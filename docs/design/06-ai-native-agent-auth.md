@@ -136,11 +136,12 @@ MCP auth uses the same Identity/SVID model; tools are capability-scoped. HoBo al
 Instead of relying on a community to write adapters, the **Forge** generates and certifies them.
 ```mermaid
 flowchart LR
-  SRC[Provider docs / OpenAPI /<br/>TF provider / existing Hobo Code] --> GEN[LLM generate<br/>@hobo/provider-x]
-  GEN --> SBX[Firecracker sandbox<br/>scoped creds, no egress]
-  SBX --> CONF{@hobo/conformance<br/>port contract tests}
-  CONF -- pass --> SIGN[sign + publish to Registry<br/>forge.PluginCertified]
-  CONF -- fail --> FIX[feed failures back] --> GEN
+  SRC["Provider docs / OpenAPI / TF provider / existing Hobo Code"] --> GEN["LLM generate @hobo/provider-x"]
+  GEN --> SBX["Firecracker sandbox (scoped creds, no egress)"]
+  SBX --> CONF{"@hobo/conformance port contract tests"}
+  CONF -->|pass| SIGN["sign + publish to Registry (forge.PluginCertified)"]
+  CONF -->|fail| FIX["feed failures back"]
+  FIX --> GEN
 ```
 1. **Generate** a candidate provider (port impls + IaC mappings + equivalence classes + a Hobo Code manifest) from the backend's docs/OpenAPI/Terraform provider/Hobo Code.
 2. **Sandbox-test** it in a Firecracker microVM with capability-scoped tokens and no outbound egress (can't exfiltrate) against `@hobo/conformance` ([Plan 9](./09-verification-open-questions.md)).

@@ -31,7 +31,7 @@ flowchart LR
   end
 
   subgraph Cloud["Real providers"]
-    AWS & AZ["AWS / Azure / GCP / CF / Fly / K8s"]
+    CLOUDS["AWS / Azure / GCP / CF / Fly / K8s"]
   end
 
   subgraph Data["Data plane (deployed Bindle)"]
@@ -44,12 +44,12 @@ flowchart LR
   PL --> ES
   OR --> ES
   OR --> EX
-  EX --> AWS
+  EX --> CLOUDS
   ID -. brokers tokens .-> EX
   REG -. capabilities/auth .-> PL
   ES --> RM
   RM --> GW
-  AWS --> APP
+  CLOUDS --> APP
   APP --> WORLD
 ```
 

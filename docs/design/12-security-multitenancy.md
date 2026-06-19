@@ -1,0 +1,48 @@
+# Plan 12 — Security & multi-tenancy
+
+> Part of the [HoBo Design Plan Suite](./README.md). Security is load-bearing here because HoBo holds the keys to other people's clouds and runs AI-generated code. See also [agent auth](./06-ai-native-agent-auth.md) and the [event model](./11-event-model.md).
+
+## Threat model (who/what we defend against)
+| Asset | Threats | Primary mitigations |
+|---|---|---|
+| **Provider credentials** | theft, over-broad scope, long-lived leakage | keyless OIDC federation by default; short-lived, resource-scoped tokens; no static secrets at rest; every issuance audited |
+| **Tenant data & event streams** | cross-tenant read/write, replay leakage | per-tenant isolation of streams/keys/pools; tenant claim enforced at the Gateway and in the store |
+| **Executors (run IaC + builds)** | malicious/compromised provider code, supply-chain | Firecracker isolation, no ambient creds, no egress except the scoped target, ephemeral |
+| **Forge plugins (AI-generated)** | exfiltration, backdoors, prompt injection in source docs | sandboxed conformance run with no egress; signed provenance; capability-scoped; human gate for high-trust |
+| **The Yard itself** | privilege escalation, tampering with history | append-only log + fencing tokens; least-privilege services; immutable audit; quorum writes |
+| **Agents** | confused-deputy, runaway spend/destroy | scoped SVIDs; policy gates on high-risk actions; spend caps; full replay |
+
+## Multi-tenancy isolation model
+A **tenant** is the hard isolation boundary. Isolation applies across four dimensions:
+1. **Data** — event streams are namespaced and (optionally) encrypted per tenant; projections enforce the tenant claim; a query can never fold another tenant's stream. Sharding can be per-tenant logs for large tenants.
+2. **Compute** — Executor pools are partitioned per tenant (and bulkheaded per provider) so one tenant's workload/storm can't observe or starve another's ([Plan 5](./05-reliability-ha.md)).
+3. **Credentials** — SVIDs and brokered provider tokens are scoped to the tenant; a tenant's federation trust is established only with that tenant's provider accounts.
+4. **Network** — data-plane resources of different tenants never share a trust domain; mTLS identities are tenant-scoped ([Plan 13](./13-networking-connectivity.md)).
+
+**Deployment tiers:** self-host = single-tenant (the whole Yard is one trust domain); hosted = multi-tenant on the same code with the boundaries above. A "dedicated" tier can pin a tenant to isolated infra.
+
+## Identity & authorization
+- **Authentication:** humans via OIDC (SSO); agents/workloads via SVIDs ([Plan 6](./06-ai-native-agent-auth.md)).
+- **Authorization:** ABAC over `(principal, tenant, port, resource, action)` evaluated at the Gateway and again at the broker. Roles are sugar over attributes (owner/maintainer/deployer/viewer/agent).
+- **Policy gates** for high-risk actions (destroy, prod, spend > cap) — auto / require-approval (a resolvable hook) / deny. Policy is versioned and event-sourced (decisions are auditable facts).
+
+## Secrets management
+- **Goal: no static secrets.** Bindings resolve to *secret refs*, not values; the runtime fetches via the provider's `secrets` port or a brokered token at use time.
+- **When secrets are unavoidable** (legacy `api-key` flow): stored with envelope encryption (KMS-backed DEK/KEK), never in the Bindle or the plaintext log; access is itself an audited `token.Used`.
+- **Per-run encryption:** sensitive step inputs/outputs in the event log are encrypted with a per-run key (so log access ≠ payload access), decryptable on demand for the run owner — mirrors the Vercel `getEncryptionKeyForRun` model.
+
+## Supply-chain security (plugins & images)
+- **Plugins** (human or Forge): signed; carry SLSA-style provenance + the conformance report; the Registry refuses unsigned/unverified plugins; consumers can pin versions and require a trust level.
+- **Images**: built reproducibly (Dagger), scanned, and referenced by digest; provenance attached.
+- **Dependencies**: SBOMs generated in CI; vuln scanning gates publishing.
+
+## Audit & compliance
+- The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.
+- Retention: audit streams (`token.*`, `resource.*`, policy decisions) retained per policy and never compacted; runtime streams have shorter retention.
+- Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 3](./03-providers-iac.md)) and residency violations are rejected at plan time.
+
+## Iteration hooks
+- Encryption granularity (per-tenant vs per-stream vs per-run) and KMS strategy.
+- ABAC policy engine choice (typed TS vs Rego/CEL) — shared with [Plan 6](./06-ai-native-agent-auth.md) guardrails.
+- Trust tiers for Forge plugins and the human-certification threshold.
+- Compliance targets to design toward (SOC2/ISO/FedRAMP) and what each implies for the log.

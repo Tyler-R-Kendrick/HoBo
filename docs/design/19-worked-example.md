@@ -23,7 +23,7 @@ export default bindle("snapshop", (b) => {
 ```
 `src/api/checkout.ts` — the *runtime* (durable workflow + choreography saga):
 ```ts
-import { workflow, step, saga, sleep } from "@hobo/runtime";
+import { step, saga, emit } from "@hobo/runtime";
 
 const reserve = step(async (o: Order, ctx) => ctx.bindings.db.reserve(o));
 const charge  = step(async (o: Order) => paymentApi.charge(o), { retries: 5 });
@@ -32,7 +32,7 @@ export async function checkout(order: Order) {
   "use workflow";
   await reserve(order);
   await charge(order);
-  await ctx.emit("OrderConfirmed", { orderId: order.id });
+  await emit("OrderConfirmed", { orderId: order.id });   // ambient, like sleep/start
   return { status: "confirmed" as const };
 }
 

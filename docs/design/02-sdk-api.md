@@ -168,6 +168,7 @@ export const fulfillment = saga("fulfillment")
 | `createWebhook()` | hook with auto HTTP routing | provider `gateway` wires the URL |
 | `getWritable<T>()` | stream output to clients | per-run stream; `run.readable` on the other side |
 | `start(wf, args, opts?)` | fire-and-forget a run | returns `{ runId, readable }`; typed against `wf` |
+| `emit(type, data)` | publish a domain event | appended to the event store; drives choreography sagas |
 | `signal(actorKey, msg)` | message an actor | enqueued; at-least-once; idempotent by key |
 
 ### Error handling & retries

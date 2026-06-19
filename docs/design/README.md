@@ -14,9 +14,21 @@
 | 4 | The Yard (hobo-cloud control plane) | [`04-control-plane.md`](./04-control-plane.md) |
 | 5 | Reliability / HA algorithms | [`05-reliability-ha.md`](./05-reliability-ha.md) |
 | 6 | AI-native & agent auth ⭐ (deep) | [`06-ai-native-agent-auth.md`](./06-ai-native-agent-auth.md) |
-| 7 | UI / dashboard (sketch) | [`07-ui-dashboard.md`](./07-ui-dashboard.md) |
+| 7 | UI / dashboard | [`07-ui-dashboard.md`](./07-ui-dashboard.md) |
 | 8 | Roadmap / phasing | [`08-roadmap.md`](./08-roadmap.md) |
-| 9 | Verification & open questions | [`09-verification-open-questions.md`](./09-verification-open-questions.md) |
+| 9 | Verification, testing & open questions | [`09-verification-open-questions.md`](./09-verification-open-questions.md) |
+| 10 | Reference architecture overview | [`10-architecture-overview.md`](./10-architecture-overview.md) |
+| 11 | Event model, sourcing & replay | [`11-event-model.md`](./11-event-model.md) |
+| 12 | Security & multi-tenancy | [`12-security-multitenancy.md`](./12-security-multitenancy.md) |
+| 13 | Networking & connectivity | [`13-networking-connectivity.md`](./13-networking-connectivity.md) |
+| 14 | Observability | [`14-observability.md`](./14-observability.md) |
+| 15 | CLI & developer experience | [`15-cli-dx.md`](./15-cli-dx.md) |
+| 16 | Cost & FinOps | [`16-cost-finops.md`](./16-cost-finops.md) |
+| 17 | Positioning & competitive analysis | [`17-positioning-competitive.md`](./17-positioning-competitive.md) |
+| 18 | Architecture Decision Record (ADR) log | [`18-adr-log.md`](./18-adr-log.md) |
+| 19 | End-to-end worked example | [`19-worked-example.md`](./19-worked-example.md) |
+
+**Reading order.** New to HoBo: start with [0 Vision](./00-vision.md) → [10 Architecture](./10-architecture-overview.md) → [19 Worked example](./19-worked-example.md), then the two deep plans [2 SDK](./02-sdk-api.md) and [6 AI-native/agent-auth](./06-ai-native-agent-auth.md). Evaluating vs alternatives: [17 Positioning](./17-positioning-competitive.md). Auditing decisions: [18 ADR log](./18-adr-log.md).
 
 ---
 
@@ -63,3 +75,8 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **The Yard** — hobo-cloud: the control plane / orchestrator (rail-yard where bindles are routed to real hosting).
 - **Forge** — the AI pipeline that generates & certifies new Provider plugins.
 - **Grain** — a virtual actor (Orleans term, kept for familiarity); the default concurrency primitive.
+- **Planner** — the pure function that turns a Bindle + mapping into a `DeploymentPlan` DAG.
+- **ResourceActor** — a controller-style grain that reconciles one resource's desired↔actual state.
+- **Executor** — a Firecracker-sandboxed runner that applies IaC / builds images with short-lived scoped creds.
+- **Run** — one durable execution of a workflow/agent (a `run.*` event stream).
+- **Identity / SVID** — a workload identity (SPIFFE-style) issued by the Yard to agents/services for keyless auth.

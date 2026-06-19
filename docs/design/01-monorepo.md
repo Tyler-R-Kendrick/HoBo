@@ -4,15 +4,22 @@
 
 **Tooling:** pnpm workspaces + Turborepo; TypeScript (strict, `nodenext`); `tsup`/`unbuild` for builds; Vitest; Biome; Changesets for versioned publishing.
 
+## Layering & dependency rule
+Packages are layered; dependencies point **inward only** (`apps → adapters → sdk/runtime → core`). `@hobo/core` depends on nothing HoBo. This keeps adapters swappable and prevents the "agnostic" core from leaking provider details.
+```
+core  ←  sdk, runtime  ←  worlds/*, providers/*, iac/*, build/*  ←  cli, cloud, mcp, registry, identity
+                          (all adapters depend only on core's port interfaces)
+```
+
 ## Packages (initial layout)
 ```
 packages/
-  core/            @hobo/core         types, port interfaces, Hobo Code schema, DI/container
+  core/            @hobo/core         types, port interfaces, Hobo Code schema, event envelope, DI/container
   sdk/             @hobo/sdk          bindle(), resource builders (web/service/database/queue/...)
   runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), ctx
-  cli/             @hobo/cli          hobo dev|deploy|inspect|login|registry
+  cli/             @hobo/cli          hobo dev|deploy|plan|inspect|login|registry|yard|forge
   worlds/
-    world-local        @hobo/world-local       (built-in engine; filesystem/sqlite)
+    world-local        @hobo/world-local       (built-in engine; sqlite/filesystem)
     world-postgres     @hobo/world-postgres
     world-temporal     @hobo/world-temporal
     world-restate      @hobo/world-restate
@@ -28,7 +35,7 @@ packages/
   build/
     build-dagger       @hobo/build-dagger
     build-packer / build-firecracker / build-vagrant
-  cloud/             @hobo/cloud        The Yard (control plane), itself a bindle
+  cloud/             @hobo/cloud        The Yard (control plane), itself a Bindle
   registry/          @hobo/registry     Provider/Hobo Code catalog service
   identity/          @hobo/identity     SVID issuance, OIDC provider, token broker
   mcp/               @hobo/mcp          MCP server exposing HoBo to agents
@@ -37,7 +44,13 @@ examples/
   hello-bindle/ multi-cloud-shop/ durable-agent/ self-host-yard/
 ```
 
+## Conventions
+- **Ports live in `core`**, implementations in adapter packages; adapters never import each other.
+- **Every adapter runs `@hobo/conformance`** for the ports it claims, in CI ([Plan 9](./09-verification-open-questions.md)).
+- **Examples are tests** — `examples/*` double as E2E fixtures.
+- **Public type surface is the contract** — provider option types are exported for `.with(...)` autocomplete ([Plan 2](./02-sdk-api.md)).
+
 ## Iteration hooks
-- Package boundaries.
-- Whether `runtime` and `sdk` merge.
-- Build tooling choices.
+- Package boundaries; whether `runtime` and `sdk` merge.
+- Build tooling (tsup vs unbuild vs tsc project refs).
+- Versioning policy: lockstep vs independent semver per package.

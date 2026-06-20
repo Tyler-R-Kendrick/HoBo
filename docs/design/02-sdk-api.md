@@ -4,6 +4,12 @@
 
 The SDK is four cooperating layers. Each lower layer is usable on its own; higher layers add ergonomics. The "feels like Vercel Workflows" surface = Layer 4 primitives + Layer 3 topology. **Design tenet:** the *agnostic* path is the default and the shortest; provider-specific power is always one `.with(...)` away.
 
+> **v2 update (Nitric/WASM/Aspire iteration).** Three refinements now layer on top of this model:
+> - **Authoring is IfC-default** ([Plan 21](./21-resources-catalog.md)): you declare resources inline with `.allow(...)` and HoBo collects them by running the component; the explicit `bindle()` topology below becomes the **advanced/escape-hatch** mode.
+> - **Ports are WIT worlds** and **services are wasm/wasi components by default** ([Plan 20](./20-wasm-wasi-runtime.md)); the typed clients shown here are generated from those worlds (OCI-container fallback for non-wasm workloads).
+> - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 22](./22-wiring-manifest.md)).
+> The Layer 1–4 model still holds; read it as the conceptual core, with those three docs as the concrete v2 surface.
+
 ---
 
 ## Layer 1 — Worlds (durable runtime ports)

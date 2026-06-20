@@ -2,13 +2,15 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The ports/adapters layer that turns agnostic Bindles into real infra. See [Plan 2 §Layer 2](./02-sdk-api.md) and [Plan 4](./04-control-plane.md).
 
+> **v2 update (WASM/WASI iteration).** Ports are now **WIT worlds** and a CloudProvider is a **capability provider** that implements a world's exports for a backend; **binding a resource = creating a link** (wasmCloud model) from a component's import to a provider's export, late-bound at deploy/runtime ([Plan 20](./20-wasm-wasi-runtime.md)). The deploy layer below (realize → IaC) is unchanged and now also wires links + emits the **manifest IR** ([Plan 22](./22-wiring-manifest.md)). Custom providers can be authored in any wasm language (not just Go like Nitric) and AI-generated via the Forge ([Plan 23](./23-stubbable-ai-implementations.md)).
+
 ## The three adapter families (one shape)
 Everything that touches the outside world is a port with swappable adapters:
-- **CloudProvider** — implements capability ports (`database`, `compute`, …) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).
+- **CloudProvider** — implements capability ports (now **WIT worlds**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).
 - **IacProvider** — the *mechanism* a CloudProvider uses to realize resources (Pulumi/CDKTF/Crossplane/OpenTofu).
-- **BuildProvider** — produces images/rootfs (Dagger/Packer/Firecracker/Vagrant).
+- **BuildProvider** — produces images/rootfs/**wasm components** (Dagger/Packer/Firecracker/Vagrant/jco+componentize).
 
-A CloudProvider composes the other two: it declares *what* a resource is, then emits an `IacProgram` (and optionally a `BuildSpec`) for the chosen IaC/Build adapters to execute.
+A CloudProvider composes the other two: it declares *what* a resource is, then emits an `IacProgram` (and optionally a `BuildSpec`) for the chosen IaC/Build adapters to execute, plus the **links** that bind components to it at runtime.
 
 ## Port & provider interfaces
 ```ts

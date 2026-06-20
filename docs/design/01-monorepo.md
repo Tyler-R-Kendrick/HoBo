@@ -15,8 +15,10 @@ core  ←  sdk, runtime  ←  worlds/*, providers/*, iac/*, build/*  ←  cli, c
 ```
 packages/
   core/            @hobo/core         types, port interfaces, Hobo Code schema, event envelope, DI/container
-  sdk/             @hobo/sdk          bindle(), resource builders (web/service/database/queue/...)
-  runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), ctx
+  wit/             @hobo/wit          WIT worlds (wasi:* reuse + hobo:* ports) + generated TS bindings  [Plan 20]
+  sdk/             @hobo/sdk          IfC resources (api/kv/bucket/queue/topic/secret/sql/...) + .allow(); bindle() (advanced)  [Plan 21]
+  runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx
+  componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
   cli/             @hobo/cli          hobo dev|deploy|plan|inspect|login|registry|yard|forge
   worlds/
     world-local        @hobo/world-local       (built-in engine; sqlite/filesystem)
@@ -33,7 +35,8 @@ packages/
     iac-pulumi         @hobo/iac-pulumi        (Automation API — primary)
     iac-cdktf / iac-crossplane / iac-opentofu
   build/
-    build-dagger       @hobo/build-dagger
+    build-wasm         @hobo/build-wasm        (jco/cargo-component/TinyGo/... -> wasm component, OCI artifact)
+    build-dagger       @hobo/build-dagger      (container fallback images)
     build-packer / build-firecracker / build-vagrant
   cloud/             @hobo/cloud        The Yard (control plane), itself a Bindle
   registry/          @hobo/registry     Provider/Hobo Code catalog service

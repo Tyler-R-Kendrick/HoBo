@@ -5,6 +5,8 @@
 ## Design stance: agents are principals, not scripts
 Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Hobo Code** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 
+> **v2 update.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./23-stubbable-ai-implementations.md). And `.allow()` ([Plan 21](./21-resources-catalog.md)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
+
 ---
 
 ## 6.1 Hobo Code / Signs — the `auth.md` standard

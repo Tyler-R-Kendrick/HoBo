@@ -81,7 +81,8 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 | **FR-010** | Core CLI: `new`, `dev`, `build`, `collect`, `plan`, `deploy`, `promote`, `rollback`, `destroy`, `inspect`, `logs`, `drift`, `login`, `registry`, `doctor`. | M | Each command runs on the reference app; `plan` shows plan + cost + warnings. | BR-001 |
 | **FR-011** | `hobo dev` runs the full app locally on `world-local` with **zero cloud**. | M | Cold `hobo dev` ≤60 s, no credentials required (NFR-002). | BR-001 |
 | **FR-012** | Deployment strategies (`recreate`/`blue-green`/`canary`/`progressive`) selectable per service. | S | Canary regression auto-rolls-back ([05](../design/05-reliability-ha.md)). | BR-006 |
-| **FR-013** | Verification CLI: `verify`, `can-deploy`, `explain-failure`, `fix --dry-run`. | S | A producer/consumer skew is blocked with a precise reason ([29](../design/29-contracts-compatibility.md)). | BR-010 |
+| **FR-013** | Verification CLI: `verify`, `can-deploy`, `explain-failure`, `fix --dry-run`. | S | A producer/consumer skew is blocked with a precise reason ([29](../design/29-contracts-compatibility.md)); `explain-failure` output meets the error-UX bar in NFR-017. | BR-010 |
+| **FR-014** | `hobo doctor` runs a **portability + security lint**: warns (non-blocking, explained) on provider lock-in (provider-specific `.with()` for only one provider) and on static-key use where federation is available. | S | doctor flags a single-provider `.with()` resource and a static-key binding with an actionable message ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)/[ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)). | BR-002/BR-003/BR-005 |
 
 ### 6.3 AI-native & agent operation ([06](../design/06-ai-native-agent-auth.md))
 | ID | Requirement | Pri | AC | BR |
@@ -130,11 +131,11 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 
 | ID | Category | Requirement | Target / method | BR |
 |---|---|---|---|---|
-| **NFR-001** | Portability | One unedited Bindle deploys to multiple providers; provider details never leak into the agnostic core. | ≥2 providers at v1; `multi-cloud-shop` E2E ([03](../design/03-providers-iac.md), [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)) | BR-002 |
+| **NFR-001** | Portability | One **unedited** Bindle deploys to multiple providers; provider details never leak into the agnostic core. "Unedited" = `bindle.ts` + app `src/` byte-identical across targets; only `hobo.config.ts`/env vary. | ≥2 providers at v1; `multi-cloud-shop` E2E asserts identical topology ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md), [03](../design/03-providers-iac.md)) | BR-002 |
 | **NFR-002** | Ease-of-use | Local dev with zero cloud/credentials. | `hobo dev` ≤60 s cold | BR-001 |
 | **NFR-003** | Ease-of-use | Time-to-first-deploy on the happy path. | ≤10 min p50 (E2E timing) | BR-001 |
 | **NFR-004** | Ease-of-use | Parity across surfaces: anything in the CLI/SDK is also in MCP. | Surface-parity test ([09](../design/09-verification-open-questions.md)) | BR-004 |
-| **NFR-005** | Security | Zero static secrets by default; provider access via short-lived scoped tokens. | ≥99% brokered; audit of `token.*` | BR-005 |
+| **NFR-005** | Security | Zero static secrets by default; provider access via short-lived scoped tokens. The legacy static-key escape hatch is **bounded** (max TTL, enforced rotation, fully audited, opt-in). | ≥99% brokered; audit of `token.*`; a key past TTL is rejected ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) | BR-005 |
 | **NFR-006** | Security | Tenant isolation across data/compute/credentials/network/wasm-capability. | Cross-tenant read fails at Gateway + store ([12](../design/12-security-multitenancy.md)) | BR-006 |
 | **NFR-007** | Security | AI-generated code is sandboxed (Firecracker + wasm capability, no egress in conformance) and only runs if signed + conformance-passing. | Executor egress test; unsigned plugin refused ([12](../design/12-security-multitenancy.md)) | BR-008 |
 | **NFR-008** | Auditability | Every state transition is an append-only event; replayable/time-travelable. | Projection rebuild == live ([11](../design/11-event-model.md)) | BR-006 |
@@ -145,7 +146,11 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 | **NFR-013** | Portability | The product is self-hostable on the same code as hosted. | `hobo yard up` bootstraps a working Yard ([04](../design/04-control-plane.md)) | BR-007 |
 | **NFR-014** | Observability | OTel logs/traces/metrics for control + data planes. | Traces present for a deploy + a run ([14](../design/14-observability.md)) | BR-006 |
 | **NFR-015** | Usability/Docs | Machine-readable docs (`llms.txt`) + instant `npx` onboarding so agents and humans self-serve. | Onboarding test; docs present | BR-001/BR-004 |
-| **NFR-016** | Accessibility/i18n | Dashboard meets WCAG 2.1 AA; UI strings localizable. | Audit (P6 dashboard) | BR-007 |
+| **NFR-016** | Accessibility/i18n | CLI/runtime error output is screen-reader-friendly and an **i18n framework is integrated from P3**; the dashboard meets **WCAG 2.1 AA** and ships a pseudo-localization-passing i18n layer at P6. | automated WCAG audit + manual review (P6 dashboard); pseudo-loc test (200% string length, RTL) passes | BR-001 |
+| **NFR-017** | Ease-of-use | Failure output is **actionable**: every blocked gate / failed deploy states root cause + 1–2 remediation steps, machine-readable for agent self-correction. | `explain-failure` on a seeded failure yields cause + fix steps; agent self-corrects in the MCP E2E | BR-001/BR-004 |
+| **NFR-018** | Security/Audit | Compliance audit streams (`token.*`/`resource.*`/policy decisions) are retained for a defined minimum and **never compacted**. | retention test: stream older than the floor still present ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) | BR-006/BR-010 |
+| **NFR-019** | Security/Availability | The Gateway and MCP surface enforce **per-principal and per-tenant rate limits + quotas** with backpressure. | a flooding agent is throttled (typed error); legitimate volume unaffected ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) | BR-007/BR-011 |
+| **NFR-020** | Portability | The **agnostic core never imports a provider/adapter package**; enforced at build time. | CI dependency-graph lint fails on a core→provider import ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)) | BR-002 |
 
 ## 8. UX / UI requirements ([07-ui-dashboard.md](../design/07-ui-dashboard.md))
 Core views (P6 depth): **Deployments timeline** (event-sourced, replay/time-travel scrubber, rollback on DAG); **Topology graph** (resources→providers, bind edges w/ connectivity + cost); **Run inspector** (step/actor/saga trace, per-step I/O, replay-diff vs current code); **Registry browser** (capabilities, signs, Forge provenance); **Agent activity & credential audit** (token grant/use/revoke, approvals); **Cost & FinOps** (plan vs actuals, budgets, showback); **Drift** (heal/propose). Key interactions: plan preview, approve policy gates, promote/rollback, live tail.
@@ -156,8 +161,8 @@ From [08-roadmap.md](../design/08-roadmap.md) exit criteria; MVP line at **P4** 
 - **P2:** reference Bindle deploys to a real cloud and survives a Yard restart mid-deploy.
 - **P3:** an agent deploys via MCP using only brokered tokens; credential audit present.
 - **P4 (v1 GA):** one Bindle deploys to ≥2 clouds; cross-cloud mTLS works.
-- **P5:** `hobo forge <url>` produces a certified provider passing conformance.
-- **P6:** canary auto-rollback; plan-time cost within tolerance; DR rebuild < RTO; dashboard + accessibility.
+- **P5:** `hobo forge <url>` produces a certified provider passing conformance. **Governance phase 1:** policy gates + approval obligations + `can-deploy` (FR-050/051/052) are usable.
+- **P6:** canary auto-rollback; plan-time cost within tolerance; DR rebuild < RTO; dashboard + accessibility (NFR-016). **Governance phase 2:** resource-driven Resource Definitions/Matching + Packs (FR-060/061/062) at depth.
 
 ## 10. Analytics / success metrics
 Instrument the [BRD KPIs](./BRD.md#10-success-metrics--kpis): time-to-first-deploy, providers-per-Bindle, zero-secret rate, agent-completable lifecycle %, Forge yield, recovery times. Derived from the event log (no separate telemetry path required for control-plane KPIs).

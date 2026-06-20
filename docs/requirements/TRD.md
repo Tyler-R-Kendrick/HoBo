@@ -89,13 +89,17 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-003** | Services compile to **wasm components** (jco/componentize) with **OCI-container fallback**. | Build test; component runs on `world-local` ([20](../design/20-wasm-wasi-runtime.md)) |
 | **TR-004** | `.allow(v)` produces exactly one **{IAM scope + wasm capability link + brokered-token scope}** triple; a missing verb is denied on all three. | `.allow()` triple test ([09](../design/09-verification-open-questions.md)) |
 | **TR-005** | `.with(provider.option(...))` is per-provider-typed and inert for non-resolved providers. | Multi-provider resolve test ([09](../design/09-verification-open-questions.md)) |
+| **TR-006** | The build enforces the **layering invariant** via a dependency-graph lint (e.g. `depcheck`/`madge`): no agnostic package imports a provider/iac/build package and no adapter imports another adapter; CI blocks on violation. | dep-graph lint gate ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md), [01](../design/01-monorepo.md)) |
+
+> **"Unedited" (portability definition, [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)):** across cloud targets, `bindle.ts` and application `src/` are **byte-identical**; only `hobo.config.ts` and CLI/env parameters may change. The `multi-cloud-shop` E2E proves it by deploying an unchanged `bindle.ts` to ≥2 providers and asserting identical resolved topology + bindings.
 
 ### 5.2 Worlds runtime ([02](../design/02-sdk-api.md), [24](../design/24-wit-worlds-reference.md))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-010** | Define `World` ports — EventStore, Queue, Streamer, ActorHost, Clock — as WIT worlds; ship a built-in engine (`world-local`, SQLite/fs). | Per-World-port conformance ([09](../design/09-verification-open-questions.md)) |
 | **TR-011** | Runtime primitives `step`/`workflow`/`actor`/`saga`/`agent`/`sleep`/`cron`/hooks/streams with memoized steps + auto idempotency keys. | hello-bindle exercises all; replay==live |
-| **TR-012** | Worlds are swappable per Camp (`world-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | Same app on ≥2 Worlds ([24](../design/24-wit-worlds-reference.md)) |
+| **TR-012** | Worlds are swappable per Camp (`world-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 Worlds** (e.g. `world-local` + `world-postgres`) with only a World override; lifecycle identical (replay==live) ([24](../design/24-wit-worlds-reference.md)) |
+| **TR-013** | **Version policy:** Pulumi Automation API / WASI-WIT / MCP are pinned to exact versions; World port versions are recorded in the Manifest IR and immutable for a Bindle version; upgrades go through a gated `hobo upgrade` path with a compat/upgrade test; a version mismatch fails planning with a precise reason. | upstream-upgrade compat test; version-mismatch reject test ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md); open ADR-P/Q11 [09](../design/09-verification-open-questions.md)) |
 
 ### 5.3 The Yard control plane ([04](../design/04-control-plane.md))
 | ID | Requirement | Verified by |
@@ -126,8 +130,9 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-050** | **Identity** issues short-lived **SVIDs** (SPIFFE-style) to agents/workloads and acts as an OIDC provider. | Token issuance test ([09](../design/09-verification-open-questions.md)) |
-| **TR-051** | **Token broker** exchanges an SVID for a resource-scoped provider token (OIDC federation preferred; OAuth-OBO for human delegation; API-key only as an explicit legacy escape hatch). | Zero-secret deploy test (NFR-005) |
-| **TR-052** | Every credential event (`token.Granted/Used/Revoked`) is logged and replayable. | Credential-audit test ([06](../design/06-ai-native-agent-auth.md)) |
+| **TR-051** | **Token broker** exchanges an SVID for a resource-scoped provider token (OIDC federation preferred; OAuth-OBO for human delegation). The **API-key legacy escape hatch** is opt-in, carries a **max TTL with enforced rotation**, and is fully audited. | Zero-secret deploy test (NFR-005); key-past-TTL-rejected test ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) |
+| **TR-052** | Every credential event (`token.Granted/Used/Revoked`) is logged and replayable; audit streams are retained for a defined minimum and never compacted. | Credential-audit + retention-floor test ([06](../design/06-ai-native-agent-auth.md), NFR-018) |
+| **TR-053** | **Confused-deputy default-deny:** before issuing any scoped token, the policy engine checks `{principal, tenant, resource, action}`; cross-tenant issuance is denied unless explicitly delegated. | Agent-with-tenant-1-SVID requests tenant-2 token → denied before `token.Granted` ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) |
 
 ### 5.7 Registry & Hobo Code ([06](../design/06-ai-native-agent-auth.md))
 | ID | Requirement | Verified by |
@@ -139,6 +144,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-070** | `@hobo/mcp` exposes every CLI/SDK capability as an MCP tool (`plan`/`deploy`/`promote`/`rollback`/`inspect_run`/`tail_logs`/`request_token`/`get_drift`/`heal`/…) with the same identity/authz model. | Surface-parity + agent E2E (NFR-004) |
+| **TR-071** | The Gateway and MCP surface enforce **per-principal (SVID/OIDC) and per-tenant rate limits + quotas** with backpressure; excess returns a typed throttle error. | Flooding-agent-throttled test (NFR-019, [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) |
 
 ### 5.9 Forge & conformance trust boundary ([06](../design/06-ai-native-agent-auth.md), [09](../design/09-verification-open-questions.md), [23](../design/23-stubbable-ai-implementations.md))
 | ID | Requirement | Verified by |
@@ -146,6 +152,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-080** | `@hobo/conformance` provides an executable contract suite **per WIT world**; an adapter may only claim a port it passes; CI blocks otherwise. | Conformance gate in CI ([09](../design/09-verification-open-questions.md)) |
 | **TR-081** | **Forge** generates a candidate provider/impl, runs conformance **sandboxed with no egress**, signs + attaches SLSA-style provenance, publishes on pass. | `hobo forge` certification test ([06](../design/06-ai-native-agent-auth.md)) |
 | **TR-082** | `stub()` records calls as events; AI implement-to-trace asserts conformance-green **and** reproduces recorded traces; **live-fix** routes through the gated canary/auto-rollback saga. | Stub/replay + gated live-fix test ([09](../design/09-verification-open-questions.md)) |
+| **TR-083** | **Forge generation is injection-hardened:** source docs/OpenAPI are scanned/sanitized before generation; the signed provenance includes a scrub report; conformance runs with **no egress** (hard requirement, not default). | Seeded-malicious-docs test produces a scrub report; egress attempt during conformance fails ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md), [12](../design/12-security-multitenancy.md)) |
 
 ### 5.10 Contracts, policy, evals & Gatekeeper ([29](../design/29-contracts-compatibility.md), [30](../design/30-policy-plane.md))
 | ID | Requirement | Verified by |
@@ -165,9 +172,9 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 ### 5.12 Cross-cutting: security & multi-tenancy ([12](../design/12-security-multitenancy.md))
 | ID | Requirement | Verified by |
 |---|---|---|
-| **TR-110** | Tenant is the hard isolation boundary across **five** dimensions: data (namespaced/encrypted streams), compute (partitioned Executor pools), credentials (tenant-scoped SVIDs/tokens), network (tenant-scoped mTLS domains), and **wasm capability** (deny-by-default unforgeable handles). | Cross-tenant isolation tests ([09](../design/09-verification-open-questions.md)) |
-| **TR-111** | **No static secrets:** bindings resolve to secret refs; per-run sensitive payloads encrypted with a per-run key (log access ≠ payload access). | Secrets/encryption test |
-| **TR-112** | **Supply chain:** plugins signed w/ provenance + conformance report; images by digest + scanned; SBOMs gate publishing. | Signing/SBOM gate ([12](../design/12-security-multitenancy.md)) |
+| **TR-110** | Tenant is the hard isolation boundary across **five** dimensions: data (namespaced/encrypted streams), compute (partitioned Executor pools), credentials (tenant-scoped SVIDs/tokens), network (tenant-scoped mTLS domains), and **wasm capability** (deny-by-default unforgeable handles). | Cross-tenant tests incl. an **explicit denial scenario**: a component linked only to tenant A's resource calling tenant B's resource fails with a *capability-denied* (not generic-auth) error ([09](../design/09-verification-open-questions.md)) |
+| **TR-111** | **No static secrets:** bindings resolve to secret refs; per-run sensitive payloads encrypted with a per-run key. **Envelope encryption at rest** for event streams is available across **all** Worlds (default for new tenants; opt-in where a World lacks native support, gap documented). Decryption requires log-read **and** explicit authorization (run-owner / `decrypt:run`); log access ≠ payload access. | Encryption-across-Worlds + unauthorized-decrypt-denied test ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md), [12](../design/12-security-multitenancy.md)) |
+| **TR-112** | **Supply chain:** plugins signed w/ SLSA-style provenance + conformance report; images by digest + scanned; all published artifacts (SDK, CLI, providers, implementations, base images) carry **CycloneDX SBOMs**; CI **blocks publishing on CVSS ≥ 7.0** (documented waiver path). | Signing + SBOM-present + vuln-gate test ([12](../design/12-security-multitenancy.md)) |
 | **TR-113** | **Data residency:** a tenant can constrain regions; the Planner rejects residency violations at plan time. | Residency rejection test ([03](../design/03-providers-iac.md)) |
 
 ### 5.13 Cross-cutting: networking ([13](../design/13-networking-connectivity.md))
@@ -213,7 +220,7 @@ Self-host = single-tenant (whole Yard = one trust domain); hosted = multi-tenant
 Pyramid: **unit** (pure Planner/upcasters) → **conformance** per port (the trust boundary, `@hobo/conformance`) → **integration** (SDK + built-in World + local provider) → **E2E** (Yard + one real cloud, gated) → **determinism/replay** (`replay == live`). New gate tests: matching, Delta→Set, compatibility (`can-deploy`), policy-decision, eval-gate, stub/replay, IfC-collection. `hobo verify` composes contracts + policy + evals + conformance + cost (TR-093).
 
 ## 10. Technical risks & open decisions
-Inherits [BRD risks](./BRD.md#15-risk-register). Open ADR-P items ([18-adr-log](../design/18-adr-log.md)) this TRD must eventually close:
+Inherits [BRD risks](./BRD.md#15-risk-register). The requirements review/hardening pass closed several gaps via [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md) (security posture) and [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md) (portability guarantee) — including a v1 version-pinning default (TR-013) for the otherwise-open `hobo:*` versioning question. Open ADR-P items ([18-adr-log](../design/18-adr-log.md)) this TRD must eventually close:
 - **ADR-P1** built-in-engine consensus (own Raft vs delegate) — affects TR-142.
 - **ADR-P2** overlay-mesh tech — affects TR-120.
 - **ADR-P4** default Planner objective (cost vs latency) — affects TR-021/TR-150; **TRD stance:** ship a documented default (cost-aware with colocation) that is **per-tenant configurable**, decision deferred to ADR-P4 ratification.
@@ -225,19 +232,21 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-001
 
 | BR | FR / NFR | TR | Proven by (design + test) |
 |---|---|---|---|
-| BR-001 author once | FR-001, FR-002, FR-003, FR-010, FR-011; NFR-002, NFR-003, NFR-015 | TR-001..003, TR-011 | hello-bindle; IfC-collection; `hobo dev` timing |
-| BR-002 N clouds, unedited | FR-004, FR-005, FR-006, FR-030, FR-032; NFR-001 | TR-005, TR-012, TR-040, TR-043, TR-021 | `multi-cloud-shop` E2E; resolve test |
-| BR-003 optimize on demand | FR-005 | TR-005 | provider-options test |
-| BR-004 agents first-class | FR-020, FR-021; NFR-004 | TR-070, TR-050 | MCP surface-parity; agent E2E |
-| BR-005 zero secrets | FR-002, FR-023; NFR-005 | TR-004, TR-051, TR-052 | zero-secret deploy; `token.*` audit |
-| BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014 | TR-030..033, TR-130 | projection-rebuild; determinism; OTel |
-| BR-007 self-hostable + reliable | FR-010; NFR-009, NFR-010, NFR-013 | TR-024, TR-140..143 | bootstrap; DR replay; fencing |
-| BR-008 no community bottleneck | FR-040, FR-041, FR-042; NFR-007 | TR-080..082 | `hobo forge`; stub/replay; sandbox egress |
+| BR-001 author once | FR-001, FR-002, FR-003, FR-010, FR-011; NFR-002, NFR-003, NFR-015, NFR-016, NFR-017 | TR-001..003, TR-011 | hello-bindle; IfC-collection; `hobo dev` timing; explain-failure UX; WCAG audit |
+| BR-002 N clouds, unedited | FR-004, FR-005, FR-006, FR-014, FR-030, FR-032; NFR-001, NFR-020 | TR-005, TR-006, TR-012, TR-040, TR-043, TR-021 | `multi-cloud-shop` E2E; resolve test; dep-graph lint |
+| BR-003 optimize on demand | FR-005, FR-014 | TR-005 | provider-options + lock-in-lint test |
+| BR-004 agents first-class | FR-020, FR-021, FR-031; NFR-004, NFR-017 | TR-070, TR-050, TR-060 | MCP surface-parity; agent E2E; registry discovery |
+| BR-005 zero secrets | FR-002, FR-014, FR-023; NFR-005 | TR-004, TR-051, TR-052 | zero-secret deploy; `token.*` audit; key-TTL |
+| BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014, NFR-018 | TR-030..033, TR-052, TR-130 | projection-rebuild; determinism; OTel; retention floor |
+| BR-007 self-hostable + reliable | FR-010, FR-012; NFR-009, NFR-010, NFR-013, NFR-019 | TR-024, TR-071, TR-140..144 | bootstrap; DR replay; fencing; rate-limit; canary auto-rollback |
+| BR-008 no community bottleneck | FR-040, FR-041, FR-042; NFR-007 | TR-080..083 | `hobo forge`; stub/replay; sandbox no-egress; injection scrub |
 | BR-009 cost first-class | FR-070; NFR-012 | TR-150, TR-151 | cost fixture; budget-breach |
 | BR-010 governance | FR-013, FR-050, FR-051, FR-052, FR-060, FR-061 | TR-090..093, TR-100, TR-101, TR-113 | can-deploy; policy/obligation; matching; residency |
-| BR-011 safe autonomy | FR-022, FR-042, FR-051 | TR-092, TR-082 | policy-gate; spend-cap; gated live-fix |
-| BR-012 monetization/marketplace | FR-062; NFR-007 | TR-061, TR-102, TR-112 | pack install; signing/SBOM gate |
-| (security spine) | NFR-006, NFR-007 | TR-110, TR-111, TR-112, TR-023, TR-121 | tenant isolation; executor egress; mTLS |
+| BR-011 safe autonomy | FR-022, FR-042, FR-051; NFR-019 | TR-053, TR-071, TR-082, TR-092 | confused-deputy deny; rate-limit; policy-gate; spend-cap; gated live-fix |
+| BR-012 monetization/marketplace | FR-031, FR-062; NFR-007 | TR-061, TR-102, TR-112 | pack install; signing/SBOM gate |
+| (security spine) | NFR-006, NFR-007, NFR-018, NFR-019, NFR-020 | TR-006, TR-013, TR-023, TR-053, TR-071, TR-083, TR-110, TR-111, TR-112, TR-121 | tenant isolation; executor egress; mTLS; layering lint; version pin; rate-limit |
+
+> The matrix shows **representative** TRs per BR; every `TR-NNN` carries its own verification in [§5](#5-technical-requirements-tr-nnn). Rows for BR-001/002/004/006/007/008/011 and the security spine were extended in the requirements hardening pass ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)/[ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md); see [`plans/README.md`](../../plans/README.md)).
 
 ## 11. References
 [10 Architecture](../design/10-architecture-overview.md) · [04 Control plane](../design/04-control-plane.md) · [11 Event model](../design/11-event-model.md) · [05 Reliability](../design/05-reliability-ha.md) · [12 Security](../design/12-security-multitenancy.md) · [13 Networking](../design/13-networking-connectivity.md) · [09 Verification](../design/09-verification-open-questions.md) · [24 WIT worlds](../design/24-wit-worlds-reference.md) · [BRD](./BRD.md) · [PRD](./PRD.md) · [ADR index](../design/adr/README.md).

@@ -4,11 +4,11 @@
 
 **HoBo** is a developer-centric, cloud-agnostic TypeScript SDK plus an intermediary cloud control plane ("the Yard"). Describe your app once through PaaS / SaaS / CaaS / IaaS abstractions; a provider pattern (ports & adapters) maps it onto real providers — agnostic by default, optimizable on demand via typed provider-specific options. The runtime is AI-native: actor-model + choreography sagas over a replayable event store, with durable workflows and agents as first-class authenticated users.
 
-> **Status: design phase.** No implementation code yet — this repository currently holds the design plans. See [`docs/design/`](./docs/design/README.md).
+> **Status: design phase.** No **HoBo product** implementation code yet — this repository holds the design plans and requirements. (The only code present is third-party AI agent-tooling under `.agents/`, `.claude/`, and `scripts/` — see [Working in this repo with AI agents](#working-in-this-repo-with-ai-agents).) See [`docs/design/`](./docs/design/README.md).
 
 ## Design plans
 
-The design is split into 20 independently iterable plans under [`docs/design/`](./docs/design/README.md). Suggested reading order: **[0 Vision](./docs/design/00-vision.md) → [10 Architecture overview](./docs/design/10-architecture-overview.md) → [19 Worked example](./docs/design/19-worked-example.md)**, then the two deep plans **[2 SDK/API ⭐](./docs/design/02-sdk-api.md)** and **[6 AI-native & agent auth ⭐](./docs/design/06-ai-native-agent-auth.md)**.
+The design is split into 31 independently iterable plans (`00`–`30`) under [`docs/design/`](./docs/design/README.md). Suggested reading order: **[0 Vision](./docs/design/00-vision.md) → [10 Architecture overview](./docs/design/10-architecture-overview.md) → [19 Worked example](./docs/design/19-worked-example.md)**, then the two deep plans **[2 SDK/API ⭐](./docs/design/02-sdk-api.md)** and **[6 AI-native & agent auth ⭐](./docs/design/06-ai-native-agent-auth.md)**.
 
 | Foundations | Deep dives | Cross-cutting |
 |---|---|---|

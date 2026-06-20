@@ -1,7 +1,7 @@
 # HoBo — Design Plan Suite
 
 > A suite of inter-related design plans for **HoBo**, a TypeScript SDK + cloud control plane.
-> This is a **planning deliverable only — no implementation code is committed yet.** Each numbered plan lives in its own file so we can iterate on areas independently.
+> This is a **planning deliverable — no HoBo *product* implementation code is committed yet** (the only code in the repo is third-party AI agent-tooling under `.agents/`/`.claude/`/`scripts/`). Each numbered plan lives in its own file so we can iterate on areas independently.
 
 ## Index
 

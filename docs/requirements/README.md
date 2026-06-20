@@ -31,6 +31,8 @@ Authored alongside the docs (one ADR per load-bearing decision) — see the [ADR
 - [ADR-0020](../design/adr/ADR-0020-monetization-model.md) — monetization model
 - [ADR-0021](../design/adr/ADR-0021-nfr-baselines-slos.md) — NFR baselines / SLOs (Proposed)
 - [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md) — MVP scope / MoSCoW
+- [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md) — security posture commitments *(from the review/hardening pass)*
+- [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md) — portability conformance guarantee *(from the review/hardening pass)*
 
 ## Reading order
 New reader: [BRD](./BRD.md) → [PRD](./PRD.md) → [TRD](./TRD.md). For design depth behind any requirement, follow its citation into [`docs/design`](../design/README.md) (start with [10 Architecture](../design/10-architecture-overview.md) and [19 Worked example](../design/19-worked-example.md)).

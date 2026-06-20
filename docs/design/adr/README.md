@@ -36,5 +36,7 @@
 | 0020 | Monetization model (OSS core + hosted Yard + marketplace) | Accepted | [ADR-0020](./ADR-0020-monetization-model.md) |
 | 0021 | NFR baselines / committed SLOs for v1 | Proposed | [ADR-0021](./ADR-0021-nfr-baselines-slos.md) |
 | 0022 | MVP scope line / MoSCoW mapped to phases | Accepted | [ADR-0022](./ADR-0022-mvp-scope-moscow.md) |
+| 0023 | Security posture commitments for v1 | Accepted | [ADR-0023](./ADR-0023-security-posture-commitments.md) |
+| 0024 | Portability conformance guarantee ("same Bindle, N clouds") | Accepted | [ADR-0024](./ADR-0024-portability-conformance-guarantee.md) |
 
-> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). Additional ADRs (0023+) are appended here as later iterations — including the requirements review/hardening pass — produce load-bearing decisions.
+> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)).

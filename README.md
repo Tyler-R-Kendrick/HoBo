@@ -16,3 +16,7 @@ The design is split into 20 independently iterable plans under [`docs/design/`](
 | | [7 UI](./docs/design/07-ui-dashboard.md) · [15 CLI/DX](./docs/design/15-cli-dx.md) | [8 Roadmap](./docs/design/08-roadmap.md) · [9 Verification](./docs/design/09-verification-open-questions.md) · [17 Positioning](./docs/design/17-positioning-competitive.md) · [18 ADR log](./docs/design/18-adr-log.md) · [19 Worked example](./docs/design/19-worked-example.md) |
 
 Design inspiration: the API *feels like* [Vercel Workflows](https://workflow-sdk.dev/) and adopts its [Worlds](https://workflow-sdk.dev/worlds) abstraction. HoBo is positioned as a cloud-agnostic, AI-native alternative to closed agent-native PaaS offerings.
+
+## Working in this repo with AI agents
+
+This repo is wired for **Claude Code**, **Cursor**, and **Codex** with four agent tools — **improve** (audit→plans), **caveman** (output compression), **headroom** (context compression, MCP), and **gbrain** (knowledge-graph memory, MCP). See [`AGENTS.md`](./AGENTS.md) and [`docs/agent-tooling.md`](./docs/agent-tooling.md); install with [`scripts/setup-agent-tools.sh`](./scripts/setup-agent-tools.sh). Note: gbrain needs an embedding API key and sends content to that provider.

@@ -15,6 +15,18 @@
 > ```
 > **Stub → AI-implement (Plan 23):** a `payments` capability can ship as `service("payments").stub()` so checkout runs end-to-end on day one; the Forge later generates the real component, validated against conformance + the recorded stub traces, and promotes it through a gated rollout. Everything else in the narrative below (deploy to one cloud → multi-cloud split → provider tuning → agent-operated → Forge) is unchanged.
 
+> **v3 dynamic configuration (Plan 25/26):** the developer never picks infra for `db` — a **platform engineer** writes **Resource Definitions** and the *same* `bindle.ts` resolves differently per **environment type**:
+> ```ts
+> // platform/resource-defs.ts
+> defineResource({ type: "database", engine: "postgres", class: "ha",
+>   provider: aws, driver: "terraform", with: aws.rds({ multiAz: true }),
+>   match: { envType: "production" } });               // prod → managed HA RDS
+> defineResource({ type: "database", engine: "postgres",
+>   driver: "container", with: { image: "postgres:16" },
+>   match: { envType: "ephemeral" } });                // preview → cheap in-cluster
+> ```
+> `hobo deploy --camp prod` → matches the HA definition; `hobo deploy --camp preview` (an **ephemeral** Camp, auto-TTL) → matches the in-cluster one. Each choice emits a **`match.Decided`** event (score + rejected candidates) so the dashboard answers "*why did preview get the cheap DB?*". A **Pipeline** can open the prod **Delta** behind an **approval gate**; if the cluster is private, Executors run behind the **HoBo Agent**. The app code and `bindle.ts` are untouched throughout.
+
 ## 1. Scaffold & build locally (no cloud)
 ```bash
 npx hobo new snapshop -t fullstack && cd snapshop && hobo dev

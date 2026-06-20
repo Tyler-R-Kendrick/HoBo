@@ -32,6 +32,10 @@
 | 22 | Wiring, config & the manifest IR (Aspire model) | [`22-wiring-manifest.md`](./22-wiring-manifest.md) |
 | 23 | Stubbable implementations & AI implement/evolve/live-fix | [`23-stubbable-ai-implementations.md`](./23-stubbable-ai-implementations.md) |
 | 24 | WIT worlds reference (the canonical ports) | [`24-wit-worlds-reference.md`](./24-wit-worlds-reference.md) |
+| 25 | Resource Definitions & Matching (dynamic config mgmt, Humanitec) | [`25-resource-definitions-matching.md`](./25-resource-definitions-matching.md) |
+| 26 | Environments, Deployment Sets & Deltas | [`26-environments-deltas.md`](./26-environments-deltas.md) |
+| 27 | Drivers, Resource Packs & Workload Profiles | [`27-drivers-packs-profiles.md`](./27-drivers-packs-profiles.md) |
+| 28 | The HoBo Agent, GitOps publisher & Pipelines | [`28-agent-gitops-pipelines.md`](./28-agent-gitops-pipelines.md) |
 | — | **Phased build plan (every phase, every step)** | [`phases/`](./phases/README.md) |
 
 **Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric/README.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric/hobo-mapping.md)).
@@ -96,3 +100,10 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **IfC** — Infrastructure-from-Code: the default authoring mode where resources are declared inline and collected by running the component.
 - **Manifest (IR)** — the deployment intermediate representation emitted by resource-collection and consumed by the Planner.
 - **Stub** — a typed, recording placeholder behind a WIT port so an app runs before implementations exist (basis for AI implement/evolve).
+- **Resource Definition** — a platform-engineer rule for *how* a port is realized in a context (provider + driver + options), selected by Matching. Mapping is sugar over default definitions.
+- **Matching Criteria** — the specificity-scored selector that picks one Resource Definition for a deploy context (env-type/app/env/class/id); the decision is recorded as `match.Decided`.
+- **Driver** — the execution mechanism a definition uses to realize a resource: `terraform`/`template`/`echo`/`container`/`custom-webhook`.
+- **Deployment Set** — the immutable resolved config of a Camp at a point in time (the manifest IR). **Delta** — a mutable diff applied to a Set (draft→promote).
+- **Environment Type** — a Camp's classification (`production`/`ephemeral`/…); the primary matching dimension.
+- **Workload Profile** — how a service is realized (wasm-component/container/serverless/VM). **Resource Pack** — a shareable bundle of Resource Definitions.
+- **Agent** — an outbound-only proxy inside a private network so a hosted Yard deploys there with no inbound.

@@ -68,6 +68,15 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Links & WIT-boundary calls** (the trace stream powering AI implement/evolve/live-fix, [Plan 20](./20-wasm-wasi-runtime.md)/[Plan 23](./23-stubbable-ai-implementations.md))
 `link.Established` · `link.Called` · `stub.Recorded` · `impl.Generated` · `impl.Certified` · `impl.Promoted` · `livefix.Proposed` · `livefix.Applied` · `livefix.RolledBack`
 
+**Platform config & matching** (Resource Definitions, [Plan 25](./25-resource-definitions-matching.md))
+`resourcedef.Registered` · `resourcedef.Updated` · `pack.Imported` · **`match.Decided`** (winning definition + score + rejected candidates → "why this infra")
+
+**Environments, deltas & sets** ([Plan 26](./26-environments-deltas.md))
+`env.Created` · `env.Cloned` · `env.Reaped` (ephemeral TTL) · `delta.Opened` · `delta.Updated` · `delta.Applied` · `set.Created` · `deployment.Promoted`
+
+**Pipelines** ([Plan 28](./28-agent-gitops-pipelines.md))
+`pipeline.Triggered` · `pipeline.StepStarted` · `pipeline.StepCompleted` · `pipeline.GateRequested` · `pipeline.GateApproved` · `pipeline.GateRejected` · `pipeline.Completed`
+
 ## Projections (read models)
 Events are the write model; queries read **projections** rebuilt by folding the stream. Initial projections:
 - **DeploymentView** — current status + per-resource state for the dashboard timeline.

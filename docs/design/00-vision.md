@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md).
 
+> **v3 (Humanitec):** HoBo embraces the Internal Developer Platform **"5-plane"** framing — it is the **Integration & Delivery plane orchestrator** — and the **developer-vs-platform-engineer separation of concerns**: developers declare *what* (IfC resources), platform engineers declare *how* via **Resource Definitions** matched per environment ([Plan 25](./25-resource-definitions-matching.md)). "Agnostic by default, optimizable on demand" now also means "simple for developers, governable by platform teams."
+
 **Pitch:** *"Write your app once in TypeScript. HoBo decides how to host it — and gets out of the way when you want control. Built for humans and the agents that work for them."*
 
 ## Principles (design north stars)

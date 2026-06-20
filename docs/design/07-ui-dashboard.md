@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The Yard ships a dashboard built on the SDK; it reads only [projections](./11-event-model.md) and [streams](./14-observability.md), never live providers.
 
+> **v3 (Humanitec):** add a **Resource Graph** view, a **matching-decision** view (`match.Decided` — which Resource Definition won and why, [Plan 25](./25-resource-definitions-matching.md)), a **Delta diff / promote** view ([Plan 26](./26-environments-deltas.md)), and a **Pipelines** view with approval gates ([Plan 28](./28-agent-gitops-pipelines.md)) — matching Humanitec's Portal while staying projection-only.
+
 > **v2 update.** Adopt Nitric's **local-dashboard** features for `hobo dev` (test APIs, browse kv/sql/buckets, trigger schedules, publish to topics, inspect websockets) and add HoBo-native views: the **collected-resource/manifest** view ([Plan 22](./22-wiring-manifest.md)), the **link map** (component imports → providers, [Plan 20](./20-wasm-wasi-runtime.md)), and **cross-WIT-call traces** + AI implement/evolve/live-fix proposals & approvals ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Principles

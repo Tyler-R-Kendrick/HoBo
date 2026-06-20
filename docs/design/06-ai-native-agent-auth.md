@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The other deepest plan. HoBo's biggest differentiation vs Lakebed. **Goal: an agent can discover providers and self-provision credentials with zero developer involvement, and every action is durable + auditable.**
 
+> **v3 (Humanitec):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
+
 ## Design stance: agents are principals, not scripts
 Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Hobo Code** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 

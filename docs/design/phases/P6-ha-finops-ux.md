@@ -5,6 +5,8 @@
 **Objective.** Production hardening: the reliability/HA algorithms, deployment strategies, the cost model, the full dashboard, and multi-region/DR.
 **Depends on.** P4 (and P5 for evolution/live-fix integration).
 
+> **v3 (Humanitec):** add **Pipelines** (rule-based triggers + approval gates, [Plan 28](../28-agent-gitops-pipelines.md)) and **Workload Profiles** ([Plan 27](../27-drivers-packs-profiles.md)); the dashboard gains the **Resource Graph / matching-decision / Delta-diff / Pipelines** views ([Plan 7](../07-ui-dashboard.md)); cost objective uses **env-type matching** to pick cheap variants ([Plan 16](../16-cost-finops.md)).
+
 ## Workstream 1 — Reliability & HA ([Plan 5](../05-reliability-ha.md))
 1. Actor availability: single-writer **leases + fencing tokens**, placement + failover.
 2. Control-plane HA: event-store **replication (quorum)**, leader election for singletons.

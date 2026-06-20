@@ -4,6 +4,8 @@
 
 > **Stepwise breakdown:** each phase below is fully expanded — every workstream and step — under [`phases/`](./phases/README.md) ([P0](./phases/P0-foundations.md) · [P1](./phases/P1-sdk-local.md) · [P2](./phases/P2-first-deploy.md) · [P3](./phases/P3-ai-native.md) · [P4](./phases/P4-multi-provider.md) · [P5](./phases/P5-forge.md) · [P6](./phases/P6-ha-finops-ux.md)).
 
+> **v3 (Humanitec) placement:** **Resource Definitions + Matching** + the **Driver** taxonomy land in **P2** (the Planner resolves via definitions; mapping is sugar) and deepen in **P4** (per-env definitions across clouds); **Deployment Sets/Deltas** + environment types/cloning/ephemeral land in **P2→P4**; the **Agent** + **GitOps publisher** in **P3/P4**; **Pipelines** + **Resource Packs** + **Workload Profiles** in **P4/P6**. See [Plan 25](./25-resource-definitions-matching.md)–[Plan 28](./28-agent-gitops-pipelines.md).
+
 | Phase | Theme | Key deliverables | Done when… |
 |---|---|---|---|
 | **P0** | Foundations | monorepo ([1](./01-monorepo.md)); `@hobo/core` types + all port interfaces; event envelope + catalog ([11](./11-event-model.md)); Hobo Code schema ([6](./06-ai-native-agent-auth.md)); `@hobo/conformance` skeleton; `@hobo/world-local` built-in engine | local World passes World-port conformance; an event log replays |

@@ -17,6 +17,7 @@
 | **Pulumi** | IaC SDK | ✅ | full SDK | n/a (provisioning) | no | ✅ |
 | **Crossplane** | K8s control plane | ✅ | compositions | reconcilers (CRDs) | no | ✅ (k8s) |
 | **Radius** | App platform | ✅ | recipes | app model | no | ✅ |
+| **Humanitec** | Platform Orchestrator (IDP) | ✅ | Resource Definitions + drivers | k8s-centric (v2 any-compute) | MCP (2026) | ✅ (self-host) |
 | **Score / KubeVela / OAM** | Workload spec | ✅ | traits/policies | k8s-centric | no | ✅ |
 | **wasmCloud** | Wasm actor/provider runtime | ✅ | capability providers + links | components + providers | no | ✅ |
 | **Fermyon Spin / SpinKube** | Wasm serverless | ✅ (wasm) | spin triggers/components | wasm components | no | ✅ |
@@ -34,6 +35,7 @@
 - **From Nitric:** the full resource catalog, inline `.allow()` → least-privilege, and Infrastructure-from-Code (default authoring) — see [Plan 21](./21-resources-catalog.md).
 - **From WASI/Component Model + wasmCloud:** ports as **WIT worlds**, providers as **capability providers**, `bind` as **links**, and a polyglot wasm-default runtime — see [Plan 20](./20-wasm-wasi-runtime.md).
 - **From .NET Aspire:** `WithReference` wiring, uniform config for any component/container, annotations, and the **manifest IR** — see [Plan 22](./22-wiring-manifest.md).
+- **From Humanitec:** **Resource Definitions + Matching** (dynamic configuration management — the platform-rules layer, [Plan 25](./25-resource-definitions-matching.md)), the **Driver** taxonomy + Resource Packs + Workload Profiles ([Plan 27](./27-drivers-packs-profiles.md)), **Deployment Sets/Deltas** + environment types/cloning/ephemeral ([Plan 26](./26-environments-deltas.md)), the **Agent**/GitOps/**Pipelines** ([Plan 28](./28-agent-gitops-pipelines.md)), and the IDP **5-plane** framing (HoBo = the Integration & Delivery plane orchestrator). HoBo's edges: auditable matching (`match.Decided`), wasm-first, event-sourced replay, Forge-generated definitions, OSS core — see [`competitors/humanitec`](../../competitors/humanitec/README.md).
 
 ## Defensible differentiators (the moat)
 1. **AI-native operations, not just AI-readable apps** — agents deploy, optimize, and self-heal via MCP with first-class identity + audit.

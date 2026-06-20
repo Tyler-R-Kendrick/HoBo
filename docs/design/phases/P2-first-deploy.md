@@ -5,6 +5,8 @@
 **Objective.** Take a collected manifest and **deploy it to one real cloud** through a minimal Yard, with the event-sourced deployment lifecycle and crash-resume.
 **Depends on.** P1.
 
+> **v3 (Humanitec):** the Planner resolves each resource via **Resource Definitions + Matching** ([Plan 25](../25-resource-definitions-matching.md)) — `hobo.config.ts` compiles to default definitions, and `match.Decided` is recorded; the IaC apply is the **`terraform` Driver** ([Plan 27](../27-drivers-packs-profiles.md)); the deployment runs as **Delta → Set** with incremental reconcile ([Plan 26](../26-environments-deltas.md)).
+
 ## Workstream 1 — IaC adapter (`@hobo/iac-pulumi`)
 1. Wrap the **Pulumi Automation API** (no CLI): `preview`/`apply`/`destroy`/`refresh` against an `IacProgram`.
 2. Per-resource stack model + state backend + outputs capture ([Plan 3](../03-providers-iac.md)).

@@ -34,7 +34,7 @@
 - **From SPIFFE/OAuth/MCP-auth:** keyless workload identity + token brokering for agents.
 - **From Nitric:** the full resource catalog, inline `.allow()` → least-privilege, and Infrastructure-from-Code (default authoring) — see [Plan 21](./21-resources-catalog.md).
 - **From WASI/Component Model + wasmCloud:** ports as **WIT worlds**, providers as **capability providers**, `bind` as **links**, and a polyglot wasm-default runtime — see [Plan 20](./20-wasm-wasi-runtime.md).
-- **From .NET Aspire:** `WithReference` wiring, uniform config for any component/container, annotations, and the **manifest IR** — see [Plan 22](./22-wiring-manifest.md).
+- **From .NET Aspire:** `WithReference` wiring, uniform config for any component/container, annotations, and the **manifest IR** — see [Plan 22](./22-wiring-manifest.md). Detailed capture + parity in [`competitors/aspire`](../../competitors/aspire/README.md).
 - **From Humanitec:** **Resource Definitions + Matching** (dynamic configuration management — the platform-rules layer, [Plan 25](./25-resource-definitions-matching.md)), the **Driver** taxonomy + Resource Packs + Workload Profiles ([Plan 27](./27-drivers-packs-profiles.md)), **Deployment Sets/Deltas** + environment types/cloning/ephemeral ([Plan 26](./26-environments-deltas.md)), the **Agent**/GitOps/**Pipelines** ([Plan 28](./28-agent-gitops-pipelines.md)), and the IDP **5-plane** framing (HoBo = the Integration & Delivery plane orchestrator). HoBo's edges: auditable matching (`match.Decided`), wasm-first, event-sourced replay, Forge-generated definitions, OSS core — see [`competitors/humanitec`](../../competitors/humanitec/README.md).
 
 ## Defensible differentiators (the moat)

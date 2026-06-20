@@ -27,6 +27,9 @@ A shared, executable contract test suite per **port** (World ports and Provider 
 - **Networking ([13](./13-networking-connectivity.md))** — cross-provider services connect over mTLS keyed by SVIDs; the topology graph reports the correct connectivity tier + egress.
 - **Cost ([16](./16-cost-finops.md))** — `hobo plan` estimate is within tolerance of a known fixture; a budget breach blocks or requires approval.
 - **MCP/DX ([15](./15-cli-dx.md))** — a real agent drives `plan`→`deploy`→`inspect_run` through `@hobo/mcp`; `hobo dev` runs the agnostic path with zero cloud.
+- **WASM/WASI runtime ([20](./20-wasm-wasi-runtime.md),[24](./24-wit-worlds-reference.md))** — a TS service builds to a component via jco; conformance runs **per WIT world**; swapping a provider behind a port is a link change (no recompile); deny-by-default holds (an un-linked capability call fails).
+- **Resources/IfC ([21](./21-resources-catalog.md),[22](./22-wiring-manifest.md))** — `hobo collect` emits a **manifest** matching a fixture; `.allow()` produces exactly the expected IAM + link + token-scope triple; a missing verb is denied on all three.
+- **Stubbable/AI ([23](./23-stubbable-ai-implementations.md))** — run with a `stub()` behind a port, record traces, then assert a Forge-generated implementation **passes conformance and reproduces the recorded traces**; a simulated SLO regression drives a **gated** live-fix that auto-rolls-back on failure.
 
 ## CI/CD for HoBo itself
 - Monorepo CI ([Plan 1](./01-monorepo.md)): typecheck, unit, conformance (built-in adapters), determinism; Changesets-driven publishing; SBOM + vuln scan gate ([Plan 12](./12-security-multitenancy.md)).
@@ -42,3 +45,8 @@ A shared, executable contract test suite per **port** (World ports and Provider 
 7. **Overlay-mesh tech** for cross-provider connectivity. ([13](./13-networking-connectivity.md))
 8. **Policy language** for guardrails/ABAC (typed TS vs Rego/CEL). ([12](./12-security-multitenancy.md))
 9. **Governance/license** for OSS core + the hosted Yard business model. ([0](./00-vision.md),[17](./17-positioning-competitive.md))
+10. **Wasm host of record** for the built-in/local World (Wasmtime vs jco-in-Node) and the deployed target (SpinKube/containerd-wasm vs wasmCloud lattice vs wasm-in-container). ([20](./20-wasm-wasi-runtime.md))
+11. **`hobo:*` WIT world naming/versioning** + how aggressively to track upstream `wasi:*` draft churn; which `hobo:*` worlds to upstream as `wasi:*` proposals. ([24](./24-wit-worlds-reference.md))
+12. **IfC-by-default fidelity for non-TS languages** — run-to-collect vs static analysis. ([21](./21-resources-catalog.md))
+13. **"Low-risk auto" threshold** for AI live-fix, shared with the HA/security policy. ([23](./23-stubbable-ai-implementations.md),[5](./05-reliability-ha.md),[12](./12-security-multitenancy.md))
+14. **Competitor-docs home** (`competitors/` top-level vs `docs/competitors/`) and the pattern for future competitors. ([competitors/nitric](../../competitors/nitric/README.md))

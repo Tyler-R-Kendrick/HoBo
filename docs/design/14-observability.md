@@ -41,6 +41,10 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 ## Cost observability
 Ties to [Plan 16](./16-cost-finops.md): the topology graph and run inspector annotate resources/edges with live cost and egress estimates, and budget breaches raise alerts/policy gates.
 
+## v2 signals (integrated)
+- **WIT-boundary call trace** (`link.Called` + stub recordings, [Plan 11](./11-event-model.md)) is a first-class stream: it drives the dashboard **link map + trace views** ([Plan 7](./07-ui-dashboard.md)) and is the **test oracle** for AI implement → auto-evolve → live-fix ([Plan 23](./23-stubbable-ai-implementations.md)).
+- **Catalog additions.** Control plane: IfC-collection metrics (resources/links per manifest), Forge generation/certification rates. Data plane: **wasm runtime** metrics — component cold-start, instances per host (density), link call latency/error rate per `(import, provider)`.
+
 ## Iteration hooks
 - Whether HoBo ships a bundled backend (e.g. embedded Grafana/Tempo) for self-host or only emits OTLP.
 - Retention/sampling defaults for traces vs the (authoritative, longer-lived) event log.

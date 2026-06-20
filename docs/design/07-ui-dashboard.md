@@ -31,6 +31,15 @@
 - Next.js app, itself a HoBo `web` resource in the Yard Bindle; subscribes to projections via the Gateway's read API and to live data via streams.
 - Component-driven; design-system and detailed flows are deferred (this plan is a scope/IA sketch — the visual design is an explicit iteration target, see [Plan 0](./00-vision.md) "ui design" iteration note).
 
+## v2 views (integrated)
+Additional views the v2 model adds, each a projection/stream like the rest:
+| View | Source | Shows |
+|---|---|---|
+| **Local emulation** (Nitric-style) | `world-local` | test APIs; browse kv/sql/buckets; trigger schedules; publish to topics; inspect websockets ([Plan 15](./15-cli-dx.md)) |
+| **Collected manifest** | `bindle.ManifestProduced` | the IfC resource-collection output (resources, links, annotations) before deploy ([Plan 22](./22-wiring-manifest.md)) |
+| **Link map** | manifest links | each component's imports → resolved capability providers ([Plan 20](./20-wasm-wasi-runtime.md)) |
+| **WIT-call traces** | `link.Called` / stub recordings | cross-port calls; the basis for AI implement/evolve/live-fix **proposals + gate approvals** ([Plan 23](./23-stubbable-ai-implementations.md)) |
+
 ## Iteration hooks
 - Information architecture & navigation; the design system.
 - Whether the dashboard is World-agnostic (read API only) or has a World-specific fast path.

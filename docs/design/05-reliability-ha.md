@@ -78,6 +78,11 @@ Health signals come from the data plane (the World's metrics/streams) and/or pro
 | RPO | ~0 (sync quorum) / ≤ 5s (async tier) |
 | RTO (full Yard rebuild) | < 15 min from replicated log |
 
+## v2 integration (WASM / IfC / AI)
+- **AI live-fix as a gated saga.** A failing trace or SLO/health breach triggers an AI-proposed fix, validated sandboxed + replayed, then applied through the **same canary/blue-green saga + auto-rollback** machinery above; the failing trace is retained as a permanent regression test ([Plan 23](./23-stubbable-ai-implementations.md)). Live-fix adds no new failure class — it reuses *compensation* and *deployment-strategy* mechanics.
+- **Faster recovery with wasm.** Components' ms-scale cold start shortens actor failover and rollout/rollback windows vs containers, improving the "deploy resume after node loss" target ([Plan 20](./20-wasm-wasi-runtime.md)).
+- **Exactly-once across links.** At-least-once `link.Called` invocations carry idempotency keys, so cross-WIT-boundary calls inherit the exactly-once-*effects* guarantee already used for steps/IaC ([Plan 11](./11-event-model.md)).
+
 ## Iteration hooks
 - Consensus: ship our own Raft in the built-in engine vs always delegate to the World's store.
 - Multi-region topology: active-active log vs active-passive with failover.

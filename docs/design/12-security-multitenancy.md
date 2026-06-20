@@ -43,6 +43,11 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 - Retention: audit streams (`token.*`, `resource.*`, policy decisions) retained per policy and never compacted; runtime streams have shorter retention.
 - Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 3](./03-providers-iac.md)) and residency violations are rejected at plan time.
 
+## v2 isolation layer (integrated)
+- **Wasm capability sandbox = a fifth isolation dimension** alongside data / compute / credentials / network: deny-by-default, unforgeable handles, and `.allow()`-scoped **links** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)). A component — including a Forge-generated one — can reach *only* what it is explicitly linked to.
+- **`.allow()` is the single grant.** One declaration scopes least-privilege IAM **+** the wasm capability link **+** the brokered token, so the three enforcement layers can't drift apart.
+- **AI-generated code is contained.** Forge runs in this sandbox + Firecracker with **no egress** during conformance; promotion requires per-WIT-world conformance + signed provenance ([Plan 23](./23-stubbable-ai-implementations.md)), keeping the threat-model row "Forge plugins" fully mitigated for *implementations* too, not just providers.
+
 ## Iteration hooks
 - Encryption granularity (per-tenant vs per-stream vs per-run) and KMS strategy.
 - ABAC policy engine choice (typed TS vs Rego/CEL) — shared with [Plan 6](./06-ai-native-agent-auth.md) guardrails.

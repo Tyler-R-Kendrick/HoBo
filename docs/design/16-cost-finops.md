@@ -47,6 +47,11 @@ These are estimates (real bills vary); HoBo reconciles estimates against actual 
 - **Carbon/sustainability** — providers may publish region carbon intensity alongside cost; the Planner objective can include a carbon term.
 - **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval).
 
+## v2 cost inputs (integrated)
+- **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./20-wasm-wasi-runtime.md)).
+- **Cross-link egress.** `link.Called` paths that cross providers/regions feed the egress term of the cost model exactly like `bind` edges ([Plan 13](./13-networking-connectivity.md)).
+- **AI cost optimization.** Auto-evolution can take **cost** as an objective, proposing cheaper implementations/providers validated against recorded traces before a gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)).
+
 ## Iteration hooks
 - Estimate fidelity vs simplicity (static `cost.json` vs live pricing APIs vs learned usage profiles).
 - The default Planner objective (cost-first feels right for the agnostic promise, but latency-sensitive apps differ).

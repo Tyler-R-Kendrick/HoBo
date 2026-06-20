@@ -80,6 +80,15 @@ flowchart LR
 3. **The Yard is itself a Bindle** deployed by an earlier Yard (or bootstrapped locally) — see [Plan 4 §Bootstrapping](./04-control-plane.md).
 4. **Same code, many Worlds.** Swapping the World changes durability backing, never app logic. See [Plan 2 §Layer 1](./02-sdk-api.md).
 
+## v2 components (integrated)
+Two boxes the v2 model adds to the map above:
+| Component | Responsibility | Key events |
+|---|---|---|
+| **Wasm host** (per provider target) | run service **components**; hold the **link table** binding each import → a capability provider ([Plan 20](./20-wasm-wasi-runtime.md)) | `link.Established`, `link.Called` |
+| **Collector** (IfC) | run components in resource-collection mode → the **manifest IR** the Planner consumes ([Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)) | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
+
+**Invariant addendum.** A deployed component reaches a backend **only via a link the manifest declared** — deny-by-default capability security extends invariant #2 from the executor to the running data plane ([Plan 12](./12-security-multitenancy.md)).
+
 ## Iteration hooks
 - Whether read models live in the same store (projections) or a separate query DB.
 - Gateway protocol details (gRPC vs tRPC-style vs plain HTTP+JSON for the SDK RPC).

@@ -15,6 +15,9 @@
 ```
 hobo new <name> [--template todo|api|agent|fullstack]   scaffold a Bindle
 hobo dev                                                 run locally on world-local (no cloud)
+hobo build                                               compile services to wasm components -> OCI (container fallback)
+hobo collect [--camp prod]                               run resource-collection (IfC) -> print manifest IR
+hobo stub <resource|service>                             run with a stub behind a WIT port (Plan 23)
 hobo plan [--camp prod]                                  dry-run: DeploymentPlan + cost + warnings
 hobo deploy [--camp prod] [--strategy canary]            provision/converge to real infra
 hobo promote <version> --camp prod                       move a Camp pointer

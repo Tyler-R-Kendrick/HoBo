@@ -5,6 +5,8 @@
 **Objective.** Break the human bottleneck on breadth: AI generates **providers** (new backends) and **implementations** (components behind WIT ports), certified by conformance + trace replay, promoted through gates.
 **Depends on.** P3 (identity/registry/sandbox) and P4 (multiple providers as reference adapters).
 
+> **v3 (Humanitec):** the Forge generates not just providers/implementations but **Resource Definitions** and **Resource Packs** ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)) — given a backend's Hobo Code + a target context, propose a definition, validate it sandboxed against the **Driver** conformance suite, and certify it (signed, with provenance) into the Registry.
+
 ## Workstream 1 — Full conformance coverage
 1. Author `@hobo/conformance` suites **per WIT world** (every capability port) — the trust boundary ([Plan 9](../09-verification-open-questions.md)).
 2. Coverage report; gate publishing on per-world pass.

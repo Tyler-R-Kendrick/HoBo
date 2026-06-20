@@ -5,6 +5,8 @@
 **Objective.** Stand up the monorepo, the core contracts (types, ports-as-WIT, event envelope, Hobo Code schema), the built-in local World, and the conformance harness — so every later phase builds on a stable, testable base.
 **Depends on.** Nothing (greenfield).
 
+> **v3 (Humanitec):** `@hobo/core` adds the **Resource Definition** + **Matching** types, the **Driver** interface ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)), and the `match.Decided`/`delta.*`/`set.*`/`pipeline.*` events ([Plan 11](../11-event-model.md)); `@hobo/conformance` gains a **Driver** contract-suite slot so later phases can certify drivers.
+
 ## Workstream 1 — Monorepo & tooling
 1. Initialize pnpm workspace + Turborepo; root `tsconfig` (strict, `nodenext`); Biome; Vitest; Changesets.
 2. Create the package skeletons from [Plan 1](../01-monorepo.md): `core`, `wit`, `sdk`, `runtime`, `componentize`, `cli`, `worlds/*`, `providers/*`, `iac/*`, `build/*`, `cloud`, `registry`, `identity`, `mcp`, `conformance`, `examples/*`.

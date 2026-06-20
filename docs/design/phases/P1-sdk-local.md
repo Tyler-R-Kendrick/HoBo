@@ -5,6 +5,8 @@
 **Objective.** A developer (or agent) can author an app **IfC-style**, run it as a **wasm component** on `world-local` with the full runtime (workflows/actors/sagas/agents), and have resources **collected into a manifest** — all offline, with replay.
 **Depends on.** P0.
 
+> **v3 (Humanitec):** resources gain a **`class`** ([Plan 21](../21-resources-catalog.md)); platform engineers can author **Resource Definitions** locally and the local Planner resolves them by **Matching** (emitting `match.Decided`) — the `hobo.config.ts` mapping compiles to default definitions ([Plan 25](../25-resource-definitions-matching.md)); `hobo dev` exercises **Deltas→Sets** + Camp **environment types** on `world-local` ([Plan 26](../26-environments-deltas.md)).
+
 ## Workstream 1 — Authoring & resources (`@hobo/sdk`)
 1. Resource builders for the full catalog ([Plan 21](../21-resources-catalog.md)): `api`, `kv`, `bucket`, `queue`, `topic`, `secret`, `sql`, `schedule`, `websocket`, `job`, `web`, `service`.
 2. The **`.allow(verbs)`** model with typed per-resource verbs; record permission intent for IAM + links + token scope.

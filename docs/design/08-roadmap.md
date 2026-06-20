@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Phased so each milestone is independently demoable and de-risks the next. Each phase names its exit criterion ("done when…").
 
+> **Stepwise breakdown:** each phase below is fully expanded — every workstream and step — under [`phases/`](./phases/README.md) ([P0](./phases/P0-foundations.md) · [P1](./phases/P1-sdk-local.md) · [P2](./phases/P2-first-deploy.md) · [P3](./phases/P3-ai-native.md) · [P4](./phases/P4-multi-provider.md) · [P5](./phases/P5-forge.md) · [P6](./phases/P6-ha-finops-ux.md)).
+
 | Phase | Theme | Key deliverables | Done when… |
 |---|---|---|---|
 | **P0** | Foundations | monorepo ([1](./01-monorepo.md)); `@hobo/core` types + all port interfaces; event envelope + catalog ([11](./11-event-model.md)); Hobo Code schema ([6](./06-ai-native-agent-auth.md)); `@hobo/conformance` skeleton; `@hobo/world-local` built-in engine | local World passes World-port conformance; an event log replays |

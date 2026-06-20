@@ -31,6 +31,8 @@
 | 21 | Resource catalog & the `.allow()` model (Nitric parity) | [`21-resources-catalog.md`](./21-resources-catalog.md) |
 | 22 | Wiring, config & the manifest IR (Aspire model) | [`22-wiring-manifest.md`](./22-wiring-manifest.md) |
 | 23 | Stubbable implementations & AI implement/evolve/live-fix | [`23-stubbable-ai-implementations.md`](./23-stubbable-ai-implementations.md) |
+| 24 | WIT worlds reference (the canonical ports) | [`24-wit-worlds-reference.md`](./24-wit-worlds-reference.md) |
+| — | **Phased build plan (every phase, every step)** | [`phases/`](./phases/README.md) |
 
 **Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric/README.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric/hobo-mapping.md)).
 

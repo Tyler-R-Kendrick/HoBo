@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). **Decision: wasm-first, OCI-container fallback; WASI/WIT as canonical port contracts.** This doc defines HoBo's runtime substrate; it reframes ports ([Plan 3](./03-providers-iac.md)) as WIT worlds and providers as capability providers.
 
+> **v4 (gates):** each **world declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)) knows what a target can enforce, just as a world announces its runtime capabilities.
+
 ## Why wasm/wasi is the default
 - **Any language, one artifact.** Anything that compiles to a WASI component (Rust, TinyGo, TS via jco, Python via componentize-py, C# via componentize-dotnet) is a first-class HoBo service. The SDK is TypeScript, but the *runtime contract* is language-neutral.
 - **Capability security by construction.** WASI is deny-by-default with unforgeable resource handles — a component can only touch what it's been linked to. This is the runtime enforcement of `.allow()` ([Plan 21](./21-resources-catalog.md)) and complements SVIDs/token scoping ([Plan 6](./06-ai-native-agent-auth.md), [Plan 12](./12-security-multitenancy.md)).

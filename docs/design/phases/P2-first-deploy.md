@@ -7,6 +7,8 @@
 
 > **v3 (Humanitec):** the Planner resolves each resource via **Resource Definitions + Matching** ([Plan 25](../25-resource-definitions-matching.md)) — `hobo.config.ts` compiles to default definitions, and `match.Decided` is recorded; the IaC apply is the **`terraform` Driver** ([Plan 27](../27-drivers-packs-profiles.md)); the deployment runs as **Delta → Set** with incremental reconcile ([Plan 26](../26-environments-deltas.md)).
 
+> **v4 (gates):** introduce the **Gatekeeper** at Delta→Set — the built-in `contract-engine` (declared/inferred contracts + `can-deploy`, [Plan 29](../29-contracts-compatibility.md)) and `policy-engine` (typed-TS packs + obligations, [Plan 30](../30-policy-plane.md)); `hobo verify` blocks an unsafe first deploy with an explainable, event-sourced reason.
+
 ## Workstream 1 — IaC adapter (`@hobo/iac-pulumi`)
 1. Wrap the **Pulumi Automation API** (no CLI): `preview`/`apply`/`destroy`/`refresh` against an `IacProgram`.
 2. Per-resource stack model + state backend + outputs capture ([Plan 3](../03-providers-iac.md)).

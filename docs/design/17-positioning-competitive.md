@@ -44,6 +44,7 @@
 2. **Hobo Code standard + Registry** — a network effect: providers self-describe capabilities/auth, agents self-provision, and the **Forge** auto-generates missing providers (no community bottleneck).
 3. **Event-sourced everything** — replay/time-travel/audit across both control and data planes is a property competitors would have to re-architect to match.
 4. **Genuine agnostic + escape hatch in one model** — the same Bindle ships to one provider or many, with typed provider-specific optimization that doesn't fork the code.
+5. **Contracts, policy & evals are native graph artifacts, not bolted-on tools** — consumer-driven compatibility (`can-deploy`, [Plan 29](./29-contracts-compatibility.md)), a unified policy plane with obligations ([Plan 30](./30-policy-plane.md)), and eval-gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)) compose into one `hobo verify`. The four-lens taxonomy (**Contract / Eval / Policy / Trace**) is built in, and **engines sit behind ports** — Pact/OPA/Cedar are *optional adapters*, never the conceptual model or a dependency.
 
 ## Who HoBo is NOT for (honest scoping)
 - Teams happy on a single cloud with deep native tooling and no agnostic need (SST/CDK is simpler).

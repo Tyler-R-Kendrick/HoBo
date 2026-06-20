@@ -7,6 +7,8 @@
 
 > **v3 (Humanitec):** add **Pipelines** (rule-based triggers + approval gates, [Plan 28](../28-agent-gitops-pipelines.md)) and **Workload Profiles** ([Plan 27](../27-drivers-packs-profiles.md)); the dashboard gains the **Resource Graph / matching-decision / Delta-diff / Pipelines** views ([Plan 7](../07-ui-dashboard.md)); cost objective uses **env-type matching** to pick cheap variants ([Plan 16](../16-cost-finops.md)).
 
+> **v4 (gates):** harden **obligations** as durable effects (require-canary/approval tracked to completion) and the **remediation/auto-fix** loop (classify failure → propose safe fix, gated) ([Plan 30](../30-policy-plane.md)/[Plan 23](../23-stubbable-ai-implementations.md)); the dashboard gains a **`hobo verify` / gate-decision** view (per-gate results + `explain-failure` replay).
+
 ## Workstream 1 — Reliability & HA ([Plan 5](../05-reliability-ha.md))
 1. Actor availability: single-writer **leases + fencing tokens**, placement + failover.
 2. Control-plane HA: event-store **replication (quorum)**, leader election for singletons.

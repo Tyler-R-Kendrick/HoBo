@@ -36,6 +36,9 @@ flowchart LR
   DEP --> REC["record Deployment (audit)"]
 ```
 
+## The `can-deploy` gate (at Delta → Set / promote)
+Applying a Delta or promoting a Set runs the **Gatekeeper** ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)) against the **versions already running in the target Camp** (read from the event log): contracts-compatible (`compat.GatePassed/Failed`) AND policy-allows (with **obligations** that can *reshape* the rollout — e.g. an "allow but require canary" obligation forces a canary below) AND evals/conformance/cost. Incompatible producer/consumer skew blocks the promote with a precise reason + suggested fixes (shim, deploy-order, migration window).
+
 ## Promote, rollback, incremental
 - **Promote** = apply the Set that's running in one Camp as a Delta against another (e.g. staging → prod), gated.
 - **Rollback** = re-apply a previous Set; stateful resources keep state ([Plan 5](./05-reliability-ha.md)).

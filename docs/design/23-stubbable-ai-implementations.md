@@ -4,6 +4,23 @@
 
 > **v3 (Humanitec):** the same Forge loop also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — given a backend's Hobo Code + a target context, propose a definition, validate it sandboxed against conformance, and certify it into the Registry.
 
+> **v4 (contracts/policy/evals):** a stubbed-then-AI-implemented port is a **semantic function**, governed by the four-lens taxonomy — **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened** ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)). The promotion gate below is now explicit: **conformance(contract) green AND eval thresholds met AND policy allows**.
+
+## Contract vs eval vs policy (for a semantic function)
+A semantic function carries three independent things, not one:
+- **Contract** (must never break): I/O schema + invariants + forbidden outputs + negative cases. Verified by conformance + replayed traces; a failure **blocks**. *e.g. "summary must not contain PII"; "`critical` urgency requires explicit security/outage/production impact".*
+- **Eval** (should improve): a **rubric** scored on quality/faithfulness/calibration/cost/latency, with **promotion thresholds**, **champion/challenger**, **shadow traffic**, and a **min-samples** floor. A candidate that regresses an eval **stays in shadow**, it doesn't block the champion.
+- **Policy** (may/may not): whether *this* promotion is allowed here ([Plan 30](./30-policy-plane.md)) — e.g. prod promotions require human approval.
+```ts
+classifyTicket.promotionGate({
+  requireConformance: true,                 // contract — hard gate
+  evalThresholds: { categoryCorrect: 0.92, urgencyCalibrated: 0.90, piiSafe: 1.0 },
+  shadowTraffic: "10%", minSamples: 1000,   // observe before promote
+  policy: "promote.semantic.prod",          // Plan 30 decision (may require approval)
+});
+```
+Promotion = **all three** pass. Each `eval.Ran`/`eval.GatePassed|Failed` and the final promotion is an event ([Plan 11](./11-event-model.md)).
+
 ## Stubs: run before anything is implemented
 Any WIT port can be backed by a **stub** the host links in place of a real provider/component:
 - **Record** every call (args) and **return** typed/canned responses derived from the WIT types (and optionally an LLM given the interface + intent).

@@ -6,6 +6,8 @@
 
 > **v3 (Humanitec) placement:** **Resource Definitions + Matching** + the **Driver** taxonomy land in **P2** (the Planner resolves via definitions; mapping is sugar) and deepen in **P4** (per-env definitions across clouds); **Deployment Sets/Deltas** + environment types/cloning/ephemeral land in **P2→P4**; the **Agent** + **GitOps publisher** in **P3/P4**; **Pipelines** + **Resource Packs** + **Workload Profiles** in **P4/P6**. See [Plan 25](./25-resource-definitions-matching.md)–[Plan 28](./28-agent-gitops-pipelines.md).
 
+> **v4 (gates) placement:** **contracts + `can-deploy`** and the **policy plane** land in **P2** (gate the first real deploy) and deepen in **P4** (cross-provider/version skew); **eval-gated promotion** in **P5** (with the Forge); **obligations + remediation/auto-fix** in **P6**. See [Plan 29](./29-contracts-compatibility.md)–[Plan 30](./30-policy-plane.md).
+
 | Phase | Theme | Key deliverables | Done when… |
 |---|---|---|---|
 | **P0** | Foundations | monorepo ([1](./01-monorepo.md)); `@hobo/core` types + all port interfaces; event envelope + catalog ([11](./11-event-model.md)); Hobo Code schema ([6](./06-ai-native-agent-auth.md)); `@hobo/conformance` skeleton; `@hobo/world-local` built-in engine | local World passes World-port conformance; an event log replays |

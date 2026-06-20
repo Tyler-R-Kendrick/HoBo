@@ -44,9 +44,18 @@
 ### ADR-0014 — MCP as a first-class control surface
 **Status:** Accepted. **Decision:** every CLI/SDK capability has an MCP equivalent with the same identity model. **Consequences:** agents are true operators; we maintain a third interface surface in lockstep ([Plan 6](./06-ai-native-agent-auth.md), [Plan 15](./15-cli-dx.md)).
 
+### ADR-0015 — Contracts & policy are HoBo-native planes; engines sit behind ports
+**Status:** Accepted. **Decision:** consumer-driven contracts/compatibility ([Plan 29](./29-contracts-compatibility.md)) and policy decisions ([Plan 30](./30-policy-plane.md)) are first-class, with `contract-engine`/`policy-engine` as **WIT ports** whose default impls are built-in HoBo engines; **Pact/OPA/Cedar are optional providers**, never dependencies or the conceptual model. **Consequences:** no hard dep; HoBo owns the Contract/Policy IR; ecosystems integrate via adapters. (Resolves ADR-P3 — policy default is **typed TypeScript**.)
+
+### ADR-0016 — A single `can-deploy`/Gatekeeper gate composes all checks
+**Status:** Accepted. **Decision:** deployability = contracts-compatible AND policy-allows/approves AND eval-gates-pass AND conformance AND within-cost AND signed/attested, evaluated at Delta→Set/promote and surfaced as `hobo verify` ([Plan 29](./29-contracts-compatibility.md)/[Plan 26](./26-environments-deltas.md)). **Consequences:** one explainable, event-sourced decision instead of scattered CI gates.
+
+### ADR-0017 — Policy obligations are durable effects, not advice
+**Status:** Accepted. **Decision:** an "allow but require X" obligation (canary/approval/auth/shadow-eval) is realized as a HoBo effect/saga and tracked `ObligationCreated→Satisfied`; an unmet obligation blocks ([Plan 30](./30-policy-plane.md)/[Plan 5](./05-reliability-ha.md)). **Consequences:** governance is enforced by construction, fully auditable.
+
 ## Open / proposed (not yet decided)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the World's store) — [Plan 5](./05-reliability-ha.md).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 13](./13-networking-connectivity.md).
-- **ADR-P3:** policy language for guardrails/ABAC (typed TS vs Rego/CEL) — [Plan 12](./12-security-multitenancy.md).
+- **ADR-P3:** ~~policy language for guardrails/ABAC~~ — **Resolved by ADR-0015** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
 - **ADR-P4:** default Planner objective (cost-first vs latency-first) — [Plan 16](./16-cost-finops.md).
 - **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](./02-sdk-api.md).

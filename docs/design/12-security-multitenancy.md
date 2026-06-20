@@ -4,6 +4,8 @@
 
 > **v3 (Humanitec):** the **HoBo Agent** ([Plan 28](./28-agent-gitops-pipelines.md)) keeps cloud credentials inside the customer's network — outbound-only TCP 443 reverse tunnel, SVID-authenticated, no inbound; Executors run behind it. This unlocks regulated/air-gapped/sovereign deploys without the Yard ever connecting into the private network.
 
+> **v4 (policy plane):** the governance rules here are expressed as **policy packs** — signed, versioned resources evaluated by the **policy plane** ([Plan 30](./30-policy-plane.md)). Decisions can carry **obligations** (require signed+attested artifact / encryption / approved region for a data classification), tracked to completion as events. Supply-chain attestation and data-classification/region constraints become gate dimensions, not prose.
+
 > **v2 update.** **WASM capability security** ([Plan 20](./20-wasm-wasi-runtime.md)) is now a runtime isolation layer: deny-by-default, unforgeable handles, and `.allow()`-scoped links ([Plan 21](./21-resources-catalog.md)) mean a component (incl. Forge-generated ones) can only touch what it's explicitly linked to — strengthening the sandbox for AI-generated providers/implementations ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Threat model (who/what we defend against)

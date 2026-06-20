@@ -4,6 +4,8 @@
 
 > **v3 (Humanitec):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
 
+> **v4 (gates):** an **agent action is a policy decision** ([Plan 30](./30-policy-plane.md)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./29-contracts-compatibility.md)), so calls outside the tool's scope/shape are rejected and audited.
+
 ## Design stance: agents are principals, not scripts
 Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Hobo Code** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 

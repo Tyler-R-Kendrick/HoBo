@@ -4,6 +4,8 @@
 
 > **v3 (Humanitec):** the Planner box resolves resources via **Resource Definitions + Matching** ([Plan 25](./25-resource-definitions-matching.md)); Executors can run behind a **HoBo Agent** inside a private network ([Plan 28](./28-agent-gitops-pipelines.md)); a **GitOps publisher** is an alternate path from Set → cluster. Control/data-plane split and event-sourced invariants are unchanged.
 
+> **v4 (gates):** two governance planes sit at the deploy decision point as **WIT ports with built-in engines** — a **contract plane** (compatibility/`can-deploy`, [Plan 29](./29-contracts-compatibility.md)) and a **policy plane** (decisions + obligations, [Plan 30](./30-policy-plane.md)) — composed by the **Gatekeeper** alongside conformance/evals/cost. The organizing lens across the suite: **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened.**
+
 > **v2 update.** Deployed services are **wasm components** (OCI-container fallback) running on a wasm host that links each component's imported WIT ports to **capability providers** ([Plan 20](./20-wasm-wasi-runtime.md)). The deploy path gains a **resource-collection (IfC)** step that emits the **manifest IR** the Planner consumes ([Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The control/data-plane split and event-sourced invariants below are unchanged.
 
 ## The one-paragraph model

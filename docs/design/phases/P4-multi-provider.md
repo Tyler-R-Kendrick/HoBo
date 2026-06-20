@@ -7,6 +7,8 @@
 
 > **v3 (Humanitec):** this is where **Resource Definitions** shine — platform engineers write per-`envType`/per-`class` definitions so the same bindle resolves to managed-HA in prod and cheap variants in ephemeral ([Plan 25](../25-resource-definitions-matching.md)/[Plan 26](../26-environments-deltas.md)); add the **echo**/**container**/**custom-webhook** Drivers ([Plan 27](../27-drivers-packs-profiles.md)), **Resource Packs**, the **HoBo Agent** for private targets, and the **GitOps publisher** ([Plan 28](../28-agent-gitops-pipelines.md)).
 
+> **v4 (gates):** deepen the contract plane — **observed/promoted** contracts (trace-mining) and cross-provider/**version-skew `can-deploy`** ([Plan 29](../29-contracts-compatibility.md)); **capability contracts** (`.allow()` required ⊆ granted) and policy packs with **region/data-classification obligations** ([Plan 30](../30-policy-plane.md)/[Plan 12](../12-security-multitenancy.md)) become first-class as the topology spans clouds.
+
 ## Workstream 1 — Additional CloudProviders (AWS, Azure)
 1. Implement capability ports for the full resource catalog ([Plan 21](../21-resources-catalog.md)) on AWS and Azure as capability providers.
 2. Equivalence classes per port (e.g. `database{postgres}` → RDS / Flexible Server); Hobo Code for each.

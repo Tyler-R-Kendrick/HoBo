@@ -36,6 +36,8 @@
 | 26 | Environments, Deployment Sets & Deltas | [`26-environments-deltas.md`](./26-environments-deltas.md) |
 | 27 | Drivers, Resource Packs & Workload Profiles | [`27-drivers-packs-profiles.md`](./27-drivers-packs-profiles.md) |
 | 28 | The HoBo Agent, GitOps publisher & Pipelines | [`28-agent-gitops-pipelines.md`](./28-agent-gitops-pipelines.md) |
+| 29 | Contracts & compatibility (the `can-deploy` gate) | [`29-contracts-compatibility.md`](./29-contracts-compatibility.md) |
+| 30 | The policy plane (decisions, obligations & gates) | [`30-policy-plane.md`](./30-policy-plane.md) |
 | — | **Phased build plan (every phase, every step)** | [`phases/`](./phases/README.md) |
 
 **Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric/README.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric/hobo-mapping.md)).
@@ -107,3 +109,7 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **Environment Type** — a Camp's classification (`production`/`ephemeral`/…); the primary matching dimension.
 - **Workload Profile** — how a service is realized (wasm-component/container/serverless/VM). **Resource Pack** — a shareable bundle of Resource Definitions.
 - **Agent** — an outbound-only proxy inside a private network so a hosted Yard deploys there with no inbound.
+- **Four-lens taxonomy** — **Contract** = must never break · **Eval** = should improve · **Policy** = may/may not be allowed · **Trace** = what actually happened.
+- **Contract** — a typed expectation on a graph edge (HTTP/event/binding/`.allow()` scope/SLO/semantic/agent-tool), in mode *declared/inferred/observed/promoted*. **`can-deploy`** — the compatibility-matrix gate checking a change against versions already running per environment.
+- **Policy decision** — `{ effect: allow/deny/warn/mutate/require-approval, obligations, evidence }`; an **Obligation** = "allow but require X" realized as a durable HoBo effect/saga.
+- **Eval / rubric** — scored quality thresholds (with champion/challenger + shadow traffic) gating an AI-impl promotion. **Gatekeeper** — the composite gate (contracts + policy + evals + conformance + cost) behind `hobo verify`.

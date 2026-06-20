@@ -77,6 +77,15 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Pipelines** ([Plan 28](./28-agent-gitops-pipelines.md))
 `pipeline.Triggered` · `pipeline.StepStarted` · `pipeline.StepCompleted` · `pipeline.GateRequested` · `pipeline.GateApproved` · `pipeline.GateRejected` · `pipeline.Completed`
 
+**Contracts & compatibility** ([Plan 29](./29-contracts-compatibility.md))
+`contract.Inferred` · `contract.Observed` · `contract.Promoted` · `contract.Verified` · `contract.VerificationFailed` · **`compat.GatePassed`** · **`compat.GateFailed`**
+
+**Policy** ([Plan 30](./30-policy-plane.md))
+**`policy.Decided`** (effect + evidence + obligations) · `policy.ViolationDetected` · `policy.WaiverRequested` · `policy.WaiverApproved` · `policy.ObligationCreated` · `policy.ObligationSatisfied`
+
+**Evals & promotion** ([Plan 23](./23-stubbable-ai-implementations.md))
+`eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
+
 ## Projections (read models)
 Events are the write model; queries read **projections** rebuilt by folding the stream. Initial projections:
 - **DeploymentView** — current status + per-resource state for the dashboard timeline.

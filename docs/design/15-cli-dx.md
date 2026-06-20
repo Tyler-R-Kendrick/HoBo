@@ -4,6 +4,8 @@
 
 > **v3 (Humanitec):** new platform/ops commands — `hobo def` (manage Resource Definitions, [Plan 25](./25-resource-definitions-matching.md)), `hobo pack` (Resource Packs, [Plan 27](./27-drivers-packs-profiles.md)), `hobo env clone` + ephemeral/preview Camps ([Plan 26](./26-environments-deltas.md)), `hobo delta`/`hobo promote`, `hobo pipeline` + `hobo agent` ([Plan 28](./28-agent-gitops-pipelines.md)). Developer commands are unchanged — definitions are a platform-team surface.
 
+> **v4 (gates):** add the verification surface — `hobo verify --target <env>` (the composite Gatekeeper: contracts + policy + evals + conformance + cost), `hobo can-deploy --target <env>` ([Plan 29](./29-contracts-compatibility.md)), `hobo explain-failure` (replay a blocked gate's events), `hobo fix --dry-run` (Forge-proposed remediation), and `hobo promote-contract` / `hobo promote-impl` ([Plan 23](./23-stubbable-ai-implementations.md)). All read-only by default; mutations go through the same gates.
+
 > **v2 update.** `hobo build` compiles each service to a **wasm component** (jco/`@hobo/componentize`, OCI-container fallback) — [Plan 20](./20-wasm-wasi-runtime.md). `hobo deploy`/`plan` run a **resource-collection** phase (IfC) that emits the **manifest IR** — [Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md). New commands: `hobo collect` (print collected resources, à la `nitric spec`) and `hobo stub <resource|service>` to run with stubs ([Plan 23](./23-stubbable-ai-implementations.md)). `hobo.config.ts` + Camps play the role of Nitric stack files.
 
 ## DX principles

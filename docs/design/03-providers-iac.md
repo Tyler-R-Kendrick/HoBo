@@ -6,6 +6,8 @@
 
 > **v3 update (Humanitec iteration).** The Planner no longer resolves providers by static mapping — it resolves a **Resource Definition** per resource via **context-matching** ([Plan 25](./25-resource-definitions-matching.md)); the `hobo.config.ts` mapping is sugar over default definitions. The `IacProvider` here is one **Driver** in a taxonomy (terraform/template/echo/container/custom-webhook, [Plan 27](./27-drivers-packs-profiles.md)); a capability provider picks a driver to realize a resource.
 
+> **v4 update (gates).** Before Apply, the Planner runs the **Gatekeeper** — a composite decision requiring contracts-compatible (`can-deploy`, [Plan 29](./29-contracts-compatibility.md)) AND policy-allows/approves (incl. obligations, [Plan 30](./30-policy-plane.md)) AND eval gates ([Plan 23](./23-stubbable-ai-implementations.md)) AND conformance ([Plan 9](./09-verification-open-questions.md)) AND within cost ([Plan 16](./16-cost-finops.md)). `contract-engine` and `policy-engine` are WIT ports with built-in defaults (Pact/OPA/Cedar optional providers). A blocked gate emits a precise reason (like `deployment.PlanRejected`) an agent can self-correct.
+
 ## The three adapter families (one shape)
 Everything that touches the outside world is a port with swappable adapters:
 - **CloudProvider** — implements capability ports (now **WIT worlds**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).

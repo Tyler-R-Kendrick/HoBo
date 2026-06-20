@@ -43,6 +43,12 @@ packages/
   identity/          @hobo/identity     SVID issuance, OIDC provider, token broker
   mcp/               @hobo/mcp          MCP server exposing HoBo to agents
   conformance/       @hobo/conformance  port contract test suites (shared by all adapters)
+  contracts/         @hobo/contracts    HoBo Contract IR + compatibility/can-deploy engine (built-in)  [Plan 29]
+  policy/            @hobo/policy        policy decision model + built-in TypeScript engine            [Plan 30]
+  evals/             @hobo/evals         rubrics + promotion gates for semantic functions             [Plan 23]
+    provider-pact      @hobo/provider-pact   (optional) Pact/Broker adapter behind contract-engine
+    provider-opa       @hobo/provider-opa    (optional) OPA/Rego adapter behind policy-engine
+    provider-cedar     @hobo/provider-cedar  (optional) Cedar adapter behind policy-engine
 examples/
   hello-bindle/ multi-cloud-shop/ durable-agent/ self-host-yard/
 ```

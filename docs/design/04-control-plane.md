@@ -6,6 +6,8 @@
 
 > **v3 update (Humanitec iteration).** The Planner resolves each resource via **Resource Definitions + Matching** ([Plan 25](./25-resource-definitions-matching.md)); the lifecycle works in **Deltas → Sets** with **incremental** reconcile (only changed nodes) ([Plan 26](./26-environments-deltas.md)); Executors can run behind a **HoBo Agent** for private-network targets and a **GitOps publisher** is an alternate apply path ([Plan 28](./28-agent-gitops-pipelines.md)); **Pipelines** drive *when* deploys happen.
 
+> **v4 update (gates).** New grains back the two governance planes: a **contract-engine** ([Plan 29](./29-contracts-compatibility.md)) and a **policy-engine** ([Plan 30](./30-policy-plane.md)), each a WIT port with a built-in default. The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
+
 The Yard is the orchestrator that maps Bindle deployments to real hosting. It is **itself a HoBo Bindle** (dogfood) and runs on the TS-native core; Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement.
 
 ## Services (each a grain-based module)

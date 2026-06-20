@@ -1,0 +1,71 @@
+# Plan 30 — The policy plane (decisions, obligations & gates)
+
+> Part of the [HoBo Design Plan Suite](./README.md). Consolidates HoBo's scattered gates ([Plan 5](./05-reliability-ha.md)/[Plan 6](./06-ai-native-agent-auth.md)/[Plan 12](./12-security-multitenancy.md)/[Plan 28](./28-agent-gitops-pipelines.md)) into **one decision model** — a HoBo-native policy plane with engines behind a WIT port. No new dependency.
+
+## Why a plane (not scattered gates)
+HoBo already gates agent actions, live-fix, deploys, and pipelines — but each is bespoke and mostly boolean. The contribution here is a **single policy decision model** that every gate calls, with **lifecycle phases**, **rich effects**, and **obligations**. It answers one question everywhere:
+
+> *Is this action allowed, denied, warned, mutated, gated for approval — and what must follow if allowed?*
+
+In the four-lens taxonomy ([Plan 29](./29-contracts-compatibility.md)): **Policy = may/may not be allowed** (distinct from *Contract = must never break* and *Eval = should improve*).
+
+## The decision model
+A decision **request** describes the action in context:
+```text
+request = {
+  subject:  { kind: user|service|agent|system, id, roles?, scopes?, delegatedBy? }
+  action:   deployment.apply | resource.delete | agent.tool.call | contract.promote
+            | semantic.implementation.promote | provider.plugin.certify | runtime.invoke | …
+  resource: { kind: app|environment|deployment|contract|semantic-function|agent|secret|…, id }
+  phase:    author | local | test | plan | apply | runtime | observe | train | promote | repair
+  context:  { graphDiff?, deploymentPlan?, contractResults?, evalResults?, costEstimate?,
+              dataClassifications?, region?, provider?, riskScore?, traceSummary? }
+}
+```
+The **decision** is richer than allow/deny:
+```text
+decision = {
+  effect: allow | deny | warn | mutate | require-approval
+  reason, violations[], mutations[], approvals[]
+  obligations[]            // "allowed, but you must…"
+  evidence: { policyIds[], inputHash, engine }   // → recorded as an event
+}
+```
+
+## Obligations are HoBo effects (the powerful part)
+An **obligation** lets policy say *allow but require X*, and in HoBo that X is a **durable, event-sourced effect/saga** ([Plan 5](./05-reliability-ha.md)) — not advice the caller may ignore. Examples:
+- *allow deploy* **→ require canary** (the Orchestrator must roll out as canary, [Plan 26](./26-environments-deltas.md)).
+- *allow public endpoint* **→ require auth middleware** (a graph mutation before apply).
+- *allow model change* **→ require shadow evaluation** ([Plan 23](./23-stubbable-ai-implementations.md)).
+- *allow generated provider* **→ require sandbox verification** ([Plan 23](./23-stubbable-ai-implementations.md)).
+- *allow agent action* **→ require human approval before apply** (a `createHook`, [Plan 6](./06-ai-native-agent-auth.md)).
+Obligations are tracked to completion via `policy.ObligationCreated` → `…Satisfied` events; an unsatisfied obligation blocks the gate.
+
+## Phases (policy spans the whole lifecycle)
+| Phase | Example rule |
+|---|---|
+| author | public handlers must declare input schemas |
+| local | no hardcoded secrets in source |
+| test | every external interaction needs a contract ([Plan 29](./29-contracts-compatibility.md)) |
+| plan | prod data resources must be encrypted + backed up |
+| apply | no prod resource deletion without approval |
+| runtime | an agent cannot call a tool outside its delegated scope |
+| observe | PII must not appear in traces |
+| train | PII-bearing traces can't be used for training |
+| promote | a candidate impl must beat the champion on evals ([Plan 23](./23-stubbable-ai-implementations.md)) |
+| repair | agents may auto-fix preview, only *propose* prod changes |
+
+## Policy packs
+Rules are grouped into **policy packs** — versioned, **signed** resources ([Plan 12](./12-security-multitenancy.md)) scoped to org/app/environment and bound per target ([Plan 25](./25-resource-definitions-matching.md) matching can select which pack applies). Packs are distributed like Resource Packs ([Plan 27](./27-drivers-packs-profiles.md)) and Forge-generatable.
+
+## Engine behind a port (no dependency)
+`policy-engine` is a **WIT port**. The **default** implementation is built-in **TypeScript rules** (typed, testable, no Rego to learn). Optional capability providers: **OPA/Rego** (`@hobo/provider-opa` — maps the request to OPA `input`, runs as embedded/WASM/sidecar/Envoy, returns the decision) and **Cedar** (`@hobo/provider-cedar`) for ABAC-style authz. HoBo Cloud is the **management plane** (pack registry, distribution, decision logs); worlds/providers are **enforcement points** — the same decision/enforcement split OPA advocates, but HoBo owns the model.
+
+## Decisions are events
+Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./11-event-model.md)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper ([Plan 29](./29-contracts-compatibility.md)) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
+
+## Iteration hooks
+- Default pack set + precedence when multiple packs match.
+- Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.
+- Waiver workflow + who can grant per environment.
+- Mutation safety (policy-driven graph mutations must themselves pass contracts/conformance).

@@ -27,6 +27,8 @@
 > ```
 > `hobo deploy --camp prod` → matches the HA definition; `hobo deploy --camp preview` (an **ephemeral** Camp, auto-TTL) → matches the in-cluster one. Each choice emits a **`match.Decided`** event (score + rejected candidates) so the dashboard answers "*why did preview get the cheap DB?*". A **Pipeline** can open the prod **Delta** behind an **approval gate**; if the cluster is private, Executors run behind the **HoBo Agent**. The app code and `bindle.ts` are untouched throughout.
 
+> **v4 gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
+
 ## 1. Scaffold & build locally (no cloud)
 ```bash
 npx hobo new snapshop -t fullstack && cd snapshop && hobo dev

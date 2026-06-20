@@ -4,6 +4,8 @@
 
 > **v3 (Humanitec):** add **Driver** conformance suites ([Plan 27](./27-drivers-packs-profiles.md)) and a **matching test** (given context + a set of Resource Definitions, assert the expected one wins and a `match.Decided` event records the score, [Plan 25](./25-resource-definitions-matching.md)) and a **Delta→Set** test (a delta applied yields the expected immutable Set, [Plan 26](./26-environments-deltas.md)).
 
+> **v4 (gates):** **conformance** here is the *provider* contract (does an impl satisfy a port); the *consumer-driven* compatibility check (`can-deploy`, [Plan 29](./29-contracts-compatibility.md)) is distinct — add a **compatibility test** (producer/consumer version skew → `compat.GateFailed`), a **policy-decision test** ([Plan 30](./30-policy-plane.md): assert effect + obligations for a given request), and an **eval-gate test** ([Plan 23](./23-stubbable-ai-implementations.md)). `hobo verify` composes all of these.
+
 > **v2 update.** Conformance is now **per WIT world** ([Plan 20](./20-wasm-wasi-runtime.md)) and is the gate for both human- and Forge-generated **providers and implementations** ([Plan 23](./23-stubbable-ai-implementations.md)). Add: a **stub/replay test** (run with stubs, then assert an AI-generated impl reproduces recorded traces + passes conformance) and an **IfC-collection test** (collected manifest matches a fixture). New open questions: wasm host of record, `hobo:*` WIT versioning, IfC fidelity for non-TS languages, and the "low-risk auto live-fix" threshold.
 
 ## Testing strategy (the pyramid)

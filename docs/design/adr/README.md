@@ -1,0 +1,40 @@
+# Architecture Decision Records (ADR) — index
+
+> Part of the [HoBo Design Plan Suite](../README.md). This directory holds **one file per decision**, the convention adopted from ADR-0018 onward. Earlier decisions (ADR-0001…0017) remain in the consolidated [18 — ADR log](../18-adr-log.md); they are listed here for a single chronological view.
+>
+> **Format (house style):** `Status · Context · Decision · Consequences`, plus (for per-file ADRs) `Date`, `Deciders`, `Related`, and `Alternatives considered`. Statuses: **Proposed · Accepted · Superseded · Deprecated**. ADRs are the things we should be deliberate about *unmaking*.
+
+## How ADRs are numbered
+- IDs are global and monotonic across the whole suite: `ADR-NNNN`.
+- ADR-0001…0017 live in [`../18-adr-log.md`](../18-adr-log.md) (one section each).
+- ADR-0018+ live here as `ADR-NNNN-<slug>.md`.
+- Open/proposed-but-undecided items use `ADR-Pn` and are tracked at the bottom of [`../18-adr-log.md`](../18-adr-log.md).
+
+## Index
+
+| ID | Title | Status | Source |
+|---|---|---|---|
+| 0001 | TS-native control-plane core (Kubernetes optional) | Accepted | [18-adr-log](../18-adr-log.md#adr-0001--ts-native-control-plane-core-kubernetes-optional) |
+| 0002 | Pluggable durable ports + a built-in engine ("Worlds") | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0003 | Event sourcing + CQRS as the foundation | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0004 | Choreography sagas + virtual actors | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0005 | One ports/adapters shape for cloud, IaC, build/VM | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0006 | Pulumi Automation API as primary IaC | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0007 | Provider-specific options via typed `.with(...)` | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0008 | Keyless agent identity (SVID/OIDC) + token broker | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0009 | Hobo Code capability/auth standard + Registry | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0010 | Forge: AI-generated providers gated by conformance | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0011 | `bindle.ts` (what) vs `hobo.config.ts` (where/how) | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0012 | Firecracker-sandboxed, credential-scoped executors | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0013 | Per-resource IaC stacks (default) | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0014 | MCP as a first-class control surface | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0015 | Contracts & policy are HoBo-native planes; engines behind ports | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0016 | A single `can-deploy`/Gatekeeper gate composes all checks | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0017 | Policy obligations are durable effects, not advice | Accepted | [18-adr-log](../18-adr-log.md) |
+| 0018 | Requirements-artifact structure & traceability scheme | Accepted | [ADR-0018](./ADR-0018-requirements-structure-and-traceability.md) |
+| 0019 | Persona prioritization / primary ICP | Accepted | [ADR-0019](./ADR-0019-persona-prioritization-icp.md) |
+| 0020 | Monetization model (OSS core + hosted Yard + marketplace) | Accepted | [ADR-0020](./ADR-0020-monetization-model.md) |
+| 0021 | NFR baselines / committed SLOs for v1 | Proposed | [ADR-0021](./ADR-0021-nfr-baselines-slos.md) |
+| 0022 | MVP scope line / MoSCoW mapped to phases | Accepted | [ADR-0022](./ADR-0022-mvp-scope-moscow.md) |
+
+> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). Additional ADRs (0023+) are appended here as later iterations — including the requirements review/hardening pass — produce load-bearing decisions.

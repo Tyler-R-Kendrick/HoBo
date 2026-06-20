@@ -1,6 +1,8 @@
 # Plan 18 — Architecture Decision Record (ADR) log
 
 > Part of the [HoBo Design Plan Suite](./README.md). The load-bearing decisions, why they were made, and what they cost. Format: Status · Context · Decision · Consequences. These are the things we should be deliberate about *unmaking*.
+>
+> **Convention (from ADR-0018):** new ADRs are now written **one file per decision** under [`adr/`](./adr/README.md). ADR-0001…0017 below remain the canonical record for those decisions; the [ADR index](./adr/README.md) gives a single chronological view including ADR-0018+ (the requirements decision log).
 
 ### ADR-0001 — TS-native control-plane core (Kubernetes optional)
 **Status:** Accepted. **Context:** the control plane could be built on Kubernetes/Crossplane or as a bespoke TS service. **Decision:** TS-native core (actor runtime + Pulumi Automation API); Crossplane is one optional execution adapter. **Consequences:** maximal TS cohesion + self-host simplicity; we own reconciliation/HA we'd otherwise inherit from k8s ([Plan 4](./04-control-plane.md), [Plan 5](./05-reliability-ha.md)).

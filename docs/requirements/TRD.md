@@ -1,0 +1,243 @@
+# HoBo — Technical Requirements Document (TRD)
+
+> Part of the [HoBo Requirements Suite](./README.md). **How** — in requirements terms: the architecture, per-subsystem technical requirements (`TR-NNN`), interfaces, cross-cutting NFR realization, verification strategy, and the authoritative **[traceability matrix](#traceability-matrix)** linking [BRD](./BRD.md) `BR` → [PRD](./PRD.md) `FR`/`NFR` → `TR` → design doc. This document states *requirements on the implementation*; design depth lives in [`docs/design`](../design/README.md).
+
+## 1. Document control
+
+| Field | Value |
+|---|---|
+| Title | HoBo Technical Requirements Document |
+| Version | 0.1 (Draft for review) |
+| Date | 2026-06-20 |
+| Status | Draft |
+| Owner (Accountable) | Engineering lead |
+| Authors | Engineering + Platform + SRE |
+| Reviewers | Product, Security, Founders |
+| Related | [BRD](./BRD.md), [PRD](./PRD.md), [10 Architecture](../design/10-architecture-overview.md), [01 Monorepo](../design/01-monorepo.md), [04 Control plane](../design/04-control-plane.md), [09 Verification](../design/09-verification-open-questions.md), [11 Event model](../design/11-event-model.md), [18 ADR log](../design/18-adr-log.md) |
+
+### 1.1 RACI (technical decisions)
+| Activity | Eng | Platform | Security | SRE | Product |
+|---|---|---|---|---|---|
+| Architecture & subsystem TRs | **A/R** | C | C | C | I |
+| Interfaces (WIT/CLI/MCP/API) | **A/R** | C | C | I | C |
+| Security/multi-tenancy TRs | A | C | **R** | C | I |
+| Reliability/SLO TRs | A | C | C | **R** | C |
+| Verification strategy | **A/R** | C | C | C | I |
+
+### 1.2 Sign-off
+| Role | Name | Decision | Date |
+|---|---|---|---|
+| Engineering lead | _TBD_ | ☐ Approve ☐ Changes | |
+| Security lead | _TBD_ | ☐ Approve ☐ Changes | |
+| SRE lead | _TBD_ | ☐ Approve ☐ Changes | |
+
+## 2. Scope & system context
+HoBo comprises (a) an **SDK** (author + runtime) compiled to portable components, (b) **the Yard** — an event-sourced, actor-based control plane, and (c) **adapters** (Worlds, Providers, IaC, Build) behind ports. The **control plane** decides what infra should exist and makes it exist; the **data plane** is the running Bindle on a World, never on the Yard's critical path ([10-architecture-overview.md](../design/10-architecture-overview.md)). This TRD specifies technical requirements on these subsystems and how they satisfy the PRD.
+
+## 3. Architecture overview
+Control plane vs data plane, author→deploy→run ([10](../design/10-architecture-overview.md)/[04](../design/04-control-plane.md)):
+
+```mermaid
+flowchart TB
+  subgraph Author["Author time"]
+    B["bindle.ts — what (topology + .allow)"]
+    CFG["hobo.config.ts — where/how (mapping + Worlds)"]
+  end
+  subgraph Yard["The Yard — control plane (event-sourced, multi-tenant)"]
+    GW["Gateway: RPC / REST / MCP ingress + authz"]
+    IDP["Identity: SVID/OIDC + token broker"]
+    REG["Registry: Hobo Code catalog"]
+    PLN["Planner: Bindle+mapping to DeploymentPlan DAG"]
+    ORC["Orchestrator: choreography saga engine"]
+    RAC["ResourceActors: per-resource reconcilers"]
+    EXE["Executors: Firecracker, scoped tokens"]
+    EVT[("Event Store + Projections")]
+  end
+  subgraph Data["Data plane — the running Bindle"]
+    APP["App components: wasm / OCI"]
+    WRL["World: EventStore+Queue+Streamer+ActorHost+Clock"]
+  end
+  PROV["Providers: cloud / IaC / build adapters"]
+
+  B --> GW
+  CFG --> GW
+  GW --> PLN
+  REG -. capabilities/cost .-> PLN
+  PLN --> ORC
+  ORC --> RAC
+  RAC --> EXE
+  EXE --> PROV
+  IDP -. short-lived scoped token .-> EXE
+  GW --> EVT
+  RAC --> EVT
+  PROV --> APP
+  APP --> WRL
+```
+
+**Layering invariant** ([01-monorepo.md](../design/01-monorepo.md)): dependencies point **inward only** — `apps → adapters → sdk/runtime → core`; adapters depend only on `@hobo/core` port interfaces, so the agnostic core never leaks provider detail (enforces NFR-001).
+
+## 4. Component breakdown (`@hobo/*`)
+From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/wit`, `@hobo/sdk`, `@hobo/runtime`); **control plane** (`@hobo/cli`, `@hobo/cloud` = the Yard, `@hobo/registry`, `@hobo/identity`, `@hobo/mcp`); **Worlds** (`world-local` built-in, `world-postgres`/`-temporal`/`-restate`/`-cloudflare`); **Providers** (`provider-aws`/`-azure`/`-gcp`/`-cloudflare`/`-fly`/`-kubernetes`); **IaC** (`iac-pulumi` primary, `-cdktf`/`-crossplane`/`-opentofu`); **Build** (`build-wasm`, `-dagger`/`-packer`/`-firecracker`); **governance** (`@hobo/conformance`, `@hobo/contracts`, `@hobo/policy`, `@hobo/evals`, optional `provider-pact`/`-opa`/`-cedar`).
+
+## 5. Technical requirements (`TR-NNN`)
+
+### 5.1 SDK & compile (IfC) ([02](../design/02-sdk-api.md), [20](../design/20-wasm-wasi-runtime.md), [21](../design/21-resources-catalog.md), [22](../design/22-wiring-manifest.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-001** | `@hobo/sdk` exposes the resource catalog + `bindle()`; resources declare `.allow()` verbs inline (IfC). | IfC-collection test ([09](../design/09-verification-open-questions.md)) |
+| **TR-002** | `hobo collect` runs the component to emit a **Manifest IR** (resources + links + endpoints + env). | Manifest matches fixture ([09](../design/09-verification-open-questions.md)) |
+| **TR-003** | Services compile to **wasm components** (jco/componentize) with **OCI-container fallback**. | Build test; component runs on `world-local` ([20](../design/20-wasm-wasi-runtime.md)) |
+| **TR-004** | `.allow(v)` produces exactly one **{IAM scope + wasm capability link + brokered-token scope}** triple; a missing verb is denied on all three. | `.allow()` triple test ([09](../design/09-verification-open-questions.md)) |
+| **TR-005** | `.with(provider.option(...))` is per-provider-typed and inert for non-resolved providers. | Multi-provider resolve test ([09](../design/09-verification-open-questions.md)) |
+
+### 5.2 Worlds runtime ([02](../design/02-sdk-api.md), [24](../design/24-wit-worlds-reference.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-010** | Define `World` ports — EventStore, Queue, Streamer, ActorHost, Clock — as WIT worlds; ship a built-in engine (`world-local`, SQLite/fs). | Per-World-port conformance ([09](../design/09-verification-open-questions.md)) |
+| **TR-011** | Runtime primitives `step`/`workflow`/`actor`/`saga`/`agent`/`sleep`/`cron`/hooks/streams with memoized steps + auto idempotency keys. | hello-bindle exercises all; replay==live |
+| **TR-012** | Worlds are swappable per Camp (`world-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | Same app on ≥2 Worlds ([24](../design/24-wit-worlds-reference.md)) |
+
+### 5.3 The Yard control plane ([04](../design/04-control-plane.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-020** | **Gateway** authenticates principal (human OIDC / agent SVID), authorizes ABAC `(principal,tenant,port,resource,action)`, turns requests into **commands**; reads served from projections only. | Authz tests ([12](../design/12-security-multitenancy.md)) |
+| **TR-021** | **Planner** is a **pure function** Bindle+mapping → DeploymentPlan DAG; records selection rationale on `deployment.Planned`. | Unit-testable without cloud ([09](../design/09-verification-open-questions.md)) |
+| **TR-022** | **Orchestrator** runs choreography sagas; one **ResourceActor** grain per resource reconciles desired↔actual via the resolved IaC adapter; cross-resource ordering by dependency DAG + events (no central coordinator). | Crash-resume + compensation tests ([05](../design/05-reliability-ha.md)) |
+| **TR-023** | **Executors** run IaC/builds in **Firecracker microVMs** with **no ambient creds** and a single injected scoped token; output streams as `exec.*` events. | Executor egress test ([12](../design/12-security-multitenancy.md)) |
+| **TR-024** | The Yard is **itself a Bindle**; `hobo yard up [--restore <log>]` bootstraps/rebuilds it (self-host = hosted). | Bootstrap + DR replay test ([04](../design/04-control-plane.md)/[05](../design/05-reliability-ha.md)) |
+
+### 5.4 Event model & CQRS ([11](../design/11-event-model.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-030** | A single **append-only event log** is the source of truth for both planes; reads are projections (CQRS). | Projection rebuild==live ([09](../design/09-verification-open-questions.md)) |
+| **TR-031** | Appends are **conditional on expected `seq`** (OCC) and **dedup on `idempotencyKey`** → exactly-once *effects* over at-least-once delivery. | Idempotent-dedup conformance ([05](../design/05-reliability-ha.md)) |
+| **TR-032** | Schema evolution via **upcasters**; old events replay through them. | Upcaster replay test ([11](../design/11-event-model.md)) |
+| **TR-033** | Every durable run satisfies **`replay == live state`** (hard invariant, NFR-011). | Determinism test ([09](../design/09-verification-open-questions.md)) |
+
+### 5.5 Providers / IaC / Build ([03](../design/03-providers-iac.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-040** | `CloudProvider`/`IacProvider`/`BuildProvider` are swappable ports; a cloud provider composes IaC + build. | Per-capability conformance ([09](../design/09-verification-open-questions.md)) |
+| **TR-041** | **Pulumi Automation API** is the primary IaC mechanism (embedded, no CLI shell-out); Crossplane/OpenTofu/CDKTF are alternates. | Provider deploy test ([ADR-0006](../design/adr/README.md)) |
+| **TR-042** | **Per-resource IaC stacks** by default (blast-radius isolation + clean compensation). | Compensation rollback test ([05](../design/05-reliability-ha.md)) |
+| **TR-043** | ≥2 cloud providers implement the capability ports for the reference app at v1. | `multi-cloud-shop` E2E (NFR-001) |
+
+### 5.6 Identity, credentials & token broker ([06](../design/06-ai-native-agent-auth.md), [12](../design/12-security-multitenancy.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-050** | **Identity** issues short-lived **SVIDs** (SPIFFE-style) to agents/workloads and acts as an OIDC provider. | Token issuance test ([09](../design/09-verification-open-questions.md)) |
+| **TR-051** | **Token broker** exchanges an SVID for a resource-scoped provider token (OIDC federation preferred; OAuth-OBO for human delegation; API-key only as an explicit legacy escape hatch). | Zero-secret deploy test (NFR-005) |
+| **TR-052** | Every credential event (`token.Granted/Used/Revoked`) is logged and replayable. | Credential-audit test ([06](../design/06-ai-native-agent-auth.md)) |
+
+### 5.7 Registry & Hobo Code ([06](../design/06-ai-native-agent-auth.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-060** | Providers publish **Hobo Code** (`index/signs/capabilities/auth/cost.json`) at `/.well-known/hobo-code/`; the **Registry** indexes + serves capability search. | Discovery test (FR-031) |
+| **TR-061** | The Registry **refuses unsigned/unverified plugins**; consumers pin versions + require a trust level. | Unsigned-plugin-refused test ([12](../design/12-security-multitenancy.md)) |
+
+### 5.8 MCP control surface ([06](../design/06-ai-native-agent-auth.md), [15](../design/15-cli-dx.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-070** | `@hobo/mcp` exposes every CLI/SDK capability as an MCP tool (`plan`/`deploy`/`promote`/`rollback`/`inspect_run`/`tail_logs`/`request_token`/`get_drift`/`heal`/…) with the same identity/authz model. | Surface-parity + agent E2E (NFR-004) |
+
+### 5.9 Forge & conformance trust boundary ([06](../design/06-ai-native-agent-auth.md), [09](../design/09-verification-open-questions.md), [23](../design/23-stubbable-ai-implementations.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-080** | `@hobo/conformance` provides an executable contract suite **per WIT world**; an adapter may only claim a port it passes; CI blocks otherwise. | Conformance gate in CI ([09](../design/09-verification-open-questions.md)) |
+| **TR-081** | **Forge** generates a candidate provider/impl, runs conformance **sandboxed with no egress**, signs + attaches SLSA-style provenance, publishes on pass. | `hobo forge` certification test ([06](../design/06-ai-native-agent-auth.md)) |
+| **TR-082** | `stub()` records calls as events; AI implement-to-trace asserts conformance-green **and** reproduces recorded traces; **live-fix** routes through the gated canary/auto-rollback saga. | Stub/replay + gated live-fix test ([09](../design/09-verification-open-questions.md)) |
+
+### 5.10 Contracts, policy, evals & Gatekeeper ([29](../design/29-contracts-compatibility.md), [30](../design/30-policy-plane.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-090** | `contract-engine` + `policy-engine` are **WIT ports** with built-in defaults (typed TS); Pact/OPA/Cedar are optional providers. | Per-engine conformance ([ADR-0015](../design/adr/README.md)) |
+| **TR-091** | **`can-deploy`** checks producer/consumer version skew against what the event log says runs per environment; emits `compat.GatePassed/Failed`. | Compatibility test ([09](../design/09-verification-open-questions.md)) |
+| **TR-092** | Policy decisions carry **obligations** realized as durable effects/sagas, tracked `ObligationCreated→Satisfied`; an unmet obligation blocks. | Policy-decision + obligation test ([30](../design/30-policy-plane.md)) |
+| **TR-093** | A single **Gatekeeper** (`hobo verify`) composes contracts + policy + evals + conformance + cost into one event-sourced decision at Delta→Set/promote. | `hobo verify` composite test ([ADR-0016](../design/adr/README.md)) |
+
+### 5.11 Platform-engineering: definitions, matching, deltas, packs ([25](../design/25-resource-definitions-matching.md)–[27](../design/27-drivers-packs-profiles.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-100** | **Resource Definitions + Matching** select how a port is realized per context; the winning definition + score recorded as `match.Decided`. | Matching test ([09](../design/09-verification-open-questions.md)) |
+| **TR-101** | Environments are **Deployment Sets** with mutable **Deltas** (draft→promote); reconcile is **incremental** (only changed nodes). | Delta→Set test ([26](../design/26-environments-deltas.md)) |
+| **TR-102** | **Resource Packs** bundle definitions and are installable (marketplace); Drivers (`terraform`/`template`/`container`/`custom-webhook`) have conformance suites. | Pack + Driver conformance ([27](../design/27-drivers-packs-profiles.md)) |
+
+### 5.12 Cross-cutting: security & multi-tenancy ([12](../design/12-security-multitenancy.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-110** | Tenant is the hard isolation boundary across **five** dimensions: data (namespaced/encrypted streams), compute (partitioned Executor pools), credentials (tenant-scoped SVIDs/tokens), network (tenant-scoped mTLS domains), and **wasm capability** (deny-by-default unforgeable handles). | Cross-tenant isolation tests ([09](../design/09-verification-open-questions.md)) |
+| **TR-111** | **No static secrets:** bindings resolve to secret refs; per-run sensitive payloads encrypted with a per-run key (log access ≠ payload access). | Secrets/encryption test |
+| **TR-112** | **Supply chain:** plugins signed w/ provenance + conformance report; images by digest + scanned; SBOMs gate publishing. | Signing/SBOM gate ([12](../design/12-security-multitenancy.md)) |
+| **TR-113** | **Data residency:** a tenant can constrain regions; the Planner rejects residency violations at plan time. | Residency rejection test ([03](../design/03-providers-iac.md)) |
+
+### 5.13 Cross-cutting: networking ([13](../design/13-networking-connectivity.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-120** | Connectivity is derived from `bind` edges; the Planner selects a **tier** (same-region private → cross-region → cross-provider private → overlay mesh → public+mTLS) and may be overridden via `.with(...)`. | Connectivity-tier test ([09](../design/09-verification-open-questions.md)) |
+| **TR-121** | **mTLS-by-default** between services, keyed by workload SVIDs; certs issued/rotated by Identity (zero-trust); apps don't manage them. | Cross-provider mTLS test (P4 gate) |
+| **TR-122** | The **HoBo Agent** provides an outbound-only (no inbound) reverse tunnel for private-network targets. | Private-target deploy test ([28](../design/28-agent-gitops-pipelines.md)) |
+
+### 5.14 Cross-cutting: observability ([14](../design/14-observability.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-130** | OTel logs/traces/metrics emitted for control + data planes; the event log backs the audit/timeline; dashboard reads projections only. | Trace-present test ([14](../design/14-observability.md)) |
+
+### 5.15 Cross-cutting: reliability/HA ([05](../design/05-reliability-ha.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-140** | Single-writer **leases + fencing tokens** per grain; stale-owner appends rejected; failover = lease TTL + tail replay (<30 s). | Partition/fencing test ([05](../design/05-reliability-ha.md)) |
+| **TR-141** | Saga **compensation** in reverse-topological order past a configurable no-go threshold; compensations idempotent; escalate to `needs-human` rather than loop. | Compensation test |
+| **TR-142** | Control-plane HA: quorum/replicated log (built-in engine ships a small Raft; `world-*` delegate); stateless tier scales horizontally; bounded-staleness reads labeled. | HA/availability test (99.9%/99.95%) |
+| **TR-143** | DR = replay: `hobo yard up --restore` rebuilds projections + actors; RPO ~0/≤5 s, RTO <15 min. | DR replay test (NFR-010) |
+| **TR-144** | Deployment strategies (`recreate`/`blue-green`/`canary`/`progressive`) are parameterized sagas with event-sourced gates + auto-rollback. | Canary auto-rollback test |
+
+### 5.16 Cross-cutting: cost ([16](../design/16-cost-finops.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-150** | Providers publish `cost.json`; the Planner estimates plan-time cost (incl. egress per connectivity tier); estimate within ±20% of a fixture. | Cost fixture test (NFR-012) |
+| **TR-151** | Budgets/caps are policy gates; spend over cap → obligation/approval; showback attributable per tenant/Bindle/Camp/resource from the log. | Budget-breach test |
+
+## 6. Interfaces & APIs
+- **WIT ports** ([24](../design/24-wit-worlds-reference.md)): the canonical contracts (World ports + provider capability ports + `contract-engine`/`policy-engine`). `hobo:*` worlds reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/09-verification-open-questions.md) Q11).
+- **CLI** ([15](../design/15-cli-dx.md)): the `hobo …` command set (FR-010/013).
+- **MCP** ([06](../design/06-ai-native-agent-auth.md)): tool-per-capability surface (TR-070).
+- **Gateway command/event API** ([04](../design/04-control-plane.md)): commands (`Deploy`/`Promote`/`Rollback`/`Destroy`/`RegisterProvider`/`RequestToken`/…); the only side effect is appending events.
+
+## 7. Technology stack & dependencies
+TypeScript/Node (core + Yard); WASI/Component Model + WIT + jco (components); Pulumi Automation API (IaC); SPIFFE/OIDC (identity); Firecracker (executor isolation); SQLite (built-in World) / Postgres / Temporal / Restate / Cloudflare DO (World adapters); MCP (agent surface). Upstream churn is isolated behind ports ([BRD R-5](./BRD.md#15-risk-register)).
+
+## 8. Deployment & self-host topology
+Self-host = single-tenant (whole Yard = one trust domain); hosted = multi-tenant on the same code ([04](../design/04-control-plane.md)/[12](../design/12-security-multitenancy.md)). Bootstrapping: local seed (`world-local`) → self-deploy `@hobo/cloud` to a real target → handover imports the seed's log for provenance (TR-024).
+
+## 9. Test & verification strategy ([09](../design/09-verification-open-questions.md))
+Pyramid: **unit** (pure Planner/upcasters) → **conformance** per port (the trust boundary, `@hobo/conformance`) → **integration** (SDK + built-in World + local provider) → **E2E** (Yard + one real cloud, gated) → **determinism/replay** (`replay == live`). New gate tests: matching, Delta→Set, compatibility (`can-deploy`), policy-decision, eval-gate, stub/replay, IfC-collection. `hobo verify` composes contracts + policy + evals + conformance + cost (TR-093).
+
+## 10. Technical risks & open decisions
+Inherits [BRD risks](./BRD.md#15-risk-register). Open ADR-P items ([18-adr-log](../design/18-adr-log.md)) this TRD must eventually close:
+- **ADR-P1** built-in-engine consensus (own Raft vs delegate) — affects TR-142.
+- **ADR-P2** overlay-mesh tech — affects TR-120.
+- **ADR-P4** default Planner objective (cost vs latency) — affects TR-021/TR-150; **TRD stance:** ship a documented default (cost-aware with colocation) that is **per-tenant configurable**, decision deferred to ADR-P4 ratification.
+- **ADR-P5** `"use workflow"` transform depth — affects TR-011.
+Plus [09](../design/09-verification-open-questions.md) open questions (wasm host of record, `hobo:*` versioning, IfC fidelity for non-TS, live-fix auto threshold, first P2 provider).
+
+## Traceability matrix
+Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)). Every BR has ≥1 FR/NFR; every FR/NFR has ≥1 TR.
+
+| BR | FR / NFR | TR | Proven by (design + test) |
+|---|---|---|---|
+| BR-001 author once | FR-001, FR-002, FR-003, FR-010, FR-011; NFR-002, NFR-003, NFR-015 | TR-001..003, TR-011 | hello-bindle; IfC-collection; `hobo dev` timing |
+| BR-002 N clouds, unedited | FR-004, FR-005, FR-006, FR-030, FR-032; NFR-001 | TR-005, TR-012, TR-040, TR-043, TR-021 | `multi-cloud-shop` E2E; resolve test |
+| BR-003 optimize on demand | FR-005 | TR-005 | provider-options test |
+| BR-004 agents first-class | FR-020, FR-021; NFR-004 | TR-070, TR-050 | MCP surface-parity; agent E2E |
+| BR-005 zero secrets | FR-002, FR-023; NFR-005 | TR-004, TR-051, TR-052 | zero-secret deploy; `token.*` audit |
+| BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014 | TR-030..033, TR-130 | projection-rebuild; determinism; OTel |
+| BR-007 self-hostable + reliable | FR-010; NFR-009, NFR-010, NFR-013 | TR-024, TR-140..143 | bootstrap; DR replay; fencing |
+| BR-008 no community bottleneck | FR-040, FR-041, FR-042; NFR-007 | TR-080..082 | `hobo forge`; stub/replay; sandbox egress |
+| BR-009 cost first-class | FR-070; NFR-012 | TR-150, TR-151 | cost fixture; budget-breach |
+| BR-010 governance | FR-013, FR-050, FR-051, FR-052, FR-060, FR-061 | TR-090..093, TR-100, TR-101, TR-113 | can-deploy; policy/obligation; matching; residency |
+| BR-011 safe autonomy | FR-022, FR-042, FR-051 | TR-092, TR-082 | policy-gate; spend-cap; gated live-fix |
+| BR-012 monetization/marketplace | FR-062; NFR-007 | TR-061, TR-102, TR-112 | pack install; signing/SBOM gate |
+| (security spine) | NFR-006, NFR-007 | TR-110, TR-111, TR-112, TR-023, TR-121 | tenant isolation; executor egress; mTLS |
+
+## 11. References
+[10 Architecture](../design/10-architecture-overview.md) · [04 Control plane](../design/04-control-plane.md) · [11 Event model](../design/11-event-model.md) · [05 Reliability](../design/05-reliability-ha.md) · [12 Security](../design/12-security-multitenancy.md) · [13 Networking](../design/13-networking-connectivity.md) · [09 Verification](../design/09-verification-open-questions.md) · [24 WIT worlds](../design/24-wit-worlds-reference.md) · [BRD](./BRD.md) · [PRD](./PRD.md) · [ADR index](../design/adr/README.md).

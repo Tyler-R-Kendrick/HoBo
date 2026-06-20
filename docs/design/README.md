@@ -25,7 +25,7 @@
 | 15 | CLI & developer experience | [`15-cli-dx.md`](./15-cli-dx.md) |
 | 16 | Cost & FinOps | [`16-cost-finops.md`](./16-cost-finops.md) |
 | 17 | Positioning & competitive analysis | [`17-positioning-competitive.md`](./17-positioning-competitive.md) |
-| 18 | Architecture Decision Record (ADR) log | [`18-adr-log.md`](./18-adr-log.md) |
+| 18 | Architecture Decision Record (ADR) log | [`18-adr-log.md`](./18-adr-log.md) · per-file ADRs in [`adr/`](./adr/README.md) |
 | 19 | End-to-end worked example | [`19-worked-example.md`](./19-worked-example.md) |
 | 20 | WASM/WASI runtime (the polyglot spine) | [`20-wasm-wasi-runtime.md`](./20-wasm-wasi-runtime.md) |
 | 21 | Resource catalog & the `.allow()` model (Nitric parity) | [`21-resources-catalog.md`](./21-resources-catalog.md) |
@@ -39,6 +39,8 @@
 | 29 | Contracts & compatibility (the `can-deploy` gate) | [`29-contracts-compatibility.md`](./29-contracts-compatibility.md) |
 | 30 | The policy plane (decisions, obligations & gates) | [`30-policy-plane.md`](./30-policy-plane.md) |
 | — | **Phased build plan (every phase, every step)** | [`phases/`](./phases/README.md) |
+
+**Requirements suite** (BRD / PRD / TRD + the requirements decision log) lives in [`../requirements/`](../requirements/README.md) — the *why / what / how-in-requirements-terms* layer over these design plans, with end-to-end BR→FR/NFR→TR traceability.
 
 **Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric/README.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric/hobo-mapping.md)).
 

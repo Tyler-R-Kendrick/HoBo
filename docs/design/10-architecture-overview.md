@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). This is the load-bearing map; most other plans refine a box on it.
 
+> **v2 update.** Deployed services are **wasm components** (OCI-container fallback) running on a wasm host that links each component's imported WIT ports to **capability providers** ([Plan 20](./20-wasm-wasi-runtime.md)). The deploy path gains a **resource-collection (IfC)** step that emits the **manifest IR** the Planner consumes ([Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The control/data-plane split and event-sourced invariants below are unchanged.
+
 ## The one-paragraph model
 A developer (or agent) writes a **Bindle** (app topology, [Plan 2](./02-sdk-api.md)) and a `hobo.config.ts` mapping ports to **Providers** ([Plan 3](./03-providers-iac.md)). The **Yard** ([Plan 4](./04-control-plane.md)) — HoBo's control plane — receives a deploy request, the **Planner** turns the Bindle + mapping into a **DeploymentPlan** (a DAG of `ResourcePlan`s), and the **Orchestrator** drives each resource to reality through **ResourceActors** that call **IaC/Build adapters** inside sandboxed **Executors**, brokering short-lived credentials from **Identity**. Every state transition is an **event** ([Plan 11](./11-event-model.md)) in an append-only log, so the whole system is replayable, auditable, and recoverable. The deployed app itself runs against a **World** — the durable runtime ([Plan 2 §Layer 1](./02-sdk-api.md)) — which provides its event store, queue, streams, actor host, and clock.
 

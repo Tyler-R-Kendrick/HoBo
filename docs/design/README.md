@@ -27,8 +27,14 @@
 | 17 | Positioning & competitive analysis | [`17-positioning-competitive.md`](./17-positioning-competitive.md) |
 | 18 | Architecture Decision Record (ADR) log | [`18-adr-log.md`](./18-adr-log.md) |
 | 19 | End-to-end worked example | [`19-worked-example.md`](./19-worked-example.md) |
+| 20 | WASM/WASI runtime (the polyglot spine) | [`20-wasm-wasi-runtime.md`](./20-wasm-wasi-runtime.md) |
+| 21 | Resource catalog & the `.allow()` model (Nitric parity) | [`21-resources-catalog.md`](./21-resources-catalog.md) |
+| 22 | Wiring, config & the manifest IR (Aspire model) | [`22-wiring-manifest.md`](./22-wiring-manifest.md) |
+| 23 | Stubbable implementations & AI implement/evolve/live-fix | [`23-stubbable-ai-implementations.md`](./23-stubbable-ai-implementations.md) |
 
-**Reading order.** New to HoBo: start with [0 Vision](./00-vision.md) → [10 Architecture](./10-architecture-overview.md) → [19 Worked example](./19-worked-example.md), then the two deep plans [2 SDK](./02-sdk-api.md) and [6 AI-native/agent-auth](./06-ai-native-agent-auth.md). Evaluating vs alternatives: [17 Positioning](./17-positioning-competitive.md). Auditing decisions: [18 ADR log](./18-adr-log.md).
+**Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric/README.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric/hobo-mapping.md)).
+
+**Reading order.** New to HoBo: start with [0 Vision](./00-vision.md) → [10 Architecture](./10-architecture-overview.md) → [19 Worked example](./19-worked-example.md), then the two deep plans [2 SDK](./02-sdk-api.md) and [6 AI-native/agent-auth](./06-ai-native-agent-auth.md). For the v2 runtime/authoring model read [20 WASM/WASI](./20-wasm-wasi-runtime.md) → [21 Resources/`.allow()`](./21-resources-catalog.md) → [22 Wiring/manifest](./22-wiring-manifest.md) → [23 AI implementations](./23-stubbable-ai-implementations.md). Evaluating vs alternatives: [17 Positioning](./17-positioning-competitive.md) + [`competitors/nitric`](../../competitors/nitric/README.md). Auditing decisions: [18 ADR log](./18-adr-log.md).
 
 ---
 
@@ -80,3 +86,11 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **Executor** — a Firecracker-sandboxed runner that applies IaC / builds images with short-lived scoped creds.
 - **Run** — one durable execution of a workflow/agent (a `run.*` event stream).
 - **Identity / SVID** — a workload identity (SPIFFE-style) issued by the Yard to agents/services for keyless auth.
+- **Component** — a WASM/WASI component; the default unit a HoBo service compiles to (OCI-container fallback otherwise).
+- **WIT world** — the canonical form of a HoBo **port**: a WebAssembly Interface Types contract a component imports/exports.
+- **Capability provider** — a Provider as a wasm capability adapter implementing a WIT world's exports for a backend.
+- **Link** — the late-bound binding from a component's imported interface to a provider's export (the `bind`/escape-hatch made concrete).
+- **`.allow(...)`** — inline capability-permission on a resource; drives least-privilege IAM **+** wasm capability links **+** agent token scope.
+- **IfC** — Infrastructure-from-Code: the default authoring mode where resources are declared inline and collected by running the component.
+- **Manifest (IR)** — the deployment intermediate representation emitted by resource-collection and consumed by the Planner.
+- **Stub** — a typed, recording placeholder behind a WIT port so an app runs before implementations exist (basis for AI implement/evolve).

@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). This was an explicit iteration target; below is the concrete design, not a sketch.
 
+> **v2 update.** AI **live-fix** ([Plan 23](./23-stubbable-ai-implementations.md)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
+
 ## Failure taxonomy (what we design against)
 | Class | Example | Strategy |
 |---|---|---|

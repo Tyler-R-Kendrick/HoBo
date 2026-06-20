@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). See also the [reference architecture](./10-architecture-overview.md) and [event model](./11-event-model.md).
 
+> **v2 update.** The Planner now consumes the **manifest IR** produced by IfC resource-collection ([Plan 22](./22-wiring-manifest.md)); ResourceActors additionally manage **links** binding components to capability providers ([Plan 20](./20-wasm-wasi-runtime.md)). The reconciliation FSM and choreography below are unchanged.
+
 The Yard is the orchestrator that maps Bindle deployments to real hosting. It is **itself a HoBo Bindle** (dogfood) and runs on the TS-native core; Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement.
 
 ## Services (each a grain-based module)

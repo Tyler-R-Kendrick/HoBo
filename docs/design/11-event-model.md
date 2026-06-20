@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Everything in HoBo — deployments, workflows, actor state, token issuance — is sourced from this model.
 
+> **v2 update.** Two event families join the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./23-stubbable-ai-implementations.md)). Both ride the same envelope and replay rules below.
+
 ## Why event sourcing is the foundation (not an add-on)
 HoBo makes one big bet: **the append-only event log is the single source of truth** for both the control plane (the Yard) and the data-plane runtime (the World). This buys four properties we'd otherwise have to build piecemeal:
 - **Recovery** — crash mid-deploy or mid-workflow → replay the stream to rebuild exact state.

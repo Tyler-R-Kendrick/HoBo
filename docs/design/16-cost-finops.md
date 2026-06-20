@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Multi-provider only pays off if HoBo can reason about cost — otherwise "ship anywhere" quietly becomes "overpay everywhere."
 
+> **v2 update.** Wasm components' tiny footprint + ms cold starts ([Plan 20](./20-wasm-wasi-runtime.md)) change the cost model (higher density, scale-to-zero friendliness) — a Planner input alongside the `cost.json` signals below. AI auto-evolution can also optimize for cost as an objective ([Plan 23](./23-stubbable-ai-implementations.md)).
+
 ## Cost is a first-class input, not a report
 HoBo treats cost as a signal that flows through planning, deployment, runtime, and governance:
 - **Plan-time estimate** — `hobo plan` returns a projected cost for the DeploymentPlan before anything is provisioned (the agent/dev sees the bill first).

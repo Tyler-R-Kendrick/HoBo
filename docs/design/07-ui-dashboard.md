@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The Yard ships a dashboard built on the SDK; it reads only [projections](./11-event-model.md) and [streams](./14-observability.md), never live providers.
 
+> **v2 update.** Adopt Nitric's **local-dashboard** features for `hobo dev` (test APIs, browse kv/sql/buckets, trigger schedules, publish to topics, inspect websockets) and add HoBo-native views: the **collected-resource/manifest** view ([Plan 22](./22-wiring-manifest.md)), the **link map** (component imports → providers, [Plan 20](./20-wasm-wasi-runtime.md)), and **cross-WIT-call traces** + AI implement/evolve/live-fix proposals & approvals ([Plan 23](./23-stubbable-ai-implementations.md)).
+
 ## Principles
 1. **Everything is a view over events.** No view has privileged state; each is a projection, so the dashboard is consistent with the audit log by construction.
 2. **Replay/time-travel is a first-class UX**, not a hidden log. The deploy timeline and run inspector both scrub through history.

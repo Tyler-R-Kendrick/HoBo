@@ -12,15 +12,18 @@
 | **Vercel + Workflow SDK** | PaaS + durable exec | partial (Worlds for runtime) | Vercel-native | durable workflows/steps | DurableAgent | Worlds self-host |
 | **SST** | AWS framework | ❌ (AWS) | full CDK | serverless | no | n/a |
 | **Encore** | Backend framework | ✅ (AWS/GCP) | config overrides | typed services | no | ✅ |
-| **Nitric** | Cloud-agnostic framework | ✅ | plugin model | functions/resources | no | ✅ |
+| **Nitric** | Cloud-agnostic framework (IfC) | ✅ | plugin/custom provider (Go) | functions/resources | no | ✅ |
 | **Wing** | Cloud language | ✅ | `bring` modules | preflight/inflight | no | ✅ |
 | **Pulumi** | IaC SDK | ✅ | full SDK | n/a (provisioning) | no | ✅ |
 | **Crossplane** | K8s control plane | ✅ | compositions | reconcilers (CRDs) | no | ✅ (k8s) |
 | **Radius** | App platform | ✅ | recipes | app model | no | ✅ |
 | **Score / KubeVela / OAM** | Workload spec | ✅ | traits/policies | k8s-centric | no | ✅ |
-| **HoBo** | **AI-native control plane** | **✅** | **typed `.with(...)` per provider** | **actors + durable workflows + choreography sagas (event-sourced)** | **agents as principals; Hobo Code; Forge; MCP** | **✅ (the Yard is a Bindle)** |
+| **wasmCloud** | Wasm actor/provider runtime | ✅ | capability providers + links | components + providers | no | ✅ |
+| **Fermyon Spin / SpinKube** | Wasm serverless | ✅ (wasm) | spin triggers/components | wasm components | no | ✅ |
+| **.NET Aspire** | App composition/orchestration | partial | annotations / custom resources | containers + projects | no | ✅ |
+| **HoBo** | **AI-native control plane** | **✅** | **typed `.with(...)` + WIT links** | **wasm components + actors + durable workflows + sagas (event-sourced)** | **agents as principals; Hobo Code; Forge (providers+impls); MCP** | **✅ (the Yard is a Bindle)** |
 
-**The gap:** every cloud-agnostic option above is either (a) IaC-flavored (you still think in infra), (b) Kubernetes-bound, or (c) not AI-native. Every AI-native option (Lakebed, Vercel) is single-runtime / locked-in. **No one combines cloud-agnostic ports/adapters + a Vercel-grade durable runtime + agents-as-first-class + AI-generated provider support + a self-hostable control plane.** That intersection is HoBo.
+**The gap:** every cloud-agnostic option above is either (a) IaC-flavored (you still think in infra), (b) Kubernetes-bound, or (c) not AI-native — and the wasm runtimes (wasmCloud/Spin) and orchestrators (Aspire) solve *runtime/wiring* but not multi-cloud provisioning, agents, or durable workflows. Every AI-native option (Lakebed, Vercel) is single-runtime / locked-in. **No one combines cloud-agnostic ports/adapters (as WIT worlds) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane.** That intersection is HoBo. (Detailed Nitric capture + parity in [`competitors/nitric`](../../competitors/nitric/README.md).)
 
 ## What HoBo borrows (deliberately)
 - **From Vercel Workflows:** the durable `workflow`/`step` feel and the **Worlds** ports/adapters for the runtime.
@@ -28,6 +31,9 @@
 - **From Crossplane/Radius:** reconciliation + the dev-vs-platform separation (here: `bindle.ts` vs `hobo.config.ts`, and provider recipes/equivalence classes).
 - **From Pulumi:** real-language IaC via the Automation API as our primary mechanism.
 - **From SPIFFE/OAuth/MCP-auth:** keyless workload identity + token brokering for agents.
+- **From Nitric:** the full resource catalog, inline `.allow()` → least-privilege, and Infrastructure-from-Code (default authoring) — see [Plan 21](./21-resources-catalog.md).
+- **From WASI/Component Model + wasmCloud:** ports as **WIT worlds**, providers as **capability providers**, `bind` as **links**, and a polyglot wasm-default runtime — see [Plan 20](./20-wasm-wasi-runtime.md).
+- **From .NET Aspire:** `WithReference` wiring, uniform config for any component/container, annotations, and the **manifest IR** — see [Plan 22](./22-wiring-manifest.md).
 
 ## Defensible differentiators (the moat)
 1. **AI-native operations, not just AI-readable apps** — agents deploy, optimize, and self-heal via MCP with first-class identity + audit.

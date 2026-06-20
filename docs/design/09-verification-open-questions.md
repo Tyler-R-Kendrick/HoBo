@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). How we prove each plan works when implemented, and the cross-cutting questions still open.
 
+> **v2 update.** Conformance is now **per WIT world** ([Plan 20](./20-wasm-wasi-runtime.md)) and is the gate for both human- and Forge-generated **providers and implementations** ([Plan 23](./23-stubbable-ai-implementations.md)). Add: a **stub/replay test** (run with stubs, then assert an AI-generated impl reproduces recorded traces + passes conformance) and an **IfC-collection test** (collected manifest matches a fixture). New open questions: wasm host of record, `hobo:*` WIT versioning, IfC fidelity for non-TS languages, and the "low-risk auto live-fix" threshold.
+
 ## Testing strategy (the pyramid)
 1. **Unit** — pure functions (the Planner, upcasters, capability negotiation) tested in isolation. The Planner being pure ([Plan 3](./03-providers-iac.md)) makes provider-resolution fully unit-testable without a cloud.
 2. **Conformance (contract) tests** — `@hobo/conformance` is the centerpiece (below).

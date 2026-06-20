@@ -1,6 +1,19 @@
 # Plan 19 — End-to-end worked example
 
-> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–17 actually compose. App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
+> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–23 actually compose. App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
+
+> **v2 authoring (IfC + wasm + `.allow()`).** In the v2 model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The explicit `bindle.ts` below still works (advanced mode).
+> ```ts
+> // src/api.ts — IfC: resources + permissions inline; compiles to a wasm component via jco
+> import { api, kv, bucket, queue, workflow, step } from "@hobo/sdk";
+> const orders = kv("orders").allow("get", "set");          // → wasi:keyvalue link + IAM + token scope
+> const images = bucket("images").allow("read", "write");   // → wasi:blobstore
+> const events = queue("orders").allow("enqueue");          // → hobo:queue
+> const app = api("main");
+> app.post("/checkout", async (ctx) => { await checkout(await ctx.json()); ctx.json({ ok: true }); });
+> // `hobo collect` runs this in resource-collection mode → manifest IR (see Plan 22)
+> ```
+> **Stub → AI-implement (Plan 23):** a `payments` capability can ship as `service("payments").stub()` so checkout runs end-to-end on day one; the Forge later generates the real component, validated against conformance + the recorded stub traces, and promotes it through a gated rollout. Everything else in the narrative below (deploy to one cloud → multi-cloud split → provider tuning → agent-operated → Forge) is unchanged.
 
 ## 1. Scaffold & build locally (no cloud)
 ```bash

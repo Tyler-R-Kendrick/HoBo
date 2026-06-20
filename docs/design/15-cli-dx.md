@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Lakebed's biggest strength is ruthless onboarding (`npx lakebed new` → running in seconds). HoBo must match that for the agnostic path while exposing depth on demand.
 
+> **v2 update.** `hobo build` compiles each service to a **wasm component** (jco/`@hobo/componentize`, OCI-container fallback) — [Plan 20](./20-wasm-wasi-runtime.md). `hobo deploy`/`plan` run a **resource-collection** phase (IfC) that emits the **manifest IR** — [Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md). New commands: `hobo collect` (print collected resources, à la `nitric spec`) and `hobo stub <resource|service>` to run with stubs ([Plan 23](./23-stubbable-ai-implementations.md)). `hobo.config.ts` + Camps play the role of Nitric stack files.
+
 ## DX principles
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
 2. **The agnostic path is the default path** — you can build, run, test, and inspect locally before ever choosing a provider.

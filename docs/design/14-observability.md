@@ -2,6 +2,8 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). HoBo's event-sourced core gives it an observability superpower most platforms lack: **replay-based, time-travel debugging** on top of the usual three pillars.
 
+> **v2 update.** Cross-WIT-boundary calls (`link.Called` / stub recordings, [Plan 11](./11-event-model.md)) are a first-class trace stream — they drive both the **link/trace dashboard views** ([Plan 7](./07-ui-dashboard.md)) and the AI **implement → auto-evolve → live-fix** loop ([Plan 23](./23-stubbable-ai-implementations.md)).
+
 ## Four pillars (three standard + one HoBo-native)
 1. **Traces** — OpenTelemetry spans across deploys, workflows, steps, actor messages, and provider calls.
 2. **Metrics** — control-plane and data-plane time series.

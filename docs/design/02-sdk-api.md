@@ -10,6 +10,8 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 > - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 22](./22-wiring-manifest.md)).
 > The Layer 1–4 model still holds; read it as the conceptual core, with those three docs as the concrete v2 surface.
 
+> **v3 update (Humanitec iteration).** The `hobo.config.ts` mapping (`defaultProvider`/`tiers`/`bindings`) is now **sugar over default Resource Definitions** — platform engineers can override with explicit, context-matched definitions + resource **classes** ([Plan 25](./25-resource-definitions-matching.md)); Camps gain **environment types** ([Plan 26](./26-environments-deltas.md)). Resources accept a `class` (`standard`/`ha`/…). HoBo can also **import a Score file** as a workload-spec input (interop), like importing an Aspire manifest.
+
 ---
 
 ## Layer 1 — Worlds (durable runtime ports)

@@ -4,6 +4,8 @@
 
 > **v2 update (WASM/WASI iteration).** Ports are now **WIT worlds** and a CloudProvider is a **capability provider** that implements a world's exports for a backend; **binding a resource = creating a link** (wasmCloud model) from a component's import to a provider's export, late-bound at deploy/runtime ([Plan 20](./20-wasm-wasi-runtime.md)). The deploy layer below (realize → IaC) is unchanged and now also wires links + emits the **manifest IR** ([Plan 22](./22-wiring-manifest.md)). Custom providers can be authored in any wasm language (not just Go like Nitric) and AI-generated via the Forge ([Plan 23](./23-stubbable-ai-implementations.md)).
 
+> **v3 update (Humanitec iteration).** The Planner no longer resolves providers by static mapping — it resolves a **Resource Definition** per resource via **context-matching** ([Plan 25](./25-resource-definitions-matching.md)); the `hobo.config.ts` mapping is sugar over default definitions. The `IacProvider` here is one **Driver** in a taxonomy (terraform/template/echo/container/custom-webhook, [Plan 27](./27-drivers-packs-profiles.md)); a capability provider picks a driver to realize a resource.
+
 ## The three adapter families (one shape)
 Everything that touches the outside world is a port with swappable adapters:
 - **CloudProvider** — implements capability ports (now **WIT worlds**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).
@@ -55,13 +57,12 @@ export interface BuildProvider {
 The Planner is a pure function (easy to test, replayable): `plan(bindle, config, registry) → DeploymentPlan`. Steps:
 
 1. **Collect resources** from the Bindle into nodes; collect `bind` edges into a dependency DAG.
-2. **Resolve a provider per resource** by precedence:
-   `bindings[name]` (explicit pin) → `tiers[serviceModel]` → `defaultProvider`.
-3. **Capability negotiation** — for each (resource, candidate provider) call `Capability.satisfies(request)`:
+2. **Resolve a Resource Definition per resource** via **context-matching** ([Plan 25](./25-resource-definitions-matching.md)): gather definitions of the resource's `type`, keep those whose criteria match the deploy context `{envType, app, env, tenant, resourceClass, resourceId}`, score by specificity, pick the highest, and record a **`match.Decided`** event (auditable "why this infra"). The simple `hobo.config.ts` mapping (`bindings`→`tiers`→`defaultProvider`) is **sugar that compiles to default definitions**, so it still works and is naturally outscored by explicit platform definitions.
+3. **Capability negotiation** — for the resolved definition's provider, call `Capability.satisfies(request)`:
    - `full` → accept.
    - `partial(missing)` → if the request used `prefer`, accept with a `PlanWarning` (degrade, e.g. emulate `vector` via an extension or fall back to a container); if `require`, reject the candidate.
    - `none` → reject.
-   - If a pinned provider can't satisfy a `require`, emit `deployment.PlanRejected` with a precise reason (good for agents to self-correct).
+   - If no definition can satisfy a `require`, emit `deployment.PlanRejected` with a precise reason (good for agents to self-correct).
 4. **Region & colocation** — honor explicit regions; otherwise pick a region satisfying all colocated resources' constraints (latency edges from `bind`), minimizing cross-provider/cross-region egress.
 5. **Cost shaping** (optional, [Plan 16](./16-cost-finops.md)) — when multiple candidates satisfy `full`, choose by a cost/latency objective; record the rationale as `meta` on `deployment.Planned`.
 6. **Emit `DeploymentPlan`** — DAG of `ResourcePlan{ name, port, provider, options, deps, strategy }`, each tagged with its resolved provider + merged `.with(...)` options (only the resolved provider's block survives).

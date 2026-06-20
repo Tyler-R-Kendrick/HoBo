@@ -1,0 +1,70 @@
+# Plan 25 — Resource Definitions & Matching (dynamic configuration management)
+
+> Part of the [HoBo Design Plan Suite](./README.md). The platform-rules layer the Planner uses to turn an abstract port into concrete infra **per context** — HoBo's adoption of Humanitec's standout idea ([competitor capture](../../competitors/humanitec/orchestration-model.md)). **Decision: this subsumes the old static mapping** ([Plan 2](./02-sdk-api.md)/[Plan 3](./03-providers-iac.md)); `hobo.config.ts` becomes sugar over default definitions.
+
+## Why this exists
+Developers declare *what* they need (a `database`, IfC-style with `.allow()`, [Plan 21](./21-resources-catalog.md)). Platform engineers declare *how* it's realized — and crucially, **differently per environment**: managed-HA Postgres in prod, a cheap in-cluster Postgres in an ephemeral preview. A **Resource Definition** is that rule; **Matching** picks the right one for the deploy context. This is **dynamic configuration management**: the *same Bindle* resolves to different infra without app edits.
+
+## A Resource Definition
+For an abstract port (`type` + optional `class`), a definition says which **provider + driver + options + co-provisioned resources** realize it, plus the **matching criteria** that select it. Definitions are **WIT-world-typed** ([Plan 24](./24-wit-worlds-reference.md)) and may be **Forge-generated** ([Plan 23](./23-stubbable-ai-implementations.md)).
+```ts
+// platform/resource-defs.ts — authored by platform engineers (TS; YAML form also supported)
+import { defineResource } from "@hobo/sdk/platform";
+import { aws } from "@hobo/provider-aws";
+
+export const postgresProdHa = defineResource({
+  type: "database", engine: "postgres", class: "ha",   // the port it satisfies
+  provider: aws,
+  driver: "terraform",                                   // Plan 27 driver taxonomy
+  with: aws.rds({ instanceClass: "db.r6g.large", multiAz: true }),
+  match: { envType: "production", resourceClass: "ha" }, // criteria (Plan: specificity below)
+});
+
+export const postgresEphemeral = defineResource({
+  type: "database", engine: "postgres",
+  driver: "container",                                   // in-cluster Postgres for cheap previews
+  with: { image: "postgres:16" },
+  match: { envType: "ephemeral" },
+});
+```
+
+## Matching (specificity-scored selection)
+For a needed resource in context `{ envType, app, env, tenant, resourceType, resourceClass, resourceId }`, the Planner gathers all definitions of that `type`, keeps those whose criteria fully match, **scores by specificity**, and selects the highest (ties → next-most-specific). Criteria dimensions: `envType` · `app` · `env` · `resourceClass` · `resourceId` (+ `tenant`).
+```
+match: {}                                              # score 0  (catch-all)
+match: { envType: "production" }                       # score 1
+match: { envType: "production", resourceClass: "ha" }  # score 2
+match: { envType: "production", app: "shop", resourceClass: "ha" }  # score 3  (wins)
+```
+**HoBo twist — auditable matching.** The winning definition, its score, and the rejected candidates are recorded as a **`match.Decided`** event ([Plan 11](./11-event-model.md)) → a replayable answer to "*why did this resource land on this infra?*" (a gap in Humanitec's opaque selection). The dashboard renders it ([Plan 7](./07-ui-dashboard.md)).
+
+```mermaid
+flowchart LR
+  REQ["needed resource<br/>(type, class, id) + context"] --> GATH["gather Resource Definitions<br/>of this type"]
+  GATH --> SCORE["score criteria by specificity"]
+  SCORE --> PICK["select highest<br/>(record match.Decided)"]
+  PICK --> REAL["realize via provider + Driver<br/>(Plan 27)"]
+  REAL --> NODE["node in DeploymentPlan DAG<br/>(Plan 3/4)"]
+```
+
+## Mapping is sugar over default definitions
+The simple `hobo.config.ts` ([Plan 2](./02-sdk-api.md)) is **not** a separate system — it **compiles to default Resource Definitions**:
+- `defaultProvider: azure` → a `match: {}` definition per port on Azure.
+- `tiers: { saas: azure, edge: cloudflare }` → definitions matched by service model.
+- `bindings: { "shop.db": azure.cosmos({...}) }` → a definition matched by `resourceId: "shop.db"`.
+So a solo dev writes the one-liner and never sees definitions; a platform team adds explicit definitions (with classes + env-type matching) that win by specificity. **Precedence** = pure matching score (explicit definitions naturally outscore the `{}` defaults).
+
+## Resource classes
+`class` (`standard`/`ha`/`encrypted`/…) is declared on the resource ([Plan 21](./21-resources-catalog.md)) and is a first-class matching dimension, so one logical port can have several platform realizations.
+
+## Co-provisioning & the graph
+A definition may declare co-provisioned resources (e.g. a bucket + its IAM policy); these become extra nodes/edges in the DeploymentPlan DAG with output flow via placeholders ([Plan 22](./22-wiring-manifest.md)). The Planner ([Plan 3](./03-providers-iac.md)) consumes definitions; the Orchestrator ([Plan 4](./04-control-plane.md)) executes the graph.
+
+## Forge-generated definitions
+Given a backend's Hobo Code + a target context, the **Forge** ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 23](./23-stubbable-ai-implementations.md)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, [Plan 27](./27-drivers-packs-profiles.md)), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
+
+## Iteration hooks
+- Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.
+- Scoring exactly like Humanitec vs a HoBo refinement (explicit priorities/weights, tenant dimension).
+- Conflict resolution when two definitions tie on score (deterministic tiebreak).
+- How `match.Decided` is surfaced for agents to self-correct an unsatisfiable request.

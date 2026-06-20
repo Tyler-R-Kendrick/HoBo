@@ -1,0 +1,51 @@
+# Plan 26 — Environments, Deployment Sets & Deltas
+
+> Part of the [HoBo Design Plan Suite](./README.md). Upgrades Camps with environment **types**, **cloning**, and **ephemeral/preview** environments, and formalizes deployments as immutable **Sets** + mutable **Deltas** — HoBo's adoption of Humanitec's environment & deployment model ([capture](../../competitors/humanitec/orchestration-model.md)), expressed event-sourced.
+
+## Camps gain an environment type
+A **Camp** ([Plan 2](./02-sdk-api.md)) is an environment a Bindle runs in. It now carries an **environment type** (`development`/`staging`/`production`/`ephemeral`/custom) — the **primary matching dimension** for Resource Definitions ([Plan 25](./25-resource-definitions-matching.md)). The same Bindle deployed to a `production` Camp vs an `ephemeral` Camp resolves to different infra purely via matching.
+```ts
+// hobo.config.ts
+camps: {
+  prod:    { envType: "production" },
+  staging: { envType: "staging" },
+  preview: { envType: "ephemeral", ttl: "72h" },   // ephemeral defaults
+}
+```
+
+## Cloning
+A Camp can be **cloned** from another that has a prior successful deployment (`clone-from`), producing a draft **Delta** (below) you can tweak then deploy — e.g. stand up `staging` from `production` config in one step (`hobo env clone`). Recorded as `env.Cloned` ([Plan 11](./11-event-model.md)).
+
+## Ephemeral / preview environments
+Per-PR/feature environments, created and torn down automatically:
+- Created by CI / a Pipeline ([Plan 28](./28-agent-gitops-pipelines.md)) on PR open; **auto-TTL** reaps them.
+- Platform engineers map **cheap variants** to `envType: ephemeral` via matching (in-cluster DB, scale-to-zero wasm, shared cluster) — so previews are cheap by construction ([Plan 16](./16-cost-finops.md)).
+- Each gets its own Camp + isolated event streams ([Plan 12](./12-security-multitenancy.md)).
+
+## Deployment Sets (immutable) + Deltas (mutable)
+HoBo already produces a **manifest IR** per deploy ([Plan 22](./22-wiring-manifest.md)); we name and formalize the two halves of Humanitec's model on top of the event log ([Plan 11](./11-event-model.md)):
+- **Deployment Set** = the immutable, complete resolved configuration of a Camp at a point in time (the manifest IR, content-addressed). Recorded as `set.Created`.
+- **Deployment Delta** = a mutable, reviewable **diff** (add/update/remove resources or workloads) proposed against the current Set. Deltas can be combined, previewed, approved, then **applied** to produce a new Set. Recorded as `delta.Opened` / `delta.Updated` / `delta.Applied`.
+
+```mermaid
+flowchart LR
+  SRC["Bindle + Camp(envType)"] --> D["Delta (draft diff)"]
+  D --> REV["preview / review / approve<br/>(policy gate, Plan 5/6)"]
+  REV --> APPLY["apply -> new Set (immutable)"]
+  APPLY --> DEP["deploy: reconcile only changed nodes (incremental)"]
+  DEP --> REC["record Deployment (audit)"]
+```
+
+## Promote, rollback, incremental
+- **Promote** = apply the Set that's running in one Camp as a Delta against another (e.g. staging → prod), gated.
+- **Rollback** = re-apply a previous Set; stateful resources keep state ([Plan 5](./05-reliability-ha.md)).
+- **Incremental deploy** = the Orchestrator's ResourceActors diff the new Set vs observed and reconcile **only changed nodes** ([Plan 4](./04-control-plane.md)) — fast, low-blast-radius.
+- All of the above are sequences of events → time-travel, audit, and DR-as-replay for free.
+
+## How this differs from Humanitec
+Sets/Deltas are not bespoke tables — they're **projections over the event log**, so promote/rollback/preview inherit replay + audit; ephemeral environments are first-class Camps; and `match.Decided` ([Plan 25](./25-resource-definitions-matching.md)) makes "why did preview get the cheap DB?" answerable.
+
+## Iteration hooks
+- Delta merge/conflict semantics when multiple Deltas target one Set.
+- Default ephemeral TTLs + reaping policy; preview URL scheme.
+- Whether promote copies the resolved Set or re-resolves matching in the target Camp (re-resolve is more correct; copy is more predictable).

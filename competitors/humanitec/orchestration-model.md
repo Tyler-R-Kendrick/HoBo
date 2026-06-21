@@ -1,6 +1,6 @@
 # Humanitec — Orchestration Model (Score, Resource Definitions, Matching, Graph, Sets/Deltas)
 
-> Part of the [Humanitec competitor reference](./README.md). The core engine, with verbatim YAML.
+> Part of the [Humanitec competitor reference](./README.md). The core engine, with quoted/illustrative YAML excerpts (see the [fair-use note](../README.md#sources--fair-use)).
 
 ## Score — the workload spec (developer intent)
 Open, platform-agnostic (CNCF Sandbox; created by Humanitec). Developers write `score.yaml` once; it specifies containers, service ports, and abstract resource dependencies.

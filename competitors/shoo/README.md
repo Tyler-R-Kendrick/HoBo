@@ -8,7 +8,7 @@
 **shoo.dev** is a **minimal auth broker for Google sign-in** — *"AUTH IN 2LOC"* (auth in two lines of code). It removes the usual Google-OAuth friction (dashboard registration, client config, client-side secret handling) by **auto-deriving the OAuth `client_id` from your app's origin** and enforcing **PKCE (S256) on every flow**. It hands your app a standards-based, **ES256-signed JWT** that any backend can verify with plain JWKS — no proprietary SDK required server-side.
 
 - **Category:** zero-config OAuth2 / Google-Sign-In broker (an alternative to standing up your own Google OAuth client, or to Auth0/Clerk/Firebase Auth for the narrow "just let users sign in with Google" case).
-- **Status (verbatim):** "SUPER EARLY WIP — USE AT YOUR OWN RISK" (repeated in the docs).
+- **Status (quoted from the docs):** "SUPER EARLY WIP — USE AT YOUR OWN RISK" (repeated in the docs).
 - **Model:** **free forever, no sign-up required**; open source ("GitHub coming soon"); SaaS-hosted at `https://shoo.dev` (no self-host documented). Support: `support@ping.gg`.
 
 ## The three-party model

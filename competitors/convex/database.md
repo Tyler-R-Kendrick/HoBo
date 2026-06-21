@@ -1,6 +1,6 @@
 # Convex — Database
 
-> Part of the [Convex reference](./README.md). Document model, schema, indexes, reading/writing, transactions, pagination, limits. Verbatim API.
+> Part of the [Convex reference](./README.md). Document model, schema, indexes, reading/writing, transactions, pagination, limits. API surface quoted as factual excerpts (see the [fair-use note](../README.md#sources--fair-use)).
 
 ## Document model & system fields
 Documents are JSON-like objects (nested arrays/objects allowed). Tables spring into existence on first insert. Every document gets two **system fields** (auto-managed, immutable):

@@ -1,6 +1,6 @@
 # Aspire — AppHost & Resource Model
 
-> Part of the [Aspire competitor reference](./README.md). The core composition model: the builder, the resource interfaces, resource types, annotations, lifecycle/eventing, custom resources, health checks, parameters/secrets, persistence. Verbatim C#.
+> Part of the [Aspire competitor reference](./README.md). The core composition model: the builder, the resource interfaces, resource types, annotations, lifecycle/eventing, custom resources, health checks, parameters/secrets, persistence. C# shown as quoted/illustrative excerpts (see the [fair-use note](../README.md#sources--fair-use)).
 
 ## AppHost & the builder
 The **AppHost** is a normal program whose job is to declare the app graph and run it.

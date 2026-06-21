@@ -1,6 +1,6 @@
 # shoo.dev — Server Verification
 
-> Part of the [shoo.dev competitor reference](./README.md). Verbatim from docs.shoo.dev/docs/server-verification. **Required for production.**
+> Part of the [shoo.dev competitor reference](./README.md). Source: `docs.shoo.dev/docs/server-verification` — excerpts quoted for analysis (see the [fair-use note](./README.md#sources--fair-use)). **Required for production.**
 
 ## Why
 *"The browser auth flow gives the user a signed `id_token`, but the browser is an untrusted environment."* You must verify tokens server-side before authorizing users. *"Always verify the signature, issuer, audience, and expiration on your server."*
@@ -40,7 +40,7 @@ export async function verifyShooToken(idToken: string, appOrigin: string) {
 }
 ```
 
-## Next.js API route (verbatim)
+## Next.js API route (quoted from the docs)
 ```typescript
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRemoteJWKSet, jwtVerify } from "jose";

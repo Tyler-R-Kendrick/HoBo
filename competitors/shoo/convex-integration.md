@@ -1,6 +1,6 @@
 # shoo.dev — Convex Integration
 
-> Part of the [shoo.dev competitor reference](./README.md). Verbatim from docs.shoo.dev/docs/convex. (See the [Convex reference](../convex/README.md) for the backend side — shoo plugs into Convex's **customJwt** auth provider.)
+> Part of the [shoo.dev competitor reference](./README.md). Source: `docs.shoo.dev/docs/convex` — excerpts quoted for analysis (see the [fair-use note](./README.md#sources--fair-use)). (See the [Convex reference](../convex/README.md) for the backend side — shoo plugs into Convex's **customJwt** auth provider.)
 
 ## What it adds
 `@shoojs/react` provides **`createShooConvexAuth`**, which lets you authenticate Convex queries and mutations with shoo. It returns:
@@ -85,5 +85,5 @@ export const viewer = query({
 });
 ```
 
-## Note (verbatim)
+## Note (quoted from the docs)
 *"Always verify Shoo id_tokens on your server before trusting identity claims."* With Convex this is handled by the `customJwt` provider config + Convex's token validation — the JWKS/issuer/algorithm are checked backend-side, and `ctx.auth.getUserIdentity()` only returns a verified identity.

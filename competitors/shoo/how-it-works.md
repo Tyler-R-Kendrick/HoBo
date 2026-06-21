@@ -1,6 +1,6 @@
 # shoo.dev — How It Works
 
-> Part of the [shoo.dev competitor reference](./README.md). The end-to-end mechanism, verbatim from docs.shoo.dev/docs/how-it-works.
+> Part of the [shoo.dev competitor reference](./README.md). The end-to-end mechanism. Source: `docs.shoo.dev/docs/how-it-works` — excerpts quoted for analysis (see the [fair-use note](./README.md#sources--fair-use)).
 
 ## Core idea
 The browser auth flow gives the user a signed `id_token` (ES256 JWT). shoo is the OAuth intermediary between your app and Google; it **auto-registers** your app from its origin and enforces **PKCE (S256)** on every flow. *"The browser auth flow gives the user a signed `id_token`, but the browser is an untrusted environment"* — so production apps must verify server-side ([server-verification.md](./server-verification.md)).

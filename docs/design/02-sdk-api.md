@@ -171,6 +171,7 @@ export const fulfillment = saga("fulfillment")
 | `actor(name, def)` | stateful single-writer entity (grain) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |
+| `training(fn, opts)` / `"use training"` | **AI-rewritable semantic function** | baseline body; HoBo optimizes prompt/code vs a rubric from OTel/OpenInference trajectories + live-evals; gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)) |
 | `sleep(d)` / `cron(expr)` | durable timers | scheduled via World.clock; survive restarts |
 | `createHook<T>()` | pause until external resume | token-addressable; multi-event via async iterator |
 | `createWebhook()` | hook with auto HTTP routing | provider `gateway` wires the URL |
@@ -178,6 +179,29 @@ export const fulfillment = saga("fulfillment")
 | `start(wf, args, opts?)` | fire-and-forget a run | returns `{ runId, readable }`; typed against `wf` |
 | `emit(type, data)` | publish a domain event | appended to the event store; drives choreography sagas |
 | `signal(actorKey, msg)` | message an actor | enqueued; at-least-once; idempotent by key |
+
+### Trainable methods (`"use training"`)
+A fourth directive joins `"use workflow"`/`"use step"`: **`"use training"`** marks a method as an **AI-rewritable semantic function** — HoBo continuously optimizes its prompt/code against a rubric, from real recorded executions. The body is the baseline (often a `stub()`); the optimizer may rewrite it.
+
+```ts
+import { training } from "@hobo/runtime";
+
+/**
+ * @intent Classify a support ticket; `critical` ONLY for security/outage/production impact.
+ * @invariant output.category ∈ KnownCategories; `rationale` must not contain PII.
+ */
+export const classifyTicket = training(
+  async (t: Ticket): Promise<Classification> => llm.classify(t),     // baseline
+  {
+    intent: "Route tickets; critical only for security/outage/prod impact.",
+    contract: ClassificationContract,                                 // Zod I/O + invariants (Plan 29)
+    rubric: { categoryCorrect: 0.92, urgencyCalibrated: 0.90, piiSafe: 1.0 }, // eval (Plan 23)
+  },
+);
+// directive form is equivalent:  export async function classifyTicket(t: Ticket) { "use training"; ... }
+```
+
+What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./23-stubbable-ai-implementations.md)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)): swapping it is a config change, not an app-code change.
 
 ### Error handling & retries
 ```ts

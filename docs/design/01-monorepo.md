@@ -46,9 +46,12 @@ packages/
   contracts/         @hobo/contracts    HoBo Contract IR + compatibility/can-deploy engine (built-in)  [Plan 29]
   policy/            @hobo/policy        policy decision model + built-in TypeScript engine            [Plan 30]
   evals/             @hobo/evals         rubrics + promotion gates for semantic functions             [Plan 23]
-    provider-pact      @hobo/provider-pact   (optional) Pact/Broker adapter behind contract-engine
-    provider-opa       @hobo/provider-opa    (optional) OPA/Rego adapter behind policy-engine
-    provider-cedar     @hobo/provider-cedar  (optional) Cedar adapter behind policy-engine
+  training/          @hobo/training      training-engine port + built-in OPTO optimizer + OpenInference capture (INTERNAL; not on the SDK surface)  [Plan 23]
+    provider-pact             @hobo/provider-pact             (optional) Pact/Broker adapter behind contract-engine
+    provider-opa              @hobo/provider-opa              (optional) OPA/Rego adapter behind policy-engine
+    provider-cedar            @hobo/provider-cedar            (optional) Cedar adapter behind policy-engine
+    provider-agent-lightning  @hobo/provider-agent-lightning  (optional, INTERNAL) Microsoft Agent Lightning behind training-engine
+    provider-trace            @hobo/provider-trace            (optional, INTERNAL) Microsoft Trace (OPTO) behind training-engine
 examples/
   hello-bindle/ multi-cloud-shop/ durable-agent/ self-host-yard/
 ```

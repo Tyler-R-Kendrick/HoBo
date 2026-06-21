@@ -153,6 +153,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-081** | **Forge** generates a candidate provider/impl, runs conformance **sandboxed with no egress**, signs + attaches SLSA-style provenance, publishes on pass. | `hobo forge` certification test ([06](../design/06-ai-native-agent-auth.md)) |
 | **TR-082** | `stub()` records calls as events; AI implement-to-trace asserts conformance-green **and** reproduces recorded traces; **live-fix** routes through the gated canary/auto-rollback saga. | Stub/replay + gated live-fix test ([09](../design/09-verification-open-questions.md)) |
 | **TR-083** | **Forge generation is injection-hardened:** source docs/OpenAPI are scanned/sanitized before generation; the signed provenance includes a scrub report; conformance runs with **no egress** (hard requirement, not default). | Seeded-malicious-docs test produces a scrub report; egress attempt during conformance fails ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md), [12](../design/12-security-multitenancy.md)) |
+| **TR-084** | **`"use training"` methods** are optimized by a `training-engine` **WIT port** (built-in OPTO default; **Microsoft Agent Lightning / Trace optional INTERNAL providers, not on the SDK surface**). Runtime emits OTel/**OpenInference** trajectories; **live-evals** attach the reward; trained candidates pass the **same** conformance + eval + policy gate as Forge impls. | Training-loop test: trajectory captured → candidate proposed → promoted only via the gate; swapping the engine is config-only ([ADR-0025](../design/adr/ADR-0025-use-training-directive-and-training-engine.md), [23](../design/23-stubbable-ai-implementations.md)) |
 
 ### 5.10 Contracts, policy, evals & Gatekeeper ([29](../design/29-contracts-compatibility.md), [30](../design/30-policy-plane.md))
 | ID | Requirement | Verified by |
@@ -237,9 +238,9 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-001
 | BR-003 optimize on demand | FR-005, FR-014 | TR-005 | provider-options + lock-in-lint test |
 | BR-004 agents first-class | FR-020, FR-021, FR-031; NFR-004, NFR-017 | TR-070, TR-050, TR-060 | MCP surface-parity; agent E2E; registry discovery |
 | BR-005 zero secrets | FR-002, FR-014, FR-023; NFR-005 | TR-004, TR-051, TR-052 | zero-secret deploy; `token.*` audit; key-TTL |
-| BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014, NFR-018 | TR-030..033, TR-052, TR-130 | projection-rebuild; determinism; OTel; retention floor |
+| BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014, NFR-018, NFR-021 | TR-030..033, TR-052, TR-130 | projection-rebuild; determinism; OTel/OpenInference; retention floor |
 | BR-007 self-hostable + reliable | FR-010, FR-012; NFR-009, NFR-010, NFR-013, NFR-019 | TR-024, TR-071, TR-140..144 | bootstrap; DR replay; fencing; rate-limit; canary auto-rollback |
-| BR-008 no community bottleneck | FR-040, FR-041, FR-042; NFR-007 | TR-080..083 | `hobo forge`; stub/replay; sandbox no-egress; injection scrub |
+| BR-008 no community bottleneck | FR-040, FR-041, FR-042, FR-043; NFR-007, NFR-021 | TR-080..084 | `hobo forge`; stub/replay; sandbox no-egress; injection scrub; `use training` loop |
 | BR-009 cost first-class | FR-070; NFR-012 | TR-150, TR-151 | cost fixture; budget-breach |
 | BR-010 governance | FR-013, FR-050, FR-051, FR-052, FR-060, FR-061 | TR-090..093, TR-100, TR-101, TR-113 | can-deploy; policy/obligation; matching; residency |
 | BR-011 safe autonomy | FR-022, FR-042, FR-051; NFR-019 | TR-053, TR-071, TR-082, TR-092 | confused-deputy deny; rate-limit; policy-gate; spend-cap; gated live-fix |

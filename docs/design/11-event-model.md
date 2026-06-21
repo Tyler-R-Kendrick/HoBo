@@ -86,6 +86,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Evals & promotion** ([Plan 23](./23-stubbable-ai-implementations.md))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 
+**Training** (`"use training"` semantic-function optimization, [Plan 23](./23-stubbable-ai-implementations.md))
+`training.RunStarted` · `training.TrajectoryCaptured` (OTel/OpenInference span tree + I/O) · `training.RewardObserved` (live-eval signal) · `training.CandidateProposed` (rewritten prompt/code) · `training.CandidateEvaluated` · `training.Promoted` · `training.Rejected`
+
 ## Projections (read models)
 Events are the write model; queries read **projections** rebuilt by folding the stream. Initial projections:
 - **DeploymentView** — current status + per-resource state for the dashboard timeline.

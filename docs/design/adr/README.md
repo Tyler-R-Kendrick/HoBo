@@ -38,5 +38,6 @@
 | 0022 | MVP scope line / MoSCoW mapped to phases | Accepted | [ADR-0022](./ADR-0022-mvp-scope-moscow.md) |
 | 0023 | Security posture commitments for v1 | Accepted | [ADR-0023](./ADR-0023-security-posture-commitments.md) |
 | 0024 | Portability conformance guarantee ("same Bindle, N clouds") | Accepted | [ADR-0024](./ADR-0024-portability-conformance-guarantee.md) |
+| 0025 | `"use training"` directive + `training-engine` behind a port (Agent Lightning/Trace optional, internal) | Accepted | [ADR-0025](./ADR-0025-use-training-directive-and-training-engine.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)).

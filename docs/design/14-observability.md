@@ -45,7 +45,15 @@ Ties to [Plan 16](./16-cost-finops.md): the topology graph and run inspector ann
 - **WIT-boundary call trace** (`link.Called` + stub recordings, [Plan 11](./11-event-model.md)) is a first-class stream: it drives the dashboard **link map + trace views** ([Plan 7](./07-ui-dashboard.md)) and is the **test oracle** for AI implement → auto-evolve → live-fix ([Plan 23](./23-stubbable-ai-implementations.md)).
 - **Catalog additions.** Control plane: IfC-collection metrics (resources/links per manifest), Forge generation/certification rates. Data plane: **wasm runtime** metrics — component cold-start, instances per host (density), link call latency/error rate per `(import, provider)`.
 
+## v5 signals — AI-method telemetry & training capture (integrated)
+`"use training"` semantic functions ([Plan 23](./23-stubbable-ai-implementations.md)) need richer, AI-shaped telemetry than RED metrics, so HoBo layers **[OpenInference](https://github.com/Arize-ai/openinference) semantic conventions on top of OTel**:
+- **OpenInference spans** — every trainable-method (and agent/LLM/tool/retriever) call emits an OpenInference span (inputs, outputs, messages, token counts, model, latency) as a child of the same W3C trace as the enclosing run/deploy. OpenInference is OTel-native and transport-agnostic, so these export to the tenant's own backend (Phoenix/Tempo/Datadog) **and** feed HoBo's trajectory store — one emit, no lock-in.
+- **Trajectory = training data.** The span tree for one invocation + I/O + the **reward** attached by live-evals + run/agent correlation is a *trajectory* — the unit the `training-engine` consumes ([Plan 23](./23-stubbable-ai-implementations.md)). Trajectories ride the event log, so training is replayable and auditable. Sensitive payloads are per-run encrypted ([Plan 12](./12-security-multitenancy.md)).
+- **Live-evals as a telemetry stream.** Rubric scores computed online on live/shadow traffic (quality/faithfulness/calibration/cost/latency) are first-class metrics: they drive champion-vs-challenger dashboards, raise drift alerts/SLO burn on a champion regression, and *are* the optimizer's objective. `eval.Ran`/`eval.GateFailed` are events ([Plan 11](./11-event-model.md)).
+- **Metrics-catalog additions.** Per trainable method: invocation rate, eval scores (per rubric dimension), champion/challenger deltas, token/cost per call, shadow-traffic share, candidate-proposed/promoted/rejected counts, time-since-last-promotion.
+
 ## Iteration hooks
 - Whether HoBo ships a bundled backend (e.g. embedded Grafana/Tempo) for self-host or only emits OTLP.
+- OpenInference span-attribute retention vs sampling, and the online-eval (LLM-judge) sampling rate / cost ceiling.
 - Retention/sampling defaults for traces vs the (authoritative, longer-lived) event log.
 - How much replay/diff tooling is CLI vs dashboard.

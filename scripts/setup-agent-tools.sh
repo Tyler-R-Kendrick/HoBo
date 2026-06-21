@@ -41,6 +41,16 @@ if have npx; then
   done
 else echo "  SKIP: npx missing"; fi
 
+# 1c) mattpocock/skills — engineering-discipline skills (no keys), incl. grill-with-docs.
+say "mattpocock/skills -> claude-code, cursor, codex skills"
+if have npx; then
+  for ag in claude-code cursor codex; do
+    NPX --yes skills add mattpocock/skills --project --copy -a "$ag" -s '*' -y \
+      && echo "  installed for $ag" || echo "  FAILED for $ag"
+  done
+  echo "  NEXT (one-time, optional): run /setup-matt-pocock-skills in your agent to configure issue-tracker/domain-doc layout."
+else echo "  SKIP: npx missing"; fi
+
 # 2) caveman — output-compression skill/rules (no keys). curl|bash shim -> npx.
 say "caveman (JuliusBrussee/caveman) -> claude, cursor, codex (+ repo rule files)"
 if have npx; then

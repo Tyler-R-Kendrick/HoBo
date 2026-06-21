@@ -42,5 +42,6 @@
 | 0026 | Scope model `Yard ⊃ Camp ⊃ Bindle`; remove "World" (fold into Camp) | Accepted | [ADR-0026](./ADR-0026-scope-model-yard-camp-bindle.md) |
 | 0027 | Secretless-first configuration & secrets | Accepted | [ADR-0027](./ADR-0027-secretless-config-and-secrets.md) |
 | 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | Accepted | [ADR-0028](./ADR-0028-multi-camp-deployment-model.md) |
+| 0029 | Reactive / live-query model (event-log reactor) | Accepted | [ADR-0029](./ADR-0029-reactive-live-query-model.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

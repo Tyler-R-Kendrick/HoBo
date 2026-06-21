@@ -168,6 +168,7 @@ export const fulfillment = saga("fulfillment")
 |---|---|---|
 | `step(fn, opts?)` | side-effecting unit | runs once; result memoized; auto-retry per `opts` |
 | `workflow(fn)` / `"use workflow"` | deterministic orchestration | replays over memoized steps; seeded RNG/clock |
+| `query(fn)` / `"use query"` | deterministic **reactive** read-only query | read-set tracked; re-pushed on change at a consistent `seq`; client `useQuery()` ([Plan 32](./32-reactive-live-queries.md)) |
 | `actor(name, def)` | stateful single-writer entity (grain) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |

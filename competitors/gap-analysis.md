@@ -43,7 +43,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 
 ## 3. Gaps — prioritized
 ### A. NEW (no existing plan or open question)
-- **G1 — Reactive / live-query data model (Convex).** HoBo's event log + `Streamer` enable replay and per-run streams, but there is **no documented client reactive-query model** (subscribe to a query, auto-recompute on write, consistent snapshots, cache invalidation). This is Convex's headline DX and a real competitive hole. → **filed as [open question #21](../docs/design/09-verification-open-questions.md); candidate for a new Plan 32 (reactive/live-data).**
+- **G1 — Reactive / live-query data model (Convex).** ✅ **CLOSED → [Plan 32](../docs/design/32-reactive-live-queries.md)** ([ADR-0029](../docs/design/adr/ADR-0029-reactive-live-query-model.md)): a `query()`/`"use query"` primitive + event-log **reactor** (hybrid: native projections default, opt-in provider DB **change-feed** capability), **per-query consistent snapshot @ `seq`** + reads-your-writes, client `useQuery()`. Was the one true blind spot; designed via brainstorming + grill-with-docs.
 - **G2 — Vector & full-text search surface (Convex).** The `vector`/`search` ports exist in the catalog but indexing strategy, similarity operators, and filter syntax are undetailed. → **[open question #22](../docs/design/09-verification-open-questions.md).**
 
 ### B. Designed-but-shallow (deepen an existing plan)

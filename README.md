@@ -23,4 +23,4 @@ The formal requirements layer lives in [`docs/requirements/`](./docs/requirement
 
 ## Working in this repo with AI agents
 
-This repo is wired for **Claude Code**, **Cursor**, and **Codex** with four agent tools — **improve** (audit→plans), **caveman** (output compression), **headroom** (context compression, MCP), and **gbrain** (knowledge-graph memory, MCP). See [`AGENTS.md`](./AGENTS.md) and [`docs/agent-tooling.md`](./docs/agent-tooling.md); install with [`scripts/setup-agent-tools.sh`](./scripts/setup-agent-tools.sh). Note: gbrain needs an embedding API key and sends content to that provider.
+This repo is wired for **Claude Code**, **Cursor**, and **Codex** with five agent tools — **improve** (audit→plans), **caveman** (output compression), **ponytail** (minimalist-solution / anti-over-engineering), **headroom** (context compression, MCP), and **gbrain** (knowledge-graph memory, MCP). See [`AGENTS.md`](./AGENTS.md) and [`docs/agent-tooling.md`](./docs/agent-tooling.md); install with [`scripts/setup-agent-tools.sh`](./scripts/setup-agent-tools.sh). Note: gbrain needs an embedding API key and sends content to that provider.

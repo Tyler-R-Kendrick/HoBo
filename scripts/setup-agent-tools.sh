@@ -32,6 +32,15 @@ if have npx; then
   done
 else echo "  SKIP: npx missing"; fi
 
+# 1b) ponytail — minimalist-solution skill (no keys, no egress). Invocation-based (/ponytail).
+say "ponytail (DietrichGebert/ponytail) -> claude-code, cursor, codex skills"
+if have npx; then
+  for ag in claude-code cursor codex; do
+    NPX --yes skills add DietrichGebert/ponytail --project --copy -a "$ag" -s '*' -y \
+      && echo "  installed for $ag" || echo "  FAILED for $ag"
+  done
+else echo "  SKIP: npx missing"; fi
+
 # 2) caveman — output-compression skill/rules (no keys). curl|bash shim -> npx.
 say "caveman (JuliusBrussee/caveman) -> claude, cursor, codex (+ repo rule files)"
 if have npx; then

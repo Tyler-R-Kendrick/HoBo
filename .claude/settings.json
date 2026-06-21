@@ -1,0 +1,11 @@
+{
+  "$comment": "Repo-portable Claude Code plugin config. Makes obra/Superpowers (MIT; no keys) available + enabled for anyone who opens this repo. Codex/Copilot install via their own plugin marketplace — see scripts/setup-agent-tools.sh and docs/agent-tooling.md. Opt out by setting enabledPlugins.superpowers... to false or removing this block.",
+  "extraKnownMarketplaces": {
+    "superpowers-marketplace": {
+      "source": { "source": "github", "repo": "obra/superpowers-marketplace" }
+    }
+  },
+  "enabledPlugins": {
+    "superpowers@superpowers-marketplace": true
+  }
+}

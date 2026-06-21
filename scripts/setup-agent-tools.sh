@@ -87,6 +87,19 @@ else
   echo "  Codex: 'codex' CLI not found — paste .codex/config.toml's [mcp_servers.*] into ~/.codex/config.toml."
 fi
 
+# 6) superpowers — dev-methodology plugin (no keys). Plugin marketplace per agent.
+#    Claude Code is also wired repo-portably via ./.claude/settings.json; this makes it
+#    explicit and covers Codex + GitHub Copilot CLI when those CLIs are present.
+say "superpowers (obra/Superpowers) -> plugin marketplace (claude / codex / copilot)"
+for agent in claude codex copilot; do
+  if have "$agent"; then
+    "$agent" plugin marketplace add obra/superpowers-marketplace 2>/dev/null \
+      && "$agent" plugin install superpowers@superpowers-marketplace 2>/dev/null \
+      && echo "  $agent: installed superpowers" || echo "  $agent: skipped / already present"
+  else echo "  $agent: CLI not found — install superpowers via its /plugin marketplace when available."; fi
+done
+echo "  NOTE: superpowers skills load at SESSION START — open a fresh session to use them."
+
 say "Done"
 echo "Ensure these are on PATH: \$HOME/.local/bin (headroom), \$HOME/.bun/bin (gbrain)."
 echo "See AGENTS.md and docs/agent-tooling.md. Keys for gbrain go in .env (see .env.example)."

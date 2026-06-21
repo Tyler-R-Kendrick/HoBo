@@ -54,3 +54,11 @@ A shared, executable contract test suite per **port** (runtime ports and Provide
 12. **IfC-by-default fidelity for non-TS languages** — run-to-collect vs static analysis. ([21](./21-resources-catalog.md))
 13. **"Low-risk auto" threshold** for AI live-fix, shared with the HA/security policy. ([23](./23-stubbable-ai-implementations.md),[5](./05-reliability-ha.md),[12](./12-security-multitenancy.md))
 14. **Competitor-docs home** (`competitors/` top-level vs `docs/competitors/`) and the pattern for future competitors. ([competitors/nitric](../../competitors/nitric/README.md))
+
+### Surfaced by the scope-refactor review (gaps to design next — [`plans/0001-scope-refactor-review.md`](../../plans/0001-scope-refactor-review.md))
+15. **App-data schema evolution & cross-cloud migration** — the multi-cloud premise needs *data* portability, not just infra: versioned, event-sourced migrations declared in the Bindle and gated by `hobo verify` against the version running per Camp. Likely a new plan. ([26](./26-environments-deltas.md)/[21](./21-resources-catalog.md))
+16. **Stateful storage consistency across Camps** — when a Bindle spans Camps (ADR-0028), is cross-Camp state a HoBo guarantee (event replication) or an app responsibility (CQRS-per-Camp + eventual consistency)? ([11](./11-event-model.md)/[12](./12-security-multitenancy.md)/[13](./13-networking-connectivity.md))
+17. **Local-dev fidelity** — which prod behaviors `hobo dev` must *simulate* (networking tiers, mTLS, auth/ABAC, quotas, secret availability) vs *mock* vs *must-test-in-a-Camp*, so "works locally" predicts "works in prod". ([15](./15-cli-dx.md)/[13](./13-networking-connectivity.md))
+18. **Billing, quota enforcement & cost attribution** — quota gates + runaway-spend circuit-breaker + chargeback/billing integration for the hosted Yard (go/no-go for the SaaS). ([16](./16-cost-finops.md))
+19. **Migration / onboarding** from Lakebed (Capsule→Bindle), Terraform/Pulumi (import), and FaaS — bridge strategies so HoBo isn't greenfield-only. ([8](./08-roadmap.md)/[17](./17-positioning-competitive.md))
+20. **Yard federation** — v1 assumes one Yard per tenant boundary; multi-Yard (multi-region/regulatory) federation of identity/policy/registry is deferred. ([4](./04-control-plane.md)/[12](./12-security-multitenancy.md))

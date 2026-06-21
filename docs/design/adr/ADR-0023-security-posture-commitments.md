@@ -11,13 +11,14 @@ The design (esp. [12-security-multitenancy.md](../12-security-multitenancy.md)) 
 
 ## Decision
 Commit the following as v1 security requirements (each lands as an `NFR`/`TR` with a verification method):
-1. **Bound the legacy static-key escape hatch** — any static API key carries a maximum TTL and an enforced rotation schedule, is fully audited (`token.*`), and is only reachable behind an explicit opt-in; federation is always preferred. (TR-051, NFR-005)
+1. **Bound the legacy static-key escape hatch** — any static API key carries a **maximum TTL (default ≤ 7 days)** and an enforced rotation schedule (expiry fails closed, does not hang), is **fully audited on every fetch** (not just grant/revoke), and is only reachable behind an explicit opt-in; federation is always preferred. (TR-051, NFR-005)
 2. **Rate-limit & quota the Gateway/MCP surface** — per-principal (SVID/OIDC) and per-tenant limits with backpressure; exceeds return a typed throttle error. Protects against runaway agents and DoS. (TR-071, NFR-019)
 3. **Forge generation is hardened against prompt injection** — source docs/OpenAPI fed to Forge are scanned/sanitized; the signed provenance includes a scrub report; conformance runs with **no egress** as a hard requirement (not a default). (TR-083)
 4. **Confused-deputy default-deny** — before any agent obtains a scoped token, the policy engine checks `{principal, tenant, resource, action}`; cross-tenant issuance is denied unless explicitly delegated. (TR-053)
 5. **Quantified audit retention** — `token.*`/`resource.*`/policy-decision streams are retained for a defined minimum and never compacted. (NFR-018, TR-052)
 6. **Encryption everywhere it matters** — envelope encryption at rest for event streams across **all** runtimes (not just `runtime-local`); per-run payload decryption requires log-read **and** explicit authorization (run-owner / `decrypt:run`). (TR-111)
 7. **Supply-chain specifics** — all published artifacts carry CycloneDX SBOMs; CI blocks publishing on CVSS ≥ 7.0 (with a documented waiver path); plugins signed with SLSA-style provenance. (TR-112)
+8. **Redaction at capture, not export** — secret/PII values are scrubbed **before** a span/event is stored, so a value never enters the event log, OTel/OpenInference spans, error messages, or **training trajectories** ([Plan 31](../31-config-secretless-secrets.md)/[Plan 23](../23-stubbable-ai-implementations.md)). (TR-054, TR-111)
 
 ## Alternatives considered
 - **Leave these in the threat model only** — rejected: a threat model is not a testable control; reviewers and customers need requirements.

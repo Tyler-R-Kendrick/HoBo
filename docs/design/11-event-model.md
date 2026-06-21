@@ -39,7 +39,7 @@ export interface EventEnvelope<T = unknown> {
 Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only the facts they produce are.
 
 **Bindle / Camp**
-`bindle.Registered` · `bindle.VersionPublished` · `camp.Created` · `camp.WorldBound`
+`bindle.Registered` · `bindle.VersionPublished` · `camp.Created` · `camp.RuntimeBound` · `env.PromoteRequested` · `env.Promoted` · `env.PromoteRolledBack` (multi-Camp environment-group saga, [ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md))
 
 **Deployment** (the control-plane saga)
 `deployment.Requested` · `deployment.Planned` · `deployment.PlanRejected` · `deployment.Deployed` · `deployment.RolledBack`

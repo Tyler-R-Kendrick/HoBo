@@ -33,7 +33,8 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 - **Policy gates** for high-risk actions (destroy, prod, spend > cap) — auto / require-approval (a resolvable hook) / deny. Policy is versioned and event-sourced (decisions are auditable facts).
 
 ## Secrets management
-- **Goal: no static secrets.** Bindings resolve to *secret refs*, not values; the runtime fetches via the provider's `secrets` port or a brokered token at use time.
+> Full model + SDK surface: [Plan 31 — Configuration & secretless secrets](./31-config-secretless-secrets.md). Summary below.
+- **Goal: no static secrets (secretless-first).** Config/secret declarations resolve to *references per Camp*, not values; the runtime reaches bound resources via a brokered short-lived token (no secret at all) or fetches a genuine secret from the provider's `secrets` port at use time.
 - **When secrets are unavoidable** (legacy `api-key` flow): stored with envelope encryption (KMS-backed DEK/KEK), never in the Bindle or the plaintext log; access is itself an audited `token.Used`.
 - **Per-run encryption:** sensitive step inputs/outputs in the event log are encrypted with a per-run key (so log access ≠ payload access), decryptable on demand for the run owner — mirrors the Vercel `getEncryptionKeyForRun` model.
 

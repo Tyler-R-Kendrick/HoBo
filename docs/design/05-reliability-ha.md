@@ -36,14 +36,14 @@ Partial-success deployments are allowed when the Bindle marks resources `optiona
 
 ## Actor availability: single-writer leases + fencing
 Each grain key (ResourceActor, app actors) has at most one active instance:
-- **Lease:** activating an actor acquires a lease in the World's ActorHost (`key → ownerNode, leaseId, expiry`). Renewed via heartbeat.
+- **Lease:** activating an actor acquires a lease in the Camp's runtime ActorHost (`key → ownerNode, leaseId, expiry`). Renewed via heartbeat.
 - **Fencing token:** the lease carries a monotonically increasing `fenceToken`; every event append by the actor includes it. The EventStore rejects appends with a `fenceToken` lower than the latest seen → a partitioned old owner cannot corrupt state even if it thinks it still holds the lease.
 - **Failover:** lease expiry (missed heartbeats) lets another node acquire the key with a higher `fenceToken`; it replays the stream (from the latest snapshot) to rebuild state and resume. **Recovery time ≈ lease TTL + replay-of-tail.**
 - **Placement:** consistent-hashing of keys across nodes with bounded load; rebalanced on membership change.
 
 ## Control-plane HA
-- **Event store replication:** the source of truth is replicated (synchronous quorum for the control-plane streams). Adapter-specific: `world-postgres` → synchronous replicas; built-in engine → Raft log.
-- **Leader election** only for *singletons* (e.g. the drift scheduler, membership coordinator) via the same lease mechanism or an external Raft (the built-in engine ships a small Raft; `world-*` adapters can delegate to the backing store's primitives).
+- **Event store replication:** the source of truth is replicated (synchronous quorum for the control-plane streams). Adapter-specific: `runtime-postgres` → synchronous replicas; built-in engine → Raft log.
+- **Leader election** only for *singletons* (e.g. the drift scheduler, membership coordinator) via the same lease mechanism or an external Raft (the built-in engine ships a small Raft; `runtime-*` adapters can delegate to the backing store's primitives).
 - **Stateless tier** (Gateway, Planner, Executors) scales horizontally behind a load balancer; any node can serve because all state is in the log/projections.
 - **Split-brain safety:** all writes are quorum + fenced, so a minority partition cannot commit. Reads from a stale projection are bounded-staleness and labeled as such in the API.
 
@@ -54,7 +54,7 @@ Rollout strategy is a property of a `service`/`web` resource, implemented as a p
 - **Canary** — shift `x%` traffic, watch health signals for `t`, auto-advance or auto-rollback on regression. Steps + gates are events → fully auditable/replayable.
 - **Progressive** — staged canary (1%→10%→50%→100%) with gates between stages.
 
-Health signals come from the data plane (the World's metrics/streams) and/or provider health checks; the gate is a `step` with a timeout and a rollback compensation.
+Health signals come from the data plane (the Camp's runtime metrics/streams) and/or provider health checks; the gate is a `step` with a timeout and a rollback compensation.
 
 ## Provider resilience controls
 - **Circuit breaker per (provider, region, operation):** open after a failure-rate threshold; half-open probes; protects against hammering a degraded provider.
@@ -86,7 +86,7 @@ Health signals come from the data plane (the World's metrics/streams) and/or pro
 - **Exactly-once across links.** At-least-once `link.Called` invocations carry idempotency keys, so cross-WIT-boundary calls inherit the exactly-once-*effects* guarantee already used for steps/IaC ([Plan 11](./11-event-model.md)).
 
 ## Iteration hooks
-- Consensus: ship our own Raft in the built-in engine vs always delegate to the World's store.
+- Consensus: ship our own Raft in the built-in engine vs always delegate to the Camp's runtime store.
 - Multi-region topology: active-active log vs active-passive with failover.
 - Canary health-signal sources & the auto-rollback decision function.
 - Default no-go threshold for rollback vs partial-success semantics.

@@ -67,17 +67,17 @@ export const fulfillment = saga("fulfillment")
   .on("OrderConfirmed", (e, ctx) => ctx.emit("ShipmentRequested", { orderId: e.orderId }))
   .compensate("ChargeCaptured", (e, ctx) => ctx.emit("RefundRequested", e)); // on later failure
 ```
-`hobo dev` runs this against `@hobo/world-local`: Postgres in a container, a local object store, an in-memory queue. The developer drives a checkout; `hobo inspect run <id>` shows the workflow/step timeline; killing and restarting `hobo dev` **replays** the run to the same state (durability proven before any cloud).
+`hobo dev` runs this against `@hobo/runtime-local`: Postgres in a container, a local object store, an in-memory queue. The developer drives a checkout; `hobo inspect run <id>` shows the workflow/step timeline; killing and restarting `hobo dev` **replays** the run to the same state (durability proven before any cloud).
 
 ## 2. Map to one provider ("just host it on Azure")
 `hobo.config.ts` — the *where/how*:
 ```ts
 import { defineHobo } from "@hobo/core";
 import { azure } from "@hobo/provider-azure";
-import { postgresWorld } from "@hobo/world-postgres";
+import { postgresRuntime } from "@hobo/runtime-postgres";
 
 export default defineHobo({
-  world: postgresWorld({ url: process.env.DATABASE_URL }),
+  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
   defaultProvider: azure({ region: "eastus" }),   // figure out the best hosting
 });
 ```
@@ -95,7 +95,7 @@ Under the hood ([Plan 4](./04-control-plane.md), [Plan 11](./11-event-model.md))
 Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** `hobo.config.ts`:
 ```ts
 export default defineHobo({
-  world: postgresWorld({ url: process.env.DATABASE_URL }),
+  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
   defaultProvider: azure({ region: "eastus" }),
   tiers: { edge: cloudflare.workers() },                       // storefront → edge
   bindings: {

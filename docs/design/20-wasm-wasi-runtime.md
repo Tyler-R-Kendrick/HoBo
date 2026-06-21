@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). **Decision: wasm-first, OCI-container fallback; WASI/WIT as canonical port contracts.** This doc defines HoBo's runtime substrate; it reframes ports ([Plan 3](./03-providers-iac.md)) as WIT worlds and providers as capability providers.
 
-> **v4 (gates):** each **world declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)) knows what a target can enforce, just as a world announces its runtime capabilities.
+> **v4 (gates):** each **Camp** (via its runtime + wasm host) **declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)) knows what a target can enforce, just as a WIT world announces its capabilities.
 
 ## Why wasm/wasi is the default
 - **Any language, one artifact.** Anything that compiles to a WASI component (Rust, TinyGo, TS via jco, Python via componentize-py, C# via componentize-dotnet) is a first-class HoBo service. The SDK is TypeScript, but the *runtime contract* is language-neutral.
@@ -23,7 +23,7 @@ flowchart LR
   subgraph C["Service component (any language)"]
     IMP["imports: wasi:keyvalue, wasi:http,<br/>hobo:workflow, ..."]
   end
-  subgraph H["HoBo wasm host (World runtime)"]
+  subgraph H["HoBo wasm host (Camp runtime)"]
     LNK["link table<br/>(import to provider, late-bound)"]
   end
   subgraph P["Capability providers (adapters)"]
@@ -67,7 +67,7 @@ The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generat
 `@hobo/componentize` wraps these; output is a component pushed as an **OCI artifact** (`wash push`-style). `build-wasm`/`build-dagger` ([Plan 1](./01-monorepo.md)) produce both wasm components and the container fallback.
 
 ## Hosts & where it runs
-- **Local/built-in World:** a wasm host (Wasmtime or jco-in-Node — TBD, iteration hook) provides WASI interface implementations and the link table; `hobo dev` runs everything locally with capability emulation.
+- **Local/built-in runtime:** a wasm host (Wasmtime or jco-in-Node — TBD, iteration hook) provides WASI interface implementations and the link table; `hobo dev` runs everything locally with capability emulation.
 - **Deployed:** components run on a provider's wasm-capable target (e.g. SpinKube/containerd-wasm, a wasmCloud lattice, or a wasm host inside a container); the OCI-container fallback runs as a normal container. Either way the **manifest IR** ([Plan 22](./22-wiring-manifest.md)) carries endpoints/links/config.
 - **Async:** WASI Preview 3 brings native async; HoBo workflows/agents map onto it where available, falling back to the host's executor otherwise.
 
@@ -77,7 +77,7 @@ The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generat
 - Forge-generated components/providers run in this sandbox during conformance ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Iteration hooks
-- Wasm host of record for the built-in/local World (Wasmtime vs jco-in-Node) and the deployed host (SpinKube/containerd-wasm vs wasmCloud lattice vs wasm-in-container).
+- Wasm host of record for the built-in/local runtime (Wasmtime vs jco-in-Node) and the deployed host (SpinKube/containerd-wasm vs wasmCloud lattice vs wasm-in-container).
 - `hobo:*` WIT world naming/versioning; how aggressively to track upstream `wasi:*` draft churn.
 - Component-to-component composition (`wac`) vs runtime links for intra-app calls.
 - Container-fallback runtime + when the Planner chooses it automatically (GPU/native detection).

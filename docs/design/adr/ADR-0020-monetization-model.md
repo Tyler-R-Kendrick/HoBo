@@ -10,7 +10,7 @@ Open question #9 in [09-verification-open-questions.md](../09-verification-open-
 
 ## Decision
 A three-part model:
-1. **Open-source core (the SDK, runtime, built-in World, conformance, CLI, and a self-hostable Yard).** Permissive enough to drive adoption and self-host; the agnostic promise requires the core be runnable by anyone. (Exact license — Apache-2.0 vs a fair-source/BSL variant for the Yard — is tracked as an open ADR; default lean is **Apache-2.0 for libraries, with the hosted differentiators kept commercial**.)
+1. **Open-source core (the SDK, runtime, built-in runtime engine, conformance, CLI, and a self-hostable Yard).** Permissive enough to drive adoption and self-host; the agnostic promise requires the core be runnable by anyone. (Exact license — Apache-2.0 vs a fair-source/BSL variant for the Yard — is tracked as an open ADR; default lean is **Apache-2.0 for libraries, with the hosted differentiators kept commercial**.)
 2. **Hosted Yard (SaaS) — the primary revenue line.** Multi-tenant managed control plane with the operationally hard, ongoing-value features: managed HA/multi-region, showback→**chargeback/billing integration** ([16-cost-finops.md](../16-cost-finops.md)), org SSO/RBAC, audit retention, support SLAs, and a hosted Forge. Priced per-seat and/or per-deployment/usage (figures TBD).
 3. **Marketplace — Forge-certified providers & Resource Packs.** A distribution channel for signed, conformance-passing providers/implementations and platform-engineer Resource Packs ([27](../27-drivers-packs-profiles.md)); monetization optional/secondary (rev-share or paid tiers), explicitly **not** a community bottleneck since Forge can generate providers.
 

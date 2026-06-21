@@ -13,6 +13,8 @@
 4. **Ports over platforms.** Cloud, IaC, and build/VM are all the same ports/adapters shape. New backends are adapters, ideally AI-generated.
 5. **Self-host = hosted.** The Yard is itself a HoBo bindle (dogfood); the only difference is who runs it.
 6. **Conformance is the contract.** Every port ships a contract test suite; any adapter (human- or AI-written) must pass it.
+7. **Three nested scopes.** `Yard` (cross-provider / cross-cloud / hybrid policy + the control plane) ⊃ `Camp` (a **provider-specific** target that also **provides the durable runtime**) ⊃ `Bindle` (the app's provider-agnostic config). HoBo defines its **own runtime ports** rather than adopting any vendor's runtime concept ([README glossary](./README.md#glossary--naming-thematic-all-tunable)).
+8. **Secretless-first.** Config and secrets resolve to *references* (per Camp), not stored values; access prefers workload identity + brokered short-lived tokens over static secrets ([Plan 31](./31-config-secretless-secrets.md)).
 
 ## Non-goals (initially)
 - Being a general PaaS UI for non-developers.

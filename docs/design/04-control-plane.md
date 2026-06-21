@@ -68,8 +68,8 @@ The Gateway accepts **commands** (imperative, validated, authorized) and the onl
 
 ## Bootstrapping (chicken-and-egg)
 The Yard runs itself, so first existence is special:
-1. **Local seed:** `hobo yard up` runs a single-node Yard on `@hobo/world-local` (SQLite event store) — enough to deploy the Yard Bindle to a real provider.
-2. **Self-deploy:** that seed deploys `@hobo/cloud` (the Yard Bindle) to the target (e.g. a managed Postgres World + container provider), producing a "real" Yard.
+1. **Local seed:** `hobo yard up` runs a single-node Yard on a **local Camp** (`@hobo/runtime-local`, SQLite event store) — enough to deploy the Yard Bindle to a real provider.
+2. **Self-deploy:** that seed deploys `@hobo/cloud` (the Yard Bindle) to the target Camp (e.g. a managed Postgres runtime + container provider), producing a "real" Yard.
 3. **Handover:** the real Yard imports the seed's event log (the deployment that created it) so its own provenance is auditable, then the seed is discarded.
 This makes self-hosting a first-class, reproducible path, not a bespoke install script.
 

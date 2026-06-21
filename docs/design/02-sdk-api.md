@@ -14,12 +14,12 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 
 ---
 
-## Layer 1 — Worlds (durable runtime ports)
-A **World** provides the durable substrate. HoBo's port is a superset of Vercel's Storage+Queue+Streamer, adding actors + a deterministic clock:
+## Layer 1 — the Camp runtime (durable runtime ports)
+A **Camp** provides the durable runtime substrate via these **runtime ports** — a superset of the usual Storage+Queue+Streamer, adding actors + a deterministic clock. *(This is HoBo's own concept; it deliberately replaces — and does not adopt — Vercel's "World".)*
 
 ```ts
 // @hobo/core
-export interface World {
+export interface Runtime {       // the durable runtime a Camp supplies
   events:  EventStore;   // append-only log; append/read/subscribe, optimistic concurrency
   queue:   Queue;        // at-least-once enqueue/handle; dedup by idempotency key
   streams: Streamer;     // realtime read/write per run (run.readable)
@@ -38,9 +38,9 @@ export interface ActorHost {
   state<S>(key: string): DurableState<S>;          // backed by the actor's event stream
 }
 ```
-Selected per **Camp**; **the same app code runs regardless of World** (`HOBO_WORLD` env or config). Built-in `@hobo/world-local` (SQLite/filesystem) for dev; production adapters: `world-postgres`, `world-temporal`, `world-restate`, `world-cloudflare`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./11-event-model.md)).
+**Provided by the Camp** (the provider-specific layer); **the same app code runs regardless of the runtime backend** (`HOBO_RUNTIME` env or Camp config). Built-in `@hobo/runtime-local` (SQLite/filesystem) for dev; production backends: `runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./11-event-model.md)).
 
-> **Worlds vs Providers** (a key distinction): a **World** backs the *data-plane runtime* of your app (durable state, queues, timers). A **Provider** ([Layer 2](#layer-2--providers-infra-capability-ports)) provisions *infrastructure* (databases, compute, buckets). A Camp picks one World; resources are realized by Providers.
+> **Runtime vs Providers** (a key distinction): the **Camp runtime** backs the *data-plane runtime* of your app (durable state, queues, timers). A **Provider** ([Layer 2](#layer-2--providers-infra-capability-ports)) provisions *infrastructure* (databases, compute, buckets). A Camp **supplies both** — its runtime backend + the providers that realize resources.
 
 ---
 
@@ -62,15 +62,15 @@ A **Provider** binds these ports to a backend and declares *how* it realizes the
 `bindle()` declares resources and bindings; **mapping rules** decide which provider realizes each port. Three mapping styles, all supported:
 
 ```ts
-// hobo.config.ts — Worlds + provider mapping (the "where/how")
+// hobo.config.ts — Camps (runtime backend + provider mapping; the "where/how")
 import { defineHobo } from "@hobo/core";
 import { azure } from "@hobo/provider-azure";
 import { aws } from "@hobo/provider-aws";
 import { cloudflare } from "@hobo/provider-cloudflare";
-import { postgresWorld } from "@hobo/world-postgres";
+import { postgresRuntime } from "@hobo/runtime-postgres";
 
 export default defineHobo({
-  world: postgresWorld({ url: process.env.DATABASE_URL }),
+  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),   // the Camp's durable runtime backend
 
   // (a) whole-app: "just host everything on Azure, figure out the best way"
   defaultProvider: azure({ region: "eastus" }),
@@ -147,7 +147,7 @@ export async function checkout(order: Order) {
   return { status: "confirmed" as const };
 }
 
-// virtual actor / grain: durable single-writer state per key, backed by World.actors
+// virtual actor / grain: durable single-writer state per key, backed by Runtime.actors
 export const Cart = actor("Cart", {
   state: () => ({ items: [] as Item[] }),
   on: {
@@ -172,7 +172,7 @@ export const fulfillment = saga("fulfillment")
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |
 | `training(fn, opts)` / `"use training"` | **AI-rewritable semantic function** | baseline body; HoBo optimizes prompt/code vs a rubric from OTel/OpenInference trajectories + live-evals; gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)) |
-| `sleep(d)` / `cron(expr)` | durable timers | scheduled via World.clock; survive restarts |
+| `sleep(d)` / `cron(expr)` | durable timers | scheduled via Runtime.clock; survive restarts |
 | `createHook<T>()` | pause until external resume | token-addressable; multi-event via async iterator |
 | `createWebhook()` | hook with auto HTTP routing | provider `gateway` wires the URL |
 | `getWritable<T>()` | stream output to clients | per-run stream; `run.readable` on the other side |
@@ -235,12 +235,12 @@ database("db", { engine: "postgres" })
 ---
 
 ## Local development & testing
-- **`hobo dev`** runs the Bindle against `@hobo/world-local` with an in-process Provider mock layer: resources resolve to local equivalents (Postgres in a container, a local object store, an in-memory queue) so the agnostic path runs with zero cloud. Replay/inspection work offline (mirrors Lakebed's instant-onboarding strength, full CLI in [Plan 15](./15-cli-dx.md)).
-- **Test World:** `@hobo/world-local` exposes a deterministic test mode — drive time (`clock.advance`), assert emitted events, and **replay a run to assert identical final state** (the determinism test). Providers have fakes from `@hobo/conformance` so unit tests never hit a cloud.
+- **`hobo dev`** runs the Bindle against a **local Camp** (`@hobo/runtime-local`) with an in-process Provider mock layer: resources resolve to local equivalents (Postgres in a container, a local object store, an in-memory queue) so the agnostic path runs with zero cloud. Replay/inspection work offline (mirrors Lakebed's instant-onboarding strength, full CLI in [Plan 15](./15-cli-dx.md)).
+- **Test runtime:** `@hobo/runtime-local` exposes a deterministic test mode — drive time (`clock.advance`), assert emitted events, and **replay a run to assert identical final state** (the determinism test). Providers have fakes from `@hobo/conformance` so unit tests never hit a cloud.
 ```ts
-import { testWorld } from "@hobo/world-local/testing";
+import { testRuntime } from "@hobo/runtime-local/testing";
 test("checkout is durable", async () => {
-  const w = testWorld();
+  const w = testRuntime();
   const run = await w.start(checkout, sampleOrder);
   await w.resumeHook(run, { ok: true });
   await w.clock.advance("10s");

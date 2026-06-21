@@ -68,18 +68,19 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 ### 6.1 Authoring & SDK ([02](../design/02-sdk-api.md), [21](../design/21-resources-catalog.md), [22](../design/22-wiring-manifest.md))
 | ID | Requirement | Pri | AC | BR |
 |---|---|---|---|---|
-| **FR-001** | Declare app topology in a provider-agnostic `bindle.ts` (resources + bindings). | M | A `bindle()` with ≥2 resources + a `bind` compiles and runs on `world-local`. | BR-001 |
+| **FR-001** | Declare app topology in a provider-agnostic `bindle.ts` (resources + bindings). | M | A `bindle()` with ≥2 resources + a `bind` compiles and runs on the local Camp (`runtime-local`). | BR-001 |
 | **FR-002** | Resource catalog with inline `.allow()` permissions (IfC), collected at build. | M | `hobo collect` emits a manifest matching a fixture; `.allow()` yields the expected IAM + link + token-scope triple ([09](../design/09-verification-open-questions.md)). | BR-001/BR-005 |
 | **FR-003** | Runtime primitives: `step`, `workflow`, `actor`, `saga`, `agent`, `sleep`/`cron`, hooks, streams. | M | hello-bindle runs a workflow + actor + saga; replay == live state. | BR-001/BR-006 |
 | **FR-004** | Separate `hobo.config.ts` (where/how) from `bindle.ts` (what). | M | Swapping the mapped provider edits only config ([ADR-0011](../design/adr/README.md)). | BR-002 |
 | **FR-005** | Typed provider-specific options via `.with(...)`, inert for non-resolved providers; `require`/`prefer`. | M | The same Bindle resolves to ≥2 providers; `.with()` affects only the resolved one ([09](../design/09-verification-open-questions.md)). | BR-002/BR-003 |
 | **FR-006** | Mapping styles: whole-app default, per-tier, per-boundary. | M | Each style deploys the reference app. | BR-002 |
+| **FR-015** | Config & secrets load via `ctx.config` (`config()`/`secret()`/`env()`), resolved to **references per Camp**, **secretless-first** (bound resource via brokered token → provider secret store at use-time → bounded static fallback). | M | A secret resolves via a brokered token with **no value at rest**; `config.Resolved`/`secret.Accessed` events present; value redacted from logs/spans ([Plan 31](../design/31-config-secretless-secrets.md), [ADR-0027](../design/adr/ADR-0027-secretless-config-and-secrets.md)). | BR-005 |
 
 ### 6.2 CLI & DX ([15](../design/15-cli-dx.md))
 | ID | Requirement | Pri | AC | BR |
 |---|---|---|---|---|
 | **FR-010** | Core CLI: `new`, `dev`, `build`, `collect`, `plan`, `deploy`, `promote`, `rollback`, `destroy`, `inspect`, `logs`, `drift`, `login`, `registry`, `doctor`. | M | Each command runs on the reference app; `plan` shows plan + cost + warnings. | BR-001 |
-| **FR-011** | `hobo dev` runs the full app locally on `world-local` with **zero cloud**. | M | Cold `hobo dev` ≤60 s, no credentials required (NFR-002). | BR-001 |
+| **FR-011** | `hobo dev` runs the full app locally on the local Camp (`runtime-local`) with **zero cloud**. | M | Cold `hobo dev` ≤60 s, no credentials required (NFR-002). | BR-001 |
 | **FR-012** | Deployment strategies (`recreate`/`blue-green`/`canary`/`progressive`) selectable per service. | S | Canary regression auto-rolls-back ([05](../design/05-reliability-ha.md)). | BR-006 |
 | **FR-013** | Verification CLI: `verify`, `can-deploy`, `explain-failure`, `fix --dry-run`. | S | A producer/consumer skew is blocked with a precise reason ([29](../design/29-contracts-compatibility.md)); `explain-failure` output meets the error-UX bar in NFR-017. | BR-010 |
 | **FR-014** | `hobo doctor` runs a **portability + security lint**: warns (non-blocking, explained) on provider lock-in (provider-specific `.with()` for only one provider) and on static-key use where federation is available. | S | doctor flags a single-provider `.with()` resource and a static-key binding with an actionable message ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)/[ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)). | BR-002/BR-003/BR-005 |
@@ -159,7 +160,7 @@ Core views (P6 depth): **Deployments timeline** (event-sourced, replay/time-trav
 
 ## 9. Release criteria (definition of done per phase)
 From [08-roadmap.md](../design/08-roadmap.md) exit criteria; MVP line at **P4** ([ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)):
-- **P0/P1:** `world-local` passes World-port conformance; hello-bindle runs offline; replay == live.
+- **P0/P1:** the local Camp (`runtime-local`) passes runtime-port conformance; hello-bindle runs offline; replay == live.
 - **P2:** reference Bindle deploys to a real cloud and survives a Yard restart mid-deploy.
 - **P3:** an agent deploys via MCP using only brokered tokens; credential audit present.
 - **P4 (v1 GA):** one Bindle deploys to ≥2 clouds; cross-cloud mTLS works.

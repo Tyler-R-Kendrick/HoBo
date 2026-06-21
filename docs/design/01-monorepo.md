@@ -7,7 +7,7 @@
 ## Layering & dependency rule
 Packages are layered; dependencies point **inward only** (`apps → adapters → sdk/runtime → core`). `@hobo/core` depends on nothing HoBo. This keeps adapters swappable and prevents the "agnostic" core from leaking provider details.
 ```
-core  ←  sdk, runtime  ←  worlds/*, providers/*, iac/*, build/*  ←  cli, cloud, mcp, registry, identity
+core  ←  sdk, runtime  ←  runtimes/*, providers/*, iac/*, build/*  ←  cli, cloud, mcp, registry, identity
                           (all adapters depend only on core's port interfaces)
 ```
 
@@ -20,12 +20,12 @@ packages/
   runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
   cli/             @hobo/cli          hobo dev|deploy|plan|inspect|login|registry|yard|forge
-  worlds/
-    world-local        @hobo/world-local       (built-in engine; sqlite/filesystem)
-    world-postgres     @hobo/world-postgres
-    world-temporal     @hobo/world-temporal
-    world-restate      @hobo/world-restate
-    world-cloudflare   @hobo/world-cloudflare  (Durable Objects)
+  runtimes/          (the durable runtime backends a Camp provides — formerly "worlds")
+    runtime-local      @hobo/runtime-local     (built-in engine; sqlite/filesystem)
+    runtime-postgres   @hobo/runtime-postgres
+    runtime-temporal   @hobo/runtime-temporal
+    runtime-restate    @hobo/runtime-restate
+    runtime-cloudflare @hobo/runtime-cloudflare  (Durable Objects)
   providers/
     provider-aws       @hobo/provider-aws
     provider-azure     @hobo/provider-azure

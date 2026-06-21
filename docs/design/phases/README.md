@@ -5,8 +5,8 @@
 ## Phases
 | Phase | Theme | Doc |
 |---|---|---|
-| **P0** | Foundations (monorepo, core contracts, WIT, local World, conformance) | [`P0-foundations.md`](./P0-foundations.md) |
-| **P1** | SDK on the local World (IfC authoring + runtime + components) | [`P1-sdk-local.md`](./P1-sdk-local.md) |
+| **P0** | Foundations (monorepo, core contracts, WIT, local runtime, conformance) | [`P0-foundations.md`](./P0-foundations.md) |
+| **P1** | SDK on the local runtime (IfC authoring + runtime + components) | [`P1-sdk-local.md`](./P1-sdk-local.md) |
 | **P2** | First real deploy (one provider, Yard MVP) | [`P2-first-deploy.md`](./P2-first-deploy.md) |
 | **P3** | AI-native core (identity, registry, Hobo Code, agents, MCP) | [`P3-ai-native.md`](./P3-ai-native.md) |
 | **P4** | Multi-provider + wiring depth | [`P4-multi-provider.md`](./P4-multi-provider.md) |

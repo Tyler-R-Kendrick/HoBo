@@ -72,7 +72,7 @@ From [17-positioning-competitive.md](../design/17-positioning-competitive.md) an
 | **Convex** | Reactive TypeScript backend-as-a-service | Adjacent; Convex could be a HoBo *capability provider* ([competitors/convex](../../competitors/convex/README.md)) |
 | **shoo.dev** | Zero-config Google-sign-in broker | Adjacent (identity); HoBo adds workload/agent identity + token brokering ([competitors/shoo](../../competitors/shoo/README.md)) |
 | **Lakebed** | Agent-native closed PaaS | Single closed runtime; HoBo is multi-cloud, multi-runtime, self-hostable |
-| **Vercel + Workflow SDK** | PaaS + durable execution | HoBo adopts Worlds for runtime portability; adds multi-provider + IfC + self-host |
+| **Vercel + Workflow SDK** | PaaS + durable execution | HoBo provides its own HoBo-native durable runtime (per Camp) for portability — deliberately *not* Vercel's "World"; adds multi-provider + IfC + self-host |
 
 **Defensible differentiators** ([17](../design/17-positioning-competitive.md)): AI-native operations; the Hobo Code standard + Registry + Forge (no community bottleneck); event-sourced everything; genuine agnostic + typed escape hatch in one model; contracts/policy/evals as native graph artifacts.
 
@@ -108,7 +108,7 @@ Persona priority is fixed by [ADR-0019](../design/adr/ADR-0019-persona-prioritiz
 
 ## 9. Business model & pricing
 Per [ADR-0020](../design/adr/ADR-0020-monetization-model.md):
-1. **OSS core** — SDK, runtime, built-in World, conformance, CLI, self-hostable Yard (drives adoption; required by the agnostic promise).
+1. **OSS core** — SDK, runtime, built-in runtime backend (`runtime-local`), conformance, CLI, self-hostable Yard (drives adoption; required by the agnostic promise).
 2. **Hosted Yard (SaaS)** — primary revenue: managed HA/multi-region, showback→**chargeback/billing**, org SSO/RBAC, audit retention, support SLAs, hosted Forge. *Pricing model:* per-seat and/or usage; **figures TBD** (see Assumptions).
 3. **Marketplace** — signed, conformance-passing Forge providers and platform-engineer Resource Packs ([27](../design/27-drivers-packs-profiles.md)); monetization secondary.
 We do **not** mark up the customer's cloud spend and do **not** gate portability — both would break the core thesis.

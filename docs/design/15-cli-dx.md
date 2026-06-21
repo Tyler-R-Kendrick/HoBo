@@ -11,14 +11,14 @@
 ## DX principles
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
 2. **The agnostic path is the default path** — you can build, run, test, and inspect locally before ever choosing a provider.
-3. **Fast inner loop** — hot reload of handlers/workflows; local World with replay; no deploy needed to iterate.
+3. **Fast inner loop** — hot reload of handlers/workflows; local runtime with replay; no deploy needed to iterate.
 4. **Type-safe end to end** — bindings, workflow signatures, and provider options are all typed; the editor guides you.
 5. **Everything the CLI does, an agent can do** — every command has an MCP equivalent ([Plan 6](./06-ai-native-agent-auth.md)).
 
 ## Command surface
 ```
 hobo new <name> [--template todo|api|agent|fullstack]   scaffold a Bindle
-hobo dev                                                 run locally on world-local (no cloud)
+hobo dev                                                 run locally on runtime-local (no cloud)
 hobo build                                               compile services to wasm components -> OCI (container fallback)
 hobo collect [--camp prod]                               run resource-collection (IfC) -> print manifest IR
 hobo stub <resource|service>                             run with a stub behind a WIT port (Plan 23)
@@ -28,7 +28,7 @@ hobo promote <version> --camp prod                       move a Camp pointer
 hobo rollback --camp prod                                revert to previous good version
 hobo destroy --camp <camp>                               tear down (guardrail-gated)
 hobo inspect run <id> | deploy <id> | topology           projections / time-travel
-hobo logs [--follow] [<resource>]                        live stream via World.streams
+hobo logs [--follow] [<resource>]                        live stream via the Camp runtime streams
 hobo drift [--heal|--propose]                            drift status + reconcile
 hobo login                                               obtain a dev SVID (OIDC)
 hobo registry search <capability> | add <provider>       browse/install providers (Hobo Code)
@@ -39,15 +39,15 @@ hobo doctor                                              env/credential/connecti
 
 ## The two config files
 - **`bindle.ts`** — *what* the app is (resources + bindings + runtime primitives). Provider-agnostic.
-- **`hobo.config.ts`** — *where/how* it maps (World + provider mapping rules + Camps). The only file that names providers.
+- **`hobo.config.ts`** — *where/how* it maps (runtime backend + provider mapping rules + Camps). The only file that names providers.
 
 This separation is deliberate: code review of `bindle.ts` is about the app; `hobo.config.ts` is about hosting. Swapping clouds touches only the latter.
 
 ## The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
-2. Handlers/workflows hot-reload; the local World persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline.
+2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline.
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
-4. Determinism tests (`replay == state`) run in CI from the same local World ([Plan 2](./02-sdk-api.md), [Plan 9](./09-verification-open-questions.md)).
+4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./02-sdk-api.md), [Plan 9](./09-verification-open-questions.md)).
 
 ## Onboarding paths
 - **Human:** `npx hobo new my-app -t fullstack && cd my-app && hobo dev` → edit → `hobo login` → `hobo deploy`.

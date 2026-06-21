@@ -101,7 +101,7 @@ sequenceDiagram
 ---
 
 ## 6.3 Durable AI agents (the `agent()` primitive)
-A DurableAgent analog backed by the World: replayable, resumable, tools-as-steps, identity + scoped tokens injected via `ctx`.
+A DurableAgent analog backed by the Camp's runtime: replayable, resumable, tools-as-steps, identity + scoped tokens injected via `ctx`.
 ```ts
 import { agent, step } from "@hobo/runtime";
 

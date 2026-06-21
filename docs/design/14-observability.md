@@ -24,11 +24,11 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 
 ## Metrics catalog (initial)
 **Control plane:** deploy success rate, plan→deployed latency, reconcile loop latency, executor queue depth/saturation, provider error rate (per provider/region/op), circuit-breaker state, drift count, token grants/min.
-**Data plane (via the World):** workflow start/complete/fail rates, step retry rates, actor activations/passivations, queue lag, app RED metrics (rate/errors/duration) for `service`/`web`.
+**Data plane (via the Camp's runtime):** workflow start/complete/fail rates, step retry rates, actor activations/passivations, queue lag, app RED metrics (rate/errors/duration) for `service`/`web`.
 
 ## Logs
 - `ctx.log` is structured and auto-tagged with `tenant`, `runId`, `resource`, `traceId`.
-- Live tail via the World's `streams` (`hobo logs` / dashboard) without waiting for completion; historical logs exported to the tenant's chosen sink.
+- Live tail via the Camp's runtime `streams` (`hobo logs` / dashboard) without waiting for completion; historical logs exported to the tenant's chosen sink.
 
 ## SLOs & alerting
 - Built-in SLOs (e.g. deploy success rate, control-plane availability from [Plan 5](./05-reliability-ha.md)) with burn-rate alerts.

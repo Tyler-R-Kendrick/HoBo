@@ -32,7 +32,7 @@
 | SRE lead | _TBD_ | ☐ Approve ☐ Changes | |
 
 ## 2. Scope & system context
-HoBo comprises (a) an **SDK** (author + runtime) compiled to portable components, (b) **the Yard** — an event-sourced, actor-based control plane, and (c) **adapters** (Worlds, Providers, IaC, Build) behind ports. The **control plane** decides what infra should exist and makes it exist; the **data plane** is the running Bindle on a World, never on the Yard's critical path ([10-architecture-overview.md](../design/10-architecture-overview.md)). This TRD specifies technical requirements on these subsystems and how they satisfy the PRD.
+HoBo comprises (a) an **SDK** (author + runtime) compiled to portable components, (b) **the Yard** — an event-sourced, actor-based control plane and the cross-provider/hybrid scope, and (c) **adapters** (runtime backends, Providers, IaC, Build) behind ports. The **control plane** decides what infra should exist and makes it exist; the **data plane** is the running Bindle in a **Camp** (which provides the durable runtime), never on the Yard's critical path ([10-architecture-overview.md](../design/10-architecture-overview.md)). Scopes nest `Yard ⊃ Camp ⊃ Bindle` ([ADR-0026](../design/adr/ADR-0026-scope-model-yard-camp-bindle.md)). This TRD specifies technical requirements on these subsystems and how they satisfy the PRD.
 
 ## 3. Architecture overview
 Control plane vs data plane, author→deploy→run ([10](../design/10-architecture-overview.md)/[04](../design/04-control-plane.md)):
@@ -41,7 +41,7 @@ Control plane vs data plane, author→deploy→run ([10](../design/10-architectu
 flowchart TB
   subgraph Author["Author time"]
     B["bindle.ts — what (topology + .allow)"]
-    CFG["hobo.config.ts — where/how (mapping + Worlds)"]
+    CFG["hobo.config.ts — where/how (Camps: runtime + mapping)"]
   end
   subgraph Yard["The Yard — control plane (event-sourced, multi-tenant)"]
     GW["Gateway: RPC / REST / MCP ingress + authz"]
@@ -55,7 +55,7 @@ flowchart TB
   end
   subgraph Data["Data plane — the running Bindle"]
     APP["App components: wasm / OCI"]
-    WRL["World: EventStore+Queue+Streamer+ActorHost+Clock"]
+    WRL["Camp runtime: EventStore+Queue+Streamer+ActorHost+Clock"]
   end
   PROV["Providers: cloud / IaC / build adapters"]
 
@@ -77,7 +77,7 @@ flowchart TB
 **Layering invariant** ([01-monorepo.md](../design/01-monorepo.md)): dependencies point **inward only** — `apps → adapters → sdk/runtime → core`; adapters depend only on `@hobo/core` port interfaces, so the agnostic core never leaks provider detail (enforces NFR-001).
 
 ## 4. Component breakdown (`@hobo/*`)
-From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/wit`, `@hobo/sdk`, `@hobo/runtime`); **control plane** (`@hobo/cli`, `@hobo/cloud` = the Yard, `@hobo/registry`, `@hobo/identity`, `@hobo/mcp`); **Worlds** (`world-local` built-in, `world-postgres`/`-temporal`/`-restate`/`-cloudflare`); **Providers** (`provider-aws`/`-azure`/`-gcp`/`-cloudflare`/`-fly`/`-kubernetes`); **IaC** (`iac-pulumi` primary, `-cdktf`/`-crossplane`/`-opentofu`); **Build** (`build-wasm`, `-dagger`/`-packer`/`-firecracker`); **governance** (`@hobo/conformance`, `@hobo/contracts`, `@hobo/policy`, `@hobo/evals`, optional `provider-pact`/`-opa`/`-cedar`).
+From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/wit`, `@hobo/sdk`, `@hobo/runtime`); **control plane** (`@hobo/cli`, `@hobo/cloud` = the Yard, `@hobo/registry`, `@hobo/identity`, `@hobo/mcp`); **runtime backends** (`runtime-local` built-in, `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`); **Providers** (`provider-aws`/`-azure`/`-gcp`/`-cloudflare`/`-fly`/`-kubernetes`); **IaC** (`iac-pulumi` primary, `-cdktf`/`-crossplane`/`-opentofu`); **Build** (`build-wasm`, `-dagger`/`-packer`/`-firecracker`); **governance** (`@hobo/conformance`, `@hobo/contracts`, `@hobo/policy`, `@hobo/evals`, `@hobo/training`, optional `provider-pact`/`-opa`/`-cedar`).
 
 ## 5. Technical requirements (`TR-NNN`)
 
@@ -86,20 +86,20 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 |---|---|---|
 | **TR-001** | `@hobo/sdk` exposes the resource catalog + `bindle()`; resources declare `.allow()` verbs inline (IfC). | IfC-collection test ([09](../design/09-verification-open-questions.md)) |
 | **TR-002** | `hobo collect` runs the component to emit a **Manifest IR** (resources + links + endpoints + env). | Manifest matches fixture ([09](../design/09-verification-open-questions.md)) |
-| **TR-003** | Services compile to **wasm components** (jco/componentize) with **OCI-container fallback**. | Build test; component runs on `world-local` ([20](../design/20-wasm-wasi-runtime.md)) |
+| **TR-003** | Services compile to **wasm components** (jco/componentize) with **OCI-container fallback**. | Build test; component runs on the local Camp (`runtime-local`) ([20](../design/20-wasm-wasi-runtime.md)) |
 | **TR-004** | `.allow(v)` produces exactly one **{IAM scope + wasm capability link + brokered-token scope}** triple; a missing verb is denied on all three. | `.allow()` triple test ([09](../design/09-verification-open-questions.md)) |
 | **TR-005** | `.with(provider.option(...))` is per-provider-typed and inert for non-resolved providers. | Multi-provider resolve test ([09](../design/09-verification-open-questions.md)) |
 | **TR-006** | The build enforces the **layering invariant** via a dependency-graph lint (e.g. `depcheck`/`madge`): no agnostic package imports a provider/iac/build package and no adapter imports another adapter; CI blocks on violation. | dep-graph lint gate ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md), [01](../design/01-monorepo.md)) |
 
 > **"Unedited" (portability definition, [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)):** across cloud targets, `bindle.ts` and application `src/` are **byte-identical**; only `hobo.config.ts` and CLI/env parameters may change. The `multi-cloud-shop` E2E proves it by deploying an unchanged `bindle.ts` to ≥2 providers and asserting identical resolved topology + bindings.
 
-### 5.2 Worlds runtime ([02](../design/02-sdk-api.md), [24](../design/24-wit-worlds-reference.md))
+### 5.2 Camp runtime — durable runtime ports ([02](../design/02-sdk-api.md), [24](../design/24-wit-worlds-reference.md))
 | ID | Requirement | Verified by |
 |---|---|---|
-| **TR-010** | Define `World` ports — EventStore, Queue, Streamer, ActorHost, Clock — as WIT worlds; ship a built-in engine (`world-local`, SQLite/fs). | Per-World-port conformance ([09](../design/09-verification-open-questions.md)) |
+| **TR-010** | Define the **runtime ports** — EventStore, Queue, Streamer, ActorHost, Clock — as WIT worlds; ship a built-in engine (`runtime-local`, SQLite/fs). | Per-runtime-port conformance ([09](../design/09-verification-open-questions.md)) |
 | **TR-011** | Runtime primitives `step`/`workflow`/`actor`/`saga`/`agent`/`sleep`/`cron`/hooks/streams with memoized steps + auto idempotency keys. | hello-bindle exercises all; replay==live |
-| **TR-012** | Worlds are swappable per Camp (`world-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 Worlds** (e.g. `world-local` + `world-postgres`) with only a World override; lifecycle identical (replay==live) ([24](../design/24-wit-worlds-reference.md)) |
-| **TR-013** | **Version policy:** Pulumi Automation API / WASI-WIT / MCP are pinned to exact versions; World port versions are recorded in the Manifest IR and immutable for a Bindle version; upgrades go through a gated `hobo upgrade` path with a compat/upgrade test; a version mismatch fails planning with a precise reason. | upstream-upgrade compat test; version-mismatch reject test ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md); open ADR-P/Q11 [09](../design/09-verification-open-questions.md)) |
+| **TR-012** | Runtime backends are swappable per Camp (`runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 runtime backends** (e.g. `runtime-local` + `runtime-postgres`) with only a runtime override; lifecycle identical (replay==live) ([24](../design/24-wit-worlds-reference.md)) |
+| **TR-013** | **Version policy:** Pulumi Automation API / WASI-WIT / MCP are pinned to exact versions; runtime-port versions are recorded in the Manifest IR and immutable for a Bindle version; upgrades go through a gated `hobo upgrade` path with a compat/upgrade test; a version mismatch fails planning with a precise reason. | upstream-upgrade compat test; version-mismatch reject test ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md); open ADR-P/Q11 [09](../design/09-verification-open-questions.md)) |
 
 ### 5.3 The Yard control plane ([04](../design/04-control-plane.md))
 | ID | Requirement | Verified by |
@@ -133,6 +133,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-051** | **Token broker** exchanges an SVID for a resource-scoped provider token (OIDC federation preferred; OAuth-OBO for human delegation). The **API-key legacy escape hatch** is opt-in, carries a **max TTL with enforced rotation**, and is fully audited. | Zero-secret deploy test (NFR-005); key-past-TTL-rejected test ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) |
 | **TR-052** | Every credential event (`token.Granted/Used/Revoked`) is logged and replayable; audit streams are retained for a defined minimum and never compacted. | Credential-audit + retention-floor test ([06](../design/06-ai-native-agent-auth.md), NFR-018) |
 | **TR-053** | **Confused-deputy default-deny:** before issuing any scoped token, the policy engine checks `{principal, tenant, resource, action}`; cross-tenant issuance is denied unless explicitly delegated. | Agent-with-tenant-1-SVID requests tenant-2 token → denied before `token.Granted` ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) |
+| **TR-054** | **Config/secret resolution (secretless-first):** `config()`/`secret()`/`env()` declarations resolve to **references per Camp** at use-time via the ladder — bound resource (brokered token, no secret) → provider secret store (brokered token) → bounded static fallback ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)). Values never persist in the Bindle/Camp config/event log; reads emit `config.Resolved`/`secret.Accessed` and are redacted from logs/spans. | secretless-resolve + redaction test ([Plan 31](../design/31-config-secretless-secrets.md)/[ADR-0027](../design/adr/ADR-0027-secretless-config-and-secrets.md)) |
 
 ### 5.7 Registry & Hobo Code ([06](../design/06-ai-native-agent-auth.md))
 | ID | Requirement | Verified by |
@@ -174,7 +175,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-110** | Tenant is the hard isolation boundary across **five** dimensions: data (namespaced/encrypted streams), compute (partitioned Executor pools), credentials (tenant-scoped SVIDs/tokens), network (tenant-scoped mTLS domains), and **wasm capability** (deny-by-default unforgeable handles). | Cross-tenant tests incl. an **explicit denial scenario**: a component linked only to tenant A's resource calling tenant B's resource fails with a *capability-denied* (not generic-auth) error ([09](../design/09-verification-open-questions.md)) |
-| **TR-111** | **No static secrets:** bindings resolve to secret refs; per-run sensitive payloads encrypted with a per-run key. **Envelope encryption at rest** for event streams is available across **all** Worlds (default for new tenants; opt-in where a World lacks native support, gap documented). Decryption requires log-read **and** explicit authorization (run-owner / `decrypt:run`); log access ≠ payload access. | Encryption-across-Worlds + unauthorized-decrypt-denied test ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md), [12](../design/12-security-multitenancy.md)) |
+| **TR-111** | **No static secrets:** bindings resolve to secret refs; per-run sensitive payloads encrypted with a per-run key. **Envelope encryption at rest** for event streams is available across **all** runtime backends (default for new tenants; opt-in where a backend lacks native support, gap documented). Decryption requires log-read **and** explicit authorization (run-owner / `decrypt:run`); log access ≠ payload access. | Encryption-across-runtimes + unauthorized-decrypt-denied test ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md), [12](../design/12-security-multitenancy.md)) |
 | **TR-112** | **Supply chain:** plugins signed w/ SLSA-style provenance + conformance report; images by digest + scanned; all published artifacts (SDK, CLI, providers, implementations, base images) carry **CycloneDX SBOMs**; CI **blocks publishing on CVSS ≥ 7.0** (documented waiver path). | Signing + SBOM-present + vuln-gate test ([12](../design/12-security-multitenancy.md)) |
 | **TR-113** | **Data residency:** a tenant can constrain regions; the Planner rejects residency violations at plan time. | Residency rejection test ([03](../design/03-providers-iac.md)) |
 
@@ -195,7 +196,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 |---|---|---|
 | **TR-140** | Single-writer **leases + fencing tokens** per grain; stale-owner appends rejected; failover = lease TTL + tail replay (<30 s). | Partition/fencing test ([05](../design/05-reliability-ha.md)) |
 | **TR-141** | Saga **compensation** in reverse-topological order past a configurable no-go threshold; compensations idempotent; escalate to `needs-human` rather than loop. | Compensation test |
-| **TR-142** | Control-plane HA: quorum/replicated log (built-in engine ships a small Raft; `world-*` delegate); stateless tier scales horizontally; bounded-staleness reads labeled. | HA/availability test (99.9%/99.95%) |
+| **TR-142** | Control-plane HA: quorum/replicated log (built-in engine ships a small Raft; `runtime-*` backends delegate to their store); stateless tier scales horizontally; bounded-staleness reads labeled. | HA/availability test (99.9%/99.95%) |
 | **TR-143** | DR = replay: `hobo yard up --restore` rebuilds projections + actors; RPO ~0/≤5 s, RTO <15 min. | DR replay test (NFR-010) |
 | **TR-144** | Deployment strategies (`recreate`/`blue-green`/`canary`/`progressive`) are parameterized sagas with event-sourced gates + auto-rollback. | Canary auto-rollback test |
 
@@ -206,19 +207,19 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-151** | Budgets/caps are policy gates; spend over cap → obligation/approval; showback attributable per tenant/Bindle/Camp/resource from the log. | Budget-breach test |
 
 ## 6. Interfaces & APIs
-- **WIT ports** ([24](../design/24-wit-worlds-reference.md)): the canonical contracts (World ports + provider capability ports + `contract-engine`/`policy-engine`). `hobo:*` worlds reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/09-verification-open-questions.md) Q11).
+- **WIT ports** ([24](../design/24-wit-worlds-reference.md)): the canonical contracts (runtime ports + provider capability ports + `contract-engine`/`policy-engine`/`training-engine`). `hobo:*` WIT worlds reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/09-verification-open-questions.md) Q11).
 - **CLI** ([15](../design/15-cli-dx.md)): the `hobo …` command set (FR-010/013).
 - **MCP** ([06](../design/06-ai-native-agent-auth.md)): tool-per-capability surface (TR-070).
 - **Gateway command/event API** ([04](../design/04-control-plane.md)): commands (`Deploy`/`Promote`/`Rollback`/`Destroy`/`RegisterProvider`/`RequestToken`/…); the only side effect is appending events.
 
 ## 7. Technology stack & dependencies
-TypeScript/Node (core + Yard); WASI/Component Model + WIT + jco (components); Pulumi Automation API (IaC); SPIFFE/OIDC (identity); Firecracker (executor isolation); SQLite (built-in World) / Postgres / Temporal / Restate / Cloudflare DO (World adapters); MCP (agent surface). Upstream churn is isolated behind ports ([BRD R-5](./BRD.md#15-risk-register)).
+TypeScript/Node (core + Yard); WASI/Component Model + WIT + jco (components); Pulumi Automation API (IaC); SPIFFE/OIDC (identity); Firecracker (executor isolation); SQLite (built-in runtime) / Postgres / Temporal / Restate / Cloudflare DO (runtime backends); MCP (agent surface). Upstream churn is isolated behind ports ([BRD R-5](./BRD.md#15-risk-register)).
 
 ## 8. Deployment & self-host topology
-Self-host = single-tenant (whole Yard = one trust domain); hosted = multi-tenant on the same code ([04](../design/04-control-plane.md)/[12](../design/12-security-multitenancy.md)). Bootstrapping: local seed (`world-local`) → self-deploy `@hobo/cloud` to a real target → handover imports the seed's log for provenance (TR-024).
+Self-host = single-tenant (whole Yard = one trust domain); hosted = multi-tenant on the same code ([04](../design/04-control-plane.md)/[12](../design/12-security-multitenancy.md)). Bootstrapping: local seed (the local Camp, `runtime-local`) → self-deploy `@hobo/cloud` to a real target Camp → handover imports the seed's log for provenance (TR-024).
 
 ## 9. Test & verification strategy ([09](../design/09-verification-open-questions.md))
-Pyramid: **unit** (pure Planner/upcasters) → **conformance** per port (the trust boundary, `@hobo/conformance`) → **integration** (SDK + built-in World + local provider) → **E2E** (Yard + one real cloud, gated) → **determinism/replay** (`replay == live`). New gate tests: matching, Delta→Set, compatibility (`can-deploy`), policy-decision, eval-gate, stub/replay, IfC-collection. `hobo verify` composes contracts + policy + evals + conformance + cost (TR-093).
+Pyramid: **unit** (pure Planner/upcasters) → **conformance** per port (the trust boundary, `@hobo/conformance`) → **integration** (SDK + built-in runtime + local provider) → **E2E** (Yard + one real cloud, gated) → **determinism/replay** (`replay == live`). New gate tests: matching, Delta→Set, compatibility (`can-deploy`), policy-decision, eval-gate, stub/replay, IfC-collection. `hobo verify` composes contracts + policy + evals + conformance + cost (TR-093).
 
 ## 10. Technical risks & open decisions
 Inherits [BRD risks](./BRD.md#15-risk-register). The requirements review/hardening pass closed several gaps via [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md) (security posture) and [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md) (portability guarantee) — including a v1 version-pinning default (TR-013) for the otherwise-open `hobo:*` versioning question. Open ADR-P items ([18-adr-log](../design/18-adr-log.md)) this TRD must eventually close:
@@ -237,7 +238,7 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-001
 | BR-002 N clouds, unedited | FR-004, FR-005, FR-006, FR-014, FR-030, FR-032; NFR-001, NFR-020 | TR-005, TR-006, TR-012, TR-040, TR-043, TR-021 | `multi-cloud-shop` E2E; resolve test; dep-graph lint |
 | BR-003 optimize on demand | FR-005, FR-014 | TR-005 | provider-options + lock-in-lint test |
 | BR-004 agents first-class | FR-020, FR-021, FR-031; NFR-004, NFR-017 | TR-070, TR-050, TR-060 | MCP surface-parity; agent E2E; registry discovery |
-| BR-005 zero secrets | FR-002, FR-014, FR-023; NFR-005 | TR-004, TR-051, TR-052 | zero-secret deploy; `token.*` audit; key-TTL |
+| BR-005 zero secrets | FR-002, FR-014, FR-015, FR-023; NFR-005 | TR-004, TR-051, TR-052, TR-054 | zero-secret deploy; `token.*` audit; key-TTL; secretless config resolution |
 | BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014, NFR-018, NFR-021 | TR-030..033, TR-052, TR-130 | projection-rebuild; determinism; OTel/OpenInference; retention floor |
 | BR-007 self-hostable + reliable | FR-010, FR-012; NFR-009, NFR-010, NFR-013, NFR-019 | TR-024, TR-071, TR-140..144 | bootstrap; DR replay; fencing; rate-limit; canary auto-rollback |
 | BR-008 no community bottleneck | FR-040, FR-041, FR-042, FR-043; NFR-007, NFR-021 | TR-080..084 | `hobo forge`; stub/replay; sandbox no-egress; injection scrub; `use training` loop |

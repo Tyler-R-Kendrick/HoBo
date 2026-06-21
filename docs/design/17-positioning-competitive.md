@@ -9,7 +9,7 @@
 | Product | Category | Cloud-agnostic? | Escape hatch | Runtime model | Agent/AI-native? | Self-host? |
 |---|---|---|---|---|---|---|
 | **Lakebed** | Agent-native PaaS | ❌ (own runtime) | endpoints/env only | sync RPC | reads contracts; basic auth | ❌ |
-| **Vercel + Workflow SDK** | PaaS + durable exec | partial (Worlds for runtime) | Vercel-native | durable workflows/steps | DurableAgent | Worlds self-host |
+| **Vercel + Workflow SDK** | PaaS + durable exec | partial (runtime ports) | Vercel-native | durable workflows/steps | DurableAgent | runtime self-host |
 | **SST** | AWS framework | ❌ (AWS) | full CDK | serverless | no | n/a |
 | **Encore** | Backend framework | ✅ (AWS/GCP) | config overrides | typed services | no | ✅ |
 | **Nitric** | Cloud-agnostic framework (IfC) | ✅ | plugin/custom provider (Go) | functions/resources | no | ✅ |
@@ -27,7 +27,7 @@
 **The gap:** every cloud-agnostic option above is either (a) IaC-flavored (you still think in infra), (b) Kubernetes-bound, or (c) not AI-native — and the wasm runtimes (wasmCloud/Spin) and orchestrators (Aspire) solve *runtime/wiring* but not multi-cloud provisioning, agents, or durable workflows. Every AI-native option (Lakebed, Vercel) is single-runtime / locked-in. **No one combines cloud-agnostic ports/adapters (as WIT worlds) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane.** That intersection is HoBo. (Detailed Nitric capture + parity in [`competitors/nitric`](../../competitors/nitric/README.md).)
 
 ## What HoBo borrows (deliberately)
-- **From Vercel Workflows:** the durable `workflow`/`step` feel and the **Worlds** ports/adapters for the runtime.
+- **From Vercel Workflows:** the durable `workflow`/`step` feel and the **runtime** ports/adapters for the runtime.
 - **From Lakebed:** ruthless onboarding, machine-readable contracts (`llms.txt`), server authority — and we extend "machine-readable" from the app to *operations* (MCP).
 - **From Crossplane/Radius:** reconciliation + the dev-vs-platform separation (here: `bindle.ts` vs `hobo.config.ts`, and provider recipes/equivalence classes).
 - **From Pulumi:** real-language IaC via the Automation API as our primary mechanism.

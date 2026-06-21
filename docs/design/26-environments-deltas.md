@@ -3,7 +3,7 @@
 > Part of the [HoBo Design Plan Suite](./README.md). Upgrades Camps with environment **types**, **cloning**, and **ephemeral/preview** environments, and formalizes deployments as immutable **Sets** + mutable **Deltas** — HoBo's adoption of Humanitec's environment & deployment model ([capture](../../competitors/humanitec/orchestration-model.md)), expressed event-sourced.
 
 ## Camps gain an environment type
-A **Camp** ([Plan 2](./02-sdk-api.md)) is an environment a Bindle runs in. It now carries an **environment type** (`development`/`staging`/`production`/`ephemeral`/custom) — the **primary matching dimension** for Resource Definitions ([Plan 25](./25-resource-definitions-matching.md)). The same Bindle deployed to a `production` Camp vs an `ephemeral` Camp resolves to different infra purely via matching.
+A **Camp** ([Plan 2](./02-sdk-api.md)) is a **provider-specific deployment target** (an environment on one provider/cloud) that also provides the durable runtime. It carries an **environment type** (`development`/`staging`/`production`/`ephemeral`/custom) — the **primary matching dimension** for Resource Definitions ([Plan 25](./25-resource-definitions-matching.md)). The same Bindle deployed to a `production` Camp vs an `ephemeral` Camp resolves to different infra purely via matching; a multi-cloud `production` is **several Camps under one Yard** ([Plan 4](./04-control-plane.md)), which holds the cross-provider policy.
 ```ts
 // hobo.config.ts
 camps: {

@@ -38,6 +38,7 @@
 | 28 | The HoBo Agent, GitOps publisher & Pipelines | [`28-agent-gitops-pipelines.md`](./28-agent-gitops-pipelines.md) |
 | 29 | Contracts & compatibility (the `can-deploy` gate) | [`29-contracts-compatibility.md`](./29-contracts-compatibility.md) |
 | 30 | The policy plane (decisions, obligations & gates) | [`30-policy-plane.md`](./30-policy-plane.md) |
+| 31 | Configuration & secretless secrets | [`31-config-secretless-secrets.md`](./31-config-secretless-secrets.md) |
 | — | **Phased build plan (every phase, every step)** | [`phases/`](./phases/README.md) |
 
 **Requirements suite** (BRD / PRD / TRD + the requirements decision log) lives in [`../requirements/`](../requirements/README.md) — the *why / what / how-in-requirements-terms* layer over these design plans, with end-to-end BR→FR/NFR→TR traceability.
@@ -54,13 +55,13 @@
 
 **What HoBo is.** An *intermediary cloud control plane* with a developer-centric, cloud-agnostic TypeScript SDK. Developers describe their app once through **PaaS / SaaS / CaaS / IaaS abstractions**; a **provider pattern** (ports & adapters) maps those abstractions onto real providers. You can map the whole app to a single provider ("just host this on Azure, figure it out"), split tiers across providers, or pin specific boundaries to specific providers — and drop to typed **provider-specific options** when you want to optimize. IaC tools (Pulumi, Crossplane, Terraform/OpenTofu) and image/VM tools (Dagger, Packer, Vagrant, Firecracker) are themselves pluggable via the same ports/adapters pattern.
 
-**Why it wins.** Write cloud-agnostic code that ships anywhere; reach for provider-native power only when you want to. The API *feels like* [Vercel Workflows](https://workflow-sdk.dev/) and adopts its [**Worlds**](https://workflow-sdk.dev/worlds) abstraction for a portable, durable runtime. The whole system is **AI-native**: actor-model + choreography sagas over a replayable event store, agents as first-class authenticated users, a machine-readable **auth/capability standard** so agents self-provision credentials with zero developer effort, and AI-generated provider plugins instead of relying on a community to write them.
+**Why it wins.** Write cloud-agnostic code that ships anywhere; reach for provider-native power only when you want to. The API *feels like* [Vercel Workflows](https://workflow-sdk.dev/) for its durable `workflow`/`step` ergonomics, but the durable runtime is **HoBo-native and provided per [Camp](#glossary--naming-thematic-all-tunable)** (no dependency on any single vendor's runtime). The whole system is **AI-native**: actor-model + choreography sagas over a replayable event store, agents as first-class authenticated users, a machine-readable **auth/capability standard** so agents self-provision credentials with zero developer effort, and AI-generated provider plugins instead of relying on a community to write them.
 
 **Intended outcome.** A self-hostable (or hosted) **hobo-cloud** orchestrator + an SDK such that a developer (or an agent) can `hobo deploy` a TypeScript app and have it land on real infrastructure — agnostic by default, optimizable on demand.
 
 ### Decisions locked (from clarifying Q&A)
 1. **Substrate:** TS-native control-plane core (actor runtime + Pulumi Automation API to drive IaC); Kubernetes/Crossplane is *one optional* execution adapter, not the foundation.
-2. **Durable core:** HoBo defines its own *Worlds*-style ports (EventStore + Queue + Streamer + ActorHost + Clock) and ships a **built-in lightweight engine**, plus adapters for Temporal / Restate / DBOS / Cloudflare DO.
+2. **Durable core:** HoBo defines its own **runtime ports** (EventStore + Queue + Streamer + ActorHost + Clock) — the durable runtime a **Camp** provides — and ships a **built-in lightweight engine** (`runtime-local`), plus backends for Temporal / Restate / DBOS / Cloudflare DO. *(This is HoBo-native; it deliberately does **not** adopt Vercel's "World" concept.)*
 3. **SDK feel:** **Layered blend** — topology/resource layer + provider mapping + actor runtime + Vercel-style `workflow`/`step`/`agent` primitives + provider-specific options escape hatch.
 4. **Deepest in this round:** **SDK/API design** and **AI-native + agent auth**. Architecture overview and a UI sketch are included; control-plane internals and providers are at solid (not maximal) depth and flagged for later iteration.
 
@@ -82,13 +83,15 @@
 
 HoBo's metaphor is the itinerant worker who travels light and shares a standardized sign language. Names below are proposals; technical meaning is what matters.
 
-- **Bindle** — the deployable unit: an app's declared topology + bindings. (Lakebed "capsule" analog.)
-- **Camp** — an environment a bindle runs in (dev / preview / staging / prod).
-- **World** — the durable-runtime backing (ports: EventStore + Queue + Streamer + ActorHost + Clock). Adopted from Vercel. Selected per Camp.
+- **Layered scopes** — HoBo config nests in three scopes: **`Yard` ⊃ `Camp` ⊃ `Bindle`** — *governed-how-across-clouds* (cross-provider policy + control plane) ⊃ *where-on-which-provider* (a provider-specific target + its runtime) ⊃ *what-the-app-is* (app config).
+- **Bindle** — **app-level config**: an app's declared topology + bindings, provider-agnostic. (Lakebed "capsule" analog.) Deployed *into* Camps.
+- **Camp** — a **provider-specific deployment target** (one environment on one provider/cloud, e.g. `prod-aws`). A Camp **provides the durable runtime** (the runtime ports below) and binds the Bindle to that provider's capability ports. The local dev Camp ships a built-in runtime (`runtime-local`). Belongs to a Yard.
+- **Runtime ports** — the durable-runtime capability ports a **Camp** provides: EventStore + Queue + Streamer + ActorHost + Clock. Backends are pluggable (`runtime-local` built-in; `runtime-postgres` / `-temporal` / `-restate` / `-cloudflare`). *Replaces the earlier vendor-branded "World"; the substrate is now a property of a Camp, not a separate selectable noun.*
 - **Provider** — an adapter that implements infra **ports** (cloud / IaC / build/VM) for a specific backend.
 - **Port** — a capability interface (e.g. `Database`, `Compute`, `ObjectStore`, `Vm`) that providers implement.
 - **Hobo Code / Signs** — the machine-readable **auth + capability standard** (the `auth.md` analog). Providers publish "signs" describing what they offer and how an agent obtains a token. The thematic anchor: hobo signs were a real standardized symbol language for finding resources & safe routes — exactly what agents need.
-- **The Yard** — hobo-cloud: the control plane / orchestrator (rail-yard where bindles are routed to real hosting).
+- **The Yard** — hobo-cloud: the control plane / orchestrator **and the broadest scope** — it holds **cross-provider / cross-cloud / hybrid** policy + topology and governs many **Camps** (`Yard ⊃ Camp ⊃ Bindle`). A rail-yard where bindles are routed across providers to real hosting. A multi-cloud `production` is several Camps under one Yard.
+- **Config & secrets (secretless-first)** — apps read config/secrets via `ctx.config`; values resolve to **references per Camp**, never literals in the Bindle / Camp config / event log. Resolution prefers workload identity (SVID) → brokered short-lived tokens / OIDC federation ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 12](./12-security-multitenancy.md)/[Plan 31](./31-config-secretless-secrets.md)); static secrets are a bounded, audited, opt-in fallback ([ADR-0023](./adr/ADR-0023-security-posture-commitments.md)).
 - **Forge** — the AI pipeline that generates & certifies new Provider plugins.
 - **Grain** — a virtual actor (Orleans term, kept for familiarity); the default concurrency primitive.
 - **Planner** — the pure function that turns a Bindle + mapping into a `DeploymentPlan` DAG.
@@ -108,7 +111,7 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **Matching Criteria** — the specificity-scored selector that picks one Resource Definition for a deploy context (env-type/app/env/class/id); the decision is recorded as `match.Decided`.
 - **Driver** — the execution mechanism a definition uses to realize a resource: `terraform`/`template`/`echo`/`container`/`custom-webhook`.
 - **Deployment Set** — the immutable resolved config of a Camp at a point in time (the manifest IR). **Delta** — a mutable diff applied to a Set (draft→promote).
-- **Environment Type** — a Camp's classification (`production`/`ephemeral`/…); the primary matching dimension.
+- **Environment Type** — an environment classification (`production`/`ephemeral`/…) a Camp carries; the primary matching dimension. *Not a separate layer:* a multi-cloud `production` spans several Camps under one Yard.
 - **Workload Profile** — how a service is realized (wasm-component/container/serverless/VM). **Resource Pack** — a shareable bundle of Resource Definitions.
 - **Agent** — an outbound-only proxy inside a private network so a hosted Yard deploys there with no inbound.
 - **Four-lens taxonomy** — **Contract** = must never break · **Eval** = should improve · **Policy** = may/may not be allowed · **Trace** = what actually happened.

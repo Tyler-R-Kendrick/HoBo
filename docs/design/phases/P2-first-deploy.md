@@ -18,15 +18,15 @@
 2. Equivalence-class mappings + provider-specific `.with(...)` option types.
 3. Publish the provider's **Hobo Code** ([Plan 6](../06-ai-native-agent-auth.md)) and its **link** wiring ([Plan 20](../20-wasm-wasi-runtime.md)).
 
-## Workstream 3 — Production World (`@hobo/world-postgres`)
-1. Implement the five World ports on Postgres (graphile-worker-style queue, NOTIFY/LISTEN streams, snapshots); pass World-port conformance.
+## Workstream 3 — Production runtime (`@hobo/runtime-postgres`)
+1. Implement the five runtime ports on Postgres (graphile-worker-style queue, NOTIFY/LISTEN streams, snapshots); pass runtime-port conformance.
 
 ## Workstream 4 — Yard MVP (`@hobo/cloud`)
 1. **Gateway** (SDK RPC + REST) with authn/z; accept commands → emit events.
 2. **Planner**: manifest IR → `DeploymentPlan` DAG (provider resolution, capability negotiation) ([Plan 3](../03-providers-iac.md)).
 3. **Orchestrator + ResourceActors**: reconciliation FSM + choreography ([Plan 4](../04-control-plane.md)).
 4. **Executors**: Firecracker-sandboxed IaC apply + component build, scoped creds, `exec.*` events.
-5. **Event store** = Postgres World; deployment lifecycle events (`deployment.*`, `resource.*`).
+5. **Event store** = Postgres runtime; deployment lifecycle events (`deployment.*`, `resource.*`).
 6. OCI artifact push for built components.
 
 ## Workstream 5 — CLI deploy path
@@ -34,7 +34,7 @@
 2. `hobo login` (dev SVID stub; full broker in P3).
 
 ## Deliverables
-- `iac-pulumi`; one CloudProvider; `world-postgres`; Yard MVP (single-node); deploy path.
+- `iac-pulumi`; one CloudProvider; `runtime-postgres`; Yard MVP (single-node); deploy path.
 
 ## Exit criteria (acceptance)
 - `hello-bindle` **deploys to one real cloud** and serves traffic.

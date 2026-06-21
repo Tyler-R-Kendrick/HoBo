@@ -5,7 +5,7 @@
 > **v2 update.** Two event families join the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./23-stubbable-ai-implementations.md)). Both ride the same envelope and replay rules below.
 
 ## Why event sourcing is the foundation (not an add-on)
-HoBo makes one big bet: **the append-only event log is the single source of truth** for both the control plane (the Yard) and the data-plane runtime (the World). This buys four properties we'd otherwise have to build piecemeal:
+HoBo makes one big bet: **the append-only event log is the single source of truth** for both the control plane (the Yard) and the data-plane runtime (the Camp's runtime). This buys four properties we'd otherwise have to build piecemeal:
 - **Recovery** — crash mid-deploy or mid-workflow → replay the stream to rebuild exact state.
 - **Audit** — every infra change and every credential issuance is an immutable, ordered fact (directly answers "what did the agent do, and with what token?").
 - **Time-travel** — reconstruct state as-of any point; diff two points.
@@ -22,7 +22,7 @@ export interface EventEnvelope<T = unknown> {
   v: number;             // schema version of `type` (for upcasting)
   streamId: string;      // aggregate/run/actor key, e.g. "deployment:01H..."
   seq: number;           // per-stream monotonic sequence (optimistic concurrency)
-  ts: string;            // ISO8601, set by the World's Clock (deterministic on replay)
+  ts: string;            // ISO8601, set by the Camp's runtime Clock (deterministic on replay)
   actor: PrincipalRef;   // who/what caused it (user, agent SVID, system)
   tenant: string;        // isolation boundary (Plan 12)
   causationId?: string;  // the command/event that directly caused this
@@ -109,7 +109,7 @@ Projections are rebuildable from zero at any time (this is the test that the log
 - Never rewrite history; only add upcasters. This keeps replay/audit guarantees intact across years of schema drift.
 
 ## How replay powers durable workflows
-A workflow run is a stream of `run.*` events. On resume, the runtime replays the workflow function: each `step()` call checks the stream for a matching `StepCompleted` and returns the cached result if present, otherwise schedules the step (`StepScheduled`), suspends, and resumes when the step worker appends `StepCompleted`. Determinism is enforced by seeding `Math.random`/`crypto` and freezing `Date`/`env` from the run's seed events — identical to the Vercel model, but the `EventStore` is whichever World the Camp selected. See [Plan 2 §Layer 4](./02-sdk-api.md).
+A workflow run is a stream of `run.*` events. On resume, the runtime replays the workflow function: each `step()` call checks the stream for a matching `StepCompleted` and returns the cached result if present, otherwise schedules the step (`StepScheduled`), suspends, and resumes when the step worker appends `StepCompleted`. Determinism is enforced by seeding `Math.random`/`crypto` and freezing `Date`/`env` from the run's seed events — identical to the Vercel model, but the `EventStore` is whichever runtime backend the Camp provides. See [Plan 2 §Layer 4](./02-sdk-api.md).
 
 ## Iteration hooks
 - ULID vs UUIDv7 vs hybrid for `id`.

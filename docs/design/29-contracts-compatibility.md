@@ -70,8 +70,8 @@ deployable =
 ## Engine behind a port (no dependency)
 The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** as the default (it already has the graph, traces, and event log it needs). **Pact** is an *optional capability provider* (`@hobo/provider-pact`) that can export HoBo contracts to Pact interactions/message pacts, run Pact provider verification, and mirror a Pact Broker's `can-i-deploy` — for teams already invested in that ecosystem. HoBo owns the source of truth (the **HoBo Contract IR**); Pact/OpenAPI/AsyncAPI/Protobuf are import/export targets, never the model.
 
-## Worlds declare enforcement modes
-Each world ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 24](./24-wit-worlds-reference.md)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire world announcing capabilities.
+## Camps declare enforcement modes
+Each **Camp** (via its runtime + wasm host, [Plan 20](./20-wasm-wasi-runtime.md)/[Plan 24](./24-wit-worlds-reference.md)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire world announcing capabilities.
 
 ## Iteration hooks
 - Authoring surface when devs *want* explicit contracts (TS DSL vs annotations) vs pure inference.

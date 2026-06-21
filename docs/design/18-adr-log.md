@@ -7,8 +7,8 @@
 ### ADR-0001 — TS-native control-plane core (Kubernetes optional)
 **Status:** Accepted. **Context:** the control plane could be built on Kubernetes/Crossplane or as a bespoke TS service. **Decision:** TS-native core (actor runtime + Pulumi Automation API); Crossplane is one optional execution adapter. **Consequences:** maximal TS cohesion + self-host simplicity; we own reconciliation/HA we'd otherwise inherit from k8s ([Plan 4](./04-control-plane.md), [Plan 5](./05-reliability-ha.md)).
 
-### ADR-0002 — Pluggable durable ports + a built-in engine ("Worlds")
-**Status:** Accepted. **Context:** adopt one durable engine (Temporal/Restate) vs define our own ports. **Decision:** HoBo defines `World` ports (EventStore+Queue+Streamer+ActorHost+Clock) and ships a built-in engine plus adapters. **Consequences:** portability + no hard dependency; we must build/maintain the built-in engine and a conformance suite for Worlds ([Plan 2](./02-sdk-api.md)).
+### ADR-0002 — Pluggable durable ports + a built-in engine (the Camp runtime)
+**Status:** Accepted. **Context:** adopt one durable engine (Temporal/Restate) vs define our own ports. **Decision:** HoBo defines runtime ports (EventStore+Queue+Streamer+ActorHost+Clock), provided per Camp, and ships a built-in engine plus adapters. **Consequences:** portability + no hard dependency; we must build/maintain the built-in engine and a conformance suite for the runtime ports ([Plan 2](./02-sdk-api.md)).
 
 ### ADR-0003 — Event sourcing + CQRS as the foundation
 **Status:** Accepted. **Context:** state-based store vs event log. **Decision:** append-only event log is the single source of truth for both planes. **Consequences:** free replay/audit/time-travel and recovery; cost is CQRS discipline, projections, and schema upcasting ([Plan 11](./11-event-model.md)).
@@ -56,7 +56,7 @@
 **Status:** Accepted. **Decision:** an "allow but require X" obligation (canary/approval/auth/shadow-eval) is realized as a HoBo effect/saga and tracked `ObligationCreated→Satisfied`; an unmet obligation blocks ([Plan 30](./30-policy-plane.md)/[Plan 5](./05-reliability-ha.md)). **Consequences:** governance is enforced by construction, fully auditable.
 
 ## Open / proposed (not yet decided)
-- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the World's store) — [Plan 5](./05-reliability-ha.md).
+- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](./05-reliability-ha.md).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 13](./13-networking-connectivity.md).
 - **ADR-P3:** ~~policy language for guardrails/ABAC~~ — **Resolved by ADR-0015** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
 - **ADR-P4:** default Planner objective (cost-first vs latency-first) — [Plan 16](./16-cost-finops.md).

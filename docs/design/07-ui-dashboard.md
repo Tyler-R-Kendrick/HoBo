@@ -27,7 +27,7 @@
 - **Plan preview before deploy** — render `hobo plan` output (provider resolution, cost, warnings, cross-cloud edges) as an approvable diff; deploy from the UI triggers the same command path as the CLI.
 - **Approve a policy gate** — high-risk actions (destroy/prod/over-budget, incl. agent requests) surface as an inline approval that resolves a `createHook` ([Plan 6](./06-ai-native-agent-auth.md)).
 - **Promote / rollback** — move a Camp pointer with a confirmation; the timeline reflects it as events.
-- **Live tail** — logs and run streams render in real time via the World's `streams`.
+- **Live tail** — logs and run streams render in real time via the Camp's runtime `streams`.
 
 ## Tech & structure
 - Next.js app, itself a HoBo `web` resource in the Yard Bindle; subscribes to projections via the Gateway's read API and to live data via streams.
@@ -37,13 +37,13 @@
 Additional views the v2 model adds, each a projection/stream like the rest:
 | View | Source | Shows |
 |---|---|---|
-| **Local emulation** (Nitric-style) | `world-local` | test APIs; browse kv/sql/buckets; trigger schedules; publish to topics; inspect websockets ([Plan 15](./15-cli-dx.md)) |
+| **Local emulation** (Nitric-style) | `runtime-local` | test APIs; browse kv/sql/buckets; trigger schedules; publish to topics; inspect websockets ([Plan 15](./15-cli-dx.md)) |
 | **Collected manifest** | `bindle.ManifestProduced` | the IfC resource-collection output (resources, links, annotations) before deploy ([Plan 22](./22-wiring-manifest.md)) |
 | **Link map** | manifest links | each component's imports → resolved capability providers ([Plan 20](./20-wasm-wasi-runtime.md)) |
 | **WIT-call traces** | `link.Called` / stub recordings | cross-port calls; the basis for AI implement/evolve/live-fix **proposals + gate approvals** ([Plan 23](./23-stubbable-ai-implementations.md)) |
 
 ## Iteration hooks
 - Information architecture & navigation; the design system.
-- Whether the dashboard is World-agnostic (read API only) or has a World-specific fast path.
+- Whether the dashboard is runtime-agnostic (read API only) or has a runtime-specific fast path.
 - Depth of replay/diff tooling in UI vs CLI.
 - Multi-tenant org/team/project navigation and RBAC surfacing.

@@ -17,7 +17,7 @@
 
 ## Workstream 2 — Deployment strategies ([Plan 5](../05-reliability-ha.md))
 1. Saga templates: **recreate / blue-green / canary / progressive**, with health-gated promotion + auto-rollback.
-2. Wire health signals from the data plane (World metrics) + provider health checks into the gates.
+2. Wire health signals from the data plane (Camp runtime metrics) + provider health checks into the gates.
 
 ## Workstream 3 — Cost & FinOps ([Plan 16](../16-cost-finops.md))
 1. Plan-time **cost estimate** from `cost.json` × usage profile + egress per connectivity tier; show in `hobo plan`.
@@ -43,6 +43,6 @@
 - Dashboard renders every view from projections only (no live-provider reads).
 
 ## Risks / iteration hooks
-- Consensus choice (own Raft vs delegate to the World's store); RPO/RTO targets.
+- Consensus choice (own Raft vs delegate to the Camp's runtime store); RPO/RTO targets.
 - Multi-region: active-active vs active-passive.
 - Canary health-signal sources + the auto-rollback decision function.

@@ -96,13 +96,13 @@ flowchart LR
 Implementing/evolving a `"use training"` method is a **continuous optimization loop**, modeled on two Microsoft frameworks but wrapped so SDK users never see them:
 
 - **From [Microsoft Trace](https://microsoft.github.io/Trace/):** treat the graph of `"use training"` methods + their calls as an **optimizable computational graph**. Each method's instruction/prompt/code is a *trainable parameter*; feedback (eval scores, natural-language critiques, errors, SLO/cost signals) propagates back through the recorded execution graph and an LLM-based optimizer (OptoPrime/TextGrad/OPRO-style) rewrites the parameters *in place* — "backprop for prompts and code." HoBo's built-in `training-engine` is this OPTO-style optimizer.
-- **From [Agent Lightning](https://microsoft.github.io/agent-lightning/stable/):** **decouple execution from training.** The running app (the agent/method) just executes and emits trajectories; a separate **trajectory store + trainer** consumes them and produces candidate improvements via RL (GRPO/PPO), automatic prompt optimization (APO), or SFT. This is exactly HoBo's control-plane/data-plane split — the World runs the method, the Yard's training-engine optimizes it offline/async. **HoBo may use Agent Lightning itself as the provider behind the port** to run the trainer.
+- **From [Agent Lightning](https://microsoft.github.io/agent-lightning/stable/):** **decouple execution from training.** The running app (the agent/method) just executes and emits trajectories; a separate **trajectory store + trainer** consumes them and produces candidate improvements via RL (GRPO/PPO), automatic prompt optimization (APO), or SFT. This is exactly HoBo's control-plane/data-plane split — the Camp's runtime runs the method, the Yard's training-engine optimizes it offline/async. **HoBo may use Agent Lightning itself as the provider behind the port** to run the trainer.
 
 **Engines behind a port (the load-bearing rule).** Following [ADR-0015](./adr/README.md), `training-engine` is a **WIT port** ([Plan 24](./24-wit-worlds-reference.md)) with a **built-in default**; **Agent Lightning** (`@hobo/provider-agent-lightning`) and **Trace** (`@hobo/provider-trace`) are **optional adapters selected per tenant/Camp and are NOT part of the SDK surface**. SDK users write `"use training"` + intent + rubric; they never import, configure, or even need to know which optimizer ran. Swapping optimizers is a config change, never an app-code change ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)).
 
 ```mermaid
 flowchart LR
-  RUN["Runtime executes use-training method<br/>(World, data plane)"] --> CAP["OTel + OpenInference spans<br/>= trajectory (inputs, output, messages, tokens, reward)"]
+  RUN["Runtime executes use-training method<br/>(Camp runtime, data plane)"] --> CAP["OTel + OpenInference spans<br/>= trajectory (inputs, output, messages, tokens, reward)"]
   CAP --> STORE[("Trajectory store<br/>(event log + spans)")]
   LE["Live-evals (rubric on live/shadow traffic)"] --> STORE
   STORE --> OPT["training-engine port<br/>built-in OPTO | Agent Lightning | Trace (internal)"]

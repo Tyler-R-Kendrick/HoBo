@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Security is load-bearing here because HoBo holds the keys to other people's clouds and runs AI-generated code. See also [agent auth](./06-ai-native-agent-auth.md) and the [event model](./11-event-model.md).
 
-> **v3 (Humanitec):** the **HoBo Agent** ([Plan 28](./28-agent-gitops-pipelines.md)) keeps cloud credentials inside the customer's network — outbound-only TCP 443 reverse tunnel, SVID-authenticated, no inbound; Executors run behind it. This unlocks regulated/air-gapped/sovereign deploys without the Yard ever connecting into the private network.
+> **v3 (Humanitec):** the **HoBo Relay** ([Plan 28](./28-relay-gitops-pipelines.md)) keeps cloud credentials inside the customer's network — outbound-only TCP 443 reverse tunnel, SVID-authenticated, no inbound; Executors run behind it. This unlocks regulated/air-gapped/sovereign deploys without the Yard ever connecting into the private network.
 
 > **v4 (policy plane):** the governance rules here are expressed as **policy packs** — signed, versioned resources evaluated by the **policy plane** ([Plan 30](./30-policy-plane.md)). Decisions can carry **obligations** (require signed+attested artifact / encryption / approved region for a data classification), tracked to completion as events. Supply-chain attestation and data-classification/region constraints become gate dimensions, not prose.
 

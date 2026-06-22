@@ -1,6 +1,6 @@
 # Plan 30 — The policy plane (decisions, obligations & gates)
 
-> Part of the [HoBo Design Plan Suite](./README.md). Consolidates HoBo's scattered gates ([Plan 5](./05-reliability-ha.md)/[Plan 6](./06-ai-native-agent-auth.md)/[Plan 12](./12-security-multitenancy.md)/[Plan 28](./28-agent-gitops-pipelines.md)) into **one decision model** — a HoBo-native policy plane with engines behind a WIT port. No new dependency.
+> Part of the [HoBo Design Plan Suite](./README.md). Consolidates HoBo's scattered gates ([Plan 5](./05-reliability-ha.md)/[Plan 6](./06-ai-native-agent-auth.md)/[Plan 12](./12-security-multitenancy.md)/[Plan 28](./28-relay-gitops-pipelines.md)) into **one decision model** — a HoBo-native policy plane with engines behind a WIT port. No new dependency.
 
 ## Why a plane (not scattered gates)
 HoBo already gates agent actions, live-fix, deploys, and pipelines — but each is bespoke and mostly boolean. The contribution here is a **single policy decision model** that every gate calls, with **lifecycle phases**, **rich effects**, and **obligations**. It answers one question everywhere:

@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). This is the load-bearing map; most other plans refine a box on it.
 
-> **v3 (Humanitec):** the Planner box resolves resources via **Resource Definitions + Matching** ([Plan 25](./25-resource-definitions-matching.md)); Executors can run behind a **HoBo Agent** inside a private network ([Plan 28](./28-agent-gitops-pipelines.md)); a **GitOps publisher** is an alternate path from Set → cluster. Control/data-plane split and event-sourced invariants are unchanged.
+> **v3 (Humanitec):** the Planner box resolves resources via **Resource Definitions + Matching** ([Plan 25](./25-resource-definitions-matching.md)); Executors can run behind a **HoBo Relay** inside a private network ([Plan 28](./28-relay-gitops-pipelines.md)); a **GitOps publisher** is an alternate path from Set → cluster. Control/data-plane split and event-sourced invariants are unchanged.
 
 > **v4 (gates):** two governance planes sit at the deploy decision point as **WIT ports with built-in engines** — a **contract plane** (compatibility/`can-deploy`, [Plan 29](./29-contracts-compatibility.md)) and a **policy plane** (decisions + obligations, [Plan 30](./30-policy-plane.md)) — composed by the **Gatekeeper** alongside conformance/evals/cost. The organizing lens across the suite: **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened.**
 

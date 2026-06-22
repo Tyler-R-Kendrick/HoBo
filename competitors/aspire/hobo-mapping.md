@@ -21,7 +21,7 @@
 | Aspire | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | `aspire-manifest.json` (deploy IR) | **manifest IR = Deployment Set** | ✅➕ | [22](../../docs/design/22-wiring-manifest.md), [26](../../docs/design/26-environments-deltas.md) |
-| Publishers (azd/Compose/K8s/custom) | Publisher targets incl. **GitOps publisher** | ✅ | [22](../../docs/design/22-wiring-manifest.md), [28](../../docs/design/28-agent-gitops-pipelines.md) |
+| Publishers (azd/Compose/K8s/custom) | Publisher targets incl. **GitOps publisher** | ✅ | [22](../../docs/design/22-wiring-manifest.md), [28](../../docs/design/28-relay-gitops-pipelines.md) |
 | Compute environments | Camps + **environment types** | ✅ | [26](../../docs/design/26-environments-deltas.md) |
 | DCP (local Go orchestrator) | local `runtime-local` host / dev loop; the Yard for hosted | ✅ | [20](../../docs/design/20-wasm-wasi-runtime.md), [04](../../docs/design/04-control-plane.md) |
 | Aspire Dashboard (resource graph, OTel) | Dashboard: resource graph + run inspector + replay | ➕ | [07](../../docs/design/07-ui-dashboard.md), [14](../../docs/design/14-observability.md) |

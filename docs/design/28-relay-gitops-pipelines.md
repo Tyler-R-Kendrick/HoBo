@@ -1,21 +1,21 @@
-# Plan 28 — The HoBo Agent, GitOps publisher & Pipelines
+# Plan 28 — The HoBo Relay, GitOps publisher & Pipelines
 
 > Part of the [HoBo Design Plan Suite](./README.md). The operational surface for private-network deploys, Git-driven delivery, and rule-based automation — HoBo's adoption of Humanitec's Agent/GitOps/Pipelines ([capture](../../competitors/humanitec/platform-ops.md)).
 
-## The HoBo Agent (deploy into private / air-gapped networks)
-A hosted Yard can't reach a customer's private cluster/cloud. The **HoBo Agent** is a lightweight proxy inside that network:
-- **Outbound-only reverse tunnel:** the Agent dials the Yard over **TCP 443** (no inbound ports, no exposed endpoints); TLS + authenticated with an SVID ([Plan 6](./06-ai-native-agent-auth.md)).
-- **Executors run behind the Agent:** IaC/build/driver execution ([Plan 27](./27-drivers-packs-profiles.md)) happens inside the private network; **credentials never leave it**; the Yard sends work + receives `exec.*`/outputs over the tunnel.
-- One Agent can serve multiple clusters/targets; routing by target id. Enables regulated/air-gapped/sovereign deploys ([Plan 12](./12-security-multitenancy.md)) and self-hosted parity.
+## The HoBo Relay (deploy into private / air-gapped networks)
+A hosted Yard can't reach a customer's private cluster/cloud. The **HoBo Relay** is a lightweight proxy inside that network:
+- **Outbound-only reverse tunnel:** the Relay dials the Yard over **TCP 443** (no inbound ports, no exposed endpoints); TLS + authenticated with an SVID ([Plan 6](./06-ai-native-agent-auth.md)).
+- **Executors run behind the Relay:** IaC/build/driver execution ([Plan 27](./27-drivers-packs-profiles.md)) happens inside the private network; **credentials never leave it**; the Yard sends work + receives `exec.*`/outputs over the tunnel.
+- One Relay can serve multiple clusters/targets; routing by target id. Enables regulated/air-gapped/sovereign deploys ([Plan 12](./12-security-multitenancy.md)) and self-hosted parity.
 ```mermaid
 flowchart LR
-  YARD["Yard (hosted control plane)"] -. work / results over outbound 443 .- AG["HoBo Agent<br/>(customer private network)"]
+  YARD["Yard (hosted control plane)"] -. work / results over outbound 443 .- AG["HoBo Relay<br/>(customer private network)"]
   AG --> EX["Executors (sandboxed)"]
   EX --> PRIV["private cluster / cloud / DB"]
 ```
 
 ## Air-gapped / sovereign mode (fully disconnected) ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md))
-The Agent above is the *connected-private* path (it dials a hosted Yard over outbound 443). A **fully disconnected / sovereign** environment has no such path — so air-gap is a **first-class self-hosted Yard profile**: the whole control plane (Yard + Registry + Identity + Executors + runtime + optional models) runs **inside the boundary with zero egress**.
+The Relay above is the *connected-private* path (it dials a hosted Yard over outbound 443). A **fully disconnected / sovereign** environment has no such path — so air-gap is a **first-class self-hosted Yard profile**: the whole control plane (Yard + Registry + Identity + Executors + runtime + optional models) runs **inside the boundary with zero egress**.
 - **Artifacts enter via signed offline bundle import** (`hobo registry import <bundle>`): provider plugins, Capability Manifest, Resource Packs, base images, and optional model weights, each with **SLSA provenance + conformance reports**, **verified in-boundary against the same trust boundary** as the live Registry (signature + provenance + conformance) — one-way-transfer (sneakernet / data diode) friendly; the in-boundary Registry serves the mirror, **no live crawl**. Recorded as `registry.BundleImported` ([Plan 11](./11-event-model.md)).
 - **In-boundary trust roots + local models, graceful degradation:** Identity issues SVIDs locally; certs use an **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)); secrets via **in-boundary KMS/HSM** ([ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)); `embed`/Forge/`"use training"` use **local models when provisioned, else degrade** (Forge→human-authored only, training→static, `embed`→BYO vectors, [ADR-0034](./adr/ADR-0034-search-vector-surface.md)); telemetry/live-evals stay in-boundary (no phone-home). The **deterministic core (deploy/match/migrate/route) needs no model or egress**, so air-gapped deploys work fully.
 
@@ -53,7 +53,7 @@ flowchart TD
 > Air-gap is a **single in-boundary Yard**; multi-Yard **federation** (multi-region/regulatory) remains deferred ([Q20](./09-verification-open-questions.md)).
 
 ## GitOps publisher mode
-Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** ([Plan 26](./26-environments-deltas.md)) as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 22](./22-wiring-manifest.md)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Agent can supply runtime data back.
+Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** ([Plan 26](./26-environments-deltas.md)) as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 22](./22-wiring-manifest.md)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Relay can supply runtime data back.
 
 ## Pipelines (rule-based automation + approval gates)
 **Pipelines** sit above the deployment sagas ([Plan 5](./05-reliability-ha.md)) and policy gates ([Plan 6](./06-ai-native-agent-auth.md)) to automate *when* deploys happen:

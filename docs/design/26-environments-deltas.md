@@ -18,7 +18,7 @@ A Camp can be **cloned** from another that has a prior successful deployment (`c
 
 ## Ephemeral / preview environments
 Per-PR/feature environments, created and torn down automatically:
-- Created by CI / a Pipeline ([Plan 28](./28-agent-gitops-pipelines.md)) on PR open; **auto-TTL** reaps them.
+- Created by CI / a Pipeline ([Plan 28](./28-relay-gitops-pipelines.md)) on PR open; **auto-TTL** reaps them.
 - Platform engineers map **cheap variants** to `envType: ephemeral` via matching (in-cluster DB, scale-to-zero wasm, shared cluster) — so previews are cheap by construction ([Plan 16](./16-cost-finops.md)).
 - Each gets its own Camp + isolated event streams ([Plan 12](./12-security-multitenancy.md)).
 

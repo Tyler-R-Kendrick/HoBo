@@ -67,5 +67,9 @@
 | 0051 | WIT records as the canonical domain schema (TS + protobuf + Zod generated) | Accepted | [ADR-0051](./ADR-0051-wit-record-canonical-domain-schema.md) |
 | 0052 | Projection-sink paradigm taxonomy & the reactivity boundary | Accepted | [ADR-0052](./ADR-0052-projection-sink-paradigm-taxonomy.md) |
 | 0053 | Write-side consistency: commands, aggregates & the actor boundary | Accepted | [ADR-0053](./ADR-0053-write-side-aggregates-and-commands.md) |
+| 0054 | Operator Agents (the Crew): built-in autonomous Yard services | Accepted | [ADR-0054](./ADR-0054-operator-agent-roster.md) |
+| 0055 | The generated stack: layered AI generation/self-healing/persistence | Accepted | [ADR-0055](./ADR-0055-generated-stack-layered-model.md) |
+| 0056 | App-UI generation + Design.md design-system enforcement | Accepted | [ADR-0056](./ADR-0056-ui-generation-and-design-system.md) |
+| 0057 | Patchability as a first-class guarantee (distinct from portability) | Accepted | [ADR-0057](./ADR-0057-patchability-derivative-implementations.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

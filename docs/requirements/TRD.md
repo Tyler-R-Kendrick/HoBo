@@ -184,7 +184,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 |---|---|---|
 | **TR-120** | Connectivity is derived from `bind` edges; the Planner selects a **tier** (same-region private → cross-region → cross-provider private → overlay mesh → public+mTLS) and may be overridden via `.with(...)`. | Connectivity-tier test ([09](../design/09-verification-open-questions.md)) |
 | **TR-121** | **mTLS-by-default** between services, keyed by workload SVIDs; certs issued/rotated by Identity (zero-trust); apps don't manage them. | Cross-provider mTLS test (P4 gate) |
-| **TR-122** | The **HoBo Agent** provides an outbound-only (no inbound) reverse tunnel for private-network targets. | Private-target deploy test ([28](../design/28-agent-gitops-pipelines.md)) |
+| **TR-122** | The **HoBo Relay** provides an outbound-only (no inbound) reverse tunnel for private-network targets. | Private-target deploy test ([28](../design/28-relay-gitops-pipelines.md)) |
 
 ### 5.14 Cross-cutting: observability ([14](../design/14-observability.md))
 | ID | Requirement | Verified by |

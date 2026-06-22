@@ -29,15 +29,15 @@
 | Humanitec | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | Portal (golden paths, catalogs, scorecards) | HoBo dashboard + resource-graph/matching/delta/pipeline views | ✅ | [07](../../docs/design/07-ui-dashboard.md) |
-| Agent (private-network reverse tunnel) | **HoBo Agent** (outbound-only; Executors run behind it) | ✅ | [28](../../docs/design/28-agent-gitops-pipelines.md), [12](../../docs/design/12-security-multitenancy.md), [13](../../docs/design/13-networking-connectivity.md) |
+| Agent (private-network reverse tunnel) | **HoBo Relay** (outbound-only; Executors run behind it) | ✅ | [28](../../docs/design/28-relay-gitops-pipelines.md), [12](../../docs/design/12-security-multitenancy.md), [13](../../docs/design/13-networking-connectivity.md) |
 | Operator (secret provisioning) | Provider `secrets` port + brokered tokens | ✅ | [06](../../docs/design/06-ai-native-agent-auth.md), [12](../../docs/design/12-security-multitenancy.md) |
-| Pipelines (triggers + approval gates) | **Pipelines** atop sagas + policy gates | ✅ | [28](../../docs/design/28-agent-gitops-pipelines.md), [05](../../docs/design/05-reliability-ha.md) |
-| GitOps mode (write CRs to Git) | **GitOps publisher** target | ✅ | [28](../../docs/design/28-agent-gitops-pipelines.md), [22](../../docs/design/22-wiring-manifest.md) |
+| Pipelines (triggers + approval gates) | **Pipelines** atop sagas + policy gates | ✅ | [28](../../docs/design/28-relay-gitops-pipelines.md), [05](../../docs/design/05-reliability-ha.md) |
+| GitOps mode (write CRs to Git) | **GitOps publisher** target | ✅ | [28](../../docs/design/28-relay-gitops-pipelines.md), [22](../../docs/design/22-wiring-manifest.md) |
 | Resource Packs | **Resource Packs** in the Registry (Forge-generatable) | ➕ | [27](../../docs/design/27-drivers-packs-profiles.md), [06](../../docs/design/06-ai-native-agent-auth.md) |
 | RBAC + approvals | ABAC + policy gates | ✅ | [12](../../docs/design/12-security-multitenancy.md), [06](../../docs/design/06-ai-native-agent-auth.md) |
 | Audit logs (365d, immutable) | Event log **is** the audit log (replayable) | ➕ | [11](../../docs/design/11-event-model.md), [14](../../docs/design/14-observability.md) |
 | Drift detection | Drift loop (heal/propose/ignore) | ✅ | [05](../../docs/design/05-reliability-ha.md) |
-| CI/CD integration | CLI/MCP + Pipelines + artifact triggers | ✅ | [15](../../docs/design/15-cli-dx.md), [28](../../docs/design/28-agent-gitops-pipelines.md) |
+| CI/CD integration | CLI/MCP + Pipelines + artifact triggers | ✅ | [15](../../docs/design/15-cli-dx.md), [28](../../docs/design/28-relay-gitops-pipelines.md) |
 | MCP (AI agents drive it) | `@hobo/mcp` (agents as first-class principals) | ➕ | [06](../../docs/design/06-ai-native-agent-auth.md) |
 | Self-hosted + air-gapped | Self-host = hosted (the Yard is a Bindle) + Agent | ✅ | [04](../../docs/design/04-control-plane.md) |
 | IDP "5-plane" framing | HoBo = Integration & Delivery plane orchestrator | ✅ | [00](../../docs/design/00-vision.md), [17](../../docs/design/17-positioning-competitive.md) |

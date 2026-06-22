@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). This was an explicit iteration target; below is the concrete design, not a sketch.
 
-> **v3 (Humanitec):** **Pipelines** + approval gates ([Plan 28](./28-agent-gitops-pipelines.md)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 26](./26-environments-deltas.md)) shrink blast radius and rollout time.
+> **v3 (Humanitec):** **Pipelines** + approval gates ([Plan 28](./28-relay-gitops-pipelines.md)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 26](./26-environments-deltas.md)) shrink blast radius and rollout time.
 
 > **v2 update.** AI **live-fix** ([Plan 23](./23-stubbable-ai-implementations.md)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
 

@@ -9,8 +9,8 @@
 | Mutations = OCC serializable transactions | Single-writer actor leases + exactly-once effects | ✅ | [05](../../docs/design/05-reliability-ha.md) |
 | Actions (external calls; Node runtime) | Provider/driver calls in sandboxed Executors; durable `step`/`workflow` | ✅ | [02](../../docs/design/02-sdk-api.md), [04](../../docs/design/04-control-plane.md) |
 | Document DB + schema + indexes + vector search | A **capability/resource** in HoBo's catalog (`database`/`vector`/`blobstore` ports) | ↔ | [21](../../docs/design/21-resources-catalog.md), [24](../../docs/design/24-wit-interfaces-reference.md) |
-| Scheduled functions + cron | Saga scheduling + Pipelines/triggers | ✅ | [05](../../docs/design/05-reliability-ha.md), [28](../../docs/design/28-agent-gitops-pipelines.md) |
-| HTTP actions / webhooks | Provider HTTP ports + GitOps/webhook triggers | ✅ | [22](../../docs/design/22-wiring-manifest.md), [28](../../docs/design/28-agent-gitops-pipelines.md) |
+| Scheduled functions + cron | Saga scheduling + Pipelines/triggers | ✅ | [05](../../docs/design/05-reliability-ha.md), [28](../../docs/design/28-relay-gitops-pipelines.md) |
+| HTTP actions / webhooks | Provider HTTP ports + GitOps/webhook triggers | ✅ | [22](../../docs/design/22-wiring-manifest.md), [28](../../docs/design/28-relay-gitops-pipelines.md) |
 
 ## The three user-emphasized surfaces
 | Convex | HoBo equivalent | Status | HoBo doc |

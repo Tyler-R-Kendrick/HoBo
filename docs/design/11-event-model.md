@@ -77,7 +77,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Environments, deltas & sets** ([Plan 26](./26-environments-deltas.md))
 `env.Created` · `env.Cloned` · `env.Reaped` (ephemeral TTL) · `delta.Opened` · `delta.Updated` · `delta.Applied` · `set.Created` · `deployment.Promoted`
 
-**Pipelines** ([Plan 28](./28-agent-gitops-pipelines.md))
+**Pipelines** ([Plan 28](./28-relay-gitops-pipelines.md))
 `pipeline.Triggered` · `pipeline.StepStarted` · `pipeline.StepCompleted` · `pipeline.GateRequested` · `pipeline.GateApproved` · `pipeline.GateRejected` · `pipeline.Completed`
 
 **Contracts & compatibility** ([Plan 29](./29-contracts-compatibility.md))

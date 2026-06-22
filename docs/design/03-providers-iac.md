@@ -39,7 +39,7 @@ export interface CloudProvider {
   regions: string[];
   capabilities: Capability[];
   realize(plan: ResourcePlan): { iac: IacProgram; build?: BuildSpec };
-  code(): HoboCode;                             // machine-readable signs (Plan 6)
+  capabilityManifest(): CapabilityManifest;     // machine-readable signs (Plan 6)
   client(port: PortKind, outputs: Outputs): unknown; // the runtime client for ctx.bindings
 }
 

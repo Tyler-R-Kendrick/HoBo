@@ -34,6 +34,12 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 - Built-in SLOs (e.g. deploy success rate, control-plane availability from [Plan 5](./05-reliability-ha.md)) with burn-rate alerts.
 - Alert routing is a provider capability (`email`/webhook/PagerDuty); high-risk policy gates ([Plan 6](./06-ai-native-agent-auth.md)) can post to the same channels for human approval.
 
+### SLO-as-code + error-budget gating + an AlertManager-style model ([ADR-0045](./adr/ADR-0045-slo-as-code-and-alerting.md))
+- **SLO-as-code:** SLOs/SLIs/objectives/error-budgets are **declared** ([OpenSLO](../../standards/openslo.md)-aligned; SLI source behind a port) and versioned as part of the resolved Set ([Plan 26](./26-environments-deltas.md)), computed from the telemetry above.
+- **Error budgets gate:** burn-rate + remaining budget is a **policy input** — a policy ([Plan 30](./30-policy-plane.md)) can **freeze deploys / require approval** when the budget burns (a `can-deploy` dimension, [Plan 29](./29-contracts-compatibility.md)) and an obligation can **auto-revert** a rollout or feature flag ([ADR-0044](./adr/ADR-0044-feature-flags-progressive-delivery.md)). Events `slo.Declared`/`slo.BudgetBurned`.
+- **Alerting model:** alerts derive from SLO burn + health/drift/spend ([Plan 5](./05-reliability-ha.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) through an **[AlertManager](../../technologies/prometheus-alertmanager.md)-style** model — **grouping, dedup, silencing, inhibition, a routing tree**, and notification **receivers as providers** — all **event-sourced** (`alert.*`) so "why did (or didn't) this page" replays.
+- **Boundary export ([ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)):** telemetry exports **OTLP-native**; events export **CloudEvents**-compatible; the audit log exports to **OCSF** for SIEM.
+
 ## Observability for agents (closing the loop)
 - Agents read the same projections over MCP (`inspect_run`, `tail_logs`, `get_drift`) so an autonomous operator agent can diagnose its own deploy, see why a step failed, and self-correct — the operational analog of Lakebed's "agent discovers the contract."
 - The `CredentialAudit` projection answers "what did this agent access, with which token, when?" for security review.

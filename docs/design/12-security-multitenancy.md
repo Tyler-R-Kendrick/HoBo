@@ -48,6 +48,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 
 ## Audit & compliance
 - The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.
+- **SIEM export via OCSF** ([ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)): security-relevant events (`token.*`, `identity.*`, `policy.Decided`, `domain.Cert*`, `registry.BundleImported`, `flag.Changed`, …) map to **[OCSF](../../standards/ocsf.md)** classes via an exporter/projection (no change to how they're stored), so the audit trail drops straight into an enterprise SIEM.
 - Retention: audit streams (`token.*`, `resource.*`, policy decisions) retained per policy and never compacted; runtime streams have shorter retention.
 - Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 3](./03-providers-iac.md)) and residency violations are rejected at plan time.
 - **Metering/billing data is tenant-scoped.** The `MeteringView` + showback attribution ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) are projections over the same per-tenant-isolated streams, so usage/cost data inherits the tenant isolation above — no cross-tenant metering leakage.

@@ -107,6 +107,12 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Feature flags** ([Plan 37](./37-feature-flags-progressive-delivery.md)/[ADR-0044](./adr/ADR-0044-feature-flags-progressive-delivery.md))
 `flag.Defined` · `flag.Changed` (value/targeting diff + actor — "who flipped what, for whom") · `flag.Evaluated` (sampled, optional, for experiments) · `flag.Archived` (flip-gate decisions ride `policy.Decided`)
 
+**SLO & alerting** ([Plan 14](./14-observability.md)/[ADR-0045](./adr/ADR-0045-slo-as-code-and-alerting.md)) — SLO/budget state is a projection; these are the decision/notification facts
+`slo.Declared` · `slo.BudgetBurned` (burn-rate threshold crossed → policy input) · `alert.Fired` · `alert.Grouped` · `alert.Silenced` · `alert.Inhibited` · `alert.Resolved`
+
+**Chaos** ([ADR-0047](./adr/ADR-0047-chaos-resilience-verification-tier.md)) — fault injection is policy-gated + blast-radius-bounded
+`chaos.ExperimentStarted` (hypothesis + fault + blast radius) · `chaos.FaultInjected` · `chaos.SteadyStateChecked` · `chaos.Aborted` · `chaos.ExperimentCompleted` (a failed experiment's replay becomes a regression test, [Plan 23](./23-stubbable-ai-implementations.md))
+
 **Training** (`"use training"` semantic-function optimization, [Plan 23](./23-stubbable-ai-implementations.md))
 `training.RunStarted` · `training.TrajectoryCaptured` (OTel/OpenInference span tree + I/O) · `training.RewardObserved` (live-eval signal) · `training.CandidateProposed` (rewritten prompt/code) · `training.CandidateEvaluated` · `training.Promoted` · `training.Rejected`
 

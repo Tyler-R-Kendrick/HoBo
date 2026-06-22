@@ -28,4 +28,4 @@ ADR-0026 made a **Camp** provider-specific and nested `Yard ⊃ Camp ⊃ Bindle`
 - **(+)** Per-Camp Sets/Deltas/`can-deploy` are unchanged; the group composes them.
 - **(−)** Requires `env.*` group-saga events + a group view in the dashboard, and a clear story for partial-success across clouds (covered by saga compensation + `optional` Camps).
 - **(−)** Cross-Camp app boundaries inherit cross-provider latency/egress; the Planner still prefers colocation ([13](../13-networking-connectivity.md)/[16](../16-cost-finops.md)) and `hobo doctor` warns on accidental cross-cloud edges.
-- **Follow-ups:** stateful-data consistency across Camps and app-data migration are **not** solved here — tracked as open questions ([09](../09-verification-open-questions.md)).
+- **Follow-ups:** ~~stateful-data consistency across Camps~~ — **resolved by [ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md)** (declared replication topology, single-writer-Camp default, event-log backbone, labeled bounded-staleness + write-goes-home); ~~app-data migration~~ — **resolved by [ADR-0032](./ADR-0032-data-portability-schema-versioning.md)** ([Plan 34](../34-app-data-migrations.md)).

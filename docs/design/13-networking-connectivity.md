@@ -53,6 +53,29 @@ flowchart TD
   HC["health signals (Plan 5)"] -.->|failover flip| DNS
 ```
 
+## Cross-Camp state consistency ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md))
+When a Bindle spans Camps ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)), HoBo does **not** silently make state strongly consistent across clouds (CAP). Each piece of cross-Camp state declares a **replication topology** (resolved config, [Plan 26](./26-environments-deltas.md)): **single-writer-Camp** (default), **active-active-eventual** (CRDT/event-merge, opt-in), or **pinned-single-Camp**.
+- **Replication backbone = the event log.** The owning Camp writes; other Camps consume a replicated read-stream into **bounded-staleness projections** ([Plan 11](./11-event-model.md)/[Plan 5](./05-reliability-ha.md)). Provider-backed stores default to single-writer + cross-Camp read over the connectivity tiers above (active-active CDC deferred).
+- **Honest surface:** non-owner reads are **labeled** stale-by ≤ replication lag; **reads-your-writes** holds in the writer Camp; **consistency-requiring writes "go home"** to the owner; cross-Camp reactive queries ([Plan 32](./32-reactive-live-queries.md)) carry the staleness label.
+
+```mermaid
+flowchart LR
+  subgraph OWN["owner Camp (single writer)"]
+    W["writes to event log / store"]
+    R0["reads-your-writes (local)"]
+  end
+  subgraph OTHER["other Camp(s)"]
+    PROJ["replicated read-stream to bounded-staleness projection"]
+    RR["read, labeled stale-by &lt;= lag"]
+    WH["consistency-requiring write"]
+  end
+  W -->|replicate via event log| PROJ
+  PROJ --> RR
+  WH -->|write-goes-home| W
+  PROJ -.->|cross-Camp reactive query + staleness label| RX["useQuery client"]
+  ALT["active-active-eventual opt-in: CRDT / event-merge"] -.-> PROJ
+```
+
 ## DNS & naming
 - Each Camp gets a namespace; resources have stable logical names (`shop.api`). HoBo manages records on the resolved provider's DNS (or a HoBo-managed zone), abstracted behind logical endpoints so app code never hardcodes hosts.
 - Internal service discovery uses the SVID/identity layer, not DNS round-robin, so it works across providers.

@@ -43,6 +43,7 @@ Each grain key (ResourceActor, app actors) has at most one active instance:
 
 ## Control-plane HA
 - **Event store replication:** the source of truth is replicated (synchronous quorum for the control-plane streams). Adapter-specific: `runtime-postgres` → synchronous replicas; built-in engine → Raft log.
+- **Cross-Camp app-state replication** reuses this same backbone with **declared topologies** ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)): single-writer-Camp (owner writes; other Camps consume a replicated read-stream into bounded-staleness projections), active-active-eventual (CRDT), or pinned — surfaced via the **labeled bounded-staleness reads** below.
 - **Leader election** only for *singletons* (e.g. the drift scheduler, membership coordinator) via the same lease mechanism or an external Raft (the built-in engine ships a small Raft; `runtime-*` adapters can delegate to the backing store's primitives).
 - **Stateless tier** (Gateway, Planner, Executors) scales horizontally behind a load balancer; any node can serve because all state is in the log/projections.
 - **Split-brain safety:** all writes are quorum + fenced, so a minority partition cannot commit. Reads from a stale projection are bounded-staleness and labeled as such in the API.

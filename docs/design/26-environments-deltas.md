@@ -24,7 +24,7 @@ Per-PR/feature environments, created and torn down automatically:
 
 ## Deployment Sets (immutable) + Deltas (mutable)
 HoBo already produces a **manifest IR** per deploy ([Plan 22](./22-wiring-manifest.md)); we name and formalize the two halves of Humanitec's model on top of the event log ([Plan 11](./11-event-model.md)):
-- **Deployment Set** = the immutable, complete resolved configuration of a Camp at a point in time (the manifest IR, content-addressed). Recorded as `set.Created`.
+- **Deployment Set** = the immutable, complete resolved configuration of a Camp at a point in time (the manifest IR, content-addressed). Recorded as `set.Created`. *(A stateful resource's **cross-Camp replication topology** — single-writer/active-active-eventual/pinned, [ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md) — is part of this resolved config, selected like any other Resource-Definition dimension, [Plan 25](./25-resource-definitions-matching.md).)*
 - **Deployment Delta** = a mutable, reviewable **diff** (add/update/remove resources or workloads) proposed against the current Set. Deltas can be combined, previewed, approved, then **applied** to produce a new Set. Recorded as `delta.Opened` / `delta.Updated` / `delta.Applied`.
 
 ```mermaid

@@ -115,7 +115,7 @@ Events are the write model; queries read **projections** rebuilt by folding the 
 - **CredentialAudit** — every `token.*` event, joined to the run/agent that triggered it.
 - **DriftView** — resources whose observed state diverged from desired.
 
-Projections are rebuildable from zero at any time (this is the test that the log is truly authoritative).
+Projections are rebuildable from zero at any time (this is the test that the log is truly authoritative). **Cross-Camp:** a non-owner Camp builds **bounded-staleness projections** from the owner Camp's replicated read-stream — the same fold, fed by replication ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)/[Plan 5](./05-reliability-ha.md)).
 
 ## Snapshots & compaction
 - **Snapshots:** for long-lived streams (actors, the Yard's own state), periodically persist a fold result + the `seq` it covers, so activation replays only the tail. Snapshots are a cache, never a source of truth.

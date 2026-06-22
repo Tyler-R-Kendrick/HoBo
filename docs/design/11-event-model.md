@@ -86,6 +86,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Policy** ([Plan 30](./30-policy-plane.md))
 **`policy.Decided`** (effect + evidence + obligations) · `policy.ViolationDetected` · `policy.WaiverRequested` · `policy.WaiverApproved` · `policy.ObligationCreated` · `policy.ObligationSatisfied`
 
+**Cost & billing** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — metering is the `MeteringView` *projection* (no per-usage events); quota decisions ride `policy.Decided`
+`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker) · `meter.PeriodClosed` (immutable billing-period snapshot = invoice basis; `invoice.*` lives in the hosted `billing` adapter)
+
 **Evals & promotion** ([Plan 23](./23-stubbable-ai-implementations.md))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 

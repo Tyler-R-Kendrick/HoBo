@@ -41,6 +41,7 @@ An **obligation** lets policy say *allow but require X*, and in HoBo that X is a
 - *allow model change* **→ require shadow evaluation** ([Plan 23](./23-stubbable-ai-implementations.md)).
 - *allow generated provider* **→ require sandbox verification** ([Plan 23](./23-stubbable-ai-implementations.md)).
 - *allow agent action* **→ require human approval before apply** (a `createHook`, [Plan 6](./06-ai-native-agent-auth.md)).
+- *allow spend-incurring action within quota* **→ deny past a hard quota, or trip a spend circuit-breaker on runaway velocity** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — the `MeteringView` counter is the policy input, the breaker is a durable obligation/saga ([Plan 5](./05-reliability-ha.md)) halting deploys/agent-provisioning/Forge-runs until acknowledged.
 Obligations are tracked to completion via `policy.ObligationCreated` → `…Satisfied` events; an unsatisfied obligation blocks the gate.
 
 ## Phases (policy spans the whole lifecycle)

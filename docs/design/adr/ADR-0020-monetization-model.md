@@ -23,6 +23,6 @@ We do **not** monetize by charging egress/markup on the user's own cloud spend, 
 
 ## Consequences
 - **(+)** Adoption (OSS) and revenue (hosted) are aligned with the product's values; self-host remains first-class.
-- **(+)** Cost/FinOps features ([16](../16-cost-finops.md)) have a clear home: showback in OSS, chargeback/billing in hosted.
+- **(+)** Cost/FinOps features ([16](../16-cost-finops.md)) have a clear home: showback in OSS, chargeback/billing in hosted. The concrete mechanism — event-sourced `MeteringView`, policy-plane quotas + a runaway-spend circuit-breaker, and chargeback behind a `billing` port — is specified in [ADR-0039](./ADR-0039-billing-quota-cost-attribution.md).
 - **(−)** The OSS/commercial line must be drawn carefully so the hosted tier has durable differentiators without crippling self-host; exact license + the feature split remain open and are called out as BRD risks/assumptions.
 - **(−)** A marketplace implies trust, signing, and provenance infrastructure ([12](../12-security-multitenancy.md)) — already in scope, but its quality now has commercial stakes.

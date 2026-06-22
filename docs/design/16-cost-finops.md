@@ -43,9 +43,25 @@ These are estimates (real bills vary); HoBo reconciles estimates against actual 
 - **Agent spend caps** — `agent({ policy: { spendCapUsd } })` bounds what an autonomous agent can provision; exceeding it triggers a policy gate (approve/deny) rather than silent spend ([Plan 6](./06-ai-native-agent-auth.md)).
 - All budget/cap decisions are events → the audit trail shows who approved which spend.
 
-## Showback / chargeback
-- Cost is attributable per tenant/Bindle/Camp/resource because every provisioning + usage fact is in the event log with the owning principal.
-- The dashboard provides showback by default; chargeback (billing integration) is a hosted-tier feature.
+## Metering, quota & chargeback ([ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md))
+This is the hosted Yard's commercial substrate — and it reuses the event log + policy plane rather than adding a billing system.
+- **Metering = an event-sourced projection.** A **`MeteringView`** folds **billable counters** from the log HoBo already keeps (`deployment.*`, `run.*`, `resource.*`, `forge.*`, `token.*`, egress) across a small dimension set — **control-plane operations · runtime-compute-seconds · storage-GB · egress-GB · Forge-runs · seats**. No new instrumentation; auditable, replayable, rebuildable from zero ([Plan 11](./11-event-model.md)) so **every bill traces to facts**.
+- **Quotas + runaway-spend circuit-breaker run through the policy plane** ([Plan 30](./30-policy-plane.md)). A counter crossing a plan-tier threshold → `policy.Decided`: **soft** = warn/alert obligation; **hard** = deny at the gate (block deploy / agent provisioning / Forge run). Excess spend **velocity** trips a **durable spend circuit-breaker** — a saga obligation reusing the resilience-breaker pattern ([Plan 5](./05-reliability-ha.md)) — halting spend-incurring actions until acknowledged (`spend.CircuitTripped`/`spend.CircuitReset`). **Agent spend-caps** (above, [Plan 6](./06-ai-native-agent-auth.md)) generalize to **tenant / Camp / plan** quotas.
+- **OSS↔hosted boundary.** **Metering + quota + showback** (cost attributed **tenant → Camp → Bindle → run/agent/team**, from the owning principal on every event) are **OSS core**, self-hostable. **Chargeback** (moving money — metered billing / invoicing) is an adapter behind a **`billing` port** the hosted Yard wires; the billing-period basis is an immutable `meter.PeriodClosed` snapshot. This realizes [ADR-0020](./adr/ADR-0020-monetization-model.md) and the **never-gate-portability** rule — self-host runs a no-op/showback-only billing provider.
+
+```mermaid
+flowchart LR
+  LOG[("event log<br/>deployment.* / run.* / resource.* / forge.* / token.* / egress")] --> MV["MeteringView projection<br/>(billable counters; auditable, rebuildable)"]
+  MV --> SHOW["showback (OSS): cost by tenant -> Camp -> Bindle -> run/agent/team"]
+  MV --> QUOTA{"quota check (policy plane, Plan 30)"}
+  QUOTA -->|soft| WARN["warn / alert obligation"]
+  QUOTA -->|hard| DENY["deny at gate (block deploy / agent / Forge)"]
+  MV --> VEL{"spend velocity"}
+  VEL -->|runaway| CB["spend.CircuitTripped (saga, Plan 5)<br/>halt spend-incurring actions"]
+  CB -->|ack| RESET["spend.CircuitReset"]
+  SHOW --> CLOSE["meter.PeriodClosed (invoice basis)"]
+  CLOSE -.->|hosted only| BILL["billing port adapter (Stripe / metered)"]
+```
 
 ## Optional dimensions
 - **Carbon/sustainability** — providers may publish region carbon intensity alongside cost; the Planner objective can include a carbon term.

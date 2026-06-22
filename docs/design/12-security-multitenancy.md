@@ -48,6 +48,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 - The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.
 - Retention: audit streams (`token.*`, `resource.*`, policy decisions) retained per policy and never compacted; runtime streams have shorter retention.
 - Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 3](./03-providers-iac.md)) and residency violations are rejected at plan time.
+- **Metering/billing data is tenant-scoped.** The `MeteringView` + showback attribution ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) are projections over the same per-tenant-isolated streams, so usage/cost data inherits the tenant isolation above — no cross-tenant metering leakage.
 
 ## v2 isolation layer (integrated)
 - **Wasm capability sandbox = a fifth isolation dimension** alongside data / compute / credentials / network: deny-by-default, unforgeable handles, and `.allow()`-scoped **links** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)). A component — including a Forge-generated one — can reach *only* what it is explicitly linked to.

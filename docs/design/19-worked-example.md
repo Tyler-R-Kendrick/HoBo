@@ -1,8 +1,8 @@
 # Plan 19 — End-to-end worked example
 
-> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–44 actually compose (the base narrative is Plans 2–23; the **v2–v6 addenda** below layer in the later models without rewriting it). App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
+> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–44 actually compose (the base narrative is Plans 2–23; the **topical addenda** below layer in the later models without rewriting it). App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
 
-> **v2 authoring (IfC + wasm + `.allow()`).** In the v2 model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The explicit `bindle.ts` below still works (advanced mode).
+> **Authoring (IfC + wasm + `.allow()`).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
 > // src/api.ts — IfC: resources + permissions inline; compiles to a wasm component via jco
 > import { api, kv, bucket, queue, workflow, step } from "@hobo/sdk";
@@ -15,7 +15,7 @@
 > ```
 > **Stub → AI-implement (Plan 23):** a `payments` capability can ship as `service("payments").stub()` so checkout runs end-to-end on day one; the Forge later generates the real component, validated against conformance + the recorded stub traces, and promotes it through a gated rollout. Everything else in the narrative below (deploy to one cloud → multi-cloud split → provider tuning → agent-operated → Forge) is unchanged.
 
-> **v3 dynamic configuration (Plan 25/26):** the developer never picks infra for `db` — a **platform engineer** writes **Resource Definitions** and the *same* `bindle.ts` resolves differently per **environment type**:
+> **Dynamic configuration (Plan 25/26):** the developer never picks infra for `db` — a **platform engineer** writes **Resource Definitions** and the *same* `bindle.ts` resolves differently per **environment type**:
 > ```ts
 > // platform/resource-defs.ts
 > defineResource({ type: "database", engine: "postgres", class: "ha",
@@ -27,9 +27,9 @@
 > ```
 > `hobo deploy --camp prod` → matches the HA definition; `hobo deploy --camp preview` (an **ephemeral** Camp, auto-TTL) → matches the in-cluster one. Each choice emits a **`match.Decided`** event (score + rejected candidates) so the dashboard answers "*why did preview get the cheap DB?*". A **Pipeline** can open the prod **Delta** behind an **approval gate**; if the cluster is private, Executors run behind the **HoBo Relay**. The app code and `bindle.ts` are untouched throughout.
 
-> **v4 gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
+> **Contracts & policy gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
 
-> **v5 data plane ([Plan 39](./39-data-plane-projections.md)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is now the *escape-hatch* form ([raw/adopted access](./39-data-plane-projections.md)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
+> **Data plane ([Plan 39](./39-data-plane-projections.md)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is now the *escape-hatch* form ([raw/adopted access](./39-data-plane-projections.md)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
 > ```ts
 > // domain.wit — the canonical domain schema (Plan 24 / ADR-0051) → generates TS types + protobuf event bodies
 > //   record order { id: string, status: order-status, total: u64 }   enum order-status { placed, confirmed, shipped }
@@ -47,9 +47,9 @@
 >   return view("orders").where({ userId, status: "placed" }).order("createdAt").paginate({ limit: 20 });
 > }
 > ```
-> The `orders` **projection** folds `Order.*` events into a read model; a **platform/data engineer** picks its sink exactly like the `db` definition in v3 — `defineResource({ type: "projection-sink", paradigm: "relational", match: { envType: "production" } })` in prod, the native log-backed projection in preview — recorded in **`match.Decided`**. App code names `view("orders")`, never a backend, and the `OrderConfirmed` saga (§1) is unchanged (it already reacts to domain events). *Developers don't know how orders are stored or queried; the architect has full control* — the data-plane thesis, shown end to end.
+> The `orders` **projection** folds `Order.*` events into a read model; a **platform/data engineer** picks its sink exactly like the `db` definition in the dynamic-configuration model above — `defineResource({ type: "projection-sink", paradigm: "relational", match: { envType: "production" } })` in prod, the native log-backed projection in preview — recorded in **`match.Decided`**. App code names `view("orders")`, never a backend, and the `OrderConfirmed` saga (§1) is unchanged (it already reacts to domain events). *Developers don't know how orders are stored or queried; the architect has full control* — the data-plane thesis, shown end to end.
 
-> **v6 the Crew operates, generates & heals it ([Plan 40](./40-operator-agents.md)–[44](./44-sre-incident-management.md)):** snapshop runs itself. The **UX Designer** agent generates the storefront UI from the typed `view("orders")` + a repo `Design.md` (OpenUI → json-render IR, design-conformance-gated, [Plan 42](./42-ui-layer-generation.md)); the **GitOps** agent promotes staging→prod only when `can-deploy` is green ([Plan 28](./28-relay-gitops-pipelines.md)/[Plan 29](./29-contracts-compatibility.md)). Then prod `checkout` latency burns its SLO:
+> **The Crew operates, generates & heals it ([Plan 40](./40-operator-agents.md)–[44](./44-sre-incident-management.md)):** snapshop runs itself. The **UX Designer** agent generates the storefront UI from the typed `view("orders")` + a repo `Design.md` (OpenUI → json-render IR, design-conformance-gated, [Plan 42](./42-ui-layer-generation.md)); the **GitOps** agent promotes staging→prod only when `can-deploy` is green ([Plan 28](./28-relay-gitops-pipelines.md)/[Plan 29](./29-contracts-compatibility.md)). Then prod `checkout` latency burns its SLO:
 > ```txt
 > Endpoint Monitor → slo.BudgetBurned(checkout.latency)
 > SRE: incident.Opened(SEV2) → diagnose (HolmesGPT behind a port) → classify: provider-degraded (db)
@@ -148,7 +148,7 @@ b.use(service("api", { handler: "./src/api", bind: { db, images, orders } }))
 Only the resolved provider's block applies; targeting the other cloud needs no further edits ([Plan 2](./02-sdk-api.md)).
 
 ## 5. An agent operates it (zero developer effort)
-> This is the *ad-hoc external* agent path. The **built-in Operator Crew** ([Plan 40](./40-operator-agents.md), shown in **v6** above) runs the same surface continuously and autonomously — the SRE operator *is* the always-on version of the flow below.
+> This is the *ad-hoc external* agent path. The **built-in Operator Crew** ([Plan 40](./40-operator-agents.md), shown in **the Crew addendum** above) runs the same surface continuously and autonomously — the SRE operator *is* the always-on version of the flow below.
 
 The team points an MCP client (Claude) at the Yard. The ops agent:
 1. `search_registry("database postgres managed")` → reads Capability Manifest; finds a cheaper region.

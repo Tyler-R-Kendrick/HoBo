@@ -2,11 +2,11 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Multi-provider only pays off if HoBo can reason about cost — otherwise "ship anywhere" quietly becomes "overpay everywhere."
 
-> **v3 (Humanitec):** **Matching by environment type** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 26](./26-environments-deltas.md)) is a primary cost lever — platform engineers map cheap variants (in-cluster DB, scale-to-zero wasm, shared cluster) to `ephemeral`/`development` and managed-HA to `production`, so previews are cheap by construction.
+> **Matching by environment type (Humanitec parity):** **Matching by environment type** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 26](./26-environments-deltas.md)) is a primary cost lever — platform engineers map cheap variants (in-cluster DB, scale-to-zero wasm, shared cluster) to `ephemeral`/`development` and managed-HA to `production`, so previews are cheap by construction.
 
-> **v4 (gates):** the **cost estimate is a gate dimension** in the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)) — a policy ([Plan 30](./30-policy-plane.md)) can deny over-budget plans or *allow with an obligation* ("within budget X", "require approval above $Y"), with the decision recorded as an event.
+> **Contracts & policy (gates):** the **cost estimate is a gate dimension** in the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)) — a policy ([Plan 30](./30-policy-plane.md)) can deny over-budget plans or *allow with an obligation* ("within budget X", "require approval above $Y"), with the decision recorded as an event.
 
-> **v2 update.** Wasm components' tiny footprint + ms cold starts ([Plan 20](./20-wasm-wasi-runtime.md)) change the cost model (higher density, scale-to-zero friendliness) — a Planner input alongside the `cost.json` signals below. AI auto-evolution can also optimize for cost as an objective ([Plan 23](./23-stubbable-ai-implementations.md)).
+> **Runtime cost integration.** Wasm components' tiny footprint + ms cold starts ([Plan 20](./20-wasm-wasi-runtime.md)) change the cost model (higher density, scale-to-zero friendliness) — a Planner input alongside the `cost.json` signals below. AI auto-evolution can also optimize for cost as an objective ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Cost is a first-class input, not a report
 HoBo treats cost as a signal that flows through planning, deployment, runtime, and governance:
@@ -67,7 +67,7 @@ flowchart LR
 - **Carbon/sustainability** — providers may publish region carbon intensity alongside cost; the Planner objective can include a carbon term.
 - **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval).
 
-## v2 cost inputs (integrated)
+## Runtime cost inputs (integrated)
 - **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./20-wasm-wasi-runtime.md)).
 - **Cross-link egress.** `link.Called` paths that cross providers/regions feed the egress term of the cost model exactly like `bind` edges ([Plan 13](./13-networking-connectivity.md)).
 - **AI cost optimization.** Auto-evolution can take **cost** as an objective, proposing cheaper implementations/providers validated against recorded traces before a gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)).

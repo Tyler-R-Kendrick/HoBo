@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The authoritative enumeration of HoBo's **ports as WIT interfaces** ([Plan 20](./20-wasm-wasi-runtime.md)). Reused `wasi:*` interfaces + HoBo-authored `hobo:*` interfaces. The TS SDK's typed clients ([Plan 2](./02-sdk-api.md)) are generated from these via `jco guest-types`; capability providers ([Plan 3](./03-providers-iac.md)) implement their exports; `bind` creates the link.
 
-> **v4 (gates):** two governance ports join the catalog — **`hobo:contract-engine`** ([Plan 29](./29-contracts-compatibility.md)) and **`hobo:policy-engine`** ([Plan 30](./30-policy-plane.md)) — each with a built-in HoBo implementation and optional providers (Pact / OPA / Cedar). A port's WIT interface *is* its provider contract; this doc's interfaces are what the Gatekeeper's compatibility checks are written against.
+> **Contracts & policy (gates):** two governance ports join the catalog — **`hobo:contract-engine`** ([Plan 29](./29-contracts-compatibility.md)) and **`hobo:policy-engine`** ([Plan 30](./30-policy-plane.md)) — each with a built-in HoBo implementation and optional providers (Pact / OPA / Cedar). A port's WIT interface *is* its provider contract; this doc's interfaces are what the Gatekeeper's compatibility checks are written against.
 
 ## Conventions
 - **Package/version:** `namespace:package@semver` (e.g. `wasi:keyvalue@0.2.0`, `hobo:runtime@0.1.0`). HoBo pins exact versions; upgrades go through upcasters/compat shims, never silent drift.

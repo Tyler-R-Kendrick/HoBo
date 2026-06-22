@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Brings full **Nitric resource parity** into HoBo, each resource mapped to a **WIT port** ([Plan 20](./20-wasm-wasi-runtime.md)) with the inline `.allow()` capability-permission model. See the competitor capture in [`competitors/nitric/resources.md`](../../competitors/nitric/resources.md).
 
-> **v4 (contracts):** an `.allow()` declaration is also a **capability contract** ([Plan 29](./29-contracts-compatibility.md)) — the **required** scope must be ⊆ the **granted** scope on the resolved provider; a mismatch is a contract failure caught by `can-deploy`, not a runtime surprise.
+> **Contracts & policy (gates):** an `.allow()` declaration is also a **capability contract** ([Plan 29](./29-contracts-compatibility.md)) — the **required** scope must be ⊆ the **granted** scope on the resolved provider; a mismatch is a contract failure caught by `can-deploy`, not a runtime surprise.
 
 ## The `.allow()` model — one declaration, three effects
 HoBo adopts Nitric's inline permission model and extends it. Declaring a permission on a resource drives **three** things at once:

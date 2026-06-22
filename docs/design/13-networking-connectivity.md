@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The hardest part of being genuinely multi-provider: making resources that live on different clouds/regions talk securely and cheaply.
 
-> **v3 (Humanitec):** the **HoBo Relay** ([Plan 28](./28-relay-gitops-pipelines.md)) is the control-plane→private-network path (outbound reverse tunnel, no inbound), distinct from the data-plane connectivity tiers below. Multi-cluster routing is by target id; one Relay can serve several private targets.
+> **The Relay (Humanitec parity):** the **HoBo Relay** ([Plan 28](./28-relay-gitops-pipelines.md)) is the control-plane→private-network path (outbound reverse tunnel, no inbound), distinct from the data-plane connectivity tiers below. Multi-cluster routing is by target id; one Relay can serve several private targets.
 
 ## The problem
 When one Bindle's `api` is on AWS and its `db` is on Azure (or its edge is on Cloudflare), HoBo must wire secure, low-latency, identity-aware connectivity across trust domains — without the developer thinking about VPCs, peering, or certificates. The agnostic path must "just connect."

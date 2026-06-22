@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). HoBo's event-sourced core gives it an observability superpower most platforms lack: **replay-based, time-travel debugging** on top of the usual three pillars.
 
-> **v2 update.** Cross-WIT-boundary calls (`link.Called` / stub recordings, [Plan 11](./11-event-model.md)) are a first-class trace stream — they drive both the **link/trace dashboard views** ([Plan 7](./07-ui-dashboard.md)) and the AI **implement → auto-evolve → live-fix** loop ([Plan 23](./23-stubbable-ai-implementations.md)).
+> **Runtime/IfC integration.** Cross-WIT-boundary calls (`link.Called` / stub recordings, [Plan 11](./11-event-model.md)) are a first-class trace stream — they drive both the **link/trace dashboard views** ([Plan 7](./07-ui-dashboard.md)) and the AI **implement → auto-evolve → live-fix** loop ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Four pillars (three standard + one HoBo-native)
 1. **Traces** — OpenTelemetry spans across deploys, workflows, steps, actor messages, and provider calls.
@@ -47,11 +47,11 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 ## Cost observability
 Ties to [Plan 16](./16-cost-finops.md): the topology graph and run inspector annotate resources/edges with live cost and egress estimates, and budget breaches raise alerts/policy gates.
 
-## v2 signals (integrated)
+## Runtime/IfC signals (integrated)
 - **WIT-boundary call trace** (`link.Called` + stub recordings, [Plan 11](./11-event-model.md)) is a first-class stream: it drives the dashboard **link map + trace views** ([Plan 7](./07-ui-dashboard.md)) and is the **test oracle** for AI implement → auto-evolve → live-fix ([Plan 23](./23-stubbable-ai-implementations.md)).
 - **Catalog additions.** Control plane: IfC-collection metrics (resources/links per manifest), Forge generation/certification rates. Data plane: **wasm runtime** metrics — component cold-start, instances per host (density), link call latency/error rate per `(import, provider)`.
 
-## v5 signals — AI-method telemetry & training capture (integrated)
+## AI-method telemetry & training-capture signals (integrated)
 `"use training"` semantic functions ([Plan 23](./23-stubbable-ai-implementations.md)) need richer, AI-shaped telemetry than RED metrics, so HoBo layers **[OpenInference](https://github.com/Arize-ai/openinference) semantic conventions on top of OTel**:
 - **OpenInference spans** — every trainable-method (and agent/LLM/tool/retriever) call emits an OpenInference span (inputs, outputs, messages, token counts, model, latency) as a child of the same W3C trace as the enclosing run/deploy. OpenInference is OTel-native and transport-agnostic, so these export to the tenant's own backend (Phoenix/Tempo/Datadog) **and** feed HoBo's trajectory store — one emit, no lock-in.
 - **Trajectory = training data.** The span tree for one invocation + I/O + the **reward** attached by live-evals + run/agent correlation is a *trajectory* — the unit the `training-engine` consumes ([Plan 23](./23-stubbable-ai-implementations.md)). Trajectories ride the event log, so training is replayable and auditable. Sensitive payloads are per-run encrypted ([Plan 12](./12-security-multitenancy.md)).

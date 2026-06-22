@@ -2,14 +2,14 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The other deepest plan. HoBo's biggest differentiation vs Lakebed. **Goal: an agent can discover providers and self-provision credentials with zero developer involvement, and every action is durable + auditable.**
 
-> **v3 (Humanitec):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
+> **Drivers & Resource Packs (Humanitec parity):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
 
-> **v4 (gates):** an **agent action is a policy decision** ([Plan 30](./30-policy-plane.md)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./29-contracts-compatibility.md)), so calls outside the tool's scope/shape are rejected and audited.
+> **Contracts & policy (gates):** an **agent action is a policy decision** ([Plan 30](./30-policy-plane.md)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./29-contracts-compatibility.md)), so calls outside the tool's scope/shape are rejected and audited.
 
 ## Design stance: agents are principals, not scripts
 Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Capability Manifest** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 
-> **v2 update.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./23-stubbable-ai-implementations.md). And `.allow()` ([Plan 21](./21-resources-catalog.md)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
+> **Runtime/AI integration.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./23-stubbable-ai-implementations.md). And `.allow()` ([Plan 21](./21-resources-catalog.md)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
 
 > **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is [Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/ADR-0038-end-user-application-auth.md). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
 
@@ -167,7 +167,7 @@ The end state the project asks for: a developer (or their agent) writes a Bindle
 ## Iteration hooks
 - Exact Capability Manifest schema + whether to publish it as an open spec aligned with MCP-auth / OAuth-OBO draft / SPIFFE federation / the emerging Agent Identity Protocol.
 - Delegation chains (agent → sub-agent) — adopt AIP when it matures, or interim OBO chaining.
-- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/ADR-0043-multi-yard-federation-junction.md)): a principal from one Yard is authenticated by another under an agreed trust root (post-v1).
+- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/ADR-0043-multi-yard-federation-junction.md)): a principal from one Yard is authenticated by another under an agreed trust root (a v1 iteration hook — single-Yard ships first).
 - Policy language for guardrails (CEL/Rego-style vs typed TS policy).
 - Forge model + eval design; human-in-the-loop certification for high-trust providers.
 - Plugin signing, provenance (SLSA), and supply-chain trust for Registry plugins ([Plan 12](./12-security-multitenancy.md)).

@@ -2,9 +2,9 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). This was an explicit iteration target; below is the concrete design, not a sketch.
 
-> **v3 (Humanitec):** **Pipelines** + approval gates ([Plan 28](./28-relay-gitops-pipelines.md)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 26](./26-environments-deltas.md)) shrink blast radius and rollout time.
+> **Pipelines & incremental deploys (Humanitec parity):** **Pipelines** + approval gates ([Plan 28](./28-relay-gitops-pipelines.md)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 26](./26-environments-deltas.md)) shrink blast radius and rollout time.
 
-> **v2 update.** AI **live-fix** ([Plan 23](./23-stubbable-ai-implementations.md)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
+> **Runtime/AI integration.** AI **live-fix** ([Plan 23](./23-stubbable-ai-implementations.md)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
 
 ## Failure taxonomy (what we design against)
 | Class | Example | Strategy |
@@ -83,7 +83,7 @@ Health signals come from the data plane (the Camp's runtime metrics/streams) and
 | RPO | ~0 (sync quorum) / ≤ 5s (async tier) |
 | RTO (full Yard rebuild) | < 15 min from replicated log |
 
-## v2 integration (WASM / IfC / AI)
+## Runtime/IfC/AI integration
 - **AI live-fix as a gated saga.** A failing trace or SLO/health breach triggers an AI-proposed fix, validated sandboxed + replayed, then applied through the **same canary/blue-green saga + auto-rollback** machinery above; the failing trace is retained as a permanent regression test ([Plan 23](./23-stubbable-ai-implementations.md)). Live-fix adds no new failure class — it reuses *compensation* and *deployment-strategy* mechanics.
 - **Faster recovery with wasm.** Components' ms-scale cold start shortens actor failover and rollout/rollback windows vs containers, improving the "deploy resume after node loss" target ([Plan 20](./20-wasm-wasi-runtime.md)). Failover is a property of the Camp's **`component-host`** ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)): the **wasm-in-container default** restarts the component like any container (re-placed by the same lease/fencing machinery above), while the **wasmCloud-lattice** adapter can additionally **migrate late-bound links across hosts** without redeploy — a stronger failover that apps opt into per Camp.
 - **Exactly-once across links.** At-least-once `link.Called` invocations carry idempotency keys, so cross-WIT-boundary calls inherit the exactly-once-*effects* guarantee already used for steps/IaC ([Plan 11](./11-event-model.md)).

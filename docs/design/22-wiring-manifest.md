@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Adopts **.NET Aspire's** wiring/config model: `WithReference`-style bindings, uniform config for any component/container, annotations as extensibility, and a **manifest** as the deployment IR — produced by IfC resource-collection ([Plan 21](./21-resources-catalog.md)) and consumed by the Planner ([Plan 4](./04-control-plane.md)). Detailed capture of the model being borrowed: [`competitors/aspire`](../../competitors/aspire/README.md).
 
-> **v3 update (Humanitec iteration).** The manifest IR is the immutable **Deployment Set**; a **Delta** is a mutable diff against it (draft→review→promote), both event-sourced ([Plan 26](./26-environments-deltas.md)). Placeholders/output-refs align to Humanitec syntax (`${resources.<type>.<class>#<id>.outputs.<name>}`, `${context.*}`) — see [Plan 27](./27-drivers-packs-profiles.md). Besides direct apply, a **GitOps publisher** can write the Set to Git for Argo/Flux ([Plan 28](./28-relay-gitops-pipelines.md)).
+> **Deltas & Sets (Humanitec parity).** The manifest IR is the immutable **Deployment Set**; a **Delta** is a mutable diff against it (draft→review→promote), both event-sourced ([Plan 26](./26-environments-deltas.md)). Placeholders/output-refs align to Humanitec syntax (`${resources.<type>.<class>#<id>.outputs.<name>}`, `${context.*}`) — see [Plan 27](./27-drivers-packs-profiles.md). Besides direct apply, a **GitOps publisher** can write the Set to Git for Argo/Flux ([Plan 28](./28-relay-gitops-pipelines.md)).
 
 ## Wiring: `bind` = reference (lazy, convention-based)
 HoBo `bind` adopts Aspire `.WithReference()` semantics:

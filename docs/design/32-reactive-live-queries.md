@@ -69,7 +69,7 @@ Long-lived subscriptions are multiplexed over **one** gateway connection per cli
 - **Determinism:** a `query` replays to the identical result at the same `seq` (it's deterministic + read-only).
 
 ## Scope / YAGNI
-**In v1:** native event-sourced reactive queries **within a Camp**; `query()`/`"use query"`; `useQuery`/`subscribe`/`runQuery`; consistent-snapshot@`seq` + reads-your-writes; optimistic updates; the `change-feed` capability interface **+ one reference adapter (Postgres)**.
+**In v1:** native event-sourced reactive queries **within a Camp**; `query()`/`"use query"`; `useQuery`/`subscribe`/`runQuery`; **cursor-based pagination** (`usePaginatedQuery` — page windows are stable over the consistent-snapshot@`seq`, not `OFFSET`; specified in [Plan 39](./39-data-plane-projections.md)); consistent-snapshot@`seq` + reads-your-writes; optimistic updates; the `change-feed` capability interface **+ one reference adapter (Postgres)**.
 **Deferred:** ~~cross-Camp reactive queries~~ — **now specified by [ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)** (a cross-Camp reactive query subscribes to the owner Camp's reactor or a replicated-stream reactor carrying the bounded-staleness label); full DB-CDC coverage for every provider; global serializable snapshots. *(Reactive **search** results — once deferred here — are now specified in [Plan 35](./35-search-vector-surface.md)/[ADR-0034](./adr/ADR-0034-search-vector-surface.md): full-text/filtered search is a reactive `query()` citizen via `data.Changed`; vector search is a step.)*
 
 ## Iteration hooks

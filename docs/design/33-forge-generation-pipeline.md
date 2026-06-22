@@ -24,7 +24,7 @@ flowchart LR
   GATE -->|low-risk| CERT["sign + provenance (model/prompt/seed pinned) to Registry"]
   GATE -->|prod / high-trust| APPR["human approval hook"] --> CERT
 ```
-1. **Scaffold** — start from a template for the artifact kind + target port (a provider skeleton, a component skeleton, or a Resource-Definition skeleton), so structure/boilerplate is deterministic and only capability-specific logic is synthesized.
+1. **Scaffold** — start from a template for the artifact kind + target port (a provider skeleton, a component skeleton, a Resource-Definition skeleton, or a **migration importer** skeleton for [ADR-0041](./adr/ADR-0041-migration-onboarding.md)), so structure/boilerplate is deterministic and only capability-specific logic is synthesized.
 2. **LLM-fill** — synthesize the capability-specific logic from the **authoritative** spec, using **material** as hints. Inputs are sanitized; nothing in `material` can override the contract.
 3. **Validate (sandboxed)** — run `@hobo/conformance` for the claimed port **and** replay recorded traces as regression tests, inside a **Firecracker + wasm sandbox with no egress** ([ADR-0012](./adr/README.md)/[ADR-0023](./adr/ADR-0023-security-posture-commitments.md)).
 4. **Repair (bounded)** — conformance assertion failures + trace diffs are the **feedback signal** fed to the **`training-engine`** optimizer (OPTO/Trace, [ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)), which regenerates. A **repair budget** caps iterations; on exhaustion the run emits **`forge.NeedsHuman`** rather than looping forever.

@@ -8,6 +8,8 @@
 
 > **v4 (gates) placement:** **contracts + `can-deploy`** and the **policy plane** land in **P2** (gate the first real deploy) and deepen in **P4** (cross-provider/version skew); **eval-gated promotion** in **P5** (with the Forge); **obligations + remediation/auto-fix** in **P6**. See [Plan 29](./29-contracts-compatibility.md)–[Plan 30](./30-policy-plane.md).
 
+> **v5 placement:** **migration & onboarding** (`hobo import` adopt-in-place + brownfield coexistence, [ADR-0041](./adr/ADR-0041-migration-onboarding.md)) lands in **P4** (reusing the P2 Pulumi/CDKTF-import IaC adapters), deepening via **Forge-generated importers** in **P5**. **Metering/quota/billing** ([ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) and **cross-Camp consistency** ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)) land in **P6** (FinOps/HA); **end-user auth** ([ADR-0038](./adr/ADR-0038-end-user-application-auth.md)) and **search** ([ADR-0034](./adr/ADR-0034-search-vector-surface.md))/**custom domains** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) ride the relevant capability phases; **air-gap** ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)) is a self-host profile across phases.
+
 | Phase | Theme | Key deliverables | Done when… |
 |---|---|---|---|
 | **P0** | Foundations | monorepo ([1](./01-monorepo.md)); `@hobo/core` types + all port interfaces; event envelope + catalog ([11](./11-event-model.md)); Hobo Code schema ([6](./06-ai-native-agent-auth.md)); `@hobo/conformance` skeleton; `@hobo/runtime-local` built-in engine | local runtime passes runtime-port conformance; an event log replays |

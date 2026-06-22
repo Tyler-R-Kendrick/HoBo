@@ -98,6 +98,7 @@ flowchart TD
 - **State backend:** pluggable; default to the Yard's own object store; locking via the resource's ActorHost lease (single-writer already guaranteed, so IaC-level locks are belt-and-suspenders).
 - **Outputs → bindings:** stack outputs are captured into `resource.Provisioned` and resolved into the dependent resources' env/secret refs.
 - **Drift:** `refresh()` feeds the drift loop in [Plan 5](./05-reliability-ha.md).
+- **Adopt-in-place (migration, [ADR-0041](./adr/ADR-0041-migration-onboarding.md)):** `hobo import` reads an existing estate's IaC state (CDKTF import-only / Pulumi Automation API) into the graph as **`adopted`** nodes — managed by id/state, **never destroyed/recreated on import** (drift-detect only). An **`external` resource kind** references infra HoBo doesn't manage yet, so a HoBo-managed resource can `bind` across the boundary during an incremental (strangler-fig) migration. Adoption emits `resource.Adopted` ([Plan 11](./11-event-model.md)).
 
 ## Cross-cloud equivalence classes
 Agnostic ports map to provider services via curated equivalence classes (extensible, and what the [Forge](./06-ai-native-agent-auth.md) targets):

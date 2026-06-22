@@ -45,6 +45,7 @@
 3. **Event-sourced everything** — replay/time-travel/audit across both control and data planes is a property competitors would have to re-architect to match.
 4. **Genuine agnostic + escape hatch in one model** — the same Bindle ships to one provider or many, with typed provider-specific optimization that doesn't fork the code.
 5. **Contracts, policy & evals are native graph artifacts, not bolted-on tools** — consumer-driven compatibility (`can-deploy`, [Plan 29](./29-contracts-compatibility.md)), a unified policy plane with obligations ([Plan 30](./30-policy-plane.md)), and eval-gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)) compose into one `hobo verify`. The four-lens taxonomy (**Contract / Eval / Policy / Trace**) is built in, and **engines sit behind ports** — Pact/OPA/Cedar are *optional adapters*, never the conceptual model or a dependency.
+6. **Incremental, not greenfield-only** — `hobo import` adopts an existing Terraform/Pulumi/Lakebed/FaaS estate **in place** and coexists with un-migrated infra (strangler-fig), so teams move onto HoBo without a big-bang rewrite ([ADR-0041](./adr/ADR-0041-migration-onboarding.md)) — a path Lakebed's closed runtime doesn't offer.
 
 ## Who HoBo is NOT for (honest scoping)
 - Teams happy on a single cloud with deep native tooling and no agnostic need (SST/CDK is simpler).

@@ -34,6 +34,7 @@ hobo drift [--heal|--propose]                            drift status + reconcil
 hobo login                                               obtain a dev SVID (OIDC)
 hobo registry search <capability> | add <provider>       browse/install providers (Hobo Code)
 hobo forge <provider-url>                                request an AI-generated provider
+hobo import terraform|pulumi|opentofu|lakebed|faas <src> adopt an existing estate in place (ADR-0041)
 hobo yard up [--restore <log>] | status                  run/restore a self-hosted Yard
 hobo doctor                                              env/credential/connectivity diagnostics
 ```
@@ -53,6 +54,7 @@ This separation is deliberate: code review of `bindle.ts` is about the app; `hob
 ## Onboarding paths
 - **Human:** `npx hobo new my-app -t fullstack && cd my-app && hobo dev` → edit → `hobo login` → `hobo deploy`.
 - **Agent:** an MCP client calls `list templates → new → plan → deploy`, obtaining tokens via the broker; never touches a key. The agent can `inspect_run`/`tail_logs` to verify and self-correct.
+- **Brownfield (existing estate):** `hobo import terraform ./infra` adopts the current resources in place (no re-provision) → `hobo plan` shows a no-op diff → bring services under IfC one at a time, binding to still-`external` resources until they're adopted too — the strangler-fig path ([ADR-0041](./adr/ADR-0041-migration-onboarding.md)).
 
 ## Editor & ecosystem integration
 - TS types ship in every `@hobo/*` package; provider options autocomplete on `.with(...)`.

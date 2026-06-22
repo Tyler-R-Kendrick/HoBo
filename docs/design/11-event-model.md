@@ -45,7 +45,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `deployment.Requested` · `deployment.Planned` · `deployment.PlanRejected` · `deployment.Deployed` · `deployment.RolledBack`
 
 **Resource** (one stream per resource instance)
-`resource.Provisioning` · `resource.Provisioned` · `resource.UpdateRequested` · `resource.Updated` · `resource.Failed` · `resource.Compensating` · `resource.Destroyed` · `resource.DriftDetected`
+`resource.Provisioning` · `resource.Provisioned` · `resource.UpdateRequested` · `resource.Updated` · `resource.Failed` · `resource.Compensating` · `resource.Destroyed` · `resource.DriftDetected` · `resource.Adopted` (existing resource brought under management on `hobo import` + its source/provenance, [ADR-0041](./adr/ADR-0041-migration-onboarding.md))
 
 **Execution** (IaC/build runs)
 `exec.Started` · `exec.Output` · `exec.Succeeded` · `exec.Failed`

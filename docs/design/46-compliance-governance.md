@@ -1,8 +1,8 @@
 # Plan 46 — Compliance & data governance plane
 
-> Part of the [HoBo Design Plan Suite](./README.md). A **governance plane over the existing planes**: **data-classification labels** drive **residency + retention enforced as policy obligations** at `can-deploy` *and* runtime; **right-to-erasure** is done by crypto-shredding + projection purge (honoring the forward-only log); **certification attestation bundles** (SOC2/GDPR/HIPAA) are assembled from the audit log; and a **DPA / subprocessor registry** tracks who processes what, where. No new runtime — this is classification + policy + evidence-assembly over machinery HoBo already has. Decision record: [ADR-0060](./adr/ADR-0060-compliance-governance-plane.md).
+> Part of the [HoBo Design Plan Suite](./README.md). A **governance plane over the existing planes**: **data-classification labels** drive **residency + retention enforced as policy obligations** at `can-deploy` *and* runtime; **right-to-erasure** is done by crypto-shredding + projection purge (honoring the forward-only log). The enforcement is the plane; an **OCSF attestation export** lets external GRC tools consume the audit facts. No new runtime — this is classification + policy + evidence-assembly over machinery HoBo already has. Decision record: [ADR-0060](./adr/ADR-0060-compliance-governance-plane.md).
 
-> **Why this exists.** Residency was a *hint* ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)/[ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)), retention had a *floor* ([ADR-0023](./adr/ADR-0023-security-posture-commitments.md)), and audit/OCSF export existed ([ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)) — but there was **no plane that turns a data classification into an *enforced* residency/retention decision**, no **right-to-erasure** mechanism, and no **way to produce a compliance attestation** from all that evidence. A platform sold to regulated buyers needs this; HoBo had the raw materials but not the plane.
+> **Why this exists.** Residency was a *hint* ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)/[ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)), retention had a *floor* ([ADR-0023](./adr/ADR-0023-security-posture-commitments.md)), and audit/OCSF export existed ([ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)) — but there was **no plane that turns a data classification into an *enforced* residency/retention decision** and no **right-to-erasure** mechanism. The enforcement is the gap HoBo had the raw materials for but no plane to deliver; attestation evidence rides out as an OCSF export.
 
 ## Data classification — the input everything keys on
 Resources and WIT-record fields carry a **classification label** (`public` / `internal` / `pii` / `phi` / `pci` / `secret`, extensible). Labels attach two ways:
@@ -35,28 +35,25 @@ flowchart TB
   PURGE --> DONE["erasure.Completed"]
   RUN --> EV["audit log + OCSF export (ADR-0046)"]
   DONE --> EV
-  EV --> ATT["attestation bundle: SOC2/GDPR/HIPAA evidence (signed)"]
+  EV --> ATT["OCSF attestation export (signed) → external GRC tools"]
 ```
 
-## Attestation bundles — evidence from the log
-A **certification attestation** (SOC2 control evidence, a GDPR Article-30 record-of-processing, a HIPAA access report) is **assembled from existing facts**, not maintained by hand: the audit log + OCSF export ([Plan 12](./12-security-multitenancy.md)/[ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)) already record who-did-what; `policy.Decided` records every access/residency/retention decision; `data.Classified`/`erasure.*` record the data lifecycle. An **attestation bundle** is a signed, point-in-time projection over these — `hobo attest --framework soc2` produces a verifiable evidence pack with provenance, replayable to its source events. Frameworks are declarative control→evidence maps (packs), not code.
-
-## DPA / subprocessor registry
-A **subprocessor registry** records each third-party processor (a provider adapter that touches classified data — SES, a hosted embedder, a chosen Camp's cloud), the **DPA** governing it, the **classifications it may process**, and its **region**. It is the authoritative source for the GDPR-required public subprocessor list and feeds two gates: a deploy that would route `pii` to an unregistered/disallowed subprocessor **fails `can-deploy`**, and the **egress caveats** already noted for hosted embedders/models ([Plan 35](./35-search-vector-surface.md)) are formalized as registry entries. Adding a subprocessor is a governed, event-sourced change.
+## OCSF attestation export — evidence from the log
+HoBo standardizes the **enforcement**, not a compliance program. The audit facts it already records — the OCSF audit export ([Plan 12](./12-security-multitenancy.md)/[ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)), `policy.Decided` (every access/residency/retention decision), `data.Classified`/`erasure.*` (the data lifecycle) — are exportable as a signed, point-in-time **OCSF attestation export** that external GRC tools can consume to assemble whatever certification evidence (SOC2/GDPR/HIPAA) a buyer needs. HoBo produces the replayable facts; it does not run the attestation program itself.
 
 ## Events & ports
 - **New:** `data.Classified`, `governance.*` (residency/retention obligation lifecycle), `erasure.Requested`/`erasure.Completed` ([Plan 11](./11-event-model.md)). **Reused:** `policy.Decided`/obligations ([Plan 30](./30-policy-plane.md)), `compat.Gate*` ([Plan 29](./29-contracts-compatibility.md)), `match.Decided` region context ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)), `hobo:crypto` ([Plan 21](./21-resources-catalog.md)), OCSF audit export ([ADR-0046](./adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)), projection rebuild ([Plan 39](./39-data-plane-projections.md)).
-- **Ports/engines behind ports:** a **classification/discovery** engine (built-in label rules; optional PII-discovery scanner) and an **attestation** assembler (built-in framework packs; external GRC tools can consume the OCSF/bundle export). No new app-developer SDK surface beyond `.classify()` + `hobo attest`/`hobo erase`.
+- **Ports/engines behind ports:** a **classification/discovery** engine (built-in label rules; optional PII-discovery scanner) and a thin **OCSF attestation export** assembler (external GRC tools consume it). No new app-developer SDK surface beyond `.classify()` + `hobo attest`/`hobo erase`.
 
 ## Verification
 - A plan placing a `phi`-classified `sql` in a non-permitted region is rejected at `can-deploy` with a precise residency violation; pinning to a permitted Camp passes.
 - `hobo erase --subject <id>`: key destroyed, tombstone written, projections rebuilt excluding the subject, `erasure.Completed` — the subject's data is unreadable everywhere yet **no historical event was rewritten** (replay still works).
-- `hobo attest --framework gdpr` produces a signed record-of-processing bundle whose every line traces to a source event (classification, subprocessor, access decision).
-- A deploy routing `pii` to a subprocessor absent from the registry fails the gate; adding the DPA entry unblocks it (event-sourced).
+- `hobo attest` produces a signed OCSF attestation export whose every line traces to a source event (classification, residency/retention decision, access decision) for an external GRC tool to consume.
+- A deploy routing `pii` to a Camp/provider outside its allowed region or classification fails the gate; pinning to a permitted target unblocks it (event-sourced) — the egress caveats for hosted embedders/models ([Plan 35](./35-search-vector-surface.md)) ride the same residency obligation.
 
 ## Scope (v1) & YAGNI
-- **v1:** classification labels (resource + WIT-field) → enforced residency/retention obligations at `can-deploy` + runtime; crypto-shred erasure + projection purge; attestation bundles for SOC2/GDPR/HIPAA from the log; subprocessor/DPA registry feeding the gate.
-- **Deferred:** auto-PII-discovery beyond a basic scanner (proposes, never auto-classifies); per-framework auditor portals/workflow; consent-management UI (the records exist, the UX is app-owned); data-lineage graph beyond classification + projection read-sets.
+- **v1:** classification labels (resource + WIT-field) → enforced residency/retention obligations at `can-deploy` + runtime; crypto-shred erasure + projection purge; an OCSF attestation export over the audit facts for external GRC tools.
+- **Deferred / out of scope:** the SOC2/GDPR/HIPAA attestation-program framing and a DPA/subprocessor registry as a product surface ([ADR-0064](./adr/ADR-0064-scope-ai-native-meta-cloud.md)) — HoBo exports the facts, GRC tools run the program; auto-PII-discovery beyond a basic scanner (proposes, never auto-classifies); data-lineage graph beyond classification + projection read-sets.
 
 ## Iteration hooks
 - Classification taxonomy + whether labels are a closed enum or an extensible lattice with inheritance.

@@ -86,8 +86,8 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Policy** ([Plan 30](./30-policy-plane.md))
 **`policy.Decided`** (effect + evidence + obligations) · `policy.ViolationDetected` · `policy.WaiverRequested` · `policy.WaiverApproved` · `policy.ObligationCreated` · `policy.ObligationSatisfied`
 
-**Cost & billing** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — metering is the `MeteringView` *projection* (no per-usage events); quota decisions ride `policy.Decided`
-`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker) · `meter.PeriodClosed` (immutable billing-period snapshot = invoice basis; `invoice.*` lives in the hosted `billing` adapter)
+**Cost & metering** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — metering is the `MeteringView` *projection* (no per-usage events); quota decisions ride `policy.Decided`
+`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker)
 
 **Evals & promotion** ([Plan 23](./23-stubbable-ai-implementations.md))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
@@ -97,9 +97,6 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 
 **Data plane / projections** ([Plan 39](./39-data-plane-projections.md)) — app domain data is event-sourced (commands→events here); a projection folds streams into an architect-chosen sink
 `projection.Declared` (read-model record + event-type read-set + reactivity class) · `projection.Lagged` (staleness/lag exceeded a bound → policy input) · `projection.SinkRebound` (Matching reselected a sink; links `match.Decided`) — sink **schema** changes reuse `migration.*`; sink **change-feeds** reuse `data.Changed`; rebuild-from-zero is a `migration.PhaseApplied` backfill
-
-**UI-layer generation** ([Plan 42](./42-ui-layer-generation.md)) — generated app front-end + design-system enforcement
-`ui.Generated` (intent + Design.md version + json-render IR hash) · `ui.DesignViolation` (failed design-conformance — which constraint) · `ui.Published` (rendered to a `web` Set) · `ui.Regenerated` (trigger: `view()`/schema/`Design.md` change)
 
 **Operator Agents (the Crew)** ([Plan 40](./40-operator-agents.md)) — roster-level facts; per-agent runs reuse `run.*`, domain facts ride existing families
 `crew.AgentDispatched` (which operator + triggering signal) · `crew.ActionProposed` (action + blast radius + `policy.Decided` ref) · `crew.ActionApplied`/`crew.ActionDenied` (ride `policy.Decided`) · `crew.HandoffRequested` (escalate to another operator or a human)

@@ -33,7 +33,6 @@
 | 0017 | Policy obligations are durable effects, not advice | Accepted | [18-adr-log](../18-adr-log.md) |
 | 0018 | Requirements-artifact structure & traceability scheme | Accepted | [ADR-0018](./ADR-0018-requirements-structure-and-traceability.md) |
 | 0019 | Persona prioritization / primary ICP | Accepted | [ADR-0019](./ADR-0019-persona-prioritization-icp.md) |
-| 0020 | Monetization model (OSS core + hosted Yard + marketplace) | Accepted | [ADR-0020](./ADR-0020-monetization-model.md) |
 | 0021 | NFR baselines / committed SLOs for v1 | Proposed | [ADR-0021](./ADR-0021-nfr-baselines-slos.md) |
 | 0022 | MVP scope line / MoSCoW mapped to phases | Superseded by 0063 | [ADR-0022](./ADR-0022-mvp-scope-moscow.md) |
 | 0023 | Security posture commitments for v1 | Accepted | [ADR-0023](./ADR-0023-security-posture-commitments.md) |
@@ -52,7 +51,7 @@
 | 0036 | Air-gapped / sovereign Yard mode (zero-egress profile + signed bundle import) | Accepted | [ADR-0036](./ADR-0036-air-gapped-sovereign-mode.md) |
 | 0037 | SDK codegen surface & policy (checked-in `_generated/`) | Accepted | [ADR-0037](./ADR-0037-sdk-codegen-surface.md) |
 | 0038 | End-user / application auth (federate+verify; unified `PrincipalRef`) | Accepted | [ADR-0038](./ADR-0038-end-user-application-auth.md) |
-| 0039 | Billing, quota & cost attribution (event-sourced metering; `billing` port) | Accepted | [ADR-0039](./ADR-0039-billing-quota-cost-attribution.md) |
+| 0039 | Metering, quota & cost attribution | Accepted | [ADR-0039](./ADR-0039-billing-quota-cost-attribution.md) |
 | 0040 | Cross-Camp stateful consistency (declared topology; single-writer default) | Accepted | [ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md) |
 | 0041 | Migration & onboarding (`hobo import` adopt-in-place; strangler-fig) | Accepted | [ADR-0041](./ADR-0041-migration-onboarding.md) |
 | 0042 | Local-dev fidelity (simulate / mock / Camp-only matrix) | Accepted | [ADR-0042](./ADR-0042-local-dev-fidelity.md) |
@@ -69,13 +68,13 @@
 | 0053 | Write-side consistency: commands, aggregates & the actor boundary | Accepted | [ADR-0053](./ADR-0053-write-side-aggregates-and-commands.md) |
 | 0054 | Operator Agents (the Crew): built-in autonomous Yard services | Accepted | [ADR-0054](./ADR-0054-operator-agent-roster.md) |
 | 0055 | The generated stack: layered AI generation/self-healing/persistence | Accepted | [ADR-0055](./ADR-0055-generated-stack-layered-model.md) |
-| 0056 | App-UI generation + Design.md design-system enforcement | Accepted | [ADR-0056](./ADR-0056-ui-generation-and-design-system.md) |
 | 0057 | Patchability as a first-class guarantee (distinct from portability) | Accepted | [ADR-0057](./ADR-0057-patchability-derivative-implementations.md) |
 | 0058 | SRE: incident management, runbooks & the self-healing decision model | Accepted | [ADR-0058](./ADR-0058-sre-incident-management-and-runbooks.md) |
 | 0059 | App communications: the `notify` family over the shared receiver port | Accepted | [ADR-0059](./ADR-0059-app-communications-notify.md) |
 | 0060 | Compliance & data governance as a plane (classification → enforced residency/retention; crypto-shred erasure; attestations) | Accepted | [ADR-0060](./ADR-0060-compliance-governance-plane.md) |
 | 0061 | AI safety & model governance (model registry, guardrails, red-teaming) | Accepted | [ADR-0061](./ADR-0061-ai-safety-model-governance.md) |
-| 0062 | Marketplace & ecosystem (governed lifecycle over signed/certified artifacts; never-gate-portability) | Accepted | [ADR-0062](./ADR-0062-marketplace-ecosystem.md) |
+| 0062 | Registry distribution (publish/discover/install/trust; no monetization) | Accepted | [ADR-0062](./ADR-0062-marketplace-ecosystem.md) |
 | 0063 | Single v1 scope (whole designed surface ships as one v1; P0–P6 become build stages) | Accepted | [ADR-0063](./ADR-0063-single-v1-scope.md) |
+| 0064 | Scope: AI-native meta-cloud (remove business + app-build-out) | Accepted | [ADR-0064](./ADR-0064-scope-ai-native-meta-cloud.md) |
 
-> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands. **ADR-0063 supersedes ADR-0022**: the MVP-at-P4 line and phase-gated MoSCoW are replaced by a single v1 that contains the whole designed surface, with P0–P6 reframed as build stages.
+> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands. **ADR-0063 supersedes ADR-0022**: the MVP-at-P4 line and phase-gated MoSCoW are replaced by a single v1 that contains the whole designed surface, with P0–P6 reframed as build stages. **ADR-0064 (AI-native meta-cloud refocus) supersedes ADR-0020** (monetization model — removed) and **amends ADR-0039** (retitled *Metering, quota & cost attribution*), **ADR-0054** (UX-Designer operator removed), **ADR-0055** (UI layer removed from the generated stack), **ADR-0059** (`notify` is a catalog port, not a plane) and **ADR-0062** (reframed to Registry distribution, monetization removed); **ADR-0056** (UI generation) is **withdrawn**. ADR-0020 and ADR-0056 files are deleted — they no longer appear in the index above.

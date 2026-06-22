@@ -28,10 +28,10 @@ Business need ──BR──▶ Product capability ──FR / NFR──▶ Techn
 Authored alongside the docs (one ADR per load-bearing decision) — see the [ADR index](../design/adr/README.md):
 - [ADR-0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md) — requirements structure & traceability
 - [ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md) — persona prioritization / primary ICP
-- [ADR-0020](../design/adr/ADR-0020-monetization-model.md) — monetization model
 - [ADR-0021](../design/adr/ADR-0021-nfr-baselines-slos.md) — NFR baselines / SLOs (Proposed)
 - [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md) — MVP scope / MoSCoW *(superseded by ADR-0063)*
 - [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md) — single v1 scope (whole designed surface ships as one v1; P0–P6 become build stages)
+- [ADR-0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md) — scope: AI-native meta-cloud (removes business + app-build-out)
 - [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md) — security posture commitments *(from the review/hardening pass)*
 - [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md) — portability conformance guarantee *(from the review/hardening pass)*
 

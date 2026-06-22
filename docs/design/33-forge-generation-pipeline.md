@@ -48,7 +48,7 @@ Same optimizer, same gate, same provenance — generation and evolution are the 
 A **Forge-generation test:** seed a known WIT port + its conformance suite + a backend's Capability Manifest → assert the loop produces a **certified** artifact that passes conformance **and** reproduces recorded traces; assert the repair loop **converges or escalates** within the budget (no infinite loop); assert the certification carries complete provenance.
 
 ## Scope / YAGNI
-**In v1:** the loop for **providers** and **implementations**, plus **Resource-Definition** generation via the same loop with a definition template; **one reference run** end-to-end (generate a `database` provider for a known backend from its Capability Manifest + conformance). **Deferred:** fully autonomous **cold-start from docs/OpenAPI only** with no Capability Manifest (riskiest input path); marketplace economics ([ADR-0020](./adr/ADR-0020-monetization-model.md)); generating whole Resource **Packs** (vs single definitions).
+**In v1:** the loop for **providers** and **implementations**, plus **Resource-Definition** generation via the same loop with a definition template; **one reference run** end-to-end (generate a `database` provider for a known backend from its Capability Manifest + conformance). **Deferred:** fully autonomous **cold-start from docs/OpenAPI only** with no Capability Manifest (riskiest input path); generating whole Resource **Packs** (vs single definitions). *(Marketplace economics / monetization is out of scope — [ADR-0064](./adr/ADR-0064-scope-ai-native-meta-cloud.md).)*
 
 ## Iteration hooks
 - Template library shape (per-port vs per-driver scaffolds) and how much is fixed vs synthesized.

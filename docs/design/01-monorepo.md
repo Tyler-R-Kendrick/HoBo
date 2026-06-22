@@ -43,7 +43,6 @@ packages/
   identity/          @hobo/identity     SVID issuance, OIDC provider, token broker
   mcp/               @hobo/mcp          MCP server exposing HoBo to agents
   agent-skills/      @hobo/agent-skills skills the Operator Agents (the Crew) + external MCP agents compose          [Plan 40]
-  ui-render/         @hobo/ui-render    the `ui-render` port: app-UI generation (OpenUI + json-render adapters)      [Plan 42]
   hobo-code/         @hobo/hobo-code    the Hobo Code DSL — token-efficient IR for codegen + platform config         [Plan 38]
   conformance/       @hobo/conformance  port contract test suites (shared by all adapters)
   contracts/         @hobo/contracts    HoBo Contract IR + compatibility/can-deploy engine (built-in)  [Plan 29]
@@ -60,7 +59,7 @@ examples/
 ```
 
 ## Projects (the stated top-level surfaces → packages)
-The product's named **Projects** map to packages here: **Cloud** → `@hobo/cloud` (+ `registry`/`identity`); **SDK** → `@hobo/sdk` (+ `runtime`); **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 38](./38-hobo-code-dsl.md)). The **UI generation** surface adds `@hobo/ui-render` ([Plan 42](./42-ui-layer-generation.md)).
+The product's named **Projects** map to packages here: **Cloud** → `@hobo/cloud` (+ `registry`/`identity`); **SDK** → `@hobo/sdk` (+ `runtime`); **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 38](./38-hobo-code-dsl.md)). *(The former `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/ADR-0064-scope-ai-native-meta-cloud.md).)*
 
 ## Conventions
 - **Ports live in `core`**, implementations in adapter packages; adapters never import each other.

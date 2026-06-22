@@ -8,9 +8,9 @@
 
 ### 1. Derivative implementations (fork & extend behind the same ports)
 Every HoBo component is an **adapter behind a WIT port** — so you can ship your *own* implementation without forking the core:
-- **Providers / IaC / build** ([Plan 3](./03-providers-iac.md)), **runtimes** ([ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)), **capability providers** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 24](./24-wit-interfaces-reference.md)), **`component-host`** ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)), **projection sinks** ([Plan 39](./39-data-plane-projections.md)), **`ui-render`** ([Plan 42](./42-ui-layer-generation.md)).
+- **Providers / IaC / build** ([Plan 3](./03-providers-iac.md)), **runtimes** ([ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)), **capability providers** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 24](./24-wit-interfaces-reference.md)), **`component-host`** ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)), **projection sinks** ([Plan 39](./39-data-plane-projections.md)).
 - **Engines behind ports** — `contract`/`policy`/`training`/operator-agent engines ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)/[ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)/[Plan 40](./40-operator-agents.md)) all have a built-in default + optional external providers; swap any without touching app code.
-- **The Yard itself** is a Bindle ([ADR-0020](./adr/ADR-0020-monetization-model.md)/[Plan 4](./04-control-plane.md)) — a derivative control plane is a HoBo deployment, not a hostile fork.
+- **The Yard itself** is a Bindle ([Plan 4](./04-control-plane.md)) — a derivative control plane is a HoBo deployment, not a hostile fork.
 - Derivatives are distributed as **signed Resource Packs / plugins** ([Plan 27](./27-drivers-packs-profiles.md)) and **certified by the same `@hobo/conformance` trust boundary** ([Plan 9](./09-verification-open-questions.md)) — a derivative that passes conformance is a first-class citizen, human- or **Forge-generated** ([Plan 33](./33-forge-generation-pipeline.md)).
 
 ### 2. Enumerated plugin extension points (the seams)
@@ -21,7 +21,7 @@ Patchability is only real if the seams are *named and stable*. The extension poi
 | Capability providers | any `wasi:*`/`hobo:*` WIT export | [20](./20-wasm-wasi-runtime.md)/[24](./24-wit-interfaces-reference.md) |
 | Runtimes / `component-host` | `Runtime` / `component-host` ports | [ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)/[ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md) |
 | Drivers | `terraform`/`template`/`echo`/`container`/`custom-webhook` | [27](./27-drivers-packs-profiles.md) |
-| Engines | `contract`/`policy`/`training`/`ui-render`/operator engines | [29](./29-contracts-compatibility.md)/[30](./30-policy-plane.md)/[ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)/[42](./42-ui-layer-generation.md) |
+| Engines | `contract`/`policy`/`training`/operator engines | [29](./29-contracts-compatibility.md)/[30](./30-policy-plane.md)/[ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)/[40](./40-operator-agents.md) |
 | Resource Definitions / Packs / Profiles | platform-rule layer | [25](./25-resource-definitions-matching.md)/[27](./27-drivers-packs-profiles.md) |
 | Agent skills | `@hobo/agent-skills` (operator + external agents) | [1](./01-monorepo.md)/[40](./40-operator-agents.md) |
 | Projection sinks | `projection-sink` paradigms | [39](./39-data-plane-projections.md) |
@@ -38,7 +38,7 @@ AI- or human-authored changes to generated code persist via **region-scoped, for
 flowchart LR
   CORE["HoBo core (ports + Yard)"]
   CORE -->|swap engine / add adapter| DERIV["derivative impls (signed Packs/plugins)"]
-  CORE -->|extension seams| SEAMS["providers · drivers · runtimes · engines · skills · sinks · ui-render"]
+  CORE -->|extension seams| SEAMS["providers · drivers · runtimes · engines · skills · sinks"]
   GEN["AI/human edits"] -->|region-scoped AST + provenance (ADR-0048)| PATCH["persisted patches"]
   DERIV --> CONF["@hobo/conformance + signing (Plan 9/12)"]
   SEAMS --> CONF

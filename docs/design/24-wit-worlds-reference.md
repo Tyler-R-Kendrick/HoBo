@@ -55,7 +55,7 @@ world shop-api {
   export wasi:http/incoming-handler@0.2.0;
 }
 ```
-The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` + `.allow()` and an `api`/`service` generates the world; `jco` emits the typed bindings the handler code uses.
+The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` + `.allow()` and an `api`/`service` generates the world; `jco` emits the typed bindings the handler code uses. These `jco guest-types` are one of the four codegen sources (with Zod, `.allow()`, and the bindle graph) that land in the checked-in `_generated/` directory ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md)/[Plan 2 §Generated code](./02-sdk-api.md)).
 
 ## Versioning & evolution
 - Worlds are versioned independently; the manifest IR ([Plan 22](./22-wiring-manifest.md)) records the exact versions a component imports/exports.

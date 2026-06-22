@@ -233,6 +233,30 @@ database("db", { engine: "postgres" })
 - `start(checkout, order)` is checked against the workflow signature; hooks/streams are generic (`createHook<T>()`, `getWritable<UIMessageChunk>()`).
 - Provider option types are exported by each provider package, so autocomplete on `.with(aws.…)` shows only valid knobs for that provider/resource pairing (conditional types keyed on the port).
 
+### Generated code (`_generated/`) ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md))
+The end-to-end types above aren't hand-written — they're **generated**, deterministically, from four authoritative sources and checked into the repo:
+```mermaid
+flowchart LR
+  subgraph SRC["sources (authoritative)"]
+    WIT["WIT worlds (jco guest-types)"]
+    ZOD["Zod schemas (step/workflow/query/search I/O)"]
+    ALLOW[".allow() scopes"]
+    GRAPH["bindle graph (bind edges)"]
+  end
+  SRC --> CG["hobo codegen (deterministic)"]
+  WIT --> CG
+  ZOD --> CG
+  ALLOW --> CG
+  GRAPH --> CG
+  CG --> GEN[".hobo/generated/ (checked-in)<br/>typed bindings, useQuery, step/workflow sigs, api tree"]
+  GEN --> ED["editor types (no build step)"]
+  GEN --> CI{"hobo codegen --check (CI)"}
+  CI -->|drift| FAIL["fail: regenerate"]
+  CI -->|clean| PASS["pass"]
+```
+- **Output (committed `.hobo/generated/`, or `src/_generated/`):** typed `ctx.bindings.<name>` clients, typed `useQuery()`/search results ([Plan 32](./32-reactive-live-queries.md)/[Plan 35](./35-search-vector-surface.md)), typed workflow/step signatures, typed `.with()` options, and a typed **`api` function-tree** reference (the Convex `_generated/` analog).
+- **When:** `hobo dev` regenerates on change (watch); `hobo build` regenerates + fails on drift; `hobo new` scaffolds it; `hobo codegen --check` is the CI drift gate ([Plan 15](./15-cli-dx.md)). Checked-in = reviewable diffs + editor types with **no build step** + works offline/air-gap ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)). Every command has an MCP equivalent for agents ([Plan 6](./06-ai-native-agent-auth.md)).
+
 ---
 
 ## Local development & testing

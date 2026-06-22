@@ -20,6 +20,7 @@
 hobo new <name> [--template todo|api|agent|fullstack]   scaffold a Bindle
 hobo dev                                                 run locally on runtime-local (no cloud)
 hobo build                                               compile services to wasm components -> OCI (container fallback)
+hobo codegen [--check]                                   (re)generate typed clients into _generated/; --check fails on drift (CI) (ADR-0037)
 hobo collect [--camp prod]                               run resource-collection (IfC) -> print manifest IR
 hobo stub <resource|service>                             run with a stub behind a WIT port (Plan 23)
 hobo plan [--camp prod]                                  dry-run: DeploymentPlan + cost + warnings
@@ -45,7 +46,7 @@ This separation is deliberate: code review of `bindle.ts` is about the app; `hob
 
 ## The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
-2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline.
+2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT world, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md)).
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./02-sdk-api.md), [Plan 9](./09-verification-open-questions.md)).
 

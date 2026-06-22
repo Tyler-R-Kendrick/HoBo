@@ -14,6 +14,44 @@ flowchart LR
   EX --> PRIV["private cluster / cloud / DB"]
 ```
 
+## Air-gapped / sovereign mode (fully disconnected) ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md))
+The Agent above is the *connected-private* path (it dials a hosted Yard over outbound 443). A **fully disconnected / sovereign** environment has no such path — so air-gap is a **first-class self-hosted Yard profile**: the whole control plane (Yard + Registry + Identity + Executors + runtime + optional models) runs **inside the boundary with zero egress**.
+- **Artifacts enter via signed offline bundle import** (`hobo registry import <bundle>`): provider plugins, Hobo Code, Resource Packs, base images, and optional model weights, each with **SLSA provenance + conformance reports**, **verified in-boundary against the same trust boundary** as the live Registry (signature + provenance + conformance) — one-way-transfer (sneakernet / data diode) friendly; the in-boundary Registry serves the mirror, **no live crawl**. Recorded as `registry.BundleImported` ([Plan 11](./11-event-model.md)).
+- **In-boundary trust roots + local models, graceful degradation:** Identity issues SVIDs locally; certs use an **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)); secrets via **in-boundary KMS/HSM** ([ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)); `embed`/Forge/`"use training"` use **local models when provisioned, else degrade** (Forge→human-authored only, training→static, `embed`→BYO vectors, [ADR-0034](./adr/ADR-0034-search-vector-surface.md)); telemetry/live-evals stay in-boundary (no phone-home). The **deterministic core (deploy/match/migrate/route) needs no model or egress**, so air-gapped deploys work fully.
+
+| Capability | Normal (connected) | Air-gapped substitute |
+|---|---|---|
+| Registry (Hobo Code/plugins/packs) | crawl `/.well-known/hobo-code/` | **signed offline bundle import** → in-boundary mirror |
+| Images | public registry pull | mirrored in-boundary OCI registry (bundle) |
+| TLS certs | ACME → Let's Encrypt | **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) |
+| Identity / secrets | provider KMS | already in-boundary; **in-boundary KMS/HSM** ([ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)) |
+| `embed` / Forge / `"use training"` | hosted models | **local model**, else BYO / human-authored / static |
+| Telemetry / live-evals | hosted sinks | **in-boundary OTel collector**, no phone-home |
+| Deploy / match / migrate / route | — | **zero egress, no model — always works** |
+
+```mermaid
+flowchart TD
+  subgraph OUT["outside the boundary"]
+    BUNDLE["signed offline bundle<br/>(plugins, Hobo Code, images, model weights)<br/>+ SLSA provenance + conformance reports"]
+  end
+  subgraph BND["air-gapped boundary (zero egress)"]
+    IMP["hobo registry import<br/>verify signature + provenance + conformance"]
+    REG["in-boundary Registry (mirror)"]
+    YARD["self-hosted Yard + Identity (SVID) + Executors"]
+    CA["internal CA / private ACME"]
+    MODEL["local model (embed / Forge / training)<br/>else graceful degrade"]
+    APP["deploy / match / migrate / route<br/>(no model, no egress)"]
+  end
+  BUNDLE -. one-way transfer / data diode .-> IMP
+  IMP --> REG
+  REG --> YARD
+  YARD --> APP
+  YARD --> CA
+  YARD --> MODEL
+```
+
+> Air-gap is a **single in-boundary Yard**; multi-Yard **federation** (multi-region/regulatory) remains deferred ([Q20](./09-verification-open-questions.md)).
+
 ## GitOps publisher mode
 Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** ([Plan 26](./26-environments-deltas.md)) as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 22](./22-wiring-manifest.md)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Agent can supply runtime data back.
 

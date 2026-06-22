@@ -42,6 +42,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 - **Plugins** (human or Forge): signed; carry SLSA-style provenance + the conformance report; the Registry refuses unsigned/unverified plugins; consumers can pin versions and require a trust level.
 - **Images**: built reproducibly (Dagger), scanned, and referenced by digest; provenance attached.
 - **Dependencies**: SBOMs generated in CI; vuln scanning gates publishing.
+- **Air-gapped supply chain** ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)): in a zero-egress/sovereign Yard, plugins/Hobo Code/packs/images/model weights enter only via a **signed offline bundle** (`hobo registry import`) verified against this **same** signature + SLSA-provenance + conformance trust boundary (a tampered bundle is refused; `registry.BundleImported` audits it). Trust roots stay in-boundary: Identity issues SVIDs locally, certs via an **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)), secrets via in-boundary KMS/HSM, and no telemetry phone-home.
 
 ## Audit & compliance
 - The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.

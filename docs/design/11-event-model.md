@@ -54,7 +54,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `identity.Issued` · `identity.Rotated` · `token.Granted` · `token.Used` · `token.Revoked` · `token.Denied`
 
 **Registry**
-`provider.Registered` · `provider.HoboCodeUpdated` · `provider.Deprecated` · `forge.PluginCertified`
+`provider.Registered` · `provider.HoboCodeUpdated` · `provider.Deprecated` · `forge.PluginCertified` · `registry.BundleImported` (signed offline bundle imported + verified — air-gap supply chain, [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md))
 
 **Runtime (data-plane, per Run)** — mirrors Vercel's durable model
 `run.Started` · `run.StepScheduled` · `run.StepCompleted` · `run.StepFailed` · `run.SleepScheduled` · `run.HookCreated` · `run.HookResumed` · `run.Suspended` · `run.Completed` · `run.Failed`

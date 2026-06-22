@@ -18,7 +18,7 @@
 | **Deployments timeline** | DeploymentView | event-sourced history with a replay/time-travel scrubber; per-resource provisioning states; rollback/compensation visualized on the DAG |
 | **Topology graph** | TopologyView | resources → resolved providers + options; `bind` edges annotated with connectivity tier + estimated egress/cost ([Plan 13](./13-networking-connectivity.md), [Plan 16](./16-cost-finops.md)) |
 | **Run inspector** | RunView | workflow/step/actor/saga trace; per-step inputs/outputs/attempts/duration; **replay-diff** against current code ([Plan 14](./14-observability.md)) |
-| **Registry browser** | Registry | providers, their Hobo Code/signs, capabilities, cost signals, Forge-certification + provenance |
+| **Registry browser** | Registry | providers, their Capability Manifest/signs, capabilities, cost signals, Forge-certification + provenance |
 | **Agent activity & credential audit** | CredentialAudit | agent runs + every token grant/use/revoke, joined to the triggering run; approvals on policy gates |
 | **Cost & FinOps** | cost projection | plan-time estimates vs actuals, budgets/caps, showback per tenant/Bindle/Camp |
 | **Drift** | DriftView | resources diverged from desired; heal/propose actions |

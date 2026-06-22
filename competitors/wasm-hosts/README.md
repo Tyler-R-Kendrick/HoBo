@@ -16,7 +16,7 @@ HoBo's runtime substrate ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) 
 - **WASI components are portable across hosts.** "WASI-http components have many compatible hosts — Spin (CLI), Fermyon Cloud, **Wasmtime**, NGINX Unit, SpinKube …" — direct evidence for HoBo's **one component, many `component-host` adapters** thesis.
 - **Capability-based security by default.** All three rely on wasm's deny-by-default sandbox — HoBo's `.allow()`→link enforcement ([Plan 21](../../docs/design/21-resources-catalog.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) is the same property.
 - **Perf:** "a typical Wasm module starts in **~1 ms** (cold start), consumes **~10 MB**, binary **< 5 MB**, vs a container's ~300 ms / 50–100 MB" — grounds HoBo's "ms cold start, tiny footprint, scale-to-zero" cost/density claims ([Plan 16](../../docs/design/16-cost-finops.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)).
-- **WIT as the contract** across all three — the same standards-based contract HoBo uses for ports ([Plan 24](../../docs/design/24-wit-worlds-reference.md)).
+- **WIT as the contract** across all three — the same standards-based contract HoBo uses for ports ([Plan 24](../../docs/design/24-wit-interfaces-reference.md)).
 
 ## Files
 - [`wasmcloud.md`](./wasmcloud.md) — lattice, capability providers, WIT links over wRPC.

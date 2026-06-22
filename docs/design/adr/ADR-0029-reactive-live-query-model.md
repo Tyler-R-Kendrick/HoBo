@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-06-21
 - **Deciders:** Engineering, Product
-- **Related:** [Plan 32 — Reactive/live queries](../32-reactive-live-queries.md) · [02 SDK](../02-sdk-api.md) · [11 Event model](../11-event-model.md) · [21 Resources](../21-resources-catalog.md) · [24 WIT worlds](../24-wit-worlds-reference.md) · [competitors/gap-analysis](../../../competitors/gap-analysis.md) (G1) · open question [#21](../09-verification-open-questions.md)
+- **Related:** [Plan 32 — Reactive/live queries](../32-reactive-live-queries.md) · [02 SDK](../02-sdk-api.md) · [11 Event model](../11-event-model.md) · [21 Resources](../21-resources-catalog.md) · [24 WIT interfaces](../24-wit-interfaces-reference.md) · [competitors/gap-analysis](../../../competitors/gap-analysis.md) (G1) · open question [#21](../09-verification-open-questions.md)
 - **Origin:** the competitor gap analysis flagged a **reactive/live-query data model** (Convex's core DX) as HoBo's one true blind spot. Designed via brainstorming + grill-with-docs.
 
 ## Context

@@ -1,22 +1,22 @@
 # Plan 20 — WASM/WASI runtime (the polyglot spine)
 
-> Part of the [HoBo Design Plan Suite](./README.md). **Decision: wasm-first, OCI-container fallback; WASI/WIT as canonical port contracts.** This doc defines HoBo's runtime substrate; it reframes ports ([Plan 3](./03-providers-iac.md)) as WIT worlds and providers as capability providers.
+> Part of the [HoBo Design Plan Suite](./README.md). **Decision: wasm-first, OCI-container fallback; WASI/WIT as canonical port contracts.** This doc defines HoBo's runtime substrate; it reframes ports ([Plan 3](./03-providers-iac.md)) as WIT interfaces and providers as capability providers.
 
-> **v4 (gates):** each **Camp** (via its runtime + wasm host) **declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)) knows what a target can enforce, just as a WIT world announces its capabilities.
+> **v4 (gates):** each **Camp** (via its runtime + wasm host) **declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)) knows what a target can enforce, just as a WIT interface announces its capabilities.
 
 ## Why wasm/wasi is the default
 - **Any language, one artifact.** Anything that compiles to a WASI component (Rust, TinyGo, TS via jco, Python via componentize-py, C# via componentize-dotnet) is a first-class HoBo service. The SDK is TypeScript, but the *runtime contract* is language-neutral.
 - **Capability security by construction.** WASI is deny-by-default with unforgeable resource handles — a component can only touch what it's been linked to. This is the runtime enforcement of `.allow()` ([Plan 21](./21-resources-catalog.md)) and complements SVIDs/token scoping ([Plan 6](./06-ai-native-agent-auth.md), [Plan 12](./12-security-multitenancy.md)).
 - **Tiny, portable, OCI-native.** Components are small, start in ms, and distribute as **OCI artifacts** — the same registry/signing/scanning pipeline as containers.
-- **Standards = ecosystem.** Because ports are WIT worlds, HoBo can reuse existing **wasmCloud capability providers** and the broader Bytecode Alliance toolchain.
+- **Standards = ecosystem.** Because ports are WIT interfaces, HoBo can reuse existing **wasmCloud capability providers** and the broader Bytecode Alliance toolchain.
 
-## The model: components, worlds, providers, links
+## The model: components, interfaces, providers, links
 - **Service = component (default).** A HoBo service compiles to a WASI **component**. Fallback: workloads that can't compile to wasm yet (GPU/native deps) run as plain **OCI containers** through the identical OCI + wiring pipeline ([Plan 22](./22-wiring-manifest.md)).
-- **Port = WIT world.** A capability port is a WIT interface/world. Reuse the standard cloud interfaces; author `hobo:*` worlds for what WASI doesn't cover yet:
+- **Port = WIT interface.** A capability port is a WIT interface. Reuse the standard cloud interfaces; author `hobo:*` interfaces for what WASI doesn't cover yet:
   - **Reused:** `wasi:http`, `wasi:keyvalue`, `wasi:blobstore`, `wasi:messaging`, `wasi:sql`, `wasi:config`, `wasi:logging`, `wasi:filesystem/sockets/clocks/random`.
-  - **HoBo worlds:** `hobo:workflow` (durable workflow/step), `hobo:actor` (grains), `hobo:saga`, `hobo:agent`, and control-plane `hobo:scheduler`/`provisioning`/`observability`/`config`.
-- **Provider = capability provider.** A Provider implements a WIT world's *exports* for a backend (e.g. an S3 adapter exports `wasi:blobstore`). It has the same deploy + runtime split HoBo already uses ([Plan 3](./03-providers-iac.md)): `realize()` provisions infra; the runtime impl serves the interface.
-- **Bind = link.** Binding a component's *import* of a world to a provider's *export* is a **link**, late-bound at deploy/runtime (the wasmCloud model). Swapping Redis→Vault behind `wasi:keyvalue` is a link change, no recompile. Links are the concrete form of HoBo's ports/adapters escape hatch.
+  - **HoBo interfaces:** `hobo:workflow` (durable workflow/step), `hobo:actor` (grains), `hobo:saga`, `hobo:agent`, and control-plane `hobo:scheduler`/`provisioning`/`observability`/`config`.
+- **Provider = capability provider.** A Provider implements a WIT interface's *exports* for a backend (e.g. an S3 adapter exports `wasi:blobstore`). It has the same deploy + runtime split HoBo already uses ([Plan 3](./03-providers-iac.md)): `realize()` provisions infra; the runtime impl serves the interface.
+- **Bind = link.** Binding a component's *import* of an interface to a provider's *export* is a **link**, late-bound at deploy/runtime (the wasmCloud model). Swapping Redis→Vault behind `wasi:keyvalue` is a link change, no recompile. Links are the concrete form of HoBo's ports/adapters escape hatch.
 
 ```mermaid
 flowchart LR
@@ -39,7 +39,7 @@ flowchart LR
 
 ## WIT as the contract (example)
 ```wit
-// hobo:workflow world (illustrative) — HoBo-authored where WASI has no equivalent
+// hobo:workflow interface (illustrative) — HoBo-authored where WASI has no equivalent
 package hobo:runtime@0.1.0;
 interface workflow {
   record step-opts { retries: u32, timeout-ms: u64 }
@@ -47,14 +47,14 @@ interface workflow {
   sleep: func(ms: u64);
   emit: func(event-type: string, data: list<u8>) -> result<_, string>;
 }
-world service {
-  import wasi:keyvalue/store@0.2.0;
-  import wasi:http/outgoing-handler@0.2.0;
-  import hobo:runtime/workflow@0.1.0;
-  export wasi:http/incoming-handler@0.2.0;   // an HTTP service
-}
+// a service component's interface contract (illustrative)
+//   imports = dependencies → links; export = capability
+import wasi:keyvalue/store@0.2.0;
+import wasi:http/outgoing-handler@0.2.0;
+import hobo:runtime/workflow@0.1.0;
+export wasi:http/incoming-handler@0.2.0;     // an HTTP service
 ```
-The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generated from these worlds** (jco `guest-types`), so app code never hand-writes WIT — it gets typed TS, and the contract is standards-based underneath.
+The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generated from these interfaces** (jco `guest-types`), so app code never hand-writes WIT — it gets typed TS, and the contract is standards-based underneath.
 
 ## Build pipeline (per language)
 | Language | Toolchain → component |
@@ -80,6 +80,6 @@ The thing that *executes* a component — the WASI interface impls + the link ta
 
 ## Iteration hooks
 - ~~Wasm host of record~~ — **decided ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)):** Wasmtime locally + a `component-host` port whose v1 prod default is wasm-in-container, with SpinKube / wasmCloud-lattice / provider-native as opt-in per-Camp adapters. Remaining: the host **conformance-suite** assertions and the wasmCloud-lattice adapter's cross-host link semantics. **Grounding/refinements** (from [`competitors/wasm-hosts`](../../competitors/wasm-hosts/README.md)): pin **`runwasi`/containerd-shim** as the mechanism for the wasm-in-container default + SpinKube adapter; pin **`wRPC` (WIT-over-RPC) over the lattice (NATS)** as the wasmCloud adapter's cross-host link transport.
-- `hobo:*` WIT world naming/versioning; how aggressively to track upstream `wasi:*` draft churn.
+- `hobo:*` WIT interface naming/versioning; how aggressively to track upstream `wasi:*` draft churn.
 - Component-to-component composition (`wac`) vs runtime links for intra-app calls.
 - Container-fallback runtime + when the Planner chooses it automatically (GPU/native detection).

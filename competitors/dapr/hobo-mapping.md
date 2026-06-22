@@ -4,7 +4,7 @@
 
 | Dapr concept | HoBo equivalent | Notes |
 |---|---|---|
-| **Building block** (portable HTTP/gRPC API) | **WIT port** ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)/[Plan 24](../../docs/design/24-wit-worlds-reference.md)) | ✅ same idea; HoBo's contract is a WIT world (typed, conformance-tested) rather than an HTTP/gRPC convention |
+| **Building block** (portable HTTP/gRPC API) | **WIT port** ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)/[Plan 24](../../docs/design/24-wit-interfaces-reference.md)) | ✅ same idea; HoBo's contract is a WIT interface (typed, conformance-tested) rather than an HTTP/gRPC convention |
 | **Component** (swappable adapter + YAML) | **Capability provider + link** ([Plan 3](../../docs/design/03-providers-iac.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) | ✅ swap-without-code-change; HoBo links are late-bound + capability-scoped by `.allow()` |
 | **Sidecar** (per-app runtime) | **`component-host`** (in-process wasm) ([ADR-0031](../../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)) | ➕ no per-app sidecar tax; wasm-in-container default, runs anywhere a container runs |
 | **State / pub/sub / bindings / actors / workflow / secrets / config / lock / crypto / jobs** | the matching HoBo ports/primitives ([building-blocks.md](./building-blocks.md) table) | ✅ near 1:1 — validates HoBo's port catalog |

@@ -26,7 +26,7 @@ export interface Driver {
 Drivers run inside sandboxed Executors with short-lived scoped creds ([Plan 12](./12-security-multitenancy.md)); outputs flow back as events and into placeholders ([Plan 22](./22-wiring-manifest.md)). `echo` resources are read-only by default (drift behavior is an iteration hook).
 
 ## Resource Packs
-A **Resource Pack** is a shareable, versioned bundle of Resource Definitions ([Plan 25](./25-resource-definitions-matching.md)) for a common need (e.g. "AWS data tier", "in-cluster preview stack"). Packs live in the **Registry** ([Plan 6](./06-ai-native-agent-auth.md)) with provenance + conformance reports, can be imported and customized by matching, and — the HoBo twist — can be **Forge-generated** from a backend's Hobo Code and certified sandboxed ([Plan 23](./23-stubbable-ai-implementations.md)). `hobo pack add <pack>` installs one.
+A **Resource Pack** is a shareable, versioned bundle of Resource Definitions ([Plan 25](./25-resource-definitions-matching.md)) for a common need (e.g. "AWS data tier", "in-cluster preview stack"). Packs live in the **Registry** ([Plan 6](./06-ai-native-agent-auth.md)) with provenance + conformance reports, can be imported and customized by matching, and — the HoBo twist — can be **Forge-generated** from a backend's Capability Manifest and certified sandboxed ([Plan 23](./23-stubbable-ai-implementations.md)). `hobo pack add <pack>` installs one.
 
 ## Workload Profiles
 A **Workload Profile** declares **how a service is realized** on a target — the realization HoBo chooses for a `service`/`web` resource:

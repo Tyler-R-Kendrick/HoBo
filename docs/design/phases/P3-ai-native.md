@@ -2,7 +2,7 @@
 
 > [Phases index](./README.md) · realizes [Plan 6](../06-ai-native-agent-auth.md), [Plan 12](../12-security-multitenancy.md), [Plan 14](../14-observability.md).
 
-**Objective.** Agents become first-class principals: keyless identity + token brokering, a provider/Hobo Code registry, durable agents, and an MCP control surface — so an agent can deploy with zero static secrets and a full audit trail.
+**Objective.** Agents become first-class principals: keyless identity + token brokering, a provider/Capability Manifest registry, durable agents, and an MCP control surface — so an agent can deploy with zero static secrets and a full audit trail.
 **Depends on.** P2.
 
 > **v3 (Humanitec):** this phase also lands the **HoBo Agent** (outbound-only private-network deploys; Executors run behind it) and the **GitOps publisher** mode ([Plan 28](../28-agent-gitops-pipelines.md)) — both lean on the identity/SVID work here. The Registry begins accepting **Forge-generated Resource Definitions/Packs** ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)).
@@ -14,7 +14,7 @@
 4. Emit `identity.*` / `token.*` events → **CredentialAudit** projection ([Plan 14](../14-observability.md)).
 
 ## Workstream 2 — Registry (`@hobo/registry`)
-1. Ingest + verify provider **Hobo Code** (`.well-known/hobo-code/`), index capabilities/auth/cost.
+1. Ingest + verify provider **Capability Manifest** (`.well-known/capability-manifest/`), index capabilities/auth/cost.
 2. Capability search API; plugin records (provenance, conformance report).
 
 ## Workstream 3 — `.allow()` → scope wiring
@@ -35,9 +35,9 @@
 ## Exit criteria (acceptance)
 - An **agent deploys a bindle via MCP** using only **brokered, short-lived tokens** (no static secrets); `token.*` events exist and the run is replayable.
 - A high-risk action **blocks on a policy gate** until approved.
-- Registry serves a provider's capabilities from its ingested Hobo Code; `request_token` returns a scoped token bounded by `.allow()`.
+- Registry serves a provider's capabilities from its ingested Capability Manifest; `request_token` returns a scoped token bounded by `.allow()`.
 
 ## Risks / iteration hooks
-- Hobo Code as an open spec aligned with MCP-auth / OAuth-OBO / SPIFFE federation / AIP.
+- Capability Manifest as an open spec aligned with MCP-auth / OAuth-OBO / SPIFFE federation / AIP.
 - Delegation chains (agent → sub-agent).
 - Policy language for guardrails/ABAC (typed TS vs Rego/CEL).

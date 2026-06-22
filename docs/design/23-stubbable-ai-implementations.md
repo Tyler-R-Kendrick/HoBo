@@ -1,10 +1,10 @@
 # Plan 23 — Stubbable & trainable (`use training`) implementations: AI implement / train / auto-evolve / live-fix
 
-> Part of the [HoBo Design Plan Suite](./README.md). **Decision: gated by default.** Because every port is a WIT world ([Plan 20](./20-wasm-wasi-runtime.md)) with a conformance suite ([Plan 9](./09-verification-open-questions.md)) and every cross-port call is an event ([Plan 11](./11-event-model.md)), HoBo can let AI fill, trace, evolve, and live-fix implementations safely. This extends the Forge ([Plan 6](./06-ai-native-agent-auth.md)) from *provider* generation to *implementation* generation.
+> Part of the [HoBo Design Plan Suite](./README.md). **Decision: gated by default.** Because every port is a WIT interface ([Plan 20](./20-wasm-wasi-runtime.md)) with a conformance suite ([Plan 9](./09-verification-open-questions.md)) and every cross-port call is an event ([Plan 11](./11-event-model.md)), HoBo can let AI fill, trace, evolve, and live-fix implementations safely. This extends the Forge ([Plan 6](./06-ai-native-agent-auth.md)) from *provider* generation to *implementation* generation.
 
 > **v5 (trainable methods).** A method the developer marks **`"use training"`** ([Plan 2](./02-sdk-api.md)) is an **AI-rewritable semantic function**: HoBo continuously optimizes its prompt/code against a rubric. The optimizer is an **engine behind a WIT port** (`training-engine`, built-in default; **Microsoft [Agent Lightning](https://microsoft.github.io/agent-lightning/stable/) / [Trace](https://microsoft.github.io/Trace/) are optional *internal* providers, never exposed to SDK users** — same engines-behind-ports rule as [ADR-0015](./adr/README.md), see [ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)). Runtime execution is captured as **OTel + [OpenInference](https://github.com/Arize-ai/openinference)** spans (the training data), and **live-evals** supply the reward/feedback signal and gate promotion.
 
-> **v3 (Humanitec):** the same Forge loop also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — given a backend's Hobo Code + a target context, propose a definition, validate it sandboxed against conformance, and certify it into the Registry.
+> **v3 (Humanitec):** the same Forge loop also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./25-resource-definitions-matching.md)/[Plan 27](./27-drivers-packs-profiles.md)) — given a backend's Capability Manifest + a target context, propose a definition, validate it sandboxed against conformance, and certify it into the Registry.
 
 > **v4 (contracts/policy/evals):** a stubbed-then-AI-implemented port is a **semantic function**, governed by the four-lens taxonomy — **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened** ([Plan 29](./29-contracts-compatibility.md)/[Plan 30](./30-policy-plane.md)). The promotion gate below is now explicit: **conformance(contract) green AND eval thresholds met AND policy allows**.
 
@@ -76,7 +76,7 @@ service("payments").stub({ charge: () => ({ status: "ok" }) }); // partial canne
 
 ```mermaid
 flowchart LR
-  WIT["WIT world + conformance + recorded traces"] --> GEN["AI: generate stub -> full impl<br/>(component or capability provider)"]
+  WIT["WIT interface + conformance + recorded traces"] --> GEN["AI: generate stub -> full impl<br/>(component or capability provider)"]
   GEN --> SBX["Firecracker + wasm sandbox<br/>capability-scoped, no egress"]
   SBX --> TEST{"conformance + replay<br/>recorded traces as tests"}
   TEST -->|fail| GEN
@@ -86,7 +86,7 @@ flowchart LR
   AUTO --> PUB["sign + publish; record events"]
   HUMAN --> PUB
 ```
-1. **Generate** an implementation for a WIT world from its interface + conformance + recorded traces (an entire service component or a backend capability provider).
+1. **Generate** an implementation for a WIT interface from its interface + conformance + recorded traces (an entire service component or a backend capability provider).
 2. **Validate** sandboxed (wasm capability sandbox + Firecracker, no egress, [Plan 12](./12-security-multitenancy.md)) against `@hobo/conformance` **and** by **replaying recorded traces** as regression tests.
 3. **Gate** promotion by policy (below).
 4. **Publish** signed with provenance; every step is an event ([Plan 11](./11-event-model.md)).
@@ -102,7 +102,7 @@ Implementing/evolving a `"use training"` method is a **continuous optimization l
 - **From [Microsoft Trace](https://microsoft.github.io/Trace/):** treat the graph of `"use training"` methods + their calls as an **optimizable computational graph**. Each method's instruction/prompt/code is a *trainable parameter*; feedback (eval scores, natural-language critiques, errors, SLO/cost signals) propagates back through the recorded execution graph and an LLM-based optimizer (OptoPrime/TextGrad/OPRO-style) rewrites the parameters *in place* — "backprop for prompts and code." HoBo's built-in `training-engine` is this OPTO-style optimizer.
 - **From [Agent Lightning](https://microsoft.github.io/agent-lightning/stable/):** **decouple execution from training.** The running app (the agent/method) just executes and emits trajectories; a separate **trajectory store + trainer** consumes them and produces candidate improvements via RL (GRPO/PPO), automatic prompt optimization (APO), or SFT. This is exactly HoBo's control-plane/data-plane split — the Camp's runtime runs the method, the Yard's training-engine optimizes it offline/async. **HoBo may use Agent Lightning itself as the provider behind the port** to run the trainer.
 
-**Engines behind a port (the load-bearing rule).** Following [ADR-0015](./adr/README.md), `training-engine` is a **WIT port** ([Plan 24](./24-wit-worlds-reference.md)) with a **built-in default**; **Agent Lightning** (`@hobo/provider-agent-lightning`) and **Trace** (`@hobo/provider-trace`) are **optional adapters selected per tenant/Camp and are NOT part of the SDK surface**. SDK users write `"use training"` + intent + rubric; they never import, configure, or even need to know which optimizer ran. Swapping optimizers is a config change, never an app-code change ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)).
+**Engines behind a port (the load-bearing rule).** Following [ADR-0015](./adr/README.md), `training-engine` is a **WIT port** ([Plan 24](./24-wit-interfaces-reference.md)) with a **built-in default**; **Agent Lightning** (`@hobo/provider-agent-lightning`) and **Trace** (`@hobo/provider-trace`) are **optional adapters selected per tenant/Camp and are NOT part of the SDK surface**. SDK users write `"use training"` + intent + rubric; they never import, configure, or even need to know which optimizer ran. Swapping optimizers is a config change, never an app-code change ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)).
 
 ```mermaid
 flowchart LR

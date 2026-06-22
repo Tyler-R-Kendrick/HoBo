@@ -8,7 +8,7 @@
 | **wasm-in-container via containerd shim (runwasi)** | **v1 prod default** `component-host` (reuses the OCI pipeline) | ✅ validated; pin **runwasi** as the mechanism |
 | **SpinKube** (Spin operator + containerd shim + runtime-class-mgr) | **k8s-native `component-host` adapter** | ✅ real system = the named adapter |
 | **wasmCloud lattice + capability providers + wRPC links** | **lattice `component-host` adapter** + HoBo **links** / **capability providers** ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) | ✅ HoBo's model *is* this; pin **wRPC/NATS** as cross-host link transport |
-| **WIT contracts** across all hosts | HoBo WIT ports ([Plan 24](../../docs/design/24-wit-worlds-reference.md)) | ✅ same standard |
+| **WIT contracts** across all hosts | HoBo WIT ports ([Plan 24](../../docs/design/24-wit-interfaces-reference.md)) | ✅ same standard |
 | **WASI component portable across hosts** | "one component, many `component-host` adapters" ([ADR-0031](../../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)) | ✅ directly evidenced |
 | **deny-by-default capability security** | `.allow()` → link enforcement ([Plan 21](../../docs/design/21-resources-catalog.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) | ✅ same property |
 | **~1 ms / ~10 MB cold start** | cost/density + failover-speed claims ([Plan 16](../../docs/design/16-cost-finops.md)/[Plan 5](../../docs/design/05-reliability-ha.md)) | ✅ numbers grounded |

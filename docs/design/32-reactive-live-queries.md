@@ -18,7 +18,7 @@ export async function openTickets(team: string): Promise<Ticket[]> {
   return ctx.view("tickets").where({ team, status: "open" }).order("createdAt");
 }
 
-// client (typed, generated from the WIT world — Plan 24)
+// client (typed, generated from the WIT interface — Plan 24)
 const { data, seq, stale } = useQuery(openTickets, { team: "infra" }); // re-renders on change
 ```
 - **Read-set:** recorded per execution (stream ids / projection keys / change-feed topic + predicate) and **re-tracked on every recompute**, so dependencies are dynamic (a query that branches reads different things and the subscription follows).
@@ -46,13 +46,13 @@ flowchart LR
 
 ## Hybrid source (native default + DB opt-in)
 - **Native (default).** Queries over the **event log / projections**. The log *is* the change stream — zero extra infrastructure, works on **any** Camp runtime backend (`runtime-local` … `runtime-cloudflare`), inherits replay/audit. This is the portable path and the recommended one.
-- **DB change-feed (opt-in capability).** A provider's `database` port may advertise a **`change-feed`** capability ([Plan 21](./21-resources-catalog.md)/[Plan 24](./24-wit-worlds-reference.md)) — Postgres logical replication, DynamoDB Streams, Mongo change streams, etc. The adapter **normalizes** changes into `data.Changed{ resource, key, op }` events on the runtime log, so the **same reactor** drives DB-backed reactive queries. v1 ships the capability interface + **one reference adapter (Postgres)**.
+- **DB change-feed (opt-in capability).** A provider's `database` port may advertise a **`change-feed`** capability ([Plan 21](./21-resources-catalog.md)/[Plan 24](./24-wit-interfaces-reference.md)) — Postgres logical replication, DynamoDB Streams, Mongo change streams, etc. The adapter **normalizes** changes into `data.Changed{ resource, key, op }` events on the runtime log, so the **same reactor** drives DB-backed reactive queries. v1 ships the capability interface + **one reference adapter (Postgres)**.
 - **No change feed?** The query is typed **non-reactive** (`reactive: false`) — `useQuery` still works but won't live-update (or polls at a documented interval if opted in). `hobo doctor` warns when a query depends on a non-reactive source ([Plan 15](./15-cli-dx.md)).
 
 ## Client SDK
 - `useQuery(q, args) → { data, seq, stale }` (React); framework-agnostic `subscribe(q, args, cb)` / async iterator; `runQuery(q, args)` one-shot.
 - **Optimistic updates:** a mutation may declare a local optimistic patch, applied client-side until the authoritative push at ≥ its `seq` (Convex-parity).
-- **Typed end-to-end** from the WIT-generated client ([Plan 24](./24-wit-worlds-reference.md)). Subscriptions authenticate with the workload/agent **SVID** and are **tenant + Camp scoped** ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 12](./12-security-multitenancy.md)); `.allow()` read scopes gate what a query may touch ([Plan 21](./21-resources-catalog.md)).
+- **Typed end-to-end** from the WIT-generated client ([Plan 24](./24-wit-interfaces-reference.md)). Subscriptions authenticate with the workload/agent **SVID** and are **tenant + Camp scoped** ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 12](./12-security-multitenancy.md)); `.allow()` read scopes gate what a query may touch ([Plan 21](./21-resources-catalog.md)).
 
 ## Transport
 Long-lived subscriptions are multiplexed over **one** gateway connection per client (WebSocket primary, SSE fallback), backed by the `Streamer` port — the same mechanism `getWritable`/run-streams already use ([Plan 2 §Layer 1](./02-sdk-api.md)/[Plan 14](./14-observability.md)). The Yard is **not** on this path; the reactor runs in the data-plane Camp runtime.

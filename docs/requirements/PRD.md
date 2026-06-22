@@ -93,11 +93,11 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 | **FR-022** | Agent guardrails: `require-approval`/`auto-allow`/`deny`, `spendCapUsd`, destroy protection. | M | A high-risk action blocks on a policy gate; spend over cap requires approval. | BR-011 |
 | **FR-023** | Keyless credentials: agents obtain short-lived, resource-scoped provider tokens via OIDC federation (no static keys). | M | A deploy completes with zero static secrets; full grant/use/revoke audit. | BR-005 |
 
-### 6.4 Providers, Registry & Hobo Code ([03](../design/03-providers-iac.md), [06](../design/06-ai-native-agent-auth.md))
+### 6.4 Providers, Registry & Capability Manifest ([03](../design/03-providers-iac.md), [06](../design/06-ai-native-agent-auth.md))
 | ID | Requirement | Pri | AC | BR |
 |---|---|---|---|---|
 | **FR-030** | ≥2 cloud providers (e.g. AWS + Azure) implement the capability ports via IaC adapters. | M | The reference app deploys to both; conformance green. | BR-002 |
-| **FR-031** | Providers publish machine-readable **Hobo Code** (`capabilities/auth/cost.json`) at a well-known path; the **Registry** indexes it. | M | An agent discovers a capability + auth flow from the Registry. | BR-004/BR-008 |
+| **FR-031** | Providers publish machine-readable **Capability Manifest** (`capabilities/auth/cost.json`) at a well-known path; the **Registry** indexes it. | M | An agent discovers a capability + auth flow from the Registry. | BR-004/BR-008 |
 | **FR-032** | Capability/region/cost-aware **Planner** turns Bindle + mapping into a DeploymentPlan; records rationale. | M | Planner rejects an unsatisfiable `require` with a precise reason; rationale on `deployment.Planned`. | BR-002/BR-009 |
 
 ### 6.5 Forge, stubbable & trainable implementations ([06](../design/06-ai-native-agent-auth.md), [23](../design/23-stubbable-ai-implementations.md))
@@ -172,7 +172,7 @@ Instrument the [BRD KPIs](./BRD.md#10-success-metrics--kpis): time-to-first-depl
 
 ## 11. Dependencies, assumptions, constraints
 - **Dependencies:** WASI/WIT, Pulumi Automation API, SPIFFE/OIDC, MCP ([BRD §14](./BRD.md#14-dependencies)).
-- **Assumptions:** providers publish or accept Forge-generated Hobo Code; agents are a real delivery channel.
+- **Assumptions:** providers publish or accept Forge-generated Capability Manifest; agents are a real delivery channel.
 - **Constraints:** agnostic core may not leak provider detail; conformance gates everything; phase-gated delivery.
 
 ## 12. Risks & open questions

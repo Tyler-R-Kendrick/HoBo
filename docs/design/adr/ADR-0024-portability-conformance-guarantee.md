@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-06-20
 - **Deciders:** Engineering, Platform, Product
-- **Related:** [PRD §NFRs](../../requirements/PRD.md) · [TRD §5.1/§5.2/§6](../../requirements/TRD.md) · [00 Vision](../00-vision.md) · [01 Monorepo](../01-monorepo.md) · [03 Providers/IaC](../03-providers-iac.md) · [24 WIT worlds](../24-wit-worlds-reference.md) · open ADR-P/Q11 in [18-adr-log](../18-adr-log.md)
+- **Related:** [PRD §NFRs](../../requirements/PRD.md) · [TRD §5.1/§5.2/§6](../../requirements/TRD.md) · [00 Vision](../00-vision.md) · [01 Monorepo](../01-monorepo.md) · [03 Providers/IaC](../03-providers-iac.md) · [24 WIT interfaces](../24-wit-interfaces-reference.md) · open ADR-P/Q11 in [18-adr-log](../18-adr-log.md)
 - **Origin:** the requirements portability review (see [`plans/README.md`](../../../plans/README.md), findings P-01…07).
 
 ## Context

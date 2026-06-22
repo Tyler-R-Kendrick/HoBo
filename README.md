@@ -8,7 +8,7 @@
 
 ## Design plans
 
-The design is split into 37 independently iterable plans (`00`–`36`) under [`docs/design/`](./docs/design/README.md). Suggested reading order: **[0 Vision](./docs/design/00-vision.md) → [10 Architecture overview](./docs/design/10-architecture-overview.md) → [19 Worked example](./docs/design/19-worked-example.md)**, then the two deep plans **[2 SDK/API ⭐](./docs/design/02-sdk-api.md)** and **[6 AI-native & agent auth ⭐](./docs/design/06-ai-native-agent-auth.md)**.
+The design is split into 39 independently iterable plans (`00`–`38`) under [`docs/design/`](./docs/design/README.md). Suggested reading order: **[0 Vision](./docs/design/00-vision.md) → [10 Architecture overview](./docs/design/10-architecture-overview.md) → [19 Worked example](./docs/design/19-worked-example.md)**, then the two deep plans **[2 SDK/API ⭐](./docs/design/02-sdk-api.md)** and **[6 AI-native & agent auth ⭐](./docs/design/06-ai-native-agent-auth.md)**.
 
 | Foundations | Deep dives | Cross-cutting |
 |---|---|---|

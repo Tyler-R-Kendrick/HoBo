@@ -8,7 +8,7 @@
 | **P0** | Foundations (monorepo, core contracts, WIT, local runtime, conformance) | [`P0-foundations.md`](./P0-foundations.md) |
 | **P1** | SDK on the local runtime (IfC authoring + runtime + components) | [`P1-sdk-local.md`](./P1-sdk-local.md) |
 | **P2** | First real deploy (one provider, Yard MVP) | [`P2-first-deploy.md`](./P2-first-deploy.md) |
-| **P3** | AI-native core (identity, registry, Hobo Code, agents, MCP) | [`P3-ai-native.md`](./P3-ai-native.md) |
+| **P3** | AI-native core (identity, registry, Capability Manifest, agents, MCP) | [`P3-ai-native.md`](./P3-ai-native.md) |
 | **P4** | Multi-provider + wiring depth | [`P4-multi-provider.md`](./P4-multi-provider.md) |
 | **P5** | Forge (AI-generated providers + implementations) | [`P5-forge.md`](./P5-forge.md) |
 | **P6** | HA, FinOps & UX | [`P6-ha-finops-ux.md`](./P6-ha-finops-ux.md) |
@@ -34,6 +34,6 @@ flowchart LR
 - **Risks / iteration hooks** — what could go wrong and what's deferred.
 
 ## Conventions used across phases
-- **port = WIT world** ([Plan 20](../20-wasm-wasi-runtime.md), reference: [Plan 24](../24-wit-worlds-reference.md)) · **provider = capability provider** · **bind = link** · **service = wasm component (default), OCI-container fallback**.
+- **port = WIT interface** ([Plan 20](../20-wasm-wasi-runtime.md), reference: [Plan 24](../24-wit-interfaces-reference.md)) · **provider = capability provider** · **bind = link** · **service = wasm component (default), OCI-container fallback**.
 - Every adapter ships against `@hobo/conformance`; examples double as E2E fixtures.
 - Each phase is independently demoable and commits behind it must keep prior exit criteria green (no regressions).

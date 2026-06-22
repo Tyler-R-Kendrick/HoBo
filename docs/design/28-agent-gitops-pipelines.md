@@ -16,12 +16,12 @@ flowchart LR
 
 ## Air-gapped / sovereign mode (fully disconnected) ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md))
 The Agent above is the *connected-private* path (it dials a hosted Yard over outbound 443). A **fully disconnected / sovereign** environment has no such path — so air-gap is a **first-class self-hosted Yard profile**: the whole control plane (Yard + Registry + Identity + Executors + runtime + optional models) runs **inside the boundary with zero egress**.
-- **Artifacts enter via signed offline bundle import** (`hobo registry import <bundle>`): provider plugins, Hobo Code, Resource Packs, base images, and optional model weights, each with **SLSA provenance + conformance reports**, **verified in-boundary against the same trust boundary** as the live Registry (signature + provenance + conformance) — one-way-transfer (sneakernet / data diode) friendly; the in-boundary Registry serves the mirror, **no live crawl**. Recorded as `registry.BundleImported` ([Plan 11](./11-event-model.md)).
+- **Artifacts enter via signed offline bundle import** (`hobo registry import <bundle>`): provider plugins, Capability Manifest, Resource Packs, base images, and optional model weights, each with **SLSA provenance + conformance reports**, **verified in-boundary against the same trust boundary** as the live Registry (signature + provenance + conformance) — one-way-transfer (sneakernet / data diode) friendly; the in-boundary Registry serves the mirror, **no live crawl**. Recorded as `registry.BundleImported` ([Plan 11](./11-event-model.md)).
 - **In-boundary trust roots + local models, graceful degradation:** Identity issues SVIDs locally; certs use an **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)); secrets via **in-boundary KMS/HSM** ([ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)); `embed`/Forge/`"use training"` use **local models when provisioned, else degrade** (Forge→human-authored only, training→static, `embed`→BYO vectors, [ADR-0034](./adr/ADR-0034-search-vector-surface.md)); telemetry/live-evals stay in-boundary (no phone-home). The **deterministic core (deploy/match/migrate/route) needs no model or egress**, so air-gapped deploys work fully.
 
 | Capability | Normal (connected) | Air-gapped substitute |
 |---|---|---|
-| Registry (Hobo Code/plugins/packs) | crawl `/.well-known/hobo-code/` | **signed offline bundle import** → in-boundary mirror |
+| Registry (Capability Manifest/plugins/packs) | crawl `/.well-known/capability-manifest/` | **signed offline bundle import** → in-boundary mirror |
 | Images | public registry pull | mirrored in-boundary OCI registry (bundle) |
 | TLS certs | ACME → Let's Encrypt | **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) |
 | Identity / secrets | provider KMS | already in-boundary; **in-boundary KMS/HSM** ([ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)) |
@@ -32,7 +32,7 @@ The Agent above is the *connected-private* path (it dials a hosted Yard over out
 ```mermaid
 flowchart TD
   subgraph OUT["outside the boundary"]
-    BUNDLE["signed offline bundle<br/>(plugins, Hobo Code, images, model weights)<br/>+ SLSA provenance + conformance reports"]
+    BUNDLE["signed offline bundle<br/>(plugins, Capability Manifest, images, model weights)<br/>+ SLSA provenance + conformance reports"]
   end
   subgraph BND["air-gapped boundary (zero egress)"]
     IMP["hobo registry import<br/>verify signature + provenance + conformance"]

@@ -1,8 +1,8 @@
 # Phase P0 — Foundations
 
-> [Phases index](./README.md) · realizes [Plan 1](../01-monorepo.md), [Plan 11](../11-event-model.md), [Plan 20](../20-wasm-wasi-runtime.md), [Plan 24](../24-wit-worlds-reference.md), [Plan 9](../09-verification-open-questions.md).
+> [Phases index](./README.md) · realizes [Plan 1](../01-monorepo.md), [Plan 11](../11-event-model.md), [Plan 20](../20-wasm-wasi-runtime.md), [Plan 24](../24-wit-interfaces-reference.md), [Plan 9](../09-verification-open-questions.md).
 
-**Objective.** Stand up the monorepo, the core contracts (types, ports-as-WIT, event envelope, Hobo Code schema), the built-in local runtime, and the conformance harness — so every later phase builds on a stable, testable base.
+**Objective.** Stand up the monorepo, the core contracts (types, ports-as-WIT, event envelope, Capability Manifest schema), the built-in local runtime, and the conformance harness — so every later phase builds on a stable, testable base.
 **Depends on.** Nothing (greenfield).
 
 > **v3 (Humanitec):** `@hobo/core` adds the **Resource Definition** + **Matching** types, the **Driver** interface ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)), and the `match.Decided`/`delta.*`/`set.*`/`pipeline.*` events ([Plan 11](../11-event-model.md)); `@hobo/conformance` gains a **Driver** contract-suite slot so later phases can certify drivers.
@@ -15,13 +15,13 @@
 
 ## Workstream 2 — `@hobo/core` contracts
 1. **EventEnvelope** type + append/read semantics + idempotency/optimistic-concurrency rules ([Plan 11](../11-event-model.md)).
-2. **Port interfaces** as TS mirrors of the canonical WIT worlds ([Plan 24](../24-wit-worlds-reference.md)).
-3. **Hobo Code schema** (`capabilities.json` / `auth.json` / `cost.json`) types + validators ([Plan 6](../06-ai-native-agent-auth.md)).
+2. **Port interfaces** as TS mirrors of the canonical WIT interfaces ([Plan 24](../24-wit-interfaces-reference.md)).
+3. **Capability Manifest schema** (`capabilities.json` / `auth.json` / `cost.json`) types + validators ([Plan 6](../06-ai-native-agent-auth.md)).
 4. DI/container + the `Runtime` interface (`events`/`queue`/`streams`/`actors`/`clock`) — the durable runtime a Camp provides.
 
 ## Workstream 3 — `@hobo/wit` (the ports)
-1. Author the `hobo:*` WIT worlds (`workflow`, `actor`, `saga`, `agent`, control-plane `scheduler`/`provisioning`/`observability`/`config`) — [Plan 24](../24-wit-worlds-reference.md).
-2. Vendor + pin the reused `wasi:*` worlds (`http`, `keyvalue`, `blobstore`, `messaging`, `sql`, `config`, `logging`).
+1. Author the `hobo:*` WIT interfaces (`workflow`, `actor`, `saga`, `agent`, control-plane `scheduler`/`provisioning`/`observability`/`config`) — [Plan 24](../24-wit-interfaces-reference.md).
+2. Vendor + pin the reused `wasi:*` interfaces (`http`, `keyvalue`, `blobstore`, `messaging`, `sql`, `config`, `logging`).
 3. Set up `jco guest-types` generation → typed TS bindings consumed by `@hobo/sdk`/`@hobo/runtime`.
 
 ## Workstream 4 — `@hobo/runtime-local` (built-in engine)
@@ -41,7 +41,7 @@
 ## Exit criteria (acceptance)
 - `runtime-local` **passes all runtime-port conformance** tests in CI.
 - An event log **appends and replays** to identical state (determinism harness).
-- `jco`-generated types compile against the authored WIT worlds.
+- `jco`-generated types compile against the authored WIT interfaces.
 - Dependency-boundary lint passes (no adapter imports another adapter).
 
 ## Risks / iteration hooks

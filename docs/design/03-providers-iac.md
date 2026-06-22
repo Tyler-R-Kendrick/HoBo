@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). The ports/adapters layer that turns agnostic Bindles into real infra. See [Plan 2 §Layer 2](./02-sdk-api.md) and [Plan 4](./04-control-plane.md).
 
-> **v2 update (WASM/WASI iteration).** Ports are now **WIT worlds** and a CloudProvider is a **capability provider** that implements a world's exports for a backend; **binding a resource = creating a link** (wasmCloud model) from a component's import to a provider's export, late-bound at deploy/runtime ([Plan 20](./20-wasm-wasi-runtime.md)). The deploy layer below (realize → IaC) is unchanged and now also wires links + emits the **manifest IR** ([Plan 22](./22-wiring-manifest.md)). Custom providers can be authored in any wasm language (not just Go like Nitric) and AI-generated via the Forge ([Plan 23](./23-stubbable-ai-implementations.md)).
+> **v2 update (WASM/WASI iteration).** Ports are now **WIT interfaces** and a CloudProvider is a **capability provider** that implements an interface's exports for a backend; **binding a resource = creating a link** (wasmCloud model) from a component's import to a provider's export, late-bound at deploy/runtime ([Plan 20](./20-wasm-wasi-runtime.md)). The deploy layer below (realize → IaC) is unchanged and now also wires links + emits the **manifest IR** ([Plan 22](./22-wiring-manifest.md)). Custom providers can be authored in any wasm language (not just Go like Nitric) and AI-generated via the Forge ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 > **v3 update (Humanitec iteration).** The Planner no longer resolves providers by static mapping — it resolves a **Resource Definition** per resource via **context-matching** ([Plan 25](./25-resource-definitions-matching.md)); the `hobo.config.ts` mapping is sugar over default definitions. The `IacProvider` here is one **Driver** in a taxonomy (terraform/template/echo/container/custom-webhook, [Plan 27](./27-drivers-packs-profiles.md)); a capability provider picks a driver to realize a resource.
 
@@ -10,7 +10,7 @@
 
 ## The three adapter families (one shape)
 Everything that touches the outside world is a port with swappable adapters:
-- **CloudProvider** — implements capability ports (now **WIT worlds**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).
+- **CloudProvider** — implements capability ports (now **WIT interfaces**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).
 - **IacProvider** — the *mechanism* a CloudProvider uses to realize resources (Pulumi/CDKTF/Crossplane/OpenTofu).
 - **BuildProvider** — produces images/rootfs/**wasm components** (Dagger/Packer/Firecracker/Vagrant/jco+componentize).
 
@@ -76,7 +76,7 @@ The plan is content-addressed and stored via `deployment.Planned`, so the exact 
 ```mermaid
 flowchart TD
   B[Bindle + hobo.config] --> P{Planner}
-  R[(Registry: Hobo Code<br/>capabilities + cost)] --> P
+  R[(Registry: Capability Manifest<br/>capabilities + cost)] --> P
   P -->|resolve provider| RP[ResourcePlan x N]
   P -->|reject| X[deployment.PlanRejected<br/>precise reason]
   RP --> DAG[DeploymentPlan DAG]
@@ -119,7 +119,7 @@ Agnostic ports map to provider services via curated equivalence classes (extensi
 - **Vagrant** — local VM parity for `hobo dev` when a resource truly needs a VM.
 
 ## Authoring a provider (human or Forge)
-A provider package exports: (1) a factory (`aws({...})`) returning a `CloudProvider`, (2) typed `.with(...)` option builders per port (`aws.rds`, `aws.fargate`), (3) capability declarations + equivalence mappings, (4) `realize()` emitting IaC, (5) a runtime `client()` per port, and (6) a `code()` Hobo Code manifest. It must pass `@hobo/conformance` for every port it claims — that suite is the contract that lets AI-generated providers be trusted ([Plan 6](./06-ai-native-agent-auth.md), [Plan 9](./09-verification-open-questions.md)).
+A provider package exports: (1) a factory (`aws({...})`) returning a `CloudProvider`, (2) typed `.with(...)` option builders per port (`aws.rds`, `aws.fargate`), (3) capability declarations + equivalence mappings, (4) `realize()` emitting IaC, (5) a runtime `client()` per port, and (6) a `code()` Capability Manifest manifest. It must pass `@hobo/conformance` for every port it claims — that suite is the contract that lets AI-generated providers be trusted ([Plan 6](./06-ai-native-agent-auth.md), [Plan 9](./09-verification-open-questions.md)).
 
 ## Iteration hooks
 - ~~Planner objective function when several providers fully satisfy~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md), resolves ADR-P4):** configurable `cost`|`latency`|`single-provider`|`carbon`, default **min-cost within constraints**, applied deterministically (no solver/LLM on-path).

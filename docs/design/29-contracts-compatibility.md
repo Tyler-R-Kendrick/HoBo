@@ -3,7 +3,7 @@
 > Part of the [HoBo Design Plan Suite](./README.md). The **contract dimension** of the wiring graph and the **compatibility gate** that decides whether a change is safe to deploy. Built entirely from HoBo primitives — no new dependency.
 
 ## Why this exists (conformance ≠ compatibility)
-HoBo already has **conformance** ([Plan 9](./09-verification-open-questions.md)/[Plan 24](./24-wit-worlds-reference.md)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
+HoBo already has **conformance** ([Plan 9](./09-verification-open-questions.md)/[Plan 24](./24-wit-interfaces-reference.md)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
 
 > *Will `api@v3` (which removed `tenantId` from `order.created`) still work with `worker@v2` that's already running in prod?*
 
@@ -24,7 +24,7 @@ Every **edge** in the manifest graph ([Plan 22](./22-wiring-manifest.md)) carrie
 | **Runtime / SLO** | latency, availability, idempotency, ordering ([Plan 14](./14-observability.md)) |
 | **Semantic function** | I/O schema + invariants + forbidden outputs ([Plan 23](./23-stubbable-ai-implementations.md)) |
 | **Agent tool** | tool I/O, auth scope, allowed side effects ([Plan 6](./06-ai-native-agent-auth.md)) |
-| Provider / world | conformance to the port it claims ([Plan 24](./24-wit-worlds-reference.md)) |
+| Provider / interface | conformance to the port it claims ([Plan 24](./24-wit-interfaces-reference.md)) |
 
 ## Four contract modes (IfC-inferred, then refined by reality)
 Developers don't hand-write contracts (IfC-default, [Plan 21](./21-resources-catalog.md)); they're derived and refined:
@@ -71,7 +71,7 @@ deployable =
 The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** as the default (it already has the graph, traces, and event log it needs). **Pact** is an *optional capability provider* (`@hobo/provider-pact`) that can export HoBo contracts to Pact interactions/message pacts, run Pact provider verification, and mirror a Pact Broker's `can-i-deploy` — for teams already invested in that ecosystem. HoBo owns the source of truth (the **HoBo Contract IR**); Pact/OpenAPI/AsyncAPI/Protobuf are import/export targets, never the model.
 
 ## Camps declare enforcement modes
-Each **Camp** (via its runtime + wasm host, [Plan 20](./20-wasm-wasi-runtime.md)/[Plan 24](./24-wit-worlds-reference.md)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire world announcing capabilities.
+Each **Camp** (via its runtime + wasm host, [Plan 20](./20-wasm-wasi-runtime.md)/[Plan 24](./24-wit-interfaces-reference.md)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire component announcing capabilities.
 
 ## Iteration hooks
 - Authoring surface when devs *want* explicit contracts (TS DSL vs annotations) vs pure inference.

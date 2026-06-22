@@ -14,8 +14,8 @@ core  ←  sdk, runtime  ←  runtimes/*, providers/*, iac/*, build/*  ←  cli,
 ## Packages (initial layout)
 ```
 packages/
-  core/            @hobo/core         types, port interfaces, Hobo Code schema, event envelope, DI/container
-  wit/             @hobo/wit          WIT worlds (wasi:* reuse + hobo:* ports) + generated TS bindings  [Plan 20]
+  core/            @hobo/core         types, port interfaces, Capability Manifest schema, event envelope, DI/container
+  wit/             @hobo/wit          WIT interfaces (wasi:* reuse + hobo:* ports) + generated TS bindings  [Plan 20]
   sdk/             @hobo/sdk          IfC resources (api/kv/bucket/queue/topic/secret/sql/...) + .allow(); bindle() (advanced)  [Plan 21]
   runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
@@ -39,7 +39,7 @@ packages/
     build-dagger       @hobo/build-dagger      (container fallback images)
     build-packer / build-firecracker / build-vagrant
   cloud/             @hobo/cloud        The Yard (control plane), itself a Bindle
-  registry/          @hobo/registry     Provider/Hobo Code catalog service
+  registry/          @hobo/registry     Provider/Capability Manifest catalog service
   identity/          @hobo/identity     SVID issuance, OIDC provider, token broker
   mcp/               @hobo/mcp          MCP server exposing HoBo to agents
   conformance/       @hobo/conformance  port contract test suites (shared by all adapters)

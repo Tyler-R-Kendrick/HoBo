@@ -8,7 +8,7 @@
 
 > **v2 update.** **WASM capability security** ([Plan 20](./20-wasm-wasi-runtime.md)) is now a runtime isolation layer: deny-by-default, unforgeable handles, and `.allow()`-scoped links ([Plan 21](./21-resources-catalog.md)) mean a component (incl. Forge-generated ones) can only touch what it's explicitly linked to — strengthening the sandbox for AI-generated providers/implementations ([Plan 23](./23-stubbable-ai-implementations.md)).
 
-> **Isolation tiers.** Default multi-tenancy isolates tenants *within one Yard* (per-tenant streams/keys/pools, below). For **extreme isolation** (sovereign/regulated tenants, air-gap [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)) a tenant gets a **wholly separate Yard**; sovereign Yards interoperate only via a **`Circuit`** peer federation (trust + signed artifacts, no shared state — [ADR-0043](./adr/ADR-0043-multi-yard-federation-circuit.md)), so the isolation boundary is the Yard itself.
+> **Isolation tiers.** Default multi-tenancy isolates tenants *within one Yard* (per-tenant streams/keys/pools, below). For **extreme isolation** (sovereign/regulated tenants, air-gap [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)) a tenant gets a **wholly separate Yard**; sovereign Yards interoperate only via a **`Junction`** peer federation (trust + signed artifacts, no shared state — [ADR-0043](./adr/ADR-0043-multi-yard-federation-junction.md)), so the isolation boundary is the Yard itself.
 
 ## Threat model (who/what we defend against)
 | Asset | Threats | Primary mitigations |
@@ -44,7 +44,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 - **Plugins** (human or Forge): signed; carry SLSA-style provenance + the conformance report; the Registry refuses unsigned/unverified plugins; consumers can pin versions and require a trust level.
 - **Images**: built reproducibly (Dagger), scanned, and referenced by digest; provenance attached.
 - **Dependencies**: SBOMs generated in CI; vuln scanning gates publishing.
-- **Air-gapped supply chain** ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)): in a zero-egress/sovereign Yard, plugins/Hobo Code/packs/images/model weights enter only via a **signed offline bundle** (`hobo registry import`) verified against this **same** signature + SLSA-provenance + conformance trust boundary (a tampered bundle is refused; `registry.BundleImported` audits it). Trust roots stay in-boundary: Identity issues SVIDs locally, certs via an **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)), secrets via in-boundary KMS/HSM, and no telemetry phone-home.
+- **Air-gapped supply chain** ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)): in a zero-egress/sovereign Yard, plugins/Capability Manifest/packs/images/model weights enter only via a **signed offline bundle** (`hobo registry import`) verified against this **same** signature + SLSA-provenance + conformance trust boundary (a tampered bundle is refused; `registry.BundleImported` audits it). Trust roots stay in-boundary: Identity issues SVIDs locally, certs via an **internal CA / private ACME** ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)), secrets via in-boundary KMS/HSM, and no telemetry phone-home.
 
 ## Audit & compliance
 - The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.
@@ -56,7 +56,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 ## v2 isolation layer (integrated)
 - **Wasm capability sandbox = a fifth isolation dimension** alongside data / compute / credentials / network: deny-by-default, unforgeable handles, and `.allow()`-scoped **links** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)). A component — including a Forge-generated one — can reach *only* what it is explicitly linked to.
 - **`.allow()` is the single grant.** One declaration scopes least-privilege IAM **+** the wasm capability link **+** the brokered token, so the three enforcement layers can't drift apart.
-- **AI-generated code is contained.** Forge runs in this sandbox + Firecracker with **no egress** during conformance; promotion requires per-WIT-world conformance + signed provenance ([Plan 23](./23-stubbable-ai-implementations.md)), keeping the threat-model row "Forge plugins" fully mitigated for *implementations* too, not just providers.
+- **AI-generated code is contained.** Forge runs in this sandbox + Firecracker with **no egress** during conformance; promotion requires per-WIT-interface conformance + signed provenance ([Plan 23](./23-stubbable-ai-implementations.md)), keeping the threat-model row "Forge plugins" fully mitigated for *implementations* too, not just providers.
 
 ## Iteration hooks
 - Encryption granularity (per-tenant vs per-stream vs per-run) and KMS strategy.

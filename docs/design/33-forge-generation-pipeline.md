@@ -6,7 +6,7 @@
 
 ## Inputs — contract-first
 The generator separates **authoritative** spec (what the artifact must satisfy) from **material** (hints + behavioral oracle):
-- **Authoritative:** the target **WIT port** ([Plan 24](./24-wit-worlds-reference.md)) + its **`@hobo/conformance` suite** + the backend's **Hobo Code** (`capabilities/auth/cost.json`, [Plan 6](./06-ai-native-agent-auth.md)). Generation succeeds only by satisfying these — the *same* gate that certifies it.
+- **Authoritative:** the target **WIT port** ([Plan 24](./24-wit-interfaces-reference.md)) + its **`@hobo/conformance` suite** + the backend's **Capability Manifest** (`capabilities/auth/cost.json`, [Plan 6](./06-ai-native-agent-auth.md)). Generation succeeds only by satisfying these — the *same* gate that certifies it.
 - **Material (hints/oracle):** provider docs / OpenAPI / Terraform (treated as **untrusted data**, sanitized + scrubbed per the prompt-injection rule, [ADR-0023](./adr/ADR-0023-security-posture-commitments.md)) and recorded **stub/live traces** ([Plan 11](./11-event-model.md)/[Plan 23](./23-stubbable-ai-implementations.md)) as the behavioral oracle to reproduce.
 
 This is why HoBo can "generate providers without a community": the contract (WIT + conformance) bounds and validates the synthesis, so a wrong guess can't be certified.
@@ -14,7 +14,7 @@ This is why HoBo can "generate providers without a community": the contract (WIT
 ## The loop — generate → validate → repair → certify
 ```mermaid
 flowchart LR
-  REQ["forge request: target WIT port + Hobo Code"] --> SCAF["scaffold from template (per port / artifact kind)"]
+  REQ["forge request: target WIT port + Capability Manifest"] --> SCAF["scaffold from template (per port / artifact kind)"]
   SCAF --> FILL["LLM-fill capability logic (contract-first + sanitized hints)"]
   FILL --> VAL{"sandbox validate: conformance + replayed traces (Firecracker + wasm, no egress)"}
   VAL -->|fail| REPAIR["training-engine optimizer: failures to regenerate (bounded budget)"]
@@ -45,13 +45,13 @@ Same optimizer, same gate, same provenance — generation and evolution are the 
 - **Pinned provenance** — model + frozen prompt + seed + conformance report are signed and recorded, so a certification is reproducible and auditable ([Plan 12](./12-security-multitenancy.md)).
 
 ## Verification ([Plan 9](./09-verification-open-questions.md))
-A **Forge-generation test:** seed a known WIT port + its conformance suite + a backend's Hobo Code → assert the loop produces a **certified** artifact that passes conformance **and** reproduces recorded traces; assert the repair loop **converges or escalates** within the budget (no infinite loop); assert the certification carries complete provenance.
+A **Forge-generation test:** seed a known WIT port + its conformance suite + a backend's Capability Manifest → assert the loop produces a **certified** artifact that passes conformance **and** reproduces recorded traces; assert the repair loop **converges or escalates** within the budget (no infinite loop); assert the certification carries complete provenance.
 
 ## Scope / YAGNI
-**In v1:** the loop for **providers** and **implementations**, plus **Resource-Definition** generation via the same loop with a definition template; **one reference run** end-to-end (generate a `database` provider for a known backend from its Hobo Code + conformance). **Deferred:** fully autonomous **cold-start from docs/OpenAPI only** with no Hobo Code (riskiest input path); marketplace economics ([ADR-0020](./adr/ADR-0020-monetization-model.md)); generating whole Resource **Packs** (vs single definitions).
+**In v1:** the loop for **providers** and **implementations**, plus **Resource-Definition** generation via the same loop with a definition template; **one reference run** end-to-end (generate a `database` provider for a known backend from its Capability Manifest + conformance). **Deferred:** fully autonomous **cold-start from docs/OpenAPI only** with no Capability Manifest (riskiest input path); marketplace economics ([ADR-0020](./adr/ADR-0020-monetization-model.md)); generating whole Resource **Packs** (vs single definitions).
 
 ## Iteration hooks
 - Template library shape (per-port vs per-driver scaffolds) and how much is fixed vs synthesized.
 - Repair-budget defaults + the cost/quality tradeoff of more iterations ([Plan 16](./16-cost-finops.md)); whether the budget is policy-configurable per tenant.
 - How aggressively `material` (docs/OpenAPI) is trusted vs ignored when it conflicts with the contract.
-- Whether the Forge can *propose* a new WIT port / Hobo Code when none exists (vs only implementing an existing one).
+- Whether the Forge can *propose* a new WIT port / Capability Manifest when none exists (vs only implementing an existing one).

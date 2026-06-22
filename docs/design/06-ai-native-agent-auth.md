@@ -7,7 +7,7 @@
 > **v4 (gates):** an **agent action is a policy decision** ([Plan 30](./30-policy-plane.md)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./29-contracts-compatibility.md)), so calls outside the tool's scope/shape are rejected and audited.
 
 ## Design stance: agents are principals, not scripts
-Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Hobo Code** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
+Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Capability Manifest** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 
 > **v2 update.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./23-stubbable-ai-implementations.md). And `.allow()` ([Plan 21](./21-resources-catalog.md)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
 
@@ -15,11 +15,11 @@ Most platforms bolt agent support on as "an API key in a script." HoBo treats an
 
 ---
 
-## 6.1 Hobo Code / Signs — the `auth.md` standard
+## 6.1 Capability Manifest / Signs — the `auth.md` standard
 A machine-readable standard each Provider publishes so any agent can understand *what it offers* and *how to authenticate* — with no human reading docs or pasting keys. Markdown for humans + strict JSON companions for machines, at a well-known location.
 
 ```
-/.well-known/hobo-code/
+/.well-known/capability-manifest/
   index.json          # version, links, signature, issuer
   signs.md            # human/LLM-readable overview (also emitted as llms.txt)
   capabilities.json   # which ports + service models, regions, equivalence classes
@@ -83,7 +83,7 @@ sequenceDiagram
   participant REG as Registry
   participant P as Provider STS/AS
   A->>ID: ctx.token("acme", { port:"database", resource:"shop.db", action:"write" })
-  ID->>REG: lookup Hobo Code (auth.json) for "acme"
+  ID->>REG: lookup Capability Manifest (auth.json) for "acme"
   REG-->>ID: flow = oidc-federation, audience, exchange
   ID->>ID: mint OIDC token (aud=acme) for this SVID + scope
   ID->>P: token exchange (AssumeRoleWithWebIdentity / WIF / federated cred)
@@ -108,7 +108,7 @@ A DurableAgent analog backed by the Camp's runtime: replayable, resumable, tools
 import { agent, step } from "@hobo/runtime";
 
 const deployTool = step(async ({ bindle }: { bindle: string }, ctx) => {
-  // ctx.identity is the agent's SVID; ctx.token() brokers a scoped token via Hobo Code
+  // ctx.identity is the agent's SVID; ctx.token() brokers a scoped token via Capability Manifest
   const token = await ctx.token("acme", { port: "compute", resource: `${bindle}.api`, action: "deploy" });
   return ctx.hobo.deploy(bindle, { token });
 });
@@ -132,7 +132,7 @@ The Yard exposes an **MCP server** (`@hobo/mcp`) so any agent (Claude, etc.) can
 | `plan` | dry-run a deploy → returns the DeploymentPlan + cost + warnings |
 | `deploy` / `promote` / `rollback` / `destroy` | lifecycle (guardrail-gated) |
 | `inspect_run` / `tail_logs` | observability over projections + streams |
-| `search_registry` | find providers by capability (reads Hobo Code) |
+| `search_registry` | find providers by capability (reads Capability Manifest) |
 | `request_token` | broker a scoped provider token (audited) |
 | `get_drift` / `heal` | drift status + reconcile |
 
@@ -144,30 +144,30 @@ MCP auth uses the same Identity/SVID model; tools are capability-scoped. HoBo al
 Instead of relying on a community to write adapters, the **Forge** generates and certifies them.
 ```mermaid
 flowchart LR
-  SRC["Provider docs / OpenAPI / TF provider / existing Hobo Code"] --> GEN["LLM generate @hobo/provider-x"]
+  SRC["Provider docs / OpenAPI / TF provider / existing Capability Manifest"] --> GEN["LLM generate @hobo/provider-x"]
   GEN --> SBX["Firecracker sandbox (scoped creds, no egress)"]
   SBX --> CONF{"@hobo/conformance port contract tests"}
   CONF -->|pass| SIGN["sign + publish to Registry (forge.PluginCertified)"]
   CONF -->|fail| FIX["feed failures back"]
   FIX --> GEN
 ```
-1. **Generate** a candidate provider (port impls + IaC mappings + equivalence classes + a Hobo Code manifest) from the backend's docs/OpenAPI/Terraform provider/Hobo Code.
+1. **Generate** a candidate provider (port impls + IaC mappings + equivalence classes + a Capability Manifest manifest) from the backend's docs/OpenAPI/Terraform provider/Capability Manifest.
 2. **Sandbox-test** it in a Firecracker microVM with capability-scoped tokens and no outbound egress (can't exfiltrate) against `@hobo/conformance` ([Plan 9](./09-verification-open-questions.md)).
 3. **Certify** on pass: sign and publish to the Registry (`forge.PluginCertified` with the test report + provenance); on fail, feed errors back for repair.
 
 **Conformance tests are the trust boundary** that makes AI-generated extensibility safe — a plugin is only as trusted as the contract tests it passed, and the signed report is part of its Registry record.
 
-> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./33-forge-generation-pipeline.md)** ([ADR-0030](./adr/ADR-0030-forge-generation-inputs-and-algorithm.md)): the sketch above is **contract-first** (the WIT port + conformance suite + Hobo Code are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
+> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./33-forge-generation-pipeline.md)** ([ADR-0030](./adr/ADR-0030-forge-generation-inputs-and-algorithm.md)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
 
 ---
 
 ## 6.6 How this all reduces to "zero developer effort"
-The end state the project asks for: a developer (or their agent) writes a Bindle, points it at "acme-cloud," and the agent — using its SVID, the Registry's Hobo Code, and the broker — obtains exactly the scoped tokens it needs, deploys, and leaves an auditable trail. The developer never created an IAM role, pasted a key, or wrote an adapter. If acme-cloud isn't supported yet, the Forge generates and certifies the provider on demand.
+The end state the project asks for: a developer (or their agent) writes a Bindle, points it at "acme-cloud," and the agent — using its SVID, the Registry's Capability Manifest, and the broker — obtains exactly the scoped tokens it needs, deploys, and leaves an auditable trail. The developer never created an IAM role, pasted a key, or wrote an adapter. If acme-cloud isn't supported yet, the Forge generates and certifies the provider on demand.
 
 ## Iteration hooks
-- Exact Hobo Code schema + whether to publish it as an open spec aligned with MCP-auth / OAuth-OBO draft / SPIFFE federation / the emerging Agent Identity Protocol.
+- Exact Capability Manifest schema + whether to publish it as an open spec aligned with MCP-auth / OAuth-OBO draft / SPIFFE federation / the emerging Agent Identity Protocol.
 - Delegation chains (agent → sub-agent) — adopt AIP when it matures, or interim OBO chaining.
-- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Circuit** ([ADR-0043](./adr/ADR-0043-multi-yard-federation-circuit.md)): a principal from one Yard is authenticated by another under an agreed trust root (post-v1).
+- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/ADR-0043-multi-yard-federation-junction.md)): a principal from one Yard is authenticated by another under an agreed trust root (post-v1).
 - Policy language for guardrails (CEL/Rego-style vs typed TS policy).
 - Forge model + eval design; human-in-the-loop certification for high-trust providers.
 - Plugin signing, provenance (SLSA), and supply-chain trust for Registry plugins ([Plan 12](./12-security-multitenancy.md)).

@@ -118,7 +118,7 @@ Only the resolved provider's block applies; targeting the other cloud needs no f
 
 ## 5. An agent operates it (zero developer effort)
 The team points an MCP client (Claude) at the Yard. The ops agent:
-1. `search_registry("database postgres managed")` → reads Hobo Code; finds a cheaper region.
+1. `search_registry("database postgres managed")` → reads Capability Manifest; finds a cheaper region.
 2. `plan` a region move → sees cost delta + egress impact.
 3. The move would exceed its `spendCapUsd`, so the **policy gate** opens a `require-approval` hook → a human approves in the dashboard.
 4. `deploy` → the agent obtains scoped tokens via the broker (no keys), reconciles, and watches `inspect_run`/`tail_logs`; if a step regresses, the canary gate auto-rolls back and the agent reports why.

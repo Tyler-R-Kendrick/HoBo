@@ -20,9 +20,9 @@ Adopt three explicitly nested scopes — **`Yard ⊃ Camp ⊃ Bindle`** — and 
 
 **Environments stay a matching dimension, not a new layer.** A Camp carries an `environment type` ([Plan 25](../25-resource-definitions-matching.md)/[Plan 26](../26-environments-deltas.md)); "prod across two clouds" = two Camps under a Yard. No fourth noun.
 
-**Preserve "WIT world"** — that is the WebAssembly Component Model term ([Plan 20](../20-wasm-wasi-runtime.md)/[Plan 24](../24-wit-worlds-reference.md)) and is unrelated to the removed Vercel concept.
+**Preserve "WIT interface"** — that is the WebAssembly Component Model term ([Plan 20](../20-wasm-wasi-runtime.md)/[Plan 24](../24-wit-interfaces-reference.md)) and is unrelated to the removed Vercel concept.
 
-> **Above the Yard (rare, post-v1):** the Yard remains the broadest scope **for an app/org**. For the extreme-isolation case where wholly separate Yards must interoperate, an optional **peer-federation** aggregate — the **`Circuit`** — sits over sovereign Yards ([ADR-0043](./ADR-0043-multi-yard-federation-circuit.md)); it federates trust + signed artifacts, is **not** a controller, and does **not** make the Yard subordinate. Default deployments never see it.
+> **Above the Yard (rare, post-v1):** the Yard remains the broadest scope **for an app/org**. For the extreme-isolation case where wholly separate Yards must interoperate, an optional **peer-federation** aggregate — the **`Junction`** — sits over sovereign Yards ([ADR-0043](./ADR-0043-multi-yard-federation-junction.md)); it federates trust + signed artifacts, is **not** a controller, and does **not** make the Yard subordinate. Default deployments never see it.
 
 ## Alternatives considered
 - **Keep "World" as the runtime substrate noun** — rejected: vendor-branded, and redundant once a Camp is provider-specific and naturally owns its runtime.
@@ -32,5 +32,5 @@ Adopt three explicitly nested scopes — **`Yard ⊃ Camp ⊃ Bindle`** — and 
 ## Consequences
 - **(+)** A clean, teachable hierarchy (governed-how-across-clouds / where-on-which-provider / what-the-app-is); HoBo owns its runtime concept end-to-end; no Vercel-brand dependency.
 - **(+)** Cross-provider/hybrid governance has a home (the Yard) that matches how the control plane already works.
-- **(−)** A broad terminology sweep across the suite (`World`→Camp/runtime; `@hobo/world-*`→`@hobo/runtime-*`), with care to preserve "WIT world". Tracked + verified by grep in the refactor.
+- **(−)** A broad terminology sweep across the suite (`World`→Camp/runtime; `@hobo/world-*`→`@hobo/runtime-*`), with care to preserve "WIT interface". Tracked + verified by grep in the refactor.
 - **(−)** `ADR-0002`'s wording ("Worlds") is now historical; this ADR supersedes its naming (the *decision* — pluggable durable ports + built-in engine — stands).

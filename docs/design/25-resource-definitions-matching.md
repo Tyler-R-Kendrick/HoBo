@@ -6,7 +6,7 @@
 Developers declare *what* they need (a `database`, IfC-style with `.allow()`, [Plan 21](./21-resources-catalog.md)). Platform engineers declare *how* it's realized — and crucially, **differently per environment**: managed-HA Postgres in prod, a cheap in-cluster Postgres in an ephemeral preview. A **Resource Definition** is that rule; **Matching** picks the right one for the deploy context. This is **dynamic configuration management**: the *same Bindle* resolves to different infra without app edits.
 
 ## A Resource Definition
-For an abstract port (`type` + optional `class`), a definition says which **provider + driver + options + co-provisioned resources** realize it, plus the **matching criteria** that select it. Definitions are **WIT-world-typed** ([Plan 24](./24-wit-worlds-reference.md)) and may be **Forge-generated** ([Plan 23](./23-stubbable-ai-implementations.md)).
+For an abstract port (`type` + optional `class`), a definition says which **provider + driver + options + co-provisioned resources** realize it, plus the **matching criteria** that select it. Definitions are **WIT-interface-typed** ([Plan 24](./24-wit-interfaces-reference.md)) and may be **Forge-generated** ([Plan 23](./23-stubbable-ai-implementations.md)).
 ```ts
 // platform/resource-defs.ts — authored by platform engineers (TS; YAML form also supported)
 import { defineResource } from "@hobo/sdk/platform";
@@ -74,7 +74,7 @@ So a solo dev writes the one-liner and never sees definitions; a platform team a
 A definition may declare co-provisioned resources (e.g. a bucket + its IAM policy); these become extra nodes/edges in the DeploymentPlan DAG with output flow via placeholders ([Plan 22](./22-wiring-manifest.md)). The Planner ([Plan 3](./03-providers-iac.md)) consumes definitions; the Orchestrator ([Plan 4](./04-control-plane.md)) executes the graph.
 
 ## Forge-generated definitions
-Given a backend's Hobo Code + a target context, the **Forge** ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 23](./23-stubbable-ai-implementations.md)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, [Plan 27](./27-drivers-packs-profiles.md)), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
+Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 23](./23-stubbable-ai-implementations.md)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, [Plan 27](./27-drivers-packs-profiles.md)), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
 
 ## Iteration hooks
 - Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.

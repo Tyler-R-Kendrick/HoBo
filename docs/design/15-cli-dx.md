@@ -32,7 +32,7 @@ hobo inspect run <id> | deploy <id> | topology           projections / time-trav
 hobo logs [--follow] [<resource>]                        live stream via the Camp runtime streams
 hobo drift [--heal|--propose]                            drift status + reconcile
 hobo login                                               obtain a dev SVID (OIDC)
-hobo registry search <capability> | add <provider>       browse/install providers (Hobo Code)
+hobo registry search <capability> | add <provider>       browse/install providers (Capability Manifest)
 hobo forge <provider-url>                                request an AI-generated provider
 hobo import terraform|pulumi|opentofu|lakebed|faas <src> adopt an existing estate in place (ADR-0041)
 hobo yard up [--restore <log>] | status                  run/restore a self-hosted Yard
@@ -47,7 +47,7 @@ This separation is deliberate: code review of `bindle.ts` is about the app; `hob
 
 ## The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
-2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT world, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md)).
+2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md)).
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./02-sdk-api.md), [Plan 9](./09-verification-open-questions.md)).
 

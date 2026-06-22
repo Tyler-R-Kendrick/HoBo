@@ -6,7 +6,7 @@
 | Aspire | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | AppHost (`DistributedApplication.CreateBuilder`) | `bindle()` topology + **IfC** resource collection | ✅ | [02](../../docs/design/02-sdk-api.md), [21](../../docs/design/21-resources-catalog.md) |
-| `IResource` + capability interfaces | Resources behind **WIT-world ports** + capability negotiation | ➕ | [20](../../docs/design/20-wasm-wasi-runtime.md), [24](../../docs/design/24-wit-worlds-reference.md) |
+| `IResource` + capability interfaces | Resources behind **WIT-interface ports** + capability negotiation | ➕ | [20](../../docs/design/20-wasm-wasi-runtime.md), [24](../../docs/design/24-wit-interfaces-reference.md) |
 | `Add*` integration catalog | Resource catalog + capability providers | ✅ | [21](../../docs/design/21-resources-catalog.md), [03](../../docs/design/03-providers-iac.md) |
 | Hosting vs **client** integrations | Provider `realize` (deploy) vs generated typed clients (`code`) | ✅ | [03](../../docs/design/03-providers-iac.md), [02](../../docs/design/02-sdk-api.md) |
 | `WithReference` / `services__*` / `ConnectionStrings__*` | Aspire-style references + the same env conventions | ✅ | [22](../../docs/design/22-wiring-manifest.md) |
@@ -23,7 +23,7 @@
 | `aspire-manifest.json` (deploy IR) | **manifest IR = Deployment Set** | ✅➕ | [22](../../docs/design/22-wiring-manifest.md), [26](../../docs/design/26-environments-deltas.md) |
 | Publishers (azd/Compose/K8s/custom) | Publisher targets incl. **GitOps publisher** | ✅ | [22](../../docs/design/22-wiring-manifest.md), [28](../../docs/design/28-agent-gitops-pipelines.md) |
 | Compute environments | Camps + **environment types** | ✅ | [26](../../docs/design/26-environments-deltas.md) |
-| DCP (local Go orchestrator) | local `world` runtime / dev loop; the Yard for hosted | ✅ | [20](../../docs/design/20-wasm-wasi-runtime.md), [04](../../docs/design/04-control-plane.md) |
+| DCP (local Go orchestrator) | local `runtime-local` host / dev loop; the Yard for hosted | ✅ | [20](../../docs/design/20-wasm-wasi-runtime.md), [04](../../docs/design/04-control-plane.md) |
 | Aspire Dashboard (resource graph, OTel) | Dashboard: resource graph + run inspector + replay | ➕ | [07](../../docs/design/07-ui-dashboard.md), [14](../../docs/design/14-observability.md) |
 | OpenTelemetry-by-default | OTel + event-sourced traces/replay | ➕ | [14](../../docs/design/14-observability.md), [11](../../docs/design/11-event-model.md) |
 | `Aspire.Hosting.Testing` | Conformance suites + E2E replay tests | ✅ | [09](../../docs/design/09-verification-open-questions.md) |

@@ -39,7 +39,7 @@ Shipping software still forces application developers to become part-time platfo
 
 **HoBo** is an AI-native, cloud-agnostic **control plane** plus a TypeScript SDK: *"Write your app once in TypeScript. HoBo decides how to host it — and gets out of the way when you want control. Built for humans and the agents that work for them."* ([00-vision.md](../design/00-vision.md)). It is **not** a single PaaS, **not** "just IaC," and **not** Kubernetes-only ([17-positioning-competitive.md](../design/17-positioning-competitive.md)).
 
-The business bet: own the intersection no incumbent occupies — cloud-agnostic ports/adapters (as WIT worlds) + a durable, event-sourced runtime + inline `.allow()` infrastructure-from-code + agents-as-first-class + **AI-generated providers** + a self-hostable control plane ([17](../design/17-positioning-competitive.md)). Monetize via an **OSS core + hosted Yard SaaS + a Forge/Resource-Pack marketplace** ([ADR-0020](../design/adr/ADR-0020-monetization-model.md)).
+The business bet: own the intersection no incumbent occupies — cloud-agnostic ports/adapters (as WIT interfaces) + a durable, event-sourced runtime + inline `.allow()` infrastructure-from-code + agents-as-first-class + **AI-generated providers** + a self-hostable control plane ([17](../design/17-positioning-competitive.md)). Monetize via an **OSS core + hosted Yard SaaS + a Forge/Resource-Pack marketplace** ([ADR-0020](../design/adr/ADR-0020-monetization-model.md)).
 
 ## 3. Business context & problem statement
 - **Developer pain:** cloud-specific APIs, IaC sprawl, and operational burden block application developers from shipping; switching clouds means rewrites.
@@ -59,7 +59,7 @@ The business bet: own the intersection no incumbent occupies — cloud-agnostic 
 ## 5. Market opportunity & positioning
 **Positioning statement** ([17](../design/17-positioning-competitive.md)): *HoBo is an AI-native, cloud-agnostic control plane that maps a single TypeScript app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.*
 
-**The gap HoBo fills:** *"No one combines cloud-agnostic ports/adapters (as WIT worlds) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane. That intersection is HoBo."* ([17](../design/17-positioning-competitive.md)).
+**The gap HoBo fills:** *"No one combines cloud-agnostic ports/adapters (as WIT interfaces) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane. That intersection is HoBo."* ([17](../design/17-positioning-competitive.md)).
 
 ## 6. Competitive analysis
 From [17-positioning-competitive.md](../design/17-positioning-competitive.md) and the [`competitors/`](../../competitors/README.md) captures:
@@ -74,7 +74,7 @@ From [17-positioning-competitive.md](../design/17-positioning-competitive.md) an
 | **Lakebed** | Agent-native closed PaaS | Single closed runtime; HoBo is multi-cloud, multi-runtime, self-hostable |
 | **Vercel + Workflow SDK** | PaaS + durable execution | HoBo provides its own HoBo-native durable runtime (per Camp) for portability — deliberately *not* Vercel's "World"; adds multi-provider + IfC + self-host |
 
-**Defensible differentiators** ([17](../design/17-positioning-competitive.md)): AI-native operations; the Hobo Code standard + Registry + Forge (no community bottleneck); event-sourced everything; genuine agnostic + typed escape hatch in one model; contracts/policy/evals as native graph artifacts.
+**Defensible differentiators** ([17](../design/17-positioning-competitive.md)): AI-native operations; the Capability Manifest standard + Registry + Forge (no community bottleneck); event-sourced everything; genuine agnostic + typed escape hatch in one model; contracts/policy/evals as native graph artifacts.
 
 **Who HoBo is *not* for:** single-cloud teams happy with native tooling; pure-Kubernetes shops on Crossplane/KubeVela; bare-metal/extreme-perf workloads where any abstraction is a liability.
 
@@ -125,13 +125,13 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 | Recovery (resume after node loss / rebuild) | <30 s resume / <15 min rebuild | BR-006/BR-007 |
 
 ## 11. Scope
-**In scope (v1, P0–P4 — [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Hobo Code + Registry; conformance trust boundary; cross-provider connectivity.
+**In scope (v1, P0–P4 — [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity.
 **In scope (post-v1, P5–P6):** Forge at scale; full FinOps/budgets/chargeback; multi-region HA; complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth.
 **Out of scope (v1)** ([00 non-goals](../design/00-vision.md)): a general PaaS UI for non-developers; replacing Terraform/Pulumi (we orchestrate them); supporting every cloud on day one; being an application framework or a standalone secret-management product.
 
 ## 12. Assumptions
 - AI agents (via MCP) are a growing, real channel for software delivery — central to the bet.
-- Providers will (eventually) publish, or accept Forge-generated, machine-readable Hobo Code; v1 ships first-party signs for launch providers.
+- Providers will (eventually) publish, or accept Forge-generated, machine-readable Capability Manifest; v1 ships first-party signs for launch providers.
 - The OSS license split and exact hosted pricing are **open** and will be ratified before paid GA (tracked as risks).
 
 ## 13. Constraints
@@ -150,7 +150,7 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 | R-2 | **Agent autonomy causes runaway spend/destroy** | Med | High | Scoped SVIDs, policy gates, spend caps, full replay ([06](../design/06-ai-native-agent-auth.md)/[30](../design/30-policy-plane.md)) | Eng/Platform |
 | R-3 | **Scope/complexity overwhelms the team** (broad surface) | High | High | Phase gates; MVP line at P4; "powerful but unusable" guardrail ([ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)) | Product |
 | R-4 | **OSS/commercial line wrong** → no revenue or no adoption | Med | High | Explicit model ([ADR-0020](../design/adr/ADR-0020-monetization-model.md)); ratify license + pricing pre-GA | Founders |
-| R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/24-wit-worlds-reference.md)) | Eng |
+| R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/24-wit-interfaces-reference.md)) | Eng |
 | R-6 | **Multi-cloud networking** harder/costlier than modeled | Med | Med | Tiered connectivity + egress feedback to Planner ([13](../design/13-networking-connectivity.md)/[16](../design/16-cost-finops.md)) | Eng |
 | R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/17-positioning-competitive.md)) | Founders/GTM |
 

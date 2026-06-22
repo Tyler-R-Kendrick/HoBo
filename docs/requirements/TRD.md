@@ -46,7 +46,7 @@ flowchart TB
   subgraph Yard["The Yard — control plane (event-sourced, multi-tenant)"]
     GW["Gateway: RPC / REST / MCP ingress + authz"]
     IDP["Identity: SVID/OIDC + token broker"]
-    REG["Registry: Hobo Code catalog"]
+    REG["Registry: Capability Manifest catalog"]
     PLN["Planner: Bindle+mapping to DeploymentPlan DAG"]
     ORC["Orchestrator: choreography saga engine"]
     RAC["ResourceActors: per-resource reconcilers"]
@@ -93,12 +93,12 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 
 > **"Unedited" (portability definition, [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)):** across cloud targets, `bindle.ts` and application `src/` are **byte-identical**; only `hobo.config.ts` and CLI/env parameters may change. The `multi-cloud-shop` E2E proves it by deploying an unchanged `bindle.ts` to ≥2 providers and asserting identical resolved topology + bindings.
 
-### 5.2 Camp runtime — durable runtime ports ([02](../design/02-sdk-api.md), [24](../design/24-wit-worlds-reference.md))
+### 5.2 Camp runtime — durable runtime ports ([02](../design/02-sdk-api.md), [24](../design/24-wit-interfaces-reference.md))
 | ID | Requirement | Verified by |
 |---|---|---|
-| **TR-010** | Define the **runtime ports** — EventStore, Queue, Streamer, ActorHost, Clock — as WIT worlds; ship a built-in engine (`runtime-local`, SQLite/fs). | Per-runtime-port conformance ([09](../design/09-verification-open-questions.md)) |
+| **TR-010** | Define the **runtime ports** — EventStore, Queue, Streamer, ActorHost, Clock — as WIT interfaces; ship a built-in engine (`runtime-local`, SQLite/fs). | Per-runtime-port conformance ([09](../design/09-verification-open-questions.md)) |
 | **TR-011** | Runtime primitives `step`/`workflow`/`actor`/`saga`/`agent`/`sleep`/`cron`/hooks/streams with memoized steps + auto idempotency keys. | hello-bindle exercises all; replay==live |
-| **TR-012** | Runtime backends are swappable per Camp (`runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 runtime backends** (e.g. `runtime-local` + `runtime-postgres`) with only a runtime override; lifecycle identical (replay==live) ([24](../design/24-wit-worlds-reference.md)) |
+| **TR-012** | Runtime backends are swappable per Camp (`runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 runtime backends** (e.g. `runtime-local` + `runtime-postgres`) with only a runtime override; lifecycle identical (replay==live) ([24](../design/24-wit-interfaces-reference.md)) |
 | **TR-013** | **Version policy:** Pulumi Automation API / WASI-WIT / MCP are pinned to exact versions; runtime-port versions are recorded in the Manifest IR and immutable for a Bindle version; upgrades go through a gated `hobo upgrade` path with a compat/upgrade test; a version mismatch fails planning with a precise reason. | upstream-upgrade compat test; version-mismatch reject test ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md); open ADR-P/Q11 [09](../design/09-verification-open-questions.md)) |
 
 ### 5.3 The Yard control plane ([04](../design/04-control-plane.md))
@@ -135,10 +135,10 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-053** | **Confused-deputy default-deny:** before issuing any scoped token, the policy engine checks `{principal, tenant, resource, action}`; cross-tenant issuance is denied unless explicitly delegated. | Agent-with-tenant-1-SVID requests tenant-2 token → denied before `token.Granted` ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) |
 | **TR-054** | **Config/secret resolution (secretless-first):** `config()`/`secretRef()`/`env()` declarations resolve to **references per Camp** at use-time via the ladder — bound resource (brokered token, no secret) → provider secret store (brokered token) → bounded static fallback (TTL ≤7d, [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)). Values never persist in the Bindle/Camp config/event log; reads emit `config.Resolved`(ref+Camp)/`secret.Accessed`/`secret.Unavailable` and are redacted **at capture** (incl. training trajectories). `hobo doctor` checks cross-Camp ref parity. | secretless-resolve + redaction + drift test ([Plan 31](../design/31-config-secretless-secrets.md)/[ADR-0027](../design/adr/ADR-0027-secretless-config-and-secrets.md)) |
 
-### 5.7 Registry & Hobo Code ([06](../design/06-ai-native-agent-auth.md))
+### 5.7 Registry & Capability Manifest ([06](../design/06-ai-native-agent-auth.md))
 | ID | Requirement | Verified by |
 |---|---|---|
-| **TR-060** | Providers publish **Hobo Code** (`index/signs/capabilities/auth/cost.json`) at `/.well-known/hobo-code/`; the **Registry** indexes + serves capability search. | Discovery test (FR-031) |
+| **TR-060** | Providers publish **Capability Manifest** (`index/signs/capabilities/auth/cost.json`) at `/.well-known/capability-manifest/`; the **Registry** indexes + serves capability search. | Discovery test (FR-031) |
 | **TR-061** | The Registry **refuses unsigned/unverified plugins**; consumers pin versions + require a trust level. | Unsigned-plugin-refused test ([12](../design/12-security-multitenancy.md)) |
 
 ### 5.8 MCP control surface ([06](../design/06-ai-native-agent-auth.md), [15](../design/15-cli-dx.md))
@@ -150,7 +150,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 ### 5.9 Forge & conformance trust boundary ([06](../design/06-ai-native-agent-auth.md), [09](../design/09-verification-open-questions.md), [23](../design/23-stubbable-ai-implementations.md))
 | ID | Requirement | Verified by |
 |---|---|---|
-| **TR-080** | `@hobo/conformance` provides an executable contract suite **per WIT world**; an adapter may only claim a port it passes; CI blocks otherwise. | Conformance gate in CI ([09](../design/09-verification-open-questions.md)) |
+| **TR-080** | `@hobo/conformance` provides an executable contract suite **per WIT interface**; an adapter may only claim a port it passes; CI blocks otherwise. | Conformance gate in CI ([09](../design/09-verification-open-questions.md)) |
 | **TR-081** | **Forge** generates a candidate provider/impl, runs conformance **sandboxed with no egress**, signs + attaches SLSA-style provenance, publishes on pass. | `hobo forge` certification test ([06](../design/06-ai-native-agent-auth.md)) |
 | **TR-082** | `stub()` records calls as events; AI implement-to-trace asserts conformance-green **and** reproduces recorded traces; **live-fix** routes through the gated canary/auto-rollback saga. | Stub/replay + gated live-fix test ([09](../design/09-verification-open-questions.md)) |
 | **TR-083** | **Forge generation is injection-hardened:** source docs/OpenAPI are scanned/sanitized before generation; the signed provenance includes a scrub report; conformance runs with **no egress** (hard requirement, not default). | Seeded-malicious-docs test produces a scrub report; egress attempt during conformance fails ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md), [12](../design/12-security-multitenancy.md)) |
@@ -207,7 +207,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-151** | Budgets/caps are policy gates; spend over cap → obligation/approval; showback attributable per tenant/Bindle/Camp/resource from the log. | Budget-breach test |
 
 ## 6. Interfaces & APIs
-- **WIT ports** ([24](../design/24-wit-worlds-reference.md)): the canonical contracts (runtime ports + provider capability ports + `contract-engine`/`policy-engine`/`training-engine`). `hobo:*` WIT worlds reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/09-verification-open-questions.md) Q11).
+- **WIT ports** ([24](../design/24-wit-interfaces-reference.md)): the canonical contracts (runtime ports + provider capability ports + `contract-engine`/`policy-engine`/`training-engine`). `hobo:*` WIT interfaces reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/09-verification-open-questions.md) Q11).
 - **CLI** ([15](../design/15-cli-dx.md)): the `hobo …` command set (FR-010/013).
 - **MCP** ([06](../design/06-ai-native-agent-auth.md)): tool-per-capability surface (TR-070).
 - **Gateway command/event API** ([04](../design/04-control-plane.md)): commands (`Deploy`/`Promote`/`Rollback`/`Destroy`/`RegisterProvider`/`RequestToken`/…); the only side effect is appending events.
@@ -251,4 +251,4 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-001
 > The matrix shows **representative** TRs per BR; every `TR-NNN` carries its own verification in [§5](#5-technical-requirements-tr-nnn). Rows for BR-001/002/004/006/007/008/011 and the security spine were extended in the requirements hardening pass ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)/[ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md); see [`plans/README.md`](../../plans/README.md)).
 
 ## 11. References
-[10 Architecture](../design/10-architecture-overview.md) · [04 Control plane](../design/04-control-plane.md) · [11 Event model](../design/11-event-model.md) · [05 Reliability](../design/05-reliability-ha.md) · [12 Security](../design/12-security-multitenancy.md) · [13 Networking](../design/13-networking-connectivity.md) · [09 Verification](../design/09-verification-open-questions.md) · [24 WIT worlds](../design/24-wit-worlds-reference.md) · [BRD](./BRD.md) · [PRD](./PRD.md) · [ADR index](../design/adr/README.md).
+[10 Architecture](../design/10-architecture-overview.md) · [04 Control plane](../design/04-control-plane.md) · [11 Event model](../design/11-event-model.md) · [05 Reliability](../design/05-reliability-ha.md) · [12 Security](../design/12-security-multitenancy.md) · [13 Networking](../design/13-networking-connectivity.md) · [09 Verification](../design/09-verification-open-questions.md) · [24 WIT interfaces](../design/24-wit-interfaces-reference.md) · [BRD](./BRD.md) · [PRD](./PRD.md) · [ADR index](../design/adr/README.md).

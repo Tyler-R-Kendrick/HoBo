@@ -11,7 +11,7 @@
 
 ## Workstream 1 — Additional CloudProviders (AWS, Azure)
 1. Implement capability ports for the full resource catalog ([Plan 21](../21-resources-catalog.md)) on AWS and Azure as capability providers.
-2. Equivalence classes per port (e.g. `database{postgres}` → RDS / Flexible Server); Hobo Code for each.
+2. Equivalence classes per port (e.g. `database{postgres}` → RDS / Flexible Server); Capability Manifest for each.
 3. Typed `.with(...)` option builders per provider (`aws.fargate`, `azure.containerApps`, …).
 
 ## Workstream 2 — Mapping rules & resolution

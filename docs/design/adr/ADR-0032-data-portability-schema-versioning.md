@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-06-22
 - **Deciders:** Engineering, Product
-- **Related:** [Plan 34 — App-data migrations](../34-app-data-migrations.md) · [Plan 21 — Resource catalog](../21-resources-catalog.md) (`sql`) · [Plan 24 — WIT worlds](../24-wit-worlds-reference.md) (`wasi:sql`/`hobo:sql`) · [Plan 26 — Environments/Deltas](../26-environments-deltas.md) (`can-deploy`) · [Plan 29 — Contracts](../29-contracts-compatibility.md) (`compat.Gate*`) · [Plan 5 — Reliability/HA](../05-reliability-ha.md) (blue/green, snapshots) · [Plan 11 — Event model](../11-event-model.md) (upcasters, contrast) · [competitors/gap-analysis](../../../competitors/gap-analysis.md) (G5 / "data, not just infra")
+- **Related:** [Plan 34 — App-data migrations](../34-app-data-migrations.md) · [Plan 21 — Resource catalog](../21-resources-catalog.md) (`sql`) · [Plan 24 — WIT interfaces](../24-wit-interfaces-reference.md) (`wasi:sql`/`hobo:sql`) · [Plan 26 — Environments/Deltas](../26-environments-deltas.md) (`can-deploy`) · [Plan 29 — Contracts](../29-contracts-compatibility.md) (`compat.Gate*`) · [Plan 5 — Reliability/HA](../05-reliability-ha.md) (blue/green, snapshots) · [Plan 11 — Event model](../11-event-model.md) (upcasters, contrast) · [competitors/gap-analysis](../../../competitors/gap-analysis.md) (G5 / "data, not just infra")
 - **Origin:** the gap analysis and open question Q15 found HoBo's multi-cloud premise was **infra-only** — it could provision a DB on any cloud but had no story for migrating the *schema and data* or gating it. Designed via brainstorming + grill-with-docs.
 
 ## Context

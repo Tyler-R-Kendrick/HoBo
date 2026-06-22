@@ -6,7 +6,7 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 
 > **v2 update (Nitric/WASM/Aspire iteration).** Three refinements now layer on top of this model:
 > - **Authoring is IfC-default** ([Plan 21](./21-resources-catalog.md)): you declare resources inline with `.allow(...)` and HoBo collects them by running the component; the explicit `bindle()` topology below becomes the **advanced/escape-hatch** mode.
-> - **Ports are WIT worlds** and **services are wasm/wasi components by default** ([Plan 20](./20-wasm-wasi-runtime.md)); the typed clients shown here are generated from those worlds (OCI-container fallback for non-wasm workloads).
+> - **Ports are WIT interfaces** and **services are wasm/wasi components by default** ([Plan 20](./20-wasm-wasi-runtime.md)); the typed clients shown here are generated from those interfaces (OCI-container fallback for non-wasm workloads).
 > - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 22](./22-wiring-manifest.md)).
 > The Layer 1–4 model still holds; read it as the conceptual core, with those three docs as the concrete v2 surface.
 
@@ -45,7 +45,7 @@ export interface ActorHost {
 ---
 
 ## Layer 2 — Providers (infra capability ports)
-Capabilities are grouped by service model. Each is a **port**; providers implement subsets and advertise them via Hobo Code ([Plan 6](./06-ai-native-agent-auth.md)).
+Capabilities are grouped by service model. Each is a **port**; providers implement subsets and advertise them via Capability Manifest ([Plan 6](./06-ai-native-agent-auth.md)).
 
 ```ts
 // service-model taxonomy (illustrative)
@@ -238,7 +238,7 @@ The end-to-end types above aren't hand-written — they're **generated**, determ
 ```mermaid
 flowchart LR
   subgraph SRC["sources (authoritative)"]
-    WIT["WIT worlds (jco guest-types)"]
+    WIT["WIT interfaces (jco guest-types)"]
     ZOD["Zod schemas (step/workflow/query/search I/O)"]
     ALLOW[".allow() scopes"]
     GRAPH["bindle graph (bind edges)"]

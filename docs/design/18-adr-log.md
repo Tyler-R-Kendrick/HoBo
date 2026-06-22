@@ -28,7 +28,7 @@
 ### ADR-0008 — Keyless agent identity (SVID/OIDC federation) + token broker
 **Status:** Accepted. **Context:** static keys vs federated identity. **Decision:** agents get short-lived SVIDs; the broker exchanges them for resource-scoped provider tokens (OIDC federation preferred, OAuth-OBO for human delegation). **Consequences:** no static secrets, full credential audit; we must run an OIDC IdP + per-provider trust setup ([Plan 6](./06-ai-native-agent-auth.md), [Plan 12](./12-security-multitenancy.md)).
 
-### ADR-0009 — Hobo Code capability/auth standard + Registry
+### ADR-0009 — Capability Manifest capability/auth standard + Registry
 **Status:** Accepted. **Decision:** providers publish machine-readable signs (`capabilities/auth/cost.json`) at a well-known path; the Registry indexes them. **Consequences:** agents self-discover + self-provision; we must define, version, and possibly standardize the schema ([Plan 6](./06-ai-native-agent-auth.md)).
 
 ### ADR-0010 — Forge: AI-generated providers gated by conformance

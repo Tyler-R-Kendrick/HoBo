@@ -12,7 +12,7 @@
 | Resource spec | **Manifest IR** (Nitric spec ∪ Aspire manifest) consumed by the Planner | ➕ | [22](../../docs/design/22-wiring-manifest.md) |
 
 ## Resource catalog (full parity target)
-| Nitric resource | HoBo port (WIT world) | Status |
+| Nitric resource | HoBo port (WIT interface) | Status |
 |---|---|---|
 | `api` | `hobo:http` / `wasi:http` | ✅ |
 | `kv` | `wasi:keyvalue` | ✅ |
@@ -41,7 +41,7 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 ## CLI, local dev, deployment
 | Nitric | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
-| `nitric start` (emulate + dashboard) | `hobo dev` on `world-local` + dashboard | ✅ | [15](../../docs/design/15-cli-dx.md), [07](../../docs/design/07-ui-dashboard.md) |
+| `nitric start` (emulate + dashboard) | `hobo dev` on `runtime-local` + dashboard | ✅ | [15](../../docs/design/15-cli-dx.md), [07](../../docs/design/07-ui-dashboard.md) |
 | `nitric run` (containers) | `hobo dev --containers` (wasm host or OCI) | ✅ | [15](../../docs/design/15-cli-dx.md) |
 | `nitric up/down/spec/build` | `hobo deploy/destroy/plan/build` | ✅ | [15](../../docs/design/15-cli-dx.md) |
 | Local dashboard (test APIs, view kv/sql, trigger schedules, etc.) | HoBo dashboard + **run inspector / replay / link & trace views** | ➕ | [07](../../docs/design/07-ui-dashboard.md), [14](../../docs/design/14-observability.md) |
@@ -52,7 +52,7 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 |---|---|
 | **WASM/WASI-default polyglot runtime** (any language → component; capability security) | [20](../../docs/design/20-wasm-wasi-runtime.md) |
 | **Actors + durable workflows + choreography sagas** over a replayable event store | [02](../../docs/design/02-sdk-api.md), [11](../../docs/design/11-event-model.md) |
-| **Agents as first-class principals** + Hobo Code + MCP control surface | [06](../../docs/design/06-ai-native-agent-auth.md) |
+| **Agents as first-class principals** + Capability Manifest + MCP control surface | [06](../../docs/design/06-ai-native-agent-auth.md) |
 | **AI-generated providers AND implementations**; stub → implement → trace → auto-evolve → live-fix (gated) | [23](../../docs/design/23-stubbable-ai-implementations.md) |
 | **Aspire-style wiring + manifest IR** for any component/container | [22](../../docs/design/22-wiring-manifest.md) |
 | **Reliability/HA, security/multi-tenancy, networking, cost/FinOps** as designed concerns | [05](../../docs/design/05-reliability-ha.md), [12](../../docs/design/12-security-multitenancy.md), [13](../../docs/design/13-networking-connectivity.md), [16](../../docs/design/16-cost-finops.md) |

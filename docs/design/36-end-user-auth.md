@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). Closes the re-survey gap **G8** ([gap analysis](../../competitors/gap-analysis.md)): `auth()` is a listed SaaS primitive ([Plan 2](./02-sdk-api.md) §53) but only **agent/workload** auth was specified ([Plan 6](./06-ai-native-agent-auth.md)). This plan specifies **end-user / application auth** — how an app authenticates the *humans* using it — **unified with** HoBo's existing principal model. Decision record: [ADR-0038](./adr/ADR-0038-end-user-application-auth.md). Designed via brainstorming + grill-with-docs.
 
-> **Two auths, one principal model.** [Plan 6](./06-ai-native-agent-auth.md) is **agent/workload** auth (SVIDs, the token broker, Hobo Code). This plan is **end-user** auth (app users signing in). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (the event envelope's `actor` already admits `user`, [Plan 11](./11-event-model.md)), and the agent **OBO** flow ([Plan 6](./06-ai-native-agent-auth.md) §6.2) is the *same* human principal acting through an agent.
+> **Two auths, one principal model.** [Plan 6](./06-ai-native-agent-auth.md) is **agent/workload** auth (SVIDs, the token broker, Capability Manifest). This plan is **end-user** auth (app users signing in). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (the event envelope's `actor` already admits `user`, [Plan 11](./11-event-model.md)), and the agent **OBO** flow ([Plan 6](./06-ai-native-agent-auth.md) §6.2) is the *same* human principal acting through an agent.
 
 ## The `auth()` port — federate + verify
 HoBo does **not** reinvent a full identity provider (a deep, security-critical domain). Instead `auth()` is a **federation + verification** port (`hobo:auth`):

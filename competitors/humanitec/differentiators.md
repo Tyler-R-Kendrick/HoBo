@@ -19,6 +19,6 @@
 5. **No event-sourcing/replay/time-travel** → HoBo's core is event-sourced (audit + DR + run inspector).
 6. **Human-authored Resource Definitions/Packs** → HoBo's **Forge** can AI-generate definitions + packs, gated by conformance.
 7. **Not a full observability platform** → HoBo bundles run inspector/traces/replay.
-8. **Vendor lock-in (Manifests)** → HoBo ports are **WIT worlds** (standards-based); Score importable for interop.
+8. **Vendor lock-in (Manifests)** → HoBo ports are **WIT interfaces** (standards-based); Score importable for interop.
 
 > Net: Humanitec proves the orchestrator abstraction and governance; HoBo adopts that engine and adds a polyglot wasm runtime, event-sourced auditability, AI-native generation, and OSS openness.

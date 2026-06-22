@@ -16,7 +16,7 @@
 ## Workstream 2 — First CloudProvider (Cloudflare *or* Fly — pick the simplest)
 1. Implement a few capability ports (`web`/`service` via wasm-host or container target, `kv`, `objectStore`) as a **capability provider** (deploy `realize()` + runtime WIT impl).
 2. Equivalence-class mappings + provider-specific `.with(...)` option types.
-3. Publish the provider's **Hobo Code** ([Plan 6](../06-ai-native-agent-auth.md)) and its **link** wiring ([Plan 20](../20-wasm-wasi-runtime.md)).
+3. Publish the provider's **Capability Manifest** ([Plan 6](../06-ai-native-agent-auth.md)) and its **link** wiring ([Plan 20](../20-wasm-wasi-runtime.md)).
 
 ## Workstream 3 — Production runtime (`@hobo/runtime-postgres`)
 1. Implement the five runtime ports on Postgres (graphile-worker-style queue, NOTIFY/LISTEN streams, snapshots); pass runtime-port conformance.

@@ -13,7 +13,7 @@
 
 ## Direct correspondence to HoBo
 This is, almost verbatim, HoBo's [Plan 20](../../docs/design/20-wasm-wasi-runtime.md) model:
-- **wasmCloud capability provider ≈ HoBo capability provider** (a Provider implementing a WIT world's exports for a backend).
+- **wasmCloud capability provider ≈ HoBo capability provider** (a Provider implementing a WIT interface's exports for a backend).
 - **wasmCloud link ≈ HoBo link** (late-bound import→export binding; swap the backend with no recompile). HoBo's Plan 20 literally cites "the wasmCloud model" for links.
 - **wasmCloud lattice ≈ the cross-host substrate** behind HoBo's **wasmCloud-lattice `component-host` adapter** ([ADR-0031](../../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)), and the lattice's **cross-host link coordination** is exactly the "migrate late-bound links across hosts without redeploy" capability HoBo attributes to that adapter for failover ([Plan 5](../../docs/design/05-reliability-ha.md)) and cross-Camp work ([ADR-0040](../../docs/design/adr/ADR-0040-cross-camp-stateful-consistency.md)).
 

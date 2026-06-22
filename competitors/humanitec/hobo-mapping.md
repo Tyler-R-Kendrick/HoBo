@@ -6,7 +6,7 @@
 | Humanitec | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | Dynamic configuration management (Score + Resource Definitions + Matching) | **Resource Definitions + Matching** as the Planner's platform-rules layer; mapping = sugar over default definitions | ✅➕ | [25](../../docs/design/25-resource-definitions-matching.md) |
-| Resource Definition | HoBo Resource Definition (**WIT-world-typed**, Forge-generatable) | ➕ | [25](../../docs/design/25-resource-definitions-matching.md) |
+| Resource Definition | HoBo Resource Definition (**WIT-interface-typed**, Forge-generatable) | ➕ | [25](../../docs/design/25-resource-definitions-matching.md) |
 | Matching Criteria (specificity scoring) | Same model; the winning definition + score recorded as a **`match.Decided`** event (auditable "why this infra") | ➕ | [25](../../docs/design/25-resource-definitions-matching.md), [11](../../docs/design/11-event-model.md) |
 | Resource classes (`standard`/`ha`/…) | Resource `class` as a matching dimension | ✅ | [21](../../docs/design/21-resources-catalog.md) |
 | Resource Graph (DAG, co-provision, outputs) | DeploymentPlan DAG + ResourceActors + manifest links | ✅ | [03](../../docs/design/03-providers-iac.md), [04](../../docs/design/04-control-plane.md) |
@@ -50,7 +50,7 @@
 | **Event-sourced replay/time-travel + DR-as-replay** | [11](../../docs/design/11-event-model.md), [05](../../docs/design/05-reliability-ha.md) |
 | **Forge-generated Resource Definitions, Packs & implementations** (not human-only) | [23](../../docs/design/23-stubbable-ai-implementations.md), [06](../../docs/design/06-ai-native-agent-auth.md) |
 | **IfC-default simplicity** + mapping-as-sugar (lower learning curve) | [02](../../docs/design/02-sdk-api.md), [25](../../docs/design/25-resource-definitions-matching.md) |
-| **OSS core + WIT-standard ports** (less lock-in) | [17](../../docs/design/17-positioning-competitive.md), [24](../../docs/design/24-wit-worlds-reference.md) |
+| **OSS core + WIT-standard ports** (less lock-in) | [17](../../docs/design/17-positioning-competitive.md), [24](../../docs/design/24-wit-interfaces-reference.md) |
 
 ## Open parity items (iteration hooks)
 - Resource Definition authoring surface: TS (typed) vs YAML (Humanitec-parity) vs both.

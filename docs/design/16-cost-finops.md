@@ -15,8 +15,8 @@ HoBo treats cost as a signal that flows through planning, deployment, runtime, a
 - **Runtime observability** — live cost/egress annotations on the topology graph and run inspector ([Plan 14](./14-observability.md)).
 - **Governance** — budgets + spend caps as policy gates, including for agents ([Plan 6](./06-ai-native-agent-auth.md)).
 
-## Cost signals (`cost.json` in Hobo Code)
-Each provider publishes machine-readable price/region signals as part of its Hobo Code ([Plan 6](./06-ai-native-agent-auth.md)):
+## Cost signals (`cost.json` in Capability Manifest)
+Each provider publishes machine-readable price/region signals as part of its Capability Manifest ([Plan 6](./06-ai-native-agent-auth.md)):
 ```jsonc
 {
   "currency": "USD",

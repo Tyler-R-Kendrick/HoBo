@@ -11,7 +11,7 @@ The PRD enumerates many functional requirements across SDK, CLI, dashboard, AI/a
 ## Decision
 Apply **MoSCoW** to functional requirements and define the **MVP (v1 GA) line at the end of P4**, consistent with the co-primary ICP ([ADR-0019](./ADR-0019-persona-prioritization-icp.md)):
 
-- **Must (P0–P4):** local agnostic authoring (`bindle`, IfC, `.allow()`); the runtime primitives (`workflow`/`step`/`actor`/`saga`/`agent`); `hobo dev/plan/deploy/inspect`; the event-sourced Yard with crash-resume + saga compensation; keyless agent identity + token broker; the MCP control surface; Hobo Code + Registry; **≥2 cloud providers** with mapping rules + `.with(...)`; cross-provider mTLS; conformance suite as the trust boundary.
+- **Must (P0–P4):** local agnostic authoring (`bindle`, IfC, `.allow()`); the runtime primitives (`workflow`/`step`/`actor`/`saga`/`agent`); `hobo dev/plan/deploy/inspect`; the event-sourced Yard with crash-resume + saga compensation; keyless agent identity + token broker; the MCP control surface; Capability Manifest + Registry; **≥2 cloud providers** with mapping rules + `.with(...)`; cross-provider mTLS; conformance suite as the trust boundary.
 - **Should (P5):** the Forge (AI-generated providers + stubbable implementations) certified by conformance; richer contracts/`can-deploy`/policy/eval gates beyond the built-in defaults.
 - **Could (P6):** multi-region HA, progressive/canary auto-rollback polish, full FinOps (budgets/chargeback), the complete dashboard, platform-engineer Resource Definitions/Matching/Packs at depth.
 - **Won't (v1):** general non-developer PaaS UI; replacing Terraform/Pulumi; every cloud on day one ([00-vision.md](../00-vision.md) non-goals); multi-tenant hosted-operator GA features beyond what P6 delivers.

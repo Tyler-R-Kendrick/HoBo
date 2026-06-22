@@ -13,7 +13,7 @@ The Yard is the orchestrator that maps Bindle deployments to real hosting. It is
 ## Services (each a grain-based module)
 - **Gateway** — SDK RPC + REST + **MCP** ingress; authenticates the principal (human or agent SVID), authorizes against tenant + scope, turns requests into commands, and serves read models. Stateless; horizontally scalable.
 - **Identity** — issues agent/workload identities (SPIFFE-style SVIDs), acts as OIDC provider + token broker ([Plan 6](./06-ai-native-agent-auth.md)).
-- **Registry** — Provider + Hobo Code catalog; capability search; plugin certification records from the Forge.
+- **Registry** — Provider + Capability Manifest catalog; capability search; plugin certification records from the Forge.
 - **Planner** — Bindle + mapping → `DeploymentPlan` DAG; capability/region/cost solving (algorithm in [Plan 3](./03-providers-iac.md)).
 - **Orchestrator** — **choreography saga engine** over the event store. One **ResourceActor** (a controller-style grain) per resource owns its lifecycle and reconciles desired↔actual via the resolved IaC adapter. Resource actors coordinate by emitting/observing events (e.g. `resource.Provisioned(db)` → unblocks `api`), not via a central coordinator.
 - **Executors** — sandboxed (Firecracker) runners that execute IaC applies + Dagger builds with short-lived scoped creds.
@@ -77,12 +77,12 @@ This makes self-hosting a first-class, reproducible path, not a bespoke install 
 ## Multi-tenancy
 Tenant = isolation boundary for event streams, actor placement, credential scope, and executor pools. Self-host runs single-tenant; hosted runs multi-tenant on the same code. Full model in [Plan 12](./12-security-multitenancy.md).
 
-## Yard scope & multi-Yard (the Circuit) ([ADR-0043](./adr/ADR-0043-multi-yard-federation-circuit.md))
-The Yard is the central **cross-cloud / cross-region orchestrator**, and **one Yard per app/org is the norm** — a multi-cloud `production` is several **Camps** under *one* Yard ([ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)/[ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)); **multi-region needs no second Yard.** A *second* Yard is warranted only for **extreme isolation** — a tenant/boundary requiring a wholly separate control plane (sovereign/regulated, air-gapped [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md), or isolation beyond per-tenant streams). When such sovereign Yards must interoperate, an optional **`Circuit`** federates them as **peers** — sharing **identity trust + signed policy packs + signed registry bundles**, never shared state and never a controller; each Yard keeps its own log/control-plane/data (residency preserved). **v1 ships single-Yard, federation-ready; the Circuit is post-v1.**
+## Yard scope & multi-Yard (the Junction) ([ADR-0043](./adr/ADR-0043-multi-yard-federation-junction.md))
+The Yard is the central **cross-cloud / cross-region orchestrator**, and **one Yard per app/org is the norm** — a multi-cloud `production` is several **Camps** under *one* Yard ([ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)/[ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)); **multi-region needs no second Yard.** A *second* Yard is warranted only for **extreme isolation** — a tenant/boundary requiring a wholly separate control plane (sovereign/regulated, air-gapped [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md), or isolation beyond per-tenant streams). When such sovereign Yards must interoperate, an optional **`Junction`** federates them as **peers** — sharing **identity trust + signed policy packs + signed registry bundles**, never shared state and never a controller; each Yard keeps its own log/control-plane/data (residency preserved). **v1 ships single-Yard, federation-ready; the Junction is post-v1.**
 
 ```mermaid
 flowchart TB
-  subgraph CIRCUIT["Circuit: peer federation, trust + signed artifacts, no shared state"]
+  subgraph JUNCTION["Junction: peer federation, trust + signed artifacts, no shared state"]
     subgraph Y1["Yard A (sovereign: own log + control plane + data)"]
       C1["Camp prod-aws"]
       C2["Camp prod-azure"]

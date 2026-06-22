@@ -28,7 +28,7 @@ flowchart LR
   subgraph Yard["The Yard (control plane)"]
     GW["Gateway<br/>(RPC / REST / MCP)"]
     ID["Identity<br/>(SVID, OIDC, token broker)"]
-    REG["Registry<br/>(Provider + Hobo Code)"]
+    REG["Registry<br/>(Provider + Capability Manifest)"]
     PL["Planner<br/>(Bindle -> DeploymentPlan DAG)"]
     OR["Orchestrator<br/>(ResourceActors + sagas)"]
     EX["Executors<br/>(sandboxed IaC/Build)"]
@@ -63,8 +63,8 @@ flowchart LR
 | Component | Responsibility | Key inputs | Key outputs (events) |
 |---|---|---|---|
 | **Gateway** | Authn/z; expose SDK RPC + REST + MCP; accept commands; serve read models | Commands, identity tokens | `DeployRequested`, `BindleRegistered`, … |
-| **Identity** | Issue workload identities (SVIDs); act as OIDC IdP; broker provider tokens via Hobo Code | SVID requests, provider Hobo Code | `IdentityIssued`, `TokenGranted`, `TokenRevoked` |
-| **Registry** | Catalog providers + their Hobo Code (capabilities, auth, cost) | Provider manifests | `ProviderRegistered`, `HoboCodeUpdated` |
+| **Identity** | Issue workload identities (SVIDs); act as OIDC IdP; broker provider tokens via Capability Manifest | SVID requests, provider Capability Manifest | `IdentityIssued`, `TokenGranted`, `TokenRevoked` |
+| **Registry** | Catalog providers + their Capability Manifest (capabilities, auth, cost) | Provider manifests | `ProviderRegistered`, `HoboCodeUpdated` |
 | **Planner** | Resolve mapping rules → `DeploymentPlan` DAG; solve capability/region/cost constraints | Bindle, config, Registry | `Planned`, `PlanRejected` |
 | **Orchestrator** | Drive the plan; one **ResourceActor** per resource reconciling desired↔actual; choreography sagas for cross-resource ordering & compensation | `DeploymentPlan`, observed state | `Provisioning`, `Provisioned`, `Failed`, `Compensating`, `Deployed` |
 | **Executors** | Run IaC apply/preview/destroy + image/VM builds in Firecracker sandboxes with scoped creds | `IacProgram`, `BuildSpec`, brokered token | `ExecStarted`, `ExecOutput`, `ExecSucceeded`, `ExecFailed` |

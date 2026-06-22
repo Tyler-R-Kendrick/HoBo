@@ -39,6 +39,7 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 | **Embed** | `embed(name)` | `hobo:embed` | `embed` | local model / hosted embedding API (used via `search`; [Plan 35](./35-search-vector-surface.md)) |
 | **Domain** | `domain(name)` | `hobo:dns` (+ `gateway`) | `bind`,`route` | Yard-level; ACME DNS-01 certs; failover/weighted/latency across Camps ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) |
 | **DNS** | (capability) | `hobo:dns` | `read`,`write` | Route53 / Azure DNS / Cloud DNS / Cloudflare ([Plan 13](./13-networking-connectivity.md)) |
+| **Feature flag** | `flag(name)` | `hobo:feature-flag` | `eval`,`change` | built-in store / OpenFeature providers (flagd/LaunchDarkly) ([Plan 37](./37-feature-flags-progressive-delivery.md)) |
 | **Auth** (end-user) | `auth(name)` | `hobo:auth` | (verify/session) | federate+verify any IdP (Google/GitHub/Clerk/Auth0/customJwt) + thin dev built-in ([Plan 36](./36-end-user-auth.md)) |
 
 Cross-cloud equivalence classes are owned by [Plan 3](./03-providers-iac.md); this table is the resource→port view.

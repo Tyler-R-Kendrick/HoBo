@@ -7,6 +7,8 @@
 
 > **v3 (Humanitec):** add **Pipelines** (rule-based triggers + approval gates, [Plan 28](../28-relay-gitops-pipelines.md)) and **Workload Profiles** ([Plan 27](../27-drivers-packs-profiles.md)); the dashboard gains the **Resource Graph / matching-decision / Delta-diff / Pipelines** views ([Plan 7](../07-ui-dashboard.md)); cost objective uses **env-type matching** to pick cheap variants ([Plan 16](../16-cost-finops.md)).
 
+> **v6 (operators + SRE + UI):** this phase lands the operational Crew on the HA/observability substrate — **Endpoint Monitor** + the **SRE operator** with **incident management, runbooks & self-healing** ([Plan 40](../40-operator-agents.md)/[Plan 44](../44-sre-incident-management.md)) (Incident aggregate, the diagnose→classify→auto-fix/propose/escalate decision tree, MTTD/MTTR SLOs, postmortem-as-replay), and the **UX Designer** operator with **UI-layer generation** ([Plan 42](../42-ui-layer-generation.md), OpenUI + json-render + Design.md). Builds on P5 live-fix + the SLO/alerting model ([ADR-0045](../adr/ADR-0045-slo-as-code-and-alerting.md)).
+
 > **v4 (gates):** harden **obligations** as durable effects (require-canary/approval tracked to completion) and the **remediation/auto-fix** loop (classify failure → propose safe fix, gated) ([Plan 30](../30-policy-plane.md)/[Plan 23](../23-stubbable-ai-implementations.md)); the dashboard gains a **`hobo verify` / gate-decision** view (per-gate results + `explain-failure` replay).
 
 ## Workstream 1 — Reliability & HA ([Plan 5](../05-reliability-ha.md))

@@ -132,6 +132,8 @@ Evals don't only run at promotion time — they run **continuously on live and s
 - The same min-samples / shadow-traffic floors prevent the optimizer from chasing noise.
 
 ## Live-fix (gated by default)
+> Live-fix is the **applier** of a remediation; the **classifier** that decides *which* fix (and whether to auto-fix, propose, or escalate) is the SRE operator's runtime+contract **failure-taxonomy** ([Plan 44](./44-sre-incident-management.md)). A live-fix runs inside an **Incident** ([Plan 44](./44-sre-incident-management.md)/[Plan 11](./11-event-model.md)).
+
 On a failing trace or SLO/health breach in a running deployment:
 1. AI captures the failing trace, forms a hypothesis, generates a fix.
 2. Validates sandboxed + **replays the failing trace as a new test** (and the full conformance suite).

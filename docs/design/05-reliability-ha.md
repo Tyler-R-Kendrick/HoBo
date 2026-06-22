@@ -16,6 +16,8 @@
 | **Drift** | someone changed infra out-of-band | periodic resync detects + reconciles (auto or proposed) |
 | **Split-brain** | two Yard leaders | leases + fencing tokens; quorum writes reject stale leader |
 
+> **The SRE operator extends this taxonomy.** [Plan 44](./44-sre-incident-management.md) unifies these *runtime* classes with the *contract* classes ([Plan 23](./23-stubbable-ai-implementations.md)/[Plan 29](./29-contracts-compatibility.md)) into one **failure-taxonomy → safe-fix** map and a documented auto-fix/propose/escalate decision tree; **live-fix is the applier, the taxonomy is the classifier**.
+
 ## Exactly-once *effects* over at-least-once delivery
 HoBo never assumes the queue delivers once. Instead:
 1. Every command/step carries an **idempotency key** (`meta.idempotencyKey`).

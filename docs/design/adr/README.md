@@ -71,5 +71,6 @@
 | 0055 | The generated stack: layered AI generation/self-healing/persistence | Accepted | [ADR-0055](./ADR-0055-generated-stack-layered-model.md) |
 | 0056 | App-UI generation + Design.md design-system enforcement | Accepted | [ADR-0056](./ADR-0056-ui-generation-and-design-system.md) |
 | 0057 | Patchability as a first-class guarantee (distinct from portability) | Accepted | [ADR-0057](./ADR-0057-patchability-derivative-implementations.md) |
+| 0058 | SRE: incident management, runbooks & the self-healing decision model | Accepted | [ADR-0058](./ADR-0058-sre-incident-management-and-runbooks.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

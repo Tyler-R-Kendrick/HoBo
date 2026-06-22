@@ -43,7 +43,7 @@ An **obligation** lets policy say *allow but require X*, and in HoBo that X is a
 - *allow agent action* **→ require human approval before apply** (a `createHook`, [Plan 6](./06-ai-native-agent-auth.md)).
 - *allow spend-incurring action within quota* **→ deny past a hard quota, or trip a spend circuit-breaker on runaway velocity** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — the `MeteringView` counter is the policy input, the breaker is a durable obligation/saga ([Plan 5](./05-reliability-ha.md)) halting deploys/agent-provisioning/Forge-runs until acknowledged.
 - *allow a feature-flag flip* **→ require approval for a prod kill-switch / risky `%` bump, or attach an auto-revert obligation on SLO burn** ([Plan 37](./37-feature-flags-progressive-delivery.md)/[ADR-0044](./adr/ADR-0044-feature-flags-progressive-delivery.md)) — a `flag.Changed` is a policy-gated event like any other deploy-affecting action.
-Obligations are tracked to completion via `policy.ObligationCreated` → `…Satisfied` events; an unsatisfied obligation blocks the gate.
+Obligations are tracked to completion via `policy.ObligationCreated` → `…Satisfied` events; an unsatisfied obligation blocks the gate. **Obligations may carry a deadline:** an unmet obligation past its deadline **escalates** (e.g. an unacked incident pages up the on-call ladder) rather than silently lingering ([Plan 44](./44-sre-incident-management.md)) — the durable form of an SLA on a follow-up.
 
 ## Phases (policy spans the whole lifecycle)
 | Phase | Example rule |
@@ -70,6 +70,6 @@ Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetec
 
 ## Iteration hooks
 - Default pack set + precedence when multiple packs match.
-- Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.
+- ~~Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.~~ **Resolved ([Plan 44](./44-sre-incident-management.md)):** obligations carry a deadline; unmet-by-deadline **escalates** (the on-call ladder), tracked as `policy.ObligationCreated`→`…Satisfied`/escalation events.
 - Waiver workflow + who can grant per environment.
 - Mutation safety (policy-driven graph mutations must themselves pass contracts/conformance).

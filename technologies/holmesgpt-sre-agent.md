@@ -25,7 +25,7 @@ It is **agentic**: rather than a one-shot prompt, it runs an **investigation loo
 
 ## Relevance to HoBo
 
-HolmesGPT is the canonical **"investigate failure"** agent — a strong fit as an **optional provider** behind HoBo's incident/live-fix machinery, and a model for how an SRE agent should consume telemetry HoBo already emits.
+HolmesGPT is the canonical **"investigate failure"** agent — a strong fit as the **optional engine behind the SRE operator's diagnosis port** ([Plan 44](../docs/design/44-sre-incident-management.md)/[Plan 40](../docs/design/40-operator-agents.md)), and a model for how an SRE agent should consume telemetry HoBo already emits.
 
 - **Pairs with AI live-fix.** HoBo's **AI live-fix** ([Plan 23](../docs/design/23-stubbable-ai-implementations.md) §Live-fix, [Plan 5](../docs/design/05-reliability-ha.md)) triggers an AI-proposed fix when "a failing trace or SLO/health breach" occurs, then validates it through the gated canary/rollback saga. HolmesGPT supplies the missing front half: **root-cause investigation** that turns a failing trace/alert into a diagnosis before a fix candidate is proposed.
 - **Drift & incident response.** HoBo detects **drift** and emits `resource.DriftDetected` ([Plan 5](../docs/design/05-reliability-ha.md) §Drift detection & self-healing); a HolmesGPT-style agent could investigate *why* drift or an SLO breach happened, correlating across the same observability sources HoBo exports to.

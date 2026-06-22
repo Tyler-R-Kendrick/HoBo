@@ -113,6 +113,10 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **SLO & alerting** ([Plan 14](./14-observability.md)/[ADR-0045](./adr/ADR-0045-slo-as-code-and-alerting.md)) — SLO/budget state is a projection; these are the decision/notification facts
 `slo.Declared` · `slo.BudgetBurned` (burn-rate threshold crossed → policy input) · `alert.Fired` · `alert.Grouped` · `alert.Silenced` · `alert.Inhibited` · `alert.Resolved`
 
+**Incident & SRE** ([Plan 44](./44-sre-incident-management.md)) — an **Incident** is an aggregate (stream `incident:<id>`, single-writer, rebuildable) that correlates `alert.*`/`slo.BudgetBurned`/`resource.DriftDetected`/`compat.GateFailed` into one command point; the SRE operator ([Plan 40](./40-operator-agents.md)) drives it
+`incident.Opened` (cause + severity + impact) · `incident.Triaged` · `incident.RootCauseIdentified` (diagnosis; optional HolmesGPT) · `incident.RemediationProposed` (action + blast radius + `policy.Decided` ref) · `incident.RemediationApplied`/`incident.RemediationFailed` · `incident.Resolved` · `incident.SLABreached` (MTTD/MTTR overrun) · `incident.PostmortemFiled` (replay-generated)
+`runbook.Defined` (trigger + diagnosis steps + gated fix actions) · `runbook.Triggered` · `runbook.StepCompleted` · `runbook.Completed`/`runbook.Failed` (built on the Pipelines engine, [Plan 28](./28-relay-gitops-pipelines.md); remediation applies ride live-fix + `policy.Decided`)
+
 **Chaos** ([ADR-0047](./adr/ADR-0047-chaos-resilience-verification-tier.md)) — fault injection is policy-gated + blast-radius-bounded
 `chaos.ExperimentStarted` (hypothesis + fault + blast radius) · `chaos.FaultInjected` · `chaos.SteadyStateChecked` · `chaos.Aborted` · `chaos.ExperimentCompleted` (a failed experiment's replay becomes a regression test, [Plan 23](./23-stubbable-ai-implementations.md))
 

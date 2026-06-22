@@ -56,7 +56,7 @@ flowchart TD
 Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** ([Plan 26](./26-environments-deltas.md)) as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 22](./22-wiring-manifest.md)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Relay can supply runtime data back.
 
 ## Pipelines (rule-based automation + approval gates)
-**Pipelines** sit above the deployment sagas ([Plan 5](./05-reliability-ha.md)) and policy gates ([Plan 6](./06-ai-native-agent-auth.md)) to automate *when* deploys happen:
+**Pipelines** sit above the deployment sagas ([Plan 5](./05-reliability-ha.md)) and policy gates ([Plan 6](./06-ai-native-agent-auth.md)) to automate *when* deploys happen. The same engine powers **incident-response runbooks** — the SRE sibling of deploy pipelines, with alert/SLO-burn/drift triggers and gated *fix* actions ([Plan 44](./44-sre-incident-management.md)); StackStorm/HolmesGPT are optional engines behind that port.
 - **Triggers:** **artifact** (a new image/component version matching a rule), **deploy-request** (a Delta opened), **schedule/cron**, and **API/MCP**.
 - **Rules (if-then):** e.g. *"new component from `main` → deploy to `staging`"*; *"tag `v*` → open a prod Delta requiring approval"*. Flexible match/exclude on artifact + branch.
 - **Steps/jobs:** run in order (`needs`) or parallel; can run tests, wait for health, call external CI, notify Slack/Teams, and **gate on approval** (a `createHook` resolved in the dashboard).

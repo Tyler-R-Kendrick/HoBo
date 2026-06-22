@@ -35,6 +35,8 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 | **Batch job** | `job(name)` | `hobo:job` (+ `vm`/`microVm`) | `submit` | AWS Batch / Azure Batch / Cloud Batch |
 | **Website** | `web(name)` | static + `wasi:http` | n/a | CloudFront+S3 / Front Door+Blob / CDN+GCS |
 | **Compute/service** | `service(name)` | component (exports `wasi:http`) | (binds below) | Fargate / Container Apps / Cloud Run / Workers |
+| **Search** | `search(name)` | `hobo:search` | `index`,`query`,`admin` | pgvector+PG-FTS / OpenSearch / Azure AI Search / Pinecone ([Plan 35](./35-search-vector-surface.md)) |
+| **Embed** | `embed(name)` | `hobo:embed` | `embed` | local model / hosted embedding API (used via `search`; [Plan 35](./35-search-vector-surface.md)) |
 
 Cross-cloud equivalence classes are owned by [Plan 3](./03-providers-iac.md); this table is the resource→port view.
 

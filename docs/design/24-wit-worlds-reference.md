@@ -33,6 +33,8 @@
 | `hobo:websocket` | websocket connections | `on(connect/message/disconnect)`, `send(conn,msg)` |
 | `hobo:job` | batch jobs (cpu/mem/gpu) | `handler(opts)`, `submit(input)` |
 | `hobo:scheduler` | cron/interval triggers | `every(spec)`, `cron(expr)` |
+| `hobo:search` | full-text + vector + hybrid retrieval ([Plan 35](./35-search-vector-surface.md)) | `text-query(q,filter)` (reactive), `vector-query(vec,filter,k)`, `hybrid(q,vec,...)`, `upsert`/`delete` |
+| `hobo:embed` | embedding generation behind `search` ([Plan 35](./35-search-vector-surface.md)) | `embed(text)` → vector (local model or hosted API; secretless) |
 | `hobo:control/provisioning` | control-plane resource ops | `provision(spec)`, `deprovision(id)`, `refresh(id)` |
 | `hobo:control/observability` | metrics/traces/logs emit | `emit-metric`, `emit-trace` |
 | `hobo:control/config` | tenant/Camp config | `get`, `set` |

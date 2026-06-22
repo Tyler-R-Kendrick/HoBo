@@ -26,4 +26,4 @@ Build a **reactor on the event log**, with three locked choices:
 - **(+)** Reactivity inherits HoBo's superpowers — replay, audit, determinism — and the `change-feed` capability rides the existing conformance trust boundary.
 - **(−)** A new always-on data-plane component (`QueryReactor`) with fan-out, coalescing, and backpressure to engineer ([Plan 5](../05-reliability-ha.md)); a hot stream can wake many subscriptions (mitigated by the inverted stream→subscription index + sharding).
 - **(−)** DB-backed reactivity is only as good as each provider's change feed; coverage beyond the Postgres reference adapter is incremental, and cross-Camp reactive queries are deferred (open [Q16](../09-verification-open-questions.md)).
-- **Resolves** open question #21; **enables** reactive search (#22) once `search` emits `data.Changed`.
+- **Resolves** open question #21; **enabled** reactive search (#22), now specified in [Plan 35](../35-search-vector-surface.md)/[ADR-0034](./ADR-0034-search-vector-surface.md) (full-text/filtered search re-pushes on `data.Changed`; vector search is a step).

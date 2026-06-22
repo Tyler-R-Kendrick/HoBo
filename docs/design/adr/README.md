@@ -47,5 +47,6 @@
 | 0031 | wasm host of record & runtime substrate (`component-host` port) | Accepted | [ADR-0031](./ADR-0031-wasm-host-of-record-and-runtime-substrate.md) |
 | 0032 | Data portability & schema-versioning strategy | Accepted | [ADR-0032](./ADR-0032-data-portability-schema-versioning.md) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective; resolves ADR-P4) | Accepted | [ADR-0033](./ADR-0033-deterministic-matching-and-planner-selection.md) |
+| 0034 | Search & vector surface (unified `search` port + `embed`) | Accepted | [ADR-0034](./ADR-0034-search-vector-surface.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

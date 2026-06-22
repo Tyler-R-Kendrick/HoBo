@@ -65,7 +65,7 @@ Long-lived subscriptions are multiplexed over **one** gateway connection per cli
 
 ## Scope / YAGNI
 **In v1:** native event-sourced reactive queries **within a Camp**; `query()`/`"use query"`; `useQuery`/`subscribe`/`runQuery`; consistent-snapshot@`seq` + reads-your-writes; optimistic updates; the `change-feed` capability interface **+ one reference adapter (Postgres)**.
-**Deferred:** cross-Camp reactive queries (depends on cross-Camp state, open [Q16](./09-verification-open-questions.md)); full DB-CDC coverage for every provider; global serializable snapshots; reactive **search** results (extends naturally once `search` emits `data.Changed` — open [Q22](./09-verification-open-questions.md)).
+**Deferred:** cross-Camp reactive queries (depends on cross-Camp state, open [Q16](./09-verification-open-questions.md)); full DB-CDC coverage for every provider; global serializable snapshots. *(Reactive **search** results — once deferred here — are now specified in [Plan 35](./35-search-vector-surface.md)/[ADR-0034](./adr/ADR-0034-search-vector-surface.md): full-text/filtered search is a reactive `query()` citizen via `data.Changed`; vector search is a step.)*
 
 ## Iteration hooks
 - Read-set granularity (per-stream vs per-key vs predicate-indexed) and the recompute-vs-incremental-maintenance tradeoff for expensive queries (incremental view maintenance later).

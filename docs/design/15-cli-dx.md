@@ -51,6 +51,12 @@ This separation is deliberate: code review of `bindle.ts` is about the app; `hob
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./02-sdk-api.md), [Plan 9](./09-verification-open-questions.md)).
 
+### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/ADR-0042-local-dev-fidelity.md))
+"Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./09-verification-open-questions.md)).
+- **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector).
+- **Mock (honest seam):** real cloud IAM, provider latency/egress/cost, secrets backends (KMS).
+- **Camp-only:** cross-cloud mTLS, real quotas/spend limits, provider drift.
+
 ## Onboarding paths
 - **Human:** `npx hobo new my-app -t fullstack && cd my-app && hobo dev` → edit → `hobo login` → `hobo deploy`.
 - **Agent:** an MCP client calls `list templates → new → plan → deploy`, obtaining tokens via the broker; never touches a key. The agent can `inspect_run`/`tail_logs` to verify and self-correct.

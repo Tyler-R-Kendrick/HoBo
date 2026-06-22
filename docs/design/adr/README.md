@@ -63,5 +63,8 @@
 | 0047 | Chaos / continuous-resilience verification tier | Accepted | [ADR-0047](./ADR-0047-chaos-resilience-verification-tier.md) |
 | 0048 | Persisted code-mutation mechanism (`"use training"` promotion) | Accepted | [ADR-0048](./ADR-0048-persisted-code-mutation-mechanism.md) |
 | 0049 | Reserve "Hobo Code" for the configuration + code DSL (rename auth standard → Capability Manifest) | Accepted | [ADR-0049](./ADR-0049-hobo-code-dsl-reservation.md) |
+| 0050 | Event-sourced-by-default app domain data; backends are projection sinks | Accepted | [ADR-0050](./ADR-0050-event-sourced-domain-data-projection-sinks.md) |
+| 0051 | WIT records as the canonical domain schema (TS + protobuf + Zod generated) | Accepted | [ADR-0051](./ADR-0051-wit-record-canonical-domain-schema.md) |
+| 0052 | Projection-sink paradigm taxonomy & the reactivity boundary | Accepted | [ADR-0052](./ADR-0052-projection-sink-paradigm-taxonomy.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

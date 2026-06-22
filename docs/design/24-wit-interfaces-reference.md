@@ -33,7 +33,8 @@
 | `hobo:websocket` | websocket connections | `on(connect/message/disconnect)`, `send(conn,msg)` |
 | `hobo:job` | batch jobs (cpu/mem/gpu) | `handler(opts)`, `submit(input)` |
 | `hobo:scheduler` | cron/interval triggers | `every(spec)`, `cron(expr)` |
-| `hobo:search` | full-text + vector + hybrid retrieval ([Plan 35](./35-search-vector-surface.md)) | `text-query(q,filter)` (reactive), `vector-query(vec,filter,k)`, `hybrid(q,vec,...)`, `upsert`/`delete` |
+| `hobo:projection` | persistence-agnostic data plane: fold event streams into a sink + query it ([Plan 39](./39-data-plane-projections.md)) | `declare(spec)`, `fold(state,event)`, `materialize`, `rebuild`, `read(query)`, `read-raw(driver-call)` (escape hatch) |
+| `hobo:search` | full-text + vector + hybrid retrieval ([Plan 35](./35-search-vector-surface.md)); a projection-sink paradigm | `text-query(q,filter)` (reactive), `vector-query(vec,filter,k)`, `hybrid(q,vec,...)`, `upsert`/`delete` |
 | `hobo:embed` | embedding generation behind `search` ([Plan 35](./35-search-vector-surface.md)) | `embed(text)` → vector (local model or hosted API; secretless) |
 | `hobo:dns` | DNS records + custom-domain routing ([Plan 13](./13-networking-connectivity.md)/[ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) | `upsert-record`, `set-routing(policy)`, `verify`, health-checked failover across Camps |
 | `hobo:auth` | end-user auth: federate + verify ([Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/ADR-0038-end-user-application-auth.md)) | `verify(jwt)` → `ctx.user` claims (OIDC/JWKS/customJwt), `start-session`/`revoke-session`; thin built-in (passkey/email) for dev |
@@ -42,6 +43,8 @@
 | `hobo:control/observability` | metrics/traces/logs emit | `emit-metric`, `emit-trace` |
 | `hobo:control/config` | tenant/Camp config | `get`, `set` |
 | `hobo:capability-manifest` | Capability Manifest capability/auth manifest | `capabilities()`, `auth()`, `cost()` ([Plan 6](./06-ai-native-agent-auth.md)) |
+
+> **`change-feed` is a capability, not a standalone port.** First defined on the `database` port ([Plan 32](./32-reactive-live-queries.md)) to normalize a provider's change stream into `data.Changed`, it **generalizes to any projection sink** ([Plan 39](./39-data-plane-projections.md)): a sink that advertises `change-feed` makes its projection reactive; one that doesn't is `reactive: false`.
 
 ## Example: a service's interface contract
 ```wit

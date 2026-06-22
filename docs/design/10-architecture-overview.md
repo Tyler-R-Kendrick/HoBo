@@ -94,6 +94,6 @@ Two boxes the v2 model adds to the map above:
 **Invariant addendum.** A deployed component reaches a backend **only via a link the manifest declared** — deny-by-default capability security extends invariant #2 from the executor to the running data plane ([Plan 12](./12-security-multitenancy.md)).
 
 ## Iteration hooks
-- Whether read models live in the same store (projections) or a separate query DB.
+- ~~Whether read models live in the same store (projections) or a separate query DB.~~ **Resolved ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)):** architect-selected per context via Matching — default is a native standing projection over the log; a projection may be materialized into a separate query backend (a **projection sink**) when wanted.
 - Gateway protocol details (gRPC vs tRPC-style vs plain HTTP+JSON for the SDK RPC).
 - How far the control/data-plane split goes for HoBo's own managed Camps/runtimes.

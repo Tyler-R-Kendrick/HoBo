@@ -7,6 +7,8 @@ A **`search(name)`** resource backed by a `hobo:search` WIT interface ([Plan 24]
 
 `.allow()` verbs: **`index`** (write/maintain indexed docs), **`query`** (search), **`admin`** (manage indexes) — same triple-effect IAM + wasm link + token scope as every resource ([Plan 21](./21-resources-catalog.md)).
 
+> **`search` is the vector/text projection-sink paradigm.** In the data plane taxonomy ([Plan 39](./39-data-plane-projections.md)/[ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md)), `search` is one **projection sink** among several — a read model materialized into a text/vector index, sharing this doc's predicate DSL. Its determinism split is the taxonomy's reactivity rule in miniature: full-text/filtered search is a reactive `query()` citizen, **vector search is a step** (non-deterministic embedding, off the reactive path).
+
 ```mermaid
 flowchart LR
   APP["app / agent"] --> Q["query() full-text + filter<br/>(reactive, Plan 32)"]

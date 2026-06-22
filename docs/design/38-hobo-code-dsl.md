@@ -41,6 +41,7 @@ flowchart LR
 - **TypeScript SDK ([Plan 2](./02-sdk-api.md))** — the peer front-end; identical semantics, different ergonomics. Codegen ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md)) and conformance ([Plan 9](./09-verification-open-questions.md)) apply to both.
 - **The Forge & `"use training"` ([Plan 33](./33-forge-generation-pipeline.md)/[Plan 23](./23-stubbable-ai-implementations.md))** — the primary *consumers/producers* of Hobo Code: a compact, regular target is what makes generation/repair/optimization tractable.
 - **Capability Manifest ([Plan 6](./06-ai-native-agent-auth.md))** — unrelated and **not** to be confused with this DSL; it is the machine-readable auth+capability standard that previously bore the "Hobo Code" name.
+- **Data plane / projections ([Plan 39](./39-data-plane-projections.md))** — a natural future target for Hobo Code's config-half: declaring **projections + schema mappings** (and the WIT-record domain schema, [ADR-0051](./adr/ADR-0051-wit-record-canonical-domain-schema.md)) is exactly the kind of regular, declarative surface the DSL is for. Forward-looking only — nothing in the data plane's v1 depends on Hobo Code.
 
 ## Open questions (deferred — this plan is a charter, not a spec)
 - Surface syntax family (HCL/CUE-like declarative + an embedded expression/code grammar? a typed superset? a projectional/AST-first editor?).

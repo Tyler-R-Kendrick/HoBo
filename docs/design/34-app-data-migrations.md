@@ -57,6 +57,9 @@ Moving a `sql` resource to a **different Camp/provider within the same provider 
 - **Migration test:** declare schema vN→vN+1 → assert the diff engine produces the expected **expand/backfill/contract** phases; assert a **destructive contract phase that breaks a still-running version is blocked** by `can-deploy` (`compat.GateFailed`); assert **snapshot + restore** rollback returns the prior state.
 - **Cross-cloud move test:** export→import a fixture DB **within the Postgres equivalence class** to a second Camp → assert row counts/checksums match and cutover/rollback both work.
 
+## Projection sinks reuse this machinery
+A **projection sink** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)) is a derived backend whose schema is **declarative** (it's the read-model WIT record + mapping). Changing the record or mapping flows through the **same gated expand→backfill→contract** path described here, with the same pre-contract snapshot + `can-deploy` gate. The clean unification: **rebuilding a projection from zero** (replay the event streams into the new shape — Plan 11's "rebuildable from zero") **is a backfill phase** here. Cross-cloud sink moves use the export→import path (§4) within an equivalence class.
+
 ## Scope / YAGNI
 **In v1:** declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; intra-equivalence-class (managed-Postgres) cross-cloud move. **Deferred:** cross-engine moves, CDC/dual-write cutover, kv/blob/document & cross-model migration, multi-region active-active data ([Q16](./09-verification-open-questions.md)).
 

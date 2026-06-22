@@ -26,7 +26,17 @@ export const postgresEphemeral = defineResource({
   with: { image: "postgres:16" },
   match: { envType: "ephemeral" },
 });
+
+// projection sinks are definitions too — this is the data-architect-autonomy knob (Plan 39)
+export const ticketsSinkProd = defineResource({
+  type: "projection-sink", paradigm: "relational",       // SQL / document / kv / graph / vector / lake / olap
+  provider: aws, driver: "terraform",
+  with: aws.rds({ instanceClass: "db.r6g.large" }),
+  mapping: "./projections/tickets.mapping",              // WIT-record fields → backend columns (Plan 39/ADR-0050)
+  match: { envType: "production", resourceId: "tickets" },
+});
 ```
+A **`projection-sink`** definition is how a data architect places a developer's read model on a backend **without touching app code** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)): the `paradigm` is a matching dimension, and the `mapping` declares how the read-model WIT record lands in that backend. The developer owns the logical record + queries; the architect owns the mapping + sink — the autonomy split *is* this Matching boundary.
 
 ## Matching (specificity-scored selection)
 For a needed resource in context `{ envType, app, env, tenant, resourceType, resourceClass, resourceId }`, the Planner gathers all definitions of that `type`, keeps those whose criteria fully match, **scores by specificity**, and selects the highest (ties → next-most-specific). Criteria dimensions: `envType` · `app` · `env` · `resourceClass` · `resourceId` (+ `tenant`).

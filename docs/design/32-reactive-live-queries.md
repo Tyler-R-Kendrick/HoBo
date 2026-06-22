@@ -15,8 +15,11 @@ import { query } from "@hobo/runtime";
 // directive form — reactive, read-only; runtime tracks the read-set
 export async function openTickets(team: string): Promise<Ticket[]> {
   "use query";
-  return ctx.view("tickets").where({ team, status: "open" }).order("createdAt");
+  return view("tickets").where({ team, status: "open" }).order("createdAt");
 }
+// `view(...)` / `repo(...)` query a PROJECTION by logical name — concretized in Plan 39.
+// Projections are developer-authorable read models over event streams, materialized into an
+// architect-chosen backend (the projection sink); the predicate DSL is Plan 35's (eq/in/range).
 
 // client (typed, generated from the WIT interface — Plan 24)
 const { data, seq, stale } = useQuery(openTickets, { team: "infra" }); // re-renders on change

@@ -117,10 +117,11 @@ export default bindle("shop", (b) => {
 // src/api/index.ts
 import { handler } from "@hobo/runtime";
 export default handler(async (req, ctx) => {
-  const rows = await ctx.bindings.db.query("select 1");  // typed; driver chosen by provider
+  const rows = await ctx.bindings.db.query("select 1");  // raw access (driver chosen by provider; non-portable, flagged)
   await ctx.bindings.orders.send({ id: "o1" });          // typed queue client
 });
 ```
+> **Domain data goes through the persistence-agnostic data plane, not raw `.query()`.** App domain data is **event-sourced by default** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)): writes are `command(...)`→`ctx.emit(event)`, reads are `repo<T>(...)`/`view(...)` over **projections** the architect maps onto SQL/NoSQL/KV/graph/vector. Raw `ctx.bindings.db.query("…")` above is the **escape hatch** — provider-namespaced/typed to the resolved driver (a dialect leak fails to compile) and **flagged non-portable** by `can-deploy`/`hobo doctor`; raw writes are allowed only on adopted **authoritative-external** stores ([ADR-0041](./adr/ADR-0041-migration-onboarding.md)).
 
 ---
 
@@ -169,6 +170,8 @@ export const fulfillment = saga("fulfillment")
 | `step(fn, opts?)` | side-effecting unit | runs once; result memoized; auto-retry per `opts` |
 | `workflow(fn)` / `"use workflow"` | deterministic orchestration | replays over memoized steps; seeded RNG/clock |
 | `query(fn)` / `"use query"` | deterministic **reactive** read-only query | read-set tracked; re-pushed on change at a consistent `seq`; client `useQuery()` ([Plan 32](./32-reactive-live-queries.md)) |
+| `command(type, fn)` | **domain write** = command→event | the only domain write path; `ctx.emit(event)`; `step`-class (idempotent, memoized); returns its `seq` ([Plan 39](./39-data-plane-projections.md)) |
+| `repo<T>(name)` / `view(name)` | **persistence-agnostic read** over a projection | backend-neutral by logical name; `repo` = entity get/find, `view().where().order()` = reactive inside `"use query"`; `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./39-data-plane-projections.md)) |
 | `actor(name, def)` | stateful single-writer entity (grain) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |

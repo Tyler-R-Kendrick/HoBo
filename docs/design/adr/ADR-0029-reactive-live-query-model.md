@@ -1,6 +1,6 @@
 # ADR-0029 — Reactive / live-query model (event-log reactor)
 
-- **Status:** Accepted
+- **Status:** Accepted (reframed by [ADR-0065](./ADR-0065-streaming-first-rx-materializations.md) — the reactor engine is unchanged; the *default surface* is now subscriptions/streams (RX materializations), with queries as snapshots/escape hatches)
 - **Date:** 2026-06-21
 - **Deciders:** Engineering, Product
 - **Related:** [Plan 32 — Reactive/live queries](../32-reactive-live-queries.md) · [02 SDK](../02-sdk-api.md) · [11 Event model](../11-event-model.md) · [21 Resources](../21-resources-catalog.md) · [24 WIT interfaces](../24-wit-interfaces-reference.md) · [competitors/gap-analysis](../../../competitors/gap-analysis.md) (G1) · open question [#21](../09-verification-open-questions.md)

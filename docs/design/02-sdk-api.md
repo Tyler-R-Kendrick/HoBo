@@ -169,10 +169,10 @@ export const fulfillment = saga("fulfillment")
 |---|---|---|
 | `step(fn, opts?)` | side-effecting unit | runs once; result memoized; auto-retry per `opts` |
 | `workflow(fn)` / `"use workflow"` | deterministic orchestration | replays over memoized steps; seeded RNG/clock |
-| `query(fn)` / `"use query"` | deterministic **reactive** read-only query | read-set tracked; re-pushed on change at a consistent `seq`; client `useQuery()` ([Plan 32](./32-reactive-live-queries.md)) |
+| `subscribe(m)` (default) / `query(fn)`+`"use query"` (snapshot) | **reactive read** — subscribe to a **materialization** (RX observable folded from event types), or take a one-shot snapshot | replays to `seq` then pushes live at a consistent `seq`; clients `useSubscription()` (default) / `useQuery()` (sugar) ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)) |
 | `command(type, fn)` | **domain write** = command→aggregate→event | runs in its **aggregate (actor) boundary**: checks invariants vs `ctx.state` (write-model fold), then `ctx.emit` under optimistic `seq`; `step`-class (idempotent); returns its `seq` ([Plan 39](./39-data-plane-projections.md)/[ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md)) |
 | `projection<T>(name, def)` | **read model** = fold event streams → read-model record | per-event-type `on:` fold (deterministic, query-class); rebuildable-from-zero; sink chosen by the architect via Matching ([Plan 39](./39-data-plane-projections.md)/[Plan 25](./25-resource-definitions-matching.md)) |
-| `repo<T>(name)` / `view(name)` | **persistence-agnostic read** over a projection | backend-neutral by logical name; `repo` = entity get/find, `view().where().order().paginate()` = reactive inside `"use query"` (cursor pagination); `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./39-data-plane-projections.md)) |
+| `repo<T>(name)` / `view(name)` | **persistence-agnostic snapshot/point/search read** over a materialization's sink cache (the default read is `subscribe`, [ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)) | backend-neutral by logical name; `repo` = entity get/find (point lookup), `view().where().order().paginate()` = snapshot/search (cursor pagination); `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./39-data-plane-projections.md)) |
 | `actor(name, def)` | stateful single-writer entity (grain); **the aggregate / write-model boundary** commands write through ([ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md)) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |
@@ -252,13 +252,13 @@ flowchart LR
   ZOD --> CG
   ALLOW --> CG
   GRAPH --> CG
-  CG --> GEN[".hobo/generated/ (checked-in)<br/>typed bindings, useQuery, step/workflow sigs, api tree"]
+  CG --> GEN[".hobo/generated/ (checked-in)<br/>typed bindings, useSubscription/useQuery, step/workflow sigs, api tree"]
   GEN --> ED["editor types (no build step)"]
   GEN --> CI{"hobo codegen --check (CI)"}
   CI -->|drift| FAIL["fail: regenerate"]
   CI -->|clean| PASS["pass"]
 ```
-- **Output (committed `.hobo/generated/`, or `src/_generated/`):** typed `ctx.bindings.<name>` clients, typed `useQuery()`/search results ([Plan 32](./32-reactive-live-queries.md)/[Plan 35](./35-search-vector-surface.md)), typed workflow/step signatures, typed `.with()` options, and a typed **`api` function-tree** reference (the Convex `_generated/` analog).
+- **Output (committed `.hobo/generated/`, or `src/_generated/`):** typed `ctx.bindings.<name>` clients, typed `useSubscription()`/`useQuery()`/search results ([Plan 32](./32-reactive-live-queries.md)/[Plan 35](./35-search-vector-surface.md)), typed workflow/step signatures, typed `.with()` options, and a typed **`api` function-tree** reference (the Convex `_generated/` analog).
 - **When:** `hobo dev` regenerates on change (watch); `hobo build` regenerates + fails on drift; `hobo new` scaffolds it; `hobo codegen --check` is the CI drift gate ([Plan 15](./15-cli-dx.md)). Checked-in = reviewable diffs + editor types with **no build step** + works offline/air-gap ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)). Every command has an MCP equivalent for agents ([Plan 6](./06-ai-native-agent-auth.md)).
 
 ---

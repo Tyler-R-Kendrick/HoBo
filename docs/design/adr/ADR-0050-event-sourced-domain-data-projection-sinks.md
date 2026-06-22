@@ -1,6 +1,6 @@
 # ADR-0050 — Event-sourced-by-default app domain data; backends are projection sinks
 
-- **Status:** Accepted
+- **Status:** Accepted (reframed by [ADR-0065](./ADR-0065-streaming-first-rx-materializations.md) — a projection is a **subscribable materialization**; the backend sink is an **optional cache**, not the default query target)
 - **Date:** 2026-06-22
 - **Deciders:** Engineering, Product
 - **Related:** [Plan 39 — Data plane: projections](../39-data-plane-projections.md) · [Plan 11 — Event model](../11-event-model.md) (single source of truth; rebuildable projections; the read-model-store open question this resolves) · [Plan 32 — Reactive queries](../32-reactive-live-queries.md)/[ADR-0029](./ADR-0029-reactive-live-query-model.md) (reactor reuse, `data.Changed`) · [Plan 25 — Resource Definitions & Matching](../25-resource-definitions-matching.md)/[ADR-0033](./ADR-0033-deterministic-matching-and-planner-selection.md) (the sink is architect-selected) · [Plan 34 — App-data migrations](../34-app-data-migrations.md) (sink schema gating) · [ADR-0040 — Cross-Camp consistency](./ADR-0040-cross-camp-stateful-consistency.md) (replication, staleness) · [ADR-0041 — Migration/onboarding](./ADR-0041-migration-onboarding.md) (the adopt-in-place escape hatch) · [ADR-0051](./ADR-0051-wit-record-canonical-domain-schema.md)/[ADR-0052](./ADR-0052-projection-sink-paradigm-taxonomy.md)

@@ -1,6 +1,6 @@
 # Plan 39 — The data plane: projections & persistence-agnostic data access
 
-> Part of the [HoBo Design Plan Suite](./README.md). Makes HoBo's data plane **persistence-agnostic for developers** and **fully configurable for data architects**. App **domain data is event-sourced by default** ([Plan 11](./11-event-model.md)); every database is a **derived projection sink** the architect selects via Matching ([Plan 25](./25-resource-definitions-matching.md)). Decision records: [ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md) (event-sourced-by-default + sinks) · [ADR-0051](./adr/ADR-0051-wit-record-canonical-domain-schema.md) (WIT-record domain schema) · [ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md) (paradigm taxonomy + reactivity boundary).
+> Part of the [HoBo Design Plan Suite](./README.md). Makes HoBo's data plane **persistence-agnostic for developers** and **fully configurable for data architects**. App **domain data is event-sourced by default** ([Plan 11](./11-event-model.md)) and **materialized from streams**; the **default read surface is a subscription** to a materialization ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)). A database is an **optional cache** of a materialization — selected by the architect via Matching ([Plan 25](./25-resource-definitions-matching.md)) for point/search/analytics reads — **not** the thing you query by default. Decision records: [ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md) (streaming-first / sinks-as-caches) · [ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md) (event-sourced-by-default + sinks) · [ADR-0051](./adr/ADR-0051-wit-record-canonical-domain-schema.md) (WIT-record domain schema) · [ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md) (paradigm taxonomy + reactivity boundary).
 
 > **The bet, finished.** Plan 11 already makes the event log the single source of truth and folds it into **rebuildable projections** — but only for HoBo's *own* control-plane state (`DeploymentView`/`RunView`). This plan extends the same machinery to **application domain data**: a developer declares a logical record + queries; a data architect maps it onto SQL / NoSQL / KV / graph / vector / object-lake / OLAP — and neither has to know about the other. *Developers don't know or care how data is persisted or queried; architects have full autonomy over how it is.*
 
@@ -11,14 +11,14 @@ HoBo had the ingredients but not the dish:
 - **App domain data was not event-sourced by default** and there was no first-class *"project this event stream into this backend via this mapping"* artifact.
 - **Paradigm coverage was narrow** — relational was deep; document/graph/OLAP/data-lake were absent.
 
-## The Projection (materialized into a projection sink)
-A **projection** (the word [Plan 11](./11-event-model.md) already uses) is, at the application layer, a **developer-authored, sink-targeted, mapped** read model. Five parts:
+## The Projection — a subscribable materialization (optionally cached in a sink)
+A **projection** (the word [Plan 11](./11-event-model.md) already uses) is, at the application layer, a **developer-authored materialization**: a deterministic fold over **subscribed event types**, exposed as a **subscribable observable** ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)) and **optionally cached** in an architect-chosen sink for point/search/analytics reads. Five parts:
 
 1. **Subscription** — the event stream(s) it folds, keyed by **WIT-record event types** (`Ticket.Opened`, `Ticket.Assigned`). This is its read-set on the write log.
 2. **Fold (reducer)** — a deterministic, read-only `(state, event) → state` (the same determinism rules as `query()`/`workflow`: no `step`, no writes, seeded clock — [Plan 2](./02-sdk-api.md)/[ADR-0029](./adr/ADR-0029-reactive-live-query-model.md)).
 3. **Read-model record** — the canonical logical shape, a **WIT record** (the DTO; §WIT-record domain schema).
 4. **Schema mapping** — WIT-record fields → backend representation (columns / document fields / key+value / nodes+edges / vector field+filters / lake partitions). **Architect-owned.**
-5. **Sink binding** — the concrete backend, chosen by **Resource Definitions + Matching** ([Plan 25](./25-resource-definitions-matching.md)/[ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)), never by app code.
+5. **Sink binding (optional cache)** — the concrete backend *cache*, chosen by **Resource Definitions + Matching** ([Plan 25](./25-resource-definitions-matching.md)/[ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)), never by app code; omit it and the materialization is served natively from the log (the default, always reactive).
 
 What you can understand and depend on in isolation: a projection has a **stable logical contract** (a named read-model WIT record + the event types it folds); it is **rebuildable from zero** (drop the sink, replay the streams — the test that the *log*, not the sink, is authoritative); and it declares a **reactivity class** and a **consistency label** (bounded-staleness, [ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)) as part of that contract, so callers know their guarantees.
 
@@ -34,7 +34,7 @@ flowchart LR
   EV --> LOG["event log<br/>single source of truth (Plan 11)"]
   LOG -->|fold| PROJ["projection<br/>read-model WIT record"]
   PROJ -->|schema mapping| SINK["projection sink<br/>SQL / document / KV / vector / lake"]
-  LOG -->|native| RX["QueryReactor (Plan 32)"]
+  LOG -->|native| RX["Reactor (Plan 32)"]
   SINK -->|change-feed| RX
   RX -->|push at seq| READ["repo / view — use query"]
 ```
@@ -79,7 +79,8 @@ export const orders = projection<Order>("orders", {
 - The developer declares *only* the logical fold + read-model; the **sink** (relational/document/…) is bound by the data architect's `projection-sink` Resource Definition ([Plan 25](./25-resource-definitions-matching.md)), never here. The read-model record's fields are what the schema mapping targets.
 - `index` hints (which fields are queryable/sortable — needed for `where`/`order`/`paginate`) are declared on the read-model and ride the same migration machinery as any index ([Plan 34](./34-app-data-migrations.md)/[Plan 35](./35-search-vector-surface.md)).
 
-### Read path — logical repository + query DSL
+### Read path — subscribe (default) + the query/point escape hatches
+The **default** read is a **subscription** to the materialization ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)): `subscribe(...)`/`useSubscription(...)` returns a live observable folded from the event log. The **repository + query DSL below are the snapshot / point-lookup / search escape hatches** over the sink cache — reach for them for one-shot, by-key, full-text/vector, or analytical reads.
 ```ts
 import { view, repo } from "@hobo/runtime";
 

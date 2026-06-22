@@ -7,11 +7,11 @@ A **`search(name)`** resource backed by a `hobo:search` WIT interface ([Plan 24]
 
 `.allow()` verbs: **`index`** (write/maintain indexed docs), **`query`** (search), **`admin`** (manage indexes) — same triple-effect IAM + wasm link + token scope as every resource ([Plan 21](./21-resources-catalog.md)).
 
-> **`search` is the vector/text projection-sink paradigm.** In the data plane taxonomy ([Plan 39](./39-data-plane-projections.md)/[ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md)), `search` is one **projection sink** among several — a read model materialized into a text/vector index, sharing this doc's predicate DSL. Its determinism split is the taxonomy's reactivity rule in miniature: full-text/filtered search is a reactive `query()` citizen, **vector search is a step** (non-deterministic embedding, off the reactive path).
+> **`search` is the vector/text projection-sink paradigm.** In the data plane taxonomy ([Plan 39](./39-data-plane-projections.md)/[ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md)), `search` is one **projection sink** among several — a read model materialized into a text/vector index, sharing this doc's predicate DSL. Its determinism split is the taxonomy's reactivity rule in miniature: full-text/filtered search is a reactive **materialization** citizen ([ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)), **vector search is a step** (non-deterministic embedding, off the reactive path — the query escape hatch).
 
 ```mermaid
 flowchart LR
-  APP["app / agent"] --> Q["query() full-text + filter<br/>(reactive, Plan 32)"]
+  APP["app / agent"] --> Q["full-text + filter materialization<br/>(reactive subscription, Plan 32)"]
   APP --> VS["vector search (step)<br/>auto-embed or BYO vector"]
   APP --> HY["hybrid (step): text + vector via RRF"]
   Q -->|read-set tracked| PORT
@@ -33,7 +33,7 @@ An index *is* schema, so creating/changing one flows through the **same gated ex
 
 ## Query surface & reactivity — split by determinism
 The boundary follows HoBo's determinism rules ([ADR-0029](./adr/ADR-0029-reactive-live-query-model.md)/[ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)):
-- **Full-text + filtered search is reactive.** It is deterministic, so it is a `query()` / `"use query"` citizen ([Plan 32](./32-reactive-live-queries.md)): the runtime tracks its read-set and **re-pushes results to clients on `data.Changed`** (a write to the indexed data). Client surface: `useQuery()`. This is the live-search DX Plan 32 teed up.
+- **Full-text + filtered search is reactive.** It is deterministic, so it is a **reactive materialization** citizen ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)): the runtime tracks its read-set and **re-pushes results to clients on `data.Changed`** (a write to the indexed data). Client surface: `useSubscription()` (or `useQuery()` sugar). This is the live-search DX Plan 32 teed up.
 - **Vector search is a `step`/action.** A text query is auto-embedded (below) or a precomputed vector is passed in; it returns ranked **`{ id, score }`** by cosine / inner-product with a typed **filter** predicate. Because embedding is external/non-deterministic, vector search is **off the reactive path** (mirrors Convex's "vector search in actions only").
 - **Hybrid is a `step`** that fuses a reactive text query + a vector step via **reciprocal rank fusion (RRF)**.
 - **Filter syntax** is the same typed predicate DSL used elsewhere (`eq`/`in`/`range`/…), so search filters compose with `.allow()`/tenant scoping rather than being a separate query language.

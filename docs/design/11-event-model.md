@@ -92,8 +92,8 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Evals & promotion** ([Plan 23](./23-stubbable-ai-implementations.md))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 
-**Reactive / live queries** ([Plan 32](./32-reactive-live-queries.md))
-`query.Subscribed` · `query.Recomputed` (new `seq` + read-set hash) · `query.Pushed` · `query.Unsubscribed` · **`data.Changed`** (normalized provider change-feed event)
+**Reactive streams & subscriptions** ([Plan 32](./32-reactive-live-queries.md))
+`subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event) *(legacy aliases: `query.Subscribed`/`Recomputed`/`Pushed`/`Unsubscribed`)*
 
 **Data plane / projections** ([Plan 39](./39-data-plane-projections.md)) — app domain data is event-sourced (commands→events here); a projection folds streams into an architect-chosen sink
 `projection.Declared` (read-model record + event-type read-set + reactivity class) · `projection.Lagged` (staleness/lag exceeded a bound → policy input) · `projection.SinkRebound` (Matching reselected a sink; links `match.Decided`) — sink **schema** changes reuse `migration.*`; sink **change-feeds** reuse `data.Changed`; rebuild-from-zero is a `migration.PhaseApplied` backfill

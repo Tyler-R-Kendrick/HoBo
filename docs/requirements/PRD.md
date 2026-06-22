@@ -37,7 +37,7 @@
 
 ## 3. Goals & non-goals
 **Goals:** minutes-to-first-deploy; one Bindle to many clouds, unedited; safe autonomous agent operation; openness/self-host; AI-generated providers without a community bottleneck.
-**Non-goals (v1)** ([00-vision.md](../design/00-vision.md)): general PaaS UI for non-developers; replacing Terraform/Pulumi; every cloud day one; being an app framework or a standalone secrets product.
+**Non-goals (positioning, not deferrals)** ([00-vision.md](../design/00-vision.md)): HoBo **composes** Terraform/Pulumi/OpenTofu rather than replacing them; it is not a generic app framework or a standalone secrets product. Broad cloud coverage comes **on demand via the Forge** rather than pre-enumerating every cloud. *(The full dashboard / UI generation and the hosted multi-tenant operator are now in v1, not out of scope — [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md).)*
 
 ## 4. Personas & roles
 Priority per [ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md).
@@ -64,7 +64,7 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 **J5 — Missing provider** ([06](../design/06-ai-native-agent-auth.md)): `hobo forge <url>` generates + sandbox-certifies a provider, then it's usable like any other.
 
 ## 6. Functional requirements (`FR-NNN`)
-> Priority M/S/C/W per [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md). Each has acceptance criteria (AC) and a back-trace to `BR`.
+> All FRs are **v1** ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)). The M/S/C label is **build priority within v1** (which to nail first), not a release gate — there is no "Won't" tier. Each has acceptance criteria (AC) and a back-trace to `BR`.
 
 ### 6.1 Authoring & SDK ([02](../design/02-sdk-api.md), [21](../design/21-resources-catalog.md), [22](../design/22-wiring-manifest.md))
 | ID | Requirement | Pri | AC | BR |
@@ -158,7 +158,7 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 | **NFR-013** | Portability | The product is self-hostable on the same code as hosted. | `hobo yard up` bootstraps a working Yard ([04](../design/04-control-plane.md)) | BR-007 |
 | **NFR-014** | Observability | OTel logs/traces/metrics for control + data planes. | Traces present for a deploy + a run ([14](../design/14-observability.md)) | BR-006 |
 | **NFR-015** | Usability/Docs | Machine-readable docs (`llms.txt`) + instant `npx` onboarding so agents and humans self-serve. | Onboarding test; docs present | BR-001/BR-004 |
-| **NFR-016** | Accessibility/i18n | CLI/runtime error output is screen-reader-friendly and an **i18n framework is integrated from P3**; the dashboard meets **WCAG 2.1 AA** and ships a pseudo-localization-passing i18n layer at P6. | automated WCAG audit + manual review (P6 dashboard); pseudo-loc test (200% string length, RTL) passes | BR-001 |
+| **NFR-016** | Accessibility/i18n | CLI/runtime error output is screen-reader-friendly and an **i18n framework is integrated from build stage 3**; the dashboard meets **WCAG 2.1 AA** and ships a pseudo-localization-passing i18n layer at build stage 6. | automated WCAG audit + manual review (stage-6 dashboard); pseudo-loc test (200% string length, RTL) passes | BR-001 |
 | **NFR-017** | Ease-of-use | Failure output is **actionable**: every blocked gate / failed deploy states root cause + 1–2 remediation steps, machine-readable for agent self-correction. | `explain-failure` on a seeded failure yields cause + fix steps; agent self-corrects in the MCP E2E | BR-001/BR-004 |
 | **NFR-018** | Security/Audit | Compliance audit streams (`token.*`/`resource.*`/policy decisions) are retained for a defined minimum and **never compacted**. | retention test: stream older than the floor still present ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) | BR-006/BR-010 |
 | **NFR-019** | Security/Availability | The Gateway and MCP surface enforce **per-principal and per-tenant rate limits + quotas** with backpressure. | a flooding agent is throttled (typed error); legitimate volume unaffected ([ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md)) | BR-007/BR-011 |
@@ -166,16 +166,16 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 | **NFR-021** | Observability/AI | Trainable-method execution is captured as **OTel/OpenInference trajectories** and scored by **live-evals** (the training signal + performance telemetry), with no backend-lock-in telemetry path. | OpenInference spans present per call; live-eval reward attached; exports to the tenant's OTLP backend ([14](../design/14-observability.md), [ADR-0025](../design/adr/ADR-0025-use-training-directive-and-training-engine.md)) | BR-006/BR-008 |
 
 ## 8. UX / UI requirements ([07-ui-dashboard.md](../design/07-ui-dashboard.md))
-Core views (P6 depth): **Deployments timeline** (event-sourced, replay/time-travel scrubber, rollback on DAG); **Topology graph** (resources→providers, bind edges w/ connectivity + cost); **Run inspector** (step/actor/saga trace, per-step I/O, replay-diff vs current code); **Registry browser** (capabilities, signs, Forge provenance); **Agent activity & credential audit** (token grant/use/revoke, approvals); **Cost & FinOps** (plan vs actuals, budgets, showback); **Drift** (heal/propose). Key interactions: plan preview, approve policy gates, promote/rollback, live tail.
+Core views (built at stage 6): **Deployments timeline** (event-sourced, replay/time-travel scrubber, rollback on DAG); **Topology graph** (resources→providers, bind edges w/ connectivity + cost); **Run inspector** (step/actor/saga trace, per-step I/O, replay-diff vs current code); **Registry browser** (capabilities, signs, Forge provenance); **Agent activity & credential audit** (token grant/use/revoke, approvals); **Cost & FinOps** (plan vs actuals, budgets, showback); **Drift** (heal/propose). Key interactions: plan preview, approve policy gates, promote/rollback, live tail.
 
-## 9. Release criteria (definition of done per phase)
-From [08-roadmap.md](../design/08-roadmap.md) exit criteria; MVP line at **P4** ([ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)):
-- **P0/P1:** the local Camp (`runtime-local`) passes runtime-port conformance; hello-bindle runs offline; replay == live.
-- **P2:** reference Bindle deploys to a real cloud and survives a Yard restart mid-deploy.
-- **P3:** an agent deploys via MCP using only brokered tokens; credential audit present.
-- **P4 (v1 GA):** one Bindle deploys to ≥2 clouds; cross-cloud mTLS works.
-- **P5:** `hobo forge <url>` produces a certified provider passing conformance. **Governance phase 1:** policy gates + approval obligations + `can-deploy` (FR-050/051/052) are usable.
-- **P6:** canary auto-rollback; plan-time cost within tolerance; DR rebuild < RTO; dashboard + accessibility (NFR-016). **Governance phase 2:** resource-driven Resource Definitions/Matching + Packs (FR-060/061/062) at depth.
+## 9. Release criteria (single v1 definition of done)
+v1 ships the whole designed surface ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)); **v1 GA = every build-stage acceptance gate below is green** ([08 v1 delivery plan](../design/08-roadmap.md)/[phases/](../design/phases/README.md)). The stages are a build sequence, not separate releases.
+- **Stage 0/1:** the local Camp (`runtime-local`) passes runtime-port conformance; hello-bindle runs offline; replay == live.
+- **Stage 2:** reference Bindle deploys to a real cloud and survives a Yard restart mid-deploy; the Gatekeeper blocks an unsafe change with an explainable reason (policy gates + approval obligations + `can-deploy`, FR-050/051/052).
+- **Stage 3:** an agent deploys via MCP using only brokered tokens; credential audit present.
+- **Stage 4:** one Bindle deploys to ≥2 clouds; cross-cloud mTLS works; switching a resource's provider touches only config; resource-driven Resource Definitions/Matching + Packs (FR-060/061/062) participate in resolution.
+- **Stage 5:** `hobo forge <url>` produces a certified provider passing conformance; a stubbed port gets an AI-generated, conformance-passing implementation promoted through the eval gate.
+- **Stage 6:** canary auto-rollback; plan-time cost within tolerance; chargeback via the `billing` port; DR rebuild < RTO; full dashboard + accessibility (NFR-016); and the completeness planes usable — a `notify` send is event-sourced + consent-gated, a classified field drives an enforced residency/retention obligation with crypto-shred erasure, a guardrail blocks a flagged model output, and a certified marketplace listing installs via Matching (uncertified stays unlisted).
 
 ## 10. Analytics / success metrics
 Instrument the [BRD KPIs](./BRD.md#10-success-metrics--kpis): time-to-first-deploy, providers-per-Bindle, zero-secret rate, agent-completable lifecycle %, Forge yield, recovery times. Derived from the event log (no separate telemetry path required for control-plane KPIs).
@@ -183,13 +183,13 @@ Instrument the [BRD KPIs](./BRD.md#10-success-metrics--kpis): time-to-first-depl
 ## 11. Dependencies, assumptions, constraints
 - **Dependencies:** WASI/WIT, Pulumi Automation API, SPIFFE/OIDC, MCP ([BRD §14](./BRD.md#14-dependencies)).
 - **Assumptions:** providers publish or accept Forge-generated Capability Manifest; agents are a real delivery channel.
-- **Constraints:** agnostic core may not leak provider detail; conformance gates everything; phase-gated delivery.
+- **Constraints:** agnostic core may not leak provider detail; conformance gates everything; single-v1 delivery in dependency-ordered build stages ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)).
 
 ## 12. Risks & open questions
-Inherits the [BRD risk register](./BRD.md#15-risk-register). Open product questions (from [09](../design/09-verification-open-questions.md)): compiler-magic depth for `"use workflow"`; default Planner objective; "low-risk auto live-fix" threshold; first P2 provider; IfC fidelity for non-TS languages. Tracked as ADR-P items in [18-adr-log](../design/18-adr-log.md).
+Inherits the [BRD risk register](./BRD.md#15-risk-register). Open product questions (from [09](../design/09-verification-open-questions.md)): compiler-magic depth for `"use workflow"`; default Planner objective; "low-risk auto live-fix" threshold; first-deploy provider (build stage 2); IfC fidelity for non-TS languages. Tracked as ADR-P items in [18-adr-log](../design/18-adr-log.md).
 
-## 13. Out of scope (v1)
-Per [§3](#3-goals--non-goals) and [00 non-goals](../design/00-vision.md): non-developer PaaS UI; replacing IaC engines; all clouds at once; app framework; standalone secrets product.
+## 13. Out of scope (positioning anti-goals, not deferrals)
+Per [§3](#3-goals--non-goals) and [00 non-goals](../design/00-vision.md): HoBo composes IaC engines rather than replacing them; it is not a generic app framework or a standalone secrets product; broad cloud coverage is Forge-on-demand, not pre-enumerated. There is no "later release" bucket — everything designed is in v1 ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)).
 
 ## 14. References
 [02 SDK](../design/02-sdk-api.md) · [06 AI/agent](../design/06-ai-native-agent-auth.md) · [07 UI](../design/07-ui-dashboard.md) · [15 CLI/DX](../design/15-cli-dx.md) · [19 Worked example](../design/19-worked-example.md) · [BRD](./BRD.md) · [TRD](./TRD.md) · ADRs [0019](../design/adr/ADR-0019-persona-prioritization-icp.md)/[0021](../design/adr/ADR-0021-nfr-baselines-slos.md)/[0022](../design/adr/ADR-0022-mvp-scope-moscow.md).

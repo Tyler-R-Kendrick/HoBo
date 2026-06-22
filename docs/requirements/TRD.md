@@ -183,7 +183,7 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-120** | Connectivity is derived from `bind` edges; the Planner selects a **tier** (same-region private → cross-region → cross-provider private → overlay mesh → public+mTLS) and may be overridden via `.with(...)`. | Connectivity-tier test ([09](../design/09-verification-open-questions.md)) |
-| **TR-121** | **mTLS-by-default** between services, keyed by workload SVIDs; certs issued/rotated by Identity (zero-trust); apps don't manage them. | Cross-provider mTLS test (P4 gate) |
+| **TR-121** | **mTLS-by-default** between services, keyed by workload SVIDs; certs issued/rotated by Identity (zero-trust); apps don't manage them. | Cross-provider mTLS test (build stage 4) |
 | **TR-122** | The **HoBo Relay** provides an outbound-only (no inbound) reverse tunnel for private-network targets. | Private-target deploy test ([28](../design/28-relay-gitops-pipelines.md)) |
 
 ### 5.14 Cross-cutting: observability ([14](../design/14-observability.md))
@@ -236,7 +236,7 @@ Inherits [BRD risks](./BRD.md#15-risk-register). The requirements review/hardeni
 - **ADR-P2** overlay-mesh tech — affects TR-120.
 - **ADR-P4** default Planner objective (cost vs latency) — affects TR-021/TR-150; **TRD stance:** ship a documented default (cost-aware with colocation) that is **per-tenant configurable**, decision deferred to ADR-P4 ratification.
 - **ADR-P5** `"use workflow"` transform depth — affects TR-011.
-Plus [09](../design/09-verification-open-questions.md) open questions (wasm host of record, `hobo:*` versioning, IfC fidelity for non-TS, live-fix auto threshold, first P2 provider).
+Plus [09](../design/09-verification-open-questions.md) open questions (wasm host of record, `hobo:*` versioning, IfC fidelity for non-TS, live-fix auto threshold, first-deploy provider at build stage 2).
 
 ## Traceability matrix
 Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)). Every BR has ≥1 FR/NFR; every FR/NFR has ≥1 TR.

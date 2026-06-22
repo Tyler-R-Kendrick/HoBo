@@ -21,7 +21,7 @@ Business need ──BR──▶ Product capability ──FR / NFR──▶ Techn
 
 - Every **BR** maps to ≥1 **FR**/**NFR**; every **FR**/**NFR** maps to ≥1 **TR**; every **TR** cites the governing `docs/design/*` doc and how it's verified ([09](../design/09-verification-open-questions.md)).
 - The authoritative **BR→FR/NFR→TR matrix** lives in [TRD §Traceability](./TRD.md#traceability-matrix).
-- Priorities use **MoSCoW** bound to roadmap phases P0–P6 ([ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)).
+- Everything is **v1** ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md), superseding [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)); **MoSCoW** now expresses **build priority/order within v1** (mapped to the build stages in [`docs/design/phases/`](../design/phases/README.md)), not a release boundary.
 - These docs **cite** the design suite; they do not restate it. The design docs remain the source of design truth.
 
 ## Decision log for this suite
@@ -30,7 +30,8 @@ Authored alongside the docs (one ADR per load-bearing decision) — see the [ADR
 - [ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md) — persona prioritization / primary ICP
 - [ADR-0020](../design/adr/ADR-0020-monetization-model.md) — monetization model
 - [ADR-0021](../design/adr/ADR-0021-nfr-baselines-slos.md) — NFR baselines / SLOs (Proposed)
-- [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md) — MVP scope / MoSCoW
+- [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md) — MVP scope / MoSCoW *(superseded by ADR-0063)*
+- [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md) — single v1 scope (whole designed surface ships as one v1; P0–P6 become build stages)
 - [ADR-0023](../design/adr/ADR-0023-security-posture-commitments.md) — security posture commitments *(from the review/hardening pass)*
 - [ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md) — portability conformance guarantee *(from the review/hardening pass)*
 

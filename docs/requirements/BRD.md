@@ -48,13 +48,14 @@ The business bet: own the intersection no incumbent occupies — cloud-agnostic 
 - **Provider-breadth bottleneck:** agnostic platforms depend on communities to write provider adapters; coverage lags demand.
 
 ## 4. Business objectives (SMART)
-| ID | Objective | Measure | Target horizon |
+All objectives are part of the single v1 ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)); the milestone column names the **v1 build stage** ([phases/](../design/phases/README.md)) by which each is demonstrable, not a separate release.
+| ID | Objective | Measure | v1 build milestone |
 |---|---|---|---|
-| OBJ-1 | Prove agnostic deploy is tractable | A single unedited Bindle deploys to ≥2 clouds | P4 |
-| OBJ-2 | Prove AI-native operation is safe | An agent completes deploy/operate via MCP using only brokered tokens, fully audited | P3 |
-| OBJ-3 | Break the provider-breadth bottleneck | `hobo forge <url>` yields a conformance-passing provider | P5 |
-| OBJ-4 | Establish a revenue line | Hosted Yard in paid preview with ≥N design partners | post-P4 |
-| OBJ-5 | Earn developer trust via openness | OSS core self-hostable; "self-host = hosted" demonstrated | P2 |
+| OBJ-1 | Prove agnostic deploy is tractable | A single unedited Bindle deploys to ≥2 clouds | stage 4 |
+| OBJ-2 | Prove AI-native operation is safe | An agent completes deploy/operate via MCP using only brokered tokens, fully audited | stage 3 |
+| OBJ-3 | Break the provider-breadth bottleneck | `hobo forge <url>` yields a conformance-passing provider | stage 5 |
+| OBJ-4 | Establish a revenue line | Hosted Yard in paid preview with ≥N design partners | stage 6 (hosted) |
+| OBJ-5 | Earn developer trust via openness | OSS core self-hostable; "self-host = hosted" demonstrated | stage 2 |
 
 ## 5. Market opportunity & positioning
 **Positioning statement** ([17](../design/17-positioning-competitive.md)): *HoBo is an AI-native, cloud-agnostic control plane that maps a single TypeScript app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.*
@@ -85,11 +86,11 @@ From [17-positioning-competitive.md](../design/17-positioning-competitive.md) an
 | **AI agent** (co-primary; agent-as-user) | Deploys/operates via MCP | First-class identity, scoped credentials, audit, self-service capability discovery |
 | **Platform engineer** (secondary) | Authors Resource Definitions, mapping rules, policy/cost guardrails | Governance, standardization, least-privilege, cost control |
 | **Operator / SRE** | Runs (or self-hosts) the Yard | Reliability, observability, DR, incident response |
-| **Hosted-tenant buyer** (deferred) | Buys the hosted Yard | Managed HA, SSO/RBAC, billing/chargeback, support SLA |
+| **Hosted-tenant buyer** (v1, hosted) | Buys the hosted Yard | Managed HA, SSO/RBAC, billing/chargeback, support SLA |
 Persona priority is fixed by [ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md).
 
 ## 8. Business requirements (`BR-NNN`)
-> Priority: **M**ust / **S**hould / **C**ould / **W**on't-v1 ([ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)). Each maps forward to PRD `FR`/`NFR` (see [TRD traceability](./TRD.md#traceability-matrix)).
+> All BRs are **v1** ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)). Priority **M**ust / **S**hould / **C**ould now expresses **build order within v1** (which to nail first), not a release boundary — there is no "Won't-v1" bucket. Each maps forward to PRD `FR`/`NFR` (see [TRD traceability](./TRD.md#traceability-matrix)).
 
 | ID | Business requirement | Priority | Rationale / source |
 |---|---|---|---|
@@ -125,9 +126,8 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 | Recovery (resume after node loss / rebuild) | <30 s resume / <15 min rebuild | BR-006/BR-007 |
 
 ## 11. Scope
-**In scope (v1, P0–P4 — [ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity.
-**In scope (post-v1, P5–P6):** Forge at scale; full FinOps/budgets/chargeback; multi-region HA; complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth.
-**Out of scope (v1)** ([00 non-goals](../design/00-vision.md)): a general PaaS UI for non-developers; replacing Terraform/Pulumi (we orchestrate them); supporting every cloud on day one; being an application framework or a standalone secret-management product.
+**In scope (v1 — the whole designed surface, [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity; **the Forge; full FinOps/budgets/chargeback; multi-region HA; the complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth; the Operator Crew, the generated stack, UI generation, patchability, SRE/incident management; and the completeness planes (app communications, compliance & governance, AI safety, marketplace).** Delivered as one v1 in dependency-ordered build stages ([phases/](../design/phases/README.md)) — there is no post-v1 release.
+**Out of scope — positioning anti-goals, not deferrals** ([00 non-goals](../design/00-vision.md)): HoBo **composes** Terraform/Pulumi/OpenTofu via the IaC port rather than replacing them; it is not a standalone secret-management product or a generic application framework. Broad cloud coverage is delivered **on demand via the Forge** rather than pre-enumerating every cloud.
 
 ## 12. Assumptions
 - AI agents (via MCP) are a growing, real channel for software delivery — central to the bet.
@@ -137,7 +137,7 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 ## 13. Constraints
 - **Agnostic constraint:** no design choice may make the core un-runnable off our cloud (would break BR-002/BR-007).
 - **Security constraint:** the conformance suite is the trust boundary for all (esp. AI-generated) adapters; nothing ships uncertified ([09](../design/09-verification-open-questions.md)/[12](../design/12-security-multitenancy.md)).
-- **Resourcing:** the roadmap is phase-gated; risky bets (Forge, multi-region HA) deliberately follow a proven core ([08](../design/08-roadmap.md)).
+- **Resourcing:** v1 is one large scope delivered in dependency-ordered build stages; risky bets (Forge, multi-region HA) deliberately follow a proven core, but all of it is v1 ([08](../design/08-roadmap.md)).
 
 ## 14. Dependencies
 - Upstream ecosystems: WASI/Component Model + WIT, Pulumi Automation API, SPIFFE/OIDC, MCP. Churn in these (esp. `wasi:*` drafts) is a tracked risk ([09](../design/09-verification-open-questions.md)).
@@ -148,22 +148,22 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 |---|---|---|---|---|---|
 | R-1 | **Forge yields insecure/low-quality providers** | Med | High | Conformance + sandbox-no-egress + signing/provenance + human gate for high-trust ([12](../design/12-security-multitenancy.md)/[23](../design/23-stubbable-ai-implementations.md)) | Eng |
 | R-2 | **Agent autonomy causes runaway spend/destroy** | Med | High | Scoped SVIDs, policy gates, spend caps, full replay ([06](../design/06-ai-native-agent-auth.md)/[30](../design/30-policy-plane.md)) | Eng/Platform |
-| R-3 | **Scope/complexity overwhelms the team** (broad surface) | High | High | Phase gates; MVP line at P4; "powerful but unusable" guardrail ([ADR-0022](../design/adr/ADR-0022-mvp-scope-moscow.md)) | Product |
+| R-3 | **Scope/complexity overwhelms the team** (large single-v1 surface) | High | High | Dependency-ordered build stages, each independently demoable + keeping prior acceptance gates green; "powerful but unusable" guardrail ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)) | Product |
 | R-4 | **OSS/commercial line wrong** → no revenue or no adoption | Med | High | Explicit model ([ADR-0020](../design/adr/ADR-0020-monetization-model.md)); ratify license + pricing pre-GA | Founders |
 | R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/24-wit-interfaces-reference.md)) | Eng |
 | R-6 | **Multi-cloud networking** harder/costlier than modeled | Med | Med | Tiered connectivity + egress feedback to Planner ([13](../design/13-networking-connectivity.md)/[16](../design/16-cost-finops.md)) | Eng |
 | R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/17-positioning-competitive.md)) | Founders/GTM |
 
-## 16. Roadmap as business milestones
-From [08-roadmap.md](../design/08-roadmap.md):
-| Phase | Business milestone | Exit criterion |
+## 16. v1 build milestones
+All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery plan](../design/08-roadmap.md)/[phases/](../design/phases/README.md)), **not** separate releases. v1 GA = every milestone below met.
+| v1 build stage | Business milestone | Acceptance |
 |---|---|---|
-| P0–P1 | Developer SDK works locally (agnostic authoring) | hello-bindle runs offline; replay == live state |
-| P2 | **MVP production:** first cloud + Yard | deploys to a real cloud + survives Yard restart |
-| P3 | **Agent autonomy:** keyless agent deploy | agent deploys via MCP using only brokered tokens |
-| P4 | **Multi-cloud thesis proved (v1 GA line):** one Bindle, ≥2 clouds | multi-cloud example runs; cross-cloud mTLS works |
-| P5 | **Extensibility moat:** Forge | `hobo forge <url>` yields a certified provider |
-| P6 | **Production hardened:** HA + FinOps + UX | canary auto-rollback; cost within tolerance; DR < RTO |
+| 0–1 | Developer SDK works locally (agnostic authoring) | hello-bindle runs offline; replay == live state |
+| 2 | First cloud + Yard, governance-gated | deploys to a real cloud + survives Yard restart; an unsafe change is blocked |
+| 3 | **Agent autonomy:** keyless agent deploy | agent deploys via MCP using only brokered tokens |
+| 4 | **Multi-cloud thesis proved:** one Bindle, ≥2 clouds | multi-cloud example runs; cross-cloud mTLS works |
+| 5 | **Extensibility moat:** Forge | `hobo forge <url>` yields a certified provider |
+| 6 | **Production hardened + breadth:** HA + FinOps + UX + the completeness planes | canary auto-rollback; cost within tolerance; DR < RTO; comms/governance/AI-safety/marketplace usable |
 
 ## 17. References
-[00 Vision](../design/00-vision.md) · [08 Roadmap](../design/08-roadmap.md) · [16 Cost/FinOps](../design/16-cost-finops.md) · [17 Positioning](../design/17-positioning-competitive.md) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)/[0019](../design/adr/ADR-0019-persona-prioritization-icp.md)/[0020](../design/adr/ADR-0020-monetization-model.md)/[0021](../design/adr/ADR-0021-nfr-baselines-slos.md)/[0022](../design/adr/ADR-0022-mvp-scope-moscow.md).
+[00 Vision](../design/00-vision.md) · [08 Roadmap](../design/08-roadmap.md) · [16 Cost/FinOps](../design/16-cost-finops.md) · [17 Positioning](../design/17-positioning-competitive.md) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)/[0019](../design/adr/ADR-0019-persona-prioritization-icp.md)/[0020](../design/adr/ADR-0020-monetization-model.md)/[0021](../design/adr/ADR-0021-nfr-baselines-slos.md)/[0063](../design/adr/ADR-0063-single-v1-scope.md) (supersedes [0022](../design/adr/ADR-0022-mvp-scope-moscow.md)).

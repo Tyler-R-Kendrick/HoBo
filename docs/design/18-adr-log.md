@@ -59,5 +59,5 @@
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](./05-reliability-ha.md).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 13](./13-networking-connectivity.md).
 - **ADR-P3:** ~~policy language for guardrails/ABAC~~ — **Resolved by ADR-0015** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
-- **ADR-P4:** default Planner objective (cost-first vs latency-first) — [Plan 16](./16-cost-finops.md).
+- **ADR-P4:** ~~default Planner objective (cost-first vs latency-first)~~ — **Resolved by [ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 16](./16-cost-finops.md)/[Plan 25](./25-resource-definitions-matching.md).
 - **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](./02-sdk-api.md).

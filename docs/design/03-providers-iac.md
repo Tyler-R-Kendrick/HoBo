@@ -66,7 +66,7 @@ The Planner is a pure function (easy to test, replayable): `plan(bindle, config,
    - `none` → reject.
    - If no definition can satisfy a `require`, emit `deployment.PlanRejected` with a precise reason (good for agents to self-correct).
 4. **Region & colocation** — honor explicit regions; otherwise pick a region satisfying all colocated resources' constraints (latency edges from `bind`), minimizing cross-provider/cross-region egress.
-5. **Cost shaping** (optional, [Plan 16](./16-cost-finops.md)) — when multiple candidates satisfy `full`, choose by a cost/latency objective; record the rationale as `meta` on `deployment.Planned`.
+5. **Objective ranking** ([Plan 25](./25-resource-definitions-matching.md)/[ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)) — when multiple candidates satisfy `full` and tie on specificity + explicit `priority`, rank by the **configurable objective** (`cost`|`latency`|`single-provider`|`carbon`, **default = min-cost within constraints**), then a **stable tiebreak** (definition id). Deterministic, not a solver/LLM; rationale recorded in `match.Decided` + as `meta` on `deployment.Planned`.
 6. **Emit `DeploymentPlan`** — DAG of `ResourcePlan{ name, port, provider, options, deps, strategy }`, each tagged with its resolved provider + merged `.with(...)` options (only the resolved provider's block survives).
 
 The plan is content-addressed and stored via `deployment.Planned`, so the exact decisions are auditable and re-runnable.
@@ -119,7 +119,7 @@ Agnostic ports map to provider services via curated equivalence classes (extensi
 A provider package exports: (1) a factory (`aws({...})`) returning a `CloudProvider`, (2) typed `.with(...)` option builders per port (`aws.rds`, `aws.fargate`), (3) capability declarations + equivalence mappings, (4) `realize()` emitting IaC, (5) a runtime `client()` per port, and (6) a `code()` Hobo Code manifest. It must pass `@hobo/conformance` for every port it claims — that suite is the contract that lets AI-generated providers be trusted ([Plan 6](./06-ai-native-agent-auth.md), [Plan 9](./09-verification-open-questions.md)).
 
 ## Iteration hooks
-- Planner objective function when several providers fully satisfy (cost vs latency vs carbon vs "stay on one provider").
+- ~~Planner objective function when several providers fully satisfy~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md), resolves ADR-P4):** configurable `cost`|`latency`|`single-provider`|`carbon`, default **min-cost within constraints**, applied deterministically (no solver/LLM on-path).
 - Per-resource vs grouped IaC stacks (isolation vs state sprawl).
 - How `prefer` degradation is surfaced/approved (silent warning vs require ack).
 - Maintaining equivalence classes by hand vs Forge-generated + curated.

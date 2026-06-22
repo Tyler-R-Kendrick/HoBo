@@ -35,7 +35,7 @@ These are estimates (real bills vary); HoBo reconciles estimates against actual 
 
 ## The Planner cost model
 - For a candidate plan, sum each resource's projected cost from `cost.json` × an expected-usage profile (defaults per port, overridable in the Bindle), plus **egress** across each `bind` edge given its connectivity tier ([Plan 13](./13-networking-connectivity.md)).
-- Objective is configurable per tenant: `min-cost`, `min-latency`, `min-cross-cloud`, or a weighted blend; the chosen rationale is recorded on `deployment.Planned` (auditable "why this provider").
+- Objective is configurable per Yard/Camp: `cost` | `latency` | `single-provider` | `carbon`, **default = min-cost within constraints** ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md), resolves ADR-P4). It is the **soft tiebreak** in the deterministic Matching rank (specificity → explicit `priority` → objective → stable tiebreak, [Plan 25](./25-resource-definitions-matching.md)) — applied lexicographically, not as an on-path solver; a weighted multi-objective blend is a deferred hook. The chosen rationale is recorded in `match.Decided` + on `deployment.Planned` (auditable "why this provider").
 - Cross-cloud hops are penalized by their egress cost so the Planner naturally colocates bound resources unless explicitly told otherwise.
 
 ## Budgets, caps & guardrails
@@ -58,6 +58,6 @@ These are estimates (real bills vary); HoBo reconciles estimates against actual 
 
 ## Iteration hooks
 - Estimate fidelity vs simplicity (static `cost.json` vs live pricing APIs vs learned usage profiles).
-- The default Planner objective (cost-first feels right for the agnostic promise, but latency-sensitive apps differ).
+- ~~The default Planner objective~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)):** min-cost within constraints, configurable; weighted multi-objective blending remains the open part.
 - How aggressively to act on commitment/savings recommendations.
 - Reconciling estimates with real billing per provider (which expose usable billing APIs?).

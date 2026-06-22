@@ -40,12 +40,25 @@ match: { envType: "production", app: "shop", resourceClass: "ha" }  # score 3  (
 
 ```mermaid
 flowchart LR
-  REQ["needed resource<br/>(type, class, id) + context"] --> GATH["gather Resource Definitions<br/>of this type"]
-  GATH --> SCORE["score criteria by specificity"]
-  SCORE --> PICK["select highest<br/>(record match.Decided)"]
-  PICK --> REAL["realize via provider + Driver<br/>(Plan 27)"]
-  REAL --> NODE["node in DeploymentPlan DAG<br/>(Plan 3/4)"]
+  REQ["needed resource<br/>(type, class, id) + context"] --> GATH["gather definitions of this type"]
+  GATH --> FILT["filter: criteria match<br/>+ hard require capability"]
+  FILT -->|none satisfy require| REJ["deployment.PlanRejected<br/>(precise reason)"]
+  FILT --> RANK["rank lexicographically:<br/>specificity → priority → objective → stable tiebreak"]
+  RANK --> PICK["select winner<br/>(record match.Decided + ranking + tie flag)"]
+  PICK --> REAL["realize via provider + Driver (Plan 27)"]
+  REAL --> NODE["node in DeploymentPlan DAG (Plan 3/4)"]
 ```
+
+## The selection algorithm — deterministic, on-path ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md))
+Selection is a **pure function** of `(catalog snapshot, deploy context, objective setting)` — no clock, RNG, network, or model — so it is unit-testable without a cloud and **identical on replay** (the determinism property [Plan 9](./09-verification-open-questions.md) asserts of the Planner). The pipeline:
+1. **Gather** all definitions of the requested `type`.
+2. **Filter** to candidates whose criteria match the context **and** whose provider satisfies the resource's hard **`require`** capabilities (`Capability.satisfies` ([Plan 3](./03-providers-iac.md)) = `full` → accept; `prefer` may degrade with a `PlanWarning`; `require` miss → reject). If none satisfy `require` → **`deployment.PlanRejected`** with a precise, agent-correctable reason.
+3. **Rank lexicographically:** (a) **specificity score** (above) → (b) an **explicit `priority`** (optional integer on a definition, for deliberate platform override) → (c) the **default objective** (soft; configurable `cost`|`latency`|`single-provider`|`carbon` per Yard/Camp, **default = min-cost within constraints** — [Plan 16](./16-cost-finops.md)) → (d) a **stable deterministic tiebreak** (definition id, lexicographic).
+4. **Record** the winner + full ranking + rejected candidates + the objective used + a **tie flag** in `match.Decided`.
+
+**True ties never block.** If candidates are equal on specificity, `priority`, *and* objective, the stable tiebreak still yields a deterministic winner, and a `PlanWarning` + tie flag is recorded so a platform engineer can add an explicit `priority` to disambiguate.
+
+**AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 33](./33-forge-generation-pipeline.md)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. (A constraint solver / LLM selector on-path was rejected — [ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md).)
 
 ## Mapping is sugar over default definitions
 The simple `hobo.config.ts` ([Plan 2](./02-sdk-api.md)) is **not** a separate system — it **compiles to default Resource Definitions**:
@@ -65,6 +78,6 @@ Given a backend's Hobo Code + a target context, the **Forge** ([Plan 6](./06-ai-
 
 ## Iteration hooks
 - Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.
-- Scoring exactly like Humanitec vs a HoBo refinement (explicit priorities/weights, tenant dimension).
-- Conflict resolution when two definitions tie on score (deterministic tiebreak).
-- How `match.Decided` is surfaced for agents to self-correct an unsatisfiable request.
+- ~~Scoring exactly like Humanitec vs a HoBo refinement~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)):** deterministic lexicographic rank (specificity → explicit `priority` → configurable objective, default min-cost → stable tiebreak); weighted multi-objective blending + carbon-signal sourcing remain hooks.
+- ~~Conflict resolution when two definitions tie on score~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)):** stable tiebreak (definition id) + `PlanWarning`, never a block.
+- How `match.Decided` is surfaced for agents to self-correct an unsatisfiable request (now carries the full ranking + reasons).

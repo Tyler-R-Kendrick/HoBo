@@ -2,7 +2,7 @@
 
 > Part of the [HoBo Design Plan Suite](./README.md). How we prove each plan works when implemented, and the cross-cutting questions still open.
 
-> **v3 (Humanitec):** add **Driver** conformance suites ([Plan 27](./27-drivers-packs-profiles.md)) and a **matching test** (given context + a set of Resource Definitions, assert the expected one wins and a `match.Decided` event records the score, [Plan 25](./25-resource-definitions-matching.md)) and a **Delta→Set** test (a delta applied yields the expected immutable Set, [Plan 26](./26-environments-deltas.md)).
+> **v3 (Humanitec):** add **Driver** conformance suites ([Plan 27](./27-drivers-packs-profiles.md)) and a **matching test** (given context + a set of Resource Definitions, assert the expected one wins and a `match.Decided` event records the score, [Plan 25](./25-resource-definitions-matching.md)) and a **Delta→Set** test (a delta applied yields the expected immutable Set, [Plan 26](./26-environments-deltas.md)). The matching test also asserts **determinism** (same inputs → same winner on replay), the **stable tiebreak + `PlanWarning`** on a true tie, and a **`require`-miss → `deployment.PlanRejected`** ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)).
 
 > **v4 (gates):** **conformance** here is the *provider* contract (does an impl satisfy a port); the *consumer-driven* compatibility check (`can-deploy`, [Plan 29](./29-contracts-compatibility.md)) is distinct — add a **compatibility test** (producer/consumer version skew → `compat.GateFailed`), a **policy-decision test** ([Plan 30](./30-policy-plane.md): assert effect + obligations for a given request), and an **eval-gate test** ([Plan 23](./23-stubbable-ai-implementations.md)). `hobo verify` composes all of these.
 
@@ -42,7 +42,7 @@ A shared, executable contract test suite per **port** (runtime ports and Provide
 ## Open questions to resolve in iteration
 1. **Hobo Code standard:** open spec aligned with MCP-auth / OAuth-OBO / SPIFFE, or HoBo-proprietary first then standardize? ([6](./06-ai-native-agent-auth.md))
 2. **Compiler magic:** depth of a build-time transform for `"use workflow"`/`"use step"` vs pure runtime wrappers? ([2](./02-sdk-api.md))
-3. **Planner intelligence:** rules vs cost/constraint solver vs LLM-assisted selection, and the default objective. ([3](./03-providers-iac.md),[16](./16-cost-finops.md))
+3. ~~**Planner intelligence:**~~ — **RESOLVED by [ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)** (resolves ADR-P4): selection on the deploy path is **deterministic rules** (gather → filter on `require` → rank lexicographically [specificity → explicit `priority` → configurable objective, **default min-cost** → stable tiebreak] → record in `match.Decided`); AI/cost-solvers are **advisory only, off-path** ([Plan 25](./25-resource-definitions-matching.md)/[3](./03-providers-iac.md)/[16](./16-cost-finops.md)). Weighted multi-objective blending + carbon-signal sourcing remain iteration hooks.
 4. **Default first provider** for P2 (Cloudflare vs Fly vs a local Docker provider). ([8](./08-roadmap.md))
 5. **Built-in engine scope:** how much of Temporal/Restate we reimplement in `runtime-local` vs always recommending an external runtime in prod. ([2](./02-sdk-api.md),[5](./05-reliability-ha.md))
 6. **Consensus / multi-region:** own Raft vs delegate; active-active vs active-passive. ([5](./05-reliability-ha.md))

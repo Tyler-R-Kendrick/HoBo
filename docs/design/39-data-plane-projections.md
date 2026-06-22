@@ -60,6 +60,25 @@ export const openTicket = command("Ticket.Open", { key: (i: OpenTicket) => i.id 
 - **Per-aggregate serializability, not global.** Optimistic `seq` on the aggregate's stream gives serializable writes *within* an aggregate with no global lock — the CAP-honest analog of Convex's serializable mutations ([competitors/convex](../../competitors/convex/functions.md)). Cross-aggregate consistency is a **saga** ([Plan 2](./02-sdk-api.md)) or eventual ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)) — never a silent distributed transaction. Decision record: [ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md).
 - A command is a **`step`-class** unit (idempotent via the existing idempotency-key machinery, [Plan 2](./02-sdk-api.md)); **reads-your-writes** — it returns its `seq` and the client advances subscriptions to ≥ that `seq` before ack ([Plan 32](./32-reactive-live-queries.md)). **Naked `emit`** (no aggregate) remains for domain facts that need no invariant boundary.
 
+### Declaring a projection — subscribe + fold + read-model
+A projection is declared with per-event-type fold handlers (the same `on:` shape as an [actor](./02-sdk-api.md) or [saga](./02-sdk-api.md)), typed by its read-model **WIT record**:
+```ts
+import { projection } from "@hobo/runtime";
+
+// "orders": fold Order.* events → the Order read-model record; `key` picks the row each event lands in.
+export const orders = projection<Order>("orders", {
+  key: (e) => e.id,                                              // read-model row id
+  on: {
+    OrderPlaced:    (s, e) => ({ ...s, id: e.id, status: "placed", total: e.total }),
+    OrderConfirmed: (s, e) => ({ ...s, status: "confirmed" }),   // deterministic, read-only (query-class)
+    OrderShipped:   (s, e) => ({ ...s, status: "shipped" }),
+  },
+});
+```
+- The fold is **deterministic + read-only** (no `step`, no writes — the same rules as `query()`/`workflow`), so the projection is **rebuildable from zero** by replay.
+- The developer declares *only* the logical fold + read-model; the **sink** (relational/document/…) is bound by the data architect's `projection-sink` Resource Definition ([Plan 25](./25-resource-definitions-matching.md)), never here. The read-model record's fields are what the schema mapping targets.
+- `index` hints (which fields are queryable/sortable — needed for `where`/`order`/`paginate`) are declared on the read-model and ride the same migration machinery as any index ([Plan 34](./34-app-data-migrations.md)/[Plan 35](./35-search-vector-surface.md)).
+
 ### Read path — logical repository + query DSL
 ```ts
 import { view, repo } from "@hobo/runtime";

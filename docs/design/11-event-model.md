@@ -95,6 +95,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **App-data migrations** ([Plan 34](./34-app-data-migrations.md)) — the developer's `sql`-resource schema/data, *not* this log's own upcasting (see Schema evolution below)
 `migration.Planned` · `migration.SnapshotTaken` · `migration.PhaseApplied` (phase = `expand`/`backfill`/`contract` + the diff) · `migration.Verified` · `migration.RolledBack` · `migration.Failed` · **(cross-cloud move)** `migration.Exported` · `migration.Imported` · `migration.CutOver`
 
+**Custom domains & ingress** ([Plan 13](./13-networking-connectivity.md)/[ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md))
+`domain.Registered` · `domain.Validated` (DNS/ACME challenge passed) · `domain.CertIssued` · `domain.CertRotated` · `domain.RoutingChanged` (routing-policy decision + chosen target Camps → "why traffic went where")
+
 **Training** (`"use training"` semantic-function optimization, [Plan 23](./23-stubbable-ai-implementations.md))
 `training.RunStarted` · `training.TrajectoryCaptured` (OTel/OpenInference span tree + I/O) · `training.RewardObserved` (live-eval signal) · `training.CandidateProposed` (rewritten prompt/code) · `training.CandidateEvaluated` · `training.Promoted` · `training.Rejected`
 

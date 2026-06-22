@@ -37,6 +37,8 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 | **Compute/service** | `service(name)` | component (exports `wasi:http`) | (binds below) | Fargate / Container Apps / Cloud Run / Workers |
 | **Search** | `search(name)` | `hobo:search` | `index`,`query`,`admin` | pgvector+PG-FTS / OpenSearch / Azure AI Search / Pinecone ([Plan 35](./35-search-vector-surface.md)) |
 | **Embed** | `embed(name)` | `hobo:embed` | `embed` | local model / hosted embedding API (used via `search`; [Plan 35](./35-search-vector-surface.md)) |
+| **Domain** | `domain(name)` | `hobo:dns` (+ `gateway`) | `bind`,`route` | Yard-level; ACME DNS-01 certs; failover/weighted/latency across Camps ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) |
+| **DNS** | (capability) | `hobo:dns` | `read`,`write` | Route53 / Azure DNS / Cloud DNS / Cloudflare ([Plan 13](./13-networking-connectivity.md)) |
 
 Cross-cloud equivalence classes are owned by [Plan 3](./03-providers-iac.md); this table is the resource→port view.
 

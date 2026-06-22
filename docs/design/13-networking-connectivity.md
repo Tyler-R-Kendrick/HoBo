@@ -27,6 +27,32 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 - Custom domains + managed certs are a provider capability; `web()`/`service()` attach to a gateway by binding.
 - WAF/rate-limit/DDoS are provider-specific `.with(...)` options on the gateway.
 
+## Custom domains & multi-cloud ingress ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md))
+A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (which holds cross-provider topology, [ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)):
+```ts
+import { domain } from "@hobo/sdk";
+export const site = domain("shop.com")
+  .routes(api)                          // bind to a service/gateway
+  .routing("failover");                 // failover | weighted | latency | geo
+```
+- **Routing across Camps is policy-driven DNS**, programmed via a provider-agnostic **`dns` capability**: `failover` (active-passive, health-checked), `weighted` (canary/split), `latency`/`geo` (nearest Camp). It reuses the env-group saga ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)) + the blue/green gateway flip + health signals ([Plan 5](./05-reliability-ha.md)); each routing decision is an event (`domain.RoutingChanged` → auditable "why traffic went to `prod-aws`"). HoBo does **not** operate a global data-plane LB in v1 (it's a deferred opt-in adapter).
+- **Certs are ACME DNS-01 by default**, issued + auto-rotated by Identity ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 31](./31-config-secretless-secrets.md)) with **no static secret** — DNS-01 works cross-cloud + wildcard because HoBo controls the zone. **Provider-managed certs** (ACM / App Service / Google-managed) are an opt-in per-Camp adapter.
+- The `gateway` keeps doing TLS termination + routing + traffic-split + provider `.with()` WAF/rate-limit; the `domain` sits **above** it, routing across Camps.
+
+```mermaid
+flowchart TD
+  DOM["domain('shop.com').routes(api)<br/>Yard-level resource"] --> POL{"routing policy<br/>(failover / weighted / latency)"}
+  DOM --> CERT["ACME DNS-01 cert<br/>(issued + rotated by Identity, secretless)"]
+  POL --> DNS["dns capability: program records<br/>(event-sourced: domain.RoutingChanged)"]
+  DNS --> GW1["prod-aws gateway (TLS, routing)"]
+  DNS --> GW2["prod-azure gateway (TLS, routing)"]
+  CERT --> GW1
+  CERT --> GW2
+  GW1 --> A1["api @ AWS Camp"]
+  GW2 --> A2["api @ Azure Camp"]
+  HC["health signals (Plan 5)"] -.->|failover flip| DNS
+```
+
 ## DNS & naming
 - Each Camp gets a namespace; resources have stable logical names (`shop.api`). HoBo manages records on the resolved provider's DNS (or a HoBo-managed zone), abstracted behind logical endpoints so app code never hardcodes hosts.
 - Internal service discovery uses the SVID/identity layer, not DNS round-robin, so it works across providers.

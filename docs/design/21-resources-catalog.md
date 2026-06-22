@@ -44,6 +44,8 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 
 Cross-cloud equivalence classes are owned by [Plan 3](./03-providers-iac.md); this table is the resource→port view.
 
+> **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)). The `sql`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/ADR-0041-migration-onboarding.md)). They remain first-class resources; what changed is that domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
+
 ## IfC-default authoring (resources emerge from code)
 The **default** authoring mode is Nitric-style: declare resources inline and `.allow()` what you use; HoBo's deploy pipeline runs each component in **resource-collection mode** to capture declarations into the **manifest IR** ([Plan 22](./22-wiring-manifest.md)). Handlers attach to resources directly:
 ```ts

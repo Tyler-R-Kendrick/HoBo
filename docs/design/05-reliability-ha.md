@@ -82,7 +82,7 @@ Health signals come from the data plane (the Camp's runtime metrics/streams) and
 
 ## v2 integration (WASM / IfC / AI)
 - **AI live-fix as a gated saga.** A failing trace or SLO/health breach triggers an AI-proposed fix, validated sandboxed + replayed, then applied through the **same canary/blue-green saga + auto-rollback** machinery above; the failing trace is retained as a permanent regression test ([Plan 23](./23-stubbable-ai-implementations.md)). Live-fix adds no new failure class — it reuses *compensation* and *deployment-strategy* mechanics.
-- **Faster recovery with wasm.** Components' ms-scale cold start shortens actor failover and rollout/rollback windows vs containers, improving the "deploy resume after node loss" target ([Plan 20](./20-wasm-wasi-runtime.md)).
+- **Faster recovery with wasm.** Components' ms-scale cold start shortens actor failover and rollout/rollback windows vs containers, improving the "deploy resume after node loss" target ([Plan 20](./20-wasm-wasi-runtime.md)). Failover is a property of the Camp's **`component-host`** ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)): the **wasm-in-container default** restarts the component like any container (re-placed by the same lease/fencing machinery above), while the **wasmCloud-lattice** adapter can additionally **migrate late-bound links across hosts** without redeploy — a stronger failover that apps opt into per Camp.
 - **Exactly-once across links.** At-least-once `link.Called` invocations carry idempotency keys, so cross-WIT-boundary calls inherit the exactly-once-*effects* guarantee already used for steps/IaC ([Plan 11](./11-event-model.md)).
 
 ## Iteration hooks

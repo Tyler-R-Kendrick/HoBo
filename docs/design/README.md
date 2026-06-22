@@ -105,6 +105,7 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **Component** — a WASM/WASI component; the default unit a HoBo service compiles to (OCI-container fallback otherwise).
 - **WIT world** — the canonical form of a HoBo **port**: a WebAssembly Interface Types contract a component imports/exports.
 - **Capability provider** — a Provider as a wasm capability adapter implementing a WIT world's exports for a backend.
+- **`component-host`** — the **port that executes components** (WASI interface impls + link table + lifecycle); **a property of a Camp** ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)). Host of record: **Wasmtime** locally/`runtime-local`; **v1 prod default = wasm-in-container** (reuses the OCI pipeline → zero new infra); **SpinKube / wasmCloud-lattice / provider-native** are opt-in per-Camp adapters certified by the host conformance suite.
 - **Link** — the late-bound binding from a component's imported interface to a provider's export (the `bind`/escape-hatch made concrete).
 - **`.allow(...)`** — inline capability-permission on a resource; drives least-privilege IAM **+** wasm capability links **+** agent token scope.
 - **IfC** — Infrastructure-from-Code: the default authoring mode where resources are declared inline and collected by running the component.

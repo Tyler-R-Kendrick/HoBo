@@ -66,9 +66,11 @@ The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generat
 | C#/.NET | `componentize-dotnet` (NativeAOT-LLVM) |
 `@hobo/componentize` wraps these; output is a component pushed as an **OCI artifact** (`wash push`-style). `build-wasm`/`build-dagger` ([Plan 1](./01-monorepo.md)) produce both wasm components and the container fallback.
 
-## Hosts & where it runs
-- **Local/built-in runtime:** a wasm host (Wasmtime or jco-in-Node — TBD, iteration hook) provides WASI interface implementations and the link table; `hobo dev` runs everything locally with capability emulation.
-- **Deployed:** components run on a provider's wasm-capable target (e.g. SpinKube/containerd-wasm, a wasmCloud lattice, or a wasm host inside a container); the OCI-container fallback runs as a normal container. Either way the **manifest IR** ([Plan 22](./22-wiring-manifest.md)) carries endpoints/links/config.
+## Hosts & where it runs — the `component-host` port ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md))
+The thing that *executes* a component — the WASI interface impls + the link table + the component lifecycle — is itself a **`component-host` port**, and **the host is a property of a Camp** ([ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)): a Camp selects its host the same way it selects its runtime backend and infra Provider, and Camps stay heterogeneous ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)).
+- **Local/built-in runtime (`runtime-local`): Wasmtime.** The canonical Component-Model engine provides the WASI impls + link table; `hobo dev` runs everything locally with capability emulation. (jco-in-Node was rejected — a second wasm semantics surface would break dev/prod parity.)
+- **v1 prod default: wasm-in-container.** The portable default runs the host (Wasmtime) **inside an OCI container**, reusing the existing OCI/container pipeline ([Plan 22](./22-wiring-manifest.md)) — so "runs anywhere a container runs" holds with **zero new mandatory infra**, and local semantics match prod. The OCI-container *fallback* (non-wasm workloads) still runs as a normal container alongside it.
+- **Opt-in host adapters (per Camp), same port + same conformance gate:** **SpinKube / containerd-wasm** (k8s-native, shim-level density), **wasmCloud lattice** (cross-host late-bound links + multi-region link migration), and **provider-native wasm targets**. Each is certified against the `component-host` conformance suite ([Plan 9](./09-verification-open-questions.md)) before a Camp may select it. Either way the **manifest IR** ([Plan 22](./22-wiring-manifest.md)) carries endpoints/links/config.
 - **Async:** WASI Preview 3 brings native async; HoBo workflows/agents map onto it where available, falling back to the host's executor otherwise.
 
 ## Security substrate
@@ -77,7 +79,7 @@ The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generat
 - Forge-generated components/providers run in this sandbox during conformance ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Iteration hooks
-- Wasm host of record for the built-in/local runtime (Wasmtime vs jco-in-Node) and the deployed host (SpinKube/containerd-wasm vs wasmCloud lattice vs wasm-in-container).
+- ~~Wasm host of record~~ — **decided ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)):** Wasmtime locally + a `component-host` port whose v1 prod default is wasm-in-container, with SpinKube / wasmCloud-lattice / provider-native as opt-in per-Camp adapters. Remaining: the host **conformance-suite** assertions and the wasmCloud-lattice adapter's cross-host link semantics.
 - `hobo:*` WIT world naming/versioning; how aggressively to track upstream `wasi:*` draft churn.
 - Component-to-component composition (`wac`) vs runtime links for intra-app calls.
 - Container-fallback runtime + when the Planner chooses it automatically (GPU/native detection).

@@ -37,7 +37,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 1. **Reactivity:** HoBo has a `Streamer` port and an event log — but a Convex user gets `useQuery()` that re-runs and pushes to every client on write, with consistent snapshots. *What is HoBo's client-facing live-query story?* Is it "bring your own websocket over `Streamer`", or a first-class reactive-query model with cache-invalidation + consistency guarantees? Today: **undefined.**
 2. **Forge depth:** Plans 6/23 say Forge *generates* providers/impls and gates them by conformance. *But what actually generates them?* The conformance gate ([09](../docs/design/09-verification-open-questions.md)) is specified; the generation loop (inputs, prompt/program synthesis, repair iteration, the training-engine for impls) is thin outside [Plan 23](../docs/design/23-stubbable-ai-implementations.md)'s `use training`. *Is "Forge generates providers" demonstrable, or aspirational?*
 3. **Matching credibility:** Humanitec ships Matching; HoBo promises auditable `match.Decided`. *Which algorithm — rules, constraint solver, or LLM — and is it deterministic enough to trust in prod?* ([Q3](../docs/design/09-verification-open-questions.md), unresolved.)
-4. **wasm to prod:** every competitor has a clear runtime substrate (containers/K8s/their cloud). *What does HoBo actually run components on in prod* — SpinKube? wasmCloud lattice? wasm-in-container? Until [Q10](../docs/design/09-verification-open-questions.md) is answered, "wasm-first" is unproven for production.
+4. **wasm to prod:** ✅ **RESOLVED → [ADR-0031](../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)** ([Q10](../docs/design/09-verification-open-questions.md)): a **`component-host` port** (the host is a property of a Camp), **Wasmtime** locally, **wasm-in-container** as the portable v1 prod default (reuses the OCI pipeline → runs anywhere a container runs), and **SpinKube / wasmCloud-lattice / provider-native** as opt-in per-Camp adapters. "wasm-first" now has a concrete substrate.
 5. **Data, not just infra:** HoBo can provision a DB on AWS *or* Azure — *but who migrates the schema and the data when you move, and how is it gated?* ([Q15](../docs/design/09-verification-open-questions.md), new last iteration; still undesigned.)
 6. **Batteries vs Lego:** Convex is one consistent backend; HoBo is ports→providers (compose-it-yourself, per cloud). *Does the agnostic Lego model cost too much first-run DX vs Convex's batteries?* Mitigations: a "starter Resource Pack" + great `hobo dev`.
 
@@ -59,7 +59,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 | Local-dev fidelity + dev dashboard | Aspire | #17 |
 | Non-TS IfC parity | Nitric | #12 |
 | Matching algorithm choice | Humanitec | #3 |
-| wasm host-of-record for prod | all (clear runtimes) | #10 |
+| ~~wasm host-of-record for prod~~ ✅ ([ADR-0031](../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)) | all (clear runtimes) | #10 |
 | Cross-Camp stateful consistency | (multi-cloud premise) | #16 |
 | App-data schema evolution & migration | Nitric/Humanitec | #15 |
 | Billing / quota / runaway-spend | Humanitec (governance) | #18 |
@@ -70,7 +70,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 ## 5. Iterate — recommended next design moves (priority order)
 1. **Design the reactive/live-query model** (G1) — close the Convex DX gap; new plan candidate, built on `Streamer` + projections.
 2. **Deepen the Forge generation pipeline** (G3) — make the headline differentiator concrete (extend [23](../docs/design/23-stubbable-ai-implementations.md)/[06](../docs/design/06-ai-native-agent-auth.md)).
-3. **Resolve wasm host-of-record** ([Q10](../docs/design/09-verification-open-questions.md)) — unblocks "wasm-first" for prod.
+3. ✅ **Resolved wasm host-of-record** ([Q10](../docs/design/09-verification-open-questions.md) → [ADR-0031](../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)) — `component-host` port; Wasmtime local + wasm-in-container default + per-Camp host adapters unblock "wasm-first" for prod.
 4. **Design app-data schema evolution + migration** ([Q15](../docs/design/09-verification-open-questions.md)) — required for the multi-cloud promise.
 5. **Decide the Matching algorithm** ([Q3](../docs/design/09-verification-open-questions.md)) — makes Resource Definitions credible vs Humanitec.
 6. **Detail search (G2) + custom-domain/ingress (G4) + SDK codegen (G7)** surfaces.

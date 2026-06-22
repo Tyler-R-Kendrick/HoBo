@@ -92,6 +92,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Forge generation** ([Plan 33](./33-forge-generation-pipeline.md))
 `forge.Requested` · `forge.CandidateGenerated` · `forge.Validated` · `forge.ValidationFailed` · `forge.Repaired` (iteration n + failing-assertion set) · `forge.NeedsHuman` · `forge.Certified` (extends the Registry's `forge.PluginCertified` + `impl.*`)
 
+**App-data migrations** ([Plan 34](./34-app-data-migrations.md)) — the developer's `sql`-resource schema/data, *not* this log's own upcasting (see Schema evolution below)
+`migration.Planned` · `migration.SnapshotTaken` · `migration.PhaseApplied` (phase = `expand`/`backfill`/`contract` + the diff) · `migration.Verified` · `migration.RolledBack` · `migration.Failed` · **(cross-cloud move)** `migration.Exported` · `migration.Imported` · `migration.CutOver`
+
 **Training** (`"use training"` semantic-function optimization, [Plan 23](./23-stubbable-ai-implementations.md))
 `training.RunStarted` · `training.TrajectoryCaptured` (OTel/OpenInference span tree + I/O) · `training.RewardObserved` (live-eval signal) · `training.CandidateProposed` (rewritten prompt/code) · `training.CandidateEvaluated` · `training.Promoted` · `training.Rejected`
 
@@ -113,6 +116,7 @@ Projections are rebuildable from zero at any time (this is the test that the log
 - Each `type` carries `v`. Readers run **upcasters**: pure functions `vN → vN+1` chained to the current version, so old events remain replayable forever.
 - Additive changes (new optional fields) don't bump `v`. Renames/semantic changes do, with an upcaster.
 - Never rewrite history; only add upcasters. This keeps replay/audit guarantees intact across years of schema drift.
+- **This is HoBo's *own* event-log evolution.** The developer's **application database** (the `sql` resource) evolves differently — via gated **expand/backfill/contract** migrations + snapshots ([Plan 34](./34-app-data-migrations.md)/[ADR-0032](./adr/ADR-0032-data-portability-schema-versioning.md)). Don't conflate the two: upcasters here, schema migrations there.
 
 ## How replay powers durable workflows
 A workflow run is a stream of `run.*` events. On resume, the runtime replays the workflow function: each `step()` call checks the stream for a matching `StepCompleted` and returns the cached result if present, otherwise schedules the step (`StepScheduled`), suspends, and resumes when the step worker appends `StepCompleted`. Determinism is enforced by seeding `Math.random`/`crypto` and freezing `Date`/`env` from the run's seed events — identical to the Vercel model, but the `EventStore` is whichever runtime backend the Camp provides. See [Plan 2 §Layer 4](./02-sdk-api.md).

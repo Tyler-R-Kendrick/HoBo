@@ -62,4 +62,4 @@ The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` +
 ## Iteration hooks
 - Final `hobo:*` package names/namespacing; which `hobo:*` worlds to upstream as `wasi:*` proposals (queue/websocket/blob-events).
 - Whether intra-app calls use runtime links or build-time composition (`wac`).
-- `wasi:sql` adoption vs a richer `hobo:sql` (migrations parity with Nitric).
+- `wasi:sql` adoption vs a richer `hobo:sql` — the **migration** half is now specified in [Plan 34](./34-app-data-migrations.md) ([ADR-0032](./adr/ADR-0032-data-portability-schema-versioning.md)); `hobo:sql` is where the declarative-schema/diff + snapshot/export capabilities live (the connection/query surface stays `wasi:sql`).

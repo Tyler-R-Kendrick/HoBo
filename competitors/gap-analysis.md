@@ -38,7 +38,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 2. **Forge depth:** Plans 6/23 say Forge *generates* providers/impls and gates them by conformance. *But what actually generates them?* The conformance gate ([09](../docs/design/09-verification-open-questions.md)) is specified; the generation loop (inputs, prompt/program synthesis, repair iteration, the training-engine for impls) is thin outside [Plan 23](../docs/design/23-stubbable-ai-implementations.md)'s `use training`. *Is "Forge generates providers" demonstrable, or aspirational?*
 3. **Matching credibility:** Humanitec ships Matching; HoBo promises auditable `match.Decided`. *Which algorithm — rules, constraint solver, or LLM — and is it deterministic enough to trust in prod?* ([Q3](../docs/design/09-verification-open-questions.md), unresolved.)
 4. **wasm to prod:** ✅ **RESOLVED → [ADR-0031](../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)** ([Q10](../docs/design/09-verification-open-questions.md)): a **`component-host` port** (the host is a property of a Camp), **Wasmtime** locally, **wasm-in-container** as the portable v1 prod default (reuses the OCI pipeline → runs anywhere a container runs), and **SpinKube / wasmCloud-lattice / provider-native** as opt-in per-Camp adapters. "wasm-first" now has a concrete substrate.
-5. **Data, not just infra:** HoBo can provision a DB on AWS *or* Azure — *but who migrates the schema and the data when you move, and how is it gated?* ([Q15](../docs/design/09-verification-open-questions.md), new last iteration; still undesigned.)
+5. **Data, not just infra:** ✅ **RESOLVED → [Plan 34](../docs/design/34-app-data-migrations.md)** ([ADR-0032](../docs/design/adr/ADR-0032-data-portability-schema-versioning.md)): declarative-schema + auto-diff migrations, gated **expand/backfill/contract** apply + snapshot rollback, and **export→import within a provider equivalence class** for cross-cloud moves ([Q15](../docs/design/09-verification-open-questions.md); v1 = relational `sql`/Postgres). The multi-cloud promise now covers *data*, not just infra.
 6. **Batteries vs Lego:** Convex is one consistent backend; HoBo is ports→providers (compose-it-yourself, per cloud). *Does the agnostic Lego model cost too much first-run DX vs Convex's batteries?* Mitigations: a "starter Resource Pack" + great `hobo dev`.
 
 ## 3. Gaps — prioritized
@@ -49,7 +49,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 ### B. Designed-but-shallow (deepen an existing plan)
 - **G3 — Forge *generation* pipeline.** ✅ **CLOSED → [Plan 33](../docs/design/33-forge-generation-pipeline.md)** ([ADR-0030](../docs/design/adr/ADR-0030-forge-generation-inputs-and-algorithm.md)): the **scaffold → LLM-fill → validate(sandboxed, no-egress) → repair(via `training-engine`, bounded) → certify(signed provenance)** loop, **contract-first** inputs (WIT + conformance + Hobo Code authoritative; docs/OpenAPI sanitized hints), unified across **providers + implementations + Resource Definitions/Packs**. The unique differentiator is now specified end-to-end (was the least-detailed).
 - **G4 — Custom domains + ingress depth** (Nitric has custom domains): [Plan 13](../docs/design/13-networking-connectivity.md) doesn't document custom-domain provisioning or multi-cloud DNS/CNAME. → **[open question #23](../docs/design/09-verification-open-questions.md).**
-- **G5 — SQL migration DSL** (Nitric `.up.sql`, Humanitec preview): the `sql` port is designed; the migration workflow folds into the data-migration work ([Q15](../docs/design/09-verification-open-questions.md)).
+- **G5 — SQL migration DSL** (Nitric `.up.sql`, Humanitec preview): ✅ **CLOSED → [Plan 34](../docs/design/34-app-data-migrations.md)** ([ADR-0032](../docs/design/adr/ADR-0032-data-portability-schema-versioning.md)) — folded into the data-migration work: **declarative desired-schema + auto-diff** (raw `.up.sql`-style SQL is the escape hatch), gated expand/backfill/contract apply + snapshot rollback.
 - **G6 — Air-gapped / sovereign mode** (Humanitec): the HoBo Agent gives no-inbound private-network deploys ([28](../docs/design/28-agent-gitops-pipelines.md)); a fully air-gapped/regulated mode (offline registry, in-boundary key custody) isn't stated. Relates to [Q20](../docs/design/09-verification-open-questions.md) (Yard federation).
 - **G7 — SDK codegen surface** (Aspire/Convex typed end-to-end): WIT-generated clients are promised ([24](../docs/design/24-wit-worlds-reference.md)) but the developer-facing codegen ergonomics aren't shown.
 
@@ -61,7 +61,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 | Matching algorithm choice | Humanitec | #3 |
 | ~~wasm host-of-record for prod~~ ✅ ([ADR-0031](../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)) | all (clear runtimes) | #10 |
 | Cross-Camp stateful consistency | (multi-cloud premise) | #16 |
-| App-data schema evolution & migration | Nitric/Humanitec | #15 |
+| ~~App-data schema evolution & migration~~ ✅ ([Plan 34](../docs/design/34-app-data-migrations.md)) | Nitric/Humanitec | #15 |
 | Billing / quota / runaway-spend | Humanitec (governance) | #18 |
 
 ## 4. Review verdict
@@ -71,7 +71,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 1. **Design the reactive/live-query model** (G1) — close the Convex DX gap; new plan candidate, built on `Streamer` + projections.
 2. **Deepen the Forge generation pipeline** (G3) — make the headline differentiator concrete (extend [23](../docs/design/23-stubbable-ai-implementations.md)/[06](../docs/design/06-ai-native-agent-auth.md)).
 3. ✅ **Resolved wasm host-of-record** ([Q10](../docs/design/09-verification-open-questions.md) → [ADR-0031](../docs/design/adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)) — `component-host` port; Wasmtime local + wasm-in-container default + per-Camp host adapters unblock "wasm-first" for prod.
-4. **Design app-data schema evolution + migration** ([Q15](../docs/design/09-verification-open-questions.md)) — required for the multi-cloud promise.
+4. ✅ **Designed app-data schema evolution + migration** ([Q15](../docs/design/09-verification-open-questions.md) → [Plan 34](../docs/design/34-app-data-migrations.md)/[ADR-0032](../docs/design/adr/ADR-0032-data-portability-schema-versioning.md)) — the multi-cloud promise now covers data: declarative-diff migrations, expand/contract gating, intra-equivalence-class moves.
 5. **Decide the Matching algorithm** ([Q3](../docs/design/09-verification-open-questions.md)) — makes Resource Definitions credible vs Humanitec.
 6. **Detail search (G2) + custom-domain/ingress (G4) + SDK codegen (G7)** surfaces.
 

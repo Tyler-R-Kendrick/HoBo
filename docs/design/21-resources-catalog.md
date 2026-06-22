@@ -56,6 +56,6 @@ Each entry point compiles to a component exporting the right WIT interface:
 
 ## Iteration hooks
 - `hobo:blob-events` / `hobo:websocket` WIT shapes (no standard `wasi:*` yet).
-- SQL migrations workflow (parity with Nitric's `migrations/<db>/*.up.sql`).
+- ~~SQL migrations workflow~~ — **specified in [Plan 34](./34-app-data-migrations.md)** ([ADR-0032](./adr/ADR-0032-data-portability-schema-versioning.md)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
 - Whether `.allow()` verbs are per-resource-type enums (typed) and how they map to each provider's IAM actions.
 - Collection fidelity for non-TS languages (run-to-collect vs static analysis).

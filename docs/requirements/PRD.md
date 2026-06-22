@@ -48,6 +48,7 @@ Priority per [ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md).
 | **Atlas — AI agent** (co-primary) | Deploy/operate apps on a user's behalf, safely | Treated as a bolt-on API client; static keys; no audit | Obtains scoped tokens, deploys via MCP, self-corrects from logs; every action audited |
 | **Priya — platform engineer** (secondary) | Standardize how resources are realized; enforce policy/cost | Bespoke golden paths, drift | Authors Resource Definitions + policy packs; dev teams self-serve within guardrails |
 | **Omar — operator/SRE** | Keep the Yard healthy; recover fast | Opaque deploys, manual DR | Event-sourced timeline, drift heal, replay-based DR |
+| **The Crew — built-in Operator Agents** (SRE/Endpoint Monitor/GitOps/Platform Engineer/UX Designer) | Run the platform autonomously within guardrails | Ops is manual or a DIY agent kit; no audit | Built-in, audited, policy-gated Yard services that diagnose/promote/generate; humans approve high-risk writes ([40](../design/40-operator-agents.md)) |
 
 ## 5. Primary user journeys
 **J1 — Human developer (happy path)** ([15-cli-dx.md](../design/15-cli-dx.md)):
@@ -127,6 +128,15 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 |---|---|---|---|---|
 | **FR-070** | `hobo plan` returns a projected cost before provisioning; budgets/caps as policy gates; showback per tenant/Bindle/Camp. | S→C | Plan estimate within ±20% of a fixture; a budget breach blocks or requires approval. | BR-009 |
 | **FR-071** | Dashboard: deployments timeline (replay/time-travel), topology graph (+ connectivity/cost), run inspector (replay-diff), credential audit, drift. | C | Each view renders for the reference app from projections only. | BR-006/BR-009 |
+
+### 6.9 Operator Agents, the generated stack, UI generation & patchability ([40](../design/40-operator-agents.md)–[43](../design/43-patchability-extensibility.md))
+| ID | Requirement | Pri | AC | BR |
+|---|---|---|---|---|
+| **FR-080** | A built-in roster of **Operator Agents** (SRE / Endpoint Monitor / GitOps / Platform Engineer / UX Designer) runs as Yard services — each a principal (SVID + per-agent policy), event-sourced, MCP-surfaced; reads autonomous, writes policy-gated; reasoning engine behind a port. | S→C | A simulated SLO breach dispatches SRE; a prod fix requires approval, a low-risk fix auto-canaries + auto-rolls-back; every action audited ([40](../design/40-operator-agents.md)). | BR-004 |
+| **FR-081** | HoBo generates / self-heals / persists code across the **generated stack** (data·business·message·intelligence·ui) via one loop + one trust boundary + one persistence mechanism. | C | A WIT-record change propagates per-layer as gated, reviewable diffs; `hobo codegen --check` flags hand-edited drift ([41](../design/41-generated-stack.md)). | BR-004/BR-008 |
+| **FR-082** | **App-UI generation**: a `ui-render` port (OpenUI + json-render IR) generates the app front-end, typed-and-reactive from `view()`, gated by **Design.md** design-conformance. | C | A generated screen type-checks against its query, re-renders on `data.Changed`, and an off-system token fails the gate ([42](../design/42-ui-layer-generation.md)). | BR-001/BR-004 |
+| **FR-083** | **Patchability**: any engine/adapter is swappable behind its port, the Yard is forkable, and AI/human patches persist (region-scoped AST + provenance) — all conformance-gated. | C | A custom engine shipped as a signed plugin passes conformance + is Matching-selected with no core edit; a persisted patch survives regeneration ([43](../design/43-patchability-extensibility.md)). | BR-002 |
+| **FR-084** | **Continuous/live security scanning + remediation**: vuln/SBOM/drift scans re-run on running Sets; findings ride the policy plane; remediation is the gated live-fix loop; findings export as OCSF. | S→C | A newly-disclosed CVE in a running Set raises a policy decision; a low-risk dep-bump auto-remediates, a prod one requires approval ([12](../design/12-security-multitenancy.md)/[40](../design/40-operator-agents.md)). | BR-005/BR-008 |
 
 ## 7. Non-functional requirements (`NFR-NNN`)
 > The three review lenses — **security, ease-of-use, portability** — are first-class and tagged. Baselines from [ADR-0021](../design/adr/ADR-0021-nfr-baselines-slos.md).

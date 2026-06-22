@@ -206,6 +206,15 @@ From [01-monorepo.md](../design/01-monorepo.md): **core** (`@hobo/core`, `@hobo/
 | **TR-150** | Providers publish `cost.json`; the Planner estimates plan-time cost (incl. egress per connectivity tier); estimate within ±20% of a fixture. | Cost fixture test (NFR-012) |
 | **TR-151** | Budgets/caps are policy gates; spend over cap → obligation/approval; showback attributable per tenant/Bindle/Camp/resource from the log. | Budget-breach test |
 
+### 5.17 Operator Agents, generated stack, UI generation & patchability ([40](../design/40-operator-agents.md)–[43](../design/43-patchability-extensibility.md))
+| ID | Requirement | Verified by |
+|---|---|---|
+| **TR-160** | Operator Agents are Yard services on the agent-principal model (SVID + per-agent policy + spend caps), event-sourced runs, MCP tools; writes ride `policy.Decided` (auto / canary / require-approval); reasoning engine behind a port (optional externals e.g. HolmesGPT). | Crew dispatch + gated-remediation test ([40](../design/40-operator-agents.md)/FR-080) |
+| **TR-161** | The generated stack shares one generation loop, one conformance/policy/eval trust boundary, and one persistence mechanism (region-scoped AST + provenance, ADR-0048) across data/business/message/intelligence/ui; drift-gated by `hobo codegen --check`. | Cross-layer regeneration + drift-gate test ([41](../design/41-generated-stack.md)/FR-081) |
+| **TR-162** | App-UI generation: `hobo:ui-render` port (OpenUI + json-render IR adapters); generated UI binds typed reactive `view()` + WIT records + `ctx.user`; **Design.md** enforced at a design-conformance + visual-eval gate; shipped via the `web` resource. | UI gen type-check + reactivity + design-conformance-fail test ([42](../design/42-ui-layer-generation.md)/FR-082) |
+| **TR-163** | Patchability: every engine/adapter behind a WIT port is swappable; derivatives ship as signed, conformance-certified Packs/plugins, Matching-selected; persisted patches are round-trippable + provenance-pinned; conformance is the trust bridge (shared with portability). | Custom-engine plugin + persisted-patch round-trip test ([43](../design/43-patchability-extensibility.md)/FR-083) |
+| **TR-164** | Continuous security scanning re-runs vuln/SBOM/drift on running Sets; findings raise `policy.Decided`, remediation is the gated live-fix loop, findings export as OCSF ([ADR-0046](../design/adr/ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md)). | Live-CVE → policy-decision + gated-remediation test ([12](../design/12-security-multitenancy.md)/FR-084) |
+
 ## 6. Interfaces & APIs
 - **WIT ports** ([24](../design/24-wit-interfaces-reference.md)): the canonical contracts (runtime ports + provider capability ports + `contract-engine`/`policy-engine`/`training-engine`). `hobo:*` WIT interfaces reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/09-verification-open-questions.md) Q11).
 - **CLI** ([15](../design/15-cli-dx.md)): the `hobo …` command set (FR-010/013).
@@ -237,8 +246,9 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/ADR-001
 | BR-001 author once | FR-001, FR-002, FR-003, FR-010, FR-011; NFR-002, NFR-003, NFR-015, NFR-016, NFR-017 | TR-001..003, TR-011 | hello-bindle; IfC-collection; `hobo dev` timing; explain-failure UX; WCAG audit |
 | BR-002 N clouds, unedited | FR-004, FR-005, FR-006, FR-014, FR-030, FR-032; NFR-001, NFR-020 | TR-005, TR-006, TR-012, TR-040, TR-043, TR-021 | `multi-cloud-shop` E2E; resolve test; dep-graph lint |
 | BR-003 optimize on demand | FR-005, FR-014 | TR-005 | provider-options + lock-in-lint test |
-| BR-004 agents first-class | FR-020, FR-021, FR-031; NFR-004, NFR-017 | TR-070, TR-050, TR-060 | MCP surface-parity; agent E2E; registry discovery |
-| BR-005 zero secrets | FR-002, FR-014, FR-015, FR-023; NFR-005 | TR-004, TR-051, TR-052, TR-054 | zero-secret deploy; `token.*` audit; key-TTL; secretless config resolution |
+| BR-004 agents first-class | FR-020, FR-021, FR-031, FR-080, FR-081, FR-082; NFR-004, NFR-017 | TR-070, TR-050, TR-060, TR-160, TR-161, TR-162 | MCP surface-parity; agent E2E; registry discovery; Crew dispatch; generated-stack regeneration; UI-gen |
+| BR (patchability) | FR-083 | TR-163 | custom-engine plugin + persisted-patch round-trip (conformance-bridged; sibling to BR-002 portability) |
+| BR-005 zero secrets | FR-002, FR-014, FR-015, FR-023, FR-084; NFR-005 | TR-004, TR-051, TR-052, TR-054, TR-164 | zero-secret deploy; `token.*` audit; key-TTL; secretless config resolution; live security scan + gated remediation |
 | BR-006 auditable/replayable | FR-003, FR-071; NFR-008, NFR-011, NFR-014, NFR-018, NFR-021 | TR-030..033, TR-052, TR-130 | projection-rebuild; determinism; OTel/OpenInference; retention floor |
 | BR-007 self-hostable + reliable | FR-010, FR-012; NFR-009, NFR-010, NFR-013, NFR-019 | TR-024, TR-071, TR-140..144 | bootstrap; DR replay; fencing; rate-limit; canary auto-rollback |
 | BR-008 no community bottleneck | FR-040, FR-041, FR-042, FR-043; NFR-007, NFR-021 | TR-080..084 | `hobo forge`; stub/replay; sandbox no-egress; injection scrub; `use training` loop |

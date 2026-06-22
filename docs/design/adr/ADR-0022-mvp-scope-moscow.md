@@ -1,9 +1,9 @@
 # ADR-0022 — MVP scope line / MoSCoW mapped to phases
 
-- **Status:** Accepted
-- **Date:** 2026-06-20
+- **Status:** Superseded by [ADR-0063](./ADR-0063-single-v1-scope.md) — HoBo now ships the **whole designed surface as a single v1** (no MVP-at-P4 line, no phase-gated release, no "Won't (v1)" bucket). The P0–P6 sequence survives only as **build stages** of that one v1 ([phases/](../phases/README.md)). The history below is retained for context.
+- **Date:** 2026-06-20 (superseded 2026-06-22)
 - **Deciders:** Product, Engineering
-- **Related:** [PRD §Release criteria](../../requirements/PRD.md) · [08 Roadmap](../08-roadmap.md) · [phases/](../phases/README.md) · [ADR-0019](./ADR-0019-persona-prioritization-icp.md)
+- **Related:** [ADR-0063](./ADR-0063-single-v1-scope.md) (supersedes this) · [PRD §Release criteria](../../requirements/PRD.md) · [08 v1 delivery plan](../08-roadmap.md) · [phases/](../phases/README.md) · [ADR-0019](./ADR-0019-persona-prioritization-icp.md)
 
 ## Context
 The PRD enumerates many functional requirements across SDK, CLI, dashboard, AI/agent, Forge, contracts/policy, and platform-engineering surfaces. Without an explicit scope line, "v1" is ambiguous and every `FR` looks mandatory. The roadmap ([08-roadmap.md](../08-roadmap.md)) already sequences capabilities into P0–P6 with exit criteria; we need to bind requirement **priority** to that sequence.

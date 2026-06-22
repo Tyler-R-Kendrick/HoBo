@@ -1,11 +1,11 @@
-# Phase P3 — AI-native core
+# Build stage 3 — AI-native core
 
 > [Phases index](./README.md) · realizes [Plan 6](../06-ai-native-agent-auth.md), [Plan 12](../12-security-multitenancy.md), [Plan 14](../14-observability.md).
 
 **Objective.** Agents become first-class principals: keyless identity + token brokering, a provider/Capability Manifest registry, durable agents, and an MCP control surface — so an agent can deploy with zero static secrets and a full audit trail.
-**Depends on.** P2.
+**Depends on.** Stage 2.
 
-> **v3 (Humanitec):** this phase also lands the **HoBo Relay** (outbound-only private-network deploys; Executors run behind it) and the **GitOps publisher** mode ([Plan 28](../28-relay-gitops-pipelines.md)) — both lean on the identity/SVID work here. The Registry begins accepting **Forge-generated Resource Definitions/Packs** ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)).
+> **Relay & GitOps publisher:** this stage also lands the **HoBo Relay** (outbound-only private-network deploys; Executors run behind it) and the **GitOps publisher** mode ([Plan 28](../28-relay-gitops-pipelines.md)) — both lean on the identity/SVID work here. The Registry begins accepting **Forge-generated Resource Definitions/Packs** ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)).
 
 ## Workstream 1 — Identity (`@hobo/identity`)
 1. **SVID issuance** (SPIFFE-style JWT-SVID) with attestation of run/tenant/parent/code-version; rotation ([Plan 6](../06-ai-native-agent-auth.md)).

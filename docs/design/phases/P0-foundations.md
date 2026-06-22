@@ -1,11 +1,11 @@
-# Phase P0 — Foundations
+# Build stage 0 — Foundations
 
 > [Phases index](./README.md) · realizes [Plan 1](../01-monorepo.md), [Plan 11](../11-event-model.md), [Plan 20](../20-wasm-wasi-runtime.md), [Plan 24](../24-wit-interfaces-reference.md), [Plan 9](../09-verification-open-questions.md).
 
-**Objective.** Stand up the monorepo, the core contracts (types, ports-as-WIT, event envelope, Capability Manifest schema), the built-in local runtime, and the conformance harness — so every later phase builds on a stable, testable base.
+**Objective.** Stand up the monorepo, the core contracts (types, ports-as-WIT, event envelope, Capability Manifest schema), the built-in local runtime, and the conformance harness — so every later stage builds on a stable, testable base.
 **Depends on.** Nothing (greenfield).
 
-> **v3 (Humanitec):** `@hobo/core` adds the **Resource Definition** + **Matching** types, the **Driver** interface ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)), and the `match.Decided`/`delta.*`/`set.*`/`pipeline.*` events ([Plan 11](../11-event-model.md)); `@hobo/conformance` gains a **Driver** contract-suite slot so later phases can certify drivers.
+> **Resource Definitions / Matching / Drivers:** `@hobo/core` adds the **Resource Definition** + **Matching** types, the **Driver** interface ([Plan 25](../25-resource-definitions-matching.md)/[Plan 27](../27-drivers-packs-profiles.md)), and the `match.Decided`/`delta.*`/`set.*`/`pipeline.*` events ([Plan 11](../11-event-model.md)); `@hobo/conformance` gains a **Driver** contract-suite slot so later stages can certify drivers.
 
 ## Workstream 1 — Monorepo & tooling
 1. Initialize pnpm workspace + Turborepo; root `tsconfig` (strict, `nodenext`); Biome; Vitest; Changesets.
@@ -45,6 +45,6 @@
 - Dependency-boundary lint passes (no adapter imports another adapter).
 
 ## Risks / iteration hooks
-- Wasm host of record for `runtime-local` (Wasmtime vs jco-in-Node) — decide here, it colors P1.
+- Wasm host of record for `runtime-local` (Wasmtime vs jco-in-Node) — decide here, it colors stage 1.
 - `hobo:*` WIT naming/versioning + tracking upstream `wasi:*` draft churn.
 - Built-in-engine scope vs always recommending an external runtime in prod ([Plan 5](../05-reliability-ha.md)).

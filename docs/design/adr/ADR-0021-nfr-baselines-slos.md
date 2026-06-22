@@ -16,7 +16,7 @@ Adopt these v1 NFR baselines (each becomes an `NFR-` in the PRD with a verificat
 | Time-to-first-deploy (scaffold → running on real cloud) | ≤ 10 min p50 on the happy path | north-star ([08](../08-roadmap.md)); E2E timing test |
 | Local dev start (`hobo dev`, no cloud) | ≤ 60 s | [15-cli-dx.md](../15-cli-dx.md); integration test |
 | Zero-secret rate (provider access via brokered/federated tokens) | ≥ 99% of provider calls; static keys only via explicit legacy escape hatch | [06](../06-ai-native-agent-auth.md)/[12](../12-security-multitenancy.md); audit of `token.*` events |
-| Portability ("same Bindle, N clouds" unedited) | ≥ 2 providers for the reference app at v1 (P4), design target N | [03](../03-providers-iac.md); `multi-cloud-shop` E2E |
+| Portability ("same Bindle, N clouds" unedited) | ≥ 2 providers for the reference app at v1, design target N | [03](../03-providers-iac.md); `multi-cloud-shop` E2E |
 | Control-plane availability | 99.9% single-region / 99.95% multi-region | [05](../05-reliability-ha.md) |
 | Deploy resume after node loss | < 30 s (lease TTL + tail replay) | [05](../05-reliability-ha.md); chaos test |
 | RPO | ~0 (sync quorum) / ≤ 5 s (async tier) | [05](../05-reliability-ha.md) |
@@ -26,9 +26,9 @@ Adopt these v1 NFR baselines (each becomes an `NFR-` in the PRD with a verificat
 
 ## Alternatives considered
 - **Leave NFRs qualitative** — rejected: unverifiable NFRs are not requirements; release gates need numbers.
-- **Commit aggressive enterprise SLAs (e.g. 99.99%) now** — rejected: premature before multi-region HA (P6) is proven; over-promises.
+- **Commit aggressive enterprise SLAs (e.g. 99.99%) now** — rejected: premature before multi-region HA (build stage 6) is proven; over-promises.
 
 ## Consequences
 - **(+)** PRD NFRs become testable; [09](../09-verification-open-questions.md) gains concrete fixtures; releases can gate on them.
 - **(+)** Determinism and zero-secret are treated as **hard invariants**, not best-effort.
-- **(−)** Status stays **Proposed** until ratified; some numbers (availability, cost accuracy) can only be measured post-P6, so early phases verify them on representative-but-partial setups. Re-ratify at P6.
+- **(−)** Status stays **Proposed** until ratified; some numbers (availability, cost accuracy) can only be measured once the later build stages exist (multi-region HA, full cost model), so earlier stages verify them on representative-but-partial setups. Re-ratify when build stage 6 lands.

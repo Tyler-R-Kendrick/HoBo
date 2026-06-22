@@ -1,15 +1,17 @@
-# Phase P6 — HA, FinOps & UX
+# Build stage 6 — HA, FinOps, UX & completeness planes
 
-> [Phases index](./README.md) · realizes [Plan 5](../05-reliability-ha.md), [Plan 16](../16-cost-finops.md), [Plan 7](../07-ui-dashboard.md), [Plan 14](../14-observability.md).
+> [Phases index](./README.md) · realizes [Plan 5](../05-reliability-ha.md), [Plan 16](../16-cost-finops.md), [Plan 7](../07-ui-dashboard.md), [Plan 14](../14-observability.md), and the completeness planes [Plan 45](../45-app-communications.md)–[Plan 48](../48-marketplace-ecosystem.md).
 
-**Objective.** Production hardening: the reliability/HA algorithms, deployment strategies, the cost model, the full dashboard, and multi-region/DR.
-**Depends on.** P4 (and P5 for evolution/live-fix integration).
+**Objective.** Production hardening + breadth: the reliability/HA algorithms, deployment strategies, the cost model + chargeback, the full dashboard, multi-region/DR, and the completeness planes (app communications, compliance/governance, AI safety, marketplace).
+**Depends on.** Stage 4 (and stage 5 for evolution/live-fix integration).
 
-> **v3 (Humanitec):** add **Pipelines** (rule-based triggers + approval gates, [Plan 28](../28-relay-gitops-pipelines.md)) and **Workload Profiles** ([Plan 27](../27-drivers-packs-profiles.md)); the dashboard gains the **Resource Graph / matching-decision / Delta-diff / Pipelines** views ([Plan 7](../07-ui-dashboard.md)); cost objective uses **env-type matching** to pick cheap variants ([Plan 16](../16-cost-finops.md)).
+> **Pipelines & Workload Profiles:** add **Pipelines** (rule-based triggers + approval gates, [Plan 28](../28-relay-gitops-pipelines.md)) and **Workload Profiles** ([Plan 27](../27-drivers-packs-profiles.md)); the dashboard gains the **Resource Graph / matching-decision / Delta-diff / Pipelines** views ([Plan 7](../07-ui-dashboard.md)); cost objective uses **env-type matching** to pick cheap variants ([Plan 16](../16-cost-finops.md)).
 
-> **v6 (operators + SRE + UI):** this phase lands the operational Crew on the HA/observability substrate — **Endpoint Monitor** + the **SRE operator** with **incident management, runbooks & self-healing** ([Plan 40](../40-operator-agents.md)/[Plan 44](../44-sre-incident-management.md)) (Incident aggregate, the diagnose→classify→auto-fix/propose/escalate decision tree, MTTD/MTTR SLOs, postmortem-as-replay), and the **UX Designer** operator with **UI-layer generation** ([Plan 42](../42-ui-layer-generation.md), OpenUI + json-render + Design.md). Builds on P5 live-fix + the SLO/alerting model ([ADR-0045](../adr/ADR-0045-slo-as-code-and-alerting.md)).
+> **Operators + SRE + UI:** this stage lands the operational Crew on the HA/observability substrate — **Endpoint Monitor** + the **SRE operator** with **incident management, runbooks & self-healing** ([Plan 40](../40-operator-agents.md)/[Plan 44](../44-sre-incident-management.md)) (Incident aggregate, the diagnose→classify→auto-fix/propose/escalate decision tree, MTTD/MTTR SLOs, postmortem-as-replay), and the **UX Designer** operator with **UI-layer generation** ([Plan 42](../42-ui-layer-generation.md), OpenUI + json-render + Design.md). Builds on stage 5 live-fix + the SLO/alerting model ([ADR-0045](../adr/ADR-0045-slo-as-code-and-alerting.md)).
 
-> **v4 (gates):** harden **obligations** as durable effects (require-canary/approval tracked to completion) and the **remediation/auto-fix** loop (classify failure → propose safe fix, gated) ([Plan 30](../30-policy-plane.md)/[Plan 23](../23-stubbable-ai-implementations.md)); the dashboard gains a **`hobo verify` / gate-decision** view (per-gate results + `explain-failure` replay).
+> **Gates hardening:** harden **obligations** as durable effects (require-canary/approval tracked to completion) and the **remediation/auto-fix** loop (classify failure → propose safe fix, gated) ([Plan 30](../30-policy-plane.md)/[Plan 23](../23-stubbable-ai-implementations.md)); the dashboard gains a **`hobo verify` / gate-decision** view (per-gate results + `explain-failure` replay).
+
+> **Completeness planes:** broaden the platform over existing machinery (no new runtime) — **app communications** (`notify` family over the shared receiver port, [Plan 45](../45-app-communications.md)/[ADR-0059](../adr/ADR-0059-app-communications-notify.md)), **compliance & data governance** (classification→residency/retention obligations + crypto-shred erasure + attestation bundles, [Plan 46](../46-compliance-governance.md)/[ADR-0060](../adr/ADR-0060-compliance-governance-plane.md)), **AI safety & model governance** (model registry + `guardrail` capability + red-teaming, [Plan 47](../47-ai-safety-model-governance.md)/[ADR-0061](../adr/ADR-0061-ai-safety-model-governance.md)), and the **marketplace & ecosystem** (governed lifecycle over signed/certified artifacts; never-gate-portability, [Plan 48](../48-marketplace-ecosystem.md)/[ADR-0062](../adr/ADR-0062-marketplace-ecosystem.md)).
 
 ## Workstream 1 — Reliability & HA ([Plan 5](../05-reliability-ha.md))
 1. Actor availability: single-writer **leases + fencing tokens**, placement + failover.
@@ -35,14 +37,21 @@
 2. **DR = replay**: `hobo yard up --restore <log>` rebuilds the Yard + projections + actors.
 3. SLOs + burn-rate alerting; OTLP export ([Plan 14](../14-observability.md)).
 
+## Workstream 6 — Completeness planes ([Plan 45](../45-app-communications.md)–[Plan 48](../48-marketplace-ecosystem.md))
+1. **App communications**: the `notify` family (`email`/`sms`/`push`/`webhookOut`) over the shared receiver port + secretless-brokered providers; sends are idempotent steps, delivery event-sourced (`notification.*`), consent/quiet-hours as policy obligations ([Plan 45](../45-app-communications.md)).
+2. **Compliance & governance**: classification labels → residency/retention obligations enforced at `can-deploy` + runtime; crypto-shred erasure + projection purge; signed attestation bundles + DPA/subprocessor registry ([Plan 46](../46-compliance-governance.md)).
+3. **AI safety & model governance**: model/prompt/eval-dataset registry (signed, provenance); the `guardrail` capability as a policy-gated step wrapping `agent()`/`"use training"`/generated outputs; red-teaming as a chaos-tier sibling ([Plan 47](../47-ai-safety-model-governance.md)).
+4. **Marketplace & ecosystem**: the `listing.*` lifecycle (publish→discover→install→trust→monetize) over signed/certified artifacts via Registry + Packs + the `billing` port, never gating portability ([Plan 48](../48-marketplace-ecosystem.md)).
+
 ## Deliverables
-- HA mechanisms; rollout saga templates; cost model + budgets; full dashboard; multi-region + DR.
+- HA mechanisms; rollout saga templates; cost model + budgets + chargeback; full dashboard; multi-region + DR; the four completeness planes (comms · governance · AI-safety · marketplace).
 
 ## Exit criteria (acceptance)
 - A **canary** with an injected health regression **auto-rolls-back**; blue/green flip + soak works.
 - **Plan-time cost estimate** is within tolerance of a known fixture; a budget breach blocks or requires approval.
 - Kill a Yard node → deploy resumes < target (lease TTL + tail replay); **DR rebuild** from replicated log < target RTO.
 - Dashboard renders every view from projections only (no live-provider reads).
+- A `notify` send is event-sourced and an opted-out recipient is denied by policy; a classified field drives an enforced residency/retention obligation and an erasure crypto-shreds its key; a guardrail blocks a flagged model output; an uncertified marketplace listing is unlisted while a certified one installs via Matching.
 
 ## Risks / iteration hooks
 - Consensus choice (own Raft vs delegate to the Camp's runtime store); RPO/RTO targets.

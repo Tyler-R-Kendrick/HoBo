@@ -35,7 +35,7 @@
 | 0019 | Persona prioritization / primary ICP | Accepted | [ADR-0019](./ADR-0019-persona-prioritization-icp.md) |
 | 0020 | Monetization model (OSS core + hosted Yard + marketplace) | Accepted | [ADR-0020](./ADR-0020-monetization-model.md) |
 | 0021 | NFR baselines / committed SLOs for v1 | Proposed | [ADR-0021](./ADR-0021-nfr-baselines-slos.md) |
-| 0022 | MVP scope line / MoSCoW mapped to phases | Accepted | [ADR-0022](./ADR-0022-mvp-scope-moscow.md) |
+| 0022 | MVP scope line / MoSCoW mapped to phases | Superseded by 0063 | [ADR-0022](./ADR-0022-mvp-scope-moscow.md) |
 | 0023 | Security posture commitments for v1 | Accepted | [ADR-0023](./ADR-0023-security-posture-commitments.md) |
 | 0024 | Portability conformance guarantee ("same Bindle, N clouds") | Accepted | [ADR-0024](./ADR-0024-portability-conformance-guarantee.md) |
 | 0025 | `"use training"` directive + `training-engine` behind a port (Agent Lightning/Trace optional, internal) | Accepted | [ADR-0025](./ADR-0025-use-training-directive-and-training-engine.md) |
@@ -76,5 +76,6 @@
 | 0060 | Compliance & data governance as a plane (classification → enforced residency/retention; crypto-shred erasure; attestations) | Accepted | [ADR-0060](./ADR-0060-compliance-governance-plane.md) |
 | 0061 | AI safety & model governance (model registry, guardrails, red-teaming) | Accepted | [ADR-0061](./ADR-0061-ai-safety-model-governance.md) |
 | 0062 | Marketplace & ecosystem (governed lifecycle over signed/certified artifacts; never-gate-portability) | Accepted | [ADR-0062](./ADR-0062-marketplace-ecosystem.md) |
+| 0063 | Single v1 scope (whole designed surface ships as one v1; P0–P6 become build stages) | Accepted | [ADR-0063](./ADR-0063-single-v1-scope.md) |
 
-> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.
+> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands. **ADR-0063 supersedes ADR-0022**: the MVP-at-P4 line and phase-gated MoSCoW are replaced by a single v1 that contains the whole designed surface, with P0–P6 reframed as build stages.

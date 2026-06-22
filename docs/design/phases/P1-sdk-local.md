@@ -1,11 +1,11 @@
-# Phase P1 — SDK on the local runtime
+# Build stage 1 — SDK on the local runtime
 
 > [Phases index](./README.md) · realizes [Plan 2](../02-sdk-api.md), [Plan 21](../21-resources-catalog.md), [Plan 22](../22-wiring-manifest.md), [Plan 20](../20-wasm-wasi-runtime.md), [Plan 15](../15-cli-dx.md).
 
 **Objective.** A developer (or agent) can author an app **IfC-style**, run it as a **wasm component** on `runtime-local` with the full runtime (workflows/actors/sagas/agents), and have resources **collected into a manifest** — all offline, with replay.
-**Depends on.** P0.
+**Depends on.** Stage 0.
 
-> **v3 (Humanitec):** resources gain a **`class`** ([Plan 21](../21-resources-catalog.md)); platform engineers can author **Resource Definitions** locally and the local Planner resolves them by **Matching** (emitting `match.Decided`) — the `hobo.config.ts` mapping compiles to default definitions ([Plan 25](../25-resource-definitions-matching.md)); `hobo dev` exercises **Deltas→Sets** + Camp **environment types** on `runtime-local` ([Plan 26](../26-environments-deltas.md)).
+> **Resource Definitions / Matching / Deltas:** resources gain a **`class`** ([Plan 21](../21-resources-catalog.md)); platform engineers can author **Resource Definitions** locally and the local Planner resolves them by **Matching** (emitting `match.Decided`) — the `hobo.config.ts` mapping compiles to default definitions ([Plan 25](../25-resource-definitions-matching.md)); `hobo dev` exercises **Deltas→Sets** + Camp **environment types** on `runtime-local` ([Plan 26](../26-environments-deltas.md)).
 
 ## Workstream 1 — Authoring & resources (`@hobo/sdk`)
 1. Resource builders for the full catalog ([Plan 21](../21-resources-catalog.md)): `api`, `kv`, `bucket`, `queue`, `topic`, `secret`, `sql`, `schedule`, `websocket`, `job`, `web`, `service`.
@@ -21,7 +21,7 @@
 ## Workstream 3 — Runtime primitives (`@hobo/runtime`)
 1. `step` (memoized, retried), `workflow` (deterministic replay), `emit`, `sleep`, `cron`, hooks/webhooks, streams.
 2. `actor`/grain (durable state via ActorHost), `saga` (choreography + compensation).
-3. `agent()` skeleton (full identity/tools wiring lands in P3) and **`stub()`** placeholders ([Plan 23](../23-stubbable-ai-implementations.md)).
+3. `agent()` skeleton (full identity/tools wiring lands in stage 3) and **`stub()`** placeholders ([Plan 23](../23-stubbable-ai-implementations.md)).
 4. Determinism guarantees (seeded RNG/clock, frozen env) verified by replay.
 
 ## Workstream 4 — Components (`@hobo/componentize`, `@hobo/build-wasm`)

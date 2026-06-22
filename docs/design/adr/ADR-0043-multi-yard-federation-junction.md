@@ -1,6 +1,6 @@
 # ADR-0043 — Multi-Yard federation: the Junction (and the Yard's scope, clarified)
 
-- **Status:** Accepted (architecture); **v1 ships single-Yard, federation-ready** (the Junction is post-v1)
+- **Status:** Accepted (architecture); **v1 ships single-Yard, federation-ready** (the Junction itself is a later v1 iteration hook — [ADR-0063](./ADR-0063-single-v1-scope.md))
 - **Date:** 2026-06-22
 - **Deciders:** Engineering, Product
 - **Related:** [ADR-0026 — Scope model `Yard ⊃ Camp ⊃ Bindle`](./ADR-0026-scope-model-yard-camp-bindle.md) · [ADR-0028 — Multi-Camp model](./ADR-0028-multi-camp-deployment-model.md) · [Plan 4 — The Yard](../04-control-plane.md) · [Plan 12 — Security/multitenancy](../12-security-multitenancy.md) · [Plan 6 — Agent auth](../06-ai-native-agent-auth.md) (OIDC federation) · [Plan 30 — Policy plane](../30-policy-plane.md) (signed policy packs) · [ADR-0036 — Air-gap](./ADR-0036-air-gapped-sovereign-mode.md) (signed-bundle sharing) · [competitors/gap-analysis](../../../competitors/gap-analysis.md) (#20)
@@ -17,18 +17,18 @@
    - **Policy** — shareable **signed policy packs** ([Plan 30](../30-policy-plane.md)) propagate across the Junction.
    - **Registry** — certified providers/packs flow via the **signed-bundle/mirror** mechanism ([ADR-0036](./ADR-0036-air-gapped-sovereign-mode.md)).
    Each Yard keeps its **own event log + control plane + data** — the Junction is **trust + signed-artifact sharing, never shared mutable state and never a super-controller**. A cross-Yard operation is a *federated request* (authn via federated identity, authz by the **target** Yard's own policy), with **data residency preserved** (nothing centralizes). The scope model becomes, for the rare case: **`Junction` (optional, peer) ⊇ `Yard ⊃ Camp ⊃ Bindle`** — where `⊇` is federation, not control.
-4. **v1 ships single-Yard, federation-ready.** v1 implements one Yard per boundary but makes identity/policy/registry **federation-ready**: no assumption of a single global trust root, policy packs + registry bundles already signed/portable, the event `tenant` already scoping. The Junction (and its future events `junction.YardJoined`/`junction.TrustEstablished`/`junction.ArtifactShared`/`junction.YardLeft`) is **post-v1** but the v1 design does not preclude it.
+4. **v1 ships single-Yard, federation-ready.** v1 implements one Yard per boundary but makes identity/policy/registry **federation-ready**: no assumption of a single global trust root, policy packs + registry bundles already signed/portable, the event `tenant` already scoping. The Junction (and its future events `junction.YardJoined`/`junction.TrustEstablished`/`junction.ArtifactShared`/`junction.YardLeft`) is a **later v1 iteration hook** — an in-scope follow-up, not a separate release ([ADR-0063](./ADR-0063-single-v1-scope.md)) — and the initial single-Yard design does not preclude it.
 
 ## Alternatives considered
 - **A central super-Yard (hierarchy) over regional Yards.** Rejected: a global SPOF + a data-residency problem (the central plane would see all regions) + it contradicts "the Yard is the broadest orchestrator" ([ADR-0026](./ADR-0026-scope-model-yard-camp-bindle.md)). The Junction is peer, not hierarchical.
 - **Overload the Yard to nest under another Yard.** Rejected per the scope model — the Yard is the central orchestrator; an aggregate above it must be a distinct concept (the Junction), not a subordinated Yard.
 - **Use multiple Yards for multi-region (the original #20 framing).** Rejected: multi-region is Camps under one Yard ([ADR-0028](./ADR-0028-multi-camp-deployment-model.md)); a second Yard there would duplicate control planes for no benefit.
 - **No federation (independent Yards, manual).** Rejected for the extreme-isolation case: leaves sovereign tenants as disconnected islands when they legitimately need to share identity/policy/providers; the Junction gives a thin, trust-only bridge.
-- **Build the Junction in v1.** Rejected: it's a post-v1 need (v1 is one-Yard-per-boundary); the decision is the *architecture* + forward-compat, not v1 implementation.
+- **Build the Junction up front.** Rejected as an early-stage need: it's a late iteration hook (v1 ships one-Yard-per-boundary first); this decision is the *architecture* + forward-compat, not the initial implementation.
 
 ## Consequences
 - **(+)** Resolves #20 honestly: clarifies that multi-region is already one-Yard-many-Camps, scopes true multi-Yard to extreme isolation, and gives that case a clean concept (the Junction) without distorting the Yard.
 - **(+)** The Junction reuses OIDC federation ([Plan 6](../06-ai-native-agent-auth.md)), signed policy packs ([Plan 30](../30-policy-plane.md)), and the signed-bundle mechanism ([ADR-0036](./ADR-0036-air-gapped-sovereign-mode.md)) — no new control-plane machinery, and data residency is preserved (peer, not central).
 - **(+)** v1 stays simple (one Yard) while remaining federation-ready, so the design doesn't paint itself into a corner.
 - **(−)** A peer federation has no single global view/governance point — cross-Junction policy conflicts must be reconciled by agreement, not a central authority (acceptable, and the point, for sovereignty).
-- **(−)** The Junction is specified but deferred; its event model + join/trust ceremony are post-v1 work, so the multi-Yard story is architectural-only until then.
+- **(−)** The Junction is specified but deferred within v1; its event model + join/trust ceremony are a later iteration, so the multi-Yard story is architectural-only until then.

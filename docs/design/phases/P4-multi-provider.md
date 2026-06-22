@@ -1,13 +1,13 @@
-# Phase P4 — Multi-provider + wiring depth
+# Build stage 4 — Multi-provider + wiring depth
 
 > [Phases index](./README.md) · realizes [Plan 3](../03-providers-iac.md), [Plan 13](../13-networking-connectivity.md), [Plan 22](../22-wiring-manifest.md), [Plan 2](../02-sdk-api.md).
 
 **Objective.** Prove the agnostic thesis: the **same bindle** deploys to multiple clouds via mapping rules, with cross-provider connectivity and typed provider-specific optimization — no app edits.
-**Depends on.** P2 (and benefits from P3 for cross-cloud identity/links).
+**Depends on.** Stage 2 (and benefits from stage 3 for cross-cloud identity/links).
 
-> **v3 (Humanitec):** this is where **Resource Definitions** shine — platform engineers write per-`envType`/per-`class` definitions so the same bindle resolves to managed-HA in prod and cheap variants in ephemeral ([Plan 25](../25-resource-definitions-matching.md)/[Plan 26](../26-environments-deltas.md)); add the **echo**/**container**/**custom-webhook** Drivers ([Plan 27](../27-drivers-packs-profiles.md)), **Resource Packs**, the **HoBo Relay** for private targets, and the **GitOps publisher** ([Plan 28](../28-relay-gitops-pipelines.md)).
+> **Resource Definitions across environments:** this is where **Resource Definitions** shine — platform engineers write per-`envType`/per-`class` definitions so the same bindle resolves to managed-HA in prod and cheap variants in ephemeral ([Plan 25](../25-resource-definitions-matching.md)/[Plan 26](../26-environments-deltas.md)); add the **echo**/**container**/**custom-webhook** Drivers ([Plan 27](../27-drivers-packs-profiles.md)), **Resource Packs**, the **HoBo Relay** for private targets, and the **GitOps publisher** ([Plan 28](../28-relay-gitops-pipelines.md)).
 
-> **v4 (gates):** deepen the contract plane — **observed/promoted** contracts (trace-mining) and cross-provider/**version-skew `can-deploy`** ([Plan 29](../29-contracts-compatibility.md)); **capability contracts** (`.allow()` required ⊆ granted) and policy packs with **region/data-classification obligations** ([Plan 30](../30-policy-plane.md)/[Plan 12](../12-security-multitenancy.md)) become first-class as the topology spans clouds.
+> **Contract plane (cross-provider):** deepen the contract plane — **observed/promoted** contracts (trace-mining) and cross-provider/**version-skew `can-deploy`** ([Plan 29](../29-contracts-compatibility.md)); **capability contracts** (`.allow()` required ⊆ granted) and policy packs with **region/data-classification obligations** ([Plan 30](../30-policy-plane.md)/[Plan 12](../12-security-multitenancy.md)) become first-class as the topology spans clouds.
 
 ## Workstream 1 — Additional CloudProviders (AWS, Azure)
 1. Implement capability ports for the full resource catalog ([Plan 21](../21-resources-catalog.md)) on AWS and Azure as capability providers.

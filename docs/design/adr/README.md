@@ -72,5 +72,9 @@
 | 0056 | App-UI generation + Design.md design-system enforcement | Accepted | [ADR-0056](./ADR-0056-ui-generation-and-design-system.md) |
 | 0057 | Patchability as a first-class guarantee (distinct from portability) | Accepted | [ADR-0057](./ADR-0057-patchability-derivative-implementations.md) |
 | 0058 | SRE: incident management, runbooks & the self-healing decision model | Accepted | [ADR-0058](./ADR-0058-sre-incident-management-and-runbooks.md) |
+| 0059 | App communications: the `notify` family over the shared receiver port | Accepted | [ADR-0059](./ADR-0059-app-communications-notify.md) |
+| 0060 | Compliance & data governance as a plane (classification → enforced residency/retention; crypto-shred erasure; attestations) | Accepted | [ADR-0060](./ADR-0060-compliance-governance-plane.md) |
+| 0061 | AI safety & model governance (model registry, guardrails, red-teaming) | Accepted | [ADR-0061](./ADR-0061-ai-safety-model-governance.md) |
+| 0062 | Marketplace & ecosystem (governed lifecycle over signed/certified artifacts; never-gate-portability) | Accepted | [ADR-0062](./ADR-0062-marketplace-ecosystem.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

@@ -66,5 +66,6 @@
 | 0050 | Event-sourced-by-default app domain data; backends are projection sinks | Accepted | [ADR-0050](./ADR-0050-event-sourced-domain-data-projection-sinks.md) |
 | 0051 | WIT records as the canonical domain schema (TS + protobuf + Zod generated) | Accepted | [ADR-0051](./ADR-0051-wit-record-canonical-domain-schema.md) |
 | 0052 | Projection-sink paradigm taxonomy & the reactivity boundary | Accepted | [ADR-0052](./ADR-0052-projection-sink-paradigm-taxonomy.md) |
+| 0053 | Write-side consistency: commands, aggregates & the actor boundary | Accepted | [ADR-0053](./ADR-0053-write-side-aggregates-and-commands.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

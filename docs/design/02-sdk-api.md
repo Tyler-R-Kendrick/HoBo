@@ -170,9 +170,9 @@ export const fulfillment = saga("fulfillment")
 | `step(fn, opts?)` | side-effecting unit | runs once; result memoized; auto-retry per `opts` |
 | `workflow(fn)` / `"use workflow"` | deterministic orchestration | replays over memoized steps; seeded RNG/clock |
 | `query(fn)` / `"use query"` | deterministic **reactive** read-only query | read-set tracked; re-pushed on change at a consistent `seq`; client `useQuery()` ([Plan 32](./32-reactive-live-queries.md)) |
-| `command(type, fn)` | **domain write** = command→event | the only domain write path; `ctx.emit(event)`; `step`-class (idempotent, memoized); returns its `seq` ([Plan 39](./39-data-plane-projections.md)) |
+| `command(type, fn)` | **domain write** = command→aggregate→event | runs in its **aggregate (actor) boundary**: checks invariants vs `ctx.state` (write-model fold), then `ctx.emit` under optimistic `seq`; `step`-class (idempotent); returns its `seq` ([Plan 39](./39-data-plane-projections.md)/[ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md)) |
 | `repo<T>(name)` / `view(name)` | **persistence-agnostic read** over a projection | backend-neutral by logical name; `repo` = entity get/find, `view().where().order()` = reactive inside `"use query"`; `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./39-data-plane-projections.md)) |
-| `actor(name, def)` | stateful single-writer entity (grain) | state = folded event stream; lease + fencing |
+| `actor(name, def)` | stateful single-writer entity (grain); **the aggregate / write-model boundary** commands write through ([ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md)) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |
 | `training(fn, opts)` / `"use training"` | **AI-rewritable semantic function** | baseline body; HoBo optimizes prompt/code vs a rubric from OTel/OpenInference trajectories + live-evals; gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)) |

@@ -1,0 +1,28 @@
+# ADR-0053 — Write-side consistency: commands, aggregates, and the actor boundary
+
+- **Status:** Accepted
+- **Date:** 2026-06-22
+- **Deciders:** Engineering, Product
+- **Related:** [Plan 39 — Data plane: projections](../39-data-plane-projections.md) (the write path) · [ADR-0050](./ADR-0050-event-sourced-domain-data-projection-sinks.md) (event-sourced domain data) · [Plan 2 — SDK/API](../02-sdk-api.md) (`actor`/`saga`/`signal`/`emit`) · [Plan 11 — Event model](../11-event-model.md) (`streamId` = aggregate key, optimistic `seq`, single-writer) · [ADR-0040 — Cross-Camp consistency](./ADR-0040-cross-camp-stateful-consistency.md) (no silent distributed transactions) · [competitors/convex](../../../competitors/convex/functions.md) (serializable mutations, the comparison)
+- **Origin:** [Plan 39](../39-data-plane-projections.md)'s `command` emitted events with no stated invariant boundary or concurrency control, while HoBo already had **actors** ("state = folded event stream, single-writer lease") and **sagas** (event choreography) — leaving "where do write-side invariants live, and when do I use an actor vs a command?" ambiguous. Designed via analysis of the existing primitives.
+
+## Context
+[ADR-0050](./ADR-0050-event-sourced-domain-data-projection-sinks.md) made app domain data event-sourced (commands→events; backends are projections). But event-sourcing needs a **write-side consistency boundary**: a command must check invariants against current state and append without lost updates. HoBo already has the pieces — `streamId` is described as the "aggregate/run/actor key" with optimistic `seq` ([Plan 11](../11-event-model.md)), and an `actor` is a "single-writer entity, state = folded event stream, lease + fencing" ([Plan 2](../02-sdk-api.md)) — but Plan 39's `command` example didn't connect them, and there was no statement of what consistency a write gets. Convex answers this with serializable mutations on its document DB; HoBo needs its own answer that is honest about CAP ([ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md) rejects silent cross-store strong consistency).
+
+## Decision
+1. **The command's consistency boundary is an aggregate, realized as an actor.** A `command` runs **inside** the single-writer boundary of the aggregate it targets (an [actor](../02-sdk-api.md) keyed by the command's stream id): it loads the aggregate's **write-model fold** (`ctx.state`), checks invariants against current state, and emits events under the aggregate's **lease + fencing + optimistic `seq`** ([Plan 11](../11-event-model.md)). No new primitive — **an aggregate is an actor whose handlers emit domain events**, and `command` is the typed, domain-write sibling of an actor `signal`.
+2. **Two folds, one log (CQRS, named).** The **aggregate fold** is the authoritative *write* model (in the single-writer, for invariant checks); a **projection fold** ([Plan 39](../39-data-plane-projections.md)/[ADR-0050](./ADR-0050-event-sourced-domain-data-projection-sinks.md)) is the *read* model (derived, in architect-chosen sinks). "Actor state = folded stream" and "projection = folded stream" are the same log, folded for two purposes.
+3. **Per-aggregate serializability, not global.** Optimistic `seq` on the aggregate's stream gives serializable writes *within* an aggregate with **no global lock** — the CAP-honest analog of Convex's serializable mutations. **Cross-aggregate** consistency is a **saga** (choreography + compensation, [Plan 2](../02-sdk-api.md)) or eventual ([ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md)); HoBo never offers a silent distributed transaction across aggregates.
+4. **`emit` stays for boundary-free facts.** A naked `ctx.emit` (no aggregate) remains valid for domain events that need no invariant check (telemetry-like facts); the **default** domain write goes through a command→aggregate.
+
+## Alternatives considered
+- **Commands as naked event appends (no aggregate).** Rejected as the default: gives no place to enforce invariants and reintroduces lost-update races; fine only for boundary-free facts (4).
+- **A new `aggregate(...)` primitive distinct from `actor`.** Rejected: an actor already *is* a single-writer, folded-stream consistency boundary; adding a second primitive duplicates the model. "Aggregate" is the **role** an actor plays on the write side, not a new noun (keeps the primitive set small, consistent with reusing "projection" rather than minting terms).
+- **Global serializable transactions across aggregates** (Convex-style, but distributed). Rejected: cross-store/cross-Camp strong consistency is high-latency and partition-prone ([ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md)); sagas + per-aggregate serializability is the honest model.
+
+## Consequences
+- **(+)** Closes the write-side gap: invariants, concurrency, and "actor vs command" now have one coherent answer — the aggregate/actor boundary — reusing existing primitives (no new mechanism).
+- **(+)** CQRS is stated plainly (write fold vs read fold), making Plan 39's projections and Plan 2's actors obviously two sides of one log.
+- **(+)** Honest, competitive framing vs Convex: serializable *per aggregate* without a global lock, sagas for cross-aggregate flows.
+- **(−)** Developers must model aggregate boundaries (what's one consistency unit) — the classic DDD modeling cost; bad boundaries mean either over-large aggregates (contention) or cross-aggregate invariants that need sagas.
+- **(−)** Multi-aggregate operations are eventually consistent / saga-coordinated, not atomic — surprising to those expecting RDBMS transactions; documented as a deliberate CAP choice.

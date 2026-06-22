@@ -42,20 +42,23 @@ flowchart LR
 ## Developer surface — the persistence-agnostic data access (the "pseudo-ORM")
 Both an **entity repository** (ergonomic 80%) and a **query DSL** (the composable, reactive surface), over **one logical model**.
 
-### Write path — command → event (no direct sink writes)
-The developer never writes to a sink. They emit a domain event; a projection folds it.
+### Write path — command → aggregate → event (no direct sink writes)
+The developer never writes to a sink. A **command** runs inside its **aggregate**'s single-writer boundary, checks invariants against the aggregate's current state, and emits domain events; projections fold those events into read models.
 ```ts
 import { command } from "@hobo/runtime";
 
-export const openTicket = command("Ticket.Open", async (input: OpenTicket, ctx) => {
-  // input validated against the WIT-record-generated type
+// a command targets an aggregate by key (stream `ticket:<id>`); the handler runs inside that
+// aggregate's single-writer boundary, with ctx.state = the aggregate's WRITE-MODEL fold.
+export const openTicket = command("Ticket.Open", { key: (i: OpenTicket) => i.id }, async (input, ctx) => {
+  if (ctx.state.status) throw new Conflict("ticket already exists");   // invariant vs current state
   ctx.emit("Ticket.Opened", { id: input.id, team: input.team, title: input.title });
-  // returns the seq the event landed at → drives reads-your-writes (Plan 32)
+  // appended under the aggregate's lease + optimistic expectedSeq; returns its seq
 });
 ```
-- `ctx.emit` appends a typed domain event (body = protobuf-encoded WIT record) to the stream `ticket:<id>` via the existing `EventStore.append` with optimistic `expectedSeq` ([Plan 11](./11-event-model.md)).
-- A command handler is a **`step`-class** unit (side-effecting, retried, memoized — [Plan 2](./02-sdk-api.md)), so command idempotency rides the existing idempotency-key machinery.
-- **Reads-your-writes:** the command returns its `seq`; the client advances subscriptions to ≥ that `seq` before ack ([Plan 32](./32-reactive-live-queries.md)).
+- **The command's consistency boundary is an aggregate, realized as an [actor](./02-sdk-api.md)** — single-writer lease + fencing + optimistic `seq` ([Plan 11](./11-event-model.md)). The handler runs inside that boundary; `ctx.state` is the aggregate's **write-model fold** (authoritative, for invariant checks), then `ctx.emit` appends. (`command` is the typed, domain-write sibling of an actor `signal`; an aggregate is just an actor whose handlers emit domain events.)
+- **Two folds, one log (CQRS).** The **aggregate fold** is the *write* model (authoritative, in the single-writer, for invariants); a **projection fold** (read path below) is the *read* model (derived, in architect-chosen sinks). "Actor state = folded stream" and "projection = folded stream" are the two sides of the same log.
+- **Per-aggregate serializability, not global.** Optimistic `seq` on the aggregate's stream gives serializable writes *within* an aggregate with no global lock — the CAP-honest analog of Convex's serializable mutations ([competitors/convex](../../competitors/convex/functions.md)). Cross-aggregate consistency is a **saga** ([Plan 2](./02-sdk-api.md)) or eventual ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)) — never a silent distributed transaction. Decision record: [ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md).
+- A command is a **`step`-class** unit (idempotent via the existing idempotency-key machinery, [Plan 2](./02-sdk-api.md)); **reads-your-writes** — it returns its `seq` and the client advances subscriptions to ≥ that `seq` before ack ([Plan 32](./32-reactive-live-queries.md)). **Naked `emit`** (no aggregate) remains for domain facts that need no invariant boundary.
 
 ### Read path — logical repository + query DSL
 ```ts

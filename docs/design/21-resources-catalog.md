@@ -41,6 +41,7 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 | **DNS** | (capability) | `hobo:dns` | `read`,`write` | Route53 / Azure DNS / Cloud DNS / Cloudflare ([Plan 13](./13-networking-connectivity.md)) |
 | **Feature flag** | `flag(name)` | `hobo:feature-flag` | `eval`,`change` | built-in store / OpenFeature providers (flagd/LaunchDarkly) ([Plan 37](./37-feature-flags-progressive-delivery.md)) |
 | **Auth** (end-user) | `auth(name)` | `hobo:auth` | (verify/session) | federate+verify any IdP (Google/GitHub/Clerk/Auth0/customJwt) + thin dev built-in ([Plan 36](./36-end-user-auth.md)) |
+| **Crypto** | `crypto(name)` | `hobo:crypto` | `encrypt`,`decrypt`,`sign`,`verify` | KMS / Key Vault / Cloud KMS / in-boundary HSM — **keys the app never holds**, brokered like secrets ([Plan 31](./31-config-secretless-secrets.md)) |
 
 Cross-cloud equivalence classes are owned by [Plan 3](./03-providers-iac.md); this table is the resource→port view.
 

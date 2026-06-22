@@ -38,6 +38,7 @@
 | `hobo:embed` | embedding generation behind `search` ([Plan 35](./35-search-vector-surface.md)) | `embed(text)` → vector (local model or hosted API; secretless) |
 | `hobo:dns` | DNS records + custom-domain routing ([Plan 13](./13-networking-connectivity.md)/[ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) | `upsert-record`, `set-routing(policy)`, `verify`, health-checked failover across Camps |
 | `hobo:auth` | end-user auth: federate + verify ([Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/ADR-0038-end-user-application-auth.md)) | `verify(jwt)` → `ctx.user` claims (OIDC/JWKS/customJwt), `start-session`/`revoke-session`; thin built-in (passkey/email) for dev |
+| `hobo:crypto` | app-facing cryptography with **keys the app never holds** ([Plan 31](./31-config-secretless-secrets.md)) | `encrypt`/`decrypt` (envelope), `sign`/`verify` — key handles brokered via Identity; KMS/Key Vault/Cloud KMS/in-boundary HSM behind the port |
 | `hobo:feature-flag` | runtime flags, OpenFeature-compatible ([Plan 37](./37-feature-flags-progressive-delivery.md)/[ADR-0044](./adr/ADR-0044-feature-flags-progressive-delivery.md)) | `eval(flag, ctx)` (bool/string/number/object, in-process deterministic), `change`/`target`; built-in store or OpenFeature provider |
 | `hobo:control/provisioning` | control-plane resource ops | `provision(spec)`, `deprovision(id)`, `refresh(id)` |
 | `hobo:control/observability` | metrics/traces/logs emit | `emit-metric`, `emit-trace` |

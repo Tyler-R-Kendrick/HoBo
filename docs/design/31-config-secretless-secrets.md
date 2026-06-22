@@ -73,6 +73,9 @@ The local Camp (`runtime-local`) has no cloud secret store, so `secretRef` resol
 ## Availability & failure modes
 If a Camp's secret store is unreachable, `secretRef` resolution **fails fast after a bounded retry** (a small capped-backoff budget), emits `secret.Unavailable`, and surfaces a typed error the step can handle — it does **not** silently fall back to a static value. A short, bounded in-process cache (above) may serve a recently-fetched value within its TTL; beyond that, the call fails rather than serve stale/unknown credentials. Treat secret-store availability as a dependency in the SLO budget ([Plan 5](./05-reliability-ha.md)).
 
+## App-facing crypto (keys the app never holds)
+The secretless model extends to **cryptography**: a `crypto(name)` resource (`hobo:crypto` port, [Plan 21](./21-resources-catalog.md)/[Plan 24](./24-wit-interfaces-reference.md)) offers `encrypt`/`decrypt` (envelope) + `sign`/`verify` where the **key material never enters app code** — the app holds a brokered key *handle* (via Identity, [Plan 6](./06-ai-native-agent-auth.md)), and the operation runs against a per-Camp **KMS / Key Vault / Cloud KMS / in-boundary HSM** behind the port (air-gap: in-boundary KMS, [ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)/[ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)). Same secretless guarantee as tokens: nothing key-shaped at rest in the app. (Closes the Dapr-crypto parity item, [gap-analysis G9](../../competitors/gap-analysis.md).)
+
 ## Why this is safe
 - **Nothing to steal by default** — the common case (bound resources) uses brokered tokens, so there is no secret at rest ([ADR-0008](./adr/README.md)).
 - **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/ADR-0023-security-posture-commitments.md)).

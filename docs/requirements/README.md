@@ -1,6 +1,6 @@
 # HoBo — Requirements Suite
 
-> The **requirements layer** over the [HoBo Design Plan Suite](../design/README.md). Where the design docs (`docs/design/0–30`) explain *how* HoBo works, these three documents state *why* (business), *what* (product), and *how — in requirements terms* (technical) — with stable IDs and end-to-end traceability so business intent, product scope, and engineering work cannot silently drift apart.
+> The **requirements layer** over the [HoBo Design Plan Suite](../design/README.md). Where the design docs (`docs/design/0–36`) explain *how* HoBo works, these three documents state *why* (business), *what* (product), and *how — in requirements terms* (technical) — with stable IDs and end-to-end traceability so business intent, product scope, and engineering work cannot silently drift apart.
 >
 > **Status:** Draft for review · **Date:** 2026-06-20 · Phase: design.
 

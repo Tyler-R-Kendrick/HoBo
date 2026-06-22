@@ -1,8 +1,8 @@
 # HoBo vs competitors — gap analysis
 
-> A cross-competitor synthesis: where HoBo's [design suite](../docs/design/README.md) (Plans 0–31) leads, matches, or **falls short** of [Aspire](./aspire/README.md), [Nitric](./nitric/README.md), [Humanitec](./humanitec/README.md), [Convex](./convex/README.md), and [shoo.dev](./shoo/README.md). Produced with the [Superpowers](../docs/agent-tooling.md) methodology — **brainstorm → compare → review → iterate**. Companion to each folder's `differentiators.md` (their strengths) and `hobo-mapping.md` (per-feature parity ✅ has / ➕ adds / 🔜 planned).
+> A cross-competitor synthesis: where HoBo's [design suite](../docs/design/README.md) (Plans 0–36) leads, matches, or **falls short** of [Aspire](./aspire/README.md), [Nitric](./nitric/README.md), [Humanitec](./humanitec/README.md), [Convex](./convex/README.md), and [shoo.dev](./shoo/README.md). Produced with the [Superpowers](../docs/agent-tooling.md) methodology — **brainstorm → compare → review → iterate**. Companion to each folder's `differentiators.md` (their strengths) and `hobo-mapping.md` (per-feature parity ✅ has / ➕ adds / 🔜 planned).
 >
-> **Bottom line:** the architecture is broad and most gaps are *already tracked* as open questions ([09 §15–20](../docs/design/09-verification-open-questions.md)). The **one true blind spot** is a **reactive / live-query data model** (Convex's core DX) — added as open question #21. Two surfaces are designed-but-shallow (**Forge generation pipeline**, **vector-search & custom-domain/ingress**).
+> **Bottom line (updated 2026-06-22):** the original analysis found the architecture broad with most gaps *tracked* as open questions, one true blind spot (**reactive / live-query**, now Plan 32/ADR-0029), and two designed-but-shallow surfaces (**Forge generation**, **search/ingress**). **All of those — and every tracked open question — are now remediated in design** (gaps G1–G8 + open questions #3/#10/#15–20/#22–23, via Plans 32–36 + ADRs 0029–0043). The sections below record the original findings with their ✅ closures inline.
 
 ## 1. Comparison matrix
 Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed but shallow/deferred · ✗ gap (not in the design).
@@ -33,6 +33,8 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 
 ## 2. Brainstorm — sharp questions that surface the gaps
 *(Superpowers `brainstorming` style: challenge the design's assumptions, one pointed question each.)*
+
+> **Historical framing — all resolved.** The questions below were the *open* probes at analysis time; each is now answered in design (see the ✅ closures in §3 and the ADR/Plan links). They're preserved as the reasoning trail, not as current open items.
 
 1. **Reactivity:** HoBo has a `Streamer` port and an event log — but a Convex user gets `useQuery()` that re-runs and pushes to every client on write, with consistent snapshots. *What is HoBo's client-facing live-query story?* Is it "bring your own websocket over `Streamer`", or a first-class reactive-query model with cache-invalidation + consistency guarantees? Today: **undefined.**
 2. **Forge depth:** Plans 6/23 say Forge *generates* providers/impls and gates them by conformance. *But what actually generates them?* The conformance gate ([09](../docs/design/09-verification-open-questions.md)) is specified; the generation loop (inputs, prompt/program synthesis, repair iteration, the training-engine for impls) is thin outside [Plan 23](../docs/design/23-stubbable-ai-implementations.md)'s `use training`. *Is "Forge generates providers" demonstrable, or aspirational?*

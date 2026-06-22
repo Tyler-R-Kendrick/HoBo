@@ -25,6 +25,8 @@ export interface DatabasePort {
   // requested features the provider must satisfy/negotiate
   features?: { managed?: boolean; ha?: boolean; vector?: boolean; serverless?: boolean };
 }
+// Note: `vector` here is a DB *capability hint* for negotiation; the full-text/vector/hybrid
+// retrieval surface is a first-class `search` port ([Plan 35](./35-search-vector-surface.md)/[ADR-0034](./adr/ADR-0034-search-vector-surface.md)), not just a database flag.
 
 export interface Capability {
   port: PortKind;                       // "database" | "compute" | "objectStore" | ...

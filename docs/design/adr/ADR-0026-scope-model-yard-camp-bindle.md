@@ -22,6 +22,8 @@ Adopt three explicitly nested scopes — **`Yard ⊃ Camp ⊃ Bindle`** — and 
 
 **Preserve "WIT world"** — that is the WebAssembly Component Model term ([Plan 20](../20-wasm-wasi-runtime.md)/[Plan 24](../24-wit-worlds-reference.md)) and is unrelated to the removed Vercel concept.
 
+> **Above the Yard (rare, post-v1):** the Yard remains the broadest scope **for an app/org**. For the extreme-isolation case where wholly separate Yards must interoperate, an optional **peer-federation** aggregate — the **`Circuit`** — sits over sovereign Yards ([ADR-0043](./ADR-0043-multi-yard-federation-circuit.md)); it federates trust + signed artifacts, is **not** a controller, and does **not** make the Yard subordinate. Default deployments never see it.
+
 ## Alternatives considered
 - **Keep "World" as the runtime substrate noun** — rejected: vendor-branded, and redundant once a Camp is provider-specific and naturally owns its runtime.
 - **Rename the control-plane orchestrator and make "Yard" only a config scope** — rejected: more churn for no gain; the orchestrator already spans providers, so "Yard = control plane + broad scope" is the natural, least-disruptive reading.

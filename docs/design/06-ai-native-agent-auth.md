@@ -167,6 +167,7 @@ The end state the project asks for: a developer (or their agent) writes a Bindle
 ## Iteration hooks
 - Exact Hobo Code schema + whether to publish it as an open spec aligned with MCP-auth / OAuth-OBO draft / SPIFFE federation / the emerging Agent Identity Protocol.
 - Delegation chains (agent → sub-agent) — adopt AIP when it matures, or interim OBO chaining.
+- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Circuit** ([ADR-0043](./adr/ADR-0043-multi-yard-federation-circuit.md)): a principal from one Yard is authenticated by another under an agreed trust root (post-v1).
 - Policy language for guardrails (CEL/Rego-style vs typed TS policy).
 - Forge model + eval design; human-in-the-loop certification for high-trust providers.
 - Plugin signing, provenance (SLSA), and supply-chain trust for Registry plugins ([Plan 12](./12-security-multitenancy.md)).

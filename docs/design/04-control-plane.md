@@ -77,6 +77,24 @@ This makes self-hosting a first-class, reproducible path, not a bespoke install 
 ## Multi-tenancy
 Tenant = isolation boundary for event streams, actor placement, credential scope, and executor pools. Self-host runs single-tenant; hosted runs multi-tenant on the same code. Full model in [Plan 12](./12-security-multitenancy.md).
 
+## Yard scope & multi-Yard (the Circuit) ([ADR-0043](./adr/ADR-0043-multi-yard-federation-circuit.md))
+The Yard is the central **cross-cloud / cross-region orchestrator**, and **one Yard per app/org is the norm** — a multi-cloud `production` is several **Camps** under *one* Yard ([ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)/[ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)); **multi-region needs no second Yard.** A *second* Yard is warranted only for **extreme isolation** — a tenant/boundary requiring a wholly separate control plane (sovereign/regulated, air-gapped [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md), or isolation beyond per-tenant streams). When such sovereign Yards must interoperate, an optional **`Circuit`** federates them as **peers** — sharing **identity trust + signed policy packs + signed registry bundles**, never shared state and never a controller; each Yard keeps its own log/control-plane/data (residency preserved). **v1 ships single-Yard, federation-ready; the Circuit is post-v1.**
+
+```mermaid
+flowchart TB
+  subgraph CIRCUIT["Circuit: peer federation, trust + signed artifacts, no shared state"]
+    subgraph Y1["Yard A (sovereign: own log + control plane + data)"]
+      C1["Camp prod-aws"]
+      C2["Camp prod-azure"]
+    end
+    subgraph Y2["Yard B (sovereign: own log + control plane + data)"]
+      C3["Camp eu-gcp"]
+    end
+  end
+  Y1 <-.->|federated identity trust OIDC/SVID| Y2
+  Y1 <-.->|signed policy packs + registry bundles| Y2
+```
+
 ## Iteration hooks
 - ResourceActor resync interval & jitter; how aggressive drift auto-heal should be (auto vs propose).
 - Plan-level vs resource-level compensation thresholds (when does one failure roll back the whole deploy vs just retry locally?).

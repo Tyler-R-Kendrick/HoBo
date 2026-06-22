@@ -8,6 +8,8 @@
 
 > **v2 update.** **WASM capability security** ([Plan 20](./20-wasm-wasi-runtime.md)) is now a runtime isolation layer: deny-by-default, unforgeable handles, and `.allow()`-scoped links ([Plan 21](./21-resources-catalog.md)) mean a component (incl. Forge-generated ones) can only touch what it's explicitly linked to — strengthening the sandbox for AI-generated providers/implementations ([Plan 23](./23-stubbable-ai-implementations.md)).
 
+> **Isolation tiers.** Default multi-tenancy isolates tenants *within one Yard* (per-tenant streams/keys/pools, below). For **extreme isolation** (sovereign/regulated tenants, air-gap [ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)) a tenant gets a **wholly separate Yard**; sovereign Yards interoperate only via a **`Circuit`** peer federation (trust + signed artifacts, no shared state — [ADR-0043](./adr/ADR-0043-multi-yard-federation-circuit.md)), so the isolation boundary is the Yard itself.
+
 ## Threat model (who/what we defend against)
 | Asset | Threats | Primary mitigations |
 |---|---|---|

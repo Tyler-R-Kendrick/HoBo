@@ -56,5 +56,6 @@
 | 0040 | Cross-Camp stateful consistency (declared topology; single-writer default) | Accepted | [ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md) |
 | 0041 | Migration & onboarding (`hobo import` adopt-in-place; strangler-fig) | Accepted | [ADR-0041](./ADR-0041-migration-onboarding.md) |
 | 0042 | Local-dev fidelity (simulate / mock / Camp-only matrix) | Accepted | [ADR-0042](./ADR-0042-local-dev-fidelity.md) |
+| 0043 | Multi-Yard federation: the Circuit (peer; v1 single-Yard, federation-ready) | Accepted | [ADR-0043](./ADR-0043-multi-yard-federation-circuit.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

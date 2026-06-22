@@ -41,6 +41,7 @@ flowchart LR
 - An **inverted index** `stream → subscriptions` means an append wakes **only** affected subscriptions (no full re-scan).
 - **Consistency = per-query consistent snapshot @ `seq`** ([ADR-0029](./adr/ADR-0029-reactive-live-query-model.md)): each push is computed at a single monotonic log position; pushes are delivered in `seq` order; the client never regresses; reads-your-writes as above. This matches Convex's "consistent snapshot" feel without global serializability.
 - **Coalescing + backpressure** ([Plan 5](./05-reliability-ha.md)): bursts of appends collapse to the latest `seq`; slow clients get coalesced snapshots, not an unbounded backlog.
+- **Auth-state is part of the read-set.** A reactive query runs as a principal (`ctx.user`, [Plan 36](./36-end-user-auth.md)); its authorization inputs (the user's session + claims) are tracked like any other dependency, so a **`session.Revoked`** (sign-out / revoke) recomputes the affected queries — denying or re-scoping the push — without a client poll.
 
 ## Hybrid source (native default + DB opt-in)
 - **Native (default).** Queries over the **event log / projections**. The log *is* the change stream — zero extra infrastructure, works on **any** Camp runtime backend (`runtime-local` … `runtime-cloudflare`), inherits replay/audit. This is the portable path and the recommended one.

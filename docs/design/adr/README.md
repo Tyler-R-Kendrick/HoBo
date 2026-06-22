@@ -51,5 +51,6 @@
 | 0035 | Custom domains & multi-cloud ingress (Yard-level `domain` + `dns`) | Accepted | [ADR-0035](./ADR-0035-custom-domains-and-multi-cloud-ingress.md) |
 | 0036 | Air-gapped / sovereign Yard mode (zero-egress profile + signed bundle import) | Accepted | [ADR-0036](./ADR-0036-air-gapped-sovereign-mode.md) |
 | 0037 | SDK codegen surface & policy (checked-in `_generated/`) | Accepted | [ADR-0037](./ADR-0037-sdk-codegen-surface.md) |
+| 0038 | End-user / application auth (federate+verify; unified `PrincipalRef`) | Accepted | [ADR-0038](./ADR-0038-end-user-application-auth.md) |
 
 > ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands.

@@ -54,7 +54,7 @@ SaaS:  database() cache() objectStore() secrets() vector() search() auth() email
 CaaS:  containerService() image()        // image built via build-* adapters
 IaaS:  vm() microVm() network() volume()  // microVm via Firecracker adapter
 ```
-A **Provider** binds these ports to a backend and declares *how* it realizes them (which IaC/build adapter it uses under the hood). Full interfaces and the resolution/Planner algorithm live in [Plan 3](./03-providers-iac.md). The `vector()`/`search()` primitives are specified as a single unified `search` port (text + vector + hybrid, with an `embed` capability) in [Plan 35](./35-search-vector-surface.md).
+A **Provider** binds these ports to a backend and declares *how* it realizes them (which IaC/build adapter it uses under the hood). Full interfaces and the resolution/Planner algorithm live in [Plan 3](./03-providers-iac.md). The `vector()`/`search()` primitives are specified as a single unified `search` port (text + vector + hybrid, with an `embed` capability) in [Plan 35](./35-search-vector-surface.md); the `auth()` primitive (**end-user** sign-in/sessions, distinct from agent auth) is specified in [Plan 36](./36-end-user-auth.md) — a verified `ctx.user` flows in `ctx` alongside `ctx.identity`.
 
 ---
 

@@ -22,6 +22,8 @@ request = {
               dataClassifications?, region?, provider?, riskScore?, traceSummary? }
 }
 ```
+> **End-user authorization rides this model.** `subject.kind = user` is populated from a verified **`ctx.user`** ([Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/ADR-0038-end-user-application-auth.md)) — its claims (`roles`/`scopes`/tenant) drive record-level rules like "a user may read only their own orders" as a **`policy.Decided`**, the same way agent/service actions are gated. No separate end-user authz engine; `.allow()` ([Plan 21](./21-resources-catalog.md)) is the declarative shorthand over these user-claim rules.
+
 The **decision** is richer than allow/deny:
 ```text
 decision = {

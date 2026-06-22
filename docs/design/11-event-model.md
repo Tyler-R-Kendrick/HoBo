@@ -98,6 +98,12 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Data plane / projections** ([Plan 39](./39-data-plane-projections.md)) — app domain data is event-sourced (commands→events here); a projection folds streams into an architect-chosen sink
 `projection.Declared` (read-model record + event-type read-set + reactivity class) · `projection.Lagged` (staleness/lag exceeded a bound → policy input) · `projection.SinkRebound` (Matching reselected a sink; links `match.Decided`) — sink **schema** changes reuse `migration.*`; sink **change-feeds** reuse `data.Changed`; rebuild-from-zero is a `migration.PhaseApplied` backfill
 
+**UI-layer generation** ([Plan 42](./42-ui-layer-generation.md)) — generated app front-end + design-system enforcement
+`ui.Generated` (intent + Design.md version + json-render IR hash) · `ui.DesignViolation` (failed design-conformance — which constraint) · `ui.Published` (rendered to a `web` Set) · `ui.Regenerated` (trigger: `view()`/schema/`Design.md` change)
+
+**Operator Agents (the Crew)** ([Plan 40](./40-operator-agents.md)) — roster-level facts; per-agent runs reuse `run.*`, domain facts ride existing families
+`crew.AgentDispatched` (which operator + triggering signal) · `crew.ActionProposed` (action + blast radius + `policy.Decided` ref) · `crew.ActionApplied`/`crew.ActionDenied` (ride `policy.Decided`) · `crew.HandoffRequested` (escalate to another operator or a human)
+
 **Forge generation** ([Plan 33](./33-forge-generation-pipeline.md))
 `forge.Requested` · `forge.CandidateGenerated` · `forge.Validated` · `forge.ValidationFailed` · `forge.Repaired` (iteration n + failing-assertion set) · `forge.NeedsHuman` · `forge.Certified` (extends the Registry's `forge.PluginCertified` + `impl.*`)
 

@@ -44,3 +44,6 @@ Your server  ──verify(id_token) against shoo's JWKS──►  trust the pair
 - **Narrow** — an auth *broker*, not an identity platform (no user store, RBAC, orgs, MFA management).
 
 See [hobo-mapping.md](./hobo-mapping.md) for how shoo's ideas map onto HoBo's identity/agent-auth model.
+
+## Sources & fair use
+These files are **competitive-research notes**, not redistribution of shoo.dev's documentation. Source: **`docs.shoo.dev` / `shoo.dev`** (captured 2026). Only **short excerpts are quoted** — shown in quotation marks with attribution — for **commentary, analysis, and parity comparison** (fair use); all rights in the quoted material remain with shoo.dev. Where a passage was paraphrased it is HoBo's own summary. No license over shoo's content is claimed or implied; follow the source links for the authoritative, current text. If a rights-holder objects to any excerpt, we will revise or remove it.

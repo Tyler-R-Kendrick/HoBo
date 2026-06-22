@@ -155,6 +155,8 @@ flowchart LR
 
 **Conformance tests are the trust boundary** that makes AI-generated extensibility safe — a plugin is only as trusted as the contract tests it passed, and the signed report is part of its Registry record.
 
+> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./33-forge-generation-pipeline.md)** ([ADR-0030](./adr/ADR-0030-forge-generation-inputs-and-algorithm.md)): the sketch above is **contract-first** (the WIT port + conformance suite + Hobo Code are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
+
 ---
 
 ## 6.6 How this all reduces to "zero developer effort"

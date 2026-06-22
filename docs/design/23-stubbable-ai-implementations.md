@@ -70,6 +70,8 @@ service("payments").stub({ charge: () => ({ status: "ok" }) }); // partial canne
 ```
 
 ## The Forge implementation loop (gated)
+> **Generation vs evolution — same engine, two entry points.** The loop below is the *evolution / continuous-training* path for a live `"use training"` method. The **cold-start generation** of a brand-new artifact — and the generalization of this loop to **providers and Resource Definitions/Packs**, not just implementations — is specified in [Plan 33 — Forge generation pipeline](./33-forge-generation-pipeline.md) ([ADR-0030](./adr/ADR-0030-forge-generation-inputs-and-algorithm.md)). Both share the `training-engine` optimizer ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)), the conformance/sandbox trust boundary, and signed provenance.
+
 ```mermaid
 flowchart LR
   WIT["WIT world + conformance + recorded traces"] --> GEN["AI: generate stub -> full impl<br/>(component or capability provider)"]

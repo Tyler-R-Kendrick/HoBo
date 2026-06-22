@@ -79,7 +79,7 @@ The thing that *executes* a component — the WASI interface impls + the link ta
 - Forge-generated components/providers run in this sandbox during conformance ([Plan 23](./23-stubbable-ai-implementations.md)).
 
 ## Iteration hooks
-- ~~Wasm host of record~~ — **decided ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)):** Wasmtime locally + a `component-host` port whose v1 prod default is wasm-in-container, with SpinKube / wasmCloud-lattice / provider-native as opt-in per-Camp adapters. Remaining: the host **conformance-suite** assertions and the wasmCloud-lattice adapter's cross-host link semantics.
+- ~~Wasm host of record~~ — **decided ([ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md)):** Wasmtime locally + a `component-host` port whose v1 prod default is wasm-in-container, with SpinKube / wasmCloud-lattice / provider-native as opt-in per-Camp adapters. Remaining: the host **conformance-suite** assertions and the wasmCloud-lattice adapter's cross-host link semantics. **Grounding/refinements** (from [`competitors/wasm-hosts`](../../competitors/wasm-hosts/README.md)): pin **`runwasi`/containerd-shim** as the mechanism for the wasm-in-container default + SpinKube adapter; pin **`wRPC` (WIT-over-RPC) over the lattice (NATS)** as the wasmCloud adapter's cross-host link transport.
 - `hobo:*` WIT world naming/versioning; how aggressively to track upstream `wasi:*` draft churn.
 - Component-to-component composition (`wac`) vs runtime links for intra-app calls.
 - Container-fallback runtime + when the Planner chooses it automatically (GPU/native detection).

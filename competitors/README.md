@@ -11,6 +11,7 @@
 | **shoo.dev** | Zero-config Google-sign-in auth broker (PKCE + ES256/JWKS) — *adjacent; identity* | [`shoo/`](./shoo/README.md) | [`shoo/hobo-mapping.md`](./shoo/hobo-mapping.md) |
 | **Dapr** | Distributed-application runtime: portable building-block APIs + pluggable components (sidecar) — *closest architectural analog* | [`dapr/`](./dapr/README.md) | [`dapr/hobo-mapping.md`](./dapr/hobo-mapping.md) |
 | **Encore** | Infrastructure-from-code for TS/Go (declare resources in code → provision AWS/GCP) — *closest product analog* | [`encore/`](./encore/README.md) | [`encore/hobo-mapping.md`](./encore/hobo-mapping.md) |
+| **Wasm hosts** | The wasm component-hosting landscape (Wasmtime · Spin/SpinKube · wasmCloud) — *grounds ADR-0031's `component-host` adapters* | [`wasm-hosts/`](./wasm-hosts/README.md) | [`wasm-hosts/hobo-mapping.md`](./wasm-hosts/hobo-mapping.md) |
 
 Each folder captures positioning, the feature surface (with quoted excerpts of factual API/CLI/config surface where it matters), differentiators, and gaps a competitor could exploit. The `hobo-mapping.md` in each shows HoBo's equivalent for every feature and where HoBo deliberately goes further. Some entries (Convex, shoo.dev) are **adjacent** rather than head-on — captured because they inform HoBo's design or could compose with it.
 

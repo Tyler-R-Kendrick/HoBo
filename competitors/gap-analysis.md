@@ -67,6 +67,18 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 | ~~App-data schema evolution & migration~~ ✅ ([Plan 34](../docs/design/34-app-data-migrations.md)) | Nitric/Humanitec | #15 |
 | ~~Billing / quota / runaway-spend~~ ✅ ([ADR-0039](../docs/design/adr/ADR-0039-billing-quota-cost-attribution.md)) | Humanitec (governance) | #18 |
 
+## 3b. Re-survey — Dapr & Encore (2026-06-22)
+After the backlog closed, two of the closest **un-captured** comparables were added (see [`dapr/`](./dapr/README.md), [`encore/`](./encore/README.md)) and analyzed against HoBo's now-complete design:
+
+- **Dapr** ([`dapr/`](./dapr/README.md)) — the closest *architectural* analog: portable building-block APIs with pluggable components behind them. Its 12 building blocks map **near 1:1** onto HoBo's WIT ports/primitives — strong external **validation** of HoBo's ports/capability-provider spine. Dapr stops at the **runtime/sidecar** layer (it doesn't provision infra, has no control-plane planes, no event-sourced audit, hand-written adapters). **No new major gap** — HoBo is a superset (provisioning + control plane + AI-native) on top of the same runtime model.
+- **Encore** ([`encore/`](./encore/README.md)) — the closest *product* analog: infrastructure-from-code for TS/Go → AWS/GCP, with excellent local DX (`encore run` real-infra + `:9400` dashboard + preview envs) and an MCP agent surface. It **validates** HoBo's IfC authoring (Plans 21/22), local-fidelity (ADR-0042), preview-Camps (Plan 26), and MCP (Plan 6). It's bounded to **AWS/GCP + TS/Go + fixed mapping**; HoBo's breadth (multi-cloud + pluggable IaC + language-neutral wasm + Resource Definitions/Matching + event-sourced governance + Forge) is the delta. **No new major gap.**
+
+**Minor candidates surfaced (low priority, not a remediation round):**
+- **G9 — first-class app-facing `crypto` capability** (Dapr's *cryptography* building block: encrypt/decrypt/sign with keys the app never holds). HoBo has secrets + envelope encryption ([Plan 12](../docs/design/12-security-multitenancy.md)/[Plan 31](../docs/design/31-config-secretless-secrets.md)) but **not** an explicit app-facing crypto port — a small, additive `hobo:crypto` capability would close it. *Low priority; covered for most cases by secrets+KMS.*
+- **Minor — explicit app-facing `lock()` primitive + declarative per-binding resiliency policies** (Dapr exposes distributed-lock + retry/timeout/circuit-breaker config). HoBo *has* the mechanisms (ActorHost lease, [Plan 5](../docs/design/05-reliability-ha.md) circuit-breakers/retries) but not as app-declared surface; exposing them is a small DX add. *Low priority.*
+
+**Net:** the two closest comparables surface **no major new gaps** — they primarily *validate* HoBo's architecture, with a couple of minor additive capabilities worth a future tranche if demand appears.
+
 ## 4. Review verdict
 *(Superpowers `receiving-code-review` framing.)* **Strong-but-uneven** *(original verdict)*. HoBo's intersection bet (agnostic IfC + durable event-sourced runtime + agents/Forge, self-hostable) is genuinely uncontested — no competitor spans it. The risks were **depth, not breadth**: (a) the **unique** differentiator (Forge generation) was the least-specified; (b) HoBo lacked the one piece of mainstream DX a TS-backend audience expects (**reactive queries**); (c) several "designed" capabilities were blocked on unresolved open questions (wasm host, matching algorithm, data migration) that competitors had already shipped answers to. None fatal; all addressable in the design phase.
 

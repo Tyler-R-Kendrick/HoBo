@@ -8,7 +8,7 @@
 
 ## Design plans
 
-The design is split into 39 independently iterable plans (`00`–`38`) under [`docs/design/`](./docs/design/README.md). Suggested reading order: **[0 Vision](./docs/design/00-vision.md) → [10 Architecture overview](./docs/design/10-architecture-overview.md) → [19 Worked example](./docs/design/19-worked-example.md)**, then the two deep plans **[2 SDK/API ⭐](./docs/design/02-sdk-api.md)** and **[6 AI-native & agent auth ⭐](./docs/design/06-ai-native-agent-auth.md)**.
+The design is split into 44 independently iterable plans (`00`–`43`) under [`docs/design/`](./docs/design/README.md). Suggested reading order: **[0 Vision](./docs/design/00-vision.md) → [10 Architecture overview](./docs/design/10-architecture-overview.md) → [19 Worked example](./docs/design/19-worked-example.md)**, then the two deep plans **[2 SDK/API ⭐](./docs/design/02-sdk-api.md)** and **[6 AI-native & agent auth ⭐](./docs/design/06-ai-native-agent-auth.md)**. HoBo is a meta cloud-orchestration layer that is **security-first, AI-native, platform-engineering built-in, and patchable** — with built-in **Operator Agents** ([40](./docs/design/40-operator-agents.md)), a **generated stack** across data/business/message/intelligence/ui ([41](./docs/design/41-generated-stack.md)), **app-UI generation** ([42](./docs/design/42-ui-layer-generation.md)), and **patchability** beyond portability ([43](./docs/design/43-patchability-extensibility.md)).
 
 | Foundations | Deep dives | Cross-cutting |
 |---|---|---|

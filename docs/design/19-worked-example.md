@@ -1,6 +1,6 @@
 # Plan 19 — End-to-end worked example
 
-> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–23 actually compose. App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
+> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–39 actually compose (the base narrative is Plans 2–23; the **v2–v5 addenda** below layer in the later models without rewriting it). App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
 
 > **v2 authoring (IfC + wasm + `.allow()`).** In the v2 model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
@@ -28,6 +28,26 @@
 > `hobo deploy --camp prod` → matches the HA definition; `hobo deploy --camp preview` (an **ephemeral** Camp, auto-TTL) → matches the in-cluster one. Each choice emits a **`match.Decided`** event (score + rejected candidates) so the dashboard answers "*why did preview get the cheap DB?*". A **Pipeline** can open the prod **Delta** behind an **approval gate**; if the cluster is private, Executors run behind the **HoBo Agent**. The app code and `bindle.ts` are untouched throughout.
 
 > **v4 gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
+
+> **v5 data plane ([Plan 39](./39-data-plane-projections.md)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is now the *escape-hatch* form ([raw/adopted access](./39-data-plane-projections.md)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
+> ```ts
+> // domain.wit — the canonical domain schema (Plan 24 / ADR-0051) → generates TS types + protobuf event bodies
+> //   record order { id: string, status: order-status, total: u64 }   enum order-status { placed, confirmed, shipped }
+>
+> // src/api/orders.ts — WRITE: a command runs inside the Order aggregate (an actor; ADR-0053)
+> import { command, view } from "@hobo/runtime";
+> export const placeOrder = command("Order.Place", { key: (i: PlaceOrder) => i.id }, (input, ctx) => {
+>   if (ctx.state.status) throw new Conflict("order exists");         // invariant vs the aggregate's write-model fold
+>   ctx.emit("OrderPlaced", { id: input.id, total: input.total });   // appended under the aggregate's lease + optimistic seq
+> });
+>
+> // READ: a reactive, projection-backed view (Plan 32) — no table, no SQL, backend-neutral by logical name
+> export async function myOrders(userId: string) {
+>   "use query";
+>   return view("orders").where({ userId, status: "placed" }).order("createdAt").paginate({ limit: 20 });
+> }
+> ```
+> The `orders` **projection** folds `Order.*` events into a read model; a **platform/data engineer** picks its sink exactly like the `db` definition in v3 — `defineResource({ type: "projection-sink", paradigm: "relational", match: { envType: "production" } })` in prod, the native log-backed projection in preview — recorded in **`match.Decided`**. App code names `view("orders")`, never a backend, and the `OrderConfirmed` saga (§1) is unchanged (it already reacts to domain events). *Developers don't know how orders are stored or queried; the architect has full control* — the data-plane thesis, shown end to end.
 
 ## 1. Scaffold & build locally (no cloud)
 ```bash

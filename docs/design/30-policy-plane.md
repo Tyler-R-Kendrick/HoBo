@@ -27,7 +27,7 @@ request = {
 The **decision** is richer than allow/deny:
 ```text
 decision = {
-  effect: allow | deny | warn | mutate | require-approval
+  effect: allow | allow-degraded | deny | warn | mutate | require-approval
   reason, violations[], mutations[], approvals[]
   obligations[]            // "allowed, but you must…"
   evidence: { policyIds[], inputHash, engine }   // → recorded as an event
@@ -42,6 +42,7 @@ An **obligation** lets policy say *allow but require X*, and in HoBo that X is a
 - *allow generated provider* **→ require sandbox verification** ([Plan 23](./23-stubbable-ai-implementations.md)).
 - *allow agent action* **→ require human approval before apply** (a `createHook`, [Plan 6](./06-ai-native-agent-auth.md)).
 - *allow spend-incurring action within quota* **→ deny past a hard quota, or trip a spend circuit-breaker on runaway velocity** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — the `MeteringView` counter is the policy input, the breaker is a durable obligation/saga ([Plan 5](./05-reliability-ha.md)) halting deploys/agent-provisioning/Forge-runs until acknowledged.
+- *allow at this spend velocity* **→ `allow-degraded` + a degradation obligation** (*"enter the reduced tier; shed batch/analytics"*) when **spend velocity** would cross a `costAvailabilityProfile` tier before period end ([Plan 16](./16-cost-finops.md)/[ADR-0066](./adr/ADR-0066-cost-driven-graceful-degradation.md)) — graceful QoS shedding by priority is the durable effect, the runaway-spend breaker the last resort.
 - *allow a feature-flag flip* **→ require approval for a prod kill-switch / risky `%` bump, or attach an auto-revert obligation on SLO burn** ([Plan 37](./37-feature-flags-progressive-delivery.md)/[ADR-0044](./adr/ADR-0044-feature-flags-progressive-delivery.md)) — a `flag.Changed` is a policy-gated event like any other deploy-affecting action.
 - *allow a `notify` send* **→ deny to an opted-out recipient, or defer until the quiet-hours window opens** ([Plan 45](./45-app-communications.md)/[ADR-0059](./adr/ADR-0059-app-communications-notify.md)) — consent + per-recipient rate limits are obligation-checked preconditions, with deferral a durable effect (not advice).
 - *allow a deploy/runtime action on classified data* **→ deny if it places/moves the data outside its allowed region, or past its retention ceiling** ([Plan 46](./46-compliance-governance.md)/[ADR-0060](./adr/ADR-0060-compliance-governance-plane.md)) — `context.dataClassifications`/`region` (above) drive a residency/retention obligation at `can-deploy` *and* runtime; routing to an unregistered subprocessor is denied.

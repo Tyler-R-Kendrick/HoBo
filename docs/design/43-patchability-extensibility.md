@@ -20,11 +20,13 @@ Patchability is only real if the seams are *named and stable*. The extension poi
 | Cloud / IaC / build adapters | `CloudProvider`/`IacProvider`/`BuildProvider` | [3](./03-providers-iac.md) |
 | Capability providers | any `wasi:*`/`hobo:*` WIT export | [20](./20-wasm-wasi-runtime.md)/[24](./24-wit-interfaces-reference.md) |
 | Runtimes / `component-host` | `Runtime` / `component-host` ports | [ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)/[ADR-0031](./adr/ADR-0031-wasm-host-of-record-and-runtime-substrate.md) |
+| Durable-store `runtime` port | `EventStore`/`Queue`/`Streamer`/`ActorHost`/`Clock` (conformance: replay fidelity, exactly-once, lease/fencing, ordering) | [ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)/[9](./09-verification-open-questions.md)/[11](./11-event-model.md) |
 | Drivers | `terraform`/`template`/`echo`/`container`/`custom-webhook` | [27](./27-drivers-packs-profiles.md) |
 | Engines | `contract`/`policy`/`training`/operator engines | [29](./29-contracts-compatibility.md)/[30](./30-policy-plane.md)/[ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)/[40](./40-operator-agents.md) |
 | Resource Definitions / Packs / Profiles | platform-rule layer | [25](./25-resource-definitions-matching.md)/[27](./27-drivers-packs-profiles.md) |
 | Agent skills | `@hobo/agent-skills` (operator + external agents) | [1](./01-monorepo.md)/[40](./40-operator-agents.md) |
 | Projection sinks | `projection-sink` paradigms | [39](./39-data-plane-projections.md) |
+| Projection-sink paradigm adapters | add a new paradigm (relational/document/kv/graph/vector/OLAP/…): author driver → certify (`@hobo/conformance`) → signed Pack → Matching-select | [39](./39-data-plane-projections.md)/[ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md)/[27](./27-drivers-packs-profiles.md) |
 Each seam: a typed contract (WIT/conformance), a registry entry (signed + provenance), and Matching/selection per Camp ([Plan 25](./25-resource-definitions-matching.md)). Adding a seam implementation never requires editing the core.
 
 ### 3. Persisted patches (safe, round-trippable mutation)
@@ -46,6 +48,13 @@ flowchart LR
   CONF --> TRUST["trusted, upgradable derivative"]
 ```
 
+## Derivative upgrade paths ([ADR-0068](./adr/ADR-0068-derivative-upgrade-paths.md))
+Patchability is only durable if long-lived derivatives can **track core upgrades** instead of rotting or forking permanently — so derivatives get a **versioned, conformance-gated upgrade path** (closing the deferral below).
+- **Seams are independently semver-versioned.** Each extension seam (a WIT port: `policy-engine`, `contract-engine`, `component-host`, a provider/driver/runtime/projection-sink — the seams enumerated above) carries a semver; a Yard pins the seam versions it requires, and the manifest IR records which seam versions a Bindle uses (proven by its conformance run).
+- **A signed `derivative.json` descriptor** ([Plan 12](./12-security-multitenancy.md)): the **core version range** it targets (`core@^1.0.0 <1.1.0`), its **seam implementations + versions** (`policy-engine@2.3.0`, `custom-aws-driver@1.0.0`), and **pinned upcasters** for any persisted mutations ([ADR-0048](./adr/ADR-0048-persisted-code-mutation-mechanism.md)) — codemods that repair the hand-written/generated regions on a core upgrade.
+- **An `hobo derivative upgrade <from> <to>` ceremony.** In a derivative Yard it: **checks `derivative.json` compatibility** (warns on any seam/mutation incompatibility) → **runs the pinned upcasters** → **re-runs seam conformance** (proves the upgrade didn't regress a guarantee) → **emits an upgrade report**. Events: `derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed`.
+- **Core releases ship a breaking-change manifest** — the seam/port changes with upcaster hints (*"`policy-engine` gained decision field X — here's the migration"*), so a derivative author writes targeted upcasters instead of reverse-engineering the diff. **Conformance is the bridge:** a derivative that re-passes the suite post-upgrade is a trusted, upgradable first-class citizen ([ADR-0057](./adr/ADR-0057-patchability-derivative-implementations.md)).
+
 ## Verification
 - A custom engine (e.g. a bespoke `policy-engine`) shipped as a signed plugin passes conformance and is selected per Camp via Matching — no core edit; portability of user apps is unaffected.
 - A persisted patch to a generated region survives regeneration (round-trip), shows as a minimal diff, and `hobo codegen --check` distinguishes it from drift.
@@ -53,9 +62,10 @@ flowchart LR
 
 ## Scope (v1) & YAGNI
 - **v1:** name patchability as a guarantee + enumerate the seams (all already exist as ports); the persisted-patch mechanism ([ADR-0048](./adr/ADR-0048-persisted-code-mutation-mechanism.md)); conformance/signing as the trust bridge.
-- **Deferred:** an upstream-merge/rebase story for long-lived derivatives (how a fork tracks core upgrades); a public derivative/plugin marketplace beyond Resource Packs.
+- **Now designed (was deferred):** the upgrade story for long-lived derivatives — seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony + core breaking-change manifests ([ADR-0068](./adr/ADR-0068-derivative-upgrade-paths.md)).
+- **Deferred:** an upstream-merge/rebase story beyond the upgrade ceremony; a public derivative/plugin marketplace beyond Resource Packs.
 
 ## Iteration hooks
-- How a derivative tracks core upgrades (semver + conformance-pinned + codemod-assisted migration).
+- ~~How a derivative tracks core upgrades (semver + conformance-pinned + codemod-assisted migration).~~ **Resolved ([ADR-0068](./adr/ADR-0068-derivative-upgrade-paths.md)):** seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony (check compat → run upcasters → re-run conformance → report) + core breaking-change manifests.
 - Whether "patchability" needs its own CLI surface (`hobo extend`/`hobo fork`) or rides existing pack/registry commands.
 - Provenance/trust for third-party derivatives (signing chain, attestation) beyond [Plan 12](./12-security-multitenancy.md).

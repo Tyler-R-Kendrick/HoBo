@@ -42,7 +42,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `bindle.Registered` · `bindle.VersionPublished` · `camp.Created` · `camp.RuntimeBound` · `env.PromoteRequested` · `env.Promoted` · `env.PromoteRolledBack` (multi-Camp environment-group saga, [ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md))
 
 **Deployment** (the control-plane saga)
-`deployment.Requested` · `deployment.Planned` · `deployment.PlanRejected` · `deployment.Deployed` · `deployment.RolledBack`
+`deployment.Requested` · `deployment.Planned` · `deployment.PortabilityReported` (plan-time portability scorecard: portability % + lock-in sources + per-resource equivalence class + upgrade readiness — [Plan 22](./22-wiring-manifest.md)/[ADR-0024](./adr/ADR-0024-portability-conformance-guarantee.md)) · `deployment.PlanRejected` · `deployment.Deployed` · `deployment.RolledBack`
 
 **Resource** (one stream per resource instance)
 `resource.Provisioning` · `resource.Provisioned` · `resource.UpdateRequested` · `resource.Updated` · `resource.Failed` · `resource.Compensating` · `resource.Destroyed` · `resource.DriftDetected` · `resource.Adopted` (existing resource brought under management on `hobo import` + its source/provenance, [ADR-0041](./adr/ADR-0041-migration-onboarding.md))
@@ -87,7 +87,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **`policy.Decided`** (effect + evidence + obligations) · `policy.ViolationDetected` · `policy.WaiverRequested` · `policy.WaiverApproved` · `policy.ObligationCreated` · `policy.ObligationSatisfied`
 
 **Cost & metering** ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)) — metering is the `MeteringView` *projection* (no per-usage events); quota decisions ride `policy.Decided`
-`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker)
+`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker) · `spend.DegradationRequired` · `spend.DegradationApplied` · `spend.DegradationRolledBack` (cost-driven graceful degradation saga, [ADR-0066](./adr/ADR-0066-cost-driven-graceful-degradation.md))
 
 **Evals & promotion** ([Plan 23](./23-stubbable-ai-implementations.md))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
@@ -137,6 +137,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 
 **Marketplace & ecosystem** ([Plan 48](./48-marketplace-ecosystem.md)) — a governed lifecycle over already-signed/certified artifacts; install ≠ force (Matching binds)
 `listing.Published` · `listing.Certified` (signed + `@hobo/conformance`-passed + provenance — uncertified ⇒ unlisted) · `listing.Installed` (extends `provider.Registered`/`pack.Imported`/`forge.Certified`) · `listing.Yanked` (compromised/broken version pulled; installed copies flagged by `hobo doctor`, not silently broken)
+
+**Derivatives** ([Plan 43](./43-patchability-extensibility.md)/[ADR-0068](./adr/ADR-0068-derivative-upgrade-paths.md)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
+`derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed`
 
 ## Projections (read models)
 Events are the write model; queries read **projections** rebuilt by folding the stream. Initial projections:

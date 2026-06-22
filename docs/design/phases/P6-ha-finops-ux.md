@@ -11,6 +11,8 @@
 
 > **Gates hardening:** harden **obligations** as durable effects (require-canary/approval tracked to completion) and the **remediation/auto-fix** loop (classify failure → propose safe fix, gated) ([Plan 30](../30-policy-plane.md)/[Plan 23](../23-stubbable-ai-implementations.md)); the dashboard gains a **`hobo verify` / gate-decision** view (per-gate results + `explain-failure` replay).
 
+> **Portability & patchability hardening:** this stage also lands **component-host conformance** (the `@hobo/conformance/component-host` suite + host version-pinning + cross-host E2E + the **PortabilityReport** scorecard, [ADR-0067](../adr/ADR-0067-component-host-portability.md)/[Plan 22](../22-wiring-manifest.md)) and **derivative upgrade paths** (seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony + core breaking-change manifests, [ADR-0068](../adr/ADR-0068-derivative-upgrade-paths.md)) over the multi-provider ([ADR-0024](../adr/ADR-0024-portability-conformance-guarantee.md)) and patchability ([Plan 43](../43-patchability-extensibility.md)) work.
+
 > **Governance planes + ports:** broaden the platform over existing machinery (no new runtime) — the **`notify` port** (the `notify` family as a cloud-messaging port in the resource catalog, [Plan 45](../45-app-communications.md)/[ADR-0059](../adr/ADR-0059-app-communications-notify.md)), **compliance & data governance enforcement** (classification→residency/retention obligations + crypto-shred erasure + an OCSF attestation export, [Plan 46](../46-compliance-governance.md)/[ADR-0060](../adr/ADR-0060-compliance-governance-plane.md)), **AI safety & model governance** (model registry + `guardrail` capability + red-teaming, [Plan 47](../47-ai-safety-model-governance.md)/[ADR-0061](../adr/ADR-0061-ai-safety-model-governance.md)), and **Registry distribution** (governed publish/discover/install/trust over signed/certified artifacts; never-gate-portability; no monetization, [Plan 48](../48-marketplace-ecosystem.md)/[ADR-0062](../adr/ADR-0062-marketplace-ecosystem.md)).
 
 ## Workstream 1 — Reliability & HA ([Plan 5](../05-reliability-ha.md))
@@ -27,6 +29,7 @@
 1. Plan-time **cost estimate** from `cost.json` × usage profile + egress per connectivity tier; show in `hobo plan`.
 2. Planner cost objective (cost/latency/stay-on-one-cloud blend); record rationale.
 3. **Budgets + spend-caps** as policy gates (incl. agent caps); showback per tenant/Bindle/Camp; optional carbon term.
+4. **Cost-driven graceful degradation** ([ADR-0066](../adr/ADR-0066-cost-driven-graceful-degradation.md)): the `costAvailabilityProfile` (budget + `availabilitySlo` + ordered degradation tiers + priority shedding), spend-velocity as a policy input → `allow-degraded`, the `spend.Degradation*` saga (scale-to-zero/feature-flag/cache-TTL/request-priority shed, canary hold; runaway-spend breaker as last resort), and the **SLO-bounded Planner objective** (min-cost subject to the availability floor).
 
 ## Workstream 4 — Dashboard (full) ([Plan 7](../07-ui-dashboard.md))
 1. Build all views: deployments timeline (replay/time-travel), topology graph, run inspector (+ replay-diff), registry browser, **credential audit**, cost/FinOps, **link map** + **cross-WIT-call traces**, drift.

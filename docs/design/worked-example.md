@@ -121,7 +121,7 @@ hobo plan --camp prod # dry run
 ```bash
 hobo deploy --camp prod --strategy canary
 ```
-Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./event-model.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
+Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./data-plane.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
 
 ### 3. Optimize a boundary (split providers, no app edits)
 Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** the `camp()` mapping:

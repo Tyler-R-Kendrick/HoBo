@@ -2,7 +2,7 @@
 
 This capability doc specifies HoBo's **default operational surfaces** for multi-cloud, multi-environment deployments: a fleet-wide **operations dashboard** (the prod analog of the Aspire dashboard, but across clouds and environments), a per-**project** **status page** (aggregate uptime + dependent-service health, internal by default and publicly shareable on opt-in), and the **architecture-derived availability** model — the *"march of the 9s"* — that estimates downtime from the dependency graph and calibrates it against observed history.
 
-Everything here is a **projection over the event log** ([Plan 11](./event-model.md#plan-11)): no surface holds privileged state, so every view is consistent with the audit log by construction — the same principle the developer dashboard already follows ([Plan 7](./developer-experience.md#plan-07)).
+Everything here is a **projection over the event log** ([Plan 11](./data-plane.md#plan-11)): no surface holds privileged state, so every view is consistent with the audit log by construction — the same principle the developer dashboard already follows ([Plan 7](./developer-experience.md#plan-07)).
 
 ## Plan 49
 
@@ -115,7 +115,7 @@ flowchart LR
 
 **Honest limits (stated, not hidden):** the model assumes the declared per-component SLAs and the modeled serial/parallel structure; correlated failures (a shared region/provider outage hitting "independent" replicas), partial/grey failures, and human/deploy-induced outages are **not** captured by SLA composition — which is exactly why **observed calibration runs alongside** and the gap is surfaced rather than the estimate being treated as truth.
 
-### Events ([Plan 11](./event-model.md#plan-11))
+### Events ([Plan 11](./data-plane.md#plan-11))
 
 Deliberately minimal — the surfaces are projections, the groupings are dimensions on existing events:
 - **Grouping** is **not** a new event family: `project` is a recorded dimension on existing events (like `tenant`); `environment` derives from Camp `environment type` ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)).

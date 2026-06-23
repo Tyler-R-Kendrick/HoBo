@@ -338,7 +338,7 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 | **WASM/WASI-default polyglot runtime** (any language → component; capability security) | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
 | **wRPC membrane + WIT-component providers + thin SDK** (same building-block set as Nitric's gRPC + Go-plugin shape, realized on the Component Model; SDK is typed sugar with no cloud logic; deny-by-default by linking) | [ADR-0069](../docs/design/adr/01-architecture-core.md#adr-0069) |
 | **Dev auth bypass via integrated contract testing** (`hobo dev` satisfies the `auth` contract with a fixture principal; same contract gates `can-deploy`, so dev can't drift from prod — vs Nitric's OIDC rules not enforced locally) | [ADR-0070](../docs/design/adr/02-identity-security.md#adr-0070) |
-| **Actors + durable workflows + choreography sagas** over a replayable event store | [02](../docs/design/sdk-api.md#plan-02), [11](../docs/design/event-model.md#plan-11) |
+| **Actors + durable workflows + choreography sagas** over a replayable event store | [02](../docs/design/sdk-api.md#plan-02), [11](../docs/design/data-plane.md#plan-11) |
 | **Agents as first-class principals** + Capability Manifest + MCP control surface | [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | **AI-generated providers AND implementations**; stub → implement → trace → auto-evolve → live-fix (gated) | [23](../docs/design/forge-generated-stack.md#plan-23) |
 | **Aspire-style wiring + manifest IR** for any component/container | [22](../docs/design/authoring-resources-wiring.md#plan-21) |

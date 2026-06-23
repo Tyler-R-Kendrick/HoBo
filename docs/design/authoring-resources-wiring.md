@@ -146,7 +146,7 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
 ```
 - **Tokens** like `{db.connectionString}` are lazy references resolved at deploy (Aspire pattern).
 - **`links`** are the wasm capability bindings ([Plan 20](./wasm-runtime-wit.md#plan-20)); **`allow`** mirrors the permission model above.
-- The manifest is **content-addressed and event-sourced** (`deployment.Planned` carries it), so it's auditable/replayable ([Plan 11](./event-model.md#plan-11)).
+- The manifest is **content-addressed and event-sourced** (`deployment.Planned` carries it), so it's auditable/replayable ([Plan 11](./data-plane.md#plan-11)).
 
 **Publishers (deploy targets).** Like Aspire publishers / `azd`, the manifest is rendered by pluggable backends: the default **Pulumi Automation API** adapter ([Plan 4](./control-plane.md#plan-04)), plus Crossplane (k8s), and container/wasm-host targets (SpinKube/containerd-wasm, wasmCloud lattice). The manifest decouples *what to deploy* from *how*.
 
@@ -219,7 +219,7 @@ The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-co
 
 **Events & audit.**
 - `config.Resolved` — a declared key bound to a source (binding / secret-store path / federation trust); carries the *ref* + Camp, never the value.
-- `secret.Accessed` — a use-time fetch, joined to the run/agent + the brokered `token.Used` (the [CredentialAudit](./event-model.md#plan-11) projection answers "who read which secret, when, with which token"). `secret.Unavailable` — a failed fetch (store down / denied).
+- `secret.Accessed` — a use-time fetch, joined to the run/agent + the brokered `token.Used` (the [CredentialAudit](./data-plane.md#plan-11) projection answers "who read which secret, when, with which token"). `secret.Unavailable` — a failed fetch (store down / denied).
 - **Redaction is at capture time, not export.** Values are scrubbed **before** a span/event is stored — so a secret never lands in the event log, OTel/OpenInference spans, error messages, or **training trajectories** ([Plan 23](./forge-generated-stack.md#plan-23): a `"use training"` method that calls `ctx.config.STRIPE()` must not leak the value into its trajectory). Values that must transit a step's I/O are per-run encrypted ([TR-111](../requirements/requirements.md)).
 
 **Local development (`hobo dev`).** The local Camp (`runtime-local`) has no cloud secret store, so `secretRef` resolves against a **dev-only** source, in order: (1) a gitignored **`.env.local`**, (2) the OS keychain, (3) an interactive prompt (skipped in CI; CI uses `.env.local` or stubbed providers). Dev secrets are **clearly marked non-production**, audited as `secret.Accessed { camp: "local", source: "dev" }`, and never satisfy a production `can-deploy`. Tests prefer `stub()`ed providers ([Plan 23](./forge-generated-stack.md#plan-23)) so unit runs need no real secret at all.
@@ -254,7 +254,7 @@ Ties to the rest of the model:
 
 **Design properties.**
 - **Small, regular grammar** with a **stable, canonical AST** — one obvious way to express a thing, so generated programs are diffable and scoreable.
-- **Declarative-first + deterministic** — no host imports or collection-time side-effects; the same source always lowers to the same IR (replay-safe, [Plan 11](./event-model.md#plan-11)).
+- **Declarative-first + deterministic** — no host imports or collection-time side-effects; the same source always lowers to the same IR (replay-safe, [Plan 11](./data-plane.md#plan-11)).
 - **Schema-aware & self-describing** — the grammar carries enough structure that a model (and a linter) can complete/repair it locally; errors are machine-actionable (like `deployment.PlanRejected`).
 - **Token-efficient** — terse but readable, so generation/training context stays small.
 - **Round-trippable with TypeScript** — TS↔Hobo Code is mechanically convertible (both are views over the same IR/AST), so teams mix surfaces and the Forge emits either.

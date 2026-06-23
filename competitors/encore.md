@@ -140,7 +140,7 @@ The mental model is **infrastructure-from-code (IfC)**: instead of a separate Ia
 | TS/Go (Python coming) | language-neutral **WIT** runtime, any wasm language ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) | ➕ |
 | *(none — greenfield-leaning)* | **`hobo import`** adopt-in-place migration ([ADR-0041](../docs/design/adr/07-portability-extensibility.md#adr-0041)) | ➕ adopt existing TF/Pulumi/Lakebed/FaaS estates incrementally |
 | *(none)* | **Multi-tenant-app primitives** ([Plan 50](../docs/design/multi-tenant-apps.md#plan-50)) | ➕ app-tenant model + tenancy spectrum + isolation by construction |
-| *(none)* | **Event-sourced control plane + audit/replay** ([Plan 11](../docs/design/event-model.md#plan-11)) | ➕ |
+| *(none)* | **Event-sourced control plane + audit/replay** ([Plan 11](../docs/design/data-plane.md#plan-11)) | ➕ |
 | *(none)* | **Contracts/`can-deploy` + policy planes** ([Plan 29](../docs/design/contracts-policy-flags.md#plan-29)) | ➕ |
 | *(none)* | **Forge** — AI-generated providers/impls ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)) + **trainable semantic functions** | ➕ |
 | *(none)* | **Cross-cloud data**: app-data migration ([ADR-0032](../docs/design/adr/03-data-plane.md#adr-0032)) + cross-Camp consistency ([ADR-0040](../docs/design/adr/05-config-matching-environments.md#adr-0040)) | ➕ |

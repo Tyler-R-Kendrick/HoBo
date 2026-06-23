@@ -15,7 +15,7 @@
 | Owner (Accountable) | Founders / Business lead (business), Product lead (product), Engineering lead (technical) |
 | Authors | Business + Product + Design + Engineering + Platform + SRE |
 | Reviewers | Founders, Engineering, Platform, UX, Security, SRE, GTM |
-| Related design | [00 Vision](../design/vision.md#plan-00), [02 SDK](../design/sdk-api.md#plan-02), [04 Control plane](../design/control-plane.md#plan-04), [06 AI/agent](../design/ai-native-agent-auth.md#plan-06), [07 UI](../design/developer-experience.md#plan-07), [08 Roadmap](../design/roadmap.md#plan-08), [09 Verification](../design/verification.md#plan-09), [10 Architecture](../design/architecture.md#plan-10), [11 Event model](../design/event-model.md#plan-11), [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-05), [17 Positioning](../design/positioning.md#plan-17), [19 Worked example](../design/worked-example.md#plan-19), [18 ADR log](../design/adr/README.md) |
+| Related design | [00 Vision](../design/vision.md#plan-00), [02 SDK](../design/sdk-api.md#plan-02), [04 Control plane](../design/control-plane.md#plan-04), [06 AI/agent](../design/ai-native-agent-auth.md#plan-06), [07 UI](../design/developer-experience.md#plan-07), [08 Roadmap](../design/roadmap.md#plan-08), [09 Verification](../design/verification.md#plan-09), [10 Architecture](../design/architecture.md#plan-10), [11 Event model](../design/data-plane.md#plan-11), [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-05), [17 Positioning](../design/vision.md#plan-17), [19 Worked example](../design/worked-example.md#plan-19), [18 ADR log](../design/adr/README.md) |
 
 ### Traceability model
 Decided in [ADR-0018](../design/adr/08-scope-and-requirements.md#adr-0018):
@@ -72,9 +72,9 @@ Three decision lanes — business, product, technical.
 ### Vision & shared context
 Shipping software still forces application developers to become part-time platform engineers — picking clouds, wiring IaC, designing for HA, and operating infrastructure ([design README §Context](../design/README.md)). Today's tools force a bad trade: an opinionated closed PaaS (simple but locked-in) **or** raw multi-cloud IaC (powerful but heavy). Neither is built for the emerging world where **AI agents are primary builders and deployers**.
 
-**HoBo** is an **AI-native meta-cloud** — a cloud-agnostic **control plane** plus a TypeScript SDK: *"Write your app once in TypeScript. HoBo decides how to host it — and gets out of the way when you want control. Built for humans and the agents that work for them."* ([vision.md#plan-00](../design/vision.md#plan-00)). It is **not** a single PaaS, **not** "just IaC," and **not** Kubernetes-only ([positioning.md#plan-17](../design/positioning.md#plan-17)). The product realizes six principles: agnostic by default / optimizable on demand; everything replayable; agents are users; ports over platforms; self-host = hosted; conformance is the contract.
+**HoBo** is an **AI-native meta-cloud** — a cloud-agnostic **control plane** plus a TypeScript SDK: *"Write your app once in TypeScript. HoBo decides how to host it — and gets out of the way when you want control. Built for humans and the agents that work for them."* ([vision.md#plan-00](../design/vision.md#plan-00)). It is **not** a single PaaS, **not** "just IaC," and **not** Kubernetes-only ([positioning.md#plan-17](../design/vision.md#plan-17)). The product realizes six principles: agnostic by default / optimizable on demand; everything replayable; agents are users; ports over platforms; self-host = hosted; conformance is the contract.
 
-The bet: own the intersection no incumbent occupies — cloud-agnostic ports/adapters (as WIT interfaces) + a durable, event-sourced runtime + inline `.allow()` infrastructure-from-code + agents-as-first-class + **AI-generated providers** + a self-hostable control plane ([17](../design/positioning.md#plan-17)).
+The bet: own the intersection no incumbent occupies — cloud-agnostic ports/adapters (as WIT interfaces) + a durable, event-sourced runtime + inline `.allow()` infrastructure-from-code + agents-as-first-class + **AI-generated providers** + a self-hostable control plane ([17](../design/vision.md#plan-17)).
 
 ### Scope (single v1)
 **In scope (the whole designed surface, [ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity; **the Forge; cloud-cost FinOps (estimates/budgets/showback); multi-region HA; the complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth; the Operator Crew, the generated stack (infrastructure + app/UI), patchability, SRE/incident management; and the governance planes (compliance & data governance, AI safety/model governance).** Delivered in dependency-ordered build stages ([per-stage build detail](../design/roadmap.md#per-stage-build-detail-stages-06)) — there is no deferred release.
@@ -106,12 +106,12 @@ All objectives are part of the single v1 ([ADR-0063](../design/adr/08-scope-and-
 | OBJ-5 | Earn developer trust via openness | OSS core self-hostable; "self-host = hosted" demonstrated | stage 2 |
 
 ### 3 Market opportunity & positioning
-**Positioning statement** ([17](../design/positioning.md#plan-17)): *HoBo is an AI-native meta-cloud — a cloud-agnostic control plane (WIT/WASM surface; TypeScript the first reference implementation) that maps one app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.*
+**Positioning statement** ([17](../design/vision.md#plan-17)): *HoBo is an AI-native meta-cloud — a cloud-agnostic control plane (WIT/WASM surface; TypeScript the first reference implementation) that maps one app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.*
 
-**The gap HoBo fills:** *"No one combines cloud-agnostic ports/adapters (as WIT interfaces) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane. That intersection is HoBo."* ([17](../design/positioning.md#plan-17)).
+**The gap HoBo fills:** *"No one combines cloud-agnostic ports/adapters (as WIT interfaces) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane. That intersection is HoBo."* ([17](../design/vision.md#plan-17)).
 
 ### 4 Competitive analysis
-From [positioning.md#plan-17](../design/positioning.md#plan-17) and the [`competitors/`](../../competitors/README.md) captures:
+From [positioning.md#plan-17](../design/vision.md#plan-17) and the [`competitors/`](../../competitors/README.md) captures:
 
 | Competitor | Their position | HoBo's edge |
 |---|---|---|
@@ -123,7 +123,7 @@ From [positioning.md#plan-17](../design/positioning.md#plan-17) and the [`compet
 | **shoo.dev** | Zero-config Google-sign-in broker | Adjacent (identity); HoBo adds workload/agent identity + token brokering ([competitors/shoo](../../competitors/shoo.md)) |
 | **Vercel + Workflow SDK** | PaaS + durable execution | HoBo provides its own HoBo-native durable runtime (per Camp) for portability; adds multi-provider + IfC + self-host |
 
-**Defensible differentiators** ([17](../design/positioning.md#plan-17)): AI-native operations; the Capability Manifest standard + Registry + Forge (no community bottleneck); event-sourced everything; genuine agnostic + typed escape hatch in one model; contracts/policy/evals as native graph artifacts.
+**Defensible differentiators** ([17](../design/vision.md#plan-17)): AI-native operations; the Capability Manifest standard + Registry + Forge (no community bottleneck); event-sourced everything; genuine agnostic + typed escape hatch in one model; contracts/policy/evals as native graph artifacts.
 
 **Who HoBo is *not* for:** single-cloud teams happy with native tooling; pure-Kubernetes shops on Crossplane/KubeVela; bare-metal/extreme-perf workloads where any abstraction is a liability.
 
@@ -147,7 +147,7 @@ Persona priority is fixed by [ADR-0019](../design/adr/08-scope-and-requirements.
 | **BR-003** | Developers can **optimize per-provider on demand** without losing portability (typed escape hatch). | M | "optimizable on demand" ([ADR-0007](../design/adr/README.md)) |
 | **BR-004** | **AI agents are first-class users**: every capability is reachable via SDK, CLI, **and** MCP with first-class agent identity. | M | OBJ-2; agents-as-users ([06](../design/ai-native-agent-auth.md#plan-06)) |
 | **BR-005** | Provider access uses **brokered/federated short-lived credentials**, not static secrets (zero-secret default). | M | Trust/security; OBJ-2 ([06](../design/ai-native-agent-auth.md#plan-06)/[12](../design/security-networking.md#plan-12)) |
-| **BR-006** | Every business-relevant action (deploy, token grant/use/revoke, spend approval, policy decision) is **auditable and replayable**. | M | Compliance, trust ([11](../design/event-model.md#plan-11)/[12](../design/security-networking.md#plan-12)) |
+| **BR-006** | Every business-relevant action (deploy, token grant/use/revoke, spend approval, policy decision) is **auditable and replayable**. | M | Compliance, trust ([11](../design/data-plane.md#plan-11)/[12](../design/security-networking.md#plan-12)) |
 | **BR-007** | HoBo is **self-hostable**; the hosted offering runs the same code ("self-host = hosted"). | M | OBJ-5; openness ([00](../design/vision.md#plan-00)/[04](../design/control-plane.md#plan-04)) |
 | **BR-008** | Missing provider coverage can be filled **without waiting on a community** (AI-generated, conformance-gated). | S | OBJ-3; Forge moat ([06](../design/ai-native-agent-auth.md#plan-06)/[23](../design/forge-generated-stack.md#plan-23)) |
 | **BR-009** | **Cost is a first-class input**: plan-time estimates, budgets/caps, and showback per tenant/Bindle/Camp. | S→C | FinOps ([16](../design/reliability-observability-cost.md#plan-05)) |
@@ -189,7 +189,7 @@ North-star signals from [roadmap.md#plan-08](../design/roadmap.md#plan-08), made
 | R-3 | **Scope/complexity overwhelms the team** (large single-v1 surface) | High | High | Dependency-ordered build stages, each independently demoable + keeping prior acceptance gates green; "powerful but unusable" guardrail ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)) | Product |
 | R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/wasm-runtime-wit.md#plan-20)) | Eng |
 | R-6 | **Multi-cloud networking** harder/costlier than modeled | Med | Med | Tiered connectivity + egress feedback to Planner ([13](../design/security-networking.md#plan-12)/[16](../design/reliability-observability-cost.md#plan-05)) | Eng |
-| R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/positioning.md#plan-17)) | Founders/GTM |
+| R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/vision.md#plan-17)) | Founders/GTM |
 
 ### 16 v1 build milestones
 All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery plan](../design/roadmap.md#plan-08), [per-stage build detail](../design/roadmap.md#per-stage-build-detail-stages-06)), **not** separate releases. v1 GA = every milestone below met.
@@ -323,7 +323,7 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 | **NFR-005** | Security | Zero static secrets by default; provider access via short-lived scoped tokens. The legacy static-key escape hatch is **bounded** (max TTL, enforced rotation, fully audited, opt-in). | ≥99% brokered; audit of `token.*`; a key past TTL is rejected ([ADR-0023](../design/adr/02-identity-security.md#adr-0023)) | BR-005 |
 | **NFR-006** | Security | Tenant isolation across data/compute/credentials/network/wasm-capability. | Cross-tenant read fails at Gateway + store ([12](../design/security-networking.md#plan-12)) | BR-006 |
 | **NFR-007** | Security | AI-generated code is sandboxed (Firecracker + wasm capability, no egress in conformance) and only runs if signed + conformance-passing. | Executor egress test; unsigned plugin refused ([12](../design/security-networking.md#plan-12)) | BR-008 |
-| **NFR-008** | Auditability | Every state transition is an append-only event; replayable/time-travelable. | Projection rebuild == live ([11](../design/event-model.md#plan-11)) | BR-006 |
+| **NFR-008** | Auditability | Every state transition is an append-only event; replayable/time-travelable. | Projection rebuild == live ([11](../design/data-plane.md#plan-11)) | BR-006 |
 | **NFR-009** | Reliability | Control-plane availability; crash-resume; saga compensation. | 99.9%/99.95%; resume <30 s ([05](../design/reliability-observability-cost.md#plan-05)) | BR-007 |
 | **NFR-010** | Recoverability | DR is replay from the log. | RPO ~0/≤5 s; RTO <15 min ([05](../design/reliability-observability-cost.md#plan-05)) | BR-007 |
 | **NFR-011** | Determinism | Durable runs replay to identical state. | `replay == live` (hard invariant) | BR-006 |
@@ -438,12 +438,12 @@ From [architecture.md#plan-10](../design/architecture.md#plan-10): **core** (`@h
 | **TR-023** | **Executors** run IaC/builds in **Firecracker microVMs** with **no ambient creds** and a single injected scoped token; output streams as `exec.*` events. | Executor egress test ([12](../design/security-networking.md#plan-12)) |
 | **TR-024** | The Yard is **itself a Bindle**; `hobo yard up [--restore <log>]` bootstraps/rebuilds it (self-host = hosted). | Bootstrap + DR replay test ([04](../design/control-plane.md#plan-04)/[05](../design/reliability-observability-cost.md#plan-05)) |
 
-#### Event model & CQRS ([11](../design/event-model.md#plan-11))
+#### Event model & CQRS ([11](../design/data-plane.md#plan-11))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-030** | A single **append-only event log** is the source of truth for both planes; reads are projections (CQRS). | Projection rebuild==live ([09](../design/verification.md#plan-09)) |
 | **TR-031** | Appends are **conditional on expected `seq`** (OCC) and **dedup on `idempotencyKey`** → exactly-once *effects* over at-least-once delivery. | Idempotent-dedup conformance ([05](../design/reliability-observability-cost.md#plan-05)) |
-| **TR-032** | Schema evolution via **upcasters**; old events replay through them. | Upcaster replay test ([11](../design/event-model.md#plan-11)) |
+| **TR-032** | Schema evolution via **upcasters**; old events replay through them. | Upcaster replay test ([11](../design/data-plane.md#plan-11)) |
 | **TR-033** | Every durable run satisfies **`replay == live state`** (hard invariant, NFR-011). | Determinism test ([09](../design/verification.md#plan-09)) |
 
 #### Providers / IaC / Build ([03](../design/control-plane.md#plan-04))
@@ -590,4 +590,4 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/08-scop
 > The matrix shows **representative** TRs per BR; every `TR-NNN` carries its own verification in [Technical requirements (`TR-NNN`)](#technical-requirements-tr-nnn). Rows for BR-001/002/004/006/007/008/011 and the security spine were extended in the requirements hardening pass ([ADR-0023](../design/adr/02-identity-security.md#adr-0023)/[ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024); see [`plans/README.md`](../../plans/README.md)).
 
 ## References
-[00 Vision](../design/vision.md#plan-00) · [02 SDK](../design/sdk-api.md#plan-02) · [04 Control plane](../design/control-plane.md#plan-04) · [06 AI/agent](../design/ai-native-agent-auth.md#plan-06) · [07 UI](../design/developer-experience.md#plan-07) · [08 Roadmap](../design/roadmap.md#plan-08) · [09 Verification](../design/verification.md#plan-09) · [10 Architecture](../design/architecture.md#plan-10) · [11 Event model](../design/event-model.md#plan-11) · [05 Reliability](../design/reliability-observability-cost.md#plan-05) · [12 Security](../design/security-networking.md#plan-12) · [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-05) · [17 Positioning](../design/positioning.md#plan-17) · [19 Worked example](../design/worked-example.md#plan-19) · [24 WIT interfaces](../design/wasm-runtime-wit.md#plan-20) · [`competitors/`](../../competitors/README.md) · [ADR index](../design/adr/README.md) · ADRs [0018](../design/adr/08-scope-and-requirements.md#adr-0018)/[0019](../design/adr/08-scope-and-requirements.md#adr-0019)/[0021](../design/adr/08-scope-and-requirements.md#adr-0021)/[0063](../design/adr/08-scope-and-requirements.md#adr-0063)/[0064](../design/adr/08-scope-and-requirements.md#adr-0064).
+[00 Vision](../design/vision.md#plan-00) · [02 SDK](../design/sdk-api.md#plan-02) · [04 Control plane](../design/control-plane.md#plan-04) · [06 AI/agent](../design/ai-native-agent-auth.md#plan-06) · [07 UI](../design/developer-experience.md#plan-07) · [08 Roadmap](../design/roadmap.md#plan-08) · [09 Verification](../design/verification.md#plan-09) · [10 Architecture](../design/architecture.md#plan-10) · [11 Event model](../design/data-plane.md#plan-11) · [05 Reliability](../design/reliability-observability-cost.md#plan-05) · [12 Security](../design/security-networking.md#plan-12) · [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-05) · [17 Positioning](../design/vision.md#plan-17) · [19 Worked example](../design/worked-example.md#plan-19) · [24 WIT interfaces](../design/wasm-runtime-wit.md#plan-20) · [`competitors/`](../../competitors/README.md) · [ADR index](../design/adr/README.md) · ADRs [0018](../design/adr/08-scope-and-requirements.md#adr-0018)/[0019](../design/adr/08-scope-and-requirements.md#adr-0019)/[0021](../design/adr/08-scope-and-requirements.md#adr-0021)/[0063](../design/adr/08-scope-and-requirements.md#adr-0063)/[0064](../design/adr/08-scope-and-requirements.md#adr-0064).

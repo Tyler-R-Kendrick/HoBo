@@ -426,7 +426,7 @@ Head-to-head:
 | **Nitric** ([nitric.md](nitric.md)) | broader app composition + OTel + local parity | serverless-first IfC + policy-from-code |
 | **Humanitec** ([humanitec.md](humanitec.md)) | superb local dev, code-first | enterprise Platform Orchestrator: matching, RBAC, governance, hosted |
 
-The net for HoBo: Aspire nails the developer inner loop — code-first wiring, local parity, a manifest IR, and observability — which is why HoBo adopts its wiring + manifest model ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)). HoBo then adds what Aspire lacks: a platform-rules/matching layer ([Plan 25](../docs/design/platform-engineering.md#plan-25)), a wasm-first polyglot runtime ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)), event-sourced replay/audit ([Plan 11](../docs/design/event-model.md#plan-11)), agent-native Forge generation ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)), and a hosted, multi-tenant, governed control plane.
+The net for HoBo: Aspire nails the developer inner loop — code-first wiring, local parity, a manifest IR, and observability — which is why HoBo adopts its wiring + manifest model ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)). HoBo then adds what Aspire lacks: a platform-rules/matching layer ([Plan 25](../docs/design/platform-engineering.md#plan-25)), a wasm-first polyglot runtime ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)), event-sourced replay/audit ([Plan 11](../docs/design/data-plane.md#plan-11)), agent-native Forge generation ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)), and a hosted, multi-tenant, governed control plane.
 
 ## HoBo mapping
 
@@ -457,7 +457,7 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 | Compute environments | Camps + **environment types** | ✅ | [26](../docs/design/platform-engineering.md#plan-25) |
 | DCP (local Go orchestrator) | local `runtime-local` host / dev loop; the Yard for hosted | ✅ | [20](../docs/design/wasm-runtime-wit.md#plan-20), [04](../docs/design/control-plane.md#plan-04) |
 | Aspire Dashboard (resource graph, OTel) | Dashboard: resource graph + run inspector + replay | ➕ | [07](../docs/design/developer-experience.md#plan-07), [14](../docs/design/reliability-observability-cost.md#plan-05) |
-| OpenTelemetry-by-default | OTel + event-sourced traces/replay | ➕ | [14](../docs/design/reliability-observability-cost.md#plan-05), [11](../docs/design/event-model.md#plan-11) |
+| OpenTelemetry-by-default | OTel + event-sourced traces/replay | ➕ | [14](../docs/design/reliability-observability-cost.md#plan-05), [11](../docs/design/data-plane.md#plan-11) |
 | `Aspire.Hosting.Testing` | Conformance suites + E2E replay tests | ✅ | [09](../docs/design/verification.md#plan-09) |
 | `aspire` CLI | `hobo` CLI | ✅ | [15](../docs/design/developer-experience.md#plan-07) |
 | Polyglot (Python/Node/Go/Java/Rust) | **WASM/WASI components** (any language) + OCI fallback | ➕ | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
@@ -469,7 +469,7 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 |---|---|
 | **Platform-rules / Matching** (per-environment Resource Definitions — Aspire has no equivalent) | [25](../docs/design/platform-engineering.md#plan-25) |
 | **Hosted, multi-tenant, governed control plane** (RBAC/policy/approvals/cost) | [04](../docs/design/control-plane.md#plan-04), [12](../docs/design/security-networking.md#plan-12), [16](../docs/design/reliability-observability-cost.md#plan-05) |
-| **Event-sourced replay / time-travel / DR-as-replay** | [11](../docs/design/event-model.md#plan-11), [05](../docs/design/reliability-observability-cost.md#plan-05) |
+| **Event-sourced replay / time-travel / DR-as-replay** | [11](../docs/design/data-plane.md#plan-11), [05](../docs/design/reliability-observability-cost.md#plan-05) |
 | **WASM-first polyglot runtime** (vs container/process) | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
 | **Agent-native Forge** generation of providers/implementations/definitions | [06](../docs/design/ai-native-agent-auth.md#plan-06), [23](../docs/design/forge-generated-stack.md#plan-23) |
 | **Stubbable ports** (run before implementations exist) | [23](../docs/design/forge-generated-stack.md#plan-23) |

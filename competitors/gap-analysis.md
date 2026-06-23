@@ -20,7 +20,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 | Multi-cloud portability (same app → N clouds) | ✗ | ✅ | ◐ (K8s) | ✗ | ➕ Camps + ADR-0028 ([03](../docs/design/control-plane.md#plan-04)) |
 | Resource Definitions + Matching (platform rules) | — | — | ✅ | — | ✅➕ auditable `match.Decided` ([25](../docs/design/platform-engineering.md#plan-25)) ◐ *algorithm open ([Q3](../docs/design/verification.md#plan-09))* |
 | Deployment Sets / Deltas / promote | — | — | ✅ | ◐ | ✅➕ event-sourced ([26](../docs/design/platform-engineering.md#plan-25)) |
-| Durable workflows / actors / sagas | — | ✗ | — | ◐ (txns) | ➕ ([02](../docs/design/sdk-api.md#plan-02)/[11](../docs/design/event-model.md#plan-11)) |
+| Durable workflows / actors / sagas | — | ✗ | — | ◐ (txns) | ➕ ([02](../docs/design/sdk-api.md#plan-02)/[11](../docs/design/data-plane.md#plan-11)) |
 | **Reactive client queries / live subscriptions** | — | — | — | **✅ (core)** | **✗ NEW GAP → [Q21](../docs/design/verification.md#plan-09)** |
 | Generated typed clients / codegen | ✅ | ◐ | — | ✅ | ✅➕ WIT-generated ([24](../docs/design/wasm-runtime-wit.md#plan-20)) ◐ *SDK codegen surface thin* |
 | Vector / full-text search | — | — | — | ✅ | ◐ `vector` port exists, surface undetailed ([21](../docs/design/authoring-resources-wiring.md#plan-21)) |
@@ -29,7 +29,7 @@ Legend: ✅ HoBo designed-for-parity · ➕ HoBo goes further · ◐ designed bu
 | Multi-language (non-TS) authoring | ✅ (.NET+poly) | ✅ (membrane) | lang-agnostic | ✗ (TS) | ◐ wasm/WIT spine, non-TS IfC deferred ([Q12](../docs/design/verification.md#plan-09)) |
 | AI-generated providers/impls (Forge) | ✗ | ✗ | ✗ | ✗ | ➕ unique — generation pipeline now specified ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)/[ADR-0010](../docs/design/adr/06-ai-generation-operators.md#adr-0010)) |
 | Agents as first-class principals | ✗ | ✗ | ✗ | ✗ | ➕ unique ([06](../docs/design/ai-native-agent-auth.md#plan-06)) |
-| Event-sourced audit / replay / time-travel | ✗ | ✗ | ◐ | ◐ | ➕ unique core bet ([11](../docs/design/event-model.md#plan-11)/[14](../docs/design/reliability-observability-cost.md#plan-05)) |
+| Event-sourced audit / replay / time-travel | ✗ | ✗ | ◐ | ◐ | ➕ unique core bet ([11](../docs/design/data-plane.md#plan-11)/[14](../docs/design/reliability-observability-cost.md#plan-05)) |
 | Air-gapped / sovereign deploy | — | — | ✅ | ◐ (self-host) | ✅ zero-egress Yard profile + signed bundle import + in-boundary trust roots ([ADR-0036](../docs/design/adr/07-portability-extensibility.md#adr-0036)/[28](../docs/design/platform-engineering.md#plan-25)) |
 | Enterprise governance (RBAC/approvals/drift) | ✗ | ◐ | ✅ | ◐ | ✅ ([12](../docs/design/security-networking.md#plan-12)/[28](../docs/design/platform-engineering.md#plan-25)/[30](../docs/design/contracts-policy-flags.md#plan-29)) |
 | End-user (human) auth broker | — | — | — | ◐ | ✗ orthogonal (HoBo does *agent/workload* identity; pairs with shoo) |

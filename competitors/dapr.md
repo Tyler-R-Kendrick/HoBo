@@ -72,7 +72,7 @@ Dapr runs as a **sidecar process** (`daprd`) next to each app instance. The app 
 - **Model cost / policy / contracts / topology** as first-class planes.
 - **Event-source infra changes** or provide an audit/replay of "what changed and why."
 
-This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter** pattern at scale (CNCF-graduated, huge component catalog) — strong validation of HoBo's ports/capability-providers. HoBo's deltas: it pushes the *same* abstraction **up into the control plane** (one `.allow()`-scoped declaration drives provisioning **+** the runtime link **+** the token, [Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)), runs adapters **in-process as wasm components** (no per-app sidecar, [ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031)), makes the **conformance suite the trust boundary** for adapters (incl. **Forge-generated** ones, [Plan 23](../docs/design/forge-generated-stack.md#plan-23)), and **event-sources** every infra + credential fact ([Plan 11](../docs/design/event-model.md#plan-11)).
+This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter** pattern at scale (CNCF-graduated, huge component catalog) — strong validation of HoBo's ports/capability-providers. HoBo's deltas: it pushes the *same* abstraction **up into the control plane** (one `.allow()`-scoped declaration drives provisioning **+** the runtime link **+** the token, [Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)), runs adapters **in-process as wasm components** (no per-app sidecar, [ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031)), makes the **conformance suite the trust boundary** for adapters (incl. **Forge-generated** ones, [Plan 23](../docs/design/forge-generated-stack.md#plan-23)), and **event-sources** every infra + credential fact ([Plan 11](../docs/design/data-plane.md#plan-11)).
 
 ## Differentiators
 
@@ -90,7 +90,7 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 - **No provisioning / infrastructure-from-code.** Dapr abstracts *using* a backend; you still create + own Redis/Kafka/DynamoDB and wire connection settings. There's no `deploy`, no topology graph, no cloud-agnostic provisioning. **This is the biggest gap vs HoBo** (and vs Encore/Nitric).
 - **Sidecar tax + K8s-centric prod.** A sidecar per app instance (latency/memory/lifecycle) and a Kubernetes control plane in production — operational weight HoBo's in-process wasm component-host ([ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031)) avoids.
 - **No control-plane planes.** No cost/FinOps, policy/`can-deploy` contracts, or matching/Resource-Definitions layer; governance is left to the platform around it.
-- **No infra event-sourcing / audit-replay.** Dapr traces requests, but doesn't event-source *infra + credential changes* the way HoBo does ([Plan 11](../docs/design/event-model.md#plan-11)).
+- **No infra event-sourcing / audit-replay.** Dapr traces requests, but doesn't event-source *infra + credential changes* the way HoBo does ([Plan 11](../docs/design/data-plane.md#plan-11)).
 - **Adapters are hand-written.** No AI-generated-adapter pipeline or conformance-as-trust-boundary (HoBo's Forge, [Plan 23](../docs/design/forge-generated-stack.md#plan-23)).
 
 ### Comparisons
@@ -119,7 +119,7 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 | **Self-host / Kubernetes** | self-hostable Yard; K8s is *one* execution adapter, not the foundation ([ADR-0001](../docs/design/adr/README.md)) | ➕ HoBo isn't K8s-centric in prod |
 | *(none — Dapr doesn't provision)* | **Provisioning / IfC**: `realize()` + Planner + IaC adapters ([Plan 4](../docs/design/control-plane.md#plan-04)/[Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)) | ➕ HoBo *creates* the infra, not just uses it |
 | *(none)* | **Control-plane planes**: cost ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)), policy/`can-deploy` ([Plan 29](../docs/design/contracts-policy-flags.md#plan-29)), matching/Resource-Definitions ([Plan 25](../docs/design/platform-engineering.md#plan-25)) | ➕ governance HoBo makes first-class |
-| *(none)* | **Event-sourced infra + credential audit** ([Plan 11](../docs/design/event-model.md#plan-11)) | ➕ replay/time-travel/"why" for every infra + token change |
+| *(none)* | **Event-sourced infra + credential audit** ([Plan 11](../docs/design/data-plane.md#plan-11)) | ➕ replay/time-travel/"why" for every infra + token change |
 | *(hand-written components)* | **Forge** — AI-generated, conformance-gated adapters ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)) | ➕ adapter breadth without a community bottleneck |
 
 **The one-line takeaway:** Dapr ≈ HoBo's runtime ports + capability providers, made concrete at the sidecar layer — and nothing above it. HoBo's whole differentiation is the layers Dapr leaves out: provisioning (IfC), the agnostic control plane with cost/policy/contracts/matching, event-sourced audit, agents/end-users as first-class principals, and AI-generated adapters. The closeness of the *runtime* mapping is the strongest external validation that HoBo's ports/adapters foundation is the right one.

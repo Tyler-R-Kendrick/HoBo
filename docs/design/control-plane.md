@@ -19,7 +19,7 @@ The Yard is the orchestrator that maps Bindle deployments to real hosting. It is
 - **Planner** — Bindle + mapping → `DeploymentPlan` DAG; capability/region/cost solving (resolution algorithm in the adapters section below).
 - **Orchestrator** — **choreography saga engine** over the event store. One **ResourceActor** (a controller-style grain) per resource owns its lifecycle and reconciles desired↔actual via the resolved IaC adapter. Resource actors coordinate by emitting/observing events (e.g. `resource.Provisioned(db)` → unblocks `api`), not via a central coordinator.
 - **Executors** — sandboxed (Firecracker) runners that execute IaC applies + Dagger builds with short-lived scoped creds.
-- **Event Store + Projections** — source of truth + read models ([Plan 11](./event-model.md#plan-11)).
+- **Event Store + Projections** — source of truth + read models ([Plan 11](./data-plane.md#plan-11)).
 
 ### The ResourceActor reconciliation FSM
 Each resource in a plan gets a durable virtual actor keyed `resource:<deployment>:<name>`. Its job is to converge **observed** state to **desired** state, idempotently, surviving crashes by replaying its own event stream.
@@ -65,7 +65,7 @@ IaC apply and image builds run untrusted-ish provider code, so they are isolated
 - Executors are pooled and pre-warmed; concurrency is bounded per tenant and per provider (backpressure, [Plan 5](./reliability-observability-cost.md#plan-05)).
 
 ### Command / event API surface
-The Gateway accepts **commands** (imperative, validated, authorized) and the only side effect is appending **events** ([Plan 11](./event-model.md#plan-11)). Representative commands:
+The Gateway accepts **commands** (imperative, validated, authorized) and the only side effect is appending **events** ([Plan 11](./data-plane.md#plan-11)). Representative commands:
 `RegisterBindle` · `PublishBindleVersion` · `CreateCamp` · `Deploy` · `Promote` · `Rollback` · `Destroy` · `RegisterProvider` · `RequestToken`. Reads go to projections, never to live providers.
 
 ### Bootstrapping (chicken-and-egg)
@@ -146,7 +146,7 @@ export interface BuildMachineProvider {
   execute(build: BuildSpec): Promise<ImageRef>;     // run a BuildProvider engine on this host
 }
 ```
-Both publish a Capability Manifest with `cost.json` + declared free-tier/credit facts, so the Dispatcher's `CreditLedgerView` ([Plan 5](./reliability-observability-cost.md#plan-05)) can rank them by **effective marginal cost** and record the pick as `dispatch.Decided` ([Plan 11](./event-model.md#plan-11)). Registering a runner/build-machine makes it a candidate; that is the whole integration. A missing adapter is Forge-generatable ([Plan 23](./forge-generated-stack.md#plan-23)).
+Both publish a Capability Manifest with `cost.json` + declared free-tier/credit facts, so the Dispatcher's `CreditLedgerView` ([Plan 5](./reliability-observability-cost.md#plan-05)) can rank them by **effective marginal cost** and record the pick as `dispatch.Decided` ([Plan 11](./data-plane.md#plan-11)). Registering a runner/build-machine makes it a candidate; that is the whole integration. A missing adapter is Forge-generatable ([Plan 23](./forge-generated-stack.md#plan-23)).
 
 **Integration providers (swappable external touchpoints, [ADR-0073](./adr/07-portability-extensibility.md#adr-0073)).** The same ports/adapters shape covers the meta-cloud's external integrations — only registered adapters are considered, all secretless-brokered + policy-gated + Forge-generatable:
 - **ArtifactRepoProvider** (`hobo:artifact-repo`) — the package/artifact repositories HoBo **builds against and publishes to**: **npm · NuGet · PyPI · OCI** (+ Maven/cargo/RubyGems). Serves dependency pulls + publishes outputs (language packages and the component **OCI images** `@hobo/componentize` produces, [Plan 20](./wasm-runtime-wit.md#plan-20)), with **SLSA provenance** on publish ([ADR-0010](./adr/06-ai-generation-operators.md#adr-0010)) and **air-gap mirroring** (generalizes [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); equivalent mirrors are Dispatcher-routable ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071)).
@@ -248,7 +248,7 @@ flowchart TD
 - **State backend:** pluggable; default to the Yard's own object store; locking via the resource's ActorHost lease (single-writer already guaranteed, so IaC-level locks are belt-and-suspenders).
 - **Outputs → bindings:** stack outputs are captured into `resource.Provisioned` and resolved into the dependent resources' env/secret refs.
 - **Drift:** `refresh()` feeds the drift loop in [Plan 5](./reliability-observability-cost.md#plan-05).
-- **Adopt-in-place (migration, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041)):** `hobo import` reads an existing estate's IaC state (CDKTF import-only / Pulumi Automation API) into the graph as **`adopted`** nodes — managed by id/state, **never destroyed/recreated on import** (drift-detect only). An **`external` resource kind** references infra HoBo doesn't manage yet, so a HoBo-managed resource can `bind` across the boundary during an incremental (strangler-fig) migration. Adoption emits `resource.Adopted` ([Plan 11](./event-model.md#plan-11)).
+- **Adopt-in-place (migration, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041)):** `hobo import` reads an existing estate's IaC state (CDKTF import-only / Pulumi Automation API) into the graph as **`adopted`** nodes — managed by id/state, **never destroyed/recreated on import** (drift-detect only). An **`external` resource kind** references infra HoBo doesn't manage yet, so a HoBo-managed resource can `bind` across the boundary during an incremental (strangler-fig) migration. Adoption emits `resource.Adopted` ([Plan 11](./data-plane.md#plan-11)).
 
 #### Cross-cloud equivalence classes
 Agnostic ports map to provider services via curated equivalence classes (extensible, and what the [Forge](./ai-native-agent-auth.md#plan-06) targets):

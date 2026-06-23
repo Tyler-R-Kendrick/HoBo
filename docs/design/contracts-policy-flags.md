@@ -32,7 +32,7 @@ Every **edge** in the manifest graph ([Plan 21](./authoring-resources-wiring.md#
 Developers don't hand-write contracts (IfC-default, [Plan 21](./authoring-resources-wiring.md#plan-21)); they're derived and refined:
 1. **Declared** — from WIT types + Zod/validators on resources.
 2. **Inferred** — from graph compilation (who publishes/consumes what, which `.allow()` scopes).
-3. **Observed** — **trace-mined** from the event log ([Plan 11](./event-model.md#plan-11)): "99.8% of 42k `order.created` had `tenantId`; the 0.2% without came from `worker@v1`."
+3. **Observed** — **trace-mined** from the event log ([Plan 11](./data-plane.md#plan-11)): "99.8% of 42k `order.created` had `tenantId`; the 0.2% without came from `worker@v1`."
 4. **Promoted** — an observed shape is promoted to a **versioned compatibility gate** with a migration window.
 
 > **Contracts make boundary virtualization safe ([ADR-0076](./adr/04-governance-verification.md#adr-0076)).** Because every boundary carries a contract, the host can serve it in a **mode** — `mock` (a contract-conformant fake auto-served from the contract + traces, *no hand-written mocks*), `fork` (a forked/branch impl), `shadow`, or `fault`. A `fork` must **satisfy the boundary contract at *lane join*** — a **lightweight runtime check** (the fork's exported contract verified against the baseline consumers' expectations before any baseline traffic routes to it), *distinct from* the deploy-time `can-deploy` gate (a `hobo dev --fork` never goes through Delta→Set). Contracts bound *shape*, not behavior or resource use — so a `mock` carries a fidelity label ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042)) and lanes carry a resource budget. **Lane-origin `contract.Observed`/trace events are tagged + excluded by default** from observed-contract promotion (and from training trajectories) — a fork's experimental behavior never poisons a baseline contract. This is the substrate for low-friction test sandboxes, request-level branch isolation, preview environments, self-healing experiments, and non-destructive chaos ([Plan 9](./verification.md#plan-09)/[Plan 25](./platform-engineering.md#plan-25)).
@@ -69,7 +69,7 @@ deployable =
   AND artifact signed + attested   (Plan 12)
   AND the deployment plan is valid (Plan 3)
 ```
-`hobo verify --target prod` returns a structured decision (per-gate results + suggested fixes); every gate result is an event, so "why did this deploy block?" is replayable ([Plan 11](./event-model.md#plan-11)). On failure, the **Forge/live-fix** remediation loop ([Plan 23](./forge-generated-stack.md#plan-23)) classifies the failure (producer-broke-consumer, consumer-over-specified, semantic drift) and proposes safe fixes (shim, deploy-order, migration window, loosen an over-strict matcher) — all themselves gated.
+`hobo verify --target prod` returns a structured decision (per-gate results + suggested fixes); every gate result is an event, so "why did this deploy block?" is replayable ([Plan 11](./data-plane.md#plan-11)). On failure, the **Forge/live-fix** remediation loop ([Plan 23](./forge-generated-stack.md#plan-23)) classifies the failure (producer-broke-consumer, consumer-over-specified, semantic drift) and proposes safe fixes (shim, deploy-order, migration window, loosen an over-strict matcher) — all themselves gated.
 
 ### The `contract-engine` ([ADR-0015](./adr/04-governance-verification.md#adr-0015))
 The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** (it already has the graph, traces, and event log it needs). **PACT-style consumer-driven contract testing is the built-in, default behavior of that engine — an internal implementation detail developers never see.** Developers declare contracts (or let IfC infer them, above); they never interact with PACT directly and there is no PACT option to turn on or swap. HoBo owns the source of truth — the **HoBo Contract IR** — and consumer-driven testing runs against the graph + event log by construction. PACT/OpenAPI/AsyncAPI/Protobuf are import/export *targets* over that IR for interop with outside ecosystems, never the model and never a behavior toggle.
@@ -204,7 +204,7 @@ The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-007
 `policy-engine` is a **WIT port**. The default implementation is built-in **typed TypeScript rules** (testable, no Rego to learn). Unlike the `contract-engine` (whose PACT-style testing is built-in, not swappable), the policy engine genuinely accepts optional capability providers: **OPA/Rego** (`@hobo/provider-opa` — maps the request to OPA `input`, runs embedded/WASM/sidecar/Envoy, returns the decision) and **Cedar** (`@hobo/provider-cedar`) for ABAC-style authz. HoBo Cloud is the **management plane** (pack registry, distribution, decision logs); Camps/providers are **enforcement points** — the decision/enforcement split, with HoBo owning the model (the **HoBo Policy IR**).
 
 #### Decisions are events
-Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./event-model.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper (above) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
+Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./data-plane.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper (above) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
 
 ### Feature flags & progressive delivery
 
@@ -237,7 +237,7 @@ flowchart LR
 ```
 
 #### Change governance — event-sourced, optionally gated, reactive
-- **Event-sourced.** Every value/targeting change is a `flag.*` event ([Plan 11](./event-model.md#plan-11)) → a replayable "who flipped what, when, for whom" audit (the trail standalone flag tools lack).
+- **Event-sourced.** Every value/targeting change is a `flag.*` event ([Plan 11](./data-plane.md#plan-11)) → a replayable "who flipped what, when, for whom" audit (the trail standalone flag tools lack).
 - **Optionally policy-gated.** A flip can pass through the policy plane (above): a **prod kill-switch** or a risky `%` bump can require approval / carry an obligation (e.g. "auto-revert if error-rate SLO burns", tying to [#25](./verification.md#plan-09)). Low-risk dev flips are ungated.
 - **Reactive.** A flag change is a `data.Changed`-class signal, so reactive queries + clients (`useFlag`/`useQuery`, [Plan 32](./data-plane.md#plan-32)) re-evaluate **live, no redeploy** — the reactor re-pushes affected results.
 
@@ -250,7 +250,7 @@ flowchart LR
 - A **gradual rollout** flag (`%` by segment) is the *release* dial; a **canary** ([Plan 5](./reliability-observability-cost.md#plan-05)) is the *deploy* dial — used together, you deploy dark, then ramp the flag, with the same health signals able to **auto-revert** the flag (a policy obligation) on SLO burn ([#25](./verification.md#plan-09)).
 - **Experiments**: a multivariate flag + the eval/metrics surface ([Plan 5](./reliability-observability-cost.md#plan-05)) supports A/B without bespoke infra.
 
-#### Events ([Plan 11](./event-model.md#plan-11))
+#### Events ([Plan 11](./data-plane.md#plan-11))
 `flag.Defined` · `flag.Changed` (value/targeting diff + actor) · `flag.Evaluated` (sampled, optional — for experiment analytics) · `flag.Archived`. Flip-gate decisions ride the existing `policy.Decided`.
 
 #### Verification ([Plan 9](./verification.md#plan-09))

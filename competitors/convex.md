@@ -455,7 +455,7 @@ Head-to-head:
 
 | Convex | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
-| Deterministic reactive queries; consistent snapshots | Event-sourced, deterministic **replay** + projections; durable workflows | ↔➕ | [11](../docs/design/event-model.md#plan-11) |
+| Deterministic reactive queries; consistent snapshots | Event-sourced, deterministic **replay** + projections; durable workflows | ↔➕ | [11](../docs/design/data-plane.md#plan-11) |
 | Mutations = OCC serializable transactions | Single-writer actor leases + exactly-once effects | ✅ | [05](../docs/design/reliability-observability-cost.md#plan-05) |
 | Actions (external calls; Node runtime) | Provider/driver calls in sandboxed Executors; durable `step`/`workflow` | ✅ | [02](../docs/design/sdk-api.md#plan-02), [04](../docs/design/control-plane.md#plan-04) |
 | Document DB + schema + indexes + vector search | A **capability/resource** in HoBo's catalog (`database`/`vector`/`blobstore` ports) | ↔ | [21](../docs/design/authoring-resources-wiring.md#plan-21), [24](../docs/design/wasm-runtime-wit.md#plan-20) |
@@ -476,7 +476,7 @@ Head-to-head:
 |---|---|---|---|
 | Components (sandboxed reusable backends) | Capability providers + **Resource Packs** (signed, conformance-gated) | ✅➕ | [27](../docs/design/platform-engineering.md#plan-25), [03](../docs/design/control-plane.md#plan-04) |
 | Log streams / exceptions / dashboard | Observability + run inspector + replay | ✅➕ | [14](../docs/design/reliability-observability-cost.md#plan-05), [07](../docs/design/developer-experience.md#plan-07) |
-| Self-host (Rust backend; FSL→Apache) | Self-host = hosted (the Yard is a Bindle); OSS core | ✅ | [04](../docs/design/control-plane.md#plan-04), [17](../docs/design/positioning.md#plan-17) |
+| Self-host (Rust backend; FSL→Apache) | Self-host = hosted (the Yard is a Bindle); OSS core | ✅ | [04](../docs/design/control-plane.md#plan-04), [17](../docs/design/vision.md#plan-17) |
 | Auth: `customJwt`/OIDC (Convex Auth/Clerk/Auth0) | Workload/agent identity (SVIDs, OIDC principals); **shoo** composes via `customJwt` | ↔ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [12](../docs/design/security-networking.md#plan-12), [../shoo](shoo.md) |
 | AI: MCP server + agent skills | Agents-as-principals + MCP control surface + Forge | ✅➕ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [23](../docs/design/forge-generated-stack.md#plan-23) |
 
@@ -487,6 +487,6 @@ The cleanest framing: **Convex is a backend HoBo could realize as a capability p
 ### Where HoBo deliberately differs
 
 - **Multi-cloud + IaC + matching** — HoBo provisions *across providers* by context ([Plan 25](../docs/design/platform-engineering.md#plan-25)); Convex is one backend.
-- **Event-sourced replay/time-travel + audit** as the substrate ([Plan 11](../docs/design/event-model.md#plan-11)).
+- **Event-sourced replay/time-travel + audit** as the substrate ([Plan 11](../docs/design/data-plane.md#plan-11)).
 - **WASM-first polyglot runtime** ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) vs Convex's TS/JS runtime.
 - **Agent-native Forge** generation of providers/implementations/definitions ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)).

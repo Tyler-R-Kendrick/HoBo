@@ -1,10 +1,6 @@
 # Positioning & Competitive Analysis
 
-This capability doc consolidates Plan 17 of the HoBo design suite.
-
 ## Plan 17
-
-**Plan 17 — Positioning & competitive analysis**
 
 ### The one-line position
 **HoBo is an AI-native meta-cloud — a cloud-agnostic *control plane* and durable runtime that maps a single app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.** The programmable surface is **WIT/WASM** (the Component Model / wasmCloud); **TypeScript is the first reference implementation, not a requirement** — any Component-Model language can author against the same WIT worlds ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). It competes head-on with **Convex, Lakebed, and Nitric**; it is not a single PaaS, not "just IaC," and not Kubernetes-only.
@@ -72,8 +68,3 @@ This capability doc consolidates Plan 17 of the HoBo design suite.
 - **Provider breadth is a treadmill** → mitigated by the Forge + conformance suite (AI generates, contracts certify).
 - **Trusting AI-generated infra code** → mitigated by sandboxed conformance + signed provenance ([Plan 12](./security-networking.md#plan-12)).
 - **"Yet another abstraction" skepticism** → mitigated by matching Lakebed's onboarding and letting users drop to provider-native instantly.
-
-### Iteration hooks
-- Sharpen the primary ICP (indie/agent-builders first vs platform teams first) — changes default UX emphasis.
-- Whether to lead with "AI-native" or "cloud-agnostic" in messaging.
-- OSS core + hosted Yard split (what's free, what's paid) — ties to [Plan 0](./vision.md#plan-00) governance.

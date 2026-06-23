@@ -110,9 +110,3 @@ A first-class lifecycle, event-sourced as the **app-tenant `tenant.*` family** (
 
 - **In scope:** the app-tenant model + `ctx.tenant`, the declared tenancy-model spectrum (pooled/siloed/bridge/region-pooled) over Matching, isolation-by-construction + the conformance gate, per-tenant routing/config/flags/quotas/showback/residency/lifecycle/observability — all over existing planes.
 - **Out of scope** (the [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064) boundary): **per-tenant billing/subscriptions/invoicing/plans-as-a-product** (the developer's business — HoBo gives them showback + quotas, not a billing engine); a tenant **self-service admin UI** beyond the events/API (the developer builds it, or generates it via the UI layer [ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)); cross-tenant **analytics** beyond an OLAP sink ([ADR-0052](./adr/03-data-plane.md#adr-0052)).
-
-### Iteration hooks
-
-- **Tenant-group / hierarchy** (a tenant with sub-tenants / departments) — defer; today an app-tenant is flat within an app.
-- **Per-tenant schema/customization** (a tenant adding fields) — interacts with the WIT-record canonical schema ([ADR-0051](./adr/03-data-plane.md#adr-0051)); deferred to the generated-stack/patchability path ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)).
-- **Automatic pooled→siloed promotion triggers** (promote on a usage/SLA threshold) — the mechanism exists (Matching + migration); the *policy* of when to auto-promote is a later refinement.

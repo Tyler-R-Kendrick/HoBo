@@ -1,10 +1,6 @@
 # End-to-End Worked Example
 
-This capability doc consolidates Plan 19 of the HoBo design suite.
-
 ## Plan 19
-
-**Plan 19 — End-to-end worked example**
 
 > **Authoring (IfC + wasm + `.allow()`).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
@@ -33,7 +29,7 @@ This capability doc consolidates Plan 19 of the HoBo design suite.
 
 > **Contracts & policy gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
 
-> **Data plane ([Plan 32](./data-plane.md#plan-32)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is now the *escape-hatch* form ([raw/adopted access](./data-plane.md#plan-32)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
+> **Data plane ([Plan 32](./data-plane.md#plan-32)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is the *escape-hatch* form ([raw/adopted access](./data-plane.md#plan-32)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
 > ```ts
 > // domain.wit — the canonical domain schema (Plan 24 / ADR-0051) → generates TS types + protobuf event bodies
 > //   record order { id: string, status: order-status, total: u64 }   enum order-status { placed, confirmed, shipped }

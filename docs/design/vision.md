@@ -1,14 +1,10 @@
 # Vision, Positioning & Guiding Principles
 
-This capability doc consolidates Plan 0 of the HoBo design suite.
-
 ## Plan 00
 
-**Plan 0 — Vision, positioning & guiding principles**
+> **Platform-engineering framing (Humanitec parity):** HoBo embraces the Internal Developer Platform **"5-plane"** framing — it is the **Integration & Delivery plane orchestrator** — and the **developer-vs-platform-engineer separation of concerns**: developers declare *what* (IfC resources), platform engineers declare *how* via **Resource Definitions** matched per environment ([Plan 25](./platform-engineering.md#plan-25)). "Agnostic by default, optimizable on demand" also means "simple for developers, governable by platform teams."
 
-> **Platform-engineering framing (Humanitec parity):** HoBo embraces the Internal Developer Platform **"5-plane"** framing — it is the **Integration & Delivery plane orchestrator** — and the **developer-vs-platform-engineer separation of concerns**: developers declare *what* (IfC resources), platform engineers declare *how* via **Resource Definitions** matched per environment ([Plan 25](./platform-engineering.md#plan-25)). "Agnostic by default, optimizable on demand" now also means "simple for developers, governable by platform teams."
-
-> **Sharpened goals.** HoBo is an **AI-native meta-cloud** — a meta cloud-orchestration layer that is **security-first**, **AI-native**, **platform-engineering & GitOps built-in**, and — beyond portability — **patchable**. It competes head-on with **Convex, Lakebed, and Nitric**. The AI-native promise is concrete: a built-in roster of **Operator Agents (the Crew)** runs the platform ([Plan 40](./operators-sre.md#plan-40)), and HoBo **generates, self-heals, and persists** the app — infrastructure and UI — across a five-layer **generated stack** — data · business · message · intelligence · UI ([Plan 23](./forge-generated-stack.md#plan-23)) — Forge-generated adapters/projections/handlers + self-optimizing trained methods + design.md-driven app UI ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)). HoBo's cloud is **only the cross-cloud orchestration plane**; everything else runs on the user's chosen providers.
+HoBo is an **AI-native meta-cloud** — a meta cloud-orchestration layer that is **security-first**, **AI-native**, **platform-engineering & GitOps built-in**, and — beyond portability — **patchable**. It competes head-on with **Convex, Lakebed, and Nitric**. The AI-native promise is concrete: a built-in roster of **Operator Agents (the Crew)** runs the platform ([Plan 40](./operators-sre.md#plan-40)), and HoBo **generates, self-heals, and persists** the app — infrastructure and UI — across a five-layer **generated stack** — data · business · message · intelligence · UI ([Plan 23](./forge-generated-stack.md#plan-23)) — Forge-generated adapters/projections/handlers + self-optimizing trained methods + design.md-driven app UI ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)). HoBo's cloud is **only the cross-cloud orchestration plane**; everything else runs on the user's chosen providers.
 
 **Pitch:** *"Write your app once. HoBo — the AI-native meta-cloud — decides how to host it, and gets out of the way when you want control. Built for humans and the agents that work for them."* The programmable surface is **WIT/WASM** (the Component Model / wasmCloud); **TypeScript is the first reference implementation, not a requirement** — any Component-Model language authors against the same WIT worlds ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
 
@@ -29,14 +25,7 @@ This capability doc consolidates Plan 0 of the HoBo design suite.
 - **Client-configurable** (per app/team): **IaC providers** ([Plan 4](./control-plane.md#plan-04)), **auth** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 6](./ai-native-agent-auth.md#plan-06)), and **secrets / vars / config-as-a-service** ([Plan 21](./authoring-resources-wiring.md#plan-21)).
 - **Cloud-configurable** (the orchestration plane): **trainable code** — model, evals, training data ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) — and **cross-cloud integrations** (the Junction, [ADR-0043](./adr/07-portability-extensibility.md#adr-0043); cross-Camp state, [ADR-0040](./adr/05-config-matching-environments.md#adr-0040)).
 
-### Non-goals (initially)
+### Non-goals
 - Being a general PaaS UI for non-developers.
-- Replacing Terraform/Pulumi (we *orchestrate* them).
-- Supporting every cloud on day one.
+- Replacing Terraform/Pulumi (HoBo *orchestrates* them).
 - **SaaS-business functions** — billing, subscriptions, invoicing, tax/VAT, chargeback, monetization, rev-share. HoBo is not a payments/commerce product ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)).
-
-### Iteration hooks
-- Tagline/naming.
-- Exact PaaS/SaaS/CaaS/IaaS taxonomy boundaries.
-- OSS license & governance.
-- Hosted business model.

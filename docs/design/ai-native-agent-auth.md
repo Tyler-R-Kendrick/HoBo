@@ -4,8 +4,6 @@ This capability doc covers HoBo's identity story end to end: **agent/workload au
 
 ## Plan 06
 
-**Plan 6 — AI-native & agent auth ⭐ (deep)**
-
 > **Drivers & Resource Packs (Humanitec parity):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./platform-engineering.md#plan-25)/[Plan 25](./platform-engineering.md#plan-25)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
 
 > **Contracts & policy (gates):** an **agent action is a policy decision** ([Plan 29](./contracts-policy-flags.md#plan-29)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./contracts-policy-flags.md#plan-29)), so calls outside the tool's scope/shape are rejected and audited.

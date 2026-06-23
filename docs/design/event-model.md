@@ -1,21 +1,19 @@
 # Event Model, Sourcing & Replay
 
-This capability doc consolidates Plan 11 of the HoBo design suite.
+This capability doc specifies HoBo's event model, event sourcing, and replay.
 
 ## Plan 11
 
-**Plan 11 — Event model, event sourcing & replay**
-
-> **Runtime/IfC integration.** Two event families join the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./forge-generated-stack.md#plan-23)). Both ride the same envelope and replay rules below.
+> **Runtime/IfC integration.** Two event families are in the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./forge-generated-stack.md#plan-23)). Both ride the same envelope and replay rules below.
 
 ### Why event sourcing is the foundation (not an add-on)
-HoBo makes one big bet: **the append-only event log is the single source of truth** for both the control plane (the Yard) and the data-plane runtime (the Camp's runtime). This buys four properties we'd otherwise have to build piecemeal:
+**The append-only event log is the single source of truth** for both the control plane (the Yard) and the data-plane runtime (the Camp's runtime). This buys four properties:
 - **Recovery** — crash mid-deploy or mid-workflow → replay the stream to rebuild exact state.
 - **Audit** — every infra change and every credential issuance is an immutable, ordered fact (directly answers "what did the agent do, and with what token?").
 - **Time-travel** — reconstruct state as-of any point; diff two points.
 - **Determinism** — durable workflows replay over cached step results (the Vercel model).
 
-The cost is discipline (CQRS, projections, versioning) and that read-after-write needs projections. We accept this; the audit/replay story is a primary differentiator vs Lakebed.
+The cost is discipline (CQRS, projections, versioning) and that read-after-write needs projections; the audit/replay story is a primary differentiator vs Lakebed.
 
 ### The event envelope
 A single envelope shape across control plane and data plane:
@@ -41,7 +39,7 @@ export interface EventEnvelope<T = unknown> {
 - **Concurrency:** appends are conditional on expected `seq` (optimistic locking) → no lost updates.
 - **Idempotency:** producers attach an idempotency key in `meta`; the store dedups, giving exactly-once *effects* over an at-least-once queue.
 
-### Event catalog (initial, by aggregate)
+### Event catalog (by aggregate)
 Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only the facts they produce are.
 
 **Bindle / Camp**
@@ -110,7 +108,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 
 **Reactive streams & subscriptions** ([Plan 32](./data-plane.md#plan-32))
-`subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event) *(legacy aliases: `query.Subscribed`/`Recomputed`/`Pushed`/`Unsubscribed`)*
+`subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event)
 
 **Data plane / projections** ([Plan 32](./data-plane.md#plan-32)) — app domain data is event-sourced (commands→events here); a projection folds streams into an architect-chosen sink
 `projection.Declared` (read-model record + event-type read-set + reactivity class) · `projection.Lagged` (staleness/lag exceeded a bound → policy input) · `projection.SinkRebound` (Matching reselected a sink; links `match.Decided`) — sink **schema** changes reuse `migration.*`; sink **change-feeds** reuse `data.Changed`; rebuild-from-zero is a `migration.PhaseApplied` backfill
@@ -165,7 +163,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `junction.YardJoined` · `junction.TrustEstablished` · `junction.TrustRevoked` (drops a peer immediately — fast revocation bounding the forge-principals-into-A window; the mechanism [ADR-0074](./adr/02-identity-security.md#adr-0074) §6 cross-Yard governance depends on) · `junction.ArtifactShared` · `junction.PolicyPropagated` · `junction.YardLeft`
 
 ### Projections (read models)
-Events are the write model; queries read **projections** rebuilt by folding the stream. Initial projections:
+Events are the write model; queries read **projections** rebuilt by folding the stream. Projections:
 - **DeploymentView** — current status + per-resource state for the dashboard timeline.
 - **TopologyView** — Bindle resources → resolved providers + options (the topology graph).
 - **RunView** — workflow/step/actor/saga trace for the run inspector.
@@ -175,7 +173,7 @@ Events are the write model; queries read **projections** rebuilt by folding the 
 
 Projections are rebuildable from zero at any time (this is the test that the log is truly authoritative). **Cross-Camp:** a non-owner Camp builds **bounded-staleness projections** from the owner Camp's replicated read-stream — the same fold, fed by replication ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)/[Plan 5](./reliability-observability-cost.md#plan-05)).
 
-**App domain data uses the same machinery.** The projections above are HoBo's *own* control-plane read models; **application** domain data is event-sourced the same way ([Plan 32](./data-plane.md#plan-32)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): developer-authored, sink-targeted projections fold WIT-record-typed event streams into a backend the **architect** picks via Matching. **Where a read model lives is no longer an open question** — it is architect-selected per context (default = a native standing projection over the log; opt into Postgres/Mongo/… when wanted), recorded in `match.Decided`.
+**App domain data uses the same machinery.** The projections above are HoBo's *own* control-plane read models; **application** domain data is event-sourced the same way ([Plan 32](./data-plane.md#plan-32)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): developer-authored, sink-targeted projections fold WIT-record-typed event streams into a backend the **architect** picks via Matching. **Where a read model lives is architect-selected per context** (default = a native standing projection over the log; opt into Postgres/Mongo/… when wanted), recorded in `match.Decided`.
 
 **Two folds, one log (CQRS).** The same stream is folded for two purposes: the **write-model fold** lives in the **aggregate** (an [actor](./sdk-api.md#plan-02), single-writer lease + fencing) and is the authoritative state a **command** checks invariants against before appending under optimistic `seq` ([ADR-0053](./adr/03-data-plane.md#adr-0053)); the **read-model fold** is the projection (above), derived and possibly materialized into a separate sink. The `streamId` ("aggregate/run/actor key") is the consistency boundary; writes are serializable *per aggregate*, never globally (cross-aggregate flows are sagas, [ADR-0040](./adr/05-config-matching-environments.md#adr-0040)).
 
@@ -192,9 +190,3 @@ Projections are rebuildable from zero at any time (this is the test that the log
 
 ### How replay powers durable workflows
 A workflow run is a stream of `run.*` events. On resume, the runtime replays the workflow function: each `step()` call checks the stream for a matching `StepCompleted` and returns the cached result if present, otherwise schedules the step (`StepScheduled`), suspends, and resumes when the step worker appends `StepCompleted`. Determinism is enforced by seeding `Math.random`/`crypto` and freezing `Date`/`env` from the run's seed events — identical to the Vercel model, but the `EventStore` is whichever runtime backend the Camp provides. See [Plan 2 §Layer 4](./sdk-api.md#plan-02).
-
-### Iteration hooks
-- ULID vs UUIDv7 vs hybrid for `id`.
-- Single global log vs per-tenant logs vs per-stream logs (sharding) — interacts with [Plan 12](./security-networking.md#plan-12).
-- Exactly which streams are compliance-retained vs compactable.
-- Whether projections are push (subscription) or pull (on-read fold with cache).

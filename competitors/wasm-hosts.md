@@ -15,8 +15,8 @@ HoBo's runtime substrate ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20))
 ## Key shared facts (validation for HoBo)
 - **WASI components are portable across hosts.** "WASI-http components have many compatible hosts — Spin (CLI), Fermyon Cloud, **Wasmtime**, NGINX Unit, SpinKube …" — direct evidence for HoBo's **one component, many `component-host` adapters** thesis.
 - **Capability-based security by default.** All three rely on wasm's deny-by-default sandbox — HoBo's `.allow()`→link enforcement ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) is the same property.
-- **Perf:** "a typical Wasm module starts in **~1 ms** (cold start), consumes **~10 MB**, binary **< 5 MB**, vs a container's ~300 ms / 50–100 MB" — grounds HoBo's "ms cold start, tiny footprint, scale-to-zero" cost/density claims ([Plan 16](../docs/design/reliability-observability-cost.md#plan-16)/[Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)).
-- **WIT as the contract** across all three — the same standards-based contract HoBo uses for ports ([Plan 24](../docs/design/wasm-runtime-wit.md#plan-24)).
+- **Perf:** "a typical Wasm module starts in **~1 ms** (cold start), consumes **~10 MB**, binary **< 5 MB**, vs a container's ~300 ms / 50–100 MB" — grounds HoBo's "ms cold start, tiny footprint, scale-to-zero" cost/density claims ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)/[Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)).
+- **WIT as the contract** across all three — the same standards-based contract HoBo uses for ports ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)).
 
 ## Files
 - [`wasmcloud.md`](#wasmcloud) — lattice, capability providers, WIT links over wRPC.
@@ -41,7 +41,7 @@ HoBo's runtime substrate ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20))
 
 ### Why it matters for HoBo
 - **Validates the SpinKube/containerd-wasm adapter** in [ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031): a real, K8s-native `component-host` that runs WASI components via a containerd shim — exactly the "k8s-native, shim-level density" adapter HoBo names.
-- **Validates the perf basis** of HoBo's cost/density story ([Plan 16](../docs/design/reliability-observability-cost.md#plan-16)/[Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)): "~1 ms cold start, ~10 MB memory, <5 MB binary vs container ~300 ms / 50–100 MB."
+- **Validates the perf basis** of HoBo's cost/density story ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)/[Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)): "~1 ms cold start, ~10 MB memory, <5 MB binary vs container ~300 ms / 50–100 MB."
 - **Validates the OCI-container path** ([ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031) v1 default): running wasm *via containerd* (same registry/scheduler as containers) is precisely HoBo's "wasm-in-container reuses the OCI pipeline, zero new infra" default — SpinKube is the K8s expression of it.
 - **Capability-based security by default** (deny-by-default sandbox) ≈ HoBo's `.allow()`→link enforcement.
 
@@ -90,10 +90,10 @@ This is, almost verbatim, HoBo's [Plan 20](../docs/design/wasm-runtime-wit.md#pl
 | **wasm-in-container via containerd shim (runwasi)** | **v1 prod default** `component-host` (reuses the OCI pipeline) | ✅ validated; pin **runwasi** as the mechanism |
 | **SpinKube** (Spin operator + containerd shim + runtime-class-mgr) | **k8s-native `component-host` adapter** | ✅ real system = the named adapter |
 | **wasmCloud lattice + capability providers + wRPC links** | **lattice `component-host` adapter** + HoBo **links** / **capability providers** ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) | ✅ HoBo's model *is* this; pin **wRPC/NATS** as cross-host link transport |
-| **WIT contracts** across all hosts | HoBo WIT ports ([Plan 24](../docs/design/wasm-runtime-wit.md#plan-24)) | ✅ same standard |
+| **WIT contracts** across all hosts | HoBo WIT ports ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) | ✅ same standard |
 | **WASI component portable across hosts** | "one component, many `component-host` adapters" ([ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031)) | ✅ directly evidenced |
 | **deny-by-default capability security** | `.allow()` → link enforcement ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) | ✅ same property |
-| **~1 ms / ~10 MB cold start** | cost/density + failover-speed claims ([Plan 16](../docs/design/reliability-observability-cost.md#plan-16)/[Plan 5](../docs/design/reliability-observability-cost.md#plan-05)) | ✅ numbers grounded |
+| **~1 ms / ~10 MB cold start** | cost/density + failover-speed claims ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)/[Plan 5](../docs/design/reliability-observability-cost.md#plan-05)) | ✅ numbers grounded |
 | *(provider-native wasm targets, e.g. cloud wasm runtimes)* | provider-native `component-host` adapter ([ADR-0031](../docs/design/adr/01-architecture-core.md#adr-0031)) | ✅ adapter slot exists |
 
 ### ADR-0031 stress-test verdict

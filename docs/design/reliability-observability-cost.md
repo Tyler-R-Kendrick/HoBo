@@ -1,12 +1,12 @@
 # Reliability, Observability & Cost
 
-This capability doc consolidates Plan 5, Plan 14, Plan 16 of the HoBo design suite.
+This capability doc unifies reliability/HA, observability, and cost/FinOps as one operational story: the same event log, saga machinery, and policy plane that keep HoBo available also make it observable and keep its spend safe.
 
 ## Plan 05
 
 **Plan 5 — Reliability / HA algorithms**
 
-> **Pipelines & incremental deploys (Humanitec parity):** **Pipelines** + approval gates ([Plan 28](./platform-engineering.md#plan-28)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 26](./platform-engineering.md#plan-26)) shrink blast radius and rollout time.
+> **Pipelines & incremental deploys (Humanitec parity):** **Pipelines** + approval gates ([Plan 25](./platform-engineering.md#plan-25)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 25](./platform-engineering.md#plan-25)) shrink blast radius and rollout time.
 
 > **Runtime/AI integration.** AI **live-fix** ([Plan 23](./forge-generated-stack.md#plan-23)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
 
@@ -20,7 +20,7 @@ This capability doc consolidates Plan 5, Plan 14, Plan 16 of the HoBo design sui
 | **Drift** | someone changed infra out-of-band | periodic resync detects + reconciles (auto or proposed) |
 | **Split-brain** | two Yard leaders | leases + fencing tokens; quorum writes reject stale leader |
 
-> **The SRE operator extends this taxonomy.** [Plan 44](./operators-sre.md#plan-44) unifies these *runtime* classes with the *contract* classes ([Plan 23](./forge-generated-stack.md#plan-23)/[Plan 29](./contracts-policy-flags.md#plan-29)) into one **failure-taxonomy → safe-fix** map and a documented auto-fix/propose/escalate decision tree; **live-fix is the applier, the taxonomy is the classifier**.
+> **The SRE operator extends this taxonomy.** [Plan 40](./operators-sre.md#plan-40) unifies these *runtime* classes with the *contract* classes ([Plan 23](./forge-generated-stack.md#plan-23)/[Plan 29](./contracts-policy-flags.md#plan-29)) into one **failure-taxonomy → safe-fix** map and a documented auto-fix/propose/escalate decision tree; **live-fix is the applier, the taxonomy is the classifier**.
 
 ### Exactly-once *effects* over at-least-once delivery
 HoBo never assumes the queue delivers once. Instead:
@@ -64,7 +64,7 @@ Rollout strategy is a property of a `service`/`web` resource, implemented as a p
 Health signals come from the data plane (the Camp's runtime metrics/streams) and/or provider health checks; the gate is a `step` with a timeout and a rollback compensation.
 
 ### Provider resilience controls
-- **Circuit breaker per (provider, region, operation):** open after a failure-rate threshold; half-open probes; protects against hammering a degraded provider. *(The same breaker pattern is reused as a **spend** circuit-breaker — opened on runaway cost velocity to halt spend-incurring actions, [Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039).)*
+- **Circuit breaker per (provider, region, operation):** open after a failure-rate threshold; half-open probes; protects against hammering a degraded provider. *(The same breaker pattern is reused as a **spend** circuit-breaker — opened on runaway cost velocity to halt spend-incurring actions, [Plan 05](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039).)*
 - **Retry budgets** (not just per-call retries): a token-bucket cap on total retries per deployment so a flapping provider can't cause unbounded work.
 - **Bulkheads / concurrency caps** per tenant and per provider on the Executor pool (backpressure; one tenant's storm can't starve others).
 - **Timeouts** at every external boundary, with the operation classified retryable/fatal on expiry.
@@ -91,98 +91,86 @@ Health signals come from the data plane (the Camp's runtime metrics/streams) and
 - **AI live-fix as a gated saga.** A failing trace or SLO/health breach triggers an AI-proposed fix, validated sandboxed + replayed, then applied through the **same canary/blue-green saga + auto-rollback** machinery above; the failing trace is retained as a permanent regression test ([Plan 23](./forge-generated-stack.md#plan-23)). Live-fix adds no new failure class — it reuses *compensation* and *deployment-strategy* mechanics.
 - **Faster recovery with wasm.** Components' ms-scale cold start shortens actor failover and rollout/rollback windows vs containers, improving the "deploy resume after node loss" target ([Plan 20](./wasm-runtime-wit.md#plan-20)). Failover is a property of the Camp's **`component-host`** ([ADR-0031](./adr/01-architecture-core.md#adr-0031)): the **wasm-in-container default** restarts the component like any container (re-placed by the same lease/fencing machinery above), while the **wasmCloud-lattice** adapter can additionally **migrate late-bound links across hosts** without redeploy — a stronger failover that apps opt into per Camp.
 - **Exactly-once across links.** At-least-once `link.Called` invocations carry idempotency keys, so cross-WIT-boundary calls inherit the exactly-once-*effects* guarantee already used for steps/IaC ([Plan 11](./event-model.md#plan-11)).
-- **Cost-driven graceful degradation as a reliability strategy.** Cost pressure is an availability lever that **composes** with canary/auto-rollback + drift above ([ADR-0039](./adr/04-governance-verification.md#adr-0039)/[Plan 16](./reliability-observability-cost.md#plan-16)): rather than hard-failing on a budget breach, it sheds QoS **by priority** through ordered degradation tiers (scale-to-zero non-critical, feature-flag shed, request-priority `503`+`Retry-After`) before the runaway-spend breaker trips as a last resort — "availability through cost controls," not cost-vs-availability.
+- **Cost-driven graceful degradation as a reliability strategy.** Cost pressure is an availability lever that **composes** with canary/auto-rollback + drift above ([ADR-0039](./adr/04-governance-verification.md#adr-0039)): rather than hard-failing on a budget breach, it sheds QoS **by priority** through ordered degradation tiers (scale-to-zero non-critical, feature-flag shed, request-priority `503`+`Retry-After`) before the runaway-spend breaker trips as a last resort — "availability through cost controls," not cost-vs-availability. The cost-side mechanics live below.
 
-### Iteration hooks
-- Consensus: ship our own Raft in the built-in engine vs always delegate to the Camp's runtime store.
-- Multi-region topology: active-active log vs active-passive with failover.
-- Canary health-signal sources & the auto-rollback decision function.
-- Default no-go threshold for rollback vs partial-success semantics.
+### Observability
 
-## Plan 14
-
-**Plan 14 — Observability**
+Reliability and observability share one substrate: the event log *is* the observability layer, and reliability signals (health, drift, SLO burn, spend) flow back as alerts and policy inputs.
 
 > **Runtime/IfC integration.** Cross-WIT-boundary calls (`link.Called` / stub recordings, [Plan 11](./event-model.md#plan-11)) are a first-class trace stream — they drive both the **link/trace dashboard views** ([Plan 7](./developer-experience.md#plan-07)) and the AI **implement → auto-evolve → live-fix** loop ([Plan 23](./forge-generated-stack.md#plan-23)).
 
-### Four pillars (three standard + one HoBo-native)
+#### Four pillars (three standard + one HoBo-native)
 1. **Traces** — OpenTelemetry spans across deploys, workflows, steps, actor messages, and provider calls.
 2. **Metrics** — control-plane and data-plane time series.
 3. **Logs** — structured, correlated logs (`ctx.log`) streamed live.
 4. **Provenance / replay** — the event log itself: every fact, ordered and replayable, so you can reconstruct *exactly* what happened and re-run it. This is the differentiator.
 
-### Tracing
+#### Tracing
 - Every command/event carries `meta.traceparent` (W3C trace context) in its [envelope](./event-model.md#plan-11), so a deploy or a run is one distributed trace from the Gateway through ResourceActors, Executors, and provider APIs.
 - `step()` and actor message handlers auto-create spans; provider SDK calls are instrumented in the adapters.
 - Export via OTLP to any backend (Tempo/Jaeger/Honeycomb/Datadog) — HoBo emits, it doesn't lock you into a backend.
 
-### The Run Inspector (the marquee view)
+#### The Run Inspector (the marquee view)
 Derived purely from `run.*` / `actor.*` / `saga.*` events ([Plan 11](./event-model.md#plan-11)), the inspector shows a workflow/step/actor/saga timeline with, per step: inputs, output, attempts/retries, duration, and the memoized result used on replay. Because it's event-sourced you can:
 - **Time-travel:** view state as-of any event; scrub the timeline.
 - **Replay/diff:** re-run a workflow against current code and diff the step outcomes (regression hunting).
 - **Causality:** follow `causationId`/`correlationId` to see why a step ran.
 This mirrors and extends Vercel's run observability, and is the data-plane analog of the deploy timeline.
 
-### Metrics catalog (initial)
-**Control plane:** deploy success rate, plan→deployed latency, reconcile loop latency, executor queue depth/saturation, provider error rate (per provider/region/op), circuit-breaker state, drift count, token grants/min.
-**Data plane (via the Camp's runtime):** workflow start/complete/fail rates, step retry rates, actor activations/passivations, queue lag, app RED metrics (rate/errors/duration) for `service`/`web`.
+#### Metrics catalog (initial)
+**Control plane:** deploy success rate, plan→deployed latency, reconcile loop latency, executor queue depth/saturation, provider error rate (per provider/region/op), circuit-breaker state, drift count, token grants/min; plus IfC-collection metrics (resources/links per manifest) and Forge generation/certification rates.
+**Data plane (via the Camp's runtime):** workflow start/complete/fail rates, step retry rates, actor activations/passivations, queue lag, app RED metrics (rate/errors/duration) for `service`/`web`; plus **wasm runtime** metrics — component cold-start, instances per host (density), link call latency/error rate per `(import, provider)`.
 
-### Logs
+#### Logs
 - `ctx.log` is structured and auto-tagged with `tenant`, `runId`, `resource`, `traceId`.
 - Live tail via the Camp's runtime `streams` (`hobo logs` / dashboard) without waiting for completion; historical logs exported to the tenant's chosen sink.
 
-### SLOs & alerting
-- Built-in SLOs (e.g. deploy success rate, control-plane availability from [Plan 5](./reliability-observability-cost.md#plan-05)) with burn-rate alerts.
+#### SLOs & alerting
+- Built-in SLOs (e.g. deploy success rate, control-plane availability from the reliability targets above) with burn-rate alerts.
 - Alert routing is a provider capability (`email`/webhook/PagerDuty); high-risk policy gates ([Plan 6](./ai-native-agent-auth.md#plan-06)) can post to the same channels for human approval.
 
-#### SLO-as-code + error-budget gating + an AlertManager-style model ([ADR-0045](./adr/04-governance-verification.md#adr-0045))
-- **SLO-as-code:** SLOs/SLIs/objectives/error-budgets are **declared** ([OpenSLO](../../standards/openslo.md)-aligned; SLI source behind a port) and versioned as part of the resolved Set ([Plan 26](./platform-engineering.md#plan-26)), computed from the telemetry above.
-- **Error budgets gate:** burn-rate + remaining budget is a **policy input** — a policy ([Plan 30](./contracts-policy-flags.md#plan-30)) can **freeze deploys / require approval** when the budget burns (a `can-deploy` dimension, [Plan 29](./contracts-policy-flags.md#plan-29)) and an obligation can **auto-revert** a rollout or feature flag ([ADR-0044](./adr/04-governance-verification.md#adr-0044)). Events `slo.Declared`/`slo.BudgetBurned`.
-- **Alerting model:** alerts derive from SLO burn + health/drift/spend ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) through an **[AlertManager](../../technologies/prometheus-alertmanager.md)-style** model — **grouping, dedup, silencing, inhibition, a routing tree**, and notification **receivers as providers** — all **event-sourced** (`alert.*`) so "why did (or didn't) this page" replays.
+##### SLO-as-code + error-budget gating + an AlertManager-style model ([ADR-0045](./adr/04-governance-verification.md#adr-0045))
+- **SLO-as-code:** SLOs/SLIs/objectives/error-budgets are **declared** ([OpenSLO](../../standards/openslo.md)-aligned; SLI source behind a port) and versioned as part of the resolved Set ([Plan 25](./platform-engineering.md#plan-25)), computed from the telemetry above.
+- **Error budgets gate:** burn-rate + remaining budget is a **policy input** — a policy ([Plan 29](./contracts-policy-flags.md#plan-29)) can **freeze deploys / require approval** when the budget burns (a `can-deploy` dimension, [Plan 29](./contracts-policy-flags.md#plan-29)) and an obligation can **auto-revert** a rollout or feature flag ([ADR-0044](./adr/04-governance-verification.md#adr-0044)). Events `slo.Declared`/`slo.BudgetBurned`.
+- **Alerting model:** alerts derive from SLO burn + health/drift/spend through an **[AlertManager](../../technologies/prometheus-alertmanager.md)-style** model — **grouping, dedup, silencing, inhibition, a routing tree**, and notification **receivers as providers** — all **event-sourced** (`alert.*`) so "why did (or didn't) this page" replays.
 - **Boundary export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)):** telemetry exports **OTLP-native**; events export **CloudEvents**-compatible; the audit log exports to **OCSF** for SIEM.
 
-### Observability for agents (closing the loop)
+#### Observability for agents (closing the loop)
 - Agents read the same projections over MCP (`inspect_run`, `tail_logs`, `get_drift`) so an autonomous operator agent can diagnose its own deploy, see why a step failed, and self-correct — the operational analog of Lakebed's "agent discovers the contract."
 - The `CredentialAudit` projection answers "what did this agent access, with which token, when?" for security review.
 
-### Cost observability
-Ties to [Plan 16](./reliability-observability-cost.md#plan-16): the topology graph and run inspector annotate resources/edges with live cost and egress estimates, and budget breaches raise alerts/policy gates.
-
-### Runtime/IfC signals (integrated)
+#### WIT-boundary signals
 - **WIT-boundary call trace** (`link.Called` + stub recordings, [Plan 11](./event-model.md#plan-11)) is a first-class stream: it drives the dashboard **link map + trace views** ([Plan 7](./developer-experience.md#plan-07)) and is the **test oracle** for AI implement → auto-evolve → live-fix ([Plan 23](./forge-generated-stack.md#plan-23)).
-- **Catalog additions.** Control plane: IfC-collection metrics (resources/links per manifest), Forge generation/certification rates. Data plane: **wasm runtime** metrics — component cold-start, instances per host (density), link call latency/error rate per `(import, provider)`.
 
-### AI-method telemetry & training-capture signals (integrated)
+#### AI-method telemetry & training-capture signals
 `"use training"` semantic functions ([Plan 23](./forge-generated-stack.md#plan-23)) need richer, AI-shaped telemetry than RED metrics, so HoBo layers **[OpenInference](https://github.com/Arize-ai/openinference) semantic conventions on top of OTel**:
 - **OpenInference spans** — every trainable-method (and agent/LLM/tool/retriever) call emits an OpenInference span (inputs, outputs, messages, token counts, model, latency) as a child of the same W3C trace as the enclosing run/deploy. OpenInference is OTel-native and transport-agnostic, so these export to the tenant's own backend (Phoenix/Tempo/Datadog) **and** feed HoBo's trajectory store — one emit, no lock-in.
 - **Trajectory = training data.** The span tree for one invocation + I/O + the **reward** attached by live-evals + run/agent correlation is a *trajectory* — the unit the `training-engine` consumes ([Plan 23](./forge-generated-stack.md#plan-23)). Trajectories ride the event log, so training is replayable and auditable. Sensitive payloads are per-run encrypted ([Plan 12](./security-networking.md#plan-12)).
 - **Live-evals as a telemetry stream.** Rubric scores computed online on live/shadow traffic (quality/faithfulness/calibration/cost/latency) are first-class metrics: they drive champion-vs-challenger dashboards, raise drift alerts/SLO burn on a champion regression, and *are* the optimizer's objective. `eval.Ran`/`eval.GateFailed` are events ([Plan 11](./event-model.md#plan-11)).
 - **Metrics-catalog additions.** Per trainable method: invocation rate, eval scores (per rubric dimension), champion/challenger deltas, token/cost per call, shadow-traffic share, candidate-proposed/promoted/rejected counts, time-since-last-promotion.
 
-### Iteration hooks
+#### Observability iteration hooks
 - Whether HoBo ships a bundled backend (e.g. embedded Grafana/Tempo) for self-host or only emits OTLP.
 - OpenInference span-attribute retention vs sampling, and the online-eval (LLM-judge) sampling rate / cost ceiling.
 - Retention/sampling defaults for traces vs the (authoritative, longer-lived) event log.
 - How much replay/diff tooling is CLI vs dashboard.
 
-## Plan 16
+### Cost & FinOps
 
-**Plan 16 — Cost & FinOps**
+Cost rides the same machinery again: it is metered as an event-sourced projection, surfaced through the observability views above, and enforced through the same policy plane and circuit-breaker pattern as reliability. HoBo charges no money and ships no billing ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)) — this is FinOps (visibility + safety), not billing.
 
-> **Matching by environment type (Humanitec parity):** **Matching by environment type** ([Plan 25](./platform-engineering.md#plan-25)/[Plan 26](./platform-engineering.md#plan-26)) is a primary cost lever — platform engineers map cheap variants (in-cluster DB, scale-to-zero wasm, shared cluster) to `ephemeral`/`development` and managed-HA to `production`, so previews are cheap by construction.
+> **Matching by environment type (Humanitec parity):** **Matching by environment type** ([Plan 25](./platform-engineering.md#plan-25)/[Plan 25](./platform-engineering.md#plan-25)) is a primary cost lever — platform engineers map cheap variants (in-cluster DB, scale-to-zero wasm, shared cluster) to `ephemeral`/`development` and managed-HA to `production`, so previews are cheap by construction.
 
-> **Contracts & policy (gates):** the **cost estimate is a gate dimension** in the Gatekeeper ([Plan 29](./contracts-policy-flags.md#plan-29)) — a policy ([Plan 30](./contracts-policy-flags.md#plan-30)) can deny over-budget plans or *allow with an obligation* ("within budget X", "require approval above $Y"), with the decision recorded as an event.
+> **Contracts & policy (gates):** the **cost estimate is a gate dimension** in the Gatekeeper ([Plan 29](./contracts-policy-flags.md#plan-29)) — a policy ([Plan 29](./contracts-policy-flags.md#plan-29)) can deny over-budget plans or *allow with an obligation* ("within budget X", "require approval above $Y"), with the decision recorded as an event.
 
-> **Runtime cost integration.** Wasm components' tiny footprint + ms cold starts ([Plan 20](./wasm-runtime-wit.md#plan-20)) change the cost model (higher density, scale-to-zero friendliness) — a Planner input alongside the `cost.json` signals below. AI auto-evolution can also optimize for cost as an objective ([Plan 23](./forge-generated-stack.md#plan-23)).
-
-### Cost is a first-class input, not a report
+#### Cost is a first-class input, not a report
 HoBo treats cost as a signal that flows through planning, deployment, runtime, and governance:
 - **Plan-time estimate** — `hobo plan` returns a projected cost for the DeploymentPlan before anything is provisioned (the agent/dev sees the bill first).
-- **Provider selection** — when multiple providers fully satisfy a port, the Planner can optimize for cost (or latency, or "stay on one provider") per a tenant objective ([Plan 3](./control-plane.md#plan-03)).
-- **Runtime observability** — live cost/egress annotations on the topology graph and run inspector ([Plan 14](./reliability-observability-cost.md#plan-14)).
+- **Provider selection** — when multiple providers fully satisfy a port, the Planner can optimize for cost (or latency, or "stay on one provider") per a tenant objective ([Plan 4](./control-plane.md#plan-04)).
+- **Runtime observability** — live cost/egress annotations on the topology graph and run inspector (the observability views above): budget breaches raise alerts/policy gates.
 - **Governance** — budgets + spend caps as policy gates, including for agents ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 
-### Cost signals (`cost.json` in Capability Manifest)
+#### Cost signals (`cost.json` in Capability Manifest)
 Each provider publishes machine-readable price/region signals as part of its Capability Manifest ([Plan 6](./ai-native-agent-auth.md#plan-06)):
 ```jsonc
 {
@@ -200,20 +188,20 @@ Each provider publishes machine-readable price/region signals as part of its Cap
 ```
 These are estimates (real bills vary); HoBo reconciles estimates against actual provider billing where an API exists, and records the delta.
 
-### The Planner cost model
-- For a candidate plan, sum each resource's projected cost from `cost.json` × an expected-usage profile (defaults per port, overridable in the Bindle), plus **egress** across each `bind` edge given its connectivity tier ([Plan 13](./security-networking.md#plan-13)).
+#### The Planner cost model
+- For a candidate plan, sum each resource's projected cost from `cost.json` × an expected-usage profile (defaults per port, overridable in the Bindle), plus **egress** across each `bind` edge given its connectivity tier ([Plan 12](./security-networking.md#plan-12)).
 - Objective is configurable per Yard/Camp: `cost` | `latency` | `single-provider` | `carbon`, **default = min-cost within constraints** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033), resolves ADR-P4). It is the **soft tiebreak** in the deterministic Matching rank (specificity → explicit `priority` → objective → stable tiebreak, [Plan 25](./platform-engineering.md#plan-25)) — applied lexicographically, not as an on-path solver; a weighted multi-objective blend is a deferred hook. The chosen rationale is recorded in `match.Decided` + on `deployment.Planned` (auditable "why this provider").
 - Cross-cloud hops are penalized by their egress cost so the Planner naturally colocates bound resources unless explicitly told otherwise.
 
-### Budgets, caps & guardrails
+#### Budgets, caps & guardrails
 - **Camp/tenant budgets** — soft (alert) and hard (block deploys that would exceed) thresholds; breaches raise alerts and can require human approval.
 - **Agent spend caps** — `agent({ policy: { spendCapUsd } })` bounds what an autonomous agent can provision; exceeding it triggers a policy gate (approve/deny) rather than silent spend ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 - All budget/cap decisions are events → the audit trail shows who approved which spend.
 
-### Metering, quota & showback — cost attribution ([ADR-0039](./adr/04-governance-verification.md#adr-0039))
-Cost attribution + quota safety reuse the event log + policy plane rather than adding a separate system. HoBo charges no money and ships no billing ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)) — this is FinOps (visibility + safety), not billing.
+#### Metering, quota & showback — cost attribution ([ADR-0039](./adr/04-governance-verification.md#adr-0039))
+Cost attribution + quota safety reuse the event log + policy plane rather than adding a separate system.
 - **Metering = an event-sourced projection.** A **`MeteringView`** folds **usage/cost counters** from the log HoBo already keeps (`deployment.*`, `run.*`, `resource.*`, `forge.*`, `token.*`, egress) across a small dimension set — **control-plane operations · runtime-compute-seconds · storage-GB · egress-GB · Forge-runs**. No new instrumentation; auditable, replayable, rebuildable from zero ([Plan 11](./event-model.md#plan-11)) so **every cost figure traces to facts**.
-- **Quotas + runaway-spend circuit-breaker run through the policy plane** ([Plan 30](./contracts-policy-flags.md#plan-30)). A counter crossing a threshold → `policy.Decided`: **soft** = warn/alert obligation; **hard** = deny at the gate (block deploy / agent provisioning / Forge run). Excess spend **velocity** trips a **durable spend circuit-breaker** — a saga obligation reusing the resilience-breaker pattern ([Plan 5](./reliability-observability-cost.md#plan-05)) — halting spend-incurring actions until acknowledged (`spend.CircuitTripped`/`spend.CircuitReset`). **Agent spend-caps** (above, [Plan 6](./ai-native-agent-auth.md#plan-06)) generalize to **tenant / Camp** quotas.
+- **Quotas + runaway-spend circuit-breaker run through the policy plane** ([Plan 29](./contracts-policy-flags.md#plan-29)). A counter crossing a threshold → `policy.Decided`: **soft** = warn/alert obligation; **hard** = deny at the gate (block deploy / agent provisioning / Forge run). Excess spend **velocity** trips a **durable spend circuit-breaker** — a saga obligation reusing the resilience-breaker pattern above — halting spend-incurring actions until acknowledged (`spend.CircuitTripped`/`spend.CircuitReset`). **Agent spend-caps** (above, [Plan 6](./ai-native-agent-auth.md#plan-06)) generalize to **tenant / Camp** quotas.
 - **Showback (visibility, not money).** Cost is attributed **tenant → Camp → Bindle → run/agent/team** (from the owning principal on every event) and surfaced as **showback** — OSS-core and self-hostable like the rest of the platform.
 
 ```mermaid
@@ -228,24 +216,30 @@ flowchart LR
   CB -->|ack| RESET["spend.CircuitReset"]
 ```
 
-### Cost-driven graceful degradation & availability ([ADR-0039](./adr/04-governance-verification.md#adr-0039))
-Cost is also an **availability lever**: cost controls **shed quality-of-service gracefully** before they ever hard-stop, and provisioning optimizes cost **within** an availability floor — *"hold 99.9% within $5k,"* not "pick one."
+#### Cost-driven graceful degradation & availability ([ADR-0039](./adr/04-governance-verification.md#adr-0039))
+Cost is also an **availability lever** (the reliability framing above): cost controls **shed quality-of-service gracefully** before they ever hard-stop, and provisioning optimizes cost **within** an availability floor — *"hold 99.9% within $5k,"* not "pick one."
 - **`costAvailabilityProfile` per Camp/Bindle.** A declarative profile binds a **budget** to an **`availabilitySlo`** ([ADR-0045](./adr/04-governance-verification.md#adr-0045)) with **ordered degradation tiers** (`nominal`→`reduced`→`minimal`, each capping a budget fraction + an SLO + what it sheds). Resources/handlers carry a **`priority`/criticality** label (`critical`|`standard`|`low`); tiers shed lowest-priority load first (`strategy: shed-low-priority-first | degrade-all | fail-closed`).
-- **Spend velocity is a policy input.** The `MeteringView`'s real-time **spend velocity** feeds the policy plane ([Plan 30](./contracts-policy-flags.md#plan-30)) — a decision asks *"at this velocity, do we cross tier N before period end?"* and yields `allow` · **`allow-degraded`** + obligation · `deny`/`fail-closed`.
-- **Graceful degradation is a durable saga, not a halt.** Crossing a tier emits **`spend.DegradationRequired`**; the **SRE operator** ([Plan 40](./operators-sre.md#plan-40)) + runtime enforce it by composing existing levers — **scale-to-zero** non-critical workloads (wasm economics, below), **feature-flag shed** ([Plan 37](./contracts-policy-flags.md#plan-37)), **cache-TTL increase / expensive-query shed**, **request-priority shedding** (an honest `503` + `Retry-After` to low-priority callers, never a silent hang), and **canary hold**. Recovery emits **`spend.DegradationRolledBack`** (`spend.DegradationApplied` records each enforced step). The **runaway-spend circuit-breaker becomes the last resort** *after* graceful tiers are exhausted ([ADR-0039](./adr/04-governance-verification.md#adr-0039)) — degradation is the path *to* it, not a synonym for it.
-- **SLO-bounded Planner objective.** The Planner objective ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) becomes *"minimize cost **subject to** the availability floor"* — the cheapest realization that still meets `availabilitySlo`, not unbounded min-cost; the cost **and** the SLO rationale are recorded in `match.Decided`/`deployment.Planned`. Cost-induced degradation is a first-class **incident class** ([Plan 44](./operators-sre.md#plan-44)): the SRE operator may *propose* cost-efficient remediation as a gated obligation, and postmortem-by-replay shows exactly what was shed.
+- **Spend velocity is a policy input.** The `MeteringView`'s real-time **spend velocity** feeds the policy plane ([Plan 29](./contracts-policy-flags.md#plan-29)) — a decision asks *"at this velocity, do we cross tier N before period end?"* and yields `allow` · **`allow-degraded`** + obligation · `deny`/`fail-closed`.
+- **Graceful degradation is a durable saga, not a halt.** Crossing a tier emits **`spend.DegradationRequired`**; the **SRE operator** ([Plan 40](./operators-sre.md#plan-40)) + runtime enforce it by composing existing levers — **scale-to-zero** non-critical workloads (wasm economics, below), **feature-flag shed** ([Plan 29](./contracts-policy-flags.md#plan-29)), **cache-TTL increase / expensive-query shed**, **request-priority shedding** (an honest `503` + `Retry-After` to low-priority callers, never a silent hang), and **canary hold**. Recovery emits **`spend.DegradationRolledBack`** (`spend.DegradationApplied` records each enforced step). The **runaway-spend circuit-breaker becomes the last resort** *after* graceful tiers are exhausted — degradation is the path *to* it, not a synonym for it.
+- **SLO-bounded Planner objective.** The Planner objective ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) becomes *"minimize cost **subject to** the availability floor"* — the cheapest realization that still meets `availabilitySlo`, not unbounded min-cost; the cost **and** the SLO rationale are recorded in `match.Decided`/`deployment.Planned`. Cost-induced degradation is a first-class **incident class** ([Plan 40](./operators-sre.md#plan-40)): the SRE operator may *propose* cost-efficient remediation as a gated obligation, and postmortem-by-replay shows exactly what was shed.
 
-### Optional dimensions
+#### Optional dimensions
 - **Carbon/sustainability** — providers may publish region carbon intensity alongside cost; the Planner objective can include a carbon term.
 - **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval).
 
-### Runtime cost inputs (integrated)
+#### Runtime cost inputs
 - **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./wasm-runtime-wit.md#plan-20)).
-- **Cross-link egress.** `link.Called` paths that cross providers/regions feed the egress term of the cost model exactly like `bind` edges ([Plan 13](./security-networking.md#plan-13)).
+- **Cross-link egress.** `link.Called` paths that cross providers/regions feed the egress term of the cost model exactly like `bind` edges ([Plan 12](./security-networking.md#plan-12)).
 - **AI cost optimization.** Auto-evolution can take **cost** as an objective, proposing cheaper implementations/providers validated against recorded traces before a gated promotion ([Plan 23](./forge-generated-stack.md#plan-23)).
 
-### Iteration hooks
+#### Cost iteration hooks
 - Estimate fidelity vs simplicity (static `cost.json` vs live pricing APIs vs learned usage profiles).
 - ~~The default Planner objective~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** min-cost within constraints, configurable; weighted multi-objective blending remains the open part.
 - How aggressively to act on commitment/savings recommendations.
 - Reconciling estimates with real provider cost (which clouds expose usable cost APIs?).
+
+### Iteration hooks (reliability)
+- Consensus: ship our own Raft in the built-in engine vs always delegate to the Camp's runtime store.
+- Multi-region topology: active-active log vs active-passive with failover.
+- Canary health-signal sources & the auto-rollback decision function.
+- Default no-go threshold for rollback vs partial-success semantics.

@@ -49,7 +49,7 @@ All four personas are in v1; we prioritize **build emphasis** (which to nail fir
 ### Consequences
 - **(+)** Sharpens the early build stages around the develop→deploy→agent-operate loop; the MCP surface and keyless identity are not deferrable.
 - **(+)** Gives marketing/positioning one clear ICP to address.
-- **(−)** Platform-engineer features (Resource Definitions/Matching, policy packs) are in v1 but built after the core loop (build stage 4+); they are sequenced later, not cut. The design already accommodates them ([25](../platform-engineering.md#plan-25), [30](../contracts-policy-flags.md#plan-30)); only *build order* differs, not scope or architecture.
+- **(−)** Platform-engineer features (Resource Definitions/Matching, policy packs) are in v1 but built after the core loop (build stage 4+); they are sequenced later, not cut. The design already accommodates them ([25](../platform-engineering.md#plan-25), [30](../contracts-policy-flags.md#plan-29)); only *build order* differs, not scope or architecture.
 
 ## ADR-0021
 **NFR baselines / committed SLOs for v1.** Proposed (numbers pending stakeholder ratification)
@@ -63,14 +63,14 @@ Adopt these v1 NFR baselines (each becomes an `NFR-` in the PRD with a verificat
 | Dimension | Baseline (v1) | Source / verified by |
 |---|---|---|
 | Time-to-first-deploy (scaffold → running on real cloud) | ≤ 10 min p50 on the happy path | north-star ([08](../roadmap.md#plan-08)); E2E timing test |
-| Local dev start (`hobo dev`, no cloud) | ≤ 60 s | [developer-experience.md#plan-15](../developer-experience.md#plan-15); integration test |
+| Local dev start (`hobo dev`, no cloud) | ≤ 60 s | [developer-experience.md#plan-07](../developer-experience.md#plan-07); integration test |
 | Zero-secret rate (provider access via brokered/federated tokens) | ≥ 99% of provider calls; static keys only via explicit legacy escape hatch | [06](../ai-native-agent-auth.md#plan-06)/[12](../security-networking.md#plan-12); audit of `token.*` events |
-| Portability ("same Bindle, N clouds" unedited) | ≥ 2 providers for the reference app at v1, design target N | [03](../control-plane.md#plan-03); `multi-cloud-shop` E2E |
+| Portability ("same Bindle, N clouds" unedited) | ≥ 2 providers for the reference app at v1, design target N | [03](../control-plane.md#plan-04); `multi-cloud-shop` E2E |
 | Control-plane availability | 99.9% single-region / 99.95% multi-region | [05](../reliability-observability-cost.md#plan-05) |
 | Deploy resume after node loss | < 30 s (lease TTL + tail replay) | [05](../reliability-observability-cost.md#plan-05); chaos test |
 | RPO | ~0 (sync quorum) / ≤ 5 s (async tier) | [05](../reliability-observability-cost.md#plan-05) |
 | RTO (full Yard rebuild from log) | < 15 min | [05](../reliability-observability-cost.md#plan-05); DR replay test |
-| Plan-time cost estimate accuracy | within ±20% of a known fixture | [16](../reliability-observability-cost.md#plan-16); cost fixture test |
+| Plan-time cost estimate accuracy | within ±20% of a known fixture | [16](../reliability-observability-cost.md#plan-05); cost fixture test |
 | Determinism | `replay == live state` for every durable run (hard invariant) | [09](../verification.md#plan-09); determinism test |
 
 ### Alternatives considered
@@ -89,12 +89,12 @@ Adopt these v1 NFR baselines (each becomes an `NFR-` in the PRD with a verificat
 HoBo is in its design phase; nothing has shipped and no release ladder is committed. The full surface is designed and internally coherent, and the directive is to treat it as **one scope** delivered in dependency order — "it's okay to have a massive implementation plan; we can deliver quickly and effectively." Dependencies between capabilities are a **build order**, not a version ladder.
 
 ### Decision
-**Scope = the entire designed surface.** Every plan in the suite ([Plan 0](../vision.md#plan-00)–[Plan 47](../governance-planes.md#plan-47)) is in scope.
+**Scope = the entire designed surface.** Every plan in the suite ([Plan 0](../vision.md#plan-00)–[Plan 46](../governance-planes.md#plan-46)) is in scope.
 
 1. **No release split, no deferred bucket.** There is no "next version" and no "post-launch" tier: the Forge, multi-region HA, FinOps showback, the full dashboard, platform-engineer Resource Definitions/Matching/Packs at depth, the Operator Crew, the generated stack (infrastructure **and** app/UI), patchability, SRE/incident-management, and the governance planes (compliance enforcement, AI safety) + the `notify` port + Registry distribution are all in scope. Scope is bounded only by [ADR-0064](#adr-0064) (AI-native meta-cloud: no business/monetization).
 2. **Build stages = dependency order.** The build proceeds foundations → SDK-local → first-deploy(+gates) → AI-native → multi-provider → Forge → HA/FinOps/UX/planes ([Per-stage build detail](../roadmap.md#per-stage-build-detail-stages-06)). Stages are *how* a large surface is delivered in order; they are not separate versions. Definition of done = every stage's acceptance gate green ([PRD §9](../../requirements/PRD.md)).
 3. **Priority = build order.** MoSCoW on requirements ([BRD §8](../../requirements/BRD.md)/[PRD §6](../../requirements/PRD.md)) expresses **build priority/sequencing**, not a release boundary.
-4. **Anti-goals are positioning, not deferrals.** HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu/Crossplane) via the IaC port rather than replacing them ([Plan 3](../control-plane.md#plan-03)); it is not a standalone secret-management product or a generic app framework ([00 non-goals](../vision.md#plan-00)).
+4. **Anti-goals are positioning, not deferrals.** HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu/Crossplane) via the IaC port rather than replacing them ([Plan 4](../control-plane.md#plan-04)); it is not a standalone secret-management product or a generic app framework ([00 non-goals](../vision.md#plan-00)).
 
 Genuine *technical* first-cut scoping inside individual capability designs (e.g. provider-store active-active/CDC, the multi-Yard **Junction** [ADR-0043](07-portability-extensibility.md#adr-0043), incremental view maintenance, full ITSM) remain honest "first implementation" notes and **iteration hooks** — in scope, sequenced by the build.
 
@@ -128,7 +128,7 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
-- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 13](../security-networking.md#plan-13).
+- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 12](../security-networking.md#plan-12).
 - **ADR-P3:** ~~policy language for guardrails/ABAC~~ — **Resolved by ADR-0015** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
-- **ADR-P4:** ~~default Planner objective (cost-first vs latency-first)~~ — **Resolved by [ADR-0033](05-config-matching-environments.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 16](../reliability-observability-cost.md#plan-16)/[Plan 25](../platform-engineering.md#plan-25).
+- **ADR-P4:** ~~default Planner objective (cost-first vs latency-first)~~ — **Resolved by [ADR-0033](05-config-matching-environments.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
 - **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../sdk-api.md#plan-02).

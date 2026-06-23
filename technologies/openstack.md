@@ -28,7 +28,7 @@ API model:
 Private-cloud usage: OpenStack is most commonly used to run **on-prem / private / sovereign clouds** — via vendor distributions (Red Hat OpenStack Platform, Canonical Charmed OpenStack, Mirantis), turnkey appliances, or hosted private cloud. It gives organizations cloud-style self-service and APIs **without dependence on a public hyperscaler**, which is its core appeal for regulated, cost-sensitive, and data-residency-bound workloads.
 
 ## Relevance to HoBo
-OpenStack is a natural **HoBo provider** and **Camp target** — the private-cloud counterpart to the public hyperscalers HoBo already targets. In HoBo's ports/adapters model ([Plan 3](../docs/design/control-plane.md#plan-03)), a `CloudProvider` implements capability ports (WIT interfaces: compute, network, `wasi:blobstore`, `wasi:sql`, etc.) for a backend; a **Camp** is a provider-specific deployment target on one provider/cloud ([ADR-0026](../docs/design/adr/01-architecture-core.md#adr-0026)). An **`provider-openstack`** adapter would make any private OpenStack cloud a first-class Camp.
+OpenStack is a natural **HoBo provider** and **Camp target** — the private-cloud counterpart to the public hyperscalers HoBo already targets. In HoBo's ports/adapters model ([Plan 4](../docs/design/control-plane.md#plan-04)), a `CloudProvider` implements capability ports (WIT interfaces: compute, network, `wasi:blobstore`, `wasi:sql`, etc.) for a backend; a **Camp** is a provider-specific deployment target on one provider/cloud ([ADR-0026](../docs/design/adr/01-architecture-core.md#adr-0026)). An **`provider-openstack`** adapter would make any private OpenStack cloud a first-class Camp.
 
 **Service → port mapping** (the integration is unusually clean because OpenStack's services are already capability-shaped):
 
@@ -38,9 +38,9 @@ OpenStack is a natural **HoBo provider** and **Camp target** — the private-clo
 | **Neutron** | `network` (vnets, subnets, routers, security groups) |
 | **Cinder** | `volume` / block storage |
 | **Swift** | `objectStore` (`wasi:blobstore`) |
-| **Glance** | image source for the **BuildProvider** rootfs/VM images ([Plan 3](../docs/design/control-plane.md#plan-03)) |
+| **Glance** | image source for the **BuildProvider** rootfs/VM images ([Plan 4](../docs/design/control-plane.md#plan-04)) |
 | **Keystone** | identity/token brokering — maps onto HoBo's Identity + token broker ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)) |
-| **Heat** | a realization **Driver** (template driver, [Plan 27](../docs/design/platform-engineering.md#plan-27)) for the `IacProvider` |
+| **Heat** | a realization **Driver** (template driver, [Plan 25](../docs/design/platform-engineering.md#plan-25)) for the `IacProvider` |
 
 **The strategic payoff is sovereign / air-gapped deployment.** OpenStack is the leading way to stand up a cloud *inside a boundary with zero egress*, which is exactly HoBo's air-gapped / sovereign mode ([ADR-0036](../docs/design/adr/07-portability-extensibility.md#adr-0036)). A self-hosted Yard + Executors deploying onto an in-boundary OpenStack cloud gives the full HoBo model (deploy/match/migrate/route) **on-prem with no public-cloud dependency** — and Keystone's in-boundary identity dovetails with HoBo's internal CA / in-boundary KMS posture ([ADR-0027](../docs/design/adr/02-identity-security.md#adr-0027)). Because OpenStack exposes AWS-compatible surfaces (Swift↔S3, Heat↔CloudFormation), much of an existing AWS-targeted adapter's IaC logic could be reused.
 

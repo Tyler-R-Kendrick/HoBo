@@ -1,22 +1,22 @@
 # Contracts, Policy & Feature Flags
 
-This capability doc consolidates Plan 29, Plan 30, Plan 37 of the HoBo design suite.
+This capability doc unifies three planes of the HoBo design suite into one narrative — contracts (the `can-deploy` gate), the policy plane (decisions, obligations & gates), and feature flags & progressive delivery.
 
 ## Plan 29
 
 **Plan 29 — Contracts & compatibility (the `can-deploy` gate)**
 
 ### Why this exists (conformance ≠ compatibility)
-HoBo already has **conformance** ([Plan 9](./verification.md#plan-09)/[Plan 24](./wasm-runtime-wit.md#plan-24)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
+HoBo already has **conformance** ([Plan 9](./verification.md#plan-09)/[Plan 20](./wasm-runtime-wit.md#plan-20)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
 
 > *Will `api@v3` (which removed `tenantId` from `order.created`) still work with `worker@v2` that's already running in prod?*
 
-That's a **contract** between a **producer and its consumers**, evaluated against **what's actually deployed**. This doc adds that missing dimension and a `can-deploy` gate. The organizing lens (shared across [Plan 30](./contracts-policy-flags.md#plan-30)/[Plan 23](./forge-generated-stack.md#plan-23)):
+That's a **contract** between a **producer and its consumers**, evaluated against **what's actually deployed**. This doc adds that missing dimension and a `can-deploy` gate. The organizing lens (shared across [Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 23](./forge-generated-stack.md#plan-23)):
 
 > **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened.**
 
 ### Contracts are a dimension of the graph (not test files)
-Every **edge** in the manifest graph ([Plan 22](./authoring-resources-wiring.md#plan-22)) carries a typed contract; HoBo covers more than HTTP:
+Every **edge** in the manifest graph ([Plan 21](./authoring-resources-wiring.md#plan-21)) carries a typed contract; HoBo covers more than HTTP:
 
 | Edge | Contract checks |
 |---|---|
@@ -25,10 +25,10 @@ Every **edge** in the manifest graph ([Plan 22](./authoring-resources-wiring.md#
 | Resource binding | the behavior app code expects of a `database`/`blobstore`/… port |
 | Service / actor / workflow | command/query I/O, step inputs/outputs, compensation expectations |
 | **Capability (`.allow()`)** | **required scope ⊆ granted scope** ([Plan 21](./authoring-resources-wiring.md#plan-21)) |
-| **Runtime / SLO** | latency, availability, idempotency, ordering ([Plan 14](./reliability-observability-cost.md#plan-14)) |
+| **Runtime / SLO** | latency, availability, idempotency, ordering ([Plan 5](./reliability-observability-cost.md#plan-05)) |
 | **Semantic function** | I/O schema + invariants + forbidden outputs ([Plan 23](./forge-generated-stack.md#plan-23)) |
 | **Agent tool** | tool I/O, auth scope, allowed side effects ([Plan 6](./ai-native-agent-auth.md#plan-06)) |
-| Provider / interface | conformance to the port it claims ([Plan 24](./wasm-runtime-wit.md#plan-24)) |
+| Provider / interface | conformance to the port it claims ([Plan 20](./wasm-runtime-wit.md#plan-20)) |
 
 ### Four contract modes (IfC-inferred, then refined by reality)
 Developers don't hand-write contracts (IfC-default, [Plan 21](./authoring-resources-wiring.md#plan-21)); they're derived and refined:
@@ -47,7 +47,7 @@ flowchart LR
 ```
 
 ### The `can-deploy` gate (compatibility matrix)
-At **Delta → Set / promote** time ([Plan 26](./platform-engineering.md#plan-26)) the Planner ([Plan 3](./control-plane.md#plan-03)/[Plan 4](./control-plane.md#plan-04)) builds a compatibility matrix: the proposed Set's producer/consumer **versions** vs the versions the event log says are **running in the target environment**. Incompatible skew → block with a precise, machine-readable reason (an agent can self-correct, like `deployment.PlanRejected`). Recorded as `compat.GatePassed` / `compat.GateFailed`.
+At **Delta → Set / promote** time ([Plan 25](./platform-engineering.md#plan-25)) the Planner ([Plan 4](./control-plane.md#plan-04)/[Plan 4](./control-plane.md#plan-04)) builds a compatibility matrix: the proposed Set's producer/consumer **versions** vs the versions the event log says are **running in the target environment**. Incompatible skew → block with a precise, machine-readable reason (an agent can self-correct, like `deployment.PlanRejected`). Recorded as `compat.GatePassed` / `compat.GateFailed`.
 ```text
 $ hobo can-deploy --target prod
 blocked: api@1.8.0 publishes order-events/order.created v3 (removed tenantId),
@@ -62,7 +62,7 @@ This is HoBo's generalization of `can-i-deploy`, driven by HoBo's own graph + ev
 ```text
 deployable =
   contracts compatible            (this doc)
-  AND policy allows / approves     (Plan 30 — incl. obligations)
+  AND policy allows / approves     (Plan 29 — incl. obligations)
   AND eval gates pass              (Plan 23 — for AI/semantic impls)
   AND conformance satisfied        (Plan 9/24)
   AND within cost budget           (Plan 16)
@@ -75,10 +75,10 @@ deployable =
 The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** (it already has the graph, traces, and event log it needs). **PACT-style consumer-driven contract testing is the built-in, default behavior of that engine — an internal implementation detail developers never see.** Developers declare contracts (or let IfC infer them, above); they never interact with PACT directly and there is no PACT option to turn on or swap. HoBo owns the source of truth — the **HoBo Contract IR** — and consumer-driven testing runs against the graph + event log by construction. PACT/OpenAPI/AsyncAPI/Protobuf are import/export *targets* over that IR for interop with outside ecosystems, never the model and never a behavior toggle.
 
 ### Consumer-driven contracts drive the dev auth bypass ([ADR-0070](./adr/02-identity-security.md#adr-0070))
-The `auth` port ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 36](./ai-native-agent-auth.md#plan-36)) carries a **consumer-driven contract** like any other edge — the subject/roles/tenancy/scopes the app expects of its principal. In **`hobo dev`** the runtime satisfies that contract with a **contract-asserted dev principal** (a fixture matching the contract) instead of calling a real IdP: auth still runs, fulfilled by the fixture, and the dev can override claims/roles/tenant per session within what the contract allows. **The same `auth` contract is enforced at `can-deploy`** (above) — a real IdP/Camp must satisfy the identical contract in prod — so dev and prod are **contract-equivalent** and the bypass cannot drift. This is the contract plane defining the dev identity, not a bespoke `AUTH_DISABLED` flag.
+The `auth` port ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 6](./ai-native-agent-auth.md#plan-06)) carries a **consumer-driven contract** like any other edge — the subject/roles/tenancy/scopes the app expects of its principal. In **`hobo dev`** the runtime satisfies that contract with a **contract-asserted dev principal** (a fixture matching the contract) instead of calling a real IdP: auth still runs, fulfilled by the fixture, and the dev can override claims/roles/tenant per session within what the contract allows. **The same `auth` contract is enforced at `can-deploy`** (above) — a real IdP/Camp must satisfy the identical contract in prod — so dev and prod are **contract-equivalent** and the bypass cannot drift. This is the contract plane defining the dev identity, not a bespoke `AUTH_DISABLED` flag.
 
 ### Camps declare enforcement modes
-Each **Camp** (via its runtime + wasm host, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 24](./wasm-runtime-wit.md#plan-24)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire component announcing capabilities.
+Each **Camp** (via its runtime + wasm host, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 20](./wasm-runtime-wit.md#plan-20)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire component announcing capabilities.
 
 ### Iteration hooks
 - Authoring surface when devs *want* explicit contracts (TS DSL vs annotations) vs pure inference.
@@ -86,18 +86,15 @@ Each **Camp** (via its runtime + wasm host, [Plan 20](./wasm-runtime-wit.md#plan
 - Sampling/retention for observed→promoted mining; promotion thresholds.
 - Where the running-version-per-env projection lives (the matrix's source of truth).
 
-## Plan 30
+### The policy plane — one decision model behind every gate
 
-**Plan 30 — The policy plane (decisions, obligations & gates)**
-
-### Why a plane (not scattered gates)
-HoBo already gates agent actions, live-fix, deploys, and pipelines — but each is bespoke and mostly boolean. The contribution here is a **single policy decision model** that every gate calls, with **lifecycle phases**, **rich effects**, and **obligations**. It answers one question everywhere:
+HoBo already gates agent actions, live-fix, deploys, and pipelines — but left alone each is bespoke and mostly boolean. The policy plane replaces that with a **single decision model** every gate calls, carrying **lifecycle phases**, **rich effects**, and **obligations**. It answers one question everywhere:
 
 > *Is this action allowed, denied, warned, mutated, gated for approval — and what must follow if allowed?*
 
-In the four-lens taxonomy ([Plan 29](./contracts-policy-flags.md#plan-29)): **Policy = may/may not be allowed** (distinct from *Contract = must never break* and *Eval = should improve*).
+This is the **Policy = may/may not be allowed** lens of the taxonomy above, distinct from *Contract = must never break* and *Eval = should improve*.
 
-### The decision model
+#### The decision model
 A decision **request** describes the action in context:
 ```text
 request = {
@@ -110,7 +107,7 @@ request = {
               dataClassifications?, region?, provider?, riskScore?, traceSummary? }
 }
 ```
-> **End-user authorization rides this model.** `subject.kind = user` is populated from a verified **`ctx.user`** ([Plan 36](./ai-native-agent-auth.md#plan-36)/[ADR-0038](./adr/02-identity-security.md#adr-0038)) — its claims (`roles`/`scopes`/tenant) drive record-level rules like "a user may read only their own orders" as a **`policy.Decided`**, the same way agent/service actions are gated. No separate end-user authz engine; `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)) is the declarative shorthand over these user-claim rules.
+> **End-user authorization rides this model.** `subject.kind = user` is populated from a verified **`ctx.user`** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0038](./adr/02-identity-security.md#adr-0038)) — its claims (`roles`/`scopes`/tenant) drive record-level rules like "a user may read only their own orders" as a **`policy.Decided`**, the same way agent/service actions are gated. No separate end-user authz engine; `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)) is the declarative shorthand over these user-claim rules.
 
 The **decision** is richer than allow/deny:
 ```text
@@ -122,27 +119,27 @@ decision = {
 }
 ```
 
-### Obligations are HoBo effects (the powerful part)
+#### Obligations are HoBo effects (the powerful part)
 An **obligation** lets policy say *allow but require X*, and in HoBo that X is a **durable, event-sourced effect/saga** ([Plan 5](./reliability-observability-cost.md#plan-05)) — not advice the caller may ignore. Examples:
-- *allow deploy* **→ require canary** (the Orchestrator must roll out as canary, [Plan 26](./platform-engineering.md#plan-26)).
+- *allow deploy* **→ require canary** (the Orchestrator must roll out as canary, [Plan 25](./platform-engineering.md#plan-25)).
 - *allow public endpoint* **→ require auth middleware** (a graph mutation before apply).
 - *allow model change* **→ require shadow evaluation** ([Plan 23](./forge-generated-stack.md#plan-23)).
 - *allow generated provider* **→ require sandbox verification** ([Plan 23](./forge-generated-stack.md#plan-23)).
 - *allow agent action* **→ require human approval before apply** (a `createHook`, [Plan 6](./ai-native-agent-auth.md#plan-06)).
-- *allow spend-incurring action within quota* **→ deny past a hard quota, or trip a spend circuit-breaker on runaway velocity** ([Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) — the `MeteringView` counter is the policy input, the breaker is a durable obligation/saga ([Plan 5](./reliability-observability-cost.md#plan-05)) halting deploys/agent-provisioning/Forge-runs until acknowledged.
-- *allow at this spend velocity* **→ `allow-degraded` + a degradation obligation** (*"enter the reduced tier; shed batch/analytics"*) when **spend velocity** would cross a `costAvailabilityProfile` tier before period end ([Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) — graceful QoS shedding by priority is the durable effect, the runaway-spend breaker the last resort.
-- *allow a feature-flag flip* **→ require approval for a prod kill-switch / risky `%` bump, or attach an auto-revert obligation on SLO burn** ([Plan 37](./contracts-policy-flags.md#plan-37)/[ADR-0044](./adr/04-governance-verification.md#adr-0044)) — a `flag.Changed` is a policy-gated event like any other deploy-affecting action.
+- *allow spend-incurring action within quota* **→ deny past a hard quota, or trip a spend circuit-breaker on runaway velocity** ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) — the `MeteringView` counter is the policy input, the breaker is a durable obligation/saga ([Plan 5](./reliability-observability-cost.md#plan-05)) halting deploys/agent-provisioning/Forge-runs until acknowledged.
+- *allow at this spend velocity* **→ `allow-degraded` + a degradation obligation** (*"enter the reduced tier; shed batch/analytics"*) when **spend velocity** would cross a `costAvailabilityProfile` tier before period end ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) — graceful QoS shedding by priority is the durable effect, the runaway-spend breaker the last resort.
+- *allow a feature-flag flip* **→ require approval for a prod kill-switch / risky `%` bump, or attach an auto-revert obligation on SLO burn** ([Plan 29](./contracts-policy-flags.md#plan-29)/[ADR-0044](./adr/04-governance-verification.md#adr-0044)) — a `flag.Changed` is a policy-gated event like any other deploy-affecting action (see *feature flags*, below).
 - *allow a `notify` send* **→ deny to an opted-out recipient, or defer until the quiet-hours window opens** ([Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0059](./adr/03-data-plane.md#adr-0059)) — consent + per-recipient rate limits are obligation-checked preconditions, with deferral a durable effect (not advice).
 - *allow a deploy/runtime action on classified data* **→ deny if it places/moves the data outside its allowed region, or past its retention ceiling** ([Plan 46](./governance-planes.md#plan-46)/[ADR-0060](./adr/04-governance-verification.md#adr-0060)) — `context.dataClassifications`/`region` (above) drive a residency/retention obligation at `can-deploy` *and* runtime; routing to an unregistered subprocessor is denied.
-- *allow an AI output* **→ block, redact, or require-approval on a guardrail failure** ([Plan 47](./governance-planes.md#plan-47)/[ADR-0061](./adr/04-governance-verification.md#adr-0061)) — moderation/PII/jailbreak/grounding checks are a policy-gated step (`guardrail.Blocked`); guardrail-coverage is a *promote*-phase contract for model/prompt changes.
-Obligations are tracked to completion via `policy.ObligationCreated` → `…Satisfied` events; an unsatisfied obligation blocks the gate. **Obligations may carry a deadline:** an unmet obligation past its deadline **escalates** (e.g. an unacked incident pages up the on-call ladder) rather than silently lingering ([Plan 44](./operators-sre.md#plan-44)) — the durable form of an SLA on a follow-up.
+- *allow an AI output* **→ block, redact, or require-approval on a guardrail failure** ([Plan 46](./governance-planes.md#plan-46)/[ADR-0061](./adr/04-governance-verification.md#adr-0061)) — moderation/PII/jailbreak/grounding checks are a policy-gated step (`guardrail.Blocked`); guardrail-coverage is a *promote*-phase contract for model/prompt changes.
+Obligations are tracked to completion via `policy.ObligationCreated` → `…Satisfied` events; an unsatisfied obligation blocks the gate. **Obligations may carry a deadline:** an unmet obligation past its deadline **escalates** (e.g. an unacked incident pages up the on-call ladder) rather than silently lingering ([Plan 40](./operators-sre.md#plan-40)) — the durable form of an SLA on a follow-up.
 
-### Phases (policy spans the whole lifecycle)
+#### Phases (policy spans the whole lifecycle)
 | Phase | Example rule |
 |---|---|
 | author | public handlers must declare input schemas |
 | local | no hardcoded secrets in source |
-| test | every external interaction needs a contract ([Plan 29](./contracts-policy-flags.md#plan-29)) |
+| test | every external interaction needs a contract (above) |
 | plan | prod data resources must be encrypted + backed up |
 | apply | no prod resource deletion without approval |
 | runtime | an agent cannot call a tool outside its delegated scope |
@@ -151,29 +148,27 @@ Obligations are tracked to completion via `policy.ObligationCreated` → `…Sat
 | promote | a candidate impl must beat the champion on evals ([Plan 23](./forge-generated-stack.md#plan-23)) |
 | repair | agents may auto-fix preview, only *propose* prod changes |
 
-### Policy packs
-Rules are grouped into **policy packs** — versioned, **signed** resources ([Plan 12](./security-networking.md#plan-12)) scoped to org/app/environment and bound per target ([Plan 25](./platform-engineering.md#plan-25) matching can select which pack applies). Packs are distributed like Resource Packs ([Plan 27](./platform-engineering.md#plan-27)) and Forge-generatable. Because packs are signed + portable, they **federate across sovereign Yards in a `Junction`** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — shared policy without a shared control plane.
+#### Policy packs
+Rules are grouped into **policy packs** — versioned, **signed** resources ([Plan 12](./security-networking.md#plan-12)) scoped to org/app/environment and bound per target ([Plan 25](./platform-engineering.md#plan-25) matching can select which pack applies). Packs are distributed like Resource Packs ([Plan 25](./platform-engineering.md#plan-25)) and Forge-generatable. Because packs are signed + portable, they **federate across sovereign Yards in a `Junction`** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — shared policy without a shared control plane.
 
-### The `policy-engine` ([ADR-0015](./adr/04-governance-verification.md#adr-0015))
+#### The `policy-engine` ([ADR-0015](./adr/04-governance-verification.md#adr-0015))
 `policy-engine` is a **WIT port**. The default implementation is built-in **typed TypeScript rules** (testable, no Rego to learn). Unlike the `contract-engine` (whose PACT-style testing is built-in, not swappable), the policy engine genuinely accepts optional capability providers: **OPA/Rego** (`@hobo/provider-opa` — maps the request to OPA `input`, runs embedded/WASM/sidecar/Envoy, returns the decision) and **Cedar** (`@hobo/provider-cedar`) for ABAC-style authz. HoBo Cloud is the **management plane** (pack registry, distribution, decision logs); Camps/providers are **enforcement points** — the decision/enforcement split, with HoBo owning the model (the **HoBo Policy IR**).
 
-### Decisions are events
-Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./event-model.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper ([Plan 29](./contracts-policy-flags.md#plan-29)) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
+#### Decisions are events
+Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./event-model.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper (above) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
 
-### Iteration hooks
+#### Iteration hooks
 - Default pack set + precedence when multiple packs match.
-- ~~Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.~~ **Resolved ([Plan 44](./operators-sre.md#plan-44)):** obligations carry a deadline; unmet-by-deadline **escalates** (the on-call ladder), tracked as `policy.ObligationCreated`→`…Satisfied`/escalation events.
+- ~~Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.~~ **Resolved ([Plan 40](./operators-sre.md#plan-40)):** obligations carry a deadline; unmet-by-deadline **escalates** (the on-call ladder), tracked as `policy.ObligationCreated`→`…Satisfied`/escalation events.
 - Waiver workflow + who can grant per environment.
 - Mutation safety (policy-driven graph mutations must themselves pass contracts/conformance).
 
-## Plan 37
+### Feature flags & progressive delivery
 
-**Plan 37 — Feature flags & progressive delivery**
+> **Deploy ≠ release.** A canary ([Plan 5](./reliability-observability-cost.md#plan-05)) shifts traffic between *deployed versions*; a feature flag toggles *behavior within a running version* — kill-switches, gradual `%` rollout, per-segment targeting, experiments — without a redeploy. HoBo needs both, and flags compose with the contracts, policy, gates, audit, and reactive planes already in play here.
 
-> **Deploy ≠ release.** A canary ([Plan 5](./reliability-observability-cost.md#plan-05)) shifts traffic between *deployed versions*; a feature flag toggles *behavior within a running version* — kill-switches, gradual `%` rollout, per-segment targeting, experiments — without a redeploy. HoBo needs both, and flags compose with the gates/audit/reactive planes it already has.
-
-### The `feature-flag` port — OpenFeature-compatible
-A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance HoBo uses for the policy plane (OPA/Cedar as optional `policy-engine` providers, [Plan 30](./contracts-policy-flags.md#plan-30)). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, [Plan 29](./contracts-policy-flags.md#plan-29)/[ADR-0015](./adr/04-governance-verification.md#adr-0015).)
+#### The `feature-flag` port — OpenFeature-compatible
+A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance the policy plane takes (OPA/Cedar as optional `policy-engine` providers, above). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, as established above and in [ADR-0015](./adr/04-governance-verification.md#adr-0015).)
 - **Built-in flag store is the default** (zero-dep, self-host/air-gap friendly, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); **OpenFeature providers** (flagd / LaunchDarkly / etc.) are **opt-in adapters** selected per Camp by Matching ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).
 - **Flag types:** boolean, string, number, object (the OpenFeature set).
 - **Definitions are IfC** — flags are declared in the Bindle (name, type, default, targeting rules); flag *values/targeting* are runtime state (below).
@@ -188,7 +183,7 @@ export const newCheckout = flag.boolean("new-checkout", { default: false });
 ```mermaid
 flowchart LR
   DEF["flag defined in Bindle (IfC)"] --> STORE["flag store: built-in default or OpenFeature provider adapter"]
-  FLIP["flip / target / % rollout"] --> GATE{"policy gate, Plan 30 (optional)"}
+  FLIP["flip / target / % rollout"] --> GATE{"policy gate, Plan 29 (optional)"}
   GATE -->|allow| EV["flag.Changed (event-sourced)"]
   GATE -->|prod kill-switch / risky| APPR["approval obligation"]
   APPR --> EV
@@ -198,29 +193,29 @@ flowchart LR
   EV -.->|data.Changed-class| RQ["reactive query / useQuery re-eval, Plan 32"]
 ```
 
-### Change governance — event-sourced, optionally gated, reactive
+#### Change governance — event-sourced, optionally gated, reactive
 - **Event-sourced.** Every value/targeting change is a `flag.*` event ([Plan 11](./event-model.md#plan-11)) → a replayable "who flipped what, when, for whom" audit (the trail standalone flag tools lack).
-- **Optionally policy-gated.** A flip can pass through the policy plane ([Plan 30](./contracts-policy-flags.md#plan-30)): a **prod kill-switch** or a risky `%` bump can require approval / carry an obligation (e.g. "auto-revert if error-rate SLO burns", tying to [#25](./verification.md#plan-09)). Low-risk dev flips are ungated.
+- **Optionally policy-gated.** A flip can pass through the policy plane (above): a **prod kill-switch** or a risky `%` bump can require approval / carry an obligation (e.g. "auto-revert if error-rate SLO burns", tying to [#25](./verification.md#plan-09)). Low-risk dev flips are ungated.
 - **Reactive.** A flag change is a `data.Changed`-class signal, so reactive queries + clients (`useFlag`/`useQuery`, [Plan 32](./data-plane.md#plan-32)) re-evaluate **live, no redeploy** — the reactor re-pushes affected results.
 
-### Evaluation — in-process, deterministic, identity-aware
+#### Evaluation — in-process, deterministic, identity-aware
 - **In-process evaluation** against a ruleset **synced via the Streamer / event log** (edge-friendly, low-latency, the OpenFeature in-process/flagd model) — no per-eval network hop or SPOF.
 - **Targeting context** is the unified **`PrincipalRef`** — `ctx.user` (end-user claims/segments, [ADR-0038](./adr/02-identity-security.md#adr-0038)) and `ctx.identity` (SVID/tenant) — so flag targeting reuses HoBo's one identity model.
 - **Deterministic:** evaluation is a pure function of `(ruleset@seq, context)`, so it's **replayable** and safe to call inside a reactive `query()` ([ADR-0050](./adr/03-data-plane.md#adr-0050)).
 
-### Progressive delivery — flags + deploy gates compose
+#### Progressive delivery — flags + deploy gates compose
 - A **gradual rollout** flag (`%` by segment) is the *release* dial; a **canary** ([Plan 5](./reliability-observability-cost.md#plan-05)) is the *deploy* dial — used together, you deploy dark, then ramp the flag, with the same health signals able to **auto-revert** the flag (a policy obligation) on SLO burn ([#25](./verification.md#plan-09)).
-- **Experiments**: a multivariate flag + the eval/metrics surface ([Plan 14](./reliability-observability-cost.md#plan-14)) supports A/B without bespoke infra.
+- **Experiments**: a multivariate flag + the eval/metrics surface ([Plan 5](./reliability-observability-cost.md#plan-05)) supports A/B without bespoke infra.
 
-### Events ([Plan 11](./event-model.md#plan-11))
+#### Events ([Plan 11](./event-model.md#plan-11))
 `flag.Defined` · `flag.Changed` (value/targeting diff + actor) · `flag.Evaluated` (sampled, optional — for experiment analytics) · `flag.Archived`. Flip-gate decisions ride the existing `policy.Decided`.
 
-### Verification ([Plan 9](./verification.md#plan-09))
-A **feature-flag test**: define a flag → assert in-process eval is deterministic for a fixed `(ruleset@seq, ctx.user)`; a targeting rule selects the right segment; a flip emits `flag.Changed` and **re-pushes an affected reactive query** ([Plan 32](./data-plane.md#plan-32)); a **prod kill-switch flip requires the policy gate** ([Plan 30](./contracts-policy-flags.md#plan-30)); the built-in store works **offline/air-gap**; an OpenFeature provider adapter passes the same conformance.
+#### Verification ([Plan 9](./verification.md#plan-09))
+A **feature-flag test**: define a flag → assert in-process eval is deterministic for a fixed `(ruleset@seq, ctx.user)`; a targeting rule selects the right segment; a flip emits `flag.Changed` and **re-pushes an affected reactive query** ([Plan 32](./data-plane.md#plan-32)); a **prod kill-switch flip requires the policy gate** (above); the built-in store works **offline/air-gap**; an OpenFeature provider adapter passes the same conformance.
 
-### Scope
+#### Scope
 The `feature-flag` port (OpenFeature-compatible) + built-in store + boolean/string/number/object flags + IfC definitions + in-process deterministic eval (targeting via `ctx.user`/`ctx.identity`) + event-sourced `flag.*` + optional policy-gated flips + reactive re-eval + OpenFeature provider adapters. Experiments get a stats surface over the emitted `flag.Evaluated` events, flag-debt auto-cleanup (stale-flag detection + archival) is built in, and cross-Camp flag-state consistency rides [ADR-0040](./adr/05-config-matching-environments.md#adr-0040).
 
-### Iteration hooks
+#### Iteration hooks
 - Targeting-rule DSL (typed TS predicate vs OpenFeature JSONLogic-style) and how it reuses the policy/`.allow()` predicate language.
 - Stale-flag detection heuristics + archival-workflow ergonomics.

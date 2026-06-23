@@ -1,6 +1,6 @@
 # Security, Multi-Tenancy & Networking
 
-This capability doc consolidates Plan 12, Plan 13 of the HoBo design suite.
+This capability doc covers HoBo's security and multi-tenancy posture together with the networking and connectivity model that enforces it across trust domains.
 
 ## Plan 12
 
@@ -8,9 +8,9 @@ This capability doc consolidates Plan 12, Plan 13 of the HoBo design suite.
 
 > **Posture: secure-by-default, zero-trust, defense-in-depth ([ADR-0023](./adr/02-identity-security.md#adr-0023)).** Every principal (human, agent, workload) authenticates and is authorized on every call — no ambient trust, no implicit network perimeter. Controls layer so one bypass is not a breach: keyless federation removes most secrets, the policy plane default-denies what remains, encryption protects data at rest, rate-limits cap blast radius, the wasm sandbox contains code, and **continuous scanning/monitoring** catches regressions. Controls **map to recognized industry standards** so adopters can assess them against their own frameworks.
 
-> **The Relay:** the **HoBo Relay** ([Plan 28](./platform-engineering.md#plan-28)) keeps cloud credentials inside the customer's network — outbound-only TCP 443 reverse tunnel, SVID-authenticated, no inbound; Executors run behind it. This unlocks regulated/air-gapped/sovereign deploys without the Yard ever connecting into the private network.
+> **The Relay:** the **HoBo Relay** ([Plan 25](./platform-engineering.md#plan-25)) keeps cloud credentials inside the customer's network — outbound-only TCP 443 reverse tunnel, SVID-authenticated, no inbound; Executors run behind it. This unlocks regulated/air-gapped/sovereign deploys without the Yard ever connecting into the private network.
 
-> **Policy plane (gates):** the governance rules here are expressed as **policy packs** — signed, versioned resources evaluated by the **policy plane** ([Plan 30](./contracts-policy-flags.md#plan-30)). Decisions can carry **obligations** (require signed+attested artifact / encryption / approved region for a data classification), tracked to completion as events. Supply-chain attestation and data-classification/region constraints become gate dimensions, not prose.
+> **Policy plane (gates):** the governance rules here are expressed as **policy packs** — signed, versioned resources evaluated by the **policy plane** ([Plan 29](./contracts-policy-flags.md#plan-29)). Decisions can carry **obligations** (require signed+attested artifact / encryption / approved region for a data classification), tracked to completion as events. Supply-chain attestation and data-classification/region constraints become gate dimensions, not prose.
 
 > **Runtime isolation (WASM).** **WASM capability security** ([Plan 20](./wasm-runtime-wit.md#plan-20)) is a runtime isolation layer: deny-by-default, unforgeable handles, and `.allow()`-scoped links ([Plan 21](./authoring-resources-wiring.md#plan-21)) mean a component (incl. Forge-generated ones) can only touch what it's explicitly linked to — the sandbox for AI-generated providers/implementations ([Plan 23](./forge-generated-stack.md#plan-23)).
 
@@ -31,7 +31,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 1. **Data** — event streams are namespaced and (optionally) encrypted per tenant; projections enforce the tenant claim; a query can never fold another tenant's stream. Sharding can be per-tenant logs for large tenants.
 2. **Compute** — Executor pools are partitioned per tenant (and bulkheaded per provider) so one tenant's workload/storm can't observe or starve another's ([Plan 5](./reliability-observability-cost.md#plan-05)).
 3. **Credentials** — SVIDs and brokered provider tokens are scoped to the tenant; a tenant's federation trust is established only with that tenant's provider accounts.
-4. **Network** — data-plane resources of different tenants never share a trust domain; mTLS identities are tenant-scoped ([Plan 13](./security-networking.md#plan-13)).
+4. **Network** — data-plane resources of different tenants never share a trust domain; mTLS identities are tenant-scoped ([networking](./security-networking.md#networking--connectivity)).
 
 **Deployment tiers:** self-host = single-tenant (the whole Yard is one trust domain); hosted = multi-tenant on the same code with the boundaries above. A "dedicated" tier can pin a tenant to isolated infra.
 
@@ -41,7 +41,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 - **Policy gates** for high-risk actions (destroy, prod, spend > cap) — auto / require-approval (a resolvable hook) / deny. Policy is versioned and event-sourced (decisions are auditable facts).
 
 ### Secrets management
-> Full model + SDK surface: [Plan 31 — Configuration & secretless secrets](./authoring-resources-wiring.md#plan-31). Summary below.
+> Full model + SDK surface: [Plan 31 — Configuration & secretless secrets](./authoring-resources-wiring.md#plan-21). Summary below.
 - **Goal: no static secrets (secretless-first).** Config/secret declarations resolve to *references per Camp*, not values; the runtime reaches bound resources via a brokered short-lived token (no secret at all) or fetches a genuine secret from the provider's `secrets` port at use time.
 - **When secrets are unavoidable** (a provider with no federation, the bounded `api-key` escape hatch): stored with envelope encryption (KMS-backed DEK/KEK), never in the Bindle or the plaintext log; access is itself an audited `token.Used`.
 - **Per-run encryption:** sensitive step inputs/outputs in the event log are encrypted with a per-run key (so log access ≠ payload access), decryptable on demand for the run owner — mirrors the Vercel `getEncryptionKeyForRun` model.
@@ -54,47 +54,36 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 
 ### Continuous / live security scanning & remediation
 Security runs **continuously, not just as a deploy-time gate** — a loop owned by the **SRE / security operator** ([Plan 40](./operators-sre.md#plan-40)), with controls **mapped to recognized industry standards** ([ADR-0023](./adr/02-identity-security.md#adr-0023)) so adopters can map findings to their own compliance frameworks:
-- **Live scanning.** Dependency/image vuln scans + SBOM checks run continuously in CI *and* in production (not only at publish); the **policy plane** ([Plan 30](./contracts-policy-flags.md#plan-30)) treats a newly-disclosed CVE in a *running* Set like a contract break — it can warn, block the next deploy, or trip an obligation. Provider config/drift is watched for security regressions ([Plan 5](./reliability-observability-cost.md#plan-05) drift).
-- **Live remediation.** A finding triggers the same classify → propose-fix → sandbox-validate → policy-gated apply loop as live-fix ([Plan 23](./forge-generated-stack.md#plan-23)) — e.g. bump a vulnerable dep, rotate a leaked credential, tighten an over-broad `.allow()` — auto for low-risk, **require-approval** for prod ([Plan 30](./contracts-policy-flags.md#plan-30)).
-- **Normalized signal.** Findings + decisions emit as events and export as **OCSF** ([ADR-0046](./adr/04-governance-verification.md#adr-0046)) to a SIEM; the SRE operator and Endpoint Monitor ([Plan 40](./operators-sre.md#plan-40)) consume them. This is the security face of the self-healing reflex ([Plan 41](./forge-generated-stack.md#plan-41)).
+- **Live scanning.** Dependency/image vuln scans + SBOM checks run continuously in CI *and* in production (not only at publish); the **policy plane** ([Plan 29](./contracts-policy-flags.md#plan-29)) treats a newly-disclosed CVE in a *running* Set like a contract break — it can warn, block the next deploy, or trip an obligation. Provider config/drift is watched for security regressions ([Plan 5](./reliability-observability-cost.md#plan-05) drift).
+- **Live remediation.** A finding triggers the same classify → propose-fix → sandbox-validate → policy-gated apply loop as live-fix ([Plan 23](./forge-generated-stack.md#plan-23)) — e.g. bump a vulnerable dep, rotate a leaked credential, tighten an over-broad `.allow()` — auto for low-risk, **require-approval** for prod ([Plan 29](./contracts-policy-flags.md#plan-29)).
+- **Normalized signal.** Findings + decisions emit as events and export as **OCSF** ([ADR-0046](./adr/04-governance-verification.md#adr-0046)) to a SIEM; the SRE operator and Endpoint Monitor ([Plan 40](./operators-sre.md#plan-40)) consume them. This is the security face of the self-healing reflex ([Plan 23](./forge-generated-stack.md#plan-23)).
 
 ### Audit & compliance
 - The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.
 - **SIEM export via OCSF** ([ADR-0046](./adr/04-governance-verification.md#adr-0046)): security-relevant events (`token.*`, `identity.*`, `policy.Decided`, `domain.Cert*`, `registry.BundleImported`, `flag.Changed`, …) map to **[OCSF](../../standards/ocsf.md)** classes via an exporter/projection (no change to how they're stored), so the audit trail drops straight into an enterprise SIEM.
 - Retention: audit streams (`token.*`, `resource.*`, policy decisions) retained per policy and never compacted; runtime streams have shorter retention.
-- Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 3](./control-plane.md#plan-03)) and residency violations are rejected at plan time.
-- **Metering/billing data is tenant-scoped.** The `MeteringView` + showback attribution ([Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) are projections over the same per-tenant-isolated streams, so usage/cost data inherits the tenant isolation above — no cross-tenant metering leakage.
+- Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 4](./control-plane.md#plan-04)) and residency violations are rejected at plan time.
+- **Metering/billing data is tenant-scoped.** The `MeteringView` + showback attribution ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) are projections over the same per-tenant-isolated streams, so usage/cost data inherits the tenant isolation above — no cross-tenant metering leakage.
 
 ### Runtime isolation layer (WASM, integrated)
 - **Deny-by-default is structural, not a policy toggle ([ADR-0069](./adr/01-architecture-core.md#adr-0069)/[ADR-0023](./adr/02-identity-security.md#adr-0023)).** Capability is granted by **linking + `.allow()`**, never by ambient reachability: the membrane is **wRPC**, which only routes **linked** interfaces, and capability handles are deny-by-default. An imported interface with no link / no `.allow()` grant **cannot be invoked** — an un-granted capability call fails at the membrane, it isn't merely refused downstream.
 - **Wasm capability sandbox = a fifth isolation dimension** alongside data / compute / credentials / network: deny-by-default, unforgeable handles, and `.allow()`-scoped **links** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)). A component — including a Forge-generated one — can reach *only* what it is explicitly linked to.
 - **`.allow()` is the single grant.** One declaration scopes least-privilege IAM **+** the wasm capability link **+** the brokered token, so the three enforcement layers can't drift apart.
-- **The dev auth bypass does not weaken deny-by-default ([ADR-0070](./adr/02-identity-security.md#adr-0070)).** `hobo dev`'s contract-asserted dev principal ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 36](./ai-native-agent-auth.md#plan-36)) bypasses *authentication* only — it still obtains capabilities solely via linking + `.allow()`. Bypassing authentication never bypasses authorization: an unlinked/un-granted call from the dev principal fails exactly as it would in prod.
+- **The dev auth bypass does not weaken deny-by-default ([ADR-0070](./adr/02-identity-security.md#adr-0070)).** `hobo dev`'s contract-asserted dev principal ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 6](./ai-native-agent-auth.md#plan-06)) bypasses *authentication* only — it still obtains capabilities solely via linking + `.allow()`. Bypassing authentication never bypasses authorization: an unlinked/un-granted call from the dev principal fails exactly as it would in prod.
 - **AI-generated code is contained.** Forge runs in this sandbox + Firecracker with **no egress** during conformance; promotion requires per-WIT-interface conformance + signed provenance ([Plan 23](./forge-generated-stack.md#plan-23)), keeping the threat-model row "Forge plugins" fully mitigated for *implementations* too, not just providers.
 
-### Iteration hooks
-- Encryption granularity (per-tenant vs per-stream vs per-run) and KMS strategy.
-- ABAC policy engine choice (typed TS vs Rego/CEL) — shared with [Plan 6](./ai-native-agent-auth.md#plan-06) guardrails.
-- Trust tiers for Forge plugins and the human-certification threshold.
-- Compliance targets to design toward (SOC2/ISO/FedRAMP) and what each implies for the log.
+### Networking & connectivity
 
-## Plan 13
+The zero-trust posture above is enforced on the wire. When one Bindle's `api` is on AWS and its `db` is on Azure (or its edge is on Cloudflare), HoBo wires secure, low-latency, identity-aware connectivity across trust domains — without the developer thinking about VPCs, peering, or certificates. The agnostic path must "just connect," and every hop authenticates by workload identity rather than network position. The Relay (above) is the control-plane→private-network path (outbound reverse tunnel, no inbound), distinct from the data-plane connectivity tiers here; multi-cluster routing is by target id, and one Relay can serve several private targets.
 
-**Plan 13 — Networking & connectivity**
-
-> **The Relay:** the **HoBo Relay** ([Plan 28](./platform-engineering.md#plan-28)) is the control-plane→private-network path (outbound reverse tunnel, no inbound), distinct from the data-plane connectivity tiers below. Multi-cluster routing is by target id; one Relay can serve several private targets.
-
-### The problem
-When one Bindle's `api` is on AWS and its `db` is on Azure (or its edge is on Cloudflare), HoBo must wire secure, low-latency, identity-aware connectivity across trust domains — without the developer thinking about VPCs, peering, or certificates. The agnostic path must "just connect."
-
-### Logical connectivity from `bind`
+#### Logical connectivity from `bind`
 A `bind: { db }` edge is the only thing the developer writes; HoBo derives the network wiring from it:
 - **Service identity:** every service/resource gets a workload identity (SVID, [Plan 6](./ai-native-agent-auth.md#plan-06)) — `spiffe://<tenant>/<bindle>/<resource>`. This is the unit of authn/authz, independent of IP/DNS.
 - **Endpoint resolution:** `ctx.bindings.db` resolves to a logical endpoint; the actual address is injected from the resolved provider's outputs at deploy time and can change without app edits.
 - **Authorization:** the dependent is granted least-privilege access to exactly its bound dependency (security-group/firewall rules or mesh policy generated by the provider's `realize()`).
 
-### Connectivity tiers (Planner-selected, override via `.with(...)`)
-1. **Same provider + region (preferred):** native private networking (VPC/VNet, security groups). Cheapest, lowest latency. The Planner colocates bound resources here by default ([Plan 3](./control-plane.md#plan-03)).
+#### Connectivity tiers (Planner-selected, override via `.with(...)`)
+1. **Same provider + region (preferred):** native private networking (VPC/VNet, security groups). Cheapest, lowest latency. The Planner colocates bound resources here by default ([Plan 4](./control-plane.md#plan-04)).
 2. **Same provider, cross-region:** provider backbone + private peering where available.
 3. **Cross-provider, private:** provider interconnects (PrivateLink/Private Service Connect/Private Link) provisioned via IaC where the equivalence class supports it; otherwise an **encrypted overlay**.
 4. **Cross-provider, overlay mesh:** a HoBo-managed WireGuard/eBPF overlay (Tailscale/Cilium-ClusterMesh-style) joining resources into one logical network with mesh policy. Default fallback when native private peering isn't available.
@@ -102,12 +91,12 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 
 **mTLS-by-default between services:** regardless of tier, service-to-service traffic authenticates with SVIDs (zero-trust). Certificates are issued/rotated by Identity; apps don't manage them.
 
-### Ingress / the `gateway` port
+#### Ingress / the `gateway` port
 - The `gateway()` capability provides TLS termination, routing, and traffic-splitting. It's what blue/green and canary rollouts flip ([Plan 5](./reliability-observability-cost.md#plan-05)).
 - Custom domains + managed certs are a provider capability; `web()`/`service()` attach to a gateway by binding.
 - WAF/rate-limit/DDoS are provider-specific `.with(...)` options on the gateway.
 
-### Custom domains & multi-cloud ingress ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035))
+#### Custom domains & multi-cloud ingress ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035))
 DNS is high-blast-radius and slow to recover — an unvalidated change can blackhole a domain for a TTL window. So **no DNS change ever promotes without passing an automated validation gate, and every cutover is health-checked and self-rolling-back.** A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (provider-global, cross-Camp, [ADR-0026](./adr/01-architecture-core.md#adr-0026)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)); cross-cloud domains fronting Camps in different providers' Yards are federated by the Junction ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)):
 ```ts
 import { domain } from "@hobo/sdk";
@@ -126,7 +115,7 @@ export const site = domain("shop.com")
 **Health-checked staged / canary cutover with automatic rollback.** Once validation passes, cutover is **staged, never big-bang**: traffic shifts to the new target incrementally (canary `%` / weighted), continuously watched against health + SLO signals ([Plan 5](./reliability-observability-cost.md#plan-05)). On any regression the cutover **auto-reverts to the last-known-good routing** (`domain.RolledBack` with the reason) — no operator in the loop. `domain.CutoverStarted` → `domain.RoutingChanged` (success) | `domain.RolledBack` (regression) are the auditable facts.
 
 - **Routing across Camps is policy-driven DNS**, programmed via a provider-agnostic **`dns` capability**: `failover` (active-passive, health-gated), `weighted` (canary/split), `latency`/`geo` (nearest Camp). **Failover follows health-gated best practice** — a flip happens only on a sustained health-signal failure of the active target and only to a target the validation gate has cleared. It reuses the env-group saga ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)) + the blue/green gateway flip + health signals ([Plan 5](./reliability-observability-cost.md#plan-05)); each routing decision is an event (`domain.RoutingChanged` → auditable "why traffic went to `prod-aws`").
-- **Certs are ACME DNS-01 by default**, issued + auto-rotated by Identity ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 31](./authoring-resources-wiring.md#plan-31)) with **no static secret** — DNS-01 works cross-cloud + wildcard because HoBo controls the zone. **Provider-managed certs** (ACM / App Service / Google-managed) and an **internal CA / private ACME** for air-gapped Yards ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) are per-Camp cert adapters; the cert source is irrelevant to the validation gate, which checks issuability for the name regardless.
+- **Certs are ACME DNS-01 by default**, issued + auto-rotated by Identity ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 21](./authoring-resources-wiring.md#plan-21)) with **no static secret** — DNS-01 works cross-cloud + wildcard because HoBo controls the zone. **Provider-managed certs** (ACM / App Service / Google-managed) and an **internal CA / private ACME** for air-gapped Yards ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) are per-Camp cert adapters; the cert source is irrelevant to the validation gate, which checks issuability for the name regardless.
 - The `gateway` keeps doing TLS termination + routing + traffic-split + provider `.with()` WAF/rate-limit; the `domain` sits **above** it, routing across Camps.
 
 ```mermaid
@@ -151,8 +140,8 @@ flowchart TD
   HC -.->|regression| RB
 ```
 
-### Cross-Camp state consistency ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040))
-When a Bindle spans Camps ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)), HoBo does **not** silently make state strongly consistent across clouds (CAP). Each piece of cross-Camp state declares a **replication topology** (resolved config, [Plan 26](./platform-engineering.md#plan-26)): **single-writer-Camp** (default), **active-active-eventual** (CRDT/event-merge, opt-in), or **pinned-single-Camp**.
+#### Cross-Camp state consistency ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040))
+When a Bindle spans Camps ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)), HoBo does **not** silently make state strongly consistent across clouds (CAP). Each piece of cross-Camp state declares a **replication topology** (resolved config, [Plan 25](./platform-engineering.md#plan-25)): **single-writer-Camp** (default), **active-active-eventual** (CRDT/event-merge, opt-in), or **pinned-single-Camp**.
 - **Replication backbone = the event log.** The owning Camp writes; other Camps consume a replicated read-stream into **bounded-staleness projections** ([Plan 11](./event-model.md#plan-11)/[Plan 5](./reliability-observability-cost.md#plan-05)). Provider-backed stores default to single-writer + cross-Camp read over the connectivity tiers above; active-active-eventual (CRDT/event-merge) is the opt-in topology.
 - **Honest surface:** non-owner reads are **labeled** stale-by ≤ replication lag; **reads-your-writes** holds in the writer Camp; **consistency-requiring writes "go home"** to the owner; cross-Camp reactive queries ([Plan 32](./data-plane.md#plan-32)) carry the staleness label.
 
@@ -174,19 +163,23 @@ flowchart LR
   ALT["active-active-eventual opt-in: CRDT / event-merge"] -.-> PROJ
 ```
 
-### DNS & naming
+#### DNS & naming
 - Each Camp gets a namespace; resources have stable logical names (`shop.api`). HoBo manages records on the resolved provider's DNS (or a HoBo-managed zone), abstracted behind logical endpoints so app code never hardcodes hosts.
 - Internal service discovery uses the SVID/identity layer, not DNS round-robin, so it works across providers.
 
-### Egress, cost & latency feedback to the Planner
-- Cross-provider/cross-region data paths incur egress $ and latency; the connectivity tier chosen feeds back into the Planner's colocation objective and the cost model ([Plan 16](./reliability-observability-cost.md#plan-16)).
+#### Egress, cost & latency feedback to the Planner
+- Cross-provider/cross-region data paths incur egress $ and latency; the connectivity tier chosen feeds back into the Planner's colocation objective and the cost model ([Plan 5](./reliability-observability-cost.md#plan-05)).
 - The dashboard's topology graph annotates each `bind` edge with its connectivity tier + estimated egress, so a developer can *see* when a mapping choice created an expensive cross-cloud hop.
 
-### Data-plane vs control-plane traffic
+#### Data-plane vs control-plane traffic
 - **Control-plane** (Yard ↔ Executors ↔ providers) is separate from **data-plane** (app ↔ app, app ↔ db). The Yard is never on the app's request path ([Plan 10](./architecture.md#plan-10)).
 - Executors reach providers over the scoped-token path only; they are not part of any tenant's data-plane network.
 
 ### Iteration hooks
+- Encryption granularity (per-tenant vs per-stream vs per-run) and KMS strategy.
+- ABAC policy engine choice (typed TS vs Rego/CEL) — shared with [Plan 6](./ai-native-agent-auth.md#plan-06) guardrails.
+- Trust tiers for Forge plugins and the human-certification threshold.
+- Compliance targets to design toward (SOC2/ISO/FedRAMP) and what each implies for the log.
 - Overlay mesh technology choice (WireGuard userspace vs eBPF/Cilium vs a SaaS like Tailscale) and who operates it in self-host.
 - How aggressively to auto-colocate vs honor explicit cross-cloud intent.
 - Service-mesh depth (do we ship a sidecar/mesh, or rely on provider-native + mTLS libraries?).

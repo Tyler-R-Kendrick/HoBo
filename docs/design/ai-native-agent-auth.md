@@ -1,21 +1,21 @@
 # AI-Native Platform & Agent Auth
 
-This capability doc consolidates Plan 6, Plan 36 of the HoBo design suite.
+This capability doc covers HoBo's identity story end to end: **agent/workload auth** (SVIDs, the token broker, the Capability Manifest, the Forge) and **end-user / application auth** (app users signing in) — one principal model, one policy plane, one audit trail.
 
 ## Plan 06
 
 **Plan 6 — AI-native & agent auth ⭐ (deep)**
 
-> **Drivers & Resource Packs (Humanitec parity):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./platform-engineering.md#plan-25)/[Plan 27](./platform-engineering.md#plan-27)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
+> **Drivers & Resource Packs (Humanitec parity):** the **Forge** also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./platform-engineering.md#plan-25)/[Plan 25](./platform-engineering.md#plan-25)) — not just providers/implementations — so the platform-rules layer isn't human-bottlenecked. The Registry catalogs packs with provenance + conformance reports.
 
-> **Contracts & policy (gates):** an **agent action is a policy decision** ([Plan 30](./contracts-policy-flags.md#plan-30)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./contracts-policy-flags.md#plan-29)), so calls outside the tool's scope/shape are rejected and audited.
+> **Contracts & policy (gates):** an **agent action is a policy decision** ([Plan 29](./contracts-policy-flags.md#plan-29)) — `{subject: agent, action, resource, phase}` → allow/deny/warn/require-approval **+ obligations** (e.g. "auto-fix preview, only *propose* prod"); the agent-action policy here is the same model. Each **agent tool** also carries a **contract** (I/O + auth scope + allowed side effects, [Plan 29](./contracts-policy-flags.md#plan-29)), so calls outside the tool's scope/shape are rejected and audited.
 
 ### Design stance: agents are principals, not scripts
 Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Capability Manifest** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 
 > **Runtime/AI integration.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./forge-generated-stack.md#plan-23). And `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
 
-> **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is [Plan 36](./ai-native-agent-auth.md#plan-36)/[ADR-0038](./adr/02-identity-security.md#adr-0038). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
+> **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is [Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0038](./adr/02-identity-security.md#adr-0038). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
 
 ---
 
@@ -104,7 +104,7 @@ sequenceDiagram
 
 **Least privilege & guardrails:**
 - Tokens are scoped to `(port, resource, action)` and the minimal provider permission for that equivalence class — never "admin."
-- **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)).
+- **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)).
 
 ---
 
@@ -163,7 +163,7 @@ flowchart LR
 
 **Conformance tests are the trust boundary** that makes AI-generated extensibility safe — a plugin is only as trusted as the contract tests it passed, and the signed report is part of its Registry record.
 
-> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-33)** ([ADR-0010](./adr/06-ai-generation-operators.md#adr-0010)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
+> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-23)** ([ADR-0010](./adr/06-ai-generation-operators.md#adr-0010)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
 
 ---
 
@@ -178,15 +178,11 @@ The end state the project asks for: a developer (or their agent) writes a Bindle
 - Forge model + eval design; human-in-the-loop certification for high-trust providers.
 - Plugin signing, provenance (SLSA), and supply-chain trust for Registry plugins ([Plan 12](./security-networking.md#plan-12)).
 
-## Plan 36
+### 6.7 End-user / application auth — same principal, same plane
+Agent auth and end-user auth are one system seen from two ends. The §6.2 scope note already says it: an end-user is just another **`PrincipalRef`** — the event envelope's `actor` already admits `user` ([Plan 11](./event-model.md#plan-11)) — and the **OBO** flow (§6.2) is that same human principal acting *through* an agent. So app users signing in reuse the identity, authorization, and audit machinery built above, rather than standing up a parallel stack.
 
-**Plan 36 — End-user / application auth**
-
-> **Two auths, one principal model.** [Plan 6](./ai-native-agent-auth.md#plan-06) is **agent/workload** auth (SVIDs, the token broker, Capability Manifest). This plan is **end-user** auth (app users signing in). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (the event envelope's `actor` already admits `user`, [Plan 11](./event-model.md#plan-11)), and the agent **OBO** flow ([Plan 6](./ai-native-agent-auth.md#plan-06) §6.2) is the *same* human principal acting through an agent.
-
-### The `auth()` port — federate + verify
-HoBo does **not** reinvent a full identity provider (a deep, security-critical domain). Instead `auth()` is a **federation + verification** port (`hobo:auth`):
-- **Verify any IdP.** It validates an OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo + Convex-`customJwt` pattern, [competitors/shoo](../../competitors/shoo.md)/[convex](../../competitors/convex.md#integrations-ops)) — reusing HoBo's existing **OIDC + JWKS + secretless** machinery (Identity already does OIDC/JWKS for agents, [Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 31](./authoring-resources-wiring.md#plan-31)). Providers are declared IfC-style (issuer / JWKS URL / algorithm).
+**The `auth()` port — federate + verify.** HoBo does **not** reinvent a full identity provider (a deep, security-critical domain). `auth()` is a **federation + verification** port (`hobo:auth`):
+- **Verify any IdP.** It validates an OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo + Convex-`customJwt` pattern, [competitors/shoo](../../competitors/shoo.md)/[convex](../../competitors/convex.md#integrations-ops)) — reusing the **OIDC + JWKS + secretless** machinery Identity already runs for agents (§6.2, [Plan 21](./authoring-resources-wiring.md#plan-21)). Providers are declared IfC-style (issuer / JWKS URL / algorithm).
 - **Thin built-in for zero-config dev.** An optional built-in (passkey / email magic-link) lets `hobo dev` and small apps work with no external IdP — and runs **offline / in air-gap** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 
 ```ts
@@ -212,34 +208,29 @@ flowchart LR
   SESS -.->|revoked| VER
 ```
 
-### Local dev — the contract-asserted dev principal ([ADR-0070](./adr/02-identity-security.md#adr-0070))
-The natural local-dev path is **not** disabling auth. The `auth` port carries a **consumer-driven contract** (the subject/roles/tenancy/scopes the app expects, [Plan 29](./contracts-policy-flags.md#plan-29)); in **`hobo dev`** the runtime satisfies it with a **contract-asserted dev principal** — a fixture identity matching the contract — rather than verifying a real IdP JWT. `auth()` still runs; it's fulfilled by the fixture, offline (the thin built-in, above, is one such fixture source). The dev **overrides claims/roles/tenant per session** within the contract, so `ctx.user`-keyed record-level rules ([Plan 30](./contracts-policy-flags.md#plan-30)/`.allow()`) are exercised against real principals in dev. **Prod parity** is structural: the **same `auth` contract is enforced at `can-deploy`** — a configured IdP must satisfy the identical contract — so the dev bypass is contract-equivalent to prod and cannot drift. Authentication is bypassed, authorization is not: the dev principal still only gets `.allow()`-granted capabilities (deny-by-default, [Plan 12](./security-networking.md#plan-12)).
-
-### Unified principal model
-An authenticated end-user is a **`PrincipalRef`**, exposed in handlers as **`ctx.user`** (typed, verified claims) alongside `ctx.identity` (the SVID, [Plan 6](./ai-native-agent-auth.md#plan-06)). This means one identity/authz/audit path for **users + agents + services**:
-- **Authorization** is the **same policy plane** ([Plan 30](./contracts-policy-flags.md#plan-30)) + **`.allow()`-style declarative rules** ([Plan 21](./authoring-resources-wiring.md#plan-21)) keyed on user claims (record/row-level), so "this user may read only their own orders" is a policy decision, not ad-hoc handler code (imperative checks on `ctx.user` remain available).
+**Unified principal model.** An authenticated end-user surfaces in handlers as **`ctx.user`** (typed, verified claims) alongside `ctx.identity` (the SVID, §6.2) — one identity/authz/audit path for **users + agents + services**:
+- **Authorization** is the **same policy plane** ([Plan 29](./contracts-policy-flags.md#plan-29)) + **`.allow()`** declarative rules ([Plan 21](./authoring-resources-wiring.md#plan-21)) keyed on user claims (record/row-level), so "this user may read only their own orders" is a policy decision, not ad-hoc handler code (imperative checks on `ctx.user` remain available).
 - **Audit** rides the existing event `actor` ([Plan 11](./event-model.md#plan-11)) — every user action is already an attributable, replayable fact, identical to agent/service actions. No parallel audit trail.
-- **Delegation** — an agent acting **on behalf of** a user (OBO, [Plan 6](./ai-native-agent-auth.md#plan-06) §6.2) carries that same user `PrincipalRef`, so user → agent → resource chains are one coherent identity story.
+- **Delegation** — an agent acting **on behalf of** a user (OBO, §6.2) carries that same user `PrincipalRef`, so user → agent → resource is one coherent identity chain.
 
-### Sessions & token model
-- **Stateless verify by default.** The IdP's JWT is verified via **JWKS on each request** (edge-friendly, matches `customJwt` + HoBo's existing JWKS), producing `ctx.user`. No central session read on the hot path.
+**Local dev** uses the same **contract-asserted dev principal** as §6.2 ([ADR-0070](./adr/02-identity-security.md#adr-0070)): the `auth` port carries a consumer-driven contract (subject/roles/tenancy/scopes the app expects, [Plan 29](./contracts-policy-flags.md#plan-29)), and in `hobo dev` the runtime satisfies it with a fixture principal — the thin built-in is one such fixture source — instead of verifying a real IdP JWT. The dev overrides claims/roles/tenant per session within the contract, so `ctx.user`-keyed record-level rules ([Plan 29](./contracts-policy-flags.md#plan-29)/`.allow()`) are exercised against real principals offline. Prod parity is structural: the **same `auth` contract is enforced at `can-deploy`**, so the dev path is contract-equivalent and cannot drift. Authentication is fulfilled by the fixture; authorization is not bypassed (deny-by-default, only `.allow()`-granted capabilities, [Plan 12](./security-networking.md#plan-12)).
+
+**Sessions & token model.**
+- **Stateless verify by default.** The IdP's JWT is verified via **JWKS on each request** (edge-friendly, matches `customJwt` + the existing JWKS), producing `ctx.user`. No central session read on the hot path.
 - **Event-sourced sessions for revocation.** Optional **`session.*`** records make revocation / "sign out everywhere" + session audit first-class; reactive queries/mutations ([Plan 32](./data-plane.md#plan-32)) **re-evaluate when auth state changes** (a revoked session re-pushes/denies affected live queries), reusing the reactor's `data.Changed` path.
 
-### Client & server surface
+**Client & server surface.**
 - **Client:** `useAuth()` (current user + status), `signIn(provider)`, `signOut()` — a peer to `useQuery()` ([Plan 32](./data-plane.md#plan-32)); generated typed against the configured providers ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)).
 - **Server:** `ctx.user` (verified claims, typed) gates handlers and reactive queries; combine with policy/`.allow()` for record-level authorization.
 
-### Events ([Plan 11](./event-model.md#plan-11))
-`user.Authenticated` (verification result + principal claims) · `session.Started` · `session.Refreshed` · `session.Revoked`. User authorization decisions ride the existing **`policy.Decided`** ([Plan 30](./contracts-policy-flags.md#plan-30)) — no duplicate authz events.
+**Events ([Plan 11](./event-model.md#plan-11)).** `user.Authenticated` (verification result + principal claims) · `session.Started` · `session.Refreshed` · `session.Revoked`. User authorization decisions ride the existing **`policy.Decided`** ([Plan 29](./contracts-policy-flags.md#plan-29)) — no duplicate authz events.
 
-### Verification ([Plan 9](./verification.md#plan-09))
-An **end-user-auth test**: a JWT from a fixture IdP is verified via JWKS → `ctx.user` carries the claims; an **expired / wrong-issuer / tampered** token is rejected; a **policy/`.allow()` rule keyed on user claims** gates a query/mutation (allow + deny cases); **revocation** (`session.Revoked`) blocks subsequent requests **and re-pushes affected reactive queries**; the **thin built-in dev provider works offline** (air-gap tie, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
+**Verification ([Plan 9](./verification.md#plan-09)).** An end-user-auth test: a JWT from a fixture IdP is verified via JWKS → `ctx.user` carries the claims; an **expired / wrong-issuer / tampered** token is rejected; a **policy/`.allow()` rule keyed on user claims** gates a query/mutation (allow + deny cases); **revocation** (`session.Revoked`) blocks subsequent requests **and re-pushes affected reactive queries**; the **thin built-in dev provider works offline** (air-gap tie, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 
-### Scope / YAGNI
-**In v1:** the `auth()` federate+verify port (OIDC + `customJwt`, reference adapters: Google/GitHub/Clerk/Auth0) + a thin built-in (passkey/email) for dev; `ctx.user` as a unified `PrincipalRef`; policy/`.allow()` authorization on user claims; stateless JWKS verify + event-sourced sessions/revocation; `useAuth()`/`signIn`/`signOut`. **Deferred:** a full hosted IdP (accounts/passwords/MFA at scale), B2B org/role hierarchies beyond claims, SCIM provisioning, and step-up/MFA orchestration.
+**Scope / YAGNI.** *In v1:* the `auth()` federate+verify port (OIDC + `customJwt`, reference adapters: Google/GitHub/Clerk/Auth0) + a thin built-in (passkey/email) for dev; `ctx.user` as a unified `PrincipalRef`; policy/`.allow()` authorization on user claims; stateless JWKS verify + event-sourced sessions/revocation; `useAuth()`/`signIn`/`signOut`. *Deferred:* a full hosted IdP (accounts/passwords/MFA at scale), B2B org/role hierarchies beyond claims, SCIM provisioning, and step-up/MFA orchestration.
 
-### Iteration hooks
+**End-user-auth iteration hooks.**
 - Reference IdP adapters beyond the first few; how much of the built-in (passkey vs email vs both) ships in v1.
 - Claims→policy mapping conventions (roles/groups/tenants) and how `.allow()` expresses record-level rules on `ctx.user`.
-- Cookie/storage strategy for the client session + CSRF posture across the `gateway` ([Plan 13](./security-networking.md#plan-13)).
+- Cookie/storage strategy for the client session + CSRF posture across the `gateway` ([Plan 12](./security-networking.md#plan-12)).
 - Whether the thin built-in graduates into a fuller optional IdP, or stays dev-only.

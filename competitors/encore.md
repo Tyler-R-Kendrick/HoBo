@@ -6,7 +6,7 @@
 Encore is an **open-source infrastructure SDK** (MPL-2.0) for **TypeScript (`Encore.ts`) and Go (`Encore.go`)** — *"the infrastructure platform for the intelligence era, where engineers and AI agents build production systems without waiting on infrastructure."* You **declare resources directly in code** (databases, pub/sub, object storage, caches, cron, secrets, APIs); `encore run` starts the whole system locally with **real Postgres, real pub/sub semantics, distributed tracing, and a dev dashboard at `localhost:9400`**; then you deploy to **your own AWS or GCP account** — self-hosted (`encore build docker` + your own IaC) or via the optional managed **Encore Cloud**.
 
 ## The mental model — infrastructure-from-code (IfC)
-Instead of a separate IaC file, you declare what the app needs **in the same files where you use it**. The Encore compiler parses these declarations to build an **application graph**, then provisions matching **production-grade managed services** in your cloud. This is the same IfC thesis HoBo adopts ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 22](../docs/design/authoring-resources-wiring.md#plan-22)) — declare-and-the-platform-provisions — applied to TS/Go on AWS/GCP.
+Instead of a separate IaC file, you declare what the app needs **in the same files where you use it**. The Encore compiler parses these declarations to build an **application graph**, then provisions matching **production-grade managed services** in your cloud. This is the same IfC thesis HoBo adopts ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)) — declare-and-the-platform-provisions — applied to TS/Go on AWS/GCP.
 
 ## At a glance
 | Dimension | Encore |
@@ -55,10 +55,10 @@ Instead of a separate IaC file, you declare what the app needs **in the same fil
 | **APIs / services** | type-safe service-to-service calls | service mesh / IAM wiring |
 
 ### Why this is the closest analog to HoBo
-This is **exactly HoBo's IfC stance** ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21) resource catalog + [Plan 22](../docs/design/authoring-resources-wiring.md#plan-22) wiring/manifest): declare resources inline, let the platform collect them into a graph and provision them, with connection info injected (never hand-wired). Encore validates the model in production at scale.
+This is **exactly HoBo's IfC stance** ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21) resource catalog + [Plan 21](../docs/design/authoring-resources-wiring.md#plan-21) wiring/manifest): declare resources inline, let the platform collect them into a graph and provision them, with connection info injected (never hand-wired). Encore validates the model in production at scale.
 
 ### Where Encore stops (and HoBo continues)
-- **Two clouds, owned provisioning.** Encore provisions to **AWS or GCP** via its own engine. HoBo is **provider-agnostic across many clouds + IaC tools** (Pulumi/Crossplane/Terraform/OpenTofu are pluggable adapters, [Plan 3](../docs/design/control-plane.md#plan-03)), and supports **per-resource/per-tier/per-cloud mapping** + typed provider-native `.with(...)` escape hatches.
+- **Two clouds, owned provisioning.** Encore provisions to **AWS or GCP** via its own engine. HoBo is **provider-agnostic across many clouds + IaC tools** (Pulumi/Crossplane/Terraform/OpenTofu are pluggable adapters, [Plan 4](../docs/design/control-plane.md#plan-04)), and supports **per-resource/per-tier/per-cloud mapping** + typed provider-native `.with(...)` escape hatches.
 - **No platform-rules layer.** Encore's mapping is fixed; HoBo adds **Resource Definitions + Matching** ([Plan 25](../docs/design/platform-engineering.md#plan-25)) so platform engineers can realize the *same* declaration differently per environment (cheap preview vs managed-HA prod), with the choice **audited** (`match.Decided`, [ADR-0033](../docs/design/adr/05-config-matching-environments.md#adr-0033)).
 - **No cross-cloud data/migration/consistency model**, no wasm runtime, no event-sourced control plane, no Forge — see [`differentiators.md`](#differentiators).
 
@@ -83,9 +83,9 @@ This is **exactly HoBo's IfC stance** ([Plan 21](../docs/design/authoring-resour
 - Positioned explicitly for **AI-assisted development**: the fast local→cloud loop lets agents validate against real infra immediately.
 
 ### HoBo comparison (sharp points)
-- **Local fidelity:** Encore's "real Postgres + real pub/sub locally" is the bar HoBo's `hobo dev` targets — and HoBo formalizes it as a **fidelity matrix** (simulate/mock/Camp-only) with **`hobo verify` splitting local vs Camp checks** so "works locally" is an honest, bounded promise ([ADR-0042](../docs/design/adr/07-portability-extensibility.md#adr-0042)). Encore's dashboard `:9400` ≈ HoBo's dashboard ([Plan 7](../docs/design/developer-experience.md#plan-07)) + observability ([Plan 14](../docs/design/reliability-observability-cost.md#plan-14)).
-- **Preview environments / namespaces** ≈ HoBo **ephemeral/preview Camps + Deltas→Sets** ([Plan 26](../docs/design/platform-engineering.md#plan-26)).
-- **MCP for agents:** both expose an MCP surface; HoBo goes further — agents are **first-class authenticated principals** with brokered tokens + audit ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)), and HoBo adds **AI-generated providers** (Forge, [Plan 33](../docs/design/forge-generated-stack.md#plan-33)) and **trainable semantic functions** ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)).
+- **Local fidelity:** Encore's "real Postgres + real pub/sub locally" is the bar HoBo's `hobo dev` targets — and HoBo formalizes it as a **fidelity matrix** (simulate/mock/Camp-only) with **`hobo verify` splitting local vs Camp checks** so "works locally" is an honest, bounded promise ([ADR-0042](../docs/design/adr/07-portability-extensibility.md#adr-0042)). Encore's dashboard `:9400` ≈ HoBo's dashboard ([Plan 7](../docs/design/developer-experience.md#plan-07)) + observability ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)).
+- **Preview environments / namespaces** ≈ HoBo **ephemeral/preview Camps + Deltas→Sets** ([Plan 25](../docs/design/platform-engineering.md#plan-25)).
+- **MCP for agents:** both expose an MCP surface; HoBo goes further — agents are **first-class authenticated principals** with brokered tokens + audit ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)), and HoBo adds **AI-generated providers** (Forge, [Plan 23](../docs/design/forge-generated-stack.md#plan-23)) and **trainable semantic functions** ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)).
 - **Self-host vs managed:** Encore has an OSS-core + hosted-platform split — but Encore's OSS self-host leaves provisioning to you, whereas HoBo's **Yard is itself a Bindle** (self-host = hosted parity, [Plan 4](../docs/design/control-plane.md#plan-04)). HoBo is OSS and ships no billing; commercialization is out of design scope ([ADR-0064](../docs/design/adr/08-scope-and-requirements.md#adr-0064)), and its **metering/quota/showback is OSS FinOps** ([ADR-0039](../docs/design/adr/04-governance-verification.md#adr-0039)).
 - **Migration:** HoBo adds an explicit **`hobo import` adopt-in-place** path from existing estates ([ADR-0041](../docs/design/adr/07-portability-extensibility.md#adr-0041)); Encore is greenfield-leaning.
 
@@ -104,7 +104,7 @@ This is **exactly HoBo's IfC stance** ([Plan 21](../docs/design/authoring-resour
 - **OSS core (MPL-2.0)** with a clean OSS/commercial split.
 
 ### Gaps (Encore's limits — HoBo's opening)
-- **AWS/GCP only; Encore owns provisioning.** No Azure/Cloudflare/edge/on-prem, and **no pluggable IaC** — you can't bring Pulumi/Crossplane/Terraform or pin specific boundaries to specific providers. HoBo is genuinely **multi-cloud + IaC-agnostic** with typed provider-native escape hatches ([Plan 3](../docs/design/control-plane.md#plan-03)).
+- **AWS/GCP only; Encore owns provisioning.** No Azure/Cloudflare/edge/on-prem, and **no pluggable IaC** — you can't bring Pulumi/Crossplane/Terraform or pin specific boundaries to specific providers. HoBo is genuinely **multi-cloud + IaC-agnostic** with typed provider-native escape hatches ([Plan 4](../docs/design/control-plane.md#plan-04)).
 - **TS/Go only** (Python pending). HoBo's runtime contract is **language-neutral WIT** (any wasm-compiling language, [Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)).
 - **No platform-rules layer.** Fixed resource→service mapping; HoBo adds **Resource Definitions + Matching** so the *same* app realizes different infra per environment, auditably ([Plan 25](../docs/design/platform-engineering.md#plan-25)/[ADR-0033](../docs/design/adr/05-config-matching-environments.md#adr-0033)).
 - **No event-sourced control plane / audit-replay**, no **contracts/`can-deploy`/policy** planes, no **cost** plane beyond Encore Cloud analytics.
@@ -129,22 +129,22 @@ This is **exactly HoBo's IfC stance** ([Plan 21](../docs/design/authoring-resour
 
 | Encore concept | HoBo equivalent | Notes |
 |---|---|---|
-| **Infrastructure-from-code** (declare resources in app code) | **IfC authoring** ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 22](../docs/design/authoring-resources-wiring.md#plan-22)) | ✅ same thesis — declare inline, platform collects + provisions |
+| **Infrastructure-from-code** (declare resources in app code) | **IfC authoring** ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)) | ✅ same thesis — declare inline, platform collects + provisions |
 | Declared resources (DB / pub-sub / object-storage / cache / cron / secrets / APIs) | the HoBo resource catalog (`sql`/`topic`/`bucket`/`kv`/`schedule`/`secret`/`service`) ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)) | ✅ near 1:1 |
 | Type-safe service-to-service APIs + generated clients | typed `ctx.bindings` + WIT-generated clients ([ADR-0037](../docs/design/adr/05-config-matching-environments.md#adr-0037)) | ✅ HoBo generates from WIT+Zod+`.allow()`+graph |
-| Provisions to **your AWS/GCP** (managed services) | provider adapters across **many clouds** + pluggable IaC ([Plan 3](../docs/design/control-plane.md#plan-03)) | ➕ multi-cloud + Pulumi/Crossplane/TF/OpenTofu as adapters + per-tier mapping |
+| Provisions to **your AWS/GCP** (managed services) | provider adapters across **many clouds** + pluggable IaC ([Plan 4](../docs/design/control-plane.md#plan-04)) | ➕ multi-cloud + Pulumi/Crossplane/TF/OpenTofu as adapters + per-tier mapping |
 | Fixed resource→service mapping | **Resource Definitions + Matching** ([Plan 25](../docs/design/platform-engineering.md#plan-25)/[ADR-0033](../docs/design/adr/05-config-matching-environments.md#adr-0033)) | ➕ same app → different infra per env, auditable (`match.Decided`) |
-| `encore run` (real Postgres + pub/sub locally) | `hobo dev` on `runtime-local` + **fidelity matrix** ([Plan 15](../docs/design/developer-experience.md#plan-15)/[ADR-0042](../docs/design/adr/07-portability-extensibility.md#adr-0042)) | ✅/➕ HoBo labels simulate/mock/Camp-only + `hobo verify` splits local vs Camp |
-| Dev dashboard `:9400` (traces, DB, arch diagram) | dashboard ([Plan 7](../docs/design/developer-experience.md#plan-07)) + observability ([Plan 14](../docs/design/reliability-observability-cost.md#plan-14)) + topology graph | ✅ |
-| Infra **namespaces** / per-PR **preview environments** | **ephemeral/preview Camps + Deltas→Sets** ([Plan 26](../docs/design/platform-engineering.md#plan-26)) | ✅ |
+| `encore run` (real Postgres + pub/sub locally) | `hobo dev` on `runtime-local` + **fidelity matrix** ([Plan 7](../docs/design/developer-experience.md#plan-07)/[ADR-0042](../docs/design/adr/07-portability-extensibility.md#adr-0042)) | ✅/➕ HoBo labels simulate/mock/Camp-only + `hobo verify` splits local vs Camp |
+| Dev dashboard `:9400` (traces, DB, arch diagram) | dashboard ([Plan 7](../docs/design/developer-experience.md#plan-07)) + observability ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)) + topology graph | ✅ |
+| Infra **namespaces** / per-PR **preview environments** | **ephemeral/preview Camps + Deltas→Sets** ([Plan 25](../docs/design/platform-engineering.md#plan-25)) | ✅ |
 | Self-host (`encore build docker`) vs **Encore Cloud** | self-hostable **Yard-is-a-Bindle** ([Plan 4](../docs/design/control-plane.md#plan-04)); HoBo is OSS, commercialization out of design scope ([ADR-0064](../docs/design/adr/08-scope-and-requirements.md#adr-0064)) | ➕ self-host = hosted parity; metering/showback is OSS FinOps, no billing ([ADR-0039](../docs/design/adr/04-governance-verification.md#adr-0039)) |
 | Least-privilege IAM (Encore Cloud) | `.allow()` → least-priv IAM + wasm link + token (one decl, three effects) ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)) | ✅/➕ |
 | **MCP server** for agent introspection | `@hobo/mcp` control surface ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)) | ✅/➕ agents are first-class principals with brokered tokens + audit |
 | TS/Go (Python coming) | language-neutral **WIT** runtime, any wasm language ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) | ➕ |
 | *(none — greenfield-leaning)* | **`hobo import`** adopt-in-place migration ([ADR-0041](../docs/design/adr/07-portability-extensibility.md#adr-0041)) | ➕ adopt existing TF/Pulumi/Lakebed/FaaS estates incrementally |
 | *(none)* | **Event-sourced control plane + audit/replay** ([Plan 11](../docs/design/event-model.md#plan-11)) | ➕ |
-| *(none)* | **Contracts/`can-deploy` + policy planes** ([Plan 29](../docs/design/contracts-policy-flags.md#plan-29)/[Plan 30](../docs/design/contracts-policy-flags.md#plan-30)) | ➕ |
-| *(none)* | **Forge** — AI-generated providers/impls ([Plan 33](../docs/design/forge-generated-stack.md#plan-33)) + **trainable semantic functions** ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)) | ➕ |
+| *(none)* | **Contracts/`can-deploy` + policy planes** ([Plan 29](../docs/design/contracts-policy-flags.md#plan-29)/[Plan 29](../docs/design/contracts-policy-flags.md#plan-29)) | ➕ |
+| *(none)* | **Forge** — AI-generated providers/impls ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)) + **trainable semantic functions** ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)) | ➕ |
 | *(none)* | **Cross-cloud data**: app-data migration ([ADR-0032](../docs/design/adr/03-data-plane.md#adr-0032)) + cross-Camp consistency ([ADR-0040](../docs/design/adr/05-config-matching-environments.md#adr-0040)) | ➕ |
 
 ### The one-line takeaway

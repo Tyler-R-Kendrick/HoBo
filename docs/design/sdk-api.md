@@ -11,11 +11,11 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 > **Runtime & authoring refinements (Nitric/WASM/Aspire).** Three refinements now layer on top of this model:
 > - **Authoring is IfC-default** ([Plan 21](./authoring-resources-wiring.md#plan-21)): you declare resources inline with `.allow(...)` and HoBo collects them by running the component; the explicit `bindle()` topology below becomes the **advanced/escape-hatch** mode.
 > - **Ports are WIT interfaces** and **services are wasm/wasi components by default** ([Plan 20](./wasm-runtime-wit.md#plan-20)); the typed clients shown here are generated from those interfaces (OCI-container fallback for non-wasm workloads).
-> - **The SDK is a thin wrapper over the runtime** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)): ergonomic TS over the generated WIT bindings / wRPC client. It holds **no cloud logic** — all behavior lives behind the WIT ports in the runtime + providers ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 24](./wasm-runtime-wit.md#plan-24)). So any Component-Model-capable language can host the same app; the TS surface is one binding among equals, not the source of truth.
-> - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)).
+> - **The SDK is a thin wrapper over the runtime** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)): ergonomic TS over the generated WIT bindings / wRPC client. It holds **no cloud logic** — all behavior lives behind the WIT ports in the runtime + providers ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 20](./wasm-runtime-wit.md#plan-20)). So any Component-Model-capable language can host the same app; the TS surface is one binding among equals, not the source of truth.
+> - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 21](./authoring-resources-wiring.md#plan-21)).
 > The Layer 1–4 model still holds; read it as the conceptual core, with those three docs as the concrete runtime/authoring surface.
 
-> **Resource Definitions & Matching (Humanitec parity).** A Camp's mapping (`defaultProvider`/`tiers`/`bindings`) is now **sugar over default Resource Definitions** — platform engineers can override with explicit, context-matched definitions + resource **classes** ([Plan 25](./platform-engineering.md#plan-25)); Camps gain **environment types** ([Plan 26](./platform-engineering.md#plan-26)). Resources accept a `class` (`standard`/`ha`/…). HoBo can also **import a Score file** as a workload-spec input (interop), like importing an Aspire manifest.
+> **Resource Definitions & Matching (Humanitec parity).** A Camp's mapping (`defaultProvider`/`tiers`/`bindings`) is now **sugar over default Resource Definitions** — platform engineers can override with explicit, context-matched definitions + resource **classes** ([Plan 25](./platform-engineering.md#plan-25)); Camps gain **environment types** ([Plan 25](./platform-engineering.md#plan-25)). Resources accept a `class` (`standard`/`ha`/…). HoBo can also **import a Score file** as a workload-spec input (interop), like importing an Aspire manifest.
 
 ---
 
@@ -59,7 +59,7 @@ SaaS:  database() cache() objectStore() secrets() vector() search() auth() email
 CaaS:  containerService() image()        // image built via build-* adapters
 IaaS:  vm() microVm() network() volume()  // microVm via Firecracker adapter
 ```
-A **Provider** binds these ports to a backend and declares *how* it realizes them (which IaC/build adapter it uses under the hood). Full interfaces and the resolution/Planner algorithm live in [Plan 3](./control-plane.md#plan-03). The `vector()`/`search()` primitives are specified as a single unified `search` port (text + vector + hybrid, with an `embed` capability) in [Plan 35](./data-plane.md#plan-35); the `auth()` primitive (**end-user** sign-in/sessions, distinct from agent auth) is specified in [Plan 36](./ai-native-agent-auth.md#plan-36) — a verified `ctx.user` flows in `ctx` alongside `ctx.identity`.
+A **Provider** binds these ports to a backend and declares *how* it realizes them (which IaC/build adapter it uses under the hood). Full interfaces and the resolution/Planner algorithm live in [Plan 4](./control-plane.md#plan-04). The `vector()`/`search()` primitives are specified as a single unified `search` port (text + vector + hybrid, with an `embed` capability) in [Plan 32](./data-plane.md#plan-32); the `auth()` primitive (**end-user** sign-in/sessions, distinct from agent auth) is specified in [Plan 6](./ai-native-agent-auth.md#plan-06) — a verified `ctx.user` flows in `ctx` alongside `ctx.identity`.
 
 ---
 
@@ -118,7 +118,7 @@ export default bindle("shop", (b) => {
   b.use(web("site", { handler: "./src/site", bind: { api } }));      // SSR/static, edge by mapping rule
 });
 ```
-**Resolution order** per port: explicit `bindings` → `tiers` → `defaultProvider` (formalized in [Plan 3 §Planner](./control-plane.md#plan-03)).
+**Resolution order** per port: explicit `bindings` → `tiers` → `defaultProvider` (formalized in [Plan 3 §Planner](./control-plane.md#plan-04)).
 
 #### Binding & injection mechanics
 `bind: { db }` does three things at deploy time and one at runtime:
@@ -132,7 +132,7 @@ export default handler(async (req, ctx) => {
   await ctx.bindings.orders.send({ id: "o1" });          // typed queue client
 });
 ```
-> **Domain data goes through the persistence-agnostic data plane, not raw `.query()`.** App domain data is **event-sourced by default** ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): writes are `command(...)`→`ctx.emit(event)`, reads are `repo<T>(...)`/`view(...)` over **projections** the architect maps onto SQL/NoSQL/KV/graph/vector. Raw `ctx.bindings.db.query("…")` above is the **escape hatch** — provider-namespaced/typed to the resolved driver (a dialect leak fails to compile) and **flagged non-portable** by `can-deploy`/`hobo doctor`; raw writes are allowed only on adopted **authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).
+> **Domain data goes through the persistence-agnostic data plane, not raw `.query()`.** App domain data is **event-sourced by default** ([Plan 32](./data-plane.md#plan-32)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): writes are `command(...)`→`ctx.emit(event)`, reads are `repo<T>(...)`/`view(...)` over **projections** the architect maps onto SQL/NoSQL/KV/graph/vector. Raw `ctx.bindings.db.query("…")` above is the **escape hatch** — provider-namespaced/typed to the resolved driver (a dialect leak fails to compile) and **flagged non-portable** by `can-deploy`/`hobo doctor`; raw writes are allowed only on adopted **authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).
 
 ---
 
@@ -181,9 +181,9 @@ export const fulfillment = saga("fulfillment")
 | `step(fn, opts?)` | side-effecting unit | runs once; result memoized; auto-retry per `opts` |
 | `workflow(fn)` / `"use workflow"` | deterministic orchestration | replays over memoized steps; seeded RNG/clock |
 | `subscribe(m)` (default) / `query(fn)`+`"use query"` (snapshot) | **reactive read** — subscribe to a **materialization** (RX observable folded from event types), or take a one-shot snapshot | replays to `seq` then pushes live at a consistent `seq`; clients `useSubscription()` (default) / `useQuery()` (sugar) ([Plan 32](./data-plane.md#plan-32)/[ADR-0050](./adr/03-data-plane.md#adr-0050)) |
-| `command(type, fn)` | **domain write** = command→aggregate→event | runs in its **aggregate (actor) boundary**: checks invariants vs `ctx.state` (write-model fold), then `ctx.emit` under optimistic `seq`; `step`-class (idempotent); returns its `seq` ([Plan 39](./data-plane.md#plan-39)/[ADR-0053](./adr/03-data-plane.md#adr-0053)) |
-| `projection<T>(name, def)` | **read model** = fold event streams → read-model record | per-event-type `on:` fold (deterministic, query-class); rebuildable-from-zero; sink chosen by the architect via Matching ([Plan 39](./data-plane.md#plan-39)/[Plan 25](./platform-engineering.md#plan-25)) |
-| `repo<T>(name)` / `view(name)` | **persistence-agnostic snapshot/point/search read** over a materialization's sink cache (the default read is `subscribe`, [ADR-0050](./adr/03-data-plane.md#adr-0050)) | backend-neutral by logical name; `repo` = entity get/find (point lookup), `view().where().order().paginate()` = snapshot/search (cursor pagination); `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./data-plane.md#plan-39)) |
+| `command(type, fn)` | **domain write** = command→aggregate→event | runs in its **aggregate (actor) boundary**: checks invariants vs `ctx.state` (write-model fold), then `ctx.emit` under optimistic `seq`; `step`-class (idempotent); returns its `seq` ([Plan 32](./data-plane.md#plan-32)/[ADR-0053](./adr/03-data-plane.md#adr-0053)) |
+| `projection<T>(name, def)` | **read model** = fold event streams → read-model record | per-event-type `on:` fold (deterministic, query-class); rebuildable-from-zero; sink chosen by the architect via Matching ([Plan 32](./data-plane.md#plan-32)/[Plan 25](./platform-engineering.md#plan-25)) |
+| `repo<T>(name)` / `view(name)` | **persistence-agnostic snapshot/point/search read** over a materialization's sink cache (the default read is `subscribe`, [ADR-0050](./adr/03-data-plane.md#adr-0050)) | backend-neutral by logical name; `repo` = entity get/find (point lookup), `view().where().order().paginate()` = snapshot/search (cursor pagination); `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 32](./data-plane.md#plan-32)) |
 | `actor(name, def)` | stateful single-writer entity (grain); **the aggregate / write-model boundary** commands write through ([ADR-0053](./adr/03-data-plane.md#adr-0053)) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./ai-native-agent-auth.md#plan-06)) |
@@ -269,13 +269,13 @@ flowchart LR
   CI -->|drift| FAIL["fail: regenerate"]
   CI -->|clean| PASS["pass"]
 ```
-- **Output (committed `.hobo/generated/`, or `src/_generated/`):** typed `ctx.bindings.<name>` clients, typed `useSubscription()`/`useQuery()`/search results ([Plan 32](./data-plane.md#plan-32)/[Plan 35](./data-plane.md#plan-35)), typed workflow/step signatures, typed `.with()` options, and a typed **`api` function-tree** reference (the Convex `_generated/` analog).
-- **When:** `hobo dev` regenerates on change (watch); `hobo build` regenerates + fails on drift; `hobo new` scaffolds it; `hobo codegen --check` is the CI drift gate ([Plan 15](./developer-experience.md#plan-15)). Checked-in = reviewable diffs + editor types with **no build step** + works offline/air-gap ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)). Every command has an MCP equivalent for agents ([Plan 6](./ai-native-agent-auth.md#plan-06)).
+- **Output (committed `.hobo/generated/`, or `src/_generated/`):** typed `ctx.bindings.<name>` clients, typed `useSubscription()`/`useQuery()`/search results ([Plan 32](./data-plane.md#plan-32)/[Plan 32](./data-plane.md#plan-32)), typed workflow/step signatures, typed `.with()` options, and a typed **`api` function-tree** reference (the Convex `_generated/` analog).
+- **When:** `hobo dev` regenerates on change (watch); `hobo build` regenerates + fails on drift; `hobo new` scaffolds it; `hobo codegen --check` is the CI drift gate ([Plan 7](./developer-experience.md#plan-07)). Checked-in = reviewable diffs + editor types with **no build step** + works offline/air-gap ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)). Every command has an MCP equivalent for agents ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 
 ---
 
 ### Local development & testing
-- **`hobo dev`** runs the Bindle against a **local Camp** (`@hobo/runtime-local`) with an in-process Provider mock layer: resources resolve to local equivalents (Postgres in a container, a local object store, an in-memory queue) so the agnostic path runs with zero cloud. Replay/inspection work offline (mirrors Lakebed's instant-onboarding strength, full CLI in [Plan 15](./developer-experience.md#plan-15)).
+- **`hobo dev`** runs the Bindle against a **local Camp** (`@hobo/runtime-local`) with an in-process Provider mock layer: resources resolve to local equivalents (Postgres in a container, a local object store, an in-memory queue) so the agnostic path runs with zero cloud. Replay/inspection work offline (mirrors Lakebed's instant-onboarding strength, full CLI in [Plan 7](./developer-experience.md#plan-07)).
 - **Test runtime:** `@hobo/runtime-local` exposes a deterministic test mode — drive time (`clock.advance`), assert emitted events, and **replay a run to assert identical final state** (the determinism test). Providers have fakes from `@hobo/conformance` so unit tests never hit a cloud.
 ```ts
 import { testRuntime } from "@hobo/runtime-local/testing";

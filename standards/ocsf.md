@@ -32,15 +32,15 @@ HoBo's design makes a strong claim: **"the event log *is* the audit log"** ([Pla
 
 | HoBo event family ([Plan 11](../docs/design/event-model.md#plan-11)) | OCSF category → class |
 |---|---|
-| `user.Authenticated`, `session.Started`/`Refreshed`/`Revoked` ([Plan 36](../docs/design/ai-native-agent-auth.md#plan-36)) | IAM `[3]` → **Authentication** |
+| `user.Authenticated`, `session.Started`/`Refreshed`/`Revoked` ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)) | IAM `[3]` → **Authentication** |
 | `identity.Issued`/`Rotated` | IAM `[3]` → **Account Change** / **Authentication** |
 | `token.Granted`/`Used`/`Revoked`/`Denied` (the credential audit trail) | IAM `[3]` → **Authorization** / **Authentication** |
-| `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected` ([Plan 30](../docs/design/contracts-policy-flags.md#plan-30)) | Findings `[2]` → **Detection Finding** / **Compliance Finding** |
+| `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected` ([Plan 29](../docs/design/contracts-policy-flags.md#plan-29)) | Findings `[2]` → **Detection Finding** / **Compliance Finding** |
 | `resource.*`, `deployment.*`, `domain.*` (infra changes) | Application Activity `[6]` → **API Activity**; Cloud profile |
 | `spend.CircuitTripped` ([ADR-0039](../docs/design/adr/04-governance-verification.md#adr-0039)) | Findings `[2]` (anomaly/policy) |
 
 **Why this fits HoBo's posture.** Per [`README`](./README.md), HoBo's bet is to *speak existing standards at its boundaries* rather than invent proprietary ones — OCSF is exactly the security-schema boundary. Concretely:
-- **The `CredentialAudit` projection** ([Plan 11](../docs/design/event-model.md#plan-11)/[Plan 14](../docs/design/reliability-observability-cost.md#plan-14)) already answers "what did this agent access, with which token, when?" — fold it to OCSF **Authorization/Authentication** events and a tenant gets SIEM-ready export with zero new instrumentation, the same "projection over the log" pattern used for metering ([ADR-0039](../docs/design/adr/04-governance-verification.md#adr-0039)).
+- **The `CredentialAudit` projection** ([Plan 11](../docs/design/event-model.md#plan-11)/[Plan 5](../docs/design/reliability-observability-cost.md#plan-05)) already answers "what did this agent access, with which token, when?" — fold it to OCSF **Authorization/Authentication** events and a tenant gets SIEM-ready export with zero new instrumentation, the same "projection over the log" pattern used for metering ([ADR-0039](../docs/design/adr/04-governance-verification.md#adr-0039)).
 - **Envelope vs payload.** OCSF defines the *security payload schema*; it is **complementary to CloudEvents** (see [`cloudevents.md`](./cloudevents.md)), which defines the *transport envelope*. The clean design: emit **CloudEvents-wrapped OCSF events** — CloudEvents `type` carries the OCSF class, `data` carries the OCSF object — to a tenant's security lake / SIEM.
 - **Compliance leverage.** [Plan 12 §Iteration hooks](../docs/design/security-networking.md#plan-12) asks which compliance targets to design toward (SOC2/ISO/FedRAMP) and what each implies for the log. Emitting OCSF (and aligning audit-stream retention to it) directly serves those audits because OCSF is the format auditors' tools already ingest. The per-tenant isolation of streams ([Plan 12](../docs/design/security-networking.md#plan-12)) means OCSF export inherits tenant scoping — no cross-tenant leakage in the SIEM feed.
 
@@ -52,4 +52,4 @@ HoBo's design makes a strong claim: **"the event log *is* the audit log"** ([Pla
 - [ocsf/ocsf-schema — GitHub](https://github.com/ocsf/ocsf-schema)
 - [OCSF in Amazon Security Lake — AWS docs](https://docs.aws.amazon.com/security-lake/latest/userguide/open-cybersecurity-schema-framework.html)
 - [The OCSF — Splunk](https://www.splunk.com/en_us/blog/learn/open-cybersecurity-schema-framework-ocsf.html)
-- HoBo: [Plan 12 — Security & multi-tenancy](../docs/design/security-networking.md#plan-12) · [Plan 11 — Event model](../docs/design/event-model.md#plan-11) · [Plan 30 — Policy plane](../docs/design/contracts-policy-flags.md#plan-30) · [Plan 36 — End-user auth](../docs/design/ai-native-agent-auth.md#plan-36) · [ADR-0039 — Billing/quota/cost](../docs/design/adr/04-governance-verification.md#adr-0039)
+- HoBo: [Plan 12 — Security & multi-tenancy](../docs/design/security-networking.md#plan-12) · [Plan 11 — Event model](../docs/design/event-model.md#plan-11) · [Plan 30 — Policy plane](../docs/design/contracts-policy-flags.md#plan-29) · [Plan 36 — End-user auth](../docs/design/ai-native-agent-auth.md#plan-06) · [ADR-0039 — Billing/quota/cost](../docs/design/adr/04-governance-verification.md#adr-0039)

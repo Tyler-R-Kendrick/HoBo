@@ -1,6 +1,6 @@
 # Governance Planes: Compliance & AI Safety
 
-This capability doc consolidates Plan 46, Plan 47 of the HoBo design suite.
+This capability doc covers the HoBo governance plane: compliance/data governance and AI safety/model governance as one enforcement story.
 
 ## Plan 46
 
@@ -11,11 +11,11 @@ This capability doc consolidates Plan 46, Plan 47 of the HoBo design suite.
 ### Data classification — the input everything keys on
 Resources and WIT-record fields carry a **classification label** (`public` / `internal` / `pii` / `phi` / `pci` / `secret`, extensible). Labels attach two ways:
 - **On a resource** — `sql("patients").classify("phi")` — the coarse default for everything it holds.
-- **On a WIT-record field** ([ADR-0051](./adr/03-data-plane.md#adr-0051)) — `email: pii`, `ssn: pii` — fine-grained, so a projection ([Plan 39](./data-plane.md#plan-39)) inherits classification per column and the schema *is* the data map.
-Classification emits `data.Classified` ([Plan 11](./event-model.md#plan-11)) and becomes the `context.dataClassifications` the policy plane already accepts ([Plan 30](./contracts-policy-flags.md#plan-30) decision request). **Discovery** (scan a projection/field for likely PII) is an optional engine behind a port that *proposes* labels; humans/policy confirm.
+- **On a WIT-record field** ([ADR-0051](./adr/03-data-plane.md#adr-0051)) — `email: pii`, `ssn: pii` — fine-grained, so a projection ([Plan 32](./data-plane.md#plan-32)) inherits classification per column and the schema *is* the data map.
+Classification emits `data.Classified` ([Plan 11](./event-model.md#plan-11)) and becomes the `context.dataClassifications` the policy plane already accepts ([Plan 29](./contracts-policy-flags.md#plan-29) decision request). **Discovery** (scan a projection/field for likely PII) is an optional engine behind a port that *proposes* labels; humans/policy confirm.
 
 ### Residency & retention — enforced, not hinted
-Classification + jurisdiction → **policy obligations** ([Plan 30](./contracts-policy-flags.md#plan-30)) enforced at two points:
+Classification + jurisdiction → **policy obligations** ([Plan 29](./contracts-policy-flags.md#plan-29)) enforced at two points:
 - **`can-deploy`** ([Plan 29](./contracts-policy-flags.md#plan-29)) — a plan that would place `phi` data in a Camp outside its allowed region is a **gate failure**, not a runtime surprise. This reuses the deterministic Matching context (`region`/`provider`, [ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) and cross-Camp residency ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)); sovereign mode ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) is the strict ceiling.
 - **Runtime** — a `notify`/replication/export action that would move classified data across a residency boundary is denied or mutated (e.g. region-pinned channel, [Plan 21](./authoring-resources-wiring.md#plan-21)).
 
@@ -23,9 +23,9 @@ Classification + jurisdiction → **policy obligations** ([Plan 30](./contracts-
 
 ### Right-to-erasure on a forward-only log
 The hard problem: HoBo's log is **append-only and never rewritten** ([Plan 11](./event-model.md#plan-11)) — so how do you "delete" a user? **Crypto-shredding**, not history rewrite:
-1. PII payloads are encrypted with a **per-subject key** via `hobo:crypto` ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 31](./authoring-resources-wiring.md#plan-31)) — keys the app never holds.
+1. PII payloads are encrypted with a **per-subject key** via `hobo:crypto` ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)) — keys the app never holds.
 2. An `erasure.Requested` opens a saga; **destroying the subject's key** renders every historical event carrying their PII permanently unreadable (the ciphertext stays, the plaintext is gone) and a **tombstone** event records the erasure.
-3. **Projections rebuild excluding erased subjects** ([Plan 39](./data-plane.md#plan-39)) — the read side no longer surfaces the data; an `erasure.Completed` fact closes the saga.
+3. **Projections rebuild excluding erased subjects** ([Plan 32](./data-plane.md#plan-32)) — the read side no longer surfaces the data; an `erasure.Completed` fact closes the saga.
 This **honors the forward-only invariant** (no event is rewritten or removed) while delivering GDPR/CCPA deletion semantics — and it's auditable: the erasure itself is a replayable fact.
 
 ```mermaid
@@ -46,14 +46,14 @@ flowchart TB
 HoBo standardizes the **enforcement**, not a compliance program. The audit facts it already records — the OCSF audit export ([Plan 12](./security-networking.md#plan-12)/[ADR-0046](./adr/04-governance-verification.md#adr-0046)), `policy.Decided` (every access/residency/retention decision), `data.Classified`/`erasure.*` (the data lifecycle) — are exportable as a signed, point-in-time **OCSF attestation export** that external GRC tools can consume to assemble whatever certification evidence (SOC2/GDPR/HIPAA) a buyer needs. HoBo produces the replayable facts; it does not run the attestation program itself.
 
 ### Events & ports
-- **New:** `data.Classified`, `governance.*` (residency/retention obligation lifecycle), `erasure.Requested`/`erasure.Completed` ([Plan 11](./event-model.md#plan-11)). **Reused:** `policy.Decided`/obligations ([Plan 30](./contracts-policy-flags.md#plan-30)), `compat.Gate*` ([Plan 29](./contracts-policy-flags.md#plan-29)), `match.Decided` region context ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)), `hobo:crypto` ([Plan 21](./authoring-resources-wiring.md#plan-21)), OCSF audit export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)), projection rebuild ([Plan 39](./data-plane.md#plan-39)).
+- **New:** `data.Classified`, `governance.*` (residency/retention obligation lifecycle), `erasure.Requested`/`erasure.Completed` ([Plan 11](./event-model.md#plan-11)). **Reused:** `policy.Decided`/obligations ([Plan 29](./contracts-policy-flags.md#plan-29)), `compat.Gate*` ([Plan 29](./contracts-policy-flags.md#plan-29)), `match.Decided` region context ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)), `hobo:crypto` ([Plan 21](./authoring-resources-wiring.md#plan-21)), OCSF audit export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)), projection rebuild ([Plan 32](./data-plane.md#plan-32)).
 - **Ports/engines behind ports:** a **classification/discovery** engine (built-in label rules; optional PII-discovery scanner) and a thin **OCSF attestation export** assembler (external GRC tools consume it). No new app-developer SDK surface beyond `.classify()` + `hobo attest`/`hobo erase`.
 
 ### Verification
 - A plan placing a `phi`-classified `sql` in a non-permitted region is rejected at `can-deploy` with a precise residency violation; pinning to a permitted Camp passes.
 - `hobo erase --subject <id>`: key destroyed, tombstone written, projections rebuilt excluding the subject, `erasure.Completed` — the subject's data is unreadable everywhere yet **no historical event was rewritten** (replay still works).
 - `hobo attest` produces a signed OCSF attestation export whose every line traces to a source event (classification, residency/retention decision, access decision) for an external GRC tool to consume.
-- A deploy routing `pii` to a Camp/provider outside its allowed region or classification fails the gate; pinning to a permitted target unblocks it (event-sourced) — the egress caveats for hosted embedders/models ([Plan 35](./data-plane.md#plan-35)) ride the same residency obligation.
+- A deploy routing `pii` to a Camp/provider outside its allowed region or classification fails the gate; pinning to a permitted target unblocks it (event-sourced) — the egress caveats for hosted embedders/models ([Plan 32](./data-plane.md#plan-32)) ride the same residency obligation.
 
 ### Scope
 - **In scope:** classification labels (resource + WIT-field) → enforced residency/retention obligations at `can-deploy` + runtime; crypto-shred erasure + projection purge; PII-discovery that *proposes* labels (humans/policy confirm, never auto-classifies); a data-lineage view over classification + projection read-sets; an OCSF attestation export over the audit facts for external GRC tools.
@@ -65,23 +65,21 @@ HoBo standardizes the **enforcement**, not a compliance program. The audit facts
 - Whether attestation packs are first-party only or community/Registry-distributed ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)).
 - Coupling the suppression list (the `notify` port, [Plan 21](./authoring-resources-wiring.md#plan-21)) to erasure so an erased subject is auto-suppressed across channels.
 
-## Plan 47
+### AI safety & model governance
 
-**Plan 47 — AI safety & model governance**
+The same enforcement spine — classification, the policy plane, signed facts, the OCSF attestation export — extends from data to the models that touch it. HoBo is AI-native to its core — `"use training"` ([Plan 23](./forge-generated-stack.md#plan-23)), the Forge ([Plan 23](./forge-generated-stack.md#plan-23)), the Operator Crew ([Plan 40](./operators-sre.md#plan-40)), the generated stack ([Plan 23](./forge-generated-stack.md#plan-23)) — so "AI everywhere" must be governed by default or it becomes the biggest liability. This half of the plane governs the models/prompts themselves, **enforces output guardrails**, runs **red-teaming**, and emits **model cards** — built on prompt-injection defenses ([ADR-0023](./adr/02-identity-security.md#adr-0023)), evals ([Plan 23](./forge-generated-stack.md#plan-23)), and the PII-not-trained rule ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)). **All AI work runs in sandboxed environments by default** ([ADR-0061](./adr/04-governance-verification.md#adr-0061)). Data classification (above) is the input here too: a dataset's label decides whether it may train or only evaluate.
 
-> **Why this exists.** HoBo is AI-native to its core — `"use training"` ([Plan 23](./forge-generated-stack.md#plan-23)), the Forge ([Plan 33](./forge-generated-stack.md#plan-33)), the Operator Crew ([Plan 40](./operators-sre.md#plan-40)), the generated stack ([Plan 41](./forge-generated-stack.md#plan-41)). A platform whose differentiator is "AI everywhere" must govern that AI by default, or the differentiator is the biggest liability. This plane governs the models/prompts themselves, **enforces output guardrails**, runs **red-teaming**, and emits **model cards** — built on prompt-injection defenses ([ADR-0023](./adr/02-identity-security.md#adr-0023)), evals ([Plan 23](./forge-generated-stack.md#plan-23)), and the PII-not-trained rule ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)). **All AI work runs in sandboxed environments by default** ([ADR-0061](./adr/04-governance-verification.md#adr-0061)).
-
-### A model registry (the Registry pattern, applied to models)
-Models, prompts, and eval-datasets are **versioned, signed, provenance-bearing artifacts** in the existing **Registry** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 27](./platform-engineering.md#plan-27)) — the same machinery that holds providers and Resource Packs:
-- A **model entry** pins `{ id, version, provider, weights-or-endpoint ref, model card, eval results, signature }`. Local/in-boundary models and hosted endpoints are both entries (the latter with an egress caveat, like a subprocessor — [Plan 46](./governance-planes.md#plan-46)).
+#### A model registry (the Registry pattern, applied to models)
+Models, prompts, and eval-datasets are **versioned, signed, provenance-bearing artifacts** in the existing **Registry** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 25](./platform-engineering.md#plan-25)) — the same machinery that holds providers and Resource Packs:
+- A **model entry** pins `{ id, version, provider, weights-or-endpoint ref, model card, eval results, signature }`. Local/in-boundary models and hosted endpoints are both entries (the latter with an egress caveat, like a subprocessor, riding the same residency obligation as classified data above).
 - A **prompt entry** is a versioned artifact too — because in HoBo a prompt *is* persisted code ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) when `"use training"` rewrites it. Promotion is gated.
-- An **eval-dataset entry** carries its own provenance + classification ([Plan 46](./governance-planes.md#plan-46)) — so a PII-bearing dataset can't be used for training ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)).
+- An **eval-dataset entry** carries its own provenance + the classification label above — so a PII-bearing dataset can't be used for training ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)).
 `model.Registered`/`model.Promoted` are events; promotion runs the four-lens gate below.
 
-### Output guardrails — an enforced default on every AI call ([ADR-0061](./adr/04-governance-verification.md#adr-0061))
-Guardrails are an **enforced default, not optional and not behind a swappable port.** The **`guardrail` capability** ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 24](./wasm-runtime-wit.md#plan-24)) runs **moderation / PII-leak / jailbreak / grounding** checks as a **policy-gated step** ([Plan 30](./contracts-policy-flags.md#plan-30)) wrapped around *every* AI output — `agent()` responses ([Plan 6](./ai-native-agent-auth.md#plan-06)), `"use training"` method outputs ([Plan 23](./forge-generated-stack.md#plan-23)), and generated-stack artifacts ([Plan 41](./forge-generated-stack.md#plan-41)). There is no off switch.
+#### Output guardrails — an enforced default on every AI call ([ADR-0061](./adr/04-governance-verification.md#adr-0061))
+Guardrails are an **enforced default, not optional and not behind a swappable port.** The **`guardrail` capability** ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 20](./wasm-runtime-wit.md#plan-20)) runs **moderation / PII-leak / jailbreak / grounding** checks as a **policy-gated step** ([Plan 29](./contracts-policy-flags.md#plan-29)) wrapped around *every* AI output — `agent()` responses ([Plan 6](./ai-native-agent-auth.md#plan-06)), `"use training"` method outputs ([Plan 23](./forge-generated-stack.md#plan-23)), and generated-stack artifacts ([Plan 23](./forge-generated-stack.md#plan-23)). There is no off switch.
 
-The default governance layer is **NVIDIA NeMo Guardrails + the Microsoft AI governance / Responsible AI toolkit** — NeMo rails for moderation/jailbreak/grounding/topical control (streaming-aware), the Microsoft Responsible AI toolkit for moderation/PII/content-safety — applied to every call as the policy-gated step. Both run **local-first**, so the layer keeps working air-gapped with no egress. A failed check emits `guardrail.Blocked` and the policy decides: block, redact (mutate), or require-approval. Because it rides the policy plane, "why was this output blocked" is a replayable `policy.Decided`. **And because all AI work runs sandboxed by default** ([ADR-0061](./adr/04-governance-verification.md#adr-0061)) — every `agent()` / `"use training"` / Forge / generated-stack execution in a capability-scoped wasm sandbox with no ambient authority ([Plan 24](./wasm-runtime-wit.md#plan-24)) — the guardrail step governs the output while the sandbox bounds the blast radius of the call itself.
+The default governance layer is **NVIDIA NeMo Guardrails + the Microsoft AI governance / Responsible AI toolkit** — NeMo rails for moderation/jailbreak/grounding/topical control (streaming-aware), the Microsoft Responsible AI toolkit for moderation/PII/content-safety — applied to every call as the policy-gated step. Both run **local-first**, so the layer keeps working air-gapped with no egress. A failed check emits `guardrail.Blocked` and the policy decides: block, redact (mutate), or require-approval. Because it rides the policy plane, "why was this output blocked" is a replayable `policy.Decided`. **And because all AI work runs sandboxed by default** ([ADR-0061](./adr/04-governance-verification.md#adr-0061)) — every `agent()` / `"use training"` / Forge / generated-stack execution in a capability-scoped wasm sandbox with no ambient authority ([Plan 20](./wasm-runtime-wit.md#plan-20)) — the guardrail step governs the output while the sandbox bounds the blast radius of the call itself.
 
 ```mermaid
 flowchart TB
@@ -97,38 +95,28 @@ flowchart TB
   RT -.finding → regression test.-> EVAL["eval-dataset (governed)"]
 ```
 
-### Red-teaming as a chaos-tier sibling
+#### Red-teaming as a chaos-tier sibling
 Adversarial evaluation reuses the **chaos verification tier** pattern ([ADR-0047](./adr/04-governance-verification.md#adr-0047)): **hypothesis-driven, blast-radius-bounded, policy-gated** adversarial experiments against models/prompts/agents (jailbreak suites, prompt-injection corpora, harmful-content probes). A red-team run is event-sourced (`redteam.*`); a **discovered failure becomes a permanent regression test** in the governed eval-dataset — exactly as a chaos finding becomes a resilience regression test. Red-teaming runs in the same gated, replayable frame as every other HoBo verification tier.
 
-### Eval-dataset governance
-Eval-datasets are first-class governed artifacts (registry entries above): **versioned, classified, provenance-tracked**. This **extends the PII-not-trained policy** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) into a full lifecycle — a dataset's classification ([Plan 46](./governance-planes.md#plan-46)) gates whether it may train or only evaluate; contamination checks (eval data leaking into training) are a policy rule; the `training-engine`'s reward signal ([Plan 23](./forge-generated-stack.md#plan-23) trajectories) is auditable against the dataset it was scored on.
+#### Eval-dataset governance
+Eval-datasets are first-class governed artifacts (registry entries above): **versioned, classified, provenance-tracked**. This **extends the PII-not-trained policy** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) into a full lifecycle — the dataset's classification label gates whether it may train or only evaluate; contamination checks (eval data leaking into training) are a policy rule; the `training-engine`'s reward signal ([Plan 23](./forge-generated-stack.md#plan-23) trajectories) is auditable against the dataset it was scored on.
 
-### Model cards as facts
-Every registered model carries a **model card** (intended use, training-data provenance class, eval results, known limitations, guardrail coverage) — a signed, replayable artifact assembled from the registry + `guardrail.*` + `redteam.*` + eval facts. Like compliance ([Plan 46](./governance-planes.md#plan-46)), HoBo exports these facts via the OCSF attestation export for an external GRC/responsible-AI tool to consume; it does **not** run a responsible-AI attestation *program* itself ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)). Model cards are the AI analog of the conformance/provenance bridge that underpins portability.
+#### Model cards as facts
+Every registered model carries a **model card** (intended use, training-data provenance class, eval results, known limitations, guardrail coverage) — a signed, replayable artifact assembled from the registry + `guardrail.*` + `redteam.*` + eval facts. Just as with data compliance above, HoBo exports these facts via the OCSF attestation export for an external GRC/responsible-AI tool to consume; it does **not** run a responsible-AI attestation *program* itself ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)). Model cards are the AI analog of the conformance/provenance bridge that underpins portability.
 
-### The four lenses, applied to model & prompt changes
-A model/prompt promotion is governed by the same four-lens taxonomy as any change ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 30](./contracts-policy-flags.md#plan-30)):
+#### The four lenses, applied to model & prompt changes
+A model/prompt promotion is governed by the same four-lens taxonomy as any change ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)):
 - **Contract** — the model's I/O schema + the guardrail floor *must never break* (a guardrail-coverage regression blocks promotion).
 - **Eval** — the candidate *should improve* on the governed eval-dataset (champion/challenger + shadow, [Plan 23](./forge-generated-stack.md#plan-23)).
 - **Policy** — *may/may not* be promoted (residency of weights, dataset classification, red-team clearance).
 - **Trace** — *what actually happened* — every invocation is an OpenInference trajectory ([Plan 23](./forge-generated-stack.md#plan-23)) the registry links back to.
 
-### Events & ports
-- **New:** `model.Registered`/`model.Promoted`, `guardrail.Blocked`, `redteam.*` ([Plan 11](./event-model.md#plan-11)); a **`hobo:guardrail`** port + `guardrail` catalog row ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 24](./wasm-runtime-wit.md#plan-24)). **Reused:** the Registry + signing/provenance ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 27](./platform-engineering.md#plan-27)), `policy.Decided` ([Plan 30](./contracts-policy-flags.md#plan-30)), evals/trajectories/`training.*` ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)), the chaos tier ([ADR-0047](./adr/04-governance-verification.md#adr-0047)), persisted prompts ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)), the OCSF attestation export ([Plan 46](./governance-planes.md#plan-46)).
+#### AI-side events, ports & verification
+- **New events/ports:** `model.Registered`/`model.Promoted`, `guardrail.Blocked`, `redteam.*` ([Plan 11](./event-model.md#plan-11)); a **`hobo:guardrail`** port + `guardrail` catalog row ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 20](./wasm-runtime-wit.md#plan-20)). **Reused:** the Registry + signing/provenance ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 25](./platform-engineering.md#plan-25)), `policy.Decided` ([Plan 29](./contracts-policy-flags.md#plan-29)), evals/trajectories/`training.*` ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)), the chaos tier ([ADR-0047](./adr/04-governance-verification.md#adr-0047)), persisted prompts ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)), and the same OCSF attestation export defined above.
 - **Guardrail layer (enforced default):** NVIDIA NeMo Guardrails + the Microsoft AI governance / Responsible AI toolkit, applied to every AI call as the policy-gated step — local-first, air-gap-safe, no off switch ([ADR-0061](./adr/04-governance-verification.md#adr-0061)). The **red-team engine** (built-in adversarial suites) is certified by `@hobo/conformance` and air-gap-degradable.
+- **Verification:** a `"use training"` candidate prompt that regresses guardrail coverage is **blocked at promotion** (Contract lens) even if it improves the eval score (Eval lens) — replayable `policy.Decided`; a jailbreak that elicits disallowed content emits a `redteam.*` finding, becomes a regression test in the governed dataset, and fails future promotions until mitigated; an agent output containing PII is caught by the guardrail step → `guardrail.Blocked` (or redacted by policy), local-first so air-gap catches it with no egress; `hobo attest` also produces a signed model-card export tracing to registry + guardrail + red-team + eval events.
 
-### Verification
-- A `"use training"` method whose candidate prompt regresses guardrail coverage is **blocked at promotion** (Contract lens) even if it improves the eval score (Eval lens) — replayable `policy.Decided`.
-- A jailbreak that elicits disallowed content in a red-team run emits a `redteam.*` finding, becomes a regression test in the governed dataset, and fails future promotions until mitigated.
-- An agent output containing PII is caught by the guardrail step → `guardrail.Blocked` (or redacted by policy); the NeMo + Microsoft Responsible AI layer runs local-first, so air-gap catches it with no egress.
-- `hobo attest` produces a signed model-card export (via the OCSF attestation export) tracing to registry + guardrail + red-team + eval events, for an external responsible-AI/GRC tool to consume.
-
-### Scope
+#### AI-side scope & iteration hooks
 - **In scope:** model/prompt/eval-dataset registry entries (versioned, signed, provenance); the `guardrail` capability as an enforced default (NeMo Guardrails + Microsoft Responsible AI toolkit, local-first); red-teaming on the chaos-tier pattern, including automated continuous red-team campaigns; eval-dataset classification/contamination policy; model cards as exported facts; the four-lens model-promotion gate; per-token cost/safety budgets (riding the spend breaker); model distribution over Registry distribution ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)).
-- **Out of scope:** HoBo does not run a responsible-AI attestation *program* itself ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)) — it exports the facts, a GRC tool runs the program; a watermarking/output-provenance scheme for generated media is a separate concern.
-
-### Iteration hooks
-- Whether guardrails are one `hobo:guardrail` port with check-type discriminators or a port per check class.
-- Where the guardrail step sits for streaming responses (post-hoc vs incremental) — latency/safety tradeoff.
-- How model-card schema aligns to emerging standards (EU AI Act technical docs, NIST AI RMF, model-card-toolkit).
-- Sharing the red-team finding → regression-test loop with the Operator Crew's SRE postmortem loop ([Plan 44](./operators-sre.md#plan-44)).
+- **Out of scope:** as with data compliance above, HoBo does not run a responsible-AI attestation *program* itself ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)) — it exports the facts, a GRC tool runs the program; a watermarking/output-provenance scheme for generated media is a separate concern.
+- **Iteration hooks:** whether guardrails are one `hobo:guardrail` port with check-type discriminators or a port per check class; where the guardrail step sits for streaming responses (post-hoc vs incremental, the latency/safety tradeoff); how model-card schema aligns to emerging standards (EU AI Act technical docs, NIST AI RMF, model-card-toolkit); sharing the red-team finding → regression-test loop with the Operator Crew's SRE postmortem loop ([Plan 40](./operators-sre.md#plan-40)).

@@ -13,7 +13,7 @@
 | Owner (Accountable) | Founders / Business lead |
 | Authors | Product + Business |
 | Reviewers | Engineering lead, Platform lead, GTM |
-| Related | [PRD](./PRD.md), [TRD](./TRD.md), [00 Vision](../design/vision.md#plan-00), [17 Positioning](../design/positioning.md#plan-17), [08 Roadmap](../design/roadmap.md#plan-08), [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-16) |
+| Related | [PRD](./PRD.md), [TRD](./TRD.md), [00 Vision](../design/vision.md#plan-00), [17 Positioning](../design/positioning.md#plan-17), [08 Roadmap](../design/roadmap.md#plan-08), [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-05) |
 
 ### 1.1 RACI (business decisions)
 | Activity | Founders | Product | Eng | Platform | GTM |
@@ -93,16 +93,16 @@ Persona priority is fixed by [ADR-0019](../design/adr/08-scope-and-requirements.
 | ID | Business requirement | Priority | Rationale / source |
 |---|---|---|---|
 | **BR-001** | A developer authors an app **once** in TypeScript and deploys it to real cloud infrastructure without cloud-specific code. | M | Core value prop ([00](../design/vision.md#plan-00)) |
-| **BR-002** | The **same** unedited app description deploys to **multiple** providers; switching/splitting clouds touches config only. | M | OBJ-1; agnostic thesis ([03](../design/control-plane.md#plan-03)) |
+| **BR-002** | The **same** unedited app description deploys to **multiple** providers; switching/splitting clouds touches config only. | M | OBJ-1; agnostic thesis ([03](../design/control-plane.md#plan-04)) |
 | **BR-003** | Developers can **optimize per-provider on demand** without losing portability (typed escape hatch). | M | "optimizable on demand" ([ADR-0007](../design/adr/README.md)) |
 | **BR-004** | **AI agents are first-class users**: every capability is reachable via SDK, CLI, **and** MCP with first-class agent identity. | M | OBJ-2; agents-as-users ([06](../design/ai-native-agent-auth.md#plan-06)) |
 | **BR-005** | Provider access uses **brokered/federated short-lived credentials**, not static secrets (zero-secret default). | M | Trust/security; OBJ-2 ([06](../design/ai-native-agent-auth.md#plan-06)/[12](../design/security-networking.md#plan-12)) |
 | **BR-006** | Every business-relevant action (deploy, token grant/use/revoke, spend approval, policy decision) is **auditable and replayable**. | M | Compliance, trust ([11](../design/event-model.md#plan-11)/[12](../design/security-networking.md#plan-12)) |
 | **BR-007** | HoBo is **self-hostable**; the hosted offering runs the same code ("self-host = hosted"). | M | OBJ-5; openness ([00](../design/vision.md#plan-00)/[04](../design/control-plane.md#plan-04)) |
 | **BR-008** | Missing provider coverage can be filled **without waiting on a community** (AI-generated, conformance-gated). | S | OBJ-3; Forge moat ([06](../design/ai-native-agent-auth.md#plan-06)/[23](../design/forge-generated-stack.md#plan-23)) |
-| **BR-009** | **Cost is a first-class input**: plan-time estimates, budgets/caps, and showback per tenant/Bindle/Camp. | S→C | FinOps ([16](../design/reliability-observability-cost.md#plan-16)) |
-| **BR-010** | The platform supports **governance** (policy, approvals, data-residency/region constraints) suitable for regulated adopters. | C | Platform-engineer persona ([12](../design/security-networking.md#plan-12)/[30](../design/contracts-policy-flags.md#plan-30)) |
-| **BR-011** | The platform must be **safe to operate autonomously**: high-risk agent/automation actions are gated (approval, spend caps). | M | Trust; risk control ([06](../design/ai-native-agent-auth.md#plan-06)/[30](../design/contracts-policy-flags.md#plan-30)) |
+| **BR-009** | **Cost is a first-class input**: plan-time estimates, budgets/caps, and showback per tenant/Bindle/Camp. | S→C | FinOps ([16](../design/reliability-observability-cost.md#plan-05)) |
+| **BR-010** | The platform supports **governance** (policy, approvals, data-residency/region constraints) suitable for regulated adopters. | C | Platform-engineer persona ([12](../design/security-networking.md#plan-12)/[30](../design/contracts-policy-flags.md#plan-29)) |
+| **BR-011** | The platform must be **safe to operate autonomously**: high-risk agent/automation actions are gated (approval, spend caps). | M | Trust; risk control ([06](../design/ai-native-agent-auth.md#plan-06)/[30](../design/contracts-policy-flags.md#plan-29)) |
 
 ## 9. Business model
 HoBo is **open-source**. Commercialization (pricing, billing, invoicing, tax) is **out of scope of these design docs** ([ADR-0064](../design/adr/08-scope-and-requirements.md#adr-0064)) — HoBo is a meta-cloud, not a SaaS-business toolkit. An optional managed/hosted Yard may exist operationally (managed HA, org SSO/RBAC, audit retention, support), but it ships the **same code** as self-host and **never gates portability** ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024)); HoBo never marks up the customer's cloud spend.
@@ -139,10 +139,10 @@ North-star signals from [roadmap.md#plan-08](../design/roadmap.md#plan-08), made
 | ID | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|---|
 | R-1 | **Forge yields insecure/low-quality providers** | Med | High | Conformance + sandbox-no-egress + signing/provenance + human gate for high-trust ([12](../design/security-networking.md#plan-12)/[23](../design/forge-generated-stack.md#plan-23)) | Eng |
-| R-2 | **Agent autonomy causes runaway spend/destroy** | Med | High | Scoped SVIDs, policy gates, spend caps, full replay ([06](../design/ai-native-agent-auth.md#plan-06)/[30](../design/contracts-policy-flags.md#plan-30)) | Eng/Platform |
+| R-2 | **Agent autonomy causes runaway spend/destroy** | Med | High | Scoped SVIDs, policy gates, spend caps, full replay ([06](../design/ai-native-agent-auth.md#plan-06)/[30](../design/contracts-policy-flags.md#plan-29)) | Eng/Platform |
 | R-3 | **Scope/complexity overwhelms the team** (large single-v1 surface) | High | High | Dependency-ordered build stages, each independently demoable + keeping prior acceptance gates green; "powerful but unusable" guardrail ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)) | Product |
-| R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/wasm-runtime-wit.md#plan-24)) | Eng |
-| R-6 | **Multi-cloud networking** harder/costlier than modeled | Med | Med | Tiered connectivity + egress feedback to Planner ([13](../design/security-networking.md#plan-13)/[16](../design/reliability-observability-cost.md#plan-16)) | Eng |
+| R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/wasm-runtime-wit.md#plan-20)) | Eng |
+| R-6 | **Multi-cloud networking** harder/costlier than modeled | Med | Med | Tiered connectivity + egress feedback to Planner ([13](../design/security-networking.md#plan-12)/[16](../design/reliability-observability-cost.md#plan-05)) | Eng |
 | R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/positioning.md#plan-17)) | Founders/GTM |
 
 ## 16. v1 build milestones
@@ -157,4 +157,4 @@ All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery p
 | 6 | **Production hardened + breadth:** HA + FinOps + UX + the governance planes | canary auto-rollback; cost within tolerance; DR < RTO; compliance/AI-safety usable |
 
 ## 17. References
-[00 Vision](../design/vision.md#plan-00) · [08 Roadmap](../design/roadmap.md#plan-08) · [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-16) · [17 Positioning](../design/positioning.md#plan-17) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/08-scope-and-requirements.md#adr-0018)/[0019](../design/adr/08-scope-and-requirements.md#adr-0019)/[0021](../design/adr/08-scope-and-requirements.md#adr-0021)/[0063](../design/adr/08-scope-and-requirements.md#adr-0063) (single v1 scope) · [0064](../design/adr/08-scope-and-requirements.md#adr-0064).
+[00 Vision](../design/vision.md#plan-00) · [08 Roadmap](../design/roadmap.md#plan-08) · [16 Cost/FinOps](../design/reliability-observability-cost.md#plan-05) · [17 Positioning](../design/positioning.md#plan-17) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/08-scope-and-requirements.md#adr-0018)/[0019](../design/adr/08-scope-and-requirements.md#adr-0019)/[0021](../design/adr/08-scope-and-requirements.md#adr-0021)/[0063](../design/adr/08-scope-and-requirements.md#adr-0063) (single v1 scope) · [0064](../design/adr/08-scope-and-requirements.md#adr-0064).

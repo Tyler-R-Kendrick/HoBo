@@ -13,7 +13,7 @@
 | Owner (Accountable) | Engineering lead |
 | Authors | Engineering + Platform + SRE |
 | Reviewers | Product, Security, Founders |
-| Related | [BRD](./BRD.md), [PRD](./PRD.md), [10 Architecture](../design/architecture.md#plan-10), [01 Monorepo](../design/architecture.md#plan-01), [04 Control plane](../design/control-plane.md#plan-04), [09 Verification](../design/verification.md#plan-09), [11 Event model](../design/event-model.md#plan-11), [18 ADR log](../design/adr/README.md) |
+| Related | [BRD](./BRD.md), [PRD](./PRD.md), [10 Architecture](../design/architecture.md#plan-10), [01 Monorepo](../design/architecture.md#plan-10), [04 Control plane](../design/control-plane.md#plan-04), [09 Verification](../design/verification.md#plan-09), [11 Event model](../design/event-model.md#plan-11), [18 ADR log](../design/adr/README.md) |
 
 ### 1.1 RACI (technical decisions)
 | Activity | Eng | Platform | Security | SRE | Product |
@@ -74,14 +74,14 @@ flowchart TB
   APP --> WRL
 ```
 
-**Layering invariant** ([architecture.md#plan-01](../design/architecture.md#plan-01)): dependencies point **inward only** — `apps → adapters → sdk/runtime → core`; adapters depend only on `@hobo/core` port interfaces, so the agnostic core never leaks provider detail (enforces NFR-001).
+**Layering invariant** ([architecture.md#plan-10](../design/architecture.md#plan-10)): dependencies point **inward only** — `apps → adapters → sdk/runtime → core`; adapters depend only on `@hobo/core` port interfaces, so the agnostic core never leaks provider detail (enforces NFR-001).
 
 ## 4. Component breakdown (`@hobo/*`)
-From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@hobo/core`, `@hobo/wit`, `@hobo/sdk`, `@hobo/runtime`); **control plane** (`@hobo/cli`, `@hobo/cloud` = the Yard, `@hobo/registry`, `@hobo/identity`, `@hobo/mcp`); **runtime backends** (`runtime-local` built-in, `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`); **Providers** (`provider-aws`/`-azure`/`-gcp`/`-cloudflare`/`-fly`/`-kubernetes`); **IaC** (`iac-pulumi` primary, `-cdktf`/`-crossplane`/`-opentofu`); **Build** (`build-wasm`, `-dagger`/`-packer`/`-firecracker`); **governance** (`@hobo/conformance`, `@hobo/contracts`, `@hobo/policy`, `@hobo/evals`, `@hobo/training`, optional `provider-pact`/`-opa`/`-cedar`).
+From [architecture.md#plan-10](../design/architecture.md#plan-10): **core** (`@hobo/core`, `@hobo/wit`, `@hobo/sdk`, `@hobo/runtime`); **control plane** (`@hobo/cli`, `@hobo/cloud` = the Yard, `@hobo/registry`, `@hobo/identity`, `@hobo/mcp`); **runtime backends** (`runtime-local` built-in, `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`); **Providers** (`provider-aws`/`-azure`/`-gcp`/`-cloudflare`/`-fly`/`-kubernetes`); **IaC** (`iac-pulumi` primary, `-cdktf`/`-crossplane`/`-opentofu`); **Build** (`build-wasm`, `-dagger`/`-packer`/`-firecracker`); **governance** (`@hobo/conformance`, `@hobo/contracts`, `@hobo/policy`, `@hobo/evals`, `@hobo/training`, optional `provider-pact`/`-opa`/`-cedar`).
 
 ## 5. Technical requirements (`TR-NNN`)
 
-### 5.1 SDK & compile (IfC) ([02](../design/sdk-api.md#plan-02), [20](../design/wasm-runtime-wit.md#plan-20), [21](../design/authoring-resources-wiring.md#plan-21), [22](../design/authoring-resources-wiring.md#plan-22))
+### 5.1 SDK & compile (IfC) ([02](../design/sdk-api.md#plan-02), [20](../design/wasm-runtime-wit.md#plan-20), [21](../design/authoring-resources-wiring.md#plan-21), [22](../design/authoring-resources-wiring.md#plan-21))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-001** | `@hobo/sdk` exposes the resource catalog + `bindle()`; resources declare `.allow()` verbs inline (IfC). | IfC-collection test ([09](../design/verification.md#plan-09)) |
@@ -89,16 +89,16 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-003** | Services compile to **wasm components** (jco/componentize) with **OCI-container fallback**. | Build test; component runs on the local Camp (`runtime-local`) ([20](../design/wasm-runtime-wit.md#plan-20)) |
 | **TR-004** | `.allow(v)` produces exactly one **{IAM scope + wasm capability link + brokered-token scope}** triple; a missing verb is denied on all three. | `.allow()` triple test ([09](../design/verification.md#plan-09)) |
 | **TR-005** | `.with(provider.option(...))` is per-provider-typed and inert for non-resolved providers. | Multi-provider resolve test ([09](../design/verification.md#plan-09)) |
-| **TR-006** | The build enforces the **layering invariant** via a dependency-graph lint (e.g. `depcheck`/`madge`): no agnostic package imports a provider/iac/build package and no adapter imports another adapter; CI blocks on violation. | dep-graph lint gate ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024), [01](../design/architecture.md#plan-01)) |
+| **TR-006** | The build enforces the **layering invariant** via a dependency-graph lint (e.g. `depcheck`/`madge`): no agnostic package imports a provider/iac/build package and no adapter imports another adapter; CI blocks on violation. | dep-graph lint gate ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024), [01](../design/architecture.md#plan-10)) |
 
 > **"Unedited" (portability definition, [ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024)):** across cloud targets, `bindle.ts` and application `src/` are **byte-identical**; only `hobo.config.ts` and CLI/env parameters may change. The `multi-cloud-shop` E2E proves it by deploying an unchanged `bindle.ts` to ≥2 providers and asserting identical resolved topology + bindings.
 
-### 5.2 Camp runtime — durable runtime ports ([02](../design/sdk-api.md#plan-02), [24](../design/wasm-runtime-wit.md#plan-24))
+### 5.2 Camp runtime — durable runtime ports ([02](../design/sdk-api.md#plan-02), [24](../design/wasm-runtime-wit.md#plan-20))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-010** | Define the **runtime ports** — EventStore, Queue, Streamer, ActorHost, Clock — as WIT interfaces; ship a built-in engine (`runtime-local`, SQLite/fs). | Per-runtime-port conformance ([09](../design/verification.md#plan-09)) |
 | **TR-011** | Runtime primitives `step`/`workflow`/`actor`/`saga`/`agent`/`sleep`/`cron`/hooks/streams with memoized steps + auto idempotency keys. | hello-bindle exercises all; replay==live |
-| **TR-012** | Runtime backends are swappable per Camp (`runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 runtime backends** (e.g. `runtime-local` + `runtime-postgres`) with only a runtime override; lifecycle identical (replay==live) ([24](../design/wasm-runtime-wit.md#plan-24)) |
+| **TR-012** | Runtime backends are swappable per Camp (`runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`) with no app-code change. | An example runs unchanged on **≥2 runtime backends** (e.g. `runtime-local` + `runtime-postgres`) with only a runtime override; lifecycle identical (replay==live) ([24](../design/wasm-runtime-wit.md#plan-20)) |
 | **TR-013** | **Version policy:** Pulumi Automation API / WASI-WIT / MCP are pinned to exact versions; runtime-port versions are recorded in the Manifest IR and immutable for a Bindle version; upgrades go through a gated `hobo upgrade` path with a compat/upgrade test; a version mismatch fails planning with a precise reason. | upstream-upgrade compat test; version-mismatch reject test ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024); open ADR-P/Q11 [09](../design/verification.md#plan-09)) |
 
 ### 5.3 The Yard control plane ([04](../design/control-plane.md#plan-04))
@@ -118,7 +118,7 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-032** | Schema evolution via **upcasters**; old events replay through them. | Upcaster replay test ([11](../design/event-model.md#plan-11)) |
 | **TR-033** | Every durable run satisfies **`replay == live state`** (hard invariant, NFR-011). | Determinism test ([09](../design/verification.md#plan-09)) |
 
-### 5.5 Providers / IaC / Build ([03](../design/control-plane.md#plan-03))
+### 5.5 Providers / IaC / Build ([03](../design/control-plane.md#plan-04))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-040** | `CloudProvider`/`IacProvider`/`BuildProvider` are swappable ports; a cloud provider composes IaC + build. | Per-capability conformance ([09](../design/verification.md#plan-09)) |
@@ -133,7 +133,7 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-051** | **Token broker** exchanges an SVID for a resource-scoped provider token (OIDC federation preferred; OAuth-OBO for human delegation). The **API-key legacy escape hatch** is opt-in, carries a **max TTL with enforced rotation**, and is fully audited. | Zero-secret deploy test (NFR-005); key-past-TTL-rejected test ([ADR-0023](../design/adr/02-identity-security.md#adr-0023)) |
 | **TR-052** | Every credential event (`token.Granted/Used/Revoked`) is logged and replayable; audit streams are retained for a defined minimum and never compacted. | Credential-audit + retention-floor test ([06](../design/ai-native-agent-auth.md#plan-06), NFR-018) |
 | **TR-053** | **Confused-deputy default-deny:** before issuing any scoped token, the policy engine checks `{principal, tenant, resource, action}`; cross-tenant issuance is denied unless explicitly delegated. | Agent-with-tenant-1-SVID requests tenant-2 token → denied before `token.Granted` ([ADR-0023](../design/adr/02-identity-security.md#adr-0023)) |
-| **TR-054** | **Config/secret resolution (secretless-first):** `config()`/`secretRef()`/`env()` declarations resolve to **references per Camp** at use-time via the ladder — bound resource (brokered token, no secret) → provider secret store (brokered token) → bounded static fallback (TTL ≤7d, [ADR-0023](../design/adr/02-identity-security.md#adr-0023)). Values never persist in the Bindle/Camp config/event log; reads emit `config.Resolved`(ref+Camp)/`secret.Accessed`/`secret.Unavailable` and are redacted **at capture** (incl. training trajectories). `hobo doctor` checks cross-Camp ref parity. | secretless-resolve + redaction + drift test ([Plan 31](../design/authoring-resources-wiring.md#plan-31)/[ADR-0027](../design/adr/02-identity-security.md#adr-0027)) |
+| **TR-054** | **Config/secret resolution (secretless-first):** `config()`/`secretRef()`/`env()` declarations resolve to **references per Camp** at use-time via the ladder — bound resource (brokered token, no secret) → provider secret store (brokered token) → bounded static fallback (TTL ≤7d, [ADR-0023](../design/adr/02-identity-security.md#adr-0023)). Values never persist in the Bindle/Camp config/event log; reads emit `config.Resolved`(ref+Camp)/`secret.Accessed`/`secret.Unavailable` and are redacted **at capture** (incl. training trajectories). `hobo doctor` checks cross-Camp ref parity. | secretless-resolve + redaction + drift test ([Plan 21](../design/authoring-resources-wiring.md#plan-21)/[ADR-0027](../design/adr/02-identity-security.md#adr-0027)) |
 
 ### 5.7 Registry & Capability Manifest ([06](../design/ai-native-agent-auth.md#plan-06))
 | ID | Requirement | Verified by |
@@ -141,7 +141,7 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-060** | Providers publish **Capability Manifest** (`index/signs/capabilities/auth/cost.json`) at `/.well-known/capability-manifest/`; the **Registry** indexes + serves capability search. | Discovery test (FR-031) |
 | **TR-061** | The Registry **refuses unsigned/unverified plugins**; consumers pin versions + require a trust level. | Unsigned-plugin-refused test ([12](../design/security-networking.md#plan-12)) |
 
-### 5.8 MCP control surface ([06](../design/ai-native-agent-auth.md#plan-06), [15](../design/developer-experience.md#plan-15))
+### 5.8 MCP control surface ([06](../design/ai-native-agent-auth.md#plan-06), [15](../design/developer-experience.md#plan-07))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-070** | `@hobo/mcp` exposes every CLI/SDK capability as an MCP tool (`plan`/`deploy`/`promote`/`rollback`/`inspect_run`/`tail_logs`/`request_token`/`get_drift`/`heal`/…) with the same identity/authz model. | Surface-parity + agent E2E (NFR-004) |
@@ -156,20 +156,20 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-083** | **Forge generation is injection-hardened:** source docs/OpenAPI are scanned/sanitized before generation; the signed provenance includes a scrub report; conformance runs with **no egress** (hard requirement, not default). | Seeded-malicious-docs test produces a scrub report; egress attempt during conformance fails ([ADR-0023](../design/adr/02-identity-security.md#adr-0023), [12](../design/security-networking.md#plan-12)) |
 | **TR-084** | **`"use training"` methods** are optimized by a `training-engine` **WIT port** (built-in OPTO default; **Microsoft Agent Lightning / Trace optional INTERNAL providers, not on the SDK surface**). Runtime emits OTel/**OpenInference** trajectories; **live-evals** attach the reward; trained candidates pass the **same** conformance + eval + policy gate as Forge impls. | Training-loop test: trajectory captured → candidate proposed → promoted only via the gate; swapping the engine is config-only ([ADR-0025](../design/adr/06-ai-generation-operators.md#adr-0025), [23](../design/forge-generated-stack.md#plan-23)) |
 
-### 5.10 Contracts, policy, evals & Gatekeeper ([29](../design/contracts-policy-flags.md#plan-29), [30](../design/contracts-policy-flags.md#plan-30))
+### 5.10 Contracts, policy, evals & Gatekeeper ([29](../design/contracts-policy-flags.md#plan-29), [30](../design/contracts-policy-flags.md#plan-29))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-090** | `contract-engine` + `policy-engine` are **WIT ports** with built-in defaults (typed TS); Pact/OPA/Cedar are optional providers. | Per-engine conformance ([ADR-0015](../design/adr/README.md)) |
 | **TR-091** | **`can-deploy`** checks producer/consumer version skew against what the event log says runs per environment; emits `compat.GatePassed/Failed`. | Compatibility test ([09](../design/verification.md#plan-09)) |
-| **TR-092** | Policy decisions carry **obligations** realized as durable effects/sagas, tracked `ObligationCreated→Satisfied`; an unmet obligation blocks. | Policy-decision + obligation test ([30](../design/contracts-policy-flags.md#plan-30)) |
+| **TR-092** | Policy decisions carry **obligations** realized as durable effects/sagas, tracked `ObligationCreated→Satisfied`; an unmet obligation blocks. | Policy-decision + obligation test ([30](../design/contracts-policy-flags.md#plan-29)) |
 | **TR-093** | A single **Gatekeeper** (`hobo verify`) composes contracts + policy + evals + conformance + cost into one event-sourced decision at Delta→Set/promote. | `hobo verify` composite test ([ADR-0015](../design/adr/README.md)) |
 
-### 5.11 Platform-engineering: definitions, matching, deltas, packs ([25](../design/platform-engineering.md#plan-25)–[27](../design/platform-engineering.md#plan-27))
+### 5.11 Platform-engineering: definitions, matching, deltas, packs ([25](../design/platform-engineering.md#plan-25)–[27](../design/platform-engineering.md#plan-25))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-100** | **Resource Definitions + Matching** select how a port is realized per context; the winning definition + score recorded as `match.Decided`. | Matching test ([09](../design/verification.md#plan-09)) |
-| **TR-101** | Environments are **Deployment Sets** with mutable **Deltas** (draft→promote); reconcile is **incremental** (only changed nodes). | Delta→Set test ([26](../design/platform-engineering.md#plan-26)) |
-| **TR-102** | **Resource Packs** bundle definitions and are installable (marketplace); Drivers (`terraform`/`template`/`container`/`custom-webhook`) have conformance suites. | Pack + Driver conformance ([27](../design/platform-engineering.md#plan-27)) |
+| **TR-101** | Environments are **Deployment Sets** with mutable **Deltas** (draft→promote); reconcile is **incremental** (only changed nodes). | Delta→Set test ([26](../design/platform-engineering.md#plan-25)) |
+| **TR-102** | **Resource Packs** bundle definitions and are installable (marketplace); Drivers (`terraform`/`template`/`container`/`custom-webhook`) have conformance suites. | Pack + Driver conformance ([27](../design/platform-engineering.md#plan-25)) |
 
 ### 5.12 Cross-cutting: security & multi-tenancy ([12](../design/security-networking.md#plan-12))
 | ID | Requirement | Verified by |
@@ -177,19 +177,19 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-110** | Tenant is the hard isolation boundary across **five** dimensions: data (namespaced/encrypted streams), compute (partitioned Executor pools), credentials (tenant-scoped SVIDs/tokens), network (tenant-scoped mTLS domains), and **wasm capability** (deny-by-default unforgeable handles). | Cross-tenant tests incl. an **explicit denial scenario**: a component linked only to tenant A's resource calling tenant B's resource fails with a *capability-denied* (not generic-auth) error ([09](../design/verification.md#plan-09)) |
 | **TR-111** | **No static secrets:** bindings resolve to secret refs; per-run sensitive payloads encrypted with a per-run key. **Envelope encryption at rest** for event streams is available across **all** runtime backends (default for new tenants; opt-in where a backend lacks native support, gap documented). Decryption requires log-read **and** explicit authorization (run-owner / `decrypt:run`); log access ≠ payload access. | Encryption-across-runtimes + unauthorized-decrypt-denied test ([ADR-0023](../design/adr/02-identity-security.md#adr-0023), [12](../design/security-networking.md#plan-12)) |
 | **TR-112** | **Supply chain:** plugins signed w/ SLSA-style provenance + conformance report; images by digest + scanned; all published artifacts (SDK, CLI, providers, implementations, base images) carry **CycloneDX SBOMs**; CI **blocks publishing on CVSS ≥ 7.0** (documented waiver path). | Signing + SBOM-present + vuln-gate test ([12](../design/security-networking.md#plan-12)) |
-| **TR-113** | **Data residency:** a tenant can constrain regions; the Planner rejects residency violations at plan time. | Residency rejection test ([03](../design/control-plane.md#plan-03)) |
+| **TR-113** | **Data residency:** a tenant can constrain regions; the Planner rejects residency violations at plan time. | Residency rejection test ([03](../design/control-plane.md#plan-04)) |
 
-### 5.13 Cross-cutting: networking ([13](../design/security-networking.md#plan-13))
+### 5.13 Cross-cutting: networking ([13](../design/security-networking.md#plan-12))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-120** | Connectivity is derived from `bind` edges; the Planner selects a **tier** (same-region private → cross-region → cross-provider private → overlay mesh → public+mTLS) and may be overridden via `.with(...)`. | Connectivity-tier test ([09](../design/verification.md#plan-09)) |
 | **TR-121** | **mTLS-by-default** between services, keyed by workload SVIDs; certs issued/rotated by Identity (zero-trust); apps don't manage them. | Cross-provider mTLS test (build stage 4) |
-| **TR-122** | The **HoBo Relay** provides an outbound-only (no inbound) reverse tunnel for private-network targets. | Private-target deploy test ([28](../design/platform-engineering.md#plan-28)) |
+| **TR-122** | The **HoBo Relay** provides an outbound-only (no inbound) reverse tunnel for private-network targets. | Private-target deploy test ([28](../design/platform-engineering.md#plan-25)) |
 
-### 5.14 Cross-cutting: observability ([14](../design/reliability-observability-cost.md#plan-14))
+### 5.14 Cross-cutting: observability ([14](../design/reliability-observability-cost.md#plan-05))
 | ID | Requirement | Verified by |
 |---|---|---|
-| **TR-130** | OTel logs/traces/metrics emitted for control + data planes; the event log backs the audit/timeline; dashboard reads projections only. | Trace-present test ([14](../design/reliability-observability-cost.md#plan-14)) |
+| **TR-130** | OTel logs/traces/metrics emitted for control + data planes; the event log backs the audit/timeline; dashboard reads projections only. | Trace-present test ([14](../design/reliability-observability-cost.md#plan-05)) |
 
 ### 5.15 Cross-cutting: reliability/HA ([05](../design/reliability-observability-cost.md#plan-05))
 | ID | Requirement | Verified by |
@@ -200,24 +200,24 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-143** | DR = replay: `hobo yard up --restore` rebuilds projections + actors; RPO ~0/≤5 s, RTO <15 min. | DR replay test (NFR-010) |
 | **TR-144** | Deployment strategies (`recreate`/`blue-green`/`canary`/`progressive`) are parameterized sagas with event-sourced gates + auto-rollback. | Canary auto-rollback test |
 
-### 5.16 Cross-cutting: cost ([16](../design/reliability-observability-cost.md#plan-16))
+### 5.16 Cross-cutting: cost ([16](../design/reliability-observability-cost.md#plan-05))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-150** | Providers publish `cost.json`; the Planner estimates plan-time cost (incl. egress per connectivity tier); estimate within ±20% of a fixture. | Cost fixture test (NFR-012) |
 | **TR-151** | Budgets/caps are policy gates; spend over cap → obligation/approval; showback attributable per tenant/Bindle/Camp/resource from the log. | Budget-breach test |
 
-### 5.17 Operator Agents, the generated infrastructure stack & patchability ([40](../design/operators-sre.md#plan-40)–[43](../design/forge-generated-stack.md#plan-43))
+### 5.17 Operator Agents, the generated infrastructure stack & patchability ([40](../design/operators-sre.md#plan-40)–[43](../design/forge-generated-stack.md#plan-23))
 | ID | Requirement | Verified by |
 |---|---|---|
 | **TR-160** | Operator Agents are Yard services on the agent-principal model (SVID + per-agent policy + spend caps), event-sourced runs, MCP tools; writes ride `policy.Decided` (auto / canary / require-approval); reasoning engine behind a port (optional externals e.g. HolmesGPT). *(Roster: SRE/Endpoint Monitor/GitOps/Platform Engineer/UX Designer/SWE; all sandboxed under enforced AI governance, [ADR-0061](../design/adr/04-governance-verification.md#adr-0061).)* | Crew dispatch + gated-remediation test ([40](../design/operators-sre.md#plan-40)/FR-080) |
-| **TR-161** | The generated stack shares one generation loop, one conformance/policy/eval trust boundary, and one persistence mechanism (region-scoped AST + provenance, ADR-0048) across data/business/message/intelligence/UI; drift-gated by `hobo codegen --check`. | Cross-layer regeneration + drift-gate test ([41](../design/forge-generated-stack.md#plan-41)/FR-081) |
-| **TR-162** | App/UI generation: the `ui-render` port (OpenUI / json-render / mcp-apps adapters) generates the app UI from intent + `design.md` (the enforced design-system spec); typed from the WIT-record domain schema, reactive to materializations, owned by the UX Designer operator, landed via the persisted-mutation + policy gate. | UI-from-intent + design.md-gate + reactive-render test ([41](../design/forge-generated-stack.md#plan-41)/[ADR-0056](../design/adr/06-ai-generation-operators.md#adr-0056)) |
-| **TR-163** | Patchability: every engine/adapter behind a WIT port is swappable; derivatives ship as signed, conformance-certified Packs/plugins, Matching-selected; persisted patches are round-trippable + provenance-pinned; conformance is the trust bridge (shared with portability). | Custom-engine plugin + persisted-patch round-trip test ([43](../design/forge-generated-stack.md#plan-43)/FR-083) |
+| **TR-161** | The generated stack shares one generation loop, one conformance/policy/eval trust boundary, and one persistence mechanism (region-scoped AST + provenance, ADR-0048) across data/business/message/intelligence/UI; drift-gated by `hobo codegen --check`. | Cross-layer regeneration + drift-gate test ([41](../design/forge-generated-stack.md#plan-23)/FR-081) |
+| **TR-162** | App/UI generation: the `ui-render` port (OpenUI / json-render / mcp-apps adapters) generates the app UI from intent + `design.md` (the enforced design-system spec); typed from the WIT-record domain schema, reactive to materializations, owned by the UX Designer operator, landed via the persisted-mutation + policy gate. | UI-from-intent + design.md-gate + reactive-render test ([41](../design/forge-generated-stack.md#plan-23)/[ADR-0056](../design/adr/06-ai-generation-operators.md#adr-0056)) |
+| **TR-163** | Patchability: every engine/adapter behind a WIT port is swappable; derivatives ship as signed, conformance-certified Packs/plugins, Matching-selected; persisted patches are round-trippable + provenance-pinned; conformance is the trust bridge (shared with portability). | Custom-engine plugin + persisted-patch round-trip test ([43](../design/forge-generated-stack.md#plan-23)/FR-083) |
 | **TR-164** | Continuous security scanning re-runs vuln/SBOM/drift on running Sets; findings raise `policy.Decided`, remediation is the gated live-fix loop, findings export as OCSF ([ADR-0046](../design/adr/04-governance-verification.md#adr-0046)). | Live-CVE → policy-decision + gated-remediation test ([12](../design/security-networking.md#plan-12)/FR-084) |
 
 ## 6. Interfaces & APIs
-- **WIT ports** ([24](../design/wasm-runtime-wit.md#plan-24)): the canonical contracts (runtime ports + provider capability ports + `contract-engine`/`policy-engine`/`training-engine`). `hobo:*` WIT interfaces reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/verification.md#plan-09) Q11).
-- **CLI** ([15](../design/developer-experience.md#plan-15)): the `hobo …` command set (FR-010/013).
+- **WIT ports** ([24](../design/wasm-runtime-wit.md#plan-20)): the canonical contracts (runtime ports + provider capability ports + `contract-engine`/`policy-engine`/`training-engine`). `hobo:*` WIT interfaces reuse `wasi:*` where possible; versioning tracked as an open item ([09](../design/verification.md#plan-09) Q11).
+- **CLI** ([15](../design/developer-experience.md#plan-07)): the `hobo …` command set (FR-010/013).
 - **MCP** ([06](../design/ai-native-agent-auth.md#plan-06)): tool-per-capability surface (TR-070).
 - **Gateway command/event API** ([04](../design/control-plane.md#plan-04)): commands (`Deploy`/`Promote`/`Rollback`/`Destroy`/`RegisterProvider`/`RequestToken`/…); the only side effect is appending events.
 
@@ -260,4 +260,4 @@ Authoritative **BR → FR/NFR → TR** mapping ([ADR-0018](../design/adr/08-scop
 > The matrix shows **representative** TRs per BR; every `TR-NNN` carries its own verification in [§5](#5-technical-requirements-tr-nnn). Rows for BR-001/002/004/006/007/008/011 and the security spine were extended in the requirements hardening pass ([ADR-0023](../design/adr/02-identity-security.md#adr-0023)/[ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024); see [`plans/README.md`](../../plans/README.md)).
 
 ## 11. References
-[10 Architecture](../design/architecture.md#plan-10) · [04 Control plane](../design/control-plane.md#plan-04) · [11 Event model](../design/event-model.md#plan-11) · [05 Reliability](../design/reliability-observability-cost.md#plan-05) · [12 Security](../design/security-networking.md#plan-12) · [13 Networking](../design/security-networking.md#plan-13) · [09 Verification](../design/verification.md#plan-09) · [24 WIT interfaces](../design/wasm-runtime-wit.md#plan-24) · [BRD](./BRD.md) · [PRD](./PRD.md) · [ADR index](../design/adr/README.md).
+[10 Architecture](../design/architecture.md#plan-10) · [04 Control plane](../design/control-plane.md#plan-04) · [11 Event model](../design/event-model.md#plan-11) · [05 Reliability](../design/reliability-observability-cost.md#plan-05) · [12 Security](../design/security-networking.md#plan-12) · [13 Networking](../design/security-networking.md#plan-12) · [09 Verification](../design/verification.md#plan-09) · [24 WIT interfaces](../design/wasm-runtime-wit.md#plan-20) · [BRD](./BRD.md) · [PRD](./PRD.md) · [ADR index](../design/adr/README.md).

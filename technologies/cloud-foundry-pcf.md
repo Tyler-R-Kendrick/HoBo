@@ -18,12 +18,12 @@ It began as a VMware project (2011), became **Pivotal Cloud Foundry (PCF)** — 
 - **Operations** — built-in **log aggregation** (Loggregator), metrics, health checks, rolling restarts, and horizontal scaling (`cf scale`); the platform itself is deployed/managed by **BOSH** across IaaS (vSphere/AWS/Azure/GCP).
 
 ## Relevance to HoBo
-Cloud Foundry is HoBo's **clearest lineage and a sharp positioning foil** ([Plan 0](../docs/design/vision.md#plan-00), [Plan 17](../docs/design/positioning.md#plan-17)). The "push your code, the platform does the rest" ideal is exactly what HoBo's `hobo deploy` ([Plan 15](../docs/design/developer-experience.md#plan-15)) inherits; the differences are precisely HoBo's thesis. Concept-for-concept:
+Cloud Foundry is HoBo's **clearest lineage and a sharp positioning foil** ([Plan 0](../docs/design/vision.md#plan-00), [Plan 17](../docs/design/positioning.md#plan-17)). The "push your code, the platform does the rest" ideal is exactly what HoBo's `hobo deploy` ([Plan 7](../docs/design/developer-experience.md#plan-07)) inherits; the differences are precisely HoBo's thesis. Concept-for-concept:
 
 | Cloud Foundry | HoBo analog |
 |---|---|
 | `cf push` | `hobo deploy` (push-to-deploy from a TS app description) |
-| Buildpacks → droplet | **BuildProvider** adapters producing images/rootfs/**wasm components** ([Plan 3](../docs/design/control-plane.md#plan-03)); CNCF Buildpacks usable behind it |
+| Buildpacks → droplet | **BuildProvider** adapters producing images/rootfs/**wasm components** ([Plan 4](../docs/design/control-plane.md#plan-04)); CNCF Buildpacks usable behind it |
 | Diego (cells, auction, self-heal) | the **durable runtime a Camp supplies** + reliability/drift loop ([Plan 2 §Layer 1](../docs/design/sdk-api.md#plan-02), [Plan 5](../docs/design/reliability-observability-cost.md#plan-05)) |
 | Service brokers + marketplace (OSBAPI) | **Providers + Registry** + the AI **Forge** ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)); `.allow()`-scoped, capability-negotiated bindings ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)) |
 | Orgs / spaces (UAA roles) | **Tenant / Camp** + Identity (SVIDs, scoped tokens) ([Plan 12](../docs/design/security-networking.md#plan-12), [Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)) |

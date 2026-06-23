@@ -157,6 +157,50 @@ The same plane governs **HoBo's own control-plane surface**, not just deployed i
 - **RBAC populates `subject.roles`.** Built-in roles (Org-Admin · Security/Policy-Admin · Platform-Engineer · Deployer · Operator-Supervisor · Auditor) + custom roles from the taxonomy, bound to principals via **SSO/SCIM** through the `auth` port ([ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)). **Operator Agents (the Crew) are principals under the same RBAC** ([Plan 40](./operators-sre.md#plan-40)) — never exceeding their role.
 - **Org guardrails are per-rule `mandatory | default` (default mandatory).** Attached to the **Yard/Junction** (no new scope noun), a `mandatory` rule is a **hard deny-ceiling** — a lower scope may only *further restrict*, never *widen*, what a higher scope denies (the AWS-SCP property, falling out of deny-by-default); a `default` rule is overridable. Org-wide rules ride the Junction's signed-pack federation (above). Separation-of-duties uses **approval obligations** (e.g. a policy change needs Security-Admin approval); the gated **waiver** path is the escape valve. No new event families — decisions ride `policy.Decided`, audited + OCSF-exported ([ADR-0046](./adr/04-governance-verification.md#adr-0046)).
 
+#### Control-plane action taxonomy and default role bindings
+The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-0074), following recognized standards: **NIST RBAC** (INCITS 359) with **least privilege** + **separation of duties**, cloud-IAM action naming, **Kubernetes RBAC** verbs, **SCIM** + **OIDC/SAML** for role binding ([ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)), and **OCSF** audit ([ADR-0046](./adr/04-governance-verification.md#adr-0046)).
+
+**Naming convention.** Admin actions use the cloud-IAM **`hobo:<resource>:<verb>`** shape (AWS `service:Action`; cf. GCP `service.resource.verb`, Azure RBAC `read/write/action/delete`). In a policy request this lowers to `resource = hobo:<resource>`, `action = <verb>`. Verbs are a **canonical reduced set** — `create · read · list · update · delete` (CRUD+list, as Kubernetes RBAC) plus well-known lifecycle verbs `register · deprecate · approve · promote · execute · configure · rotate · bind` (cf. Kubernetes `approve`/`bind`/`escalate`, Azure `*/action`). `manage` = all verbs on that resource. Everything is **deny-by-default**: an unlisted `(role, action, resource)` is denied.
+
+**The `hobo:*` control-plane resources & actions.**
+
+| Resource (`hobo:`) | Actions | Phase | Governs |
+|---|---|---|---|
+| `provider` | register · read · list · update · deprecate | author/plan | a CloudProvider / capability provider in the Registry ([Plan 4](./control-plane.md#plan-04)) |
+| `resource-definition` | create · read · list · update · delete | author | Matching definitions ([Plan 25](./platform-engineering.md#plan-25)) |
+| `resource-pack` | install · read · list · publish · yank | author | Resource Packs ([Plan 25](./platform-engineering.md#plan-25)) |
+| `listing` | publish · read · list · install · yank | author | Registry distribution ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)) |
+| `driver` | register · read · list · update | author | the Driver taxonomy ([Plan 25](./platform-engineering.md#plan-25)) |
+| `integration` | register · read · list · update · deprecate | author | swappable adapters — auth IdP · artifact-repo · runner · build-machine · issue-tracker · knowledge ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)) |
+| `dispatcher` | read · configure | author | the cost-routing objective ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071)) |
+| `policy-pack` | create · read · list · update · delete · approve | author/apply | policy + **guardrail** packs (this plane) — **SoD: author ≠ approver** |
+| `role` | create · read · list · update · delete · bind | author | RBAC roles; `bind` assigns a role to a principal (no self-escalation, cf. K8s `escalate`) |
+| `yard` · `camp` · `junction` | create · read · list · update · delete · configure | plan/apply | scope lifecycle + governance config ([ADR-0026](./adr/01-architecture-core.md#adr-0026)) |
+| `delta` | create · read · update · approve · promote | apply | the deploy change unit ([Plan 25](./platform-engineering.md#plan-25)) — **SoD: opener ≠ prod-promoter** |
+| `deployment` | read · rollback | apply/runtime | a live deployment |
+| `forge` | execute · read | author/repair | the generation/repair loop ([Plan 23](./forge-generated-stack.md#plan-23)) |
+| `operator` | read · configure · dispatch · disable | runtime/repair | the Crew operator agents ([Plan 40](./operators-sre.md#plan-40)) |
+| `secret-broker` | read-metadata · rotate · configure | runtime | brokered creds — secret **values** are never a grantable read ([ADR-0023](./adr/02-identity-security.md#adr-0023)/[ADR-0027](./adr/02-identity-security.md#adr-0027)) |
+| `audit` | read · export | observe | the event log / OCSF export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)) — read-only |
+
+**Default built-in role → action bindings** (least privilege; `manage` = all verbs; `—` = no grant). Custom roles compose any subset of the above.
+
+| Resource group | Org-Admin | Security/Policy-Admin | Platform-Engineer | Deployer | Operator-Supervisor | Auditor |
+|---|---|---|---|---|---|---|
+| `role` (RBAC) | manage | read · bind | — | — | — | read · list |
+| `policy-pack` / guardrails | manage¹ | manage · **approve** | read | read | read | read · list |
+| `provider` · `resource-definition` · `resource-pack` · `driver` · `integration` · `dispatcher` | manage | read | manage | read | read | read · list |
+| `yard` · `camp` · `junction` | manage | read · configure(guardrails) | configure | read | read | read · list |
+| `delta` · `deployment` | manage | read | create · update | create · update · **promote**² | read | read · list |
+| `forge` | execute | read | execute | — | execute³ | read |
+| `operator` (Crew) | manage | read | configure | — | manage | read |
+| `secret-broker` | configure · rotate | configure · rotate | rotate | — | rotate | — |
+| `audit` | read · export | read · export | read | read | read | **read · export** |
+
+¹ Even Org-Admin's policy/guardrail change can require a second approver where a `mandatory` guardrail sets **2-person approval** — an org can make *no* role self-approve a policy change. ² `delta:promote` to **prod** is gated by an approval obligation per org guardrails (a Deployer promotes lower environments freely, prod with approval). ³ `forge:execute` under Operator-Supervisor is the Crew's SWE/Platform-Engineer operator acting under its own capped role, not the human.
+
+**Separation of duties (NIST).** The principal who *authors* a policy/guardrail change cannot *approve* it (the Security/Policy-Admin approves); the principal who *opens* a prod Delta is not automatically the one who *promotes* it; `role:bind` cannot grant privileges the binder lacks (no self-escalation). These constraints are themselves `mandatory` guardrails an org may tighten but not silently remove.
+
 #### The `policy-engine` ([ADR-0015](./adr/04-governance-verification.md#adr-0015))
 `policy-engine` is a **WIT port**. The default implementation is built-in **typed TypeScript rules** (testable, no Rego to learn). Unlike the `contract-engine` (whose PACT-style testing is built-in, not swappable), the policy engine genuinely accepts optional capability providers: **OPA/Rego** (`@hobo/provider-opa` — maps the request to OPA `input`, runs embedded/WASM/sidecar/Envoy, returns the decision) and **Cedar** (`@hobo/provider-cedar`) for ABAC-style authz. HoBo Cloud is the **management plane** (pack registry, distribution, decision logs); Camps/providers are **enforcement points** — the decision/enforcement split, with HoBo owning the model (the **HoBo Policy IR**).
 

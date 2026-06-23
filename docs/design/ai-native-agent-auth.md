@@ -11,7 +11,7 @@ This capability doc covers HoBo's identity story end to end: **agent/workload au
 ### Design stance: agents are principals, not scripts
 Most platforms bolt agent support on as "an API key in a script." HoBo treats an agent as a **first-class authenticated principal** with its own identity, scoped capabilities, a full audit trail, and durable execution. Three pillars: **Capability Manifest** (the capability/auth standard), **Identity** (issuance + brokering), and the **Forge** (AI-generated providers). All three are reachable over **MCP** so agents drive HoBo natively.
 
-> **Runtime/AI integration.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./forge-generated-stack.md#plan-23). And `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
+> **Runtime/AI integration.** The Forge (§6.5) generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./forge-generated-stack.md#plan-23). And `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
 
 > **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is covered in §6.7 below ([ADR-0038](./adr/02-identity-security.md#adr-0038)). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
 
@@ -166,15 +166,9 @@ flowchart LR
 ---
 
 ### 6.6 How this all reduces to "zero developer effort"
-The end state the project asks for: a developer (or their agent) writes a Bindle, points it at "acme-cloud," and the agent — using its SVID, the Registry's Capability Manifest, and the broker — obtains exactly the scoped tokens it needs, deploys, and leaves an auditable trail. The developer never created an IAM role, pasted a key, or wrote an adapter. If acme-cloud isn't supported yet, the Forge generates and certifies the provider on demand.
+A developer (or their agent) writes a Bindle, points it at "acme-cloud," and the agent — using its SVID, the Registry's Capability Manifest, and the broker — obtains exactly the scoped tokens it needs, deploys, and leaves an auditable trail. The developer never created an IAM role, pasted a key, or wrote an adapter. If acme-cloud isn't supported yet, the Forge generates and certifies the provider on demand.
 
-### Iteration hooks
-- Exact Capability Manifest schema + whether to publish it as an open spec aligned with MCP-auth / OAuth-OBO draft / SPIFFE federation / the emerging Agent Identity Protocol.
-- Delegation chains (agent → sub-agent) — adopt AIP when it matures, or interim OBO chaining.
-- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)): a principal from one Yard is authenticated by another under an agreed trust root (a v1 iteration hook — single-Yard ships first).
-- Policy language for guardrails (CEL/Rego-style vs typed TS policy).
-- Forge model + eval design; human-in-the-loop certification for high-trust providers.
-- Plugin signing, provenance (SLSA), and supply-chain trust for Registry plugins ([Plan 12](./security-networking.md#plan-12)).
+**Cross-Yard identity federation.** The same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)): a principal from one Yard is authenticated by another under an agreed trust root.
 
 ### 6.7 End-user / application auth — same principal, same plane
 Agent auth and end-user auth are one system seen from two ends. The §6.2 scope note already says it: an end-user is just another **`PrincipalRef`** — the event envelope's `actor` already admits `user` ([Plan 11](./event-model.md#plan-11)) — and the **OBO** flow (§6.2) is that same human principal acting *through* an agent. So app users signing in reuse the identity, authorization, and audit machinery built above, rather than standing up a parallel stack.

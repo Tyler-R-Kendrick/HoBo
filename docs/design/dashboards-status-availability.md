@@ -133,11 +133,4 @@ Deliberately minimal — the surfaces are projections, the groupings are dimensi
 ### Scope / YAGNI
 
 - **In scope:** the projections, the grouping dimensions, the status-page model + redaction contract, the availability composition algorithm, the events above — all over existing machinery (log, SLO, incidents, cost, the dependency graph, ingress, `notify`).
-- **Out of scope this round:** the actual frontend implementation; a full public-status-page *subscription product* (we emit the events; `notify` delivers); ingesting third-party SLA feeds beyond declared/observed; SLA-of-SLAs contractual modeling; correlated-failure / fault-tree analysis beyond serial/parallel composition (noted as an iteration hook).
-
-### Iteration hooks
-
-- **Correlated-failure modeling** — shared-region/provider failure domains as a refinement of the independence assumption (fault-tree / common-cause), beyond serial/parallel.
-- **Latency "march" alongside availability** — composing p99 latency through the same hop graph (cross-cloud hops add latency too), a natural sibling of the 9s.
-- **Per-public-component SLO publishing** — letting a project publish a *target* per public component and tracking attainment on the public page.
-- **Project as a deploy/promotion unit** — today project is observability/ownership; whether a project-wide promote (across its Bindles/environments) is ever desirable is deferred (env-group promotion already covers the multi-Camp case, [ADR-0028](./adr/05-config-matching-environments.md#adr-0028)).
+- **Out of scope:** the frontend implementation; a full public-status-page *subscription product* (HoBo emits the events; `notify` delivers); ingesting third-party SLA feeds beyond declared/observed; SLA-of-SLAs contractual modeling; correlated-failure / fault-tree analysis beyond serial/parallel composition.

@@ -97,11 +97,6 @@ Two more boxes on the map:
 
 **Invariant addendum.** A deployed component reaches a backend **only via a link the manifest declared** — deny-by-default capability security extends invariant #2 from the executor to the running data plane ([Plan 12](./security-networking.md#plan-12)).
 
-### Iteration hooks
-- ~~Whether read models live in the same store (projections) or a separate query DB.~~ **Resolved ([Plan 32](./data-plane.md#plan-32)/[ADR-0050](./adr/03-data-plane.md#adr-0050)):** architect-selected per context via Matching — default is a native standing projection over the log; a projection may be materialized into a separate query backend (a **projection sink**) when wanted.
-- Gateway protocol details (gRPC vs tRPC-style vs plain HTTP+JSON for the SDK RPC).
-- How far the control/data-plane split goes for HoBo's own managed Camps/runtimes.
-
 ### Monorepo & package architecture
 The architecture above is realized as a layered monorepo. **Tooling:** pnpm workspaces + Turborepo; TypeScript (strict, `nodenext`); `tsup`/`unbuild` for builds; Vitest; Biome; Changesets for versioned publishing.
 
@@ -112,7 +107,7 @@ core  ←  sdk, runtime  ←  runtimes/*, providers/*, iac/*, build/*  ←  cli,
                           (all adapters depend only on core's port interfaces)
 ```
 
-#### Packages (initial layout)
+#### Packages
 ```
 packages/
   core/            @hobo/core         types, port interfaces, Capability Manifest schema, event envelope, DI/container
@@ -160,7 +155,7 @@ examples/
   hello-bindle/ multi-cloud-shop/ durable-agent/ self-host-yard/
 ```
 
-#### Projects (the stated top-level surfaces → packages)
+#### Projects (top-level surfaces → packages)
 The product's named **Projects** map to packages here: **Cloud** → `@hobo/cloud` (+ `registry`/`identity`); **SDK** → `@hobo/sdk` (+ `runtime`); **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 21](./authoring-resources-wiring.md#plan-21)). *(A `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064).)*
 
 #### Conventions
@@ -168,8 +163,3 @@ The product's named **Projects** map to packages here: **Cloud** → `@hobo/clou
 - **Every adapter runs `@hobo/conformance`** for the ports it claims, in CI ([Plan 9](./verification.md#plan-09)).
 - **Examples are tests** — `examples/*` double as E2E fixtures.
 - **Public type surface is the contract** — provider option types are exported for `.with(...)` autocomplete ([Plan 2](./sdk-api.md#plan-02)).
-
-#### Iteration hooks
-- Package boundaries; whether `runtime` and `sdk` merge.
-- Build tooling (tsup vs unbuild vs tsc project refs).
-- Versioning policy: lockstep vs independent semver per package.

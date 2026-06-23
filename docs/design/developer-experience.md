@@ -4,8 +4,6 @@ This capability doc covers the developer-facing surface end to end: the UI/dashb
 
 ## Plan 07
 
-**Plan 7 — UI / dashboard**
-
 > **Resource Definitions & Matching (Humanitec parity):** add a **Resource Graph** view, a **matching-decision** view (`match.Decided` — which Resource Definition won and why, [Plan 25](./platform-engineering.md#plan-25)), a **Delta diff / promote** view ([Plan 25](./platform-engineering.md#plan-25)), and a **Pipelines** view with approval gates ([Plan 25](./platform-engineering.md#plan-25)) — matching Humanitec's Portal while staying projection-only.
 
 > **Runtime/authoring views.** Adopt Nitric's **local-dashboard** features for `hobo dev` (test APIs, browse kv/sql/buckets, trigger schedules, publish to topics, inspect websockets) and add HoBo-native views: the **collected-resource/manifest** view ([Plan 21](./authoring-resources-wiring.md#plan-21)), the **link map** (component imports → providers, [Plan 20](./wasm-runtime-wit.md#plan-20)), and **cross-WIT-call traces** + AI implement/evolve/live-fix proposals & approvals ([Plan 23](./forge-generated-stack.md#plan-23)).

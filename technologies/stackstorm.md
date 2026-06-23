@@ -21,23 +21,23 @@ It is the prototypical **runbook-automation engine**: codifying the "when X happ
 - **Key-value datastore** — a built-in store (with encryption) for sharing config/state across sensors, rules, and workflows.
 
 ## Relevance to HoBo
-StackStorm is the **canonical OSS analog of HoBo's Pipelines + rule-based automation** ([Plan 28](../docs/design/28-relay-gitops-pipelines.md)). The structural mapping is almost one-to-one, which makes st2 a useful reference design — and a candidate optional provider — for the automation surface HoBo describes:
+StackStorm is the **canonical OSS analog of HoBo's Pipelines + rule-based automation** ([Plan 28](../docs/design/platform-engineering.md#plan-28)). The structural mapping is almost one-to-one, which makes st2 a useful reference design — and a candidate optional provider — for the automation surface HoBo describes:
 
-| StackStorm | HoBo ([Plan 28](../docs/design/28-relay-gitops-pipelines.md)) |
+| StackStorm | HoBo ([Plan 28](../docs/design/platform-engineering.md#plan-28)) |
 |---|---|
 | Sensor → Trigger | Pipeline **triggers**: artifact / deploy-request / schedule-cron / API-MCP |
 | Rule (if-then, match criteria) | Pipeline **rules** (e.g. *"new component from `main` → deploy `staging`"*; *"tag `v*` → open a prod Delta requiring approval"*) |
 | Action / Orquesta workflow | Pipeline **steps/jobs** (ordered via `needs` or parallel; tests, health-waits, external CI, notify) |
-| Inquiry / `core.ask` approval | **Approval gate** = a `createHook` resolved in the dashboard ([Plan 6](../docs/design/06-ai-native-agent-auth.md)) |
-| Execution history / audit log | **Every trigger/step/gate is an event** (`pipeline.Triggered`/`pipeline.StepCompleted`/`pipeline.GateApproved`, [Plan 11](../docs/design/11-event-model.md)) — replayable, auditable |
-| Packs (versioned content) | Resource Packs / policy packs ([Plan 27](../docs/design/27-drivers-packs-profiles.md)/[Plan 30](../docs/design/30-policy-plane.md)) — versioned, signed, distributable |
+| Inquiry / `core.ask` approval | **Approval gate** = a `createHook` resolved in the dashboard ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)) |
+| Execution history / audit log | **Every trigger/step/gate is an event** (`pipeline.Triggered`/`pipeline.StepCompleted`/`pipeline.GateApproved`, [Plan 11](../docs/design/event-model.md#plan-11)) — replayable, auditable |
+| Packs (versioned content) | Resource Packs / policy packs ([Plan 27](../docs/design/platform-engineering.md#plan-27)/[Plan 30](../docs/design/contracts-policy-flags.md#plan-30)) — versioned, signed, distributable |
 
 Where HoBo **diverges by design**:
-- **Event-sourced, not just logged.** StackStorm records execution history; HoBo makes the event log the *source of truth* ([Plan 11](../docs/design/11-event-model.md)), so a pipeline run is replayable and time-travelable, not merely auditable after the fact.
-- **Policy-gated, not RBAC-only.** HoBo's gates compose into one **policy decision model** with rich effects and **obligations** ("allow but require canary") ([Plan 30](../docs/design/30-policy-plane.md)) — richer than st2's allow/deny RBAC plus inline inquiries.
-- **Agent-drivable & MCP-native.** An `API/MCP` trigger lets agents drive pipelines first-class ([Plan 6](../docs/design/06-ai-native-agent-auth.md)/[Plan 15](../docs/design/15-cli-dx.md)), not just chat operators via ChatOps.
-- **Typed-TS authoring option.** HoBo weighs typed-TS `definePipeline(...)` vs YAML ([Plan 28](../docs/design/28-relay-gitops-pipelines.md) iteration hooks), where st2 standardizes on YAML/Orquesta.
-- **Built atop gated deployment sagas.** HoBo Pipelines sit *above* the canary/blue-green/auto-rollback saga machinery ([Plan 5](../docs/design/05-reliability-ha.md)) and the immutable-Set promotion model ([Plan 26](../docs/design/26-environments-deltas.md)); st2 orchestrates arbitrary actions but has no built-in deployment-Set/promotion semantics.
+- **Event-sourced, not just logged.** StackStorm records execution history; HoBo makes the event log the *source of truth* ([Plan 11](../docs/design/event-model.md#plan-11)), so a pipeline run is replayable and time-travelable, not merely auditable after the fact.
+- **Policy-gated, not RBAC-only.** HoBo's gates compose into one **policy decision model** with rich effects and **obligations** ("allow but require canary") ([Plan 30](../docs/design/contracts-policy-flags.md#plan-30)) — richer than st2's allow/deny RBAC plus inline inquiries.
+- **Agent-drivable & MCP-native.** An `API/MCP` trigger lets agents drive pipelines first-class ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)/[Plan 15](../docs/design/developer-experience.md#plan-15)), not just chat operators via ChatOps.
+- **Typed-TS authoring option.** HoBo weighs typed-TS `definePipeline(...)` vs YAML ([Plan 28](../docs/design/platform-engineering.md#plan-28) iteration hooks), where st2 standardizes on YAML/Orquesta.
+- **Built atop gated deployment sagas.** HoBo Pipelines sit *above* the canary/blue-green/auto-rollback saga machinery ([Plan 5](../docs/design/reliability-observability-cost.md#plan-05)) and the immutable-Set promotion model ([Plan 26](../docs/design/platform-engineering.md#plan-26)); st2 orchestrates arbitrary actions but has no built-in deployment-Set/promotion semantics.
 
 **Bet:** consistent with HoBo's "engines behind a WIT port" stance, **StackStorm could be an optional automation provider** behind the Pipelines surface (an adapter that runs Orquesta workflows as pipeline steps, or imports st2 packs as actions), while HoBo's native, event-sourced + policy-gated + agent-drivable model remains the default. Its 6000-action Exchange is the kind of ready-made integration breadth a provider seam can borrow without baking st2 into the core. See also the runbook/promotion pattern: [`../patterns/gitops-runbook-promotion.md`](../patterns/gitops-runbook-promotion.md).
 

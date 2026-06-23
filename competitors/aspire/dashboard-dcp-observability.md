@@ -1,6 +1,6 @@
 # Aspire — Dashboard, DCP & Observability
 
-> Part of the [Aspire competitor reference](./README.md). The runtime/visibility layer — a major part of Aspire's appeal and a reference point for [HoBo Plan 7](../../docs/design/07-ui-dashboard.md)/[Plan 14](../../docs/design/14-observability.md).
+> Part of the [Aspire competitor reference](./README.md). The runtime/visibility layer — a major part of Aspire's appeal and a reference point for [HoBo Plan 7](../../docs/design/developer-experience.md#plan-07)/[Plan 14](../../docs/design/reliability-observability-cost.md#plan-14).
 
 ## DCP — the Developer Control Plane
 **DCP** is Aspire's **local orchestrator**, written in **Go**, that the AppHost drives when you `aspire run`:

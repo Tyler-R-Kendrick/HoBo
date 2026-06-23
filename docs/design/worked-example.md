@@ -1,8 +1,12 @@
-# Plan 19 — End-to-end worked example
+# End-to-End Worked Example
 
-> Part of the [HoBo Design Plan Suite](./README.md). A single narrative that exercises the whole platform, to prove the pieces in Plans 2–44 actually compose (the base narrative is Plans 2–23; the **topical addenda** below layer in the later models without rewriting it). App: **"snapshop"**, a tiny commerce app (catalog + checkout + an ops agent).
+This capability doc consolidates Plan 19 of the HoBo design suite.
 
-> **Authoring (IfC + wasm + `.allow()`).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./20-wasm-wasi-runtime.md)/[Plan 21](./21-resources-catalog.md)/[Plan 22](./22-wiring-manifest.md)). The explicit `bindle.ts` below still works (advanced mode).
+## Plan 19
+
+**Plan 19 — End-to-end worked example**
+
+> **Authoring (IfC + wasm + `.allow()`).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 22](./authoring-resources-wiring.md#plan-22)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
 > // src/api.ts — IfC: resources + permissions inline; compiles to a wasm component via jco
 > import { api, kv, bucket, queue, workflow, step } from "@hobo/sdk";
@@ -29,7 +33,7 @@
 
 > **Contracts & policy gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
 
-> **Data plane ([Plan 39](./39-data-plane-projections.md)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is now the *escape-hatch* form ([raw/adopted access](./39-data-plane-projections.md)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
+> **Data plane ([Plan 39](./data-plane.md#plan-39)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is now the *escape-hatch* form ([raw/adopted access](./data-plane.md#plan-39)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
 > ```ts
 > // domain.wit — the canonical domain schema (Plan 24 / ADR-0051) → generates TS types + protobuf event bodies
 > //   record order { id: string, status: order-status, total: u64 }   enum order-status { placed, confirmed, shipped }
@@ -49,7 +53,7 @@
 > ```
 > The `orders` **projection** folds `Order.*` events into a read model; a **platform/data engineer** picks its sink exactly like the `db` definition in the dynamic-configuration model above — `defineResource({ type: "projection-sink", paradigm: "relational", match: { envType: "production" } })` in prod, the native log-backed projection in preview — recorded in **`match.Decided`**. App code names `view("orders")`, never a backend, and the `OrderConfirmed` saga (§1) is unchanged (it already reacts to domain events). *Developers don't know how orders are stored or queried; the architect has full control* — the data-plane thesis, shown end to end.
 
-> **The Crew operates, generates & heals it ([Plan 40](./40-operator-agents.md)–[44](./44-sre-incident-management.md)):** snapshop runs itself. The **Platform Engineer** agent generates and self-heals the storefront's *infrastructure* — projections off `view("orders")`, handlers, and Forge-generated adapters behind ports ([Plan 41](./41-generated-stack.md)); the **GitOps** agent promotes staging→prod only when `can-deploy` is green ([Plan 28](./28-relay-gitops-pipelines.md)/[Plan 29](./29-contracts-compatibility.md)). *(HoBo does not generate the developer's product UI — out of scope, [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064).)* Then prod `checkout` latency burns its SLO:
+> **The Crew operates, generates & heals it ([Plan 40](./operators-sre.md#plan-40)–[44](./operators-sre.md#plan-44)):** snapshop runs itself. The **Platform Engineer** agent generates and self-heals the storefront's *infrastructure* — projections off `view("orders")`, handlers, and Forge-generated adapters behind ports ([Plan 41](./forge-generated-stack.md#plan-41)); the **GitOps** agent promotes staging→prod only when `can-deploy` is green ([Plan 28](./platform-engineering.md#plan-28)/[Plan 29](./contracts-policy-flags.md#plan-29)). *(HoBo does not generate the developer's product UI — out of scope, [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064).)* Then prod `checkout` latency burns its SLO:
 > ```txt
 > Endpoint Monitor → slo.BudgetBurned(checkout.latency)
 > SRE: incident.Opened(SEV2) → diagnose (HolmesGPT behind a port) → classify: provider-degraded (db)
@@ -58,9 +62,9 @@
 >   → policy gate (Plan 30): prod write → allowed as canary w/ auto-rollback
 >   → incident.Resolved; postmortem generated by replaying incident:<id>; the failing trace = a regression test
 > ```
-> A SEV1 the SRE can't classify **escalates** — an on-call obligation with a deadline pages up the ladder ([Plan 30](./30-policy-plane.md)/[Plan 44](./44-sre-incident-management.md)). And snapshop is **patchable**: swapping the SRE's diagnosis engine (HolmesGPT → built-in) or forking the `runtime-postgres` backend is a signed, conformance-gated plugin — no app edit ([Plan 43](./43-patchability-extensibility.md)). *Developers wrote app logic; the Crew runs, generates, heals, and explains it.*
+> A SEV1 the SRE can't classify **escalates** — an on-call obligation with a deadline pages up the ladder ([Plan 30](./contracts-policy-flags.md#plan-30)/[Plan 44](./operators-sre.md#plan-44)). And snapshop is **patchable**: swapping the SRE's diagnosis engine (HolmesGPT → built-in) or forking the `runtime-postgres` backend is a signed, conformance-gated plugin — no app edit ([Plan 43](./forge-generated-stack.md#plan-43)). *Developers wrote app logic; the Crew runs, generates, heals, and explains it.*
 
-## 1. Scaffold & build locally (no cloud)
+### 1. Scaffold & build locally (no cloud)
 ```bash
 npx hobo new snapshop -t fullstack && cd snapshop && hobo dev
 ```
@@ -100,7 +104,7 @@ export const fulfillment = saga("fulfillment")
 ```
 `hobo dev` runs this against `@hobo/runtime-local`: Postgres in a container, a local object store, an in-memory queue. The developer drives a checkout; `hobo inspect run <id>` shows the workflow/step timeline; killing and restarting `hobo dev` **replays** the run to the same state (durability proven before any cloud).
 
-## 2. Map to one provider ("just host it on Azure")
+### 2. Map to one provider ("just host it on Azure")
 `hobo.config.ts` — the *where/how*:
 ```ts
 import { defineHobo } from "@hobo/core";
@@ -120,9 +124,9 @@ hobo plan --camp prod # dry run
 ```bash
 hobo deploy --camp prod --strategy canary
 ```
-Under the hood ([Plan 4](./04-control-plane.md), [Plan 11](./11-event-model.md)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
+Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./event-model.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
 
-## 3. Optimize a boundary (split providers, no app edits)
+### 3. Optimize a boundary (split providers, no app edits)
 Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** `hobo.config.ts`:
 ```ts
 export default defineHobo({
@@ -135,9 +139,9 @@ export default defineHobo({
   },
 });
 ```
-`bindle.ts` and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 13](./13-networking-connectivity.md), [Plan 16](./16-cost-finops.md)), and connects them over mTLS keyed by workload SVIDs. `hobo deploy` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
+`bindle.ts` and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 13](./security-networking.md#plan-13), [Plan 16](./reliability-observability-cost.md#plan-16)), and connects them over mTLS keyed by workload SVIDs. `hobo deploy` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
 
-## 4. Provider-specific tuning (the escape hatch)
+### 4. Provider-specific tuning (the escape hatch)
 Black-Friday prep — tune just the API tier, still cloud-portable:
 ```ts
 // bindle.ts (the only app-side change, additive + typed)
@@ -145,24 +149,24 @@ b.use(service("api", { handler: "./src/api", bind: { db, images, orders } }))
  .with(aws.fargate({ autoscale: { min: 3, max: 50 } }),
        azure.containerApps({ minReplicas: 3, maxReplicas: 50 }));
 ```
-Only the resolved provider's block applies; targeting the other cloud needs no further edits ([Plan 2](./02-sdk-api.md)).
+Only the resolved provider's block applies; targeting the other cloud needs no further edits ([Plan 2](./sdk-api.md#plan-02)).
 
-## 5. An agent operates it (zero developer effort)
-> This is the *ad-hoc external* agent path. The **built-in Operator Crew** ([Plan 40](./40-operator-agents.md), shown in **the Crew addendum** above) runs the same surface continuously and autonomously — the SRE operator *is* the always-on version of the flow below.
+### 5. An agent operates it (zero developer effort)
+> This is the *ad-hoc external* agent path. The **built-in Operator Crew** ([Plan 40](./operators-sre.md#plan-40), shown in **the Crew addendum** above) runs the same surface continuously and autonomously — the SRE operator *is* the always-on version of the flow below.
 
 The team points an MCP client (Claude) at the Yard. The ops agent:
 1. `search_registry("database postgres managed")` → reads Capability Manifest; finds a cheaper region.
 2. `plan` a region move → sees cost delta + egress impact.
 3. The move would exceed its `spendCapUsd`, so the **policy gate** opens a `require-approval` hook → a human approves in the dashboard.
 4. `deploy` → the agent obtains scoped tokens via the broker (no keys), reconciles, and watches `inspect_run`/`tail_logs`; if a step regresses, the canary gate auto-rolls back and the agent reports why.
-Every agent action, token grant, and approval is an event in the `CredentialAudit` trail ([Plan 6](./06-ai-native-agent-auth.md), [Plan 14](./14-observability.md)).
+Every agent action, token grant, and approval is an event in the `CredentialAudit` trail ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 14](./reliability-observability-cost.md#plan-14)).
 
-## 6. A missing provider appears on demand
+### 6. A missing provider appears on demand
 The team wants a niche EU host with no `@hobo/provider-*` yet:
 ```bash
 hobo forge https://niche-eu-cloud.example.com/docs
 ```
-The **Forge** generates a candidate provider, runs it sandboxed against `@hobo/conformance` for the ports snapshop uses, and on pass publishes a signed plugin to the Registry. `hobo.config.ts` can now target it like any first-party provider ([Plan 6](./06-ai-native-agent-auth.md), [Plan 9](./09-verification-open-questions.md)).
+The **Forge** generates a candidate provider, runs it sandboxed against `@hobo/conformance` for the ports snapshop uses, and on pass publishes a signed plugin to the Registry. `hobo.config.ts` can now target it like any first-party provider ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 9](./verification.md#plan-09)).
 
-## What this proves
+### What this proves
 A single, untouched application description (`bindle.ts` + `src/`) ran locally, shipped to one cloud, split across three, was tuned per-provider, operated by an agent under guardrails, and extended to a brand-new provider — **agnostic by default, optimizable on demand, AI-native throughout, fully auditable.** That is the thesis of HoBo, demonstrated end to end.

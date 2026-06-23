@@ -19,9 +19,9 @@ Decided in [ADR-0018](../design/adr/08-scope-and-requirements.md#adr-0018):
 Business need ──BR──▶ Product capability ──FR / NFR──▶ Technical requirement ──TR──▶ design doc + conformance/verification
 ```
 
-- Every **BR** maps to ≥1 **FR**/**NFR**; every **FR**/**NFR** maps to ≥1 **TR**; every **TR** cites the governing `docs/design/*` doc and how it's verified ([09](../design/09-verification-open-questions.md)).
+- Every **BR** maps to ≥1 **FR**/**NFR**; every **FR**/**NFR** maps to ≥1 **TR**; every **TR** cites the governing `docs/design/*` doc and how it's verified ([09](../design/verification.md#plan-09)).
 - The authoritative **BR→FR/NFR→TR matrix** lives in [TRD §Traceability](./TRD.md#traceability-matrix).
-- Everything is **v1** ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)); **MoSCoW** now expresses **build priority/order within v1** (mapped to the build stages in the [per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)), not a release boundary.
+- Everything is **v1** ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)); **MoSCoW** now expresses **build priority/order within v1** (mapped to the build stages in the [per-stage build detail](../design/roadmap.md#per-stage-build-detail-stages-06)), not a release boundary.
 - These docs **cite** the design suite; they do not restate it. The design docs remain the source of design truth.
 
 ## Decision log for this suite
@@ -35,7 +35,7 @@ Authored alongside the docs (one ADR per load-bearing decision) — see the [ADR
 - [ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024) — portability conformance guarantee *(from the review/hardening pass)*
 
 ## Reading order
-New reader: [BRD](./BRD.md) → [PRD](./PRD.md) → [TRD](./TRD.md). For design depth behind any requirement, follow its citation into [`docs/design`](../design/README.md) (start with [10 Architecture](../design/10-architecture-overview.md) and [19 Worked example](../design/19-worked-example.md)).
+New reader: [BRD](./BRD.md) → [PRD](./PRD.md) → [TRD](./TRD.md). For design depth behind any requirement, follow its citation into [`docs/design`](../design/README.md) (start with [10 Architecture](../design/architecture.md#plan-10) and [19 Worked example](../design/worked-example.md#plan-19)).
 
 ## Glossary
 These docs reuse the canonical vocabulary verbatim — the three nested scopes **`Yard ⊃ Camp ⊃ Bindle`** (Yard = cross-provider policy + control plane; Camp = provider-specific target that provides the durable **runtime ports**; Bindle = app config), Port, Provider, Forge, Grain, Planner, ResourceActor, Executor, SVID, Capability Manifest/Signs, IfC, `.allow()`, `.with(...)`, Manifest IR, Stub, Resource Definition/Matching, Deployment Set/Delta, Gatekeeper, the four-lens taxonomy. *(The vendor-branded "World" was removed; the durable runtime is now a property of a Camp — [ADR-0026](../design/adr/01-architecture-core.md#adr-0026).)* Definitions: [design suite glossary](../design/README.md#glossary--naming-thematic-all-tunable).

@@ -6,7 +6,7 @@
 Encore is an **open-source infrastructure SDK** (MPL-2.0) for **TypeScript (`Encore.ts`) and Go (`Encore.go`)** — *"the infrastructure platform for the intelligence era, where engineers and AI agents build production systems without waiting on infrastructure."* You **declare resources directly in code** (databases, pub/sub, object storage, caches, cron, secrets, APIs); `encore run` starts the whole system locally with **real Postgres, real pub/sub semantics, distributed tracing, and a dev dashboard at `localhost:9400`**; then you deploy to **your own AWS or GCP account** — self-hosted (`encore build docker` + your own IaC) or via the optional managed **Encore Cloud**.
 
 ## The mental model — infrastructure-from-code (IfC)
-Instead of a separate IaC file, you declare what the app needs **in the same files where you use it**. The Encore compiler parses these declarations to build an **application graph**, then provisions matching **production-grade managed services** in your cloud. This is the same IfC thesis HoBo adopts ([Plan 21](../../docs/design/21-resources-catalog.md)/[Plan 22](../../docs/design/22-wiring-manifest.md)) — declare-and-the-platform-provisions — applied to TS/Go on AWS/GCP.
+Instead of a separate IaC file, you declare what the app needs **in the same files where you use it**. The Encore compiler parses these declarations to build an **application graph**, then provisions matching **production-grade managed services** in your cloud. This is the same IfC thesis HoBo adopts ([Plan 21](../../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 22](../../docs/design/authoring-resources-wiring.md#plan-22)) — declare-and-the-platform-provisions — applied to TS/Go on AWS/GCP.
 
 ## At a glance
 | Dimension | Encore |

@@ -1,0 +1,283 @@
+# Platform Engineering: Matching, Environments, Drivers & GitOps
+
+This capability doc consolidates Plan 25, Plan 26, Plan 27, Plan 28 of the HoBo design suite.
+
+## Plan 25
+
+**Plan 25 — Resource Definitions & Matching (dynamic configuration management)**
+
+### Why this exists
+Developers declare *what* they need (a `database`, IfC-style with `.allow()`, [Plan 21](./authoring-resources-wiring.md#plan-21)). Platform engineers declare *how* it's realized — and crucially, **differently per environment**: managed-HA Postgres in prod, a cheap in-cluster Postgres in an ephemeral preview. A **Resource Definition** is that rule; **Matching** picks the right one for the deploy context. This is **dynamic configuration management**: the *same Bindle* resolves to different infra without app edits.
+
+### A Resource Definition
+For an abstract port (`type` + optional `class`), a definition says which **provider + driver + options + co-provisioned resources** realize it, plus the **matching criteria** that select it. Definitions are **WIT-interface-typed** ([Plan 24](./wasm-runtime-wit.md#plan-24)) and may be **Forge-generated** ([Plan 23](./forge-generated-stack.md#plan-23)).
+```ts
+// platform/resource-defs.ts — authored by platform engineers (TS; YAML form also supported)
+import { defineResource } from "@hobo/sdk/platform";
+import { aws } from "@hobo/provider-aws";
+
+export const postgresProdHa = defineResource({
+  type: "database", engine: "postgres", class: "ha",   // the port it satisfies
+  provider: aws,
+  driver: "terraform",                                   // Plan 27 driver taxonomy
+  with: aws.rds({ instanceClass: "db.r6g.large", multiAz: true }),
+  match: { envType: "production", resourceClass: "ha" }, // criteria (Plan: specificity below)
+});
+
+export const postgresEphemeral = defineResource({
+  type: "database", engine: "postgres",
+  driver: "container",                                   // in-cluster Postgres for cheap previews
+  with: { image: "postgres:16" },
+  match: { envType: "ephemeral" },
+});
+
+// projection sinks are definitions too — this is the data-architect-autonomy knob (Plan 39)
+export const ticketsSinkProd = defineResource({
+  type: "projection-sink", paradigm: "relational",       // SQL / document / kv / graph / vector / lake / olap
+  provider: aws, driver: "terraform",
+  with: aws.rds({ instanceClass: "db.r6g.large" }),
+  mapping: "./projections/tickets.mapping",              // WIT-record fields → backend columns (Plan 39/ADR-0050)
+  match: { envType: "production", resourceId: "tickets" },
+});
+```
+A **`projection-sink`** definition is how a data architect places a developer's read model on a backend **without touching app code** ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): the `paradigm` is a matching dimension, and the `mapping` declares how the read-model WIT record lands in that backend. The developer owns the logical record + queries; the architect owns the mapping + sink — the autonomy split *is* this Matching boundary.
+
+### Matching (specificity-scored selection)
+For a needed resource in context `{ envType, app, env, tenant, resourceType, resourceClass, resourceId }`, the Planner gathers all definitions of that `type`, keeps those whose criteria fully match, **scores by specificity**, and selects the highest (ties → next-most-specific). Criteria dimensions: `envType` · `app` · `env` · `resourceClass` · `resourceId` (+ `tenant`).
+```
+match: {}                                              # score 0  (catch-all)
+match: { envType: "production" }                       # score 1
+match: { envType: "production", resourceClass: "ha" }  # score 2
+match: { envType: "production", app: "shop", resourceClass: "ha" }  # score 3  (wins)
+```
+**HoBo twist — auditable matching.** The winning definition, its score, and the rejected candidates are recorded as a **`match.Decided`** event ([Plan 11](./event-model.md#plan-11)) → a replayable answer to "*why did this resource land on this infra?*" (a gap in Humanitec's opaque selection). The dashboard renders it ([Plan 7](./developer-experience.md#plan-07)).
+
+```mermaid
+flowchart LR
+  REQ["needed resource<br/>(type, class, id) + context"] --> GATH["gather definitions of this type"]
+  GATH --> FILT["filter: criteria match<br/>+ hard require capability"]
+  FILT -->|none satisfy require| REJ["deployment.PlanRejected<br/>(precise reason)"]
+  FILT --> RANK["rank lexicographically:<br/>specificity → priority → objective → stable tiebreak"]
+  RANK --> PICK["select winner<br/>(record match.Decided + ranking + tie flag)"]
+  PICK --> REAL["realize via provider + Driver (Plan 27)"]
+  REAL --> NODE["node in DeploymentPlan DAG (Plan 3/4)"]
+```
+
+### The selection algorithm — deterministic, on-path ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033))
+Selection is a **pure function** of `(catalog snapshot, deploy context, objective setting)` — no clock, RNG, network, or model — so it is unit-testable without a cloud and **identical on replay** (the determinism property [Plan 9](./verification.md#plan-09) asserts of the Planner). The pipeline:
+1. **Gather** all definitions of the requested `type`.
+2. **Filter** to candidates whose criteria match the context **and** whose provider satisfies the resource's hard **`require`** capabilities (`Capability.satisfies` ([Plan 3](./control-plane.md#plan-03)) = `full` → accept; `prefer` may degrade with a `PlanWarning`; `require` miss → reject). If none satisfy `require` → **`deployment.PlanRejected`** with a precise, agent-correctable reason.
+3. **Rank lexicographically:** (a) **specificity score** (above) → (b) an **explicit `priority`** (optional integer on a definition, for deliberate platform override) → (c) the **default objective** (soft; configurable `cost`|`latency`|`single-provider`|`carbon` per Yard/Camp, **default = min-cost within constraints** — [Plan 16](./reliability-observability-cost.md#plan-16)) → (d) a **stable deterministic tiebreak** (definition id, lexicographic).
+4. **Record** the winner + full ranking + rejected candidates + the objective used + a **tie flag** in `match.Decided`.
+
+**True ties never block.** If candidates are equal on specificity, `priority`, *and* objective, the stable tiebreak still yields a deterministic winner, and a `PlanWarning` + tie flag is recorded so a platform engineer can add an explicit `priority` to disambiguate.
+
+**AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 33](./forge-generated-stack.md#plan-33)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. (A constraint solver / LLM selector on-path was rejected — [ADR-0033](./adr/05-config-matching-environments.md#adr-0033).)
+
+### Mapping is sugar over default definitions
+The simple `hobo.config.ts` ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate system — it **compiles to default Resource Definitions**:
+- `defaultProvider: azure` → a `match: {}` definition per port on Azure.
+- `tiers: { saas: azure, edge: cloudflare }` → definitions matched by service model.
+- `bindings: { "shop.db": azure.cosmos({...}) }` → a definition matched by `resourceId: "shop.db"`.
+So a solo dev writes the one-liner and never sees definitions; a platform team adds explicit definitions (with classes + env-type matching) that win by specificity. **Precedence** = pure matching score (explicit definitions naturally outscore the `{}` defaults).
+
+### Resource classes
+`class` (`standard`/`ha`/`encrypted`/…) is declared on the resource ([Plan 21](./authoring-resources-wiring.md#plan-21)) and is a first-class matching dimension, so one logical port can have several platform realizations.
+
+### Co-provisioning & the graph
+A definition may declare co-provisioned resources (e.g. a bucket + its IAM policy); these become extra nodes/edges in the DeploymentPlan DAG with output flow via placeholders ([Plan 22](./authoring-resources-wiring.md#plan-22)). The Planner ([Plan 3](./control-plane.md#plan-03)) consumes definitions; the Orchestrator ([Plan 4](./control-plane.md#plan-04)) executes the graph.
+
+### Forge-generated definitions
+Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 23](./forge-generated-stack.md#plan-23)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, [Plan 27](./platform-engineering.md#plan-27)), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
+
+### Iteration hooks
+- Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.
+- ~~Scoring exactly like Humanitec vs a HoBo refinement~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** deterministic lexicographic rank (specificity → explicit `priority` → configurable objective, default min-cost → stable tiebreak); weighted multi-objective blending + carbon-signal sourcing remain hooks.
+- ~~Conflict resolution when two definitions tie on score~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** stable tiebreak (definition id) + `PlanWarning`, never a block.
+- How `match.Decided` is surfaced for agents to self-correct an unsatisfiable request (now carries the full ranking + reasons).
+
+## Plan 26
+
+**Plan 26 — Environments, Deployment Sets & Deltas**
+
+### Camps gain an environment type
+A **Camp** ([Plan 2](./sdk-api.md#plan-02)) is a **provider-specific deployment target** (an environment on one provider/cloud) that also provides the durable runtime. It carries an **environment type** (`development`/`staging`/`production`/`ephemeral`/custom) — the **primary matching dimension** for Resource Definitions ([Plan 25](./platform-engineering.md#plan-25)). The same Bindle deployed to a `production` Camp vs an `ephemeral` Camp resolves to different infra purely via matching; a multi-cloud `production` is **several Camps under one Yard** ([Plan 4](./control-plane.md#plan-04)), which holds the cross-provider policy.
+```ts
+// hobo.config.ts
+camps: {
+  prod:    { envType: "production" },
+  staging: { envType: "staging" },
+  preview: { envType: "ephemeral", ttl: "72h" },   // ephemeral defaults
+}
+```
+
+### Cloning
+A Camp can be **cloned** from another that has a prior successful deployment (`clone-from`), producing a draft **Delta** (below) you can tweak then deploy — e.g. stand up `staging` from `production` config in one step (`hobo env clone`). Recorded as `env.Cloned` ([Plan 11](./event-model.md#plan-11)).
+
+### Ephemeral / preview environments
+Per-PR/feature environments, created and torn down automatically:
+- Created by CI / a Pipeline ([Plan 28](./platform-engineering.md#plan-28)) on PR open; **auto-TTL** reaps them.
+- Platform engineers map **cheap variants** to `envType: ephemeral` via matching (in-cluster DB, scale-to-zero wasm, shared cluster) — so previews are cheap by construction ([Plan 16](./reliability-observability-cost.md#plan-16)).
+- Each gets its own Camp + isolated event streams ([Plan 12](./security-networking.md#plan-12)).
+
+### Deployment Sets (immutable) + Deltas (mutable)
+HoBo already produces a **manifest IR** per deploy ([Plan 22](./authoring-resources-wiring.md#plan-22)); we name and formalize the two halves of Humanitec's model on top of the event log ([Plan 11](./event-model.md#plan-11)):
+- **Deployment Set** = the immutable, complete resolved configuration of a Camp at a point in time (the manifest IR, content-addressed). Recorded as `set.Created`. *(A stateful resource's **cross-Camp replication topology** — single-writer/active-active-eventual/pinned, [ADR-0040](./adr/05-config-matching-environments.md#adr-0040) — is part of this resolved config, selected like any other Resource-Definition dimension, [Plan 25](./platform-engineering.md#plan-25).)*
+- **Deployment Delta** = a mutable, reviewable **diff** (add/update/remove resources or workloads) proposed against the current Set. Deltas can be combined, previewed, approved, then **applied** to produce a new Set. Recorded as `delta.Opened` / `delta.Updated` / `delta.Applied`.
+
+```mermaid
+flowchart LR
+  SRC["Bindle + Camp(envType)"] --> D["Delta (draft diff)"]
+  D --> REV["preview / review / approve<br/>(policy gate, Plan 5/6)"]
+  REV --> APPLY["apply -> new Set (immutable)"]
+  APPLY --> DEP["deploy: reconcile only changed nodes (incremental)"]
+  DEP --> REC["record Deployment (audit)"]
+```
+
+### The `can-deploy` gate (at Delta → Set / promote)
+Applying a Delta or promoting a Set runs the **Gatekeeper** ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 30](./contracts-policy-flags.md#plan-30)) against the **versions already running in the target Camp** (read from the event log): contracts-compatible (`compat.GatePassed/Failed`) AND policy-allows (with **obligations** that can *reshape* the rollout — e.g. an "allow but require canary" obligation forces a canary below) AND evals/conformance/cost. Incompatible producer/consumer skew blocks the promote with a precise reason + suggested fixes (shim, deploy-order, migration window).
+
+**App-data schema migrations compose here.** When a Delta changes a `sql` resource's schema, its **expand/backfill/contract** phases ([Plan 34](./data-plane.md#plan-34)) are gated saga steps in *this* flow: each phase passes through the same `can-deploy` check, and a **destructive contract phase that would break a still-running version is blocked** (`compat.GateFailed`) — schema migration and code rollout are gated together, not in separate pipelines.
+
+### Promote, rollback, incremental
+- **Promote** = apply the Set that's running in one Camp as a Delta against another (e.g. staging → prod), gated.
+- **Rollback** = re-apply a previous Set; stateful resources keep state ([Plan 5](./reliability-observability-cost.md#plan-05)).
+- **Incremental deploy** = the Orchestrator's ResourceActors diff the new Set vs observed and reconcile **only changed nodes** ([Plan 4](./control-plane.md#plan-04)) — fast, low-blast-radius.
+- All of the above are sequences of events → time-travel, audit, and DR-as-replay for free.
+
+### How this differs from Humanitec
+Sets/Deltas are not bespoke tables — they're **projections over the event log**, so promote/rollback/preview inherit replay + audit; ephemeral environments are first-class Camps; and `match.Decided` ([Plan 25](./platform-engineering.md#plan-25)) makes "why did preview get the cheap DB?" answerable.
+
+### Iteration hooks
+- Delta merge/conflict semantics when multiple Deltas target one Set.
+- Default ephemeral TTLs + reaping policy; preview URL scheme.
+- Whether promote copies the resolved Set or re-resolves matching in the target Camp (re-resolve is more correct; copy is more predictable).
+
+## Plan 27
+
+**Plan 27 — Drivers, Resource Packs & Workload Profiles**
+
+### Drivers (generalizing HoBo's IaC adapters)
+HoBo's `IacProvider` ([Plan 3](./control-plane.md#plan-03)) becomes one **Driver** among a taxonomy. A Resource Definition names a driver; a capability provider uses it to realize the resource.
+
+| Driver | Realizes via | Notes |
+|---|---|---|
+| **`terraform`** | Pulumi Automation API / OpenTofu | primary; any provider; per-resource state ([Plan 3](./control-plane.md#plan-03)) |
+| **`template`** | render manifests/config (Go-template/CUE) | K8s manifests, config files, CRDs |
+| **`echo`** | none — **adopt an externally-managed/BYO resource** | pass declared connection info through as outputs; HoBo reads, doesn't provision (gap-filler) |
+| **`container`** | run arbitrary provisioning in a **Firecracker Executor** | Pulumi/CFN/scripts; HoBo already sandboxes Executors ([Plan 4](./control-plane.md#plan-04)) |
+| **`custom-webhook`** | call a self-hosted HTTP service | signed (SVID) request; returns outputs + optional manifests; any stack |
+
+#### Driver interface (conceptual)
+```ts
+export interface Driver {
+  id: "terraform" | "template" | "echo" | "container" | "custom-webhook";
+  provision(input: { context: MatchContext; inputs: unknown; oldState?: unknown })
+    : Promise<{ outputs: Record<string, unknown>; manifests?: unknown[]; state?: unknown }>;
+  destroy(input: { context: MatchContext; state: unknown }): Promise<void>;
+  refresh?(input: { context: MatchContext; state: unknown }): Promise<DriftReport>;
+}
+```
+Drivers run inside sandboxed Executors with short-lived scoped creds ([Plan 12](./security-networking.md#plan-12)); outputs flow back as events and into placeholders ([Plan 22](./authoring-resources-wiring.md#plan-22)). `echo` resources are read-only by default (drift behavior is an iteration hook).
+
+### Resource Packs
+A **Resource Pack** is a shareable, versioned bundle of Resource Definitions ([Plan 25](./platform-engineering.md#plan-25)) for a common need (e.g. "AWS data tier", "in-cluster preview stack"). Packs live in the **Registry** ([Plan 6](./ai-native-agent-auth.md#plan-06)) with provenance + conformance reports, can be imported and customized by matching, and — the HoBo twist — can be **Forge-generated** from a backend's Capability Manifest and certified sandboxed ([Plan 23](./forge-generated-stack.md#plan-23)). `hobo pack add <pack>` installs one.
+
+### Workload Profiles
+A **Workload Profile** declares **how a service is realized** on a target — the realization HoBo chooses for a `service`/`web` resource:
+- `wasm-component` (default, [Plan 20](./wasm-runtime-wit.md#plan-20)) · `container` (OCI fallback) · `serverless-function` · `vm`/`microvm` ([Plan 21](./authoring-resources-wiring.md#plan-21)).
+- Platform engineers define custom profiles (e.g. a Dapr profile, a batch-job profile); the profile influences the manifest/Set the deploy produces ([Plan 22](./authoring-resources-wiring.md#plan-22)) and which provider compute port is used.
+- Selected by the resource (default per target) or pinned via `.with(...)`.
+
+### Placeholders / output references
+Aligned to Humanitec syntax and HoBo's lazy references ([Plan 22](./authoring-resources-wiring.md#plan-22)):
+- Resource outputs: `${resources.<type>.<class>#<id>.outputs.<name>}`
+- Context: `${context.app}`, `${context.env}`, `${context.envType}`, `${context.res.id|class|type}`
+Resolved at deploy from the resolved graph; unresolved refs fail planning with a precise error.
+
+### Iteration hooks
+- Driver authoring SDK + how custom-webhook drivers are registered/trusted (signing).
+- Whether `echo`/BYO resources participate in drift/reconcile or stay read-only.
+- Template engine choice (Go-template vs CUE vs both).
+- Workload-Profile ↔ provider-compute-port negotiation when a target can't satisfy a profile.
+
+## Plan 28
+
+**Plan 28 — The HoBo Relay, GitOps publisher & Pipelines**
+
+### The HoBo Relay (deploy into private / air-gapped networks)
+A hosted Yard can't reach a customer's private cluster/cloud. The **HoBo Relay** is a lightweight proxy inside that network:
+- **Outbound-only reverse tunnel:** the Relay dials the Yard over **TCP 443** (no inbound ports, no exposed endpoints); TLS + authenticated with an SVID ([Plan 6](./ai-native-agent-auth.md#plan-06)).
+- **Executors run behind the Relay:** IaC/build/driver execution ([Plan 27](./platform-engineering.md#plan-27)) happens inside the private network; **credentials never leave it**; the Yard sends work + receives `exec.*`/outputs over the tunnel.
+- One Relay can serve multiple clusters/targets; routing by target id. Enables regulated/air-gapped/sovereign deploys ([Plan 12](./security-networking.md#plan-12)) and self-hosted parity.
+```mermaid
+flowchart LR
+  YARD["Yard (hosted control plane)"] -. work / results over outbound 443 .- AG["HoBo Relay<br/>(customer private network)"]
+  AG --> EX["Executors (sandboxed)"]
+  EX --> PRIV["private cluster / cloud / DB"]
+```
+
+### Air-gapped / sovereign mode (fully disconnected) ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036))
+The Relay above is the *connected-private* path (it dials a hosted Yard over outbound 443). A **fully disconnected / sovereign** environment has no such path — so air-gap is a **first-class self-hosted Yard profile**: the whole control plane (Yard + Registry + Identity + Executors + runtime + optional models) runs **inside the boundary with zero egress**.
+- **Artifacts enter via signed offline bundle import** (`hobo registry import <bundle>`): provider plugins, Capability Manifest, Resource Packs, base images, and optional model weights, each with **SLSA provenance + conformance reports**, **verified in-boundary against the same trust boundary** as the live Registry (signature + provenance + conformance) — one-way-transfer (sneakernet / data diode) friendly; the in-boundary Registry serves the mirror, **no live crawl**. Recorded as `registry.BundleImported` ([Plan 11](./event-model.md#plan-11)).
+- **In-boundary trust roots + local models, graceful degradation:** Identity issues SVIDs locally; certs use an **internal CA / private ACME** ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)); secrets via **in-boundary KMS/HSM** ([ADR-0027](./adr/02-identity-security.md#adr-0027)); `embed`/Forge/`"use training"` use **local models when provisioned, else degrade** (Forge→human-authored only, training→static, `embed`→BYO vectors, [ADR-0034](./adr/03-data-plane.md#adr-0034)); telemetry/live-evals stay in-boundary (no phone-home). The **deterministic core (deploy/match/migrate/route) needs no model or egress**, so air-gapped deploys work fully.
+
+| Capability | Normal (connected) | Air-gapped substitute |
+|---|---|---|
+| Registry (Capability Manifest/plugins/packs) | crawl `/.well-known/capability-manifest/` | **signed offline bundle import** → in-boundary mirror |
+| Images | public registry pull | mirrored in-boundary OCI registry (bundle) |
+| TLS certs | ACME → Let's Encrypt | **internal CA / private ACME** ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)) |
+| Identity / secrets | provider KMS | already in-boundary; **in-boundary KMS/HSM** ([ADR-0027](./adr/02-identity-security.md#adr-0027)) |
+| `embed` / Forge / `"use training"` | hosted models | **local model**, else BYO / human-authored / static |
+| Telemetry / live-evals | hosted sinks | **in-boundary OTel collector**, no phone-home |
+| Deploy / match / migrate / route | — | **zero egress, no model — always works** |
+
+```mermaid
+flowchart TD
+  subgraph OUT["outside the boundary"]
+    BUNDLE["signed offline bundle<br/>(plugins, Capability Manifest, images, model weights)<br/>+ SLSA provenance + conformance reports"]
+  end
+  subgraph BND["air-gapped boundary (zero egress)"]
+    IMP["hobo registry import<br/>verify signature + provenance + conformance"]
+    REG["in-boundary Registry (mirror)"]
+    YARD["self-hosted Yard + Identity (SVID) + Executors"]
+    CA["internal CA / private ACME"]
+    MODEL["local model (embed / Forge / training)<br/>else graceful degrade"]
+    APP["deploy / match / migrate / route<br/>(no model, no egress)"]
+  end
+  BUNDLE -. one-way transfer / data diode .-> IMP
+  IMP --> REG
+  REG --> YARD
+  YARD --> APP
+  YARD --> CA
+  YARD --> MODEL
+```
+
+> Air-gap is a **single in-boundary Yard**; multi-Yard **federation** (multi-region/regulatory) remains deferred ([Q20](./verification.md#plan-09)).
+
+### GitOps publisher mode
+Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** ([Plan 26](./platform-engineering.md#plan-26)) as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 22](./authoring-resources-wiring.md#plan-22)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Relay can supply runtime data back.
+
+### Pipelines (rule-based automation + approval gates)
+**Pipelines** sit above the deployment sagas ([Plan 5](./reliability-observability-cost.md#plan-05)) and policy gates ([Plan 6](./ai-native-agent-auth.md#plan-06)) to automate *when* deploys happen. The same engine powers **incident-response runbooks** — the SRE sibling of deploy pipelines, with alert/SLO-burn/drift triggers and gated *fix* actions ([Plan 44](./operators-sre.md#plan-44)); StackStorm/HolmesGPT are optional engines behind that port.
+- **Triggers:** **artifact** (a new image/component version matching a rule), **deploy-request** (a Delta opened), **schedule/cron**, and **API/MCP**.
+- **Rules (if-then):** e.g. *"new component from `main` → deploy to `staging`"*; *"tag `v*` → open a prod Delta requiring approval"*. Flexible match/exclude on artifact + branch.
+- **Steps/jobs:** run in order (`needs`) or parallel; can run tests, wait for health, call external CI, notify Slack/Teams, and **gate on approval** (a `createHook` resolved in the dashboard).
+- **Concurrency:** per-pipeline locks; bounded concurrent runs.
+- Every trigger/step/gate is an event (`pipeline.Triggered`/`pipeline.StepCompleted`/`pipeline.GateApproved`, [Plan 11](./event-model.md#plan-11)) → replayable, auditable automation.
+```ts
+// platform/pipelines.ts (illustrative)
+definePipeline("promote-staging", {
+  on: { artifact: { component: "api", branch: "main" } },
+  steps: [
+    { run: "deploy", camp: "staging" },
+    { gate: "approval", to: "production" },     // resolves via dashboard hook
+    { run: "deploy", camp: "prod", strategy: "canary" },
+  ],
+});
+```
+
+### Iteration hooks
+- Agent transport details (gRPC-over-443 vs WebSocket) + multi-cluster routing + HA (multiple agents).
+- GitOps repo layout/branching convention; drift between Git and observed state.
+- Pipeline language (typed TS vs YAML) + reuse of the policy-gate engine ([Plan 12](./security-networking.md#plan-12)).

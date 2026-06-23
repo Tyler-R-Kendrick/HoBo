@@ -1,6 +1,6 @@
 # wasmCloud — lattice, capability providers, WIT links
 
-> Part of the [wasm-hosts reference](./README.md). The system HoBo's **links** model was borrowed from ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)). Source: [wasmcloud.com/docs/concepts](https://wasmcloud.com/docs/concepts/) · [linking-components](https://wasmcloud.com/docs/concepts/linking-components/) — summarized for analysis.
+> Part of the [wasm-hosts reference](./README.md). The system HoBo's **links** model was borrowed from ([Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)). Source: [wasmcloud.com/docs/concepts](https://wasmcloud.com/docs/concepts/) · [linking-components](https://wasmcloud.com/docs/concepts/linking-components/) — summarized for analysis.
 
 ## What it is
 **wasmCloud** is a **CNCF** project for building/managing/scaling **polyglot wasm apps across any cloud, K8s, or edge** as one flat mesh. Components and **capability providers** communicate over a **lattice** using **WIT** contracts.
@@ -12,10 +12,10 @@
 - **Links** — "the wasmCloud host mediates **runtime links** over the NATS lattice using the **WIT over RPC (wRPC)** protocol." Links are declared in a **manifest**; "you don't have to worry about whether your components are distributed or running on the same host — declare links … and wasmCloud coordinates them regardless of where the parts run." Links can be **same-host or cross-host**.
 
 ## Direct correspondence to HoBo
-This is, almost verbatim, HoBo's [Plan 20](../../docs/design/20-wasm-wasi-runtime.md) model:
+This is, almost verbatim, HoBo's [Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20) model:
 - **wasmCloud capability provider ≈ HoBo capability provider** (a Provider implementing a WIT interface's exports for a backend).
 - **wasmCloud link ≈ HoBo link** (late-bound import→export binding; swap the backend with no recompile). HoBo's Plan 20 literally cites "the wasmCloud model" for links.
-- **wasmCloud lattice ≈ the cross-host substrate** behind HoBo's **wasmCloud-lattice `component-host` adapter** ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)), and the lattice's **cross-host link coordination** is exactly the "migrate late-bound links across hosts without redeploy" capability HoBo attributes to that adapter for failover ([Plan 5](../../docs/design/05-reliability-ha.md)) and cross-Camp work ([ADR-0040](../../docs/design/adr/05-config-matching-environments.md#adr-0040)).
+- **wasmCloud lattice ≈ the cross-host substrate** behind HoBo's **wasmCloud-lattice `component-host` adapter** ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)), and the lattice's **cross-host link coordination** is exactly the "migrate late-bound links across hosts without redeploy" capability HoBo attributes to that adapter for failover ([Plan 5](../../docs/design/reliability-observability-cost.md#plan-05)) and cross-Camp work ([ADR-0040](../../docs/design/adr/05-config-matching-environments.md#adr-0040)).
 
 ## Refinement surfaced for HoBo (analysis)
 - **wRPC (WIT-over-RPC) is the concrete cross-host link transport.** HoBo's wasmCloud-lattice adapter should adopt **wRPC over the lattice** as its cross-host link mechanism (rather than inventing one) — a small sharpening of [ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)'s lattice adapter + [ADR-0040](../../docs/design/adr/05-config-matching-environments.md#adr-0040)'s cross-host link migration. **NATS** is the lattice's transport — an operational dependency the adapter inherits (noted, not a blocker).

@@ -11,9 +11,9 @@
 - **OSS core (MPL-2.0)** with a clean OSS/commercial split.
 
 ## Gaps (Encore's limits — HoBo's opening)
-- **AWS/GCP only; Encore owns provisioning.** No Azure/Cloudflare/edge/on-prem, and **no pluggable IaC** — you can't bring Pulumi/Crossplane/Terraform or pin specific boundaries to specific providers. HoBo is genuinely **multi-cloud + IaC-agnostic** with typed provider-native escape hatches ([Plan 3](../../docs/design/03-providers-iac.md)).
-- **TS/Go only** (Python pending). HoBo's runtime contract is **language-neutral WIT** (any wasm-compiling language, [Plan 20](../../docs/design/20-wasm-wasi-runtime.md)).
-- **No platform-rules layer.** Fixed resource→service mapping; HoBo adds **Resource Definitions + Matching** so the *same* app realizes different infra per environment, auditably ([Plan 25](../../docs/design/25-resource-definitions-matching.md)/[ADR-0033](../../docs/design/adr/05-config-matching-environments.md#adr-0033)).
+- **AWS/GCP only; Encore owns provisioning.** No Azure/Cloudflare/edge/on-prem, and **no pluggable IaC** — you can't bring Pulumi/Crossplane/Terraform or pin specific boundaries to specific providers. HoBo is genuinely **multi-cloud + IaC-agnostic** with typed provider-native escape hatches ([Plan 3](../../docs/design/control-plane.md#plan-03)).
+- **TS/Go only** (Python pending). HoBo's runtime contract is **language-neutral WIT** (any wasm-compiling language, [Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)).
+- **No platform-rules layer.** Fixed resource→service mapping; HoBo adds **Resource Definitions + Matching** so the *same* app realizes different infra per environment, auditably ([Plan 25](../../docs/design/platform-engineering.md#plan-25)/[ADR-0033](../../docs/design/adr/05-config-matching-environments.md#adr-0033)).
 - **No event-sourced control plane / audit-replay**, no **contracts/`can-deploy`/policy** planes, no **cost** plane beyond Encore Cloud analytics.
 - **No cross-cloud data story** (migration/portability/consistency) — HoBo specifies app-data migration ([ADR-0032](../../docs/design/adr/03-data-plane.md#adr-0032)) + cross-Camp consistency ([ADR-0040](../../docs/design/adr/05-config-matching-environments.md#adr-0040)).
 - **No AI-generated providers** (Forge), no **agents-as-principals**, no **trainable semantic functions**.

@@ -1,6 +1,6 @@
 # Aspire — Wiring, References & Endpoints
 
-> Part of the [Aspire competitor reference](./README.md). How resources discover and connect to each other — the part HoBo borrowed most directly ([HoBo Plan 22](../../docs/design/22-wiring-manifest.md)).
+> Part of the [Aspire competitor reference](./README.md). How resources discover and connect to each other — the part HoBo borrowed most directly ([HoBo Plan 22](../../docs/design/authoring-resources-wiring.md#plan-22)).
 
 ## `WithReference` — the core wiring verb
 ```csharp

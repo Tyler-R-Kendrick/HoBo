@@ -1,9 +1,9 @@
 # Wasm hosting landscape — competitor/grounding reference
 
-> A capture of the **WebAssembly component hosting** landscape — **Wasmtime**, **Fermyon Spin / SpinKube**, and **wasmCloud** — that directly grounds HoBo's most novel infra bet: **wasm-first** with a **`component-host` port** ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) and the **links** model ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)). Sources: [wasmcloud.com/docs](https://wasmcloud.com/docs/concepts/) · [spinkube.dev](https://www.spinkube.dev/) · [fermyon.com](https://www.fermyon.com/) · [WebAssembly Component Model]. Excerpts quoted for analysis (see [`../README.md`](../README.md#sources--fair-use)).
+> A capture of the **WebAssembly component hosting** landscape — **Wasmtime**, **Fermyon Spin / SpinKube**, and **wasmCloud** — that directly grounds HoBo's most novel infra bet: **wasm-first** with a **`component-host` port** ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) and the **links** model ([Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)). Sources: [wasmcloud.com/docs](https://wasmcloud.com/docs/concepts/) · [spinkube.dev](https://www.spinkube.dev/) · [fermyon.com](https://www.fermyon.com/) · [WebAssembly Component Model]. Excerpts quoted for analysis (see [`../README.md`](../README.md#sources--fair-use)).
 
 ## Why this is here
-HoBo's runtime substrate ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) is **WASI components behind WIT ports, late-bound by links** — a model HoBo *explicitly borrowed* from wasmCloud — and [ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031) names **Wasmtime** (local default), **wasm-in-container** (v1 prod default), and **SpinKube / wasmCloud-lattice / provider-native** as the `component-host` adapters. This capture documents those real systems so the decision is grounded, not hand-waved, and stress-tests whether the adapter set holds up.
+HoBo's runtime substrate ([Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)) is **WASI components behind WIT ports, late-bound by links** — a model HoBo *explicitly borrowed* from wasmCloud — and [ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031) names **Wasmtime** (local default), **wasm-in-container** (v1 prod default), and **SpinKube / wasmCloud-lattice / provider-native** as the `component-host` adapters. This capture documents those real systems so the decision is grounded, not hand-waved, and stress-tests whether the adapter set holds up.
 
 ## The three hosts at a glance
 | Host | Shape | Where it runs | Cross-host links | HoBo role ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) |
@@ -14,9 +14,9 @@ HoBo's runtime substrate ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) 
 
 ## Key shared facts (validation for HoBo)
 - **WASI components are portable across hosts.** "WASI-http components have many compatible hosts — Spin (CLI), Fermyon Cloud, **Wasmtime**, NGINX Unit, SpinKube …" — direct evidence for HoBo's **one component, many `component-host` adapters** thesis.
-- **Capability-based security by default.** All three rely on wasm's deny-by-default sandbox — HoBo's `.allow()`→link enforcement ([Plan 21](../../docs/design/21-resources-catalog.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) is the same property.
-- **Perf:** "a typical Wasm module starts in **~1 ms** (cold start), consumes **~10 MB**, binary **< 5 MB**, vs a container's ~300 ms / 50–100 MB" — grounds HoBo's "ms cold start, tiny footprint, scale-to-zero" cost/density claims ([Plan 16](../../docs/design/16-cost-finops.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)).
-- **WIT as the contract** across all three — the same standards-based contract HoBo uses for ports ([Plan 24](../../docs/design/24-wit-interfaces-reference.md)).
+- **Capability-based security by default.** All three rely on wasm's deny-by-default sandbox — HoBo's `.allow()`→link enforcement ([Plan 21](../../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)) is the same property.
+- **Perf:** "a typical Wasm module starts in **~1 ms** (cold start), consumes **~10 MB**, binary **< 5 MB**, vs a container's ~300 ms / 50–100 MB" — grounds HoBo's "ms cold start, tiny footprint, scale-to-zero" cost/density claims ([Plan 16](../../docs/design/reliability-observability-cost.md#plan-16)/[Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)).
+- **WIT as the contract** across all three — the same standards-based contract HoBo uses for ports ([Plan 24](../../docs/design/wasm-runtime-wit.md#plan-24)).
 
 ## Files
 - [`wasmcloud.md`](./wasmcloud.md) — lattice, capability providers, WIT links over wRPC.

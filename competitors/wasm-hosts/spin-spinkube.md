@@ -14,7 +14,7 @@
 
 ## Why it matters for HoBo
 - **Validates the SpinKube/containerd-wasm adapter** in [ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031): a real, K8s-native `component-host` that runs WASI components via a containerd shim — exactly the "k8s-native, shim-level density" adapter HoBo names.
-- **Validates the perf basis** of HoBo's cost/density story ([Plan 16](../../docs/design/16-cost-finops.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)): "~1 ms cold start, ~10 MB memory, <5 MB binary vs container ~300 ms / 50–100 MB."
+- **Validates the perf basis** of HoBo's cost/density story ([Plan 16](../../docs/design/reliability-observability-cost.md#plan-16)/[Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)): "~1 ms cold start, ~10 MB memory, <5 MB binary vs container ~300 ms / 50–100 MB."
 - **Validates the OCI-container path** ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031) v1 default): running wasm *via containerd* (same registry/scheduler as containers) is precisely HoBo's "wasm-in-container reuses the OCI pipeline, zero new infra" default — SpinKube is the K8s expression of it.
 - **Capability-based security by default** (deny-by-default sandbox) ≈ HoBo's `.allow()`→link enforcement.
 

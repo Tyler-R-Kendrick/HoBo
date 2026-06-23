@@ -7,11 +7,11 @@
 | **Wasmtime** (Component-Model engine) | local/dev `component-host` + the engine inside the wasm-in-container default ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) | ✅ exact match |
 | **wasm-in-container via containerd shim (runwasi)** | **v1 prod default** `component-host` (reuses the OCI pipeline) | ✅ validated; pin **runwasi** as the mechanism |
 | **SpinKube** (Spin operator + containerd shim + runtime-class-mgr) | **k8s-native `component-host` adapter** | ✅ real system = the named adapter |
-| **wasmCloud lattice + capability providers + wRPC links** | **lattice `component-host` adapter** + HoBo **links** / **capability providers** ([Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) | ✅ HoBo's model *is* this; pin **wRPC/NATS** as cross-host link transport |
-| **WIT contracts** across all hosts | HoBo WIT ports ([Plan 24](../../docs/design/24-wit-interfaces-reference.md)) | ✅ same standard |
+| **wasmCloud lattice + capability providers + wRPC links** | **lattice `component-host` adapter** + HoBo **links** / **capability providers** ([Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)) | ✅ HoBo's model *is* this; pin **wRPC/NATS** as cross-host link transport |
+| **WIT contracts** across all hosts | HoBo WIT ports ([Plan 24](../../docs/design/wasm-runtime-wit.md#plan-24)) | ✅ same standard |
 | **WASI component portable across hosts** | "one component, many `component-host` adapters" ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) | ✅ directly evidenced |
-| **deny-by-default capability security** | `.allow()` → link enforcement ([Plan 21](../../docs/design/21-resources-catalog.md)/[Plan 20](../../docs/design/20-wasm-wasi-runtime.md)) | ✅ same property |
-| **~1 ms / ~10 MB cold start** | cost/density + failover-speed claims ([Plan 16](../../docs/design/16-cost-finops.md)/[Plan 5](../../docs/design/05-reliability-ha.md)) | ✅ numbers grounded |
+| **deny-by-default capability security** | `.allow()` → link enforcement ([Plan 21](../../docs/design/authoring-resources-wiring.md#plan-21)/[Plan 20](../../docs/design/wasm-runtime-wit.md#plan-20)) | ✅ same property |
+| **~1 ms / ~10 MB cold start** | cost/density + failover-speed claims ([Plan 16](../../docs/design/reliability-observability-cost.md#plan-16)/[Plan 5](../../docs/design/reliability-observability-cost.md#plan-05)) | ✅ numbers grounded |
 | *(provider-native wasm targets, e.g. cloud wasm runtimes)* | provider-native `component-host` adapter ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) | ✅ adapter slot exists |
 
 ## ADR-0031 stress-test verdict

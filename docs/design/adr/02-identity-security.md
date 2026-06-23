@@ -5,17 +5,17 @@
 ## ADR-0008
 **Keyless agent identity (SVID/OIDC federation) + token broker.**
 
-**Context:** static keys vs federated identity. **Decision:** agents get short-lived SVIDs; the broker exchanges them for resource-scoped provider tokens (OIDC federation preferred, OAuth-OBO for human delegation). **Consequences:** no static secrets, full credential audit; we must run an OIDC IdP + per-provider trust setup ([Plan 6](../06-ai-native-agent-auth.md), [Plan 12](../12-security-multitenancy.md)).
+**Context:** static keys vs federated identity. **Decision:** agents get short-lived SVIDs; the broker exchanges them for resource-scoped provider tokens (OIDC federation preferred, OAuth-OBO for human delegation). **Consequences:** no static secrets, full credential audit; we must run an OIDC IdP + per-provider trust setup ([Plan 6](../ai-native-agent-auth.md#plan-06), [Plan 12](../security-networking.md#plan-12)).
 
 ## ADR-0009
 **Capability Manifest capability/auth standard + Registry.**
 
-**Decision:** providers publish machine-readable signs (`capabilities/auth/cost.json`) at a well-known path; the Registry indexes them. **Consequences:** agents self-discover + self-provision; we must define, version, and possibly standardize the schema ([Plan 6](../06-ai-native-agent-auth.md)).
+**Decision:** providers publish machine-readable signs (`capabilities/auth/cost.json`) at a well-known path; the Registry indexes them. **Consequences:** agents self-discover + self-provision; we must define, version, and possibly standardize the schema ([Plan 6](../ai-native-agent-auth.md#plan-06)).
 
 ## ADR-0012
 **Firecracker-sandboxed, credential-scoped executors.**
 
-**Decision:** all IaC/build runs in microVMs with no ambient creds and a single scoped token. **Consequences:** strong isolation for untrusted/generated provider code; operational cost of running a microVM fleet ([Plan 4](../04-control-plane.md), [Plan 12](../12-security-multitenancy.md)).
+**Decision:** all IaC/build runs in microVMs with no ambient creds and a single scoped token. **Consequences:** strong isolation for untrusted/generated provider code; operational cost of running a microVM fleet ([Plan 4](../control-plane.md#plan-04), [Plan 12](../security-networking.md#plan-12)).
 
 ## ADR-0023
 **Security posture commitments for v1.**
@@ -23,7 +23,7 @@
 - **Origin:** the requirements security review (see [`plans/README.md`](../../../plans/README.md), findings SEC-01…10).
 
 ### Context
-The design (esp. [12-security-multitenancy.md](../12-security-multitenancy.md)) names the right threats — runaway/confused-deputy agents, Forge prompt-injection, supply-chain, cross-tenant access — but several mitigations lived only in the threat model or as design prose, not as **verifiable requirements**. A security review of the requirements suite found assumed-but-unstated controls: the legacy static-key escape hatch was unbounded, there was no Gateway/MCP rate-limiting requirement, Forge prompt-injection had no defense requirement, audit retention was "per policy" (unquantified), encryption-at-rest wasn't required across all runtimes, and per-run decryption authorization was unspecified. For an agent-facing control plane that holds other people's cloud credentials and runs AI-generated code, these must be commitments, not aspirations.
+The design (esp. [security-networking.md#plan-12](../security-networking.md#plan-12)) names the right threats — runaway/confused-deputy agents, Forge prompt-injection, supply-chain, cross-tenant access — but several mitigations lived only in the threat model or as design prose, not as **verifiable requirements**. A security review of the requirements suite found assumed-but-unstated controls: the legacy static-key escape hatch was unbounded, there was no Gateway/MCP rate-limiting requirement, Forge prompt-injection had no defense requirement, audit retention was "per policy" (unquantified), encryption-at-rest wasn't required across all runtimes, and per-run decryption authorization was unspecified. For an agent-facing control plane that holds other people's cloud credentials and runs AI-generated code, these must be commitments, not aspirations.
 
 ### Decision
 Commit the following as v1 security requirements (each lands as an `NFR`/`TR` with a verification method):
@@ -34,7 +34,7 @@ Commit the following as v1 security requirements (each lands as an `NFR`/`TR` wi
 5. **Quantified audit retention** — `token.*`/`resource.*`/policy-decision streams are retained for a defined minimum and never compacted. (NFR-018, TR-052)
 6. **Encryption everywhere it matters** — envelope encryption at rest for event streams across **all** runtimes (not just `runtime-local`); per-run payload decryption requires log-read **and** explicit authorization (run-owner / `decrypt:run`). (TR-111)
 7. **Supply-chain specifics** — all published artifacts carry CycloneDX SBOMs; CI blocks publishing on CVSS ≥ 7.0 (with a documented waiver path); plugins signed with SLSA-style provenance. (TR-112)
-8. **Redaction at capture, not export** — secret/PII values are scrubbed **before** a span/event is stored, so a value never enters the event log, OTel/OpenInference spans, error messages, or **training trajectories** ([Plan 31](../31-config-secretless-secrets.md)/[Plan 23](../23-stubbable-ai-implementations.md)). (TR-054, TR-111)
+8. **Redaction at capture, not export** — secret/PII values are scrubbed **before** a span/event is stored, so a value never enters the event log, OTel/OpenInference spans, error messages, or **training trajectories** ([Plan 31](../authoring-resources-wiring.md#plan-31)/[Plan 23](../forge-generated-stack.md#plan-23)). (TR-054, TR-111)
 
 ### Alternatives considered
 - **Leave these in the threat model only** — rejected: a threat model is not a testable control; reviewers and customers need requirements.
@@ -53,10 +53,10 @@ Commit the following as v1 security requirements (each lands as an `NFR`/`TR` wi
 - **Origin:** product direction — "env vars / secrets should be loaded somehow, leveraging secretless auth patterns." The suite had keyless identity + a token broker but no explicit *app config/secrets loading* surface.
 
 ### Context
-HoBo already issues keyless workload identities (SVIDs) and brokers short-lived provider tokens ([ADR-0008](#adr-0008)), and forbids static secrets at rest ([Plan 12](../12-security-multitenancy.md)). What was missing: a defined way for an **app** to declare and load configuration and secrets. Without it, teams default to the antipattern — static secrets in env files/images/IaC, or worse, in the event log.
+HoBo already issues keyless workload identities (SVIDs) and brokers short-lived provider tokens ([ADR-0008](#adr-0008)), and forbids static secrets at rest ([Plan 12](../security-networking.md#plan-12)). What was missing: a defined way for an **app** to declare and load configuration and secrets. Without it, teams default to the antipattern — static secrets in env files/images/IaC, or worse, in the event log.
 
 ### Decision
-Define a **secretless-first** config/secrets model ([Plan 31](../31-config-secretless-secrets.md)):
+Define a **secretless-first** config/secrets model ([Plan 31](../authoring-resources-wiring.md#plan-31)):
 1. **References, not values.** `config()`/`secret()`/`env()` declarations resolve to **references**, resolved **per Camp at use-time**. A value never lives in the Bindle, the Camp config, or the event log.
 2. **Resolution ladder (secretless-first):** (a) **bound resource** → SVID-brokered short-lived token (no secret exists); (b) **secret with provider federation** → broker a scoped token and read from the provider's secret store at use-time; (c) **non-secret config** → typed value from the Camp's Deployment Set; (d) **static-secret escape hatch** → only where no federation exists, **bounded** by TTL + rotation + audit + opt-in ([ADR-0023](#adr-0023)).
 3. **Provider-specific resolution belongs to the Camp.** The Bindle declares *what it needs*; each Camp supplies *where it comes from* (Key Vault vs Secrets Manager vs Vault) — so swapping clouds is a Camp change, not an app edit ([ADR-0024](07-portability-extensibility.md#adr-0024)).
@@ -79,12 +79,12 @@ Define a **secretless-first** config/secrets model ([Plan 31](../31-config-secre
 - **Origin:** a competitive re-survey (after closing G1–G7) found `auth()` listed as a SaaS primitive but **only agent/workload auth specified** — no end-user/app-user story, while shoo / Convex Auth / Clerk / Auth0 ship it first-class (the same listed-but-unspecified shape as the search gap). Designed via brainstorming + grill-with-docs.
 
 ### Context
-[Plan 6](../06-ai-native-agent-auth.md) is a deep treatment of **agent/workload** auth (SVIDs, the token broker, Capability Manifest, OBO). But an app deployed on HoBo needs to authenticate its **end users** (humans), and `auth()` ([Plan 2](../02-sdk-api.md) §53) had no specification: sign-in, sessions, JWT/JWKS verification, IdP integration. HoBo already has the substrate — it issues + verifies OIDC/JWTs via JWKS for agents, is secretless-first, has a policy plane + `.allow()` for authorization, and the event envelope's `actor: PrincipalRef` already admits a `user`. The decision is how to assemble end-user auth from that substrate without reinventing a full identity provider.
+[Plan 6](../ai-native-agent-auth.md#plan-06) is a deep treatment of **agent/workload** auth (SVIDs, the token broker, Capability Manifest, OBO). But an app deployed on HoBo needs to authenticate its **end users** (humans), and `auth()` ([Plan 2](../sdk-api.md#plan-02) §53) had no specification: sign-in, sessions, JWT/JWKS verification, IdP integration. HoBo already has the substrate — it issues + verifies OIDC/JWTs via JWKS for agents, is secretless-first, has a policy plane + `.allow()` for authorization, and the event envelope's `actor: PrincipalRef` already admits a `user`. The decision is how to assemble end-user auth from that substrate without reinventing a full identity provider.
 
 ### Decision
 1. **`auth()` is a federation + verification port (`hobo:auth`), not a homegrown IdP.** It verifies OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo/Convex-`customJwt` pattern) — reusing HoBo's existing **OIDC + JWKS + secretless** machinery. A **thin optional built-in** (passkey / email magic-link) covers zero-config dev and runs offline/air-gap ([ADR-0036](07-portability-extensibility.md#adr-0036)). HoBo does **not** build a full hosted IdP in v1.
-2. **Unified principal model.** An end-user is a **`PrincipalRef`** (the event `actor` already admits `user`), exposed as **`ctx.user`** alongside `ctx.identity` (SVID). **Authorization is the same policy plane** ([Plan 30](../30-policy-plane.md)) **+ `.allow()`-style declarative rules** keyed on user claims (record-level), and **audit rides the existing event `actor`** ([Plan 11](../11-event-model.md)). One identity/authz/audit path for users + agents + services; agent **OBO** ([Plan 6](../06-ai-native-agent-auth.md)) carries the same user principal.
-3. **Stateless JWKS verify per request + optional event-sourced sessions.** JWTs are verified via JWKS on each request (edge-friendly, matches `customJwt`); optional **`session.*`** records provide revocation / "sign out everywhere" + audit, and reactive queries ([Plan 32](../32-reactive-live-queries.md)) re-evaluate on auth-state change.
+2. **Unified principal model.** An end-user is a **`PrincipalRef`** (the event `actor` already admits `user`), exposed as **`ctx.user`** alongside `ctx.identity` (SVID). **Authorization is the same policy plane** ([Plan 30](../contracts-policy-flags.md#plan-30)) **+ `.allow()`-style declarative rules** keyed on user claims (record-level), and **audit rides the existing event `actor`** ([Plan 11](../event-model.md#plan-11)). One identity/authz/audit path for users + agents + services; agent **OBO** ([Plan 6](../ai-native-agent-auth.md#plan-06)) carries the same user principal.
+3. **Stateless JWKS verify per request + optional event-sourced sessions.** JWTs are verified via JWKS on each request (edge-friendly, matches `customJwt`); optional **`session.*`** records provide revocation / "sign out everywhere" + audit, and reactive queries ([Plan 32](../data-plane.md#plan-32)) re-evaluate on auth-state change.
 4. **Surface:** client `useAuth()`/`signIn()`/`signOut()` (peer to `useQuery()`); server `ctx.user` (typed verified claims). **Events:** `user.Authenticated` · `session.Started/Refreshed/Revoked` (authz decisions ride `policy.Decided`).
 
 ### Alternatives considered

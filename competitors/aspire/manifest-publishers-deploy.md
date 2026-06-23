@@ -1,6 +1,6 @@
 # Aspire — Manifest, Publishers & Deployment
 
-> Part of the [Aspire competitor reference](./README.md). The deployment IR and how it reaches real targets. This is HoBo's closest structural analogue ([HoBo Plan 22](../../docs/design/22-wiring-manifest.md)).
+> Part of the [Aspire competitor reference](./README.md). The deployment IR and how it reaches real targets. This is HoBo's closest structural analogue ([HoBo Plan 22](../../docs/design/authoring-resources-wiring.md#plan-22)).
 
 ## The manifest (deployment IR)
 `aspire publish` (or the legacy `dotnet run --project AppHost -- --publisher manifest`) emits **`aspire-manifest.json`** — a tool-agnostic description of the resolved graph that deployment tooling consumes.

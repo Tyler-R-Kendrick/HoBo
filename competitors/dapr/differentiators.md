@@ -14,8 +14,8 @@
 - **No provisioning / infrastructure-from-code.** Dapr abstracts *using* a backend; you still create + own Redis/Kafka/DynamoDB and wire connection settings. There's no `deploy`, no topology graph, no cloud-agnostic provisioning. **This is the biggest gap vs HoBo** (and vs Encore/Nitric).
 - **Sidecar tax + K8s-centric prod.** A sidecar per app instance (latency/memory/lifecycle) and a Kubernetes control plane in production — operational weight HoBo's in-process wasm component-host ([ADR-0031](../../docs/design/adr/01-architecture-core.md#adr-0031)) avoids.
 - **No control-plane planes.** No cost/FinOps, policy/`can-deploy` contracts, or matching/Resource-Definitions layer; governance is left to the platform around it.
-- **No infra event-sourcing / audit-replay.** Dapr traces requests, but doesn't event-source *infra + credential changes* the way HoBo does ([Plan 11](../../docs/design/11-event-model.md)).
-- **Adapters are hand-written.** No AI-generated-adapter pipeline or conformance-as-trust-boundary (HoBo's Forge, [Plan 33](../../docs/design/33-forge-generation-pipeline.md)).
+- **No infra event-sourcing / audit-replay.** Dapr traces requests, but doesn't event-source *infra + credential changes* the way HoBo does ([Plan 11](../../docs/design/event-model.md#plan-11)).
+- **Adapters are hand-written.** No AI-generated-adapter pipeline or conformance-as-trust-boundary (HoBo's Forge, [Plan 33](../../docs/design/forge-generated-stack.md#plan-33)).
 
 ## Comparisons
 - **vs HoBo:** Dapr is a **runtime/data-plane** abstraction (use-the-infra); HoBo is a **control-plane + runtime** abstraction (provision-*and*-use, agnostic, event-sourced, AI-native). They could even compose — a HoBo `Camp` could realize ports onto a Dapr-backed runtime, or Dapr components could inspire HoBo capability providers.

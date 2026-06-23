@@ -16,7 +16,7 @@ HoBo's design suite (`docs/design/0–30`) is engineering-shaped: it explains *h
    - `NFR-NNN` — non-functional requirement (PRD)
    - `TR-NNN` — technical requirement (TRD)
 3. **Forward traceability is mandatory.** Every `BR` maps to ≥1 `FR`/`NFR`; every `FR`/`NFR` maps to ≥1 `TR`; every `TR` cites the design doc(s) and (where relevant) the conformance/verification that proves it. The TRD owns the authoritative **BR→FR/NFR→TR traceability matrix**.
-4. **Priority vocabulary** is MoSCoW (`Must`/`Should`/`Could`), expressing **build priority/order within the single v1** — all requirements are v1, mapped to the build stages in the [per-stage build detail](../08-roadmap.md#per-stage-build-detail-stages-06) (see [ADR-0063](#adr-0063), superseding the former ADR-0022 MVP-scope line; there is no `Won't`-for-v1 tier).
+4. **Priority vocabulary** is MoSCoW (`Must`/`Should`/`Could`), expressing **build priority/order within the single v1** — all requirements are v1, mapped to the build stages in the [per-stage build detail](../roadmap.md#per-stage-build-detail-stages-06) (see [ADR-0063](#adr-0063), superseding the former ADR-0022 MVP-scope line; there is no `Won't`-for-v1 tier).
 5. **Style** is "formal but skimmable": standard enterprise section set (document control, RACI, sign-off, risk register) rendered as tables/short prose to match the suite's voice.
 
 ### Alternatives considered
@@ -33,7 +33,7 @@ HoBo's design suite (`docs/design/0–30`) is engineering-shaped: it explains *h
 **Persona prioritization / primary ICP.**
 
 ### Context
-HoBo serves four distinct personas — **application developers**, **platform engineers**, **operators**, and **AI agents-as-users** ([00-vision.md](../00-vision.md), [06-ai-native-agent-auth.md](../06-ai-native-agent-auth.md)). All four are served in the single v1 ([ADR-0063](#adr-0063)), but the build can't optimize for all four at once; leading with the wrong one would dilute the wedge. Positioning ([17](../17-positioning-competitive.md)) already names the wedge: developer-centric, agnostic-by-default, agent-operable, with Lakebed/Vercel-grade onboarding. We commit a **build-emphasis order** so the BRD/PRD scope and the v1 build stages ([per-stage build detail](../08-roadmap.md#per-stage-build-detail-stages-06)) align to one primary Ideal Customer Profile (ICP) without deferring any persona to a later release.
+HoBo serves four distinct personas — **application developers**, **platform engineers**, **operators**, and **AI agents-as-users** ([vision.md#plan-00](../vision.md#plan-00), [ai-native-agent-auth.md#plan-06](../ai-native-agent-auth.md#plan-06)). All four are served in the single v1 ([ADR-0063](#adr-0063)), but the build can't optimize for all four at once; leading with the wrong one would dilute the wedge. Positioning ([17](../positioning.md#plan-17)) already names the wedge: developer-centric, agnostic-by-default, agent-operable, with Lakebed/Vercel-grade onboarding. We commit a **build-emphasis order** so the BRD/PRD scope and the v1 build stages ([per-stage build detail](../roadmap.md#per-stage-build-detail-stages-06)) align to one primary Ideal Customer Profile (ICP) without deferring any persona to a later release.
 
 ### Decision
 All four personas are in v1; we prioritize **build emphasis** (which to nail first) in this order:
@@ -44,41 +44,41 @@ All four personas are in v1; we prioritize **build emphasis** (which to nail fir
 ### Alternatives considered
 - **Platform-engineer-first (Humanitec/IDP posture)** — rejected for v1: leads with governance before there is a developer base to govern; slower to a "wow" moment.
 - **Enterprise-operator-first** — rejected: requires multi-tenant HA + compliance up front (late-stage work) before the core agnostic-deploy thesis is proven.
-- **Human-developer-only, agents later** — rejected: contradicts the "agents are users, not afterthoughts" principle ([00-vision.md](../00-vision.md)) and the core differentiator.
+- **Human-developer-only, agents later** — rejected: contradicts the "agents are users, not afterthoughts" principle ([vision.md#plan-00](../vision.md#plan-00)) and the core differentiator.
 
 ### Consequences
 - **(+)** Sharpens the early build stages around the develop→deploy→agent-operate loop; the MCP surface and keyless identity are not deferrable.
 - **(+)** Gives marketing/positioning one clear ICP to address.
-- **(−)** Platform-engineer features (Resource Definitions/Matching, policy packs) are in v1 but built after the core loop (build stage 4+); they are sequenced later, not cut. The design already accommodates them ([25](../25-resource-definitions-matching.md), [30](../30-policy-plane.md)); only *build order* differs, not scope or architecture.
+- **(−)** Platform-engineer features (Resource Definitions/Matching, policy packs) are in v1 but built after the core loop (build stage 4+); they are sequenced later, not cut. The design already accommodates them ([25](../platform-engineering.md#plan-25), [30](../contracts-policy-flags.md#plan-30)); only *build order* differs, not scope or architecture.
 
 ## ADR-0021
 **NFR baselines / committed SLOs for v1.** Proposed (numbers pending stakeholder ratification)
 
 ### Context
-[08-roadmap.md](../08-roadmap.md) defines **north-star signals** (time-to-first-deploy, "same Bindle, N clouds", zero-secret rate, agent-completable lifecycle, Forge yield, recovery) but they are *directional*, not testable thresholds. [05-reliability-ha.md](../05-reliability-ha.md) lists initial HA targets explicitly marked "to ratify with the user." A PRD needs **measurable NFRs** with numbers so they can be verified ([09](../09-verification-open-questions.md)) and used as release gates. Numbers proposed here are **defaults to ratify**, not contractual SLAs.
+[roadmap.md#plan-08](../roadmap.md#plan-08) defines **north-star signals** (time-to-first-deploy, "same Bindle, N clouds", zero-secret rate, agent-completable lifecycle, Forge yield, recovery) but they are *directional*, not testable thresholds. [reliability-observability-cost.md#plan-05](../reliability-observability-cost.md#plan-05) lists initial HA targets explicitly marked "to ratify with the user." A PRD needs **measurable NFRs** with numbers so they can be verified ([09](../verification.md#plan-09)) and used as release gates. Numbers proposed here are **defaults to ratify**, not contractual SLAs.
 
 ### Decision
 Adopt these v1 NFR baselines (each becomes an `NFR-` in the PRD with a verification method):
 
 | Dimension | Baseline (v1) | Source / verified by |
 |---|---|---|
-| Time-to-first-deploy (scaffold → running on real cloud) | ≤ 10 min p50 on the happy path | north-star ([08](../08-roadmap.md)); E2E timing test |
-| Local dev start (`hobo dev`, no cloud) | ≤ 60 s | [15-cli-dx.md](../15-cli-dx.md); integration test |
-| Zero-secret rate (provider access via brokered/federated tokens) | ≥ 99% of provider calls; static keys only via explicit legacy escape hatch | [06](../06-ai-native-agent-auth.md)/[12](../12-security-multitenancy.md); audit of `token.*` events |
-| Portability ("same Bindle, N clouds" unedited) | ≥ 2 providers for the reference app at v1, design target N | [03](../03-providers-iac.md); `multi-cloud-shop` E2E |
-| Control-plane availability | 99.9% single-region / 99.95% multi-region | [05](../05-reliability-ha.md) |
-| Deploy resume after node loss | < 30 s (lease TTL + tail replay) | [05](../05-reliability-ha.md); chaos test |
-| RPO | ~0 (sync quorum) / ≤ 5 s (async tier) | [05](../05-reliability-ha.md) |
-| RTO (full Yard rebuild from log) | < 15 min | [05](../05-reliability-ha.md); DR replay test |
-| Plan-time cost estimate accuracy | within ±20% of a known fixture | [16](../16-cost-finops.md); cost fixture test |
-| Determinism | `replay == live state` for every durable run (hard invariant) | [09](../09-verification-open-questions.md); determinism test |
+| Time-to-first-deploy (scaffold → running on real cloud) | ≤ 10 min p50 on the happy path | north-star ([08](../roadmap.md#plan-08)); E2E timing test |
+| Local dev start (`hobo dev`, no cloud) | ≤ 60 s | [developer-experience.md#plan-15](../developer-experience.md#plan-15); integration test |
+| Zero-secret rate (provider access via brokered/federated tokens) | ≥ 99% of provider calls; static keys only via explicit legacy escape hatch | [06](../ai-native-agent-auth.md#plan-06)/[12](../security-networking.md#plan-12); audit of `token.*` events |
+| Portability ("same Bindle, N clouds" unedited) | ≥ 2 providers for the reference app at v1, design target N | [03](../control-plane.md#plan-03); `multi-cloud-shop` E2E |
+| Control-plane availability | 99.9% single-region / 99.95% multi-region | [05](../reliability-observability-cost.md#plan-05) |
+| Deploy resume after node loss | < 30 s (lease TTL + tail replay) | [05](../reliability-observability-cost.md#plan-05); chaos test |
+| RPO | ~0 (sync quorum) / ≤ 5 s (async tier) | [05](../reliability-observability-cost.md#plan-05) |
+| RTO (full Yard rebuild from log) | < 15 min | [05](../reliability-observability-cost.md#plan-05); DR replay test |
+| Plan-time cost estimate accuracy | within ±20% of a known fixture | [16](../reliability-observability-cost.md#plan-16); cost fixture test |
+| Determinism | `replay == live state` for every durable run (hard invariant) | [09](../verification.md#plan-09); determinism test |
 
 ### Alternatives considered
 - **Leave NFRs qualitative** — rejected: unverifiable NFRs are not requirements; release gates need numbers.
 - **Commit aggressive enterprise SLAs (e.g. 99.99%) now** — rejected: premature before multi-region HA (build stage 6) is proven; over-promises.
 
 ### Consequences
-- **(+)** PRD NFRs become testable; [09](../09-verification-open-questions.md) gains concrete fixtures; releases can gate on them.
+- **(+)** PRD NFRs become testable; [09](../verification.md#plan-09) gains concrete fixtures; releases can gate on them.
 - **(+)** Determinism and zero-secret are treated as **hard invariants**, not best-effort.
 - **(−)** Status stays **Proposed** until ratified; some numbers (availability, cost accuracy) can only be measured once the later build stages exist (multi-region HA, full cost model), so earlier stages verify them on representative-but-partial setups. Re-ratify when build stage 6 lands.
 
@@ -91,20 +91,20 @@ The former ADR-0022 drew the MVP line at the **end of P4** and bound requirement
 The phased line was a *sequencing and risk* tool, not an architectural boundary. Nothing in the architecture requires the capabilities to land as separate releases — the dependencies are a build order, not a version ladder.
 
 ### Decision
-**v1 scope = the entire designed surface.** Every plan in the suite ([Plan 0](../00-vision.md)–[Plan 47](../47-ai-safety-model-governance.md)) and every former phase (P0–P6) and iteration wave (v2–v7) is **v1**. Specifically:
+**v1 scope = the entire designed surface.** Every plan in the suite ([Plan 0](../vision.md#plan-00)–[Plan 47](../governance-planes.md#plan-47)) and every former phase (P0–P6) and iteration wave (v2–v7) is **v1**. Specifically:
 
 1. **No release split.** There is no v2/v3/… and no "post-v1": Forge, multi-region HA, full FinOps showback, the complete dashboard, platform-engineer Resource Definitions/Matching/Packs at depth, the Operator Crew, the generated infrastructure stack, patchability, SRE/incident-management, and the governance planes (governance enforcement, AI safety) + the `notify` port + Registry distribution are **all v1**. *(Scope is bounded by [ADR-0064](#adr-0064) (AI-native meta-cloud: no business/app-build-out) — UI-layer generation, billing/monetization, marketplace-as-a-plane and app-communications-as-a-plane are **out of scope**, not deferred.)*
-2. **No deferred bucket.** The former ADR-0022 **"Won't (v1)"** list is dissolved. Its in-scope feature-like items fold into v1: the full/non-developer dashboard ([Plan 7](../07-ui-dashboard.md)); broad cloud coverage, delivered **on demand via the Forge** ([Plan 33](../33-forge-generation-pipeline.md)) + the provider port rather than pre-enumerated.
-3. **Build stages replace phases.** P0–P6 are reframed as **dependency-ordered build stages of v1** ([Per-stage build detail](../08-roadmap.md#per-stage-build-detail-stages-06)): foundations → SDK-local → first-deploy(+gates) → AI-native → multi-provider → Forge → HA/FinOps/UX/planes. Stages are *how* a large v1 is delivered in order; they are not separate versions. The **v1 definition of done = every stage's acceptance gate green** ([PRD §9](../../requirements/PRD.md)).
+2. **No deferred bucket.** The former ADR-0022 **"Won't (v1)"** list is dissolved. Its in-scope feature-like items fold into v1: the full/non-developer dashboard ([Plan 7](../developer-experience.md#plan-07)); broad cloud coverage, delivered **on demand via the Forge** ([Plan 33](../forge-generated-stack.md#plan-33)) + the provider port rather than pre-enumerated.
+3. **Build stages replace phases.** P0–P6 are reframed as **dependency-ordered build stages of v1** ([Per-stage build detail](../roadmap.md#per-stage-build-detail-stages-06)): foundations → SDK-local → first-deploy(+gates) → AI-native → multi-provider → Forge → HA/FinOps/UX/planes. Stages are *how* a large v1 is delivered in order; they are not separate versions. The **v1 definition of done = every stage's acceptance gate green** ([PRD §9](../../requirements/PRD.md)).
 4. **Priority becomes build order, not version gate.** MoSCoW on requirements ([BRD §8](../../requirements/BRD.md)/[PRD §6](../../requirements/PRD.md)) now expresses **build priority/sequencing within v1**, not a release boundary; everything Must/Should/Could is in v1.
-5. **Anti-goals are positioning, not deferrals.** A small set of stances remain genuine non-goals because they describe what HoBo *is not* (not features awaiting a later version): HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu) via the IaC port rather than replacing them ([Plan 3](../03-providers-iac.md)); it is not a standalone secret-management product or a generic app framework ([00 non-goals](../00-vision.md)). These are unchanged by this ADR.
+5. **Anti-goals are positioning, not deferrals.** A small set of stances remain genuine non-goals because they describe what HoBo *is not* (not features awaiting a later version): HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu) via the IaC port rather than replacing them ([Plan 3](../control-plane.md#plan-03)); it is not a standalone secret-management product or a generic app framework ([00 non-goals](../vision.md#plan-00)). These are unchanged by this ADR.
 
 Genuine *technical* first-cut scoping inside individual capability designs (e.g. provider-store active-active/CDC, the multi-Yard **Junction** [ADR-0043](07-portability-extensibility.md#adr-0043), incremental view maintenance, full ITSM) remain honest "first implementation" notes and **iteration hooks within v1** — they are no longer tied to a removed release number, but this ADR does not claim CAP-impossible or out-of-first-cut sub-features are complete.
 
 ### Alternatives considered
 - **Keep the P4 MVP line (the former ADR-0022).** Rejected per the directive: the design is complete and coherent enough to commit to a single v1; phasing the *release* now adds coordination overhead without de-risking the architecture.
 - **Merge everything but keep a thin "Won't" bucket.** Offered to the user; they chose "literally everything in v1, no deferred bucket." Only true positioning anti-goals are retained.
-- **Drop the per-stage breakdown and write one flat plan.** Rejected: the dependency-ordered stages are exactly how a massive v1 stays deliverable; we keep them (now folded into the [roadmap](../08-roadmap.md#per-stage-build-detail-stages-06)), reframed as build stages, not versions.
+- **Drop the per-stage breakdown and write one flat plan.** Rejected: the dependency-ordered stages are exactly how a massive v1 stays deliverable; we keep them (now folded into the [roadmap](../roadmap.md#per-stage-build-detail-stages-06)), reframed as build stages, not versions.
 
 ### Consequences
 - **(+)** One unambiguous scope: "v1 is everything designed." No per-feature "which version?" question; the roadmap is a build sequence.
@@ -142,8 +142,8 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 - **(↔)** Updates ripple through the suite: ADR-0063 (v1 scope list), the roadmap/phases (stage 6), the requirements (BRD/PRD/TRD), the event model, the glossary/index, and the gap-analysis. Removed numbers are tombstoned, not reused.
 
 ## Open / proposed decisions (ADR-Pn)
-- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../05-reliability-ha.md).
-- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 13](../13-networking-connectivity.md).
+- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
+- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 13](../security-networking.md#plan-13).
 - **ADR-P3:** ~~policy language for guardrails/ABAC~~ — **Resolved by ADR-0015** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
-- **ADR-P4:** ~~default Planner objective (cost-first vs latency-first)~~ — **Resolved by [ADR-0033](05-config-matching-environments.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 16](../16-cost-finops.md)/[Plan 25](../25-resource-definitions-matching.md).
-- **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../02-sdk-api.md).
+- **ADR-P4:** ~~default Planner objective (cost-first vs latency-first)~~ — **Resolved by [ADR-0033](05-config-matching-environments.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 16](../reliability-observability-cost.md#plan-16)/[Plan 25](../platform-engineering.md#plan-25).
+- **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../sdk-api.md#plan-02).

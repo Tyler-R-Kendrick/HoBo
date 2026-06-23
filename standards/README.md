@@ -16,7 +16,7 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **OpenFeature** (CNCF) | Vendor-neutral feature-flag evaluation API + provider model | [`openfeature.md`](./openfeature.md) |
 | **OCSF** | Open Cybersecurity Schema Framework — normalized schema for security events | [`ocsf.md`](./ocsf.md) |
 
-> See also: the **feature-flags pattern** lives in [`../patterns/feature-flags.md`](../patterns/feature-flags.md) (OpenFeature is its standard); telemetry standards underpin both observability ([Plan 14](../docs/design/14-observability.md)) and the training reward signal ([Plan 23](../docs/design/23-stubbable-ai-implementations.md)).
+> See also: the **feature-flags pattern** lives in [`../patterns/feature-flags.md`](../patterns/feature-flags.md) (OpenFeature is its standard); telemetry standards underpin both observability ([Plan 14](../docs/design/reliability-observability-cost.md#plan-14)) and the training reward signal ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)).
 
 ## Sources & fair use
 Third-party reference captures; factual spec surface quoted under fair use for commentary/interoperability analysis, limited to what's needed to map each to HoBo. Trademarks/copyright remain their owners'; not part of the HoBo product.

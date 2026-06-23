@@ -15,7 +15,7 @@
 
 Each folder captures positioning, the feature surface (with quoted excerpts of factual API/CLI/config surface where it matters), differentiators, and gaps a competitor could exploit. The `hobo-mapping.md` in each shows HoBo's equivalent for every feature and where HoBo deliberately goes further. Some entries (Convex, shoo.dev) are **adjacent** rather than head-on — captured because they inform HoBo's design or could compose with it.
 
-➡️ **Cross-competitor [gap analysis](./gap-analysis.md)** — a synthesis of where HoBo's design leads / matches / falls short of all five, with a comparison matrix, prioritized gaps (the standout: a **reactive/live-query model**, à la Convex), and recommended next design moves. New gaps are filed as [open questions #21–23](../docs/design/09-verification-open-questions.md).
+➡️ **Cross-competitor [gap analysis](./gap-analysis.md)** — a synthesis of where HoBo's design leads / matches / falls short of all five, with a comparison matrix, prioritized gaps (the standout: a **reactive/live-query model**, à la Convex), and recommended next design moves. New gaps are filed as [open questions #21–23](../docs/design/verification.md#plan-09).
 
 Pattern for future competitors (wasmCloud, Spin/Fermyon, Winglang, SST/Ion, Qovery, Northflank, Backstage, Crossplane, Radius, Supabase …): add a sibling folder with the same file layout.
 

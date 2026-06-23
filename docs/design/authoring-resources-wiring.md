@@ -18,7 +18,7 @@ Declaring a permission on a resource drives **three** things at once:
 // IfC-default authoring: resources declared inline, permissions co-located
 import { bucket, kv, topic } from "@hobo/sdk";
 
-const profiles = bucket("profiles").allow("read", "write");   // → S3 RW IAM + wasi:blobstore link + token scope
+const profiles = bucket("profiles").allow("read", "write");   // → blobstore RW IAM + wasi:blobstore link + token scope
 const sessions = kv("sessions").allow("get", "set");          // → wasi:keyvalue (get/set only)
 const events   = topic("user-created").allow("publish");      // → wasi:messaging (publish only)
 ```
@@ -33,26 +33,23 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 | **Queue** (pull) | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` | SQS / Service Bus / Tasks / Queues |
 | **Topic** (push) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` | SNS / Event Grid / Pub/Sub / — |
 | **Secret** | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` | Secrets Mgr / Key Vault / Secret Mgr |
-| **SQL** | `sql(name)` | `wasi:sql`/`hobo:sql` | (conn string) | RDS / Azure DB / Cloud SQL / Neon |
+| **Data** | `data(name)` | `hobo:data` (paradigm sub-ports) | `read`,`write`,`query`,`admin` | one abstract dep, paradigm-specific providers: relational/SQL · document/NoSQL · graph · vector · key/value ([ADR-0052](./adr/03-data-plane.md#adr-0052)) |
 | **Schedule** | `schedule(name)` | `hobo:scheduler` | n/a | EventBridge / Timer / Cloud Scheduler |
 | **WebSocket** | `websocket(name)` | `hobo:websocket` | n/a | API GW WS / Web PubSub / — |
 | **Batch job** | `job(name)` | `hobo:job` (+ `vm`/`microVm`) | `submit` | AWS Batch / Azure Batch / Cloud Batch |
 | **Website** | `web(name)` | static + `wasi:http` | n/a | CloudFront+S3 / Front Door+Blob / CDN+GCS |
 | **Compute/service** | `service(name)` | component (exports `wasi:http`) | (binds below) | Fargate / Container Apps / Cloud Run / Workers |
-| **Search** | `search(name)` | `hobo:search` | `index`,`query`,`admin` | pgvector+PG-FTS / OpenSearch / Azure AI Search / Pinecone ([Plan 35](./data-plane.md#plan-35)) |
-| **Embed** | `embed(name)` | `hobo:embed` | `embed` | local model / hosted embedding API (used via `search`; [Plan 35](./data-plane.md#plan-35)) |
-| **Domain** | `domain(name)` | `hobo:dns` (+ `gateway`) | `bind`,`route` | Yard-level; ACME DNS-01 certs; failover/weighted/latency across Camps ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)) |
-| **DNS** | (capability) | `hobo:dns` | `read`,`write` | Route53 / Azure DNS / Cloud DNS / Cloudflare ([Plan 13](./security-networking.md#plan-13)) |
+| **Search** | `search(name)` | `hobo:search` | `index`,`query`,`admin` | full-text in core; vector/graph as optional extensions; `embed` is a vector-extension capability ([ADR-0034](./adr/03-data-plane.md#adr-0034)/[Plan 35](./data-plane.md#plan-35)) |
 | **Feature flag** | `flag(name)` | `hobo:feature-flag` | `eval`,`change` | built-in store / OpenFeature providers (flagd/LaunchDarkly) ([Plan 37](./contracts-policy-flags.md#plan-37)) |
 | **Auth** (end-user) | `auth(name)` | `hobo:auth` | (verify/session) | federate+verify any IdP (Google/GitHub/Clerk/Auth0/customJwt) + thin dev built-in ([Plan 36](./ai-native-agent-auth.md#plan-36)) |
 | **Crypto** | `crypto(name)` | `hobo:crypto` | `encrypt`,`decrypt`,`sign`,`verify` | KMS / Key Vault / Cloud KMS / in-boundary HSM — **keys the app never holds**, brokered like secrets ([Plan 31](./authoring-resources-wiring.md#plan-31)) |
-| **Email / SMS / Push / Webhook-out** | `email`/`sms`/`push`/`webhookOut(name)` | `hobo:notify` | `send` | SES/SendGrid · Twilio/SNS · FCM/APNs · signed HTTP — a thin **cloud-messaging port** (typed templates, PrincipalRef recipients, policy-gated), shares the ops receiver port ([ADR-0059](./adr/03-data-plane.md#adr-0059)) |
+| **Notify** | `notify(name)` | `hobo:notify` | `send` | one capability; **channels are types** (`email`/`sms`/`push`/`webhook`) — SES/SendGrid · Twilio/SNS · FCM/APNs · signed HTTP — a thin **cloud-messaging port** (typed templates, PrincipalRef recipients, policy-gated), shares the ops receiver port ([ADR-0059](./adr/03-data-plane.md#adr-0059)) |
 | **Guardrail** | `guardrail(name)` | `hobo:guardrail` | `check` | built-in rules / Llama Guard / hosted moderation / local — **AI output safety** (moderation/PII/jailbreak/grounding) as a policy-gated step ([Plan 47](./governance-planes.md#plan-47)/[ADR-0061](./adr/04-governance-verification.md#adr-0061)) |
 | **UI render** | `ui(name)` | `hobo:ui-render` | `render`,`drive` | pluggable engines: OpenUI (UI from intent) · json-render (declarative render IR) · mcp-apps (MCP-driven app surfaces) — **app/UI generation** typed from the domain schema, design.md-gated, reactive to materializations ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)) |
 
-The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./adr/01-architecture-core.md#adr-0002)): APIs, schedules, AI (`search`/`embed`/`guardrail`), websites, storage, secrets/config, databases/caching (`sql`/`kv`), messaging (`topic`/`queue`/`notify`), feature flags, and functions/workflows (`service`/`job` + the durable runtime) — every capability expressed as a resource behind a port. Cross-cloud equivalence classes are owned by [Plan 3](./control-plane.md#plan-03); this table is the resource→port view.
+The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./adr/01-architecture-core.md#adr-0002)): APIs, schedules, AI (`search` + its vector/graph extensions, `guardrail`), websites, storage, secrets/config, data/caching (`data`/`kv`), messaging (`topic`/`queue`/`notify`), feature flags, and functions/workflows (`service`/`job` + the durable runtime) — every capability expressed as a resource behind a port. Cross-cloud equivalence classes are owned by [Plan 3](./control-plane.md#plan-03); this table is the resource→port view.
 
-**Full Nitric building-block parity (one resource per block, each a WIT interface).** Every Nitric building block has a catalog row above, each backed by a WIT port ([ADR-0069](./adr/01-architecture-core.md#adr-0069)):
+**Full Nitric building-block parity (one resource per block, each a WIT interface).** Every Nitric building block has a catalog row above, each backed by a WIT port ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). **Queue and topic/pub-sub are the runtime's messaging building blocks**, backed by WIT interfaces and named to match them ([Plan 24](./wasm-runtime-wit.md#plan-24)):
 
 | Nitric building block | HoBo resource | WIT interface | `.allow()` verbs |
 |---|---|---|---|
@@ -63,12 +60,12 @@ The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./a
 | Key/value store | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` |
 | Storage / blob (buckets) | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` |
 | Secrets | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` |
-| SQL databases | `sql(name)` | `wasi:sql`/`hobo:sql` | (conn string) |
+| Data (relational/document/graph/vector/kv) | `data(name)` | `hobo:data` (paradigm sub-ports) | `read`,`write`,`query`,`admin` |
 | Websockets | `websocket(name)` | `hobo:websocket` | n/a (connect/message/disconnect) |
 
 HoBo's runtime provides **everything Nitric's runtime does** — the full building-block set above — but realized as **WIT interfaces**, with providers implementing the WIT world (not Go plugins) and invoked over the **wRPC membrane** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). A building block is just a port; HoBo's own durable workflow/actors, materializations, auth, and AI ports (the rest of the catalog) sit alongside the Nitric set on the same membrane.
 
-> **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)). The `sql`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)). They remain first-class resources; domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
+> **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)). The `data`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching — for `data`, the paradigm + backend is a provider/Matching choice, [ADR-0052](./adr/03-data-plane.md#adr-0052)), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)). They remain first-class resources; domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
 
 ### IfC-default authoring (resources emerge from code)
 The **default** authoring mode is Nitric-style: declare resources inline and `.allow()` what you use; HoBo's deploy pipeline runs each component in **resource-collection mode** to capture declarations into the **manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)). Handlers attach to resources directly:
@@ -86,11 +83,17 @@ Each entry point compiles to a component exporting the right WIT interface:
 - HTTP routes → `wasi:http/incoming-handler`.
 - `topic.subscribe`, `bucket.on('write', …)`, `schedule.cron(…)`, `queue` workers, `websocket.on(…)`, `job.handler(…)` → host triggers that invoke the component. These also flow through HoBo's durable runtime ([Plan 2](./sdk-api.md#plan-02)) so a subscriber can be a workflow/saga with replay + compensation — a capability Nitric lacks.
 
+### Declarations follow varlock's declarative schema
+Catalog resource declarations (and the Plan 31 config items) use **varlock's declarative schema pattern** ([ADR-0027](./adr/02-identity-security.md#adr-0027)): each item is a **typed, annotation-driven declaration** carrying its **type, required, sensitivity, and source**. The annotations are provider-neutral; Matching and the Camp's adapters consume them. The same declaration style applies to the Plan 38 DSL surface ([Plan 38](./authoring-resources-wiring.md#plan-38)).
+
+### DNS is a Yard-level resource, not app/Bindle-level
+DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)). DNS is a **Yard-level** resource — provider-global, with **per-Camp overrides** — so a Bindle never declares it. Custom-domain binding (ACME DNS-01 certs; failover/weighted/latency across Camps) is resolved at the Yard layer and applied per Camp; the app references endpoints, not zones.
+
 ### Notes
 - `hobo:blob-events` / `hobo:websocket` are HoBo WIT shapes where no standard `wasi:*` exists.
-- SQL migrations are specified in [Plan 34](./data-plane.md#plan-34) ([ADR-0032](./adr/03-data-plane.md#adr-0032)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
+- A relational `data` provider's schema migrations are specified in [Plan 34](./data-plane.md#plan-34) ([ADR-0032](./adr/03-data-plane.md#adr-0032)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
 - `.allow()` verbs are per-resource-type typed enums; each provider's IAM adapter maps them to that provider's actions.
-- Collection runs each component to capture declarations; non-TS languages are collected the same way (run-to-collect), with static analysis as a supplement.
+- The programmable surface is **WIT/WASM**: collection runs each component to capture declarations, and any Component-Model language authors Bindles. TypeScript is the **first reference implementation**, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)) — non-TS languages are collected the same way (run-to-collect), with static analysis as a supplement.
 
 ## Plan 22
 
@@ -105,25 +108,26 @@ HoBo `bind` adopts Aspire `.WithReference()` semantics:
 - **Convention:** endpoints/connection info are injected with predictable keys (Aspire uses `services__<name>__<endpoint>__<i>` and `ConnectionStrings__<name>`); HoBo exposes them as a typed `ctx.bindings.<name>` client generated from the resource's WIT port, with the raw env convention available underneath for non-wasm/container fallback.
 
 ```ts
-const db  = sql("db");
-const api = service("api", { bind: { db } });   // api gets a typed db client; edge + link recorded
+const db  = data("db");                          // abstract data dep; paradigm + backend resolved by Matching
+const api = service("api", { bind: { db } });    // api gets a typed db client; edge + link recorded
 // container/component fallback receives ConnectionStrings__db / services__db__... env vars
 ```
 
 ### Config for any component *or* container (uniform)
-Adopt Aspire's `AddContainer` surface, applied identically to wasm components and OCI containers (wasm-on-OCI is just another image):
+Adopt Aspire's `addContainer(...)` surface, applied identically to wasm components and OCI containers (wasm-on-OCI is just another image). **`addContainer(...)` both wires *and* builds** ([ADR-0005](./adr/01-architecture-core.md#adr-0005)): it records the dependency edge/link *and* drives the build of the workload through the dagger-adjacent programmable **BuildProvider**, which **defaults to wasm-on-OCI** (and is swappable to plain OCI). One call covers wiring and the build step:
 - **Endpoints:** `withHttpEndpoint(port, targetPort, name)`, `withEndpoint({ scheme, port, targetPort, external, protocol })`.
 - **Env / args:** `withEnvironment(k, v)`, `withArgs(...)` (values may be lazy references).
 - **Storage:** `withBindMount(src, dst, readOnly?)`, `withVolume(name, dst)`.
 - **Lifecycle:** `withLifetime("persistent")`, `withExplicitStartup()`, `waitFor(dep)`, `waitForCompletion(job)`.
 - **Health:** `withHttpHealthCheck(path)` / `withHealthCheck()` — feeds rollout gates ([Plan 5](./reliability-observability-cost.md#plan-05)).
 ```ts
-container("cuda-job", "ghcr.io/acme/cuda-job:1.2")       // OCI fallback workload
+addContainer("cuda-job", "ghcr.io/acme/cuda-job:1.2")    // wires + builds via BuildProvider (wasm-on-OCI default)
   .withEndpoint({ port: 8080, scheme: "http" })
   .withEnvironment("MODEL", "yolo")
   .withVolume("models", "/models")
   .withHttpHealthCheck("/healthz");
 ```
+The BuildProvider is the programmable build seam: a prebuilt image short-circuits the build; a source dir is compiled (wasm-on-OCI by default) before the edge/link is finalized.
 
 ### Annotations = typed extensibility (`.with(...)`)
 Aspire attaches behavior via resource **annotations** consumed by deploy tools. HoBo's existing provider-specific options pattern **is** this: `.with(provider.options())` adds typed annotations that the resolved Provider/IaC adapter consumes; non-resolved providers' annotations are inert ([Plan 2](./sdk-api.md#plan-02)). New first-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral.
@@ -134,11 +138,11 @@ Resource-collection ([Plan 21](./authoring-resources-wiring.md#plan-21)) emits a
 {
   "schema": "hobo.manifest/v1",
   "resources": {
-    "db":  { "type": "sql.v1", "port": "wasi:sql", "allow": ["query"],
+    "db":  { "type": "data.v1", "port": "hobo:data", "paradigm": "relational", "allow": ["query"],
              "connectionString": "{db.connectionString}" },
     "api": { "type": "component.v1", "image": "oci://.../api@sha256:…", "runtime": "wasm",
              "exports": ["wasi:http/incoming-handler"],
-             "links": [ { "import": "wasi:sql", "to": "db" } ],
+             "links": [ { "import": "hobo:data", "to": "db" } ],
              "endpoints": { "http": { "scheme": "http", "targetPort": 8080, "external": true } },
              "env": { "ConnectionStrings__db": "{db.connectionString}" },
              "annotations": { "scaling": { "min": 1, "max": 10 }, "with": { "aws.fargate": { "cpu": 512 } } } },
@@ -179,7 +183,7 @@ Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-
 4. **Every access is audited; values are never telemetry.** Secret reads are `token.Used` / `secret.Accessed` events; OTel/OpenInference spans and `ctx.log` redact values ([Plan 14](./reliability-observability-cost.md#plan-14)).
 
 ### SDK surface
-Declared inline (IfC, [Plan 21](./authoring-resources-wiring.md#plan-21)) alongside resources; typed; read via `ctx.config`.
+Declared inline (IfC, [Plan 21](./authoring-resources-wiring.md#plan-21)) alongside resources; read via `ctx.config`. Each item is a **varlock-style declarative schema** entry ([ADR-0027](./adr/02-identity-security.md#adr-0027)) — typed and annotation-driven, carrying its **type, required, sensitivity, and source** — so `can-deploy` can validate the config surface without ever touching values:
 ```ts
 import { config, secretRef, env, fromBinding } from "@hobo/sdk";
 
@@ -211,7 +215,7 @@ flowchart TD
   STS --> AUDIT
   ESCAPE --> AUDIT
 ```
-1. **Bound resource** → SVID-brokered token (zero stored secret). Default for `database`/`queue`/`objectStore`/etc.
+1. **Bound resource** → SVID-brokered token (zero stored secret). Default for `data`/`queue`/`bucket`/etc.
 2. **Secret with provider federation** → broker a scoped token, read the value from the provider's secret store at use-time.
 3. **Non-secret config** → typed value from the Camp's Deployment Set (no broker needed).
 4. **Static-secret escape hatch** → only when a provider offers no federation/secret-store path. **Bounded, concretely:** max TTL **≤ 7 days** (default; per-Camp tunable down), **rotation enforced** (a key past TTL fails closed with a typed `SecretExpiredError`, it does not hang), **every fetch audited** (not just grant/revoke), and **in-process cache bounded** (short TTL; each cache miss re-audits) — explicit opt-in ([ADR-0023](./adr/02-identity-security.md#adr-0023)). `hobo doctor` warns when this path is used where federation exists ([Plan 15](./developer-experience.md#plan-15), FR-014).
@@ -249,7 +253,7 @@ The secretless model extends to **cryptography**: a `crypto(name)` resource (`ho
 - **Portable** — the Bindle declares needs, the Camp supplies sources; swapping clouds is a Camp change, never an app edit.
 
 ### Notes
-- The authoring surface is `config()`/`secretRef()`/`env()`, read via `ctx.config`.
+- The authoring surface is `config()`/`secretRef()`/`env()`, read via `ctx.config`; each declared item is a typed, annotation-driven varlock-style schema entry (type, required, sensitivity, source) ([ADR-0027](./adr/02-identity-security.md#adr-0027)).
 - Fetched secrets are held in a short, bounded in-process cache (TTL above); each cache miss re-audits.
 - Non-secret config supports live reload, pushed from the Camp's Deployment Set.
 - Each provider's `secrets` port adapter resolves per-Camp sourcing; providers without a native secrets port use a shim adapter behind the same port.
@@ -258,7 +262,7 @@ The secretless model extends to **cryptography**: a `crypto(name)` resource (`ho
 
 **Plan 38 — Hobo Code (the configuration + code DSL)**
 
-> **One surface for config *and* code, with two entry levels.** Hobo Code is HoBo's human-readable DSL that declares **Yards, Camps, Bindles** and their resources/wiring **and** the workflow/step/agent behavior that runs in them — built to be **optimal for AI generation, training, and optimization** as well as human authoring. It is a *sibling* authoring front-end to the TypeScript SDK: both lower to the same **Manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)) + runtime constructs ([ADR-0049](./adr/05-config-matching-environments.md#adr-0049)).
+> **One surface for config *and* code, with two entry levels.** Hobo Code is HoBo's human-readable DSL that declares **Yards, Camps, Bindles** and their resources/wiring **and** the workflow/step/agent behavior that runs in them — built to be **optimal for AI generation, training, and optimization** as well as human authoring. The programmable surface is **WIT/WASM**; any Component-Model language can author Bindles and providers, and TypeScript is just the **first reference implementation** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). Hobo Code is a *sibling* authoring front-end alongside that TypeScript reference: both lower to the same **Manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)) + runtime constructs ([ADR-0049](./adr/05-config-matching-environments.md#adr-0049)).
 
 ### Two-level authoring model
 Authors enter at whichever level fits; both compile to the same artifacts ([ADR-0049](./adr/05-config-matching-environments.md#adr-0049)).
@@ -302,7 +306,7 @@ flowchart LR
 
 ### Relationship to existing concepts
 - **Manifest IR ([Plan 22](./authoring-resources-wiring.md#plan-22))** — the lowering target; Hobo Code is one more way to produce it. The IR is the single source of truth.
-- **TypeScript SDK ([Plan 2](./sdk-api.md#plan-02))** — the peer front-end; identical semantics, different ergonomics. Codegen ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) and conformance ([Plan 9](./verification.md#plan-09)) apply to both.
+- **TypeScript SDK ([Plan 2](./sdk-api.md#plan-02))** — the **first reference implementation** of the WIT/WASM authoring surface, not a required language ([ADR-0069](./adr/01-architecture-core.md#adr-0069)); a peer front-end with identical semantics, different ergonomics, and any Component-Model language can stand beside it. Codegen ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) and conformance ([Plan 9](./verification.md#plan-09)) apply to both.
 - **The Forge, the Crew & `"use training"` ([Plan 33](./forge-generated-stack.md#plan-33)/[Plan 40](./operators-sre.md#plan-40)/[Plan 23](./forge-generated-stack.md#plan-23))** — the primary *consumers/producers* of Hobo Code: it is the **token-efficient IR for codegen + platform config** that the generated stack ([Plan 41](./forge-generated-stack.md#plan-41)) emits and the **Platform Engineer operator** ([Plan 40](./operators-sre.md#plan-40)) authors. A compact, regular, low-ambiguity target is what makes generation/repair/optimization tractable and cheap in tokens.
 - **Capability Manifest ([Plan 6](./ai-native-agent-auth.md#plan-06))** — a distinct artifact, not to be confused with this DSL: it is the machine-readable auth+capability standard (`/.well-known/capability-manifest/`, WIT `hobo:capability-manifest`).
 - **Data plane / projections ([Plan 39](./data-plane.md#plan-39))** — a target for Hobo Code's config half: declaring **projections + schema mappings** (and the WIT-record domain schema, [ADR-0051](./adr/03-data-plane.md#adr-0051)) is exactly the kind of regular, declarative surface the DSL is for.

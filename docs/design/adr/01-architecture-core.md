@@ -25,7 +25,7 @@
 ## ADR-0005
 **One ports/adapters shape for cloud, IaC, and build/VM.**
 
-**Decision:** `CloudProvider`, `IacProvider`, `BuildProvider` are all swappable ports; a cloud provider composes the other two. **Consequences:** uniform extensibility (incl. Forge); a provider must implement more surface to be "complete" ([Plan 3](../control-plane.md#plan-03)).
+**Decision:** `CloudProvider`, `IacProvider`, `BuildProvider` are all swappable ports; a cloud provider composes the other two. The default **`BuildProvider` is a dagger-adjacent programmable build engine** — a DAG of containerized build steps — that **packages wasm components as OCI images by default (wasm-on-OCI)**, so `addContainer(...)` both wires *and builds* the container from one syntax. **Consequences:** uniform extensibility (incl. Forge); one build mechanism for wasm-first and container workloads; a provider must implement more surface to be "complete" ([Plan 3](../control-plane.md#plan-03)).
 
 ## ADR-0006
 **IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); no single primary.**
@@ -38,9 +38,9 @@
 **Decision:** per-provider optimization is additive, typed, and inert for non-resolved providers, so one Bindle targets many clouds unedited; `require`/`prefer` controls strictness. Provider options use an **idiomatic typed-options builder pattern** — the same shape .NET uses for middleware/service configuration (`addX(options => { … })` with a strongly-typed, per-provider options object) — so options are discoverable, validated, and composable. **Consequences:** the agnostic promise + escape hatch coexist; provider packages must export accurate typed option builders ([Plan 2](../sdk-api.md#plan-02)).
 
 ## ADR-0011
-**`bindle.ts` (what) vs `hobo.config.ts` (where/how).**
+**Scopes are first-class SDK objects (`bindle`/`camp`/`yard`/`junction`), not config files.**
 
-**Decision:** app topology is provider-agnostic and separate from the mapping/config that names providers. **Consequences:** clean review boundaries; swapping clouds touches only config ([Plan 15](../developer-experience.md#plan-15)).
+**Decision:** the four scopes are constructed and composed **programmatically in the SDK**, not declared in separate `*.config.ts` files. `bindle(name)` declares the provider-agnostic app (`.addContainer(...)`, abstract deps); `camp(name)` imports Bindles and maps them to one provider's resources (`camp.import(app)`); `yard(name, provider)` groups Camps under one provider and holds cross-Camp policy/gateways (`yard.setup(camp1, camp2)`); `junction(name)` connects Yards across clouds (`junction.add(azureYard, awsYard)`). The objects **are** the topology; config is data on them, not a parallel file. **Consequences:** one composable, typed, testable surface; the Bindle stays provider-agnostic while Camp/Yard/Junction carry provider + cross-cloud specifics ([Plan 2](../sdk-api.md#plan-02)/[Plan 15](../developer-experience.md#plan-15)).
 
 ## ADR-0013
 **Per-resource IaC stacks (default).**
@@ -48,25 +48,24 @@
 **Decision:** each resource owns an isolated IaC stack. **Consequences:** blast-radius isolation + clean compensation; more state objects to manage ([Plan 3](../control-plane.md#plan-03)).
 
 ## ADR-0026
-**Scope model: `Yard ⊃ Camp ⊃ Bindle`.**
+**Scope model: `Bindle ⊂ Camp ⊂ Yard ⊂ Junction`.**
 
 ### Decision
-Three explicitly nested scopes:
+Four nested scopes, each owning a distinct kind of "what varies":
 
-1. **Bindle = app-level config.** Provider-agnostic topology + bindings. Deployed *into* Camps.
-2. **Camp = provider-specific deployment target.** One environment on one provider/cloud (e.g. `prod-aws`). A Camp **provides the durable runtime** — the **runtime ports** (EventStore + Queue + Streamer + ActorHost + Clock) are supplied by the Camp (built-in `runtime-local`; backends `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`), behind the `Runtime` interface (`@hobo/runtime-*` packages).
-3. **Yard = control plane + broadest scope.** The orchestrator, and the holder of **cross-provider / cross-cloud / hybrid** policy + topology, governing many Camps. A multi-cloud `production` is several Camps under one Yard.
+1. **Bindle = the app, provider-agnostic.** App-level abstractions only — service boundaries and **abstract dependencies** (a SQL/data store, a message bus, a bucket) — with **no cloud-provider specifics**. A Bindle deploys *into* Camps unchanged.
+2. **Camp = a provider-specific deployment target (≈ a Pulumi stack).** It maps the Bindle's abstract deps onto **one provider's** concrete resources in one provider-specific grouping (e.g. an Azure resource group in one region); two Camps can be the same Bindle on the same provider but differ by group/region. A Camp **provides the durable runtime** (EventStore + Queue + Streamer + ActorHost + Clock, behind the `Runtime` interface; built-in `runtime-local`, backends `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`) and carries **camp-local networking constraints**.
+3. **Yard = cross-Camp scope, still provider-specific.** A Yard groups Camps under **one** provider and applies **cross-Camp constraints**: policies, provider-global networking (e.g. a vWAN), and global gateways (e.g. Azure Front Door). It runs the control plane for its provider.
+4. **Junction = cross-cloud / hybrid.** A Junction connects **Yards** (each provider-specific) for multi-cloud and hybrid scenarios — federating trust + signed artifacts + cross-cloud policy, never a shared-state controller ([ADR-0043](07-portability-extensibility.md#adr-0043)).
 
-**Environments are a matching dimension, not a layer.** A Camp carries an `environment type` ([Plan 25](../platform-engineering.md#plan-25)/[Plan 26](../platform-engineering.md#plan-26)); "prod across two clouds" = two Camps under a Yard. No fourth noun.
+**Environments are a matching dimension, not a layer** — a Camp carries an `environment type` ([Plan 25](../platform-engineering.md#plan-25)/[Plan 26](../platform-engineering.md#plan-26)).
 
 **WIT interface** is the WebAssembly Component Model term ([Plan 20](../wasm-runtime-wit.md#plan-20)/[Plan 24](../wasm-runtime-wit.md#plan-24)) — the contract shape for ports.
 
-**Above the Yard — peer federation (the `Junction`).** The Yard is the broadest scope for an app/org. For the extreme-isolation case where wholly separate Yards must interoperate, an optional **peer-federation** aggregate — the **`Junction`** — sits over sovereign Yards ([ADR-0043](07-portability-extensibility.md#adr-0043)): it federates trust + signed artifacts, is **not** a controller, and does **not** make a Yard subordinate. Default deployments never see it.
-
 ### Consequences
-- **(+)** A clean, teachable hierarchy (governed-how-across-clouds / where-on-which-provider / what-the-app-is); HoBo owns its runtime concept end-to-end.
-- **(+)** Cross-provider/hybrid governance has a home (the Yard) that matches how the control plane already works.
-- **(+)** Environments need no extra noun; the Junction covers sovereign federation without subordinating the Yard.
+- **(+)** Each level maps to a real concern: portable app (Bindle) / provider stack (Camp ≈ Pulumi stack) / provider-global cross-Camp policy + gateways (Yard) / cross-cloud + hybrid (Junction).
+- **(+)** Multi-region within a provider = several Camps under one Yard; multi-cloud = several Yards under a Junction — no overloaded noun.
+- **(+)** Cross-cloud is an explicit first-class scope (the Junction), not a property smuggled into the control plane.
 
 ## ADR-0031
 **wasm host of record & runtime substrate.**
@@ -131,6 +130,7 @@ Nitric proves the "runtime + membrane + provider" shape: app code calls an SDK �
 3. **The membrane is wRPC, not plain gRPC.** App-component imports are bound to provider-component exports by **links** and invoked over **wRPC** (wasmCloud's WIT-native RPC; transport-agnostic, NATS by default), so the same WIT contract drives in-process, cross-process, and cross-host (lattice) invocation — consistent with the `component-host` adapters ([ADR-0031](#adr-0031), incl. the wasmCloud-lattice host). No separate IDL or hand-maintained protobuf: the wire is generated from WIT.
 4. **A thin SDK wraps the runtime.** The TS SDK ([Plan 2](../sdk-api.md#plan-02)) is ergonomic sugar over the generated WIT bindings — typed clients for the runtime's imported interfaces. It holds **no cloud logic**; all behavior lives behind the WIT ports in the runtime + providers, so the SDK stays small and every language with a Component-Model binding can host the same app.
 5. **Deny-by-default is structural.** An imported interface with no link / no `.allow()` grant cannot be invoked — wRPC only routes linked interfaces and capability handles are deny-by-default ([ADR-0023](02-identity-security.md#adr-0023)/[Plan 21](../authoring-resources-wiring.md#plan-21)). Capability is granted by linking, not by ambient reachability.
+6. **The contract is WIT/WASM, not a language.** The entire programmable surface — Bindles, services, providers — targets the Component Model and runs on wasmCloud; HoBo requires **WIT + WASM**, with **TypeScript as the first reference implementation, not a requirement**. Any language with a Component-Model toolchain authors against the same WIT worlds.
 
 ### Alternatives considered
 - **Plain gRPC membrane (Nitric's choice).** Rejected: not WIT-native — needs a separate `.proto` IDL + codegen parallel to WIT, and a non-component wire that breaks the "one contract = the WIT world" model. wRPC gives the same RPC ergonomics generated straight from WIT.

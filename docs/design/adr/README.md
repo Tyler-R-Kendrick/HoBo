@@ -25,13 +25,13 @@
 | 0002 | Pluggable durable ports + a built-in engine (the Camp runtime) | [architecture-core](01-architecture-core.md#adr-0002) |
 | 0003 | Event sourcing + CQRS as the foundation | [architecture-core](01-architecture-core.md#adr-0003) |
 | 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
-| 0005 | One ports/adapters shape for cloud, IaC, and build/VM | [architecture-core](01-architecture-core.md#adr-0005) |
+| 0005 | One ports/adapters shape for cloud, IaC & build (dagger-adjacent, wasm-on-OCI) | [architecture-core](01-architecture-core.md#adr-0005) |
 | 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); no single primary | [architecture-core](01-architecture-core.md#adr-0006) |
 | 0007 | Provider-specific options via an idiomatic typed-options builder (`.with(...)`) | [architecture-core](01-architecture-core.md#adr-0007) |
 | 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
 | 0010 | Forge: AI-generated providers gated by conformance | [ai-generation-operators](06-ai-generation-operators.md#adr-0010) |
-| 0011 | `bindle.ts` (what) vs `hobo.config.ts` (where/how) | [architecture-core](01-architecture-core.md#adr-0011) |
+| 0011 | Scopes are first-class SDK objects (bindle/camp/yard/junction), not files | [architecture-core](01-architecture-core.md#adr-0011) |
 | 0012 | Credential-scoped executors; isolation tier chosen per workload | [identity-security](02-identity-security.md#adr-0012) |
 | 0013 | Per-resource IaC stacks (default) | [architecture-core](01-architecture-core.md#adr-0013) |
 | 0014 | MCP as a first-class control surface | [ai-generation-operators](06-ai-generation-operators.md#adr-0014) |
@@ -44,7 +44,7 @@
 | 0023 | Security posture: secure-by-default, zero-trust, defense-in-depth | [identity-security](02-identity-security.md#adr-0023) |
 | 0024 | Portability conformance guarantee ("same Bindle, N clouds") | [portability-extensibility](07-portability-extensibility.md#adr-0024) |
 | 0025 | `"use training"` directive + `training-engine` behind a port (Agent Lightning / Trace optional, internal-only) | [ai-generation-operators](06-ai-generation-operators.md#adr-0025) |
-| 0026 | Scope model: `Yard ⊃ Camp ⊃ Bindle` | [architecture-core](01-architecture-core.md#adr-0026) |
+| 0026 | Scope model: `Bindle ⊂ Camp ⊂ Yard ⊂ Junction` | [architecture-core](01-architecture-core.md#adr-0026) |
 | 0027 | Secretless-first configuration & secrets | [identity-security](02-identity-security.md#adr-0027) |
 | 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | [config-matching-environments](05-config-matching-environments.md#adr-0028) |
 | 0029 | Reactive / live-query model (event-log reactor) | [data-plane](03-data-plane.md#adr-0029) |
@@ -53,7 +53,7 @@
 | 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective) | [config-matching-environments](05-config-matching-environments.md#adr-0033) |
 | 0034 | Generalized, extensible search capability (vector/graph as extensions) | [data-plane](03-data-plane.md#adr-0034) |
-| 0035 | Custom domains & multi-cloud ingress | [portability-extensibility](07-portability-extensibility.md#adr-0035) |
+| 0035 | Custom domains & DNS (Yard-level, per-Camp overrides) & multi-cloud ingress | [portability-extensibility](07-portability-extensibility.md#adr-0035) |
 | 0036 | Air-gapped / sovereign Yard mode | [portability-extensibility](07-portability-extensibility.md#adr-0036) |
 | 0037 | SDK codegen surface & policy | [config-matching-environments](05-config-matching-environments.md#adr-0037) |
 | 0038 | End-user / application auth | [identity-security](02-identity-security.md#adr-0038) |
@@ -61,7 +61,7 @@
 | 0040 | Cross-Camp stateful consistency | [config-matching-environments](05-config-matching-environments.md#adr-0040) |
 | 0041 | Migration & onboarding (adopt-in-place) | [portability-extensibility](07-portability-extensibility.md#adr-0041) |
 | 0042 | Local-dev fidelity (simulate / mock / Camp-only) | [portability-extensibility](07-portability-extensibility.md#adr-0042) |
-| 0043 | Multi-Yard federation: the Junction (and the Yard's scope, clarified) | [portability-extensibility](07-portability-extensibility.md#adr-0043) |
+| 0043 | The Junction: cross-cloud / hybrid federation of provider-specific Yards | [portability-extensibility](07-portability-extensibility.md#adr-0043) |
 | 0044 | Feature flags & progressive delivery | [governance-verification](04-governance-verification.md#adr-0044) |
 | 0045 | SLO-as-code, error-budget gating & alerting model | [governance-verification](04-governance-verification.md#adr-0045) |
 | 0046 | Boundary standards: CloudEvents, OCSF & OTLP | [governance-verification](04-governance-verification.md#adr-0046) |

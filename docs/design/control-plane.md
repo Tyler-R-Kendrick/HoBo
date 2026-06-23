@@ -81,22 +81,22 @@ This makes self-hosting a first-class, reproducible path, not a bespoke install 
 ### Multi-tenancy
 Tenant = isolation boundary for event streams, actor placement, credential scope, and executor pools. Self-host runs single-tenant; hosted runs multi-tenant on the same code. Full model in [Plan 12](./security-networking.md#plan-12).
 
-### Yard scope & multi-Yard (the Junction) ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043))
-The Yard is the central **cross-cloud / cross-region orchestrator**, and **one Yard per app/org is the norm** — a multi-cloud `production` is several **Camps** under *one* Yard ([ADR-0026](./adr/01-architecture-core.md#adr-0026)/[ADR-0028](./adr/05-config-matching-environments.md#adr-0028)); **multi-region needs no second Yard.** A *second* Yard is warranted only for **extreme isolation** — a tenant/boundary requiring a wholly separate control plane (sovereign/regulated, air-gapped [ADR-0036](./adr/07-portability-extensibility.md#adr-0036), or isolation beyond per-tenant streams). When such sovereign Yards must interoperate, an optional **`Junction`** federates them as **peers** — sharing **identity trust + signed policy packs + signed registry bundles**, never shared state and never a controller; each Yard keeps its own log/control-plane/data (residency preserved). **Single-Yard is the default and federation-ready; the Junction federates sovereign Yards when needed ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)).**
+### Yard scope & multi-Yard (the Junction) ([ADR-0026](./adr/01-architecture-core.md#adr-0026)/[ADR-0043](./adr/07-portability-extensibility.md#adr-0043))
+The Yard is **provider-specific** — **one Yard per provider** — running that provider's control plane over its **Camps** and applying cross-Camp constraints: policies, provider-global networking (e.g. a vWAN), and global gateways (e.g. Azure Front Door). **Multi-region within a provider is several Camps under one Yard; it needs no second Yard.** Going cross-cloud / hybrid means **several Yards** (one per provider), connected by a **`Junction`** — the normal, first-class multi-cloud mechanism, not an extreme-isolation escape hatch. The Junction federates Yards as **peers** — sharing **identity trust + signed policy packs + signed registry bundles + cross-cloud policy**, never shared state and never a controller; each Yard keeps its own log/control-plane/data (residency preserved). A regulated/air-gapped boundary ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) is just one provider-specific Yard that may stand alone or join a Junction. **A Yard is provider-scoped and federation-ready; the Junction is how Yards span clouds ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)).**
 
 ```mermaid
 flowchart TB
-  subgraph JUNCTION["Junction: peer federation, trust + signed artifacts, no shared state"]
-    subgraph Y1["Yard A (sovereign: own log + control plane + data)"]
-      C1["Camp prod-aws"]
-      C2["Camp prod-azure"]
+  subgraph JUNCTION["Junction: cross-cloud peer federation, trust + signed artifacts + policy, no shared state"]
+    subgraph Y1["Yard AWS (provider-specific: own log + control plane + data)"]
+      C1["Camp prod-aws-use1"]
+      C2["Camp prod-aws-euw1"]
     end
-    subgraph Y2["Yard B (sovereign: own log + control plane + data)"]
-      C3["Camp eu-gcp"]
+    subgraph Y2["Yard Azure (provider-specific: own log + control plane + data)"]
+      C3["Camp prod-azure-weu"]
     end
   end
   Y1 <-.->|federated identity trust OIDC/SVID| Y2
-  Y1 <-.->|signed policy packs + registry bundles| Y2
+  Y1 <-.->|signed policy packs + registry bundles + cross-cloud policy| Y2
 ```
 
 ### Iteration hooks
@@ -180,12 +180,15 @@ The Planner is a pure function (easy to test, replayable): `plan(bindle, config,
 
 The plan is content-addressed and stored via `deployment.Planned`, so the exact decisions are auditable and re-runnable.
 
+**Compile-time provider-capability feedback with remediation ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).** Not all providers support all capabilities. Each registered provider **advertises its supported capabilities** in the Registry's Capability Manifest, and the Planner/Matching runs the same capability-negotiation pass **statically, at author time** (in-editor / `hobo plan` / pre-commit) against that manifest — not only at deploy. An unsupported configuration (a `require`d capability the resolved provider can't satisfy) surfaces as **static feedback before deploy**, each finding carrying a **remediation suggestion**: the Planner scans registered providers for one that *does* advertise the capability and names it (e.g. *"provider X doesn't support containers — host on registered provider Y"*). This is in addition to — not a replacement for — deploy-time rejection: the same gap still emits `deployment.PlanRejected` with a precise reason at deploy, so an agent or human gets the same signal early (fast feedback) and late (enforced).
+
 ```mermaid
 flowchart TD
   B[Bindle + hobo.config] --> P{Planner}
   R[(Registry: Capability Manifest<br/>capabilities + cost)] --> P
   P -->|resolve provider| RP[ResourcePlan x N]
   P -->|reject| X[deployment.PlanRejected<br/>precise reason]
+  P -->|author-time: unsupported capability| F[static feedback<br/>+ remediation: try provider Y]
   RP --> DAG[DeploymentPlan DAG]
 ```
 

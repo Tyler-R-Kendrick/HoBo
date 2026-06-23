@@ -15,7 +15,7 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 > - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)).
 > The Layer 1–4 model still holds; read it as the conceptual core, with those three docs as the concrete runtime/authoring surface.
 
-> **Resource Definitions & Matching (Humanitec parity).** The `hobo.config.ts` mapping (`defaultProvider`/`tiers`/`bindings`) is now **sugar over default Resource Definitions** — platform engineers can override with explicit, context-matched definitions + resource **classes** ([Plan 25](./platform-engineering.md#plan-25)); Camps gain **environment types** ([Plan 26](./platform-engineering.md#plan-26)). Resources accept a `class` (`standard`/`ha`/…). HoBo can also **import a Score file** as a workload-spec input (interop), like importing an Aspire manifest.
+> **Resource Definitions & Matching (Humanitec parity).** A Camp's mapping (`defaultProvider`/`tiers`/`bindings`) is now **sugar over default Resource Definitions** — platform engineers can override with explicit, context-matched definitions + resource **classes** ([Plan 25](./platform-engineering.md#plan-25)); Camps gain **environment types** ([Plan 26](./platform-engineering.md#plan-26)). Resources accept a `class` (`standard`/`ha`/…). HoBo can also **import a Score file** as a workload-spec input (interop), like importing an Aspire manifest.
 
 ---
 
@@ -63,18 +63,18 @@ A **Provider** binds these ports to a backend and declares *how* it realizes the
 
 ---
 
-### Layer 3 — Topology / resources (declare the app, map to providers)
-`bindle()` declares resources and bindings; **mapping rules** decide which provider realizes each port. Three mapping styles, all supported:
+### Layer 3 — Topology (first-class scope objects: bindle · camp · yard · junction)
+The topology scopes are **first-class SDK objects, constructed and composed programmatically** ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) — not `*.config.ts` files. A **`bindle()`** is the provider-agnostic app (resources + bindings); a **`camp()`** maps it to **one provider** (runtime backend + provider mapping, the "where/how"); a **`yard()`** is **provider-specific** and composes the Camps under that one provider (its cross-Camp policy + control plane); a **`junction()`** connects Yards **across clouds** for the multi-cloud / hybrid case. You build them in code and wire them together — the same values flow into deploy. **Mapping rules** on a Camp decide which provider realizes each port; three mapping styles, all supported:
 
 ```ts
-// hobo.config.ts — Camps (runtime backend + provider mapping; the "where/how")
-import { defineHobo } from "@hobo/core";
+import { camp, yard, junction } from "@hobo/sdk";
 import { azure } from "@hobo/provider-azure";
 import { aws } from "@hobo/provider-aws";
 import { cloudflare } from "@hobo/provider-cloudflare";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 
-export default defineHobo({
+// a Camp maps the Bindle to ONE provider (runtime backend + mapping; the "where/how")
+const prodAzure = camp("prod-azure", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),   // the Camp's durable runtime backend
 
   // (a) whole-app: "just host everything on Azure, figure out the best way"
@@ -93,10 +93,16 @@ export default defineHobo({
     "shop.api":  aws.fargate({ cpu: 512, memory: 1024 }),
   },
 });
+
+// a Yard is provider-specific: it composes the Camps under ONE provider + that provider's cross-Camp policy
+const azureYard = yard("azure", { camps: [prodAzure /*, more Azure-region Camps */] });
+
+// a Junction connects provider-specific Yards across clouds (multi-cloud / hybrid)
+export default junction("shop", { yards: [azureYard /*, awsYard, … */] });
 ```
 
 ```ts
-// bindle.ts — the app topology (the "what")
+// the app topology (the "what") — the provider-agnostic Bindle
 import { bindle, database, service, web, queue } from "@hobo/sdk";
 
 export default bindle("shop", (b) => {

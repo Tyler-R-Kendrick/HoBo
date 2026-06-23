@@ -56,11 +56,11 @@ Additional views the runtime/IfC model adds, each a projection/stream like the r
 
 **Plan 15 — CLI & developer experience**
 
-> **Platform/ops commands (Humanitec parity):** new platform/ops commands — `hobo def` (manage Resource Definitions, [Plan 25](./platform-engineering.md#plan-25)), `hobo pack` (Resource Packs, [Plan 27](./platform-engineering.md#plan-27)), `hobo env clone` + ephemeral/preview Camps ([Plan 26](./platform-engineering.md#plan-26)), `hobo delta`/`hobo promote`, `hobo pipeline` + `hobo relay` ([Plan 28](./platform-engineering.md#plan-28)). Developer commands are unchanged — definitions are a platform-team surface.
+> **Platform/ops commands (Humanitec parity):** new platform/ops commands — `hobo def` (manage Resource Definitions, [Plan 25](./platform-engineering.md#plan-25)), `hobo pack` (Resource Packs, [Plan 27](./platform-engineering.md#plan-27)), `hobo env clone` + ephemeral/preview Camps ([Plan 26](./platform-engineering.md#plan-26)), `hobo delta` (promotion is `hobo up --camp prod` against the promoted revision), `hobo pipeline` + `hobo relay` ([Plan 28](./platform-engineering.md#plan-28)). Developer commands are unchanged — definitions are a platform-team surface.
 
 > **Contracts & policy (gates):** add the verification surface — `hobo verify --target <env>` (the composite Gatekeeper: contracts + policy + evals + conformance + cost), `hobo can-deploy --target <env>` ([Plan 29](./contracts-policy-flags.md#plan-29)), `hobo explain-failure` (replay a blocked gate's events), `hobo fix --dry-run` (Forge-proposed remediation), and `hobo promote-contract` / `hobo promote-impl` ([Plan 23](./forge-generated-stack.md#plan-23)). All read-only by default; mutations go through the same gates.
 
-> **Runtime/authoring commands.** `hobo build` compiles each service to a **wasm component** (jco/`@hobo/componentize`, OCI-container fallback) — [Plan 20](./wasm-runtime-wit.md#plan-20). `hobo deploy`/`plan` run a **resource-collection** phase (IfC) that emits the **manifest IR** — [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 22](./authoring-resources-wiring.md#plan-22). New commands: `hobo collect` (print collected resources, à la `nitric spec`) and `hobo stub <resource|service>` to run with stubs ([Plan 23](./forge-generated-stack.md#plan-23)). `hobo.config.ts` + Camps play the role of Nitric stack files.
+> **Runtime/authoring commands.** `hobo build` compiles each service to a **wasm component** (jco/`@hobo/componentize`, OCI-container fallback) — [Plan 20](./wasm-runtime-wit.md#plan-20). `hobo up`/`plan` run a **resource-collection** phase (IfC) that emits the **manifest IR** — [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 22](./authoring-resources-wiring.md#plan-22). New commands: `hobo collect` (print collected resources, à la `nitric spec`) and `hobo stub <resource|service>` to run with stubs ([Plan 23](./forge-generated-stack.md#plan-23)). The SDK Camp objects ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) play the role of Nitric stack files — programmatic, not declared.
 
 ### DX principles
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
@@ -70,39 +70,59 @@ Additional views the runtime/IfC model adds, each a projection/stream like the r
 5. **Everything the CLI does, an agent can do** — every command has an MCP equivalent ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 
 ### Command surface
+The CLI collapses to two lifecycle verbs — **`hobo up`** (bring the topology up) and **`hobo down`** (tear it down) — plus a small essential set around them. Everything else is a flag or subcommand, not a new verb.
 ```
-hobo new <name> [--template todo|api|agent|fullstack]   scaffold a Bindle
+hobo up [--camp prod] [--strategy canary] [--to <rev>] [--rollback]
+                                                         provision + deploy the object graph (ADR-0011); the only "ship it" verb
+hobo down [--camp prod]                                  tear down / deprovision the topology
 hobo dev                                                 run locally on runtime-local (no cloud)
-hobo build                                               compile services to wasm components -> OCI (container fallback)
+hobo plan [--camp prod]                                  dry-run: DeploymentPlan + cost + warnings (what `up` would do)
+hobo doctor                                              env/credential/connectivity diagnostics
 hobo codegen [--check]                                   (re)generate typed clients into _generated/; --check fails on drift (CI) (ADR-0037)
+hobo verify [--target <env>]                             composite Gatekeeper: contracts + policy + evals + conformance + cost
+```
+**`hobo up` subsumes the old lifecycle verbs.** No separate `deploy`/`destroy`/`rollback`/`promote`/`yard up`:
+- **deploy** → `hobo up` (provision-then-deploy is one convergence).
+- **destroy / teardown** → `hobo down`.
+- **rollback** → `hobo up --to <rev>` (re-realize a prior revision) or `hobo up --rollback` (last-good).
+- **promote** → `hobo up --camp prod` against the promoted revision (moving a Camp pointer is just bringing prod up to it).
+- **self-hosted Yard bootstrap** → `hobo up` on the program that constructs the Yard ([Plan 4](./control-plane.md#plan-04)); `--restore <log>` restores from an event log.
+
+Auxiliary subcommands (not lifecycle verbs):
+```
+hobo new <name> [--template todo|api|agent|fullstack]   scaffold an SDK program
+hobo build                                               compile services to wasm components -> OCI (container fallback)
 hobo collect [--camp prod]                               run resource-collection (IfC) -> print manifest IR
 hobo stub <resource|service>                             run with a stub behind a WIT port (Plan 23)
-hobo plan [--camp prod]                                  dry-run: DeploymentPlan + cost + warnings
-hobo up [--camp prod] [--strategy canary]                bring up the runtime/Camp + deploy the Bindle (everyday "make it run")
-hobo down [--camp prod]                                  tear it down (deprovision/stop)
-hobo deploy [--camp prod] [--strategy canary]            provision/converge to real infra
-hobo promote <version> --camp prod                       move a Camp pointer
-hobo rollback --camp prod                                revert to previous good version
-hobo destroy --camp <camp>                               tear down (guardrail-gated)
 hobo inspect run <id> | deploy <id> | topology           projections / time-travel
 hobo logs [--follow] [<resource>]                        live stream via the Camp runtime streams
 hobo drift [--heal|--propose]                            drift status + reconcile
-hobo login                                               obtain a dev SVID (OIDC)
+hobo login | claim                                       obtain a dev SVID (OIDC); claim an anonymous deploy into an account
 hobo registry search <capability> | add <provider>       browse/install providers (Capability Manifest)
 hobo forge <provider-url>                                request an AI-generated provider
 hobo import terraform|pulumi|opentofu|lakebed|faas <src> adopt an existing estate in place (ADR-0041)
-hobo yard up [--restore <log>] | status                  run/restore a self-hosted Yard
-hobo doctor                                              env/credential/connectivity diagnostics
 ```
+Both `up` and `down` drive the thin-SDK + **wRPC** runtime — typed clients over generated WIT bindings, no cloud logic in the SDK ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
 
 ### Lifecycle verbs (`up` / `down`)
-`hobo up` is the everyday "make it run" verb: it brings up the runtime/Camp and deploys the Bindle in one step (a `plan`→`deploy` convergence to the resolved Camp). `hobo down` is its inverse — deprovision/stop the Bindle and tear the Camp back down. They wrap the existing deploy/destroy story (`hobo deploy`/`hobo destroy` remain the explicit, finer-grained verbs); `hobo yard up` stays the control-plane bootstrap variant that runs/restores a self-hosted **Yard** ([Plan 4](./control-plane.md#plan-04)), whereas `hobo up` targets a **Camp** under an existing Yard. All three drive the thin-SDK + **wRPC** runtime — typed clients over generated WIT bindings, no cloud logic in the SDK ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
+`hobo up` realizes whatever object graph the program builds — provision then deploy, in one convergence — and `hobo down` reverses it. There is no separate deploy/destroy/rollback/promote vocabulary: those are revisions and targets of the same two verbs. `up` reads the topology from the SDK objects the program constructs ([ADR-0011](./adr/01-architecture-core.md#adr-0011)), not from config files, so the same verb brings up a single Camp, a multi-Camp Yard, or a cross-cloud Junction — whatever the graph contains. Provision is idempotent: running `up` again converges to the desired graph; `up --to <rev>`/`--rollback` re-realizes a prior revision. Both verbs drive the thin-SDK + **wRPC** runtime — typed clients over generated WIT bindings, no cloud logic in the SDK ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
 
-### The two config files
-- **`bindle.ts`** — *what* the app is (resources + bindings + runtime primitives). Provider-agnostic.
-- **`hobo.config.ts`** — *where/how* it maps (runtime backend + provider mapping rules + Camps). The only file that names providers.
+### Scopes are SDK objects, not config files
+The topology is **constructed programmatically** — Bindle, Camp, Yard, Junction are first-class SDK objects you build and compose in code, not declarations in `*.config.ts` files ([ADR-0011](./adr/01-architecture-core.md#adr-0011)). `hobo up` realizes whatever object graph the program builds.
+```ts
+import { bindle, camp, yard, junction } from "hobo";
+const app = bindle("my app"); app.addContainer(/* ... */);
+const c1 = camp("c1"); c1.import(app);
+const azureYard = yard("y-azure", azure); azureYard.setup(c1);
+const awsYard = yard("y-aws", aws); awsYard.setup(camp("c2").import(app));
+const j = junction("j1"); j.add(azureYard, awsYard);
+```
+- **Bindle** — provider-agnostic app: resources + bindings + runtime primitives. Names no provider; reviewing it is reviewing the app.
+- **Camp** — maps a Bindle to **one** provider's resources (≈ a Pulumi stack); `camp.import(app)`.
+- **Yard** — provider-specific, **cross-Camp**: groups Camps under one provider and holds cross-Camp policy/gateways; `yard.setup(...)`.
+- **Junction** — connects **Yards across clouds**; `junction.add(...)`.
 
-This separation is deliberate: code review of `bindle.ts` is about the app; `hobo.config.ts` is about hosting. Swapping clouds touches only the latter.
+The objects *are* the topology; provider choice and cross-cloud wiring live on Camp/Yard/Junction, so swapping clouds touches those objects, not the Bindle.
 
 ### The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
@@ -117,8 +137,9 @@ This separation is deliberate: code review of `bindle.ts` is about the app; `hob
 - **Camp-only:** cross-cloud mTLS, real quotas/spend limits, provider drift.
 
 ### Onboarding paths
-- **Human:** `npx hobo new my-app -t fullstack && cd my-app && hobo dev` → edit → `hobo login` → `hobo deploy`.
-- **Agent:** an MCP client calls `list templates → new → plan → deploy`, obtaining tokens via the broker; never touches a key. The agent can `inspect_run`/`tail_logs` to verify and self-correct.
+- **Anonymous `npx` deploy (zero setup):** `npx hobo up` deploys from any directory with **no account and no setup** — an instant, unclaimed deployment that returns a live URL (the Lakebed-style instant feel, now for *deploys*). The deployment is owned by nobody yet; `hobo claim` later binds it to an account, preserving its state and URL. This is the first-class try-it-now path: see a real URL before you ever sign up.
+- **Human:** `npx hobo new my-app -t fullstack && cd my-app && hobo dev` → edit → `hobo login` → `hobo up`.
+- **Agent:** an MCP client calls `list templates → new → plan → up`, obtaining tokens via the broker; never touches a key. The agent can `inspect_run`/`tail_logs` to verify and self-correct.
 - **Brownfield (existing estate):** `hobo import terraform ./infra` adopts the current resources in place (no re-provision) → `hobo plan` shows a no-op diff → bring services under IfC one at a time, binding to still-`external` resources until they're adopted too — the strangler-fig path ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).
 
 ### Editor & ecosystem integration
@@ -127,7 +148,7 @@ This separation is deliberate: code review of `bindle.ts` is about the app; `hob
 - Framework adapters (Next/Astro/Hono/etc.) wire HoBo's build transform like Vercel's `withWorkflow`.
 
 ### Iteration hooks
-- Template set + whether scaffolds include `hobo.config.ts` pre-pinned or fully agnostic.
+- Template set + whether scaffolds wire a provider-pinned Camp object or stay fully agnostic ([ADR-0011](./adr/01-architecture-core.md#adr-0011)).
 - How `hobo dev` emulates provider-specific behaviors (fidelity vs simplicity).
 - Single binary vs `npx`-only distribution; self-update story.
 - Depth of the VS Code extension vs CLI-first.

@@ -184,7 +184,7 @@ The end state the project asks for: a developer (or their agent) writes a Bindle
 
 ### The `auth()` port — federate + verify
 HoBo does **not** reinvent a full identity provider (a deep, security-critical domain). Instead `auth()` is a **federation + verification** port (`hobo:auth`):
-- **Verify any IdP.** It validates an OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo + Convex-`customJwt` pattern, [competitors/shoo](../../competitors/shoo/README.md)/[convex](../../competitors/convex/integrations-ops.md)) — reusing HoBo's existing **OIDC + JWKS + secretless** machinery (Identity already does OIDC/JWKS for agents, [Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 31](./authoring-resources-wiring.md#plan-31)). Providers are declared IfC-style (issuer / JWKS URL / algorithm).
+- **Verify any IdP.** It validates an OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo + Convex-`customJwt` pattern, [competitors/shoo](../../competitors/shoo.md)/[convex](../../competitors/convex.md#integrations-ops)) — reusing HoBo's existing **OIDC + JWKS + secretless** machinery (Identity already does OIDC/JWKS for agents, [Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 31](./authoring-resources-wiring.md#plan-31)). Providers are declared IfC-style (issuer / JWKS URL / algorithm).
 - **Thin built-in for zero-config dev.** An optional built-in (passkey / email magic-link) lets `hobo dev` and small apps work with no external IdP — and runs **offline / in air-gap** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 
 ```ts

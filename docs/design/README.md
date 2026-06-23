@@ -65,11 +65,11 @@ The 45 design plans are consolidated into **21 capability docs**. Each plan keep
 
 **Requirements suite** (BRD / PRD / TRD + the requirements decision log) lives in [`../requirements/`](../requirements/README.md) — the *why / what / how-in-requirements-terms* layer over these design plans, with end-to-end BR→FR/NFR→TR traceability.
 
-**Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric/README.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric/hobo-mapping.md)).
+**Competitor references** live in [`../../competitors/`](../../competitors/) — currently [`nitric/`](../../competitors/nitric.md) (full feature capture + a [HoBo parity tracker](../../competitors/nitric.md#hobo-mapping)).
 
 **Scope.** The whole suite is a **single v1** — every plan below is v1 scope; there is no v2/v3/… release split or "post-v1" bucket ([ADR-0063](./adr/08-scope-and-requirements.md#adr-0063)). The [per-stage build detail](./roadmap.md#per-stage-build-detail-stages-06) in the roadmap is v1's dependency-ordered **build sequence** (stages 0–6), not a list of versions.
 
-**Reading order.** New to HoBo: start with [0 Vision](./vision.md#plan-00) → [10 Architecture](./architecture.md#plan-10) → [19 Worked example](./worked-example.md#plan-19), then the two deep plans [2 SDK](./sdk-api.md#plan-02) and [6 AI-native/agent-auth](./ai-native-agent-auth.md#plan-06). For the runtime/authoring model read [20 WASM/WASI](./wasm-runtime-wit.md#plan-20) → [21 Resources/`.allow()`](./authoring-resources-wiring.md#plan-21) → [22 Wiring/manifest](./authoring-resources-wiring.md#plan-22) → [23 AI implementations](./forge-generated-stack.md#plan-23). Evaluating vs alternatives: [17 Positioning](./positioning.md#plan-17) + [`competitors/nitric`](../../competitors/nitric/README.md). Auditing decisions: [18 ADR log](./adr/README.md).
+**Reading order.** New to HoBo: start with [0 Vision](./vision.md#plan-00) → [10 Architecture](./architecture.md#plan-10) → [19 Worked example](./worked-example.md#plan-19), then the two deep plans [2 SDK](./sdk-api.md#plan-02) and [6 AI-native/agent-auth](./ai-native-agent-auth.md#plan-06). For the runtime/authoring model read [20 WASM/WASI](./wasm-runtime-wit.md#plan-20) → [21 Resources/`.allow()`](./authoring-resources-wiring.md#plan-21) → [22 Wiring/manifest](./authoring-resources-wiring.md#plan-22) → [23 AI implementations](./forge-generated-stack.md#plan-23). Evaluating vs alternatives: [17 Positioning](./positioning.md#plan-17) + [`competitors/nitric`](../../competitors/nitric.md). Auditing decisions: [18 ADR log](./adr/README.md).
 
 ---
 

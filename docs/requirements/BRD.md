@@ -65,12 +65,12 @@ From [positioning.md#plan-17](../design/positioning.md#plan-17) and the [`compet
 
 | Competitor | Their position | HoBo's edge |
 |---|---|---|
-| **Convex** | Reactive TypeScript backend-as-a-service | + multi-cloud portability, durable event-sourced runtime, agents-first, Forge ([competitors/convex](../../competitors/convex/README.md)) |
-| **Nitric** | Cloud-agnostic Infrastructure-from-Code | + durable workflows, agents-first, Forge, event-sourced replay, wasm-first ([competitors/nitric](../../competitors/nitric/README.md)) |
+| **Convex** | Reactive TypeScript backend-as-a-service | + multi-cloud portability, durable event-sourced runtime, agents-first, Forge ([competitors/convex](../../competitors/convex.md)) |
+| **Nitric** | Cloud-agnostic Infrastructure-from-Code | + durable workflows, agents-first, Forge, event-sourced replay, wasm-first ([competitors/nitric](../../competitors/nitric.md)) |
 | **Lakebed** | Agent-native closed PaaS | Single closed runtime; HoBo is multi-cloud, multi-runtime, self-hostable |
-| **.NET Aspire** | Code-first composition + local orchestration | + cloud-agnostic multi-provider, Resource Definitions/Matching, event sourcing, agent ops ([competitors/aspire](../../competitors/aspire/README.md)) |
-| **Humanitec** | Platform Orchestrator for IDPs (K8s-centric) | + wasm/OCI runtime, event-sourced audit, OSS core, Forge-generated definitions ([competitors/humanitec](../../competitors/humanitec/README.md)) |
-| **shoo.dev** | Zero-config Google-sign-in broker | Adjacent (identity); HoBo adds workload/agent identity + token brokering ([competitors/shoo](../../competitors/shoo/README.md)) |
+| **.NET Aspire** | Code-first composition + local orchestration | + cloud-agnostic multi-provider, Resource Definitions/Matching, event sourcing, agent ops ([competitors/aspire](../../competitors/aspire.md)) |
+| **Humanitec** | Platform Orchestrator for IDPs (K8s-centric) | + wasm/OCI runtime, event-sourced audit, OSS core, Forge-generated definitions ([competitors/humanitec](../../competitors/humanitec.md)) |
+| **shoo.dev** | Zero-config Google-sign-in broker | Adjacent (identity); HoBo adds workload/agent identity + token brokering ([competitors/shoo](../../competitors/shoo.md)) |
 | **Vercel + Workflow SDK** | PaaS + durable execution | HoBo provides its own HoBo-native durable runtime (per Camp) for portability — deliberately *not* Vercel's "World"; adds multi-provider + IfC + self-host |
 
 **Defensible differentiators** ([17](../design/positioning.md#plan-17)): AI-native operations; the Capability Manifest standard + Registry + Forge (no community bottleneck); event-sourced everything; genuine agnostic + typed escape hatch in one model; contracts/policy/evals as native graph artifacts.

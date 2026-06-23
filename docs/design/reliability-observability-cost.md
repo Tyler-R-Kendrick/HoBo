@@ -4,8 +4,6 @@ This capability doc unifies reliability/HA, observability, and cost/FinOps as on
 
 ## Plan 05
 
-**Plan 5 — Reliability / HA algorithms**
-
 > **Pipelines & incremental deploys (Humanitec parity):** **Pipelines** + approval gates ([Plan 25](./platform-engineering.md#plan-25)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 25](./platform-engineering.md#plan-25)) shrink blast radius and rollout time.
 
 > **Runtime/AI integration.** AI **live-fix** ([Plan 23](./forge-generated-stack.md#plan-23)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
@@ -150,12 +148,6 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 - **Live-evals as a telemetry stream.** Rubric scores computed online on live/shadow traffic (quality/faithfulness/calibration/cost/latency) are first-class metrics: they drive champion-vs-challenger dashboards, raise drift alerts/SLO burn on a champion regression, and *are* the optimizer's objective. `eval.Ran`/`eval.GateFailed` are events ([Plan 11](./event-model.md#plan-11)).
 - **Metrics-catalog additions.** Per trainable method: invocation rate, eval scores (per rubric dimension), champion/challenger deltas, token/cost per call, shadow-traffic share, candidate-proposed/promoted/rejected counts, time-since-last-promotion.
 
-#### Observability iteration hooks
-- Whether HoBo ships a bundled backend (e.g. embedded Grafana/Tempo) for self-host or only emits OTLP.
-- OpenInference span-attribute retention vs sampling, and the online-eval (LLM-judge) sampling rate / cost ceiling.
-- Retention/sampling defaults for traces vs the (authoritative, longer-lived) event log.
-- How much replay/diff tooling is CLI vs dashboard.
-
 ### Cost & FinOps
 
 Cost rides the same machinery again: it is metered as an event-sourced projection, surfaced through the observability views above, and enforced through the same policy plane and circuit-breaker pattern as reliability. HoBo charges no money and ships no billing ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)) — this is FinOps (visibility + safety), not billing.
@@ -191,7 +183,7 @@ These are estimates (real bills vary); HoBo reconciles estimates against actual 
 
 #### The Planner cost model
 - For a candidate plan, sum each resource's projected cost from `cost.json` × an expected-usage profile (defaults per port, overridable in the Bindle), plus **egress** across each `bind` edge given its connectivity tier ([Plan 12](./security-networking.md#plan-12)).
-- Objective is configurable per Yard/Camp: `cost` | `latency` | `single-provider` | `carbon`, **default = min-cost within constraints** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033), resolves ADR-P4). It is the **soft tiebreak** in the deterministic Matching rank (specificity → explicit `priority` → objective → stable tiebreak, [Plan 25](./platform-engineering.md#plan-25)) — applied lexicographically, not as an on-path solver; a weighted multi-objective blend is a deferred hook. The chosen rationale is recorded in `match.Decided` + on `deployment.Planned` (auditable "why this provider").
+- Objective is configurable per Yard/Camp: `cost` | `latency` | `single-provider` | `carbon`, **default = min-cost within constraints** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)). It is the **soft tiebreak** in the deterministic Matching rank (specificity → explicit `priority` → objective → stable tiebreak, [Plan 25](./platform-engineering.md#plan-25)) — applied lexicographically, not as an on-path solver. The chosen rationale is recorded in `match.Decided` + on `deployment.Planned` (auditable "why this provider").
 - Cross-cloud hops are penalized by their egress cost so the Planner naturally colocates bound resources unless explicitly told otherwise.
 
 #### The Dispatcher: credit/budget-aware cost routing ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071))
@@ -235,15 +227,3 @@ Cost is also an **availability lever** (the reliability framing above): cost con
 - **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./wasm-runtime-wit.md#plan-20)).
 - **Cross-link egress.** `link.Called` paths that cross providers/regions feed the egress term of the cost model exactly like `bind` edges ([Plan 12](./security-networking.md#plan-12)).
 - **AI cost optimization.** Auto-evolution can take **cost** as an objective, proposing cheaper implementations/providers validated against recorded traces before a gated promotion ([Plan 23](./forge-generated-stack.md#plan-23)).
-
-#### Cost iteration hooks
-- Estimate fidelity vs simplicity (static `cost.json` vs live pricing APIs vs learned usage profiles).
-- ~~The default Planner objective~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** min-cost within constraints, configurable; weighted multi-objective blending remains the open part.
-- How aggressively to act on commitment/savings recommendations.
-- Reconciling estimates with real provider cost (which clouds expose usable cost APIs?).
-
-### Iteration hooks (reliability)
-- Consensus: ship our own Raft in the built-in engine vs always delegate to the Camp's runtime store. *(This is a mechanism choice **within** an eligible backend — the split-brain-safety **guarantee** itself is decided: any backend hosting the control-plane log must pass the linearizable-quorum-fenced-append conformance assertion, §Control-plane HA. So this hook is "which conformant mechanism," never "whether the guarantee holds.")*
-- Multi-region topology: active-active log vs active-passive with failover.
-- Canary health-signal sources & the auto-rollback decision function.
-- Default no-go threshold for rollback vs partial-success semantics.

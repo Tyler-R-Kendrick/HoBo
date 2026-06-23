@@ -4,8 +4,6 @@ This capability doc covers HoBo's security and multi-tenancy posture together wi
 
 ## Plan 12
 
-**Plan 12 — Security & multi-tenancy**
-
 > **Posture: secure-by-default, zero-trust, defense-in-depth ([ADR-0023](./adr/02-identity-security.md#adr-0023)).** Every principal (human, agent, workload) authenticates and is authorized on every call — no ambient trust, no implicit network perimeter. Controls layer so one bypass is not a breach: keyless federation removes most secrets, the policy plane default-denies what remains, encryption protects data at rest, rate-limits cap blast radius, the wasm sandbox contains code, and **continuous scanning/monitoring** catches regressions. Controls **map to recognized industry standards** so adopters can assess them against their own frameworks.
 
 > **The Relay:** the **HoBo Relay** ([Plan 25](./platform-engineering.md#plan-25)) keeps cloud credentials inside the customer's network — outbound-only TCP 443 reverse tunnel, SVID-authenticated, no inbound; Executors run behind it. This unlocks regulated/air-gapped/sovereign deploys without the Yard ever connecting into the private network.
@@ -177,13 +175,3 @@ flowchart LR
 #### Data-plane vs control-plane traffic
 - **Control-plane** (Yard ↔ Executors ↔ providers) is separate from **data-plane** (app ↔ app, app ↔ db). The Yard is never on the app's request path ([Plan 10](./architecture.md#plan-10)).
 - Executors reach providers over the scoped-token path only; they are not part of any tenant's data-plane network.
-
-### Iteration hooks
-- Encryption granularity (per-tenant vs per-stream vs per-run) and KMS strategy.
-- ABAC policy engine choice (typed TS vs Rego/CEL) — shared with [Plan 6](./ai-native-agent-auth.md#plan-06) guardrails.
-- Trust tiers for Forge plugins and the human-certification threshold.
-- Compliance targets to design toward (SOC2/ISO/FedRAMP) and what each implies for the log.
-- Overlay mesh technology choice (WireGuard userspace vs eBPF/Cilium vs a SaaS like Tailscale) and who operates it in self-host.
-- How aggressively to auto-colocate vs honor explicit cross-cloud intent.
-- Service-mesh depth (do we ship a sidecar/mesh, or rely on provider-native + mTLS libraries?).
-- Private-interconnect coverage per provider equivalence class.

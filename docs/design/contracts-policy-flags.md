@@ -1,17 +1,15 @@
 # Contracts, Policy & Feature Flags
 
-This capability doc unifies three planes of the HoBo design suite into one narrative — contracts (the `can-deploy` gate), the policy plane (decisions, obligations & gates), and feature flags & progressive delivery.
+This capability doc covers three planes — contracts (the `can-deploy` gate), the policy plane (decisions, obligations & gates), and feature flags & progressive delivery.
 
 ## Plan 29
-
-**Plan 29 — Contracts & compatibility (the `can-deploy` gate)**
 
 ### Why this exists (conformance ≠ compatibility)
 HoBo already has **conformance** ([Plan 9](./verification.md#plan-09)/[Plan 20](./wasm-runtime-wit.md#plan-20)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
 
 > *Will `api@v3` (which removed `tenantId` from `order.created`) still work with `worker@v2` that's already running in prod?*
 
-That's a **contract** between a **producer and its consumers**, evaluated against **what's actually deployed**. This doc adds that missing dimension and a `can-deploy` gate. The organizing lens (shared with [Plan 23](./forge-generated-stack.md#plan-23)):
+That's a **contract** between a **producer and its consumers**, evaluated against **what's actually deployed** — the dimension the `can-deploy` gate covers. The organizing lens (shared with [Plan 23](./forge-generated-stack.md#plan-23)):
 
 > **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened.**
 
@@ -82,15 +80,9 @@ The `auth` port ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 6](./ai-nativ
 ### Camps declare enforcement modes
 Each **Camp** (via its runtime + wasm host, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 20](./wasm-runtime-wit.md#plan-20)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire component announcing capabilities.
 
-### Iteration hooks
-- Authoring surface when devs *want* explicit contracts (TS DSL vs annotations) vs pure inference.
-- Default compatibility policy (backward/forward) + migration-window defaults per edge kind.
-- Sampling/retention for observed→promoted mining; promotion thresholds.
-- Where the running-version-per-env projection lives (the matrix's source of truth).
-
 ### The policy plane — one decision model behind every gate
 
-HoBo already gates agent actions, live-fix, deploys, and pipelines — but left alone each is bespoke and mostly boolean. The policy plane replaces that with a **single decision model** every gate calls, carrying **lifecycle phases**, **rich effects**, and **obligations**. It answers one question everywhere:
+HoBo gates agent actions, live-fix, deploys, and pipelines through the policy plane: a **single decision model** every gate calls, carrying **lifecycle phases**, **rich effects**, and **obligations**. It answers one question everywhere:
 
 > *Is this action allowed, denied, warned, mutated, gated for approval — and what must follow if allowed?*
 
@@ -214,12 +206,6 @@ The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-007
 #### Decisions are events
 Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./event-model.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper (above) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
 
-#### Iteration hooks
-- ~~Default pack set + precedence when multiple packs match.~~ **Resolved ([ADR-0074](./adr/02-identity-security.md#adr-0074)):** deny-overrides + scope-monotonic composition + most-restrictive-wins tie-break (above). Default pack set remains config.
-- ~~Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.~~ **Resolved ([Plan 40](./operators-sre.md#plan-40)):** obligations carry a deadline; unmet-by-deadline **escalates** (the on-call ladder), tracked as `policy.ObligationCreated`→`…Satisfied`/escalation events.
-- Waiver workflow + who can grant per environment.
-- Mutation safety (policy-driven graph mutations must themselves pass contracts/conformance).
-
 ### Feature flags & progressive delivery
 
 > **Deploy ≠ release.** A canary ([Plan 5](./reliability-observability-cost.md#plan-05)) shifts traffic between *deployed versions*; a feature flag toggles *behavior within a running version* — kill-switches, gradual `%` rollout, per-segment targeting, experiments — without a redeploy. HoBo needs both, and flags compose with the contracts, policy, gates, audit, and reactive planes already in play here.
@@ -272,7 +258,3 @@ A **feature-flag test**: define a flag → assert in-process eval is determinist
 
 #### Scope
 The `feature-flag` port (OpenFeature-compatible) + built-in store + boolean/string/number/object flags + IfC definitions + in-process deterministic eval (targeting via `ctx.user`/`ctx.identity`) + event-sourced `flag.*` + optional policy-gated flips + reactive re-eval + OpenFeature provider adapters. Experiments get a stats surface over the emitted `flag.Evaluated` events, flag-debt auto-cleanup (stale-flag detection + archival) is built in, and cross-Camp flag-state consistency rides [ADR-0040](./adr/05-config-matching-environments.md#adr-0040).
-
-#### Iteration hooks
-- Targeting-rule DSL (typed TS predicate vs OpenFeature JSONLogic-style) and how it reuses the policy/`.allow()` predicate language.
-- Stale-flag detection heuristics + archival-workflow ergonomics.

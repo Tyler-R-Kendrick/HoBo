@@ -67,11 +67,6 @@ Crew run lifecycle reuses the durable-agent run model ([Plan 11](./event-model.m
 - Each operator is a **principal under org RBAC** ([ADR-0074](./adr/02-identity-security.md#adr-0074)): its actions on HoBo's own control-plane surface are role-gated and bounded by the org's mandatory guardrails — an operator can never exceed its assigned role (e.g. a GitOps operator without the Deployer role can *propose* but not *promote*).
 - Multi-agent planning/negotiation rides `crew.HandoffRequested`; agent-authored *new* operators and third-party operators ride `@hobo/agent-skills` ([Plan 10](./architecture.md#plan-10)).
 
-### Iteration hooks
-- Whether operators are always-on services vs dispatched-on-signal (cost vs latency); per-operator concurrency/lease model (an operator is itself a single-writer [actor](./sdk-api.md#plan-02)).
-- The collective-name "Crew" is a proposal (glossary convention); the formal term is "Operator Agents."
-- How much the **Platform Engineer** operator may auto-merge vs always-propose (ties [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048) persisted-patch gating).
-
 ### SRE: incident management, runbooks & self-healing
 
 The SRE operator from the roster above is the one Crew member whose remediation loop deserves a full model. It binds the platform's response primitives — alerting/SLO ([ADR-0045](./adr/04-governance-verification.md#adr-0045)), pipelines ([Plan 25](./platform-engineering.md#plan-25)), live-fix ([Plan 23](./forge-generated-stack.md#plan-23)), drift + auto-rollback ([Plan 5](./reliability-observability-cost.md#plan-05)), chaos ([ADR-0047](./adr/04-governance-verification.md#adr-0047)) — into a governed incident lifecycle: a first-class **Incident** aggregate behind `incident.*`, an enumerated runtime failure→fix playbook, a transparent decision tree, and declarative runbooks.
@@ -137,7 +132,7 @@ The SRE operator *executes* runbooks; a runbook with no matching `fix` escalates
 SRE performance is measured as code ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0045](./adr/04-governance-verification.md#adr-0045)): `sre.mttd` (signal → `crew.AgentDispatched`) and `sre.mttr` (`incident.Opened` → `incident.Resolved`) are **OpenSLO SLOs with error budgets**. Burn is a **policy input**: MTTR-SLO burn can **freeze risky deploys** or **require a deeper postmortem** (a `can-deploy` dimension), exactly like availability-SLO burn. `incident.SLABreached` fires on overrun.
 
 #### On-call & escalation (lean)
-Escalation is modeled as a **policy obligation with a deadline** — resolving the open Plan 30 hook. `incident.Opened` (SEV≥threshold) creates an obligation: *notify on-call, require ack within N minutes*; **unsatisfied-by-deadline → escalate** up the ladder ([Plan 29](./contracts-policy-flags.md#plan-29) obligations + [ADR-0045](./adr/04-governance-verification.md#adr-0045) routing). The **on-call** is a receiver/principal; PagerDuty/OpsGenie/Slack are receiver providers behind the alerting port. The obligation-deadline mechanism carries escalation; rotation-calendar machinery rides the same receiver/obligation model when added.
+Escalation is modeled as a **policy obligation with a deadline**. `incident.Opened` (SEV≥threshold) creates an obligation: *notify on-call, require ack within N minutes*; **unsatisfied-by-deadline → escalate** up the ladder ([Plan 29](./contracts-policy-flags.md#plan-29) obligations + [ADR-0045](./adr/04-governance-verification.md#adr-0045) routing). The **on-call** is a receiver/principal; PagerDuty/OpsGenie/Slack are receiver providers behind the alerting port. The obligation-deadline mechanism carries escalation; rotation-calendar machinery rides the same receiver/obligation model when added.
 
 #### Postmortem-as-replay
 The incident's event stream **is** the timeline, so a **blameless postmortem** is generated from the replay (what fired, what SRE decided, which gate, MTTD/MTTR, what fixed it). A failed remediation or a chaos finding becomes a **permanent regression test** (the [ADR-0047](./adr/04-governance-verification.md#adr-0047)/[Plan 23](./forge-generated-stack.md#plan-23) pattern); the postmortem's findings feed **candidate runbook / SRE-prompt updates**, promoted through the same gated, eval'd path as any generated artifact ([Plan 23](./forge-generated-stack.md#plan-23)).
@@ -154,9 +149,4 @@ The incident's event stream **is** the timeline, so a **blameless postmortem** i
 
 #### SRE scope
 - The Incident aggregate + `incident.*`/`runbook.*`; the SRE decision tree; the failure-taxonomy→fix map; declarative runbooks on the Pipelines engine; MTTD/MTTR SLOs; obligation-deadline escalation; postmortem-as-replay.
-- On-call rotation calendars + paging-vendor specifics, a richer runbook authoring DSL ([Hobo Code](./authoring-resources-wiring.md#plan-21)), and HolmesGPT/StackStorm adapters all ride the existing obligation/runbook/engine-behind-port seams when built.
-
-#### SRE iteration hooks
-- How much cross-operator handoff (`crew.HandoffRequested`) the SRE drives (SRE→GitOps to ship a fix; SRE→SWE to repair code; SRE→UX Designer for a UI fix; SRE→Platform Engineer to change a definition).
-- Auto-fix confidence thresholds + blast-radius defaults per failure class (tuning the decision tree).
-- Whether runbooks and deploy pipelines share one `definePipeline`/`defineRunbook` core or stay distinct surfaces.
+- On-call rotation calendars + paging-vendor specifics, a richer runbook authoring DSL ([Hobo Code](./authoring-resources-wiring.md#plan-21)), and HolmesGPT/StackStorm adapters all ride the existing obligation/runbook/engine-behind-port seams.

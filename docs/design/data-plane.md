@@ -6,8 +6,6 @@ The app layer is **CQRS** ([ADR-0053](./adr/03-data-plane.md#adr-0053)): writes 
 
 ## Plan 32
 
-**Plan 32 — Reactive streams & subscriptions (RX materializations)**
-
 > **Why streams, not queries.** Convex/Lakebed *store-then-query*: you write a query function over a built-in DB and the platform re-runs it on change. HoBo is **event-sourced** (the log already *is* a change stream; actors and projections already fold it — [Plan 11](./event-model.md#plan-11)) and **multi-cloud**. So the natural primitive is **subscribe to an event-type stream and fold it into a materialization you observe** — RX (reactive-extensions) semantics over the log. The store is an *optional cache* of a materialization (§Projections & persistence-agnostic data access), not the thing you query. The opinionated request/response **query** surface is a **GraphQL facade** over those materializations ([ADR-0050](./adr/03-data-plane.md#adr-0050)).
 
 ### The model in one paragraph
@@ -95,7 +93,7 @@ Native event-sourced subscribable materializations **within a Camp**; `subscribe
 
 ### Projections & persistence-agnostic data access
 
-> **The bet, finished.** Plan 11 already makes the event log the single source of truth and folds it into **rebuildable projections** — but only for HoBo's *own* control-plane state (`DeploymentView`/`RunView`). This section extends the same machinery to **application domain data**: a developer declares a logical record + queries; a data architect maps it onto SQL / NoSQL / KV / graph / vector / object-lake / OLAP — and neither has to know about the other. *Developers don't know or care how data is persisted or queried; architects have full autonomy over how it is.*
+> **The bet.** The event log is the single source of truth, folded into **rebuildable projections** — for HoBo's *own* control-plane state (`DeploymentView`/`RunView`) and for **application domain data** via the same machinery: a developer declares a logical record + queries; a data architect maps it onto SQL / NoSQL / KV / graph / vector / object-lake / OLAP — and neither has to know about the other. *Developers don't know or care how data is persisted or queried; architects have full autonomy over how it is.*
 
 This gives you:
 - **A persistence-agnostic data-access layer** — the `repo`/`view` surface over a logical model, so app access is never a dialect-leaky raw `db.query`.
@@ -104,7 +102,7 @@ This gives you:
 - **Broad paradigm coverage** — relational, document, KV/wide-column, graph, vector, object/data-lake, and OLAP behind one projection abstraction.
 
 #### The Projection — a subscribable materialization (optionally cached in a sink)
-A **projection** (the word [Plan 11](./event-model.md#plan-11) already uses) is, at the application layer, a **developer-authored materialization**: the same deterministic fold over subscribed event types exposed as the subscribable observable above ([ADR-0050](./adr/03-data-plane.md#adr-0050)), **optionally cached** in an architect-chosen sink for point/search/analytics reads. Five parts:
+A **projection** ([Plan 11](./event-model.md#plan-11)) is, at the application layer, a **developer-authored materialization**: the same deterministic fold over subscribed event types exposed as the subscribable observable above ([ADR-0050](./adr/03-data-plane.md#adr-0050)), **optionally cached** in an architect-chosen sink for point/search/analytics reads. Five parts:
 
 1. **Subscription** — the event stream(s) it folds, keyed by **WIT-record event types** (`Ticket.Opened`, `Ticket.Assigned`). This is its read-set on the write log.
 2. **Fold (reducer)** — a deterministic, read-only `(state, event) → state` (the same determinism rules as `query()`/`workflow`: no `step`, no writes, seeded clock — [Plan 2](./sdk-api.md#plan-02)/[ADR-0050](./adr/03-data-plane.md#adr-0050)).
@@ -114,9 +112,9 @@ A **projection** (the word [Plan 11](./event-model.md#plan-11) already uses) is,
 
 What you can understand and depend on in isolation: a projection has a **stable logical contract** (a named read-model WIT record + the event types it folds); it is **rebuildable from zero** (drop the sink, replay the streams — the test that the *log*, not the sink, is authoritative); and it declares a **reactivity class** and a **tunable consistency level** (Cosmos-style: strong/bounded-staleness/session/consistent-prefix/eventual, session by default — [ADR-0052](./adr/03-data-plane.md#adr-0052); cross-Camp bounded-staleness per [ADR-0040](./adr/05-config-matching-environments.md#adr-0040)) as part of that contract, so callers know their guarantees.
 
-**Two modes, named explicitly:**
+**Two modes:**
 - **Projected** *(default, event-sourced)* — the sink is derived from the log; writes never touch it directly.
-- **Authoritative-external** *(adopted, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041))* — an existing DB declared the source of truth via `hobo import` (`external` kind + `echo` driver). Its `change-feed` (if any) runs it *backwards* into `data.Changed` so reactive reads still work; `hobo doctor` flags long-lived authoritative-external stores as migration debt.
+- **Authoritative-external** ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)) — an existing DB declared the source of truth via `hobo import` (`external` kind + `echo` driver). Its `change-feed` (if any) runs it *backwards* into `data.Changed` so reactive reads still work; `hobo doctor` flags long-lived authoritative-external stores as migration debt.
 
 **Where read models live is an architect's per-context choice, not a global fork.** A projection's sink is **architect-selected per context** via Matching (default = a native standing projection over the log; opt a projection into Postgres/Mongo/… when a purpose-built query backend is wanted), recorded in `match.Decided`.
 
@@ -196,7 +194,7 @@ export async function openTickets(team: string): Promise<Ticket[]> {
 const rows = await view("tickets").raw(pg => pg.query("select … for update"));
 ```
 - **Provider-namespaced + typed to the resolved driver** (`pg`, `mongo`, …) — a dialect leak fails to compile against a *different* resolved backend instead of breaking silently at runtime, so a raw `db.query` can never leak unnoticed.
-- **Flagged** as a non-portable edge in the manifest IR; surfaced by `hobo doctor`/`can-deploy` ([Plan 29](./contracts-policy-flags.md#plan-29)) and counted as a `PlanWarning` against the portability guarantee ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)) — the Bindle is no longer "same Bindle, N clouds" for that edge, and HoBo says so.
+- **Flagged** as a non-portable edge in the manifest IR; surfaced by `hobo doctor`/`can-deploy` ([Plan 29](./contracts-policy-flags.md#plan-29)) and counted as a `PlanWarning` against the portability guarantee ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)) — that edge breaks "same Bindle, N clouds", and HoBo says so.
 - **Read-only on projected sinks** (a derived sink must not diverge from the log); raw **writes** are permitted only on **authoritative-external** (adopted) stores.
 
 #### The domain-schema layer — author in any serialization that compiles to WIT
@@ -244,7 +242,7 @@ Each paradigm is a **projection-sink kind** behind one stable WIT port, a Matchi
 #### Composition (reuse, not reinvent)
 - **Matching ([Plan 25](./platform-engineering.md#plan-25)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).** The architect declares a `projection-sink` Resource Definition (`defineResource({ type: "projection-sink", paradigm, provider, driver, with, match })`); the Planner selects per context — native projection in a preview Camp, managed Postgres in prod — recorded in `match.Decided`. **Developer owns the logical record + query; architect owns the mapping + sink** — the autonomy split *is* the Matching boundary.
 - **Migrations (§Migrations).** A derived sink has **two** evolution paths: **rebuild-from-zero** (replay into the new shape — the default; **paradigm-agnostic**, so document/KV/vector sinks evolve without a relational diff engine) and **in-place expand→backfill→contract** (the optimization for large relational sinks; the *required* path only for **authoritative-external** adopted stores that can't be rebuilt from the log). Both are `can-deploy`-gated and PACT-contract-tested; cross-cloud sink moves use export→import within an equivalence class.
-- **Reactivity (§The Reactor).** Projections **are** the read models the reactor already runs over; this just makes them developer-authored and sink-targeted. `data.Changed`, read-set tracking, consistent-snapshot@`seq`, and reads-your-writes are reused verbatim — **no new reactor**.
+- **Reactivity (§The Reactor).** Projections **are** the read models the reactor runs over — developer-authored and sink-targeted. `data.Changed`, read-set tracking, consistent-snapshot@`seq`, and reads-your-writes are reused verbatim — **no new reactor**.
 - **Cross-Camp ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)).** A projection declares a replication topology (single-writer-Camp default); a non-owner Camp builds a bounded-staleness projection from the owner's replicated read-stream; reads carry the staleness label; consistency-requiring writes "go home."
 - **Adopt-in-place ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).** The escape hatch from the event-sourced default: `external`/adopted authoritative stores answer the same `repo`/`view` surface, so a half-migrated app coexists (strangler-fig) — some entities projected, some authoritative-external, one data surface.
 
@@ -282,7 +280,7 @@ This covers relational **`sql`** resources, **Postgres** as the reference adapte
 #### Authoring — declarative schema + auto-diff
 A developer **declares the desired schema** alongside the `sql` resource (IfC — the same run-to-collect model as the rest of the Bindle, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). HoBo's **diff engine** compares it to the schema **currently live in the target Camp** and computes a **reviewable migration plan** — a sequence of typed phases, not hand-written step files.
 - **Escape hatch:** raw per-dialect SQL steps for operations the diff engine can't express (data transforms, non-trivial constraints, vendor features). Raw steps are still gated + snapshotted like any other.
-- **Why declarative, not `.up/.down.sql`:** the declared target is portable across SQL dialects by construction, HoBo can *reason* about intent (is this phase additive or destructive?), and the plan reviews like a [Delta](./platform-engineering.md#plan-25). ([ADR-0032](./adr/03-data-plane.md#adr-0032) records the rejected alternatives.)
+- **Why declarative, not `.up/.down.sql`:** the declared target is portable across SQL dialects by construction, HoBo can *reason* about intent (is this phase additive or destructive?), and the plan reviews like a [Delta](./platform-engineering.md#plan-25) ([ADR-0032](./adr/03-data-plane.md#adr-0032)).
 
 #### Apply — expand → backfill → contract, gated
 The diff engine decomposes every change into **backward-compatible phases**, each applied as a **gated saga step** at **Delta → Set / promote** ([Plan 25](./platform-engineering.md#plan-25)):
@@ -403,12 +401,3 @@ A **search test**: index a fixture corpus, then assert (a) an in-core full-text 
 The generic `search` port; **full-text search in the core** (reactive, declarative text index) with Postgres FTS + one managed engine as reference adapters; **vector, graph, OWL/Semantic-Web, and hybrid as optional extension libraries** behind the same port (vector ships pgvector + a managed engine, the `embed` capability with local + hosted adapters, BYO vectors as the escape hatch, hybrid/RRF fusing full-text + an extension). Each extension brings its own index declaration, operators, and conformance.
 
 **Non-goal:** baking any rich modality into the core as a built-in default — apps install only the extensions they use.
-
-### Open design points
-- Read-set granularity (per-event-type vs per-stream vs per-key vs predicate-indexed) and recompute-vs-incremental view maintenance for expensive folds.
-- Delta encoding for pushes (full snapshot vs diff vs operation log) and client cache/merge strategy.
-- Subscription fan-out limits + Reactor sharding for very hot streams; promoting a hot materialization to a standing cached projection automatically (sink auto-binding).
-- Diff-engine reference (build vs adopt Atlas/Prisma-style) and how much DDL it covers before falling to the raw escape hatch; backfill throughput/throttling defaults + how online backfill interacts with live traffic and SLOs ([Plan 5](./reliability-observability-cost.md#plan-05)).
-- Snapshot mechanism per provider (native DB snapshot vs logical dump) and retention/cost ([Plan 5](./reliability-observability-cost.md#plan-05)); whether cross-Camp data consistency during a move is a HoBo guarantee or app-owned ([Q16](./verification.md#plan-09)).
-- Whether `projection.Materialized`/`Rebuilt` should be modeled as `migration.PhaseApplied` backfill phases rather than new event types (minimize catalog bloat); PK/edge derivation rules for KV/graph mappings; incremental view maintenance for expensive folds; whether the repository `find()` predicate and the `view()` DSL should share a single compiled query AST end-to-end.
-- Search-extension adapters beyond pgvector + one managed engine; how much FTS analyzer config is portable vs provider-specific; default embedding model(s) for the local adapter + dimension/version pinning (an embedding model change is itself an index migration); RRF weighting defaults + whether to expose a re-ranker hook; faceting/aggregations, learned/semantic re-ranking, multi-vector & late-interaction (ColBERT-style) as extension surface; whether vector search can ever be made reactive cheaply (cache embedding at subscribe time) without breaking determinism; cross-Camp federated search ([Q16](./verification.md#plan-09)).

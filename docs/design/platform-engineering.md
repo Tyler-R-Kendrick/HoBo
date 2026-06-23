@@ -70,7 +70,7 @@ Selection is a **pure function** of `(catalog snapshot, deploy context, objectiv
 
 **True ties never block.** If candidates are equal on specificity, `priority`, *and* objective, the stable tiebreak (definition id, lexicographic) still yields a deterministic winner, and a `PlanWarning` + tie flag is recorded so a platform engineer can add an explicit `priority` to disambiguate. **The tiebreak is stable only within a catalog snapshot:** because Resource Definitions are Forge-generatable and Pack-importable, adding/renaming a definition can change which of two equal-scoring candidates wins on the next plan — so `match.Decided` records the **catalog content-hash**, making a winner change **attributable to a catalog change** rather than appearing as nondeterminism.
 
-**AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 23](./forge-generated-stack.md#plan-23)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. (A constraint solver / LLM selector on-path was rejected — [ADR-0033](./adr/05-config-matching-environments.md#adr-0033).)
+**AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 23](./forge-generated-stack.md#plan-23)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. A constraint solver / LLM selector on-path is not part of the model ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).
 
 ### Mapping is sugar over default definitions
 A Camp's inline mapping ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate system — it **compiles to default Resource Definitions**:
@@ -207,7 +207,7 @@ flowchart TD
   YARD --> MODEL
 ```
 
-> Air-gap is a **single in-boundary Yard**; multi-Yard **federation** (multi-region/regulatory) remains deferred ([Q20](./verification.md#plan-09)).
+> Air-gap is a **single in-boundary Yard**; multi-Yard **federation** (multi-region/regulatory) is out of scope ([Q20](./verification.md#plan-09)).
 
 ### GitOps publisher mode
 Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 21](./authoring-resources-wiring.md#plan-21)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Relay can supply runtime data back.

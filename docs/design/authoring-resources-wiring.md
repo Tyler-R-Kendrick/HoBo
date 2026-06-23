@@ -4,8 +4,6 @@ This capability doc covers the authoring surface end to end: the resource catalo
 
 ## Plan 21
 
-**Plan 21 — Resource catalog & the `.allow()` model**
-
 > **Contracts & policy (gates):** an `.allow()` declaration is also a **capability contract** ([Plan 29](./contracts-policy-flags.md#plan-29)) — the **required** scope must be ⊆ the **granted** scope on the resolved provider; a mismatch is a contract failure caught by `can-deploy`, not a runtime surprise.
 
 ### The `.allow()` model — one declaration, three effects
@@ -92,7 +90,7 @@ Resource declarations, config items, and the DSL surface all use **varlock's dec
 DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)). DNS is a **Yard-level** resource — provider-global, with **per-Camp overrides** — so a Bindle never declares it. Custom-domain binding (ACME DNS-01 certs; failover/weighted/latency across Camps) is resolved at the Yard layer and applied per Camp; the app references endpoints, not zones.
 
 ### Notes
-- `hobo:blob-events` is a HoBo WIT shape where no standard `wasi:*` exists; `hobo:websocket` is now a **thin extension over the preview `wasi:websocket`** ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)), not a standalone shape.
+- `hobo:blob-events` is a HoBo WIT shape where no standard `wasi:*` exists; `hobo:websocket` is a **thin extension over the preview `wasi:websocket`** ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)), not a standalone shape.
 - A relational `data` provider's schema migrations are specified in [Plan 32](./data-plane.md#plan-32) ([ADR-0032](./adr/03-data-plane.md#adr-0032)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
 - `.allow()` verbs are per-resource-type typed enums; each provider's IAM adapter maps them to that provider's actions.
 - The programmable surface is **WIT/WASM**: collection runs each component to capture declarations, and any Component-Model language authors Bindles. TypeScript is the **first reference implementation**, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)) — non-TS languages are collected the same way (run-to-collect), with static analysis as a supplement.
@@ -250,7 +248,7 @@ Config notes: fetched secrets are held in a short, bounded in-process cache (TTL
 Ties to the rest of the model:
 - **Stubs via codegen** ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) — the same deterministic, checked-in `_generated/` discipline and `--check` drift gate, so DSL → stub output is reviewable and reproducible.
 - **Placement via deterministic Matching** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) — the DSL declares the resource graph; Matching resolves it to Camps.
-- **Both levels lower to the one Manifest IR** (above) — no new runtime semantics; the scope model is unchanged (`Yard ⊃ Camp ⊃ Bindle`, [ADR-0026](./adr/01-architecture-core.md#adr-0026)).
+- **Both levels lower to the one Manifest IR** (above) — no new runtime semantics; the scope model is `Yard ⊃ Camp ⊃ Bindle` ([ADR-0026](./adr/01-architecture-core.md#adr-0026)).
 
 **Why a DSL.** HoBo is **AI-native** ([Plan 6](./ai-native-agent-auth.md#plan-06)): agents and the Forge generate, repair, and optimize HoBo artifacts (the Forge, [Plan 23](./forge-generated-stack.md#plan-23); `"use training"`, [Plan 23](./forge-generated-stack.md#plan-23)). TypeScript + IfC ([Plan 2](./sdk-api.md#plan-02)) is ideal for humans with an editor and a type-checker but a noisy generation/training target: large grammar, host imports, collection-time side-effects, an AST that is hard to diff/score. Hobo Code is **small, regular, declarative-first, and low-ambiguity** — exactly what makes a surface cheap to generate correctly, cheap to *train on*, and cheap to *optimize* against a reward signal. It also forces no author through code when a declaration would do (Level 1).
 

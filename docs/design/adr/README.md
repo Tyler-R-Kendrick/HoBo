@@ -83,3 +83,4 @@
 | 0071 | The Dispatcher: credit/budget-aware cost routing across registered providers (placement · dispatch · traffic) | [config-matching-environments](05-config-matching-environments.md#adr-0071) |
 | 0072 | WIT-first SDK: a canonical `hobo:sdk` world + conformance-gated per-language idiom layers | [architecture-core](01-architecture-core.md#adr-0072) |
 | 0073 | Swappable integration ports: identity, artifacts, work-tracking & knowledge | [portability-extensibility](07-portability-extensibility.md#adr-0073) |
+| 0074 | Org governance: RBAC + mandatory guardrails over HoBo's own control-plane surface | [identity-security](02-identity-security.md#adr-0074) |

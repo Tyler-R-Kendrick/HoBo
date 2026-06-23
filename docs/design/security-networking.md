@@ -38,6 +38,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 ### Identity & authorization
 - **Authentication:** humans via OIDC (SSO); agents/workloads via SVIDs ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 - **Authorization:** ABAC over `(principal, tenant, port, resource, action)` evaluated at the Gateway and again at the broker. Roles are sugar over attributes (owner/maintainer/deployer/viewer/agent).
+- **Org governance over HoBo's own surface ([ADR-0074](./adr/02-identity-security.md#adr-0074)).** The same ABAC/policy plane governs not just deployed infra but **HoBo's own control-plane actions** (register a provider, change policy, set the Dispatcher objective, run the Forge, approve a Delta, read audit…) via a `hobo:*` admin action/resource taxonomy. Orgs bind principals to **RBAC roles** (Org-Admin · Security/Policy-Admin · Platform-Engineer · Deployer · Operator-Supervisor · Auditor + custom) via **SSO/SCIM** ([ADR-0038](./adr/02-identity-security.md#adr-0038)), and set **mandatory guardrails** (per-rule `mandatory|default`, default mandatory) at the **Yard/Junction** that lower scopes can only further-restrict, never widen. The Crew operators are principals under the same RBAC.
 - **Policy gates** for high-risk actions (destroy, prod, spend > cap) — auto / require-approval (a resolvable hook) / deny. Policy is versioned and event-sourced (decisions are auditable facts).
 
 ### Secrets management

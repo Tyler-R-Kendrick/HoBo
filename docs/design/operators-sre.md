@@ -66,6 +66,7 @@ Crew run lifecycle reuses the durable-agent run model ([Plan 11](./event-model.m
 
 ### Scope
 - The roster as built-in Yard services on the shared model (identity/policy/events/MCP/engine-behind-port, sandboxed under enforced AI governance); read/diagnose autonomous, writes gated. **SRE · Endpoint Monitor · GitOps · Platform Engineer · SWE · UX Designer**, plus built-in engines + the HolmesGPT (SRE) reference adapter.
+- Each operator is a **principal under org RBAC** ([ADR-0074](./adr/02-identity-security.md#adr-0074)): its actions on HoBo's own control-plane surface are role-gated and bounded by the org's mandatory guardrails — an operator can never exceed its assigned role (e.g. a GitOps operator without the Deployer role can *propose* but not *promote*).
 - Multi-agent planning/negotiation rides `crew.HandoffRequested`; agent-authored *new* operators and third-party operators ride `@hobo/agent-skills` ([Plan 10](./architecture.md#plan-10)).
 
 ### Iteration hooks

@@ -300,6 +300,7 @@ flowchart LR
 3. **Integration** — SDK + built-in runtime + a real-but-local provider (containers) exercise deploy→run→inspect.
 4. **E2E** — full Yard + one real cloud provider, gated and periodic (cost-aware).
 5. **Determinism/replay** — every durable run asserts `replay == live state`.
+6. **Golden Suites** — the reproducible layer *over* the pyramid ([ADR-0082](./adr/02-identity-security.md#adr-0082)): a signed, versioned suite that **pins + orchestrates** the checks above (conformance + contracts + evals + benchmarks + chaos + SLO/availability assertions) **plus** a **golden-master primitive** (`golden.sample` — bless a reference output, then assert reproduction) for behaviors that lack a check. A **default suite is auto-derived** from what a Bindle already declares and runs as a `can-deploy` gate dimension ([Plan 29](./contracts-policy-flags.md#plan-29)) + continuously; it covers **HoBo's own infra and the customer's app, infra, and agents** (the latter via a *trajectory golden*), executes against a replay/fork **lane** ([ADR-0076](./adr/02-identity-security.md#adr-0076)) not live prod, and is disable/extensible per scope (a deny-ceiling can keep it mandatory in prod). Failure opens an Incident → Crew → A2H ([Plan 40](./operators-sre.md#plan-40)).
 
 ### `@hobo/conformance` — the trust boundary
 A shared, executable contract test suite per **port** (runtime ports and Provider capability ports). It is what lets human- *and* Forge-generated adapters be trusted ([Plan 6](./ai-native-agent-auth.md#plan-06)).

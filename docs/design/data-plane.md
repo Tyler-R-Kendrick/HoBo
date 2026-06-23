@@ -109,6 +109,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Evals & promotion** ([Plan 23](./forge-generated-stack.md#plan-23))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 
+**Golden Suites** (the reproducible default test/eval/benchmark gate, [ADR-0082](./adr/02-identity-security.md#adr-0082))
+`golden.SuiteDeclared` · `golden.Pinned` · `golden.Blessed` (a golden-master reference accepted) · `golden.Ran` · `golden.Passed` · `golden.Failed` · `golden.Drifted` (post-deploy regression). Failure rides `incident.*`/`crew.*`/`policy.Decided`; the A2H handoff rides `crew.HandoffRequested` + a policy obligation — no new family.
+
 **Reactive streams & subscriptions** ([Plan 32](#plan-32))
 `subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event)
 

@@ -102,7 +102,7 @@ sequenceDiagram
 
 **Least privilege & guardrails:**
 - Tokens are scoped to `(port, resource, action)` and the minimal provider permission for that equivalence class — never "admin."
-- **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)).
+- **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/02-identity-security.md#adr-0039)).
 
 ---
 
@@ -161,7 +161,7 @@ flowchart LR
 
 **Conformance tests are the trust boundary** that makes AI-generated extensibility safe — a plugin is only as trusted as the contract tests it passed, and the signed report is part of its Registry record.
 
-> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-23)** ([ADR-0010](./adr/06-ai-generation-operators.md#adr-0010)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
+> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-23)** ([ADR-0010](./adr/03-data-plane.md#adr-0010)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/03-data-plane.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
 
 ---
 
@@ -213,7 +213,7 @@ flowchart LR
 - **Event-sourced sessions for revocation.** Optional **`session.*`** records make revocation / "sign out everywhere" + session audit first-class; reactive queries/mutations ([Plan 32](./data-plane.md#plan-32)) **re-evaluate when auth state changes** (a revoked session re-pushes/denies affected live queries), reusing the reactor's `data.Changed` path.
 
 **Client & server surface.**
-- **Client:** `useAuth()` (current user + status), `signIn(provider)`, `signOut()` — a peer to `useQuery()` ([Plan 32](./data-plane.md#plan-32)); generated typed against the configured providers ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)).
+- **Client:** `useAuth()` (current user + status), `signIn(provider)`, `signOut()` — a peer to `useQuery()` ([Plan 32](./data-plane.md#plan-32)); generated typed against the configured providers ([ADR-0037](./adr/01-architecture-core.md#adr-0037)).
 - **Server:** `ctx.user` (verified claims, typed) gates handlers and reactive queries; combine with policy/`.allow()` for record-level authorization.
 
 **Events ([Plan 11](./data-plane.md#plan-11)).** `user.Authenticated` (verification result + principal claims) · `session.Started` · `session.Refreshed` · `session.Revoked`. User authorization decisions ride the existing **`policy.Decided`** ([Plan 29](./contracts-policy-flags.md#plan-29)) — no duplicate authz events.

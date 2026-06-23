@@ -213,7 +213,7 @@ export const classifyTicket = training(
 // directive form is equivalent:  export async function classifyTicket(t: Ticket) { "use training"; ... }
 ```
 
-What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./forge-generated-stack.md#plan-23)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)): swapping it is a config change, not an app-code change.
+What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./forge-generated-stack.md#plan-23)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/03-data-plane.md#adr-0025)): swapping it is a config change, not an app-code change.
 
 #### Error handling & retries
 ```ts
@@ -245,7 +245,7 @@ database("db", { engine: "postgres" })
 - `start(checkout, order)` is checked against the workflow signature; hooks/streams are generic (`createHook<T>()`, `getWritable<UIMessageChunk>()`).
 - Provider option types are exported by each provider package, so autocomplete on `.with(aws.…)` shows only valid knobs for that provider/resource pairing (conditional types keyed on the port).
 
-#### Generated code (`_generated/`) ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037))
+#### Generated code (`_generated/`) ([ADR-0037](./adr/01-architecture-core.md#adr-0037))
 The end-to-end types above aren't hand-written — they're **generated**, deterministically, from four authoritative sources and checked into the repo:
 ```mermaid
 flowchart LR

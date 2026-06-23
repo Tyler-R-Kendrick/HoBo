@@ -88,3 +88,5 @@
 | 0076 | Boundary virtualization: stub/link modes for request-level isolation, preview, self-healing & non-destructive chaos | [governance-verification](04-governance-verification.md#adr-0076) |
 | 0077 | Projects & environments as grouping dimensions; the operations dashboard & per-project status pages | [governance-verification](04-governance-verification.md#adr-0077) |
 | 0078 | Architecture-derived availability — the "march of the 9s" | [governance-verification](04-governance-verification.md#adr-0078) |
+| 0079 | App multi-tenancy: the app-tenant model, tenancy-model spectrum & tenant lifecycle | [identity-security](02-identity-security.md#adr-0079) |
+| 0080 | Tenant isolation by construction + the cross-tenant-leak conformance gate | [identity-security](02-identity-security.md#adr-0080) |

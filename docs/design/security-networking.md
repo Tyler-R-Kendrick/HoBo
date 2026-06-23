@@ -27,7 +27,9 @@ This capability doc covers HoBo's security and multi-tenancy posture together wi
 | **Agents** | confused-deputy, runaway spend/destroy | scoped SVIDs; policy gates on high-risk actions; spend caps; full replay |
 
 ### Multi-tenancy isolation model
-A **tenant** is the hard isolation boundary. Isolation applies across four dimensions:
+> **Which "tenant"?** This section is HoBo's **platform tenant** — the **HoBo account/org** using the platform (`EventEnvelope.tenant`, `spiffe://yard/<tenant>/…`), HoBo's own hard isolation boundary. The developer's **own customers** (when they build a multi-tenant SaaS *on* HoBo) are **app tenants** (`ctx.tenant`) — a separate, application-domain concept covered in [Plan 50](./multi-tenant-apps.md#plan-50)/[ADR-0079](./adr/02-identity-security.md#adr-0079)/[ADR-0080](./adr/02-identity-security.md#adr-0080), which **reuses the machinery below one level up**. They nest: `platform-tenant ⊇ project ⊇ Bindle ⊇ app-tenant ⊇ end-user`.
+
+A **(platform) tenant** is the hard isolation boundary. Isolation applies across four dimensions:
 1. **Data** — event streams are namespaced and (optionally) encrypted per tenant; projections enforce the tenant claim; a query can never fold another tenant's stream. Sharding can be per-tenant logs for large tenants.
 2. **Compute** — Executor pools are partitioned per tenant (and bulkheaded per provider) so one tenant's workload/storm can't observe or starve another's ([Plan 5](./reliability-observability-cost.md#plan-05)).
 3. **Credentials** — SVIDs and brokered provider tokens are scoped to the tenant; a tenant's federation trust is established only with that tenant's provider accounts.

@@ -62,7 +62,7 @@ The dashboard is **runtime-agnostic** (read API only) so it works against any Ca
 
 ### C. Status pages — one per project, internal by default, opt-in public ([ADR-0077](./adr/04-governance-verification.md#adr-0077))
 
-Every **project** automatically gets a **status page** — the stakeholder-facing aggregate of "is it up, what's degraded, what happened" — drillable to a Bindle and filterable by environment. It is a projection over the same facts, so it can never disagree with the audit log:
+Every **project** automatically gets a **status page** — the stakeholder-facing aggregate of "is it up, what's degraded, what happened" — drillable to a Bindle and filterable by environment. It is a projection over the same facts, so it can never disagree with the audit log. **For a multi-tenant app** ([Plan 50](./multi-tenant-apps.md#plan-50)), a status page can additionally be **scoped per `app-tenant`** (a tenant's own uptime, the dependent services that affect *them*, and the incidents that touched them) — the natural per-customer status surface, sharing all the machinery below:
 
 - **Aggregate uptime / downtime** — observed availability per service and rolled up to Bindle / environment / project, over selectable windows; derived from SLO/health + `incident.*` (an incident's open→resolved span is downtime for its impacted components).
 - **Dependent-service health** — the **public-facing components** the project declares (e.g. *API*, *Checkout*, *Search*), each mapping to one or more internal services in the dependency graph, with current status (operational / degraded / outage) and the **upstream dependencies** that affect it.

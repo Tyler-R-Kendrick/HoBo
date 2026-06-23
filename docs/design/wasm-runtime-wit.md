@@ -119,7 +119,7 @@ The runtime's ports form a **Nitric-parity building-block set, each a first-clas
 | Storage / blob | `wasi:blobstore/blobstore` (+ `hobo:blob-events`) |
 | Secrets | `wasi:config/store` |
 | SQL | `wasi:sql` (+ `hobo:sql`, [Plan 32](./data-plane.md#plan-32)) |
-| Websockets | `hobo:websocket` |
+| Websockets | `wasi:websocket` **(preview)** + `hobo:websocket` (extension) ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) |
 | Durable workflow / actors | `hobo:runtime/workflow`, `hobo:runtime/actor`, `hobo:runtime/saga` |
 | Reactive materializations | `hobo:projection` ([Plan 32](./data-plane.md#plan-32)) |
 | Auth | `hobo:auth` ([Plan 6](./ai-native-agent-auth.md#plan-06)) |
@@ -128,7 +128,7 @@ The runtime's ports form a **Nitric-parity building-block set, each a first-clas
 A provider exports the subset it backs; conformance to the interface is the contract (no plugin SDK, as above). Full per-interface detail in the tables below.
 
 ### Conventions
-- **Package/version:** `namespace:package@semver` (e.g. `wasi:keyvalue@0.2.0`, `hobo:runtime@0.1.0`). HoBo pins exact versions; upgrades go through upcasters/compat shims, never silent drift.
+- **Package/version + stability:** `namespace:package@semver` (e.g. `wasi:keyvalue@0.2.0`, `hobo:runtime@0.1.0`). HoBo pins exact versions; upgrades go through upcasters/compat shims, never silent drift. Each interface also carries a **stability tier — `stable · preview · experimental · deprecated`** ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)): `preview` tracks an expected-but-unratified standard (e.g. `wasi:websocket@0.0.x-draft`), `experimental` is HoBo-incubated. Version + stability are recorded per import/export in the manifest IR.
 - **Import = dependency** (inbound port the component needs), **export = capability** (what it provides), and a **link** late-binds an import to a provider's export — the model laid out above.
 - **`.allow()` ↔ interface:** a resource's permitted verbs ([Plan 21](./authoring-resources-wiring.md#plan-21)) select which interface's functions are linked + which IAM/token scope is granted.
 
@@ -153,7 +153,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `hobo:runtime/agent` | durable AI agent | `run(messages)`, `tool(name,input)`, `token(provider,scope)` |
 | `hobo:queue` | pull queue (Nitric parity) | `enqueue`, `dequeue(n)`, `complete` |
 | `hobo:blob-events` | bucket notifications + presigned URLs | `on(event,prefix)`, `download-url`, `upload-url` |
-| `hobo:websocket` | websocket connections | `on(connect/message/disconnect)`, `send(conn,msg)` |
+| `hobo:websocket` | **thin extension** over the preview `wasi:websocket` ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) — the HoBo-specifics the bare interface won't carry | principal/`ctx.user` binding, `.allow()` verbs, **event-sourced connection lifecycle** `on(connect/message/disconnect)` |
 | `hobo:job` | batch jobs (cpu/mem/gpu) | `handler(opts)`, `submit(input)` |
 | `hobo:scheduler` | cron/interval triggers | `every(spec)`, `cron(expr)` |
 | `hobo:projection` | persistence-agnostic data plane: fold event streams into a sink + query it ([Plan 32](./data-plane.md#plan-32)) | `declare(spec)`, `fold(state,event)`, `materialize`, `rebuild`, `read(query)`, `read-raw(driver-call)` (escape hatch) |
@@ -187,14 +187,33 @@ export wasi:http/incoming-handler@0.2.0;
 ```
 The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` + `.allow()` and an `api`/`service` generates the interface contract; `jco` emits the typed bindings the handler code uses. These `jco guest-types` are one of the four codegen sources (with Zod, `.allow()`, and the bindle graph) that land in the checked-in `_generated/` directory ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)/[Plan 2 §Generated code](./sdk-api.md#plan-02)).
 
+### Preview `wasi:websocket` ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075))
+No `wasi:websocket` is ratified — WASI standardizes per-protocol sockets-family modules independently and 0.3 adds native async — so HoBo **vendors + pins a `preview` `wasi:websocket@0.0.x-draft`** modeled on the likely-approved shape (sockets-family over `wasi:io` streams, 0.3-async-ready; server-accept via `wasi:http` connection upgrade + client-connect), and migrates via upcaster when the standard lands. `hobo:websocket` is the thin extension (principal binding, `.allow()`, lifecycle events) above it.
+```wit
+// PREVIEW — tracks the expected wasi:websocket; pinned, may change before ratification
+package wasi:websocket@0.0.1-draft;
+interface types {
+  use wasi:io/streams@0.2.0.{input-stream, output-stream};
+  resource connection {
+    incoming: func() -> input-stream;     // frames in  (0.3: stream<frame>)
+    outgoing: func() -> output-stream;    // frames out
+    close: func(code: u16, reason: string);
+  }
+  variant frame { text(string), binary(list<u8>), ping, pong, close }
+}
+interface server { use types.{connection}; accept: func() -> connection; }   // via wasi:http upgrade
+interface client { use types.{connection}; connect: func(url: string) -> result<connection, string>; }
+```
+
 ### Versioning & evolution
-- Interfaces are versioned independently; the manifest IR ([Plan 21](./authoring-resources-wiring.md#plan-21)) records the exact versions a component imports/exports.
-- Upstream `wasi:*` draft churn is absorbed by pinning + a compat layer; `hobo:*` interfaces follow semver with conformance suites per version ([Plan 9](./verification.md#plan-09)).
+- Interfaces are versioned independently **with a stability tier** (`stable · preview · experimental · deprecated`, [ADR-0075](./adr/07-portability-extensibility.md#adr-0075)); the manifest IR ([Plan 21](./authoring-resources-wiring.md#plan-21)) records the exact `interface@version@stability` a component imports/exports.
+- Upstream `wasi:*` draft churn is absorbed by pinning + a compat layer; `hobo:*` interfaces follow semver with conformance suites per version ([Plan 9](./verification.md#plan-09)). A `preview` interface (e.g. `wasi:websocket`) may break on a version bump — HoBo ships the upcaster + bumps the pin.
 - Every interface ships a `@hobo/conformance` suite; providers/implementations must pass the version they claim — the gate for human- and Forge-authored adapters ([Plan 23](./forge-generated-stack.md#plan-23)).
+- **Provider Capability Spec (static availability, [ADR-0075](./adr/07-portability-extensibility.md#adr-0075)).** A provider's **Capability Manifest** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0009](./adr/02-identity-security.md#adr-0009)) declares the exact **`interface@semver` + stability tier + conformance-suite version passed** it implements — the spec the SDK/Matching evaluate **statically (compile-time, [ADR-0033](./adr/05-config-matching-environments.md#adr-0033))** to answer "is this capability available?": `stable` → ok, `preview`/`experimental` → warn (pinned, may change), unavailable → error + remediation. Stability is org-governable (no preview in prod, [ADR-0074](./adr/02-identity-security.md#adr-0074)).
 
 ### Iteration hooks
 - ~~Wasm host of record~~ — **decided ([ADR-0031](./adr/01-architecture-core.md#adr-0031)):** Wasmtime locally + a `component-host` port whose **default is self-hosted wasmCloud** (on k8s/Coolify/bare-metal), with **wasm-in-container** as the zero-infra floor and SpinKube / provider-native as opt-in per-Camp adapters. Remaining: the host **conformance-suite** assertions and the wasmCloud-lattice adapter's cross-host link semantics. **Grounding/refinements** (from [`competitors/wasm-hosts`](../../competitors/wasm-hosts.md)): pin **`runwasi`/containerd-shim** as the mechanism for the wasm-in-container default + SpinKube adapter; pin **`wRPC` (WIT-over-RPC) over the lattice (NATS)** as the wasmCloud adapter's cross-host link transport.
-- Final `hobo:*` package names/namespacing and version churn; how aggressively to track upstream `wasi:*` drafts; which `hobo:*` interfaces to upstream as `wasi:*` proposals (queue/websocket/blob-events).
+- Final `hobo:*` package names/namespacing and version churn; how aggressively to track upstream `wasi:*` drafts; which `hobo:*` interfaces to upstream as `wasi:*` proposals (queue/blob-events). ~~websocket~~ — **decided ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)):** ship a `preview` `wasi:websocket` now (core) + `hobo:websocket` extension; migrate via upcaster on ratification.
 - Component-to-component composition (`wac`) vs runtime links for intra-app calls.
 - Container-fallback runtime + when the Planner chooses it automatically (GPU/native detection).
 - `wasi:sql` adoption vs a richer `hobo:sql` — the **migration** half is now specified in [Plan 32](./data-plane.md#plan-32) ([ADR-0032](./adr/03-data-plane.md#adr-0032)); `hobo:sql` is where the declarative-schema/diff + snapshot/export capabilities live (the connection/query surface stays `wasi:sql`).

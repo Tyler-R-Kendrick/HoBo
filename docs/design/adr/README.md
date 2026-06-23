@@ -84,3 +84,4 @@
 | 0072 | WIT-first SDK: a canonical `hobo:sdk` world + conformance-gated per-language idiom layers | [architecture-core](01-architecture-core.md#adr-0072) |
 | 0073 | Swappable integration ports: identity, artifacts, work-tracking & knowledge | [portability-extensibility](07-portability-extensibility.md#adr-0073) |
 | 0074 | Org governance: RBAC + mandatory guardrails over HoBo's own control-plane surface | [identity-security](02-identity-security.md#adr-0074) |
+| 0075 | Interface stability tiers + statically-evaluable provider Capability Spec (preview `wasi:websocket`) | [portability-extensibility](07-portability-extensibility.md#adr-0075) |

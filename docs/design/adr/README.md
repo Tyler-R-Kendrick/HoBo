@@ -1,83 +1,88 @@
 # Architecture Decision Records (ADR) — index
 
-> Part of the [HoBo Design Plan Suite](../README.md). This directory holds **one file per decision**, the convention adopted from ADR-0018 onward. Earlier decisions (ADR-0001…0017) remain in the consolidated [18 — ADR log](../18-adr-log.md); they are listed here for a single chronological view.
->
-> **Format (house style):** `Status · Context · Decision · Consequences`, plus (for per-file ADRs) `Date`, `Deciders`, `Related`, and `Alternatives considered`. Statuses: **Proposed · Accepted · Superseded · Deprecated**. ADRs are the things we should be deliberate about *unmaking*.
+> Part of the [HoBo Design Plan Suite](../README.md). The load-bearing decisions, why they were made, and what they cost. Decisions are consolidated into **8 thematic decision docs**; each ADR is a section anchored `#adr-00xx`. ADRs are the things we should be deliberate about *unmaking*.
 
 ## How ADRs are numbered
 - IDs are global and monotonic across the whole suite: `ADR-NNNN`.
-- ADR-0001…0017 live in [`../18-adr-log.md`](../18-adr-log.md) (one section each).
-- ADR-0018+ live here as `ADR-NNNN-<slug>.md`.
-- Open/proposed-but-undecided items use `ADR-Pn` and are tracked at the bottom of [`../18-adr-log.md`](../18-adr-log.md).
+- Each decision lives as a `## ADR-00xx` section inside one of the 8 theme docs below; link to it as `<theme>.md#adr-00xx`.
+- Open/proposed-but-undecided items use `ADR-Pn` and are tracked in [`08-scope-and-requirements.md`](./08-scope-and-requirements.md#open--proposed-decisions-adr-pn).
+
+## Theme docs
+- [`01-architecture-core.md`](./01-architecture-core.md) — Core architecture, scope model & runtime substrate
+- [`02-identity-security.md`](./02-identity-security.md) — Identity, security & secrets
+- [`03-data-plane.md`](./03-data-plane.md) — Data plane, reactivity, schema & app capabilities
+- [`04-governance-verification.md`](./04-governance-verification.md) — Governance, verification, SLO & cost
+- [`05-config-matching-environments.md`](./05-config-matching-environments.md) — Config, matching, environments, codegen & DSL
+- [`06-ai-generation-operators.md`](./06-ai-generation-operators.md) — AI generation, agents & operators
+- [`07-portability-extensibility.md`](./07-portability-extensibility.md) — Portability, extensibility & deployment topology
+- [`08-scope-and-requirements.md`](./08-scope-and-requirements.md) — Scope, requirements process & NFR baselines
 
 ## Index
 
-| ID | Title | Status | Source |
-|---|---|---|---|
-| 0001 | TS-native control-plane core (Kubernetes optional) | Accepted | [18-adr-log](../18-adr-log.md#adr-0001--ts-native-control-plane-core-kubernetes-optional) |
-| 0002 | Pluggable durable ports + a built-in engine ("Worlds") | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0003 | Event sourcing + CQRS as the foundation | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0004 | Choreography sagas + virtual actors | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0005 | One ports/adapters shape for cloud, IaC, build/VM | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0006 | Pulumi Automation API as primary IaC | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0007 | Provider-specific options via typed `.with(...)` | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0008 | Keyless agent identity (SVID/OIDC) + token broker | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0009 | Capability Manifest capability/auth standard + Registry | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0010 | Forge: AI-generated providers gated by conformance | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0011 | `bindle.ts` (what) vs `hobo.config.ts` (where/how) | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0012 | Firecracker-sandboxed, credential-scoped executors | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0013 | Per-resource IaC stacks (default) | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0014 | MCP as a first-class control surface | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0015 | Contracts & policy are HoBo-native planes; engines behind ports | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0016 | A single `can-deploy`/Gatekeeper gate composes all checks | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0017 | Policy obligations are durable effects, not advice | Accepted | [18-adr-log](../18-adr-log.md) |
-| 0018 | Requirements-artifact structure & traceability scheme | Accepted | [ADR-0018](./ADR-0018-requirements-structure-and-traceability.md) |
-| 0019 | Persona prioritization / primary ICP | Accepted | [ADR-0019](./ADR-0019-persona-prioritization-icp.md) |
-| 0021 | NFR baselines / committed SLOs for v1 | Proposed | [ADR-0021](./ADR-0021-nfr-baselines-slos.md) |
-| 0023 | Security posture commitments for v1 | Accepted | [ADR-0023](./ADR-0023-security-posture-commitments.md) |
-| 0024 | Portability conformance guarantee ("same Bindle, N clouds") | Accepted | [ADR-0024](./ADR-0024-portability-conformance-guarantee.md) |
-| 0025 | `"use training"` directive + `training-engine` behind a port (Agent Lightning/Trace optional, internal) | Accepted | [ADR-0025](./ADR-0025-use-training-directive-and-training-engine.md) |
-| 0026 | Scope model `Yard ⊃ Camp ⊃ Bindle`; remove "World" (fold into Camp) | Accepted | [ADR-0026](./ADR-0026-scope-model-yard-camp-bindle.md) |
-| 0027 | Secretless-first configuration & secrets | Accepted | [ADR-0027](./ADR-0027-secretless-config-and-secrets.md) |
-| 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | Accepted | [ADR-0028](./ADR-0028-multi-camp-deployment-model.md) |
-| 0029 | Reactive / live-query model (event-log reactor) | Accepted | [ADR-0029](./ADR-0029-reactive-live-query-model.md) |
-| 0030 | Forge generation: inputs & algorithm | Accepted | [ADR-0030](./ADR-0030-forge-generation-inputs-and-algorithm.md) |
-| 0031 | wasm host of record & runtime substrate (`component-host` port) | Accepted | [ADR-0031](./ADR-0031-wasm-host-of-record-and-runtime-substrate.md) |
-| 0032 | Data portability & schema-versioning strategy | Accepted | [ADR-0032](./ADR-0032-data-portability-schema-versioning.md) |
-| 0033 | Deterministic Matching & Planner selection (+ default objective; resolves ADR-P4) | Accepted | [ADR-0033](./ADR-0033-deterministic-matching-and-planner-selection.md) |
-| 0034 | Search & vector surface (unified `search` port + `embed`) | Accepted | [ADR-0034](./ADR-0034-search-vector-surface.md) |
-| 0035 | Custom domains & multi-cloud ingress (Yard-level `domain` + `dns`) | Accepted | [ADR-0035](./ADR-0035-custom-domains-and-multi-cloud-ingress.md) |
-| 0036 | Air-gapped / sovereign Yard mode (zero-egress profile + signed bundle import) | Accepted | [ADR-0036](./ADR-0036-air-gapped-sovereign-mode.md) |
-| 0037 | SDK codegen surface & policy (checked-in `_generated/`) | Accepted | [ADR-0037](./ADR-0037-sdk-codegen-surface.md) |
-| 0038 | End-user / application auth (federate+verify; unified `PrincipalRef`) | Accepted | [ADR-0038](./ADR-0038-end-user-application-auth.md) |
-| 0039 | Metering, quota & cost attribution | Accepted | [ADR-0039](./ADR-0039-billing-quota-cost-attribution.md) |
-| 0040 | Cross-Camp stateful consistency (declared topology; single-writer default) | Accepted | [ADR-0040](./ADR-0040-cross-camp-stateful-consistency.md) |
-| 0041 | Migration & onboarding (`hobo import` adopt-in-place; strangler-fig) | Accepted | [ADR-0041](./ADR-0041-migration-onboarding.md) |
-| 0042 | Local-dev fidelity (simulate / mock / Camp-only matrix) | Accepted | [ADR-0042](./ADR-0042-local-dev-fidelity.md) |
-| 0043 | Multi-Yard federation: the Junction (peer; v1 single-Yard, federation-ready) | Accepted | [ADR-0043](./ADR-0043-multi-yard-federation-junction.md) |
-| 0044 | Feature flags & progressive delivery (OpenFeature-compatible port) | Accepted | [ADR-0044](./ADR-0044-feature-flags-progressive-delivery.md) |
-| 0045 | SLO-as-code, error-budget gating & alerting model (OpenSLO / AlertManager-style) | Accepted | [ADR-0045](./ADR-0045-slo-as-code-and-alerting.md) |
-| 0046 | Boundary standards: CloudEvents · OCSF · OTLP | Accepted | [ADR-0046](./ADR-0046-boundary-standards-cloudevents-ocsf-otlp.md) |
-| 0047 | Chaos / continuous-resilience verification tier | Accepted | [ADR-0047](./ADR-0047-chaos-resilience-verification-tier.md) |
-| 0048 | Persisted code-mutation mechanism (`"use training"` promotion) | Accepted | [ADR-0048](./ADR-0048-persisted-code-mutation-mechanism.md) |
-| 0049 | Reserve "Hobo Code" for the configuration + code DSL (rename auth standard → Capability Manifest) | Accepted | [ADR-0049](./ADR-0049-hobo-code-dsl-reservation.md) |
-| 0050 | Event-sourced-by-default app domain data; backends are projection sinks | Accepted | [ADR-0050](./ADR-0050-event-sourced-domain-data-projection-sinks.md) |
-| 0051 | WIT records as the canonical domain schema (TS + protobuf + Zod generated) | Accepted | [ADR-0051](./ADR-0051-wit-record-canonical-domain-schema.md) |
-| 0052 | Projection-sink paradigm taxonomy & the reactivity boundary | Accepted | [ADR-0052](./ADR-0052-projection-sink-paradigm-taxonomy.md) |
-| 0053 | Write-side consistency: commands, aggregates & the actor boundary | Accepted | [ADR-0053](./ADR-0053-write-side-aggregates-and-commands.md) |
-| 0054 | Operator Agents (the Crew): built-in autonomous Yard services | Accepted | [ADR-0054](./ADR-0054-operator-agent-roster.md) |
-| 0055 | The generated stack: layered AI generation/self-healing/persistence | Accepted | [ADR-0055](./ADR-0055-generated-stack-layered-model.md) |
-| 0057 | Patchability as a first-class guarantee (distinct from portability) | Accepted | [ADR-0057](./ADR-0057-patchability-derivative-implementations.md) |
-| 0058 | SRE: incident management, runbooks & the self-healing decision model | Accepted | [ADR-0058](./ADR-0058-sre-incident-management-and-runbooks.md) |
-| 0059 | App communications: the `notify` family over the shared receiver port | Accepted | [ADR-0059](./ADR-0059-app-communications-notify.md) |
-| 0060 | Compliance & data governance as a plane (classification → enforced residency/retention; crypto-shred erasure; attestations) | Accepted | [ADR-0060](./ADR-0060-compliance-governance-plane.md) |
-| 0061 | AI safety & model governance (model registry, guardrails, red-teaming) | Accepted | [ADR-0061](./ADR-0061-ai-safety-model-governance.md) |
-| 0062 | Registry distribution (publish/discover/install/trust; no monetization) | Accepted | [ADR-0062](./ADR-0062-marketplace-ecosystem.md) |
-| 0063 | Single v1 scope (whole designed surface ships as one v1; P0–P6 become build stages) | Accepted | [ADR-0063](./ADR-0063-single-v1-scope.md) |
-| 0064 | Scope: AI-native meta-cloud (remove business + app-build-out) | Accepted | [ADR-0064](./ADR-0064-scope-ai-native-meta-cloud.md) |
-| 0065 | Streaming-first: RX subscribable materializations as the default read surface (reframes 0029/0050) | Accepted | [ADR-0065](./ADR-0065-streaming-first-rx-materializations.md) |
-| 0066 | Cost-driven graceful degradation — availability through cost controls | Accepted | [ADR-0066](./ADR-0066-cost-driven-graceful-degradation.md) |
-| 0067 | Component-host portability conformance | Accepted | [ADR-0067](./ADR-0067-component-host-portability.md) |
-| 0068 | Derivative upgrade paths | Accepted | [ADR-0068](./ADR-0068-derivative-upgrade-paths.md) |
-
-> ADR-0021 is **Proposed** (SLO numbers need stakeholder ratification — see the open ADR-P series in the log). ADR-0023/0024 were produced by the requirements review/hardening pass (see [`../../../plans/README.md`](../../../plans/README.md)). ADR-0026 supersedes the *naming* in ADR-0002 ("Worlds") — the decision (pluggable durable ports + built-in engine) stands. **ADR-0063** sets the single-v1 scope: the whole designed surface ships as one v1, with P0–P6 reframed as dependency-ordered build stages (the [per-stage build detail](../08-roadmap.md#per-stage-build-detail-stages-06) in the roadmap). It replaced the earlier MVP-at-P4 line / phase-gated MoSCoW (the removed ADR-0022). **ADR-0064 (AI-native meta-cloud refocus) supersedes ADR-0020** (monetization model — removed) and **amends ADR-0039** (retitled *Metering, quota & cost attribution*), **ADR-0054** (UX-Designer operator removed), **ADR-0055** (UI layer removed from the generated stack), **ADR-0059** (`notify` is a catalog port, not a plane) and **ADR-0062** (reframed to Registry distribution, monetization removed); **ADR-0056** (UI generation) is **withdrawn**. ADR-0020 and ADR-0056 files are deleted — they no longer appear in the index above. **ADR-0065** makes subscriptions/streams (RX materializations) the **default read surface**, reframing **ADR-0029** (the reactor engine is unchanged) and **ADR-0050** (the backend sink is an optional cache, not the default query target).
+| ID | Title | Theme doc |
+|---|---|---|
+| 0001 | TS-native control-plane core (Kubernetes optional) | [architecture-core](01-architecture-core.md#adr-0001) |
+| 0002 | Pluggable durable ports + a built-in engine (the Camp runtime) | [architecture-core](01-architecture-core.md#adr-0002) |
+| 0003 | Event sourcing + CQRS as the foundation | [architecture-core](01-architecture-core.md#adr-0003) |
+| 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
+| 0005 | One ports/adapters shape for cloud, IaC, and build/VM | [architecture-core](01-architecture-core.md#adr-0005) |
+| 0006 | Pulumi Automation API as the primary IaC mechanism | [architecture-core](01-architecture-core.md#adr-0006) |
+| 0007 | Provider-specific options via typed `.with(...)` | [architecture-core](01-architecture-core.md#adr-0007) |
+| 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
+| 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
+| 0010 | Forge: AI-generated providers gated by conformance | [ai-generation-operators](06-ai-generation-operators.md#adr-0010) |
+| 0011 | `bindle.ts` (what) vs `hobo.config.ts` (where/how) | [architecture-core](01-architecture-core.md#adr-0011) |
+| 0012 | Firecracker-sandboxed, credential-scoped executors | [identity-security](02-identity-security.md#adr-0012) |
+| 0013 | Per-resource IaC stacks (default) | [architecture-core](01-architecture-core.md#adr-0013) |
+| 0014 | MCP as a first-class control surface | [ai-generation-operators](06-ai-generation-operators.md#adr-0014) |
+| 0015 | Contracts & policy are HoBo-native planes; engines sit behind ports | [governance-verification](04-governance-verification.md#adr-0015) |
+| 0016 | A single `can-deploy`/Gatekeeper gate composes all checks | [governance-verification](04-governance-verification.md#adr-0016) |
+| 0017 | Policy obligations are durable effects, not advice | [governance-verification](04-governance-verification.md#adr-0017) |
+| 0018 | Requirements-artifact structure & traceability scheme | [scope-and-requirements](08-scope-and-requirements.md#adr-0018) |
+| 0019 | Persona prioritization / primary ICP | [scope-and-requirements](08-scope-and-requirements.md#adr-0019) |
+| 0021 | NFR baselines / committed SLOs for v1 | [scope-and-requirements](08-scope-and-requirements.md#adr-0021) |
+| 0023 | Security posture commitments for v1 | [identity-security](02-identity-security.md#adr-0023) |
+| 0024 | Portability conformance guarantee ("same Bindle, N clouds") | [portability-extensibility](07-portability-extensibility.md#adr-0024) |
+| 0025 | `"use training"` directive + `training-engine` behind a port (Agent Lightning / Trace optional, internal-only) | [ai-generation-operators](06-ai-generation-operators.md#adr-0025) |
+| 0026 | Scope model: `Yard ⊃ Camp ⊃ Bindle`; remove "World" | [architecture-core](01-architecture-core.md#adr-0026) |
+| 0027 | Secretless-first configuration & secrets | [identity-security](02-identity-security.md#adr-0027) |
+| 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | [config-matching-environments](05-config-matching-environments.md#adr-0028) |
+| 0029 | Reactive / live-query model (event-log reactor) | [data-plane](03-data-plane.md#adr-0029) |
+| 0030 | Forge generation: inputs & algorithm | [ai-generation-operators](06-ai-generation-operators.md#adr-0030) |
+| 0031 | wasm host of record & runtime substrate | [architecture-core](01-architecture-core.md#adr-0031) |
+| 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
+| 0033 | Deterministic Matching & Planner selection (+ default objective) | [config-matching-environments](05-config-matching-environments.md#adr-0033) |
+| 0034 | Search & vector surface | [data-plane](03-data-plane.md#adr-0034) |
+| 0035 | Custom domains & multi-cloud ingress | [portability-extensibility](07-portability-extensibility.md#adr-0035) |
+| 0036 | Air-gapped / sovereign Yard mode | [portability-extensibility](07-portability-extensibility.md#adr-0036) |
+| 0037 | SDK codegen surface & policy | [config-matching-environments](05-config-matching-environments.md#adr-0037) |
+| 0038 | End-user / application auth | [identity-security](02-identity-security.md#adr-0038) |
+| 0039 | Metering, quota & cost attribution | [governance-verification](04-governance-verification.md#adr-0039) |
+| 0040 | Cross-Camp stateful consistency | [config-matching-environments](05-config-matching-environments.md#adr-0040) |
+| 0041 | Migration & onboarding (adopt-in-place) | [portability-extensibility](07-portability-extensibility.md#adr-0041) |
+| 0042 | Local-dev fidelity (simulate / mock / Camp-only) | [portability-extensibility](07-portability-extensibility.md#adr-0042) |
+| 0043 | Multi-Yard federation: the Junction (and the Yard's scope, clarified) | [portability-extensibility](07-portability-extensibility.md#adr-0043) |
+| 0044 | Feature flags & progressive delivery | [governance-verification](04-governance-verification.md#adr-0044) |
+| 0045 | SLO-as-code, error-budget gating & alerting model | [governance-verification](04-governance-verification.md#adr-0045) |
+| 0046 | Boundary standards: CloudEvents, OCSF & OTLP | [governance-verification](04-governance-verification.md#adr-0046) |
+| 0047 | Chaos / continuous-resilience verification tier | [governance-verification](04-governance-verification.md#adr-0047) |
+| 0048 | Persisted code-mutation mechanism (for `"use training"` promotion) | [ai-generation-operators](06-ai-generation-operators.md#adr-0048) |
+| 0049 | Reserve "Hobo Code" for the configuration + code DSL | [config-matching-environments](05-config-matching-environments.md#adr-0049) |
+| 0050 | Event-sourced-by-default app domain data; backends are projection sinks | [data-plane](03-data-plane.md#adr-0050) |
+| 0051 | WIT records as the canonical domain schema (TS + protobuf + Zod generated) | [data-plane](03-data-plane.md#adr-0051) |
+| 0052 | Projection-sink paradigm taxonomy & the reactivity boundary | [data-plane](03-data-plane.md#adr-0052) |
+| 0053 | Write-side consistency: commands, aggregates, and the actor boundary | [data-plane](03-data-plane.md#adr-0053) |
+| 0054 | Operator Agents (the Crew): built-in autonomous Yard services | [ai-generation-operators](06-ai-generation-operators.md#adr-0054) |
+| 0055 | The generated stack: a layered model for AI generation/self-healing/persistence | [ai-generation-operators](06-ai-generation-operators.md#adr-0055) |
+| 0057 | Patchability as a first-class guarantee (distinct from portability) | [portability-extensibility](07-portability-extensibility.md#adr-0057) |
+| 0058 | SRE: incident management, runbooks & the self-healing decision model | [ai-generation-operators](06-ai-generation-operators.md#adr-0058) |
+| 0059 | App communications: the `notify` family over the shared receiver port | [data-plane](03-data-plane.md#adr-0059) |
+| 0060 | Compliance & data governance as a plane over the existing planes | [governance-verification](04-governance-verification.md#adr-0060) |
+| 0061 | AI safety & model governance: registry, guardrails, red-teaming | [governance-verification](04-governance-verification.md#adr-0061) |
+| 0062 | Registry distribution: publish/discover/install/trust over signed, certified artifacts | [portability-extensibility](07-portability-extensibility.md#adr-0062) |
+| 0063 | Single v1 scope (the whole designed surface ships as one v1) | [scope-and-requirements](08-scope-and-requirements.md#adr-0063) |
+| 0064 | Scope: AI-native meta-cloud (remove business + app-build-out) | [scope-and-requirements](08-scope-and-requirements.md#adr-0064) |
+| 0065 | Streaming-first: RX subscribable materializations as the default read surface | [data-plane](03-data-plane.md#adr-0065) |
+| 0066 | Availability through cost controls: cost-driven graceful degradation & SLO-aware cost/availability trade-offs | [governance-verification](04-governance-verification.md#adr-0066) |
+| 0067 | Component-host portability: conformance + version pinning across hosts | [architecture-core](01-architecture-core.md#adr-0067) |
+| 0068 | Derivative upgrade paths: seam versioning & compat for forks/patches | [portability-extensibility](07-portability-extensibility.md#adr-0068) |

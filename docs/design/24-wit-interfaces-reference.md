@@ -36,12 +36,12 @@
 | `hobo:projection` | persistence-agnostic data plane: fold event streams into a sink + query it ([Plan 39](./39-data-plane-projections.md)) | `declare(spec)`, `fold(state,event)`, `materialize`, `rebuild`, `read(query)`, `read-raw(driver-call)` (escape hatch) |
 | `hobo:search` | full-text + vector + hybrid retrieval ([Plan 35](./35-search-vector-surface.md)); a projection-sink paradigm | `text-query(q,filter)` (reactive), `vector-query(vec,filter,k)`, `hybrid(q,vec,...)`, `upsert`/`delete` |
 | `hobo:embed` | embedding generation behind `search` ([Plan 35](./35-search-vector-surface.md)) | `embed(text)` → vector (local model or hosted API; secretless) |
-| `hobo:dns` | DNS records + custom-domain routing ([Plan 13](./13-networking-connectivity.md)/[ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md)) | `upsert-record`, `set-routing(policy)`, `verify`, health-checked failover across Camps |
-| `hobo:auth` | end-user auth: federate + verify ([Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/ADR-0038-end-user-application-auth.md)) | `verify(jwt)` → `ctx.user` claims (OIDC/JWKS/customJwt), `start-session`/`revoke-session`; thin built-in (passkey/email) for dev |
+| `hobo:dns` | DNS records + custom-domain routing ([Plan 13](./13-networking-connectivity.md)/[ADR-0035](./adr/07-portability-extensibility.md#adr-0035)) | `upsert-record`, `set-routing(policy)`, `verify`, health-checked failover across Camps |
+| `hobo:auth` | end-user auth: federate + verify ([Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/02-identity-security.md#adr-0038)) | `verify(jwt)` → `ctx.user` claims (OIDC/JWKS/customJwt), `start-session`/`revoke-session`; thin built-in (passkey/email) for dev |
 | `hobo:crypto` | app-facing cryptography with **keys the app never holds** ([Plan 31](./31-config-secretless-secrets.md)) | `encrypt`/`decrypt` (envelope), `sign`/`verify` — key handles brokered via Identity; KMS/Key Vault/Cloud KMS/in-boundary HSM behind the port |
-| `hobo:notify` | app-facing communications: email/sms/push/outbound-webhook to *end-users* ([Plan 21](./21-resources-catalog.md)/[ADR-0059](./adr/ADR-0059-app-communications-notify.md)) | `send(channel, to: PrincipalRef, template, data)` (idempotent `step`; typed WIT-record templates); shares the ADR-0045 receiver port + adapters (SES/Twilio/FCM/signed-webhook); secretless-brokered |
-| `hobo:guardrail` | AI output safety checks as a gated step ([Plan 47](./47-ai-safety-model-governance.md)/[ADR-0061](./adr/ADR-0061-ai-safety-model-governance.md)) | `check(output, kind)` → pass/redact/block (moderation/PII/jailbreak/grounding); built-in rules default, Llama Guard/hosted/local adapters (Matching-selected, air-gap → local) |
-| `hobo:feature-flag` | runtime flags, OpenFeature-compatible ([Plan 37](./37-feature-flags-progressive-delivery.md)/[ADR-0044](./adr/ADR-0044-feature-flags-progressive-delivery.md)) | `eval(flag, ctx)` (bool/string/number/object, in-process deterministic), `change`/`target`; built-in store or OpenFeature provider |
+| `hobo:notify` | app-facing communications: email/sms/push/outbound-webhook to *end-users* ([Plan 21](./21-resources-catalog.md)/[ADR-0059](./adr/03-data-plane.md#adr-0059)) | `send(channel, to: PrincipalRef, template, data)` (idempotent `step`; typed WIT-record templates); shares the ADR-0045 receiver port + adapters (SES/Twilio/FCM/signed-webhook); secretless-brokered |
+| `hobo:guardrail` | AI output safety checks as a gated step ([Plan 47](./47-ai-safety-model-governance.md)/[ADR-0061](./adr/04-governance-verification.md#adr-0061)) | `check(output, kind)` → pass/redact/block (moderation/PII/jailbreak/grounding); built-in rules default, Llama Guard/hosted/local adapters (Matching-selected, air-gap → local) |
+| `hobo:feature-flag` | runtime flags, OpenFeature-compatible ([Plan 37](./37-feature-flags-progressive-delivery.md)/[ADR-0044](./adr/04-governance-verification.md#adr-0044)) | `eval(flag, ctx)` (bool/string/number/object, in-process deterministic), `change`/`target`; built-in store or OpenFeature provider |
 | `hobo:control/provisioning` | control-plane resource ops | `provision(spec)`, `deprovision(id)`, `refresh(id)` |
 | `hobo:control/observability` | metrics/traces/logs emit | `emit-metric`, `emit-trace` |
 | `hobo:control/config` | tenant/Camp config | `get`, `set` |
@@ -61,7 +61,7 @@ import hobo:runtime/workflow@0.1.0;
 import wasi:logging/logging@0.2.0;
 export wasi:http/incoming-handler@0.2.0;
 ```
-The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` + `.allow()` and an `api`/`service` generates the interface contract; `jco` emits the typed bindings the handler code uses. These `jco guest-types` are one of the four codegen sources (with Zod, `.allow()`, and the bindle graph) that land in the checked-in `_generated/` directory ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md)/[Plan 2 §Generated code](./02-sdk-api.md)).
+The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` + `.allow()` and an `api`/`service` generates the interface contract; `jco` emits the typed bindings the handler code uses. These `jco guest-types` are one of the four codegen sources (with Zod, `.allow()`, and the bindle graph) that land in the checked-in `_generated/` directory ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)/[Plan 2 §Generated code](./02-sdk-api.md)).
 
 ## Versioning & evolution
 - Interfaces are versioned independently; the manifest IR ([Plan 22](./22-wiring-manifest.md)) records the exact versions a component imports/exports.
@@ -71,4 +71,4 @@ The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` +
 ## Iteration hooks
 - Final `hobo:*` package names/namespacing; which `hobo:*` interfaces to upstream as `wasi:*` proposals (queue/websocket/blob-events).
 - Whether intra-app calls use runtime links or build-time composition (`wac`).
-- `wasi:sql` adoption vs a richer `hobo:sql` — the **migration** half is now specified in [Plan 34](./34-app-data-migrations.md) ([ADR-0032](./adr/ADR-0032-data-portability-schema-versioning.md)); `hobo:sql` is where the declarative-schema/diff + snapshot/export capabilities live (the connection/query surface stays `wasi:sql`).
+- `wasi:sql` adoption vs a richer `hobo:sql` — the **migration** half is now specified in [Plan 34](./34-app-data-migrations.md) ([ADR-0032](./adr/03-data-plane.md#adr-0032)); `hobo:sql` is where the declarative-schema/diff + snapshot/export capabilities live (the connection/query surface stays `wasi:sql`).

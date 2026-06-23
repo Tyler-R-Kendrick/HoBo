@@ -47,7 +47,7 @@ flowchart TD
 1. **Bound resource** → SVID-brokered token (zero stored secret). Default for `database`/`queue`/`objectStore`/etc.
 2. **Secret with provider federation** → broker a scoped token, read the value from the provider's secret store at use-time.
 3. **Non-secret config** → typed value from the Camp's Deployment Set (no broker needed).
-4. **Static-secret escape hatch** → only when a provider offers no federation/secret-store path. **Bounded, concretely:** max TTL **≤ 7 days** (default; per-Camp tunable down), **rotation enforced** (a key past TTL fails closed with a typed `SecretExpiredError`, it does not hang), **every fetch audited** (not just grant/revoke), and **in-process cache bounded** (short TTL; each cache miss re-audits) — explicit opt-in ([ADR-0023](./adr/ADR-0023-security-posture-commitments.md)). `hobo doctor` warns when this path is used where federation exists ([Plan 15](./15-cli-dx.md), FR-014).
+4. **Static-secret escape hatch** → only when a provider offers no federation/secret-store path. **Bounded, concretely:** max TTL **≤ 7 days** (default; per-Camp tunable down), **rotation enforced** (a key past TTL fails closed with a typed `SecretExpiredError`, it does not hang), **every fetch audited** (not just grant/revoke), and **in-process cache bounded** (short TTL; each cache miss re-audits) — explicit opt-in ([ADR-0023](./adr/02-identity-security.md#adr-0023)). `hobo doctor` warns when this path is used where federation exists ([Plan 15](./15-cli-dx.md), FR-014).
 
 ## Per-Camp binding (where values actually come from)
 The Bindle declares *needs*; each Camp supplies the *source* (provider-specific), e.g.:
@@ -58,7 +58,7 @@ camp("prod-aws").config({
   LOG_LEVEL: "warn",
 });
 ```
-The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-code change** (the portability promise, [ADR-0024](./adr/ADR-0024-portability-conformance-guarantee.md)). Resolution decisions are recorded as `config.Resolved` (ref → source **+ Camp**, never the value).
+The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-code change** (the portability promise, [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)). Resolution decisions are recorded as `config.Resolved` (ref → source **+ Camp**, never the value).
 
 **Multi-Camp drift.** Because each Camp sources secrets independently, the *same logical secret* can diverge across Camps (rotated in AWS, stale in Azure). HoBo does **not** sync secret values (it never holds them), but `hobo doctor` / `hobo verify` compare resolved **refs across an environment group** and warn on a key that is missing or maps inconsistently; `config.Resolved` (ref + Camp) makes drift inspectable in the audit log. Value correctness remains the secret-store owner's responsibility.
 
@@ -74,11 +74,11 @@ The local Camp (`runtime-local`) has no cloud secret store, so `secretRef` resol
 If a Camp's secret store is unreachable, `secretRef` resolution **fails fast after a bounded retry** (a small capped-backoff budget), emits `secret.Unavailable`, and surfaces a typed error the step can handle — it does **not** silently fall back to a static value. A short, bounded in-process cache (above) may serve a recently-fetched value within its TTL; beyond that, the call fails rather than serve stale/unknown credentials. Treat secret-store availability as a dependency in the SLO budget ([Plan 5](./05-reliability-ha.md)).
 
 ## App-facing crypto (keys the app never holds)
-The secretless model extends to **cryptography**: a `crypto(name)` resource (`hobo:crypto` port, [Plan 21](./21-resources-catalog.md)/[Plan 24](./24-wit-interfaces-reference.md)) offers `encrypt`/`decrypt` (envelope) + `sign`/`verify` where the **key material never enters app code** — the app holds a brokered key *handle* (via Identity, [Plan 6](./06-ai-native-agent-auth.md)), and the operation runs against a per-Camp **KMS / Key Vault / Cloud KMS / in-boundary HSM** behind the port (air-gap: in-boundary KMS, [ADR-0027](./adr/ADR-0027-secretless-config-and-secrets.md)/[ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)). Same secretless guarantee as tokens: nothing key-shaped at rest in the app. (Closes the Dapr-crypto parity item, [gap-analysis G9](../../competitors/gap-analysis.md).)
+The secretless model extends to **cryptography**: a `crypto(name)` resource (`hobo:crypto` port, [Plan 21](./21-resources-catalog.md)/[Plan 24](./24-wit-interfaces-reference.md)) offers `encrypt`/`decrypt` (envelope) + `sign`/`verify` where the **key material never enters app code** — the app holds a brokered key *handle* (via Identity, [Plan 6](./06-ai-native-agent-auth.md)), and the operation runs against a per-Camp **KMS / Key Vault / Cloud KMS / in-boundary HSM** behind the port (air-gap: in-boundary KMS, [ADR-0027](./adr/02-identity-security.md#adr-0027)/[ADR-0036](./adr/07-portability-extensibility.md#adr-0036)). Same secretless guarantee as tokens: nothing key-shaped at rest in the app. (Closes the Dapr-crypto parity item, [gap-analysis G9](../../competitors/gap-analysis.md).)
 
 ## Why this is safe
 - **Nothing to steal by default** — the common case (bound resources) uses brokered tokens, so there is no secret at rest ([ADR-0008](./adr/README.md)).
-- **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/ADR-0023-security-posture-commitments.md)).
+- **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/02-identity-security.md#adr-0023)).
 - **Portable** — the Bindle declares needs, the Camp supplies sources; swapping clouds is a Camp change, never an app edit.
 
 ## Iteration hooks

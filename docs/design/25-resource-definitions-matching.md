@@ -36,7 +36,7 @@ export const ticketsSinkProd = defineResource({
   match: { envType: "production", resourceId: "tickets" },
 });
 ```
-A **`projection-sink`** definition is how a data architect places a developer's read model on a backend **without touching app code** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)): the `paradigm` is a matching dimension, and the `mapping` declares how the read-model WIT record lands in that backend. The developer owns the logical record + queries; the architect owns the mapping + sink — the autonomy split *is* this Matching boundary.
+A **`projection-sink`** definition is how a data architect places a developer's read model on a backend **without touching app code** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): the `paradigm` is a matching dimension, and the `mapping` declares how the read-model WIT record lands in that backend. The developer owns the logical record + queries; the architect owns the mapping + sink — the autonomy split *is* this Matching boundary.
 
 ## Matching (specificity-scored selection)
 For a needed resource in context `{ envType, app, env, tenant, resourceType, resourceClass, resourceId }`, the Planner gathers all definitions of that `type`, keeps those whose criteria fully match, **scores by specificity**, and selects the highest (ties → next-most-specific). Criteria dimensions: `envType` · `app` · `env` · `resourceClass` · `resourceId` (+ `tenant`).
@@ -59,7 +59,7 @@ flowchart LR
   REAL --> NODE["node in DeploymentPlan DAG (Plan 3/4)"]
 ```
 
-## The selection algorithm — deterministic, on-path ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md))
+## The selection algorithm — deterministic, on-path ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033))
 Selection is a **pure function** of `(catalog snapshot, deploy context, objective setting)` — no clock, RNG, network, or model — so it is unit-testable without a cloud and **identical on replay** (the determinism property [Plan 9](./09-verification-open-questions.md) asserts of the Planner). The pipeline:
 1. **Gather** all definitions of the requested `type`.
 2. **Filter** to candidates whose criteria match the context **and** whose provider satisfies the resource's hard **`require`** capabilities (`Capability.satisfies` ([Plan 3](./03-providers-iac.md)) = `full` → accept; `prefer` may degrade with a `PlanWarning`; `require` miss → reject). If none satisfy `require` → **`deployment.PlanRejected`** with a precise, agent-correctable reason.
@@ -68,7 +68,7 @@ Selection is a **pure function** of `(catalog snapshot, deploy context, objectiv
 
 **True ties never block.** If candidates are equal on specificity, `priority`, *and* objective, the stable tiebreak still yields a deterministic winner, and a `PlanWarning` + tie flag is recorded so a platform engineer can add an explicit `priority` to disambiguate.
 
-**AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 33](./33-forge-generation-pipeline.md)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. (A constraint solver / LLM selector on-path was rejected — [ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md).)
+**AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 33](./33-forge-generation-pipeline.md)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. (A constraint solver / LLM selector on-path was rejected — [ADR-0033](./adr/05-config-matching-environments.md#adr-0033).)
 
 ## Mapping is sugar over default definitions
 The simple `hobo.config.ts` ([Plan 2](./02-sdk-api.md)) is **not** a separate system — it **compiles to default Resource Definitions**:
@@ -88,6 +88,6 @@ Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6
 
 ## Iteration hooks
 - Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.
-- ~~Scoring exactly like Humanitec vs a HoBo refinement~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)):** deterministic lexicographic rank (specificity → explicit `priority` → configurable objective, default min-cost → stable tiebreak); weighted multi-objective blending + carbon-signal sourcing remain hooks.
-- ~~Conflict resolution when two definitions tie on score~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)):** stable tiebreak (definition id) + `PlanWarning`, never a block.
+- ~~Scoring exactly like Humanitec vs a HoBo refinement~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** deterministic lexicographic rank (specificity → explicit `priority` → configurable objective, default min-cost → stable tiebreak); weighted multi-objective blending + carbon-signal sourcing remain hooks.
+- ~~Conflict resolution when two definitions tie on score~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** stable tiebreak (definition id) + `PlanWarning`, never a block.
 - How `match.Decided` is surfaced for agents to self-correct an unsatisfiable request (now carries the full ranking + reasons).

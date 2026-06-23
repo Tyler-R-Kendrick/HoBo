@@ -121,7 +121,7 @@ export default handler(async (req, ctx) => {
   await ctx.bindings.orders.send({ id: "o1" });          // typed queue client
 });
 ```
-> **Domain data goes through the persistence-agnostic data plane, not raw `.query()`.** App domain data is **event-sourced by default** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/ADR-0050-event-sourced-domain-data-projection-sinks.md)): writes are `command(...)`→`ctx.emit(event)`, reads are `repo<T>(...)`/`view(...)` over **projections** the architect maps onto SQL/NoSQL/KV/graph/vector. Raw `ctx.bindings.db.query("…")` above is the **escape hatch** — provider-namespaced/typed to the resolved driver (a dialect leak fails to compile) and **flagged non-portable** by `can-deploy`/`hobo doctor`; raw writes are allowed only on adopted **authoritative-external** stores ([ADR-0041](./adr/ADR-0041-migration-onboarding.md)).
+> **Domain data goes through the persistence-agnostic data plane, not raw `.query()`.** App domain data is **event-sourced by default** ([Plan 39](./39-data-plane-projections.md)/[ADR-0050](./adr/03-data-plane.md#adr-0050)): writes are `command(...)`→`ctx.emit(event)`, reads are `repo<T>(...)`/`view(...)` over **projections** the architect maps onto SQL/NoSQL/KV/graph/vector. Raw `ctx.bindings.db.query("…")` above is the **escape hatch** — provider-namespaced/typed to the resolved driver (a dialect leak fails to compile) and **flagged non-portable** by `can-deploy`/`hobo doctor`; raw writes are allowed only on adopted **authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).
 
 ---
 
@@ -169,11 +169,11 @@ export const fulfillment = saga("fulfillment")
 |---|---|---|
 | `step(fn, opts?)` | side-effecting unit | runs once; result memoized; auto-retry per `opts` |
 | `workflow(fn)` / `"use workflow"` | deterministic orchestration | replays over memoized steps; seeded RNG/clock |
-| `subscribe(m)` (default) / `query(fn)`+`"use query"` (snapshot) | **reactive read** — subscribe to a **materialization** (RX observable folded from event types), or take a one-shot snapshot | replays to `seq` then pushes live at a consistent `seq`; clients `useSubscription()` (default) / `useQuery()` (sugar) ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)) |
-| `command(type, fn)` | **domain write** = command→aggregate→event | runs in its **aggregate (actor) boundary**: checks invariants vs `ctx.state` (write-model fold), then `ctx.emit` under optimistic `seq`; `step`-class (idempotent); returns its `seq` ([Plan 39](./39-data-plane-projections.md)/[ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md)) |
+| `subscribe(m)` (default) / `query(fn)`+`"use query"` (snapshot) | **reactive read** — subscribe to a **materialization** (RX observable folded from event types), or take a one-shot snapshot | replays to `seq` then pushes live at a consistent `seq`; clients `useSubscription()` (default) / `useQuery()` (sugar) ([Plan 32](./32-reactive-live-queries.md)/[ADR-0065](./adr/03-data-plane.md#adr-0065)) |
+| `command(type, fn)` | **domain write** = command→aggregate→event | runs in its **aggregate (actor) boundary**: checks invariants vs `ctx.state` (write-model fold), then `ctx.emit` under optimistic `seq`; `step`-class (idempotent); returns its `seq` ([Plan 39](./39-data-plane-projections.md)/[ADR-0053](./adr/03-data-plane.md#adr-0053)) |
 | `projection<T>(name, def)` | **read model** = fold event streams → read-model record | per-event-type `on:` fold (deterministic, query-class); rebuildable-from-zero; sink chosen by the architect via Matching ([Plan 39](./39-data-plane-projections.md)/[Plan 25](./25-resource-definitions-matching.md)) |
-| `repo<T>(name)` / `view(name)` | **persistence-agnostic snapshot/point/search read** over a materialization's sink cache (the default read is `subscribe`, [ADR-0065](./adr/ADR-0065-streaming-first-rx-materializations.md)) | backend-neutral by logical name; `repo` = entity get/find (point lookup), `view().where().order().paginate()` = snapshot/search (cursor pagination); `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./39-data-plane-projections.md)) |
-| `actor(name, def)` | stateful single-writer entity (grain); **the aggregate / write-model boundary** commands write through ([ADR-0053](./adr/ADR-0053-write-side-aggregates-and-commands.md)) | state = folded event stream; lease + fencing |
+| `repo<T>(name)` / `view(name)` | **persistence-agnostic snapshot/point/search read** over a materialization's sink cache (the default read is `subscribe`, [ADR-0065](./adr/03-data-plane.md#adr-0065)) | backend-neutral by logical name; `repo` = entity get/find (point lookup), `view().where().order().paginate()` = snapshot/search (cursor pagination); `.raw(driver=>…)` escape hatch flagged non-portable ([Plan 39](./39-data-plane-projections.md)) |
+| `actor(name, def)` | stateful single-writer entity (grain); **the aggregate / write-model boundary** commands write through ([ADR-0053](./adr/03-data-plane.md#adr-0053)) | state = folded event stream; lease + fencing |
 | `saga(name)` | event-driven process manager | choreography; compensations; correlation-keyed |
 | `agent(name, def)` | durable AI agent | tools-as-steps; replayable; identity-injected ([Plan 6](./06-ai-native-agent-auth.md)) |
 | `training(fn, opts)` / `"use training"` | **AI-rewritable semantic function** | baseline body; HoBo optimizes prompt/code vs a rubric from OTel/OpenInference trajectories + live-evals; gated promotion ([Plan 23](./23-stubbable-ai-implementations.md)) |
@@ -206,7 +206,7 @@ export const classifyTicket = training(
 // directive form is equivalent:  export async function classifyTicket(t: Ticket) { "use training"; ... }
 ```
 
-What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./23-stubbable-ai-implementations.md)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)): swapping it is a config change, not an app-code change.
+What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./23-stubbable-ai-implementations.md)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)): swapping it is a config change, not an app-code change.
 
 ### Error handling & retries
 ```ts
@@ -237,7 +237,7 @@ database("db", { engine: "postgres" })
 - `start(checkout, order)` is checked against the workflow signature; hooks/streams are generic (`createHook<T>()`, `getWritable<UIMessageChunk>()`).
 - Provider option types are exported by each provider package, so autocomplete on `.with(aws.…)` shows only valid knobs for that provider/resource pairing (conditional types keyed on the port).
 
-### Generated code (`_generated/`) ([ADR-0037](./adr/ADR-0037-sdk-codegen-surface.md))
+### Generated code (`_generated/`) ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037))
 The end-to-end types above aren't hand-written — they're **generated**, deterministically, from four authoritative sources and checked into the repo:
 ```mermaid
 flowchart LR
@@ -259,7 +259,7 @@ flowchart LR
   CI -->|clean| PASS["pass"]
 ```
 - **Output (committed `.hobo/generated/`, or `src/_generated/`):** typed `ctx.bindings.<name>` clients, typed `useSubscription()`/`useQuery()`/search results ([Plan 32](./32-reactive-live-queries.md)/[Plan 35](./35-search-vector-surface.md)), typed workflow/step signatures, typed `.with()` options, and a typed **`api` function-tree** reference (the Convex `_generated/` analog).
-- **When:** `hobo dev` regenerates on change (watch); `hobo build` regenerates + fails on drift; `hobo new` scaffolds it; `hobo codegen --check` is the CI drift gate ([Plan 15](./15-cli-dx.md)). Checked-in = reviewable diffs + editor types with **no build step** + works offline/air-gap ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)). Every command has an MCP equivalent for agents ([Plan 6](./06-ai-native-agent-auth.md)).
+- **When:** `hobo dev` regenerates on change (watch); `hobo build` regenerates + fails on drift; `hobo new` scaffolds it; `hobo codegen --check` is the CI drift gate ([Plan 15](./15-cli-dx.md)). Checked-in = reviewable diffs + editor types with **no build step** + works offline/air-gap ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)). Every command has an MCP equivalent for agents ([Plan 6](./06-ai-native-agent-auth.md)).
 
 ---
 

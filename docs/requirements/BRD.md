@@ -19,7 +19,7 @@
 | Activity | Founders | Product | Eng | Platform | GTM |
 |---|---|---|---|---|---|
 | Business objectives & KPIs | **A** | R | C | C | C |
-| ICP / persona priority ([ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md)) | A | **R** | C | C | C |
+| ICP / persona priority ([ADR-0019](../design/adr/08-scope-and-requirements.md#adr-0019)) | A | **R** | C | C | C |
 | Scope (in/out) & roadmap | A | **R** | C | C | I |
 | Risk acceptance | **A** | R | C | C | C |
 
@@ -47,7 +47,7 @@ The bet: own the intersection no incumbent occupies — cloud-agnostic ports/ada
 - **Provider-breadth bottleneck:** agnostic platforms depend on communities to write provider adapters; coverage lags demand.
 
 ## 4. Business objectives (SMART)
-All objectives are part of the single v1 ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)); the milestone column names the **v1 build stage** ([per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)) by which each is demonstrable, not a separate release.
+All objectives are part of the single v1 ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)); the milestone column names the **v1 build stage** ([per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)) by which each is demonstrable, not a separate release.
 | ID | Objective | Measure | v1 build milestone |
 |---|---|---|---|
 | OBJ-1 | Prove agnostic deploy is tractable | A single unedited Bindle deploys to ≥2 clouds | stage 4 |
@@ -85,10 +85,10 @@ From [17-positioning-competitive.md](../design/17-positioning-competitive.md) an
 | **Platform engineer** (secondary) | Authors Resource Definitions, mapping rules, policy/cost guardrails | Governance, standardization, least-privilege, cost control |
 | **Operator / SRE** | Runs (or self-hosts) the Yard | Reliability, observability, DR, incident response |
 | **Hosted-tenant operator** | Runs (or uses) a managed Yard | Managed HA, SSO/RBAC, audit retention, support SLA |
-Persona priority is fixed by [ADR-0019](../design/adr/ADR-0019-persona-prioritization-icp.md).
+Persona priority is fixed by [ADR-0019](../design/adr/08-scope-and-requirements.md#adr-0019).
 
 ## 8. Business requirements (`BR-NNN`)
-> All BRs are **v1** ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)). Priority **M**ust / **S**hould / **C**ould now expresses **build order within v1** (which to nail first), not a release boundary — there is no "Won't-v1" bucket. Each maps forward to PRD `FR`/`NFR` (see [TRD traceability](./TRD.md#traceability-matrix)).
+> All BRs are **v1** ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)). Priority **M**ust / **S**hould / **C**ould now expresses **build order within v1** (which to nail first), not a release boundary — there is no "Won't-v1" bucket. Each maps forward to PRD `FR`/`NFR` (see [TRD traceability](./TRD.md#traceability-matrix)).
 
 | ID | Business requirement | Priority | Rationale / source |
 |---|---|---|---|
@@ -105,10 +105,10 @@ Persona priority is fixed by [ADR-0019](../design/adr/ADR-0019-persona-prioritiz
 | **BR-011** | The platform must be **safe to operate autonomously**: high-risk agent/automation actions are gated (approval, spend caps). | M | Trust; risk control ([06](../design/06-ai-native-agent-auth.md)/[30](../design/30-policy-plane.md)) |
 
 ## 9. Business model
-HoBo is **open-source**. Commercialization (pricing, billing, invoicing, tax) is **out of scope of these design docs** ([ADR-0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md)) — HoBo is a meta-cloud, not a SaaS-business toolkit. An optional managed/hosted Yard may exist operationally (managed HA, org SSO/RBAC, audit retention, support), but it ships the **same code** as self-host and **never gates portability** ([ADR-0024](../design/adr/ADR-0024-portability-conformance-guarantee.md)); HoBo never marks up the customer's cloud spend.
+HoBo is **open-source**. Commercialization (pricing, billing, invoicing, tax) is **out of scope of these design docs** ([ADR-0064](../design/adr/08-scope-and-requirements.md#adr-0064)) — HoBo is a meta-cloud, not a SaaS-business toolkit. An optional managed/hosted Yard may exist operationally (managed HA, org SSO/RBAC, audit retention, support), but it ships the **same code** as self-host and **never gates portability** ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024)); HoBo never marks up the customer's cloud spend.
 
 ## 10. Success metrics & KPIs
-North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurable in [ADR-0021](../design/adr/ADR-0021-nfr-baselines-slos.md):
+North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurable in [ADR-0021](../design/adr/08-scope-and-requirements.md#adr-0021):
 | KPI | Target | Tied to |
 |---|---|---|
 | Time-to-first-deploy | minutes, not hours (≤10 min p50) | BR-001 |
@@ -119,8 +119,8 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 | Recovery (resume after node loss / rebuild) | <30 s resume / <15 min rebuild | BR-006/BR-007 |
 
 ## 11. Scope
-**In scope (v1 — the whole designed surface, [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity; **the Forge; cloud-cost FinOps (estimates/budgets/showback); multi-region HA; the complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth; the Operator Crew, the (infrastructure) generated stack, patchability, SRE/incident management; and the governance planes (compliance & data governance, AI safety/model governance).** Delivered as one v1 in dependency-ordered build stages ([per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)) — there is no post-v1 release.
-**Out of scope** ([ADR-0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md) + [00 non-goals](../design/00-vision.md)): **SaaS-business functions** (billing/subscriptions/invoicing/tax/chargeback/monetization) and **app-build-out** (generating the developer's own product UI). HoBo **composes** Terraform/Pulumi/OpenTofu via the IaC port rather than replacing them; it is not a standalone secret-management product or a generic application framework. Broad cloud coverage is delivered **on demand via the Forge** rather than pre-enumerating every cloud.
+**In scope (v1 — the whole designed surface, [ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity; **the Forge; cloud-cost FinOps (estimates/budgets/showback); multi-region HA; the complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth; the Operator Crew, the (infrastructure) generated stack, patchability, SRE/incident management; and the governance planes (compliance & data governance, AI safety/model governance).** Delivered as one v1 in dependency-ordered build stages ([per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)) — there is no post-v1 release.
+**Out of scope** ([ADR-0064](../design/adr/08-scope-and-requirements.md#adr-0064) + [00 non-goals](../design/00-vision.md)): **SaaS-business functions** (billing/subscriptions/invoicing/tax/chargeback/monetization) and **app-build-out** (generating the developer's own product UI). HoBo **composes** Terraform/Pulumi/OpenTofu via the IaC port rather than replacing them; it is not a standalone secret-management product or a generic application framework. Broad cloud coverage is delivered **on demand via the Forge** rather than pre-enumerating every cloud.
 
 ## 12. Assumptions
 - AI agents (via MCP) are a growing, real channel for software delivery — central to the bet.
@@ -140,7 +140,7 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 |---|---|---|---|---|---|
 | R-1 | **Forge yields insecure/low-quality providers** | Med | High | Conformance + sandbox-no-egress + signing/provenance + human gate for high-trust ([12](../design/12-security-multitenancy.md)/[23](../design/23-stubbable-ai-implementations.md)) | Eng |
 | R-2 | **Agent autonomy causes runaway spend/destroy** | Med | High | Scoped SVIDs, policy gates, spend caps, full replay ([06](../design/06-ai-native-agent-auth.md)/[30](../design/30-policy-plane.md)) | Eng/Platform |
-| R-3 | **Scope/complexity overwhelms the team** (large single-v1 surface) | High | High | Dependency-ordered build stages, each independently demoable + keeping prior acceptance gates green; "powerful but unusable" guardrail ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)) | Product |
+| R-3 | **Scope/complexity overwhelms the team** (large single-v1 surface) | High | High | Dependency-ordered build stages, each independently demoable + keeping prior acceptance gates green; "powerful but unusable" guardrail ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)) | Product |
 | R-5 | **Upstream churn** (`wasi:*`, Pulumi, MCP) breaks assumptions | Med | Med | Ports/adapters isolate churn; pin + conformance ([24](../design/24-wit-interfaces-reference.md)) | Eng |
 | R-6 | **Multi-cloud networking** harder/costlier than modeled | Med | Med | Tiered connectivity + egress feedback to Planner ([13](../design/13-networking-connectivity.md)/[16](../design/16-cost-finops.md)) | Eng |
 | R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/17-positioning-competitive.md)) | Founders/GTM |
@@ -157,4 +157,4 @@ All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery p
 | 6 | **Production hardened + breadth:** HA + FinOps + UX + the governance planes | canary auto-rollback; cost within tolerance; DR < RTO; compliance/AI-safety usable |
 
 ## 17. References
-[00 Vision](../design/00-vision.md) · [08 Roadmap](../design/08-roadmap.md) · [16 Cost/FinOps](../design/16-cost-finops.md) · [17 Positioning](../design/17-positioning-competitive.md) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)/[0019](../design/adr/ADR-0019-persona-prioritization-icp.md)/[0021](../design/adr/ADR-0021-nfr-baselines-slos.md)/[0063](../design/adr/ADR-0063-single-v1-scope.md) (single v1 scope) · [0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md).
+[00 Vision](../design/00-vision.md) · [08 Roadmap](../design/08-roadmap.md) · [16 Cost/FinOps](../design/16-cost-finops.md) · [17 Positioning](../design/17-positioning-competitive.md) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/08-scope-and-requirements.md#adr-0018)/[0019](../design/adr/08-scope-and-requirements.md#adr-0019)/[0021](../design/adr/08-scope-and-requirements.md#adr-0021)/[0063](../design/adr/08-scope-and-requirements.md#adr-0063) (single v1 scope) · [0064](../design/adr/08-scope-and-requirements.md#adr-0064).

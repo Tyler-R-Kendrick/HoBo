@@ -27,15 +27,15 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 - Custom domains + managed certs are a provider capability; `web()`/`service()` attach to a gateway by binding.
 - WAF/rate-limit/DDoS are provider-specific `.with(...)` options on the gateway.
 
-## Custom domains & multi-cloud ingress ([ADR-0035](./adr/ADR-0035-custom-domains-and-multi-cloud-ingress.md))
-A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (which holds cross-provider topology, [ADR-0026](./adr/ADR-0026-scope-model-yard-camp-bindle.md)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)):
+## Custom domains & multi-cloud ingress ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035))
+A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (which holds cross-provider topology, [ADR-0026](./adr/01-architecture-core.md#adr-0026)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)):
 ```ts
 import { domain } from "@hobo/sdk";
 export const site = domain("shop.com")
   .routes(api)                          // bind to a service/gateway
   .routing("failover");                 // failover | weighted | latency | geo
 ```
-- **Routing across Camps is policy-driven DNS**, programmed via a provider-agnostic **`dns` capability**: `failover` (active-passive, health-checked), `weighted` (canary/split), `latency`/`geo` (nearest Camp). It reuses the env-group saga ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)) + the blue/green gateway flip + health signals ([Plan 5](./05-reliability-ha.md)); each routing decision is an event (`domain.RoutingChanged` → auditable "why traffic went to `prod-aws`"). HoBo does **not** operate a global data-plane LB in v1 (it's a deferred opt-in adapter).
+- **Routing across Camps is policy-driven DNS**, programmed via a provider-agnostic **`dns` capability**: `failover` (active-passive, health-checked), `weighted` (canary/split), `latency`/`geo` (nearest Camp). It reuses the env-group saga ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)) + the blue/green gateway flip + health signals ([Plan 5](./05-reliability-ha.md)); each routing decision is an event (`domain.RoutingChanged` → auditable "why traffic went to `prod-aws`"). HoBo does **not** operate a global data-plane LB in v1 (it's a deferred opt-in adapter).
 - **Certs are ACME DNS-01 by default**, issued + auto-rotated by Identity ([Plan 6](./06-ai-native-agent-auth.md)/[Plan 31](./31-config-secretless-secrets.md)) with **no static secret** — DNS-01 works cross-cloud + wildcard because HoBo controls the zone. **Provider-managed certs** (ACM / App Service / Google-managed) are an opt-in per-Camp adapter.
 - The `gateway` keeps doing TLS termination + routing + traffic-split + provider `.with()` WAF/rate-limit; the `domain` sits **above** it, routing across Camps.
 
@@ -53,8 +53,8 @@ flowchart TD
   HC["health signals (Plan 5)"] -.->|failover flip| DNS
 ```
 
-## Cross-Camp state consistency ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md))
-When a Bindle spans Camps ([ADR-0028](./adr/ADR-0028-multi-camp-deployment-model.md)), HoBo does **not** silently make state strongly consistent across clouds (CAP). Each piece of cross-Camp state declares a **replication topology** (resolved config, [Plan 26](./26-environments-deltas.md)): **single-writer-Camp** (default), **active-active-eventual** (CRDT/event-merge, opt-in), or **pinned-single-Camp**.
+## Cross-Camp state consistency ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040))
+When a Bindle spans Camps ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)), HoBo does **not** silently make state strongly consistent across clouds (CAP). Each piece of cross-Camp state declares a **replication topology** (resolved config, [Plan 26](./26-environments-deltas.md)): **single-writer-Camp** (default), **active-active-eventual** (CRDT/event-merge, opt-in), or **pinned-single-Camp**.
 - **Replication backbone = the event log.** The owning Camp writes; other Camps consume a replicated read-stream into **bounded-staleness projections** ([Plan 11](./11-event-model.md)/[Plan 5](./05-reliability-ha.md)). Provider-backed stores default to single-writer + cross-Camp read over the connectivity tiers above (active-active CDC deferred).
 - **Honest surface:** non-owner reads are **labeled** stale-by ≤ replication lag; **reads-your-writes** holds in the writer Camp; **consistency-requiring writes "go home"** to the owner; cross-Camp reactive queries ([Plan 32](./32-reactive-live-queries.md)) carry the staleness label.
 

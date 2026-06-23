@@ -26,7 +26,7 @@ export interface DatabasePort {
   features?: { managed?: boolean; ha?: boolean; vector?: boolean; serverless?: boolean };
 }
 // Note: `vector` here is a DB *capability hint* for negotiation; the full-text/vector/hybrid
-// retrieval surface is a first-class `search` port ([Plan 35](./35-search-vector-surface.md)/[ADR-0034](./adr/ADR-0034-search-vector-surface.md)), not just a database flag.
+// retrieval surface is a first-class `search` port ([Plan 35](./35-search-vector-surface.md)/[ADR-0034](./adr/03-data-plane.md#adr-0034)), not just a database flag.
 
 export interface Capability {
   port: PortKind;                       // "database" | "compute" | "objectStore" | ...
@@ -68,7 +68,7 @@ The Planner is a pure function (easy to test, replayable): `plan(bindle, config,
    - `none` → reject.
    - If no definition can satisfy a `require`, emit `deployment.PlanRejected` with a precise reason (good for agents to self-correct).
 4. **Region & colocation** — honor explicit regions; otherwise pick a region satisfying all colocated resources' constraints (latency edges from `bind`), minimizing cross-provider/cross-region egress.
-5. **Objective ranking** ([Plan 25](./25-resource-definitions-matching.md)/[ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)) — when multiple candidates satisfy `full` and tie on specificity + explicit `priority`, rank by the **configurable objective** (`cost`|`latency`|`single-provider`|`carbon`, **default = min-cost within constraints**), then a **stable tiebreak** (definition id). Deterministic, not a solver/LLM; rationale recorded in `match.Decided` + as `meta` on `deployment.Planned`.
+5. **Objective ranking** ([Plan 25](./25-resource-definitions-matching.md)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) — when multiple candidates satisfy `full` and tie on specificity + explicit `priority`, rank by the **configurable objective** (`cost`|`latency`|`single-provider`|`carbon`, **default = min-cost within constraints**), then a **stable tiebreak** (definition id). Deterministic, not a solver/LLM; rationale recorded in `match.Decided` + as `meta` on `deployment.Planned`.
 6. **Emit `DeploymentPlan`** — DAG of `ResourcePlan{ name, port, provider, options, deps, strategy }`, each tagged with its resolved provider + merged `.with(...)` options (only the resolved provider's block survives).
 
 The plan is content-addressed and stored via `deployment.Planned`, so the exact decisions are auditable and re-runnable.
@@ -100,7 +100,7 @@ flowchart TD
 - **State backend:** pluggable; default to the Yard's own object store; locking via the resource's ActorHost lease (single-writer already guaranteed, so IaC-level locks are belt-and-suspenders).
 - **Outputs → bindings:** stack outputs are captured into `resource.Provisioned` and resolved into the dependent resources' env/secret refs.
 - **Drift:** `refresh()` feeds the drift loop in [Plan 5](./05-reliability-ha.md).
-- **Adopt-in-place (migration, [ADR-0041](./adr/ADR-0041-migration-onboarding.md)):** `hobo import` reads an existing estate's IaC state (CDKTF import-only / Pulumi Automation API) into the graph as **`adopted`** nodes — managed by id/state, **never destroyed/recreated on import** (drift-detect only). An **`external` resource kind** references infra HoBo doesn't manage yet, so a HoBo-managed resource can `bind` across the boundary during an incremental (strangler-fig) migration. Adoption emits `resource.Adopted` ([Plan 11](./11-event-model.md)).
+- **Adopt-in-place (migration, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041)):** `hobo import` reads an existing estate's IaC state (CDKTF import-only / Pulumi Automation API) into the graph as **`adopted`** nodes — managed by id/state, **never destroyed/recreated on import** (drift-detect only). An **`external` resource kind** references infra HoBo doesn't manage yet, so a HoBo-managed resource can `bind` across the boundary during an incremental (strangler-fig) migration. Adoption emits `resource.Adopted` ([Plan 11](./11-event-model.md)).
 
 ## Cross-cloud equivalence classes
 Agnostic ports map to provider services via curated equivalence classes (extensible, and what the [Forge](./06-ai-native-agent-auth.md) targets):
@@ -122,7 +122,7 @@ Agnostic ports map to provider services via curated equivalence classes (extensi
 A provider package exports: (1) a factory (`aws({...})`) returning a `CloudProvider`, (2) typed `.with(...)` option builders per port (`aws.rds`, `aws.fargate`), (3) capability declarations + equivalence mappings, (4) `realize()` emitting IaC, (5) a runtime `client()` per port, and (6) a `code()` Capability Manifest manifest. It must pass `@hobo/conformance` for every port it claims — that suite is the contract that lets AI-generated providers be trusted ([Plan 6](./06-ai-native-agent-auth.md), [Plan 9](./09-verification-open-questions.md)).
 
 ## Iteration hooks
-- ~~Planner objective function when several providers fully satisfy~~ — **decided ([ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md), resolves ADR-P4):** configurable `cost`|`latency`|`single-provider`|`carbon`, default **min-cost within constraints**, applied deterministically (no solver/LLM on-path).
+- ~~Planner objective function when several providers fully satisfy~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033), resolves ADR-P4):** configurable `cost`|`latency`|`single-provider`|`carbon`, default **min-cost within constraints**, applied deterministically (no solver/LLM on-path).
 - Per-resource vs grouped IaC stacks (isolation vs state sprawl).
 - How `prefer` degradation is surfaced/approved (silent warning vs require ack).
 - Maintaining equivalence classes by hand vs Forge-generated + curated.

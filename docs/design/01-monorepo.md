@@ -59,7 +59,7 @@ examples/
 ```
 
 ## Projects (the stated top-level surfaces → packages)
-The product's named **Projects** map to packages here: **Cloud** → `@hobo/cloud` (+ `registry`/`identity`); **SDK** → `@hobo/sdk` (+ `runtime`); **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 38](./38-hobo-code-dsl.md)). *(The former `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/ADR-0064-scope-ai-native-meta-cloud.md).)*
+The product's named **Projects** map to packages here: **Cloud** → `@hobo/cloud` (+ `registry`/`identity`); **SDK** → `@hobo/sdk` (+ `runtime`); **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 38](./38-hobo-code-dsl.md)). *(The former `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064).)*
 
 ## Conventions
 - **Ports live in `core`**, implementations in adapter packages; adapters never import each other.

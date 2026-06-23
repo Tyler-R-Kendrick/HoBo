@@ -11,7 +11,7 @@ Most platforms bolt agent support on as "an API key in a script." HoBo treats an
 
 > **Runtime/AI integration.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./23-stubbable-ai-implementations.md). And `.allow()` ([Plan 21](./21-resources-catalog.md)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
 
-> **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is [Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/ADR-0038-end-user-application-auth.md). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
+> **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is [Plan 36](./36-end-user-auth.md)/[ADR-0038](./adr/02-identity-security.md#adr-0038). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
 
 ---
 
@@ -98,7 +98,7 @@ sequenceDiagram
 
 **Least privilege & guardrails:**
 - Tokens are scoped to `(port, resource, action)` and the minimal provider permission for that equivalence class — never "admin."
-- **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/ADR-0039-billing-quota-cost-attribution.md)).
+- **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 16](./16-cost-finops.md)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)).
 
 ---
 
@@ -157,7 +157,7 @@ flowchart LR
 
 **Conformance tests are the trust boundary** that makes AI-generated extensibility safe — a plugin is only as trusted as the contract tests it passed, and the signed report is part of its Registry record.
 
-> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./33-forge-generation-pipeline.md)** ([ADR-0030](./adr/ADR-0030-forge-generation-inputs-and-algorithm.md)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/ADR-0025-use-training-directive-and-training-engine.md)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
+> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./33-forge-generation-pipeline.md)** ([ADR-0030](./adr/06-ai-generation-operators.md#adr-0030)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
 
 ---
 
@@ -167,7 +167,7 @@ The end state the project asks for: a developer (or their agent) writes a Bindle
 ## Iteration hooks
 - Exact Capability Manifest schema + whether to publish it as an open spec aligned with MCP-auth / OAuth-OBO draft / SPIFFE federation / the emerging Agent Identity Protocol.
 - Delegation chains (agent → sub-agent) — adopt AIP when it matures, or interim OBO chaining.
-- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/ADR-0043-multi-yard-federation-junction.md)): a principal from one Yard is authenticated by another under an agreed trust root (a v1 iteration hook — single-Yard ships first).
+- **Cross-Yard identity federation** — the same OIDC/SVID federation extends across sovereign Yards in a **Junction** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)): a principal from one Yard is authenticated by another under an agreed trust root (a v1 iteration hook — single-Yard ships first).
 - Policy language for guardrails (CEL/Rego-style vs typed TS policy).
 - Forge model + eval design; human-in-the-loop certification for high-trust providers.
 - Plugin signing, provenance (SLSA), and supply-chain trust for Registry plugins ([Plan 12](./12-security-multitenancy.md)).

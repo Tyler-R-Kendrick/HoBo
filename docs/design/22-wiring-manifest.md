@@ -59,12 +59,12 @@ Resource-collection ([Plan 21](./21-resources-catalog.md)) emits a **HoBo manife
 ## Publishers (deploy targets)
 Like Aspire publishers / `azd`, the manifest is rendered by pluggable backends: the default **Pulumi Automation API** adapter ([Plan 3](./03-providers-iac.md)), plus Crossplane (k8s), and container/wasm-host targets (SpinKube/containerd-wasm, wasmCloud lattice). The manifest decouples *what to deploy* from *how*.
 
-## PortabilityReport ([ADR-0024](./adr/ADR-0024-portability-conformance-guarantee.md))
+## PortabilityReport ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024))
 A **plan-time, event-sourced scorecard** computed from the manifest IR + the Matching result, emitted alongside `deployment.Planned` (event **`deployment.PortabilityReported`**) so "how locked-in is this Bindle?" is an auditable, replayable fact — not a manual audit. It complements `hobo doctor` (interactive warnings) with a structured per-deploy record:
 - **Portability %** — the fraction of resources backed by a provider **equivalence class** with **≥2-cloud capability** (a single-provider-only resource lowers the score).
-- **Lock-in sources, with severity** — provider `.with()` blocks, raw escape hatches (`.raw(driver => …)` dialect leaks, [Plan 39](./39-data-plane-projections.md)), **host-`.with()`** options ([ADR-0067](./adr/ADR-0067-component-host-portability.md)), and **paradigm mismatches** (cross-paradigm-only data features, paradigm-class-scoped per [ADR-0024 §Detect lock-in](./adr/ADR-0024-portability-conformance-guarantee.md)/[ADR-0052](./adr/ADR-0052-projection-sink-paradigm-taxonomy.md)).
-- **Per-resource provider-equivalence-class** — the class chosen + **why other members were rejected** (reuses the rejected-candidate reasons in `match.Decided`, [ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)).
-- **Upgrade readiness** — the pinned **`component-host` + `wasi:*` versions** ([ADR-0067](./adr/ADR-0067-component-host-portability.md)) and whether a host upgrade path/upcaster is available, so portability and upgradability read off one report.
+- **Lock-in sources, with severity** — provider `.with()` blocks, raw escape hatches (`.raw(driver => …)` dialect leaks, [Plan 39](./39-data-plane-projections.md)), **host-`.with()`** options ([ADR-0067](./adr/01-architecture-core.md#adr-0067)), and **paradigm mismatches** (cross-paradigm-only data features, paradigm-class-scoped per [ADR-0024 §Detect lock-in](./adr/07-portability-extensibility.md#adr-0024)/[ADR-0052](./adr/03-data-plane.md#adr-0052)).
+- **Per-resource provider-equivalence-class** — the class chosen + **why other members were rejected** (reuses the rejected-candidate reasons in `match.Decided`, [ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).
+- **Upgrade readiness** — the pinned **`component-host` + `wasi:*` versions** ([ADR-0067](./adr/01-architecture-core.md#adr-0067)) and whether a host upgrade path/upcaster is available, so portability and upgradability read off one report.
 
 ## Iteration hooks
 - Exact manifest schema + how close to Aspire's `aspire-manifest.json` to stay (interop?).

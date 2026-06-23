@@ -268,7 +268,7 @@ A first-class lifecycle, event-sourced as the **app-tenant `tenant.*` family** (
 - **App-tenant lifecycle** — `tenant.Provisioned` · `tenant.Suspended` · `tenant.Resumed` · `tenant.Offboarded` · `tenant.Exported` · `tenant.Erased` (per-tenant crypto-shred). *Explicitly the **app's** customer tenant — distinct from the platform `tenant` envelope field, which has no lifecycle.*
 - **The app-tenant scoping dimension** is the **stream key** + an indexed projection scope (§C), and **cross-tenant access** is audited via `policy.Decided` (the cross-tenant-admin grant). Model selection/promotion ride `match.Decided`/`migration.*` — **no new event types** for those.
 
-### Verification ([Plan 9](./verification.md#plan-09))
+### Verification ([Plan 9](./forge-generated-stack.md#plan-09))
 
 - **Cross-tenant-leak gate (the critical one) — with a positive control:** seed tenants **A** and **B** with distinct **sentinel** records; under an ordinary `ctx.user` of A, every surface (command/query/**subscription**/**search**/projection) querying B's sentinel **denies/returns-empty** *and* A's own sentinel is **present** (so an all-deny-because-broken impl fails); a query with **no** resolved tenant **fails closed** (not all-tenants); the platform-tenant and app-tenant filters **compose** (no leak masked by platform scoping). A `.raw()` query on a pooled store is **denied** unless hand-scoped.
 - **Search-path test:** the vector/graph search **`step`** is tenant-partitioned (separate index/namespace or platform-injected filter) — a search for B's sentinel under A denies even without a developer predicate.

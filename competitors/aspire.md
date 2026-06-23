@@ -458,7 +458,7 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 | DCP (local Go orchestrator) | local `runtime-local` host / dev loop; the Yard for hosted | ✅ | [20](../docs/design/wasm-runtime-wit.md#plan-20), [04](../docs/design/control-plane.md#plan-04) |
 | Aspire Dashboard (resource graph, OTel) | Dashboard: resource graph + run inspector + replay | ➕ | [07](../docs/design/developer-experience.md#plan-07), [14](../docs/design/reliability-observability-cost.md#plan-05) |
 | OpenTelemetry-by-default | OTel + event-sourced traces/replay | ➕ | [14](../docs/design/reliability-observability-cost.md#plan-05), [11](../docs/design/data-plane.md#plan-11) |
-| `Aspire.Hosting.Testing` | Conformance suites + E2E replay tests | ✅ | [09](../docs/design/verification.md#plan-09) |
+| `Aspire.Hosting.Testing` | Conformance suites + E2E replay tests | ✅ | [09](../docs/design/forge-generated-stack.md#plan-09) |
 | `aspire` CLI | `hobo` CLI | ✅ | [15](../docs/design/developer-experience.md#plan-07) |
 | Polyglot (Python/Node/Go/Java/Rust) | **WASM/WASI components** (any language) + OCI fallback | ➕ | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
 | AI integrations + Copilot-in-dashboard | Agents as principals + MCP + Forge generation | ➕ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [23](../docs/design/forge-generated-stack.md#plan-23) |

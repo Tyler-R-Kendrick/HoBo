@@ -160,6 +160,6 @@ The product's named **Projects** map to packages here: **Cloud** → `@hobo/clou
 
 #### Conventions
 - **Ports live in `core`**, implementations in adapter packages; adapters never import each other.
-- **Every adapter runs `@hobo/conformance`** for the ports it claims, in CI ([Plan 9](./verification.md#plan-09)).
+- **Every adapter runs `@hobo/conformance`** for the ports it claims, in CI ([Plan 9](./forge-generated-stack.md#plan-09)).
 - **Examples are tests** — `examples/*` double as E2E fixtures.
 - **Public type surface is the contract** — provider option types are exported for `.with(...)` autocomplete ([Plan 2](./sdk-api.md#plan-02)).

@@ -269,7 +269,7 @@ Long-lived subscriptions multiplex over **one** gateway connection per client (W
 ### Events ([Plan 11](#plan-11))
 `subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event). Pushed *results* are ephemeral (not persisted); *subscriptions* are a projection so they rebuild on Reactor failover. Schema evolution adds no reactive-path events: index create/change rides **`migration.*`** (§Migrations); a vector/graph/OWL/hybrid search is a step (`run.StepCompleted`).
 
-### Verification ([Plan 9](./verification.md#plan-09))
+### Verification ([Plan 9](./forge-generated-stack.md#plan-09))
 - **Subscription test:** `subscribe` → append an event in the read-set → assert a push at the new `seq` with the correct materialized value; assert monotonicity (no regression) and reads-your-writes (a client's command is visible to its own subscription before/at ack).
 - **Replay-then-live:** a new subscriber receives the current value (folded to `seq`) before any live push.
 - **Change-feed conformance:** the `change-feed` capability suite (a sink that claims it must emit ordered `data.Changed` for insert/update/delete) — same trust-boundary model as other ports.
@@ -426,7 +426,7 @@ Each paradigm is a **projection-sink kind** behind one stable WIT port, a Matchi
 | **Object / data-lake** (S3/Parquet) | adapter | record → partitioned files (partition keys from fields) | **non-reactive** (batch) | append/compaction latency; query via an OLAP engine |
 | **OLAP / columnar** (ClickHouse/BigQuery/DuckDB) | adapter | record → columnar table; fields → typed columns | **non-reactive** (analytical) | bounded-staleness batch; not for reads-your-writes UI |
 
-**Honest reactivity rule (one sentence; canonical: [ADR-0052](./adr/03-data-plane.md#adr-0052) §3):** a projection is reactive **iff** its sink advertises the `change-feed` capability **or** it is the native log-backed projection; everything else is typed `reactive: false` and `hobo doctor` warns when a `"use query"` depends on it. Each sink kind ships a `@hobo/conformance` suite ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 9](./verification.md#plan-09)): claim a paradigm → round-trip a fixture record set, **honor the declared consistency level** ([ADR-0052](./adr/03-data-plane.md#adr-0052)), and (if reactive) emit ordered `data.Changed`.
+**Honest reactivity rule (one sentence; canonical: [ADR-0052](./adr/03-data-plane.md#adr-0052) §3):** a projection is reactive **iff** its sink advertises the `change-feed` capability **or** it is the native log-backed projection; everything else is typed `reactive: false` and `hobo doctor` warns when a `"use query"` depends on it. Each sink kind ships a `@hobo/conformance` suite ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 9](./forge-generated-stack.md#plan-09)): claim a paradigm → round-trip a fixture record set, **honor the declared consistency level** ([ADR-0052](./adr/03-data-plane.md#adr-0052)), and (if reactive) emit ordered `data.Changed`.
 
 #### Composition (reuse, not reinvent)
 - **Matching ([Plan 25](./platform-engineering.md#plan-25)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).** The architect declares a `projection-sink` Resource Definition (`defineResource({ type: "projection-sink", paradigm, provider, driver, with, match })`); the Planner selects per context — native projection in a preview Camp, managed Postgres in prod — recorded in `match.Decided`. **Developer owns the logical record + query; architect owns the mapping + sink** — the autonomy split *is* the Matching boundary.
@@ -523,12 +523,12 @@ Cross-cloud sink moves use the export→import path above within an equivalence 
 #### Migration events ([Plan 11](#plan-11))
 `migration.Planned` · `migration.SnapshotTaken` · `migration.PhaseApplied` (phase = `expand`/`backfill`/`contract`, with the diff) · `migration.Verified` · `migration.RolledBack` · `migration.Failed` · (cross-cloud move) `migration.Exported` · `migration.Imported` · `migration.CutOver`. Every phase, snapshot, and cutover is an immutable, replayable fact → "what changed the schema, when, and could it be rolled back?" is answerable from the log.
 
-#### Migration verification ([Plan 9](./verification.md#plan-09))
+#### Migration verification ([Plan 9](./forge-generated-stack.md#plan-09))
 - **Migration test:** declare schema vN→vN+1 → assert the diff engine produces the expected **expand/backfill/contract** phases; assert a **destructive contract phase that breaks a still-running version is blocked** by `can-deploy` (`compat.GateFailed`); assert **snapshot + restore** rollback returns the prior state.
 - **Cross-cloud move test:** export→import a fixture DB **within the Postgres equivalence class** to a second Camp → assert row counts/checksums match and cutover/rollback both work.
 
 #### Migration scope
-Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see above). Multi-region active-active data is an [ADR-0040](./adr/05-config-matching-environments.md#adr-0040) topology concern ([Q16](./verification.md#plan-09)).
+Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see above). Multi-region active-active data is an [ADR-0040](./adr/05-config-matching-environments.md#adr-0040) topology concern ([Q16](./forge-generated-stack.md#plan-09)).
 
 ### Search — the generalized `search` capability
 
@@ -573,7 +573,7 @@ The boundary follows HoBo's determinism rules ([ADR-0050](./adr/03-data-plane.md
 
 #### Embeddings — the `embed` capability (for the vector extension)
 The **vector extension** can **auto-embed** indexed rows and text queries via an **`embed` capability** (`hobo:embed`), brokered secretlessly ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 21](./authoring-resources-wiring.md#plan-21)) so developers don't hand-wire an embedding API. The embedder is itself a capability **realized per Camp** and selected by Matching:
-- **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; relates to [Q20](./verification.md#plan-09) / the air-gap gap).
+- **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; relates to [Q20](./forge-generated-stack.md#plan-09) / the air-gap gap).
 - **Hosted embedding API** — for prod scale/quality.
 
 **BYO precomputed vectors** is the escape hatch (compute embeddings in your own step, pass the vector in).
@@ -583,7 +583,7 @@ The **vector extension** can **auto-embed** indexed rows and text queries via an
 #### Search events ([Plan 11](#plan-11))
 **No new event types.** Reactive full-text search reuses `subscription.Opened`/`subscription.Recomputed`/`subscription.Pushed` + **`data.Changed`**; index create/change rides **`migration.*`** (§Migrations); a vector/graph/OWL/hybrid search is a step (`run.StepCompleted`). The retrieval surface adds capability, not catalog bloat.
 
-#### Search verification ([Plan 9](./verification.md#plan-09))
+#### Search verification ([Plan 9](./forge-generated-stack.md#plan-09))
 A **search test**: index a fixture corpus, then assert (a) an in-core full-text query returns the expected ranked hits **and is reactive** (a write emits `data.Changed` → the subscribed result re-pushes); (b) with the vector extension installed, vector search returns cosine-ranked ids with a **filter** applied; (c) **hybrid** RRF fuses full-text + the vector extension; (d) the **same `search` Bindle resolves to Postgres FTS in a preview Camp and a managed engine in prod** (portability/equivalence — [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)); (e) the `embed` capability is realized by a **local model in an air-gapped Camp** (no egress).
 
 #### Search scope

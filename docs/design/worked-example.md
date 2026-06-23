@@ -163,7 +163,7 @@ The team wants a niche EU host with no `@hobo/provider-*` yet:
 ```bash
 hobo forge https://niche-eu-cloud.example.com/docs
 ```
-The **Forge** generates a candidate provider, runs it sandboxed against `@hobo/conformance` for the ports snapshop uses, and on pass publishes a signed plugin to the Registry. the `camp()` mapping can now target it like any first-party provider ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 9](./verification.md#plan-09)).
+The **Forge** generates a candidate provider, runs it sandboxed against `@hobo/conformance` for the ports snapshop uses, and on pass publishes a signed plugin to the Registry. the `camp()` mapping can now target it like any first-party provider ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 9](./forge-generated-stack.md#plan-09)).
 
 ### What this proves
 A single, untouched application description (`bindle.ts` + `src/`) ran locally, shipped to one cloud, split across three, was tuned per-provider, operated by an agent under guardrails, and extended to a brand-new provider — **agnostic by default, optimizable on demand, AI-native throughout, fully auditable.** That is the thesis of HoBo, demonstrated end to end.

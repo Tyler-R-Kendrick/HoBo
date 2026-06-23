@@ -121,10 +121,10 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
 2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)).
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
-4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./verification.md#plan-09)).
+4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./forge-generated-stack.md#plan-09)).
 
 ##### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042))
-"Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./verification.md#plan-09)).
+"Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./forge-generated-stack.md#plan-09)).
 - **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector).
 - **Mock (honest seam):** real cloud IAM, provider latency/egress/cost, secrets backends (KMS).
 - **Camp-only:** cross-cloud mTLS, real quotas/spend limits, provider drift.
@@ -258,7 +258,7 @@ Deliberately minimal — the surfaces are projections, the groupings are dimensi
 - **Availability** is the **`AvailabilityView`** projection over the dependency graph + declared SLAs + `slo.*`/`incident.*` — **no new event types**.
 - **Status page** adds only **`statuspage.Published`** · **`statuspage.Unpublished`** · **`statuspage.IncidentPosted`** (what was shown publicly, and when — an auditable disclosure trail; subscriber delivery rides `notify`, [ADR-0059](./adr/03-data-plane.md#adr-0059)).
 
-### Verification ([Plan 9](./verification.md#plan-09))
+### Verification ([Plan 9](./forge-generated-stack.md#plan-09))
 
 - **Grouping rollup test:** events tagged with a `project` and Camps of an `environment type` roll up correctly; a Bindle in two environments appears once per environment, not double-counted.
 - **Dashboard projection test:** every dashboard view is reproducible from the log alone (no privileged state); a from-zero rebuild equals the live view.

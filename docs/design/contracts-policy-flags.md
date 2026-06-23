@@ -5,7 +5,7 @@ This capability doc covers three planes — contracts (the `can-deploy` gate), t
 ## Plan 29
 
 ### Why this exists (conformance ≠ compatibility)
-HoBo already has **conformance** ([Plan 9](./verification.md#plan-09)/[Plan 20](./wasm-runtime-wit.md#plan-20)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
+HoBo already has **conformance** ([Plan 9](./forge-generated-stack.md#plan-09)/[Plan 20](./wasm-runtime-wit.md#plan-20)): proof that *one implementation satisfies its WIT port*. That is necessary but not sufficient. It does **not** answer the version-skew question:
 
 > *Will `api@v3` (which removed `tenantId` from `order.created`) still work with `worker@v2` that's already running in prod?*
 
@@ -35,7 +35,7 @@ Developers don't hand-write contracts (IfC-default, [Plan 21](./authoring-resour
 3. **Observed** — **trace-mined** from the event log ([Plan 11](./data-plane.md#plan-11)): "99.8% of 42k `order.created` had `tenantId`; the 0.2% without came from `worker@v1`."
 4. **Promoted** — an observed shape is promoted to a **versioned compatibility gate** with a migration window.
 
-> **Contracts make boundary virtualization safe ([ADR-0076](./adr/04-governance-verification.md#adr-0076)).** Because every boundary carries a contract, the host can serve it in a **mode** — `mock` (a contract-conformant fake auto-served from the contract + traces, *no hand-written mocks*), `fork` (a forked/branch impl), `shadow`, or `fault`. A `fork` must **satisfy the boundary contract at *lane join*** — a **lightweight runtime check** (the fork's exported contract verified against the baseline consumers' expectations before any baseline traffic routes to it), *distinct from* the deploy-time `can-deploy` gate (a `hobo dev --fork` never goes through Delta→Set). Contracts bound *shape*, not behavior or resource use — so a `mock` carries a fidelity label ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042)) and lanes carry a resource budget. **Lane-origin `contract.Observed`/trace events are tagged + excluded by default** from observed-contract promotion (and from training trajectories) — a fork's experimental behavior never poisons a baseline contract. This is the substrate for low-friction test sandboxes, request-level branch isolation, preview environments, self-healing experiments, and non-destructive chaos ([Plan 9](./verification.md#plan-09)/[Plan 25](./platform-engineering.md#plan-25)).
+> **Contracts make boundary virtualization safe ([ADR-0076](./adr/04-governance-verification.md#adr-0076)).** Because every boundary carries a contract, the host can serve it in a **mode** — `mock` (a contract-conformant fake auto-served from the contract + traces, *no hand-written mocks*), `fork` (a forked/branch impl), `shadow`, or `fault`. A `fork` must **satisfy the boundary contract at *lane join*** — a **lightweight runtime check** (the fork's exported contract verified against the baseline consumers' expectations before any baseline traffic routes to it), *distinct from* the deploy-time `can-deploy` gate (a `hobo dev --fork` never goes through Delta→Set). Contracts bound *shape*, not behavior or resource use — so a `mock` carries a fidelity label ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042)) and lanes carry a resource budget. **Lane-origin `contract.Observed`/trace events are tagged + excluded by default** from observed-contract promotion (and from training trajectories) — a fork's experimental behavior never poisons a baseline contract. This is the substrate for low-friction test sandboxes, request-level branch isolation, preview environments, self-healing experiments, and non-destructive chaos ([Plan 9](./forge-generated-stack.md#plan-09)/[Plan 25](./platform-engineering.md#plan-25)).
 
 ```mermaid
 flowchart LR
@@ -238,7 +238,7 @@ flowchart LR
 
 #### Change governance — event-sourced, optionally gated, reactive
 - **Event-sourced.** Every value/targeting change is a `flag.*` event ([Plan 11](./data-plane.md#plan-11)) → a replayable "who flipped what, when, for whom" audit (the trail standalone flag tools lack).
-- **Optionally policy-gated.** A flip can pass through the policy plane (above): a **prod kill-switch** or a risky `%` bump can require approval / carry an obligation (e.g. "auto-revert if error-rate SLO burns", tying to [#25](./verification.md#plan-09)). Low-risk dev flips are ungated.
+- **Optionally policy-gated.** A flip can pass through the policy plane (above): a **prod kill-switch** or a risky `%` bump can require approval / carry an obligation (e.g. "auto-revert if error-rate SLO burns", tying to [#25](./forge-generated-stack.md#plan-09)). Low-risk dev flips are ungated.
 - **Reactive.** A flag change is a `data.Changed`-class signal, so reactive queries + clients (`useFlag`/`useQuery`, [Plan 32](./data-plane.md#plan-32)) re-evaluate **live, no redeploy** — the reactor re-pushes affected results.
 
 #### Evaluation — in-process, deterministic, identity-aware
@@ -247,13 +247,13 @@ flowchart LR
 - **Deterministic:** evaluation is a pure function of `(ruleset@seq, context)`, so it's **replayable** and safe to call inside a reactive `query()` ([ADR-0050](./adr/03-data-plane.md#adr-0050)).
 
 #### Progressive delivery — flags + deploy gates compose
-- A **gradual rollout** flag (`%` by segment) is the *release* dial; a **canary** ([Plan 5](./reliability-observability-cost.md#plan-05)) is the *deploy* dial — used together, you deploy dark, then ramp the flag, with the same health signals able to **auto-revert** the flag (a policy obligation) on SLO burn ([#25](./verification.md#plan-09)).
+- A **gradual rollout** flag (`%` by segment) is the *release* dial; a **canary** ([Plan 5](./reliability-observability-cost.md#plan-05)) is the *deploy* dial — used together, you deploy dark, then ramp the flag, with the same health signals able to **auto-revert** the flag (a policy obligation) on SLO burn ([#25](./forge-generated-stack.md#plan-09)).
 - **Experiments**: a multivariate flag + the eval/metrics surface ([Plan 5](./reliability-observability-cost.md#plan-05)) supports A/B without bespoke infra.
 
 #### Events ([Plan 11](./data-plane.md#plan-11))
 `flag.Defined` · `flag.Changed` (value/targeting diff + actor) · `flag.Evaluated` (sampled, optional — for experiment analytics) · `flag.Archived`. Flip-gate decisions ride the existing `policy.Decided`.
 
-#### Verification ([Plan 9](./verification.md#plan-09))
+#### Verification ([Plan 9](./forge-generated-stack.md#plan-09))
 A **feature-flag test**: define a flag → assert in-process eval is deterministic for a fixed `(ruleset@seq, ctx.user)`; a targeting rule selects the right segment; a flip emits `flag.Changed` and **re-pushes an affected reactive query** ([Plan 32](./data-plane.md#plan-32)); a **prod kill-switch flip requires the policy gate** (above); the built-in store works **offline/air-gap**; an OpenFeature provider adapter passes the same conformance.
 
 #### Scope

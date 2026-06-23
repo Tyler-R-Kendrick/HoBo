@@ -23,7 +23,7 @@ Decided in [ADR-0018](../design/adr/08-scope-and-requirements.md#adr-0018):
 Business need ──BR──▶ Product capability ──FR / NFR──▶ Technical requirement ──TR──▶ design doc + conformance/verification
 ```
 
-- Every **BR** maps to ≥1 **FR**/**NFR**; every **FR**/**NFR** maps to ≥1 **TR**; every **TR** cites the governing `docs/design/*` doc and how it's verified ([09](../design/verification.md#plan-09)).
+- Every **BR** maps to ≥1 **FR**/**NFR**; every **FR**/**NFR** maps to ≥1 **TR**; every **TR** cites the governing `docs/design/*` doc and how it's verified ([09](../design/forge-generated-stack.md#plan-09)).
 - The authoritative **BR→FR/NFR→TR matrix** lives in [requirements.md §Traceability matrix](./requirements.md#traceability-matrix).
 - Everything is **v1** ([ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063)); **MoSCoW** now expresses **build priority/order within v1** (mapped to the build stages in the [per-stage build detail](../design/roadmap.md#per-stage-build-detail-stages-06)), not a release boundary.
 - This layer **cites** the design suite; it does not restate it. The design docs remain the source of design truth.

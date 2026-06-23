@@ -13,13 +13,13 @@ The design is split into independently iterable numbered plans (`00`–`48`, a f
 | Foundations | Deep dives | Cross-cutting |
 |---|---|---|
 | [0 Vision](./docs/design/vision.md#plan-00) · [1 Monorepo](./docs/design/architecture.md#plan-10) · [10 Architecture](./docs/design/architecture.md#plan-10) · [11 Event model](./docs/design/data-plane.md#plan-11) | [2 SDK/API ⭐](./docs/design/sdk-api.md#plan-02) · [3 Providers/IaC](./docs/design/control-plane.md#plan-04) · [4 Control plane](./docs/design/control-plane.md#plan-04) · [6 AI-native/agent-auth ⭐](./docs/design/ai-native-agent-auth.md#plan-06) | [5 Reliability/HA](./docs/design/reliability-observability-cost.md#plan-05) · [12 Security](./docs/design/security-networking.md#plan-12) · [13 Networking](./docs/design/security-networking.md#plan-12) · [14 Observability](./docs/design/reliability-observability-cost.md#plan-05) · [16 Cost/FinOps](./docs/design/reliability-observability-cost.md#plan-05) |
-| | [7 UI](./docs/design/developer-experience.md#plan-07) · [15 CLI/DX](./docs/design/developer-experience.md#plan-07) | [8 Roadmap](./docs/design/roadmap.md#plan-08) · [9 Verification](./docs/design/verification.md#plan-09) · [17 Positioning](./docs/design/vision.md#plan-17) · [ADR index](./docs/design/adr/README.md) · [19 Worked example](./docs/design/worked-example.md#plan-19) |
+| | [7 UI](./docs/design/developer-experience.md#plan-07) · [15 CLI/DX](./docs/design/developer-experience.md#plan-07) | [9 Verification](./docs/design/forge-generated-stack.md#plan-09) · [17 Positioning](./docs/design/vision.md#plan-17) · [ADR index](./docs/design/adr/README.md) · [19 Worked example](./docs/design/worked-example.md#plan-19) |
 
 Design inspiration: the API *feels like* [Vercel Workflows](https://workflow-sdk.dev/) for its durable `workflow`/`step` ergonomics, but the durable runtime is **HoBo-native and provided per Camp**. HoBo is positioned as a cloud-agnostic, AI-native alternative to closed agent-native PaaS offerings.
 
-## Requirements (BRD / PRD / TRD)
+## Archived planning material
 
-The formal requirements layer lives in [`docs/requirements/`](./docs/requirements/README.md): a [BRD](./docs/requirements/requirements.md) (business), [PRD](./docs/requirements/requirements.md) (product), and [TRD](./docs/requirements/requirements.md) (technical) with stable `BR`/`FR`/`NFR`/`TR` IDs and an end-to-end [traceability matrix](./docs/requirements/requirements.md#traceability-matrix). Decisions made while authoring them are logged as [ADRs 0018+](./docs/design/adr/README.md).
+The **roadmap / build sequence** and the formal **requirements suite** (BRD / PRD / TRD with `BR`/`FR`/`NFR`/`TR` IDs + an end-to-end traceability matrix) are **deferred project-planning artifacts**, kept out of the active design suite and archived under [`archive/`](./archive/) — to be revived when the work is scoped. The current scope boundary and NFR/SLO targets live in the design itself ([ADR-0063](./docs/design/adr/08-scope-and-requirements.md#adr-0063) / [ADR-0064](./docs/design/adr/08-scope-and-requirements.md#adr-0064) / [ADR-0021](./docs/design/adr/08-scope-and-requirements.md#adr-0021)).
 
 ## Working in this repo with AI agents
 

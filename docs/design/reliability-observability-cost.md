@@ -166,7 +166,7 @@ Cost rides the same machinery again: it is metered as an event-sourced projectio
 #### Cost is a first-class input, not a report
 HoBo treats cost as a signal that flows through planning, deployment, runtime, and governance:
 - **Plan-time estimate** — `hobo plan` returns a projected cost for the DeploymentPlan before anything is provisioned (the agent/dev sees the bill first).
-- **Provider selection** — when multiple providers fully satisfy a port, the Planner can optimize for cost (or latency, or "stay on one provider") per a tenant objective ([Plan 4](./control-plane.md#plan-04)).
+- **Provider selection** — when multiple providers fully satisfy a port, the Planner optimizes per a configurable objective (`cost`|`latency`|`single-provider`|`carbon`|`maximize-credits`, [ADR-0033](./adr/05-config-matching-environments.md#adr-0033)/[ADR-0071](./adr/05-config-matching-environments.md#adr-0071)) per a tenant setting ([Plan 4](./control-plane.md#plan-04)).
 - **Runtime observability** — live cost/egress annotations on the topology graph and run inspector (the observability views above): budget breaches raise alerts/policy gates.
 - **Governance** — budgets + spend caps as policy gates, including for agents ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 

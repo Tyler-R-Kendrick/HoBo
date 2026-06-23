@@ -184,6 +184,11 @@ The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-007
 | `operator` | read · configure · dispatch · disable | runtime/repair | the Crew operator agents ([Plan 40](./operators-sre.md#plan-40)) |
 | `secret-broker` | read-metadata · rotate · configure | runtime | brokered creds — secret **values** are never a grantable read ([ADR-0023](./adr/02-identity-security.md#adr-0023)/[ADR-0027](./adr/02-identity-security.md#adr-0027)) |
 | `audit` | read · export | observe | the event log / OCSF export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)) — read-only |
+| `derivative` | upgrade · read | author/repair | swap an engine / fork the Yard / apply persisted patches ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)) — high-privilege |
+| `registry` (bundle) | import · read | author | signed offline bundle import ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) — a supply-chain trust action |
+| `relay` | register · attach · read · revoke | apply | register/attach an outbound Relay into a private network ([Plan 12](./security-networking.md#plan-12)) |
+
+> **Completeness is a hard gate** ([ADR-0074](./adr/02-identity-security.md#adr-0074)): every control-plane CLI/MCP verb must map to a `hobo:*` action above **or the build fails** (`@hobo/conformance`) — deny-by-default only protects an *enumerated-but-unbound* tuple, not an action that was never given an id. **Pack composition** is **deny-overrides + scope-monotonic** (a child pack's effective deny-set ⊇ its parent's; a child can add denies, never un-deny a parent `mandatory`) with a deterministic **most-restrictive-wins** tie-break — so conflicting federated `mandatory` packs resolve to the union of their denies, identically on every Yard (this is the precedence rule the iteration hook below asked for).
 
 **Default built-in role → action bindings** (least privilege; `manage` = all verbs; `—` = no grant). Custom roles compose any subset of the above.
 
@@ -210,7 +215,7 @@ The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-007
 Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./event-model.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper (above) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
 
 #### Iteration hooks
-- Default pack set + precedence when multiple packs match.
+- ~~Default pack set + precedence when multiple packs match.~~ **Resolved ([ADR-0074](./adr/02-identity-security.md#adr-0074)):** deny-overrides + scope-monotonic composition + most-restrictive-wins tie-break (above). Default pack set remains config.
 - ~~Obligation tracking SLAs (saga vs projection) and expiry of unmet obligations.~~ **Resolved ([Plan 40](./operators-sre.md#plan-40)):** obligations carry a deadline; unmet-by-deadline **escalates** (the on-call ladder), tracked as `policy.ObligationCreated`→`…Satisfied`/escalation events.
 - Waiver workflow + who can grant per environment.
 - Mutation safety (policy-driven graph mutations must themselves pass contracts/conformance).

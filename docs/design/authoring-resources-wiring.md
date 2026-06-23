@@ -90,7 +90,7 @@ Resource declarations, config items, and the DSL surface all use **varlock's dec
 DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)). DNS is a **Yard-level** resource — provider-global, with **per-Camp overrides** — so a Bindle never declares it. Custom-domain binding (ACME DNS-01 certs; failover/weighted/latency across Camps) is resolved at the Yard layer and applied per Camp; the app references endpoints, not zones.
 
 ### Notes
-- `hobo:blob-events` / `hobo:websocket` are HoBo WIT shapes where no standard `wasi:*` exists.
+- `hobo:blob-events` is a HoBo WIT shape where no standard `wasi:*` exists; `hobo:websocket` is now a **thin extension over the preview `wasi:websocket`** ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)), not a standalone shape.
 - A relational `data` provider's schema migrations are specified in [Plan 32](./data-plane.md#plan-32) ([ADR-0032](./adr/03-data-plane.md#adr-0032)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
 - `.allow()` verbs are per-resource-type typed enums; each provider's IAM adapter maps them to that provider's actions.
 - The programmable surface is **WIT/WASM**: collection runs each component to capture declarations, and any Component-Model language authors Bindles. TypeScript is the **first reference implementation**, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)) — non-TS languages are collected the same way (run-to-collect), with static analysis as a supplement.

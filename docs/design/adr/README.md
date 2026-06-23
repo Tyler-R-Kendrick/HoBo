@@ -44,7 +44,7 @@
 | 0026 | Scope model: `Bindle ⊂ Camp ⊂ Yard ⊂ Junction` | [architecture-core](01-architecture-core.md#adr-0026) |
 | 0027 | Secretless-first configuration & secrets | [identity-security](02-identity-security.md#adr-0027) |
 | 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | [config-matching-environments](05-config-matching-environments.md#adr-0028) |
-| 0031 | wasm host of record, runtime substrate & component-host portability | [architecture-core](01-architecture-core.md#adr-0031) |
+| 0031 | wasm host: self-hosted wasmCloud (default) · wasm-in-container floor · portability | [architecture-core](01-architecture-core.md#adr-0031) |
 | 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective) | [config-matching-environments](05-config-matching-environments.md#adr-0033) |
 | 0034 | Generalized, extensible search capability (vector/graph as extensions) | [data-plane](03-data-plane.md#adr-0034) |

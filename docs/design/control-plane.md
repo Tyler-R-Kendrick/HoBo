@@ -111,10 +111,29 @@ This is the layer the Yard's Planner, Orchestrator, and Executors drive: how an 
 
 A CloudProvider is a **capability provider** — it implements a WIT interface's exports for a backend, and **binding a resource means creating a link** (wasmCloud model) from a component's import to a provider's export, late-bound at deploy/runtime ([Plan 20](./wasm-runtime-wit.md#plan-20)). The realize → IaC path below also wires those links and emits the **manifest IR** ([Plan 21](./authoring-resources-wiring.md#plan-21)). Providers can be authored in any wasm language and AI-generated via the Forge ([Plan 23](./forge-generated-stack.md#plan-23)). Provider resolution is **context-matching**, not static mapping: the Planner picks a **Resource Definition** per resource ([Plan 25](./platform-engineering.md#plan-25)), with the `hobo.config.ts` mapping as sugar over default definitions; the `IacProvider` is one **Driver** in a taxonomy (terraform/template/echo/container/custom-webhook, [Plan 25](./platform-engineering.md#plan-25)) that a capability provider selects to realize a resource. The same **Gatekeeper** that the Orchestrator runs at Delta→Set (contracts + policy + evals + conformance + cost — Plans [29](./contracts-policy-flags.md#plan-29)/[30](./contracts-policy-flags.md#plan-29)/[23](./forge-generated-stack.md#plan-23)/[9](./verification.md#plan-09)/[16](./reliability-observability-cost.md#plan-05)) also runs before Apply here; a blocked gate emits a precise `deployment.PlanRejected` reason an agent can self-correct.
 
+#### Intended providers & deploy targets (non-limiting)
+This is HoBo's **intended seed set — not a closed list.** Every entry is a swappable adapter behind the `CloudProvider` / `component-host` / `IacProvider` ports: a Bindle stays provider-agnostic, the **Forge** generates new provider adapters on demand ([Plan 23](./forge-generated-stack.md#plan-23)), conformance guarantees portability ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)), and capability gaps are surfaced at author time with remediation, never silently ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)). Adding a provider never edits app code.
+
+- **Runtime hosts (`component-host`).** Default = **self-hosted wasmCloud** (lattice over NATS/JetStream) on **k8s** (`wasmcloud-operator`), **Coolify/Docker**, or **bare metal**; **wasm-in-container** is the zero-infra floor; **SpinKube** and **provider-native wasm (Cloudflare Workers)** are opt-in; local/dev = Wasmtime ([ADR-0031](./adr/01-architecture-core.md#adr-0031)).
+- **Self-host / deploy targets.** Kubernetes on any distro/cloud (Hetzner `kube-hetzner`/Talos, k3s, AKS/EKS/GKE), **Coolify** (Docker PaaS on any VPS, API/MCP-drivable), Docker/Compose, bare-metal/VPS. "Self-host = hosted" — the same code.
+
+**Cloud / infra providers (`CloudProvider`):**
+
+| Provider | Realizes (representative ports) | IaC adapter |
+|---|---|---|
+| **Self-hosted** (k8s / Coolify / bare-metal) | compute · the wasmCloud runtime host · networking | Crossplane · Pulumi · Terraform |
+| **Hetzner** | compute (servers/VPS) · networking (LB/firewall/vSwitch) · volumes · **S3-compatible object storage** · k8s substrate (HKE / k3s / Talos) | Terraform `hcloud` · Pulumi |
+| **Cloudflare** | edge compute (**Workers**, wasm-native host) · R2 (object, S3-compat) · D1 (SQL) · KV · Durable Objects · Queues · Vectorize (vector) · Workers AI · Hyperdrive · DNS | Terraform `cloudflare` · Wrangler |
+| **Vercel** | web/SSR hosting · functions (serverless + edge) · Blob · Edge Config (relational/KV via marketplace: Neon/Upstash) | Vercel CLI · Terraform `vercel` |
+| **AWS · Azure · GCP** | full IaaS/PaaS (compute, data, storage, messaging, networking) | Pulumi · Terraform · OpenTofu · Crossplane |
+| **Fly.io** | global app/VM hosting · volumes | Terraform · Pulumi |
+
+Cloudflare and self-hosted wasmCloud are first-class **wasm** targets; **Hetzner** is the cheap **self-host substrate** for wasmCloud-on-k8s; **Vercel/Cloudflare** cover the **edge/web** tier. A Camp picks one provider (and its runtime host) per [ADR-0026](./adr/01-architecture-core.md#adr-0026); cross-cloud spans Yards under a Junction ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)).
+
 #### The three adapter families (one shape)
 Everything that touches the outside world is a port with swappable adapters:
-- **CloudProvider** — implements capability ports (now **WIT interfaces**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (AWS/Azure/GCP/Cloudflare/Fly/K8s).
-- **IacProvider** — the *mechanism* a CloudProvider uses to realize resources (Pulumi/CDKTF/Crossplane/OpenTofu).
+- **CloudProvider** — implements capability ports (now **WIT interfaces**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (self-hosted/Hetzner/AWS/Azure/GCP/Cloudflare/Vercel/Fly/K8s).
+- **IacProvider** — the *mechanism* a CloudProvider uses to realize resources (Pulumi/Terraform/OpenTofu/Crossplane).
 - **BuildProvider** — produces images/rootfs/**wasm components** (Dagger/Packer/Firecracker/Vagrant/jco+componentize).
 
 A CloudProvider composes the other two: it declares *what* a resource is, then emits an `IacProgram` (and optionally a `BuildSpec`) for the chosen IaC/Build adapters to execute, plus the **links** that bind components to it at runtime.

@@ -9,6 +9,8 @@ This capability doc consolidates Plan 17 of the HoBo design suite.
 ### The one-line position
 **HoBo is an AI-native meta-cloud — a cloud-agnostic *control plane* and durable runtime that maps a single app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.** The programmable surface is **WIT/WASM** (the Component Model / wasmCloud); **TypeScript is the first reference implementation, not a requirement** — any Component-Model language can author against the same WIT worlds ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). It competes head-on with **Convex, Lakebed, and Nitric**; it is not a single PaaS, not "just IaC," and not Kubernetes-only.
 
+**Default runtime + open providers.** The default host is **self-hosted wasmCloud** (lattice on k8s / Coolify / bare metal — no managed-cloud dependency; wasm-in-container is the zero-infra floor, [ADR-0031](./adr/01-architecture-core.md#adr-0031)). The provider set is an **open seed list** — self-host, **Hetzner**, **Cloudflare**, **Vercel**, AWS/Azure/GCP, Fly — behind swappable ports, with the Forge generating more on demand; it's documented to *prove* portability, never to cap it ([providers matrix](./control-plane.md#plan-04), [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)).
+
 ### The landscape (and the gap HoBo fills)
 | Product | Category | Cloud-agnostic? | Escape hatch | Runtime model | Agent/AI-native? | Self-host? |
 |---|---|---|---|---|---|---|

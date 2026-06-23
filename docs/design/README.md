@@ -27,7 +27,7 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 | [`governance-planes.md`](./governance-planes.md#plan-46) | Governance: compliance/data governance & AI safety | 46 |
 | [`worked-example.md`](./worked-example.md#plan-19) | End-to-end worked example | 19 |
 
-**Decisions** live as 8 thematic ADR docs in [`adr/`](./adr/README.md) (each decision is a `#adr-NNNN` section).
+**Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/README.md) (each decision is a `#adr-NNNN` section).
 
 **Archived planning material** (not part of the current design state — revived when the work is scoped): the **roadmap / build sequence** and the formal **requirements suite** (BRD/PRD/TRD + BR→FR/NFR→TR traceability) live in [`../../archive/`](../../archive/). The design-relevant scope boundary and NFR/SLO targets are kept in the design itself ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)/[ADR-0021](./adr/07-portability-extensibility.md#adr-0021)).
 

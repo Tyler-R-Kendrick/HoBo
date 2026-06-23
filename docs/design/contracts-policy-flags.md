@@ -37,6 +37,8 @@ Developers don't hand-write contracts (IfC-default, [Plan 21](./authoring-resour
 3. **Observed** — **trace-mined** from the event log ([Plan 11](./event-model.md#plan-11)): "99.8% of 42k `order.created` had `tenantId`; the 0.2% without came from `worker@v1`."
 4. **Promoted** — an observed shape is promoted to a **versioned compatibility gate** with a migration window.
 
+> **Contracts make boundary virtualization safe ([ADR-0076](./adr/04-governance-verification.md#adr-0076)).** Because every boundary carries a contract, the host can serve it in a **mode** — `mock` (a contract-conformant fake auto-served from the contract + traces, *no hand-written mocks*), `fork` (a forked/branch impl, which must **satisfy the contract** via `can-deploy` or it's rejected — so it can't break shared consumers), `shadow`, or `fault`. This is the substrate for low-friction test sandboxes, request-level branch isolation, preview environments, self-healing experiments, and non-destructive chaos ([Plan 9](./verification.md#plan-09)/[Plan 25](./platform-engineering.md#plan-25)).
+
 ```mermaid
 flowchart LR
   DECL["declared (WIT/Zod)"] --> INF["inferred (graph compile)"]

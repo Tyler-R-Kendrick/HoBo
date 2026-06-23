@@ -76,7 +76,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `bindle.ResourcesCollected` · `bindle.ManifestProduced`
 
 **Links & WIT-boundary calls** (the trace stream powering AI implement/evolve/live-fix, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 23](./forge-generated-stack.md#plan-23))
-`link.Established` · `link.Called` · `stub.Recorded` · `impl.Generated` · `impl.Certified` · `impl.Promoted` · `livefix.Proposed` · `livefix.Applied` · `livefix.RolledBack`
+`link.Established` (carries the **boundary mode** — `live`/`mock`/`record`/`replay`/`fork`/`shadow`/`fault` — for boundary virtualization, [ADR-0076](./adr/04-governance-verification.md#adr-0076)) · `link.Called` · `stub.Recorded` · `impl.Generated` · `impl.Certified` · `impl.Promoted` · `livefix.Proposed` · `livefix.Applied` · `livefix.RolledBack`
+
+> **Boundary virtualization & sandbox lanes** ([ADR-0076](./adr/04-governance-verification.md#adr-0076)) add **no new families**: a sandbox lane is an `env.*` overlay (`env.Cloned`/`env.Reaped`), selector routing rides `policy.Decided`, the boundary mode rides `link.Established` (above), `shadow` rides `impl.Shadowed`/`eval.*`, and `fault` rides `chaos.*` — so a test/preview/self-heal/chaos run is replayable like everything else.
 
 **Platform config & matching** (Resource Definitions, [Plan 25](./platform-engineering.md#plan-25))
 `resourcedef.Registered` · `resourcedef.Updated` · `pack.Imported` · **`match.Decided`** (winning definition + full lexicographic ranking [specificity → priority → objective → stable tiebreak] + objective used + tie flag + rejected candidates with reasons → "why this infra", deterministic/replayable — [ADR-0033](./adr/05-config-matching-environments.md#adr-0033))

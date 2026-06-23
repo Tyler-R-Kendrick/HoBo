@@ -85,3 +85,4 @@
 | 0073 | Swappable integration ports: identity, artifacts, work-tracking & knowledge | [portability-extensibility](07-portability-extensibility.md#adr-0073) |
 | 0074 | Org governance: RBAC + mandatory guardrails over HoBo's own control-plane surface | [identity-security](02-identity-security.md#adr-0074) |
 | 0075 | Interface stability tiers + statically-evaluable provider Capability Spec (preview `wasi:websocket`) | [portability-extensibility](07-portability-extensibility.md#adr-0075) |
+| 0076 | Boundary virtualization: stub/link modes for request-level isolation, preview, self-healing & non-destructive chaos | [governance-verification](04-governance-verification.md#adr-0076) |

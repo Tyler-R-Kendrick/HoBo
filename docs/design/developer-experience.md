@@ -75,7 +75,8 @@ The CLI collapses to two lifecycle verbs — **`hobo up`** (bring the topology u
 hobo up [--camp prod] [--strategy canary] [--to <rev>] [--rollback]
                                                          provision + deploy the object graph (ADR-0011); the only "ship it" verb
 hobo down [--camp prod]                                  tear down / deprovision the topology
-hobo dev                                                 run locally on runtime-local (no cloud)
+hobo dev [--fork <service> --into <env>]                 run locally on runtime-local (no cloud); --fork joins a shared env in your lane (request-level isolation, ADR-0076)
+hobo sandbox / hobo test [--fork <svc>]                  run a system-under-test with out-of-scope boundaries auto-mocked from contracts (or fork the SUT) (ADR-0076)
 hobo plan [--camp prod]                                  dry-run: DeploymentPlan + cost + warnings (what `up` would do)
 hobo doctor                                              env/credential/connectivity diagnostics
 hobo codegen [--check]                                   (re)generate typed clients into _generated/; --check fails on drift (CI) (ADR-0037)

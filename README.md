@@ -1,8 +1,8 @@
 # HoBo
 
-> Write your app once in TypeScript. HoBo decides how to host it — and gets out of the way when you want control. Built for humans and the agents that work for them.
+> Write your app once. HoBo decides how to host it — and gets out of the way when you want control. Built for humans and the agents that work for them.
 
-**HoBo** is a developer-centric, cloud-agnostic TypeScript SDK plus an intermediary cloud control plane ("the Yard"). Describe your app once through PaaS / SaaS / CaaS / IaaS abstractions; a provider pattern (ports & adapters) maps it onto real providers — agnostic by default, optimizable on demand via typed provider-specific options. The runtime is AI-native: actor-model + choreography sagas over a replayable event store, with durable workflows and agents as first-class authenticated users.
+**HoBo** is a developer-centric, cloud-agnostic platform whose programmable surface is **WIT/WASM** (the Component Model / wasmCloud), plus an intermediary cloud control plane ("the Yard"). **TypeScript is the first reference implementation, not a requirement** — any Component-Model language can author against the same WIT worlds. Describe your app once through PaaS / SaaS / CaaS / IaaS abstractions; a provider pattern (ports & adapters) maps it onto real providers — agnostic by default, optimizable on demand via typed provider-specific options. The runtime is AI-native: actor-model + choreography sagas over a replayable event store, with durable workflows and agents as first-class authenticated users.
 
 > **Status: design phase.** No **HoBo product** implementation code yet — this repository holds the design plans and requirements. (The only code present is third-party AI agent-tooling under `.agents/`, `.claude/`, and `scripts/` — see [Working in this repo with AI agents](#working-in-this-repo-with-ai-agents).) See [`docs/design/`](./docs/design/README.md).
 

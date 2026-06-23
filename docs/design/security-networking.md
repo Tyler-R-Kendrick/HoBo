@@ -108,7 +108,7 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 - WAF/rate-limit/DDoS are provider-specific `.with(...)` options on the gateway.
 
 ### Custom domains & multi-cloud ingress ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035))
-DNS is high-blast-radius and slow to recover — an unvalidated change can blackhole a domain for a TTL window. So **no DNS change ever promotes without passing an automated validation gate, and every cutover is health-checked and self-rolling-back.** A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (which holds cross-provider topology, [ADR-0026](./adr/01-architecture-core.md#adr-0026)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)):
+DNS is high-blast-radius and slow to recover — an unvalidated change can blackhole a domain for a TTL window. So **no DNS change ever promotes without passing an automated validation gate, and every cutover is health-checked and self-rolling-back.** A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (provider-global, cross-Camp, [ADR-0026](./adr/01-architecture-core.md#adr-0026)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)); cross-cloud domains fronting Camps in different providers' Yards are federated by the Junction ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)):
 ```ts
 import { domain } from "@hobo/sdk";
 export const site = domain("shop.com")

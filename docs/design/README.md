@@ -1,6 +1,6 @@
 # HoBo — Design Plan Suite
 
-> A suite of inter-related design plans for **HoBo**, a TypeScript SDK + cloud control plane.
+> A suite of inter-related design plans for **HoBo**, a **WIT/WASM** programmable surface (Component Model / wasmCloud) + cloud control plane — TypeScript is the first reference implementation, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
 > This is a **planning deliverable — no HoBo *product* implementation code is committed yet** (the only code in the repo is third-party AI agent-tooling under `.agents/`/`.claude/`/`scripts/`). The 45 design plans are consolidated into 21 capability docs; each plan keeps a stable `#plan-NN` anchor so we can still cite areas precisely.
 
 ## Index
@@ -77,11 +77,11 @@ The 45 design plans are consolidated into **21 capability docs**. Each plan keep
 
 **Problem.** Shipping software still forces application developers to become part-time platform engineers: picking clouds, wiring IaC, designing for HA, and operating infra. Tools today force a bad trade — either an opinionated closed PaaS (simple but locked-in, e.g. **Lakebed**) or raw multi-cloud IaC (powerful but heavy). Neither is built for the world that's coming, where **AI agents are the primary builders and deployers**.
 
-**What HoBo is.** An *intermediary cloud control plane* with a developer-centric, cloud-agnostic TypeScript SDK. Developers describe their app once through **PaaS / SaaS / CaaS / IaaS abstractions**; a **provider pattern** (ports & adapters) maps those abstractions onto real providers. You can map the whole app to a single provider ("just host this on Azure, figure it out"), split tiers across providers, or pin specific boundaries to specific providers — and drop to typed **provider-specific options** when you want to optimize. IaC tools (Pulumi, Crossplane, Terraform/OpenTofu) and image/VM tools (Dagger, Packer, Vagrant, Firecracker) are themselves pluggable via the same ports/adapters pattern.
+**What HoBo is.** An *intermediary cloud control plane* with a developer-centric, cloud-agnostic programmable surface that is **WIT/WASM** (the Component Model / wasmCloud) — **TypeScript is the first reference implementation, not a requirement**; any Component-Model language authors against the same WIT worlds ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). Developers describe their app once through **PaaS / SaaS / CaaS / IaaS abstractions**; a **provider pattern** (ports & adapters) maps those abstractions onto real providers. You can map the whole app to a single provider ("just host this on Azure, figure it out"), split tiers across providers, or pin specific boundaries to specific providers — and drop to typed **provider-specific options** when you want to optimize. IaC tools (Pulumi, Crossplane, Terraform/OpenTofu) and image/VM tools (Dagger, Packer, Vagrant, Firecracker) are themselves pluggable via the same ports/adapters pattern.
 
 **Why it wins.** Write cloud-agnostic code that ships anywhere; reach for provider-native power only when you want to. The API *feels like* [Vercel Workflows](https://workflow-sdk.dev/) for its durable `workflow`/`step` ergonomics, but the durable runtime is **HoBo-native and provided per [Camp](#glossary--naming-thematic-all-tunable)** (no dependency on any single vendor's runtime). The whole system is **AI-native**: actor-model + choreography sagas over a replayable event store, agents as first-class authenticated users, a machine-readable **auth/capability standard** so agents self-provision credentials with zero developer effort, and AI-generated provider plugins instead of relying on a community to write them.
 
-**Intended outcome.** A self-hostable (or hosted) **hobo-cloud** orchestrator + an SDK such that a developer (or an agent) can `hobo deploy` a TypeScript app and have it land on real infrastructure — agnostic by default, optimizable on demand.
+**Intended outcome.** A self-hostable (or hosted) **hobo-cloud** orchestrator + an SDK such that a developer (or an agent) can `hobo deploy` an app and have it land on real infrastructure — agnostic by default, optimizable on demand.
 
 ### Decisions locked (from clarifying Q&A)
 1. **Substrate:** TS-native control-plane core (actor runtime + Pulumi Automation API to drive IaC); Kubernetes/Crossplane is *one optional* execution adapter, not the foundation.

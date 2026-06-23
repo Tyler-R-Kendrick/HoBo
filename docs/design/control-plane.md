@@ -156,6 +156,19 @@ export interface BuildMachineProvider {
 ```
 Both publish a Capability Manifest with `cost.json` + declared free-tier/credit facts, so the Dispatcher's `CreditLedgerView` ([Plan 5](./reliability-observability-cost.md#plan-05)) can rank them by **effective marginal cost** and record the pick as `dispatch.Decided` ([Plan 11](./event-model.md#plan-11)). Registering a runner/build-machine makes it a candidate; that is the whole integration. A missing adapter is Forge-generatable ([Plan 23](./forge-generated-stack.md#plan-23)).
 
+**Integration providers (swappable external touchpoints, [ADR-0073](./adr/07-portability-extensibility.md#adr-0073)).** The same ports/adapters shape covers the meta-cloud's external integrations — only registered adapters are considered, all secretless-brokered + policy-gated + Forge-generatable:
+- **ArtifactRepoProvider** (`hobo:artifact-repo`) — the package/artifact repositories HoBo **builds against and publishes to**: **npm · NuGet · PyPI · OCI** (+ Maven/cargo/RubyGems). Serves dependency pulls + publishes outputs (language packages and the component **OCI images** `@hobo/componentize` produces, [Plan 20](./wasm-runtime-wit.md#plan-20)), with **SLSA provenance** on publish ([ADR-0010](./adr/06-ai-generation-operators.md#adr-0010)) and **air-gap mirroring** (generalizes [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); equivalent mirrors are Dispatcher-routable ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071)).
+- **Auth (`hobo:auth`)** — swappable IdP adapters (**WorkOS · Auth0 · Supabase Auth · Entra** + the existing set, [ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)).
+- **Operator-facing seams** (named, Forge-generatable; full surface later, [ADR-0073](./adr/07-portability-extensibility.md#adr-0073)): `issue-tracker` (**JIRA · GitHub Issues · Linear**) and `knowledge` (**Confluence · Obsidian · Wikis**) — the integration surface the **Crew** ([Plan 40](./operators-sre.md#plan-40)) drives, reusing the `notify`/receiver-port pattern ([ADR-0059](./adr/03-data-plane.md#adr-0059)).
+```ts
+export interface ArtifactRepoProvider {
+  id: "npm" | "nuget" | "pypi" | "oci" | "maven" | "cargo" | string;
+  capabilityManifest(): CapabilityManifest;             // endpoints + auth (brokered) + retention
+  pull(ref: ArtifactRef): Promise<Artifact>;            // build input
+  publish(a: Artifact, prov: SlsaProvenance): Promise<ArtifactRef>;  // build output + provenance
+}
+```
+
 #### Port & provider interfaces
 ```ts
 // A capability port (one of many): the agnostic contract apps depend on

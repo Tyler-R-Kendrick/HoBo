@@ -24,6 +24,6 @@ Build a **reactor on the event log**, with three locked choices:
 ## Consequences
 - **(+)** Closes the one mainstream-DX gap vs Convex while staying log-first, portable across Camps/runtimes, and multi-cloud-safe; reuses the event log + `Streamer` + projections HoBo already has.
 - **(+)** Reactivity inherits HoBo's superpowers — replay, audit, determinism — and the `change-feed` capability rides the existing conformance trust boundary.
-- **(−)** A new always-on data-plane component (`QueryReactor`) with fan-out, coalescing, and backpressure to engineer ([Plan 5](../05-reliability-ha.md)); a hot stream can wake many subscriptions (mitigated by the inverted stream→subscription index + sharding).
+- **(−)** A new always-on data-plane component (the `Reactor`, renamed from `QueryReactor` by [ADR-0065](./ADR-0065-streaming-first-rx-materializations.md)) with fan-out, coalescing, and backpressure to engineer ([Plan 5](../05-reliability-ha.md)); a hot stream can wake many subscriptions (mitigated by the inverted stream→subscription index + sharding).
 - **(−)** DB-backed reactivity is only as good as each provider's change feed; coverage beyond the Postgres reference adapter is incremental, and cross-Camp reactive queries are deferred (open [Q16](../09-verification-open-questions.md)).
 - **Resolves** open question #21; **enabled** reactive search (#22), now specified in [Plan 35](../35-search-vector-surface.md)/[ADR-0034](./ADR-0034-search-vector-surface.md) (full-text/filtered search re-pushes on `data.Changed`; vector search is a step).

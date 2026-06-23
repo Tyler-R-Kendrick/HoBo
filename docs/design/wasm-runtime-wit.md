@@ -68,6 +68,12 @@ export wasi:http/incoming-handler@0.2.0;     // an HTTP service
 ```
 The TS SDK's typed clients (`ctx.bindings.db`, `step`, `workflow`) are **generated from these interfaces** (jco `guest-types`), so app code never hand-writes WIT — it gets typed TS, and the contract is standards-based underneath.
 
+### The SDK is provided *through* WIT — `hobo:sdk` + idiom layers ([ADR-0072](./adr/01-architecture-core.md#adr-0072))
+The SDK isn't just *typed from* WIT — its **own surface is a WIT contract**. A canonical **`hobo:sdk` world** aggregates the runtime **primitives** (`hobo:workflow`/`hobo:actor`/`hobo:saga`/`hobo:agent` — i.e. `workflow`/`step`/`actor`/`saga`/`agent`/`command`/`subscribe` signatures) with the capability/data interfaces above. That world *is* the standard contract; its semantics are identical in every language.
+- **Build *against* WIT (forward).** Each language SDK = **`wit-bindgen`/jco against `hobo:sdk`** (mechanical, low-level bindings) **+ a thin idiom layer** that adds language-native ergonomics — TS builder chains + IfC collection ([Plan 21](./authoring-resources-wiring.md#plan-21)), Rust traits/builders, Python decorators/context-managers, Go option structs — and **nothing else**. The idiom layer lowers to the same bindings + emits the same **manifest IR** ([Plan 21](./authoring-resources-wiring.md#plan-21)); it holds no cloud logic and adds no semantics. `@hobo/sdk` (TS) is the **first** idiom layer, not the contract.
+- **Reverse compile (backward).** Tooling derives the WIT world a component **actually** imports/exports — used to **scaffold a new language's idiom-layer skeleton** (the SWE operator's starting point, [Plan 40](./operators-sre.md#plan-40)) and for adoption/parity reports. Forward and reverse share the one `hobo:sdk` contract.
+- **Parity is proven, not trusted.** A **`@hobo/conformance/sdk`** suite ([Plan 9](./verification.md#plan-09)) asserts an idiom layer adds no semantics — identical inputs → identical WIT calls + identical manifest IR across languages (golden-IR + replay). Idiom layers may be **hand-authored or SWE-operator/Forge-generated** ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0054](./adr/06-ai-generation-operators.md#adr-0054)); the gate is the same either way. Hobo Code ([ADR-0049](./adr/05-config-matching-environments.md#adr-0049)) is one more front-end over the same contract.
+
 ### Build pipeline (per language)
 | Language | Toolchain → component |
 |---|---|

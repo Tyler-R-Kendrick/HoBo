@@ -90,3 +90,4 @@
 | 0078 | Architecture-derived availability — the "march of the 9s" | [governance-verification](04-governance-verification.md#adr-0078) |
 | 0079 | App multi-tenancy: the app-tenant model, tenancy-model spectrum & tenant lifecycle | [identity-security](02-identity-security.md#adr-0079) |
 | 0080 | Tenant isolation by construction + the cross-tenant-leak conformance gate | [identity-security](02-identity-security.md#adr-0080) |
+| 0081 | Encore-style paradigm resource packages as opt-in SDK plugins (SQL · vector · graph · document), mapped to cloud natives by Matching, overridable | [data-plane](03-data-plane.md#adr-0081) |

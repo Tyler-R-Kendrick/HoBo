@@ -1,103 +1,21 @@
 # Humanitec — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026). This folder documents **Humanitec's Platform Orchestrator** faithfully; the HoBo↔Humanitec parity tracker is in [`hobo-mapping.md`](#hobo-mapping).
->
-> Files: [orchestration-model.md](#orchestration-model) · [drivers.md](#drivers) · [platform-ops.md](#platform-ops) · [pricing-positioning.md](#pricing-positioning) · [differentiators.md](#differentiators) · [hobo-mapping.md](#hobo-mapping)
+> Captured for HoBo competitive analysis (research as of 2026). This documents **Humanitec's Platform Orchestrator** faithfully; the HoBo↔Humanitec parity tracker lives in the [HoBo mapping](#hobo-mapping) section below.
 
 ## What it is
-The **Platform Orchestrator** is a cloud-agnostic, multi-compute orchestration engine that powers **Internal Developer Platforms (IDPs)**. Developers describe a workload in **Score** (environment-agnostic); platform engineers define **Resource Definitions** (how resources are provisioned); the Orchestrator **dynamically generates** environment-specific configuration at deploy time, enforcing standards/policy without the developer knowing the details. It is *not* a portal, *not* CI/CD, *not* IaC, *not* monitoring — it's the configuration engine at the heart of an IDP.
 
-- **Tagline / framing:** dynamic configuration management; "developers describe *what*, the platform decides *how*."
-- **Target users:** developers (write Score) + platform engineers (write Resource Definitions).
+The **Platform Orchestrator** is a cloud-agnostic, multi-compute orchestration engine that powers **Internal Developer Platforms (IDPs)**. Developers describe a workload in **Score** (environment-agnostic); platform engineers author **Resource Definitions** (how resources get provisioned); the Orchestrator **dynamically generates** environment-specific configuration at deploy time, enforcing standards and policy without the developer touching the details. It is *not* a portal, *not* CI/CD, *not* IaC, *not* monitoring — it is the configuration engine at the heart of an IDP. The framing: "developers describe *what*, the platform decides *how*."
 
-## The IDP "5-plane" reference architecture
-1. **Developer Control Plane** — workload specs (Score), developer portals (Humanitec Portal, Backstage, custom).
-2. **Integration & Delivery Plane** — CI, image registries, **the Platform Orchestrator**, CD.
-3. **Resource Plane** — real infra (clusters, DBs, storage, DNS, VMs, serverless).
-4. **Monitoring & Logging Plane.**
-5. **Security Plane** — secrets, identity, access.
-The Orchestrator lives in plane 2 and drives plane 3.
+Two audiences share it: developers (who write Score) and platform engineers (who write Resource Definitions). Within the common IDP "5-plane" reference architecture — Developer Control Plane (workload specs, portals), Integration & Delivery Plane (CI, registries, the Orchestrator, CD), Resource Plane (clusters, DBs, storage, DNS, VMs, serverless), Monitoring & Logging, and Security — the Orchestrator sits in plane 2 and drives plane 3.
 
-## Core mental model — "RMCD" (Read → Match → Create → Deploy)
-```
-Developer intent (Score)  +  Platform config (Resource Definitions)
-   → READ score → MATCH to context (env_type, app, env, resource_class, resource_id)
-   → SELECT best Resource Definition (specificity-scored)
-   → BUILD Resource Graph (DAG) → EXECUTE Drivers → RECORD Deployment Set + Delta
-```
-Single source of truth = Score (*what*) + Resource Definitions (*how*).
+The core mental model is **Read → Match → Create → Deploy**: read developer intent (Score) plus platform config (Resource Definitions); match the needed resource to context (`env_type`, `app`, `env`, `resource_class`, `resource_id`); select the best Resource Definition by specificity score; build a Resource Graph (DAG); execute Drivers; and record an immutable Deployment Set plus a Delta. The single source of truth is Score (*what*) combined with Resource Definitions (*how*). The current generation is compute-agnostic — "any compute, any cloud," meaning VMs, Kubernetes, serverless, or anything Terraform/OpenTofu can manage — while retaining the projects/environments/resource-graph abstractions.
 
-## v1 vs v2
-- **v1** (legacy): Kubernetes-only, opinionated, complex.
-- **v2** (Sept 2025): **compute-agnostic** ("any compute, any cloud" — VMs/K8s/serverless/anything Terraform/OpenTofu can manage), simplified concepts, AI-first; keeps v1's projects/environments/resource-graph abstractions.
-
-## At-a-glance feature list (detailed in sibling files)
-- **Resource Definitions + Matching Criteria** (specificity scoring) — the platform-config layer — see [orchestration-model.md](#orchestration-model).
-- **Resource Graph** (DAG of implicit + dependent + co-provisioned resources) — see [orchestration-model.md](#orchestration-model).
-- **Drivers** (terraform / template / echo / container / custom-webhook) + **Resource Packs** + **Workload Profiles** — see [drivers.md](#drivers).
-- **Score** workload spec; **Applications / Environments / Environment Types**; **Deployment Sets** (immutable) + **Deltas** (mutable diff); cloning + ephemeral environments — see [orchestration-model.md](#orchestration-model).
-- **Portal**, **Agent** (private-network deploys), **Operator**, **Pipelines**, **GitOps**, **RBAC + approvals**, **secrets**, **audit logs** — see [platform-ops.md](#platform-ops).
-- **Pricing/editions** (SaaS + self-hosted + air-gapped), positioning, 2024–26 direction (MCP, self-hosted GA, incremental deploys) — see [pricing-positioning.md](#pricing-positioning).
-
-## Known gaps (opportunities for HoBo)
-- Kubernetes-centric; weak native serverless (no first-class Cloud Run/Lambda compute).
-- Steep learning curve; opaque pricing; proprietary core.
-- Not a full observability platform; relies on external tools.
-- Opaque matching selection (no first-class "why this infra" audit).
-- No wasm/polyglot-component runtime; no event-sourced replay/time-travel.
-
-See [differentiators.md](#differentiators) for the full strengths/gaps and [hobo-mapping.md](#hobo-mapping) for HoBo's response.
-
-## drivers
-
-**Humanitec — Drivers, Resource Packs & Workload Profiles**
-
-> Part of the [Humanitec competitor reference](humanitec.md). The execution layer that actually provisions resources.
-
-### Drivers (the execution mechanism)
-A **Driver** provisions a resource given a Resource Definition's inputs + context, and returns outputs (and optionally K8s manifests).
-
-| Driver | `driver_type` | What it does |
-|---|---|---|
-| **Terraform** | `humanitec/terraform` | Runs Terraform/OpenTofu (inline `tf_code` or Git module); manages state; any TF provider. GA. |
-| **Template** | `humanitec/template` | Renders Go templates → Kubernetes manifests (Namespace, Service, Ingress, CRDs, quotas…). |
-| **Echo** | `humanitec/echo` | Passes inputs through as outputs unchanged — for **externally-managed** resources Humanitec reads but doesn't provision. |
-| **Container** | `humanitec/container` | Runs a K8s Job for complex/custom provisioning (Pulumi, CloudFormation, scripts); a sidecar `outputs-fetcher` reads the outputs JSON. |
-| **Custom (webhook)** | `custom/<name>` | Calls a self-hosted HTTP service (signed JWT payload); returns outputs JSON + optional manifests. Any tech stack. |
-
-#### Driver interface (conceptual)
-**Input:**
-```json
-{ "context": {"app_id":"my-app","env_id":"prod","env_type":"production",
-              "res_id":"shared.primary","res_type":"postgres","res_class":"ha"},
-  "driver_inputs": {"tf_code":"...","instance_class":"db.r6g.large"},
-  "old_state": { } }
-```
-**Output:**
-```json
-{ "outputs": {"host":"...","port":5432,"username":"...","password":"...","connection_string":"..."},
-  "manifests": [ { "apiVersion":"v1","kind":"Secret", "...":"..." } ] }
-```
-Custom drivers are registered with type + input-schema (JSON) + URL + supported account credentials. Humanitec publishes an open-source driver library (AWS/GCP/Azure) + community contributions.
-
-### Resource Packs
-Pre-built collections of Resource Definitions for common use cases (AWS, GCP, Azure, in-cluster). Typically use the Terraform or Template driver. Imported into an org and customized via matching criteria. Marketplace at humanitec.com/marketplace. Used to jump-start platform setup.
-
-### Workload Profiles
-A template for **how a workload is realized** (e.g. Kubernetes Deployment vs serverless vs batch job). Built-in `container` (default K8s); custom profiles defined via a spec + Helm chart. Selected when generating the Deployment Set; influences the produced manifests. Enables Dapr services, gRPC servers, batch jobs, etc.
-
-### Notable
-- Co-provisioning: one Resource Definition can create several resources + the edges between them.
-- The Container/Custom drivers are how Humanitec stays IaC-agnostic (Terraform, Pulumi, CloudFormation, or anything HTTP-callable).
-
-## orchestration-model
-
-**Humanitec — Orchestration Model (Score, Resource Definitions, Matching, Graph, Sets/Deltas)**
-
-> Part of the [Humanitec competitor reference](humanitec.md). The core engine, with quoted/illustrative YAML excerpts (see the [fair-use note](README.md#sources--fair-use)).
+## Feature surface
 
 ### Score — the workload spec (developer intent)
-Open, platform-agnostic (CNCF Sandbox; created by Humanitec). Developers write `score.yaml` once; it specifies containers, service ports, and abstract resource dependencies.
+
+Score is an open, platform-agnostic workload spec (CNCF Sandbox, created by Humanitec). Developers write `score.yaml` once, specifying containers, service ports, and abstract resource dependencies; the same file deploys to any environment unchanged.
+
 ```yaml
 apiVersion: score.dev/v1b1
 metadata:
@@ -118,10 +36,13 @@ resources:
   dns:   { type: dns }
   s3:    { type: s3, class: private, id: data-bucket }
 ```
-A companion `humanitec.score.yaml` carries Humanitec-specific extensions (workload profile, annotations, overrides). The same `score.yaml` deploys to any environment unchanged.
 
-### Resource Definitions — platform config (how a resource is provisioned)
-Platform-engineer-authored rules: for an abstract `type` (+ optional `class`), which **driver**, what **inputs**, and the **matching criteria** that select this definition.
+A companion `humanitec.score.yaml` carries Humanitec-specific extensions (workload profile, annotations, overrides).
+
+### Resource Definitions and Matching
+
+A **Resource Definition** is the platform-engineer-authored rule for an abstract `type` (plus optional `class`): which **driver** runs, what **inputs** it gets, and the **matching criteria** that select this definition.
+
 ```yaml
 apiVersion: entity.humanitec.io/v1b1
 kind: Definition
@@ -145,42 +66,63 @@ entity:
       resource_class: high-availability
 ```
 
-### Matching & Matching Criteria (specificity scoring)
-For a needed resource in context `{env_type, app_id, env_id, resource_type, resource_class, resource_id}`, the Orchestrator gathers all definitions of that type, evaluates each definition's criteria, **scores by specificity**, and selects the highest. Criteria fields: `env_type`, `app_id`, `env_id`, `resource_id`, `resource_class`. Example scoring:
+For a needed resource in context `{env_type, app_id, env_id, resource_type, resource_class, resource_id}`, the Orchestrator gathers all definitions of that type, evaluates each definition's criteria, **scores by specificity**, and selects the highest. All listed fields in a criterion must match; the most specific wins; ties break to the next-most-specific.
+
 ```yaml
 - {}                                                  # score 0 (catch-all)
 - env_type: production                                # score 1
 - env_type: production, resource_class: ha            # score 2
 - env_type: production, app_id: critical, resource_class: ha  # score 3 (wins)
 ```
-All listed fields in a criterion must match; most specific wins; ties broken by next-most-specific.
 
 ### Resource Graph (DAG)
-A per-deployment DAG; nodes = resource instances, edges = dependencies.
-- **Implicit resources** (auto): `workload`, `base-env`, `k8s-cluster`, `k8s-namespace`.
+
+Each deployment produces a DAG whose nodes are resource instances and whose edges are dependencies:
+
+- **Implicit resources** (auto-provisioned scaffolding): `workload`, `base-env`, `k8s-cluster`, `k8s-namespace`.
 - **Dependent resources**: those Score requests.
-- **Co-provisioned resources**: extra resources a Resource Definition provisions together (e.g. an S3 bucket + its IAM policy).
-- Resources are identified by the triple **`(type, class, id)`**; shared resources use `id: shared.<name>` and are provisioned once and reused across workloads.
-- References create edges + flow outputs: `${resources.postgres.standard#shared.primary.outputs.host}`. The graph is topologically ordered; independent nodes provision in parallel; idempotent retries (≈2).
+- **Co-provisioned resources**: extra resources a single Resource Definition provisions together (e.g. an S3 bucket plus its IAM policy), including the edges between them.
 
-### Placeholders
-- Context: `${context.app.id}`, `${context.env.id}`, `${context.env.type}`, `${context.res.id}`, `${context.res.class}`, `${context.res.type}`.
-- Resource outputs: `${resources.<type>.<class>#<id>.outputs.<name>}`.
-- Implicit: `${implicit.k8s.namespace}`.
+Resources are identified by the triple **`(type, class, id)`**; shared resources use `id: shared.<name>` and are provisioned once, then reused across workloads. References create edges and flow outputs — `${resources.postgres.standard#shared.primary.outputs.host}`. The graph is topologically ordered; independent nodes provision in parallel; retries are idempotent (≈2). Placeholders span context (`${context.app.id}`, `${context.env.id}`, `${context.env.type}`, `${context.res.id}`, `${context.res.class}`, `${context.res.type}`), resource outputs (`${resources.<type>.<class>#<id>.outputs.<name>}`), and implicit values (`${implicit.k8s.namespace}`).
 
-### Applications, Environments, Environment Types
-- **Application** = logical grouping of workloads + shared resources (org-level).
-- **Environment** = an instance of an app with its own config; has an **Environment Type** (`development`/`staging`/`production`/custom) — the primary matching dimension.
-- **Cloning**: a new environment can be cloned from one with a prior successful deployment (creates a draft Delta).
-- **Ephemeral / dynamic environments**: per-PR/feature, created + torn down via CI; platform engineers map cheap variants (in-cluster DB, serverless) to ephemeral via matching.
+Resource lifecycle distinguishes an **active resource** (a real provisioned object — RDS instance, bucket, namespace — whose driver keeps state across runs), a **shared resource** (`shared.<name>`, one active resource deduped by `(type,class,id)` and reused across workloads in an environment), and **implicit resources** (the auto scaffolding above).
 
-### Deployment Sets & Deltas
-- **Deployment Set** = an immutable, complete configuration snapshot (`modules` + `shared`) for an app at a point in time.
-- **Deployment Delta** = a mutable draft diff (create/update/delete modules/resources) applied to a Set; can be combined/reviewed before committing.
-- **Flow:** Score → generate **Delta** → review/approve → apply to create a new **Set** → execute drivers → record immutable Deployment (audit).
-- **Rollback** = re-apply a previous Deployment's Set + graph; stateful resources keep state. **Incremental deployments** (2026): update only changed resources.
+### Drivers, Resource Packs, and Workload Profiles
 
-### Deployment workflow (`humctl`)
+A **Driver** provisions a resource given a Resource Definition's inputs plus context, returning outputs and optionally Kubernetes manifests. Drivers are the core extension point and the mechanism that keeps Humanitec IaC-agnostic — Terraform, Pulumi, CloudFormation, or anything HTTP-callable.
+
+| Driver | `driver_type` | What it does |
+|---|---|---|
+| **Terraform** | `humanitec/terraform` | Runs Terraform/OpenTofu (inline `tf_code` or Git module); manages state; any TF provider. GA. |
+| **Template** | `humanitec/template` | Renders Go templates → Kubernetes manifests (Namespace, Service, Ingress, CRDs, quotas…). |
+| **Echo** | `humanitec/echo` | Passes inputs through as outputs unchanged — for **externally-managed** resources Humanitec reads but does not provision. |
+| **Container** | `humanitec/container` | Runs a K8s Job for complex/custom provisioning (Pulumi, CloudFormation, scripts); a sidecar `outputs-fetcher` reads the outputs JSON. |
+| **Custom (webhook)** | `custom/<name>` | Calls a self-hosted HTTP service (signed JWT payload); returns outputs JSON plus optional manifests. Any tech stack. |
+
+The driver interface is conceptually a PUT/DELETE contract — input (context + driver inputs + old state) in, outputs (and optional manifests) out:
+
+```json
+{ "context": {"app_id":"my-app","env_id":"prod","env_type":"production",
+              "res_id":"shared.primary","res_type":"postgres","res_class":"ha"},
+  "driver_inputs": {"tf_code":"...","instance_class":"db.r6g.large"},
+  "old_state": { } }
+```
+
+```json
+{ "outputs": {"host":"...","port":5432,"username":"...","password":"...","connection_string":"..."},
+  "manifests": [ { "apiVersion":"v1","kind":"Secret", "...":"..." } ] }
+```
+
+Custom drivers register with type, JSON input-schema, URL, and supported account credentials. Humanitec publishes an open-source driver library (AWS/GCP/Azure) plus community contributions. **Resource Packs** are pre-built collections of Resource Definitions for common use cases (AWS, GCP, Azure, in-cluster), typically using the Terraform or Template driver, imported into an org and customized via matching criteria (marketplace at humanitec.com/marketplace). **Workload Profiles** template *how a workload is realized* — Kubernetes Deployment vs serverless vs batch job; the built-in `container` profile is the default, custom profiles come from a spec plus Helm chart, and the selected profile shapes the produced manifests (enabling Dapr services, gRPC servers, batch jobs, etc.).
+
+### Applications, Environments, and lifecycle
+
+An **Application** is a logical grouping of workloads plus shared resources (org-level). An **Environment** is an instance of an app with its own config, carrying an **Environment Type** (`development`/`staging`/`production`/custom) that is the primary matching dimension. A new environment can be **cloned** from one with a prior successful deployment (creating a draft Delta). **Ephemeral / dynamic environments** are per-PR/feature, created and torn down via CI; platform engineers map cheap variants (in-cluster DB, serverless) to ephemeral environments through matching.
+
+Deployment state is captured as two artifacts. A **Deployment Set** is an immutable, complete configuration snapshot (`modules` + `shared`) for an app at a point in time. A **Deployment Delta** is a mutable draft diff (create/update/delete of modules and resources) applied to a Set, combinable and reviewable before committing. The flow: Score → generate **Delta** → review/approve → apply to create a new **Set** → execute drivers → record an immutable Deployment (the audit trail). **Rollback** re-applies a previous Deployment's Set and graph (stateful resources keep state); **incremental deployments** update only changed resources.
+
+The CLI is `humctl`:
+
 ```bash
 humctl score deploy -f score.yaml --org O --app A --env prod --image my-app:v1 --message "..." --wait
 humctl deploy delta <DELTA_ID> <ENV> --app A
@@ -190,130 +132,83 @@ humctl get deployments --app A --env prod
 humctl describe environment --app A --env prod               # resource graph
 humctl apply -f resource-definition.yaml
 ```
-REST API base `https://api.humanitec.dev` (Bearer token); endpoints for orgs/apps/envs/deploys/definitions/logs. A Terraform provider (`humanitec/humanitec`) manages Humanitec resources as IaC.
 
-### Shared / active / implicit resources
-- **Active resource** = a real provisioned object (RDS instance, bucket, namespace); driver keeps its state across runs; long-lived.
-- **Shared resource** (`shared.<name>`) = one active resource reused by multiple workloads in an environment (deduped by `(type,class,id)`).
-- **Implicit resources** = auto-provisioned scaffolding (workload/base-env/cluster/namespace).
+The REST API base is `https://api.humanitec.dev` (Bearer token), with endpoints for orgs/apps/envs/deploys/definitions/logs. A Terraform provider (`humanitec/humanitec`) manages Humanitec resources as IaC.
 
-## platform-ops
+### Portal and developer self-service
 
-**Humanitec — Platform, Operations & Governance**
+The Portal is a web UI atop the Orchestrator: self-service environments and deployments, app status, resource-graph visualization, and drift detection; platform engineers do resource management and setup here. It offers **golden paths / paved roads** (platform rules developers follow declaratively via Score), service catalogs, dashboards, self-service templates/scaffolding, **scorecards** (health/compliance, DORA metrics), RBAC, and automated docs/audit. The Portal is **optional and modular** — teams can use the API/CLI or other portals (Backstage, Port.io) instead. Humanitec frames the split cleanly: the Orchestrator is the engine; the portal is one surface.
 
-> Part of the [Humanitec competitor reference](humanitec.md). Portal, Agent, CI/CD, RBAC, secrets, observability, extensibility.
+### Connectivity — Agent and Operator
 
-### Portal / developer self-service
-Web UI atop the Orchestrator: self-service environments/deployments, app status, resource-graph visualization, drift detection. Platform engineers do resource management/setup here. Features: **golden paths / paved roads** (platform rules developers follow declaratively via Score), service catalogs, dashboards, self-service templates/scaffolding, **scorecards** (health/compliance, DORA metrics), RBAC, automated docs/audit. The Portal is **optional/modular** — teams can use API/CLI or other portals (Backstage, Port.io) instead. Humanitec frames Portal vs Orchestrator as a clean separation: the Orchestrator is the engine; the portal is one surface.
+The **Humanitec Agent** is a lightweight proxy inside the customer's private network so the **SaaS** Orchestrator can deploy into **private/air-gapped** clusters **without inbound access**. It opens an **outbound TCP 443** reverse tunnel to Humanitec — no open ports or exposed endpoints — TLS-encrypted and authenticated, with credentials staying in-network; the Orchestrator never connects directly to private clusters, proxying everything through the Agent. Installed as a K8s agent, one Agent can manage multiple clusters (private K8s, multi-region/multi-cloud, regulated/air-gapped), and it also enables a GitOps mode where the Agent pulls runtime data.
 
-### The Humanitec Agent
-A lightweight proxy inside the customer's private network so the **SaaS** Orchestrator can deploy into **private/air-gapped** clusters **without inbound access**:
-- **Reverse tunnel:** Agent makes an **outbound TCP 443** connection to Humanitec; no open ports/exposed endpoints.
-- TLS-encrypted, authenticated; credentials stay in-network; the Orchestrator never connects directly to private clusters — all proxying goes through the Agent.
-- Installed as a K8s agent; one Agent can manage multiple clusters; used for private K8s, multi-region/multi-cloud, regulated/air-gapped environments. Also enables a GitOps mode where the Agent pulls runtime data.
+The **Humanitec Operator** is separate from the Agent: a K8s operator on each cluster (public or private) that manages CRDs and provisions **Secrets** from secret stores. It is a Helm-installed controller-manager that acts on resource changes.
 
-### Humanitec Operator
-Separate from the Agent; a K8s operator on each cluster (public or private) managing CRDs and provisioning **Secrets** from secret stores (Vault, Azure Key Vault, Infisical, native K8s). Helm-installed controller-manager acts on resource changes.
+### CI/CD, Pipelines, and GitOps
 
-### CI/CD & Pipelines
-- Works with **any** CI (GitHub Actions, GitLab, Bitbucket, CircleCI, Jenkins, Codefresh). Pattern: CI builds image → notifies Orchestrator of new artifact → Orchestrator deploys (via `humctl score deploy --image <ver>` or webhook, using a service-user token).
-- **Humanitec Pipelines** (feature): multi-step deployment workflows. Triggers: **Deployment Request** (new artifacts matching criteria) and **API**. **Deployment rules** are if-then (e.g. "new image from dev HEAD → deploy dev-testing"); flexible image matching/exclusion. Jobs run in parallel with `needs` for ordering; max ~10 concurrent runs; custom `concurrency` locks. Integrate policy checks, sign-offs, Slack/Teams notifications.
-- **GitOps mode:** Orchestrator writes the Resource Graph as K8s Custom Resources to a Git repo/branch; ArgoCD/Flux sync to clusters. Can run standalone or hybrid.
+Humanitec works with **any** CI (GitHub Actions, GitLab, Bitbucket, CircleCI, Jenkins, Codefresh). The pattern: CI builds an image → notifies the Orchestrator of the new artifact → the Orchestrator deploys (via `humctl score deploy --image <ver>` or a webhook, using a service-user token). **Humanitec Pipelines** add multi-step deployment workflows triggered by a **Deployment Request** (new artifacts matching criteria) or the **API**. **Deployment rules** are if-then (e.g. "new image from dev HEAD → deploy dev-testing") with flexible image matching/exclusion; jobs run in parallel with `needs` for ordering, capped at ~10 concurrent runs, with custom `concurrency` locks; they can integrate policy checks, sign-offs, and Slack/Teams notifications. In **GitOps mode**, the Orchestrator writes the Resource Graph as K8s Custom Resources to a Git repo/branch and ArgoCD/Flux sync to clusters — standalone or hybrid.
 
-### Deployment targets
-Kubernetes-centric (EKS/GKE/AKS/on-prem/private). Cloud resources via **Terraform driver** (any TF provider), **Template driver** (K8s), **Container driver** (Pulumi/CFN/custom). v2 extends to "any compute" (VMs/serverless) but K8s remains primary; native serverless (Cloud Run/Lambda as primary compute) is limited.
+Deployment targets are Kubernetes-centric (EKS/GKE/AKS/on-prem/private). Cloud resources come via the **Terraform driver** (any TF provider), **Template driver** (K8s), and **Container driver** (Pulumi/CFN/custom). The "any compute" direction extends to VMs and serverless, but K8s remains primary and native serverless (Cloud Run/Lambda as primary compute) is limited.
 
-### RBAC, governance, approvals
-- **RBAC** (GA 2025) at **Organization / Application / Environment-Type** levels; least-privilege default; roles like admin/developer/ops/delivery-manager/approver/viewer.
-- **Approvals/sign-offs** via Pipelines + webhooks (e.g. notify Slack pre-prod, delivery manager confirms prod). Policy checks run automatically pre-deploy. Standardization by design (devs declare *what*, platform enforces *how*).
+### Governance, secrets, and observability
 
-### Secrets management
-Secrets are a resource type whose outputs inject into containers at runtime; never logged or persisted in manifests/Git. Stores: **Vault** (KV v2, dynamic creds), **Azure Key Vault**, **Infisical**, **native K8s**. Shared values/secrets scoped to app/environment with overrides.
+**RBAC** operates at **Organization / Application / Environment-Type** levels, least-privilege by default, with roles like admin/developer/ops/delivery-manager/approver/viewer. **Approvals and sign-offs** run via Pipelines and webhooks (e.g. notify Slack pre-prod, delivery manager confirms prod), and policy checks run automatically pre-deploy — standardization by design (devs declare *what*, the platform enforces *how*).
 
-### Observability, status, audit
-- Deployment status tab (active deployment + workloads + shared resources); resource-status health via the Operator; plan-only & historical resource graphs (2026).
-- **Drift detection** (TF provider): desired (graph) vs actual; alerts on config drift.
-- Scorecards + DORA metrics; integrates external monitoring (Prometheus/Datadog) via resource definitions. Not a full observability platform.
-- **Audit log:** every API change on every entity, who/when/action; min **365-day** retention, immutable; **no request bodies / no IPs**; up to ~5-min delay.
+**Secrets** are a resource type whose outputs inject into containers at runtime, never logged or persisted in manifests/Git; stores include **Vault** (KV v2, dynamic creds), **Azure Key Vault**, **Infisical**, and **native K8s**, with shared values/secrets scoped to app/environment with overrides.
 
-### Extensibility & API
-- **Drivers** = the core extension (HTTP PUT/DELETE implementing the driver interface; any stack; embed TF/Pulumi/CFN/custom). **Resource Packs** bundle definitions; open-source driver library.
-- REST API for all entities; **webhooks** (env create/delete, deploy start/complete; customizable payloads with variable substitution); Terraform provider; **MCP** support (Jan 2026) so AI agents drive the Orchestrator.
+For observability and audit, a deployment-status tab shows the active deployment plus workloads and shared resources; resource-status health comes via the Operator; plan-only and historical resource graphs are available. **Drift detection** (via the TF provider) compares desired (graph) against actual and alerts on config drift. Scorecards and DORA metrics ship in the Portal, and external monitoring (Prometheus/Datadog) integrates through resource definitions — Humanitec is not a full observability platform. The **audit log** records every API change on every entity (who/when/action), with min **365-day** immutable retention, but **no request bodies and no IPs**, and up to a ~5-min delay.
 
-## pricing-positioning
+### Extensibility and API
 
-**Humanitec — Editions, Positioning & Recent Direction**
+Drivers are the core extension (HTTP PUT/DELETE implementing the driver interface; any stack; embedding TF/Pulumi/CFN/custom). Resource Packs bundle definitions; the open-source driver library seeds them. The REST API covers all entities; **webhooks** fire on env create/delete and deploy start/complete with customizable payloads and variable substitution; the Terraform provider manages Humanitec as IaC; and **MCP** support lets AI agents (Claude, ChatGPT) drive the Orchestrator directly.
 
-> Part of the [Humanitec competitor reference](humanitec.md).
+### Editions and pricing
 
-### Editions & deployment models
 - **SaaS (cloud-hosted):** fully managed, multi-tenant; uses the Agent for private-cluster access.
-- **Self-hosted (GA Dec 2025):** entire Orchestrator on customer infra; data sovereignty, **air-gapped** support; regulated industries (banking/insurance/gov/defense), GovCloud/sovereign clouds.
-- **Free / community:** free trial (no card); a free community version is mentioned (limits not fully public).
-- **Pricing:** not publicly disclosed — demo/contact required (an adoption + comparison friction point).
+- **Self-hosted:** the entire Orchestrator on customer infra — data sovereignty, **air-gapped** support, regulated industries (banking/insurance/gov/defense), GovCloud/sovereign clouds.
+- **Free / community:** a free trial (no card); a free community version is mentioned (limits not fully public).
+- **Pricing:** not publicly disclosed — demo/contact required, an adoption and comparison friction point.
 
-### Positioning vs adjacent tools (Humanitec's framing)
-- **vs Backstage** — complementary, not competitive. Backstage = developer **portal** (catalog/scaffolding, OSS framework); Humanitec = **backend orchestrator** (config generation, provisioning). "Deploy Humanitec first, layer Backstage on top." Humanitec argues Backstage is framework-heavy DIY.
-- **vs Terraform / Pulumi** — Humanitec is the **orchestration layer above** IaC: it *orchestrates and standardizes* TF execution via drivers (declarative + policy-driven) rather than replacing it.
-- **vs Crossplane** — Crossplane is a K8s-native control plane (CRDs); Humanitec is broader app+infra orchestration not requiring K8s-CRD modeling of everything.
-- **vs ArgoCD / Flux** — GitOps operators sync Git→cluster; Humanitec **generates** what to sync (and adds multi-stage workflows, approvals, policy) then can hand off to Argo/Flux.
-- **vs Qovery / Northflank / Nitric** — those are simpler PaaS/serverless-first; Humanitec is enterprise-grade orchestration with deep policy/governance and a single app+infra graph (more upfront config, more control).
+## Differentiators
 
-### Stated strengths
-Dynamic resource graph; true developer self-service (intent → platform applies rules); policy/governance (RBAC, approvals, drift, audit); multi-env/multi-cloud/multi-cluster; production-ready (SaaS + self-hosted); IaC-agnostic (TF/Pulumi/CFN/custom drivers); proven in regulated/air-gapped enterprises.
+### Strengths (what is genuinely strong)
 
-### Gaps / criticism (competitor openings)
-- Steep learning curve; many interlocking concepts (Resource Types/Definitions/Drivers/Runners/Manifests); docs lag features.
-- Kubernetes-centric; limited native serverless; assumes containerized workloads.
-- Opaque pricing; proprietary core (vs OSS Backstage).
-- Not a full observability platform.
-- Vendor lock-in risk (Humanitec Manifests), though Score is open.
-- Audit limits (no request bodies/IPs, ~5-min delay); opaque matching selection.
-
-### Recent direction (2024–2026)
-- **Sept 2025:** Orchestrator **v2** — compute-agnostic, simplified, AI-first.
-- **Dec 2025:** self-hosted Orchestrator GA (regulated/sovereign unlock).
-- **Jan 2026:** **MCP** integration — AI agents (Claude/ChatGPT) drive the Orchestrator.
-- **Aug 2025:** Container Driver. **2026:** **incremental deployments** (update only changed resources); plan-only & historical resource graphs.
-- Strategic shift: "K8s orchestrator" → "any-compute orchestrator"; "DevOps tool" → "AI-integrated developer platform".
-
-### What this means for HoBo
-Humanitec is mature, enterprise-grade, and now explicitly **AI-first** — so HoBo can't win on "AI-native" alone. HoBo must combine Humanitec's best engine (Resource Definitions + Matching, drivers, sets/deltas, governance) with what Humanitec lacks: a **wasm-first polyglot runtime**, **event-sourced replay/time-travel + auditable matching decisions**, **Forge-generated definitions/implementations**, **IfC-default simplicity**, and an **OSS core**. See [hobo-mapping.md](#hobo-mapping).
-
-## differentiators
-
-**Humanitec — Differentiators & Gaps (quick reference)**
-
-> Part of the [Humanitec competitor reference](humanitec.md). Condensed; full positioning in [pricing-positioning.md](#pricing-positioning).
-
-### Differentiators (what's genuinely strong)
 1. **Dynamic configuration management** — Score (intent) + Resource Definitions (rules) + **Matching** → environment-specific config generated at deploy time. The cleanest dev-vs-platform separation in the market.
 2. **Resource Graph** — a real, queryable DAG of app + infra with co-provisioning and output flow; topologically executed.
 3. **Driver model** — IaC-agnostic execution (terraform/template/echo/container/custom-webhook); extend by HTTP.
-4. **Deployment Sets + Deltas** — immutable snapshots + mutable diffs → clean promote/rollback/preview + incremental deploys.
+4. **Deployment Sets + Deltas** — immutable snapshots plus mutable diffs → clean promote/rollback/preview and incremental deploys.
 5. **Governance** — RBAC (org/app/env-type), approval workflows, drift detection, immutable audit.
 6. **Enterprise reach** — SaaS + self-hosted + air-gapped; the Agent for private networks; regulated/sovereign markets.
-7. **Ecosystem** — Resource Packs, open Score spec, Terraform provider, open-source drivers, MCP (AI agents).
+7. **Ecosystem** — Resource Packs, the open Score spec, a Terraform provider, open-source drivers, and MCP for AI agents.
+
+### Positioning against adjacent tools (Humanitec's framing)
+
+- **vs Backstage** — complementary, not competitive. Backstage is a developer **portal** (catalog/scaffolding, OSS framework); Humanitec is the **backend orchestrator** (config generation, provisioning). "Deploy Humanitec first, layer Backstage on top"; Humanitec argues Backstage is framework-heavy DIY.
+- **vs Terraform / Pulumi** — Humanitec is the **orchestration layer above** IaC: it orchestrates and standardizes TF execution via drivers (declarative, policy-driven) rather than replacing it.
+- **vs Crossplane** — Crossplane is a K8s-native control plane (CRDs); Humanitec is broader app+infra orchestration that does not require modeling everything as K8s CRDs.
+- **vs ArgoCD / Flux** — GitOps operators sync Git→cluster; Humanitec **generates** what to sync (and adds multi-stage workflows, approvals, policy), then can hand off to Argo/Flux.
+- **vs Qovery / Northflank / Nitric** — those are simpler PaaS/serverless-first; Humanitec is enterprise-grade orchestration with deep policy/governance and a single app+infra graph (more upfront config, more control).
 
 ### Gaps (HoBo's openings)
+
 1. **K8s-centric; weak serverless** — no first-class Cloud Run/Lambda compute → HoBo leads with **wasm components + OCI fallback**, polyglot.
-2. **Steep learning curve** — many concepts → HoBo's **IfC-default** authoring + mapping-as-sugar keeps the simple path simple.
-3. **Opaque pricing + proprietary** → HoBo **OSS core**, self-host = hosted.
-4. **Opaque matching selection** → HoBo records **`match.Decided`** events ("why this infra"), replayable.
+2. **Steep learning curve** — many interlocking concepts (Resource Types/Definitions/Drivers/Runners/Manifests), and docs lag features → HoBo's **IfC-default** authoring plus mapping-as-sugar keeps the simple path simple.
+3. **Opaque pricing + proprietary core** → HoBo ships an **OSS core**, self-host = hosted.
+4. **Opaque matching selection** — no first-class "why this infra" audit → HoBo records **`match.Decided`** events, replayable.
 5. **No event-sourcing/replay/time-travel** → HoBo's core is event-sourced (audit + DR + run inspector).
-6. **Human-authored Resource Definitions/Packs** → HoBo's **Forge** can AI-generate definitions + packs, gated by conformance.
+6. **Human-authored Resource Definitions/Packs** → HoBo's **Forge** can AI-generate definitions and packs, gated by conformance.
 7. **Not a full observability platform** → HoBo bundles run inspector/traces/replay.
-8. **Vendor lock-in (Manifests)** → HoBo ports are **WIT interfaces** (standards-based); Score importable for interop.
+8. **Vendor lock-in (Manifests)**, though Score is open → HoBo ports are **WIT interfaces** (standards-based); Score is importable for interop.
 
-> Net: Humanitec proves the orchestrator abstraction and governance; HoBo adopts that engine and adds a polyglot wasm runtime, event-sourced auditability, AI-native generation, and OSS openness.
+> Net: Humanitec proves the orchestrator abstraction and governance; HoBo adopts that engine and adds a polyglot wasm runtime, event-sourced auditability, AI-native generation, and OSS openness. Because Humanitec is mature, enterprise-grade, and now explicitly AI-first, HoBo cannot win on "AI-native" alone — it must combine Humanitec's best engine (Resource Definitions + Matching, drivers, sets/deltas, governance) with what Humanitec lacks: a wasm-first polyglot runtime, event-sourced replay/time-travel plus auditable matching decisions, Forge-generated definitions/implementations, IfC-default simplicity, and an OSS core.
 
-## hobo-mapping
-
-**Humanitec → HoBo parity & mapping tracker**
+## HoBo mapping
 
 > For every Humanitec feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · 🔜 = planned/roadmap. HoBo design lives in [`../../docs/design/`](../docs/design/README.md).
 
 ### Core engine
+
 | Humanitec | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | Dynamic configuration management (Score + Resource Definitions + Matching) | **Resource Definitions + Matching** as the Planner's platform-rules layer; mapping = sugar over default definitions | ✅➕ | [25](../docs/design/platform-engineering.md#plan-25) |
@@ -328,6 +223,7 @@ Humanitec is mature, enterprise-grade, and now explicitly **AI-first** — so Ho
 | Shared / active / implicit resources | Shared resources + ResourceActors + implicit scaffolding | ✅ | [04](../docs/design/control-plane.md#plan-04) |
 
 ### Environments & lifecycle
+
 | Humanitec | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | Applications / Environments / Environment Types | Bindle / **Camp** with **environment type** (matching dimension) | ✅ | [26](../docs/design/platform-engineering.md#plan-25) |
@@ -337,6 +233,7 @@ Humanitec is mature, enterprise-grade, and now explicitly **AI-first** — so Ho
 | Rollback / incremental deploys | Event-sourced rollback + incremental reconcile | ✅ | [26](../docs/design/platform-engineering.md#plan-25), [04](../docs/design/control-plane.md#plan-04) |
 
 ### Platform & operations
+
 | Humanitec | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | Portal (golden paths, catalogs, scorecards) | HoBo dashboard + resource-graph/matching/delta/pipeline views | ✅ | [07](../docs/design/developer-experience.md#plan-07) |
@@ -354,6 +251,7 @@ Humanitec is mature, enterprise-grade, and now explicitly **AI-first** — so Ho
 | IDP "5-plane" framing | HoBo = Integration & Delivery plane orchestrator | ✅ | [00](../docs/design/vision.md#plan-00), [17](../docs/design/positioning.md#plan-17) |
 
 ### Where HoBo deliberately exceeds Humanitec
+
 | Capability | HoBo doc |
 |---|---|
 | **Auditable matching** (`match.Decided` events — "why this infra", replayable) | [25](../docs/design/platform-engineering.md#plan-25), [11](../docs/design/event-model.md#plan-11) |
@@ -364,6 +262,7 @@ Humanitec is mature, enterprise-grade, and now explicitly **AI-first** — so Ho
 | **OSS core + WIT-standard ports** (less lock-in) | [17](../docs/design/positioning.md#plan-17), [24](../docs/design/wasm-runtime-wit.md#plan-20) |
 
 ### Open parity items (iteration hooks)
+
 - Resource Definition authoring surface: TS (typed) vs YAML (Humanitec-parity) vs both.
 - Whether `echo`/BYO resources participate in drift/reconcile or are read-only.
 - Agent transport + multi-cluster routing details.

@@ -1,17 +1,15 @@
 # Aspire — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026). The most detailed capture in this folder. The HoBo↔Aspire parity tracker is in [`hobo-mapping.md`](#hobo-mapping).
->
-> Files: [apphost-resource-model.md](#apphost-resource-model) · [integrations-catalog.md](#integrations-catalog) · [wiring-endpoints.md](#wiring-endpoints) · [manifest-publishers-deploy.md](#manifest-publishers-deploy) · [cli.md](#cli) · [dashboard-dcp-observability.md](#dashboard-dcp-observability) · [testing-polyglot-ai.md](#testing-polyglot-ai) · [differentiators.md](#differentiators) · [hobo-mapping.md](#hobo-mapping)
+> Captured for HoBo competitive analysis (research as of 2026) — the deepest capture in this folder. C# and CLI excerpts are quoted as illustrative competitive reference (see the [fair-use note](README.md#sources--fair-use)). The HoBo↔Aspire parity tracker lives at the end, under [HoBo mapping](#hobo-mapping).
 
 ## What it is
-**Aspire** (originally **.NET Aspire**; Microsoft dropped the ".NET" prefix in the **2025 polyglot rebrand** → **aspire.dev**) is a **code-first, opinionated application-composition & orchestration framework**. You describe your distributed app's topology — services, containers, databases, queues, and how they wire together — in a single **AppHost** program (C#, with a TypeScript AppHost also emerging); Aspire runs the whole graph locally with one command, gives you an integrated **OpenTelemetry dashboard**, and can **publish/deploy** the same graph to real targets (Azure Container Apps, Docker Compose, Kubernetes).
 
-- **Positioning:** "your stack, streamlined" — *infrastructure described in code, local-dev parity, observable by default*.
-- **License / model:** **MIT, fully open source**; **no SaaS** — it's a tool you run locally and deploy from, not a hosted control plane.
-- **Repo / docs:** `github.com/dotnet/aspire` · `aspire.dev` (legacy docs at learn.microsoft.com/dotnet/aspire).
+**Aspire** (`aspire.dev`, `github.com/dotnet/aspire`) is a code-first, opinionated framework for composing and orchestrating distributed applications. You describe a whole app's topology — services, containers, databases, queues, and how they wire together — in a single **AppHost** program (C#, with a TypeScript AppHost emerging), then run the entire graph locally with one command. Aspire bundles an OpenTelemetry **dashboard** for that local run and can **publish/deploy** the same graph to real targets (Azure Container Apps, Docker Compose, Kubernetes).
 
-## The mental model (AppHost-centric)
+Its positioning is "your stack, streamlined": infrastructure described in code, local-dev parity, observable by default. It is **MIT, fully open source**, and there is **no SaaS** — it is a tool you run locally and deploy from, not a hosted control plane, which keeps lock-in low (the deploy IR is plain JSON). C#/.NET is its native surface, but Python and Node/JS are first-class and Go/Java/Rust arrive via the Community Toolkit.
+
+The mental model is **AppHost-centric** — a single source of truth that drives local run, the dashboard, and deployment alike:
+
 ```
 AppHost program (C#/TS)            ── you write this
   builder.AddPostgres("db").AddDatabase("app")
@@ -26,9 +24,7 @@ Aspire Dashboard                   ── logs · traces · metrics · resource 
         ▼
 aspire-manifest.json → publishers  ── azd→ACA · Docker Compose · Kubernetes/Helm · custom
 ```
-Single source of truth = the **AppHost**. The same description drives local run, the dashboard, and deployment.
 
-## At a glance
 | Dimension | Aspire |
 |---|---|
 | Category | Code-first app composition + local orchestration + deploy |
@@ -38,30 +34,17 @@ Single source of truth = the **AppHost**. The same description drives local run,
 | Deploy IR | **`aspire-manifest.json`** → publishers |
 | Deploy targets | Azure Container Apps (azd+Bicep), Docker Compose, Kubernetes/Helm, custom |
 | CLI | standalone **`aspire`** (`new`/`run`/`add`/`publish`/`deploy`/…) |
-| Languages | C#/.NET first; **Python, Node/JS** first-class (2025); Go/Java/Rust via Community Toolkit |
+| Languages | C#/.NET first; **Python, Node/JS** first-class; Go/Java/Rust via Community Toolkit |
 | License / hosting | **MIT**, self-hosted; no SaaS |
 
-## Where it sits vs the others in this folder
-- **vs Humanitec** ([../humanitec](humanitec.md)): Aspire is dev-to-deploy *tooling* (no platform-rules/matching, no RBAC/policy/cost, no hosted control plane); Humanitec is an enterprise **Platform Orchestrator**.
-- **vs Nitric** ([../nitric](nitric.md)): both are infrastructure-from-code, but Nitric targets serverless with a Go-based plugin runtime; Aspire is broader app composition + local-dev parity + OTel, .NET-rooted.
+Against the others in this folder: it is dev-to-deploy *tooling*, not a platform — unlike **Humanitec** ([humanitec.md](humanitec.md)), an enterprise Platform Orchestrator with matching, RBAC, policy, cost, and a hosted control plane. Like **Nitric** ([nitric.md](nitric.md)) it is infrastructure-from-code, but Nitric targets serverless with a Go plugin runtime, whereas Aspire is broader app composition plus local-dev parity and OTel.
 
-## Known gaps (opportunities for HoBo) — see [differentiators.md](#differentiators)
-- **Deployment maturity** lags the local-dev experience; production typically still leans on `azd`/`kubectl`.
-- **Not a full IDP** — no Resource-Definition/matching layer, no RBAC/policy/cost/multi-tenant model.
-- **.NET heritage** despite the polyglot rebrand; ecosystem is still .NET-heavy.
-- **Container-/process-centric**; dashboard is **dev-time**, not a production control plane.
-- No event-sourced replay/audit; no agent-native generation.
+## Feature surface
 
-See [hobo-mapping.md](#hobo-mapping) for HoBo's response to each.
+### AppHost & the resource model
 
-## apphost-resource-model
+The AppHost is a normal program whose job is to declare the app graph and run it:
 
-**Aspire — AppHost & Resource Model**
-
-> Part of the [Aspire competitor reference](aspire.md). The core composition model: the builder, the resource interfaces, resource types, annotations, lifecycle/eventing, custom resources, health checks, parameters/secrets, persistence. C# shown as quoted/illustrative excerpts (see the [fair-use note](README.md#sources--fair-use)).
-
-### AppHost & the builder
-The **AppHost** is a normal program whose job is to declare the app graph and run it.
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -75,12 +58,10 @@ builder.AddNpmApp("web", "../web", "dev")
 
 builder.Build().Run();   // or await builder.Build().RunAsync();
 ```
-- `DistributedApplication.CreateBuilder(string[] args)` (also no-arg and `(DistributedApplicationOptions)` overloads) → `IDistributedApplicationBuilder` (exposes `.Services` for DI and `.Eventing` for lifecycle).
-- `builder.Build()` → `DistributedApplication` (`IHost`, `IAsyncDisposable`); `.Run()`/`.RunAsync()`.
-- Project layout: a `*.AppHost` project (references the `Aspire.AppHost.Sdk` + project references to everything it orchestrates) plus a shared **ServiceDefaults** project (OTel + service discovery + resilience + health-check wiring). The single-file `apphost.cs` direction (run via the `aspire` CLI without a full project) is emerging.
 
-### The resource model
-Everything in the graph implements **`IResource`**, accessed through an **`IResourceBuilder<T>`** (fluent). Capabilities are expressed as **marker/capability interfaces** a resource type opts into:
+`DistributedApplication.CreateBuilder(string[] args)` (also no-arg and `(DistributedApplicationOptions)` overloads) returns an `IDistributedApplicationBuilder` exposing `.Services` for DI and `.Eventing` for lifecycle; `builder.Build()` returns a `DistributedApplication` (`IHost`, `IAsyncDisposable`) with `.Run()`/`.RunAsync()`. The layout is a `*.AppHost` project (referencing `Aspire.AppHost.Sdk` plus project references to everything it orchestrates) alongside a shared **ServiceDefaults** project that wires OTel, service discovery, resilience, and health checks. A single-file `apphost.cs` direction — run via the `aspire` CLI without a full project — is emerging.
+
+Everything in the graph implements **`IResource`**, accessed through a fluent **`IResourceBuilder<T>`**. Capabilities are expressed as marker/capability interfaces a resource type opts into:
 
 | Interface | Grants |
 |---|---|
@@ -93,7 +74,8 @@ Everything in the graph implements **`IResource`**, accessed through an **`IReso
 | `IComputeResource` | a deployable compute unit (replicas, compute environment) |
 | `IResourceWithContainerFiles` / `IResourceWithDockerfile` | contribute files / build from a Dockerfile |
 
-#### Resource types
+The built-in resource types span compute and data:
+
 - **`ProjectResource`** — a .NET project: `builder.AddProject<Projects.MyApi>("api")` (typed via generated `Projects.*`).
 - **`ContainerResource`** — `builder.AddContainer("cache", "redis:7")`.
 - **`ExecutableResource`** — `builder.AddExecutable("tool", "./tool", workingDir, args…)`.
@@ -103,14 +85,14 @@ Everything in the graph implements **`IResource`**, accessed through an **`IReso
 - **Dockerfile resource** — `builder.AddDockerfile("svc", "../svc")` (build instead of pull).
 - **Database resources** — returned by `.AddDatabase("name")` on a server resource (`PostgresDatabaseResource`, `SqlServerDatabaseResource`, …).
 
-### Annotations — the extensibility substrate
-Resource configuration is stored as **annotations**: each `With*` call attaches an `IResourceAnnotation` to `resource.Annotations`. Built-ins include `EndpointAnnotation`, `EnvironmentCallbackAnnotation` (lazy/deferred env), `ContainerMountAnnotation`, `ArgsAnnotation`, `HealthCheckAnnotation`, `WaitAnnotation`, `ReplicaAnnotation`, and `ManifestPublishingCallbackAnnotation` (controls what the manifest emits). You query them:
+Configuration is stored as **annotations**: each `With*` call attaches an `IResourceAnnotation` to `resource.Annotations`. Built-ins include `EndpointAnnotation`, `EnvironmentCallbackAnnotation` (lazy/deferred env), `ContainerMountAnnotation`, `ArgsAnnotation`, `HealthCheckAnnotation`, `WaitAnnotation`, `ReplicaAnnotation`, and `ManifestPublishingCallbackAnnotation` (controls what the manifest emits). They are queryable:
+
 ```csharp
 var endpoints = api.Resource.Annotations.OfType<EndpointAnnotation>().ToList();
 ```
 
-### Custom resources & integrations
-A custom integration = a resource subclass + an `Add*` extension + optional `With*` annotation helpers:
+This annotation substrate is the extensibility seam. A custom integration is a resource subclass plus an `Add*` extension plus optional `With*` helpers:
+
 ```csharp
 public sealed class LlmResource(string name) : Resource(name)
 { public string? Model { get; set; } }
@@ -128,29 +110,23 @@ public static class LlmResourceExtensions
 // usage: builder.AddLlm("local").WithModel("mistral-7b");
 ```
 
-### Lifecycle & eventing
+Lifecycle is observable through eventing — `IDistributedApplicationLifecycleHook` for cross-cutting hooks, plus per-resource events that fire as resources transition (created → starting → running/ready):
+
 ```csharp
 builder.Eventing.Subscribe<BeforeStartEvent>((evt, ct) => { /* mutate model */ return Task.CompletedTask; });
 builder.Eventing.Subscribe<ResourceReadyEvent>((evt, ct) => { /* react when a resource is ready */ return Task.CompletedTask; });
 ```
-Also `IDistributedApplicationLifecycleHook` for cross-cutting hooks. Events fire as resources transition (created → starting → running/ready).
 
-### Health checks (gate dependencies)
-```csharp
-builder.AddProject<Projects.Api>("api").WithHttpHealthCheck("/health");      // GET /health → 200
-builder.AddPostgres("pg").WithHealthCheck("custom-check");                    // DI-registered check
-```
-`WaitFor(x)` blocks a dependent until `x` is **running and all its health checks pass** (see [wiring-endpoints.md](#wiring-endpoints)).
+Parameters and secrets bind through the standard config system (user-secrets/appsettings); non-secret params surface as text, secrets as masked password inputs, and values flow in as env vars or connection strings:
 
-### Parameters & secrets
 ```csharp
 var pw = builder.AddParameter("db-password", secret: true);   // prompted; masked
 builder.AddSqlServer("sql").WithPassword(pw);
 var ext = builder.AddConnectionString("legacy-db");           // BYO connection string
 ```
-Non-secret params show as text, secret params as password inputs; values flow in as env vars / connection strings. Binds to user-secrets/appsettings via the standard config system.
 
-### Persistence
+Persistence is configured with volumes, bind mounts, and container lifetime:
+
 ```csharp
 builder.AddPostgres("pg").WithDataVolume();                          // named volume
 builder.AddContainer("app", "img").WithBindMount("./cfg", "/cfg", isReadOnly: true);
@@ -158,102 +134,67 @@ builder.AddContainer("app", "img").WithVolume("data", "/data");
 builder.AddPostgres("pg").WithLifetime(ContainerLifetime.Persistent); // survive restarts (vs Ephemeral default)
 ```
 
-## cli
+### Wiring, references & endpoints
 
-**Aspire — The `aspire` CLI**
+`WithReference` is the core wiring verb — and the part HoBo borrowed most directly ([HoBo Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)):
 
-> Part of the [Aspire competitor reference](aspire.md). The standalone command-line tool (distinct from `dotnet`), part of Aspire's move toward a language-agnostic, single-file-AppHost experience.
-
-### Install
-```bash
-dotnet tool install -g aspire.cli      # or the installer at aspire.dev
-aspire --version
+```csharp
+var db  = builder.AddPostgres("pg").AddDatabase("appdata");
+var api = builder.AddProject<Projects.Api>("api")
+                 .WithReference(db)                       // connection string + service discovery
+                 .WithReference(cache.GetEndpoint("tcp")); // a specific endpoint
 ```
 
-### Project lifecycle
-```bash
-aspire new                 # scaffold a new Aspire solution (interactive; templates)
-aspire init                # add Aspire to an existing repo (detects sln or file-based AppHost)
-aspire add redis           # add a hosting integration package (e.g. Aspire.Hosting.Redis)
-aspire add azure-cosmos-db
-aspire update              # safely upgrade Aspire packages in the AppHost
+By convention it injects into the dependent's environment: connection strings as `ConnectionStrings__{name}` (e.g. `ConnectionStrings__appdata`), and service endpoints as `services__{name}__{endpointName}__{index}` (0-based; multiple endpoints/replicas yield multiple indices), resolved by .NET **service discovery** at runtime. The consuming service reads these through normal configuration / `HttpClient` + `AddServiceDiscovery()` (set up in ServiceDefaults). Direct env and args work the same way, with callback support for values computed at run/publish time (`EnvironmentCallbackAnnotation`):
+
+```csharp
+builder.AddContainer("svc", "img")
+       .WithEnvironment("LOG_LEVEL", "debug")
+       .WithEnvironment("DB", db)                 // resolves to its connection string
+       .WithEnvironment("KEY", apiKeyParameter)   // ParameterResource
+       .WithArgs("--port", "8080");
 ```
 
-### Run & inspect (local dev)
-```bash
-aspire run                 # find & run the AppHost; launches the dashboard
-aspire run --no-dashboard
-aspire run --project ./src/AppHost
-aspire logs [resource] [--follow]   # stream resource logs
-aspire exec <command>               # run a resource command (e.g. migrations)
+Two reference primitives stitch values together: **`ReferenceExpression`** (a deferred, interpolated string mixing literals and resource values, e.g. a custom connection string built from parts) and **`EndpointReference`** (`resource.GetEndpoint("https")` with `.Url`/`.UriExpression`/`.Host`/`.Port` members usable in `WithEnvironment`). The latter become `{resource.bindings.https.url}`-style tokens in the manifest.
+
+Endpoints and networking are declared fluently:
+
+```csharp
+builder.AddProject<Projects.Api>("api")
+       .WithHttpEndpoint(targetPort: 8080, port: 5000, name: "http")
+       .WithHttpsEndpoint(name: "https")
+       .WithExternalHttpEndpoints();              // expose beyond the dev host
+builder.AddContainer("svc", "img")
+       .WithEndpoint(targetPort: 9000, scheme: "tcp", name: "tcp", isProxied: true);
 ```
 
-### Publish & deploy
-```bash
-aspire publish [--publisher docker-compose|kubernetes] [--output-path ./dist]
-aspire deploy [--refresh]
-```
-(See [manifest-publishers-deploy.md](#manifest-publishers-deploy) for what each publisher emits.)
+`targetPort` is the port the app listens on inside the container/process; `port` is the host-facing port (auto-assigned if omitted). `isProxied: true` (default) routes through Aspire's reverse proxy for stable URLs across restarts plus automatic service discovery, while `false` uses direct container DNS. `WithExternalHttpEndpoints()` marks endpoints external (it matters at deploy time as ingress), and `WithUrls(...)`/`WithUrlForEndpoint(...)` customize the URLs surfaced in the dashboard.
 
-### Config & secrets
-```bash
-aspire config list
-aspire config set <key> <value>     # CLI/feature settings
-aspire secret set ConnectionStrings__Db "..."   # user-secret management
+Ordering is expressed with the `WaitFor` family, gated by health checks:
+
+```csharp
+builder.AddProject<Projects.Api>("api")
+       .WaitFor(db)              // wait until db is running AND healthy
+       .WaitForStart(cache);    // wait until cache is merely running
+builder.AddProject<Projects.Worker>("worker")
+       .WaitForCompletion(migrations);  // wait until a one-shot task exits 0
 ```
 
-### Direction
-The CLI underpins the **single-file `apphost.cs`** experience (run an AppHost without a full project), the **TypeScript AppHost**, and **MCP/agent** entry points — part of repositioning Aspire from "a .NET feature" to "a polyglot orchestration tool you drive from the terminal." Exact command surface and flags evolve release-to-release; the groups above are the stable shape.
+Health checks gate those dependencies — `WaitFor(x)` blocks a dependent until `x` is running and all its health checks pass; `WaitForCompletion` handles run-to-completion jobs like migrations and seeders:
 
-## dashboard-dcp-observability
-
-**Aspire — Dashboard, DCP & Observability**
-
-> Part of the [Aspire competitor reference](aspire.md). The runtime/visibility layer — a major part of Aspire's appeal and a reference point for [HoBo Plan 7](../docs/design/developer-experience.md#plan-07)/[Plan 5](../docs/design/reliability-observability-cost.md#plan-05).
-
-### DCP — the Developer Control Plane
-**DCP** is Aspire's **local orchestrator**, written in **Go**, that the AppHost drives when you `aspire run`:
-- Manages the lifecycle of **containers**, **.NET projects**, and **executables/processes** as a unit.
-- Provides a **Kubernetes-style local API** (pods/services/configmaps analogues) — but it is *not* Kubernetes and requires none.
-- Handles a **bridge network + DNS** so resources reach each other by name (`http://api`, `postgres:5432`) and containers can tunnel to host processes; plus health-probe execution and restarts.
-```
-AppHost (C#/TS)  ──►  DCP API (Go, localhost)  ──►  containers + processes
-       └────────────────────────────────────────►  Dashboard (OTLP)
+```csharp
+builder.AddProject<Projects.Api>("api").WithHttpHealthCheck("/health");      // GET /health → 200
+builder.AddPostgres("pg").WithHealthCheck("custom-check");                    // DI-registered check
 ```
 
-### The Aspire Dashboard
-A web UI bundled with `aspire run`:
-- **Resources** — list + **dependency graph**, status, endpoints, environment variables, connection strings (with **sensitive-value masking**), and **start/stop/restart** controls.
-- **Console logs** — raw stdout/stderr per resource.
-- **Structured logs / Traces / Metrics** — via **OpenTelemetry (OTLP)**: searchable structured logs, distributed traces with spans, and metrics with percentiles.
-- **Interactive parameters** — prompts for missing parameters before start.
-- **AI assist** — when launched from VS / VS Code, **GitHub Copilot** can summarize logs and help root-cause across logs/traces/metrics.
+The payoff is uniform service discovery: `WithReference` plus ServiceDefaults' `AddServiceDiscovery()` let a service call a dependency by logical name (`http://api`), with resolution via configuration (`services__*` env), the platform (Container Apps/Kubernetes DNS), or DNS-SRV — the same code working locally and in production.
 
-### Standalone dashboard (any language)
-The dashboard ships as a container and works as a **generic OTLP sink** for *any* stack — no Aspire app required:
-```bash
-docker run --rm -it -p 18888:18888 -p 4317:18889 \
-  mcr.microsoft.com/dotnet/aspire-dashboard:latest
-# point any OTEL_EXPORTER_OTLP_ENDPOINT at it (gRPC 4317 / HTTP 18889)
-```
-This is a common reason non-.NET teams adopt Aspire's dashboard on its own.
+### Integration catalog
 
-### OpenTelemetry by default
-The **ServiceDefaults** project wires OTel logging/metrics/tracing, service discovery, and standard resilience into every .NET service; non-.NET services participate by exporting OTLP (Python/Node/Go SDKs). Telemetry is **dev-time first** — for production you still point OTel at Grafana/Datadog/etc. (the bundled dashboard is not a production monitoring system).
+Integrations ship in **pairs**: a *hosting integration* used in the AppHost (`builder.AddRedis("cache")`, which declares/runs the resource and wires references) and a *client integration* used inside a service (`builder.AddRedisClient("cache")`, which registers a typed, health-checked, OTel-instrumented client bound to the injected connection string/endpoint). Nearly every data/messaging integration has a matching client package; the catalog below is the hosting side. Names are stable API surface; some live in core `Aspire.Hosting.*` packages, some in Azure/AWS packages, some in the Community Toolkit.
 
-## integrations-catalog
+Compute & runtimes:
 
-**Aspire — Integration Catalog**
-
-> Part of the [Aspire competitor reference](aspire.md). The breadth of `Add*` integrations. Names are stable API surface; some live in the core `Aspire.Hosting.*` packages, some in Azure/AWS packages, some in the **Community Toolkit**.
-
-### Hosting vs client integrations (two halves)
-Aspire ships integrations in **pairs**:
-- **Hosting integration** (used in the AppHost): `builder.AddRedis("cache")` — declares/runs the resource and wires references.
-- **Client integration** (used inside a service): `builder.AddRedisClient("cache")` — registers a typed, health-checked, OTel-instrumented client bound to the injected connection string/endpoint.
-This doc focuses on the **hosting** side; nearly every data/messaging integration has a matching client package.
-
-### Compute & runtimes
 ```csharp
 builder.AddProject<Projects.Api>("api");           // .NET project
 builder.AddContainer("nginx", "nginx:latest");     // any OCI image
@@ -264,28 +205,24 @@ builder.AddNpmApp("web", "../web", "dev");         // npm/yarn/pnpm script
 builder.AddPythonApp("worker", "../worker", "main.py");  // Python (uv/pip/venv)
 builder.AddAzureFunctionsProject<Projects.Fn>("fn");
 ```
-(MAUI, Orleans, IIS-Express/.NET-Framework projects, and SQL Server DB projects (`AddSqlProject`) also exist.)
 
-### Relational databases
+(MAUI, Orleans, IIS-Express/.NET-Framework projects, and SQL Server DB projects via `AddSqlProject` also exist.)
+
+Relational databases, NoSQL / document / cache, and messaging / streaming:
+
 ```csharp
 builder.AddPostgres("pg").AddDatabase("appdata");
 builder.AddSqlServer("sql").AddDatabase("appdata");
 builder.AddMySql("mysql").AddDatabase("appdata");
 builder.AddAzurePostgresFlexibleServer("pg");   // .RunAsContainer() for local
 builder.AddAzureSqlServer("sql").AddDatabase("appdata");
-```
 
-### NoSQL / document / cache
-```csharp
 builder.AddMongoDB("mongo").AddDatabase("appdata");
 builder.AddAzureCosmosDB("cosmos");
 builder.AddRedis("cache").WithDataVolume();
 builder.AddValkey("cache");      // Redis-compatible
 builder.AddGarnet("cache");      // Microsoft's Redis-compatible store
-```
 
-### Messaging & streaming
-```csharp
 builder.AddRabbitMQ("rmq").WithManagementPlugin();
 builder.AddKafka("kafka");
 builder.AddNats("nats");
@@ -293,60 +230,74 @@ builder.AddAzureServiceBus("sb");
 builder.AddAzureEventHubs("eh");
 ```
 
-### Search & vector
+Search & vector, identity / config / secrets, and observability:
+
 ```csharp
 builder.AddElasticsearch("es");
 builder.AddOpenSearch("os");
 builder.AddQdrant("qdrant");     // vector DB
 builder.AddMilvus("milvus");     // vector DB
-```
 
-### Identity, config & secrets
-```csharp
 builder.AddKeycloak("kc").WithRealmImport("./realm.json").WithDataVolume();
 builder.AddAzureKeyVault("kv");
 builder.AddAzureAppConfiguration("appcfg");
-```
 
-### Observability
-```csharp
 builder.AddSeq("seq");                 // structured-log server
 builder.AddAzureApplicationInsights("ai");
 ```
-(All resources emit OpenTelemetry to the bundled dashboard by default — see [dashboard-dcp-observability.md](#dashboard-dcp-observability).)
 
-### AI / LLM
+AI / LLM integrations cover hosted and local models:
+
 ```csharp
 builder.AddAzureOpenAI("openai").AddDeployment("gpt-4o", "gpt-4o", "2024-08-06");
-builder.AddGitHubModel("ai", "openai/gpt-4o-mini");   // GitHub Models (newer)
+builder.AddGitHubModel("ai", "openai/gpt-4o-mini");   // GitHub Models
 builder.AddOllama("ollama").AddModel("llama3");        // local LLMs (Community Toolkit)
 ```
 
-### Azure & AWS
-Beyond those above: `AddAzureStorage` (+ `AddBlobs`/`AddQueues`/`AddTables`), `AddAzureSignalR`, `AddAzureWebPubSub`, `AddAzureContainerAppEnvironment` (deploy target). AWS support is provided via `Aspire.Hosting.AWS` (CloudFormation/CDK provisioning + resource references). Many Azure resources can `.RunAsContainer()`/emulator locally and provision the real service on deploy.
+Beyond these, Azure adds `AddAzureStorage` (+ `AddBlobs`/`AddQueues`/`AddTables`), `AddAzureSignalR`, `AddAzureWebPubSub`, and `AddAzureContainerAppEnvironment` (a deploy target); AWS support comes via `Aspire.Hosting.AWS` (CloudFormation/CDK provisioning + resource references). Many Azure resources can `.RunAsContainer()`/emulate locally and provision the real service on deploy. The **Community Toolkit** (`github.com/CommunityToolkit/Aspire`) adds Go, Java (Spring Boot/Quarkus), Rust, Ollama, Dapr, and SQL/Mongo extensions — published to NuGet, community-maintained — which is how non-first-party languages and services become first-class AppHost resources.
 
-### Community Toolkit
-`github.com/CommunityToolkit/Aspire` adds Go, Java (Spring Boot/Quarkus), Rust, Ollama, Dapr, SQL/Mongo extensions, and more — published to NuGet, community-maintained. This is how non-first-party languages/services become first-class AppHost resources.
+### The `aspire` CLI
 
-## manifest-publishers-deploy
+The standalone command-line tool (distinct from `dotnet`) drives Aspire's move toward a language-agnostic, single-file-AppHost experience. Install it as a global tool, then it covers the full project lifecycle:
 
-**Aspire — Manifest, Publishers & Deployment**
+```bash
+dotnet tool install -g aspire.cli      # or the installer at aspire.dev
+aspire --version
 
-> Part of the [Aspire competitor reference](aspire.md). The deployment IR and how it reaches real targets. This is HoBo's closest structural analogue ([HoBo Plan 22](../docs/design/authoring-resources-wiring.md#plan-21)).
+aspire new                 # scaffold a new Aspire solution (interactive; templates)
+aspire init                # add Aspire to an existing repo (detects sln or file-based AppHost)
+aspire add redis           # add a hosting integration package (e.g. Aspire.Hosting.Redis)
+aspire add azure-cosmos-db
+aspire update              # safely upgrade Aspire packages in the AppHost
+```
 
-### The manifest (deployment IR)
-`aspire publish` (or the legacy `dotnet run --project AppHost -- --publisher manifest`) emits **`aspire-manifest.json`** — a tool-agnostic description of the resolved graph that deployment tooling consumes.
+Local run and inspection, then publish and deploy:
 
-#### Resource type versions
-`project.v1`, `container.v1` (and legacy `container.v0`), `dockerfile.v0`, `parameter.v0`, `value.v0` (computed outputs), `azure.bicep.v0` (an Azure resource defined by a Bicep template). Each entry carries `type`, optional `connectionString`, `env`, `bindings`, `volumes`, and `params`/`outputs` for Bicep.
+```bash
+aspire run                 # find & run the AppHost; launches the dashboard
+aspire run --no-dashboard
+aspire run --project ./src/AppHost
+aspire logs [resource] [--follow]   # stream resource logs
+aspire exec <command>               # run a resource command (e.g. migrations)
 
-#### Token expressions
-`env` and `connectionString` values reference other resources with `{...}` tokens, resolved by the deploy tool:
-- `{resource.connectionString}`
-- `{resource.bindings.<endpoint>.host|port|url}`
-- `{parameter.value}`
+aspire publish [--publisher docker-compose|kubernetes] [--output-path ./dist]
+aspire deploy [--refresh]
+```
 
-#### Representative manifest
+Config and secrets round it out:
+
+```bash
+aspire config list
+aspire config set <key> <value>     # CLI/feature settings
+aspire secret set ConnectionStrings__Db "..."   # user-secret management
+```
+
+The CLI underpins the single-file `apphost.cs` experience (running an AppHost without a full project), the TypeScript AppHost, and MCP/agent entry points — repositioning Aspire from a .NET feature into a polyglot orchestration tool driven from the terminal. The exact command surface and flags evolve, but the groups above are the stable shape.
+
+### Manifest, publishers & deployment
+
+This is HoBo's closest structural analogue ([HoBo Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)). `aspire publish` emits **`aspire-manifest.json`** — a tool-agnostic description of the resolved graph that deployment tooling consumes. Entries carry resource type versions (`project.v1`, `container.v1`, `dockerfile.v0`, `parameter.v0`, `value.v0` for computed outputs, `azure.bicep.v0` for an Azure resource defined by a Bicep template), each with optional `connectionString`, `env`, `bindings`, `volumes`, and `params`/`outputs` for Bicep. Values reference other resources with `{...}` tokens resolved by the deploy tool — `{resource.connectionString}`, `{resource.bindings.<endpoint>.host|port|url}`, `{parameter.value}`:
+
 ```json
 {
   "$schema": "https://json.schemastore.org/aspire-8.0.json",
@@ -373,38 +324,59 @@ Beyond those above: `AddAzureStorage` (+ `AddBlobs`/`AddQueues`/`AddTables`), `A
 }
 ```
 
-### Publishers & compute environments
-A **publisher** turns the model into deployment artifacts (and, for `deploy`, applies them) via `IDistributedApplicationPublisher`. You select a target by adding a **compute environment** resource in the AppHost:
+A **publisher** (`IDistributedApplicationPublisher`) turns the model into deployment artifacts and, for `deploy`, applies them. You select a target by adding a **compute environment** resource in the AppHost, and resources can be pinned to one with `.WithComputeEnvironment(env)`, enabling mixed targets:
+
 ```csharp
 builder.AddAzureContainerAppEnvironment("cae");    // Azure Container Apps
 builder.AddDockerComposeEnvironment("compose");    // Docker Compose
 builder.AddKubernetesEnvironment("k8s");           // Kubernetes/Helm
 ```
-Resources can be pinned to an environment (`.WithComputeEnvironment(env)`), enabling mixed targets.
 
-### Deploy targets
-- **Azure Container Apps via `azd`** — the **Azure Developer CLI** consumes the manifest, generates **Bicep**, provisions ACA + dependencies, builds/pushes images to ACR, and deploys. The most mature path.
-- **Docker Compose** (`Aspire.Hosting.Docker`) — emits `docker-compose.yaml` + `.env` (services, networks, named volumes, `depends_on`); `docker compose up`.
-- **Kubernetes / Helm** (`Aspire.Hosting.Kubernetes`) — emits a Helm chart (`Chart.yaml`, `values.yaml`, `templates/`). This supersedes the earlier community **Aspir8 / aspir8** tool that pioneered manifest→Helm.
+The deploy targets:
+
+- **Azure Container Apps via `azd`** — the Azure Developer CLI consumes the manifest, generates Bicep, provisions ACA plus dependencies, builds/pushes images to ACR, and deploys. The most mature path.
+- **Docker Compose** (`Aspire.Hosting.Docker`) — emits `docker-compose.yaml` + `.env` (services, networks, named volumes, `depends_on`) for `docker compose up`.
+- **Kubernetes / Helm** (`Aspire.Hosting.Kubernetes`) — emits a Helm chart (`Chart.yaml`, `values.yaml`, `templates/`).
 - **Custom** — implement `IDistributedApplicationPublisher` to emit Terraform/Pulumi/anything and register it in the AppHost.
 
-### Commands
 ```bash
 aspire publish --output-path ./dist           # generate artifacts (manifest + target files)
 aspire publish --publisher docker-compose
 aspire deploy                                  # publish + apply to the configured target
 aspire deploy --refresh                        # refresh credentials first
 ```
-> **Maturity note:** publish/deploy and the compute-environment publishers matured through the 9.x line; many teams still hand off to `azd` (Azure) or `kubectl`/`helm` (K8s) for production. The local-dev experience is more mature than the deploy story.
 
-## testing-polyglot-ai
+The deployment story is the framework's softest spot: the publishers and compute environments are newer than the run experience, and many teams still hand off to `azd` (Azure) or `kubectl`/`helm` (Kubernetes) for production.
 
-**Aspire — Testing, Polyglot & AI; Versions & Licensing**
+### Dashboard, DCP & observability
 
-> Part of the [Aspire competitor reference](aspire.md). Integration testing, the polyglot rebrand, AI integrations, the release timeline, and the licensing/deployment model.
+This runtime/visibility layer is a major part of Aspire's appeal and a reference point for [HoBo Plan 7](../docs/design/developer-experience.md#plan-07) and [Plan 5](../docs/design/reliability-observability-cost.md#plan-05). **DCP** is Aspire's local orchestrator, written in Go, that the AppHost drives on `aspire run`:
 
-### Testing — `Aspire.Hosting.Testing`
-Spin up the whole app graph in a test and exercise it end-to-end:
+- Manages the lifecycle of containers, .NET projects, and executables/processes as a unit.
+- Provides a Kubernetes-style local API (pods/services/configmaps analogues) — but it is *not* Kubernetes and requires none.
+- Handles a bridge network plus DNS so resources reach each other by name (`http://api`, `postgres:5432`) and containers can tunnel to host processes, plus health-probe execution and restarts.
+
+```
+AppHost (C#/TS)  ──►  DCP API (Go, localhost)  ──►  containers + processes
+       └────────────────────────────────────────►  Dashboard (OTLP)
+```
+
+The **dashboard** is a web UI bundled with `aspire run`. It shows resources (a list plus a dependency graph, with status, endpoints, environment variables, and connection strings — sensitive values masked — and start/stop/restart controls), raw per-resource console logs, and structured logs, traces, and metrics over OpenTelemetry (OTLP): searchable structured logs, distributed traces with spans, and metrics with percentiles. It prompts interactively for missing parameters before start, and when launched from VS / VS Code, GitHub Copilot can summarize logs and help root-cause across logs/traces/metrics.
+
+The dashboard also ships as a standalone container that works as a generic OTLP sink for *any* stack — no Aspire app required, which is a common reason non-.NET teams adopt it on its own:
+
+```bash
+docker run --rm -it -p 18888:18888 -p 4317:18889 \
+  mcr.microsoft.com/dotnet/aspire-dashboard:latest
+# point any OTEL_EXPORTER_OTLP_ENDPOINT at it (gRPC 4317 / HTTP 18889)
+```
+
+OpenTelemetry is on by default: the ServiceDefaults project wires OTel logging/metrics/tracing, service discovery, and standard resilience into every .NET service, while non-.NET services participate by exporting OTLP (Python/Node/Go SDKs). Telemetry is dev-time first — for production you still point OTel at Grafana/Datadog/etc., since the bundled dashboard is not a production monitoring system.
+
+### Testing, polyglot & AI
+
+`Aspire.Hosting.Testing` spins up the whole app graph in a test and exercises it end-to-end:
+
 ```csharp
 using Aspire.Hosting.Testing;
 
@@ -416,140 +388,52 @@ var http = app.CreateHttpClient("api");
 var res  = await http.GetAsync("/health");
 Assert.Equal(HttpStatusCode.OK, res.StatusCode);
 ```
-- Launches the AppHost (real DCP, real containers/processes) in-process for the test run; dashboard disabled, ports randomized for parallel runs.
-- Access resources via `app.GetResource(name)`, `app.CreateHttpClient(name)`, `WaitFor*` helpers.
-- **Limitation:** it's an *integration* harness (real processes) — no built-in mocking/substitution; for pure unit tests use `WebApplicationFactory`/test doubles.
 
-### Polyglot & the rebrand
-Microsoft's **2025 rebrand** dropped ".NET" → **"Aspire"** (aspire.dev), repositioning it as language-agnostic:
-- **Python** — `AddPythonApp(...)` with **uv**/pip/venv detection; also module/script execution. Good for FastAPI/Flask/Celery.
-- **Node / JS** — `AddNodeApp(...)`, `AddNpmApp(...)` (npm/yarn/pnpm), Vite support; a **TypeScript AppHost** is emerging.
-- **Go / Java / Rust** — via the **Community Toolkit** (Spring Boot/Quarkus for Java, Cargo for Rust, etc.).
-- **How non-.NET apps participate:** as containers/executables/projects in the graph, wired with the same `WithReference`/endpoints, and exporting **OTLP** to the dashboard. The orchestration, wiring, and observability are uniform; the deepest typed ergonomics remain strongest in .NET.
+It launches the AppHost (real DCP, real containers/processes) in-process for the test run, with the dashboard disabled and ports randomized for parallel runs; resources are reached via `app.GetResource(name)`, `app.CreateHttpClient(name)`, and `WaitFor*` helpers. The limitation is that it is an *integration* harness with no built-in mocking/substitution — for pure unit tests you still reach for `WebApplicationFactory`/test doubles.
 
-### AI / GenAI
-```csharp
-builder.AddAzureOpenAI("openai").AddDeployment("gpt-4o", "gpt-4o", "2024-08-06");
-builder.AddGitHubModel("ai", "openai/gpt-4o-mini");   // GitHub Models
-builder.AddOllama("ollama").AddModel("llama3");        // local (Community Toolkit)
-```
-Plus **GitHub Copilot in the dashboard** (log summarization / root-cause) when run from VS/VS Code.
+Polyglot support repositions Aspire as language-agnostic. Python arrives via `AddPythonApp(...)` with uv/pip/venv detection plus module/script execution (good for FastAPI/Flask/Celery); Node/JS via `AddNodeApp(...)` and `AddNpmApp(...)` (npm/yarn/pnpm, with Vite support) and an emerging TypeScript AppHost; Go/Java/Rust via the Community Toolkit (Spring Boot/Quarkus for Java, Cargo for Rust). Non-.NET apps participate as containers/executables/projects in the graph, wired with the same `WithReference`/endpoints and exporting OTLP to the dashboard — orchestration, wiring, and observability are uniform, though the deepest typed ergonomics remain strongest in .NET.
 
-### Version timeline
-> Anchored on well-established releases; later items are *direction*, not precise dated facts.
-- **8.0 — GA, May 2024.** First stable release; the AppHost/integration/dashboard model; service discovery + ServiceDefaults.
-- **8.1 / 8.2 (2024).** More integrations; dashboard improvements.
-- **9.0 — Nov 2024.** Dropped the workload requirement (SDK reference), `WaitFor`/health-gating, dashboard resource control (start/stop/restart), OTLP/CORS improvements.
-- **9.x (2025).** **Publishers + `aspire publish`/`deploy`**, the standalone **`aspire` CLI**, compute environments (ACA/Compose/K8s), interactive parameters, **GitHub Models**, Copilot-in-dashboard.
-- **2025 polyglot rebrand.** ".NET Aspire" → **"Aspire"**, aspire.dev, first-class Python/Node, TypeScript AppHost, single-file `apphost.cs` direction. (Specific post-rebrand version numbers/dates vary by source and are not asserted here.)
+AI shows up two ways: as integrations (`AddAzureOpenAI`, `AddGitHubModel`, `AddOllama` — shown in the catalog above) and as GitHub Copilot in the dashboard for log summarization and root-cause when run from VS/VS Code.
 
-Support policy: effectively the latest major line is the supported one.
+## Differentiators
 
-### Licensing & deployment model
-- **MIT**, fully open source (`github.com/dotnet/aspire`).
-- **No SaaS / no hosted control plane** — runs locally for dev and **publishes/deploys** to infra you own (Azure, Kubernetes, Docker Compose, custom). Manifests are plain JSON → low lock-in.
+What is genuinely strong:
 
-## wiring-endpoints
-
-**Aspire — Wiring, References & Endpoints**
-
-> Part of the [Aspire competitor reference](aspire.md). How resources discover and connect to each other — the part HoBo borrowed most directly ([HoBo Plan 22](../docs/design/authoring-resources-wiring.md#plan-21)).
-
-### `WithReference` — the core wiring verb
-```csharp
-var db  = builder.AddPostgres("pg").AddDatabase("appdata");
-var api = builder.AddProject<Projects.Api>("api")
-                 .WithReference(db)                       // connection string + service discovery
-                 .WithReference(cache.GetEndpoint("tcp")); // a specific endpoint
-```
-`WithReference` injects, by convention, into the dependent's environment:
-- **Connection strings:** `ConnectionStrings__{name}` (e.g. `ConnectionStrings__appdata`).
-- **Service endpoints:** `services__{name}__{endpointName}__{index}` (0-based; multiple endpoints/replicas → multiple indices), resolved by .NET **service discovery** at runtime.
-The consuming service reads these through normal configuration / `HttpClient` + `AddServiceDiscovery()` (set up in ServiceDefaults).
-
-### Direct env, args
-```csharp
-builder.AddContainer("svc", "img")
-       .WithEnvironment("LOG_LEVEL", "debug")
-       .WithEnvironment("DB", db)                 // resolves to its connection string
-       .WithEnvironment("KEY", apiKeyParameter)   // ParameterResource
-       .WithArgs("--port", "8080");
-```
-`WithEnvironment` also takes a callback (`EnvironmentCallbackAnnotation`) for values computed at run/publish time.
-
-### Reference expressions
-- **`ReferenceExpression`** — a deferred, interpolated string mixing literals + resource values (e.g. building a custom connection string from parts).
-- **`EndpointReference`** — `resource.GetEndpoint("https")` with `.Url`/`.UriExpression`/`.Host`/`.Port` members usable in `WithEnvironment`. These become `{resource.bindings.https.url}`-style tokens in the manifest ([manifest-publishers-deploy.md](#manifest-publishers-deploy)).
-
-### Endpoints & networking
-```csharp
-builder.AddProject<Projects.Api>("api")
-       .WithHttpEndpoint(targetPort: 8080, port: 5000, name: "http")
-       .WithHttpsEndpoint(name: "https")
-       .WithExternalHttpEndpoints();              // expose beyond the dev host
-builder.AddContainer("svc", "img")
-       .WithEndpoint(targetPort: 9000, scheme: "tcp", name: "tcp", isProxied: true);
-```
-- `targetPort` = port the app listens on (inside the container/process); `port` = host-facing port (auto-assigned if omitted).
-- `isProxied: true` (default) routes through Aspire's reverse proxy → stable URLs across restarts + automatic service discovery; `false` = direct container DNS.
-- `WithExternalHttpEndpoints()` marks endpoints external (matters at deploy — ingress).
-- `WithUrls(...)`/`WithUrlForEndpoint(...)` customize the URLs surfaced in the dashboard.
-
-### Ordering: `WaitFor` family
-```csharp
-builder.AddProject<Projects.Api>("api")
-       .WaitFor(db)              // wait until db is running AND healthy
-       .WaitForStart(cache);    // wait until cache is merely running
-builder.AddProject<Projects.Worker>("worker")
-       .WaitForCompletion(migrations);  // wait until a one-shot task exits 0
-```
-`WaitFor` is gated by health checks ([apphost-resource-model.md](#apphost-resource-model)); `WaitForCompletion` is for run-to-completion jobs (migrations, seeders).
-
-### Service discovery resolution
-`WithReference` + ServiceDefaults' `AddServiceDiscovery()` mean a service calls a dependency by **logical name** (`http://api`), and resolution happens via configuration (`services__*` env), the platform (Container Apps/Kubernetes DNS), or DNS-SRV — the same code works locally and in production.
-
-## differentiators
-
-**Aspire — Differentiators & Gaps**
-
-> Part of the [Aspire competitor reference](aspire.md). Condensed strengths/gaps + head-to-head comparisons.
-
-### Differentiators (what's genuinely strong)
 1. **Code-first composition** — the topology (services, deps, wiring) is a typed program (`WithReference`/`WaitFor`/endpoints), not YAML/HCL; refactorable, with IDE support.
 2. **Local-dev parity** — one command (`aspire run`) stands up the whole multi-service graph (containers + processes) locally, closely matching the deploy shape.
-3. **Integrated observability** — OpenTelemetry (logs/traces/metrics) + a bundled **dashboard** with a resource graph, out of the box; the dashboard also runs **standalone for any language**.
-4. **Manifest IR + publishers** — a clean `aspire-manifest.json` → multiple targets (azd→ACA, Docker Compose, Kubernetes/Helm, custom).
-5. **Polyglot direction** — first-class Python/Node alongside .NET; Go/Java/Rust via the toolkit; non-.NET apps wired uniformly and observed via OTLP.
-6. **Extensible** — custom resources/integrations/publishers via NuGet; rich first-party + Azure/AWS + Community Toolkit catalog.
-7. **MIT / no lock-in** — open source, self-hosted, plain-JSON IR; Microsoft-backed with a fast release cadence.
+3. **Integrated observability** — OpenTelemetry (logs/traces/metrics) plus a bundled dashboard with a resource graph, out of the box; the dashboard also runs standalone for any language.
+4. **Manifest IR + publishers** — a clean `aspire-manifest.json` fanning out to multiple targets (azd→ACA, Docker Compose, Kubernetes/Helm, custom).
+5. **Polyglot reach** — first-class Python/Node alongside .NET, Go/Java/Rust via the toolkit, non-.NET apps wired uniformly and observed via OTLP.
+6. **Extensible** — custom resources/integrations/publishers via NuGet; a rich first-party + Azure/AWS + Community Toolkit catalog.
+7. **MIT / no lock-in** — open source, self-hosted, plain-JSON IR, Microsoft-backed with a fast release cadence.
 
-### Gaps (HoBo's openings)
+The gaps — HoBo's openings:
+
 1. **Deployment maturity** lags local dev — production often still leans on `azd`/`kubectl`/`helm`; publishers are newer than the run experience.
-2. **Not a platform/IDP** — no platform-rules layer (no Resource-Definition/**matching** per environment), no **RBAC/policy/approvals/cost/multi-tenant**; one AppHost per repo.
-3. **.NET heritage** — despite the rebrand, ergonomics and ecosystem skew .NET; the AppHost authoring is C#-first.
+2. **Not a platform/IDP** — no platform-rules layer (no Resource-Definition/matching per environment), no RBAC/policy/approvals/cost/multi-tenant; one AppHost per repo.
+3. **.NET heritage** — ergonomics and ecosystem skew .NET, and AppHost authoring is C#-first.
 4. **Container-/process-centric** — no wasm/component runtime; non-containerized/legacy workloads need `ExecutableResource` glue.
 5. **Dev-time dashboard** — not a production monitoring system; no event-sourced replay/time-travel/audit.
-6. **No agent-native generation** — no Forge-style AI generation of integrations/definitions; AI shows up as *integrations* + Copilot-in-dashboard, not as a generation pipeline.
+6. **No agent-native generation** — no Forge-style AI generation of integrations/definitions; AI appears as *integrations* plus Copilot-in-dashboard, not as a generation pipeline.
 
-### Head-to-head
+Head-to-head:
+
 | vs | Aspire's edge | Their edge |
 |---|---|---|
 | **Docker Compose** | code-first, OTel, projects-not-just-containers, deploy publishers | dead-simple `up`, ubiquitous |
 | **Skaffold / Tilt / Garden** | polyglot code-first, local-dev parity beyond K8s | K8s-native inner loop, mature |
 | **Pulumi / Crossplane** | local-dev + observability + app composition | mature, broad IaC / control-plane provisioning |
-| **Nitric** ([../nitric](nitric.md)) | broader app composition + OTel + local parity | serverless-first IfC + policy-from-code |
-| **Humanitec** ([../humanitec](humanitec.md)) | superb local dev, code-first | enterprise Platform Orchestrator: matching, RBAC, governance, hosted |
+| **Nitric** ([nitric.md](nitric.md)) | broader app composition + OTel + local parity | serverless-first IfC + policy-from-code |
+| **Humanitec** ([humanitec.md](humanitec.md)) | superb local dev, code-first | enterprise Platform Orchestrator: matching, RBAC, governance, hosted |
 
-### Net for HoBo
-Aspire nails the **developer inner loop** — code-first wiring, local parity, a manifest IR, and observability — which is why HoBo adopts its **wiring + manifest model** ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)). HoBo then adds what Aspire lacks: a **platform-rules/matching layer** ([Plan 25](../docs/design/platform-engineering.md#plan-25)), a **wasm-first polyglot runtime** ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)), **event-sourced replay/audit** ([Plan 11](../docs/design/event-model.md#plan-11)), agent-native **Forge** generation ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)), and a hosted, multi-tenant, governed control plane. See [hobo-mapping.md](#hobo-mapping).
+The net for HoBo: Aspire nails the developer inner loop — code-first wiring, local parity, a manifest IR, and observability — which is why HoBo adopts its wiring + manifest model ([Plan 21](../docs/design/authoring-resources-wiring.md#plan-21)). HoBo then adds what Aspire lacks: a platform-rules/matching layer ([Plan 25](../docs/design/platform-engineering.md#plan-25)), a wasm-first polyglot runtime ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)), event-sourced replay/audit ([Plan 11](../docs/design/event-model.md#plan-11)), agent-native Forge generation ([Plan 6](../docs/design/ai-native-agent-auth.md#plan-06)), and a hosted, multi-tenant, governed control plane.
 
-## hobo-mapping
+## HoBo mapping
 
-**Aspire → HoBo parity & mapping tracker**
-
-> For every Aspire feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · 🔜 = planned. HoBo design lives in [`../../docs/design/`](../docs/design/README.md). Aspire directly inspired HoBo's wiring/manifest layer, so parity here is high by design.
+For every Aspire feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · 🔜 = planned. HoBo design lives in [`../docs/design/`](../docs/design/README.md). Aspire directly inspired HoBo's wiring/manifest layer, so parity here is high by design.
 
 ### Composition & wiring
+
 | Aspire | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | AppHost (`DistributedApplication.CreateBuilder`) | `bindle()` topology + **IfC** resource collection | ✅ | [02](../docs/design/sdk-api.md#plan-02), [21](../docs/design/authoring-resources-wiring.md#plan-21) |
@@ -565,6 +449,7 @@ Aspire nails the **developer inner loop** — code-first wiring, local parity, a
 | Parameters & secrets | Parameters + brokered secrets (`secrets` port) | ✅ | [02](../docs/design/sdk-api.md#plan-02), [12](../docs/design/security-networking.md#plan-12) |
 
 ### Runtime, deploy & ops
+
 | Aspire | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | `aspire-manifest.json` (deploy IR) | **manifest IR = Deployment Set** | ✅➕ | [22](../docs/design/authoring-resources-wiring.md#plan-21), [26](../docs/design/platform-engineering.md#plan-25) |
@@ -579,6 +464,7 @@ Aspire nails the **developer inner loop** — code-first wiring, local parity, a
 | AI integrations + Copilot-in-dashboard | Agents as principals + MCP + Forge generation | ➕ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [23](../docs/design/forge-generated-stack.md#plan-23) |
 
 ### Where HoBo deliberately exceeds Aspire
+
 | Capability | HoBo doc |
 |---|---|
 | **Platform-rules / Matching** (per-environment Resource Definitions — Aspire has no equivalent) | [25](../docs/design/platform-engineering.md#plan-25) |
@@ -589,4 +475,5 @@ Aspire nails the **developer inner loop** — code-first wiring, local parity, a
 | **Stubbable ports** (run before implementations exist) | [23](../docs/design/forge-generated-stack.md#plan-23) |
 
 ### What HoBo borrows wholesale (credit Aspire)
+
 `WithReference`-style wiring, uniform config for any component/container, annotations as extensibility, and the **manifest as deploy IR** — adopted in [Plan 21](../docs/design/authoring-resources-wiring.md#plan-21). HoBo's contribution is wrapping that ergonomic core in a wasm runtime, a matching/platform layer, event-sourcing, and a governed hosted plane.

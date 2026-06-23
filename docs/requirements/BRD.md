@@ -56,7 +56,7 @@ All objectives are part of the single v1 ([ADR-0063](../design/adr/08-scope-and-
 | OBJ-5 | Earn developer trust via openness | OSS core self-hostable; "self-host = hosted" demonstrated | stage 2 |
 
 ## 5. Market opportunity & positioning
-**Positioning statement** ([17](../design/positioning.md#plan-17)): *HoBo is an AI-native meta-cloud — a cloud-agnostic control plane that maps a single TypeScript app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.*
+**Positioning statement** ([17](../design/positioning.md#plan-17)): *HoBo is an AI-native meta-cloud — a cloud-agnostic control plane (WIT/WASM surface; TypeScript the first reference implementation) that maps one app description onto any mix of real providers — agnostic by default, optimizable on demand, and operable by agents end to end.*
 
 **The gap HoBo fills:** *"No one combines cloud-agnostic ports/adapters (as WIT interfaces) + a wasm-default polyglot runtime + a Vercel-grade durable runtime + Nitric-style IfC/`.allow()` + Aspire-style wiring + agents-as-first-class + AI-generated providers AND implementations + a self-hostable control plane. That intersection is HoBo."* ([17](../design/positioning.md#plan-17)).
 

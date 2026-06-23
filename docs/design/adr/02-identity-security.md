@@ -102,3 +102,26 @@ Define a **secretless-first** config/secrets model ([Plan 31](../authoring-resou
 - **(+)** Stateless JWKS verify is edge-friendly; the thin built-in works offline/air-gap; the typed `useAuth()`/`ctx.user` surface flows through codegen ([ADR-0037](05-config-matching-environments.md#adr-0037)).
 - **(−)** Federation-first means HoBo depends on external IdPs for production-grade user management (the thin built-in is dev-grade); orgs needing a fully self-contained IdP supply one through the IdP adapter.
 - **(−)** Record-level authorization expressed via policy/`.allow()` on user claims is powerful but adds modeling surface; HoBo ships conventions for claims→roles/tenancy.
+
+## ADR-0070
+**Dev-mode auth bypass via integrated contract testing.**
+
+### Context
+Local dev needs to skip real authentication — no IdP round-trips, works offline — without the dev code path **diverging** from production. The usual "set `AUTH_DISABLED=true`" flag runs untested logic in dev and silently differs from prod. HoBo already treats every boundary as a consumer-driven **contract** ([ADR-0015](04-governance-verification.md#adr-0015)) and authenticates principals via the `auth` port ([ADR-0008](#adr-0008)/[ADR-0038](#adr-0038)); the dev bypass should ride that machinery, not a bespoke flag.
+
+### Decision
+**Dev auth is a contract-satisfied fixture, not a disabled check.**
+1. The `auth` port carries a **consumer-driven contract** describing the principal/claims the app expects (subject, roles, tenancy, scopes). It is the same contract the app declares for prod.
+2. In **`hobo dev`**, the runtime satisfies that contract with a **contract-asserted dev principal** — a fixture identity generated to match the contract — instead of calling a real IdP. Auth still "runs"; it's just fulfilled by the contract fixture. The developer can override claims per-request/session (e.g. assume a role/tenant) within what the contract allows, making role/tenancy testing first-class.
+3. **The same contract is enforced at `can-deploy`** ([ADR-0016](04-governance-verification.md#adr-0016)): a real IdP/Camp must satisfy the identical `auth` contract, so dev and prod are **contract-equivalent** — the bypass cannot drift from production semantics.
+4. **Deny-by-default still holds** ([ADR-0069](01-architecture-core.md#adr-0069)): the dev principal only obtains the capabilities granted by `.allow()`/links. Bypassing *authentication* never bypasses *authorization*.
+
+### Alternatives considered
+- **A global `AUTH_DISABLED` flag.** Rejected: runs a code path that never ships, and gives no guarantee dev matches prod claims/roles.
+- **Hand-mocked IdP per test.** Rejected: bespoke per project/test, no shared contract, drifts as the app's claim needs change.
+- **Always require a real IdP in dev.** Rejected: slow, online-only, and hostile to the inner loop and air-gapped dev.
+
+### Consequences
+- **(+)** Fast, offline inner loop that is still **faithful to prod** because the dev identity is defined by the same contract that gates deploys; role/claim testing is built in.
+- **(+)** No new mechanism — reuses the contract plane + `auth` port; the four-lens taxonomy now also defines the dev identity.
+- **(−)** Requires the app to declare an `auth` contract (lint-enforced like other contracts); apps with no declared auth contract get a minimal default dev principal and a `hobo doctor` nudge.

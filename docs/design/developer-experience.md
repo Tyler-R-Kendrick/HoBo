@@ -78,6 +78,8 @@ hobo codegen [--check]                                   (re)generate typed clie
 hobo collect [--camp prod]                               run resource-collection (IfC) -> print manifest IR
 hobo stub <resource|service>                             run with a stub behind a WIT port (Plan 23)
 hobo plan [--camp prod]                                  dry-run: DeploymentPlan + cost + warnings
+hobo up [--camp prod] [--strategy canary]                bring up the runtime/Camp + deploy the Bindle (everyday "make it run")
+hobo down [--camp prod]                                  tear it down (deprovision/stop)
 hobo deploy [--camp prod] [--strategy canary]            provision/converge to real infra
 hobo promote <version> --camp prod                       move a Camp pointer
 hobo rollback --camp prod                                revert to previous good version
@@ -92,6 +94,9 @@ hobo import terraform|pulumi|opentofu|lakebed|faas <src> adopt an existing estat
 hobo yard up [--restore <log>] | status                  run/restore a self-hosted Yard
 hobo doctor                                              env/credential/connectivity diagnostics
 ```
+
+### Lifecycle verbs (`up` / `down`)
+`hobo up` is the everyday "make it run" verb: it brings up the runtime/Camp and deploys the Bindle in one step (a `plan`→`deploy` convergence to the resolved Camp). `hobo down` is its inverse — deprovision/stop the Bindle and tear the Camp back down. They wrap the existing deploy/destroy story (`hobo deploy`/`hobo destroy` remain the explicit, finer-grained verbs); `hobo yard up` stays the control-plane bootstrap variant that runs/restores a self-hosted **Yard** ([Plan 4](./control-plane.md#plan-04)), whereas `hobo up` targets a **Camp** under an existing Yard. All three drive the thin-SDK + **wRPC** runtime — typed clients over generated WIT bindings, no cloud logic in the SDK ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
 
 ### The two config files
 - **`bindle.ts`** — *what* the app is (resources + bindings + runtime primitives). Provider-agnostic.

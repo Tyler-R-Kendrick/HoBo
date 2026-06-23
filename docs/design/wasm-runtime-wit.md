@@ -22,6 +22,14 @@ This capability doc consolidates Plan 20, Plan 24 of the HoBo design suite.
 - **Provider = capability provider.** A Provider implements a WIT interface's *exports* for a backend (e.g. an S3 adapter exports `wasi:blobstore`). It has the same deploy + runtime split HoBo already uses ([Plan 3](./control-plane.md#plan-03)): `realize()` provisions infra; the runtime impl serves the interface.
 - **Bind = link.** Binding a component's *import* of an interface to a provider's *export* is a **link**, late-bound at deploy/runtime (the wasmCloud model). Swapping Redis→Vault behind `wasi:keyvalue` is a link change, no recompile. Links are the concrete form of HoBo's ports/adapters escape hatch.
 
+### The runtime membrane = wRPC ([ADR-0069](./adr/01-architecture-core.md#adr-0069))
+The transport that carries a link — an app component's *import* invoking a provider component's *export* — is **wRPC** (wasmCloud's WIT-native, transport-agnostic RPC; **NATS by default**), not plain gRPC. The same WIT contract drives **in-process, cross-process, and cross-host (lattice)** invocation, so a link resolves identically whether the provider is co-located or on another host — consistent with the `component-host` adapters ([ADR-0031](./adr/01-architecture-core.md#adr-0031)).
+- **Wire generated from WIT.** There is no separate protobuf/IDL or hand-maintained schema; the wire is derived from the interface. Contrast plain gRPC, which needs a parallel `.proto` IDL kept in sync with the WIT and bespoke transport plumbing.
+- **Deny-by-default routing.** wRPC only routes **linked** interfaces. An unlinked / un-`.allow()`-ed capability has no route and cannot be invoked — the membrane enforces the same capability boundary as the wasm sandbox.
+
+### Providers are WIT components ([ADR-0069](./adr/01-architecture-core.md#adr-0069))
+A **provider implements the building-block WIT interfaces directly**: a provider is a WASM component (or WIT-conformant adapter) that **exports** the building-block interfaces an app imports. There is **no Go/TS provider plugin SDK** — the contract *is* the WIT world, and the only trust boundary is **conformance** to that interface ([Plan 9](./verification.md#plan-09)). The **Forge generates providers** against the WIT ([Plan 23](./forge-generated-stack.md#plan-23)). This is the explicit departure from Nitric's per-language Go provider plugins: bind to a WIT export over wRPC, don't compile a language-specific plugin.
+
 ```mermaid
 flowchart LR
   subgraph C["Service component (any language)"]
@@ -99,6 +107,27 @@ A component proven on Wasmtime locally must behave **identically** on wasm-in-co
 **Plan 24 — WIT interfaces reference (the canonical ports)**
 
 > **Contracts & policy (gates):** two governance ports join the catalog — **`hobo:contract-engine`** ([Plan 29](./contracts-policy-flags.md#plan-29)) and **`hobo:policy-engine`** ([Plan 30](./contracts-policy-flags.md#plan-30)) — each with a built-in HoBo implementation and optional providers (Pact / OPA / Cedar). A port's WIT interface *is* its provider contract; this doc's interfaces are what the Gatekeeper's compatibility checks are written against.
+
+### Building-block interface set ([ADR-0069](./adr/01-architecture-core.md#adr-0069))
+HoBo's runtime provides a **Nitric-parity building-block set, each a first-class WIT interface** a provider exports and an app imports over wRPC — alongside HoBo's own durable workflow/actors, reactive materializations, auth, and AI/training. The blocks and their canonical worlds:
+
+| Building block | WIT interface |
+|---|---|
+| APIs / HTTP | `wasi:http/incoming-handler`, `.../outgoing-handler` |
+| Schedules | `hobo:scheduler` |
+| Topics & subscriptions (pub/sub) | `wasi:messaging` |
+| Queues | `hobo:queue` |
+| Key/value | `wasi:keyvalue/store` |
+| Storage / blob | `wasi:blobstore/blobstore` (+ `hobo:blob-events`) |
+| Secrets | `wasi:config/store` |
+| SQL | `wasi:sql` (+ `hobo:sql`, [Plan 34](./data-plane.md#plan-34)) |
+| Websockets | `hobo:websocket` |
+| Durable workflow / actors | `hobo:runtime/workflow`, `hobo:runtime/actor`, `hobo:runtime/saga` |
+| Reactive materializations | `hobo:projection` ([Plan 39](./data-plane.md#plan-39)) |
+| Auth | `hobo:auth` ([Plan 36](./ai-native-agent-auth.md#plan-36)) |
+| AI / training | `hobo:runtime/agent`, `hobo:embed`/`hobo:search` ([Plan 35](./data-plane.md#plan-35)) |
+
+A provider exports the subset it backs; conformance to the interface is the contract (no plugin SDK, [Plan 20](./wasm-runtime-wit.md#plan-20)). Full per-interface detail in the tables below.
 
 ### Conventions
 - **Package/version:** `namespace:package@semver` (e.g. `wasi:keyvalue@0.2.0`, `hobo:runtime@0.1.0`). HoBo pins exact versions; upgrades go through upcasters/compat shims, never silent drift.

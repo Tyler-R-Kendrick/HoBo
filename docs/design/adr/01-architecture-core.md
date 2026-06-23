@@ -118,3 +118,28 @@ Make the component-host a **conformance-gated, version-pinned** portability boun
 - **(+)** Host portability reuses the existing conformance + version-policy machinery — a new suite + a manifest field, not new architecture.
 - **(−)** Authoring the host conformance suite (esp. deterministic-clock + WASI fidelity assertions) is real work; v1 ships the suite + Wasmtime/wasm-in-container reference passes, with SpinKube/wasmCloud as opt-in certified adapters.
 - **(−)** Host-`.with()` options reintroduce a (typed, flagged) lock-in surface; mitigated by `hobo doctor` + the portability report ([ADR-0024](07-portability-extensibility.md#adr-0024)).
+
+## ADR-0069
+**The runtime & membrane: WIT-interface providers over wRPC, wrapped by a thin SDK.**
+
+### Context
+Nitric proves the "runtime + membrane + provider" shape: app code calls an SDK → a local **runtime/membrane** (Nitric uses **gRPC**) → a **provider plugin** (written in **Go**) that implements each building block against a specific cloud. HoBo wants Nitric's full building-block runtime, but realized natively on the WebAssembly **Component Model** rather than on a language-specific plugin SDK and a hand-rolled gRPC wire. The pieces already exist — WIT ports ([Plan 24](../wasm-runtime-wit.md#plan-24)), late-bound **links**, the `component-host` ([ADR-0031](#adr-0031)) — so the membrane should be the component model, not a parallel mechanism.
+
+### Decision
+1. **The runtime provides a full building-block set (Nitric parity), each as a WIT interface** ([Plan 24](../wasm-runtime-wit.md#plan-24)): APIs/HTTP, schedules, topics & subscriptions (pub/sub), queues, key/value, storage/blob, secrets, SQL, and websockets — alongside HoBo's own durable workflow/actors, reactive materializations, auth, and AI/training. A "building block" is just a **port** ([ADR-0005](#adr-0005)).
+2. **Providers implement the WIT interfaces directly — not a Go/TS plugin SDK.** A provider is a WASM **component** (or WIT-conformant adapter) that *exports* the building-block interfaces; there is no HoBo-specific provider language or plugin API to learn — the contract **is** the WIT world, and the Forge can generate it ([ADR-0010](06-ai-generation-operators.md#adr-0010)/[ADR-0030](06-ai-generation-operators.md#adr-0030)). This is the key departure from Nitric's per-language provider plugins.
+3. **The membrane is wRPC, not plain gRPC.** App-component imports are bound to provider-component exports by **links** and invoked over **wRPC** (wasmCloud's WIT-native RPC; transport-agnostic, NATS by default), so the same WIT contract drives in-process, cross-process, and cross-host (lattice) invocation — consistent with the `component-host` adapters ([ADR-0031](#adr-0031), incl. the wasmCloud-lattice host). No separate IDL or hand-maintained protobuf: the wire is generated from WIT.
+4. **A thin SDK wraps the runtime.** The TS SDK ([Plan 2](../sdk-api.md#plan-02)) is ergonomic sugar over the generated WIT bindings — typed clients for the runtime's imported interfaces. It holds **no cloud logic**; all behavior lives behind the WIT ports in the runtime + providers, so the SDK stays small and every language with a Component-Model binding can host the same app.
+5. **Deny-by-default is structural.** An imported interface with no link / no `.allow()` grant cannot be invoked — wRPC only routes linked interfaces and capability handles are deny-by-default ([ADR-0023](02-identity-security.md#adr-0023)/[Plan 21](../authoring-resources-wiring.md#plan-21)). Capability is granted by linking, not by ambient reachability.
+
+### Alternatives considered
+- **Plain gRPC membrane (Nitric's choice).** Rejected: not WIT-native — needs a separate `.proto` IDL + codegen parallel to WIT, and a non-component wire that breaks the "one contract = the WIT world" model. wRPC gives the same RPC ergonomics generated straight from WIT.
+- **Language-specific provider plugin SDK (Go/TS).** Rejected: forces a provider author into one language and a bespoke plugin API, and fragments the trust/conformance boundary. Requiring providers to code against the **WIT interface** makes the Component Model the single contract and lets the Forge generate providers.
+- **A fat SDK with cloud logic.** Rejected: re-introduces per-cloud code on the client, breaking portability and the thin-client model; the SDK must be a typed shell over the runtime.
+
+### Consequences
+- **(+)** One contract everywhere: a building block is a WIT interface, a provider is a WIT component, the wire is wRPC generated from that WIT — local dev, cross-process, and lattice all use the same mechanism ([ADR-0031](#adr-0031)).
+- **(+)** Provider breadth via the Component Model + Forge, with no language lock-in for provider authors; conformance ([Plan 9](../verification.md#plan-09)) is the single trust boundary.
+- **(+)** Thin SDK → small client, easy multi-language hosting, and deny-by-default falls out of linking.
+- **(−)** wRPC is younger than gRPC; HoBo pins/vendors its wRPC + WIT versions ([ADR-0067](#adr-0067)) and ships a conformance suite for the membrane.
+- **(−)** "Everything is a WIT interface" demands disciplined interface design + versioning ([ADR-0024](07-portability-extensibility.md#adr-0024)); the building-block WIT set is now a maintained public contract.

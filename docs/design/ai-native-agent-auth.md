@@ -100,6 +100,8 @@ sequenceDiagram
 - **MCP/OAuth2.1** for SaaS tools that speak it.
 - **Every issuance is an event** (`token.Granted` → `token.Used` → `token.Revoked`) → a fully replayable credential audit (the `CredentialAudit` projection, [Plan 11](./event-model.md#plan-11)). This directly answers the industry gap where agent actions can't be audited.
 
+**Dev-mode auth bypass — the local-dev path ([ADR-0070](./adr/02-identity-security.md#adr-0070)).** In **`hobo dev`** the runtime skips real attestation/IdP round-trips by satisfying the `auth` port's **consumer-driven contract** (subject/roles/tenancy/scopes the app expects, [Plan 29](./contracts-policy-flags.md#plan-29)) with a **contract-asserted dev principal** — a fixture matching that contract. Auth still runs; it's just fulfilled by the fixture, offline. The dev can override claims/roles/tenant per session within the contract, so role/tenancy testing is first-class. **Prod parity** holds because the **same `auth` contract is enforced at `can-deploy`** (a real IdP/Camp must satisfy it), so the dev path is contract-equivalent to prod and cannot drift. Deny-by-default is untouched: the dev principal only gets `.allow()`-granted capabilities ([Plan 12](./security-networking.md#plan-12)).
+
 **Least privilege & guardrails:**
 - Tokens are scoped to `(port, resource, action)` and the minimal provider permission for that equivalence class — never "admin."
 - **High-risk actions** (destroy, spend above a budget, touch prod) require a policy gate: auto-allowed, require human approval (a `createHook` the dashboard/Slack resolves), or denied. Policy is per-tenant, versioned, and itself event-sourced. An agent's **`spendCapUsd`** is one instance of the general **quota** model — agent caps, Camp/tenant budgets, and plan-tier quotas are the same policy-plane gate over the `MeteringView`, backed by a runaway-spend circuit-breaker ([Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)).
@@ -209,6 +211,9 @@ flowchart LR
   VER -.-> SESS["event-sourced session (session.*)<br/>revocation / sign-out-everywhere"]
   SESS -.->|revoked| VER
 ```
+
+### Local dev — the contract-asserted dev principal ([ADR-0070](./adr/02-identity-security.md#adr-0070))
+The natural local-dev path is **not** disabling auth. The `auth` port carries a **consumer-driven contract** (the subject/roles/tenancy/scopes the app expects, [Plan 29](./contracts-policy-flags.md#plan-29)); in **`hobo dev`** the runtime satisfies it with a **contract-asserted dev principal** — a fixture identity matching the contract — rather than verifying a real IdP JWT. `auth()` still runs; it's fulfilled by the fixture, offline (the thin built-in, above, is one such fixture source). The dev **overrides claims/roles/tenant per session** within the contract, so `ctx.user`-keyed record-level rules ([Plan 30](./contracts-policy-flags.md#plan-30)/`.allow()`) are exercised against real principals in dev. **Prod parity** is structural: the **same `auth` contract is enforced at `can-deploy`** — a configured IdP must satisfy the identical contract — so the dev bypass is contract-equivalent to prod and cannot drift. Authentication is bypassed, authorization is not: the dev principal still only gets `.allow()`-granted capabilities (deny-by-default, [Plan 12](./security-networking.md#plan-12)).
 
 ### Unified principal model
 An authenticated end-user is a **`PrincipalRef`**, exposed in handlers as **`ctx.user`** (typed, verified claims) alongside `ctx.identity` (the SVID, [Plan 6](./ai-native-agent-auth.md#plan-06)). This means one identity/authz/audit path for **users + agents + services**:

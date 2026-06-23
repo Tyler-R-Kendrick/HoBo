@@ -383,7 +383,7 @@ Security rules are **not enforced in local dev** (`nitric start`) — you must d
 | Infrastructure from Code (run-to-collect) | **IfC-default**: resources declared inline + `.allow()`, collected by running the wasm component in resource-collection mode → manifest IR | ✅ | [02](../docs/design/sdk-api.md#plan-02), [22](../docs/design/authoring-resources-wiring.md#plan-22) |
 | Services (containerized entry points) | **Services = wasm/wasi components by default** (OCI container fallback) | ➕ | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
 | Resources (building blocks) | HoBo resources = **WIT ports** with equivalence classes | ✅ | [21](../docs/design/authoring-resources-wiring.md#plan-21) |
-| The Membrane (gRPC runtime contract) | **WIT/wasm host boundary** (component imports → host routes to linked provider); standards-based, no bespoke proto | ➕ | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
+| The Membrane (**gRPC** runtime contract) | **wRPC membrane** (wasmCloud's WIT-native RPC) over the WIT/wasm host boundary: component imports → host routes to linked provider; wire generated from WIT, no bespoke proto; same contract drives local/cross-process/lattice | ➕ | [20](../docs/design/wasm-runtime-wit.md#plan-20), [ADR-0069](../docs/design/adr/01-architecture-core.md#adr-0069) |
 | Resource spec | **Manifest IR** (Nitric spec ∪ Aspire manifest) consumed by the Planner | ➕ | [22](../docs/design/authoring-resources-wiring.md#plan-22) |
 
 ### Resource catalog (full parity target)
@@ -409,8 +409,8 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 | `.allow(verbs)` → least-privilege IAM | `.allow(verbs)` drives **IAM + wasm capability grants (links) + agent token scope** (one declaration, three effects) | ➕ | [21](../docs/design/authoring-resources-wiring.md#plan-21), [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | OIDC API auth | OIDC + **first-class agent identity (SVID)** + keyless token broker | ➕ | [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | Pulumi/Terraform providers | `iac-pulumi` (primary) + Crossplane/OpenTofu adapters | ✅ | [03](../docs/design/control-plane.md#plan-03) |
-| Provider = deploy + runtime layers | **Provider = capability provider** (deploy realize() + runtime WIT impl + link) | ✅ | [03](../docs/design/control-plane.md#plan-03), [20](../docs/design/wasm-runtime-wit.md#plan-20) |
-| Custom providers (Go) | Provider authoring in **any wasm language** + `@hobo/conformance` gate; **AI-generated via the Forge** | ➕ | [03](../docs/design/control-plane.md#plan-03), [23](../docs/design/forge-generated-stack.md#plan-23) |
+| Provider = deploy + runtime layers (**Go plugins**) | **Provider = WIT-component** that *exports* the building-block interfaces (deploy realize() + runtime WIT impl + link); the contract **is** the WIT world, no Go/TS plugin SDK | ➕ | [03](../docs/design/control-plane.md#plan-03), [20](../docs/design/wasm-runtime-wit.md#plan-20), [ADR-0069](../docs/design/adr/01-architecture-core.md#adr-0069) |
+| Custom providers (**Go-only** plugins) | Provider authoring in **any wasm language** (code against WIT, not a plugin API) + `@hobo/conformance` gate; **Forge-generatable** | ➕ | [03](../docs/design/control-plane.md#plan-03), [23](../docs/design/forge-generated-stack.md#plan-23) |
 | Stack files (per-target) | `hobo.config.ts` + Camps (per-env) | ✅ | [02](../docs/design/sdk-api.md#plan-02) |
 
 ### CLI, local dev, deployment
@@ -426,6 +426,8 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 | Capability | HoBo doc |
 |---|---|
 | **WASM/WASI-default polyglot runtime** (any language → component; capability security) | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
+| **wRPC membrane + WIT-component providers + thin SDK** (same building-block set as Nitric's gRPC + Go-plugin shape, realized on the Component Model; SDK is typed sugar with no cloud logic; deny-by-default by linking) | [ADR-0069](../docs/design/adr/01-architecture-core.md#adr-0069) |
+| **Dev auth bypass via integrated contract testing** (`hobo dev` satisfies the `auth` contract with a fixture principal; same contract gates `can-deploy`, so dev can't drift from prod — vs Nitric's OIDC rules not enforced locally) | [ADR-0070](../docs/design/adr/02-identity-security.md#adr-0070) |
 | **Actors + durable workflows + choreography sagas** over a replayable event store | [02](../docs/design/sdk-api.md#plan-02), [11](../docs/design/event-model.md#plan-11) |
 | **Agents as first-class principals** + Capability Manifest + MCP control surface | [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | **AI-generated providers AND implementations**; stub → implement → trace → auto-evolve → live-fix (gated) | [23](../docs/design/forge-generated-stack.md#plan-23) |

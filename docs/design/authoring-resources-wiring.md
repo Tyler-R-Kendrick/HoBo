@@ -52,6 +52,22 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 
 The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./adr/01-architecture-core.md#adr-0002)): APIs, schedules, AI (`search`/`embed`/`guardrail`), websites, storage, secrets/config, databases/caching (`sql`/`kv`), messaging (`topic`/`queue`/`notify`), feature flags, and functions/workflows (`service`/`job` + the durable runtime) — every capability expressed as a resource behind a port. Cross-cloud equivalence classes are owned by [Plan 3](./control-plane.md#plan-03); this table is the resource→port view.
 
+**Full Nitric building-block parity (one resource per block, each a WIT interface).** Every Nitric building block has a catalog row above, each backed by a WIT port ([ADR-0069](./adr/01-architecture-core.md#adr-0069)):
+
+| Nitric building block | HoBo resource | WIT interface | `.allow()` verbs |
+|---|---|---|---|
+| APIs / HTTP routing | `api(name)` | `wasi:http` (+ `hobo:http`) | route-level security |
+| Schedules (cron) | `schedule(name)` | `hobo:scheduler` | n/a (cron trigger) |
+| Topics & subscriptions (pub/sub) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` |
+| Queues | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` |
+| Key/value store | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` |
+| Storage / blob (buckets) | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` |
+| Secrets | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` |
+| SQL databases | `sql(name)` | `wasi:sql`/`hobo:sql` | (conn string) |
+| Websockets | `websocket(name)` | `hobo:websocket` | n/a (connect/message/disconnect) |
+
+HoBo's runtime provides **everything Nitric's runtime does** — the full building-block set above — but realized as **WIT interfaces**, with providers implementing the WIT world (not Go plugins) and invoked over the **wRPC membrane** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). A building block is just a port; HoBo's own durable workflow/actors, materializations, auth, and AI ports (the rest of the catalog) sit alongside the Nitric set on the same membrane.
+
 > **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)). The `sql`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)). They remain first-class resources; domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
 
 ### IfC-default authoring (resources emerge from code)

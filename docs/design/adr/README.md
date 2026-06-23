@@ -87,3 +87,5 @@
 | 0066 | Availability through cost controls: cost-driven graceful degradation & SLO-aware cost/availability trade-offs | [governance-verification](04-governance-verification.md#adr-0066) |
 | 0067 | Component-host portability: conformance + version pinning across hosts | [architecture-core](01-architecture-core.md#adr-0067) |
 | 0068 | Derivative upgrade paths: seam versioning & compat for forks/patches | [portability-extensibility](07-portability-extensibility.md#adr-0068) |
+| 0069 | The runtime & membrane: WIT-interface providers over wRPC, thin SDK | [architecture-core](01-architecture-core.md#adr-0069) |
+| 0070 | Dev-mode auth bypass via integrated contract testing | [identity-security](02-identity-security.md#adr-0070) |

@@ -11,6 +11,7 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 > **Runtime & authoring refinements (Nitric/WASM/Aspire).** Three refinements now layer on top of this model:
 > - **Authoring is IfC-default** ([Plan 21](./authoring-resources-wiring.md#plan-21)): you declare resources inline with `.allow(...)` and HoBo collects them by running the component; the explicit `bindle()` topology below becomes the **advanced/escape-hatch** mode.
 > - **Ports are WIT interfaces** and **services are wasm/wasi components by default** ([Plan 20](./wasm-runtime-wit.md#plan-20)); the typed clients shown here are generated from those interfaces (OCI-container fallback for non-wasm workloads).
+> - **The SDK is a thin wrapper over the runtime** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)): ergonomic TS over the generated WIT bindings / wRPC client. It holds **no cloud logic** — all behavior lives behind the WIT ports in the runtime + providers ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 24](./wasm-runtime-wit.md#plan-24)). So any Component-Model-capable language can host the same app; the TS surface is one binding among equals, not the source of truth.
 > - **Bindings adopt Aspire-style references + a manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)).
 > The Layer 1–4 model still holds; read it as the conceptual core, with those three docs as the concrete runtime/authoring surface.
 

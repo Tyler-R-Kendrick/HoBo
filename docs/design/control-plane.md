@@ -8,9 +8,9 @@ This capability doc covers the Yard control plane end to end: its services and r
 
 > **Runtime/IfC integration.** The Planner now consumes the **manifest IR** produced by IfC resource-collection ([Plan 21](./authoring-resources-wiring.md#plan-21)); ResourceActors additionally manage **links** binding components to capability providers ([Plan 20](./wasm-runtime-wit.md#plan-20)). The reconciliation FSM and choreography below are unchanged.
 
-> **Resource Definitions & Matching (Humanitec parity).** The Planner resolves each resource via **Resource Definitions + Matching** ([Plan 25](./platform-engineering.md#plan-25)); the lifecycle works in **Deltas → Sets** with **incremental** reconcile (only changed nodes) ([Plan 25](./platform-engineering.md#plan-25)); Executors can run behind a **HoBo Relay** for private-network targets and a **GitOps publisher** is an alternate apply path ([Plan 25](./platform-engineering.md#plan-25)); **Pipelines** drive *when* deploys happen.
+> **Resource Definitions & Matching (Humanitec parity).** The Planner resolves each resource via **Resource Definitions + Matching**; the lifecycle works in **Deltas → Sets** with **incremental** reconcile (only changed nodes); Executors can run behind a **HoBo Relay** for private-network targets, with a **GitOps publisher** as an alternate apply path; and **Pipelines** drive *when* deploys happen ([Plan 25](./platform-engineering.md#plan-25)).
 
-> **Contracts & policy (gates).** New grains back the two governance planes: a **contract-engine** ([Plan 29](./contracts-policy-flags.md#plan-29)) and a **policy-engine** ([Plan 29](./contracts-policy-flags.md#plan-29)), each a WIT port with a built-in default. The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
+> **Contracts & policy (gates).** New grains back the two governance planes: a **contract-engine** and a **policy-engine**, each a WIT port with a built-in default ([Plan 29](./contracts-policy-flags.md#plan-29)). The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
 
 The Yard is the orchestrator that maps Bindle deployments to real hosting. It is **itself a HoBo Bindle** (dogfood) and runs on the TS-native core; Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement.
 
@@ -18,7 +18,7 @@ The Yard is the orchestrator that maps Bindle deployments to real hosting. It is
 - **Gateway** — SDK RPC + REST + **MCP** ingress; authenticates the principal (human or agent SVID), authorizes against tenant + scope, turns requests into commands, and serves read models. Stateless; horizontally scalable.
 - **Identity** — issues agent/workload identities (SPIFFE-style SVIDs), acts as OIDC provider + token broker ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 - **Registry** — Provider + Capability Manifest catalog; capability search; plugin certification records from the Forge.
-- **Planner** — Bindle + mapping → `DeploymentPlan` DAG; capability/region/cost solving (algorithm in [Plan 04](./control-plane.md#plan-04)).
+- **Planner** — Bindle + mapping → `DeploymentPlan` DAG; capability/region/cost solving (resolution algorithm in the adapters section below).
 - **Orchestrator** — **choreography saga engine** over the event store. One **ResourceActor** (a controller-style grain) per resource owns its lifecycle and reconciles desired↔actual via the resolved IaC adapter. Resource actors coordinate by emitting/observing events (e.g. `resource.Provisioned(db)` → unblocks `api`), not via a central coordinator.
 - **Executors** — sandboxed (Firecracker) runners that execute IaC applies + Dagger builds with short-lived scoped creds.
 - **Event Store + Projections** — source of truth + read models ([Plan 11](./event-model.md#plan-11)).

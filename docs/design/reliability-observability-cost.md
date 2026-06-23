@@ -64,7 +64,7 @@ Rollout strategy is a property of a `service`/`web` resource, implemented as a p
 Health signals come from the data plane (the Camp's runtime metrics/streams) and/or provider health checks; the gate is a `step` with a timeout and a rollback compensation.
 
 ### Provider resilience controls
-- **Circuit breaker per (provider, region, operation):** open after a failure-rate threshold; half-open probes; protects against hammering a degraded provider. *(The same breaker pattern is reused as a **spend** circuit-breaker — opened on runaway cost velocity to halt spend-incurring actions, [Plan 05](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039).)*
+- **Circuit breaker per (provider, region, operation):** open after a failure-rate threshold; half-open probes; protects against hammering a degraded provider. *(The same breaker pattern is reused as a **spend** circuit-breaker — opened on runaway cost velocity to halt spend-incurring actions, see §Cost & FinOps below; [ADR-0039](./adr/04-governance-verification.md#adr-0039).)*
 - **Retry budgets** (not just per-call retries): a token-bucket cap on total retries per deployment so a flapping provider can't cause unbounded work.
 - **Bulkheads / concurrency caps** per tenant and per provider on the Executor pool (backpressure; one tenant's storm can't starve others).
 - **Timeouts** at every external boundary, with the operation classified retryable/fatal on expiry.

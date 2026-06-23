@@ -15,7 +15,7 @@ Most platforms bolt agent support on as "an API key in a script." HoBo treats an
 
 > **Runtime/AI integration.** The Forge (§6.5) now generates not just providers but **implementations** behind WIT ports — the stub → implement → trace → auto-evolve → live-fix loop is specified in [Plan 23](./forge-generated-stack.md#plan-23). And `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)) is what scopes the tokens the broker issues: one declaration drives IAM **+ wasm capability links + token scope**.
 
-> **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is [Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0038](./adr/02-identity-security.md#adr-0038). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
+> **Scope note — this plan is *agent/workload* auth.** **End-user / application auth** (an app's human users signing in) is covered in §6.7 below ([ADR-0038](./adr/02-identity-security.md#adr-0038)). They are *not* separate systems: an end-user is just another **`PrincipalRef`** (`ctx.user` alongside `ctx.identity`), authorized via the same policy plane + `.allow()` and audited via the same event `actor`. The **OBO** flow below (§6.2, an agent acting *for* a specific human) carries that same end-user principal — user → agent → resource is one identity chain.
 
 ---
 

@@ -31,7 +31,7 @@ A **tenant** is the hard isolation boundary. Isolation applies across four dimen
 1. **Data** — event streams are namespaced and (optionally) encrypted per tenant; projections enforce the tenant claim; a query can never fold another tenant's stream. Sharding can be per-tenant logs for large tenants.
 2. **Compute** — Executor pools are partitioned per tenant (and bulkheaded per provider) so one tenant's workload/storm can't observe or starve another's ([Plan 5](./reliability-observability-cost.md#plan-05)).
 3. **Credentials** — SVIDs and brokered provider tokens are scoped to the tenant; a tenant's federation trust is established only with that tenant's provider accounts.
-4. **Network** — data-plane resources of different tenants never share a trust domain; mTLS identities are tenant-scoped ([networking](./security-networking.md#networking--connectivity)).
+4. **Network** — data-plane resources of different tenants never share a trust domain; mTLS identities are tenant-scoped ([networking](#networking--connectivity)).
 
 **Deployment tiers:** self-host = single-tenant (the whole Yard is one trust domain); hosted = multi-tenant on the same code with the boundaries above. A "dedicated" tier can pin a tenant to isolated infra.
 

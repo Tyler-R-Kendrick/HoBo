@@ -88,7 +88,7 @@ So a solo dev writes the one-liner and never sees definitions; a platform team a
 A definition may declare co-provisioned resources (e.g. a bucket + its IAM policy); these become extra nodes/edges in the DeploymentPlan DAG with output flow via placeholders ([Plan 21](./authoring-resources-wiring.md#plan-21)). The Planner ([Plan 4](./control-plane.md#plan-04)) consumes definitions; the Orchestrator ([Plan 4](./control-plane.md#plan-04)) executes the graph.
 
 ### Forge-generated definitions
-Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 23](./forge-generated-stack.md#plan-23)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, [Plan 25](./platform-engineering.md#plan-25)), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
+Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 23](./forge-generated-stack.md#plan-23)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, below), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
 
 ### Iteration hooks
 - Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.

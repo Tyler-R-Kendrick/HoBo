@@ -80,3 +80,4 @@
 | 0064 | Scope: AI-native meta-cloud (remove business/monetization; keep app generation) | [scope-and-requirements](08-scope-and-requirements.md#adr-0064) |
 | 0069 | The runtime & membrane: WIT-interface providers over wRPC, thin SDK | [architecture-core](01-architecture-core.md#adr-0069) |
 | 0070 | Dev-mode auth bypass via integrated contract testing | [identity-security](02-identity-security.md#adr-0070) |
+| 0071 | The Dispatcher: credit/budget-aware cost routing across registered providers (placement · dispatch · traffic) | [config-matching-environments](05-config-matching-environments.md#adr-0071) |

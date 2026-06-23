@@ -116,6 +116,7 @@ This is HoBo's **intended seed set — not a closed list.** Every entry is a swa
 
 - **Runtime hosts (`component-host`).** Default = **self-hosted wasmCloud** (lattice over NATS/JetStream) on **k8s** (`wasmcloud-operator`), **Coolify/Docker**, or **bare metal**; **wasm-in-container** is the zero-infra floor; **SpinKube** and **provider-native wasm (Cloudflare Workers)** are opt-in; local/dev = Wasmtime ([ADR-0031](./adr/01-architecture-core.md#adr-0031)).
 - **Self-host / deploy targets.** Kubernetes on any distro/cloud (Hetzner `kube-hetzner`/Talos, k3s, AKS/EKS/GKE), **Coolify** (Docker PaaS on any VPS, API/MCP-drivable), Docker/Compose, bare-metal/VPS. "Self-host = hosted" — the same code.
+- **CI runners & build machines (`runner` / `build-machine`).** Execution-host categories the **Dispatcher** cost-routes per job ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071)): **self-hosted** (Executors behind the Relay, the default), **GitHub Actions**, **Blacksmith** (fast runners), **Depot** (remote container builds + cache). Registering several lets HoBo maximize free credits/budgets by routing each build/CI run to the cheapest registered option.
 
 **Cloud / infra providers (`CloudProvider`):**
 
@@ -134,9 +135,26 @@ Cloudflare and self-hosted wasmCloud are first-class **wasm** targets; **Hetzner
 Everything that touches the outside world is a port with swappable adapters:
 - **CloudProvider** — implements capability ports (now **WIT interfaces**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (self-hosted/Hetzner/AWS/Azure/GCP/Cloudflare/Vercel/Fly/K8s).
 - **IacProvider** — the *mechanism* a CloudProvider uses to realize resources (Pulumi/Terraform/OpenTofu/Crossplane).
-- **BuildProvider** — produces images/rootfs/**wasm components** (Dagger/Packer/Firecracker/Vagrant/jco+componentize).
+- **BuildProvider** — produces images/rootfs/**wasm components** (Dagger/Packer/Firecracker/Vagrant/jco+componentize) — the build *engine*.
 
 A CloudProvider composes the other two: it declares *what* a resource is, then emits an `IacProgram` (and optionally a `BuildSpec`) for the chosen IaC/Build adapters to execute, plus the **links** that bind components to it at runtime.
+
+**Execution-host provider categories (cost-routed by the Dispatcher).** Two more provider categories follow the same ports/adapters shape, but instead of realizing app resources they are *where work runs* — and so are selected per job by the **Dispatcher** ([ADR-0071](./adr/05-config-matching-environments.md#adr-0071)) to maximize free credits/budgets across **only the registered providers**:
+- **RunnerProvider** (`hobo:runner`) — executes CI / action jobs. Adapters: **self-hosted · GitHub Actions · Blacksmith · Depot**.
+- **BuildMachineProvider** (`hobo:build-machine`) — the host a build *runs on* (the BuildProvider engine executes on it; deepens [ADR-0005](./adr/01-architecture-core.md#adr-0005)). Adapters: **self-hosted · GitHub · Blacksmith · Depot** (Depot = remote container builds + shared cache; Blacksmith = fast runners). Default = the Executors behind the Relay ([Plan 25](./platform-engineering.md#plan-25)).
+```ts
+export interface RunnerProvider {
+  id: "self-hosted" | "github" | "blacksmith" | "depot";
+  capabilityManifest(): CapabilityManifest;        // incl. cost.json + declared free tiers/credits (Plan 5)
+  run(job: RunnerJob): Promise<RunnerResult>;       // execute a CI/action job
+}
+export interface BuildMachineProvider {
+  id: "self-hosted" | "github" | "blacksmith" | "depot";
+  capabilityManifest(): CapabilityManifest;
+  execute(build: BuildSpec): Promise<ImageRef>;     // run a BuildProvider engine on this host
+}
+```
+Both publish a Capability Manifest with `cost.json` + declared free-tier/credit facts, so the Dispatcher's `CreditLedgerView` ([Plan 5](./reliability-observability-cost.md#plan-05)) can rank them by **effective marginal cost** and record the pick as `dispatch.Decided` ([Plan 11](./event-model.md#plan-11)). Registering a runner/build-machine makes it a candidate; that is the whole integration. A missing adapter is Forge-generatable ([Plan 23](./forge-generated-stack.md#plan-23)).
 
 #### Port & provider interfaces
 ```ts

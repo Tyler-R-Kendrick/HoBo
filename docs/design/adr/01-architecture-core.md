@@ -25,7 +25,7 @@
 ## ADR-0005
 **One ports/adapters shape for cloud, IaC, and build/VM.**
 
-**Decision:** `CloudProvider`, `IacProvider`, `BuildProvider` are all swappable ports; a cloud provider composes the other two. The default **`BuildProvider` is a dagger-adjacent programmable build engine** — a DAG of containerized build steps — that **packages wasm components as OCI images by default (wasm-on-OCI)**, so `addContainer(...)` both wires *and builds* the container from one syntax. **Consequences:** uniform extensibility (incl. Forge); one build mechanism for wasm-first and container workloads; a provider must implement more surface to be "complete" ([Plan 4](../control-plane.md#plan-04)).
+**Decision:** `CloudProvider`, `IacProvider`, `BuildProvider` are all swappable ports; a cloud provider composes the other two. The default **`BuildProvider` is a dagger-adjacent programmable build engine** — a DAG of containerized build steps — that **packages wasm components as OCI images by default (wasm-on-OCI)**, so `addContainer(...)` both wires *and builds* the container from one syntax. **Consequences:** uniform extensibility (incl. Forge); one build mechanism for wasm-first and container workloads; a provider must implement more surface to be "complete" ([Plan 4](../control-plane.md#plan-04)). The build *engine* runs on a **`build-machine`** host (self-hosted/GitHub/Blacksmith/Depot) the **Dispatcher** cost-routes per build ([ADR-0071](05-config-matching-environments.md#adr-0071)).
 
 ## ADR-0006
 **IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); no single primary.**

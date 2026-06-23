@@ -93,6 +93,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Cost & metering** ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) — metering is the `MeteringView` *projection* (no per-usage events); quota decisions ride `policy.Decided`
 `spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker) · `spend.DegradationRequired` · `spend.DegradationApplied` · `spend.DegradationRolledBack` (cost-driven graceful degradation saga, [ADR-0039](./adr/04-governance-verification.md#adr-0039))
 
+**Cost routing & credits** (the Dispatcher, [ADR-0071](./adr/05-config-matching-environments.md#adr-0071)) — credit/budget state is the `CreditLedgerView` *projection*; **placement** reuses `match.Decided`, **traffic** reuses `domain.RoutingChanged`
+`dispatch.Decided` (per-job selection of a `runner`/`build-machine` provider + full ranking + objective + the credit-ledger snapshot used → "why this build/CI ran here", deterministic/replayable like `match.Decided`) · `credit.Registered` (a provider's free-tier/promo/committed allotment declared + reset window/expiry) · `credit.Reset` (a free-tier/credit window rolled over) · `credit.Exhausted` (free headroom hit zero → the Dispatcher stops preferring it; consumption itself is derived from `MeteringView`, no per-use event)
+
 **Evals & promotion** ([Plan 23](./forge-generated-stack.md#plan-23))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 

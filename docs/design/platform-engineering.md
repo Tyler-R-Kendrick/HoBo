@@ -75,7 +75,7 @@ Selection is a **pure function** of `(catalog snapshot, deploy context, objectiv
 **AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **Forge** may *generate* candidate definitions ([Plan 23](./forge-generated-stack.md#plan-23)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. (A constraint solver / LLM selector on-path was rejected — [ADR-0033](./adr/05-config-matching-environments.md#adr-0033).)
 
 ### Mapping is sugar over default definitions
-The simple `hobo.config.ts` ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate system — it **compiles to default Resource Definitions**:
+A Camp's inline mapping ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate system — it **compiles to default Resource Definitions**:
 - `defaultProvider: azure` → a `match: {}` definition per port on Azure.
 - `tiers: { saas: azure, edge: cloudflare }` → definitions matched by service model.
 - `bindings: { "shop.db": azure.cosmos({...}) }` → a definition matched by `resourceId: "shop.db"`.
@@ -99,7 +99,7 @@ Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6
 ### Environments: Camps with an environment type
 A **Camp** ([Plan 2](./sdk-api.md#plan-02)) is a **provider-specific deployment target** — one environment on one provider/cloud — that also hosts the durable runtime. Its **environment type** (`development`/`staging`/`production`/`ephemeral`/custom) is the **primary matching dimension** above: the same Bindle resolves to different infra on a `production` Camp vs an `ephemeral` one, purely via specificity. A multi-cloud `production` is **several Camps under one Yard** ([Plan 4](./control-plane.md#plan-04)), which holds the cross-provider policy. A Camp can be **cloned** from one with a prior successful deploy (`hobo env clone`), producing a draft Delta to tweak and ship (`env.Cloned`, [Plan 11](./event-model.md#plan-11)).
 ```ts
-// hobo.config.ts
+// a camp() object's inline mapping
 camps: {
   prod:    { envType: "production" },
   staging: { envType: "staging" },

@@ -35,7 +35,7 @@ This capability doc consolidates Plan 17 of the HoBo design suite.
 ### What HoBo borrows (deliberately)
 - **From Vercel Workflows:** the durable `workflow`/`step` feel and the **runtime** ports/adapters for the runtime.
 - **From Lakebed:** ruthless onboarding, machine-readable contracts (`llms.txt`), server authority — and we extend "machine-readable" from the app to *operations* (MCP).
-- **From Crossplane/Radius:** reconciliation + the dev-vs-platform separation (here: `bindle.ts` vs `hobo.config.ts`, and provider recipes/equivalence classes).
+- **From Crossplane/Radius:** reconciliation + the dev-vs-platform separation (here: the provider-agnostic `bindle()` vs provider-specific `camp()`/`yard()` scope objects, and provider recipes/equivalence classes).
 - **From Pulumi:** real-language IaC via the Automation API as our primary mechanism.
 - **From SPIFFE/OAuth/MCP-auth:** keyless workload identity + token brokering for agents.
 - **From Nitric:** the full resource catalog, inline `.allow()` → least-privilege, and Infrastructure-from-Code (default authoring) — see [Plan 21](./authoring-resources-wiring.md#plan-21).

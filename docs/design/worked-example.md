@@ -105,16 +105,17 @@ export const fulfillment = saga("fulfillment")
 `hobo dev` runs this against `@hobo/runtime-local`: Postgres in a container, a local object store, an in-memory queue. The developer drives a checkout; `hobo inspect run <id>` shows the workflow/step timeline; killing and restarting `hobo dev` **replays** the run to the same state (durability proven before any cloud).
 
 ### 2. Map to one provider ("just host it on Azure")
-`hobo.config.ts` — the *where/how*:
+A provider-specific **`camp()`** object — the *where/how* (no separate config file, [ADR-0011](./adr/01-architecture-core.md#adr-0011)):
 ```ts
-import { defineHobo } from "@hobo/core";
+import { camp } from "@hobo/sdk";
 import { azure } from "@hobo/provider-azure";
 import { postgresRuntime } from "@hobo/runtime-postgres";
+import shop from "./bindle";   // the provider-agnostic Bindle above
 
-export default defineHobo({
+export const prod = camp("prod-aws", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
   defaultProvider: azure({ region: "eastus" }),   // figure out the best hosting
-});
+}).import(shop);                                   // map the Bindle onto this provider
 ```
 ```bash
 hobo login            # dev obtains an SVID (OIDC); no cloud keys pasted
@@ -127,9 +128,9 @@ hobo deploy --camp prod --strategy canary
 Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./event-model.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
 
 ### 3. Optimize a boundary (split providers, no app edits)
-Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** `hobo.config.ts`:
+Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** the `camp()` mapping:
 ```ts
-export default defineHobo({
+export const prod = camp("prod-aws", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
   defaultProvider: azure({ region: "eastus" }),
   tiers: { edge: cloudflare.workers() },                       // storefront → edge
@@ -137,9 +138,9 @@ export default defineHobo({
     "snapshop.db": azure.cosmos({ consistency: "session" })    // pin db to Cosmos
       // app's ctx.bindings.db is still the same typed client
   },
-});
+}).import(shop);
 ```
-`bindle.ts` and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)), and connects them over mTLS keyed by workload SVIDs. `hobo deploy` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
+The `bindle()` (provider-agnostic) and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)), and connects them over mTLS keyed by workload SVIDs. `hobo deploy` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
 
 ### 4. Provider-specific tuning (the escape hatch)
 Black-Friday prep — tune just the API tier, still cloud-portable:
@@ -166,7 +167,7 @@ The team wants a niche EU host with no `@hobo/provider-*` yet:
 ```bash
 hobo forge https://niche-eu-cloud.example.com/docs
 ```
-The **Forge** generates a candidate provider, runs it sandboxed against `@hobo/conformance` for the ports snapshop uses, and on pass publishes a signed plugin to the Registry. `hobo.config.ts` can now target it like any first-party provider ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 9](./verification.md#plan-09)).
+The **Forge** generates a candidate provider, runs it sandboxed against `@hobo/conformance` for the ports snapshop uses, and on pass publishes a signed plugin to the Registry. the `camp()` mapping can now target it like any first-party provider ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 9](./verification.md#plan-09)).
 
 ### What this proves
 A single, untouched application description (`bindle.ts` + `src/`) ran locally, shipped to one cloud, split across three, was tuned per-provider, operated by an agent under guardrails, and extended to a brand-new provider — **agnostic by default, optimizable on demand, AI-native throughout, fully auditable.** That is the thesis of HoBo, demonstrated end to end.

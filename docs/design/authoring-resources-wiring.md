@@ -207,7 +207,7 @@ flowchart TD
 
 **Per-Camp binding (where values actually come from).** The Bindle declares *needs*; each Camp supplies the *source* (provider-specific), e.g.:
 ```ts
-// hobo.config.ts — Camp "prod-aws"
+// camp("prod-aws") — provider mapping (no separate config file)
 camp("prod-aws").config({
   STRIPE: fromSecretStore("aws:secretsmanager", "prod/stripe"),   // resolved via brokered token
   LOG_LEVEL: "warn",

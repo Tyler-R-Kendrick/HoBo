@@ -232,7 +232,7 @@ hobo login && hobo plan --camp prod                         # dry-run: plan + co
 hobo deploy --camp prod --strategy canary                   # provision + shift traffic
 ```
 **J2 — Agent via MCP** ([ai-native-agent-auth.md#plan-06](../design/ai-native-agent-auth.md#plan-06)): `list_templates → new → plan → deploy (brokered tokens) → inspect_run/tail_logs → self-correct`.
-**J3 — Optimize a boundary** ([worked-example.md#plan-19](../design/worked-example.md#plan-19)): split one resource onto a different provider by editing `hobo.config.ts` only — no app-code change.
+**J3 — Optimize a boundary** ([worked-example.md#plan-19](../design/worked-example.md#plan-19)): split one resource onto a different provider by changing the `camp()` mapping only — no app-code or Bindle change.
 **J4 — Platform engineer governs** ([25](../design/platform-engineering.md#plan-25)/[30](../design/contracts-policy-flags.md#plan-29)): author a Resource Definition + policy pack; matching selects it per environment; high-risk actions require approval.
 **J5 — Missing provider** ([06](../design/ai-native-agent-auth.md#plan-06)): `hobo forge <url>` generates + sandbox-certifies a provider, then it's usable like any other.
 
@@ -242,10 +242,10 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 #### Authoring & SDK ([02](../design/sdk-api.md#plan-02), [21](../design/authoring-resources-wiring.md#plan-21), [22](../design/authoring-resources-wiring.md#plan-21))
 | ID | Requirement | Pri | AC | BR |
 |---|---|---|---|---|
-| **FR-001** | Declare app topology in a provider-agnostic `bindle.ts` (resources + bindings). | M | A `bindle()` with ≥2 resources + a `bind` compiles and runs on the local Camp (`runtime-local`). | BR-001 |
+| **FR-001** | Declare app topology in a provider-agnostic `bindle()` (resources + bindings). | M | A `bindle()` with ≥2 resources + a `bind` compiles and runs on the local Camp (`runtime-local`). | BR-001 |
 | **FR-002** | Resource catalog with inline `.allow()` permissions (IfC), collected at build. | M | `hobo collect` emits a manifest matching a fixture; `.allow()` yields the expected IAM + link + token-scope triple ([09](../design/verification.md#plan-09)). | BR-001/BR-005 |
 | **FR-003** | Runtime primitives: `step`, `workflow`, `actor`, `saga`, `agent`, `sleep`/`cron`, hooks, streams. | M | hello-bindle runs a workflow + actor + saga; replay == live state. | BR-001/BR-006 |
-| **FR-004** | Separate `hobo.config.ts` (where/how) from `bindle.ts` (what). | M | Swapping the mapped provider edits only config ([ADR-0011](../design/adr/README.md)). | BR-002 |
+| **FR-004** | Separate provider-specific `camp()`/`yard()` scope objects (where/how) from the provider-agnostic `bindle()` (what). | M | Swapping the mapped provider edits only the Camp object, not the Bindle ([ADR-0011](../design/adr/README.md)). | BR-002 |
 | **FR-005** | Typed provider-specific options via `.with(...)`, inert for non-resolved providers; `require`/`prefer`. | M | The same Bindle resolves to ≥2 providers; `.with()` affects only the resolved one ([09](../design/verification.md#plan-09)). | BR-002/BR-003 |
 | **FR-006** | Mapping styles: whole-app default, per-tier, per-boundary. | M | Each style deploys the reference app. | BR-002 |
 | **FR-015** | Config & secrets load via `ctx.config` (`config()`/`secretRef()`/`env()`), resolved to **references per Camp**, **secretless-first** (bound resource via brokered token → provider secret store at use-time → bounded static fallback). | M | A secret resolves via a brokered token with **no value at rest**; `config.Resolved`/`secret.Accessed` events present; value redacted **at capture** from logs/spans/trajectories ([Plan 21](../design/authoring-resources-wiring.md#plan-21), [ADR-0027](../design/adr/02-identity-security.md#adr-0027)). | BR-005 |
@@ -316,7 +316,7 @@ hobo deploy --camp prod --strategy canary                   # provision + shift 
 
 | ID | Category | Requirement | Target / method | BR |
 |---|---|---|---|---|
-| **NFR-001** | Portability | One **unedited** Bindle deploys to multiple providers; provider details never leak into the agnostic core. "Unedited" = `bindle.ts` + app `src/` byte-identical across targets; only `hobo.config.ts`/env vary. | ≥2 providers at v1; `multi-cloud-shop` E2E asserts identical topology ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024), [03](../design/control-plane.md#plan-04)) | BR-002 |
+| **NFR-001** | Portability | One **unedited** Bindle deploys to multiple providers; provider details never leak into the agnostic core. "Unedited" = the `bindle()` definition + app `src/` byte-identical across targets; only the `camp()`/`yard()` mapping/env vary. | ≥2 providers at v1; `multi-cloud-shop` E2E asserts identical topology ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024), [03](../design/control-plane.md#plan-04)) | BR-002 |
 | **NFR-002** | Ease-of-use | Local dev with zero cloud/credentials. | `hobo dev` ≤60 s cold | BR-001 |
 | **NFR-003** | Ease-of-use | Time-to-first-deploy on the happy path. | ≤10 min p50 (E2E timing) | BR-001 |
 | **NFR-004** | Ease-of-use | Parity across surfaces: anything in the CLI/SDK is also in MCP. | Surface-parity test ([09](../design/verification.md#plan-09)) | BR-004 |
@@ -368,8 +368,8 @@ Control plane vs data plane, author→deploy→run ([10](../design/architecture.
 ```mermaid
 flowchart TB
   subgraph Author["Author time"]
-    B["bindle.ts — what (topology + .allow)"]
-    CFG["hobo.config.ts — where/how (Camps: runtime + mapping)"]
+    B["bindle() — what (topology + .allow)"]
+    CFG["camp()/yard() — where/how (runtime + mapping)"]
   end
   subgraph Yard["The Yard — control plane (event-sourced, multi-tenant)"]
     GW["Gateway: RPC / REST / MCP ingress + authz"]
@@ -419,7 +419,7 @@ From [architecture.md#plan-10](../design/architecture.md#plan-10): **core** (`@h
 | **TR-005** | `.with(provider.option(...))` is per-provider-typed and inert for non-resolved providers. | Multi-provider resolve test ([09](../design/verification.md#plan-09)) |
 | **TR-006** | The build enforces the **layering invariant** via a dependency-graph lint (e.g. `depcheck`/`madge`): no agnostic package imports a provider/iac/build package and no adapter imports another adapter; CI blocks on violation. | dep-graph lint gate ([ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024), [01](../design/architecture.md#plan-10)) |
 
-> **"Unedited" (portability definition, [ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024)):** across cloud targets, `bindle.ts` and application `src/` are **byte-identical**; only `hobo.config.ts` and CLI/env parameters may change. The `multi-cloud-shop` E2E proves it by deploying an unchanged `bindle.ts` to ≥2 providers and asserting identical resolved topology + bindings.
+> **"Unedited" (portability definition, [ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024)):** across cloud targets, the **`bindle()` definition** and application `src/` are **byte-identical**; only the **`camp()`/`yard()` mapping** and CLI/env parameters may change. The `multi-cloud-shop` E2E proves it by deploying an unchanged Bindle to ≥2 providers and asserting identical resolved topology + bindings.
 
 #### Camp runtime — durable runtime ports ([02](../design/sdk-api.md#plan-02), [24](../design/wasm-runtime-wit.md#plan-20))
 | ID | Requirement | Verified by |

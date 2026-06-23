@@ -5,7 +5,27 @@
 ## ADR-0010
 **Forge: AI-generated providers gated by conformance.**
 
-**Decision:** generate candidate providers from docs/OpenAPI/TF, certify via sandboxed conformance tests, sign + publish. **Consequences:** breaks the community-bottleneck on provider breadth; relies on a strong conformance suite as the trust boundary ([Plan 6](../ai-native-agent-auth.md#plan-06), [Plan 9](../verification.md#plan-09)).
+### Context
+Provider/implementation breadth is a community bottleneck. Forge breaks it by **synthesizing** candidates and **certifying** them against a conformance trust boundary ([Plan 6](../ai-native-agent-auth.md#plan-06), [Plan 9](../verification.md#plan-09)). This ADR defines both *what* Forge produces and *how* a candidate is synthesized, repaired, and made reproducible/trustworthy — so "generate a provider" is concrete.
+
+### Decision
+1. **Algorithm = template scaffold + LLM-fill + a conformance/trace-driven repair loop**, and the repair loop **reuses the `training-engine` optimizer** (OPTO/Trace, [ADR-0025](#adr-0025)) rather than a separate generator. Generation (cold-start) and live training ([Plan 23](../forge-generated-stack.md#plan-23)) are the two entry points of one engine.
+2. **Inputs are contract-first.** The target **WIT port + its `@hobo/conformance` suite + the backend's Capability Manifest** are *authoritative*; provider docs/OpenAPI/Terraform and recorded stub/live traces are *material* (synthesis hints + behavioral oracle). Material is treated as **untrusted data** — sanitized/scrubbed for prompt injection ([ADR-0023](02-identity-security.md#adr-0023)); it can never override the contract.
+3. **The loop is generate → validate(sandboxed, no-egress) → repair(bounded budget; exhaustion → `forge.NeedsHuman`) → certify.** Certification **signs + pins provenance** (model, frozen prompt, seed, conformance report) and **promotes via the policy gate**: low-risk auto-certify, prod/high-trust human approval.
+4. **One pipeline for three artifact kinds** — providers, implementations, and Resource Definitions/Packs — all behind existing WIT ports + the conformance boundary.
+5. **Events** `forge.Requested/CandidateGenerated/Validated/ValidationFailed/Repaired/NeedsHuman/Certified` make every step replayable/auditable.
+
+### Alternatives considered
+- **Pure-LLM synthesis, gate-only** (emit the whole artifact, then just run conformance) — rejected as the default: maximal repair burden, least determinism, larger injection surface; the scaffold + bounded repair is more reliable.
+- **Pure program-synthesis/optimization over the conformance suite (no scaffold)** — rejected: heavier and slower to a first candidate; the template makes structure deterministic so only capability logic is synthesized. (The optimizer is still used — for *repair* — so we keep its benefit.)
+- **Docs-first / trace-first authoritative inputs** — rejected: docs/OpenAPI are external/untrusted (injection risk) and traces don't exist for a cold-start provider; the contract (WIT + conformance) is the only trustworthy authority and is already the certification gate.
+- **A separate Forge generator distinct from the training-engine** — rejected: duplicates the optimizer and splits provenance; unifying them keeps "generate" and "evolve" consistent.
+
+### Consequences
+- **(+)** Breaks the community-bottleneck on provider breadth; "generate a provider/impl/definition" becomes a concrete, bounded, auditable loop — the differentiator is demonstrable, not hand-wave.
+- **(+)** Reuses the conformance trust boundary, the Firecracker+wasm no-egress sandbox, and the training-engine — minimal new machinery; contract-first + sanitized material keeps generation safe against malicious provider docs.
+- **(−)** Relies on a strong conformance suite as the trust boundary; quality also depends on the template library + the optimizer. Cold-start from docs-only (no Capability Manifest) is the riskiest path and is sequenced last.
+- **(−)** A repair budget trades thoroughness for cost ([Plan 16](../reliability-observability-cost.md#plan-16)); some artifacts will escalate to humans (`forge.NeedsHuman`) — acceptable and explicit.
 
 ## ADR-0014
 **MCP as a first-class control surface.**
@@ -41,32 +61,6 @@ HoBo lets AI implement, evolve, and live-fix WIT-port implementations ([Plan 23]
 - **(−)** Online eval (LLM-judge) and trajectory storage add runtime cost; mitigated by sampling + min-samples floors (iteration hook in [Plan 23](../forge-generated-stack.md#plan-23)).
 - **(−)** HoBo must define and version the `training-engine` WIT port and a trajectory schema, and maintain a built-in optimizer even when providers exist (the no-hard-dependency rule).
 - **(−)** A rewritable method that lacks good intent/rubric optimizes poorly — hence the lint requirement; "garbage rubric in, garbage optimization out" is a real failure mode to document.
-
-## ADR-0030
-**Forge generation: inputs & algorithm.**
-
-### Context
-ADR-0010 establishes that Forge artifacts are **gated by conformance**; ADR-0025 establishes a `training-engine` that optimizes live `"use training"` implementations. This ADR specifies **how a candidate is synthesized in the first place** — the inputs it trusts, how it's repaired toward passing, and how the result is made reproducible/trustworthy — so "generate a provider" is concrete.
-
-### Decision
-1. **Algorithm = template scaffold + LLM-fill + a conformance/trace-driven repair loop**, and the repair loop **reuses the `training-engine` optimizer** (OPTO/Trace, ADR-0025) rather than a separate generator. Generation (cold-start) and live training (Plan 23) are the two entry points of one engine.
-2. **Inputs are contract-first.** The target **WIT port + its `@hobo/conformance` suite + the backend's Capability Manifest** are *authoritative*; provider docs/OpenAPI/Terraform and recorded stub/live traces are *material* (synthesis hints + behavioral oracle). Material is treated as **untrusted data** — sanitized/scrubbed for prompt injection (ADR-0023); it can never override the contract.
-3. **The loop is generate → validate(sandboxed, no-egress) → repair(bounded budget; exhaustion → `forge.NeedsHuman`) → certify.** Certification **signs + pins provenance** (model, frozen prompt, seed, conformance report) and **promotes via the existing policy gate** (ADR-0010): low-risk auto-certify, prod/high-trust human approval.
-4. **One pipeline for three artifact kinds** — providers, implementations, and Resource Definitions/Packs — all behind existing WIT ports + the conformance boundary.
-5. **Events** `forge.Requested/CandidateGenerated/Validated/ValidationFailed/Repaired/NeedsHuman/Certified` make every step replayable/auditable.
-
-### Alternatives considered
-- **Pure-LLM synthesis, gate-only** (emit the whole artifact, then just run conformance) — rejected as the default: maximal repair burden, least determinism, larger injection surface; the scaffold + bounded repair is more reliable.
-- **Pure program-synthesis/optimization over the conformance suite (no scaffold)** — rejected: heavier and slower to a first candidate; the template makes structure deterministic so only capability logic is synthesized. (The optimizer is still used — for *repair* — so we keep its benefit.)
-- **Docs-first / trace-first authoritative inputs** — rejected: docs/OpenAPI are external/untrusted (injection risk) and traces don't exist for a cold-start provider; the contract (WIT + conformance) is the only trustworthy authority and is already the certification gate.
-- **A separate Forge generator distinct from the training-engine** — rejected: duplicates the optimizer and splits provenance; unifying them keeps "generate" and "evolve" consistent.
-
-### Consequences
-- **(+)** "Generate a provider/impl/definition" becomes a concrete, bounded, auditable loop; the differentiator is demonstrable, not hand-wave.
-- **(+)** Reuses the conformance trust boundary, the Firecracker+wasm no-egress sandbox, and the training-engine — minimal new machinery.
-- **(+)** Contract-first + sanitized material keeps generation safe against malicious provider docs.
-- **(−)** Quality depends on the template library + the optimizer; cold-start from docs-only (no Capability Manifest) is the riskiest path and is sequenced last.
-- **(−)** A repair budget trades thoroughness for cost ([Plan 16](../reliability-observability-cost.md#plan-16)); some artifacts will escalate to humans (`forge.NeedsHuman`) — acceptable and explicit.
 
 ## ADR-0048
 **Persisted code-mutation mechanism (for `"use training"` promotion).**

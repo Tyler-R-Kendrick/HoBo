@@ -3,19 +3,16 @@
 > Consolidated ADR decisions for **governance, verification, slo & cost**. Each section is one architecture decision; see [`README.md`](./README.md) for the full ADR index.
 
 ## ADR-0015
-**Contracts & policy are HoBo-native planes; PACT-style contract testing is built-in.**
+**Contracts & policy are HoBo-native planes; a single `can-deploy`/Gatekeeper gate composes the checks; obligations are durable effects.**
 
-**Decision:** consumer-driven contracts/compatibility ([Plan 29](../contracts-policy-flags.md#plan-29)) and policy decisions ([Plan 30](../contracts-policy-flags.md#plan-30)) are first-class. The `contract-engine` runs **PACT-style consumer-driven contract testing as the built-in, default behavior** — an internal implementation detail of the contract plane, never a user-facing option to swap; developers declare contracts and never touch PACT directly. The `policy-engine` is a built-in HoBo engine; policy is **typed TypeScript** by default. **Consequences:** compatibility is verified by construction with no extra wiring; HoBo owns the Contract/Policy IR; ecosystems integrate via adapters with no hard dep. (Resolves ADR-P3.)
+**Decision:** consumer-driven contracts/compatibility ([Plan 29](../contracts-policy-flags.md#plan-29)) and policy decisions ([Plan 30](../contracts-policy-flags.md#plan-30)) are first-class, HoBo-native planes; engines sit behind ports.
 
-## ADR-0016
-**A single `can-deploy`/Gatekeeper gate composes all checks.**
+1. **Contract plane.** The `contract-engine` runs **PACT-style consumer-driven contract testing as the built-in, default behavior** — an internal implementation detail of the contract plane, never a user-facing option to swap; developers declare contracts and never touch PACT directly. Compatibility is verified by construction with no extra wiring. HoBo owns the Contract IR; ecosystems integrate via adapters with no hard dep.
+2. **Policy plane.** The `policy-engine` is a built-in HoBo engine; policy is **typed TypeScript** by default, and HoBo owns the Policy IR.
+3. **One Gatekeeper gate composes everything.** Deployability is a single explainable decision — contracts-compatible AND policy-allows/approves AND eval-gates-pass AND conformance AND within-cost AND signed/attested — evaluated at Delta→Set/promote and surfaced as `hobo verify` ([Plan 29](../contracts-policy-flags.md#plan-29)/[Plan 26](../platform-engineering.md#plan-26)). One event-sourced decision replaces scattered CI gates.
+4. **Obligations are durable effects, not advice.** An "allow but require X" obligation (canary/approval/auth/shadow-eval) is realized as a HoBo effect/saga and tracked `ObligationCreated→Satisfied`; an unmet obligation blocks ([Plan 30](../contracts-policy-flags.md#plan-30)/[Plan 5](../reliability-observability-cost.md#plan-05)).
 
-**Decision:** deployability = contracts-compatible AND policy-allows/approves AND eval-gates-pass AND conformance AND within-cost AND signed/attested, evaluated at Delta→Set/promote and surfaced as `hobo verify` ([Plan 29](../contracts-policy-flags.md#plan-29)/[Plan 26](../platform-engineering.md#plan-26)). **Consequences:** one explainable, event-sourced decision instead of scattered CI gates.
-
-## ADR-0017
-**Policy obligations are durable effects, not advice.**
-
-**Decision:** an "allow but require X" obligation (canary/approval/auth/shadow-eval) is realized as a HoBo effect/saga and tracked `ObligationCreated→Satisfied`; an unmet obligation blocks ([Plan 30](../contracts-policy-flags.md#plan-30)/[Plan 5](../reliability-observability-cost.md#plan-05)). **Consequences:** governance is enforced by construction, fully auditable.
+**Consequences:** compatibility and governance are enforced by construction and fully auditable — one event-sourced gate, durable obligations, and HoBo-owned IRs with engines behind ports. (Resolves ADR-P3.)
 
 ## ADR-0044
 **Feature flags & progressive delivery.**
@@ -169,38 +166,16 @@ HoBo's differentiator is AI everywhere: trainable methods, the Forge, the Operat
 - **(−)** Model cards encode an interpretation of evolving standards; like compliance bundles they are evidence, not legal certification.
 
 ## ADR-0039
-**Metering, quota & cost attribution.**
+**Metering, quota, cost attribution & cost-driven availability.**
 
 ### Context
-The platform **attributes cloud cost**, enforces **quotas**, and guards against **runaway spend** — independent of any commercial model. Money-movement (billing/invoicing/chargeback) is out of scope ([ADR-0064](08-scope-and-requirements.md#adr-0064)); this ADR is **FinOps / cost-safety**, not billing. [Plan 16](../reliability-observability-cost.md#plan-16) carries plan-time cost estimation, soft/hard **budgets**, **agent spend-caps**, and a **provider-resilience circuit-breaker**; this ADR adds the **metering** model (what's measurable + how), **quota** enforcement beyond budget alerts, a **runaway-spend** safeguard, and a **cost-attribution / showback** pipeline. HoBo charges no money and ships no billing ([ADR-0064](08-scope-and-requirements.md#adr-0064)); this is purely cost visibility + safety.
+The platform **attributes cloud cost**, enforces **quotas**, guards against **runaway spend**, and uses **cost as an availability lever** — independent of any commercial model. Money-movement (billing/invoicing/chargeback) is out of scope ([ADR-0064](08-scope-and-requirements.md#adr-0064)); this ADR is **FinOps / cost-safety**, not billing. [Plan 16](../reliability-observability-cost.md#plan-16) carries plan-time cost estimation, soft/hard **budgets**, **agent spend-caps**, and a **provider-resilience circuit-breaker**; this ADR adds the **metering** model (what's measurable + how), **quota** enforcement beyond budget alerts, a **runaway-spend** safeguard, a **cost-attribution / showback** pipeline, and the **cost↔availability link** that ties cost controls to the availability machinery ([Plan 5](../reliability-observability-cost.md#plan-05): leases/fencing, replication, circuit breakers, canary/auto-rollback, drift). For an AI-native control plane the right primitive is *"hold this availability target **within** this budget,"* not "pick one" — without the linkage, cost controls can themselves *cause* outages (a tripped breaker hangs requests) and the Planner would minimize cost unbounded by any availability floor.
 
 ### Decision
 1. **Metering is an event-sourced projection.** A **`MeteringView`** folds **usage/cost counters** from the event log HoBo already keeps — `deployment.*`, `run.*`, `resource.*`, `forge.*`, `token.*`, and egress ([Plan 13](../security-networking.md#plan-13)/[Plan 16](../reliability-observability-cost.md#plan-16)) — across a small dimension set: **control-plane operations, runtime-compute-seconds, storage-GB, egress-GB, and Forge-runs**. No new instrumentation; the view is auditable, replayable, and rebuildable from zero like every projection ([Plan 11](../event-model.md#plan-11)), so **every cost figure traces to facts**.
 2. **Quotas + a runaway-spend circuit-breaker run through the policy plane.** A metered counter crossing a threshold produces a **`policy.Decided`** ([Plan 30](../contracts-policy-flags.md#plan-30)): **soft** → warn/alert obligation; **hard** → **deny at the gate** (block the spend-incurring action — deploy / agent provisioning / Forge run). Excess **spend *velocity*** trips a **durable spend circuit-breaker** — a saga obligation reusing the breaker pattern from [Plan 5](../reliability-observability-cost.md#plan-05) — that **halts spend-incurring actions until acknowledged/reset**. The existing **agent spend-caps** ([Plan 6](../ai-native-agent-auth.md#plan-06)/[Plan 16](../reliability-observability-cost.md#plan-16)) generalize to **tenant / Camp** quotas.
 3. **Showback (cost attribution, not money).** Cost is attributed by the dimensions already in the event envelope — **tenant → Camp → Bindle → run/agent/team** — and surfaced as **showback** (visibility). The cost/showback/allocation abstraction is **modeled on the [OpenCost](https://opencost.io) open standard** (the CNCF cost-allocation spec) so figures are portable and interoperate with existing FinOps tooling rather than being a bespoke shape. It is OSS-core and self-hostable like the rest of the platform; there is no chargeback/invoicing.
-4. **Events:** `spend.CircuitTripped` · `spend.CircuitReset`. **Quota decisions ride the existing `policy.Decided`**; metering itself is a projection (no per-usage events).
-
-### Alternatives considered
-- **A separate metering pipeline (independent instrumentation).** Rejected: duplicates what the log records and risks drift between "what happened" and "what was metered"; the projection is the source-of-truth-consistent answer.
-- **A bespoke quota subsystem** separate from the policy plane. Rejected: duplicates the decision model + gates and splits "why was this blocked" across two systems.
-- **Soft alerts only (no hard enforcement).** Rejected: no protection against runaway spend (a looping agent racking up cost).
-
-### Consequences
-- **(+)** The platform can meter, quota, protect against runaway spend, and attribute cost — all from the existing log + policy plane, with auditable figures.
-- **(+)** Reuses the event log/projection model ([Plan 11](../event-model.md#plan-11)), the policy plane + obligations ([Plan 30](../contracts-policy-flags.md#plan-30)), the circuit-breaker pattern ([Plan 5](../reliability-observability-cost.md#plan-05)), and agent spend-caps ([Plan 6](../ai-native-agent-auth.md#plan-06)) — little new machinery (a projection + two events).
-- **(−)** Metering fidelity depends on the cost-dimension model; mapping raw events → fair, intuitive counters is ongoing work.
-- **(−)** A spend circuit-breaker that halts actions is a sharp safeguard: its velocity thresholds need tuning to avoid false trips while still catching real runaways.
-
-## ADR-0066
-**Availability through cost controls: cost-driven graceful degradation & SLO-aware cost/availability trade-offs.**
-
-### Context
-HoBo has strong **availability** machinery ([Plan 5](../reliability-observability-cost.md#plan-05): leases/fencing, replication, circuit breakers, canary/auto-rollback, drift) and strong **cost** machinery ([Plan 16](../reliability-observability-cost.md#plan-16)/[ADR-0039](#adr-0039): plan-time estimates, budgets, agent spend-caps, a runaway-spend circuit-breaker, showback). This ADR links them. For an AI-native control plane the right primitive is *"hold this availability target **within** this budget,"* not "pick one." Without the linkage, cost controls can themselves *cause* outages (a tripped breaker hangs requests) and the Planner would minimize cost unbounded by any availability floor; so cost becomes an availability lever rather than a blunt guard.
-
-### Decision
-Treat **cost as an availability lever**: cost controls **shed quality-of-service gracefully** before they ever hard-stop, and provisioning optimizes cost **within** an availability floor.
-
-1. **`costAvailabilityProfile` per Camp/Bindle.** A declarative profile binds a budget to an availability target with ordered **degradation tiers**:
+4. **Cost is an availability lever: graceful degradation before hard-stop.** Cost controls **shed quality-of-service gracefully** rather than hard-stopping, and provisioning optimizes cost **within** an availability floor. A declarative **`costAvailabilityProfile`** per Camp/Bindle binds a budget to an availability target with ordered **degradation tiers**:
    ```ts
    costAvailability({
      budgetUsd: 5000,                 // period hard cap
@@ -213,23 +188,21 @@ Treat **cost as an availability lever**: cost controls **shed quality-of-service
      strategy: "shed-low-priority-first",   // | "degrade-all" | "fail-closed"
    })
    ```
-   Resources/handlers carry a **`priority`/criticality** label (`critical`|`standard`|`low`); tiers shed lowest-priority load first.
-2. **Spend velocity is a policy dimension.** The `MeteringView` ([ADR-0039](#adr-0039)) feeds **real-time spend velocity** to the policy plane ([Plan 30](../contracts-policy-flags.md#plan-30)); a decision can ask *"at this velocity, do we cross tier N before period end?"* A **`policy.Decided`** yields: `allow` (fits nominal) · **`allow-degraded`** + obligation (*"enter reduced tier; shed batch"*) · `deny`/`fail-closed` (would breach the hard cap).
-3. **Graceful degradation is a durable saga obligation, not a halt.** Crossing a tier emits **`spend.DegradationRequired`**; the **SRE operator** ([Plan 40](../operators-sre.md#plan-40)) + runtime enforce it by composing existing levers — **scale-to-zero** non-critical workloads ([Plan 16](../reliability-observability-cost.md#plan-16) wasm economics), **feature-flag shed** ([Plan 37](../contracts-policy-flags.md#plan-37)), **cache-TTL increase / expensive-query shed**, **request-priority shedding** (an honest `503` + `Retry-After` to low-priority callers, never a silent hang), and **canary hold**. The **runaway-spend circuit-breaker becomes the last resort** *after* graceful tiers are exhausted — degradation is the path *to* it, not a synonym for it. Recovery emits **`spend.DegradationRolledBack`** (restore the higher tier when velocity falls).
-4. **SLO-bounded cost optimization at plan-time.** The Planner objective ([ADR-0033](05-config-matching-environments.md#adr-0033)) becomes *"minimize cost **subject to** the availability floor"* — pick the cheapest realization that still meets `availabilitySlo` (e.g. cheapest provider/topology that satisfies the target), not unbounded min-cost. The cost **and** the SLO rationale are recorded in `match.Decided`/`deployment.Planned`.
-5. **Incident tie-in.** A cost-induced degradation is a first-class incident class ([Plan 44](../operators-sre.md#plan-44)): the SRE operator may *propose* cost-efficient remediation (*"hold 99% to stay under budget while the leak is fixed"*) as a gated obligation, and postmortem-by-replay shows exactly which load was shed and when.
-
-**Events:** `spend.DegradationRequired` · `spend.DegradationApplied` · `spend.DegradationRolledBack` (ride the existing `policy.Decided` + saga/obligation model; no new engine).
+   Resources/handlers carry a **`priority`/criticality** label (`critical`|`standard`|`low`); tiers shed lowest-priority load first. The `MeteringView` feeds **real-time spend velocity** into the policy plane, so a `policy.Decided` can ask *"at this velocity, do we cross tier N before period end?"* and yield `allow` (fits nominal) · **`allow-degraded`** + obligation (*"enter reduced tier; shed batch"*) · `deny`/`fail-closed` (would breach the hard cap). Crossing a tier is a **durable saga obligation, not a halt** (`spend.DegradationRequired`): the **SRE operator** ([Plan 40](../operators-sre.md#plan-40)) + runtime enforce it by composing existing levers — **scale-to-zero** non-critical workloads ([Plan 16](../reliability-observability-cost.md#plan-16) wasm economics), **feature-flag shed** ([Plan 37](../contracts-policy-flags.md#plan-37)), **cache-TTL increase / expensive-query shed**, **request-priority shedding** (an honest `503` + `Retry-After` to low-priority callers, never a silent hang), and **canary hold**. The **runaway-spend circuit-breaker (point 2) is the last resort** *after* graceful tiers are exhausted — degradation is the path *to* it, not a synonym for it; recovery emits `spend.DegradationRolledBack` when velocity falls. The Planner objective ([ADR-0033](05-config-matching-environments.md#adr-0033)) becomes *"minimize cost **subject to** the availability floor"* — the cheapest realization (provider/topology) that still meets `availabilitySlo`, with the cost **and** SLO rationale recorded in `match.Decided`/`deployment.Planned`. A cost-induced degradation is a first-class incident class ([Plan 44](../operators-sre.md#plan-44)): the SRE operator may *propose* cost-efficient remediation (*"hold 99% to stay under budget while the leak is fixed"*) as a gated obligation, and postmortem-by-replay shows exactly which load was shed and when.
+5. **Events:** `spend.CircuitTripped` · `spend.CircuitReset` · `spend.DegradationRequired` · `spend.DegradationApplied` · `spend.DegradationRolledBack`. **Quota + degradation decisions ride the existing `policy.Decided`** + saga/obligation model (no new engine); metering itself is a projection (no per-usage events).
 
 ### Alternatives considered
+- **A separate metering pipeline (independent instrumentation).** Rejected: duplicates what the log records and risks drift between "what happened" and "what was metered"; the projection is the source-of-truth-consistent answer.
+- **A bespoke quota subsystem** separate from the policy plane. Rejected: duplicates the decision model + gates and splits "why was this blocked" across two systems.
+- **Soft alerts only (no hard enforcement).** Rejected: no protection against runaway spend (a looping agent racking up cost).
 - **Keep cost and availability independent.** Rejected: the breaker can cause the outage it's meant to prevent, and the Planner has no availability floor — the exact "availability through cost controls" gap.
-- **Hard-stop on budget only (no tiers).** Rejected: turns a cost event into a binary outage; tiers + priority shedding preserve critical traffic.
-- **A new cost-degradation engine.** Rejected: reuse the policy plane (obligations), feature flags, the SRE operator, scale-to-zero, and the spend circuit-breaker — this ADR is a composition + schema, not new runtime.
+- **Hard-stop on budget only (no degradation tiers).** Rejected: turns a cost event into a binary outage; tiers + priority shedding preserve critical traffic.
+- **A new cost-degradation engine.** Rejected: reuse the policy plane (obligations), feature flags, the SRE operator, scale-to-zero, and the spend circuit-breaker — the cost↔availability link is a composition + schema, not new runtime.
 
 ### Consequences
-- **(+)** Realizes **availability through cost controls**: agents/operators can target *"99.9% within $5k,"* and cost pressure degrades QoS gracefully instead of failing.
-- **(+)** Reuses existing machinery (policy obligations, flags, SRE operator, Planner objective, `MeteringView`, circuit-breaker) — minimal new surface (a profile + three events + a Planner constraint).
+- **(+)** The platform can meter, quota, protect against runaway spend, attribute cost, and **hold an availability target within a budget** — all from the existing log + policy plane, with auditable figures; agents/operators can target *"99.9% within $5k,"* and cost pressure degrades QoS gracefully instead of failing.
+- **(+)** Reuses the event log/projection model ([Plan 11](../event-model.md#plan-11)), the policy plane + obligations ([Plan 30](../contracts-policy-flags.md#plan-30)), the circuit-breaker pattern ([Plan 5](../reliability-observability-cost.md#plan-05)), feature flags, the SRE operator, the Planner objective, and agent spend-caps ([Plan 6](../ai-native-agent-auth.md#plan-06)) — little new machinery (a projection + a profile + a Planner constraint + the `spend.*` events).
 - **(+)** Honest failure modes (priority shedding + `503`+`Retry-After`) instead of silent hangs under budget pressure.
+- **(−)** Metering fidelity depends on the cost-dimension model; mapping raw events → fair, intuitive counters is ongoing work.
+- **(−)** A spend circuit-breaker that halts actions is a sharp safeguard, and tier thresholds + velocity windows need tuning to avoid false trips and flapping between tiers while still catching real runaways.
 - **(−)** Degradation tiers + priority labels are new authoring surface; sensible defaults (one nominal tier, fail-closed) keep it optional.
-- **(−)** Tier thresholds + velocity windows need tuning to avoid flapping between tiers (shared with the [ADR-0039](#adr-0039) breaker tuning).
-- **(↔)** Extends [Plan 16](../reliability-observability-cost.md#plan-16) (a cost/availability section), [Plan 5](../reliability-observability-cost.md#plan-05) (degradation as a reliability strategy), and the [Plan 11](../event-model.md#plan-11) event catalog.

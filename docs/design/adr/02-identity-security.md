@@ -113,7 +113,7 @@ Local dev needs to skip real authentication — no IdP round-trips, works offlin
 **Dev auth is a contract-satisfied fixture, not a disabled check.**
 1. The `auth` port carries a **consumer-driven contract** describing the principal/claims the app expects (subject, roles, tenancy, scopes). It is the same contract the app declares for prod.
 2. In **`hobo dev`**, the runtime satisfies that contract with a **contract-asserted dev principal** — a fixture identity generated to match the contract — instead of calling a real IdP. Auth still "runs"; it's just fulfilled by the contract fixture. The developer can override claims per-request/session (e.g. assume a role/tenant) within what the contract allows, making role/tenancy testing first-class.
-3. **The same contract is enforced at `can-deploy`** ([ADR-0016](04-governance-verification.md#adr-0016)): a real IdP/Camp must satisfy the identical `auth` contract, so dev and prod are **contract-equivalent** — the bypass cannot drift from production semantics.
+3. **The same contract is enforced at `can-deploy`** ([ADR-0016](04-governance-verification.md#adr-0015)): a real IdP/Camp must satisfy the identical `auth` contract, so dev and prod are **contract-equivalent** — the bypass cannot drift from production semantics.
 4. **Deny-by-default still holds** ([ADR-0069](01-architecture-core.md#adr-0069)): the dev principal only obtains the capabilities granted by `.allow()`/links. Bypassing *authentication* never bypasses *authorization*.
 
 ### Alternatives considered

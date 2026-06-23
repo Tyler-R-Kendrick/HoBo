@@ -91,7 +91,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **`policy.Decided`** (effect + evidence + obligations) · `policy.ViolationDetected` · `policy.WaiverRequested` · `policy.WaiverApproved` · `policy.ObligationCreated` · `policy.ObligationSatisfied`
 
 **Cost & metering** ([Plan 16](./reliability-observability-cost.md#plan-16)/[ADR-0039](./adr/04-governance-verification.md#adr-0039)) — metering is the `MeteringView` *projection* (no per-usage events); quota decisions ride `policy.Decided`
-`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker) · `spend.DegradationRequired` · `spend.DegradationApplied` · `spend.DegradationRolledBack` (cost-driven graceful degradation saga, [ADR-0066](./adr/04-governance-verification.md#adr-0066))
+`spend.CircuitTripped` · `spend.CircuitReset` (runaway-spend breaker) · `spend.DegradationRequired` · `spend.DegradationApplied` · `spend.DegradationRolledBack` (cost-driven graceful degradation saga, [ADR-0066](./adr/04-governance-verification.md#adr-0039))
 
 **Evals & promotion** ([Plan 23](./forge-generated-stack.md#plan-23))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
@@ -142,7 +142,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Registry distribution** ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)) — a governed lifecycle over already-signed/certified artifacts; install ≠ force (Matching binds)
 `listing.Published` · `listing.Certified` (signed + `@hobo/conformance`-passed + provenance — uncertified ⇒ unlisted) · `listing.Installed` (extends `provider.Registered`/`pack.Imported`/`forge.Certified`) · `listing.Yanked` (compromised/broken version pulled; installed copies flagged by `hobo doctor`, not silently broken)
 
-**Derivatives** ([Plan 43](./forge-generated-stack.md#plan-43)/[ADR-0068](./adr/07-portability-extensibility.md#adr-0068)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
+**Derivatives** ([Plan 43](./forge-generated-stack.md#plan-43)/[ADR-0068](./adr/07-portability-extensibility.md#adr-0057)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
 `derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed`
 
 ### Projections (read models)

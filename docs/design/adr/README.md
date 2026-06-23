@@ -26,18 +26,15 @@
 | 0003 | Event sourcing + CQRS as the foundation | [architecture-core](01-architecture-core.md#adr-0003) |
 | 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
 | 0005 | One ports/adapters shape for cloud, IaC & build (dagger-adjacent, wasm-on-OCI) | [architecture-core](01-architecture-core.md#adr-0005) |
-| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); no single primary | [architecture-core](01-architecture-core.md#adr-0006) |
+| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); per-resource stacks | [architecture-core](01-architecture-core.md#adr-0006) |
 | 0007 | Provider-specific options via an idiomatic typed-options builder (`.with(...)`) | [architecture-core](01-architecture-core.md#adr-0007) |
 | 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
-| 0010 | Forge: AI-generated providers gated by conformance | [ai-generation-operators](06-ai-generation-operators.md#adr-0010) |
+| 0010 | Forge: generation pipeline (inputs + algorithm) gated by conformance | [ai-generation-operators](06-ai-generation-operators.md#adr-0010) |
 | 0011 | Scopes are first-class SDK objects (bindle/camp/yard/junction), not files | [architecture-core](01-architecture-core.md#adr-0011) |
 | 0012 | Credential-scoped executors; isolation tier chosen per workload | [identity-security](02-identity-security.md#adr-0012) |
-| 0013 | Per-resource IaC stacks (default) | [architecture-core](01-architecture-core.md#adr-0013) |
 | 0014 | MCP as a first-class control surface | [ai-generation-operators](06-ai-generation-operators.md#adr-0014) |
-| 0015 | Contracts & policy are HoBo-native planes; engines sit behind ports | [governance-verification](04-governance-verification.md#adr-0015) |
-| 0016 | A single `can-deploy`/Gatekeeper gate composes all checks | [governance-verification](04-governance-verification.md#adr-0016) |
-| 0017 | Policy obligations are durable effects, not advice | [governance-verification](04-governance-verification.md#adr-0017) |
+| 0015 | Contracts & policy planes, the Gatekeeper gate & durable obligations | [governance-verification](04-governance-verification.md#adr-0015) |
 | 0018 | Requirements-artifact structure & traceability scheme | [scope-and-requirements](08-scope-and-requirements.md#adr-0018) |
 | 0019 | Persona prioritization / primary ICP | [scope-and-requirements](08-scope-and-requirements.md#adr-0019) |
 | 0021 | NFR baselines / committed SLOs for v1 | [scope-and-requirements](08-scope-and-requirements.md#adr-0021) |
@@ -48,8 +45,7 @@
 | 0027 | Secretless-first configuration & secrets | [identity-security](02-identity-security.md#adr-0027) |
 | 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | [config-matching-environments](05-config-matching-environments.md#adr-0028) |
 | 0029 | Reactive / live-query model (event-log reactor) | [data-plane](03-data-plane.md#adr-0029) |
-| 0030 | Forge generation: inputs & algorithm | [ai-generation-operators](06-ai-generation-operators.md#adr-0030) |
-| 0031 | wasm host of record & runtime substrate | [architecture-core](01-architecture-core.md#adr-0031) |
+| 0031 | wasm host of record, runtime substrate & component-host portability | [architecture-core](01-architecture-core.md#adr-0031) |
 | 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective) | [config-matching-environments](05-config-matching-environments.md#adr-0033) |
 | 0034 | Generalized, extensible search capability (vector/graph as extensions) | [data-plane](03-data-plane.md#adr-0034) |
@@ -57,7 +53,7 @@
 | 0036 | Air-gapped / sovereign Yard mode | [portability-extensibility](07-portability-extensibility.md#adr-0036) |
 | 0037 | SDK codegen surface & policy | [config-matching-environments](05-config-matching-environments.md#adr-0037) |
 | 0038 | End-user / application auth | [identity-security](02-identity-security.md#adr-0038) |
-| 0039 | Metering, quota & cost attribution | [governance-verification](04-governance-verification.md#adr-0039) |
+| 0039 | Metering, quota, cost attribution & cost-driven availability | [governance-verification](04-governance-verification.md#adr-0039) |
 | 0040 | Cross-Camp stateful consistency | [config-matching-environments](05-config-matching-environments.md#adr-0040) |
 | 0041 | Migration & onboarding (adopt-in-place) | [portability-extensibility](07-portability-extensibility.md#adr-0041) |
 | 0042 | Local-dev fidelity (simulate / mock / Camp-only) | [portability-extensibility](07-portability-extensibility.md#adr-0042) |
@@ -75,7 +71,7 @@
 | 0054 | Operator Agents (the Crew): built-in autonomous Yard services | [ai-generation-operators](06-ai-generation-operators.md#adr-0054) |
 | 0055 | The generated stack: a layered model for AI generation/self-healing/persistence | [ai-generation-operators](06-ai-generation-operators.md#adr-0055) |
 | 0056 | App/UI generation (design.md · OpenUI · json-render · mcp-apps · `ui-render`) | [ai-generation-operators](06-ai-generation-operators.md#adr-0056) |
-| 0057 | Patchability as a first-class guarantee (distinct from portability) | [portability-extensibility](07-portability-extensibility.md#adr-0057) |
+| 0057 | Patchability & derivative upgrade paths (distinct from portability) | [portability-extensibility](07-portability-extensibility.md#adr-0057) |
 | 0058 | SRE: incident management, runbooks & the self-healing decision model | [ai-generation-operators](06-ai-generation-operators.md#adr-0058) |
 | 0059 | App communications: the `notify` family over the shared receiver port | [data-plane](03-data-plane.md#adr-0059) |
 | 0060 | Compliance & data governance as a plane over the existing planes | [governance-verification](04-governance-verification.md#adr-0060) |
@@ -84,8 +80,5 @@
 | 0063 | Single scope: the whole designed surface ships together | [scope-and-requirements](08-scope-and-requirements.md#adr-0063) |
 | 0064 | Scope: AI-native meta-cloud (remove business/monetization; keep app generation) | [scope-and-requirements](08-scope-and-requirements.md#adr-0064) |
 | 0065 | Streaming-first: RX subscribable materializations as the default read surface | [data-plane](03-data-plane.md#adr-0065) |
-| 0066 | Availability through cost controls: cost-driven graceful degradation & SLO-aware cost/availability trade-offs | [governance-verification](04-governance-verification.md#adr-0066) |
-| 0067 | Component-host portability: conformance + version pinning across hosts | [architecture-core](01-architecture-core.md#adr-0067) |
-| 0068 | Derivative upgrade paths: seam versioning & compat for forks/patches | [portability-extensibility](07-portability-extensibility.md#adr-0068) |
 | 0069 | The runtime & membrane: WIT-interface providers over wRPC, thin SDK | [architecture-core](01-architecture-core.md#adr-0069) |
 | 0070 | Dev-mode auth bypass via integrated contract testing | [identity-security](02-identity-security.md#adr-0070) |

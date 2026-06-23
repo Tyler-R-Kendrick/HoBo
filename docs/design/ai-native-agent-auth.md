@@ -163,7 +163,7 @@ flowchart LR
 
 **Conformance tests are the trust boundary** that makes AI-generated extensibility safe — a plugin is only as trusted as the contract tests it passed, and the signed report is part of its Registry record.
 
-> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-33)** ([ADR-0030](./adr/06-ai-generation-operators.md#adr-0030)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
+> **The generation/repair loop is specified in detail in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-33)** ([ADR-0030](./adr/06-ai-generation-operators.md#adr-0010)): the sketch above is **contract-first** (the WIT port + conformance suite + Capability Manifest are authoritative; docs/OpenAPI/TF are *sanitized hints*), the "feed failures back" step is the **`training-engine` optimizer** ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)) under a **bounded repair budget** (exhaustion → `forge.NeedsHuman`), and the same loop generates **providers, implementations, and Resource Definitions** — not just providers.
 
 ---
 

@@ -32,6 +32,7 @@ export interface EventEnvelope<T = unknown> {
   causationId?: string;  // the command/event that directly caused this
   correlationId?: string;// the saga / deploy / run this belongs to
   data: T;               // typed payload
+  lane?: string;         // sandbox-lane id (signed, principal/tenant-bound); absent = baseline — dispatch filters on it, deny-by-default (ADR-0076)
   meta?: Record<string, unknown>; // tracing (traceparent), idempotency keys
 }
 ```
@@ -78,7 +79,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Links & WIT-boundary calls** (the trace stream powering AI implement/evolve/live-fix, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 23](./forge-generated-stack.md#plan-23))
 `link.Established` (carries the **boundary mode** — `live`/`mock`/`record`/`replay`/`fork`/`shadow`/`fault` — for boundary virtualization, [ADR-0076](./adr/04-governance-verification.md#adr-0076)) · `link.Called` · `stub.Recorded` · `impl.Generated` · `impl.Certified` · `impl.Promoted` · `livefix.Proposed` · `livefix.Applied` · `livefix.RolledBack`
 
-> **Boundary virtualization & sandbox lanes** ([ADR-0076](./adr/04-governance-verification.md#adr-0076)) add **no new families**: a sandbox lane is an `env.*` overlay (`env.Cloned`/`env.Reaped`), selector routing rides `policy.Decided`, the boundary mode rides `link.Established` (above), `shadow` rides `impl.Shadowed`/`eval.*`, and `fault` rides `chaos.*` — so a test/preview/self-heal/chaos run is replayable like everything else.
+> **Boundary virtualization & sandbox lanes** ([ADR-0076](./adr/04-governance-verification.md#adr-0076)) add **no new families** but **two envelope/routing rules**: (1) the **`EventEnvelope` carries `lane`** (a signed, principal/tenant-bound lane token) and **every subscriber/Reactor/saga/queue dispatch filters by lane, deny-by-default** — a baseline subscriber **ignores** lane events (so a forked service's emitted event can't drive a baseline subscriber to mutate real state), a lane subscriber gets lane events + baseline read-through; (2) **routing is the membrane-enforced signed token, *not* a per-request `policy.Decided`** (that is a deploy/gate-time fact). A sandbox lane is otherwise an `env.*` overlay; the boundary mode rides `link.Established`, `shadow` rides `impl.Shadowed`/`eval.*`, `fault` rides `chaos.*`. **Lane-origin events are tagged with the lane id and excluded by default** from observed-contract promotion ([Plan 29](./contracts-policy-flags.md#plan-29)), training trajectories ([Plan 23](./forge-generated-stack.md#plan-23)), and tenant metering rollups ([ADR-0039](./adr/04-governance-verification.md#adr-0039)). A lane run is replayable **only** with its baseline read-through recorded (value + observed `seq`).
 
 **Platform config & matching** (Resource Definitions, [Plan 25](./platform-engineering.md#plan-25))
 `resourcedef.Registered` · `resourcedef.Updated` · `pack.Imported` · **`match.Decided`** (winning definition + full lexicographic ranking [specificity → priority → objective → stable tiebreak] + objective used + tie flag + rejected candidates with reasons → "why this infra", deterministic/replayable — [ADR-0033](./adr/05-config-matching-environments.md#adr-0033))

@@ -93,8 +93,8 @@ The thing that *executes* a component — the WASI interface impls + the link ta
 - **Async:** WASI Preview 3 brings native async; HoBo workflows/agents map onto it where available, falling back to the host's executor otherwise.
 
 ### Component-host portability ([ADR-0031](./adr/01-architecture-core.md#adr-0031))
-A component proven on Wasmtime locally must behave **identically** on wasm-in-container in prod — so the `component-host` is a **conformance-gated, version-pinned portability boundary**, exactly like a provider port ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)).
-- **`@hobo/conformance/component-host` suite** ([Plan 9](./verification.md#plan-09)). Any host claiming conformance must pass: **deterministic-clock trace replay** (same run → identical state across hosts, [Plan 11](./event-model.md#plan-11)), **`wasi:*` interface round-trip** (vendored/pinned interfaces behave identically), **link semantics** (imported-interface → provider-export late-binding resolves the same), and **capability-handle isolation** (deny-by-default; an un-linked capability call fails). A host may only be selected for a Camp if it passes.
+A component proven on Wasmtime locally must behave **equivalently with respect to the conformance suite's asserted properties** on wasm-in-container in prod (not bit-identically in *every* observable) — so the `component-host` is a **conformance-gated, version-pinned portability boundary**, exactly like a provider port ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024) §3).
+- **`@hobo/conformance/component-host` suite** ([Plan 9](./verification.md#plan-09)). Any host claiming conformance must pass: **deterministic-clock trace replay** (same run → identical state across hosts, [Plan 11](./event-model.md#plan-11)), **`wasi:*` interface round-trip** (vendored/pinned interfaces behave identically), **link semantics** (imported-interface → provider-export late-binding resolves the same), **capability-handle isolation** (deny-by-default; an un-linked capability call fails), and the **determinism-relevant host behaviors** — **floating-point/NaN canonicalization, fuel/epoch scheduling, and resource-limit semantics** — that would otherwise diverge silently across hosts. A host may only be selected for a Camp if it passes. Behaviors *outside* the asserted set (wall-clock scheduling jitter, host-specific partial-failure timing) are **declared non-covered divergences**, documented rather than implied-equivalent.
 - **Host version pinned in the manifest IR** ([Plan 21](./authoring-resources-wiring.md#plan-21)). A Bindle records the `component-host` kind + version it was built/certified against; a Camp whose host is incompatible fails planning with a precise reason (mirrors the `wasi:*`/runtime version policy in [ADR-0024](./adr/07-portability-extensibility.md#adr-0024) §5). Host upgrades go through an explicit, gated path with an **upcaster** where semantics change — no silent rewrite of component behavior.
 - **Cross-host E2E** folded into `multi-cloud-shop` ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)): the same component runs on **Wasmtime local → self-hosted wasmCloud → wasm-in-container → (opt-in) provider-native** with identical behavior under trace replay. Host-specific capabilities (e.g. wasmCloud lattice link-migration) are typed as **host-`.with()`** options, inert on hosts that don't offer them, and flagged by **`hobo doctor`** as host lock-in (same model as provider `.with()`).
 
@@ -245,8 +245,11 @@ interface extension {
   send-to: func(conn: conn-id, msg: message) -> result<_, string>;   // address a connection by id
   join: func(conn: conn-id, channel: string);             // room/channel membership
   leave: func(conn: conn-id, channel: string);
-  broadcast: func(channel: string, msg: message);         // fan-out to a channel's members (Yard-brokered)
+  broadcast: func(channel: string, msg: message);         // fan-out to a channel's members (Camp-runtime/Streamer-brokered, NOT the Yard — see below)
   // connection lifecycle is event-sourced as the ws.* family (Plan 11); deny-by-default .allow() applies
+  // Fan-out runs in the data-plane Camp runtime over the Streamer port (the same path reactive pushes use,
+  // Plan 32) — the Yard (control plane) is never on this request path, so broadcast keeps working when the
+  // Yard is down. Conformance asserts no hobo:websocket/hobo:notify data path invokes the Yard.
 }
 ```
 

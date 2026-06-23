@@ -56,7 +56,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `exec.Started` · `exec.Output` · `exec.Succeeded` · `exec.Failed`
 
 **Identity / auth** (the audit trail)
-`identity.Issued` · `identity.Rotated` · `token.Granted` · `token.Used` · `token.Revoked` · `token.Denied`
+`identity.Issued` · `identity.Rotated` · `identity.SeedTokenUsed` (the operator's one-time `hobo login` OIDC/SVID used for a Yard bootstrap-apply before the target Identity exists — [Plan 4 §Bootstrapping](./control-plane.md#plan-04)) · `token.Granted` · `token.Used` · `token.Revoked` · `token.Denied`
 
 **End-user auth** (app users, [Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0038](./adr/02-identity-security.md#adr-0038)) — same `actor: PrincipalRef` audit path as agents/services
 `user.Authenticated` (verification result + principal claims) · `session.Started` · `session.Refreshed` · `session.Revoked` (revocation / sign-out-everywhere; authz decisions ride `policy.Decided`)

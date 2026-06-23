@@ -112,7 +112,7 @@ import { azure } from "@hobo/provider-azure";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 import shop from "./bindle";   // the provider-agnostic Bindle above
 
-export const prod = camp("prod-aws", {
+export const prod = camp("prod-azure", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
   defaultProvider: azure({ region: "eastus" }),   // figure out the best hosting
 }).import(shop);                                   // map the Bindle onto this provider
@@ -130,7 +130,7 @@ Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./event-model.md
 ### 3. Optimize a boundary (split providers, no app edits)
 Marketing wants the storefront on the edge and the team has a Cosmos commitment. Change **only** the `camp()` mapping:
 ```ts
-export const prod = camp("prod-aws", {
+export const prod = camp("prod-azure", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
   defaultProvider: azure({ region: "eastus" }),
   tiers: { edge: cloudflare.workers() },                       // storefront → edge

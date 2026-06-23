@@ -66,7 +66,7 @@ The same projection-and-event model the dashboard renders is what the CLI drives
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
 2. **The agnostic path is the default path** — you can build, run, test, and inspect locally before ever choosing a provider.
 3. **Fast inner loop** — hot reload of handlers/workflows; local runtime with replay; no deploy needed to iterate.
-4. **Type-safe end to end** — bindings, workflow signatures, and provider options are all typed; the editor guides you.
+4. **Type-safe across the agnostic path** — bindings, workflow signatures, and provider options are all typed; the editor guides you. (The `.raw()` escape hatch is untyped by design and the run-to-collect resource graph is coverage-gated — the two declared exceptions, [Plan 2 §Type ergonomics](./sdk-api.md#plan-02).)
 5. **Everything the CLI does, an agent can do** — every command has an MCP equivalent ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 
 #### Command surface

@@ -162,7 +162,7 @@ From [architecture.md#plan-01](../design/architecture.md#plan-01): **core** (`@h
 | **TR-090** | `contract-engine` + `policy-engine` are **WIT ports** with built-in defaults (typed TS); Pact/OPA/Cedar are optional providers. | Per-engine conformance ([ADR-0015](../design/adr/README.md)) |
 | **TR-091** | **`can-deploy`** checks producer/consumer version skew against what the event log says runs per environment; emits `compat.GatePassed/Failed`. | Compatibility test ([09](../design/verification.md#plan-09)) |
 | **TR-092** | Policy decisions carry **obligations** realized as durable effects/sagas, tracked `ObligationCreated→Satisfied`; an unmet obligation blocks. | Policy-decision + obligation test ([30](../design/contracts-policy-flags.md#plan-30)) |
-| **TR-093** | A single **Gatekeeper** (`hobo verify`) composes contracts + policy + evals + conformance + cost into one event-sourced decision at Delta→Set/promote. | `hobo verify` composite test ([ADR-0016](../design/adr/README.md)) |
+| **TR-093** | A single **Gatekeeper** (`hobo verify`) composes contracts + policy + evals + conformance + cost into one event-sourced decision at Delta→Set/promote. | `hobo verify` composite test ([ADR-0015](../design/adr/README.md)) |
 
 ### 5.11 Platform-engineering: definitions, matching, deltas, packs ([25](../design/platform-engineering.md#plan-25)–[27](../design/platform-engineering.md#plan-27))
 | ID | Requirement | Verified by |

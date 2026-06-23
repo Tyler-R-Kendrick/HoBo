@@ -44,7 +44,6 @@
 | 0026 | Scope model: `Bindle ⊂ Camp ⊂ Yard ⊂ Junction` | [architecture-core](01-architecture-core.md#adr-0026) |
 | 0027 | Secretless-first configuration & secrets | [identity-security](02-identity-security.md#adr-0027) |
 | 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | [config-matching-environments](05-config-matching-environments.md#adr-0028) |
-| 0029 | Reactive / live-query model (event-log reactor) | [data-plane](03-data-plane.md#adr-0029) |
 | 0031 | wasm host of record, runtime substrate & component-host portability | [architecture-core](01-architecture-core.md#adr-0031) |
 | 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective) | [config-matching-environments](05-config-matching-environments.md#adr-0033) |
@@ -64,7 +63,7 @@
 | 0047 | Chaos / continuous-resilience verification tier | [governance-verification](04-governance-verification.md#adr-0047) |
 | 0048 | Persisted code-mutation mechanism (for `"use training"` promotion) | [ai-generation-operators](06-ai-generation-operators.md#adr-0048) |
 | 0049 | Reserve "Hobo Code" for the configuration + code DSL | [config-matching-environments](05-config-matching-environments.md#adr-0049) |
-| 0050 | Event-sourced-by-default app domain data; backends are projection sinks | [data-plane](03-data-plane.md#adr-0050) |
+| 0050 | Event-sourced data plane: reactor + streaming-first RX reads + projection sinks | [data-plane](03-data-plane.md#adr-0050) |
 | 0051 | WIT records as the canonical domain schema (TS + protobuf + Zod generated) | [data-plane](03-data-plane.md#adr-0051) |
 | 0052 | Projection-sink paradigm taxonomy & the reactivity boundary | [data-plane](03-data-plane.md#adr-0052) |
 | 0053 | Write-side consistency: commands, aggregates, and the actor boundary | [data-plane](03-data-plane.md#adr-0053) |
@@ -79,6 +78,5 @@
 | 0062 | Registry distribution: publish/discover/install/trust over signed, certified artifacts | [portability-extensibility](07-portability-extensibility.md#adr-0062) |
 | 0063 | Single scope: the whole designed surface ships together | [scope-and-requirements](08-scope-and-requirements.md#adr-0063) |
 | 0064 | Scope: AI-native meta-cloud (remove business/monetization; keep app generation) | [scope-and-requirements](08-scope-and-requirements.md#adr-0064) |
-| 0065 | Streaming-first: RX subscribable materializations as the default read surface | [data-plane](03-data-plane.md#adr-0065) |
 | 0069 | The runtime & membrane: WIT-interface providers over wRPC, thin SDK | [architecture-core](01-architecture-core.md#adr-0069) |
 | 0070 | Dev-mode auth bypass via integrated contract testing | [identity-security](02-identity-security.md#adr-0070) |

@@ -76,7 +76,7 @@ service("payments").stub({ charge: () => ({ status: "ok" }) }); // partial canne
 ```
 
 ### The Forge implementation loop (gated)
-> **Generation vs evolution — same engine, two entry points.** The loop below is the *evolution / continuous-training* path for a live `"use training"` method. The **cold-start generation** of a brand-new artifact — and the generalization of this loop to **providers and Resource Definitions/Packs**, not just implementations — is specified in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-33) ([ADR-0030](./adr/06-ai-generation-operators.md#adr-0010)). Both share the `training-engine` optimizer ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)), the conformance/sandbox trust boundary, and signed provenance.
+> **Generation vs evolution — same engine, two entry points.** The loop below is the *evolution / continuous-training* path for a live `"use training"` method. The **cold-start generation** of a brand-new artifact — and the generalization of this loop to **providers and Resource Definitions/Packs**, not just implementations — is specified in [Plan 33 — Forge generation pipeline](./forge-generated-stack.md#plan-33) ([ADR-0010](./adr/06-ai-generation-operators.md#adr-0010)). Both share the `training-engine` optimizer ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)), the conformance/sandbox trust boundary, and signed provenance.
 
 ```mermaid
 flowchart LR
@@ -349,7 +349,7 @@ flowchart LR
   CONF --> TRUST["trusted, upgradable derivative"]
 ```
 
-### Derivative upgrade paths ([ADR-0068](./adr/07-portability-extensibility.md#adr-0057))
+### Derivative upgrade paths ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057))
 Patchability is only durable if long-lived derivatives can **track core upgrades** instead of rotting or forking permanently — so derivatives get a **versioned, conformance-gated upgrade path**.
 - **Seams are independently semver-versioned.** Each extension seam (a WIT port: `policy-engine`, `contract-engine`, `component-host`, a provider/driver/runtime/projection-sink — the seams enumerated above) carries a semver; a Yard pins the seam versions it requires, and the manifest IR records which seam versions a Bindle uses (proven by its conformance run).
 - **A signed `derivative.json` descriptor** ([Plan 12](./security-networking.md#plan-12)): the **core version range** it targets (`core@^1.0.0 <1.1.0`), its **seam implementations + versions** (`policy-engine@2.3.0`, `custom-aws-driver@1.0.0`), and **pinned upcasters** for any persisted mutations ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) — codemods that repair the hand-written/generated regions on a core upgrade.
@@ -363,7 +363,7 @@ Patchability is only durable if long-lived derivatives can **track core upgrades
 
 ### Scope
 - Patchability as a guarantee + the enumerated seams (all already ports); **both patch kinds** — persisted ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) and ephemeral runtime-instance ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)); conformance/signing as the trust bridge.
-- The upgrade story for long-lived derivatives — seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony + core breaking-change manifests ([ADR-0068](./adr/07-portability-extensibility.md#adr-0057)).
+- The upgrade story for long-lived derivatives — seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony + core breaking-change manifests ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)).
 - An upstream-merge/rebase story richer than the upgrade ceremony, and a public derivative/plugin marketplace beyond signed Resource Packs, ride the same conformance/signing machinery when added.
 
 ### Iteration hooks

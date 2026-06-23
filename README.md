@@ -19,7 +19,7 @@ Design inspiration: the API *feels like* [Vercel Workflows](https://workflow-sdk
 
 ## Requirements (BRD / PRD / TRD)
 
-The formal requirements layer lives in [`docs/requirements/`](./docs/requirements/README.md): a [BRD](./docs/requirements/BRD.md) (business), [PRD](./docs/requirements/PRD.md) (product), and [TRD](./docs/requirements/TRD.md) (technical) with stable `BR`/`FR`/`NFR`/`TR` IDs and an end-to-end [traceability matrix](./docs/requirements/TRD.md#traceability-matrix). Decisions made while authoring them are logged as [ADRs 0018+](./docs/design/adr/README.md).
+The formal requirements layer lives in [`docs/requirements/`](./docs/requirements/README.md): a [BRD](./docs/requirements/requirements.md) (business), [PRD](./docs/requirements/requirements.md) (product), and [TRD](./docs/requirements/requirements.md) (technical) with stable `BR`/`FR`/`NFR`/`TR` IDs and an end-to-end [traceability matrix](./docs/requirements/requirements.md#traceability-matrix). Decisions made while authoring them are logged as [ADRs 0018+](./docs/design/adr/README.md).
 
 ## Working in this repo with AI agents
 

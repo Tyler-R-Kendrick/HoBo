@@ -187,23 +187,80 @@ export wasi:http/incoming-handler@0.2.0;
 ```
 The SDK author never writes this by hand — declaring `kv()/bucket()/queue()` + `.allow()` and an `api`/`service` generates the interface contract; `jco` emits the typed bindings the handler code uses. These `jco guest-types` are one of the four codegen sources (with Zod, `.allow()`, and the bindle graph) that land in the checked-in `_generated/` directory ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)/[Plan 2 §Generated code](./sdk-api.md#plan-02)).
 
-### Preview `wasi:websocket` ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075))
-No `wasi:websocket` is ratified — WASI standardizes per-protocol sockets-family modules independently and 0.3 adds native async — so HoBo **vendors + pins a `preview` `wasi:websocket@0.0.x-draft`** modeled on the likely-approved shape (sockets-family over `wasi:io` streams, 0.3-async-ready; server-accept via `wasi:http` connection upgrade + client-connect), and migrates via upcaster when the standard lands. `hobo:websocket` is the thin extension (principal binding, `.allow()`, lifecycle events) above it.
+### Preview `wasi:websocket` + the `hobo:websocket` extension ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075))
+No `wasi:websocket` is ratified — WASI standardizes per-protocol sockets-family modules independently and 0.3 adds native async — so HoBo **vendors + pins a `preview` `wasi:websocket@0.0.x-draft`** modeled on the likely-approved shape (sockets-family over `wasi:io` streams, 0.3-async-ready; server-accept via `wasi:http` connection upgrade + client-connect), and migrates via upcaster when the standard lands. `hobo:websocket` is the **thin extension** (identity, addressing, fan-out, audit) above it.
+
 ```wit
-// PREVIEW — tracks the expected wasi:websocket; pinned, may change before ratification
+// PREVIEW — tracks the expected wasi:websocket; pinned, may change before ratification.
+// Modeled on the WASI sockets-family pattern over wasi:io streams (0.3 async: list<u8> → stream<message>).
 package wasi:websocket@0.0.1-draft;
+
 interface types {
   use wasi:io/streams@0.2.0.{input-stream, output-stream};
+  use wasi:io/poll@0.2.0.{pollable};
+
+  variant message { text(string), binary(list<u8>) }     // app frames; ping/pong/close are host-handled
+  record close-info { code: u16, reason: string }         // RFC 6455 codes (1000 normal, 1008 policy, …)
+  enum state { connecting, open, closing, closed }
+  enum error-code { connection-closed, message-too-large, would-block, protocol-error }
+
   resource connection {
-    incoming: func() -> input-stream;     // frames in  (0.3: stream<frame>)
-    outgoing: func() -> output-stream;    // frames out
-    close: func(code: u16, reason: string);
+    state: func() -> state;
+    subprotocol: func() -> option<string>;                // negotiated subprotocol
+    recv: func() -> result<message, close-info>;          // next message, or the close cause
+    send: func(msg: message) -> result<_, error-code>;
+    subscribe: func() -> pollable;                        // readiness (wasi:io poll)
+    close: func(info: close-info);
   }
-  variant frame { text(string), binary(list<u8>), ping, pong, close }
 }
-interface server { use types.{connection}; accept: func() -> connection; }   // via wasi:http upgrade
-interface client { use types.{connection}; connect: func(url: string) -> result<connection, string>; }
+
+// server: a component EXPORTS this to handle upgraded connections (paired with wasi:http upgrade)
+interface incoming-handler {
+  use types.{connection};
+  record request { path: string, headers: list<tuple<string, string>>, subprotocols: list<string> }
+  variant decision { accept(option<string>), reject(u16) }   // pick a subprotocol, or reject the upgrade
+  handle: func(req: request) -> decision;
+  on-open: func(conn: connection);                        // per-connection handler loop
+}
+
+// client: a component IMPORTS this to dial out
+interface outgoing {
+  use types.{connection, error-code};
+  record options { headers: list<tuple<string, string>>, subprotocols: list<string> }
+  connect: func(url: string, opts: options) -> result<connection, error-code>;
+}
+
+world websocket { export incoming-handler; import outgoing; }
 ```
+
+```wit
+// HoBo extension — the parts the bare wasi interface won't carry: identity, addressing, fan-out, audit.
+package hobo:websocket@0.1.0;
+interface extension {
+  use wasi:websocket/types@0.0.1-draft.{message};
+  use hobo:auth/types@0.1.0.{principal-ref};
+
+  type conn-id = string;                                   // stable, addressable id (outlives the handler scope)
+  principal: func(conn: conn-id) -> option<principal-ref>; // the verified principal bound to a connection (ADR-0038)
+  send-to: func(conn: conn-id, msg: message) -> result<_, string>;   // address a connection by id
+  join: func(conn: conn-id, channel: string);             // room/channel membership
+  leave: func(conn: conn-id, channel: string);
+  broadcast: func(channel: string, msg: message);         // fan-out to a channel's members (Yard-brokered)
+  // connection lifecycle is event-sourced as the ws.* family (Plan 11); deny-by-default .allow() applies
+}
+```
+
+The developer never writes the WIT — declaring `websocket()` + `.allow()` generates the typed surface ([ADR-0072](./adr/01-architecture-core.md#adr-0072)/[ADR-0037](./adr/05-config-matching-environments.md#adr-0037)):
+```ts
+import { websocket } from "@hobo/sdk";
+const chat = websocket("chat").allow("accept", "broadcast", "subscribe");
+chat.on("open",    (c)      => { if (c.user) chat.join(c.id, `room:${c.user.tenant}`); }); // ctx.user from auth
+chat.on("message", (c, msg) => chat.broadcast(`room:${c.user.tenant}`, msg));              // fan-out
+```
+
+- **Events & volume.** Connection *lifecycle* is event-sourced as the **`ws.*`** family ([Plan 11](./event-model.md#plan-11)) — `Connected`/`Authenticated`/`Subscribed`/`Unsubscribed`/`Disconnected` — so "who connected, as whom, to which channel, and why they left" is auditable + replayable. **Per-frame messages ride the Streamer** (realtime, [Plan 11](./event-model.md#plan-11)/[Plan 2](./sdk-api.md#plan-02)), **not** the durable log by default (avoids message-flooding the log); a policy may opt specific message types into audit.
+- **Auth + authz.** A connection is **principal-bound** (`ctx.user`/SVID, [ADR-0038](./adr/02-identity-security.md#adr-0038)); `.allow()` verbs (`accept`/`connect`/`send`/`broadcast`/`subscribe`) are deny-by-default and channel/room sends are policy-gated like any other action ([Plan 29](./contracts-policy-flags.md#plan-29)).
+- **Migration.** When the real `wasi:websocket` ratifies, HoBo repins it and ships an upcaster ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)); the `hobo:websocket` extension is stable across that change, so app code is unaffected.
 
 ### Versioning & evolution
 - Interfaces are versioned independently **with a stability tier** (`stable · preview · experimental · deprecated`, [ADR-0075](./adr/07-portability-extensibility.md#adr-0075)); the manifest IR ([Plan 21](./authoring-resources-wiring.md#plan-21)) records the exact `interface@version@stability` a component imports/exports.

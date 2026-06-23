@@ -60,6 +60,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **End-user auth** (app users, [Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0038](./adr/02-identity-security.md#adr-0038)) — same `actor: PrincipalRef` audit path as agents/services
 `user.Authenticated` (verification result + principal claims) · `session.Started` · `session.Refreshed` · `session.Revoked` (revocation / sign-out-everywhere; authz decisions ride `policy.Decided`)
 
+**WebSocket connections** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) — the `hobo:websocket` extension's event-sourced *connection lifecycle* (principal-bound, like `session.*`); **per-frame messages ride the Streamer, not the log** (a policy may opt specific message types into audit)
+`ws.Connected` (connId + subprotocol + origin + Camp) · `ws.Authenticated` (principal/`PrincipalRef` bound to the connection — authz via `.allow()`/`policy.Decided`) · `ws.Subscribed` / `ws.Unsubscribed` (channel/room membership for fan-out) · `ws.Disconnected` (connId + close code/reason + `by: client|server|policy`)
+
 **Registry**
 `provider.Registered` · `provider.CapabilityManifestUpdated` · `provider.Deprecated` · `forge.PluginCertified` · `registry.BundleImported` (signed offline bundle imported + verified — air-gap supply chain, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036))
 

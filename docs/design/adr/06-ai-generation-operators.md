@@ -45,10 +45,8 @@ HoBo lets AI implement, evolve, and live-fix WIT-port implementations ([Plan 23]
 ## ADR-0030
 **Forge generation: inputs & algorithm.**
 
-- **Origin:** the gap analysis found HoBo's headline differentiator — "the Forge generates providers/implementations" — specified only at the *conformance-gate* level; the *generation* algorithm itself was undefined. Designed via brainstorming + grill-with-docs.
-
 ### Context
-ADR-0010 establishes that Forge artifacts are **gated by conformance**; ADR-0025 establishes a `training-engine` that optimizes live `"use training"` implementations. Neither says **how a candidate is synthesized in the first place** — the inputs it trusts, how it's repaired toward passing, or how the result is made reproducible/trustworthy. Without that, "generate a provider" is aspirational. Competitors (Aspire/Nitric/Humanitec) ship concrete generation/templating; HoBo needs the generation loop to be real.
+ADR-0010 establishes that Forge artifacts are **gated by conformance**; ADR-0025 establishes a `training-engine` that optimizes live `"use training"` implementations. This ADR specifies **how a candidate is synthesized in the first place** — the inputs it trusts, how it's repaired toward passing, and how the result is made reproducible/trustworthy — so "generate a provider" is concrete.
 
 ### Decision
 1. **Algorithm = template scaffold + LLM-fill + a conformance/trace-driven repair loop**, and the repair loop **reuses the `training-engine` optimizer** (OPTO/Trace, ADR-0025) rather than a separate generator. Generation (cold-start) and live training (Plan 23) are the two entry points of one engine.
@@ -67,13 +65,11 @@ ADR-0010 establishes that Forge artifacts are **gated by conformance**; ADR-0025
 - **(+)** "Generate a provider/impl/definition" becomes a concrete, bounded, auditable loop; the differentiator is demonstrable, not hand-wave.
 - **(+)** Reuses the conformance trust boundary, the Firecracker+wasm no-egress sandbox, and the training-engine — minimal new machinery.
 - **(+)** Contract-first + sanitized material keeps generation safe against malicious provider docs.
-- **(−)** Quality depends on the template library + the optimizer; cold-start from docs-only (no Capability Manifest) is the riskiest path and is deferred.
+- **(−)** Quality depends on the template library + the optimizer; cold-start from docs-only (no Capability Manifest) is the riskiest path and is sequenced last.
 - **(−)** A repair budget trades thoroughness for cost ([Plan 16](../reliability-observability-cost.md#plan-16)); some artifacts will escalate to humans (`forge.NeedsHuman`) — acceptable and explicit.
 
 ## ADR-0048
 **Persisted code-mutation mechanism (for `"use training"` promotion).**
-
-- **Origin:** the ecosystem review found Plan 23 *promotes* AI-rewritten implementations (`impl.Promoted`/`training.Promoted`) but the **mechanism to persist a runtime/AI-generated code mutation back to source** was unspecified.
 
 ### Context
 [Plan 23](../forge-generated-stack.md#plan-23) + [ADR-0025](#adr-0025): the `training-engine` continuously rewrites `"use training"` semantic functions (prompt/code) and, when a candidate passes eval/conformance, **promotes** it. But "promote" needs a concrete, safe **persistence mechanism** — how a generated mutation lands back in source without clobbering hand-written code, with provenance and review. The [runtime-code-mutation-persistence pattern](../../../patterns/runtime-code-mutation-persistence.md) (ts-morph / recast / jscodeshift / magic-string + unified-diff apply) is the toolbox; this ADR specifies HoBo's use of it.
@@ -97,19 +93,23 @@ ADR-0010 establishes that Forge artifacts are **gated by conformance**; ADR-0025
 - **(−)** The generated-region boundary is a discipline authors must respect; editing inside it risks a future promotion overwriting hand edits (mitigated by the region header + the no-op/`--check` guard surfacing drift).
 
 ## ADR-0054
-**Operator Agents (the Crew): built-in autonomous Yard services.** Accepted (amended by [ADR-0064](08-scope-and-requirements.md#adr-0064) — the **UX-Designer** operator is removed as app-build-out; the roster is SRE/Endpoint Monitor/GitOps/Platform Engineer)
-
-- **Origin:** the product vision names a first-class operator-agent roster (SRE/Endpoint Monitor/GitOps/Platform Engineer). The substrate existed (agent-principal model, MCP, live-fix, drift, pipelines, observability) but no roster was specified, and "the HoBo Agent" (proxy) collided with the term.
+**Operator Agents (the Crew): built-in autonomous Yard services.**
 
 ### Context
-HoBo already treats agents as first-class principals ([Plan 6](../ai-native-agent-auth.md#plan-06)) and exposes every capability over MCP, and it has the operational substrate (live-fix, drift/auto-rollback, pipelines, SLO/alerting, observability projections, Forge, Matching). What it lacked was a **named set of operator agents** that *use* that substrate to run the platform — the concrete form of the "AI SRE / AI GitOps / AI policy enforcement" goals. Two questions: (1) are these built-in or left to each team; (2) how do they relate to the existing "agent" notions (and the proxy formerly called "the HoBo Agent").
+HoBo treats agents as first-class principals ([Plan 6](../ai-native-agent-auth.md#plan-06)), exposes every capability over MCP, and has the operational substrate (live-fix, drift/auto-rollback, pipelines, SLO/alerting, observability projections, Forge, Matching, app generation). The Crew is the **named set of operator agents** that *use* that substrate to run the platform — the concrete form of the "AI SRE / AI GitOps / AI policy enforcement / AI software & UX" goals. "Agent" means an autonomous principal; the outbound network proxy is the **Relay** ([Plan 28](../platform-engineering.md#plan-28)).
 
 ### Decision
-1. **Ship a built-in roster — the Crew** (SRE, Endpoint Monitor, GitOps, Platform Engineer) as **first-class Yard services**, batteries-included but **pluggable** (each disableable/overridable per Yard; each brain is an **engine behind a port** with a built-in default + optional external providers).
+1. **Ship a built-in roster — the Crew** as **first-class Yard services**, batteries-included but **pluggable** (each disableable/overridable per Yard; each brain is an **engine behind a port** with a built-in default + optional external providers):
+   - **SRE** → live-fix + observability + drift/auto-rollback ([Plan 40](../operators-sre.md#plan-40)/[Plan 44](../operators-sre.md#plan-44)).
+   - **Endpoint Monitor** → synthetic probes + SLO/alerting.
+   - **GitOps** → pipelines + can-deploy promotion.
+   - **Platform Engineer** → Matching + packs + Forge (authors Resource Definitions/policy packs).
+   - **UX Designer** → app/UI generation ([ADR-0056](#adr-0056)): owns **design.md** (the required design-system spec), drives **OpenUI** + **json-render** + **mcp-apps**, and renders against the `ui-render` port; reactive to the data plane's materializations.
+   - **SWE (software engineer)** → a general software-engineering operator: implements/refactors/repairs **business + message** code behind ports, drives the Forge + `"use training"` loop and persisted code-mutation ([ADR-0048](#adr-0048)), opens gated Deltas/PRs. The generalist counterpart to the specialist operators.
 2. **Each operator is a named principal on the existing model** ([Plan 6](../ai-native-agent-auth.md#plan-06)): SVID identity, per-agent policy + spend caps, event-sourced runs, MCP surface, least-privilege `.allow()`. No new identity/policy mechanism — the roster *is* the agent-principal model applied to operations.
 3. **Reads are autonomous; writes are policy-gated** ([Plan 30](../contracts-policy-flags.md#plan-30)): diagnosis/monitoring run freely; mutations take an effect/obligation (auto / canary-with-auto-rollback / require-approval) keyed by blast radius + environment ([Plan 5](../reliability-observability-cost.md#plan-05)).
-4. **Operators compose existing subsystems, they don't reinvent them:** SRE→live-fix+observability+drift; Endpoint Monitor→SLO/alerting; GitOps→pipelines+can-deploy; Platform Engineer→Matching+packs+Forge. External brains (HolmesGPT for SRE) sit behind ports.
-5. **Reserve "Agent" for principals; rename the proxy to the Relay** ([Plan 28](../platform-engineering.md#plan-28)). Events: a thin `crew.*` family + reuse of existing `run.*`/`incident.*`/`pipeline.*`/`policy.Decided`.
+4. **All operators run sandboxed under enforced AI governance by default** ([ADR-0061](04-governance-verification.md#adr-0061)): every operator (its reasoning + tool calls) executes in a sandboxed environment with **NVIDIA NeMo Guardrails** and the **Microsoft AI governance / Responsible AI toolkit** enforced as the default guardrail layer — moderation, jailbreak/PII checks, and capability-scoped tool access. This is enforced, not opt-in.
+5. **Operators compose existing subsystems, they don't reinvent them.** External brains (e.g. HolmesGPT for SRE) sit behind ports. Events: a thin `crew.*` family + reuse of existing `run.*`/`incident.*`/`pipeline.*`/`policy.Decided`.
 
 ### Alternatives considered
 - **Skills-only on the generic `agent()` primitive (no built-in services).** Rejected as the default per product decision: leaves every team to wire core operations; loses the batteries-included, audited-by-default value. (Skills still exist — `@hobo/agent-skills` — and compose *into* the built-in operators.)
@@ -126,36 +126,55 @@ HoBo already treats agents as first-class principals ([Plan 6](../ai-native-agen
 - **(−)** A naming migration ("HoBo Agent"→"Relay") touched several docs (done in this change).
 
 ## ADR-0055
-**The generated stack: a layered model for AI generation/self-healing/persistence.** Accepted (amended by [ADR-0064](08-scope-and-requirements.md#adr-0064) — the **ui** layer is removed; generation is scoped to **infrastructure/runtime**, a four-layer model)
-
-- **Origin:** the vision framed AI generation as spanning several layers, but the suite documented each separately with no unifying model; message wasn't framed as generated at all.
+**The generated stack: a layered model for AI generation/self-healing/persistence.**
 
 ### Context
-HoBo's AI-native capabilities had grown organically: data-plane projections ([Plan 39](../data-plane.md#plan-39)), Forge-generated providers/impls ([Plan 33](../forge-generated-stack.md#plan-33)), trainable semantic functions ([Plan 23](../forge-generated-stack.md#plan-23)), persisted mutation ([ADR-0048](#adr-0048)). These share one loop, one log, one trust boundary, and one persistence mechanism — but nothing said so, and **message-handler** generation wasn't framed as part of the same story. A unifying model makes the promise legible and exposes the real gap (message). Generating the developer's **product UI** is out of scope ([ADR-0064](08-scope-and-requirements.md#adr-0064)) — the meta-cloud generates infrastructure/runtime, not the app's front-end.
+HoBo's AI-native capabilities span several layers: data-plane materializations ([Plan 39](../data-plane.md#plan-39)), Forge-generated providers/impls ([Plan 33](../forge-generated-stack.md#plan-33)), trainable semantic functions ([Plan 23](../forge-generated-stack.md#plan-23)), persisted mutation ([ADR-0048](#adr-0048)), and app/UI generation ([ADR-0056](#adr-0056)). These share one loop, one log, one trust boundary, and one persistence mechanism. A unifying model makes the promise legible across the whole stack — from infrastructure up to the app's UI.
 
 ### Decision
-1. **Adopt a four-layer taxonomy for generation: data · business · message · intelligence.** It is a *map over existing mechanisms*, not new runtime: each layer names what HoBo generates, who owns it, how it self-heals, and how it persists. Generation is scoped to **infrastructure/runtime** ([ADR-0064](08-scope-and-requirements.md#adr-0064)); the app UI is not a layer.
+1. **Adopt a five-layer taxonomy for generation: data · business · message · intelligence · ui.** It is a *map over existing mechanisms*, not new runtime: each layer names what HoBo generates, who owns it, how it self-heals, and how it persists. The **ui** layer ([ADR-0056](#adr-0056)) is generated from intent + **design.md** via OpenUI/json-render/mcp-apps, owned by the **UX Designer** operator, and reactive to the data plane's materializations.
 2. **One generation loop across layers** — the Forge loop (scaffold → LLM-fill → validate-sandboxed → repair → certify) ([Plan 33](../forge-generated-stack.md#plan-33)); only inputs/oracles differ per layer.
 3. **One trust boundary** — nothing generated is trusted without conformance + policy + eval ([Plan 9](../verification.md#plan-09)/[Plan 29](../contracts-policy-flags.md#plan-29)/[Plan 30](../contracts-policy-flags.md#plan-30)); **one persistence mechanism** — region-scoped AST edits + provenance ([ADR-0048](#adr-0048)), generated regions demarcated, hand-written intent never clobbered, drift-gated ([ADR-0037](05-config-matching-environments.md#adr-0037)).
-4. **One self-healing reflex** — classify → propose-fix → validate → gated-apply (live-fix [Plan 23](../forge-generated-stack.md#plan-23) + drift/auto-rollback [Plan 5](../reliability-observability-cost.md#plan-05)), driven by the **SRE operator** ([Plan 40](../operators-sre.md#plan-40)); where a layer can't auto-heal safely it degrades to *propose*.
-5. **Frame message as a first-class generated layer:** message-handler/choreography generation from WIT-record event types.
+4. **One self-healing reflex** — classify → propose-fix → validate → gated-apply (live-fix [Plan 23](../forge-generated-stack.md#plan-23) + drift/auto-rollback [Plan 5](../reliability-observability-cost.md#plan-05)), driven by the **SRE** and **SWE** operators ([Plan 40](../operators-sre.md#plan-40)); where a layer can't auto-heal safely it degrades to *propose*.
+5. **Message is a first-class generated layer:** message-handler/choreography generation from WIT-record event types.
 
 ### Alternatives considered
-- **Leave the layers as separate features (no unifying model).** Rejected: the promise is illegible and the message gap stays hidden; one model also prevents divergent loops/trust-boundaries per layer.
-- **A different layer cut** (e.g. by tier: frontend/backend/infra). Rejected: the data/business/message/intelligence cut matches HoBo's existing seams (event log, ports, training-engine) and the operator roster.
-- **Include a ui layer / promise whole-app generation.** Rejected ([ADR-0064](08-scope-and-requirements.md#adr-0064)): generating the developer's product UI is app-build-out, outside the meta-cloud; cross-layer single-intent regeneration remains the long arc.
+- **Leave the layers as separate features (no unifying model).** Rejected: the promise is illegible; one model also prevents divergent loops/trust-boundaries per layer.
+- **A different layer cut** (e.g. frontend/backend/infra). Rejected: the data/business/message/intelligence/ui cut matches HoBo's existing seams (event log, ports, training-engine, `ui-render`) and the operator roster.
+- **Drop the ui layer (generate only infrastructure).** Rejected: AI-generating the app from intent — UI included — is core to the AI-native thesis ([ADR-0064](08-scope-and-requirements.md#adr-0064)); cross-layer single-intent regeneration remains the long arc.
 
 ### Consequences
-- **(+)** Makes the AI-native (infrastructure) promise legible end-to-end and reuses one loop/boundary/persistence across all layers — minimal new machinery (a map + one newly-framed layer).
-- **(+)** Surfaces and closes the message gap; gives the operator agents ([Plan 40](../operators-sre.md#plan-40)) a clear remit per layer.
+- **(+)** Makes the AI-native promise legible end-to-end — infrastructure through UI — reusing one loop/boundary/persistence across all layers (a map + the `ui-render` seam).
+- **(+)** Gives the operator agents ([Plan 40](../operators-sre.md#plan-40)) a clear remit per layer (SWE: business/message; UX Designer: ui; Platform Engineer: infra).
 - **(+)** Consistent safety story: deterministic codegen is reproducible; non-deterministic promotions are region-isolated, provenance-pinned, and prod-gated.
-- **(−)** A taxonomy invites "is X a layer?" debates (e.g. networking/auth aren't in the four — deliberately, they're configured not generated).
-- **(−)** Uniform framing can over-promise: layers self-heal unequally; the plan states this explicitly to avoid implying message heals as maturely as data/business today.
+- **(−)** A taxonomy invites "is X a layer?" debates (e.g. networking/auth aren't layers — they're configured, not generated).
+- **(−)** Uniform framing can over-promise: layers self-heal unequally; the docs state this explicitly to avoid implying message/ui heal as maturely as data/business.
+
+## ADR-0056
+**App/UI generation (design.md · OpenUI · json-render · mcp-apps · the `ui-render` port).**
+
+### Context
+The AI-native thesis is to generate the application from intent — not only its infrastructure but its **UI**. HoBo generates data/business/message/intelligence layers ([ADR-0055](#adr-0055)); the **ui** layer needs a concrete mechanism, an owner, and a trust boundary, distinct from HoBo's own operator dashboard ([Plan 7](../developer-experience.md#plan-07)).
+
+### Decision
+1. **`ui-render` is a port** with pluggable engine adapters: **OpenUI** (generate UI from intent) and **json-render** (a declarative render IR), plus **mcp-apps** (MCP-driven app surfaces) so agents can drive and inspect the UI like any other capability. Custom adapters plug in behind the same port.
+2. **`design.md` is a required input** — the design-system spec (tokens, components, layout constraints, a11y rules) that HoBo generates and then **enforces** as the design analog of the conformance trust boundary. UI generation that violates design.md fails the gate.
+3. **The UX Designer operator owns it** ([ADR-0054](#adr-0054)): it generates/maintains the UI against design.md, runs sandboxed under enforced AI governance ([ADR-0061](04-governance-verification.md#adr-0061)), and lands changes via the same persisted-mutation + policy gate as any generated code ([ADR-0048](#adr-0048)).
+4. **Generated UI is typed from the domain + reactive to materializations.** Components are typed from the WIT-record domain schema ([ADR-0051](03-data-plane.md#adr-0051)) and bind to the data plane's reactive materializations / GraphQL facade ([ADR-0065](03-data-plane.md#adr-0065)), so the UI updates as state changes.
+
+### Alternatives considered
+- **Generate infrastructure only; leave UI to the developer.** Rejected: generating the app from intent — UI included — is core to the AI-native thesis and a batteries-included capability competitors ship.
+- **Hard-wire one UI engine.** Rejected: OpenUI/json-render/mcp-apps and future engines must be swappable behind `ui-render`, like every other capability.
+- **Skip design.md (free-form UI).** Rejected: without an enforced design-system spec, generated UI drifts and can't be gated; design.md is the UI's trust boundary.
+
+### Consequences
+- **(+)** Completes the generated stack up to the UI; the app — infra and front-end — is generatable from intent, design-constrained, typed, and reactive.
+- **(+)** Reuses the existing generation loop, trust boundary, persisted-mutation, and operator/governance machinery — a port + design.md, not a new plane.
+- **(−)** UI quality depends on the engine + design.md fidelity; weak design specs yield weak UI (the design.md gate makes this explicit).
+- **(−)** Distinct from HoBo's own dashboard ([Plan 7](../developer-experience.md#plan-07)) — the two must not be conflated.
 
 ## ADR-0058
 **SRE: incident management, runbooks & the self-healing decision model.**
-
-- **Origin:** the SRE operator ([Plan 40](../operators-sre.md#plan-40)) cited `incident.*` and "gated remediation" but no incident model, failure-taxonomy, decision tree, or runbook concept existed. Gap analysis (SRE coverage + runbook/alerting) confirmed the pieces existed but the incident-management layer did not.
 
 ### Context
 HoBo had alerting/SLO ([ADR-0045](04-governance-verification.md#adr-0045)), pipelines ([Plan 28](../platform-engineering.md#plan-28)), AI live-fix ([Plan 23](../forge-generated-stack.md#plan-23)), drift + auto-rollback ([Plan 5](../reliability-observability-cost.md#plan-05)), and chaos ([ADR-0047](04-governance-verification.md#adr-0047)) — strong reflexes, but no **management** layer: `incident.*` was referenced yet undefined; live-fix's failure taxonomy covered only *contract* failures (not Plan 5's *runtime* classes); the SRE operator's decide-logic was opaque; there was no first-class **runbook** (only HolmesGPT/StackStorm/gitops-runbook captures); and no MTTD/MTTR, on-call/escalation, or postmortem model. Obligations also had no deadline/escalation (an open [Plan 30](../contracts-policy-flags.md#plan-30) hook).
@@ -179,4 +198,4 @@ HoBo had alerting/SLO ([ADR-0045](04-governance-verification.md#adr-0045)), pipe
 - **(+)** Engines behind ports (HolmesGPT/StackStorm/pagers) keep it pluggable and air-gap-friendly; the deterministic core (classify/gate/apply) needs no external brain.
 - **(−)** An autonomous SRE acting on prod is a trust surface; mitigated by default-gated writes, blast-radius + spend budgets, escalate-on-unknown, and full audit — but threshold tuning is an iteration hook.
 - **(−)** Runbooks + deploy pipelines share an engine but are distinct surfaces; keeping them coherent (or merging) is an open question.
-- **(−)** Lean on-call (no rotation calendars/paging-vendor specifics in v1) — full ITSM is deferred.
+- **(−)** Lean on-call (no rotation calendars/paging-vendor specifics) — full ITSM is out of first-cut scope.

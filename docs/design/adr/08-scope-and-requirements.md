@@ -83,63 +83,48 @@ Adopt these v1 NFR baselines (each becomes an `NFR-` in the PRD with a verificat
 - **(−)** Status stays **Proposed** until ratified; some numbers (availability, cost accuracy) can only be measured once the later build stages exist (multi-region HA, full cost model), so earlier stages verify them on representative-but-partial setups. Re-ratify when build stage 6 lands.
 
 ## ADR-0063
-**Single v1 scope (the whole designed surface ships as one v1).** Accepted (supersedes the former ADR-0022 MVP-scope/MoSCoW line)
+**Single scope: the whole designed surface ships together.**
 
 ### Context
-The former ADR-0022 drew the MVP line at the **end of P4** and bound requirement priority (MoSCoW) to roadmap phases P0–P6: Forge was "Should (P5)", HA/FinOps/full-dashboard/platform-engineering-at-depth were "Could (P6)", and a "Won't (v1)" bucket deferred the rest. The design suite also accreted in **iteration waves** (v2 runtime/authoring, v3 Humanitec parity, v4 gates, v5 onboarding, v6 operators/SRE/UI, v7 completeness planes), each "placed" into a later phase. The product is still in its design phase, the full surface is now designed and internally coherent, and the directive is to **ship it all as one v1** — "it's okay to have a massive implementation plan for v1; we can deliver quickly and effectively."
-
-The phased line was a *sequencing and risk* tool, not an architectural boundary. Nothing in the architecture requires the capabilities to land as separate releases — the dependencies are a build order, not a version ladder.
+HoBo is in its design phase; nothing has shipped and no release ladder is committed. The full surface is designed and internally coherent, and the directive is to treat it as **one scope** delivered in dependency order — "it's okay to have a massive implementation plan; we can deliver quickly and effectively." Dependencies between capabilities are a **build order**, not a version ladder.
 
 ### Decision
-**v1 scope = the entire designed surface.** Every plan in the suite ([Plan 0](../vision.md#plan-00)–[Plan 47](../governance-planes.md#plan-47)) and every former phase (P0–P6) and iteration wave (v2–v7) is **v1**. Specifically:
+**Scope = the entire designed surface.** Every plan in the suite ([Plan 0](../vision.md#plan-00)–[Plan 47](../governance-planes.md#plan-47)) is in scope.
 
-1. **No release split.** There is no v2/v3/… and no "post-v1": Forge, multi-region HA, full FinOps showback, the complete dashboard, platform-engineer Resource Definitions/Matching/Packs at depth, the Operator Crew, the generated infrastructure stack, patchability, SRE/incident-management, and the governance planes (governance enforcement, AI safety) + the `notify` port + Registry distribution are **all v1**. *(Scope is bounded by [ADR-0064](#adr-0064) (AI-native meta-cloud: no business/app-build-out) — UI-layer generation, billing/monetization, marketplace-as-a-plane and app-communications-as-a-plane are **out of scope**, not deferred.)*
-2. **No deferred bucket.** The former ADR-0022 **"Won't (v1)"** list is dissolved. Its in-scope feature-like items fold into v1: the full/non-developer dashboard ([Plan 7](../developer-experience.md#plan-07)); broad cloud coverage, delivered **on demand via the Forge** ([Plan 33](../forge-generated-stack.md#plan-33)) + the provider port rather than pre-enumerated.
-3. **Build stages replace phases.** P0–P6 are reframed as **dependency-ordered build stages of v1** ([Per-stage build detail](../roadmap.md#per-stage-build-detail-stages-06)): foundations → SDK-local → first-deploy(+gates) → AI-native → multi-provider → Forge → HA/FinOps/UX/planes. Stages are *how* a large v1 is delivered in order; they are not separate versions. The **v1 definition of done = every stage's acceptance gate green** ([PRD §9](../../requirements/PRD.md)).
-4. **Priority becomes build order, not version gate.** MoSCoW on requirements ([BRD §8](../../requirements/BRD.md)/[PRD §6](../../requirements/PRD.md)) now expresses **build priority/sequencing within v1**, not a release boundary; everything Must/Should/Could is in v1.
-5. **Anti-goals are positioning, not deferrals.** A small set of stances remain genuine non-goals because they describe what HoBo *is not* (not features awaiting a later version): HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu) via the IaC port rather than replacing them ([Plan 3](../control-plane.md#plan-03)); it is not a standalone secret-management product or a generic app framework ([00 non-goals](../vision.md#plan-00)). These are unchanged by this ADR.
+1. **No release split, no deferred bucket.** There is no "next version" and no "post-launch" tier: the Forge, multi-region HA, FinOps showback, the full dashboard, platform-engineer Resource Definitions/Matching/Packs at depth, the Operator Crew, the generated stack (infrastructure **and** app/UI), patchability, SRE/incident-management, and the governance planes (compliance enforcement, AI safety) + the `notify` port + Registry distribution are all in scope. Scope is bounded only by [ADR-0064](#adr-0064) (AI-native meta-cloud: no business/monetization).
+2. **Build stages = dependency order.** The build proceeds foundations → SDK-local → first-deploy(+gates) → AI-native → multi-provider → Forge → HA/FinOps/UX/planes ([Per-stage build detail](../roadmap.md#per-stage-build-detail-stages-06)). Stages are *how* a large surface is delivered in order; they are not separate versions. Definition of done = every stage's acceptance gate green ([PRD §9](../../requirements/PRD.md)).
+3. **Priority = build order.** MoSCoW on requirements ([BRD §8](../../requirements/BRD.md)/[PRD §6](../../requirements/PRD.md)) expresses **build priority/sequencing**, not a release boundary.
+4. **Anti-goals are positioning, not deferrals.** HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu/Crossplane) via the IaC port rather than replacing them ([Plan 3](../control-plane.md#plan-03)); it is not a standalone secret-management product or a generic app framework ([00 non-goals](../vision.md#plan-00)).
 
-Genuine *technical* first-cut scoping inside individual capability designs (e.g. provider-store active-active/CDC, the multi-Yard **Junction** [ADR-0043](07-portability-extensibility.md#adr-0043), incremental view maintenance, full ITSM) remain honest "first implementation" notes and **iteration hooks within v1** — they are no longer tied to a removed release number, but this ADR does not claim CAP-impossible or out-of-first-cut sub-features are complete.
-
-### Alternatives considered
-- **Keep the P4 MVP line (the former ADR-0022).** Rejected per the directive: the design is complete and coherent enough to commit to a single v1; phasing the *release* now adds coordination overhead without de-risking the architecture.
-- **Merge everything but keep a thin "Won't" bucket.** Offered to the user; they chose "literally everything in v1, no deferred bucket." Only true positioning anti-goals are retained.
-- **Drop the per-stage breakdown and write one flat plan.** Rejected: the dependency-ordered stages are exactly how a massive v1 stays deliverable; we keep them (now folded into the [roadmap](../roadmap.md#per-stage-build-detail-stages-06)), reframed as build stages, not versions.
+Genuine *technical* first-cut scoping inside individual capability designs (e.g. provider-store active-active/CDC, the multi-Yard **Junction** [ADR-0043](07-portability-extensibility.md#adr-0043), incremental view maintenance, full ITSM) remain honest "first implementation" notes and **iteration hooks** — in scope, sequenced by the build.
 
 ### Consequences
-- **(+)** One unambiguous scope: "v1 is everything designed." No per-feature "which version?" question; the roadmap is a build sequence.
-- **(+)** The breadth planes (governance, AI safety, comms, marketplace, HA, FinOps) are committed, not aspirational — they ride existing machinery (ports, policy, events, conformance) with no new runtime.
-- **(−)** v1 is a **large** surface; delivery risk concentrates in execution sequencing rather than scope negotiation. Mitigation: the build stages are independently demoable and each keeps prior acceptance gates green (no regressions), so progress is continuously verifiable.
+- **(+)** One unambiguous scope: "everything designed." No per-feature "which version?" question; the roadmap is a build sequence.
+- **(+)** The breadth planes (governance, AI safety, comms, marketplace, HA, FinOps, app generation) are committed, not aspirational — they ride existing machinery (ports, policy, events, conformance) with no new runtime.
+- **(−)** A **large** surface; delivery risk concentrates in execution sequencing. Mitigation: build stages are independently demoable and each keeps prior acceptance gates green, so progress is continuously verifiable.
 - **(−)** Several NFR baselines ([ADR-0021](#adr-0021)) can only be fully measured once the late stages (multi-region HA) exist; earlier stages verify them on representative-but-partial setups.
-- **(↔)** The former ADR-0022 (MVP-scope/MoSCoW line) is **superseded and removed**; the BRD/PRD/TRD and `requirements/README` are updated so MoSCoW reads as build priority within v1 and release criteria are a single v1 definition of done.
 
 ## ADR-0064
-**Scope: AI-native meta-cloud (remove business + app-build-out).** Accepted (supersedes [ADR-0020](./README.md) monetization model, now removed)
+**Scope: AI-native meta-cloud (remove business/monetization; keep app generation).**
 
 ### Context
-HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed.dev, and Nitric**: a portable durable runtime + a cloud-agnostic provisioning control plane that any cloud's primitives plug into via ports, operable by agents, with the **Forge** generating the missing adapters. As the suite grew it accreted two kinds of scope that drift past a meta-cloud:
-1. **SaaS-business functions** — billing, subscriptions, invoicing, tax/VAT, chargeback, monetization, rev-share. HoBo is not a payments/billing product, and a meta-cloud should not carry a commercial toolkit.
-2. **App-build-out** — generating the developer's *own product*, in particular its **UI** (and the "generate your whole app" framing of the generated stack). Writing the user's application is a different category from running it on any cloud.
+HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed.dev, and Nitric**: a portable durable runtime + a cloud-agnostic provisioning control plane that any cloud's primitives plug into via ports, operable by agents, with the **Forge** generating the missing adapters. The one kind of scope that drifts past a meta-cloud is **SaaS-business functions** — billing, subscriptions, invoicing, tax/VAT, chargeback, monetization, rev-share. HoBo is not a payments/billing product, and a meta-cloud should not carry a commercial toolkit.
 
 ### Decision
-**Scope HoBo to the meta-cloud.** The test for any capability: ***would Convex, Nitric, or Lakebed ship this as a platform capability?*** Note that *developer-facing ≠ out of scope* — these competitors are batteries-included; the cut line is **business + app-build-out**, not "non-developer."
+**Scope HoBo to the meta-cloud, minus money-movement.** The test for a capability: ***would Convex, Nitric, or Lakebed ship this as a platform capability?*** *developer-facing ≠ out of scope* — these competitors are batteries-included; the cut line is **business/monetization**, not "non-developer" and not app generation.
 
-1. **Keep** (in scope): cloud/infra orchestration; the durable, event-sourced runtime; AI-native agents + MCP; the Forge (AI-generated **infrastructure** — providers/adapters/implementations behind ports) and self-optimizing runtime functions (`"use training"`); and the developer-facing **cloud primitives** (data, reactivity, auth, search, messaging, storage) as ports. Cloud-cost **FinOps** (estimates/budgets/showback/quotas/spend-safety) stays — it is infra, not money.
-2. **Remove — business/monetization:** the monetization model (ADR-0020, deleted); the `billing` port / chargeback / invoicing / tax / rev-share; ADR-0039 retitled to *Metering, quota & cost attribution* (FinOps only); the marketplace's monetize lifecycle.
-3. **Remove — app-build-out:** UI-layer generation (Plan 42), the **UX-Designer** operator (Plan 40), the **UI layer** of the generated stack (Plan 41), the `ui-render` port, and `Design.md`. AI generation is refocused to **infrastructure + runtime** (Forge + `"use training"` + data/message glue), not "generate the developer's product."
-4. **Consolidate:** `notify` (email/sms/push/webhook) becomes a thin **cloud-messaging port** in the resource catalog, not a standalone plane; the marketplace's publish/discover/install/trust folds into the **Registry** + **Resource Packs**; governance planes (compliance, AI safety) keep their **enforcement** machinery, trimming the compliance-program paperwork framing.
-5. **Tombstone, don't renumber.** Removed plan numbers (42, 45, 48) become short "removed — out of scope" stubs that preserve links and point to where the capability folded.
+1. **Keep** (in scope): cloud/infra orchestration; the durable, event-sourced runtime; AI-native agents + MCP; the **Forge** (AI-generated providers/adapters/implementations behind ports) and self-optimizing runtime functions (`"use training"`); the developer-facing **cloud primitives** (data, reactivity, auth, search, messaging, storage) as ports; and **app generation** — the **UX Designer** operator, **design.md** as a required input, **OpenUI**, **json-render**, and **mcp-apps**, plus the app/UI layer of the generated stack and the `ui-render` port ([ADR-0055](06-ai-generation-operators.md#adr-0055)/[ADR-0056](06-ai-generation-operators.md#adr-0056)). Cloud-cost **FinOps** (estimates/budgets/showback/quotas/spend-safety) stays — it is infra, not money.
+2. **Remove — business/monetization only:** the `billing` port / chargeback / invoicing / tax / rev-share / subscriptions; the marketplace's monetize lifecycle. ADR-0039 is **Metering, quota & cost attribution** (FinOps only).
+3. **Consolidate:** `notify` (email/sms/push/webhook) is a thin **cloud-messaging port** in the resource catalog, not a standalone plane; the marketplace's publish/discover/install/trust folds into the **Registry** + **Resource Packs**; governance planes (compliance, AI safety) keep their **enforcement** machinery.
 
 ### Alternatives considered
-- **Keep monetization + UI generation as differentiators.** Rejected: they push HoBo from a meta-cloud into a SaaS-business + app-builder, blurring the Convex/Lakebed/Nitric positioning and adding maintenance surface unrelated to the thesis.
-- **Cut only the literal billing list, keep everything else.** Rejected: leaves the app-build-out drift (UI generation) and the sprawl the directive ("consolidate and tighten") asked to remove.
-- **Delete the generated-stack plan entirely.** Considered; instead refocused it to infrastructure/runtime generation so the Forge + use-training story stays coherent.
+- **Keep monetization as a differentiator.** Rejected: pushes HoBo from a meta-cloud into a SaaS-business product, blurring the Convex/Lakebed/Nitric positioning and adding commercial surface unrelated to the thesis.
+- **Cut app/UI generation too.** Rejected: AI-generating the app (UI **and** infrastructure) from intent is core to the AI-native thesis and is a batteries-included capability competitors ship; only money-movement is out.
 
 ### Consequences
-- **(+)** Sharper, more defensible identity: the uncontested intersection (agnostic IfC + durable event-sourced runtime + agents/Forge + conformance + patchability) survives intact; the business/app-build-out sprawl leaves.
-- **(+)** Smaller surface to design, build, and maintain; clearer competitive story vs Convex/Lakebed/Nitric.
-- **(−)** Loses the "generates your UI / whole app" differentiator and any first-party commercial story in the docs (commercialization is now out of design scope).
-- **(↔)** Updates ripple through the suite: ADR-0063 (v1 scope list), the roadmap/phases (stage 6), the requirements (BRD/PRD/TRD), the event model, the glossary/index, and the gap-analysis. Removed numbers are tombstoned, not reused.
+- **(+)** Sharp, defensible identity: agnostic IfC + durable event-sourced runtime + agents/Forge + conformance + patchability + **app generation**; only the business sprawl leaves.
+- **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit to maintain (commercialization is out of design scope).
+- **(↔)** Money-movement terms are removed across the suite; metering/showback/quota/spend-safety (FinOps) and the app-generation stack (UX Designer/design.md/OpenUI/json-render/mcp-apps/`ui-render`) stay.
 
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).

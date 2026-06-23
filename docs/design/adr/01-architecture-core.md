@@ -10,7 +10,7 @@
 ## ADR-0002
 **Pluggable durable ports + a built-in engine (the Camp runtime).**
 
-**Context:** adopt one durable engine (Temporal/Restate) vs define our own ports. **Decision:** HoBo defines runtime ports (EventStore+Queue+Streamer+ActorHost+Clock), provided per Camp, and ships a built-in engine plus adapters. **Consequences:** portability + no hard dependency; we must build/maintain the built-in engine and a conformance suite for the runtime ports ([Plan 2](../sdk-api.md#plan-02)).
+**Context:** adopt one durable engine (Temporal/Restate) vs define our own ports. **Decision:** HoBo defines runtime ports (EventStore+Queue+Streamer+ActorHost+Clock), provided per Camp, and ships a built-in engine plus adapters. The capability/resource surface targets **parity with Nitric and Vercel** — APIs, schedules, AI, websites, storage, secrets/config, databases/caching, messaging, feature flags, and functions/workflows — all expressed as resources behind ports ([Plan 21](../authoring-resources-wiring.md#plan-21)). **Consequences:** portability + no hard dependency; we must build/maintain the built-in engine and a conformance suite for the runtime ports ([Plan 2](../sdk-api.md#plan-02)).
 
 ## ADR-0003
 **Event sourcing + CQRS as the foundation.**
@@ -28,14 +28,14 @@
 **Decision:** `CloudProvider`, `IacProvider`, `BuildProvider` are all swappable ports; a cloud provider composes the other two. **Consequences:** uniform extensibility (incl. Forge); a provider must implement more surface to be "complete" ([Plan 3](../control-plane.md#plan-03)).
 
 ## ADR-0006
-**Pulumi Automation API as the primary IaC mechanism.**
+**IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); no single primary.**
 
-**Context:** Pulumi vs CDKTF (sunset) vs raw Terraform/OpenTofu. **Decision:** Pulumi Automation API primary (embeddable, TS-native); Crossplane for k8s substrate; OpenTofu for HCL; CDKTF import-only. **Consequences:** real-language compositions, no CLI shell-out; Pulumi runtime dependency in the default path ([Plan 3](../control-plane.md#plan-03)).
+**Decision:** the `IacProvider` port ships first-class built-in adapters for **Pulumi (Automation API), Crossplane, Terraform, and OpenTofu** out of the box — none is "the primary." A self-hosted deployment **configures which IaC provider(s) it uses**, and the choice can be made per-workload / per-Camp via Matching ([ADR-0033](05-config-matching-environments.md#adr-0033)). Adapters are **distributed and consumed like plugins from an external git registry**, and the port is **extensible using git repositories as importable modules**, so new IaC backends and shared modules install without forking HoBo. **Consequences:** real-language compositions (Pulumi/TS), HCL ecosystems (Terraform/OpenTofu), and k8s control planes (Crossplane) coexist behind one port; HoBo maintains the adapter contract + conformance suite, not a favored engine ([Plan 3](../control-plane.md#plan-03)).
 
 ## ADR-0007
-**Provider-specific options via typed `.with(...)`.**
+**Provider-specific options via an idiomatic typed-options builder (`.with(...)`).**
 
-**Decision:** optimization is additive, per-provider-typed, and inert for non-resolved providers, so one Bindle targets many clouds unedited; `require`/`prefer` controls strictness. **Consequences:** the agnostic promise + escape hatch coexist; provider packages must export accurate option types ([Plan 2](../sdk-api.md#plan-02)).
+**Decision:** per-provider optimization is additive, typed, and inert for non-resolved providers, so one Bindle targets many clouds unedited; `require`/`prefer` controls strictness. Provider options use an **idiomatic typed-options builder pattern** — the same shape .NET uses for middleware/service configuration (`addX(options => { … })` with a strongly-typed, per-provider options object) — so options are discoverable, validated, and composable. **Consequences:** the agnostic promise + escape hatch coexist; provider packages must export accurate typed option builders ([Plan 2](../sdk-api.md#plan-02)).
 
 ## ADR-0011
 **`bindle.ts` (what) vs `hobo.config.ts` (where/how).**
@@ -48,46 +48,31 @@
 **Decision:** each resource owns an isolated IaC stack. **Consequences:** blast-radius isolation + clean compensation; more state objects to manage ([Plan 3](../control-plane.md#plan-03)).
 
 ## ADR-0026
-**Scope model: `Yard ⊃ Camp ⊃ Bindle`; remove "World".**
-
-- **Origin:** product direction — clarify the configuration layers and drop a vendor-branded concept.
-
-### Context
-Two problems with the prior vocabulary:
-1. **"World"** (the durable-runtime substrate: EventStore/Queue/Streamer/ActorHost/Clock) was lifted from Vercel's Workflow SDK. Carrying a competitor's brand for a core HoBo concept is both a positioning liability and conceptually redundant now that Camps are becoming provider-specific.
-2. **"Camp"** was overloaded as "an environment (dev/prod)" while also being the thing that selected a runtime + a provider mapping. There was no single, named scope for **cross-provider / cross-cloud / hybrid** policy and topology, even though the Yard (control plane) already operated across providers.
+**Scope model: `Yard ⊃ Camp ⊃ Bindle`.**
 
 ### Decision
-Adopt three explicitly nested scopes — **`Yard ⊃ Camp ⊃ Bindle`** — and remove the "World" noun:
+Three explicitly nested scopes:
 
-1. **Bindle = app-level config.** Provider-agnostic topology + bindings. Unchanged. Deployed *into* Camps.
-2. **Camp = provider-specific deployment target.** One environment on one provider/cloud (e.g. `prod-aws`). A Camp now **also provides the durable runtime** — the ports formerly grouped as "World" become **runtime ports** the Camp supplies (built-in `runtime-local`; backends `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`). "World" is **folded into Camp**; the `World` interface becomes `Runtime`; `@hobo/world-*` packages become `@hobo/runtime-*`.
-3. **Yard = control plane + broadest scope.** Keeps its role as the orchestrator **and** becomes the explicit holder of **cross-provider / cross-cloud / hybrid** policy + topology, governing many Camps. A multi-cloud `production` is several Camps under one Yard.
+1. **Bindle = app-level config.** Provider-agnostic topology + bindings. Deployed *into* Camps.
+2. **Camp = provider-specific deployment target.** One environment on one provider/cloud (e.g. `prod-aws`). A Camp **provides the durable runtime** — the **runtime ports** (EventStore + Queue + Streamer + ActorHost + Clock) are supplied by the Camp (built-in `runtime-local`; backends `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`), behind the `Runtime` interface (`@hobo/runtime-*` packages).
+3. **Yard = control plane + broadest scope.** The orchestrator, and the holder of **cross-provider / cross-cloud / hybrid** policy + topology, governing many Camps. A multi-cloud `production` is several Camps under one Yard.
 
-**Environments stay a matching dimension, not a new layer.** A Camp carries an `environment type` ([Plan 25](../platform-engineering.md#plan-25)/[Plan 26](../platform-engineering.md#plan-26)); "prod across two clouds" = two Camps under a Yard. No fourth noun.
+**Environments are a matching dimension, not a layer.** A Camp carries an `environment type` ([Plan 25](../platform-engineering.md#plan-25)/[Plan 26](../platform-engineering.md#plan-26)); "prod across two clouds" = two Camps under a Yard. No fourth noun.
 
-**Preserve "WIT interface"** — that is the WebAssembly Component Model term ([Plan 20](../wasm-runtime-wit.md#plan-20)/[Plan 24](../wasm-runtime-wit.md#plan-24)) and is unrelated to the removed Vercel concept.
+**WIT interface** is the WebAssembly Component Model term ([Plan 20](../wasm-runtime-wit.md#plan-20)/[Plan 24](../wasm-runtime-wit.md#plan-24)) — the contract shape for ports.
 
-> **Above the Yard (rare, a later v1 iteration):** the Yard remains the broadest scope **for an app/org**. For the extreme-isolation case where wholly separate Yards must interoperate, an optional **peer-federation** aggregate — the **`Junction`** — sits over sovereign Yards ([ADR-0043](07-portability-extensibility.md#adr-0043)); it federates trust + signed artifacts, is **not** a controller, and does **not** make the Yard subordinate. Default deployments never see it.
-
-### Alternatives considered
-- **Keep "World" as the runtime substrate noun** — rejected: vendor-branded, and redundant once a Camp is provider-specific and naturally owns its runtime.
-- **Rename the control-plane orchestrator and make "Yard" only a config scope** — rejected: more churn for no gain; the orchestrator already spans providers, so "Yard = control plane + broad scope" is the natural, least-disruptive reading.
-- **Introduce a 4th "Environment" layer (`Yard ⊃ Environment ⊃ Camp ⊃ Bindle`)** — rejected for v1: environments are already handled by the matching dimension (Plan 25); a 4th noun adds ceremony without a concrete need. Revisit if multi-env-per-provider grouping proves painful.
+**Above the Yard — peer federation (the `Junction`).** The Yard is the broadest scope for an app/org. For the extreme-isolation case where wholly separate Yards must interoperate, an optional **peer-federation** aggregate — the **`Junction`** — sits over sovereign Yards ([ADR-0043](07-portability-extensibility.md#adr-0043)): it federates trust + signed artifacts, is **not** a controller, and does **not** make a Yard subordinate. Default deployments never see it.
 
 ### Consequences
-- **(+)** A clean, teachable hierarchy (governed-how-across-clouds / where-on-which-provider / what-the-app-is); HoBo owns its runtime concept end-to-end; no Vercel-brand dependency.
+- **(+)** A clean, teachable hierarchy (governed-how-across-clouds / where-on-which-provider / what-the-app-is); HoBo owns its runtime concept end-to-end.
 - **(+)** Cross-provider/hybrid governance has a home (the Yard) that matches how the control plane already works.
-- **(−)** A broad terminology sweep across the suite (`World`→Camp/runtime; `@hobo/world-*`→`@hobo/runtime-*`), with care to preserve "WIT interface". Tracked + verified by grep in the refactor.
-- **(−)** `ADR-0002`'s wording ("Worlds") is now historical; this ADR supersedes its naming (the *decision* — pluggable durable ports + built-in engine — stands).
+- **(+)** Environments need no extra noun; the Junction covers sovereign federation without subordinating the Yard.
 
 ## ADR-0031
 **wasm host of record & runtime substrate.**
 
-- **Origin:** the gap analysis flagged that **every competitor has a clear runtime substrate** (containers/K8s/their cloud) while HoBo's was an open iteration hook (Q10) — leaving "wasm-first" unproven for production. Designed via brainstorming + grill-with-docs.
-
 ### Context
-[Plan 20](../wasm-runtime-wit.md#plan-20) commits HoBo to **wasm-first, OCI-container fallback**, with WIT interfaces as the port contracts and late-bound **links** binding a component's imports to a provider's exports. But it left the **host of record** — *what actually executes components* locally and in prod — as a "TBD" iteration hook (Wasmtime vs jco-in-Node for local; SpinKube/containerd-wasm vs wasmCloud lattice vs wasm-in-container vs provider-native for prod). Until that is decided, the "any language, one artifact, runs anywhere" claim has no concrete substrate, and [ADR-0026](#adr-0026)'s "a Camp selects its runtime backend" has no answer for the wasm execution layer.
+[Plan 20](../wasm-runtime-wit.md#plan-20) commits HoBo to **wasm-first, OCI-container fallback**, with WIT interfaces as the port contracts and late-bound **links** binding a component's imports to a provider's exports. The **host of record** — *what actually executes components* locally and in prod — must be concrete for the "any language, one artifact, runs anywhere" claim to hold and for [ADR-0026](#adr-0026)'s "a Camp selects its runtime backend" to have an answer at the wasm execution layer.
 
 ### Decision
 1. **The wasm host is a port, not a mandate.** Introduce a **`component-host`** capability/port (the WASI interface impls + the link table + the component lifecycle). The host is a **property of a Camp** ([ADR-0026](#adr-0026)) — a Camp selects its `component-host` the same way it independently selects its runtime backend and infra Provider. Camps stay heterogeneous ([ADR-0028](05-config-matching-environments.md#adr-0028)): one Camp may run SpinKube while another runs provider-native.

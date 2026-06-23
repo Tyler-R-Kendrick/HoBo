@@ -26,8 +26,8 @@
 | 0003 | Event sourcing + CQRS as the foundation | [architecture-core](01-architecture-core.md#adr-0003) |
 | 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
 | 0005 | One ports/adapters shape for cloud, IaC, and build/VM | [architecture-core](01-architecture-core.md#adr-0005) |
-| 0006 | Pulumi Automation API as the primary IaC mechanism | [architecture-core](01-architecture-core.md#adr-0006) |
-| 0007 | Provider-specific options via typed `.with(...)` | [architecture-core](01-architecture-core.md#adr-0007) |
+| 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); no single primary | [architecture-core](01-architecture-core.md#adr-0006) |
+| 0007 | Provider-specific options via an idiomatic typed-options builder (`.with(...)`) | [architecture-core](01-architecture-core.md#adr-0007) |
 | 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
 | 0010 | Forge: AI-generated providers gated by conformance | [ai-generation-operators](06-ai-generation-operators.md#adr-0010) |
@@ -41,10 +41,10 @@
 | 0018 | Requirements-artifact structure & traceability scheme | [scope-and-requirements](08-scope-and-requirements.md#adr-0018) |
 | 0019 | Persona prioritization / primary ICP | [scope-and-requirements](08-scope-and-requirements.md#adr-0019) |
 | 0021 | NFR baselines / committed SLOs for v1 | [scope-and-requirements](08-scope-and-requirements.md#adr-0021) |
-| 0023 | Security posture commitments for v1 | [identity-security](02-identity-security.md#adr-0023) |
+| 0023 | Security posture: secure-by-default, zero-trust, defense-in-depth | [identity-security](02-identity-security.md#adr-0023) |
 | 0024 | Portability conformance guarantee ("same Bindle, N clouds") | [portability-extensibility](07-portability-extensibility.md#adr-0024) |
 | 0025 | `"use training"` directive + `training-engine` behind a port (Agent Lightning / Trace optional, internal-only) | [ai-generation-operators](06-ai-generation-operators.md#adr-0025) |
-| 0026 | Scope model: `Yard ⊃ Camp ⊃ Bindle`; remove "World" | [architecture-core](01-architecture-core.md#adr-0026) |
+| 0026 | Scope model: `Yard ⊃ Camp ⊃ Bindle` | [architecture-core](01-architecture-core.md#adr-0026) |
 | 0027 | Secretless-first configuration & secrets | [identity-security](02-identity-security.md#adr-0027) |
 | 0028 | Multi-Camp deployment model (cardinality, naming, atomicity) | [config-matching-environments](05-config-matching-environments.md#adr-0028) |
 | 0029 | Reactive / live-query model (event-log reactor) | [data-plane](03-data-plane.md#adr-0029) |
@@ -52,7 +52,7 @@
 | 0031 | wasm host of record & runtime substrate | [architecture-core](01-architecture-core.md#adr-0031) |
 | 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective) | [config-matching-environments](05-config-matching-environments.md#adr-0033) |
-| 0034 | Search & vector surface | [data-plane](03-data-plane.md#adr-0034) |
+| 0034 | Generalized, extensible search capability (vector/graph as extensions) | [data-plane](03-data-plane.md#adr-0034) |
 | 0035 | Custom domains & multi-cloud ingress | [portability-extensibility](07-portability-extensibility.md#adr-0035) |
 | 0036 | Air-gapped / sovereign Yard mode | [portability-extensibility](07-portability-extensibility.md#adr-0036) |
 | 0037 | SDK codegen surface & policy | [config-matching-environments](05-config-matching-environments.md#adr-0037) |
@@ -74,14 +74,15 @@
 | 0053 | Write-side consistency: commands, aggregates, and the actor boundary | [data-plane](03-data-plane.md#adr-0053) |
 | 0054 | Operator Agents (the Crew): built-in autonomous Yard services | [ai-generation-operators](06-ai-generation-operators.md#adr-0054) |
 | 0055 | The generated stack: a layered model for AI generation/self-healing/persistence | [ai-generation-operators](06-ai-generation-operators.md#adr-0055) |
+| 0056 | App/UI generation (design.md · OpenUI · json-render · mcp-apps · `ui-render`) | [ai-generation-operators](06-ai-generation-operators.md#adr-0056) |
 | 0057 | Patchability as a first-class guarantee (distinct from portability) | [portability-extensibility](07-portability-extensibility.md#adr-0057) |
 | 0058 | SRE: incident management, runbooks & the self-healing decision model | [ai-generation-operators](06-ai-generation-operators.md#adr-0058) |
 | 0059 | App communications: the `notify` family over the shared receiver port | [data-plane](03-data-plane.md#adr-0059) |
 | 0060 | Compliance & data governance as a plane over the existing planes | [governance-verification](04-governance-verification.md#adr-0060) |
 | 0061 | AI safety & model governance: registry, guardrails, red-teaming | [governance-verification](04-governance-verification.md#adr-0061) |
 | 0062 | Registry distribution: publish/discover/install/trust over signed, certified artifacts | [portability-extensibility](07-portability-extensibility.md#adr-0062) |
-| 0063 | Single v1 scope (the whole designed surface ships as one v1) | [scope-and-requirements](08-scope-and-requirements.md#adr-0063) |
-| 0064 | Scope: AI-native meta-cloud (remove business + app-build-out) | [scope-and-requirements](08-scope-and-requirements.md#adr-0064) |
+| 0063 | Single scope: the whole designed surface ships together | [scope-and-requirements](08-scope-and-requirements.md#adr-0063) |
+| 0064 | Scope: AI-native meta-cloud (remove business/monetization; keep app generation) | [scope-and-requirements](08-scope-and-requirements.md#adr-0064) |
 | 0065 | Streaming-first: RX subscribable materializations as the default read surface | [data-plane](03-data-plane.md#adr-0065) |
 | 0066 | Availability through cost controls: cost-driven graceful degradation & SLO-aware cost/availability trade-offs | [governance-verification](04-governance-verification.md#adr-0066) |
 | 0067 | Component-host portability: conformance + version pinning across hosts | [architecture-core](01-architecture-core.md#adr-0067) |

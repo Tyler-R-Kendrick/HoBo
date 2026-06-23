@@ -4,13 +4,11 @@ This capability doc covers the Yard control plane end to end: its services and r
 
 ## Plan 04
 
-**Plan 4 — The Yard (hobo-cloud control plane)**
-
-> **Runtime/IfC integration.** The Planner now consumes the **manifest IR** produced by IfC resource-collection ([Plan 21](./authoring-resources-wiring.md#plan-21)); ResourceActors additionally manage **links** binding components to capability providers ([Plan 20](./wasm-runtime-wit.md#plan-20)). The reconciliation FSM and choreography below are unchanged.
+> **Runtime/IfC integration.** The Planner consumes the **manifest IR** produced by IfC resource-collection ([Plan 21](./authoring-resources-wiring.md#plan-21)); ResourceActors also manage **links** binding components to capability providers ([Plan 20](./wasm-runtime-wit.md#plan-20)).
 
 > **Resource Definitions & Matching (Humanitec parity).** The Planner resolves each resource via **Resource Definitions + Matching**; the lifecycle works in **Deltas → Sets** with **incremental** reconcile (only changed nodes); Executors can run behind a **HoBo Relay** for private-network targets, with a **GitOps publisher** as an alternate apply path; and **Pipelines** drive *when* deploys happen ([Plan 25](./platform-engineering.md#plan-25)).
 
-> **Contracts & policy (gates).** New grains back the two governance planes: a **contract-engine** and a **policy-engine**, each a WIT port with a built-in default ([Plan 29](./contracts-policy-flags.md#plan-29)). The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
+> **Contracts & policy (gates).** Two governance planes back grains: a **contract-engine** and a **policy-engine**, each a WIT port with a built-in default ([Plan 29](./contracts-policy-flags.md#plan-29)). The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
 
 The Yard is the orchestrator that maps Bindle deployments to real hosting. It is **itself a HoBo Bindle** (dogfood) and runs on the TS-native core; Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement.
 
@@ -76,7 +74,7 @@ The Yard runs itself, so first existence is special:
 2. **Self-deploy:** that seed deploys `@hobo/cloud` (the Yard Bindle) to the target Camp (e.g. a managed Postgres runtime + container provider), producing a "real" Yard. **The bootstrap-apply credential comes from the operator, not from a not-yet-existing Identity:** since the target Yard's Identity service doesn't exist yet, the seed's Executor provisions the real Yard's infra using the **operator's own OIDC/SVID obtained at `hobo login`** — a single, short-lived, scoped credential used *once* for the bootstrap apply and **audited as `identity.SeedTokenUsed`**. This resolves the chicken-and-egg: the operator credential bootstraps infra; the real Identity then takes over all subsequent token issuance.
 3. **Handover:** the real Yard imports the seed's event log (the deployment that created it) so its own provenance is auditable; **the handover point is explicit — once the real Identity is up and federated, it becomes the sole token broker and the seed credential is retired** — then the seed is discarded.
 This makes self-hosting a first-class, reproducible path, not a bespoke install script.
-- **Air-gapped profile:** the same self-deploy runs **fully in-boundary with zero egress** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) — artifacts arrive via signed offline bundle import, trust roots (Identity/CA/KMS) and any AI models stay in-boundary, and the deterministic core needs no network. A single in-boundary Yard; multi-Yard federation is deferred ([Q20](./verification.md#plan-09)).
+- **Air-gapped profile:** the same self-deploy runs **fully in-boundary with zero egress** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)) — artifacts arrive via signed offline bundle import, trust roots (Identity/CA/KMS) and any AI models stay in-boundary, and the deterministic core needs no network. An air-gapped boundary is a single in-boundary Yard.
 
 ### Multi-tenancy
 Tenant = isolation boundary for event streams, actor placement, credential scope, and executor pools. Self-host runs single-tenant; hosted runs multi-tenant on the same code. Full model in [Plan 12](./security-networking.md#plan-12).
@@ -98,12 +96,6 @@ flowchart TB
   Y1 <-.->|federated identity trust OIDC/SVID| Y2
   Y1 <-.->|signed policy packs + registry bundles + cross-cloud policy| Y2
 ```
-
-### Iteration hooks
-- ResourceActor resync interval & jitter; how aggressive drift auto-heal should be (auto vs propose).
-- Plan-level vs resource-level compensation thresholds (when does one failure roll back the whole deploy vs just retry locally?).
-- Whether the Planner is a Yard service or a library invoked at the edge.
-- Executor isolation tier (Firecracker vs gVisor vs container) per trust level.
 
 ### Providers, IaC & build/VM adapters
 

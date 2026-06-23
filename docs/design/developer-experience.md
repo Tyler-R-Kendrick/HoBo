@@ -33,7 +33,7 @@ This capability doc covers the developer-facing surface end to end: the UI/dashb
 
 ### Tech & structure
 - Next.js app, itself a HoBo `web` resource in the Yard Bindle; subscribes to projections via the Gateway's read API and to live data via streams.
-- Component-driven; design-system and detailed flows are deferred (this plan is a scope/IA sketch — the visual design is an explicit iteration target, see [Plan 0](./vision.md#plan-00) "ui design" iteration note).
+- Component-driven; subscribes to projections via the Gateway's read API and to live data via streams.
 
 ### Local-dashboard & link views (integrated)
 Additional views the runtime/IfC model adds, each a projection/stream like the rest:
@@ -43,12 +43,6 @@ Additional views the runtime/IfC model adds, each a projection/stream like the r
 | **Collected manifest** | `bindle.ManifestProduced` | the IfC resource-collection output (resources, links, annotations) before deploy ([Plan 21](./authoring-resources-wiring.md#plan-21)) |
 | **Link map** | manifest links | each component's imports → resolved capability providers ([Plan 20](./wasm-runtime-wit.md#plan-20)) |
 | **WIT-call traces** | `link.Called` / stub recordings | cross-port calls; the basis for AI implement/evolve/live-fix **proposals + gate approvals** ([Plan 23](./forge-generated-stack.md#plan-23)) |
-
-### Iteration hooks
-- Information architecture & navigation; the design system.
-- Whether the dashboard is runtime-agnostic (read API only) or has a runtime-specific fast path.
-- Depth of replay/diff tooling in UI vs CLI.
-- Multi-tenant org/team/project navigation and RBAC surfacing.
 
 ### CLI & developer experience
 
@@ -80,7 +74,7 @@ hobo doctor                                              env/credential/connecti
 hobo codegen [--check]                                   (re)generate typed clients into _generated/; --check fails on drift (CI) (ADR-0037)
 hobo verify [--target <env>]                             composite Gatekeeper: contracts + policy + evals + conformance + cost
 ```
-**`hobo up` subsumes the old lifecycle verbs.** No separate `deploy`/`destroy`/`rollback`/`promote`/`yard up`:
+**`hobo up` subsumes the lifecycle verbs.** There is no separate `deploy`/`destroy`/`rollback`/`promote`/`yard up`:
 - **deploy** → `hobo up` (provision-then-deploy is one convergence).
 - **destroy / teardown** → `hobo down`.
 - **rollback** → `hobo up --to <rev>` (re-realize a prior revision) or `hobo up --rollback` (last-good).
@@ -145,9 +139,3 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 - TS types ship in every `@hobo/*` package; provider options autocomplete on `.with(...)`.
 - Optional VS Code extension: topology preview, run inspector, and "explain this plan."
 - Framework adapters (Next/Astro/Hono/etc.) wire HoBo's build transform like Vercel's `withWorkflow`.
-
-#### Iteration hooks (CLI/DX)
-- Template set + whether scaffolds wire a provider-pinned Camp object or stay fully agnostic ([ADR-0011](./adr/01-architecture-core.md#adr-0011)).
-- How `hobo dev` emulates provider-specific behaviors (fidelity vs simplicity).
-- Single binary vs `npx`-only distribution; self-update story.
-- Depth of the VS Code extension vs CLI-first.

@@ -4,13 +4,11 @@ This capability doc covers the Forge generation loop, the trainable-method evolu
 
 ## Plan 23
 
-**Plan 23 — Stubbable & trainable (`use training`) implementations: AI implement / train / auto-evolve / live-fix**
-
 > **Trainable methods.** A method the developer marks **`"use training"`** ([Plan 2](./sdk-api.md#plan-02)) is an **AI-rewritable semantic function**: HoBo continuously optimizes its prompt/code against a rubric. The optimizer is an **engine behind a WIT port** (`training-engine`, built-in default; **Microsoft [Agent Lightning](https://microsoft.github.io/agent-lightning/stable/) / [Trace](https://microsoft.github.io/Trace/) are optional *internal* providers, never exposed to SDK users** — same engines-behind-ports rule as [ADR-0015](./adr/README.md), see [ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)). Runtime execution is captured as **OTel + [OpenInference](https://github.com/Arize-ai/openinference)** spans (the training data), and **live-evals** supply the reward/feedback signal and gate promotion.
 
 > **Drivers & Resource Packs (Humanitec parity):** the same Forge loop also generates **Resource Definitions** and **Resource Packs** ([Plan 25](./platform-engineering.md#plan-25)/[Plan 25](./platform-engineering.md#plan-25)) — given a backend's Capability Manifest + a target context, propose a definition, validate it sandboxed against conformance, and certify it into the Registry.
 
-> **Contracts, policy & evals (gates):** a stubbed-then-AI-implemented port is a **semantic function**, governed by the four-lens taxonomy — **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened** ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)). The promotion gate below is now explicit: **conformance(contract) green AND eval thresholds met AND policy allows**.
+> **Contracts, policy & evals (gates):** a stubbed-then-AI-implemented port is a **semantic function**, governed by the four-lens taxonomy — **Contract = must never break · Eval = should improve · Policy = may/may not be allowed · Trace = what actually happened** ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)). The promotion gate below is **conformance(contract) green AND eval thresholds met AND policy allows**.
 
 ### Contract vs eval vs policy (for a semantic function)
 A semantic function carries three independent things, not one:
@@ -287,14 +285,3 @@ flowchart LR
 - **Core releases ship a breaking-change manifest** — the seam/port changes with upcaster hints (*"`policy-engine` gained decision field X — here's the migration"*), so a derivative author writes targeted upcasters instead of reverse-engineering the diff. A derivative that re-passes the suite post-upgrade is a trusted, upgradable first-class citizen.
 
 **Verification.** A custom engine (e.g. a bespoke `policy-engine`) shipped as a signed plugin passes conformance and is selected per Camp via Matching — no core edit; portability of user apps is unaffected. A persisted patch to a generated region survives regeneration (round-trip), shows as a minimal diff, and `hobo codegen --check` distinguishes it from drift. A derivative Yard (forked control plane) deploys as a Bindle and self-hosts with the same control-plane features ([ADR-0024 §self-host=hosted](./adr/07-portability-extensibility.md#adr-0024)).
-
-### Iteration hooks (Forge & generated stack)
-- Precise definition of "low-risk" for auto live-fix (shared with [Plan 5](./reliability-observability-cost.md#plan-05)/[Plan 12](./security-networking.md#plan-12) policy); rollback granularity, and whether evolution targets the component, the linked provider, or both.
-- Trace retention/sampling + per-run encryption for sensitive payloads; trajectory schema + how much OpenInference span detail to persist as authoritative training data vs sample.
-- Default `training-engine` method (OPTO/prompt-rewrite vs RL/GRPO vs APO) per method class, when to delegate to Agent Lightning vs Trace vs the built-in optimizer, and whether a tenant can bring their own (trust/conformance bar, since it can rewrite production behavior).
-- Forge model/eval design and the human-certification threshold for high-trust ports.
-- Online-eval cost control (LLM-judge sampling rate) and how reward is attached for methods without a cheap programmatic rubric.
-- Template library shape (per-port vs per-driver scaffolds) and how much is fixed vs synthesized; repair-budget defaults + the cost/quality tradeoff of more iterations ([Plan 5](./reliability-observability-cost.md#plan-05)), policy-configurable per tenant.
-- How aggressively `material` (docs/OpenAPI) is trusted vs ignored when it conflicts with the contract; whether the Forge can *propose* a new WIT port / Capability Manifest when none exists.
-- How aggressively message-layer choreography is generated vs hand-authored sagas; cross-layer eval (a rubric that scores a *whole feature*, not one function); and the maturity gap between layers (data/business heal more readily than message/ui).
-- Ephemeral-patch GC policy + the promotion threshold (when an in-place fix earns a persisted patch); whether "patchability" needs its own CLI surface (`hobo extend`/`hobo fork`); and provenance/trust for third-party derivatives beyond [Plan 12](./security-networking.md#plan-12).

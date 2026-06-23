@@ -4,9 +4,7 @@ This capability doc covers the HoBo governance plane: compliance/data governance
 
 ## Plan 46
 
-**Plan 46 — Compliance & data governance plane**
-
-> **Why this exists.** This plane turns a **data classification into an *enforced* residency/retention decision** and delivers **right-to-erasure** on a forward-only log. It builds on residency context ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)/[ADR-0036](./adr/07-portability-extensibility.md#adr-0036)), the retention floor ([ADR-0023](./adr/02-identity-security.md#adr-0023)), and the OCSF audit export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)) — wiring them into one enforcement plane. Attestation evidence rides out as a signed OCSF export.
+> **What this plane does.** This plane turns a **data classification into an *enforced* residency/retention decision** and delivers **right-to-erasure** on a forward-only log. It builds on residency context ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)/[ADR-0036](./adr/07-portability-extensibility.md#adr-0036)), the retention floor ([ADR-0023](./adr/02-identity-security.md#adr-0023)), and the OCSF audit export ([ADR-0046](./adr/04-governance-verification.md#adr-0046)) — wiring them into one enforcement plane. Attestation evidence rides out as a signed OCSF export.
 
 ### Data classification — the input everything keys on
 Resources and WIT-record fields carry a **classification label** (`public` / `internal` / `pii` / `phi` / `pci` / `secret`, extensible). Labels attach two ways:
@@ -58,12 +56,6 @@ HoBo standardizes the **enforcement**, not a compliance program. The audit facts
 ### Scope
 - **In scope:** classification labels (resource + WIT-field) → enforced residency/retention obligations at `can-deploy` + runtime; crypto-shred erasure + projection purge; PII-discovery that *proposes* labels (humans/policy confirm, never auto-classifies); a data-lineage view over classification + projection read-sets; an OCSF attestation export over the audit facts for external GRC tools.
 - **Out of scope:** HoBo does not run a SOC2/GDPR/HIPAA attestation *program* and does not ship a DPA/subprocessor registry as a product surface ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)) — it exports the facts, GRC tools run the program.
-
-### Iteration hooks
-- Classification taxonomy + whether labels are a closed enum or an extensible lattice with inheritance.
-- Where the per-subject key boundary sits (per-user vs per-record vs per-tenant) — the granularity/erasure-blast-radius tradeoff.
-- Whether attestation packs are first-party only or community/Registry-distributed ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)).
-- Coupling the suppression list (the `notify` port, [Plan 21](./authoring-resources-wiring.md#plan-21)) to erasure so an erased subject is auto-suppressed across channels.
 
 ### AI safety & model governance
 

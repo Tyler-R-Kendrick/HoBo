@@ -44,13 +44,13 @@ export interface EventEnvelope<T = unknown> {
 Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only the facts they produce are.
 
 **Bindle / Camp**
-`bindle.Registered` · `bindle.VersionPublished` · `camp.Created` · `camp.RuntimeBound` · `env.PromoteRequested` · `env.Promoted` · `env.PromoteRolledBack` (multi-Camp environment-group saga, [ADR-0028](./adr/05-config-matching-environments.md#adr-0028))
+`bindle.Registered` · `bindle.VersionPublished` · `camp.Created` · `camp.RuntimeBound` · `env.PromoteRequested` · `env.Promoted` · `env.PromoteRolledBack` · `env.PartiallyPromoted` (a tolerated partial deploy across the group — only via `optional` members, never a silent split, [ADR-0028](./adr/05-config-matching-environments.md#adr-0028)) (multi-Camp environment-group saga)
 
 **Deployment** (the control-plane saga)
 `deployment.Requested` · `deployment.Planned` · `deployment.PortabilityReported` (plan-time portability scorecard: portability % + lock-in sources + per-resource equivalence class + upgrade readiness — [Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0024](./adr/07-portability-extensibility.md#adr-0024)) · `deployment.PlanRejected` · `deployment.Deployed` · `deployment.RolledBack`
 
 **Resource** (one stream per resource instance)
-`resource.Provisioning` · `resource.Provisioned` · `resource.UpdateRequested` · `resource.Updated` · `resource.Failed` · `resource.Compensating` · `resource.Destroyed` · `resource.DriftDetected` · `resource.Adopted` (existing resource brought under management on `hobo import` + its source/provenance, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041))
+`resource.Provisioning` · `resource.Provisioned` · `resource.UpdateRequested` · `resource.Updated` · `resource.Failed` · `resource.Compensating` · `resource.Destroyed` · `resource.CompensationFailed` (a destroy that itself failed → escalates to an incident rather than a silent half-rollback, [ADR-0004](./adr/01-architecture-core.md#adr-0004)) · `resource.DriftDetected` · `resource.Adopted` (existing resource brought under management on `hobo import` + its source/provenance, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041))
 
 **Execution** (IaC/build runs)
 `exec.Started` · `exec.Output` · `exec.Succeeded` · `exec.Failed`
@@ -154,6 +154,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Derivatives** ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0057](./adr/07-portability-extensibility.md#adr-0057)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
 `derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed`
 
+**Junction (peer federation)** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — cross-Yard trust/policy/registry federation under an agreed root; never reaches into a member Yard's state
+`junction.YardJoined` · `junction.TrustEstablished` · `junction.TrustRevoked` (drops a peer immediately — fast revocation bounding the forge-principals-into-A window; the mechanism [ADR-0074](./adr/02-identity-security.md#adr-0074) §6 cross-Yard governance depends on) · `junction.ArtifactShared` · `junction.PolicyPropagated` · `junction.YardLeft`
+
 ### Projections (read models)
 Events are the write model; queries read **projections** rebuilt by folding the stream. Initial projections:
 - **DeploymentView** — current status + per-resource state for the dashboard timeline.
@@ -170,12 +173,13 @@ Projections are rebuildable from zero at any time (this is the test that the log
 
 ### Snapshots & compaction
 - **Snapshots:** for long-lived streams (actors, the Yard's own state), periodically persist a fold result + the `seq` it covers, so activation replays only the tail. Snapshots are a cache, never a source of truth.
-- **Compaction:** runtime `run.*` streams can be archived to cold storage after terminal state + retention window; audit (`token.*`, `resource.*`) streams are retained per compliance policy and never compacted away.
+- **Compaction:** runtime `run.*` streams can be archived to cold storage after terminal state + retention window; audit (`token.*`, `resource.*`) streams are retained per compliance policy and never compacted away. **Domain streams** (the app's own event-sourced data, [Plan 32](./data-plane.md#plan-32)) carry a **distinct retention/compaction policy**: a high-volume domain aggregate may be **snapshot-and-truncated** (snapshot ≥ retention floor, older events tiered to cold storage behind an audit marker) so "domain data on the log" doesn't grow unbounded — while compliance-retained `token.*`/`resource.*`/policy streams stay never-compacted ([ADR-0050](./adr/03-data-plane.md#adr-0050)).
 
 ### Schema evolution (versioning events)
 - Each `type` carries `v`. Readers run **upcasters**: pure functions `vN → vN+1` chained to the current version, so old events remain replayable forever.
 - Additive changes (new optional fields) don't bump `v`. Renames/semantic changes do, with an upcaster.
 - Never rewrite history; only add upcasters. This keeps replay/audit guarantees intact across years of schema drift.
+- **Poison events** — a body a deterministic fold/aggregate still can't process (a bad upcast, a decode error) would otherwise wedge an append-only stream forever. The reader emits a **quarantine fact** (`*.Quarantined`, e.g. `resource.Quarantined`/`<aggregate>.Quarantined`, recording the offending `seq` + reason) that lets the fold **skip it deterministically** — never a silent rewrite of the log; the quarantine is itself an auditable event and a `hobo doctor`/incident signal ([ADR-0050](./adr/03-data-plane.md#adr-0050)).
 - **This is HoBo's *own* event-log evolution.** The developer's **application database** (the `sql` resource) evolves differently — via gated **expand/backfill/contract** migrations + snapshots ([Plan 32](./data-plane.md#plan-32)/[ADR-0032](./adr/03-data-plane.md#adr-0032)). Don't conflate the two: upcasters here, schema migrations there.
 
 ### How replay powers durable workflows

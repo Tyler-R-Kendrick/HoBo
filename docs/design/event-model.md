@@ -29,6 +29,7 @@ export interface EventEnvelope<T = unknown> {
   ts: string;            // ISO8601, set by the Camp's runtime Clock (deterministic on replay)
   actor: PrincipalRef;   // who/what caused it (user, agent SVID, system)
   tenant: string;        // isolation boundary (Plan 12)
+  project?: string;      // organizational grouping (app/product/portfolio) — a rollup/ownership/RBAC dimension that cross-cuts the infra scopes, NOT a containment scope (ADR-0077). Absent = the Bindle's singleton-project default
   causationId?: string;  // the command/event that directly caused this
   correlationId?: string;// the saga / deploy / run this belongs to
   data: T;               // typed payload
@@ -133,6 +134,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `incident.Opened` (cause + severity + impact) · `incident.Triaged` · `incident.RootCauseIdentified` (diagnosis; optional HolmesGPT) · `incident.RemediationProposed` (action + blast radius + `policy.Decided` ref) · `incident.RemediationApplied`/`incident.RemediationFailed` · `incident.Resolved` · `incident.SLABreached` (MTTD/MTTR overrun) · `incident.PostmortemFiled` (replay-generated)
 `runbook.Defined` (trigger + diagnosis steps + gated fix actions) · `runbook.Triggered` · `runbook.StepCompleted` · `runbook.Completed`/`runbook.Failed` (built on the Pipelines engine, [Plan 25](./platform-engineering.md#plan-25); remediation applies ride live-fix + `policy.Decided`)
 
+**Status pages** ([Plan 49](./dashboards-status-availability.md#plan-49)/[ADR-0077](./adr/04-governance-verification.md#adr-0077)) — per-**project** stakeholder pages; the surfaces themselves are projections, only the public-disclosure trail is event-sourced
+`statuspage.Published` (a project's public page went live — the declared public-component allowlist + redaction profile + a content hash of the served snapshot; **re-emitted on every allowlist/profile change** so the in-force profile is reconstructable at any time) · `statuspage.Unpublished` (retracted) · `statuspage.IncidentPosted` (a curated public incident update — its free text redaction-scanned before publish; subscriber delivery rides `notify`, [ADR-0059](./adr/03-data-plane.md#adr-0059)). *The operations dashboard, the status page's aggregate uptime/dependency views, and architecture availability (the `AvailabilityView`, "march of the 9s", [ADR-0078](./adr/04-governance-verification.md#adr-0078)) are all **projections** over existing facts — no new event types; `project`/`environment` are rollup dimensions, not events.*
+
 **Chaos** ([ADR-0047](./adr/04-governance-verification.md#adr-0047)) — fault injection is policy-gated + blast-radius-bounded
 `chaos.ExperimentStarted` (hypothesis + fault + blast radius) · `chaos.FaultInjected` · `chaos.SteadyStateChecked` · `chaos.Aborted` · `chaos.ExperimentCompleted` (a failed experiment's replay becomes a regression test, [Plan 23](./forge-generated-stack.md#plan-23))
 
@@ -164,6 +168,7 @@ Events are the write model; queries read **projections** rebuilt by folding the 
 - **RunView** — workflow/step/actor/saga trace for the run inspector.
 - **CredentialAudit** — every `token.*` event, joined to the run/agent that triggered it.
 - **DriftView** — resources whose observed state diverged from desired.
+- **AvailabilityView** — architecture-derived availability ("march of the 9s", [ADR-0078](./adr/04-governance-verification.md#adr-0078)): composes declared provider SLAs + observed availability through the dependency graph (serial multiplies, redundant sets parallel, each hop a failure domain) → estimated vs observed downtime per service, rolled up by Bindle/environment/project.
 
 Projections are rebuildable from zero at any time (this is the test that the log is truly authoritative). **Cross-Camp:** a non-owner Camp builds **bounded-staleness projections** from the owner Camp's replicated read-stream — the same fold, fed by replication ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)/[Plan 5](./reliability-observability-cost.md#plan-05)).
 

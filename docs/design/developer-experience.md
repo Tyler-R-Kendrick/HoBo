@@ -1,6 +1,6 @@
 # Developer Experience: UI & CLI
 
-This capability doc covers the developer-facing surface end to end: the UI/dashboard and the CLI/DX, told as one narrative.
+This capability doc covers the developer-facing surface end to end: the UI/dashboard and the CLI/DX, told as one narrative. This is the **developer/authoring** dashboard (deploy timeline, link map, run inspector, AI proposals); the **operations** counterpart — the multi-cloud / multi-environment **fleet** view and the per-project **status pages** + architecture availability — is [Plan 49](./dashboards-status-availability.md#plan-49), built from the same projection-and-event model.
 
 ## Plan 07
 

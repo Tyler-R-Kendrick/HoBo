@@ -350,7 +350,7 @@ The deployment story is the framework's softest spot: the publishers and compute
 
 ### Dashboard, DCP & observability
 
-This runtime/visibility layer is a major part of Aspire's appeal and a reference point for [HoBo Plan 7](../docs/design/developer-experience.md#plan-07) and [Plan 5](../docs/design/reliability-observability-cost.md#plan-05). **DCP** is Aspire's local orchestrator, written in Go, that the AppHost drives on `aspire run`:
+This runtime/visibility layer is a major part of Aspire's appeal and a reference point for [HoBo Plan 7](../docs/design/developer-experience.md#plan-07) and [Plan 5](../docs/design/reliability-observability-cost.md#plan-05). Note the scope gap HoBo closes: **Aspire's dashboard is a *local-dev* surface for one AppHost run**, whereas HoBo's **operations dashboard** ([HoBo Plan 49](../docs/design/dashboards-status-availability.md#plan-49)) is the **multi-cloud / multi-environment** prod analog (project × environment fleet view), plus per-project **status pages** and an **architecture-availability** estimate (the "march of the 9s") Aspire has no equivalent of. **DCP** is Aspire's local orchestrator, written in Go, that the AppHost drives on `aspire run`:
 
 - Manages the lifecycle of containers, .NET projects, and executables/processes as a unit.
 - Provides a Kubernetes-style local API (pods/services/configmaps analogues) — but it is *not* Kubernetes and requires none.

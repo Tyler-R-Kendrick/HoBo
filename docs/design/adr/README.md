@@ -86,3 +86,5 @@
 | 0074 | Org governance: RBAC + mandatory guardrails over HoBo's own control-plane surface | [identity-security](02-identity-security.md#adr-0074) |
 | 0075 | Interface stability tiers + statically-evaluable provider Capability Spec (preview `wasi:websocket`) | [portability-extensibility](07-portability-extensibility.md#adr-0075) |
 | 0076 | Boundary virtualization: stub/link modes for request-level isolation, preview, self-healing & non-destructive chaos | [governance-verification](04-governance-verification.md#adr-0076) |
+| 0077 | Projects & environments as grouping dimensions; the operations dashboard & per-project status pages | [governance-verification](04-governance-verification.md#adr-0077) |
+| 0078 | Architecture-derived availability — the "march of the 9s" | [governance-verification](04-governance-verification.md#adr-0078) |

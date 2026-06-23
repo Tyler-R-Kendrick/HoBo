@@ -19,7 +19,7 @@ The SDK is four cooperating layers. Each lower layer is usable on its own; highe
 ---
 
 ### Layer 1 — the Camp runtime (durable runtime ports)
-A **Camp** provides the durable runtime substrate via these **runtime ports** — a superset of the usual Storage+Queue+Streamer, adding actors + a deterministic clock. *(This is HoBo's own concept; it deliberately replaces — and does not adopt — Vercel's "World".)*
+A **Camp** provides the durable runtime substrate via these **runtime ports** — a superset of the usual Storage+Queue+Streamer, adding actors + a deterministic clock.
 
 ```ts
 // @hobo/core

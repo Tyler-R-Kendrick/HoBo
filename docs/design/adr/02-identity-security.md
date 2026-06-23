@@ -13,9 +13,9 @@
 **Decision:** providers publish machine-readable signs (`capabilities/auth/cost.json`) at a well-known path; the Registry indexes them. **Consequences:** agents self-discover + self-provision; we must define, version, and possibly standardize the schema ([Plan 6](../ai-native-agent-auth.md#plan-06)).
 
 ## ADR-0012
-**Firecracker-sandboxed, credential-scoped executors.**
+**Credential-scoped executors; isolation tier chosen per workload.**
 
-**Decision:** all IaC/build runs in microVMs with no ambient creds and a single scoped token. **Consequences:** strong isolation for untrusted/generated provider code; operational cost of running a microVM fleet ([Plan 4](../control-plane.md#plan-04), [Plan 12](../security-networking.md#plan-12)).
+**Decision:** IaC/build and untrusted/generated code run with **no ambient creds and a single scoped token**, in a sandbox whose **isolation tier is selected per workload/trust level** via Matching ([ADR-0033](05-config-matching-environments.md#adr-0033)) — microVM (Firecracker) for untrusted/generated provider code, with gVisor or container tiers where the workload allows. The hosting/isolation tech is optimized for the specific workload, not fixed globally. **Consequences:** strong isolation where it's needed without paying microVM cost for every workload; the executor manages several isolation backends behind one contract ([Plan 4](../control-plane.md#plan-04), [Plan 12](../security-networking.md#plan-12)).
 
 ## ADR-0023
 **Security posture commitments.**

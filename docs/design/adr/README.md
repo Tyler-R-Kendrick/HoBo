@@ -32,7 +32,7 @@
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
 | 0010 | Forge: AI-generated providers gated by conformance | [ai-generation-operators](06-ai-generation-operators.md#adr-0010) |
 | 0011 | `bindle.ts` (what) vs `hobo.config.ts` (where/how) | [architecture-core](01-architecture-core.md#adr-0011) |
-| 0012 | Firecracker-sandboxed, credential-scoped executors | [identity-security](02-identity-security.md#adr-0012) |
+| 0012 | Credential-scoped executors; isolation tier chosen per workload | [identity-security](02-identity-security.md#adr-0012) |
 | 0013 | Per-resource IaC stacks (default) | [architecture-core](01-architecture-core.md#adr-0013) |
 | 0014 | MCP as a first-class control surface | [ai-generation-operators](06-ai-generation-operators.md#adr-0014) |
 | 0015 | Contracts & policy are HoBo-native planes; engines sit behind ports | [governance-verification](04-governance-verification.md#adr-0015) |

@@ -55,7 +55,7 @@ blocked: api@1.8.0 publishes order-events/order.created v3 (removed tenantId),
 fixes:   1) dual-publish tenantId during a 14d migration window
          2) deploy worker@1.5.0 first  3) add a compatibility shim
 ```
-This is HoBo's generalization of consumer-driven contract testing's `can-i-deploy`, but driven by HoBo's own graph + event log (not an external broker).
+This is HoBo's generalization of `can-i-deploy`, driven by HoBo's own graph + event log (not an external broker).
 
 ### The unified Gatekeeper — `hobo verify`
 `can-deploy` is one input to a single composite decision. The **Gatekeeper** (a step in the Planner/Orchestrator) requires **all** gates:
@@ -71,8 +71,8 @@ deployable =
 ```
 `hobo verify --target prod` returns a structured decision (per-gate results + suggested fixes); every gate result is an event, so "why did this deploy block?" is replayable ([Plan 11](./event-model.md#plan-11)). On failure, the **Forge/live-fix** remediation loop ([Plan 23](./forge-generated-stack.md#plan-23)) classifies the failure (producer-broke-consumer, consumer-over-specified, semantic drift) and proposes safe fixes (shim, deploy-order, migration window, loosen an over-strict matcher) — all themselves gated.
 
-### Engine behind a port (no dependency)
-The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** as the default (it already has the graph, traces, and event log it needs). **Pact** is an *optional capability provider* (`@hobo/provider-pact`) that can export HoBo contracts to Pact interactions/message pacts, run Pact provider verification, and mirror a Pact Broker's `can-i-deploy` — for teams already invested in that ecosystem. HoBo owns the source of truth (the **HoBo Contract IR**); Pact/OpenAPI/AsyncAPI/Protobuf are import/export targets, never the model.
+### The `contract-engine` ([ADR-0015](./adr/04-governance-verification.md#adr-0015))
+The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** (it already has the graph, traces, and event log it needs). **PACT-style consumer-driven contract testing is the built-in, default behavior of that engine — an internal implementation detail developers never see.** Developers declare contracts (or let IfC infer them, above); they never interact with PACT directly and there is no PACT option to turn on or swap. HoBo owns the source of truth — the **HoBo Contract IR** — and consumer-driven testing runs against the graph + event log by construction. PACT/OpenAPI/AsyncAPI/Protobuf are import/export *targets* over that IR for interop with outside ecosystems, never the model and never a behavior toggle.
 
 ### Camps declare enforcement modes
 Each **Camp** (via its runtime + wasm host, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 24](./wasm-runtime-wit.md#plan-24)) announces the contract modes it supports — `record-and-verify` (local), `strict` (prod), `verify-at-build-observe-at-runtime` (edge) — like an Aspire component announcing capabilities.
@@ -151,8 +151,8 @@ Obligations are tracked to completion via `policy.ObligationCreated` → `…Sat
 ### Policy packs
 Rules are grouped into **policy packs** — versioned, **signed** resources ([Plan 12](./security-networking.md#plan-12)) scoped to org/app/environment and bound per target ([Plan 25](./platform-engineering.md#plan-25) matching can select which pack applies). Packs are distributed like Resource Packs ([Plan 27](./platform-engineering.md#plan-27)) and Forge-generatable. Because packs are signed + portable, they **federate across sovereign Yards in a `Junction`** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — shared policy without a shared control plane.
 
-### Engine behind a port (no dependency)
-`policy-engine` is a **WIT port**. The **default** implementation is built-in **TypeScript rules** (typed, testable, no Rego to learn). Optional capability providers: **OPA/Rego** (`@hobo/provider-opa` — maps the request to OPA `input`, runs as embedded/WASM/sidecar/Envoy, returns the decision) and **Cedar** (`@hobo/provider-cedar`) for ABAC-style authz. HoBo Cloud is the **management plane** (pack registry, distribution, decision logs); Camps/providers are **enforcement points** — the same decision/enforcement split OPA advocates, but HoBo owns the model.
+### The `policy-engine` ([ADR-0015](./adr/04-governance-verification.md#adr-0015))
+`policy-engine` is a **WIT port**. The default implementation is built-in **typed TypeScript rules** (testable, no Rego to learn). Unlike the `contract-engine` (whose PACT-style testing is built-in, not swappable), the policy engine genuinely accepts optional capability providers: **OPA/Rego** (`@hobo/provider-opa` — maps the request to OPA `input`, runs embedded/WASM/sidecar/Envoy, returns the decision) and **Cedar** (`@hobo/provider-cedar`) for ABAC-style authz. HoBo Cloud is the **management plane** (pack registry, distribution, decision logs); Camps/providers are **enforcement points** — the decision/enforcement split, with HoBo owning the model (the **HoBo Policy IR**).
 
 ### Decisions are events
 Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./event-model.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper ([Plan 29](./contracts-policy-flags.md#plan-29)) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
@@ -170,7 +170,7 @@ Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetec
 > **Deploy ≠ release.** A canary ([Plan 5](./reliability-observability-cost.md#plan-05)) shifts traffic between *deployed versions*; a feature flag toggles *behavior within a running version* — kill-switches, gradual `%` rollout, per-segment targeting, experiments — without a redeploy. HoBo needs both, and flags compose with the gates/audit/reactive planes it already has.
 
 ### The `feature-flag` port — OpenFeature-compatible
-A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance HoBo uses for policy (OPA/Cedar, [Plan 30](./contracts-policy-flags.md#plan-30)) and contracts (Pact, [Plan 29](./contracts-policy-flags.md#plan-29)):
+A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance HoBo uses for the policy plane (OPA/Cedar as optional `policy-engine` providers, [Plan 30](./contracts-policy-flags.md#plan-30)). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, [Plan 29](./contracts-policy-flags.md#plan-29)/[ADR-0015](./adr/04-governance-verification.md#adr-0015).)
 - **Built-in flag store is the default** (zero-dep, self-host/air-gap friendly, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); **OpenFeature providers** (flagd / LaunchDarkly / etc.) are **opt-in adapters** selected per Camp by Matching ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).
 - **Flag types:** boolean, string, number, object (the OpenFeature set).
 - **Definitions are IfC** — flags are declared in the Bindle (name, type, default, targeting rules); flag *values/targeting* are runtime state (below).
@@ -215,10 +215,9 @@ flowchart LR
 ### Verification ([Plan 9](./verification.md#plan-09))
 A **feature-flag test**: define a flag → assert in-process eval is deterministic for a fixed `(ruleset@seq, ctx.user)`; a targeting rule selects the right segment; a flip emits `flag.Changed` and **re-pushes an affected reactive query** ([Plan 32](./data-plane.md#plan-32)); a **prod kill-switch flip requires the policy gate** ([Plan 30](./contracts-policy-flags.md#plan-30)); the built-in store works **offline/air-gap**; an OpenFeature provider adapter passes the same conformance.
 
-### Scope / YAGNI
-**In v1:** the `feature-flag` port (OpenFeature-compatible) + built-in store + boolean/string/number/object flags + IfC definitions + in-process deterministic eval (targeting via `ctx.user`/`ctx.identity`) + event-sourced `flag.*` + optional policy-gated flips + reactive re-eval + one reference OpenFeature provider adapter. **Deferred:** built-in experiment/stats engine (emit events, analyze in the observability backend), flag-debt auto-cleanup tooling, and cross-Camp flag-state consistency (rides [ADR-0040](./adr/05-config-matching-environments.md#adr-0040)).
+### Scope
+The `feature-flag` port (OpenFeature-compatible) + built-in store + boolean/string/number/object flags + IfC definitions + in-process deterministic eval (targeting via `ctx.user`/`ctx.identity`) + event-sourced `flag.*` + optional policy-gated flips + reactive re-eval + OpenFeature provider adapters. Experiments get a stats surface over the emitted `flag.Evaluated` events, flag-debt auto-cleanup (stale-flag detection + archival) is built in, and cross-Camp flag-state consistency rides [ADR-0040](./adr/05-config-matching-environments.md#adr-0040).
 
 ### Iteration hooks
 - Targeting-rule DSL (typed TS predicate vs OpenFeature JSONLogic-style) and how it reuses the policy/`.allow()` predicate language.
-- Flag-lifecycle/debt management (stale-flag detection, archival workflow).
-- Whether experiments get a first-class stats surface or stay event-emit + external analysis.
+- Stale-flag detection heuristics + archival-workflow ergonomics.

@@ -176,7 +176,7 @@ agent("ops", {
 
 **Plan 33 — Forge generation pipeline**
 
-> **What the Forge generates.** One pipeline, three artifact kinds, all behind existing WIT ports and gated by `@hobo/conformance` (the trust boundary): **providers** (a backend's capability adapter), **implementations** (service components / semantic functions — the live-training half is [Plan 23](./forge-generated-stack.md#plan-23)), and **Resource Definitions / Packs** (platform-engineer config — [Plan 25](./platform-engineering.md#plan-25)/[Plan 27](./platform-engineering.md#plan-27)). "Generate a provider" is no longer hand-wave: it is this loop.
+> **What the Forge generates.** One pipeline, four artifact kinds, all behind existing WIT ports and gated by `@hobo/conformance` (the trust boundary): **providers** (a backend's capability adapter), **implementations** (service components / semantic functions — the live-training half is [Plan 23](./forge-generated-stack.md#plan-23)), **Resource Definitions / Packs** (platform-engineer config — [Plan 25](./platform-engineering.md#plan-25)/[Plan 27](./platform-engineering.md#plan-27)), and **ui** artifacts (the `ui-render` engines fill against design.md — [ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)). "Generate a provider" is concrete: it is this loop.
 
 ### Inputs — contract-first
 The generator separates **authoritative** spec (what the artifact must satisfy) from **material** (hints + behavioral oracle):
@@ -221,8 +221,8 @@ Same optimizer, same gate, same provenance — generation and evolution are the 
 ### Verification ([Plan 9](./verification.md#plan-09))
 A **Forge-generation test:** seed a known WIT port + its conformance suite + a backend's Capability Manifest → assert the loop produces a **certified** artifact that passes conformance **and** reproduces recorded traces; assert the repair loop **converges or escalates** within the budget (no infinite loop); assert the certification carries complete provenance.
 
-### Scope / YAGNI
-**In v1:** the loop for **providers** and **implementations**, plus **Resource-Definition** generation via the same loop with a definition template; **one reference run** end-to-end (generate a `database` provider for a known backend from its Capability Manifest + conformance). **Deferred:** fully autonomous **cold-start from docs/OpenAPI only** with no Capability Manifest (riskiest input path); generating whole Resource **Packs** (vs single definitions). *(Marketplace economics / monetization is out of scope — [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064).)*
+### Scope
+The loop generates **providers**, **implementations**, **Resource Definitions / Packs** (definition + pack templates), and **ui** artifacts (the `ui-render` engines fill against design.md, [ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)) — one pipeline, one trust boundary, per-kind templates and oracles. Reference run: generate a `database` provider for a known backend from its Capability Manifest + conformance, end-to-end. Cold-start from docs/OpenAPI with no Capability Manifest is the riskiest input path and leans hardest on the sandbox + conformance gate. *(Marketplace economics / monetization is out of scope — [ADR-0064](./adr/08-scope-and-requirements.md#adr-0064).)*
 
 ### Iteration hooks
 - Template library shape (per-port vs per-driver scaffolds) and how much is fixed vs synthesized.
@@ -232,17 +232,20 @@ A **Forge-generation test:** seed a known WIT port + its conformance suite + a b
 
 ## Plan 41
 
-**Plan 41 — The generated stack (AI-generated, self-healing, persisted infrastructure & runtime)**
+**Plan 41 — The generated stack (AI-generated, self-healing, persisted application stack)**
 
-> **The thesis.** The pieces already exist, scattered. Naming them as one stack makes the promise legible and the gaps obvious: *the same generate→validate→repair→certify→persist loop, the same self-healing reflexes, and the same audit/replay apply to every layer of infrastructure HoBo manages.* The operator **[Platform Engineer / SRE](./operators-sre.md#plan-40)** agents are the ones that drive it.
+> **The thesis.** The pieces already exist, scattered. Naming them as one stack makes the promise legible and the gaps obvious: *the same generate→validate→repair→certify→persist loop, the same self-healing reflexes, and the same audit/replay apply to every layer of the application HoBo manages — from the data plane up to the UI.* The operator agents ([Plan 40](./operators-sre.md#plan-40)) drive it: **SWE** owns business/message, **UX Designer** owns ui, **Platform Engineer** owns infra config, **SRE** drives self-healing.
 
-### The four layers
+### The five layers
+HoBo generates the application from intent — data, business logic, messaging, intelligence, **and the UI** ([ADR-0055](./adr/06-ai-generation-operators.md#adr-0055)/[ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)).
+
 | Layer | What HoBo generates | Owned by | Self-heals via | Persisted by |
 |---|---|---|---|---|
 | **Data** | WIT-record schemas, projections + sink mappings, migrations | [Plan 39](./data-plane.md#plan-39)/[Plan 34](./data-plane.md#plan-34)/[ADR-0051](./adr/03-data-plane.md#adr-0051) | rebuild-from-zero (replay), gated migration | migration machinery + codegen |
 | **Business** | service components + **semantic functions** (`"use training"`), providers, Resource Definitions | [Plan 23](./forge-generated-stack.md#plan-23)/[Plan 33](./forge-generated-stack.md#plan-33) | live-fix (trace-replay → gated canary) | [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048) region-scoped edits |
 | **Message** | event/command/saga handlers + choreography from the WIT-record event types | [Plan 11](./event-model.md#plan-11)/[Plan 2](./sdk-api.md#plan-02)/[Plan 21](./authoring-resources-wiring.md#plan-21) | compensation + replay; contract gate ([Plan 29](./contracts-policy-flags.md#plan-29)) | codegen + [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048) |
 | **Intelligence** | prompts/policies/weights of trainable methods, continuously optimized | [Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0025](./adr/06-ai-generation-operators.md#adr-0025) | training-engine (trajectory + live-eval → re-optimize) | [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048) + signed provenance |
+| **UI** | app UI from intent + **design.md** via OpenUI / json-render / mcp-apps behind the **`ui-render`** port; typed from the domain, reactive to materializations | [ADR-0056](./adr/06-ai-generation-operators.md#adr-0056) ([Plan 40](./operators-sre.md#plan-40) UX Designer) | regenerate against design.md; design-system gate | [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048) region-scoped edits |
 
 ```mermaid
 flowchart TB
@@ -252,6 +255,7 @@ flowchart TB
     B["business (Plan 23/33)"]
     M["message (Plan 11/2)"]
     I["intelligence (Plan 23)"]
+    U["ui (ADR-0056, ui-render)"]
   end
   LOG --> GEN
   GEN -->|conformance + policy + eval gate| TB["trust boundary (Plan 9/29/30)"]
@@ -259,39 +263,39 @@ flowchart TB
   HEAL["self-healing: live-fix / drift / rebuild / re-train"] -.feeds.-> GEN
 ```
 
-> **Why only infrastructure/runtime layers?** Generating the developer's product — the app UI, the business app itself — is **app-build-out**, a different category from running it on any cloud, and is out of scope for the meta-cloud ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)). HoBo generates the *adapters, projections, handlers, and trained methods* that wire an app to clouds, not the app's own front-end.
+> **The UI is a generated layer, not the dashboard.** The **ui** layer is the developer's *product* UI — generated from intent + the **design.md** design-system spec via OpenUI/json-render/mcp-apps behind the `ui-render` port, owned by the **UX Designer** operator ([Plan 40](./operators-sre.md#plan-40)), typed from the WIT-record domain ([ADR-0051](./adr/03-data-plane.md#adr-0051)) and bound to the data plane's reactive materializations ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)). It is distinct from HoBo's own operator dashboard ([Plan 7](./developer-experience.md#plan-07)); design.md is its trust boundary (UI that violates it fails the gate).
 
-### What makes it one stack (not four features)
+### What makes it one stack (not five features)
 - **One source of truth.** Every layer reads/writes the **event log** ([Plan 11](./event-model.md#plan-11)); generated code targets **WIT ports** ([Plan 24](./wasm-runtime-wit.md#plan-24)) and is typed from **WIT records** ([ADR-0051](./adr/03-data-plane.md#adr-0051)).
 - **One generation loop.** The Forge loop — **scaffold → LLM-fill → validate (sandboxed, no-egress) → repair → certify (sign + provenance)** ([Plan 33](./forge-generated-stack.md#plan-33)) — is the same shape for a provider, a projection, a saga handler, or a trained prompt; only the inputs/oracles differ.
 - **One trust boundary.** Nothing is generated *and trusted* without passing **conformance + policy + eval** ([Plan 9](./verification.md#plan-09)/[Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 30](./contracts-policy-flags.md#plan-30)).
 - **One persistence mechanism.** Promoted code lands via **region-scoped, format-preserving AST edits with provenance** ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) — generated regions are demarcated, hand-written code is never clobbered, and every change is round-trippable + gated (`hobo codegen --check`, [ADR-0037](./adr/05-config-matching-environments.md#adr-0037)).
-- **One self-healing reflex.** A failing trace / SLO burn / drift / contract break triggers the same classify → propose-fix → validate → gated-apply loop ([Plan 23](./forge-generated-stack.md#plan-23) live-fix, [Plan 5](./reliability-observability-cost.md#plan-05) drift/auto-rollback), driven by the **SRE** operator ([Plan 40](./operators-sre.md#plan-40)).
+- **One self-healing reflex.** A failing trace / SLO burn / drift / contract break triggers the same classify → propose-fix → validate → gated-apply loop ([Plan 23](./forge-generated-stack.md#plan-23) live-fix, [Plan 5](./reliability-observability-cost.md#plan-05) drift/auto-rollback), driven by the **SRE** and **SWE** operators ([Plan 40](./operators-sre.md#plan-40)).
 
 ### Self-healing & persistence, per layer (honest)
-- **Generated ≠ unowned.** Hand-written intent (the WIT record, the `@intent`/`@invariant`) is authoritative; AI fills/optimizes the generated region against it. The intent is the thing a human edits.
-- **Determinism gates persistence.** Deterministic codegen (data/message types, [ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) is reproducible and safe to regenerate; *non-deterministic* promotions (trained methods) need stronger region-isolation, signed provenance, and (in prod) a human-gated PR/Delta ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)).
-- **Not every layer self-heals equally.** Data heals by rebuild; business/intelligence by live-fix/re-train; message by compensation + contract gate. Where a layer can't auto-heal safely, it degrades to *propose* (human approval), never silent mutation.
+- **Generated ≠ unowned.** Hand-written intent (the WIT record, `@intent`/`@invariant`, the design.md spec for ui) is authoritative; AI fills/optimizes the generated region against it. The intent is the thing a human edits.
+- **Determinism gates persistence.** Deterministic codegen (data/message types, [ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) is reproducible and safe to regenerate; *non-deterministic* promotions (trained methods, generated UI) need stronger region-isolation, signed provenance, and (in prod) a human-gated PR/Delta ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)).
+- **Not every layer self-heals equally.** Data heals by rebuild; business/intelligence by live-fix/re-train; message by compensation + contract gate; ui by regeneration against design.md. Where a layer can't auto-heal safely, it degrades to *propose* (human approval), never silent mutation.
 
 ### Verification
-- A change to a WIT domain record propagates through the stack: data (migration + projection), message (regenerated handlers + contract gate), business/intelligence (impl re-validated) — each gated, each persisted as a reviewable diff.
+- A change to a WIT domain record propagates through the stack: data (migration + projection), message (regenerated handlers + contract gate), business/intelligence (impl re-validated), ui (components re-typed + design.md gate) — each gated, each persisted as a reviewable diff.
 - A prod failure triggers one self-healing loop (classify → fix → sandbox-validate → policy-gate → canary/auto-rollback), fully event-sourced, driven by the SRE operator.
 - `hobo codegen --check` fails on hand-edited drift in any layer's generated region.
 
-### Scope (v1) & YAGNI
-- **v1:** the *map* + the shared loop/trust-boundary/persistence model; data/business/intelligence are already specified; **message-handler generation** is the newly-framed layer. AI generation is scoped to **infrastructure + runtime** — generating the developer's product UI is out of scope ([ADR-0064](./adr/08-scope-and-requirements.md#adr-0064)).
-- **Deferred:** fully autonomous cross-layer regeneration from a single intent edit (the long arc).
+### Scope
+- The *map* + the shared loop/trust-boundary/persistence model across all five layers — data, business, message, intelligence, **and ui** ([ADR-0055](./adr/06-ai-generation-operators.md#adr-0055)/[ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)). The app is generatable from intent, infra through front-end; the ui layer is generated via the `ui-render` port (OpenUI/json-render/mcp-apps), typed from the domain and reactive to materializations.
+- Single-intent edit → multi-layer regeneration is the cross-layer workflow (each layer regenerates against the shared event log + WIT records).
 
 ### Iteration hooks
 - How aggressively message-layer choreography is generated vs hand-authored sagas.
-- The single-intent-edit → multi-layer-regeneration workflow (today each layer regenerates independently).
-- Cross-layer eval: a rubric that scores a *whole feature* (data+message+business) not just one function.
+- Cross-layer eval: a rubric that scores a *whole feature* (data + message + business + ui) not just one function.
+- The maturity gap between layers (data/business heal more readily than message/ui) and how to close it.
 
 ## Plan 43
 
 **Plan 43 — Patchability & extensibility (derivative implementations)**
 
-> **Why it's a distinct goal.** Portability protects the *user's app* from lock-in. Patchability protects the *platform itself* from being a black box: every engine is swappable, every seam is an extension point, and every AI/human edit persists as a reviewable, round-trippable, conformance-gated diff. Closed PaaS gives you neither; raw IaC gives you patchability but no portability. HoBo commits to both.
+> **Why it's a distinct goal.** Portability protects the *user's app* from lock-in. Patchability protects the *platform itself* from being a black box: every engine is swappable, every seam is an extension point, and every AI/human edit either persists as a reviewable, round-trippable, conformance-gated diff **or** overlays the running instance as an audited, GC'd ephemeral patch. Closed PaaS gives you neither; raw IaC gives you patchability but no portability. HoBo commits to both. **Portability = the same artifact on N backends; patchability = derive/extend/patch the platform itself, persisted OR ephemeral** ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)).
 
 ### Three pillars
 
@@ -318,12 +322,17 @@ Patchability is only real if the seams are *named and stable*. The extension poi
 | Projection-sink paradigm adapters | add a new paradigm (relational/document/kv/graph/vector/OLAP/…): author driver → certify (`@hobo/conformance`) → signed Pack → Matching-select | [39](./data-plane.md#plan-39)/[ADR-0052](./adr/03-data-plane.md#adr-0052)/[27](./platform-engineering.md#plan-27) |
 Each seam: a typed contract (WIT/conformance), a registry entry (signed + provenance), and Matching/selection per Camp ([Plan 25](./platform-engineering.md#plan-25)). Adding a seam implementation never requires editing the core.
 
-#### 3. Persisted patches (safe, round-trippable mutation)
-AI- or human-authored changes to generated code persist via **region-scoped, format-preserving AST mutation with signed provenance** ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)): generated regions are demarcated, hand-written intent is never clobbered, every patch is a minimal reviewable diff, round-trippable, and gated (`hobo codegen --check`, [ADR-0037](./adr/05-config-matching-environments.md#adr-0037); low-risk → auto-commit, prod → PR/Delta for approval). This is what makes "self-healing, persisted code" ([Plan 41](./forge-generated-stack.md#plan-41)) a *durable derivative*, not an ephemeral runtime hack.
+#### 3. Patches — two kinds (`patch-package`-style: derive/extend without forking upstream)
+A patch changes behavior without editing upstream source outright. HoBo distinguishes *where the change lives* ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)):
+
+- **Persisted patches** — captured into source/artifacts via **region-scoped, format-preserving AST mutation with signed provenance** ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)): generated regions are demarcated, hand-written intent is never clobbered, every patch is a minimal reviewable diff, round-trippable, conformance-gated, and drift-gated (`hobo codegen --check`, [ADR-0037](./adr/05-config-matching-environments.md#adr-0037); low-risk → auto-commit, prod → PR/Delta for approval). Durable, version-controlled — the patch becomes part of the derivative.
+- **Ephemeral runtime-instance patches** — an agent overlays a change on the **running instance only**, **not** persisted to source (the way `patch-package` overlays a dependency locally without committing upstream). Each is **scoped to that instance**, **audited as an event**, and **garbage-collected** unless explicitly **promoted** to a persisted patch — which re-enters the [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048) region/provenance + conformance path. An ephemeral patch never silently mutates source.
+
+Persisted patches are what make "self-healing, persisted code" ([Plan 41](./forge-generated-stack.md#plan-41)) a *durable derivative*; ephemeral patches let an agent apply a fast in-place fix without a commit ceremony, then promote it if it should last.
 
 ### Patchability vs portability (the two guarantees, side by side)
 - **Portability ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)):** the *same* Bindle + `src/` run byte-identical on N clouds; you don't get locked into a backend.
-- **Patchability ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)):** you can *change* HoBo — swap any engine, add any adapter, fork the Yard, and persist AI/human patches — and still ride the same conformance/signing/Matching machinery, so a derivative stays trustworthy and upgradable. **Conformance is the bridge:** it's what makes both a swapped backend *and* a derived implementation safe to trust.
+- **Patchability ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)):** you can *change* HoBo — swap any engine, add any adapter, fork the Yard, and patch AI/human edits **persisted OR ephemeral** — and still ride the same conformance/signing/Matching machinery, so a derivative stays trustworthy and upgradable. **Conformance is the bridge:** it's what makes a swapped backend, a derived implementation, and a persisted patch safe to trust; an ephemeral patch is gated by instance-scope + audit and must pass conformance to be promoted.
 
 ```mermaid
 flowchart LR
@@ -331,14 +340,17 @@ flowchart LR
   CORE -->|swap engine / add adapter| DERIV["derivative impls (signed Packs/plugins)"]
   CORE -->|extension seams| SEAMS["providers · drivers · runtimes · engines · skills · sinks"]
   GEN["AI/human edits"] -->|region-scoped AST + provenance (ADR-0048)| PATCH["persisted patches"]
+  GEN -->|instance-scoped overlay + audit event| EPH["ephemeral runtime patches"]
+  EPH -.promote.-> PATCH
   DERIV --> CONF["@hobo/conformance + signing (Plan 9/12)"]
   SEAMS --> CONF
   PATCH --> CONF
+  EPH -->|GC unless promoted| GONE["discarded"]
   CONF --> TRUST["trusted, upgradable derivative"]
 ```
 
 ### Derivative upgrade paths ([ADR-0068](./adr/07-portability-extensibility.md#adr-0068))
-Patchability is only durable if long-lived derivatives can **track core upgrades** instead of rotting or forking permanently — so derivatives get a **versioned, conformance-gated upgrade path** (closing the deferral below).
+Patchability is only durable if long-lived derivatives can **track core upgrades** instead of rotting or forking permanently — so derivatives get a **versioned, conformance-gated upgrade path**.
 - **Seams are independently semver-versioned.** Each extension seam (a WIT port: `policy-engine`, `contract-engine`, `component-host`, a provider/driver/runtime/projection-sink — the seams enumerated above) carries a semver; a Yard pins the seam versions it requires, and the manifest IR records which seam versions a Bindle uses (proven by its conformance run).
 - **A signed `derivative.json` descriptor** ([Plan 12](./security-networking.md#plan-12)): the **core version range** it targets (`core@^1.0.0 <1.1.0`), its **seam implementations + versions** (`policy-engine@2.3.0`, `custom-aws-driver@1.0.0`), and **pinned upcasters** for any persisted mutations ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) — codemods that repair the hand-written/generated regions on a core upgrade.
 - **An `hobo derivative upgrade <from> <to>` ceremony.** In a derivative Yard it: **checks `derivative.json` compatibility** (warns on any seam/mutation incompatibility) → **runs the pinned upcasters** → **re-runs seam conformance** (proves the upgrade didn't regress a guarantee) → **emits an upgrade report**. Events: `derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed`.
@@ -349,12 +361,12 @@ Patchability is only durable if long-lived derivatives can **track core upgrades
 - A persisted patch to a generated region survives regeneration (round-trip), shows as a minimal diff, and `hobo codegen --check` distinguishes it from drift.
 - A derivative Yard (forked control plane) deploys as a Bindle and self-hosts with the same control-plane features ([ADR-0024 §self-host=hosted](./adr/07-portability-extensibility.md#adr-0024)).
 
-### Scope (v1) & YAGNI
-- **v1:** name patchability as a guarantee + enumerate the seams (all already exist as ports); the persisted-patch mechanism ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)); conformance/signing as the trust bridge.
-- **Now designed (was deferred):** the upgrade story for long-lived derivatives — seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony + core breaking-change manifests ([ADR-0068](./adr/07-portability-extensibility.md#adr-0068)).
-- **Deferred:** an upstream-merge/rebase story beyond the upgrade ceremony; a public derivative/plugin marketplace beyond Resource Packs.
+### Scope
+- Patchability as a guarantee + the enumerated seams (all already ports); **both patch kinds** — persisted ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) and ephemeral runtime-instance ([ADR-0057](./adr/07-portability-extensibility.md#adr-0057)); conformance/signing as the trust bridge.
+- The upgrade story for long-lived derivatives — seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony + core breaking-change manifests ([ADR-0068](./adr/07-portability-extensibility.md#adr-0068)).
+- An upstream-merge/rebase story richer than the upgrade ceremony, and a public derivative/plugin marketplace beyond signed Resource Packs, ride the same conformance/signing machinery when added.
 
 ### Iteration hooks
-- ~~How a derivative tracks core upgrades (semver + conformance-pinned + codemod-assisted migration).~~ **Resolved ([ADR-0068](./adr/07-portability-extensibility.md#adr-0068)):** seam semver + signed `derivative.json` + the `hobo derivative upgrade` ceremony (check compat → run upcasters → re-run conformance → report) + core breaking-change manifests.
+- Ephemeral-patch GC policy + the promotion threshold (when an in-place fix earns a persisted patch).
 - Whether "patchability" needs its own CLI surface (`hobo extend`/`hobo fork`) or rides existing pack/registry commands.
 - Provenance/trust for third-party derivatives (signing chain, attestation) beyond [Plan 12](./security-networking.md#plan-12).

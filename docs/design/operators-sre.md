@@ -6,10 +6,10 @@ This capability doc consolidates Plan 40, Plan 44 of the HoBo design suite.
 
 **Plan 40 — Operator Agents (the Crew)**
 
-> **Disambiguation (one word, four meanings — now resolved):** **Operator Agent** = an autonomous principal in the Crew (this plan). **Agents-as-users** = *external/customer* agents acting on a developer's behalf ([Plan 6](./ai-native-agent-auth.md#plan-06)). The **`agent()` primitive** = the SDK runtime building block both use ([Plan 2](./sdk-api.md#plan-02)). The **[Relay](./platform-engineering.md#plan-28)** = the outbound network proxy (formerly mis-named "the HoBo Agent"), *not* an agent at all. The **[Forge](./forge-generated-stack.md#plan-33)** = a generation *pipeline*, not a principal.
+> **Disambiguation (one word, four meanings):** **Operator Agent** = an autonomous principal in the Crew (this plan). **Agents-as-users** = *external/customer* agents acting on a developer's behalf ([Plan 6](./ai-native-agent-auth.md#plan-06)). The **`agent()` primitive** = the SDK runtime building block both use ([Plan 2](./sdk-api.md#plan-02)). The **[Relay](./platform-engineering.md#plan-28)** = the outbound network proxy, *not* an agent at all. The **[Forge](./forge-generated-stack.md#plan-33)** = a generation *pipeline*, not a principal.
 
 ### Why built-in (batteries-included), not just skills
-HoBo is AI-native: the operations a platform team does — triage incidents, watch endpoints, drive delivery, author platform rules — are exactly what an agent can do against HoBo's event-sourced, MCP-complete surface. Rather than leave each team to wire its own, HoBo **ships the Crew as built-in Yard services** ([ADR-0054](./adr/06-ai-generation-operators.md#adr-0054)): opinionated, audited, policy-gated out of the box, while still **pluggable** — each agent's "brain" is an **engine behind a port** (built-in default; optional externals like HolmesGPT), and each is disableable / overridable per Yard. They are the AI-native realization of goals "AI SRE / AI GitOps / AI policy enforcement."
+HoBo is AI-native: the work a software + platform team does — triage incidents, watch endpoints, drive delivery, author platform rules, **write/refactor application code, generate the app's UI** — is exactly what an agent can do against HoBo's event-sourced, MCP-complete surface. Rather than leave each team to wire its own, HoBo **ships the Crew as built-in Yard services** ([ADR-0054](./adr/06-ai-generation-operators.md#adr-0054)): opinionated, audited, policy-gated, sandboxed under enforced AI governance out of the box, while still **pluggable** — each agent's "brain" is an **engine behind a port** (built-in default; optional externals like HolmesGPT), and each is disableable / overridable per Yard. They are the AI-native realization of goals "AI SRE / AI GitOps / AI policy enforcement / AI software & UX."
 
 ### The shared model (every Crew member)
 - **Principal identity.** Each agent is a named workload with an **SVID** and **per-agent policy** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 30](./contracts-policy-flags.md#plan-30)): scoped capabilities, **spend caps**, and **high-risk → require-approval** gates (destroy/prod/over-budget resolve via a dashboard/Slack hook). Least-privilege by `.allow()` ([Plan 21](./authoring-resources-wiring.md#plan-21)).
@@ -17,6 +17,7 @@ HoBo is AI-native: the operations a platform team does — triage incidents, wat
 - **MCP-surfaced.** Each agent exposes its actions as MCP tools ([Plan 6 §MCP](./ai-native-agent-auth.md#plan-06)) so a human or an external agent can invoke, inspect, or override it — same identity/token model.
 - **Engines behind ports.** The reasoning engine is a `*-engine` port with a built-in default and optional external providers (never on the SDK surface) — consistent with `training-engine`/`policy-engine`/`contract-engine` ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)/[Plan 30](./contracts-policy-flags.md#plan-30)/[Plan 29](./contracts-policy-flags.md#plan-29)).
 - **Human-in-the-loop by default for write actions.** Read/diagnose is autonomous; mutations ride the policy plane's effects/obligations (auto / canary-with-auto-rollback / require-approval), keyed by blast radius + environment ([Plan 5](./reliability-observability-cost.md#plan-05)/[Plan 30](./contracts-policy-flags.md#plan-30)).
+- **Sandboxed under enforced AI governance by default** ([ADR-0061](./adr/04-governance-verification.md#adr-0061)/[ADR-0054](./adr/06-ai-generation-operators.md#adr-0054)). Every operator's reasoning + tool calls run in a capability-scoped sandbox with **NVIDIA NeMo Guardrails** + the **Microsoft AI governance / Responsible AI toolkit** as the default guardrail layer — moderation, jailbreak/PII checks, capability-scoped tool access. This is enforced, not optional; `guardrail.Blocked` + `policy.Decided` make every block replayable.
 
 ```mermaid
 flowchart TB
@@ -25,12 +26,16 @@ flowchart TB
     EM["Endpoint Monitor"]
     GO["GitOps"]
     PE["Platform Engineer"]
+    SWE["SWE"]
+    UX["UX Designer"]
   end
   EM -->|SLO burn / drift signals| SRE
   SRE -->|gated live-fix| FIX["live-fix + canary/rollback (Plan 23/5)"]
   GO -->|promote / can-deploy| DEP["pipelines + gates (Plan 28/29)"]
   PE -->|author / Forge-generate| DEFS["Resource Defs + policy packs (Plan 25/30/33)"]
-  CREW -->|identity + policy + events + MCP| YARD["the Yard (Plan 4)"]
+  SWE -->|implement / refactor / repair| CODE["business + message code behind ports (Plan 23/33/41)"]
+  UX -->|generate / maintain| UI["app UI via ui-render: design.md + OpenUI/json-render/mcp-apps (ADR-0056)"]
+  CREW -->|identity + policy + events + MCP + enforced governance| YARD["the Yard (Plan 4)"]
 ```
 
 ### The roster
@@ -40,6 +45,8 @@ flowchart TB
 | **Endpoint Monitor** | synthetic probes, health/SLO watch, drift surfacing | SLO/alerting ([ADR-0045](./adr/04-governance-verification.md#adr-0045)), observability ([Plan 14](./reliability-observability-cost.md#plan-14)), drift ([Plan 5](./reliability-observability-cost.md#plan-05)) | external synthetic-check provider behind a port | emits `slo.BudgetBurned`/`alert.*`/drift → **feeds SRE** |
 | **GitOps** | drive *when/what* deploys; promotion across env-groups | pipelines + publishers ([Plan 28](./platform-engineering.md#plan-28)), `can-deploy` ([Plan 29](./contracts-policy-flags.md#plan-29)), env-group saga ([ADR-0028](./adr/05-config-matching-environments.md#adr-0028)) | external GitOps controller (Argo/Flux) as publisher | MCP `promote`/`rollback`; rides `pipeline.*`/`deployment.*` |
 | **Platform Engineer** | author + **Forge-generate** Resource Definitions/Packs + policy packs | Matching ([Plan 25](./platform-engineering.md#plan-25)), packs ([Plan 27](./platform-engineering.md#plan-27)), policy ([Plan 30](./contracts-policy-flags.md#plan-30)), Forge ([Plan 33](./forge-generated-stack.md#plan-33)) | — (Forge is the engine) | MCP `propose-definition`/`propose-pack`; AI counterpart to the human persona ([ADR-0019](./adr/08-scope-and-requirements.md#adr-0019)) |
+| **SWE** (software engineer) | implement / refactor / repair **business + message** code behind ports | Forge ([Plan 33](./forge-generated-stack.md#plan-33)), `"use training"` + persisted code-mutation ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)), the generated stack ([Plan 41](./forge-generated-stack.md#plan-41)), contract gate ([Plan 29](./contracts-policy-flags.md#plan-29)) | external coding-agent engine behind a port | MCP `implement`/`refactor`/`repair`; opens gated Deltas/PRs, rides `forge.*`/`impl.*`/`crew.*` |
+| **UX Designer** | generate + maintain the app **UI** against **design.md** | `ui-render` port — OpenUI / json-render / mcp-apps ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)); typed from the domain ([ADR-0051](./adr/03-data-plane.md#adr-0051)), reactive to materializations ([ADR-0065](./adr/03-data-plane.md#adr-0065)); persisted-mutation ([ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)) | OpenUI / json-render / mcp-apps or custom adapter behind `ui-render` | MCP `generate-ui`/`update-ui`; design.md is the trust gate; rides `crew.*`/`policy.Decided` |
 
 > **The SRE operator has a deep-dive.** Its full model — the **Incident** aggregate + `incident.*` events, the diagnose → classify → **auto-fix / propose / escalate** decision tree, the runtime+contract **failure-taxonomy → safe-fix** map, declarative **runbooks**, MTTD/MTTR SLOs, on-call escalation, and postmortem-as-replay — is **[Plan 44](./operators-sre.md#plan-44)** ([ADR-0058](./adr/06-ai-generation-operators.md#adr-0058)).
 
@@ -50,11 +57,14 @@ Crew run lifecycle reuses the durable-agent run model ([Plan 11](./event-model.m
 - A simulated SLO breach → **Endpoint Monitor** emits burn → **SRE** is dispatched (`crew.AgentDispatched`), diagnoses from projections, proposes a fix; a **prod** fix requires approval (`policy.Decided` → `crew.ActionApplied` only after approve), a **low-risk** fix auto-applies as a canary and auto-rolls-back on regression — all replayable.
 - **GitOps** promotes staging→prod only when `can-deploy` is green; a skew blocks with a precise reason ([Plan 29](./contracts-policy-flags.md#plan-29)).
 - Each agent's `CredentialAudit` ([Plan 14](./reliability-observability-cost.md#plan-14)) answers "what did this operator access, with which token, when?".
+- The **SWE** operator opens a gated Delta/PR for a business-code repair (region-scoped AST edit + provenance, [ADR-0048](./adr/06-ai-generation-operators.md#adr-0048)); prod requires approval, the diff is reviewable + round-trippable.
+- The **UX Designer** generates UI that violates **design.md** → the design-system gate blocks it ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)); a conforming change lands via the same persisted-mutation + policy gate.
+- A jailbreak/PII-laden prompt to any operator is blocked by the enforced guardrail layer → `guardrail.Blocked` + `policy.Decided`, replayable ([ADR-0061](./adr/04-governance-verification.md#adr-0061)).
 - Swapping the SRE engine to HolmesGPT (or disabling an operator) is a per-Yard config change; the deterministic core is unaffected.
 
-### Scope (v1) & YAGNI
-- **v1:** the four operators as built-in Yard services on the shared model (identity/policy/events/MCP/engine-behind-port); read/diagnose autonomous, writes gated; built-in engines + the HolmesGPT (SRE) reference adapter.
-- **Deferred:** multi-agent planning/negotiation beyond `crew.HandoffRequested`; agent-authored *new* operators; third-party operators (ride `@hobo/agent-skills`, [Plan 1](./architecture.md#plan-01)).
+### Scope
+- The roster as built-in Yard services on the shared model (identity/policy/events/MCP/engine-behind-port, sandboxed under enforced AI governance); read/diagnose autonomous, writes gated. **SRE · Endpoint Monitor · GitOps · Platform Engineer · SWE · UX Designer**, plus built-in engines + the HolmesGPT (SRE) reference adapter.
+- Multi-agent planning/negotiation rides `crew.HandoffRequested`; agent-authored *new* operators and third-party operators ride `@hobo/agent-skills` ([Plan 1](./architecture.md#plan-01)).
 
 ### Iteration hooks
 - Whether operators are always-on services vs dispatched-on-signal (cost vs latency); per-operator concurrency/lease model (an operator is itself a single-writer [actor](./sdk-api.md#plan-02)).
@@ -71,7 +81,7 @@ Crew run lifecycle reuses the durable-agent run model ([Plan 11](./event-model.m
 An **Incident** is an [aggregate](./sdk-api.md#plan-02) (an actor; [ADR-0053](./adr/03-data-plane.md#adr-0053)) on stream `incident:<id>` — single-writer, **rebuildable from the log**. It is the **command point** that correlates the loose signals (`alert.Fired`, `slo.BudgetBurned`, `resource.DriftDetected`, `compat.GateFailed`, `spend.CircuitTripped`) into one governed object: `{ id, severity, impact, status, timeline, causedBy (causation/correlation chain), owner }`. Lifecycle events ([Plan 11](./event-model.md#plan-11)): `Opened → Triaged → RootCauseIdentified → RemediationProposed → RemediationApplied|Failed → Resolved → PostmortemFiled`, plus `SLABreached` on MTTD/MTTR overrun. Correlation uses the envelope's existing `correlationId`/`causationId` ([Plan 11](./event-model.md#plan-11)) — multiple alerts fold into **one** incident, not N pages.
 
 ### The SRE operator decision tree
-The SRE operator ([Plan 40](./operators-sre.md#plan-40)) is no longer opaque. On a signal it runs: **diagnose** (read projections; optional **HolmesGPT** engine behind a port, [technologies/holmesgpt-sre-agent.md](../../technologies/holmesgpt-sre-agent.md)) → **classify** (the taxonomy below) → **decide** one of three branches, each policy-gated + event-sourced:
+The SRE operator ([Plan 40](./operators-sre.md#plan-40)) runs a documented decision tree. On a signal it runs: **diagnose** (read projections; optional **HolmesGPT** engine behind a port, [technologies/holmesgpt-sre-agent.md](../../technologies/holmesgpt-sre-agent.md)) → **classify** (the taxonomy below) → **decide** one of three branches, each policy-gated + event-sourced:
 ```mermaid
 flowchart TB
   SIG["signal: alert.Fired / slo.BudgetBurned / resource.DriftDetected / compat.GateFailed"] --> INC["Incident opened (aggregate, Plan 11)"]
@@ -128,7 +138,7 @@ The SRE operator *executes* runbooks; a runbook with no matching `fix` escalates
 SRE performance is measured as code ([Plan 14](./reliability-observability-cost.md#plan-14)/[ADR-0045](./adr/04-governance-verification.md#adr-0045)): `sre.mttd` (signal → `crew.AgentDispatched`) and `sre.mttr` (`incident.Opened` → `incident.Resolved`) are **OpenSLO SLOs with error budgets**. Burn is a **policy input**: MTTR-SLO burn can **freeze risky deploys** or **require a deeper postmortem** (a `can-deploy` dimension), exactly like availability-SLO burn. `incident.SLABreached` fires on overrun.
 
 ### On-call & escalation (lean)
-Escalation is modeled as a **policy obligation with a deadline** — resolving the open Plan 30 hook. `incident.Opened` (SEV≥threshold) creates an obligation: *notify on-call, require ack within N minutes*; **unsatisfied-by-deadline → escalate** up the ladder ([Plan 30](./contracts-policy-flags.md#plan-30) obligations + [ADR-0045](./adr/04-governance-verification.md#adr-0045) routing). The **on-call** is a receiver/principal; PagerDuty/OpsGenie/Slack are receiver providers behind the alerting port. No rotation-calendar machinery in v1 (deferred).
+Escalation is modeled as a **policy obligation with a deadline** — resolving the open Plan 30 hook. `incident.Opened` (SEV≥threshold) creates an obligation: *notify on-call, require ack within N minutes*; **unsatisfied-by-deadline → escalate** up the ladder ([Plan 30](./contracts-policy-flags.md#plan-30) obligations + [ADR-0045](./adr/04-governance-verification.md#adr-0045) routing). The **on-call** is a receiver/principal; PagerDuty/OpsGenie/Slack are receiver providers behind the alerting port. The obligation-deadline mechanism carries escalation; rotation-calendar machinery rides the same receiver/obligation model when added.
 
 ### Postmortem-as-replay
 The incident's event stream **is** the timeline, so a **blameless postmortem** is generated from the replay (what fired, what SRE decided, which gate, MTTD/MTTR, what fixed it). A failed remediation or a chaos finding becomes a **permanent regression test** (the [ADR-0047](./adr/04-governance-verification.md#adr-0047)/[Plan 23](./forge-generated-stack.md#plan-23) pattern); the postmortem's findings feed **candidate runbook / SRE-prompt updates**, promoted through the same gated, eval'd path as any generated artifact ([Plan 41](./forge-generated-stack.md#plan-41)).
@@ -143,11 +153,11 @@ The incident's event stream **is** the timeline, so a **blameless postmortem** i
 - An unclassifiable SEV1: SRE *escalates*; on-call obligation unsatisfied by deadline → escalates up; `incident.SLABreached` if MTTR SLO burns.
 - A runbook with no matching `fix` escalates; `hobo runbook exec` is replayable.
 
-### Scope (v1) & YAGNI
-- **v1:** the Incident aggregate + `incident.*`/`runbook.*`; the SRE decision tree; the failure-taxonomy→fix map; declarative runbooks on the Pipelines engine; MTTD/MTTR SLOs; obligation-deadline escalation; postmortem-as-replay.
-- **Deferred:** on-call rotation calendars + paging-vendor specifics; a richer runbook authoring DSL ([Hobo Code](./authoring-resources-wiring.md#plan-38) future); building HolmesGPT/StackStorm adapters.
+### Scope
+- The Incident aggregate + `incident.*`/`runbook.*`; the SRE decision tree; the failure-taxonomy→fix map; declarative runbooks on the Pipelines engine; MTTD/MTTR SLOs; obligation-deadline escalation; postmortem-as-replay.
+- On-call rotation calendars + paging-vendor specifics, a richer runbook authoring DSL ([Hobo Code](./authoring-resources-wiring.md#plan-38)), and HolmesGPT/StackStorm adapters all ride the existing obligation/runbook/engine-behind-port seams when built.
 
 ### Iteration hooks
-- How much cross-operator handoff (`crew.HandoffRequested`) the SRE drives (SRE→GitOps to ship a fix; SRE→Platform Engineer to change a definition).
+- How much cross-operator handoff (`crew.HandoffRequested`) the SRE drives (SRE→GitOps to ship a fix; SRE→SWE to repair code; SRE→UX Designer for a UI fix; SRE→Platform Engineer to change a definition).
 - Auto-fix confidence thresholds + blast-radius defaults per failure class (tuning the decision tree).
 - Whether runbooks and deploy pipelines share one `definePipeline`/`defineRunbook` core or stay distinct surfaces.

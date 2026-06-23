@@ -4,12 +4,12 @@ This capability doc consolidates Plan 21, Plan 22, Plan 31, Plan 38 of the HoBo 
 
 ## Plan 21
 
-**Plan 21 — Resource catalog & the `.allow()` model (Nitric parity)**
+**Plan 21 — Resource catalog & the `.allow()` model**
 
 > **Contracts & policy (gates):** an `.allow()` declaration is also a **capability contract** ([Plan 29](./contracts-policy-flags.md#plan-29)) — the **required** scope must be ⊆ the **granted** scope on the resolved provider; a mismatch is a contract failure caught by `can-deploy`, not a runtime surprise.
 
 ### The `.allow()` model — one declaration, three effects
-HoBo adopts Nitric's inline permission model and extends it. Declaring a permission on a resource drives **three** things at once:
+Declaring a permission on a resource drives **three** things at once:
 1. **Least-privilege IAM** — the IaC adapter generates the minimal cloud policy ([Plan 3](./control-plane.md#plan-03)).
 2. **WASM capability grant (link)** — the component is linked to *only* the provider interfaces its permissions require; everything else is denied by the wasm host ([Plan 20](./wasm-runtime-wit.md#plan-20)).
 3. **Agent token scope** — the broker issues scoped tokens bounded to exactly these `(resource, verbs)` ([Plan 6](./ai-native-agent-auth.md#plan-06)).
@@ -22,9 +22,9 @@ const profiles = bucket("profiles").allow("read", "write");   // → S3 RW IAM +
 const sessions = kv("sessions").allow("get", "set");          // → wasi:keyvalue (get/set only)
 const events   = topic("user-created").allow("publish");      // → wasi:messaging (publish only)
 ```
-Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor token grants it. This unifies Nitric's IAM story with wasm capability security and HoBo's agent auth.
+Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor token grants it. This unifies least-privilege IAM with wasm capability security and HoBo's agent auth.
 
-### Catalog (full parity) — resource → WIT port → permission verbs
+### Catalog — resource → WIT port → permission verbs
 | Resource | `@hobo/sdk` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
 |---|---|---|---|---|
 | **API / HTTP** | `api(name)` | `wasi:http` (+ `hobo:http`) | route-level security | API GW+Lambda / Container Apps / Cloud Run / Workers |
@@ -48,10 +48,11 @@ Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor toke
 | **Crypto** | `crypto(name)` | `hobo:crypto` | `encrypt`,`decrypt`,`sign`,`verify` | KMS / Key Vault / Cloud KMS / in-boundary HSM — **keys the app never holds**, brokered like secrets ([Plan 31](./authoring-resources-wiring.md#plan-31)) |
 | **Email / SMS / Push / Webhook-out** | `email`/`sms`/`push`/`webhookOut(name)` | `hobo:notify` | `send` | SES/SendGrid · Twilio/SNS · FCM/APNs · signed HTTP — a thin **cloud-messaging port** (typed templates, PrincipalRef recipients, policy-gated), shares the ops receiver port ([ADR-0059](./adr/03-data-plane.md#adr-0059)) |
 | **Guardrail** | `guardrail(name)` | `hobo:guardrail` | `check` | built-in rules / Llama Guard / hosted moderation / local — **AI output safety** (moderation/PII/jailbreak/grounding) as a policy-gated step ([Plan 47](./governance-planes.md#plan-47)/[ADR-0061](./adr/04-governance-verification.md#adr-0061)) |
+| **UI render** | `ui(name)` | `hobo:ui-render` | `render`,`drive` | pluggable engines: OpenUI (UI from intent) · json-render (declarative render IR) · mcp-apps (MCP-driven app surfaces) — **app/UI generation** typed from the domain schema, design.md-gated, reactive to materializations ([ADR-0056](./adr/06-ai-generation-operators.md#adr-0056)) |
 
-Cross-cloud equivalence classes are owned by [Plan 3](./control-plane.md#plan-03); this table is the resource→port view.
+The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./adr/01-architecture-core.md#adr-0002)): APIs, schedules, AI (`search`/`embed`/`guardrail`), websites, storage, secrets/config, databases/caching (`sql`/`kv`), messaging (`topic`/`queue`/`notify`), feature flags, and functions/workflows (`service`/`job` + the durable runtime) — every capability expressed as a resource behind a port. Cross-cloud equivalence classes are owned by [Plan 3](./control-plane.md#plan-03); this table is the resource→port view.
 
-> **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)). The `sql`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)). They remain first-class resources; what changed is that domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
+> **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)). The `sql`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)). They remain first-class resources; domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
 
 ### IfC-default authoring (resources emerge from code)
 The **default** authoring mode is Nitric-style: declare resources inline and `.allow()` what you use; HoBo's deploy pipeline runs each component in **resource-collection mode** to capture declarations into the **manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)). Handlers attach to resources directly:
@@ -69,11 +70,11 @@ Each entry point compiles to a component exporting the right WIT interface:
 - HTTP routes → `wasi:http/incoming-handler`.
 - `topic.subscribe`, `bucket.on('write', …)`, `schedule.cron(…)`, `queue` workers, `websocket.on(…)`, `job.handler(…)` → host triggers that invoke the component. These also flow through HoBo's durable runtime ([Plan 2](./sdk-api.md#plan-02)) so a subscriber can be a workflow/saga with replay + compensation — a capability Nitric lacks.
 
-### Iteration hooks
-- `hobo:blob-events` / `hobo:websocket` WIT shapes (no standard `wasi:*` yet).
-- ~~SQL migrations workflow~~ — **specified in [Plan 34](./data-plane.md#plan-34)** ([ADR-0032](./adr/03-data-plane.md#adr-0032)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
-- Whether `.allow()` verbs are per-resource-type enums (typed) and how they map to each provider's IAM actions.
-- Collection fidelity for non-TS languages (run-to-collect vs static analysis).
+### Notes
+- `hobo:blob-events` / `hobo:websocket` are HoBo WIT shapes where no standard `wasi:*` exists.
+- SQL migrations are specified in [Plan 34](./data-plane.md#plan-34) ([ADR-0032](./adr/03-data-plane.md#adr-0032)): declarative desired-schema + auto-diff (raw `.up.sql`-style steps as an escape hatch), gated **expand/backfill/contract** apply + snapshot rollback, and cross-cloud move within an equivalence class.
+- `.allow()` verbs are per-resource-type typed enums; each provider's IAM adapter maps them to that provider's actions.
+- Collection runs each component to capture declarations; non-TS languages are collected the same way (run-to-collect), with static analysis as a supplement.
 
 ## Plan 22
 
@@ -101,7 +102,7 @@ Adopt Aspire's `AddContainer` surface, applied identically to wasm components an
 - **Lifecycle:** `withLifetime("persistent")`, `withExplicitStartup()`, `waitFor(dep)`, `waitForCompletion(job)`.
 - **Health:** `withHttpHealthCheck(path)` / `withHealthCheck()` — feeds rollout gates ([Plan 5](./reliability-observability-cost.md#plan-05)).
 ```ts
-container("legacy-gpu", "ghcr.io/acme/cuda-job:1.2")     // OCI fallback workload
+container("cuda-job", "ghcr.io/acme/cuda-job:1.2")       // OCI fallback workload
   .withEndpoint({ port: 8080, scheme: "http" })
   .withEnvironment("MODEL", "yolo")
   .withVolume("models", "/models")
@@ -143,11 +144,10 @@ A **plan-time, event-sourced scorecard** computed from the manifest IR + the Mat
 - **Per-resource provider-equivalence-class** — the class chosen + **why other members were rejected** (reuses the rejected-candidate reasons in `match.Decided`, [ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).
 - **Upgrade readiness** — the pinned **`component-host` + `wasi:*` versions** ([ADR-0067](./adr/01-architecture-core.md#adr-0067)) and whether a host upgrade path/upcaster is available, so portability and upgradability read off one report.
 
-### Iteration hooks
-- Exact manifest schema + how close to Aspire's `aspire-manifest.json` to stay (interop?).
-- Env-injection convention for the container/wasm-host fallback (reuse Aspire's `services__…`?).
-- Which annotations are first-party/provider-neutral vs `.with(...)` provider-specific.
-- Whether HoBo can *import* an Aspire manifest as one input format.
+### Notes
+- The manifest schema (`hobo.manifest/v1`) stays interop-close to Aspire's `aspire-manifest.json`, and HoBo imports an Aspire manifest as one input format.
+- The container/wasm-host fallback injects endpoints/connection info on the Aspire `services__<name>__<endpoint>__<i>` / `ConnectionStrings__<name>` convention.
+- First-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral; `.with(...)` carries provider-specific options.
 
 ## Plan 31
 
@@ -159,7 +159,7 @@ Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-
 ### Principles
 1. **Secretless-first.** The best secret is no secret: a bound resource is reached via the app's **SVID → brokered short-lived token**, so there is nothing to store or leak ([ADR-0008](./adr/README.md)).
 2. **References, not values.** Config/secret declarations resolve to **refs** (a pointer to a provider secret store path, a binding, or a federation trust), resolved **at use-time, per Camp**. A value never lives in the `Bindle`, the Camp config, or the event log.
-3. **Provider-specific resolution belongs to the Camp.** Because a Camp is the provider-specific layer, *where* a secret/config actually comes from (Key Vault vs Secrets Manager vs Vault; which region) is a Camp concern; the Bindle only declares *what it needs*.
+3. **Secretless is the default; provider specifics are a pluggable `secrets` port adapter.** The default identity path — SVID → SVID-brokered short-lived tokens, OIDC federation — stays the default. Cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension per provider** ([ADR-0027](./adr/02-identity-security.md#adr-0027)). Because a Camp is the provider-specific layer, *where* a secret/config actually comes from (Key Vault vs Secrets Manager vs Vault; which region) and *which* adapter resolves it is a Camp concern; the Bindle only declares *what it needs*. Overriding the default identity path with a cloud-native one is a Camp + extension change, not an app edit.
 4. **Every access is audited; values are never telemetry.** Secret reads are `token.Used` / `secret.Accessed` events; OTel/OpenInference spans and `ctx.log` redact values ([Plan 14](./reliability-observability-cost.md#plan-14)).
 
 ### SDK surface
@@ -190,10 +190,10 @@ flowchart TD
   KIND -->|secretRef| FED{provider federation<br/>available?}
   KIND -->|env| CFG["non-secret value from the Camp's Deployment Set"]
   FED -->|yes| STS["broker token -> read from provider secret store at use-time<br/>(Key Vault / Secrets Manager / Vault)"]
-  FED -->|no| LEGACY["bounded static-secret escape hatch<br/>(TTL + rotation + audited + opt-in, ADR-0023)"]
+  FED -->|no| ESCAPE["bounded static-secret escape hatch<br/>(TTL + rotation + audited + opt-in, ADR-0023)"]
   BIND --> AUDIT["token.Used / secret.Accessed event; value never logged"]
   STS --> AUDIT
-  LEGACY --> AUDIT
+  ESCAPE --> AUDIT
 ```
 1. **Bound resource** → SVID-brokered token (zero stored secret). Default for `database`/`queue`/`objectStore`/etc.
 2. **Secret with provider federation** → broker a scoped token, read the value from the provider's secret store at use-time.
@@ -232,42 +232,50 @@ The secretless model extends to **cryptography**: a `crypto(name)` resource (`ho
 - **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/02-identity-security.md#adr-0023)).
 - **Portable** — the Bindle declares needs, the Camp supplies sources; swapping clouds is a Camp change, never an app edit.
 
-### Iteration hooks
-- The exact `config()`/`secretRef()` DSL vs a thinner `ctx.env`-style accessor.
-- Caching/TTL of fetched secrets in-process (re-fetch cadence vs latency) — defaults above are a starting point.
-- Whether non-secret config supports live reload (push from the Camp's Deployment Set) or is deploy-time only.
-- Per-Camp secret-store adapter coverage (which providers expose a `secrets` port natively vs need a shim).
+### Notes
+- The authoring surface is `config()`/`secretRef()`/`env()`, read via `ctx.config`.
+- Fetched secrets are held in a short, bounded in-process cache (TTL above); each cache miss re-audits.
+- Non-secret config supports live reload, pushed from the Camp's Deployment Set.
+- Each provider's `secrets` port adapter resolves per-Camp sourcing; providers without a native secrets port use a shim adapter behind the same port.
 
 ## Plan 38
 
 **Plan 38 — Hobo Code (the configuration + code DSL)**
 
-> **One surface for config *and* code.** Hobo Code is the planned human-readable DSL to declare **Yards, Camps, Bindles** and their resources/wiring **and** the workflow/step/agent code that runs in them — designed from the ground up to be **optimal for AI generation, training, and optimization**, not just human authoring. It is a *sibling* authoring front-end to the TypeScript SDK, not a replacement: both lower to the same **Manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)) + runtime constructs.
+> **One surface for config *and* code, with two entry levels.** Hobo Code is HoBo's human-readable DSL that declares **Yards, Camps, Bindles** and their resources/wiring **and** the workflow/step/agent behavior that runs in them — built to be **optimal for AI generation, training, and optimization** as well as human authoring. It is a *sibling* authoring front-end to the TypeScript SDK: both lower to the same **Manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)) + runtime constructs ([ADR-0049](./adr/05-config-matching-environments.md#adr-0049)).
 
-### Why a DSL (and why now reserve it)
-HoBo's v1 authoring surface is **TypeScript + IfC** ([Plan 2](./sdk-api.md#plan-02)/[Plan 21](./authoring-resources-wiring.md#plan-21)) — excellent for humans with an editor and a type-checker. But HoBo is **AI-native** ([Plan 6](./ai-native-agent-auth.md#plan-06)): agents generate, repair, and optimize HoBo artifacts (the Forge, [Plan 33](./forge-generated-stack.md#plan-33); `"use training"`, [Plan 23](./forge-generated-stack.md#plan-23)). A general-purpose language is a noisy target for that: large grammar, many ways to say the same thing, host-language imports, side-effects at collection time, and an AST that is hard to diff/score. A purpose-built DSL can be **small, regular, declarative-first, and low-ambiguity**, which is exactly what makes a surface cheap to generate correctly, cheap to *train on*, and cheap to *optimize* against a reward signal.
+### Two-level authoring model
+Authors enter at whichever level fits; both compile to the same artifacts ([ADR-0049](./adr/05-config-matching-environments.md#adr-0049)).
 
-This plan **reserves the name and the intent now** so the rest of the suite can refer to it coherently; the concrete grammar/toolchain is deferred.
+- **Level 1 — declarative DSL/config, no code.** A first-class no-code entry point: the small, regular declarative surface declares **scope/topology** (`Yard`/`Camp`/`Bindle` + resources + `.allow()` + `bind` wiring) and **behavior shape** (`workflow`/`step`/`actor`/`saga`/`agent`, `"use query"`/`"use training"` methods) **without writing code**. The same declarative path drives **init, spec, and code-generation** — declarations alone produce a deployable Bindle.
+- **Level 2 — generated SDK code stubs (intermediary artifacts).** The DSL **generates typed `service`/`workflow`/`step`/`actor` stubs** with `.allow()` pre-wired and the `bind` graph stitched. Stubs are the seam where hand-written code lands: the author fills the bodies while the declarative source stays authoritative for topology.
 
-### Design goals (the charter)
-- **One file, two halves — config + code.** Declare scope/topology (`Yard`/`Camp`/`Bindle`, resources, `.allow()`, wiring) *and* the behavior (`workflow`/`step`/`actor`/`saga`/`agent`, `"use query"`/`"use training"` methods) in one coherent, human-readable surface.
-- **AI-optimal by construction:**
-  - **Small, regular grammar** with a **stable, canonical AST** — one obvious way to express a thing, so generated programs are diffable and scoreable.
-  - **Declarative-first + deterministic** — no host imports or collection-time side-effects; the same source always lowers to the same IR (replay-safe, [Plan 11](./event-model.md#plan-11)).
-  - **Schema-aware & self-describing** — the grammar carries enough structure that a model (and a linter) can complete/repair it locally; errors are machine-actionable (like `deployment.PlanRejected`).
-  - **Token-efficient** — terse but readable, so generation/training context stays small.
-- **Lowers to the existing model, adds nothing semantically new.** Hobo Code compiles to the **Manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)) and the same SDK constructs the TS surface produces; the scope model is unchanged (`Yard ⊃ Camp ⊃ Bindle`, [ADR-0026](./adr/01-architecture-core.md#adr-0026)). It is a front-end, not a new runtime.
-- **Round-trippable with TypeScript.** TS↔Hobo Code should be mechanically convertible (both are views over the same IR/AST), so teams mix surfaces and the Forge can emit either.
-- **First-class for agents *and* humans.** Generated by the Forge/agents, edited by people; the same codegen + conformance discipline as everything else ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)).
+**Flow: declarative DSL/config → generated SDK stubs → code.** The no-code declarative path is the front door; it emits SDK stubs, and developers extend the stubs with behavior. A pure no-code stack is valid end-to-end; a code-heavy stack starts from the same declarations and grows.
+
+**Ties to the rest of the model:**
+- **Stubs via codegen** ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) — the same deterministic, checked-in `_generated/` discipline and `--check` drift gate, so DSL → stub output is reviewable and reproducible.
+- **Placement via deterministic Matching** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) — the DSL declares the resource graph; Matching resolves it to Camps.
+- **Both levels lower to the one Manifest IR** ([Plan 22](./authoring-resources-wiring.md#plan-22)) — no new runtime semantics; the scope model is unchanged (`Yard ⊃ Camp ⊃ Bindle`, [ADR-0026](./adr/01-architecture-core.md#adr-0026)).
+
+### Why a DSL
+HoBo is **AI-native** ([Plan 6](./ai-native-agent-auth.md#plan-06)): agents and the Forge generate, repair, and optimize HoBo artifacts (the Forge, [Plan 33](./forge-generated-stack.md#plan-33); `"use training"`, [Plan 23](./forge-generated-stack.md#plan-23)). TypeScript + IfC ([Plan 2](./sdk-api.md#plan-02)/[Plan 21](./authoring-resources-wiring.md#plan-21)) is ideal for humans with an editor and a type-checker but a noisy generation/training target: large grammar, host imports, collection-time side-effects, an AST that is hard to diff/score. Hobo Code is **small, regular, declarative-first, and low-ambiguity** — exactly what makes a surface cheap to generate correctly, cheap to *train on*, and cheap to *optimize* against a reward signal. It also forces no author through code when a declaration would do (Level 1).
+
+### Design properties
+- **Small, regular grammar** with a **stable, canonical AST** — one obvious way to express a thing, so generated programs are diffable and scoreable.
+- **Declarative-first + deterministic** — no host imports or collection-time side-effects; the same source always lowers to the same IR (replay-safe, [Plan 11](./event-model.md#plan-11)).
+- **Schema-aware & self-describing** — the grammar carries enough structure that a model (and a linter) can complete/repair it locally; errors are machine-actionable (like `deployment.PlanRejected`).
+- **Token-efficient** — terse but readable, so generation/training context stays small.
+- **Round-trippable with TypeScript** — TS↔Hobo Code is mechanically convertible (both are views over the same IR/AST), so teams mix surfaces and the Forge emits either.
 
 ### Where it sits (front-end over the shared IR)
 ```mermaid
 flowchart LR
   subgraph FE["Authoring front-ends"]
     TS["TypeScript SDK + IfC<br/>(Plan 2 / Plan 21)"]
-    HC["Hobo Code DSL<br/>(this plan, future)"]
+    HC["Hobo Code DSL<br/>(L1 declarative + L2 stubs)"]
   end
-  HC --> AST["canonical AST"]
+  HC --> STUB["generated SDK stubs<br/>(codegen, ADR-0037)"]
+  STUB --> AST["canonical AST"]
   TS --> AST
   AST --> IR["Manifest IR<br/>(Plan 22)"]
   IR --> PLAN["Planner / Matching<br/>(Plan 25 / ADR-0033)"]
@@ -277,19 +285,14 @@ flowchart LR
 ```
 
 ### Relationship to existing concepts
-- **Manifest IR ([Plan 22](./authoring-resources-wiring.md#plan-22))** — the lowering target; Hobo Code is one more way to produce it. The IR stays the single source of truth.
+- **Manifest IR ([Plan 22](./authoring-resources-wiring.md#plan-22))** — the lowering target; Hobo Code is one more way to produce it. The IR is the single source of truth.
 - **TypeScript SDK ([Plan 2](./sdk-api.md#plan-02))** — the peer front-end; identical semantics, different ergonomics. Codegen ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)) and conformance ([Plan 9](./verification.md#plan-09)) apply to both.
 - **The Forge, the Crew & `"use training"` ([Plan 33](./forge-generated-stack.md#plan-33)/[Plan 40](./operators-sre.md#plan-40)/[Plan 23](./forge-generated-stack.md#plan-23))** — the primary *consumers/producers* of Hobo Code: it is the **token-efficient IR for codegen + platform config** that the generated stack ([Plan 41](./forge-generated-stack.md#plan-41)) emits and the **Platform Engineer operator** ([Plan 40](./operators-sre.md#plan-40)) authors. A compact, regular, low-ambiguity target is what makes generation/repair/optimization tractable and cheap in tokens.
-- **Capability Manifest ([Plan 6](./ai-native-agent-auth.md#plan-06))** — unrelated and **not** to be confused with this DSL; it is the machine-readable auth+capability standard that previously bore the "Hobo Code" name.
-- **Data plane / projections ([Plan 39](./data-plane.md#plan-39))** — a natural future target for Hobo Code's config-half: declaring **projections + schema mappings** (and the WIT-record domain schema, [ADR-0051](./adr/03-data-plane.md#adr-0051)) is exactly the kind of regular, declarative surface the DSL is for. Forward-looking only — nothing in the data plane's v1 depends on Hobo Code.
+- **Capability Manifest ([Plan 6](./ai-native-agent-auth.md#plan-06))** — a distinct artifact, not to be confused with this DSL: it is the machine-readable auth+capability standard (`/.well-known/capability-manifest/`, WIT `hobo:capability-manifest`).
+- **Data plane / projections ([Plan 39](./data-plane.md#plan-39))** — a target for Hobo Code's config half: declaring **projections + schema mappings** (and the WIT-record domain schema, [ADR-0051](./adr/03-data-plane.md#adr-0051)) is exactly the kind of regular, declarative surface the DSL is for.
 
-### Open questions (deferred — this plan is a charter, not a spec)
-- Surface syntax family (HCL/CUE-like declarative + an embedded expression/code grammar? a typed superset? a projectional/AST-first editor?).
-- Toolchain: parser, formatter (canonicalizer), LSP, and the TS↔Hobo Code transpiler — and whether the canonical artifact is text or AST.
-- How embedded *code* (workflow/step bodies) is expressed and compiled to wasm components ([Plan 20](./wasm-runtime-wit.md#plan-20)) vs delegating to host languages.
-- The training/optimization interface: how a generated program's AST is scored and mutated by the `training-engine` ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)).
-- Versioning/evolution of the grammar and migration of existing Bindles.
-
-### Iteration hooks
-- Prototype the **config half first** (Yards/Camps/Bindles + resources + `.allow()` + wiring) as a thin declarative surface over the Manifest IR; defer the embedded-code half until the IR + codegen are stable.
-- Keep this plan a **reservation**: nothing else in the suite should depend on Hobo Code existing in v1.
+### Notes
+- The config half (Yards/Camps/Bindles + resources + `.allow()` + wiring) and the embedded-code half (workflow/step bodies, compiled to wasm components, [Plan 20](./wasm-runtime-wit.md#plan-20)) are both first-class.
+- Toolchain: parser, canonicalizing formatter, LSP, and the TS↔Hobo Code transpiler; the canonical artifact is the AST, surfaced as text.
+- The training/optimization interface scores and mutates a generated program's AST via the `training-engine` ([ADR-0025](./adr/06-ai-generation-operators.md#adr-0025)).
+- Grammar evolution is versioned; existing Bindles migrate via the shared IR + transpiler.

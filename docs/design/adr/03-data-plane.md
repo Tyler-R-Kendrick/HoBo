@@ -246,7 +246,7 @@ HoBo messages *operators* (ops alerting, [ADR-0045](04-governance-verification.m
 - **A separate notification microservice / port unrelated to ops alerting.** Rejected: duplicates the receiver-port + adapter work; two SendGrid integrations to maintain. Sharing the port is the cheap, coherent choice.
 - **Untyped `send(to, body)` with raw provider keys.** Rejected: reintroduces static secrets, untyped payloads, and no consent/audit — the precise anti-patterns the secretless/WIT-record/policy planes remove.
 - **Make notifications a kind of `topic`.** Rejected: `topic` is intra-app pub/sub between components; human-facing delivery needs consent, channel addressing, delivery receipts, and quiet-hours — a different contract. They compose (a `topic` subscriber may `notify`) but aren't the same resource.
-- **Build a full marketing-automation / campaign engine.** Rejected — out of scope: campaign/marketing orchestration is app-build-out, not meta-cloud infrastructure ([ADR-0064](08-scope-and-requirements.md#adr-0064)). `notify` is a thin transactional send port.
+- **Build a full marketing-automation / campaign engine.** Rejected — out of scope: campaign/marketing orchestration is a business/SaaS function, not meta-cloud infrastructure ([ADR-0064](08-scope-and-requirements.md#adr-0064)). `notify` is a thin transactional send port.
 
 ### Consequences
 - **(+)** Closes the most common SaaS gap with almost no new machinery — one port + one event family + catalog rows, riding the existing receiver port, broker, log, and policy plane.

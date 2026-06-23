@@ -30,7 +30,7 @@ Authored alongside the docs (one ADR per load-bearing decision) — see the [ADR
 - [ADR-0019](../design/adr/08-scope-and-requirements.md#adr-0019) — persona prioritization / primary ICP
 - [ADR-0021](../design/adr/08-scope-and-requirements.md#adr-0021) — NFR baselines / SLOs (Proposed)
 - [ADR-0063](../design/adr/08-scope-and-requirements.md#adr-0063) — single v1 scope (whole designed surface ships as one v1; P0–P6 become build stages; supersedes the removed ADR-0022 MVP-scope/MoSCoW line)
-- [ADR-0064](../design/adr/08-scope-and-requirements.md#adr-0064) — scope: AI-native meta-cloud (removes business + app-build-out)
+- [ADR-0064](../design/adr/08-scope-and-requirements.md#adr-0064) — scope: AI-native meta-cloud (removes business/monetization; keeps app generation)
 - [ADR-0023](../design/adr/02-identity-security.md#adr-0023) — security posture commitments *(from the review/hardening pass)*
 - [ADR-0024](../design/adr/07-portability-extensibility.md#adr-0024) — portability conformance guarantee *(from the review/hardening pass)*
 
@@ -38,4 +38,4 @@ Authored alongside the docs (one ADR per load-bearing decision) — see the [ADR
 New reader: [BRD](./BRD.md) → [PRD](./PRD.md) → [TRD](./TRD.md). For design depth behind any requirement, follow its citation into [`docs/design`](../design/README.md) (start with [10 Architecture](../design/architecture.md#plan-10) and [19 Worked example](../design/worked-example.md#plan-19)).
 
 ## Glossary
-These docs reuse the canonical vocabulary verbatim — the three nested scopes **`Yard ⊃ Camp ⊃ Bindle`** (Yard = cross-provider policy + control plane; Camp = provider-specific target that provides the durable **runtime ports**; Bindle = app config), Port, Provider, Forge, Grain, Planner, ResourceActor, Executor, SVID, Capability Manifest/Signs, IfC, `.allow()`, `.with(...)`, Manifest IR, Stub, Resource Definition/Matching, Deployment Set/Delta, Gatekeeper, the four-lens taxonomy. *(The vendor-branded "World" was removed; the durable runtime is now a property of a Camp — [ADR-0026](../design/adr/01-architecture-core.md#adr-0026).)* Definitions: [design suite glossary](../design/README.md#glossary--naming-thematic-all-tunable).
+These docs reuse the canonical vocabulary verbatim — the three nested scopes **`Yard ⊃ Camp ⊃ Bindle`** (Yard = cross-provider policy + control plane; Camp = provider-specific target that provides the durable **runtime ports**; Bindle = app config), Port, Provider, Forge, Grain, Planner, ResourceActor, Executor, SVID, Capability Manifest/Signs, IfC, `.allow()`, `.with(...)`, Manifest IR, Stub, Resource Definition/Matching, Deployment Set/Delta, Gatekeeper, the four-lens taxonomy. Definitions: [design suite glossary](../design/README.md#glossary--naming-thematic-all-tunable).

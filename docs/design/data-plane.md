@@ -2,11 +2,13 @@
 
 This capability doc consolidates Plan 32, Plan 34, Plan 35, Plan 39 of the HoBo design suite.
 
+The app layer is **CQRS** ([ADR-0053](./adr/03-data-plane.md#adr-0053)): writes go through commands into aggregates (the write model); reads come from projections/materializations (the read model). The default **read** surface is a subscription to an observable materialization; the opinionated **query** surface is a **GraphQL facade over materialized views and snapshots** — CQRS querying of materializations produced by GraphQL reducers, with **snapshots cached by default** ([ADR-0065](./adr/03-data-plane.md#adr-0065)). Per-entity/per-materialization **tunable consistency** ([ADR-0052](./adr/03-data-plane.md#adr-0052)) defaults to session.
+
 ## Plan 32
 
 **Plan 32 — Reactive streams & subscriptions (RX materializations)**
 
-> **Why streams, not queries.** Convex/Lakebed *store-then-query*: you write a query function over a built-in DB and the platform re-runs it on change. HoBo is **event-sourced** (the log already *is* a change stream; actors and projections already fold it — [Plan 11](./event-model.md#plan-11)) and **multi-cloud**. So the natural primitive is **subscribe to an event-type stream and fold it into a materialization you observe** — RX (reactive-extensions) semantics over the log. The store becomes an *optional cache* of a materialization ([Plan 39](./data-plane.md#plan-39)), not the thing you query.
+> **Why streams, not queries.** Convex/Lakebed *store-then-query*: you write a query function over a built-in DB and the platform re-runs it on change. HoBo is **event-sourced** (the log already *is* a change stream; actors and projections already fold it — [Plan 11](./event-model.md#plan-11)) and **multi-cloud**. So the natural primitive is **subscribe to an event-type stream and fold it into a materialization you observe** — RX (reactive-extensions) semantics over the log. The store is an *optional cache* of a materialization ([Plan 39](./data-plane.md#plan-39)), not the thing you query. The opinionated request/response **query** surface is a **GraphQL facade** over those materializations ([ADR-0065](./adr/03-data-plane.md#adr-0065)).
 
 ### The model in one paragraph
 A **materialization** is a deterministic **fold over subscribed event types** (a projection — [Plan 39](./data-plane.md#plan-39)), exposed as a **subscribable observable**. **Registering interest in event types *is* the subscription** (the read-set). When you `subscribe`, the runtime replays the stream to the current **log position (`seq`)** to give you the current value, then a **Reactor** keeps the subscription live: when any stream in the read-set appends, it recomputes/advances the materialization at the new monotonic `seq`, diffs, and **pushes** the result (or a delta) to the client over the **gateway** (WebSocket/SSE) backed by the **`Streamer`** runtime port. Monotonic `seq` ⇒ a client never sees state regress; **reads-your-writes** holds because a command returns its `seq` and the client's subscriptions advance to ≥ that `seq` before the write acks.
@@ -30,14 +32,16 @@ const { data, seq } = useSubscription(openTickets, { team: "infra" }); // React:
 - **Replay-then-live** (RX `ReplaySubject`/`scan`): a new subscriber gets the current materialized value (folded to `seq`) immediately, then the live tail — "current value + updates" for free from event sourcing.
 - **RX operator vocabulary:** `map` · `filter` · `scan`/`fold` · `distinctUntilChanged` · `combineLatest`/`join` · `window`/`buffer` · `debounce`/`coalesce` — composed over event-type streams; deterministic + replayable.
 
-### Query is the escape hatch (snapshot / point / search / analytics)
-When a stream subscription is the wrong shape — a one-shot read, a point lookup, full-text/vector **search**, pagination, or analytics — you reach for the **query escape hatches**, served from a materialization's **sink cache** ([Plan 39](./data-plane.md#plan-39)):
+### The query surface: a GraphQL facade + escape hatches
+Request/response reads are served by a **GraphQL facade over materialized views and snapshots** ([ADR-0065](./adr/03-data-plane.md#adr-0065)): the resolver reads a materialization produced by a **GraphQL reducer** (the fold). GraphQL subscriptions map onto the same observable materializations, so query and stream share one model. **Snapshots are cached by default**, so repeated point/query reads hit the cached snapshot rather than re-folding; cache freshness follows the entity's tunable consistency level ([ADR-0052](./adr/03-data-plane.md#adr-0052)).
+
+When a stream subscription is the wrong shape — a one-shot read, a point lookup, full-text/vector **search**, pagination, or analytics — you reach for the **escape hatches**, served from a materialization's cached snapshot or **sink cache** ([Plan 39](./data-plane.md#plan-39)):
 ```ts
-const now   = await snapshot(openTickets, { team: "infra" }); // one-shot current value @ seq (was runQuery)
+const now   = await snapshot(openTickets, { team: "infra" }); // one-shot current value @ seq (cached by default)
 const t     = await repo<Ticket>("tickets").get(id);          // point lookup (sink cache)
-const found = await view("tickets").search({ text: "disk full" }); // full-text/vector (Plan 35)
+const found = await view("tickets").search({ text: "disk full" }); // search capability (Plan 35)
 ```
-- `useQuery()` is **retained as sugar** for `useSubscription()` over a materialization (Convex familiarity), not the primary surface.
+- `useQuery()` is **sugar** for `useSubscription()` over a materialization (Convex familiarity), not the primary surface.
 - Point/search/OLAP read from the **sink cache** (a durable, indexed materialization), so they carry that sink's reactivity/consistency caveats ([Plan 39](./data-plane.md#plan-39) honest-limits). `hobo doctor` nudges toward `subscribe` for live views.
 
 ### The Reactor (the engine, unchanged)
@@ -55,15 +59,15 @@ flowchart LR
 ```
 - A **`Reactor`** grain (one per Camp, sharded by subscription) holds, per active subscription: `{ materialization, args, readSet, lastSeq, client }`.
 - An **inverted index** `stream/event-type → subscriptions` means an append wakes **only** affected subscriptions (no full re-scan).
-- **Consistency = per-subscription consistent snapshot @ `seq`** ([ADR-0029](./adr/03-data-plane.md#adr-0029)): each push is computed at a single monotonic log position; pushes are delivered in `seq` order; the client never regresses; reads-your-writes as above.
+- **Consistency = per-subscription consistent snapshot @ `seq`** ([ADR-0029](./adr/03-data-plane.md#adr-0029)): each push is computed at a single monotonic log position; pushes are delivered in `seq` order; the client never regresses; reads-your-writes as above. The guarantee is **tunable per entity/materialization** ([ADR-0052](./adr/03-data-plane.md#adr-0052)) — session by default, dialable to bounded-staleness/strong or down to eventual; the level is a `match.Decided` outcome the reactor's snapshot@`seq` machinery honors.
 - **Coalescing + backpressure** ([Plan 5](./reliability-observability-cost.md#plan-05)): bursts collapse to the latest `seq`; slow clients get coalesced snapshots, not an unbounded backlog (RX backpressure).
 - **Auth-state is part of the read-set.** A subscription runs as a principal (`ctx.user`, [Plan 36](./ai-native-agent-auth.md#plan-36)); its authorization inputs (session + claims) are tracked like any dependency, so **`session.Revoked`** recomputes affected subscriptions — denying/re-scoping the push — without a client poll.
 - **Feature-flag state is part of the read-set too.** A materialization that reads a flag tracks the ruleset; **`flag.Changed`** re-pushes affected results live ([Plan 37](./contracts-policy-flags.md#plan-37)) — a kill-switch/`%` bump takes effect without redeploy or poll.
 
 ### Source of truth: native log (default) + sink change-feed (opt-in)
 - **Native (default).** Materializations fold the **event log** directly. The log *is* the change stream — zero extra infrastructure, works on **any** Camp runtime backend (`runtime-local` … `runtime-cloudflare`), inherits replay/audit. The portable, recommended path; **always reactive**.
-- **Sink change-feed (opt-in capability).** A materialization may be **cached** in a provider store ([Plan 39](./data-plane.md#plan-39)); if that store advertises a **`change-feed`** capability ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 24](./wasm-runtime-wit.md#plan-24)) — Postgres logical replication, DynamoDB Streams, Mongo change streams — the adapter **normalizes** changes into `data.Changed{ resource, key, op }` so the **same Reactor** keeps the cached materialization live. v1 ships the capability interface + **one reference adapter (Postgres)**.
-- **No change feed?** A query over that sink cache is typed **non-reactive** (`reactive: false`) — `snapshot`/`repo.get` still work but won't live-update; `hobo doctor` warns when a *live view* depends on a non-reactive cache ([Plan 15](./developer-experience.md#plan-15)). The native materialization is always available as the reactive default.
+- **Sink change-feed (opt-in capability).** A materialization may be **cached** in a provider store ([Plan 39](./data-plane.md#plan-39)); if that store advertises a **`change-feed`** capability ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 24](./wasm-runtime-wit.md#plan-24)) — Postgres logical replication, DynamoDB Streams, Mongo change streams — the adapter **normalizes** changes into `data.Changed{ resource, key, op }` so the **same Reactor** keeps the cached materialization live. The capability is a stable interface with a Postgres reference adapter.
+- **No change feed?** A query over that sink cache is typed **non-reactive** (`reactive: false`) — `snapshot`/`repo.get` still work (served from the cached snapshot) but won't live-update; `hobo doctor` warns when a *live view* depends on a non-reactive cache ([Plan 15](./developer-experience.md#plan-15)). The native materialization is always available as the reactive default.
 
 ### Client SDK
 - **Default:** `subscribe(m, args) → Observable` (framework-agnostic; async-iterator + callback forms); React `useSubscription(m, args) → { data, seq, stale }`.
@@ -75,7 +79,7 @@ flowchart LR
 Long-lived subscriptions multiplex over **one** gateway connection per client (WebSocket primary, SSE fallback), backed by the `Streamer` port — the same mechanism run-streams already use ([Plan 2 §Layer 1](./sdk-api.md#plan-02)/[Plan 14](./reliability-observability-cost.md#plan-14)). The Yard is **not** on this path; the Reactor runs in the data-plane Camp runtime.
 
 ### Events ([Plan 11](./event-model.md#plan-11))
-`subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event). *(Legacy aliases `query.Subscribed`/`Recomputed`/`Pushed`/`Unsubscribed` map onto these.)* Pushed *results* are ephemeral (not persisted); *subscriptions* are a projection so they rebuild on Reactor failover.
+`subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event). Pushed *results* are ephemeral (not persisted); *subscriptions* are a projection so they rebuild on Reactor failover.
 
 ### Verification ([Plan 9](./verification.md#plan-09))
 - **Subscription test:** `subscribe` → append an event in the read-set → assert a push at the new `seq` with the correct materialized value; assert monotonicity (no regression) and reads-your-writes (a client's command is visible to its own subscription before/at ack).
@@ -83,12 +87,13 @@ Long-lived subscriptions multiplex over **one** gateway connection per client (W
 - **Change-feed conformance:** the `change-feed` capability suite (a sink that claims it must emit ordered `data.Changed` for insert/update/delete) — same trust-boundary model as other ports.
 - **Determinism:** a materialization replays to the identical value at the same `seq` (deterministic + read-only).
 
-### Scope / YAGNI
-**In v1:** native event-sourced subscribable materializations **within a Camp**; `subscribe`/`from`+RX operators; `useSubscription` (default) + `snapshot`/`useQuery` (escape hatch); **cursor-based pagination** (`usePaginatedQuery` — page windows stable over the consistent-snapshot@`seq`, [Plan 39](./data-plane.md#plan-39)); consistent-snapshot@`seq` + reads-your-writes; optimistic updates; the `change-feed` capability interface **+ one reference adapter (Postgres)**.
-**Deferred:** cross-Camp subscriptions — specified by [ADR-0040](./adr/05-config-matching-environments.md#adr-0040) (subscribe to the owner Camp's Reactor or a replicated-stream Reactor carrying the bounded-staleness label); full DB-CDC coverage for every provider; global serializable snapshots. *(Full-text/filtered **search** is a reactive materialization via `data.Changed`; vector search is a step — [Plan 35](./data-plane.md#plan-35).)*
+### Scope
+Native event-sourced subscribable materializations **within a Camp**; `subscribe`/`from`+RX operators; `useSubscription` (default) + the GraphQL query facade + `snapshot`/`useQuery` (escape hatches); **cursor-based pagination** (`usePaginatedQuery` — page windows stable over the consistent-snapshot@`seq`, [Plan 39](./data-plane.md#plan-39)); tunable consistency ([ADR-0052](./adr/03-data-plane.md#adr-0052)) with session-default reads-your-writes; optimistic updates; the `change-feed` capability with a Postgres reference adapter. **Cross-Camp subscriptions** follow [ADR-0040](./adr/05-config-matching-environments.md#adr-0040): subscribe to the owner Camp's Reactor or a replicated-stream Reactor carrying the bounded-staleness label. Full-text/filtered **search** is a reactive materialization via `data.Changed`; non-deterministic search (vector/embedding) runs as a step ([Plan 35](./data-plane.md#plan-35)).
 
-### Iteration hooks
-- Read-set granularity (per-event-type vs per-stream vs per-key vs predicate-indexed) and recompute-vs-incremental-maintenance for expensive folds (incremental view maintenance later).
+**Non-goal:** global serializable snapshots — cross-aggregate/cross-Camp consistency is a saga or eventual ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)), never a silent distributed transaction.
+
+### Open design points
+- Read-set granularity (per-event-type vs per-stream vs per-key vs predicate-indexed) and recompute-vs-incremental view maintenance for expensive folds.
 - Delta encoding for pushes (full snapshot vs diff vs operation log) and client cache/merge strategy.
 - Subscription fan-out limits + Reactor sharding for very hot streams.
 - Promoting a hot materialization to a standing cached projection automatically (sink auto-binding).
@@ -99,8 +104,8 @@ Long-lived subscriptions multiplex over **one** gateway connection per client (W
 
 > **Two different "schema evolutions" — don't conflate them.** HoBo's **own** event log evolves by **forward-only upcasters that never rewrite history** ([Plan 11](./event-model.md#plan-11)) — that is *control-plane* data. **This plan is about the developer's *application* database** (the `sql` resource, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 24](./wasm-runtime-wit.md#plan-24)) — a provider-backed store (RDS / Azure DB / Cloud SQL / Neon) whose schema and data the app owns. Different layer, different mechanism.
 
-### Scope (v1)
-Relational **`sql`** resources, **Postgres** as the reference adapter. Deferred (iteration hooks): key-value/blob/document migrations, cross-*engine* moves (e.g. Postgres→MySQL), CDC/dual-write cutover, and multi-region active-active data.
+### Scope
+Relational **`sql`** resources, **Postgres** as the reference adapter, plus the projection-sink evolution paths (§Projection sinks). **Schema versioning follows the PACT contract-testing strategy** ([ADR-0032](./adr/03-data-plane.md#adr-0032)/[ADR-0051](./adr/03-data-plane.md#adr-0051)): data/materialization schemas are contract-tested like service boundaries, so a change that would break a live consumer is caught before deploy.
 
 ### 1. Authoring — declarative schema + auto-diff
 A developer **declares the desired schema** alongside the `sql` resource (IfC — the same run-to-collect model as the rest of the Bindle, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 22](./authoring-resources-wiring.md#plan-22)). HoBo's **diff engine** compares it to the schema **currently live in the target Camp** and computes a **reviewable migration plan** — a sequence of typed phases, not hand-written step files.
@@ -143,7 +148,11 @@ Moving a `sql` resource to a **different Camp/provider within the same provider 
 3. **Cutover** — flip traffic via the existing **blue/green + `gateway` flip** machinery ([Plan 5](./reliability-observability-cost.md#plan-05)); the source stays hot for fast rollback (`migration.CutOver`).
 4. **Verify** — row counts / checksums / health gate; on pass, **reap** the source after a soak window.
 
-**Cross-*engine* moves (Postgres→MySQL) are out of scope for v1** — they are lossy/semantic, not mechanical. **CDC / dual-write replication cutover** (near-zero-downtime for large/live DBs) is noted as a **future opt-in adapter capability**, not the v1 default.
+**Cross-*engine* moves (Postgres→MySQL)** are lossy/semantic, not mechanical; they go through a **CDC / dual-write replication adapter** (also the near-zero-downtime path for large/live DBs). Portability is bounded to equivalence classes so the guarantee stays real; the CDC/dual-write adapter is the deliberate cross-engine path.
+
+### 5. Schema versioning (PACT) & forgetting (GDPR)
+- **Versioning is contract-tested (PACT strategy)** ([ADR-0032](./adr/03-data-plane.md#adr-0032)/[ADR-0051](./adr/03-data-plane.md#adr-0051)). Data and materialization schemas are versioned and **contract-tested like service boundaries**: consumer/provider expectations are pinned per version, so a contract phase that would break a live consumer is caught by `can-deploy` (`compat.GateFailed`) before deploy. Event bodies evolve via [Plan 11](./event-model.md#plan-11) upcasters; projection-sink schemas evolve via the expand→backfill→contract machinery above. A domain-record change wires to both and is gated by its PACT contract.
+- **Forward-only is the default, configurable for right-to-be-forgotten.** No-history-rewrite holds by default. Where a data subject must be forgotten (GDPR), HoBo **crypto-shreds**: destroying the per-subject **forgetting key** makes the record's encrypted fields permanently unrecoverable, **anonymizing the record without rewriting history** ([ADR-0032](./adr/03-data-plane.md#adr-0032)/[ADR-0051](./adr/03-data-plane.md#adr-0051)). The log stays append-only and replayable; forgotten fields decrypt to tombstones. Erasure is a configurable obligation, not a history rewrite.
 
 ### Events ([Plan 11](./event-model.md#plan-11))
 `migration.Planned` · `migration.SnapshotTaken` · `migration.PhaseApplied` (phase = `expand`/`backfill`/`contract`, with the diff) · `migration.Verified` · `migration.RolledBack` · `migration.Failed` · (cross-cloud move) `migration.Exported` · `migration.Imported` · `migration.CutOver`. Every phase, snapshot, and cutover is an immutable, replayable fact → "what changed the schema, when, and could it be rolled back?" is answerable from the log.
@@ -154,15 +163,15 @@ Moving a `sql` resource to a **different Camp/provider within the same provider 
 
 ### Projection sinks: rebuild-from-zero vs in-place migration
 A **projection sink** ([Plan 39](./data-plane.md#plan-39)/[ADR-0050](./adr/03-data-plane.md#adr-0050)) is a *derived* backend whose schema is **declarative** (the read-model WIT record + mapping), so it has a second evolution path that an authoritative store does not:
-- **Rebuild-from-zero (the default for derived sinks; paradigm-agnostic).** Change the read-model record/fold → **replay the event streams into the new shape** (Plan 11's "rebuildable from zero" *is* a backfill). This needs **no relational diff engine**, so it works for **document / KV / vector** sinks too — which is why a v1 document projection sink is fine even though *in-place* kv/blob/document migration is deferred below. Cut over old→new sink with the blue/green machinery (§4).
+- **Rebuild-from-zero (the default for derived sinks; paradigm-agnostic).** Change the read-model record/fold → **replay the event streams into the new shape** (Plan 11's "rebuildable from zero" *is* a backfill). This needs **no relational diff engine**, so it works for **document / KV / vector** sinks alike. Cut over old→new sink with the blue/green machinery (§4).
 - **In-place expand→backfill→contract (this doc's gated machinery).** The *optimization* for **large relational** sinks where a full rebuild is too expensive, and the *required* path for **authoritative-external** (adopted, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041)) stores — which are the source of truth and **cannot** be rebuilt from the log. Same pre-contract snapshot + `can-deploy` gate.
 
 Cross-cloud sink moves use the export→import path (§4) within an equivalence class.
 
-### Scope / YAGNI
-**In v1:** declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; intra-equivalence-class (managed-Postgres) cross-cloud move. **Deferred:** cross-engine moves, CDC/dual-write cutover, **in-place** kv/blob/document & cross-model migration (derived projection sinks of those paradigms still evolve by **rebuild-from-zero**, see §Projection sinks), multi-region active-active data ([Q16](./verification.md#plan-09)).
+### Scope
+Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see §Projection sinks). Multi-region active-active data is an [ADR-0040](./adr/05-config-matching-environments.md#adr-0040) topology concern ([Q16](./verification.md#plan-09)).
 
-### Iteration hooks
+### Open design points
 - Diff-engine reference (build vs adopt Atlas/Prisma-style) and how much DDL it covers before falling to the raw escape hatch.
 - Backfill throughput/throttling defaults + how online backfill interacts with live traffic and SLOs ([Plan 14](./reliability-observability-cost.md#plan-14)).
 - Snapshot mechanism per provider (native DB snapshot vs logical dump) and retention/cost ([Plan 16](./reliability-observability-cost.md#plan-16)).
@@ -170,46 +179,49 @@ Cross-cloud sink moves use the export→import path (§4) within an equivalence 
 
 ## Plan 35
 
-**Plan 35 — Search & vector surface**
+**Plan 35 — The generalized `search` capability**
 
-### The `search` port — one interface, three modes
-A **`search(name)`** resource backed by a `hobo:search` WIT interface ([Plan 24](./wasm-runtime-wit.md#plan-24)) unifies **full-text**, **vector**, and **hybrid** retrieval in a single interface — *not* three bolt-ons. It is a first-class port realized by a provider **equivalence class** ([Plan 3](./control-plane.md#plan-03)/[Plan 25](./platform-engineering.md#plan-25)): **pgvector + Postgres FTS** (cheap, colocated with the DB) at one end, **managed engines** (OpenSearch / Azure AI Search / Pinecone / Turbopuffer) at the other. **Matching** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) picks the realization per context — pgvector in a preview Camp, a managed index in prod — exactly the Resource-Definitions value, applied to retrieval.
+### The `search` port — one generic interface, paradigm-agnostic
+A **`search(name)`** resource backed by a `hobo:search` WIT interface ([Plan 24](./wasm-runtime-wit.md#plan-24)) is a **generic, extensible retrieval port**: one stable query/index/filter contract that **does not commit to a search paradigm** ([ADR-0034](./adr/03-data-plane.md#adr-0034)). **Full-text search is the in-core default** over the port; **vector/semantic, graph traversal, OWL/Semantic-Web reasoning, and hybrid are OPTIONAL extension libraries** an app installs, not built-ins. Each extension registers a modality behind the generic port (a `search-extension` Matching dimension), bringing its own index declaration and operators; the core stays small and paradigm-agnostic.
+
+The port is realized by a provider **equivalence class** ([Plan 3](./control-plane.md#plan-03)/[Plan 25](./platform-engineering.md#plan-25)): **Postgres FTS** (cheap, colocated with the DB) for the in-core full-text default, **managed engines** (OpenSearch / Azure AI Search / Pinecone / Turbopuffer) at scale; the **pgvector** extension colocates vector with the DB when installed. **Matching** ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)) picks the realization per context — FTS in a preview Camp, a managed index in prod — exactly the Resource-Definitions value, applied to retrieval.
 
 `.allow()` verbs: **`index`** (write/maintain indexed docs), **`query`** (search), **`admin`** (manage indexes) — same triple-effect IAM + wasm link + token scope as every resource ([Plan 21](./authoring-resources-wiring.md#plan-21)).
 
-> **`search` is the vector/text projection-sink paradigm.** In the data plane taxonomy ([Plan 39](./data-plane.md#plan-39)/[ADR-0052](./adr/03-data-plane.md#adr-0052)), `search` is one **projection sink** among several — a read model materialized into a text/vector index, sharing this doc's predicate DSL. Its determinism split is the taxonomy's reactivity rule in miniature: full-text/filtered search is a reactive **materialization** citizen ([ADR-0065](./adr/03-data-plane.md#adr-0065)), **vector search is a step** (non-deterministic embedding, off the reactive path — the query escape hatch).
+> **`search` is the text/vector projection-sink paradigm.** In the data plane taxonomy ([Plan 39](./data-plane.md#plan-39)/[ADR-0052](./adr/03-data-plane.md#adr-0052)), `search` is one **projection sink** among several — a read model materialized into a text/vector index, sharing this doc's predicate DSL. Its determinism split is the taxonomy's reactivity rule in miniature: **full-text/filtered search is deterministic** and so a reactive **materialization** citizen ([ADR-0065](./adr/03-data-plane.md#adr-0065)); **non-deterministic modalities** (vector/embedding, external reasoners) **run as `step`s**, off the reactive path.
 
 ```mermaid
 flowchart LR
-  APP["app / agent"] --> Q["full-text + filter materialization<br/>(reactive subscription, Plan 32)"]
-  APP --> VS["vector search (step)<br/>auto-embed or BYO vector"]
-  APP --> HY["hybrid (step): text + vector via RRF"]
+  APP["app / agent"] --> Q["full-text + filter materialization<br/>(in-core; reactive subscription, Plan 32)"]
+  APP --> VS["vector / graph / OWL (extension, step)<br/>auto-embed or BYO vector"]
+  APP --> HY["hybrid (step): full-text + extension via RRF"]
   Q -->|read-set tracked| PORT
   VS -->|embed via embed capability| EMB["embed (per-Camp: local model | hosted API)"]
   EMB --> PORT
-  HY --> PORT["hobo:search port"]
+  HY --> PORT["hobo:search port (generic)"]
   PORT --> CLASS{"equivalence class (Matching, ADR-0033)"}
-  CLASS -->|preview / cheap| PG["pgvector + Postgres FTS"]
+  CLASS -->|preview / cheap| PG["Postgres FTS (+ pgvector extension)"]
   CLASS -->|prod / scale| MGD["OpenSearch / Azure AI Search / Pinecone"]
   PORT -.->|writes emit data.Changed| Q
 ```
 
-### Index declaration — declarative (consistent with [Plan 34](./data-plane.md#plan-34))
-Indexes are **declared on the resource**, IfC-style, not imperatively built:
-- **Text index** — fields + analyzer/tokenizer + optional **prefix** matching (typeahead).
-- **Vector index** — field + **`dimensions`** + the **filter fields** allowed in queries.
+### Index declaration — declarative, per modality (consistent with [Plan 34](./data-plane.md#plan-34))
+Indexes are **declared on the resource**, IfC-style, not imperatively built. Each modality declares its own index shape:
+- **Text index (in-core)** — fields + analyzer/tokenizer + optional **prefix** matching (typeahead).
+- **Vector index (extension)** — field + **`dimensions`** + the **filter fields** allowed in queries.
+- **Graph / OWL index (extension)** — the extension's own node/edge or ontology schema.
 
 An index *is* schema, so creating/changing one flows through the **same gated expand→backfill→contract migration machinery** as a `sql` schema change ([Plan 34](./data-plane.md#plan-34)/[ADR-0032](./adr/03-data-plane.md#adr-0032)) — building a large index is a backfill phase; dropping one is a (snapshotted) contract phase; `can-deploy` gates it.
 
 ### Query surface & reactivity — split by determinism
-The boundary follows HoBo's determinism rules ([ADR-0029](./adr/03-data-plane.md#adr-0029)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):
-- **Full-text + filtered search is reactive.** It is deterministic, so it is a **reactive materialization** citizen ([Plan 32](./data-plane.md#plan-32)/[ADR-0065](./adr/03-data-plane.md#adr-0065)): the runtime tracks its read-set and **re-pushes results to clients on `data.Changed`** (a write to the indexed data). Client surface: `useSubscription()` (or `useQuery()` sugar). This is the live-search DX Plan 32 teed up.
-- **Vector search is a `step`/action.** A text query is auto-embedded (below) or a precomputed vector is passed in; it returns ranked **`{ id, score }`** by cosine / inner-product with a typed **filter** predicate. Because embedding is external/non-deterministic, vector search is **off the reactive path** (mirrors Convex's "vector search in actions only").
-- **Hybrid is a `step`** that fuses a reactive text query + a vector step via **reciprocal rank fusion (RRF)**.
+The boundary follows HoBo's determinism rules ([ADR-0029](./adr/03-data-plane.md#adr-0029)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)/[ADR-0034](./adr/03-data-plane.md#adr-0034)):
+- **Full-text + filtered search (in-core) is reactive.** It is deterministic, so it is a **reactive materialization** citizen ([Plan 32](./data-plane.md#plan-32)/[ADR-0065](./adr/03-data-plane.md#adr-0065)): the runtime tracks its read-set and **re-pushes results to clients on `data.Changed`** (a write to the indexed data). Client surface: `useSubscription()` (or `useQuery()` sugar). This is the live-search DX Plan 32 teed up.
+- **Vector / graph / OWL search (extensions) run as `step`s.** A text query is auto-embedded (below) or a precomputed vector is passed in; vector search returns ranked **`{ id, score }`** by cosine / inner-product with a typed **filter** predicate. Because embedding and external reasoners are non-deterministic, these modalities are **off the reactive path** (mirrors Convex's "vector search in actions only").
+- **Hybrid is a `step`** that fuses a reactive in-core full-text query with an installed extension (e.g. vector) via **reciprocal rank fusion (RRF)**, composed at the port.
 - **Filter syntax** is the same typed predicate DSL used elsewhere (`eq`/`in`/`range`/…), so search filters compose with `.allow()`/tenant scoping rather than being a separate query language.
 
-### Embeddings — the `embed` capability
-The `search` port can **auto-embed** indexed rows and text queries via an **`embed` capability** (`hobo:embed`), brokered secretlessly ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 31](./authoring-resources-wiring.md#plan-31)) so developers don't hand-wire an embedding API. The embedder is itself a capability **realized per Camp** and selected by Matching:
+### Embeddings — the `embed` capability (for the vector extension)
+The **vector extension** can **auto-embed** indexed rows and text queries via an **`embed` capability** (`hobo:embed`), brokered secretlessly ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 31](./authoring-resources-wiring.md#plan-31)) so developers don't hand-wire an embedding API. The embedder is itself a capability **realized per Camp** and selected by Matching:
 - **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; relates to [Q20](./verification.md#plan-09) / the air-gap gap).
 - **Hosted embedding API** — for prod scale/quality.
 
@@ -218,19 +230,21 @@ The `search` port can **auto-embed** indexed rows and text queries via an **`emb
 > **Egress caveat.** A *hosted* embedder sends query/row text to a third-party model provider (data egress + recurring cost) — the same class of concern as the optional `gbrain` agent tool ([`docs/agent-tooling.md`](../../docs/agent-tooling.md)). HoBo surfaces this as a cost/policy signal ([Plan 16](./reliability-observability-cost.md#plan-16)/[Plan 30](./contracts-policy-flags.md#plan-30)); the **local-model adapter** is the in-boundary answer. Never gate portability behind a paid embedder — the pgvector + local-model path is a complete default.
 
 ### Events ([Plan 11](./event-model.md#plan-11))
-**No new event types.** Reactive full-text search reuses `subscription.Opened`/`subscription.Recomputed`/`subscription.Pushed` (legacy aliases `query.*` map onto these, [ADR-0065](./adr/03-data-plane.md#adr-0065)) + **`data.Changed`** ([Plan 32](./data-plane.md#plan-32)); index create/change rides **`migration.*`** ([Plan 34](./data-plane.md#plan-34)); a vector/hybrid search is a step (`run.StepCompleted`). The retrieval surface adds capability, not catalog bloat.
+**No new event types.** Reactive full-text search reuses `subscription.Opened`/`subscription.Recomputed`/`subscription.Pushed` + **`data.Changed`** ([Plan 32](./data-plane.md#plan-32)); index create/change rides **`migration.*`** ([Plan 34](./data-plane.md#plan-34)); a vector/graph/OWL/hybrid search is a step (`run.StepCompleted`). The retrieval surface adds capability, not catalog bloat.
 
 ### Verification ([Plan 9](./verification.md#plan-09))
-A **search test**: index a fixture corpus, then assert (a) a full-text query returns the expected ranked hits **and is reactive** (a write emits `data.Changed` → the subscribed result re-pushes); (b) vector search returns cosine-ranked ids with a **filter** applied; (c) **hybrid** RRF fuses text + vector; (d) the **same `search` Bindle resolves to pgvector in a preview Camp and a managed engine in prod** (portability/equivalence — [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)); (e) the `embed` capability is realized by a **local model in an air-gapped Camp** (no egress).
+A **search test**: index a fixture corpus, then assert (a) an in-core full-text query returns the expected ranked hits **and is reactive** (a write emits `data.Changed` → the subscribed result re-pushes); (b) with the vector extension installed, vector search returns cosine-ranked ids with a **filter** applied; (c) **hybrid** RRF fuses full-text + the vector extension; (d) the **same `search` Bindle resolves to Postgres FTS in a preview Camp and a managed engine in prod** (portability/equivalence — [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)); (e) the `embed` capability is realized by a **local model in an air-gapped Camp** (no egress).
 
-### Scope / YAGNI
-**In v1:** the unified `search` port (text + vector + hybrid/RRF), declarative text+vector indexes, reactive full-text + vector-as-step, the `embed` capability (local + hosted adapters) with BYO vectors as the escape hatch, and pgvector + one managed engine as reference adapters. **Deferred:** faceting/aggregations, learned/semantic re-ranking, multi-vector & late-interaction (ColBERT-style), and cross-Camp federated search ([Q16](./verification.md#plan-09)).
+### Scope
+The generic `search` port; **full-text search in the core** (reactive, declarative text index) with Postgres FTS + one managed engine as reference adapters; **vector, graph, OWL/Semantic-Web, and hybrid as optional extension libraries** behind the same port (vector ships pgvector + a managed engine, the `embed` capability with local + hosted adapters, BYO vectors as the escape hatch, hybrid/RRF fusing full-text + an extension). Each extension brings its own index declaration, operators, and conformance.
 
-### Iteration hooks
-- Reference adapters beyond pgvector + one managed engine; how much FTS analyzer config is portable vs provider-specific.
+**Non-goal:** baking any rich modality into the core as a built-in default — apps install only the extensions they use.
+
+### Open design points
+- Extension adapters beyond pgvector + one managed engine; how much FTS analyzer config is portable vs provider-specific.
 - Default embedding model(s) for the local adapter + dimension/version pinning (an embedding model change is itself an index migration).
-- RRF weighting defaults + whether to expose a re-ranker hook.
-- Whether vector search can ever be made reactive cheaply (cache embedding at subscribe time) without breaking determinism.
+- RRF weighting defaults + whether to expose a re-ranker hook; faceting/aggregations, learned/semantic re-ranking, multi-vector & late-interaction (ColBERT-style) as extension surface.
+- Whether vector search can ever be made reactive cheaply (cache embedding at subscribe time) without breaking determinism; cross-Camp federated search ([Q16](./verification.md#plan-09)).
 
 ## Plan 39
 
@@ -238,12 +252,11 @@ A **search test**: index a fixture corpus, then assert (a) a full-text query ret
 
 > **The bet, finished.** Plan 11 already makes the event log the single source of truth and folds it into **rebuildable projections** — but only for HoBo's *own* control-plane state (`DeploymentView`/`RunView`). This plan extends the same machinery to **application domain data**: a developer declares a logical record + queries; a data architect maps it onto SQL / NoSQL / KV / graph / vector / object-lake / OLAP — and neither has to know about the other. *Developers don't know or care how data is persisted or queried; architects have full autonomy over how it is.*
 
-### Why this exists (the gaps it closes)
-HoBo had the ingredients but not the dish:
-- **No persistence-agnostic data-access layer.** App access was raw `ctx.bindings.db.query("select 1")` (dialect-leaky); the `ctx.view(...)` in [Plan 32](./data-plane.md#plan-32) was pseudocode with no spec.
-- **No canonical domain-schema/DTO layer.** Zod (I/O), WIT (ports), and the declarative SQL schema ([Plan 34](./data-plane.md#plan-34)) were disjoint.
-- **App domain data was not event-sourced by default** and there was no first-class *"project this event stream into this backend via this mapping"* artifact.
-- **Paradigm coverage was narrow** — relational was deep; document/graph/OLAP/data-lake were absent.
+### What this provides
+- **A persistence-agnostic data-access layer** — the `repo`/`view` surface over a logical model, so app access is never a dialect-leaky raw `db.query`.
+- **A canonical domain-schema/DTO layer** that unifies Zod (I/O), WIT (ports), and the declarative SQL schema ([Plan 34](./data-plane.md#plan-34)).
+- **App domain data is event-sourced by default**, with a first-class *"project this event stream into this backend via this mapping"* artifact.
+- **Broad paradigm coverage** — relational, document, KV/wide-column, graph, vector, object/data-lake, and OLAP behind one projection abstraction.
 
 ### The Projection — a subscribable materialization (optionally cached in a sink)
 A **projection** (the word [Plan 11](./event-model.md#plan-11) already uses) is, at the application layer, a **developer-authored materialization**: a deterministic fold over **subscribed event types**, exposed as a **subscribable observable** ([Plan 32](./data-plane.md#plan-32)/[ADR-0065](./adr/03-data-plane.md#adr-0065)) and **optionally cached** in an architect-chosen sink for point/search/analytics reads. Five parts:
@@ -254,13 +267,13 @@ A **projection** (the word [Plan 11](./event-model.md#plan-11) already uses) is,
 4. **Schema mapping** — WIT-record fields → backend representation (columns / document fields / key+value / nodes+edges / vector field+filters / lake partitions). **Architect-owned.**
 5. **Sink binding (optional cache)** — the concrete backend *cache*, chosen by **Resource Definitions + Matching** ([Plan 25](./platform-engineering.md#plan-25)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)), never by app code; omit it and the materialization is served natively from the log (the default, always reactive).
 
-What you can understand and depend on in isolation: a projection has a **stable logical contract** (a named read-model WIT record + the event types it folds); it is **rebuildable from zero** (drop the sink, replay the streams — the test that the *log*, not the sink, is authoritative); and it declares a **reactivity class** and a **consistency label** (bounded-staleness, [ADR-0040](./adr/05-config-matching-environments.md#adr-0040)) as part of that contract, so callers know their guarantees.
+What you can understand and depend on in isolation: a projection has a **stable logical contract** (a named read-model WIT record + the event types it folds); it is **rebuildable from zero** (drop the sink, replay the streams — the test that the *log*, not the sink, is authoritative); and it declares a **reactivity class** and a **tunable consistency level** (Cosmos-style: strong/bounded-staleness/session/consistent-prefix/eventual, session by default — [ADR-0052](./adr/03-data-plane.md#adr-0052); cross-Camp bounded-staleness per [ADR-0040](./adr/05-config-matching-environments.md#adr-0040)) as part of that contract, so callers know their guarantees.
 
 **Two modes, named explicitly:**
 - **Projected** *(default, event-sourced)* — the sink is derived from the log; writes never touch it directly.
 - **Authoritative-external** *(adopted, [ADR-0041](./adr/07-portability-extensibility.md#adr-0041))* — an existing DB declared the source of truth via `hobo import` (`external` kind + `echo` driver). Its `change-feed` (if any) runs it *backwards* into `data.Changed` so reactive reads still work; `hobo doctor` flags long-lived authoritative-external stores as migration debt.
 
-**Resolves a Plan 11 open question.** "Whether read models live in the same store or a separate query DB" is no longer a global fork: a projection's sink is **architect-selected per context** via Matching (default = a native standing projection over the log; opt a projection into Postgres/Mongo/… when a purpose-built query backend is wanted), recorded in `match.Decided`.
+**Where read models live is an architect's per-context choice, not a global fork.** A projection's sink is **architect-selected per context** via Matching (default = a native standing projection over the log; opt a projection into Postgres/Mongo/… when a purpose-built query backend is wanted), recorded in `match.Decided`.
 
 ```mermaid
 flowchart LR
@@ -277,7 +290,7 @@ flowchart LR
 Both an **entity repository** (ergonomic 80%) and a **query DSL** (the composable, reactive surface), over **one logical model**.
 
 #### Write path — command → aggregate → event (no direct sink writes)
-The developer never writes to a sink. A **command** runs inside its **aggregate**'s single-writer boundary, checks invariants against the aggregate's current state, and emits domain events; projections fold those events into read models.
+**CQRS is the opinionated app-layer default** ([ADR-0053](./adr/03-data-plane.md#adr-0053)) — command/query-separated, not one option among several. The developer never writes to a sink. A **command** runs inside its **aggregate**'s single-writer boundary, checks invariants against the aggregate's current state, and emits domain events; projections fold those events into read models.
 ```ts
 import { command } from "@hobo/runtime";
 
@@ -313,8 +326,8 @@ export const orders = projection<Order>("orders", {
 - The developer declares *only* the logical fold + read-model; the **sink** (relational/document/…) is bound by the data architect's `projection-sink` Resource Definition ([Plan 25](./platform-engineering.md#plan-25)), never here. The read-model record's fields are what the schema mapping targets.
 - `index` hints (which fields are queryable/sortable — needed for `where`/`order`/`paginate`) are declared on the read-model and ride the same migration machinery as any index ([Plan 34](./data-plane.md#plan-34)/[Plan 35](./data-plane.md#plan-35)).
 
-#### Read path — subscribe (default) + the query/point escape hatches
-The **default** read is a **subscription** to the materialization ([Plan 32](./data-plane.md#plan-32)/[ADR-0065](./adr/03-data-plane.md#adr-0065)): `subscribe(...)`/`useSubscription(...)` returns a live observable folded from the event log. The **repository + query DSL below are the snapshot / point-lookup / search escape hatches** over the sink cache — reach for them for one-shot, by-key, full-text/vector, or analytical reads.
+#### Read path — subscribe (default), GraphQL facade (query), point escape hatches
+The **default** read is a **subscription** to the materialization ([Plan 32](./data-plane.md#plan-32)/[ADR-0065](./adr/03-data-plane.md#adr-0065)): `subscribe(...)`/`useSubscription(...)` returns a live observable folded from the event log. The **opinionated request/response query surface is a GraphQL facade over materialized views and snapshots** — CQRS querying of materializations produced by **GraphQL reducers** (the reducer is the fold; the resolver reads the materialization). GraphQL subscriptions map onto the same observable materializations, and **snapshots are cached by default** ([ADR-0065](./adr/03-data-plane.md#adr-0065)), so query and stream share one model and one engine. The **repository + query DSL below are the snapshot / point-lookup / search escape hatches** over the cached snapshot or sink cache — reach for them for one-shot, by-key, full-text/vector, or analytical reads.
 ```ts
 import { view, repo } from "@hobo/runtime";
 
@@ -329,7 +342,7 @@ export async function openTickets(team: string): Promise<Ticket[]> {
 ```
 - Both forms target a **projection by logical name** (`"tickets"`), never a table; the resolved sink + driver come from Matching, so the same query runs over Postgres or Mongo unchanged.
 - The predicate DSL is the **one already specified in [Plan 35](./data-plane.md#plan-35)** (`eq`/`in`/`range`/…) — domain queries, search filters, and `.allow()`/tenant scoping compose in one predicate language, no second grammar.
-- `view(...)` inside `"use query"` is reactive (read-set tracked, re-pushed on change); `repo.get/find` outside a query is the one-shot `runQuery` analog. Same primitive, two ergonomics.
+- `view(...)` inside `"use query"` is reactive (read-set tracked, re-pushed on change); `repo.get/find` outside a query is the one-shot snapshot read (served from the cached snapshot). Same primitive, two ergonomics.
 - Typed end-to-end from the WIT-generated client + the projection's read-model record ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)). Tenant + `.allow()` read scopes are enforced at the projection boundary ([Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 12](./security-networking.md#plan-12)) exactly as Plan 32 already scopes reactive queries.
 - **Pagination is cursor-based over the consistent snapshot @ `seq`, never `OFFSET`.** `view("tickets").order("createdAt").paginate({ cursor, limit: 50 })` returns `{ items, nextCursor, seq }`, where `nextCursor` encodes the **sort-key position** (not a row offset) — so pages stay stable as the set changes (items enter/leave within their key range instead of shifting every page). A **paginated reactive query** subscribes to its current page-window key-range: a `data.Changed` *within that range* re-pushes the page at a new `seq` (Plan 32's reactor, in `seq` order, never regressing); "load more" extends the window via the dynamic read-set Plan 32 already re-tracks per recompute. Client: **`usePaginatedQuery()`** (familiar to a Convex audience, [competitors/convex](../../competitors/convex.md#database)). *Honest limit:* cursor pagination needs the **sort key indexable in the sink** (a sink-capability/Matching concern); deep arbitrary-sort pagination over a non-indexed projection is expensive, and **vector** results are top-`k` ([Plan 35](./data-plane.md#plan-35)), paginated by `k`, not cursors.
 
@@ -338,14 +351,14 @@ export async function openTickets(team: string): Promise<Ticket[]> {
 // explicitly non-portable; only compiles when the resolved driver advertises raw access
 const rows = await view("tickets").raw(pg => pg.query("select … for update"));
 ```
-- **Provider-namespaced + typed to the resolved driver** (`pg`, `mongo`, …) — a dialect leak fails to compile against a *different* resolved backend instead of breaking silently at runtime (the fix for the old `ctx.bindings.db.query("select 1")` leak).
+- **Provider-namespaced + typed to the resolved driver** (`pg`, `mongo`, …) — a dialect leak fails to compile against a *different* resolved backend instead of breaking silently at runtime, so a raw `db.query` can never leak unnoticed.
 - **Flagged** as a non-portable edge in the manifest IR; surfaced by `hobo doctor`/`can-deploy` ([Plan 29](./contracts-policy-flags.md#plan-29)) and counted as a `PlanWarning` against the portability guarantee ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)) — the Bindle is no longer "same Bindle, N clouds" for that edge, and HoBo says so.
 - **Read-only on projected sinks** (a derived sink must not diverge from the log); raw **writes** are permitted only on **authoritative-external** (adopted) stores.
 
-### The WIT-record domain-schema layer
-**WIT records are the canonical domain schema** ([ADR-0051](./adr/03-data-plane.md#adr-0051)). One record family is the single upstream for event payloads, projection/read-model shapes, and backend mappings.
+### The domain-schema layer — author in any serialization that compiles to WIT
+**WIT is the canonical domain schema, authored in the serialization a team prefers** ([ADR-0051](./adr/03-data-plane.md#adr-0051)). Domain types/DTOs resolve to **WIT records**, but may be authored as **WIT records, Zod schemas, or Protobuf messages** — each compiles to the same canonical WIT. One record family is the single upstream for event payloads, projection/read-model shapes, and backend mappings, regardless of authoring surface. **Constraints (ranges, formats, cross-field invariants) are declared in CUE** and apply to the canonical type independent of how it was expressed — one constraint language across WIT, Zod, and Protobuf inputs.
 ```wit
-// domain.wit — authored by the developer (the canonical contract, Plan 24)
+// domain.wit — one canonical contract (authorable as WIT / Zod / Protobuf), Plan 24
 package app:shop@0.1.0;
 interface domain {
   record ticket {                       // the read-model / DTO record
@@ -362,29 +375,29 @@ interface domain {
 }
 ```
 - **Events reference domain records.** `Ticket.Opened` carries a `ticket-opened` record as its `data` payload in the `EventEnvelope` ([Plan 11](./event-model.md#plan-11)); the envelope is unchanged, only the typed body is WIT-record-derived.
-- **Generation ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037), four-source codegen + two new emitters):** **TS types** via `jco guest-types` (existing); **protobuf** wire encodings for event bodies (new emitter — protobuf is the *encoding*, never the authoring language); **Zod validators** generated from the record (new emitter). All deterministic, checked into `_generated/`.
-- **WIT-first, Zod-generated for domain data.** Hand-written Zod stays valid for ad-hoc step I/O, but **domain DTOs are WIT-first** with Zod as a generated runtime-validation view — so the WIT record is the single upstream for TS type, protobuf encoding, Zod validator, projection shape, and Plan 29's "Declared" contract.
-- **Evolution, two mechanisms wired together:** **event bodies** evolve by [Plan 11](./event-model.md#plan-11) upcasters (forward-only `vN→vN+1`, never rewrite history); the **sink schema** evolves by [Plan 34](./data-plane.md#plan-34) expand→backfill→contract. A domain change does both — upcast the body, gate-migrate the sink.
+- **Generation ([ADR-0037](./adr/05-config-matching-environments.md#adr-0037)):** from the canonical WIT, emit **TS types** via `jco guest-types`; **Protobuf** message descriptors as the **wire encoding for event bodies** (Protobuf is the *encoding*, not an authoring constraint); **Zod validators** as a runtime-validation view; **CUE constraints** applied across them. All deterministic, checked into `_generated/`.
+- **One canonical type, many views.** Whichever serialization authored a type (WIT/Zod/Protobuf), the canonical WIT record is the single upstream for the TS type, Protobuf encoding, Zod validator, CUE constraints, projection shape, and Plan 29's "Declared" contract. Hand-written Zod stays valid for ad-hoc step I/O.
+- **Evolution, two mechanisms wired together, contract-tested (PACT).** **Event bodies** evolve by [Plan 11](./event-model.md#plan-11) upcasters (forward-only `vN→vN+1`, never rewrite history); the **sink schema** evolves by [Plan 34](./data-plane.md#plan-34) expand→backfill→contract. A domain change does both — upcast the body, gate-migrate the sink — and is pinned by its **PACT contract** ([ADR-0051](./adr/03-data-plane.md#adr-0051)) so a change breaking a live consumer is caught before deploy. Right-to-be-forgotten is satisfied by crypto-shredding ([Plan 34](./data-plane.md#plan-34)), not history rewrite.
 
 ### Paradigm taxonomy for projection sinks
-Each paradigm is a **projection-sink kind** behind a WIT port, a Matching dimension (`type: "projection-sink", paradigm: …`). Modeled now; a subset ships v1.
+Each paradigm is a **projection-sink kind** behind one stable WIT port, a Matching dimension (`type: "projection-sink", paradigm: …`). The **core ships native, relational (Postgres), and document (Mongo)**; every other paradigm is an **adapter behind the same port**, and **vector/graph search backends are search extension libraries** ([ADR-0034](./adr/03-data-plane.md#adr-0034)). Adding a paradigm is a new adapter, not a model change.
 
-| Paradigm | v1? | Maps WIT record → | Reactive read? | Honest limit |
+| Paradigm | Realization | Maps WIT record → | Reactive read? | Honest limit |
 |---|---|---|---|---|
-| **Native** (log / standing projection) | **v1 (default)** | in-runtime read model over the log | **Yes** (the log *is* the change stream) | recompute-not-incremental in v1; bounded by fold cost |
-| **Relational** (Postgres ref) | **v1** | fields → columns; record → table; enums → enum/check | **Yes** via `change-feed` (Postgres ref adapter, [Plan 32](./data-plane.md#plan-32)) | dialect features behind the raw escape hatch |
-| **Document** (Mongo ref; Cosmos/Firestore) | **v1 (one ref)** | record → document; nested records → embedded | **Yes** if change-feed (change streams) | no cross-document joins in the portable DSL |
-| **KV / wide-column** (Dynamo/Cosmos/Cassandra) | roadmap | record → key (PK rule) + value; secondary fields → GSIs | partial (Dynamo Streams) | DSL limited to key/range; rich predicates → escape hatch |
-| **Graph** (Neptune/Neo4j) | roadmap | record → node; relations → edges (mapping declares which) | mostly non-reactive | traversal not in the portable predicate DSL v1 |
-| **Vector** (via [Plan 35](./data-plane.md#plan-35) `search`) | **v1** | record → indexed doc + vector field + filter fields | text/filter reactive; **vector search is a step** | vector queries off the reactive path by construction |
-| **Object / data-lake** (S3/Parquet) | roadmap | record → partitioned files (partition keys from fields) | **non-reactive** (batch) | append/compaction latency; query via an OLAP engine |
-| **OLAP / columnar** (ClickHouse/BigQuery/DuckDB) | roadmap | record → columnar table; fields → typed columns | **non-reactive** (analytical) | bounded-staleness batch; not for reads-your-writes UI |
+| **Native** (log / standing projection) | **core (default)** | in-runtime read model over the log | **Yes** (the log *is* the change stream) | recompute-not-incremental; bounded by fold cost |
+| **Relational** (Postgres ref) | **core** | fields → columns; record → table; enums → enum/check | **Yes** via `change-feed` (Postgres ref adapter, [Plan 32](./data-plane.md#plan-32)) | dialect features behind the raw escape hatch |
+| **Document** (Mongo ref; Cosmos/Firestore) | **core** | record → document; nested records → embedded | **Yes** if change-feed (change streams) | no cross-document joins in the portable DSL |
+| **KV / wide-column** (Dynamo/Cosmos/Cassandra) | adapter | record → key (PK rule) + value; secondary fields → GSIs | partial (Dynamo Streams) | DSL limited to key/range; rich predicates → escape hatch |
+| **Graph** (Neptune/Neo4j) | adapter / search extension | record → node; relations → edges (mapping declares which) | mostly non-reactive | traversal not in the portable predicate DSL |
+| **Vector** (via [Plan 35](./data-plane.md#plan-35) `search` extension) | search extension | record → indexed doc + vector field + filter fields | text/filter reactive; **vector search is a step** | vector queries off the reactive path by construction |
+| **Object / data-lake** (S3/Parquet) | adapter | record → partitioned files (partition keys from fields) | **non-reactive** (batch) | append/compaction latency; query via an OLAP engine |
+| **OLAP / columnar** (ClickHouse/BigQuery/DuckDB) | adapter | record → columnar table; fields → typed columns | **non-reactive** (analytical) | bounded-staleness batch; not for reads-your-writes UI |
 
-**Honest reactivity rule (one sentence):** a projection is reactive **iff** its sink advertises the `change-feed` capability **or** it is the native log-backed projection; everything else is typed `reactive: false` and `hobo doctor` warns when a `"use query"` depends on it (Plan 32's existing check). Each sink kind ships a `@hobo/conformance` suite ([Plan 24](./wasm-runtime-wit.md#plan-24)/[Plan 9](./verification.md#plan-09)): claim a paradigm → round-trip a fixture record set and (if reactive) emit ordered `data.Changed`.
+**Honest reactivity rule (one sentence):** a projection is reactive **iff** its sink advertises the `change-feed` capability **or** it is the native log-backed projection; everything else is typed `reactive: false` and `hobo doctor` warns when a `"use query"` depends on it (Plan 32's existing check). Each sink kind ships a `@hobo/conformance` suite ([Plan 24](./wasm-runtime-wit.md#plan-24)/[Plan 9](./verification.md#plan-09)): claim a paradigm → round-trip a fixture record set, **honor the declared consistency level** ([ADR-0052](./adr/03-data-plane.md#adr-0052)), and (if reactive) emit ordered `data.Changed`.
 
 ### Composition (reuse, not reinvent)
 - **Matching ([Plan 25](./platform-engineering.md#plan-25)/[ADR-0033](./adr/05-config-matching-environments.md#adr-0033)).** The architect declares a `projection-sink` Resource Definition (`defineResource({ type: "projection-sink", paradigm, provider, driver, with, match })`); the Planner selects per context — native projection in a preview Camp, managed Postgres in prod — recorded in `match.Decided`. **Developer owns the logical record + query; architect owns the mapping + sink** — the autonomy split *is* the Matching boundary.
-- **Migrations ([Plan 34](./data-plane.md#plan-34)).** A derived sink has **two** evolution paths: **rebuild-from-zero** (replay into the new shape — the default; **paradigm-agnostic**, so document/KV/vector sinks evolve without a relational diff engine, which is why a v1 document sink is fine though Plan 34 defers *in-place* document migration) and **in-place expand→backfill→contract** (the Plan 34 optimization for large relational sinks; the *required* path only for **authoritative-external** adopted stores that can't be rebuilt from the log). Both are `can-deploy`-gated; cross-cloud sink moves use export→import within an equivalence class.
+- **Migrations ([Plan 34](./data-plane.md#plan-34)).** A derived sink has **two** evolution paths: **rebuild-from-zero** (replay into the new shape — the default; **paradigm-agnostic**, so document/KV/vector sinks evolve without a relational diff engine) and **in-place expand→backfill→contract** (the Plan 34 optimization for large relational sinks; the *required* path only for **authoritative-external** adopted stores that can't be rebuilt from the log). Both are `can-deploy`-gated and PACT-contract-tested; cross-cloud sink moves use export→import within an equivalence class.
 - **Reactivity ([Plan 32](./data-plane.md#plan-32)/[ADR-0029](./adr/03-data-plane.md#adr-0029)).** Projections **are** the read models the reactor already runs over; this plan just makes them developer-authored and sink-targeted. `data.Changed`, read-set tracking, consistent-snapshot@`seq`, and reads-your-writes are reused verbatim — **no new reactor**.
 - **Cross-Camp ([ADR-0040](./adr/05-config-matching-environments.md#adr-0040)).** A projection declares a replication topology (single-writer-Camp default); a non-owner Camp builds a bounded-staleness projection from the owner's replicated read-stream; reads carry the staleness label; consistency-requiring writes "go home."
 - **Adopt-in-place ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).** The escape hatch from the event-sourced default: `external`/adopted authoritative stores answer the same `repo`/`view` surface, so a half-migrated app coexists (strangler-fig) — some entities projected, some authoritative-external, one data surface.
@@ -395,7 +408,7 @@ Each paradigm is a **projection-sink kind** behind a WIT port, a Matching dimens
 - **Generalize the `change-feed` capability** (today on the `database` port, [Plan 32](./data-plane.md#plan-32)) to a **sink capability** any projection-sink provider may advertise — the gate for whether a projection is reactive, under the same conformance trust boundary. Sink drivers realize their mapping over existing `wasi:sql`/`wasi:keyvalue`/`wasi:blobstore`/`hobo:search`.
 
 ### Honest limits (stated, not hidden)
-- **Eventual consistency is the normal case.** CQRS means a projection lags the log by its fold/replication latency; a fresh write isn't instantly visible in every external sink (reads-your-writes holds within the owning Camp, observable via `seq`). This is [ADR-0003](./adr/README.md)'s "read-after-write needs projections" made explicit at the app layer.
+- **Consistency is tunable, eventual is the cheap end.** CQRS means a projection lags the log by its fold/replication latency. The level is **configurable per entity/materialization** ([ADR-0052](./adr/03-data-plane.md#adr-0052)) — session by default (reads-your-writes within the owning Camp, observable via `seq`), dialable up to bounded-staleness/strong or down to eventual. This is [ADR-0003](./adr/README.md)'s "read-after-write needs projections" made explicit and tunable at the app layer.
 - **Portability is equivalence-class-bounded.** "Same Bindle, N backends" holds *within* a paradigm's class; cross-*paradigm* portability (relational ↔ document) is not automatic — the mapping is paradigm-specific. Cross-engine within a class follows [Plan 34](./data-plane.md#plan-34)'s export→import.
 - **Leak-free query is impossible; leaks are made visible instead** (the raw escape hatch fails to compile against a different backend and is flagged).
 - **Reactivity is not universal** — only native + change-feed-advertising sinks are reactive; vector/object-lake/OLAP are off the reactive path by construction.
@@ -406,14 +419,16 @@ Each paradigm is a **projection-sink kind** behind a WIT port, a Matching dimens
 - **Persistence-agnostic read:** the same `repo`/`view` query resolves to the native sink in a preview Camp and to managed Postgres in prod (Matching), byte-identical app code.
 - **Reactivity class honesty:** a `"use query"` over a non-change-feed sink is typed `reactive: false` and `hobo doctor` warns; a change-feed sink re-pushes on `data.Changed`.
 - **Escape-hatch honesty:** `.raw(pg => …)` fails to type-check when the resolved driver is `mongo`; the edge is flagged as portability debt in `can-deploy`.
-- **Schema evolution:** a domain-record change produces a Plan 11 upcaster (event body) **and** a Plan 34 expand→backfill→contract plan (sink); a contract phase that breaks a running consumer is blocked by `can-deploy`.
+- **Schema evolution:** a domain-record change produces a Plan 11 upcaster (event body) **and** a Plan 34 expand→backfill→contract plan (sink); the change is pinned by its PACT contract, and a contract phase that breaks a running consumer is blocked by `can-deploy`.
+- **Tunable consistency:** an entity declared `strong`/`bounded-staleness`/`session`/`eventual` ([ADR-0052](./adr/03-data-plane.md#adr-0052)) is read at the declared level; the conformance suite asserts the sink honors it.
 
-### Scope (v1) & YAGNI
-- **v1:** the `projection` concept + `hobo:projection` port; `command`/`repo`/`view` surface + raw escape hatch; WIT-record domain schema + TS/protobuf/Zod codegen; sink adapters for **native, relational (Postgres), one document (Mongo), and vector (via Plan 35)**; `projection.*` events; `change-feed` generalized.
-- **Deferred (modeled, not built):** KV/wide-column, graph, object/data-lake, OLAP sink adapters; cross-paradigm auto-migration; active-active CRDT sinks; the [Hobo Code](./authoring-resources-wiring.md#plan-38) authoring surface for declaring projections/mappings.
+### Scope
+The `projection` concept + `hobo:projection` port; CQRS `command`/`repo`/`view` surface + GraphQL query facade + raw escape hatch; the domain-schema layer authorable as WIT/Zod/Protobuf with CUE constraints and TS/Protobuf/Zod codegen; **core sink kinds native, relational (Postgres), document (Mongo)**, with KV/wide-column, graph, object/data-lake, and OLAP as **adapters behind the same stable port** and vector/graph via the **Plan 35 search extensions**; per-entity tunable consistency ([ADR-0052](./adr/03-data-plane.md#adr-0052)); PACT-contract-tested schema versioning with crypto-shred forgetting; `projection.*` events; the generalized `change-feed` capability; the [Hobo Code](./authoring-resources-wiring.md#plan-38) authoring surface for declaring projections/mappings.
 
-### Iteration hooks
+**Non-goal:** cross-paradigm auto-migration (relational↔document is a re-model, not a config flip) and silent active-active strong consistency (CRDT active-active is opt-in and pushes merge semantics onto the developer).
+
+### Open design points
 - Whether `projection.Materialized`/`Rebuilt` should be modeled as `migration.PhaseApplied` backfill phases rather than new event types (minimize catalog bloat, per the [Plan 35](./data-plane.md#plan-35) precedent).
 - PK/edge derivation rules for KV/graph mappings (how a WIT record's fields name a key or an edge).
-- Incremental view maintenance for expensive folds (deferred; today recompute-not-incremental).
+- Incremental view maintenance for expensive folds (today recompute-not-incremental).
 - Whether the repository `find()` predicate and the `view()` DSL should share a single compiled query AST end-to-end.

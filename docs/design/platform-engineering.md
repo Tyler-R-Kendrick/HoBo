@@ -4,8 +4,6 @@ This capability doc covers how platform engineers shape HoBo deploys: Resource D
 
 ## Plan 25
 
-**Plan 25 — Resource Definitions & Matching (dynamic configuration management)**
-
 ### Why this exists
 Developers declare *what* they need (a `database`, IfC-style with `.allow()`, [Plan 21](./authoring-resources-wiring.md#plan-21)). Platform engineers declare *how* it's realized — and crucially, **differently per environment**: managed-HA Postgres in prod, a cheap in-cluster Postgres in an ephemeral preview. A **Resource Definition** is that rule; **Matching** picks the right one for the deploy context. This is **dynamic configuration management**: the *same Bindle* resolves to different infra without app edits.
 
@@ -89,12 +87,6 @@ A definition may declare co-provisioned resources (e.g. a bucket + its IAM polic
 
 ### Forge-generated definitions
 Given a backend's Capability Manifest + a target context, the **Forge** ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 23](./forge-generated-stack.md#plan-23)) can generate candidate Resource Definitions (and bundle them as **Resource Packs**, below), validated sandboxed against conformance — so platform breadth isn't human-bottlenecked.
-
-### Iteration hooks
-- Authoring surface: TS (typed, shown) vs YAML (Humanitec-parity) vs both.
-- ~~Scoring exactly like Humanitec vs a HoBo refinement~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** deterministic lexicographic rank (specificity → explicit `priority` → configurable objective, default min-cost → stable tiebreak); weighted multi-objective blending + carbon-signal sourcing remain hooks.
-- ~~Conflict resolution when two definitions tie on score~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033)):** stable tiebreak (definition id) + `PlanWarning`, never a block.
-- How `match.Decided` is surfaced for agents to self-correct an unsatisfiable request (now carries the full ranking + reasons).
 
 ### Environments: Camps with an environment type
 A **Camp** ([Plan 2](./sdk-api.md#plan-02)) is a **provider-specific deployment target** — one environment on one provider/cloud — that also hosts the durable runtime. Its **environment type** (`development`/`staging`/`production`/`ephemeral`/custom) is the **primary matching dimension** above: the same Bindle resolves to different infra on a `production` Camp vs an `ephemeral` one, purely via specificity. A multi-cloud `production` is **several Camps under one Yard** ([Plan 4](./control-plane.md#plan-04)), which holds the cross-provider policy. A Camp can be **cloned** from one with a prior successful deploy (`hobo env clone`), producing a draft Delta to tweak and ship (`env.Cloned`, [Plan 11](./event-model.md#plan-11)).
@@ -239,11 +231,3 @@ definePipeline("promote-staging", {
   ],
 });
 ```
-
-### Iteration hooks
-- Delta merge/conflict semantics when multiple Deltas target one Set; whether promote copies the resolved Set or re-resolves matching in the target Camp (re-resolve is more correct; copy is more predictable).
-- Default ephemeral TTLs + reaping policy; preview URL scheme.
-- Driver authoring SDK + how custom-webhook drivers are registered/trusted (signing); whether `echo`/BYO resources participate in drift/reconcile or stay read-only; template engine choice (Go-template vs CUE vs both); Workload-Profile ↔ provider-compute-port negotiation when a target can't satisfy a profile.
-- Relay transport details (gRPC-over-443 vs WebSocket) + multi-cluster routing + HA (multiple Relays).
-- GitOps repo layout/branching convention; drift between Git and observed state.
-- Pipeline language (typed TS vs YAML) + reuse of the policy-gate engine ([Plan 12](./security-networking.md#plan-12)).

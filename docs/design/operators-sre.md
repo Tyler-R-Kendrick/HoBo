@@ -1,10 +1,8 @@
 # Operator Agents & SRE
 
-This capability doc covers Plan 40 of the HoBo design suite — the operator-agent Crew and the deep-dive SRE model that lives within it.
+This capability doc covers the operator-agent Crew and the deep-dive SRE model that lives within it.
 
 ## Plan 40
-
-**Plan 40 — Operator Agents (the Crew)**
 
 > **Disambiguation (one word, four meanings):** **Operator Agent** = an autonomous principal in the Crew (this plan). **Agents-as-users** = *external/customer* agents acting on a developer's behalf ([Plan 6](./ai-native-agent-auth.md#plan-06)). The **`agent()` primitive** = the SDK runtime building block both use ([Plan 2](./sdk-api.md#plan-02)). The **[Relay](./platform-engineering.md#plan-25)** = the outbound network proxy, *not* an agent at all. The **[Forge](./forge-generated-stack.md#plan-23)** = a generation *pipeline*, not a principal.
 
@@ -50,7 +48,7 @@ flowchart TB
 
 > **The SRE operator has a deep-dive** ([SRE deep-dive](#sre-incident-management-runbooks--self-healing) below, [ADR-0058](./adr/06-ai-generation-operators.md#adr-0058)): the **Incident** aggregate + `incident.*` events, the diagnose → classify → **auto-fix / propose / escalate** decision tree, the runtime+contract **failure-taxonomy → safe-fix** map, declarative **runbooks**, MTTD/MTTR SLOs, on-call escalation, and postmortem-as-replay.
 
-> **Operator integration ports** ([ADR-0073](./adr/07-portability-extensibility.md#adr-0073)): the Crew drives swappable, policy-gated **`issue-tracker`** (JIRA/GitHub Issues/Linear — the SRE syncs an Incident → ticket, the SWE files repair issues, GitOps links deploys) and **`knowledge`** (Confluence/Obsidian/Wikis — runbooks + postmortems-by-replay published, design notes) ports, reusing the `notify`/receiver-port pattern ([ADR-0059](./adr/03-data-plane.md#adr-0059)); these writes ride `crew.ActionApplied` + `policy.Decided` — no new event families. Named/Forge-generatable seams; full surface is a later round.
+> **Operator integration ports** ([ADR-0073](./adr/07-portability-extensibility.md#adr-0073)): the Crew drives swappable, policy-gated **`issue-tracker`** (JIRA/GitHub Issues/Linear — the SRE syncs an Incident → ticket, the SWE files repair issues, GitOps links deploys) and **`knowledge`** (Confluence/Obsidian/Wikis — runbooks + postmortems-by-replay published, design notes) ports, reusing the `notify`/receiver-port pattern ([ADR-0059](./adr/03-data-plane.md#adr-0059)); these writes ride `crew.ActionApplied` + `policy.Decided` — no new event families. Named/Forge-generatable seams.
 
 ### Events
 Crew run lifecycle reuses the durable-agent run model ([Plan 11](./event-model.md#plan-11) `run.*`); add a thin **`crew.*`** family for roster-level facts: `crew.AgentDispatched` (which operator, why — the triggering signal), `crew.ActionProposed` (action + blast radius + policy decision ref), `crew.ActionApplied`/`crew.ActionDenied` (ride `policy.Decided`), `crew.HandoffRequested` (one operator escalates to another or to a human). Domain remediation/promotion facts ride the existing `incident.*`/live-fix and `pipeline.*`/`deployment.*` families — **no per-agent event silos**.

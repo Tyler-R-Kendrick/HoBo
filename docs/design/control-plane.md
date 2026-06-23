@@ -206,7 +206,7 @@ export interface BuildProvider {
 The Planner is a pure function (easy to test, replayable): `plan(bindle, config, registry) → DeploymentPlan`. Steps:
 
 1. **Collect resources** from the Bindle into nodes; collect `bind` edges into a dependency DAG.
-2. **Resolve a Resource Definition per resource** via **context-matching** ([Plan 25](./platform-engineering.md#plan-25)): gather definitions of the resource's `type`, keep those whose criteria match the deploy context `{envType, app, env, tenant, resourceClass, resourceId}`, score by specificity, pick the highest, and record a **`match.Decided`** event (auditable "why this infra"). A Camp's inline mapping (`bindings`→`tiers`→`defaultProvider` on the `camp()` object) is **sugar that compiles to default definitions**, so it still works and is naturally outscored by explicit platform definitions.
+2. **Resolve a Resource Definition per resource** via **context-matching** ([Plan 25](./platform-engineering.md#plan-25)): gather definitions of the resource's `type`, keep those whose criteria match the deploy context `{envType, app, env, tenant, resourceClass, resourceId}`, score by specificity, pick the highest, and record a **`match.Decided`** event (auditable "why this infra"). A Camp's inline mapping (`bindings`→`tiers`→`defaultProvider` on the `camp()` object) is **sugar that compiles to default definitions**, naturally outscored by explicit platform definitions.
 3. **Capability negotiation** — for the resolved definition's provider, call `Capability.satisfies(request)`:
    - `full` → accept.
    - `partial(missing)` → if the request used `prefer`, accept with a `PlanWarning` (degrade, e.g. emulate `vector` via an extension or fall back to a container); if `require`, reject the candidate.
@@ -268,10 +268,3 @@ Agnostic ports map to provider services via curated equivalence classes (extensi
 
 #### Authoring a provider (human or Forge)
 A provider package exports: (1) a factory (`aws({...})`) returning a `CloudProvider`, (2) typed `.with(...)` option builders per port (`aws.rds`, `aws.fargate`), (3) capability declarations + equivalence mappings, (4) `realize()` emitting IaC, (5) a runtime `client()` per port, and (6) a `code()` Capability Manifest manifest. It must pass `@hobo/conformance` for every port it claims — that suite is the contract that lets AI-generated providers be trusted ([Plan 6](./ai-native-agent-auth.md#plan-06), [Plan 9](./verification.md#plan-09)).
-
-#### Iteration hooks (adapters)
-- ~~Planner objective function when several providers fully satisfy~~ — **decided ([ADR-0033](./adr/05-config-matching-environments.md#adr-0033), resolves ADR-P4):** configurable `cost`|`latency`|`single-provider`|`carbon`, default **min-cost within constraints**, applied deterministically (no solver/LLM on-path).
-- Per-resource vs grouped IaC stacks (isolation vs state sprawl).
-- How `prefer` degradation is surfaced/approved (silent warning vs require ack).
-- Maintaining equivalence classes by hand vs Forge-generated + curated.
-- Crossplane substrate: delegate reconciliation to k8s vs keep ResourceActors authoritative.

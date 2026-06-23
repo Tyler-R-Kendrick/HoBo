@@ -126,7 +126,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Training** (`"use training"` semantic-function optimization, [Plan 23](./23-stubbable-ai-implementations.md))
 `training.RunStarted` · `training.TrajectoryCaptured` (OTel/OpenInference span tree + I/O) · `training.RewardObserved` (live-eval signal) · `training.CandidateProposed` (rewritten prompt/code) · `training.CandidateEvaluated` · `training.Promoted` · `training.Rejected`
 
-**App communications** ([Plan 45](./45-app-communications.md)) — the app messaging *its* end-users via the shared receiver port ([ADR-0045](./adr/ADR-0045-slo-as-code-and-alerting.md)); a send is a `step`, recipient is a `PrincipalRef`
+**App communications** (the `notify` port, [Plan 21](./21-resources-catalog.md)/[ADR-0059](./adr/ADR-0059-app-communications-notify.md)) — the app messaging *its* end-users via the shared receiver port ([ADR-0045](./adr/ADR-0045-slo-as-code-and-alerting.md)); a send is a `step`, recipient is a `PrincipalRef`
 `notification.Requested` (channel + template + recipient + idempotency key) · `notification.Sent` · `notification.Delivered` · `notification.Bounced` · `notification.Failed` (provider callbacks/poll feed the post-send transitions; consent/quiet-hours decisions ride `policy.Decided`)
 
 **Compliance & governance** ([Plan 46](./46-compliance-governance.md)) — classification drives enforced residency/retention; erasure honors the forward-only log
@@ -135,7 +135,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **AI safety & model governance** ([Plan 47](./47-ai-safety-model-governance.md)) — models/prompts/eval-datasets are signed Registry artifacts; guardrails are policy-gated steps
 `model.Registered` (version + provider + model card + provenance) · `model.Promoted` (four-lens gate passed) · `guardrail.Blocked` (which check + the `policy.Decided` ref) · `redteam.ExperimentStarted` · `redteam.FindingRecorded` (→ regression test in a governed eval-dataset) · `redteam.ExperimentCompleted` (chaos-tier sibling, [ADR-0047](./adr/ADR-0047-chaos-resilience-verification-tier.md))
 
-**Marketplace & ecosystem** ([Plan 48](./48-marketplace-ecosystem.md)) — a governed lifecycle over already-signed/certified artifacts; install ≠ force (Matching binds)
+**Registry distribution** ([ADR-0062](./adr/ADR-0062-marketplace-ecosystem.md)) — a governed lifecycle over already-signed/certified artifacts; install ≠ force (Matching binds)
 `listing.Published` · `listing.Certified` (signed + `@hobo/conformance`-passed + provenance — uncertified ⇒ unlisted) · `listing.Installed` (extends `provider.Registered`/`pack.Imported`/`forge.Certified`) · `listing.Yanked` (compromised/broken version pulled; installed copies flagged by `hobo doctor`, not silently broken)
 
 **Derivatives** ([Plan 43](./43-patchability-extensibility.md)/[ADR-0068](./adr/ADR-0068-derivative-upgrade-paths.md)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report

@@ -47,7 +47,7 @@ The bet: own the intersection no incumbent occupies — cloud-agnostic ports/ada
 - **Provider-breadth bottleneck:** agnostic platforms depend on communities to write provider adapters; coverage lags demand.
 
 ## 4. Business objectives (SMART)
-All objectives are part of the single v1 ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)); the milestone column names the **v1 build stage** ([phases/](../design/phases/README.md)) by which each is demonstrable, not a separate release.
+All objectives are part of the single v1 ([ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)); the milestone column names the **v1 build stage** ([per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)) by which each is demonstrable, not a separate release.
 | ID | Objective | Measure | v1 build milestone |
 |---|---|---|---|
 | OBJ-1 | Prove agnostic deploy is tractable | A single unedited Bindle deploys to ≥2 clouds | stage 4 |
@@ -119,7 +119,7 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 | Recovery (resume after node loss / rebuild) | <30 s resume / <15 min rebuild | BR-006/BR-007 |
 
 ## 11. Scope
-**In scope (v1 — the whole designed surface, [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity; **the Forge; cloud-cost FinOps (estimates/budgets/showback); multi-region HA; the complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth; the Operator Crew, the (infrastructure) generated stack, patchability, SRE/incident management; and the governance planes (compliance & data governance, AI safety/model governance).** Delivered as one v1 in dependency-ordered build stages ([phases/](../design/phases/README.md)) — there is no post-v1 release.
+**In scope (v1 — the whole designed surface, [ADR-0063](../design/adr/ADR-0063-single-v1-scope.md)):** agnostic authoring + runtime; the Yard control plane; ≥2 providers; keyless agent identity + MCP; Capability Manifest + Registry; conformance trust boundary; cross-provider connectivity; **the Forge; cloud-cost FinOps (estimates/budgets/showback); multi-region HA; the complete dashboard; platform-engineer Resource Definitions/Matching/Packs at depth; the Operator Crew, the (infrastructure) generated stack, patchability, SRE/incident management; and the governance planes (compliance & data governance, AI safety/model governance).** Delivered as one v1 in dependency-ordered build stages ([per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)) — there is no post-v1 release.
 **Out of scope** ([ADR-0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md) + [00 non-goals](../design/00-vision.md)): **SaaS-business functions** (billing/subscriptions/invoicing/tax/chargeback/monetization) and **app-build-out** (generating the developer's own product UI). HoBo **composes** Terraform/Pulumi/OpenTofu via the IaC port rather than replacing them; it is not a standalone secret-management product or a generic application framework. Broad cloud coverage is delivered **on demand via the Forge** rather than pre-enumerating every cloud.
 
 ## 12. Assumptions
@@ -146,7 +146,7 @@ North-star signals from [08-roadmap.md](../design/08-roadmap.md), made measurabl
 | R-7 | **Incumbents add agnostic/agent features** | Med | Med | Move fast on the unique intersection; OSS + Forge moat ([17](../design/17-positioning-competitive.md)) | Founders/GTM |
 
 ## 16. v1 build milestones
-All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery plan](../design/08-roadmap.md)/[phases/](../design/phases/README.md)), **not** separate releases. v1 GA = every milestone below met.
+All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery plan](../design/08-roadmap.md), [per-stage build detail](../design/08-roadmap.md#per-stage-build-detail-stages-06)), **not** separate releases. v1 GA = every milestone below met.
 | v1 build stage | Business milestone | Acceptance |
 |---|---|---|
 | 0–1 | Developer SDK works locally (agnostic authoring) | hello-bindle runs offline; replay == live state |
@@ -157,4 +157,4 @@ All of v1; the stages are a dependency-ordered build sequence ([08 v1 delivery p
 | 6 | **Production hardened + breadth:** HA + FinOps + UX + the governance planes | canary auto-rollback; cost within tolerance; DR < RTO; compliance/AI-safety usable |
 
 ## 17. References
-[00 Vision](../design/00-vision.md) · [08 Roadmap](../design/08-roadmap.md) · [16 Cost/FinOps](../design/16-cost-finops.md) · [17 Positioning](../design/17-positioning-competitive.md) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)/[0019](../design/adr/ADR-0019-persona-prioritization-icp.md)/[0021](../design/adr/ADR-0021-nfr-baselines-slos.md)/[0063](../design/adr/ADR-0063-single-v1-scope.md) (supersedes [0022](../design/adr/ADR-0022-mvp-scope-moscow.md)) · [0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md).
+[00 Vision](../design/00-vision.md) · [08 Roadmap](../design/08-roadmap.md) · [16 Cost/FinOps](../design/16-cost-finops.md) · [17 Positioning](../design/17-positioning-competitive.md) · [`competitors/`](../../competitors/README.md) · [PRD](./PRD.md) · [TRD](./TRD.md) · ADRs [0018](../design/adr/ADR-0018-requirements-structure-and-traceability.md)/[0019](../design/adr/ADR-0019-persona-prioritization-icp.md)/[0021](../design/adr/ADR-0021-nfr-baselines-slos.md)/[0063](../design/adr/ADR-0063-single-v1-scope.md) (single v1 scope) · [0064](../design/adr/ADR-0064-scope-ai-native-meta-cloud.md).

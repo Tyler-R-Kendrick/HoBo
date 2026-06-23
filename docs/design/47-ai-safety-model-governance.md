@@ -56,7 +56,7 @@ A model/prompt promotion is governed by the same four-lens taxonomy as any chang
 
 ## Scope (v1) & YAGNI
 - **v1:** model/prompt/eval-dataset registry entries (versioned, signed, provenance); the `guardrail` capability + one reference engine (built-in + Llama Guard adapter); red-teaming on the chaos-tier pattern; eval-dataset classification/contamination policy; model cards as exported facts; four-lens model-promotion gate.
-- **Deferred / out of scope:** a responsible-AI attestation *program* framing ([ADR-0064](./adr/ADR-0064-scope-ai-native-meta-cloud.md)) — HoBo exports the facts, a GRC tool runs the program; automated continuous red-teaming campaigns; a watermarking/output-provenance scheme for generated media; fine-grained per-token cost/safety budgets (rides the spend breaker); model distribution rides Registry distribution ([Plan 48](./48-marketplace-ecosystem.md)).
+- **Deferred / out of scope:** a responsible-AI attestation *program* framing ([ADR-0064](./adr/ADR-0064-scope-ai-native-meta-cloud.md)) — HoBo exports the facts, a GRC tool runs the program; automated continuous red-teaming campaigns; a watermarking/output-provenance scheme for generated media; fine-grained per-token cost/safety budgets (rides the spend breaker); model distribution rides Registry distribution ([ADR-0062](./adr/ADR-0062-marketplace-ecosystem.md)).
 
 ## Iteration hooks
 - Whether guardrails are one `hobo:guardrail` port with check-type discriminators or a port per check class.

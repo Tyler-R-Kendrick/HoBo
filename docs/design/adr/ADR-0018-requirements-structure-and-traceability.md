@@ -16,7 +16,7 @@ HoBo's design suite (`docs/design/0–30`) is engineering-shaped: it explains *h
    - `NFR-NNN` — non-functional requirement (PRD)
    - `TR-NNN` — technical requirement (TRD)
 3. **Forward traceability is mandatory.** Every `BR` maps to ≥1 `FR`/`NFR`; every `FR`/`NFR` maps to ≥1 `TR`; every `TR` cites the design doc(s) and (where relevant) the conformance/verification that proves it. The TRD owns the authoritative **BR→FR/NFR→TR traceability matrix**.
-4. **Priority vocabulary** is MoSCoW (`Must`/`Should`/`Could`), expressing **build priority/order within the single v1** — all requirements are v1, mapped to the build stages in [`phases/`](../phases/README.md) (see [ADR-0063](./ADR-0063-single-v1-scope.md), superseding [ADR-0022](./ADR-0022-mvp-scope-moscow.md); there is no `Won't`-for-v1 tier).
+4. **Priority vocabulary** is MoSCoW (`Must`/`Should`/`Could`), expressing **build priority/order within the single v1** — all requirements are v1, mapped to the build stages in the [per-stage build detail](../08-roadmap.md#per-stage-build-detail-stages-06) (see [ADR-0063](./ADR-0063-single-v1-scope.md), superseding the former ADR-0022 MVP-scope line; there is no `Won't`-for-v1 tier).
 5. **Style** is "formal but skimmable": standard enterprise section set (document control, RACI, sign-off, risk register) rendered as tables/short prose to match the suite's voice.
 
 ## Alternatives considered

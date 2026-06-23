@@ -13,7 +13,7 @@ Classification emits `data.Classified` ([Plan 11](./11-event-model.md)) and beco
 ## Residency & retention — enforced, not hinted
 Classification + jurisdiction → **policy obligations** ([Plan 30](./30-policy-plane.md)) enforced at two points:
 - **`can-deploy`** ([Plan 29](./29-contracts-compatibility.md)) — a plan that would place `phi` data in a Camp outside its allowed region is a **gate failure**, not a runtime surprise. This reuses the deterministic Matching context (`region`/`provider`, [ADR-0033](./adr/ADR-0033-deterministic-matching-and-planner-selection.md)) and cross-Camp residency ([ADR-0040](./adr/ADR-0040-cross-camp-stateful-consistency.md)); sovereign mode ([ADR-0036](./adr/ADR-0036-air-gapped-sovereign-mode.md)) is the strict ceiling.
-- **Runtime** — a `notify`/replication/export action that would move classified data across a residency boundary is denied or mutated (e.g. region-pinned channel, [Plan 45](./45-app-communications.md)).
+- **Runtime** — a `notify`/replication/export action that would move classified data across a residency boundary is denied or mutated (e.g. region-pinned channel, [Plan 21](./21-resources-catalog.md)).
 
 **Retention** is the dual: each classification declares a retention window; the compaction/archival rules ([Plan 11](./11-event-model.md)) honor it as a **floor and a ceiling** — audit streams are retained per policy, and data past its ceiling is a candidate for erasure. Retention rules ride the existing event-log compaction policy; no new store.
 
@@ -58,5 +58,5 @@ HoBo standardizes the **enforcement**, not a compliance program. The audit facts
 ## Iteration hooks
 - Classification taxonomy + whether labels are a closed enum or an extensible lattice with inheritance.
 - Where the per-subject key boundary sits (per-user vs per-record vs per-tenant) — the granularity/erasure-blast-radius tradeoff.
-- Whether attestation packs are first-party only or community/marketplace-distributed ([Plan 48](./48-marketplace-ecosystem.md)).
-- Coupling the suppression list ([Plan 45](./45-app-communications.md)) to erasure so an erased subject is auto-suppressed across channels.
+- Whether attestation packs are first-party only or community/Registry-distributed ([ADR-0062](./adr/ADR-0062-marketplace-ecosystem.md)).
+- Coupling the suppression list (the `notify` port, [Plan 21](./21-resources-catalog.md)) to erasure so an erased subject is auto-suppressed across channels.

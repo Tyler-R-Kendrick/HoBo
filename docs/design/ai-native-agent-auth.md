@@ -17,7 +17,7 @@ Most platforms bolt agent support on as "an API key in a script." HoBo treats an
 
 ---
 
-### 6.1 Capability Manifest / Signs — the `auth.md` standard
+### 6.1 Capability Manifest — the `auth.md` standard
 A machine-readable standard each Provider publishes so any agent can understand *what it offers* and *how to authenticate* — with no human reading docs or pasting keys. Markdown for humans + strict JSON companions for machines, at a well-known location.
 
 ```

@@ -63,7 +63,14 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 
 ## Glossary & naming (thematic, all tunable)
 
-HoBo's metaphor is the itinerant worker who travels light and shares a standardized sign language. Names are proposals; technical meaning is what matters. This is the foundational vocabulary — each subsystem's full treatment is in its capability doc and ADRs.
+HoBo's metaphor is the itinerant worker who travels light. Names are proposals; technical meaning is what matters. This is the foundational vocabulary — each subsystem's full treatment is in its capability doc and ADRs.
+
+> **One word, several senses (read once).** A few terms are deliberately reused — disambiguated here so prose elsewhere can stay terse:
+> - **runtime** — the SDK **primitives** package (`@hobo/runtime`) · the **`Runtime` interface** (the five durable ports a Camp provides) · a **`runtime-*` backend** that implements them.
+> - **port** — a **runtime substrate port** (EventStore/Queue/Streamer/ActorHost/Clock) · an **infra port** (cloud/IaC/build) · a **capability WIT port** (`wasi:*`/`hobo:*`). All three are "ports/adapters"; the tier is clear from context.
+> - **environment** — an **env-type** (a Camp's `production`/`ephemeral` matching dimension) · an **env-group** (the member Camps of one logical environment, possibly cross-cloud) · the **environment rollup axis** (project × environment in dashboards). Not a config layer.
+> - **mock** — a **boundary mode** (ADR-0076, a contract-served fake) · a **fidelity label** (ADR-0042, an honest local seam) · a **contract mode**. The fidelity label is the one that gates prod-readiness claims.
+> - **the Yard** — the **per-provider scope** (one provider's Camps + cross-Camp policy) **and** the **control plane** that runs it; the **Orchestrator** is the control-plane component. Same noun, scope-and-its-software.
 
 **Scope chain & deployment nouns**
 - **Layered scopes** — config nests **`Junction` ⊃ `Yard` ⊃ `Camp` ⊃ `Bindle`** ([ADR-0026](./adr/01-architecture-core.md#adr-0026)): *connected-across-clouds* ⊃ *governed-per-provider* ⊃ *where-on-which-provider* ⊃ *what-the-app-is*. This is the **infra-containment** axis; **project** and **app-tenant** are separate ownership/rollup axes, not scope nouns.
@@ -78,7 +85,7 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 - **Runtime ports** — the durable-runtime capability ports a Camp provides: EventStore + Queue + Streamer + ActorHost + Clock. Backends are pluggable (`runtime-local` built-in; `runtime-postgres`/`-temporal`/`-restate`/`-cloudflare`).
 - **Provider** — an adapter implementing infra **ports** (cloud / IaC / build/VM) for a backend. **Port** — a capability interface providers implement. **Capability provider** — a Provider as a wasm capability adapter implementing a WIT interface.
 - **Component** — a WASM/WASI component; the default unit a HoBo service compiles to (OCI-container fallback). **WIT interface** — the canonical form of a HoBo port. **`component-host`** — the port that executes components, a property of a Camp ([ADR-0031](./adr/01-architecture-core.md#adr-0031)); Wasmtime locally, wasm-in-container the v1 prod default.
-- **Capability Manifest / Signs** — the machine-readable auth + capability standard: providers publish "signs" describing what they offer and how an agent obtains a token.
+- **Capability Manifest** — the machine-readable auth + capability standard: a provider publishes a manifest describing what it offers and how an agent obtains a token.
 
 **Authoring**
 - **IfC** — Infrastructure-from-Code: resources declared inline, collected by running the component. **Manifest (IR)** — the deployment intermediate representation the Planner consumes.

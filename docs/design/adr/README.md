@@ -17,9 +17,9 @@
 
 | ID | Title | Theme doc |
 |---|---|---|
-| 0001 | TS-native control-plane core (Kubernetes optional) | [architecture-core](01-architecture-core.md#adr-0001) |
+| 0001 | WASM/WASI/WIT-native; TypeScript is the first reference implementation (Kubernetes optional; operator-configured IaC) | [architecture-core](01-architecture-core.md#adr-0001) |
 | 0002 | Pluggable durable ports + a built-in engine (the Camp runtime) | [architecture-core](01-architecture-core.md#adr-0002) |
-| 0003 | Event sourcing + CQRS as the foundation | [architecture-core](01-architecture-core.md#adr-0003) |
+| 0003 | Event sourcing + CQRS (command store, actor-produced events, cached materializations) | [architecture-core](01-architecture-core.md#adr-0003) |
 | 0004 | Choreography sagas + virtual actors for orchestration | [architecture-core](01-architecture-core.md#adr-0004) |
 | 0005 | One ports/adapters shape for cloud, IaC & build (dagger-adjacent, wasm-on-OCI) | [architecture-core](01-architecture-core.md#adr-0005) |
 | 0006 | IaC mechanism: pluggable adapters (Pulumi · Crossplane · Terraform · OpenTofu); per-resource stacks | [architecture-core](01-architecture-core.md#adr-0006) |
@@ -43,7 +43,7 @@
 | 0031 | wasm host: self-hosted wasmCloud (default) · wasm-in-container floor · portability | [architecture-core](01-architecture-core.md#adr-0031) |
 | 0032 | Data portability & schema-versioning strategy | [data-plane](03-data-plane.md#adr-0032) |
 | 0033 | Deterministic Matching & Planner selection (+ default objective) | [architecture-core](01-architecture-core.md#adr-0033) |
-| 0034 | Generalized, extensible search capability (vector/graph as extensions) | [data-plane](03-data-plane.md#adr-0034) |
+| 0034 | Search is the query side of the data plane — not a primitive; vector/graph as opt-in packages | [data-plane](03-data-plane.md#adr-0034) |
 | 0035 | Custom domains & DNS (Yard-level, per-Camp overrides) & multi-cloud ingress | [portability-extensibility](07-portability-extensibility.md#adr-0035) |
 | 0036 | Air-gapped / sovereign Yard mode | [portability-extensibility](07-portability-extensibility.md#adr-0036) |
 | 0037 | SDK codegen surface & policy | [architecture-core](01-architecture-core.md#adr-0037) |
@@ -77,7 +77,7 @@
 | 0069 | The runtime & membrane: WIT-interface providers over wRPC, thin SDK | [architecture-core](01-architecture-core.md#adr-0069) |
 | 0070 | Dev-mode auth bypass via integrated contract testing | [identity-security](02-identity-security.md#adr-0070) |
 | 0071 | The Dispatcher: credit/budget-aware cost routing across registered providers (placement · dispatch · traffic) | [architecture-core](01-architecture-core.md#adr-0071) |
-| 0072 | WIT-first SDK: a canonical `hobo:sdk` world + conformance-gated per-language idiom layers | [architecture-core](01-architecture-core.md#adr-0072) |
+| 0072 | WIT-first SDK: a canonical `hobo:sdk` WIT package + conformance-gated per-language idiom layers | [architecture-core](01-architecture-core.md#adr-0072) |
 | 0073 | Swappable integration ports: identity, artifacts, work-tracking & knowledge | [portability-extensibility](07-portability-extensibility.md#adr-0073) |
 | 0074 | Org governance: RBAC + mandatory policy rules (deny-ceilings) over HoBo's own control-plane surface | [identity-security](02-identity-security.md#adr-0074) |
 | 0075 | Interface stability tiers + statically-evaluable provider Capability Spec (preview `wasi:websocket`) | [portability-extensibility](07-portability-extensibility.md#adr-0075) |

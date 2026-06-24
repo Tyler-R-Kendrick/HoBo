@@ -111,7 +111,7 @@ core  ←  sdk, runtime  ←  runtimes/*, providers/*, iac/*, build/*  ←  cli,
 ```
 packages/
   core/            @hobo/core         types, port interfaces, Capability Manifest schema, event envelope, DI/container
-  wit/             @hobo/wit          WIT interfaces (wasi:* reuse + hobo:* ports) + the canonical hobo:sdk world + wit-bindgen/jco bindings (per language)  [Plan 20/ADR-0072]
+  wit/             @hobo/wit          WIT interfaces (wasi:* reuse + hobo:* ports) + the canonical hobo:sdk WIT package + wit-bindgen/jco bindings (per language)  [Plan 20/ADR-0072]
   sdk/             @hobo/sdk          the TS idiom layer over the hobo:sdk bindings: IfC resources (api/kv/bucket/queue/topic/secret/sql/...) + .allow(); bindle() (advanced) — semantics-free, conformance-gated  [Plan 21/ADR-0072]
   sdk-rs/ sdk-py/ sdk-go/ ...        per-language idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
   runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx

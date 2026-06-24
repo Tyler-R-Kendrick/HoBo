@@ -22,7 +22,7 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 | [`authoring-resources-wiring.md`](./authoring-resources-wiring.md#plan-21) | Authoring: resource catalog, wiring/manifest, config & the Hobo Code DSL | 21 |
 | [`platform-engineering.md`](./platform-engineering.md#plan-25) | Platform engineering: Matching, environments, drivers/packs, Relay/GitOps/pipelines | 25 |
 | [`contracts-policy-flags.md`](./contracts-policy-flags.md#plan-29) | Contracts & compatibility, the policy plane & feature flags | 29 |
-| [`forge-generated-stack.md`](./forge-generated-stack.md#plan-23) | The Forge, the generated stack, patchability & verification/testing | 23, 09 |
+| [`generated-stack.md`](./generated-stack.md#plan-23) | AI generation, the generated stack, patchability & verification/testing | 23, 09 |
 | [`operators-sre.md`](./operators-sre.md#plan-40) | Operator Agents (the Crew) & SRE incident management | 40 |
 | [`governance-planes.md`](./governance-planes.md#plan-46) | Governance: compliance/data governance & AI safety | 46 |
 | [`worked-example.md`](./worked-example.md#plan-19) | End-to-end worked example | 19 |
@@ -35,7 +35,7 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 
 **Scope.** The whole suite is **one scope** — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)). Build sequencing/phasing is deferred planning (archived).
 
-**Reading order.** New to HoBo: [Vision](./vision.md#plan-00) → [Architecture](./architecture.md#plan-10) → [Worked example](./worked-example.md#plan-19), then the two deep plans [SDK](./sdk-api.md#plan-02) and [AI-native/agent-auth](./ai-native-agent-auth.md#plan-06). Runtime/authoring model: [WASM/WASI](./wasm-runtime-wit.md#plan-20) → [Resources/`.allow()`/wiring](./authoring-resources-wiring.md#plan-21) → [AI implementations](./forge-generated-stack.md#plan-23). Evaluating vs alternatives: [Positioning](./vision.md#plan-17) + [`competitors/`](../../competitors/). Auditing decisions: the [ADR docs](./adr/README.md).
+**Reading order.** New to HoBo: [Vision](./vision.md#plan-00) → [Architecture](./architecture.md#plan-10) → [Worked example](./worked-example.md#plan-19), then the two deep plans [SDK](./sdk-api.md#plan-02) and [AI-native/agent-auth](./ai-native-agent-auth.md#plan-06). Runtime/authoring model: [WASM/WASI](./wasm-runtime-wit.md#plan-20) → [Resources/`.allow()`/wiring](./authoring-resources-wiring.md#plan-21) → [AI implementations](./generated-stack.md#plan-23). Evaluating vs alternatives: [Positioning](./vision.md#plan-17) + [`competitors/`](../../competitors/). Auditing decisions: the [ADR docs](./adr/README.md).
 
 ---
 
@@ -90,7 +90,7 @@ HoBo's metaphor is the itinerant worker who travels light and shares a standardi
 **Control plane**
 - **Planner** — the pure function turning a Bindle + mapping into a `DeploymentPlan` DAG. **ResourceActor** — a controller-style grain reconciling one resource's desired↔actual state. **Executor** — a Firecracker-sandboxed runner applying IaC / building images with short-lived scoped creds. **Grain** — a virtual actor (the default concurrency primitive).
 - **Run** — one durable execution of a workflow/agent (a `run.*` event stream). **Identity / SVID** — a SPIFFE-style workload identity issued by the Yard for keyless auth.
-- **Forge** — the AI pipeline that generates & certifies new Provider plugins (and implementations, Resource Definitions): scaffold → LLM-fill → validate(sandboxed) → repair(via the `training-engine`) → certify(sign + provenance), gated by `@hobo/conformance` ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0010](./adr/03-data-plane.md#adr-0010)). **`"use training"`** — SDK directive marking an **AI-rewritable semantic function**, continuously optimized against a rubric behind the `training-engine` port ([ADR-0025](./adr/03-data-plane.md#adr-0025)).
+- **generation pipeline** — the AI pipeline that generates & certifies new Provider plugins (and implementations, Resource Definitions): scaffold → LLM-fill → validate(sandboxed) → repair(via the `training-engine`) → certify(sign + provenance), gated by `@hobo/conformance` ([Plan 23](./generated-stack.md#plan-23)/[ADR-0010](./adr/03-data-plane.md#adr-0010)). **`"use training"`** — SDK directive marking an **AI-rewritable semantic function**, continuously optimized against a rubric behind the `training-engine` port ([ADR-0025](./adr/03-data-plane.md#adr-0025)).
 - **Relay** — an outbound-only proxy inside a private network so a hosted Yard deploys there with no inbound ([Plan 25](./platform-engineering.md#plan-25)). "Agent" is reserved for autonomous principals; the proxy is the Relay.
 
 **Platform engineering**

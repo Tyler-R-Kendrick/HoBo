@@ -6,7 +6,7 @@ This capability doc unifies reliability/HA, observability, and cost/FinOps as on
 
 > **Pipelines & incremental deploys (Humanitec parity):** **Pipelines** + approval gates ([Plan 25](./platform-engineering.md#plan-25)) run atop the same gated-saga + canary/rollback machinery here. **Incremental deploys** (reconcile only changed nodes via Deltas→Sets, [Plan 25](./platform-engineering.md#plan-25)) shrink blast radius and rollout time.
 
-> **Runtime/AI integration.** AI **live-fix** ([Plan 23](./forge-generated-stack.md#plan-23)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
+> **Runtime/AI integration.** AI **live-fix** ([Plan 23](./generated-stack.md#plan-23)) applies through the same gated deployment-saga + canary/auto-rollback machinery here; a failing trace becomes a permanent regression test. Wasm components' fast restart improves recovery time vs containers.
 
 ### Failure taxonomy (what we design against)
 | Class | Example | Strategy |
@@ -18,7 +18,7 @@ This capability doc unifies reliability/HA, observability, and cost/FinOps as on
 | **Drift** | someone changed infra out-of-band | periodic resync detects + reconciles (auto or proposed) |
 | **Split-brain** | two Yard leaders | leases + fencing tokens; quorum writes reject stale leader |
 
-> **The SRE operator extends this taxonomy.** [Plan 40](./operators-sre.md#plan-40) unifies these *runtime* classes with the *contract* classes ([Plan 23](./forge-generated-stack.md#plan-23)/[Plan 29](./contracts-policy-flags.md#plan-29)) into one **failure-taxonomy → safe-fix** map and a documented auto-fix/propose/escalate decision tree; **live-fix is the applier, the taxonomy is the classifier**.
+> **The SRE operator extends this taxonomy.** [Plan 40](./operators-sre.md#plan-40) unifies these *runtime* classes with the *contract* classes ([Plan 23](./generated-stack.md#plan-23)/[Plan 29](./contracts-policy-flags.md#plan-29)) into one **failure-taxonomy → safe-fix** map and a documented auto-fix/propose/escalate decision tree; **live-fix is the applier, the taxonomy is the classifier**.
 
 ### Exactly-once *effects* over at-least-once delivery
 HoBo never assumes the queue delivers once. Instead:
@@ -41,7 +41,7 @@ Partial-success deployments are allowed when the Bindle marks resources `optiona
 ### Actor availability: single-writer leases + fencing
 Each grain key (ResourceActor, app actors) has at most one active instance:
 - **Lease:** activating an actor acquires a lease in the Camp's runtime ActorHost (`key → ownerNode, leaseId, expiry`). Renewed via heartbeat.
-- **Fencing token:** the lease carries a monotonically increasing `fenceToken`; every event append by the actor includes it. The EventStore rejects appends with a `fenceToken` lower than the latest seen → a partitioned old owner cannot corrupt state even if it thinks it still holds the lease. **This is a contract clause of the `EventStore`/`ActorHost` port, not an assumption about one backend:** since the runtime is swappable (`runtime-temporal`/`runtime-restate`/`runtime-cloudflare`/`runtime-postgres`, each with its own concurrency model), **"conditional append rejects a lower `fenceToken` *and* a lower-than-expected `seq`" is a mandatory, named `@hobo/conformance` durable-store assertion** ([Plan 9](./forge-generated-stack.md#plan-09); the [Forge seam table](./forge-generated-stack.md#plan-23) "lease/fencing" row) — a backend that accepts a stale-fenced append fails conformance and **cannot back HoBo state**, so single-writer safety can't silently regress under a backend swap.
+- **Fencing token:** the lease carries a monotonically increasing `fenceToken`; every event append by the actor includes it. The EventStore rejects appends with a `fenceToken` lower than the latest seen → a partitioned old owner cannot corrupt state even if it thinks it still holds the lease. **This is a contract clause of the `EventStore`/`ActorHost` port, not an assumption about one backend:** since the runtime is swappable (`runtime-temporal`/`runtime-restate`/`runtime-cloudflare`/`runtime-postgres`, each with its own concurrency model), **"conditional append rejects a lower `fenceToken` *and* a lower-than-expected `seq`" is a mandatory, named `@hobo/conformance` durable-store assertion** ([Plan 9](./generated-stack.md#plan-09); the [generation pipeline seam table](./generated-stack.md#plan-23) "lease/fencing" row) — a backend that accepts a stale-fenced append fails conformance and **cannot back HoBo state**, so single-writer safety can't silently regress under a backend swap.
 - **Failover:** lease expiry (missed heartbeats) lets another node acquire the key with a higher `fenceToken`; it replays the stream (from the latest snapshot) to rebuild state and resume. **Recovery time ≈ lease TTL + replay-of-tail.**
 - **Placement:** consistent-hashing of keys across nodes with bounded load; rebalanced on membership change.
 
@@ -86,7 +86,7 @@ Health signals come from the data plane (the Camp's runtime metrics/streams) and
 | RTO (full Yard rebuild) | < 15 min from replicated log |
 
 ### Runtime/IfC/AI integration
-- **AI live-fix as a gated saga.** A failing trace or SLO/health breach triggers an AI-proposed fix, validated sandboxed + replayed, then applied through the **same canary/blue-green saga + auto-rollback** machinery above; the failing trace is retained as a permanent regression test ([Plan 23](./forge-generated-stack.md#plan-23)). Live-fix adds no new failure class — it reuses *compensation* and *deployment-strategy* mechanics.
+- **AI live-fix as a gated saga.** A failing trace or SLO/health breach triggers an AI-proposed fix, validated sandboxed + replayed, then applied through the **same canary/blue-green saga + auto-rollback** machinery above; the failing trace is retained as a permanent regression test ([Plan 23](./generated-stack.md#plan-23)). Live-fix adds no new failure class — it reuses *compensation* and *deployment-strategy* mechanics.
 - **Faster recovery with wasm.** Components' ms-scale cold start shortens actor failover and rollout/rollback windows vs containers, improving the "deploy resume after node loss" target ([Plan 20](./wasm-runtime-wit.md#plan-20)). Failover is a property of the Camp's **`component-host`** ([ADR-0031](./adr/01-architecture-core.md#adr-0031)): the **wasm-in-container default** restarts the component like any container (re-placed by the same lease/fencing machinery above), while the **wasmCloud-lattice** adapter can additionally **migrate late-bound links across hosts** without redeploy — a stronger failover that apps opt into per Camp.
 - **Exactly-once effects — scoped honestly across the membrane.** At-least-once `link.Called` invocations carry idempotency keys. Where the link's effect is an **EventStore append**, HoBo dedups → exactly-once *effects* (as for steps/IaC, [Plan 11](./data-plane.md#plan-11)). But a link to a **provider component's export** (e.g. a `wasi:keyvalue` SET on a Redis provider on another lattice host, or a payment call) lands its effect **in the provider, which has no view of HoBo's dedup table** — so across the membrane it is **at-least-once**, made effectively-once only when the **provider adapter forwards the idempotency key** (AWS client tokens / Stripe keys; a **conformance obligation** on the adapter) or the caller does `refresh()`-before-act (above). For a non-idempotent provider op with no key support, retry-after-ambiguous-failure can double-apply — stated, not hidden.
 - **Cost-driven graceful degradation as a reliability strategy.** Cost pressure is an availability lever that **composes** with canary/auto-rollback + drift above ([ADR-0039](./adr/02-identity-security.md#adr-0039)): rather than hard-failing on a budget breach, it sheds QoS **by priority** through ordered degradation tiers (scale-to-zero non-critical, feature-flag shed, request-priority `503`+`Retry-After`) before the runaway-spend breaker trips as a last resort — "availability through cost controls," not cost-vs-availability. The cost-side mechanics live below.
@@ -95,7 +95,7 @@ Health signals come from the data plane (the Camp's runtime metrics/streams) and
 
 Reliability and observability share one substrate: the event log *is* the observability layer, and reliability signals (health, drift, SLO burn, spend) flow back as alerts and policy inputs.
 
-> **Runtime/IfC integration.** Cross-WIT-boundary calls (`link.Called` / stub recordings, [Plan 11](./data-plane.md#plan-11)) are a first-class trace stream — they drive both the **link/trace dashboard views** ([Plan 7](./developer-experience.md#plan-07)) and the AI **implement → auto-evolve → live-fix** loop ([Plan 23](./forge-generated-stack.md#plan-23)).
+> **Runtime/IfC integration.** Cross-WIT-boundary calls (`link.Called` / stub recordings, [Plan 11](./data-plane.md#plan-11)) are a first-class trace stream — they drive both the **link/trace dashboard views** ([Plan 7](./developer-experience.md#plan-07)) and the AI **implement → auto-evolve → live-fix** loop ([Plan 23](./generated-stack.md#plan-23)).
 
 #### Four pillars (three standard + one HoBo-native)
 1. **Traces** — OpenTelemetry spans across deploys, workflows, steps, actor messages, and provider calls.
@@ -116,7 +116,7 @@ Derived purely from `run.*` / `actor.*` / `saga.*` events ([Plan 11](./data-plan
 This mirrors and extends Vercel's run observability, and is the data-plane analog of the deploy timeline.
 
 #### Metrics catalog (initial)
-**Control plane:** deploy success rate, plan→deployed latency, reconcile loop latency, executor queue depth/saturation, provider error rate (per provider/region/op), circuit-breaker state, drift count, token grants/min; plus IfC-collection metrics (resources/links per manifest) and Forge generation/certification rates.
+**Control plane:** deploy success rate, plan→deployed latency, reconcile loop latency, executor queue depth/saturation, provider error rate (per provider/region/op), circuit-breaker state, drift count, token grants/min; plus IfC-collection metrics (resources/links per manifest) and AI generation/certification rates.
 **Data plane (via the Camp's runtime):** workflow start/complete/fail rates, step retry rates, actor activations/passivations, queue lag, app RED metrics (rate/errors/duration) for `service`/`web`; plus **wasm runtime** metrics — component cold-start, instances per host (density), link call latency/error rate per `(import, provider)`.
 
 #### Logs
@@ -139,12 +139,12 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 - The `CredentialAudit` projection answers "what did this agent access, with which token, when?" for security review.
 
 #### WIT-boundary signals
-- **WIT-boundary call trace** (`link.Called` + stub recordings, [Plan 11](./data-plane.md#plan-11)) is a first-class stream: it drives the dashboard **link map + trace views** ([Plan 7](./developer-experience.md#plan-07)) and is the **test oracle** for AI implement → auto-evolve → live-fix ([Plan 23](./forge-generated-stack.md#plan-23)).
+- **WIT-boundary call trace** (`link.Called` + stub recordings, [Plan 11](./data-plane.md#plan-11)) is a first-class stream: it drives the dashboard **link map + trace views** ([Plan 7](./developer-experience.md#plan-07)) and is the **test oracle** for AI implement → auto-evolve → live-fix ([Plan 23](./generated-stack.md#plan-23)).
 
 #### AI-method telemetry & training-capture signals
-`"use training"` semantic functions ([Plan 23](./forge-generated-stack.md#plan-23)) need richer, AI-shaped telemetry than RED metrics, so HoBo layers **[OpenInference](https://github.com/Arize-ai/openinference) semantic conventions on top of OTel**:
+`"use training"` semantic functions ([Plan 23](./generated-stack.md#plan-23)) need richer, AI-shaped telemetry than RED metrics, so HoBo layers **[OpenInference](https://github.com/Arize-ai/openinference) semantic conventions on top of OTel**:
 - **OpenInference spans** — every trainable-method (and agent/LLM/tool/retriever) call emits an OpenInference span (inputs, outputs, messages, token counts, model, latency) as a child of the same W3C trace as the enclosing run/deploy. OpenInference is OTel-native and transport-agnostic, so these export to the tenant's own backend (Phoenix/Tempo/Datadog) **and** feed HoBo's trajectory store — one emit, no lock-in.
-- **Trajectory = training data.** The span tree for one invocation + I/O + the **reward** attached by live-evals + run/agent correlation is a *trajectory* — the unit the `training-engine` consumes ([Plan 23](./forge-generated-stack.md#plan-23)). Trajectories ride the event log, so training is replayable and auditable. Sensitive payloads are per-run encrypted ([Plan 12](./security-networking.md#plan-12)).
+- **Trajectory = training data.** The span tree for one invocation + I/O + the **reward** attached by live-evals + run/agent correlation is a *trajectory* — the unit the `training-engine` consumes ([Plan 23](./generated-stack.md#plan-23)). Trajectories ride the event log, so training is replayable and auditable. Sensitive payloads are per-run encrypted ([Plan 12](./security-networking.md#plan-12)).
 - **Live-evals as a telemetry stream.** Rubric scores computed online on live/shadow traffic (quality/faithfulness/calibration/cost/latency) are first-class metrics: they drive champion-vs-challenger dashboards, raise drift alerts/SLO burn on a champion regression, and *are* the optimizer's objective. `eval.Ran`/`eval.GateFailed` are events ([Plan 11](./data-plane.md#plan-11)).
 - **Metrics-catalog additions.** Per trainable method: invocation rate, eval scores (per rubric dimension), champion/challenger deltas, token/cost per call, shadow-traffic share, candidate-proposed/promoted/rejected counts, time-since-last-promotion.
 
@@ -196,17 +196,17 @@ Min-cost over static `cost.json` is only half the story across clouds: free tier
 
 #### Metering, quota & showback — cost attribution ([ADR-0039](./adr/02-identity-security.md#adr-0039))
 Cost attribution + quota safety reuse the event log + policy plane rather than adding a separate system.
-- **Metering = an event-sourced projection.** A **`MeteringView`** folds **usage/cost counters** from the log HoBo already keeps (`deployment.*`, `run.*`, `resource.*`, `forge.*`, `token.*`, egress) across a small dimension set — **control-plane operations · runtime-compute-seconds · storage-GB · egress-GB · Forge-runs**. No new instrumentation; auditable, replayable, rebuildable from zero ([Plan 11](./data-plane.md#plan-11)) so **every cost figure traces to facts**.
-- **Quotas + runaway-spend circuit-breaker run through the policy plane** ([Plan 29](./contracts-policy-flags.md#plan-29)). A counter crossing a threshold → `policy.Decided`: **soft** = warn/alert obligation; **hard** = deny at the gate (block deploy / agent provisioning / Forge run). Excess spend **velocity** trips a **durable spend circuit-breaker** — a saga obligation reusing the resilience-breaker pattern above — halting spend-incurring actions until acknowledged (`spend.CircuitTripped`/`spend.CircuitReset`). **Agent spend-caps** (above, [Plan 6](./ai-native-agent-auth.md#plan-06)) generalize to **tenant / Camp** quotas.
+- **Metering = an event-sourced projection.** A **`MeteringView`** folds **usage/cost counters** from the log HoBo already keeps (`deployment.*`, `run.*`, `resource.*`, `gen.*`, `token.*`, egress) across a small dimension set — **control-plane operations · runtime-compute-seconds · storage-GB · egress-GB · generation runs**. No new instrumentation; auditable, replayable, rebuildable from zero ([Plan 11](./data-plane.md#plan-11)) so **every cost figure traces to facts**.
+- **Quotas + runaway-spend circuit-breaker run through the policy plane** ([Plan 29](./contracts-policy-flags.md#plan-29)). A counter crossing a threshold → `policy.Decided`: **soft** = warn/alert obligation; **hard** = deny at the gate (block deploy / agent provisioning / generation pipeline run). Excess spend **velocity** trips a **durable spend circuit-breaker** — a saga obligation reusing the resilience-breaker pattern above — halting spend-incurring actions until acknowledged (`spend.CircuitTripped`/`spend.CircuitReset`). **Agent spend-caps** (above, [Plan 6](./ai-native-agent-auth.md#plan-06)) generalize to **tenant / Camp** quotas.
 - **Showback (visibility, not money).** Cost is attributed **tenant → Camp → Bindle → run/agent/team** (from the owning principal on every event) and surfaced as **showback** — OSS-core and self-hostable like the rest of the platform.
 
 ```mermaid
 flowchart LR
-  LOG[("event log<br/>deployment.* / run.* / resource.* / forge.* / token.* / egress")] --> MV["MeteringView projection<br/>(usage/cost counters; auditable, rebuildable)"]
+  LOG[("event log<br/>deployment.* / run.* / resource.* / gen.* / token.* / egress")] --> MV["MeteringView projection<br/>(usage/cost counters; auditable, rebuildable)"]
   MV --> SHOW["showback: cost by tenant -> Camp -> Bindle -> run/agent/team"]
   MV --> QUOTA{"quota check (policy plane, Plan 30)"}
   QUOTA -->|soft| WARN["warn / alert obligation"]
-  QUOTA -->|hard| DENY["deny at gate (block deploy / agent / Forge)"]
+  QUOTA -->|hard| DENY["deny at gate (block deploy / agent / generation pipeline)"]
   MV --> VEL{"spend velocity"}
   VEL -->|runaway| CB["spend.CircuitTripped (saga, Plan 5)<br/>halt spend-incurring actions"]
   CB -->|ack| RESET["spend.CircuitReset"]
@@ -226,4 +226,4 @@ Cost is also an **availability lever** (the reliability framing above): cost con
 #### Runtime cost inputs
 - **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./wasm-runtime-wit.md#plan-20)).
 - **Cross-link egress.** `link.Called` paths that cross providers/regions feed the egress term of the cost model exactly like `bind` edges ([Plan 12](./security-networking.md#plan-12)).
-- **AI cost optimization.** Auto-evolution can take **cost** as an objective, proposing cheaper implementations/providers validated against recorded traces before a gated promotion ([Plan 23](./forge-generated-stack.md#plan-23)).
+- **AI cost optimization.** Auto-evolution can take **cost** as an objective, proposing cheaper implementations/providers validated against recorded traces before a gated promotion ([Plan 23](./generated-stack.md#plan-23)).

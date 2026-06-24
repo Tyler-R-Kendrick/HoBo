@@ -26,7 +26,7 @@
 | 0007 | Provider-specific options via an idiomatic typed-options builder (`.with(...)`) | [architecture-core](01-architecture-core.md#adr-0007) |
 | 0008 | Keyless agent identity (SVID/OIDC federation) + token broker | [identity-security](02-identity-security.md#adr-0008) |
 | 0009 | Capability Manifest capability/auth standard + Registry | [identity-security](02-identity-security.md#adr-0009) |
-| 0010 | Forge: generation pipeline (inputs + algorithm) gated by conformance | [data-plane](03-data-plane.md#adr-0010) |
+| 0010 | AI generation pipeline: providers/implementations generated + certified against conformance | [data-plane](03-data-plane.md#adr-0010) |
 | 0011 | Scopes are first-class SDK objects (bindle/camp/yard/junction), not files | [architecture-core](01-architecture-core.md#adr-0011) |
 | 0012 | Credential-scoped executors; isolation tier chosen per workload | [identity-security](02-identity-security.md#adr-0012) |
 | 0014 | MCP as a first-class control surface | [data-plane](03-data-plane.md#adr-0014) |

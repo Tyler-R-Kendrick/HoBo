@@ -6,7 +6,7 @@ This capability doc covers the developer-facing surface end to end: the UI/dashb
 
 > **Resource Definitions & Matching (Humanitec parity):** add a **Resource Graph** view, a **matching-decision** view (`match.Decided` — which Resource Definition won and why, [Plan 25](./platform-engineering.md#plan-25)), a **Delta diff / promote** view ([Plan 25](./platform-engineering.md#plan-25)), and a **Pipelines** view with approval gates ([Plan 25](./platform-engineering.md#plan-25)) — matching Humanitec's Portal while staying projection-only.
 
-> **Runtime/authoring views.** Adopt Nitric's **local-dashboard** features for `hobo dev` (test APIs, browse kv/sql/buckets, trigger schedules, publish to topics, inspect websockets) and add HoBo-native views: the **collected-resource/manifest** view ([Plan 21](./authoring-resources-wiring.md#plan-21)), the **link map** (component imports → providers, [Plan 20](./wasm-runtime-wit.md#plan-20)), and **cross-WIT-call traces** + AI implement/evolve/live-fix proposals & approvals ([Plan 23](./forge-generated-stack.md#plan-23)).
+> **Runtime/authoring views.** Adopt Nitric's **local-dashboard** features for `hobo dev` (test APIs, browse kv/sql/buckets, trigger schedules, publish to topics, inspect websockets) and add HoBo-native views: the **collected-resource/manifest** view ([Plan 21](./authoring-resources-wiring.md#plan-21)), the **link map** (component imports → providers, [Plan 20](./wasm-runtime-wit.md#plan-20)), and **cross-WIT-call traces** + AI implement/evolve/live-fix proposals & approvals ([Plan 23](./generated-stack.md#plan-23)).
 
 ### Principles
 1. **Everything is a view over events.** No view has privileged state; each is a projection, so the dashboard is consistent with the audit log by construction.
@@ -20,7 +20,7 @@ This capability doc covers the developer-facing surface end to end: the UI/dashb
 | **Deployments timeline** | DeploymentView | event-sourced history with a replay/time-travel scrubber; per-resource provisioning states; rollback/compensation visualized on the DAG |
 | **Topology graph** | TopologyView | resources → resolved providers + options; `bind` edges annotated with connectivity tier + estimated egress/cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)) |
 | **Run inspector** | RunView | workflow/step/actor/saga trace; per-step inputs/outputs/attempts/duration; **replay-diff** against current code ([Plan 5](./reliability-observability-cost.md#plan-05)) |
-| **Registry browser** | Registry | providers, their Capability Manifest/signs, capabilities, cost signals, Forge-certification + provenance |
+| **Registry browser** | Registry | providers, their Capability Manifest/signs, capabilities, cost signals, generation certification + provenance |
 | **Agent activity & credential audit** | CredentialAudit | agent runs + every token grant/use/revoke, joined to the triggering run; approvals on policy gates |
 | **Cost & FinOps** | cost projection | plan-time estimates vs actuals, budgets/caps, showback per tenant/Bindle/Camp |
 | **Drift** | DriftView | resources diverged from desired; heal/propose actions |
@@ -42,7 +42,7 @@ Additional views the runtime/IfC model adds, each a projection/stream like the r
 | **Local emulation** (Nitric-style) | `runtime-local` | test APIs; browse kv/sql/buckets; trigger schedules; publish to topics; inspect websockets ([CLI & developer experience](#cli--developer-experience)) |
 | **Collected manifest** | `bindle.ManifestProduced` | the IfC resource-collection output (resources, links, annotations) before deploy ([Plan 21](./authoring-resources-wiring.md#plan-21)) |
 | **Link map** | manifest links | each component's imports → resolved capability providers ([Plan 20](./wasm-runtime-wit.md#plan-20)) |
-| **WIT-call traces** | `link.Called` / stub recordings | cross-port calls; the basis for AI implement/evolve/live-fix **proposals + gate approvals** ([Plan 23](./forge-generated-stack.md#plan-23)) |
+| **WIT-call traces** | `link.Called` / stub recordings | cross-port calls; the basis for AI implement/evolve/live-fix **proposals + gate approvals** ([Plan 23](./generated-stack.md#plan-23)) |
 
 ### CLI & developer experience
 
@@ -50,9 +50,9 @@ The same projection-and-event model the dashboard renders is what the CLI drives
 
 > **Platform/ops commands (Humanitec parity):** new platform/ops commands — `hobo def` (manage Resource Definitions, [Plan 25](./platform-engineering.md#plan-25)), `hobo pack` (Resource Packs, [Plan 25](./platform-engineering.md#plan-25)), `hobo env clone` + ephemeral/preview Camps ([Plan 25](./platform-engineering.md#plan-25)), `hobo delta` (promotion is `hobo up --camp prod` against the promoted revision), `hobo pipeline` + `hobo relay` ([Plan 25](./platform-engineering.md#plan-25)). Developer commands are unchanged — definitions are a platform-team surface.
 
-> **Contracts & policy (gates):** add the verification surface — `hobo verify --target <env>` (the composite Gatekeeper: contracts + policy + evals + conformance + cost), `hobo can-deploy --target <env>` ([Plan 29](./contracts-policy-flags.md#plan-29)), `hobo explain-failure` (replay a blocked gate's events), `hobo fix --dry-run` (Forge-proposed remediation), and `hobo promote-contract` / `hobo promote-impl` ([Plan 23](./forge-generated-stack.md#plan-23)). All read-only by default; mutations go through the same gates.
+> **Contracts & policy (gates):** add the verification surface — `hobo verify --target <env>` (the composite Gatekeeper: contracts + policy + evals + conformance + cost), `hobo can-deploy --target <env>` ([Plan 29](./contracts-policy-flags.md#plan-29)), `hobo explain-failure` (replay a blocked gate's events), `hobo fix --dry-run` (auto-proposed remediation), and `hobo promote-contract` / `hobo promote-impl` ([Plan 23](./generated-stack.md#plan-23)). All read-only by default; mutations go through the same gates.
 
-> **Runtime/authoring commands.** `hobo build` compiles each service to a **wasm component** (jco/`@hobo/componentize`, OCI-container fallback) — [Plan 20](./wasm-runtime-wit.md#plan-20). `hobo up`/`plan` run a **resource-collection** phase (IfC) that emits the **manifest IR** — [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21). New commands: `hobo collect` (print collected resources, à la `nitric spec`) and `hobo stub <resource|service>` to run with stubs ([Plan 23](./forge-generated-stack.md#plan-23)). The SDK Camp objects ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) play the role of Nitric stack files — programmatic, not declared.
+> **Runtime/authoring commands.** `hobo build` compiles each service to a **wasm component** (jco/`@hobo/componentize`, OCI-container fallback) — [Plan 20](./wasm-runtime-wit.md#plan-20). `hobo up`/`plan` run a **resource-collection** phase (IfC) that emits the **manifest IR** — [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21). New commands: `hobo collect` (print collected resources, à la `nitric spec`) and `hobo stub <resource|service>` to run with stubs ([Plan 23](./generated-stack.md#plan-23)). The SDK Camp objects ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) play the role of Nitric stack files — programmatic, not declared.
 
 #### DX principles
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
@@ -92,7 +92,7 @@ hobo logs [--follow] [<resource>]                        live stream via the Cam
 hobo drift [--heal|--propose]                            drift status + reconcile
 hobo login | claim                                       obtain a dev SVID (OIDC); claim an anonymous deploy into an account
 hobo registry search <capability> | add <provider>       browse/install providers (Capability Manifest)
-hobo forge <provider-url>                                request an AI-generated provider
+hobo generate <provider-url>                                request an AI-generated provider
 hobo import terraform|pulumi|opentofu|lakebed|faas <src> adopt an existing estate in place (ADR-0041)
 ```
 Both `up` and `down` drive the thin-SDK + **wRPC** runtime — typed clients over generated WIT bindings, no cloud logic in the SDK ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
@@ -121,10 +121,10 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
 2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/01-architecture-core.md#adr-0037)).
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
-4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./forge-generated-stack.md#plan-09)).
+4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./generated-stack.md#plan-09)).
 
 ##### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042))
-"Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./forge-generated-stack.md#plan-09)).
+"Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./generated-stack.md#plan-09)).
 - **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector).
 - **Mock (honest seam):** real cloud IAM, provider latency/egress/cost, secrets backends (KMS).
 - **Camp-only:** cross-cloud mTLS, real quotas/spend limits, provider drift.
@@ -258,7 +258,7 @@ Deliberately minimal — the surfaces are projections, the groupings are dimensi
 - **Availability** is the **`AvailabilityView`** projection over the dependency graph + declared SLAs + `slo.*`/`incident.*` — **no new event types**.
 - **Status page** adds only **`statuspage.Published`** · **`statuspage.Unpublished`** · **`statuspage.IncidentPosted`** (what was shown publicly, and when — an auditable disclosure trail; subscriber delivery rides `notify`, [ADR-0059](./adr/03-data-plane.md#adr-0059)).
 
-### Verification ([Plan 9](./forge-generated-stack.md#plan-09))
+### Verification ([Plan 9](./generated-stack.md#plan-09))
 
 - **Grouping rollup test:** events tagged with a `project` and Camps of an `environment type` roll up correctly; a Bindle in two environments appears once per environment, not double-counted.
 - **Dashboard projection test:** every dashboard view is reproducible from the log alone (no privileged state); a from-zero rebuild equals the live view.

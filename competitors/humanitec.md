@@ -197,11 +197,11 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 3. **Opaque pricing + proprietary core** → HoBo ships an **OSS core**, self-host = hosted.
 4. **Opaque matching selection** — no first-class "why this infra" audit → HoBo records **`match.Decided`** events, replayable.
 5. **No event-sourcing/replay/time-travel** → HoBo's core is event-sourced (audit + DR + run inspector).
-6. **Human-authored Resource Definitions/Packs** → HoBo's **Forge** can AI-generate definitions and packs, gated by conformance.
+6. **Human-authored Resource Definitions/Packs** → HoBo's **generation pipeline** can AI-generate definitions and packs, gated by conformance.
 7. **Not a full observability platform** → HoBo bundles run inspector/traces/replay.
 8. **Vendor lock-in (Manifests)**, though Score is open → HoBo ports are **WIT interfaces** (standards-based); Score is importable for interop.
 
-> Net: Humanitec proves the orchestrator abstraction and governance; HoBo adopts that engine and adds a polyglot wasm runtime, event-sourced auditability, AI-native generation, and OSS openness. Because Humanitec is mature, enterprise-grade, and now explicitly AI-first, HoBo cannot win on "AI-native" alone — it must combine Humanitec's best engine (Resource Definitions + Matching, drivers, sets/deltas, governance) with what Humanitec lacks: a wasm-first polyglot runtime, event-sourced replay/time-travel plus auditable matching decisions, Forge-generated definitions/implementations, IfC-default simplicity, and an OSS core.
+> Net: Humanitec proves the orchestrator abstraction and governance; HoBo adopts that engine and adds a polyglot wasm runtime, event-sourced auditability, AI-native generation, and OSS openness. Because Humanitec is mature, enterprise-grade, and now explicitly AI-first, HoBo cannot win on "AI-native" alone — it must combine Humanitec's best engine (Resource Definitions + Matching, drivers, sets/deltas, governance) with what Humanitec lacks: a wasm-first polyglot runtime, event-sourced replay/time-travel plus auditable matching decisions, AI-generated definitions/implementations, IfC-default simplicity, and an OSS core.
 
 ## HoBo mapping
 
@@ -212,7 +212,7 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 | Humanitec | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | Dynamic configuration management (Score + Resource Definitions + Matching) | **Resource Definitions + Matching** as the Planner's platform-rules layer; mapping = sugar over default definitions | ✅➕ | [25](../docs/design/platform-engineering.md#plan-25) |
-| Resource Definition | HoBo Resource Definition (**WIT-interface-typed**, Forge-generatable) | ➕ | [25](../docs/design/platform-engineering.md#plan-25) |
+| Resource Definition | HoBo Resource Definition (**WIT-interface-typed**, auto-generatable) | ➕ | [25](../docs/design/platform-engineering.md#plan-25) |
 | Matching Criteria (specificity scoring) | Same model; the winning definition + score recorded as a **`match.Decided`** event (auditable "why this infra") | ➕ | [25](../docs/design/platform-engineering.md#plan-25), [11](../docs/design/data-plane.md#plan-11) |
 | Resource classes (`standard`/`ha`/…) | Resource `class` as a matching dimension | ✅ | [21](../docs/design/authoring-resources-wiring.md#plan-21) |
 | Resource Graph (DAG, co-provision, outputs) | DeploymentPlan DAG + ResourceActors + manifest links | ✅ | [03](../docs/design/control-plane.md#plan-04), [04](../docs/design/control-plane.md#plan-04) |
@@ -241,7 +241,7 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 | Operator (secret provisioning) | Provider `secrets` port + brokered tokens | ✅ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [12](../docs/design/security-networking.md#plan-12) |
 | Pipelines (triggers + approval gates) | **Pipelines** atop sagas + policy gates | ✅ | [28](../docs/design/platform-engineering.md#plan-25), [05](../docs/design/reliability-observability-cost.md#plan-05) |
 | GitOps mode (write CRs to Git) | **GitOps publisher** target | ✅ | [28](../docs/design/platform-engineering.md#plan-25), [22](../docs/design/authoring-resources-wiring.md#plan-21) |
-| Resource Packs | **Resource Packs** in the Registry (Forge-generatable) | ➕ | [27](../docs/design/platform-engineering.md#plan-25), [06](../docs/design/ai-native-agent-auth.md#plan-06) |
+| Resource Packs | **Resource Packs** in the Registry (auto-generatable) | ➕ | [27](../docs/design/platform-engineering.md#plan-25), [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | RBAC + approvals | ABAC + policy gates | ✅ | [12](../docs/design/security-networking.md#plan-12), [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | Audit logs (365d, immutable) | Event log **is** the audit log (replayable) | ➕ | [11](../docs/design/data-plane.md#plan-11), [14](../docs/design/reliability-observability-cost.md#plan-05) |
 | Drift detection | Drift loop (heal/propose/ignore) | ✅ | [05](../docs/design/reliability-observability-cost.md#plan-05) |
@@ -257,7 +257,7 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 | **Auditable matching** (`match.Decided` events — "why this infra", replayable) | [25](../docs/design/platform-engineering.md#plan-25), [11](../docs/design/data-plane.md#plan-11) |
 | **WASM-first polyglot runtime** (not K8s-centric) | [20](../docs/design/wasm-runtime-wit.md#plan-20) |
 | **Event-sourced replay/time-travel + DR-as-replay** | [11](../docs/design/data-plane.md#plan-11), [05](../docs/design/reliability-observability-cost.md#plan-05) |
-| **Forge-generated Resource Definitions, Packs & implementations** (not human-only) | [23](../docs/design/forge-generated-stack.md#plan-23), [06](../docs/design/ai-native-agent-auth.md#plan-06) |
+| **AI-generated Resource Definitions, Packs & implementations** (not human-only) | [23](../docs/design/generated-stack.md#plan-23), [06](../docs/design/ai-native-agent-auth.md#plan-06) |
 | **IfC-default simplicity** + mapping-as-sugar (lower learning curve) | [02](../docs/design/sdk-api.md#plan-02), [25](../docs/design/platform-engineering.md#plan-25) |
 | **OSS core + WIT-standard ports** (less lock-in) | [17](../docs/design/vision.md#plan-17), [24](../docs/design/wasm-runtime-wit.md#plan-20) |
 

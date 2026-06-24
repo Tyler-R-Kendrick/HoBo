@@ -6,7 +6,7 @@ The app layer is **CQRS** ([ADR-0053](./adr/03-data-plane.md#adr-0053)): writes 
 
 ## Plan 11
 
-> **Runtime/IfC integration.** Two event families are in the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./forge-generated-stack.md#plan-23)). Both ride the same envelope and replay rules below.
+> **Runtime/IfC integration.** Two event families are in the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./generated-stack.md#plan-23)). Both ride the same envelope and replay rules below.
 
 ### Why event sourcing is the foundation (not an add-on)
 **The append-only event log is the single source of truth** for both the control plane (the Yard) and the data-plane runtime (the Camp's runtime). This buys four properties:
@@ -69,7 +69,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `ws.Connected` (connId + subprotocol + origin + Camp) · `ws.Authenticated` (principal/`PrincipalRef` bound to the connection — authz via `.allow()`/`policy.Decided`) · `ws.Subscribed` / `ws.Unsubscribed` (channel/room membership for fan-out) · `ws.Disconnected` (connId + close code/reason + `by: client|server|policy`)
 
 **Registry**
-`provider.Registered` · `provider.CapabilityManifestUpdated` · `provider.Deprecated` · `forge.PluginCertified` · `registry.BundleImported` (signed offline bundle imported + verified — air-gap supply chain, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036))
+`provider.Registered` · `provider.CapabilityManifestUpdated` · `provider.Deprecated` · `gen.PluginCertified` · `registry.BundleImported` (signed offline bundle imported + verified — air-gap supply chain, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036))
 
 **Runtime (data-plane, per Run)** — mirrors Vercel's durable model
 `run.Started` · `run.StepScheduled` · `run.StepCompleted` · `run.StepFailed` · `run.SleepScheduled` · `run.HookCreated` · `run.HookResumed` · `run.Suspended` · `run.Completed` · `run.Failed`
@@ -80,10 +80,10 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **IfC collection** (the resource-collection step, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21))
 `bindle.ResourcesCollected` · `bindle.ManifestProduced`
 
-**Links & WIT-boundary calls** (the trace stream powering AI implement/evolve/live-fix, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 23](./forge-generated-stack.md#plan-23))
+**Links & WIT-boundary calls** (the trace stream powering AI implement/evolve/live-fix, [Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 23](./generated-stack.md#plan-23))
 `link.Established` (carries the **boundary mode** — `live`/`mock`/`record`/`replay`/`fork`/`shadow`/`fault` — for boundary virtualization, [ADR-0076](./adr/02-identity-security.md#adr-0076)) · `link.Called` · `stub.Recorded` · `impl.Generated` · `impl.Certified` · `impl.Promoted` · `livefix.Proposed` · `livefix.Applied` · `livefix.RolledBack`
 
-> **Boundary virtualization & sandbox lanes** ([ADR-0076](./adr/02-identity-security.md#adr-0076)) add **no new families** but **two envelope/routing rules**: (1) the **`EventEnvelope` carries `lane`** (a signed, principal/tenant-bound lane token) and **every subscriber/Reactor/saga/queue dispatch filters by lane, deny-by-default** — a baseline subscriber **ignores** lane events (so a forked service's emitted event can't drive a baseline subscriber to mutate real state), a lane subscriber gets lane events + baseline read-through; (2) **routing is the membrane-enforced signed token, *not* a per-request `policy.Decided`** (that is a deploy/gate-time fact). A sandbox lane is otherwise an `env.*` overlay; the boundary mode rides `link.Established`, `shadow` rides `impl.Shadowed`/`eval.*`, `fault` rides `chaos.*`. **Lane-origin events are tagged with the lane id and excluded by default** from observed-contract promotion ([Plan 29](./contracts-policy-flags.md#plan-29)), training trajectories ([Plan 23](./forge-generated-stack.md#plan-23)), and tenant metering rollups ([ADR-0039](./adr/02-identity-security.md#adr-0039)). A lane run is replayable **only** with its baseline read-through recorded (value + observed `seq`).
+> **Boundary virtualization & sandbox lanes** ([ADR-0076](./adr/02-identity-security.md#adr-0076)) add **no new families** but **two envelope/routing rules**: (1) the **`EventEnvelope` carries `lane`** (a signed, principal/tenant-bound lane token) and **every subscriber/Reactor/saga/queue dispatch filters by lane, deny-by-default** — a baseline subscriber **ignores** lane events (so a forked service's emitted event can't drive a baseline subscriber to mutate real state), a lane subscriber gets lane events + baseline read-through; (2) **routing is the membrane-enforced signed token, *not* a per-request `policy.Decided`** (that is a deploy/gate-time fact). A sandbox lane is otherwise an `env.*` overlay; the boundary mode rides `link.Established`, `shadow` rides `impl.Shadowed`/`eval.*`, `fault` rides `chaos.*`. **Lane-origin events are tagged with the lane id and excluded by default** from observed-contract promotion ([Plan 29](./contracts-policy-flags.md#plan-29)), training trajectories ([Plan 23](./generated-stack.md#plan-23)), and tenant metering rollups ([ADR-0039](./adr/02-identity-security.md#adr-0039)). A lane run is replayable **only** with its baseline read-through recorded (value + observed `seq`).
 
 **Platform config & matching** (Resource Definitions, [Plan 25](./platform-engineering.md#plan-25))
 `resourcedef.Registered` · `resourcedef.Updated` · `pack.Imported` · **`match.Decided`** (winning definition + full lexicographic ranking [specificity → priority → objective → stable tiebreak] + objective used + tie flag + rejected candidates with reasons → "why this infra", deterministic/replayable — [ADR-0033](./adr/01-architecture-core.md#adr-0033))
@@ -106,7 +106,7 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Cost routing & credits** (the Dispatcher, [ADR-0071](./adr/01-architecture-core.md#adr-0071)) — credit/budget state is the `CreditLedgerView` *projection*; **placement** reuses `match.Decided`, **traffic** reuses `domain.RoutingChanged`
 `dispatch.Decided` (per-job selection of a `runner`/`build-machine` provider + full ranking + objective + the credit-ledger snapshot used → "why this build/CI ran here", deterministic/replayable like `match.Decided`) · `credit.Registered` (a provider's free-tier/promo/committed allotment declared + reset window/expiry) · `credit.Reset` (a free-tier/credit window rolled over) · `credit.Exhausted` (free headroom hit zero → the Dispatcher stops preferring it; consumption itself is derived from `MeteringView`, no per-use event)
 
-**Evals & promotion** ([Plan 23](./forge-generated-stack.md#plan-23))
+**Evals & promotion** ([Plan 23](./generated-stack.md#plan-23))
 `eval.Ran` · `eval.GatePassed` · `eval.GateFailed` · `impl.Shadowed` · `impl.Promoted`
 
 **Golden Suites** (the reproducible default test/eval/benchmark gate, [ADR-0082](./adr/02-identity-security.md#adr-0082))
@@ -121,8 +121,8 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Operator Agents (the Crew)** ([Plan 40](./operators-sre.md#plan-40)) — roster-level facts; per-agent runs reuse `run.*`, domain facts ride existing families
 `crew.AgentDispatched` (which operator + triggering signal) · `crew.ActionProposed` (action + blast radius + `policy.Decided` ref) · `crew.ActionApplied`/`crew.ActionDenied` (ride `policy.Decided`) · `crew.HandoffRequested` (escalate to another operator or a human)
 
-**Forge generation** ([Plan 23](./forge-generated-stack.md#plan-23))
-`forge.Requested` · `forge.CandidateGenerated` · `forge.Validated` · `forge.ValidationFailed` · `forge.Repaired` (iteration n + failing-assertion set) · `forge.NeedsHuman` · `forge.Certified` (extends the Registry's `forge.PluginCertified` + `impl.*`)
+**AI generation** ([Plan 23](./generated-stack.md#plan-23))
+`gen.Requested` · `gen.CandidateGenerated` · `gen.Validated` · `gen.ValidationFailed` · `gen.Repaired` (iteration n + failing-assertion set) · `gen.NeedsHuman` · `gen.Certified` (extends the Registry's `gen.PluginCertified` + `impl.*`)
 
 **App-data migrations** ([Plan 32](#plan-32)) — the developer's `sql`-resource schema/data, *not* this log's own upcasting (see Schema evolution below)
 `migration.Planned` · `migration.SnapshotTaken` · `migration.PhaseApplied` (phase = `expand`/`backfill`/`contract` + the diff) · `migration.Verified` · `migration.RolledBack` · `migration.Failed` · **(cross-cloud move)** `migration.Exported` · `migration.Imported` · `migration.CutOver`
@@ -144,9 +144,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `statuspage.Published` (a project's public page went live — the declared public-component allowlist + redaction profile + a content hash of the served snapshot; **re-emitted on every allowlist/profile change** so the in-force profile is reconstructable at any time) · `statuspage.Unpublished` (retracted) · `statuspage.IncidentPosted` (a curated public incident update — its free text redaction-scanned before publish; subscriber delivery rides `notify`, [ADR-0059](./adr/03-data-plane.md#adr-0059)). *The operations dashboard, the status page's aggregate uptime/dependency views, and architecture availability (the `AvailabilityView`, "march of the 9s", [ADR-0078](./adr/02-identity-security.md#adr-0078)) are all **projections** over existing facts — no new event types; `project`/`environment` are rollup dimensions, not events.*
 
 **Chaos** ([ADR-0047](./adr/02-identity-security.md#adr-0047)) — fault injection is policy-gated + blast-radius-bounded
-`chaos.ExperimentStarted` (hypothesis + fault + blast radius) · `chaos.FaultInjected` · `chaos.SteadyStateChecked` · `chaos.Aborted` · `chaos.ExperimentCompleted` (a failed experiment's replay becomes a regression test, [Plan 23](./forge-generated-stack.md#plan-23))
+`chaos.ExperimentStarted` (hypothesis + fault + blast radius) · `chaos.FaultInjected` · `chaos.SteadyStateChecked` · `chaos.Aborted` · `chaos.ExperimentCompleted` (a failed experiment's replay becomes a regression test, [Plan 23](./generated-stack.md#plan-23))
 
-**Training** (`"use training"` semantic-function optimization, [Plan 23](./forge-generated-stack.md#plan-23))
+**Training** (`"use training"` semantic-function optimization, [Plan 23](./generated-stack.md#plan-23))
 `training.RunStarted` · `training.TrajectoryCaptured` (OTel/OpenInference span tree + I/O) · `training.RewardObserved` (live-eval signal) · `training.CandidateProposed` (rewritten prompt/code) · `training.CandidateEvaluated` · `training.Promoted` · `training.Rejected`
 
 **App communications** (the `notify` port, [Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0059](./adr/03-data-plane.md#adr-0059)) — the app messaging *its* end-users via the shared receiver port ([ADR-0045](./adr/02-identity-security.md#adr-0045)); a send is a `step`, recipient is a `PrincipalRef`
@@ -159,9 +159,9 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 `model.Registered` (version + provider + model card + provenance) · `model.Promoted` (four-lens gate passed) · `guardrail.Blocked` (which check + the `policy.Decided` ref) · `redteam.ExperimentStarted` · `redteam.FindingRecorded` (→ regression test in a governed eval-dataset) · `redteam.ExperimentCompleted` (chaos-tier sibling, [ADR-0047](./adr/02-identity-security.md#adr-0047))
 
 **Registry distribution** ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)) — a governed lifecycle over already-signed/certified artifacts; install ≠ force (Matching binds)
-`listing.Published` · `listing.Certified` (signed + `@hobo/conformance`-passed + provenance — uncertified ⇒ unlisted) · `listing.Installed` (extends `provider.Registered`/`pack.Imported`/`forge.Certified`) · `listing.Yanked` (compromised/broken version pulled; installed copies flagged by `hobo doctor`, not silently broken)
+`listing.Published` · `listing.Certified` (signed + `@hobo/conformance`-passed + provenance — uncertified ⇒ unlisted) · `listing.Installed` (extends `provider.Registered`/`pack.Imported`/`gen.Certified`) · `listing.Yanked` (compromised/broken version pulled; installed copies flagged by `hobo doctor`, not silently broken)
 
-**Derivatives** ([Plan 23](./forge-generated-stack.md#plan-23)/[ADR-0057](./adr/07-portability-extensibility.md#adr-0057)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
+**Derivatives** ([Plan 23](./generated-stack.md#plan-23)/[ADR-0057](./adr/07-portability-extensibility.md#adr-0057)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
 `derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed` · `derivative.EphemeralPatchApplied` (a runtime-instance patch's full diff + regions + provenance — *not* promoted to source control, but durable in the log so replay reconstructs the patched instance; [ADR-0057](./adr/07-portability-extensibility.md#adr-0057))
 
 **Junction (peer federation)** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — cross-Yard trust/policy/registry federation under an agreed root; never reaches into a member Yard's state
@@ -272,7 +272,7 @@ Long-lived subscriptions multiplex over **one** gateway connection per client (W
 ### Events ([Plan 11](#plan-11))
 `subscription.Opened` · `subscription.Recomputed` (new `seq` + read-set hash) · `subscription.Pushed` · `subscription.Closed` · **`data.Changed`** (normalized sink change-feed event). Pushed *results* are ephemeral (not persisted); *subscriptions* are a projection so they rebuild on Reactor failover. Schema evolution adds no reactive-path events: index create/change rides **`migration.*`** (§Migrations); a vector/graph/OWL/hybrid search is a step (`run.StepCompleted`).
 
-### Verification ([Plan 9](./forge-generated-stack.md#plan-09))
+### Verification ([Plan 9](./generated-stack.md#plan-09))
 - **Subscription test:** `subscribe` → append an event in the read-set → assert a push at the new `seq` with the correct materialized value; assert monotonicity (no regression) and reads-your-writes (a client's command is visible to its own subscription before/at ack).
 - **Replay-then-live:** a new subscriber receives the current value (folded to `seq`) before any live push.
 - **Change-feed conformance:** the `change-feed` capability suite (a sink that claims it must emit ordered `data.Changed` for insert/update/delete) — same trust-boundary model as other ports.
@@ -429,7 +429,7 @@ Each paradigm is a **projection-sink kind** behind one stable WIT port, a Matchi
 | **Object / data-lake** (S3/Parquet) | adapter | record → partitioned files (partition keys from fields) | **non-reactive** (batch) | append/compaction latency; query via an OLAP engine |
 | **OLAP / columnar** (ClickHouse/BigQuery/DuckDB) | adapter | record → columnar table; fields → typed columns | **non-reactive** (analytical) | bounded-staleness batch; not for reads-your-writes UI |
 
-**Honest reactivity rule (one sentence; canonical: [ADR-0052](./adr/03-data-plane.md#adr-0052) §3):** a projection is reactive **iff** its sink advertises the `change-feed` capability **or** it is the native log-backed projection; everything else is typed `reactive: false` and `hobo doctor` warns when a `"use query"` depends on it. Each sink kind ships a `@hobo/conformance` suite ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 9](./forge-generated-stack.md#plan-09)): claim a paradigm → round-trip a fixture record set, **honor the declared consistency level** ([ADR-0052](./adr/03-data-plane.md#adr-0052)), and (if reactive) emit ordered `data.Changed`.
+**Honest reactivity rule (one sentence; canonical: [ADR-0052](./adr/03-data-plane.md#adr-0052) §3):** a projection is reactive **iff** its sink advertises the `change-feed` capability **or** it is the native log-backed projection; everything else is typed `reactive: false` and `hobo doctor` warns when a `"use query"` depends on it. Each sink kind ships a `@hobo/conformance` suite ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 9](./generated-stack.md#plan-09)): claim a paradigm → round-trip a fixture record set, **honor the declared consistency level** ([ADR-0052](./adr/03-data-plane.md#adr-0052)), and (if reactive) emit ordered `data.Changed`.
 
 #### Composition (reuse, not reinvent)
 - **Matching ([Plan 25](./platform-engineering.md#plan-25)/[ADR-0033](./adr/01-architecture-core.md#adr-0033)).** The architect declares a `projection-sink` Resource Definition (`defineResource({ type: "projection-sink", paradigm, provider, driver, with, match })`); the Planner selects per context — native projection in a preview Camp, managed Postgres in prod — recorded in `match.Decided`. **Developer owns the logical record + query; architect owns the mapping + sink** — the autonomy split *is* the Matching boundary.
@@ -526,12 +526,12 @@ Cross-cloud sink moves use the export→import path above within an equivalence 
 #### Migration events ([Plan 11](#plan-11))
 `migration.Planned` · `migration.SnapshotTaken` · `migration.PhaseApplied` (phase = `expand`/`backfill`/`contract`, with the diff) · `migration.Verified` · `migration.RolledBack` · `migration.Failed` · (cross-cloud move) `migration.Exported` · `migration.Imported` · `migration.CutOver`. Every phase, snapshot, and cutover is an immutable, replayable fact → "what changed the schema, when, and could it be rolled back?" is answerable from the log.
 
-#### Migration verification ([Plan 9](./forge-generated-stack.md#plan-09))
+#### Migration verification ([Plan 9](./generated-stack.md#plan-09))
 - **Migration test:** declare schema vN→vN+1 → assert the diff engine produces the expected **expand/backfill/contract** phases; assert a **destructive contract phase that breaks a still-running version is blocked** by `can-deploy` (`compat.GateFailed`); assert **snapshot + restore** rollback returns the prior state.
 - **Cross-cloud move test:** export→import a fixture DB **within the Postgres equivalence class** to a second Camp → assert row counts/checksums match and cutover/rollback both work.
 
 #### Migration scope
-Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see above). Multi-region active-active data is an [ADR-0040](./adr/01-architecture-core.md#adr-0040) topology concern ([Q16](./forge-generated-stack.md#plan-09)).
+Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see above). Multi-region active-active data is an [ADR-0040](./adr/01-architecture-core.md#adr-0040) topology concern ([Q16](./generated-stack.md#plan-09)).
 
 ### Search — the generalized `search` capability
 
@@ -576,7 +576,7 @@ The boundary follows HoBo's determinism rules ([ADR-0050](./adr/03-data-plane.md
 
 #### Embeddings — the `embed` capability (for the vector extension)
 The **vector extension** can **auto-embed** indexed rows and text queries via an **`embed` capability** (`hobo:embed`), brokered secretlessly ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 21](./authoring-resources-wiring.md#plan-21)) so developers don't hand-wire an embedding API. The embedder is itself a capability **realized per Camp** and selected by Matching:
-- **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; relates to [Q20](./forge-generated-stack.md#plan-09) / the air-gap gap).
+- **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; relates to [Q20](./generated-stack.md#plan-09) / the air-gap gap).
 - **Hosted embedding API** — for prod scale/quality.
 
 **BYO precomputed vectors** is the escape hatch (compute embeddings in your own step, pass the vector in).
@@ -586,7 +586,7 @@ The **vector extension** can **auto-embed** indexed rows and text queries via an
 #### Search events ([Plan 11](#plan-11))
 **No new event types.** Reactive full-text search reuses `subscription.Opened`/`subscription.Recomputed`/`subscription.Pushed` + **`data.Changed`**; index create/change rides **`migration.*`** (§Migrations); a vector/graph/OWL/hybrid search is a step (`run.StepCompleted`). The retrieval surface adds capability, not catalog bloat.
 
-#### Search verification ([Plan 9](./forge-generated-stack.md#plan-09))
+#### Search verification ([Plan 9](./generated-stack.md#plan-09))
 A **search test**: index a fixture corpus, then assert (a) an in-core full-text query returns the expected ranked hits **and is reactive** (a write emits `data.Changed` → the subscribed result re-pushes); (b) with the vector extension installed, vector search returns cosine-ranked ids with a **filter** applied; (c) **hybrid** RRF fuses full-text + the vector extension; (d) the **same `search` Bindle resolves to Postgres FTS in a preview Camp and a managed engine in prod** (portability/equivalence — [ADR-0024](./adr/07-portability-extensibility.md#adr-0024)); (e) the `embed` capability is realized by a **local model in an air-gapped Camp** (no egress).
 
 #### Search scope

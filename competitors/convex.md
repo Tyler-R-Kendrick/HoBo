@@ -478,7 +478,7 @@ Head-to-head:
 | Log streams / exceptions / dashboard | Observability + run inspector + replay | ✅➕ | [14](../docs/design/reliability-observability-cost.md#plan-05), [07](../docs/design/developer-experience.md#plan-07) |
 | Self-host (Rust backend; FSL→Apache) | Self-host = hosted (the Yard is a Bindle); OSS core | ✅ | [04](../docs/design/control-plane.md#plan-04), [17](../docs/design/vision.md#plan-17) |
 | Auth: `customJwt`/OIDC (Convex Auth/Clerk/Auth0) | Workload/agent identity (SVIDs, OIDC principals); **shoo** composes via `customJwt` | ↔ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [12](../docs/design/security-networking.md#plan-12), [../shoo](shoo.md) |
-| AI: MCP server + agent skills | Agents-as-principals + MCP control surface + Forge | ✅➕ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [23](../docs/design/forge-generated-stack.md#plan-23) |
+| AI: MCP server + agent skills | Agents-as-principals + MCP control surface + generation pipeline | ✅➕ | [06](../docs/design/ai-native-agent-auth.md#plan-06), [23](../docs/design/generated-stack.md#plan-23) |
 
 ### Convex-as-a-HoBo-provider (the composing relationship)
 
@@ -489,4 +489,4 @@ The cleanest framing: **Convex is a backend HoBo could realize as a capability p
 - **Multi-cloud + IaC + matching** — HoBo provisions *across providers* by context ([Plan 25](../docs/design/platform-engineering.md#plan-25)); Convex is one backend.
 - **Event-sourced replay/time-travel + audit** as the substrate ([Plan 11](../docs/design/data-plane.md#plan-11)).
 - **WASM-first polyglot runtime** ([Plan 20](../docs/design/wasm-runtime-wit.md#plan-20)) vs Convex's TS/JS runtime.
-- **Agent-native Forge** generation of providers/implementations/definitions ([Plan 23](../docs/design/forge-generated-stack.md#plan-23)).
+- **Agent-native generation pipeline** generation of providers/implementations/definitions ([Plan 23](../docs/design/generated-stack.md#plan-23)).

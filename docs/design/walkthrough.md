@@ -62,6 +62,37 @@ import { pulumi } from "@hobo/iac-pulumi";                                      
 | **5** | **DevOps** | run the control plane + CI fabric | `platform/yard.ts`, `platform/runners.ts` | `hobo up ./platform` |
 | **6** | **SRE** | SLOs, runbooks, the SRE operator | `ops/slos.ts`, `ops/runbooks.ts`, `ops/crew.ts` | observe; `hobo inspect` |
 
+### The repo, by role
+
+One repository; each role owns a folder; everything lowers to one Manifest IR and ships with the one verb. This is the whole map — every file the six Parts touch, in one place:
+
+```text
+snapshop/                       # one repo, one Manifest IR, one verb (hobo up)
+├─ src/                         # ── App developer ───────────  loop: hobo dev → hobo up
+│  ├─ app.ts                    #   api + resources (.allow)
+│  ├─ pipeline.ts               #   "use workflow" + steps
+│  ├─ cart.ts                   #   actor + checkout saga
+│  ├─ orders.ts                 #   command/view  (@hobo/data)
+│  ├─ feed.ts feed.training.ts  #   "use trainable" + its typed groundings
+│  └─ cart.test.ts              #   vitest; boundaries auto-mocked
+├─ platform/                    # ── Platform eng / DevOps ───  loop: hobo up ./platform
+│  ├─ yard.ts                   #   control plane + .register(provider)
+│  ├─ camps.ts  topology.ts     #   Camps, Yards, Junctions
+│  ├─ resources.ts              #   golden paths (defineResource + match)
+│  └─ runners.ts                #   cost-routed CI fabric
+├─ delivery/                    # ── GitOps ──────────────────  loop: git push → CI hobo up
+│  └─ checkout.ts  rollout.ts   #   flags, experiments, canary policy
+├─ security/                    # ── SecOps ──────────────────  loop: gates on every up
+│  └─ policy.ts  waivers.ts     #   policy packs, break-glass
+├─ ops/                         # ── SRE ─────────────────────  loop: observe; approve gated fixes
+│  ├─ slos.ts  runbooks.ts      #   objectives, runbooks
+│  ├─ crew.ts                   #   the governed SRE operator
+│  └─ chaos.ts                  #   reliability experiments
+└─ .github/workflows/hobo.yml   #   CI = the same `hobo up`, keyless via OIDC
+```
+
+Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8s/`, no per-cloud YAML. The infrastructure is *implied by the code* in each folder and realized by Matching (Part 2).
+
 ---
 
 # Part 1 — App developer: write code, `hobo up`
@@ -175,6 +206,8 @@ export async function myOrders(userId: string) {
 ```
 
 You never chose a database or a query language; a platform/data engineer maps the `orders` projection onto a backend (Part 2). You name `view("orders")`, never a table.
+
+**Evolving the data is a versioned, gated change — not a migration ticket.** Add a field and you've authored a new contract version; the gate runs the same `can-deploy` check it runs for events, so an incompatible change is caught at `hobo up`, never at 2 a.m. in prod. The shape is always *expand → migrate → contract*: ship the additive change, let the projection **rebuild from the log** (the read model is event-sourced — disposable and regenerable), then retire the old shape once nothing reads it. You never hand-write `ALTER TABLE` against live data or sequence a migration by hand — you change the type, and the platform makes the rollout safe.
 
 ## 1.5 — Test the way it runs; read a refusal
 

@@ -57,7 +57,7 @@ import { pulumi } from "@hobo/iac-pulumi";                                      
 |---|---|---|---|---|
 | **1** | **App developer** | write code → see it run | `app.ts`, `feed.ts`, `cart.ts` | `hobo dev` → `hobo up` |
 | **2** | **Platform engineer** | register providers, set golden paths | `platform/yard.ts`, `platform/resources.ts` | `hobo up ./platform` |
-| **3** | **GitOps** | declare delivery; git is the trigger | `delivery/pipelines.ts`, flags/experiments | `git push` (CI runs `hobo up`) |
+| **3** | **GitOps** | declare delivery + PR previews; git is the trigger | `delivery/pipelines.ts`, flags/experiments | `git push` (CI runs `hobo up`) |
 | **4** | **SecOps** | policy + identity as code | `security/policy.ts`, `.allow()` scopes | gates enforce on every `up` |
 | **5** | **DevOps** | run the control plane + CI fabric | `platform/yard.ts`, `platform/runners.ts` | `hobo up ./platform` |
 | **6** | **SRE** | SLOs, runbooks, the SRE operator | `ops/slos.ts`, `ops/runbooks.ts`, `ops/crew.ts` | observe; `hobo inspect` |
@@ -176,28 +176,70 @@ export async function myOrders(userId: string) {
 
 You never chose a database or a query language; a platform/data engineer maps the `orders` projection onto a backend (Part 2). You name `view("orders")`, never a table.
 
-## 1.5 — Trainable methods: a directive, not a framework
+## 1.5 — Test the way it runs; read a refusal
 
-Some functions should improve themselves from real traffic. Mark one **`"use trainable"`** — the same ergonomics as `"use workflow"`, the spirit of Microsoft Trace's decorated methods — and attach three groundings (intent, contract, rubric). The optimizer owns the body; you own the guardrails:
+You don't stand up infrastructure to test. Every boundary carries a contract, so HoBo **auto-mocks** the ones a test doesn't exercise — your code runs against contract-true fakes, in your normal test runner:
 
 ```ts
-// feed.ts
-import { z } from "zod";
+// cart.test.ts — vitest; boundaries auto-mocked from their contracts, zero infra.
+import { test, expect } from "vitest";
+import { harness } from "@hobo/test";
+import { checkout } from "./cart";
 
-/**
- * @intent   Order photos to maximize dwell WITHOUT burying brand-new sellers.
- * @contract input RankInput; output Photo[]; invariant out.length === input.candidates.length; forbidden out[0].nsfw
- * @rubric   dwellLift >= 0.80, newSellerShare >= 0.75, latencyP95 >= 0.90
- */
+test("a declined card leaves no partial state", async () => {
+  const h = harness(checkout, { charge: () => { throw new CardDeclined(); } });  // override one boundary
+  await h.run("u1");
+  expect(h.events).toContainEqual({ type: "InventoryReleased", userId: "u1" });  // compensation fired
+});
+```
+
+When you ship, the **gate is part of `hobo up`** — there's no separate verify tool, and a refusal is precise and actionable:
+
+```bash
+hobo up --camp prod
+#   gate: can-deploy ✗
+#   BLOCKED  api@1.8.0 publishes order.created v3 (dropped tenantId),
+#            but worker@1.4.2 (running in prod) still consumes tenantId.
+#   fix:     dual-publish tenantId for one migration window, OR deploy worker first.
+#   nothing was provisioned — a blocked gate is a no-op, prod is untouched.
+```
+
+Fix it forward and the same `up` proceeds. Deploys never half-apply.
+
+## 1.6 — Trainable methods: a directive, plus typed groundings
+
+Some functions should improve themselves from real traffic. Mark one **`"use trainable"`** — the same ergonomics as `"use workflow"`, the spirit of Microsoft Trace's decorated methods:
+
+```ts
+// feed.ts — the method itself: a directive marks it AI-rewritable.
 export async function rankFeed(input: RankInput): Promise<Photo[]> {
-  "use trainable";                                              // AI-rewritable semantic function
+  "use trainable";                                              // the optimizer owns this body
   return [...input.candidates].sort((a, b) => b.likes - a.likes);   // your baseline / fallback
 }
 ```
 
-Ship it with `hobo up`. It can't improve until real traffic accrues; then the optimizer captures traces, runs candidates on a shadow lane, and a candidate is promoted **only if it clears the rubric** — gated, signed, reversible. You watch candidates and confidence intervals in the dashboard; the live app picks up the promoted version on the next `hobo up`. **No `hobo train` command exists** — it's a property of your code, not a CLI ritual.
+The groundings the optimizer needs aren't magic comments — they're a **typed registration** next to the function (intent, a contract, a rubric):
 
-## 1.6 — Ship
+```ts
+// feed.training.ts
+import { trainable } from "@hobo/sdk";
+import { z } from "zod";
+import { rankFeed } from "./feed";
+
+export default trainable(rankFeed, {
+  intent:   "Order photos to maximize dwell without burying brand-new sellers.",
+  contract: {
+    input: RankInput, output: z.array(Photo),
+    invariants: [(out, { candidates }) => out.length === candidates.length],
+    forbidden:  [(out) => out[0]?.nsfw === true],
+  },
+  rubric:   { dwellLift: 0.80, newSellerShare: 0.75, latencyP95: 0.90 },   // scorer → threshold
+});
+```
+
+Ship with `hobo up`. It can't improve until real traffic accrues; then the optimizer captures traces, runs candidates on a shadow lane, and promotes one **only if it clears the rubric** — gated, signed, reversible. You watch candidates and their confidence intervals in the dashboard; the live app adopts a promoted version on the next `hobo up`. **No `hobo train` command exists** — it's a property of your code.
+
+## 1.7 — Ship
 
 ```bash
 hobo up                  # to your default camp
@@ -391,6 +433,30 @@ export const apiRollout = rollout("api", { strategy: "canary", steps: ["10%", "5
 
 You `hobo up` this like anything else. Results, exposures, and winners show up in the dashboard and via MCP; the winning variant promotes through the **same gate** as a deploy and the app adopts it on the next `up`. Every flip is a `flag.Changed` event — a full "who flipped what, when, for whom" audit standalone flag tools lack.
 
+## 3.4 — Every PR gets a real preview, then cleans itself up
+
+A pull request opens an **ephemeral Camp** (Matching picks cheap golden-path variants, auto-TTL) and closes it on merge — preview infrastructure with no bespoke tooling, just `up`/`down` on a per-PR camp:
+
+```yaml
+  preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - run: npx hobo up   --camp pr-${{ github.event.number }}   # ephemeral; cheap variants via Matching (Part 2)
+      - run: gh pr comment --body "Preview → https://pr-${{ github.event.number }}.preview.acme.dev"
+  teardown:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - run: npx hobo down --camp pr-${{ github.event.number }}
+```
+
+It's the *same* app and the *same* gates as prod, mapped to throwaway infra by environment type — so "it works in preview" actually means something.
+
+## 3.5 — Git is the desired state; drift is an event, not a 2 a.m. surprise
+
+Because every resource's desired state is the committed graph, an out-of-band change (someone clicked in a cloud console) is detected and surfaced as **`resource.DriftDetected`**, and re-running `hobo up` is an idempotent reconcile back to git. A GitOps operator can watch for drift and open a reconcile PR for you to review — you read a diff, you don't get paged for config rot.
+
 ---
 
 # Part 4 — SecOps: trust as code, secrets never typed
@@ -425,7 +491,32 @@ export default policyPack("acme-baseline", { mandatory: true }, [          // ma
 
 ## 4.4 — Secrets and supply chain
 
-Secrets are **brokered references**, never values in env or files; the secret broker exposes `read-metadata`/`rotate`, never a grantable "read the value." Every artifact (provider plugin, build, deploy) is **signed + attested** (SLSA provenance), and a generated provider is only as trusted as the conformance suite it passed — the signed report is part of its Registry record.
+Secrets are **brokered references**, never values in env or files; the secret broker exposes `read-metadata`/`rotate`, never a grantable "read the value." Every artifact (provider plugin, build, deploy) is **signed + attested** (SLSA provenance) with an SBOM, and the deploy gate fails closed on a known-exploited CVE or an unsigned dependency. A generated provider is only as trusted as the conformance suite it passed — the signed report is part of its Registry record.
+
+## 4.5 — Investigate a denial; break the glass without breaking the rules
+
+When a gate denies, the reason is the `policy.Decided` event the `up` already printed — replayable, attributable, OCSF-exported. There's nothing to grep across five tools:
+
+```bash
+hobo up --camp prod
+#   gate: policy ✗
+#   DENIED  rule eu-data-stays-in-eu: 'orders' (pii) would land in us-east-1.
+#   policy.Decided  pack acme-baseline@4  subject ci@acme.yard  → audit:pol_7f31
+```
+
+A legitimate exception is a **gated waiver**, not a flag someone flips — a governed, time-boxed, separation-of-duties approval recorded as an event:
+
+```ts
+// security/waivers.ts — break-glass: signed, expiring, audited.
+import { waiver } from "@hobo/cloud";
+export default waiver("pol_7f31", {
+  reason:   "EU capacity incident; temporary US failover, approved by IR.",
+  approver: "role:security-admin",     // author ≠ approver; no one self-approves (SoD)
+  expires:  "2026-07-01T00:00:00Z",     // auto-revokes; no lingering exception
+});
+```
+
+`hobo up` passes for the window only; `policy.WaiverApproved` / `policy.WaiverExpired` bracket exactly what was allowed, by whom, and until when — the opposite of a console click nobody can reconstruct later.
 
 ---
 
@@ -468,6 +559,16 @@ export default dispatcher({ objective: "min-cost" }, [
 ## 5.3 — Fleet visibility
 
 Everything DevOps needs is a **projection over the event log** — the dashboard's fleet view (project × environment), or `hobo inspect`/`hobo logs` for scripting. No view has privileged state, so it can never disagree with the audit log. There's no `hobo fleet` verb; there's a dashboard and `inspect`.
+
+## 5.4 — Disaster recovery and upgrades are just `up`
+
+The Yard is event-sourced, so recovery is **rebuild from the log**, not restore-a-snapshot-and-pray:
+
+```bash
+hobo up ./platform --restore s3://acme-backups/yard.log   # replay the control plane to its last good state
+```
+
+And the Yard is itself a Bindle, so **upgrading it is deploying it** — bump `@hobo/cloud`, run `hobo up ./platform`, and the upgrade rides the same gate + canary + rollback as any app. No bespoke control-plane updater, no maintenance-window ritual, no "which version is the cluster actually on?"
 
 ---
 
@@ -519,7 +620,38 @@ export const sre = agent("sre", {
 });
 ```
 
-`hobo up ./platform` commissions it. When `checkout.latency` burns, it opens one correlated Incident, classifies (`provider-degraded`), and — for a **prod** write — **proposes** a canary failover that waits for your approval in the dashboard/MCP; a low-risk reversible fix it applies as an auto-rolling-back canary. A SEV it can't classify **escalates** to on-call with a deadline. The incident's event stream *is* its blameless postmortem, and a failed remediation becomes a permanent regression test. You direct a governed crew; you don't hand prod to a bot.
+`hobo up ./platform` commissions it. A real incident reads as one legible, replayable stream — diagnosis is autonomous, the prod write waits for you:
+
+```text
+slo.BudgetBurned         checkout.latency burning 3x
+incident.Opened          SEV2   (correlated alerts → ONE incident, not N pages)
+crew.AgentDispatched     sre
+incident.Classified      provider-degraded · db@prod-azure
+crew.ActionProposed      failover db → staging-cf, canary, auto-rollback on regression
+policy.Decided           prod write → REQUIRE-APPROVAL   [approve] [reject]  ← you, in dashboard/MCP
+crew.ActionApplied       (after approve) canary 10% → 100%, healthy
+incident.Resolved        MTTR 9m
+incident.PostmortemFiled replay of incident:<id>; the failing trace → a permanent regression test
+```
+
+A SEV it can't classify **escalates** to on-call with a deadline; a low-risk reversible fix it applies itself as an auto-rolling-back canary. You direct a governed crew; you don't hand prod to a bot.
+
+## 6.4 — Prove reliability on purpose (chaos as a test)
+
+Reliability you didn't verify is a guess. A chaos experiment is a typed hypothesis — a steady-state invariant, an injected fault, a blast-radius bound, an abort condition — and a failed one becomes a permanent regression test, the same mechanism that turns an incident into a guardrail:
+
+```ts
+// ops/chaos.ts
+import { chaos } from "@hobo/cloud";
+export default chaos("db-failover-holds-checkout-slo", {
+  steadyState: "slo:checkout.latency",                 // the invariant that must keep holding
+  inject:      { fault: "provider-degraded", target: "db@prod-azure" },
+  blastRadius: "1 camp",                               // bounded; never the whole fleet
+  abortIf:     "slo:photos.availability < 99.9%",       // trip-wire: stop and roll back
+});
+```
+
+It runs on a fork lane against shadowed traffic, never touching baseline state; the result is an event, and a regression is a finding you fix before a user ever sees it.
 
 ---
 
@@ -531,7 +663,7 @@ snapshop is provider-agnostic application code that **never changed** as it move
 |---|---|---|---|---|
 | **App developer** | `hobo inspect` | `app.ts`, `feed.ts` (`"use trainable"`), `cart.ts` | `hobo dev`, `hobo up` | clouds, IAM, YAML, deploy tools |
 | **Platform engineer** | `match.Decided` | `platform/yard.ts` (`.register`), `resources.ts` (golden paths) | `hobo up ./platform` | app business logic |
-| **GitOps** | plan + cost on PRs | `delivery/pipelines.ts`, flags/experiments | `git push` → CI `hobo up` | manual deploys |
+| **GitOps** | plan + cost + preview URL on PRs | `delivery/pipelines.ts`, flags/experiments | `git push` → CI `hobo up` | manual deploys |
 | **SecOps** | `policy.Decided` (OCSF) | `security/policy.ts`, `.allow()` scopes | gates on every `up` | static secrets |
 | **DevOps** | fleet projections | `platform/yard.ts`, `runners.ts` | `hobo up ./platform --seed` | laptop-as-control-plane |
 | **SRE** | SLO/incident projections | `ops/slos.ts`, `runbooks.ts`, `crew.ts` | observe; approve gated fixes | a metrics stack to babysit |

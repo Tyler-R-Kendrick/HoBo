@@ -53,11 +53,12 @@ Each grain key (ResourceActor, app actors) has at most one active instance:
 - **Split-brain safety:** all writes are quorum + fenced, so a minority partition cannot commit. Reads from a stale projection are bounded-staleness and labeled as such in the API.
 
 ### Deployment strategies as reusable saga templates
-Rollout strategy is a property of a `service`/`web` resource, implemented as a parameterized saga the ResourceActor runs:
+Rollout strategy is a property of a `service`/`web` resource, implemented as a parameterized saga the ResourceActor runs. **These strategies are the built-in default of the Harness's *delivery* leg (OpenDelivery, [ADR-0083](./adr/02-identity-security.md#adr-0083)); Argo Rollouts / Flagger / Spinnaker are per-Camp adapters behind the same `hobo:delivery` port** (the deploy gate decides *whether* to ship; the Harness decides *how* it rolls out, emitting `rollout.*`):
 - **Recreate** — stop old, start new (dev default).
 - **Blue/green** — provision green fully, health-gate, flip the router (provider `gateway` port), keep blue for fast rollback, reap after soak.
 - **Canary** — shift `x%` traffic, watch health signals for `t`, auto-advance or auto-rollback on regression. Steps + gates are events → fully auditable/replayable.
 - **Progressive** — staged canary (1%→10%→50%→100%) with gates between stages.
+- **Automated rollback** (Flagger-style) — a rollout step's metric/SLO analysis (OTEL) composing SLO error-budget burn ([ADR-0045](./adr/02-identity-security.md#adr-0045)) + continuous [Golden-suite](./adr/02-identity-security.md#adr-0082) failure; a breach auto-rolls-back as a policy obligation, else promotes.
 
 Health signals come from the data plane (the Camp's runtime metrics/streams) and/or provider health checks; the gate is a `step` with a timeout and a rollback compensation.
 

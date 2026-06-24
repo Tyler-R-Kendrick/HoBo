@@ -130,8 +130,11 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Custom domains & ingress** ([Plan 12](./security-networking.md#plan-12)/[ADR-0035](./adr/07-portability-extensibility.md#adr-0035))
 `domain.Registered` · `domain.Validated` (DNS/ACME challenge passed) · `domain.CertIssued` · `domain.CertRotated` · `domain.RoutingChanged` (routing-policy decision + chosen target Camps → "why traffic went where")
 
-**Feature flags** ([Plan 29](./contracts-policy-flags.md#plan-29)/[ADR-0044](./adr/02-identity-security.md#adr-0044))
+**Feature flags** (the Harness flags leg, [Plan 29](./contracts-policy-flags.md#plan-29)/[ADR-0044](./adr/02-identity-security.md#adr-0044))
 `flag.Defined` · `flag.Changed` (value/targeting diff + actor — "who flipped what, for whom") · `flag.Evaluated` (sampled, optional, for experiments) · `flag.Archived` (flip-gate decisions ride `policy.Decided`)
+
+**Progressive delivery & experiments** (the Harness delivery + experiment legs, [ADR-0083](./adr/02-identity-security.md#adr-0083))
+`rollout.Started` · `rollout.Stepped` · `rollout.Promoted` · `rollout.RolledBack` · `rollout.Failed` (canary/blue-green steps; auto-rollback rides a `policy.Decided` obligation + SLO `alert.*`) · `experiment.Assigned` (sampled) · `experiment.Exposed` (sampled) · `experiment.Concluded`
 
 **SLO & alerting** ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0045](./adr/02-identity-security.md#adr-0045)) — SLO/budget state is a projection; these are the decision/notification facts
 `slo.Declared` · `slo.BudgetBurned` (burn-rate threshold crossed → policy input) · `alert.Fired` · `alert.Grouped` · `alert.Silenced` · `alert.Inhibited` · `alert.Resolved`

@@ -207,9 +207,19 @@ The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-007
 #### Decisions are events
 Every `policy.Decided` (effect + evidence + obligations), `policy.ViolationDetected`, `policy.WaiverRequested/Approved`, and obligation lifecycle is an event ([Plan 11](./data-plane.md#plan-11)) → a replayable, auditable answer to "*why was this allowed/blocked, under which pack version?*". The Gatekeeper (above) composes the policy decision with contracts + evals + conformance + cost into one `hobo verify` result.
 
-### Feature flags & progressive delivery
+### The Harness — progressive delivery (flags · delivery · experiment)
 
-> **Deploy ≠ release.** A canary ([Plan 5](./reliability-observability-cost.md#plan-05)) shifts traffic between *deployed versions*; a feature flag toggles *behavior within a running version* — kill-switches, gradual `%` rollout, per-segment targeting, experiments — without a redeploy. HoBo needs both, and flags compose with the contracts, policy, gates, audit, and reactive planes already in play here.
+> **Deploy ≠ release.** A canary ([Plan 5](./reliability-observability-cost.md#plan-05)) shifts traffic between *deployed versions*; a feature flag toggles *behavior within a running version* — kill-switches, gradual `%` rollout, per-segment targeting, experiments — without a redeploy. HoBo needs both, and they compose with the contracts, policy, gates, audit, and reactive planes already in play here.
+
+The **Harness** ([ADR-0083](./adr/02-identity-security.md#adr-0083)) is HoBo's **progressive-delivery core** — the subsystem that carries a *deployed* change to users safely. The deploy gate (the Gatekeeper/`can-deploy` + the [Golden suite](./adr/02-identity-security.md#adr-0082)) decides **whether** to ship; the Harness decides **how it rolls out**, through three pluggable, standard-shaped ports with **OpenTelemetry** ([ADR-0046](./adr/02-identity-security.md#adr-0046)) under all three:
+
+| Concern | Port | Built-in default | Adapters |
+|---|---|---|---|
+| **Flags** — kill-switch / `%` / targeting | **OpenFeature** `hobo:feature-flag` (real CNCF standard) | built-in store | flagd · LaunchDarkly · Unleash |
+| **Delivery** — canary · blue/green · rollouts · promotion policies · automated rollback | **OpenDelivery** `hobo:delivery` (HoBo-shaped port; CDEvents at the boundary) | HoBo canary + blue/green + auto-rollback ([Plan 5](./reliability-observability-cost.md#plan-05)) | Argo Rollouts · Flagger · Spinnaker |
+| **Experiment** — assignment · exposure · metrics · statistical analysis | **OpenExperiment** `hobo:experiment` (HoBo-shaped port; no standard yet) | event-log + eval/metrics surface | Statsig · GrowthBook · Optimizely · Eppo · Amplitude |
+
+**Honest about status:** OpenFeature + OpenTelemetry are real adopted standards; **OpenDelivery / OpenExperiment are HoBo-shaped port abstractions** (named adapters above), not standards today — HoBo speaks the real standard at the boundary if one emerges. The Harness's built-in engines are per-Camp Matching selections; the **core pattern** changes only if the industry's dominant release pattern does. The flag port detailed below is the OpenFeature leg; delivery composes with [Plan 5](./reliability-observability-cost.md#plan-05) and the `gateway`/`domain` traffic-split ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)), experiment with the eval surface ([Plan 23](./generated-stack.md#plan-23)).
 
 #### The `feature-flag` port — OpenFeature-compatible
 A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance the policy plane takes (OPA/Cedar as optional `policy-engine` providers, above). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, as established above and in [ADR-0015](./adr/02-identity-security.md#adr-0015).)
@@ -247,12 +257,14 @@ flowchart LR
 - **Targeting context** is the unified **`PrincipalRef`** — `ctx.user` (end-user claims/segments, [ADR-0038](./adr/02-identity-security.md#adr-0038)) and `ctx.identity` (SVID/tenant) — so flag targeting reuses HoBo's one identity model.
 - **Deterministic:** evaluation is a pure function of `(ruleset@seq, context)`, so it's **replayable** and safe to call inside a reactive `query()` ([ADR-0050](./adr/03-data-plane.md#adr-0050)).
 
-#### Progressive delivery — flags + deploy gates compose
-- A **gradual rollout** flag (`%` by segment) is the *release* dial; a **canary** ([Plan 5](./reliability-observability-cost.md#plan-05)) is the *deploy* dial — used together, you deploy dark, then ramp the flag, with the same health signals able to **auto-revert** the flag (a policy obligation) on SLO burn ([#25](./generated-stack.md#plan-09)).
-- **Experiments**: a multivariate flag + the eval/metrics surface ([Plan 5](./reliability-observability-cost.md#plan-05)) supports A/B without bespoke infra.
+#### OpenDelivery (`hobo:delivery`) — canary, blue/green, rollouts, promotion policies, automated rollback
+The delivery leg drives *how a deployed version takes traffic*. The built-in default is HoBo's canary + blue/green + auto-rollback ([Plan 5](./reliability-observability-cost.md#plan-05)) over the `gateway`/`domain` traffic-split ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)); **Argo Rollouts / Flagger / Spinnaker** are per-Camp adapters. **Automated rollback** is a delivery capability (Flagger-style metric analysis): each rollout step watches its SLO/metrics (OTEL), continuous [Golden-suite](./adr/02-identity-security.md#adr-0082) failure, and SLO error-budget burn ([ADR-0045](./adr/02-identity-security.md#adr-0045)) — a breach **auto-rolls-back** (a policy obligation), otherwise it **promotes**. The standard loop: deploy dark → ramp the flag → shift canary traffic → watch metrics → roll back or promote. Events `rollout.Started/Stepped/Promoted/RolledBack/Failed`.
+
+#### OpenExperiment (`hobo:experiment`) — assignment, exposure, metrics, statistical analysis
+The experiment leg measures *whether the change was good*. A `%`/multivariate flag provides **assignment**; **exposure** + **metrics** ride OTEL + the event log; **statistical analysis** runs over them (built-in default; **Statsig / GrowthBook / Optimizely / Eppo / Amplitude** as adapters). Self-evolving / continuous-ML experiments ride the `training-engine` + eval loop ([ADR-0025](./adr/03-data-plane.md#adr-0025)); the stats surface guards against peeking / multiple-comparisons / under-power. Events `experiment.Assigned` (sampled) · `experiment.Exposed` (sampled) · `experiment.Concluded`.
 
 #### Events ([Plan 11](./data-plane.md#plan-11))
-`flag.Defined` · `flag.Changed` (value/targeting diff + actor) · `flag.Evaluated` (sampled, optional — for experiment analytics) · `flag.Archived`. Flip-gate decisions ride the existing `policy.Decided`.
+`flag.Defined` · `flag.Changed` (value/targeting diff + actor) · `flag.Evaluated` (sampled, optional — for experiment analytics) · `flag.Archived`; delivery `rollout.*`; experiment `experiment.*`. Flip/rollback-gate decisions ride the existing `policy.Decided`.
 
 #### Verification ([Plan 9](./generated-stack.md#plan-09))
 A **feature-flag test**: define a flag → assert in-process eval is deterministic for a fixed `(ruleset@seq, ctx.user)`; a targeting rule selects the right segment; a flip emits `flag.Changed` and **re-pushes an affected reactive query** ([Plan 32](./data-plane.md#plan-32)); a **prod kill-switch flip requires the policy gate** (above); the built-in store works **offline/air-gap**; an OpenFeature provider adapter passes the same conformance.

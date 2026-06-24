@@ -79,6 +79,8 @@ A Camp's inline mapping ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate s
 - `bindings: { "shop.db": azure.cosmos({...}) }` → a definition matched by `resourceId: "shop.db"`.
 So a solo dev writes the one-liner and never sees definitions; a platform team adds explicit definitions (with classes + env-type matching) that win by specificity. **Precedence** = pure matching score (explicit definitions naturally outscore the `{}` defaults).
 
+**Where the `{}` defaults come from — resolvers.** Each provider package ships a **resolver** per capability it supports: its `equivalence` map (abstract port → that cloud's resource class) plus `realize()` ([Plan 4](./control-plane.md#plan-04)), and `.register(provider)` registers them. A resolver *is* the default Resource Definition for a capability on that cloud — so a Camp that declares only a **cloud + IaC** resolves the *entire* generated manifest with **zero** per-resource config. `defineResource`/`bindings`/`tiers` exist to **override** a resolver default, never to bootstrap the mapping. The same holds for an AI-generated provider: conformance proves its resolvers satisfy each claimed port before it is signed and registered.
+
 ### Resource classes
 `class` (`standard`/`ha`/`encrypted`/…) is declared on the resource ([Plan 21](./authoring-resources-wiring.md#plan-21)) and is a first-class matching dimension, so one logical port can have several platform realizations.
 

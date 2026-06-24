@@ -12,7 +12,7 @@ HoBo's bet: **the only command an app developer runs is `hobo up`.** Everything 
 flowchart TB
   subgraph WRITE["everyone writes code, in their own package"]
     A["app dev → app code + .allow()"]
-    P["platform eng → providers + golden paths"]
+    P["platform eng → register providers + map camp to cloud+IaC"]
     G["gitops → pipelines + promotion rules"]
     S["secops → policy packs + identities"]
     D["devops → the self-hosted Yard + CI runners"]
@@ -56,7 +56,7 @@ import { pulumi } from "@hobo/iac-pulumi";                                      
 | Part | Role | Your loop | Your files | Your command |
 |---|---|---|---|---|
 | **1** | **App developer** | write code → see it run | `app.ts`, `feed.ts`, `cart.ts` | `hobo dev` → `hobo up` |
-| **2** | **Platform engineer** | register providers, set golden paths | `platform/yard.ts`, `platform/resources.ts` | `hobo up ./platform` |
+| **2** | **Platform engineer** | map each Camp to a cloud + IaC; override only when needed | `platform/yard.ts`, `platform/resources.ts` | `hobo up ./platform` |
 | **3** | **GitOps** | declare delivery + PR previews; git is the trigger | `delivery/pipelines.ts`, flags/experiments | `git push` (CI runs `hobo up`) |
 | **4** | **SecOps** | policy + identity as code | `security/policy.ts`, `.allow()` scopes | gates enforce on every `up` |
 | **5** | **DevOps** | run the control plane + CI fabric | `platform/yard.ts`, `platform/runners.ts` | `hobo up ./platform` |
@@ -78,7 +78,7 @@ snapshop/                       # one repo, one Manifest IR, one verb (hobo up)
 ├─ platform/                    # ── Platform eng / DevOps ───  loop: hobo up ./platform
 │  ├─ yard.ts                   #   control plane + .register(provider)
 │  ├─ camps.ts  topology.ts     #   Camps, Yards, Junctions
-│  ├─ resources.ts              #   golden paths (defineResource + match)
+│  ├─ resources.ts              #   OPTIONAL overrides (golden paths)
 │  └─ runners.ts                #   cost-routed CI fabric
 ├─ delivery/                    # ── GitOps ──────────────────  loop: git push → CI hobo up
 │  └─ checkout.ts  rollout.ts   #   flags, experiments, canary policy
@@ -91,7 +91,7 @@ snapshop/                       # one repo, one Manifest IR, one verb (hobo up)
 └─ .github/workflows/hobo.yml   #   CI = the same `hobo up`, keyless via OIDC
 ```
 
-Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8s/`, no per-cloud YAML. The infrastructure is *implied by the code* in each folder and realized by Matching (Part 2).
+Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8s/`, no per-cloud YAML. The infrastructure is *implied by the code* in each folder and realized by the resolvers a Camp registers (Part 2).
 
 ---
 
@@ -143,6 +143,20 @@ app.get("/photos/:id", async (ctx) => ctx.json(await catalog.get(ctx.params.id) 
 ```
 
 `hobo dev` runs this against a local Postgres/object-store with hot reload; `hobo up` ships it. You never named a provider — that's Part 2's job, and it already happened.
+
+**What `hobo up` builds first is a manifest — generated from your code, not written by you.** A resource-collection pass runs your component and captures every resource and `.allow()` into a provider-agnostic IR. It names *abstract capabilities* — a kv, a bucket, an api — and **never a cloud**. This generated artifact is the entire contract handed to Part 2:
+
+```jsonc
+// snapshop.manifest.json — generated; schema hobo.manifest/v1
+{ "resources": {
+    "catalog": { "type": "kv.v1",     "port": "wasi:keyvalue",  "allow": ["get","set"] },
+    "images":  { "type": "bucket.v1", "port": "wasi:blobstore", "allow": ["read","write"] },
+    "main":    { "type": "api.v1",    "port": "wasi:http",
+                 "links": [ { "import": "wasi:keyvalue",  "to": "catalog" },
+                            { "import": "wasi:blobstore", "to": "images"  } ] } } }
+```
+
+Nothing in here is Azure or AWS; nothing is a SKU. *How* each capability becomes real infrastructure is decided next — by **resolvers** you, the app dev, never see.
 
 ## 1.3 — Durability without a queue to operate
 
@@ -284,9 +298,9 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 ---
 
-# Part 2 — Platform engineer: register providers, pave golden paths
+# Part 2 — Platform engineer: map a Camp to a cloud; resolvers do the rest
 
-**Your promise:** app devs never pick infrastructure because **you** decided how each abstract resource is realized, per environment, once. You build the control plane (the Yard) and **register providers in code** — there is no `hobo registry add`; **a provider must be registered before any Camp can bind to it.**
+**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **resolvers** — the capability→resource mappings the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is realized automatically; you write per-resource config **only to override a default.**
 
 ## 2.1 — The cloud SDK: build a Yard and register providers
 
@@ -321,7 +335,7 @@ export default yard("acme", {
 hobo up ./platform       # brings the Yard up; registered providers are now bindable by Camps
 ```
 
-`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. From this point, an app dev writing `camp("prod-azure", { provider: "azure" })` works **because you registered Azure** — they never see the wiring.
+`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **resolvers** — the built-in mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you.
 
 > **A provider that doesn't exist yet?** Generate one, then register it the same way:
 > ```ts
@@ -331,27 +345,31 @@ hobo up ./platform       # brings the Yard up; registered providers are now bind
 > ```
 > Air-gapped? `registry.import(signedBundle)` mirrors a signed offline bundle in-boundary — same trust checks, zero egress ([Plan 25](./platform-engineering.md#plan-25)).
 
-## 2.2 — Camps, Yards, Junctions — the real shapes
+## 2.2 — A Camp is just (cloud + IaC); the resolvers infer the rest
 
-App devs see thin Camps; you see the full mapping API. A Camp maps one Bindle onto one provider, with three levels of control (resolution order: `bindings` → `tiers` → `defaultProvider`, [Plan 2](./sdk-api.md#plan-02)):
+This is the whole baseline Camp. It names a cloud and an IaC engine — and says nothing about `catalog`, `images`, or the api:
 
 ```ts
 // platform/camps.ts
 import { camp } from "@hobo/cloud";
 import { azure } from "@hobo/provider-azure";
-import { aws } from "@hobo/provider-aws";
-import { cloudflare } from "@hobo/provider-cloudflare";
-import { postgresRuntime } from "@hobo/runtime-postgres";
+import { pulumi } from "@hobo/iac-pulumi";
 
-export const prodAzure = camp("prod-azure", {
-  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: azure({ region: "eastus" }),          // (a) whole-app: "host it on Azure, figure it out"
-  tiers:    { edge: cloudflare.workers() },              // (b) per-tier: storefront on the edge
-  bindings: { "snapshop.db": azure.cosmos({ consistency: "session" }) },   // (c) per-boundary pin
-});
+export const prod = camp("prod", { provider: azure(), iac: pulumi() });   // that's the entire mapping
 ```
 
-A **Yard** groups Camps under one provider and runs the control plane; a **Junction** federates Yards across clouds as peers (no shared state):
+`hobo up ./platform` walks the generated manifest from Part 1, and for each abstract capability a **registered resolver** claims it and emits concrete config, which `@hobo/iac-pulumi` realizes. You configured nothing per-resource:
+
+```bash
+hobo plan --camp prod
+#   match.Decided  catalog (kv)     → azure.tableStorage   [resolver @hobo/provider-azure]
+#   match.Decided  images  (bucket) → azure.blob           [resolver @hobo/provider-azure]
+#   match.Decided  main    (api)    → azure.containerApp   [iac pulumi · region eastus · est $/mo …]
+```
+
+The durable runtime is just another capability the resolver maps (managed Postgres on Azure) — you pin it only to override. Every choice is a recorded `match.Decided` ([Plan 25](./platform-engineering.md#plan-25)), so "why did `catalog` land on Table Storage?" is always answerable. **You never hand-write a resolver for a cloud that has a package** — `@hobo/provider-azure` ships them and `.register()` registered them; you author one only for something bespoke (a generated provider ships its own, above).
+
+A **Yard** groups Camps and runs the control plane; a **Junction** federates Yards across clouds as peers (no shared state):
 
 ```ts
 // platform/topology.ts
@@ -365,30 +383,34 @@ export default junction("acme").add(azureYard, euYard); // federate trust + sign
 
 `hobo up ./platform` realizes whatever this graph contains — one Camp, a multi-Camp Yard, or a cross-cloud Junction — with the same verb.
 
-## 2.3 — Golden paths: Resource Definitions + Matching
+## 2.3 — Overrides: change one default, keep the rest inferred
 
-This is the heart of platform DX: app devs say *what* (`a database`), you say *how*, **differently per environment**, once. The same app gets managed-HA Postgres in prod and a cheap container in preview — with no app edit, and an audit of every choice:
+Resolver defaults are sensible, not mandatory. When you want a specific SKU, a different shape per environment, or a tier on the edge, override **just that** — everything else still auto-infers. An override is the same `defineResource`/`bindings`/`tiers` API, and it **wins by specificity** over the resolver's default:
 
 ```ts
-// platform/resources.ts
+// platform/resources.ts — OPTIONAL. A prod-only HA Postgres golden path; preview keeps the cheap default.
 import { defineResource } from "@hobo/cloud";
-import { aws } from "@hobo/provider-aws";
+import { azure } from "@hobo/provider-azure";
 
 defineResource({ type: "database", engine: "postgres", class: "ha",
-  provider: aws, iac: "pulumi", with: aws.rds({ multiAz: true }),
-  match: { envType: "production" } });                    // prod → managed HA
+  with: azure.flexiblePostgres({ ha: true }),
+  match: { envType: "production" } });          // wins in prod by specificity; resolver default covers everywhere else
+```
 
-defineResource({ type: "database", engine: "postgres",
-  with: { container: "postgres:16" },
-  match: { envType: "ephemeral" } });                     // preview → cheap in-cluster
+```ts
+// inline, per-Camp overrides — pin one boundary, split one tier; the rest is untouched.
+camp("prod", { provider: azure(), iac: pulumi(),
+  bindings: { "catalog": azure.cosmos({ consistency: "session" }) },   // pin: this kv → Cosmos, not Table Storage
+  tiers:    { edge: cloudflare.workers() } });                          // split: the storefront tier to the edge
 ```
 
 ```bash
-hobo plan --camp preview
-#   match.Decided  database → postgres(container)  [envType=ephemeral wins; HA rejected: env mismatch]
+hobo plan --camp prod
+#   match.Decided  database (postgres) → azure.flexiblePostgres(ha)  [definition envType=production; beats resolver default]
+#   match.Decided  catalog  (kv)       → azure.cosmos                [binding pins it; resolver default rejected]
 ```
 
-Matching is **deterministic and recorded** (`match.Decided` with score + rejected candidates, [Plan 25](./platform-engineering.md#plan-25)), so "why did preview get the cheap DB?" is always answerable. Bundle definitions + policy + dashboards into signed **Resource Packs** to ship a whole golden path to other teams.
+Under the hood these compile to the same Resource Definitions the resolvers emit by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite.
 
 ---
 
@@ -695,7 +717,7 @@ snapshop is provider-agnostic application code that **never changed** as it move
 | Role | Reads | Writes | Runs | Never touches |
 |---|---|---|---|---|
 | **App developer** | `hobo inspect` | `app.ts`, `feed.ts` (`"use trainable"`), `cart.ts` | `hobo dev`, `hobo up` | clouds, IAM, YAML, deploy tools |
-| **Platform engineer** | `match.Decided` | `platform/yard.ts` (`.register`), `resources.ts` (golden paths) | `hobo up ./platform` | app business logic |
+| **Platform engineer** | `match.Decided` | `platform/yard.ts` (`.register`), `resources.ts` (overrides only) | `hobo up ./platform` | app business logic |
 | **GitOps** | plan + cost + preview URL on PRs | `delivery/pipelines.ts`, flags/experiments | `git push` → CI `hobo up` | manual deploys |
 | **SecOps** | `policy.Decided` (OCSF) | `security/policy.ts`, `.allow()` scopes | gates on every `up` | static secrets |
 | **DevOps** | fleet projections | `platform/yard.ts`, `runners.ts` | `hobo up ./platform --seed` | laptop-as-control-plane |

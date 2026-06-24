@@ -52,6 +52,8 @@ A machine-readable standard each Provider publishes so any agent can understand 
       "trust": { "oidcDiscovery": "https://yard.example.com/.well-known/openid-configuration" } },
     { "type": "oauth2-obo", "authorizationServer": "https://acme.example.com/oauth",
       "scopes": ["db:write","compute:deploy","objstore:rw"] },
+    { "type": "oauth2-xaa", "idJag": true, "authorizationServer": "https://acme.example.com/oauth",
+      "audience": "urn:acme:app", "scopes": ["tasks:read","tasks:write"] },   // Cross-App Access (ID-JAG, ADR-0084)
     { "type": "device-code" },
     { "type": "api-key", "header": "X-Api-Key", "rotation": "manual" }
   ],
@@ -63,7 +65,7 @@ A machine-readable standard each Provider publishes so any agent can understand 
 ```
 
 - **Discovery:** the Registry crawls/accepts `index.json`, verifies its signature, and indexes capabilities + auth for the Planner and agents.
-- **Preference order:** HoBo prefers **keyless** flows (`oidc-federation` > `oauth2-obo` > `device-code` > `api-key`) so static secrets are a last resort.
+- **Preference order:** HoBo prefers **keyless** flows (`oidc-federation` > `oauth2-xaa` (Cross-App Access) > `oauth2-obo` > `device-code` > `api-key`) so static secrets are a last resort; `oauth2-xaa` is preferred for user-delegated access to an *external* app because the IdP brokers and governs it ([ADR-0084](./adr/02-identity-security.md#adr-0084)).
 - **Thematic anchor:** real hobo "signs" were a shared symbol language for finding resources & safe passage — `signs.md` is exactly that, for agents. This is the "standard like auth.md" the project calls for, and the Registry is the centralized place providers register it.
 
 ---
@@ -217,6 +219,33 @@ flowchart LR
 - **Server:** `ctx.user` (verified claims, typed) gates handlers and reactive queries; combine with policy/`.allow()` for record-level authorization.
 
 **Events ([Plan 11](./data-plane.md#plan-11)).** `user.Authenticated` (verification result + principal claims) · `session.Started` · `session.Refreshed` · `session.Revoked`. User authorization decisions ride the existing **`policy.Decided`** ([Plan 29](./contracts-policy-flags.md#plan-29)) — no duplicate authz events.
+
+---
+
+### 6.8 Cross-App Access (XAA) — governed agent/app access to external apps
+Connecting a HoBo agent or app to an *external* app on a user's behalf (Asana, Slack, an external MCP server) must not mean a private OAuth+consent dance the enterprise can't see — that leaves **standing API keys and invisible consent** (the IdP only ever saw "the user signed in", never "an AI agent can now act *as* the user in Asana"). HoBo speaks **Cross-App Access (XAA)** — the **Identity Assertion JWT Authorization Grant (ID-JAG)** ([draft-ietf-oauth-identity-assertion-authz-grant](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/); an official **MCP authorization extension**), built on **Token Exchange (RFC 8693)** + the **JWT assertion grant (RFC 7523)** — the same broker machinery §6.2 already uses for provider federation, specialized to the cross-app case ([ADR-0084](./adr/02-identity-security.md#adr-0084)).
+
+**Two-stage, brokered by the IdP the target already trusts for SSO:**
+```mermaid
+sequenceDiagram
+  participant A as HoBo agent/app (requester)
+  participant ID as IdP / Identity broker (hobo:auth or Yard Identity)
+  participant RAS as External app Authorization Server (Asana/Slack)
+  participant R as External app (resource)
+  A->>ID: token-exchange: user ID token (or OBO SVID) → ID-JAG for audience=Asana
+  Note over ID: policy check (subject.delegatedBy = user; ADR-0074) BEFORE minting
+  ID-->>A: short-lived, audience-bound ID-JAG (assertion)
+  A->>RAS: RFC 8693 exchange: ID-JAG → access token (least-privilege scopes)
+  RAS-->>A: short-lived access token, scoped to Asana only
+  A->>R: call Asana as the user, within scope
+  Note over ID: every step is token.Granted / token.Used (full user→agent→app chain)
+```
+
+**Both directions are first-class.**
+- **HoBo as requester (outbound).** A HoBo agent/app reaching an external app on a user's behalf — Identity mints the audience-bound ID-JAG, the agent redeems it at the target's AS. Declared per target as the `oauth2-xaa` flow in `auth.json` (above).
+- **HoBo as resource (inbound).** A HoBo-hosted app is the *target*: its **`auth()` port** (§6.7) / Yard AS accepts an ID-JAG (audience = the HoBo app) from an external requesting agent (Claude, Cursor, …), verifies it against the trusted IdP's JWKS, and issues a scoped token — gated by the policy plane + `.allow()`. So **HoBo apps are XAA resource servers by default**, reachable by external agents under enterprise governance.
+
+**Governed, scoped, audited — no standing privilege.** The brokering IdP is the same swappable **`hobo:auth`** IdP (WorkOS/Auth0/Entra/Okta/Keycloak, [ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)) or HoBo's own Yard Identity acting as OIDC issuer. Every cross-app grant is a **deny-by-default policy decision** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) — the request already carries `subject.delegatedBy`, so "agent X may access external app Y on behalf of user Z" is a policy/deny-ceiling rule, checked *before* the ID-JAG is minted (a `mandatory` rule can **require XAA** and refuse standing API keys where a target supports it). Tokens are short-lived + audience-bound (no reuse across targets); the whole **user → agent → external-app** chain rides `token.Granted/Used/Revoked` (the `CredentialAudit` projection), so "which agent reached which external app as which user, when" is always answerable. For targets that don't yet speak ID-JAG (still an IETF draft), HoBo falls back to `oauth2-obo` / MCP-OAuth2.1 — functional, but without the central XAA governance.
 
 **Verification ([Plan 9](./generated-stack.md#plan-09)).** An end-user-auth test: a JWT from a fixture IdP is verified via JWKS → `ctx.user` carries the claims; an **expired / wrong-issuer / tampered** token is rejected; a **policy/`.allow()` rule keyed on user claims** gates a query/mutation (allow + deny cases); **revocation** (`session.Revoked`) blocks subsequent requests **and re-pushes affected reactive queries**; the **thin built-in dev provider works offline** (air-gap tie, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 

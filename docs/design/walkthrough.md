@@ -607,13 +607,17 @@ export default policyPack("acme-baseline", { mandatory: true }, [          // ma
 ]);
 ```
 
+## 4.4 — Agents reach external apps under governed Cross-App Access
+
+When snapshop's assistant needs to act in an *external* app on a user's behalf — file a ticket in Linear, read a doc in Confluence, call an external MCP server — it does **not** get a standing API key or a consent screen you can't see. It uses **Cross-App Access (XAA)** ([ADR-0084](./adr/02-identity-security.md#adr-0084)): your IdP brokers an **audience-bound, short-lived assertion** (ID-JAG) the target exchanges for a least-privilege token, and the grant is a `policy.Decided` *before* it's minted — `subject.delegatedBy` is the user, so "this agent may act as this user in Linear" is one of your policy-pack rules. A `mandatory` rule can **require XAA** (and refuse static keys) for any target that supports it. The full **user → agent → external-app** chain lands on `token.Granted/Used/Revoked`, so you can answer "which agent touched which external app as whom, when" — and revoke it in one place. Inbound is symmetric: snapshop is itself an **XAA resource server**, so an *external* agent (someone's Claude/Cursor) reaching snapshop is verified against your IdP and gated by the same policy + `.allow()`.
+
 `hobo up ./platform` distributes the pack; a **mandatory** rule is a deny-ceiling a lower scope can only tighten, never widen (the AWS-SCP property). Built-in RBAC roles (Org-Admin, Security-Admin, Platform-Engineer, Deployer, Operator-Supervisor, Auditor) bind via SSO/SCIM, with separation-of-duties (the author of a policy can't approve it; the opener of a prod Delta isn't its promoter). Every decision is a replayable `policy.Decided` event, OCSF-exported.
 
-## 4.4 — Secrets and supply chain
+## 4.5 — Secrets and supply chain
 
 Secrets are **brokered references**, never values in env or files; the secret broker exposes `read-metadata`/`rotate`, never a grantable "read the value." Every artifact (provider plugin, build, deploy) is **signed + attested** (SLSA provenance) with an SBOM, and the deploy gate fails closed on a known-exploited CVE or an unsigned dependency. A generated provider is only as trusted as the conformance suite it passed — the signed report is part of its Registry record.
 
-## 4.5 — Investigate a denial; break the glass without breaking the rules
+## 4.6 — Investigate a denial; break the glass without breaking the rules
 
 When a gate denies, the reason is the `policy.Decided` event the `up` already printed — replayable, attributable, OCSF-exported. There's nothing to grep across five tools:
 

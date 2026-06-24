@@ -26,7 +26,7 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 | [`operators-sre.md`](./operators-sre.md#plan-40) | Operator Agents (the Crew) & SRE incident management | 40 |
 | [`governance-planes.md`](./governance-planes.md#plan-46) | Governance: compliance/data governance & AI safety | 46 |
 | [`worked-example.md`](./worked-example.md#plan-19) | End-to-end worked example | 19 |
-| [`walkthrough.md`](./walkthrough.md) | End-to-end ideal-state walkthrough (install → multi-cloud → operators), the instructional superset of the worked example | — |
+| [`walkthrough.md`](./walkthrough.md) | Role-organized ideal-state walkthrough: one app, six workflows (app dev · platform eng · GitOps · SecOps · DevOps · SRE) | — |
 
 **Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/README.md) (each decision is a `#adr-NNNN` section).
 
@@ -36,7 +36,7 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 
 **Scope.** The whole suite is **one scope** — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)). Build sequencing/phasing is deferred planning (archived).
 
-**Reading order.** New to HoBo: [Vision](./vision.md#plan-00) → [Architecture](./architecture.md#plan-10) → [Worked example](./worked-example.md#plan-19), then the two deep plans [SDK](./sdk-api.md#plan-02) and [AI-native/agent-auth](./ai-native-agent-auth.md#plan-06). Want the full "do the whole thing" journey: the [Walkthrough](./walkthrough.md) carries one app from install to multi-cloud, agent-operated production. Runtime/authoring model: [WASM/WASI](./wasm-runtime-wit.md#plan-20) → [Resources/`.allow()`/wiring](./authoring-resources-wiring.md#plan-21) → [AI implementations](./generated-stack.md#plan-23). Evaluating vs alternatives: [Positioning](./vision.md#plan-17) + [`competitors/`](../../competitors/). Auditing decisions: the [ADR docs](./adr/README.md).
+**Reading order.** New to HoBo: [Vision](./vision.md#plan-00) → [Architecture](./architecture.md#plan-10) → [Worked example](./worked-example.md#plan-19), then the two deep plans [SDK](./sdk-api.md#plan-02) and [AI-native/agent-auth](./ai-native-agent-auth.md#plan-06). Want it by role: the [Walkthrough](./walkthrough.md) takes one app through six clean workflows — app developer, platform engineer, GitOps, SecOps, DevOps, and SRE — each with its own loop and one shared verb (`hobo up`). Runtime/authoring model: [WASM/WASI](./wasm-runtime-wit.md#plan-20) → [Resources/`.allow()`/wiring](./authoring-resources-wiring.md#plan-21) → [AI implementations](./generated-stack.md#plan-23). Evaluating vs alternatives: [Positioning](./vision.md#plan-17) + [`competitors/`](../../competitors/). Auditing decisions: the [ADR docs](./adr/README.md).
 
 ---
 

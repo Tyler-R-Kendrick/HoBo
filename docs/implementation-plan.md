@@ -1,33 +1,43 @@
 # HoBo Implementation Plan — Linear backlog mirror
 
 > **Purpose.** This document is the master, branch-sized implementation backlog for the whole
-> HoBo platform. It mirrors the Linear workspace (team **HoBo**, key `HOBO`) and — critically —
-> captures the slices that were **designed but could not yet be created in Linear** because the
-> workspace hit its free-tier issue cap (see *Status* below). It is the source of truth for "what
-> is left to build and in what order" until every slice is materialised in Linear.
+> HoBo platform — the structural mirror of the Linear workspace (team **HoBo**, key `HOBO`). It
+> records the full subsystem decomposition: 15 epics and **399** independently-deliverable slices,
+> phased M0→M4, with dependency intent. **All slices are now created in Linear** (see *Status*);
+> Linear is the authoritative live index, and this doc is the durable plan-of-record.
 >
 > Every slice is intended to be **independently implementable and provable on its own branch**,
 > with full context (why / refs / scope-in / scope-out / acceptance / adversarial / depends-on)
 > recorded in the corresponding Linear issue. Where an issue exists, its `HOBO-N` id is given.
 
-## Status (2026-06-24)
+## Status (2026-06-24) — COMPLETE
 
-- **Created in Linear:** 110 issues across all 15 projects (`HOBO-1` … `HOBO-110`, non-contiguous ids).
-- **Blocked:** the `quickdeploy-ai` Linear workspace is on the **free tier and hit its issue cap**.
-  Every further `save_issue` *create* returns
-  `Usage limit exceeded — You've exceeded the free issue limit for this workspace`.
-  This is a workspace-wide billing limit (not transient, not per-project) — confirmed independently
-  by every subsystem agent on retry. Roughly **~230 fully-designed slices remain uncreated.**
-- **To unblock:** upgrade the Linear workspace (or free up issue quota), then materialise the
-  remaining slices below. `save_issue` *updates* and `blockedBy` relations on existing issues still
-  work; only new-issue creation is capped.
+- **Created in Linear:** **399 issues** across all **15 projects** (`HOBO-1` … `HOBO-399`,
+  non-contiguous ids), team **HoBo**. Every project is populated; no orphaned/project-less issues.
+- **The "cap" was a false alarm.** The `Usage limit exceeded — free issue limit` error was a
+  **transient burst rate-limit** triggered by 13 subagents writing to Linear simultaneously — *not*
+  a hard workspace cap. Under **paced, single-writer creation** (one `save_issue` at a time, with
+  retry-on-throttle), every remaining slice was created with **zero failures**. No plan upgrade was
+  needed.
+- **Label spread:** 325 `slice`, 109 `security`, 48 `adversarial`, 36 `hardening`, 22 `spike`,
+  13 `user-story`, 2 `epic`.
+- **All 6 walkthrough role journeys** are filed as `user-story` issues (App dev, Platform eng,
+  GitOps, SecOps, SRE, DevOps×2) plus the end-to-end IfC author-flow story.
+- **Per-project final tallies:** Providers 34 · Data Plane 32 · Contracts/Policy 32 · Networking 32 ·
+  Reliability 31 · Identity 31 · Control Plane 28 · CLI/MCP/DX 28 · WIT Runtime 25 · Harness 24 ·
+  Generation 24 · SDK 23 · Portability 22 · Operators/SRE 22 · Foundations 11.
 
-### How to resume materialisation once the cap is lifted
+> **Note on markers below.** The per-project sections were authored when ~110 issues existed and the
+> rest were still designed-but-uncreated. **Every `▢` slice listed below has since been created in
+> Linear.** Linear (team HoBo) is now the authoritative, live index — exact `HOBO-N` ids, current
+> status, and the full Why/Refs/Scope/Acceptance/Adversarial/Depends-on bodies live there. This
+> document remains the durable *structural* plan: the subsystem decomposition, phasing, and
+> dependency intent.
 
-Each subsystem was authored by a dedicated subagent that still holds the **full templated issue
-bodies** (Why/Refs/Scope/Acceptance/Adversarial/Depends-on) in its context. Re-engage it to create
-its remaining slices in one pass (it already knows the project id, labels, estimates, and the exact
-descriptions):
+### Provenance — the subagents that authored each subsystem
+
+Each subsystem was authored by a dedicated subagent holding the **full templated issue bodies**.
+For reference / future edits:
 
 | Subsystem | Resume agent id |
 |---|---|
@@ -52,7 +62,9 @@ descriptions):
   `hardening` (contract-finalisation / normalisation), `security`, `user-story` (end-to-end role
   flow), `adversarial` (failure/abuse/edge case), `epic` (tracking parent).
 - **Estimates:** Fibonacci `1/2/3/5/8`.
-- `✅ HOBO-N` = exists in Linear. `▢` = designed, not yet created (cap-blocked).
+- `✅ HOBO-N` = listed with its assigned id. `▢` = was designed-but-uncreated when this doc was
+  first written; **all `▢` slices are now created in Linear** (see Status above) — consult Linear
+  for the exact `HOBO-N`.
 
 ---
 
@@ -104,7 +116,7 @@ Dependency wiring: 2←1, 3←1, 4←3, 5←1&2, 6←4&5, 7←4.
 
 ---
 
-## 3. SDK & Authoring (IfC / bindles) — `883a1938-3727-4a9c-8e71-18fa4605d8a9` — **16 ✅ / +7 ▢**
+## 3. SDK & Authoring (IfC / bindles) — `883a1938-3727-4a9c-8e71-18fa4605d8a9` — **complete · 23 issues**
 
 Created:
 - ✅ HOBO-37 — Define the `@hobo/bindles` resource catalog declaration surface (resource → WIT port) · M0 · slice · 5
@@ -137,7 +149,7 @@ Wiring to add: 67←37,38,49; 70←67; 75←67; 79←37,67,49; 83←43,67,70; 88
 
 ---
 
-## 4. Control Plane: Planner, Matching & Orchestrator — `0b863d00-e180-4ad1-a8d8-a58049252a71` — **20 ✅ / +8 ▢**
+## 4. Control Plane: Planner, Matching & Orchestrator — `0b863d00-e180-4ad1-a8d8-a58049252a71` — **complete · 28 issues**
 
 Created:
 - ✅ HOBO-39 — Define control-plane event schemas (planning/matching/reconcile/dispatch log) · M0 · slice · 3
@@ -175,7 +187,7 @@ Wiring present: 61←41; 64←45,55; 73←68; 95←68,72; 109←95,73.
 
 ---
 
-## 5. Providers, IaC & Build Adapters — `daa89960-b663-42f4-8cca-67a90d979beb` — **4 ✅ / +28 ▢**
+## 5. Providers, IaC & Build Adapters — `daa89960-b663-42f4-8cca-67a90d979beb` — **complete · 34 issues**
 
 Created:
 - ✅ HOBO-87 — Define the provider-package authoring contract (factory + `.with` builders + client + manifest) · M0 · slice · 5
@@ -219,7 +231,7 @@ Wiring: each concrete provider/`generateProvider` ← HOBO-87 + HOBO-102; HOBO-1
 
 ---
 
-## 6. Identity, Auth, Secrets & Cross-App Access (XAA) — `fd8de913-fe73-4b49-8388-28c5f19cc95c` — **12 ✅ / +19 ▢**
+## 6. Identity, Auth, Secrets & Cross-App Access (XAA) — `fd8de913-fe73-4b49-8388-28c5f19cc95c` — **complete · 31 issues**
 
 Created:
 - ✅ HOBO-44 — Specify the JWT-SVID token format and trust-domain naming scheme · M0 · slice/security · 3
@@ -260,7 +272,7 @@ Wiring present: 48←44; 54←44,48; 56←44; 63←56; 66←56; 71←44; 77←44
 
 ---
 
-## 7. Data Plane: Event Sourcing, CQRS & Reactivity — `7c8e15ca-8587-4986-b278-8dc2854aa11a` — **15 ✅ / +16 ▢**
+## 7. Data Plane: Event Sourcing, CQRS & Reactivity — `7c8e15ca-8587-4986-b278-8dc2854aa11a` — **complete · 32 issues**
 
 Created:
 - ✅ HOBO-42 — Define the typed domain event-body contract (WIT-record payloads, Protobuf wire) · M0 · slice · 3
@@ -300,7 +312,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 8. Contracts, Policy & Governance — `c98c644d-e132-4062-b44b-fcdfd7db6d9d` — **2 ✅ / +24 ▢**
+## 8. Contracts, Policy & Governance — `c98c644d-e132-4062-b44b-fcdfd7db6d9d` — **complete · 32 issues**
 
 Created:
 - ✅ HOBO-91 — Define the HoBo Policy IR + decision request/response schema · M0 · slice/security · 3
@@ -336,7 +348,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 9. Networking, Connectivity, DNS & Relay — `70e2d1f1-c7fc-4dd0-bff5-87c0b7b83dda` — **4 ✅ / +26 ▢**
+## 9. Networking, Connectivity, DNS & Relay — `70e2d1f1-c7fc-4dd0-bff5-87c0b7b83dda` — **complete · 32 issues**
 
 Created:
 - ✅ HOBO-89 — Define the connectivity-tier IR and the 5-tier model contract · M0 · slice/epic · 3
@@ -372,7 +384,7 @@ Wiring present: 94←89; 101←89.
 
 ---
 
-## 10. Reliability, Observability & Cost (FinOps) — `b36b40c8-059f-4d29-8aa1-0a80c852761a` — **1 ✅ / +29 ▢**
+## 10. Reliability, Observability & Cost (FinOps) — `b36b40c8-059f-4d29-8aa1-0a80c852761a` — **complete · 31 issues**
 
 Created:
 - ✅ HOBO-104 — Define the telemetry envelope + boundary-export schema (OTEL/CloudEvents/OCSF) · M0 · slice/epic · 3 (←20)
@@ -411,7 +423,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 11. Progressive Delivery — The Harness — `122f5e0a-30d6-4949-9285-9441d18c36d9` — **0 ✅ / 24 ▢**
+## 11. Progressive Delivery — The Harness — `122f5e0a-30d6-4949-9285-9441d18c36d9` — **complete · 24 issues**
 
 - ▢ Define the `hobo:feature-flag` port (OpenFeature-compatible) · M0 · slice · 3
 - ▢ Define the `hobo:delivery` (OpenDelivery) port + `rollout.*` events · M0 · slice · 3
@@ -440,7 +452,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 12. Generation Pipeline, Training & AI Safety — `d19bf007-d3a6-4706-9c82-658261060fc4` — **0 ✅ / 24 ▢**
+## 12. Generation Pipeline, Training & AI Safety — `d19bf007-d3a6-4706-9c82-658261060fc4` — **complete · 24 issues**
 
 - ▢ G1 — Generation-pipeline IO contract + `gen.*` event family · M0 · slice · 3
 - ▢ G2 — Eval rubric + promotion-gate contract (Contract/Eval/Policy three-pass) · M0 · slice · 3 (←G1)
@@ -469,7 +481,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 13. Portability, Registry & Distribution — `fd338892-6949-42ea-aca4-e1e71e3c3b05` — **0 ✅ / 22 ▢**
+## 13. Portability, Registry & Distribution — `fd338892-6949-42ea-aca4-e1e71e3c3b05` — **complete · 22 issues**
 
 - ▢ Define the registry artifact descriptor + listing-kind taxonomy schema · M0 · slice · 3
 - ▢ Define the version + semver/compat-resolution policy for distributed artifacts · M0 · slice · 3
@@ -496,7 +508,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 14. Operators & SRE — the Crew — `036f25f3-94bf-4253-ac06-d128eaedbf49` — **0 ✅ / 22 ▢**
+## 14. Operators & SRE — the Crew — `036f25f3-94bf-4253-ac06-d128eaedbf49` — **complete · 22 issues**
 
 - ▢ Author the remediation-action + blast-radius contract (the autonomous-write envelope) · M0 · slice · 5
 - ▢ Author the `crew.*` event family + the Crew operator principal model · M0 · slice · 3
@@ -523,7 +535,7 @@ Remaining (cap-blocked):
 
 ---
 
-## 15. CLI, MCP & Developer Experience — `4783497d-6376-41ef-bf18-9c1fa068ade8` — **0 ✅ / 26 ▢**
+## 15. CLI, MCP & Developer Experience — `4783497d-6376-41ef-bf18-9c1fa068ade8` — **complete · 28 issues**
 
 - ▢ Build the `hobo` CLI shell: arg parser, command registry, output renderer, MCP-parity dispatch · M1 · slice · 5 (←HOBO-8)
 - ▢ `hobo new <name> [-t todo|api|agent|fullstack]`: scaffold an SDK program · M1 · slice · 3 (←HOBO-88)
@@ -559,12 +571,19 @@ Remaining (cap-blocked):
 
 ## Coverage / completeness notes
 
-- **Foundations + WIT Runtime** are fully materialised in Linear (36 issues) and complete.
-- Every other subsystem has its **M0 contracts** (and often M1 skeleton) materialised; the
-  cap-blocked remainder is overwhelmingly **M2 Core / M3 Hardening / M4 GA** plus the
-  adversarial and spike slices.
+- **All 15 subsystems are fully materialised** in Linear — **399 issues**, phased M0 Contracts →
+  M1 Skeleton → M2 Core → M3 Hardening → M4 GA, with dependency (`blockedBy`) graphs wired within
+  and across projects.
+- Every subsystem carries **spike** slices for the genuinely uncertain decisions (e.g. wRPC/WIT
+  baseline, Matching tie-break, self-host bootstrap ordering, deny-ceiling algebra, replay==live
+  proof, Junction inference, generation-eval methodology, data-flywheel privacy) and
+  **adversarial** slices for its top abuse/failure modes (48 adversarial issues in total).
 - The **role-based user-story walkthrough** (app dev / platform eng / GitOps / SecOps / SRE,
-  + optional DevOps) is captured under Project 15 (CLI/MCP/DX) as `user-story` issues that thread
-  across subsystems.
+  + DevOps×2) is captured under Project 15 (CLI/MCP/DX) as `user-story` issues that thread across
+  subsystems, with cross-project `blockedBy` to the verbs and contracts they exercise.
 - `HOBO-11` (ADR ↔ implementation traceability audit, Foundations) is the standing gate that
-  confirms every ADR/Plan maps to ≥1 issue once materialisation is complete.
+  confirms every ADR/Plan maps to ≥1 issue; with all 15 subsystems now populated, every ADR file
+  (01-architecture-core, 02-identity-security, 03-data-plane, 07-portability-extensibility) and the
+  design-suite features map onto at least one branch-sized slice.
+- **Authoritative source:** Linear (team **HoBo**). This document is the durable structural mirror;
+  for exact ids, live status, and full issue bodies, consult Linear.

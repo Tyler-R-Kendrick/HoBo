@@ -122,15 +122,15 @@ hobo dev                                 # localhost:4000, hot-reload, replay, l
 
 ## 1.2 — An API, then storage, with zero infra ceremony
 
-You declare resources **inline** and grant capabilities with `.allow()`. One `.allow()` becomes three things — an IAM policy, a WASM capability link, and the scope of any token brokered to your code — so least-privilege is the default, not a chore.
+You declare resources **inline** — and you **don't hand-grant capabilities.** HoBo **infers each resource's permissions from how your code uses it** (the methods it actually calls) and bakes the least-privilege set into the manifest, where one inferred grant becomes three things — an IAM policy, a WASM capability link, and the scope of any token brokered to your code. Least-privilege is the *automatic default*, not a chore. You write `.allow()` only to **narrow** below what you use (assert a tighter contract) — never to switch a permission *on*.
 
 ```ts
 // app.ts
 import { api, kv, bucket } from "@hobo/bindles";
 import { z } from "zod";
 
-const catalog = kv("catalog").allow("get", "set");        // 1 line → IAM + capability + token scope
-const images  = bucket("images").allow("read", "write");
+const catalog = kv("catalog");        // no .allow() — permissions inferred from use below → allow:[get,set]
+const images  = bucket("images");     // inferred from images.read()/.write() → allow:[read,write]
 const Photo   = z.object({ id: z.string().min(1), title: z.string().min(1), bytes: z.string().optional() });
 
 export const app = api("main");
@@ -147,7 +147,7 @@ app.get("/photos/:id", async (ctx) => ctx.json(await catalog.get(ctx.params.id) 
 
 `hobo dev` runs this against a local Postgres/object-store with hot reload; `hobo up` ships it. You never named a provider — that's Part 2's job, and it already happened.
 
-**What `hobo up` builds first is a manifest — generated from your code, not written by you.** A resource-collection pass runs your component and captures every resource and `.allow()` into a provider-agnostic IR. It names *abstract capabilities* — a kv, a bucket, an api — and **never a cloud**. This generated artifact is the entire contract handed to Part 2:
+**What `hobo up` builds first is a manifest — generated from your code, not written by you.** A resource-collection pass runs your component, captures every resource, and **infers each one's permissions from how the code uses it** — recording the least-privilege `allow` set into a provider-agnostic IR (you wrote no `.allow()`). It names *abstract capabilities* — a kv, a bucket, an api — and **never a cloud**. This generated artifact is the entire contract handed to Part 2:
 
 ```jsonc
 // snapshop.manifest.json — generated; schema hobo.manifest/v1
@@ -170,8 +170,8 @@ Image processing shouldn't lose work on a crash. A durable `"use workflow"` orch
 import { workflow, step } from "@hobo/runtime";
 import { bucket, kv } from "@hobo/bindles";
 
-const images = bucket("images").allow("read", "write");
-const catalog = kv("catalog").allow("get", "set");
+const images = bucket("images");     // permissions inferred from usage
+const catalog = kv("catalog");
 
 export const processImage = workflow("processImage", async (id: string) => {
   const full  = await step("resize",    () => resize(id));
@@ -303,7 +303,7 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 # Part 2 — Platform engineer: map a Camp to a cloud; Matching does the rest
 
-**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.**
+**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.** And **placement itself is automatic**: with no Camp, the cloud auto-places and **rebalances** the Bindle across your registered providers (the Dispatcher, [Plan 25](./platform-engineering.md#plan-25)/[ADR-0071](./adr/01-architecture-core.md#adr-0071)). You build a **Camp / Yard / Junction only to *pin*** a cloud, region, residency, or topology auto-placement shouldn't decide — topology is an override, not a prerequisite.
 
 ## 2.1 — The operator SDK: build a Yard and register providers
 
@@ -554,9 +554,9 @@ Because every resource's desired state is the committed graph, an out-of-band ch
 
 Every workload, CI job, and AI agent is a **named SVID principal** issued by the Yard's Identity service (`spiffe://acme.yard/<tenant>/<name>`). Provider access is **brokered**: an SVID is exchanged for a short-lived, resource-scoped provider token via OIDC federation (the `auth.json` you saw in Part 2). Nobody pastes a cloud key — `token.Granted → Used → Revoked` is the audit trail.
 
-## 4.2 — `.allow()` is the least-privilege surface
+## 4.2 — Inferred least-privilege is your control surface
 
-The app dev's `bucket("images").allow("read","write")` is also *your* control point: it's the **only** capability that resource gets, enforced three ways (IAM, WASM capability link, token scope), deny-by-default. A handler that wasn't granted `delete` cannot delete — at the policy layer, the capability layer, and the IAM layer simultaneously.
+The app dev never hand-grants capabilities — HoBo **infers** each resource's permissions from usage and records the least-privilege set in the manifest. That inferred set is also *your* control point: it's the **only** capability that resource gets, enforced three ways (IAM, WASM capability link, token scope), deny-by-default — a handler whose code never calls `delete` is never granted `delete`, at the policy, capability, and IAM layers simultaneously. You govern it not by editing app code but with **policy-pack deny-ceilings** ([ADR-0074](./adr/02-identity-security.md#adr-0074)): *policy* (what's permitted) is declared by SecOps, **separately** from *usage* (what the app does) — a ceiling can deny a verb even where the code uses it, and an explicit `.allow()` can only narrow, never widen past the ceiling.
 
 ## 4.3 — Policy packs gate the whole lifecycle
 

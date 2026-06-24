@@ -4,23 +4,23 @@ This capability doc covers the authoring surface end to end: the resource catalo
 
 ## Plan 21
 
-> **Contracts & policy (gates):** an `.allow()` declaration is also a **capability contract** ([Plan 29](./contracts-policy-flags.md#plan-29)) — the **required** scope must be ⊆ the **granted** scope on the resolved provider; a mismatch is a contract failure caught by `can-deploy`, not a runtime surprise.
+> **Contracts & policy (gates):** the inferred (or explicitly narrowed) grant is also a **capability contract** ([Plan 29](./contracts-policy-flags.md#plan-29)) — the **required** scope (what the code uses) must be ⊆ the **granted** scope on the resolved provider; by default they're equal (granted = inferred-from-usage), and an explicit `.allow()` that narrows below usage is the contract failure `can-deploy` catches, not a runtime surprise.
 
-### The `.allow()` model — one declaration, three effects
-Declaring a permission on a resource drives **three** things at once:
+### The permission model — inferred from usage, three effects
+A resource's permissions are **inferred from how your code uses it**: resource-collection runs the component and static analysis reads which WIT verbs it calls, baking the least-privilege used-set into the manifest. That inferred grant drives **three** things at once:
 1. **Least-privilege IAM** — the IaC adapter generates the minimal cloud policy ([Plan 4](./control-plane.md#plan-04)).
-2. **WASM capability grant (link)** — the component is linked to *only* the provider interfaces its permissions require; everything else is denied by the wasm host ([Plan 20](./wasm-runtime-wit.md#plan-20)).
-3. **Agent token scope** — the broker issues scoped tokens bounded to exactly these `(resource, verbs)` ([Plan 6](./ai-native-agent-auth.md#plan-06)).
+2. **WASM capability grant (link)** — the component is linked to *only* the provider interfaces it uses; everything else is denied by the wasm host ([Plan 20](./wasm-runtime-wit.md#plan-20)).
+3. **Agent token scope** — the broker issues scoped tokens bounded to exactly those `(resource, verbs)` ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 
 ```ts
-// IfC-default authoring: resources declared inline, permissions co-located
+// IfC-default authoring: resources declared inline; permissions inferred from use
 import { bucket, kv, topic } from "@hobo/bindles";
 
-const profiles = bucket("profiles").allow("read", "write");   // → blobstore RW IAM + wasi:blobstore link + token scope
-const sessions = kv("sessions").allow("get", "set");          // → wasi:keyvalue (get/set only)
-const events   = topic("user-created").allow("publish");      // → wasi:messaging (publish only)
+const profiles = bucket("profiles");                        // profiles.read()/.write() → infers RW (wasi:blobstore)
+const sessions = kv("sessions");                            // sessions.get()/.set()    → infers get/set (wasi:keyvalue)
+const events   = topic("user-created").allow("publish");   // explicit .allow() = NARROW: cap to publish even if code uses more
 ```
-Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor token grants it. This unifies least-privilege IAM with wasm capability security and HoBo's agent auth.
+Permissions are **deny-by-default**: a verb your code never calls is never granted — by IAM, link, or token. Inference yields exactly the used-set; **`.allow()` is an optional override** that only **narrows** it (assert a tighter contract — `can-deploy` fails if the code exceeds it) or grants a **dynamic** verb static analysis can't see. This unifies least-privilege IAM with wasm capability security and HoBo's agent auth.
 
 ### Catalog — resource → WIT port → permission verbs
 | Resource | `@hobo/bindles` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
@@ -70,10 +70,10 @@ HoBo's runtime provides **everything Nitric's runtime does** — the full buildi
 > **Opt-in paradigm packages (Encore-style ergonomics, [ADR-0081](./adr/03-data-plane.md#adr-0081)).** `data(name)` is the **portable default** (paradigm chosen by Matching). A developer who wants a paradigm-idiomatic typed abstraction instead opts into **`@hobo/sql`** / **`@hobo/vector`** / **`@hobo/graph`** / **`@hobo/document`** — idiom layers over the same `hobo:data`/`hobo:search` ports that map to cloud natives by Matching and stay overridable (`.with()` native pin · Resource Definition · `.raw()` dialect). A deliberate, surfaced specialization (equivalence-class-bounded), not the default.
 
 ### IfC-default authoring (resources emerge from code)
-The **default** authoring mode is Nitric-style: declare resources inline and `.allow()` what you use; HoBo's deploy pipeline runs each component in **resource-collection mode** to capture declarations into the **manifest IR** (below). Handlers attach to resources directly:
+The **default** authoring mode is Nitric-style: declare resources inline and HoBo **infers their permissions from how you use them**; the deploy pipeline runs each component in **resource-collection mode** to capture declarations + the used-verb set into the **manifest IR** (below). Handlers attach to resources directly:
 ```ts
 import { api, kv } from "@hobo/bindles";
-const todos = kv("todos").allow("get", "set");
+const todos = kv("todos");   // todos.get()/.set() below → infers allow:[get,set]
 const app = api("main");
 app.get("/todos/:id", async (ctx) => ctx.json(await todos.get(ctx.params.id)));
 app.post("/todos",    async (ctx) => { await todos.set(crypto.randomUUID(), await ctx.json()); });

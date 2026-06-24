@@ -11,7 +11,7 @@ Developers declare *what* they need (a `database`, IfC-style with `.allow()`, [P
 For an abstract port (`type` + optional `class`), a definition says which **provider + driver + options + co-provisioned resources** realize it, plus the **matching criteria** that select it. Definitions are **WIT-interface-typed** ([Plan 20](./wasm-runtime-wit.md#plan-20)) and may be **AI-generated** ([Plan 23](./generated-stack.md#plan-23)).
 ```ts
 // platform/resource-defs.ts — authored by platform engineers (TS; YAML form also supported)
-import { defineResource } from "@hobo/sdk/platform";
+import { defineResource } from "@hobo/sdk";
 import { aws } from "@hobo/provider-aws";
 
 export const postgresProdHa = defineResource({

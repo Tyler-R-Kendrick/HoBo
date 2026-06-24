@@ -228,7 +228,7 @@ A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks 
 - **Definitions are IfC** — flags are declared in the Bindle (name, type, default, targeting rules); flag *values/targeting* are runtime state (below).
 
 ```ts
-import { flag } from "@hobo/sdk";
+import { flag } from "@hobo/bindles";
 export const newCheckout = flag.boolean("new-checkout", { default: false });
 // server: const on = await ctx.flags.eval(newCheckout);   // typed, deterministic
 // client: const on = useFlag(newCheckout);                // reactive (Plan 32)

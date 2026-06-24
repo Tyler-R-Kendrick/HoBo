@@ -5,7 +5,7 @@
 > **Authoring (IfC + wasm + `.allow()`).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
 > // src/api.ts — IfC: resources + permissions inline; compiles to a wasm component via jco
-> import { api, kv, bucket, queue, workflow, step } from "@hobo/sdk";
+> import { api, kv, bucket, queue, workflow, step } from "@hobo/bindles";
 > const orders = kv("orders").allow("get", "set");          // → wasi:keyvalue link + IAM + token scope
 > const images = bucket("images").allow("read", "write");   // → wasi:blobstore
 > const events = queue("orders").allow("enqueue");          // → hobo:queue
@@ -66,7 +66,7 @@ npx hobo new snapshop -t fullstack && cd snapshop && hobo dev
 ```
 `bindle.ts` — the *what* (agnostic):
 ```ts
-import { bindle, database, objectStore, service, web, queue } from "@hobo/sdk";
+import { bindle, database, objectStore, service, web, queue } from "@hobo/bindles";
 import type { OrderEvent } from "./shared/types";
 
 export default bindle("snapshop", (b) => {
@@ -103,7 +103,7 @@ export const fulfillment = saga("fulfillment")
 ### 2. Map to one provider ("just host it on Azure")
 A provider-specific **`camp()`** object — the *where/how* (no separate config file, [ADR-0011](./adr/01-architecture-core.md#adr-0011)):
 ```ts
-import { camp } from "@hobo/sdk";
+import { camp } from "@hobo/camps";
 import { azure } from "@hobo/provider-azure";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 import shop from "./bindle";   // the provider-agnostic Bindle above

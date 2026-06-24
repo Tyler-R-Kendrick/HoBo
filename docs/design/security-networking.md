@@ -102,7 +102,7 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 #### Custom domains & multi-cloud ingress ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035))
 DNS is high-blast-radius and slow to recover — an unvalidated change can blackhole a domain for a TTL window. So **no DNS change ever promotes without passing an automated validation gate, and every cutover is health-checked and self-rolling-back.** A custom domain is a **first-class, Yard-level resource** — declared IfC-style, owned at the Yard (provider-global, cross-Camp, [ADR-0026](./adr/01-architecture-core.md#adr-0026)) so **one domain fronts the member Camps** of an environment group ([ADR-0028](./adr/01-architecture-core.md#adr-0028)); cross-cloud domains fronting Camps in different providers' Yards are **inferred and federated by the Junction from the member Yards' manifests** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)):
 ```ts
-import { domain } from "@hobo/sdk";
+import { domain } from "@hobo/yards";
 export const site = domain("shop.com")
   .routes(api)                          // bind to a service/gateway
   .routing("failover");                 // failover | weighted | latency | geo

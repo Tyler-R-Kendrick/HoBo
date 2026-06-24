@@ -178,7 +178,7 @@ Agent auth and end-user auth are one system seen from two ends. The §6.2 scope 
 - **Thin built-in for zero-config dev.** An optional built-in (passkey / email magic-link) lets `hobo dev` and small apps work with no external IdP — and runs **offline / in air-gap** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 
 ```ts
-import { auth } from "@hobo/sdk";
+import { auth } from "@hobo/bindles";
 export const appAuth = auth({
   providers: [
     auth.oidc({ issuer: "https://accounts.google.com" }),

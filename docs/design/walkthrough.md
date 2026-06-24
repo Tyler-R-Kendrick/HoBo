@@ -42,11 +42,14 @@ That's it. **Crew, flags, experiments, training, deltas, providers, policy — n
 ### Namespaces — layers don't leak
 
 ```ts
-import { api, kv, bucket, queue, topic, flag, experiment, slo } from "@hobo/sdk";        // resources you declare
+import { api, kv, bucket, queue, topic, flag, experiment, slo } from "@hobo/bindles";    // app resources you declare
 import { workflow, step, actor }                                  from "@hobo/runtime";  // durable execution
 import { command, view, projection }                              from "@hobo/data";     // CQRS read/write model
 import { emit, subscribe, saga }                                  from "@hobo/events";   // messaging + choreography
-import { yard, camp, junction, defineResource }                   from "@hobo/cloud";    // control-plane / platform SDK
+import { camp } from "@hobo/camps";
+import { yard } from "@hobo/yards";
+import { junction } from "@hobo/junctions";        // one namespace per scope
+import { defineResource }                   from "@hobo/sdk";  // operator SDK: configure & self-host the cloud
 import { azure } from "@hobo/provider-azure";                                            // a provider adapter
 import { pulumi } from "@hobo/iac-pulumi";                                               // an IaC adapter
 ```
@@ -123,7 +126,7 @@ You declare resources **inline** and grant capabilities with `.allow()`. One `.a
 
 ```ts
 // app.ts
-import { api, kv, bucket } from "@hobo/sdk";
+import { api, kv, bucket } from "@hobo/bindles";
 import { z } from "zod";
 
 const catalog = kv("catalog").allow("get", "set");        // 1 line → IAM + capability + token scope
@@ -165,7 +168,7 @@ Image processing shouldn't lose work on a crash. A durable `"use workflow"` orch
 ```ts
 // pipeline.ts
 import { workflow, step } from "@hobo/runtime";
-import { bucket, kv } from "@hobo/sdk";
+import { bucket, kv } from "@hobo/bindles";
 
 const images = bucket("images").allow("read", "write");
 const catalog = kv("catalog").allow("get", "set");
@@ -269,7 +272,7 @@ The groundings the optimizer needs aren't magic comments — they're a **typed r
 
 ```ts
 // feed.training.ts
-import { trainable } from "@hobo/sdk";
+import { trainable } from "@hobo/bindles";
 import { z } from "zod";
 import { rankFeed } from "./feed";
 
@@ -302,13 +305,14 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 **Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.**
 
-## 2.1 — The cloud SDK: build a Yard and register providers
+## 2.1 — The operator SDK: build a Yard and register providers
 
-`@hobo/cloud` is the SDK for the control plane. Registration is a programmatic, audited, signed act — not a CLI side effect:
+`@hobo/sdk` is the operator SDK — you use it to configure and self-host the control plane. Registration is a programmatic, audited, signed act — not a CLI side effect:
 
 ```ts
 // platform/yard.ts — your self-hosted control plane.
-import { yard, camp } from "@hobo/cloud";
+import { camp } from "@hobo/camps";
+import { yard } from "@hobo/yards";
 import { azure } from "@hobo/provider-azure";
 import { cloudflare } from "@hobo/provider-cloudflare";
 import { pulumi } from "@hobo/iac-pulumi";
@@ -339,7 +343,7 @@ hobo up ./platform       # brings the Yard up; registered providers are now bind
 
 > **A provider that doesn't exist yet?** Generate one, then register it the same way:
 > ```ts
-> import { generateProvider } from "@hobo/cloud";
+> import { generateProvider } from "@hobo/sdk";
 > const nicheEu = await generateProvider("https://niche-eu-cloud.example.com/docs"); // scaffold→LLM-fill→sandbox-conformance→sign
 > yard("acme", { /* … */ }).register(nicheEu);                                       // a signed plugin, registered in code
 > ```
@@ -351,7 +355,7 @@ This is the whole baseline Camp. It names a cloud and an IaC engine — and says
 
 ```ts
 // platform/camps.ts
-import { camp } from "@hobo/cloud";
+import { camp } from "@hobo/camps";
 import { azure } from "@hobo/provider-azure";
 import { pulumi } from "@hobo/iac-pulumi";
 
@@ -373,7 +377,8 @@ A **Yard** groups Camps and runs the control plane; a **Junction** federates Yar
 
 ```ts
 // platform/topology.ts
-import { yard, junction } from "@hobo/cloud";
+import { yard } from "@hobo/yards";
+import { junction } from "@hobo/junctions";
 import { prodAzure, stagingCf } from "./camps";
 import euYard from "./yard-eu";                          // a second self-hosted Yard, EU residency
 
@@ -416,7 +421,7 @@ Provider defaults are sensible, not mandatory. When you want a specific SKU, a d
 
 ```ts
 // platform/resources.ts — OPTIONAL. A prod-only HA Postgres golden path; preview keeps the cheap default.
-import { defineResource } from "@hobo/cloud";
+import { defineResource } from "@hobo/sdk";
 import { azure } from "@hobo/provider-azure";
 
 defineResource({ type: "database", engine: "postgres", class: "ha",
@@ -489,7 +494,7 @@ Flags, canaries, and experiments are **the Harness** — three legs you write as
 
 ```ts
 // delivery/checkout.ts
-import { flag, experiment } from "@hobo/sdk";
+import { flag, experiment } from "@hobo/bindles";
 import { checkoutTwoStep, checkoutOneClick } from "../src/checkout";
 
 export const variant = flag.string("checkout-variant", {           // OpenFeature-typed
@@ -509,7 +514,7 @@ export const handler = (ctx) =>
 
 ```ts
 // delivery/rollout.ts — canary policy as code; auto-rollback on SLO burn.
-import { rollout } from "@hobo/sdk";
+import { rollout } from "@hobo/bindles";
 export const apiRollout = rollout("api", { strategy: "canary", steps: ["10%", "50%", "100%"], rollbackOn: "slo:checkout.latency" });
 ```
 
@@ -559,7 +564,7 @@ Policy is typed code (no Rego to learn; OPA/Cedar are optional engines). Rules c
 
 ```ts
 // security/policy.ts
-import { policyPack, rule } from "@hobo/cloud";
+import { policyPack, rule } from "@hobo/sdk";
 
 export default policyPack("acme-baseline", { mandatory: true }, [          // mandatory = a deny-ceiling
   rule("prod-deletes-need-approval", { phase: "apply", when: { env: "production", action: "resource.delete" }, effect: "require-approval" }),
@@ -590,7 +595,7 @@ A legitimate exception is a **gated waiver**, not a flag someone flips — a gov
 
 ```ts
 // security/waivers.ts — break-glass: signed, expiring, audited.
-import { waiver } from "@hobo/cloud";
+import { waiver } from "@hobo/sdk";
 export default waiver("pol_7f31", {
   reason:   "EU capacity incident; temporary US failover, approved by IR.",
   approver: "role:security-admin",     // author ≠ approver; no one self-approves (SoD)
@@ -613,7 +618,7 @@ The Yard is itself a HoBo Bindle (dogfood). Standing it up is two phases — a d
 ```bash
 hobo up ./platform --seed          # phase 1: a disposable LOCAL seed Yard (sqlite). NOT "your cloud" yet.
 hobo up ./platform --camp host-azure
-#   phase 2: the seed self-deploys @hobo/cloud to real infra
+#   phase 2: the seed self-deploys @hobo/sdk to real infra
 #   provisioning Planner · Orchestrator · Identity(SVID issuer) · Registry · Executors(Firecracker) · EventStore
 #   Firecracker runs on HOST VMs, not your laptop
 #   seed used YOUR `hobo login` SVID once (audited: identity.SeedTokenUsed)
@@ -629,7 +634,7 @@ Where CI runs is itself a registered, cost-routed decision — burn free credits
 
 ```ts
 // platform/runners.ts
-import { dispatcher, runner } from "@hobo/cloud";
+import { dispatcher, runner } from "@hobo/sdk";
 export default dispatcher({ objective: "min-cost" }, [
   runner.selfHosted({ behind: "relay" }),       // your Executors, reachable via the outbound Relay (no inbound ports)
   runner.github(), runner.depot(), runner.blacksmith(),
@@ -650,7 +655,7 @@ The Yard is event-sourced, so recovery is **rebuild from the log**, not restore-
 hobo up ./platform --restore s3://acme-backups/yard.log   # replay the control plane to its last good state
 ```
 
-And the Yard is itself a Bindle, so **upgrading it is deploying it** — bump `@hobo/cloud`, run `hobo up ./platform`, and the upgrade rides the same gate + canary + rollback as any app. No bespoke control-plane updater, no maintenance-window ritual, no "which version is the cluster actually on?"
+And the Yard is itself a Bindle, so **upgrading it is deploying it** — bump `@hobo/sdk`, run `hobo up ./platform`, and the upgrade rides the same gate + canary + rollback as any app. No bespoke control-plane updater, no maintenance-window ritual, no "which version is the cluster actually on?"
 
 ---
 
@@ -662,7 +667,7 @@ And the Yard is itself a Bindle, so **upgrading it is deploying it** — bump `@
 
 ```ts
 // ops/slos.ts
-import { slo } from "@hobo/sdk";
+import { slo } from "@hobo/bindles";
 export const checkoutLatency = slo("checkout.latency", { objective: "p95 < 250ms", window: "30d", burnAlert: "2x" });
 export const photosAvail     = slo("photos.availability", { objective: "99.9%", window: "30d" });
 ```
@@ -675,7 +680,7 @@ A runbook is a trigger → diagnosis (read-only MCP queries) → gated, blast-ra
 
 ```ts
 // ops/runbooks.ts
-import { runbook } from "@hobo/cloud";
+import { runbook } from "@hobo/sdk";
 export default runbook("high-5xx-on-api", {
   on: { alert: "api.5xx-burst", severity: ">=SEV2" },
   diagnose: ["logs api", "drift api", "slo checkout.latency"],
@@ -693,7 +698,7 @@ The Crew is **code**, not a `hobo crew` command. Each operator is an `agent()` t
 
 ```ts
 // ops/crew.ts
-import { agent } from "@hobo/cloud";
+import { agent } from "@hobo/sdk";
 export const sre = agent("sre", {
   model: "anthropic/claude-haiku-4.5",
   instructions: "Diagnose from projections; classify; auto-fix only if low-risk, reversible, in-budget.",
@@ -724,7 +729,7 @@ Reliability you didn't verify is a guess. A chaos experiment is a typed hypothes
 
 ```ts
 // ops/chaos.ts
-import { chaos } from "@hobo/cloud";
+import { chaos } from "@hobo/sdk";
 export default chaos("db-failover-holds-checkout-slo", {
   steadyState: "slo:checkout.latency",                 // the invariant that must keep holding
   inject:      { fault: "provider-degraded", target: "db@prod-azure" },

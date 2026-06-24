@@ -14,7 +14,7 @@ Declaring a permission on a resource drives **three** things at once:
 
 ```ts
 // IfC-default authoring: resources declared inline, permissions co-located
-import { bucket, kv, topic } from "@hobo/sdk";
+import { bucket, kv, topic } from "@hobo/bindles";
 
 const profiles = bucket("profiles").allow("read", "write");   // → blobstore RW IAM + wasi:blobstore link + token scope
 const sessions = kv("sessions").allow("get", "set");          // → wasi:keyvalue (get/set only)
@@ -23,7 +23,7 @@ const events   = topic("user-created").allow("publish");      // → wasi:messag
 Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor token grants it. This unifies least-privilege IAM with wasm capability security and HoBo's agent auth.
 
 ### Catalog — resource → WIT port → permission verbs
-| Resource | `@hobo/sdk` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
+| Resource | `@hobo/bindles` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
 |---|---|---|---|---|
 | **API / HTTP** | `api(name)` | `wasi:http` (+ `hobo:http`) | route-level security | API GW+Lambda / Container Apps / Cloud Run / Workers |
 | **KV** | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` | DynamoDB / Cosmos / Firestore / KV |
@@ -72,7 +72,7 @@ HoBo's runtime provides **everything Nitric's runtime does** — the full buildi
 ### IfC-default authoring (resources emerge from code)
 The **default** authoring mode is Nitric-style: declare resources inline and `.allow()` what you use; HoBo's deploy pipeline runs each component in **resource-collection mode** to capture declarations into the **manifest IR** (below). Handlers attach to resources directly:
 ```ts
-import { api, kv } from "@hobo/sdk";
+import { api, kv } from "@hobo/bindles";
 const todos = kv("todos").allow("get", "set");
 const app = api("main");
 app.get("/todos/:id", async (ctx) => ctx.json(await todos.get(ctx.params.id)));
@@ -172,7 +172,7 @@ Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-
 
 **SDK surface.** Declared inline (IfC) alongside resources; read via `ctx.config`. Each item is a **varlock-style declarative schema** entry ([ADR-0027](./adr/02-identity-security.md#adr-0027)) — typed and annotation-driven, carrying its **type, required, sensitivity, and source** — so `can-deploy` can validate the config surface without ever touching values:
 ```ts
-import { config, secretRef, env, fromBinding } from "@hobo/sdk";
+import { config, secretRef, env, fromBinding } from "@hobo/bindles";
 
 export const cfg = config({
   DB:        fromBinding("db"),            // secretless: brokered client/token via the bind (Plan 13)

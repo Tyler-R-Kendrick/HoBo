@@ -53,7 +53,7 @@ A machine-readable standard each Provider publishes so any agent can understand 
     { "type": "oauth2-obo", "authorizationServer": "https://acme.example.com/oauth",
       "scopes": ["db:write","compute:deploy","objstore:rw"] },
     { "type": "oauth2-xaa", "idJag": true, "authorizationServer": "https://acme.example.com/oauth",
-      "audience": "urn:acme:app", "scopes": ["tasks:read","tasks:write"] },   // Cross-App Access (ID-JAG, ADR-0084)
+      "audience": "urn:acme:app", "scopes": ["tasks:read","tasks:write"] },   // XAA available scopes; HoBo requests only the subset inferred from usage (ADR-0084)
     { "type": "device-code" },
     { "type": "api-key", "header": "X-Api-Key", "rotation": "manual" }
   ],
@@ -246,6 +246,14 @@ sequenceDiagram
 - **HoBo as resource (inbound).** A HoBo-hosted app is the *target*: its **`auth()` port** (§6.7) / Yard AS accepts an ID-JAG (audience = the HoBo app) from an external requesting agent (Claude, Cursor, …), verifies it against the trusted IdP's JWKS, and issues a scoped token — gated by the policy plane + `.allow()`. So **HoBo apps are XAA resource servers by default**, reachable by external agents under enterprise governance.
 
 **Governed, scoped, audited — no standing privilege.** The brokering IdP is the same swappable **`hobo:auth`** IdP (WorkOS/Auth0/Entra/Okta/Keycloak, [ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)) or HoBo's own Yard Identity acting as OIDC issuer. Every cross-app grant is a **deny-by-default policy decision** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) — the request already carries `subject.delegatedBy`, so "agent X may access external app Y on behalf of user Z" is a policy/deny-ceiling rule, checked *before* the ID-JAG is minted (a `mandatory` rule can **require XAA** and refuse standing API keys where a target supports it). Tokens are short-lived + audience-bound (no reuse across targets); the whole **user → agent → external-app** chain rides `token.Granted/Used/Revoked` (the `CredentialAudit` projection), so "which agent reached which external app as which user, when" is always answerable. For targets that don't yet speak ID-JAG (still an IETF draft), HoBo falls back to `oauth2-obo` / MCP-OAuth2.1 — functional, but without the central XAA governance.
+
+**App-facing surface — declare the app, infer the scope.** You don't list OAuth scopes by hand. Declare a cross-app dependency and use its typed client; HoBo infers the least-privilege scope set from the operations you call (declaration + usage, [Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0069](./adr/01-architecture-core.md#adr-0069)) and brokers the XAA token for exactly that set, on behalf of `ctx.user`:
+```ts
+import { crossApp } from "@hobo/bindles";
+const asana = crossApp("asana");                            // declaration → typed client from Asana's Capability Manifest
+await asana.tasks.create({ name, assignee: ctx.user.id });  // usage → infers scope tasks:write; XAA token brokered automatically
+```
+`auth.json`'s `scopes` advertise what the target *offers*; the manifest records the inferred subset HoBo actually *requests* (`allow`). `crossApp("asana").allow("tasks:read")` narrows it; a policy deny-ceiling ([ADR-0074](./adr/02-identity-security.md#adr-0074)) caps it. Full authoring surface in [Plan 21](./authoring-resources-wiring.md#plan-21).
 
 **Verification ([Plan 9](./generated-stack.md#plan-09)).** An end-user-auth test: a JWT from a fixture IdP is verified via JWKS → `ctx.user` carries the claims; an **expired / wrong-issuer / tampered** token is rejected; a **policy/`.allow()` rule keyed on user claims** gates a query/mutation (allow + deny cases); **revocation** (`session.Revoked`) blocks subsequent requests **and re-pushes affected reactive queries**; the **thin built-in dev provider works offline** (air-gap tie, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 

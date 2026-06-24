@@ -102,10 +102,10 @@ Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8
 
 `hobo up` always deploys **through a HoBo cloud** — a control plane (a Yard). That cloud has to exist *first*; nobody deploys into a vacuum. There are exactly two ways to have one:
 
-1. **Use the hosted HoBo cloud.** HoBo runs a managed control plane and exposes a **pre-approved catalog** of providers, Camps, and side-loaded Bindles ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)). An app dev's first `hobo up` (Part 1) lands here — the `*.preview.hobo.dev` ephemeral preview **is** the hosted cloud auto-placing your Bindle. Zero platform setup, because HoBo already self-hosted it and curated what you can deploy.
-2. **Self-host your own.** For your org's infrastructure, a **platform engineer stands up a Yard first** — Part 2 builds it, Part 5 bootstraps it onto real infra. **Until that Yard exists with providers registered, no app dev can `hobo up` through it.** Once it's live (optionally publishing its own pre-approved catalog), app devs deploy exactly as in Part 1 — pointed at your cloud instead of the hosted one.
+1. **Use the hosted HoBo cloud.** HoBo runs a managed control plane and exposes a **pre-approved catalog** of providers, Camps, and side-loaded Bindles ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)). An app dev's first `hobo up` (Part 1) lands here — the `*.preview.hobo.dev` ephemeral preview **is** the hosted cloud **inferring and auto-approving a Camp** for your Bindle. Zero platform setup, because HoBo already self-hosted the cloud and **approved its default providers** (the pre-approved catalog), so the happy path is ready.
+2. **Self-host your own.** For your org's infrastructure, a **platform engineer goes first**: they run the operator SDK (`@hobo/sdk`) self-hosted *somewhere* to stand up a Yard (Part 2 builds it, Part 5 bootstraps it onto real infra), then **approve a set of default providers**. That approval is what creates the **happy path** — once defaults are approved, the cloud **infers and auto-approves a Camp** for each Bindle and deploys it zero-config, so app devs `hobo up` exactly as in Part 1, pointed at your cloud. **Until the cloud exists *and* has approved defaults, there's no happy path to deploy through.**
 
-So the real order of operations is **platform-engineer-first**: a cloud is configured and self-hosted (Part 2 → Part 5), *then* app devs deploy through it (Part 1). The role Parts below can be read in any order, but this dependency is real — the hosted cloud just hides it by keeping a platform engineer (HoBo's) on the other side.
+So the real order of operations is **platform-engineer-first**: a cloud is **self-hosted and its default providers approved** (Part 2 → Part 5), *then* app devs deploy through it (Part 1) on **inferred, auto-approved Camps**. The role Parts below can be read in any order, but this dependency is real — the hosted cloud just hides it by keeping a platform engineer (HoBo's) on the other side, defaults already approved.
 
 ---
 
@@ -314,7 +314,7 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 # Part 2 — Platform engineer: map a Camp to a cloud; Matching does the rest
 
-**You go first.** On your own infrastructure this Part is the prerequisite for all of Part 1: until this Yard exists with providers registered, there is no cloud for an app dev to `hobo up` through (the hosted HoBo cloud is the only alternative — see Part 0).
+**You go first.** On your own infrastructure this Part is the prerequisite for all of Part 1: until this Yard exists **and you've approved default providers**, there's no happy path for an app dev to `hobo up` through (the hosted HoBo cloud is the only alternative — see Part 0). Approving defaults is what lets the cloud **infer and auto-approve a Camp** per Bindle.
 
 **Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.** And **placement itself is automatic**: with no Camp, the cloud auto-places and **rebalances** the Bindle across your registered providers (the Dispatcher, [Plan 25](./platform-engineering.md#plan-25)/[ADR-0071](./adr/01-architecture-core.md#adr-0071)). You build a **Camp / Yard / Junction only to *pin*** a cloud, region, residency, or topology auto-placement shouldn't decide — topology is an override, not a prerequisite.
 
@@ -342,17 +342,19 @@ export default yard("acme", {
     oidc: { federate: "acme.yard" },             // keyless: the Yard's OIDC is trusted by Azure; no secrets stored
   }))
   .register(cloudflare({ accountId: process.env.CF_ACCT, oidc: { federate: "acme.yard" } }))
-  .setup(
+  // ── approve which registered providers are DEFAULTS → the happy path (cloud infers + auto-approves Camps) ──
+  .approveDefaults("azure", "cloudflare")
+  .setup(                                   // OPTIONAL explicit Camps — pins/overrides, not required
     camp("prod-azure",   { provider: "azure",      runtime: postgresRuntime() }),
     camp("staging-cf",   { provider: "cloudflare", runtime: postgresRuntime() }),
   );
 ```
 
 ```bash
-hobo up ./platform       # brings the Yard up; registered providers are now bindable by Camps
+hobo up ./platform       # brings the Yard up; approved defaults make the happy path live (Camps inferred + auto-approved)
 ```
 
-`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you.
+`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you. Registering a provider makes it **available**; **`.approveDefaults(...)` marks which ones the cloud may auto-place into without asking** — that approval is what turns the lights on for app devs (the cloud infers and **auto-approves** a Camp per Bindle). The explicit `camp(...)` calls above are optional **pins**; the happy path needs only the approved defaults.
 
 > **A provider that doesn't exist yet?** Generate one, then register it the same way:
 > ```ts

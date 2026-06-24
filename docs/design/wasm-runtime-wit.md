@@ -254,10 +254,10 @@ interface extension {
 }
 ```
 
-The developer never writes the WIT — declaring `websocket()` + `.allow()` generates the typed surface ([ADR-0072](./adr/01-architecture-core.md#adr-0072)/[ADR-0037](./adr/01-architecture-core.md#adr-0037)):
+The developer never writes the WIT — declaring `websocket()` generates the typed surface, and its permissions are inferred from the methods used ([ADR-0072](./adr/01-architecture-core.md#adr-0072)/[ADR-0037](./adr/01-architecture-core.md#adr-0037)):
 ```ts
 import { websocket } from "@hobo/bindles";
-const chat = websocket("chat").allow("accept", "broadcast", "subscribe");
+const chat = websocket("chat");   // chat.accept()/.broadcast()/.subscribe() below → infers allow:[accept,broadcast,subscribe]
 chat.on("open",    (c)      => { if (c.user) chat.join(c.id, `room:${c.user.tenant}`); }); // ctx.user from auth
 chat.on("message", (c, msg) => chat.broadcast(`room:${c.user.tenant}`, msg));              // fan-out
 ```

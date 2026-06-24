@@ -2,13 +2,13 @@
 
 ## Plan 19
 
-> **Authoring (IfC + wasm + `.allow()`).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline with `.allow()`, the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). The explicit `bindle.ts` below still works (advanced mode).
+> **Authoring (IfC + wasm + inferred permissions).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline (their permissions **inferred from use**, `.allow()` only to narrow), the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
-> // src/api.ts — IfC: resources + permissions inline; compiles to a wasm component via jco
+> // src/api.ts — IfC: resources inline, permissions inferred from use; compiles to a wasm component via jco
 > import { api, kv, bucket, queue, workflow, step } from "@hobo/bindles";
-> const orders = kv("orders").allow("get", "set");          // → wasi:keyvalue link + IAM + token scope
-> const images = bucket("images").allow("read", "write");   // → wasi:blobstore
-> const events = queue("orders").allow("enqueue");          // → hobo:queue
+> const orders = kv("orders");          // orders.get()/.set() → infers allow:[get,set] (wasi:keyvalue + IAM + token scope)
+> const images = bucket("images");      // images.read()/.write() → infers allow:[read,write] (wasi:blobstore)
+> const events = queue("orders");       // events.enqueue() → infers allow:[enqueue] (hobo:queue)
 > const app = api("main");
 > app.post("/checkout", async (ctx) => { await checkout(await ctx.json()); ctx.json({ ok: true }); });
 > // `hobo collect` runs this in resource-collection mode → manifest IR (see Plan 22)

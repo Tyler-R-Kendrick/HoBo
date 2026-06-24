@@ -164,7 +164,7 @@ The concrete enumeration behind [ADR-0074](./adr/02-identity-security.md#adr-007
 | `provider` | register · read · list · update · deprecate | author/plan | a CloudProvider / capability provider in the Registry ([Plan 4](./control-plane.md#plan-04)) |
 | `resource-definition` | create · read · list · update · delete | author | Matching definitions ([Plan 25](./platform-engineering.md#plan-25)) |
 | `resource-pack` | install · read · list · publish · yank | author | Resource Packs ([Plan 25](./platform-engineering.md#plan-25)) |
-| `listing` | publish · read · list · install · yank | author | Registry distribution ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)) |
+| `listing` | publish · read · list · install · yank · approve | author | Registry distribution incl. **scope listings** (Bindle/Camp/Yard/Junction) + **pre-approved catalog** curation ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)) |
 | `driver` | register · read · list · update | author | the Driver taxonomy ([Plan 25](./platform-engineering.md#plan-25)) |
 | `integration` | register · read · list · update · deprecate | author | swappable adapters — auth IdP · artifact-repo · runner · build-machine · issue-tracker · knowledge ([ADR-0071](./adr/01-architecture-core.md#adr-0071)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)) |
 | `dispatcher` | read · configure | author | the cost-routing objective ([ADR-0071](./adr/01-architecture-core.md#adr-0071)) |

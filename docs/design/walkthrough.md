@@ -98,6 +98,17 @@ Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8
 
 ---
 
+# Part 0 — Before anyone deploys: a HoBo cloud must exist
+
+`hobo up` always deploys **through a HoBo cloud** — a control plane (a Yard). That cloud has to exist *first*; nobody deploys into a vacuum. There are exactly two ways to have one:
+
+1. **Use the hosted HoBo cloud.** HoBo runs a managed control plane and exposes a **pre-approved catalog** of providers, Camps, and side-loaded Bindles ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)). An app dev's first `hobo up` (Part 1) lands here — the `*.preview.hobo.dev` ephemeral preview **is** the hosted cloud auto-placing your Bindle. Zero platform setup, because HoBo already self-hosted it and curated what you can deploy.
+2. **Self-host your own.** For your org's infrastructure, a **platform engineer stands up a Yard first** — Part 2 builds it, Part 5 bootstraps it onto real infra. **Until that Yard exists with providers registered, no app dev can `hobo up` through it.** Once it's live (optionally publishing its own pre-approved catalog), app devs deploy exactly as in Part 1 — pointed at your cloud instead of the hosted one.
+
+So the real order of operations is **platform-engineer-first**: a cloud is configured and self-hosted (Part 2 → Part 5), *then* app devs deploy through it (Part 1). The role Parts below can be read in any order, but this dependency is real — the hosted cloud just hides it by keeping a platform engineer (HoBo's) on the other side.
+
+---
+
 # Part 1 — App developer: write code, `hobo up`
 
 **Your promise:** you never pick a cloud, write a Dockerfile, touch IAM, or learn a deploy tool. You write TypeScript and run two commands.
@@ -145,7 +156,7 @@ app.post("/photos", async (ctx) => {
 app.get("/photos/:id", async (ctx) => ctx.json(await catalog.get(ctx.params.id) ?? { error: "not found" }));
 ```
 
-`hobo dev` runs this against a local Postgres/object-store with hot reload; `hobo up` ships it. You never named a provider — that's Part 2's job, and it already happened.
+`hobo dev` runs this against a local Postgres/object-store with hot reload; `hobo up` ships it. You never named a provider — that's Part 2's job, and it already happened: on the hosted cloud, or on the Yard your platform engineer self-hosted (see Part 0).
 
 **What `hobo up` builds first is a manifest — generated from your code, not written by you.** A resource-collection pass runs your component, captures every resource, and **infers each one's permissions from how the code uses it** — recording the least-privilege `allow` set into a provider-agnostic IR (you wrote no `.allow()`). It names *abstract capabilities* — a kv, a bucket, an api — and **never a cloud**. This generated artifact is the entire contract handed to Part 2:
 
@@ -303,6 +314,8 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 # Part 2 — Platform engineer: map a Camp to a cloud; Matching does the rest
 
+**You go first.** On your own infrastructure this Part is the prerequisite for all of Part 1: until this Yard exists with providers registered, there is no cloud for an app dev to `hobo up` through (the hosted HoBo cloud is the only alternative — see Part 0).
+
 **Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.** And **placement itself is automatic**: with no Camp, the cloud auto-places and **rebalances** the Bindle across your registered providers (the Dispatcher, [Plan 25](./platform-engineering.md#plan-25)/[ADR-0071](./adr/01-architecture-core.md#adr-0071)). You build a **Camp / Yard / Junction only to *pin*** a cloud, region, residency, or topology auto-placement shouldn't decide — topology is an override, not a prerequisite.
 
 ## 2.1 — The operator SDK: build a Yard and register providers
@@ -443,6 +456,22 @@ hobo plan --camp prod
 ```
 
 Under the hood these are the same Resource Definitions the provider supplies by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite. **Junction connectivity overrides the same way** — pin a hub-and-spoke topology, a specific interconnect SKU, or explicit DNS/routing, and the explicit choice wins by specificity over the inferred default.
+
+## 2.5 — Share it: distribute and import golden topology
+
+You don't re-author a Yard per team. Because Camps, Yards, and Junctions are plain SDK objects, you **package and publish** them — an npm package or a structured git repo that *exports* the constructed scope, signed + certified like any listing ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)):
+
+```ts
+// @acme/yard-prod — a preconfigured, signed Yard other teams import
+export { default } from "./yard";   // the Yard above: providers + Camps + policy baked in
+```
+
+```bash
+npm i @acme/yard-prod          # or: hobo add @acme/yard-prod  (registry, Matching-bound)
+hobo up ./platform             # imports the golden Yard instead of rebuilding it
+```
+
+The same goes for a **preconfigured Camp/Junction** or a **side-loaded Bindle** (a prebuilt app component you didn't author). And a Yard — including the **hosted HoBo cloud** — can publish a **pre-approved catalog**: the curated set of providers, scopes, and packs it vouches for, which a policy pack can *require* in production ([ADR-0074](./adr/02-identity-security.md#adr-0074)). That's exactly what lets an app dev's first `hobo up` (Part 0) just work — the hosted cloud ships a pre-approved catalog so the Bindle deploys with zero platform setup.
 
 ---
 

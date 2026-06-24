@@ -383,7 +383,34 @@ export default junction("acme").add(azureYard, euYard); // federate trust + sign
 
 `hobo up ./platform` realizes whatever this graph contains — one Camp, a multi-Camp Yard, or a cross-cloud Junction — with the same verb.
 
-## 2.3 — Overrides: change one default, keep the rest inferred
+## 2.3 — Junctions infer cross-cloud connectivity from Yard manifests
+
+The inference runs one scope up, too. Just as a Bindle generates a manifest of capabilities for its Camp, **each Yard generates a manifest of its cross-boundary surface** — the endpoints/domains it exposes, and the cross-Yard links its Bindles need (folded from `bind`/`link` edges that point at a resource living in another Yard), plus residency and trust domain. You write none of it:
+
+```jsonc
+// generated per Yard — schema hobo.yard-manifest/v1
+{ "yard": "acme-azure", "trustDomain": "acme.yard", "residency": "us",
+  "exposes":  [ { "service": "snapshop.api",   "domain": "shop.acme.com", "visibility": "public" } ],
+  "requires": [ { "from": "snapshop.api", "to": "payments.ledger@acme-aws", "via": "private" } ] }
+```
+
+A **Junction** folds its members' manifests into the cross-cloud graph and **infers the connectivity plane** — exactly as Matching realizes a resource, selecting per cross-boundary edge the providers' built-in connectivity Definitions: the **connectivity tier** (native peering → PrivateLink/PSC → WireGuard/eBPF overlay → public+mTLS, [Plan 12](./security-networking.md#plan-12)), the **`hobo:dns` rules** (cross-cloud domain routing/failover + private resolution), and the gateways. You declared only the peers:
+
+```ts
+// platform/topology.ts
+export default junction("acme").add(azureYard, awsYard);   // just the members — connectivity is inferred
+```
+
+```bash
+hobo plan ./platform
+#   match.Decided  link snapshop.api → payments.ledger  → privatelink (azure↔aws)     [both providers' default]
+#   match.Decided  dns  shop.acme.com                   → hobo:dns failover(azure,aws) [cross-cloud · ACME DNS-01]
+#   junction.ConnectivityInferred  2 links · 1 domain · residency preserved
+```
+
+This stays inside the Junction's **peer** rule ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)): the Junction **computes the plan and federates each Yard its half** — the Azure Yard provisions the Azure side of the PrivateLink and its DNS records, the AWS Yard provisions its side — **no shared state, no super-controller**, each Yard realizing its own resources under its own log. A new cross-cloud dependency in app code becomes a new inferred link on the next `hobo up`; you never hand-build a VPN or hand-write a DNS record.
+
+## 2.4 — Overrides: change one default, keep the rest inferred
 
 Provider defaults are sensible, not mandatory. When you want a specific SKU, a different shape per environment, or a tier on the edge, override **just that** — everything else still auto-infers. An override is the same `defineResource`/`bindings`/`tiers` API, and it **wins by specificity** over the provider's default:
 
@@ -410,7 +437,7 @@ hobo plan --camp prod
 #   match.Decided  catalog  (kv)       → azure.cosmos                [binding pins it; provider default rejected]
 ```
 
-Under the hood these are the same Resource Definitions the provider supplies by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite.
+Under the hood these are the same Resource Definitions the provider supplies by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite. **Junction connectivity overrides the same way** — pin a hub-and-spoke topology, a specific interconnect SKU, or explicit DNS/routing, and the explicit choice wins by specificity over the inferred default.
 
 ---
 

@@ -167,8 +167,8 @@ Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only 
 **Derivatives** ([Plan 23](./generated-stack.md#plan-23)/[ADR-0057](./adr/07-portability-extensibility.md#adr-0057)) — the `hobo derivative upgrade` ceremony for long-lived forks: check `derivative.json` compat → run pinned upcasters → re-run seam conformance → report
 `derivative.UpgradeStarted` · `derivative.UpgradeSucceeded` · `derivative.UpgradeFailed` · `derivative.EphemeralPatchApplied` (a runtime-instance patch's full diff + regions + provenance — *not* promoted to source control, but durable in the log so replay reconstructs the patched instance; [ADR-0057](./adr/07-portability-extensibility.md#adr-0057))
 
-**Junction (peer federation)** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — cross-Yard trust/policy/registry federation under an agreed root; never reaches into a member Yard's state
-`junction.YardJoined` · `junction.TrustEstablished` · `junction.TrustRevoked` (drops a peer immediately — fast revocation bounding the forge-principals-into-A window; the mechanism [ADR-0074](./adr/02-identity-security.md#adr-0074) §6 cross-Yard governance depends on) · `junction.ArtifactShared` · `junction.PolicyPropagated` · `junction.YardLeft`
+**Junction (peer federation)** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — cross-Yard trust/policy/registry federation **plus inferred cross-cloud connectivity** under an agreed root; never reaches into a member Yard's state (each Yard realizes its own half of an inferred link)
+`junction.YardJoined` · `junction.TrustEstablished` · `junction.TrustRevoked` (drops a peer immediately — fast revocation bounding the forge-principals-into-A window; the mechanism [ADR-0074](./adr/02-identity-security.md#adr-0074) §6 cross-Yard governance depends on) · `junction.ArtifactShared` · `junction.PolicyPropagated` · `junction.ConnectivityInferred` · `junction.YardLeft`
 
 ### Projections (read models)
 Events are the write model; queries read **projections** rebuilt by folding the stream. Projections:

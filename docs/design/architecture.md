@@ -24,7 +24,7 @@ HoBo has two distinct planes; keeping them separate is a core architectural comm
 ```mermaid
 flowchart LR
   subgraph Dev["Developer / Agent"]
-    SDK["@hobo/sdk + @hobo/runtime"]
+    SDK["@hobo/bindles + @hobo/runtime"]
     CLI["@hobo/cli"]
     MCP["MCP client (Claude, etc.)"]
   end
@@ -112,8 +112,11 @@ core  ←  sdk, runtime  ←  runtimes/*, providers/*, iac/*, build/*  ←  cli,
 packages/
   core/            @hobo/core         types, port interfaces, Capability Manifest schema, event envelope, DI/container
   wit/             @hobo/wit          WIT interfaces (wasi:* reuse + hobo:* ports) + the canonical hobo:sdk WIT package + wit-bindgen/jco bindings (per language)  [Plan 20/ADR-0072]
-  sdk/             @hobo/sdk          the TS idiom layer over the hobo:sdk bindings: IfC resources (api/kv/bucket/queue/topic/secret/sql/...) + .allow(); bindle() (advanced) — semantics-free, conformance-gated  [Plan 21/ADR-0072]
-  sdk-rs/ sdk-py/ sdk-go/ ...        per-language idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
+  bindles/         @hobo/bindles      app idiom layer (TS) over the hobo:sdk bindings: IfC resources (api/web/kv/bucket/queue/topic/secret≈vault/sql/...) + .allow(); bindle() (advanced) — semantics-free, conformance-gated  [Plan 21/ADR-0072]
+  camps/           @hobo/camps        camp() — map a Bindle to a cloud + IaC
+  yards/           @hobo/yards        yard() + domain() — provider-specific control-plane scope
+  junctions/       @hobo/junctions    junction() — cross-cloud federation + inferred connectivity  [ADR-0043]
+  bindles-rs/ bindles-py/ bindles-go/ ... per-language app idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
   runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
   cli/             @hobo/cli          hobo dev|deploy|plan|inspect|login|registry|yard|forge
@@ -135,7 +138,7 @@ packages/
     build-wasm         @hobo/build-wasm        (jco/cargo-component/TinyGo/... -> wasm component, OCI artifact)
     build-dagger       @hobo/build-dagger      (container fallback images)
     build-packer / build-firecracker / build-vagrant
-  cloud/             @hobo/cloud        The Yard (control plane), itself a Bindle; hosts the built-in Operator Agents (the Crew)  [Plan 40]
+  sdk/               @hobo/sdk          operator SDK — configure & self-host a HoBo cloud: the Yard (control plane), itself a Bindle; defineResource + policy/waiver + dispatcher + runbooks; hosts the built-in Operator Agents (the Crew)  [Plan 40]
   registry/          @hobo/registry     Provider/Capability Manifest catalog service
   identity/          @hobo/identity     SVID issuance, OIDC provider, token broker
   mcp/               @hobo/mcp          MCP server exposing HoBo to agents
@@ -156,7 +159,7 @@ examples/
 ```
 
 #### Projects (top-level surfaces → packages)
-The product's named **Projects** map to packages here: **Cloud** → `@hobo/cloud` (+ `registry`/`identity`); **SDK** → `@hobo/sdk` (+ `runtime`); **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 21](./authoring-resources-wiring.md#plan-21)). *(A `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/07-portability-extensibility.md#adr-0064).)*
+The product's named **Projects** map to packages here: **Cloud / self-host** → `@hobo/sdk` (the operator SDK, + `registry`/`identity`); **App SDK** → `@hobo/bindles` (+ `runtime`); **topology** → `@hobo/camps`/`@hobo/yards`/`@hobo/junctions`; **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 21](./authoring-resources-wiring.md#plan-21)). *(A `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/07-portability-extensibility.md#adr-0064).)*
 
 #### Conventions
 - **Ports live in `core`**, implementations in adapter packages; adapters never import each other.

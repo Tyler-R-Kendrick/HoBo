@@ -89,3 +89,4 @@
 | 0081 | Encore-style paradigm resource packages as opt-in SDK plugins (SQL · vector · graph · document), mapped to cloud natives by Matching, overridable | [data-plane](03-data-plane.md#adr-0081) |
 | 0082 | Golden Suites: reproducible default-on test/eval/benchmark gate for every deployment; failure → Incident → Crew → A2H handoff | [identity-security](02-identity-security.md#adr-0082) |
 | 0083 | The Harness: progressive delivery as a pluggable core (OpenFeature · OpenDelivery · OpenExperiment, over OpenTelemetry) | [identity-security](02-identity-security.md#adr-0083) |
+| 0084 | Cross-App Access (XAA): IdP-brokered, policy-governed user-delegated access to/from external apps (ID-JAG over token exchange) | [identity-security](02-identity-security.md#adr-0084) |

@@ -4,26 +4,26 @@ This capability doc covers the authoring surface end to end: the resource catalo
 
 ## Plan 21
 
-> **Contracts & policy (gates):** an `.allow()` declaration is also a **capability contract** ([Plan 29](./contracts-policy-flags.md#plan-29)) — the **required** scope must be ⊆ the **granted** scope on the resolved provider; a mismatch is a contract failure caught by `can-deploy`, not a runtime surprise.
+> **Contracts & policy (gates):** the inferred (or explicitly narrowed) grant is also a **capability contract** ([Plan 29](./contracts-policy-flags.md#plan-29)) — the **required** scope (what the code uses) must be ⊆ the **granted** scope on the resolved provider; by default they're equal (granted = inferred-from-usage), and an explicit `.allow()` that narrows below usage is the contract failure `can-deploy` catches, not a runtime surprise.
 
-### The `.allow()` model — one declaration, three effects
-Declaring a permission on a resource drives **three** things at once:
+### The permission model — inferred from usage, three effects
+A resource's permissions are **inferred from how your code uses it**: resource-collection runs the component and static analysis reads which WIT verbs it calls, baking the least-privilege used-set into the manifest. That inferred grant drives **three** things at once:
 1. **Least-privilege IAM** — the IaC adapter generates the minimal cloud policy ([Plan 4](./control-plane.md#plan-04)).
-2. **WASM capability grant (link)** — the component is linked to *only* the provider interfaces its permissions require; everything else is denied by the wasm host ([Plan 20](./wasm-runtime-wit.md#plan-20)).
-3. **Agent token scope** — the broker issues scoped tokens bounded to exactly these `(resource, verbs)` ([Plan 6](./ai-native-agent-auth.md#plan-06)).
+2. **WASM capability grant (link)** — the component is linked to *only* the provider interfaces it uses; everything else is denied by the wasm host ([Plan 20](./wasm-runtime-wit.md#plan-20)).
+3. **Agent token scope** — the broker issues scoped tokens bounded to exactly those `(resource, verbs)` ([Plan 6](./ai-native-agent-auth.md#plan-06)).
 
 ```ts
-// IfC-default authoring: resources declared inline, permissions co-located
-import { bucket, kv, topic } from "@hobo/sdk";
+// IfC-default authoring: resources declared inline; permissions inferred from use
+import { bucket, kv, topic } from "@hobo/bindles";
 
-const profiles = bucket("profiles").allow("read", "write");   // → blobstore RW IAM + wasi:blobstore link + token scope
-const sessions = kv("sessions").allow("get", "set");          // → wasi:keyvalue (get/set only)
-const events   = topic("user-created").allow("publish");      // → wasi:messaging (publish only)
+const profiles = bucket("profiles");                        // profiles.read()/.write() → infers RW (wasi:blobstore)
+const sessions = kv("sessions");                            // sessions.get()/.set()    → infers get/set (wasi:keyvalue)
+const events   = topic("user-created").allow("publish");   // explicit .allow() = NARROW: cap to publish even if code uses more
 ```
-Permissions are **deny-by-default**: omit a verb and neither IAM, link, nor token grants it. This unifies least-privilege IAM with wasm capability security and HoBo's agent auth.
+Permissions are **deny-by-default**: a verb your code never calls is never granted — by IAM, link, or token. Inference yields exactly the used-set; **`.allow()` is an optional override** that only **narrows** it (assert a tighter contract — `can-deploy` fails if the code exceeds it) or grants a **dynamic** verb static analysis can't see. This unifies least-privilege IAM with wasm capability security and HoBo's agent auth.
 
 ### Catalog — resource → WIT port → permission verbs
-| Resource | `@hobo/sdk` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
+| Resource | `@hobo/bindles` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
 |---|---|---|---|---|
 | **API / HTTP** | `api(name)` | `wasi:http` (+ `hobo:http`) | route-level security | API GW+Lambda / Container Apps / Cloud Run / Workers |
 | **KV** | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` | DynamoDB / Cosmos / Firestore / KV |
@@ -70,15 +70,37 @@ HoBo's runtime provides **everything Nitric's runtime does** — the full buildi
 > **Opt-in paradigm packages (Encore-style ergonomics, [ADR-0081](./adr/03-data-plane.md#adr-0081)).** `data(name)` is the **portable default** (paradigm chosen by Matching). A developer who wants a paradigm-idiomatic typed abstraction instead opts into **`@hobo/sql`** / **`@hobo/vector`** / **`@hobo/graph`** / **`@hobo/document`** — idiom layers over the same `hobo:data`/`hobo:search` ports that map to cloud natives by Matching and stay overridable (`.with()` native pin · Resource Definition · `.raw()` dialect). A deliberate, surfaced specialization (equivalence-class-bounded), not the default.
 
 ### IfC-default authoring (resources emerge from code)
-The **default** authoring mode is Nitric-style: declare resources inline and `.allow()` what you use; HoBo's deploy pipeline runs each component in **resource-collection mode** to capture declarations into the **manifest IR** (below). Handlers attach to resources directly:
+The **default** authoring mode is Nitric-style: declare resources inline and HoBo **infers their permissions from how you use them**; the deploy pipeline runs each component in **resource-collection mode** to capture declarations + the used-verb set into the **manifest IR** (below). Handlers attach to resources directly:
 ```ts
-import { api, kv } from "@hobo/sdk";
-const todos = kv("todos").allow("get", "set");
+import { api, kv } from "@hobo/bindles";
+const todos = kv("todos");   // todos.get()/.set() below → infers allow:[get,set]
 const app = api("main");
 app.get("/todos/:id", async (ctx) => ctx.json(await todos.get(ctx.params.id)));
 app.post("/todos",    async (ctx) => { await todos.set(crypto.randomUUID(), await ctx.json()); });
 ```
 The explicit `bindle()` topology ([Plan 2](./sdk-api.md#plan-02)) remains available as the **advanced/escape-hatch** mode when you want to declare the graph by hand or do things collection can't infer.
+
+### Cross-app access (XAA) — declare the app, infer the scope
+Reaching an *external* app on the end-user's behalf is a binding like any other, and its OAuth scope is **inferred from declaration + usage** — you no more hand-list scopes than you hand-list `.allow()` verbs ([ADR-0084](./adr/02-identity-security.md#adr-0084)/[Plan 6](./ai-native-agent-auth.md#plan-06)):
+```ts
+import { api, crossApp } from "@hobo/bindles";
+
+const asana = crossApp("asana");          // DECLARATION: a cross-app dependency; typed client from Asana's Capability Manifest
+const sync  = api("sync");
+
+sync.post("/ticket", async (ctx) => {
+  // USAGE: the operations you call infer the least-privilege XAA scopes
+  await asana.tasks.create({ name: ctx.body.title, assignee: ctx.user.id });   // → infers scope tasks:write, on behalf of ctx.user
+});
+```
+- **Declaration** names the target (and that access is *on a user's behalf*); the typed client is generated from the target's Capability Manifest `auth.json`, which advertises the *available* scopes + resource indicators.
+- **Usage** — collection + static analysis read which client operations the code calls and map them to the target's scopes, baking the **least-privilege requested subset** into the manifest, exactly like resource verbs:
+  ```jsonc
+  "asana": { "type": "external-app.v1", "via": "xaa", "audience": "urn:asana:app",
+             "onBehalfOf": "user", "allow": ["tasks:write"] }   // inferred from usage, not declared
+  ```
+- **Brokered automatically** — on the call the runtime obtains an XAA token (ID-JAG → access token, [Plan 6](./ai-native-agent-auth.md#plan-06)) scoped to exactly the inferred set, for `ctx.user`; you never touch a token or a scope string. The raw escape hatch is `ctx.crossApp("asana").token()` (scopes default to the inferred set; pass an explicit subset only to narrow).
+- **Override = narrow only** — `crossApp("asana").allow("tasks:read")` asserts a tighter contract; `can-deploy` fails if the code uses more, and a **policy deny-ceiling** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) can cap it regardless. Deny-by-default holds: a scope the code never exercises is never requested.
 
 ### Handlers, events & triggers (parity with Nitric "services")
 Each entry point compiles to a component exporting the right WIT interface:
@@ -172,7 +194,7 @@ Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-
 
 **SDK surface.** Declared inline (IfC) alongside resources; read via `ctx.config`. Each item is a **varlock-style declarative schema** entry ([ADR-0027](./adr/02-identity-security.md#adr-0027)) — typed and annotation-driven, carrying its **type, required, sensitivity, and source** — so `can-deploy` can validate the config surface without ever touching values:
 ```ts
-import { config, secretRef, env, fromBinding } from "@hobo/sdk";
+import { config, secretRef, env, fromBinding } from "@hobo/bindles";
 
 export const cfg = config({
   DB:        fromBinding("db"),            // secretless: brokered client/token via the bind (Plan 13)

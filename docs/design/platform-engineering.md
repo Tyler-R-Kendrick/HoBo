@@ -11,7 +11,7 @@ Developers declare *what* they need (a `database`, IfC-style with `.allow()`, [P
 For an abstract port (`type` + optional `class`), a definition says which **provider + driver + options + co-provisioned resources** realize it, plus the **matching criteria** that select it. Definitions are **WIT-interface-typed** ([Plan 20](./wasm-runtime-wit.md#plan-20)) and may be **AI-generated** ([Plan 23](./generated-stack.md#plan-23)).
 ```ts
 // platform/resource-defs.ts — authored by platform engineers (TS; YAML form also supported)
-import { defineResource } from "@hobo/sdk/platform";
+import { defineResource } from "@hobo/sdk";
 import { aws } from "@hobo/provider-aws";
 
 export const postgresProdHa = defineResource({
@@ -78,6 +78,8 @@ A Camp's inline mapping ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate s
 - `tiers: { saas: azure, edge: cloudflare }` → definitions matched by service model.
 - `bindings: { "shop.db": azure.cosmos({...}) }` → a definition matched by `resourceId: "shop.db"`.
 So a solo dev writes the one-liner and never sees definitions; a platform team adds explicit definitions (with classes + env-type matching) that win by specificity. **Precedence** = pure matching score (explicit definitions naturally outscore the `{}` defaults).
+
+**Where the `{}` defaults come from — the provider ships them.** Each provider package ships a **default Resource Definition** per capability it supports: its `equivalence` map (abstract port → that cloud's resource class) plus `realize()` ([Plan 4](./control-plane.md#plan-04)), and `.register(provider)` registers them. So a Camp that declares only a **cloud + IaC** matches the *entire* generated manifest with **zero** per-resource config; `defineResource`/`bindings`/`tiers` exist to **override** a default, never to bootstrap the mapping. The same holds for an AI-generated provider: conformance proves its built-in Definitions satisfy each claimed port before it is signed and registered. And declaring a Camp at all is optional: once you've **approved default providers** *and* **enabled inferred-Camp approval** (a toggle, or a policy that passes — [ADR-0074](./adr/02-identity-security.md#adr-0074); off by default), the cloud **infers** a Camp and auto-places/rebalances the Bindle across them (the Dispatcher, [ADR-0071](./adr/01-architecture-core.md#adr-0071)) with no human in the loop — that pair is the happy path. A Camp **pins** placement/residency, or reaches a provider outside the approved set, when inference shouldn't decide.
 
 ### Resource classes
 `class` (`standard`/`ha`/`encrypted`/…) is declared on the resource ([Plan 21](./authoring-resources-wiring.md#plan-21)) and is a first-class matching dimension, so one logical port can have several platform realizations.
@@ -151,6 +153,8 @@ Drivers run inside sandboxed Executors with short-lived scoped creds ([Plan 12](
 
 ### Resource Packs & Workload Profiles
 A **Resource Pack** is a shareable, versioned bundle of Resource Definitions for a common need (e.g. "AWS data tier", "in-cluster preview stack"). Packs live in the **Registry** ([Plan 6](./ai-native-agent-auth.md#plan-06)) with provenance + conformance reports, can be imported and customized by matching, and can be **AI-generated** from a backend's Capability Manifest and certified sandboxed ([Plan 23](./generated-stack.md#plan-23)). `hobo pack add <pack>` installs one.
+
+**Scopes are distributable too, not just definitions.** The scope objects themselves are first-class **listings** ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)): an org ships a **preconfigured Camp/Yard/Junction** — or a **side-loaded Bindle** — as an npm package or a structured git repo that exports the constructed scope (signed + certified like any listing), so a team runs `npm i @acme/yard-prod` (or `hobo add`) and imports a golden topology instead of re-authoring it. A Yard — including the **hosted HoBo cloud** — can publish a **pre-approved catalog** of these (providers, scopes, packs) that production policy may require ([ADR-0074](./adr/02-identity-security.md#adr-0074)); the hosted cloud ships one by default so a Bindle deploys with zero platform setup.
 
 A **Workload Profile** declares **how a service is realized** on a target — the realization HoBo chooses for a `service`/`web` resource:
 - `wasm-component` (default, [Plan 20](./wasm-runtime-wit.md#plan-20)) · `container` (OCI fallback) · `serverless-function` · `vm`/`microvm` ([Plan 21](./authoring-resources-wiring.md#plan-21)).

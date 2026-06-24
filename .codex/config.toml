@@ -1,0 +1,21 @@
+# Codex CLI — MCP servers for this project.
+#
+# NOTE: Codex reads MCP config from its GLOBAL config at ~/.codex/config.toml,
+# not from this project file. This file is a copy-paste reference. Either:
+#   1) paste the [mcp_servers.*] tables below into ~/.codex/config.toml, or
+#   2) run (from scripts/setup-agent-tools.sh):
+#        codex mcp add headroom -- headroom mcp serve
+#        codex mcp add gbrain   -- gbrain serve
+#
+# headroom: local token compression, no API keys.
+# gbrain:   knowledge-graph memory. Requires `gbrain init` once and an embedding
+#           key (OPENAI_API_KEY | ZEROENTROPY_API_KEY | VOYAGE_API_KEY) in your
+#           environment; embedding/query text is sent to that provider (cost + egress).
+
+[mcp_servers.headroom]
+command = "headroom"
+args = ["mcp", "serve"]
+
+[mcp_servers.gbrain]
+command = "gbrain"
+args = ["serve"]

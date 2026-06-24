@@ -1,0 +1,20 @@
+# Secrets / local env
+.env
+.env.local
+
+# Agent-tool local state (machine-specific; do NOT commit)
+.gbrain/
+*.pglite
+.headroom/
+.caveman/
+
+# Node / tooling
+node_modules/
+
+# Logs / OS cruft
+*.log
+.DS_Store
+
+# NOTE: committed on purpose so clones get the tooling wired up —
+#   .mcp.json, .cursor/, .codex/, .claude/skills/, .agents/skills/,
+#   AGENTS.md, CLAUDE.md, skills-lock.json

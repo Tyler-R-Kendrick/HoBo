@@ -60,7 +60,7 @@ A **Provider** binds these ports to a backend and declares *how* it realizes the
 ---
 
 ### Layer 3 — Topology (first-class scope objects: bindle · camp · yard · junction)
-The topology scopes are **first-class SDK objects, constructed and composed programmatically** ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) — not `*.config.ts` files. A **`bindle()`** is the provider-agnostic app (resources + bindings); a **`camp()`** maps it to **one provider** (runtime backend + provider mapping, the "where/how"); a **`yard()`** is **provider-specific** and composes the Camps under that one provider (its cross-Camp policy + control plane); a **`junction()`** connects Yards **across clouds** for the multi-cloud / hybrid case. You build them in code and wire them together — the same values flow into deploy. **Mapping rules** on a Camp decide which provider realizes each port; three mapping styles, all supported:
+The topology scopes are **first-class SDK objects, constructed and composed programmatically** ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) — not `*.config.ts` files. A **`bindle()`** is the provider-agnostic app (resources + bindings); a **`camp()`** maps it to **one provider** (runtime backend + provider mapping, the "where/how"); a **`yard()`** is **provider-specific** and composes the Camps under that one provider (its cross-Camp policy + control plane); a **`junction()`** connects Yards **across clouds** for the multi-cloud / hybrid case. You build them in code and wire them together — the same values flow into deploy. By default a Camp needs only a **provider + IaC**: the Provider's built-in (default) Resource Definitions match every port in the Bindle's manifest automatically. The three mapping styles below are **overrides** for when you want explicit control:
 
 ```ts
 import { camp, yard, junction } from "@hobo/sdk";
@@ -69,7 +69,8 @@ import { aws } from "@hobo/provider-aws";
 import { cloudflare } from "@hobo/provider-cloudflare";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 
-// a Camp maps the Bindle to ONE provider (runtime backend + mapping; the "where/how")
+// A Camp needs only { provider, iac }: the Provider's built-in (default) Resource Definitions
+// match every port automatically. defaultProvider/tiers/bindings below are OVERRIDES.
 const prodAzure = camp("prod-azure", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),   // the Camp's durable runtime backend
 

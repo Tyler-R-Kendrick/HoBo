@@ -91,7 +91,7 @@ snapshop/                       # one repo, one Manifest IR, one verb (hobo up)
 └─ .github/workflows/hobo.yml   #   CI = the same `hobo up`, keyless via OIDC
 ```
 
-Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8s/`, no per-cloud YAML. The infrastructure is *implied by the code* in each folder and realized by the resolvers a Camp registers (Part 2).
+Nothing here is HoBo-specific scaffolding — no `Dockerfile`, no `*.tf`, no `k8s/`, no per-cloud YAML. The infrastructure is *implied by the code* in each folder and realized by **Matching** against the provider's built-in Resource Definitions (Part 2).
 
 ---
 
@@ -156,7 +156,7 @@ app.get("/photos/:id", async (ctx) => ctx.json(await catalog.get(ctx.params.id) 
                             { "import": "wasi:blobstore", "to": "images"  } ] } } }
 ```
 
-Nothing in here is Azure or AWS; nothing is a SKU. *How* each capability becomes real infrastructure is decided next — by **resolvers** you, the app dev, never see.
+Nothing in here is Azure or AWS; nothing is a SKU. *How* each capability becomes real infrastructure is decided next — by **Matching** against mappings the provider ships, which you, the app dev, never see.
 
 ## 1.3 — Durability without a queue to operate
 
@@ -298,9 +298,9 @@ That is the entire app-developer surface: **write code, `hobo up`.** Everything 
 
 ---
 
-# Part 2 — Platform engineer: map a Camp to a cloud; resolvers do the rest
+# Part 2 — Platform engineer: map a Camp to a cloud; Matching does the rest
 
-**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **resolvers** — the capability→resource mappings the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is realized automatically; you write per-resource config **only to override a default.**
+**Your promise:** app devs never pick infrastructure, and **you barely configure it.** You build the control plane (the Yard) and **register providers in code** (there is no `hobo registry add`). Registering a provider brings its **built-in mappings** — a *default Resource Definition* per capability (its `equivalence` map + `realize()`) that the package already ships — so a Camp only needs to declare *which cloud* and *which IaC*. The generated manifest from Part 1 is matched automatically; you write per-resource config **only to override a default.**
 
 ## 2.1 — The cloud SDK: build a Yard and register providers
 
@@ -335,7 +335,7 @@ export default yard("acme", {
 hobo up ./platform       # brings the Yard up; registered providers are now bindable by Camps
 ```
 
-`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **resolvers** — the built-in mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you.
+`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you.
 
 > **A provider that doesn't exist yet?** Generate one, then register it the same way:
 > ```ts
@@ -345,7 +345,7 @@ hobo up ./platform       # brings the Yard up; registered providers are now bind
 > ```
 > Air-gapped? `registry.import(signedBundle)` mirrors a signed offline bundle in-boundary — same trust checks, zero egress ([Plan 25](./platform-engineering.md#plan-25)).
 
-## 2.2 — A Camp is just (cloud + IaC); the resolvers infer the rest
+## 2.2 — A Camp is just (cloud + IaC); Matching infers the rest
 
 This is the whole baseline Camp. It names a cloud and an IaC engine — and says nothing about `catalog`, `images`, or the api:
 
@@ -358,16 +358,16 @@ import { pulumi } from "@hobo/iac-pulumi";
 export const prod = camp("prod", { provider: azure(), iac: pulumi() });   // that's the entire mapping
 ```
 
-`hobo up ./platform` walks the generated manifest from Part 1, and for each abstract capability a **registered resolver** claims it and emits concrete config, which `@hobo/iac-pulumi` realizes. You configured nothing per-resource:
+`hobo up ./platform` walks the generated manifest from Part 1, and for each abstract capability **Matching selects the provider's built-in default Resource Definition** and emits concrete config, which `@hobo/iac-pulumi` realizes. You configured nothing per-resource:
 
 ```bash
 hobo plan --camp prod
-#   match.Decided  catalog (kv)     → azure.tableStorage   [resolver @hobo/provider-azure]
-#   match.Decided  images  (bucket) → azure.blob           [resolver @hobo/provider-azure]
+#   match.Decided  catalog (kv)     → azure.tableStorage   [@hobo/provider-azure default]
+#   match.Decided  images  (bucket) → azure.blob           [@hobo/provider-azure default]
 #   match.Decided  main    (api)    → azure.containerApp   [iac pulumi · region eastus · est $/mo …]
 ```
 
-The durable runtime is just another capability the resolver maps (managed Postgres on Azure) — you pin it only to override. Every choice is a recorded `match.Decided` ([Plan 25](./platform-engineering.md#plan-25)), so "why did `catalog` land on Table Storage?" is always answerable. **You never hand-write a resolver for a cloud that has a package** — `@hobo/provider-azure` ships them and `.register()` registered them; you author one only for something bespoke (a generated provider ships its own, above).
+The durable runtime is just another capability matched the same way (managed Postgres on Azure) — you pin it only to override. Every choice is a recorded `match.Decided` ([Plan 25](./platform-engineering.md#plan-25)), so "why did `catalog` land on Table Storage?" is always answerable. **You never hand-write a definition for a cloud that has a package** — `@hobo/provider-azure` ships its defaults and `.register()` registered them; you author one only for something bespoke (a generated provider ships its own, above).
 
 A **Yard** groups Camps and runs the control plane; a **Junction** federates Yards across clouds as peers (no shared state):
 
@@ -385,7 +385,7 @@ export default junction("acme").add(azureYard, euYard); // federate trust + sign
 
 ## 2.3 — Overrides: change one default, keep the rest inferred
 
-Resolver defaults are sensible, not mandatory. When you want a specific SKU, a different shape per environment, or a tier on the edge, override **just that** — everything else still auto-infers. An override is the same `defineResource`/`bindings`/`tiers` API, and it **wins by specificity** over the resolver's default:
+Provider defaults are sensible, not mandatory. When you want a specific SKU, a different shape per environment, or a tier on the edge, override **just that** — everything else still auto-infers. An override is the same `defineResource`/`bindings`/`tiers` API, and it **wins by specificity** over the provider's default:
 
 ```ts
 // platform/resources.ts — OPTIONAL. A prod-only HA Postgres golden path; preview keeps the cheap default.
@@ -394,7 +394,7 @@ import { azure } from "@hobo/provider-azure";
 
 defineResource({ type: "database", engine: "postgres", class: "ha",
   with: azure.flexiblePostgres({ ha: true }),
-  match: { envType: "production" } });          // wins in prod by specificity; resolver default covers everywhere else
+  match: { envType: "production" } });          // wins in prod by specificity; provider default covers everywhere else
 ```
 
 ```ts
@@ -406,11 +406,11 @@ camp("prod", { provider: azure(), iac: pulumi(),
 
 ```bash
 hobo plan --camp prod
-#   match.Decided  database (postgres) → azure.flexiblePostgres(ha)  [definition envType=production; beats resolver default]
-#   match.Decided  catalog  (kv)       → azure.cosmos                [binding pins it; resolver default rejected]
+#   match.Decided  database (postgres) → azure.flexiblePostgres(ha)  [definition envType=production; beats provider default]
+#   match.Decided  catalog  (kv)       → azure.cosmos                [binding pins it; provider default rejected]
 ```
 
-Under the hood these compile to the same Resource Definitions the resolvers emit by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite.
+Under the hood these are the same Resource Definitions the provider supplies by default — an explicit one simply outscores the `{}` default ([Plan 25](./platform-engineering.md#plan-25)). Bundle a set of overrides + policy + dashboards into a signed **Resource Pack** to ship a whole golden path to other teams. Baseline is **zero** resource config; an override is a deliberate, audited exception — never a prerequisite.
 
 ---
 

@@ -1,3 +1,4 @@
+import type { ConsistencyLevel } from "../src/projection-contract.mjs";
 import {
   assertNonReactiveProjection,
   assertReactiveProjection,
@@ -58,8 +59,21 @@ const changeFeedProjection = declareProjection({
 const changeFeedLiteralTrue: true = changeFeedProjection.reactive;
 assertReactiveProjection(changeFeedProjection);
 
+// A strong cross-Camp projection's tradeoff warning preserves the declared level
+// and surfaces it via the typed `preservedLevel` field (never silently downgraded).
+const strongCrossCamp = declareProjection({
+  name: "GlobalAccountBalance",
+  readModel: "AccountBalance",
+  eventTypes: ["Ledger.Posted"],
+  consistency: "strong",
+  scope: "cross-camp",
+});
+const tradeoffWarnings = assessConsistencyTradeoffs(strongCrossCamp);
+const preserved: ConsistencyLevel | undefined = tradeoffWarnings[0]?.preservedLevel;
+
 void literalFalse;
 void eventLiteralFalse;
 void cannotClaimReactive;
 void nativeLiteralTrue;
 void changeFeedLiteralTrue;
+void preserved;

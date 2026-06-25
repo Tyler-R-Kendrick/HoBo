@@ -108,6 +108,8 @@ export type DoctorWarning = Readonly<{
   severity: "warning";
   projection: string;
   message: string;
+  /** Present on consistency-tradeoff warnings: the level that was preserved (never downgraded). */
+  preservedLevel?: ConsistencyLevel;
 }>;
 
 export declare function doctorUseQuery(projection: { name: string; reactive: boolean }): readonly DoctorWarning[];

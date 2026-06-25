@@ -139,7 +139,8 @@ export default handler(async (req, ctx) => {
 This is the Vercel-feel surface. Both **directive** sugar and **wrapper** form are supported (the directive compiles to the wrapper; same semantics).
 
 ```ts
-import { workflow, step, actor, saga, sleep, cron, start, createHook } from "@hobo/runtime";
+import { workflow, step, actor, sleep, cron, start, createHook } from "@hobo/runtime";
+import { saga } from "@hobo/events";
 
 // step: full Node access, retried, result memoized in the event log
 export const reserveInventory = step(async (orderId: string) => {

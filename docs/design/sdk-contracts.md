@@ -1,6 +1,6 @@
 # SDK Public Contracts
 
-This is the canonical public-contract record for the SDK surfaces hardened by HOBO-9. It pins signatures, semantics, defaults, conformance coverage, and implementation ownership for the surfaces that were previously spread across examples in [sdk-api.md](./sdk-api.md#plan-02), [authoring-resources-wiring.md](./authoring-resources-wiring.md#plan-21), [platform-engineering.md](./platform-engineering.md#plan-25), [walkthrough.md](./walkthrough.md), [ADR-0026](./adr/01-architecture-core.md#adr-0026), [ADR-0069](./adr/01-architecture-core.md#adr-0069), [ADR-0071](./adr/01-architecture-core.md#adr-0071), and [ADR-0084](./adr/02-identity-security.md#adr-0084).
+This is the canonical public-contract record for the SDK surfaces hardened by HOBO-9. It pins signatures, semantics, defaults, conformance coverage, and implementation ownership for the surfaces that were previously spread across examples in [sdk-api.md](./sdk-api.md#plan-02), [authoring-resources-wiring.md](./authoring-resources-wiring.md#plan-21), [platform-engineering.md](./platform-engineering.md#plan-25), [walkthrough.md](./walkthrough.md), [ADR-0026](./adr/01-architecture-core.md#adr-0026), [ADR-0069](./adr/01-architecture-core.md#adr-0069), [ADR-0071](./adr/01-architecture-core.md#adr-0071), and [ADR-0084](./adr/02-identity-security.md#adr-0084). [Package Namespace Map](./package-namespaces.md) is the canonical import-ownership table.
 
 Run `node scripts/validate-sdk-contracts.mjs` after editing SDK examples or package imports. That check treats this file as the source of truth and fails when examples drift across package boundaries or imply different defaults.
 
@@ -20,6 +20,7 @@ Inferred-Camp approval is both a Yard builder affordance and a policy-pack rule.
 |---|---|---|---|---|
 | `.allow(...verbs)` | app idiom layer: `@hobo/bindles`; WIT-owned verb set in `hobo:sdk` | language idiom lowering + manifest IR | HOBO-70 | HOBO-32 / `@hobo/conformance/sdk` |
 | `crossApp(name)` | `@hobo/bindles` | language idiom lowering + manifest IR | HOBO-43 | HOBO-32 / `@hobo/conformance/sdk` |
+| `config(...)`, `secretRef(...)`, `env(...)`, `fromBinding(...)` | `@hobo/bindles` | app config reference lowering + manifest IR | HOBO-40 | HOBO-32 / `@hobo/conformance/sdk` |
 | `CrossAppBinding.token()` | `@hobo/bindles`, backed by identity broker | XAA wire contract + manifest scope | HOBO-235 | HOBO-54 / ID-JAG token-exchange vectors |
 | `approveDefaults(...)` | `@hobo/yards` | topology idiom lowering + Yard manifest | HOBO-62 | HOBO-32 / `@hobo/conformance/sdk` |
 | `autoApprove(...)` | `@hobo/yards`, lowering to policy | policy rule + decision parity | HOBO-133 | HOBO-223 / policy-engine conformance parity |

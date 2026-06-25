@@ -209,7 +209,8 @@ A **materialization** is a deterministic **fold over subscribed event types** (a
 ### The default surface: `subscribe` + RX materializations
 A materialization is declared as a **fold over subscribed event types** and composed with RX-style operators. The fold/operators are **deterministic and read-only** (no `step`, no writes — the same determinism rules as `workflow`/`actor` folds, [Plan 2](./sdk-api.md#plan-02)).
 ```ts
-import { subscribe, from } from "@hobo/runtime";
+import { subscribe } from "@hobo/events";
+import { from } from "@hobo/runtime";
 
 // a materialization: subscribe to event types -> RX pipeline (filter/scan/map) -> observable<Ticket[]>
 export const openTickets = from("Ticket.Opened", "Ticket.Assigned", "Ticket.Closed")
@@ -327,7 +328,7 @@ flowchart LR
 #### Write path — command → aggregate → event (no direct sink writes)
 **CQRS is the opinionated app-layer default** ([ADR-0053](./adr/03-data-plane.md#adr-0053)) — command/query-separated, not one option among several. The developer never writes to a sink. A **command** runs inside its **aggregate**'s single-writer boundary, checks invariants against the aggregate's current state, and emits domain events; projections fold those events into read models.
 ```ts
-import { command } from "@hobo/runtime";
+import { command } from "@hobo/data";
 
 // a command targets an aggregate by key (stream `ticket:<id>`); the handler runs inside that
 // aggregate's single-writer boundary, with ctx.state = the aggregate's WRITE-MODEL fold.
@@ -346,7 +347,7 @@ export const openTicket = command("Ticket.Open", { key: (i: OpenTicket) => i.id 
 #### Declaring a projection — subscribe + fold + read-model
 A projection is declared with per-event-type fold handlers (the same `on:` shape as an [actor](./sdk-api.md#plan-02) or [saga](./sdk-api.md#plan-02)), typed by its read-model **WIT record**:
 ```ts
-import { projection } from "@hobo/runtime";
+import { projection } from "@hobo/data";
 
 // "orders": fold Order.* events → the Order read-model record; `key` picks the row each event lands in.
 export const orders = projection<Order>("orders", {
@@ -365,7 +366,7 @@ export const orders = projection<Order>("orders", {
 #### Read path — subscribe (default), GraphQL facade (query), point escape hatches
 The **default** read is a **subscription** to the materialization ([ADR-0050](./adr/03-data-plane.md#adr-0050)): `subscribe(...)`/`useSubscription(...)` returns a live observable folded from the event log. The **opinionated request/response query surface is a GraphQL facade over materialized views and snapshots** — CQRS querying of materializations produced by **GraphQL reducers** (the reducer is the fold; the resolver reads the materialization). GraphQL subscriptions map onto the same observable materializations, and **snapshots are cached by default** ([ADR-0050](./adr/03-data-plane.md#adr-0050)), so query and stream share one model and one engine. The **repository + query DSL below are the snapshot / point-lookup / search escape hatches** over the cached snapshot or sink cache — reach for them for one-shot, by-key, full-text/vector, or analytical reads.
 ```ts
-import { view, repo } from "@hobo/runtime";
+import { view, repo } from "@hobo/data";
 
 const tickets = repo<Ticket>("tickets");              // entity form, typed by the read-model record
 const t    = await tickets.get(id);                   // by key

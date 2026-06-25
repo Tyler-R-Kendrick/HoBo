@@ -135,14 +135,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0091 | [architecture-core](./adr/01-architecture-core.md#adr-0091) | Non-TS idiom layers start from reverse-extracted WIT plus a parity report, with TS-only ergonomics translated through lowering records and semantics-annex gates. | HOBO-398, HOBO-16, HOBO-31, HOBO-32, HOBO-106 |
 | ADR-0092 | [architecture-core](./adr/01-architecture-core.md#adr-0092) | Self-host bootstrap ordering is pinned as a disposable seed Yard, single-use operator credential, immutable provenance import, explicit Identity handover, and air-gap-compatible recovery table. | HOBO-59, HOBO-50, HOBO-39 |
 | ADR-0093 | [architecture-core](./adr/01-architecture-core.md#adr-0093) | SDK semantics-annex parity is a separate required conformance lane from golden-IR lowering equality, with negative vectors for error mapping, cancellation, async ordering, and IfC side-effect order. | HOBO-31, HOBO-32, HOBO-106, HOBO-398 |
+| ADR-0094 | [identity-security](./adr/02-identity-security.md#adr-0094) | Autonomous-action safety rails map to Crew blast-radius envelopes, oscillation guards, and SRE remediation classification. | HOBO-263, HOBO-251, HOBO-267 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 82 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 83 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0093`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0094`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

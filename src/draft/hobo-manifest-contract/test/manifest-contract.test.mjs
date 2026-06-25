@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  CURRENT_MANIFEST_SCHEMA,
   canonicalManifestHash,
   parseManifestReference,
   parseOutputPlaceholder,
+  upcastManifest,
   validateManifest,
 } from "../src/manifest.mjs";
 
@@ -74,6 +76,16 @@ describe("hobo.manifest/v1 contract", () => {
       () => validateManifest(unknownType),
       /resources\.db\.type: unknown resource type queue\.v9/,
     );
+
+    const missingVersionMarker = {
+      ...structuredClone(goldenManifest),
+      schema: CURRENT_MANIFEST_SCHEMA,
+    };
+
+    assert.throws(
+      () => validateManifest(missingVersionMarker),
+      /manifestVersion: required/,
+    );
   });
 
   it("canonicalizes equivalent manifests to the same content hash", () => {
@@ -133,6 +145,94 @@ describe("hobo.manifest/v1 contract", () => {
     assert.throws(
       () => validateManifest(danglingLink),
       /resources\.api\.links\[0\]\.import: no matching declared resource for hobo:queue/,
+    );
+  });
+
+  it("upcasts an older manifest through the version registry and preserves deterministic content addressing", () => {
+    const result = upcastManifest(goldenManifest);
+
+    assert.equal(result.fromSchema, "hobo.manifest/v1");
+    assert.equal(result.toSchema, CURRENT_MANIFEST_SCHEMA);
+    assert.deepEqual(result.appliedUpcasters, [
+      "hobo.manifest/v1->hobo.manifest/v1.1",
+    ]);
+    assert.equal(result.manifest.schema, CURRENT_MANIFEST_SCHEMA);
+    assert.deepEqual(result.manifest.manifestVersion, {
+      upcastedFrom: "hobo.manifest/v1",
+    });
+    assert.equal(validateManifest(result.manifest).schema, CURRENT_MANIFEST_SCHEMA);
+    assert.equal(result.hash, canonicalManifestHash(result.manifest));
+    assert.equal(upcastManifest(goldenManifest).hash, result.hash);
+  });
+
+  it("fails unsafe upcaster edges closed and keeps current manifests idempotent", () => {
+    const current = upcastManifest(goldenManifest).manifest;
+    const noOp = upcastManifest(current);
+
+    assert.deepEqual(noOp.appliedUpcasters, []);
+    assert.equal(noOp.hash, canonicalManifestHash(current));
+
+    assert.throws(
+      () => upcastManifest({ ...goldenManifest, schema: "hobo.manifest/v9" }),
+      /schema: unknown manifest schema hobo\.manifest\/v9/,
+    );
+
+    assert.throws(
+      () =>
+        upcastManifest(goldenManifest, {
+          targetSchema: "hobo.manifest/v1.2",
+          schemaOrder: [
+            "hobo.manifest/v1",
+            "hobo.manifest/v1.1",
+            "hobo.manifest/v1.2",
+          ],
+        }),
+      /schema: missing upcaster from hobo\.manifest\/v1\.1 to hobo\.manifest\/v1\.2/,
+    );
+
+    assert.throws(
+      () =>
+        upcastManifest(goldenManifest, {
+          targetSchema: "hobo.manifest/v1.2",
+          schemaOrder: [
+            "hobo.manifest/v1",
+            "hobo.manifest/v1.1",
+            "hobo.manifest/v1.2",
+          ],
+          upcasters: [
+            {
+              from: "hobo.manifest/v1",
+              to: "hobo.manifest/v1.2",
+              upcast(manifest) {
+                return {
+                  ...manifest,
+                  schema: "hobo.manifest/v1.2",
+                  manifestVersion: { upcastedFrom: manifest.schema },
+                };
+              },
+            },
+          ],
+        }),
+      /schema: missing intermediate upcaster from hobo\.manifest\/v1 to hobo\.manifest\/v1\.1/,
+    );
+
+    assert.throws(
+      () =>
+        upcastManifest(goldenManifest, {
+          upcasters: [
+            {
+              from: "hobo.manifest/v1",
+              to: "hobo.manifest/v1.1",
+              upcast(manifest) {
+                const next = structuredClone(manifest);
+                next.schema = "hobo.manifest/v1.1";
+                delete next.resources.db.connectionString;
+                return next;
+              },
+            },
+          ],
+        }),
+      /lossy upcaster hobo\.manifest\/v1->hobo\.manifest\/v1\.1 removed resources\.db\.connectionString without recording loss/,
     );
   });
 });

@@ -6,7 +6,10 @@ an Aspire-style lazy reference:
 - a bind records a manifest `links` edge from consumer import to target resource;
 - fallback/container injection uses `ConnectionStrings__<name>` lazy tokens;
 - `ctx.bindings.<name>` is generated from the bound resource's port client type;
-- `addContainer(...)` records build and wiring metadata in one fluent surface;
+- `addContainer(...)` records build and wiring metadata in one fluent surface:
+  `withHttpEndpoint` / `withEndpoint` / `withEnvironment` / `withArgs` /
+  `withBindMount` / `withVolume` / `withLifetime` / `waitFor` /
+  `waitForCompletion` / `withHttpHealthCheck`;
 - unknown binds and unresolved lazy references fail closed during collection.
 
 The POC intentionally does not implement provider realization, runtime injection,

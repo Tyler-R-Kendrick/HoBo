@@ -6,5 +6,9 @@
     "test": "node --test",
     "docs:cli-lint": "node scripts/check-cli-docs.mjs",
     "docs:design-lint": "node scripts/check-design-docs.mjs"
+  },
+  "devDependencies": {
+    "protobufjs": "^7.6.4",
+    "zod": "^4.1.13"
   }
 }

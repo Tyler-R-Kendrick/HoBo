@@ -278,6 +278,24 @@ The executable proof bundle is [`../../../src/draft/self-host-bootstrap-ordering
 - **(+)** The seed log becomes provenance for the real Yard while avoiding live command replay.
 - **(-)** Operators must preserve attempt ids and seed logs until handover, and a mid-apply credential expiry requires explicit re-authentication.
 
+## ADR-0093
+**SDK semantics annex is a separate conformance lane from golden-IR lowering parity.**
+
+Golden-IR lowering equivalence proves only the mechanical boundary: identical author input lowers to identical `hobo:sdk` WIT calls and identical `hobo.manifest/v1` records. It cannot see whether a language idiom layer swallowed a WIT `result.err`, converted cancellation into a hidden retry, reordered awaited collection facts, or let an IfC handler attach before its resource declaration. Those behaviors are legitimate language-control-flow semantics, so they are pinned in a separate SDK semantics annex.
+
+1. **Golden-IR is necessary but not sufficient.** A language SDK cannot claim parity with only WIT-call and manifest equality. The report must carry both a `goldenIr` lane and a `semanticsAnnex` lane.
+2. **The annex owns negative vectors.** The minimum v1 categories are error mapping, cancellation, async ordering, and IfC side-effect order. Each category includes failing vectors, not only happy-path examples.
+3. **Errors preserve WIT meaning in language-native form.** A WIT `result.err` maps to the idiom's explicit error channel (`throw`, `Result`, `(T, err)`, etc.) with the WIT tag preserved. Swallowing, defaulting, or widening the error is a conformance failure.
+4. **Cancellation is caller-owned and visible.** Cancellation lowers to a typed cancelled result or language equivalent. Hidden retries, silent success, or deadline erasure are annex failures.
+5. **Collection facts are ordered contract data.** IfC side effects lower to an ordered declaration fact stream. Async language machinery may schedule work however it wants, but the observed fact order must be deterministic and a handler observed before its resource declaration fails closed.
+
+The executable proof bundle is [`../../../src/draft/idiom-semantics-annex`](../../../src/draft/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31.
+
+### Consequences
+- **(+)** SDK parity no longer overclaims what WIT-call equality can prove.
+- **(+)** Non-TS idiom layers can expose native control flow without becoming invisible semantics drift.
+- **(-)** SDK conformance grows another required report lane and every language needs annex fixtures before claiming parity.
+
 ## ADR-0028
 **Multi-Camp deployment model (cardinality, naming, atomicity).**
 

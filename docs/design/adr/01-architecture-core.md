@@ -110,6 +110,19 @@ Preview and experimental interfaces may move faster than stable interfaces, but 
 - **(+)** WIT generation, wRPC links, and component-host compatibility now have a reproducible floor with drift checks; downstream interface work can cite one lock shape and one upgrade ceremony.
 - **(−)** Toolchain upgrades become explicit work: bump the lock, regenerate fixtures, document compatibility, and add upcasters for any breaking or preview churn.
 
+## ADR-0087
+**Package namespace ownership map.**
+
+HOBO-58 fixes the ambiguous boundary between the WIT package name `hobo:sdk`, npm `@hobo/bindles`, npm `@hobo/sdk`, and the topology/runtime packages. The ambiguity matters because docs can otherwise imply that `@hobo/sdk` is the app authoring SDK, when ADR-0072 reserves npm `@hobo/sdk` for operator and self-host extensions.
+
+The canonical package/import table lives in [`package-namespaces.md`](../package-namespaces.md). `@hobo/bindles` owns app resource factories, bindle composition, cross-app declarations, and app config helpers including `config`, `secretRef`, `env`, and `fromBinding`. `@hobo/runtime` owns runtime control-flow primitives. `@hobo/camps`, `@hobo/yards`, and `@hobo/junctions` own topology factories and are not re-exported by `@hobo/bindles`. npm `@hobo/sdk` is the operator/self-host SDK for provider, policy, runbook, dispatcher, runner, generated provider, Crew agent, and chaos surfaces. `@hobo/core` remains a shared type substrate, not an authoring import home.
+
+`secret()` and `secretRef()` intentionally stay in `@hobo/bindles` with distinct meanings: managed secret resource versus config-value reference. Docs and future boundary lint must flag unqualified `@hobo/sdk` app-author guidance, topology imports from `@hobo/bindles`, and mixed runtime/operator `agent` imports without aliases.
+
+### Consequences
+- **(+)** App resource, runtime, topology, and operator imports are now reviewable by one table and one lint guard.
+- **(−)** `@hobo/bindles` remains small and explicit, but users must import topology factories from their topology packages instead of a single omnibus SDK package.
+
 ## ADR-0072
 **The SDK is WIT-first: a canonical `hobo:sdk` WIT package, generated per language, with conformance-gated idiom layers.**
 

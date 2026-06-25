@@ -45,7 +45,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | PLAN-29 | [contracts-policy-flags.md](./contracts-policy-flags.md#plan-29) | Contract gates, policy, obligations, RBAC, feature flags, and progressive delivery have policy/harness slices. | HOBO-119, HOBO-123, HOBO-137, HOBO-141, HOBO-146, HOBO-150, HOBO-154, HOBO-158, HOBO-162 |
 | PLAN-09 | [generated-stack.md](./generated-stack.md#plan-09) | Verification/testing, conformance, golden suites, and generated-stack checks map to conformance/eval slices. | HOBO-5, HOBO-6, HOBO-7, HOBO-102, HOBO-104, HOBO-146 |
 | PLAN-23 | [generated-stack.md](./generated-stack.md#plan-23) | Generation IO, sandboxing, scaffold, LLM-fill, training trajectories, eval gates, repair, provenance, certification, and provider generation have slices. | HOBO-7, HOBO-102, HOBO-108, HOBO-146, HOBO-307, HOBO-320, HOBO-321, HOBO-324, HOBO-335 |
-| PLAN-40 | [operators-sre.md](./operators-sre.md#plan-40) | Crew operators, incidents, runbooks, remediation envelopes, escalation, and DR map to Operators/SRE slices. | HOBO-141, HOBO-146, HOBO-251, HOBO-260 |
+| PLAN-40 | [operators-sre.md](./operators-sre.md#plan-40) | Crew operators, incidents, runbooks, remediation envelopes, escalation, and DR map to Operators/SRE slices. | HOBO-141, HOBO-146, HOBO-251, HOBO-260, HOBO-270 |
 | PLAN-46 | [governance-planes.md](./governance-planes.md#plan-46) | Compliance, data governance, AI safety, policy packs, lifecycle policy, and human obligations have policy/security slices. | HOBO-137, HOBO-141, HOBO-146, HOBO-150, HOBO-154, HOBO-158, HOBO-162 |
 | PLAN-19 | [worked-example.md](./worked-example.md#plan-19) | End-to-end example flow is covered by SDK, CLI, control-plane, provider, identity, and user-story slices. | HOBO-1, HOBO-37, HOBO-67, HOBO-70, HOBO-88, HOBO-115, HOBO-160, HOBO-164, HOBO-396 |
 
@@ -99,11 +99,11 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0051 | [data-plane](./adr/03-data-plane.md#adr-0051) | WIT records as canonical domain schema are represented by WIT tooling, SDK codegen, and event-body upcaster gates. | HOBO-3, HOBO-12, HOBO-16, HOBO-42, HOBO-57, HOBO-88, HOBO-152 |
 | ADR-0052 | [data-plane](./adr/03-data-plane.md#adr-0052) | Projection-sink paradigm taxonomy and reactive boundary map to paradigm packages and authoring opt-in. | HOBO-248, HOBO-252, HOBO-389 |
 | ADR-0053 | [data-plane](./adr/03-data-plane.md#adr-0053) | Write-side commands, aggregates, and actor boundary map to WIT runtime and ActorHost slices. | HOBO-13, HOBO-21, HOBO-30 |
-| ADR-0054 | [data-plane](./adr/03-data-plane.md#adr-0054) | Operator Agents as built-in Yard services map to Operators/SRE, policy, and MCP surfaces. | HOBO-115, HOBO-141, HOBO-146, HOBO-158 |
+| ADR-0054 | [data-plane](./adr/03-data-plane.md#adr-0054) | Operator Agents as built-in Yard services map to Operators/SRE, policy, and MCP surfaces. | HOBO-115, HOBO-141, HOBO-146, HOBO-158, HOBO-270 |
 | ADR-0055 | [data-plane](./adr/03-data-plane.md#adr-0055) | Generated stack persistence maps to generation, conformance, and persisted-mutation gates. | HOBO-5, HOBO-7, HOBO-102, HOBO-146 |
 | ADR-0056 | [data-plane](./adr/03-data-plane.md#adr-0056) | App/UI generation maps to generated-stack verification and future UI package slices. | HOBO-146 |
 | ADR-0057 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0057) | Patchability and derivative upgrades map to conformance, registry, generation, and compatibility work. | HOBO-5, HOBO-7, HOBO-102, HOBO-108, HOBO-388 |
-| ADR-0058 | [data-plane](./adr/03-data-plane.md#adr-0058) | SRE incident management, runbooks, and self-healing map to operators, obligations, and Gatekeeper work. | HOBO-141, HOBO-146, HOBO-251, HOBO-260 |
+| ADR-0058 | [data-plane](./adr/03-data-plane.md#adr-0058) | SRE incident management, runbooks, and self-healing map to operators, obligations, and Gatekeeper work. | HOBO-141, HOBO-146, HOBO-251, HOBO-260, HOBO-270 |
 | ADR-0059 | [data-plane](./adr/03-data-plane.md#adr-0059) | App communications through `hobo:notify` map to WIT capability surfaces and operators/SRE handoff. | HOBO-14, HOBO-141 |
 | ADR-0060 | [identity-security](./adr/02-identity-security.md#adr-0060) | Compliance/data governance maps to lifecycle policy and policy-pack slices. | HOBO-137, HOBO-150, HOBO-154, HOBO-162 |
 | ADR-0061 | [identity-security](./adr/02-identity-security.md#adr-0061) | AI safety and model governance map to generation sandbox/eval/policy gate work. | HOBO-7, HOBO-102, HOBO-137, HOBO-146 |

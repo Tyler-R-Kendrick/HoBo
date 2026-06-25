@@ -423,7 +423,7 @@ HoBo is AI-native: its agents and apps must connect to *external* apps and MCP s
 - **(+)** Governed, least-privilege, no-standing-privilege, fully-audited access **between HoBo and the external app/MCP ecosystem in both directions**, reusing the broker + `auth.json` + policy plane + MCP with almost no new machinery; HoBo apps become first-class XAA resource servers and HoBo agents first-class governed XAA clients.
 - **(−)** ID-JAG is a **moving IETF draft** (version-pin + conformance-test the flow; track adoption) and requires the target to support it; for non-XAA targets HoBo falls back to `oauth2-obo` / MCP-OAuth2.1 (functional, less central governance). XAA's governance is only as strong as the shared IdP both sides trust for SSO.
 
-## ADR-0087
+## ADR-0096
 **Deny-ceiling composition algebra for mandatory policy packs.**
 
 ### Context

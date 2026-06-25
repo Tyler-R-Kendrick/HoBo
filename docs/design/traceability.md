@@ -128,7 +128,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0084 | [identity-security](./adr/02-identity-security.md#adr-0084) | Cross-App Access maps to `crossApp`, ID-JAG token exchange, inferred scopes, and XAA runtime work. | HOBO-9, HOBO-43, HOBO-54, HOBO-83, HOBO-110 |
 | ADR-0085 | [architecture-core](./adr/01-architecture-core.md#adr-0085) | wRPC/WIT version floors, vendored interface hashes, and preview upcaster discipline are proven by the HOBO-12 spike and expanded by WIT vendoring work. | HOBO-12, HOBO-15, HOBO-26, HOBO-27, HOBO-36 |
 | ADR-0086 | [data-plane](./adr/03-data-plane.md#adr-0086) | Replay/live equivalence is pinned as an executable data-plane gate for deterministic materialization folds. | HOBO-60, HOBO-51, HOBO-57, HOBO-80 |
-| ADR-0087 | [identity-security](./adr/02-identity-security.md#adr-0087) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128 |
+| ADR-0096 | [identity-security](./adr/02-identity-security.md#adr-0096) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128 |
 
 ## ADR Numbering and Status Audit
 

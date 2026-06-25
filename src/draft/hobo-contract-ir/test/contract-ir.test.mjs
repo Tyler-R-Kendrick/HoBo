@@ -11,10 +11,14 @@ import {
   canonicalJson,
   createContractFixture,
   deserializeContract,
+  exportAsyncApiContract,
   exportOpenApiContract,
   exportPactContract,
+  exportProtobufContract,
+  importAsyncApiContract,
   importOpenApiContract,
   importPactContract,
+  importProtobufContract,
   parseContract,
   serializeContract
 } from "../src/contract-ir.mjs";
@@ -221,4 +225,82 @@ test("conflicting consumer requirements remain representable for can-deploy to r
       requiredFields: ["id", "tenantId"]
     }
   ]);
+});
+
+test("AsyncAPI and Protobuf import into the IR and export without losing required-shape info", () => {
+  const asyncApi = {
+    asyncapi: "2.6.0",
+    info: { title: "orders-stream@1.0.0", version: "1.0.0" },
+    channels: {
+      "order.created": {
+        subscribe: {
+          message: {
+            name: "OrderCreated",
+            payload: {
+              type: "object",
+              required: ["id", "tenantId"],
+              properties: {
+                id: { type: "string" },
+                tenantId: { type: "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const proto = {
+    syntax: "proto3",
+    package: "orders.v1",
+    messages: [
+      {
+        name: "Order",
+        fields: [
+          { name: "id", type: "string", required: true },
+          { name: "tenantId", type: "string", required: true },
+          { name: "note", type: "string" }
+        ]
+      }
+    ]
+  };
+
+  const asyncApiContract = importAsyncApiContract(asyncApi, {
+    id: "contract-asyncapi-order-created",
+    eventType: "order.created"
+  });
+  const protobufContract = importProtobufContract(proto, {
+    id: "contract-protobuf-order",
+    producer: "orders-api@1.8.0",
+    consumer: "worker@1.4.2"
+  });
+
+  assert.equal(parseContract(asyncApiContract).ok, true);
+  assert.equal(parseContract(protobufContract).ok, true);
+  assert.equal(asyncApiContract.edge.kind, "event");
+  assert.equal(protobufContract.edge.kind, "message");
+  assert.deepEqual(asyncApiContract.requiredShape.requiredFields, ["id", "tenantId"]);
+  assert.deepEqual(protobufContract.requiredShape.requiredFields, ["id", "tenantId"]);
+
+  assert.deepEqual(exportAsyncApiContract(asyncApiContract).requiredFields, ["id", "tenantId"]);
+  assert.deepEqual(exportProtobufContract(protobufContract).requiredFields, ["id", "tenantId"]);
+});
+
+test("AsyncAPI and Protobuf adapters cannot inject source-of-truth mode or provenance", () => {
+  assert.throws(
+    () =>
+      importAsyncApiContract(
+        { asyncapi: "2.6.0", "x-hobo-mode": "promoted", channels: {} },
+        { id: "bad", eventType: "evt" }
+      ),
+    /external adapters cannot set Contract IR mode/
+  );
+  assert.throws(
+    () =>
+      importProtobufContract(
+        { syntax: "proto3", "x-hobo-provenance": "promotion-gate", messages: [] },
+        { id: "bad" }
+      ),
+    /external adapters cannot set Contract IR mode/
+  );
 });

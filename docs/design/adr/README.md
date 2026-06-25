@@ -99,4 +99,6 @@
 | 0091 | Non-TS idiom layers start from reverse-extracted WIT plus a parity report | [architecture-core](01-architecture-core.md#adr-0091) |
 | 0092 | Self-host bootstrap uses a disposable seed Yard and explicit Identity handover | [architecture-core](01-architecture-core.md#adr-0092) |
 | 0093 | SDK semantics annex is a separate conformance lane from golden-IR lowering parity | [architecture-core](01-architecture-core.md#adr-0093) |
-| 0094 | Deny-ceiling composition algebra for mandatory policy packs | [identity-security](02-identity-security.md#adr-0094) |
+| 0094 | Autonomous-action safety rails: bounded blast radius, oscillation guards, and fail-closed A2H | [identity-security](02-identity-security.md#adr-0094) |
+| 0095 | Distributed-artifact version resolution semantics | [portability-extensibility](07-portability-extensibility.md#adr-0095) |
+| 0096 | Deny-ceiling composition algebra for mandatory policy packs | [identity-security](02-identity-security.md#adr-0096) |

@@ -32,7 +32,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | PLAN-04 | [control-plane.md](./control-plane.md#plan-04) | Planning, matching, resource actors, executors, deltas, and orchestration are covered by control-plane slices. | HOBO-39, HOBO-41, HOBO-45, HOBO-47, HOBO-50, HOBO-55, HOBO-59, HOBO-61, HOBO-64, HOBO-68, HOBO-72, HOBO-73, HOBO-78, HOBO-81, HOBO-82, HOBO-86, HOBO-95, HOBO-97, HOBO-103, HOBO-109 |
 | PLAN-02 | [sdk-api.md](./sdk-api.md#plan-02) | SDK authoring surfaces, generated code, IfC collection, permissions, and local testing are tied to SDK slices. | HOBO-9, HOBO-37, HOBO-38, HOBO-40, HOBO-43, HOBO-49, HOBO-52, HOBO-58, HOBO-62, HOBO-67, HOBO-70, HOBO-75, HOBO-79, HOBO-83, HOBO-88, HOBO-98, HOBO-106, HOBO-386, HOBO-389, HOBO-392, HOBO-394, HOBO-396, HOBO-398, HOBO-399 |
 | PLAN-06 | [ai-native-agent-auth.md](./ai-native-agent-auth.md#plan-06) | Agent identity, end-user auth, XAA, token brokerage, workload attestation, and auth events have security slices. | HOBO-43, HOBO-44, HOBO-48, HOBO-54, HOBO-56, HOBO-63, HOBO-66, HOBO-71, HOBO-77, HOBO-84, HOBO-90, HOBO-98, HOBO-99, HOBO-110, HOBO-136, HOBO-158, HOBO-162 |
-| PLAN-11 | [data-plane.md](./data-plane.md#plan-11) | EventEnvelope, replay, actors, queues, streams, runbook events, and projection semantics are assigned to runtime/data-plane slices. | HOBO-2, HOBO-20, HOBO-21, HOBO-22, HOBO-23, HOBO-24, HOBO-25, HOBO-30, HOBO-60, HOBO-104, HOBO-241, HOBO-260 |
+| PLAN-11 | [data-plane.md](./data-plane.md#plan-11) | EventEnvelope, replay, actors, queues, streams, runbook events, and projection semantics are assigned to runtime/data-plane slices. | HOBO-2, HOBO-20, HOBO-21, HOBO-22, HOBO-23, HOBO-24, HOBO-25, HOBO-30, HOBO-57, HOBO-60, HOBO-104, HOBO-241, HOBO-260 |
 | PLAN-32 | [data-plane.md](./data-plane.md#plan-32) | Data model, projections, migration, search, and paradigm packages have runtime/data-plane or SDK package owners. | HOBO-20, HOBO-21, HOBO-22, HOBO-23, HOBO-30, HOBO-60, HOBO-65, HOBO-67, HOBO-104, HOBO-248, HOBO-252, HOBO-389 |
 | PLAN-05 | [reliability-observability-cost.md](./reliability-observability-cost.md#plan-05) | Telemetry envelopes, OpenInference trajectory capture, SLOs, cost, sagas, budgets, burn rate, and golden suites map to reliability and policy slices. | HOBO-25, HOBO-39, HOBO-104, HOBO-141, HOBO-146, HOBO-155, HOBO-241, HOBO-243, HOBO-246, HOBO-249, HOBO-335, HOBO-339 |
 | PLAN-12 | [security-networking.md](./security-networking.md#plan-12) | Security, ingress, gateway, DNS, certs, custom domains, and per-run encrypted trajectory payloads have dedicated security/networking slices. | HOBO-44, HOBO-48, HOBO-54, HOBO-56, HOBO-71, HOBO-90, HOBO-136, HOBO-138, HOBO-142, HOBO-144, HOBO-148, HOBO-151, HOBO-155, HOBO-159, HOBO-163, HOBO-335 |
@@ -96,7 +96,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0048 | [data-plane](./adr/03-data-plane.md#adr-0048) | Persisted code mutation for training promotion maps to generated-stack, eval, and policy gate work. | HOBO-104, HOBO-146 |
 | ADR-0049 | [architecture-core](./adr/01-architecture-core.md#adr-0049) | Hobo Code naming and DSL reservation are covered by SDK contract hardening and DSL frontend work. | HOBO-9, HOBO-394 |
 | ADR-0050 | [data-plane](./adr/03-data-plane.md#adr-0050) | Event-sourced data plane and projection sinks map to runtime ports and data-plane package work. | HOBO-20, HOBO-21, HOBO-22, HOBO-23, HOBO-30, HOBO-60, HOBO-65, HOBO-248, HOBO-252 |
-| ADR-0051 | [data-plane](./adr/03-data-plane.md#adr-0051) | WIT records as canonical domain schema are represented by WIT tooling and SDK codegen. | HOBO-3, HOBO-12, HOBO-16, HOBO-42, HOBO-88, HOBO-152 |
+| ADR-0051 | [data-plane](./adr/03-data-plane.md#adr-0051) | WIT records as canonical domain schema are represented by WIT tooling, SDK codegen, and event-body upcaster gates. | HOBO-3, HOBO-12, HOBO-16, HOBO-42, HOBO-57, HOBO-88, HOBO-152 |
 | ADR-0052 | [data-plane](./adr/03-data-plane.md#adr-0052) | Projection-sink paradigm taxonomy and reactive boundary map to paradigm packages and authoring opt-in. | HOBO-248, HOBO-252, HOBO-389 |
 | ADR-0053 | [data-plane](./adr/03-data-plane.md#adr-0053) | Write-side commands, aggregates, and actor boundary map to WIT runtime and ActorHost slices. | HOBO-13, HOBO-21, HOBO-30 |
 | ADR-0054 | [data-plane](./adr/03-data-plane.md#adr-0054) | Operator Agents as built-in Yard services map to Operators/SRE, policy, and MCP surfaces. | HOBO-115, HOBO-141, HOBO-146, HOBO-158 |
@@ -135,15 +135,17 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0091 | [architecture-core](./adr/01-architecture-core.md#adr-0091) | Non-TS idiom layers start from reverse-extracted WIT plus a parity report, with TS-only ergonomics translated through lowering records and semantics-annex gates. | HOBO-398, HOBO-16, HOBO-31, HOBO-32, HOBO-106 |
 | ADR-0092 | [architecture-core](./adr/01-architecture-core.md#adr-0092) | Self-host bootstrap ordering is pinned as a disposable seed Yard, single-use operator credential, immutable provenance import, explicit Identity handover, and air-gap-compatible recovery table. | HOBO-59, HOBO-50, HOBO-39 |
 | ADR-0093 | [architecture-core](./adr/01-architecture-core.md#adr-0093) | SDK semantics-annex parity is a separate required conformance lane from golden-IR lowering equality, with negative vectors for error mapping, cancellation, async ordering, and IfC side-effect order. | HOBO-31, HOBO-32, HOBO-106, HOBO-398 |
-| ADR-0094 | [identity-security](./adr/02-identity-security.md#adr-0094) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128 |
+| ADR-0094 | [identity-security](./adr/02-identity-security.md#adr-0094) | Autonomous-action safety rails map to Crew blast-radius envelopes, oscillation guards, and SRE remediation classification. | HOBO-263, HOBO-251, HOBO-267 |
+| ADR-0095 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0095) | Distributed-artifact resolution semantics are pinned by the HOBO-340 decision vectors and consumed by the future resolver. | HOBO-340, HOBO-370 |
+| ADR-0096 | [identity-security](./adr/02-identity-security.md#adr-0096) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 83 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 85 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0094`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0096`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

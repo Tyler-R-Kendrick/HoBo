@@ -424,6 +424,62 @@ HoBo is AI-native: its agents and apps must connect to *external* apps and MCP s
 - **(−)** ID-JAG is a **moving IETF draft** (version-pin + conformance-test the flow; track adoption) and requires the target to support it; for non-XAA targets HoBo falls back to `oauth2-obo` / MCP-OAuth2.1 (functional, less central governance). XAA's governance is only as strong as the shared IdP both sides trust for SSO.
 
 ## ADR-0094
+**Autonomous-action safety rails: bounded blast radius, oscillation guards, and fail-closed A2H.**
+
+### Context
+The Crew model lets operators diagnose autonomously and route writes through the policy plane
+([Plan 40](../operators-sre.md#plan-40), [Plan 29](../contracts-policy-flags.md#plan-29)).
+The design already says writes are keyed by blast radius + environment, low-risk fixes may canary,
+`requiresHuman` signals enter A2H, and chaos uses bounded experiments ([ADR-0047](#adr-0047)).
+What was underspecified was the safety-rail algorithm: how blast radius is computed, how the
+auto/canary/approval/A2H class is derived, and what prevents an operator from amplifying an outage
+by reacting to its own remediation.
+
+### Decision
+1. **Every autonomous write carries a `SafetyEnvelope` before policy evaluation.** The envelope is
+   computed by the diagnosing operator and revalidated by the policy gate. It records the acting
+   principal, incident/correlation id, source signal ids, target scope (tenant/project/Camp/resource),
+   environment, action kind, idempotency key, reversibility, compensation reference, estimated
+   affected users/resources, spend impact, conformance state, and causation link to any prior
+   remediation. Missing or uncomputable fields are not defaulted optimistically; the envelope becomes
+   `blastRadius = unknown`.
+2. **Decision class is most-restrictive-wins.** The safety classifier emits exactly one class:
+   `auto`, `canary-with-auto-rollback`, `require-approval`, or `a2h-escalate`. `auto` is allowed
+   only for low-impact, reversible, non-prod or explicitly preapproved scopes with conformance green
+   and budget headroom. `canary-with-auto-rollback` is allowed for bounded prod/shared-scope changes
+   only when the action is reversible, has an executable rollback/compensation path, has SLO/Golden
+   abort signals, and policy does not require human approval. Irreversible, high-impact, over-budget,
+   low-confidence, or governance-sensitive actions become `require-approval`. `requiresHuman`,
+   `blastRadius = unknown`, unclassified signals, and triggered loop guards become `a2h-escalate`.
+3. **Operators may not re-act on their own effects.** Every remediation emits a causal action id.
+   Follow-on signals carrying that id, or arriving inside the action's cooldown/evaluation window,
+   are quarantined as "self-caused" and may only update the same incident or escalate; they may not
+   launch another same-scope write. The rail also enforces max actions per incident, max actions per
+   target scope per window, and monotonic attempt counters. A second action in the same scope needs
+   an independent signal outside the cooldown or a human decision.
+4. **Fail-closed defaults are explicit.** If the operator cannot compute blast radius, cannot prove
+   reversibility, cannot find the compensation path, cannot bound spend, or cannot decide whether a
+   signal was self-caused, it routes to A2H. The default is not "require approval later" after a
+   proposed mutation; it is no mutation until a human or another governed agent supplies the missing
+   evidence.
+5. **Scenario table is part of the contract.**
+
+| Scenario | Safety class | Guard |
+|---|---|---|
+| Prod provider-degraded failover to a healthy Camp | `canary-with-auto-rollback` unless org policy requires approval | step traffic, watch SLO/Golden signals, single failover per scope during cooldown |
+| Low-risk staging scale-up for queue depth | `auto` | cap replicas/spend, require reversible scale-down, idempotency key |
+| False-positive drift with conflicting observations | `require-approval` or `a2h-escalate` when confidence is unknown | diagnose-only until evidence confirms actual drift |
+| Runaway loop where the operator's prior fix caused the next alert | `a2h-escalate` | self-causation quarantine, max-attempt guard, no second same-scope write |
+
+### Consequences
+- **(+)** The Crew's write path is now a concrete, reviewable safety algorithm rather than a prose
+  promise: every action has a bounded envelope, a deterministic class, and replayable causal guards.
+- **(+)** The default for unknown blast radius is safe: no autonomous mutation, direct A2H with the
+  missing evidence in the handoff package.
+- **(−)** Some useful remediations will be slower because the rail deliberately treats ambiguous
+  signals, unknown blast radius, and self-caused follow-on signals as human/escalation cases.
+
+## ADR-0096
 **Deny-ceiling composition algebra for mandatory policy packs.**
 
 ### Context

@@ -25,9 +25,9 @@
 >   driver: "container", with: { image: "postgres:16" },
 >   match: { envType: "ephemeral" } });                // preview → cheap in-cluster
 > ```
-> `hobo deploy --camp prod` → matches the HA definition; `hobo deploy --camp preview` (an **ephemeral** Camp, auto-TTL) → matches the in-cluster one. Each choice emits a **`match.Decided`** event (score + rejected candidates) so the dashboard answers "*why did preview get the cheap DB?*". A **Pipeline** can open the prod **Delta** behind an **approval gate**; if the cluster is private, Executors run behind the **HoBo Relay**. The app code and `bindle.ts` are untouched throughout.
+> `hobo up --camp prod` → matches the HA definition; `hobo up --camp preview` (an **ephemeral** Camp, auto-TTL) → matches the in-cluster one. Each choice emits a **`match.Decided`** event (score + rejected candidates) so the dashboard answers "*why did preview get the cheap DB?*". A **Pipeline** can open the prod **Delta** behind an **approval gate**; if the cluster is private, Executors run behind the **HoBo Relay**. The app code and `bindle.ts` are untouched throughout.
 
-> **Contracts & policy gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). `hobo explain-failure` replays the gate events; `hobo fix --dry-run` proposes a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
+> **Contracts & policy gates (Plan 29/30):** later, the team ships `api@v3` that drops `tenantId` from `order.created`. `hobo verify --target prod` **blocks**: the contract plane's `can-deploy` finds `worker@v2` (running in prod) still consumes `tenantId` (`compat.GateFailed`), and the policy plane flags the new public endpoint with an *obligation* ("allow but require auth middleware"). The verification report replays the gate events and can include a dry-run remediation proposal — for example a **dual-publish migration window** + an auth binding. After the shim + a green eval gate on the updated classifier, `hobo verify` passes and the prod Delta promotes as a canary (the policy obligation). Nothing here is a separate CI tool — it's the same event-sourced graph.
 
 > **Data plane ([Plan 32](./data-plane.md#plan-32)):** snapshop's domain data is **event-sourced by default**. The `reserve`/`charge` steps in §1 use `ctx.bindings.db.reserve(...)` — that direct DB call is the *escape-hatch* form ([raw/adopted access](./data-plane.md#plan-32)); the default domain write is **command → aggregate → event**, and reads come from **projections** a data architect maps onto any backend.
 > ```ts
@@ -119,7 +119,7 @@ hobo plan --camp prod # dry run
 ```
 `hobo plan` output (illustrative): resolves `db→Azure Flexible Server (managed ✓)`, `images→Blob`, `orders→Service Bus`, `api→Container Apps`, `site→edge`; **estimated cost $X/mo**; all colocated in `eastus` (no cross-cloud egress). Then:
 ```bash
-hobo deploy --camp prod --strategy canary
+hobo up --camp prod --strategy canary
 ```
 Under the hood ([Plan 4](./control-plane.md#plan-04), [Plan 11](./data-plane.md#plan-11)): Gateway emits `deployment.Requested` → Planner `deployment.Planned` → ResourceActors provision in DAG order (`db`, `images`, `orders` in parallel → then `api` → then `site`), each via Pulumi Automation API inside a Firecracker Executor holding a **short-lived Azure token brokered from the dev's SVID** — no static secret anywhere. Outputs (conn strings) wire into `api` as secret refs. Canary shifts traffic with a health gate before going 100%. Every step is an event; the dashboard shows the live timeline and the credential audit.
 
@@ -136,7 +136,7 @@ export const prod = camp("prod-azure", {
   },
 }).import(shop);
 ```
-The `bindle()` (provider-agnostic) and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)), and connects them over mTLS keyed by workload SVIDs. `hobo deploy` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
+The `bindle()` (provider-agnostic) and all of `src/` are untouched. `hobo plan` now shows `site→Cloudflare`, `db→Cosmos`, flags a **cross-cloud egress edge** `site↔api` with its estimated cost ([Plan 12](./security-networking.md#plan-12), [Plan 5](./reliability-observability-cost.md#plan-05)), and connects them over mTLS keyed by workload SVIDs. `hobo up` reconciles: only the changed resources are re-provisioned; the rest are diff-empty no-ops.
 
 ### 4. Provider-specific tuning (the escape hatch)
 Black-Friday prep — tune just the API tier, still cloud-portable:

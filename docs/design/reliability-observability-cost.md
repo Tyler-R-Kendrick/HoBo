@@ -75,7 +75,7 @@ Health signals come from the data plane (the Camp's runtime metrics/streams) and
 
 ### Disaster recovery
 - **RPO:** bounded by event-store replication lag (≈0 for synchronous quorum; configurable for cheaper async tiers).
-- **RTO:** rebuild a fresh Yard from the replicated log — `hobo yard up --restore <log>` replays all streams and rehydrates projections + actors. Because the Yard is event-sourced, **DR is just replay**, exercised continuously by the same code path that powers normal recovery.
+- **RTO:** rebuild a fresh Yard from the replicated log — `hobo up ./platform --restore <log>` replays all streams and rehydrates projections + actors. Because the Yard is event-sourced, **DR is just replay**, exercised continuously by the same code path that powers normal recovery.
 - **Backups:** periodic log snapshots to object storage in a second region; audit streams (`token.*`, `resource.*`) retained per compliance policy.
 
 ### Targets (to ratify with the user)

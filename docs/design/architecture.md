@@ -77,7 +77,7 @@ flowchart LR
 
 ### Request lifecycles (two canonical paths)
 **Deploy (command path):**
-`hobo deploy` → Gateway authenticates the principal → emits `DeployRequested` → Planner consumes it, emits `Planned` → Orchestrator spawns ResourceActors → each emits `Provisioning`→`Provisioned` (or `Failed`→`Compensating`) → on DAG completion, `Deployed`. A crash anywhere is recovered by replaying the deployment's event stream.
+`hobo up` → Gateway authenticates the principal → emits `DeployRequested` → Planner consumes it, emits `Planned` → Orchestrator spawns ResourceActors → each emits `Provisioning`→`Provisioned` (or `Failed`→`Compensating`) → on DAG completion, `Deployed`. A crash anywhere is recovered by replaying the deployment's event stream.
 
 **Run inspection (query path):**
 `hobo inspect run <id>` / dashboard → Gateway → read model projection of the run's events (workflow/step/actor/saga timeline). Never touches the providers.
@@ -119,7 +119,7 @@ packages/
   bindles-rs/ bindles-py/ bindles-go/ ... per-language app idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
   runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
-  cli/             @hobo/cli          hobo dev|deploy|plan|inspect|login|registry|yard|forge
+  cli/             @hobo/cli          hobo up|down|dev|new|login|claim|plan|verify|can-deploy|inspect|logs|doctor|codegen|build|collect|stub|drift|add|registry|import|generate|sandbox|test|attest|erase|derivative|runbook
   runtimes/          (the durable runtime backends a Camp provides)
     runtime-local      @hobo/runtime-local     (built-in engine; sqlite/filesystem)
     runtime-postgres   @hobo/runtime-postgres

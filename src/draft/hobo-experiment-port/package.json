@@ -1,0 +1,14 @@
+{
+  "name": "@hobo-draft/experiment-port",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for the OpenExperiment-shaped hobo:experiment port contract.",
+  "scripts": {
+    "generate": "jco types wit --out-dir generated && node scripts/strip-generated-trailing-whitespace.mjs",
+    "test": "npm run generate && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.24.3"
+  }
+}

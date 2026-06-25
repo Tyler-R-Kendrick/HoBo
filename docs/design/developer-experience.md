@@ -103,7 +103,11 @@ Both `up` and `down` drive the thin-SDK + **wRPC** runtime — typed clients ove
 #### Scopes are SDK objects, not config files
 The topology is **constructed programmatically** — Bindle, Camp, Yard, Junction are first-class SDK objects you build and compose in code, not declarations in `*.config.ts` files ([ADR-0011](./adr/01-architecture-core.md#adr-0011)). `hobo up` realizes whatever object graph the program builds. Because they're plain SDK objects, a scope is also **packageable and shareable** — an npm package or structured git repo that *exports* a constructed Camp/Yard/Junction (or a side-loaded Bindle), imported and composed like any object ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)).
 ```ts
-import { bindle, camp, yard, junction } from "hobo";
+import { bindle } from "@hobo/bindles";
+import { camp } from "@hobo/camps";
+import { yard } from "@hobo/yards";
+import { junction } from "@hobo/junctions";
+
 const app = bindle("my app"); app.addContainer(/* ... */);
 const c1 = camp("c1"); c1.import(app);
 const azureYard = yard("y-azure", azure); azureYard.setup(c1);

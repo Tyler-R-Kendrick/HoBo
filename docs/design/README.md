@@ -1,11 +1,11 @@
 # HoBo — Design Plan Suite
 
 > A suite of inter-related design plans for **HoBo**, a **WIT/WASM** programmable surface (Component Model / wasmCloud) + cloud control plane — TypeScript is the first reference implementation, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
-> This is a **planning deliverable — no HoBo *product* implementation code is committed yet** (the only code in the repo is third-party AI agent-tooling under `.agents/`/`.claude/`/`scripts/`). The design is **17 capability docs**; each plan keeps a stable `#plan-NN` anchor so areas can still be cited precisely.
+> This is a **planning deliverable — no HoBo *product* implementation code is committed yet** (the only code in the repo is third-party AI agent-tooling under `.agents`/`.claude` plus validation/POC scripts). The design is **17 capability docs** plus contract records; each plan keeps a stable `#plan-NN` anchor so areas can still be cited precisely.
 
 ## Index
 
-Each doc is one coherent decision area; some absorb more than one plan (the folded plan keeps its `#plan-NN` anchor in the host doc).
+Each capability doc is one coherent decision area; some absorb more than one plan (the folded plan keeps its `#plan-NN` anchor in the host doc). Contract records pin public surfaces that cross multiple capability docs.
 
 | Doc | Covers | Plans |
 |---|---|---|
@@ -13,6 +13,7 @@ Each doc is one coherent decision area; some absorb more than one plan (the fold
 | [`architecture.md`](./architecture.md#plan-10) | Reference architecture + monorepo/package layout | 10 |
 | [`control-plane.md`](./control-plane.md#plan-04) | The Yard control plane; providers, IaC & build/VM adapters | 04 |
 | [`sdk-api.md`](./sdk-api.md#plan-02) | SDK / API design (the four-layer model) | 02 |
+| [`sdk-contracts.md`](./sdk-contracts.md) | Canonical public SDK signatures, defaults, conformance coverage, and implementation issue mapping | 02, 21 |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |
 | [`data-plane.md`](./data-plane.md#plan-32) | Event model & the data plane: sourcing/replay, reactivity, projections, migrations, search | 11, 32 |
 | [`reliability-observability-cost.md`](./reliability-observability-cost.md#plan-05) | Reliability/HA, observability & cost/FinOps | 05 |

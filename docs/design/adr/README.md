@@ -94,3 +94,4 @@
 | 0086 | Replay/live equivalence gate for deterministic materialization folds | [data-plane](03-data-plane.md#adr-0086) |
 | 0087 | Package namespace ownership map | [architecture-core](01-architecture-core.md#adr-0087) |
 | 0088 | Matching specificity vectors and catalog-hash tie attribution | [architecture-core](01-architecture-core.md#adr-0088) |
+| 0089 | GraphQL facade generation boundary over materialization contracts | [data-plane](03-data-plane.md#adr-0089) |

@@ -59,7 +59,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
 | `saga.*` | `saga.Started`, `saga.Compensated` |
 | `secret.*` | `secret.Accessed`, `secret.Unavailable` |
-| `session.*` | `session.Started`, `session.Revoked` |
+| `session.*` | `session.Started`, `session.Refreshed`, `session.Revoked` |
 | `set.*` | `set.Created` |
 | `slo.*` | `slo.Declared`, `slo.BudgetBurned` |
 | `spend.*` | `spend.CircuitTripped`, `spend.DegradationRequired` |
@@ -67,7 +67,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `stub.*` | `stub.Recorded` |
 | `subscription.*` | `subscription.Opened`, `subscription.Pushed` |
 | `tenant.*` | `tenant.Suspended`, `tenant.Resumed` |
-| `token.*` | `token.Granted`, `token.Used` |
+| `token.*` | `token.Granted`, `token.Used`, `token.Denied`, `token.Revoked` |
 | `training.*` | `training.RunStarted`, `training.Promoted` |
 | `user.*` | `user.Authenticated` |
 | `ws.*` | `ws.Connected`, `ws.Subscribed` |

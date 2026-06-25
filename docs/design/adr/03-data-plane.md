@@ -303,3 +303,39 @@ Plan 11 and Plan 32 require the same materialization value whether a client sees
 - **(+)** Reactor, snapshot, and rebuild work get a small, importable assertion that catches wall-clock reads, arrival-order dependence, floating-point drift, and impure upcasters before those bugs become data-plane invariants.
 - **(+)** The proof is cheap enough to run as a contract test in downstream packages and precise enough to explain a mismatch with live/replay event order and state.
 - **(-)** Authors must either keep multi-stream materializations order-insensitive or explicitly define a canonical order/accumulator; convenient but order-dependent folds are rejected.
+
+## ADR-0089
+**GraphQL facade generation boundary over materialization contracts.**
+
+### Context
+Plan 32 and ADR-0050 define the request/response query surface as a GraphQL facade over materialized
+views and cached snapshots, while subscriptions map onto the same observable materializations. HOBO-65
+spiked whether the SDL, query fields, subscription fields, and resolver stubs can be generated from
+canonical WIT read-model records plus projection/materialization metadata without creating a second
+read engine.
+
+### Decision
+1. **Generate SDL from canonical WIT read-model records.** WIT records and enums are the source for
+   GraphQL object and enum types; field names are deterministically transformed from WIT names into
+   GraphQL names and checked for collisions.
+2. **Generate root fields from projection/materialization metadata.** Query fields are generated for
+   materialization snapshot reads. Subscription fields are generated only when the materialization is
+   reactive by ADR-0052's rule: native log-backed or backed by a change-feed-advertising sink.
+3. **Generate thin dispatch, not resolver business logic.** Generated resolvers call the existing
+   materialization read path; generated subscriptions attach to the same observable materialization
+   the `subscribe`/`useSubscription` surface uses. The facade must not introduce its own store,
+   planner, read-set tracker, or reactivity engine.
+4. **Keep policy-heavy behavior outside pure generation.** Tenant scoping, `.allow()` checks,
+   pagination/index constraints, search/vector/OLAP escape hatches, and raw-driver behavior remain
+   generated hooks or hand-authored policy adapters around the projection boundary, not inferred
+   solely from WIT records.
+5. **Gate non-reactive honesty at generation time.** A non-reactive sink can expose query/snapshot
+   fields, but GraphQL subscription generation is rejected rather than producing a static field that
+   looks live.
+
+### Consequences
+- **(+)** The GraphQL facade stays a deterministic codegen view over the existing data-plane
+  contracts, so query and stream keep one model and one engine.
+- **(+)** The generated surface is reviewable and drift-gated alongside ADR-0037 codegen artifacts.
+- **(-)** Advanced resolver behavior is intentionally not fully generated; custom policy,
+  pagination, and search semantics still need explicit adapter hooks.

@@ -1,0 +1,18 @@
+{
+  "name": "@hobo-draft/sdk-aggregate-wit-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for the hobo:sdk aggregate WIT package and reverse extraction drift gate.",
+  "bin": {
+    "hobo-sdk-reverse-extract": "./bin/reverse-extract.mjs"
+  },
+  "scripts": {
+    "generate": "jco types wit --out-dir generated && node scripts/strip-generated-trailing-whitespace.mjs",
+    "reverse:fixture": "node bin/reverse-extract.mjs --wit wit/world.wit --artifact fixtures/golden-component.imports-exports.json",
+    "test": "npm run generate && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.24.3"
+  }
+}

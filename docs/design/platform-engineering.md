@@ -120,6 +120,12 @@ flowchart LR
 
 Because `match.Decided` (above) is part of the same record, "why did preview get the cheap DB?" is always answerable.
 
+The M0 projection contract is pinned by the executable HOBO-50 proof in
+[`proofs/hobo-50-deployment-set-delta`](./proofs/hobo-50-deployment-set-delta/README.md):
+it folds `set.Created` + `delta.*`, verifies stable Set content addressing, computes
+add/update/remove diffs, rejects overlapping Deltas and absent-resource references, and treats an
+environment group as Yard-level orchestration over member Camps rather than a new config layer.
+
 ### The `can-deploy` gate, promote, rollback, incremental
 Applying a Delta or promoting a Set runs the **Gatekeeper** ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)) against the **versions already running in the target Camp** (read from the event log): contracts-compatible (`compat.GatePassed/Failed`) AND policy-allows — with **obligations** that can *reshape* the rollout (e.g. "allow but require canary" forces a canary) — AND evals/conformance/cost. Incompatible producer/consumer skew blocks the promote with a precise reason + suggested fixes (shim, deploy-order, migration window). **App-data schema migrations compose here:** when a Delta changes a `sql` resource's schema, its **expand/backfill/contract** phases ([Plan 32](./data-plane.md#plan-32)) are gated saga steps in *this* flow — each phase passes the same `can-deploy` check, and a **destructive contract phase that would break a still-running version is blocked** (`compat.GateFailed`). Schema migration and code rollout are gated together, not in separate pipelines.
 

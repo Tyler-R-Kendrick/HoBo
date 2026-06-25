@@ -139,3 +139,27 @@ export function exportPactContract(contract: ContractIr): {
   provider: string;
   requiredFields: string[];
 };
+export function importAsyncApiContract(asyncApi: unknown, input?: {
+  id?: string;
+  eventType?: string;
+}): ContractIr;
+export function exportAsyncApiContract(contract: ContractIr): {
+  source: "hobo-contract-ir";
+  id: string;
+  channel: string;
+  producer: string;
+  requiredFields: string[];
+};
+export function importProtobufContract(proto: unknown, input?: {
+  id?: string;
+  producer?: string;
+  consumer?: string;
+}): ContractIr;
+export function exportProtobufContract(contract: ContractIr): {
+  source: "hobo-contract-ir";
+  id: string;
+  message: string;
+  producer: string;
+  consumer: string;
+  requiredFields: string[];
+};

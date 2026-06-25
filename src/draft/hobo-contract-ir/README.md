@@ -8,7 +8,7 @@ This package pins the `contract.ir/v1` shape for Plan 29:
 - modes are `declared`, `inferred`, `observed`, and `promoted`;
 - declared/inferred contracts are verified by construction;
 - observed/promoted contracts are confidence-bounded and carry sample coverage;
-- OpenAPI and Pact are import/export targets over the IR, not the source of truth.
+- OpenAPI, Pact, AsyncAPI, and Protobuf are import/export targets over the IR, not the source of truth.
 
 Run:
 

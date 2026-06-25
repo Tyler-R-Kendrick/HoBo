@@ -96,7 +96,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0048 | [data-plane](./adr/03-data-plane.md#adr-0048) | Persisted code mutation for training promotion maps to generated-stack, eval, and policy gate work. | HOBO-104, HOBO-146 |
 | ADR-0049 | [architecture-core](./adr/01-architecture-core.md#adr-0049) | Hobo Code naming and DSL reservation are covered by SDK contract hardening and DSL frontend work. | HOBO-9, HOBO-394 |
 | ADR-0050 | [data-plane](./adr/03-data-plane.md#adr-0050) | Event-sourced data plane and projection sinks map to runtime ports and data-plane package work. | HOBO-20, HOBO-21, HOBO-22, HOBO-23, HOBO-30, HOBO-60, HOBO-248, HOBO-252 |
-| ADR-0051 | [data-plane](./adr/03-data-plane.md#adr-0051) | WIT records as canonical domain schema are represented by WIT tooling and SDK codegen. | HOBO-3, HOBO-12, HOBO-16, HOBO-88, HOBO-152 |
+| ADR-0051 | [data-plane](./adr/03-data-plane.md#adr-0051) | WIT records as canonical domain schema are represented by WIT tooling and SDK codegen. | HOBO-3, HOBO-12, HOBO-16, HOBO-42, HOBO-88, HOBO-152 |
 | ADR-0052 | [data-plane](./adr/03-data-plane.md#adr-0052) | Projection-sink paradigm taxonomy and reactive boundary map to paradigm packages and authoring opt-in. | HOBO-248, HOBO-252, HOBO-389 |
 | ADR-0053 | [data-plane](./adr/03-data-plane.md#adr-0053) | Write-side commands, aggregates, and actor boundary map to WIT runtime and ActorHost slices. | HOBO-13, HOBO-21, HOBO-30 |
 | ADR-0054 | [data-plane](./adr/03-data-plane.md#adr-0054) | Operator Agents as built-in Yard services map to Operators/SRE, policy, and MCP surfaces. | HOBO-115, HOBO-141, HOBO-146, HOBO-158 |

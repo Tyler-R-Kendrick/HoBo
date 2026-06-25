@@ -56,7 +56,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `resourcedef.*` | `resourcedef.Registered`, `resourcedef.Updated` |
 | `rollout.*` | `rollout.Started`, `rollout.RolledBack` |
 | `run.*` | `run.Started`, `run.StepCompleted` |
-| `runbook.*` | `runbook.Triggered`, `runbook.Completed` |
+| `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
 | `saga.*` | `saga.Started`, `saga.Compensated` |
 | `secret.*` | `secret.Accessed`, `secret.Unavailable` |
 | `session.*` | `session.Started`, `session.Revoked` |

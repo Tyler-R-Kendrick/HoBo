@@ -97,3 +97,4 @@
 | 0089 | GraphQL facade generation boundary over materialization contracts | [data-plane](03-data-plane.md#adr-0089) |
 | 0090 | Cross-cloud equivalence entries are provider-owned, registry-indexed, and resolved by a shared pure negotiation function | [architecture-core](01-architecture-core.md#adr-0090) |
 | 0091 | Non-TS idiom layers start from reverse-extracted WIT plus a parity report | [architecture-core](01-architecture-core.md#adr-0091) |
+| 0092 | Self-host bootstrap uses a disposable seed Yard and explicit Identity handover | [architecture-core](01-architecture-core.md#adr-0092) |

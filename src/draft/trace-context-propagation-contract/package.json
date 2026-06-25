@@ -1,0 +1,8 @@
+{
+  "name": "@hobo-draft/trace-context-propagation-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

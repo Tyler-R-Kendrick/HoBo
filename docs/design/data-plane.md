@@ -44,6 +44,8 @@ export interface EventEnvelope<T = unknown> {
 ### Event catalog (by aggregate)
 Naming: `aggregate.PastTenseFact`. Commands (imperative) are *not* stored; only the facts they produce are.
 
+The canonical event-family index used by `docs:design-lint` is [`event-families.md`](./event-families.md); this section remains the detailed data-plane catalog of individual event names.
+
 **Bindle / Camp**
 `bindle.Registered` · `bindle.VersionPublished` · `camp.Created` · `camp.RuntimeBound` · `env.PromoteRequested` · `env.Promoted` · `env.PromoteRolledBack` · `env.PartiallyPromoted` (a tolerated partial deploy across the group — only via `optional` members, never a silent split, [ADR-0028](./adr/01-architecture-core.md#adr-0028)) (multi-Camp environment-group saga)
 

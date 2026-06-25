@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "docs:cli-lint": "node scripts/check-cli-docs.mjs"
+    "docs:cli-lint": "node scripts/check-cli-docs.mjs",
+    "docs:design-lint": "node scripts/check-design-docs.mjs"
   }
 }

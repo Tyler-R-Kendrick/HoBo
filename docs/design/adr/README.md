@@ -91,4 +91,5 @@
 | 0083 | The Harness: progressive delivery as a pluggable core (OpenFeature · OpenDelivery · OpenExperiment, over OpenTelemetry) | [identity-security](02-identity-security.md#adr-0083) |
 | 0084 | Cross-App Access (XAA): IdP-brokered, policy-governed user-delegated access to/from external apps (ID-JAG over token exchange) | [identity-security](02-identity-security.md#adr-0084) |
 | 0085 | wRPC + WIT baseline: exact toolchain pins, vendored interface hashes, and preview upcasters | [architecture-core](01-architecture-core.md#adr-0085) |
+| 0086 | Replay/live equivalence gate for deterministic materialization folds | [data-plane](03-data-plane.md#adr-0086) |
 | 0087 | Package namespace ownership map | [architecture-core](01-architecture-core.md#adr-0087) |

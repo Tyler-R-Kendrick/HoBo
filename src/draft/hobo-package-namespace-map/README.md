@@ -26,4 +26,3 @@ npm --prefix src/draft/hobo-package-namespace-map test
   SDK symbols.
 - `secret()` and `secretRef()` are both app authoring symbols, but the former is
   a managed secret resource and the latter is a config-value reference.
-

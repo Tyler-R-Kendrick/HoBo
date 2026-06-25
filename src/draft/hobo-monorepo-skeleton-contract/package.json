@@ -1,0 +1,11 @@
+{
+  "name": "@hobo/draft-monorepo-skeleton-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/verify-monorepo-skeleton.mjs build",
+    "typecheck": "node scripts/verify-monorepo-skeleton.mjs typecheck",
+    "lint": "node scripts/verify-monorepo-skeleton.mjs lint"
+  }
+}

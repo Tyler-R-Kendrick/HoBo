@@ -5,6 +5,7 @@ const root = process.cwd();
 const docsRoot = path.join(root, "docs", "design");
 const contractPath = path.join(docsRoot, "sdk-contracts.md");
 const designIndexPath = path.join(docsRoot, "README.md");
+const packageNamespacePath = path.join(docsRoot, "package-namespaces.md");
 
 const requiredSurfaces = [
   {
@@ -68,17 +69,50 @@ const importOwners = new Map([
   ["auth", "@hobo/bindles"],
   ["bindle", "@hobo/bindles"],
   ["bucket", "@hobo/bindles"],
+  ["config", "@hobo/bindles"],
   ["crossApp", "@hobo/bindles"],
+  ["database", "@hobo/bindles"],
+  ["env", "@hobo/bindles"],
   ["experiment", "@hobo/bindles"],
   ["flag", "@hobo/bindles"],
+  ["fromBinding", "@hobo/bindles"],
   ["kv", "@hobo/bindles"],
+  ["objectStore", "@hobo/bindles"],
+  ["queue", "@hobo/bindles"],
   ["rollout", "@hobo/bindles"],
+  ["secret", "@hobo/bindles"],
+  ["secretRef", "@hobo/bindles"],
   ["slo", "@hobo/bindles"],
+  ["topic", "@hobo/bindles"],
   ["trainable", "@hobo/bindles"],
+  ["web", "@hobo/bindles"],
   ["websocket", "@hobo/bindles"],
+  ["actor", "@hobo/runtime"],
+  ["cron", "@hobo/runtime"],
+  ["createHook", "@hobo/runtime"],
+  ["FatalError", "@hobo/runtime"],
+  ["from", "@hobo/runtime"],
+  ["handler", "@hobo/runtime"],
+  ["RetryableError", "@hobo/runtime"],
+  ["sleep", "@hobo/runtime"],
+  ["start", "@hobo/runtime"],
+  ["step", "@hobo/runtime"],
+  ["training", "@hobo/runtime"],
+  ["workflow", "@hobo/runtime"],
+  ["command", "@hobo/data"],
+  ["projection", "@hobo/data"],
+  ["repo", "@hobo/data"],
+  ["view", "@hobo/data"],
+  ["emit", "@hobo/events"],
+  ["saga", "@hobo/events"],
+  ["subscribe", "@hobo/events"],
   ["camp", "@hobo/camps"],
+  ["approveDefaults", "@hobo/yards"],
+  ["autoApprove", "@hobo/yards"],
+  ["domain", "@hobo/yards"],
   ["yard", "@hobo/yards"],
   ["junction", "@hobo/junctions"],
+  ["chaos", "@hobo/sdk"],
   ["defineResource", "@hobo/sdk"],
   ["dispatcher", "@hobo/sdk"],
   ["generateProvider", "@hobo/sdk"],
@@ -172,6 +206,41 @@ function validateContractDoc() {
   }
 }
 
+function validatePackageNamespaceDoc() {
+  if (!fs.existsSync(packageNamespacePath)) {
+    fail("docs/design/package-namespaces.md is missing");
+    return;
+  }
+
+  const namespaceDoc = read(packageNamespacePath);
+  const designIndex = read(designIndexPath);
+  const requiredTerms = [
+    "ADR-0087",
+    "hobo:sdk",
+    "@hobo/bindles",
+    "@hobo/runtime",
+    "@hobo/data",
+    "@hobo/events",
+    "@hobo/camps",
+    "@hobo/yards",
+    "@hobo/junctions",
+    "@hobo/sdk",
+    "@hobo/core",
+    "secretRef",
+    "must not re-export topology factories",
+  ];
+
+  if (!designIndex.includes("./package-namespaces.md")) {
+    fail("docs/design/README.md does not link docs/design/package-namespaces.md");
+  }
+
+  for (const term of requiredTerms) {
+    if (!namespaceDoc.includes(term)) {
+      fail(`package-namespaces.md missing required term: ${term}`);
+    }
+  }
+}
+
 function validateImportOwners() {
   const importPattern = /import\s*\{\s*([^}]+?)\s*\}\s*from\s*["']([^"']+)["']/g;
 
@@ -228,6 +297,7 @@ function validateDefaultGuards() {
 }
 
 validateContractDoc();
+validatePackageNamespaceDoc();
 validateImportOwners();
 validateDefaultGuards();
 

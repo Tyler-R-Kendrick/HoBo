@@ -478,3 +478,24 @@ by reacting to its own remediation.
   missing evidence in the handoff package.
 - **(−)** Some useful remediations will be slower because the rail deliberately treats ambiguous
   signals, unknown blast radius, and self-caused follow-on signals as human/escalation cases.
+
+## ADR-0096
+**Deny-ceiling composition algebra for mandatory policy packs.**
+
+### Context
+[ADR-0074](#adr-0074) made mandatory policy rules a hard deny-ceiling: lower scopes may further restrict, never widen. That property is not guaranteed by "deny by default" alone. A lower-scope allow, a maliciously reordered pack list, or two federated mandatory packs that disagree could otherwise produce different answers per Yard, or worse, fail open. The composition algorithm must therefore be part of the policy contract, not an implementation detail.
+
+### Decision
+1. **Scope order is fixed:** `Junction -> Yard -> Camp -> Bindle`. Composition sorts by scope rank, pack id, then rule id before evaluation so input order is not observable.
+2. **Mandatory denies compose by union.** Every `mandatory` deny contributes to the effective deny-set. A child scope can add denies, but cannot remove or weaken a parent mandatory deny; this is the scope-monotonic invariant.
+3. **Default rules are recommendations.** `default` denies or allows may be overridden by lower scopes. They never erase a mandatory deny.
+4. **Attempts to widen past a mandatory deny are compose-time failures.** A lower-scope allow that intersects the mandatory deny-set rejects the composed pack set while preserving the deny in the failure result, so the system fails closed.
+5. **Most-restrictive wins for bounded mandatory values.** For numeric ceilings such as `agent.maxSpendCents`, the effective value is the smallest maximum; ties are broken by deterministic source id.
+6. **Federated mandatory conflicts resolve to the union of denies.** Two signed Junction/Yard packs that deny different or overlapping surfaces produce the same union on every honest Yard. There is no undefined conflict state.
+
+The executable proof vectors live in `src/draft/deny-ceiling-algebra-poc` and cover deterministic Yard replay, scope monotonicity, default override, mandatory widening rejection, federated-union behavior, most-restrictive numeric limits, and malicious pack-order permutations.
+
+### Consequences
+- **(+)** Mandatory policy packs now have one replayable algebra that policy engines, conformance tests, and future OPA/Cedar adapters can implement against.
+- **(+)** Adversarial ordering and child-scope widening attempts fail closed without losing the effective deny evidence.
+- **(-)** The algebra is intentionally conservative: default rules are the only place to express overridable recommendations, while mandatory rules must be modeled as ceilings or bounded maxima.

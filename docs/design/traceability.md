@@ -42,7 +42,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | PLAN-20 | [wasm-runtime-wit.md](./wasm-runtime-wit.md#plan-20) | WIT versioning, WIT packages, component host, runtime ports, transport, and SDK conformance are covered. | HOBO-3, HOBO-4, HOBO-12, HOBO-13, HOBO-14, HOBO-15, HOBO-16, HOBO-17, HOBO-18, HOBO-19, HOBO-20, HOBO-21, HOBO-22, HOBO-23, HOBO-24, HOBO-25, HOBO-26, HOBO-27, HOBO-28, HOBO-29, HOBO-30, HOBO-31, HOBO-32, HOBO-33, HOBO-34, HOBO-35, HOBO-36 |
 | PLAN-21 | [authoring-resources-wiring.md](./authoring-resources-wiring.md#plan-21) | Resource catalog, manifest IR, wiring, config/secrets, provider options, and Hobo Code are owned by SDK slices. | HOBO-37, HOBO-38, HOBO-40, HOBO-43, HOBO-49, HOBO-52, HOBO-62, HOBO-67, HOBO-70, HOBO-75, HOBO-79, HOBO-83, HOBO-88, HOBO-386, HOBO-392, HOBO-394 |
 | PLAN-25 | [platform-engineering.md](./platform-engineering.md#plan-25) | Matching, environments, providers, drivers, packs, GitOps, Relay, pipelines, and the runbook contract consumed by the Pipelines sibling engine have control/provider/operator owners. | HOBO-45, HOBO-47, HOBO-50, HOBO-55, HOBO-61, HOBO-64, HOBO-68, HOBO-72, HOBO-73, HOBO-78, HOBO-81, HOBO-82, HOBO-86, HOBO-87, HOBO-93, HOBO-95, HOBO-97, HOBO-102, HOBO-103, HOBO-108, HOBO-109, HOBO-135, HOBO-139, HOBO-145, HOBO-149, HOBO-260 |
-| PLAN-29 | [contracts-policy-flags.md](./contracts-policy-flags.md#plan-29) | Contract gates, policy, obligations, RBAC, feature flags, generation promotion gates, and progressive delivery have policy/harness slices. | HOBO-119, HOBO-123, HOBO-137, HOBO-141, HOBO-146, HOBO-150, HOBO-154, HOBO-158, HOBO-162, HOBO-333 |
+| PLAN-29 | [contracts-policy-flags.md](./contracts-policy-flags.md#plan-29) | Contract gates, policy, obligations, RBAC, feature flags, generation promotion gates, and progressive delivery have policy/harness slices. | HOBO-119, HOBO-123, HOBO-128, HOBO-137, HOBO-141, HOBO-146, HOBO-150, HOBO-154, HOBO-158, HOBO-162, HOBO-333 |
 | PLAN-09 | [generated-stack.md](./generated-stack.md#plan-09) | Verification/testing, conformance, golden suites, and generated-stack checks map to conformance/eval slices. | HOBO-5, HOBO-6, HOBO-7, HOBO-102, HOBO-104, HOBO-146 |
 | PLAN-23 | [generated-stack.md](./generated-stack.md#plan-23) | Generation IO, sandboxing, scaffold, LLM-fill, training trajectories, eval gates, policy gates, repair, provenance, certification, and provider generation have slices. | HOBO-7, HOBO-102, HOBO-108, HOBO-146, HOBO-307, HOBO-320, HOBO-321, HOBO-324, HOBO-333, HOBO-335 |
 | PLAN-40 | [operators-sre.md](./operators-sre.md#plan-40) | Crew operators, incidents, runbooks, remediation envelopes, escalation, and DR map to Operators/SRE slices. | HOBO-141, HOBO-146, HOBO-251, HOBO-260, HOBO-270 |
@@ -115,7 +115,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0071 | [architecture-core](./adr/01-architecture-core.md#adr-0071) | Dispatcher placement/dispatch/traffic decisions map to matching, region/objective, credit/cost, and routing work. | HOBO-64, HOBO-81, HOBO-103, HOBO-155, HOBO-246, HOBO-339 |
 | ADR-0072 | [architecture-core](./adr/01-architecture-core.md#adr-0072) | WIT-first SDK maps to WIT package, bindings, collection-coverage honesty, reverse extraction, idiom parity, and SDK conformance. | HOBO-3, HOBO-12, HOBO-16, HOBO-31, HOBO-32, HOBO-75, HOBO-88, HOBO-106, HOBO-398 |
 | ADR-0073 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0073) | Swappable integration ports map to artifact repo, registry, signed bundles, issue tracker, and digest selection work. | HOBO-347, HOBO-354, HOBO-390, HOBO-391 |
-| ADR-0074 | [identity-security](./adr/02-identity-security.md#adr-0074) | Org governance, RBAC, mandatory rules, and control-plane action taxonomy map to policy/RBAC slices. | HOBO-137, HOBO-150, HOBO-154, HOBO-158, HOBO-162 |
+| ADR-0074 | [identity-security](./adr/02-identity-security.md#adr-0074) | Org governance, RBAC, mandatory rules, and control-plane action taxonomy map to policy/RBAC slices. | HOBO-128, HOBO-137, HOBO-150, HOBO-154, HOBO-158, HOBO-162 |
 | ADR-0075 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0075) | Interface stability tiers and Capability Spec map to WIT pinning, manifest versioning, registry, and adversarial version work. | HOBO-12, HOBO-15, HOBO-36, HOBO-331, HOBO-343, HOBO-386, HOBO-395 |
 | ADR-0076 | [identity-security](./adr/02-identity-security.md#adr-0076) | Boundary virtualization maps to local-dev/test, provider mock, preview, and chaos surfaces. | HOBO-135, HOBO-392 |
 | ADR-0077 | [identity-security](./adr/02-identity-security.md#adr-0077) | Projects/environments grouping maps to topology, environment, dashboard, and status-page read models. | HOBO-62, HOBO-81, HOBO-140 |
@@ -137,14 +137,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0093 | [architecture-core](./adr/01-architecture-core.md#adr-0093) | SDK semantics-annex parity is a separate required conformance lane from golden-IR lowering equality, with negative vectors for error mapping, cancellation, async ordering, and IfC side-effect order. | HOBO-31, HOBO-32, HOBO-106, HOBO-398 |
 | ADR-0094 | [identity-security](./adr/02-identity-security.md#adr-0094) | Autonomous-action safety rails map to Crew blast-radius envelopes, oscillation guards, and SRE remediation classification. | HOBO-263, HOBO-251, HOBO-267 |
 | ADR-0095 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0095) | Distributed-artifact resolution semantics are pinned by the HOBO-340 decision vectors and consumed by the future resolver. | HOBO-340, HOBO-370 |
+| ADR-0096 | [identity-security](./adr/02-identity-security.md#adr-0096) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 84 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 85 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0095`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0096`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

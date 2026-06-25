@@ -230,6 +230,12 @@ const { data, seq } = useSubscription(openTickets, { team: "infra" }); // React:
 ### The query surface: a GraphQL facade + escape hatches
 Request/response reads are served by a **GraphQL facade over materialized views and snapshots** ([ADR-0050](./adr/03-data-plane.md#adr-0050)): the resolver reads a materialization produced by a **GraphQL reducer** (the fold). GraphQL subscriptions map onto the same observable materializations, so query and stream share one model. **Snapshots are cached by default**, so repeated point/query reads hit the cached snapshot rather than re-folding; cache freshness follows the entity's tunable consistency level ([ADR-0052](./adr/03-data-plane.md#adr-0052)).
 
+**Generation boundary:** the GraphQL facade is generated from canonical WIT read-model records plus
+`projection.Declared`/materialization metadata ([ADR-0087](./adr/03-data-plane.md#adr-0087)).
+Generated resolvers and subscriptions are thin dispatchers to the existing materialization engine,
+not a second read engine. Non-reactive materializations generate query/snapshot fields only; GraphQL
+subscription generation is rejected for them.
+
 When a stream subscription is the wrong shape — a one-shot read, a point lookup, full-text/vector **search**, pagination, or analytics — you reach for the **escape hatches**, served from a materialization's cached snapshot or **sink cache** (§Projections):
 ```ts
 const now   = await snapshot(openTickets, { team: "infra" }); // one-shot current value @ seq (cached by default)

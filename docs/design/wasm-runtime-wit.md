@@ -127,6 +127,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 
 ### Conventions
 - **Package/version + stability:** `namespace:package@semver` (e.g. `wasi:keyvalue@0.2.0`, `hobo:runtime@0.1.0`). HoBo pins exact versions; upgrades go through upcasters/compat shims, never silent drift. Each interface also carries a **stability tier — `stable · preview · experimental · deprecated`** ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)): `preview` tracks an expected-but-unratified standard (e.g. `wasi:websocket@0.0.x-draft`), `experimental` is HoBo-incubated. Version + stability are recorded per import/export in the manifest IR.
+- **HOBO-12 baseline:** [ADR-0085](./adr/01-architecture-core.md#adr-0085) pins the initial toolchain floor (`wasmtime@46.0.1`, `jco@1.24.3`, `wit-bindgen-cli@0.58.0`, `wrpc@0.17.0`, wasmCloud `2.4.0`) and the vendored-tree lock shape: `namespace:package/interface@semver@stability` plus a SHA-256 of the vendored WIT source. Breaking `preview` bumps require an upcaster, a new Bindle version, and a deprecation window.
 - **Import = dependency** (inbound port the component needs), **export = capability** (what it provides), and a **link** late-binds an import to a provider's export — the model laid out above.
 - **`.allow()` ↔ interface:** a resource's permitted verbs ([Plan 21](./authoring-resources-wiring.md#plan-21)) select which interface's functions are linked + which IAM/token scope is granted.
 

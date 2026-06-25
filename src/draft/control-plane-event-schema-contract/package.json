@@ -1,0 +1,14 @@
+{
+  "name": "@hobo/draft-control-plane-event-schema-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate-contract-artifacts.mjs",
+    "test": "npm run generate && node --test",
+    "codegen:check": "node scripts/generate-contract-artifacts.mjs --check"
+  },
+  "devDependencies": {
+    "protobufjs": "^7.6.4",
+    "zod": "^4.1.13"
+  }
+}

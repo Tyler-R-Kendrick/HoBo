@@ -128,11 +128,12 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0084 | [identity-security](./adr/02-identity-security.md#adr-0084) | Cross-App Access maps to `crossApp`, ID-JAG token exchange, inferred scopes, and XAA runtime work. | HOBO-9, HOBO-43, HOBO-54, HOBO-83, HOBO-110 |
 | ADR-0085 | [architecture-core](./adr/01-architecture-core.md#adr-0085) | wRPC/WIT version floors, vendored interface hashes, and preview upcaster discipline are proven by the HOBO-12 spike and expanded by WIT vendoring work. | HOBO-12, HOBO-15, HOBO-26, HOBO-27, HOBO-36 |
 | ADR-0086 | [data-plane](./adr/03-data-plane.md#adr-0086) | Replay/live equivalence is pinned as an executable data-plane gate for deterministic materialization folds. | HOBO-60, HOBO-51, HOBO-57, HOBO-80 |
-| ADR-0087 | [data-plane](./adr/03-data-plane.md#adr-0087) | GraphQL facade generation is bounded to deterministic SDL plus thin materialization dispatch, not a second read engine. | HOBO-65, HOBO-92 |
+| ADR-0087 | [architecture-core](./adr/01-architecture-core.md#adr-0087) | Package namespace ownership is pinned by the canonical import table and doc lint guards. | HOBO-58 |
+| ADR-0088 | [data-plane](./adr/03-data-plane.md#adr-0088) | GraphQL facade generation is bounded to deterministic SDL plus thin materialization dispatch, not a second read engine. | HOBO-65, HOBO-92 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 76 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 77 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.

@@ -68,4 +68,5 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | `@hobo/yards` | Topology idiom package for declaring Yards. |
 | `.allow(...)` | Capability permission surface that narrows or asserts usage-inferred grants, capped by policy deny ceilings. |
 | `hobo:sdk` | WIT contract/package for app primitives and capability/data interfaces; distinct from the `@hobo/sdk` operator SDK. |
+| Package namespace map | Canonical import-ownership table for `@hobo/*` packages; see [package-namespaces.md](./package-namespaces.md) (ADR-0087). |
 | `"use training"` | SDK directive marking an AI-rewritable semantic function optimized behind the `training-engine` port. |

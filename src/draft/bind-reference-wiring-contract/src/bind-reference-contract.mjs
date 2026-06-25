@@ -85,6 +85,49 @@ export function addContainer(name, source, options = {}) {
     return handle;
   };
 
+  handle.withHttpEndpoint = (port, options = {}) =>
+    handle.withEndpoint({
+      name: options.name ?? "http",
+      scheme: "http",
+      port,
+      targetPort: options.targetPort,
+      external: options.external,
+      protocol: options.protocol,
+    });
+
+  handle.withArgs = (...args) => {
+    handle.annotations.args ??= [];
+    handle.annotations.args.push(...args.flat());
+    return handle;
+  };
+
+  handle.withBindMount = (source, target, readOnly = false) => {
+    handle.annotations.bindMounts ??= [];
+    handle.annotations.bindMounts.push({ source, target, readOnly });
+    return handle;
+  };
+
+  handle.withLifetime = (lifetime) => {
+    if (!["session", "persistent"].includes(lifetime)) {
+      throw new BindReferenceError(
+        `resources.${name}.lifetime`,
+        "lifetime must be one of session, persistent",
+      );
+    }
+    handle.annotations.lifetime = lifetime;
+    return handle;
+  };
+
+  handle.waitFor = (dependency) => {
+    recordWait(handle, name, "waitFor", dependency, "ready");
+    return handle;
+  };
+
+  handle.waitForCompletion = (dependency) => {
+    recordWait(handle, name, "waitForCompletion", dependency, "completed");
+    return handle;
+  };
+
   handle.withDnsRecord = () => {
     throw new BindReferenceError(
       `resources.${name}.dns`,
@@ -208,6 +251,28 @@ function componentHandle(kind, name, options) {
   };
 
   return handle;
+}
+
+function recordWait(handle, ownerName, key, dependency, until) {
+  const target = resolveDependencyName(dependency);
+  if (typeof target !== "string" || !RESOURCE_ID.test(target)) {
+    throw new BindReferenceError(
+      `resources.${ownerName}.${key}`,
+      "must reference a declared resource handle or id",
+    );
+  }
+  handle.annotations[key] ??= [];
+  handle.annotations[key].push({ to: target, until });
+}
+
+function resolveDependencyName(dependency) {
+  if (typeof dependency === "string") {
+    return dependency;
+  }
+  if (isRecord(dependency) && typeof dependency.name === "string") {
+    return dependency.name;
+  }
+  return null;
 }
 
 function normalizeBindMap(bind = {}) {

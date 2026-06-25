@@ -1,0 +1,14 @@
+{
+  "name": "@hobo/draft-cli-shell-contract",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "hobo": "./bin/hobo.mjs"
+  },
+  "exports": {
+    ".": "./src/cli-shell.mjs"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -117,7 +117,9 @@ packages/
   yards/           @hobo/yards        yard() + domain() — provider-specific control-plane scope
   junctions/       @hobo/junctions    junction() — cross-cloud federation + inferred connectivity  [ADR-0043]
   bindles-rs/ bindles-py/ bindles-go/ ... per-language app idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
-  runtime/         @hobo/runtime      actors/grains, workflow/step, sagas, agent(), stubs, ctx
+  runtime/         @hobo/runtime      actors/grains, workflow/step, agent(), stubs, ctx
+  data/            @hobo/data         command/view/projection CQRS authoring helpers
+  events/          @hobo/events       emit/subscribe/saga messaging and choreography helpers
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
   cli/             @hobo/cli          hobo up|down|dev|new|login|claim|plan|verify|can-deploy|inspect|logs|doctor|codegen|build|collect|stub|drift|add|registry|import|generate|sandbox|test|attest|erase|derivative|runbook
   runtimes/          (the durable runtime backends a Camp provides)

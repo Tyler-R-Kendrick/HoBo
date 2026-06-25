@@ -1,0 +1,20 @@
+{
+  "name": "@hobo-draft/bindles-resource-catalog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for the @hobo/bindles resource catalog declaration surface from HOBO-37.",
+  "exports": {
+    ".": {
+      "types": "./src/catalog.d.ts",
+      "import": "./src/catalog.mjs"
+    }
+  },
+  "scripts": {
+    "test": "npm run typecheck && node --test test/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.types.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

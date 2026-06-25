@@ -1,0 +1,8 @@
+{
+  "name": "@hobo-draft/policy-ir-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

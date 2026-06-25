@@ -1,0 +1,10 @@
+{
+  "name": "@hobo/draft-domain-event-body-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate-contract-artifacts.mjs",
+    "test": "npm run generate && node --test",
+    "codegen:check": "node scripts/generate-contract-artifacts.mjs --check"
+  }
+}

@@ -235,6 +235,105 @@ export function exportPactContract(contract) {
   };
 }
 
+export function importAsyncApiContract(asyncApi, {
+  id,
+  eventType
+} = {}) {
+  assertExternalAdapterIsNotSourceOfTruth(asyncApi);
+
+  const firstMessage = findFirstAsyncApiMessage(asyncApi);
+  const payloadSchema = firstMessage?.message?.payload ?? {};
+  const requiredFields = normalizeStringArray(payloadSchema.required ?? []);
+  const contract = createContractFixture({ edgeKind: "event", mode: "declared" });
+
+  contract.id = id ?? `contract-asyncapi-${eventType ?? firstMessage?.channel ?? "channel"}`;
+  contract.edge.producer = asyncApi?.info?.title ?? "asyncapi-producer";
+  contract.edge.consumer = "asyncapi-consumer";
+  contract.edge.operation = eventType ?? firstMessage?.channel ?? "ASYNCAPI unknown";
+  contract.requiredShape = {
+    format: "asyncapi",
+    schemaVersion: asyncApi?.asyncapi ?? "unknown",
+    requiredFields,
+    shape: sortKeys(payloadSchema)
+  };
+  contract.consumerRequirements = [
+    {
+      consumer: contract.edge.consumer,
+      requiredFields
+    }
+  ];
+
+  return normalizeContract(contract);
+}
+
+export function exportAsyncApiContract(contract) {
+  const parsed = parseContract(contract);
+  if (!parsed.ok) {
+    throw new Error(parsed.errors.join("\n"));
+  }
+
+  return {
+    source: "hobo-contract-ir",
+    id: parsed.contract.id,
+    channel: parsed.contract.edge.operation,
+    producer: parsed.contract.edge.producer,
+    requiredFields: parsed.contract.requiredShape.requiredFields
+  };
+}
+
+export function importProtobufContract(proto, {
+  id,
+  producer,
+  consumer
+} = {}) {
+  assertExternalAdapterIsNotSourceOfTruth(proto);
+
+  const message = findFirstProtobufMessage(proto);
+  const fields = Array.isArray(message?.fields) ? message.fields : [];
+  const explicitlyRequired = fields
+    .filter((field) => field && field.required === true)
+    .map((field) => field.name);
+  const requiredFields = normalizeStringArray(
+    explicitlyRequired.length > 0 ? explicitlyRequired : fields.map((field) => field?.name)
+  );
+  const contract = createContractFixture({ edgeKind: "message", mode: "declared" });
+
+  contract.id = id ?? `contract-protobuf-${message?.name ?? "message"}`;
+  contract.edge.producer = producer ?? proto?.package ?? "protobuf-producer";
+  contract.edge.consumer = consumer ?? "protobuf-consumer";
+  contract.edge.operation = message?.name ?? "PROTOBUF message";
+  contract.requiredShape = {
+    format: "protobuf",
+    schemaVersion: proto?.syntax ?? "proto3",
+    requiredFields,
+    shape: sortKeys(message ?? {})
+  };
+  contract.consumerRequirements = [
+    {
+      consumer: contract.edge.consumer,
+      requiredFields
+    }
+  ];
+
+  return normalizeContract(contract);
+}
+
+export function exportProtobufContract(contract) {
+  const parsed = parseContract(contract);
+  if (!parsed.ok) {
+    throw new Error(parsed.errors.join("\n"));
+  }
+
+  return {
+    source: "hobo-contract-ir",
+    id: parsed.contract.id,
+    message: parsed.contract.edge.operation,
+    producer: parsed.contract.edge.producer,
+    consumer: parsed.contract.edge.consumer,
+    requiredFields: parsed.contract.requiredShape.requiredFields
+  };
+}
+
 export function canonicalJson(value) {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
@@ -426,6 +525,34 @@ function findFirstOpenApiOperation(openApi) {
         return { path, method, operation: pathItem[method] };
       }
     }
+  }
+
+  return null;
+}
+
+function findFirstAsyncApiMessage(asyncApi) {
+  const channels = asyncApi?.channels;
+  if (!channels || typeof channels !== "object") {
+    return null;
+  }
+
+  for (const channel of Object.keys(channels).sort()) {
+    const channelItem = channels[channel];
+    for (const operation of ["subscribe", "publish"]) {
+      const message = channelItem?.[operation]?.message;
+      if (message) {
+        return { channel, operation, message };
+      }
+    }
+  }
+
+  return null;
+}
+
+function findFirstProtobufMessage(proto) {
+  const messages = proto?.messages;
+  if (Array.isArray(messages) && messages.length > 0) {
+    return messages[0];
   }
 
   return null;

@@ -298,7 +298,7 @@ export default trainable(rankFeed, {
 });
 ```
 
-Ship with `hobo up`. It can't improve until real traffic accrues; then the optimizer captures traces, runs candidates on a shadow lane, and promotes one **only if it clears the rubric** — gated, signed, reversible. You watch candidates and their confidence intervals in the dashboard; the live app adopts a promoted version on the next `hobo up`. **No `hobo train` command exists** — it's a property of your code.
+Ship with `hobo up`. It can't improve until real traffic accrues; then the optimizer captures traces, runs candidates on a shadow lane, and promotes one **only if it clears the rubric** — gated, signed, reversible. You watch candidates and their confidence intervals in the dashboard; the live app adopts a promoted version on the next `hobo up`. **No standalone training command exists** — it's a property of your code.
 
 ## 1.7 — Ship
 
@@ -682,7 +682,7 @@ export default dispatcher({ objective: "min-cost" }, [
 
 ## 5.3 — Fleet visibility
 
-Everything DevOps needs is a **projection over the event log** — the dashboard's fleet view (project × environment), or `hobo inspect`/`hobo logs` for scripting. No view has privileged state, so it can never disagree with the audit log. There's no `hobo fleet` verb; there's a dashboard and `inspect`.
+Everything DevOps needs is a **projection over the event log** — the dashboard's fleet view (project × environment), or `hobo inspect`/`hobo logs` for scripting. No view has privileged state, so it can never disagree with the audit log. There's no fleet CLI verb; there's a dashboard and `inspect`.
 
 ## 5.4 — Disaster recovery and upgrades are just `up`
 
@@ -731,7 +731,7 @@ export default runbook("high-5xx-on-api", {
 
 ## 6.3 — The SRE operator: autonomous, but on a leash
 
-The Crew is **code**, not a `hobo crew` command. Each operator is an `agent()` that's part of your control-plane program — a named SVID principal with a scoped policy, event-sourced, MCP-surfaced, **read/diagnose autonomous, every write gated**:
+The Crew is **code**, not a CLI command. Each operator is an `agent()` that's part of your control-plane program — a named SVID principal with a scoped policy, event-sourced, MCP-surfaced, **read/diagnose autonomous, every write gated**:
 
 ```ts
 // ops/crew.ts

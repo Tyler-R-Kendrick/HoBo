@@ -1,0 +1,9 @@
+{
+  "name": "hobo-design",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "docs:cli-lint": "node scripts/check-cli-docs.mjs"
+  }
+}

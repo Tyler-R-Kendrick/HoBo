@@ -5,5 +5,9 @@
   "scripts": {
     "test": "node --test",
     "docs:cli-lint": "node scripts/check-cli-docs.mjs"
+  },
+  "devDependencies": {
+    "protobufjs": "^7.6.4",
+    "zod": "^4.1.13"
   }
 }

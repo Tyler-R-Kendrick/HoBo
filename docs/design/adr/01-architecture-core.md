@@ -97,6 +97,19 @@ HoBo realizes the "runtime + membrane + provider" shape (proven by Nitric: app c
 - **(+)** One contract everywhere: a building block is a WIT interface, a provider is a WIT component, the wire is wRPC generated from that WIT — local dev, cross-process, and lattice all use the same mechanism ([ADR-0031](#adr-0031)), with conformance ([Plan 9](../generated-stack.md#plan-09)) as the single trust boundary and no language lock-in for provider authors.
 - **(−)** wRPC is younger than gRPC (HoBo pins/vendors its wRPC + WIT versions and ships a membrane conformance suite), and "everything is a WIT interface" demands disciplined interface design + versioning ([ADR-0024](07-portability-extensibility.md#adr-0024)).
 
+## ADR-0085
+**wRPC + WIT baseline: exact toolchain pins, vendored interface hashes, and preview upcasters.**
+
+HOBO-12 fixes the first version floor for the runtime membrane so downstream WIT and host slices build on one reproducible contract rather than a moving "latest" toolchain. The baseline is recorded as exact pins, not ranges: **Wasmtime/Component Model host `46.0.1`**, **`@bytecodealliance/jco` `1.24.3`**, **`@bytecodealliance/componentize-js` `0.21.0`**, **`wit-bindgen-cli` `0.58.0`**, **`wrpc` `0.17.0`**, and **wasmCloud `2.4.0`** as the self-hosted lattice integration floor. Wasmtime is the compatibility floor for local/component-host semantics; wasmCloud remains the default lattice host because it speaks wRPC natively ([ADR-0031](#adr-0031)/[ADR-0069](#adr-0069)).
+
+The vendoring layout is `wit/deps/<namespace-package>/...` plus a lock manifest that records each imported/exported WIT contract as **`namespace:package/interface@semver@stability`** with a SHA-256 hash of the vendored source. The first smoke fixture vendors `wasi:clocks/wall-clock@0.2.0@stable` in `src/draft/wrpc-wit-baseline-poc`; HOBO-15 expands this to the full reused `wasi:*` catalog. The manifest IR records the same per-interface pin shape, the component-model floor (`wasmtime@46.0.1`), and the selected link transport (`wrpc@0.17.0+nats`) so caller/provider skew fails planning instead of failing at runtime.
+
+Preview and experimental interfaces may move faster than stable interfaces, but they still cannot silently mutate a deployed Bindle. Any breaking `preview` bump requires **an upcaster, a new Bindle version, and a deprecation window**; CI must reject a preview pin change that lacks those artifacts. A stable interface can take additive semver-compatible changes, but a hash drift or breaking shape change must either be pinned as a new version or fail the vendored-tree check. This applies equally to HoBo-authored `hobo:*` and vendored `wasi:*` packages.
+
+### Consequences
+- **(+)** WIT generation, wRPC links, and component-host compatibility now have a reproducible floor with drift checks; downstream interface work can cite one lock shape and one upgrade ceremony.
+- **(−)** Toolchain upgrades become explicit work: bump the lock, regenerate fixtures, document compatibility, and add upcasters for any breaking or preview churn.
+
 ## ADR-0072
 **The SDK is WIT-first: a canonical `hobo:sdk` WIT package, generated per language, with conformance-gated idiom layers.**
 

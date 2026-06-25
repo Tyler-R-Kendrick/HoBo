@@ -259,6 +259,43 @@ The spike proof bundle is [`../../../src/draft/non-ts-idiom-roundtrip-spike`](..
 - **(+)** The SWE operator can generate useful skeletons while still failing closed on WIT drift and semantics-annex gaps.
 - **(-)** The SDK conformance surface grows: each language needs a lowering corpus, a semantics annex, and an adoption/parity report before it can claim parity.
 
+## ADR-0092
+**Self-host bootstrap uses a disposable seed Yard and explicit Identity handover.**
+
+The Yard is itself a Bindle, so its first existence cannot depend on the target Yard's not-yet-running Identity service, token broker, or control-plane runtime. Self-host bootstrap therefore starts with a disposable local seed Yard, uses one scoped operator credential for the first apply, imports that seed log into the real Yard as provenance, and hands over only when the real Identity service can broker Yard control-plane tokens.
+
+1. **Bootstrap has three ledgers: seed log, target resource state, and real Yard log.** `hobo yard up --seed` starts a single-node seed Yard on `@hobo/runtime-local` with a SQLite event store. The seed opens the first Deployment Delta/Set against an empty target and records the bootstrap `resource.*` events plus `identity.SeedTokenUsed`. The real Yard imports the seed log by hash as immutable provenance; it does not replay seed commands as new live commands.
+2. **The operator credential is single-use and scoped to one bootstrap apply.** In connected mode it comes from `hobo login`; in air-gapped mode it comes from an in-boundary bootstrap trust root (ADR-0036). Its scope is `bootstrap-apply:<yard>:<camp>`, it is non-refreshable, and its use is audited as `identity.SeedTokenUsed`. If it expires mid-apply, the seed fails closed and requires explicit operator re-login for the same attempt id. No ambient cloud key or silent refresh is allowed.
+3. **Handover is gated on real Identity readiness, not provision success alone.** Target resources must be provisioned, the seed log must be imported, and real Identity must be able to issue a brokered token for the Yard control-plane principal. Only then does the seed revoke the operator credential and discard itself. Premature handover is invalid.
+4. **Recovery is idempotent by bootstrap attempt id.** A seed crash resumes the same attempt from the seed log plus observed target state. A second bootstrap for the same target is blocked unless it carries the same attempt id. Created-but-not-recorded resources use ADR-0006's tagged-state/orphan-sweep discipline.
+5. **Air-gapped bootstrap runs the same state machine with in-boundary inputs.** The seed verifies a signed offline bundle and uses in-boundary Identity/CA/KMS substitutes before any apply. It does not require a public Registry, hosted IdP, public ACME, hosted model service, or other egress dependency.
+
+The executable proof bundle is [`../../../src/draft/self-host-bootstrap-ordering-spike`](../../../src/draft/self-host-bootstrap-ordering-spike). It encodes the accepted order, credential lifecycle, handover trigger, air-gap delta, double-bootstrap guard, and failure-injection table for HOBO-59.
+
+### Consequences
+- **(+)** Self-host bootstrap is reproducible and auditable without depending on the service it is creating.
+- **(+)** Air-gapped and connected bootstrap share one decision path instead of drifting into separate installers.
+- **(+)** The seed log becomes provenance for the real Yard while avoiding live command replay.
+- **(-)** Operators must preserve attempt ids and seed logs until handover, and a mid-apply credential expiry requires explicit re-authentication.
+
+## ADR-0093
+**SDK semantics annex is a separate conformance lane from golden-IR lowering parity.**
+
+Golden-IR lowering equivalence proves only the mechanical boundary: identical author input lowers to identical `hobo:sdk` WIT calls and identical `hobo.manifest/v1` records. It cannot see whether a language idiom layer swallowed a WIT `result.err`, converted cancellation into a hidden retry, reordered awaited collection facts, or let an IfC handler attach before its resource declaration. Those behaviors are legitimate language-control-flow semantics, so they are pinned in a separate SDK semantics annex.
+
+1. **Golden-IR is necessary but not sufficient.** A language SDK cannot claim parity with only WIT-call and manifest equality. The report must carry both a `goldenIr` lane and a `semanticsAnnex` lane.
+2. **The annex owns negative vectors.** The minimum v1 categories are error mapping, cancellation, async ordering, and IfC side-effect order. Each category includes failing vectors, not only happy-path examples.
+3. **Errors preserve WIT meaning in language-native form.** A WIT `result.err` maps to the idiom's explicit error channel (`throw`, `Result`, `(T, err)`, etc.) with the WIT tag preserved. Swallowing, defaulting, or widening the error is a conformance failure.
+4. **Cancellation is caller-owned and visible.** Cancellation lowers to a typed cancelled result or language equivalent. Hidden retries, silent success, or deadline erasure are annex failures.
+5. **Collection facts are ordered contract data.** IfC side effects lower to an ordered declaration fact stream. Async language machinery may schedule work however it wants, but the observed fact order must be deterministic and a handler observed before its resource declaration fails closed.
+
+The executable proof bundle is [`../../../src/draft/idiom-semantics-annex`](../../../src/draft/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31.
+
+### Consequences
+- **(+)** SDK parity no longer overclaims what WIT-call equality can prove.
+- **(+)** Non-TS idiom layers can expose native control flow without becoming invisible semantics drift.
+- **(-)** SDK conformance grows another required report lane and every language needs annex fixtures before claiming parity.
+
 ## ADR-0028
 **Multi-Camp deployment model (cardinality, naming, atomicity).**
 

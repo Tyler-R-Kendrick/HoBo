@@ -1,0 +1,10 @@
+{
+  "name": "@hobo-draft/projection-consistency-reactivity-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for the HOBO-53 projection consistency and reactivity contract.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

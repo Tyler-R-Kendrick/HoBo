@@ -1,0 +1,16 @@
+{
+  "name": "@hobo-draft/wit-toolchain-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "npm@11.4.2",
+  "description": "POC for the HOBO-3 WIT toolchain, hobo:sdk skeleton, and deterministic binding generation contract.",
+  "scripts": {
+    "wit:gen": "node scripts/generate-bindings.mjs",
+    "wit:check": "node scripts/generate-bindings.mjs --check",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.24.3"
+  }
+}

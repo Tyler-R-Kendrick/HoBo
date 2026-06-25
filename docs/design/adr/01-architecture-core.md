@@ -240,6 +240,25 @@ The executable spike POC is [`../../../src/draft/cross-cloud-equivalence-model`]
 - **(+)** Author-time remediation has a concrete source: rejected/partial entries carry missing features and suggestions, so `hobo plan`, codegen, and `hobo doctor` can point to a registered provider that satisfies the request.
 - **(−)** Provider packages now own a correctness-sensitive artifact. A stale or over-broad equivalence entry misleads author-time feedback until conformance or install-time verification rejects it, so generated-provider and registry slices must treat equivalence entries as signed, reviewed contract data.
 
+## ADR-0091
+**Non-TS idiom layers start from reverse-extracted WIT plus a parity report, not from the TypeScript surface.**
+
+ADR-0072 makes `hobo:sdk` the contract and `@hobo/bindles` the first idiom layer. The non-TS round trip needs a sharper rule so the first TypeScript implementation does not become the de facto spec. Reverse extraction therefore produces a language-neutral component surface and a parity/adoption report. The SWE operator, or a human SDK author, uses that report to write a language-native skeleton that lowers back to the same `hobo:sdk` calls and `hobo.manifest/v1` IR.
+
+1. **Reverse extraction emits a contract surface, not an API clone.** The reverse path reads a component artifact's imported/exported WIT surface and normalizes it into a stable surface digest: package, world, imported interfaces, exported interfaces, and function signatures. That digest is compared with the pinned `hobo:sdk` contract before any skeleton is generated. A drifted import/export/signature blocks skeleton generation and becomes an adoption report.
+2. **The skeleton is language-native but semantics-bounded.** A Rust skeleton may expose builders/traits and `Result`; Python may expose decorators/context managers; Go may expose option structs. Those are idioms only. Each skeleton must include an explicit lowering map from each ergonomic operation to generated `hobo:sdk` binding calls and manifest records. It must not copy TypeScript builder chains as syntax or introduce cloud/provider logic.
+3. **Parity has four lanes.** A parity report records: the extracted WIT surface digest, the golden-IR lowering corpus status, the language semantics-annex status, and unsupported/translated idiom notes. "At parity" means all four lanes are green or explicitly waived with an issue reference. Golden-IR equivalence does not cover error mapping, cancellation, async ordering, or collection side-effect order; the semantics annex owns those.
+4. **TypeScript-only assumptions are translated, not standardized.** `@hobo/bindles` builder chains translate to a declaration graph and lowering events. IfC module-execution side effects translate to a collection transaction that records declaration facts in stable order. Decorators are optional ergonomics, not a required feature. Dynamic JavaScript proxy/monkey-patch behavior is not a contract surface. `.allow()`, `.with(...)`, `bind`, handler attach, and runtime primitive declarations must be represented in the WIT-call/manifest lowering map.
+5. **Non-TS collection reaches the same manifest by explicit collection facts.** A Rust or Python guest does not need JavaScript module execution. It may use macro/decorator registration, an explicit registrar function, or build-time extracted declarations, but the output is the same ordered collection fact stream consumed by `hobo.manifest/v1`. Static analysis remains a supplement for coverage, not the source of truth.
+6. **Recommendation for M2: keep `@hobo/bindles`, but freeze the lowering seam.** No pre-M2 refactor is required solely for non-TS support if `@hobo/bindles` exposes no TS-only semantic as contract. HOBO-399 should freeze public exports plus the lowering records, and any new ergonomic feature must name its lowering record and semantics-annex coverage before landing.
+
+The spike proof bundle is [`../../../src/draft/non-ts-idiom-roundtrip-spike`](../../../src/draft/non-ts-idiom-roundtrip-spike). It works a sample component through extracted WIT surface -> parity report -> Rust skeleton sketch, identifies TypeScript-only assumptions and mitigations, and recommends keeping the TypeScript idiom layer while freezing the lowering seam.
+
+### Consequences
+- **(+)** Non-TS SDKs have a concrete starting point that is mechanically tied to `hobo:sdk`, not to TypeScript syntax.
+- **(+)** The SWE operator can generate useful skeletons while still failing closed on WIT drift and semantics-annex gaps.
+- **(-)** The SDK conformance surface grows: each language needs a lowering corpus, a semantics annex, and an adoption/parity report before it can claim parity.
+
 ## ADR-0028
 **Multi-Camp deployment model (cardinality, naming, atomicity).**
 

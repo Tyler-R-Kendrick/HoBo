@@ -92,4 +92,11 @@
 | 0084 | Cross-App Access (XAA): IdP-brokered, policy-governed user-delegated access to/from external apps (ID-JAG over token exchange) | [identity-security](02-identity-security.md#adr-0084) |
 | 0085 | wRPC + WIT baseline: exact toolchain pins, vendored interface hashes, and preview upcasters | [architecture-core](01-architecture-core.md#adr-0085) |
 | 0086 | Replay/live equivalence gate for deterministic materialization folds | [data-plane](03-data-plane.md#adr-0086) |
-| 0087 | Distributed-artifact version resolution semantics | [portability-extensibility](07-portability-extensibility.md#adr-0087) |
+| 0087 | Package namespace ownership map | [architecture-core](01-architecture-core.md#adr-0087) |
+| 0088 | Matching specificity vectors and catalog-hash tie attribution | [architecture-core](01-architecture-core.md#adr-0088) |
+| 0089 | GraphQL facade generation boundary over materialization contracts | [data-plane](03-data-plane.md#adr-0089) |
+| 0090 | Cross-cloud equivalence entries are provider-owned, registry-indexed, and resolved by a shared pure negotiation function | [architecture-core](01-architecture-core.md#adr-0090) |
+| 0091 | Non-TS idiom layers start from reverse-extracted WIT plus a parity report | [architecture-core](01-architecture-core.md#adr-0091) |
+| 0092 | Self-host bootstrap uses a disposable seed Yard and explicit Identity handover | [architecture-core](01-architecture-core.md#adr-0092) |
+| 0093 | SDK semantics annex is a separate conformance lane from golden-IR lowering parity | [architecture-core](01-architecture-core.md#adr-0093) |
+| 0094 | Distributed-artifact version resolution semantics | [portability-extensibility](07-portability-extensibility.md#adr-0094) |

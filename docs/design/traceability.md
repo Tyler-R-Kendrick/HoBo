@@ -129,14 +129,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0085 | [architecture-core](./adr/01-architecture-core.md#adr-0085) | wRPC/WIT version floors, vendored interface hashes, and preview upcaster discipline are proven by the HOBO-12 spike and expanded by WIT vendoring work. | HOBO-12, HOBO-15, HOBO-26, HOBO-27, HOBO-36 |
 | ADR-0086 | [data-plane](./adr/03-data-plane.md#adr-0086) | Replay/live equivalence is pinned as an executable data-plane gate for deterministic materialization folds. | HOBO-60, HOBO-51, HOBO-57, HOBO-80 |
 | ADR-0087 | [architecture-core](./adr/01-architecture-core.md#adr-0087) | Package namespace ownership is pinned by the canonical import table and doc lint guards. | HOBO-58 |
+| ADR-0088 | [architecture-core](./adr/01-architecture-core.md#adr-0088) | Matching specificity vectors, true-tie handling, and catalog-hash attribution are pinned by executable HOBO-55 vectors and consumed by the matching engine. | HOBO-55, HOBO-64, HOBO-78, HOBO-81 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 76 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 77 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0087`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0088`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

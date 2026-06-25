@@ -110,8 +110,8 @@ export async function validateToolchainLock(lock, options = {}) {
   if (lock.package !== "hobo:sdk@0.1.0") {
     errors.push("package must pin hobo:sdk@0.1.0");
   }
-  if (lock.scripts?.witGen !== "npm run wit:gen" || lock.scripts?.witCheck !== "npm run wit:check") {
-    errors.push("scripts must expose npm run wit:gen and npm run wit:check");
+  if (lock.scripts?.witGen !== "pnpm wit:gen" || lock.scripts?.witCheck !== "pnpm wit:check") {
+    errors.push("scripts must expose pnpm wit:gen and pnpm wit:check");
   }
   if (lock.canonicalGenerator?.name !== "@bytecodealliance/jco") {
     errors.push("canonical generator must be @bytecodealliance/jco");

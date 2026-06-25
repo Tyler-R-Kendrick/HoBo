@@ -4,7 +4,7 @@ HOBO-3 is proven by the focused POC at [`src/draft/hobo-wit-toolchain-contract`]
 
 Acceptance mapping:
 
-- `wit:gen` determinism is checked by the package test and `npm run wit:check`.
+- `wit:gen` determinism is checked by the package test and `pnpm wit:check`.
 - The trivial guest fixture imports the generated `hobo:sdk` world and builds.
 - The WIT compatibility floor is recorded in the toolchain lock with an explicit [ADR-0024](../../adr/07-portability-extensibility.md#adr-0024) policy link.
 

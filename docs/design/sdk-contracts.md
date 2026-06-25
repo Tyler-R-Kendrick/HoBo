@@ -16,6 +16,8 @@ Inferred-Camp approval is both a Yard builder affordance and a policy-pack rule.
 
 ## Surface Index
 
+Naming: `hobo:sdk` is the WIT contract/package for app primitives and capability/data interfaces; `@hobo/sdk` is the operator SDK for configuring and self-hosting a HoBo cloud.
+
 | Surface | Package boundary | Contract tier | Implementation issue | Conformance issue / suite |
 |---|---|---|---|---|
 | `.allow(...verbs)` | app idiom layer: `@hobo/bindles`; WIT-owned verb set in `hobo:sdk` | language idiom lowering + manifest IR | HOBO-70 | HOBO-32 / `@hobo/conformance/sdk` |

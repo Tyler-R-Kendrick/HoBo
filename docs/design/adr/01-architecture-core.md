@@ -221,6 +221,25 @@ With multi-provider support ([ADR-0026](#adr-0026)/[ADR-0043](07-portability-ext
 - **(+)** Cost optimization is a **native, auditable capability** spanning app services, CI runners, and build machines — *"maximize free credits/budgets across every cloud I registered"* is a single objective setting — and strictly non-limiting: registering a provider makes it eligible with no app-code change.
 - **(−)** Effective-marginal-cost quality depends on providers declaring free tiers/credits + on usage reconciliation; a mis-declared free tier mis-ranks, and absent any credit facts the Dispatcher degrades to plain min-cost ([ADR-0033](#adr-0033)).
 
+## ADR-0090
+**Cross-cloud equivalence entries are provider-owned, registry-indexed, and resolved by a shared pure negotiation function.**
+
+Provider equivalence is not a closed HoBo-owned matrix. Each provider package owns the entries saying which agnostic port requests it can realize as default Resource Definitions: provider id, resource class, WIT port, semantic paradigm, supported engines/features, conformance report reference, and remediation text. The Registry indexes those signed/provider-published entries into a catalog snapshot. HoBo core owns the entry schema and the resolver contract, not the provider list.
+
+1. **The equivalence source of truth lives with provider packages.** A human-written or generated provider ships its equivalence entries with its Capability Manifest and conformance report. `.register()` records those entries as the provider's default Resource Definitions, so a Camp that names only a cloud + IaC still has every manifest capability matchable. Core may seed first-party entries, but they use the same provider-owned shape.
+2. **Resolution is a pure function over a catalog snapshot.** `satisfies(request, entry)` returns `full | partial(missing[]) | none`. The function reads only the port request, the entry, and the pinned catalog snapshot: no live provider call, clock, model, or network. The later Matching/Planner ranker ([ADR-0033](#adr-0033)) wraps this result with context criteria, specificity, priority, objective, and stable tiebreak.
+3. **`require` is hard; `prefer` may degrade.** Missing hard requirements reject a candidate. Missing preferred features return `partial(missing[])`; the Planner may accept that candidate only as a degraded result with a `PlanWarning` and a remediation suggestion. If every candidate is partial for a hard requirement, the plan is rejected with an agent-correctable reason.
+4. **Conformance gates truthfulness.** An entry that claims `full` but lacks a current matching conformance report is treated as unavailable, not as an optimistic candidate. The resolver does not prove providers; `@hobo/conformance` does. The resolver consumes the conformance status as an input.
+5. **No cross-paradigm equivalence by accident.** An equivalence entry carries a semantic paradigm (`relational`, `document`, `blob`, `container`, etc.). Cross-paradigm substitutions such as relational Postgres to document Mongo are `none` unless a separate, explicit paradigm package defines a higher-level port that permits that translation.
+6. **Extensibility is catalog extension, not enum editing.** Third-party and generated providers add entries by publishing packages; the resolver accepts any provider/resource-class string that satisfies the schema and conformance gate. This keeps provider addition off the app-code path and avoids a central closed enum.
+
+The executable spike POC is [`../../../src/draft/cross-cloud-equivalence-model`](../../../src/draft/cross-cloud-equivalence-model): it resolves database, object-store, and compute requests across AWS/Azure/Cloudflare/Fly fixtures; demonstrates `full`/`partial`/`none`; accepts a `prefer` degradation; rejects a hard requirement when every candidate is partial or none; accepts a third-party extension entry; rejects a failed-conformance claim; and rejects cross-paradigm substitution.
+
+### Consequences
+- **(+)** Concrete providers can evolve independently while the Planner remains deterministic and replayable: all provider variation enters as signed catalog facts, then ADR-0033's pure Matching path selects among them.
+- **(+)** Author-time remediation has a concrete source: rejected/partial entries carry missing features and suggestions, so `hobo plan`, codegen, and `hobo doctor` can point to a registered provider that satisfies the request.
+- **(−)** Provider packages now own a correctness-sensitive artifact. A stale or over-broad equivalence entry misleads author-time feedback until conformance or install-time verification rejects it, so generated-provider and registry slices must treat equivalence entries as signed, reviewed contract data.
+
 ## ADR-0028
 **Multi-Camp deployment model (cardinality, naming, atomicity).**
 

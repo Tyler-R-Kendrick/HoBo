@@ -131,14 +131,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0087 | [architecture-core](./adr/01-architecture-core.md#adr-0087) | Package namespace ownership is pinned by the canonical import table and doc lint guards. | HOBO-58 |
 | ADR-0088 | [architecture-core](./adr/01-architecture-core.md#adr-0088) | Matching specificity vectors, true-tie handling, and catalog-hash attribution are pinned by executable HOBO-55 vectors and consumed by the matching engine. | HOBO-55, HOBO-64, HOBO-78, HOBO-81 |
 | ADR-0089 | [data-plane](./adr/03-data-plane.md#adr-0089) | GraphQL facade generation is bounded to deterministic SDL plus thin materialization dispatch, not a second read engine. | HOBO-65, HOBO-92 |
+| ADR-0090 | [architecture-core](./adr/01-architecture-core.md#adr-0090) | Provider-owned equivalence entries, pure capability negotiation, prefer-degrade warnings, conformance-gated truthfulness, and cross-paradigm rejection are pinned by the HOBO-108 spike and prototype. | HOBO-108, HOBO-87, HOBO-102 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 78 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 79 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0088`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0090`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

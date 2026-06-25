@@ -95,3 +95,4 @@
 | 0087 | Package namespace ownership map | [architecture-core](01-architecture-core.md#adr-0087) |
 | 0088 | Matching specificity vectors and catalog-hash tie attribution | [architecture-core](01-architecture-core.md#adr-0088) |
 | 0089 | GraphQL facade generation boundary over materialization contracts | [data-plane](03-data-plane.md#adr-0089) |
+| 0090 | Cross-cloud equivalence entries are provider-owned, registry-indexed, and resolved by a shared pure negotiation function | [architecture-core](01-architecture-core.md#adr-0090) |

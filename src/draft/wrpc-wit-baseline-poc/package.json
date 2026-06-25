@@ -1,0 +1,14 @@
+{
+  "name": "@hobo-draft/wrpc-wit-baseline-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for the HOBO-12 wRPC and WIT version baseline decision.",
+  "scripts": {
+    "generate": "jco types wit --out-dir generated && node scripts/strip-generated-trailing-whitespace.mjs",
+    "test": "npm run generate && node scripts/run-wit-bindgen-smoke.mjs && node scripts/validate-baseline.mjs && node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.24.3"
+  }
+}

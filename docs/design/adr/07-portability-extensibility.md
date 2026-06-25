@@ -277,7 +277,7 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 - **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit to maintain (commercialization is out of design scope).
 - **(↔)** Money-movement terms are removed across the suite; metering/showback/quota/spend-safety (FinOps) and the app-generation stack (UX Designer/design.md/OpenUI/json-render/mcp-apps/`ui-render`) stay.
 
-## ADR-0094
+## ADR-0095
 **Distributed-artifact version resolution semantics.**
 
 ### Context

@@ -2,7 +2,7 @@
 
 Independent HOBO-340 spike proof. This folder records executable test vectors for the future distributed-artifact resolver (HOBO-370). It is not the production resolver and does not implement registry IO, yank handling, upcaster execution, or CLI behavior.
 
-The vectors encode ADR-0094:
+The vectors encode ADR-0095:
 
 - initial install chooses the highest compatible candidate from a canonical catalog snapshot,
 - ordinary plan preserves an existing manifest pin when it still satisfies the request,

@@ -260,6 +260,8 @@ Agnostic ports map to provider services via curated equivalence classes (extensi
 | `queue` | SQS | Service Bus | Pub/Sub | Queues | (NATS) |
 | `cache` | ElastiCache | Cache for Redis | Memorystore | KV | Upstash |
 
+ADR-0086 fixes the model behind this table: equivalence entries are shipped by provider packages as their default Resource Definitions and indexed by the Registry into a catalog snapshot; HoBo core owns only the schema and the deterministic `satisfies(request, entry) -> full | partial(missing) | none` negotiation function. `require` misses reject a candidate, `prefer` misses may degrade with a `PlanWarning`, conformance failure makes an entry unavailable, and third-party/generated providers extend the catalog without editing a central enum ([ADR-0086](./adr/01-architecture-core.md#adr-0086)). The executable POC for the decision lives in [`../../src/draft/cross-cloud-equivalence-model`](../../src/draft/cross-cloud-equivalence-model).
+
 #### Build / VM adapters
 - **Dagger** — reproducible container build pipelines, defined in TS, run in containers; primary image path for `compute`/`containerService`.
 - **Packer** — baked VM images (AMI/Azure image) for `vm`.

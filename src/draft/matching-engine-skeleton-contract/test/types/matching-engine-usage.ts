@@ -1,0 +1,41 @@
+import {
+  decideResourceDefinition,
+  matchingDecisionToEvent,
+  rankingSummary,
+  type MatchObjective,
+  type MatchingDecision,
+  type SuccessfulMatchingDecision
+} from "../../src/matching-engine.mjs";
+
+const objective: MatchObjective = "cost";
+const decision: MatchingDecision = decideResourceDefinition({
+  catalog: {
+    snapshot: () => ({
+      definitions: [],
+      contentHash: "abc123"
+    })
+  },
+  context: { resourceType: "database" },
+  objective
+});
+
+const ranking: string[] = rankingSummary(decision);
+
+if (decision.ok) {
+  const success: SuccessfulMatchingDecision = decision;
+  const objectiveScore: 0 = success.ranking[0]?.objectiveScore ?? 0;
+  const event: Record<string, unknown> = matchingDecisionToEvent(success);
+  void [objectiveScore, event];
+}
+
+if (false) {
+  // @ts-expect-error unknown objectives are outside the matching contract.
+  const badObjective: MatchObjective = "random";
+
+  // @ts-expect-error resourceType is required to gather candidate definitions.
+  decideResourceDefinition({ catalog: { definitions: [], contentHash: "abc123" }, context: {} });
+
+  void badObjective;
+}
+
+void ranking;

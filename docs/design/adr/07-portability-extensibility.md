@@ -277,6 +277,29 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 - **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit to maintain (commercialization is out of design scope).
 - **(↔)** Money-movement terms are removed across the suite; metering/showback/quota/spend-safety (FinOps) and the app-generation stack (UX Designer/design.md/OpenUI/json-render/mcp-apps/`ui-render`) stay.
 
+## ADR-0095
+**Distributed-artifact version resolution semantics.**
+
+### Context
+The distributed-artifact version policy defines the accepted range forms, immutable Bindle pins, tier-aware compatibility, and deprecation-window behavior (HOBO-336). The resolver still needs one deterministic algorithmic contract before implementation: how floating ranges select concrete digests, how lockfile hints relate to manifest pins, how transitive constraints compose, and when preview bumps require an upcaster. Without this decision, the future resolver could silently choose a different digest from the same catalog snapshot or mutate an already-pinned Bindle version in place.
+
+### Decision
+1. **Resolution is a pure function of the requested roots, the current manifest pins, the optional lockfile hints, the mode, and the catalog snapshot.** The catalog snapshot is canonicalized before selection (sort by artifact name, stability tier, normalized semver descending, then digest ascending), so provider/API ordering never changes the selected digest set.
+2. **Initial install and explicit upgrade choose the highest compatible candidate.** The accepted range syntax remains the HOBO-336 policy (`exact`, `^`, `~`, and bounded `>= <`). For a floating root or transitive dependency, initial install selects the highest candidate satisfying the intersected constraints and tier policy. Explicit upgrade mode re-runs that selection.
+3. **Ordinary plan preserves an existing manifest pin.** If a deployed Bindle version already records `{name, version, digest}` and that pin still satisfies all constraints and is still servable, planning keeps it even when a newer compatible candidate exists. Adopting the newer digest is an explicit upgrade that publishes a new Bindle version.
+4. **The manifest pin is authoritative; lockfiles are review/authoring aids.** A lockfile may precompute the same selected pins for source review and local repeatability, but it cannot override the manifest IR. If a lockfile hint disagrees with an existing manifest pin during ordinary planning, resolution fails closed with a lock-mismatch error instead of silently rewriting the pin.
+5. **Transitive constraints intersect to one version per artifact coordinate.** A resolved Bindle version carries one selected version/digest for each artifact coordinate. Diamond dependencies with a non-empty constraint intersection choose the highest compatible candidate inside that intersection. An empty intersection is a deterministic conflict error with sorted constraint-path evidence; no branch is silently preferred.
+6. **Preview and experimental bumps require an upcaster on upgrade.** Stable artifacts use semver compatibility from the policy. `preview` and `experimental` artifacts may break on any selected version change, and `0.x` preview bumps are always treated as potentially breaking. If upgrade mode selects a different preview/experimental version without a declared upcaster for that edge, resolution returns `upcaster-required`. Running Sets are not rewritten; successful adoption is a new Bindle version.
+7. **Deprecation windows are enforced before selection.** A deprecated candidate remains selectable only before expiry and carries a warning; after expiry it is unservable and cannot satisfy a redeploy. Floating installs and upgrades prefer non-deprecated candidates over deprecated candidates when both satisfy the same constraints.
+
+### Executable Vectors
+The HOBO-340 spike vectors live in [`../../../src/draft/version-compat-resolution-semantics`](../../../src/draft/version-compat-resolution-semantics). They cover highest-compatible selection, ordinary-plan pin preservation, explicit upgrade, compatible and incompatible diamond dependencies, preview upcaster requirements, lockfile/manifest mismatch, deprecation-window selection, and catalog ordering determinism. HOBO-370 must either import these vectors directly or preserve them as a compatibility fixture set.
+
+### Consequences
+- **(+)** The resolver can be implemented without hidden policy choices: each selection mode, transitive conflict, and preview-upgrade branch has a fixture-backed expected result.
+- **(+)** Immutable pins and floating ranges no longer conflict: ranges float only at install/explicit-upgrade time, while ordinary planning honors the already-published Bindle version.
+- **(−)** One-version-per-coordinate is stricter than package-manager-style nested duplication. That keeps deployments auditably portable, but some future dependency graphs will require package renaming, compatibility shims, or a deliberate RCR to support side-by-side versions.
+
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 12](../security-networking.md#plan-12).

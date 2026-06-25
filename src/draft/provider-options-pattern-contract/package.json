@@ -1,0 +1,13 @@
+{
+  "name": "@hobo-draft/provider-options-pattern-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for typed provider-specific option annotations on HoBo resources.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs && tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.5.4"
+  }
+}

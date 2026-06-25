@@ -1,0 +1,28 @@
+# Provider Authoring Contract POC
+
+This draft covers HOBO-87: the M0 provider-package authoring contract for a
+human-authored or generated provider package.
+
+It pins this public surface:
+
+- `defineProvider(...)` creates a provider package with `id`, declared capability
+  ports, scoped `.with` option builders, `client(port, outputs)`, and
+  `capabilityManifest()`.
+- `createOptionBuilder(...)` produces provider-scoped option blocks. A builder
+  must belong to the provider and target a declared port.
+- `resolveProviderOptions(...)` models planning-time merge behavior: only the
+  resolved provider's option blocks survive; unrelated provider blocks are
+  dropped with evidence.
+- `mergeResolvedProviderOptions(...)` is the type-level version used by the
+  type tests to reject cross-provider option blocks before runtime.
+- `auditProviderCatalog(...)` reports same-named unqualified option builders
+  across providers so call sites use provider-scoped access.
+
+Out of scope by issue contract: `realize()` emission, equivalence mappings,
+default Resource Definitions, and conformance harness internals.
+
+Run:
+
+```powershell
+npm.cmd --prefix src\draft\provider-authoring-contract test
+```

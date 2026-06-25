@@ -110,6 +110,19 @@ Preview and experimental interfaces may move faster than stable interfaces, but 
 - **(+)** WIT generation, wRPC links, and component-host compatibility now have a reproducible floor with drift checks; downstream interface work can cite one lock shape and one upgrade ceremony.
 - **(−)** Toolchain upgrades become explicit work: bump the lock, regenerate fixtures, document compatibility, and add upcasters for any breaking or preview churn.
 
+## ADR-0087
+**Package namespace ownership map.**
+
+HOBO-58 fixes the ambiguous boundary between the WIT package name `hobo:sdk`, npm `@hobo/bindles`, npm `@hobo/sdk`, and the topology/runtime packages. The ambiguity matters because docs can otherwise imply that `@hobo/sdk` is the app authoring SDK, when ADR-0072 reserves npm `@hobo/sdk` for operator and self-host extensions.
+
+The canonical package/import table lives in [`package-namespaces.md`](../package-namespaces.md). `@hobo/bindles` owns app resource factories, bindle composition, cross-app declarations, and app config helpers including `config`, `secretRef`, `env`, and `fromBinding`. `@hobo/runtime` owns runtime control-flow primitives. `@hobo/camps`, `@hobo/yards`, and `@hobo/junctions` own topology factories and are not re-exported by `@hobo/bindles`. npm `@hobo/sdk` is the operator/self-host SDK for provider, policy, runbook, dispatcher, runner, generated provider, Crew agent, and chaos surfaces. `@hobo/core` remains a shared type substrate, not an authoring import home.
+
+`secret()` and `secretRef()` intentionally stay in `@hobo/bindles` with distinct meanings: managed secret resource versus config-value reference. Docs and future boundary lint must flag unqualified `@hobo/sdk` app-author guidance, topology imports from `@hobo/bindles`, and mixed runtime/operator `agent` imports without aliases.
+
+### Consequences
+- **(+)** App resource, runtime, topology, and operator imports are now reviewable by one table and one lint guard.
+- **(−)** `@hobo/bindles` remains small and explicit, but users must import topology factories from their topology packages instead of a single omnibus SDK package.
+
 ## ADR-0072
 **The SDK is WIT-first: a canonical `hobo:sdk` WIT package, generated per language, with conformance-gated idiom layers.**
 
@@ -144,6 +157,54 @@ Matching uses **Resource Definitions** + **specificity-scored Matching** and the
 - **(+)** Matching is **demonstrably deterministic + auditable** — "why did this resource land on this infra?" is answerable and reproducible — while AI still adds value (AI-generated + LLM-suggested definitions) off the deploy path.
 - **(−)** Pure rules can pick a sub-optimal option a full solver might improve on; mitigated by the soft cost objective, the advisory `hobo plan` suggestion, and explicit `priority`.
 
+## ADR-0088
+**Matching specificity vectors and catalog-hash tie attribution.**
+
+ADR-0033 fixed that Matching is deterministic and auditable; this ADR pins the exact specificity
+vector and tie semantics that HOBO-55 feeds into the Matching engine. The rejected alternatives were
+(1) a raw "count every criterion" scalar, which made `envType+app` outrank a resource-targeted
+definition in surprising ways; and (2) opaque numeric weights, which were deterministic but hard to
+explain in `match.Decided`. The accepted shape is explicit enough for operators to audit and small
+enough for providers, generated packs, and tests to reproduce.
+
+1. **Filter remains exact and fail-closed.** A Resource Definition is a candidate only when every
+   criterion it declares equals the deploy context. Unknown criterion fields are invalid contract
+   data, not ignored. Missing `require` capabilities are rejected before ranking, as ADR-0033 says.
+2. **Specificity is a grouped `0..3` score plus a deterministic detail vector.** The score is the
+   number of specificity groups represented in the criteria: environment (`envType`/`env`),
+   ownership (`app`/`tenant`), and resource (`resourceClass`/`resourceId`). That preserves the
+   documented score range while preventing one concern from winning just by naming many fields.
+   Within the score, Matching compares a detail vector in this order:
+   `resourceId`, `resourceClass`, `tenant`, `app`, `env`, `envType`. This makes exact resource
+   targeting beat class targeting, tenant-specific rules beat app-wide rules, and named environments
+   beat broad environment types.
+3. **Priority never crosses a specificity boundary.** Explicit `priority` is evaluated only after
+   the full specificity comparison. A low-specificity catch-all with priority `1000` cannot beat a
+   more-specific environment/resource rule; priority is for deliberate overrides inside the same
+   specificity boundary.
+4. **Objective is a soft tiebreak after priority.** The selected objective (`cost`, `latency`,
+   `single-provider`, `carbon`, or the Dispatcher-owned `maximize-credits`) is compared only after
+   specificity and priority. Objective inputs used on-path must be recorded inputs; live solvers,
+   current clocks, RNG, network reads, and LLMs remain off-path.
+5. **True ties are selected by definition id and flagged.** If two or more candidates are equal on
+   specificity, priority, and objective, the lexicographically smallest stable definition id wins.
+   `match.Decided` records `tie: true`, the tied ids, a `PlanWarning`, the complete ranking, rejected
+   candidates, objective, and the catalog content hash.
+6. **Catalog changes make tie-winner changes attributable.** A later catalog snapshot may add or
+   rename an equal-rank definition and therefore change the stable-id winner. That is allowed only
+   because the previous and current `match.Decided` events carry different catalog hashes; a winner
+   change under the same catalog hash is a determinism bug.
+
+The executable golden vectors for this decision live in
+[`../../../src/draft/matching-specificity-vectors`](../../../src/draft/matching-specificity-vectors).
+
+### Consequences
+- **(+)** The Matching engine gets reproducible golden vectors for the subtle cases: true ties,
+  catalog churn, tenant-vs-app specificity, and priority not overriding specificity.
+- **(−)** The grouped score is slightly more model than a scalar count, but it is the smallest shape
+  that keeps the documented `0..3` score and still explains "why this winner?" without hidden
+  weights.
+
 ## ADR-0071
 **The Dispatcher: credit/budget-aware cost routing across registered providers (placement · dispatch · traffic).**
 
@@ -159,6 +220,81 @@ With multi-provider support ([ADR-0026](#adr-0026)/[ADR-0043](07-portability-ext
 ### Consequences
 - **(+)** Cost optimization is a **native, auditable capability** spanning app services, CI runners, and build machines — *"maximize free credits/budgets across every cloud I registered"* is a single objective setting — and strictly non-limiting: registering a provider makes it eligible with no app-code change.
 - **(−)** Effective-marginal-cost quality depends on providers declaring free tiers/credits + on usage reconciliation; a mis-declared free tier mis-ranks, and absent any credit facts the Dispatcher degrades to plain min-cost ([ADR-0033](#adr-0033)).
+
+## ADR-0090
+**Cross-cloud equivalence entries are provider-owned, registry-indexed, and resolved by a shared pure negotiation function.**
+
+Provider equivalence is not a closed HoBo-owned matrix. Each provider package owns the entries saying which agnostic port requests it can realize as default Resource Definitions: provider id, resource class, WIT port, semantic paradigm, supported engines/features, conformance report reference, and remediation text. The Registry indexes those signed/provider-published entries into a catalog snapshot. HoBo core owns the entry schema and the resolver contract, not the provider list.
+
+1. **The equivalence source of truth lives with provider packages.** A human-written or generated provider ships its equivalence entries with its Capability Manifest and conformance report. `.register()` records those entries as the provider's default Resource Definitions, so a Camp that names only a cloud + IaC still has every manifest capability matchable. Core may seed first-party entries, but they use the same provider-owned shape.
+2. **Resolution is a pure function over a catalog snapshot.** `satisfies(request, entry)` returns `full | partial(missing[]) | none`. The function reads only the port request, the entry, and the pinned catalog snapshot: no live provider call, clock, model, or network. The later Matching/Planner ranker ([ADR-0033](#adr-0033)) wraps this result with context criteria, specificity, priority, objective, and stable tiebreak.
+3. **`require` is hard; `prefer` may degrade.** Missing hard requirements reject a candidate. Missing preferred features return `partial(missing[])`; the Planner may accept that candidate only as a degraded result with a `PlanWarning` and a remediation suggestion. If every candidate is partial for a hard requirement, the plan is rejected with an agent-correctable reason.
+4. **Conformance gates truthfulness.** An entry that claims `full` but lacks a current matching conformance report is treated as unavailable, not as an optimistic candidate. The resolver does not prove providers; `@hobo/conformance` does. The resolver consumes the conformance status as an input.
+5. **No cross-paradigm equivalence by accident.** An equivalence entry carries a semantic paradigm (`relational`, `document`, `blob`, `container`, etc.). Cross-paradigm substitutions such as relational Postgres to document Mongo are `none` unless a separate, explicit paradigm package defines a higher-level port that permits that translation.
+6. **Extensibility is catalog extension, not enum editing.** Third-party and generated providers add entries by publishing packages; the resolver accepts any provider/resource-class string that satisfies the schema and conformance gate. This keeps provider addition off the app-code path and avoids a central closed enum.
+
+The executable spike POC is [`../../../src/draft/cross-cloud-equivalence-model`](../../../src/draft/cross-cloud-equivalence-model): it resolves database, object-store, and compute requests across AWS/Azure/Cloudflare/Fly fixtures; demonstrates `full`/`partial`/`none`; accepts a `prefer` degradation; rejects a hard requirement when every candidate is partial or none; accepts a third-party extension entry; rejects a failed-conformance claim; and rejects cross-paradigm substitution.
+
+### Consequences
+- **(+)** Concrete providers can evolve independently while the Planner remains deterministic and replayable: all provider variation enters as signed catalog facts, then ADR-0033's pure Matching path selects among them.
+- **(+)** Author-time remediation has a concrete source: rejected/partial entries carry missing features and suggestions, so `hobo plan`, codegen, and `hobo doctor` can point to a registered provider that satisfies the request.
+- **(−)** Provider packages now own a correctness-sensitive artifact. A stale or over-broad equivalence entry misleads author-time feedback until conformance or install-time verification rejects it, so generated-provider and registry slices must treat equivalence entries as signed, reviewed contract data.
+
+## ADR-0091
+**Non-TS idiom layers start from reverse-extracted WIT plus a parity report, not from the TypeScript surface.**
+
+ADR-0072 makes `hobo:sdk` the contract and `@hobo/bindles` the first idiom layer. The non-TS round trip needs a sharper rule so the first TypeScript implementation does not become the de facto spec. Reverse extraction therefore produces a language-neutral component surface and a parity/adoption report. The SWE operator, or a human SDK author, uses that report to write a language-native skeleton that lowers back to the same `hobo:sdk` calls and `hobo.manifest/v1` IR.
+
+1. **Reverse extraction emits a contract surface, not an API clone.** The reverse path reads a component artifact's imported/exported WIT surface and normalizes it into a stable surface digest: package, world, imported interfaces, exported interfaces, and function signatures. That digest is compared with the pinned `hobo:sdk` contract before any skeleton is generated. A drifted import/export/signature blocks skeleton generation and becomes an adoption report.
+2. **The skeleton is language-native but semantics-bounded.** A Rust skeleton may expose builders/traits and `Result`; Python may expose decorators/context managers; Go may expose option structs. Those are idioms only. Each skeleton must include an explicit lowering map from each ergonomic operation to generated `hobo:sdk` binding calls and manifest records. It must not copy TypeScript builder chains as syntax or introduce cloud/provider logic.
+3. **Parity has four lanes.** A parity report records: the extracted WIT surface digest, the golden-IR lowering corpus status, the language semantics-annex status, and unsupported/translated idiom notes. "At parity" means all four lanes are green or explicitly waived with an issue reference. Golden-IR equivalence does not cover error mapping, cancellation, async ordering, or collection side-effect order; the semantics annex owns those.
+4. **TypeScript-only assumptions are translated, not standardized.** `@hobo/bindles` builder chains translate to a declaration graph and lowering events. IfC module-execution side effects translate to a collection transaction that records declaration facts in stable order. Decorators are optional ergonomics, not a required feature. Dynamic JavaScript proxy/monkey-patch behavior is not a contract surface. `.allow()`, `.with(...)`, `bind`, handler attach, and runtime primitive declarations must be represented in the WIT-call/manifest lowering map.
+5. **Non-TS collection reaches the same manifest by explicit collection facts.** A Rust or Python guest does not need JavaScript module execution. It may use macro/decorator registration, an explicit registrar function, or build-time extracted declarations, but the output is the same ordered collection fact stream consumed by `hobo.manifest/v1`. Static analysis remains a supplement for coverage, not the source of truth.
+6. **Recommendation for M2: keep `@hobo/bindles`, but freeze the lowering seam.** No pre-M2 refactor is required solely for non-TS support if `@hobo/bindles` exposes no TS-only semantic as contract. HOBO-399 should freeze public exports plus the lowering records, and any new ergonomic feature must name its lowering record and semantics-annex coverage before landing.
+
+The spike proof bundle is [`../../../src/draft/non-ts-idiom-roundtrip-spike`](../../../src/draft/non-ts-idiom-roundtrip-spike). It works a sample component through extracted WIT surface -> parity report -> Rust skeleton sketch, identifies TypeScript-only assumptions and mitigations, and recommends keeping the TypeScript idiom layer while freezing the lowering seam.
+
+### Consequences
+- **(+)** Non-TS SDKs have a concrete starting point that is mechanically tied to `hobo:sdk`, not to TypeScript syntax.
+- **(+)** The SWE operator can generate useful skeletons while still failing closed on WIT drift and semantics-annex gaps.
+- **(-)** The SDK conformance surface grows: each language needs a lowering corpus, a semantics annex, and an adoption/parity report before it can claim parity.
+
+## ADR-0092
+**Self-host bootstrap uses a disposable seed Yard and explicit Identity handover.**
+
+The Yard is itself a Bindle, so its first existence cannot depend on the target Yard's not-yet-running Identity service, token broker, or control-plane runtime. Self-host bootstrap therefore starts with a disposable local seed Yard, uses one scoped operator credential for the first apply, imports that seed log into the real Yard as provenance, and hands over only when the real Identity service can broker Yard control-plane tokens.
+
+1. **Bootstrap has three ledgers: seed log, target resource state, and real Yard log.** `hobo yard up --seed` starts a single-node seed Yard on `@hobo/runtime-local` with a SQLite event store. The seed opens the first Deployment Delta/Set against an empty target and records the bootstrap `resource.*` events plus `identity.SeedTokenUsed`. The real Yard imports the seed log by hash as immutable provenance; it does not replay seed commands as new live commands.
+2. **The operator credential is single-use and scoped to one bootstrap apply.** In connected mode it comes from `hobo login`; in air-gapped mode it comes from an in-boundary bootstrap trust root (ADR-0036). Its scope is `bootstrap-apply:<yard>:<camp>`, it is non-refreshable, and its use is audited as `identity.SeedTokenUsed`. If it expires mid-apply, the seed fails closed and requires explicit operator re-login for the same attempt id. No ambient cloud key or silent refresh is allowed.
+3. **Handover is gated on real Identity readiness, not provision success alone.** Target resources must be provisioned, the seed log must be imported, and real Identity must be able to issue a brokered token for the Yard control-plane principal. Only then does the seed revoke the operator credential and discard itself. Premature handover is invalid.
+4. **Recovery is idempotent by bootstrap attempt id.** A seed crash resumes the same attempt from the seed log plus observed target state. A second bootstrap for the same target is blocked unless it carries the same attempt id. Created-but-not-recorded resources use ADR-0006's tagged-state/orphan-sweep discipline.
+5. **Air-gapped bootstrap runs the same state machine with in-boundary inputs.** The seed verifies a signed offline bundle and uses in-boundary Identity/CA/KMS substitutes before any apply. It does not require a public Registry, hosted IdP, public ACME, hosted model service, or other egress dependency.
+
+The executable proof bundle is [`../../../src/draft/self-host-bootstrap-ordering-spike`](../../../src/draft/self-host-bootstrap-ordering-spike). It encodes the accepted order, credential lifecycle, handover trigger, air-gap delta, double-bootstrap guard, and failure-injection table for HOBO-59.
+
+### Consequences
+- **(+)** Self-host bootstrap is reproducible and auditable without depending on the service it is creating.
+- **(+)** Air-gapped and connected bootstrap share one decision path instead of drifting into separate installers.
+- **(+)** The seed log becomes provenance for the real Yard while avoiding live command replay.
+- **(-)** Operators must preserve attempt ids and seed logs until handover, and a mid-apply credential expiry requires explicit re-authentication.
+
+## ADR-0093
+**SDK semantics annex is a separate conformance lane from golden-IR lowering parity.**
+
+Golden-IR lowering equivalence proves only the mechanical boundary: identical author input lowers to identical `hobo:sdk` WIT calls and identical `hobo.manifest/v1` records. It cannot see whether a language idiom layer swallowed a WIT `result.err`, converted cancellation into a hidden retry, reordered awaited collection facts, or let an IfC handler attach before its resource declaration. Those behaviors are legitimate language-control-flow semantics, so they are pinned in a separate SDK semantics annex.
+
+1. **Golden-IR is necessary but not sufficient.** A language SDK cannot claim parity with only WIT-call and manifest equality. The report must carry both a `goldenIr` lane and a `semanticsAnnex` lane.
+2. **The annex owns negative vectors.** The minimum v1 categories are error mapping, cancellation, async ordering, and IfC side-effect order. Each category includes failing vectors, not only happy-path examples.
+3. **Errors preserve WIT meaning in language-native form.** A WIT `result.err` maps to the idiom's explicit error channel (`throw`, `Result`, `(T, err)`, etc.) with the WIT tag preserved. Swallowing, defaulting, or widening the error is a conformance failure.
+4. **Cancellation is caller-owned and visible.** Cancellation lowers to a typed cancelled result or language equivalent. Hidden retries, silent success, or deadline erasure are annex failures.
+5. **Collection facts are ordered contract data.** IfC side effects lower to an ordered declaration fact stream. Async language machinery may schedule work however it wants, but the observed fact order must be deterministic and a handler observed before its resource declaration fails closed.
+
+The executable proof bundle is [`../../../src/draft/idiom-semantics-annex`](../../../src/draft/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31.
+
+### Consequences
+- **(+)** SDK parity no longer overclaims what WIT-call equality can prove.
+- **(+)** Non-TS idiom layers can expose native control flow without becoming invisible semantics drift.
+- **(-)** SDK conformance grows another required report lane and every language needs annex fixtures before claiming parity.
 
 ## ADR-0028
 **Multi-Camp deployment model (cardinality, naming, atomicity).**

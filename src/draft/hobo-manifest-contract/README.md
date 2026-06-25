@@ -14,6 +14,10 @@ It covers:
   `ConnectionStrings__<name>` and `services__<name>__...`.
 - Stable content hashing from canonical JSON.
 - Fail-closed validation for dangling tokens and unresolved capability links.
+- A versioned-schema upcaster registry for `hobo.manifest/v1` -> `hobo.manifest/v1.1`.
+- Current-schema dispatch that rejects unknown schemas, missing intermediate upcasters,
+  and unrecorded lossy migrations.
+- Idempotent current-manifest handling and deterministic post-upcast hashing.
 
 Run:
 

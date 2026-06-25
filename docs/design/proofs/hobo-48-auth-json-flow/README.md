@@ -8,6 +8,8 @@ Manifests from [Plan 6](../../ai-native-agent-auth.md#plan-06) and
 
 - Providers publish a versioned `auth.json` with issuer, flow list, scope model,
   resource indicators, token lifetime, and audit event facts.
+- Audit event facts must include `token.Granted` and `token.Used`, matching the
+  parser and schema so signed-token grants and uses stay observable.
 - The broker selects flows in keyless-first order:
   `oidc-federation` > `oauth2-xaa` > `oauth2-obo` > `device-code` > `api-key`.
 - `oauth2-xaa` is pinned to

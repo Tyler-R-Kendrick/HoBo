@@ -52,6 +52,10 @@
         "events": {
           "type": "array",
           "minItems": 1,
+          "allOf": [
+            { "contains": { "const": "token.Granted" } },
+            { "contains": { "const": "token.Used" } }
+          ],
           "items": {
             "type": "string",
             "pattern": "^(token|identity|session|secret|config)\\.[A-Z][A-Za-z0-9]+$"

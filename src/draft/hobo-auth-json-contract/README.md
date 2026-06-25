@@ -8,6 +8,8 @@ and [ADR-0009](../../../docs/design/adr/02-identity-security.md#adr-0009).
 
 - `auth.json` declares a provider issuer, supported auth flows, token lifetime,
   resource indicators, and audit events.
+- `audit.events` must include `token.Granted` and `token.Used` so broker-issued
+  credentials are traceable at grant and use time.
 - Flow selection is deterministic and keyless-first:
   `oidc-federation` > `oauth2-xaa` > `oauth2-obo` > `device-code` > `api-key`.
 - `oauth2-xaa` uses the pinned ID-JAG draft version

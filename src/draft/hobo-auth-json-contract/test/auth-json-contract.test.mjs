@@ -73,6 +73,10 @@ describe("auth.json flow contract", () => {
       schema.$defs.oauth2XaaFlow.properties.idJagDraftVersion.const,
       ID_JAG_DRAFT_VERSION,
     );
+    assert.deepEqual(schema.properties.audit.properties.events.allOf, [
+      { contains: { const: "token.Granted" } },
+      { contains: { const: "token.Used" } },
+    ]);
     assert.deepEqual(schema.required, [
       "issuer",
       "flows",

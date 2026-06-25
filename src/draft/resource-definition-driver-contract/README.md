@@ -12,6 +12,50 @@ This draft pins the M0 Resource Definition and Driver seam:
   priority/objective/tiebreak, instead of silently disappearing.
 - The `echo` driver is explicitly read-only for externally managed resources.
 
+## TS factory ↔ YAML-form equivalence
+
+`defineResource()` is the author-facing factory; an equivalent declarative YAML resource definition
+normalizes to the exact same `ResourceDefinition`. The two forms are interchangeable — the YAML form
+is sugar over the same default-definition shape, carrying the identical
+`type` / `engine` / `class` (→ `className`) / `paradigm` / `provider` / `driver` / `with` / `match` /
+`priority` / `mapping` / `coProvisioned` fields.
+
+TypeScript:
+
+```ts
+defineResource({
+  type: "projection-sink",
+  paradigm: "relational",
+  provider: "aws",
+  driver: "terraform",
+  with: { tableName: "tickets_projection" },
+  mapping: "./projections/tickets.mapping",
+  priority: 10,
+  match: { envType: "production", resourceId: "tickets" },
+});
+```
+
+Equivalent YAML:
+
+```yaml
+apiVersion: hobo.resource-definition/v1
+type: projection-sink
+paradigm: relational
+provider: aws
+driver: terraform
+with:
+  tableName: tickets_projection
+mapping: ./projections/tickets.mapping
+priority: 10
+match:
+  envType: production
+  resourceId: tickets
+```
+
+Both produce a `ResourceDefinition` with `apiVersion: hobo.resource-definition/v1`, a derived `id`
+(when none is supplied), key-sorted `with`/`match`, and `priority` defaulting to `0` — so a catalog
+built from YAML and one built from `defineResource()` calls yield the same content hash.
+
 Scope intentionally stops before matching/scoring, provider `realize()` implementations, concrete
 Terraform/Pulumi/OpenTofu/Crossplane backends, and ResourceActor reconciliation.
 

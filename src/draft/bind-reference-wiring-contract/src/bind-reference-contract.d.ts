@@ -40,9 +40,20 @@ export interface ContainerHandle<TBindings extends Record<string, BindingDescrip
     external?: boolean;
     protocol?: string;
   }): ContainerHandle<TBindings>;
+  withHttpEndpoint(
+    port: number,
+    options?: { name?: string; targetPort?: number; external?: boolean; protocol?: string },
+  ): ContainerHandle<TBindings>;
   withEnvironment(key: string, value: string): ContainerHandle<TBindings>;
+  withArgs(...args: string[]): ContainerHandle<TBindings>;
+  withBindMount(source: string, target: string, readOnly?: boolean): ContainerHandle<TBindings>;
   withVolume(name: string, target: string): ContainerHandle<TBindings>;
+  withLifetime(lifetime: "session" | "persistent"): ContainerHandle<TBindings>;
+  waitFor(dependency: ResourceHandle | ServiceHandle | ContainerHandle | string): ContainerHandle<TBindings>;
+  waitForCompletion(dependency: ResourceHandle | ServiceHandle | ContainerHandle | string): ContainerHandle<TBindings>;
   withHttpHealthCheck(path: string): ContainerHandle<TBindings>;
+  /** Scope guard: DNS is Yard-level and outside this contract; always throws. */
+  withDnsRecord(record?: string): never;
 }
 
 export function data(name: string, options?: { paradigm?: string }): ResourceHandle<"DataClient">;

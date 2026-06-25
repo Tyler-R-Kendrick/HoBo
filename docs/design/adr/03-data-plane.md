@@ -304,7 +304,7 @@ Plan 11 and Plan 32 require the same materialization value whether a client sees
 - **(+)** The proof is cheap enough to run as a contract test in downstream packages and precise enough to explain a mismatch with live/replay event order and state.
 - **(-)** Authors must either keep multi-stream materializations order-insensitive or explicitly define a canonical order/accumulator; convenient but order-dependent folds are rejected.
 
-## ADR-0088
+## ADR-0089
 **GraphQL facade generation boundary over materialization contracts.**
 
 ### Context

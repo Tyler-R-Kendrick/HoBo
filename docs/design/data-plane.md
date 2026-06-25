@@ -232,7 +232,7 @@ const { data, seq } = useSubscription(openTickets, { team: "infra" }); // React:
 Request/response reads are served by a **GraphQL facade over materialized views and snapshots** ([ADR-0050](./adr/03-data-plane.md#adr-0050)): the resolver reads a materialization produced by a **GraphQL reducer** (the fold). GraphQL subscriptions map onto the same observable materializations, so query and stream share one model. **Snapshots are cached by default**, so repeated point/query reads hit the cached snapshot rather than re-folding; cache freshness follows the entity's tunable consistency level ([ADR-0052](./adr/03-data-plane.md#adr-0052)).
 
 **Generation boundary:** the GraphQL facade is generated from canonical WIT read-model records plus
-`projection.Declared`/materialization metadata ([ADR-0088](./adr/03-data-plane.md#adr-0088)).
+`projection.Declared`/materialization metadata ([ADR-0089](./adr/03-data-plane.md#adr-0089)).
 Generated resolvers and subscriptions are thin dispatchers to the existing materialization engine,
 not a second read engine. Non-reactive materializations generate query/snapshot fields only; GraphQL
 subscription generation is rejected for them.

@@ -61,7 +61,7 @@ flowchart LR
   REAL --> NODE["node in DeploymentPlan DAG (Plan 3/4)"]
 ```
 
-### The selection algorithm — deterministic, on-path ([ADR-0033](./adr/01-architecture-core.md#adr-0033))
+### The selection algorithm — deterministic, on-path ([ADR-0033](./adr/01-architecture-core.md#adr-0033), [ADR-0088](./adr/01-architecture-core.md#adr-0088))
 Selection is a **pure function** of `(catalog snapshot, deploy context, objective setting)` — and, for the credit-aware **`maximize-credits`** objective, of the **pinned `CreditLedgerView@seq` recorded into the decision** ([ADR-0071](./adr/01-architecture-core.md#adr-0071) §3). No clock, RNG, network, or model is read **live on the path**: the time-dependent credit/budget/free-tier state is captured as a *pinned input*, not sampled at decision time, so selection stays unit-testable without a cloud and **identical on replay** (the determinism property [Plan 9](./generated-stack.md#plan-09) asserts of the Planner). The pipeline:
 1. **Gather** all definitions of the requested `type`.
 2. **Filter** to candidates whose criteria match the context **and** whose provider satisfies the resource's hard **`require`** capabilities (`Capability.satisfies` ([Plan 4](./control-plane.md#plan-04)) = `full` → accept; `prefer` may degrade with a `PlanWarning`; `require` miss → reject). If none satisfy `require` → **`deployment.PlanRejected`** with a precise, agent-correctable reason.
@@ -69,6 +69,8 @@ Selection is a **pure function** of `(catalog snapshot, deploy context, objectiv
 4. **Record** the winner + full ranking + rejected candidates + the objective used + a **tie flag** + the **catalog content-hash** in `match.Decided`.
 
 **True ties never block.** If candidates are equal on specificity, `priority`, *and* objective, the stable tiebreak (definition id, lexicographic) still yields a deterministic winner, and a `PlanWarning` + tie flag is recorded so a platform engineer can add an explicit `priority` to disambiguate. **The tiebreak is stable only within a catalog snapshot:** because Resource Definitions are auto-generatable and Pack-importable, adding/renaming a definition can change which of two equal-scoring candidates wins on the next plan — so `match.Decided` records the **catalog content-hash**, making a winner change **attributable to a catalog change** rather than appearing as nondeterminism.
+
+HOBO-55 pins the exact scoring vector in [ADR-0088](./adr/01-architecture-core.md#adr-0088): specificity is a grouped `0..3` score over environment, ownership, and resource groups, with a deterministic detail vector (`resourceId`, `resourceClass`, `tenant`, `app`, `env`, `envType`) before priority/objective/id. Its executable golden vectors live in [`../../src/draft/matching-specificity-vectors`](../../src/draft/matching-specificity-vectors).
 
 **AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **generation pipeline** may *generate* candidate definitions ([Plan 23](./generated-stack.md#plan-23)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. A constraint solver / LLM selector on-path is not part of the model ([ADR-0033](./adr/01-architecture-core.md#adr-0033)).
 

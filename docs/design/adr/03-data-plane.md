@@ -285,3 +285,57 @@ HoBo has alerting/SLO ([ADR-0045](02-identity-security.md#adr-0045)), pipelines 
 ### Consequences
 - **(+)** A coherent, auditable incident-management story (one aggregate + two event families + a taxonomy table + runbooks-on-pipelines), where postmortem-as-replay + failure→regression-test make incidents a learning loop and engines behind ports (HolmesGPT/StackStorm/pagers) keep it pluggable and air-gap-friendly.
 - **(−)** An autonomous SRE acting on prod is a trust surface (mitigated by default-gated writes, blast-radius + spend budgets, escalate-on-unknown, full audit), and on-call is lean — full ITSM is out of first-cut scope.
+
+## ADR-0086
+**Replay/live equivalence gate for deterministic materialization folds.**
+
+### Context
+Plan 11 and Plan 32 require the same materialization value whether a client sees updates live or the runtime rebuilds that materialization from the event log. ADR-0050 already says native materializations are reactive over the log, delivered as consistent snapshots, and rebuildable from zero. HOBO-60 turns that claim into a falsifiable gate before the Reactor, snapshot, and rebuild slices depend on it.
+
+### Decision
+1. **Replay/live equivalence is a reusable conformance primitive.** A materialization must pass a helper that folds a live event interleaving and a replayed event-log slice to the same normalized state.
+2. **The comparison point is a per-stream `seq` vector, not a scalar global position.** Multi-stream materializations compare at `{ streamId -> seq }`, matching ADR-0050's per-stream consistency model.
+3. **Folds and operators are pure, read-only, and seeded.** They may read only the current event, prior state, declared arguments, and the runtime-provided seeded clock/random/env context. Ambient `Date.now`, `Math.random`, process env, IO, `step`, and writes are outside the fold boundary and fail the gate.
+4. **Cross-stream arrival order is not semantics unless it is canonicalized.** A fold that changes result based on live arrival order rather than the materialization's declared `seq` vector is invalid. Order-sensitive math must use exact/canonical accumulators; floating-point accumulation order drift is a gate failure.
+5. **Upcasters are inside the proof.** Event-body upcasters run before the fold in both live and replay paths; they must be pure and total over the corpus HOBO-57 will maintain.
+
+### Consequences
+- **(+)** Reactor, snapshot, and rebuild work get a small, importable assertion that catches wall-clock reads, arrival-order dependence, floating-point drift, and impure upcasters before those bugs become data-plane invariants.
+- **(+)** The proof is cheap enough to run as a contract test in downstream packages and precise enough to explain a mismatch with live/replay event order and state.
+- **(-)** Authors must either keep multi-stream materializations order-insensitive or explicitly define a canonical order/accumulator; convenient but order-dependent folds are rejected.
+
+## ADR-0089
+**GraphQL facade generation boundary over materialization contracts.**
+
+### Context
+Plan 32 and ADR-0050 define the request/response query surface as a GraphQL facade over materialized
+views and cached snapshots, while subscriptions map onto the same observable materializations. HOBO-65
+spiked whether the SDL, query fields, subscription fields, and resolver stubs can be generated from
+canonical WIT read-model records plus projection/materialization metadata without creating a second
+read engine.
+
+### Decision
+1. **Generate SDL from canonical WIT read-model records.** WIT records and enums are the source for
+   GraphQL object and enum types; field names are deterministically transformed from WIT names into
+   GraphQL names and checked for collisions.
+2. **Generate root fields from projection/materialization metadata.** Query fields are generated for
+   materialization snapshot reads. Subscription fields are generated only when the materialization is
+   reactive by ADR-0052's rule: native log-backed or backed by a change-feed-advertising sink.
+3. **Generate thin dispatch, not resolver business logic.** Generated resolvers call the existing
+   materialization read path; generated subscriptions attach to the same observable materialization
+   the `subscribe`/`useSubscription` surface uses. The facade must not introduce its own store,
+   planner, read-set tracker, or reactivity engine.
+4. **Keep policy-heavy behavior outside pure generation.** Tenant scoping, `.allow()` checks,
+   pagination/index constraints, search/vector/OLAP escape hatches, and raw-driver behavior remain
+   generated hooks or hand-authored policy adapters around the projection boundary, not inferred
+   solely from WIT records.
+5. **Gate non-reactive honesty at generation time.** A non-reactive sink can expose query/snapshot
+   fields, but GraphQL subscription generation is rejected rather than producing a static field that
+   looks live.
+
+### Consequences
+- **(+)** The GraphQL facade stays a deterministic codegen view over the existing data-plane
+  contracts, so query and stream keep one model and one engine.
+- **(+)** The generated surface is reviewable and drift-gated alongside ADR-0037 codegen artifacts.
+- **(-)** Advanced resolver behavior is intentionally not fully generated; custom policy,
+  pagination, and search semantics still need explicit adapter hooks.

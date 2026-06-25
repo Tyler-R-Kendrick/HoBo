@@ -1,0 +1,433 @@
+import { createHash } from "node:crypto";
+
+export const REALIZE_EMISSION_VERSION = "hobo.realize-emission/v1";
+export const IAC_PROGRAM_VERSION = "hobo.iacProgram/v1";
+export const BUILD_SPEC_VERSION = "hobo.buildSpec/v1";
+
+const PLACEHOLDER_RE =
+  /^\$\{resources\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)#([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)\}$/;
+
+const DRIVER_DIALECT_FIELDS = new Set([
+  "awsCloudFormationType",
+  "awsCdkConstruct",
+  "cloudFormationType",
+  "driverDialect",
+  "providerDialect",
+  "providerSdk",
+  "pulumiModule",
+  "terraformResourceType"
+]);
+
+export function outputPlaceholder({ type, className = "standard", id, output }) {
+  return `\${resources.${type}.${className}#${id}.outputs.${output}}`;
+}
+
+export function createFixtureResourcePlan() {
+  return {
+    id: "fixture-object-store-and-api",
+    context: {
+      app: "gallery",
+      env: "preview",
+      envType: "ephemeral"
+    },
+    resources: [
+      {
+        id: "assets",
+        type: "objectStore",
+        className: "standard",
+        request: {
+          durability: "regional"
+        }
+      },
+      {
+        id: "api",
+        type: "compute",
+        className: "standard",
+        build: {
+          artifactId: "api-image",
+          source: "services/api",
+          target: "wasm-component"
+        },
+        binds: [
+          {
+            import: "wasi:blobstore/blobstore",
+            providerResourceId: "assets"
+          }
+        ]
+      }
+    ]
+  };
+}
+
+export function realizeFixtureProvider(plan = createFixtureResourcePlan()) {
+  const assets = getRequiredResource(plan, "assets");
+  const api = getRequiredResource(plan, "api");
+  const imageArtifactId = api.build?.artifactId ?? "api-image";
+
+  const bucketName = outputPlaceholder({
+    type: assets.type,
+    className: assets.className,
+    id: assets.id,
+    output: "bucketName"
+  });
+  const bucketArn = outputPlaceholder({
+    type: assets.type,
+    className: assets.className,
+    id: assets.id,
+    output: "bucketArn"
+  });
+
+  const iac = {
+    apiVersion: IAC_PROGRAM_VERSION,
+    intent: "driver-agnostic-resource-graph",
+    context: plan.context,
+    nodes: [
+      {
+        id: "assets",
+        type: "objectStore",
+        className: "standard",
+        driverIntent: {
+          capability: "objectStore",
+          operation: "create"
+        },
+        inputs: {
+          name: "gallery-assets-${context.env}",
+          durability: "regional"
+        },
+        outputs: ["bucketName", "bucketArn"]
+      },
+      {
+        id: "assets-read-policy",
+        type: "iamPolicy",
+        className: "standard",
+        coProvisionedFor: "assets",
+        driverIntent: {
+          capability: "iamPolicy",
+          operation: "grant"
+        },
+        inputs: {
+          subject: "component:api",
+          actions: ["objectStore.read"],
+          resource: bucketArn
+        },
+        outputs: ["policyRef"]
+      },
+      {
+        id: "api",
+        type: "compute",
+        className: "standard",
+        driverIntent: {
+          capability: "compute",
+          operation: "deploy"
+        },
+        inputs: {
+          image: { $build: imageArtifactId },
+          env: {
+            ASSETS_BUCKET: bucketName
+          }
+        },
+        outputs: ["url"]
+      }
+    ],
+    edges: [
+      { from: "assets", to: "assets-read-policy", reason: "co-provisioned-output" },
+      { from: "assets", to: "api", reason: "binding-output" },
+      { from: "assets-read-policy", to: "api", reason: "runtime-policy" }
+    ],
+    outputPlaceholders: [
+      {
+        placeholder: bucketName,
+        producerNode: "assets",
+        output: "bucketName",
+        consumerNode: "api",
+        inputPath: "inputs.env.ASSETS_BUCKET"
+      },
+      {
+        placeholder: bucketArn,
+        producerNode: "assets",
+        output: "bucketArn",
+        consumerNode: "assets-read-policy",
+        inputPath: "inputs.resource"
+      }
+    ],
+    links: [
+      {
+        component: "api",
+        import: "wasi:blobstore/blobstore",
+        providerNode: "assets",
+        capability: "objectStore"
+      }
+    ]
+  };
+
+  return {
+    apiVersion: REALIZE_EMISSION_VERSION,
+    provider: "fixture-local-provider",
+    planId: plan.id,
+    iac,
+    build: {
+      apiVersion: BUILD_SPEC_VERSION,
+      artifacts: [
+        {
+          id: imageArtifactId,
+          source: api.build?.source ?? "services/api",
+          target: api.build?.target ?? "wasm-component",
+          outputKind: "ImageRef",
+          dependsOn: []
+        }
+      ]
+    }
+  };
+}
+
+export function validateEmission(emission) {
+  const errors = [];
+  const portabilityReport = {
+    lockInMarkers: [],
+    warnings: []
+  };
+
+  if (emission?.apiVersion !== REALIZE_EMISSION_VERSION) {
+    errors.push(`expected apiVersion ${REALIZE_EMISSION_VERSION}`);
+  }
+  if (emission?.iac?.apiVersion !== IAC_PROGRAM_VERSION) {
+    errors.push(`expected iac.apiVersion ${IAC_PROGRAM_VERSION}`);
+  }
+
+  const nodes = new Map();
+  for (const node of emission?.iac?.nodes ?? []) {
+    if (nodes.has(node.id)) {
+      errors.push(`duplicate node id ${node.id}`);
+    }
+    nodes.set(node.id, node);
+  }
+
+  for (const edge of emission?.iac?.edges ?? []) {
+    if (!nodes.has(edge.from)) errors.push(`edge references missing source node ${edge.from}`);
+    if (!nodes.has(edge.to)) errors.push(`edge references missing target node ${edge.to}`);
+  }
+
+  for (const link of emission?.iac?.links ?? []) {
+    if (!nodes.has(link.providerNode)) {
+      errors.push(`link ${link.import} references missing provider node ${link.providerNode}`);
+    }
+  }
+
+  const buildArtifacts = new Map((emission?.build?.artifacts ?? []).map((artifact) => [artifact.id, artifact]));
+  for (const artifact of emission?.build?.artifacts ?? []) {
+    for (const dependency of artifact.dependsOn ?? []) {
+      if (!buildArtifacts.has(dependency)) {
+        errors.push(`build artifact ${artifact.id} depends on missing artifact ${dependency}`);
+      }
+    }
+  }
+
+  for (const cycle of findBuildCycles(emission?.build?.artifacts ?? [])) {
+    errors.push(`build dependency cycle: ${cycle.join(" -> ")}`);
+  }
+
+  const buildRefs = [];
+  visit(emission?.iac, (value, path, key) => {
+    if (typeof key === "string" && DRIVER_DIALECT_FIELDS.has(key)) {
+      portabilityReport.lockInMarkers.push({
+        path: path.join("."),
+        field: key,
+        reason: "driver-specific dialect must be reported before a backend accepts the program"
+      });
+    }
+
+    if (typeof value === "string") {
+      const placeholder = parseOutputPlaceholder(value);
+      if (!placeholder) return;
+
+      const producer = nodes.get(placeholder.id);
+      if (!producer) {
+        errors.push(`placeholder ${value} references missing node ${placeholder.id}`);
+        return;
+      }
+      if (producer.type !== placeholder.type || producer.className !== placeholder.className) {
+        errors.push(`placeholder ${value} does not match producer ${producer.id} type/class`);
+      }
+      if (!producer.outputs?.includes(placeholder.output)) {
+        errors.push(`placeholder ${value} references missing output ${placeholder.output}`);
+      }
+    }
+
+    if (isBuildReference(value)) {
+      buildRefs.push({ artifactId: value.$build, path: path.join(".") });
+      if (!buildArtifacts.has(value.$build)) {
+        errors.push(`build reference ${value.$build} at ${path.join(".")} has no BuildSpec artifact`);
+      }
+    }
+  });
+
+  for (const declared of emission?.iac?.outputPlaceholders ?? []) {
+    if (!parseOutputPlaceholder(declared.placeholder)) {
+      errors.push(`declared output placeholder is malformed: ${declared.placeholder}`);
+    }
+  }
+
+  if (portabilityReport.lockInMarkers.length > 0) {
+    errors.push("driver-specific dialect leak surfaced in PortabilityReport");
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    buildRefs,
+    portabilityReport
+  };
+}
+
+export function wireBuildOutputs(emission, imageRefs) {
+  const imageRefByArtifact = new Map(Object.entries(imageRefs));
+  const iac = replaceBuildRefs(emission.iac, imageRefByArtifact);
+
+  return {
+    ...emission,
+    iac,
+    build: {
+      ...emission.build,
+      outputs: Object.entries(imageRefs).map(([artifactId, imageRef]) => ({
+        artifactId,
+        imageRef
+      }))
+    }
+  };
+}
+
+export function createReferenceIacBackend() {
+  return {
+    accept(emission) {
+      const result = validateEmission(emission);
+      if (!result.ok) {
+        return {
+          accepted: false,
+          errors: result.errors,
+          portabilityReport: result.portabilityReport
+        };
+      }
+      if (result.buildRefs.length > 0) {
+        return {
+          accepted: false,
+          errors: result.buildRefs.map((ref) => `unresolved BuildSpec artifact ${ref.artifactId} at ${ref.path}`),
+          portabilityReport: result.portabilityReport
+        };
+      }
+
+      return {
+        accepted: true,
+        errors: [],
+        portabilityReport: result.portabilityReport
+      };
+    }
+  };
+}
+
+export function canonicalJson(value) {
+  return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
+}
+
+export function stableDigest(value) {
+  return createHash("sha256").update(canonicalJson(value)).digest("hex");
+}
+
+function getRequiredResource(plan, id) {
+  const resource = plan.resources.find((candidate) => candidate.id === id);
+  if (!resource) {
+    throw new Error(`fixture plan missing required resource ${id}`);
+  }
+  return resource;
+}
+
+function parseOutputPlaceholder(value) {
+  const match = PLACEHOLDER_RE.exec(value);
+  if (!match) return null;
+  return {
+    type: match[1],
+    className: match[2],
+    id: match[3],
+    output: match[4]
+  };
+}
+
+function isBuildReference(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && typeof value.$build === "string");
+}
+
+function findBuildCycles(artifacts) {
+  const byId = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
+  const visiting = new Set();
+  const visited = new Set();
+  const cycles = [];
+
+  function walk(id, stack) {
+    if (visiting.has(id)) {
+      const start = stack.indexOf(id);
+      cycles.push([...stack.slice(start), id]);
+      return;
+    }
+    if (visited.has(id)) return;
+
+    visiting.add(id);
+    const artifact = byId.get(id);
+    for (const dependency of artifact?.dependsOn ?? []) {
+      walk(dependency, [...stack, dependency]);
+    }
+    visiting.delete(id);
+    visited.add(id);
+  }
+
+  for (const artifact of artifacts) {
+    walk(artifact.id, [artifact.id]);
+  }
+
+  return cycles;
+}
+
+function visit(value, callback, path = [], key = undefined) {
+  callback(value, path, key);
+
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => visit(item, callback, [...path, String(index)], index));
+    return;
+  }
+
+  for (const [childKey, child] of Object.entries(value)) {
+    visit(child, callback, [...path, childKey], childKey);
+  }
+}
+
+function replaceBuildRefs(value, imageRefByArtifact) {
+  if (isBuildReference(value)) {
+    const imageRef = imageRefByArtifact.get(value.$build);
+    if (!imageRef) return value;
+    return {
+      artifactId: value.$build,
+      imageRef
+    };
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => replaceBuildRefs(item, imageRefByArtifact));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, replaceBuildRefs(child, imageRefByArtifact)])
+    );
+  }
+
+  return value;
+}
+
+function sortKeys(value) {
+  if (Array.isArray(value)) {
+    return value.map(sortKeys);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
+}

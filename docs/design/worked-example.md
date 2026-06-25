@@ -5,7 +5,8 @@
 > **Authoring (IfC + wasm + inferred permissions).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline (their permissions **inferred from use**, `.allow()` only to narrow), the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). The explicit `bindle.ts` below still works (advanced mode).
 > ```ts
 > // src/api.ts — IfC: resources inline, permissions inferred from use; compiles to a wasm component via jco
-> import { api, kv, bucket, queue, workflow, step } from "@hobo/bindles";
+> import { api, kv, bucket, queue } from "@hobo/bindles";
+> import { workflow, step } from "@hobo/runtime";
 > const orders = kv("orders");          // orders.get()/.set() → infers allow:[get,set] (wasi:keyvalue + IAM + token scope)
 > const images = bucket("images");      // images.read()/.write() → infers allow:[read,write] (wasi:blobstore)
 > const events = queue("orders");       // events.enqueue() → infers allow:[enqueue] (hobo:queue)
@@ -35,7 +36,7 @@
 > //   record order { id: string, status: order-status, total: u64 }   enum order-status { placed, confirmed, shipped }
 >
 > // src/api/orders.ts — WRITE: a command runs inside the Order aggregate (an actor; ADR-0053)
-> import { command, view } from "@hobo/runtime";
+> import { command, view } from "@hobo/data";
 > export const placeOrder = command("Order.Place", { key: (i: PlaceOrder) => i.id }, (input, ctx) => {
 >   if (ctx.state.status) throw new Conflict("order exists");         // invariant vs the aggregate's write-model fold
 >   ctx.emit("OrderPlaced", { id: input.id, total: input.total });   // appended under the aggregate's lease + optimistic seq
@@ -81,7 +82,8 @@ export default bindle("snapshop", (b) => {
 ```
 `src/api/checkout.ts` — the *runtime* (durable workflow + choreography saga):
 ```ts
-import { step, saga, emit } from "@hobo/runtime";
+import { step } from "@hobo/runtime";
+import { saga, emit } from "@hobo/events";
 
 const reserve = step(async (o: Order, ctx) => ctx.bindings.db.reserve(o));
 const charge  = step(async (o: Order) => paymentApi.charge(o), { retries: 5 });

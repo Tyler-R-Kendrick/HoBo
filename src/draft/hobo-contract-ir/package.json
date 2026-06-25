@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-contract-ir",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

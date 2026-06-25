@@ -1,0 +1,22 @@
+# Failure Taxonomy Safe-Fix Classifier POC
+
+Independent POC for HOBO-267. It pins the M0 classifier that maps documented SRE runtime and contract failure signals to canonical `RemediationAction` kinds from the HOBO-251 contract.
+
+## Contract Surface
+
+- `classifyFailureSignal(signal)` returns `{ failureClass, strategy, decisionBranch, action }`.
+- Every documented class from `docs/design/operators-sre.md` is represented in `failureTaxonomyEntries`.
+- Unknown signals fail closed to `escalate`.
+- Ambiguous matches choose the most restrictive branch: `escalate` over `propose` over `auto-fix`.
+- `requiresHuman` signals short-circuit to escalation before taxonomy matching.
+
+## Scope Boundaries
+
+This POC classifies and builds validated `RemediationAction` envelopes only. It does not diagnose incidents, execute runbooks, apply live fixes, run policy decisions, or perform remediation.
+
+## Verification
+
+```powershell
+npm.cmd --prefix src\draft\failure-taxonomy-safe-fix-classifier test
+npm.cmd test
+```

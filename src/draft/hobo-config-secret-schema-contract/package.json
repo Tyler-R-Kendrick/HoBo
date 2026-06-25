@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-config-secret-schema-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

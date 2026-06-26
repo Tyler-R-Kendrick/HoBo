@@ -1,9 +1,17 @@
 export const MANIFEST_SCHEMA: "hobo.manifest/v1";
+export const CURRENT_MANIFEST_SCHEMA: "hobo.manifest/v1.1";
 
 export interface HoboManifestV1 {
   schema: "hobo.manifest/v1";
   componentHost: ComponentHostPin;
   resources: Record<string, ManifestResource>;
+}
+
+export interface HoboManifestV1_1 extends Omit<HoboManifestV1, "schema"> {
+  schema: "hobo.manifest/v1.1";
+  manifestVersion: {
+    upcastedFrom?: string;
+  };
 }
 
 export interface ComponentHostPin {
@@ -58,7 +66,7 @@ export interface ManifestEndpoint {
 
 export interface ManifestValidationResult {
   valid: true;
-  schema: "hobo.manifest/v1";
+  schema: "hobo.manifest/v1" | "hobo.manifest/v1.1";
   aspireEnv: Record<string, string[]>;
   hash: string;
 }
@@ -83,7 +91,44 @@ export class ManifestValidationError extends Error {
   path: string;
 }
 
+export class ManifestUpcastError extends Error {
+  path: string;
+}
+
+export interface ManifestUpcaster {
+  from: string;
+  to: string;
+  upcast(manifest: Record<string, unknown>): Record<string, unknown> | {
+    manifest: Record<string, unknown>;
+    losses?: ManifestUpcastLoss[];
+  };
+}
+
+export interface ManifestUpcastLoss {
+  path: string;
+  reason: string;
+}
+
+export interface UpcastManifestOptions {
+  targetSchema?: string;
+  schemaOrder?: string[];
+  upcasters?: ManifestUpcaster[];
+}
+
+export interface ManifestUpcastResult {
+  manifest: HoboManifestV1 | HoboManifestV1_1 | Record<string, unknown>;
+  hash: string;
+  fromSchema: string;
+  toSchema: string;
+  appliedUpcasters: string[];
+  losses: ManifestUpcastLoss[];
+}
+
 export function validateManifest(input: unknown): ManifestValidationResult;
+export function upcastManifest(
+  input: unknown,
+  options?: UpcastManifestOptions,
+): ManifestUpcastResult;
 export function parseManifestReference(value: string): ManifestReference;
 export function parseOutputPlaceholder(
   value: string,

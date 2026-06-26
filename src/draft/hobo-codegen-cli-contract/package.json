@@ -1,0 +1,11 @@
+{
+  "name": "@hobo-draft/codegen-cli-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for the hobo codegen --check wrapper contract and deterministic generated tree drift gate.",
+  "scripts": {
+    "codegen": "node scripts/hobo-codegen.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

@@ -2,17 +2,20 @@
 
 This POC pins the `@hobo/mcp` operations surface without building a production
 MCP server, Yard runtime, auth provider, or dashboard. It proves tool metadata,
-schema validation, CLI call-path parity, progress streaming, and the
+input/output schema validation, CLI call-path parity, progress streaming, and the
 `request_token` broker seam against local fixtures.
 
 ## What It Proves
 
-- The documented MCP tools are listed with JSON-schema-shaped inputs and
+- The documented MCP tools are listed with JSON-schema-shaped inputs/outputs and
   explicit read/write/destructive annotations.
 - `plan` and `deploy` dispatch through the same shared CLI call path as
   `hobo plan` and `hobo up`.
+- CLI-backed `deploy` forwards long-running `hobo up` progress callbacks through
+  the MCP progress channel.
 - `inspect_run` returns projection data and `tail_logs` can stream progress.
-- Each canonical CLI verb has a pinned MCP parity mapping.
+- Each canonical CLI verb has a pinned MCP parity mapping, and CLI/MCP input
+  schema drift fails the parity assertion.
 - Malformed inputs produce structured errors.
 - Anonymous mutation tools fail closed, while read-only tools remain callable.
 - `request_token` delegates to the token-broker seam with the authenticated

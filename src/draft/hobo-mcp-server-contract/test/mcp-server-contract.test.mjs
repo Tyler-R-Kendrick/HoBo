@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { CANONICAL_VERBS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.mjs";
+import { CANONICAL_VERBS, CLI_COMMAND_SCHEMAS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.mjs";
 import {
   assertCliParity,
   createHoboMcpServer,
@@ -23,6 +23,7 @@ describe("HoBo MCP server contract", () => {
 
     for (const tool of tools) {
       assert.equal(tool.inputSchema.type, "object", `${tool.name} schema must be object-shaped`);
+      assert.equal(tool.outputSchema.type, "object", `${tool.name} output schema must be object-shaped`);
       assert.ok(tool.description.length > 0, `${tool.name} needs a routeable description`);
       assert.ok(["read", "write"].includes(tool.access), `${tool.name} access must be explicit`);
       assert.equal(typeof tool.annotations.readOnlyHint, "boolean");
@@ -37,6 +38,7 @@ describe("HoBo MCP server contract", () => {
 
   it("maps plan and deploy to the same shared CLI call path as hobo plan/up", async () => {
     const calls = [];
+    const progress = [];
     const cli = createHoboCli({
       contextFactory: async (request) => ({
         cwd: request.cwd,
@@ -58,8 +60,10 @@ describe("HoBo MCP server contract", () => {
           },
         },
         up: {
-          run: async ({ context, flags, args, verb }) => {
+          run: async ({ context, flags, args, verb, emitProgress }) => {
             calls.push({ verb, flags, args });
+            emitProgress({ phase: "deploy", message: "up started" });
+            emitProgress({ phase: "deploy", message: "up converged" });
             return {
               ok: true,
               status: "deployed",
@@ -74,7 +78,11 @@ describe("HoBo MCP server contract", () => {
     const server = createHoboMcpServer({ cli, identity });
 
     const planned = await server.callTool("plan", { cwd: "C:\\repo\\app", camp: "prod" });
-    const deployed = await server.callTool("deploy", { cwd: "C:\\repo\\app", camp: "prod", args: ["--strategy", "canary"] });
+    const deployed = await server.callTool(
+      "deploy",
+      { cwd: "C:\\repo\\app", camp: "prod", args: ["--strategy", "canary"] },
+      { onProgress: (event) => progress.push(event) },
+    );
     const cliPlan = await cli.run(["plan", "--json", "--camp", "prod"], { cwd: "C:\\repo\\app" });
     const cliUp = await cli.run(["up", "--json", "--camp", "prod", "--strategy", "canary"], { cwd: "C:\\repo\\app" });
 
@@ -85,6 +93,13 @@ describe("HoBo MCP server contract", () => {
     assert.equal(deployed.cli.verb, "up");
     assert.equal(deployed.cli.status, JSON.parse(cliUp.stdout).status);
     assert.deepEqual(calls.map((call) => call.verb), ["plan", "up", "plan", "up"]);
+    assert.deepEqual(
+      progress.map((event) => [event.tool, event.cliVerb, event.message]),
+      [
+        ["deploy", "up", "up started"],
+        ["deploy", "up", "up converged"],
+      ],
+    );
   });
 
   it("returns projection data and streams progress for inspect_run and tail_logs", async () => {
@@ -119,6 +134,7 @@ describe("HoBo MCP server contract", () => {
 
     assert.equal(parity.ok, true);
     assert.deepEqual(parity.missing, []);
+    assert.deepEqual(parity.schemaDrift, []);
     assert.equal(parity.mappings.up, "deploy");
     assert.equal(parity.mappings.down, "destroy");
     assert.equal(parity.mappings.logs, "tail_logs");
@@ -126,6 +142,13 @@ describe("HoBo MCP server contract", () => {
     assert.throws(
       () => assertCliParity(MCP_TOOL_SPECS.filter((tool) => tool.name !== "plan"), CANONICAL_VERBS),
       /Missing MCP parity for CLI verb "plan"/,
+    );
+
+    const driftedCliSchemas = JSON.parse(JSON.stringify(CLI_COMMAND_SCHEMAS));
+    delete driftedCliSchemas.plan.properties.camp;
+    assert.throws(
+      () => assertCliParity(MCP_TOOL_SPECS, CANONICAL_VERBS, driftedCliSchemas),
+      /Schema drift between CLI verb "plan" and MCP tool "plan"/,
     );
   });
 

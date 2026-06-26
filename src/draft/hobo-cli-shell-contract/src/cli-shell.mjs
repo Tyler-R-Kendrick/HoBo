@@ -40,6 +40,10 @@ export const GLOBAL_FLAGS = [
   "--help"
 ];
 
+export const CLI_COMMAND_SCHEMAS = Object.freeze(
+  Object.fromEntries(CANONICAL_VERBS.map((verb) => [verb.name, cliCommandSchemaFor(verb.name)])),
+);
+
 const verbNames = new Set(CANONICAL_VERBS.map((verb) => verb.name));
 const projectScopedVerbs = new Set(
   CANONICAL_VERBS.map((verb) => verb.name).filter((verb) => !["new", "login", "claim", "add", "registry", "generate", "derivative"].includes(verb))
@@ -142,7 +146,13 @@ export function createHoboCli(options = {}) {
           args: request.args,
           requiresProject: projectScopedVerbs.has(request.verb)
         });
-        const result = await command.run({ context, flags: request.flags, args: request.args, verb: request.verb });
+        const result = await command.run({
+          context,
+          flags: request.flags,
+          args: request.args,
+          verb: request.verb,
+          emitProgress: runOptions.onProgress ?? (() => {}),
+        });
 
         return renderSuccess({ verb: request.verb, flags: request.flags, context, result });
       } catch (error) {
@@ -385,6 +395,31 @@ function okText(stdout) {
     stdout,
     stderr: ""
   };
+}
+
+function cliCommandSchemaFor(verbName) {
+  switch (verbName) {
+    case "inspect":
+    case "logs":
+      return objectSchema({ runId: { type: "string" } }, ["runId"]);
+    case "registry":
+      return objectSchema({ capability: { type: "string" } }, ["capability"]);
+    default:
+      return objectSchema({
+        cwd: { type: "string" },
+        camp: { type: "string" },
+        args: { type: "array", items: { type: "string" } },
+      });
+  }
+}
+
+function objectSchema(properties = {}, required = []) {
+  return Object.freeze({
+    type: "object",
+    properties,
+    required,
+    additionalProperties: true,
+  });
 }
 
 function publicContext(context) {

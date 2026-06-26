@@ -1,4 +1,4 @@
-import { createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.mjs";
+import { CLI_COMMAND_SCHEMAS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.mjs";
 import { createRequestTokenTool } from "../../token-broker-skeleton-contract/src/token-broker-skeleton.mjs";
 
 export const DOCUMENTED_MCP_TOOLS = [
@@ -56,6 +56,16 @@ const cwdSchema = schema({
 const idSchema = schema({ bindleId: { type: "string" } }, ["bindleId"]);
 const runSchema = schema({ runId: { type: "string" } }, ["runId"]);
 const capabilitySchema = schema({ capability: { type: "string" } }, ["capability"]);
+const bindleListOutputSchema = schema({ bindles: { type: "array", items: { type: "object" } } });
+const bindleOutputSchema = schema({ bindleId: { type: "string" }, topology: { type: "object" } });
+const projectionOutputSchema = schema({ runId: { type: "string" }, timeline: { type: "array", items: { type: "object" } } });
+const logTailOutputSchema = schema({ runId: { type: "string" }, complete: { type: "boolean" } });
+const registryOutputSchema = schema({ capability: { type: "string" }, results: { type: "array", items: { type: "object" } } });
+const driftOutputSchema = schema({ drift: { type: "array", items: { type: "object" } } });
+const cliOutputSchema = schema({
+  cli: { type: "object" },
+  data: { type: "object" },
+});
 const tokenSchema = schema(
   {
     requestId: { type: "string" },
@@ -65,20 +75,43 @@ const tokenSchema = schema(
   },
   ["requestId", "provider", "scope", "svidScope"],
 );
+const tokenOutputSchema = schema({
+  requestId: { type: "string" },
+  provider: { type: "string" },
+  credential: { type: "object" },
+  events: { type: "array", items: { type: "object" } },
+});
 
 export const MCP_TOOL_SPECS = Object.freeze([
-  tool("list_bindles", "Discover Bindles visible to the current principal.", "read", emptySchema),
-  tool("get_bindle", "Return one Bindle topology by id.", "read", idSchema),
+  tool("list_bindles", "Discover Bindles visible to the current principal.", "read", emptySchema, {
+    outputSchema: bindleListOutputSchema,
+  }),
+  tool("get_bindle", "Return one Bindle topology by id.", "read", idSchema, { outputSchema: bindleOutputSchema }),
   tool("plan", "Dry-run hobo plan through the shared CLI call path.", "read", cwdSchema, { cliVerb: "plan" }),
   tool("deploy", "Converge a topology through hobo up.", "write", cwdSchema, { cliVerb: "up" }),
   tool("promote", "Promote by converging a target Camp through hobo up.", "write", cwdSchema, { cliVerb: "up" }),
   tool("rollback", "Rollback by invoking hobo up --rollback.", "write", cwdSchema, { cliVerb: "up", cliArgs: ["--rollback"] }),
   tool("destroy", "Tear down a topology through hobo down.", "write", cwdSchema, { cliVerb: "down", destructive: true }),
-  tool("inspect_run", "Read RunView or DeploymentView projection data.", "read", runSchema, { cliVerb: "inspect" }),
-  tool("tail_logs", "Stream runtime log progress for a run or resource.", "read", runSchema, { cliVerb: "logs", streaming: true }),
-  tool("search_registry", "Find providers or listings by capability.", "read", capabilitySchema, { cliVerb: "registry" }),
-  tool("request_token", "Broker a scoped provider token through the token-broker seam.", "write", tokenSchema),
-  tool("get_drift", "Read drift status for a Camp or resource.", "read", cwdSchema, { cliVerb: "drift" }),
+  tool("inspect_run", "Read RunView or DeploymentView projection data.", "read", runSchema, {
+    cliVerb: "inspect",
+    outputSchema: projectionOutputSchema,
+  }),
+  tool("tail_logs", "Stream runtime log progress for a run or resource.", "read", runSchema, {
+    cliVerb: "logs",
+    streaming: true,
+    outputSchema: logTailOutputSchema,
+  }),
+  tool("search_registry", "Find providers or listings by capability.", "read", capabilitySchema, {
+    cliVerb: "registry",
+    outputSchema: registryOutputSchema,
+  }),
+  tool("request_token", "Broker a scoped provider token through the token-broker seam.", "write", tokenSchema, {
+    outputSchema: tokenOutputSchema,
+  }),
+  tool("get_drift", "Read drift status for a Camp or resource.", "read", cwdSchema, {
+    cliVerb: "drift",
+    outputSchema: driftOutputSchema,
+  }),
   tool("heal", "Request governed drift reconciliation.", "write", cwdSchema, { cliVerb: "drift" }),
   tool("dev", "Run hobo dev through the shared CLI call path.", "write", cwdSchema, { cliVerb: "dev" }),
   tool("new", "Scaffold a new HoBo program through hobo new.", "write", cwdSchema, { cliVerb: "new" }),
@@ -153,7 +186,7 @@ export function createHoboMcpServer(options = {}) {
           return success(name, await tokenTool.invoke({ ...input, subject: identity }));
         }
         if (spec.cliVerb) {
-          return callCliTool({ cli, spec, input });
+          return callCliTool({ cli, spec, input, emitProgress: context.emitProgress });
         }
         return success(name, defaultDataFor(name, input));
       } catch (error) {
@@ -163,9 +196,11 @@ export function createHoboMcpServer(options = {}) {
   });
 }
 
-export function assertCliParity(toolSpecs, canonicalVerbs) {
+export function assertCliParity(toolSpecs, canonicalVerbs, cliSchemas = CLI_COMMAND_SCHEMAS) {
   const toolNames = new Set(toolSpecs.map((spec) => spec.name));
+  const specByName = new Map(toolSpecs.map((spec) => [spec.name, spec]));
   const missing = [];
+  const schemaDrift = [];
   const mappings = {};
 
   for (const verb of canonicalVerbs) {
@@ -173,14 +208,25 @@ export function assertCliParity(toolSpecs, canonicalVerbs) {
     mappings[verb.name] = toolName;
     if (!toolName || !toolNames.has(toolName)) {
       missing.push(verb.name);
+      continue;
+    }
+
+    const cliInputSchema = cliSchemas[verb.name]?.inputSchema ?? cliSchemas[verb.name];
+    const toolSpec = specByName.get(toolName);
+    if (!cliInputSchema || !sameSchema(toolSpec.inputSchema, cliInputSchema)) {
+      schemaDrift.push({ verb: verb.name, tool: toolName });
     }
   }
 
   if (missing.length > 0) {
     throw new Error(`Missing MCP parity for CLI verb "${missing[0]}".`);
   }
+  if (schemaDrift.length > 0) {
+    const drift = schemaDrift[0];
+    throw new Error(`Schema drift between CLI verb "${drift.verb}" and MCP tool "${drift.tool}".`);
+  }
 
-  return { ok: true, missing, mappings };
+  return { ok: true, missing, schemaDrift, mappings };
 }
 
 function tool(name, description, access, inputSchema, options = {}) {
@@ -189,6 +235,7 @@ function tool(name, description, access, inputSchema, options = {}) {
     description,
     access,
     inputSchema,
+    outputSchema: options.outputSchema ?? (options.cliVerb ? cliOutputSchema : emptySchema),
     cliVerb: options.cliVerb ?? null,
     cliArgs: options.cliArgs ?? [],
     streaming: options.streaming ?? false,
@@ -214,6 +261,7 @@ function publicTool(spec) {
     description: spec.description,
     access: spec.access,
     inputSchema: spec.inputSchema,
+    outputSchema: spec.outputSchema,
     annotations: spec.annotations,
   };
 }
@@ -229,9 +277,12 @@ function createFixtureCli(identity) {
   });
 }
 
-async function callCliTool({ cli, spec, input }) {
-  const argv = [spec.cliVerb, "--json", ...campArgs(input), ...spec.cliArgs, ...(input.args ?? [])];
-  const result = await cli.run(argv, { cwd: input.cwd ?? process.cwd() });
+async function callCliTool({ cli, spec, input, emitProgress }) {
+  const argv = [spec.cliVerb, "--json", ...campArgs(input), ...spec.cliArgs, ...toolArgs(input)];
+  const result = await cli.run(argv, {
+    cwd: input.cwd ?? process.cwd(),
+    onProgress: (event) => emitProgress?.({ cliVerb: spec.cliVerb, ...event }),
+  });
 
   if (result.exitCode !== 0) {
     return failure(spec.name, "MCP_CLI_FAILED", result.stderr.trim() || `hobo ${spec.cliVerb} failed.`);
@@ -254,6 +305,16 @@ async function callCliTool({ cli, spec, input }) {
 
 function campArgs(input) {
   return input.camp ? ["--camp", input.camp] : [];
+}
+
+function toolArgs(input) {
+  const args = [...(input.args ?? [])];
+  for (const field of ["bindleId", "runId", "capability"]) {
+    if (input[field] && !args.includes(input[field])) {
+      args.unshift(input[field]);
+    }
+  }
+  return args;
 }
 
 function validateInput(inputSchema, input) {
@@ -298,6 +359,23 @@ function typeDescription(definition) {
   return definition.type === "array" && definition.items
     ? `array of ${definition.items.type}`
     : `a ${definition.type}`;
+}
+
+function sameSchema(left, right) {
+  return stableStringify(left) === stableStringify(right);
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (isPlainObject(value)) {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function defaultDataFor(name, input) {

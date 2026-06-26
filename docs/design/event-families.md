@@ -37,7 +37,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `junction.*` | `junction.TrustEstablished`, `junction.ArtifactShared` |
 | `lane.*` | `lane.Revoked` |
 | `link.*` | `link.Established`, `link.Called` |
-| `listing.*` | `listing.Published`, `listing.Yanked` |
+| `listing.*` | `listing.Published`, `listing.Certified`, `listing.Yanked` |
 | `livefix.*` | `livefix.Proposed`, `livefix.Applied` |
 | `match.*` | `match.Decided` |
 | `meter.*` | `meter.*` |

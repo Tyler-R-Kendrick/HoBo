@@ -63,6 +63,28 @@ describe("HOBO-315 compensation-of-compensation escalation", () => {
     ]);
   });
 
+  it("awaits async refresh before deciding whether ambiguous destroy reclaimed the object", async () => {
+    let refreshCalled = false;
+    const outcome = await runCompensationEscalation({
+      deploymentId: "deploy-async-refresh",
+      resources,
+      provisioned: ["network"],
+      retryCap: 1,
+      destroy: () => ({ status: "ambiguous", reason: "socket-closed" }),
+      refresh: async ({ resourceId }) => {
+        assert.equal(resourceId, "network");
+        refreshCalled = true;
+        return { exists: true, reason: "provider-object-still-present" };
+      },
+    });
+
+    assert.equal(refreshCalled, true);
+    assert.equal(outcome.status, "needs-human");
+    assert.deepEqual(outcome.orphanInventory, [
+      { resourceId: "network", state: "unreclaimed", reason: "provider-object-still-present" },
+    ]);
+  });
+
   it("treats ambiguous destroy as reclaimed when refresh proves the object is gone", async () => {
     const outcome = await runCompensationEscalation({
       deploymentId: "deploy-ambiguous-gone",
@@ -137,6 +159,28 @@ describe("HOBO-315 compensation-of-compensation escalation", () => {
     assert.ok(outcome.events.find((event) => event.type === "compensation.EscalationPersisted"));
     assert.ok(outcome.events.find((event) => event.type === "compensation.EscalationNotifyFailed"));
     assert.ok(outcome.events.find((event) => event.type === "compensation.Escalated"));
+  });
+
+  it("awaits async escalation notification failure before retrying the human handoff", async () => {
+    let notifyAttempts = 0;
+    const outcome = await runCompensationEscalation({
+      deploymentId: "deploy-async-notify",
+      resources,
+      provisioned: ["network"],
+      retryCap: 1,
+      destroy: () => ({ status: "failed", reason: "access-denied" }),
+      notifyEscalation: async () => {
+        notifyAttempts += 1;
+        return notifyAttempts === 1
+          ? { status: "failed", reason: "pager-timeout" }
+          : { status: "notified" };
+      },
+    });
+
+    assert.equal(notifyAttempts, 2);
+    assert.equal(outcome.status, "needs-human");
+    assert.equal(outcome.events.at(-1).notified, true);
+    assert.ok(outcome.events.find((event) => event.type === "compensation.EscalationNotifyFailed"));
   });
 
   it("escalates hangs, retry storms, and compensation dependency deadlocks", async () => {

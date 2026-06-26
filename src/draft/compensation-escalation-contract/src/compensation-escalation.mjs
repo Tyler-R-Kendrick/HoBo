@@ -21,7 +21,7 @@ export async function runCompensationEscalation({
   try {
     order = reverseTopologicalProvisionedOrder(resources, provisioned);
   } catch (error) {
-    return escalate({
+    return await escalate({
       deploymentId,
       events,
       reason: "compensation-dependency-deadlock",
@@ -61,7 +61,7 @@ export async function runCompensationEscalation({
         break;
       }
 
-      const failure = reconcileDestroyFailure({
+      const failure = await reconcileDestroyFailure({
         resourceId,
         result,
         deadlineMs,
@@ -88,7 +88,7 @@ export async function runCompensationEscalation({
       });
 
       if (attempts >= retryCap) {
-        return escalate({
+        return await escalate({
           deploymentId,
           events,
           reason: "retry-cap-exhausted",
@@ -98,7 +98,7 @@ export async function runCompensationEscalation({
       }
 
       if (retriesScheduled >= retryBudget) {
-        return escalate({
+        return await escalate({
           deploymentId,
           events,
           reason: "retry-budget-exhausted",
@@ -124,13 +124,13 @@ export async function runCompensationEscalation({
   };
 }
 
-function reconcileDestroyFailure({ resourceId, result, deadlineMs, refresh }) {
+async function reconcileDestroyFailure({ resourceId, result, deadlineMs, refresh }) {
   if (result.status === "timeout" || result.elapsedMs > deadlineMs) {
     return { reason: result.reason ?? "deadline-exceeded" };
   }
 
   if (result.status === "ambiguous") {
-    const observed = refresh({ resourceId });
+    const observed = await refresh({ resourceId });
     if (observed.exists) {
       return { reason: observed.reason ?? "provider-object-still-present" };
     }
@@ -152,18 +152,18 @@ function buildOrphanInventory({ order, failedResourceId, reason }) {
   });
 }
 
-function escalate({ deploymentId, events, reason, orphanInventory, notifyEscalation }) {
+async function escalate({ deploymentId, events, reason, orphanInventory, notifyEscalation }) {
   const escalation = { reason, orphanInventory };
   events.push({ type: "compensation.EscalationPersisted", deploymentId, escalation });
 
-  let notified = notifyEscalation({ deploymentId, escalation });
+  let notified = await notifyEscalation({ deploymentId, escalation });
   if (notified?.status === "failed") {
     events.push({
       type: "compensation.EscalationNotifyFailed",
       deploymentId,
       reason: notified.reason,
     });
-    notified = notifyEscalation({ deploymentId, escalation });
+    notified = await notifyEscalation({ deploymentId, escalation });
   }
 
   events.push({

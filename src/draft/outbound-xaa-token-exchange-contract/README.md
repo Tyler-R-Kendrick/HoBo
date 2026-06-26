@@ -21,6 +21,7 @@ npm.cmd --prefix src\draft\outbound-xaa-token-exchange-contract test
 Covered behaviors:
 
 - user ID token reference plus delegated agent subject mints an audience-bound ID-JAG for target A;
+- unsupported source token types fail before policy or minting;
 - target A authorization server redeems the ID-JAG into an access-token reference scoped only to A;
 - `token.Granted` and `token.Used` reconstruct the user -> agent -> external app chain;
 - missing `subject.delegatedBy` is denied before policy or mint;

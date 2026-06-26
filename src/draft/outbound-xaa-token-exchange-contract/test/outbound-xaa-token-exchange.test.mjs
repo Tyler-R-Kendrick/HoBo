@@ -116,6 +116,46 @@ test("refuses an outbound XAA exchange without subject.delegatedBy before mintin
   assert.deepEqual(result.events.map((event) => event.type), ["token.Denied"]);
 });
 
+test("refuses unsupported source token types before policy or minting", async () => {
+  const policyCalls = [];
+  const asanaAs = createTargetAuthorizationServer({
+    targetId: "asana",
+    audience: "https://api.asana.test",
+    resource: "https://api.asana.test/tasks",
+    allowedScopes: ["tasks:read"],
+  });
+  const broker = createBroker({
+    preMintPolicy: async (context) => {
+      policyCalls.push(context);
+      return { ok: true };
+    },
+    targetAuthorizationServers: { asana: asanaAs },
+  });
+
+  await assert.rejects(
+    () =>
+      broker.exchangeToken({
+        requestId: "req-api-key-source",
+        subject: SUBJECT,
+        subjectToken: {
+          tokenRef: "identity://legacy/api-key",
+          tokenType: "urn:ietf:params:oauth:token-type:access_token",
+        },
+        target: {
+          id: "asana",
+          audience: "https://api.asana.test",
+          resource: "https://api.asana.test/tasks",
+          allowedScopes: ["tasks:read"],
+          authFlow: { type: "oauth2-xaa", targetAuthorizationServer: "asana" },
+        },
+        requestedScopes: ["tasks:read"],
+      }),
+    /subjectToken\.tokenType must be id_token or jwt/,
+  );
+  assert.equal(policyCalls.length, 0);
+  assert.equal(asanaAs.calls.length, 0);
+});
+
 test("does not redeem a target A ID-JAG at target B authorization server", async () => {
   const slackAs = createTargetAuthorizationServer({
     targetId: "slack",

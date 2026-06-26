@@ -12,6 +12,10 @@ import {
 const DEFAULT_ID_JAG_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_ACCESS_TOKEN_MAX_LIFETIME_MS = 10 * 60 * 1000;
 const DEFAULT_EVENT_ACTOR = { kind: "service", id: "yard/identity" };
+const SUBJECT_TOKEN_TYPES = new Set([
+  "urn:ietf:params:oauth:token-type:id_token",
+  "urn:ietf:params:oauth:token-type:jwt",
+]);
 
 export function createOutboundXaaTokenBroker(options = {}) {
   const issuer = requireString(options.issuer ?? "https://identity.hobo.test", "issuer");
@@ -305,9 +309,13 @@ function normalizeTarget(value, field) {
 
 function normalizeSubjectToken(value) {
   assertObject(value, "subjectToken");
+  const tokenType = requireString(value.tokenType, "subjectToken.tokenType");
+  if (!SUBJECT_TOKEN_TYPES.has(tokenType)) {
+    throw new Error("subjectToken.tokenType must be id_token or jwt");
+  }
   return {
     tokenRef: requireString(value.tokenRef, "subjectToken.tokenRef"),
-    tokenType: requireString(value.tokenType, "subjectToken.tokenType"),
+    tokenType,
   };
 }
 

@@ -19,6 +19,7 @@ npm.cmd --prefix src\draft\outbound-xaa-token-exchange-contract test
 Acceptance mapping:
 
 - ID-JAG mint is proven by the successful `oauth2-xaa` exchange test, which asserts the minted claims carry target A audience, target A resource, delegated user, nonce, and requested scopes.
+- Source-token admissibility is proven by rejecting unsupported token types before policy or minting.
 - Target-AS redemption is proven by the fixture authorization server parsing the JWT bearer grant and returning a token reference scoped to target A.
 - Audit reconstruction is proven with `foldCredentialAudit(result.events)`.
 - Fallback is proven by the non-XAA target test, which asserts no ID-JAG is returned and the fallback exchanger is invoked.

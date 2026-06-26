@@ -197,6 +197,24 @@ export function recoverWithBreakGlass(ledger, {
     });
   }
 
+  if (!isEmergencyRecoveryContext({
+    idpAvailable,
+    mandatoryPolicyBlocksAllChanges,
+  })) {
+    return deniedDecision(ledger, {
+      requestId,
+      actor: credential.subjectId,
+      code: "BREAK_GLASS_CONTEXT_NOT_BRICKED",
+      reason: "break-glass requires IdP outage and a bricking mandatory policy rule",
+      data: {
+        idpAvailable,
+        mandatoryPolicyBlocksAllChanges,
+        offlineSigned: true,
+        idpPath: false,
+      },
+    });
+  }
+
   ledger.usedBreakGlassNonces.add(credential.nonce);
 
   const decision = {
@@ -306,6 +324,13 @@ function hasValidOfflineSignature(credential, publicKey) {
   } catch {
     return false;
   }
+}
+
+function isEmergencyRecoveryContext({
+  idpAvailable,
+  mandatoryPolicyBlocksAllChanges,
+}) {
+  return idpAvailable === false && mandatoryPolicyBlocksAllChanges === true;
 }
 
 function breakGlassPayload({

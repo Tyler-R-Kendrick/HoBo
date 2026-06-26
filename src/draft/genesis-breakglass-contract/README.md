@@ -10,6 +10,8 @@ It defines:
 - A rotation path that revokes the bootstrap admin and binds the durable admin.
 - Offline Ed25519 break-glass credentials that produce auditable policy and
   identity events.
+- Emergency-context gating: a valid offline credential is denied unless the IdP
+  is unavailable and a mandatory policy rule is blocking all changes.
 - Replay protection for break-glass nonces.
 - Guardrails proving normal IdP tokens and self-granted `Org-Admin` bindings
   cannot recover a bricked mandatory rule.

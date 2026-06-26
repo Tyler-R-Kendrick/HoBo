@@ -162,6 +162,51 @@ test("normal IdP path and self-grant cannot recover a bricked mandatory rule", (
   assert.equal(ledger.events.some((event) => event.type === "identity.BreakGlassUsed"), false);
 });
 
+test("offline-signed break-glass is denied unless both emergency predicates hold", () => {
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const ledger = createYardGovernanceLedger({
+    yardId: "yard:prod",
+    offlinePublicKeys: {
+      "breakglass-key-1": publicKey,
+    },
+  });
+  const credential = createOfflineBreakGlassCredential({
+    keyId: "breakglass-key-1",
+    privateKey,
+    subjectId: "user:security-admin",
+    action: "hobo:policy-pack:update",
+    resourceId: "policy-pack:prod-mandatory",
+    reason: "recover bricked policy",
+    nonce: "nonce-005",
+  });
+
+  const idpStillAvailable = recoverWithBreakGlass(ledger, {
+    credential,
+    idpAvailable: true,
+    mandatoryPolicyBlocksAllChanges: true,
+    requestId: "breakglass-005-idp-available",
+  });
+  const policyStillMutable = recoverWithBreakGlass(ledger, {
+    credential,
+    idpAvailable: false,
+    mandatoryPolicyBlocksAllChanges: false,
+    requestId: "breakglass-005-policy-mutable",
+  });
+  const actualEmergency = recoverWithBreakGlass(ledger, {
+    credential,
+    idpAvailable: false,
+    mandatoryPolicyBlocksAllChanges: true,
+    requestId: "breakglass-005",
+  });
+
+  assert.equal(idpStillAvailable.ok, false);
+  assert.equal(idpStillAvailable.code, "BREAK_GLASS_CONTEXT_NOT_BRICKED");
+  assert.equal(policyStillMutable.ok, false);
+  assert.equal(policyStillMutable.code, "BREAK_GLASS_CONTEXT_NOT_BRICKED");
+  assert.equal(actualEmergency.ok, true);
+  assert.equal(ledger.events.filter((event) => event.type === "identity.BreakGlassUsed").length, 1);
+});
+
 test("tampered offline break-glass credentials fail closed before recovery", () => {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
   const ledger = createYardGovernanceLedger({

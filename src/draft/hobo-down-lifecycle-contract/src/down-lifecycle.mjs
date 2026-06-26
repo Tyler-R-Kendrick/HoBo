@@ -142,7 +142,6 @@ export function createDownLifecycle({
 
 export function replayDownEvents(events, deploymentId, campId) {
   const destroyedResourceIds = new Set();
-  const failedResources = [];
 
   for (const event of events) {
     if (event.deploymentId !== deploymentId || event.campId !== campId) {
@@ -152,16 +151,9 @@ export function replayDownEvents(events, deploymentId, campId) {
     if (event.type === "resource.Destroyed") {
       destroyedResourceIds.add(event.data.resourceId);
     }
-
-    if (event.type === "resource.DestroyFailed") {
-      failedResources.push({
-        resourceId: event.data.resourceId,
-        message: event.data.message,
-      });
-    }
   }
 
-  return { destroyedResourceIds, failedResources };
+  return { destroyedResourceIds };
 }
 
 export function reverseDependencyOrder(resources) {

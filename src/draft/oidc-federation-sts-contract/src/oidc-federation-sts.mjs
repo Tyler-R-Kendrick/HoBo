@@ -60,6 +60,17 @@ export function createOidcFederationBroker(options = {}) {
         });
       }
 
+      const trustConfigError = validateProviderTrustConfig(request.flow);
+      if (trustConfigError) {
+        return denied({
+          request,
+          target,
+          reason: trustConfigError,
+          now: issuedAt,
+          eventSink,
+        });
+      }
+
       const grantId = idFactory("grant");
       const usageId = idFactory("use");
       const operation = providerOperation(request.flow);
@@ -289,6 +300,34 @@ function providerOperation(flow) {
     return "azure:FederatedCredential";
   }
   return requireString(flow.exchange, "flow.exchange");
+}
+
+function validateProviderTrustConfig(flow) {
+  if (!isPlainObject(flow.trust)) {
+    return "oidc-federation flow requires trust.oidcDiscovery";
+  }
+  if (typeof flow.trust.oidcDiscovery !== "string" || flow.trust.oidcDiscovery.length === 0) {
+    return "oidc-federation flow requires trust.oidcDiscovery";
+  }
+
+  const operation = providerOperation(flow);
+  switch (operation) {
+    case "aws:AssumeRoleWithWebIdentity":
+      return requireTrustField(flow, "roleArn", "AWS AssumeRoleWithWebIdentity");
+    case "gcp:WorkloadIdentityFederation":
+      return requireTrustField(flow, "serviceAccount", "GCP Workload Identity Federation");
+    case "azure:FederatedCredential":
+      return requireTrustField(flow, "clientId", "Azure federated credential");
+    default:
+      return null;
+  }
+}
+
+function requireTrustField(flow, field, providerName) {
+  if (typeof flow[field] !== "string" || flow[field].length === 0) {
+    return `${providerName} flow requires ${field}`;
+  }
+  return null;
 }
 
 function narrowPermissions(permissions, requested) {

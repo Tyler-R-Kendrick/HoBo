@@ -11,6 +11,9 @@ This executable proof pins the M2 provider-federation slice from
   [`src/draft/oidc-federation-sts-contract`](../../../../src/draft/oidc-federation-sts-contract).
 - AWS, GCP, and Azure mock STS exchanges receive SVID-bound OIDC assertions
   whose audience matches the provider trust config.
+- Missing provider trust setup fails closed before assertion minting or STS
+  exchange: AWS role ARN, GCP service account, Azure client id, and
+  `trust.oidcDiscovery` are required.
 - Provider credentials are short-lived and bounded by both SVID expiry and
   broker max TTL.
 - The credential permission surface is exactly the requested
@@ -34,6 +37,6 @@ npm.cmd --prefix src\draft\oidc-federation-sts-contract test
 ```
 
 The tests cover the HOBO-110 acceptance and adversarial cases: scoped fixture
-exchange, short TTL, no static-secret read/storage, audit events,
-out-of-SVID-scope denial, provider over-grant narrowing/flagging, and expired
-SVID rejection.
+exchange, provider trust-config failure, short TTL, no static-secret
+read/storage, audit events, out-of-SVID-scope denial, provider over-grant
+narrowing/flagging, and expired SVID rejection.

@@ -128,6 +128,67 @@ describe("OIDC federation provider STS exchange", () => {
     assert.deepEqual(events.map((event) => event.type), ["token.Denied"]);
   });
 
+  it("rejects provider federation without required trust setup before any provider STS exchange", async () => {
+    const scenarios = [
+      {
+        flow: {
+          type: "oidc-federation",
+          providerKind: "aws",
+          audience: "arn:aws:iam::123456789012:role/hobo-db-writer",
+          exchange: "sts:AssumeRoleWithWebIdentity",
+          trust: { oidcDiscovery: "https://identity.prod-yard.example/.well-known/openid-configuration" },
+        },
+        reason: "AWS AssumeRoleWithWebIdentity flow requires roleArn",
+      },
+      {
+        flow: {
+          type: "oidc-federation",
+          providerKind: "gcp",
+          audience: "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/hobo/providers/yard",
+          exchange: "gcp:workload-identity-federation",
+          trust: { oidcDiscovery: "https://identity.prod-yard.example/.well-known/openid-configuration" },
+        },
+        reason: "GCP Workload Identity Federation flow requires serviceAccount",
+      },
+      {
+        flow: {
+          type: "oidc-federation",
+          providerKind: "azure",
+          audience: "api://AzureADTokenExchange",
+          exchange: "azure:federated-credential",
+          trust: { oidcDiscovery: "https://identity.prod-yard.example/.well-known/openid-configuration" },
+        },
+        reason: "Azure federated credential flow requires clientId",
+      },
+      {
+        flow: {
+          type: "oidc-federation",
+          providerKind: "aws",
+          audience: "arn:aws:iam::123456789012:role/hobo-db-writer",
+          exchange: "sts:AssumeRoleWithWebIdentity",
+          roleArn: "arn:aws:iam::123456789012:role/hobo-db-writer",
+        },
+        reason: "oidc-federation flow requires trust.oidcDiscovery",
+      },
+    ];
+
+    for (const scenario of scenarios) {
+      const events = [];
+      const sts = createFixtureProviderSts();
+      const broker = createFixtureBroker({
+        providerSts: sts,
+        eventSink: (event) => events.push(event),
+      });
+
+      const result = await broker.requestToken(baseRequest({ flow: scenario.flow }));
+
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, scenario.reason);
+      assert.equal(sts.calls.length, 0);
+      assert.deepEqual(events.map((event) => event.type), ["token.Denied"]);
+    }
+  });
+
   it("narrows and flags a provider STS token that grants broader permissions than requested", async () => {
     const events = [];
     const sts = createFixtureProviderSts({

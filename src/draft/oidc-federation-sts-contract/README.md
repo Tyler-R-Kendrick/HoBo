@@ -19,6 +19,9 @@ and Azure federated credentials.
 - Mock provider STS adapters receive provider-specific operations:
   `aws:AssumeRoleWithWebIdentity`, `gcp:WorkloadIdentityFederation`, and
   `azure:FederatedCredential`.
+- Missing provider trust setup fails closed before assertion minting or STS
+  exchange: AWS requires a role ARN, GCP requires a service account, Azure
+  requires a client id, and every flow requires `trust.oidcDiscovery`.
 - Returned provider credentials are bounded by the SVID expiry and broker max
   TTL, expose only a non-secret credential reference, and carry the narrowed
   permission tuple.
@@ -41,7 +44,7 @@ Run:
 npm.cmd --prefix src\draft\oidc-federation-sts-contract test
 ```
 
-The checks prove provider-specific STS dispatch, SVID-scoped assertion claims,
-short-lived provider credential bounds, static-secret non-use, audit emission,
-out-of-SVID-scope denial, over-broad STS narrowing/flagging, and expired SVID
-rejection.
+The checks prove provider-specific STS dispatch, provider trust config
+fail-closed behavior, SVID-scoped assertion claims, short-lived provider
+credential bounds, static-secret non-use, audit emission, out-of-SVID-scope
+denial, over-broad STS narrowing/flagging, and expired SVID rejection.

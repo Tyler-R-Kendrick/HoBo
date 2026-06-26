@@ -17,6 +17,9 @@ proves the AWS seed provider contract:
 - the multi-cloud-shop fixture realizes RDS/Aurora, S3, Fargate, SQS, and
   ElastiCache into a HoBo realization graph with `@hobo/iac-pulumi` driver
   intent and no provider-dialect leakage;
+- compute default definitions cover both Fargate and App Runner, and App Runner
+  region availability fails closed with the same `deployment.PlanRejected`
+  contract as other AWS classes;
 - local and camp conformance are both represented, with camp-only IAM/mTLS/quota
   evidence failing the camp lane while local conformance still passes;
 - unavailable AWS regions, unsatisfied `require` facts, and quota exhaustion

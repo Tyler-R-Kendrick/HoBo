@@ -36,6 +36,7 @@ test("factory publishes AWS seed capabilities, scoped option builders, defaults,
       ["aws.default.database.rds-aurora", "database", "aws:rds-aurora-postgres"],
       ["aws.default.objectStore.s3", "objectStore", "aws:s3-bucket"],
       ["aws.default.compute.fargate", "compute", "aws:fargate-service"],
+      ["aws.default.compute.apprunner", "compute", "aws:apprunner-service"],
       ["aws.default.queue.sqs", "queue", "aws:sqs-queue"],
       ["aws.default.cache.elasticache", "cache", "aws:elasticache-redis"]
     ]
@@ -45,6 +46,10 @@ test("factory publishes AWS seed capabilities, scoped option builders, defaults,
   assert.equal(manifest.auth.mode, "svid-federation");
   assert.equal(manifest.cost.currency, "USD");
   assert.equal(manifest.cost.facts.some((fact) => fact.sku === "aws.rds.aurora-postgres.acu-hour"), true);
+  assert.deepEqual(
+    manifest.capabilities.find((capability) => capability.port === "compute").resourceClasses,
+    ["aws:fargate-service", "aws:apprunner-service"]
+  );
   assert.deepEqual(aws.with.rds({ instanceClass: "db.t4g.medium", storageGb: 50 }), {
     providerId: "aws",
     port: "database",
@@ -112,7 +117,8 @@ test("provider-scoped .with blocks only affect AWS-resolved resources", () => {
     createAwsMultiCloudShopPlan({
       resourceOptions: {
         "orders-db": [aws.with.rds({ storageGb: 100, deletionProtection: true })],
-        assets: [aws.with.s3({ versioning: true })]
+        assets: [aws.with.s3({ versioning: true })],
+        web: [aws.with.appRunner({ ingress: "public" })]
       }
     })
   );
@@ -122,6 +128,8 @@ test("provider-scoped .with blocks only affect AWS-resolved resources", () => {
   assert.equal(emission.iac.nodes.find((node) => node.id === "orders-db").inputs.options.storageGb, 100);
   assert.equal(emission.iac.nodes.find((node) => node.id === "assets").inputs.options.versioning, true);
   assert.equal(emission.iac.nodes.find((node) => node.id === "jobs").inputs.options.versioning, undefined);
+  assert.equal(emission.iac.nodes.find((node) => node.id === "web").resourceClass, "aws:apprunner-service");
+  assert.equal(emission.iac.nodes.find((node) => node.id === "web").inputs.options.ingress, "public");
 });
 
 test("camp-only IAM, mTLS, and quota gaps do not hide behind local conformance", () => {
@@ -152,6 +160,28 @@ test("unsupported regions, missing require facts, and quota exhaustion reject wi
   assert.equal(badRegion.reason.code, "aws-region-service-unavailable");
   assert.equal(badRegion.reason.resourceId, "orders-db");
   assert.match(badRegion.reason.message, /RDS\/Aurora is not available/);
+
+  const appRunnerUnavailable = evaluateAwsPlan(
+    createAwsProvider({
+      serviceMatrix: {
+        "us-east-1": [
+          "aws:rds-aurora-postgres",
+          "aws:s3-bucket",
+          "aws:fargate-service",
+          "aws:sqs-queue",
+          "aws:elasticache-redis"
+        ]
+      }
+    }),
+    createAwsMultiCloudShopPlan({
+      resourceOptions: {
+        web: [aws.with.appRunner()]
+      }
+    })
+  );
+  assert.equal(appRunnerUnavailable.type, "deployment.PlanRejected");
+  assert.equal(appRunnerUnavailable.reason.code, "aws-region-service-unavailable");
+  assert.equal(appRunnerUnavailable.reason.resourceClass, "aws:apprunner-service");
 
   const unsupportedRequire = evaluateAwsPlan(
     provider,

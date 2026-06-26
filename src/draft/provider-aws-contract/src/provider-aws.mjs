@@ -38,6 +38,7 @@ const CAPABILITY_DEFINITIONS = [
     port: "compute",
     service: "Fargate/App Runner",
     resourceClass: "aws:fargate-service",
+    alternateResourceClasses: ["aws:apprunner-service"],
     className: "container",
     features: ["container", "http"],
     outputs: ["url", "serviceArn"],
@@ -296,7 +297,8 @@ export function evaluateAwsPlan(provider, plan) {
   for (const rawResource of plan.resources ?? []) {
     const resource = normalizeResource(rawResource, plan);
     const definition = requireCapability(resource.type);
-    const unavailable = availabilityError(resource, definition, serviceMatrix);
+    const resolved = mergeAwsResolvedOptions(provider, resource.options).merged[resource.type];
+    const unavailable = availabilityError(resource, definition, serviceMatrix, resolved?.resourceClass ?? definition.resourceClass);
     if (unavailable) return unavailable;
 
     const missing = (resource.require ?? []).filter((feature) => !definition.features.includes(feature));
@@ -448,6 +450,8 @@ function createCapabilities(serviceMatrix, defaultRegions) {
     port: definition.port,
     service: definition.service,
     resourceClass: definition.resourceClass,
+    resourceClasses: resourceClassesFor(definition),
+    resourceClassesByRegion: availableResourceClassesByRegion(definition, serviceMatrix, defaultRegions),
     features: definition.features,
     regions: availableRegionsFor(definition, serviceMatrix, defaultRegions),
     conformance: { tags: ["local", "camp"] },
@@ -485,7 +489,7 @@ function createCapabilityManifest(regions, serviceMatrix) {
 }
 
 function createDefaultDefinitions(regions) {
-  return CAPABILITY_DEFINITIONS.map((definition) => ({
+  return CAPABILITY_DEFINITIONS.flatMap((definition) => [{
     id: definition.defaultId,
     provider: AWS_PROVIDER_ID,
     port: definition.port,
@@ -499,7 +503,7 @@ function createDefaultDefinitions(regions) {
       features: definition.features
     },
     regions
-  }));
+  }, ...defaultAlternatesFor(definition, regions)]);
 }
 
 function createIacNode(resource) {
@@ -542,15 +546,15 @@ function normalizeResource(resource, plan) {
   };
 }
 
-function availabilityError(resource, definition, serviceMatrix) {
-  if (serviceMatrix[resource.region]?.includes(definition.resourceClass)) return null;
+function availabilityError(resource, definition, serviceMatrix, resourceClass) {
+  if (serviceMatrix[resource.region]?.includes(resourceClass)) return null;
 
   return planRejected("aws-region-service-unavailable", resource.id, {
     message: `${definition.service} is not available in ${resource.region} for ${resource.id}`,
     provider: AWS_PROVIDER_ID,
     region: resource.region,
     service: definition.service,
-    resourceClass: definition.resourceClass
+    resourceClass
   });
 }
 
@@ -570,7 +574,7 @@ function manifestServiceMatrix(provider) {
   for (const capability of manifest.capabilities ?? []) {
     for (const region of capability.regions ?? []) {
       matrix[region] ??= [];
-      matrix[region].push(capability.resourceClass);
+      matrix[region].push(...(capability.resourceClassesByRegion?.[region] ?? capability.resourceClasses ?? [capability.resourceClass]));
     }
   }
   return matrix;
@@ -579,12 +583,44 @@ function manifestServiceMatrix(provider) {
 function normalizeServiceMatrix(serviceMatrix, defaultRegions) {
   if (serviceMatrix) return serviceMatrix;
 
-  const allResourceClasses = CAPABILITY_DEFINITIONS.map((definition) => definition.resourceClass);
+  const allResourceClasses = CAPABILITY_DEFINITIONS.flatMap(resourceClassesFor);
   return Object.fromEntries(defaultRegions.map((region) => [region, allResourceClasses]));
 }
 
 function availableRegionsFor(definition, serviceMatrix, defaultRegions) {
-  return defaultRegions.filter((region) => serviceMatrix[region]?.includes(definition.resourceClass));
+  return defaultRegions.filter((region) =>
+    resourceClassesFor(definition).some((resourceClass) => serviceMatrix[region]?.includes(resourceClass))
+  );
+}
+
+function availableResourceClassesByRegion(definition, serviceMatrix, defaultRegions) {
+  return Object.fromEntries(defaultRegions.map((region) => [
+    region,
+    resourceClassesFor(definition).filter((resourceClass) => serviceMatrix[region]?.includes(resourceClass))
+  ]));
+}
+
+function resourceClassesFor(definition) {
+  return [definition.resourceClass, ...(definition.alternateResourceClasses ?? [])];
+}
+
+function defaultAlternatesFor(definition, regions) {
+  if (definition.port !== "compute") return [];
+  return [{
+    id: "aws.default.compute.apprunner",
+    provider: AWS_PROVIDER_ID,
+    port: definition.port,
+    resourceClass: "aws:apprunner-service",
+    className: "container",
+    source: "provider-default",
+    driver: IAC_PULUMI_DRIVER,
+    satisfies: definition.features,
+    equivalence: {
+      providerService: "App Runner",
+      features: definition.features
+    },
+    regions
+  }];
 }
 
 function normalizeCampEvidence(evidence = "pass", capability) {

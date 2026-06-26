@@ -65,6 +65,18 @@ export declare const aws: {
   with: AwsWithBuilders;
 };
 
+export interface AwsCapabilityManifestEntry {
+  port: AwsCapability;
+  service: string;
+  resourceClass: string;
+  resourceClasses: string[];
+  resourceClassesByRegion: Record<string, string[]>;
+  features: string[];
+  regions: string[];
+  conformance: { tags: ["local", "camp"] };
+  driver: typeof IAC_PULUMI_DRIVER;
+}
+
 export interface AwsProvider {
   id: typeof AWS_PROVIDER_ID;
   apiVersion: typeof AWS_PROVIDER_VERSION;
@@ -73,11 +85,13 @@ export interface AwsProvider {
   manifest: { claimedCapabilities: AwsCapability[] };
   with: AwsWithBuilders;
   registerDefaultDefinitions<T extends unknown[]>(registry: T): T;
+  realize(plan: Record<string, unknown>): Record<string, unknown>;
   capabilityManifest(): {
     provider: typeof AWS_PROVIDER_ID;
     claimedCapabilities: AwsCapability[];
     auth: { mode: "svid-federation" };
     regions: string[];
+    capabilities: AwsCapabilityManifestEntry[];
     cost: { facts: Array<{ sku: string }> };
   };
   client(port: "database", outputs: Record<string, unknown>): AwsDatabaseClient;

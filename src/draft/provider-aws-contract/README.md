@@ -14,6 +14,8 @@ It covers the seed AWS provider surface:
   `@hobo/iac-pulumi`;
 - a multi-cloud-shop fixture that wires RDS/Aurora, S3, Fargate, SQS, and
   ElastiCache through HoBo links and build references;
+- Fargate and App Runner default definitions for the compute seed port, with
+  App Runner availability rejected precisely when a region lacks it;
 - negative cases for camp-only IAM evidence, unavailable regions, unsatisfied
   `require` facts, and quota exhaustion.
 

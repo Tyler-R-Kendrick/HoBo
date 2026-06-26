@@ -364,6 +364,12 @@ function validateRecordPayload(payload, publicKeyPem, reasons) {
   if (payload.gateDecision?.effect !== "certify") {
     reasons.push("registry.policy_not_certified");
   }
+  if (!isObject(payload.validationReport)) {
+    reasons.push("registry.validation_report_required");
+  }
+  if (!isObject(payload.conformanceReport)) {
+    reasons.push("registry.conformance_report_required");
+  }
   if (!payload.validationReport?.passed) {
     reasons.push("registry.validation_not_green");
   }
@@ -376,7 +382,10 @@ function validateRecordPayload(payload, publicKeyPem, reasons) {
   if (payload.validationReportRef?.digest !== payload.validationReport?.ref?.digest) {
     reasons.push("registry.validation_report_ref_mismatch");
   }
-  if (payload.validationReportRef?.digest !== contentDigest(withoutRef(payload.validationReport))) {
+  if (
+    payload.validationReport &&
+    payload.validationReportRef?.digest !== contentDigest(withoutRef(payload.validationReport))
+  ) {
     reasons.push("registry.validation_report_digest_mismatch");
   }
 
@@ -393,7 +402,10 @@ function validateRecordPayload(payload, publicKeyPem, reasons) {
   if (payload.provenance.payload.artifact.digest !== payload.artifactRef?.digest) {
     reasons.push("registry.provenance_artifact_digest_mismatch");
   }
-  if (payload.provenance.payload.conformanceReportRef.digest !== contentDigest(payload.conformanceReport)) {
+  if (
+    payload.conformanceReport &&
+    payload.provenance.payload.conformanceReportRef.digest !== contentDigest(payload.conformanceReport)
+  ) {
     reasons.push("registry.provenance_report_digest_mismatch");
   }
   if (
@@ -537,10 +549,14 @@ function equal(actual, expected, code, path) {
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isObject(value)) {
     throw new CertifyStageContractError("certify.expected_object", path);
   }
   return value;
+}
+
+function isObject(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function nonEmptyString(value, path) {

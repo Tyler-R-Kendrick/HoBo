@@ -104,3 +104,4 @@
 | 0096 | Deny-ceiling composition algebra for mandatory policy packs | [identity-security](02-identity-security.md#adr-0096) |
 | 0097 | ID-JAG threat model and draft-version tracking for Cross-App Access | [identity-security](02-identity-security.md#adr-0097) |
 | 0098 | Generation eval methodology: hybrid rubrics, golden trajectories, and independent calibration | [data-plane](03-data-plane.md#adr-0098) |
+| 0099 | Data-flywheel privacy model for trajectory capture and training | [data-plane](03-data-plane.md#adr-0099) |

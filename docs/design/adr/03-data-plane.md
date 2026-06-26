@@ -339,3 +339,42 @@ read engine.
 - **(+)** The generated surface is reviewable and drift-gated alongside ADR-0037 codegen artifacts.
 - **(-)** Advanced resolver behavior is intentionally not fully generated; custom policy,
   pagination, and search semantics still need explicit adapter hooks.
+
+## ADR-0097
+**generateProvider correctness is a deterministic certification property.**
+
+### Context
+Plan 23 defines the generate -> validate -> repair -> certify loop for generated providers, and
+Plan 09 makes conformance plus trace replay the verification boundary. HOBO-211 spiked whether that
+claim can be made falsifiable for a reference database provider without building the production
+`generateProvider` loop.
+
+### Decision
+1. **Correctness is a reference event-stream proof, not a prose claim.** A provider generation run
+   starts from `gen.Requested` with authoritative WIT, conformance suite, Capability Manifest,
+   sanitized material refs, pinned model, frozen prompt, and seed. The run may certify only after
+   no-egress validation, provider conformance, trace replay, coverage, and provenance gates pass.
+2. **The canonical reference target is the database provider.** The acceptance harness must prove a
+   `hobo:database/postgres@0.1.0` provider can converge, replay recorded database traces, pass the
+   local database conformance suite, and produce a reference `gen.Certified`/`gen.PluginCertified`
+   record tied to the actual validation report.
+3. **Repair is bounded and fail-closed.** The default automated repair budget is two repair attempts.
+   A candidate that keeps failing validation emits `gen.NeedsHuman` with `repair-budget-exhausted`;
+   it is not silently retried, broadened, or certified.
+4. **Reproducibility requires pinned inputs.** The artifact digest and certification payload are
+   reproducible only when the target WIT, suite, Capability Manifest digest, model digest, frozen
+   prompt digest, seed, material refs, and policy input hash are pinned. Hosted aliases or
+   temperature-driven nondeterminism can be re-verified, but cannot make a bit-reproduction claim.
+5. **Minimum production coverage must include local and real Camp behavior.** A database provider
+   must pass the required local lifecycle checks and real-provider Camp behavior checks. A reference,
+   thin, local-only, or fixture-Camp suite is not enough for production certification even if every
+   check it contains passes. Untrusted cold-start docs are hints only and cannot override the
+   authoritative target WIT or suite.
+
+### Consequences
+- **(+)** Plan 23 provider-generation correctness now has an executable, reviewable reference proof
+  in `src/draft/generateprovider-correctness-spike`.
+- **(+)** HOBO-307, HOBO-320, HOBO-327, HOBO-330, HOBO-346, and HOBO-102 remain the production
+  building blocks; this ADR only fixes their acceptance boundary.
+- **(-)** The production loop still needs to wire these gates together and obtain real Camp evidence;
+  this spike deliberately does not implement provider runtime defense or training optimizer internals.

@@ -1,0 +1,44 @@
+# HOBO-152 Codegen CLI Proof
+
+HOBO-152 is proven by the focused POC at
+`src/draft/hobo-codegen-cli-contract`.
+
+## Acceptance Evidence
+
+- `hobo codegen writes the documented generated layout deterministically`
+  proves repeated generation, byte-identical output, and the documented
+  `.hobo/generated/` plus `src/_generated/` paths.
+- `--check passes on a fresh tree and never mutates the working tree` proves the
+  clean CI gate.
+- `--check fails with a clear diff after source or generated drift` proves the
+  nonzero drift gate and JSON drift status for stale generated files.
+- `--check fails after a valid source edit without rewriting generated files`
+  proves source edits are detected through the same non-mutating check path.
+- `generated TypeScript tree type-checks for a guest consumer` compiles a guest
+  fixture against the generated declarations.
+
+## Adversarial Evidence
+
+- `map and set ordering is normalized so --check cannot flap` covers
+  nondeterministic source ordering.
+- `source parse errors name the offending file and do not half-write the
+  generated tree` covers parse failure atomicity.
+- `--check does not mutate when drift is present` covers failed check safety.
+- `non-TypeScript guests fail with a static-analysis-required diagnostic` covers
+  non-TS guest behavior.
+
+## Scope Boundary
+
+The package models the CLI wrapper and check protocol only. It does not build the
+production codegen engine, watch-mode regeneration for `hobo dev`, or `hobo build`
+regeneration behavior.
+
+## Verification
+
+```powershell
+npm.cmd --prefix src\draft\hobo-codegen-cli-contract test
+npm.cmd test
+npm.cmd run docs:cli-lint
+npm.cmd run docs:design-lint
+node scripts\validate-traceability.mjs
+```

@@ -7,10 +7,12 @@ Independent POC for HOBO-92.
 - GraphQL query resolvers read materializations through cached snapshots.
 - Repeated identical queries hit the snapshot cache and do not re-fold.
 - GraphQL subscriptions attach to the same observable materialization as queries.
+- Snapshot positions are carried as per-stream seq vectors, matching the Reactor contract.
 - Tenant resolution fails closed before any read can return all tenants.
 - `.allow()` field scopes are enforced at the resolver/projection boundary.
 - Non-reactive sinks support one-shot query reads but reject subscription wiring.
 - Stale snapshots beyond the materialization consistency bound are refreshed.
+- Session/strong snapshots refresh when their materialization log position advances.
 - Cross-tenant rows emitted by a buggy resolver/materialization are caught before return.
 
 ## Scope Boundary

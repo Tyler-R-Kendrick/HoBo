@@ -73,6 +73,22 @@ function createRuntime({ now = () => 0 } = {}) {
               tenant: event.tenant,
               id: event.payload.id,
               total: event.payload.total,
+          }));
+        },
+      },
+      {
+        name: "sessionOrders",
+        queryField: "sessionOrders",
+        reactive: true,
+        readSet: ["order.created"],
+        consistency: { level: "session" },
+        fold(events, { tenant }) {
+          return events
+            .filter((event) => event.type === "order.created" && event.tenant === tenant)
+            .map((event) => ({
+              tenant: event.tenant,
+              id: event.payload.id,
+              total: event.payload.total,
             }));
         },
       },
@@ -126,7 +142,7 @@ test("GraphQL subscriptions deliver live pushes from the same observable materia
       source: "observable-materialization",
       materialization: "orders",
       fieldName: "ordersChanged",
-      seq: 2,
+      seq: { "acme/order:1": 1, "acme/order:3": 2 },
       value: [
         { id: "order-1", total: 42 },
         { id: "order-3", total: 17 },
@@ -209,6 +225,31 @@ test("stale cached snapshots beyond the consistency bound are refreshed", () => 
   assert.equal(refreshed.cacheHit, false);
   assert.equal(refreshed.refreshedBecause, "stale-snapshot");
   assert.equal(runtime.stats("orders").folds, 2);
+});
+
+test("session snapshots refresh when the materialization seq advances even inside one clock tick", () => {
+  const runtime = createRuntime({ now: () => 0 });
+  const document = "query { sessionOrders { id total } }";
+
+  const first = runtime.query({ document, context: { tenant: "acme" } });
+  runtime.appendEvent({
+    type: "order.created",
+    tenant: "acme",
+    streamId: "acme/order:3",
+    seq: 2,
+    payload: { id: "order-3", total: 17, internalCost: 8 },
+  });
+  const refreshed = runtime.query({ document, context: { tenant: "acme" } });
+
+  assert.equal(first.cacheHit, false);
+  assert.equal(refreshed.cacheHit, false);
+  assert.equal(refreshed.refreshedBecause, "snapshot-behind-log");
+  assert.deepEqual(refreshed.seq, { "acme/order:1": 1, "acme/order:3": 2 });
+  assert.deepEqual(refreshed.value, [
+    { id: "order-1", total: 42 },
+    { id: "order-3", total: 17 },
+  ]);
+  assert.equal(runtime.stats("sessionOrders").folds, 2);
 });
 
 test("cross-tenant resolver leaks are caught before returning a row", () => {

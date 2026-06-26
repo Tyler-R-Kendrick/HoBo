@@ -110,8 +110,12 @@ function readSnapshot({ state, materialization, operation, context, now }) {
   const cacheKey = snapshotKey(materialization, operation, normalizedContext);
   const existing = state.snapshots.get(cacheKey);
   const currentTime = now();
+  const currentSeq = seqVector(state.events, normalizedContext.tenant, materialization);
+  const staleReason = existing
+    ? snapshotStaleReason(existing, materialization, currentTime, currentSeq)
+    : undefined;
 
-  if (existing && !isStale(existing, materialization, currentTime)) {
+  if (existing && !staleReason) {
     return { snapshot: existing, cacheHit: true };
   }
 
@@ -127,7 +131,7 @@ function readSnapshot({ state, materialization, operation, context, now }) {
   return {
     snapshot,
     cacheHit: false,
-    refreshedBecause: existing ? "stale-snapshot" : undefined,
+    refreshedBecause: staleReason,
   };
 }
 
@@ -143,7 +147,7 @@ function recomputeSnapshot({ state, materialization, operation, context, created
 
   return {
     createdAt,
-    seq: maxSeq(state.events, context.tenant),
+    seq: seqVector(state.events, context.tenant, materialization),
     value: rows.map((row) => projectFields(row, operation.fields)),
   };
 }
@@ -250,19 +254,37 @@ function snapshotKey(materialization, operation, context) {
   });
 }
 
-function isStale(snapshot, materialization, currentTime) {
-  const maxAgeMs = materialization.consistency?.maxAgeMs ?? 0;
-  return currentTime - snapshot.createdAt > maxAgeMs;
+function snapshotStaleReason(snapshot, materialization, currentTime, currentSeq) {
+  const level = materialization.consistency?.level ?? "session";
+  if ((level === "session" || level === "strong") && !seqAtLeast(snapshot.seq, currentSeq)) {
+    return "snapshot-behind-log";
+  }
+
+  const maxAgeMs = materialization.consistency?.maxAgeMs;
+  if (maxAgeMs !== undefined && currentTime - snapshot.createdAt > maxAgeMs) {
+    return "stale-snapshot";
+  }
+
+  return undefined;
 }
 
 function dependsOn(materialization, event) {
   return !Array.isArray(materialization.readSet) || materialization.readSet.includes(event.type);
 }
 
-function maxSeq(events, tenant) {
-  return events
-    .filter((event) => event.tenant === tenant)
-    .reduce((highest, event) => Math.max(highest, event.seq), 0);
+function seqVector(events, tenant, materialization) {
+  const seq = {};
+  for (const event of events) {
+    if (event.tenant !== tenant || !dependsOn(materialization, event)) {
+      continue;
+    }
+    seq[event.streamId] = Math.max(seq[event.streamId] ?? 0, event.seq);
+  }
+  return stableObject(seq);
+}
+
+function seqAtLeast(candidate, floor) {
+  return Object.entries(floor).every(([streamId, seq]) => (candidate[streamId] ?? -1) >= seq);
 }
 
 function requiredString(value, label) {
@@ -273,4 +295,10 @@ function requiredString(value, label) {
 
 function clone(value) {
   return value === undefined ? value : structuredClone(value);
+}
+
+function stableObject(value) {
+  return Object.freeze(
+    Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right))),
+  );
 }

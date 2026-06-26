@@ -36,7 +36,7 @@ It covers:
 | Capture boundaries | Mixed public/internal/PII/secret trajectory fields transform before storage. |
 | PII redaction | PII becomes token and encrypted references; raw value is absent from serialized output. |
 | Secret handling | Secrets become sealed encrypted references and are omitted from optimizer payloads. |
-| Cross-tenant isolation | Store tenant mismatch denies capture and emits a denial reason. |
+| Cross-tenant isolation | Store or optimizer tenant mismatch denies capture and emits a denial reason. |
 | Retention and sampling | Trace sampling suppresses capture; effective retention chooses the strictest limit. |
-| Opt-out | Method opt-out suppresses trajectory capture before storage. |
+| Opt-out | Method opt-out suppresses trajectory capture; field opt-out omits the field before storage. |
 | PII re-emission defense | Optimizer payloads contain redacted fields and instructions, not raw prompt PII. |

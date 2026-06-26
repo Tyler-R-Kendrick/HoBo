@@ -183,6 +183,46 @@ test("Given trace sampling and opt-out policy when evaluated then trajectories i
 
   assert.equal(optedOut.capture, false);
   assert.equal(optedOut.denials[0].code, "method_opted_out");
+
+  const fieldOptOut = evaluateTrajectoryPrivacy(
+    policy,
+    baseRequest({
+      tenantPolicy: {
+        maxTrajectoryRetentionDays: 45,
+        optOut: {
+          tenants: [],
+          methods: [],
+          users: [],
+          fields: ["input.email"]
+        }
+      }
+    })
+  );
+
+  assert.equal(fieldOptOut.capture, true);
+  assert.equal(
+    fieldOptOut.fields.some((field) => field.path === "input.email"),
+    false
+  );
+});
+
+test("Given a cross-tenant optimizer when evaluated then capture fails closed", () => {
+  const decision = evaluateTrajectoryPrivacy(
+    policy,
+    baseRequest({
+      optimizer: {
+        tenantId: "tenant-b",
+        providerKind: "external"
+      }
+    })
+  );
+
+  assert.equal(decision.capture, false);
+  assert.deepEqual(
+    decision.denials.map((denial) => denial.code),
+    ["cross_tenant_optimizer"]
+  );
+  assert.deepEqual(decision.fields, []);
 });
 
 test("Given PII in a prompt trajectory when optimizer payload is built then raw PII cannot be re-emitted", () => {

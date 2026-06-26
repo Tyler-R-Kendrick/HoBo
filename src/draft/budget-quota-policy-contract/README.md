@@ -1,16 +1,19 @@
 # Budget/Quota Policy Contract POC
 
-Independent POC for HOBO-290. It pins the M2 cost-safety gate between
+Independent POC for HOBO-290, extended for HOBO-192. It pins the M2 cost-safety gate between
 `MeteringView` and the policy plane without implementing the policy engine,
-showback UI, spend-velocity circuit breaker, or cost-driven degradation tiers.
+showback UI, SRE operator, or cost-plane projections.
 
 ## Contract Surface
 
-- `evaluateBudgetQuotaPolicy({ request, meteringView, policies, approval })`
+- `evaluateBudgetQuotaPolicy({ request, meteringView, policies, approval, reservation })`
   consumes a policy `DecisionRequest` and a seq-pinned `MeteringView` snapshot.
 - Camp and tenant budgets support soft and hard USD thresholds.
 - Agent `spendCapUsd` is treated as the same quota gate, with explicit approve
   or deny handling.
+- `reservation` is optional for legacy policies, but required when a policy sets
+  `reservationRequired: true`; it carries the fenced counter id, matching scope,
+  granted/denied result, reserved USD amount, and in-flight action id.
 - Decisions return a policy IR decision plus an auditable `policy.Decided`
   event and supporting `spend.*` budget/cap facts.
 
@@ -25,14 +28,21 @@ Included:
   and records approver evidence.
 - Estimate-vs-actual overspend is marked as reconciliation-required without
   implementing the reconciliation engine.
+- Reservation-required policies consume synchronous pre-commit quota
+  reservations and deny missing, mismatched, denied, or under-sized
+  reservations before an action runs.
+- Spend-velocity crossing a `costAvailabilityProfile` tier returns
+  `allow-degraded` with a durable `spend.degradation-required` obligation.
 - Out-of-order `MeteringView` updates fail closed.
 - Partial-provision hard denies carry a compensation obligation.
 
 Excluded:
 
 - Policy-engine implementation or rule authoring.
-- Spend-velocity circuit breaker and `spend.CircuitTripped`.
-- Cost-driven graceful degradation and `allow-degraded`.
+- MeteringView projection, `spend.*` event production by the cost plane, and
+  planner objectives.
+- Runtime enforcement levers for degraded execution.
+- Spend-velocity circuit breaker reset mechanics and `spend.CircuitTripped`.
 - Showback presentation or billing/chargeback.
 
 ## Verification

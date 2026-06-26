@@ -19,6 +19,7 @@ export function evaluateBudgetQuotaPolicy(input) {
   const meteringView = normalizeMeteringView(source.meteringView);
   const policies = normalizePolicies(source.policies);
   const approval = normalizeApproval(source.approval);
+  const reservation = normalizeReservation(source.reservation);
   const estimateUsd = readCost(request.context, "costEstimateUsd", "estimatedCostUsd");
   const actualUsd = readOptionalCost(request.context, "actualCostUsd");
 
@@ -28,17 +29,26 @@ export function evaluateBudgetQuotaPolicy(input) {
     estimateUsd,
     actualUsd,
     approval,
+    reservation,
     evaluations: [],
     events: [],
     obligations: [],
     approvals: [],
     violations: [],
+    missingQuotaContext: policies.length === 0 && estimateUsd > 0,
     stalePolicies: [],
+    reservationViolations: [],
     hardViolations: [],
     approvalDenied: [],
     approvalNeeded: [],
     driftPolicies: [],
+    degradationPolicies: [],
   };
+
+  if (state.missingQuotaContext) {
+    state.violations.push("missing quota policy context for spend-incurring action");
+    state.events.push(createQuotaContextMissingEvent({ request, meteringView, estimateUsd }));
+  }
 
   for (const policy of policies) {
     evaluatePolicy(state, policy);
@@ -81,12 +91,16 @@ function evaluatePolicy(state, policy) {
   const projectedSpendUsd = roundUsd(currentSpendUsd + state.estimateUsd);
   const actualProjectedSpendUsd =
     state.actualUsd === null ? null : roundUsd(currentSpendUsd + state.actualUsd);
+  const reservationProjectedSpendUsd = state.reservation
+    ? roundUsd(currentSpendUsd + state.reservation.reservedCostUsd)
+    : null;
   const evaluation = {
     policyId: policy.id,
     scope: policy.scope,
     currentSpendUsd,
     estimatedCostUsd: state.estimateUsd,
     projectedSpendUsd,
+    reservationProjectedSpendUsd,
     actualCostUsd: state.actualUsd,
     actualProjectedSpendUsd,
     meteringViewSeq: state.meteringView.seq,
@@ -114,6 +128,12 @@ function evaluatePolicy(state, policy) {
     return;
   }
 
+  const reservationViolationCount = state.reservationViolations.length;
+  evaluatePreCommitReservation(state, policy, { currentSpendUsd, projectedSpendUsd });
+  if (state.reservationViolations.length > reservationViolationCount) {
+    return;
+  }
+
   evaluateBudgetThresholds(state, policy, { currentSpendUsd, projectedSpendUsd });
   evaluateAgentSpendCap(state, policy, { currentSpendUsd, projectedSpendUsd });
   evaluateEstimateDrift(state, policy, {
@@ -121,6 +141,95 @@ function evaluatePolicy(state, policy) {
     projectedSpendUsd,
     actualProjectedSpendUsd,
   });
+  evaluateCostAvailabilityProfile(state, policy, { currentSpendUsd, projectedSpendUsd });
+}
+
+function evaluatePreCommitReservation(state, policy, { currentSpendUsd, projectedSpendUsd }) {
+  if (!policy.reservationRequired) {
+    return;
+  }
+
+  const reservation = state.reservation;
+  const denyReservation = (reason, extra = {}) => {
+    state.reservationViolations.push(policy);
+    state.violations.push(`${policy.id}: ${reason}`);
+    state.events.push(
+      createSpendEvent({
+        type: "spend.QuotaReservationDenied",
+        request: state.request,
+        meteringView: state.meteringView,
+        policy,
+        currentSpendUsd,
+        projectedSpendUsd,
+        extra: {
+          reason,
+          reservationRequired: true,
+          ...extra,
+        },
+      }),
+    );
+  };
+
+  if (!reservation) {
+    denyReservation("missing pre-commit quota reservation");
+    return;
+  }
+
+  if (!sameScope(reservation.scope, policy.scope)) {
+    denyReservation("pre-commit quota reservation scope mismatch", {
+      reservationScopeKind: reservation.scope.kind,
+      reservationScopeId: reservation.scope.id,
+    });
+    return;
+  }
+
+  if (!reservation.granted) {
+    denyReservation(reservation.reason ?? "pre-commit quota reservation denied", {
+      counterId: reservation.counterId,
+      reservedCostUsd: reservation.reservedCostUsd,
+      inFlightActionId: reservation.inFlightActionId,
+    });
+    return;
+  }
+
+  if (reservation.reservedCostUsd < state.estimateUsd) {
+    denyReservation("pre-commit quota reservation is smaller than estimated spend", {
+      counterId: reservation.counterId,
+      reservedCostUsd: reservation.reservedCostUsd,
+      estimatedCostUsd: state.estimateUsd,
+    });
+    return;
+  }
+
+  const reservationProjectedSpendUsd = roundUsd(currentSpendUsd + reservation.reservedCostUsd);
+  if (policy.hardLimitUsd !== null && reservationProjectedSpendUsd > policy.hardLimitUsd) {
+    denyReservation("pre-commit quota reservation would exceed hard budget", {
+      counterId: reservation.counterId,
+      reservedCostUsd: reservation.reservedCostUsd,
+      hardLimitUsd: policy.hardLimitUsd,
+      reservationProjectedSpendUsd,
+    });
+    maybeAddCompensationObligation(state);
+    return;
+  }
+
+  state.events.push(
+    createSpendEvent({
+      type: "spend.QuotaReservationCommitted",
+      request: state.request,
+      meteringView: state.meteringView,
+      policy,
+      currentSpendUsd,
+      projectedSpendUsd,
+      extra: {
+        counterId: reservation.counterId,
+        reservedCostUsd: reservation.reservedCostUsd,
+        reservationProjectedSpendUsd,
+        inFlightActionId: reservation.inFlightActionId,
+        maxOvershootUsd: reservation.reservedCostUsd,
+      },
+    }),
+  );
 }
 
 function evaluateBudgetThresholds(state, policy, { currentSpendUsd, projectedSpendUsd }) {
@@ -279,6 +388,66 @@ function evaluateEstimateDrift(state, policy, { currentSpendUsd, projectedSpendU
   );
 }
 
+function evaluateCostAvailabilityProfile(state, policy, { currentSpendUsd, projectedSpendUsd }) {
+  if (!policy.costAvailabilityProfile) {
+    return;
+  }
+
+  const profile = policy.costAvailabilityProfile;
+  const hoursRemaining = hoursBetween(profile.evaluationAt, profile.periodEnd);
+  const projectedPeriodSpendUsd = roundUsd(
+    projectedSpendUsd + profile.spendVelocityUsdPerHour * hoursRemaining,
+  );
+  const breachedTier = profile.tiers.reduce((selected, tier) => {
+    if (projectedPeriodSpendUsd <= tier.thresholdUsd) {
+      return selected;
+    }
+    if (!selected || tier.thresholdUsd >= selected.thresholdUsd) {
+      return tier;
+    }
+    return selected;
+  }, null);
+  if (!breachedTier) {
+    return;
+  }
+
+  state.degradationPolicies.push(policy);
+  state.obligations.push({
+    kind: "spend.degradation-required",
+    policyId: policy.id,
+    scope: policy.scope,
+    profileId: profile.id,
+    tier: breachedTier.name,
+    durable: true,
+    strategy: breachedTier.strategy,
+    shed: breachedTier.shed,
+    currentSpendUsd,
+    projectedSpendUsd,
+    projectedPeriodSpendUsd,
+    thresholdUsd: breachedTier.thresholdUsd,
+  });
+  state.events.push(
+    createSpendEvent({
+      type: "spend.DegradationRequired",
+      request: state.request,
+      meteringView: state.meteringView,
+      policy,
+      currentSpendUsd,
+      projectedSpendUsd,
+      extra: {
+        profileId: profile.id,
+        tier: breachedTier.name,
+        durable: true,
+        strategy: breachedTier.strategy,
+        shed: breachedTier.shed,
+        spendVelocityUsdPerHour: profile.spendVelocityUsdPerHour,
+        projectedPeriodSpendUsd,
+        thresholdUsd: breachedTier.thresholdUsd,
+      },
+    }),
+  );
+}
+
 function maybeAddCompensationObligation(state) {
   const partial = state.request.context.partialProvisioning;
   if (!partial || typeof partial !== "object" || Array.isArray(partial)) {
@@ -301,18 +470,33 @@ function maybeAddCompensationObligation(state) {
 }
 
 function chooseEffect(state) {
-  if (state.stalePolicies.length > 0 || state.hardViolations.length > 0 || state.approvalDenied.length > 0) {
+  if (
+    state.missingQuotaContext ||
+    state.stalePolicies.length > 0 ||
+    state.reservationViolations.length > 0 ||
+    state.hardViolations.length > 0 ||
+    state.approvalDenied.length > 0
+  ) {
     return "deny";
   }
   if (state.approvalNeeded.length > 0 || state.driftPolicies.length > 0) {
     return "require-approval";
   }
+  if (state.degradationPolicies.length > 0) {
+    return "allow-degraded";
+  }
   return "allow";
 }
 
 function chooseReason(state) {
+  if (state.missingQuotaContext) {
+    return "missing quota policy context failed closed";
+  }
   if (state.stalePolicies.length > 0) {
     return "out-of-order MeteringView update failed closed";
+  }
+  if (state.reservationViolations.length > 0) {
+    return "pre-commit quota reservation denied spend";
   }
   if (state.hardViolations.length > 0) {
     return "hard budget threshold exceeded";
@@ -325,6 +509,9 @@ function chooseReason(state) {
   }
   if (state.driftPolicies.length > 0) {
     return "estimate-vs-actual drift requires reconciliation approval";
+  }
+  if (state.degradationPolicies.length > 0) {
+    return "spend velocity requires degraded execution";
   }
   return "budget and quota gate passed";
 }
@@ -381,6 +568,22 @@ function createSpendEvent({ type, request, meteringView, policy, currentSpendUsd
   };
 }
 
+function createQuotaContextMissingEvent({ request, meteringView, estimateUsd }) {
+  const payload = {
+    type: "spend.QuotaContextMissing",
+    schemaVersion: BUDGET_QUOTA_POLICY_SCHEMA_VERSION,
+    seq: meteringView.seq,
+    meteringViewDigest: meteringView.digest,
+    requestHash: request.inputHash,
+    estimatedCostUsd: estimateUsd,
+    currency: meteringView.currency,
+  };
+  return {
+    id: `${payload.type}:${shortHash(payload)}`,
+    ...payload,
+  };
+}
+
 function normalizePolicies(policies) {
   if (!Array.isArray(policies)) {
     throw new TypeError("input.policies must be an array");
@@ -399,14 +602,23 @@ function normalizePolicy(input, path) {
     driftToleranceUsd: optionalNonNegativeNumber(policy.driftToleranceUsd, `${path}.driftToleranceUsd`) ?? 0,
     allowedApprovers: parseStringArray(policy.allowedApprovers ?? [], `${path}.allowedApprovers`),
     lastEvaluatedSeq: optionalNonNegativeInteger(policy.lastEvaluatedSeq, `${path}.lastEvaluatedSeq`) ?? 0,
+    reservationRequired: optionalBoolean(policy.reservationRequired, `${path}.reservationRequired`) ?? false,
+    costAvailabilityProfile: normalizeCostAvailabilityProfile(
+      policy.costAvailabilityProfile,
+      `${path}.costAvailabilityProfile`,
+      policy.hardLimitUsd,
+    ),
   };
 
   if (
     normalized.softLimitUsd === null &&
     normalized.hardLimitUsd === null &&
-    normalized.spendCapUsd === null
+    normalized.spendCapUsd === null &&
+    normalized.costAvailabilityProfile === null
   ) {
-    throw new TypeError(`${path} must define a softLimitUsd, hardLimitUsd, or spendCapUsd`);
+    throw new TypeError(
+      `${path} must define a softLimitUsd, hardLimitUsd, spendCapUsd, or costAvailabilityProfile`,
+    );
   }
   if (
     normalized.softLimitUsd !== null &&
@@ -416,6 +628,71 @@ function normalizePolicy(input, path) {
     throw new RangeError(`${path}.softLimitUsd must be less than hardLimitUsd`);
   }
   return normalized;
+}
+
+function normalizeReservation(input) {
+  if (input === undefined || input === null) {
+    return null;
+  }
+  const reservation = expectObject(input, "input.reservation");
+  return {
+    counterId: requireString(reservation.counterId, "input.reservation.counterId"),
+    scope: normalizeScope(reservation.scope, "input.reservation.scope"),
+    granted: requireBoolean(reservation.granted, "input.reservation.granted"),
+    reservedCostUsd: optionalNonNegativeNumber(
+      reservation.reservedCostUsd,
+      "input.reservation.reservedCostUsd",
+    ) ?? 0,
+    inFlightActionId: requireString(
+      reservation.inFlightActionId,
+      "input.reservation.inFlightActionId",
+    ),
+    reason: optionalString(reservation.reason),
+  };
+}
+
+function normalizeCostAvailabilityProfile(input, path, fallbackBudgetUsd) {
+  if (input === undefined || input === null) {
+    return null;
+  }
+  const profile = expectObject(input, path);
+  const budgetUsd =
+    optionalNonNegativeNumber(profile.budgetUsd, `${path}.budgetUsd`) ?? fallbackBudgetUsd;
+  if (budgetUsd === null || budgetUsd === undefined) {
+    throw new TypeError(`${path}.budgetUsd is required when policy.hardLimitUsd is absent`);
+  }
+  const tiers = parseDegradationTiers(profile.tiers, `${path}.tiers`, budgetUsd);
+  return {
+    id: requireString(profile.id, `${path}.id`),
+    budgetUsd,
+    evaluationAt: requireString(profile.evaluationAt, `${path}.evaluationAt`),
+    periodEnd: requireString(profile.periodEnd, `${path}.periodEnd`),
+    spendVelocityUsdPerHour:
+      optionalNonNegativeNumber(
+        profile.spendVelocityUsdPerHour,
+        `${path}.spendVelocityUsdPerHour`,
+      ) ?? 0,
+    tiers,
+  };
+}
+
+function parseDegradationTiers(input, path, budgetUsd) {
+  if (!Array.isArray(input) || input.length === 0) {
+    throw new TypeError(`${path} must be a non-empty array`);
+  }
+  return input.map((tier, index) => {
+    const tierPath = `${path}[${index}]`;
+    const source = expectObject(tier, tierPath);
+    const thresholdUsd =
+      optionalNonNegativeNumber(source.thresholdUsd, `${tierPath}.thresholdUsd`) ??
+      readThresholdFraction(source.thresholdFraction, `${tierPath}.thresholdFraction`, budgetUsd);
+    return {
+      name: requireString(source.name, `${tierPath}.name`),
+      thresholdUsd,
+      strategy: requireString(source.strategy, `${tierPath}.strategy`),
+      shed: parseStringArray(source.shed ?? [], `${tierPath}.shed`),
+    };
+  });
 }
 
 function normalizeScope(input, path) {
@@ -428,6 +705,10 @@ function normalizeScope(input, path) {
     kind,
     id: requireString(scope.id, `${path}.id`),
   };
+}
+
+function sameScope(left, right) {
+  return left.kind === right.kind && left.id === right.id;
 }
 
 function normalizeMeteringView(input) {
@@ -573,6 +854,20 @@ function parseOptionalStringArray(input) {
   return input.filter((value) => typeof value === "string" && value.length > 0);
 }
 
+function requireBoolean(input, fieldName) {
+  if (typeof input !== "boolean") {
+    throw new TypeError(`${fieldName} must be a boolean`);
+  }
+  return input;
+}
+
+function optionalBoolean(input, fieldName) {
+  if (input === undefined || input === null) {
+    return null;
+  }
+  return requireBoolean(input, fieldName);
+}
+
 function optionalNonNegativeNumber(input, fieldName) {
   if (input === undefined || input === null) {
     return null;
@@ -595,6 +890,25 @@ function requireNonNegativeInteger(input, fieldName) {
     throw new TypeError(`${fieldName} must be a non-negative integer`);
   }
   return input;
+}
+
+function readThresholdFraction(input, fieldName, budgetUsd) {
+  if (!Number.isFinite(input) || input <= 0 || input > 1) {
+    throw new TypeError(`${fieldName} must be a number greater than 0 and at most 1`);
+  }
+  return roundUsd(budgetUsd * input);
+}
+
+function hoursBetween(start, end) {
+  const startMs = Date.parse(start);
+  const endMs = Date.parse(end);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    throw new TypeError("costAvailabilityProfile evaluationAt and periodEnd must be ISO timestamps");
+  }
+  if (endMs < startMs) {
+    throw new RangeError("costAvailabilityProfile.periodEnd must be after evaluationAt");
+  }
+  return (endMs - startMs) / 3_600_000;
 }
 
 function roundUsd(value) {

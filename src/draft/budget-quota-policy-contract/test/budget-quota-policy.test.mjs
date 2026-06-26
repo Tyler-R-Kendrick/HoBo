@@ -87,6 +87,17 @@ function decisionRequest(overrides = {}) {
   };
 }
 
+function quotaReservation(overrides = {}) {
+  return {
+    counterId: "counter:tenant-a/camp-prod/monthly",
+    scope: { kind: "camp", id: "tenant-a/camp-prod" },
+    granted: true,
+    reservedCostUsd: 3.5,
+    inFlightActionId: "action:deploy-checkout-prod",
+    ...overrides,
+  };
+}
+
 test("soft threshold emits a warn obligation without blocking the gate", () => {
   const result = evaluateBudgetQuotaPolicy({
     request: decisionRequest({ context: { costEstimateUsd: 8 } }),
@@ -414,4 +425,185 @@ test("out-of-order counter update fails closed instead of regressing a crossed t
   assert.equal(result.decision.effect, "deny");
   assert.match(result.decision.reason, /out-of-order/);
   assert.equal(result.events.find((event) => event.type === "spend.CounterOutOfOrder").scopeId, "tenant-a");
+});
+
+test("pre-commit reservation bounds hot-loop overshoot to one in-flight action", () => {
+  const policy = {
+    id: "budget:camp-prod/monthly",
+    scope: { kind: "camp", id: "tenant-a/camp-prod" },
+    softLimitUsd: 90,
+    hardLimitUsd: 100,
+    reservationRequired: true,
+    lastEvaluatedSeq: 10,
+  };
+  const request = decisionRequest({ context: { costEstimateUsd: 3.5 } });
+  const view = meteringView({
+    scopeCosts: {
+      "camp:tenant-a/camp-prod": 96,
+    },
+  });
+
+  const firstInFlight = evaluateBudgetQuotaPolicy({
+    request,
+    meteringView: view,
+    reservation: quotaReservation(),
+    policies: [policy],
+  });
+  const racedHotLoop = evaluateBudgetQuotaPolicy({
+    request,
+    meteringView: view,
+    reservation: quotaReservation({
+      granted: false,
+      reason: "quota counter already reserved for in-flight action",
+    }),
+    policies: [policy],
+  });
+
+  assert.equal(firstInFlight.decision.effect, "allow");
+  assert.equal(
+    firstInFlight.events.find((event) => event.type === "spend.QuotaReservationCommitted")
+      .maxOvershootUsd,
+    3.5,
+  );
+  assert.equal(firstInFlight.events.find((event) => event.type === "policy.Decided").data.effect, "allow");
+
+  assert.equal(racedHotLoop.decision.effect, "deny");
+  assert.match(racedHotLoop.decision.reason, /pre-commit quota reservation/);
+  assert.equal(
+    racedHotLoop.events.find((event) => event.type === "spend.QuotaReservationDenied").reason,
+    "quota counter already reserved for in-flight action",
+  );
+  assert.equal(racedHotLoop.events.find((event) => event.type === "policy.Decided").data.effect, "deny");
+});
+
+test("spend-incurring action with no quota context fails closed", () => {
+  const result = evaluateBudgetQuotaPolicy({
+    request: decisionRequest({ context: { costEstimateUsd: 2 } }),
+    meteringView: meteringView(),
+    policies: [],
+  });
+
+  assert.equal(result.decision.effect, "deny");
+  assert.match(result.decision.reason, /missing quota policy context/);
+  assert.equal(result.events.find((event) => event.type === "spend.QuotaContextMissing").estimatedCostUsd, 2);
+  assert.equal(result.events.find((event) => event.type === "policy.Decided").data.effect, "deny");
+});
+
+test("missing required reservation denies instead of treating hard quota as unlimited", () => {
+  const result = evaluateBudgetQuotaPolicy({
+    request: decisionRequest({ context: { costEstimateUsd: 1 } }),
+    meteringView: meteringView({
+      scopeCosts: {
+        "camp:tenant-a/camp-prod": 25,
+      },
+    }),
+    policies: [
+      {
+        id: "budget:camp-prod/monthly",
+        scope: { kind: "camp", id: "tenant-a/camp-prod" },
+        hardLimitUsd: 100,
+        reservationRequired: true,
+        lastEvaluatedSeq: 10,
+      },
+    ],
+  });
+
+  assert.equal(result.decision.effect, "deny");
+  assert.match(result.decision.violations.join("\n"), /missing pre-commit quota reservation/);
+  assert.equal(result.events.find((event) => event.type === "spend.QuotaReservationDenied").blocked, undefined);
+  assert.equal(result.events.find((event) => event.type === "policy.Decided").data.effect, "deny");
+});
+
+test("spend velocity crossing cost availability tier yields durable allow-degraded obligation", () => {
+  const result = evaluateBudgetQuotaPolicy({
+    request: decisionRequest({ context: { costEstimateUsd: 1 } }),
+    meteringView: meteringView({
+      scopeCosts: {
+        "camp:tenant-a/camp-prod": 70,
+      },
+    }),
+    policies: [
+      {
+        id: "cost-availability:camp-prod/monthly",
+        scope: { kind: "camp", id: "tenant-a/camp-prod" },
+        hardLimitUsd: 100,
+        costAvailabilityProfile: {
+          id: "cost-availability-profile:camp-prod",
+          evaluationAt: "2026-06-26T12:00:00.000Z",
+          periodEnd: "2026-06-27T00:00:00.000Z",
+          spendVelocityUsdPerHour: 1,
+          tiers: [
+            {
+              name: "observe",
+              thresholdFraction: 0.5,
+              strategy: "watch-cost-velocity",
+              shed: ["cosmetic-telemetry"],
+            },
+            {
+              name: "reduced",
+              thresholdFraction: 0.8,
+              strategy: "shed-low-priority-work",
+              shed: ["background-analysis", "noncritical-retries"],
+            },
+          ],
+        },
+        lastEvaluatedSeq: 10,
+      },
+    ],
+  });
+
+  assert.equal(result.decision.effect, "allow-degraded");
+  assert.equal(result.decision.reason, "spend velocity requires degraded execution");
+  assert.deepEqual(result.decision.obligations, [
+    {
+      kind: "spend.degradation-required",
+      policyId: "cost-availability:camp-prod/monthly",
+      scope: { kind: "camp", id: "tenant-a/camp-prod" },
+      profileId: "cost-availability-profile:camp-prod",
+      tier: "reduced",
+      durable: true,
+      strategy: "shed-low-priority-work",
+      shed: ["background-analysis", "noncritical-retries"],
+      currentSpendUsd: 70,
+      projectedSpendUsd: 71,
+      projectedPeriodSpendUsd: 83,
+      thresholdUsd: 80,
+    },
+  ]);
+  assert.equal(result.events.find((event) => event.type === "spend.DegradationRequired").durable, true);
+  assert.equal(
+    result.events.find((event) => event.type === "policy.Decided").data.effect,
+    "allow-degraded",
+  );
+});
+
+test("cost availability profile without hard limit or budget fails closed", () => {
+  assert.throws(
+    () =>
+      evaluateBudgetQuotaPolicy({
+        request: decisionRequest({ context: { costEstimateUsd: 1 } }),
+        meteringView: meteringView(),
+        policies: [
+          {
+            id: "cost-availability:camp-prod/monthly",
+            scope: { kind: "camp", id: "tenant-a/camp-prod" },
+            costAvailabilityProfile: {
+              id: "cost-availability-profile:camp-prod",
+              evaluationAt: "2026-06-26T12:00:00.000Z",
+              periodEnd: "2026-06-27T00:00:00.000Z",
+              spendVelocityUsdPerHour: 1,
+              tiers: [
+                {
+                  name: "reduced",
+                  thresholdFraction: 0.8,
+                  strategy: "shed-low-priority-work",
+                  shed: [],
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    /budgetUsd is required/,
+  );
 });

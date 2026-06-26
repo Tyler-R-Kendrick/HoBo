@@ -499,3 +499,24 @@ The executable proof vectors live in `src/draft/deny-ceiling-algebra-poc` and co
 - **(+)** Mandatory policy packs now have one replayable algebra that policy engines, conformance tests, and future OPA/Cedar adapters can implement against.
 - **(+)** Adversarial ordering and child-scope widening attempts fail closed without losing the effective deny evidence.
 - **(-)** The algebra is intentionally conservative: default rules are the only place to express overridable recommendations, while mandatory rules must be modeled as ceilings or bounded maxima.
+
+## ADR-0097
+**ID-JAG threat model and draft-version tracking for Cross-App Access.**
+
+### Context
+[ADR-0084](#adr-0084) chose Cross-App Access over private per-app OAuth consent so enterprise policy can see and govern "agent X acts as user Y in external app Z". HOBO-54 already pins the ID-JAG wire contract, and `auth.json` already pins the active draft string. The missing decision was how HoBo treats ID-JAG as a moving IETF draft, and which abuse cases must become adversarial regression vectors before outbound and inbound XAA hardening can ship.
+
+As of 2026-06-26, the official IETF Datatracker page shows `draft-ietf-oauth-identity-assertion-authz-grant-04` as the current draft. HoBo keeps that as the active protocol pin until a branch explicitly reviews a newer draft and updates the HOBO-48 `auth.json` pin, the HOBO-54 wire vectors, and the adversarial matrix together.
+
+### Decision
+1. **The draft pin is a contract input, not a comment.** `oauth2-xaa` declarations and ID-JAG assertions carry `draft-ietf-oauth-identity-assertion-authz-grant-04`. A target authorization server must advertise compatible grant-profile support before HoBo uses XAA with it. A mismatched, missing, or newer unreviewed draft revision yields `hold` or `invalid_grant`, never silent interop.
+2. **Draft bumps require vector-diff review.** A newer Datatracker revision, MCP authorization-extension change, token/grant-profile registration change, OAuth security BCP change, or incompatible target metadata opens a requirements review. The pin may move only with updated `auth.json`, wire-contract vectors, and threat-model fixtures in the same branch.
+3. **Threat families are fixed for the adversarial handoff.** The HOBO-271 matrix covers stage-1 assertion theft/replay, stage-2 audience/resource confusion, IdP-compromise blast radius, scope upgrade at redemption, draft-version skew, forced fallback from `oauth2-xaa` to `oauth2-obo`, actor-token confusion, sender-constrained token downgrade, and refresh-token-as-subject-token broadening.
+4. **Fallback is explicit and policy-gated.** HoBo may use `oauth2-obo` or MCP OAuth only when target discovery does not advertise compatible XAA, or a policy allows that lower-governance route. If a target supports XAA and a mandatory rule requires it, downgrade attempts fail closed and are recorded in CredentialAudit.
+5. **Unsupported extension paths fail closed.** HoBo rejects unexpected `actor_token` use in XAA until a supported profile defines actor processing. When sender-constrained ID-JAG use is required, `cnf` and DPoP proof must match; missing proof or mismatched thumbprint is not treated as bearer fallback.
+6. **The spike output is executable.** The matrix and guard requirements live in `src/draft/id-jag-threat-model-spike`, and the proof doc lives in `docs/design/proofs/hobo-271-id-jag-threat-model`. Future adversarial slices consume this as the minimum coverage list.
+
+### Consequences
+- **(+)** XAA hardening now has a concrete threat matrix and draft-tracking rule instead of a generic "track the draft" note.
+- **(+)** The most dangerous downgrade paths - OBO fallback, actor-token confusion, sender-constrained-token downgrade, and version skew - are fail-closed by contract before runtime code exists.
+- **(-)** HoBo may temporarily reject targets that implement a newer ID-JAG draft until the pin and vectors are reviewed together.

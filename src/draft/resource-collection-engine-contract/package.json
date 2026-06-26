@@ -1,0 +1,14 @@
+{
+  "name": "@hobo-draft/resource-collection-engine-contract",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/resource-collection-engine.d.ts",
+      "import": "./src/resource-collection-engine.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

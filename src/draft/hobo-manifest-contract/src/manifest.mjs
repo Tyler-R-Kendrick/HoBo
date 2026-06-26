@@ -1,7 +1,24 @@
 import { createHash } from "node:crypto";
 
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
+export const CURRENT_MANIFEST_SCHEMA = "hobo.manifest/v1.1";
 
+const KNOWN_MANIFEST_SCHEMAS = [MANIFEST_SCHEMA, CURRENT_MANIFEST_SCHEMA];
+const DEFAULT_MANIFEST_UPCASTERS = [
+  {
+    from: MANIFEST_SCHEMA,
+    to: CURRENT_MANIFEST_SCHEMA,
+    upcast(manifest) {
+      return {
+        ...manifest,
+        schema: CURRENT_MANIFEST_SCHEMA,
+        manifestVersion: {
+          upcastedFrom: manifest.schema,
+        },
+      };
+    },
+  },
+];
 const RESOURCE_TYPES = new Set(["data.v1", "component.v1", "website.v1"]);
 const RESOURCE_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const MANIFEST_REFERENCE = /^\{([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
@@ -17,14 +34,28 @@ export class ManifestValidationError extends Error {
   }
 }
 
+export class ManifestUpcastError extends Error {
+  constructor(path, message) {
+    super(`${path}: ${message}`);
+    this.name = "ManifestUpcastError";
+    this.path = path;
+  }
+}
+
 export function validateManifest(input) {
   assertRecord(input, "manifest");
 
-  if (input.schema !== MANIFEST_SCHEMA) {
+  if (!KNOWN_MANIFEST_SCHEMAS.includes(input.schema)) {
     throw new ManifestValidationError(
       "schema",
-      `expected ${MANIFEST_SCHEMA}`,
+      `expected ${KNOWN_MANIFEST_SCHEMAS.join(" or ")}`,
     );
+  }
+  if (input.schema === CURRENT_MANIFEST_SCHEMA) {
+    if (input.manifestVersion === undefined) {
+      throw new ManifestValidationError("manifestVersion", "required");
+    }
+    assertRecord(input.manifestVersion, "manifestVersion");
   }
 
   assertRecord(input.componentHost, "componentHost");
@@ -49,9 +80,90 @@ export function validateManifest(input) {
 
   return {
     valid: true,
-    schema: MANIFEST_SCHEMA,
+    schema: input.schema,
     aspireEnv,
     hash: canonicalManifestHash(input),
+  };
+}
+
+export function upcastManifest(input, options = {}) {
+  assertRecord(input, "manifest");
+
+  const targetSchema = options.targetSchema ?? CURRENT_MANIFEST_SCHEMA;
+  const schemaOrder = options.schemaOrder ?? KNOWN_MANIFEST_SCHEMAS;
+  const upcasters = options.upcasters ?? DEFAULT_MANIFEST_UPCASTERS;
+  const fromSchema = input.schema;
+
+  if (!schemaOrder.includes(fromSchema)) {
+    throw new ManifestUpcastError("schema", `unknown manifest schema ${fromSchema}`);
+  }
+  if (!schemaOrder.includes(targetSchema)) {
+    throw new ManifestUpcastError("schema", `unknown target schema ${targetSchema}`);
+  }
+  const sourceIndex = schemaOrder.indexOf(fromSchema);
+  const targetIndex = schemaOrder.indexOf(targetSchema);
+  if (sourceIndex > targetIndex) {
+    throw new ManifestUpcastError(
+      "schema",
+      `cannot upcast ${fromSchema} to older target ${targetSchema}`,
+    );
+  }
+
+  let manifest = structuredClone(input);
+  const appliedUpcasters = [];
+  const losses = [];
+
+  while (manifest.schema !== targetSchema) {
+    const step = upcasters.find((upcaster) => upcaster.from === manifest.schema);
+    if (!step) {
+      throw new ManifestUpcastError(
+        "schema",
+        `missing upcaster from ${manifest.schema} to ${targetSchema}`,
+      );
+    }
+    const expectedNextSchema = schemaOrder[schemaOrder.indexOf(manifest.schema) + 1];
+    if (step.to !== expectedNextSchema) {
+      throw new ManifestUpcastError(
+        "schema",
+        `missing intermediate upcaster from ${manifest.schema} to ${expectedNextSchema}`,
+      );
+    }
+
+    const before = manifest;
+    const next = step.upcast(structuredClone(manifest));
+    const explicitLosses = Array.isArray(next?.losses) ? next.losses : [];
+    const nextManifest = next?.manifest ?? next;
+    assertRecord(nextManifest, "upcaster.result");
+
+    const removed = removedPaths(before, nextManifest);
+    if (removed.length > 0 && explicitLosses.length === 0) {
+      throw new ManifestUpcastError(
+        "schema",
+        `lossy upcaster ${step.from}->${step.to} removed ${removed.join(", ")} without recording loss`,
+      );
+    }
+
+    manifest = nextManifest;
+    losses.push(...explicitLosses);
+    appliedUpcasters.push(`${step.from}->${step.to}`);
+
+    if (manifest.schema !== step.to) {
+      throw new ManifestUpcastError(
+        "schema",
+        `upcaster ${step.from}->${step.to} returned ${manifest.schema}`,
+      );
+    }
+  }
+
+  validateManifest(manifest);
+
+  return {
+    manifest,
+    hash: canonicalManifestHash(manifest),
+    fromSchema,
+    toSchema: manifest.schema,
+    appliedUpcasters,
+    losses,
   };
 }
 
@@ -223,6 +335,23 @@ function sortKeys(value) {
       .sort()
       .map((key) => [key, sortKeys(value[key])]),
   );
+}
+
+function removedPaths(before, after, path = "") {
+  if (!isRecord(before) || !isRecord(after)) {
+    return [];
+  }
+
+  const removed = [];
+  for (const [key, beforeValue] of Object.entries(before)) {
+    const nextPath = path ? `${path}.${key}` : key;
+    if (!(key in after)) {
+      removed.push(nextPath);
+      continue;
+    }
+    removed.push(...removedPaths(beforeValue, after[key], nextPath));
+  }
+  return removed;
 }
 
 function assertRecord(value, path) {

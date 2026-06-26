@@ -5,9 +5,23 @@ import {
   type DataHandle,
   type ImportedParadigmPackage,
   type LoweringDescriptor,
+  type ProviderOption,
 } from "../src/data-paradigm-authoring.mjs";
 
 function assertDataParadigmTypes() {
+  const awsRds: ProviderOption<
+    "aws",
+    "data",
+    { readonly engine: "postgres"; readonly multiAz: boolean }
+  > = {
+    __kind: "hobo.provider-option",
+    provider: "aws",
+    optionName: "rds",
+    annotationKey: "aws.rds",
+    resourceKinds: ["data"],
+    value: { engine: "postgres", multiAz: true },
+  };
+
   const sql: ImportedParadigmPackage = importParadigmPackage({
     packageName: "@hobo/sql",
     paradigm: "relational",
@@ -27,6 +41,9 @@ function assertDataParadigmTypes() {
   const db: DataHandle = data("db").use(sql);
   const query: LoweringDescriptor = db.query({ by: "email" });
   query.portRef satisfies readonly ["hobo:data"];
+  db.with(awsRds).resourceDefinition("platform/prod-postgres");
+  const rawRead = db.raw("postgres", { sql: "select 1" });
+  rawRead.raw?.mode satisfies "read-only" | undefined;
 
   const embeddings = data("embeddings").use(vector);
   const vectorQuery = embeddings.query({ nearest: "ticket" });

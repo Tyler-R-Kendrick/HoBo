@@ -59,6 +59,18 @@ const hoboGraph = importParadigmPackage({
   ],
 });
 
+const awsRdsNativePin = Object.freeze({
+  __kind: "hobo.provider-option",
+  provider: "aws",
+  optionName: "rds",
+  annotationKey: "aws.rds",
+  resourceKinds: ["data"],
+  value: {
+    engine: "postgres",
+    instanceClass: "db.r7g.large",
+  },
+});
+
 describe("data paradigm package authoring contract", () => {
   it("opts @hobo/sql onto data() as hobo:data with surfaced specialization markers", () => {
     const db = data("db").use(hoboSql);
@@ -210,6 +222,57 @@ describe("data paradigm package authoring contract", () => {
     assert.deepEqual(manifest.resources.db.collection, {
       stableId: "data:db",
     });
+  });
+
+  it("keeps native pins, Resource Definitions, and raw dialect access reachable after opt-in", () => {
+    const db = data("db")
+      .use(hoboSql)
+      .with(awsRdsNativePin)
+      .resourceDefinition("platform/prod-postgres");
+    const rawRead = db.raw("postgres", { sql: "select * from customers where id = $1" });
+    const manifest = createManifest([db]);
+
+    assert.deepEqual(rawRead.portRef, ["hobo:data"]);
+    assert.equal(rawRead.verb, "query");
+    assert.deepEqual(rawRead.raw, {
+      dialect: "postgres",
+      operation: { sql: "select * from customers where id = $1" },
+      mode: "read-only",
+    });
+    assert.deepEqual(manifest.resources.db.annotations.with, {
+      "aws.rds": {
+        engine: "postgres",
+        instanceClass: "db.r7g.large",
+      },
+    });
+    assert.deepEqual(manifest.resources.db.overrides, {
+      resourceDefinitionRefs: ["platform/prod-postgres"],
+    });
+    assert.deepEqual(manifest.resources.db.raw, {
+      dialects: ["postgres"],
+      mode: "read-only",
+    });
+    assert.deepEqual(manifest.resources.db.portability.lockInMarkers, [
+      {
+        source: ".with()",
+        annotation: "aws.rds",
+        provider: "aws",
+        path: "resources.db.annotations.with.aws.rds",
+        reason: "provider-specific option is additive but non-portable",
+      },
+      {
+        source: "Resource Definition",
+        reference: "platform/prod-postgres",
+        path: "resources.db.overrides.resourceDefinitionRefs",
+        reason: "resource mapping override is explicit and must be surfaced",
+      },
+      {
+        source: ".raw()",
+        dialect: "postgres",
+        path: "resources.db.raw.postgres",
+        reason: "raw dialect access is non-portable and read-only on projected data",
+      },
+    ]);
   });
 
   it("imports package descriptors without redeclaring Data Plane package symbols", async () => {

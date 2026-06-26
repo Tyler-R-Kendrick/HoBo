@@ -6,6 +6,19 @@ export type ParadigmPackageName = "@hobo/sql" | "@hobo/document" | "@hobo/vector
 export type Paradigm = "relational" | "document" | "vector" | "graph";
 export type EquivalenceClass = "managed-postgres" | "managed-document" | "search-extension";
 
+export type ProviderOption<
+  Provider extends string,
+  Kinds extends "data",
+  Payload extends Record<string, unknown>,
+> = {
+  readonly __kind: "hobo.provider-option";
+  readonly provider: Provider;
+  readonly optionName: string;
+  readonly annotationKey: `${Provider}.${string}`;
+  readonly resourceKinds: readonly Kinds[];
+  readonly value: Payload;
+};
+
 export interface ParadigmPackageFeature {
   readonly name: string;
   readonly crossParadigmEquivalent?: boolean;
@@ -61,6 +74,9 @@ export interface DataHandle {
   readonly port: "hobo:data";
   readonly stableId: string;
   use(packageDescriptor: ImportedParadigmPackage): this;
+  with(...options: readonly ProviderOption<string, "data", Record<string, unknown>>[]): this;
+  resourceDefinition(reference: string): this;
+  raw(dialect: string, operation: unknown): LoweringDescriptor;
   allow(...verbs: readonly DataAllowVerb[]): this;
   read(...args: readonly unknown[]): LoweringDescriptor;
   write(...args: readonly unknown[]): LoweringDescriptor;
@@ -78,6 +94,11 @@ export interface LoweringDescriptor {
   readonly extensionPortRef: readonly "hobo:search"[];
   readonly verb: DataAllowVerb;
   readonly args: readonly unknown[];
+  readonly raw?: {
+    readonly dialect: string;
+    readonly operation: unknown;
+    readonly mode: "read-only";
+  };
 }
 
 export interface DataManifestResource {
@@ -91,6 +112,16 @@ export interface DataManifestResource {
   };
   readonly collection: {
     readonly stableId: string;
+  };
+  readonly annotations?: {
+    readonly with: Record<string, Record<string, unknown>>;
+  };
+  readonly overrides?: {
+    readonly resourceDefinitionRefs: readonly string[];
+  };
+  readonly raw?: {
+    readonly dialects: readonly string[];
+    readonly mode: "read-only";
   };
   readonly paradigm?: Paradigm;
   readonly specialization?: {

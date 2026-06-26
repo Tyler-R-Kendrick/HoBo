@@ -103,6 +103,9 @@ class DataHandle {
     this.stableId = `data:${name}`;
     this.usedVerbs = new Set();
     this.paradigmPackage = null;
+    this.providerAnnotations = {};
+    this.resourceDefinitionRefs = new Set();
+    this.rawDialects = new Set();
   }
 
   use(packageDescriptor) {
@@ -119,6 +122,39 @@ class DataHandle {
 
     this.paradigmPackage = packageDescriptor;
     return this;
+  }
+
+  with(...options) {
+    for (const option of options) {
+      this.addProviderOption(option);
+    }
+    return this;
+  }
+
+  resourceDefinition(reference) {
+    assertNonEmptyString(reference, `resources.${this.name}.resourceDefinition`);
+    this.resourceDefinitionRefs.add(reference);
+    return this;
+  }
+
+  raw(dialect, operation) {
+    assertNonEmptyString(dialect, `resources.${this.name}.raw.dialect`);
+    this.recordVerb("query", `resources.${this.name}.raw`);
+    this.rawDialects.add(dialect);
+    return Object.freeze({
+      lowersTo: "hobo:sdk",
+      kind: "data",
+      name: this.name,
+      handleStableId: this.stableId,
+      portRef: Object.freeze(["hobo:data"]),
+      extensionPortRef: extensionPortRefFor(this.paradigmPackage),
+      verb: "query",
+      raw: Object.freeze({
+        dialect,
+        operation,
+        mode: "read-only",
+      }),
+    });
   }
 
   allow(...verbs) {
@@ -165,6 +201,33 @@ class DataHandle {
     this.usedVerbs.add(verb);
   }
 
+  addProviderOption(option) {
+    if (!isRecord(option) || option.__kind !== "hobo.provider-option") {
+      throw new AuthoringSurfaceError(
+        `resources.${this.name}.with`,
+        "with(...) accepts provider option builders",
+      );
+    }
+    if (!Array.isArray(option.resourceKinds) || !option.resourceKinds.includes("data")) {
+      throw new AuthoringSurfaceError(
+        `resources.${this.name}.with`,
+        `${option.annotationKey ?? "provider option"} cannot annotate data resources`,
+      );
+    }
+    assertNonEmptyString(option.annotationKey, `resources.${this.name}.with.annotationKey`);
+    if (!isRecord(option.value)) {
+      throw new AuthoringSurfaceError(
+        `resources.${this.name}.with.${option.annotationKey}`,
+        "provider option value must be an object",
+      );
+    }
+
+    const existing = this.providerAnnotations[option.annotationKey] ?? {};
+    this.providerAnnotations[option.annotationKey] = sortKeys(
+      mergeOptionValues(existing, option.value, option.annotationKey),
+    );
+  }
+
   toManifestResource() {
     const resource = {
       type: "data.v1",
@@ -180,40 +243,68 @@ class DataHandle {
       },
     };
 
-    if (!this.paradigmPackage) {
-      return resource;
+    const specializationMarkers = [];
+    const lockInMarkers = [];
+
+    if (Object.keys(this.providerAnnotations).length > 0) {
+      resource.annotations = {
+        with: sortKeys(this.providerAnnotations),
+      };
+      lockInMarkers.push(...buildProviderLockInMarkers(this.name, this.providerAnnotations));
     }
 
-    const specializationMarker = {
-      source: "paradigm-package",
-      package: this.paradigmPackage.packageName,
-      marker: "surfaced-specialization",
-      equivalenceClass: this.paradigmPackage.equivalenceClass,
-      path: `resources.${this.name}.paradigm`,
-      reason: `developer opted into ${this.paradigmPackage.packageName} over portable data() default`,
-    };
-    const lockInMarkers = buildParadigmLockInMarkers(this.name, this.paradigmPackage);
-
-    resource.paradigm = this.paradigmPackage.paradigm;
-    resource.specialization = {
-      marker: "surfaced-specialization",
-      package: this.paradigmPackage.packageName,
-      equivalenceClass: this.paradigmPackage.equivalenceClass,
-      path: `resources.${this.name}.paradigm`,
-    };
-    if (this.paradigmPackage.extensionPort) {
-      resource.extensions = [
-        {
-          source: "paradigm-package",
-          package: this.paradigmPackage.packageName,
-          port: this.paradigmPackage.extensionPort,
-          features: this.paradigmPackage.features.map((feature) => feature.name).sort(),
-        },
-      ];
+    if (this.resourceDefinitionRefs.size > 0) {
+      resource.overrides = {
+        resourceDefinitionRefs: [...this.resourceDefinitionRefs].sort(),
+      };
+      lockInMarkers.push(...buildResourceDefinitionLockInMarkers(this.name, this.resourceDefinitionRefs));
     }
-    resource.portability = {
-      specializationMarkers: [specializationMarker],
-    };
+
+    if (this.rawDialects.size > 0) {
+      resource.raw = {
+        dialects: [...this.rawDialects].sort(),
+        mode: "read-only",
+      };
+      lockInMarkers.push(...buildRawLockInMarkers(this.name, this.rawDialects));
+    }
+
+    if (this.paradigmPackage) {
+      specializationMarkers.push({
+        source: "paradigm-package",
+        package: this.paradigmPackage.packageName,
+        marker: "surfaced-specialization",
+        equivalenceClass: this.paradigmPackage.equivalenceClass,
+        path: `resources.${this.name}.paradigm`,
+        reason: `developer opted into ${this.paradigmPackage.packageName} over portable data() default`,
+      });
+      lockInMarkers.push(...buildParadigmLockInMarkers(this.name, this.paradigmPackage));
+
+      resource.paradigm = this.paradigmPackage.paradigm;
+      resource.specialization = {
+        marker: "surfaced-specialization",
+        package: this.paradigmPackage.packageName,
+        equivalenceClass: this.paradigmPackage.equivalenceClass,
+        path: `resources.${this.name}.paradigm`,
+      };
+      if (this.paradigmPackage.extensionPort) {
+        resource.extensions = [
+          {
+            source: "paradigm-package",
+            package: this.paradigmPackage.packageName,
+            port: this.paradigmPackage.extensionPort,
+            features: this.paradigmPackage.features.map((feature) => feature.name).sort(),
+          },
+        ];
+      }
+    }
+
+    if (specializationMarkers.length > 0 || lockInMarkers.length > 0) {
+      resource.portability = {};
+    }
+
+    if (specializationMarkers.length > 0) {
+      resource.portability.specializationMarkers = specializationMarkers;
+    }
 
     if (lockInMarkers.length > 0) {
       resource.portability.lockInMarkers = lockInMarkers;
@@ -239,6 +330,39 @@ function buildParadigmLockInMarkers(resourceName, packageDescriptor) {
       reason: "feature has no cross-paradigm equivalent",
       severity: "blocking",
     }));
+}
+
+function buildProviderLockInMarkers(resourceName, annotations) {
+  return Object.keys(annotations)
+    .sort()
+    .map((annotationKey) => {
+      const [provider] = annotationKey.split(".");
+      return {
+        source: ".with()",
+        annotation: annotationKey,
+        provider,
+        path: `resources.${resourceName}.annotations.with.${annotationKey}`,
+        reason: "provider-specific option is additive but non-portable",
+      };
+    });
+}
+
+function buildResourceDefinitionLockInMarkers(resourceName, references) {
+  return [...references].sort().map((reference) => ({
+    source: "Resource Definition",
+    reference,
+    path: `resources.${resourceName}.overrides.resourceDefinitionRefs`,
+    reason: "resource mapping override is explicit and must be surfaced",
+  }));
+}
+
+function buildRawLockInMarkers(resourceName, dialects) {
+  return [...dialects].sort().map((dialect) => ({
+    source: ".raw()",
+    dialect,
+    path: `resources.${resourceName}.raw.${dialect}`,
+    reason: "raw dialect access is non-portable and read-only on projected data",
+  }));
 }
 
 function normalizeFeature(feature, path) {
@@ -281,6 +405,23 @@ function assertNonEmptyString(value, path) {
 
 function isRecord(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function mergeOptionValues(left, right, path) {
+  if (!isRecord(left) || !isRecord(right)) {
+    if (Object.is(left, right)) return left;
+    throw new AuthoringSurfaceError(path, `conflicting provider option ${path}`);
+  }
+
+  const merged = { ...left };
+  for (const [key, value] of Object.entries(right)) {
+    if (Object.hasOwn(merged, key)) {
+      merged[key] = mergeOptionValues(merged[key], value, `${path}.${key}`);
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
 }
 
 function sortKeys(value) {

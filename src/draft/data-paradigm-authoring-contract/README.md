@@ -14,6 +14,8 @@ handle into imported paradigm package descriptors without changing the portable
   port as extension metadata on the same `data` resource.
 - The authoring boundary rejects mixing two paradigm packages on one data
   resource.
+- `.with()` native pins, Resource Definition references, and `.raw()` dialect
+  reads stay reachable after opt-in and surface portability debt markers.
 - Cross-paradigm-only package features become explicit `paradigm-mismatch`
   lock-in markers for later PortabilityReport consumption.
 - Imported package descriptors do not redeclare `@hobo/sql`, `@hobo/vector`,

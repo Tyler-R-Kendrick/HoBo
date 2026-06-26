@@ -17,6 +17,8 @@ It verifies:
   specialization marker for the opt-in package;
 - a single `data` resource cannot mix two paradigm packages;
 - the four canonical package names map to their fixed paradigm identities;
+- `.with()` native pins, Resource Definition references, and `.raw()` dialect
+  reads remain available on opted-in handles and surface portability debt;
 - plain `data()` emits no paradigm field, specialization block, or portability
   markers;
 - cross-paradigm-only package features surface as `paradigm-mismatch` lock-in

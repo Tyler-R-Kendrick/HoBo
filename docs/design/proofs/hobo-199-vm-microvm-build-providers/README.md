@@ -26,12 +26,15 @@ HOBO-199 is proven by the independent draft package:
 - `@hobo/build-firecracker` returns a deterministic microVM rootfs ImageRef with
   required kernel modules and `executorBase: true`.
 - `@hobo/build-vagrant` returns a deterministic local VM box ImageRef linked to
-  the production VM ImageRef it claims to mirror.
+  the production VM ImageRef it claims to mirror, with the parity claim bound to
+  the production image digest and marked as simulated local fidelity that still
+  requires Camp coverage for prod readiness.
 - All ImageRefs are wired into the fixture provider IacProgram and accepted by
   the reference IAC backend.
 - The shared conformance gate rejects digest drift, unsupported targets,
   unsupported provider region/arch combinations, Firecracker kernel-module
-  omissions, Vagrant local-fidelity drift, and toolchain pin drift.
+  omissions, Vagrant local-fidelity drift, unbound production parity claims, and
+  toolchain pin drift.
 
 ## Scope Boundary
 

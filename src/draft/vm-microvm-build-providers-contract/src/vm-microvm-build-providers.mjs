@@ -561,6 +561,9 @@ function validateLocalParity(localParity, spec) {
     os: spec.prodImageRef.image.os,
     arch: spec.prodImageRef.image.arch,
     toolchainProfile: spec.parityProfile.toolchainProfile,
+    productionImageDigest: spec.prodImageRef.digest,
+    fidelity: "simulated",
+    campRequiredForProdReady: true,
   };
   for (const key of Object.keys(expected)) {
     if (localParity?.[key] !== expected[key]) {
@@ -681,6 +684,9 @@ async function defaultVagrantBoxBuilder(spec) {
       os: spec.prodImageRef.image.os,
       arch: spec.prodImageRef.image.arch,
       toolchainProfile: spec.parityProfile.toolchainProfile,
+      productionImageDigest: spec.prodImageRef.digest,
+      fidelity: "simulated",
+      campRequiredForProdReady: true,
     },
   };
 }

@@ -138,6 +138,9 @@ test("@hobo/build-vagrant produces local VM boxes with honest production parity"
     os: "ubuntu-24.04",
     arch: "x86_64",
     toolchainProfile: "prod-vm-dev-parity",
+    productionImageDigest: prodImageRef.digest,
+    fidelity: "simulated",
+    campRequiredForProdReady: true,
   });
   assert.deepEqual(await wireImageRefIntoFixtureProvider(first, spec), {
     accepted: true,
@@ -159,6 +162,9 @@ test("@hobo/build-vagrant produces local VM boxes with honest production parity"
             os: "debian-12",
             arch: "x86_64",
             toolchainProfile: "prod-vm-dev-parity",
+            productionImageDigest: prodImageRef.digest,
+            fidelity: "simulated",
+            campRequiredForProdReady: true,
           },
         }),
       }).build(spec),
@@ -166,6 +172,32 @@ test("@hobo/build-vagrant produces local VM boxes with honest production parity"
       name: "VmMicroVmBuildProviderError",
       code: "local-fidelity-drift",
       message: /os expected ubuntu-24\.04 got debian-12/,
+    },
+  );
+  await assert.rejects(
+    () =>
+      createVagrantBuildProvider({
+        boxBuilder: async () => ({
+          box: {
+            provider: "virtualbox",
+            format: "box",
+            digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            sizeBytes: 805306368,
+          },
+          localParity: {
+            os: "ubuntu-24.04",
+            arch: "x86_64",
+            toolchainProfile: "prod-vm-dev-parity",
+            productionImageDigest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            fidelity: "simulated",
+            campRequiredForProdReady: true,
+          },
+        }),
+      }).build(spec),
+    {
+      name: "VmMicroVmBuildProviderError",
+      code: "local-fidelity-drift",
+      message: /productionImageDigest expected sha256:/,
     },
   );
 });

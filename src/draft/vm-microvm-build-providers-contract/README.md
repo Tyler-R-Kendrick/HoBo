@@ -15,14 +15,17 @@ Acceptance mapping:
 - `createFirecrackerBuildProvider().build(spec)` returns a deterministic
   microVM rootfs `ImageRef` that declares Executor sandbox-base compatibility.
 - `createVagrantBuildProvider().build(spec)` returns a deterministic local VM
-  box `ImageRef` with an explicit production VM parity claim.
+  box `ImageRef` with an explicit production VM parity claim bound to the
+  production `ImageRef` digest and labeled as simulated local fidelity that
+  still needs Camp coverage before prod-ready claims.
 - All three ImageRefs wire back through the fixture provider `IacProgram` via
   `wireBuildOutputs(...)`.
 - `runVmMicroVmBuildConformance(...)` gates the provider shape, reproducibility,
   IAC wire-back, target fail-closed behavior, and adversarial fail-closed cases.
 - Adversarial guards reject digest drift, unsupported provider region/arch
   targets, Firecracker rootfs output missing required kernel modules, Vagrant
-  production-parity drift, and pinned toolchain drift.
+  production-parity drift, unbound production image parity claims, and pinned
+  toolchain drift.
 
 Run it with:
 

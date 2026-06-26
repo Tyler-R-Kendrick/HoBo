@@ -9,6 +9,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `alert.*` | `alert.Fired`, `alert.Resolved` |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
 | `camp.*` | `camp.Created`, `camp.RuntimeBound` |
+| `capability.*` | `capability.Denied` |
 | `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected` |
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |

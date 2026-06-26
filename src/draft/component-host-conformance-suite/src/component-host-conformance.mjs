@@ -7,6 +7,30 @@ const NON_COVERED_DIVERGENCES = Object.freeze([
   "host-specific partial-failure timing",
 ]);
 const CANONICAL_NAN_BITS = "0x7ff8000000000000";
+const REFERENCE_CLOCK_REPLAY = deepFreeze({
+  componentId: "clocked-worker",
+  counter: 3,
+  ticks: [0, 25, 50],
+  terminalState: "counter:3@50",
+});
+const REFERENCE_WASI_ROUND_TRIP = deepFreeze({
+  interface: "wasi:keyvalue/store",
+  version: "0.2.0",
+  request: { key: "todo-1", value: "ship" },
+  response: {
+    ok: true,
+    value: "wasi:todo-1",
+  },
+});
+const REFERENCE_LINK_LATE_BINDING = deepFreeze({
+  componentId: "api",
+  importInterface: "wasi:http/outgoing-handler@0.2.0",
+  providerExport: "wasi:http/outgoing-handler@0.2.0",
+  response: {
+    status: 200,
+    body: "linked:/healthz",
+  },
+});
 const REFERENCE_FUEL_SCHEDULE = Object.freeze([
   Object.freeze({ epoch: 0, fuelRemaining: 8, step: "load" }),
   Object.freeze({ epoch: 1, fuelRemaining: 4, step: "call-provider" }),
@@ -121,22 +145,26 @@ export async function runComponentHostConformance({ manifest, hosts }) {
   }
 
   const crossHostAssertions = {
+    manifestHostCoverage: assertManifestHostCoverage({ manifest, hosts, failures }),
     deterministicClockReplay: await assertSameAcrossHosts({
       id: "deterministic-clock-replay",
       hosts,
       failures,
+      expected: REFERENCE_CLOCK_REPLAY,
       read: (host) => host.replayDeterministicClockTrace(referenceClockTrace()),
     }),
     wasiRoundTrip: await assertSameAcrossHosts({
       id: "wasi-round-trip",
       hosts,
       failures,
+      expected: REFERENCE_WASI_ROUND_TRIP,
       read: (host) => host.roundTripWasiInterface(referenceWasiRequest()),
     }),
     linkLateBinding: await assertSameAcrossHosts({
       id: "link-late-binding",
       hosts,
       failures,
+      expected: REFERENCE_LINK_LATE_BINDING,
       read: (host) => host.invokeLinkedImport(referenceLinkCall()),
     }),
     capabilityHandleIsolation: await assertCapabilityIsolation({ hosts, failures }),
@@ -278,9 +306,15 @@ async function assertSameAcrossHosts({ id, hosts, failures, read, expected }) {
     return "pass";
   }
 
+  const hostsAgree = observations.every((observation) =>
+    sameValue(observation.value, observations[0].value),
+  );
   failures.push({
     checkId: id,
-    message: `${id} diverged across component hosts`,
+    message: hostsAgree
+      ? `${id} did not match expected reference semantics`
+      : `${id} diverged across component hosts`,
+    expected: expectedValue,
     observations,
   });
   return "fail";
@@ -311,6 +345,29 @@ async function assertCapabilityIsolation({ hosts, failures }) {
     checkId: "capability-handle-isolation",
     message: "unlinked capability call must fail closed on every host",
     observations,
+  });
+  return "fail";
+}
+
+function assertManifestHostCoverage({ manifest, hosts, failures }) {
+  const requiredHosts = normalizeHostPins(manifest);
+  const presentHosts = hosts.map(hostDescriptor);
+  const missingHosts = requiredHosts.filter(
+    (required) =>
+      !presentHosts.some(
+        (present) => present.kind === required.kind && present.version === required.version,
+      ),
+  );
+
+  if (missingHosts.length === 0) {
+    return "pass";
+  }
+
+  failures.push({
+    checkId: "manifest-host-coverage",
+    message: "all manifest-certified component hosts must run in the conformance report",
+    missingHosts,
+    hosts: presentHosts,
   });
   return "fail";
 }

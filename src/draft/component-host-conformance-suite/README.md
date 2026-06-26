@@ -14,6 +14,10 @@ portability boundary.
   canonicalization, fuel/epoch scheduling, and resource-limit semantics.
 - Manifest IR pins host kind plus version before planning; incompatible host
   versions fail with `component_host.host-version-incompatible`.
+- A conformance report must exercise every manifest-certified host kind/version
+  pair, so `runtime-local` cannot pass as a stand-in for `wasm-in-container`.
+- Cross-host checks compare both host equivalence and the expected reference
+  semantics for replay, WASI round-trip, and link late-binding.
 - Wall-clock scheduling jitter and host-specific partial-failure timing are
   declared non-covered divergences, not implied-equivalent behavior.
 

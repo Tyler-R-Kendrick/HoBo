@@ -29,6 +29,7 @@ test("runtime-local and wasm-in-container hosts pass the component-host conforma
     ],
   );
   assert.deepEqual(report.crossHostAssertions, {
+    manifestHostCoverage: "pass",
     deterministicClockReplay: "pass",
     wasiRoundTrip: "pass",
     linkLateBinding: "pass",
@@ -43,6 +44,23 @@ test("runtime-local and wasm-in-container hosts pass the component-host conforma
   ]);
 });
 
+test("all manifest-certified host kind/version pairs must be exercised", async () => {
+  const report = await runComponentHostConformance({
+    manifest: createReferenceComponentHostManifest(),
+    hosts: [
+      createReferenceRuntimeLocalHost(),
+      createReferenceRuntimeLocalHost(),
+    ],
+  });
+
+  assert.equal(report.status, "fail");
+  assert.equal(report.crossHostAssertions.manifestHostCoverage, "fail");
+  assert.deepEqual(
+    report.failures.find((failure) => failure.checkId === "manifest-host-coverage").missingHosts,
+    [{ kind: "wasm-in-container", version: "wasmtime-container/46.0.1" }],
+  );
+});
+
 test("manifest IR pins host kind and version before a component-host may plan", () => {
   const manifest = createReferenceComponentHostManifest();
   const staleWasmtime = createReferenceRuntimeLocalHost({ version: "wasmtime/45.0.0" });
@@ -55,6 +73,34 @@ test("manifest IR pins host kind and version before a component-host may plan", 
       error.hostKind === "runtime-local" &&
       error.hostVersion === "wasmtime/45.0.0" &&
       error.expectedVersions.includes("wasmtime/46.0.1"),
+  );
+});
+
+test("identical but wrong WASI round-trip behavior fails the expected semantics", async () => {
+  const runtimeLocal = createReferenceRuntimeLocalHost();
+  const inContainer = createReferenceInContainerHost();
+  const wrongRoundTrip = (request) => ({
+    interface: request.interface,
+    version: request.version,
+    request: {},
+    response: {
+      ok: true,
+      value: "wasi:wrong-key",
+    },
+  });
+  runtimeLocal.roundTripWasiInterface = wrongRoundTrip;
+  inContainer.roundTripWasiInterface = wrongRoundTrip;
+
+  const report = await runComponentHostConformance({
+    manifest: createReferenceComponentHostManifest(),
+    hosts: [runtimeLocal, inContainer],
+  });
+
+  assert.equal(report.status, "fail");
+  assert.equal(report.crossHostAssertions.wasiRoundTrip, "fail");
+  assert.equal(
+    report.failures.find((failure) => failure.checkId === "wasi-round-trip").message,
+    "wasi-round-trip did not match expected reference semantics",
   );
 });
 

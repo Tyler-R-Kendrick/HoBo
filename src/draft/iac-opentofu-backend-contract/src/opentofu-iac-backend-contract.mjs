@@ -178,6 +178,12 @@ export function createInMemoryOpenTofuBinary(options = {}) {
       commandLog.push({ command: "apply", stack: compiled.stack });
       const applied = [];
 
+      for (const change of expectedChanges) {
+        if (change.op === "delete") {
+          delete state.resources[change.resource];
+        }
+      }
+
       for (const resource of compiled.resources) {
         state.resources[resource.name] = provisionedRecord(resource);
         applied.push(resource.name);

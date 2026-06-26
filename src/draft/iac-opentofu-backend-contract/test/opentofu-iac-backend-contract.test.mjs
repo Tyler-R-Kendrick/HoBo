@@ -120,6 +120,41 @@ describe("@hobo/iac-opentofu backend contract", () => {
     });
   });
 
+  it("applies delete changes so removed resources do not remain as drift", async () => {
+    const binary = createInMemoryOpenTofuBinary();
+    const iac = createOpenTofuAdapter({ binary });
+    const expandedProgram = createOpenTofuFixtureIacProgram({
+      resources: [
+        ...createOpenTofuFixtureIacProgram().resources,
+        {
+          name: "scratch",
+          type: "wasi:keyvalue/store",
+          provider: "local",
+          inputs: { durability: "ephemeral" },
+          outputs: ["endpoint", "resourceId"],
+        },
+      ],
+    });
+    const baseProgram = createOpenTofuFixtureIacProgram();
+
+    await iac.apply(expandedProgram);
+    assert.deepEqual(await iac.preview(baseProgram), {
+      kind: "diff",
+      provider: "opentofu",
+      changes: [{ op: "delete", resource: "scratch", reason: "extra-in-state" }],
+      dirty: true,
+    });
+
+    await iac.apply(baseProgram);
+
+    assert.deepEqual(await iac.refresh(baseProgram), {
+      kind: "drift-report",
+      provider: "opentofu",
+      drifted: false,
+      resources: [],
+    });
+  });
+
   it("passes the shared IaC-backend conformance suite for the fixture program", async () => {
     const report = await runIacBackendConformance({
       adapter: createOpenTofuAdapter({ binary: createInMemoryOpenTofuBinary() }),

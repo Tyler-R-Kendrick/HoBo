@@ -340,7 +340,7 @@ read engine.
 - **(-)** Advanced resolver behavior is intentionally not fully generated; custom policy,
   pagination, and search semantics still need explicit adapter hooks.
 
-## ADR-0097
+## ADR-0098
 **Generation eval methodology: hybrid rubrics, golden trajectories, and independent calibration.**
 
 ### Context

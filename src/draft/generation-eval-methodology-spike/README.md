@@ -1,6 +1,6 @@
 # Generation Eval Methodology Spike
 
-Independent POC for HOBO-351. It records the ADR-0097 recommendation in an executable shape so the
+Independent POC for HOBO-351. It records the ADR-0098 recommendation in an executable shape so the
 decision can be checked like a contract before implementation work starts.
 
 ## Recommendation

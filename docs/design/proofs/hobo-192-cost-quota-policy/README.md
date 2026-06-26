@@ -14,6 +14,8 @@ input slice described by [Plan 29](../../contracts-policy-flags.md#plan-29) and
   existing in-flight reservation, bounding overshoot to one reserved action.
 - Spend velocity crossing a `costAvailabilityProfile` tier returns
   `allow-degraded` and emits a durable `spend.degradation-required` obligation.
+- A spend-incurring action with no matching scoped `MeteringView` quota counter
+  fails closed instead of treating an unrelated policy as unlimited context.
 - Every branch outcome is wrapped by the audited `policy.Decided` event.
 
 ## Scope Guard

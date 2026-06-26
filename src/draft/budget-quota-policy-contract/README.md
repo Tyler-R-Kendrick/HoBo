@@ -31,6 +31,9 @@ Included:
 - Reservation-required policies consume synchronous pre-commit quota
   reservations and deny missing, mismatched, denied, or under-sized
   reservations before an action runs.
+- Spend-incurring actions fail closed when the policy input lacks a matching
+  scoped `MeteringView` quota counter; an unrelated quota policy is not treated
+  as unlimited context.
 - Spend-velocity crossing a `costAvailabilityProfile` tier returns
   `allow-degraded` with a durable `spend.degradation-required` obligation.
 - Out-of-order `MeteringView` updates fail closed.

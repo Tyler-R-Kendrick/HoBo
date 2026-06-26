@@ -489,6 +489,33 @@ test("spend-incurring action with no quota context fails closed", () => {
   assert.equal(result.events.find((event) => event.type === "policy.Decided").data.effect, "deny");
 });
 
+test("quota policy with no matching MeteringView counter fails closed", () => {
+  const result = evaluateBudgetQuotaPolicy({
+    request: decisionRequest({ context: { costEstimateUsd: 2 } }),
+    meteringView: meteringView({
+      scopeCosts: {
+        "camp:tenant-a/other-camp": 12,
+      },
+    }),
+    policies: [
+      {
+        id: "budget:camp-prod/monthly",
+        scope: { kind: "camp", id: "tenant-a/camp-prod" },
+        hardLimitUsd: 100,
+        lastEvaluatedSeq: 10,
+      },
+    ],
+  });
+
+  assert.equal(result.decision.effect, "deny");
+  assert.match(result.decision.violations.join("\n"), /missing MeteringView quota counter/);
+  assert.equal(
+    result.events.find((event) => event.type === "spend.QuotaContextMissing").scopeId,
+    "tenant-a/camp-prod",
+  );
+  assert.equal(result.events.find((event) => event.type === "policy.Decided").data.effect, "deny");
+});
+
 test("missing required reservation denies instead of treating hard quota as unlimited", () => {
   const result = evaluateBudgetQuotaPolicy({
     request: decisionRequest({ context: { costEstimateUsd: 1 } }),

@@ -87,7 +87,8 @@ export function evaluateBudgetQuotaPolicy(input) {
 }
 
 function evaluatePolicy(state, policy) {
-  const currentSpendUsd = readScopeSpend(state.meteringView, policy.scope);
+  const scopeSpend = readScopeSpend(state.meteringView, policy.scope);
+  const currentSpendUsd = scopeSpend.value;
   const projectedSpendUsd = roundUsd(currentSpendUsd + state.estimateUsd);
   const actualProjectedSpendUsd =
     state.actualUsd === null ? null : roundUsd(currentSpendUsd + state.actualUsd);
@@ -106,6 +107,22 @@ function evaluatePolicy(state, policy) {
     meteringViewSeq: state.meteringView.seq,
   };
   state.evaluations.push(evaluation);
+
+  if (!scopeSpend.found && state.estimateUsd > 0) {
+    state.missingQuotaContext = true;
+    state.violations.push(
+      `${policy.id}: missing MeteringView quota counter for ${policy.scope.kind}:${policy.scope.id}`,
+    );
+    state.events.push(
+      createQuotaContextMissingEvent({
+        request: state.request,
+        meteringView: state.meteringView,
+        estimateUsd: state.estimateUsd,
+        policy,
+      }),
+    );
+    return;
+  }
 
   if (state.meteringView.seq < policy.lastEvaluatedSeq) {
     state.stalePolicies.push(policy);
@@ -568,7 +585,7 @@ function createSpendEvent({ type, request, meteringView, policy, currentSpendUsd
   };
 }
 
-function createQuotaContextMissingEvent({ request, meteringView, estimateUsd }) {
+function createQuotaContextMissingEvent({ request, meteringView, estimateUsd, policy = null }) {
   const payload = {
     type: "spend.QuotaContextMissing",
     schemaVersion: BUDGET_QUOTA_POLICY_SCHEMA_VERSION,
@@ -577,6 +594,13 @@ function createQuotaContextMissingEvent({ request, meteringView, estimateUsd }) 
     requestHash: request.inputHash,
     estimatedCostUsd: estimateUsd,
     currency: meteringView.currency,
+    ...(policy
+      ? {
+          policyId: policy.id,
+          scopeKind: policy.scope.kind,
+          scopeId: policy.scope.id,
+        }
+      : {}),
   };
   return {
     id: `${payload.type}:${shortHash(payload)}`,
@@ -745,20 +769,20 @@ function readScopeSpend(meteringView, scope) {
   const key = `${scope.kind}:${scope.id}`;
   const direct = readCounterValue(meteringView.scopeCosts?.[key]);
   if (direct !== null) {
-    return direct;
+    return { value: direct, found: true };
   }
   const spendByScope = readCounterValue(meteringView.spendByScope?.[key]);
   if (spendByScope !== null) {
-    return spendByScope;
+    return { value: spendByScope, found: true };
   }
   const scopeSpendUsd = readCounterValue(meteringView.scopeSpendUsd?.[key]);
   if (scopeSpendUsd !== null) {
-    return scopeSpendUsd;
+    return { value: scopeSpendUsd, found: true };
   }
   if (singlePrincipalScopeMatches(meteringView, scope)) {
-    return meteringView.totalCost;
+    return { value: meteringView.totalCost, found: true };
   }
-  return 0;
+  return { value: 0, found: false };
 }
 
 function readCounterValue(input) {

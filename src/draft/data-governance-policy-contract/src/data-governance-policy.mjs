@@ -31,12 +31,21 @@ export function evaluateDataGovernancePolicy(input) {
   const retentionRequest = normalizeRetentionRequest(source.retentionRequest);
   const subprocessorRegistry = normalizeSubprocessorRegistry(source.subprocessorRegistry ?? []);
   const coverageFindings = normalizeCoverageFindings(source.coverageFindings ?? []);
-  const classificationContext = buildClassificationContext({ request, classifiedData, placement, runtimeAction });
+  const requestDataClassifications = readRequestDataClassifications(request);
+  const requestRegion = optionalStringField(request.context.region, "request.context.region");
+  const classificationContext = buildClassificationContext({
+    classifiedData,
+    placement,
+    runtimeAction,
+    requestDataClassifications,
+    requestRegion,
+  });
 
   const state = {
     request,
     policy,
     classifiedData,
+    requestDataClassifications,
     classificationContext,
     runtimeAction,
     retentionRequest,
@@ -92,17 +101,21 @@ export function evaluateDataGovernancePolicy(input) {
 }
 
 function evaluateClassificationSource(state) {
-  if (state.classifiedData.length > 0 || state.classificationContext.dataClassifications.length === 0) {
+  const factClassifications = new Set(state.classifiedData.map((fact) => fact.classification));
+  const missingClassifications = state.requestDataClassifications.filter(
+    (classification) => !factClassifications.has(classification),
+  );
+  if (missingClassifications.length === 0) {
     return;
   }
 
   state.coverageFailed = true;
   state.violations.push(
-    `${state.policy.id}: request classified as ${state.classificationContext.dataClassifications.join(", ")} has no data.Classified source fact`,
+    `${state.policy.id}: request classified as ${missingClassifications.join(", ")} has no matching data.Classified source fact`,
   );
   state.events.push(
     createGovernanceEvent("dataGovernance.ClassificationSourceMissing", state, {
-      dataClassifications: state.classificationContext.dataClassifications,
+      dataClassifications: missingClassifications,
       blocked: true,
     }),
   );
@@ -355,18 +368,17 @@ function chooseReason(state) {
   return "data governance policy passed";
 }
 
-function buildClassificationContext({ request, classifiedData, placement, runtimeAction }) {
-  const classifications = [];
-  for (const value of parseOptionalStringArray(
-    request.context.dataClassifications,
-    "request.context.dataClassifications",
-  )) {
-    classifications.push(normalizeClassification(value, "request.context.dataClassifications"));
-  }
+function buildClassificationContext({
+  classifiedData,
+  placement,
+  runtimeAction,
+  requestDataClassifications,
+  requestRegion,
+}) {
+  const classifications = [...requestDataClassifications];
   for (const fact of classifiedData) {
     classifications.push(fact.classification);
   }
-  const requestRegion = optionalStringField(request.context.region, "request.context.region");
 
   return {
     dataClassifications: dedupe(classifications),
@@ -374,6 +386,12 @@ function buildClassificationContext({ request, classifiedData, placement, runtim
     jurisdiction: classifiedData[0]?.jurisdiction ?? null,
     resourceIds: classifiedData.map((fact) => fact.resourceId),
   };
+}
+
+function readRequestDataClassifications(request) {
+  return parseOptionalStringArray(request.context.dataClassifications, "request.context.dataClassifications").map(
+    (value) => normalizeClassification(value, "request.context.dataClassifications"),
+  );
 }
 
 function createRegionPinMutation(runtimeAction, fact) {

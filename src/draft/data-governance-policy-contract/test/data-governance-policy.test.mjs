@@ -174,11 +174,11 @@ test("retention policy is enforced as a floor and a ceiling over compaction", ()
   assert.equal(validWindow.decision.effect, "allow");
 });
 
-test("unregistered subprocessors fail the gate instead of being allowed with a log", () => {
+test("unregistered subprocessors fail the can-deploy gate instead of being allowed with a log", () => {
   const result = evaluate({
     request: {
-      action: "hobo:runtime:export",
-      phase: "runtime",
+      action: "hobo:deployment:can-deploy",
+      phase: "plan",
       context: {
         region: "us-east-1",
         dataClassifications: ["phi"],
@@ -266,7 +266,35 @@ test("classified policy context without a data.Classified fact fails closed", ()
   });
 
   assert.equal(result.decision.effect, "deny");
-  assert.match(result.decision.violations.join("\n"), /no data\.Classified source fact/);
+  assert.match(result.decision.violations.join("\n"), /no matching data\.Classified source fact/);
+  assert.equal(
+    result.events.find((event) => event.type === "dataGovernance.ClassificationSourceMissing")?.blocked,
+    true,
+  );
+});
+
+test("classified policy context without a matching data.Classified fact fails closed", () => {
+  const result = evaluate({
+    classifiedData: [
+      classifiedPatientRecord({
+        classification: "public",
+        allowedRegions: ["global"],
+        retention: {
+          minDays: 0,
+          maxDays: 365,
+        },
+      }),
+    ],
+    request: {
+      context: {
+        region: "eu-central-1",
+        dataClassifications: ["phi"],
+      },
+    },
+  });
+
+  assert.equal(result.decision.effect, "deny");
+  assert.match(result.decision.violations.join("\n"), /classified as phi has no matching data\.Classified source fact/);
   assert.equal(
     result.events.find((event) => event.type === "dataGovernance.ClassificationSourceMissing")?.blocked,
     true,

@@ -20,6 +20,7 @@ export function canaryStrategy({
 }) {
   assertNonEmptyString(routeId, "canary.routeId");
   const weights = parsePercentages(percentages, "canary.percentages");
+  assertEndsAtFullTraffic(weights, "canary.percentages");
 
   return deepFreeze({
     kind: "deployment-strategy-template",
@@ -138,20 +139,27 @@ export function progressiveStrategy({
   if (!Array.isArray(stages) || stages.length === 0) {
     throw new Error("progressive.stages must be a non-empty array");
   }
+  const parsedStages = stages.map((stage, index) => ({
+    name: assertNonEmptyString(stage.name, `progressive.stages[${index}].name`),
+    toWeight: parsePercentage(stage.toWeight, `progressive.stages[${index}].toWeight`),
+    timeoutMs: stage.timeoutMs,
+  }));
+  assertEndsAtFullTraffic(
+    parsedStages.map((stage) => stage.toWeight),
+    "progressive.stages[].toWeight",
+  );
 
   return deepFreeze({
     kind: "deployment-strategy-template",
     strategy: "progressive",
     routeId,
-    steps: stages.map((stage, index) => {
-      const name = assertNonEmptyString(stage.name, `progressive.stages[${index}].name`);
-      const toWeight = parsePercentage(stage.toWeight, `progressive.stages[${index}].toWeight`);
+    steps: parsedStages.map((stage) => {
       return {
-        name: `progressive-${name}`,
+        name: `progressive-${stage.name}`,
         gateTiming: "after",
         gateRefs: gateRefsFor({
           healthGate: {
-            id: `${name}-health`,
+            id: `${stage.name}-health`,
             timeoutMs: stage.timeoutMs,
           },
           autoRollbackSignals,
@@ -159,7 +167,7 @@ export function progressiveStrategy({
         action: {
           kind: "gateway.shiftTraffic",
           routeId,
-          toWeight,
+          toWeight: stage.toWeight,
         },
       };
     }),
@@ -691,13 +699,15 @@ function gateRefsFor({ healthGate, autoRollbackSignals }) {
     refs.push({
       kind: "health",
       id: assertNonEmptyString(healthGate.id, "healthGate.id"),
-      timeoutMs: Number.isInteger(healthGate.timeoutMs) ? healthGate.timeoutMs : 300000,
-      passAfterConsecutive: Number.isInteger(healthGate.passAfterConsecutive)
-        ? healthGate.passAfterConsecutive
-        : 2,
-      failAfterConsecutive: Number.isInteger(healthGate.failAfterConsecutive)
-        ? healthGate.failAfterConsecutive
-        : 2,
+      timeoutMs: healthGate.timeoutMs === undefined
+        ? 300000
+        : assertPositiveInteger(healthGate.timeoutMs, "healthGate.timeoutMs"),
+      passAfterConsecutive: healthGate.passAfterConsecutive === undefined
+        ? 2
+        : assertPositiveInteger(healthGate.passAfterConsecutive, "healthGate.passAfterConsecutive"),
+      failAfterConsecutive: healthGate.failAfterConsecutive === undefined
+        ? 2
+        : assertPositiveInteger(healthGate.failAfterConsecutive, "healthGate.failAfterConsecutive"),
     });
   }
 
@@ -721,6 +731,12 @@ function parsePercentage(percentage, path) {
     throw new Error(`${path} must be an integer from 1 to 100`);
   }
   return percentage;
+}
+
+function assertEndsAtFullTraffic(weights, path) {
+  if (weights.at(-1) !== 100) {
+    throw new Error(`${path} must end at 100 before rollout promotion`);
+  }
 }
 
 function nextSeq(events) {
@@ -823,6 +839,14 @@ function isTerminal(state) {
 function assertNonEmptyString(value, path) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
+  }
+
+  return value;
+}
+
+function assertPositiveInteger(value, path) {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${path} must be a positive integer`);
   }
 
   return value;

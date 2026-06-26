@@ -7,7 +7,7 @@ This draft pins the Harness-side strategy templates that turn a service rollout 
 
 - `canaryStrategy(...)` and `progressiveStrategy(...)` compile staged traffic-shift steps that call
   the gateway with idempotent `gateway.shiftTraffic` commands and consume health, SLO-burn, and
-  Golden-suite gate signals.
+  Golden-suite gate signals. Staged templates must end at 100% traffic before promotion.
 - `blueGreenStrategy(...)` compiles a green-slot prepare, pre-flip health gate, router flip, and
   retain-blue soak step for fast rollback.
 - `recreateStrategy(...)` compiles stop-old, start-new, and route-new steps behind a health gate.

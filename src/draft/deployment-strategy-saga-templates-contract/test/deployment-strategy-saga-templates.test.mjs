@@ -140,6 +140,48 @@ test("recreate and progressive templates compile provider-agnostic saga steps", 
   assert.equal(progressive.steps[0].gateRefs.at(-1).signal, "golden-suite");
 });
 
+test("staged traffic templates require a final full-green step before promotion", () => {
+  assert.throws(
+    () => canaryStrategy({
+      routeId: baseTarget.routeId,
+      percentages: [1, 10, 50],
+      healthGate: { id: "checkout-red", timeoutMs: 120000 },
+    }),
+    /canary\.percentages must end at 100 before rollout promotion/,
+  );
+
+  assert.throws(
+    () => progressiveStrategy({
+      routeId: baseTarget.routeId,
+      stages: [
+        { name: "internal", toWeight: 5, timeoutMs: 120000 },
+        { name: "regional", toWeight: 50, timeoutMs: 120000 },
+      ],
+    }),
+    /progressive\.stages\[\]\.toWeight must end at 100 before rollout promotion/,
+  );
+});
+
+test("health gate deadlines and hysteresis windows must be positive", () => {
+  assert.throws(
+    () => canaryStrategy({
+      routeId: baseTarget.routeId,
+      percentages: [1, 100],
+      healthGate: { id: "checkout-red", timeoutMs: 0 },
+    }),
+    /healthGate\.timeoutMs must be a positive integer/,
+  );
+
+  assert.throws(
+    () => canaryStrategy({
+      routeId: baseTarget.routeId,
+      percentages: [1, 100],
+      healthGate: { id: "checkout-red", passAfterConsecutive: 0 },
+    }),
+    /healthGate\.passAfterConsecutive must be a positive integer/,
+  );
+});
+
 test("flapping health signals require hysteresis and fail closed on timeout", async () => {
   const gateway = recordingGateway();
   const saga = createDeploymentStrategySaga({ now: fixedClock() });
@@ -147,7 +189,7 @@ test("flapping health signals require hysteresis and fail closed on timeout", as
   const result = await saga.run({
     rollout: rolloutWith(canaryStrategy({
       routeId: baseTarget.routeId,
-      percentages: [1, 10],
+      percentages: [1, 10, 100],
       healthGate: { id: "checkout-red", timeoutMs: 30000, passAfterConsecutive: 2 },
     })),
     gateway,
@@ -197,7 +239,7 @@ test("canary stuck between stages on gate timeout rolls back to the old version"
   const result = await saga.run({
     rollout: rolloutWith(canaryStrategy({
       routeId: baseTarget.routeId,
-      percentages: [1, 10, 50],
+      percentages: [1, 10, 50, 100],
       healthGate: { id: "checkout-red", timeoutMs: 1 },
     })),
     gateway,
@@ -224,7 +266,7 @@ test("terminal rollout replay does not execute later gateway steps", async () =>
   const first = await saga.run({
     rollout: rolloutWith(canaryStrategy({
       routeId: baseTarget.routeId,
-      percentages: [1, 10, 50],
+      percentages: [1, 10, 50, 100],
       healthGate: { id: "checkout-red", timeoutMs: 30000 },
     })),
     gateway: recordingGateway(),
@@ -237,7 +279,7 @@ test("terminal rollout replay does not execute later gateway steps", async () =>
   const resumed = await saga.run({
     rollout: rolloutWith(canaryStrategy({
       routeId: baseTarget.routeId,
-      percentages: [1, 10, 50],
+      percentages: [1, 10, 50, 100],
       healthGate: { id: "checkout-red", timeoutMs: 30000 },
     })),
     eventLog: first.events,

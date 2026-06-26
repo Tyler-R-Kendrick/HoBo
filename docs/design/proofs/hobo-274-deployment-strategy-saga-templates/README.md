@@ -18,6 +18,7 @@ Acceptance evidence:
   soak window, and replay to the same gateway state.
 - Recreate and progressive templates compile provider-agnostic saga steps without provider-specific
   deployment bodies.
+- Staged traffic templates reject definitions that cannot reach 100% green before promotion.
 - Flapping health signals require hysteresis and fail closed on timeout.
 - Half-applied router flips retry the same idempotency key before the step completes.
 - Canary gate timeouts between stages roll back to the old version.

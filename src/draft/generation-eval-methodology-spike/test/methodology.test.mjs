@@ -53,6 +53,19 @@ test("methodology fails without golden trajectories or independent calibration",
   assert.equal(noIndependentCalibration.ok, false);
   assert.match(noIndependentCalibration.errors.join("\n"), /requiredForPromotion must be true/);
   assert.match(noIndependentCalibration.errors.join("\n"), /independent-judge-family/);
+
+  const invalidSplitFloors = validateGenerationEvalMethodology(
+    createGenerationEvalMethodology({
+      splits: {
+        heldOut: { minSamples: 0 },
+        adversarial: { minCases: 0 },
+      },
+    }),
+  );
+
+  assert.equal(invalidSplitFloors.ok, false);
+  assert.match(invalidSplitFloors.errors.join("\n"), /splits\.heldOut\.minSamples/);
+  assert.match(invalidSplitFloors.errors.join("\n"), /splits\.adversarial\.minCases/);
 });
 
 test("promotion readiness requires held-out adversarial and independent checks", () => {
@@ -62,7 +75,9 @@ test("promotion readiness requires held-out adversarial and independent checks",
     conformancePassed: true,
     samples: 1200,
     shadowTrafficPercent: 10,
+    heldOutSamples: 250,
     heldOutPassed: true,
+    adversarialCases: 25,
     adversarialPassed: true,
     independentCalibrationPassed: true,
     selfGraded: false,
@@ -75,7 +90,9 @@ test("promotion readiness requires held-out adversarial and independent checks",
     conformancePassed: true,
     samples: 1500,
     shadowTrafficPercent: 20,
+    heldOutSamples: 250,
     heldOutPassed: false,
+    adversarialCases: 25,
     adversarialPassed: true,
     independentCalibrationPassed: false,
     selfGraded: true,
@@ -93,7 +110,9 @@ test("underpowered eval runs stay shadow", () => {
     conformancePassed: true,
     samples: 999,
     shadowTrafficPercent: 5,
+    heldOutSamples: 199,
     heldOutPassed: true,
+    adversarialCases: 19,
     adversarialPassed: true,
     independentCalibrationPassed: true,
     selfGraded: false,
@@ -102,4 +121,6 @@ test("underpowered eval runs stay shadow", () => {
   assert.equal(underpowered.outcome, "stay-shadow");
   assert.match(underpowered.failures.join("\n"), /samples below minimum 1000/);
   assert.match(underpowered.failures.join("\n"), /shadow traffic below 10%/);
+  assert.match(underpowered.failures.join("\n"), /held-out samples below minimum 200/);
+  assert.match(underpowered.failures.join("\n"), /adversarial cases below minimum 20/);
 });

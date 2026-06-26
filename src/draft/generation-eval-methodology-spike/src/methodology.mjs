@@ -90,8 +90,17 @@ export function evaluatePromotionReadiness(methodology, evalRun) {
   if (evalRun.heldOutPassed !== true) {
     failures.push("held-out eval failed");
   }
+  if (!Number.isInteger(evalRun.heldOutSamples) || evalRun.heldOutSamples < parsed.methodology.splits.heldOut.minSamples) {
+    failures.push(`held-out samples below minimum ${parsed.methodology.splits.heldOut.minSamples}`);
+  }
   if (evalRun.adversarialPassed !== true) {
     failures.push("adversarial eval failed");
+  }
+  if (
+    !Number.isInteger(evalRun.adversarialCases) ||
+    evalRun.adversarialCases < parsed.methodology.splits.adversarial.minCases
+  ) {
+    failures.push(`adversarial cases below minimum ${parsed.methodology.splits.adversarial.minCases}`);
   }
   if (evalRun.independentCalibrationPassed !== true) {
     failures.push("independent calibration failed");
@@ -122,6 +131,12 @@ function validateSplits(splits, errors) {
   }
   if (splits.adversarial?.visibleToOptimizer !== false) {
     errors.push("splits.adversarial must not be visible to optimizer");
+  }
+  if (!isPositiveInteger(splits.heldOut?.minSamples)) {
+    errors.push("splits.heldOut.minSamples must be a positive integer");
+  }
+  if (!isPositiveInteger(splits.adversarial?.minCases)) {
+    errors.push("splits.adversarial.minCases must be a positive integer");
   }
 }
 

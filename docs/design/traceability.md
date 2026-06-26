@@ -139,14 +139,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0095 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0095) | Distributed-artifact resolution semantics are pinned by the HOBO-340 decision vectors and consumed by the future resolver. | HOBO-340, HOBO-370 |
 | ADR-0096 | [identity-security](./adr/02-identity-security.md#adr-0096) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128, HOBO-133 |
 | ADR-0097 | [identity-security](./adr/02-identity-security.md#adr-0097) | ID-JAG draft tracking and XAA threat-model coverage are pinned by the HOBO-271 spike vectors before adversarial XAA work. | HOBO-271, HOBO-250, HOBO-255 |
+| ADR-0098 | [data-plane](./adr/03-data-plane.md#adr-0098) | Generation eval methodology uses hybrid rubrics, golden trajectories, held-out/adversarial splits, independent calibration, and min-sample floors before promotion. | HOBO-309, HOBO-351 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 86 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 87 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0097`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0098`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

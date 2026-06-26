@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 const REPORT_VERSION = "hobo.portabilityReport/v1";
 const DEPLOYMENT_PLANNED_EVENT = "deployment.Planned";
 
-const SEED_CLAIMS = Object.freeze(["compute", "database", "objectStore", "queue", "cache"]);
+const SHARED_CONFORMANCE_CLAIMS = Object.freeze(["compute", "database", "objectStore", "queue", "cache"]);
+const FLY_CAPABILITY_CLAIMS = Object.freeze(["compute", "volume", "database", "objectStore", "queue", "cache"]);
 const RESOURCE_CLASSES = Object.freeze({
   compute: {
     resourceClass: "fly.machine",
@@ -120,10 +121,9 @@ class FlyProvider {
     this.builderOptions = deepFreeze(structuredClone(builderOptions));
     this.resources = new Map();
     this.nextId = 0;
-    this.manifest = deepFreeze({ claimedCapabilities: [...SEED_CLAIMS] });
+    this.manifest = deepFreeze({ claimedCapabilities: [...FLY_CAPABILITY_CLAIMS] });
     this.capabilities = Object.freeze([
-      ...SEED_CLAIMS.map((type) => ({ type, ...RESOURCE_CLASSES[type] })),
-      { type: "volume", ...RESOURCE_CLASSES.volume }
+      ...FLY_CAPABILITY_CLAIMS.map((type) => ({ type, ...RESOURCE_CLASSES[type] }))
     ]);
     this.defaultDefinitions = deepFreeze(
       Object.entries(RESOURCE_CLASSES).map(([type, equivalence]) => ({
@@ -376,8 +376,8 @@ class FlyProvider {
   }
 
   assertCapability(capability) {
-    if (!SEED_CLAIMS.includes(capability)) {
-      throw new Error(`provider-fly does not claim seed capability ${capability}`);
+    if (!FLY_CAPABILITY_CLAIMS.includes(capability)) {
+      throw new Error(`provider-fly does not claim capability ${capability}`);
     }
   }
 }

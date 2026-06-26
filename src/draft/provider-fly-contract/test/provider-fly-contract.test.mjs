@@ -14,18 +14,21 @@ test("provider-fly passes shared provider conformance for seed ports and local v
   const provider = createFlyProvider();
 
   const report = hoboVerify(provider, {
+    capabilities: ["compute", "database", "objectStore", "queue", "cache"],
     runTags: ["local"]
   });
   const volume = runFlyVolumeConformance(provider);
+  const volumeResource = provider.provision("volume", { require: { region: "local" } });
 
   assert.equal(report.status, "pass");
   assert.deepEqual(report.coverage.requestedCapabilities, ["cache", "compute", "database", "objectStore", "queue"]);
   assert.deepEqual(report.coverage.missingSuites, []);
   assert.equal(report.coverage.local.total, 20);
   assert.equal(volume.status, "pass");
+  assert.equal(provider.client("volume", volumeResource).ping(), "volume:ok");
   assert.deepEqual(
     provider.capabilityManifest().claimedCapabilities,
-    ["compute", "database", "objectStore", "queue", "cache"]
+    ["compute", "volume", "database", "objectStore", "queue", "cache"]
   );
   assert.equal(provider.defaultDefinitions.some((definition) => definition.type === "volume"), true);
 });

@@ -13,6 +13,8 @@ Acceptance evidence:
 - `provider-fly` passes shared provider conformance for `compute`, `database`,
   `objectStore`, `queue`, and `cache`, plus a package-local Fly volume
   conformance check.
+- Its capability manifest claims Fly volume support alongside the shared seed
+  ports, so registry consumers see the implemented volume default definition.
 - A fixture realizes a Fly Machine, regional Fly Volume, and Fly Postgres into a
   declarative IaC program without backend execution.
 - A supporting-services fixture realizes Tigris, NATS, and Upstash defaults.

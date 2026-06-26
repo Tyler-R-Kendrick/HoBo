@@ -9,6 +9,8 @@ Executable surface:
   declarative `realize()` output.
 - Fly resource equivalence maps portable ports to Fly Machines, Fly Volumes, Fly
   Postgres, Tigris, NATS, and Upstash.
+- The provider claims `compute`, `volume`, `database`, `objectStore`, `queue`,
+  and `cache` in its capability manifest.
 - The shared provider-capability conformance suite is used for seed ports:
   `compute`, `database`, `objectStore`, `queue`, and `cache`.
 - Volumes are proved with a package-local conformance check because the current

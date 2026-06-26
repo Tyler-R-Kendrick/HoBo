@@ -58,6 +58,29 @@ test("two full tied candidates resolve by configured objective and emit rational
   assert.equal(byLatency.matchEvent.data.objective, "latency");
 });
 
+test("carbon objective ranks by carbon intensity and records rationale", () => {
+  const decision = decideRegionObjectivePlacement({
+    context,
+    objective: "carbon",
+    catalog: catalogWith([
+      definition("low-cost-high-carbon", "aws", {
+        regions: [region("us-east-1", { cost: 1, latency: 8, carbon: 50 })]
+      }),
+      definition("low-carbon", "aws", {
+        regions: [region("us-east-2", { cost: 20, latency: 35, carbon: 2 })]
+      })
+    ])
+  });
+
+  assert.equal(decision.ok, true);
+  assert.equal(decision.winner.definitionId, "low-carbon");
+  assert.equal(decision.winner.region, "us-east-2");
+  assert.equal(decision.matchEvent.data.objective, "carbon");
+  assert.equal(decision.matchEvent.data.ranking[0].objectiveScore, 2);
+  assert.match(decision.matchEvent.data.ranking[0].rationale, /objective=carbon/);
+  assert.equal(validateControlPlaneEvent(decision.matchEvent).ok, true);
+});
+
 test("colocated resources land in a shared region or fail with a precise rejection", () => {
   const catalog = catalogWith([
     definition("aws-regional", "aws", {

@@ -8,6 +8,7 @@ It proves:
 
 - Two `full` candidates tied on specificity and priority resolve by the configured objective.
 - Switching the objective from `cost` to `latency` changes the winner predictably.
+- The `carbon` objective ranks by carbon intensity and records the objective rationale.
 - Colocated resources land in a shared allowed region.
 - Conflicting region/colocation constraints fail closed with a precise rejection.
 - Missing cost signals degrade deterministically to the next objective signal instead of inventing cost data.

@@ -41,10 +41,12 @@ const ActorZod = z.object({
 }).strict();
 const RankedDefinitionZod = z.object({
   definitionId: z.string().min(1),
+  region: z.string().min(1).optional(),
   specificity: z.number(),
   priority: z.number(),
   objectiveScore: z.number(),
-  rank: z.number()
+  rank: z.number(),
+  rationale: z.string().min(1).optional()
 }).strict();
 const RejectedCandidateZod = z.object({
   definitionId: z.string().min(1),
@@ -552,7 +554,15 @@ function fixtureMatchBody() {
     objective: "cost",
     catalogContentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ranking: [
-      { definitionId: "aws-s3-standard", specificity: 2, priority: 10, objectiveScore: 0.13, rank: 1 },
+      {
+        definitionId: "aws-s3-standard",
+        region: "us-east-1",
+        specificity: 2,
+        priority: 10,
+        objectiveScore: 0.13,
+        rank: 1,
+        rationale: "objective=cost; region=us-east-1; provider=aws"
+      },
       { definitionId: "azure-blob-standard", specificity: 2, priority: 10, objectiveScore: 0.17, rank: 2 }
     ],
     rejectedCandidates: [
@@ -630,6 +640,8 @@ function validateMatchDecided(data, errors) {
   } else {
     data.ranking.forEach((entry, index) => {
       requireString(entry, "definitionId", errors, `ranking.${index}.definitionId`);
+      if (entry.region !== undefined) requireString(entry, "region", errors, `ranking.${index}.region`);
+      if (entry.rationale !== undefined) requireString(entry, "rationale", errors, `ranking.${index}.rationale`);
       for (const field of ["specificity", "priority", "objectiveScore", "rank"]) {
         if (typeof entry[field] !== "number") {
           errors.push(`ranking.${index}.${field} must be a number`);

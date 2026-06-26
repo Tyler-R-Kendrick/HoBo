@@ -339,3 +339,99 @@ read engine.
 - **(+)** The generated surface is reviewable and drift-gated alongside ADR-0037 codegen artifacts.
 - **(-)** Advanced resolver behavior is intentionally not fully generated; custom policy,
   pagination, and search semantics still need explicit adapter hooks.
+
+## ADR-0098
+**Generation eval methodology: hybrid rubrics, golden trajectories, and independent calibration.**
+
+### Context
+Plan 23 defines live evals as the reward signal for `"use training"` semantic functions and AI-generated
+implementations. HOBO-309 already pins the promotion gate shape: conformance stays the hard contract
+gate, eval thresholds score quality/faithfulness/calibration/cost/latency, and policy decides whether
+a passing candidate may promote. What remains open is the methodology behind those scores. A naive
+single LLM judge can be gamed by the optimizer it trains, a purely programmatic rubric misses semantic
+quality, and a golden-master sample alone can ossify bad behavior.
+
+### Decision
+1. **Use a hybrid evaluator, not a single judge.** Each semantic function declares dimensions with an
+   evaluator kind: programmatic checks for deterministic invariants, golden-trajectory reproduction
+   for recorded behavior, LLM judges for semantic quality, and human-label sampling for calibration.
+   A promotion score is a composed result over those dimensions, never a raw LLM-judge score.
+2. **Make the trajectory golden the stable primitive.** A `trajectoryGolden` is a signed, replayable
+   scenario set: prompt/input, tool trace, expected facets, tolerance windows, forbidden outputs, and
+   provenance. It is a Golden Suite target ([ADR-0082](02-identity-security.md#adr-0082)) for customer
+   agents and generated implementations, and it runs in replay/fork lanes rather than live prod.
+3. **Separate training, held-out, and adversarial lanes.** Candidate optimization may see training
+   trajectories, but promotion requires held-out trajectories and adversarial counterexamples that
+   are not available to the optimizer loop. The held-out/adversarial split is a hard eval term, not
+   advisory metadata.
+4. **Require independent calibration.** Any LLM-judge dimension that affects promotion must be
+   backed by at least one independent check: another pinned judge family, a human-label sample, or a
+   programmatic oracle for that dimension. The training judge cannot be the only promotion judge.
+5. **Set minimum evidence floors.** Every rubric declares min-sample floors for shadow traffic,
+   human-label sampling when used, and per-critical-dimension coverage. Underpowered runs conclude
+   `inconclusive` and stay shadow; they cannot promote as a weak positive.
+6. **Keep reward-hacking guards explicit.** The eval report records judge versions/prompts, held-out
+   split identity, adversarial case pack, calibration drift, and failed dimensions. A candidate that
+   improves the training judge while regressing held-out, adversarial, independent, or hard safety
+   dimensions fails promotion even if its aggregate score rises.
+
+### Consequences
+- **(+)** The optimizer gets a useful, continuous reward without letting one judge become a new trust
+  boundary. Golden trajectories make semantic behavior reproducible enough to review, replay, and
+  re-bless through the existing Golden Suite/A2H path.
+- **(+)** HOBO-309's promotion gate stays intact: this ADR decides how eval facts are produced and
+  calibrated, not whether conformance or policy can be bypassed.
+- **(-)** Hybrid evals cost more than one judge call and require curation of held-out/adversarial
+  packs. Thin semantic functions can start with smaller suites, but their coverage report must state
+  that limitation honestly.
+
+## ADR-0099
+**Data-flywheel privacy model for trajectory capture and training.**
+
+### Context
+Plan 23 and ADR-0025 make OpenInference trajectories the training-data unit for
+`"use training"` methods. HOBO-335 pinned the capture contract, but HOBO-364
+needed the privacy recommendation before capture scales: trajectories can carry
+PII, secrets, tenant-private prompt context, and tool payloads that must not leak
+across tenants or be re-emitted through trained methods.
+
+### Decision
+1. **Classify before persistence.** Runtime capture classifies every trajectory
+   payload field as `public`, `internal`, `pii`, or `secret` before it enters the
+   trajectory store. Public fields may be stored as cleartext; internal fields
+   are minimized to hashes unless policy explicitly keeps them; PII is stored as
+   token references plus per-run encrypted references; secrets are sealed as
+   encrypted references only.
+2. **Raw sensitive access is in-boundary and policy-gated.** External optimizer
+   or judge adapters, including Agent Lightning and Trace providers behind the
+   `training-engine` port, never receive decrypted PII or secrets. If an
+   in-boundary optimizer genuinely needs raw PII for an approved purpose, it
+   must request policy-gated decryption scoped to the same tenant, run, class,
+   purpose, and approval. Secret raw access remains deny-by-default.
+3. **Tenant isolation is fail-closed.** A trajectory can be written only to a
+   store partition whose tenant matches the run tenant, and a training consumer
+   can read only same-tenant trajectory partitions unless a future explicit
+   aggregation contract says otherwise. Cross-tenant mismatch suppresses capture
+   and emits an audit event instead of partially storing data.
+4. **Retention, sampling, and opt-out inherit the trace policy.** Trajectories
+   are captured only for sampled traces, and effective retention is the strictest
+   positive limit among trace retention, requested trajectory retention, the
+   tenant maximum, and the platform default. Tenant, method, user, and field
+   opt-outs suppress capture or omit fields before storage.
+5. **Optimizer payloads are redacted artifacts.** The training input given to an
+   optimizer is reconstructed from transformed fields, never from raw captured
+   values. Tokenized PII may be used as a stable placeholder; secrets are
+   omitted. Prompt/code candidates must pass the existing eval/conformance gate
+   for forbidden PII/secret output, so the privacy model and promotion gate
+   defend against PII-in-prompt re-emission together.
+
+### Consequences
+- **(+)** Trajectory capture can proceed without creating a new trust path:
+  redaction happens before persistence, external trainer providers stay behind
+  redacted boundaries, and tenant isolation fails closed.
+- **(+)** The privacy contract is executable in
+  `src/draft/data-flywheel-privacy-spike`, including cross-tenant leakage and
+  PII re-emission adversarial cases.
+- **(-)** Tokenized/redacted trajectories can reduce optimizer quality for tasks
+  that depend on exact raw text. Those tasks need explicit in-boundary approval
+  or accept the quality tradeoff.

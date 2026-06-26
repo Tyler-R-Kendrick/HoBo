@@ -25,5 +25,6 @@ Covered behaviors:
 - `token.Granted` and `token.Used` reconstruct the user -> agent -> external app chain;
 - missing `subject.delegatedBy` is denied before policy or mint;
 - a target A ID-JAG cannot redeem at target B authorization server;
+- a redeemed access token must carry the expected target audience;
 - non-XAA targets use `oauth2-obo` fallback without minting ID-JAG; and
 - long-lived target access tokens are rejected.

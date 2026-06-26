@@ -161,6 +161,7 @@ test("falls back to oauth2-obo for a non-XAA target without minting ID-JAG", asy
       fallbackCalls.push(request);
       return {
         tokenRef: "vault://tokens/legacy-crm/grant-1",
+        audience: request.target.audience,
         expiresAt: new Date(FIXED_NOW.getTime() + 120_000).toISOString(),
         scopes: request.requestedScopes,
       };
@@ -222,6 +223,64 @@ test("rejects target access tokens that are not short-lived", async () => {
   assert.deepEqual(result.events.map((event) => event.type), ["token.Denied"]);
 });
 
+test("rejects target access tokens without the expected audience", async () => {
+  const missingAudienceAs = createTargetAuthorizationServer({
+    targetId: "asana",
+    audience: "https://api.asana.test",
+    resource: "https://api.asana.test/tasks",
+    allowedScopes: ["tasks:read"],
+    credentialAudience: undefined,
+  });
+  const broker = createBroker({
+    targetAuthorizationServers: { asana: missingAudienceAs },
+  });
+
+  const missingAudience = await broker.exchangeToken({
+    requestId: "req-missing-audience",
+    subject: SUBJECT,
+    subjectToken: SUBJECT_TOKEN,
+    target: {
+      id: "asana",
+      audience: "https://api.asana.test",
+      resource: "https://api.asana.test/tasks",
+      allowedScopes: ["tasks:read"],
+      authFlow: { type: "oauth2-xaa", targetAuthorizationServer: "asana" },
+    },
+    requestedScopes: ["tasks:read"],
+  });
+
+  assert.equal(missingAudience.ok, false);
+  assert.match(missingAudience.reason, /credential\.audience/);
+
+  const wrongAudienceAs = createTargetAuthorizationServer({
+    targetId: "asana",
+    audience: "https://api.asana.test",
+    resource: "https://api.asana.test/tasks",
+    allowedScopes: ["tasks:read"],
+    credentialAudience: "https://api.slack.test",
+  });
+  const mismatchBroker = createBroker({
+    targetAuthorizationServers: { asana: wrongAudienceAs },
+  });
+
+  const wrongAudience = await mismatchBroker.exchangeToken({
+    requestId: "req-wrong-audience",
+    subject: SUBJECT,
+    subjectToken: SUBJECT_TOKEN,
+    target: {
+      id: "asana",
+      audience: "https://api.asana.test",
+      resource: "https://api.asana.test/tasks",
+      allowedScopes: ["tasks:read"],
+      authFlow: { type: "oauth2-xaa", targetAuthorizationServer: "asana" },
+    },
+    requestedScopes: ["tasks:read"],
+  });
+
+  assert.equal(wrongAudience.ok, false);
+  assert.match(wrongAudience.reason, /access token audience must match target audience/);
+});
+
 function createBroker(overrides = {}) {
   return createOutboundXaaTokenBroker({
     issuer: "https://identity.hobo.test",
@@ -230,6 +289,7 @@ function createBroker(overrides = {}) {
     preMintPolicy: async () => ({ ok: true }),
     fallbackExchanger: async (request) => ({
       tokenRef: `vault://tokens/${request.target.id}/grant-1`,
+      audience: request.target.audience,
       expiresAt: new Date(FIXED_NOW.getTime() + 120_000).toISOString(),
       scopes: request.requestedScopes,
     }),
@@ -258,6 +318,11 @@ function createTargetAuthorizationServer(options) {
       call.claims = parsed.claims;
       return {
         tokenRef: `vault://tokens/${options.targetId}/grant-1`,
+        ...(Object.hasOwn(options, "credentialAudience")
+          ? options.credentialAudience === undefined
+            ? {}
+            : { audience: options.credentialAudience }
+          : { audience: options.audience }),
         expiresAt: new Date(FIXED_NOW.getTime() + accessTokenTtlMs).toISOString(),
         scopes: parsed.claims.scope,
       };

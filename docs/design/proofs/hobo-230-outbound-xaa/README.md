@@ -27,4 +27,5 @@ Adversarial mapping:
 
 - Audience binding is proven by attempting target A ID-JAG redemption at target B and receiving an audience mismatch denial.
 - Missing `subject.delegatedBy` is denied before pre-mint policy or target authorization-server calls.
+- Target credential binding is proven by rejecting redeemed access tokens that omit or mismatch the expected audience.
 - Short lifetime is enforced for both ID-JAG parse options and returned target access-token references.

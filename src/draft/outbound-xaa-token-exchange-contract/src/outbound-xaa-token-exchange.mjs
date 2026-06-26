@@ -334,7 +334,7 @@ function normalizeCredential(rawCredential, { request, now, accessTokenMaxLifeti
     throw new Error("access token exceeds short-lived maxLifetimeMs");
   }
 
-  const audience = rawCredential.audience ?? request.target.audience;
+  const audience = requireString(rawCredential.audience, "credential.audience");
   if (audience !== request.target.audience) {
     throw new Error("access token audience must match target audience");
   }
@@ -446,6 +446,7 @@ function buildIdentityEvent(type, data, overrides) {
 function defaultFallbackExchanger(now) {
   return async (request) => ({
     tokenRef: `vault://tokens/${request.target.id}/${request.requestId}`,
+    audience: request.target.audience,
     expiresAt: new Date(now().getTime() + 2 * 60 * 1000).toISOString(),
     scopes: request.requestedScopes,
   });

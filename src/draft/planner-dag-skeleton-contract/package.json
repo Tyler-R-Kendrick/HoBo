@@ -1,0 +1,14 @@
+{
+  "name": "@hobo/draft-planner-dag-skeleton-contract",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/planner.d.mts",
+      "default": "./src/planner.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

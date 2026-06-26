@@ -91,6 +91,49 @@ describe("bind reference wiring contract", () => {
     );
   });
 
+  it("records the full addContainer fluent surface (Scope-in) as annotations", () => {
+    const db = data("db");
+    const migrations = addContainer("migrations", "ghcr.io/acme/migrate:1");
+    const app = addContainer("app", "ghcr.io/acme/app:1", { bind: { db } })
+      .withHttpEndpoint(8080, { external: true })
+      .withArgs("--serve", "--port=8080")
+      .withBindMount("./seed", "/seed", true)
+      .withLifetime("persistent")
+      .waitFor(db)
+      .waitForCompletion(migrations);
+
+    const manifest = compileBindleManifest([db, migrations, app]);
+    const resource = manifest.resources.app;
+
+    assert.deepEqual(resource.endpoints.http, {
+      scheme: "http",
+      port: 8080,
+      targetPort: 8080,
+      external: true,
+      protocol: "tcp",
+    });
+    assert.deepEqual(resource.annotations.args, ["--serve", "--port=8080"]);
+    assert.deepEqual(resource.annotations.bindMounts, [
+      { source: "./seed", target: "/seed", readOnly: true },
+    ]);
+    assert.equal(resource.annotations.lifetime, "persistent");
+    assert.deepEqual(resource.annotations.waitFor, [{ to: "db", until: "ready" }]);
+    assert.deepEqual(resource.annotations.waitForCompletion, [
+      { to: "migrations", until: "completed" },
+    ]);
+  });
+
+  it("rejects an invalid lifetime and an undeclarable wait dependency", () => {
+    assert.throws(
+      () => addContainer("app", "ghcr.io/acme/app:1").withLifetime("forever"),
+      /lifetime must be one of session, persistent/,
+    );
+    assert.throws(
+      () => addContainer("app", "ghcr.io/acme/app:1").waitFor(42),
+      /resources\.app\.waitFor: must reference a declared resource handle or id/,
+    );
+  });
+
   it("fails undeclared binds and unresolved lazy references closed", () => {
     const db = data("db");
     const api = service("api", { bind: { db } });

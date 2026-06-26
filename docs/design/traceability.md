@@ -138,6 +138,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0094 | [identity-security](./adr/02-identity-security.md#adr-0094) | Autonomous-action safety rails map to Crew blast-radius envelopes, oscillation guards, and SRE remediation classification. | HOBO-263, HOBO-251, HOBO-267 |
 | ADR-0095 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0095) | Distributed-artifact resolution semantics are pinned by the HOBO-340 decision vectors and consumed by the future resolver. | HOBO-340, HOBO-370 |
 | ADR-0096 | [identity-security](./adr/02-identity-security.md#adr-0096) | Deny-ceiling composition has deterministic proof vectors for scope monotonicity, default override, and fail-closed widening attempts. | HOBO-128, HOBO-133 |
+| ADR-0097 | [data-plane](./adr/03-data-plane.md#adr-0097) | Generation eval methodology uses hybrid rubrics, golden trajectories, held-out/adversarial splits, independent calibration, and min-sample floors before promotion. | HOBO-309, HOBO-351 |
 
 ## ADR Numbering and Status Audit
 

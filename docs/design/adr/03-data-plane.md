@@ -386,6 +386,57 @@ quality, and a golden-master sample alone can ossify bad behavior.
   that limitation honestly.
 
 ## ADR-0099
+**Data-flywheel privacy model for trajectory capture and training.**
+
+### Context
+Plan 23 and ADR-0025 make OpenInference trajectories the training-data unit for
+`"use training"` methods. HOBO-335 pinned the capture contract, but HOBO-364
+needed the privacy recommendation before capture scales: trajectories can carry
+PII, secrets, tenant-private prompt context, and tool payloads that must not leak
+across tenants or be re-emitted through trained methods.
+
+### Decision
+1. **Classify before persistence.** Runtime capture classifies every trajectory
+   payload field as `public`, `internal`, `pii`, or `secret` before it enters the
+   trajectory store. Public fields may be stored as cleartext; internal fields
+   are minimized to hashes unless policy explicitly keeps them; PII is stored as
+   token references plus per-run encrypted references; secrets are sealed as
+   encrypted references only.
+2. **Raw sensitive access is in-boundary and policy-gated.** External optimizer
+   or judge adapters, including Agent Lightning and Trace providers behind the
+   `training-engine` port, never receive decrypted PII or secrets. If an
+   in-boundary optimizer genuinely needs raw PII for an approved purpose, it
+   must request policy-gated decryption scoped to the same tenant, run, class,
+   purpose, and approval. Secret raw access remains deny-by-default.
+3. **Tenant isolation is fail-closed.** A trajectory can be written only to a
+   store partition whose tenant matches the run tenant, and a training consumer
+   can read only same-tenant trajectory partitions unless a future explicit
+   aggregation contract says otherwise. Cross-tenant mismatch suppresses capture
+   and emits an audit event instead of partially storing data.
+4. **Retention, sampling, and opt-out inherit the trace policy.** Trajectories
+   are captured only for sampled traces, and effective retention is the strictest
+   positive limit among trace retention, requested trajectory retention, the
+   tenant maximum, and the platform default. Tenant, method, user, and field
+   opt-outs suppress capture or omit fields before storage.
+5. **Optimizer payloads are redacted artifacts.** The training input given to an
+   optimizer is reconstructed from transformed fields, never from raw captured
+   values. Tokenized PII may be used as a stable placeholder; secrets are
+   omitted. Prompt/code candidates must pass the existing eval/conformance gate
+   for forbidden PII/secret output, so the privacy model and promotion gate
+   defend against PII-in-prompt re-emission together.
+
+### Consequences
+- **(+)** Trajectory capture can proceed without creating a new trust path:
+  redaction happens before persistence, external trainer providers stay behind
+  redacted boundaries, and tenant isolation fails closed.
+- **(+)** The privacy contract is executable in
+  `src/draft/data-flywheel-privacy-spike`, including cross-tenant leakage and
+  PII re-emission adversarial cases.
+- **(-)** Tokenized/redacted trajectories can reduce optimizer quality for tasks
+  that depend on exact raw text. Those tasks need explicit in-boundary approval
+  or accept the quality tradeoff.
+
+## ADR-0100
 **generateProvider correctness is a deterministic certification property.**
 
 ### Context

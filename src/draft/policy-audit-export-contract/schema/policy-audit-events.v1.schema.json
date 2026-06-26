@@ -101,6 +101,45 @@
           "type": "string",
           "minLength": 1
         },
+        "effect": {
+          "type": "string",
+          "enum": [
+            "allow",
+            "allow-degraded",
+            "deny",
+            "warn",
+            "mutate",
+            "require-approval"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "violationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "waiverId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approvedBy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "obligationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
         "packVersion": {
           "type": "string",
           "minLength": 1
@@ -136,5 +175,172 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.Decided"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "effect",
+              "reason",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.ViolationDetected"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "violationId",
+              "reason",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.WaiverRequested"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "waiverId",
+              "reason",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.WaiverApproved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "waiverId",
+              "approvedBy",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.ObligationCreated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "obligationId",
+              "kind",
+              "status",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.ObligationSatisfied"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "obligationId",
+              "kind",
+              "status",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "policy.ObligationEscalated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "required": [
+              "decisionId",
+              "obligationId",
+              "kind",
+              "status",
+              "reason",
+              "packVersion",
+              "packDigest",
+              "policyIds"
+            ]
+          }
+        }
+      }
+    }
+  ]
 }

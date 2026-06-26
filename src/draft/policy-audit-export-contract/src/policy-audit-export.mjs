@@ -31,7 +31,7 @@ const FORBIDDEN_PII_KEYS = new Set([
   "ssn",
 ]);
 
-const REQUIRED_DATA_FIELDS = deepFreeze({
+export const REQUIRED_POLICY_AUDIT_DATA_FIELDS = deepFreeze({
   "policy.Decided": ["decisionId", "effect", "reason", "packVersion", "packDigest", "policyIds"],
   "policy.ViolationDetected": [
     "decisionId",
@@ -281,6 +281,7 @@ export function reconstructPolicyDecision(events, decisionId) {
     effect: decision.data.effect,
     reason: decision.data.reason,
     packVersion: decision.data.packVersion,
+    packDigest: decision.data.packDigest,
     policyIds: [...decision.data.policyIds],
     obligations: obligationIds(decision.data),
     violations: [...(decision.data.violations ?? [])],
@@ -424,7 +425,7 @@ function validateData(type, data, errors) {
     return;
   }
 
-  for (const field of REQUIRED_DATA_FIELDS[type] ?? []) {
+  for (const field of REQUIRED_POLICY_AUDIT_DATA_FIELDS[type] ?? []) {
     if (data[field] === undefined || data[field] === null || data[field] === "") {
       errors.push(`data.${field} is required`);
     }
@@ -510,6 +511,9 @@ function validateRetention(retention, errors) {
   }
   if (retention.neverCompact !== true) {
     errors.push("retention.neverCompact must be true");
+  }
+  if (retention.streamPolicy !== POLICY_AUDIT_RETENTION.streamPolicy) {
+    errors.push("retention.streamPolicy must be retain-org-policy-audit-stream");
   }
 }
 

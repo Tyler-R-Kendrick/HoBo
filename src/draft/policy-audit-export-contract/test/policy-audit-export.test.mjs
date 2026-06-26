@@ -6,6 +6,7 @@ import {
   POLICY_AUDIT_EVENT_SCHEMA_VERSION,
   POLICY_AUDIT_EVENT_TYPES,
   POLICY_AUDIT_RETENTION,
+  REQUIRED_POLICY_AUDIT_DATA_FIELDS,
   createPolicyAuditEvent,
   createPolicyAuditFixtureEvent,
   exportPolicyEventToOcsf,
@@ -22,6 +23,7 @@ test("publishes the policy audit event family as retained org-scoped audit event
 
   assert.equal(POLICY_AUDIT_EVENT_SCHEMA_VERSION, "hobo.policy-audit-events/v1");
   assert.deepEqual(schema.properties.type.enum, POLICY_AUDIT_EVENT_TYPES);
+  assert.deepEqual(schemaRequiredFieldsByType(schema), REQUIRED_POLICY_AUDIT_DATA_FIELDS);
   assert.equal(POLICY_AUDIT_RETENTION.neverCompact, true);
 
   for (const [seq, type] of POLICY_AUDIT_EVENT_TYPES.entries()) {
@@ -64,6 +66,7 @@ test("exports policy.Decided to OCSF Authorization with reconstructable deny rea
     effect: "deny",
     reason: "policy pack hobo.guardrails@2026.06 blocked privileged action",
     packVersion: "hobo.guardrails@2026.06",
+    packDigest: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     policyIds: ["policy:deny-admin-without-breakglass"],
     obligations: ["obl-open-waiver"],
     violations: ["breakglass waiver required"],
@@ -155,6 +158,9 @@ test("validates append-only retained streams and rejects tampering or compaction
   assert.deepEqual(validatePolicyAuditStream(sealed), { ok: true, errors: [] });
 
   const compacted = [{ ...sealed[0], retention: { ...sealed[0].retention, neverCompact: false } }];
+  const wrongStreamPolicy = [
+    { ...sealed[0], retention: { ...sealed[0].retention, streamPolicy: "compact-policy-audit-stream" } },
+  ];
   const outOfOrder = [sealed[0], sealed[2]];
   const tampered = [
     sealed[0],
@@ -168,6 +174,16 @@ test("validates append-only retained streams and rejects tampering or compaction
   ];
 
   assert.match(validatePolicyAuditStream(compacted).errors.join("\n"), /retention.neverCompact must be true/);
+  assert.match(
+    validatePolicyAuditStream(wrongStreamPolicy).errors.join("\n"),
+    /retention.streamPolicy must be retain-org-policy-audit-stream/,
+  );
   assert.match(validatePolicyAuditStream(outOfOrder).errors.join("\n"), /stream seq must increase by 1/);
   assert.match(validatePolicyAuditStream(tampered).errors.join("\n"), /contentHash mismatch/);
 });
+
+function schemaRequiredFieldsByType(schema) {
+  return Object.fromEntries(
+    schema.allOf.map((entry) => [entry.if.properties.type.const, entry.then.properties.data.required]),
+  );
+}

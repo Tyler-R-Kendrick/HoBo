@@ -102,3 +102,4 @@
 | 0094 | Autonomous-action safety rails: bounded blast radius, oscillation guards, and fail-closed A2H | [identity-security](02-identity-security.md#adr-0094) |
 | 0095 | Distributed-artifact version resolution semantics | [portability-extensibility](07-portability-extensibility.md#adr-0095) |
 | 0096 | Deny-ceiling composition algebra for mandatory policy packs | [identity-security](02-identity-security.md#adr-0096) |
+| 0097 | ID-JAG threat model and draft-version tracking for Cross-App Access | [identity-security](02-identity-security.md#adr-0097) |

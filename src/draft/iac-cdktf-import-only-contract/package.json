@@ -1,0 +1,11 @@
+{
+  "name": "@hobo-draft/iac-cdktf-import-only-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs && npx tsc --noEmit -p tsconfig.types.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

@@ -104,6 +104,7 @@ export async function runReferenceDatabaseProviderGeneration({
   repairBudget = DEFAULT_REPAIR_BUDGET
 } = {}) {
   assertSigningKey(signingKey);
+  assertPinnedGenerationInputs({ model, prompt, generationConfig, seed });
 
   const request = buildGenerateProviderRequest(requestOverrides);
   const contract = authoritativeContractFromRequest(request);
@@ -263,6 +264,27 @@ export function assessProviderSuiteCoverage({
     requiredChecks: required,
     observedChecks: Object.freeze([...observed.keys()].sort())
   });
+}
+
+export function assertPinnedGenerationInputs({
+  model: candidateModel,
+  prompt: candidatePrompt,
+  generationConfig: candidateConfig,
+  seed
+}) {
+  if (!candidateModel?.digest || /(^|[/:])latest($|[/:])/.test(candidateModel.id ?? "")) {
+    throw new Error("generation.model_not_pinned");
+  }
+  if (!candidatePrompt?.frozenPromptDigest) {
+    throw new Error("generation.prompt_not_frozen");
+  }
+  if (candidateConfig?.temperature !== 0 || candidateConfig?.topP !== 1) {
+    throw new Error("generation.sampling_not_deterministic");
+  }
+  if (typeof seed !== "string" || seed.length === 0) {
+    throw new Error("generation.seed_not_pinned");
+  }
+  return true;
 }
 
 function coverageRequirements({ capability, profile }) {

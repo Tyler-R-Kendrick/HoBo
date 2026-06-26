@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { contentDigest } from "../../slsa-provenance-certification-contract/src/provenance.mjs";
 import {
+  assertPinnedGenerationInputs,
   assessProviderSuiteCoverage,
   buildGenerateProviderRequest,
   DEFAULT_REPAIR_BUDGET,
@@ -110,6 +111,48 @@ test("pinned model, prompt, seed, and inputs reproduce the same artifact digest"
   assert.notEqual(first.finalCandidateRef.digest, differentSeed.finalCandidateRef.digest);
   assert.notEqual(first.finalCandidateRef.digest, differentMaterial.finalCandidateRef.digest);
   assert.notEqual(first.finalCandidateRef.digest, differentSuiteRef.finalCandidateRef.digest);
+});
+
+test("unpinned model aliases or sampling cannot claim reproducible certification", () => {
+  const pinnedPrompt = {
+    id: "generate-provider-database-v1",
+    frozenPromptDigest: contentDigest({ prompt: "frozen" })
+  };
+  const pinnedModel = {
+    provider: "self-hosted",
+    id: "self-hosted/qwen3-coder",
+    digest: contentDigest({ model: "qwen3-coder", version: "pinned" })
+  };
+
+  assert.equal(
+    assertPinnedGenerationInputs({
+      model: pinnedModel,
+      prompt: pinnedPrompt,
+      generationConfig: { temperature: 0, topP: 1 },
+      seed: "seed-hobo-211"
+    }),
+    true
+  );
+  assert.throws(
+    () =>
+      assertPinnedGenerationInputs({
+        model: { ...pinnedModel, id: "hosted/latest" },
+        prompt: pinnedPrompt,
+        generationConfig: { temperature: 0, topP: 1 },
+        seed: "seed-hobo-211"
+      }),
+    /generation\.model_not_pinned/
+  );
+  assert.throws(
+    () =>
+      assertPinnedGenerationInputs({
+        model: pinnedModel,
+        prompt: pinnedPrompt,
+        generationConfig: { temperature: 0.2, topP: 1 },
+        seed: "seed-hobo-211"
+      }),
+    /generation\.sampling_not_deterministic/
+  );
 });
 
 test("minimum production suite coverage rejects reference-only and thin conformance reports", async () => {

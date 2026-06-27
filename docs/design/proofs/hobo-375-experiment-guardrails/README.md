@@ -15,16 +15,22 @@ Acceptance evidence:
 
 - Locked look schedules return `inconclusive` before the scheduled analysis
   point, even when the mid-experiment sample would look favorable.
+- Missing locked schedules fail closed instead of allowing the legacy default
+  winner path.
 - Bonferroni correction is applied across the pre-registered metric family,
   raising the effective confidence threshold for many-metric analyses.
 - Pre-registered segment families contribute to the Bonferroni family size, so
   a segment-specific conclusion is not an uncorrected free win.
 - Required sample-size power floors prevent tiny favorable samples from
-  declaring `winner`.
+  declaring `winner` or `no-difference`.
 - The primary metric must match the pre-registered primary metric.
+- The A/A calibration corpus runs repeated looks across neutral experiments:
+  early looks remain `inconclusive`, the locked final look reaches
+  `no-difference`, and no run produces a spurious `winner`.
 
 Adversarial evidence:
 
+- Analysis-plan opt-outs for peeking or multiplicity are rejected.
 - A post-hoc primary metric swap fails closed with
   `post-hoc-primary-metric`.
 - A post-hoc segment cherry-pick fails closed with `post-hoc-segment` instead

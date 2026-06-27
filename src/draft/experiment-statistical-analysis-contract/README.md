@@ -21,14 +21,19 @@ peeking, p-hacking, multiplicity, and underpowered wins.
   subject cannot flip the verdict.
 - Locked analysis-look schedules block favorable peeking before a scheduled
   conclusion point.
+- Missing analysis schedules fail closed instead of defaulting to a favorable
+  conclusion path.
 - Bonferroni correction raises the decision confidence across a pre-registered
   metric family so many-metric cherry-picks cannot create a free win.
+- Bonferroni and locked-schedule guardrails are mandatory, not opt-out flags.
 - Required sample-size power floors block tiny samples from declaring a winner
-  even when all observed samples favor a variant.
+  or `no-difference`, even when all observed samples favor one outcome.
 - Primary metrics and eligible analysis segments must be pre-registered;
   post-hoc metric swaps and segment cherry-picks fail closed.
 - Pre-registered segment families are counted in the Bonferroni family size
   rather than treated as independent uncorrected chances to win.
+- A repeated-look A/A calibration corpus stays below the nominal false-positive
+  rate and reaches `no-difference` only at the locked final look.
 
 ## Out of scope
 

@@ -17,16 +17,6 @@ export function analyzeExperiment(definition, input = {}) {
   const metrics = normalizeMetrics(input.metrics ?? [], experiment.key);
   const variants = summarizeVariants(exposures);
 
-  const lookGate = evaluateLookSchedule(experiment, seq);
-  if (!lookGate.allowed) {
-    return buildResult(experiment, {
-      outcome: "inconclusive",
-      reason: lookGate.reason,
-      seq,
-      variants
-    });
-  }
-
   if (exposures.length === 0) {
     return buildResult(experiment, {
       outcome: "inconclusive",
@@ -38,7 +28,7 @@ export function analyzeExperiment(definition, input = {}) {
 
   const primary = comparePrimary(experiment, exposures, metrics);
   const underpowered = primary.comparisons.find((comparison) =>
-    isUnderpoweredWinner(experiment, comparison)
+    isUnderpoweredComparison(experiment, comparison)
   );
 
   if (underpowered || primary.comparisons.length === 0) {
@@ -48,6 +38,17 @@ export function analyzeExperiment(definition, input = {}) {
     return buildResult(experiment, {
       outcome: "inconclusive",
       reason: `insufficient sample; required ${required} per variant`,
+      primary,
+      seq,
+      variants
+    });
+  }
+
+  const lookGate = evaluateLookSchedule(experiment, seq);
+  if (!lookGate.allowed) {
+    return buildResult(experiment, {
+      outcome: "inconclusive",
+      reason: lookGate.reason,
       primary,
       seq,
       variants
@@ -90,9 +91,9 @@ export function analyzeExperiment(definition, input = {}) {
   });
 }
 
-function isUnderpoweredWinner(experiment, comparison) {
+function isUnderpoweredComparison(experiment, comparison) {
   const required = requiredSampleFloor(experiment, comparison);
-  return comparison.winner && (comparison.control.n < required || comparison.variant.n < required);
+  return comparison.control.n < required || comparison.variant.n < required;
 }
 
 function requiredSampleFloor(experiment, comparison) {
@@ -126,9 +127,9 @@ function normalizeDefinition(definition) {
 
 function normalizeAnalysisPlan(plan = {}, metrics) {
   assertObject(plan, "analysisPlan");
-  const multipleComparisons = plan.multipleComparisons ?? "none";
-  if (!["none", "bonferroni"].includes(multipleComparisons)) {
-    throw new TypeError(`unknown multiple-comparisons method ${multipleComparisons}`);
+  const multipleComparisons = plan.multipleComparisons ?? "bonferroni";
+  if (multipleComparisons !== "bonferroni") {
+    throw new TypeError("analysisPlan.multipleComparisons must use bonferroni");
   }
 
   const preregisteredSegments = plan.preregisteredSegments ?? [];
@@ -138,16 +139,14 @@ function normalizeAnalysisPlan(plan = {}, metrics) {
 
   const metricFamily =
     plan.metricFamily ??
-    (multipleComparisons === "bonferroni"
-      ? metrics.filter((metric) => metric.role !== "guardrail").map((metric) => metric.name)
-      : []);
+    metrics.filter((metric) => metric.role !== "guardrail").map((metric) => metric.name);
   if (!Array.isArray(metricFamily)) {
     throw new TypeError("analysisPlan.metricFamily must be an array");
   }
 
-  const peekingProtection = plan.peekingProtection ?? "none";
-  if (!["none", "locked-schedule"].includes(peekingProtection)) {
-    throw new TypeError(`unknown peeking protection ${peekingProtection}`);
+  const peekingProtection = plan.peekingProtection ?? "locked-schedule";
+  if (peekingProtection !== "locked-schedule") {
+    throw new TypeError("analysisPlan.peekingProtection must use locked-schedule");
   }
 
   return {
@@ -199,8 +198,11 @@ function validatePreregisteredAnalysis(experiment, input) {
 
 function evaluateLookSchedule(experiment, seq) {
   const { peekingProtection, lookSchedule } = experiment.analysisPlan;
-  if (peekingProtection !== "locked-schedule" || lookSchedule.length === 0) {
-    return { allowed: true };
+  if (peekingProtection !== "locked-schedule") {
+    return { allowed: false, reason: "analysis look schedule is not locked" };
+  }
+  if (lookSchedule.length === 0) {
+    return { allowed: false, reason: "missing locked analysis schedule" };
   }
   if (lookSchedule.some((look) => look.seq === seq)) {
     return { allowed: true };

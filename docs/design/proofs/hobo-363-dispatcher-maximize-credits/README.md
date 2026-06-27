@@ -8,11 +8,12 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 The executable POC in
 [`src/draft/dispatcher-maximize-credits-contract`](../../../../src/draft/dispatcher-maximize-credits-contract)
 pins the M2 Dispatcher contract for `maximize-credits` placement and dispatch decisions.
+HOBO-286 extends the same POC with reservation-CAS and recorded hysteresis proof.
 
 ## Acceptance Evidence
 
 - A fixture `CreditLedgerView` ranks a CI job to the cheapest registered runner with free headroom
-  and records `dispatch.Decided` with the pinned ledger seq and balance hash.
+  and records `dispatch.Decided` with the pinned ledger seq, balance hash, and rationale.
 - Replaying the serialized dispatch input yields the same winner, ranking, and event body.
 - Exhausting a free tier rotates the next dispatch pick to the declared min-cost runner.
 - Resource placement emits `match.Decided` with objective `maximize-credits`.
@@ -31,9 +32,10 @@ pins the M2 Dispatcher contract for `maximize-credits` placement and dispatch de
 
 ## Scope Boundary
 
-The proof consumes local fixture `CreditLedgerView` snapshots and provider registrations. It does
-not implement adapter calls, live cost-event production, reservation/double-spend CAS, traffic
-routing, or rebalance/hysteresis loops.
+The HOBO-363 proof consumes local fixture `CreditLedgerView` snapshots and provider registrations.
+Adapter calls, live cost-event production, traffic routing, and production dispatcher workers remain
+out of scope; HOBO-286 adds the local reservation-CAS and hysteresis contract proof in the same
+package.
 
 ## Verification
 

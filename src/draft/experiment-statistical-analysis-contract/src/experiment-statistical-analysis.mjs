@@ -12,6 +12,7 @@ export class ExperimentAnalysisError extends Error {
 export function analyzeExperiment(definition, input = {}) {
   const experiment = normalizeDefinition(definition);
   const seq = normalizeSeq(input.seq);
+  validatePreregisteredAnalysis(experiment, input);
   const exposures = normalizeExposures(input.exposures ?? [], experiment.key);
   const metrics = normalizeMetrics(input.metrics ?? [], experiment.key);
   const variants = summarizeVariants(exposures);
@@ -26,16 +27,28 @@ export function analyzeExperiment(definition, input = {}) {
   }
 
   const primary = comparePrimary(experiment, exposures, metrics);
-  const underpowered = primary.comparisons.some(
-    (comparison) =>
-      comparison.control.n < experiment.minimumSamplesPerVariant ||
-      comparison.variant.n < experiment.minimumSamplesPerVariant
+  const underpowered = primary.comparisons.find((comparison) =>
+    isUnderpoweredComparison(experiment, comparison)
   );
 
   if (underpowered || primary.comparisons.length === 0) {
+    const required = underpowered
+      ? requiredSampleFloor(experiment, underpowered)
+      : experiment.minimumSamplesPerVariant;
     return buildResult(experiment, {
       outcome: "inconclusive",
-      reason: `insufficient sample; required ${experiment.minimumSamplesPerVariant} per variant`,
+      reason: `insufficient sample; required ${required} per variant`,
+      primary,
+      seq,
+      variants
+    });
+  }
+
+  const lookGate = evaluateLookSchedule(experiment, seq);
+  if (!lookGate.allowed) {
+    return buildResult(experiment, {
+      outcome: "inconclusive",
+      reason: lookGate.reason,
       primary,
       seq,
       variants
@@ -78,6 +91,15 @@ export function analyzeExperiment(definition, input = {}) {
   });
 }
 
+function isUnderpoweredComparison(experiment, comparison) {
+  const required = requiredSampleFloor(experiment, comparison);
+  return comparison.control.n < required || comparison.variant.n < required;
+}
+
+function requiredSampleFloor(experiment, comparison) {
+  return Math.max(experiment.minimumSamplesPerVariant, comparison.requiredSampleSize);
+}
+
 function normalizeDefinition(definition) {
   assertObject(definition, "experiment definition");
   const metrics = normalizeMetricDefinitions(definition.metrics);
@@ -98,7 +120,98 @@ function normalizeDefinition(definition) {
     ),
     primaryConfidence: normalizeConfidence(definition.primaryConfidence ?? 0.95),
     metrics,
-    primaryMetric
+    primaryMetric,
+    analysisPlan: normalizeAnalysisPlan(definition.analysisPlan, metrics)
+  };
+}
+
+function normalizeAnalysisPlan(plan = {}, metrics) {
+  assertObject(plan, "analysisPlan");
+  const multipleComparisons = plan.multipleComparisons ?? "bonferroni";
+  if (multipleComparisons !== "bonferroni") {
+    throw new TypeError("analysisPlan.multipleComparisons must use bonferroni");
+  }
+
+  const preregisteredSegments = plan.preregisteredSegments ?? [];
+  if (!Array.isArray(preregisteredSegments)) {
+    throw new TypeError("analysisPlan.preregisteredSegments must be an array");
+  }
+
+  const metricFamily =
+    plan.metricFamily ??
+    metrics.filter((metric) => metric.role !== "guardrail").map((metric) => metric.name);
+  if (!Array.isArray(metricFamily)) {
+    throw new TypeError("analysisPlan.metricFamily must be an array");
+  }
+
+  const peekingProtection = plan.peekingProtection ?? "locked-schedule";
+  if (peekingProtection !== "locked-schedule") {
+    throw new TypeError("analysisPlan.peekingProtection must use locked-schedule");
+  }
+
+  return {
+    multipleComparisons,
+    metricFamily: metricFamily.map((name) => requireString(name, "metricFamily entry")),
+    peekingProtection,
+    lookSchedule: normalizeLookSchedule(plan.lookSchedule ?? []),
+    preregisteredSegments: preregisteredSegments.map((segment) =>
+      requireString(segment, "preregistered segment")
+    )
+  };
+}
+
+function normalizeLookSchedule(lookSchedule) {
+  if (!Array.isArray(lookSchedule)) {
+    throw new TypeError("analysisPlan.lookSchedule must be an array");
+  }
+  return lookSchedule
+    .map((look) => {
+      assertObject(look, "analysis look");
+      return {
+        seq: normalizePositiveInteger(look.seq, "analysis look seq", true)
+      };
+    })
+    .sort((left, right) => left.seq - right.seq);
+}
+
+function validatePreregisteredAnalysis(experiment, input) {
+  if (
+    input.primaryMetricName !== undefined &&
+    input.primaryMetricName !== experiment.primaryMetric.name
+  ) {
+    throw new ExperimentAnalysisError(
+      "post-hoc-primary-metric",
+      `primary metric ${input.primaryMetricName} was not pre-registered`
+    );
+  }
+
+  if (
+    input.selectedSegmentKey !== undefined &&
+    !experiment.analysisPlan.preregisteredSegments.includes(input.selectedSegmentKey)
+  ) {
+    throw new ExperimentAnalysisError(
+      "post-hoc-segment",
+      `segment ${input.selectedSegmentKey} was not pre-registered`
+    );
+  }
+}
+
+function evaluateLookSchedule(experiment, seq) {
+  const { peekingProtection, lookSchedule } = experiment.analysisPlan;
+  if (peekingProtection !== "locked-schedule") {
+    return { allowed: false, reason: "analysis look schedule is not locked" };
+  }
+  if (lookSchedule.length === 0) {
+    return { allowed: false, reason: "missing locked analysis schedule" };
+  }
+  if (lookSchedule.some((look) => look.seq === seq)) {
+    return { allowed: true };
+  }
+  const nextLook = lookSchedule.find((look) => look.seq > seq);
+  const suffix = nextLook ? `; next scheduled seq ${nextLook.seq}` : "";
+  return {
+    allowed: false,
+    reason: `not a scheduled analysis look${suffix}`
   };
 }
 
@@ -192,16 +305,20 @@ function summarizeVariants(exposures) {
 
 function comparePrimary(experiment, exposures, metrics) {
   const primary = experiment.primaryMetric;
+  const multiplicity = multiplicityFor(experiment);
+  const confidence = correctedConfidence(experiment.primaryConfidence, multiplicity);
   const control = valuesForVariant(experiment.controlVariant, primary, exposures, metrics);
   const candidates = [...new Set(exposures.map((exposure) => exposure.variantKey))]
     .filter((variantKey) => variantKey !== experiment.controlVariant)
     .map((variantKey) => {
       const variant = valuesForVariant(variantKey, primary, exposures, metrics);
-      const comparison = compareMetric(primary, control, variant, experiment.primaryConfidence);
+      const comparison = compareMetric(primary, control, variant, confidence);
       return {
         ...comparison,
         metric: primary.name,
-        confidence: experiment.primaryConfidence,
+        confidence,
+        requestedConfidence: experiment.primaryConfidence,
+        multiplicity,
         control,
         variant,
         outliersClamped: control.outliersClamped + variant.outliersClamped,
@@ -214,12 +331,40 @@ function comparePrimary(experiment, exposures, metrics) {
 
   return {
     metric: primary.name,
-    confidence: experiment.primaryConfidence,
+    confidence,
+    requestedConfidence: experiment.primaryConfidence,
+    multiplicity,
     comparisons: candidates,
     outliersClamped:
       control.outliersClamped +
       candidates.reduce((sum, comparison) => sum + comparison.variant.outliersClamped, 0)
   };
+}
+
+function multiplicityFor(experiment) {
+  if (experiment.analysisPlan.multipleComparisons !== "bonferroni") {
+    return {
+      method: "none",
+      familySize: 1,
+      metrics: 1,
+      segments: 1
+    };
+  }
+  const metrics = Math.max(1, new Set(experiment.analysisPlan.metricFamily).size);
+  const segments = Math.max(1, new Set(experiment.analysisPlan.preregisteredSegments).size);
+  return {
+    method: "bonferroni",
+    familySize: metrics * segments,
+    metrics,
+    segments
+  };
+}
+
+function correctedConfidence(confidence, multiplicity) {
+  if (multiplicity.method !== "bonferroni" || multiplicity.familySize <= 1) {
+    return confidence;
+  }
+  return 1 - (1 - confidence) / multiplicity.familySize;
 }
 
 function evaluateGuardrails(experiment, exposures, metrics, variantKey) {
@@ -429,8 +574,17 @@ function safeVariance(summary) {
 }
 
 function zForConfidence(confidence) {
+  if (confidence >= 0.999) {
+    return 3.291;
+  }
   if (confidence >= 0.99) {
     return 2.576;
+  }
+  if (confidence >= 0.985) {
+    return 2.498;
+  }
+  if (confidence >= 0.975) {
+    return 2.241;
   }
   if (confidence >= 0.95) {
     return 1.96;

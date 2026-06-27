@@ -41,6 +41,8 @@ message RankedDefinition {
   int32 priority = 3;
   double objective_score = 4;
   uint32 rank = 5;
+  string region = 6;
+  string rationale = 7;
 }
 
 message RejectedCandidate {

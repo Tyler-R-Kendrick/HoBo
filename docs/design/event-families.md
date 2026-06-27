@@ -21,6 +21,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `deployment.*` | `deployment.Planned`, `deployment.PlanRejected` |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided` |
+| `drift.*` | `drift.RemediationRouted`, `drift.DiffProposed` |
 | `domain.*` | `domain.Validated`, `domain.RoutingChanged` |
 | `env.*` | `env.Cloned`, `env.Promoted` |
 | `erasure.*` | `erasure.Requested`, `erasure.Completed` |

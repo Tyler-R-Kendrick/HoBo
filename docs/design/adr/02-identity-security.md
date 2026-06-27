@@ -499,3 +499,70 @@ The executable proof vectors live in `src/draft/deny-ceiling-algebra-poc` and co
 - **(+)** Mandatory policy packs now have one replayable algebra that policy engines, conformance tests, and future OPA/Cedar adapters can implement against.
 - **(+)** Adversarial ordering and child-scope widening attempts fail closed without losing the effective deny evidence.
 - **(-)** The algebra is intentionally conservative: default rules are the only place to express overridable recommendations, while mandatory rules must be modeled as ceilings or bounded maxima.
+
+## ADR-0097
+**ID-JAG threat model and draft-version tracking for Cross-App Access.**
+
+### Context
+[ADR-0084](#adr-0084) chose Cross-App Access over private per-app OAuth consent so enterprise policy can see and govern "agent X acts as user Y in external app Z". HOBO-54 already pins the ID-JAG wire contract, and `auth.json` already pins the active draft string. The missing decision was how HoBo treats ID-JAG as a moving IETF draft, and which abuse cases must become adversarial regression vectors before outbound and inbound XAA hardening can ship.
+
+As of 2026-06-26, the official IETF Datatracker page shows `draft-ietf-oauth-identity-assertion-authz-grant-04` as the current draft. HoBo keeps that as the active protocol pin until a branch explicitly reviews a newer draft and updates the HOBO-48 `auth.json` pin, the HOBO-54 wire vectors, and the adversarial matrix together.
+
+### Decision
+1. **The draft pin is a contract input, not a comment.** `oauth2-xaa` declarations and ID-JAG assertions carry `draft-ietf-oauth-identity-assertion-authz-grant-04`. A target authorization server must advertise compatible grant-profile support before HoBo uses XAA with it. A mismatched, missing, or newer unreviewed draft revision yields `hold` or `invalid_grant`, never silent interop.
+2. **Draft bumps require vector-diff review.** A newer Datatracker revision, MCP authorization-extension change, token/grant-profile registration change, OAuth security BCP change, or incompatible target metadata opens a requirements review. The pin may move only with updated `auth.json`, wire-contract vectors, and threat-model fixtures in the same branch.
+3. **Threat families are fixed for the adversarial handoff.** The HOBO-271 matrix covers stage-1 assertion theft/replay, stage-2 audience/resource confusion, IdP-compromise blast radius, scope upgrade at redemption, draft-version skew, forced fallback from `oauth2-xaa` to `oauth2-obo`, actor-token confusion, sender-constrained token downgrade, and refresh-token-as-subject-token broadening.
+4. **Fallback is explicit and policy-gated.** HoBo may use `oauth2-obo` or MCP OAuth only when target discovery does not advertise compatible XAA, or a policy allows that lower-governance route. If a target supports XAA and a mandatory rule requires it, downgrade attempts fail closed and are recorded in CredentialAudit.
+5. **Unsupported extension paths fail closed.** HoBo rejects unexpected `actor_token` use in XAA until a supported profile defines actor processing. When sender-constrained ID-JAG use is required, `cnf` and DPoP proof must match; missing proof or mismatched thumbprint is not treated as bearer fallback.
+6. **The spike output is executable.** The matrix and guard requirements live in `src/draft/id-jag-threat-model-spike`, and the proof doc lives in `docs/design/proofs/hobo-271-id-jag-threat-model`. Future adversarial slices consume this as the minimum coverage list.
+
+### Consequences
+- **(+)** XAA hardening now has a concrete threat matrix and draft-tracking rule instead of a generic "track the draft" note.
+- **(+)** The most dangerous downgrade paths - OBO fallback, actor-token confusion, sender-constrained-token downgrade, and version skew - are fail-closed by contract before runtime code exists.
+- **(-)** HoBo may temporarily reject targets that implement a newer ID-JAG draft until the pin and vectors are reviewed together.
+
+## ADR-0100
+**SVID rotation under partition: signed renewal grace, then fail closed.**
+
+### Context
+[ADR-0008](#adr-0008) says the broker is the sole credential path and therefore needs HA with a
+bounded credential-cache plus renewal-grace window. HOBO-99 proved the happy-path SVID rotation
+contract: long agent runs rotate before TTL expiry and never keep a stale credential. The remaining
+question is what happens when a workload is partitioned from Identity across its rotation deadline.
+A naive fail-closed-at-rotation rule bricks healthy long-running work during brief broker/Identity
+outages. A naive fail-open rule lets stale credentials live for an unbounded partition.
+
+### Decision
+1. **Grace is signed by Identity and bounded by the current SVID.** Identity issues each workload a
+   rotation lease with `rotateAt`, `notAfter`, `renewalGraceUntil`, `epoch`, and scope. The grace
+   window may extend past `rotateAt`, but `renewalGraceUntil` MUST NOT exceed the current SVID's
+   `notAfter`.
+2. **Default bound: rotate at two-thirds TTL, grace until `notAfter`.** With the standard 15 minute
+   SVID TTL, rotation is due at 10 minutes and partition grace is at most 5 minutes. Shorter TTLs
+   use the same ratio and cap grace at the remaining signed validity window.
+3. **Fail open only for same-or-narrower cached renewal.** While `now <= renewalGraceUntil`, the
+   local broker/cache may renew provider tokens only for the same tenant/run/agent and same-or-
+   narrower scope already present in the lease. Scope widening or a new audience requires live
+   Identity and fails closed while partitioned.
+4. **Workloads cannot extend grace.** Client-supplied grace deadlines are ignored as authority and
+   rejected if they exceed the signed `renewalGraceUntil`. Grace is an Identity-issued lease, not a
+   runtime preference.
+5. **After grace, fail closed with an auditable fact.** A partition lasting beyond
+   `renewalGraceUntil` yields `identity.PartitionGraceExpired`; token renewal, SVID use, and brokered
+   provider access stop until Identity is reachable. The system must prefer a bounded interruption
+   over unbounded stale-credential use.
+6. **Partition heal is idempotent by epoch.** When Identity returns before grace expires, it rotates
+   once to `epoch + 1` and emits `identity.Rotated`. Replay or duplicate heal attempts that observe
+   the next epoch reuse it, avoiding double issue and validity gaps.
+
+The executable spike vectors live in `src/draft/svid-partition-grace-spike`. They cover the standard
+15 minute TTL / 5 minute grace recommendation, in-grace cached renewal, post-grace fail-closed,
+scope-widening rejection, workload grace-extension rejection, and idempotent heal.
+
+### Consequences
+- **(+)** Broker HA has a concrete degraded-mode rule: brief Identity partitions do not instantly
+  brick long runs, but no credential remains usable past its signed SVID validity.
+- **(+)** The rule composes with the existing least-privilege and attestation decisions because
+  grace can only preserve or narrow an already-attested scope.
+- **(-)** A partition longer than the signed grace window interrupts the workload. That is an
+  explicit availability/security tradeoff, not an implementation accident.

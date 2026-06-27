@@ -205,7 +205,8 @@ function parseArgv(argv, options) {
     strategy: null,
     target: null,
     check: false,
-    last: false
+    last: false,
+    offline: false
   };
   const args = [];
   let verb = null;
@@ -291,6 +292,12 @@ function parseOption(argv, index, flags, verb) {
     case "--last":
       flags.last = true;
       return index;
+    case "--offline":
+      if (verb === "doctor") {
+        flags.offline = true;
+        return index;
+      }
+      throw new UsageError(`Unknown option "${token}". Run "${verb ? `hobo ${verb} --help` : "hobo --help"}".`);
     default:
       throw new UsageError(`Unknown option "${token}". Run "${verb ? `hobo ${verb} --help` : "hobo --help"}".`);
   }
@@ -357,20 +364,21 @@ function renderSuccess({ verb, flags, context, result }) {
     context: publicContext(context),
     data: result.data ?? {}
   };
+  const exitCode = envelope.ok ? 0 : 1;
 
   if (flags.json) {
-    return okText(`${JSON.stringify(envelope)}\n`);
+    return okText(`${JSON.stringify(envelope)}\n`, exitCode);
   }
 
   if (flags.quiet) {
-    return okText("");
+    return okText("", exitCode);
   }
 
   return okText(`Command  Status
 ${verb.padEnd(8)} ${envelope.status}
 
 ${envelope.message}
-`);
+`, exitCode);
 }
 
 function renderError(error) {
@@ -389,9 +397,9 @@ function renderError(error) {
   };
 }
 
-function okText(stdout) {
+function okText(stdout, exitCode = 0) {
   return {
-    exitCode: 0,
+    exitCode,
     stdout,
     stderr: ""
   };

@@ -1,8 +1,9 @@
-# HOBO-168 MCP Server Contract
+# HOBO-168/HOBO-173 MCP Server Contract
 
 This POC pins the `@hobo/mcp` operations surface without building a production
-MCP server, Yard runtime, auth provider, or dashboard. It proves tool metadata,
-input/output schema validation, CLI call-path parity, progress streaming, and the
+MCP server, Yard runtime, auth provider, issuer, token-broker runtime, or
+dashboard. It proves tool metadata, input/output schema validation, CLI
+call-path parity, progress streaming, SVID-bound session authorization, and the
 `request_token` broker seam against local fixtures.
 
 ## What It Proves
@@ -21,13 +22,23 @@ input/output schema validation, CLI call-path parity, progress streaming, and th
 - `request_token` delegates to the token-broker seam with the authenticated
   principal injected as the subject.
 - Stdio and HTTP transport descriptors are exposed for the future server.
+- A SVID-bound MCP session verifies the SVID assertion before each tool call and
+  requires the session to hold the per-tool `hobo:mcp/tool:<name>/call`
+  capability.
+- `request_token` is routed through the injected broker with a SVID scope
+  narrowed to the requested `(port, resource, action)` tuple.
+- Token broker output is redacted before return or audit, and token
+  `Granted`/`Used`/`Revoked` events retain the triggering MCP tool-call id.
+- Expired, revoked, replayed, forged, anonymous, and over-scope sessions fail
+  closed with structured errors and auditable policy decisions.
 
 ## Scope Boundary
 
-This package intentionally does not implement auth/SVID scoping per tool,
-prompt-injection hardening, editor integration, production transports, Yard
-runtime handlers, or dashboard surfaces. Those are owned by the follow-on
-HOBO-173, HOBO-194, and HOBO-180 slices.
+This package intentionally does not implement the Identity issuer, JWKS
+verification internals, broker/provider internals, prompt-injection hardening,
+editor integration, production transports, Yard runtime handlers, or dashboard
+surfaces. Those remain owned by adjacent Identity, policy, runtime, and DX
+slices.
 
 ## Verification
 

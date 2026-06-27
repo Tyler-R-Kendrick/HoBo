@@ -107,7 +107,15 @@ test("match.Decided carries ADR-0033 ranking, rejected candidates, objective, ti
     objective: "cost",
     catalogContentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ranking: [
-      { definitionId: "aws-s3-standard", specificity: 2, priority: 10, objectiveScore: 0.13, rank: 1 },
+      {
+        definitionId: "aws-s3-standard",
+        region: "us-east-1",
+        specificity: 2,
+        priority: 10,
+        objectiveScore: 0.13,
+        rank: 1,
+        rationale: "objective=cost; region=us-east-1; provider=aws"
+      },
       { definitionId: "azure-blob-standard", specificity: 2, priority: 10, objectiveScore: 0.17, rank: 2 }
     ],
     rejectedCandidates: [
@@ -129,6 +137,8 @@ test("match.Decided carries ADR-0033 ranking, rejected candidates, objective, ti
     "winner"
   ]);
   assert.equal(decided.data.tie, false);
+  assert.equal(decided.data.ranking[0].region, "us-east-1");
+  assert.match(decided.data.ranking[0].rationale, /objective=cost/);
 });
 
 test("dispatch.Decided pins the CreditLedgerView seq and reservation input used by maximize-credits", () => {

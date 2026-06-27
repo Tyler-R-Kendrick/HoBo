@@ -75,7 +75,7 @@ export interface DispatchDecidedBody {
     reservationId: string;
     balanceHash: string;
   };
-  candidates: Array<{ provider: string; effectiveMarginalCost: number }>;
+  candidates: Array<{ provider: string; effectiveMarginalCost: number; rationale?: string }>;
 }
 
 export interface GenericControlPlaneBody {

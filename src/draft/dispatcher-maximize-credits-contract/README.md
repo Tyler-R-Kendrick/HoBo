@@ -1,6 +1,6 @@
 # Dispatcher Maximize-Credits Contract POC
 
-Independent POC for HOBO-363. It pins the M2 Dispatcher ranking contract from
+Independent POC for HOBO-363 and HOBO-286. It pins the M2 Dispatcher ranking contract from
 [ADR-0071](../../../docs/design/adr/01-architecture-core.md#adr-0071) for placement and CI/build
 dispatch decisions that consume a pinned `CreditLedgerView@seq`.
 
@@ -9,9 +9,15 @@ dispatch decisions that consume a pinned `CreditLedgerView@seq`.
 - `createDispatcherRegistry()` is the runner/build-machine registration seam; only registered
   candidates are eligible for `dispatch.Decided`.
 - `decideDispatch()` ranks a CI job/build-machine request by effective marginal cost under
-  `maximize-credits` and records `dispatch.Decided` with the pinned ledger seq and balance hash.
+  `maximize-credits` and records `dispatch.Decided` with the pinned ledger seq, balance hash, and
+  per-candidate rationale.
 - `replayDispatchDecision()` reuses the serialized candidates and `CreditLedgerView` input to prove
   deterministic replay of the same pick and event body.
+- `createReservationLedger()` + `decideAndReserveDispatch()` prove the reservation-CAS seam: a stale
+  ledger `seq` conflicts, refreshes the pinned snapshot, re-ranks, and reserves without
+  double-spending free headroom.
+- Recorded hysteresis input can hold the incumbent when a challenger is only near-equal, and the
+  held rationale is surfaced in the decision and `dispatch.Decided` candidates.
 - `decidePlacement()` applies the same cost-aware ranker to resource placement and records
   `match.Decided` with objective `maximize-credits`.
 - Absent or invalid credit facts degrade to declared min-cost ranking instead of throwing or chasing
@@ -24,9 +30,9 @@ dispatch decisions that consume a pinned `CreditLedgerView@seq`.
 ## Scope Boundary
 
 This package is a deterministic contract proof. It does not implement provider adapters, traffic
-routing, autonomous rebalance/hysteresis, cost event production, reservation-CAS, or double-spend
-safety. Reservation-CAS remains the HOBO-379 hardening slice; this POC only records a
-`reservation-intent-*` id in the dispatch decision.
+routing, live cost event production, durable EventStore persistence, or production dispatcher
+workers. The reservation ledger is an in-memory contract seam that proves the CAS/re-rank behavior
+HOBO-286 requires; deeper production hardening remains separate from this POC.
 
 ## Verification
 

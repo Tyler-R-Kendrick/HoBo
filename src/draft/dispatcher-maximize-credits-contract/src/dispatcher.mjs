@@ -46,6 +46,12 @@ export function decideDispatch(request) {
   const registry = normalizeRegistry(request.registry);
   const candidates = registry.byCategory.get(category) ?? [];
   const ledgerView = normalizeLedgerView(request.ledgerView);
+  const hysteresisInput = normalizeHysteresis(request.hysteresis);
+  const incumbentProviderId = request.incumbentProviderId ?? hysteresisInput?.incumbentProviderId;
+  const reservationId = requireString(
+    request.reservationId ?? `reservation-intent-${dispatchId}`,
+    "request.reservationId",
+  );
 
   if (candidates.length === 0) {
     return failedDecision({
@@ -58,9 +64,11 @@ export function decideDispatch(request) {
     candidates,
     ledgerView,
     units,
-    incumbentProviderId: request.incumbentProviderId,
+    incumbentProviderId,
   });
-  const winner = ranked[0];
+  const hysteresis = applyHysteresis(ranked, hysteresisInput);
+  const finalRanked = hysteresis.ranked;
+  const winner = finalRanked[0];
   const dispatchEvent = createDispatchDecidedEvent({
     dispatchId,
     category,
@@ -69,12 +77,13 @@ export function decideDispatch(request) {
     ledgerInput: {
       view: "CreditLedgerView",
       seq: ledgerView.seq,
-      reservationId: `reservation-intent-${dispatchId}`,
+      reservationId,
       balanceHash: ledgerBalanceHash(ledgerView),
     },
-    candidates: ranked.map((candidate) => ({
+    candidates: finalRanked.map((candidate) => ({
       provider: candidate.providerId,
       effectiveMarginalCost: candidate.effectiveMarginalCost,
+      rationale: candidate.rationale,
     })),
   });
 
@@ -83,17 +92,152 @@ export function decideDispatch(request) {
     schema: DISPATCHER_MAXIMIZE_CREDITS_VERSION,
     objective,
     selectedProvider: winner.providerId,
-    ranking: publicDispatchRanking(ranked),
+    ranking: publicDispatchRanking(finalRanked),
+    hysteresis: hysteresis.public,
     dispatchEvent,
     replayInput: {
       category,
       dispatchId,
       objective,
       units,
-      incumbentProviderId: request.incumbentProviderId,
+      incumbentProviderId,
+      hysteresis: hysteresisInput,
+      reservationId,
       ledgerView: clone(ledgerView),
       candidates: registry.records.map((record) => clone(record.source)),
     },
+  };
+}
+
+export function createReservationLedger(initialLedgerView) {
+  let current = normalizeLedgerView(initialLedgerView);
+
+  return {
+    snapshot() {
+      return clone(current);
+    },
+    reserve(request) {
+      assertObject(request, "request");
+      const providerId = requireString(request.providerId, "request.providerId");
+      const dimension = requireString(request.dimension, "request.dimension");
+      const reservationId = requireString(request.reservationId, "request.reservationId");
+      const units = requirePositiveNumber(request.units ?? 1, "request.units");
+      const expectedSeq = requireNonNegativeInteger(request.expectedSeq, "request.expectedSeq");
+
+      if (expectedSeq !== current.seq) {
+        return {
+          ok: false,
+          status: "cas-conflict",
+          reservationId,
+          providerId,
+          dimension,
+          expectedSeq,
+          actualSeq: current.seq,
+          ledgerView: clone(current),
+        };
+      }
+
+      const next = clone(current);
+      const account = findLedgerAccount(next, providerId, dimension);
+      if (account) {
+        consumeReservedFreeHeadroom(account, units);
+        account.reservedUnits = roundQuantity((account.reservedUnits ?? 0) + units);
+      }
+      const committedSeq = next.seq + 1;
+      next.seq = committedSeq;
+      next.reservations = [
+        ...(Array.isArray(next.reservations) ? next.reservations : []),
+        {
+          reservationId,
+          providerId,
+          dimension,
+          units,
+          expectedSeq,
+          committedSeq,
+        },
+      ];
+      current = next;
+
+      return {
+        ok: true,
+        status: "reserved",
+        reservationId,
+        providerId,
+        dimension,
+        units,
+        expectedSeq,
+        committedSeq,
+        ledgerView: clone(current),
+      };
+    },
+  };
+}
+
+export function decideAndReserveDispatch(request) {
+  assertObject(request, "request");
+  const reservationLedger = request.reservationLedger;
+  if (
+    !reservationLedger ||
+    typeof reservationLedger.snapshot !== "function" ||
+    typeof reservationLedger.reserve !== "function"
+  ) {
+    throw new TypeError("request.reservationLedger must be a reservation ledger");
+  }
+
+  const maxAttempts = requirePositiveInteger(request.maxAttempts ?? 3, "request.maxAttempts");
+  const registry = normalizeRegistry(request.registry);
+  let ledgerView = request.ledgerView ? normalizeLedgerView(request.ledgerView) : reservationLedger.snapshot();
+  const attempts = [];
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const decision = decideDispatch({
+      ...request,
+      registry,
+      ledgerView,
+      reservationId: request.reservationId ?? `reserve-${request.dispatchId}`,
+    });
+    if (!decision.ok) {
+      return {
+        ...decision,
+        attempts,
+      };
+    }
+
+    const selectedRecord = registry.records.find((record) => record.providerId === decision.selectedProvider);
+    const dimension = selectedRecord?.dimension ?? CATEGORY_DIMENSIONS[decision.dispatchEvent.data.category];
+    const reservation = reservationLedger.reserve({
+      providerId: decision.selectedProvider,
+      dimension,
+      units: request.units ?? 1,
+      expectedSeq: ledgerView.seq,
+      reservationId: decision.dispatchEvent.data.ledgerInput.reservationId,
+    });
+    attempts.push({
+      attempt,
+      status: reservation.status,
+      selectedProvider: decision.selectedProvider,
+      expectedSeq: ledgerView.seq,
+      actualSeq: reservation.actualSeq ?? reservation.committedSeq,
+    });
+
+    if (reservation.ok) {
+      return {
+        ...decision,
+        reservation,
+        attempts,
+      };
+    }
+
+    ledgerView = reservation.ledgerView;
+  }
+
+  return {
+    ok: false,
+    schema: DISPATCHER_MAXIMIZE_CREDITS_VERSION,
+    objective: request.objective ?? "maximize-credits",
+    reason: `reservation CAS failed after ${maxAttempts} attempts`,
+    ranking: [],
+    attempts,
   };
 }
 
@@ -186,6 +330,104 @@ function rankCreditCandidates({ candidates, ledgerView, units, incumbentProvider
       ...candidate,
       rank: index + 1,
     }));
+}
+
+function applyHysteresis(ranked, hysteresis) {
+  if (!hysteresis) {
+    return {
+      ranked,
+      public: {
+        held: false,
+        input: null,
+      },
+    };
+  }
+
+  const rawWinner = ranked[0];
+  const incumbent = ranked.find((candidate) => candidate.providerId === hysteresis.incumbentProviderId);
+  if (!rawWinner || !incumbent || rawWinner.providerId === incumbent.providerId) {
+    return {
+      ranked,
+      public: {
+        held: false,
+        input: hysteresis,
+        rawWinner: rawWinner?.providerId ?? null,
+        incumbentProviderId: hysteresis.incumbentProviderId,
+      },
+    };
+  }
+  if (incumbent.budgetExceeded) {
+    return {
+      ranked,
+      public: {
+        held: false,
+        input: hysteresis,
+        rawWinner: rawWinner.providerId,
+        incumbentProviderId: incumbent.providerId,
+        reason: "incumbent-budget-exceeded",
+      },
+    };
+  }
+
+  const savings = roundCost(incumbent.totalCost - rawWinner.totalCost);
+  if (savings >= hysteresis.minimumSavings) {
+    return {
+      ranked,
+      public: {
+        held: false,
+        input: hysteresis,
+        rawWinner: rawWinner.providerId,
+        incumbentProviderId: incumbent.providerId,
+        savings,
+      },
+    };
+  }
+
+  const heldIncumbent = {
+    ...incumbent,
+    rationale: [
+      incumbent.rationale,
+      `hysteresis-held rawWinner=${rawWinner.providerId}`,
+      `savings=${savings}`,
+      `minimumSavings=${hysteresis.minimumSavings}`,
+      `dwellWindow=${hysteresis.dwellWindow}`,
+      `observedAt=${hysteresis.observedAt}`,
+    ].join("; "),
+  };
+  const heldChallenger = {
+    ...rawWinner,
+    rationale: [
+      rawWinner.rationale,
+      `hysteresis-challenger-held incumbent=${incumbent.providerId}`,
+      `savings=${savings}`,
+      `minimumSavings=${hysteresis.minimumSavings}`,
+    ].join("; "),
+  };
+  const byProvider = new Map([
+    [heldIncumbent.providerId, heldIncumbent],
+    [heldChallenger.providerId, heldChallenger],
+  ]);
+  const reranked = [
+    heldIncumbent,
+    ...ranked.filter((candidate) => candidate.providerId !== incumbent.providerId).map((candidate) => (
+      byProvider.get(candidate.providerId) ?? candidate
+    )),
+  ].map((candidate, index) => ({
+    ...candidate,
+    rank: index + 1,
+  }));
+
+  return {
+    ranked: reranked,
+    public: {
+      held: true,
+      input: hysteresis,
+      rawWinner: rawWinner.providerId,
+      incumbentProviderId: incumbent.providerId,
+      savings,
+      reason: "savings-below-threshold",
+    },
+  };
 }
 
 function rankCreditCandidate({ candidate, ledgerView, units, incumbentProviderId }) {
@@ -356,6 +598,7 @@ function publicDispatchRanking(ranked) {
   return ranked.map((candidate) => ({
     providerId: candidate.providerId,
     category: candidate.category,
+    dimension: candidate.dimension,
     rank: candidate.rank,
     effectiveMarginalCost: candidate.effectiveMarginalCost,
     totalCost: candidate.totalCost,
@@ -469,6 +712,34 @@ function normalizeLedgerView(ledgerView) {
   return clone(ledgerView);
 }
 
+function normalizeHysteresis(hysteresis) {
+  if (hysteresis === undefined || hysteresis === null) return null;
+  assertObject(hysteresis, "request.hysteresis");
+  return {
+    incumbentProviderId: requireString(hysteresis.incumbentProviderId, "request.hysteresis.incumbentProviderId"),
+    minimumSavings: nonNegativeNumber(hysteresis.minimumSavings ?? 0, "request.hysteresis.minimumSavings", 0),
+    dwellWindow: requireString(hysteresis.dwellWindow, "request.hysteresis.dwellWindow"),
+    observedAt: requireString(hysteresis.observedAt, "request.hysteresis.observedAt"),
+  };
+}
+
+function consumeReservedFreeHeadroom(account, units) {
+  let remaining = units;
+  if (optionalNonNegativeNumber(account.freeHeadroom)) {
+    const consumed = Math.min(account.freeHeadroom, remaining);
+    account.freeHeadroom = roundQuantity(account.freeHeadroom - consumed);
+    remaining = roundQuantity(remaining - consumed);
+  }
+  if (!Array.isArray(account.credits) || remaining <= 0) return;
+  for (const credit of account.credits) {
+    if (!optionalNonNegativeNumber(credit?.freeHeadroom)) continue;
+    const consumed = Math.min(credit.freeHeadroom, remaining);
+    credit.freeHeadroom = roundQuantity(credit.freeHeadroom - consumed);
+    remaining = roundQuantity(remaining - consumed);
+    if (remaining <= 0) return;
+  }
+}
+
 function failedDecision({ objective, reason, rejectedCandidates = [] }) {
   return {
     ok: false,
@@ -528,6 +799,20 @@ function requireString(value, fieldName) {
 function requirePositiveNumber(value, fieldName) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new TypeError(`${fieldName} must be greater than 0`);
+  }
+  return value;
+}
+
+function requirePositiveInteger(value, fieldName) {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new TypeError(`${fieldName} must be a positive integer`);
+  }
+  return value;
+}
+
+function requireNonNegativeInteger(value, fieldName) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new TypeError(`${fieldName} must be a non-negative integer`);
   }
   return value;
 }

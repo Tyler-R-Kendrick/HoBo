@@ -163,6 +163,12 @@ function normalizeLease(value) {
   const rotateAt = requireIso(value.rotateAt, "lease.rotateAt");
   const notAfter = requireIso(value.notAfter, "lease.notAfter");
   const renewalGraceUntil = requireIso(value.renewalGraceUntil, "lease.renewalGraceUntil");
+  if (Date.parse(rotateAt) <= Date.parse(issuedAt) || Date.parse(rotateAt) >= Date.parse(notAfter)) {
+    throw new Error("lease.rotateAt must be inside the SVID validity window");
+  }
+  if (Date.parse(renewalGraceUntil) < Date.parse(rotateAt)) {
+    throw new Error("lease.renewalGraceUntil must not precede lease.rotateAt");
+  }
   if (Date.parse(renewalGraceUntil) > Date.parse(notAfter)) {
     throw new Error("lease.renewalGraceUntil must not exceed lease.notAfter");
   }

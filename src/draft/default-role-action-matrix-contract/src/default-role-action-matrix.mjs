@@ -135,6 +135,11 @@ function enforceSeparationOfDuties(request, decisionBase, grantSet) {
   const { actionId, context, subject } = request;
 
   if (actionId === "hobo:policy-pack:approve") {
+    if (!isNonEmptyString(context.changeAuthorId)) {
+      return deny(decisionBase, "separation-of-duties context missing", [
+        "policy-pack approval requires context.changeAuthorId to enforce author-not-approver",
+      ]);
+    }
     if (context.changeAuthorId === subject.id) {
       const message = context.requiresTwoPersonApproval
         ? "two-person approval blocks self-approval even for Org-Admin"
@@ -143,24 +148,41 @@ function enforceSeparationOfDuties(request, decisionBase, grantSet) {
     }
   }
 
-  if (actionId === "hobo:delta:promote" && context.targetEnvironment === "prod") {
-    if (context.deltaOpenedBy === subject.id) {
-      return deny(decisionBase, "separation-of-duties denied prod promotion", [
-        "delta opener cannot promote that Delta to prod",
+  if (actionId === "hobo:delta:promote") {
+    if (!isNonEmptyString(context.targetEnvironment)) {
+      return deny(decisionBase, "separation-of-duties context missing", [
+        "delta promotion requires context.targetEnvironment before approval obligations can be evaluated",
       ]);
     }
-    return requireApproval(decisionBase, "prod delta promotion requires approval", [
-      {
-        kind: "policy.approval-required",
-        actionId,
-        reason: "prod delta promotion requires approval",
-        approverRole: "Security/Policy-Admin",
-      },
-    ]);
+    if (context.targetEnvironment === "prod") {
+      if (!isNonEmptyString(context.deltaOpenedBy)) {
+        return deny(decisionBase, "separation-of-duties context missing", [
+          "prod delta promotion requires context.deltaOpenedBy to enforce opener-not-promoter",
+        ]);
+      }
+      if (context.deltaOpenedBy === subject.id) {
+        return deny(decisionBase, "separation-of-duties denied prod promotion", [
+          "delta opener cannot promote that Delta to prod",
+        ]);
+      }
+      return requireApproval(decisionBase, "prod delta promotion requires approval", [
+        {
+          kind: "policy.approval-required",
+          actionId,
+          reason: "prod delta promotion requires approval",
+          approverRole: "Security/Policy-Admin",
+        },
+      ]);
+    }
   }
 
   if (actionId === "hobo:role:bind") {
-    const requested = parseRequestedGrantActionIds(context.requestedGrantActionIds);
+    const requested = roleBindingGrantActionIds(context);
+    if (requested.length === 0) {
+      return deny(decisionBase, "role:bind target grants missing", [
+        "role:bind requires targetRole or requestedGrantActionIds to enforce no-self-escalation",
+      ]);
+    }
     const missing = requested.filter((grant) => !grantSet.has(grant));
     if (missing.length > 0) {
       return deny(decisionBase, "role:bind no-self-escalation denied", [
@@ -189,6 +211,10 @@ function enforceSeparationOfDuties(request, decisionBase, grantSet) {
   }
 
   return null;
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
 }
 
 function normalizeRequest(input) {
@@ -246,6 +272,15 @@ function parseRequestedGrantActionIds(input) {
     throw new TypeError("context.requestedGrantActionIds must be an array");
   }
   return input.map((grant) => requireString(grant, "context.requestedGrantActionIds[]"));
+}
+
+function roleBindingGrantActionIds(context) {
+  const grants = [];
+  if (isNonEmptyString(context.targetRole) && ROLE_GRANTS[context.targetRole]) {
+    grants.push(...resolveRoleGrantSet(context.targetRole));
+  }
+  grants.push(...parseRequestedGrantActionIds(context.requestedGrantActionIds));
+  return unique(grants);
 }
 
 function actionsGroup(resources, verbs) {

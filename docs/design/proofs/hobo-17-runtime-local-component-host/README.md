@@ -12,6 +12,6 @@ The branch adds `src/draft/runtime-local-component-host`, an independent POC for
 - `teardown releases leases and removes routes for unloaded components`
 - `host report records HOBO-17 boundaries and fuel epoch follow-up`
 
-## Deferred Follow-Up
+## Follow-Up Boundary
 
-Fuel/epoch execution limits are intentionally not implemented here. They need a separate host-resource-limit hardening slice so the runtime can bound guest execution without conflating that work with the component lifecycle and link-table skeleton. Linear follow-up: HOBO-400.
+Fuel/epoch execution limits are intentionally not implemented here. They need a separate host-resource-limit hardening slice so the runtime can bound guest execution without conflating that work with the component lifecycle and link-table skeleton. The follow-up proof is [HOBO-400 runtime-local execution limits](../hobo-400-runtime-local-execution-limits/README.md).

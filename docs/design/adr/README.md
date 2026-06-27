@@ -106,3 +106,4 @@
 | 0098 | Generation eval methodology: hybrid rubrics, golden trajectories, and independent calibration | [data-plane](03-data-plane.md#adr-0098) |
 | 0099 | Data-flywheel privacy model for trajectory capture and training | [data-plane](03-data-plane.md#adr-0099) |
 | 0100 | SVID rotation under partition: signed renewal grace, then fail closed | [identity-security](02-identity-security.md#adr-0100) |
+| 0101 | DNS validation-gate threat model: multi-vantage, TTL, ACME, health, and promote re-checks | [portability-extensibility](07-portability-extensibility.md#adr-0101) |

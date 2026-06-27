@@ -1,0 +1,12 @@
+{
+  "name": "@hobo/draft-doctor-contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/doctor-contract.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

@@ -127,6 +127,23 @@ describe("HOBO-266 SVID partition grace spike", () => {
       events: ["identity.PartitionGraceExpired"],
     });
   });
+
+  it("rejects malformed signed leases that could keep credentials alive past notAfter", () => {
+    const lease = {
+      ...fixtureLease(),
+      rotateAt: "2026-06-26T20:20:00.000Z",
+      renewalGraceUntil: "2026-06-26T20:15:00.000Z",
+    };
+
+    assert.throws(
+      () =>
+        evaluateTokenRenewal(lease, {
+          now: "2026-06-26T20:16:00.000Z",
+          scope: [{ port: "database/main", resource: "shop.db", actions: ["read"] }],
+        }),
+      /lease\.rotateAt must be inside the SVID validity window/,
+    );
+  });
 });
 
 function fixtureLease() {

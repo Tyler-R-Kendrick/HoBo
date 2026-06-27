@@ -67,6 +67,21 @@ Make portability a **conformance guarantee** with verifiable mechanisms (each la
 - **(+)** A genuine **multi-cloud ingress** story — one domain routes across clouds with failover/weighted/geo policies — where DNS changes are **safe by construction** (nothing promotes until resolve/propagation/ACME/health checks pass; cutovers are staged with automatic rollback), reusing the provider-global Yard topology, env-group saga, gateway flip + health, and secretless Identity, with ACME DNS-01 giving portable, wildcard-capable, auto-rotated certs with no static secret.
 - **(−)** DNS-based routing has propagation/TTL latency on failover (seconds–minutes) vs an anycast LB's instant flip, and the pre-promotion validation gate adds latency and is ongoing per-provider equivalence-class work the `dns` capability must be conformance-covered for.
 
+## ADR-0101
+**DNS validation-gate threat model: multi-vantage, TTL, ACME, health, and promote re-checks.**
+
+Custom-domain safety depends on the validation gate being more than a list of happy-path checks. A naive gate can be bypassed by a lying resolver, split-horizon answers, poisoned recursive cache evidence, sibling-name ACME evidence, a spoofed health endpoint, or a DNS rebinding race after validation but before the live write. Therefore the gate's required threat model is pinned before the HOBO-142 implementation slice:
+
+1. **Multi-vantage resolve fails closed on disagreement.** At least three independent vantage resolvers (different recursive networks / ASNs / regions) must report the intended target set. A single honest-looking success is not sufficient, and disagreement is a failed check rather than an input to majority selection.
+2. **TTL-aware propagation includes stale-cache defense.** Propagation is not confirmed until the previous live TTL and candidate TTL windows have elapsed and the record version is stable across required vantages. A poisoned or stale recursive cache blocks promotion instead of becoming evidence.
+3. **ACME evidence is exact-name and key-bound.** DNS-01 or provider challenge evidence must bind to the exact FQDN, key thumbprint, and CSR intent. A sibling name or unrelated wildcard challenge cannot satisfy the gate.
+4. **Endpoint health verifies the candidate path.** Health is probed through the candidate host/path and verifies the expected gateway identity; the old target or a generic health endpoint cannot make the new route pass.
+5. **Promotion re-checks pinned evidence.** Immediately before live-zone mutation, HoBo re-checks the pinned validation evidence digest. If evidence drifted, the live zone was touched early, or the validate-to-promote window exceeded the configured bound, promotion fails closed.
+
+Residual risks are explicit: a coordinated authoritative-zone compromise can serve consistent malicious answers to every vantage and must be caught through signed-change provenance and audit; rollback RTO is still bounded by cached TTL, not instant; regional internet partitions make the safe result "block promotion" rather than "promote on partial evidence."
+
+**Consequences.** HOBO-142 implements the four concrete checks and must expose enough evidence for the pinned digest. HOBO-193 owns the red-team cases for rebinding, spoofed resolvers, sibling-name ACME, and promote races. The executable spike is `src/draft/dns-validation-gate-threat-model`.
+
 ## ADR-0036
 **Air-gapped / sovereign Yard mode.**
 

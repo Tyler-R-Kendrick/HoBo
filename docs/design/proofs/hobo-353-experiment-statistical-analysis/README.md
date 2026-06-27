@@ -33,6 +33,6 @@ Adversarial evidence:
 Scope boundary:
 
 - Assignment and exposure collection remain in HOBO-349.
-- Peeking, p-hacking, and multiple-comparison guardrails remain in the
-  adversarial follow-up.
+- Peeking, p-hacking, and multiple-comparison guardrails are hardened by
+  [HOBO-375](../hobo-375-experiment-guardrails/README.md).
 - Provider adapters and ML/training-engine integration remain out of scope.

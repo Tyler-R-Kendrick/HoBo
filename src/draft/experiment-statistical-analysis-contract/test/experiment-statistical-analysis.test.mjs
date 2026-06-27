@@ -247,3 +247,184 @@ test("sampled exposure without a sampling rate fails closed", () => {
       error.code === "invalid-sampling-marker"
   );
 });
+
+test("locked look schedule blocks favorable peeking before the scheduled analysis", () => {
+  const rows = flatten([
+    cohort("control", [0, 0, 0, 0, 0, 0]),
+    cohort("treatment", [1, 1, 1, 1, 1, 1])
+  ]);
+
+  const analysis = analyzeExperiment(
+    experimentDefinition({
+      analysisPlan: {
+        peekingProtection: "locked-schedule",
+        lookSchedule: [{ seq: 30 }]
+      }
+    }),
+    {
+      exposures: rows.map((row) => row.exposure),
+      metrics: rows.map((row) => row.metric),
+      seq: 12
+    }
+  );
+
+  assert.equal(analysis.outcome, "inconclusive");
+  assert.match(analysis.event.data.reason, /not a scheduled analysis look/);
+});
+
+test("metric-family correction prevents a post-hoc many-metric win", () => {
+  const rows = flatten([
+    cohort("control", Array(10).fill(0)),
+    cohort("treatment", [1, 1, 1, 1, 0, 0, 0, 0, 0, 0])
+  ]);
+
+  const analysis = analyzeExperiment(
+    experimentDefinition({
+      metrics: [
+        {
+          name: "checkout.completed",
+          role: "primary",
+          direction: "increase",
+          minDetectableEffect: 0.2,
+          bounds: [0, 1]
+        },
+        { name: "cart.added", role: "secondary", direction: "increase", bounds: [0, 1] },
+        { name: "email.clicked", role: "secondary", direction: "increase", bounds: [0, 1] },
+        { name: "session.length", role: "secondary", direction: "increase", bounds: [0, 1] }
+      ],
+      analysisPlan: {
+        multipleComparisons: "bonferroni"
+      }
+    }),
+    {
+      exposures: rows.map((row) => row.exposure),
+      metrics: rows.map((row) => row.metric),
+      seq: 15
+    }
+  );
+
+  assert.equal(analysis.outcome, "no-difference");
+  assert.equal(analysis.primary.multiplicity.familySize, 4);
+  assert.equal(analysis.primary.multiplicity.method, "bonferroni");
+  assert.equal(analysis.primary.confidence > 0.95, true);
+});
+
+test("required sample-size power floor blocks tiny-sample certainty", () => {
+  const rows = flatten([
+    cohort("control", Array(20).fill(0)),
+    cohort("treatment", Array(20).fill(1))
+  ]);
+
+  const analysis = analyzeExperiment(
+    experimentDefinition({
+      minimumSamplesPerVariant: 1,
+      metrics: [
+        {
+          name: "checkout.completed",
+          role: "primary",
+          direction: "increase",
+          minDetectableEffect: 0.05,
+          bounds: [0, 1]
+        }
+      ]
+    }),
+    {
+      exposures: rows.map((row) => row.exposure),
+      metrics: rows.map((row) => row.metric),
+      seq: 16
+    }
+  );
+
+  assert.equal(analysis.outcome, "inconclusive");
+  assert.match(analysis.event.data.reason, /insufficient sample/);
+  assert.equal(analysis.primary.comparisons[0].requiredSampleSize > 20, true);
+});
+
+test("post-hoc primary metric swap is rejected", () => {
+  const rows = flatten([
+    cohort("control", Array(6).fill(0)),
+    cohort("treatment", Array(6).fill(1))
+  ]);
+
+  assert.throws(
+    () =>
+      analyzeExperiment(experimentDefinition(), {
+        exposures: rows.map((row) => row.exposure),
+        metrics: rows.map((row) => row.metric),
+        primaryMetricName: "posthoc.revenue",
+        seq: 17
+      }),
+    (error) =>
+      error instanceof ExperimentAnalysisError &&
+      error.code === "post-hoc-primary-metric"
+  );
+});
+
+test("post-hoc segment cherry-pick is rejected instead of treated as a free win", () => {
+  const rows = flatten([
+    cohort("control", Array(6).fill(0)),
+    cohort("treatment", Array(6).fill(1))
+  ]);
+
+  assert.throws(
+    () =>
+      analyzeExperiment(
+        experimentDefinition({
+          analysisPlan: {
+            preregisteredSegments: ["all-traffic"]
+          }
+        }),
+        {
+          exposures: rows.map((row) => row.exposure),
+          metrics: rows.map((row) => row.metric),
+          selectedSegmentKey: "mobile-big-spenders",
+          seq: 18
+        }
+      ),
+    (error) =>
+      error instanceof ExperimentAnalysisError &&
+      error.code === "post-hoc-segment"
+  );
+});
+
+test("pre-registered segment families are corrected as multiplicity", () => {
+  const rows = flatten([
+    cohort("control", Array(10).fill(0)),
+    cohort("treatment", [1, 1, 1, 1, 0, 0, 0, 0, 0, 0])
+  ]);
+
+  const analysis = analyzeExperiment(
+    experimentDefinition({
+      metrics: [
+        {
+          name: "checkout.completed",
+          role: "primary",
+          direction: "increase",
+          minDetectableEffect: 0.2,
+          bounds: [0, 1]
+        }
+      ],
+      analysisPlan: {
+        multipleComparisons: "bonferroni",
+        preregisteredSegments: [
+          "all-traffic",
+          "mobile",
+          "desktop",
+          "new-user",
+          "returning-user",
+          "high-intent"
+        ]
+      }
+    }),
+    {
+      exposures: rows.map((row) => row.exposure),
+      metrics: rows.map((row) => row.metric),
+      selectedSegmentKey: "mobile",
+      seq: 19
+    }
+  );
+
+  assert.equal(analysis.outcome, "no-difference");
+  assert.equal(analysis.primary.multiplicity.familySize, 6);
+  assert.equal(analysis.primary.multiplicity.segments, 6);
+});

@@ -4,6 +4,8 @@ import test from "node:test";
 import { validateControlPlaneEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.mjs";
 import {
   createDispatcherRegistry,
+  createReservationLedger,
+  decideAndReserveDispatch,
   decideDispatch,
   decidePlacement,
   replayDispatchDecision,
@@ -297,6 +299,123 @@ test("budget caps and spend-to-date keep over-cap cheap candidates behind afford
   assert.equal(decision.selectedProvider, "open-budget");
   assert.equal(decision.ranking[1].budgetExceeded, true);
   assert.match(decision.ranking[1].rationale, /budget-cap-exceeded/);
+});
+
+test("reservation-CAS detects a stale ledger and re-ranks so concurrent dispatches cannot double-spend", () => {
+  const registry = createDispatcherRegistry([
+    runner("github-hosted", { listUnitCost: 0.03 }),
+    runner("self-hosted", { listUnitCost: 0.01 }),
+  ]);
+  const reservationLedger = createReservationLedger(
+    ledgerView([
+      account("github-hosted", { freeHeadroom: 1, listUnitCost: 0.03 }),
+      account("self-hosted", { freeHeadroom: 0, listUnitCost: 0.01 }),
+    ]),
+  );
+  const staleSnapshot = reservationLedger.snapshot();
+
+  const first = decideAndReserveDispatch({
+    registry,
+    category: "runner",
+    dispatchId: "ci-race-a",
+    units: 1,
+    ledgerView: staleSnapshot,
+    reservationLedger,
+  });
+  const second = decideAndReserveDispatch({
+    registry,
+    category: "runner",
+    dispatchId: "ci-race-b",
+    units: 1,
+    ledgerView: staleSnapshot,
+    reservationLedger,
+  });
+
+  assert.equal(first.selectedProvider, "github-hosted");
+  assert.equal(first.reservation.status, "reserved");
+  assert.equal(second.attempts[0].status, "cas-conflict");
+  assert.deepEqual(second.attempts.map((attempt) => attempt.selectedProvider), [
+    "github-hosted",
+    "self-hosted",
+  ]);
+  assert.equal(second.selectedProvider, "self-hosted");
+  assert.equal(second.dispatchEvent.data.ledgerInput.seq, 92);
+  assert.equal(validateControlPlaneEvent(second.dispatchEvent).ok, true);
+  assert.equal(reservationLedger.snapshot().seq, 93);
+  assert.equal(
+    reservationLedger.snapshot().accounts.find((entry) => entry.providerId === "github-hosted").freeHeadroom,
+    0,
+  );
+});
+
+test("recorded hysteresis keeps an incumbent when a challenger is only near-equal", () => {
+  const registry = createDispatcherRegistry([
+    runner("incumbent", { listUnitCost: 0.1 }),
+    runner("near-free-challenger", { listUnitCost: 0.095 }),
+  ]);
+  const hysteresis = {
+    incumbentProviderId: "incumbent",
+    minimumSavings: 0.1,
+    dwellWindow: "PT10M",
+    observedAt: "2026-06-27T00:00:00.000Z",
+  };
+
+  const decision = decideDispatch({
+    registry,
+    category: "runner",
+    dispatchId: "ci-hysteresis",
+    units: 10,
+    ledgerView: ledgerView([
+      account("incumbent", { freeHeadroom: 0, listUnitCost: 0.1 }),
+      account("near-free-challenger", { freeHeadroom: 0, listUnitCost: 0.095 }),
+    ]),
+    hysteresis,
+  });
+
+  assert.equal(decision.selectedProvider, "incumbent");
+  assert.equal(decision.hysteresis.held, true);
+  assert.deepEqual(decision.hysteresis.input, hysteresis);
+  assert.match(decision.ranking[0].rationale, /hysteresis-held/);
+  assert.match(decision.dispatchEvent.data.candidates[0].rationale, /hysteresis-held/);
+  assert.equal(validateControlPlaneEvent(decision.dispatchEvent).ok, true);
+});
+
+test("hysteresis does not hold an incumbent that violates the budget hard constraint", () => {
+  const registry = createDispatcherRegistry([
+    runner("incumbent", { listUnitCost: 0.01 }),
+    runner("affordable-challenger", { listUnitCost: 0.03 }),
+  ]);
+
+  const decision = decideDispatch({
+    registry,
+    category: "runner",
+    dispatchId: "ci-budget-hysteresis",
+    units: 5,
+    ledgerView: ledgerView([
+      account("incumbent", {
+        freeHeadroom: 0,
+        listUnitCost: 0.01,
+        budgetCap: 1,
+        spendToDate: 0.99,
+      }),
+      account("affordable-challenger", {
+        freeHeadroom: 0,
+        listUnitCost: 0.03,
+        budgetCap: 10,
+        spendToDate: 0,
+      }),
+    ]),
+    hysteresis: {
+      incumbentProviderId: "incumbent",
+      minimumSavings: 1,
+      dwellWindow: "PT10M",
+      observedAt: "2026-06-27T00:00:00.000Z",
+    },
+  });
+
+  assert.equal(decision.selectedProvider, "affordable-challenger");
+  assert.equal(decision.hysteresis.held, false);
+  assert.equal(decision.ranking[1].budgetExceeded, true);
 });
 
 test("expiring-soonest free credit wins among equal zero-cost candidates", () => {

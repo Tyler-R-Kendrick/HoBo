@@ -1,12 +1,22 @@
 # Adopt-in-Place Contract
 
 HOBO-369 proves the control-plane contract for `hobo import`, adopted nodes, and
-external resource bindings without implementing real Pulumi/CDKTF import
-readers or provider realization.
+external resource bindings. HOBO-225 extends the proof to Terraform-style import
+fixtures, unsupported-resource externalization, brownfield deploy planning, and
+PortabilityReport/zero-secret debt surfacing without implementing real
+Pulumi/CDKTF/OpenTofu import readers or provider realization.
 
 ## Scope
 
 - `importIacState()` maps fixture IaC state into `adopted` graph nodes.
+- `createTerraformStateFixture()` proves a Terraform-state importer input.
+- `planImportRoundTrip()` proves imported state replays as a no-op plan.
+- Unsupported IaC resource types become `external` graph nodes instead of being
+  force-adopted.
+- `planBrownfieldDeployment()` deploys managed resources while skipping adopted
+  and external resources.
+- `createPortabilityPlanFromGraph()` emits portability markers for external,
+  adopted, and static-key brownfield debt.
 - Adoption emits `resource.Adopted` with source provenance.
 - Adopted resources are retained on destroy and reconcile only through
   drift-detect refreshes.
@@ -22,6 +32,8 @@ readers or provider realization.
 - Destroy plans skip adopted and external resources.
 - External output declarations must match the values used by managed bindings.
 - Drift on adopted resources is recorded for manual remediation only.
+- Partial or corrupt IaC state fails before graph mutation.
+- Static-key brownfield dependencies appear as zero-secret audit exceptions.
 
 ## Verification
 

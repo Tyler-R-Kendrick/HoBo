@@ -401,7 +401,7 @@ function createRegionPinMutation(runtimeAction, fact) {
   if (!runtimeAction.pinnedRegion || !regionAllowed(fact.allowedRegions, runtimeAction.pinnedRegion)) {
     return null;
   }
-  if (!runtimeAction.pinnedEndpoint || runtimeAction.endpointCompliance === "non-compliant") {
+  if (!runtimeAction.pinnedEndpoint || runtimeAction.endpointCompliance !== "compliant") {
     return null;
   }
   return {

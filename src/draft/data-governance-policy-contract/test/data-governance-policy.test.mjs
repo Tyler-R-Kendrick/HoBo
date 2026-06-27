@@ -146,6 +146,30 @@ test("runtime action to a non-compliant endpoint fails obligation instead of war
   assert.equal(result.decision.obligations.some((obligation) => obligation.kind === "warn"), false);
 });
 
+test("runtime region pinning requires explicit compliant endpoint evidence", () => {
+  const result = evaluate({
+    request: {
+      action: "hobo:runtime:export",
+      phase: "runtime",
+      context: {
+        region: "us-east-1",
+        dataClassifications: ["phi"],
+      },
+    },
+    runtimeAction: {
+      kind: "export",
+      destinationRegion: "eu-central-1",
+      allowRegionPinning: true,
+      pinnedRegion: "us-east-1",
+      pinnedEndpoint: "https://us-east-1.example.invalid/export",
+    },
+  });
+
+  assert.equal(result.decision.effect, "deny");
+  assert.match(result.decision.violations.join("\n"), /outside allowed regions us-east-1/);
+  assert.deepEqual(result.decision.mutations, []);
+});
+
 test("retention policy is enforced as a floor and a ceiling over compaction", () => {
   const deleteTooSoon = evaluate({
     retentionRequest: {

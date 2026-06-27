@@ -520,3 +520,49 @@ As of 2026-06-26, the official IETF Datatracker page shows `draft-ietf-oauth-ide
 - **(+)** XAA hardening now has a concrete threat matrix and draft-tracking rule instead of a generic "track the draft" note.
 - **(+)** The most dangerous downgrade paths - OBO fallback, actor-token confusion, sender-constrained-token downgrade, and version skew - are fail-closed by contract before runtime code exists.
 - **(-)** HoBo may temporarily reject targets that implement a newer ID-JAG draft until the pin and vectors are reviewed together.
+
+## ADR-0100
+**SVID rotation under partition: signed renewal grace, then fail closed.**
+
+### Context
+[ADR-0008](#adr-0008) says the broker is the sole credential path and therefore needs HA with a
+bounded credential-cache plus renewal-grace window. HOBO-99 proved the happy-path SVID rotation
+contract: long agent runs rotate before TTL expiry and never keep a stale credential. The remaining
+question is what happens when a workload is partitioned from Identity across its rotation deadline.
+A naive fail-closed-at-rotation rule bricks healthy long-running work during brief broker/Identity
+outages. A naive fail-open rule lets stale credentials live for an unbounded partition.
+
+### Decision
+1. **Grace is signed by Identity and bounded by the current SVID.** Identity issues each workload a
+   rotation lease with `rotateAt`, `notAfter`, `renewalGraceUntil`, `epoch`, and scope. The grace
+   window may extend past `rotateAt`, but `renewalGraceUntil` MUST NOT exceed the current SVID's
+   `notAfter`.
+2. **Default bound: rotate at two-thirds TTL, grace until `notAfter`.** With the standard 15 minute
+   SVID TTL, rotation is due at 10 minutes and partition grace is at most 5 minutes. Shorter TTLs
+   use the same ratio and cap grace at the remaining signed validity window.
+3. **Fail open only for same-or-narrower cached renewal.** While `now <= renewalGraceUntil`, the
+   local broker/cache may renew provider tokens only for the same tenant/run/agent and same-or-
+   narrower scope already present in the lease. Scope widening or a new audience requires live
+   Identity and fails closed while partitioned.
+4. **Workloads cannot extend grace.** Client-supplied grace deadlines are ignored as authority and
+   rejected if they exceed the signed `renewalGraceUntil`. Grace is an Identity-issued lease, not a
+   runtime preference.
+5. **After grace, fail closed with an auditable fact.** A partition lasting beyond
+   `renewalGraceUntil` yields `identity.PartitionGraceExpired`; token renewal, SVID use, and brokered
+   provider access stop until Identity is reachable. The system must prefer a bounded interruption
+   over unbounded stale-credential use.
+6. **Partition heal is idempotent by epoch.** When Identity returns before grace expires, it rotates
+   once to `epoch + 1` and emits `identity.Rotated`. Replay or duplicate heal attempts that observe
+   the next epoch reuse it, avoiding double issue and validity gaps.
+
+The executable spike vectors live in `src/draft/svid-partition-grace-spike`. They cover the standard
+15 minute TTL / 5 minute grace recommendation, in-grace cached renewal, post-grace fail-closed,
+scope-widening rejection, workload grace-extension rejection, and idempotent heal.
+
+### Consequences
+- **(+)** Broker HA has a concrete degraded-mode rule: brief Identity partitions do not instantly
+  brick long runs, but no credential remains usable past its signed SVID validity.
+- **(+)** The rule composes with the existing least-privilege and attestation decisions because
+  grace can only preserve or narrow an already-attested scope.
+- **(-)** A partition longer than the signed grace window interrupts the workload. That is an
+  explicit availability/security tradeoff, not an implementation accident.

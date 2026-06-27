@@ -32,7 +32,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `golden.*` | `golden.Ran`, `golden.Passed` |
 | `governance.*` | `governance.ResidencyEnforced` |
 | `guardrail.*` | `guardrail.Blocked` |
-| `identity.*` | `identity.Issued`, `identity.Rotated` |
+| `identity.*` | `identity.Issued`, `identity.Rotated`, `identity.PartitionGraceEntered`, `identity.PartitionGraceExpired` |
 | `impl.*` | `impl.Generated`, `impl.Promoted` |
 | `incident.*` | `incident.Opened`, `incident.Resolved` |
 | `junction.*` | `junction.TrustEstablished`, `junction.ArtifactShared` |

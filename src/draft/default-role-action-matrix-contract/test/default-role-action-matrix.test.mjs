@@ -120,6 +120,18 @@ describe("default role action matrix contract", () => {
     assert.equal(securityAdminApproves.effect, "allow");
   });
 
+  it("fails closed when policy approval cannot prove author separation", () => {
+    const decision = evaluateControlPlaneAuthorization({
+      subject: { kind: "user", id: "user:security-admin", roles: ["Security/Policy-Admin"] },
+      resource: "policy-pack",
+      verb: "approve",
+      phase: "apply",
+    });
+
+    assert.equal(decision.effect, "deny");
+    assert.match(decision.violations.join("\n"), /changeAuthorId/);
+  });
+
   it("requires prod delta promotion approval while allowing lower-environment promotion", () => {
     const prod = evaluateControlPlaneAuthorization({
       subject: { kind: "user", id: "user:deployer", roles: ["Deployer"] },
@@ -141,6 +153,21 @@ describe("default role action matrix contract", () => {
         deltaOpenedBy: "user:deployer",
       },
     });
+    const missingTarget = evaluateControlPlaneAuthorization({
+      subject: { kind: "user", id: "user:deployer", roles: ["Deployer"] },
+      resource: "delta",
+      verb: "promote",
+      phase: "apply",
+    });
+    const missingOpener = evaluateControlPlaneAuthorization({
+      subject: { kind: "user", id: "user:deployer", roles: ["Deployer"] },
+      resource: "delta",
+      verb: "promote",
+      phase: "apply",
+      context: {
+        targetEnvironment: "prod",
+      },
+    });
 
     assert.equal(prod.effect, "require-approval");
     assert.deepEqual(prod.obligations, [
@@ -152,6 +179,10 @@ describe("default role action matrix contract", () => {
       },
     ]);
     assert.equal(staging.effect, "allow");
+    assert.equal(missingTarget.effect, "deny");
+    assert.match(missingTarget.violations.join("\n"), /targetEnvironment/);
+    assert.equal(missingOpener.effect, "deny");
+    assert.match(missingOpener.violations.join("\n"), /deltaOpenedBy/);
   });
 
   it("blocks the Delta opener from promoting that Delta to prod", () => {
@@ -208,10 +239,44 @@ describe("default role action matrix contract", () => {
         bindTargetPrincipalId: "user:security-admin",
       },
     });
+    const hiddenBuiltInEscalation = evaluateControlPlaneAuthorization({
+      subject: { kind: "user", id: "user:security-admin", roles: ["Security/Policy-Admin"] },
+      resource: "role",
+      verb: "bind",
+      phase: "author",
+      context: {
+        targetRole: "Org-Admin",
+        bindTargetPrincipalId: "user:security-admin",
+      },
+    });
+    const missingTargetGrantShape = evaluateControlPlaneAuthorization({
+      subject: { kind: "user", id: "user:security-admin", roles: ["Security/Policy-Admin"] },
+      resource: "role",
+      verb: "bind",
+      phase: "author",
+      context: {
+        bindTargetPrincipalId: "user:analyst",
+      },
+    });
+    const orgAdminBindsDeployer = evaluateControlPlaneAuthorization({
+      subject: { kind: "user", id: "user:org-admin", roles: ["Org-Admin"] },
+      resource: "role",
+      verb: "bind",
+      phase: "author",
+      context: {
+        targetRole: "Deployer",
+        bindTargetPrincipalId: "user:deployer",
+      },
+    });
 
     assert.equal(allowed.effect, "allow");
     assert.equal(escalation.effect, "deny");
     assert.match(escalation.violations.join("\n"), /cannot bind grants it does not already hold/);
+    assert.equal(hiddenBuiltInEscalation.effect, "deny");
+    assert.match(hiddenBuiltInEscalation.violations.join("\n"), /cannot bind grants it does not already hold/);
+    assert.equal(missingTargetGrantShape.effect, "deny");
+    assert.match(missingTargetGrantShape.violations.join("\n"), /targetRole or requestedGrantActionIds/);
+    assert.equal(orgAdminBindsDeployer.effect, "allow");
   });
 
   it("keeps Operator Supervisor forge execution capped to Crew operator principals", () => {

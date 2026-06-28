@@ -22,6 +22,12 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 - A coverage row is not considered enough if it only names a broad subsystem without a testable
   assertion; the `Coverage assertion` column states what the issue family must prove.
 
+## Cross-Plan User Story Evidence
+
+| Issue | Proof package | Cross-plan assertion |
+|---|---|---|
+| HOBO-213 | [`secops-policy-audit-journey-contract`](../../src/draft/secops-policy-audit-journey-contract/README.md) | SecOps `hobo up --camp prod` proves CLI/MCP parity, mandatory deny-ceilings, `.allow()` narrowing, separated-duty waiver TTL, replayable `policy.Decided`, and `CredentialAudit` token grant/use/revoke coverage across PLAN-06, PLAN-07, PLAN-21, PLAN-29, ADR-0008, ADR-0046, ADR-0074, and ADR-0096. |
+
 ## Plan Coverage
 
 | Plan | Source | Coverage assertion | Primary issues |

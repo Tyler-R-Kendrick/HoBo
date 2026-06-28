@@ -246,7 +246,9 @@ function createRunbookEvents({
       previousFenceToken: fencing.previousFenceToken,
       newFenceToken: fencing.newFenceToken,
       stalePrimaryAppend: fencing.stalePrimaryAppend,
-      reason: fencing.stalePrimaryAppend.accepted
+      reason: fencing.stalePrimaryAppend.reason === "no-contending-append"
+        ? "no contending append observed"
+        : fencing.stalePrimaryAppend.accepted
         ? "append carried current fenceToken"
         : "lower fenceToken rejected before failover restore",
     },
@@ -332,12 +334,21 @@ function appendResolutionEvents({ incidentEvents, incident, action, restore, res
 
 function evaluateFence({ lease, stalePrimaryAppend }) {
   const newFenceToken = lease.previousFenceToken + 1;
-  const append = stalePrimaryAppend ?? {
-    ownerNode: lease.previousOwnerNode,
-    fenceToken: lease.previousFenceToken,
-    seq: 0,
-    eventType: "unknown",
-  };
+  if (!stalePrimaryAppend) {
+    return deepFreeze({
+      actorKey: lease.actorKey,
+      previousOwnerNode: lease.previousOwnerNode,
+      newOwnerNode: lease.newOwnerNode,
+      previousFenceToken: lease.previousFenceToken,
+      newFenceToken,
+      stalePrimaryAppend: {
+        accepted: null,
+        reason: "no-contending-append",
+      },
+    });
+  }
+
+  const append = stalePrimaryAppend;
   const accepted = append.fenceToken >= newFenceToken;
 
   return deepFreeze({

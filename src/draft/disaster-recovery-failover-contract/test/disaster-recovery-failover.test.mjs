@@ -53,6 +53,11 @@ describe("disaster recovery failover orchestration contract", () => {
     assert.equal(result.restore.rpo.claimsZeroDataLoss, true);
     assert.equal(result.restore.rto.ms, 8 * 60 * 1000);
     assert.equal(result.restore.rto.withinTarget, true);
+    assert.equal(result.fencing.stalePrimaryAppend.reason, "no-contending-append");
+    assert.equal(
+      result.events.runbook.find((event) => event.payload.kind === "fence-original-owner")?.payload.reason,
+      "no contending append observed",
+    );
     assert.equal(result.events.incident.at(-2).type, INCIDENT_EVENT_TYPES.resolved);
     assert.equal(result.events.incident.at(-1).type, INCIDENT_EVENT_TYPES.postmortemFiled);
 

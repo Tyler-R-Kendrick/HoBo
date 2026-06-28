@@ -111,10 +111,14 @@ export function decideDispatch(request) {
 
 export function createReservationLedger(initialLedgerView) {
   let current = normalizeLedgerView(initialLedgerView);
+  const eventLog = [];
 
   return {
     snapshot() {
       return clone(current);
+    },
+    events() {
+      return clone(eventLog);
     },
     reserve(request) {
       assertObject(request, "request");
@@ -123,6 +127,7 @@ export function createReservationLedger(initialLedgerView) {
       const reservationId = requireString(request.reservationId, "request.reservationId");
       const units = requirePositiveNumber(request.units ?? 1, "request.units");
       const expectedSeq = requireNonNegativeInteger(request.expectedSeq, "request.expectedSeq");
+      const expiresAt = optionalInstant(request.expiresAt, "request.expiresAt");
 
       if (expectedSeq !== current.seq) {
         return {
@@ -139,24 +144,32 @@ export function createReservationLedger(initialLedgerView) {
 
       const next = clone(current);
       const account = findLedgerAccount(next, providerId, dimension);
+      let consumption = { freeHeadroom: 0, credits: [] };
       if (account) {
-        consumeReservedFreeHeadroom(account, units);
+        consumption = consumeReservedFreeHeadroom(account, units);
         account.reservedUnits = roundQuantity((account.reservedUnits ?? 0) + units);
       }
       const committedSeq = next.seq + 1;
+      const reservation = {
+        reservationId,
+        providerId,
+        dimension,
+        units,
+        expectedSeq,
+        committedSeq,
+        status: "pending",
+        expiresAt,
+        consumption,
+      };
       next.seq = committedSeq;
       next.reservations = [
         ...(Array.isArray(next.reservations) ? next.reservations : []),
-        {
-          reservationId,
-          providerId,
-          dimension,
-          units,
-          expectedSeq,
-          committedSeq,
-        },
+        reservation,
       ];
       current = next;
+      eventLog.push(reservationEvent("dispatch.ReservationReserved", reservation, {
+        ledgerSeq: current.seq,
+      }));
 
       return {
         ok: true,
@@ -167,10 +180,117 @@ export function createReservationLedger(initialLedgerView) {
         units,
         expectedSeq,
         committedSeq,
+        reservation: clone(reservation),
+        ledgerView: clone(current),
+      };
+    },
+    confirm(request) {
+      assertObject(request, "request");
+      const reservationId = requireString(request.reservationId, "request.reservationId");
+      const next = clone(current);
+      const reservation = findReservation(next, reservationId);
+      if (!reservation || reservation.status !== "pending") {
+        return {
+          ok: false,
+          status: "not-confirmable",
+          reservationId,
+          ledgerView: clone(current),
+        };
+      }
+
+      const committedSeq = next.seq + 1;
+      reservation.status = "confirmed";
+      reservation.confirmedSeq = committedSeq;
+      if (request.providerUsageSeq !== undefined) {
+        reservation.providerUsageSeq = requireNonNegativeInteger(
+          request.providerUsageSeq,
+          "request.providerUsageSeq",
+        );
+      }
+      next.seq = committedSeq;
+      current = next;
+      eventLog.push(reservationEvent("dispatch.ReservationConfirmed", reservation, {
+        ledgerSeq: current.seq,
+        providerUsageSeq: reservation.providerUsageSeq,
+      }));
+
+      return {
+        ok: true,
+        status: "confirmed",
+        reservationId,
+        committedSeq,
+        reservation: clone(reservation),
+        ledgerView: clone(current),
+      };
+    },
+    release(request) {
+      assertObject(request, "request");
+      const reservationId = requireString(request.reservationId, "request.reservationId");
+      const reason = requireString(request.reason ?? "released", "request.reason");
+      return releaseReservation({
+        reservationId,
+        reason,
+        eventType: "dispatch.ReservationReleased",
+      });
+    },
+    expire(request) {
+      assertObject(request, "request");
+      const now = requireInstant(request.now, "request.now");
+      const expiredIds = (current.reservations ?? [])
+        .filter((reservation) => reservation.status === "pending")
+        .filter((reservation) => reservation.expiresAt && Date.parse(reservation.expiresAt) <= Date.parse(now))
+        .map((reservation) => reservation.reservationId);
+      const releases = expiredIds.map((reservationId) => releaseReservation({
+        reservationId,
+        reason: "expired",
+        eventType: "dispatch.ReservationExpired",
+      }));
+
+      return {
+        released: releases.filter((release) => release.ok).length,
+        releases,
         ledgerView: clone(current),
       };
     },
   };
+
+  function releaseReservation({ reservationId, reason, eventType }) {
+    const next = clone(current);
+    const reservation = findReservation(next, reservationId);
+    if (!reservation || reservation.status !== "pending") {
+      return {
+        ok: false,
+        status: "not-releasable",
+        reservationId,
+        ledgerView: clone(current),
+      };
+    }
+
+    const account = findLedgerAccount(next, reservation.providerId, reservation.dimension);
+    if (account) {
+      restoreReservedFreeHeadroom(account, reservation.consumption);
+      account.reservedUnits = roundQuantity(Math.max(0, (account.reservedUnits ?? 0) - reservation.units));
+    }
+    const committedSeq = next.seq + 1;
+    reservation.status = eventType === "dispatch.ReservationExpired" ? "expired" : "released";
+    reservation.releaseReason = reason;
+    reservation.releasedSeq = committedSeq;
+    next.seq = committedSeq;
+    current = next;
+    eventLog.push(reservationEvent(eventType, reservation, {
+      ledgerSeq: current.seq,
+      reason,
+    }));
+
+    return {
+      ok: true,
+      status: reservation.status,
+      reservationId,
+      committedSeq,
+      reservation: clone(reservation),
+      ledgerView: clone(current),
+    };
+  }
 }
 
 export function decideAndReserveDispatch(request) {
@@ -211,6 +331,7 @@ export function decideAndReserveDispatch(request) {
       units: request.units ?? 1,
       expectedSeq: ledgerView.seq,
       reservationId: decision.dispatchEvent.data.ledgerInput.reservationId,
+      expiresAt: request.reservationExpiresAt,
     });
     attempts.push({
       attempt,
@@ -723,20 +844,66 @@ function normalizeHysteresis(hysteresis) {
   };
 }
 
+function findReservation(ledgerView, reservationId) {
+  return (ledgerView.reservations ?? []).find((reservation) => reservation?.reservationId === reservationId) ?? null;
+}
+
+function reservationEvent(type, reservation, overrides = {}) {
+  return {
+    type,
+    reservationId: reservation.reservationId,
+    providerId: reservation.providerId,
+    dimension: reservation.dimension,
+    units: reservation.units,
+    status: reservation.status,
+    ledgerSeq: overrides.ledgerSeq,
+    expectedSeq: reservation.expectedSeq,
+    committedSeq: reservation.committedSeq,
+    reason: overrides.reason,
+    providerUsageSeq: overrides.providerUsageSeq,
+  };
+}
+
 function consumeReservedFreeHeadroom(account, units) {
   let remaining = units;
+  const consumption = {
+    freeHeadroom: 0,
+    credits: [],
+  };
   if (optionalNonNegativeNumber(account.freeHeadroom)) {
     const consumed = Math.min(account.freeHeadroom, remaining);
     account.freeHeadroom = roundQuantity(account.freeHeadroom - consumed);
+    consumption.freeHeadroom = roundQuantity(consumption.freeHeadroom + consumed);
     remaining = roundQuantity(remaining - consumed);
   }
-  if (!Array.isArray(account.credits) || remaining <= 0) return;
+  if (!Array.isArray(account.credits) || remaining <= 0) return consumption;
   for (const credit of account.credits) {
     if (!optionalNonNegativeNumber(credit?.freeHeadroom)) continue;
     const consumed = Math.min(credit.freeHeadroom, remaining);
     credit.freeHeadroom = roundQuantity(credit.freeHeadroom - consumed);
+    if (consumed > 0) {
+      consumption.credits.push({
+        creditId: credit.creditId,
+        units: roundQuantity(consumed),
+      });
+    }
     remaining = roundQuantity(remaining - consumed);
-    if (remaining <= 0) return;
+    if (remaining <= 0) return consumption;
+  }
+  return consumption;
+}
+
+function restoreReservedFreeHeadroom(account, consumption) {
+  if (!consumption || typeof consumption !== "object") return;
+  if (optionalNonNegativeNumber(account.freeHeadroom)) {
+    account.freeHeadroom = roundQuantity(account.freeHeadroom + (consumption.freeHeadroom ?? 0));
+  }
+  if (!Array.isArray(account.credits) || !Array.isArray(consumption.credits)) return;
+  for (const restoredCredit of consumption.credits) {
+    const credit = account.credits.find((candidate) => candidate?.creditId === restoredCredit.creditId);
+    if (credit && optionalNonNegativeNumber(credit.freeHeadroom)) {
+      credit.freeHeadroom = roundQuantity(credit.freeHeadroom + restoredCredit.units);
+    }
   }
 }
 
@@ -794,6 +961,20 @@ function requireString(value, fieldName) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
+}
+
+function optionalInstant(value, fieldName) {
+  if (value === undefined || value === null) return null;
+  return requireInstant(value, fieldName);
+}
+
+function requireInstant(value, fieldName) {
+  const timestamp = requireString(value, fieldName);
+  const parsed = Date.parse(timestamp);
+  if (Number.isNaN(parsed)) {
+    throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
+  }
+  return new Date(parsed).toISOString();
 }
 
 function requirePositiveNumber(value, fieldName) {

@@ -1,6 +1,6 @@
 # Dispatcher Maximize-Credits Contract POC
 
-Independent POC for HOBO-363 and HOBO-286. It pins the M2 Dispatcher ranking contract from
+Independent POC for HOBO-363, HOBO-286, and HOBO-379. It pins the M2 Dispatcher ranking contract from
 [ADR-0071](../../../docs/design/adr/01-architecture-core.md#adr-0071) for placement and CI/build
 dispatch decisions that consume a pinned `CreditLedgerView@seq`.
 
@@ -16,6 +16,8 @@ dispatch decisions that consume a pinned `CreditLedgerView@seq`.
 - `createReservationLedger()` + `decideAndReserveDispatch()` prove the reservation-CAS seam: a stale
   ledger `seq` conflicts, refreshes the pinned snapshot, re-ranks, and reserves without
   double-spending free headroom.
+- The reservation ledger records reserve/confirm/release/expire lifecycle proof events and restores
+  headroom on failed or timed-out dispatch reservations.
 - Recorded hysteresis input can hold the incumbent when a challenger is only near-equal, and the
   held rationale is surfaced in the decision and `dispatch.Decided` candidates.
 - `decidePlacement()` applies the same cost-aware ranker to resource placement and records
@@ -32,11 +34,12 @@ dispatch decisions that consume a pinned `CreditLedgerView@seq`.
 This package is a deterministic contract proof. It does not implement provider adapters, traffic
 routing, live cost event production, durable EventStore persistence, or production dispatcher
 workers. The reservation ledger is an in-memory contract seam that proves the CAS/re-rank behavior
-HOBO-286 requires; deeper production hardening remains separate from this POC.
+HOBO-286 requires and the lifecycle hardening HOBO-379 adds.
 
 ## Verification
 
 ```powershell
 npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
+npm.cmd --prefix src\draft\dispatcher-reservation-hardening-contract test
 npm.cmd test
 ```

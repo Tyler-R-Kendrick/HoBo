@@ -117,3 +117,34 @@ jobs:
       - name: Sweep orphaned quarantine fixtures
         if: always()
         run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase sweep-orphans
+
+  multi-cloud-shop-e2e:
+    name: multi-cloud-shop provider E2E
+    needs: pr-gate
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/e2e')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: multi-cloud-shop-e2e-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      HOBO_E2E_FIXTURE: examples/multi-cloud-shop
+      HOBO_E2E_PROVIDERS: aws,azure
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Deploy same Bindle to AWS and Azure
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}"
+      - name: Tear down multi-cloud-shop fixture
+        if: always()
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}"
+      - name: Sweep orphaned multi-cloud-shop fixtures
+        if: always()
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase sweep-orphans

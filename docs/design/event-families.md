@@ -6,7 +6,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 |---|---|
 | `actor.*` | `actor.Activated`, `actor.StateAppended` |
 | `aggregate.*` | `aggregate.PastTenseFact` |
-| `alert.*` | `alert.Fired`, `alert.Resolved` |
+| `alert.*` | `alert.Fired`, `alert.Grouped`, `alert.Routed`, `alert.Silenced`, `alert.Inhibited`, `alert.Deduped`, `alert.InhibitionCycleRejected`, `alert.Resolved` |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
 | `camp.*` | `camp.Created`, `camp.RuntimeBound` |
 | `capability.*` | `capability.Denied` |

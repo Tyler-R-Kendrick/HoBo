@@ -37,7 +37,7 @@ test("prod high-risk generation requires meaningful human approval before certif
 });
 
 test("mandatory deny-ceiling keeps the prod gate on despite tenant auto-approval policy", () => {
-  const result = decideGenerationHumanApproval(
+  const prodResult = decideGenerationHumanApproval(
     generationRequest({
       requestedRiskClass: "low",
       policyPacks: [
@@ -57,14 +57,42 @@ test("mandatory deny-ceiling keeps the prod gate on despite tenant auto-approval
     }),
   );
 
-  assert.equal(result.status, "approval-required");
-  assert.equal(result.decision.effect, "require-approval");
-  assert.match(result.decision.reason, /mandatory deny-ceiling/);
-  assert.deepEqual(result.decision.evidence.policyIds, [
+  assert.equal(prodResult.status, "approval-required");
+  assert.equal(prodResult.decision.effect, "require-approval");
+  assert.match(prodResult.decision.reason, /mandatory deny-ceiling/);
+  assert.deepEqual(prodResult.decision.evidence.policyIds, [
     "junction-mandatory-prod-gen-gate",
     "tenant-auto-generation",
   ]);
-  assert.equal(result.certified, false);
+  assert.equal(prodResult.certified, false);
+
+  const lowRiskPreviewResult = decideGenerationHumanApproval(
+    generationRequest({
+      environment: "preview",
+      requestedRiskClass: "low",
+      target: { ...generationRequest().target, trustClass: "normal", destructive: false },
+      evidence: { actualRiskClass: "low", riskReasons: [] },
+      policyPacks: [
+        {
+          id: "junction-mandatory-preview-gen-gate",
+          scope: "junction",
+          mode: "mandatory",
+          requireHumanApprovalFor: ["gen.certify:preview"],
+        },
+        {
+          id: "tenant-auto-generation",
+          scope: "bindle",
+          mode: "default",
+          autoApproveFor: ["gen.certify:preview"],
+        },
+      ],
+    }),
+  );
+
+  assert.equal(lowRiskPreviewResult.status, "approval-required");
+  assert.equal(lowRiskPreviewResult.decision.effect, "require-approval");
+  assert.match(lowRiskPreviewResult.decision.reason, /mandatory deny-ceiling/);
+  assert.equal(lowRiskPreviewResult.certified, false);
 });
 
 test("approval denial is event-sourced and never emits gen.Certified", () => {

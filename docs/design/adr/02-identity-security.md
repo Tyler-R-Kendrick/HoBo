@@ -566,3 +566,43 @@ scope-widening rejection, workload grace-extension rejection, and idempotent hea
   grace can only preserve or narrow an already-attested scope.
 - **(-)** A partition longer than the signed grace window interrupts the workload. That is an
   explicit availability/security tradeoff, not an implementation accident.
+
+## ADR-0104
+**SLO-gated rollback decisions use sustained evidence, not single-sample panic.**
+
+### Context
+[ADR-0083](#adr-0083) makes automated rollback an OpenDelivery capability, and [ADR-0045](#adr-0045)
+lets SLO error-budget burn auto-revert a rollout or flag. HOBO-342 implemented the per-step metric
+analysis gate: compose a pinned SLO snapshot, Golden-suite result, thresholds, and analysis window
+into `promote | hold | rollback`. The remaining question was calibration: which default window and
+hysteresis catches slow-burn bad rollouts without rolling back one-sample noise?
+
+### Decision
+1. **Default analysis window is 15 minutes.** The default gate evaluates the latest pinned SLO
+   samples inside a `15m` window. A shorter five-minute default is too brittle for sparse SLO
+   projections: with six-minute sampling, it sees only the latest point and cannot distinguish a
+   real slow burn from insufficient evidence.
+2. **Rollback requires sustained breach.** The default rollback threshold remains `burnRate >= 12`
+   or `remainingBudgetRatio <= 0.08`, but rollback requires two consecutive usable breach samples.
+   A single breach sample is not enough to auto-revert.
+3. **Promotion after risk requires sustained health.** After any recent breach-like sample, promotion
+   requires two usable healthy samples below the hold threshold (`burnRate < 1` and
+   `remainingBudgetRatio > 0.2`). Otherwise the verdict is `hold`, not optimistic `promote`.
+4. **Missing data is a safety hold.** `stale`, `unavailable`, or `no-data` SLO reads produce `hold`.
+   They cannot promote and cannot be counted as healthy evidence.
+5. **Every verdict remains replayable.** The decision event carries a stable digest of
+   `(snapshot@seq, Golden-suite result, thresholds, window, samples)`; replay validates the same
+   verdict from pinned evidence instead of re-reading live telemetry.
+
+The executable spike vectors live in `src/draft/slo-rollback-decision-correctness-spike`. They show
+the recommended policy at 0 FP / 0 FN for the labeled corpus, the five-minute window missing the
+slow-burn bad rollout, the one-sample policy over-rolling a transient blip, and missing data yielding
+`hold`.
+
+### Consequences
+- **(+)** The default rollback gate now has a reviewed operating point: it catches sustained
+  slow-burn failures without making one-sample noise an automatic rollback.
+- **(+)** `hold` is the safe middle state for missing data and post-blip hysteresis, preserving
+  safety without pretending the rollout is healthy.
+- **(-)** Detection latency is at least two usable samples inside the 15-minute window. Faster
+  rollback requires an explicitly reviewed policy override with its own replay evidence.

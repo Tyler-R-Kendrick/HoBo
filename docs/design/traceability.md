@@ -120,7 +120,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0069 | [architecture-core](./adr/01-architecture-core.md#adr-0069) | Runtime membrane through WIT/wRPC and thin SDK maps to WIT, component artifacts, component host, links, deadlines, usage-inferred grants, trigger lowering, and SDK conformance. | HOBO-3, HOBO-4, HOBO-12, HOBO-16, HOBO-17, HOBO-18, HOBO-19, HOBO-24, HOBO-26, HOBO-27, HOBO-32, HOBO-67, HOBO-79 |
 | ADR-0070 | [identity-security](./adr/02-identity-security.md#adr-0070) | Dev-mode auth bypass via contract testing maps to auth fixtures, local-dev testing, and `hobo dev` surfaces. | HOBO-63, HOBO-98, HOBO-392 |
 | ADR-0071 | [architecture-core](./adr/01-architecture-core.md#adr-0071) | Dispatcher placement/dispatch/traffic decisions map to matching, region/objective, runner/build-machine providers, credit/cost, reservation fencing, and routing work. | HOBO-64, HOBO-81, HOBO-103, HOBO-149, HOBO-155, HOBO-236, HOBO-246, HOBO-286, HOBO-339, HOBO-363, HOBO-379 |
-| ADR-0072 | [architecture-core](./adr/01-architecture-core.md#adr-0072) | WIT-first SDK maps to WIT package, bindings, handler trigger lowering, collection-coverage honesty, reverse extraction, idiom parity, and the HOBO-32 SDK conformance proof. | HOBO-3, HOBO-12, HOBO-16, HOBO-31, HOBO-32, HOBO-75, HOBO-79, HOBO-88, HOBO-106, HOBO-398 |
+| ADR-0072 | [architecture-core](./adr/01-architecture-core.md#adr-0072) | WIT-first SDK maps to WIT package, bindings, handler trigger lowering, collection-coverage honesty, reverse extraction, idiom parity, and the HOBO-32 SDK conformance proof. | HOBO-3, HOBO-12, HOBO-16, HOBO-31, HOBO-32, HOBO-75, HOBO-79, HOBO-88, HOBO-106, HOBO-248, HOBO-398 |
 | ADR-0073 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0073) | Swappable integration ports map to artifact repo, registry, signed bundles, issue tracker, digest selection, and portability swap work. | HOBO-158, HOBO-297, HOBO-347, HOBO-354, HOBO-365, HOBO-374, HOBO-383, HOBO-388, HOBO-390, HOBO-391 |
 | ADR-0074 | [identity-security](./adr/02-identity-security.md#adr-0074) | Org governance, RBAC, mandatory rules, detective attestation, control-plane action taxonomy, and signed composite governance evidence map to policy/RBAC slices. | HOBO-128, HOBO-133, HOBO-137, HOBO-150, HOBO-154, HOBO-158, HOBO-162, HOBO-166, HOBO-194, HOBO-196, HOBO-200, HOBO-209, HOBO-215, HOBO-218, HOBO-223, HOBO-227, HOBO-238, HOBO-250, HOBO-262, HOBO-279, HOBO-313, HOBO-360, HOBO-380 |
 | ADR-0075 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0075) | Interface stability tiers and Capability Spec map to WIT pinning, websocket extension conformance, manifest versioning, registry, and adversarial version work. | HOBO-12, HOBO-15, HOBO-33, HOBO-34, HOBO-36, HOBO-331, HOBO-343, HOBO-362, HOBO-385, HOBO-386, HOBO-395 |
@@ -151,6 +151,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0100 | [identity-security](./adr/02-identity-security.md#adr-0100) | SVID rotation under partition is pinned by signed renewal-grace vectors and consumed by broker HA work. | HOBO-255, HOBO-266, HOBO-287 |
 | ADR-0101 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0101) | DNS validation-gate threat modeling pins multi-vantage, TTL, ACME, health, and promote re-check requirements before concrete DNS gate implementation and adversarial hardening. | HOBO-189, HOBO-142, HOBO-193 |
 | ADR-0102 | [architecture-core](./adr/01-architecture-core.md#adr-0102) | SpinKube is the first opt-in component-host adapter certification target; provider-native wasm remains a precise gap-list path until required `wasi:*` and determinism checks pass. | HOBO-35 |
+| ADR-0103 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0103) | Junction connectivity inference is pinned as a pure deterministic YardManifest fold that emits mirrored per-Yard halves and fails closed on asymmetric manifests, illegal residency, and no legal tier. | HOBO-185, HOBO-159 |
 
 ## ADR Numbering and Status Audit
 
@@ -158,7 +159,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0102`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0103`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

@@ -14,6 +14,7 @@ const genEventTypes = new Set([
   "gen.CandidateGenerated",
   "gen.Validated",
   "gen.ValidationFailed",
+  "gen.SafetyRejected",
   "gen.Repaired",
   "gen.NeedsHuman",
   "gen.Certified"
@@ -93,6 +94,9 @@ export function validateGenerationEvent(event) {
     case "gen.ValidationFailed":
       validateValidationFailed(event.data);
       break;
+    case "gen.SafetyRejected":
+      validateSafetyRejected(event.data);
+      break;
     case "gen.Repaired":
       validateRepaired(event.data);
       break;
@@ -121,6 +125,7 @@ export function appendGenerationEvent(state, event) {
       candidates: [],
       validations: [],
       repairs: [],
+      safetyRejections: [],
       failingAssertions: [],
       needsHuman: null,
       result: null,
@@ -138,6 +143,7 @@ export function appendGenerationEvent(state, event) {
     candidates: [...next.candidates],
     validations: [...next.validations],
     repairs: [...next.repairs],
+    safetyRejections: [...next.safetyRejections],
     failingAssertions: [...next.failingAssertions],
     needsHuman: next.needsHuman,
     result: next.result,
@@ -161,6 +167,19 @@ export function appendGenerationEvent(state, event) {
         validationReportRef: validated.data.validationReportRef,
         passed: false
       });
+      projected.failingAssertions = unionStrings(
+        projected.failingAssertions,
+        validated.data.failingAssertions
+      );
+      break;
+    case "gen.SafetyRejected":
+      projected.safetyRejections.push({
+        candidateRef: validated.data.candidateRef,
+        validationReportRef: validated.data.validationReportRef,
+        safetyReportRef: validated.data.safetyReportRef,
+        findings: [...validated.data.failingAssertions]
+      });
+      projected.finalDecision = { effect: "deny", reason: "safety-rejected" };
       projected.failingAssertions = unionStrings(
         projected.failingAssertions,
         validated.data.failingAssertions
@@ -319,6 +338,18 @@ function validateValidationFailed(data) {
     "gen.event.validation_report",
     "$.data.validationReportRef"
   );
+  assertFailingAssertions(data.failingAssertions);
+}
+
+function validateSafetyRejected(data) {
+  assertEventRequestId(data);
+  validateDigestRef(data.candidateRef, "gen.event.candidate", "$.data.candidateRef");
+  validateDigestRef(
+    data.validationReportRef,
+    "gen.event.validation_report",
+    "$.data.validationReportRef"
+  );
+  validateDigestRef(data.safetyReportRef, "gen.event.safety_report", "$.data.safetyReportRef");
   assertFailingAssertions(data.failingAssertions);
 }
 

@@ -40,6 +40,10 @@ export const GLOBAL_FLAGS = [
   "--help"
 ];
 
+export const CLI_COMMAND_SCHEMAS = Object.freeze(
+  Object.fromEntries(CANONICAL_VERBS.map((verb) => [verb.name, cliCommandSchemaFor(verb.name)])),
+);
+
 const verbNames = new Set(CANONICAL_VERBS.map((verb) => verb.name));
 const projectScopedVerbs = new Set(
   CANONICAL_VERBS.map((verb) => verb.name).filter((verb) => !["new", "login", "claim", "add", "registry", "generate", "derivative"].includes(verb))
@@ -142,7 +146,13 @@ export function createHoboCli(options = {}) {
           args: request.args,
           requiresProject: projectScopedVerbs.has(request.verb)
         });
-        const result = await command.run({ context, flags: request.flags, args: request.args, verb: request.verb });
+        const result = await command.run({
+          context,
+          flags: request.flags,
+          args: request.args,
+          verb: request.verb,
+          emitProgress: runOptions.onProgress ?? (() => {}),
+        });
 
         return renderSuccess({ verb: request.verb, flags: request.flags, context, result });
       } catch (error) {
@@ -195,7 +205,8 @@ function parseArgv(argv, options) {
     strategy: null,
     target: null,
     check: false,
-    last: false
+    last: false,
+    offline: false
   };
   const args = [];
   let verb = null;
@@ -281,6 +292,12 @@ function parseOption(argv, index, flags, verb) {
     case "--last":
       flags.last = true;
       return index;
+    case "--offline":
+      if (verb === "doctor") {
+        flags.offline = true;
+        return index;
+      }
+      throw new UsageError(`Unknown option "${token}". Run "${verb ? `hobo ${verb} --help` : "hobo --help"}".`);
     default:
       throw new UsageError(`Unknown option "${token}". Run "${verb ? `hobo ${verb} --help` : "hobo --help"}".`);
   }
@@ -347,20 +364,21 @@ function renderSuccess({ verb, flags, context, result }) {
     context: publicContext(context),
     data: result.data ?? {}
   };
+  const exitCode = envelope.ok ? 0 : 1;
 
   if (flags.json) {
-    return okText(`${JSON.stringify(envelope)}\n`);
+    return okText(`${JSON.stringify(envelope)}\n`, exitCode);
   }
 
   if (flags.quiet) {
-    return okText("");
+    return okText("", exitCode);
   }
 
   return okText(`Command  Status
 ${verb.padEnd(8)} ${envelope.status}
 
 ${envelope.message}
-`);
+`, exitCode);
 }
 
 function renderError(error) {
@@ -379,12 +397,37 @@ function renderError(error) {
   };
 }
 
-function okText(stdout) {
+function okText(stdout, exitCode = 0) {
   return {
-    exitCode: 0,
+    exitCode,
     stdout,
     stderr: ""
   };
+}
+
+function cliCommandSchemaFor(verbName) {
+  switch (verbName) {
+    case "inspect":
+    case "logs":
+      return objectSchema({ runId: { type: "string" } }, ["runId"]);
+    case "registry":
+      return objectSchema({ capability: { type: "string" } }, ["capability"]);
+    default:
+      return objectSchema({
+        cwd: { type: "string" },
+        camp: { type: "string" },
+        args: { type: "array", items: { type: "string" } },
+      });
+  }
+}
+
+function objectSchema(properties = {}, required = []) {
+  return Object.freeze({
+    type: "object",
+    properties,
+    required,
+    additionalProperties: true,
+  });
 }
 
 function publicContext(context) {

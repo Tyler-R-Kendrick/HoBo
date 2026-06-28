@@ -10,8 +10,8 @@ pipeline request/result shapes and the `gen.*` event family.
   - material: docs/OpenAPI/Terraform/traces, always marked untrusted and sanitized.
 - `hobo.gen.result/v1` records candidate, validation report, provenance, and gate decision refs by digest.
 - `gen.Requested`, `gen.CandidateGenerated`, `gen.Validated`, `gen.ValidationFailed`,
-  `gen.Repaired`, `gen.NeedsHuman`, and `gen.Certified` validate against the Plan 11
-  event envelope.
+  `gen.SafetyRejected`, `gen.Repaired`, `gen.NeedsHuman`, and `gen.Certified`
+  validate against the Plan 11 event envelope.
 - `rebuildGenerationRun()` folds a stream from zero into the same view produced by
   live appends, preserving every candidate and the final decision.
 

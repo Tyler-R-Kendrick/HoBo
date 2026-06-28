@@ -154,8 +154,8 @@ test("dispatch.Decided pins the CreditLedgerView seq and reservation input used 
       balanceHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     candidates: [
-      { provider: "github", effectiveMarginalCost: 0.04 },
-      { provider: "depot", effectiveMarginalCost: 0 }
+      { provider: "github", effectiveMarginalCost: 0.04, rationale: "paid runner" },
+      { provider: "depot", effectiveMarginalCost: 0, rationale: "free credit available" }
     ]
   });
 
@@ -164,6 +164,7 @@ test("dispatch.Decided pins the CreditLedgerView seq and reservation input used 
   assert.equal(validation.ok, true, validation.errors.join("\n"));
   assert.equal(decided.data.ledgerInput.seq, 1844);
   assert.equal(decided.data.objective, "maximize-credits");
+  assert.match(decided.data.candidates[1].rationale, /free credit/);
 });
 
 test("adversarial validation rejects missing envelope linkage and absent current tie flag", () => {

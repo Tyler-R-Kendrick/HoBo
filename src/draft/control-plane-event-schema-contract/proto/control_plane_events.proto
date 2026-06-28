@@ -69,6 +69,7 @@ message LedgerInput {
 message DispatchCandidate {
   string provider = 1;
   double effective_marginal_cost = 2;
+  string rationale = 3;
 }
 
 message DeploymentPlanRejected {

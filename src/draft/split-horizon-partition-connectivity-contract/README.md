@@ -9,8 +9,8 @@ This package red-teams two fail-open networking paths:
 
 ## Contract Surface
 
-- `evaluateSplitHorizonResolution()` blocks promotion when any independent vantage returns a different target, even if most vantages agree.
-- `evaluateTrustLeaseFreshness()` applies the latest trust event by sequence, fails closed when lease freshness cannot be confirmed within the TTL, and lets later revocations win over older establishments.
+- `evaluateSplitHorizonResolution()` blocks promotion when any independent vantage returns a different target, even if most vantages agree, and rejects non-independent vantage evidence before promotion.
+- `evaluateTrustLeaseFreshness()` applies the latest trust event by sequence, fails closed when lease freshness cannot be confirmed within the TTL cap, rejects overlong leases, and lets later revocations win over older establishments.
 - `routeWithPartitionSafety()` wraps the existing HOBO-151 `routeCrossCampTraffic()` seam and refuses a healthy failover target if the target Yard is unconfirmable during a partition.
 - `reconcilePartitionRecovery()` reuses fresh trust evidence to re-run deterministic routing without operator action.
 
@@ -24,4 +24,4 @@ This proof consumes existing DNS-validation, routing-policy, and Junction trust 
 npm.cmd --prefix src\draft\split-horizon-partition-connectivity-contract test
 ```
 
-The checks cover split-horizon disagreement, healthy-but-unconfirmable failover refusal, TTL-bounded fail-closed partition behavior, deterministic recovery, and superseding trust revocation.
+The checks cover split-horizon disagreement, DNS vantage independence, healthy-but-unconfirmable failover refusal, TTL-bounded fail-closed partition behavior, overlong lease rejection, deterministic recovery, and superseding trust revocation.

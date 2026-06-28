@@ -2,6 +2,17 @@ import { routeCrossCampTraffic } from "../../cross-camp-routing-policy-contract/
 
 export function evaluateSplitHorizonResolution(check) {
   const normalized = normalizeResolutionCheck(check);
+  const insufficientDimensions = insufficientVantageDimensions(normalized.answersByVantage);
+  if (insufficientDimensions.length > 0) {
+    return {
+      ok: false,
+      code: "dns.vantage-independence.insufficient",
+      reason: `${normalized.fqdn} requires independent DNS vantage evidence`,
+      promotion: "blocked",
+      insufficientDimensions,
+    };
+  }
+
   const expectedKey = targetsKey(normalized.expectedTargets);
   const disagreeingVantages = normalized.answersByVantage
     .filter((answer) => targetsKey(answer.targets) !== expectedKey)
@@ -107,6 +118,11 @@ export function evaluateTrustLeaseFreshness(input) {
   }
 
   const leaseExpired = normalized.nowMs > Date.parse(latest.validUntil);
+  const leaseExceedsTtl = Date.parse(latest.validUntil) - Date.parse(latest.issuedAt) > normalized.maxLeaseTtlMs;
+  if (leaseExceedsTtl) {
+    return failClosedTrust(normalized, "junction.trust-lease.ttl-exceeded");
+  }
+
   if (leaseExpired || normalized.canConfirmWithRoot !== true) {
     return failClosedTrust(normalized, "junction.trust-lease.stale");
   }
@@ -143,6 +159,7 @@ function parseTrustEvents(events) {
     type: requiredString(event?.type, `trustEvents[${index}].type`),
     sequence: finitePositiveNumber(event?.sequence, `trustEvents[${index}].sequence`),
     peerYardId: requiredString(event?.peerYardId, `trustEvents[${index}].peerYardId`),
+    issuedAt: requiredTimestamp(event?.issuedAt, `trustEvents[${index}].issuedAt`),
     validUntil: requiredTimestamp(event?.validUntil, `trustEvents[${index}].validUntil`),
   }));
 }
@@ -181,8 +198,18 @@ function parseVantageAnswers(answers) {
   }
   return answers.map((answer, index) => ({
     id: requiredString(answer?.id, `answersByVantage[${index}].id`),
+    resolverNetwork: requiredString(answer?.resolverNetwork, `answersByVantage[${index}].resolverNetwork`),
+    asn: finitePositiveNumber(answer?.asn, `answersByVantage[${index}].asn`),
+    region: requiredString(answer?.region, `answersByVantage[${index}].region`),
     targets: sortedTargets(answer?.targets, `answersByVantage[${index}].targets`),
   }));
+}
+
+function insufficientVantageDimensions(answers) {
+  return ["resolverNetwork", "asn", "region"].filter((dimension) => {
+    const values = new Set(answers.map((answer) => answer[dimension]));
+    return values.size !== answers.length;
+  });
 }
 
 function sortedTargets(targets, path) {

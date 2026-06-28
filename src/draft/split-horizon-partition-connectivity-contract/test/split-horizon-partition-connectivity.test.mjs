@@ -29,6 +29,39 @@ test("split-horizon answers block promotion instead of choosing a majority targe
   });
 });
 
+test("resolver evidence must come from independent vantages before promotion is allowed", () => {
+  const result = evaluateSplitHorizonResolution({
+    fqdn: "api.shop.com",
+    recordType: "A",
+    expectedTargets: ["198.51.100.10"],
+    answersByVantage: [
+      vantage("iad-recursive-a", ["198.51.100.10"], {
+        resolverNetwork: "corp-recursive",
+        region: "us-east-1",
+        asn: 64512,
+      }),
+      vantage("iad-recursive-b", ["198.51.100.10"], {
+        resolverNetwork: "corp-recursive",
+        region: "us-east-1",
+        asn: 64512,
+      }),
+      vantage("iad-recursive-c", ["198.51.100.10"], {
+        resolverNetwork: "corp-recursive",
+        region: "us-east-1",
+        asn: 64512,
+      }),
+    ],
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    code: "dns.vantage-independence.insufficient",
+    reason: "api.shop.com requires independent DNS vantage evidence",
+    promotion: "blocked",
+    insufficientDimensions: ["resolverNetwork", "asn", "region"],
+  });
+});
+
 test("failover during partition refuses an unconfirmable target even when it is healthy", () => {
   const result = routeWithPartitionSafety({
     localYardId: "yard-aws-prod",
@@ -45,6 +78,7 @@ test("failover during partition refuses an unconfirmable target even when it is 
           type: "junction.TrustEstablished",
           sequence: 10,
           peerYardId: "yard-azure-prod",
+          issuedAt: "2026-06-28T21:00:00.000Z",
           validUntil: "2026-06-28T21:05:00.000Z",
         },
       ],
@@ -72,12 +106,14 @@ test("partition recovery re-converges routing deterministically without operator
         type: "junction.TrustEstablished",
         sequence: 10,
         peerYardId: "yard-azure-prod",
+        issuedAt: "2026-06-28T21:00:00.000Z",
         validUntil: "2026-06-28T21:05:00.000Z",
       },
       {
         type: "junction.TrustEstablished",
         sequence: 12,
         peerYardId: "yard-azure-prod",
+        issuedAt: "2026-06-28T21:06:00.000Z",
         validUntil: "2026-06-28T21:11:00.000Z",
       },
     ],
@@ -108,6 +144,7 @@ test("partitioned Yard fails closed when peer trust freshness cannot be confirme
         type: "junction.TrustEstablished",
         sequence: 10,
         peerYardId: "yard-azure-prod",
+        issuedAt: "2026-06-28T21:00:00.000Z",
         validUntil: "2026-06-28T21:05:00.000Z",
       },
     ],
@@ -116,6 +153,33 @@ test("partitioned Yard fails closed when peer trust freshness cannot be confirme
   assert.deepEqual(result, {
     ok: false,
     code: "junction.trust-lease.stale",
+    guarantee: "fail-closed",
+    reason: "yard-aws-prod cannot confirm yard-azure-prod trust freshness within 300000ms",
+    actions: ["stop-honoring-peer-principals", "hold-routing-to-peer"],
+  });
+});
+
+test("trust leases exceeding the TTL cap fail closed even before expiry", () => {
+  const result = evaluateTrustLeaseFreshness({
+    yardId: "yard-aws-prod",
+    peerYardId: "yard-azure-prod",
+    now: "2026-06-28T21:04:00.000Z",
+    maxLeaseTtlMs: 300000,
+    canConfirmWithRoot: true,
+    trustEvents: [
+      {
+        type: "junction.TrustEstablished",
+        sequence: 10,
+        peerYardId: "yard-azure-prod",
+        issuedAt: "2026-06-28T21:00:00.000Z",
+        validUntil: "2026-06-28T21:10:00.000Z",
+      },
+    ],
+  });
+
+  assert.deepEqual(result, {
+    ok: false,
+    code: "junction.trust-lease.ttl-exceeded",
     guarantee: "fail-closed",
     reason: "yard-aws-prod cannot confirm yard-azure-prod trust freshness within 300000ms",
     actions: ["stop-honoring-peer-principals", "hold-routing-to-peer"],
@@ -134,12 +198,14 @@ test("later trust revocation wins over an older established lease after partitio
         type: "junction.TrustEstablished",
         sequence: 10,
         peerYardId: "yard-azure-prod",
+        issuedAt: "2026-06-28T21:00:00.000Z",
         validUntil: "2026-06-28T21:08:00.000Z",
       },
       {
         type: "junction.TrustRevoked",
         sequence: 11,
         peerYardId: "yard-azure-prod",
+        issuedAt: "2026-06-28T21:04:00.000Z",
         validUntil: "2026-06-28T21:09:00.000Z",
       },
     ],

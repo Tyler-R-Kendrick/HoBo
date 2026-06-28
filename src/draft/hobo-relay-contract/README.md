@@ -1,6 +1,6 @@
 # HoBo Relay contract POC
 
-Independent proof for HOBO-167.
+Independent proof for HOBO-167 and the HOBO-197 SSRF/lateral-movement hardening.
 
 This package pins the connected-private Relay boundary from:
 
@@ -18,5 +18,9 @@ The proof covers:
 - Credential no-egress: Yard work frames carry private-network credential references, never credential material.
 - Multiple private targets routed by target id through one Relay.
 - Fail-closed rejection for invalid/expired/cross-tenant SVIDs and unknown target ids.
+- SSRF/lateral-movement resistance: every private-network connection must name a registered target
+  id, target ids cannot be rebound to arbitrary IPs or metadata endpoints, the Relay refuses to act
+  as a general forward proxy, Yard-side work is constrained to the registered target's resource
+  scope, and an authorized target tunnel cannot be reused to open a second target.
 
 Scope boundary: this POC does not implement a real TCP tunnel, executor sandbox, provider credentials, SVID issuance, air-gapped disconnected mode, or data-plane connectivity tiers. It defines and tests the branch-sized Relay contract those later slices consume.

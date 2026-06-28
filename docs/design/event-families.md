@@ -18,6 +18,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `crew.*` | `crew.ActionProposed`, `crew.HandoffRequested` |
 | `data.*` | `data.Changed`, `data.Classified` |
 | `delta.*` | `delta.Opened`, `delta.Applied` |
+| `deploy.*` | `deploy.PreviewUrlAssigned`, `deploy.PreviewTeardownRequested` |
 | `deployment.*` | `deployment.Planned`, `deployment.PlanRejected` |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided` |

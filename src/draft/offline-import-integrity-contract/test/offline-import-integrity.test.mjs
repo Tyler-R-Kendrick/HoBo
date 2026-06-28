@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -61,6 +62,8 @@ test("imports when offline revocation, anti-rollback, and transparency gates pas
   assert.equal(result.event.verification.revocation, "passed");
   assert.equal(result.event.verification.antiRollback, "passed");
   assert.equal(result.event.verification.transparency, "passed");
+  assert.deepEqual(result.event.artifacts.map((artifact) => artifact.status), ["imported", "imported", "accepted"]);
+  assert.equal(result.event.artifacts.find((artifact) => artifact.kind === "base-image").digest, fixture.bundle.contents.baseImages[0].artifact.digest);
   assert.equal(result.mirror.discover({ name: "@acme/provider-airgap", version: "1.0.0" }).availableOffline, true);
 });
 
@@ -81,7 +84,7 @@ test("refuses a bundle signed by a key in the imported offline revocation list",
   assert.match(result.reasons.join("\n"), /revocation.revoked_key:airgap-builder-key/);
   assert.equal(result.mirror.discover({ name: "@acme/provider-airgap", version: "1.0.0" }), null);
   assert.equal(result.event.verification.revocation, "failed");
-  assert.deepEqual(result.event.artifacts.map((artifact) => artifact.status), ["refused", "refused"]);
+  assert.deepEqual(result.event.artifacts.map((artifact) => artifact.status), ["refused", "refused", "refused"]);
 });
 
 test("blocks an older bundle timestamp/version unless an explicit audited force-downgrade is supplied", () => {
@@ -180,6 +183,82 @@ test("refuses missing or bad transparency inclusion proofs against the pinned ro
   assert.equal(result.event.verification.transparency, "failed");
 });
 
+test("fails closed on missing offline trust material without live repair egress", () => {
+  const fixture = createImportFixture({
+    transparencyProofOverrides: {
+      omitFirst: true,
+    },
+  });
+  const importer = createOfflineIntegrityImporter({ now: () => "2026-06-27T00:00:00.000Z" });
+  let egressCalls = 0;
+
+  const result = importer.importBundle({
+    bundle: fixture.bundle,
+    payloads: fixture.payloads,
+    trustBoundary,
+    offlineTrust: {
+      transparencyProofs: fixture.offlineTrust.transparencyProofs,
+    },
+    onEgressAttempt: () => {
+      egressCalls += 1;
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(egressCalls, 0);
+  assert.match(result.reasons.join("\n"), /revocation.missing/);
+  assert.match(result.reasons.join("\n"), /transparency.inclusion_proof_missing/);
+  assert.equal(result.event.verification.revocation, "failed");
+});
+
+test("applies transparency and anti-rollback gates to base images", () => {
+  const missingProofFixture = createImportFixture({
+    transparencyProofOverrides: {
+      omitBaseImage: true,
+    },
+  });
+  const missingProof = createOfflineIntegrityImporter({ now: () => "2026-06-27T00:00:00.000Z" }).importBundle({
+    bundle: missingProofFixture.bundle,
+    payloads: missingProofFixture.payloads,
+    trustBoundary,
+    offlineTrust: missingProofFixture.offlineTrust,
+  });
+
+  assert.equal(missingProof.ok, false);
+  assert.match(missingProof.reasons.join("\n"), /artifact wasmcloud-host@unversioned refused: transparency.inclusion_proof_missing/);
+  assert.equal(missingProof.event.artifacts.find((artifact) => artifact.name === "wasmcloud-host").status, "refused");
+  assert.deepEqual(missingProof.mirror.entries(), []);
+
+  const rollbackFixture = createImportFixture();
+  const rollback = createOfflineIntegrityImporter({ now: () => "2026-06-27T00:00:00.000Z" }).importBundle({
+    bundle: rollbackFixture.bundle,
+    payloads: rollbackFixture.payloads,
+    trustBoundary,
+    offlineTrust: rollbackFixture.offlineTrust,
+    installedState: {
+      artifacts: [
+        {
+          name: "wasmcloud-host",
+          digest: rollbackFixture.bundle.contents.baseImages[0].artifact.digest,
+          buildTimestamp: "2026-06-28T00:00:00.000Z",
+        },
+      ],
+    },
+  });
+
+  assert.equal(rollback.ok, false);
+  assert.match(rollback.reasons.join("\n"), /antiRollback.older_than_installed:wasmcloud-host@unversioned:buildTimestamp/);
+  assert.equal(rollback.event.verification.antiRollback, "failed");
+});
+
+test("offline importer source exposes no network egress sinks", () => {
+  const source = readFileSync(new URL("../src/offline-import-integrity.mjs", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /\bfetch\s*\(/);
+  assert.doesNotMatch(source, /from\s+["']node:(?:http|https|net|dns)["']/);
+  assert.doesNotMatch(source, /from\s+["'](?:http|https|net|dns)["']/);
+});
+
 function createImportFixture({
   revokedKeyIds = [],
   transparencyProofOverrides = {},
@@ -196,9 +275,10 @@ function createImportFixture({
     bytes: "postgres-pack-resource-definitions",
     kind: "resource-pack",
   });
+  const baseImage = signedBaseImage();
   const descriptors = [provider.descriptor, pack.descriptor];
   const candidates = [provider.candidate, pack.candidate];
-  const bundle = bundleFor({ descriptors });
+  const bundle = bundleFor({ descriptors, baseImageCandidate: baseImage.candidate });
   const payloads = new Map(descriptors.map((descriptor, index) => [
     descriptorDigest(descriptor),
     {
@@ -206,20 +286,36 @@ function createImportFixture({
       candidate: candidates[index],
     },
   ]));
-  const transparencyProofs = new Map(bundle.contents.listings.map((listing, index) => {
-    const proof = {
+  payloads.set(bundle.contents.baseImages[0].artifact.digest, {
+    candidate: baseImage.candidate,
+  });
+  const transparencyEntries = [
+    ...bundle.contents.listings.map((listing) => ({
       artifactDigest: listing.descriptor.digest,
-      logId: listing.transparency.logId,
-      logRoot: listing.transparency.logRoot,
+      proof: listing.transparency,
+    })),
+    ...bundle.contents.baseImages.map((image) => ({
+      artifactDigest: image.artifact.digest,
+      proof: image.transparency,
+    })),
+  ];
+  const transparencyProofs = new Map(transparencyEntries.map((entry, index) => {
+    const proof = {
+      artifactDigest: entry.artifactDigest,
+      logId: entry.proof.logId,
+      logRoot: entry.proof.logRoot,
       verified: true,
     };
     if (index === 1 && transparencyProofOverrides.corruptSecondRoot) {
       proof.logRoot = digest("wrong-rekor-root");
     }
-    return [listing.transparency.inclusionProof.digest, proof];
+    return [entry.proof.inclusionProof.digest, proof];
   }));
   if (transparencyProofOverrides.omitFirst) {
     transparencyProofs.delete(bundle.contents.listings[0].transparency.inclusionProof.digest);
+  }
+  if (transparencyProofOverrides.omitBaseImage) {
+    transparencyProofs.delete(bundle.contents.baseImages[0].transparency.inclusionProof.digest);
   }
 
   const offlineTrust = {
@@ -296,7 +392,28 @@ function signedListing({ name, coordinate, bytes, kind }) {
   return { descriptor, candidate };
 }
 
-function bundleFor({ descriptors }) {
+function signedBaseImage() {
+  const candidate = publishSignedArtifact({
+    artifact: createArtifactPayload({
+      coordinate: "oci://registry.example/hobo/base/wasmcloud-host",
+      version: "1.0.0",
+      mediaType: "application/vnd.oci.image.manifest.v1+json",
+      bytes: "wasmcloud-host-image",
+    }),
+    signingKey: builderKey,
+    conformanceReport: {
+      suiteId: "@hobo/conformance/componentize@1.0.0",
+      passed: true,
+      assertions: ["signature", "provenance", "conformance"],
+    },
+    issuedAt: "2026-06-25T20:00:00.000Z",
+    provenanceTier: "slsa-build-l3",
+  });
+
+  return { candidate };
+}
+
+function bundleFor({ descriptors, baseImageCandidate }) {
   const logRoot = digest("rekor-root-2026-06-25");
   const bundle = {
     schema: "registry.bundle/v1",
@@ -321,7 +438,7 @@ function bundleFor({ descriptors }) {
       baseImages: [
         {
           name: "wasmcloud-host",
-          artifact: artifactRef("base-image", digest("base-image")),
+          artifact: artifactRef("base-image", baseImageCandidate.artifact.digest, "application/vnd.oci.image.manifest.v1+json"),
           buildTimestamp: "2026-06-25T00:00:00.000Z",
           provenance: artifactRef("base-provenance", digest("base-provenance")),
           transparency: transparencyProof(logRoot, "inclusion-proof-base-image"),
@@ -357,9 +474,9 @@ function transparencyProof(logRoot, proofSeed) {
   };
 }
 
-function artifactRef(name, digestValue) {
+function artifactRef(name, digestValue, mediaType = "application/vnd.hobo.registry.descriptor.v1+json") {
   return {
-    mediaType: "application/vnd.hobo.registry.descriptor.v1+json",
+    mediaType,
     uri: `oci://registry.example/hobo/${name}@${digestValue}`,
     digest: digestValue,
   };

@@ -11,12 +11,12 @@ offline bundles.
   bundle reference and rejects any listing signed by a revoked key.
 - The anti-rollback gate rejects an older build timestamp or version unless an
   operator supplies an explicit audited force-downgrade.
-- The transparency gate verifies each listing inclusion proof against the
-  pinned log root using only imported proof material.
+- The transparency gate verifies each listing and base-image inclusion proof
+  against the pinned log root using only imported proof material.
 - Every refusal is recorded on a `registry.BundleImported` audit event with the
   named failed gate.
-- The proof never attempts network egress to repair missing revocation or
-  transparency material.
+- Missing revocation or transparency material fails closed instead of attempting
+  live repair egress.
 
 ## Boundary
 

@@ -17,6 +17,7 @@ export function createOfflineIntegrityImporter({
       offlineTrust,
       installedState = { artifacts: [] },
       forceDowngrade = null,
+      onEgressAttempt = null,
     } = {}) {
       const importedAt = now();
       const parsed = parseBundleManifest(bundle);
@@ -57,7 +58,18 @@ export function createOfflineIntegrityImporter({
         });
       }
 
-      const imported = baseImporter.importBundle({ bundle, payloads, trustBoundary });
+      const imported = baseImporter.importBundle({ bundle, payloads, trustBoundary, onEgressAttempt });
+      const importedArtifactEvents = imported.artifacts.map((artifact) => ({
+        name: artifact.name,
+        version: artifact.version,
+        kind: artifact.kind,
+        digest: artifact.digest,
+        status: artifact.status,
+        reasons: artifact.reasons,
+      }));
+      const baseImageGateEvents = gate.artifacts
+        .filter((artifact) => artifact.section === "baseImages")
+        .map(({ section: _section, ...artifact }) => artifact);
       const event = recordBundleImported({
         mirror,
         manifest: parsed.manifest,
@@ -71,14 +83,10 @@ export function createOfflineIntegrityImporter({
           antiRollback: gate.verification.antiRollback,
           transparency: gate.verification.transparency,
         },
-        artifacts: imported.artifacts.map((artifact) => ({
-          name: artifact.name,
-          version: artifact.version,
-          kind: artifact.kind,
-          digest: artifact.digest,
-          status: artifact.status,
-          reasons: artifact.reasons,
-        })),
+        artifacts: [
+          ...importedArtifactEvents,
+          ...baseImageGateEvents,
+        ],
         forceDowngrade: gate.forceDowngrade,
       });
 
@@ -110,11 +118,11 @@ function evaluateOfflineGates({
   let transparencyFailed = false;
   let forceDowngradeUsed = false;
 
-  for (const listing of manifest.contents.listings) {
+  for (const artifact of gateArtifactsFor(manifest)) {
     const artifactReasons = [
-      ...checkRevocationGate({ manifest, listing, payloads, offlineTrust, importedAt }),
-      ...checkAntiRollbackGate({ listing, installedState, forceDowngrade }),
-      ...checkTransparencyGate({ manifest, listing, offlineTrust }),
+      ...checkRevocationGate({ manifest, artifact, payloads, offlineTrust, importedAt }),
+      ...checkAntiRollbackGate({ artifact, installedState, forceDowngrade }),
+      ...checkTransparencyGate({ manifest, artifact, offlineTrust }),
     ];
 
     if (artifactReasons.some((reason) => reason.startsWith("revocation."))) {
@@ -126,22 +134,23 @@ function evaluateOfflineGates({
     if (artifactReasons.some((reason) => reason.startsWith("transparency."))) {
       transparencyFailed = true;
     }
-    if (needsForceDowngrade({ listing, installedState }) && isValidForceDowngrade(forceDowngrade)) {
+    if (needsForceDowngrade({ artifact, installedState }) && isValidForceDowngrade(forceDowngrade)) {
       forceDowngradeUsed = true;
     }
 
     const status = artifactReasons.length > 0 ? "refused" : "accepted";
     artifacts.push(Object.freeze({
-      name: listing.name,
-      version: listing.version,
-      kind: listing.kind,
-      digest: listing.descriptor.digest,
+      section: artifact.section,
+      name: artifact.name,
+      version: artifact.version,
+      kind: artifact.kind,
+      digest: artifact.digest,
       status,
       reasons: Object.freeze(artifactReasons),
     }));
 
     if (artifactReasons.length > 0) {
-      reasons.push(`artifact ${listing.name}@${listing.version} refused: ${artifactReasons.join(",")}`);
+      reasons.push(`artifact ${artifact.label} refused: ${artifactReasons.join(",")}`);
     }
   }
 
@@ -162,7 +171,34 @@ function evaluateOfflineGates({
   });
 }
 
-function checkRevocationGate({ manifest, listing, payloads, offlineTrust, importedAt }) {
+function gateArtifactsFor(manifest) {
+  return Object.freeze([
+    ...manifest.contents.listings.map((listing) => Object.freeze({
+      section: "listings",
+      kind: listing.kind,
+      name: listing.name,
+      version: listing.version,
+      digest: listing.descriptor.digest,
+      payloadDigest: listing.descriptor.digest,
+      buildTimestamp: listing.buildTimestamp,
+      transparency: listing.transparency,
+      label: `${listing.name}@${listing.version}`,
+    })),
+    ...(manifest.contents.baseImages ?? []).map((image) => Object.freeze({
+      section: "baseImages",
+      kind: "base-image",
+      name: image.name,
+      version: image.version ?? "unversioned",
+      digest: image.artifact.digest,
+      payloadDigest: image.artifact.digest,
+      buildTimestamp: image.buildTimestamp,
+      transparency: image.transparency,
+      label: `${image.name}@${image.version ?? "unversioned"}`,
+    })),
+  ]);
+}
+
+function checkRevocationGate({ manifest, artifact, payloads, offlineTrust, importedAt }) {
   const revocationList = offlineTrust?.revocationList;
   if (!revocationList) {
     return ["revocation.missing"];
@@ -182,7 +218,7 @@ function checkRevocationGate({ manifest, listing, payloads, offlineTrust, import
     reasons.push("revocation.expired");
   }
 
-  const keyId = payloadFor(payloads, listing.descriptor.digest)?.candidate?.signature?.keyId;
+  const keyId = payloadFor(payloads, artifact.payloadDigest)?.candidate?.signature?.keyId;
   if (!keyId) {
     reasons.push("revocation.signing_key_unknown");
   } else if ((revocationList.revokedKeyIds ?? []).includes(keyId)) {
@@ -192,26 +228,26 @@ function checkRevocationGate({ manifest, listing, payloads, offlineTrust, import
   return reasons;
 }
 
-function checkAntiRollbackGate({ listing, installedState, forceDowngrade }) {
-  const rollback = rollbackFinding({ listing, installedState });
+function checkAntiRollbackGate({ artifact, installedState, forceDowngrade }) {
+  const rollback = rollbackFinding({ artifact, installedState });
   if (!rollback) {
     return [];
   }
   if (isValidForceDowngrade(forceDowngrade)) {
     return [];
   }
-  return [`antiRollback.older_than_installed:${listing.name}@${listing.version}:${rollback}`];
+  return [`antiRollback.older_than_installed:${artifact.name}@${artifact.version}:${rollback}`];
 }
 
-function checkTransparencyGate({ manifest, listing, offlineTrust }) {
-  const proof = proofFor(offlineTrust?.transparencyProofs, listing.transparency.inclusionProof.digest);
+function checkTransparencyGate({ manifest, artifact, offlineTrust }) {
+  const proof = proofFor(offlineTrust?.transparencyProofs, artifact.transparency.inclusionProof.digest);
   if (!proof) {
-    return [`transparency.inclusion_proof_missing:${listing.transparency.inclusionProof.digest}`];
+    return [`transparency.inclusion_proof_missing:${artifact.transparency.inclusionProof.digest}`];
   }
 
   const reasons = [];
   if (proof.verified !== true) {
-    reasons.push(`transparency.inclusion_proof_invalid:${listing.transparency.inclusionProof.digest}`);
+    reasons.push(`transparency.inclusion_proof_invalid:${artifact.transparency.inclusionProof.digest}`);
   }
   if (proof.logId !== manifest.trust.transparencyLog.logId) {
     reasons.push("transparency.log_mismatch");
@@ -219,28 +255,28 @@ function checkTransparencyGate({ manifest, listing, offlineTrust }) {
   if (proof.logRoot !== manifest.trust.transparencyLog.pinnedRoot) {
     reasons.push("transparency.root_mismatch");
   }
-  if (proof.artifactDigest !== listing.descriptor.digest) {
+  if (proof.artifactDigest !== artifact.digest) {
     reasons.push("transparency.artifact_digest_mismatch");
   }
   return reasons;
 }
 
-function needsForceDowngrade({ listing, installedState }) {
-  return Boolean(rollbackFinding({ listing, installedState }));
+function needsForceDowngrade({ artifact, installedState }) {
+  return Boolean(rollbackFinding({ artifact, installedState }));
 }
 
-function rollbackFinding({ listing, installedState }) {
-  const installed = (installedState?.artifacts ?? []).find((artifact) =>
-    artifact.name === listing.name
+function rollbackFinding({ artifact, installedState }) {
+  const installed = (installedState?.artifacts ?? []).find((installedArtifact) =>
+    installedArtifact.name === artifact.name
   );
   if (!installed) {
     return null;
   }
 
-  if (installed.buildTimestamp && Date.parse(listing.buildTimestamp) < Date.parse(installed.buildTimestamp)) {
+  if (installed.buildTimestamp && Date.parse(artifact.buildTimestamp) < Date.parse(installed.buildTimestamp)) {
     return "buildTimestamp";
   }
-  if (installed.version && compareVersions(listing.version, installed.version) < 0) {
+  if (installed.version && artifact.version !== "unversioned" && compareVersions(artifact.version, installed.version) < 0) {
     return "version";
   }
   return null;

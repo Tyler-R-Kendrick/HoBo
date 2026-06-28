@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-control-plane-authz-cache-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/control-plane-authz-cache.test.mjs"
+  }
+}

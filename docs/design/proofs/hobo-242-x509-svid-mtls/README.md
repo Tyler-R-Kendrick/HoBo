@@ -19,9 +19,9 @@ This executable proof pins the M2 service-to-service identity contract from
 ## Proof Boundaries
 
 The proof composes the existing identity-event contract and the SVID issuance/rotation semantics
-from HOBO-90 and HOBO-99. It does not implement JWT-SVID issuance, mesh/connectivity tier
-selection, Relay reverse tunnels, public endpoint mTLS gateway configuration, or production ACME/TLS
-handshakes.
+from HOBO-90 and HOBO-99. It covers normal pre-expiry renewal overlap, not ADR-0100 partition-grace
+vectors. It does not implement JWT-SVID issuance, mesh/connectivity tier selection, Relay reverse
+tunnels, public endpoint mTLS gateway configuration, or production ACME/TLS handshakes.
 
 ## Executable Checks
 
@@ -31,5 +31,6 @@ Run:
 npm.cmd --prefix src\draft\x509-svid-mtls-contract test
 ```
 
-The checks prove fixture mTLS, SPIFFE SAN contents, rotation overlap, tenant trust-domain rejection,
-air-gap issuance, cross-tenant SPIFFE refusal, expiry rejection, and tampered SAN signature failure.
+The checks prove fixture mTLS, SPIFFE SAN contents, private-key possession, rotation overlap,
+tenant trust-domain rejection, air-gap issuance, cross-tenant SPIFFE refusal, expiry rejection, and
+tampered SAN signature failure.

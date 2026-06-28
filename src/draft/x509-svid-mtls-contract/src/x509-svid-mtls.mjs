@@ -18,6 +18,7 @@ const DEFAULT_SKEW_TOLERANCE_SECONDS = 5;
 const SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/;
 const SIGNING_ALGORITHM = "RSA-SHA256";
 const X509_SVID_VERSION = "hobo.x509-svid/v1";
+const workloadPrivateKeys = new WeakMap();
 
 export function createX509SvidAuthority(options = {}) {
   const trustDomain = requireSegment(options.trustDomain ?? "yard", "trustDomain");
@@ -94,7 +95,10 @@ export function createX509SvidAuthority(options = {}) {
     const identityId = idFactory("x509-svid");
     const svidRef = `identity://x509-svid/${identityId}`;
     const keyRef = `identity://workload-key/${identityId}`;
-    const workloadPublicKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).publicKey;
+    const {
+      privateKey: workloadPrivateKey,
+      publicKey: workloadPublicKey,
+    } = generateKeyPairSync("rsa", { modulusLength: 2048 });
     const certificateBody = {
       version: X509_SVID_VERSION,
       serialNumber: identityId,
@@ -141,7 +145,7 @@ export function createX509SvidAuthority(options = {}) {
     });
     eventSink(event);
 
-    return deepFreeze({
+    const issued = deepFreeze({
       identityId,
       svidRef,
       spiffeId,
@@ -154,6 +158,8 @@ export function createX509SvidAuthority(options = {}) {
       },
       events: [event],
     });
+    workloadPrivateKeys.set(issued, workloadPrivateKey);
+    return issued;
   }
 
   function trustBundle(options = {}) {
@@ -264,15 +270,27 @@ export function rotateX509Svid({ authority, current, attestation, now }) {
   });
 }
 
-export function establishMutualTls({ client, server, trustBundle, expectedTenant, now }) {
+export function establishMutualTls({ client, server, trustBundle, expectedTenant, now, autoRotate }) {
   const atMs = coerceTimeMs(now ?? Date.now(), "now");
-  const clientIdentity = verifySvid(client, {
+  const clientState = maybeAutoRotatePeer({
+    role: "client",
+    svid: client,
+    autoRotate,
+    now: atMs,
+  });
+  const serverState = maybeAutoRotatePeer({
+    role: "server",
+    svid: server,
+    autoRotate,
+    now: atMs,
+  });
+  const clientIdentity = verifySvid(clientState.svid, {
     trustBundle,
     expectedTenant,
     now: atMs,
     role: "client",
   });
-  const serverIdentity = verifySvid(server, {
+  const serverIdentity = verifySvid(serverState.svid, {
     trustBundle,
     expectedTenant: expectedTenant ?? clientIdentity.tenant,
     now: atMs,
@@ -285,6 +303,12 @@ export function establishMutualTls({ client, server, trustBundle, expectedTenant
     serverSpiffeId: serverIdentity.spiffeId,
     clientTenant: clientIdentity.tenant,
     serverTenant: serverIdentity.tenant,
+    clientSvidRef: clientState.svid.svidRef,
+    serverSvidRef: serverState.svid.svidRef,
+    rotations: {
+      client: clientState.rotation,
+      server: serverState.rotation,
+    },
     remainsEstablishedAfter(rotation) {
       if (!rotation?.rotated) {
         return { ok: true, reason: "no-rotation" };
@@ -295,6 +319,32 @@ export function establishMutualTls({ client, server, trustBundle, expectedTenant
       };
     },
   });
+}
+
+function maybeAutoRotatePeer({ role, svid, autoRotate, now }) {
+  const noRotation = deepFreeze({
+    rotated: false,
+    reason: "auto-rotation-disabled",
+    events: [],
+  });
+  if (!autoRotate) {
+    return { svid, rotation: noRotation };
+  }
+  const authority = autoRotate.authority;
+  const attestation = autoRotate.attestations?.[role];
+  if (!authority || !attestation) {
+    return { svid, rotation: noRotation };
+  }
+  const rotation = rotateX509Svid({
+    authority,
+    current: svid,
+    attestation,
+    now,
+  });
+  return {
+    svid: rotation.rotated ? rotation.next : svid,
+    rotation,
+  };
 }
 
 export function tamperSvidSan(svid, replacementSpiffeId) {
@@ -349,6 +399,7 @@ function verifySvid(svid, { trustBundle, expectedTenant, now, role }) {
   if (certificate.subject.spiffeId !== spiffeId) {
     throw new Error("certificate subject does not match SAN SPIFFE ID");
   }
+  verifyPrivateKeyProof(svid, certificate, spiffeId, role);
 
   return {
     spiffeId,
@@ -357,6 +408,36 @@ function verifySvid(svid, { trustBundle, expectedTenant, now, role }) {
     bindle: identity.bindle,
     resource: identity.resource,
   };
+}
+
+function verifyPrivateKeyProof(svid, certificate, spiffeId, role) {
+  const privateKey = workloadPrivateKeys.get(svid);
+  if (!privateKey) {
+    throw new Error("private key proof required");
+  }
+  const proof = {
+    role,
+    svidRef: svid.svidRef,
+    spiffeId,
+    serialNumber: certificate.serialNumber,
+    notBefore: certificate.notBefore,
+    notAfter: certificate.notAfter,
+  };
+  const signature = createSign(SIGNING_ALGORITHM)
+    .update(stableStringify(proof))
+    .end()
+    .sign(privateKey, "base64url");
+  const ok = createVerify(SIGNING_ALGORITHM)
+    .update(stableStringify(proof))
+    .end()
+    .verify(
+      createPublicKey({ key: certificate.publicKeyJwk, format: "jwk" }),
+      signature,
+      "base64url",
+    );
+  if (!ok) {
+    throw new Error("private key proof failed");
+  }
 }
 
 function normalizeIssueRequest(input, trustDomain) {

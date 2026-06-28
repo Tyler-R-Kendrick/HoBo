@@ -13,14 +13,16 @@ service-to-service mTLS authentication.
   established connection is not dropped.
 - Tenant trust bundles are scoped: a service from another tenant trust domain is rejected.
 - Air-gapped Yards use the internal CA/private ACME profile without phone-home.
-- Spoofed SANs, expired certificates, and caller-requested cross-tenant SPIFFE IDs fail closed.
+- Spoofed SANs, copied certificates without workload private-key possession, expired certificates,
+  and caller-requested cross-tenant SPIFFE IDs fail closed.
 
 ## Boundary
 
 This package is an in-memory contract POC. It signs certificate-shaped X.509-SVID records with a
-tenant-scoped SVID CA and verifies them at a simulated mTLS boundary. It does not implement JWT-SVID
-issuance, connectivity-tier selection, relay reverse tunnels, public endpoint gateway mTLS, ACME
-wire protocol, or a production TLS stack.
+tenant-scoped SVID CA and verifies them at a simulated mTLS boundary. It covers normal pre-expiry
+renewal overlap, not partition-grace rotation vectors. It does not implement JWT-SVID issuance,
+connectivity-tier selection, relay reverse tunnels, public endpoint gateway mTLS, ACME wire
+protocol, or a production TLS stack.
 
 ## Verification
 

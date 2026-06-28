@@ -62,6 +62,29 @@ test("fixture services establish mTLS with SPIFFE ID in the X.509 SAN", () => {
   assert.equal(apiSvid.events[0].type, "identity.Issued");
 });
 
+test("copied SVID certificate without the workload private key cannot authenticate", () => {
+  const authority = createX509SvidAuthority({
+    trustDomain: "yard",
+    ttlSeconds: 120,
+    now: baseTime,
+  });
+
+  const apiSvid = authority.issueWorkloadSvid(api);
+  const copiedApiSvid = JSON.parse(JSON.stringify(apiSvid));
+  const workerSvid = authority.issueWorkloadSvid(worker);
+
+  assert.throws(
+    () =>
+      establishMutualTls({
+        client: workerSvid,
+        server: copiedApiSvid,
+        trustBundle: authority.trustBundle(),
+        now: baseTime + 1_000,
+      }),
+    /private key proof required/,
+  );
+});
+
 test("certificates rotate within TTL without dropping an established mTLS session", () => {
   const authority = createX509SvidAuthority({
     trustDomain: "yard",
@@ -80,25 +103,26 @@ test("certificates rotate within TTL without dropping an established mTLS sessio
     now: baseTime + 1_000,
   });
 
-  const rotation = rotateX509Svid({
-    authority,
-    current: apiSvid,
-    attestation: api.attestation,
+  const refreshed = establishMutualTls({
+    client: workerSvid,
+    server: apiSvid,
+    trustBundle: authority.trustBundle(),
     now: baseTime + 65_000,
+    autoRotate: {
+      authority,
+      attestations: {
+        server: api.attestation,
+      },
+    },
   });
+  const rotation = refreshed.rotations.server;
 
   assert.equal(rotation.rotated, true);
   assert.equal(rotation.gapFree, true);
   assert.equal(rotation.previousAcceptedUntil >= rotation.next.certificate.notBefore, true);
   assert.equal(rotation.events[0].type, "identity.Rotated");
   assert.equal(session.remainsEstablishedAfter(rotation).ok, true);
-
-  const refreshed = establishMutualTls({
-    client: workerSvid,
-    server: rotation.next,
-    trustBundle: authority.trustBundle(),
-    now: baseTime + 66_000,
-  });
+  assert.equal(refreshed.serverSvidRef, rotation.next.svidRef);
   assert.equal(refreshed.ok, true);
 });
 
@@ -109,7 +133,7 @@ test("service presenting another tenant trust-domain certificate is rejected", (
     now: baseTime,
   });
   const betaAuthority = createX509SvidAuthority({
-    trustDomain: "yard",
+    trustDomain: "foreign-yard",
     ttlSeconds: 120,
     now: baseTime,
   });
@@ -136,7 +160,7 @@ test("service presenting another tenant trust-domain certificate is rejected", (
         expectedTenant: "acme",
         now: baseTime + 1_000,
       }),
-    /tenant trust-domain mismatch/,
+    /SPIFFE ID trust-domain mismatch/,
   );
 });
 

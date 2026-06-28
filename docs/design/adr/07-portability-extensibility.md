@@ -315,6 +315,23 @@ The HOBO-340 spike vectors live in [`../../../src/draft/version-compat-resolutio
 - **(+)** Immutable pins and floating ranges no longer conflict: ranges float only at install/explicit-upgrade time, while ordinary planning honors the already-published Bindle version.
 - **(−)** One-version-per-coordinate is stricter than package-manager-style nested duplication. That keeps deployments auditably portable, but some future dependency graphs will require package renaming, compatibility shims, or a deliberate RCR to support side-by-side versions.
 
+## ADR-0103
+**Junction connectivity inference is a pure Yard-manifest fold with mirrored halves.**
+
+### Context
+[ADR-0043](#adr-0043) says a Junction infers cross-cloud connectivity from member Yard manifests and federates each Yard its half. HOBO-94 supplied the `YardManifest` shape; HOBO-185 tested the riskiest missing rule: whether honest manifests can fold into exactly the intended cross-Yard connectivity without a shared controller, silent public fallback, or residency leak.
+
+### Decision
+1. **Inference is a pure deterministic fold.** The Junction input is the validated `YardManifest` from each member Yard plus a signed tier-capability snapshot for the participating provider/residency pair. The fold sorts members and links by stable ids, emits `junction.ConnectivityInferred`, and never reads or mutates a Yard's private control-plane state.
+2. **Every accepted cross-Yard link emits exactly two mirrored halves.** The source Yard receives the source-side half, the target Yard receives the target-side half, and `halvesByYard` is the exact projection of those halves. A missing mirror is invalid even if one side could provision something locally.
+3. **Tier selection is explicit and fail-closed.** Cross-Yard links can use only tier 3 private interconnect, tier 4 overlay mesh, or tier 5 public+mTLS. The manifest-required tier is the worst allowed tier; the fold selects the most private supported tier from 3 -> 4 -> 5 that is at or better than that requirement. Public+mTLS is not an implicit escape hatch: if no legal tier exists, inference emits a conflict diagnostic and no half-plan.
+4. **Residency and symmetry are hard guards.** Endpoint residency tags from both Yard manifests must match the link's declared residency and each other. Asymmetric manifests (one side references a peer endpoint the other Yard does not expose), unsupported same-Yard tiers, and residency mismatches fail closed with explicit diagnostics.
+5. **HOBO-159 consumes the executable spike contract.** The independent proof package at `src/draft/junction-connectivity-inference-spike` models generated manifest pairs and checks completeness, soundness, residency legality, determinism, asymmetric-manifest rejection, and no-legal-tier rejection. The production slice should preserve those properties while adding real DNS/provider realization outside this ADR's spike scope.
+
+### Consequences
+- **(+)** HOBO-159 gets a precise implementation contract: fold validated manifests, choose a legal tier from declared intent + capabilities, emit mirrored halves, and reject ambiguity before any Yard provisions.
+- **(−)** Some deploys that could be made to "work" by falling back to public+mTLS now require explicit intent or a capability update, but that preserves residency and the no-shared-controller Junction invariant.
+
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 12](../security-networking.md#plan-12).

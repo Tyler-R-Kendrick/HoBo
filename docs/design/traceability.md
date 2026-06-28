@@ -151,6 +151,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0100 | [identity-security](./adr/02-identity-security.md#adr-0100) | SVID rotation under partition is pinned by signed renewal-grace vectors and consumed by broker HA work. | HOBO-255, HOBO-266, HOBO-287 |
 | ADR-0101 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0101) | DNS validation-gate threat modeling pins multi-vantage, TTL, ACME, health, and promote re-check requirements before concrete DNS gate implementation and adversarial hardening. | HOBO-189, HOBO-142, HOBO-193 |
 | ADR-0102 | [architecture-core](./adr/01-architecture-core.md#adr-0102) | SpinKube is the first opt-in component-host adapter certification target; provider-native wasm remains a precise gap-list path until required `wasi:*` and determinism checks pass. | HOBO-35 |
+| ADR-0103 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0103) | Junction connectivity inference is pinned as a pure deterministic YardManifest fold that emits mirrored per-Yard halves and fails closed on asymmetric manifests, illegal residency, and no legal tier. | HOBO-185, HOBO-159 |
 
 ## ADR Numbering and Status Audit
 
@@ -158,7 +159,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0102`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0103`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

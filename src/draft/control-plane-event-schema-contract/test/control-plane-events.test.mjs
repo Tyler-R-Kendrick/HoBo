@@ -107,7 +107,15 @@ test("match.Decided carries ADR-0033 ranking, rejected candidates, objective, ti
     objective: "cost",
     catalogContentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ranking: [
-      { definitionId: "aws-s3-standard", specificity: 2, priority: 10, objectiveScore: 0.13, rank: 1 },
+      {
+        definitionId: "aws-s3-standard",
+        region: "us-east-1",
+        specificity: 2,
+        priority: 10,
+        objectiveScore: 0.13,
+        rank: 1,
+        rationale: "objective=cost; region=us-east-1; provider=aws"
+      },
       { definitionId: "azure-blob-standard", specificity: 2, priority: 10, objectiveScore: 0.17, rank: 2 }
     ],
     rejectedCandidates: [
@@ -129,6 +137,8 @@ test("match.Decided carries ADR-0033 ranking, rejected candidates, objective, ti
     "winner"
   ]);
   assert.equal(decided.data.tie, false);
+  assert.equal(decided.data.ranking[0].region, "us-east-1");
+  assert.match(decided.data.ranking[0].rationale, /objective=cost/);
 });
 
 test("dispatch.Decided pins the CreditLedgerView seq and reservation input used by maximize-credits", () => {
@@ -144,8 +154,8 @@ test("dispatch.Decided pins the CreditLedgerView seq and reservation input used 
       balanceHash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
     candidates: [
-      { provider: "github", effectiveMarginalCost: 0.04 },
-      { provider: "depot", effectiveMarginalCost: 0 }
+      { provider: "github", effectiveMarginalCost: 0.04, rationale: "paid runner" },
+      { provider: "depot", effectiveMarginalCost: 0, rationale: "free credit available" }
     ]
   });
 
@@ -154,6 +164,7 @@ test("dispatch.Decided pins the CreditLedgerView seq and reservation input used 
   assert.equal(validation.ok, true, validation.errors.join("\n"));
   assert.equal(decided.data.ledgerInput.seq, 1844);
   assert.equal(decided.data.objective, "maximize-credits");
+  assert.match(decided.data.candidates[1].rationale, /free credit/);
 });
 
 test("adversarial validation rejects missing envelope linkage and absent current tie flag", () => {

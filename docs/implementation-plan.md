@@ -261,7 +261,7 @@ Remaining (cap-blocked):
 - ▢ ADVERSARIAL: ID-JAG confused-deputy in XAA · M3 · adversarial/security
 - ▢ ADVERSARIAL: token replay (nonce/audience/short-TTL) · M3 · adversarial/security
 - ▢ ADVERSARIAL: secret-zero bootstrap trust · M3 · adversarial/security
-- ▢ SPIKE: SVID rotation under network partition · M3 · spike/security
+- ✅ HOBO-266 — SPIKE: SVID rotation under network partition · M3 · spike/security · 3 (←HOBO-99)
 - ▢ SPIKE: ID-JAG token-exchange threat model · M3 · spike/security
 - ▢ HARDENING: static-key escape-hatch (TTL/rotation/audit) · M3 · hardening/security
 - ▢ HARDENING: genesis Org-Admin + offline break-glass override · M3 · hardening/security

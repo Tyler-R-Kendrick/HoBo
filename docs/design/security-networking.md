@@ -92,7 +92,7 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 
 **mTLS-by-default between services:** regardless of tier, service-to-service traffic authenticates with SVIDs (zero-trust). Certificates are issued/rotated by Identity; apps don't manage them.
 
-**Across Yards, the tier is the Junction's call.** Within a Yard the Planner picks the tier; for a *cross-boundary* edge neither Yard sees both ends, so the **Junction infers the tier** (and the matching `hobo:dns` rules) from the member Yards' manifests and **federates each Yard its half to realize** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — the Junction decides *what* connects, each Yard owns *how* on its side, no shared state.
+**Across Yards, the tier is the Junction's call.** Within a Yard the Planner picks the tier; for a *cross-boundary* edge neither Yard sees both ends, so the **Junction infers the tier** (and the matching `hobo:dns` rules) from the member Yards' manifests and **federates each Yard its half to realize** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — the Junction decides *what* connects, each Yard owns *how* on its side, no shared state. [ADR-0103](./adr/07-portability-extensibility.md#adr-0103) pins that inference as a pure YardManifest fold that emits mirrored halves and fails closed on asymmetric manifests, illegal residency, and no legal tier before HOBO-159 builds the realizer.
 
 #### Ingress / the `gateway` port
 - The `gateway()` capability provides TLS termination, routing, and traffic-splitting. It's what blue/green and canary rollouts flip ([Plan 5](./reliability-observability-cost.md#plan-05)).

@@ -18,6 +18,7 @@ export interface CreditLedgerAccount {
     expiresAt?: string;
     windowEnd?: string;
   }>;
+  reservedUnits?: number;
 }
 
 export interface CreditLedgerView {
@@ -26,6 +27,7 @@ export interface CreditLedgerView {
   digest?: string;
   balanceHash?: string;
   accounts: CreditLedgerAccount[];
+  reservations?: CreditReservation[];
 }
 
 export interface DispatchProviderCandidate {
@@ -65,7 +67,14 @@ export interface DispatchDecisionRequest {
   objective?: DispatcherObjective;
   units?: number;
   incumbentProviderId?: string;
+  reservationId?: string;
+  hysteresis?: HysteresisInput;
   ledgerView: CreditLedgerView;
+}
+
+export interface ReserveDispatchRequest extends DispatchDecisionRequest {
+  reservationLedger: ReservationLedger;
+  maxAttempts?: number;
 }
 
 export interface PlacementDecisionRequest {
@@ -82,6 +91,7 @@ export interface PlacementDecisionRequest {
 export interface RankedDispatchCandidate {
   providerId: string;
   category: DispatchCategory;
+  dimension: string;
   rank: number;
   effectiveMarginalCost: number;
   totalCost: number;
@@ -94,6 +104,51 @@ export interface RankedDispatchCandidate {
   rationale: string;
 }
 
+export interface HysteresisInput {
+  incumbentProviderId: string;
+  minimumSavings: number;
+  dwellWindow: string;
+  observedAt: string;
+}
+
+export interface HysteresisResult {
+  held: boolean;
+  input: HysteresisInput | null;
+  rawWinner?: string | null;
+  incumbentProviderId?: string;
+  savings?: number;
+  reason?: string;
+}
+
+export interface CreditReservation {
+  reservationId: string;
+  providerId: string;
+  dimension: string;
+  units: number;
+  expectedSeq: number;
+  committedSeq?: number;
+}
+
+export interface CreditReservationResult extends CreditReservation {
+  ok: boolean;
+  status: "reserved" | "cas-conflict";
+  actualSeq?: number;
+  ledgerView: CreditLedgerView;
+}
+
+export interface ReservationLedger {
+  snapshot(): CreditLedgerView;
+  reserve(request: CreditReservation): CreditReservationResult;
+}
+
+export interface ReservationAttempt {
+  attempt: number;
+  status: "reserved" | "cas-conflict";
+  selectedProvider: string;
+  expectedSeq: number;
+  actualSeq: number;
+}
+
 export interface DispatchDecision {
   ok: boolean;
   schema: string;
@@ -101,8 +156,14 @@ export interface DispatchDecision {
   selectedProvider?: string;
   reason?: string;
   ranking: RankedDispatchCandidate[];
+  hysteresis?: HysteresisResult;
   dispatchEvent?: Record<string, unknown>;
   replayInput?: Record<string, unknown>;
+}
+
+export interface ReservedDispatchDecision extends DispatchDecision {
+  reservation?: CreditReservationResult;
+  attempts: ReservationAttempt[];
 }
 
 export interface PlacementDecision {
@@ -128,6 +189,8 @@ export interface PlacementDecision {
 
 export declare const DISPATCHER_MAXIMIZE_CREDITS_VERSION: "hobo.dispatcher-maximize-credits/v1";
 export declare function createDispatcherRegistry(providers?: DispatchProviderCandidate[]): DispatcherRegistry;
+export declare function createReservationLedger(initialLedgerView: CreditLedgerView): ReservationLedger;
 export declare function decideDispatch(request: DispatchDecisionRequest): DispatchDecision;
+export declare function decideAndReserveDispatch(request: ReserveDispatchRequest): ReservedDispatchDecision;
 export declare function replayDispatchDecision(replayInput: Record<string, unknown>): DispatchDecision;
 export declare function decidePlacement(request: PlacementDecisionRequest): PlacementDecision;

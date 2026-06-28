@@ -39,6 +39,49 @@ export function createFixtureIacState() {
   });
 }
 
+export function createTerraformStateFixture() {
+  return deepFreeze({
+    kind: "terraform-state",
+    resources: [
+      {
+        id: "legacy-network",
+        type: "network",
+        externalId: "terraform://prod/aws_vpc.legacy",
+        outputs: {
+          cidr: "10.0.0.0/16",
+          vpcId: "vpc-legacy",
+        },
+        state: {
+          address: "aws_vpc.legacy",
+          provider: "registry.terraform.io/hashicorp/aws",
+          workspace: "prod",
+        },
+      },
+    ],
+  });
+}
+
+export function createUnsupportedTerraformStateFixture() {
+  return deepFreeze({
+    kind: "terraform-state",
+    resources: [
+      {
+        id: "legacy-bus",
+        type: "managedKafka",
+        externalId: "terraform://prod/kafka.legacy",
+        outputs: {
+          brokerUrl: "kafka://legacy-bus.internal:9092",
+        },
+        state: {
+          address: "confluent_kafka_cluster.legacy",
+          provider: "registry.terraform.io/confluentinc/confluent",
+          workspace: "prod",
+        },
+      },
+    ],
+  });
+}
+
 export function createAdoptionGraph({ nodes = [] } = {}) {
   const graphNodes = {};
   for (const node of nodes) {
@@ -72,57 +115,96 @@ export function createExternalResource({
   type,
   declaredOutputs = [],
   outputs = {},
-  source = { kind: "byo", ref: id },
+  source,
+  externalId,
+  credential,
+  credentialRef,
+  federatedAlternative,
 } = {}) {
   assertId(id, "external resource");
   if (!type) {
     throw new AdoptInPlaceError("invalid-external-resource", `external resource ${id} requires type`);
   }
 
-  return deepFreeze({
+  const normalizedCredential = normalizeCredential(
+    credential ?? (credentialRef ? { mode: "static-key", ref: credentialRef, federatedAlternative } : undefined),
+    id,
+  );
+  const resource = {
     id,
     kind: "external",
     type,
     declaredOutputs: uniqueStrings(declaredOutputs, `external resource ${id} declaredOutputs`),
     outputs: clonePlainObject(outputs, `external resource ${id} outputs`),
-    source: normalizeSource(source),
+    source: normalizeSource(source ?? { kind: "byo", ref: id }),
     lifecycle: {
       reconcile: "read-only",
       destroy: "skip",
     },
-  });
+  };
+  if (externalId) {
+    resource.externalId = String(externalId);
+  }
+  if (normalizedCredential) {
+    resource.credential = normalizedCredential;
+  }
+
+  return deepFreeze(resource);
 }
 
-export function importIacState({ graph = createAdoptionGraph(), state, source } = {}) {
+export function importIacState({ graph = createAdoptionGraph(), state, source, supportedTypes } = {}) {
   const current = normalizeGraph(graph);
   const normalizedState = normalizeIacState(state);
   const normalizedSource = normalizeSource(source);
+  const supportedTypeSet = normalizeSupportedTypes(supportedTypes);
   const nodes = clonePlainObject(current.nodes, "graph nodes");
   const events = [];
+  let changed = false;
 
   for (const resource of normalizedState.resources) {
-    const adopted = adoptedNodeFromState(resource, normalizedSource);
-    const existing = nodes[adopted.id];
+    const imported =
+      supportedTypeSet && !supportedTypeSet.has(resource.type)
+        ? externalNodeFromState(resource, normalizedSource)
+        : adoptedNodeFromState(resource, normalizedSource);
+    const existing = nodes[imported.id];
 
     if (existing) {
-      if (sameAdoptedNode(existing, adopted)) {
+      if (sameImportedNode(existing, imported)) {
         continue;
       }
       throw new AdoptInPlaceError(
         "import-id-collision",
-        `imported resource ${adopted.id} collides with existing ${existing.kind} node`,
-        { resourceId: adopted.id, existingKind: existing.kind },
+        `imported resource ${imported.id} collides with existing ${existing.kind} node`,
+        { resourceId: imported.id, existingKind: existing.kind },
       );
     }
 
-    nodes[adopted.id] = adopted;
-    events.push(resourceAdoptedEvent(adopted, normalizedSource));
+    nodes[imported.id] = imported;
+    changed = true;
+    if (imported.kind === "adopted") {
+      events.push(resourceAdoptedEvent(imported, normalizedSource));
+    }
   }
 
   return deepFreeze({
-    status: events.length === 0 ? "noop" : "imported",
+    status: changed ? "imported" : "noop",
     graph: freezeGraph({ nodes }),
     events,
+  });
+}
+
+export function planImportRoundTrip({ graph = createAdoptionGraph(), state, source, supportedTypes } = {}) {
+  const result = importIacState({ graph, state, source, supportedTypes });
+
+  return deepFreeze({
+    status: result.status,
+    graph: result.graph,
+    actions: result.events.map((event) => ({
+      action: "import",
+      resourceId: event.data.resourceId,
+      externalId: event.data.externalId,
+      kind: "adopted",
+    })),
   });
 }
 
@@ -217,6 +299,57 @@ export function planDestroy(graph) {
   return deepFreeze({ actions, skipped });
 }
 
+export function planBrownfieldDeployment({ graph, resourceId } = {}) {
+  const normalized = normalizeGraph(graph);
+  const resource = normalized.nodes[resourceId];
+  if (!resource) {
+    throw new AdoptInPlaceError("deployment-resource-missing", `deployment resource ${resourceId} is missing`);
+  }
+  if (resource.kind !== "managed") {
+    throw new AdoptInPlaceError(
+      "deployment-resource-unmanaged",
+      `deployment resource ${resourceId} must be a managed node`,
+      { resourceId, kind: resource.kind },
+    );
+  }
+
+  return deepFreeze({
+    status: "deployable",
+    actions: [
+      {
+        action: "deploy",
+        resourceId,
+        bindings: resolveBindings(normalized, resourceId),
+      },
+    ],
+    skipped: sortedNodes(normalized)
+      .filter((node) => node.kind === "adopted" || node.kind === "external")
+      .map((node) => ({
+        resourceId: node.id,
+        kind: node.kind,
+        reason: node.kind === "adopted" ? "adopted resources are drift-detect only" : "external resources are unmanaged",
+      })),
+  });
+}
+
+export function createPortabilityPlanFromGraph(
+  graph,
+  { planId = "adopt-in-place-brownfield-plan", targetProviders = ["aws", "azure"] } = {},
+) {
+  const normalized = normalizeGraph(graph);
+
+  return deepFreeze({
+    id: String(planId),
+    targetProviders: uniqueStrings(targetProviders, "portability targetProviders"),
+    resources: sortedNodes(normalized).map((node) => ({
+      id: node.id,
+      type: node.type,
+      provider: providerForNode(node),
+      nonPortableEvidence: portabilityEvidenceForNode(node),
+    })),
+  });
+}
+
 export function graphDigest(graph) {
   return `sha256:${createHash("sha256").update(stableJson(normalizeGraph(graph))).digest("hex")}`;
 }
@@ -242,6 +375,17 @@ function adoptedNodeFromState(resource, source) {
       reconcile: "drift-detect-only",
       destroy: "retain",
     },
+  });
+}
+
+function externalNodeFromState(resource, source) {
+  return createExternalResource({
+    id: resource.id,
+    type: resource.type,
+    declaredOutputs: Object.keys(resource.outputs),
+    outputs: resource.outputs,
+    source,
+    externalId: resource.externalId,
   });
 }
 
@@ -276,6 +420,13 @@ function assertOutputAvailable(source, output) {
 
 function sameAdoptedNode(existing, next) {
   return existing.kind === "adopted" && existing.externalId === next.externalId && existing.importHash === next.importHash;
+}
+
+function sameImportedNode(existing, next) {
+  if (next.kind === "adopted") {
+    return sameAdoptedNode(existing, next);
+  }
+  return existing.kind === "external" && stableJson(existing) === stableJson(next);
 }
 
 function normalizeGraph(graph) {
@@ -321,6 +472,8 @@ function normalizeNode(node) {
       declaredOutputs: node.declaredOutputs ?? [],
       outputs: node.outputs ?? {},
       source: node.source ?? { kind: "byo", ref: node.id },
+      externalId: node.externalId,
+      credential: node.credential,
     });
   }
 
@@ -376,6 +529,24 @@ function normalizeSource(source) {
   });
 }
 
+function normalizeCredential(credential, resourceId) {
+  if (credential === undefined || credential === null) {
+    return undefined;
+  }
+  if (credential.mode !== "static-key" || !credential.ref) {
+    throw new AdoptInPlaceError(
+      "invalid-external-credential",
+      `external resource ${resourceId} credential requires static-key mode and ref`,
+    );
+  }
+
+  return deepFreeze({
+    mode: "static-key",
+    ref: String(credential.ref),
+    federatedAlternative: String(credential.federatedAlternative ?? "brokered-credential"),
+  });
+}
+
 function normalizeBinding(binding) {
   if (!binding?.from || !binding.output || !binding.as) {
     throw new AdoptInPlaceError("invalid-binding", "binding requires from, output, and as");
@@ -392,6 +563,51 @@ function sortedNodes(graph) {
     const kind = KIND_PRIORITY.get(left.kind) - KIND_PRIORITY.get(right.kind);
     return kind === 0 ? left.id.localeCompare(right.id) : kind;
   });
+}
+
+function normalizeSupportedTypes(supportedTypes) {
+  if (supportedTypes === undefined || supportedTypes === null) {
+    return null;
+  }
+  return new Set(uniqueStrings(supportedTypes, "supportedTypes"));
+}
+
+function providerForNode(node) {
+  if (node.kind === "managed") {
+    return "portable-fixture";
+  }
+  return node.kind;
+}
+
+function portabilityEvidenceForNode(node) {
+  const evidence = [];
+  if (node.kind === "external") {
+    evidence.push({
+      category: "external-dependency",
+      dependencyKind: "external",
+      target: brownfieldTarget(node),
+    });
+  }
+  if (node.kind === "adopted") {
+    evidence.push({
+      category: "adopted-dependency",
+      dependencyKind: "adopted",
+      target: brownfieldTarget(node),
+    });
+  }
+  if (node.credential?.mode === "static-key") {
+    evidence.push({
+      category: "static-key",
+      credentialRef: node.credential.ref,
+      federatedAlternative: node.credential.federatedAlternative,
+    });
+  }
+
+  return evidence;
+}
+
+function brownfieldTarget(node) {
+  return node.externalId ?? `${node.source.kind}://${node.source.ref}#${node.id}`;
 }
 
 function stableDigest(value) {

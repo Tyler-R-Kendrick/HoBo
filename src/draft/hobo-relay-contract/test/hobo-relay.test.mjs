@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   attemptInboundConnection,
+  authorizeRelayConnection,
   attachRelay,
   dispatchRelayWork,
+  pipelineRelayConnect,
   registerRelay,
   routeRelayTarget
 } from "../src/hobo-relay.mjs";
@@ -89,7 +91,8 @@ test("one relay routes multiple private targets by target id", () => {
     target: {
       targetId: "cluster-a",
       kind: "kubernetes-cluster",
-      privateNetwork: "prod-a"
+      privateNetwork: "prod-a",
+      allowedResourceIds: ["db"]
     }
   });
   assert.deepEqual(routeRelayTarget(session, "cluster-b"), {
@@ -98,7 +101,8 @@ test("one relay routes multiple private targets by target id", () => {
     target: {
       targetId: "cluster-b",
       kind: "vm-pool",
-      privateNetwork: "prod-b"
+      privateNetwork: "prod-b",
+      allowedResourceIds: ["vm-pool"]
     }
   });
 });
@@ -204,8 +208,227 @@ test("relay register and attach actions are governed deny-by-default", () => {
   });
 });
 
-function attachedRelay() {
-  const registration = registerRelay(relaySpec(), policyAllow("hobo:relay:register"));
+test("relay is not an SSRF or lateral-movement pivot", () => {
+  const session = attachedRelay({
+    targets: [
+      {
+        targetId: "cluster-a",
+        kind: "kubernetes-cluster",
+        privateNetwork: "prod-a",
+        endpoint: {
+          host: "api.cluster-a.private",
+          port: 6443,
+          allowedResolvedIps: ["10.10.0.20"]
+        },
+        allowedResourceIds: ["cluster-a/control-plane"]
+      },
+      {
+        targetId: "cluster-b",
+        kind: "kubernetes-cluster",
+        privateNetwork: "prod-b",
+        endpoint: {
+          host: "api.cluster-b.private",
+          port: 6443
+        },
+        allowedResourceIds: ["cluster-b/control-plane"]
+      },
+      {
+        targetId: "metadata-alias",
+        kind: "kubernetes-cluster",
+        privateNetwork: "prod-a",
+        endpoint: {
+          host: "api.metadata-alias.private",
+          port: 443,
+          allowedResolvedIps: ["169.254.169.254"]
+        },
+        allowedResourceIds: ["metadata-service"]
+      },
+      {
+        targetId: "cluster-unscoped",
+        kind: "kubernetes-cluster",
+        privateNetwork: "prod-c",
+        endpoint: {
+          host: "api.cluster-unscoped.private",
+          port: 6443,
+          allowedResolvedIps: ["10.30.0.40"]
+        }
+      }
+    ]
+  }).session;
+
+  assert.deepEqual(authorizeRelayConnection(session, {
+    connectionId: "conn-ssrf-metadata",
+    targetId: "cluster-a",
+    destination: {
+      host: "169.254.169.254",
+      port: 80,
+      resolvedIp: "169.254.169.254"
+    }
+  }), {
+    ok: false,
+    code: "relay.target.address-mismatch",
+    reason: "target cluster-a may only connect to api.cluster-a.private:6443",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-a",
+      reason: "relay.target.address-mismatch"
+    }]
+  });
+
+  assert.deepEqual(authorizeRelayConnection(session, {
+    connectionId: "conn-rebind",
+    targetId: "cluster-a",
+    destination: {
+      host: "api.cluster-a.private",
+      port: 6443,
+      resolvedIp: "10.99.0.99"
+    }
+  }), {
+    ok: false,
+    code: "relay.target.rebinding-denied",
+    reason: "target cluster-a resolved to unregistered address 10.99.0.99",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-a",
+      reason: "relay.target.rebinding-denied"
+    }]
+  });
+
+  assert.deepEqual(authorizeRelayConnection(session, {
+    connectionId: "conn-metadata-alias",
+    targetId: "metadata-alias",
+    destination: {
+      host: "api.metadata-alias.private",
+      port: 443,
+      resolvedIp: "169.254.169.254"
+    }
+  }), {
+    ok: false,
+    code: "relay.target.metadata-endpoint-denied",
+    reason: "target metadata-alias resolves to a metadata endpoint",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "metadata-alias",
+      reason: "relay.target.metadata-endpoint-denied"
+    }]
+  });
+
+  assert.deepEqual(authorizeRelayConnection(session, {
+    connectionId: "conn-no-allowlist",
+    targetId: "cluster-b",
+    destination: {
+      host: "api.cluster-b.private",
+      port: 6443,
+      resolvedIp: "10.20.0.30"
+    }
+  }), {
+    ok: false,
+    code: "relay.target.rebinding-denied",
+    reason: "target cluster-b has no explicit resolved IP allowlist",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-b",
+      reason: "relay.target.rebinding-denied"
+    }]
+  });
+
+  assert.deepEqual(authorizeRelayConnection(session, {
+    connectionId: "conn-forward-proxy",
+    destination: {
+      host: "10.0.0.8",
+      port: 8080,
+      resolvedIp: "10.0.0.8"
+    }
+  }), {
+    ok: false,
+    code: "relay.forward-proxy.denied",
+    reason: "relay requires a registered target id for every private-network connection",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: null,
+      reason: "relay.forward-proxy.denied"
+    }]
+  });
+
+  assert.deepEqual(dispatchRelayWork(session, {
+    workId: "exec-unscoped",
+    targetId: "cluster-unscoped",
+    resourceId: "cluster-unscoped/control-plane",
+    provider: "aws",
+    credentialRef: "private-broker://cluster-unscoped/scoped-token/control-plane/apply",
+    outputs: {}
+  }), {
+    ok: false,
+    code: "relay.work.scope-missing",
+    reason: "target cluster-unscoped has no registered resource scope",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-unscoped",
+      workId: "exec-unscoped",
+      reason: "relay.work.scope-missing"
+    }]
+  });
+
+  assert.deepEqual(dispatchRelayWork(session, {
+    workId: "exec-metadata",
+    targetId: "cluster-a",
+    resourceId: "metadata-service",
+    provider: "aws",
+    credentialRef: "private-broker://cluster-a/scoped-token/metadata/read",
+    outputs: {}
+  }), {
+    ok: false,
+    code: "relay.work.out-of-scope",
+    reason: "work exec-metadata targets resource metadata-service outside target cluster-a scope",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-a",
+      workId: "exec-metadata",
+      reason: "relay.work.out-of-scope"
+    }]
+  });
+
+  const authorized = authorizeRelayConnection(session, {
+    connectionId: "conn-cluster-a",
+    targetId: "cluster-a",
+    destination: {
+      host: "api.cluster-a.private",
+      port: 6443,
+      resolvedIp: "10.10.0.20"
+    }
+  });
+  assert.equal(authorized.ok, true);
+  assert.deepEqual(pipelineRelayConnect(authorized.connection, {
+    connectionId: "conn-pipelined-metadata",
+    targetId: "metadata-service",
+    destination: {
+      host: "169.254.169.254",
+      port: 80,
+      resolvedIp: "169.254.169.254"
+    }
+  }), {
+    ok: false,
+    code: "relay.connection.pipelining-denied",
+    reason: "connection conn-cluster-a is scoped to target cluster-a and cannot open a second target",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-a",
+      attemptedTargetId: "metadata-service",
+      reason: "relay.connection.pipelining-denied"
+    }]
+  });
+});
+
+function attachedRelay(overrides = {}) {
+  const registration = registerRelay(relaySpec(overrides), policyAllow("hobo:relay:register"));
   assert.equal(registration.ok, true);
   const session = attachRelay(registration.relay, policyAllow("hobo:relay:attach"));
   assert.equal(session.ok, true);
@@ -227,12 +450,14 @@ function relaySpec(overrides = {}) {
       {
         targetId: "cluster-a",
         kind: "kubernetes-cluster",
-        privateNetwork: "prod-a"
+        privateNetwork: "prod-a",
+        allowedResourceIds: ["db"]
       },
       {
         targetId: "cluster-b",
         kind: "vm-pool",
-        privateNetwork: "prod-b"
+        privateNetwork: "prod-b",
+        allowedResourceIds: ["vm-pool"]
       }
     ],
     ...overrides

@@ -1,0 +1,24 @@
+# Capability Enforcement Contract
+
+Independent HOBO-19 proof for deny-by-default capability enforcement and the
+usage-inferred grant set.
+
+This package models the security seam between the authoring/collection result
+and the runtime membrane:
+
+- static analysis records the used capability operations in `hobo.manifest/v1`;
+- `.allow()` narrows that used set, and narrow-below-usage fails can-deploy;
+- runtime calls require both a link-table route and an inferred grant;
+- capability handles are unforgeable object references, not ambient ids;
+- dynamic capability calls fail closed when static analysis cannot prove the
+  operation.
+
+Scope intentionally excludes policy-engine composition, SVID/token scoping,
+NATS/JetStream lattice transport, deadline/backpressure semantics, and dynamic
+verb grants beyond the fail-closed stub.
+
+## Verify
+
+```powershell
+npm.cmd --prefix src\draft\capability-enforcement-contract test
+```

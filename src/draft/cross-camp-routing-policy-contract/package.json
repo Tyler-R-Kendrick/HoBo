@@ -1,0 +1,14 @@
+{
+  "name": "@hobo-draft/cross-camp-routing-policy-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for cross-Camp DNS routing policy selection from HOBO-151.",
+  "main": "./src/cross-camp-routing-policy.mjs",
+  "exports": {
+    ".": "./src/cross-camp-routing-policy.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

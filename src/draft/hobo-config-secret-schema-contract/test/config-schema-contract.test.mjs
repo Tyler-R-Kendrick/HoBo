@@ -80,6 +80,7 @@ test("type declarations prove declared keys callable and undeclared keys rejecte
   const args = [
     "--noEmit",
     "--strict",
+    "--skipLibCheck",
     "--module",
     "NodeNext",
     "--moduleResolution",
@@ -88,8 +89,9 @@ test("type declarations prove declared keys callable and undeclared keys rejecte
     "ES2022",
     path.join(packageRoot, "types", "config-surface.types.ts")
   ];
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "tsc";
-  const commandArgs = process.platform === "win32" ? ["/d", "/c", "tsc.cmd", ...args] : args;
+  const npmExecArgs = ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...args];
+  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm";
+  const commandArgs = process.platform === "win32" ? ["/d", "/c", "npm.cmd", ...npmExecArgs] : npmExecArgs;
 
   execFileSync(
     command,

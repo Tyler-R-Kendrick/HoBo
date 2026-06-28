@@ -1,0 +1,150 @@
+name: HoBo CI Fabric
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pr-gate:
+    name: PR full local gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/hobo/wasm
+          key: hobo-wasm-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/draft/**/package.json', 'wit/**/*.wit') }}
+          restore-keys: |
+            hobo-wasm-${{ runner.os }}-
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/hobo/oci
+          key: hobo-oci-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/draft/**/package.json', 'src/draft/**/src/**') }}
+          restore-keys: |
+            hobo-oci-${{ runner.os }}-
+      - run: npm ci
+      - name: Build contract gate
+        run: node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.mjs build
+      - name: Typecheck contract gate
+        run: node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.mjs typecheck
+      - name: Package boundary lint
+        run: node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.mjs lint
+      - name: Unit and conformance
+        run: npm test
+      - name: CLI docs lint
+        run: npm run docs:cli-lint
+      - name: Design docs lint
+        run: npm run docs:design-lint
+      - name: Traceability gate
+        run: node scripts/validate-traceability.mjs
+      - name: SDK contract gate
+        run: node scripts/validate-sdk-contracts.mjs
+      - name: Deployment set/delta gate
+        run: node scripts/validate-deployment-set-delta.mjs
+
+  hello-bindle-e2e:
+    name: hello-bindle sandbox E2E
+    needs: pr-gate
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/e2e')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: hello-bindle-e2e-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
+      HOBO_E2E_FIXTURE: examples/hello-bindle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Assert keyless CI contract
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.mjs
+      - name: Deploy and assert hello-bindle fixture
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}"
+      - name: Tear down hello-bindle fixture
+        if: always()
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}"
+      - name: Sweep orphaned hello-bindle fixtures
+        if: always()
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase sweep-orphans
+
+  hello-bindle-e2e-quarantine:
+    name: hello-bindle E2E quarantine
+    needs: pr-gate
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hobo/e2e-quarantine')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
+      HOBO_E2E_FIXTURE: examples/hello-bindle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Assert keyless CI contract
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.mjs
+      - name: Run quarantine fixture lane
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}-quarantine"
+      - name: Tear down quarantine fixture
+        if: always()
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}-quarantine"
+      - name: Sweep orphaned quarantine fixtures
+        if: always()
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase sweep-orphans
+
+  multi-cloud-shop-e2e:
+    name: multi-cloud-shop provider E2E
+    needs: pr-gate
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/e2e')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: multi-cloud-shop-e2e-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      HOBO_E2E_FIXTURE: examples/multi-cloud-shop
+      HOBO_E2E_PROVIDERS: aws,azure
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Deploy same Bindle to AWS and Azure
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}"
+      - name: Tear down multi-cloud-shop fixture
+        if: always()
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}"
+      - name: Sweep orphaned multi-cloud-shop fixtures
+        if: always()
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase sweep-orphans

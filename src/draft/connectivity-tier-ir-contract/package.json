@@ -1,0 +1,15 @@
+{
+  "name": "@hobo/draft-connectivity-tier-ir-contract",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/connectivity-tier-ir.d.mts",
+      "default": "./src/connectivity-tier-ir.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
+  }
+}

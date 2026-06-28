@@ -91,7 +91,8 @@ test("one relay routes multiple private targets by target id", () => {
     target: {
       targetId: "cluster-a",
       kind: "kubernetes-cluster",
-      privateNetwork: "prod-a"
+      privateNetwork: "prod-a",
+      allowedResourceIds: ["db"]
     }
   });
   assert.deepEqual(routeRelayTarget(session, "cluster-b"), {
@@ -100,7 +101,8 @@ test("one relay routes multiple private targets by target id", () => {
     target: {
       targetId: "cluster-b",
       kind: "vm-pool",
-      privateNetwork: "prod-b"
+      privateNetwork: "prod-b",
+      allowedResourceIds: ["vm-pool"]
     }
   });
 });
@@ -229,6 +231,27 @@ test("relay is not an SSRF or lateral-movement pivot", () => {
           port: 6443
         },
         allowedResourceIds: ["cluster-b/control-plane"]
+      },
+      {
+        targetId: "metadata-alias",
+        kind: "kubernetes-cluster",
+        privateNetwork: "prod-a",
+        endpoint: {
+          host: "api.metadata-alias.private",
+          port: 443,
+          allowedResolvedIps: ["169.254.169.254"]
+        },
+        allowedResourceIds: ["metadata-service"]
+      },
+      {
+        targetId: "cluster-unscoped",
+        kind: "kubernetes-cluster",
+        privateNetwork: "prod-c",
+        endpoint: {
+          host: "api.cluster-unscoped.private",
+          port: 6443,
+          allowedResolvedIps: ["10.30.0.40"]
+        }
       }
     ]
   }).session;
@@ -259,17 +282,37 @@ test("relay is not an SSRF or lateral-movement pivot", () => {
     destination: {
       host: "api.cluster-a.private",
       port: 6443,
-      resolvedIp: "169.254.169.254"
+      resolvedIp: "10.99.0.99"
     }
   }), {
     ok: false,
     code: "relay.target.rebinding-denied",
-    reason: "target cluster-a resolved to unregistered address 169.254.169.254",
+    reason: "target cluster-a resolved to unregistered address 10.99.0.99",
     audit: [{
       type: "relay.RequestDenied",
       relayId: "relay-private-network",
       targetId: "cluster-a",
       reason: "relay.target.rebinding-denied"
+    }]
+  });
+
+  assert.deepEqual(authorizeRelayConnection(session, {
+    connectionId: "conn-metadata-alias",
+    targetId: "metadata-alias",
+    destination: {
+      host: "api.metadata-alias.private",
+      port: 443,
+      resolvedIp: "169.254.169.254"
+    }
+  }), {
+    ok: false,
+    code: "relay.target.metadata-endpoint-denied",
+    reason: "target metadata-alias resolves to a metadata endpoint",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "metadata-alias",
+      reason: "relay.target.metadata-endpoint-denied"
     }]
   });
 
@@ -309,6 +352,26 @@ test("relay is not an SSRF or lateral-movement pivot", () => {
       relayId: "relay-private-network",
       targetId: null,
       reason: "relay.forward-proxy.denied"
+    }]
+  });
+
+  assert.deepEqual(dispatchRelayWork(session, {
+    workId: "exec-unscoped",
+    targetId: "cluster-unscoped",
+    resourceId: "cluster-unscoped/control-plane",
+    provider: "aws",
+    credentialRef: "private-broker://cluster-unscoped/scoped-token/control-plane/apply",
+    outputs: {}
+  }), {
+    ok: false,
+    code: "relay.work.scope-missing",
+    reason: "target cluster-unscoped has no registered resource scope",
+    audit: [{
+      type: "relay.RequestDenied",
+      relayId: "relay-private-network",
+      targetId: "cluster-unscoped",
+      workId: "exec-unscoped",
+      reason: "relay.work.scope-missing"
     }]
   });
 
@@ -387,12 +450,14 @@ function relaySpec(overrides = {}) {
       {
         targetId: "cluster-a",
         kind: "kubernetes-cluster",
-        privateNetwork: "prod-a"
+        privateNetwork: "prod-a",
+        allowedResourceIds: ["db"]
       },
       {
         targetId: "cluster-b",
         kind: "vm-pool",
-        privateNetwork: "prod-b"
+        privateNetwork: "prod-b",
+        allowedResourceIds: ["vm-pool"]
       }
     ],
     ...overrides

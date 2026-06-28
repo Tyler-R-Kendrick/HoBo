@@ -2,6 +2,11 @@ import { evaluateMtlsHandshake } from "../../mtls-data-path-contract/src/mtls-da
 
 const REGISTER_ACTION = "hobo:relay:register";
 const ATTACH_ACTION = "hobo:relay:attach";
+const METADATA_ENDPOINT_ADDRESSES = new Set([
+  "169.254.169.254",
+  "fd00:ec2::254",
+  "metadata.google.internal"
+]);
 const FORBIDDEN_WORK_CREDENTIAL_FIELDS = [
   "credential",
   "credentials",
@@ -132,6 +137,15 @@ export function authorizeRelayConnection(session, request) {
     );
   }
 
+  if (isMetadataEndpoint(destination)) {
+    return denyRelayRequest(
+      session,
+      request.targetId,
+      "relay.target.metadata-endpoint-denied",
+      `target ${request.targetId} resolves to a metadata endpoint`
+    );
+  }
+
   const allowedIps = target.endpoint.allowedResolvedIps ?? [];
   if (allowedIps.length === 0) {
     return denyRelayRequest(
@@ -199,10 +213,22 @@ export function dispatchRelayWork(session, work) {
   const route = routeRelayTarget(session, work.targetId);
   if (!route.ok) return route;
 
-  if (
-    Array.isArray(route.target.allowedResourceIds) &&
-    !route.target.allowedResourceIds.includes(work.resourceId)
-  ) {
+  if (!Array.isArray(route.target.allowedResourceIds) || route.target.allowedResourceIds.length === 0) {
+    return {
+      ok: false,
+      code: "relay.work.scope-missing",
+      reason: `target ${work.targetId} has no registered resource scope`,
+      audit: [{
+        type: "relay.RequestDenied",
+        relayId: session.relayId,
+        targetId: work.targetId,
+        workId: work.workId,
+        reason: "relay.work.scope-missing"
+      }]
+    };
+  }
+
+  if (!route.target.allowedResourceIds.includes(work.resourceId)) {
     return {
       ok: false,
       code: "relay.work.out-of-scope",
@@ -290,6 +316,12 @@ function denyRelayRequest(session, targetId, code, reason) {
 
 function formatEndpoint(endpoint) {
   return `${endpoint.host}:${endpoint.port}`;
+}
+
+function isMetadataEndpoint(destination) {
+  const host = String(destination.host ?? "").toLowerCase();
+  const resolvedIp = String(destination.resolvedIp ?? "").toLowerCase();
+  return METADATA_ENDPOINT_ADDRESSES.has(host) || METADATA_ENDPOINT_ADDRESSES.has(resolvedIp);
 }
 
 function clone(value) {

@@ -20,7 +20,7 @@ The proof covers:
 - Fail-closed rejection for invalid/expired/cross-tenant SVIDs and unknown target ids.
 - SSRF/lateral-movement resistance: every private-network connection must name a registered target
   id, target ids cannot be rebound to arbitrary IPs or metadata endpoints, the Relay refuses to act
-  as a general forward proxy, Yard-side work is constrained to the registered target's resource
-  scope, and an authorized target tunnel cannot be reused to open a second target.
+  as a general forward proxy, Yard-side work requires an explicit registered target resource scope,
+  and an authorized target tunnel cannot be reused to open a second target.
 
 Scope boundary: this POC does not implement a real TCP tunnel, executor sandbox, provider credentials, SVID issuance, air-gapped disconnected mode, or data-plane connectivity tiers. It defines and tests the branch-sized Relay contract those later slices consume.

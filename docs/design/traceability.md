@@ -71,7 +71,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0019 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0019) | Persona/ICP prioritization is preserved as plan and walkthrough coverage, not a separate runtime feature. | HOBO-10, HOBO-11, HOBO-362 |
 | ADR-0021 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0021) | NFR/SLO targets map to reliability, SLO, Gatekeeper, and golden-suite work. | HOBO-104, HOBO-141, HOBO-146, HOBO-200 |
 | ADR-0023 | [identity-security](./adr/02-identity-security.md#adr-0023) | Secure-by-default posture maps to identity, policy, provenance, untrusted generation material, telemetry redaction at capture, and static-key hardening. | HOBO-7, HOBO-44, HOBO-48, HOBO-54, HOBO-90, HOBO-110, HOBO-146, HOBO-154, HOBO-184, HOBO-218, HOBO-253, HOBO-259, HOBO-271, HOBO-275, HOBO-324, HOBO-335, HOBO-346, HOBO-355, HOBO-364, HOBO-365 |
-| ADR-0024 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0024) | Portability conformance guarantee is enforced by WIT, conformance suites, seed provider contracts, manifest upcasters, and swap escape hatches. | HOBO-3, HOBO-5, HOBO-12, HOBO-26, HOBO-29, HOBO-30, HOBO-102, HOBO-153, HOBO-157, HOBO-161, HOBO-165, HOBO-169, HOBO-182, HOBO-386, HOBO-388, HOBO-395 |
+| ADR-0024 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0024) | Portability conformance guarantee is enforced by WIT, conformance suites, seed provider contracts, manifest upcasters, adapter certification, and swap escape hatches. | HOBO-3, HOBO-5, HOBO-12, HOBO-26, HOBO-29, HOBO-30, HOBO-35, HOBO-102, HOBO-153, HOBO-157, HOBO-161, HOBO-165, HOBO-169, HOBO-182, HOBO-386, HOBO-388, HOBO-395 |
 | ADR-0025 | [data-plane](./adr/03-data-plane.md#adr-0025) | Training-engine, repair optimizer boundary, OpenInference trajectory capture, live-eval rewards, trajectory privacy, and `"use training"` work are covered by generated-stack and eval slices. | HOBO-104, HOBO-146, HOBO-330, HOBO-335, HOBO-341, HOBO-358, HOBO-364 |
 | ADR-0026 | [architecture-core](./adr/01-architecture-core.md#adr-0026) | Scope hierarchy is implemented by topology objects, provider matching, and SDK contract hardening. | HOBO-9, HOBO-62, HOBO-81, HOBO-394 |
 | ADR-0027 | [identity-security](./adr/02-identity-security.md#adr-0027) | Secretless-first config/secrets maps to config schema, reference resolver, token broker, provider STS federation, static-secret escape hatch, and secretless certificate material references. | HOBO-40, HOBO-84, HOBO-90, HOBO-110, HOBO-144, HOBO-222, HOBO-275 |
@@ -143,14 +143,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0099 | [data-plane](./adr/03-data-plane.md#adr-0099) | Data-flywheel trajectory privacy is pinned by HOBO-364 proof vectors for capture boundaries, PII redaction, cross-tenant isolation, retention, opt-out, and optimizer payload redaction. | HOBO-364, HOBO-335, HOBO-358 |
 | ADR-0100 | [identity-security](./adr/02-identity-security.md#adr-0100) | SVID rotation under partition is pinned by signed renewal-grace vectors and consumed by broker HA work. | HOBO-266, HOBO-287 |
 | ADR-0101 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0101) | DNS validation-gate threat modeling pins multi-vantage, TTL, ACME, health, and promote re-check requirements before concrete DNS gate implementation and adversarial hardening. | HOBO-189, HOBO-142, HOBO-193 |
+| ADR-0102 | [architecture-core](./adr/01-architecture-core.md#adr-0102) | SpinKube is the first opt-in component-host adapter certification target; provider-native wasm remains a precise gap-list path until required `wasi:*` and determinism checks pass. | HOBO-35 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 90 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 91 numbered entries from [adr/README.md](./adr/README.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0101`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0102`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

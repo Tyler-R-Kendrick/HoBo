@@ -51,10 +51,12 @@ export interface MatchDecidedBody {
   winner: string;
   ranking: Array<{
     definitionId: string;
+    region?: string;
     specificity: number;
     priority: number;
     objectiveScore: number;
     rank: number;
+    rationale?: string;
   }>;
   rejectedCandidates: Array<{ definitionId: string; reason: string }>;
   objective: "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
@@ -73,7 +75,7 @@ export interface DispatchDecidedBody {
     reservationId: string;
     balanceHash: string;
   };
-  candidates: Array<{ provider: string; effectiveMarginalCost: number }>;
+  candidates: Array<{ provider: string; effectiveMarginalCost: number; rationale?: string }>;
 }
 
 export interface GenericControlPlaneBody {

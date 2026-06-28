@@ -94,6 +94,7 @@ test("wit:gen produces byte-identical checked-in bindings on rerun", async (t) =
 test("trivial guest imports the generated hobo:sdk world and builds", async () => {
   const args = [
     "--strict",
+    "--skipLibCheck",
     "--module",
     "NodeNext",
     "--moduleResolution",
@@ -108,14 +109,16 @@ test("trivial guest imports the generated hobo:sdk world and builds", async () =
     process.platform === "win32" ? "tsc.cmd" : "tsc",
   );
   const command =
-    process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : existsSync(localTsc) ? localTsc : "tsc";
+    existsSync(localTsc) ? localTsc : process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm";
 
   await withTempDir(async (outDir) => {
     const buildArgs = [...args, "--outDir", outDir, join(PACKAGE_ROOT, "fixtures", "trivial-guest.ts")];
-    const commandArgs =
-      process.platform === "win32"
-        ? ["/d", "/c", existsSync(localTsc) ? localTsc : "tsc.cmd", ...buildArgs]
-        : buildArgs;
+    const npmExecArgs = ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...buildArgs];
+    const commandArgs = existsSync(localTsc)
+      ? buildArgs
+      : process.platform === "win32"
+        ? ["/d", "/c", "npm.cmd", ...npmExecArgs]
+        : npmExecArgs;
 
     execFileSync(command, commandArgs, { cwd: PACKAGE_ROOT, stdio: "pipe" });
   });

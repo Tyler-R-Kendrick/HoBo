@@ -1,0 +1,8 @@
+{
+  "name": "@hobo-draft/projection-sink-change-feed-conformance-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

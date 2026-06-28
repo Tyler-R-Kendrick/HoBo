@@ -176,6 +176,7 @@ export function pipelineRelayConnect(connection, request) {
       type: "relay.RequestDenied",
       relayId: connection.relayId,
       targetId: connection.targetId,
+      attemptedTargetId: request?.targetId,
       reason: "relay.connection.pipelining-denied"
     }]
   };

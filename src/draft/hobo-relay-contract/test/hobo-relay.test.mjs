@@ -358,6 +358,7 @@ test("relay is not an SSRF or lateral-movement pivot", () => {
       type: "relay.RequestDenied",
       relayId: "relay-private-network",
       targetId: "cluster-a",
+      attemptedTargetId: "metadata-service",
       reason: "relay.connection.pipelining-denied"
     }]
   });

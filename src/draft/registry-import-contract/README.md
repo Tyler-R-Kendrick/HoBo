@@ -12,7 +12,7 @@ This draft proof makes HOBO-383 executable without building a production registr
 
 ## Boundary
 
-This slice does not implement the bundle format, production OCI storage, live registry crawl, Junction federation, model provisioning, or the air-gap hardening gates for offline revocation, anti-rollback, and transparency inclusion. It carries those trust materials through the bundle contract and marks their enforcement as deferred to the HOBO-397 hardening slice.
+This slice does not implement the bundle format, production OCI storage, live registry crawl, Junction federation, model provisioning, or the air-gap hardening gates for offline revocation, anti-rollback, and transparency inclusion. It carries those trust materials through the bundle contract; the HOBO-397 hardening proof composes this importer and enforces those gates in [`offline-import-integrity-contract`](../offline-import-integrity-contract/README.md).
 
 ## Verification
 

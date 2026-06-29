@@ -41,10 +41,12 @@ const ActorZod = z.object({
 }).strict();
 const RankedDefinitionZod = z.object({
   definitionId: z.string().min(1),
+  region: z.string().min(1).optional(),
   specificity: z.number(),
   priority: z.number(),
   objectiveScore: z.number(),
-  rank: z.number()
+  rank: z.number(),
+  rationale: z.string().min(1).optional()
 }).strict();
 const RejectedCandidateZod = z.object({
   definitionId: z.string().min(1),
@@ -52,7 +54,8 @@ const RejectedCandidateZod = z.object({
 }).strict();
 const DispatchCandidateZod = z.object({
   provider: z.string().min(1),
-  effectiveMarginalCost: z.number()
+  effectiveMarginalCost: z.number(),
+  rationale: z.string().min(1).optional()
 }).strict();
 const LedgerInputZod = z.object({
   view: z.literal("CreditLedgerView"),
@@ -93,10 +96,34 @@ export const CONTROL_PLANE_BODY_ZOD_SCHEMAS = Object.freeze({
     driver: z.string().min(1)
   }).strict(),
   "resource.Provisioned": z.object({ resourceId: z.string().min(1), outputs: JsonObjectZod }).strict(),
+  "resource.DriftDetected": z.object({
+    resourceId: z.string().min(1),
+    driftFingerprint: z.string().min(1),
+    providerStateHash: z.string().min(1),
+    desiredStateHash: z.string().min(1),
+    changes: z.array(JsonObjectZod)
+  }).strict(),
+  "resource.DriftQueued": z.object({
+    resourceId: z.string().min(1),
+    driftFingerprint: z.string().min(1),
+    leaseHolder: z.string().min(1)
+  }).strict(),
   "resource.Updating": z.object({
     resourceId: z.string().min(1),
     previousVersion: z.string().min(1),
-    targetVersion: z.string().min(1)
+    targetVersion: z.string().min(1),
+    driftFingerprint: z.string().min(1).optional()
+  }).strict(),
+  "resource.RefreshFailed": z.object({
+    resourceId: z.string().min(1),
+    classification: z.enum(["retryable", "fatal", "ambiguous"]),
+    reason: z.string().min(1),
+    retryAfterMs: z.number().int().positive()
+  }).strict(),
+  "resource.DriftSuppressed": z.object({
+    resourceId: z.string().min(1),
+    driftFingerprint: z.string().min(1),
+    reason: z.string().min(1)
   }).strict(),
   "resource.Failed": z.object({ resourceId: z.string().min(1), reason: z.string().min(1) }).strict(),
   "resource.Destroying": z.object({ resourceId: z.string().min(1), reason: z.string().min(1) }).strict(),
@@ -310,10 +337,33 @@ export function createFixtureEventForType(type, overrides = {}) {
       resourceId: "assets",
       outputs: { bucketName: "gallery-prod-assets" }
     },
+    "resource.DriftDetected": {
+      resourceId: "assets",
+      driftFingerprint: "sha256:drift-assets",
+      providerStateHash: "sha256:actual-assets",
+      desiredStateHash: "sha256:desired-assets",
+      changes: [{ path: "instanceSize", expected: "small", actual: "large" }]
+    },
+    "resource.DriftQueued": {
+      resourceId: "assets",
+      driftFingerprint: "sha256:drift-assets",
+      leaseHolder: "deploy-apply"
+    },
     "resource.Updating": {
       resourceId: "assets",
       previousVersion: "set-prod-0001",
       targetVersion: "set-prod-0002"
+    },
+    "resource.RefreshFailed": {
+      resourceId: "assets",
+      classification: "retryable",
+      reason: "provider timeout",
+      retryAfterMs: 30000
+    },
+    "resource.DriftSuppressed": {
+      resourceId: "assets",
+      driftFingerprint: "sha256:drift-assets",
+      reason: "same drift fingerprint already attempted"
     },
     "resource.Failed": {
       resourceId: "assets",
@@ -552,7 +602,15 @@ function fixtureMatchBody() {
     objective: "cost",
     catalogContentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     ranking: [
-      { definitionId: "aws-s3-standard", specificity: 2, priority: 10, objectiveScore: 0.13, rank: 1 },
+      {
+        definitionId: "aws-s3-standard",
+        region: "us-east-1",
+        specificity: 2,
+        priority: 10,
+        objectiveScore: 0.13,
+        rank: 1,
+        rationale: "objective=cost; region=us-east-1; provider=aws"
+      },
       { definitionId: "azure-blob-standard", specificity: 2, priority: 10, objectiveScore: 0.17, rank: 2 }
     ],
     rejectedCandidates: [
@@ -630,6 +688,8 @@ function validateMatchDecided(data, errors) {
   } else {
     data.ranking.forEach((entry, index) => {
       requireString(entry, "definitionId", errors, `ranking.${index}.definitionId`);
+      if (entry.region !== undefined) requireString(entry, "region", errors, `ranking.${index}.region`);
+      if (entry.rationale !== undefined) requireString(entry, "rationale", errors, `ranking.${index}.rationale`);
       for (const field of ["specificity", "priority", "objectiveScore", "rank"]) {
         if (typeof entry[field] !== "number") {
           errors.push(`ranking.${index}.${field} must be a number`);
@@ -668,6 +728,16 @@ function validateDispatchDecided(data, errors) {
   }
   if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
     errors.push("dispatch.Decided candidates must be a non-empty array");
+  } else {
+    data.candidates.forEach((candidate, index) => {
+      requireString(candidate, "provider", errors, `candidates.${index}.provider`);
+      if (typeof candidate.effectiveMarginalCost !== "number") {
+        errors.push(`candidates.${index}.effectiveMarginalCost must be a number`);
+      }
+      if (candidate.rationale !== undefined) {
+        requireString(candidate, "rationale", errors, `candidates.${index}.rationale`);
+      }
+    });
   }
 }
 

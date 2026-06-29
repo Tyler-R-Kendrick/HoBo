@@ -355,3 +355,20 @@ HoBo's typed surface runs throughout — `ctx.bindings.db` is "a provider-agnost
 ### Consequences
 - **(+)** One DSL serves both a **no-code declarative path** (init/spec/codegen without writing code) and a **code path** (generated SDK stubs the developer extends) — the widest authoring funnel — reusing one IR, two front-ends, and deterministic codegen ([ADR-0037](#adr-0037)) + Matching ([ADR-0033](#adr-0033)) with no new runtime semantics.
 - **(−)** Two authoring surfaces (TS ↔ Hobo Code) plus two entry levels must stay semantically aligned — enforced by the shared IR + transpiler + the codegen `--check` gate — and generated-stub quality depends on codegen fidelity.
+
+## ADR-0102
+**Opt-in component-host adapter certification starts with SpinKube / containerd-wasm.**
+
+HOBO-35 spikes the first opt-in adapter named by [ADR-0031](#adr-0031) and [Plan 20](../wasm-runtime-wit.md#plan-20). The certification target is **SpinKube / containerd-wasm** before provider-native wasm because it is closest to the Wasmtime-shaped local and OCI-floor hosts: it can keep the same WIT/WASI surface, link semantics, fuel/epoch controls, NaN canonicalization, and resource-limit behavior inside a Kubernetes RuntimeClass-shaped boundary. Provider-native wasm remains valid, but it starts as a gap-list path until its required pinned `wasi:*` interfaces and determinism controls pass the same suite.
+
+1. **Certification target.** The first opt-in adapter to certify is SpinKube / containerd-wasm. A Camp may select it only after `@hobo/conformance/component-host` passes from Wasmtime local to the SpinKube profile with the same component descriptor.
+2. **Gap-list path for provider-native wasm.** A provider-native host that lacks any required `wasi:*` interface fails planning with a precise reason before adapter selection. It is not "partially conformant" unless every missing interface is explicitly represented as a planning gap or prefer-degrade path in a later requirement.
+3. **Covered vs non-covered behavior is explicit.** The adapter report must list conformance-covered assertions: deterministic-clock replay, pinned `wasi:*` round trips, link late-binding, capability-handle isolation, NaN canonicalization, fuel/epoch scheduling, and resource-limit semantics. Wall-clock scheduling jitter and host-specific partial-failure timing stay declared non-covered divergences unless a later suite adds them.
+4. **Host-specific options are typed lock-in.** Host-specific features such as SpinKube link migration are exposed only as `host.<kind>.with(...)` options. They are inert on other hosts and always surfaced by `hobo doctor`/PortabilityReport as host lock-in.
+
+The executable spike is [`../../../src/draft/component-host-adapter-certification-spike`](../../../src/draft/component-host-adapter-certification-spike/README.md), with proof notes in [`../proofs/hobo-35-component-host-adapter-certification`](../proofs/hobo-35-component-host-adapter-certification/README.md).
+
+### Consequences
+- **(+)** The opt-in adapter story has a concrete first certification target rather than an open-ended "support N hosts" claim.
+- **(+)** Provider-native wasm remains supported by the architecture without weakening the portability guarantee; unsupported `wasi:*` surfaces fail planning with reasons.
+- **(-)** SpinKube certification still creates Kubernetes-specific operational surface area, so host options must stay typed and visible as portability lock-in.

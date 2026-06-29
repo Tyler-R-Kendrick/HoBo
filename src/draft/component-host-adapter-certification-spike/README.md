@@ -34,3 +34,13 @@ Run it with:
 ```powershell
 npm.cmd --prefix src\draft\component-host-adapter-certification-spike test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Component Host Adapter Certification Spike.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

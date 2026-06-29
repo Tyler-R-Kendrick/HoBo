@@ -2,11 +2,22 @@
   "mcpServers": {
     "headroom": {
       "command": "headroom",
-      "args": ["mcp", "serve"]
+      "args": [
+        "mcp",
+        "serve"
+      ]
     },
     "gbrain": {
       "command": "gbrain",
-      "args": ["serve"]
+      "args": [
+        "serve"
+      ]
+    },
+    "serena": {
+      "command": "bash",
+      "args": [
+        "scripts/agent-mcp-serena.sh"
+      ]
     }
   }
 }

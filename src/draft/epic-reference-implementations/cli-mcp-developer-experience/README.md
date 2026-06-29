@@ -67,3 +67,13 @@ Contracts:
 - `contracts/pacts/runtime-projection-boundary.pact.json`
 - `contracts/pacts/identity-policy-boundary.pact.json`
 - `contracts/pacts/operations-manifest-boundary.pact.json`
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Cli Mcp Developer Experience.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

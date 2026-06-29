@@ -40,3 +40,13 @@ branch-sized contract proof for the DSL parser/lowerer/codegen seam.
 ```powershell
 npm.cmd --prefix src\draft\hobo-code-dsl-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Code Dsl Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -7,6 +7,8 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Agent-to-human handoff | A typed escalation package over `hobo:notify` that asks a human to apply a fix, re-bless output, or abort work before a deadline. |
 | Aggregate | The write-model consistency boundary, realized as an actor over the event log. |
 | Bindle | App-level topology and bindings, provider-agnostic, deployed into one or more Camps. |
+| Broker Catalog Snapshot | Versioned provider/catalog evidence set consumed by the Meta-cloud Broker when validating a Contract Manifest. |
+| Broker Environment | Approved broker input state that constrains which providers, catalogs, mapping contracts, policies, and version pins may be used for a broker decision. |
 | Camp | Provider-specific deployment target such as `prod-aws`; it selects runtime backend, Provider, and IaC engine for a Bindle placement. |
 | Capability Manifest | Machine-readable provider manifest describing capabilities, auth flows, cost facts, and how an agent obtains scoped tokens. |
 | Capability provider | A Provider acting as a wasm capability adapter that implements a WIT interface. |
@@ -14,6 +16,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Component host | Camp capability that executes components; Wasmtime locally and wasm-in-container as the v1 production floor. |
 | Config and secrets | Secretless-first app configuration resolved through `ctx.config` to Camp-specific references rather than plaintext values. |
 | Contract | Typed expectation on a graph edge, declared, inferred, observed, or promoted, and checked by the compatibility gate. |
+| Contract Manifest | Application contract artifact presented to the Meta-cloud Broker; names requested capabilities, constraints, and declared application facts for broker validation. |
 | Cross-App Access | IdP-brokered, policy-governed access from a HoBo app or agent to an external app on a user's behalf, using ID-JAG token exchange. |
 | Delta | Mutable diff applied to an immutable Deployment Set before promotion. |
 | Deployment Set | Immutable resolved config of a Camp manifest. |
@@ -33,8 +36,10 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | IfC | Infrastructure-from-Code, where resources are declared inline and collected by running the component. |
 | Junction | Cross-cloud or hybrid scope that federates identity, signed policy packs, signed registry bundles, and inferred connectivity across autonomous Yards. |
 | Layered scopes | Infra containment chain `Junction` contains `Yard` contains `Camp` contains `Bindle`; project and app-tenant are separate rollup axes. |
+| Mapping Contract | Broker artifact that constrains provider/catalog/resource mapping inputs without giving providers unilateral selection authority. |
 | Manifest IR | Deployment intermediate representation produced by authoring and consumed by the Planner. |
 | Matching Criteria | Deterministic selector for Resource Definitions, ranked by hard requirements, specificity, priority, objective, and stable tiebreak. |
+| Meta-cloud Broker | Hosted authority that validates Contract Manifests against approved Broker Environments and emits Resolution Receipts or Resolution Rejections for Yard consumption. |
 | Obligation | Durable HoBo effect required by an allow decision, such as approval, canary, auth middleware, or budget action. |
 | Operator Agents | Built-in autonomous Yard services such as SRE, Endpoint Monitor, GitOps, Platform Engineer, UX Designer, and SWE. |
 | Planner | Pure function that turns a Bindle plus mapping into a DeploymentPlan DAG. |
@@ -46,6 +51,8 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Projection Sink | Optional queryable cache materialized through Matching; the event log remains authoritative. |
 | Provider | Adapter implementing cloud, IaC, build, or capability ports for a backend. |
 | Relay | Outbound-only proxy inside a private network so a hosted Yard can deploy without inbound access. |
+| Resolution Receipt | Broker-issued evidence artifact proving a Contract Manifest was resolved against a specific Broker Environment and catalog snapshot. |
+| Resolution Rejection | Broker-issued evidence artifact naming why resolution failed, such as stale, incompatible, ambiguous, or unsupported mapping state. |
 | Resource Definition | Rule for realizing a port in a context, including provider, driver, and options. |
 | Resource Pack | Shareable signed bundle of Resource Definitions. |
 | ResourceActor | Controller-style grain that reconciles one resource's desired and actual state. |

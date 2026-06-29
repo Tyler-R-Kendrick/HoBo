@@ -24,3 +24,13 @@ Scope boundary:
   DR orchestration engine remain out of scope.
 - the package consumes `disaster-recovery-failover-contract` instead of
   rebuilding the runbook/remediation path.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Dr Failover Integrity Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -24,3 +24,13 @@ Independent proof for HOBO-56: a unified `PrincipalRef` shape for users, agents,
 - Role enforcement and deny-ceiling algebra.
 - SSO/SCIM binding runtime.
 - The `hobo:*` admin action taxonomy.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Principal Ref Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

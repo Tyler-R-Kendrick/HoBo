@@ -173,6 +173,11 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
 - **Tokens** like `{db.connectionString}` are lazy references resolved at deploy (Aspire pattern).
 - **`links`** are the wasm capability bindings ([Plan 20](./wasm-runtime-wit.md#plan-20)); **`allow`** mirrors the permission model above.
 - The manifest is **content-addressed and event-sourced** (`deployment.Planned` carries it), so it's auditable/replayable ([Plan 11](./data-plane.md#plan-11)).
+- SDK authoring tests also materialize the manifest IR as a stable JSON artifact
+  under `contracts/manifests/`, analogous to Pact consumer tests writing
+  `contracts/pacts/*.pact.json` for broker upload. The `hobo collect --out`
+  CLI path remains the manual form; the SDK path proves tests can publish the
+  same IR without shelling through the CLI.
 
 **Publishers (deploy targets).** Like Aspire publishers / `azd`, the manifest is rendered by pluggable backends: the default **Pulumi Automation API** adapter ([Plan 4](./control-plane.md#plan-04)), plus Crossplane (k8s), and container/wasm-host targets (SpinKube/containerd-wasm, wasmCloud lattice). The manifest decouples *what to deploy* from *how*.
 

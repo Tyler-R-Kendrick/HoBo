@@ -11,3 +11,13 @@ This POC proves the run-to-collect seam for the TypeScript reference idiom layer
 - Network and clock reads through the collection context are sandboxed as ignored side effects so manifest hashes remain deterministic.
 
 Scope stays contract-only: this does not implement the later coverage gate, permission narrowing, non-TS collection, planner consumption, or production runtime hosting.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Resource Collection Engine Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

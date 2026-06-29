@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/settings-project-lifecycle-scope",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

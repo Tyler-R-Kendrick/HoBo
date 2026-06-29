@@ -33,3 +33,13 @@ the HOBO-85 contract over the existing native Reactor/CQRS surfaces.
 ```powershell
 npm.cmd --prefix src\draft\reads-your-writes-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Reads Your Writes Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

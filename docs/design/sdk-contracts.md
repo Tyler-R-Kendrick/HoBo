@@ -28,6 +28,7 @@ Naming: `hobo:sdk` is the WIT contract/package for app primitives and capability
 | `yard(name, options)` | `@hobo/yards` | topology idiom lowering + policy attachment | HOBO-62 | HOBO-32 / `@hobo/conformance/sdk` |
 | `junction(name, options)` | `@hobo/junctions` | topology idiom lowering | HOBO-62 | HOBO-32 / `@hobo/conformance/sdk` |
 | protocol connectors (`a2a`, `acp`) | `@hobo/bindles` + protocol adapters | connector protocol lowering, not an agent SDK | HOBO-88 | HOBO-32 / `@hobo/conformance/sdk` |
+| DX SDK resilience semantics | `hobo:sdk` idiom layers plus local diagnostics | semantics-annex extension matrix | HOBO-515 | HOBO-516 / HOBO-517 resilience vectors |
 
 ## Contracts
 
@@ -169,3 +170,15 @@ const internalAgent = connector("internal-agent", { protocol: "acp" });
 **Implementation issue.** HOBO-88 owns the generated SDK boundary cleanup: remove public agent SDK naming, keep protocol interop behind connector adapters, and reserve `agent` for internal implementation details where needed.
 
 **Conformance issue.** HOBO-32 covers SDK idiom-layer parity. The conformance corpus must include A2A and ACP connector lowering plus a negative vector proving `agent()` is not a supported public collection/factory.
+
+### DX SDK resilience semantics
+
+**Contract record.** [`dx-sdk-resilience-semantics.md`](./dx-sdk-resilience-semantics.md) is the M0 vocabulary and acceptance matrix for retry, cancellation, deadline, lifecycle, supervision, cleanup, and replay-derived inspection behavior.
+
+**Semantics.** Resilience helpers remain idiom-layer-only over the canonical `hobo:sdk` WIT surface. Effect and XState are reference inputs, not public dependencies. A transient failure may retry only through a deterministic schedule with persisted facts; `policy.Decided` denial and terminal WIT failures never retry; cancellation is caller-owned and stops pending retries; inspection is reconstructed from replayable event facts rather than process memory.
+
+**Default.** No SDK layer can claim retry, deadline, lifecycle, supervision, or inspection support until the corresponding resilience vector exists and passes. Off-corpus helper behavior is unsupported by default and must be listed in the conformance report.
+
+**Implementation issue.** HOBO-514 records the parent scope, child issue matrix, initiative links, and adversarial guardrails. HOBO-515 records the vocabulary, target paths, and proof sequence. HOBO-516 implements the first `src/draft/resilience-semantics-annex` proof.
+
+**Conformance issue.** HOBO-517 extends the SDK conformance gate so golden-IR success cannot hide bad resilience semantics.

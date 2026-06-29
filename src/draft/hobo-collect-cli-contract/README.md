@@ -16,3 +16,13 @@ resource-collection engine.
 Scope stays CLI-wrapper only. This does not implement the collection engine,
 coverage gate, Matching/provider resolution, deployment writes, or non-TypeScript
 static analysis.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Collect Cli Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

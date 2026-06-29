@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
+npm run architecture:guard:staged
 npm test
 npm run docs:cli-lint
 npm run docs:design-lint

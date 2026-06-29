@@ -26,3 +26,13 @@ Relevant design records:
 - `docs/design/adr/07-portability-extensibility.md`: ADR-0024 points 1 and 4, ADR-0041 point 2
 - `docs/design/control-plane.md`: resolution pipeline, `realize()` provider authoring, and
   adopt-in-place notes
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Portability Report Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

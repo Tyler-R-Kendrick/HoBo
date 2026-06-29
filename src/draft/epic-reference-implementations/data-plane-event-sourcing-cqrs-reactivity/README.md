@@ -75,3 +75,13 @@ Feature: Fail-closed data-plane adversarial behavior
 - Governance/erasure provider.
 
 No live external service, network call, credential, customer data, or production token is required.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Data Plane Event Sourcing Cqrs Reactivity.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

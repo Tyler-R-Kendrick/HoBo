@@ -9,3 +9,13 @@ This POC keeps the work intentionally contract-only:
 - Public declaration snapshot guard that rejects accidental provider-specific symbols in `@hobo/core`.
 
 It does not implement runtime behavior, provider adapters, or the WIT package.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Core Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -6,7 +6,9 @@
 #   2) run (from scripts/setup-agent-tools.sh):
 #        codex mcp add headroom -- headroom mcp serve
 #        codex mcp add gbrain   -- gbrain serve
+#        codex mcp add serena   -- bash scripts/agent-mcp-serena.sh
 #
+# serena:   semantic code retrieval/editing through language servers, no keys.
 # headroom: local token compression, no API keys.
 # gbrain:   knowledge-graph memory. Requires `gbrain init` once and an embedding
 #           key (OPENAI_API_KEY | ZEROENTROPY_API_KEY | VOYAGE_API_KEY) in your
@@ -19,3 +21,7 @@ args = ["mcp", "serve"]
 [mcp_servers.gbrain]
 command = "gbrain"
 args = ["serve"]
+
+[mcp_servers.serena]
+command = "bash"
+args = ["scripts/agent-mcp-serena.sh"]

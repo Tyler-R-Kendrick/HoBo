@@ -21,3 +21,13 @@ Independent proof for `HOBO-254`: the `crew.*` roster-level event family and sha
 ```powershell
 npm.cmd --prefix src\draft\crew-event-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Crew Event Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -13,3 +13,13 @@ The test gate runs `jco types wit --out-dir generated`, typechecks a no-op
 guest stub that imports every generated interface, validates the no-op guest
 import fixture, and fails closed when the SDK primitive table drifts from WIT or
 a nondeterministic wall-clock/random shape appears in the replay-safe surface.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Runtime Primitives.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

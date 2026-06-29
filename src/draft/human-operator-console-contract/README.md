@@ -31,3 +31,13 @@ The tests cover the acceptance and adversarial cases from HOBO-294:
 This package does not implement a rendered dashboard, status pages, fleet views,
 frontend styling, or provider/SRE runtimes. It consumes projection/event facts
 from the adjacent incident, crew, remediation, and escalation contracts.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Human Operator Console Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

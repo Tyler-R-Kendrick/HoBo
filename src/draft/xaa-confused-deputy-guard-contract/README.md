@@ -26,3 +26,13 @@ Covered behaviors:
 - an Asana grant cannot be reused to mint for Slack; and
 - missing `verifiedDelegatedBy` fails closed; and
 - a non-user verified delegation principal fails closed before minting.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Xaa Confused Deputy Guard Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

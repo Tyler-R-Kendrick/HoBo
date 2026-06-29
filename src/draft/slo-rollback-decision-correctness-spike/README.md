@@ -43,3 +43,13 @@ Out of scope:
 ```powershell
 npm.cmd --prefix src\draft\slo-rollback-decision-correctness-spike test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Slo Rollback Decision Correctness Spike.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -27,3 +27,13 @@ npm.cmd --prefix src\draft\openinference-live-eval-stream-contract test
 ```
 
 Design proof: [HOBO-296 OpenInference live eval stream](../../../docs/design/proofs/hobo-296-openinference-live-eval-stream/README.md).
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Openinference Live Eval Stream Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

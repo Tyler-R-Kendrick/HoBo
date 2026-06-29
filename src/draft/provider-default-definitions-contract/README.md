@@ -11,3 +11,13 @@ The POC covers:
 - Explicit platform definitions with more matching dimensions outscore defaults.
 - Unsupported ports produce remediation input instead of fake defaults.
 - Invalid provider claims fail closed before registration is trusted.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Provider Default Definitions Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

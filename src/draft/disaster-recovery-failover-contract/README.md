@@ -34,3 +34,13 @@ Scope boundary:
 - Cross-Camp topology and real provider routing are out of scope.
 - the package consumes the HOBO-284 gated remediation and HOBO-285 runbook
   execution contracts rather than rebuilding those engines.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Disaster Recovery Failover Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -19,3 +19,13 @@ This is a contract POC only. It does not implement provider adapters, Postgres F
 ```powershell
 npm.cmd --prefix src\draft\full-text-search-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Full Text Search Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

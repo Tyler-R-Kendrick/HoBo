@@ -22,3 +22,13 @@ npm.cmd --prefix src/draft/platform-engineer-flow-contract test
 The test suite covers the acceptance path plus adversarial cases for missing
 capability definitions, colliding overrides, unapproved inferred provider
 defaults, and unknown Camp/provider names.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Platform Engineer Flow Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

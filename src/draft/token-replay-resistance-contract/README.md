@@ -28,3 +28,13 @@ branch-local regression harness over those contracts.
 ```powershell
 npm.cmd --prefix src\draft\token-replay-resistance-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Token Replay Resistance Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

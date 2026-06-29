@@ -23,3 +23,13 @@ Relevant design records:
   resolution pipeline, provider authoring
 - `docs/design/platform-engineering.md`: co-provisioning, placeholders, drivers
 - `docs/design/adr/01-architecture-core.md`: ADR-0005 and ADR-0006
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Realize Emission Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

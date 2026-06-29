@@ -200,6 +200,38 @@ test("repair and needs-human events carry bounded-repair evidence", () => {
   assert.equal(event.data.budgetExhausted, true);
 });
 
+test("gen.SafetyRejected records malicious candidate findings before certification", () => {
+  const result = validResult();
+  const event = validateGenerationEvent(
+    envelope(3, "gen.SafetyRejected", {
+      requestId: "gen-run-1",
+      candidateRef: result.candidateRef,
+      validationReportRef: result.validationReportRef,
+      safetyReportRef: {
+        uri: "oci://registry.example/hobo/safety/gen-run-1@sha256:1111",
+        digest
+      },
+      failingAssertions: ["sandbox.network_egress_denied"]
+    })
+  );
+
+  const rebuilt = rebuildGenerationRun([
+    envelope(2, "gen.Validated", {
+      requestId: "gen-run-1",
+      candidateRef: result.candidateRef,
+      validationReportRef: result.validationReportRef,
+      passed: true
+    }),
+    event
+  ]);
+
+  assert.equal(event.type, "gen.SafetyRejected");
+  assert.equal(rebuilt.finalDecision.effect, "deny");
+  assert.deepEqual(rebuilt.safetyRejections.at(-1).findings, [
+    "sandbox.network_egress_denied"
+  ]);
+});
+
 test("generation events pin run correlation to the request id", () => {
   assertContractError(
     () =>

@@ -10,6 +10,8 @@ This capability doc covers the Yard control plane end to end: its services and r
 
 > **Contracts & policy (gates).** Two governance planes back grains: a **contract-engine** and a **policy-engine**, each a WIT port with a built-in default ([Plan 29](./contracts-policy-flags.md#plan-29)). The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
 
+Reference implementation: the [Control Plane epic rollup](../../src/draft/epic-reference-implementations/control-plane-planner-matching-orchestrator/README.md) synthesizes the Planner, Matching, Delta-to-Set reconcile, ResourceActor choreography, drift/rollback, dispatcher safety, and self-host bootstrap POCs with mocked service boundaries and Pact fixtures.
+
 The Yard is the orchestrator that maps Bindle deployments to real hosting. It is **itself a HoBo Bindle** (dogfood) and runs on the TS-native core; Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement.
 
 ### Services (each a grain-based module)

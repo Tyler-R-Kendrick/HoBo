@@ -96,10 +96,34 @@ export const CONTROL_PLANE_BODY_ZOD_SCHEMAS = Object.freeze({
     driver: z.string().min(1)
   }).strict(),
   "resource.Provisioned": z.object({ resourceId: z.string().min(1), outputs: JsonObjectZod }).strict(),
+  "resource.DriftDetected": z.object({
+    resourceId: z.string().min(1),
+    driftFingerprint: z.string().min(1),
+    providerStateHash: z.string().min(1),
+    desiredStateHash: z.string().min(1),
+    changes: z.array(JsonObjectZod)
+  }).strict(),
+  "resource.DriftQueued": z.object({
+    resourceId: z.string().min(1),
+    driftFingerprint: z.string().min(1),
+    leaseHolder: z.string().min(1)
+  }).strict(),
   "resource.Updating": z.object({
     resourceId: z.string().min(1),
     previousVersion: z.string().min(1),
-    targetVersion: z.string().min(1)
+    targetVersion: z.string().min(1),
+    driftFingerprint: z.string().min(1).optional()
+  }).strict(),
+  "resource.RefreshFailed": z.object({
+    resourceId: z.string().min(1),
+    classification: z.enum(["retryable", "fatal", "ambiguous"]),
+    reason: z.string().min(1),
+    retryAfterMs: z.number().int().positive()
+  }).strict(),
+  "resource.DriftSuppressed": z.object({
+    resourceId: z.string().min(1),
+    driftFingerprint: z.string().min(1),
+    reason: z.string().min(1)
   }).strict(),
   "resource.Failed": z.object({ resourceId: z.string().min(1), reason: z.string().min(1) }).strict(),
   "resource.Destroying": z.object({ resourceId: z.string().min(1), reason: z.string().min(1) }).strict(),
@@ -313,10 +337,33 @@ export function createFixtureEventForType(type, overrides = {}) {
       resourceId: "assets",
       outputs: { bucketName: "gallery-prod-assets" }
     },
+    "resource.DriftDetected": {
+      resourceId: "assets",
+      driftFingerprint: "sha256:drift-assets",
+      providerStateHash: "sha256:actual-assets",
+      desiredStateHash: "sha256:desired-assets",
+      changes: [{ path: "instanceSize", expected: "small", actual: "large" }]
+    },
+    "resource.DriftQueued": {
+      resourceId: "assets",
+      driftFingerprint: "sha256:drift-assets",
+      leaseHolder: "deploy-apply"
+    },
     "resource.Updating": {
       resourceId: "assets",
       previousVersion: "set-prod-0001",
       targetVersion: "set-prod-0002"
+    },
+    "resource.RefreshFailed": {
+      resourceId: "assets",
+      classification: "retryable",
+      reason: "provider timeout",
+      retryAfterMs: 30000
+    },
+    "resource.DriftSuppressed": {
+      resourceId: "assets",
+      driftFingerprint: "sha256:drift-assets",
+      reason: "same drift fingerprint already attempted"
     },
     "resource.Failed": {
       resourceId: "assets",

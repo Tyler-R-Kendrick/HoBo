@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/epic-reference-data-plane-event-sourcing-cqrs-reactivity",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs contracts/consumer/*.test.mjs",
+    "simulate": "node simulation/run-simulation.mjs"
+  }
+}

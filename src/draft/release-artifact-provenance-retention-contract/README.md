@@ -35,3 +35,13 @@ Excluded:
 ```powershell
 npm.cmd --prefix src\draft\release-artifact-provenance-retention-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Release Artifact Provenance Retention Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

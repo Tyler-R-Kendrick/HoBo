@@ -48,3 +48,13 @@ What this proves:
 - host upgrades require conformance and upcaster evidence.
 
 Mocked boundaries and contracts are listed in [contracts/pact-inventory.md](contracts/pact-inventory.md).
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Wit Component Model Runtime Membrane.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

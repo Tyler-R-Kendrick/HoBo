@@ -21,3 +21,13 @@ npm.cmd --prefix src\draft\auth-port-rbac-resolution-contract test
 
 The package test includes a compiled `tsc --noEmit` type consumer for the
 published `.d.mts` surface.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Auth Port Rbac Resolution Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

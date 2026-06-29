@@ -29,3 +29,13 @@ adapter upgrade content, and cross-host adapter migration.
 ```powershell
 npm.cmd --prefix src\draft\host-version-upgrade-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Host Version Upgrade Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -19,3 +19,13 @@ npm.cmd --prefix src\draft\cross-camp-bounded-staleness-contract test
 ```
 
 The tests cover same-fold replica materialization, staleness-labeled subscriptions, route-home writes, stale-read labeling, and lag-spike `projection.Lagged` emission without widening the declared bound.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Cross Camp Bounded Staleness Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

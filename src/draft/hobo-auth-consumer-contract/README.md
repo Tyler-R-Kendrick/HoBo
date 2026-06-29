@@ -36,3 +36,13 @@ npm.cmd --prefix src\draft\hobo-auth-consumer-contract test
 The checks prove fixture generation, per-session role/tenant overrides,
 contract-shape rejection, byte-identical dev/prod contract bytes, deny-by-default
 capability guardrails, and the documented JWT verification gap.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Auth Consumer Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

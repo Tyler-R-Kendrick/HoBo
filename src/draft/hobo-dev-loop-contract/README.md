@@ -24,3 +24,13 @@ cloud credentials, or production deployment behavior.
 ```powershell
 npm.cmd --prefix src\draft\hobo-dev-loop-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Dev Loop Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -25,3 +25,13 @@ M1-M4 work.
 ```powershell
 npm.cmd --prefix src\draft\legal-privacy-terms-readiness-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Legal Privacy Terms Readiness Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

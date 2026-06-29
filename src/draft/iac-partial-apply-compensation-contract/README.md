@@ -36,3 +36,13 @@ detection. It pins the per-resource stack primitive those slices rely on.
 ```powershell
 npm.cmd --prefix src\draft\iac-partial-apply-compensation-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Iac Partial Apply Compensation Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -92,3 +92,13 @@ npm.cmd --prefix src/draft/epic-reference-implementations/reliability-observabil
 - Wire provider verification once production boundary services exist.
 - Split cross-epic connectivity and progressive-delivery policy details back to their owning epics.
 - Promote stable reference slices into production packages only after package ownership is decided.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Reliability Observability Cost Finops.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

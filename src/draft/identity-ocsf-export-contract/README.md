@@ -43,3 +43,13 @@ The checks prove:
   leak key refs,
 - mapping gaps fail loudly instead of silently dropping new event types,
 - preserved and unordered export batches are labeled deterministically.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Identity Ocsf Export Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

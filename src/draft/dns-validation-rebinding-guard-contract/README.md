@@ -28,3 +28,13 @@ models the adversarial guard around an already staged validation gate.
 ```powershell
 npm.cmd --prefix src\draft\dns-validation-rebinding-guard-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Dns Validation Rebinding Guard Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

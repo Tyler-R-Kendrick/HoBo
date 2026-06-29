@@ -39,3 +39,13 @@ internals, or provider-backed policy evaluation.
 ```powershell
 npm.cmd --prefix src\draft\no-privilege-escalation-policy-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for No Privilege Escalation Policy Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

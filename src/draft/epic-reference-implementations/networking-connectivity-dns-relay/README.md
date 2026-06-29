@@ -70,3 +70,13 @@ npm.cmd --prefix src\draft\epic-reference-implementations\networking-connectivit
 
 - Replace mock provider verifiers with real provider verification when Networking providers are promoted out of POC status.
 - Add scenario coverage for geo and latency routing when product acceptance requires those policies as primary vertical slices.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Networking Connectivity Dns Relay.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -8,3 +8,13 @@ This POC proves the M0 `@hobo/wit` contract for HOBO-3:
 - `fixtures/trivial-guest.ts` imports the generated `hobo:sdk` world and builds as a trivial guest.
 
 The compatibility floor is documented against [Plan 20](../../../docs/design/wasm-runtime-wit.md#plan-20), [ADR-0072](../../../docs/design/adr/01-architecture-core.md#adr-0072), [ADR-0037](../../../docs/design/adr/01-architecture-core.md#adr-0037), and the version-pinning policy in [ADR-0024](../../../docs/design/adr/07-portability-extensibility.md#adr-0024). Runtime primitive contents stay out of this package; downstream runtime slices own filling those interfaces.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Wit Toolchain Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

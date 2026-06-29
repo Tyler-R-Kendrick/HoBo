@@ -67,3 +67,13 @@ Before M2 implementation lands, freeze the lowering seam:
 This spike does not build a Rust/Python/Go SDK, implement reverse extraction beyond the existing
 HOBO-16 POC, or extend `@hobo/conformance/sdk`. It records the decision and the reviewable proof
 shape for later SDK work.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Non Ts Idiom Roundtrip Spike.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

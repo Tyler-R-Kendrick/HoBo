@@ -28,3 +28,13 @@ node scripts\validate-sdk-contracts.mjs
 node scripts\validate-deployment-set-delta.mjs
 git diff origin/main...HEAD --check
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Crypto Shred Erasure Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

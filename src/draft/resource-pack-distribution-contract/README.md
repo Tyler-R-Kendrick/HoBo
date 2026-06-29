@@ -29,3 +29,13 @@ internals, and general anti-rollback policy. Those are separate HoBo slices.
 ```powershell
 npm.cmd --prefix src\draft\resource-pack-distribution-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Resource Pack Distribution Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

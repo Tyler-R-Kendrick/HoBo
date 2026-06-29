@@ -33,3 +33,13 @@ npm.cmd --prefix src\draft\org-catalogs-scope-acceptance test
 
 This proof deliberately does not build registry storage, artifact publishing, install resolution,
 marketplace UI, RBAC grants, billing, provider execution, or policy enforcement.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Org Catalogs Scope Acceptance.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

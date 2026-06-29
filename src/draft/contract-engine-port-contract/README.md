@@ -12,3 +12,13 @@ engine behavior:
 
 The POC intentionally does not implement the can-deploy compatibility matrix, observed trace-mining,
 or the full Contract IR. Those are separate slices.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Contract Engine Port Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

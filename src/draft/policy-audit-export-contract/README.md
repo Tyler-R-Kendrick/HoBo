@@ -22,3 +22,13 @@ This POC defines:
 Scope intentionally stops at the audit contract. It does not implement the
 policy engine, CloudEvents/OTLP envelopes, or the OCSF attestation export for
 compliance/model-card evidence.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Policy Audit Export Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

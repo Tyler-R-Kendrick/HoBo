@@ -30,3 +30,13 @@ The proof is also referenced by the design record:
 
 - [Entitlements & Plan Limits design record](../../../docs/design/entitlements-plan-limits.md)
 - [HOBO-419 proof record](../../../docs/design/proofs/hobo-419-entitlements-plan-limits/README.md)
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Entitlements Plan Limits Scope.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -29,3 +29,13 @@ protocol, or a production TLS stack.
 ```powershell
 npm.cmd --prefix src\draft\x509-svid-mtls-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for X509 Svid Mtls Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

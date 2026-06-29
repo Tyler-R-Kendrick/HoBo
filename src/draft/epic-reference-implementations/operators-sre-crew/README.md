@@ -80,3 +80,13 @@ The simulation uses mocked boundaries only. It records zero live network calls a
 ## Follow-up boundaries
 
 Provider verification is documented as unavailable because no real providers exist in this design repo. The Pact files are consumer fixtures for the reference implementation and should be promoted into provider verification once the corresponding runtime, policy, live-fix, notify, issue-tracker, knowledge, event-log, and chaos providers exist.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Operators Sre Crew.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -24,3 +24,13 @@ The proof covers:
 - Partitioned mesh segments do not silently route over public networking.
 
 Scope boundary: this POC does not call cloud APIs, configure real WireGuard/eBPF, implement tier 5 public+mTLS, build a global data-plane load balancer, implement Junction inference, author governance mesh-policy rules, or change Planner ranking/cost objectives. It models the narrow tier-four realization seam those later slices consume.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Tier Four Overlay Mesh Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

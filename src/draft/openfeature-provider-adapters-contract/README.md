@@ -29,3 +29,13 @@ npm.cmd --prefix src\draft\openfeature-provider-adapters-contract test
 ```
 
 The focused test suite covers all HOBO-361 acceptance and adversarial cases.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Openfeature Provider Adapters Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Technical standards"
+description: "Repository technical standards: TypeScript-first implementation, Protobuf, CUE, parse-don't-validate, and PACT contract requirements enforced by the standards gate."
+tags: [hobo, design]
+---
+
 # Technical standards
 
 HoBo favors compile-time feedback over runtime error discovery. New production-facing code, executable contracts, proof fixtures, and integration boundaries must follow these standards unless an ADR records a narrower exception.

@@ -43,6 +43,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
 | [`beta-pilot-feedback.md`](./beta-pilot-feedback.md) | Productization M0 private-beta cohort, feedback intake, triage, and release-candidate exit contract | — |
 | [`dogfood-yard.md`](./dogfood-yard.md) | Productization M0 dogfood Yard acceptance scenarios and telemetry evidence | 04, 05, 07, 40 |
+| [`settings-project-lifecycle.md`](./settings-project-lifecycle.md) | Productization M0 settings and project lifecycle scope, state model, ownership, and evidence gate | — |
 
 **Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/README.md) (each decision is a `#adr-NNNN` section). The current ADR/Plan -> Linear coverage gate is [`traceability.md`](./traceability.md). Executable draft proofs and contract packages live under [`../../src/draft/`](../../src/draft/); epic-level reference implementations live in [`../../src/draft/epic-reference-implementations/`](../../src/draft/epic-reference-implementations/) and are registered in [`../../src/draft/epic-reference-implementations/_registry.md`](../../src/draft/epic-reference-implementations/_registry.md).
 

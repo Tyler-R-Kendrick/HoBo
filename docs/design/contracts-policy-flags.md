@@ -72,6 +72,16 @@ deployable =
 ```
 The **golden suite** ([ADR-0082](./adr/02-identity-security.md#adr-0082)) is a first-class gate dimension here: a signed, reproducible bundle that pins the other checks (contracts + evals + conformance + benchmarks + chaos + SLO) plus golden-master samples, default-on for every deployment and run against a replay/fork lane. A **mandatory policy rule (deny-ceiling)** can keep it un-disableable in prod ([ADR-0074](./adr/02-identity-security.md#adr-0074)). `hobo verify --target prod` returns a structured decision (per-gate results + suggested fixes); every gate result is an event, so "why did this deploy block?" is replayable ([Plan 11](./data-plane.md#plan-11)). On failure, the **generation pipeline/live-fix** remediation loop ([Plan 23](./generated-stack.md#plan-23)) classifies the failure (producer-broke-consumer, consumer-over-specified, semantic drift) and proposes safe fixes (shim, deploy-order, migration window, loosen an over-strict matcher) — all themselves gated; a continuous post-deploy golden failure instead opens an Incident → Crew → A2H ([Plan 40](./operators-sre.md#plan-40)).
 
+### Epic reference implementation
+
+The branch-scoped reference implementation for this plane lives at [`../../src/draft/epic-reference-implementations/contracts-policy-governance/README.md`](../../src/draft/epic-reference-implementations/contracts-policy-governance/README.md). It synthesizes the contract, policy, RBAC, obligation, provenance, quota, and governance-conformance POCs into a mocked Gatekeeper vertical slice. Its simulation proves:
+
+- compatible producer/consumer contracts can produce an auditable allow-with-obligations result;
+- mandatory deny-ceiling policy blocks lower-scope attempts to disable prod gates;
+- unavailable or malformed policy providers fail closed without live external calls.
+
+The reference package carries a POC ledger, Pact-style inventory for every internal and external boundary, deterministic fixtures, and a Node simulation command. It intentionally leaves live feature-flag providers, external policy-engine adapters, residency engines, attestation networks, and control-plane bypass PR repair as follow-up surfaces instead of expanding Plan 29 scope.
+
 ### The `contract-engine` ([ADR-0015](./adr/02-identity-security.md#adr-0015))
 The contract engine is a **WIT port** (`contract-engine`) with a **built-in HoBo implementation** (it already has the graph, traces, and event log it needs). **PACT-style consumer-driven contract testing is the built-in, default behavior of that engine — an internal implementation detail developers never see.** Developers declare contracts (or let IfC infer them, above); they never interact with PACT directly and there is no PACT option to turn on or swap. HoBo owns the source of truth — the **HoBo Contract IR** — and consumer-driven testing runs against the graph + event log by construction. PACT/OpenAPI/AsyncAPI/Protobuf are import/export *targets* over that IR for interop with outside ecosystems, never the model and never a behavior toggle.
 

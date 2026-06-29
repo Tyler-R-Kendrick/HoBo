@@ -14,9 +14,9 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 
 - `hobo:sdk` is the WIT package contract. It is not the same thing as npm
   `@hobo/sdk`.
-- `@hobo/bindles` is the app authoring idiom layer. It owns resource catalog
-  factories, app config references, connector helpers, and fluent bindle
-  composition.
+- `@hobo/bindles` is the app authoring idiom layer. It owns the explicit
+  `bindle(name, builderFn)` closure builder, resource catalog builder methods,
+  app config references, connector helpers, and fluent bindle composition.
 - `@hobo/runtime` is the app runtime authoring layer. It owns workflow, step,
   handler, actor, hook, training, and runtime error primitives.
 - `@hobo/data` owns CQRS read/write model helpers. `@hobo/events` owns messaging
@@ -35,8 +35,9 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 
 | Symbol or family | Package | Importer | Boundary rationale |
 |---|---|---|---|
-| `bindle`, `.allow`, `.with` | `@hobo/bindles` | app authors | App composition belongs with the resource idiom layer. |
-| `api`, `auth`, `database`, `bucket`, `objectStore`, `kv`, `queue`, `topic`, `flag`, `experiment`, `rollout`, `slo`, `trainable`, `web`, `websocket` | `@hobo/bindles` | app authors | Resource catalog factories are the WIT-backed authoring surface. |
+| `bindle(name, builderFn)`, `.allow`, `.with` | `@hobo/bindles` | app authors | App manifest assembly belongs with the resource idiom layer; app-host behavior belongs to imported app/framework code. |
+| closure builder methods (`b.api()`, `b.auth()`, `b.bucket()`, `b.cache()`, `b.config()`, `b.connector()`, `b.data()`, `b.objectStore()`, `b.queue()`, `b.secret()`, `b.service()`, `b.topic()`, `b.web()`) | `@hobo/bindles` | app authors | Explicit Bindle v1 resource methods stay inside the closure builder and do not take resource name arguments. |
+| standalone IfC resource factories (`api`, `auth`, `database`, `bucket`, `objectStore`, `kv`, `queue`, `topic`, `flag`, `experiment`, `rollout`, `slo`, `trainable`, `web`, `websocket`) | `@hobo/bindles` | app authors | IfC resource collection factories are the WIT-backed authoring surface outside explicit Bindle assembly. |
 | `connector` | `@hobo/bindles` | app authors | Connector binding is an app-level external dependency declaration, not operator topology. |
 | `config`, `secretRef`, `env`, `fromBinding` | `@hobo/bindles` | app authors | Config references are app authoring values that resolve through bindles. |
 | `secret` | `@hobo/bindles` | app authors | Managed secret resources are catalog resources; `secretRef` is the config-value reference. |
@@ -82,7 +83,7 @@ protocols such as A2A and ACP instead of a public HoBo agent SDK.
 
 Current design examples align to this map:
 
-- `sdk-api.md` imports resources from `@hobo/bindles`, runtime primitives from
+- `sdk-api.md` imports the closure builder from `@hobo/bindles`, runtime primitives from
   `@hobo/runtime`, choreography from `@hobo/events`, topology factories from
   `@hobo/camps`, `@hobo/yards`, and `@hobo/junctions`, and provider hooks from
   operator npm `@hobo/sdk`.

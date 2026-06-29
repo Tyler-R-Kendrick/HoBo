@@ -74,17 +74,19 @@ npx hobo new snapshop -t fullstack && cd snapshop && hobo dev
 ```
 `bindle.ts` — the *what* (agnostic):
 ```ts
-import { bindle, database, objectStore, service, web, queue } from "@hobo/bindles";
+import { bindle } from "@hobo/bindles";
 import type { OrderEvent } from "./shared/types";
+import api from "./src/api";
+import site from "./src/site";
 
 export default bindle("snapshop", (b) => {
-  const db     = b.use(database("db", { engine: "postgres", require: "managed" }));
-  const images = b.use(objectStore("images"));
-  const orders = b.use(queue<OrderEvent>("orders"));
+  const db = b.data({ engine: "postgres", require: "managed" });
+  const images = b.objectStore();
+  const orders = b.queue<OrderEvent>();
 
-  const api = b.use(service("api", { handler: "./src/api", bind: { db, images, orders } }));
-  b.use(web("site", { handler: "./src/site", bind: { api } }));
-  return { db, images, orders, api };
+  const apiService = b.api(() => api.run()).dependsOn(db, images, orders);
+  const webSite = b.web(() => site.render()).dependsOn(apiService);
+  return { db, images, orders, api: apiService, site: webSite };
 });
 ```
 `src/api/checkout.ts` — the *runtime* (durable workflow + choreography saga):
@@ -151,7 +153,7 @@ The `bindle()` (provider-agnostic) and all of `src/` are untouched. `hobo plan` 
 Black-Friday prep — tune just the API tier, still cloud-portable:
 ```ts
 // bindle.ts (the only app-side change, additive + typed)
-b.use(service("api", { handler: "./src/api", bind: { db, images, orders } }))
+apiService
  .with(aws.fargate({ autoscale: { min: 3, max: 50 } }),
        azure.containerApps({ minReplicas: 3, maxReplicas: 50 }));
 ```

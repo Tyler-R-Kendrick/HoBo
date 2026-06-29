@@ -114,8 +114,12 @@ import { bindle } from "@hobo/bindles";
 import { camp } from "@hobo/camps";
 import { yard } from "@hobo/yards";
 import { junction } from "@hobo/junctions";
+import appHost from "./src/app";
 
-const app = bindle("my app"); app.addContainer(/* ... */);
+const app = bindle("my app", (b) => {
+  const api = b.api(() => appHost.run());
+  return { api };
+});
 const c1 = camp("c1"); c1.import(app);
 const azureYard = yard("y-azure", azure); azureYard.setup(c1);
 const awsYard = yard("y-aws", aws); awsYard.setup(camp("c2").import(app));

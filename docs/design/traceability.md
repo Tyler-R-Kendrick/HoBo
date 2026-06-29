@@ -52,6 +52,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 
 | Issue | Source record | Proof package | Acceptance assertion |
 |---|---|---|---|
+| HOBO-532 | [`closure-builder-public-api.md`](./closure-builder-public-api.md) | [`closure-builder-public-api-contract`](../../src/draft/closure-builder-public-api-contract/README.md) | Closure-builder public API proof pins `bindle(name, builderFn)` in `@hobo/bindles`, states Bindle is manifest assembly rather than app-host behavior, removes legacy explicit-resource examples from v1 docs, keeps package namespace ownership aligned, and documents `dependsOn()` as the only v1 relationship verb. |
 | HOBO-514 | [`dx-sdk-resilience-semantics.md`](./dx-sdk-resilience-semantics.md) | [`dx-sdk-resilience-scope-contract`](../../src/draft/dx-sdk-resilience-scope-contract/README.md) | DX SDK resilience parent scope verifies the M0-M4 child issue matrix, initiative links to launch quality and developer entry points, design-index and SDK-contract discoverability, and adversarial guardrails that reject retrying denial, hidden cancellation retry, process-memory inspection, and golden-IR-only semantics claims. |
 
 ## Productization M0 Evidence

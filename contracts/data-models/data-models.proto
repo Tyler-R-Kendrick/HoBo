@@ -465,6 +465,19 @@ message ClientOptimisticUpdateContractClientOptimisticUpdateContractDataModel {
   bool cue_annotated = 6;
 }
 
+message ClosureBuilderPublicApiContractClosureBuilderPublicApiDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-public-api-contract.closure-builder-public-api";
+  option (hobo.source_path) = "src/draft/closure-builder-public-api-contract/src/closure-builder-public-api.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderPublicApiContractClosureBuilderPublicApiDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message CollectionCoverageGateContractCollectionCoverageGateDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.collection-coverage-gate-contract.collection-coverage-gate";
   option (hobo.source_path) = "src/draft/collection-coverage-gate-contract/src/collection-coverage-gate.ts";

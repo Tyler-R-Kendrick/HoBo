@@ -1,0 +1,92 @@
+# Dogfood Yard Acceptance Scenarios and Telemetry Evidence
+
+Source issue: HOBO-403.
+
+Executable proof lives in
+[`src/draft/dogfood-yard-acceptance-contract`](../../src/draft/dogfood-yard-acceptance-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-403-dogfood-yard-acceptance`](./proofs/hobo-403-dogfood-yard-acceptance/README.md).
+
+## M0 Acceptance Record
+
+Dogfood Yard exists to make hosted and self-hosted Yard claims inspectable before private beta. The
+record defines the personas, workflows, evidence channels, and owner boundaries required before
+downstream dogfood, bootstrap, admin, and reliability work can claim operational proof.
+
+## User And Business Goal
+
+HoBo needs a repeatable way to prove that the same Yard model works as a hosted managed service and
+as a self-hosted control plane. The evidence must support release decisions without relying on
+private local setup, hidden customer data, or unbounded "it worked once" claims.
+
+## Dogfood Personas
+
+| Persona | Need |
+|---|---|
+| Platform engineer dogfooder | Stand up and operate a self-hosted Yard without private setup knowledge. |
+| Hosted operations owner | Prove the managed hosted Yard can run preview and default-provider workflows with inspectable evidence. |
+| SRE/support responder | Debug failed Yard operations from logs, traces, status views, and support-safe evidence. |
+| Release readiness owner | Classify dogfood gaps as beta blockers, launch notes, or follow-up work. |
+
+## Workflows
+
+- Hosted Yard default-provider preview from first project to first deploy evidence.
+- Self-host seed Yard bootstrap, Identity handover, and seed retirement evidence.
+- Yard upgrade with rollback signal and status-page impact classification.
+- Incident debug and restore-from-log drill without live customer data.
+
+## Acceptance Scenarios
+
+| Scenario | Yard mode | Proves |
+|---|---|---|
+| `hosted-yard-preview-path` | Hosted | Hosted cloud can accept a first project, infer a Camp, run a preview deploy, and expose status evidence. |
+| `self-hosted-seed-handover` | Self-hosted | A local seed Yard can bootstrap the real Yard, import provenance, hand over Identity, and retire the seed. |
+| `yard-upgrade-and-rollback` | Hosted or self-hosted | Yard upgrades ride the normal deploy gate and emit rollback-ready signals. |
+| `incident-debug-and-restore` | Hosted or self-hosted | Operators can diagnose and restore from event-log evidence without customer-data leakage. |
+
+## Required Evidence Channels
+
+| Channel | Owner category | Proves | Redaction rule |
+|---|---|---|---|
+| Logs | Operational | Yard bootstrap, deploy, upgrade, incident, and recovery steps produce correlated operator-readable logs. | No provider secrets, live customer payloads, or tenant data may appear in log fixtures. |
+| Traces | Reliability | Yard operations preserve request/deploy correlation across control-plane boundaries. | Trace attributes stay to ids, timings, and state transitions; no customer payload spans. |
+| Status views | Admin | Hosted and self-hosted Yard health, degraded state, maintenance, and readiness are visible to operators. | Status views expose aggregate state and evidence links, not raw customer data. |
+| Support/debug | Admin | Support can inspect safe evidence bundles for bootstrap, deploy, incident, and recovery handoff. | Debug bundles must be support-safe and tenant-scoped before export. |
+| Rollback signals | Bootstrap | Yard upgrade, deploy failure, and restore paths emit rollback-ready state and operator action cues. | Rollback evidence records state ids and prior Set/provenance pointers, not provider credentials. |
+
+## Authoritative Dependencies
+
+- [control-plane.md#plan-04](./control-plane.md#plan-04) defines the Yard control plane,
+  self-host bootstrap ordering, and seed-to-real Yard handover.
+- [walkthrough.md](./walkthrough.md) defines hosted versus self-hosted HoBo cloud flows and the
+  DevOps self-host journey.
+- [developer-experience.md#plan-07](./developer-experience.md#plan-07) defines inspect, logs,
+  status, and command evidence users expect around Yard operations.
+- [reliability-observability-cost.md#plan-05](./reliability-observability-cost.md#plan-05) defines
+  telemetry, traces, SLO signals, rollback evidence, and operational status inputs.
+- [operators-sre.md#plan-40](./operators-sre.md#plan-40) defines support, SRE, incident, and
+  runbook handoff loops for Yard operations.
+- [ADR-0092](./adr/01-architecture-core.md#adr-0092) pins self-host bootstrap as disposable seed
+  Yard, provenance import, and Identity handover.
+
+## Evidence Ownership
+
+| Category | Owner project | Consumes | Boundary |
+|---|---|---|---|
+| Operational | V1 Dogfood Yard & Hosted Operations | Owns hosted/self-hosted scenario acceptance and dogfood gap classification. | Does not implement Yard runtime or mark launch readiness. |
+| Admin | Admin Console | Owns status, support-safe debug, and operator visibility requirements. | Does not build admin UI or support tooling in this M0 issue. |
+| Bootstrap | Bootstrap Installer | Owns seed Yard bootstrap, handover, and local/self-host install evidence. | Does not implement installer or bootstrap commands here. |
+| Reliability | Reliability, Observability & Cost (FinOps) | Owns telemetry, trace correlation, SLO, rollback, and restore evidence quality. | Does not create observability pipelines or production SLO gates. |
+
+## Scope Out And Non-Goals
+
+- Do not build the Yard or any hosted operations runtime in this issue.
+- Do not provision live cloud resources, store provider credentials, or call production provider APIs.
+- Do not use live customer data for proof or support/debug fixtures.
+- Do not mark beta or GA readiness; this issue defines the acceptance evidence required later.
+
+## Follow-Up Gate
+
+M1/M2/M3/M4 dogfood evidence, admin UI, bootstrap installer, and reliability implementation issues
+must wait until this M0 evidence scope is accepted. This branch records the gate and its executable
+guard; it does not create follow-up implementation issues.

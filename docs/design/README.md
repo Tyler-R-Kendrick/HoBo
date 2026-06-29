@@ -1,7 +1,7 @@
 # HoBo — Design Plan Suite
 
 > A suite of inter-related design plans for **HoBo**, a **WIT/WASM** programmable surface (Component Model / wasmCloud) + cloud control plane — TypeScript is the first reference implementation, not a requirement ([ADR-0069](./adr/01-architecture-core.md#adr-0069)).
-> This is a **design-first repository, not a shipped HoBo product**. It now includes executable draft proof/contract packages under `src/draft/` plus validation scripts; those packages prove design claims and backlog slices before production implementation. The design is **17 capability docs** plus contract records; each plan keeps a stable `#plan-NN` anchor so areas can still be cited precisely.
+> This is a **design-first repository, not a shipped HoBo product**. It now includes executable draft proof/contract packages under `src/draft/` plus validation scripts; those packages prove design claims and backlog slices before production implementation. The design is a set of capability docs plus contract records; each plan keeps a stable `#plan-NN` anchor so areas can still be cited precisely.
 
 ## Index
 
@@ -44,6 +44,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`product-notifications-lifecycle.md`](./product-notifications-lifecycle.md) | Productization M0 taxonomy for product lifecycle notifications, preferences, delivery evidence, and scope boundaries | — |
 | [`sbom-vulnerability-notice-evidence.md`](./sbom-vulnerability-notice-evidence.md) | Productization M0 evidence contract for SBOMs, dependency vulnerability posture, third-party notices, artifact provenance, and customer assurance readiness | — |
 | [`marketplace-publisher-trust-evidence.md`](./marketplace-publisher-trust-evidence.md) | Productization M0 evidence contract for marketplace publisher trust tiers, review evidence, and launch limitations | — |
+| [`capability-review-approval.md`](./capability-review-approval.md) | Productization M0 scope and acceptance for capability review states, approval outcomes, trust-tier evidence, yanking, escalation, and follow-up gates | — |
 | [`launch-support-escalation.md`](./launch-support-escalation.md) | Productization M0 launch support escalation matrix, incident communication templates, and support gap routing | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
 | [`launch-messaging-claims.md`](./launch-messaging-claims.md) | Productization M0 evidence register for launch claims and demo assets | — |

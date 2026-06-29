@@ -46,6 +46,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`sbom-vulnerability-notice-evidence.md`](./sbom-vulnerability-notice-evidence.md) | Productization M0 evidence contract for SBOMs, dependency vulnerability posture, third-party notices, artifact provenance, and customer assurance readiness | — |
 | [`release-artifact-provenance-retention.md`](./release-artifact-provenance-retention.md) | Productization M0 handoff for release artifact provenance, retention, invalidation/yank, offline bundles, and support/debug access | — |
 | [`marketplace-publisher-trust-evidence.md`](./marketplace-publisher-trust-evidence.md) | Productization M0 evidence contract for marketplace publisher trust tiers, review evidence, and launch limitations | — |
+| [`provenance-retention.md`](./provenance-retention.md) | Productization M0 scope and acceptance for artifact provenance, retention classes, audit export, support handoff, and customer assurance evidence | — |
 | [`launch-support-escalation.md`](./launch-support-escalation.md) | Productization M0 launch support escalation matrix, incident communication templates, and support gap routing | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
 | [`launch-messaging-claims.md`](./launch-messaging-claims.md) | Productization M0 evidence register for launch claims and demo assets | — |

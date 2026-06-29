@@ -149,6 +149,10 @@ The incident's event stream **is** the timeline, so a **blameless postmortem** i
 - An unclassifiable SEV1: SRE *escalates*; on-call obligation unsatisfied by deadline → escalates up; `incident.SLABreached` if MTTR SLO burns.
 - A runbook with no matching `fix` escalates; `hobo runbook exec` is replayable.
 
+#### Epic reference implementation
+
+The Operators/SRE epic rollup is now represented by the common reference implementation at [`../../src/draft/epic-reference-implementations/operators-sre-crew/README.md`](../../src/draft/epic-reference-implementations/operators-sre-crew/README.md). It synthesizes the Crew POCs into four executable vertical slices: provider-degradation remediation, production contract-skew approval, runaway remediation fail-closed escalation, and DR failover integrity. Boundary providers remain mocked; the contract inventory records Pact fixtures for SLO signals, projections, policy, remediation, A2H notify, issue tracker, knowledge, replicated event log, and chaos fault injection.
+
 #### SRE scope
 - The Incident aggregate + `incident.*`/`runbook.*`; the SRE decision tree; the failure-taxonomy→fix map; declarative runbooks on the Pipelines engine; MTTD/MTTR SLOs; obligation-deadline escalation; postmortem-as-replay.
 - On-call rotation calendars + paging-vendor specifics, a richer runbook authoring DSL ([Hobo Code](./authoring-resources-wiring.md#plan-21)), and HolmesGPT/StackStorm adapters all ride the existing obligation/runbook/engine-behind-port seams.

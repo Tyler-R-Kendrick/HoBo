@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/draft-operations-manifests-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "test": "node --test"
+  }
+}

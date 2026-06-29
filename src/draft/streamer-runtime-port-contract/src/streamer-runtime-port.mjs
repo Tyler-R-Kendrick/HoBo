@@ -96,7 +96,7 @@ export async function runStreamerConformance(createRuntime) {
 }
 
 function createRunRecord({ runId, bufferLimit }) {
-  const done = Promise.withResolvers();
+  const done = createDeferred();
   return {
     runId,
     bufferLimit,
@@ -143,7 +143,7 @@ function toReadable(record) {
             return { value: undefined, done: true };
           }
 
-          const waiter = Promise.withResolvers();
+          const waiter = createDeferred();
           record.waiters.push(waiter.resolve);
           const value = await waiter.promise;
           if (value === END_OF_STREAM) {
@@ -154,6 +154,17 @@ function toReadable(record) {
       };
     },
   };
+}
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
 }
 
 function writeChunk(record, stream, chunk) {

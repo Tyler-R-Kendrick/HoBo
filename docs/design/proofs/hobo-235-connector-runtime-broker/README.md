@@ -1,4 +1,4 @@
-# HOBO-235 Cross-App Runtime Broker Proof
+# HOBO-235 Connector Runtime Broker Proof
 
 Refs:
 
@@ -8,12 +8,12 @@ Refs:
 
 Package:
 
-- `src/draft/cross-app-runtime-broker-contract`
+- `src/draft/connector-runtime-broker-contract`
 
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\cross-app-runtime-broker-contract test
+npm.cmd --prefix src\draft\connector-runtime-broker-contract test
 ```
 
 Acceptance mapping:
@@ -35,11 +35,11 @@ Adversarial mapping:
 - Missing `ctx.user` refuses the broker before minting: `missing ctx.user refuses the broker before
   minting`.
 - The requested subset baked into the manifest must match actual called operations: `manifest allow
-  must match the actually observed cross-app operations`.
+  must match the actually observed connector operations`.
 
 Scope boundaries:
 
-- Authoring surface and typed-client generation stay in `cross-app-authoring-contract`.
+- Authoring surface and typed-client generation stay in `connector-authoring-contract`.
 - Static operation-to-scope inference stays in `xaa-scope-inference-contract`.
 - ID-JAG minting and target authorization-server redemption stay in
   `outbound-xaa-token-exchange-contract`.

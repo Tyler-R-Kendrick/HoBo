@@ -20,14 +20,14 @@ export interface ExternalAuthJson {
   flows: readonly ExternalAuthFlow[];
 }
 
-export interface CrossAppCall<Scope extends string = string> {
+export interface ConnectorCall<Scope extends string = string> {
   readonly target: string;
   readonly operation: string;
   readonly input: unknown;
   readonly scope: Scope;
 }
 
-export interface CrossAppBinding<Name extends string = string> {
+export interface ConnectorBinding<Name extends string = string> {
   readonly name: Name;
   readonly flow: ExternalAuthFlow;
   readonly via: "xaa" | Exclude<ExternalAuthFlowType, "oauth2-xaa">;
@@ -35,12 +35,12 @@ export interface CrossAppBinding<Name extends string = string> {
   readonly operationScopes: Readonly<Record<string, string>>;
   readonly declaredAllow?: readonly string[];
   readonly client: Readonly<Record<string, unknown>>;
-  allow(...scopes: string[]): CrossAppBinding<Name>;
-  call(operation: string, input?: unknown): CrossAppCall;
+  allow(...scopes: string[]): ConnectorBinding<Name>;
+  call(operation: string, input?: unknown): ConnectorCall;
 }
 
-export interface CrossAppManifestEntry {
-  readonly type: "external-app.v1";
+export interface ConnectorManifestEntry {
+  readonly type: "connector.v1";
   readonly via: "xaa" | Exclude<ExternalAuthFlowType, "oauth2-xaa">;
   readonly audience?: string;
   readonly onBehalfOf: "user";
@@ -55,16 +55,16 @@ export interface CrossAppManifestEntry {
   readonly fallbackFrom?: "oauth2-xaa";
 }
 
-export function createCrossAppBinding<Name extends string>(
+export function createConnectorBinding<Name extends string>(
   name: Name,
   authJson: ExternalAuthJson,
   options?: { declaredAllow?: readonly string[] }
-): CrossAppBinding<Name>;
+): ConnectorBinding<Name>;
 
-export function buildCrossAppManifestEntry(
-  binding: CrossAppBinding,
+export function buildConnectorManifestEntry(
+  binding: ConnectorBinding,
   observedOperations?: readonly string[]
-): CrossAppManifestEntry;
+): ConnectorManifestEntry;
 
-export function generateCrossAppClientDeclaration(binding: CrossAppBinding): string;
+export function generateConnectorClientDeclaration(binding: ConnectorBinding): string;
 export function selectExternalAppFlow(authJson: ExternalAuthJson): ExternalAuthFlow;

@@ -342,10 +342,11 @@ export default yard("acme", {
     oidc: { federate: "acme.yard" },             // keyless: the Yard's OIDC is trusted by Azure; no secrets stored
   }))
   .register(cloudflare({ accountId: process.env.CF_ACCT, oidc: { federate: "acme.yard" } }))
-  // ── approve which registered providers are DEFAULTS (the candidate set for inferred Camps) ──
-  .approveDefaults("azure", "cloudflare")
-  // inferred-Camp approval is OFF by default — opt in (or write a policy that passes); prod stays gated:
-  .autoApprove({ inferredCamps: true, where: { envType: { not: "production" } } })
+  // ── attach inferred-Camp placement policy; approval is OFF unless policy passes; prod stays gated ──
+  .policyPack(inferredCampPlacement({
+    providers: ["azure", "cloudflare"],
+    allowWithoutHuman: { envType: { not: "production" } }
+  }))
   .setup(                                   // OPTIONAL explicit Camps — pins/overrides, not required
     camp("prod-azure",   { provider: "azure",      runtime: postgresRuntime() }),
     camp("staging-cf",   { provider: "cloudflare", runtime: postgresRuntime() }),
@@ -353,10 +354,10 @@ export default yard("acme", {
 ```
 
 ```bash
-hobo up ./platform       # brings the Yard up; approved defaults + auto-approval policy make the happy path live (Camps inferred, approved by policy)
+hobo up ./platform       # brings the Yard up; placement policy makes the happy path live (Camps inferred, approved by policy)
 ```
 
-`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you. Registering a provider makes it **available**; **`.approveDefaults(...)` marks which ones an inferred Camp may use**; and **`.autoApprove(...)` decides when an inferred Camp is approved without a human** — off by default, opt-in by toggle or a policy that passes ([ADR-0074](./adr/02-identity-security.md#adr-0074)), with production typically still gated. Those choices together turn the lights on for app devs (the cloud infers a Camp per Bindle and approves it by policy). The explicit `camp(...)` calls above are optional **pins**.
+`.register(provider)` reads the provider's **Capability Manifest** (`/.well-known/capability-manifest/` — ports, regions, an `equivalence` map, and an `auth.json` that declares keyless OIDC federation, [Plan 6](./ai-native-agent-auth.md#plan-06)), verifies its signature, and records `provider.Registered`. Registration brings **two** things: the provider's keyless **auth**, and its **built-in Resource Definitions** — the mappings (`equivalence` + `realize()`, [Plan 4](./control-plane.md#plan-04)) that turn an abstract capability into that cloud's concrete resource and IaC program. From here, a Camp bound to Azure can realize the whole manifest **with no further config** — the app dev never sees the wiring, and neither do you. Registering a provider makes it **available**; Yard placement policy decides which providers an inferred Camp may use and when an inferred Camp can proceed without a human — off by default, opt-in by an explicit policy rule that passes ([ADR-0074](./adr/02-identity-security.md#adr-0074)), with production typically still gated. Those choices together turn the lights on for app devs (the cloud infers a Camp per Bindle and approves it by policy). The explicit `camp(...)` calls above are optional **pins**.
 
 > **A provider that doesn't exist yet?** Generate one, then register it the same way:
 > ```ts
@@ -731,20 +732,19 @@ export default runbook("high-5xx-on-api", {
 
 ## 6.3 — The SRE operator: autonomous, but on a leash
 
-The Crew is **code**, not a CLI command. Each operator is an `agent()` that's part of your control-plane program — a named SVID principal with a scoped policy, event-sourced, MCP-surfaced, **read/diagnose autonomous, every write gated**:
+The SRE operator is an external agent reached through a protocol connector, not a HoBo-owned agent framework. HoBo owns the SVID principal, connector token exchange, policy decision, and replayable audit stream; A2A/ACP-compatible runtimes own planning and tool orchestration:
 
 ```ts
-// ops/crew.ts
-import { agent } from "@hobo/sdk";
-export const sre = agent("sre", {
-  model: "anthropic/claude-haiku-4.5",
-  instructions: "Diagnose from projections; classify; auto-fix only if low-risk, reversible, in-budget.",
-  policy: { destroy: "require-approval", spendCapUsd: 50 },        // the documented core; reads are free
-  runbooks: ["high-5xx-on-api"],
+// ops/connectors.ts
+import { connector } from "@hobo/bindles";
+export const sreProtocol = connector("sre-protocol", {
+  protocol: "a2a",
+  permissions: ["incident.read", "deploy.propose"],
+  policy: { destroy: "require-approval", spendCapUsd: 50 },        // reads are free; writes are gated
 });
 ```
 
-`hobo up ./platform` commissions it. A real incident reads as one legible, replayable stream — diagnosis is autonomous, the prod write waits for you:
+`hobo up ./platform` wires the connector. A real incident reads as one legible, replayable stream — diagnosis is autonomous, the prod write waits for you:
 
 ```text
 slo.BudgetBurned         checkout.latency burning 3x

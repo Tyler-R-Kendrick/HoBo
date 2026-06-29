@@ -10,7 +10,7 @@ The package models the broker seam that:
 - falls back to `oauth2-obo` for non-XAA targets; and
 - emits `token.Granted`, `token.Used`, or `token.Denied` events that the identity audit fold can reconstruct.
 
-It deliberately does not define the ID-JAG wire format, inbound resource-server validation, crossApp authoring, or scope inference. Those stay in the existing referenced packages and follow-on issues.
+It deliberately does not define the ID-JAG wire format, inbound resource-server validation, connector authoring, or scope inference. Those stay in the existing referenced packages and follow-on issues.
 
 ## Proof
 

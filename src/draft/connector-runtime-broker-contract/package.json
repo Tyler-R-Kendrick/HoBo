@@ -1,5 +1,5 @@
 {
-  "name": "@hobo/draft-cross-app-runtime-broker-contract",
+  "name": "@hobo/draft-connector-runtime-broker-contract",
   "private": true,
   "type": "module",
   "scripts": {

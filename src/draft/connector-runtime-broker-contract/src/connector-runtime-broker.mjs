@@ -1,6 +1,6 @@
 const DEFAULT_SUBJECT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
 
-export function createCrossAppRuntime({
+export function createConnectorRuntime({
   ctx,
   manifest,
   observedOperations,
@@ -10,7 +10,7 @@ export function createCrossAppRuntime({
 }) {
   assertObject(ctx, "ctx");
   assertObject(manifest, "manifest");
-  assertObject(manifest.externalApps, "manifest.externalApps");
+  assertObject(manifest.connectors, "manifest.connectors");
   assertObject(targetCatalog, "targetCatalog");
   if (!broker || typeof broker.exchangeToken !== "function") {
     throw new TypeError("broker.exchangeToken must be a function");
@@ -19,35 +19,43 @@ export function createCrossAppRuntime({
   const observedByTarget = groupObservedScopes(observedOperations);
 
   return Object.freeze({
-    crossApp(targetName) {
+    connector(targetName) {
       const target = requireString(targetName, "targetName");
-      const manifestEntry = manifest.externalApps[target];
+      const manifestEntry = manifest.connectors[target];
       if (!manifestEntry) {
-        throw new Error(`crossApp ${target} is not present in manifest.externalApps`);
+        throw new Error(`connector ${target} is not present in manifest.connectors`);
       }
       const targetConfig = targetCatalog[target];
       if (!targetConfig) {
-        throw new Error(`crossApp ${target} has no runtime target catalog entry`);
+        throw new Error(`connector ${target} has no runtime target catalog entry`);
       }
 
       return Object.freeze({
-        async token(explicitScopes) {
-          const resolved = resolveRuntimeRequest({
-            ctx,
-            target,
-            manifestEntry,
-            targetConfig,
-            observedScopes: observedByTarget.get(target) ?? [],
-            explicitScopes,
-            requestIdFactory,
-          });
-          const result = await broker.exchangeToken(resolved.exchangeRequest);
+        connection(connectionOptions = {}) {
+          assertObject(connectionOptions, "connectionOptions");
           return Object.freeze({
-            ...result,
-            target,
-            subject: resolved.exchangeRequest.subject,
-            requestedScopes: resolved.exchangeRequest.requestedScopes,
-            manifestAllow: resolved.manifestAllow,
+            async token(options = {}) {
+              assertObject(options, "tokenOptions");
+              const resolved = resolveRuntimeRequest({
+                ctx,
+                target,
+                manifestEntry,
+                targetConfig,
+                observedScopes: observedByTarget.get(target) ?? [],
+                explicitScopes: options.scopes,
+                connectionOptions,
+                purpose: options.purpose,
+                requestIdFactory,
+              });
+              const result = await broker.exchangeToken(resolved.exchangeRequest);
+              return Object.freeze({
+                ...result,
+                target,
+                subject: resolved.exchangeRequest.subject,
+                requestedScopes: resolved.exchangeRequest.requestedScopes,
+                manifestAllow: resolved.manifestAllow,
+              });
+            },
           });
         },
       });
@@ -62,23 +70,25 @@ function resolveRuntimeRequest({
   targetConfig,
   observedScopes,
   explicitScopes,
+  connectionOptions,
+  purpose,
   requestIdFactory,
 }) {
   const user = normalizeCtxUser(ctx.user);
   const identity = normalizeIdentity(ctx.identity);
-  const manifestAllow = normalizeScopes(manifestEntry.allow, "manifest.externalApps.allow");
+  const manifestAllow = normalizeScopes(manifestEntry.allow, "manifest.connectors.allow");
   const observed = normalizeScopes(observedScopes, "observedOperations");
   if (!sameSet(manifestAllow, observed)) {
     throw new Error(
-      `manifest allow must match observed crossApp scopes for ${target}; ` +
+      `manifest allow must match observed connector scopes for ${target}; ` +
         `allow=[${manifestAllow.join(",")}] observed=[${observed.join(",")}]`,
     );
   }
   if (manifestEntry.onBehalfOf !== "user") {
-    throw new Error(`crossApp ${target} manifest entry must broker on behalf of ctx.user`);
+    throw new Error(`connector ${target} manifest entry must broker on behalf of ctx.user`);
   }
   if (manifestEntry.via !== "xaa") {
-    throw new Error(`crossApp ${target} must use XAA for runtime broker backing`);
+    throw new Error(`connector ${target} must use XAA for runtime broker backing`);
   }
 
   const requestedScopes =
@@ -104,8 +114,9 @@ function resolveRuntimeRequest({
       }),
       target: Object.freeze({
         id: requireString(targetConfig.id ?? target, "target.id"),
-        audience: requireString(targetConfig.audience, "target.audience"),
+        audience: requireString(connectionOptions.audience ?? targetConfig.audience, "target.audience"),
         resource: requireString(targetConfig.resource, "target.resource"),
+        protocol: connectionOptions.protocol ?? targetConfig.protocol,
         allowedScopes,
         authFlow: Object.freeze({
           type: requireString(targetConfig.authFlow?.type, "target.authFlow.type"),
@@ -113,6 +124,7 @@ function resolveRuntimeRequest({
         }),
       }),
       requestedScopes,
+      purpose,
     }),
   });
 }

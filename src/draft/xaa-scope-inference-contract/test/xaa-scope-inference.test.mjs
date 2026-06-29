@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createCrossAppBinding } from "../../cross-app-authoring-contract/src/cross-app-authoring.mjs";
-import { inferCrossAppScopes } from "../src/xaa-scope-inference.mjs";
+import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
+import { inferConnectorScopes } from "../src/xaa-scope-inference.mjs";
 
 const asanaAuth = {
   issuer: "https://asana.example.com",
@@ -22,17 +22,17 @@ const asanaAuth = {
   ],
 };
 
-test("infers least-privilege XAA allow from called crossApp operations", () => {
-  const result = inferCrossAppScopes({
+test("infers least-privilege XAA allow from called connector operations", () => {
+  const result = inferConnectorScopes({
     sourceText: `
-      import { crossApp } from "@hobo/bindles";
-      const asana = crossApp("asana");
+      import { connector } from "@hobo/bindles";
+      const asana = connector("asana");
       export async function sync(ctx) {
         await asana.tasks.create({ name: ctx.body.title, assignee: ctx.user.id });
       }
     `,
     bindings: {
-      asana: createCrossAppBinding("asana", asanaAuth),
+      asana: createConnectorBinding("asana", asanaAuth),
     },
   });
 
@@ -46,30 +46,30 @@ test("infers least-privilege XAA allow from called crossApp operations", () => {
       onBehalfOf: "user",
     },
   ]);
-  assert.deepEqual(result.manifest.externalApps.asana.allow, ["tasks:write"]);
-  assert.deepEqual(result.manifest.externalApps.asana.observedScopes, ["tasks:write"]);
-  assert.equal(result.manifest.externalApps.asana.onBehalfOf, "user");
-  assert.equal(result.manifest.externalApps.asana.onBehalfOf === "app", false);
-  assert.equal(result.manifest.externalApps.asana.allow.includes("tasks:read"), false);
+  assert.deepEqual(result.manifest.connectors.asana.allow, ["tasks:write"]);
+  assert.deepEqual(result.manifest.connectors.asana.observedScopes, ["tasks:write"]);
+  assert.equal(result.manifest.connectors.asana.onBehalfOf, "user");
+  assert.equal(result.manifest.connectors.asana.onBehalfOf === "app", false);
+  assert.equal(result.manifest.connectors.asana.allow.includes("tasks:read"), false);
 });
 
 test("records a can-deploy contract failure when .allow narrows below observed usage", () => {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: `
-      import { crossApp } from "@hobo/bindles";
-      const asana = crossApp("asana").allow("tasks:read");
+      import { connector } from "@hobo/bindles";
+      const asana = connector("asana").allow("tasks:read");
       export async function sync(ctx) {
         await asana.tasks.create({ name: ctx.body.title, assignee: ctx.user.id });
       }
     `,
     bindings: {
-      asana: createCrossAppBinding("asana", asanaAuth).allow("tasks:read"),
+      asana: createConnectorBinding("asana", asanaAuth).allow("tasks:read"),
     },
   });
 
   assert.equal(result.ok, false);
-  assert.deepEqual(result.manifest.externalApps.asana.allow, ["tasks:read"]);
-  assert.deepEqual(result.manifest.externalApps.asana.observedScopes, ["tasks:write"]);
+  assert.deepEqual(result.manifest.connectors.asana.allow, ["tasks:read"]);
+  assert.deepEqual(result.manifest.connectors.asana.observedScopes, ["tasks:write"]);
   assert.deepEqual(result.contractFailures, [
     {
       code: "xaa.scope.exceeds-declared-allow",
@@ -77,40 +77,40 @@ test("records a can-deploy contract failure when .allow narrows below observed u
       target: "asana",
       allowedScopes: ["tasks:read"],
       observedScopes: ["tasks:write"],
-      message: "crossApp asana observes scopes outside declared .allow().",
+      message: "connector asana observes scopes outside declared .allow().",
     },
   ]);
 });
 
 test("keeps deny-by-default for unused advertised scopes", () => {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: `
-      import { crossApp } from "@hobo/bindles";
-      const asana = crossApp("asana");
+      import { connector } from "@hobo/bindles";
+      const asana = connector("asana");
       export async function readOnly(ctx) {
         await asana.tasks.get({ id: ctx.params.id, assignee: ctx.user.id });
       }
     `,
     bindings: {
-      asana: createCrossAppBinding("asana", asanaAuth),
+      asana: createConnectorBinding("asana", asanaAuth),
     },
   });
 
-  assert.deepEqual(result.manifest.externalApps.asana.allow, ["tasks:read"]);
-  assert.equal(result.manifest.externalApps.asana.allow.includes("tasks:write"), false);
+  assert.deepEqual(result.manifest.connectors.asana.allow, ["tasks:read"]);
+  assert.equal(result.manifest.connectors.asana.allow.includes("tasks:write"), false);
 });
 
 test("fails closed for unadvertised called operations", () => {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: `
-      import { crossApp } from "@hobo/bindles";
-      const asana = crossApp("asana");
+      import { connector } from "@hobo/bindles";
+      const asana = connector("asana");
       export async function destroy(ctx) {
         await asana.tasks.delete({ id: ctx.params.id, assignee: ctx.user.id });
       }
     `,
     bindings: {
-      asana: createCrossAppBinding("asana", asanaAuth),
+      asana: createConnectorBinding("asana", asanaAuth),
     },
   });
 
@@ -122,23 +122,23 @@ test("fails closed for unadvertised called operations", () => {
       target: "asana",
       operation: "tasks.delete",
       line: 5,
-      message: "crossApp asana operation tasks.delete is not advertised by auth.json.",
+      message: "connector asana operation tasks.delete is not advertised by auth.json.",
     },
   ]);
-  assert.deepEqual(result.manifest.externalApps.asana.allow, []);
+  assert.deepEqual(result.manifest.connectors.asana.allow, []);
 });
 
 test("downgrades dynamically-constructed operation names to coverage failure", () => {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: `
-      import { crossApp } from "@hobo/bindles";
-      const asana = crossApp("asana");
+      import { connector } from "@hobo/bindles";
+      const asana = connector("asana");
       export async function dynamic(ctx, method) {
         await asana.tasks[method]({ assignee: ctx.user.id });
       }
     `,
     bindings: {
-      asana: createCrossAppBinding("asana", asanaAuth),
+      asana: createConnectorBinding("asana", asanaAuth),
     },
   });
 
@@ -150,17 +150,17 @@ test("downgrades dynamically-constructed operation names to coverage failure", (
       target: "asana",
       operationPrefix: "tasks",
       line: 5,
-      message: "Static analysis cannot prove crossApp asana operation under tasks; XAA scope inference must fail closed.",
+      message: "Static analysis cannot prove connector asana operation under tasks; XAA scope inference must fail closed.",
     },
   ]);
-  assert.deepEqual(result.manifest.externalApps.asana.allow, []);
+  assert.deepEqual(result.manifest.connectors.asana.allow, []);
 });
 
 test("fails closed if an operation maps outside the target advertised scopes", () => {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: `
-      import { crossApp } from "@hobo/bindles";
-      const asana = crossApp("asana");
+      import { connector } from "@hobo/bindles";
+      const asana = connector("asana");
       export async function sync(ctx) {
         await asana.tasks.create({ name: ctx.body.title, assignee: ctx.user.id });
       }
@@ -185,8 +185,8 @@ test("fails closed if an operation maps outside the target advertised scopes", (
       operation: "tasks.create",
       scope: "tasks:write",
       line: 5,
-      message: "crossApp asana operation tasks.create maps to unadvertised scope tasks:write.",
+      message: "connector asana operation tasks.create maps to unadvertised scope tasks:write.",
     },
   ]);
-  assert.deepEqual(result.manifest.externalApps.asana.allow, []);
+  assert.deepEqual(result.manifest.connectors.asana.allow, []);
 });

@@ -78,7 +78,7 @@ For reference / future edits:
 - ✅ HOBO-6 — CI fabric (keyless OIDC) + examples-as-E2E fixtures
 - ✅ HOBO-7 — Sign artifacts + attach SLSA provenance on publish; verify on install
 - ✅ HOBO-8 — HARDENING: finalize the canonical `hobo` CLI verb surface + reconcile all docs
-- ✅ HOBO-9 — HARDENING: finalize public SDK API contracts (`.allow` narrowing, approveDefaults/autoApprove/crossApp)
+- ✅ HOBO-9 — HARDENING: finalize public SDK API contracts (`.allow` narrowing, connector naming, connection-scoped tokens, policy-owned inferred-Camp approval)
 - ✅ HOBO-10 — HARDENING: glossary/terminology/namespace consistency sweep + doc-lint
 - ✅ HOBO-11 — HARDENING: ADR ↔ implementation traceability audit (every decision maps to ≥1 issue)
 
@@ -122,7 +122,7 @@ Created:
 - ✅ HOBO-37 — Define the `@hobo/bindles` resource catalog declaration surface (resource → WIT port) · M0 · slice · 5
 - ✅ HOBO-38 — Define and version the `hobo.manifest/v1` schema (the deployment IR) · M0 · slice · 5
 - ✅ HOBO-40 — Define the varlock-style declarative config/secrets schema surface · M0 · slice/security · 3
-- ✅ HOBO-43 — Define the `crossApp()` declaration + typed-client surface (XAA authoring) · M0 · slice/security · 5
+- ✅ HOBO-43 — Define the `connector()` declaration + typed-client surface (XAA authoring) · M0 · slice/security · 5
 - ✅ HOBO-49 — Define the `bind` reference + Aspire-style wiring surface · M0 · slice · 5
 - ✅ HOBO-52 — Define the provider-specific options pattern (`.with(...)`, prefer/require) · M0 · slice · 3
 - ✅ HOBO-58 — Spike: per-scope npm namespace partitioning · M0 · spike · 2
@@ -253,7 +253,7 @@ Remaining (cap-blocked):
 - ▢ Event-sourced sessions + revocation / sign-out-everywhere · M2 · slice/security
 - ▢ ID-JAG outbound mint (HoBo as XAA requester) · M2 · slice/security
 - ▢ ID-JAG inbound (HoBo apps as XAA resource servers) · M2 · slice/security
-- ▢ `crossApp()` broker backing + usage-inferred scope · M2 · slice/security
+- ▢ `connector().connection().token()` broker backing + usage-inferred scope · M2 · slice/security
 - ▢ RBAC role binding via SSO/SCIM · M2 · slice/security
 - ▢ mTLS SVID cert issuance/rotation for service-to-service · M2 · slice/security
 - ▢ HoBo Relay SVID-auth reverse tunnel · M2 · slice/security

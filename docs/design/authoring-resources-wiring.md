@@ -85,9 +85,9 @@ The explicit `bindle()` topology ([Plan 2](./sdk-api.md#plan-02)) remains availa
 ### Cross-app access (XAA) — declare the app, infer the scope
 Reaching an *external* app on the end-user's behalf is a binding like any other, and its OAuth scope is **inferred from declaration + usage** — you no more hand-list scopes than you hand-list `.allow()` verbs ([ADR-0084](./adr/02-identity-security.md#adr-0084)/[Plan 6](./ai-native-agent-auth.md#plan-06)):
 ```ts
-import { api, crossApp } from "@hobo/bindles";
+import { api, connector } from "@hobo/bindles";
 
-const asana = crossApp("asana");          // DECLARATION: a cross-app dependency; typed client from Asana's Capability Manifest
+const asana = connector("asana");         // DECLARATION: an external connector dependency; typed client from Asana's Capability Manifest
 const sync  = api("sync");
 
 sync.post("/ticket", async (ctx) => {
@@ -98,11 +98,11 @@ sync.post("/ticket", async (ctx) => {
 - **Declaration** names the target (and that access is *on a user's behalf*); the typed client is generated from the target's Capability Manifest `auth.json`, which advertises the *available* scopes + resource indicators.
 - **Usage** — collection + static analysis read which client operations the code calls and map them to the target's scopes, baking the **least-privilege requested subset** into the manifest, exactly like resource verbs:
   ```jsonc
-  "asana": { "type": "external-app.v1", "via": "xaa", "audience": "urn:asana:app",
+  "asana": { "type": "connector.v1", "via": "xaa", "audience": "urn:asana:app",
              "onBehalfOf": "user", "allow": ["tasks:write"] }   // inferred from usage, not declared
   ```
-- **Brokered automatically** — on the call the runtime obtains an XAA token (ID-JAG → access token, [Plan 6](./ai-native-agent-auth.md#plan-06)) scoped to exactly the inferred set, for `ctx.user`; you never touch a token or a scope string. The raw escape hatch is `ctx.crossApp("asana").token()` (scopes default to the inferred set; pass an explicit subset only to narrow).
-- **Override = narrow only** — `crossApp("asana").allow("tasks:read")` asserts a tighter contract; `can-deploy` fails if the code uses more, and a **policy deny-ceiling** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) can cap it regardless. Deny-by-default holds: a scope the code never exercises is never requested.
+- **Brokered automatically** — on the call the runtime obtains an XAA token (ID-JAG → access token, [Plan 6](./ai-native-agent-auth.md#plan-06)) scoped to exactly the inferred set, for `ctx.user`; you never touch a token or a scope string. The raw escape hatch is `connector("asana").connection().token()` (scopes default to the connection's inferred set; pass an explicit subset only to narrow).
+- **Override = narrow only** — `connector("asana").allow("tasks:read")` asserts a tighter contract; `can-deploy` fails if the code uses more, and a **policy deny-ceiling** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) can cap it regardless. Deny-by-default holds: a scope the code never exercises is never requested.
 
 ### Handlers, events & triggers (parity with Nitric "services")
 Each entry point compiles to a component exporting the right WIT interface:

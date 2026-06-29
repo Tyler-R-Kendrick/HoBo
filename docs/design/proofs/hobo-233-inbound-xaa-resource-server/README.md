@@ -35,4 +35,4 @@ Adversarial mapping:
 
 Scope boundary:
 
-- The package does not mint outbound ID-JAGs, implement the policy `.allow()` engine, define cross-app authoring, or complete the full confused-deputy hardening matrix.
+- The package does not mint outbound ID-JAGs, implement the policy `.allow()` engine, define connector authoring, or complete the full confused-deputy hardening matrix.

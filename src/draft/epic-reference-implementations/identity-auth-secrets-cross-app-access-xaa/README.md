@@ -46,7 +46,7 @@ Feature: Delegate Cross-App Access through governed ID-JAG exchange
   Persona: SecOps reviewer governing an agent acting for a user
 
   Scenario: Mint outbound and verify inbound XAA credentials
-    Given a verified delegated user, inferred crossApp scope, a target auth.json, and deny-by-default policy
+    Given a verified delegated user, inferred connector scope, a target auth.json, and deny-by-default policy
     When the XAA broker mints an audience-bound ID-JAG and the target redeems it
     Then only the delegated user-to-agent-to-app chain is authorized, replay-resistant, and audit-exportable
 ```
@@ -68,7 +68,7 @@ Feature: Recover and observe identity control planes
 |---|---|---|
 | Workload credential ladder | Attestation intake, JWT-SVID issue/rotation, auth.json flow selection, OIDC federation, broker HA renewal grace, static-key last-resort denial | HOBO-44, HOBO-48, HOBO-71, HOBO-77, HOBO-84, HOBO-90, HOBO-99, HOBO-110, HOBO-247, HOBO-266, HOBO-275, HOBO-287 |
 | App-user auth and secretless config | hobo:auth consumer contract, JWKS verification, PrincipalRef/RBAC, session revocation, secretless config resolution, identity event projection | HOBO-56, HOBO-63, HOBO-66, HOBO-222, HOBO-226, HOBO-229, HOBO-238 |
-| Cross-App Access delegation | ID-JAG wire contract, outbound broker, inbound resource server, runtime crossApp token bridge, scope inference, confused-deputy and replay guards | HOBO-54, HOBO-230, HOBO-233, HOBO-235, HOBO-250, HOBO-255, HOBO-271 |
+| Cross-App Access delegation | ID-JAG wire contract, outbound broker, inbound resource server, runtime connector token bridge, scope inference, confused-deputy and replay guards | HOBO-54, HOBO-230, HOBO-233, HOBO-235, HOBO-250, HOBO-255, HOBO-271 |
 | Identity governance and observation | Secret-zero genesis, Yard issuer/JWKS, genesis admin and break-glass, X.509 SVID mTLS, Relay SVID attach, OCSF export | HOBO-71, HOBO-242, HOBO-244, HOBO-262, HOBO-279, HOBO-282 |
 
 ## What Is Real

@@ -57,7 +57,7 @@ Kept:
 - JWT-SVID and X.509-SVID formats, stable Yard issuer/JWKS, KMS-rooted genesis custody, and attestation-derived tenant binding.
 - Keyless-first broker flow: signed provider `auth.json`, OIDC federation, provider token narrowing, no plaintext token or secret persistence.
 - `hobo:auth` consumer contract, dev/prod contract equivalence, JWKS verify path, RBAC role resolution, and event-sourced session revocation.
-- XAA ID-JAG wire contract, runtime `crossApp()` broker backing, inferred scope ceiling, pre-mint policy, inbound resource-server validation, and replay/confused-deputy guards.
+- XAA ID-JAG wire contract, runtime `connector().connection().token()` broker backing, inferred scope ceiling, pre-mint policy, inbound resource-server validation, and replay/confused-deputy guards.
 - Secretless config ladder, bounded static-key escape hatch denial, broker HA renewal grace, genesis/break-glass audit, and OCSF projection.
 
 Discarded:

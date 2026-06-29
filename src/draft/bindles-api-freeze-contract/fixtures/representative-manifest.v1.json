@@ -62,9 +62,9 @@
       "bind": ["api"]
     }
   },
-  "externalApps": {
+  "connectors": {
     "asana": {
-      "type": "external-app.v1",
+      "type": "connector.v1",
       "via": "xaa",
       "audience": "https://app.asana.com",
       "onBehalfOf": "user",

@@ -2,8 +2,8 @@ import { validateManifest } from "../../hobo-manifest-contract/src/manifest.mjs"
 import * as catalogModule from "../../hobo-bindles-resource-catalog/src/catalog.mjs";
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.mjs";
 import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.mjs";
-import { createCrossAppBinding } from "../../cross-app-authoring-contract/src/cross-app-authoring.mjs";
-import { inferCrossAppScopes } from "../../xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
+import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
+import { inferConnectorScopes } from "../../xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { createRawView } from "../../raw-driver-escape-hatch-contract/src/raw-driver-escape-hatch.mjs";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
@@ -205,9 +205,9 @@ export function createRepresentativeManifest() {
         bind: ["api"],
       },
     },
-    externalApps: {
+    connectors: {
       asana: {
-        type: "external-app.v1",
+        type: "connector.v1",
         via: "xaa",
         audience: "https://app.asana.com",
         onBehalfOf: "user",
@@ -341,19 +341,19 @@ function evaluateCollectionCoverageGap() {
 }
 
 function evaluateXaaLeastPrivilege() {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: [
-      'const asana = crossApp("asana");',
+      'const asana = connector("asana");',
       "await asana.tasks.create({ name: 'ship freeze' });",
     ].join("\n"),
     bindings: {
-      asana: createCrossAppBinding("asana", ASANA_AUTH_JSON),
+      asana: createConnectorBinding("asana", ASANA_AUTH_JSON),
     },
   });
 
   return {
     name: "xaa-least-privilege",
-    ok: result.ok === true && arraysEqual(result.manifest.externalApps.asana.allow, ["tasks:write"]),
+    ok: result.ok === true && arraysEqual(result.manifest.connectors.asana.allow, ["tasks:write"]),
     status: "satisfied",
     assertedCodes: [],
     manifest: result.manifest,
@@ -361,13 +361,13 @@ function evaluateXaaLeastPrivilege() {
 }
 
 function evaluateXaaNarrowOverride() {
-  const result = inferCrossAppScopes({
+  const result = inferConnectorScopes({
     sourceText: [
-      'const asana = crossApp("asana");',
+      'const asana = connector("asana");',
       "await asana.tasks.create({ name: 'blocked by narrow allow' });",
     ].join("\n"),
     bindings: {
-      asana: createCrossAppBinding("asana", ASANA_AUTH_JSON).allow("tasks:read"),
+      asana: createConnectorBinding("asana", ASANA_AUTH_JSON).allow("tasks:read"),
     },
   });
   const assertedCodes = result.contractFailures.map((entry) => entry.code);

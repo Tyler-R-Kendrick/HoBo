@@ -1,0 +1,75 @@
+# Launch Messaging Claims
+
+Source issue: HOBO-406.
+
+Executable proof lives in
+[`src/draft/launch-messaging-claim-register`](../../src/draft/launch-messaging-claim-register/README.md).
+
+## M0 Acceptance Record
+
+V1 launch messaging must be evidence-led. A public-facing claim is publishable only when it has an
+evidence owner, an evidence source, a risk rating, and a current capability state. This record does
+not write final launch copy; it defines the claim register that future launch-site and demo work
+must consume before publication.
+
+## Claim States
+
+| State | Meaning | Publication rule |
+|---|---|---|
+| `implemented` | There is branch evidence or an accepted design/proof record for the capability shape. | Candidate wording may be drafted when the evidence source is linked. |
+| `simulated-reference` | The claim is backed by reference fixtures, design records, or contract tests rather than live hosted behavior. | Must be labeled as simulated or reference evidence. |
+| `beta-only` | The claim depends on dogfood, beta, or private operational evidence. | Public wording waits for accepted beta evidence or stays private-beta only. |
+| `future-roadmap` | The capability is planned or designed but not launch-proven. | Keep out of public launch claims unless framed as roadmap and legally reviewed. |
+
+## Initial Claim Register
+
+| Claim | State | Evidence owner | Evidence source | Risk | Disposition |
+|---|---|---|---|---|---|
+| HoBo is an AI-native meta-cloud that maps one app description onto provider-owned infrastructure through cloud-agnostic ports. | `implemented` | V1 Release Program & Cutline | [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md) | Medium | Candidate, pending cutline evidence review. |
+| Launch demos can use accepted example-app proof modes to separate live behavior from reference or simulated evidence. | `simulated-reference` | Example Apps | [example-apps.md#M0 Acceptance Record](./example-apps.md#m0-acceptance-record) | Medium | Candidate with proof-mode label. |
+| Dogfood and beta operations evidence can support private-beta messaging before broader GA operational claims are made. | `beta-only` | V1 Dogfood Yard & Hosted Operations | HOBO-403 | High | Follow-up before public use. |
+| Customer-facing release notes will distinguish supported install paths, upgrade guidance, known limitations, and support contacts. | `future-roadmap` | V1 Release Notes & Upgrade Guide | HOBO-407 | Medium | Follow-up before launch publication. |
+| Built-in operator agents are part of the product story, but launch wording must stay tied to current Crew design and proof evidence. | `future-roadmap` | Operators/SRE | [operators-sre.md#PLAN-40](./operators-sre.md#plan-40) | High | Scope out until proof evidence exists. |
+
+## Required Demo Assets
+
+| Asset | Owner | Proof mode | Refresh trigger |
+|---|---|---|---|
+| Claim index | Launch messaging owner | Design record | Any public-facing claim changes state, owner, or evidence source. |
+| Demo script | Demo maintainer | Manual review | Golden path, persona, or unsupported-state wording changes. |
+| Command transcript | Example Apps | Reference fixture | Example app command path, fixture output, or CLI wording changes. |
+| Screenshot set | V1 Launch Site, Messaging & Demo Assets | Live recording | UI surface, proof-mode label, or launch visual changes. |
+| Recording manifest | V1 Launch Site, Messaging & Demo Assets | Live recording | Demo recording, expected output, or simulated/reference marker changes. |
+
+## Scope Out And Follow-Up
+
+| Item | Reason | Disposition |
+|---|---|---|
+| Launch site build | HOBO-406 drafts the claim register; it does not build or publish the launch site. | V1 Launch Site implementation issue. |
+| Unproven production-readiness claims | Production-readiness claims need beta, RC, or GA evidence before publication. | Known limitation or go/no-go blocker. |
+| Unsupported provider, runtime, billing, support, or operations breadth | Those claims require their owner evidence and must not be inferred from reference fixtures. | Owner project follow-up. |
+
+## Authoritative Dependencies
+
+- [vision.md#plan-17](./vision.md#plan-17) defines competitive positioning and scope honesty.
+- [example-apps.md](./example-apps.md) defines proof modes launch demos can consume.
+- [developer-experience.md#plan-07](./developer-experience.md#plan-07) owns CLI/demo command surfaces.
+- [operators-sre.md#plan-40](./operators-sre.md#plan-40) owns Crew/operator-agent claims.
+- [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) keeps monetization and business
+  process mechanics outside the platform scope.
+
+## Evidence Required For Publication
+
+| Evidence | Owner | Proves |
+|---|---|---|
+| Claim register | Launch messaging owner | Every claim has state, owner, source, risk, and disposition. |
+| Cutline evidence | V1 Release Program & Cutline | Implemented claims match the accepted v1 support boundary. |
+| Proof-mode labels | Example Apps and Demo maintainer | Simulated/reference/beta/live evidence is not overclaimed. |
+| Known-limitations register | V1 Release Notes & Upgrade Guide | Unsupported claims move to scope-out or follow-up before publication. |
+| Demo asset manifest | V1 Launch Site, Messaging & Demo Assets | Launch demos can be refreshed when claims or proof sources change. |
+
+## Follow-Up Gate
+
+Future launch-site, demo, release-note, and public-copy work must consume this register. A claim with
+no evidence source, unsupported state, or high-risk publish disposition without follow-up/scope-out
+routing is not ready for launch publication.

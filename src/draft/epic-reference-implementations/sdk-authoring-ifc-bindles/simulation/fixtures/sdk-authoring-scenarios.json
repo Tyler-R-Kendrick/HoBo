@@ -62,8 +62,8 @@
     },
     {
       "name": "asana",
-      "kind": "crossApp",
-      "manifestType": "external-app.v1",
+      "kind": "connector",
+      "manifestType": "connector.v1",
       "portRef": "hobo:xaa/client@0.1.0",
       "usedVerbs": [
         "tasks:write"
@@ -99,7 +99,7 @@
     {
       "from": "sync-api",
       "to": "asana",
-      "import": "ctx.crossApp.asana"
+      "import": "ctx.connectors.asana"
     },
     {
       "from": "sync-api",

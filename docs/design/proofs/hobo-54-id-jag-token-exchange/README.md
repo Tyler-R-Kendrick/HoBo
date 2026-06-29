@@ -18,7 +18,7 @@ This proof pins the M0 Cross-App Access wire contract from
 ## Proof Boundaries
 
 This is structural proof. It does not issue live tokens, perform OAuth calls, verify
-production signatures, run policy deny-ceilings, implement `crossApp()`, or implement
+production signatures, run policy deny-ceilings, implement `connector()`, or implement
 inbound HoBo resource-server verification.
 
 ## Executable Checks

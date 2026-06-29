@@ -60,7 +60,7 @@ test("edge matrix freezes narrowing, coverage, XAA, raw, .with(), and combined a
   assert.deepEqual(cases.get("collection-coverage-gap").assertedCodes, [
     "collection.coverage.unobserved-resource",
   ]);
-  assert.deepEqual(cases.get("xaa-least-privilege").manifest.externalApps.asana.allow, [
+  assert.deepEqual(cases.get("xaa-least-privilege").manifest.connectors.asana.allow, [
     "tasks:write",
   ]);
   assert.deepEqual(cases.get("xaa-narrow-override").assertedCodes, [

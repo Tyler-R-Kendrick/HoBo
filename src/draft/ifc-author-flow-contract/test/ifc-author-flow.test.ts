@@ -32,8 +32,8 @@ test("sample Bindle drives declare to collect to infer to codegen to manifest", 
   assert.deepEqual(result.manifest.resources.uploads.allow, ["read", "write"]);
   assert.deepEqual(result.manifest.resources.jobs.allow, ["enqueue"]);
   assert.deepEqual(result.manifest.resources.config.allow, ["access"]);
-  assert.deepEqual(result.manifest.externalApps.asana.allow, ["tasks:write"]);
-  assert.equal(result.manifest.externalApps.asana.onBehalfOf, "user");
+  assert.deepEqual(result.manifest.connectors.asana.allow, ["tasks:write"]);
+  assert.equal(result.manifest.connectors.asana.onBehalfOf, "user");
   assert.equal(result.validation.valid, true);
   assert.equal(result.generated.typeCheck.ok, true);
   assert.deepEqual(result.generated.typeCheck.missing, []);

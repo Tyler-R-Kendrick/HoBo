@@ -1,8 +1,0 @@
-{
-  "name": "@hobo/draft-cross-app-runtime-broker-contract",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
-  }
-}

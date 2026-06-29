@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "The Control Plane (the Yard)"
+description: "This capability doc covers the Yard control plane end to end: its services and reconciliation model, plus the provider, IaC, and build/VM adapters it drives."
+tags: [hobo, design]
+---
+
 # The Control Plane (the Yard)
 
 This capability doc covers the Yard control plane end to end: its services and reconciliation model, plus the provider, IaC, and build/VM adapters it drives.

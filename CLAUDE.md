@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-**Repo:** HoBo — a cloud-agnostic, AI-native hosting platform, currently in the **design phase**. The design suite is in [`docs/design/`](docs/design/README.md); formal requirements are archived in [`archive/requirements/`](archive/requirements/README.md); competitor research is in [`competitors/`](competitors/README.md). No **HoBo product** implementation code yet — the only code present is third-party agent-tooling under `.agents/`/`.claude/`/`scripts/`.
+**Repo:** HoBo — a cloud-agnostic, AI-native hosting platform, currently in the **design phase**. The design suite is in [`docs/design/`](docs/design/index.md); formal requirements are archived in [`docs/archive/requirements/`](docs/archive/requirements/index.md); competitor research is in [`docs/competitors/`](docs/competitors/index.md). No **HoBo product** implementation code yet — the only code present is third-party agent-tooling under `.agents/`/`.claude/`/`scripts/`.
 
 ## Agent tooling
 This repo is wired with seven agent tools for Claude Code, Cursor, and Codex (Superpowers also targets GitHub Copilot CLI) — see **[`AGENTS.md`](AGENTS.md)** for the full table and **[`docs/agent-tooling.md`](docs/agent-tooling.md)** for setup/keys/risks. Quick map:
-- **improve** — `/improve` audits the repo and writes plans to `plans/` (read-only).
+- **improve** — `/improve` audits the repo and writes plans to `docs/plans/` (read-only).
 - **superpowers** (`obra/Superpowers`) — plugin: dev methodology (brainstorming, writing-plans, code-review, TDD, debugging); enabled repo-wide via `.claude/settings.json`; loads at session start.
 - **mattpocock/skills** — engineering disciplines incl. **`grill-with-docs`** (design interview → ADRs+glossary), `domain-modeling`, `codebase-design`, `tdd`; one-time `/setup-matt-pocock-skills` to configure.
 - **caveman** — terse-output compression (active by default; `/caveman` to adjust).

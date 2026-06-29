@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo Implementation Plan — Linear backlog mirror"
+description: "- **Created in Linear:** **399 issues** across all **15 projects** (`HOBO-1` … `HOBO-399`,"
+tags: [hobo, implementation-plan.md]
+---
+
 # HoBo Implementation Plan — Linear backlog mirror
 
 > **Purpose.** This document is the master, branch-sized implementation backlog for the whole

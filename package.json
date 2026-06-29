@@ -9,7 +9,8 @@
     "docs:freshness": "node scripts/check-docs-freshness.mjs",
     "docs:freshness:staged": "node scripts/check-docs-freshness.mjs --staged",
     "prepare-hooks": "git config core.hooksPath .githooks",
-    "docs:coverage": "node scripts/check-docs-coverage.mjs"
+    "docs:coverage": "node scripts/check-docs-coverage.mjs",
+    "docs:okf": "node scripts/check-okf-docs.mjs"
   },
   "devDependencies": {
     "protobufjs": "^7.6.4",

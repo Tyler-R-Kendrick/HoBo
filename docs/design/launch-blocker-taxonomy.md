@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Launch Blocker Taxonomy And Go/No-Go Exceptions"
+description: "Source issue: HOBO-402."
+tags: [hobo, design]
+---
+
 # Launch Blocker Taxonomy And Go/No-Go Exceptions
 
 Source issue: HOBO-402.
@@ -5,7 +12,7 @@ Source issue: HOBO-402.
 Executable proof lives in
 [`src/draft/launch-blocker-taxonomy-contract`](../../src/draft/launch-blocker-taxonomy-contract/README.md).
 Branch evidence is summarized in
-[`proofs/hobo-402-launch-blocker-taxonomy`](./proofs/hobo-402-launch-blocker-taxonomy/README.md).
+[`proofs/hobo-402-launch-blocker-taxonomy`](./proofs/hobo-402-launch-blocker-taxonomy/index.md).
 
 ## M0 Acceptance Record
 

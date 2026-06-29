@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Workspace & Onboarding UX Scope and Acceptance"
+description: "Source issue: HOBO-409."
+tags: [hobo, design]
+---
+
 # Workspace & Onboarding UX Scope and Acceptance
 
 Source issue: HOBO-409.
@@ -5,7 +12,7 @@ Source issue: HOBO-409.
 Executable proof lives in
 [`src/draft/workspace-onboarding-scope-acceptance`](../../src/draft/workspace-onboarding-scope-acceptance/README.md).
 Branch evidence is summarized in
-[`proofs/hobo-409-workspace-onboarding-scope`](./proofs/hobo-409-workspace-onboarding-scope/README.md).
+[`proofs/hobo-409-workspace-onboarding-scope`](./proofs/hobo-409-workspace-onboarding-scope/index.md).
 
 ## M0 Acceptance Record
 

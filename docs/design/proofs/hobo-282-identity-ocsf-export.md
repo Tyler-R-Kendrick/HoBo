@@ -1,3 +1,10 @@
+---
+type: Proof Record
+title: "HOBO-282 Identity OCSF Export Proof"
+description: "HOBO-282 implements a replayable, one-way OCSF projection proof in"
+tags: [hobo, design]
+---
+
 # HOBO-282 Identity OCSF Export Proof
 
 HOBO-282 implements a replayable, one-way OCSF projection proof in

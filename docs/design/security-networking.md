@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Security, Multi-Tenancy & Networking"
+description: "This capability doc covers HoBo's security and multi-tenancy posture together with the networking and connectivity model that enforces it across trust domains."
+tags: [hobo, design]
+---
+
 # Security, Multi-Tenancy & Networking
 
 This capability doc covers HoBo's security and multi-tenancy posture together with the networking and connectivity model that enforces it across trust domains.
@@ -61,7 +68,7 @@ Security runs **continuously, not just as a deploy-time gate** — a loop owned 
 
 ### Audit & compliance
 - The event log *is* the audit log: who (principal/SVID), what (event), when (clock), why (causation/correlation), and — for credentials — every grant/use/revoke.
-- **SIEM export via OCSF** ([ADR-0046](./adr/02-identity-security.md#adr-0046)): security-relevant events (`token.*`, `identity.*`, `policy.Decided`, `domain.Cert*`, `registry.BundleImported`, `flag.Changed`, …) map to **[OCSF](../../standards/ocsf.md)** classes via an exporter/projection (no change to how they're stored), so the audit trail drops straight into an enterprise SIEM.
+- **SIEM export via OCSF** ([ADR-0046](./adr/02-identity-security.md#adr-0046)): security-relevant events (`token.*`, `identity.*`, `policy.Decided`, `domain.Cert*`, `registry.BundleImported`, `flag.Changed`, …) map to **[OCSF](../standards/ocsf.md)** classes via an exporter/projection (no change to how they're stored), so the audit trail drops straight into an enterprise SIEM.
 - Retention: audit streams (`token.*`, `resource.*`, policy decisions) retained per policy and never compacted; runtime streams have shorter retention.
 - Data residency: a tenant can constrain regions; the Planner enforces it ([Plan 4](./control-plane.md#plan-04)) and residency violations are rejected at plan time. **Plan-time placement is necessary but not sufficient — runtime replication is gated too:** because cross-Camp replication streams an owner Camp's state into other Camps' bounded-staleness projections ([ADR-0040](./adr/01-architecture-core.md#adr-0040)), a replicated read-stream could otherwise carry residency-tagged data across a region boundary at *runtime*. So the **replication topology selection itself passes the residency policy gate** ([ADR-0060](./adr/02-identity-security.md#adr-0060)): a cross-Camp read-stream of residency-constrained data is **blocked or region-pinned**, not just the initial resource placement — residency holds at runtime, not only at plan time.
 - **Metering/billing data is tenant-scoped.** The `MeteringView` + showback attribution ([Plan 5](./reliability-observability-cost.md#plan-05)/[ADR-0039](./adr/02-identity-security.md#adr-0039)) are projections over the same per-tenant-isolated streams, so usage/cost data inherits the tenant isolation above — no cross-tenant metering leakage.

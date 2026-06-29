@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo Glossary"
+description: "This is the canonical glossary for HoBo design terms. `docs:design-lint` treats this table as the single source of truth for canonical term definitions."
+tags: [hobo, design]
+---
+
 # HoBo Glossary
 
 This is the canonical glossary for HoBo design terms. `docs:design-lint` treats this table as the single source of truth for canonical term definitions.

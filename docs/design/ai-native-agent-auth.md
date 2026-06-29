@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "AI-Native Platform & Agent Auth"
+description: "This capability doc covers HoBo's identity story end to end: **agent/workload auth** (SVIDs, the token broker, the Capability Manifest, the generation pipeline) and **end-user / ap"
+tags: [hobo, design]
+---
+
 # AI-Native Platform & Agent Auth
 
 This capability doc covers HoBo's identity story end to end: **agent/workload auth** (SVIDs, the token broker, the Capability Manifest, the generation pipeline) and **end-user / application auth** (app users signing in) — one principal model, one policy plane, one audit trail.
@@ -178,7 +185,7 @@ A developer (or their agent) writes a Bindle, points it at "acme-cloud," and the
 Agent auth and end-user auth are one system seen from two ends. The §6.2 scope note already says it: an end-user is just another **`PrincipalRef`** — the event envelope's `actor` already admits `user` ([Plan 11](./data-plane.md#plan-11)) — and the **OBO** flow (§6.2) is that same human principal acting *through* an agent. So app users signing in reuse the identity, authorization, and audit machinery built above, rather than standing up a parallel stack.
 
 **The `auth()` port — federate + verify.** HoBo does **not** reinvent a full identity provider (a deep, security-critical domain). `auth()` is a **federation + verification** port (`hobo:auth`):
-- **Verify any IdP.** It validates an OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo + Convex-`customJwt` pattern, [competitors/shoo](../../competitors/shoo.md)/[convex](../../competitors/convex.md#auth-integrations--ops)) — reusing the **OIDC + JWKS + secretless** machinery Identity already runs for agents (§6.2, [Plan 21](./authoring-resources-wiring.md#plan-21)). Providers are declared IfC-style (issuer / JWKS URL / algorithm).
+- **Verify any IdP.** It validates an OIDC/JWT from any provider — Google / GitHub / Clerk / Auth0 / **custom JWT** (the shoo + Convex-`customJwt` pattern, [docs/competitors/shoo](../competitors/shoo.md)/[convex](../competitors/convex.md#auth-integrations--ops)) — reusing the **OIDC + JWKS + secretless** machinery Identity already runs for agents (§6.2, [Plan 21](./authoring-resources-wiring.md#plan-21)). Providers are declared IfC-style (issuer / JWKS URL / algorithm).
 - **Thin built-in for zero-config dev.** An optional built-in (passkey / email magic-link) lets `hobo dev` and small apps work with no external IdP — and runs **offline / in air-gap** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 
 ```ts

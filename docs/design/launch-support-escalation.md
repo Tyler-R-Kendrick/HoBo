@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Launch Support Escalation Matrix"
+description: "Source issue: HOBO-408."
+tags: [hobo, design]
+---
+
 # Launch Support Escalation Matrix
 
 Source issue: HOBO-408.
@@ -5,7 +12,7 @@ Source issue: HOBO-408.
 Executable proof lives in
 [`src/draft/launch-support-escalation-matrix`](../../src/draft/launch-support-escalation-matrix/README.md).
 Branch evidence is summarized in
-[`proofs/hobo-408-launch-support-escalation`](./proofs/hobo-408-launch-support-escalation/README.md).
+[`proofs/hobo-408-launch-support-escalation`](./proofs/hobo-408-launch-support-escalation/index.md).
 
 ## M0 Acceptance Record
 

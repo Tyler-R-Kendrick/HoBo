@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo Event Families"
+description: "This catalog is the canonical event-family inventory for design docs. Add a family here before using a new backticked event name elsewhere."
+tags: [hobo, design]
+---
+
 # HoBo Event Families
 
 This catalog is the canonical event-family inventory for design docs. Add a family here before using a new backticked event name elsewhere.

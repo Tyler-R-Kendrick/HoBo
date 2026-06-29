@@ -1,6 +1,13 @@
+---
+type: Architecture Decision Record
+title: "Portability, extensibility, deployment topology & scope — consolidated decisions"
+description: "**Portability conformance guarantee (\"same Bindle, N clouds\").**"
+tags: [hobo, design]
+---
+
 # Portability, extensibility, deployment topology & scope — consolidated decisions
 
-> Consolidated ADR decisions for **portability, extensibility, deployment topology & scope**. Each section is one architecture decision; see [`README.md`](./README.md) for the full ADR index.
+> Consolidated ADR decisions for **portability, extensibility, deployment topology & scope**. Each section is one architecture decision; see [`README.md`](./index.md) for the full ADR index.
 
 ## ADR-0024
 **Portability conformance guarantee ("same Bindle, N clouds").**
@@ -117,7 +124,7 @@ The **HoBo Relay** ([Plan 25](../platform-engineering.md#plan-25)) dials a hoste
 **Migration & onboarding (adopt-in-place).**
 
 ### Context
-HoBo has the *primitives* for adoption — the **Pulumi Automation API** as primary IaC ([ADR-0006](./README.md)), **CDKTF import-only** ("read existing stacks, don't author new", [Plan 4](../control-plane.md#plan-04) §IaC adapters), and OpenTofu state backends. The **onboarding journey** on top of them moves an existing app/infra estate onto HoBo *incrementally*, without a greenfield rewrite. This is adoption-critical: teams have Terraform/Pulumi estates, Lakebed Capsules, and FaaS deployments; HoBo must meet them where they are.
+HoBo has the *primitives* for adoption — the **Pulumi Automation API** as primary IaC ([ADR-0006](./index.md)), **CDKTF import-only** ("read existing stacks, don't author new", [Plan 4](../control-plane.md#plan-04) §IaC adapters), and OpenTofu state backends. The **onboarding journey** on top of them moves an existing app/infra estate onto HoBo *incrementally*, without a greenfield rewrite. This is adoption-critical: teams have Terraform/Pulumi estates, Lakebed Capsules, and FaaS deployments; HoBo must meet them where they are.
 
 ### Decision
 1. **`hobo import` adopts existing infra/code in place.** A command family reads an existing estate into HoBo's resource graph: `hobo import terraform|pulumi|opentofu <state>` (via the existing CDKTF import-only + Pulumi Automation API), `hobo import lakebed` (Capsule→Bindle mapping), `hobo import faas` (wrap existing functions). Imported resources become **`adopted` existing nodes** in the Planner DAG — managed by id/state, **never destroyed/recreated on import** (drift-detect only, [Plan 5](../reliability-observability-cost.md#plan-05)).
@@ -240,7 +247,7 @@ HoBo prefers standard `wasi:*` interfaces and authors `hobo:*` only for gaps ([P
 ## ADR-0018
 **Requirements artifacts (BRD/PRD/TRD) are deferred planning material.**
 
-The formal Business / Product / Technical requirements layer — `BR`/`FR`/`NFR`/`TR` IDs plus the BR→FR/NFR→TR traceability matrix — is **project-planning material kept out of the current design suite**. The design docs are the single source of design truth; the requirements artifacts are **archived** (`archive/requirements/`) and revived when the work is scoped. The design-relevant NFR/SLO targets live in [ADR-0021](#adr-0021); the scope boundary lives in [ADR-0064](#adr-0064).
+The formal Business / Product / Technical requirements layer — `BR`/`FR`/`NFR`/`TR` IDs plus the BR→FR/NFR→TR traceability matrix — is **project-planning material kept out of the current design suite**. The design docs are the single source of design truth; the requirements artifacts are **archived** (`docs/archive/requirements/`) and revived when the work is scoped. The design-relevant NFR/SLO targets live in [ADR-0021](#adr-0021); the scope boundary lives in [ADR-0064](#adr-0064).
 
 ## ADR-0019
 **Primary ICP — the indie developer and the agent acting on their behalf.**
@@ -272,7 +279,7 @@ HoBo serves four personas — application developers, platform engineers, operat
 
 Everything in the suite ([Plan 0](../vision.md#plan-00)–[Plan 46](../governance-planes.md#plan-46)) is **in scope**, bounded only by [ADR-0064](#adr-0064). There is **no version ladder and no deferred-feature bucket in the design**: the generation pipeline, multi-region HA, FinOps showback, the full dashboard, platform-engineering depth, the Operator Crew, the generated stack (infrastructure **and** app/UI), patchability, SRE/incident management, the governance planes (compliance enforcement, AI safety), the `notify` port, and Registry distribution are all part of the designed surface. They ride existing machinery (ports, policy, events, conformance) with no new runtime.
 
-**Build sequencing and delivery phasing are deferred planning** (archived, `archive/roadmap.md`) — to be scoped later, not part of the current design state. The only architectural anti-goals are positioning, not deferrals: HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu/Crossplane) via the IaC port rather than replacing them ([Plan 4](../control-plane.md#plan-04)); it is not a standalone secret-management product or a generic app framework ([vision non-goals](../vision.md#plan-00)).
+**Build sequencing and delivery phasing are deferred planning** (archived, `docs/archive/roadmap.md`) — to be scoped later, not part of the current design state. The only architectural anti-goals are positioning, not deferrals: HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu/Crossplane) via the IaC port rather than replacing them ([Plan 4](../control-plane.md#plan-04)); it is not a standalone secret-management product or a generic app framework ([vision non-goals](../vision.md#plan-00)).
 
 ## ADR-0064
 **Scope: AI-native meta-cloud (remove business/monetization; keep app generation).**

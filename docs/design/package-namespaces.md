@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Package Namespace Map"
+description: "This note is the canonical import-ownership map for HoBo TypeScript packages. It"
+tags: [hobo, design]
+---
+
 # Package Namespace Map
 
 This note is the canonical import-ownership map for HoBo TypeScript packages. It

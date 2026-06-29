@@ -1,6 +1,13 @@
+---
+type: Architecture Decision Record
+title: "Data plane, AI generation, agents & operators — consolidated decisions"
+description: "**Event-sourced domain data, reactive over the log, streamed by default; backends are projection sinks.**"
+tags: [hobo, design]
+---
+
 # Data plane, AI generation, agents & operators — consolidated decisions
 
-> Consolidated ADR decisions for **the data plane, AI generation, agents & operators**. Each section is one architecture decision; see [`README.md`](./README.md) for the full ADR index.
+> Consolidated ADR decisions for **the data plane, AI generation, agents & operators**. Each section is one architecture decision; see [`README.md`](./index.md) for the full ADR index.
 
 ## ADR-0050
 **Event-sourced domain data, reactive over the log, streamed by default; backends are projection sinks.**
@@ -137,7 +144,7 @@ HoBo messages *operators* (ops alerting, [ADR-0045](02-identity-security.md#adr-
 **Encore-style paradigm resource packages as opt-in SDK plugins (SQL · vector · graph · document), mapped to cloud natives by Matching, overridable.**
 
 ### Context
-[ADR-0052](#adr-0052) makes the app-level data dependency a **single generic `data` dep** (explicitly *not* `sql`), with the paradigm chosen by Matching behind one `hobo:projection` port — the **portable default** — and scopes graph/document/vector as adapters/extensions behind the port. Developers coming from Encore (`new SQLDatabase(...)`), Mongo, a graph DB, or a vector store want **paradigm-idiomatic, typed ergonomics** *on purpose*; Encore's abstraction is **Postgres-only with a fixed compiler mapping** you can't redirect ([`competitors/encore`](../../../competitors/encore.md)). HoBo offers Encore's ergonomics **across more paradigms**, with **Matching-selected cloud natives** (not a fixed mapping) that stay **overridable** — developer-facing **opt-in paradigm packages** over the [ADR-0052](#adr-0052) taxonomy, with graph/document/vector as first-class opt-in.
+[ADR-0052](#adr-0052) makes the app-level data dependency a **single generic `data` dep** (explicitly *not* `sql`), with the paradigm chosen by Matching behind one `hobo:projection` port — the **portable default** — and scopes graph/document/vector as adapters/extensions behind the port. Developers coming from Encore (`new SQLDatabase(...)`), Mongo, a graph DB, or a vector store want **paradigm-idiomatic, typed ergonomics** *on purpose*; Encore's abstraction is **Postgres-only with a fixed compiler mapping** you can't redirect ([`docs/competitors/encore`](../../competitors/encore.md)). HoBo offers Encore's ergonomics **across more paradigms**, with **Matching-selected cloud natives** (not a fixed mapping) that stay **overridable** — developer-facing **opt-in paradigm packages** over the [ADR-0052](#adr-0052) taxonomy, with graph/document/vector as first-class opt-in.
 
 ### Decision
 1. **Opt-in paradigm packages are idiom layers over the existing ports — the generic `data` dep stays the default — and the *capability* always lives in WIT, never in the package.** [ADR-0052](#adr-0052)'s generic, paradigm-agnostic **`data`** remains the **portable default** (Matching picks the paradigm). On top of it, a developer may **opt into a paradigm package** — **`@hobo/sql`** (relational), **`@hobo/vector`** (ANN search), **`@hobo/graph`** (graph/traversal), **`@hobo/document`** (NoSQL/document) — each a **typed, paradigm-idiomatic abstraction** that **lowers to a WIT port + Manifest IR** ([ADR-0050](#adr-0050)/[ADR-0034](#adr-0034)). Per the idiom-layer rule ([ADR-0072](01-architecture-core.md#adr-0072) §4) the guarantee is **lowering-equivalence + an enumerated semantics annex, *not* "adds no semantics,"** and a package that needs a genuinely new capability **must add it to WIT first** — so the two kinds of package are distinct: **`@hobo/sql` and `@hobo/document` are pure idiom layers over the `hobo:projection` port** (sugar over capability that already exists), while **`@hobo/vector` and `@hobo/graph` are idiom layers over the `hobo:search` *extension capabilities*** ([ADR-0034](#adr-0034)) — the ANN/traversal operations the generic `data` surface lacks live **in the WIT search extension (the port), not in the package**. Either way the package holds **no cloud logic** (thin-SDK, [ADR-0069](01-architecture-core.md#adr-0069)); it is the **opt-in specialization** for devs who want the paradigm's idioms, and does not change ADR-0052's "`data`, not `sql`" default.
@@ -201,7 +208,7 @@ HoBo lets AI implement, evolve, and live-fix WIT-port implementations ([Plan 23]
 **Persisted code-mutation mechanism (for `"use training"` promotion).**
 
 ### Context
-[Plan 23](../generated-stack.md#plan-23) + [ADR-0025](#adr-0025): the `training-engine` continuously rewrites `"use training"` semantic functions (prompt/code) and, when a candidate passes eval/conformance, **promotes** it. "Promote" needs a concrete, safe **persistence mechanism** — how a generated mutation lands back in source without clobbering hand-written code, with provenance and review. The [runtime-code-mutation-persistence pattern](../../../patterns/runtime-code-mutation-persistence.md) (ts-morph / recast / jscodeshift / magic-string + unified-diff apply) is the toolbox.
+[Plan 23](../generated-stack.md#plan-23) + [ADR-0025](#adr-0025): the `training-engine` continuously rewrites `"use training"` semantic functions (prompt/code) and, when a candidate passes eval/conformance, **promotes** it. "Promote" needs a concrete, safe **persistence mechanism** — how a generated mutation lands back in source without clobbering hand-written code, with provenance and review. The [runtime-code-mutation-persistence pattern](../../patterns/runtime-code-mutation-persistence.md) (ts-morph / recast / jscodeshift / magic-string + unified-diff apply) is the toolbox.
 
 ### Decision
 1. **Promotion persists via AST-aware, region-scoped edits — never blind string patches.** A promoted candidate is applied with an **AST/codemod tool** (recast/ts-morph-style, format-preserving) confined to a **clearly demarcated generated region** of the `"use training"` method (the prompt/body the engine owns), leaving hand-written code untouched. Output is a minimal, format-preserving diff.

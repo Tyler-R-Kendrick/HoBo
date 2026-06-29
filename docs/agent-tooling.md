@@ -1,3 +1,10 @@
+---
+type: Agent Tooling Reference
+title: "Agent tooling"
+description: "Seven third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the refere"
+tags: [hobo, agent-tooling.md]
+---
+
 # Agent tooling
 
 Seven third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh).
@@ -7,7 +14,7 @@ Seven third-party AI-coding tools are wired into this repo for **Claude Code**, 
 ## The seven tools
 
 ### improve — `shadcn/improve` (MIT)
-A **read-only agent skill**: surveys the codebase and writes prioritized, self-contained implementation **plans** to `plans/` for other (cheaper) agents to execute. It never edits source. Commands: `/improve`, `/improve quick`, `/improve deep`, `/improve security|perf|tests|bugs`, `/improve branch`, `/improve next`, `/improve plan <desc>`, `/improve execute <plan>`, `/improve reconcile`. No API keys. Installed to `.claude/skills/improve` (Claude Code) and `.agents/skills/improve` (Cursor + Codex).
+A **read-only agent skill**: surveys the codebase and writes prioritized, self-contained implementation **plans** to `docs/plans/` for other (cheaper) agents to execute. It never edits source. Commands: `/improve`, `/improve quick`, `/improve deep`, `/improve security|perf|tests|bugs`, `/improve branch`, `/improve next`, `/improve plan <desc>`, `/improve execute <plan>`, `/improve reconcile`. No API keys. Installed to `.claude/skills/improve` (Claude Code) and `.agents/skills/improve` (Cursor + Codex).
 
 ### superpowers — `obra/Superpowers` (MIT)
 A **plugin** (skills library + methodology), v6.0.3, from the `obra/superpowers-marketplace`. Adds a structured development workflow — **brainstorming** (design refinement via questions), **writing-plans**, **test-driven-development**, **systematic-debugging**, **subagent-driven-development**, **requesting/receiving-code-review**, **using-git-worktrees**, **verification-before-completion**, **dispatching-parallel-agents**, **finishing-a-development-branch**, `using-superpowers`, `writing-skills` (14 skills total). **No API keys** (optional `SUPERPOWERS_DISABLE_TELEMETRY=1`). A `SessionStart` hook loads the skills, so **enable, then start a fresh session**.
@@ -16,7 +23,7 @@ A **plugin** (skills library + methodology), v6.0.3, from the `obra/superpowers-
 ### mattpocock/skills — `mattpocock/skills` (MIT)
 A **skills collection** of engineering disciplines, installed via the `skills` CLI to `.claude/skills/` (Claude Code) and `.agents/skills/` (Cursor + Codex). Highlights: **`grill-with-docs`** ("a relentless interview to sharpen a plan or design, which also creates docs — ADRs and glossary — as we go"), `domain-modeling`, `codebase-design`, `design-an-interface`, `diagnosing-bugs`, `tdd`, `to-prd`, `to-issues`, `request-refactor-plan`, `prototype`, plus model-invoked `grilling`. **No API keys.**
 - **Configure (one-time):** run `/setup-matt-pocock-skills` in your agent to set up its issue-tracker / triage-label vocabulary / domain-doc layout (optional for a docs repo; skip if you don't use the issue-tracking skills).
-- Used in this repo to **close competitor gaps** — see [`competitors/gap-analysis.md`](../competitors/gap-analysis.md) and the resulting design work.
+- Used in this repo to **close competitor gaps** — see [`docs/competitors/gap-analysis.md`](./competitors/gap-analysis.md) and the resulting design work.
 
 ### caveman — `JuliusBrussee/caveman` (MIT)
 A **skill + always-on rule** that compresses the agent's **output** (~65–87% fewer tokens) while preserving technical accuracy. Commands: `/caveman [lite|full|ultra|wenyan]`, `/caveman-commit`, `/caveman-review`, `/caveman-compress <file>`, `/caveman-stats`. No API keys. Installed to `.agents/skills/caveman*` (+ `cavecrew`), `.cursor/rules/caveman.mdc` (`alwaysApply: true`), a `## Caveman mode (active)` block in `AGENTS.md`, and (for Claude Code) a global `claude` plugin. Optional env `CAVEMAN_STATUSLINE_SAVINGS=0`.

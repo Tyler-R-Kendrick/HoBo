@@ -170,7 +170,7 @@ function validateContractDoc() {
   const designIndex = read(designIndexPath);
 
   if (!designIndex.includes("./sdk-contracts.md")) {
-    fail("docs/design/README.md does not link docs/design/sdk-contracts.md");
+    fail("docs/design/index.md does not link docs/design/sdk-contracts.md");
   }
 
   for (const surface of requiredSurfaces) {
@@ -231,7 +231,7 @@ function validatePackageNamespaceDoc() {
   ];
 
   if (!designIndex.includes("./package-namespaces.md")) {
-    fail("docs/design/README.md does not link docs/design/package-namespaces.md");
+    fail("docs/design/index.md does not link docs/design/package-namespaces.md");
   }
 
   for (const term of requiredTerms) {

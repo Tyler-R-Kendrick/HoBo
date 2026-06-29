@@ -4,6 +4,8 @@ This capability doc specifies the HoBo data plane end-to-end: how application da
 
 The app layer is **CQRS** ([ADR-0053](./adr/03-data-plane.md#adr-0053)): writes go through commands into aggregates (the write model); reads come from projections/materializations (the read model). The default **read** surface is a subscription to an observable materialization; the opinionated **query** surface is a **GraphQL facade over materialized views and snapshots** — CQRS querying of materializations produced by GraphQL reducers, with **snapshots cached by default** ([ADR-0050](./adr/03-data-plane.md#adr-0050)). Per-entity/per-materialization **tunable consistency** ([ADR-0052](./adr/03-data-plane.md#adr-0052)) defaults to session.
 
+Epic reference implementation: [`src/draft/epic-reference-implementations/data-plane-event-sourcing-cqrs-reactivity`](../../src/draft/epic-reference-implementations/data-plane-event-sourcing-cqrs-reactivity/README.md) synthesizes the data-plane POCs into one mocked CQRS -> projection -> reactive-read vertical slice with Pact-format service boundary evidence.
+
 ## Plan 11
 
 > **Runtime/IfC integration.** Two event families are in the catalog: **resource-collection** (`bindle.ResourcesCollected`, `bindle.ManifestProduced` — the IfC step, [Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)) and **cross-WIT-boundary calls** (`link.Called` / stub recordings — the trace stream that powers AI implement/evolve/live-fix, [Plan 23](./generated-stack.md#plan-23)). Both ride the same envelope and replay rules below.

@@ -15,6 +15,7 @@ export function createYardGovernanceLedger({
   }
 
   const orgAdmins = new Set();
+  const roleBindings = [];
   const usedBreakGlassNonces = new Set();
 
   return {
@@ -25,8 +26,17 @@ export function createYardGovernanceLedger({
     currentOrgAdmins() {
       return [...orgAdmins];
     },
+    roleBindings() {
+      return roleBindings.map((binding) => ({ ...binding }));
+    },
     hasOrgAdmin(principalId) {
       return orgAdmins.has(principalId);
+    },
+    addRoleBinding(principalId, role, source) {
+      roleBindings.push({ principalId, role, source });
+      if (role === "Org-Admin") {
+        orgAdmins.add(principalId);
+      }
     },
     grantOrgAdmin(principalId) {
       orgAdmins.add(principalId);
@@ -76,6 +86,51 @@ export function seedGenesisAdmin(ledger, {
   return success({ events });
 }
 
+export function bindFirstRealRole(ledger, {
+  actorId,
+  targetPrincipalId,
+  role,
+  requestId,
+}) {
+  const activeGenesisAdmin = activeGenesisAdminPrincipal(ledger);
+  if (!activeGenesisAdmin || actorId !== activeGenesisAdmin || !ledger.hasOrgAdmin(actorId)) {
+    const denied = appendEvent(ledger, {
+      type: "policy.Decided",
+      actor: actorId,
+      requestId,
+      data: {
+        decision: {
+          effect: "deny",
+          reason: "first role binding requires the active genesis Org-Admin",
+        },
+        action: "hobo:role:bind",
+        targetPrincipalId,
+        role,
+      },
+    });
+
+    return failure("GENESIS_ADMIN_REQUIRED", { events: [denied] });
+  }
+
+  ledger.addRoleBinding(targetPrincipalId, role, "genesis-first-role");
+
+  const events = [
+    appendEvent(ledger, {
+      type: "role.BindingCreated",
+      actor: actorId,
+      requestId,
+      data: {
+        principalId: targetPrincipalId,
+        role,
+        source: "genesis-first-role",
+        bootstrapAuthority: "identity.GenesisAdmin",
+      },
+    }),
+  ];
+
+  return success({ events });
+}
+
 export function rotateGenesisAdmin(ledger, {
   fromPrincipalId,
   toPrincipalId,
@@ -87,7 +142,7 @@ export function rotateGenesisAdmin(ledger, {
   }
 
   ledger.revokeOrgAdmin(fromPrincipalId);
-  ledger.grantOrgAdmin(toPrincipalId);
+  ledger.addRoleBinding(toPrincipalId, "Org-Admin", "genesis-rotation");
 
   const events = [
     appendEvent(ledger, {
@@ -122,6 +177,22 @@ export function rotateGenesisAdmin(ledger, {
   ];
 
   return success({ events });
+}
+
+export function diagnoseGenesisAdmin(ledger) {
+  const principalId = activeGenesisAdminPrincipal(ledger);
+  if (!principalId) {
+    return [];
+  }
+
+  return [
+    {
+      code: "GENESIS_ADMIN_NOT_ROTATED",
+      severity: "warning",
+      principalId,
+      message: "Genesis Org-Admin remains active; rotate it to a durable admin binding.",
+    },
+  ];
 }
 
 export function createOfflineBreakGlassCredential({
@@ -276,6 +347,15 @@ export function selfGrantOrgAdmin(ledger, {
   });
 
   return failure("SELF_GRANT_BLOCKED", { events: [denied] });
+}
+
+function activeGenesisAdminPrincipal(ledger) {
+  const genesis = ledger.events.find((event) => event.type === "identity.GenesisAdmin");
+  if (!genesis) {
+    return undefined;
+  }
+  const rotated = ledger.events.some((event) => event.type === "identity.GenesisAdminRotated");
+  return rotated ? undefined : genesis.data.principalId;
 }
 
 function deniedDecision(ledger, {

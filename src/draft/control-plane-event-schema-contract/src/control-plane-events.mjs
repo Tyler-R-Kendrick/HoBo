@@ -54,7 +54,8 @@ const RejectedCandidateZod = z.object({
 }).strict();
 const DispatchCandidateZod = z.object({
   provider: z.string().min(1),
-  effectiveMarginalCost: z.number()
+  effectiveMarginalCost: z.number(),
+  rationale: z.string().min(1).optional()
 }).strict();
 const LedgerInputZod = z.object({
   view: z.literal("CreditLedgerView"),
@@ -727,6 +728,16 @@ function validateDispatchDecided(data, errors) {
   }
   if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
     errors.push("dispatch.Decided candidates must be a non-empty array");
+  } else {
+    data.candidates.forEach((candidate, index) => {
+      requireString(candidate, "provider", errors, `candidates.${index}.provider`);
+      if (typeof candidate.effectiveMarginalCost !== "number") {
+        errors.push(`candidates.${index}.effectiveMarginalCost must be a number`);
+      }
+      if (candidate.rationale !== undefined) {
+        requireString(candidate, "rationale", errors, `candidates.${index}.rationale`);
+      }
+    });
   }
 }
 

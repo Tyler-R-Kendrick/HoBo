@@ -30,6 +30,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`organization-workspace-model.md`](./organization-workspace-model.md) | Productization M0 scope and acceptance for organization, workspace, project, tenant, and environment ownership | — |
 | [`workspace-activation-telemetry-contract.md`](./workspace-activation-telemetry-contract.md) | Productization M0 contract for first-run workspace activation telemetry and privacy boundaries | — |
 | [`e2e-test-matrix.md`](./e2e-test-matrix.md) | Productization M0 scope and acceptance for the E2E Test Matrix project | — |
+| [`performance-load-tests.md`](./performance-load-tests.md) | Productization M0 scope, launch envelope, capacity assumptions, deterministic fixtures, threshold handoffs, and acceptance for Performance & Load Tests | — |
 | [`persona-operating-profile.md`](./persona-operating-profile.md) | Productization M0 contract for persona operating profile fields and v1 recommendation memory boundaries | — |
 | [`launch-e2e-persona-matrix.md`](./launch-e2e-persona-matrix.md) | Productization M0 contract for launch e2e persona journeys and pass/fail thresholds | — |
 | [`wasm-runtime-wit.md`](./wasm-runtime-wit.md#plan-20) | WASM/WASI runtime & WIT interface reference | 20 |
@@ -44,7 +45,6 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`billing-launch-policy.md`](./billing-launch-policy.md) | Productization M0 launch billing policy for plans, credits, invoices, payment failures, refunds, and provider/legal boundaries | — |
 | [`usage-metering.md`](./usage-metering.md) | Productization M0 scope and acceptance for usage facts, showback dimensions, reconciliation evidence, and support/audit boundaries | — |
 | [`entitlements-plan-limits.md`](./entitlements-plan-limits.md) | Productization M0 scope and acceptance for plan tiers, entitlement categories, limit decisions, support overrides, and follow-up gates | — |
-| [`performance-load-tests.md`](./performance-load-tests.md) | Productization M0 launch envelope for performance, cost, capacity assumptions, deterministic load fixtures, and threshold handoffs | — |
 | [`tax-currency-receipt-obligations.md`](./tax-currency-receipt-obligations.md) | Productization M0 launch posture for tax, currency, receipts, invoice metadata, and unsupported jurisdictions | — |
 | [`product-notifications-lifecycle.md`](./product-notifications-lifecycle.md) | Productization M0 taxonomy for product lifecycle notifications, preferences, delivery evidence, and scope boundaries | — |
 | [`sbom-vulnerability-notice-evidence.md`](./sbom-vulnerability-notice-evidence.md) | Productization M0 evidence contract for SBOMs, dependency vulnerability posture, third-party notices, artifact provenance, and customer assurance readiness | — |

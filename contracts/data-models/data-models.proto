@@ -49,6 +49,19 @@ message ActorHostRuntimePortContractActorHostRuntimePortDataModel {
   bool cue_annotated = 6;
 }
 
+message AdminConsoleScopeAdminConsoleScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.admin-console-scope.admin-console-scope";
+  option (hobo.source_path) = "src/draft/admin-console-scope/src/admin-console-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#AdminConsoleScopeAdminConsoleScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message AdoptInPlaceContractAdoptInPlaceContractDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.adopt-in-place-contract.adopt-in-place-contract";
   option (hobo.source_path) = "src/draft/adopt-in-place-contract/src/adopt-in-place-contract.ts";

@@ -9,7 +9,11 @@ export const GENERATED_CONTROL_PLANE_EVENT_TYPES = [
   "resource.Pending",
   "resource.Provisioning",
   "resource.Provisioned",
+  "resource.DriftDetected",
+  "resource.DriftQueued",
   "resource.Updating",
+  "resource.RefreshFailed",
+  "resource.DriftSuppressed",
   "resource.Failed",
   "resource.Destroying",
   "resource.Destroyed",
@@ -71,10 +75,33 @@ export const GENERATED_REQUIRED_EVENT_BODY_FIELDS = {
     "resourceId",
     "outputs"
   ],
+  "resource.DriftDetected": [
+    "resourceId",
+    "driftFingerprint",
+    "providerStateHash",
+    "desiredStateHash",
+    "changes"
+  ],
+  "resource.DriftQueued": [
+    "resourceId",
+    "driftFingerprint",
+    "leaseHolder"
+  ],
   "resource.Updating": [
     "resourceId",
     "previousVersion",
     "targetVersion"
+  ],
+  "resource.RefreshFailed": [
+    "resourceId",
+    "classification",
+    "reason",
+    "retryAfterMs"
+  ],
+  "resource.DriftSuppressed": [
+    "resourceId",
+    "driftFingerprint",
+    "reason"
   ],
   "resource.Failed": [
     "resourceId",

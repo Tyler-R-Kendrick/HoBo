@@ -23,7 +23,7 @@ later SDK conformance lane.
 ## What This Proves
 
 - Transient provider/runtime failure may retry only through a deterministic,
-  budgeted schedule with persisted attempt facts.
+  seeded, budgeted schedule with persisted attempt facts.
 - `policy.Decided{allow:false}` is terminal even when a provider also reports a
   transient failure.
 - Typed terminal SDK failures never enter retry scheduling.
@@ -63,6 +63,7 @@ Deliberately bad fixtures fail with stable codes:
 - `resilience.deadline_not_escalated`
 - `resilience.cleanup_missing`
 - `resilience.replay_reran_effect`
+- `resilience.retry_seed_missing`
 
 ## Scope Boundary
 

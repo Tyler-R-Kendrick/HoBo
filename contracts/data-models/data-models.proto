@@ -192,6 +192,19 @@ message AvailabilityViewContractAvailabilityViewDataModel {
   bool cue_annotated = 6;
 }
 
+message BillingCreditsScopeContractBillingCreditsScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.billing-credits-scope-contract.billing-credits-scope";
+  option (hobo.source_path) = "src/draft/billing-credits-scope-contract/src/billing-credits-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#BillingCreditsScopeContractBillingCreditsScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message BillingLaunchPolicyContractBillingLaunchPolicyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.billing-launch-policy-contract.billing-launch-policy";
   option (hobo.source_path) = "src/draft/billing-launch-policy-contract/src/billing-launch-policy.ts";
@@ -4499,6 +4512,19 @@ message StuckRolloutConvergenceContractStuckRolloutConvergenceDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.stuck-rollout-convergence-contract.stuck-rollout-convergence";
   option (hobo.source_path) = "src/draft/stuck-rollout-convergence-contract/src/stuck-rollout-convergence.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#StuckRolloutConvergenceContractStuckRolloutConvergenceDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.supervision-child-lifetime-contract.supervision-child-lifetime";
+  option (hobo.source_path) = "src/draft/supervision-child-lifetime-contract/src/supervision-child-lifetime.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel";
 
   string contract_id = 1;
   string source_path = 2;

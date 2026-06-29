@@ -9,7 +9,7 @@ only documented, but has an implementation home.
 - Plan index: [README.md](./README.md)
 - ADR index: [adr/README.md](./adr/README.md)
 - Backlog mirror: [../implementation-plan.md](../implementation-plan.md)
-- Live source of truth: Linear team `HoBo`, issues `HOBO-1` through `HOBO-400`
+- Live source of truth: Linear team `HoBo`, issues `HOBO-1` through `HOBO-513`
 
 Open/proposed `ADR-Pn` items are intentionally excluded from the numbered ADR completeness count
 until they are accepted as monotonic `ADR-NNNN` entries.
@@ -46,6 +46,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | Issue | Source record | Proof package | Acceptance assertion |
 |---|---|---|---|
 | HOBO-435 | [`example-apps.md`](./example-apps.md) | [`example-apps-scope-acceptance`](../../src/draft/example-apps-scope-acceptance/README.md) | Example Apps M0 scope names goal/personas, scope in/out, service/UX/security/support boundaries, authoritative and owning-initiative dependencies, M1 proof assets, and the follow-up issue gate before downstream design/build work. |
+| HOBO-494 | [`security-verification.md`](./security-verification.md) | [`vulnerability-disclosure-launch-blocker-contract`](../../src/draft/vulnerability-disclosure-launch-blocker-contract/README.md) | Vulnerability disclosure and security launch-blocker process names intake channels, severity/SLA ownership, embargo handling, customer communication, fix verification, beta/GA differences, security/cutline gate mapping, and the explicit no-bug-bounty scope boundary. |
 
 ## Plan Coverage
 

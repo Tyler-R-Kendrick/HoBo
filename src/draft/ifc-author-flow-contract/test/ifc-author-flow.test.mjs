@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   withTempSdkProject,
   writeGeneratedTree,
-} from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.mjs";
+} from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.js";
 import {
   SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH,
   runIfcAuthorFlow,

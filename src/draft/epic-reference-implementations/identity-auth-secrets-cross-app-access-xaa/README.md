@@ -83,3 +83,13 @@ Feature: Recover and observe identity control planes
 - Provider-side Pact verification is documented as unavailable because the real providers are not in this reference package.
 
 No live external service, network call, credential, customer data, or production token is required.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Identity Auth Secrets Cross App Access Xaa.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -24,3 +24,13 @@ The proof covers:
 - Scope guard that rejects embedded private key or issuing material; this contract consumes `identity://` certificate material only.
 
 Scope boundary: this POC does not issue or rotate SVIDs, implement the policy engine, provision networking tiers, or perform real TLS. It defines and tests the mTLS data-path decision contract those later slices consume.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Mtls Data Path Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

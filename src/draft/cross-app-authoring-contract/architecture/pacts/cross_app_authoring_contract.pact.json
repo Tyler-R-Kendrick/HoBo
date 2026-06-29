@@ -1,0 +1,29 @@
+{
+  "consumer": {
+    "name": "CrossAppAuthoringContractConsumer"
+  },
+  "provider": {
+    "name": "CrossAppAuthoringContractBoundary"
+  },
+  "interactions": [
+    {
+      "description": "Cross App Authoring Contract boundary returns its recorded contract evidence",
+      "request": {
+        "method": "GET",
+        "path": "/cross-app-authoring-contract/contract"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "schema": "hobo.draft.cross_app_authoring_contract/v1"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  }
+}

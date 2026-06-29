@@ -29,3 +29,13 @@ Relevant design records:
 - `docs/design/platform-engineering.md`: Deployment Sets, Deltas, promote, rollback, and incremental deploy
 - `docs/design/control-plane.md`: level-triggered ResourceActor reconciliation and Orchestrator choreography
 - `docs/design/adr/01-architecture-core.md`: ADR-0003 event sourcing and ADR-0028 environment-group atomicity
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Delta Set Apply Reconcile Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

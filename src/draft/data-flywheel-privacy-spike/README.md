@@ -12,3 +12,13 @@ npm.cmd --prefix src/draft/data-flywheel-privacy-spike test
 
 The package is deliberately dependency-free and models the decision in
 `fixtures/privacy-model.json` plus the pure functions in `src/privacy-model.ts`.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Data Flywheel Privacy Spike.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

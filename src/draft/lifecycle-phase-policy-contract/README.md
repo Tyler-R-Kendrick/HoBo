@@ -22,3 +22,13 @@ This POC does not implement full domain policy packs, obligation execution, OPA/
 ```sh
 npm.cmd --prefix src/draft/lifecycle-phase-policy-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Lifecycle Phase Policy Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -35,3 +35,13 @@ the SDK conformance gate that those future implementations must pass.
 ```powershell
 npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Sdk Idiom Conformance Gate.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

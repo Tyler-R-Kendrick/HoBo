@@ -31,3 +31,13 @@ npm.cmd test
 
 `npm.cmd test` runs `jco types` for all three WIT packages, then executes the
 TypeScript guest-stub compile gate and Node conformance tests.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Async Building Block Ports.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

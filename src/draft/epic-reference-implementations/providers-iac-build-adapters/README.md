@@ -116,3 +116,13 @@ Revised:
 Deferred:
 
 - Real cloud APIs, real Pulumi/OpenTofu/Crossplane/CDKTF runs, real Dagger/Packer/Firecracker/Vagrant builds, production provider package publication, provider-side Pact verification, hosted registry transport, live model calls, and real executor dispatch.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Providers Iac Build Adapters.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

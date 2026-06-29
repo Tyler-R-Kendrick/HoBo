@@ -43,3 +43,13 @@ npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
 npm.cmd --prefix src\draft\dispatcher-reservation-hardening-contract test
 npm.cmd test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Dispatcher Maximize Credits Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

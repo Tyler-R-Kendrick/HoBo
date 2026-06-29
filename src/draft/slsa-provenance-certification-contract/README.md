@@ -11,3 +11,13 @@ It proves:
 - a missing seed or unsigned conformance report is rejected before signing.
 
 Out of scope here: KMS/signing-key infrastructure, Registry publication, the certify engine that emits the event, and bit-reproduction guarantees for hosted model aliases.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Slsa Provenance Certification Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

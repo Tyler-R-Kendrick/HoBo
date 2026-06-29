@@ -19,3 +19,13 @@ Junction identity trust establishment, trust revocation mechanics, cross-cloud c
 ```powershell
 npm.cmd --prefix src\draft\junction-registry-federation-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Junction Registry Federation Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

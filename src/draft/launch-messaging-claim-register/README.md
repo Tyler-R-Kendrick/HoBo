@@ -33,3 +33,13 @@ npm.cmd --prefix src\draft\launch-messaging-claim-register test
 
 This proof does not build the launch site, publish final copy, create demo recordings, or assert
 production readiness without linked evidence.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Launch Messaging Claim Register.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

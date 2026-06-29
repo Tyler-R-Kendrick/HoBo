@@ -31,3 +31,13 @@ npm.cmd --prefix src\draft\internal-ca-private-acme-contract test
 The checks cover zero-egress issuance, validation-gate ACME evidence from a
 private endpoint, in-boundary rotation, public ACME fallback refusal, and CA key
 boundary validation.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Internal Ca Private Acme Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

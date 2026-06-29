@@ -12,3 +12,13 @@ npm test -- src/draft/policy-gated-flag-flips-contract/test/policy-gated-flag-fl
 
 The proof intentionally stays out of RBAC, policy-engine implementation, SLO signal production, and
 shared rollout auto-revert mechanics.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Policy Gated Flag Flips Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

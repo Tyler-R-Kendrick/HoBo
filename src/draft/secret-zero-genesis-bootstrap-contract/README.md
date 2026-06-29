@@ -25,3 +25,13 @@ cross-Yard Junction federation.
 ```powershell
 npm.cmd --prefix src\draft\secret-zero-genesis-bootstrap-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Secret Zero Genesis Bootstrap Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

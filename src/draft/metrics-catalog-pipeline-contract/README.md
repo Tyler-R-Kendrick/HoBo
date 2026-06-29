@@ -22,3 +22,13 @@ Scope kept out:
 - Real OTLP network transport or provider-specific collector adapters.
 - AI-method/OpenInference metrics beyond the catalog family.
 - Cardinality-explosion guard implementation beyond this contract's fail-closed label schema.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Metrics Catalog Pipeline Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

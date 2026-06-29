@@ -24,3 +24,13 @@ support ticketing, live memberships, or downstream implementation issues.
 ```powershell
 npm.cmd --prefix src\draft\member-rbac-administration-scope test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Member Rbac Administration Scope.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -30,3 +30,13 @@ npm.cmd --prefix src\draft\document-projection-sink-contract test
 - Cross-document joins fail closed instead of doing N+1 reads.
 - Deeply nested records round-trip without field loss.
 - Enum values outside the declared WIT enum fail closed with `ProjectionSinkMappingError`.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Document Projection Sink Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -17,3 +17,13 @@ The proof covers:
 - Policy-bound `.with(...)` override rejection when an override widens beyond the configured ceiling.
 
 Scope boundary: this POC does not provision any tier, perform Junction inference, implement Planner objective ranking, or realize provider networking. It only defines and validates the IR that those later slices consume.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Connectivity Tier Ir Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -37,3 +37,13 @@ This does not implement the production `@hobo/conformance` package, real port su
 npm.cmd --prefix src\draft\conformance-port-suite-contract test
 npm.cmd test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Conformance Port Suite Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

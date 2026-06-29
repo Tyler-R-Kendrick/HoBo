@@ -18,3 +18,13 @@ decision can be checked like a contract before implementation work starts.
 ```powershell
 npm.cmd --prefix src\draft\generation-eval-methodology-spike test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Generation Eval Methodology Spike.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -74,3 +74,13 @@ Feature: Foundations, Build and Conformance Harness
 - `poc-rollup-ledger.md`
 - `scope-review.md`
 - `reference-implementation.yaml`
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Foundations Build Conformance Harness.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

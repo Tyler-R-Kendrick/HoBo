@@ -19,3 +19,13 @@ This is a contract POC, not a real Docker build. It intentionally leaves SpinKub
 ```powershell
 npm.cmd --prefix src\draft\component-host-oci-floor-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Component Host Oci Floor Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

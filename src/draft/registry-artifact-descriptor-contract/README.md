@@ -20,3 +20,13 @@ npm.cmd --prefix src\draft\registry-artifact-descriptor-contract test
 ```
 
 The root `npm.cmd test` also discovers this package's Node test suite.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Registry Artifact Descriptor Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

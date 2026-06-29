@@ -49,3 +49,13 @@ gate contract and CI lane shape that those provider implementations must satisfy
 npm.cmd --prefix src\draft\multi-cloud-shop-provider-e2e-contract test
 node src\draft\multi-cloud-shop-provider-e2e-contract\scripts\run-multi-cloud-shop-e2e-fixture.ts --phase deploy-and-assert --run-id local
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Multi Cloud Shop Provider E2e Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

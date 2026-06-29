@@ -9,3 +9,13 @@ Independent POC for HOBO-40. It pins the varlock-style authoring surface:
 - `createConfigContext()` exposes `ctx.config.<KEY>()` only for declared keys.
 
 The tests prove refs-only manifest emission, plaintext leak detection, dev-only source marking, and the TypeScript key surface.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Config Secret Schema Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -35,3 +35,13 @@ The checks prove:
 - `token.Used` without a preceding `token.Granted` is flagged as an anomaly,
 - plaintext secret/config values fail at the event boundary,
 - revocation remains an append-only fact separate from the original grant.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Identity Event Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

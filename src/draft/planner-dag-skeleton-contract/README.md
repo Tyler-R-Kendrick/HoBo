@@ -36,3 +36,13 @@ npm.cmd --prefix src\draft\planner-dag-skeleton-contract test
 
 The checks live in
 `src/draft/planner-dag-skeleton-contract/test/planner.test.ts`.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Planner Dag Skeleton Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

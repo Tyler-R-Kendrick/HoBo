@@ -33,3 +33,13 @@ npm.cmd --prefix src\draft\domain-cutover-saga-contract test
 The checks cover clean staged cutover, automatic rollback, TTL-precondition
 refusal, validation-gate refusal, exact last-known-good rollback targeting, and
 flapping-health hysteresis.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Domain Cutover Saga Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

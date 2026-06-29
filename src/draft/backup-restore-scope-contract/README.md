@@ -36,3 +36,13 @@ npm.cmd --prefix src\draft\backup-restore-scope-contract test
 This proof deliberately does not build backup storage, restore services, cloud storage backends,
 snapshot scheduling, live customer recovery, upgrade/migration rollback runners, support queues, or
 compliance approval workflows.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Backup Restore Scope Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

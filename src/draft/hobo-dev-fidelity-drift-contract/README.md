@@ -25,3 +25,13 @@ consumes those surfaces and hardens their fidelity reporting contract.
 ```powershell
 npm.cmd --prefix src\draft\hobo-dev-fidelity-drift-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Dev Fidelity Drift Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

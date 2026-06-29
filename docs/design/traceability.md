@@ -45,6 +45,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 
 | Issue | Source record | Proof package | Acceptance assertion |
 |---|---|---|---|
+| HOBO-489 | [`billing-launch-policy.md`](./billing-launch-policy.md) | [`billing-launch-policy-contract`](../../src/draft/billing-launch-policy-contract/README.md) | Billing launch policy defines supported plans, prepaid credits, invoice timing, payment failure states, refund/credit correction, provider integration boundaries, mocked-provider assumptions, legal/privacy blockers, and scope-out guards against tax or live payment implementation work. |
 | HOBO-406 | [`launch-messaging-claims.md`](./launch-messaging-claims.md) | [`launch-messaging-claim-register`](../../src/draft/launch-messaging-claim-register/README.md) | V1 launch messaging claims are classified by implemented, simulated/reference, beta-only, and future-roadmap state; each claim carries an evidence owner, source, risk rating, and publication disposition; demo assets are listed; evidence-less or risky unsupported claims are routed to scope-out or follow-up before publication. |
 | HOBO-435 | [`example-apps.md`](./example-apps.md) | [`example-apps-scope-acceptance`](../../src/draft/example-apps-scope-acceptance/README.md) | Example Apps M0 scope names goal/personas, scope in/out, service/UX/security/support boundaries, authoritative and owning-initiative dependencies, M1 proof assets, and the follow-up issue gate before downstream design/build work. |
 

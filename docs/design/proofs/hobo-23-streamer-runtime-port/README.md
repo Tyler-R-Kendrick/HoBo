@@ -23,7 +23,10 @@ pins the HOBO-23 runtime-local Streamer boundary:
 - run teardown closes the stream after buffered frames drain and rejects writes
   after closure;
 - `runStreamerConformance()` reports the runtime-local subset as machine-readable
-  conformance evidence.
+  conformance evidence;
+- the runtime-local proof uses a small Node 20-compatible deferred-promise helper
+  instead of `Promise.withResolvers`, so local status checks do not depend on
+  unreleased or mismatched runtime helpers.
 
 Scope kept out: Gateway/WebSocket transport, Reactor execution, cross-Camp
 replicated streams, provider persistence, and message coalescing.

@@ -1,0 +1,55 @@
+# V1 Release Notes and Upgrade Guide
+
+> M0 outline contract for HOBO-407. This record defines the release-note and upgrade-guide table
+> of contents, required evidence inputs, and scope guards. It is not final customer-facing release
+> copy.
+
+## Purpose
+
+Release notes and upgrade guidance are the launch handoff between release engineering, docs,
+bootstrap, compatibility, and support. V1 needs the outline before release-candidate evidence exists
+so each owner can feed the correct source of truth without inventing unsupported claims.
+
+## Outline
+
+| Section | Required input | Owner domain | Customer-facing only when |
+|---|---|---|---|
+| Release summary | Cutline, go/no-go decision | Release | Release-candidate decision is accepted |
+| Supported install paths | Bootstrap smoke matrix | Bootstrap | SaaS, self-host, or local path has smoke evidence |
+| Upgrade paths | Upgrade dry-run, artifact provenance | Release | Source/target path has compatibility evidence |
+| Compatibility matrix | Browser/device/platform matrix and e2e thresholds | Compatibility | Each supported surface has test or smoke evidence |
+| Known limitations | Known-limitation register and blocker taxonomy | Docs | Limitation owner and customer-visible wording are approved |
+| Rollback guidance | Backup/restore drill and upgrade dry-run | Release/support | Drill evidence is distinguished from production recovery claims |
+| Migration notes | Migration compatibility and tenant-data inventory | Docs/compatibility | Data/config/artifact changes have source evidence |
+| Support contacts | Support SLA and incident communications | Support | Channel, severity route, and escalation coverage are recorded |
+
+## Input Map
+
+| Source project | Feeds | Evidence |
+|---|---|---|
+| Release Engineering | Summary, upgrade paths, rollback guidance | Release-candidate decision, artifact provenance, rollback decision |
+| V1 Docs | Summary, limitations, migration notes | Outline owner, customer-facing copy owner, limitation register |
+| Bootstrap Installer | Install paths, support contacts | Smoke matrix, troubleshooting handoff |
+| Compatibility Matrix | Compatibility matrix, migration notes | Supported surfaces, unsupported environments, test evidence |
+| Support Workflow | Limitations, rollback guidance, support contacts | Support channel, severity route, escalation coverage |
+
+## Missing Evidence Policy
+
+Missing evidence is classified before any release claim is written:
+
+- Required launch claim without accepted evidence: file a release-blocker candidate.
+- Non-blocking gap: file an explicit follow-up or list it as a launch limitation.
+- Accepted substitute evidence: allowed only when the source owner and limitation text are recorded.
+
+## Scope Guards
+
+- Do not write final release notes before release-candidate evidence exists.
+- Do not invent compatibility guarantees without supporting tests.
+- Do not resolve release blockers in this issue; the outline only routes missing evidence.
+
+## Proof
+
+Executable proof lives in
+[`../../src/draft/v1-release-notes-upgrade-guide-contract`](../../src/draft/v1-release-notes-upgrade-guide-contract/README.md).
+The HOBO-401 v1 cutline dependency is recorded by
+[`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md).

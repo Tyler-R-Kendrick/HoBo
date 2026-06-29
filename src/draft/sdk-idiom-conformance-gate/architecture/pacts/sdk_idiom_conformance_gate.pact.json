@@ -16,7 +16,14 @@
         "status": 200,
         "body": {
           "ok": true,
-          "schema": "hobo.draft.sdk_idiom_conformance_gate/v1"
+          "schema": "hobo.draft.sdk_idiom_conformance_gate/v1",
+          "requiredLanes": [
+            "golden-ir-lowering-equivalence",
+            "semantics-annex",
+            "resilience-semantics-annex",
+            "thin-idiom-layer",
+            "authorship-neutral-gate"
+          ]
         }
       }
     }

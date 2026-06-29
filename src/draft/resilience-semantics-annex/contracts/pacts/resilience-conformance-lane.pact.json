@@ -14,7 +14,11 @@
       },
       "response": {
         "status": 200,
-        "body": { "name": "transient-retry-schedule", "status": "passed" }
+        "body": {
+          "name": "transient-retry-schedule",
+          "status": "passed",
+          "seed": "hobo-resilience-retry-v1"
+        }
       }
     },
     {

@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 
 const MAX_BATCH_CHARS = 12000;
+const TEST_CONCURRENCY = process.env.HOBO_NODE_TEST_CONCURRENCY ?? "4";
+const TEST_TIMEOUT_MS = Number.parseInt(process.env.HOBO_NODE_TEST_TIMEOUT_MS ?? "300000", 10);
 
 function gitLsFiles(patterns: string[]): string[] {
   const result = spawnSync("git", ["ls-files", ...patterns], {
@@ -52,11 +54,22 @@ if (testFiles.length === 0) {
 let failed = false;
 const testBatches = batches(testFiles);
 for (const [index, batch] of testBatches.entries()) {
-  const result = spawnSync(process.execPath, ["--import", "tsx", "--test", ...batch], {
-    encoding: "utf8",
-    shell: false,
-    stdio: "inherit",
-  });
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "--test",
+      `--test-concurrency=${TEST_CONCURRENCY}`,
+      `--test-timeout=${TEST_TIMEOUT_MS}`,
+      ...batch,
+    ],
+    {
+      encoding: "utf8",
+      shell: false,
+      stdio: "inherit",
+    },
+  );
 
   if (result.status !== 0) {
     console.error(

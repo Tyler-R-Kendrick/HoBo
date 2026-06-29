@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-411 Plan/Diff Viewer M0 Scope Proof"
+description: "Source issue: HOBO-411."
+tags: [hobo, design]
+---
+
 # HOBO-411 Plan/Diff Viewer M0 Scope Proof
 
 HOBO-411 is proven by the focused M0 contract at

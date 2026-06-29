@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Settings And Project Lifecycle Scope And Acceptance"
+description: "Source issue: HOBO-412."
+tags: [hobo, design]
+---
+
 # Settings And Project Lifecycle Scope And Acceptance
 
 Source issue: HOBO-412.

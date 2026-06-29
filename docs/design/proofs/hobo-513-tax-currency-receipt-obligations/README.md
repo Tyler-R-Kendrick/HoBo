@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-513 Tax Currency Receipt Obligations Proof"
+description: "Source issue: HOBO-513."
+tags: [hobo, design]
+---
+
 # HOBO-513 Tax Currency Receipt Obligations Proof
 
 HOBO-513 is proven by the focused M0 contract at

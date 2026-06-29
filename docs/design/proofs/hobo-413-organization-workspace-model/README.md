@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-413 Organization & Workspace Model Proof"
+description: "Source issue: HOBO-413."
+tags: [hobo, design]
+---
+
 # HOBO-413 Organization & Workspace Model Proof
 
 HOBO-413 is proven by the focused M0 contract at

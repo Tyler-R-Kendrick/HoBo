@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Legal, Privacy, And Terms Launch Readiness"
+description: "Source issue: HOBO-405."
+tags: [hobo, design]
+---
+
 # Legal, Privacy, And Terms Launch Readiness
 
 Source issue: HOBO-405.

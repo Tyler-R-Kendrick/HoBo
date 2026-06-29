@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Plan/Diff Viewer Scope and Acceptance"
+description: "Source issue: HOBO-411."
+tags: [hobo, design]
+---
+
 # Plan/Diff Viewer Scope and Acceptance
 
 Source issue: HOBO-411.

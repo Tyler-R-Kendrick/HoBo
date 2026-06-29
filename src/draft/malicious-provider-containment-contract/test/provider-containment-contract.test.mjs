@@ -110,6 +110,29 @@ test("forged conformance report is rejected by in-boundary rerun rather than att
   assertEvent(verdict, "conformance.ReportRejected", "conformance.in_boundary_rerun");
 });
 
+test("claimed supported capabilities must be exercised by the in-boundary rerun", () => {
+  const verdict = evaluateProviderContainment({
+    provider: createEvilProviderFixture({
+      manifest: { claimedCapabilities: ["database", "objectStore"] },
+      sandboxRerun: {
+        suiteId: "@hobo/conformance/provider-capability/database",
+        passed: true,
+        digest: "sha256:report",
+        exercisedCapabilities: ["database"]
+      }
+    }),
+    policy: defaultPolicy
+  });
+
+  assert.equal(verdict.ok, false);
+  assert.equal(gate(verdict, "conformance.claimed_capability_coverage").decision, "deny");
+  assert.deepEqual(gate(verdict, "conformance.claimed_capability_coverage").reasons, [
+    "claimed capability not rerun: objectStore"
+  ]);
+  assert.match(verdict.reasons.join("\n"), /conformance.coverage_missing: objectStore/);
+  assertEvent(verdict, "conformance.ReportRejected", "conformance.claimed_capability_coverage");
+});
+
 test("older signed vulnerable provider versions are blocked by anti-rollback", () => {
   const verdict = evaluateProviderContainment({
     provider: createEvilProviderFixture({

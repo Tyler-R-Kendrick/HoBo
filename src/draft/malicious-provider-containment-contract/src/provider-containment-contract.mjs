@@ -218,6 +218,25 @@ function evaluateConformanceRerun({ provider, gates, auditEvents, reasons }) {
     return;
   }
   allow(gates, "conformance.in_boundary_rerun");
+
+  const exercised = new Set(Array.isArray(rerun.exercisedCapabilities) ? rerun.exercisedCapabilities : []);
+  const missingCoverage = claimedCapabilities(provider)
+    .filter((capability) => !exercised.has(capability))
+    .sort();
+  if (missingCoverage.length > 0) {
+    deny({
+      gates,
+      auditEvents,
+      reasons,
+      id: "conformance.claimed_capability_coverage",
+      code: `conformance.coverage_missing: ${missingCoverage.join(", ")}`,
+      gateReasons: missingCoverage.map((capability) => `claimed capability not rerun: ${capability}`),
+      eventType: "conformance.ReportRejected",
+      details: { missingCoverage }
+    });
+    return;
+  }
+  allow(gates, "conformance.claimed_capability_coverage");
 }
 
 function evaluateRollback({ provider, policy, gates, auditEvents, reasons }) {

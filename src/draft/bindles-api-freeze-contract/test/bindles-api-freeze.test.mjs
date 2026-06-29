@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import * as bindlesCatalog from "../../hobo-bindles-resource-catalog/src/catalog.js";
+import * as bindlesCatalog from "../../hobo-bindles-resource-catalog/src/catalog.mjs";
 import {
   assertManifestFreeze,
   assertNoInternalCloudSymbols,
@@ -11,7 +11,7 @@ import {
   createBindlesPublicApiSnapshot,
   createRepresentativeManifest,
   evaluateBindlesFreezeMatrix,
-} from "../src/bindles-api-freeze.js";
+} from "../src/bindles-api-freeze.mjs";
 
 test("@hobo/bindles public API snapshot catches signature and internal symbol drift", async () => {
   const expected = await readFixture("bindles-public-api.snapshot.json");

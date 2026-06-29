@@ -7,7 +7,7 @@ import test from "node:test";
 import {
   withTempSdkProject,
   writeGeneratedTree,
-} from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.js";
+} from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.mjs";
 import {
   SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH,
   runIfcAuthorFlow,
@@ -15,7 +15,7 @@ import {
   runIfcAuthorFlowWithNarrowingFailure,
   stableManifestJson,
   writeSdkManifestIrArtifact,
-} from "../src/ifc-author-flow.js";
+} from "../src/ifc-author-flow.mjs";
 
 test("sample Bindle drives declare to collect to infer to codegen to manifest", async () => {
   const result = await runIfcAuthorFlow();

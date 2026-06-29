@@ -41,6 +41,12 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | Reliability, Observability & Cost (FinOps) | [`reliability-observability-cost-finops`](../../src/draft/epic-reference-implementations/reliability-observability-cost-finops/README.md) | Epic reference implementation proves telemetry/SLO rollback, FinOps budget guard, saga compensation recovery, Golden Suite chaos status rollup, and PACT-covered mocked boundaries across PLAN-05, ADR-0045, ADR-0047, ADR-0058, ADR-0071, ADR-0077, ADR-0078, ADR-0082, ADR-0083, ADR-0094, and ADR-0104. |
 | Networking, Connectivity, DNS & Relay | [`networking-connectivity-dns-relay`](../../src/draft/epic-reference-implementations/networking-connectivity-dns-relay/README.md) | Epic reference implementation proves tier-bounded cross-cloud binds, Yard topology and Junction halves, mTLS-by-default, shadow DNS validation, ACME and private ACME certificate paths, staged gateway routing, Relay abuse denial, tenant-aware ingress, and PACT-covered mocked boundaries across PLAN-12, PLAN-50, ADR-0008, ADR-0023, ADR-0060, ADR-0071, ADR-0079, ADR-0080, ADR-0101, and ADR-0103. |
 
+## SDK Contract Evidence
+
+| Issue | Source record | Proof package | Acceptance assertion |
+|---|---|---|---|
+| HOBO-514 | [`dx-sdk-resilience-semantics.md`](./dx-sdk-resilience-semantics.md) | [`dx-sdk-resilience-scope-contract`](../../src/draft/dx-sdk-resilience-scope-contract/README.md) | DX SDK resilience parent scope verifies the M0-M4 child issue matrix, initiative links to launch quality and developer entry points, design-index and SDK-contract discoverability, and adversarial guardrails that reject retrying denial, hidden cancellation retry, process-memory inspection, and golden-IR-only semantics claims. |
+
 ## Productization M0 Evidence
 
 | Issue | Source record | Proof package | Acceptance assertion |

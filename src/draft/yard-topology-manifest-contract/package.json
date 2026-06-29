@@ -1,0 +1,15 @@
+{
+  "name": "@hobo/draft-yard-topology-manifest-contract",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/yard-topology-manifest.d.mts",
+      "default": "./src/yard-topology-manifest.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
+  }
+}

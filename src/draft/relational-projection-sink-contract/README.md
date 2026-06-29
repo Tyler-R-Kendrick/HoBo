@@ -25,3 +25,13 @@ npm.cmd --prefix src\draft\relational-projection-sink-contract test
 - Out-of-order logical replication changes are sorted by `seq`, LSN, and key before publication.
 - Reads are explicitly labeled `bounded-staleness`.
 - Enum values outside the declared WIT enum fail closed with `ProjectionSinkMappingError`.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Relational Projection Sink Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

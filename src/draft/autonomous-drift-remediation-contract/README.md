@@ -20,3 +20,13 @@ Proofs:
 - repeated drift for the same resource and same desired/observed refs escalates instead of
   re-applying the same resync loop.
 - high-impact drift resyncs that exceed the blast-radius budget enter A2H escalation.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Autonomous Drift Remediation Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

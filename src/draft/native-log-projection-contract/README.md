@@ -26,3 +26,13 @@ provider sink adapters, the Reactor push loop, schema mapping, or rebuild-from-z
 ```powershell
 npm.cmd --prefix src\draft\native-log-projection-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Native Log Projection Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

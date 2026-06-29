@@ -20,3 +20,13 @@ This POC classifies and builds validated `RemediationAction` envelopes only. It 
 npm.cmd --prefix src\draft\failure-taxonomy-safe-fix-classifier test
 npm.cmd test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Failure Taxonomy Safe Fix Classifier.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

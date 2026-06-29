@@ -30,3 +30,13 @@ ResourceActor resync trigger, drift remediation policy, or the adopt-in-place im
 ```powershell
 npm.cmd --prefix src\draft\iac-drift-refresh-fidelity-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Iac Drift Refresh Fidelity Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

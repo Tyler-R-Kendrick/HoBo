@@ -38,3 +38,13 @@ npm.cmd --prefix src\draft\camp-mapping-sugar-compiler test
 
 The acceptance and adversarial checks live in
 `src/draft/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.mjs`.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Camp Mapping Sugar Compiler.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

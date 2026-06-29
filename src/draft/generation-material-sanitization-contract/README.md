@@ -41,3 +41,13 @@ logic. Those remain separate generation pipeline slices.
 ```powershell
 npm.cmd --prefix src\draft\generation-material-sanitization-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Generation Material Sanitization Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

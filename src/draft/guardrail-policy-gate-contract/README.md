@@ -27,3 +27,13 @@ prompt registries, eval scoring, or red-team generation.
 ```powershell
 npm.cmd --prefix src\draft\guardrail-policy-gate-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Guardrail Policy Gate Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

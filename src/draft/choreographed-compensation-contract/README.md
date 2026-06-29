@@ -29,3 +29,13 @@ Relevant design records:
 - `docs/design/control-plane.md`: choreography compensation in Plan 04
 - `docs/design/adr/01-architecture-core.md`: ADR-0004
 - `docs/implementation-plan.md`: HOBO-109 wiring under Control Plane
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Choreographed Compensation Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

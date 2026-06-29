@@ -31,3 +31,13 @@ Scope boundary:
 - No cross-Yard failover.
 - No new architectural decision; this consumes Plan 06, ADR-0008, ADR-0100, and
   the HOBO-266 partition recommendation.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Token Broker Ha Cache Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

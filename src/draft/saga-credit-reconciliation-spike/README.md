@@ -103,3 +103,13 @@ adapter, spend breaker, degradation tiers, or Dispatcher routing logic.
 npm.cmd --prefix src\draft\saga-credit-reconciliation-spike test
 npm.cmd test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Saga Credit Reconciliation Spike.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

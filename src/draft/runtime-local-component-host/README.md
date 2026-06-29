@@ -19,3 +19,13 @@ This is a local skeleton, not the cross-host membrane. It intentionally leaves c
 ```powershell
 npm.cmd --prefix src\draft\runtime-local-component-host test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Runtime Local Component Host.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

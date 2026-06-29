@@ -41,3 +41,13 @@ The checks prove the fixture `auth.json` flow resolution, scoped stub-token
 response, `token.Granted`/`token.Used` emission, unknown-provider denial,
 out-of-SVID-scope fail-closed ordering, API-key fallback marking, audit
 redaction, `ctx.token(...)`, and MCP `request_token` delegation.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Token Broker Skeleton Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

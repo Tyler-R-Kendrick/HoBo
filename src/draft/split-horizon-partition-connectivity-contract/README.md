@@ -25,3 +25,13 @@ npm.cmd --prefix src\draft\split-horizon-partition-connectivity-contract test
 ```
 
 The checks cover split-horizon disagreement, DNS vantage independence, healthy-but-unconfirmable failover refusal, TTL-bounded fail-closed partition behavior, overlong lease rejection, deterministic recovery, and superseding trust revocation.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Split Horizon Partition Connectivity Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

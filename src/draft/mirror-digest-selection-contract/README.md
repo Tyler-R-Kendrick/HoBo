@@ -24,3 +24,13 @@ registry transport, or HOBO-391's digest-mismatch hard-fail UX.
 ```powershell
 npm.cmd --prefix src\draft\mirror-digest-selection-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Mirror Digest Selection Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

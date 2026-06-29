@@ -89,3 +89,13 @@ Contracts:
 In scope: epic-level reference slice under the common reference implementation root, mocked boundary contracts, Pact fixture inventory, POC disposition ledger, and deterministic simulation.
 
 Out of scope: production registry transport, real OCI/Sigstore/Rekor services, real cloud/provider APIs, full Junction federation rollout, production Matching scoring, and deleting or moving existing POCs.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Portability Registry Distribution.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

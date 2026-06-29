@@ -18,3 +18,13 @@ The proof covers:
 - Non-tier-one plans fail closed instead of realizing adjacent tiers.
 
 Scope boundary: this POC does not call a cloud provider, create VPCs/VNets, implement tiers 2-5, build Junction inference, change Planner ranking, or implement provider IaC internals. It models the narrow tier-one realization seam those later slices consume.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Tier One Private Network Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

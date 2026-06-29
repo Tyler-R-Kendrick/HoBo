@@ -21,3 +21,13 @@ Independent POC for HOBO-76, defining the default read surface over event-source
 ## Scope Boundary
 
 This is a client/read-surface contract POC only. It does not implement the Reactor engine, Streamer transport, GraphQL facade, snapshot cache, reads-your-writes advancement, sink adapters, or slow-client backpressure.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Default Read Surface Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

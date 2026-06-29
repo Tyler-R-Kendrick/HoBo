@@ -40,3 +40,13 @@ npm.cmd --prefix src\draft\static-key-escape-hatch-contract test
 The tests cover TTL max/fail-closed behavior, rotation fail-closed behavior,
 per-fetch audit and opt-in, envelope-only persistence, and no plaintext in
 events/logs/spans/training trajectories.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Static Key Escape Hatch Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

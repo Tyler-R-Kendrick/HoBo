@@ -18,3 +18,13 @@ The proof covers:
 - Missing egress cost data is labeled `unrated` and never silently reported as `$0`.
 
 Scope boundary: this POC does not implement Planner colocation objectives, the cost model engine, dashboard rendering, provider billing reconciliation, or tier realization. It models the narrow data contract those surfaces consume.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Connectivity Cost Feedback Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

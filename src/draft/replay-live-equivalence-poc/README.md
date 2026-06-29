@@ -29,3 +29,13 @@ This POC does not implement the Reactor, Streamer transport, snapshot store, cro
 npm.cmd --prefix src\draft\replay-live-equivalence-poc test
 npm.cmd test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Replay Live Equivalence Poc.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

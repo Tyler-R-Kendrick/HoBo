@@ -23,3 +23,13 @@ HOBO-354 proves the M1 registry storage seam can push and pull registry descript
 ```powershell
 npm.cmd --prefix src\draft\oci-artifact-storage-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Oci Artifact Storage Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -31,3 +31,13 @@ npm.cmd --prefix src\draft\feature-flag-governance-contract test
 No OpenFeature port, built-in flag store, in-process evaluator, reactive
 re-evaluation, stale-flag cleanup, Harness transport, or SLO signal source is
 implemented here. Those remain in the progressive-delivery Harness slices.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Feature Flag Governance Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

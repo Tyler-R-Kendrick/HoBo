@@ -1,0 +1,52 @@
+{
+  "consumer": { "name": "SdkResilienceConformanceLane" },
+  "provider": { "name": "ResilienceSemanticsAnnex" },
+  "interactions": [
+    {
+      "description": "transient failures retry on the declared schedule then succeed",
+      "providerStates": [
+        { "name": "transient-retry-schedule fixture is published" }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/resilience/case",
+        "body": { "name": "transient-retry-schedule" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "name": "transient-retry-schedule", "status": "passed" }
+      }
+    },
+    {
+      "description": "a policy denial never retries and ends terminally",
+      "providerStates": [
+        { "name": "denial-never-retries fixture is published" }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/resilience/case",
+        "body": { "name": "denial-never-retries" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "name": "denial-never-retries", "status": "passed" }
+      }
+    },
+    {
+      "description": "replay re-runs no effects (effect counters do not increment)",
+      "providerStates": [
+        { "name": "replay-no-effect-rerun fixture is published" }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/resilience/case",
+        "body": { "name": "replay-no-effect-rerun" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "name": "replay-no-effect-rerun", "status": "passed" }
+      }
+    }
+  ],
+  "metadata": { "pactSpecification": { "version": "3.0.0" } }
+}

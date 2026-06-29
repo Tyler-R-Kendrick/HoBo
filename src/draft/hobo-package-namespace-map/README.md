@@ -26,3 +26,13 @@ npm --prefix src/draft/hobo-package-namespace-map test
   SDK symbols.
 - `secret()` and `secretRef()` are both app authoring symbols, but the former is
   a managed secret resource and the latter is a config-value reference.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Package Namespace Map.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

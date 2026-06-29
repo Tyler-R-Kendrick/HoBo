@@ -54,3 +54,8 @@ Requires: Node ≥18 (`npx`), Python ≥3.10 (`pip`) for headroom, and Bun for g
 - All seven are MIT/Apache-2.0 OSS. `improve`, `mattpocock/skills`, `ponytail`, `superpowers`, and `headroom` are read-only/local with no egress (superpowers has optional, disable-able telemetry). `caveman` installs via a `curl|bash` shim that forwards to `npx github:JuliusBrussee/caveman`. `gbrain` is the only one with third-party data egress + cost.
 - `npx skills add … --copy` writes real files (not symlinks) so they're committable and reviewable. `skills-lock.json` pins versions.
 - Review skill files before trusting them — they run with full agent permissions.
+
+
+## Maintenance gates
+
+Agent-tooling changes count as repo behavior changes. Update `AGENTS.md`, this file, or another relevant README in the same change when editing `.agents/`, `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, or setup scripts. The `docs:freshness` CI gate and `.githooks/pre-commit` hook enforce that code/tooling changes include a docs update.

@@ -10,6 +10,9 @@ how its records map onto the platform's event flow.
 - CUE constraints bound every protobuf type in that schema.
 - A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
   package's boundary.
+- The required-lanes record includes the HOBO-517 resilience-semantics lane so
+  retry, deadline, cancellation, lifecycle, and inspection helper claims cannot
+  pass on golden-IR equality alone.
 
 ## Parse, Don't Validate
 
@@ -33,6 +36,9 @@ The package's accepted record is the read model behind a small event flow:
 - **Snapshot** — the accepted record is the snapshot of that projection.
 - **Read store** — downstream surfaces query that read store rather than the raw
   event log.
+- **Conformance lanes** — the projection exposes golden-IR, existing semantics,
+  resilience semantics, thin-layer, authorship, and coverage lane snapshots
+  separately so one passing lane cannot mask another failure.
 
 No runtime engine, projector, or event store is implemented here; this is a
 design-time contract that names the command, event, actor, and projection

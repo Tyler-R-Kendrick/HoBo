@@ -16,6 +16,7 @@ message ResilienceSemanticsSpec {
 message RetryPlan {
   repeated uint32 delay_ms = 1;
   uint32 max_attempts = 2;
+  string seed = 3;
 }
 
 // One ordered domain fact (event) in a resilience scenario, e.g.
@@ -43,4 +44,5 @@ message ResilienceCaseResult {
   string status = 3;
   string code = 4;
   string reason = 5;
+  string seed = 6;
 }

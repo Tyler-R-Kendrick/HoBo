@@ -4,6 +4,12 @@ Nine third-party AI-coding tools are wired into this repo for **Claude Code**, *
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
+## Product implementation guardrails
+
+Agents implementing HoBo code must follow the canonical architecture rules in [`../AGENTS.md`](../AGENTS.md): every service boundary is pinned by PACT contracts; records, messages, data shapes, and objects are defined in protobuf with CUE constraints; runtime code parses into derived types instead of validating broad values in place; and flows use CQRS, event stores, materialized views, and actors. Actors consume commands, emit events, and coordinate durable state. Query paths use rx-style projections with cached current snapshots and persisted historical snapshots in a read store.
+
+The fail-fast check is `npm run architecture:guard` (`npm run architecture:guard:staged` in pre-commit). It scans changed `src/draft/*` implementation packages for PACT, protobuf, CUE, parse-don't-validate, and event-architecture evidence before the slower test and CI gates run.
+
 ## The nine tools
 
 ### improve — `shadcn/improve` (MIT)
@@ -83,4 +89,4 @@ Requires: Node ≥18 (`npx`), Python ≥3.10 (`pip`) for headroom/SkillOpt, `uv`
 
 ## Maintenance gates
 
-Agent-tooling changes count as repo behavior changes. Prefer cross-agent config first: shared wrapper scripts under `scripts/`, devcontainer/common-layer setup, shared skills under `.agents/skills/` where supported, then minimal Claude/Cursor/Codex/Copilot shims. When changing one supported agent config (`.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.claude/settings.json`, or setup scripts), check and update the peer configs in the same PR. Update `AGENTS.md`, this file, or another relevant README in the same change when editing `.agents/`, `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, or setup scripts. The `docs:freshness` CI gate and `.githooks/pre-commit` hook enforce that code/tooling changes include a docs update.
+Agent-tooling changes count as repo behavior changes. Prefer cross-agent config first: shared wrapper scripts under `scripts/`, devcontainer/common-layer setup, shared skills under `.agents/skills/` where supported, then minimal Claude/Cursor/Codex/Copilot shims. When changing one supported agent config (`.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.claude/settings.json`, or setup scripts), check and update the peer configs in the same PR. Update `AGENTS.md`, this file, or another relevant README in the same change when editing `.agents/`, `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, or setup scripts. The `architecture:guard`, `docs:freshness`, CI, and `.githooks/pre-commit` gates enforce architecture evidence and documentation freshness before merge.

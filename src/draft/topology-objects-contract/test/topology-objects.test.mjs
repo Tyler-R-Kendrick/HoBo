@@ -170,6 +170,23 @@ test("bindle rejects provider-specific options at app scope", () => {
       ),
     /provider-specific options belong on Camp mappings/
   );
+  assert.throws(
+    () =>
+      bindle("leaky-descriptor", (b) =>
+        b.use({
+          toDescriptor() {
+            return {
+              kind: "data",
+              name: "db",
+              stableId: "data:db",
+              portRef: ["hobo:sql"],
+              providerAnnotations: { "aws.rds": { multiAz: true } }
+            };
+          }
+        })
+      ),
+    /provider-specific options belong on Camp mappings/
+  );
 });
 
 test("junction accepts one yard but rejects an empty topology", () => {

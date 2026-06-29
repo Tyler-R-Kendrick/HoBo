@@ -170,6 +170,7 @@ function normalizeResourceDescriptor(resource) {
   if (!Array.isArray(descriptor.portRef)) {
     throw new TypeError(`resource ${descriptor.stableId} portRef must be an array`);
   }
+  assertNoProviderSpecificFields(descriptor);
 
   return deepFreeze({
     kind: descriptor.kind,

@@ -2,7 +2,7 @@
 set -eu
 
 npm test
-npm run standards:check
+npm run standards:check -- --staged --base="${HOBO_STANDARDS_BASE:-origin/main}"
 npm run docs:cli-lint
 npm run docs:design-lint
 npm run docs:coverage

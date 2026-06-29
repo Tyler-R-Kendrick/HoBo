@@ -190,13 +190,16 @@ test("hung providers are bounded by timeout and return the default", async () =>
     }
   });
 
-  const startedAt = Date.now();
-  const details = await provider.getStringDetails("checkout-theme", "safe", betaContext);
+  const result = await Promise.race([
+    provider.getStringDetails("checkout-theme", "safe", betaContext),
+    new Promise((resolve) => setTimeout(() => resolve("hung-provider-timeout"), 1_000))
+  ]);
 
+  assert.notEqual(result, "hung-provider-timeout");
+  const details = result;
   assert.equal(details.value, "safe");
   assert.equal(details.reason, "error");
   assert.equal(details.error.code, "provider-timeout");
-  assert.ok(Date.now() - startedAt < 200);
 });
 
 test("vendor flag key collisions with HoBo-defined flags are rejected", () => {

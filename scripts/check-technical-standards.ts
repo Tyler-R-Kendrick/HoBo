@@ -5,6 +5,7 @@ type Mode = "worktree" | "staged";
 
 let base = "";
 let mode: Mode = "worktree";
+let baseRefExists: boolean | undefined;
 const failures: string[] = [];
 
 for (const arg of process.argv.slice(2)) {
@@ -48,6 +49,27 @@ function run(command: string, args: string[]): string {
   return result.stdout;
 }
 
+function baseRefAvailable(): boolean {
+  if (!base) {
+    return false;
+  }
+  baseRefExists ??= spawnSync("git", ["rev-parse", "--verify", `${base}^{commit}`], {
+    shell: false,
+    stdio: "ignore",
+  }).status === 0;
+  return baseRefExists;
+}
+
+function existsAtBase(file: string): boolean {
+  if (!baseRefAvailable()) {
+    return false;
+  }
+  return spawnSync("git", ["cat-file", "-e", `${base}:${file}`], {
+    shell: false,
+    stdio: "ignore",
+  }).status === 0;
+}
+
 function changedFiles(): string[] {
   const nameStatus =
     mode === "staged"
@@ -73,15 +95,20 @@ function changedFiles(): string[] {
     .filter((entry) => entry.status.startsWith("A"))
     .map((entry) => entry.file);
 
+  const addedFiles =
+    mode === "staged" && base
+      ? changed.filter((file) => !existsAtBase(file))
+      : changed;
+
   if (mode === "worktree" && !base) {
     const untracked = run("git", ["ls-files", "--others", "--exclude-standard"])
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean);
-    changed.push(...untracked);
+    addedFiles.push(...untracked);
   }
 
-  return changed;
+  return addedFiles;
 }
 
 function isJavaScriptImplementationFile(file: string): boolean {

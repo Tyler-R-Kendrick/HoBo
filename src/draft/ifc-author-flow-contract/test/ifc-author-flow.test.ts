@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -9,9 +9,12 @@ import {
   writeGeneratedTree,
 } from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.js";
 import {
+  SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH,
   runIfcAuthorFlow,
   runIfcAuthorFlowWithCoverageGap,
   runIfcAuthorFlowWithNarrowingFailure,
+  stableManifestJson,
+  writeSdkManifestIrArtifact,
 } from "../src/ifc-author-flow.js";
 
 test("sample Bindle drives declare to collect to infer to codegen to manifest", async () => {
@@ -96,6 +99,20 @@ test("generated TypeScript surface compiles for the sample Bindle consumer", asy
         "TypeScript exited non-zero",
     );
   });
+});
+
+test("SDK test run writes an uploadable manifest IR artifact like a Pact JSON", async () => {
+  const result = await runIfcAuthorFlow();
+  const artifact = await writeSdkManifestIrArtifact({ result });
+  const written = await readFile(artifact.path, "utf8");
+
+  assert.equal(artifact.relativePath, SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH);
+  assert.equal(artifact.contentType, "application/vnd.hobo.manifest+json");
+  assert.equal(artifact.upload.target, "ManifestIrRegistry");
+  assert.equal(artifact.upload.path, "/manifests");
+  assert.equal(artifact.manifestHash, result.manifestHash);
+  assert.equal(written, stableManifestJson(result.manifest));
+  assert.deepEqual(JSON.parse(written), result.manifest);
 });
 
 test("collection coverage fails the integrated path for unobserved branch resources", async () => {

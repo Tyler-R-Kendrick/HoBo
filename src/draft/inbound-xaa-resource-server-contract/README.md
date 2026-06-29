@@ -12,7 +12,7 @@ and [ADR-0084](../../../docs/design/adr/02-identity-security.md#adr-0084):
 - issues only a short-lived token reference scoped to the inbound request; and
 - lets an MCP call run under the delegated external-agent principal.
 
-Out of scope: outbound ID-JAG minting, the `.allow()` policy engine implementation, cross-app authoring, and full confused-deputy hardening. Those remain with the referenced follow-on issues.
+Out of scope: outbound ID-JAG minting, the `.allow()` policy engine implementation, connector authoring, and full confused-deputy hardening. Those remain with the referenced follow-on issues.
 
 ## Proof
 

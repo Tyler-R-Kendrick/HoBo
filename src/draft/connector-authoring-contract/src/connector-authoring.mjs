@@ -1,8 +1,8 @@
 const FLOW_PREFERENCE = ["oauth2-xaa", "oauth2-obo", "mcp-oauth2.1"];
 
-export function createCrossAppBinding(name, authJson, options = {}) {
+export function createConnectorBinding(name, authJson, options = {}) {
   if (!name || typeof name !== "string") {
-    throw new TypeError("crossApp name must be a non-empty string");
+    throw new TypeError("connector name must be a non-empty string");
   }
 
   const flow = selectExternalAppFlow(authJson);
@@ -18,7 +18,7 @@ export function createCrossAppBinding(name, authJson, options = {}) {
     advertisedScopes: Object.freeze([...flow.scopes]),
     operationScopes: Object.freeze({ ...operationScopes }),
     declaredAllow: declaredAllow ? Object.freeze([...declaredAllow]) : undefined,
-    allow: (...scopes) => createCrossAppBinding(name, authJson, { ...options, declaredAllow: scopes }),
+    allow: (...scopes) => createConnectorBinding(name, authJson, { ...options, declaredAllow: scopes }),
     call: (operation, input) => {
       const scope = operationScopes[operation];
       if (!scope) {
@@ -34,7 +34,7 @@ export function createCrossAppBinding(name, authJson, options = {}) {
   });
 }
 
-export function buildCrossAppManifestEntry(binding, observedOperations = []) {
+export function buildConnectorManifestEntry(binding, observedOperations = []) {
   const observedScopes = inferObservedScopes(binding, observedOperations);
   const allow = binding.declaredAllow ? [...binding.declaredAllow] : observedScopes;
   const usageExceedsDeclaredAllow = binding.declaredAllow
@@ -42,7 +42,7 @@ export function buildCrossAppManifestEntry(binding, observedOperations = []) {
     : false;
 
   return Object.freeze({
-    type: "external-app.v1",
+    type: "connector.v1",
     via: binding.via,
     audience: binding.flow.audience,
     onBehalfOf: "user",
@@ -58,13 +58,13 @@ export function buildCrossAppManifestEntry(binding, observedOperations = []) {
   });
 }
 
-export function generateCrossAppClientDeclaration(binding) {
+export function generateConnectorClientDeclaration(binding) {
   const groups = groupOperations(binding.operationScopes);
   const groupLines = Object.entries(groups).map(([resource, operations]) => {
     const methods = Object.entries(operations)
       .map(
         ([method, scope]) =>
-          `    ${method}(input: unknown): CrossAppCall<"${scope}">;`
+          `    ${method}(input: unknown): ConnectorCall<"${scope}">;`
       )
       .join("\n");
 
@@ -72,7 +72,7 @@ export function generateCrossAppClientDeclaration(binding) {
   });
 
   return [
-    `export type CrossAppCall<Scope extends string> = { readonly scope: Scope };`,
+    `export type ConnectorCall<Scope extends string> = { readonly scope: Scope };`,
     `export interface ${pascalCase(binding.name)}Client {`,
     ...groupLines,
     `}`,
@@ -91,7 +91,7 @@ export function selectExternalAppFlow(authJson) {
     }
   }
 
-  throw new Error("auth.json does not advertise a supported external-app auth flow");
+  throw new Error("auth.json does not advertise a supported external-dependency auth flow");
 }
 
 function normalizeFlow(flow) {
@@ -123,7 +123,7 @@ function normalizeOperations(flow) {
 
   for (const [operation, descriptor] of entries) {
     if (!/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/.test(operation)) {
-      throw new Error(`Invalid cross-app operation name: ${operation}`);
+      throw new Error(`Invalid connector operation name: ${operation}`);
     }
 
     const scope = descriptor?.scope;

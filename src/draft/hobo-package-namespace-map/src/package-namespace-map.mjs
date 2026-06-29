@@ -20,7 +20,7 @@ export const PACKAGE_NAMESPACE_MAP = {
       "trainable",
       "web",
       "websocket",
-      "crossApp",
+      "connector",
       "config",
       "secret",
       "secretRef",
@@ -39,8 +39,7 @@ export const PACKAGE_NAMESPACE_MAP = {
       "generateProvider",
       "chaos",
       "workflow",
-      "step",
-      "agent"
+      "step"
     ]
   },
   "@hobo/runtime": {
@@ -57,8 +56,7 @@ export const PACKAGE_NAMESPACE_MAP = {
       "createHook",
       "training",
       "FatalError",
-      "RetryableError",
-      "agent"
+      "RetryableError"
     ]
   },
   "@hobo/data": {
@@ -75,7 +73,7 @@ export const PACKAGE_NAMESPACE_MAP = {
   },
   "@hobo/yards": {
     role: "topology",
-    owns: ["yard", "domain", "approveDefaults", "autoApprove"]
+    owns: ["yard", "domain"]
   },
   "@hobo/junctions": {
     role: "topology",
@@ -92,8 +90,7 @@ export const PACKAGE_NAMESPACE_MAP = {
       "runner",
       "runbook",
       "generateProvider",
-      "chaos",
-      "agent"
+      "chaos"
     ]
   },
   "@hobo/core": {
@@ -123,10 +120,6 @@ export function packageForSymbol(symbol, context = {}) {
     return undefined;
   }
 
-  if (symbol === "agent") {
-    return context.operator === true ? "@hobo/sdk" : "@hobo/runtime";
-  }
-
   if (owners.length > 1) {
     throw new Error(`${symbol} has multiple package owners; pass a context`);
   }
@@ -153,21 +146,7 @@ export function validateImportStatement({ from, symbols }) {
 }
 
 export function validateAgentImports(imports) {
-  const runtimeAgent = imports.find((entry) => entry.from === "@hobo/runtime" && entry.imported === "agent");
-  const operatorAgent = imports.find((entry) => entry.from === "@hobo/sdk" && entry.imported === "agent");
-
-  if (!runtimeAgent || !operatorAgent) {
-    return [];
-  }
-
-  const errors = [];
-  if (!runtimeAgent.alias || runtimeAgent.alias === "agent") {
-    errors.push("runtime agent import must be aliased when operator agent is also imported");
-  }
-
-  if (!operatorAgent.alias || operatorAgent.alias === "agent") {
-    errors.push("operator agent import must be aliased when runtime agent is also imported");
-  }
-
-  return errors;
+  return imports
+    .filter((entry) => entry.imported === "agent" && ["@hobo/runtime", "@hobo/sdk", "@hobo/bindles"].includes(entry.from))
+    .map((entry) => `agent is not a public SDK factory; use connector(..., { protocol }) instead of importing from ${entry.from}`);
 }

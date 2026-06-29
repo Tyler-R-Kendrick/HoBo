@@ -10,7 +10,7 @@ import {
 
 describe("package namespace map", () => {
   it("keeps app authoring resources in @hobo/bindles", () => {
-    for (const symbol of ["bindle", "database", "queue", "crossApp", "config", "secretRef"]) {
+    for (const symbol of ["bindle", "database", "queue", "connector", "config", "secretRef"]) {
       assert.equal(packageForSymbol(symbol), "@hobo/bindles");
     }
   });
@@ -67,18 +67,17 @@ describe("package namespace map", () => {
     assert.notEqual("secret", "secretRef");
   });
 
-  it("requires aliases when runtime and operator agent imports are mixed", () => {
+  it("rejects public agent SDK imports", () => {
     assert.deepEqual(validateAgentImports([
       { from: "@hobo/runtime", imported: "agent" },
-      { from: "@hobo/sdk", imported: "agent" }
+      { from: "@hobo/sdk", imported: "agent", alias: "crewAgent" }
     ]), [
-      "runtime agent import must be aliased when operator agent is also imported",
-      "operator agent import must be aliased when runtime agent is also imported"
+      "agent is not a public SDK factory; use connector(..., { protocol }) instead of importing from @hobo/runtime",
+      "agent is not a public SDK factory; use connector(..., { protocol }) instead of importing from @hobo/sdk"
     ]);
 
     assert.deepEqual(validateAgentImports([
-      { from: "@hobo/runtime", imported: "agent", alias: "runtimeAgent" },
-      { from: "@hobo/sdk", imported: "agent", alias: "crewAgent" }
+      { from: "@hobo/bindles", imported: "connector" }
     ]), []);
   });
 });

@@ -1,22 +1,22 @@
-import { buildCrossAppManifestEntry } from "../../cross-app-authoring-contract/src/cross-app-authoring.mjs";
+import { buildConnectorManifestEntry } from "../../connector-authoring-contract/src/connector-authoring.mjs";
 
-const CROSS_APP_DECLARATION =
-  /(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:[A-Za-z_$][A-Za-z0-9_$]*\.\s*)?crossApp\s*\(\s*["']([A-Za-z][A-Za-z0-9_-]*)["']\s*\)/g;
-const STATIC_CROSS_APP_CALL =
+const CONNECTOR_DECLARATION =
+  /(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:[A-Za-z_$][A-Za-z0-9_$]*\.\s*)?connector\s*\(\s*["']([A-Za-z][A-Za-z0-9_-]*)["']\s*\)/g;
+const STATIC_CONNECTOR_CALL =
   /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*((?:\.\s*[A-Za-z_$][A-Za-z0-9_$]*){2,})\s*\(/g;
-const DYNAMIC_CROSS_APP_CALL =
+const DYNAMIC_CONNECTOR_CALL =
   /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*((?:\.\s*[A-Za-z_$][A-Za-z0-9_$]*)*)\s*\[\s*[^\]]+\s*\]\s*\(/g;
 
-export function inferCrossAppScopes({ sourceText, bindings, fileName = "bindle.ts" }) {
+export function inferConnectorScopes({ sourceText, bindings, fileName = "bindle.ts" }) {
   if (typeof sourceText !== "string") {
     throw new TypeError("sourceText must be a string");
   }
   if (!bindings || typeof bindings !== "object" || Array.isArray(bindings)) {
-    throw new TypeError("bindings must be an object keyed by crossApp target");
+    throw new TypeError("bindings must be an object keyed by connector target");
   }
 
   const lineStarts = findLineStarts(sourceText);
-  const declarations = findCrossAppDeclarations(sourceText);
+  const declarations = findConnectorDeclarations(sourceText);
   const aliasToTarget = declarations.size > 0
     ? declarations
     : new Map(Object.keys(bindings).map((target) => [target, target]));
@@ -58,13 +58,13 @@ export function inferCrossAppScopes({ sourceText, bindings, fileName = "bindle.t
     });
   }
 
-  const externalApps = {};
+  const connectors = {};
   const contractFailures = [];
 
   for (const [target, binding] of Object.entries(bindings)) {
     const operations = [...(operationsByTarget.get(target) ?? [])].sort();
     const entry = buildEntry(binding, operations);
-    externalApps[target] = entry;
+    connectors[target] = entry;
 
     if (entry.usageContract?.usageExceedsDeclaredAllow) {
       contractFailures.push({
@@ -73,14 +73,14 @@ export function inferCrossAppScopes({ sourceText, bindings, fileName = "bindle.t
         target,
         allowedScopes: [...entry.allow],
         observedScopes: [...entry.observedScopes],
-        message: `crossApp ${target} observes scopes outside declared .allow().`,
+        message: `connector ${target} observes scopes outside declared .allow().`,
       });
     }
   }
 
   const manifest = {
     schema: "hobo.manifest/v1",
-    externalApps,
+    connectors,
   };
 
   return Object.freeze({
@@ -93,10 +93,10 @@ export function inferCrossAppScopes({ sourceText, bindings, fileName = "bindle.t
   });
 }
 
-function findCrossAppDeclarations(sourceText) {
+function findConnectorDeclarations(sourceText) {
   const declarations = new Map();
 
-  for (const match of sourceText.matchAll(CROSS_APP_DECLARATION)) {
+  for (const match of sourceText.matchAll(CONNECTOR_DECLARATION)) {
     declarations.set(match[1], match[2]);
   }
 
@@ -106,7 +106,7 @@ function findCrossAppDeclarations(sourceText) {
 function findStaticCalls(sourceText, aliasToTarget, lineStarts) {
   const calls = [];
 
-  for (const match of sourceText.matchAll(STATIC_CROSS_APP_CALL)) {
+  for (const match of sourceText.matchAll(STATIC_CONNECTOR_CALL)) {
     const alias = match[1];
     const target = aliasToTarget.get(alias);
     if (!target) {
@@ -120,7 +120,7 @@ function findStaticCalls(sourceText, aliasToTarget, lineStarts) {
     const operation = segments.join(".");
     const line = lineAt(lineStarts, match.index);
 
-    if (operation === "allow") {
+    if (operation === "allow" || operation.startsWith("connection.")) {
       continue;
     }
 
@@ -133,7 +133,7 @@ function findStaticCalls(sourceText, aliasToTarget, lineStarts) {
 function findDynamicCalls(sourceText, aliasToTarget, lineStarts) {
   const calls = [];
 
-  for (const match of sourceText.matchAll(DYNAMIC_CROSS_APP_CALL)) {
+  for (const match of sourceText.matchAll(DYNAMIC_CONNECTOR_CALL)) {
     const alias = match[1];
     const target = aliasToTarget.get(alias);
     if (!target) {
@@ -156,14 +156,14 @@ function findDynamicCalls(sourceText, aliasToTarget, lineStarts) {
 
 function buildEntry(binding, operations) {
   if (typeof binding.allow === "function") {
-    return buildCrossAppManifestEntry(binding, operations);
+    return buildConnectorManifestEntry(binding, operations);
   }
 
   const observedScopes = [
     ...new Set(operations.map((operation) => binding.operationScopes[operation])),
   ].sort();
   return Object.freeze({
-    type: "external-app.v1",
+    type: "connector.v1",
     via: binding.via ?? "xaa",
     audience: binding.flow?.audience,
     onBehalfOf: "user",
@@ -186,7 +186,7 @@ function dynamicOperationDiagnostic(call) {
     target: call.target,
     operationPrefix: call.operationPrefix,
     line: call.line,
-    message: `Static analysis cannot prove crossApp ${call.target} operation under ${call.operationPrefix}; XAA scope inference must fail closed.`,
+    message: `Static analysis cannot prove connector ${call.target} operation under ${call.operationPrefix}; XAA scope inference must fail closed.`,
   };
 }
 
@@ -197,7 +197,7 @@ function missingBindingDiagnostic(call) {
     target: call.target,
     operation: call.operation,
     line: call.line,
-    message: `crossApp ${call.target} has no Capability Manifest binding for scope inference.`,
+    message: `connector ${call.target} has no Capability Manifest binding for scope inference.`,
   };
 }
 
@@ -208,7 +208,7 @@ function unadvertisedOperationDiagnostic(call) {
     target: call.target,
     operation: call.operation,
     line: call.line,
-    message: `crossApp ${call.target} operation ${call.operation} is not advertised by auth.json.`,
+    message: `connector ${call.target} operation ${call.operation} is not advertised by auth.json.`,
   };
 }
 
@@ -220,7 +220,7 @@ function unadvertisedScopeDiagnostic(call) {
     operation: call.operation,
     scope: call.scope,
     line: call.line,
-    message: `crossApp ${call.target} operation ${call.operation} maps to unadvertised scope ${call.scope}.`,
+    message: `connector ${call.target} operation ${call.operation} maps to unadvertised scope ${call.scope}.`,
   };
 }
 

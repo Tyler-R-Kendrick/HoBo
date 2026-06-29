@@ -19,7 +19,7 @@ This independent POC pins the outbound Cross-App Access token-exchange wire cont
 ## Scope Boundary
 
 This package does not mint production ID-JAGs, call a live OAuth server, verify JWKS
-signatures, run policy decisions, implement `crossApp()`, or implement inbound HoBo
+signatures, run policy decisions, implement `connector()`, or implement inbound HoBo
 resource-server verification. It is the wire-contract proof only.
 
 ## Executable Checks

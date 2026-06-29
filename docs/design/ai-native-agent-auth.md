@@ -110,25 +110,26 @@ sequenceDiagram
 
 ---
 
-### 6.3 Durable AI agents (the `agent()` primitive)
-A DurableAgent analog backed by the Camp's runtime: replayable, resumable, tools-as-steps, identity + scoped tokens injected via `ctx`.
+### 6.3 Durable protocol agents
+HoBo does not define or maintain a public agent SDK. Durable agent frameworks integrate through protocol connectors (for example A2A or ACP) and receive identity + scoped credentials through connection-scoped connector tokens.
 ```ts
-import { agent, step } from "@hobo/runtime";
+import { connector } from "@hobo/bindles";
 
-const deployTool = step(async ({ bindle }: { bindle: string }, ctx) => {
-  // ctx.identity is the agent's SVID; ctx.token() brokers a scoped token via Capability Manifest
-  const token = await ctx.token("acme", { port: "compute", resource: `${bindle}.api`, action: "deploy" });
-  return ctx.hobo.deploy(bindle, { token });
+export const opsAgentProtocol = connector("ops-agent-protocol", {
+  protocol: "a2a",
+  permissions: ["incident.read", "deploy.propose"],
 });
 
-export const opsAgent = agent("ops", {
-  model: "anthropic/claude-haiku-4.5",
-  instructions: "You operate HoBo deployments on the user's behalf.",
-  policy: { destroy: "require-approval", spendCapUsd: 50 },     // guardrails
-  tools: { deploy: { input: z.object({ bindle: z.string() }), execute: deployTool } },
-});
+export async function proposeDeploy(ctx, bindle: string) {
+  const token = await ctx
+    .connector("ops-agent-protocol")
+    .connection({ audience: "a2a://ops", protocol: "a2a" })
+    .token({ scopes: ["deploy.propose"], purpose: `deploy:${bindle}` });
+
+  return ctx.hobo.deploy(bindle, { token, mode: "proposal" });
+}
 ```
-Because tools are steps and runs are event-sourced, an agent can be interrupted and resumed without losing state — and its entire decision + tool-call + credential history is replayable for debugging, audit, and post-incident review.
+Because tools run in the external agent runtime and HoBo records connector token issuance, every credential grant and gated write remains replayable for debugging, audit, and post-incident review without HoBo owning an agent framework.
 
 ---
 
@@ -225,7 +226,7 @@ flowchart LR
 ---
 
 ### 6.8 Cross-App Access (XAA) — governed agent/app access to external apps
-Connecting a HoBo agent or app to an *external* app on a user's behalf (Asana, Slack, an external MCP server) must not mean a private OAuth+consent dance the enterprise can't see — that leaves **standing API keys and invisible consent** (the IdP only ever saw "the user signed in", never "an AI agent can now act *as* the user in Asana"). HoBo speaks **Cross-App Access (XAA)** — the **Identity Assertion JWT Authorization Grant (ID-JAG)** ([draft-ietf-oauth-identity-assertion-authz-grant](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/); an official **MCP authorization extension**), built on **Token Exchange (RFC 8693)** + the **JWT assertion grant (RFC 7523)** — the same broker machinery §6.2 already uses for provider federation, specialized to the cross-app case ([ADR-0084](./adr/02-identity-security.md#adr-0084)).
+Connecting a HoBo agent or app to an *external* app on a user's behalf (Asana, Slack, an external MCP server) must not mean a private OAuth+consent dance the enterprise can't see — that leaves **standing API keys and invisible consent** (the IdP only ever saw "the user signed in", never "an AI agent can now act *as* the user in Asana"). HoBo speaks **Cross-App Access (XAA)** — the **Identity Assertion JWT Authorization Grant (ID-JAG)** ([draft-ietf-oauth-identity-assertion-authz-grant](https://datatracker.ietf.org/doc/draft-ietf-oauth-identity-assertion-authz-grant/); an official **MCP authorization extension**), built on **Token Exchange (RFC 8693)** + the **JWT assertion grant (RFC 7523)** — the same broker machinery §6.2 already uses for provider federation, specialized to connector-mediated external access ([ADR-0084](./adr/02-identity-security.md#adr-0084)).
 
 **Two-stage, brokered by the IdP the target already trusts for SSO:**
 ```mermaid
@@ -247,17 +248,17 @@ sequenceDiagram
 - **HoBo as requester (outbound).** A HoBo agent/app reaching an external app on a user's behalf — Identity mints the audience-bound ID-JAG, the agent redeems it at the target's AS. Declared per target as the `oauth2-xaa` flow in `auth.json` (above).
 - **HoBo as resource (inbound).** A HoBo-hosted app is the *target*: its **`auth()` port** (§6.7) / Yard AS accepts an ID-JAG (audience = the HoBo app) from an external requesting agent (Claude, Cursor, …), verifies it against the trusted IdP's JWKS, and issues a scoped token — gated by the policy plane + `.allow()`. So **HoBo apps are XAA resource servers by default**, reachable by external agents under enterprise governance.
 
-**Governed, scoped, audited — no standing privilege.** The brokering IdP is the same swappable **`hobo:auth`** IdP (WorkOS/Auth0/Entra/Okta/Keycloak, [ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)) or HoBo's own Yard Identity acting as OIDC issuer. Every cross-app grant is a **deny-by-default policy decision** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) — the request already carries `subject.delegatedBy`, so "agent X may access external app Y on behalf of user Z" is a policy/deny-ceiling rule, checked *before* the ID-JAG is minted (a `mandatory` rule can **require XAA** and refuse standing API keys where a target supports it). Tokens are short-lived + audience-bound (no reuse across targets); the whole **user → agent → external-app** chain rides `token.Granted/Used/Revoked` (the `CredentialAudit` projection), so "which agent reached which external app as which user, when" is always answerable. For targets that don't yet speak ID-JAG (still an IETF draft), HoBo falls back to `oauth2-obo` / MCP-OAuth2.1 — functional, but without the central XAA governance.
+**Governed, scoped, audited — no standing privilege.** The brokering IdP is the same swappable **`hobo:auth`** IdP (WorkOS/Auth0/Entra/Okta/Keycloak, [ADR-0038](./adr/02-identity-security.md#adr-0038)/[ADR-0073](./adr/07-portability-extensibility.md#adr-0073)) or HoBo's own Yard Identity acting as OIDC issuer. Every connector grant is a **deny-by-default policy decision** ([ADR-0074](./adr/02-identity-security.md#adr-0074)) — the request already carries `subject.delegatedBy`, so "agent X may access external app Y on behalf of user Z" is a policy/deny-ceiling rule, checked *before* the ID-JAG is minted (a `mandatory` rule can **require XAA** and refuse standing API keys where a target supports it). Tokens are short-lived + audience-bound (no reuse across targets); the whole **user → agent → external-app** chain rides `token.Granted/Used/Revoked` (the `CredentialAudit` projection), so "which agent reached which external app as which user, when" is always answerable. For targets that don't yet speak ID-JAG (still an IETF draft), HoBo falls back to `oauth2-obo` / MCP-OAuth2.1 — functional, but without the central XAA governance.
 
 The ID-JAG draft-version pin and XAA abuse matrix are tracked in [ADR-0097](./adr/02-identity-security.md#adr-0097): draft skew, forced OBO fallback, actor-token confusion, sender-constrained-token downgrade, and refresh-token subject broadening all fail closed until explicitly reviewed.
 
-**App-facing surface — declare the app, infer the scope.** You don't list OAuth scopes by hand. Declare a cross-app dependency and use its typed client; HoBo infers the least-privilege scope set from the operations you call (declaration + usage, [Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0069](./adr/01-architecture-core.md#adr-0069)) and brokers the XAA token for exactly that set, on behalf of `ctx.user`:
+**App-facing surface — declare the app, infer the scope.** You don't list OAuth scopes by hand. Declare a connector dependency and use its typed client; HoBo infers the least-privilege scope set from the operations you call (declaration + usage, [Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0069](./adr/01-architecture-core.md#adr-0069)) and brokers the XAA token for exactly that set, on behalf of `ctx.user`:
 ```ts
-import { crossApp } from "@hobo/bindles";
-const asana = crossApp("asana");                            // declaration → typed client from Asana's Capability Manifest
+import { connector } from "@hobo/bindles";
+const asana = connector("asana");                           // declaration → typed client from Asana's Capability Manifest
 await asana.tasks.create({ name, assignee: ctx.user.id });  // usage → infers scope tasks:write; XAA token brokered automatically
 ```
-`auth.json`'s `scopes` advertise what the target *offers*; the manifest records the inferred subset HoBo actually *requests* (`allow`). `crossApp("asana").allow("tasks:read")` narrows it; a policy deny-ceiling ([ADR-0074](./adr/02-identity-security.md#adr-0074)) caps it. Full authoring surface in [Plan 21](./authoring-resources-wiring.md#plan-21).
+`auth.json`'s `scopes` advertise what the target *offers*; the manifest records the inferred subset HoBo actually *requests* (`allow`). `connector("asana").allow("tasks:read")` narrows it; a policy deny-ceiling ([ADR-0074](./adr/02-identity-security.md#adr-0074)) caps it. Full authoring surface in [Plan 21](./authoring-resources-wiring.md#plan-21).
 
 **Verification ([Plan 9](./generated-stack.md#plan-09)).** An end-user-auth test: a JWT from a fixture IdP is verified via JWKS → `ctx.user` carries the claims; an **expired / wrong-issuer / tampered** token is rejected; a **policy/`.allow()` rule keyed on user claims** gates a query/mutation (allow + deny cases); **revocation** (`session.Revoked`) blocks subsequent requests **and re-pushes affected reactive queries**; the **thin built-in dev provider works offline** (air-gap tie, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 

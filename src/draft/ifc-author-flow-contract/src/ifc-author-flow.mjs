@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.mjs";
 import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.mjs";
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.mjs";
-import { inferCrossAppScopes } from "../../xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
+import { inferConnectorScopes } from "../../xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { generateSdkCodegenArtifacts } from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.mjs";
 
 const SAMPLE_BINDLE_ID = "support-desk";
@@ -123,7 +123,7 @@ async function runFlow({ sourceText, define }) {
     };
   }
 
-  const xaa = inferCrossAppScopes({
+  const xaa = inferConnectorScopes({
     sourceText,
     bindings: ASANA_BINDING,
     fileName: SAMPLE_FILE_NAME,
@@ -153,7 +153,7 @@ async function runFlow({ sourceText, define }) {
     };
   }
 
-  const manifest = withExternalApps(collection.manifest, xaa.manifest.externalApps);
+  const manifest = withExternalApps(collection.manifest, xaa.manifest.connectors);
   const validation = validateManifest(manifest);
   const generated = buildGeneratedSurface({ manifest, coverage: collection.coverage });
   const manifestHash = canonicalManifestHash(manifest);
@@ -189,7 +189,7 @@ function defineSampleBindle(collect) {
 }
 
 function sampleBindleSource({ extraBranch = "" } = {}) {
-  return `import { api, bucket, crossApp, kv, queue, secret as config } from "@hobo/bindles";
+  return `import { api, bucket, connector, kv, queue, secret as config } from "@hobo/bindles";
 
 export function supportDesk(ctx, includeAudit = false) {
   const todos = kv("todos");
@@ -197,7 +197,7 @@ export function supportDesk(ctx, includeAudit = false) {
   const jobs = queue("jobs");
   const appConfig = config("config");
   const http = api("api", { bind: { todos, uploads, jobs, config: appConfig } });
-  const asana = crossApp("asana");
+  const asana = connector("asana");
 
   http.route("POST", "/todos").route("GET", "/todos/:id");
   todos.get(ctx.todoId);
@@ -225,10 +225,10 @@ function permissionInputsFromManifest(manifest) {
     }));
 }
 
-function withExternalApps(manifest, externalApps) {
+function withExternalApps(manifest, connectors) {
   return sortManifest({
     ...manifest,
-    externalApps,
+    connectors,
   });
 }
 

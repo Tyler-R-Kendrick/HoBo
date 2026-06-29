@@ -5,15 +5,15 @@
   "scripts": {
     "architecture:guard": "node scripts/check-architecture-guardrails.mjs",
     "architecture:guard:staged": "node scripts/check-architecture-guardrails.mjs --staged",
-    "test": "tsx scripts/run-tests.ts",
-    "standards:check": "tsx scripts/check-technical-standards.ts",
-    "docs:cli-lint": "tsx scripts/check-cli-docs.ts",
-    "docs:design-lint": "tsx scripts/check-design-docs.ts",
-    "docs:freshness": "tsx scripts/check-docs-freshness.ts",
-    "docs:freshness:staged": "tsx scripts/check-docs-freshness.ts --staged",
+    "test": "node --import tsx scripts/run-tests.ts",
+    "standards:check": "node --import tsx scripts/check-technical-standards.ts",
+    "docs:cli-lint": "node --import tsx scripts/check-cli-docs.ts",
+    "docs:design-lint": "node --import tsx scripts/check-design-docs.ts",
+    "docs:freshness": "node --import tsx scripts/check-docs-freshness.ts",
+    "docs:freshness:staged": "node --import tsx scripts/check-docs-freshness.ts --staged",
     "prepare-hooks": "git config core.hooksPath .githooks",
-    "docs:coverage": "tsx scripts/check-docs-coverage.ts",
-    "contracts:data-models": "tsx scripts/generate-data-model-contracts.ts --check"
+    "docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
+    "contracts:data-models": "node --import tsx scripts/generate-data-model-contracts.ts --check"
   },
   "devDependencies": {
     "protobufjs": "^7.6.4",

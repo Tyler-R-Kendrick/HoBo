@@ -14,7 +14,7 @@ for (const arg of process.argv.slice(2)) {
   } else if (arg.startsWith("--base=")) {
     base = arg.slice("--base=".length);
   } else if (arg === "--help" || arg === "-h") {
-    console.log(`Usage: tsx scripts/check-technical-standards.ts [--staged] [--base=<git-ref>]
+    console.log(`Usage: node --import tsx scripts/check-technical-standards.ts [--staged] [--base=<git-ref>]
 
 Enforces HoBo's compile-time-first technical standards on changed files:
 - TypeScript toolchain is declared in package metadata.

@@ -98,9 +98,9 @@ npm run docs:cli-lint
 npm run docs:design-lint
 npm run docs:coverage
 npm run docs:freshness
-npm exec -- tsx scripts/validate-traceability.ts
-npm exec -- tsx scripts/validate-sdk-contracts.ts
-npm exec -- tsx scripts/validate-deployment-set-delta.ts
+node --import tsx scripts/validate-traceability.ts
+node --import tsx scripts/validate-sdk-contracts.ts
+node --import tsx scripts/validate-deployment-set-delta.ts
 ```
 
 Optional: enable the repo pre-commit hook:

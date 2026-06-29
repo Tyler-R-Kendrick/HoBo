@@ -3,18 +3,18 @@ export const CI_FABRIC_SCHEMA = "hobo.ciFabric/v1";
 const REQUIRED_PR_CHECKS = Object.freeze(["build", "typecheck", "lint", "unit", "conformance"]);
 const REQUIRED_PR_COMMANDS = Object.freeze([
   "npm ci",
-  "npm exec -- tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build",
-  "npm exec -- tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck",
-  "npm exec -- tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint",
+  "node --import tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build",
+  "node --import tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck",
+  "node --import tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint",
   "npm test",
   "npm run standards:check",
   "npm run docs:cli-lint",
   "npm run docs:design-lint",
   "npm run docs:coverage",
   "npm run docs:freshness",
-  "npm exec -- tsx scripts/validate-traceability.ts",
-  "npm exec -- tsx scripts/validate-sdk-contracts.ts",
-  "npm exec -- tsx scripts/validate-deployment-set-delta.ts",
+  "node --import tsx scripts/validate-traceability.ts",
+  "node --import tsx scripts/validate-sdk-contracts.ts",
+  "node --import tsx scripts/validate-deployment-set-delta.ts",
 ]);
 const REQUIRED_COVERAGE = Object.freeze([
   "pr.full-suite-blocking",

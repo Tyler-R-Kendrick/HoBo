@@ -32,6 +32,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`worked-example.md`](./worked-example.md#plan-19) | End-to-end worked example | 19 |
 | [`walkthrough.md`](./walkthrough.md) | Role-organized ideal-state walkthrough: one app, six workflows (app dev · platform eng · GitOps · SecOps · DevOps · SRE) | — |
 | [`billing-launch-policy.md`](./billing-launch-policy.md) | Productization M0 launch billing policy for plans, credits, invoices, payment failures, refunds, and provider/legal boundaries | — |
+| [`launch-support-escalation.md`](./launch-support-escalation.md) | Productization M0 launch support escalation matrix, incident communication templates, and support gap routing | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
 

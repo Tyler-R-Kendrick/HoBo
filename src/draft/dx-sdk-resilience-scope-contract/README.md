@@ -23,6 +23,25 @@ and inspection work bounded to durable event facts.
   parity failures cannot be treated as retryable or successful SDK behavior.
 - Effect and XState stay reference inputs, not public dependencies.
 
+## Architecture Guardrail Evidence
+
+This package is a scope contract, not a runtime service, but it still carries
+the repo-standard boundary evidence:
+
+- PACT: `contracts/dx-sdk-resilience-scope.pact.json` records the read contract
+  for consumers that need the accepted HOBO-514 matrix.
+- Protobuf: `proto/dx_sdk_resilience_scope.proto` defines the scope record,
+  child issue, adversarial rule, and phase data shapes.
+- CUE: `cue/dx_sdk_resilience_scope.cue` constrains every protobuf type.
+- Parse, don't validate: callers should parse raw issue text and project facts
+  into parsed domain types (`Phase`, `ChildIssue`, `AdversarialRule`) before
+  any helper or conformance claim can use them.
+- Event architecture: the conceptual actor is the scope registrar. It accepts
+  `RegisterScopeContract` and `RejectScopeCreep` commands, writes
+  `scope.Accepted` and `scope.Rejected` events to an event-store fixture, derives
+  a materialized view/projection for the child issue matrix, emits snapshots for
+  stable PR evidence, and exposes the projection through a read store.
+
 ## Verification
 
 Run the focused proof:

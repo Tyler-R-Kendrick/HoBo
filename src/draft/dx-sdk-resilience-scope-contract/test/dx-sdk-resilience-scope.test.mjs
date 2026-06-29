@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -182,4 +183,40 @@ test("inspection must derive from replayable event facts instead of process memo
       reason: "inspection derives from replayable event facts",
     },
   );
+});
+
+test("architecture guardrail artifacts describe PACT, protobuf, CUE, parsed types, and event architecture", async () => {
+  const pact = JSON.parse(
+    await readFile(new URL("../contracts/dx-sdk-resilience-scope.pact.json", import.meta.url)),
+  );
+  const proto = await readFile(
+    new URL("../proto/dx_sdk_resilience_scope.proto", import.meta.url),
+    "utf8",
+  );
+  const cue = await readFile(
+    new URL("../cue/dx_sdk_resilience_scope.cue", import.meta.url),
+    "utf8",
+  );
+  const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
+
+  assert.equal(pact.consumer.name, "dx-sdk-resilience-scope-consumer");
+  assert.equal(pact.provider.name, "dx-sdk-resilience-scope-contract");
+  assert.equal(pact.interactions.length, 1);
+  assert.match(proto, /message DxSdkResilienceScope/);
+  assert.match(proto, /message ChildIssue/);
+  assert.match(proto, /message AdversarialRule/);
+  assert.match(proto, /enum Phase/);
+  assert.match(cue, /^DxSdkResilienceScope:/m);
+  assert.match(cue, /^ChildIssue:/m);
+  assert.match(cue, /^AdversarialRule:/m);
+  assert.match(cue, /^Phase:/m);
+  assert.match(readme, /Parse, don't validate/);
+  assert.match(readme, /parsed domain types/);
+  assert.match(readme, /commands/);
+  assert.match(readme, /events/);
+  assert.match(readme, /actor/);
+  assert.match(readme, /event-store/);
+  assert.match(readme, /materialized view\/projection/);
+  assert.match(readme, /snapshots/);
+  assert.match(readme, /read store/);
 });

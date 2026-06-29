@@ -243,6 +243,11 @@ function sanitizeMaterials(materialRefs) {
       `$.materials[${index}].ref`
     );
     const codes = promptInjectionFindings(rawRef);
+    const requiresSanitizedRef =
+      typeof parsed.content === "string" ||
+      codes.length > 0 ||
+      parsed.sanitized !== true ||
+      parsed.trusted !== false;
     if (codes.length > 0 || parsed.sanitized !== true || parsed.trusted !== false) {
       findings.push({
         index,
@@ -253,7 +258,7 @@ function sanitizeMaterials(materialRefs) {
 
     return {
       kind: parsed.kind ?? "material",
-      ref: codes.length > 0 ? `draft://sanitized-material/${sha256Digest(rawRef)}` : rawRef,
+      ref: requiresSanitizedRef ? `draft://sanitized-material/${sha256Digest(rawRef)}` : rawRef,
       trusted: false,
       sanitized: true
     };

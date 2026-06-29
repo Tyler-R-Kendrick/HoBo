@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-447 Provenance & Retention M0 Scope Proof"
+description: "Source issue: HOBO-447."
+tags: [hobo, design]
+---
+
 # HOBO-447 Provenance & Retention M0 Scope Proof
 
 HOBO-447 is proven by the focused M0 contract at

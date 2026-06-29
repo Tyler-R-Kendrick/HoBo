@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Product Notifications And Lifecycle Communications"
+description: "Source issue: HOBO-506."
+tags: [hobo, design]
+---
+
 # Product Notifications And Lifecycle Communications
 
 Source issue: HOBO-506.

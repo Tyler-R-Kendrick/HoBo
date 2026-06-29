@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Capability Review & Approval Scope And Acceptance"
+description: "Source issue: HOBO-423."
+tags: [hobo, design]
+---
+
 # Capability Review & Approval Scope And Acceptance
 
 Source issue: HOBO-423.

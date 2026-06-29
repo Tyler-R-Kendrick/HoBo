@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-511 Supported Platform Matrix Proof"
+description: "Source issue: HOBO-511."
+tags: [hobo, design]
+---
+
 # HOBO-511 Supported Platform Matrix Proof
 
 HOBO-511 is proven by the focused M0 contract at

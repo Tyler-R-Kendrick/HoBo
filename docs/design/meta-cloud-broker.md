@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Meta-cloud Broker"
+description: "Source issue: HOBO-521."
+tags: [hobo, design]
+---
+
 # Meta-cloud Broker
 
 Source issue: HOBO-521.

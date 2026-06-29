@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Persona Operating Profile And Recommendation Memory"
+description: "Source issue: HOBO-507."
+tags: [hobo, design]
+---
+
 # Persona Operating Profile And Recommendation Memory
 
 Source issue: HOBO-507.

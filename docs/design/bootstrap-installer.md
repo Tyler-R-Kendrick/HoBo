@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Bootstrap Installer Scope And Acceptance"
+description: "Source issue: HOBO-428."
+tags: [hobo, design]
+---
+
 # Bootstrap Installer Scope And Acceptance
 
 Source issue: HOBO-428.

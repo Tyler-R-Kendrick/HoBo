@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Backup & Restore Scope And Acceptance"
+description: "Source issue: HOBO-429."
+tags: [hobo, design]
+---
+
 # Backup & Restore Scope And Acceptance
 
 Source issue: HOBO-429.

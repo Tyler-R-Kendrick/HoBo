@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "DX SDK Resilience Semantics"
+description: "This record is the M0 contract matrix for HOBO-514 and HOBO-515. It translates"
+tags: [hobo, design]
+---
+
 # DX SDK Resilience Semantics
 
 This record is the M0 contract matrix for HOBO-514 and HOBO-515. It translates

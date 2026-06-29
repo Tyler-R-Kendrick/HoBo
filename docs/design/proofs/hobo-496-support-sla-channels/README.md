@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-496 Support SLA Channels M0 Proof"
+description: "Source issue: HOBO-496."
+tags: [hobo, design]
+---
+
 # HOBO-496 Support SLA Channels M0 Proof
 
 This proof package demonstrates that HOBO-496 records accepted M0 support SLA and channel coverage

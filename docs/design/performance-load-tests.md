@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Performance & Load Tests"
+description: "Source issues: HOBO-440, HOBO-502."
+tags: [hobo, design]
+---
+
 # Performance & Load Tests
 
 Source issues: HOBO-440, HOBO-502.

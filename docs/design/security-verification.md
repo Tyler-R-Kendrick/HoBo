@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "V1 Security Verification"
+description: "This record pins the v1 vulnerability disclosure and security launch-blocker process for"
+tags: [hobo, design]
+---
+
 # V1 Security Verification
 
 This record pins the v1 vulnerability disclosure and security launch-blocker process for

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Public Status Page Incident Communication Contract"
+description: "Source issue: HOBO-497."
+tags: [hobo, design]
+---
+
 # Public Status Page Incident Communication Contract
 
 Source issue: HOBO-497.

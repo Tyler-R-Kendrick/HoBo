@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Org Catalogs Scope And Acceptance"
+description: "Source issue: HOBO-424."
+tags: [hobo, design]
+---
+
 # Org Catalogs Scope And Acceptance
 
 Source issue: HOBO-424.

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "E2E Test Matrix Scope And Acceptance"
+description: "Source issue: HOBO-438."
+tags: [hobo, design]
+---
+
 # E2E Test Matrix Scope And Acceptance
 
 Source issue: HOBO-438.

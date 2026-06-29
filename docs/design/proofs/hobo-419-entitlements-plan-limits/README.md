@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-419 Entitlements & Plan Limits Proof"
+description: "Source issue: HOBO-419."
+tags: [hobo, design]
+---
+
 # HOBO-419 Entitlements & Plan Limits Proof
 
 This proof backs the M0 productization record for

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-502 Launch Performance Capacity Envelope Proof"
+description: "Source issue: HOBO-502."
+tags: [hobo, design]
+---
+
 # HOBO-502 Launch Performance Capacity Envelope Proof
 
 This proof package pins the launch performance, cost, and capacity envelope for M0 scope acceptance.

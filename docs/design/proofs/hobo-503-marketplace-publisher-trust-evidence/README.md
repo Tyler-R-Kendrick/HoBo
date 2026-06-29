@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-503 Marketplace Publisher Trust Evidence Proof"
+description: "Source issue: HOBO-503."
+tags: [hobo, design]
+---
+
 # HOBO-503 Marketplace Publisher Trust Evidence Proof
 
 HOBO-503 is proven by the focused M0 contract at

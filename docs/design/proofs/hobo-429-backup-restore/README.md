@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-429 Backup & Restore Scope Evidence"
+description: "Source issue: HOBO-429."
+tags: [hobo, design]
+---
+
 # HOBO-429 Backup & Restore Scope Evidence
 
 Issue: HOBO-429.

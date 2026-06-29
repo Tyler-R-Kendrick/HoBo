@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-521 Meta-cloud Broker Proof"
+description: "Source issue: HOBO-521."
+tags: [hobo, design]
+---
+
 # HOBO-521 Meta-cloud Broker Proof
 
 This proof backs the M0 productization record for

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-497 Public Status Page Incident Communication Proof"
+description: "Source issue: HOBO-497."
+tags: [hobo, design]
+---
+
 # HOBO-497 Public Status Page Incident Communication Proof
 
 HOBO-497 is proven by the focused M0 contract at

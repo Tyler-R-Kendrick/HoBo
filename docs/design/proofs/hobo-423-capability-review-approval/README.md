@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-423 Capability Review & Approval M0 Scope Proof"
+description: "Source issue: HOBO-423."
+tags: [hobo, design]
+---
+
 # HOBO-423 Capability Review & Approval M0 Scope Proof
 
 HOBO-423 is proven by the focused M0 contract at

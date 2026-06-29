@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Entitlements & Plan Limits"
+description: "Source issue: HOBO-419."
+tags: [hobo, design]
+---
+
 # Entitlements & Plan Limits
 
 Source issue: HOBO-419.

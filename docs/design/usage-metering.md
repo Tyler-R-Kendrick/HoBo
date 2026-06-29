@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Usage Metering Scope And Acceptance"
+description: "Source issue: HOBO-417."
+tags: [hobo, design]
+---
+
 # Usage Metering Scope And Acceptance
 
 Source issue: HOBO-417.

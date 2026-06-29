@@ -39,13 +39,14 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 | Path | What it is |
 |---|---|
-| [`docs/design/`](./docs/design/README.md) | Current design suite: capability docs, ADRs, CLI spec, traceability, glossary, event-family catalog. |
+| [`docs/`](./docs/index.md) | OKF bundle root for HoBo docs; `index.md` files provide directory listings and concept docs carry OKF frontmatter. |
+| [`docs/design/`](./docs/design/index.md) | Current design suite: capability docs, ADRs, CLI spec, traceability, glossary, event-family catalog. |
 | [`src/draft/`](./src/draft/) | Executable proof/contract packages for individual backlog slices and design claims. These are draft fixtures, not a production product. |
 | [`docs/design/proofs/`](./docs/design/proofs/) | Human-readable proof records linked to `src/draft/*` packages. |
 | [`docs/implementation-plan.md`](./docs/implementation-plan.md) | Durable mirror of the Linear backlog structure. Linear remains live status source. |
-| [`competitors/`](./competitors/README.md) | Competitive analysis and positioning notes. |
-| [`standards/`](./standards/README.md), [`technologies/`](./technologies/README.md), [`patterns/`](./patterns/README.md) | Reference material used by design decisions. |
-| [`archive/`](./archive/) | Deferred or superseded planning artifacts. |
+| [`docs/competitors/`](./docs/competitors/index.md) | Competitive analysis and positioning notes. |
+| [`docs/standards/`](./docs/standards/index.md), [`docs/technologies/`](./docs/technologies/index.md), [`docs/patterns/`](./docs/patterns/index.md) | Reference material used by design decisions. |
+| [`docs/archive/`](./docs/archive/) | Deferred or superseded planning artifacts. |
 | [`AGENTS.md`](./AGENTS.md), [`docs/agent-tooling.md`](./docs/agent-tooling.md) | Repo-level agent instructions and local agent-tooling reference. |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | GitHub community-health docs for contributions, vulnerability reporting, support, and conduct. |
 
@@ -61,7 +62,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 ### If you are implementing a slice
 
 1. Start from the relevant Linear issue or [`docs/implementation-plan.md`](./docs/implementation-plan.md).
-2. Read the matching design doc in [`docs/design/`](./docs/design/README.md).
+2. Read the matching design doc in [`docs/design/`](./docs/design/index.md).
 3. Check the corresponding proof note under [`docs/design/proofs/`](./docs/design/proofs/).
 4. Apply the implementation architecture rules in [`AGENTS.md`](./AGENTS.md): PACT service boundaries, protobuf definitions with CUE constraints, parse-don't-validate derived types, and event-driven CQRS/actors/materialized views.
 5. Update or add the `src/draft/*` contract package that proves the slice.
@@ -69,7 +70,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 ### If you are reviewing architecture
 
-- ADR index: [`docs/design/adr/README.md`](./docs/design/adr/README.md)
+- ADR index: [`docs/design/adr/index.md`](./docs/design/adr/index.md)
 - Traceability gate: [`docs/design/traceability.md`](./docs/design/traceability.md)
 - CLI surface: [`docs/design/cli-spec.md`](./docs/design/cli-spec.md)
 - SDK contracts: [`docs/design/sdk-contracts.md`](./docs/design/sdk-contracts.md)
@@ -97,6 +98,7 @@ npm run standards:check
 npm run docs:cli-lint
 npm run docs:design-lint
 npm run docs:coverage
+npm run docs:okf
 npm run docs:freshness
 node --import tsx scripts/validate-traceability.ts
 node --import tsx scripts/validate-sdk-contracts.ts
@@ -146,7 +148,7 @@ Important rules for agents and humans:
 ## Status summary
 
 - **Product implementation:** not shipped.
-- **Design suite:** active and canonical under [`docs/design/`](./docs/design/README.md).
+- **Design suite:** active and canonical under [`docs/design/`](./docs/design/index.md).
 - **Backlog mirror:** [`docs/implementation-plan.md`](./docs/implementation-plan.md); Linear is live operational source.
 - **Executable proof material:** `src/draft/*` packages and repo validation scripts.
 - **Primary command surface under design:** `hobo` CLI, specified in [`docs/design/cli-spec.md`](./docs/design/cli-spec.md).

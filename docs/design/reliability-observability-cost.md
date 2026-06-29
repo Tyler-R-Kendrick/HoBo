@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Reliability, Observability & Cost"
+description: "This capability doc unifies reliability/HA, observability, and cost/FinOps as one operational story: the same event log, saga machinery, and policy plane that keep HoBo available a"
+tags: [hobo, design]
+---
+
 # Reliability, Observability & Cost
 
 This capability doc unifies reliability/HA, observability, and cost/FinOps as one operational story: the same event log, saga machinery, and policy plane that keep HoBo available also make it observable and keep its spend safe.
@@ -138,9 +145,9 @@ This mirrors and extends Vercel's run observability, and is the data-plane analo
 - Alert routing is a provider capability (`email`/webhook/PagerDuty); high-risk policy gates ([Plan 6](./ai-native-agent-auth.md#plan-06)) can post to the same channels for human approval.
 
 ##### SLO-as-code + error-budget gating + an AlertManager-style model ([ADR-0045](./adr/02-identity-security.md#adr-0045))
-- **SLO-as-code:** SLOs/SLIs/objectives/error-budgets are **declared** ([OpenSLO](../../standards/openslo.md)-aligned; SLI source behind a port) and versioned as part of the resolved Set ([Plan 25](./platform-engineering.md#plan-25)), computed from the telemetry above.
+- **SLO-as-code:** SLOs/SLIs/objectives/error-budgets are **declared** ([OpenSLO](../standards/openslo.md)-aligned; SLI source behind a port) and versioned as part of the resolved Set ([Plan 25](./platform-engineering.md#plan-25)), computed from the telemetry above.
 - **Error budgets gate:** burn-rate + remaining budget is a **policy input** — a policy ([Plan 29](./contracts-policy-flags.md#plan-29)) can **freeze deploys / require approval** when the budget burns (a `can-deploy` dimension, [Plan 29](./contracts-policy-flags.md#plan-29)) and an obligation can **auto-revert** a rollout or feature flag ([ADR-0044](./adr/02-identity-security.md#adr-0044)). Events `slo.Declared`/`slo.BudgetBurned`.
-- **Alerting model:** alerts derive from SLO burn + health/drift/spend through an **[AlertManager](../../technologies/prometheus-alertmanager.md)-style** model — **grouping, dedup, silencing, inhibition, a routing tree**, and notification **receivers as providers** — all **event-sourced** (`alert.*`) so "why did (or didn't) this page" replays.
+- **Alerting model:** alerts derive from SLO burn + health/drift/spend through an **[AlertManager](../technologies/prometheus-alertmanager.md)-style** model — **grouping, dedup, silencing, inhibition, a routing tree**, and notification **receivers as providers** — all **event-sourced** (`alert.*`) so "why did (or didn't) this page" replays.
 - **Boundary export ([ADR-0046](./adr/02-identity-security.md#adr-0046)):** telemetry exports **OTLP-native**; events export **CloudEvents**-compatible; the audit log exports to **OCSF** for SIEM.
 
 #### Observability for agents (closing the loop)

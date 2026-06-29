@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-506 Product Notification Taxonomy Proof"
+description: "Source issue: HOBO-506."
+tags: [hobo, design]
+---
+
 # HOBO-506 Product Notification Taxonomy Proof
 
 HOBO-506 is proven by the focused M0 contract at

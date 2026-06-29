@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Example Apps Scope and Acceptance"
+description: "Source issue: HOBO-435."
+tags: [hobo, design]
+---
+
 # Example Apps Scope and Acceptance
 
 Source issue: HOBO-435.
@@ -5,7 +12,7 @@ Source issue: HOBO-435.
 Executable proof lives in
 [`src/draft/example-apps-scope-acceptance`](../../src/draft/example-apps-scope-acceptance/README.md).
 Branch evidence is summarized in
-[`proofs/hobo-435-example-apps-scope`](./proofs/hobo-435-example-apps-scope/README.md).
+[`proofs/hobo-435-example-apps-scope`](./proofs/hobo-435-example-apps-scope/index.md).
 
 ## M0 Acceptance Record
 

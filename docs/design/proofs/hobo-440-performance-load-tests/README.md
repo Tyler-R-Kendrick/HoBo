@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-440 Performance & Load Tests M0 Scope Proof"
+description: "Source issue: HOBO-440."
+tags: [hobo, design]
+---
+
 # HOBO-440 Performance & Load Tests M0 Scope Proof
 
 HOBO-440 is proven by the focused M0 contract at

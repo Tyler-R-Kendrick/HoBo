@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Tax, Currency, Receipt, And Invoice Compliance Obligations"
+description: "Source issue: HOBO-513."
+tags: [hobo, design]
+---
+
 # Tax, Currency, Receipt, And Invoice Compliance Obligations
 
 Source issue: HOBO-513.

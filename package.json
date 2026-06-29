@@ -13,6 +13,7 @@
     "docs:freshness:staged": "node --import tsx scripts/check-docs-freshness.ts --staged",
     "prepare-hooks": "git config core.hooksPath .githooks",
     "docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
+    "docs:okf": "node scripts/check-okf-docs.mjs",
     "contracts:data-models": "node --import tsx scripts/generate-data-model-contracts.ts --check"
   },
   "devDependencies": {

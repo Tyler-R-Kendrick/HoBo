@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Provenance & Retention Scope And Acceptance"
+description: "Source issue: HOBO-447."
+tags: [hobo, design]
+---
+
 # Provenance & Retention Scope And Acceptance
 
 Source issue: HOBO-447.

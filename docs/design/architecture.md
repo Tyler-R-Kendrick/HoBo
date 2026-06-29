@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Reference Architecture & Monorepo"
+description: "This capability doc covers the reference architecture and, beneath it, the monorepo & package layout that realizes it."
+tags: [hobo, design]
+---
+
 # Reference Architecture & Monorepo
 
 This capability doc covers the reference architecture and, beneath it, the monorepo & package layout that realizes it.

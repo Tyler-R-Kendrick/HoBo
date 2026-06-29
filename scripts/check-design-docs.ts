@@ -3,7 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_SCAN_PATHS = ["docs", "README.md", "CLAUDE.md"];
+const DEFAULT_SCAN_PATHS = [
+  "docs/design",
+  "docs/index.md",
+  "docs/agent-tooling.md",
+  "README.md",
+  "CLAUDE.md",
+];
 
 export async function checkDesignDocs({ root, files } = {}) {
   const targetFiles = files ?? (await collectMarkdownFiles(root));
@@ -104,7 +110,7 @@ function checkSdkDisambiguation({ markdownByFile }) {
 }
 
 async function checkAdrReferences({ root, markdownByFile }) {
-  const adrIndexPath = path.join(root, "docs", "design", "adr", "README.md");
+  const adrIndexPath = path.join(root, "docs", "design", "adr", "index.md");
   if (!fs.existsSync(adrIndexPath)) return [];
 
   const adrIndex = await readFile(adrIndexPath, "utf8");
@@ -131,7 +137,7 @@ async function checkAdrReferences({ root, markdownByFile }) {
           file,
           line: lineNumberAt(content, match.index),
           target: adrId,
-          message: `${adrId} is not listed in docs/design/adr/README.md`,
+          message: `${adrId} is not listed in docs/design/adr/index.md`,
         });
       }
     }

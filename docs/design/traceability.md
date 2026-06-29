@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo ADR and Plan Traceability"
+description: "This report is the M0 traceability gate for HOBO-11. It maps every current design plan and every"
+tags: [hobo, design]
+---
+
 # HoBo ADR and Plan Traceability
 
 This report is the M0 traceability gate for HOBO-11. It maps every current design plan and every
@@ -6,8 +13,8 @@ only documented, but has an implementation home.
 
 ## Sources
 
-- Plan index: [README.md](./README.md)
-- ADR index: [adr/README.md](./adr/README.md)
+- Plan index: [README.md](./index.md)
+- ADR index: [adr/README.md](./adr/index.md)
 - Backlog mirror: [../implementation-plan.md](../implementation-plan.md)
 - Live source of truth: Linear team `HoBo`, issues `HOBO-1` through `HOBO-513`
 
@@ -222,7 +229,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 93 numbered entries from [adr/README.md](./adr/README.md).
+- Counted ADRs: 93 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.

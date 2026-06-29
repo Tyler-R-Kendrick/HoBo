@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Authoring: Resources, Wiring, Config & DSL"
+description: "This capability doc covers the authoring surface end to end: the resource catalog and the `.allow()` model, wiring and the manifest IR, configuration and secretless secrets, and th"
+tags: [hobo, design]
+---
+
 # Authoring: Resources, Wiring, Config & DSL
 
 This capability doc covers the authoring surface end to end: the resource catalog and the `.allow()` model, wiring and the manifest IR, configuration and secretless secrets, and the Hobo Code DSL — one model from declaration to deployable artifact.
@@ -194,7 +201,7 @@ Manifest interop notes: the schema (`hobo.manifest/v1`) stays interop-close to A
 Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-party API keys). The antipattern everyone falls into is static secrets baked into env files, images, IaC, or — worst — the event log. HoBo issues **keyless workload identities** and brokers short-lived provider tokens ([Plan 6](./ai-native-agent-auth.md#plan-06)); config and secrets ride that same path by default, and the SDK surface for loading them is built around it.
 
 **Principles.**
-1. **Secretless-first.** The best secret is no secret: a bound resource is reached via the app's **SVID → brokered short-lived token**, so there is nothing to store or leak ([ADR-0008](./adr/README.md)).
+1. **Secretless-first.** The best secret is no secret: a bound resource is reached via the app's **SVID → brokered short-lived token**, so there is nothing to store or leak ([ADR-0008](./adr/index.md)).
 2. **References, not values.** Config/secret declarations resolve to **refs** (a pointer to a provider secret store path, a binding, or a federation trust), resolved **at use-time, per Camp**. A value never lives in the `Bindle`, the Camp config, or the event log.
 3. **Secretless is the default; provider specifics are a pluggable `secrets` port adapter.** The default identity path — SVID → SVID-brokered short-lived tokens, OIDC federation — stays the default. Cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension per provider** ([ADR-0027](./adr/02-identity-security.md#adr-0027)). Because a Camp is the provider-specific layer, *where* a secret/config actually comes from (Key Vault vs Secrets Manager vs Vault; which region) and *which* adapter resolves it is a Camp concern; the Bindle only declares *what it needs*. Overriding the default identity path with a cloud-native one is a Camp + extension change, not an app edit.
 4. **Every access is audited; values are never telemetry.** Secret reads are `token.Used` / `secret.Accessed` events; OTel/OpenInference spans and `ctx.log` redact values ([Plan 5](./reliability-observability-cost.md#plan-05)).
@@ -257,10 +264,10 @@ The same Bindle on `prod-azure` resolves `STRIPE` from Key Vault — **no app-co
 
 **Availability & failure modes.** If a Camp's secret store is unreachable, `secretRef` resolution **fails fast after a bounded retry** (a small capped-backoff budget), emits `secret.Unavailable`, and surfaces a typed error the step can handle — it does **not** silently fall back to a static value. A short, bounded in-process cache (above) may serve a recently-fetched value within its TTL; beyond that, the call fails rather than serve stale/unknown credentials. Treat secret-store availability as a dependency in the SLO budget ([Plan 5](./reliability-observability-cost.md#plan-05)).
 
-**App-facing crypto (keys the app never holds).** The secretless model extends to **cryptography**: a `crypto(name)` resource (`hobo:crypto` port, above / [Plan 20](./wasm-runtime-wit.md#plan-20)) offers `encrypt`/`decrypt` (envelope) + `sign`/`verify` where the **key material never enters app code** — the app holds a brokered key *handle* (via Identity, [Plan 6](./ai-native-agent-auth.md#plan-06)), and the operation runs against a per-Camp **KMS / Key Vault / Cloud KMS / in-boundary HSM** behind the port (air-gap: in-boundary KMS, [ADR-0027](./adr/02-identity-security.md#adr-0027)/[ADR-0036](./adr/07-portability-extensibility.md#adr-0036)). Same secretless guarantee as tokens: nothing key-shaped at rest in the app. (Closes the Dapr-crypto parity item, [gap-analysis G9](../../competitors/gap-analysis.md).)
+**App-facing crypto (keys the app never holds).** The secretless model extends to **cryptography**: a `crypto(name)` resource (`hobo:crypto` port, above / [Plan 20](./wasm-runtime-wit.md#plan-20)) offers `encrypt`/`decrypt` (envelope) + `sign`/`verify` where the **key material never enters app code** — the app holds a brokered key *handle* (via Identity, [Plan 6](./ai-native-agent-auth.md#plan-06)), and the operation runs against a per-Camp **KMS / Key Vault / Cloud KMS / in-boundary HSM** behind the port (air-gap: in-boundary KMS, [ADR-0027](./adr/02-identity-security.md#adr-0027)/[ADR-0036](./adr/07-portability-extensibility.md#adr-0036)). Same secretless guarantee as tokens: nothing key-shaped at rest in the app. (Closes the Dapr-crypto parity item, [gap-analysis G9](../competitors/gap-analysis.md).)
 
 **Why this is safe.**
-- **Nothing to steal by default** — the common case (bound resources) uses brokered tokens, so there is no secret at rest ([ADR-0008](./adr/README.md)).
+- **Nothing to steal by default** — the common case (bound resources) uses brokered tokens, so there is no secret at rest ([ADR-0008](./adr/index.md)).
 - **Blast radius is bounded** — tokens are short-lived + resource-scoped; the static fallback is TTL'd, rotated, and audited ([ADR-0023](./adr/02-identity-security.md#adr-0023)).
 - **Portable** — the Bindle declares needs, the Camp supplies sources; swapping clouds is a Camp change, never an app edit.
 

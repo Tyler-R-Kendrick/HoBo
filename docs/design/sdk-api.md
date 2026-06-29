@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "SDK / API Design"
+description: "The SDK is four cooperating layers. Each lower layer is usable on its own; higher layers add ergonomics. The \"feels like Vercel Workflows\" surface = Layer 4 primitives + Layer 3 to"
+tags: [hobo, design]
+---
+
 # SDK / API Design
 
 ## Plan 02
@@ -43,7 +50,7 @@ export interface ActorHost {
 ```
 **Provided by the Camp** (the provider-specific layer); **the same app code runs regardless of the runtime backend** (`HOBO_RUNTIME` env or Camp config). Built-in `@hobo/runtime-local` (SQLite/filesystem) for dev; production backends: `runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./data-plane.md#plan-11)).
 
-> **Runtime vs Providers** (a key distinction): the **Camp runtime** backs the *data-plane runtime* of your app (durable state, queues, timers). A **Provider** ([Layer 2](#layer-2--providers-infra-capability-ports)) provisions *infrastructure* (databases, compute, buckets). A Camp **supplies both, chosen independently** — its runtime backend **and** its provider can be different vendors (e.g. `provider-aws` for infra + a Temporal runtime). *"Runtime" has three senses — the `@hobo/runtime` SDK-primitives package, the `Runtime` interface, and the `runtime-*` backends; see the [glossary](./README.md#glossary--naming-thematic-all-tunable).*
+> **Runtime vs Providers** (a key distinction): the **Camp runtime** backs the *data-plane runtime* of your app (durable state, queues, timers). A **Provider** ([Layer 2](#layer-2--providers-infra-capability-ports)) provisions *infrastructure* (databases, compute, buckets). A Camp **supplies both, chosen independently** — its runtime backend **and** its provider can be different vendors (e.g. `provider-aws` for infra + a Temporal runtime). *"Runtime" has three senses — the `@hobo/runtime` SDK-primitives package, the `Runtime` interface, and the `runtime-*` backends; see the [glossary](./index.md#glossary--naming-thematic-all-tunable).*
 
 ---
 

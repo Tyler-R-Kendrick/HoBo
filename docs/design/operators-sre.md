@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Operator Agents & SRE"
+description: "This capability doc covers the operator-agent Crew and the deep-dive SRE model that lives within it."
+tags: [hobo, design]
+---
+
 # Operator Agents & SRE
 
 This capability doc covers the operator-agent Crew and the deep-dive SRE model that lives within it.
@@ -39,7 +46,7 @@ flowchart TB
 ### The roster
 | Operator Agent | Owns | Composes (existing) | Optional external engine | Surfaces / events |
 |---|---|---|---|---|
-| **SRE** | incident detection → root-cause → **gated remediation** | live-fix ([Plan 23](./generated-stack.md#plan-23)), observability ([Plan 5](./reliability-observability-cost.md#plan-05)), drift + canary/auto-rollback ([Plan 5](./reliability-observability-cost.md#plan-05)), chaos findings ([ADR-0047](./adr/02-identity-security.md#adr-0047)) | **HolmesGPT** behind a port ([technologies/holmesgpt-sre-agent.md](../../technologies/holmesgpt-sre-agent.md)) | MCP `diagnose`/`heal`; rides `incident.*`/live-fix + `policy.Decided` |
+| **SRE** | incident detection → root-cause → **gated remediation** | live-fix ([Plan 23](./generated-stack.md#plan-23)), observability ([Plan 5](./reliability-observability-cost.md#plan-05)), drift + canary/auto-rollback ([Plan 5](./reliability-observability-cost.md#plan-05)), chaos findings ([ADR-0047](./adr/02-identity-security.md#adr-0047)) | **HolmesGPT** behind a port ([docs/technologies/holmesgpt-sre-agent.md](../technologies/holmesgpt-sre-agent.md)) | MCP `diagnose`/`heal`; rides `incident.*`/live-fix + `policy.Decided` |
 | **Endpoint Monitor** | synthetic probes, health/SLO watch, drift surfacing | SLO/alerting ([ADR-0045](./adr/02-identity-security.md#adr-0045)), observability ([Plan 5](./reliability-observability-cost.md#plan-05)), drift ([Plan 5](./reliability-observability-cost.md#plan-05)) | external synthetic-check provider behind a port | emits `slo.BudgetBurned`/`alert.*`/drift → **feeds SRE** |
 | **GitOps** | drive *when/what* deploys; promotion across env-groups | pipelines + publishers ([Plan 25](./platform-engineering.md#plan-25)), `can-deploy` ([Plan 29](./contracts-policy-flags.md#plan-29)), env-group saga ([ADR-0028](./adr/01-architecture-core.md#adr-0028)) | external GitOps controller (Argo/Flux) as publisher | MCP `promote`/`rollback`; rides `pipeline.*`/`deployment.*` |
 | **Platform Engineer** | author + **auto-generate** Resource Definitions/Packs + policy packs | Matching ([Plan 25](./platform-engineering.md#plan-25)), packs ([Plan 25](./platform-engineering.md#plan-25)), policy ([Plan 29](./contracts-policy-flags.md#plan-29)), generation pipeline ([Plan 23](./generated-stack.md#plan-23)) | — (generation pipeline is the engine) | MCP `propose-definition`/`propose-pack`; AI counterpart to the human persona ([ADR-0019](./adr/07-portability-extensibility.md#adr-0019)) |
@@ -75,7 +82,7 @@ The SRE operator from the roster above is the one Crew member whose remediation 
 An **Incident** is an [aggregate](./sdk-api.md#plan-02) (an actor; [ADR-0053](./adr/03-data-plane.md#adr-0053)) on stream `incident:<id>` — single-writer, **rebuildable from the log**. It is the **command point** that correlates the loose signals (`alert.Fired`, `slo.BudgetBurned`, `resource.DriftDetected`, `compat.GateFailed`, `spend.CircuitTripped`, `golden.Failed`/`golden.Drifted` — [ADR-0082](./adr/02-identity-security.md#adr-0082)) into one governed object: `{ id, severity, impact, status, timeline, causedBy (causation/correlation chain), owner }`. Lifecycle events ([Plan 11](./data-plane.md#plan-11)): `Opened → Triaged → RootCauseIdentified → RemediationProposed → RemediationApplied|Failed → Resolved → PostmortemFiled`, plus `SLABreached` on MTTD/MTTR overrun. Correlation uses the envelope's existing `correlationId`/`causationId` ([Plan 11](./data-plane.md#plan-11)) — multiple alerts fold into **one** incident, not N pages. These `incident.*` facts are what the **operations dashboard** renders (open incidents, MTTD/MTTR) and what a project's **status page** publishes as incident history + postmortem-as-replay ([Plan 49](./developer-experience.md#plan-49)) — internally in full, publicly as curated `statuspage.IncidentPosted` updates.
 
 #### The SRE operator decision tree
-The SRE operator runs a documented decision tree. On a signal it runs: **diagnose** (read projections; optional **HolmesGPT** engine behind a port, [technologies/holmesgpt-sre-agent.md](../../technologies/holmesgpt-sre-agent.md)) → **classify** (the taxonomy below) → **decide** one of three branches, each policy-gated + event-sourced:
+The SRE operator runs a documented decision tree. On a signal it runs: **diagnose** (read projections; optional **HolmesGPT** engine behind a port, [docs/technologies/holmesgpt-sre-agent.md](../technologies/holmesgpt-sre-agent.md)) → **classify** (the taxonomy below) → **decide** one of three branches, each policy-gated + event-sourced:
 ```mermaid
 flowchart TB
   SIG["signal: alert.Fired / slo.BudgetBurned / resource.DriftDetected / compat.GateFailed"] --> INC["Incident opened (aggregate, Plan 11)"]
@@ -116,7 +123,7 @@ One table unifies the scattered taxonomies (Plan 5 runtime classes + Plan 23/29 
 Each strategy is reversible + gated; an unclassifiable failure → escalate (never silent action). Cost-induced degradation is a first-class incident class: the SRE operator handles it by *proposing* cost-efficient remediation (e.g. *"hold 99% to stay under budget while the leak is fixed"*) as a gated obligation, and **postmortem-by-replay shows exactly which load was shed and when** ([ADR-0039](./adr/02-identity-security.md#adr-0039)).
 
 #### Declarative runbooks
-The missing first-class concept. A **runbook** codifies response: **trigger** (alert / SLO-burn / drift / incident-severity) → **diagnosis steps** (MCP queries the SRE runs) → **gated fix actions** (each blast-radius-bounded). Runbooks are **event-sourced** (`runbook.*`), **versioned + signed** like Resource Packs ([Plan 25](./platform-engineering.md#plan-25)), and **built on the Pipelines engine** ([Plan 25](./platform-engineering.md#plan-25)) — the incident-response sibling of deploy pipelines (same triggers/rules/gated-steps model, different triggers + actions). HolmesGPT runbooks / StackStorm are **optional engines behind the port** ([technologies/stackstorm.md](../../technologies/stackstorm.md)).
+The missing first-class concept. A **runbook** codifies response: **trigger** (alert / SLO-burn / drift / incident-severity) → **diagnosis steps** (MCP queries the SRE runs) → **gated fix actions** (each blast-radius-bounded). Runbooks are **event-sourced** (`runbook.*`), **versioned + signed** like Resource Packs ([Plan 25](./platform-engineering.md#plan-25)), and **built on the Pipelines engine** ([Plan 25](./platform-engineering.md#plan-25)) — the incident-response sibling of deploy pipelines (same triggers/rules/gated-steps model, different triggers + actions). HolmesGPT runbooks / StackStorm are **optional engines behind the port** ([docs/technologies/stackstorm.md](../technologies/stackstorm.md)).
 ```ts
 defineRunbook("high-5xx-on-api", {
   on: { alert: "api.5xx-burst", severity: ">=SEV2" },

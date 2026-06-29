@@ -35,7 +35,7 @@ async function withDesignFixture(callback) {
       ].join("\n"),
     );
     await writeFile(
-      path.join(root, "docs", "design", "adr", "README.md"),
+      path.join(root, "docs", "design", "adr", "index.md"),
       [
         "# ADR index",
         "",

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Pre-Launch Outcome Contract And Value Baseline"
+description: "Source issue: HOBO-509."
+tags: [hobo, design]
+---
+
 # Pre-Launch Outcome Contract And Value Baseline
 
 Source issue: HOBO-509.
@@ -5,7 +12,7 @@ Source issue: HOBO-509.
 Executable proof lives in
 [`src/draft/pre-launch-outcome-contract`](../../src/draft/pre-launch-outcome-contract/README.md).
 Branch evidence is summarized in
-[`proofs/hobo-509-pre-launch-outcome-contract`](./proofs/hobo-509-pre-launch-outcome-contract/README.md).
+[`proofs/hobo-509-pre-launch-outcome-contract`](./proofs/hobo-509-pre-launch-outcome-contract/index.md).
 
 ## M0 Acceptance Record
 

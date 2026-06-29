@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Marketplace Publisher Trust Evidence"
+description: "Productization M0 record for HOBO-503: marketplace publisher trust tiers and review evidence."
+tags: [hobo, design]
+---
+
 # Marketplace Publisher Trust Evidence
 
 Productization M0 record for HOBO-503: marketplace publisher trust tiers and review evidence.

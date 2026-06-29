@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "V1 Supported Browser, Device, And Platform Matrix"
+description: "Source issue: HOBO-511."
+tags: [hobo, design]
+---
+
 # V1 Supported Browser, Device, And Platform Matrix
 
 Source issue: HOBO-511.

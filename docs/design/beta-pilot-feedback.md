@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Beta Pilot Feedback Contract"
+description: "HOBO-404 defines the M0 private-beta program contract: who can be a pilot, what"
+tags: [hobo, design]
+---
+
 # Beta Pilot Feedback Contract
 
 HOBO-404 defines the M0 private-beta program contract: who can be a pilot, what

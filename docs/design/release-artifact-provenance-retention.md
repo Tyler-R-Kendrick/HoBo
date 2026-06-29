@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Release Artifact Provenance And Retention"
+description: "Source issue: HOBO-504."
+tags: [hobo, design]
+---
+
 # Release Artifact Provenance And Retention
 
 Source issue: HOBO-504.

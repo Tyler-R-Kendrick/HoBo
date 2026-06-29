@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-514 DX SDK Resilience Scope Proof"
+description: "Source issue: HOBO-514."
+tags: [hobo, design]
+---
+
 # HOBO-514 DX SDK Resilience Scope Proof
 
 This proof records why HOBO-514 is being treated as branch-sized concrete

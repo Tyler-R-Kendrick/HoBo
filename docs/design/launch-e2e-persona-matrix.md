@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Launch E2E Persona Matrix"
+description: "Source issue: HOBO-500."
+tags: [hobo, design]
+---
+
 # Launch E2E Persona Matrix
 
 Source issue: HOBO-500.

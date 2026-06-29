@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo Codex automation: issue worker"
+description: "- **Name:** HoBo issue worker"
+tags: [hobo, automations]
+---
+
 # HoBo Codex automation: issue worker
 
 ## Codex automation settings
@@ -40,8 +47,8 @@ SETUP
    - AGENTS.md
    - CLAUDE.md
    - docs/implementation-plan.md
-   - docs/design/README.md
-   - docs/design/adr/README.md
+   - docs/design/index.md
+   - docs/design/adr/index.md
 4. Follow repo tooling guidance, including Codex MCP setup and repo skills.
 
 STEP 0 — PARALLELISM POLICY

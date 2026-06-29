@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-415 Tenant Isolation & Quotas Proof"
+description: "Source issue: HOBO-415."
+tags: [hobo, design]
+---
+
 # HOBO-415 Tenant Isolation & Quotas Proof
 
 This proof backs the M0 productization record for

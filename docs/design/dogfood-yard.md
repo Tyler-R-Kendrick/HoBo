@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Dogfood Yard Acceptance Scenarios and Telemetry Evidence"
+description: "Source issue: HOBO-403."
+tags: [hobo, design]
+---
+
 # Dogfood Yard Acceptance Scenarios and Telemetry Evidence
 
 Source issue: HOBO-403.

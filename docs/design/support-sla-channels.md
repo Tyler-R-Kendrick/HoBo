@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Support SLA Channels Scope And Acceptance"
+description: "Source issue: HOBO-496."
+tags: [hobo, design]
+---
+
 # Support SLA Channels Scope And Acceptance
 
 Source issue: HOBO-496.

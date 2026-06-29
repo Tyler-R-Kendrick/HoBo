@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Tenant Isolation & Quotas"
+description: "Source issue: HOBO-415"
+tags: [hobo, design]
+---
+
 # Tenant Isolation & Quotas
 
 Source issue: HOBO-415

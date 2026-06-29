@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Billing Launch Policy"
+description: "Source issue: HOBO-489."
+tags: [hobo, design]
+---
+
 # Billing Launch Policy
 
 Source issue: HOBO-489.
@@ -5,7 +12,7 @@ Source issue: HOBO-489.
 Executable proof lives in
 [`src/draft/billing-launch-policy-contract`](../../src/draft/billing-launch-policy-contract/README.md).
 Branch evidence is summarized in
-[`proofs/hobo-489-billing-launch-policy`](./proofs/hobo-489-billing-launch-policy/README.md).
+[`proofs/hobo-489-billing-launch-policy`](./proofs/hobo-489-billing-launch-policy/index.md).
 
 ## M0 Acceptance Record
 

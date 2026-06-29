@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-508 V1 Outcome Activation Rail Proof"
+description: "Source issue: HOBO-508."
+tags: [hobo, design]
+---
+
 # HOBO-508 V1 Outcome Activation Rail Proof
 
 HOBO-508 is proven by the focused M0 contract at

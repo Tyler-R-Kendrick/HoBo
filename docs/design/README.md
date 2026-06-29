@@ -22,6 +22,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`developer-experience.md`](./developer-experience.md#plan-07) | Developer experience: dashboards, CLI, status pages & availability | 07, 49 |
 | [`cli-spec.md`](./cli-spec.md) | Canonical CLI verb surface + lifecycle semantics | — |
 | [`pre-launch-outcome-contract.md`](./pre-launch-outcome-contract.md) | Productization M0 contract for pre-launch outcome baselines and v1 value evidence | — |
+| [`ai-generation-launch-posture.md`](./ai-generation-launch-posture.md) | Productization M0 launch posture for AI-generation safety claims, limitations, and review routing | — |
 | [`launch-blocker-taxonomy.md`](./launch-blocker-taxonomy.md) | Productization M0 launch-blocker severity taxonomy and go/no-go exception posture | — |
 | [`workspace-activation-telemetry-contract.md`](./workspace-activation-telemetry-contract.md) | Productization M0 contract for first-run workspace activation telemetry and privacy boundaries | — |
 | [`wasm-runtime-wit.md`](./wasm-runtime-wit.md#plan-20) | WASM/WASI runtime & WIT interface reference | 20 |

@@ -76,3 +76,13 @@ branch-sized executable annex contract that later issues can consume.
 ```powershell
 npm.cmd --prefix src\draft\resilience-semantics-annex test
 ```
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- [`proto/resilience_semantics_annex.proto`](./proto/resilience_semantics_annex.proto) — protobuf data shapes for the spec, fixtures, facts, and case results.
+- [`cue/resilience_semantics_annex.cue`](./cue/resilience_semantics_annex.cue) — CUE constraints for every protobuf type.
+- [`contracts/pacts/resilience-conformance-lane.pact.json`](./contracts/pacts/resilience-conformance-lane.pact.json) — PACT for the SDK conformance-lane boundary.
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — parse-don't-validate and event-architecture evidence.

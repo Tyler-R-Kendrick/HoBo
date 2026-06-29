@@ -18,17 +18,24 @@ Independent POC for HOBO-32: a branch-sized `@hobo/conformance/sdk` gate for the
 - The gate has two required behavior lanes: golden-IR lowering equivalence and the semantics annex.
 - The passing TypeScript idiom-layer fixture lowers to identical `hobo:sdk` calls and manifest IR,
   then passes error mapping, cancellation, async ordering, and IfC side-effect vectors.
+- The gate now has a third required behavior lane: the resilience semantics annex from HOBO-516.
+  Retry, denial, terminal failure, cancellation, deadline, cleanup, and replay-inspection helper
+  claims fail unless matching resilience vectors are present and passing.
 - A deliberately divergent fixture fails the golden-IR lane.
 - A layer that lowers correctly but swallows WIT errors fails the semantics-annex lane.
+- A layer/report that lowers correctly but hides cancellation as retry fails the resilience lane.
 - Hand-authored and generated idiom layers use the same gate; there is no trusted-by-convention path.
-- The report states the corpus boundary explicitly: off-corpus semantics require annex vectors or an
-  unsupported-behavior callout before parity can be claimed.
+- The report separates golden-IR, existing semantics-annex, resilience-semantics, thin-layer,
+  authorship, and coverage failures so golden-IR success cannot mask a resilience failure.
+- The report states the corpus boundary explicitly: off-corpus helper claims require golden-IR,
+  semantics-annex, or resilience vectors before parity can be claimed. Unsupported helper behavior
+  fails the coverage lane.
 
 ## Scope Boundary
 
 This does not author non-TS idiom layers, build the full `@hobo/bindles` fluent surface, or implement
-the AI-generation loop. It composes the existing HOBO-16, HOBO-31, and HOBO-106 proof packages into
-the SDK conformance gate that those future implementations must pass.
+the AI-generation loop. It composes the existing HOBO-16, HOBO-31, HOBO-106, and HOBO-516 proof
+packages into the SDK conformance gate that those future implementations must pass.
 
 ## Verification
 

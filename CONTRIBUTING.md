@@ -6,7 +6,7 @@ HoBo is design-first. A useful contribution either clarifies the design, proves 
 
 1. Read [`README.md`](./README.md) for project purpose and current state.
 2. Read [`AGENTS.md`](./AGENTS.md) before using an AI coding agent in this repo.
-3. Find the relevant design area in [`docs/design/README.md`](./docs/design/README.md).
+3. Find the relevant design area in [`docs/design/index.md`](./docs/design/index.md).
 4. For implementation-facing work, find the matching proof note under [`docs/design/proofs/`](./docs/design/proofs/) or draft package under [`src/draft/`](./src/draft/README.md).
 
 ## What belongs here
@@ -16,7 +16,7 @@ Good changes usually fall into one of these buckets:
 - Design docs, ADRs, glossary entries, CLI/spec changes, or traceability updates.
 - `src/draft/*` proof/contract packages that make a design claim executable.
 - Validation scripts, CI gates, and repository-maintenance automation.
-- Reference notes in `standards/`, `technologies/`, `patterns/`, or `competitors/` that support a design decision.
+- Reference notes in `docs/standards/`, `docs/technologies/`, `docs/patterns/`, or `docs/competitors/` that support a design decision.
 
 Out of scope for now:
 
@@ -53,7 +53,7 @@ Docs must move with code. If you touch code, draft packages, tests, scripts, wor
 Use this checklist:
 
 - README still describes the repo accurately.
-- `docs/design/README.md` still describes current design organization.
+- `docs/design/index.md` still describes current design organization.
 - Relevant design doc, ADR, proof README, or draft package README changed with the implementation.
 - New public commands or examples pass `npm run docs:cli-lint`.
 - New ADR references are indexed and pass traceability validation.

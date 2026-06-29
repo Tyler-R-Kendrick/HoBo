@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Accessibility And Usability Launch Baseline"
+description: "Source issue: HOBO-505."
+tags: [hobo, design]
+---
+
 # Accessibility And Usability Launch Baseline
 
 Source issue: HOBO-505.

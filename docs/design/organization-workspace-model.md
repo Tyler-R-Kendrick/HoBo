@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Organization & Workspace Model Scope And Acceptance"
+description: "Source issue: HOBO-413."
+tags: [hobo, design]
+---
+
 # Organization & Workspace Model Scope And Acceptance
 
 Source issue: HOBO-413.

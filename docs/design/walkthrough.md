@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo by Role: One App, Six Workflows (Ideal-State Walkthrough)"
+description: "HoBo's bet: **the only command an app developer runs is `hobo up`.** Everything else — providers, golden paths, delivery, policy, the control plane, on-call response — is **code th"
+tags: [hobo, design]
+---
+
 # HoBo by Role: One App, Six Workflows (Ideal-State Walkthrough)
 
 > **What this is.** A role-organized tour of HoBo as if it were fully built. We carry **one app — `snapshop`, a photo storefront** — through the whole lifecycle, but each Part is written for the person who actually does that work: the **app developer**, the **platform engineer**, **GitOps**, **SecOps**, **DevOps**, and the **SRE**. Find your row in the table below and start there; the app is shared, the loops are yours.

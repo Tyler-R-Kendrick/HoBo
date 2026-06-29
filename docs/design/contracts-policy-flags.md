@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Contracts, Policy & Feature Flags"
+description: "This capability doc covers three planes — contracts (the `can-deploy` gate), the policy plane (decisions, obligations & gates), and feature flags & progressive delivery."
+tags: [hobo, design]
+---
+
 # Contracts, Policy & Feature Flags
 
 This capability doc covers three planes — contracts (the `can-deploy` gate), the policy plane (decisions, obligations & gates), and feature flags & progressive delivery.
@@ -234,7 +241,7 @@ The **Harness** ([ADR-0083](./adr/02-identity-security.md#adr-0083)) is HoBo's *
 **Reference implementation:** the epic rollup for Progressive Delivery — The Harness lives at [`src/draft/epic-reference-implementations/progressive-delivery-harness`](../../src/draft/epic-reference-implementations/progressive-delivery-harness/README.md). It composes the flag, delivery, SLO, experiment, policy, event-stream, and rollback-hardening POCs into one mocked-boundary simulation with Pact-style contracts for every service boundary.
 
 #### The `feature-flag` port — OpenFeature-compatible
-A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance the policy plane takes (OPA/Cedar as optional `policy-engine` providers, above). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, as established above and in [ADR-0015](./adr/02-identity-security.md#adr-0015).)
+A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance the policy plane takes (OPA/Cedar as optional `policy-engine` providers, above). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, as established above and in [ADR-0015](./adr/02-identity-security.md#adr-0015).)
 - **Built-in flag store is the default** (zero-dep, self-host/air-gap friendly, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); **OpenFeature providers** (flagd / LaunchDarkly / etc.) are **opt-in adapters** selected per Camp by Matching ([ADR-0033](./adr/01-architecture-core.md#adr-0033)).
 - **Flag types:** boolean, string, number, object (the OpenFeature set).
 - **Definitions are IfC** — flags are declared in the Bindle (name, type, default, targeting rules); flag *values/targeting* are runtime state (below).

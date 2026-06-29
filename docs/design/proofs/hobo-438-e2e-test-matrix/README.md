@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-438 E2E Test Matrix M0 Scope Proof"
+description: "Source issue: HOBO-438."
+tags: [hobo, design]
+---
+
 # HOBO-438 E2E Test Matrix M0 Scope Proof
 
 HOBO-438 is proven by the focused M0 contract at

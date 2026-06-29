@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "AI Generation Safety Launch Posture"
+description: "Source issue: HOBO-510."
+tags: [hobo, design]
+---
+
 # AI Generation Safety Launch Posture
 
 Source issue: HOBO-510.

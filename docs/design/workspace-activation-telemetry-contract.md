@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Workspace Activation Telemetry Contract"
+description: "Source issue: HOBO-486."
+tags: [hobo, design]
+---
+
 # Workspace Activation Telemetry Contract
 
 Source issue: HOBO-486.

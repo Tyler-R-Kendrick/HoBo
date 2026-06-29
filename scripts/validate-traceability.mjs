@@ -3,8 +3,8 @@ import path from "node:path";
 
 const root = process.cwd();
 const traceabilityPath = path.join(root, "docs", "design", "traceability.md");
-const adrIndexPath = path.join(root, "docs", "design", "adr", "README.md");
-const designIndexPath = path.join(root, "docs", "design", "README.md");
+const adrIndexPath = path.join(root, "docs", "design", "adr", "index.md");
+const designIndexPath = path.join(root, "docs", "design", "index.md");
 
 function read(relativeOrAbsolutePath) {
   return fs.readFileSync(relativeOrAbsolutePath, "utf8");

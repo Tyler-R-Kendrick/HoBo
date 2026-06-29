@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-424 Org Catalogs Proof"
+description: "Source issue: HOBO-424."
+tags: [hobo, design]
+---
+
 # HOBO-424 Org Catalogs Proof
 
 This proof backs the M0 productization record for

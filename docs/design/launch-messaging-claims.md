@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Launch Messaging Claims"
+description: "Source issue: HOBO-406."
+tags: [hobo, design]
+---
+
 # Launch Messaging Claims
 
 Source issue: HOBO-406.

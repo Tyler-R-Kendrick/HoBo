@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-430 Upgrade And Migration Engine M0 Proof"
+description: "Source issue: HOBO-430."
+tags: [hobo, design]
+---
+
 # HOBO-430 Upgrade And Migration Engine M0 Proof
 
 This proof package demonstrates that HOBO-430 records accepted M0 scope before follow-up Upgrade &

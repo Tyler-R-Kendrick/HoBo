@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Governance Planes: Compliance & AI Safety"
+description: "This capability doc covers the HoBo governance plane: compliance/data governance and AI safety/model governance as one enforcement story."
+tags: [hobo, design]
+---
+
 # Governance Planes: Compliance & AI Safety
 
 This capability doc covers the HoBo governance plane: compliance/data governance and AI safety/model governance as one enforcement story.

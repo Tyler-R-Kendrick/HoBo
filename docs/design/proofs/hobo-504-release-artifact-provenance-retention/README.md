@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-504 Release Artifact Provenance Retention Proof"
+description: "Source issue: HOBO-504."
+tags: [hobo, design]
+---
+
 # HOBO-504 Release Artifact Provenance Retention Proof
 
 Executable artifact:

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-510 AI Generation Launch Posture Proof"
+description: "Source issue: HOBO-510."
+tags: [hobo, design]
+---
+
 # HOBO-510 AI Generation Launch Posture Proof
 
 HOBO-510 is proven by the focused M0 contract at

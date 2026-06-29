@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-505 Accessibility And Usability Launch Baseline Proof"
+description: "Source issue: HOBO-505."
+tags: [hobo, design]
+---
+
 # HOBO-505 Accessibility And Usability Launch Baseline Proof
 
 HOBO-505 is proven by the focused M0 contract at

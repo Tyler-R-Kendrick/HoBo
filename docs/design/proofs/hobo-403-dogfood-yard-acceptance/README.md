@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-403 Dogfood Yard Acceptance Proof"
+description: "Source issue: HOBO-403."
+tags: [hobo, design]
+---
+
 # HOBO-403 Dogfood Yard Acceptance Proof
 
 HOBO-403 is proven by the focused M0 contract at

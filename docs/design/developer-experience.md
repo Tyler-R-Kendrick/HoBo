@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Developer Experience: Dashboards, CLI & Status Pages"
+description: "This capability doc covers the developer-facing surface end to end: the UI/dashboard and the CLI/DX, told as one narrative. This is the **developer/authoring** dashboard (deploy ti"
+tags: [hobo, design]
+---
+
 # Developer Experience: Dashboards, CLI & Status Pages
 
 This capability doc covers the developer-facing surface end to end: the UI/dashboard and the CLI/DX, told as one narrative. This is the **developer/authoring** dashboard (deploy timeline, link map, run inspector, AI proposals); the **operations** counterpart — the multi-cloud / multi-environment **fleet** view and the per-project **status pages** + architecture availability — is [Plan 49](#plan-49), built from the same projection-and-event model.
@@ -187,7 +194,7 @@ flowchart TB
 
 ### B. The operations dashboard — the Aspire analog for multi-cloud, multi-environment ([ADR-0077](./adr/02-identity-security.md#adr-0077))
 
-A **default fleet view** that an operator opens without configuring anything — the prod-scale, cross-cloud counterpart to the Aspire local dashboard ([`competitors/aspire`](../../competitors/aspire.md)). Like every HoBo view it is a **read-only projection** over the log; the same read API backs the CLI and agents ([Plan 7](#plan-07)). Default views, each scoped by **project × environment**:
+A **default fleet view** that an operator opens without configuring anything — the prod-scale, cross-cloud counterpart to the Aspire local dashboard ([`docs/competitors/aspire`](../competitors/aspire.md)). Like every HoBo view it is a **read-only projection** over the log; the same read API backs the CLI and agents ([Plan 7](#plan-07)). Default views, each scoped by **project × environment**:
 
 | View | Projection / source | What it shows |
 |---|---|---|

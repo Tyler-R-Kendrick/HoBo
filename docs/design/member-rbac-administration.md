@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Member/RBAC Administration Scope And Acceptance"
+description: "Source issue: HOBO-416."
+tags: [hobo, design]
+---
+
 # Member/RBAC Administration Scope And Acceptance
 
 Source issue: HOBO-416.

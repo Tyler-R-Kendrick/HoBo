@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HoBo CLI Specification"
+description: "This document is the canonical command contract for `@hobo/cli`. It keeps the CLI"
+tags: [hobo, design]
+---
+
 # HoBo CLI Specification
 
 This document is the canonical command contract for `@hobo/cli`. It keeps the CLI

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Upgrade And Migration Engine Scope And Acceptance"
+description: "Source issue: HOBO-430."
+tags: [hobo, design]
+---
+
 # Upgrade And Migration Engine Scope And Acceptance
 
 Source issue: HOBO-430.

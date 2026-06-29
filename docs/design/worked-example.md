@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "End-to-End Worked Example"
+description: "```bash"
+tags: [hobo, design]
+---
+
 # End-to-End Worked Example
 
 ## Plan 19

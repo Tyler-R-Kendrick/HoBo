@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-412 Settings & Project Lifecycle M0 Scope Proof"
+description: "Source issue: HOBO-412."
+tags: [hobo, design]
+---
+
 # HOBO-412 Settings & Project Lifecycle M0 Scope Proof
 
 HOBO-412 is proven by the focused M0 contract at

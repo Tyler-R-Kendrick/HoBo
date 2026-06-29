@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-405 Legal Privacy Terms Readiness Proof"
+description: "Source issue: HOBO-405."
+tags: [hobo, design]
+---
+
 # HOBO-405 Legal Privacy Terms Readiness Proof
 
 HOBO-405 is proven by the focused M0 contract at

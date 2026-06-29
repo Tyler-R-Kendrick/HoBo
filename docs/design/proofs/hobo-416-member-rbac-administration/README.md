@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-416 Member/RBAC Administration M0 Scope Proof"
+description: "Source issue: HOBO-416."
+tags: [hobo, design]
+---
+
 # HOBO-416 Member/RBAC Administration M0 Scope Proof
 
 HOBO-416 is proven by the focused M0 contract at

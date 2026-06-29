@@ -1,6 +1,13 @@
+---
+type: Architecture Decision Record
+title: "Architecture, runtime, config, matching & environments — consolidated decisions"
+description: "**WASM/WASI/WIT-native; TypeScript is the first reference implementation.**"
+tags: [hobo, design]
+---
+
 # Architecture, runtime, config, matching & environments — consolidated decisions
 
-> Consolidated ADR decisions for **architecture, runtime substrate, config, matching & environments**. Each section is one architecture decision; see [`README.md`](./README.md) for the full ADR index.
+> Consolidated ADR decisions for **architecture, runtime substrate, config, matching & environments**. Each section is one architecture decision; see [`README.md`](./index.md) for the full ADR index.
 
 ## ADR-0001
 **WASM/WASI/WIT-native; TypeScript is the first reference implementation.**
@@ -289,7 +296,7 @@ Golden-IR lowering equivalence proves only the mechanical boundary: identical au
 4. **Cancellation is caller-owned and visible.** Cancellation lowers to a typed cancelled result or language equivalent. Hidden retries, silent success, or deadline erasure are annex failures.
 5. **Collection facts are ordered contract data.** IfC side effects lower to an ordered declaration fact stream. Async language machinery may schedule work however it wants, but the observed fact order must be deterministic and a handler observed before its resource declaration fails closed.
 
-The executable proof bundle is [`../../../src/draft/idiom-semantics-annex`](../../../src/draft/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31. The HOBO-5 conformance harness proof adds the report-level gate at [`../proofs/hobo-5-conformance-port-suite`](../proofs/hobo-5-conformance-port-suite/README.md), including language-specific golden-IR rejection and required annex vector coverage.
+The executable proof bundle is [`../../../src/draft/idiom-semantics-annex`](../../../src/draft/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31. The HOBO-5 conformance harness proof adds the report-level gate at [`../proofs/hobo-5-conformance-port-suite`](../proofs/hobo-5-conformance-port-suite/index.md), including language-specific golden-IR rejection and required annex vector coverage.
 
 ### Consequences
 - **(+)** SDK parity no longer overclaims what WIT-call equality can prove.
@@ -366,7 +373,7 @@ HOBO-35 spikes the first opt-in adapter named by [ADR-0031](#adr-0031) and [Plan
 3. **Covered vs non-covered behavior is explicit.** The adapter report must list conformance-covered assertions: deterministic-clock replay, pinned `wasi:*` round trips, link late-binding, capability-handle isolation, NaN canonicalization, fuel/epoch scheduling, and resource-limit semantics. Wall-clock scheduling jitter and host-specific partial-failure timing stay declared non-covered divergences unless a later suite adds them.
 4. **Host-specific options are typed lock-in.** Host-specific features such as SpinKube link migration are exposed only as `host.<kind>.with(...)` options. They are inert on other hosts and always surfaced by `hobo doctor`/PortabilityReport as host lock-in.
 
-The executable spike is [`../../../src/draft/component-host-adapter-certification-spike`](../../../src/draft/component-host-adapter-certification-spike/README.md), with proof notes in [`../proofs/hobo-35-component-host-adapter-certification`](../proofs/hobo-35-component-host-adapter-certification/README.md).
+The executable spike is [`../../../src/draft/component-host-adapter-certification-spike`](../../../src/draft/component-host-adapter-certification-spike/README.md), with proof notes in [`../proofs/hobo-35-component-host-adapter-certification`](../proofs/hobo-35-component-host-adapter-certification/index.md).
 
 ### Consequences
 - **(+)** The opt-in adapter story has a concrete first certification target rather than an open-ended "support N hosts" claim.

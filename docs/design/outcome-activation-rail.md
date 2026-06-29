@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "V1 Outcome Activation Rail"
+description: "Source issue: HOBO-508."
+tags: [hobo, design]
+---
+
 # V1 Outcome Activation Rail
 
 Source issue: HOBO-508.

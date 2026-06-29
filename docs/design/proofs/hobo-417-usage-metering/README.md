@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-417 Usage Metering M0 Proof"
+description: "Source issue: HOBO-417."
+tags: [hobo, design]
+---
+
 # HOBO-417 Usage Metering M0 Proof
 
 This proof package demonstrates that HOBO-417 records accepted M0 scope before follow-up Usage

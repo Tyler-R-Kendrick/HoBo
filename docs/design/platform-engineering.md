@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Platform Engineering: Matching, Environments, Drivers & GitOps"
+description: "This capability doc covers how platform engineers shape HoBo deploys: Resource Definitions & Matching, environments (Camps, Deployment Sets & Deltas), the Driver taxonomy (Resource"
+tags: [hobo, design]
+---
+
 # Platform Engineering: Matching, Environments, Drivers & GitOps
 
 This capability doc covers how platform engineers shape HoBo deploys: Resource Definitions & Matching, environments (Camps, Deployment Sets & Deltas), the Driver taxonomy (Resource Packs & Workload Profiles), and reach (the Relay, GitOps publisher & Pipelines).
@@ -123,7 +130,7 @@ flowchart LR
 Because `match.Decided` (above) is part of the same record, "why did preview get the cheap DB?" is always answerable.
 
 The M0 projection contract is pinned by the executable HOBO-50 proof in
-[`proofs/hobo-50-deployment-set-delta`](./proofs/hobo-50-deployment-set-delta/README.md):
+[`proofs/hobo-50-deployment-set-delta`](./proofs/hobo-50-deployment-set-delta/index.md):
 it folds `set.Created` + `delta.*`, verifies stable Set content addressing, computes
 add/update/remove diffs, rejects overlapping Deltas and absent-resource references, and treats an
 environment group as Yard-level orchestration over member Camps rather than a new config layer.

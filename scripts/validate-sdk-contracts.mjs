@@ -4,7 +4,7 @@ import path from "node:path";
 const root = process.cwd();
 const docsRoot = path.join(root, "docs", "design");
 const contractPath = path.join(docsRoot, "sdk-contracts.md");
-const designIndexPath = path.join(docsRoot, "README.md");
+const designIndexPath = path.join(docsRoot, "index.md");
 const packageNamespacePath = path.join(docsRoot, "package-namespaces.md");
 
 const requiredSurfaces = [
@@ -156,7 +156,7 @@ function validateContractDoc() {
   const designIndex = read(designIndexPath);
 
   if (!designIndex.includes("./sdk-contracts.md")) {
-    fail("docs/design/README.md does not link docs/design/sdk-contracts.md");
+    fail("docs/design/index.md does not link docs/design/sdk-contracts.md");
   }
 
   for (const surface of requiredSurfaces) {
@@ -222,7 +222,7 @@ function validatePackageNamespaceDoc() {
   ];
 
   if (!designIndex.includes("./package-namespaces.md")) {
-    fail("docs/design/README.md does not link docs/design/package-namespaces.md");
+    fail("docs/design/index.md does not link docs/design/package-namespaces.md");
   }
 
   for (const term of requiredTerms) {

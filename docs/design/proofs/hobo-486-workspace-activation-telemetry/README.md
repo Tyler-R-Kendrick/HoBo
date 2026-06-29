@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-486 Workspace Activation Telemetry Proof"
+description: "Source issue: HOBO-486."
+tags: [hobo, design]
+---
+
 # HOBO-486 Workspace Activation Telemetry Proof
 
 HOBO-486 is proven by the focused M0 contract at

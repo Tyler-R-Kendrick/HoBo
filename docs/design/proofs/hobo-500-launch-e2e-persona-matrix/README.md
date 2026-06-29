@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-500 Launch E2E Persona Matrix Proof"
+description: "Source issue: HOBO-500."
+tags: [hobo, design]
+---
+
 # HOBO-500 Launch E2E Persona Matrix Proof
 
 HOBO-500 is proven by the focused M0 contract at

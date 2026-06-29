@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-507 Persona Operating Profile Proof"
+description: "Source issue: HOBO-507."
+tags: [hobo, design]
+---
+
 # HOBO-507 Persona Operating Profile Proof
 
 HOBO-507 is proven by the focused M0 contract at

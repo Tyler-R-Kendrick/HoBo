@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "V1 Release Notes and Upgrade Guide"
+description: "Release notes and upgrade guidance are the launch handoff between release engineering, docs,"
+tags: [hobo, design]
+---
+
 # V1 Release Notes and Upgrade Guide
 
 > M0 outline contract for HOBO-407. This record defines the release-note and upgrade-guide table

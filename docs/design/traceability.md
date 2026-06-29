@@ -45,8 +45,10 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 
 | Issue | Source record | Proof package | Acceptance assertion |
 |---|---|---|---|
+| HOBO-489 | [`billing-launch-policy.md`](./billing-launch-policy.md) | [`billing-launch-policy-contract`](../../src/draft/billing-launch-policy-contract/README.md) | Billing launch policy defines supported plans, prepaid credits, invoice timing, payment failure states, refund/credit correction, provider integration boundaries, mocked-provider assumptions, legal/privacy blockers, and scope-out guards against tax or live payment implementation work. |
 | HOBO-435 | [`example-apps.md`](./example-apps.md) | [`example-apps-scope-acceptance`](../../src/draft/example-apps-scope-acceptance/README.md) | Example Apps M0 scope names goal/personas, scope in/out, service/UX/security/support boundaries, authoritative and owning-initiative dependencies, M1 proof assets, and the follow-up issue gate before downstream design/build work. |
 | HOBO-508 | [`outcome-activation-rail.md`](./outcome-activation-rail.md) | [`v1-outcome-activation-rail-contract`](../../src/draft/v1-outcome-activation-rail-contract/README.md) | V1 outcome activation rail M0 scope defines stages, entry/exit criteria, persona labels, evidence objects, handoffs, proof-surface mappings, audience-specific visibility, UX-orchestration scope boundaries, and the follow-up issue gate before downstream implementation work. |
+| HOBO-509 | [`pre-launch-outcome-contract.md`](./pre-launch-outcome-contract.md) | [`pre-launch-outcome-contract`](../../src/draft/pre-launch-outcome-contract/README.md) | Pre-launch outcome M0 scope names the minimal value-baseline fields, maps them into plan/diff, go/no-go, telemetry, beta feedback, support, and release-note surfaces, records evidence/privacy rules, preserves QUI-92 as source evidence, and blocks governed launches or live-provider claims without required proof. |
 
 ## Plan Coverage
 

@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -19,4 +21,6 @@ jobs:
       - run: npm test
       - run: npm run docs:cli-lint
       - run: npm run docs:design-lint
+      - run: npm run docs:coverage
+      - run: npm run docs:freshness -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - run: node scripts/validate-traceability.mjs

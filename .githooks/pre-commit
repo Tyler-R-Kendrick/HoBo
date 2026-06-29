@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+set -eu
+
+npm test
+npm run docs:cli-lint
+npm run docs:design-lint
+npm run docs:coverage
+npm run docs:freshness:staged
+node scripts/validate-traceability.mjs
+node scripts/validate-sdk-contracts.mjs
+node scripts/validate-deployment-set-delta.mjs

@@ -5,10 +5,17 @@
   "scripts": {
     "test": "node --test",
     "docs:cli-lint": "node scripts/check-cli-docs.mjs",
-    "docs:design-lint": "node scripts/check-design-docs.mjs"
+    "docs:design-lint": "node scripts/check-design-docs.mjs",
+    "docs:freshness": "node scripts/check-docs-freshness.mjs",
+    "docs:freshness:staged": "node scripts/check-docs-freshness.mjs --staged",
+    "prepare-hooks": "git config core.hooksPath .githooks",
+    "docs:coverage": "node scripts/check-docs-coverage.mjs"
   },
   "devDependencies": {
     "protobufjs": "^7.6.4",
     "zod": "^4.1.13"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

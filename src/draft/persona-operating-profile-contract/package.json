@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-persona-operating-profile-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/persona-operating-profile.test.mjs"
+  }
+}

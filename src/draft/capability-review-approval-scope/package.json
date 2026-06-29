@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/capability-review-approval-scope",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

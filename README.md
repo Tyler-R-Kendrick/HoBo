@@ -63,8 +63,9 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 1. Start from the relevant Linear issue or [`docs/implementation-plan.md`](./docs/implementation-plan.md).
 2. Read the matching design doc in [`docs/design/`](./docs/design/README.md).
 3. Check the corresponding proof note under [`docs/design/proofs/`](./docs/design/proofs/).
-4. Update or add the `src/draft/*` contract package that proves the slice.
-5. Update docs in the same change so the repo continues to describe reality.
+4. Apply the implementation architecture rules in [`AGENTS.md`](./AGENTS.md): PACT service boundaries, protobuf definitions with CUE constraints, parse-don't-validate derived types, and event-driven CQRS/actors/materialized views.
+5. Update or add the `src/draft/*` contract package that proves the slice.
+6. Update docs in the same change so the repo continues to describe reality.
 
 ### If you are reviewing architecture
 
@@ -90,6 +91,7 @@ npm ci
 Run the core local gate:
 
 ```sh
+npm run architecture:guard
 npm test
 npm run docs:cli-lint
 npm run docs:design-lint
@@ -106,7 +108,7 @@ Optional: enable the repo pre-commit hook:
 npm run prepare-hooks
 ```
 
-After that, `.githooks/pre-commit` runs tests, docs linters, traceability, SDK/deployment validators, and staged docs freshness before each commit.
+After that, `.githooks/pre-commit` runs the staged architecture guard, tests, docs linters, traceability, SDK/deployment validators, and staged docs freshness before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
 
 ## Documentation maintenance policy
 
@@ -130,6 +132,8 @@ This repo is configured for agent/harness-agnostic helper tooling first, with su
 Important rules for agents and humans:
 
 - Do not treat `src/draft/*` as production HoBo code; it is executable design proof material.
+- Implement HoBo code through the architecture guardrails in [`AGENTS.md`](./AGENTS.md): PACT, protobuf, CUE, parse-don't-validate types, CQRS, event stores, materialized views, actors, rx-style projections, cached snapshots, and persisted historical read-store snapshots.
+- Run `npm run architecture:guard` when implementation packages change; CI runs the same changed-package guard before the expensive build and test lanes.
 - Keep docs, ADRs, proof notes, and README claims aligned with code changes.
 - Prefer small, reviewable changes tied to a design claim or backlog slice.
 - Run the local gates before opening a PR.

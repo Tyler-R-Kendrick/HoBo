@@ -5,10 +5,10 @@
   "exports": {
     ".": {
       "types": "./src/connectivity-policy-enforcement.d.mts",
-      "default": "./src/connectivity-policy-enforcement.mjs"
+      "default": "./src/connectivity-policy-enforcement.ts"
     }
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

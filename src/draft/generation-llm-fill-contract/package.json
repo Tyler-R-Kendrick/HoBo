@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "description": "POC for the generation pipeline LLM-fill stage contract."
 }

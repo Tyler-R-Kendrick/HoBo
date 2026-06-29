@@ -42,5 +42,5 @@ package.
 ```powershell
 npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
 npm.cmd test
-node scripts\validate-traceability.mjs
+node scripts\validate-traceability.ts
 ```

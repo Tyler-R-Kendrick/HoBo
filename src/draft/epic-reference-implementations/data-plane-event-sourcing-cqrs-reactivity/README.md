@@ -2,7 +2,7 @@
 
 This epic reference implementation rolls the Data Plane child POCs into one runnable architecture slice. It is not production code: service boundaries are mocked, external providers are absent, and the implementation demonstrates the intended architecture with deterministic fixtures.
 
-Reference service: `services/data-plane-reference-architecture.mjs`
+Reference service: `services/data-plane-reference-architecture.ts`
 
 Simulation command:
 

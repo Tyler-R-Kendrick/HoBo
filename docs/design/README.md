@@ -14,6 +14,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`control-plane.md`](./control-plane.md#plan-04) | The Yard control plane; providers, IaC & build/VM adapters | 04 |
 | [`sdk-api.md`](./sdk-api.md#plan-02) | SDK / API design (the four-layer model) | 02 |
 | [`sdk-contracts.md`](./sdk-contracts.md) | Canonical public SDK signatures, defaults, conformance coverage, and implementation issue mapping | 02, 21 |
+| [`technical-standards.md`](./technical-standards.md) | Cross-cutting implementation standards: latest stable TypeScript, Protobuf data contracts, CUE invariants/derivative object definitions, parse-don't-validate, and PACT boundary testing | — |
 | [`package-namespaces.md`](./package-namespaces.md) | Canonical package/import ownership for `@hobo/*` namespaces | 02, 10, 21 |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |
 | [`data-plane.md`](./data-plane.md#plan-32) | Event model & the data plane: sourcing/replay, reactivity, projections, migrations, search | 11, 32 |
@@ -75,6 +76,10 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 HoBo's metaphor is the itinerant worker who travels light. Names are proposals; technical meaning is what matters.
 
 The canonical term source is [`glossary.md`](./glossary.md). The canonical event-family source is [`event-families.md`](./event-families.md). Naming note: `hobo:sdk` is the WIT contract/package; `@hobo/sdk` is the operator SDK. The `docs:design-lint` gate fails on duplicate glossary terms, broken internal links or anchors, unindexed ADR references, `hobo:sdk`/`@hobo/sdk` ambiguity, and event families used outside the catalog.
+
+## Technical standards
+
+All implementation-facing design work follows the cross-cutting standards in [`technical-standards.md`](./technical-standards.md): latest stable TypeScript over vanilla JavaScript, Protobuf for data contracts, CUE for invariants/dependent constraints and derivative object definitions, parse-don't-validate at trust boundaries, and PACT-style contract tests for integration edges. These standards reinforce the suite's existing WIT/WASM portability model by catching schema, compatibility, and invariant drift before runtime.
 
 ## Keeping docs current
 

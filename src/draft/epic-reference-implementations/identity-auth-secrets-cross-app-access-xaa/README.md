@@ -2,7 +2,7 @@
 
 This epic reference implementation rolls the Identity/Auth/XAA child POCs into one deterministic reference architecture slice. It is not production code: providers, IdPs, STS services, policy gates, SIEM export, and service mesh edges are mocked so the architecture can run locally without credentials or live network calls.
 
-Reference service: `services/identity-reference-architecture.mjs`
+Reference service: `services/identity-reference-architecture.ts`
 
 Simulation command:
 

@@ -5,7 +5,7 @@ import {
   type MatchObjective,
   type MatchingDecision,
   type SuccessfulMatchingDecision
-} from "../../src/matching-engine.mjs";
+} from "../../src/matching-engine.js";
 
 const objective: MatchObjective = "cost";
 const decision: MatchingDecision = decideResourceDefinition({

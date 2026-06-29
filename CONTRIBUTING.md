@@ -31,13 +31,14 @@ Use Node.js 24, matching CI.
 ```sh
 npm ci
 npm test
+npm run standards:check
 npm run docs:cli-lint
 npm run docs:design-lint
 npm run docs:coverage
 npm run docs:freshness
-node scripts/validate-traceability.mjs
-node scripts/validate-sdk-contracts.mjs
-node scripts/validate-deployment-set-delta.mjs
+tsx scripts/validate-traceability.ts
+tsx scripts/validate-sdk-contracts.ts
+tsx scripts/validate-deployment-set-delta.ts
 ```
 
 Optional local hook:
@@ -58,6 +59,7 @@ Use this checklist:
 - New public commands or examples pass `npm run docs:cli-lint`.
 - New ADR references are indexed and pass traceability validation.
 - New event families are added to `docs/design/event-families.md` before use.
+- New JavaScript-family implementation files are TypeScript `.ts` sources, and `npm run standards:check` passes or the exception is recorded in an ADR/proof note.
 
 ## Pull request expectations
 

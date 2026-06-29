@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "node scripts/generate-contract-artifacts.mjs",
-    "test": "npm run generate && node --test",
-    "codegen:check": "node scripts/generate-contract-artifacts.mjs --check"
+    "generate": "tsx scripts/generate-contract-artifacts.ts",
+    "test": "npm run generate && node --import tsx --test test/*.test.ts",
+    "codegen:check": "tsx scripts/generate-contract-artifacts.ts --check"
   }
 }

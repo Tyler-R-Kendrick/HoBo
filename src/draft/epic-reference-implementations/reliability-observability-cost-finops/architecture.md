@@ -37,7 +37,7 @@ Every provider in the diagram is mocked in memory. The reference implementation 
 Contracts stay consumer-focused:
 
 - Each boundary has one Pact fixture under `contracts/pacts/`.
-- `contracts/consumer/reliability-boundaries.test.mjs` verifies the simulation advertises every provider named by Pact fixtures.
+- `contracts/consumer/reliability-boundaries.test.ts` verifies the simulation advertises every provider named by Pact fixtures.
 - Provider verification is documented as unavailable until production services exist.
 
 ## Drift Controls

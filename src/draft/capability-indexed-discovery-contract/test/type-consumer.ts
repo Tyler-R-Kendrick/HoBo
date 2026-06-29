@@ -5,13 +5,13 @@ import type {
   CapabilityDiscoveryIndex,
   CapabilityDiscoveryQuery,
   ListingCertifiedEvent,
-} from "../src/capability-indexed-discovery.mjs";
+} from "../src/capability-indexed-discovery.js";
 import {
   CAPABILITY_DISCOVERY_CONTRACT,
   createCapabilityDiscoveryIndex,
   createDiscoveryMcpTool,
   createFixtureCertifiedListing,
-} from "../src/capability-indexed-discovery.mjs";
+} from "../src/capability-indexed-discovery.js";
 
 test("typed consumer can drive SDK and MCP discovery paths", async () => {
   const index: CapabilityDiscoveryIndex = createCapabilityDiscoveryIndex();

@@ -8,7 +8,13 @@
     "noEmit": true,
     "strict": true,
     "target": "ES2022",
-    "types": []
+    "types": [],
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "../src/built-in-policy-engine.js": [
+        "./src/built-in-policy-engine.d.mts"
+      ]
+    }
   },
   "include": [
     "src/*.d.mts",

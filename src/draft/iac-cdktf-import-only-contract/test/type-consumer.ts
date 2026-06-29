@@ -4,7 +4,7 @@ import {
   type CdktfDriftReport,
   type CdktfImportReport,
   type CdktfImportedResource,
-} from "../src/cdktf-import-only.mjs";
+} from "../src/cdktf-import-only.js";
 
 const provider = createCdktfImportOnlyProvider();
 const driftReportPromise: Promise<CdktfDriftReport> = provider.refresh({

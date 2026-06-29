@@ -5,7 +5,7 @@ packs can be verified, bound to targets, federated across a Junction, and
 composed by the existing deny-ceiling algebra.
 
 Proof vectors live in
-`src/draft/policy-pack-federation-contract/test/policy-pack-federation.test.mjs`.
+`src/draft/policy-pack-federation-contract/test/policy-pack-federation.test.ts`.
 They cover:
 
 - signed pack load and versioned decision evidence;

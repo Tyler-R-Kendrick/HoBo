@@ -21,8 +21,8 @@ npm.cmd --prefix src\draft\snapshot-replay-divergence-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint
-node scripts\validate-traceability.mjs
-node scripts\validate-sdk-contracts.mjs
-node scripts\validate-deployment-set-delta.mjs
+node scripts\validate-traceability.ts
+node scripts\validate-sdk-contracts.ts
+node scripts\validate-deployment-set-delta.ts
 git diff origin/main...HEAD --check
 ```

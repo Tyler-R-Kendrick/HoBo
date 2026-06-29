@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "description": "POC for cost-routing eligibility checks from HOBO-155.",
-  "main": "./src/cost-routing-eligibility.mjs",
+  "main": "./src/cost-routing-eligibility.ts",
   "exports": {
-    ".": "./src/cost-routing-eligibility.mjs"
+    ".": "./src/cost-routing-eligibility.ts"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

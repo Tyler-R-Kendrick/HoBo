@@ -2,7 +2,7 @@ import type {
   AuthGeneratedSurface,
   AuthProviderDeclaration,
   PrincipalRef,
-} from "../src/auth-authoring-surface.mjs";
+} from "../src/auth-authoring-surface.js";
 
 type Providers = [
   AuthProviderDeclaration<"google", "oidc">,

@@ -19,8 +19,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run standards:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - run: npm run docs:cli-lint
       - run: npm run docs:design-lint
       - run: npm run docs:coverage
       - run: npm run docs:freshness -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
-      - run: node scripts/validate-traceability.mjs
+      - run: tsx scripts/validate-traceability.ts

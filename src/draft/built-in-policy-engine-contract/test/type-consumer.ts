@@ -1,12 +1,14 @@
-import {
-  BUILT_IN_POLICY_ENGINE_ID,
-  createBuiltInPolicyEngine,
-  createRuleset,
-  defineTypescriptRule,
-  evaluatePolicy,
-  type DecisionRequest,
-  type TypescriptRule,
-} from "../src/built-in-policy-engine.mjs";
+import type {
+  DecisionRequest,
+  TypescriptRule,
+} from "../src/built-in-policy-engine.d.mts";
+import type * as BuiltInPolicyEngine from "../src/built-in-policy-engine.d.mts";
+
+declare const BUILT_IN_POLICY_ENGINE_ID: typeof BuiltInPolicyEngine.BUILT_IN_POLICY_ENGINE_ID;
+declare const createBuiltInPolicyEngine: typeof BuiltInPolicyEngine.createBuiltInPolicyEngine;
+declare const createRuleset: typeof BuiltInPolicyEngine.createRuleset;
+declare const defineTypescriptRule: typeof BuiltInPolicyEngine.defineTypescriptRule;
+declare const evaluatePolicy: typeof BuiltInPolicyEngine.evaluatePolicy;
 
 const rule: TypescriptRule = defineTypescriptRule({
   id: "typed-allow-plan",

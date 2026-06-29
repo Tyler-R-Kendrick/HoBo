@@ -2,7 +2,7 @@
 
 This epic reference implementation rolls the Generation Pipeline child POCs into one runnable architecture slice. It is intentionally not production code: service boundaries are mocked, external providers are absent, and the implementation demonstrates the intended architecture with deterministic fixtures.
 
-Reference service: `services/generation-reference-architecture.mjs`
+Reference service: `services/generation-reference-architecture.ts`
 
 Simulation command:
 

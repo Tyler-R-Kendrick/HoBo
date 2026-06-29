@@ -11,4 +11,4 @@ npm.cmd --prefix src/draft/data-flywheel-privacy-spike test
 ```
 
 The package is deliberately dependency-free and models the decision in
-`fixtures/privacy-model.json` plus the pure functions in `src/privacy-model.mjs`.
+`fixtures/privacy-model.json` plus the pure functions in `src/privacy-model.ts`.

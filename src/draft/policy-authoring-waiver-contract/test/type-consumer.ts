@@ -11,7 +11,7 @@ import {
   type PolicyRuleDraft,
   type PolicyTarget,
   type WaiverApprovalResult,
-} from "../src/policy-authoring-waiver.mjs";
+} from "../src/policy-authoring-waiver.js";
 
 const author: PolicyPrincipal = {
   kind: "user",

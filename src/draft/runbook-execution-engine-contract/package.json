@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/runbook-execution-engine.mjs"
+    ".": "./src/runbook-execution-engine.ts"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

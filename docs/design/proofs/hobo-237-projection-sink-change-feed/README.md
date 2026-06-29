@@ -19,7 +19,7 @@ Proof package: [`src/draft/projection-sink-change-feed-conformance-contract`](..
 npm.cmd --prefix src/draft/projection-sink-change-feed-conformance-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
-node scripts/validate-traceability.mjs
+node scripts/validate-traceability.ts
 ```
 
 Scope intentionally excludes Postgres/Mongo adapter implementations, Reactor changes, and provider driver code; those consume this contract in their own slices.

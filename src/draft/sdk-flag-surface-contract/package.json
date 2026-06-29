@@ -2,15 +2,15 @@
   "name": "@hobo/draft-sdk-flag-surface-contract",
   "private": true,
   "type": "module",
-  "main": "./src/sdk-flag-surface.mjs",
+  "main": "./src/sdk-flag-surface.ts",
   "types": "./src/sdk-flag-surface.d.mts",
   "exports": {
     ".": {
       "types": "./src/sdk-flag-surface.d.mts",
-      "import": "./src/sdk-flag-surface.mjs"
+      "import": "./src/sdk-flag-surface.ts"
     }
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

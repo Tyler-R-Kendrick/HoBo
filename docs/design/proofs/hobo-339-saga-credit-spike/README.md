@@ -8,7 +8,7 @@ CreditLedger estimate-vs-actual reconciliation from [Plan 05](../../reliability-
 ## Proof Surface
 
 - [Draft package](../../../../src/draft/saga-credit-reconciliation-spike/README.md)
-- [Executable checks](../../../../src/draft/saga-credit-reconciliation-spike/test/spike.test.mjs)
+- [Executable checks](../../../../src/draft/saga-credit-reconciliation-spike/test/spike.test.ts)
 
 ## Proven Constraints
 

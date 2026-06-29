@@ -52,7 +52,7 @@ Feature: Multi-cloud provider gate
 
 | Slice | POCs | Reference location | Notes |
 |---|---|---|---|
-| Provider contract and conformance catalog | HOBO-87, HOBO-93, HOBO-102, HOBO-108, HOBO-120 | `services/providers-reference-architecture.mjs`, `contracts/pacts/provider-*.json` | Provider-owned defaults, capability negotiation, manifest facts, and conformance evidence. |
+| Provider contract and conformance catalog | HOBO-87, HOBO-93, HOBO-102, HOBO-108, HOBO-120 | `services/providers-reference-architecture.ts`, `contracts/pacts/provider-*.json` | Provider-owned defaults, capability negotiation, manifest facts, and conformance evidence. |
 | Realize, IaC, build, and driver adapters | HOBO-112, HOBO-114, HOBO-131, HOBO-135, HOBO-139, HOBO-145, HOBO-149, HOBO-186, HOBO-188, HOBO-191, HOBO-195, HOBO-199, HOBO-202, HOBO-214, HOBO-217, HOBO-225 | `services/`, `simulation/fixtures/`, `contracts/pacts/*adapter*.json` | Mocked `IacProgram`, `BuildSpec`, per-resource state, import/adopt, drift, partial apply, and driver taxonomy. |
 | Concrete provider matrix and portability gate | HOBO-153, HOBO-157, HOBO-161, HOBO-165, HOBO-169, HOBO-174, HOBO-178, HOBO-182, HOBO-231 | `services/`, `contracts/pacts/concrete-cloud-provider-matrix.pact.json` | AWS/Azure/GCP, edge, self-host, global VM, Kubernetes, and multi-cloud shop evidence. |
 | Generated and distributed provider trust | HOBO-207, HOBO-211, HOBO-221, HOBO-228 | `services/`, `contracts/pacts/generation-certification-sandbox.pact.json`, `contracts/pacts/resource-pack-distribution.pact.json` | No-egress generation, bounded repair, malicious-provider containment, signed Resource Packs. |

@@ -5,11 +5,11 @@
   "exports": {
     ".": {
       "types": "./src/connectivity-tier-ir.d.mts",
-      "default": "./src/connectivity-tier-ir.mjs"
+      "default": "./src/connectivity-tier-ir.ts"
     }
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
   }
 }

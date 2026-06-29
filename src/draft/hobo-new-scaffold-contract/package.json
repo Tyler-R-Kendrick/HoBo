@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/scaffold.mjs"
+    ".": "./src/scaffold.ts"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

@@ -4,6 +4,6 @@
   "type": "module",
   "types": "./src/auth-consumer-contract.d.ts",
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

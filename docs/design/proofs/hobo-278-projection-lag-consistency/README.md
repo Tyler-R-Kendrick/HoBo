@@ -20,7 +20,7 @@ Proof package: [`src/draft/projection-lag-consistency-contract`](../../../../src
 npm.cmd --prefix src/draft/projection-lag-consistency-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
-node scripts/validate-traceability.mjs
+node scripts/validate-traceability.ts
 ```
 
 Scope intentionally excludes the event schema definition, replication transport, Reactor core work, and SLO/alert policy actions; this proof only exercises the projection lag and read-class contract.

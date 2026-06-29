@@ -25,6 +25,6 @@ test runner.
 ## Verification
 
 ```powershell
-node --test .\src\draft\hobo-gateway-port\test\gateway-contract.test.mjs
+node --test .\src\draft\hobo-gateway-port\test\gateway-contract.test.ts
 npm.cmd test
 ```

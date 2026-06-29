@@ -30,3 +30,4 @@ When docs change, verify:
 - CLI examples use canonical verbs and pass `npm run docs:cli-lint`.
 - Required community and maintenance docs pass `npm run docs:coverage`.
 - Code/tooling changes include a nearby docs change and pass `npm run docs:freshness`.
+- Technical implementation changes pass `npm run standards:check`, which protects the TypeScript-first, Protobuf, CUE, parse-don't-validate, and PACT guidance.

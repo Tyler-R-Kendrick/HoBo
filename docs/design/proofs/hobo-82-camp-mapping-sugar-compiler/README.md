@@ -34,4 +34,4 @@ npm.cmd --prefix src\draft\camp-mapping-sugar-compiler test
 ```
 
 The checks live in
-`src/draft/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.mjs`.
+`src/draft/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.ts`.

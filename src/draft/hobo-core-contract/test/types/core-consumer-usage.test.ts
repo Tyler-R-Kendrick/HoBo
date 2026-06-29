@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createEventEnvelope, createPortDescriptor } from "../../src/core-contract.mjs";
-import type { EventEnvelope, ProviderPort, RuntimePort } from "../../src/core-contract.d.ts";
+import { createEventEnvelope, createPortDescriptor } from "../../src/core-contract.js";
+import type { EventEnvelope, ProviderPort, RuntimePort } from "../../src/core-contract.d.js";
 
 test("@hobo/core type surface can be imported by a consumer package", () => {
   const runtime: RuntimePort = createPortDescriptor({

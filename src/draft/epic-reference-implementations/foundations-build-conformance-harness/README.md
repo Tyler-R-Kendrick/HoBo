@@ -67,9 +67,9 @@ Feature: Foundations, Build and Conformance Harness
 
 ## Files
 
-- `services/foundations-reference-architecture.mjs`
-- `tests/reference-architecture.test.mjs`
-- `contracts/consumer/foundations-boundaries.test.mjs`
+- `services/foundations-reference-architecture.ts`
+- `tests/reference-architecture.test.ts`
+- `contracts/consumer/foundations-boundaries.test.ts`
 - `contracts/pact-inventory.md`
 - `poc-rollup-ledger.md`
 - `scope-review.md`

@@ -4,6 +4,6 @@
   "type": "module",
   "types": "./src/rbac-role-binding.d.ts",
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

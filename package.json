@@ -3,16 +3,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
-    "docs:cli-lint": "node scripts/check-cli-docs.mjs",
-    "docs:design-lint": "node scripts/check-design-docs.mjs",
-    "docs:freshness": "node scripts/check-docs-freshness.mjs",
-    "docs:freshness:staged": "node scripts/check-docs-freshness.mjs --staged",
+    "test": "node --import tsx --test $(git ls-files '*test.ts')",
+    "standards:check": "scripts/check-technical-standards.sh",
+    "docs:cli-lint": "tsx scripts/check-cli-docs.ts",
+    "docs:design-lint": "tsx scripts/check-design-docs.ts",
+    "docs:freshness": "tsx scripts/check-docs-freshness.ts",
+    "docs:freshness:staged": "tsx scripts/check-docs-freshness.ts --staged",
     "prepare-hooks": "git config core.hooksPath .githooks",
-    "docs:coverage": "node scripts/check-docs-coverage.mjs"
+    "docs:coverage": "tsx scripts/check-docs-coverage.ts",
+    "contracts:data-models": "tsx scripts/generate-data-model-contracts.ts --check"
   },
   "devDependencies": {
     "protobufjs": "^7.6.4",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "zod": "^4.1.13"
   },
   "engines": {

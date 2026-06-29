@@ -7,7 +7,7 @@ This executable proof backs [PLAN-04](../../control-plane.md#plan-04),
 ## Proof Surface
 
 - [Draft package](../../../../src/draft/choreographed-compensation-contract/README.md)
-- [Executable checks](../../../../src/draft/choreographed-compensation-contract/test/choreographed-compensation.test.mjs)
+- [Executable checks](../../../../src/draft/choreographed-compensation-contract/test/choreographed-compensation.test.ts)
 
 ## Proven Constraints
 

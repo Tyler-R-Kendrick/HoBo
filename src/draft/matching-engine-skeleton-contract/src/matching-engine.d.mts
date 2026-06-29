@@ -1,4 +1,4 @@
-import type { MatchContext, ResourceDefinition } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.ts";
+import type { MatchContext, ResourceDefinition } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.mjs";
 
 export type MatchObjective = "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
 

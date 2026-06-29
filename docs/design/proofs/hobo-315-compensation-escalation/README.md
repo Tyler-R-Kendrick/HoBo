@@ -6,7 +6,7 @@ This proof records the compensation-of-compensation hardening contract for
 ## Proof Surface
 
 - [Draft package](../../../../src/draft/compensation-escalation-contract/README.md)
-- [Executable checks](../../../../src/draft/compensation-escalation-contract/test/compensation-escalation.test.mjs)
+- [Executable checks](../../../../src/draft/compensation-escalation-contract/test/compensation-escalation.test.ts)
 
 ## Proven Constraints
 

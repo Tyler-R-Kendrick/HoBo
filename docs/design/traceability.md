@@ -210,5 +210,5 @@ RCR issue.
 - Vague coverage check: rows avoid "covered by platform" claims and state the testable assertion or
   specific issue family that must prove the ADR or plan.
 - Superseded reference check: this file keeps `ADR-Pn` out of the counted set until accepted.
-- Missing-link check: `scripts/validate-traceability.mjs` verifies every relative `.md` link target
+- Missing-link check: `scripts/validate-traceability.ts` verifies every relative `.md` link target
   exists and every indexed ADR/plan appears in this report.

@@ -1,6 +1,6 @@
-import type { DeploymentPlan } from "../../../deployment-plan-ir-contract/src/deployment-plan-ir.d.ts";
+import type { DeploymentPlan } from "../../../deployment-plan-ir-contract/src/deployment-plan-ir.d.js";
 import type { PlannerInput, PlannerResult } from "../../src/planner.d.mts";
-import { createFixtureManifestIr, plan } from "../../src/planner.mjs";
+import { createFixtureManifestIr, plan } from "../../src/planner.js";
 
 const input: PlannerInput = {
   manifest: createFixtureManifestIr(),

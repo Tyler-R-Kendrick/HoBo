@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Spike proof for generating a GraphQL facade from WIT read-model records and materialization metadata.",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

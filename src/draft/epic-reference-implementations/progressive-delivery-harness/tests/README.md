@@ -1,6 +1,6 @@
 # Tests
 
-`harness-reference.test.mjs` verifies:
+`harness-reference.test.ts` verifies:
 
 - The healthy progressive-delivery vertical slice.
 - SLO-burn auto rollback.

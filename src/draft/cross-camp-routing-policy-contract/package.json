@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "description": "POC for cross-Camp DNS routing policy selection from HOBO-151.",
-  "main": "./src/cross-camp-routing-policy.mjs",
+  "main": "./src/cross-camp-routing-policy.ts",
   "exports": {
-    ".": "./src/cross-camp-routing-policy.mjs"
+    ".": "./src/cross-camp-routing-policy.ts"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

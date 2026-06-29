@@ -10,7 +10,7 @@ exposes an OpenFeature-shaped in-process provider for boolean, string, number,
 and object flags.
 
 Acceptance proof lives in
-[`test/built-in-flag-store.test.mjs`](./test/built-in-flag-store.test.mjs):
+[`test/built-in-flag-store.test.ts`](./test/built-in-flag-store.test.ts):
 
 - fixed `(ruleset@seq, ctx.user)` evaluations are deterministic;
 - targeting rules select the expected PrincipalRef segment;

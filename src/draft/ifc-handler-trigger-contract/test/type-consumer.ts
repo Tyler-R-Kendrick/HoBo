@@ -1,4 +1,4 @@
-import { api, kv, queue } from "../src/ifc-handler-trigger-contract.mjs";
+import { api, kv, queue } from "../src/ifc-handler-trigger-contract.js";
 
 async function assertHandlerContextTypes() {
   const todos = kv("todos");

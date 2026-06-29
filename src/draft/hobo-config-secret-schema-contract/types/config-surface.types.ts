@@ -4,7 +4,7 @@ import {
   env,
   fromBinding,
   secretRef
-} from "../src/config-schema.mjs";
+} from "../src/config-schema.js";
 
 const cfg = config({
   DB: fromBinding("db"),

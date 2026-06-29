@@ -4,7 +4,7 @@ import {
   type CheckKind,
   type DomainValidationRequest,
   type ValidationCheckResult,
-} from "../../src/domain-validation-gate.mjs";
+} from "../../src/domain-validation-gate.js";
 
 const checkKinds: readonly CheckKind[] = REQUIRED_CHECK_KINDS;
 const request: DomainValidationRequest = {

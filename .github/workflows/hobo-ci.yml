@@ -38,13 +38,15 @@ jobs:
             hobo-oci-${{ runner.os }}-
       - run: npm ci
       - name: Build contract gate
-        run: node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.mjs build
+        run: tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build
       - name: Typecheck contract gate
-        run: node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.mjs typecheck
+        run: tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck
       - name: Package boundary lint
-        run: node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.mjs lint
+        run: tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint
       - name: Unit and conformance
         run: npm test
+      - name: Technical standards gate
+        run: npm run standards:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - name: CLI docs lint
         run: npm run docs:cli-lint
       - name: Design docs lint
@@ -54,11 +56,11 @@ jobs:
       - name: Docs freshness gate
         run: npm run docs:freshness -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - name: Traceability gate
-        run: node scripts/validate-traceability.mjs
+        run: tsx scripts/validate-traceability.ts
       - name: SDK contract gate
-        run: node scripts/validate-sdk-contracts.mjs
+        run: tsx scripts/validate-sdk-contracts.ts
       - name: Deployment set/delta gate
-        run: node scripts/validate-deployment-set-delta.mjs
+        run: tsx scripts/validate-deployment-set-delta.ts
 
   hello-bindle-e2e:
     name: hello-bindle sandbox E2E
@@ -83,15 +85,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Assert keyless CI contract
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.mjs
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
       - name: Deploy and assert hello-bindle fixture
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}"
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
       - name: Tear down hello-bindle fixture
         if: always()
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}"
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
       - name: Sweep orphaned hello-bindle fixtures
         if: always()
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase sweep-orphans
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
 
   hello-bindle-e2e-quarantine:
     name: hello-bindle E2E quarantine
@@ -114,15 +116,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Assert keyless CI contract
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.mjs
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
       - name: Run quarantine fixture lane
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}-quarantine"
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}-quarantine"
       - name: Tear down quarantine fixture
         if: always()
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}-quarantine"
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}-quarantine"
       - name: Sweep orphaned quarantine fixtures
         if: always()
-        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.mjs --phase sweep-orphans
+        run: node src/draft/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
 
   multi-cloud-shop-e2e:
     name: multi-cloud-shop provider E2E
@@ -147,10 +149,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Deploy same Bindle to AWS and Azure
-        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase deploy-and-assert --run-id "${{ github.run_id }}"
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
       - name: Tear down multi-cloud-shop fixture
         if: always()
-        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase teardown --run-id "${{ github.run_id }}"
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
       - name: Sweep orphaned multi-cloud-shop fixtures
         if: always()
-        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.mjs --phase sweep-orphans
+        run: node src/draft/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase sweep-orphans

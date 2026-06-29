@@ -4,7 +4,7 @@ import {
   type CommandContext,
   type CommandDefinition,
   type CommandResult,
-} from "../src/cqrs-command-aggregate-contract.mjs";
+} from "../src/cqrs-command-aggregate-contract.js";
 
 type TicketInput = {
   readonly id: string;

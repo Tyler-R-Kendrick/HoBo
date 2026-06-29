@@ -5,7 +5,7 @@
   "type": "module",
   "description": "POC for the HoBo policy IR decision request/response contract.",
   "scripts": {
-    "test": "npm run typecheck && node --test test/*.test.mjs",
+    "test": "npm run typecheck && node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {

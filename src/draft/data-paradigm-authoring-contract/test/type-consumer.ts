@@ -6,7 +6,7 @@ import {
   type ImportedParadigmPackage,
   type LoweringDescriptor,
   type ProviderOption,
-} from "../src/data-paradigm-authoring.mjs";
+} from "../src/data-paradigm-authoring.js";
 
 function assertDataParadigmTypes() {
   const awsRds: ProviderOption<

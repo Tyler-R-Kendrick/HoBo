@@ -9,7 +9,7 @@ import {
   mapDecisionRequestToCedarRequest,
   mapDecisionRequestToOpaInput,
   runPolicyEngineAdapterConformance,
-} from "../src/policy-engine-provider-adapters.mjs";
+} from "../src/policy-engine-provider-adapters.js";
 
 const opa = createOpaRegoPolicyEngineAdapter({ engineId: OPA_REGO_POLICY_ENGINE_ID });
 const cedar = createCedarPolicyEngineAdapter({ engineId: CEDAR_POLICY_ENGINE_ID });

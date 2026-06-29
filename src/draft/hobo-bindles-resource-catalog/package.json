@@ -7,11 +7,11 @@
   "exports": {
     ".": {
       "types": "./src/catalog.d.ts",
-      "import": "./src/catalog.mjs"
+      "import": "./src/catalog.ts"
     }
   },
   "scripts": {
-    "test": "npm run typecheck && node --test test/*.test.mjs",
+    "test": "npm run typecheck && node --import tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.types.json"
   },
   "devDependencies": {

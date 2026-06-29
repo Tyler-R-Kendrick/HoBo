@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "bin": {
-    "hobo": "./bin/hobo.mjs"
+    "hobo": "./bin/hobo.ts"
   },
   "exports": {
-    ".": "./src/cli-shell.mjs"
+    ".": "./src/cli-shell.ts"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/down-lifecycle.mjs"
+    ".": "./src/down-lifecycle.ts"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

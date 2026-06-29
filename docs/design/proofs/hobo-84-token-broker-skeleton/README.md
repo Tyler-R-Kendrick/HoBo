@@ -35,5 +35,5 @@ npm.cmd --prefix src\draft\token-broker-skeleton-contract test
 ```
 
 The checks live in
-`src/draft/token-broker-skeleton-contract/test/token-broker-skeleton.test.mjs`
+`src/draft/token-broker-skeleton-contract/test/token-broker-skeleton.test.ts`
 and include both `ctx.token(...)` and MCP `request_token` delegation.

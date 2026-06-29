@@ -7,7 +7,7 @@ This executable proof backs [PLAN-04](../../control-plane.md#plan-04),
 ## Proof Surface
 
 - [Draft package](../../../../src/draft/partial-realize-rollback-contract/README.md)
-- [Executable checks](../../../../src/draft/partial-realize-rollback-contract/test/partial-realize-rollback.test.mjs)
+- [Executable checks](../../../../src/draft/partial-realize-rollback-contract/test/partial-realize-rollback.test.ts)
 
 ## Proven Constraints
 

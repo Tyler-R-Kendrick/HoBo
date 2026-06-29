@@ -6,7 +6,7 @@ import {
   projectionSink,
   readSnapshot,
   runOrderedFeedConformance,
-} from "../src/change-feed-conformance.mjs";
+} from "../src/change-feed-conformance.js";
 
 const batchWarehouse = projectionSink({
   kind: "warehouse-batch",

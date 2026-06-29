@@ -2,7 +2,7 @@ import type {
   DriverId,
   ResourceDefinition,
   ResourceDefinitionInput
-} from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.ts";
+} from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.mjs";
 
 export type CampMappingSugarVersion = "hobo.camp-mapping-sugar/v1";
 

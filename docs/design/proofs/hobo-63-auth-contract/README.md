@@ -33,4 +33,4 @@ npm.cmd --prefix src\draft\hobo-auth-consumer-contract test
 ```
 
 The checks live in
-`src/draft/hobo-auth-consumer-contract/test/auth-consumer-contract.test.mjs`.
+`src/draft/hobo-auth-consumer-contract/test/auth-consumer-contract.test.ts`.

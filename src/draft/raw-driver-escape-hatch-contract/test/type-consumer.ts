@@ -2,7 +2,7 @@ import {
   createRawView,
   defineProjectionSink,
   type RawResult,
-} from "../src/raw-driver-escape-hatch.mjs";
+} from "../src/raw-driver-escape-hatch.js";
 
 function assertRawDriverTypes() {
   const postgresView = createRawView(

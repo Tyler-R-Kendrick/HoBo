@@ -5,7 +5,7 @@ import {
   createCloudflareProvider,
   evaluateCloudflarePlan,
   realizeCloudflarePlan
-} from "../src/provider-cloudflare.mjs";
+} from "../src/provider-cloudflare.js";
 
 const provider = createCloudflareProvider({ campEvidence: "pass" });
 const manifest = provider.capabilityManifest();

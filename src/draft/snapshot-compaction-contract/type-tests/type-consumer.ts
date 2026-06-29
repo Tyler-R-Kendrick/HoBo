@@ -3,7 +3,7 @@ import {
   foldCounter,
   type SnapshotActivation,
   type SnapshotCompactionLog,
-} from "../src/snapshot-compaction-contract.mjs";
+} from "../src/snapshot-compaction-contract.js";
 
 const log: SnapshotCompactionLog = createSnapshotCompactionLog();
 

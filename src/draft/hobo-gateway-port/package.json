@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for the HoBo gateway port contract from HOBO-105.",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

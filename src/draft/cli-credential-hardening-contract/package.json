@@ -2,8 +2,8 @@
   "name": "@hobo/draft-cli-credential-hardening-contract",
   "private": true,
   "type": "module",
-  "exports": "./src/cli-credential-hardening.mjs",
+  "exports": "./src/cli-credential-hardening.ts",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

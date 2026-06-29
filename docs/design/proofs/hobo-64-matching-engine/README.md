@@ -30,4 +30,4 @@ npm.cmd --prefix src\draft\matching-engine-skeleton-contract test
 ```
 
 The checks live in
-`src/draft/matching-engine-skeleton-contract/test/matching-engine.test.mjs`.
+`src/draft/matching-engine-skeleton-contract/test/matching-engine.test.ts`.

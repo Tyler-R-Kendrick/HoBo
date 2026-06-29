@@ -48,5 +48,5 @@ The lower-level POCs remain as evidence. This reference keeps their durable beha
 
 - WIT and port vocabulary becomes an in-process reference API.
 - Event families become one audit stream.
-- PACT-style contracts become JSON pact fixtures verified by `tests/harness-reference.test.mjs`.
+- PACT-style contracts become JSON pact fixtures verified by `tests/harness-reference.test.ts`.
 - Vendor adapters and live services are represented only by consumer contracts and mocks.

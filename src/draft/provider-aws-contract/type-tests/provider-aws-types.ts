@@ -1,4 +1,4 @@
-import { aws, createAwsMultiCloudShopPlan, createAwsProvider, type AwsProvider } from "../src/provider-aws.mjs";
+import { aws, createAwsMultiCloudShopPlan, createAwsProvider, type AwsProvider } from "../src/provider-aws.js";
 
 const provider: AwsProvider = createAwsProvider();
 const rds = aws.with.rds({ engine: "postgres", instanceClass: "db.t4g.medium", storageGb: 50 });

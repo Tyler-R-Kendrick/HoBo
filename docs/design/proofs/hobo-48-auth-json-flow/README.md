@@ -34,4 +34,4 @@ npm.cmd --prefix src\draft\hobo-auth-json-contract test
 ```
 
 The checks live in
-`src/draft/hobo-auth-json-contract/test/auth-json-contract.test.mjs`.
+`src/draft/hobo-auth-json-contract/test/auth-json-contract.test.ts`.

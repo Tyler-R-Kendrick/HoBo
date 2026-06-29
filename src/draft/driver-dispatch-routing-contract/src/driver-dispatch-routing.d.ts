@@ -2,7 +2,7 @@ import type {
   Driver,
   DriverId,
   MatchContext
-} from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.ts";
+} from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.js";
 
 export const DRIVER_DISPATCH_ROUTING_VERSION: "hobo.driver-dispatch-routing/v1";
 

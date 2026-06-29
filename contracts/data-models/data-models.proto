@@ -4482,6 +4482,19 @@ message StuckRolloutConvergenceContractStuckRolloutConvergenceDataModel {
   bool cue_annotated = 6;
 }
 
+message SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.supervision-child-lifetime-contract.supervision-child-lifetime";
+  option (hobo.source_path) = "src/draft/supervision-child-lifetime-contract/src/supervision-child-lifetime.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message SvidAutoRotationContractSvidRotationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.svid-auto-rotation-contract.svid-rotation";
   option (hobo.source_path) = "src/draft/svid-auto-rotation-contract/src/svid-rotation.ts";

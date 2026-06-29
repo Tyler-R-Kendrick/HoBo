@@ -97,7 +97,7 @@ npm.cmd --prefix src\draft\resilience-semantics-annex test
 | HOBO-516 | `src/draft/resilience-semantics-annex` | `npm.cmd --prefix src\draft\resilience-semantics-annex test` | No Effect/XState dependency; no production conformance package change. |
 | HOBO-517 | `src/draft/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
 | HOBO-518 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No generic statechart interpreter and no XState dependency. |
-| HOBO-519 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No distributed scheduler or production supervision tree. |
+| HOBO-519 | `src/draft/supervision-child-lifetime-contract` | `npm.cmd --prefix src\draft\supervision-child-lifetime-contract test` plus `npm.cmd run docs:design-lint` | No distributed scheduler, production supervision tree, or new queue backend. |
 | HOBO-520 | SDK docs and local diagnostic example | `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector or remote dashboard. |
 
 ## Parent Scope Proof

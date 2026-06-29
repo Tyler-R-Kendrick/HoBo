@@ -22,3 +22,13 @@ as executable requirements before HOBO-142 implements the concrete checks.
 ```powershell
 npm.cmd --prefix src\draft\dns-validation-gate-threat-model test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Dns Validation Gate Threat Model.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

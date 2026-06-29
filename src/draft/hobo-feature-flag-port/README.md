@@ -32,3 +32,13 @@ npm.cmd test
 
 `npm.cmd test` runs `jco types` against `wit/world.wit`, then executes the
 Node conformance tests.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Feature Flag Port.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

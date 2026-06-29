@@ -30,3 +30,13 @@ The tests cover the acceptance and adversarial cases from HOBO-284:
 This package does not implement the live-fix candidate engine, SRE diagnosis,
 the approval UI, or vendor paging. It consumes those seams and records the
 contract facts that downstream implementations must preserve.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Gated Autonomous Remediation Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

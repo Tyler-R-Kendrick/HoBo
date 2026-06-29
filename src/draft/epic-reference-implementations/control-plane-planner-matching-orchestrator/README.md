@@ -78,3 +78,13 @@ Contracts:
 ## Scope
 
 This is a reference architecture package, not product implementation. It does not call live clouds, live IaC tools, real Identity, real Gatekeeper, real Registry, real EventStore, or real provider APIs.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Control Plane Planner Matching Orchestrator.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

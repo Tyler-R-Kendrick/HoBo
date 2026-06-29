@@ -31,3 +31,13 @@ npm.cmd --prefix src\draft\cross-camp-routing-policy-contract test
 The checks cover weighted record emission and target validation, sustained
 failover, validation-gate refusal, transient health blip hysteresis, latency
 selection, and geo fallback.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Cross Camp Routing Policy Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

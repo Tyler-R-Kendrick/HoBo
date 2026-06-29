@@ -34,3 +34,13 @@ uses the public seams from the completed HOBO-319 and HOBO-326 draft packages.
 ```text
 npm.cmd --prefix src\draft\flag-partition-consistency-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Flag Partition Consistency Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

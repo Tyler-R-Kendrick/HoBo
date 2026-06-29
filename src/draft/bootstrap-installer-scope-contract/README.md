@@ -26,3 +26,13 @@ The tests prove:
 - M1 evidence requirements are listed with owner, source, proof mode, and claim;
 - follow-up M1-M4 issue creation is blocked until M0 acceptance;
 - excluded live installer, provisioning, auth, deploy, secret, and cleanup implementation work is rejected.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Bootstrap Installer Scope Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

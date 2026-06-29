@@ -38,3 +38,13 @@ The tests cover the acceptance and adversarial cases from HOBO-308:
 This package does not add remediation kinds, implement the policy engine, run canaries, page a
 vendor, or replace HOBO-284's gated apply path. It proves the containment contract and replay state
 that downstream SRE runtime code must preserve.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Runaway Remediation Guard Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

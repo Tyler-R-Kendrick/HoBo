@@ -14,3 +14,13 @@ policy gate, canary/rollback, and permanent regression-test retention.
 ```powershell
 npm.cmd test -- src/draft/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.mjs
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Live Fix Gated Candidate Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -28,3 +28,13 @@ Relevant design records:
 - `docs/design/control-plane.md`: ResourceActor reconcile loop and resolution pipeline.
 - `docs/design/adr/01-architecture-core.md`: ADR-0004 virtual actors and ADR-0006 per-resource stacks.
 - `docs/design/platform-engineering.md`: provider/IaC platform boundary carried by PLAN-25.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Resourceactor Reconcile Loop Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -18,3 +18,13 @@ This POC defines:
 
 Scope intentionally stops at the IR. It does not implement a policy engine,
 obligation execution, deny-ceiling algebra, or contract IR.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Policy Ir Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

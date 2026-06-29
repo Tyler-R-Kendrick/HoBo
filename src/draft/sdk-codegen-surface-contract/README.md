@@ -36,3 +36,13 @@ the production WIT/jco compiler. It consumes those surfaces as fixtures.
 npm.cmd --prefix src\draft\sdk-codegen-surface-contract install
 npm.cmd --prefix src\draft\sdk-codegen-surface-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Sdk Codegen Surface Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -25,3 +25,13 @@ it, and warn-only `can-deploy` feedback when the estimate misses
 ```powershell
 npm.cmd --prefix src\draft\availability-view-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Availability View Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

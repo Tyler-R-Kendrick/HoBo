@@ -23,3 +23,13 @@ npm.cmd --prefix src\draft\training-data-poisoning-guard-contract test
 ```
 
 Design proof: [HOBO-358 training data poisoning guard](../../../docs/design/proofs/hobo-358-training-data-poisoning/README.md).
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Training Data Poisoning Guard Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -32,3 +32,13 @@ conformance, and concrete Wasmtime or OCI execution.
 ```powershell
 npm.cmd --prefix src\draft\component-host-conformance-suite test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Component Host Conformance Suite.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

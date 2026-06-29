@@ -23,3 +23,13 @@ algebra design, or OCSF export.
 ```sh
 npm.cmd --prefix src/draft/built-in-policy-engine-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Built In Policy Engine Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

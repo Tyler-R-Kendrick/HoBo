@@ -9,3 +9,13 @@ This package pins the M0 `DeploymentPlan` / `ResourcePlan` contract from:
 - `docs/design/architecture.md`: the Yard Planner produces the DAG that ResourceActors drive.
 
 The proof covers stable plan content addressing, placeholder grammar, `MatchContext`, dependency DAG validation, unresolved placeholder references, and co-provisioned node id collisions.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Deployment Plan Ir Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

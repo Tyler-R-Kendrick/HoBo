@@ -33,3 +33,13 @@ This package intentionally stops before concrete JIRA/GitHub Issues/Linear,
 Confluence/Obsidian/Wiki implementations, generated adapters, credential
 brokering, and full event-surface design. Those remain downstream adapter and
 generation slices.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Operator Integration Ports Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

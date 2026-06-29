@@ -29,3 +29,13 @@ The proof is also referenced by the design record:
 
 - [Tenant Isolation & Quotas design record](../../../docs/design/tenant-isolation-quotas.md)
 - [HOBO-415 proof record](../../../docs/design/proofs/hobo-415-tenant-isolation-quotas/README.md)
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Tenant Isolation Quotas Scope.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

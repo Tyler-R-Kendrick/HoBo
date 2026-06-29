@@ -61,3 +61,13 @@ See:
 - [poc-rollup-ledger.md](./poc-rollup-ledger.md)
 - [contracts/pact-inventory.md](./contracts/pact-inventory.md)
 - [simulation/README.md](./simulation/README.md)
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Progressive Delivery Harness.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

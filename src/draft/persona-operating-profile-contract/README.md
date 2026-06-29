@@ -26,3 +26,13 @@ customer-success lifecycle tooling.
 ```powershell
 npm.cmd --prefix src\draft\persona-operating-profile-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Persona Operating Profile Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

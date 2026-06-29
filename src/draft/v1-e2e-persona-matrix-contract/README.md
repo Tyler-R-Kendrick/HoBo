@@ -25,3 +25,13 @@ harness, live provider execution, device lab, or release decision.
 ```powershell
 npm.cmd --prefix src\draft\v1-e2e-persona-matrix-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for V1 E2e Persona Matrix Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

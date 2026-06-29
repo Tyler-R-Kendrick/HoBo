@@ -20,3 +20,13 @@ The proof covers:
 - Deterministic conflict surfacing when a topology override disagrees with an inferred DNS rule.
 
 Scope boundary: this POC does not implement Junction folding, DNS realization, provider networking, or `bind` authoring. It only defines and validates the Yard-side manifest consumed by those later slices.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Yard Topology Manifest Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

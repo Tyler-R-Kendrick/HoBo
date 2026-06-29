@@ -28,3 +28,13 @@ The tests prove:
 - follow-up M1-M4 issue creation is blocked until M0 acceptance;
 - excluded billing, entitlement, Dispatcher, provider sync, tax, and live usage
   work is rejected by the scope validator.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Usage Metering Scope Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

@@ -34,3 +34,13 @@ The checks cover DNS-01 shadow issuance across multiple Camps, wildcard subject
 coverage, no static private-key material in persisted surfaces, early rotation,
 renewal-failure obligation escalation, live-zone mutation denial, and the
 provider-managed adapter seam.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Acme Dns01 Cert Issuance Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

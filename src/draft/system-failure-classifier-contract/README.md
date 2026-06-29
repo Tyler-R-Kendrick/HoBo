@@ -26,3 +26,13 @@ This POC intentionally does not implement the membrane taxonomy, compensation al
 npm.cmd test
 npm.cmd --prefix src\draft\system-failure-classifier-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for System Failure Classifier Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

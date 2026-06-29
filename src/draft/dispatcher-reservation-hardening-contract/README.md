@@ -16,3 +16,13 @@ Independent HOBO-379 hardening harness for the Dispatcher reservation seam from
 ```powershell
 npm.cmd --prefix src\draft\dispatcher-reservation-hardening-contract test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Dispatcher Reservation Hardening Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

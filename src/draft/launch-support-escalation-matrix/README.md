@@ -36,3 +36,13 @@ Excluded:
 ```powershell
 npm.cmd --prefix src\draft\launch-support-escalation-matrix test
 ```
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Launch Support Escalation Matrix.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

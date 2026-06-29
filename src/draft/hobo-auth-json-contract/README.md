@@ -45,3 +45,13 @@ The checks prove:
 - XAA pins the ID-JAG draft and is preferred over OAuth OBO,
 - mismatched OIDC discovery hosts and invalid XAA declarations fail,
 - duplicate flow entries fail closed.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Hobo Auth Json Contract.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

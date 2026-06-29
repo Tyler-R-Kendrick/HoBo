@@ -26,3 +26,13 @@ npm.cmd test
 `npm.cmd test` regenerates bindings with the pinned `jco`, runs an exact-version
 `wit-bindgen-cli` smoke generation, validates the lock and vendored interface
 digest, and checks the generated smoke binding surface.
+
+
+## Architecture Evidence
+
+This package ships the architecture-guard evidence required by
+`scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/` — protobuf data shapes and CUE constraints for Wrpc Wit Baseline Poc.
+- `architecture/pacts/` — PACT contract for the package boundary.
+- `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

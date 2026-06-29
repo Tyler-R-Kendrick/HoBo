@@ -520,3 +520,89 @@ As of 2026-06-26, the official IETF Datatracker page shows `draft-ietf-oauth-ide
 - **(+)** XAA hardening now has a concrete threat matrix and draft-tracking rule instead of a generic "track the draft" note.
 - **(+)** The most dangerous downgrade paths - OBO fallback, actor-token confusion, sender-constrained-token downgrade, and version skew - are fail-closed by contract before runtime code exists.
 - **(-)** HoBo may temporarily reject targets that implement a newer ID-JAG draft until the pin and vectors are reviewed together.
+
+## ADR-0100
+**SVID rotation under partition: signed renewal grace, then fail closed.**
+
+### Context
+[ADR-0008](#adr-0008) says the broker is the sole credential path and therefore needs HA with a
+bounded credential-cache plus renewal-grace window. HOBO-99 proved the happy-path SVID rotation
+contract: long agent runs rotate before TTL expiry and never keep a stale credential. The remaining
+question is what happens when a workload is partitioned from Identity across its rotation deadline.
+A naive fail-closed-at-rotation rule bricks healthy long-running work during brief broker/Identity
+outages. A naive fail-open rule lets stale credentials live for an unbounded partition.
+
+### Decision
+1. **Grace is signed by Identity and bounded by the current SVID.** Identity issues each workload a
+   rotation lease with `rotateAt`, `notAfter`, `renewalGraceUntil`, `epoch`, and scope. The grace
+   window may extend past `rotateAt`, but `renewalGraceUntil` MUST NOT exceed the current SVID's
+   `notAfter`.
+2. **Default bound: rotate at two-thirds TTL, grace until `notAfter`.** With the standard 15 minute
+   SVID TTL, rotation is due at 10 minutes and partition grace is at most 5 minutes. Shorter TTLs
+   use the same ratio and cap grace at the remaining signed validity window.
+3. **Fail open only for same-or-narrower cached renewal.** While `now <= renewalGraceUntil`, the
+   local broker/cache may renew provider tokens only for the same tenant/run/agent and same-or-
+   narrower scope already present in the lease. Scope widening or a new audience requires live
+   Identity and fails closed while partitioned.
+4. **Workloads cannot extend grace.** Client-supplied grace deadlines are ignored as authority and
+   rejected if they exceed the signed `renewalGraceUntil`. Grace is an Identity-issued lease, not a
+   runtime preference.
+5. **After grace, fail closed with an auditable fact.** A partition lasting beyond
+   `renewalGraceUntil` yields `identity.PartitionGraceExpired`; token renewal, SVID use, and brokered
+   provider access stop until Identity is reachable. The system must prefer a bounded interruption
+   over unbounded stale-credential use.
+6. **Partition heal is idempotent by epoch.** When Identity returns before grace expires, it rotates
+   once to `epoch + 1` and emits `identity.Rotated`. Replay or duplicate heal attempts that observe
+   the next epoch reuse it, avoiding double issue and validity gaps.
+
+The executable spike vectors live in `src/draft/svid-partition-grace-spike`. They cover the standard
+15 minute TTL / 5 minute grace recommendation, in-grace cached renewal, post-grace fail-closed,
+scope-widening rejection, workload grace-extension rejection, and idempotent heal.
+
+### Consequences
+- **(+)** Broker HA has a concrete degraded-mode rule: brief Identity partitions do not instantly
+  brick long runs, but no credential remains usable past its signed SVID validity.
+- **(+)** The rule composes with the existing least-privilege and attestation decisions because
+  grace can only preserve or narrow an already-attested scope.
+- **(-)** A partition longer than the signed grace window interrupts the workload. That is an
+  explicit availability/security tradeoff, not an implementation accident.
+
+## ADR-0104
+**SLO-gated rollback decisions use sustained evidence, not single-sample panic.**
+
+### Context
+[ADR-0083](#adr-0083) makes automated rollback an OpenDelivery capability, and [ADR-0045](#adr-0045)
+lets SLO error-budget burn auto-revert a rollout or flag. HOBO-342 implemented the per-step metric
+analysis gate: compose a pinned SLO snapshot, Golden-suite result, thresholds, and analysis window
+into `promote | hold | rollback`. The remaining question was calibration: which default window and
+hysteresis catches slow-burn bad rollouts without rolling back one-sample noise?
+
+### Decision
+1. **Default analysis window is 15 minutes.** The default gate evaluates the latest pinned SLO
+   samples inside a `15m` window. A shorter five-minute default is too brittle for sparse SLO
+   projections: with six-minute sampling, it sees only the latest point and cannot distinguish a
+   real slow burn from insufficient evidence.
+2. **Rollback requires sustained breach.** The default rollback threshold remains `burnRate >= 12`
+   or `remainingBudgetRatio <= 0.08`, but rollback requires two consecutive usable breach samples.
+   A single breach sample is not enough to auto-revert.
+3. **Promotion after risk requires sustained health.** After any recent breach-like sample, promotion
+   requires two usable healthy samples below the hold threshold (`burnRate < 1` and
+   `remainingBudgetRatio > 0.2`). Otherwise the verdict is `hold`, not optimistic `promote`.
+4. **Missing data is a safety hold.** `stale`, `unavailable`, or `no-data` SLO reads produce `hold`.
+   They cannot promote and cannot be counted as healthy evidence.
+5. **Every verdict remains replayable.** The decision event carries a stable digest of
+   `(snapshot@seq, Golden-suite result, thresholds, window, samples)`; replay validates the same
+   verdict from pinned evidence instead of re-reading live telemetry.
+
+The executable spike vectors live in `src/draft/slo-rollback-decision-correctness-spike`. They show
+the recommended policy at 0 FP / 0 FN for the labeled corpus, the five-minute window missing the
+slow-burn bad rollout, the one-sample policy over-rolling a transient blip, and missing data yielding
+`hold`.
+
+### Consequences
+- **(+)** The default rollback gate now has a reviewed operating point: it catches sustained
+  slow-burn failures without making one-sample noise an automatic rollback.
+- **(+)** `hold` is the safe middle state for missing data and post-blip hysteresis, preserving
+  safety without pretending the rollout is healthy.
+- **(-)** Detection latency is at least two usable samples inside the 15-minute window. Faster
+  rollback requires an explicitly reviewed policy override with its own replay evidence.

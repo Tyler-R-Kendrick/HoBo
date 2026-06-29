@@ -6,8 +6,10 @@ import {
 import test from "node:test";
 
 import {
+  bindFirstRealRole,
   createOfflineBreakGlassCredential,
   createYardGovernanceLedger,
+  diagnoseGenesisAdmin,
   recoverWithBreakGlass,
   rotateGenesisAdmin,
   seedGenesisAdmin,
@@ -81,6 +83,90 @@ test("genesis admin can rotate immediately while retaining an audit trail", () =
   assert.equal(rotation.events.at(2).type, "role.BindingCreated");
   assert.equal(rotation.events.at(0).data.from, "user:bootstrap-admin");
   assert.equal(rotation.events.at(0).data.to, "user:platform-admin");
+  assert.deepEqual(ledger.roleBindings(), [
+    {
+      principalId: "user:platform-admin",
+      role: "Org-Admin",
+      source: "genesis-rotation",
+    },
+  ]);
+});
+
+test("genesis admin can bind the first real role before normal RBAC is bootstrapped", () => {
+  const ledger = createYardGovernanceLedger({ yardId: "yard:prod" });
+  seedGenesisAdmin(ledger, {
+    principalId: "user:bootstrap-admin",
+    actorId: "system:yard-bootstrap",
+    requestId: "yard-up-001",
+  });
+
+  const firstBinding = bindFirstRealRole(ledger, {
+    actorId: "user:bootstrap-admin",
+    targetPrincipalId: "group:platform-admins",
+    role: "Org-Admin",
+    requestId: "first-role-001",
+  });
+  const attackerBinding = bindFirstRealRole(ledger, {
+    actorId: "user:attacker",
+    targetPrincipalId: "group:attacker-admins",
+    role: "Org-Admin",
+    requestId: "first-role-002",
+  });
+
+  assert.equal(firstBinding.ok, true);
+  assert.equal(firstBinding.events.at(0).type, "role.BindingCreated");
+  assert.equal(firstBinding.events.at(0).data.source, "genesis-first-role");
+  assert.equal(firstBinding.events.at(0).data.bootstrapAuthority, "identity.GenesisAdmin");
+  assert.match(firstBinding.events.at(0).auditHash, /^sha256:[a-f0-9]{64}$/);
+  assert.deepEqual(ledger.roleBindings(), [
+    {
+      principalId: "group:platform-admins",
+      role: "Org-Admin",
+      source: "genesis-first-role",
+    },
+  ]);
+  assert.equal(attackerBinding.ok, false);
+  assert.equal(attackerBinding.code, "GENESIS_ADMIN_REQUIRED");
+});
+
+test("hobo doctor flags an unrotated genesis admin and clears after rotation", () => {
+  const ledger = createYardGovernanceLedger({ yardId: "yard:prod" });
+
+  assert.deepEqual(diagnoseGenesisAdmin(ledger), []);
+
+  seedGenesisAdmin(ledger, {
+    principalId: "user:bootstrap-admin",
+    actorId: "system:yard-bootstrap",
+    requestId: "yard-up-001",
+  });
+
+  assert.deepEqual(diagnoseGenesisAdmin(ledger), [
+    {
+      code: "GENESIS_ADMIN_NOT_ROTATED",
+      severity: "warning",
+      principalId: "user:bootstrap-admin",
+      message: "Genesis Org-Admin remains active; rotate it to a durable admin binding.",
+    },
+  ]);
+
+  rotateGenesisAdmin(ledger, {
+    fromPrincipalId: "user:bootstrap-admin",
+    toPrincipalId: "user:platform-admin",
+    actorId: "user:bootstrap-admin",
+    requestId: "rotate-001",
+  });
+
+  assert.deepEqual(diagnoseGenesisAdmin(ledger), []);
+
+  const staleBootstrapBinding = bindFirstRealRole(ledger, {
+    actorId: "user:bootstrap-admin",
+    targetPrincipalId: "group:late-admins",
+    role: "Org-Admin",
+    requestId: "first-role-after-rotation",
+  });
+
+  assert.equal(staleBootstrapBinding.ok, false);
+  assert.equal(staleBootstrapBinding.code, "GENESIS_ADMIN_REQUIRED");
 });
 
 test("offline-signed break-glass recovers when IdP and mandatory policy block normal changes", () => {

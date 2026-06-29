@@ -14,6 +14,7 @@ package resilience_semantics_annex_v1
 #RetryPlan: {
 	delayMs:     [...uint]
 	maxAttempts: uint & >=1
+	seed:        string & !=""
 }
 
 #ResilienceFact: {
@@ -39,4 +40,5 @@ package resilience_semantics_annex_v1
 	status:   "passed" | "failed"
 	code?:    string
 	reason?:  string
+	seed?:    string
 }

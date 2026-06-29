@@ -12,6 +12,7 @@ export const sdkConformanceGateSpec = Object.freeze({
   lanes: [
     "golden-ir-lowering-equivalence",
     "semantics-annex",
+    "resilience-semantics-annex",
     "thin-idiom-layer",
     "authorship-neutral-gate",
   ],
@@ -36,6 +37,8 @@ export async function runSdkIdiomConformance({
   annexVectors,
   annexPath,
   annexAdapter,
+  resilienceReport,
+  helperClaims = [],
   lowerers = buildTypescriptSdkLowerers(),
   sourceFiles = [],
 } = {}) {
@@ -58,11 +61,18 @@ export async function runSdkIdiomConformance({
     { corpusPath },
   );
   const semantics = await runSemanticsAnnex(annexVectors, annexAdapter);
+  const resilience = runResilienceLane({ resilienceReport });
   const thinLayer = runThinLayerLane(sourceFiles);
   const authorshipLane = runAuthorshipLane(authorship);
-  const coverage = runCoverageLane({ corpusPath, annexPath });
+  const coverage = runCoverageLane({
+    corpusPath,
+    annexPath,
+    annexVectors,
+    resilienceReport,
+    helperClaims,
+  });
 
-  const laneList = [lowering, semantics, thinLayer, authorshipLane, coverage];
+  const laneList = [lowering, semantics, resilience, thinLayer, authorshipLane, coverage];
 
   return {
     suite: sdkConformanceGateSpec.suite,
@@ -81,11 +91,87 @@ export async function runSdkIdiomConformance({
         lane: "semantics-annex",
         annexPath,
       },
+      existingSemantics: {
+        ...semantics,
+        lane: "semantics-annex",
+        annexPath,
+      },
+      resilience,
       thinLayer,
       authorship: authorshipLane,
       coverage,
     },
   };
+}
+
+const requiredResilienceCases = Object.freeze([
+  "transient-retry-schedule",
+  "denial-never-retries",
+  "terminal-never-retries",
+  "cancellation-stops-retry",
+  "deadline-escalates-from-state",
+  "cleanup-after-interruption",
+  "replay-no-effect-rerun",
+]);
+
+function runResilienceLane({ resilienceReport }) {
+  if (!resilienceReport) {
+    return {
+      suite: "@hobo/conformance/sdk/resilience-semantics-annex",
+      lane: "resilience-semantics-annex",
+      status: "failed",
+      cases: requiredResilienceCases.map((name) => ({
+        name,
+        status: "failed",
+        reason: "missing resilience-semantics-annex report",
+      })),
+    };
+  }
+
+  const publishedCases = resilienceReport.resilienceSemanticsLane?.cases ?? [];
+  const publishedByName = new Map(publishedCases.map((entry) => [entry.name, entry]));
+  const requiredCaseNames = new Set(requiredResilienceCases);
+  const cases = requiredResilienceCases.map((name) => {
+    const entry = publishedByName.get(name);
+    if (!entry) {
+      return {
+        name,
+        status: "failed",
+        reason: "missing resilience-semantics-annex vector",
+      };
+    }
+
+    return formatResilienceCase(entry);
+  });
+  const extraFailures = publishedCases
+    .filter((entry) => !requiredCaseNames.has(entry.name) && entry.status !== "passed")
+    .map(formatResilienceCase);
+  const allCases = [...cases, ...extraFailures];
+
+  return {
+    suite: "@hobo/conformance/sdk/resilience-semantics-annex",
+    lane: "resilience-semantics-annex",
+    specVersion: resilienceReport.specVersion,
+    status:
+      resilienceReport.status === "passed" &&
+      allCases.every((entry) => entry.status === "passed")
+        ? "passed"
+        : "failed",
+    cases: allCases,
+  };
+}
+
+function formatResilienceCase(entry) {
+  const caseResult = {
+    name: entry.name,
+    status: entry.status,
+    code: entry.code,
+    reason: entry.reason,
+  };
+  if (entry.seed) {
+    caseResult.seed = entry.seed;
+  }
+  return caseResult;
 }
 
 function runThinLayerLane(sourceFiles) {
@@ -136,14 +222,37 @@ function runAuthorshipLane(authorship) {
   };
 }
 
-function runCoverageLane({ corpusPath, annexPath }) {
+function runCoverageLane({
+  corpusPath,
+  annexPath,
+  annexVectors = [],
+  resilienceReport,
+  helperClaims = [],
+}) {
+  const coveredClaims = new Set([
+    ...annexVectors.map((vector) => vector.name),
+    ...(resilienceReport?.resilienceSemanticsLane?.cases ?? []).map((entry) => entry.name),
+  ]);
+  const helperClaimCases = helperClaims.map((name) => {
+    if (coveredClaims.has(name)) {
+      return { name, status: "passed" };
+    }
+
+    return {
+      name,
+      status: "failed",
+      reason: "helper claim has no golden-IR, semantics-annex, or resilience vector",
+    };
+  });
+
   return {
     suite: "@hobo/conformance/sdk/coverage-claim",
     lane: "coverage-claim",
-    status: "passed",
+    status: helperClaimCases.every((entry) => entry.status === "passed") ? "passed" : "failed",
     claim: "bounded-by-corpus",
     corpusPath,
     annexPath,
+    helperClaims: helperClaimCases,
     notCoveredHere: [
       "authoring non-TS idiom layers",
       "AI-generation implementation loop",

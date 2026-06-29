@@ -261,7 +261,7 @@ async function writeBuildOutputs(projectRoot, builtArtifacts) {
 }
 
 function fallbackReasonFor(service, targetRuntime) {
-  if (!isWasmCandidate(service)) {
+  if (!isWasmLanguage(service.language)) {
     return `unsupported-language: ${service.language}`;
   }
   if (targetRuntime === "container") {
@@ -274,7 +274,11 @@ function fallbackReasonFor(service, targetRuntime) {
 }
 
 function isWasmCandidate(service) {
-  return new Set(["ts", "typescript", "js", "javascript"]).has(service.language) && service.runtime !== "container";
+  return isWasmLanguage(service.language) && service.runtime !== "container";
+}
+
+function isWasmLanguage(language) {
+  return new Set(["ts", "typescript", "js", "javascript"]).has(language);
 }
 
 function parseArgv(argv, cwd, env) {

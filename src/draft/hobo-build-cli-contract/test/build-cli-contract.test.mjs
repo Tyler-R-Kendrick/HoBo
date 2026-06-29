@@ -129,6 +129,30 @@ test("HOBO_RUNTIME container forces declared wasm services through OCI fallback 
   });
 });
 
+test("declared container runtime records declared-runtime fallback for wasm-capable services", async () => {
+  await withTempBuildProject(async (projectRoot) => {
+    await writeBuildFixtureProject(projectRoot, {
+      services: [
+        {
+          name: "queue-worker",
+          language: "ts",
+          runtime: "container",
+          sourceRoot: "services/queue-worker",
+          entrypoint: "services/queue-worker/src/service.ts",
+        },
+      ],
+    });
+    await seedGeneratedTree(projectRoot);
+
+    const result = await createBuildCli().run(["build", "--json"], { cwd: projectRoot });
+    const artifacts = byService(JSON.parse(result.stdout).artifacts);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(artifacts.get("queue-worker").kind, "oci-container");
+    assert.equal(artifacts.get("queue-worker").fallbackReason, "declared-runtime: container");
+  });
+});
+
 async function withSeededBuildProject(callback) {
   return withTempBuildProject(async (projectRoot) => {
     await writeBuildFixtureProject(projectRoot);

@@ -15,6 +15,17 @@ HOBO-511 defines the v1 browser, device, and platform support contract.
 This package defines the support matrix contract. It does not build a device lab, native mobile app,
 automated browser grid, live e2e suite, or package/runtime compatibility engine.
 
+## Architecture Evidence
+
+Per the repository architecture guardrails, this package ships M0 design evidence
+for its boundary (see [`ARCHITECTURE.md`](./ARCHITECTURE.md)):
+
+- [`proto/supported_platform_matrix.proto`](./proto/supported_platform_matrix.proto) — data shapes and records.
+- [`cue/supported_platform_matrix.cue`](./cue/supported_platform_matrix.cue) — CUE constraints for every protobuf type.
+- [`contracts/pacts/supported-platform-matrix-projection.pact.json`](./contracts/pacts/supported-platform-matrix-projection.pact.json) — projection-boundary PACT contract.
+
+These are M0 schema/contract evidence only; no device lab, browser grid, or live e2e execution is implemented.
+
 ## Verification
 
 ```powershell

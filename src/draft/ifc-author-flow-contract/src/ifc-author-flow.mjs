@@ -1,3 +1,7 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.mjs";
 import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.mjs";
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.mjs";
@@ -6,6 +10,11 @@ import { generateSdkCodegenArtifacts } from "../../sdk-codegen-surface-contract/
 
 const SAMPLE_BINDLE_ID = "support-desk";
 const SAMPLE_FILE_NAME = "examples/support-desk.bindle.ts";
+const PACKAGE_ROOT = fileURLToPath(new URL("../", import.meta.url));
+
+export const SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH =
+  "contracts/manifests/support-desk.manifest.json";
+export const SDK_MANIFEST_IR_CONTENT_TYPE = "application/vnd.hobo.manifest+json";
 
 const ASANA_BINDING = Object.freeze({
   asana: Object.freeze({
@@ -61,6 +70,39 @@ export async function runIfcAuthorFlowWithNarrowingFailure() {
     ok: failures.length === 0,
     phase: "permission-contract",
     failures,
+  };
+}
+
+export async function writeSdkManifestIrArtifact(options = {}) {
+  const result = options.result ?? await runIfcAuthorFlow();
+  if (!result.ok) {
+    throw new Error(
+      `cannot write manifest IR artifact from failed author flow phase ${result.phase}`,
+    );
+  }
+
+  const path = resolve(
+    options.root ?? PACKAGE_ROOT,
+    options.relativePath ?? SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH,
+  );
+  const content = stableManifestJson(result.manifest);
+
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, content);
+
+  return {
+    path,
+    relativePath: options.relativePath ?? SDK_MANIFEST_IR_ARTIFACT_RELATIVE_PATH,
+    content,
+    contentType: SDK_MANIFEST_IR_CONTENT_TYPE,
+    manifest: result.manifest,
+    manifestHash: result.manifestHash,
+    upload: {
+      target: "ManifestIrRegistry",
+      method: "POST",
+      path: "/manifests",
+      contentType: SDK_MANIFEST_IR_CONTENT_TYPE,
+    },
   };
 }
 
@@ -325,6 +367,10 @@ function sortManifest(manifest) {
   return sortKeys(manifest);
 }
 
+export function stableManifestJson(manifest) {
+  return `${JSON.stringify(sortKeys(manifest), null, 2)}\n`;
+}
+
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
@@ -335,6 +381,7 @@ function sortKeys(value) {
   return Object.fromEntries(
     Object.keys(value)
       .sort()
-      .map((key) => [key, sortKeys(value[key])]),
+      .map((key) => [key, sortKeys(value[key])])
+      .filter(([, entry]) => entry !== undefined),
   );
 }

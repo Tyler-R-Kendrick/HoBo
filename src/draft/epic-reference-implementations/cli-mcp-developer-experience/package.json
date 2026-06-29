@@ -1,0 +1,10 @@
+{
+  "name": "@hobo/epic-reference-cli-mcp-developer-experience",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs contracts/consumer/*.test.mjs",
+    "simulate": "node simulation/run-simulation.mjs"
+  }
+}

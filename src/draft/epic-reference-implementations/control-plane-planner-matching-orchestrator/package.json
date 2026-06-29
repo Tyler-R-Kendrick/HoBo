@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/epic-reference-control-plane",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs contracts/consumer/*.test.mjs",
+    "simulate": "node simulation/run-simulation.mjs"
+  }
+}

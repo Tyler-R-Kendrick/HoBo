@@ -111,25 +111,29 @@ export default junction("shop", { yards: [azureYard /*, awsYard, … */] });
 
 ```ts
 // the app topology (the "what") — the provider-agnostic Bindle
-import { bindle, database, service, web, queue } from "@hobo/bindles";
+import { bindle } from "@hobo/bindles";
+import type { OrderEvent } from "./shared/types";
+import shopApi from "./src/api";
+import shopSite from "./src/site";
 
 export default bindle("shop", (b) => {
-  const db     = b.use(database("db", { engine: "postgres" }));      // SaaS port
-  const orders = b.use(queue<OrderEvent>("orders"));                 // PaaS port
+  const db = b.data();                              // SaaS data port
+  const orders = b.queue<OrderEvent>();             // PaaS queue port
 
-  const api = b.use(service("api", {
-    handler: "./src/api",
-    bind: { db, orders },        // typed bindings → conn strings/creds injected at runtime via ctx
-  }))
-  .with(aws.fargate({ autoscale: { min: 1, max: 10 } }));            // provider-specific options (typed)
+  const api = b
+    .api(() => shopApi.run())
+    .dependsOn(db, orders)                          // typed bindings injected at runtime via ctx
+    .with(aws.fargate({ autoscale: { min: 1, max: 10 } }));
 
-  b.use(web("site", { handler: "./src/site", bind: { api } }));      // SSR/static, edge by mapping rule
+  const site = b.web(() => shopSite.render()).dependsOn(api);
+
+  return { db, orders, api, site };
 });
 ```
 **Resolution order** per port: explicit `bindings` → `tiers` → `defaultProvider` (formalized in [Plan 3 §Planner](./control-plane.md#plan-04)).
 
 #### Binding & injection mechanics
-`bind: { db }` does three things at deploy time and one at runtime:
+`dependsOn(db)` does three things at deploy time and one at runtime:
 - **Deploy:** records a dependency edge (db must provision before api — drives the DAG in [Plan 4](./control-plane.md#plan-04)); requests the right scoped credential for api→db; wires connection info as the resource's env/secret refs (never plaintext in the Bindle).
 - **Runtime:** `ctx.bindings.db` is a **provider-agnostic typed client** whose concrete driver is chosen by the resolved provider (e.g. a `SqlClient` over `pg` for RDS/Flexible Server/Neon). The app imports nothing provider-specific.
 ```ts
@@ -245,16 +249,16 @@ export const charge = step(async (o: Order) => {
 - `.with(provider.option({...}))` on any resource — **fully typed by the provider package**, additive, inert for other providers.
 - Stack multiple providers on one resource so a single Bindle targets many clouds with no edits:
 ```ts
-database("db", { engine: "postgres" })
+const db = b.data()
   .with(aws.rds({ multiAz: true }),
         azure.flexibleServer({ haMode: "zoneRedundant" }),
         neon.serverless({ autoscale: true }));   // only the resolved provider's block applies
 ```
-- **`prefer` / `require` qualifiers:** `database("db", { engine: "postgres", require: "managed" })` fails planning if no resolved provider offers managed Postgres; `prefer` degrades gracefully (e.g. to a container Postgres) with a warning event.
+- **`prefer` / `require` qualifiers:** `b.data({ engine: "postgres", require: "managed" })` fails planning if no resolved provider offers managed Postgres; `prefer` degrades gracefully (e.g. to a container Postgres) with a warning event.
 
 #### Type ergonomics
 - **Scope of "type-safe end-to-end" (stated honestly).** Types flow end-to-end **across the agnostic path** — bindings, workflow/step signatures, `useQuery()`/search results, provider `.with()` options. **Two declared exceptions:** (1) the **`.raw(driver => …)`** escape hatch returns untyped rows by design (and is flagged non-portable); (2) IfC resource collection is **run-to-collect** (it executes code to discover the resource graph, [authoring](./authoring-resources-wiring.md#plan-21)), so a resource declared only on a branch the collection run didn't hit would be missing from the generated types — therefore a **`can-deploy` collection-coverage gate fails when collection cannot prove it observed all declared resources** (static-analysis confirmation supplements it, required for non-TS guests). So "type-safe end-to-end" is true for the agnostic surface, with the raw hatch and collection-coverage as explicit, gated exceptions — not an unqualified guarantee.
-- Bindings flow end-to-end: `service({ bind: { db } })` types `ctx.bindings.db` as that resource's client type.
+- Bindings flow end-to-end: `b.api(...).dependsOn(db)` types `ctx.bindings.db` as that resource's client type.
 - `start(checkout, order)` is checked against the workflow signature; hooks/streams are generic (`createHook<T>()`, `getWritable<UIMessageChunk>()`).
 - Provider option types are exported by each provider package, so autocomplete on `.with(aws.…)` shows only valid knobs for that provider/resource pairing (conditional types keyed on the port).
 

@@ -102,3 +102,11 @@
 | 0094 | Autonomous-action safety rails: bounded blast radius, oscillation guards, and fail-closed A2H | [identity-security](02-identity-security.md#adr-0094) |
 | 0095 | Distributed-artifact version resolution semantics | [portability-extensibility](07-portability-extensibility.md#adr-0095) |
 | 0096 | Deny-ceiling composition algebra for mandatory policy packs | [identity-security](02-identity-security.md#adr-0096) |
+| 0097 | ID-JAG threat model and draft-version tracking for Cross-App Access | [identity-security](02-identity-security.md#adr-0097) |
+| 0098 | Generation eval methodology: hybrid rubrics, golden trajectories, and independent calibration | [data-plane](03-data-plane.md#adr-0098) |
+| 0099 | Data-flywheel privacy model for trajectory capture and training | [data-plane](03-data-plane.md#adr-0099) |
+| 0100 | SVID rotation under partition: signed renewal grace, then fail closed | [identity-security](02-identity-security.md#adr-0100) |
+| 0101 | DNS validation-gate threat model: multi-vantage, TTL, ACME, health, and promote re-checks | [portability-extensibility](07-portability-extensibility.md#adr-0101) |
+| 0102 | Opt-in component-host adapter certification target | [architecture-core](01-architecture-core.md#adr-0102) |
+| 0103 | Junction connectivity inference is a pure Yard-manifest fold with mirrored halves | [portability-extensibility](07-portability-extensibility.md#adr-0103) |
+| 0104 | SLO-gated rollback decisions use sustained evidence, not single-sample panic | [identity-security](02-identity-security.md#adr-0104) |

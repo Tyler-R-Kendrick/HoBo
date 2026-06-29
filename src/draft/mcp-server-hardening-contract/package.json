@@ -1,0 +1,8 @@
+{
+  "name": "@hobo-draft/mcp-server-hardening-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/mcp-server-hardening.test.mjs"
+  }
+}

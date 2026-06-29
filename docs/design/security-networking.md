@@ -92,7 +92,7 @@ A `bind: { db }` edge is the only thing the developer writes; HoBo derives the n
 
 **mTLS-by-default between services:** regardless of tier, service-to-service traffic authenticates with SVIDs (zero-trust). Certificates are issued/rotated by Identity; apps don't manage them.
 
-**Across Yards, the tier is the Junction's call.** Within a Yard the Planner picks the tier; for a *cross-boundary* edge neither Yard sees both ends, so the **Junction infers the tier** (and the matching `hobo:dns` rules) from the member Yards' manifests and **federates each Yard its half to realize** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — the Junction decides *what* connects, each Yard owns *how* on its side, no shared state.
+**Across Yards, the tier is the Junction's call.** Within a Yard the Planner picks the tier; for a *cross-boundary* edge neither Yard sees both ends, so the **Junction infers the tier** (and the matching `hobo:dns` rules) from the member Yards' manifests and **federates each Yard its half to realize** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)) — the Junction decides *what* connects, each Yard owns *how* on its side, no shared state. [ADR-0103](./adr/07-portability-extensibility.md#adr-0103) pins that inference as a pure YardManifest fold that emits mirrored halves and fails closed on asymmetric manifests, illegal residency, and no legal tier before HOBO-159 builds the realizer.
 
 #### Ingress / the `gateway` port
 - The `gateway()` capability provides TLS termination, routing, and traffic-splitting. It's what blue/green and canary rollouts flip ([Plan 5](./reliability-observability-cost.md#plan-05)).
@@ -114,6 +114,8 @@ export const site = domain("shop.com")
 - **ACME / challenge** — the DNS-01 challenge (or provider cert challenge) completes and the cert is issuable/valid for the name before traffic depends on it.
 - **Endpoint health checks** — the candidate target gateways/Camps return healthy on the domain's health path.
 - A failed check emits `domain.ValidationFailed` (naming the check that failed) and the promotion is rejected; the live zone never changed.
+
+The gate's adversarial parameter floor is pinned in [ADR-0101](./adr/07-portability-extensibility.md#adr-0101): multi-vantage disagreement fails closed, propagation waits through relevant TTL windows, ACME evidence is exact-name/key/CSR-bound, health proves the candidate gateway path, and promotion re-checks pinned evidence before live-zone mutation.
 
 **Health-checked staged / canary cutover with automatic rollback.** Once validation passes, cutover is **staged, never big-bang**: traffic shifts to the new target incrementally (canary `%` / weighted), continuously watched against health + SLO signals ([Plan 5](./reliability-observability-cost.md#plan-05)). On any regression the cutover **auto-reverts to the last-known-good routing** (`domain.RolledBack` with the reason) — no operator in the loop. `domain.CutoverStarted` → `domain.RoutingChanged` (success) | `domain.RolledBack` (regression) are the auditable facts.
 

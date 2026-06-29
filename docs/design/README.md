@@ -42,6 +42,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`walkthrough.md`](./walkthrough.md) | Role-organized ideal-state walkthrough: one app, six workflows (app dev · platform eng · GitOps · SecOps · DevOps · SRE) | — |
 | [`billing-launch-policy.md`](./billing-launch-policy.md) | Productization M0 launch billing policy for plans, credits, invoices, payment failures, refunds, and provider/legal boundaries | — |
 | [`usage-metering.md`](./usage-metering.md) | Productization M0 scope and acceptance for usage facts, showback dimensions, reconciliation evidence, and support/audit boundaries | — |
+| [`entitlements-plan-limits.md`](./entitlements-plan-limits.md) | Productization M0 scope and acceptance for plan tiers, entitlement categories, limit decisions, support overrides, and follow-up gates | — |
 | [`performance-load-tests.md`](./performance-load-tests.md) | Productization M0 launch envelope for performance, cost, capacity assumptions, deterministic load fixtures, and threshold handoffs | — |
 | [`tax-currency-receipt-obligations.md`](./tax-currency-receipt-obligations.md) | Productization M0 launch posture for tax, currency, receipts, invoice metadata, and unsupported jurisdictions | — |
 | [`product-notifications-lifecycle.md`](./product-notifications-lifecycle.md) | Productization M0 taxonomy for product lifecycle notifications, preferences, delivery evidence, and scope boundaries | — |

@@ -117,3 +117,17 @@ test("validation rejects scope creep, missing entitlement impact, and unresolved
   assert.match(result.errors.join("\n"), /legal\.terms-of-service must be blocker or limitation/);
   assert.match(result.errors.join("\n"), /scope-out\.tax-engine is required/);
 });
+
+test("validation requires lifecycle, provider-boundary, and legal input sections", () => {
+  const result = validateBillingLaunchPolicy({
+    ...BILLING_LAUNCH_POLICY,
+    lifecycleStates: [],
+    providerBoundaries: [],
+    legalPrivacyInputs: [],
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /lifecycleStates must be a non-empty list/);
+  assert.match(result.errors.join("\n"), /providerBoundaries must be a non-empty list/);
+  assert.match(result.errors.join("\n"), /legalPrivacyInputs must be a non-empty list/);
+});

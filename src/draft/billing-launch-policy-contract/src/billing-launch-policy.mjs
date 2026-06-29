@@ -211,6 +211,11 @@ export function validateBillingLaunchPolicy(record) {
       errors.push(`${section} must be a non-empty list`);
     }
   }
+  for (const section of ["lifecycleStates", "providerBoundaries", "legalPrivacyInputs"]) {
+    if (!Array.isArray(record[section]) || record[section].length === 0) {
+      errors.push(`${section} must be a non-empty list`);
+    }
+  }
 
   const scopeOutIds = new Set((record.v1ScopeOut ?? []).map((item) => item.id));
   for (const requiredScopeOut of ["scope-out.tax-engine", "scope-out.live-payment-processor"]) {

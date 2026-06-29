@@ -1,13 +1,24 @@
 {
-  "$comment": "Project-scoped MCP servers for Claude Code (auto-discovered). headroom = local token-compression (no keys); gbrain = knowledge-graph memory (needs `gbrain init` + an embedding key, e.g. OPENAI_API_KEY, and sends embedding/query text to that provider). See AGENTS.md and docs/agent-tooling.md. Install the binaries with scripts/setup-agent-tools.sh.",
+  "$comment": "Project-scoped MCP servers for Claude Code (auto-discovered). serena = semantic code retrieval/editing through language servers (no keys); headroom = local token-compression (no keys); gbrain = knowledge-graph memory (needs `gbrain init` + an embedding key, e.g. OPENAI_API_KEY, and sends embedding/query text to that provider). See AGENTS.md and docs/agent-tooling.md. Install the binaries with scripts/setup-agent-tools.sh.",
   "mcpServers": {
     "headroom": {
       "command": "headroom",
-      "args": ["mcp", "serve"]
+      "args": [
+        "mcp",
+        "serve"
+      ]
     },
     "gbrain": {
       "command": "gbrain",
-      "args": ["serve"]
+      "args": [
+        "serve"
+      ]
+    },
+    "serena": {
+      "command": "bash",
+      "args": [
+        "scripts/agent-mcp-serena.sh"
+      ]
     }
   }
 }

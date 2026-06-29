@@ -18,3 +18,4 @@ node_modules/
 # NOTE: committed on purpose so clones get the tooling wired up —
 #   .mcp.json, .cursor/, .codex/, .claude/skills/, .agents/skills/,
 #   AGENTS.md, CLAUDE.md, skills-lock.json
+.agents/vendor/

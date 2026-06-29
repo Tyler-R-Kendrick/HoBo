@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildCrossAppManifestEntry,
-  createCrossAppBinding,
-  generateCrossAppClientDeclaration,
-} from "../src/cross-app-authoring.mjs";
+  buildConnectorManifestEntry,
+  createConnectorBinding,
+  generateConnectorClientDeclaration,
+} from "../src/connector-authoring.mjs";
 
 const asanaAuth = {
   issuer: "https://asana.example.com",
@@ -25,27 +25,27 @@ const asanaAuth = {
   ],
 };
 
-test("crossApp generates a client from auth.json advertised operations", () => {
-  const asana = createCrossAppBinding("asana", asanaAuth);
+test("connector generates a client from auth.json advertised operations", () => {
+  const asana = createConnectorBinding("asana", asanaAuth);
 
   assert.equal(typeof asana.client.tasks.get, "function");
   assert.equal(typeof asana.client.tasks.create, "function");
   assert.equal(asana.client.tasks.delete, undefined);
   assert.throws(() => asana.call("tasks.delete"), /not advertised/);
 
-  const declaration = generateCrossAppClientDeclaration(asana);
+  const declaration = generateConnectorClientDeclaration(asana);
   assert.match(declaration, /readonly tasks:/);
-  assert.match(declaration, /get\(input: unknown\): CrossAppCall<"tasks:read">/);
-  assert.match(declaration, /create\(input: unknown\): CrossAppCall<"tasks:write">/);
+  assert.match(declaration, /get\(input: unknown\): ConnectorCall<"tasks:read">/);
+  assert.match(declaration, /create\(input: unknown\): ConnectorCall<"tasks:write">/);
   assert.doesNotMatch(declaration, /delete\(/);
 });
 
-test("crossApp lowers usage-inferred XAA scope into the manifest entry", () => {
-  const asana = createCrossAppBinding("asana", asanaAuth);
-  const entry = buildCrossAppManifestEntry(asana, ["tasks.create"]);
+test("connector lowers usage-inferred XAA scope into the manifest entry", () => {
+  const asana = createConnectorBinding("asana", asanaAuth);
+  const entry = buildConnectorManifestEntry(asana, ["tasks.create"]);
 
   assert.deepEqual(entry, {
-    type: "external-app.v1",
+    type: "connector.v1",
     via: "xaa",
     audience: "urn:asana:app",
     onBehalfOf: "user",
@@ -62,8 +62,8 @@ test("crossApp lowers usage-inferred XAA scope into the manifest entry", () => {
 });
 
 test("allow records a narrow-only declared set and keeps observed usage comparable", () => {
-  const readOnlyAsana = createCrossAppBinding("asana", asanaAuth).allow("tasks:read");
-  const entry = buildCrossAppManifestEntry(readOnlyAsana, ["tasks.get"]);
+  const readOnlyAsana = createConnectorBinding("asana", asanaAuth).allow("tasks:read");
+  const entry = buildConnectorManifestEntry(readOnlyAsana, ["tasks.get"]);
 
   assert.deepEqual(entry.allow, ["tasks:read"]);
   assert.deepEqual(entry.declaredAllow, ["tasks:read"]);
@@ -76,8 +76,8 @@ test("allow records a narrow-only declared set and keeps observed usage comparab
 });
 
 test("allow narrower than observed usage is marked for can-deploy comparison", () => {
-  const readOnlyAsana = createCrossAppBinding("asana", asanaAuth).allow("tasks:read");
-  const entry = buildCrossAppManifestEntry(readOnlyAsana, ["tasks.create"]);
+  const readOnlyAsana = createConnectorBinding("asana", asanaAuth).allow("tasks:read");
+  const entry = buildConnectorManifestEntry(readOnlyAsana, ["tasks.create"]);
 
   assert.deepEqual(entry.allow, ["tasks:read"]);
   assert.deepEqual(entry.observedScopes, ["tasks:write"]);
@@ -103,8 +103,8 @@ test("non-XAA targets record the fallback flow instead of dropping the dependenc
     ],
   };
 
-  const legacy = createCrossAppBinding("legacy", fallbackAuth);
-  const entry = buildCrossAppManifestEntry(legacy, ["tickets.list"]);
+  const legacy = createConnectorBinding("legacy", fallbackAuth);
+  const entry = buildConnectorManifestEntry(legacy, ["tickets.list"]);
 
   assert.equal(entry.via, "oauth2-obo");
   assert.equal(entry.fallbackFrom, "oauth2-xaa");
@@ -114,7 +114,7 @@ test("non-XAA targets record the fallback flow instead of dropping the dependenc
 test("static-secret flows are not accepted as XAA authoring fallbacks", () => {
   assert.throws(
     () =>
-      createCrossAppBinding("legacy", {
+      createConnectorBinding("legacy", {
         flows: [
           {
             type: "api-key",
@@ -125,14 +125,14 @@ test("static-secret flows are not accepted as XAA authoring fallbacks", () => {
           },
         ],
       }),
-    /supported external-app auth flow/
+    /supported external-dependency auth flow/
   );
 });
 
 test("scope strings from auth.json are validated against advertised scopes", () => {
   assert.throws(
     () =>
-      createCrossAppBinding("asana", {
+      createConnectorBinding("asana", {
         ...asanaAuth,
         flows: [
           {
@@ -147,13 +147,13 @@ test("scope strings from auth.json are validated against advertised scopes", () 
   );
 
   assert.throws(
-    () => createCrossAppBinding("asana", asanaAuth).allow("tasks:admin"),
+    () => createConnectorBinding("asana", asanaAuth).allow("tasks:admin"),
     /scope not advertised/
   );
 
   assert.throws(
     () =>
-      createCrossAppBinding("asana", {
+      createConnectorBinding("asana", {
         ...asanaAuth,
         flows: [{ ...asanaAuth.flows[0], scopes: ["tasks:*"] }],
       }),
@@ -162,7 +162,7 @@ test("scope strings from auth.json are validated against advertised scopes", () 
 
   assert.throws(
     () =>
-      createCrossAppBinding("asana", {
+      createConnectorBinding("asana", {
         ...asanaAuth,
         flows: [{ ...asanaAuth.flows[0], idJag: false }],
       }),

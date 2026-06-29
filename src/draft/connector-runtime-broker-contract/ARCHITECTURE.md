@@ -1,4 +1,4 @@
-# Cross App Runtime Broker Contract — Architecture Evidence
+# Connector Runtime Broker Contract — Architecture Evidence
 
 This draft package carries the architecture-guard evidence required by
 `scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and

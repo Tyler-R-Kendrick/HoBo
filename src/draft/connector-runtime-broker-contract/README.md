@@ -1,16 +1,16 @@
-# Cross-App Runtime Broker Contract
+# Connector Runtime Broker Contract
 
-HOBO-235 proof package for the runtime side of `ctx.crossApp(...).token()`.
+HOBO-235 proof package for the runtime side of `connector(...).connection().token()`.
 
 The package consumes the completed authoring and inference contracts:
 
-- `src/draft/cross-app-authoring-contract`
+- `src/draft/connector-authoring-contract`
 - `src/draft/xaa-scope-inference-contract`
 - `src/draft/outbound-xaa-token-exchange-contract`
 
 It proves the runtime bridge that:
 
-- maps `manifest.externalApps.<target>.allow` to the outbound XAA broker request;
+- maps `manifest.connectors.<target>.allow` to the outbound XAA broker request;
 - defaults raw `.token()` to the usage-inferred manifest scope set;
 - allows explicit token requests only when they narrow that manifest set;
 - binds broker subjects to the current `ctx.user` delegation principal; and
@@ -25,7 +25,7 @@ slices.
 Run the focused contract suite:
 
 ```powershell
-npm.cmd --prefix src\draft\cross-app-runtime-broker-contract test
+npm.cmd --prefix src\draft\connector-runtime-broker-contract test
 ```
 
 The root `npm.cmd test` also discovers this package's Node test suite.
@@ -36,6 +36,6 @@ The root `npm.cmd test` also discovers this package's Node test suite.
 This package ships the architecture-guard evidence required by
 `scripts/check-architecture-guardrails.mjs`:
 
-- `architecture/` — protobuf data shapes and CUE constraints for Cross App Runtime Broker Contract.
+- `architecture/` — protobuf data shapes and CUE constraints for Connector Runtime Broker Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ARCHITECTURE.md` — parse-don't-validate and event-architecture evidence.

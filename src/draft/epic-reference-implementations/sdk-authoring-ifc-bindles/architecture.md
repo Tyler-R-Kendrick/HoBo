@@ -12,7 +12,7 @@ Feature: IfC authoring to manifest IR
   Persona: App developer
 
   Scenario: Declare a portable Bindle and prove it before deploy
-    Given an app declares resources, handlers, config, auth, and crossApp dependencies through @hobo/bindles
+    Given an app declares resources, handlers, config, auth, and connector dependencies through @hobo/bindles
     When collection runs with mocked SDK, auth, codegen, and local runtime boundaries
     Then HoBo emits a deterministic hobo.manifest/v1, generated type surface, and contract evidence without live cloud calls
 ```

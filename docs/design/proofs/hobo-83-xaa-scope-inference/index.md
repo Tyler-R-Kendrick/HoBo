@@ -2,7 +2,7 @@
 
 HOBO-83 is proven by `src/draft/xaa-scope-inference-contract`.
 
-The proof consumes the M0 `crossApp()` authoring contract and adds the M2 inference behavior:
+The proof consumes the M0 `connector()` authoring contract and adds the M2 inference behavior:
 
 - called `asana.tasks.create(...)` usage lowers to `allow: ["tasks:write"]`;
 - unused advertised scopes are not requested;
@@ -24,5 +24,5 @@ node scripts\validate-traceability.mjs
 ## Scope Boundary
 
 This proof does not implement runtime token brokering, ID-JAG exchange, policy deny-ceiling
-evaluation, `ctx.crossApp(name).token()`, or typed-client generation. Those remain owned by the
+evaluation, `connector(name).connection().token()`, or typed-client generation. Those remain owned by the
 identity, policy, runtime, and codegen slices named in the Linear backlog.

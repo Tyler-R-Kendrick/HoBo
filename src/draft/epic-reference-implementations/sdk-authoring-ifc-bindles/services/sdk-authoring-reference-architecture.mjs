@@ -87,11 +87,11 @@ function buildManifest(fixture) {
       annotations: resource.annotations ?? []
     })),
     links: fixture.bindEdges,
-    externalApps: Object.fromEntries(
+    connectors: Object.fromEntries(
       fixture.xaaTargets.map((target) => [
         target.name,
         {
-          type: "external-app.v1",
+          type: "connector.v1",
           via: "xaa",
           audience: target.audience,
           onBehalfOf: "user",

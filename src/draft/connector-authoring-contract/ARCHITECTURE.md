@@ -1,4 +1,4 @@
-# Cross App Authoring Contract — Architecture Evidence
+# Connector Authoring Contract — Architecture Evidence
 
 This draft package carries the architecture-guard evidence required by
 `scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and

@@ -19,7 +19,7 @@ The reference implementation integrates their behavior and contracts, not their 
 
 The following are dependencies or future integrations, not accepted implementation scope here:
 
-- SDK authoring surfaces for `auth()` and `crossApp()` beyond runtime contract consumption.
+- SDK authoring surfaces for `auth()` and `connector()` beyond runtime contract consumption.
 - Provider adapter implementation, Registry publication, and provider-side Pact verification.
 - Policy engine internals, deny-ceiling algebra implementation, and UI approval flows.
 - Real Relay transport, data-plane connectivity tiers, DNS, service mesh, or TCP/TLS stacks.

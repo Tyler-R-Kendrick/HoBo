@@ -1,5 +1,5 @@
 {
-  "name": "@hobo/draft-cross-app-authoring-contract",
+  "name": "@hobo/draft-connector-authoring-contract",
   "private": true,
   "type": "module",
   "scripts": {

@@ -15,28 +15,16 @@ const requiredSurfaces = [
     requiredTerms: ["Signature.", "Semantics.", "Default.", "narrow", "dynamic", "deny-ceiling"],
   },
   {
-    heading: "### `crossApp(name)`",
+    heading: "### `connector(name)`",
     implementation: "HOBO-43",
     conformance: "HOBO-32",
     requiredTerms: ["Signature.", "Semantics.", "Default.", "inferred", "policy deny-ceiling"],
   },
   {
-    heading: "### `CrossAppBinding.token()`",
+    heading: "### `ConnectorConnection.token()`",
     implementation: "HOBO-235",
     conformance: "HOBO-54",
-    requiredTerms: ["Signature.", "Semantics.", "Default.", "escape hatch", "subset"],
-  },
-  {
-    heading: "### `approveDefaults(...)`",
-    implementation: "HOBO-62",
-    conformance: "HOBO-32",
-    requiredTerms: ["Signature.", "Semantics.", "Default.", "approved default providers"],
-  },
-  {
-    heading: "### `autoApprove(...)`",
-    implementation: "HOBO-133",
-    conformance: "HOBO-223",
-    requiredTerms: ["Signature.", "Semantics.", "Default.", "off by default", "production"],
+    requiredTerms: ["Signature.", "Semantics.", "Default.", "escape hatch", "connection", "subset"],
   },
   {
     heading: "### `camp(name, options)`",
@@ -57,10 +45,10 @@ const requiredSurfaces = [
     requiredTerms: ["Signature.", "Semantics.", "Default.", "idiom-layer-only", "semantics annex"],
   },
   {
-    heading: "### `agent()` name collision",
+    heading: "### Protocol connectors (`a2a`, `acp`)",
     implementation: "HOBO-88",
     conformance: "HOBO-32",
-    requiredTerms: ["Signature.", "Semantics.", "Default.", "@hobo/runtime", "@hobo/sdk", "alias"],
+    requiredTerms: ["Signature.", "Semantics.", "Default.", "connector", "agent SDK", "A2A", "ACP"],
   },
 ];
 
@@ -70,7 +58,7 @@ const importOwners = new Map([
   ["bindle", "@hobo/bindles"],
   ["bucket", "@hobo/bindles"],
   ["config", "@hobo/bindles"],
-  ["crossApp", "@hobo/bindles"],
+  ["connector", "@hobo/bindles"],
   ["database", "@hobo/bindles"],
   ["env", "@hobo/bindles"],
   ["experiment", "@hobo/bindles"],
@@ -107,8 +95,6 @@ const importOwners = new Map([
   ["saga", "@hobo/events"],
   ["subscribe", "@hobo/events"],
   ["camp", "@hobo/camps"],
-  ["approveDefaults", "@hobo/yards"],
-  ["autoApprove", "@hobo/yards"],
   ["domain", "@hobo/yards"],
   ["yard", "@hobo/yards"],
   ["junction", "@hobo/junctions"],
@@ -201,8 +187,12 @@ function validateContractDoc() {
     }
   }
 
-  if (!contract.includes("Inferred-Camp approval is both")) {
+  if (!contract.includes("The Yard builder does not expose `approveDefaults(...)` or `autoApprove(...)`")) {
     fail("sdk-contracts.md must record the canonical inferred-Camp approval decision");
+  }
+
+  if (contract.includes("### `approveDefaults(...)") || contract.includes("### `autoApprove(...)") || contract.includes("### `agent()` name collision")) {
+    fail("sdk-contracts.md must not preserve removed approval shortcuts or public agent SDK contracts");
   }
 }
 
@@ -227,6 +217,7 @@ function validatePackageNamespaceDoc() {
     "@hobo/sdk",
     "@hobo/core",
     "secretRef",
+    "connector",
     "must not re-export topology factories",
   ];
 
@@ -247,9 +238,6 @@ function validateImportOwners() {
   for (const filePath of listMarkdownFiles(docsRoot)) {
     const relativePath = path.relative(root, filePath);
     const markdown = read(filePath);
-    const runtimeAgentImports = [];
-    const sdkAgentImports = [];
-
     for (const match of markdown.matchAll(importPattern)) {
       const specifiers = match[1].split(",").map((specifier) => specifier.trim()).filter(Boolean);
       const packageName = match[2];
@@ -262,21 +250,9 @@ function validateImportOwners() {
           fail(`${relativePath}: ${bindingName} imported from ${packageName}; expected ${expectedPackage}`);
         }
 
-        if (bindingName === "agent" && packageName === "@hobo/runtime") {
-          runtimeAgentImports.push(specifier);
+        if (bindingName === "agent" && ["@hobo/bindles", "@hobo/runtime", "@hobo/sdk"].includes(packageName)) {
+          fail(`${relativePath}: public agent() imports are unsupported; use protocol connectors such as a2a/acp`);
         }
-
-        if (bindingName === "agent" && packageName === "@hobo/sdk") {
-          sdkAgentImports.push(specifier);
-        }
-      }
-    }
-
-    if (runtimeAgentImports.length > 0 && sdkAgentImports.length > 0) {
-      const allAgentImports = [...runtimeAgentImports, ...sdkAgentImports];
-      const allAliased = allAgentImports.every((specifier) => /\s+as\s+/i.test(specifier));
-      if (!allAliased) {
-        fail(`${relativePath}: files importing both runtime and operator agent() must alias both imports`);
       }
     }
   }

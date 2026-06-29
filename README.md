@@ -127,7 +127,7 @@ Core checks are intentionally ordinary Node scripts so they run locally, in CI, 
 
 ## AI agent workflow
 
-This repo is configured for Claude Code, Cursor, Codex, and GitHub Copilot CLI helper flows. Start with [`AGENTS.md`](./AGENTS.md) before editing. Full setup details and data-egress risks are in [`docs/agent-tooling.md`](./docs/agent-tooling.md).
+This repo is configured for agent/harness-agnostic helper tooling first, with supported shims for Claude Code, Cursor, Codex, and GitHub Copilot CLI where those clients need their own files. Start with [`AGENTS.md`](./AGENTS.md) before editing. Full setup details, devcontainer bootstrap behavior, progressive per-agent setup, cross-agent sync rules, install commands, and data-egress risks are in [`docs/agent-tooling.md`](./docs/agent-tooling.md).
 
 Important rules for agents and humans:
 

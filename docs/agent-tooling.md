@@ -7,11 +7,11 @@ tags: [hobo, agent-tooling.md]
 
 # Agent tooling
 
-Seven third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh).
+Nine third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh).
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
-## The seven tools
+## The nine tools
 
 ### improve — `shadcn/improve` (MIT)
 A **read-only agent skill**: surveys the codebase and writes prioritized, self-contained implementation **plans** to `docs/plans/` for other (cheaper) agents to execute. It never edits source. Commands: `/improve`, `/improve quick`, `/improve deep`, `/improve security|perf|tests|bugs`, `/improve branch`, `/improve next`, `/improve plan <desc>`, `/improve execute <plan>`, `/improve reconcile`. No API keys. Installed to `.claude/skills/improve` (Claude Code) and `.agents/skills/improve` (Cursor + Codex).
@@ -33,6 +33,10 @@ A **skill + always-on rule** that compresses the agent's **output** (~65–87% f
 A **minimalist-coding skill**: channels a senior dev who pushes the laziest solution that works — YAGNI (does this need to exist?), standard library before custom code, native platform features before dependencies, one line before fifty. Commands: `/ponytail [lite|full|ultra]`, `/ponytail-review` (review a diff for over-engineering), `/ponytail-audit` (whole-repo bloat scan), `/ponytail-debt` (harvest `ponytail:` shortcut comments into a ledger), `/ponytail-gain`, `/ponytail-help`. **No API keys; no third-party data transmission.** Installed (6 skills) to `.claude/skills/ponytail*` (Claude Code) and `.agents/skills/ponytail*` (Cursor + Codex).
 - **Invocation-based here, not always-on.** Run `/ponytail` to activate it for a session. (Upstream also supports an always-on plugin install via `/plugin marketplace add DietrichGebert/ponytail` → `/plugin install ponytail@ponytail` in Claude Code; we use the skills route to keep it opt-in and committable, and to avoid stacking a second always-on directive on top of caveman.) Optional global config: `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE`.
 
+
+### Serena — `oraios/serena` (MIT)
+A **semantic-code MCP server**: it gives coding agents IDE-like symbol search, reference lookup, and safer symbol-aware edits/refactors through language servers. It is agent/harness agnostic because it speaks MCP; this repo exposes one shared launcher, [`../scripts/agent-mcp-serena.sh`](../scripts/agent-mcp-serena.sh), and points Claude Code, Cursor, and Codex at that wrapper instead of duplicating hard-coded commands. Install with `uv tool install -p 3.13 serena-agent`, then run `serena init`. No API keys. Serena may install/use language-server dependencies for the languages in the checkout.
+
 ### headroom — `chopratejas/headroom` (Apache-2.0)
 A **token-compression MCP server** (also a CLI/proxy) that shrinks the **context fed to the model** — tool outputs, logs, file dumps — reversibly (`headroom_retrieve` fetches originals). Local-first, **no API keys**. MCP tools surface as `mcp__headroom__headroom_compress|retrieve|stats`. Launch: `headroom mcp serve` (wired in `.mcp.json` / `.cursor/mcp.json` / `.codex/config.toml`). For automatic compression of *all* traffic you can also run the proxy: `headroom proxy --port 8787` then `ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude` (optional; see `headroom mcp --help`).
 
@@ -40,29 +44,50 @@ A **token-compression MCP server** (also a CLI/proxy) that shrinks the **context
 A **knowledge-graph memory MCP server** (+ CLI) on the **Bun** runtime: `gbrain capture` ingests notes, `gbrain search`/`query` does hybrid retrieval + synthesis. Launch: `gbrain serve` (stdio MCP). **Requires `gbrain init` once and an embedding key.**
 - ⚠️ **Keys + data egress + cost:** set exactly one of `OPENAI_API_KEY` / `ZEROENTROPY_API_KEY` / `VOYAGE_API_KEY` (in `.env`). gbrain **sends the text it embeds and your queries to that provider** — recurring API cost and data leaving your machine. It is **inert until initialized with a key**; don't point it at content you don't want shared. The local store (PGLite) is gitignored.
 
+
+### SkillOpt — `microsoft/SkillOpt` (MIT)
+A **skill optimization research harness**, not a runtime MCP server. SkillOpt treats a markdown skill as trainable external state for a frozen agent: it runs scored rollouts, proposes bounded add/delete/replace edits, accepts only validation-improving candidates, and exports a compact `best_skill.md`. It currently targets direct chat plus Codex CLI and Claude Code CLI harnesses. Use it offline when the repo has scored tasks or benchmark suites worth optimizing against; do not put it in always-on agent instructions. The setup script installs it directly from `git+https://github.com/microsoft/SkillOpt.git`, verifies `skillopt-train` and `skillopt-sleep`, and exposes [`../scripts/skillopt-sleep.sh`](../scripts/skillopt-sleep.sh) as the repo-local runner. Use the default mock backend for no-spend dry runs, then opt in to `--backend codex` or `--backend claude` when you want real replay on your own budget.
+
+## Progressive setup
+
+Start with the common layer, then add one supported agent shim only when you need it:
+
+```bash
+bash scripts/setup-agent-tools.sh --common-only --no-gbrain
+# later, choose one supported client:
+bash scripts/setup-agent-tools.sh --agent claude-code --no-gbrain
+bash scripts/setup-agent-tools.sh --agent cursor --no-gbrain
+bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
+bash scripts/setup-agent-tools.sh --agent copilot --no-gbrain
+```
+
+The common layer installs agent-agnostic runtimes (`serena`, `headroom`, `skillopt-train`, `skillopt-sleep`) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and key-requiring gbrain setup during container creation.
+
 ## Per-agent wiring
-| | MCP servers (headroom, gbrain) | Skills (improve, mattpocock, caveman, ponytail) | Plugin (superpowers) |
+| | MCP servers (Serena, headroom, gbrain) | Skills (improve, mattpocock, caveman, ponytail) | Plugin / optimizer |
 |---|---|---|---|
-| **Claude Code** | `.mcp.json` (auto-discovered) | `.claude/skills/` (incl. mattpocock) | `.claude/settings.json` (auto-enabled) |
+| **Claude Code** | `.mcp.json` (auto-discovered) | `.claude/skills/` (incl. mattpocock) | `.claude/settings.json` for Superpowers; SkillOpt can run offline |
 | **Cursor** | `.cursor/mcp.json` | `.agents/skills/` + `.cursor/rules/` (caveman) | — (no plugin support) |
-| **Codex** | `~/.codex/config.toml` (copy from `.codex/config.toml`, or `codex mcp add …`) | `.agents/skills/` + `AGENTS.md` | `codex plugin marketplace add/install` (per-machine) |
+| **Codex** | `~/.codex/config.toml` (copy from `.codex/config.toml`, or `codex mcp add …`) | `.agents/skills/` + `AGENTS.md` | `codex plugin marketplace add/install` (per-machine); SkillOpt can run offline |
 | **GitHub Copilot CLI** | — | — | `copilot plugin marketplace add/install` (per-machine) |
 
-Committed so a clone is wired up: `.mcp.json`, `.cursor/`, `.codex/config.toml`, `.claude/skills/`, `.agents/skills/`, `AGENTS.md`, `CLAUDE.md`, `skills-lock.json`. Opening the repo in Claude Code/Cursor will prompt to start the `headroom` + `gbrain` MCP servers — decline if unwanted.
+Committed so a clone is wired up: `.mcp.json`, `.cursor/`, `.codex/config.toml`, `.claude/skills/`, `.agents/skills/`, shared MCP wrapper scripts, `AGENTS.md`, `CLAUDE.md`, `skills-lock.json`. Opening the repo in Claude Code/Cursor will prompt to start the `serena` + `headroom` + `gbrain` MCP servers — decline if unwanted.
 
 ## Install
 ```bash
-bash scripts/setup-agent-tools.sh           # all seven
-bash scripts/setup-agent-tools.sh --no-gbrain   # skip the key/egress one
+bash scripts/setup-agent-tools.sh --common-only --no-gbrain # common/devcontainer-safe layer
+bash scripts/setup-agent-tools.sh --agent codex --no-gbrain # add one supported agent shim
+bash scripts/setup-agent-tools.sh              # common + all supported shims
+bash scripts/setup-agent-tools.sh --no-skillopt # skip microsoft/SkillOpt install
 ```
-Requires: Node ≥18 (`npx`), Python ≥3.10 (`pip`) for headroom, and Bun for gbrain. Put `$HOME/.local/bin` (headroom) and `$HOME/.bun/bin` (gbrain) on your `PATH`.
+Requires: Node ≥18 (`npx`), Python ≥3.10 (`pip`) for headroom/SkillOpt, `uv` (or Python to install `uv`) for Serena, and Bun for gbrain. Put `$HOME/.local/bin` (headroom, Serena fallback, SkillOpt CLIs) and `$HOME/.bun/bin` (gbrain) on your `PATH`.
 
 ## Trust / provenance
-- All seven are MIT/Apache-2.0 OSS. `improve`, `mattpocock/skills`, `ponytail`, `superpowers`, and `headroom` are read-only/local with no egress (superpowers has optional, disable-able telemetry). `caveman` installs via a `curl|bash` shim that forwards to `npx github:JuliusBrussee/caveman`. `gbrain` is the only one with third-party data egress + cost.
+- All nine are MIT/Apache-2.0 OSS. `improve`, `mattpocock/skills`, `ponytail`, `superpowers`, `Serena`, and `headroom` are local with no egress (superpowers has optional, disable-able telemetry). `caveman` installs via a `curl|bash` shim that forwards to `npx github:JuliusBrussee/caveman`. `gbrain` is the only always-configured MCP tool with third-party data egress + cost; SkillOpt may call whatever model/backend you configure for offline training or sleep runs; its default sleep `mock` backend is no-spend and deterministic.
 - `npx skills add … --copy` writes real files (not symlinks) so they're committable and reviewable. `skills-lock.json` pins versions.
 - Review skill files before trusting them — they run with full agent permissions.
 
 
 ## Maintenance gates
 
-Agent-tooling changes count as repo behavior changes. Update `AGENTS.md`, this file, or another relevant README in the same change when editing `.agents/`, `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, or setup scripts. The `docs:freshness` CI gate and `.githooks/pre-commit` hook enforce that code/tooling changes include a docs update.
+Agent-tooling changes count as repo behavior changes. Prefer cross-agent config first: shared wrapper scripts under `scripts/`, devcontainer/common-layer setup, shared skills under `.agents/skills/` where supported, then minimal Claude/Cursor/Codex/Copilot shims. When changing one supported agent config (`.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.claude/settings.json`, or setup scripts), check and update the peer configs in the same PR. Update `AGENTS.md`, this file, or another relevant README in the same change when editing `.agents/`, `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, or setup scripts. The `docs:freshness` CI gate and `.githooks/pre-commit` hook enforce that code/tooling changes include a docs update.

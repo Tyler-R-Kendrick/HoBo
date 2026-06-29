@@ -45,6 +45,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 
 | Issue | Source record | Proof package | Acceptance assertion |
 |---|---|---|---|
+| HOBO-409 | [`workspace-onboarding-ux.md`](./workspace-onboarding-ux.md) | [`workspace-onboarding-scope-acceptance`](../../src/draft/workspace-onboarding-scope-acceptance/README.md) | Workspace & Onboarding UX M0 scope names goal/personas, scope in/out, service/UX/security/support boundaries, authoritative and owning-initiative dependencies, M1 proof assets, and the follow-up issue gate before downstream design/build work. |
 | HOBO-435 | [`example-apps.md`](./example-apps.md) | [`example-apps-scope-acceptance`](../../src/draft/example-apps-scope-acceptance/README.md) | Example Apps M0 scope names goal/personas, scope in/out, service/UX/security/support boundaries, authoritative and owning-initiative dependencies, M1 proof assets, and the follow-up issue gate before downstream design/build work. |
 
 ## Plan Coverage

@@ -4,6 +4,8 @@
 
 The SDK is four cooperating layers. Each lower layer is usable on its own; higher layers add ergonomics. The "feels like Vercel Workflows" surface = Layer 4 primitives + Layer 3 topology. **Design tenet:** the *agnostic* path is the default and the shortest; provider-specific power is always one `.with(...)` away.
 
+> **Reference architecture:** the epic rollup at [`sdk-authoring-ifc-bindles`](../../src/draft/epic-reference-implementations/sdk-authoring-ifc-bindles/README.md) composes this SDK surface with IfC collection, manifest/upcaster checks, generated type output, provider-option debt markers, and mocked Pact-covered service boundaries. It is the current executable reference for SDK authoring behavior, not a production `@hobo/bindles` implementation.
+
 > **Runtime & authoring (Nitric/WASM/Aspire).** Three properties layer on this model:
 > - **Authoring is IfC-default** ([Plan 21](./authoring-resources-wiring.md#plan-21)): you declare resources inline with `.allow(...)` and HoBo collects them by running the component; the explicit `bindle()` topology below is the **advanced/escape-hatch** mode.
 > - **Ports are WIT interfaces** and **services are wasm/wasi components by default** ([Plan 20](./wasm-runtime-wit.md#plan-20)); the typed clients shown here are generated from those interfaces (OCI-container fallback for non-wasm workloads).

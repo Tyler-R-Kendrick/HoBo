@@ -1,0 +1,14 @@
+{
+  "name": "@hobo-draft/cost-routing-eligibility-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC for cost-routing eligibility checks from HOBO-155.",
+  "main": "./src/cost-routing-eligibility.mjs",
+  "exports": {
+    ".": "./src/cost-routing-eligibility.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

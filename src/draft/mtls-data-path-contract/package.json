@@ -1,0 +1,15 @@
+{
+  "name": "@hobo/draft-mtls-data-path-contract",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/mtls-data-path.d.mts",
+      "default": "./src/mtls-data-path.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
+  }
+}

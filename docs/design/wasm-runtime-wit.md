@@ -2,6 +2,8 @@
 
 This capability doc covers the WASM/WASI runtime — the polyglot spine — together with the WIT interface reference that is its canonical port catalog.
 
+Epic reference implementation: [`src/draft/epic-reference-implementations/wit-component-model-runtime-membrane`](../../src/draft/epic-reference-implementations/wit-component-model-runtime-membrane/).
+
 ## Plan 20
 
 > **Contracts & policy (gates):** each **Camp** (via its runtime + wasm host) **declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)) knows what a target can enforce, just as a WIT interface announces its capabilities.

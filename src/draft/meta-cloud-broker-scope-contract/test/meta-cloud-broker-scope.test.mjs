@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -129,4 +130,43 @@ test("public broker claims require named proof mode and source", () => {
     }).allowed,
     true,
   );
+});
+
+test("architecture guard evidence names broker schema, parsed types, and event boundary", () => {
+  const architecture = readFileSync(new URL("../ARCHITECTURE.md", import.meta.url), "utf8");
+  const pact = JSON.parse(
+    readFileSync(
+      new URL("../contracts/pacts/meta-cloud-broker-resolution.pact.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const proto = readFileSync(new URL("../proto/meta_cloud_broker.proto", import.meta.url), "utf8");
+  const cue = readFileSync(new URL("../cue/meta_cloud_broker.cue", import.meta.url), "utf8");
+
+  assert.equal(pact.consumer.name, "ContractManifestSubmitter");
+  assert.equal(pact.provider.name, "MetaCloudBrokerResolutionAuthority");
+  assert.ok(pact.interactions.length >= 2);
+
+  for (const typeName of [
+    "ContractManifest",
+    "BrokerEnvironment",
+    "MappingContract",
+    "BrokerCatalogSnapshot",
+    "ResolutionReceipt",
+    "ResolutionRejection",
+    "BrokerDecisionState",
+  ]) {
+    assert.match(proto, new RegExp(`(?:message|enum) ${typeName}`));
+    assert.match(cue, new RegExp(`#${typeName}:`));
+  }
+
+  assert.match(architecture, /parse, don't validate/i);
+  assert.match(architecture, /derived domain\s+types/i);
+  assert.match(architecture, /Command/i);
+  assert.match(architecture, /Events/i);
+  assert.match(architecture, /Actor/i);
+  assert.match(architecture, /event-store/i);
+  assert.match(architecture, /projection/i);
+  assert.match(architecture, /Snapshot/i);
+  assert.match(architecture, /read store/i);
 });

@@ -46,6 +46,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | Issue | Source record | Proof package | Acceptance assertion |
 |---|---|---|---|
 | HOBO-435 | [`example-apps.md`](./example-apps.md) | [`example-apps-scope-acceptance`](../../src/draft/example-apps-scope-acceptance/README.md) | Example Apps M0 scope names goal/personas, scope in/out, service/UX/security/support boundaries, authoritative and owning-initiative dependencies, M1 proof assets, and the follow-up issue gate before downstream design/build work. |
+| HOBO-508 | [`outcome-activation-rail.md`](./outcome-activation-rail.md) | [`v1-outcome-activation-rail-contract`](../../src/draft/v1-outcome-activation-rail-contract/README.md) | V1 outcome activation rail M0 scope defines stages, entry/exit criteria, persona labels, evidence objects, handoffs, proof-surface mappings, audience-specific visibility, UX-orchestration scope boundaries, and the follow-up issue gate before downstream implementation work. |
 
 ## Plan Coverage
 

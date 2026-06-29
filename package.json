@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "architecture:guard": "node scripts/check-architecture-guardrails.mjs",
+    "architecture:guard:staged": "node scripts/check-architecture-guardrails.mjs --staged",
     "test": "tsx scripts/run-tests.ts",
     "standards:check": "tsx scripts/check-technical-standards.ts",
     "docs:cli-lint": "tsx scripts/check-cli-docs.ts",

@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
+npm run architecture:guard:staged -- --base="${HOBO_ARCHITECTURE_BASE:-origin/main}"
 npm test
 npm run standards:check -- --staged --base="${HOBO_STANDARDS_BASE:-origin/main}"
 npm run docs:cli-lint

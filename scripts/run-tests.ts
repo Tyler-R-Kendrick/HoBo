@@ -2,8 +2,8 @@ import { spawnSync } from "node:child_process";
 
 const MAX_BATCH_CHARS = 12000;
 
-function gitLsFiles(pattern: string): string[] {
-  const result = spawnSync("git", ["ls-files", pattern], {
+function gitLsFiles(patterns: string[]): string[] {
+  const result = spawnSync("git", ["ls-files", ...patterns], {
     encoding: "utf8",
     shell: false,
   });
@@ -42,10 +42,10 @@ function batches(files: string[]): string[][] {
   return grouped;
 }
 
-const testFiles = gitLsFiles("*test.ts");
+const testFiles = gitLsFiles(["*test.ts", "*test.mjs"]);
 
 if (testFiles.length === 0) {
-  console.error("no tracked TypeScript test files found");
+  console.error("no tracked TypeScript or ESM test files found");
   process.exit(1);
 }
 

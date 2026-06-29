@@ -1,6 +1,7 @@
 # HoBo Relay contract POC
 
-Independent proof for HOBO-167 and the HOBO-197 SSRF/lateral-movement hardening.
+Independent proof for HOBO-167, HOBO-197 SSRF/lateral-movement hardening, and HOBO-244
+SVID-authenticated outbound reverse tunnel acceptance.
 
 This package pins the connected-private Relay boundary from:
 
@@ -14,6 +15,7 @@ The proof covers:
 - Registering and attaching a Relay only after governed `hobo:relay:register` and `hobo:relay:attach` decisions.
 - Outbound-only transport: the Relay must dial the Yard over TCP 443 and may not expose inbound listeners into the private network.
 - SVID-authenticated attach using the existing mTLS data-path contract.
+- Unauthenticated, expired, or cross-tenant Relay SVID attach attempts fail closed.
 - Work dispatch from Yard to Executor behind the Relay and result return to the Yard.
 - Credential no-egress: Yard work frames carry private-network credential references, never credential material.
 - Multiple private targets routed by target id through one Relay.

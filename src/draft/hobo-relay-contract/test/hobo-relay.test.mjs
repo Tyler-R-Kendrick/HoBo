@@ -135,7 +135,17 @@ test("inbound listeners and inbound connection attempts are impossible", () => {
   });
 });
 
-test("invalid, expired, or cross-tenant SVIDs cannot attach", () => {
+test("unauthenticated, expired, or cross-tenant SVIDs cannot attach", () => {
+  assert.deepEqual(attachRelay(registerRelay(relaySpec({
+    mtls: mtlsContract({
+      peerCertificate: undefined
+    })
+  }), policyAllow("hobo:relay:register")).relay, policyAllow("hobo:relay:attach")), {
+    ok: false,
+    code: "relay.attach.svid-rejected",
+    reason: "peerCertificate must be an object"
+  });
+
   assert.deepEqual(attachRelay(registerRelay(relaySpec({
     mtls: mtlsContract({
       peerCertificate: cert(relaySvid, { notAfter: "2026-06-28T11:59:59.000Z" })

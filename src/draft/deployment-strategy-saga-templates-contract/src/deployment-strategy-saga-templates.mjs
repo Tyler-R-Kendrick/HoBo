@@ -43,10 +43,54 @@ export function blueGreenStrategy({
   routeId,
   healthGate,
   soakSeconds,
+  reapAfterSoak = false,
 }) {
   assertNonEmptyString(routeId, "blueGreen.routeId");
   if (!Number.isInteger(soakSeconds) || soakSeconds <= 0) {
     throw new Error("blueGreen.soakSeconds must be a positive integer");
+  }
+
+  const steps = [
+    {
+      name: "prepare-green",
+      gateTiming: "after",
+      gateRefs: [],
+      action: {
+        kind: "deployment.prepareGreen",
+        routeId,
+      },
+    },
+    {
+      name: "flip-router",
+      gateTiming: "before",
+      gateRefs: gateRefsFor({ healthGate, autoRollbackSignals: [] }),
+      action: {
+        kind: "gateway.flipRoute",
+        routeId,
+      },
+    },
+    {
+      name: "retain-blue",
+      gateTiming: "after",
+      gateRefs: [],
+      action: {
+        kind: "deployment.retainBlue",
+        routeId,
+        soakSeconds,
+      },
+    },
+  ];
+
+  if (reapAfterSoak) {
+    steps.push({
+      name: "reap-blue",
+      gateTiming: "before",
+      gateRefs: [{ kind: "soak", id: `${routeId}-blue-soak`, afterSeconds: soakSeconds }],
+      action: {
+        kind: "deployment.reapBlue",
+        routeId,
+      },
+    });
   }
 
   return deepFreeze({
@@ -54,36 +98,7 @@ export function blueGreenStrategy({
     strategy: "blue-green",
     routeId,
     soakSeconds,
-    steps: [
-      {
-        name: "prepare-green",
-        gateTiming: "after",
-        gateRefs: [],
-        action: {
-          kind: "deployment.prepareGreen",
-          routeId,
-        },
-      },
-      {
-        name: "flip-router",
-        gateTiming: "before",
-        gateRefs: gateRefsFor({ healthGate, autoRollbackSignals: [] }),
-        action: {
-          kind: "gateway.flipRoute",
-          routeId,
-        },
-      },
-      {
-        name: "retain-blue",
-        gateTiming: "after",
-        gateRefs: [],
-        action: {
-          kind: "deployment.retainBlue",
-          routeId,
-          soakSeconds,
-        },
-      },
-    ],
+    steps,
   });
 }
 
@@ -224,13 +239,35 @@ export function createDeploymentStrategySaga({ now = () => new Date().toISOStrin
           }
         }
 
-        const actionResult = await applyAction({
-          gateway,
-          rollout: parsed,
-          step,
-          stepIndex,
-          eventLog: [...eventLog, ...output],
-        });
+        let actionResult;
+        try {
+          actionResult = await applyAction({
+            gateway,
+            rollout: parsed,
+            step,
+            stepIndex,
+            eventLog: [...eventLog, ...output],
+          });
+        } catch (error) {
+          await rollback({
+            gateway,
+            rollout: parsed,
+            append,
+            stepIndex,
+            reason: error instanceof Error ? error.message : String(error),
+          });
+          return resultFor(eventLog, output);
+        }
+
+        if (actionResult?.status === "held") {
+          appendGate(append, parsed, step, stepIndex, {
+            decision: "hold",
+            reason: actionResult.reason ?? `${step.name} held by gateway`,
+            signals: { actionResult },
+          });
+          return resultFor(eventLog, output);
+        }
+
         append(EVENT_TYPES.stepped, {
           rolloutId: parsed.rolloutId,
           stepIndex,
@@ -377,6 +414,17 @@ async function applyAction({ gateway, rollout, step, stepIndex, eventLog }) {
     });
   }
 
+  if (step.action.kind === "deployment.reapBlue") {
+    assertBlueReapAllowed({ eventLog, rollout });
+    return applyGatewayCommand(gateway, {
+      kind: "deployment.reapBlue",
+      routeId: step.action.routeId,
+      activeVersion: rollout.target.toVersion,
+      retainedVersion: rollout.target.fromVersion,
+      idempotencyKey: `${rollout.rolloutId}:step:${stepIndex}`,
+    });
+  }
+
   return { status: "noop" };
 }
 
@@ -391,6 +439,14 @@ function applyActionToState(state, action) {
         [action.fromVersion]: 100 - action.toWeight,
         [action.toVersion]: action.toWeight,
       },
+    };
+  }
+
+  if (action.kind === "deployment.reapBlue") {
+    const { retainedVersion, ...rest } = state;
+    return {
+      ...rest,
+      reapedVersion: action.retainedVersion,
     };
   }
 
@@ -668,7 +724,8 @@ function bindTarget(step, target) {
     step.action.kind === "deployment.prepareGreen" ||
     step.action.kind === "deployment.stopVersion" ||
     step.action.kind === "deployment.startVersion" ||
-    step.action.kind === "gateway.flipRoute"
+    step.action.kind === "gateway.flipRoute" ||
+    step.action.kind === "deployment.reapBlue"
   ) {
     return {
       ...step,
@@ -784,7 +841,9 @@ async function applyGatewayCommand(gateway, command) {
     if (result?.status !== "partial") {
       return {
         status: result?.status ?? "applied",
+        reason: result?.reason,
         state: cloneJson(result?.state),
+        signals: cloneJson(result?.signals),
         command: cloneJson(command),
         attempts,
       };
@@ -797,10 +856,32 @@ async function applyGatewayCommand(gateway, command) {
 
   return {
     status: result?.status ?? "applied",
+    reason: result?.reason,
     state: cloneJson(result?.state),
+    signals: cloneJson(result?.signals),
     command: cloneJson(command),
     attempts,
   };
+}
+
+function assertBlueReapAllowed({ eventLog, rollout }) {
+  const flipGate = findLastGateForAction(eventLog, "gateway.flipRoute");
+  const gatewayState = replayGatewayState(eventLog);
+
+  if (
+    !flipGate ||
+    flipGate.data.decision !== "pass" ||
+    gatewayState.activeVersion !== rollout.target.toVersion ||
+    gatewayState.retainedVersion !== rollout.target.fromVersion
+  ) {
+    throw new Error("cannot reap blue before green is healthy and retained");
+  }
+}
+
+function findLastGateForAction(events, actionKind) {
+  return [...events]
+    .reverse()
+    .find((event) => event.type === EVENT_TYPES.gateEvaluated && event.data.step.action.kind === actionKind);
 }
 
 function findStartedAt(events) {

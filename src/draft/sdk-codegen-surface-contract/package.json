@@ -1,0 +1,12 @@
+{
+  "name": "@hobo/draft-sdk-codegen-surface-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test && npm run test:types",
+    "test:types": "node scripts/write-type-fixture.mjs && tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

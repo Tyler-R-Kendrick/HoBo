@@ -33,15 +33,18 @@ test("PR CI blocks on the full local gate including unit and conformance checks"
   assert.equal(contract.workflow.pullRequestGate.blocksPullRequest, true);
   assert.deepEqual(contract.workflow.pullRequestGate.commands, [
     "npm ci",
-    "node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build",
-    "node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck",
-    "node src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint",
+    "npm exec -- tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build",
+    "npm exec -- tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck",
+    "npm exec -- tsx src/draft/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint",
     "npm test",
+    "npm run standards:check",
     "npm run docs:cli-lint",
     "npm run docs:design-lint",
-    "node scripts/validate-traceability.ts",
-    "node scripts/validate-sdk-contracts.ts",
-    "node scripts/validate-deployment-set-delta.ts",
+    "npm run docs:coverage",
+    "npm run docs:freshness",
+    "npm exec -- tsx scripts/validate-traceability.ts",
+    "npm exec -- tsx scripts/validate-sdk-contracts.ts",
+    "npm exec -- tsx scripts/validate-deployment-set-delta.ts",
   ]);
 });
 

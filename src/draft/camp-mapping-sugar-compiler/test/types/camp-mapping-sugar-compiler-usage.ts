@@ -4,7 +4,7 @@ import {
   type CampMapping,
   type CampResource,
   type CompiledCampMapping
-} from "../../src/camp-mapping-sugar-compiler.js";
+} from "@hobo/draft-camp-mapping-sugar-compiler";
 
 const resources: CampResource[] = [
   { id: "shop.db", type: "database", engine: "postgres", serviceModel: "saas" },

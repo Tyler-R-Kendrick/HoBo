@@ -36,9 +36,9 @@ npm run docs:cli-lint
 npm run docs:design-lint
 npm run docs:coverage
 npm run docs:freshness
-tsx scripts/validate-traceability.ts
-tsx scripts/validate-sdk-contracts.ts
-tsx scripts/validate-deployment-set-delta.ts
+npm exec -- tsx scripts/validate-traceability.ts
+npm exec -- tsx scripts/validate-sdk-contracts.ts
+npm exec -- tsx scripts/validate-deployment-set-delta.ts
 ```
 
 Optional local hook:

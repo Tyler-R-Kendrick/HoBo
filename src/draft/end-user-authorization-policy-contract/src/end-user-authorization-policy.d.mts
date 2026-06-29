@@ -1,11 +1,11 @@
 import type {
   Decision,
   DecisionRequest,
-} from "../../hobo-policy-ir-contract/src/policy-ir.mjs";
+} from "../../hobo-policy-ir-contract/src/policy-ir.d.mts";
 import type {
   PolicyRuleset,
   TypescriptRule,
-} from "../../built-in-policy-engine-contract/src/built-in-policy-engine.mjs";
+} from "../../built-in-policy-engine-contract/src/built-in-policy-engine.d.mts";
 
 export const USER_AUTHORIZATION_ENGINE_ID: "hobo.policy.user-authorization@0.1.0";
 

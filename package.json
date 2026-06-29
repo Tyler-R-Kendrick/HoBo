@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test $(git ls-files '*test.ts')",
-    "standards:check": "scripts/check-technical-standards.sh",
+    "test": "tsx scripts/run-tests.ts",
+    "standards:check": "tsx scripts/check-technical-standards.ts",
     "docs:cli-lint": "tsx scripts/check-cli-docs.ts",
     "docs:design-lint": "tsx scripts/check-design-docs.ts",
     "docs:freshness": "tsx scripts/check-docs-freshness.ts",

@@ -11,7 +11,7 @@ import {
   type PolicyRuleDraft,
   type PolicyTarget,
   type WaiverApprovalResult,
-} from "../src/policy-authoring-waiver.js";
+} from "@hobo/draft-policy-authoring-waiver-contract";
 
 const author: PolicyPrincipal = {
   kind: "user",

@@ -4,7 +4,7 @@ import {
   env,
   fromBinding,
   secretRef
-} from "../src/config-schema.js";
+} from "@hobo/draft-config-secret-schema-contract";
 
 const cfg = config({
   DB: fromBinding("db"),

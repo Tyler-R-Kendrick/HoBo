@@ -1,4 +1,4 @@
-import type { DeploymentPlan } from "../../deployment-plan-ir-contract/src/deployment-plan-ir.d.mjs";
+import type { DeploymentPlan } from "../../deployment-plan-ir-contract/src/deployment-plan-ir.d.js";
 
 export type PlannerObjective = "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
 

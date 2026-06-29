@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "description": "POC for the HOBO-53 projection consistency and reactivity contract.",
+  "main": "./src/projection-contract.ts",
+  "types": "./src/projection-contract.d.mts",
+  "exports": {
+    ".": {
+      "types": "./src/projection-contract.d.mts",
+      "import": "./src/projection-contract.ts"
+    }
+  },
   "scripts": {
     "test": "node --import tsx --test test/*.test.ts"
   }

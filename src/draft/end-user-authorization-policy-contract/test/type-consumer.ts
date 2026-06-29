@@ -3,7 +3,7 @@ import {
   authorizeUserRecord,
   createUserAuthorizationRuleset,
   lowerAllowToUserClaimRule,
-} from "../src/end-user-authorization-policy.mjs";
+} from "@hobo/draft-end-user-authorization-policy-contract";
 
 const ownerRead = lowerAllowToUserClaimRule(allow({
   id: "allow-record-owner-read",

@@ -26,7 +26,7 @@ cross-Camp replication. Those remain owned by later M2 slices.
 Run:
 
 ```powershell
-node scripts\validate-deployment-set-delta.mjs
+node scripts\validate-deployment-set-delta.ts
 ```
 
 The checks prove:

@@ -2,12 +2,12 @@ import type {
   Decision,
   DecisionRequest,
   Effect,
-} from "../../hobo-policy-ir-contract/src/policy-ir.mjs";
+} from "../../hobo-policy-ir-contract/src/policy-ir.d.mts";
 import type {
   BuiltInPolicyEngine,
   PolicyRuleset as BuiltInPolicyRuleset,
   TypescriptRule,
-} from "../../built-in-policy-engine-contract/src/built-in-policy-engine.mjs";
+} from "../../built-in-policy-engine-contract/src/built-in-policy-engine.d.mts";
 
 export const OPA_REGO_POLICY_ENGINE_ID: "hobo.policy-engine/provider-opa-rego@0.1.0";
 export const CEDAR_POLICY_ENGINE_ID: "hobo.policy-engine/provider-cedar@0.1.0";

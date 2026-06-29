@@ -5,10 +5,10 @@
   "exports": {
     ".": {
       "types": "./src/raw-driver-escape-hatch.d.mts",
-      "default": "./src/raw-driver-escape-hatch.mjs"
+      "default": "./src/raw-driver-escape-hatch.ts"
     }
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs && npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
+    "test": "node --import tsx --test test/*.test.ts && npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
   }
 }

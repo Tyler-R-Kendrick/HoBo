@@ -1,13 +1,13 @@
 import {
   ConnectivityTier,
   type ConnectivityTierValue
-} from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.mjs";
+} from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import {
   projectYardManifest,
   validateYardManifest,
   type DeclaredYardTopology,
   type YardManifest
-} from "../src/yard-topology-manifest.mjs";
+} from "../src/yard-topology-manifest.js";
 
 const tier: ConnectivityTierValue = ConnectivityTier.CROSS_PROVIDER_PRIVATE_INTERCONNECT;
 

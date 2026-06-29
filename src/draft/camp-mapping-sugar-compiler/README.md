@@ -37,7 +37,7 @@ npm.cmd --prefix src\draft\camp-mapping-sugar-compiler test
 ```
 
 The acceptance and adversarial checks live in
-`src/draft/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.mjs`.
+`src/draft/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.ts`.
 
 
 ## Architecture Evidence

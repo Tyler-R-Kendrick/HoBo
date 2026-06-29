@@ -1,6 +1,10 @@
-import type { DeploymentPlan } from "../../../deployment-plan-ir-contract/src/deployment-plan-ir.d.ts";
-import type { PlannerInput, PlannerResult } from "../../src/planner.d.mts";
-import { createFixtureManifestIr, plan } from "../../src/planner.mjs";
+import type { DeploymentPlan } from "../../../deployment-plan-ir-contract/src/deployment-plan-ir.d.js";
+import {
+  createFixtureManifestIr,
+  plan,
+  type PlannerInput,
+  type PlannerResult,
+} from "@hobo/draft-planner-dag-skeleton-contract";
 
 const input: PlannerInput = {
   manifest: createFixtureManifestIr(),

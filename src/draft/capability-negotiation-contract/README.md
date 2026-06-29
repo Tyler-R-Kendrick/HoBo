@@ -30,7 +30,7 @@ npm.cmd --prefix src\draft\capability-negotiation-contract test
 ```
 
 The checks live in
-`src/draft/capability-negotiation-contract/test/capability-negotiation.test.mjs`.
+`src/draft/capability-negotiation-contract/test/capability-negotiation.test.ts`.
 
 
 ## Architecture Evidence

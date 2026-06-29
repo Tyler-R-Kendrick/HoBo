@@ -1,17 +1,19 @@
-import {
-  AUTH_PORT_RBAC_NFR,
-  BUILT_IN_ROLES,
-  bindPrincipalToRole,
-  bindScimGroupToRole,
-  createAuthPortRbacResolver,
-  createAuthPortSnapshot,
-  defineCustomRole,
-  grantAction,
-  type AuthPortRbacResolver,
-  type AuthPortSnapshot,
-  type ResolvedAuthPortSubject,
-  type ScimGroupRevocation,
-} from "../src/auth-port-rbac-resolution.mjs";
+import type {
+  AuthPortRbacResolver,
+  AuthPortSnapshot,
+  ResolvedAuthPortSubject,
+  ScimGroupRevocation,
+} from "../src/auth-port-rbac-resolution.d.mts";
+import type * as AuthPortRbac from "../src/auth-port-rbac-resolution.d.mts";
+
+declare const AUTH_PORT_RBAC_NFR: typeof AuthPortRbac.AUTH_PORT_RBAC_NFR;
+declare const BUILT_IN_ROLES: typeof AuthPortRbac.BUILT_IN_ROLES;
+declare const bindPrincipalToRole: typeof AuthPortRbac.bindPrincipalToRole;
+declare const bindScimGroupToRole: typeof AuthPortRbac.bindScimGroupToRole;
+declare const createAuthPortRbacResolver: typeof AuthPortRbac.createAuthPortRbacResolver;
+declare const createAuthPortSnapshot: typeof AuthPortRbac.createAuthPortSnapshot;
+declare const defineCustomRole: typeof AuthPortRbac.defineCustomRole;
+declare const grantAction: typeof AuthPortRbac.grantAction;
 
 function assertAuthPortRbacTypes() {
   const releaseObserver = defineCustomRole({

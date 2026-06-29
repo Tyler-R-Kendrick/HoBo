@@ -5,7 +5,7 @@ import {
   createAzureProvider,
   evaluateAzurePlan,
   realizeAzurePlan
-} from "../src/provider-azure.mjs";
+} from "../src/provider-azure.js";
 
 const provider = createAzureProvider({ campEvidence: "pass" });
 const manifest = provider.capabilityManifest();

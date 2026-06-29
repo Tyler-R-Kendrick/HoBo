@@ -2,7 +2,15 @@
   "name": "@hobo/draft-policy-authoring-waiver-contract",
   "private": true,
   "type": "module",
+  "main": "./src/policy-authoring-waiver.ts",
+  "types": "./src/policy-authoring-waiver.d.mts",
+  "exports": {
+    ".": {
+      "types": "./src/policy-authoring-waiver.d.mts",
+      "import": "./src/policy-authoring-waiver.ts"
+    }
+  },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

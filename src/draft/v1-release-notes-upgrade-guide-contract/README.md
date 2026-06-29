@@ -3,7 +3,7 @@
 HOBO-407 defines the v1 release notes and upgrade-guide outline before final release-candidate
 evidence exists.
 
-This POC records a machine-checkable M0 contract in `src/release-notes-upgrade-guide.mjs`:
+This POC records a machine-checkable M0 contract in `src/release-notes-upgrade-guide.ts`:
 
 - `outline` pins the eight required release-note and upgrade-guide sections.
 - `requiredInputs` maps release engineering, docs, bootstrap, compatibility, and support source

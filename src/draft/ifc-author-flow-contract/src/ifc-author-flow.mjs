@@ -2,11 +2,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.mjs";
-import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.mjs";
-import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.mjs";
+import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.js";
+import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.js";
+import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.js";
 import { inferConnectorScopes } from "../../xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
-import { generateSdkCodegenArtifacts } from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.mjs";
+import { generateSdkCodegenArtifacts } from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.js";
 
 const SAMPLE_BINDLE_ID = "support-desk";
 const SAMPLE_FILE_NAME = "examples/support-desk.bindle.ts";

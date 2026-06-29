@@ -15,7 +15,7 @@ runtime internals out of scope.
   `PortabilityReport` entries are not satisfied or inert across every target,
   camp checks are unrun, or negative `require`/single-provider scenarios do not
   reject with `deployment.PlanRejected`.
-- `scripts/run-multi-cloud-shop-e2e-fixture.mjs` is the CI entry point used by
+- `scripts/run-multi-cloud-shop-e2e-fixture.ts` is the CI entry point used by
   the gated E2E lane.
 
 ## Acceptance Mapping
@@ -47,7 +47,7 @@ gate contract and CI lane shape that those provider implementations must satisfy
 
 ```powershell
 npm.cmd --prefix src\draft\multi-cloud-shop-provider-e2e-contract test
-node src\draft\multi-cloud-shop-provider-e2e-contract\scripts\run-multi-cloud-shop-e2e-fixture.mjs --phase deploy-and-assert --run-id local
+node src\draft\multi-cloud-shop-provider-e2e-contract\scripts\run-multi-cloud-shop-e2e-fixture.ts --phase deploy-and-assert --run-id local
 ```
 
 

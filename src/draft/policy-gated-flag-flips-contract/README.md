@@ -7,7 +7,7 @@ before they enter the flag stream.
 Run:
 
 ```sh
-npm test -- src/draft/policy-gated-flag-flips-contract/test/policy-gated-flag-flips.test.mjs
+npm test -- src/draft/policy-gated-flag-flips-contract/test/policy-gated-flag-flips.test.ts
 ```
 
 The proof intentionally stays out of RBAC, policy-engine implementation, SLO signal production, and

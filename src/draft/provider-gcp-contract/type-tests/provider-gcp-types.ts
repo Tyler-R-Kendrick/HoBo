@@ -1,4 +1,4 @@
-import { createGcpMultiCloudShopPlan, createGcpProvider, gcp, type GcpProvider } from "../src/provider-gcp.mjs";
+import { createGcpMultiCloudShopPlan, createGcpProvider, gcp, type GcpProvider } from "../src/provider-gcp.js";
 
 const provider: GcpProvider = createGcpProvider();
 const cloudSql = gcp.with.cloudSql({ databaseVersion: "POSTGRES_16", tier: "db-custom-2-7680", storageGb: 50 });

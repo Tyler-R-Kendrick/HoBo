@@ -7,7 +7,7 @@ This branch proves the cross-Camp DNS routing-policy contract from
 
 | Issue acceptance | Executable proof |
 |---|---|
-| Each policy programs the expected record set. | `src/draft/cross-camp-routing-policy-contract/test/routing-policy.test.mjs` asserts weighted, failover, latency, and geo record outputs. |
+| Each policy programs the expected record set. | `src/draft/cross-camp-routing-policy-contract/test/routing-policy.test.ts` asserts weighted, failover, latency, and geo record outputs. |
 | Failover flips only after sustained active-target failure and only to a cleared target. | The failover tests require two consecutive failures and reject an unvalidated target. |
 | Every flip emits `domain.RoutingChanged` with target and reason. | The tests assert selected Camps and human/audit-readable reasons. |
 | Latency/geo pick the nearest healthy Camp. | Latency and geo tests exclude unhealthy Camps and pick the nearest healthy validated target. |

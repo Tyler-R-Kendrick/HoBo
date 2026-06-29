@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Contract proof for GraphQL facade resolvers over cached materializations.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

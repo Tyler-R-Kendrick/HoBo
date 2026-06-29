@@ -7,7 +7,7 @@ DR runbook path in [Plan 40](../../operators-sre.md#plan-40).
 ## Proof Surface
 
 - [Draft package](../../../../src/draft/dr-failover-integrity-contract/README.md)
-- [Executable checks](../../../../src/draft/dr-failover-integrity-contract/test/dr-failover-integrity.test.mjs)
+- [Executable checks](../../../../src/draft/dr-failover-integrity-contract/test/dr-failover-integrity.test.ts)
 
 ## Proven Constraints
 

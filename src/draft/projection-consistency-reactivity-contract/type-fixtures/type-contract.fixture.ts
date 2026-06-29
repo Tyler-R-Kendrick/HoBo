@@ -1,4 +1,3 @@
-import type { ConsistencyLevel } from "../src/projection-contract.mjs";
 import {
   assertNonReactiveProjection,
   assertReactiveProjection,
@@ -6,7 +5,8 @@ import {
   declareProjection,
   doctorUseQuery,
   projectionSink,
-} from "../src/projection-contract.mjs";
+  type ConsistencyLevel,
+} from "@hobo-draft/projection-consistency-reactivity-contract";
 
 const olapSink = projectionSink({
   kind: "warehouse",

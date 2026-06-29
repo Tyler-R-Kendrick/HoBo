@@ -5,7 +5,7 @@ import {
   type MatchObjective,
   type MatchingDecision,
   type SuccessfulMatchingDecision
-} from "../../src/matching-engine.mjs";
+} from "@hobo/draft-matching-engine-skeleton-contract";
 
 const objective: MatchObjective = "cost";
 const decision: MatchingDecision = decideResourceDefinition({

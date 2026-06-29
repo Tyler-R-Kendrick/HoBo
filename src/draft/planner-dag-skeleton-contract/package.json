@@ -2,13 +2,16 @@
   "name": "@hobo/draft-planner-dag-skeleton-contract",
   "private": true,
   "type": "module",
+  "main": "./src/planner.ts",
+  "types": "./src/planner.d.mts",
   "exports": {
     ".": {
       "types": "./src/planner.d.mts",
-      "default": "./src/planner.mjs"
+      "import": "./src/planner.ts",
+      "default": "./src/planner.ts"
     }
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

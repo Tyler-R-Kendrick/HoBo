@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 This is the canonical public-contract record for the SDK surfaces hardened by HOBO-9. It pins signatures, semantics, defaults, conformance coverage, and implementation ownership for the surfaces that were previously spread across examples in [sdk-api.md](./sdk-api.md#plan-02), [authoring-resources-wiring.md](./authoring-resources-wiring.md#plan-21), [platform-engineering.md](./platform-engineering.md#plan-25), [walkthrough.md](./walkthrough.md), [ADR-0026](./adr/01-architecture-core.md#adr-0026), [ADR-0069](./adr/01-architecture-core.md#adr-0069), [ADR-0071](./adr/01-architecture-core.md#adr-0071), and [ADR-0084](./adr/02-identity-security.md#adr-0084). [Package Namespace Map](./package-namespaces.md) is the canonical import-ownership table.
 
-Run `node scripts/validate-sdk-contracts.mjs` after editing SDK examples or package imports. That check treats this file as the source of truth and fails when examples drift across package boundaries or imply different defaults.
+Run `node scripts/validate-sdk-contracts.ts` after editing SDK examples or package imports. That check treats this file as the source of truth and fails when examples drift across package boundaries or imply different defaults.
 
 ## Canonical Decision
 

@@ -2,14 +2,14 @@ import type {
   Decision,
   DecisionRequest,
   Effect,
-} from "../../hobo-policy-ir-contract/src/policy-ir.mjs";
+} from "../../hobo-policy-ir-contract/src/policy-ir.d.mts";
 
-export { POLICY_IR_SCHEMA_VERSION } from "../../hobo-policy-ir-contract/src/policy-ir.mjs";
+export const POLICY_IR_SCHEMA_VERSION: "hobo.policy-ir/v1";
 export type {
   Decision,
   DecisionRequest,
   Effect,
-} from "../../hobo-policy-ir-contract/src/policy-ir.mjs";
+} from "../../hobo-policy-ir-contract/src/policy-ir.d.mts";
 
 export const BUILT_IN_POLICY_ENGINE_ID: "hobo.policy-engine/built-in-typescript@0.1.0";
 export const POLICY_RULESET_SCHEMA_VERSION: "hobo.policy-ruleset/v1";

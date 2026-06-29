@@ -20,8 +20,9 @@ jobs:
       - run: npm ci
       - run: npm run architecture:guard -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - run: npm test
+      - run: npm run standards:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - run: npm run docs:cli-lint
       - run: npm run docs:design-lint
       - run: npm run docs:coverage
       - run: npm run docs:freshness -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
-      - run: node scripts/validate-traceability.mjs
+      - run: node --import tsx scripts/validate-traceability.ts

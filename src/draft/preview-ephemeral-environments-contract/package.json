@@ -2,8 +2,8 @@
   "name": "@hobo-draft/preview-ephemeral-environments-contract",
   "private": true,
   "type": "module",
-  "exports": "./src/preview-environments.mjs",
+  "exports": "./src/preview-environments.ts",
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

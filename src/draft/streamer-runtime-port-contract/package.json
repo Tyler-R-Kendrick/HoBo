@@ -7,10 +7,10 @@
   "exports": {
     ".": {
       "types": "./src/streamer-runtime-port.d.mts",
-      "default": "./src/streamer-runtime-port.mjs"
+      "default": "./src/streamer-runtime-port.ts"
     }
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

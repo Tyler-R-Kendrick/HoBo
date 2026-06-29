@@ -22,7 +22,7 @@ src/draft/policy-gated-flag-flips-contract
 Verification:
 
 ```sh
-npm test -- src/draft/policy-gated-flag-flips-contract/test/policy-gated-flag-flips.test.mjs
+npm test -- src/draft/policy-gated-flag-flips-contract/test/policy-gated-flag-flips.test.ts
 ```
 
 Scope intentionally excludes the policy engine internals, RBAC who-may-flip decisions, SLO burn

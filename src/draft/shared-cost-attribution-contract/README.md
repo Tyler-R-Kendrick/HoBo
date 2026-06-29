@@ -44,7 +44,7 @@ npm.cmd --prefix src\draft\shared-cost-attribution-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint
-node scripts\validate-traceability.mjs
+node scripts\validate-traceability.ts
 git diff origin/main...HEAD --check
 ```
 

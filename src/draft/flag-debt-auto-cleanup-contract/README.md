@@ -17,7 +17,7 @@ The package consumes the existing `flag.*` event shape from
   `data.archived` is `false`.
 
 Acceptance proof lives in
-[`test/flag-debt-auto-cleanup.test.mjs`](./test/flag-debt-auto-cleanup.test.mjs).
+[`test/flag-debt-auto-cleanup.test.ts`](./test/flag-debt-auto-cleanup.test.ts).
 
 Run:
 

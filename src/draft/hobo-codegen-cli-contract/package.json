@@ -5,7 +5,7 @@
   "type": "module",
   "description": "POC for the hobo codegen --check wrapper contract and deterministic generated tree drift gate.",
   "scripts": {
-    "codegen": "node scripts/hobo-codegen.mjs",
-    "test": "node --test test/*.test.mjs"
+    "codegen": "tsx scripts/hobo-codegen.ts",
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

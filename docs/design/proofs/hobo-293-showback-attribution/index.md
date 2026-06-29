@@ -35,6 +35,6 @@ or the MeteringView fold.
 npm.cmd --prefix src\draft\showback-attribution-contract test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint
-node scripts\validate-traceability.mjs
+node scripts\validate-traceability.ts
 npm.cmd test
 ```

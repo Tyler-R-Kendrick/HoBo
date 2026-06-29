@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for HOBO-18 in-process wRPC link routing over a WIT-shaped link table.",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

@@ -1,5 +1,5 @@
-import type { DeploymentPlan, MatchContext, ResourcePlan, ValidationResult } from "../src/deployment-plan-ir.mjs";
-import { DEPLOYMENT_PLAN_IR_VERSION, outputPlaceholder } from "../src/deployment-plan-ir.mjs";
+import type { DeploymentPlan, MatchContext, ResourcePlan, ValidationResult } from "../src/deployment-plan-ir.js";
+import { DEPLOYMENT_PLAN_IR_VERSION, outputPlaceholder } from "../src/deployment-plan-ir.js";
 
 const context: MatchContext = {
   envType: "ephemeral",

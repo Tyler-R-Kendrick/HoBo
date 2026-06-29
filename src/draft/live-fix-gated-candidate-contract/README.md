@@ -12,7 +12,7 @@ policy gate, canary/rollback, and permanent regression-test retention.
 ## Proof command
 
 ```powershell
-npm.cmd test -- src/draft/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.mjs
+npm.cmd test -- src/draft/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.ts
 ```
 
 

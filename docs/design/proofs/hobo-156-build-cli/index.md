@@ -39,5 +39,5 @@ npm.cmd --prefix src\draft\hobo-build-cli-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint
-node scripts\validate-traceability.mjs
+node scripts\validate-traceability.ts
 ```

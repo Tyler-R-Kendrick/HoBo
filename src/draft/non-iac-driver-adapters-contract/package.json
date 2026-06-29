@@ -6,10 +6,10 @@
   "exports": {
     ".": {
       "types": "./src/non-iac-driver-adapters.d.ts",
-      "default": "./src/non-iac-driver-adapters.mjs"
+      "default": "./src/non-iac-driver-adapters.ts"
     }
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

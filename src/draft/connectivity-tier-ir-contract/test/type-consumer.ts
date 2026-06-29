@@ -3,7 +3,7 @@ import {
   type ConnectivityPlan,
   type ConnectivityPolicy,
   validateConnectivityPlan
-} from "../src/connectivity-tier-ir.mjs";
+} from "../src/connectivity-tier-ir.js";
 
 const policy: ConnectivityPolicy = {
   maxTier: ConnectivityTier.OVERLAY_MESH,

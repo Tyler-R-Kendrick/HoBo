@@ -2,7 +2,7 @@ import type {
   AuthGeneratedSurface,
   AuthProviderDeclaration,
   PrincipalRef,
-} from "../src/auth-authoring-surface.mjs";
+} from "@hobo/auth-authoring-surface-contract";
 
 type Providers = [
   AuthProviderDeclaration<"google", "oidc">,

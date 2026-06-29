@@ -5,12 +5,12 @@
   "type": "module",
   "description": "POC for the hobo:sdk aggregate WIT package and reverse extraction drift gate.",
   "bin": {
-    "hobo-sdk-reverse-extract": "./bin/reverse-extract.mjs"
+    "hobo-sdk-reverse-extract": "./bin/reverse-extract.ts"
   },
   "scripts": {
-    "generate": "jco types wit --out-dir generated && node scripts/strip-generated-trailing-whitespace.mjs",
-    "reverse:fixture": "node bin/reverse-extract.mjs --wit wit/world.wit --artifact fixtures/golden-component.imports-exports.json",
-    "test": "npm run generate && node --test test/*.test.mjs"
+    "generate": "jco types wit --out-dir generated && tsx scripts/strip-generated-trailing-whitespace.ts",
+    "reverse:fixture": "node bin/reverse-extract.ts --wit wit/world.wit --artifact fixtures/golden-component.imports-exports.json",
+    "test": "npm run generate && node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "1.24.3"

@@ -39,5 +39,5 @@ enforcement, or shared-resource attribution.
 npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
-node scripts\validate-traceability.mjs
+node scripts\validate-traceability.ts
 ```

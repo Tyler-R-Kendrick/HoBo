@@ -1,6 +1,34 @@
-import type { MatchContext, ResourceDefinition } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.ts";
-
 export type MatchObjective = "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
+
+export type DriverId = "terraform" | "template" | "echo" | "container" | "custom-webhook";
+
+export type MatchContext = {
+  resourceType: string;
+  tenant?: string;
+  app?: string;
+  env?: string;
+  envType?: string;
+  resourceClass?: string;
+  resourceId?: string;
+};
+
+export type ResourceDefinitionMatch = Partial<MatchContext>;
+
+export type ResourceDefinition = {
+  apiVersion?: "hobo.resource-definition/v1";
+  id: string;
+  type: string;
+  engine?: string;
+  className?: string;
+  paradigm?: string;
+  provider: string;
+  driver: DriverId;
+  with?: Record<string, unknown>;
+  match: ResourceDefinitionMatch;
+  priority?: number;
+  mapping?: string | Record<string, unknown>;
+  coProvisioned?: Array<Record<string, unknown>>;
+};
 
 export type RankedDefinition = {
   definitionId: string;
@@ -18,7 +46,7 @@ export type RejectedCandidate = {
 export type SuccessfulMatchingDecision = {
   ok: true;
   schema: "hobo.matching-engine/v1";
-  context: MatchContext & { resourceType: string };
+  context: MatchContext;
   objective: MatchObjective;
   catalogContentHash: `sha256:${string}`;
   winner: ResourceDefinition;
@@ -32,7 +60,7 @@ export type SuccessfulMatchingDecision = {
 export type FailedMatchingDecision = {
   ok: false;
   schema: "hobo.matching-engine/v1";
-  context: MatchContext & { resourceType: string };
+  context: MatchContext;
   objective: MatchObjective;
   catalogContentHash: `sha256:${string}`;
   reason: string;
@@ -47,7 +75,7 @@ export type MatchingDecision = SuccessfulMatchingDecision | FailedMatchingDecisi
 
 export declare function decideResourceDefinition(input: {
   catalog: { snapshot(): { definitions: ResourceDefinition[]; contentHash: string } } | { definitions: ResourceDefinition[]; contentHash: string };
-  context: MatchContext & { resourceType: string };
+  context: MatchContext;
   objective?: MatchObjective;
 }): MatchingDecision;
 

@@ -35,7 +35,7 @@ npm.cmd --prefix src\draft\planner-dag-skeleton-contract test
 ```
 
 The checks live in
-`src/draft/planner-dag-skeleton-contract/test/planner.test.mjs`.
+`src/draft/planner-dag-skeleton-contract/test/planner.test.ts`.
 
 
 ## Architecture Evidence

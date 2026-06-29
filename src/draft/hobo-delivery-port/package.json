@@ -5,8 +5,8 @@
   "type": "module",
   "description": "POC for the HoBo OpenDelivery hobo:delivery port contract from HOBO-301.",
   "scripts": {
-    "generate": "jco types wit --out-dir generated && node scripts/strip-generated-trailing-space.mjs",
-    "test": "npm run generate && node --test test/*.test.mjs"
+    "generate": "jco types wit --out-dir generated && tsx scripts/strip-generated-trailing-space.ts",
+    "test": "npm run generate && node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "^1.24.3"

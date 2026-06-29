@@ -2,7 +2,7 @@ import {
   createFlagSurfaceEventLog,
   createSdkFlagContract,
   createSdkFlagSurface,
-} from "../src/sdk-flag-surface.mjs";
+} from "@hobo/draft-sdk-flag-surface-contract";
 
 async function assertFlagTypes() {
   const contract = createSdkFlagContract();

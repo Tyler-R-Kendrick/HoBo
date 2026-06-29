@@ -1,4 +1,4 @@
-import type { IdentityEvent, PrincipalRef } from "../../identity-event-contract/src/identity-event-contract.d.ts";
+import type { IdentityEvent, PrincipalRef } from "../../identity-event-contract/src/identity-event-contract.d.js";
 
 export interface SessionAuthority {
   readonly events: IdentityEvent[];

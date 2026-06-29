@@ -5,11 +5,11 @@
   "exports": {
     ".": {
       "types": "./src/deployment-plan-ir.d.ts",
-      "default": "./src/deployment-plan-ir.mjs"
+      "default": "./src/deployment-plan-ir.ts"
     }
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "npx -y -p typescript@5.5.4 tsc --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 test/type-consumer.ts"
   }
 }

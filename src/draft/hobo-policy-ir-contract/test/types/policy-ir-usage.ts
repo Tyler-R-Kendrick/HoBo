@@ -7,7 +7,7 @@ import {
   type DecisionRequest,
   type Effect,
   type Phase,
-} from "../../src/policy-ir.mjs";
+} from "../../src/policy-ir.js";
 
 const request: DecisionRequest = createDecisionRequest({
   schemaVersion: POLICY_IR_SCHEMA_VERSION,

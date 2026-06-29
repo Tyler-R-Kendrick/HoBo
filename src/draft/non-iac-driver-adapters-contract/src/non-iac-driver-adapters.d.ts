@@ -2,7 +2,7 @@ import type {
   Driver,
   MatchContext,
   ResourceDefinition
-} from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.ts";
+} from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.js";
 
 export declare const NON_IAC_DRIVER_ADAPTERS_VERSION = "hobo.non-iac-driver-adapters/v1";
 

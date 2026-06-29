@@ -18,9 +18,9 @@
 - [ ] `npm run docs:design-lint`
 - [ ] `npm run docs:coverage`
 - [ ] `npm run docs:freshness`
-- [ ] `node scripts/validate-traceability.mjs`
-- [ ] `node scripts/validate-sdk-contracts.mjs`
-- [ ] `node scripts/validate-deployment-set-delta.mjs`
+- [ ] `node --import tsx scripts/validate-traceability.ts`
+- [ ] `node --import tsx scripts/validate-sdk-contracts.ts`
+- [ ] `node --import tsx scripts/validate-deployment-set-delta.ts`
 
 ## Notes / limitations
 

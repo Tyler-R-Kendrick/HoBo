@@ -5,8 +5,8 @@
   "type": "module",
   "description": "POC for the OpenExperiment-shaped hobo:experiment port contract.",
   "scripts": {
-    "generate": "jco types wit --out-dir generated && node scripts/strip-generated-trailing-whitespace.mjs",
-    "test": "npm run generate && node --test test/*.test.mjs"
+    "generate": "jco types wit --out-dir generated && tsx scripts/strip-generated-trailing-whitespace.ts",
+    "test": "npm run generate && node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
     "@bytecodealliance/jco": "1.24.3"

@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for realizing tier 2 same-provider cross-region private peering from HOBO-124.",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

@@ -16,6 +16,20 @@ This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub
 
 How they fit together: **Serena** gives agents semantic code tools, **superpowers** + **mattpocock/skills** supply the *workflow & rigor* (brainstorm → grill-with-docs → plan → build/TDD → review), **improve** decides *what* to do, **ponytail** keeps the code itself minimal (YAGNI / stdlib-first), **headroom** + **caveman** keep token use down (context-in vs output-out — complementary), **gbrain** remembers across sessions, and **SkillOpt** is reserved for offline improvement of reusable skills when we have scored tasks.
 
+## Technical standards for code and contracts
+
+These rules are harness-neutral and apply to Claude Code, Cursor, Codex, Copilot CLI, and any other agent editing this repo:
+
+- Prefer compile-time feedback over runtime error discovery. Treat typecheck, generated-contract, CUE, conformance, and PACT failures as design feedback, not cleanup.
+- Use the latest stable TypeScript toolchain for new JavaScript-family implementation, executable contract, and proof code. Do not add new vanilla JavaScript modules when TypeScript can provide static feedback; migrate touched legacy JS opportunistically.
+- Use Protobuf for data contracts at integration and persistence boundaries. Keep WIT, Protobuf, TypeScript, runtime guard, and documentation views generated from one source family or explicitly reconciled in proof fixtures.
+- Use CUE for invariants and dependent constraints: ranges, formats, cross-field relationships, state transitions, capability predicates, policy obligations, and compatibility rules.
+- Implement "Parse, don't validate": untrusted input crosses one parser boundary and becomes a refined/derivative object definition. Core functions should accept parsed/refined domain types, not raw DTOs plus repeated boolean checks.
+- Require PACT-style consumer-driven contract tests for every integration boundary: SDK/runtime, runtime/provider, CLI/API, event/projection, generated plugin/host, and external service edges.
+- When changing code, automation, package metadata, CI, hooks, or agent tooling, update docs/proof notes to identify the TypeScript, Protobuf, CUE, and PACT gates that protect the change, or document the tracked gap.
+
+Canonical detail lives in [`docs/design/technical-standards.md`](docs/design/technical-standards.md).
+
 ## HoBo implementation architecture rules
 
 All HoBo implementation work, including `src/draft/*` proof packages, must preserve these architectural contracts:

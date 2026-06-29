@@ -7,7 +7,7 @@ This proof records the M0 spike for the DNS validation-gate threat model from
 ## Proof Surface
 
 - [Draft package](../../../../src/draft/dns-validation-gate-threat-model/README.md)
-- [Executable checks](../../../../src/draft/dns-validation-gate-threat-model/test/threat-model.test.mjs)
+- [Executable checks](../../../../src/draft/dns-validation-gate-threat-model/test/threat-model.test.ts)
 
 ## Proven Constraints
 

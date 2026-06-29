@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for the HoBo guardrail policy-gated step and four-lens promotion gate.",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

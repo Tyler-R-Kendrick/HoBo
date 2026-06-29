@@ -19,5 +19,5 @@ the live-fix applier path.
 ## Verification
 
 ```powershell
-npm.cmd test -- src/draft/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.mjs
+npm.cmd test -- src/draft/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.ts
 ```

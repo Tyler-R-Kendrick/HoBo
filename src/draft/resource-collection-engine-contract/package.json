@@ -5,10 +5,10 @@
   "exports": {
     ".": {
       "types": "./src/resource-collection-engine.d.ts",
-      "import": "./src/resource-collection-engine.mjs"
+      "import": "./src/resource-collection-engine.ts"
     }
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

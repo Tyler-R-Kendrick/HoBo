@@ -1,9 +1,11 @@
-import {
-  createRuntimeLocalStreamer,
-  type StreamerFrame,
-  type StreamerRunHandle,
-  type StreamerWritable,
-} from "../src/streamer-runtime-port.mjs";
+import type {
+  StreamerFrame,
+  StreamerRunHandle,
+  StreamerWritable,
+} from "../src/streamer-runtime-port.d.mts";
+import type * as StreamerRuntimePort from "../src/streamer-runtime-port.d.mts";
+
+declare const createRuntimeLocalStreamer: typeof StreamerRuntimePort.createRuntimeLocalStreamer;
 
 interface UiChunk {
   readonly kind: "delta";

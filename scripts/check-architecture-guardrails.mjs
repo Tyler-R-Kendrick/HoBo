@@ -86,14 +86,10 @@ export function implementationPackageRoots(files) {
   const roots = [];
 
   for (const file of files) {
-    const parts = normalizePath(file).split("/");
-    if (parts[0] !== "src" || parts[1] !== "draft" || !parts[2]) continue;
-    if (!isImplementationFile(parts.join("/"))) continue;
-
-    const root =
-      parts[2] === "epic-reference-implementations" && parts[3]
-        ? parts.slice(0, 4).join("/")
-        : parts.slice(0, 3).join("/");
+    const normalized = normalizePath(file);
+    if (!isImplementationFile(normalized)) continue;
+    const root = implementationPackageRoot(normalized);
+    if (!root) continue;
     roots.push(root);
   }
 
@@ -200,14 +196,21 @@ async function listFiles(base, current) {
 }
 
 function changedFiles(args) {
-  if (args.has("--staged")) {
-    return split(git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]));
-  }
-
   const baseArg = [...args].find((arg) => arg.startsWith("--base="));
   const base = baseArg?.slice("--base=".length) ?? process.env.HOBO_ARCHITECTURE_BASE;
+
+  if (args.has("--staged")) {
+    return filterExistingBasePackages(
+      split(git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])),
+      base,
+    );
+  }
+
   if (base) {
-    return split(git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]));
+    return filterExistingBasePackages(
+      split(git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`])),
+      base,
+    );
   }
 
   return unique([
@@ -218,6 +221,33 @@ function changedFiles(args) {
 
 function git(args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
+}
+
+function gitSucceeds(args) {
+  try {
+    execFileSync("git", args, { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function filterExistingBasePackages(files, base) {
+  if (!base) return files;
+
+  return files.filter((file) => {
+    const packageRoot = implementationPackageRoot(file);
+    return !packageRoot || !gitSucceeds(["cat-file", "-e", `${base}:${packageRoot}`]);
+  });
+}
+
+function implementationPackageRoot(file) {
+  const parts = normalizePath(file).split("/");
+  if (parts[0] !== "src" || parts[1] !== "draft" || !parts[2]) return undefined;
+
+  return parts[2] === "epic-reference-implementations" && parts[3]
+    ? parts.slice(0, 4).join("/")
+    : parts.slice(0, 3).join("/");
 }
 
 function split(output) {

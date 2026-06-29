@@ -5,17 +5,21 @@
   "scripts": {
     "architecture:guard": "node scripts/check-architecture-guardrails.mjs",
     "architecture:guard:staged": "node scripts/check-architecture-guardrails.mjs --staged",
-    "test": "node --test",
-    "docs:cli-lint": "node scripts/check-cli-docs.mjs",
-    "docs:design-lint": "node scripts/check-design-docs.mjs",
-    "docs:freshness": "node scripts/check-docs-freshness.mjs",
-    "docs:freshness:staged": "node scripts/check-docs-freshness.mjs --staged",
+    "test": "node --import tsx scripts/run-tests.ts",
+    "standards:check": "node --import tsx scripts/check-technical-standards.ts",
+    "docs:cli-lint": "node --import tsx scripts/check-cli-docs.ts",
+    "docs:design-lint": "node --import tsx scripts/check-design-docs.ts",
+    "docs:freshness": "node --import tsx scripts/check-docs-freshness.ts",
+    "docs:freshness:staged": "node --import tsx scripts/check-docs-freshness.ts --staged",
     "prepare-hooks": "git config core.hooksPath .githooks",
-    "docs:coverage": "node scripts/check-docs-coverage.mjs",
-    "docs:okf": "node scripts/check-okf-docs.mjs"
+    "docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
+    "docs:okf": "node scripts/check-okf-docs.mjs",
+    "contracts:data-models": "node --import tsx scripts/generate-data-model-contracts.ts --check"
   },
   "devDependencies": {
     "protobufjs": "^7.6.4",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
     "zod": "^4.1.13"
   },
   "engines": {

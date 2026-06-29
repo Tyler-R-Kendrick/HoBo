@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "node scripts/generate.mjs",
-    "test": "node --test"
+    "generate": "tsx scripts/generate.ts",
+    "test": "node --import tsx --test test/*.test.ts"
   }
 }

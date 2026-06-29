@@ -13,7 +13,7 @@ from the lower-level flag contracts with:
 - declaration-driven TypeScript value inference from flag refs to call sites.
 
 Acceptance proof lives in
-[`test/sdk-flag-surface.test.mjs`](./test/sdk-flag-surface.test.mjs):
+[`test/sdk-flag-surface.test.ts`](./test/sdk-flag-surface.test.ts):
 
 - `ctx.flags.eval(newCheckout)` returns the declaration-typed deterministic
   value for the request context;

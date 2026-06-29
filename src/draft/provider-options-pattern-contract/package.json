@@ -5,7 +5,7 @@
   "type": "module",
   "description": "POC for typed provider-specific option annotations on HoBo resources.",
   "scripts": {
-    "test": "node --test test/*.test.mjs && tsc -p tsconfig.json --noEmit"
+    "test": "node --import tsx --test test/*.test.ts && tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "typescript": "5.5.4"

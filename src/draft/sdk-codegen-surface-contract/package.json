@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test && npm run test:types",
-    "test:types": "node scripts/write-type-fixture.mjs && tsc --noEmit -p tsconfig.json"
+    "test": "node --import tsx --test test/*.test.ts && npm run test:types",
+    "test:types": "tsx scripts/write-type-fixture.ts && tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

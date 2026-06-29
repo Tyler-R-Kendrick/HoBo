@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
-    "simulate": "node simulation/run-simulation.mjs"
+    "test": "node --import tsx --test test/*.test.ts",
+    "simulate": "node simulation/run-simulation.ts"
   }
 }

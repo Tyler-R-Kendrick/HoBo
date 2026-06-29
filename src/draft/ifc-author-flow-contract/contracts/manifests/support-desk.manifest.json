@@ -3,7 +3,7 @@
     "kind": "wasmtime",
     "version": "46.0.1"
   },
-  "externalApps": {
+  "connectors": {
     "asana": {
       "allow": [
         "tasks:write"
@@ -14,7 +14,7 @@
       ],
       "onBehalfOf": "user",
       "requestedScopeSource": "usage-inferred",
-      "type": "external-app.v1",
+      "type": "connector.v1",
       "usageContract": {
         "compareObservedUsage": false,
         "usageExceedsDeclaredAllow": false

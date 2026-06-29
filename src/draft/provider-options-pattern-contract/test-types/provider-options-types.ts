@@ -1,4 +1,4 @@
-import { aws, azure, database, service } from "../src/provider-options-contract.mjs";
+import { aws, azure, database, service } from "../src/provider-options-contract.js";
 
 database("db", { engine: "postgres", require: "managed" }).with(
   aws.rds({ multiAz: true, backupRetentionDays: 7 }),

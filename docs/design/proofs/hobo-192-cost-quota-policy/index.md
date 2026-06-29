@@ -7,7 +7,7 @@ input slice described by [Plan 29](../../contracts-policy-flags.md#plan-29) and
 ## Acceptance Evidence
 
 - Soft threshold crossing yields an allow decision with `spend.warn-threshold`
-  in `budget-quota-policy.test.mjs`.
+  in `budget-quota-policy.test.ts`.
 - Hard quota crossing denies spend-incurring actions at the policy gate.
 - Reservation-required policies consume a synchronous pre-commit quota
   reservation and deny the next hot-loop attempt when the fenced counter has an

@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "description": "POC for the @hobo/provider-kubernetes contract from HOBO-182.",
-  "main": "./src/provider-kubernetes.mjs",
+  "main": "./src/provider-kubernetes.ts",
   "types": "./src/provider-kubernetes.d.mts",
   "exports": {
     ".": {
       "types": "./src/provider-kubernetes.d.mts",
-      "import": "./src/provider-kubernetes.mjs"
+      "import": "./src/provider-kubernetes.ts"
     }
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs && npx tsc --noEmit -p tsconfig.types.json"
+    "test": "node --import tsx --test test/*.test.ts && npx tsc --noEmit -p tsconfig.types.json"
   },
   "devDependencies": {
     "typescript": "5.5.4"

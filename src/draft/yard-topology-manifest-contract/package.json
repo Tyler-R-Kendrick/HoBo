@@ -5,11 +5,11 @@
   "exports": {
     ".": {
       "types": "./src/yard-topology-manifest.d.mts",
-      "default": "./src/yard-topology-manifest.mjs"
+      "default": "./src/yard-topology-manifest.ts"
     }
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
   }
 }

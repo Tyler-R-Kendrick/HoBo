@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.mjs && npx tsc --noEmit -p tsconfig.types.json"
+    "test": "node --import tsx --test test/*.test.ts && npx tsc --noEmit -p tsconfig.types.json"
   },
   "devDependencies": {
     "typescript": "5.9.2"

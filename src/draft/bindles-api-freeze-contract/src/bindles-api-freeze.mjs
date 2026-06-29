@@ -1,10 +1,10 @@
-import { validateManifest } from "../../hobo-manifest-contract/src/manifest.mjs";
-import * as catalogModule from "../../hobo-bindles-resource-catalog/src/catalog.mjs";
-import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.mjs";
-import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.mjs";
+import { validateManifest } from "../../hobo-manifest-contract/src/manifest.js";
+import * as catalogModule from "../../hobo-bindles-resource-catalog/src/catalog.js";
+import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.js";
+import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.js";
 import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
 import { inferConnectorScopes } from "../../xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
-import { createRawView } from "../../raw-driver-escape-hatch-contract/src/raw-driver-escape-hatch.mjs";
+import { createRawView } from "../../raw-driver-escape-hatch-contract/src/raw-driver-escape-hatch.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
 const FORBIDDEN_PUBLIC_SYMBOL = /aws|azure|gcp|cloudflare|rds|fargate|cosmos|internal|cloud/i;

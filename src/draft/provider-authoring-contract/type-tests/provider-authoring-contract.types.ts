@@ -5,7 +5,7 @@ import {
   type CapabilitySpec,
   type PortClient,
   type ProviderOptionBlock
-} from "../src/provider-authoring-contract.mjs";
+} from "../src/provider-authoring-contract.js";
 
 type AwsRdsOptions = {
   instanceClass: string;

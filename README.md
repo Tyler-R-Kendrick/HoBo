@@ -28,7 +28,7 @@ HoBo's goal is a third path: **cloud portability without hiding the cloud**.
 | **Camp** | Provider-specific runtime target that hosts workloads and provides durable runtime ports. |
 | **Yard** | Provider-specific control scope spanning Camps, policy, identity, and reconciliation. |
 | **Junction** | Cross-Yard federation layer for hybrid or multi-cloud operation. |
-| **WIT/WASM membrane** | Portable contract between app code, runtime ports, and provider adapters. TypeScript is first, not exclusive. |
+| **WIT/WASM membrane** | Portable contract between app code, runtime ports, and provider adapters. Latest stable TypeScript is the first implementation language; Protobuf, CUE, and PACT pin data contracts and boundary compatibility. |
 | **Ports and adapters** | Cloud providers, IaC engines, build tools, identity systems, and AI optimizers sit behind replaceable ports. |
 | **Replayable event log** | Control-plane state, projections, SRE workflows, and audit trails derive from events. |
 | **Agent-native auth** | AI agents are first-class principals with scoped credentials, policy checks, and traceable actions. |
@@ -94,14 +94,15 @@ Run the core local gate:
 ```sh
 npm run architecture:guard
 npm test
+npm run standards:check
 npm run docs:cli-lint
 npm run docs:design-lint
 npm run docs:coverage
 npm run docs:okf
 npm run docs:freshness
-node scripts/validate-traceability.mjs
-node scripts/validate-sdk-contracts.mjs
-node scripts/validate-deployment-set-delta.mjs
+node --import tsx scripts/validate-traceability.ts
+node --import tsx scripts/validate-sdk-contracts.ts
+node --import tsx scripts/validate-deployment-set-delta.ts
 ```
 
 Optional: enable the repo pre-commit hook:
@@ -110,7 +111,11 @@ Optional: enable the repo pre-commit hook:
 npm run prepare-hooks
 ```
 
-After that, `.githooks/pre-commit` runs the staged architecture guard, tests, docs linters, traceability, SDK/deployment validators, and staged docs freshness before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
+After that, `.githooks/pre-commit` runs the staged architecture guard, tests, the technical standards gate, docs linters, traceability, SDK/deployment validators, and staged docs freshness before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
+
+## Technical standards
+
+HoBo technical work is TypeScript-first and contract-first. New JavaScript-family code should use the latest stable TypeScript rather than vanilla JavaScript; integration and persistence boundaries use Protobuf contracts; invariants and dependent constraints live in CUE; parsed/refined derivative object definitions implement "Parse, don't validate"; and all integration boundaries need PACT-style consumer-driven contract coverage. Prefer compile-time, codegen, CUE, conformance, and contract-test feedback before runtime error discovery. The `standards:check` gate enforces the baseline across local hooks and CI by requiring the TypeScript toolchain metadata, preserving canonical Protobuf/CUE/PACT guidance, and blocking new JavaScript implementation files in favor of `.ts` sources. See [`docs/design/technical-standards.md`](./docs/design/technical-standards.md).
 
 ## Documentation maintenance policy
 

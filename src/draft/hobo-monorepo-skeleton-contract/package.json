@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
-    "build": "node scripts/verify-monorepo-skeleton.mjs build",
-    "typecheck": "node scripts/verify-monorepo-skeleton.mjs typecheck",
-    "lint": "node scripts/verify-monorepo-skeleton.mjs lint"
+    "test": "node --import tsx --test test/*.test.ts",
+    "build": "tsx scripts/verify-monorepo-skeleton.ts build",
+    "typecheck": "tsx scripts/verify-monorepo-skeleton.ts typecheck",
+    "lint": "tsx scripts/verify-monorepo-skeleton.ts lint"
   }
 }

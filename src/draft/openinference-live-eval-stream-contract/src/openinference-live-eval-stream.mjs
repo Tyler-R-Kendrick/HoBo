@@ -597,6 +597,9 @@ function parseTraceparent(value) {
     throw new TypeError("run.traceparent must be a valid W3C traceparent");
   }
   const [, traceId, spanId, flags] = match;
+  if (traceId === "00000000000000000000000000000000" || spanId === "0000000000000000") {
+    throw new TypeError("run.traceparent must not contain all-zero trace or span ids");
+  }
   return { traceId, spanId, flags };
 }
 

@@ -240,6 +240,27 @@ test("eval errors do not block the request and missing rewards stay incomplete, 
   assert.equal(missingReward.metrics.some((metric) => metric.name === "eval.score"), false);
 });
 
+test("invalid all-zero traceparent ids fail closed before telemetry export", () => {
+  const runtime = createAiMethodTelemetryRuntime({
+    spanIds: ["0000000000000600"],
+    runKeyRef: "run-key://run-ai-method-1",
+  });
+
+  assert.throws(
+    () =>
+      runtime.invokeTrainableMethod({
+        run: { ...run, traceparent: "00-00000000000000000000000000000000-0000000000000000-01" },
+        method,
+        request: baseRequest,
+        response: baseResponse,
+        model: { provider: "openai", name: "gpt-4o-mini" },
+        tokenUsage: { prompt: 1, completion: 1 },
+        latencyMs: 10,
+      }),
+    /all-zero trace or span ids/,
+  );
+});
+
 test("shadow calls are exported but not double-counted into billable token cost", () => {
   const runtime = createAiMethodTelemetryRuntime({
     spanIds: ["0000000000000500", "0000000000000501"],

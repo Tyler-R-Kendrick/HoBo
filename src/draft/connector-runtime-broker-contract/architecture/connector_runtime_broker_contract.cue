@@ -3,9 +3,9 @@
 
 package architecture_evidence
 
-#CrossAppAuthoringContractEvidenceKind: "unspecified" | "design-record" | "contract-test"
+#ConnectorRuntimeBrokerContractEvidenceKind: "unspecified" | "design-record" | "contract-test"
 
-#CrossAppAuthoringContractRecord: {
+#ConnectorRuntimeBrokerContractRecord: {
 	issue:    string & !=""
 	summary:  string & !=""
 	evidence: [...string]

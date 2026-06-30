@@ -13,6 +13,10 @@ Executable proof lives in
 [`src/draft/dogfood-yard-acceptance-contract`](../../src/draft/dogfood-yard-acceptance-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-403-dogfood-yard-acceptance`](./proofs/hobo-403-dogfood-yard-acceptance/README.md).
+M2 private beta evidence is proven in
+[`src/draft/dogfood-yard-private-beta-evidence-contract`](../../src/draft/dogfood-yard-private-beta-evidence-contract/README.md)
+and summarized in
+[`proofs/hobo-462-dogfood-yard-private-beta`](./proofs/hobo-462-dogfood-yard-private-beta/README.md).
 
 ## M0 Acceptance Record
 
@@ -97,3 +101,21 @@ private local setup, hidden customer data, or unbounded "it worked once" claims.
 M1/M2/M3/M4 dogfood evidence, admin UI, bootstrap installer, and reliability implementation issues
 must wait until this M0 evidence scope is accepted. This branch records the gate and its executable
 guard; it does not create follow-up implementation issues.
+
+## M2 Private Beta Evidence
+
+HOBO-462 promotes the accepted M0 Dogfood Yard scenarios into a private beta evidence gate. The M2
+gate remains evidence-only: it records scenario fixtures, evidence owners, redaction rules, blockers,
+accepted risks, cutline handoffs, and parent release-readiness sync without building hosted Yard
+runtime, admin UI, support automation, provider adapters, bootstrap installer runtime, live cloud
+provisioning, production provider calls, or customer-data debugging.
+
+Accepted private beta scenarios:
+
+- `hosted-yard-preview-path`
+- `self-hosted-seed-handover`
+- `yard-upgrade-and-rollback`
+- `incident-debug-and-restore`
+
+The M2 proof keeps release-candidate and GA claims out of scope. Existing follow-up issues HOBO-469
+and HOBO-476 remain the only follow-ups recorded for missing M3/M4 evidence.

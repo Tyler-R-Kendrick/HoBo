@@ -190,6 +190,8 @@ importers:
 
   src/draft/curated-catalog-policy-contract: {}
 
+  src/draft/customer-assurance-evidence-packet-contract: {}
+
   src/draft/data-flywheel-privacy-spike: {}
 
   src/draft/data-governance-policy-contract: {}

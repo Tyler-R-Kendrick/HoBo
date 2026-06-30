@@ -112,6 +112,31 @@ risks, cross-project dependencies, and release-readiness sync. This gate does no
 copy, build the launch site, or promote private beta evidence to public, release-candidate, or GA
 claims.
 
+## M3 Release Candidate Evidence Gate
+
+HOBO-472 records the M3 release-candidate evidence gate for launch site, messaging, and demo
+assets. The executable proof lives in
+[`src/draft/launch-site-release-candidate-evidence-contract`](../../src/draft/launch-site-release-candidate-evidence-contract/README.md),
+with branch evidence summarized in
+[`proofs/hobo-472-launch-site-release-candidate`](./proofs/hobo-472-launch-site-release-candidate/index.md).
+
+The release-candidate gate may draft launch-site and demo messaging only when owner-mapped
+evidence, blocker dispositions, accepted risks, release-cutline dependencies, missing-evidence
+follow-ups, and parent release-readiness sync are recorded. It does not build the launch site,
+publish final public copy, create final visual assets, capture live hosted demos, or promote
+release-candidate evidence into GA/public launch claims.
+
+### M3 Gate Rules
+
+| Rule | Requirement |
+|---|---|
+| Owner-mapped evidence | Claim register rules, private-beta launch evidence, golden-path demo assets, release-candidate cutline, release notes, and legal/support handoff records all carry owner project and source. |
+| Blockers and risks | GA launch-site handoff remains blocked on HOBO-479, and reference-fixture demo language remains an accepted risk with proof-mode labels. |
+| Release cutline | Documentation, productization, operations-readiness, release-cutline, legal, and support dependencies map to v1 blocker domains. |
+| Follow-up creation | Execution follow-ups are allowed only for missing evidence; this gate points GA handoff work to HOBO-479. |
+| Parent initiative | The HoBo v1 Release Readiness initiative needs a status update because release-candidate launch messaging changes launch risk while GA/public claims remain blocked. |
+| Public claims | Release-candidate demo assets cannot publish GA readiness or production-readiness claims without GA handoff and accepted live evidence. |
+
 ## Follow-Up Gate
 
 Future launch-site, demo, release-note, and public-copy work must consume this register. A claim with

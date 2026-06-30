@@ -323,6 +323,8 @@ importers:
 
   src/draft/technical-proofs/bindles-api-freeze-contract: {}
 
+  src/draft/technical-proofs/broker-admin-controls-contract: {}
+
   src/draft/technical-proofs/broker-environment-publication-contract: {}
 
   src/draft/technical-proofs/broker-receipt-integrity-contract: {}

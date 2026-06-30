@@ -53,6 +53,9 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`sbom-vulnerability-notice-evidence.md`](./sbom-vulnerability-notice-evidence.md) | Productization M0 evidence contract for SBOMs, dependency vulnerability posture, third-party notices, artifact provenance, and customer assurance readiness | — |
 | [`release-artifact-provenance-retention.md`](./release-artifact-provenance-retention.md) | Productization M0 handoff for release artifact provenance, retention, invalidation/yank, offline bundles, and support/debug access | — |
 | [`marketplace-publisher-trust-evidence.md`](./marketplace-publisher-trust-evidence.md) | Productization M0 evidence contract for marketplace publisher trust tiers, review evidence, and launch limitations | — |
+| [`marketplace-payout-hooks.md`](./marketplace-payout-hooks.md) | Productization M0 scope and acceptance for publisher payout-readiness states, tax/identity handoffs, billing reconciliation, and payout launch limitations | — |
+| [`marketplace-ux.md`](./marketplace-ux.md) | Productization M0 scope and acceptance for marketplace browse, trust warnings, installability outcomes, org-catalog visibility, accessibility, and support handoffs | — |
+| [`publisher-portal.md`](./publisher-portal.md) | Productization M0 scope and acceptance for publisher profile, maintainer roles, listing evidence, review status, payout-readiness handoffs, support wording, and follow-up gates | — |
 | [`capability-review-approval.md`](./capability-review-approval.md) | Productization M0 scope and acceptance for capability review states, approval outcomes, trust-tier evidence, yanking, escalation, and follow-up gates | — |
 | [`provenance-retention.md`](./provenance-retention.md) | Productization M0 scope and acceptance for artifact provenance, retention classes, audit export, support handoff, and customer assurance evidence | — |
 | [`meta-cloud-broker.md`](./meta-cloud-broker.md) | Productization M0 scope and acceptance for hosted broker authority, broker artifacts, Resolution Receipts, Resolution Rejections, and follow-up gates | — |
@@ -60,6 +63,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`public-status-page-incident-communication.md`](./public-status-page-incident-communication.md) | Productization M0 public status-page scope, component taxonomy, incident states, maintenance notices, update cadence, and customer communication boundaries | — |
 | [`support-sla-channels.md`](./support-sla-channels.md) | Productization M0 support SLA language, channel coverage, response targets, unsupported request routing, and owner signoff boundaries | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
+| [`launch-demo-golden-path.md`](./launch-demo-golden-path.md) | Productization M0 golden path and proof asset checklist for the launch demo | — |
 | [`launch-messaging-claims.md`](./launch-messaging-claims.md) | Productization M0 evidence register for launch claims and demo assets | — |
 | [`outcome-activation-rail.md`](./outcome-activation-rail.md) | Productization M0 scope and acceptance for the v1 outcome activation rail | — |
 | [`workspace-onboarding-ux.md`](./workspace-onboarding-ux.md) | Productization M0 scope and acceptance for Workspace & Onboarding UX | — |
@@ -71,9 +75,13 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`bootstrap-installer.md`](./bootstrap-installer.md) | Productization M0 scope and acceptance for SaaS, self-host, and local/dev bootstrap installer paths | — |
 | [`backup-restore.md`](./backup-restore.md) | Productization M0 scope and acceptance for backup sources, restore paths, RPO/RTO drill evidence, and recovery handoffs | — |
 | [`settings-project-lifecycle.md`](./settings-project-lifecycle.md) | Productization M0 settings and project lifecycle scope, state model, ownership, and evidence gate | — |
+| [`environment-lifecycle.md`](./environment-lifecycle.md) | Productization M0 scope and acceptance for environment classes, lifecycle states, transition owners, support evidence, and follow-up gates | — |
+| [`admin-console.md`](./admin-console.md) | Productization M0 scope and acceptance for Admin Console navigation, read models, action intents, audit/redaction, and support/security boundaries | — |
+| [`audit-explorer.md`](./audit-explorer.md) | Productization M0 scope and acceptance for Audit Explorer audit facts, tenant-first filters, export evidence, redaction, and support/security/governance boundaries | — |
 | [`member-rbac-administration.md`](./member-rbac-administration.md) | Productization M0 scope and acceptance for member lifecycle, RBAC administration, role boundaries, and audit handoff | — |
 | [`tenant-isolation-quotas.md`](./tenant-isolation-quotas.md) | Productization M0 scope and acceptance for tenant isolation axes, quota dimensions, owning boundaries, and M1 evidence gates | — |
 | [`org-catalogs.md`](./org-catalogs.md) | Productization M0 scope and acceptance for org catalog kinds, approval states, evidence fields, owner handoffs, and scope boundaries | — |
+| [`resource-garbage-collection.md`](./resource-garbage-collection.md) | Productization M0 scope and acceptance for resource garbage classes, cleanup eligibility, orphan evidence, owner handoffs, and safe cleanup boundaries | — |
 | [`compatibility-matrix.md`](./compatibility-matrix.md) | Productization M0 browser, device, platform, CLI bootstrap, and support-routing compatibility matrix | — |
 
 **Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/index.md) (each decision is a `#adr-NNNN` section). The current ADR/Plan -> Linear coverage gate is [`traceability.md`](./traceability.md). Executable draft proofs and contract packages live under [`../../src/draft/`](../../src/draft/); epic-level reference implementations live in [`../../src/draft/epic-reference-implementations/`](../../src/draft/epic-reference-implementations/) and are registered in [`../../src/draft/epic-reference-implementations/_registry.md`](../../src/draft/epic-reference-implementations/_registry.md).

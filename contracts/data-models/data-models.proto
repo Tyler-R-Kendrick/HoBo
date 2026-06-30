@@ -49,6 +49,19 @@ message ActorHostRuntimePortContractActorHostRuntimePortDataModel {
   bool cue_annotated = 6;
 }
 
+message AdminConsoleScopeAdminConsoleScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.admin-console-scope.admin-console-scope";
+  option (hobo.source_path) = "src/draft/admin-console-scope/src/admin-console-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#AdminConsoleScopeAdminConsoleScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message AdoptInPlaceContractAdoptInPlaceContractDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.adopt-in-place-contract.adopt-in-place-contract";
   option (hobo.source_path) = "src/draft/adopt-in-place-contract/src/adopt-in-place-contract.ts";
@@ -105,6 +118,19 @@ message ArtifactRepoPortContractArtifactRepoPortDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.artifact-repo-port-contract.artifact-repo-port";
   option (hobo.source_path) = "src/draft/artifact-repo-port-contract/src/artifact-repo-port.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ArtifactRepoPortContractArtifactRepoPortDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message AuditExplorerScopeContractAuditExplorerScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.audit-explorer-scope-contract.audit-explorer-scope";
+  option (hobo.source_path) = "src/draft/audit-explorer-scope-contract/src/audit-explorer-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#AuditExplorerScopeContractAuditExplorerScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -482,6 +508,19 @@ message ClosureBuilderPublicApiContractClosureBuilderPublicApiDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-public-api-contract.closure-builder-public-api";
   option (hobo.source_path) = "src/draft/closure-builder-public-api-contract/src/closure-builder-public-api.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderPublicApiContractClosureBuilderPublicApiDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message ClosureBuilderResourceHandlesContractClosureBuilderResourceHandlesDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-resource-handles-contract.closure-builder-resource-handles";
+  option (hobo.source_path) = "src/draft/closure-builder-resource-handles-contract/src/closure-builder-resource-handles.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderResourceHandlesContractClosureBuilderResourceHandlesDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -1236,6 +1275,19 @@ message EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.endpoint-monitor-operator-contract.endpoint-monitor-operator";
   option (hobo.source_path) = "src/draft/endpoint-monitor-operator-contract/src/endpoint-monitor-operator.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message EnvironmentLifecycleScopeEnvironmentLifecycleDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.environment-lifecycle-scope.environment-lifecycle";
+  option (hobo.source_path) = "src/draft/environment-lifecycle-scope/src/environment-lifecycle.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EnvironmentLifecycleScopeEnvironmentLifecycleDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -2675,6 +2727,19 @@ message JwtSvidIssuanceContractJwtSvidIssuerDataModel {
   bool cue_annotated = 6;
 }
 
+message LaunchDemoGoldenPathContractLaunchDemoGoldenPathDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.launch-demo-golden-path-contract.launch-demo-golden-path";
+  option (hobo.source_path) = "src/draft/launch-demo-golden-path-contract/src/launch-demo-golden-path.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#LaunchDemoGoldenPathContractLaunchDemoGoldenPathDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message LaunchSupportEscalationMatrixLaunchSupportEscalationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.launch-support-escalation-matrix.launch-support-escalation";
   option (hobo.source_path) = "src/draft/launch-support-escalation-matrix/src/launch-support-escalation.ts";
@@ -2757,6 +2822,32 @@ message MaliciousProviderContainmentContractProviderContainmentContractDataModel
   option (hobo.data_model_contract_id) = "hobo.datamodel.malicious-provider-containment-contract.provider-containment-contract";
   option (hobo.source_path) = "src/draft/malicious-provider-containment-contract/src/provider-containment-contract.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#MaliciousProviderContainmentContractProviderContainmentContractDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message MarketplacePayoutHooksScopeContractMarketplacePayoutHooksScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.marketplace-payout-hooks-scope-contract.marketplace-payout-hooks-scope";
+  option (hobo.source_path) = "src/draft/marketplace-payout-hooks-scope-contract/src/marketplace-payout-hooks-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#MarketplacePayoutHooksScopeContractMarketplacePayoutHooksScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message MarketplaceUxScopeContractMarketplaceUxScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.marketplace-ux-scope-contract.marketplace-ux-scope";
+  option (hobo.source_path) = "src/draft/marketplace-ux-scope-contract/src/marketplace-ux-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#MarketplaceUxScopeContractMarketplaceUxScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -3650,6 +3741,19 @@ message ProviderVercelContractProviderVercelDataModel {
   bool cue_annotated = 6;
 }
 
+message PublisherPortalScopeContractPublisherPortalScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.publisher-portal-scope-contract.publisher-portal-scope";
+  option (hobo.source_path) = "src/draft/publisher-portal-scope-contract/src/publisher-portal-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#PublisherPortalScopeContractPublisherPortalScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message QueueClockRuntimePortContractQueueClockRuntimePortDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.queue-clock-runtime-port-contract.queue-clock-runtime-port";
   option (hobo.source_path) = "src/draft/queue-clock-runtime-port-contract/src/queue-clock-runtime-port.ts";
@@ -3888,6 +3992,19 @@ message ResourceDefinitionDriverContractResourceDefinitionDriverContractDataMode
   option (hobo.data_model_contract_id) = "hobo.datamodel.resource-definition-driver-contract.resource-definition-driver-contract";
   option (hobo.source_path) = "src/draft/resource-definition-driver-contract/src/resource-definition-driver-contract.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ResourceDefinitionDriverContractResourceDefinitionDriverContractDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message ResourceGarbageCollectionScopeAcceptanceResourceGarbageCollectionScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.resource-garbage-collection-scope-acceptance.resource-garbage-collection-scope";
+  option (hobo.source_path) = "src/draft/resource-garbage-collection-scope-acceptance/src/resource-garbage-collection-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ResourceGarbageCollectionScopeAcceptanceResourceGarbageCollectionScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -5032,6 +5149,19 @@ message YardIdentityIssuerContractIssuerDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.yard-identity-issuer-contract.issuer";
   option (hobo.source_path) = "src/draft/yard-identity-issuer-contract/src/issuer.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#YardIdentityIssuerContractIssuerDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message YardReceiptConsumptionContractYardReceiptConsumptionDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.yard-receipt-consumption-contract.yard-receipt-consumption";
+  option (hobo.source_path) = "src/draft/yard-receipt-consumption-contract/src/yard-receipt-consumption.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#YardReceiptConsumptionContractYardReceiptConsumptionDataModel";
 
   string contract_id = 1;
   string source_path = 2;

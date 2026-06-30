@@ -1,4 +1,9 @@
-import { aws, createAwsMultiCloudShopPlan, createAwsProvider, type AwsProvider } from "../src/provider-aws.js";
+import type * as ProviderAwsContract from "../src/provider-aws.d.mts";
+import type { AwsProvider } from "../src/provider-aws.d.mts";
+
+declare const aws: typeof ProviderAwsContract.aws;
+declare const createAwsProvider: typeof ProviderAwsContract.createAwsProvider;
+declare const createAwsMultiCloudShopPlan: typeof ProviderAwsContract.createAwsMultiCloudShopPlan;
 
 const provider: AwsProvider = createAwsProvider();
 const rds = aws.with.rds({ engine: "postgres", instanceClass: "db.t4g.medium", storageGb: 50 });

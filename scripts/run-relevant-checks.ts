@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 
 import { selectRelevantChecks, type Check } from "./relevant-check-policy.js";
 
@@ -68,6 +69,10 @@ function runWorkspaceTestFallback(commandArgs: string[]) {
 
   console.warn("Turbo workspace test runner failed before completion; falling back to direct workspace test scripts.");
   for (const workspace of workspaces) {
+    if (!fs.existsSync(path.join(workspace, "package.json"))) {
+      console.warn(`Skipping ${workspace}; no package.json test script manifest exists.`);
+      continue;
+    }
     const status = run("pnpm", ["--prefix", workspace, "test"]);
     if (status !== 0) return status;
   }

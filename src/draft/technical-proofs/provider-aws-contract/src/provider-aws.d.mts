@@ -52,13 +52,15 @@ export interface AwsElasticacheOptions {
   replicas?: number;
 }
 
+type NoExtra<TInput, TShape> = TInput & Record<Exclude<keyof TInput, keyof TShape>, never>;
+
 export interface AwsWithBuilders {
-  appRunner<T extends AwsAppRunnerOptions = {}>(options?: T): AwsOptionBlock<"compute", Required<Pick<AwsAppRunnerOptions, "cpu" | "memoryMb">> & T>;
-  elasticache<T extends AwsElasticacheOptions = {}>(options?: T): AwsOptionBlock<"cache", Required<Pick<AwsElasticacheOptions, "engine" | "nodeType">> & T>;
-  fargate<T extends AwsFargateOptions = {}>(options?: T): AwsOptionBlock<"compute", Required<Pick<AwsFargateOptions, "cpu" | "memoryMb">> & T>;
-  rds<T extends AwsRdsOptions = {}>(options?: T): AwsOptionBlock<"database", Required<Pick<AwsRdsOptions, "engine" | "instanceClass">> & T>;
-  s3<T extends AwsS3Options = {}>(options?: T): AwsOptionBlock<"objectStore", Required<Pick<AwsS3Options, "encryption" | "versioning">> & T>;
-  sqs<T extends AwsSqsOptions = {}>(options?: T): AwsOptionBlock<"queue", Required<Pick<AwsSqsOptions, "fifo" | "visibilityTimeoutSeconds">> & T>;
+  appRunner<T extends AwsAppRunnerOptions = {}>(options?: NoExtra<T, AwsAppRunnerOptions>): AwsOptionBlock<"compute", Required<Pick<AwsAppRunnerOptions, "cpu" | "memoryMb">> & T>;
+  elasticache<T extends AwsElasticacheOptions = {}>(options?: NoExtra<T, AwsElasticacheOptions>): AwsOptionBlock<"cache", Required<Pick<AwsElasticacheOptions, "engine" | "nodeType">> & T>;
+  fargate<T extends AwsFargateOptions = {}>(options?: NoExtra<T, AwsFargateOptions>): AwsOptionBlock<"compute", Required<Pick<AwsFargateOptions, "cpu" | "memoryMb">> & T>;
+  rds<T extends AwsRdsOptions = {}>(options?: NoExtra<T, AwsRdsOptions>): AwsOptionBlock<"database", Required<Pick<AwsRdsOptions, "engine" | "instanceClass">> & T>;
+  s3<T extends AwsS3Options = {}>(options?: NoExtra<T, AwsS3Options>): AwsOptionBlock<"objectStore", Required<Pick<AwsS3Options, "encryption" | "versioning">> & T>;
+  sqs<T extends AwsSqsOptions = {}>(options?: NoExtra<T, AwsSqsOptions>): AwsOptionBlock<"queue", Required<Pick<AwsSqsOptions, "fifo" | "visibilityTimeoutSeconds">> & T>;
 }
 
 export declare const aws: {

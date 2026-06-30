@@ -3,8 +3,8 @@ import test from "node:test";
 
 import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
 import { inferConnectorScopes } from "../../../exp-proofs/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
-import { parseJwtBearerGrantRequest } from "../../id-jag-token-exchange-contract/src/id-jag-token-exchange.js";
-import { createOutboundXaaTokenBroker } from "../../outbound-xaa-token-exchange-contract/src/outbound-xaa-token-exchange.js";
+import { parseJwtBearerGrantRequest } from "../../id-jag-token-exchange-contract/src/id-jag-token-exchange.ts";
+import { createOutboundXaaTokenBroker } from "../../outbound-xaa-token-exchange-contract/src/outbound-xaa-token-exchange.ts";
 import { createConnectorRuntime } from "../src/connector-runtime-broker.mjs";
 
 const FIXED_NOW = new Date("2026-06-27T21:50:00.000Z");

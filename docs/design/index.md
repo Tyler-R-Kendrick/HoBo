@@ -64,6 +64,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`launch-support-escalation.md`](./launch-support-escalation.md) | Productization M0 launch support escalation matrix, incident communication templates, and support gap routing | — |
 | [`incident-communications.md`](./incident-communications.md) | Productization M0 scope and acceptance for incident communication states, templates, customer-safe publication gates, support handoffs, and follow-up gates | — |
 | [`public-status-page-incident-communication.md`](./public-status-page-incident-communication.md) | Productization M0 public status-page scope, component taxonomy, incident states, maintenance notices, update cadence, and customer communication boundaries | — |
+| [`support-workflow.md`](./support-workflow.md) | Productization M0 scope and acceptance for support intake, triage states, customer-safe evidence, owner routing, redaction/access boundaries, and follow-up gates | — |
 | [`support-sla-channels.md`](./support-sla-channels.md) | Productization M0 support SLA language, channel coverage, response targets, unsupported request routing, and owner signoff boundaries | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
 | [`tutorials-walkthroughs.md`](./tutorials-walkthroughs.md) | Productization M0 scope and acceptance for Tutorials & Walkthroughs | — |

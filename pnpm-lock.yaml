@@ -117,6 +117,8 @@ importers:
 
   src/draft/client-optimistic-update-contract: {}
 
+  src/draft/closure-builder-author-flow-contract: {}
+
   src/draft/closure-builder-manifest-lowering-contract: {}
 
   src/draft/closure-builder-public-api-contract: {}

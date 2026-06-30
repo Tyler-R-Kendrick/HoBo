@@ -119,8 +119,11 @@ Research pass, 2026-06-29: Bun has the fastest headline installer and is worth r
 
 Chosen stack:
 
-- Package manager: `pnpm@11.9.0` via `packageManager` and `pnpm-lock.yaml`.
-- Task runner/cache: `turbo@2.10.1` via `pnpm exec turbo`.
+- Package manager: `pnpm@10.33.4` via `packageManager` and `pnpm-lock.yaml`.
+- Task runner/cache: `turbo@2.9.18` via `pnpm exec turbo`. The pin stays below
+  `2.10.x` until the Windows platform package no longer imports an unshipped
+  `ghostty-vt.dll`; local and pre-commit gates must run without hidden machine
+  DLLs.
 - Runtime for checks: Node >=24, matching `package.json` engines.
 - Bundler/dev server: none by default; add Vite only for runnable browser apps, not for docs/proof packages where it would add startup and dependency cost without serving a hot-reload UI.
 - Bun: not default. Use only for isolated proof packages that deliberately target Bun APIs or can prove Node-compatibility parity and faster measured gates.

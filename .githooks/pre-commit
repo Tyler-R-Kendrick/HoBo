@@ -1,19 +1,6 @@
 #!/usr/bin/env sh
 set -eu
 
-npm run architecture:guard:staged -- --base="${HOBO_ARCHITECTURE_BASE:-origin/main}"
-
-# Git exports hook-local repository variables that can leak into nested git/npm
-# probes. Keep the staged architecture guard first, then run the broader gate
-# stack from the working tree environment those probes expect.
-unset $(git rev-parse --local-env-vars)
-
-npm test
-npm run standards:check -- --staged --base="${HOBO_STANDARDS_BASE:-origin/main}"
-npm run docs:cli-lint
-npm run docs:design-lint
-npm run docs:coverage
-npm run docs:freshness:staged
-node --import tsx scripts/validate-traceability.ts
-node --import tsx scripts/validate-sdk-contracts.ts
-node --import tsx scripts/validate-deployment-set-delta.ts
+pnpm run generated:guard
+BASE="${HOBO_ARCHITECTURE_BASE:-$(pnpm --silent run fetch:pr-base)}"
+pnpm run check:relevant:staged -- --base="$BASE"

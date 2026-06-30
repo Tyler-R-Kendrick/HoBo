@@ -130,4 +130,6 @@ All implementation-facing design work follows the cross-cutting standards in [`t
 
 ## Keeping docs current
 
-When a draft package, validation script, workflow, or public contract changes, update this design suite or the nearest proof/contract README in the same change. CI runs `npm run docs:freshness` so implementation-facing changes cannot merge without a documentation update.
+When a draft package, validation script, workflow, or public contract changes, update this design suite or the nearest proof/contract README in the same change. CI runs `pnpm run docs:freshness` so implementation-facing changes cannot merge without a documentation update.
+
+- [Contract-First Testing Strategy](./contract-first-testing.md)

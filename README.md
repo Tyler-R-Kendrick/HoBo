@@ -80,26 +80,34 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 ### Requirements
 
-- Node.js 24, matching CI.
-- npm, using the checked-in `package-lock.json`.
+- Node.js 24 in CI; local Node must satisfy `package.json` (`>=20.20.0`).
+- pnpm through Corepack, using the checked-in `pnpm-lock.yaml`.
 
 Install dependencies:
 
 ```sh
-npm ci
+corepack enable pnpm
+pnpm run install:check
+pnpm run ci:preflight
+```
+
+Lint workflow/package-manager wiring before pushing CI changes:
+
+```sh
+pnpm run actions:lint
 ```
 
 Run the core local gate:
 
 ```sh
-npm run architecture:guard
-npm test
-npm run standards:check
-npm run docs:cli-lint
-npm run docs:design-lint
-npm run docs:coverage
-npm run docs:okf
-npm run docs:freshness
+pnpm run architecture:guard
+pnpm test
+pnpm run standards:check
+pnpm run docs:cli-lint
+pnpm run docs:design-lint
+pnpm run docs:coverage
+pnpm run docs:okf
+pnpm run docs:freshness
 node --import tsx scripts/validate-traceability.ts
 node --import tsx scripts/validate-sdk-contracts.ts
 node --import tsx scripts/validate-deployment-set-delta.ts
@@ -136,7 +144,7 @@ The `docs:freshness` gate enforces the minimum rule: changes under `src/`, `scri
 GitHub Actions run two lanes:
 
 - [`Docs`](./.github/workflows/docs.yml): tests plus docs/traceability linting on pushes and pull requests.
-- [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): full PR gate, contract checks, docs freshness, and optional labeled E2E lanes.
+- [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): full PR gate, contract checks, docs freshness, and optional labeled behavior fixture lanes.
 
 Core checks are intentionally ordinary Node scripts so they run locally, in CI, and inside agent sessions. `docs:coverage` also checks that required GitHub community-health and maintenance docs stay present.
 
@@ -148,7 +156,7 @@ Important rules for agents and humans:
 
 - Do not treat `src/draft/*` as production HoBo code; it is executable design proof material.
 - Implement HoBo code through the architecture guardrails in [`AGENTS.md`](./AGENTS.md): PACT, protobuf, CUE, parse-don't-validate types, CQRS, event stores, materialized views, actors, rx-style projections, cached snapshots, and persisted historical read-store snapshots.
-- Run `npm run architecture:guard` when implementation packages change; CI runs the same changed-package guard before the expensive build and test lanes.
+- Run `pnpm run architecture:guard` when implementation packages change; CI runs the same changed-package guard before the expensive build and test lanes.
 - Keep docs, ADRs, proof notes, and README claims aligned with code changes.
 - Prefer small, reviewable changes tied to a design claim or backlog slice.
 - Run the local gates before opening a PR.

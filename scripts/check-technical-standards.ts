@@ -6,6 +6,7 @@ type Mode = "worktree" | "staged";
 let base = "";
 let mode: Mode = "worktree";
 let baseRefExists: boolean | undefined;
+let resolvedBase: string | undefined;
 const failures: string[] = [];
 
 for (const arg of process.argv.slice(2)) {
@@ -49,22 +50,42 @@ function run(command: string, args: string[]): string {
   return result.stdout;
 }
 
-function baseRefAvailable(): boolean {
-  if (!base) {
-    return false;
-  }
-  baseRefExists ??= spawnSync("git", ["rev-parse", "--verify", `${base}^{commit}`], {
+function refAvailable(ref: string): boolean {
+  return spawnSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
     shell: false,
     stdio: "ignore",
   }).status === 0;
-  return baseRefExists;
+}
+
+function effectiveBase(): string {
+  if (!base) return "";
+  if (resolvedBase !== undefined) return resolvedBase;
+  if (refAvailable(base)) {
+    resolvedBase = base;
+    baseRefExists = true;
+    return resolvedBase;
+  }
+  if (refAvailable("HEAD~1")) {
+    console.warn(`Base ref ${base} is unavailable; falling back to HEAD~1.`);
+    resolvedBase = "HEAD~1";
+    baseRefExists = false;
+    return resolvedBase;
+  }
+  console.warn(`Base ref ${base} is unavailable; falling back to working tree diff.`);
+  resolvedBase = "";
+  baseRefExists = false;
+  return resolvedBase;
+}
+
+function baseRefAvailable(): boolean {
+  return Boolean(effectiveBase());
 }
 
 function existsAtBase(file: string): boolean {
   if (!baseRefAvailable()) {
     return false;
   }
-  return spawnSync("git", ["cat-file", "-e", `${base}:${file}`], {
+  return spawnSync("git", ["cat-file", "-e", `${effectiveBase()}:${file}`], {
     shell: false,
     stdio: "ignore",
   }).status === 0;
@@ -74,8 +95,8 @@ function changedFiles(): string[] {
   const nameStatus =
     mode === "staged"
       ? run("git", ["diff", "--cached", "--name-status", "--diff-filter=ACMR"])
-      : base
-        ? run("git", ["diff", "--name-status", "--diff-filter=ACMR", `${base}...HEAD`])
+      : effectiveBase()
+        ? run("git", ["diff", "--name-status", "--diff-filter=ACMR", `${effectiveBase()}...HEAD`])
         : run("git", ["diff", "--name-status", "--diff-filter=ACMR", "HEAD"]);
 
   const changed = nameStatus

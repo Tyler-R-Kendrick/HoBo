@@ -17,6 +17,15 @@
     "contracts:data-models": "node --import tsx scripts/generate-data-model-contracts.ts --check",
     "case:check": "node --import tsx scripts/check-case-collisions.ts",
     "test:fast": "node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts",
+    "search": "sh -c 'if command -v tgrep >/dev/null 2>&1; then tgrep \"$@\"; else rg \"$@\"; fi' --",
+    "search:structure": "ast-grep scan",
+    "test:smoke": "bun test",
+    "test:file": "vitest run --no-isolate --passWithNoTests",
+    "test:name": "vitest run --no-isolate --passWithNoTests -t",
+    "test:changed": "sh -c 'base=\"${HOBO_CHECK_BASE:-HEAD~1}\"; files=$(git diff --name-only \"$base\"...HEAD -- \"*.test.ts\" \"*.test.mts\" \"*.spec.ts\" \"*.spec.mts\" 2>/dev/null || true); if [ -z \"$files\" ]; then echo \"No changed Vitest-compatible test files found; lane skipped.\"; else vitest run --no-isolate --passWithNoTests $files; fi'",
+    "test:affected": "turbo run test --affected --continue=never",
+    "validate:local": "sh -c 'pnpm run standards:check -- --base=\"${HOBO_CHECK_BASE:-HEAD~1}\" && pnpm run test:changed'",
+    "validate:final": "pnpm run standards:check -- --base=origin/main && node --import tsx scripts/run-tests.ts --final",
     "test:root": "node --import tsx scripts/run-tests.ts --root-only",
     "test:all": "pnpm exec turbo run test",
     "check:relevant": "node --import tsx scripts/run-relevant-checks.ts",
@@ -52,12 +61,14 @@
     "fetch:pr-base": "node --import tsx scripts/fetch-pr-base.ts"
   },
   "devDependencies": {
+    "@ast-grep/cli": "^0.44.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260629.1",
     "protobufjs": "^7.6.4",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "zod": "^4.1.13",
     "turbo": "2.8.6",
-    "@typescript/native-preview": "^7.0.0-dev.20260629.1"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9",
+    "zod": "^4.1.13"
   },
   "engines": {
     "node": ">=20.20.0"

@@ -2792,6 +2792,19 @@ message MaliciousProviderContainmentContractProviderContainmentContractDataModel
   bool cue_annotated = 6;
 }
 
+message MarketplacePayoutHooksScopeContractMarketplacePayoutHooksScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.marketplace-payout-hooks-scope-contract.marketplace-payout-hooks-scope";
+  option (hobo.source_path) = "src/draft/marketplace-payout-hooks-scope-contract/src/marketplace-payout-hooks-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#MarketplacePayoutHooksScopeContractMarketplacePayoutHooksScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message MatchingEngineSkeletonContractMatchingEngineDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.matching-engine-skeleton-contract.matching-engine";
   option (hobo.source_path) = "src/draft/matching-engine-skeleton-contract/src/matching-engine.ts";
@@ -3914,6 +3927,19 @@ message ResourceDefinitionDriverContractResourceDefinitionDriverContractDataMode
   option (hobo.data_model_contract_id) = "hobo.datamodel.resource-definition-driver-contract.resource-definition-driver-contract";
   option (hobo.source_path) = "src/draft/resource-definition-driver-contract/src/resource-definition-driver-contract.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ResourceDefinitionDriverContractResourceDefinitionDriverContractDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message ResourceGarbageCollectionScopeAcceptanceResourceGarbageCollectionScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.resource-garbage-collection-scope-acceptance.resource-garbage-collection-scope";
+  option (hobo.source_path) = "src/draft/resource-garbage-collection-scope-acceptance/src/resource-garbage-collection-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ResourceGarbageCollectionScopeAcceptanceResourceGarbageCollectionScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;

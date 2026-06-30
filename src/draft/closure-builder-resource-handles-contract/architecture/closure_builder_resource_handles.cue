@@ -8,7 +8,7 @@ package closure_builder_resource_handles
 
 #ClosureBuilderResource: {
 	generated_id: =~"^res_[0-9]{4}$"
-	kind: "api" | "cache" | "queue" | "web"
+	kind: "api" | "cache" | "queue"
 	owner_bindle_id: =~"^[a-z][a-z0-9-]*$"
 	workload?: #ClosureBuilderWorkloadDescriptor
 	annotation_kinds: [...string]

@@ -14,7 +14,7 @@ executable handle contract for `@hobo/bindles` v1 authoring.
 
 ## Scope
 
-- `b.cache()`, `b.queue<T>()`, `b.api(() => app.run())`, and `b.web(...)`
+- `b.cache()`, `b.queue<T>()`, and `b.api(() => app.run())`
   create anonymous resource handles with HoBo-generated IDs.
 - `dependsOn()` is the only relationship verb and emits a manifest-lowering
   relationship `{ from, to, verb: "dependsOn" }`.

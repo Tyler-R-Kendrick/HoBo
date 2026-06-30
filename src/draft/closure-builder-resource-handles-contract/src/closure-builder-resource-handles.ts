@@ -1,4 +1,4 @@
-export type ResourceKind = "api" | "cache" | "queue" | "web";
+export type ResourceKind = "api" | "cache" | "queue";
 export type RelationshipVerb = "dependsOn";
 
 export interface ResourceRelationship {
@@ -38,7 +38,6 @@ export interface ClosureBuilder {
   api(workload: () => unknown): ResourceHandle<"api">;
   cache(): ResourceHandle<"cache">;
   queue<TMessage = unknown>(): ResourceHandle<"queue">;
-  web(workload: () => unknown): ResourceHandle<"web">;
 }
 
 export class ClosureBuilderResourceError extends Error {
@@ -92,10 +91,6 @@ class BuilderContext {
       queue: <TMessage = unknown>(...args: readonly unknown[]) => {
         assertNoFactoryArgs("queue", args);
         return this.create("queue", null);
-      },
-      web: (workload: () => unknown, ...extra: readonly unknown[]) => {
-        assertWorkloadFactory("web", workload, extra);
-        return this.create("web", { kind: "inert-workload-factory", factory: workload });
       },
     };
   }

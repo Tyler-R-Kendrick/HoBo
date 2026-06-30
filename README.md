@@ -113,6 +113,14 @@ node --import tsx scripts/validate-sdk-contracts.ts
 node --import tsx scripts/validate-deployment-set-delta.ts
 ```
 
+The test runner shards tracked test files into bounded `node --test` batches,
+prints full batch output only on failure, and uses smaller single-worker batches
+on Windows so large worktrees exercise the same suites without exhausting local
+process or terminal resources. Long-running batches print periodic progress so
+local hooks stay observable while type-heavy fixtures compile. The pre-commit
+hook clears Git's hook-local environment before the Node/npm gate stack so nested
+repo probes run against the working tree instead of hook-only state.
+
 Optional: enable the repo pre-commit hook:
 
 ```sh

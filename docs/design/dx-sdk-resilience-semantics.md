@@ -50,7 +50,7 @@ durable WIT calls, manifest IR, and replayable event facts.
 
 | Semantics area | Required HoBo behavior | First proof vector | Later consumer |
 |---|---|---|---|
-| Transient retry | A transient provider/runtime failure may retry only under a deterministic schedule with a stable budget and attempt facts. | HOBO-516 `transient-retry-schedule` | HOBO-517 SDK conformance resilience lane |
+| Transient retry | A transient provider/runtime failure may retry only under a deterministic schedule with a stable seed, stable budget, and attempt facts. | HOBO-516 `transient-retry-schedule` | HOBO-517 SDK conformance resilience lane |
 | Policy denial | `policy.Decided` with a deny outcome is terminal for that operation. It does not become retryable because a provider also failed. | HOBO-516 `denial-never-retries` | HOBO-520 local diagnostics copy |
 | Terminal failure | A typed terminal SDK failure stops retry immediately and records the terminal reason. | HOBO-516 `terminal-never-retries` | HOBO-517 resilience report |
 | WIT error mapping | A WIT error result must surface as the target-language typed failure shape and fail the semantics lane if swallowed. | Existing HOBO-31 vector, imported by HOBO-517 | HOBO-517 SDK conformance gate |
@@ -80,6 +80,8 @@ Required report categories:
 - `existingSemanticsLane`: imported or mirrored from HOBO-31 where needed.
 - `resilienceSemanticsLane`: transient retry, denial, terminal failure,
   cancellation, deadline, cleanup, replay inspection.
+- `transient-retry-schedule` must carry the deterministic retry seed consumed
+  by the HOBO-517 SDK conformance resilience lane.
 - `unsupportedBehavior`: explicit callouts for any helper claim without a
   vector.
 
@@ -97,7 +99,7 @@ npm.cmd --prefix src\draft\resilience-semantics-annex test
 | HOBO-516 | `src/draft/resilience-semantics-annex` | `npm.cmd --prefix src\draft\resilience-semantics-annex test` | No Effect/XState dependency; no production conformance package change. |
 | HOBO-517 | `src/draft/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
 | HOBO-518 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No generic statechart interpreter and no XState dependency. |
-| HOBO-519 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No distributed scheduler or production supervision tree. |
+| HOBO-519 | `src/draft/supervision-child-lifetime-contract` | `npm.cmd --prefix src\draft\supervision-child-lifetime-contract test` plus `npm.cmd run docs:design-lint` | No distributed scheduler, production supervision tree, or new queue backend. |
 | HOBO-520 | SDK docs and local diagnostic example | `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector or remote dashboard. |
 
 ## Parent Scope Proof

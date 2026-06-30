@@ -16,7 +16,7 @@ export const canonicalResilienceFixtures = Object.freeze([
   freezeFixture({
     name: "transient-retry-schedule",
     assertions: ["transient-retry-schedule"],
-    retryPlan: { delayMs: [100, 250], maxAttempts: 3 },
+    retryPlan: { seed: "hobo-resilience-retry-v1", delayMs: [100, 250], maxAttempts: 3 },
     facts: [
       { type: "effect.Attempted", attempt: 1, atMs: 0 },
       { type: "provider.Failed", failure: "transient", attempt: 1, atMs: 10 },
@@ -182,13 +182,17 @@ export function runResilienceSemanticsAnnex(fixtures = canonicalResilienceFixtur
 
 export function runResilienceCase(fixture) {
   const failure = validateFixture(fixture);
-  return {
+  const result = {
     name: fixture.name,
     category: "resilienceSemanticsLane",
     status: failure ? "failed" : "passed",
     code: failure?.code,
     reason: failure?.reason,
   };
+  if (fixture.retryPlan?.seed) {
+    result.seed = fixture.retryPlan.seed;
+  }
+  return result;
 }
 
 function validateFixture(fixture) {
@@ -233,6 +237,10 @@ function validateAssertion(assertion, fixture, facts) {
 function validateTransientRetrySchedule(fixture, facts) {
   const transientFailures = facts.filter((fact) => fact.type === "provider.Failed" && fact.failure === "transient");
   const scheduledRetries = facts.filter((fact) => fact.type === "retry.Scheduled");
+
+  if (!fixture.retryPlan?.seed) {
+    return fail("resilience.retry_seed_missing", "retry schedule has no deterministic seed");
+  }
 
   if (transientFailures.length === 0) {
     return fail("resilience.transient_missing", "transient retry fixture has no transient failure");

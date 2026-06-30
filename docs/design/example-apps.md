@@ -87,6 +87,13 @@ what is simulated as reference behavior, what needs a live recording, and what r
 | Customer Onboarding | Pilot onboarding can reuse accepted example paths as comparable first-success scripts. | Customer-success scripts and support handoff remain in Customer Onboarding. |
 | V1 Release Program & Cutline | Known-limitations and readiness dashboards can classify example claims by proof mode. | Go/no-go, legal, support, and release-note decisions remain in release-readiness projects. |
 
+## Launch Demo Consumption
+
+HOBO-488 consumes this accepted scope in [`launch-demo-golden-path.md`](./launch-demo-golden-path.md).
+That record turns the `snapshop` example-app proof modes into a launch demo checklist with command
+path, screens, expected outputs, failure recovery, and required assets. It does not build the demo
+app or marketing surface.
+
 ## Evidence Required For M1
 
 | Evidence | Owner | Proof mode | Proves |

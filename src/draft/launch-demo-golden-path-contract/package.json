@@ -1,0 +1,8 @@
+{
+  "name": "launch-demo-golden-path-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  }
+}

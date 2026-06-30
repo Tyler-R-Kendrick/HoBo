@@ -40,6 +40,9 @@ and the durable scope record at [support-debug-tools.md](../../support-debug-too
 
 ## Verification
 
+The proof package is registered in `pnpm-lock.yaml` so frozen installs include
+the workspace importer before PR gates run.
+
 ```powershell
 pnpm --dir src\draft\support-debug-tools-scope-contract test
 pnpm --dir src\draft\support-debug-tools-scope-contract typecheck

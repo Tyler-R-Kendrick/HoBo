@@ -997,6 +997,8 @@ importers:
 
   src/draft/supervision-child-lifetime-contract: {}
 
+  src/draft/support-debug-tools-scope-contract: {}
+
   src/draft/support-sla-channels-contract: {}
 
   src/draft/support-workflow-scope-contract: {}

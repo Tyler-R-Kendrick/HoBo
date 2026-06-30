@@ -26,6 +26,14 @@ const RUN_TMP_ROOT = process.env.HOBO_TEST_TMPDIR
 const categoryArg = process.argv.find((arg) => arg.startsWith("--category="));
 const category = categoryArg?.slice("--category=".length) ?? "unit";
 const rootOnly = process.argv.includes("--root-only");
+const finalValidation = process.argv.includes("--final");
+const changedScope = process.argv.includes("--changed");
+const isAgent =
+  process.env.CI_AGENT === "true" ||
+  process.env.CODEX === "true" ||
+  process.env.CLAUDECODE === "true" ||
+  process.env.CURSOR_AGENT === "true";
+const broadAgentCategories = new Set(["contract-provider", "contract-consumer", "contract", "unit", "all"]);
 
 const categories: Record<string, string[]> = {
   unit: rootOnly ? ["test/*test.ts", "test/*test.mjs"] : ["test/*test.ts", "test/*test.mjs", "src/draft/*/test/*test.ts", "src/draft/*/test/*test.mjs"],
@@ -109,6 +117,31 @@ if (!patterns) {
 }
 
 const testFiles = gitLsFiles(patterns).filter((file) => !file.endsWith(".feature"));
+
+if (isAgent && broadAgentCategories.has(category) && !finalValidation) {
+  throw new Error(
+    [
+      `Refusing broad test category during agent edit loop: ${category}`,
+      "Use:",
+      "  pnpm run test:smoke <path>",
+      "  pnpm run test:file <path>",
+      "  pnpm run test:name <pattern> <path>",
+      "  pnpm run test:changed",
+      "Pass --final only after the implementation is complete.",
+    ].join("\n"),
+  );
+}
+
+if (isAgent && testFiles.length > 3 && !changedScope && !finalValidation) {
+  throw new Error(
+    `Refusing ${testFiles.length} test files during agent edit loop. Use a targeted file, --changed, or --final.`,
+  );
+}
+
+if (isAgent && TEST_CONCURRENCY_ARGS.includes("--test-concurrency=1") && testFiles.length > 1 && !finalValidation) {
+  throw new Error("Refusing serial multi-file testing during agent edit loop.");
+}
+
 if (testFiles.length === 0) {
   console.log(`No ${category} tests found; lane skipped.`);
   process.exit(0);

@@ -9,17 +9,27 @@ tags: [hobo, design]
 
 ## Plan 19
 
-> **Authoring (IfC + wasm + inferred permissions).** In the runtime/IfC model the same app is authored Nitric-style: resources are declared inline (their permissions **inferred from use**, `.allow()` only to narrow), the service compiles to a **wasm component**, and the topology is **collected by running it** ([Plan 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)/[Plan 21](./authoring-resources-wiring.md#plan-21)). The explicit `bindle.ts` below still works (advanced mode).
+> **Authoring (closure builder + IfC collection).** The v1 authoring path is an explicit
+> closure-builder `bindle.ts`: resources are assembled as provider-agnostic manifest objects,
+> their permissions remain inferred from use, `.allow()` only narrows, service code still compiles to
+> a **wasm component**, and the topology is collected from the closure-builder corpus ([Plan
+> 20](./wasm-runtime-wit.md#plan-20)/[Plan 21](./authoring-resources-wiring.md#plan-21)). HoBo keeps
+> app-host code outside Bindle assembly: `b.api(() => api.run())` records an inert workload boundary,
+> not a request router or runtime process.
 > ```ts
-> // src/api.ts — IfC: resources inline, permissions inferred from use; compiles to a wasm component via jco
-> import { api, kv, bucket, queue } from "@hobo/bindles";
-> import { workflow, step } from "@hobo/runtime";
-> const orders = kv("orders");          // orders.get()/.set() → infers allow:[get,set] (wasi:keyvalue + IAM + token scope)
-> const images = bucket("images");      // images.read()/.write() → infers allow:[read,write] (wasi:blobstore)
-> const events = queue("orders");       // events.enqueue() → infers allow:[enqueue] (hobo:queue)
-> const app = api("main");
-> app.post("/checkout", async (ctx) => { await checkout(await ctx.json()); ctx.json({ ok: true }); });
-> // `hobo collect` runs this in resource-collection mode → manifest IR (see Plan 22)
+> // bindle.ts - v1 closure-builder corpus
+> import { bindle } from "@hobo/bindles";
+> import type { OrderEvent } from "./shared/types";
+> import myApi from "./src/api";
+>
+> export default bindle("snapshop", (b) => {
+>   const cache = b.cache();
+>   const orders = b.queue<OrderEvent>();
+>   const api = b.api(() => myApi.run()).dependsOn(cache, orders);
+>
+>   return { cache, orders, api };
+> });
+> // `hobo collect` consumes this corpus → hobo.manifest/v1 with dependsOn edges.
 > ```
 > **Stub → AI-implement (Plan 23):** a `payments` capability can ship as `service("payments").stub()` so checkout runs end-to-end on day one; the generation pipeline later generates the real component, validated against conformance + the recorded stub traces, and promotes it through a gated rollout. Everything else in the narrative below (deploy to one cloud → multi-cloud split → provider tuning → agent-operated → generation pipeline) is unchanged.
 
@@ -89,6 +99,10 @@ export default bindle("snapshop", (b) => {
   return { db, images, orders, api: apiService, site: webSite };
 });
 ```
+Returned keys such as `api` and `orders` are generated authoring aliases only. Deployment identity,
+manifest resource IDs, and physical naming seeds come from HoBo-generated IDs, so alias renames do
+not become provider resource names. The HOBO-537 author-flow proof registers this closure-builder
+corpus as the v1 SDK conformance path.
 `src/api/checkout.ts` — the *runtime* (durable workflow + choreography saga):
 ```ts
 import { step } from "@hobo/runtime";

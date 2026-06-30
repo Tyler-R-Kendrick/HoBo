@@ -104,6 +104,10 @@ Agent-tooling changes count as repo behavior changes. Prefer cross-agent config 
 
 Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
 
+On Windows, `scripts/run-relevant-checks.ts` invokes nested pnpm commands through `cmd.exe /d /c pnpm.cmd`.
+This keeps the staged hook path usable in shells where `pnpm` is not directly executable from
+`child_process.spawnSync(..., { shell: false })`.
+
 Use these commands when working locally or as an agent:
 
 - `pnpm run check:relevant:staged` before commit; this is the hook path and should stay fast.

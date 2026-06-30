@@ -111,3 +111,14 @@ self-hosted seed handover, upgrade/rollback, and incident restore scenarios. The
 routes missing proof to beta blockers, launch notes, or owning follow-up work; it does not build
 the Yard runtime, admin UI, bootstrap installer, observability pipeline, release notes, or release
 cutline workflow.
+
+## Hosted Broker GA Handoff Link
+
+HOBO-530 consumes Dogfood Yard evidence as a deploy-readiness link for the hosted broker. Resolution
+Receipts prove that Yard can consume broker authority from signed manifest, environment, and catalog
+digests. Resolution Rejections prove stale, incompatible, ambiguous, or unsupported broker mappings
+fail closed before Yard planning.
+
+This link does not mark the hosted broker live GA-ready on its own. Dogfood evidence remains an
+input to release-cutline and broker handoff review, and cannot be replaced by local fixtures, docs,
+or manually edited receipts.

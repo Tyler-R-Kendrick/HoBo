@@ -41,6 +41,26 @@ tags: [hobo, implementation-plan.md]
 > document remains the durable *structural* plan: the subsystem decomposition, phasing, and
 > dependency intent.
 
+## Post-399 Cross-Cutting Capability Deltas
+
+The original 399-issue mirror remains the baseline for the 15 planned subsystems. New
+cross-cutting capabilities discovered after that baseline must not reopen completed epics as
+mutable catch-alls. A post-core delta gets its own Linear project and issue family, beginning with
+an M0 acceptance record that names scope, authority boundaries, owning lanes, evidence, and blocked
+follow-up work.
+
+Minimum durable records for a post-core delta:
+
+- own Linear project or clearly owned Linear issue family;
+- M0 acceptance record in `docs/design/` with scope in/out and proof expectations;
+- design index row that makes the record discoverable;
+- proof README under `docs/design/proofs/` plus executable proof under `src/draft/`;
+- traceability row that links issue, design record, and proof; and
+- blocked M1-M4 skeleton issues that remain non-actionable until M0 acceptance is Done.
+
+Meta-cloud Broker is the first accepted example of this pattern: HOBO-521 owns the M0 scope record
+and proof, and HOBO-524 owns this documentation-pattern hardening.
+
 ### Provenance — the subagents that authored each subsystem
 
 Each subsystem was authored by a dedicated subagent holding the **full templated issue bodies**.

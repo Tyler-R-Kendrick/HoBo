@@ -9,7 +9,7 @@ const all = args.has("--all");
 const explain = args.has("--explain");
 const includeBuild = args.has("--build");
 
-type Check = { command: string; args: string[]; reason: string; fallback?: Check[] };
+type Check = { command: string; args: string[]; reason: string };
 
 function run(command: string, commandArgs: string[], options: { allowFailure?: boolean } = {}) {
   const printable = [command, ...commandArgs].join(" ");
@@ -18,24 +18,7 @@ function run(command: string, commandArgs: string[], options: { allowFailure?: b
   if (result.status !== 0 && !options.allowFailure) {
     process.exit(result.status ?? 1);
   }
-  return result.status ?? 1;
-}
-
-function runCheck(check: Check) {
-  const status = run(check.command, check.args, { allowFailure: Boolean(check.fallback) });
-  if (status === 0) return;
-
-  if (check.fallback && isTurboNativeStartupFailure(status)) {
-    console.warn("\nTurbo native binary failed at startup; running equivalent workspace test scripts.");
-    for (const fallbackCheck of check.fallback) runCheck(fallbackCheck);
-    return;
-  }
-
-  process.exit(status);
-}
-
-function isTurboNativeStartupFailure(status: number) {
-  return process.platform === "win32" && status === 0xc0000135;
+  return result.status ?? 0;
 }
 
 function capture(command: string, commandArgs: string[]) {
@@ -101,15 +84,17 @@ if (schemaChanged) {
 }
 
 if (workspaces.length > 0) {
+  const workspaceFilters = workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]);
+  const turboVersion = capture("pnpm", ["exec", "turbo", "--version"]);
+
   checks.push({
     command: "pnpm",
-    args: ["exec", "turbo", "run", "test", ...workspaces.flatMap((workspace) => ["--filter", `./${workspace}`])],
-    reason: `draft package unit/contract tests for ${workspaces.length} changed workspace(s)`,
-    fallback: workspaces.map((workspace) => ({
-      command: "pnpm",
-      args: ["--filter", `./${workspace}`, "run", "test"],
-      reason: `draft package test script for ${workspace}`,
-    })),
+    args: turboVersion
+      ? ["exec", "turbo", "run", "test", ...workspaceFilters]
+      : [...workspaceFilters, "test"],
+    reason: turboVersion
+      ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s)`
+      : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
   });
 }
 
@@ -154,4 +139,4 @@ console.log(`Detected scope: ${[
 for (const check of checks) console.log(`- ${check.command} ${check.args.join(" ")} (${check.reason})`);
 
 if (explain) process.exit(0);
-for (const check of checks) runCheck(check);
+for (const check of checks) run(check.command, check.args);

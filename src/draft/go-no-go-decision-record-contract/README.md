@@ -18,6 +18,9 @@ Run:
 npm.cmd --prefix src\draft\go-no-go-decision-record-contract test
 ```
 
+The package is registered in `pnpm-lock.yaml` so `pnpm run install:check`
+proves workspace dependency graph freshness before release-signoff changes merge.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

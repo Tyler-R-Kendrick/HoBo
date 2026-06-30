@@ -328,6 +328,8 @@ importers:
 
   src/draft/gitops-ci-journey-contract: {}
 
+  src/draft/go-no-go-decision-record-contract: {}
+
   src/draft/golden-suite-chaos-verification-contract: {}
 
   src/draft/governance-conformance-suite-contract: {}

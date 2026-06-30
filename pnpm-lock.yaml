@@ -525,6 +525,8 @@ importers:
 
   src/draft/incident-aggregate-contract: {}
 
+  src/draft/incident-communications-scope-contract: {}
+
   src/draft/internal-ca-private-acme-contract: {}
 
   src/draft/internal-service-discovery-contract: {}
@@ -954,6 +956,8 @@ importers:
   src/draft/training-engine-port-contract: {}
 
   src/draft/trust-tier-policy-contract: {}
+
+  src/draft/tutorials-walkthroughs-scope-acceptance: {}
 
   src/draft/upgrade-migration-scope-contract: {}
 

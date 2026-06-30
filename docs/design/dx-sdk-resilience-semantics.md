@@ -79,17 +79,47 @@ Required report categories:
   with HOBO-32.
 - `existingSemanticsLane`: imported or mirrored from HOBO-31 where needed.
 - `resilienceSemanticsLane`: transient retry, denial, terminal failure,
-  cancellation, deadline, cleanup, replay inspection.
+  cancellation, deadline, cleanup, replay inspection, and HOBO-518 lifecycle
+  transition-table vectors.
 - `transient-retry-schedule` must carry the deterministic retry seed consumed
   by the HOBO-517 SDK conformance resilience lane.
 - `unsupportedBehavior`: explicit callouts for any helper claim without a
   vector.
+- HOBO-518 extends this same package with stable lifecycle cases:
+  `lifecycle-transition-table`, `lifecycle-replay-hydration`,
+  `lifecycle-event-derived-inspection`,
+  `terminal-duplicate-no-second-side-effect`, and
+  `child-lifecycle-requires-spawn-contract`.
 
 Focused command:
 
 ```powershell
 npm.cmd --prefix src\draft\resilience-semantics-annex test
 ```
+
+## Lifecycle Transition-Table Extension
+
+HOBO-518 extends `src/draft/resilience-semantics-annex` rather than creating a
+separate runtime proof because lifecycle behavior shares the same conformance
+lane, replay-derived inspection posture, and no-Effect/no-XState dependency
+boundary.
+
+Use a transition table when a lifecycle owns impossible transitions, terminal
+duplicate handling, replay hydration, or child lifetime obligations. A simpler
+state enum is enough when the value is display-only and does not drive cleanup,
+retry, child work, operator escalation, or diagnostics. Inspection output must
+come from persisted `actor.StateAppended` facts; process-memory snapshots are
+not authoritative.
+
+Required negative fixtures:
+
+- illegal transition -> `lifecycle.illegal_transition`
+- snapshot without a causative persisted transition ->
+  `lifecycle.snapshot_without_causative_event`
+- duplicate terminal input causing a second side effect ->
+  `lifecycle.terminal_duplicate_side_effect`
+- child work outliving the parent without an explicit spawn contract ->
+  `lifecycle.child_outlived_parent`
 
 ## Later Issue Map
 

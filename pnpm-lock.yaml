@@ -999,6 +999,8 @@ importers:
 
   src/draft/usage-metering-scope-contract: {}
 
+  src/draft/v1-beta-pilot-private-beta-evidence: {}
+
   src/draft/v1-cutline-contract: {}
 
   src/draft/v1-e2e-persona-matrix-contract: {}

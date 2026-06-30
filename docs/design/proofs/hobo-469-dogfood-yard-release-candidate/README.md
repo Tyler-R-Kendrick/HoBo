@@ -26,4 +26,5 @@ and the durable source record at [dogfood-yard.md](../../dogfood-yard.md#release
 
 ```powershell
 pnpm.cmd --prefix src\draft\dogfood-yard-release-candidate-contract test
+pnpm.cmd run check:relevant -- --base=origin/main
 ```

@@ -115,6 +115,10 @@ Use these commands when working locally or as an agent:
 - `pnpm exec turbo run test --filter ./src/draft/<package>` when editing one draft proof package.
 - `pnpm run test:all` only for full-repo verification or before merging large cross-cutting changes.
 
+The non-staged relevant-check runner forwards its selected `--base` into
+`docs:freshness` so PR impact checks evaluate the same merge-base file set even
+after install or generated-contract steps touch the local working tree.
+
 When merging `origin/main` into an active proof branch, recently merged draft
 workspaces may require fresh `pnpm-lock.yaml` importer entries. Keep those
 lockfile updates with the merge repair and rerun the normal relevant check path

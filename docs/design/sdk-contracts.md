@@ -29,7 +29,7 @@ Naming: `hobo:sdk` is the WIT contract/package for app primitives and capability
 
 | Surface | Package boundary | Contract tier | Implementation issue | Conformance issue / suite |
 |---|---|---|---|---|
-| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-532 / HOBO-533 | HOBO-32 / `@hobo/conformance/sdk` |
+| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-532 / HOBO-533 / HOBO-534 / HOBO-535 | HOBO-32 / `@hobo/conformance/sdk` |
 | `.allow(...verbs)` | app idiom layer: `@hobo/bindles`; WIT-owned verb set in `hobo:sdk` | language idiom lowering + manifest IR | HOBO-70 | HOBO-32 / `@hobo/conformance/sdk` |
 | `connector(name)` | `@hobo/bindles` | language idiom lowering + manifest IR | HOBO-43 | HOBO-32 / `@hobo/conformance/sdk` |
 | `config(...)`, `secretRef(...)`, `env(...)`, `fromBinding(...)` | `@hobo/bindles` | app config reference lowering + manifest IR | HOBO-40 | HOBO-32 / `@hobo/conformance/sdk` |
@@ -72,8 +72,11 @@ keys are aliases only. `dependsOn()` is the only v1 relationship verb.
 ownership, and app-host boundary language. HOBO-533 proves anonymous builder
 handles, inert workload descriptors, invalid dependency refusal, and
 `dependsOn()` relationship emission. HOBO-534 proves generated identity stability
-across alias-only edits and diagnostic separation before HOBO-535 through
-HOBO-537 build lowering, tooling, and end-to-end flow.
+across alias-only edits and diagnostic separation. HOBO-535 proves those captured
+closure-builder facts lower to `hobo:sdk` calls and `hobo.manifest/v1`, while
+provider `.with(...)` annotations stay inert and aliases remain separate from
+deployment identity. Same-kind generated-ID ledger behavior remains outside the
+lowering contract until HOBO-538 lands.
 
 **Conformance issue.** HOBO-32 covers SDK lowering. This proof contributes the
 public vocabulary fixture that downstream conformance vectors consume.

@@ -104,12 +104,21 @@ Agent-tooling changes count as repo behavior changes. Prefer cross-agent config 
 
 Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
 
+On Windows, `scripts/run-relevant-checks.ts` invokes nested pnpm commands through `cmd.exe /d /c pnpm.cmd`.
+This keeps the staged hook path usable in shells where `pnpm` is not directly executable from
+`child_process.spawnSync(..., { shell: false })`.
+
 Use these commands when working locally or as an agent:
 
 - `pnpm run check:relevant:staged` before commit; this is the hook path and should stay fast.
 - `pnpm run check:relevant -- --base=origin/main` while iterating on a branch; it compares changed files with the merge base.
 - `pnpm exec turbo run test --filter ./src/draft/<package>` when editing one draft proof package.
 - `pnpm run test:all` only for full-repo verification or before merging large cross-cutting changes.
+
+When merging `origin/main` into an active proof branch, recently merged draft
+workspaces may require fresh `pnpm-lock.yaml` importer entries. Keep those
+lockfile updates with the merge repair and rerun the normal relevant check path
+instead of treating them as unrelated churn.
 
 Agents should prefer the narrowest command that covers the changed files, and should avoid running `pnpm test` or `pnpm run test:all` after edits that touch only one isolated draft package unless a shared script, root dependency, or contract generator changed.
 
@@ -119,8 +128,11 @@ Research pass, 2026-06-29: Bun has the fastest headline installer and is worth r
 
 Chosen stack:
 
-- Package manager: `pnpm@11.9.0` via `packageManager` and `pnpm-lock.yaml`.
-- Task runner/cache: `turbo@2.10.1` via `pnpm exec turbo`.
+- Package manager: `pnpm@10.33.4` via `packageManager` and `pnpm-lock.yaml`.
+- Task runner/cache: `turbo@2.8.6` via `pnpm exec turbo`. The pin stays below
+  `2.10.x` until the Windows platform package no longer imports an unshipped
+  `ghostty-vt.dll`; local and pre-commit gates must run without hidden machine
+  DLLs.
 - Runtime for checks: Node >=24, matching `package.json` engines.
 - Bundler/dev server: none by default; add Vite only for runnable browser apps, not for docs/proof packages where it would add startup and dependency cost without serving a hot-reload UI.
 - Bun: not default. Use only for isolated proof packages that deliberately target Bun APIs or can prove Node-compatibility parity and faster measured gates.

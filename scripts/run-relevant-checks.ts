@@ -11,10 +11,22 @@ const includeBuild = args.has("--build");
 
 type Check = { command: string; args: string[]; reason: string };
 
+function commandForPlatform(command: string, commandArgs: string[]) {
+  if (process.platform === "win32" && command === "pnpm") {
+    return {
+      command: process.env.ComSpec ?? "cmd.exe",
+      args: ["/d", "/c", "pnpm.cmd", ...commandArgs],
+    };
+  }
+
+  return { command, args: commandArgs };
+}
+
 function run(command: string, commandArgs: string[], options: { allowFailure?: boolean } = {}) {
   const printable = [command, ...commandArgs].join(" ");
   console.log(`\n▶ ${printable}`);
-  const result = spawnSync(command, commandArgs, { stdio: "inherit", shell: false });
+  const platformCommand = commandForPlatform(command, commandArgs);
+  const result = spawnSync(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
   if (result.status !== 0 && !options.allowFailure) {
     if (isTurboWorkspaceTest(command, commandArgs) && runWorkspaceTestFallback(commandArgs) === 0) {
       return 0;
@@ -49,7 +61,8 @@ function runWorkspaceTestFallback(commandArgs: string[]) {
 }
 
 function capture(command: string, commandArgs: string[]) {
-  const result = spawnSync(command, commandArgs, { encoding: "utf8", shell: false });
+  const platformCommand = commandForPlatform(command, commandArgs);
+  const result = spawnSync(platformCommand.command, platformCommand.args, { encoding: "utf8", shell: false });
   if (result.status !== 0) return "";
   return result.stdout.trim();
 }

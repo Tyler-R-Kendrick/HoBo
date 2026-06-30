@@ -65,9 +65,14 @@ export async function checkArchitectureGuardrails({ root = process.cwd(), files 
   const packageRoots = implementationPackageRoots(normalizedFiles);
   const problems = [];
 
-  for (const packageRoot of packageRoots) {
-    const evidence = await collectEvidence(root, packageRoot);
+  const evidenceByPackage = await Promise.all(
+    packageRoots.map(async (packageRoot) => ({
+      packageRoot,
+      evidence: await collectEvidence(root, packageRoot),
+    })),
+  );
 
+  for (const { packageRoot, evidence } of evidenceByPackage) {
     for (const check of REQUIRED_CHECKS) {
       if (!check.passes(evidence)) {
         problems.push({

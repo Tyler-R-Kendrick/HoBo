@@ -130,7 +130,31 @@ Required negative fixtures:
 | HOBO-517 | `src/draft/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
 | HOBO-518 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No generic statechart interpreter and no XState dependency. |
 | HOBO-519 | `src/draft/supervision-child-lifetime-contract` | `npm.cmd --prefix src\draft\supervision-child-lifetime-contract test` plus `npm.cmd run docs:design-lint` | No distributed scheduler, production supervision tree, or new queue backend. |
-| HOBO-520 | SDK docs and local diagnostic example | `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector or remote dashboard. |
+| HOBO-520 | SDK docs and local diagnostic example | `npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics`; `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector, remote dashboard, or production observability pipeline. |
+
+## Local Diagnostics Example
+
+HOBO-520 extends the existing
+[`../../src/draft/resilience-semantics-annex`](../../src/draft/resilience-semantics-annex/README.md)
+proof with a local diagnostics command:
+
+```powershell
+npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics
+```
+
+The command renders replay-derived persisted facts for four developer-facing
+outcomes:
+
+- transient retry: attempt chain, retry delay, and provider failure cause;
+- policy denial: `policy.Decided` as terminal, with no retry wording;
+- caller cancellation: caller-owned cancellation plus cleanup facts; and
+- deadline expiry: persisted deadline expiration plus workflow escalation and
+  no fresh post-terminal effect attempt.
+
+What this does not guarantee: the command is not a polished inspector UI,
+remote hosted dashboard, production observability pipeline, scheduler, or SDK
+dependency on Effect or XState. It is a local proof that diagnostics come from
+persisted event facts rather than process memory.
 
 ## Parent Scope Proof
 

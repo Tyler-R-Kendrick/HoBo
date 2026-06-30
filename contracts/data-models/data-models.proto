@@ -62,6 +62,19 @@ message AdminConsoleScopeAdminConsoleScopeDataModel {
   bool cue_annotated = 6;
 }
 
+message AdminSupportBreakglassBoundariesBreakglassBoundariesDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.admin-support-breakglass-boundaries.breakglass-boundaries";
+  option (hobo.source_path) = "src/draft/admin-support-breakglass-boundaries/src/breakglass-boundaries.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#AdminSupportBreakglassBoundariesBreakglassBoundariesDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message AdoptInPlaceContractAdoptInPlaceContractDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.adopt-in-place-contract.adopt-in-place-contract";
   option (hobo.source_path) = "src/draft/adopt-in-place-contract/src/adopt-in-place-contract.ts";
@@ -5201,6 +5214,19 @@ message UsageInferredPermissionsContractUsagePermissionsDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.usage-inferred-permissions-contract.usage-permissions";
   option (hobo.source_path) = "src/draft/usage-inferred-permissions-contract/src/usage-permissions.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#UsageInferredPermissionsContractUsagePermissionsDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message UsageToInvoiceReconciliationContractUsageToInvoiceReconciliationDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.usage-to-invoice-reconciliation-contract.usage-to-invoice-reconciliation";
+  option (hobo.source_path) = "src/draft/usage-to-invoice-reconciliation-contract/src/usage-to-invoice-reconciliation.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#UsageToInvoiceReconciliationContractUsageToInvoiceReconciliationDataModel";
 
   string contract_id = 1;
   string source_path = 2;

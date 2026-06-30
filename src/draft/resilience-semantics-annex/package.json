@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "diagnostics": "node --import tsx src/local-diagnostics.mts",
+    "test": "node --import tsx --test test/*.test.mjs test/*.test.mts"
   }
 }

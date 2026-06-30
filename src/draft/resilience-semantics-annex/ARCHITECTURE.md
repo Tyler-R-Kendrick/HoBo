@@ -1,14 +1,16 @@
 # Resilience Semantics Annex — Architecture Evidence
 
 This package is the HOBO-516 executable conformance annex, extended by HOBO-518
-for SDK-visible lifecycle transition tables. It carries the architecture
-evidence required by `scripts/check-architecture-guardrails.mjs` so the annex
-states, rather than implies, how its fixtures are parsed and how the resilience
-and lifecycle facts map onto the platform's event flow.
+for SDK-visible lifecycle transition tables and by HOBO-520 for local
+diagnostics. It carries the architecture evidence required by
+`scripts/check-architecture-guardrails.mjs` so the annex states, rather than
+implies, how its fixtures are parsed and how the resilience, lifecycle, and
+diagnostic facts map onto the platform's event flow.
 
 ## Schema And Constraints
 
-- Protobuf data shapes for the spec, fixtures, facts, and case results live in
+- Protobuf data shapes for the spec, fixtures, facts, case results, and local
+  diagnostic report live in
   [`proto/resilience_semantics_annex.proto`](./proto/resilience_semantics_annex.proto).
 - CUE constraints for every protobuf type live in
   [`cue/resilience_semantics_annex.cue`](./cue/resilience_semantics_annex.cue).
@@ -19,6 +21,9 @@ and lifecycle facts map onto the platform's event flow.
   event names, replay-inspection sources, child identifiers, and explicit spawn
   contracts so lifecycle fixtures remain protobuf-first rather than ad hoc
   object snapshots.
+- The local diagnostic report schema names the run command, replay-derived
+  source, terminal causes, retry attempts, cleanup facts, escalation facts, and
+  explicit guarantee that persisted facts are authoritative.
 
 ## Parse, Don't Validate
 
@@ -30,6 +35,9 @@ with ordered `ResilienceFact` events and a derived `ResilienceCaseResult` — an
 downstream conformance reporting consumes those parsed, derived types rather than
 re-inspecting the raw fixture. The CUE constraints bound the same derived types
 so a malformed fixture is rejected at parse time, not silently passed downstream.
+`buildLocalDiagnosticReport` follows the same rule for HOBO-520: persisted facts
+become `LocalDiagnosticScenario` records, and object-memory snapshots are
+rejected before rendering.
 
 ## Event Architecture
 
@@ -51,10 +59,13 @@ behave over that log.
   annex replays to evaluate each case.
 - **Materialized view / projection** — `runResilienceSemanticsAnnex` folds the
   per-case events into a projection (the suite result) for the conformance lane.
+  `buildLocalDiagnosticReport` folds the same persisted facts into the local
+  diagnostic projection for a developer or coding agent.
 - **Snapshot** — each `ResilienceCaseResult` is the snapshot of a case's terminal
   outcome (passed/failed with code and reason).
 - **Read store** — the SDK conformance lane reads those case-result snapshots
-  rather than re-deriving them from the raw fact log.
+  and the local diagnostic command reads diagnostic snapshots rather than
+  re-deriving them from process memory.
 
 The `replay-no-effect-rerun` and `lifecycle-replay-hydration` cases explicitly
 prove replay re-runs no effects and reconstructs state from persisted facts, so

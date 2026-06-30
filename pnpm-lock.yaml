@@ -107,6 +107,8 @@ importers:
 
   src/draft/chaos-experiment-orchestration-contract: {}
 
+  src/draft/chaos-resilience-tests-scope-acceptance: {}
+
   src/draft/choreographed-compensation-contract: {}
 
   src/draft/choreography-saga-engine-contract: {}
@@ -124,6 +126,8 @@ importers:
   src/draft/closure-builder-resource-handles-contract: {}
 
   src/draft/collection-coverage-gate-contract: {}
+
+  src/draft/compatibility-matrix-scope-contract: {}
 
   src/draft/compensation-escalation-contract: {}
 
@@ -263,6 +267,8 @@ importers:
   src/draft/end-user-authorization-policy-contract: {}
 
   src/draft/endpoint-monitor-operator-contract: {}
+
+  src/draft/entitlement-abuse-rate-limit-policy-contract: {}
 
   src/draft/entitlements-plan-limits-scope: {}
 
@@ -923,6 +929,8 @@ importers:
 
   src/draft/support-sla-channels-contract: {}
 
+  src/draft/support-workflow-scope-contract: {}
+
   src/draft/svid-auto-rotation-contract: {}
 
   src/draft/svid-cross-tenant-guard-contract: {}
@@ -964,6 +972,8 @@ importers:
   src/draft/training-data-poisoning-guard-contract: {}
 
   src/draft/training-engine-port-contract: {}
+
+  src/draft/troubleshooting-guides-scope-acceptance: {}
 
   src/draft/trust-tier-policy-contract: {}
 

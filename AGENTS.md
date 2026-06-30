@@ -116,7 +116,7 @@ All HoBo implementation work, including `src/draft/*` proof packages, must prese
 
 - Enforce every service boundary with PACT contracts. A boundary is not implemented until consumer/provider expectations, headers, payloads, and error envelopes are executable.
 - Define records, messages, data shapes, and domain objects in protobuf first. Generated or handwritten runtime types must derive from those protobuf definitions instead of inventing parallel interfaces.
-- Attach CUE constraints for every protobuf type and keep them with the protobuf contract or proof package.
+- Attach CUE constraints for every protobuf type and keep them with the protobuf contract or proof package. Do not create a repository-wide `contracts/data-models` catalog; each project/package that defines a CUE-constrained type owns its own local `data-models/` folder.
 - Parse, don't validate: do not pass broad primitive or DTO values after checking them. Introduce derived parsed types whose constructors apply protobuf and CUE constraints so invalid values are unrepresentable beyond the boundary.
 - Build flows on CQRS, event stores, materialized views, and actor models. Actors consume commands, emit events, and coordinate durable state; they do not mutate query read models directly.
 - Keep query surfaces event-driven: expose rx-style projections over materialized views, use cached snapshots for current reads, and persist historical snapshots in a read store.

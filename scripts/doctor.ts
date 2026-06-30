@@ -18,6 +18,6 @@ if (version("corepack")) ok("Corepack available"); else warn("Corepack not avail
 if (existsSync("pnpm-lock.yaml")) ok("pnpm-lock.yaml present"); else fail("pnpm-lock.yaml missing");
 if (existsSync("pnpm-workspace.yaml")) ok("pnpm-workspace.yaml present"); else fail("pnpm-workspace.yaml missing");
 if (existsSync("turbo.json")) ok("turbo.json present"); else fail("turbo.json missing");
-if (existsSync("contracts/data-models/data-models.proto") && existsSync("contracts/data-models/data-models.cue")) ok("data-model protobuf/CUE sources present"); else warn("data-model schema sources not found");
+if (existsSync("contracts/data-models")) fail("central contracts/data-models is forbidden; move CUE-backed data models into the owning project/package"); else ok("no central data-model catalog present");
 if (existsSync("AGENTS.md")) ok("root AGENTS.md present"); else fail("root AGENTS.md missing");
 process.exit(failed ? 1 : 0);

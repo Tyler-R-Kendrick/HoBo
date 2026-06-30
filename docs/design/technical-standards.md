@@ -38,7 +38,7 @@ The repo-level `pnpm run standards:check` gate runs locally, in the pre-commit h
 - `AGENTS.md` and this document must retain the canonical Protobuf, CUE, parse-don't-validate, and PACT guidance.
 - Implementation files under `src/`, `scripts/`, or `test/` may not use `.js`, `.mjs`, or `.cjs`; use `.ts` unless an ADR/proof note records why the file cannot be TypeScript. The standards gate also fails if any tracked `.js`, `.mjs`, or `.cjs` file remains in the repository.
 
-The repo-wide data-model catalog in `contracts/data-models/` is generated from tracked TypeScript data-model modules and gives each model a Protobuf message plus a CUE definition with source-path, package, domain, integration-boundary, and `cueAnnotated: true` invariants. Boundary-specific checks still belong in the relevant proof package: Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests should be implemented beside the contract they protect.
+Repository-wide data-model catalogs are forbidden. Each project/package that owns a CUE-constrained type must keep its own `data-models/` folder beside the protobuf contract or proof package that owns that type. Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests must be implemented beside the contract they protect, not through a central `contracts/data-models` bridge.
 
 ## Agent checklist
 

@@ -3403,6 +3403,19 @@ message PortabilitySwapEquivalentContractPortabilitySwapEquivalentDataModel {
   bool cue_annotated = 6;
 }
 
+message PostCoreCrossCuttingDeltaPatternPostCoreDeltaPatternDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.post-core-cross-cutting-delta-pattern.post-core-delta-pattern";
+  option (hobo.source_path) = "src/draft/post-core-cross-cutting-delta-pattern/src/post-core-delta-pattern.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#PostCoreCrossCuttingDeltaPatternPostCoreDeltaPatternDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message PreLaunchOutcomeContractPreLaunchOutcomeDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.pre-launch-outcome-contract.pre-launch-outcome";
   option (hobo.source_path) = "src/draft/pre-launch-outcome-contract/src/pre-launch-outcome.ts";

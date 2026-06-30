@@ -77,7 +77,10 @@ test("ctx.config accessors are generated only for declared keys", async () => {
 });
 
 test("type declarations prove declared keys callable and undeclared keys rejected", () => {
+  const repoRoot = path.resolve(packageRoot, "..", "..", "..");
+  const tscBin = path.join(repoRoot, "node_modules", "typescript", "bin", "tsc");
   const args = [
+    tscBin,
     "--noEmit",
     "--strict",
     "--skipLibCheck",
@@ -89,13 +92,10 @@ test("type declarations prove declared keys callable and undeclared keys rejecte
     "ES2022",
     path.join(packageRoot, "types", "config-surface.types.ts")
   ];
-  const npmExecArgs = ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...args];
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm";
-  const commandArgs = process.platform === "win32" ? ["/d", "/c", "npm.cmd", ...npmExecArgs] : npmExecArgs;
 
   execFileSync(
-    command,
-    commandArgs,
+    process.execPath,
+    args,
     { cwd: packageRoot, stdio: "pipe" }
   );
 });

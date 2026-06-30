@@ -16,9 +16,36 @@ function run(command: string, commandArgs: string[], options: { allowFailure?: b
   console.log(`\n▶ ${printable}`);
   const result = spawnSync(command, commandArgs, { stdio: "inherit", shell: false });
   if (result.status !== 0 && !options.allowFailure) {
+    if (isTurboWorkspaceTest(command, commandArgs) && runWorkspaceTestFallback(commandArgs) === 0) {
+      return 0;
+    }
     process.exit(result.status ?? 1);
   }
   return result.status ?? 0;
+}
+
+function isTurboWorkspaceTest(command: string, commandArgs: string[]) {
+  return command === "pnpm"
+    && commandArgs[0] === "exec"
+    && commandArgs[1] === "turbo"
+    && commandArgs[2] === "run"
+    && commandArgs[3] === "test";
+}
+
+function runWorkspaceTestFallback(commandArgs: string[]) {
+  const workspaces = commandArgs
+    .flatMap((arg, index) => arg === "--filter" ? [commandArgs[index + 1]] : [])
+    .filter((workspace): workspace is string => Boolean(workspace))
+    .map((workspace) => workspace.replace(/^\.\//u, ""));
+
+  if (workspaces.length === 0) return 1;
+
+  console.warn("Turbo workspace test runner failed before completion; falling back to direct workspace test scripts.");
+  for (const workspace of workspaces) {
+    const status = run("pnpm", ["--prefix", workspace, "test"]);
+    if (status !== 0) return status;
+  }
+  return 0;
 }
 
 function capture(command: string, commandArgs: string[]) {

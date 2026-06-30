@@ -4950,6 +4950,19 @@ message TrainingEnginePortContractTrainingEngineContractDataModel {
   bool cue_annotated = 6;
 }
 
+message TroubleshootingGuidesScopeAcceptanceTroubleshootingGuidesScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.troubleshooting-guides-scope-acceptance.troubleshooting-guides-scope";
+  option (hobo.source_path) = "src/draft/troubleshooting-guides-scope-acceptance/src/troubleshooting-guides-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#TroubleshootingGuidesScopeAcceptanceTroubleshootingGuidesScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message TrustTierPolicyContractTrustTierPolicyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.trust-tier-policy-contract.trust-tier-policy";
   option (hobo.source_path) = "src/draft/trust-tier-policy-contract/src/trust-tier-policy.ts";

@@ -35,6 +35,8 @@ importers:
 
   src/draft/admin-console-scope: {}
 
+  src/draft/admin-support-breakglass-boundaries: {}
+
   src/draft/adopt-in-place-contract: {}
 
   src/draft/ai-generation-launch-posture-contract: {}
@@ -64,6 +66,8 @@ importers:
   src/draft/backup-restore-scope-contract: {}
 
   src/draft/beta-pilot-feedback-contract: {}
+
+  src/draft/beta-pilot-release-candidate-evidence-contract: {}
 
   src/draft/billing-credits-scope-contract: {}
 

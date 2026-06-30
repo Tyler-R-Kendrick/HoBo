@@ -276,6 +276,8 @@ importers:
 
   src/draft/dogfood-yard-acceptance-contract: {}
 
+  src/draft/dogfood-yard-ga-handoff-evidence-contract: {}
+
   src/draft/dogfood-yard-m1-evidence-contract: {}
 
   src/draft/domain-cutover-saga-contract: {}

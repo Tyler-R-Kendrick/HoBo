@@ -605,6 +605,8 @@ importers:
 
   src/draft/launch-support-private-beta-evidence-contract: {}
 
+  src/draft/launch-support-release-candidate-evidence-contract: {}
+
   src/draft/legal-privacy-private-beta-evidence-contract: {}
 
   src/draft/legal-privacy-terms-readiness-contract: {}

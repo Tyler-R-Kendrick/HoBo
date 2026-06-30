@@ -143,3 +143,28 @@ into public SLA promises. M3/M4 follow-ups are limited to missing release-candid
 evidence and GA support handoff evidence. Support runtime services, ticket queues, status-page
 publication, live support operations, customer-data access, and commercial terms remain out of this
 branch.
+
+## M3 Release Candidate Evidence
+
+Source issue: HOBO-474.
+
+Executable proof lives in
+[`src/draft/launch-support-release-candidate-evidence-contract`](../../src/draft/launch-support-release-candidate-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-474-launch-support-release-candidate`](./proofs/hobo-474-launch-support-release-candidate/index.md).
+
+The M3 gate records seven support evidence items:
+
+- private beta support baseline from HOBO-467;
+- release-candidate support drill evidence owned by Launch Support;
+- incident-command handoff rehearsal owned by Operators/SRE;
+- customer-update redaction rehearsal owned by Public Status Page & Incident Communication;
+- security-sensitive support escalation route owned by Security Verification;
+- release-cutline support signoff owned by V1 Release Program & Cutline;
+- missing GA support handoff evidence owned by HOBO-481.
+
+The accepted M3 state keeps GA support commitments blocked until HOBO-481 records final handoff
+evidence. It carries manual release-candidate support drill and redaction rehearsal risks without
+creating support tooling, ticket automation, status-page publication, live customer operations,
+customer-data access, commercial support terms, customer-facing SLA guarantees, or GA support
+readiness claims.

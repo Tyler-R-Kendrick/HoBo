@@ -41,7 +41,7 @@ and the durable scope record at [upgrade-test-suite.md](../../upgrade-test-suite
 ## Gate Evidence
 
 - TypeScript proof: `pnpm --prefix src/draft/upgrade-test-suite-scope-contract test`.
-- Protobuf/CUE proof: `pnpm run contracts:data-models` regenerates and checks the indexed data model
+- Protobuf/CUE proof: `pnpm test:schema` checks repository schema validators; package-local data-model folders own data model
   contracts including `UpgradeTestSuiteScopeRecord`.
 - PACT proof: `architecture/pacts/upgrade_test_suite_scope.pact.json` pins the M0 scope acceptance
   consumer expectations.

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 type Mode = "worktree" | "staged";
@@ -20,7 +20,9 @@ Enforces HoBo's compile-time-first technical standards on changed files:
 - TypeScript toolchain is declared in package metadata.
 - New JavaScript-family implementation files are rejected in favor of .ts.
 - Canonical agent/design docs keep the Protobuf, CUE, parse-don't-validate,
-  and PACT guidance present.`);
+  and PACT guidance present.
+- Repository-wide data-model catalogs stay forbidden; CUE-backed data models
+  live beside the package/project that owns the type.`);
     process.exit(0);
   }
 }
@@ -140,23 +142,13 @@ if (newJavaScriptFiles.length > 0) {
   );
 }
 
-const packageManagerCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "pnpm";
-const packageManagerArgs =
-  process.platform === "win32"
-    ? ["/d", "/c", "pnpm.cmd", "run", "--silent", "contracts:data-models"]
-    : ["run", "--silent", "contracts:data-models"];
-const contractsResult = spawnSync(packageManagerCommand, packageManagerArgs, {
-  encoding: "utf8",
-  shell: false,
-});
-if (contractsResult.status !== 0) {
-  if (contractsResult.stdout) {
-    process.stderr.write(contractsResult.stdout);
-  }
-  if (contractsResult.stderr) {
-    process.stderr.write(contractsResult.stderr);
-  }
-  fail("data-model contracts are stale; run pnpm run contracts:data-models");
+if (existsSync("contracts/data-models")) {
+  fail("central contracts/data-models is forbidden; CUE-backed data models must live in the owning project/package data-models folder");
+}
+
+const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as { scripts?: Record<string, string> };
+if (packageJson.scripts?.["contracts:data-models"]) {
+  fail("package.json must not define contracts:data-models; do not regenerate a central data-model catalog");
 }
 
 if (failures.length > 0) {

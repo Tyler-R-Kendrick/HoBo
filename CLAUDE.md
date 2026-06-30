@@ -16,6 +16,6 @@ Install the binaries once with [`scripts/setup-agent-tools.sh`](scripts/setup-ag
 
 ## Working norms
 - This is a documentation repo: prefer editing the numbered design docs; keep cross-doc links valid (relative `.md` links).
-- Follow the HoBo implementation architecture rules in [`AGENTS.md`](AGENTS.md): PACT at service boundaries, protobuf plus CUE for records/messages/data/objects, parse-don't-validate derived types, and event-driven CQRS/actors/materialized views.
+- Follow the HoBo implementation architecture rules in [`AGENTS.md`](AGENTS.md): PACT at service boundaries, protobuf plus CUE for records/messages/data/objects, project-local `data-models/` folders for CUE-constrained types, parse-don't-validate derived types, and event-driven CQRS/actors/materialized views.
 - Run `npm run architecture:guard` for implementation-package changes; pre-commit runs the staged variant before the slower tests.
 - Conventional, scoped commits; branch `claude/charming-volta-lzlf0m`; changes land on PR #1.

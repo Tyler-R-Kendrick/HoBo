@@ -525,6 +525,8 @@ importers:
 
   src/draft/incident-aggregate-contract: {}
 
+  src/draft/incident-communications-scope-contract: {}
+
   src/draft/internal-ca-private-acme-contract: {}
 
   src/draft/internal-service-discovery-contract: {}
@@ -676,6 +678,8 @@ importers:
   src/draft/portability-report-contract: {}
 
   src/draft/portability-swap-equivalent-contract: {}
+
+  src/draft/post-core-cross-cutting-delta-pattern: {}
 
   src/draft/pre-launch-outcome-contract: {}
 
@@ -920,6 +924,8 @@ importers:
   src/draft/tax-currency-receipt-obligations-contract: {}
 
   src/draft/telemetry-envelope-contract: {}
+
+  src/draft/tenant-data-lifecycle-contract: {}
 
   src/draft/tenant-isolation-quotas-scope: {}
 

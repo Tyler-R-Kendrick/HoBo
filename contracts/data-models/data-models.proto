@@ -2636,6 +2636,19 @@ message IncidentAggregateContractIncidentAggregateDataModel {
   bool cue_annotated = 6;
 }
 
+message IncidentCommunicationsScopeContractIncidentCommunicationsScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.incident-communications-scope-contract.incident-communications-scope";
+  option (hobo.source_path) = "src/draft/incident-communications-scope-contract/src/incident-communications-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#IncidentCommunicationsScopeContractIncidentCommunicationsScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message InternalCaPrivateAcmeContractInternalCaPrivateAcmeDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.internal-ca-private-acme-contract.internal-ca-private-acme";
   option (hobo.source_path) = "src/draft/internal-ca-private-acme-contract/src/internal-ca-private-acme.ts";

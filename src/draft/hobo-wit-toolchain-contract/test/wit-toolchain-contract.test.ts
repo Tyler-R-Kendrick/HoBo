@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -17,6 +18,8 @@ import {
   validateToolchainLock,
   writeGeneratedBindings,
 } from "../src/wit-toolchain-contract.js";
+
+const requireFromPackage = createRequire(join(PACKAGE_ROOT, "package.json"));
 
 test("hobo:sdk WIT package skeleton validates without filling downstream interfaces", async () => {
   const source = await readWitSource();
@@ -102,31 +105,18 @@ test("trivial guest imports the generated hobo:sdk world and builds", async () =
     "--target",
     "ES2022",
   ];
-  const localTsc = join(
-    PACKAGE_ROOT,
-    "node_modules",
-    ".bin",
-    process.platform === "win32" ? "tsc.cmd" : "tsc",
-  );
-  const hasLocalTsc = existsSync(localTsc);
+  const localTsc = resolveLocalTsc();
   const command =
-    process.platform === "win32"
-      ? process.env.ComSpec ?? "cmd.exe"
-      : hasLocalTsc
-        ? localTsc
-        : "npm";
+    localTsc === undefined ? (process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm") : process.execPath;
 
   await withTempDir(async (outDir) => {
     const buildArgs = [...args, "--outDir", outDir, join(PACKAGE_ROOT, "fixtures", "trivial-guest.ts")];
     const npmExecArgs = ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...buildArgs];
-    const commandArgs =
-      process.platform === "win32"
-        ? hasLocalTsc
-          ? ["/d", "/c", localTsc, ...buildArgs]
-          : ["/d", "/c", "npm.cmd", ...npmExecArgs]
-        : hasLocalTsc
-          ? buildArgs
-          : npmExecArgs;
+    const commandArgs = localTsc
+      ? [localTsc, ...buildArgs]
+      : process.platform === "win32"
+        ? ["/d", "/c", "npm.cmd", ...npmExecArgs]
+        : npmExecArgs;
 
     execFileSync(command, commandArgs, { cwd: PACKAGE_ROOT, stdio: "pipe" });
   });
@@ -165,5 +155,13 @@ async function withTempDir(callback) {
     return await callback(dir);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+}
+
+function resolveLocalTsc() {
+  try {
+    return requireFromPackage.resolve("typescript/bin/tsc");
+  } catch {
+    return undefined;
   }
 }

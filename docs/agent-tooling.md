@@ -102,7 +102,7 @@ Agent-tooling changes count as repo behavior changes. Prefer cross-agent config 
 
 ## Fast local checks with Turborepo
 
-Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
+Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
 
 Use these commands when working locally or as an agent:
 
@@ -120,7 +120,7 @@ Research pass, 2026-06-29: Bun has the fastest headline installer and is worth r
 Chosen stack:
 
 - Package manager: `pnpm@10.33.4` via `packageManager` and `pnpm-lock.yaml`.
-- Task runner/cache: `turbo@2.9.18` via `pnpm exec turbo`. The pin stays below
+- Task runner/cache: `turbo@2.8.6` via `pnpm exec turbo`. The pin stays below
   `2.10.x` until the Windows platform package no longer imports an unshipped
   `ghostty-vt.dll`; local and pre-commit gates must run without hidden machine
   DLLs.

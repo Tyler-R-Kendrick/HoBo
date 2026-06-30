@@ -125,6 +125,8 @@ importers:
 
   src/draft/collection-coverage-gate-contract: {}
 
+  src/draft/compatibility-matrix-scope-contract: {}
+
   src/draft/compensation-escalation-contract: {}
 
   src/draft/component-host-adapter-certification-spike: {}

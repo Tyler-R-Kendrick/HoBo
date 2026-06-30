@@ -569,6 +569,19 @@ message CollectionCoverageGateContractCollectionCoverageGateDataModel {
   bool cue_annotated = 6;
 }
 
+message CompatibilityMatrixScopeContractCompatibilityMatrixScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.compatibility-matrix-scope-contract.compatibility-matrix-scope";
+  option (hobo.source_path) = "src/draft/compatibility-matrix-scope-contract/src/compatibility-matrix-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CompatibilityMatrixScopeContractCompatibilityMatrixScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message CompensationEscalationContractCompensationEscalationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.compensation-escalation-contract.compensation-escalation";
   option (hobo.source_path) = "src/draft/compensation-escalation-contract/src/compensation-escalation.ts";

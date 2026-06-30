@@ -21,8 +21,8 @@ time rather than passed downstream.
 
 ## Event Architecture
 
-The package's accepted cutline, M1 dogfood/alpha, M2 private-beta, and M3
-release-candidate records are read models behind a small event flow:
+The package's accepted cutline, M1 dogfood/alpha, M2 private-beta, M3
+release-candidate, and M4 GA handoff records are read models behind a small event flow:
 
 - **Command** — `v1CutlineEvidence.RecordRequested` asks the release-program
   owner aggregate to record or change an accepted gate.
@@ -34,7 +34,7 @@ release-candidate records are read models behind a small event flow:
 - **Event store** — accepted events are appended to the platform event store as
   the durable source of truth.
 - **Materialized view / projection** — a projection folds the event store into
-  the current M0/M1/M2/M3 cutline gate read model consumers query.
+  the current M0/M1/M2/M3/M4 cutline gate read model consumers query.
 - **Snapshot** — the accepted record is the snapshot of that projection.
 - **Read store** — downstream surfaces query that read store rather than the raw
   event log.

@@ -73,6 +73,8 @@ importers:
 
   src/draft/bootstrap-installer-scope-contract: {}
 
+  src/draft/bootstrap-launch-smoke-matrix-contract: {}
+
   src/draft/budget-quota-policy-contract: {}
 
   src/draft/build-dagger-provider-contract: {}

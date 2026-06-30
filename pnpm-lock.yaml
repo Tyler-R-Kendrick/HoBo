@@ -73,6 +73,8 @@ importers:
 
   src/draft/bootstrap-installer-scope-contract: {}
 
+  src/draft/bootstrap-launch-smoke-matrix-contract: {}
+
   src/draft/budget-quota-policy-contract: {}
 
   src/draft/build-dagger-provider-contract: {}
@@ -114,6 +116,8 @@ importers:
   src/draft/cli-credential-hardening-contract: {}
 
   src/draft/client-optimistic-update-contract: {}
+
+  src/draft/closure-builder-manifest-lowering-contract: {}
 
   src/draft/closure-builder-public-api-contract: {}
 

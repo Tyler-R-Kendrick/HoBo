@@ -64,6 +64,13 @@ hobo down --camp pr-123
 They do not mutate infrastructure. `up` always reruns the applicable gate before
 mutation, so a stale preflight result cannot authorize a deploy.
 
+Local resilience diagnostics are read-only projections too. The HOBO-520 proof
+command under `src/draft/resilience-semantics-annex` demonstrates the shape that
+`hobo dev`, `testRuntime`, or a later `inspect run` surface may render: retry
+attempts, policy denial, cancellation cleanup, and deadline escalation are read
+from replay-derived persisted facts, and stale in-memory snapshots are not an
+authoritative source.
+
 ## Retired or Rejected Commands
 
 | Command | Replacement | Decision |

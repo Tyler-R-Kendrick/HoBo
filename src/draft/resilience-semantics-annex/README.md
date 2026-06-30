@@ -39,6 +39,10 @@ into executable facts for the later SDK conformance lane.
   memory.
 - Post-terminal duplicates are ignored or refused without a second side effect.
 - Child work that outlives its parent requires an explicit spawn contract.
+- The HOBO-520 local diagnostics command renders replay-derived outcomes for a
+  transient retry, policy denial, caller cancellation, and deadline expiry
+  without implying retry after denial or treating process memory as
+  authoritative.
 
 ## Report Shape
 
@@ -48,6 +52,8 @@ The public runner emits:
 - `existingSemanticsLane`: references HOBO-31 idiom semantics vectors.
 - `resilienceSemanticsLane`: the HOBO-516 retry, denial, terminal, cancellation,
   deadline, cleanup, and replay vectors.
+- `localDiagnostics`: the HOBO-520 command output and report shape that a
+  developer can run locally.
 - `unsupportedBehavior`: explicit scope guards for helper claims with no vector.
 
 Stable case names:
@@ -100,10 +106,32 @@ statechart runtime, production `@hobo/conformance` integration, public SDK
 syntax, provider implementation, or runtime scheduler behavior. It is only the
 branch-sized executable annex contract that later issues can consume.
 
+## Local Diagnostics
+
+HOBO-520 adds one local command over the same persisted fixtures:
+
+```powershell
+npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics
+```
+
+The command prints the exact scenario outcome, terminal causes, retry attempts,
+cleanup facts, escalation facts, and source label:
+
+- `transient-retry` shows the retry attempt chain and provider failure causes.
+- `policy-denied` shows `policy.Decided` as terminal and has no retry wording.
+- `caller-cancelled` shows caller cancellation plus cleanup facts.
+- `deadline-expired` shows deadline expiration plus workflow escalation and no
+  fresh post-terminal effect attempt.
+
+What this does not guarantee: it is not a hosted inspector, polished UI,
+production observability pipeline, scheduler, or SDK dependency on Effect or
+XState. It is a replay-derived local diagnostic proof over persisted facts.
+
 ## Verification
 
 ```powershell
 npm.cmd --prefix src\draft\resilience-semantics-annex test
+npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics
 ```
 
 ## Architecture Evidence

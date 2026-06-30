@@ -149,6 +149,8 @@ importers:
 
   src/draft/closure-builder-tooling-contract: {}
 
+  src/draft/closure-builder-v1-finalization-contract: {}
+
   src/draft/collection-coverage-gate-contract: {}
 
   src/draft/compatibility-matrix-scope-contract: {}

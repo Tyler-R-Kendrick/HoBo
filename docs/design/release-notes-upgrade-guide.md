@@ -54,6 +54,31 @@ Missing evidence is classified before any release claim is written:
 - Do not invent compatibility guarantees without supporting tests.
 - Do not resolve release blockers in this issue; the outline only routes missing evidence.
 
+## M3 Release Candidate Evidence
+
+Source issue: HOBO-473.
+
+Executable proof lives in
+[`../../src/draft/v1-release-notes-upgrade-guide-release-candidate-evidence-contract`](../../src/draft/v1-release-notes-upgrade-guide-release-candidate-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-473-release-notes-release-candidate`](./proofs/hobo-473-release-notes-release-candidate/index.md).
+
+The M3 gate records release-note evidence for:
+
+- M0 outline baseline owned by V1 Release Notes & Upgrade Guide;
+- release-candidate cutline evidence owned by V1 Release Program & Cutline;
+- release-candidate notes draft evidence owned by V1 Release Notes & Upgrade Guide;
+- install-path smoke-map handoff owned by Bootstrap Installer;
+- upgrade and rollback evidence mapping owned by Upgrade & Migration Engine;
+- compatibility surface mapping owned by Compatibility Matrix;
+- support contact handoff owned by V1 Launch Support Desk & Escalation;
+- missing GA release-note handoff evidence owned by HOBO-480.
+
+The accepted M3 state keeps GA release-note and upgrade-guide handoff claims blocked until HOBO-480
+records final evidence. It carries draft copy and evidence-window risks without publishing final
+release notes, customer emails, docs-portal updates, compatibility guarantees, zero-downtime
+upgrade promises, support response-time promises, or GA release readiness claims.
+
 ## Proof
 
 Executable proof lives in

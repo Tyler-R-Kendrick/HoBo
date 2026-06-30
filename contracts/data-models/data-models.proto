@@ -1089,6 +1089,19 @@ message DenyCeilingAlgebraPocDenyCeilingAlgebraDataModel {
   bool cue_annotated = 6;
 }
 
+message DeploymentDashboardTopologyScopeContractDeploymentDashboardTopologyScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.deployment-dashboard-topology-scope-contract.deployment-dashboard-topology-scope";
+  option (hobo.source_path) = "src/draft/deployment-dashboard-topology-scope-contract/src/deployment-dashboard-topology-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#DeploymentDashboardTopologyScopeContractDeploymentDashboardTopologyScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message DeploymentPlanIrContractDeploymentPlanIrDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.deployment-plan-ir-contract.deployment-plan-ir";
   option (hobo.source_path) = "src/draft/deployment-plan-ir-contract/src/deployment-plan-ir.ts";

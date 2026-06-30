@@ -220,6 +220,8 @@ importers:
 
   src/draft/deny-ceiling-algebra-poc: {}
 
+  src/draft/deployment-dashboard-topology-scope-contract: {}
+
   src/draft/deployment-plan-ir-contract: {}
 
   src/draft/deployment-strategy-saga-templates-contract: {}

@@ -2,15 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  REQUIRED_GA_HANDOFF_EVIDENCE_IDS,
   REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS,
   REQUIRED_READINESS_DOMAINS,
   assertV1Cutline,
   validateDogfoodAlphaEvidence,
+  validateGaHandoffEvidence,
   validatePrivateBetaEvidence,
   validateReleaseCandidateEvidence,
   validateV1Cutline,
   v1Cutline,
   v1CutlineDogfoodAlphaEvidence,
+  v1CutlineGaHandoffEvidence,
   v1CutlinePrivateBetaEvidence,
   v1CutlineReleaseCandidateEvidence
 } from "../src/v1-cutline.js";
@@ -199,4 +202,53 @@ test("M3 release candidate guard rejects pending evidence, speculative follow-up
   assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
   assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
   assert.match(result.errors.join("\n"), /GA claims require GA handoff evidence/);
+});
+
+test("M4 GA handoff evidence records owners, blockers, risks, dependencies, allowed follow-ups, and parent sync", () => {
+  const result = validateGaHandoffEvidence(v1CutlineGaHandoffEvidence);
+
+  assert.equal(result.ok, true, result.errors.join("\n"));
+  assert.equal(v1CutlineGaHandoffEvidence.issue, "HOBO-475");
+  assert.equal(v1CutlineGaHandoffEvidence.phase, "M4");
+  assert.equal(v1CutlineGaHandoffEvidence.milestoneGate, "M4 GA handoff");
+  assert.deepEqual(
+    v1CutlineGaHandoffEvidence.requiredEvidence.map((item) => item.id).sort(),
+    [...REQUIRED_GA_HANDOFF_EVIDENCE_IDS].sort(),
+  );
+  assert.ok(v1CutlineGaHandoffEvidence.requiredEvidence.every((item) => item.ownerProject));
+  assert.ok(v1CutlineGaHandoffEvidence.blockers.length > 0);
+  assert.ok(v1CutlineGaHandoffEvidence.acceptedRisks.length > 0);
+  assert.ok(v1CutlineGaHandoffEvidence.crossProjectDependencies.length > 0);
+  assert.ok(
+    v1CutlineGaHandoffEvidence.followUpIssues.every((item) =>
+      v1CutlineGaHandoffEvidence.missingEvidence.some((missing) => missing.id === item.missingEvidenceId)
+    )
+  );
+  assert.equal(v1CutlineGaHandoffEvidence.parentInitiativeSync.statusUpdated, true);
+});
+
+test("M4 GA handoff guard rejects pending evidence, speculative follow-ups, unsynced risk, and unsupported GA publication", () => {
+  const invalid = structuredClone(v1CutlineGaHandoffEvidence);
+  invalid.requiredEvidence.find((item) => item.id === "ga-go-no-go").status = "pending";
+  invalid.followUpIssues.push({
+    id: "duplicate-dashboard-follow-up",
+    ownerProject: "V1 Readiness Dashboard",
+    missingEvidenceId: "cutline-baseline",
+    allowedReason: "Create dashboard work even though cutline baseline evidence is accepted"
+  });
+  invalid.parentInitiativeSync.statusUpdated = false;
+  invalid.publicClaimGuards.push({
+    id: "ga-ready-with-open-handoffs",
+    claim: "GA is ready while Dogfood Yard and Beta Pilot M4 handoffs remain open.",
+    evidenceId: "ga-go-no-go",
+    disposition: "publish"
+  });
+
+  const result = validateGaHandoffEvidence(invalid);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /ga-go-no-go must be accepted/);
+  assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
+  assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
+  assert.match(result.errors.join("\n"), /GA publication requires every M4 handoff dependency to be closed/);
 });

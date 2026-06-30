@@ -32,6 +32,18 @@ export const REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS = [
   "release-notes-readiness"
 ];
 
+export const REQUIRED_GA_HANDOFF_EVIDENCE_IDS = [
+  "cutline-baseline",
+  "ga-go-no-go",
+  "signed-launch-checklist",
+  "support-handoff",
+  "legal-privacy-posture",
+  "blocker-delta",
+  "accepted-risk-register",
+  "cross-project-handoff",
+  "readiness-dashboard-refresh"
+];
+
 export const v1Cutline = {
   schema: "hobo.v1.cutline/2026-06-29",
   issue: "HOBO-401",
@@ -645,6 +657,195 @@ export const v1CutlineReleaseCandidateEvidence = {
   ]
 };
 
+export const v1CutlineGaHandoffEvidence = {
+  schema: "hobo.v1.cutline.m4-ga-handoff/2026-06-30",
+  issue: "HOBO-475",
+  parentIssue: "HOBO-401",
+  phase: "M4",
+  milestoneGate: "M4 GA handoff",
+  decisionStatus: "ga-handoff-evidence-accepted-with-dependent-m4-blockers",
+  requiredEvidence: [
+    {
+      id: "cutline-baseline",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "src/draft/v1-cutline-contract",
+      proves: "The accepted M0 cutline and M1-M3 release-program gates form the GA handoff baseline.",
+      status: "accepted"
+    },
+    {
+      id: "ga-go-no-go",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md#gate-workflow",
+      proves: "GA decisions consume signed launch checklist, support handoff, legal/privacy posture, blocker delta, and evidence links.",
+      status: "accepted"
+    },
+    {
+      id: "signed-launch-checklist",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/v1-readiness-dashboard.md#required-fields",
+      proves: "Release readiness fields name owners, evidence links, blockers, accepted risks, and last verification state before a GA decision.",
+      status: "accepted"
+    },
+    {
+      id: "support-handoff",
+      ownerProject: "V1 Launch Support Desk & Escalation",
+      evidenceSource: "docs/design/support-sla-channels.md#support-sla-language",
+      proves: "Support handoff language, severity routing, launch-room limits, and release-cutline escalation remain owner-scoped.",
+      status: "accepted"
+    },
+    {
+      id: "legal-privacy-posture",
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      evidenceSource: "docs/design/proofs/hobo-478-legal-privacy-ga-handoff/index.md",
+      proves: "Legal/privacy GA handoff evidence is accepted without drafting legal text or expanding compliance claims.",
+      status: "accepted"
+    },
+    {
+      id: "blocker-delta",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/launch-blocker-taxonomy.md",
+      proves: "GA blockers, high-risk non-blockers, launch notes, and post-GA follow-ups are classified without waiving gates.",
+      status: "accepted"
+    },
+    {
+      id: "accepted-risk-register",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md#risk-acceptance-rules",
+      proves: "Accepted GA risks carry owner, mitigation, launch note or follow-up, revisit date, and supporting evidence.",
+      status: "accepted"
+    },
+    {
+      id: "cross-project-handoff",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/traceability.md",
+      proves: "Release notes, support, legal/privacy, dogfood operations, launch-site messaging, and beta-pilot owner lanes stay reflected in the cutline.",
+      status: "accepted"
+    },
+    {
+      id: "readiness-dashboard-refresh",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/v1-readiness-dashboard.md#source-of-truth-rules",
+      proves: "Readiness dashboard status fails closed on missing evidence, unknown blockers, absent owners, or stale verification.",
+      status: "accepted"
+    }
+  ],
+  blockers: [
+    {
+      id: "open-dogfood-ga-handoff",
+      category: "launch-blocker",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      sourceEvidenceId: "cross-project-handoff",
+      disposition: "HOBO-476 remains the visible M4 Dogfood Yard and Hosted Operations GA handoff blocker before public GA claims can publish.",
+      launchRisk: "high"
+    },
+    {
+      id: "open-beta-pilot-ga-handoff",
+      category: "launch-blocker",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      sourceEvidenceId: "cross-project-handoff",
+      disposition: "HOBO-477 remains the visible M4 Beta Pilot and Feedback Loop GA handoff blocker before public GA claims can publish.",
+      launchRisk: "high"
+    },
+    {
+      id: "ga-public-claim-held",
+      category: "launch-note",
+      ownerProject: "V1 Release Program & Cutline",
+      sourceEvidenceId: "ga-go-no-go",
+      disposition: "The release-program GA record can be accepted, but customer-facing GA publication stays held until dependent M4 owner handoffs close.",
+      launchRisk: "medium"
+    }
+  ],
+  acceptedRisks: [
+    {
+      id: "release-program-ga-record-with-dependent-blockers",
+      ownerRole: "release-owner",
+      mitigation: "Keep the parent readiness status and launch messaging conditional on HOBO-476 and HOBO-477 until their owner evidence is accepted.",
+      followUpOrLaunchNote: "Readiness dashboard and release notes must show Dogfood Yard and Beta Pilot M4 handoffs as open launch blockers.",
+      revisitDate: "2026-09-30",
+      evidenceId: "accepted-risk-register"
+    }
+  ],
+  crossProjectDependencies: [
+    {
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Hosted operations GA evidence blocks public operational readiness claims until HOBO-476 lands."
+    },
+    {
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Beta feedback GA evidence blocks broad customer-readiness claims until HOBO-477 lands."
+    },
+    {
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      consumesEvidenceId: "legal-privacy-posture",
+      cutlineImpact: "Legal/privacy owner evidence may be consumed only as accepted posture, not as legal text or expanded compliance claims."
+    },
+    {
+      ownerProject: "V1 Launch Support Desk & Escalation",
+      consumesEvidenceId: "support-handoff",
+      cutlineImpact: "Support handoff language constrains launch-room, severity, and customer communication commitments."
+    },
+    {
+      ownerProject: "V1 Release Notes & Upgrade Guide",
+      consumesEvidenceId: "ga-go-no-go",
+      cutlineImpact: "Release notes must list open M4 owner handoffs and cannot imply GA readiness while blockers remain."
+    },
+    {
+      ownerProject: "V1 Launch Site, Messaging & Demo Assets",
+      consumesEvidenceId: "readiness-dashboard-refresh",
+      cutlineImpact: "Launch-site claims consume readiness-dashboard state and stay held when blockers, missing evidence, or stale verification are red."
+    }
+  ],
+  missingEvidence: [
+    {
+      id: "dogfood-yard-ga-handoff",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      reason: "Dogfood Yard and hosted operations M4 handoff evidence is a separate visible Backlog issue.",
+      launchDisposition: "existing-follow-up"
+    },
+    {
+      id: "beta-pilot-ga-handoff",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      reason: "Beta pilot and feedback-loop M4 handoff evidence is a separate visible Backlog issue.",
+      launchDisposition: "existing-follow-up"
+    }
+  ],
+  followUpIssues: [
+    {
+      id: "HOBO-476",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      missingEvidenceId: "dogfood-yard-ga-handoff",
+      allowedReason: "Existing M4 Backlog issue owns Dogfood Yard and Hosted Operations GA handoff evidence."
+    },
+    {
+      id: "HOBO-477",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      missingEvidenceId: "beta-pilot-ga-handoff",
+      allowedReason: "Existing M4 Backlog issue owns Beta Pilot and Feedback Loop GA handoff evidence."
+    }
+  ],
+  parentInitiativeSync: {
+    initiative: "HoBo v1 Release Readiness",
+    launchRiskChanged: true,
+    statusUpdated: true,
+    statusUpdateReason: "M4 release-program GA handoff evidence is accepted with Dogfood Yard and Beta Pilot handoffs still recorded as visible launch blockers."
+  },
+  scopeOut: [
+    "Do not implement release automation, approval UI, runtime launch gates, support tooling, customer-facing release notes, or legal text in this proof.",
+    "Do not publish public GA or general availability claims while HOBO-476 or HOBO-477 remain open.",
+    "Do not create new follow-up execution work unless the record names missing evidence and an owner lane."
+  ],
+  publicClaimGuards: [
+    {
+      id: "ga-held-until-owner-handoffs-close",
+      claim: "GA publication waits for Dogfood Yard and Beta Pilot M4 handoff evidence.",
+      evidenceId: "ga-go-no-go",
+      disposition: "hold"
+    }
+  ]
+};
+
 export function validateV1Cutline(record) {
   const errors = [];
 
@@ -748,6 +949,33 @@ export function validateReleaseCandidateEvidence(record) {
     }
     if (guard.disposition === "publish" && /\bGA\b|\bgeneral availability\b/i.test(guard.claim)) {
       errors.push(`${guard.id}: GA claims require GA handoff evidence`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateGaHandoffEvidence(record) {
+  const result = validateReleaseGateEvidence(record, {
+    recordName: "GA handoff evidence record",
+    issue: "HOBO-475",
+    phase: "M4",
+    milestoneGate: "M4 GA handoff",
+    requiredEvidenceIds: REQUIRED_GA_HANDOFF_EVIDENCE_IDS,
+    requiredEvidenceLabel: "M4",
+    gateName: "M4 GA handoff"
+  });
+  const errors = [...result.errors];
+
+  for (const guard of record?.publicClaimGuards ?? []) {
+    if (!guard.id || !guard.claim || !guard.evidenceId || !guard.disposition) {
+      errors.push(`${guard.id ?? "<missing>"} public claim guard must name id, claim, evidenceId, and disposition`);
+      continue;
+    }
+    const hasOpenHandoffDependency = (record.missingEvidence?.length ?? 0) > 0
+      || (record.blockers ?? []).some((blocker) => blocker.category === "launch-blocker");
+    if (guard.disposition === "publish" && /\bGA\b|\bgeneral availability\b/i.test(guard.claim) && hasOpenHandoffDependency) {
+      errors.push(`${guard.id}: GA publication requires every M4 handoff dependency to be closed`);
     }
   }
 

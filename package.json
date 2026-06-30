@@ -59,5 +59,18 @@
   "engines": {
     "node": ">=20.20.0"
   },
+  "pnpm": {
+    "supportedArchitectures": {
+      "os": [
+        "win32",
+        "current"
+      ],
+      "cpu": [
+        "arm64",
+        "x64",
+        "current"
+      ]
+    }
+  },
   "packageManager": "pnpm@10.33.4"
 }

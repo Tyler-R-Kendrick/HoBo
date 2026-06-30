@@ -1,9 +1,3 @@
----
-type: Reference
-title: "HOBO-476 Dogfood Yard GA Handoff Proof"
-tags: [hobo, proof]
----
-
 # HOBO-476 Dogfood Yard GA Handoff Proof
 
 This proof summarizes the executable M4 GA handoff contract in

@@ -1,10 +1,3 @@
----
-type: Reference
-title: "HOBO-480 Release Notes GA Handoff Evidence"
-description: "Source issue: HOBO-480."
-tags: [hobo, design, proof]
----
-
 # HOBO-480 Release Notes GA Handoff Evidence
 
 HOBO-480 is proven by the focused M4 contract at

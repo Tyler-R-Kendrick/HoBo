@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-531 Closure Builder V1 Finalization Proof"
+description: "Proof note for the accepted closure-builder v1 public API finalization gate."
+tags: [hobo, proof]
+---
+
 # HOBO-531 Closure Builder V1 Finalization Proof
 
 HOBO-531 closes the parent closure-builder `@hobo/bindles` v1 API item after

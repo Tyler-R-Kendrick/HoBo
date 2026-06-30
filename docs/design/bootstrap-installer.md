@@ -13,6 +13,10 @@ Executable proof lives in
 [`src/draft/bootstrap-installer-scope-contract`](../../src/draft/bootstrap-installer-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-428-bootstrap-installer`](./proofs/hobo-428-bootstrap-installer/README.md).
+Launch smoke matrix proof lives in
+[`src/draft/bootstrap-launch-smoke-matrix-contract`](../../src/draft/bootstrap-launch-smoke-matrix-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-501-bootstrap-launch-smoke-matrix`](./proofs/hobo-501-bootstrap-launch-smoke-matrix/README.md).
 
 ## M0 Acceptance Record
 
@@ -128,6 +132,19 @@ live services.
 | Failure recovery and uninstall boundary | DevOps operator | Failure/recovery boundary section | Reference fixture | Failed install, retry, recovery, and cleanup states have named evidence and remain separate from implementation. |
 | Support troubleshooting handoff | Support engineer | Owning-initiative boundary table | Support handoff | Support can route bootstrap failures with setup-stage diagnostics and unsupported-state labels. |
 | Security secret-handling review | Security/compliance reviewer | Security boundary record | Security review | M1 proof must document no secret persistence, no live environment scan, and no unaudited seed credential path. |
+
+## HOBO-501 Launch Smoke Matrix Proof
+
+HOBO-501 accepts the launch smoke matrix as executable M1 evidence for this design record. The
+matrix binds each SaaS, self-host, and local/dev bootstrap path to preflight, auth seed, first
+project, first deploy, failure recovery, and cleanup/uninstall boundary stages. Each stage names
+fixture evidence, mocked boundary ownership, unsupported states, and result ids that feed release
+notes, troubleshooting, and support handoff inputs.
+
+The proof remains a contract-only surface. It rejects production installer scripts, live cloud
+provisioning, production auth, real deploy execution, secret persistence, customer environment
+scans, and uninstall cleanup implementation so launch smoke evidence cannot silently expand into
+production installer runtime.
 
 ## Follow-Up Gate
 

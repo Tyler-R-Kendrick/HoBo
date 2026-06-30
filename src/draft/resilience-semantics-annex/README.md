@@ -1,8 +1,8 @@
 # Resilience Semantics Annex POC
 
-Independent POC for HOBO-516. It turns the DX SDK resilience semantics matrix
-from `docs/design/dx-sdk-resilience-semantics.md` into executable facts for the
-later SDK conformance lane.
+Independent POC for HOBO-516, extended by HOBO-518. It turns the DX SDK
+resilience semantics matrix from `docs/design/dx-sdk-resilience-semantics.md`
+into executable facts for the later SDK conformance lane.
 
 ## Requirements Source
 
@@ -32,6 +32,13 @@ later SDK conformance lane.
   fresh command attempt occurs.
 - Replay-derived inspection reconstructs terminal state without re-running
   effects or incrementing counters.
+- Lifecycle transition tables reject impossible state/event pairs with a stable
+  failure code.
+- Replay hydration reconstructs lifecycle state from persisted transition facts.
+- Inspection snapshots are derived from persisted lifecycle events, not process
+  memory.
+- Post-terminal duplicates are ignored or refused without a second side effect.
+- Child work that outlives its parent requires an explicit spawn contract.
 
 ## Report Shape
 
@@ -52,6 +59,11 @@ Stable case names:
 - `deadline-escalates-from-state`
 - `cleanup-after-interruption`
 - `replay-no-effect-rerun`
+- `lifecycle-transition-table`
+- `lifecycle-replay-hydration`
+- `lifecycle-event-derived-inspection`
+- `terminal-duplicate-no-second-side-effect`
+- `child-lifecycle-requires-spawn-contract`
 
 ## Adversarial Proof
 
@@ -64,6 +76,22 @@ Deliberately bad fixtures fail with stable codes:
 - `resilience.cleanup_missing`
 - `resilience.replay_reran_effect`
 - `resilience.retry_seed_missing`
+- `lifecycle.illegal_transition`
+- `lifecycle.snapshot_without_causative_event`
+- `lifecycle.terminal_duplicate_side_effect`
+- `lifecycle.child_outlived_parent`
+
+## Lifecycle Convention Boundary
+
+Use a lifecycle transition table when an SDK-visible actor, workflow, saga, or
+runbook-like unit has meaningful impossible states, replay-derived inspection,
+or parent/child lifetime obligations. A simple state enum is enough when a value
+is display-only, has no illegal transition matrix, and does not drive cleanup,
+retry, child work, or operator escalation behavior.
+
+The table records state changes as `actor.StateAppended` facts and derives
+inspection from those facts. It is not a generic statechart interpreter and does
+not add XState, Effect, or any runtime scheduler dependency.
 
 ## Scope Boundary
 

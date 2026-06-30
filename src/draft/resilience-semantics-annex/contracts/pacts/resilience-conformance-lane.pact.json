@@ -50,6 +50,36 @@
         "status": 200,
         "body": { "name": "replay-no-effect-rerun", "status": "passed" }
       }
+    },
+    {
+      "description": "lifecycle transition tables reject impossible transitions",
+      "providerStates": [
+        { "name": "lifecycle-transition-table fixture is published" }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/resilience/case",
+        "body": { "name": "lifecycle-transition-table" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "name": "lifecycle-transition-table", "status": "passed" }
+      }
+    },
+    {
+      "description": "child work that outlives a parent carries an explicit spawn contract",
+      "providerStates": [
+        { "name": "child-lifecycle-requires-spawn-contract fixture is published" }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/resilience/case",
+        "body": { "name": "child-lifecycle-requires-spawn-contract" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "name": "child-lifecycle-requires-spawn-contract", "status": "passed" }
+      }
     }
   ],
   "metadata": { "pactSpecification": { "version": "3.0.0" } }

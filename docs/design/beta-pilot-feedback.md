@@ -61,6 +61,16 @@ Beta evidence can support release-candidate promotion only when:
 - required feedback evidence is attached or explicitly accepted as a limitation;
 - unresolved high-risk non-blockers have owner-approved launch notes or exceptions.
 
+## M3 Release Candidate Evidence
+
+HOBO-470 records the M3 release-candidate evidence gate. The gate lists owner-mapped evidence,
+blockers, accepted risks, cross-project cutline dependencies, and follow-up work only where evidence
+is missing. It keeps private-beta evidence separate from GA readiness: GA claims remain blocked until
+the M4 handoff issue records GA evidence.
+
+Executable proof lives in
+[`../../src/draft/beta-pilot-release-candidate-evidence-contract`](../../src/draft/beta-pilot-release-candidate-evidence-contract/README.md).
+
 ## Scope Boundaries
 
 This record does not onboard beta customers, implement support tooling, create

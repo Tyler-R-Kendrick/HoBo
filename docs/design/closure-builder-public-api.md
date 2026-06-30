@@ -7,7 +7,7 @@ tags: [hobo, design]
 
 # Closure Builder Public API
 
-Source issues: HOBO-532, HOBO-533, HOBO-534, and HOBO-535. This record is the v1 public contract for
+Source issues: HOBO-532, HOBO-533, HOBO-534, HOBO-535, and HOBO-538. This record is the v1 public contract for
 explicit Bindle authoring in `@hobo/bindles`. It replaces pre-release
 factory-object assembly examples with a closure builder that has one vocabulary
 for agents, docs, and downstream implementation slices.
@@ -37,16 +37,22 @@ export default bindle("shop", (b) => {
   are aliases for authoring, generated types, and downstream examples only.
 - Generated identity is surfaced separately from aliases in diagnostics and
   physical naming seeds derive from the generated ID, not the local alias.
+- Ambiguous same-kind insertions preserve existing generated IDs only through a
+  collector-owned identity ledger artifact. The ledger maps kind occurrences to
+  HoBo-generated IDs, records `collector-proposes-review-accepts` as its update
+  flow, and crosses code review before downstream lowering consumes it.
 - `dependsOn()` is the only v1 relationship verb and records a manifest-lowering
   relationship between handles.
 
 ## Scope
 
 This contract pins public API vocabulary, package ownership, relationship
-spelling, app-host boundary language, generated-identity separation, and the
-first manifest-lowering proof for downstream HOBO-533 through HOBO-537 work.
+spelling, app-host boundary language, generated-identity separation, identity
+ledger review artifacts, and the first manifest-lowering proof for downstream
+HOBO-533 through HOBO-537 work.
 
-Out of scope: runtime app-host behavior, provider resolution, production
+Out of scope: runtime app-host behavior, provider resolution, public
+resource-name factory arguments, alias-derived physical names, production
 codegen, collection coverage, and end-to-end author flow proof.
 
 ## Proof
@@ -60,8 +66,9 @@ The resource-handle proof lives in
 [`../../src/draft/closure-builder-resource-handles-contract`](../../src/draft/closure-builder-resource-handles-contract/README.md).
 It proves anonymous handle creation, inert workload descriptors, invalid
 dependency refusal, `dependsOn()` relationship emission, and inert provider
-annotations. The same proof now covers HOBO-534 generated-ID stability and alias
-separation diagnostics.
+annotations. The same proof now covers HOBO-534 generated-ID stability, alias
+separation diagnostics, and the HOBO-538 collector-owned identity ledger for
+same-kind insertion stability.
 
 The manifest-lowering proof lives in
 [`../../src/draft/closure-builder-manifest-lowering-contract`](../../src/draft/closure-builder-manifest-lowering-contract/README.md).

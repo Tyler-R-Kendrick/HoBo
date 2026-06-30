@@ -115,6 +115,8 @@ importers:
 
   src/draft/client-optimistic-update-contract: {}
 
+  src/draft/closure-builder-manifest-lowering-contract: {}
+
   src/draft/closure-builder-public-api-contract: {}
 
   src/draft/closure-builder-resource-handles-contract: {}
@@ -919,6 +921,8 @@ importers:
 
   src/draft/support-sla-channels-contract: {}
 
+  src/draft/support-workflow-scope-contract: {}
+
   src/draft/svid-auto-rotation-contract: {}
 
   src/draft/svid-cross-tenant-guard-contract: {}
@@ -972,6 +976,8 @@ importers:
   src/draft/usage-inferred-permissions-contract: {}
 
   src/draft/usage-metering-scope-contract: {}
+
+  src/draft/usage-to-invoice-reconciliation-contract: {}
 
   src/draft/v1-cutline-contract: {}
 

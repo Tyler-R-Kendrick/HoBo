@@ -53,7 +53,7 @@ Before committing a technical change, agents must verify:
 
 ## Performance-oriented local gates
 
-Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and pnpm-filtered `src/draft/*` package tests. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
+Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and pnpm-filtered `src/draft/*` package tests. The package-test lane uses Turborepo when the local native binary starts promptly and falls back to pnpm workspace filters when it does not. Root schema changes still run the repository consumer/provider contract lanes, but those heavy lanes run serially because they already batch Node test processes internally. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
 
 TypeScript proof code should use the repository-pinned latest stable TypeScript version. For experiments that need the Go-native TypeScript toolchain, the repository also pins `@typescript/native-preview`; keep proof packages on the shared TypeScript pin instead of adding older per-package compiler versions.
 

@@ -35,4 +35,5 @@ and the durable Dogfood Yard scope record at [dogfood-yard.md](../../dogfood-yar
 
 ```powershell
 pnpm.cmd --prefix src\draft\dogfood-yard-private-beta-evidence-contract test
+pnpm.cmd run contracts:data-models
 ```

@@ -1,9 +1,10 @@
 # Resilience Semantics Annex — Architecture Evidence
 
-This package is the HOBO-516 executable conformance annex. It carries the
-architecture evidence required by `scripts/check-architecture-guardrails.mjs`
-so the annex states, rather than implies, how its fixtures are parsed and how the
-resilience facts map onto the platform's event flow.
+This package is the HOBO-516 executable conformance annex, extended by HOBO-518
+for SDK-visible lifecycle transition tables. It carries the architecture
+evidence required by `scripts/check-architecture-guardrails.mjs` so the annex
+states, rather than implies, how its fixtures are parsed and how the resilience
+and lifecycle facts map onto the platform's event flow.
 
 ## Schema And Constraints
 
@@ -14,6 +15,10 @@ resilience facts map onto the platform's event flow.
 - The retry-plan schema carries a deterministic seed. HOBO-517 consumes that
   seed through the SDK resilience lane before an idiom layer can claim retry
   helper parity.
+- The lifecycle fact schema carries transition source/target states, causative
+  event names, replay-inspection sources, child identifiers, and explicit spawn
+  contracts so lifecycle fixtures remain protobuf-first rather than ad hoc
+  object snapshots.
 
 ## Parse, Don't Validate
 
@@ -29,15 +34,19 @@ so a malformed fixture is rejected at parse time, not silently passed downstream
 ## Event Architecture
 
 The annex is event-shaped: every fixture is an ordered fact (event) log, and the
-assertions describe how a resilient workflow must behave over that log.
+assertions describe how a resilient workflow or SDK-visible lifecycle must
+behave over that log.
 
 - **Command** — a caller `AttemptEffect` command drives the workflow whose
   resilience behavior the fixtures certify.
 - **Event** — each fact (`effect.Attempted`, `provider.Failed`, `retry.Scheduled`,
-  `caller.Cancelled`, `cleanup.Emitted`, `workflow.Terminal`) is a domain event in
-  the ordered log.
+  `caller.Cancelled`, `cleanup.Emitted`, `workflow.Terminal`,
+  `actor.StateAppended`, `inspection.StateSnapshot`, `child.Spawned`) is a
+  domain event in the ordered log.
 - **Actor** — the workflow actor owns retry, cancellation, deadline, and cleanup
-  decisions and reaches a single terminal state per scenario.
+  decisions and reaches a single terminal state per scenario. Lifecycle
+  transition-table fixtures model SDK-visible actors/workflows/sagas without
+  introducing a generic statechart interpreter.
 - **Event store** — the ordered fact list is the append-only event store the
   annex replays to evaluate each case.
 - **Materialized view / projection** — `runResilienceSemanticsAnnex` folds the
@@ -47,7 +56,8 @@ assertions describe how a resilient workflow must behave over that log.
 - **Read store** — the SDK conformance lane reads those case-result snapshots
   rather than re-deriving them from the raw fact log.
 
-The `replay-no-effect-rerun` case explicitly proves replay re-runs no effects, so
-the projection is a pure fold over the event store. No runtime SDK, provider, or
-event store is implemented here; the annex only fixes the resilience vocabulary
-and facts for the later conformance lane.
+The `replay-no-effect-rerun` and `lifecycle-replay-hydration` cases explicitly
+prove replay re-runs no effects and reconstructs state from persisted facts, so
+the projection is a pure fold over the event store. No runtime SDK, provider,
+statechart engine, or event store is implemented here; the annex only fixes the
+resilience and lifecycle vocabulary and facts for the later conformance lane.

@@ -5,7 +5,7 @@
 
 ## Index
 
-Each capability doc is one coherent decision area; some absorb more than one plan (the folded plan keeps its `#plan-NN` anchor in the host doc). Contract records pin public surfaces that cross multiple capability docs.
+Each capability doc is one coherent decision area; some absorb more than one plan (the folded plan keeps its `#plan-NN` anchor in the host doc). Contract records pin public surfaces that cross multiple capability docs. Post-core cross-cutting capability deltas get their own discoverable row here, plus a Linear owner, proof README, traceability row, and executable `src/draft/` proof instead of being folded into completed epics.
 
 | Doc | Covers | Plans |
 |---|---|---|

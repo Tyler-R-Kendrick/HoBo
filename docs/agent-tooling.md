@@ -17,6 +17,8 @@ Agents implementing HoBo code must follow the canonical architecture rules in [`
 
 The fail-fast check is `pnpm run architecture:guard` (`pnpm run architecture:guard:staged` in pre-commit). It scans changed `src/draft/*` implementation packages for PACT, protobuf, CUE, parse-don't-validate, and event-architecture evidence before the slower test and CI gates run.
 
+The full local test gate is `npm test`, backed by [`../scripts/run-tests.ts`](../scripts/run-tests.ts). It discovers tracked `*test.ts` and `*test.mjs` files, batches ordinary contract tests conservatively for speed, and isolates compile-heavy TypeScript consumer tests that are known to report grouped Node test-file wrapper failures on Windows even when their assertions pass individually. Keep those isolated entries unless the full pre-commit gate proves a grouped runner is stable; update the isolated list when adding contract tests that shell out to `tsc` or compile TypeScript consumers.
+
 ## The nine tools
 
 ### improve — `shadcn/improve` (MIT)

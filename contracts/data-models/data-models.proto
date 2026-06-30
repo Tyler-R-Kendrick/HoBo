@@ -1245,6 +1245,19 @@ message DnsValidationRebindingGuardContractDnsValidationRebindingGuardDataModel 
   bool cue_annotated = 6;
 }
 
+message DocsPortalScopeContractDocsPortalScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.docs-portal-scope-contract.docs-portal-scope";
+  option (hobo.source_path) = "src/draft/docs-portal-scope-contract/src/docs-portal-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#DocsPortalScopeContractDocsPortalScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message DocumentProjectionSinkContractDocumentProjectionSinkDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.document-projection-sink-contract.document-projection-sink";
   option (hobo.source_path) = "src/draft/document-projection-sink-contract/src/document-projection-sink.ts";

@@ -246,6 +246,8 @@ importers:
 
   src/draft/dns-validation-rebinding-guard-contract: {}
 
+  src/draft/docs-portal-scope-contract: {}
+
   src/draft/document-projection-sink-contract: {}
 
   src/draft/dogfood-yard-acceptance-contract: {}

@@ -439,6 +439,19 @@ message ChaosExperimentOrchestrationContractChaosExperimentOrchestrationDataMode
   bool cue_annotated = 6;
 }
 
+message ChaosResilienceTestsScopeAcceptanceChaosResilienceTestsScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.chaos-resilience-tests-scope-acceptance.chaos-resilience-tests-scope";
+  option (hobo.source_path) = "src/draft/chaos-resilience-tests-scope-acceptance/src/chaos-resilience-tests-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ChaosResilienceTestsScopeAcceptanceChaosResilienceTestsScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ChoreographedCompensationContractChoreographedCompensationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.choreographed-compensation-contract.choreographed-compensation";
   option (hobo.source_path) = "src/draft/choreographed-compensation-contract/src/choreographed-compensation.ts";

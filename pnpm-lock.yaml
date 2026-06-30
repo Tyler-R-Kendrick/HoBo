@@ -59,6 +59,8 @@ importers:
 
   src/draft/availability-view-contract: {}
 
+  src/draft/backup-restore-launch-drill-contract: {}
+
   src/draft/backup-restore-scope-contract: {}
 
   src/draft/beta-pilot-feedback-contract: {}
@@ -1000,6 +1002,8 @@ importers:
   src/draft/usage-inferred-permissions-contract: {}
 
   src/draft/usage-metering-scope-contract: {}
+
+  src/draft/v1-beta-pilot-private-beta-evidence: {}
 
   src/draft/v1-cutline-contract: {}
 

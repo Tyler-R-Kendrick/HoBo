@@ -68,3 +68,9 @@ The manifest-lowering proof lives in
 It proves captured closure-builder facts lower to `hobo:sdk` calls and
 `hobo.manifest/v1` while keeping aliases out of deployment identity and leaving
 same-kind identity-ledger behavior to HOBO-538.
+
+The end-to-end author-flow proof lives in
+[`../../src/draft/closure-builder-author-flow-contract`](../../src/draft/closure-builder-author-flow-contract/README.md).
+It names the v1 closure-builder corpus consumed by SDK conformance, keeps app-host code outside
+Bindle assembly, proves cache/API/queue authoring, proves `dependsOn()` manifest edges, and
+type-checks generated aliases without making aliases deployment identity.

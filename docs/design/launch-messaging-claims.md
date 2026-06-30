@@ -137,6 +137,21 @@ release-candidate evidence into GA/public launch claims.
 | Parent initiative | The HoBo v1 Release Readiness initiative needs a status update because release-candidate launch messaging changes launch risk while GA/public claims remain blocked. |
 | Public claims | Release-candidate demo assets cannot publish GA readiness or production-readiness claims without GA handoff and accepted live evidence. |
 
+## GA Handoff Evidence Gate
+
+HOBO-479 adds the M4 GA handoff gate for this project. The executable proof lives in
+[`src/draft/launch-site-ga-handoff-evidence-contract`](../../src/draft/launch-site-ga-handoff-evidence-contract/README.md),
+with branch evidence summarized in
+[`proofs/hobo-479-launch-site-ga-handoff`](./proofs/hobo-479-launch-site-ga-handoff/index.md).
+
+GA launch messaging may consume the claim register, golden-path demo record, private-beta launch-site
+evidence, GA asset-manifest handoff, release cutline, release notes, support, legal/privacy, and
+dogfood operations records only when each has an owning project and source. The gate records
+blockers, accepted risks, cross-project dependencies, follow-up rules, and parent release-readiness
+sync. This gate does not build or publish the public launch site, write final launch copy, create
+final visual assets, record final demo video, provision real cloud resources, or promote
+release-candidate/private-beta evidence into unconditional GA production-readiness claims.
+
 ## Follow-Up Gate
 
 Future launch-site, demo, release-note, and public-copy work must consume this register. A claim with

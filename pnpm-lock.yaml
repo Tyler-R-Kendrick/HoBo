@@ -601,6 +601,8 @@ importers:
 
   src/draft/launch-site-demo-alpha-evidence-contract: {}
 
+  src/draft/launch-site-ga-handoff-evidence-contract: {}
+
   src/draft/launch-site-private-beta-evidence-contract: {}
 
   src/draft/launch-site-release-candidate-evidence-contract: {}

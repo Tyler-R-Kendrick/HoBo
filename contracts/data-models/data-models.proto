@@ -1310,6 +1310,19 @@ message EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel {
   bool cue_annotated = 6;
 }
 
+message EntitlementAbuseRateLimitPolicyContractEntitlementAbuseRateLimitPolicyDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.entitlement-abuse-rate-limit-policy-contract.entitlement-abuse-rate-limit-policy";
+  option (hobo.source_path) = "src/draft/entitlement-abuse-rate-limit-policy-contract/src/entitlement-abuse-rate-limit-policy.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EntitlementAbuseRateLimitPolicyContractEntitlementAbuseRateLimitPolicyDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message EnvironmentLifecycleScopeEnvironmentLifecycleDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.environment-lifecycle-scope.environment-lifecycle";
   option (hobo.source_path) = "src/draft/environment-lifecycle-scope/src/environment-lifecycle.ts";

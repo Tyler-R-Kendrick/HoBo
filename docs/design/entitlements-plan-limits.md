@@ -15,6 +15,9 @@ Executable proof:
 Branch evidence:
 [`proof record`](./proofs/hobo-419-entitlements-plan-limits/README.md)
 
+Follow-up policy evidence:
+[`HOBO-491 entitlement abuse, rate-limit, and fraud response proof`](./proofs/hobo-491-entitlement-abuse-rate-limit-policy/README.md)
+
 This M0 record defines the accepted productization scope for plan entitlements and limits. It does
 not build billing, runtime quota enforcement, RBAC, provider-quota sync, fraud/abuse response, live
 customer plan mutation, or customer administration UI.
@@ -77,6 +80,28 @@ rules, and billing/FinOps should see where plan/payment state stops and entitlem
 - Do not mutate live customer plans, build customer-facing billing pages, store provider credentials,
   or make final legal pricing claims.
 - Do not create downstream M1-M4 execution issues before M0 scope is accepted.
+
+## HOBO-491 Abuse, Rate-Limit, And Fraud Response Policy
+
+HOBO-491 fills the follow-up gap named by this M0 record. The policy is accepted when the design
+record and executable proof agree on:
+
+- entitlement limit types that can trigger abuse, rate-limit, grace, suspension, appeal, and support
+  override handling;
+- rate-limit behavior for soft warning, backpressure, hard denial, and manual hold outcomes;
+- customer-safe grace, appeal-open, suspended, recovered, and normal states;
+- response rows for runaway usage, rate-limit exceeded, suspected fraud, confirmed abuse, and
+  false-positive correction, each with audit evidence, customer communication, and recovery path;
+- ownership boundaries for Billing & Credits, Tenant Isolation & Quotas, Security Verification, and
+  Support Workflow; and
+- scope guards that reject fraud scoring engine selection, risk-model tuning, live rate limiter
+  implementation, payment-provider fraud webhooks, chargeback/refund workflows, customer suspension
+  automation, and support ticket automation.
+
+The executable proof lives in
+[`entitlement-abuse-rate-limit-policy-contract`](../../src/draft/entitlement-abuse-rate-limit-policy-contract/README.md).
+HOBO-491 remains a policy contract: fraud scoring, runtime enforcement, billing provider
+integration, support queue implementation, and live customer suspension remain out of scope.
 
 ## Plan Tiers
 

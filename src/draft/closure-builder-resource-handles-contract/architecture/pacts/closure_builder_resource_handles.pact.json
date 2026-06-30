@@ -1,0 +1,48 @@
+{
+  "consumer": {
+    "name": "closure-builder-manifest-lowering-consumer"
+  },
+  "provider": {
+    "name": "closure-builder-resource-handles-contract"
+  },
+  "interactions": [
+    {
+      "description": "collect anonymous closure-builder resources and dependsOn relationship",
+      "request": {
+        "method": "POST",
+        "path": "/closure-builder/v1/collect"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "bindleName": "shop",
+          "resources": [
+            {
+              "generatedId": "res_0001",
+              "kind": "cache"
+            },
+            {
+              "generatedId": "res_0002",
+              "kind": "api",
+              "workload": {
+                "kind": "inert-workload-factory"
+              }
+            }
+          ],
+          "relationships": [
+            {
+              "from": "res_0002",
+              "to": "res_0001",
+              "verb": "dependsOn"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  }
+}

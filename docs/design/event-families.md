@@ -15,6 +15,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `aggregate.*` | `aggregate.PastTenseFact` |
 | `alert.*` | `alert.Fired`, `alert.Grouped`, `alert.Routed`, `alert.Silenced`, `alert.Inhibited`, `alert.Deduped`, `alert.InhibitionCycleRejected`, `alert.Resolved` |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
+| `breakglass.*` | `breakglass.Requested`, `breakglass.Approved`, `breakglass.Started`, `breakglass.Used`, `breakglass.Revoked` |
 | `camp.*` | `camp.Created`, `camp.RuntimeBound` |
 | `capability.*` | `capability.Denied` |
 | `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected` |

@@ -127,6 +127,19 @@ message ArtifactRepoPortContractArtifactRepoPortDataModel {
   bool cue_annotated = 6;
 }
 
+message ArtifactStoreScopeContractArtifactStoreDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.artifact-store-scope-contract.artifact-store";
+  option (hobo.source_path) = "src/draft/artifact-store-scope-contract/src/artifact-store.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ArtifactStoreScopeContractArtifactStoreDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message AuditExplorerScopeContractAuditExplorerScopeDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.audit-explorer-scope-contract.audit-explorer-scope";
   option (hobo.source_path) = "src/draft/audit-explorer-scope-contract/src/audit-explorer-scope.ts";

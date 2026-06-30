@@ -25,6 +25,14 @@ package resilience_semantics_annex_v1
 	reason?:  string
 	allow?:   bool
 	delayMs?: uint
+	state?:   string
+	source?:  string
+	from?:    string
+	event?:   string
+	to?:      string
+	causedBy?: string
+	childId?: string
+	spawnContractId?: string
 }
 
 #ResilienceFixture: {

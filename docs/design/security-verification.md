@@ -7,8 +7,53 @@ tags: [hobo, design]
 
 # V1 Security Verification
 
-This record pins the v1 vulnerability disclosure and security launch-blocker process for
-HOBO-494. It is a launch-readiness contract, not a production workflow implementation.
+This record pins the M0 Security Verification scope for HOBO-441 and the v1 vulnerability
+disclosure and security launch-blocker process for HOBO-494. It is a launch-readiness contract,
+not a production workflow implementation.
+
+## M0 Scope Acceptance (HOBO-441)
+
+Security Verification owns the v1 security launch gate. The M0 scope is accepted only when the
+user/business goal, primary personas, scope in/out, service/UX/security/support boundaries, owning
+initiative dependencies, M1 evidence requirements, and follow-up gate are explicit.
+
+Primary personas:
+
+- Release owner deciding beta, RC, and paid-GA go/no-go posture.
+- Security lead owning threat intake, severity disposition, blocker criteria, and fix evidence.
+- Support operator routing customer-safe escalation without mutating security decisions.
+- Customer admin reading assurance evidence and known limitations.
+- Legal/privacy owner approving disclosure, advisory, and public-security-page posture.
+
+Scope in:
+
+- Define the security verification goal, launch gate vocabulary, and evidence expectations.
+- Map service, UX, security, and support boundaries.
+- Map dependencies to Threat Model & Security Review, V1 Release Program & Cutline, Launch Support
+  Desk & Escalation, Incident Communications, and Legal/Privacy readiness.
+- List M1 evidence before downstream design or contract proof issues can fan out.
+- Block M1-M4 follow-up work until M0 scope acceptance is recorded.
+
+Scope out:
+
+- No live scanner, SIEM integration, ticketing workflow, incident service, or customer notification
+  service.
+- No public security page, final legal terms, privacy notice, advisory copy, external bug bounty,
+  CVE CNA commitment, or vendor disclosure portal.
+- No runtime security engine, Gatekeeper change, policy engine change, tenant-control
+  implementation, or exploit scanning integration.
+
+M1 evidence required before follow-up work can start:
+
+- accepted M0 scope record and traceability;
+- threat-review intake fixture;
+- launch-blocker taxonomy mapping;
+- vulnerability-disclosure process proof;
+- fix-verification fixture; and
+- support escalation handoff.
+
+Executable proof:
+[`security-verification-scope-acceptance`](../../src/draft/security-verification-scope-acceptance/README.md).
 
 ## Goal
 
@@ -89,7 +134,10 @@ evidence.
 
 ## Proof
 
-The executable proof is
+The M0 scope proof is
+[`security-verification-scope-acceptance`](../../src/draft/security-verification-scope-acceptance/README.md).
+
+The HOBO-494 process proof is
 [`vulnerability-disclosure-launch-blocker-contract`](../../src/draft/vulnerability-disclosure-launch-blocker-contract/README.md).
 It validates the process record, beta/GA differences, scope-out guard for external bug bounty, and
 release-blocker classification.

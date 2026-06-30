@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bindle, ClosureBuilderResourceError } from "../src/closure-builder-resource-handles.ts";
+import {
+  bindle,
+  ClosureBuilderResourceError,
+  resourceIdentityDiagnostics,
+} from "../src/closure-builder-resource-handles.ts";
 
 test("closure-builder authoring creates anonymous handles and dependsOn relationships without starting workloads", () => {
   let started = false;
@@ -24,8 +28,8 @@ test("closure-builder authoring creates anonymous handles and dependsOn relation
   assert.deepEqual(shop.resources.map((resource) => resource.kind), ["cache", "api"]);
   assert.deepEqual(shop.relationships, [
     {
-      from: "res_0002",
-      to: "res_0001",
+      from: "res_api_0001",
+      to: "res_cache_0001",
       verb: "dependsOn",
     },
   ]);
@@ -83,4 +87,59 @@ test("provider with annotations stay inert resource annotations, not relationshi
 
   assert.deepEqual(shop.resources[1].annotations, [providerAnnotation]);
   assert.deepEqual(shop.relationships.map((relationship) => relationship.verb), ["dependsOn"]);
+});
+
+test("generated resource IDs survive alias rename, returned-key reorder, and inserted resources", () => {
+  const original = bindle("shop", (b) => {
+    const cache = b.cache();
+    const api = b.api(() => undefined).dependsOn(cache);
+    return { cache, api };
+  });
+
+  const renamedAndReordered = bindle("shop", (b) => {
+    const cache = b.cache();
+    const api = b.api(() => undefined).dependsOn(cache);
+    return { service: api, data: cache };
+  });
+
+  const insertedResource = bindle("shop", (b) => {
+    const cache = b.cache();
+    const queue = b.queue();
+    const api = b.api(() => undefined).dependsOn(cache, queue);
+    return { cache, queue, api };
+  });
+
+  const originalIds = resourceIdentityDiagnostics(original);
+  const renamedIds = resourceIdentityDiagnostics(renamedAndReordered);
+  const insertedIds = resourceIdentityDiagnostics(insertedResource);
+
+  assert.equal(renamedIds.find((entry) => entry.alias === "data")?.generatedId, originalIds[0].generatedId);
+  assert.equal(renamedIds.find((entry) => entry.alias === "service")?.generatedId, originalIds[1].generatedId);
+  assert.equal(insertedIds.find((entry) => entry.alias === "cache")?.generatedId, originalIds[0].generatedId);
+  assert.equal(insertedIds.find((entry) => entry.alias === "api")?.generatedId, originalIds[1].generatedId);
+});
+
+test("identity diagnostics keep aliases separate from generated IDs and physical naming seeds", () => {
+  const shop = bindle("shop", (b) => {
+    const cache = b.cache();
+    const api = b.api(() => undefined).dependsOn(cache);
+    return { renamedCache: cache, renamedApi: api };
+  });
+
+  assert.deepEqual(resourceIdentityDiagnostics(shop), [
+    {
+      alias: "renamedCache",
+      generatedId: "res_cache_0001",
+      kind: "cache",
+      ownerBindleId: "shop",
+      physicalNameSeed: "shop:res_cache_0001",
+    },
+    {
+      alias: "renamedApi",
+      generatedId: "res_api_0001",
+      kind: "api",
+      ownerBindleId: "shop",
+      physicalNameSeed: "shop:res_api_0001",
+    },
+  ]);
 });

@@ -9,6 +9,11 @@ export const resilienceSemanticsSpec = Object.freeze({
     "deadline-escalates-from-state",
     "cleanup-after-interruption",
     "replay-no-effect-rerun",
+    "lifecycle-transition-table",
+    "lifecycle-replay-hydration",
+    "lifecycle-event-derived-inspection",
+    "terminal-duplicate-no-second-side-effect",
+    "child-lifecycle-requires-spawn-contract",
   ]),
 });
 
@@ -88,6 +93,62 @@ export const canonicalResilienceFixtures = Object.freeze([
       { type: "inspection.TerminalState", state: "succeeded", source: "persisted-facts", atMs: 201 },
     ],
   }),
+  freezeFixture({
+    name: "lifecycle-transition-table",
+    assertions: ["lifecycle-transition-table"],
+    facts: [
+      { type: "actor.StateAppended", from: "pending", event: "workflow.Started", to: "running", atMs: 0 },
+      { type: "actor.StateAppended", from: "running", event: "effect.Succeeded", to: "succeeded", atMs: 10 },
+      { type: "workflow.Terminal", state: "succeeded", atMs: 11 },
+    ],
+  }),
+  freezeFixture({
+    name: "lifecycle-replay-hydration",
+    assertions: ["lifecycle-replay-hydration"],
+    facts: [
+      { type: "actor.StateAppended", from: "pending", event: "workflow.Started", to: "running", atMs: 0 },
+      { type: "actor.StateAppended", from: "running", event: "caller.Cancelled", to: "cleanup", atMs: 10 },
+      { type: "actor.StateAppended", from: "cleanup", event: "cleanup.Audited", to: "cancelled", atMs: 20 },
+      { type: "inspection.Replayed", effectCounterBefore: 1, effectCounterAfter: 1, atMs: 100 },
+      { type: "inspection.HydratedState", state: "cancelled", source: "persisted-facts", atMs: 101 },
+      { type: "inspection.TerminalState", state: "cancelled", source: "persisted-facts", atMs: 102 },
+    ],
+  }),
+  freezeFixture({
+    name: "lifecycle-event-derived-inspection",
+    assertions: ["lifecycle-event-derived-inspection"],
+    facts: [
+      { type: "actor.StateAppended", from: "pending", event: "workflow.Started", to: "running", atMs: 0 },
+      {
+        type: "inspection.StateSnapshot",
+        state: "running",
+        source: "persisted-facts",
+        causedBy: "actor.StateAppended",
+        atMs: 1,
+      },
+    ],
+  }),
+  freezeFixture({
+    name: "terminal-duplicate-no-second-side-effect",
+    assertions: ["terminal-duplicate-no-second-side-effect"],
+    facts: [
+      { type: "effect.Attempted", attempt: 1, atMs: 0 },
+      { type: "effect.Succeeded", attempt: 1, atMs: 1 },
+      { type: "workflow.Terminal", state: "succeeded", atMs: 2 },
+      { type: "input.DuplicateReceived", event: "effect.Succeeded", atMs: 3 },
+      { type: "terminal.DuplicateIgnored", reason: "already-terminal", atMs: 4 },
+    ],
+  }),
+  freezeFixture({
+    name: "child-lifecycle-requires-spawn-contract",
+    assertions: ["child-lifecycle-requires-spawn-contract"],
+    facts: [
+      { type: "parent.StateEntered", state: "running", atMs: 0 },
+      { type: "child.Spawned", childId: "child:email", spawnContractId: "spawn:email", atMs: 1 },
+      { type: "parent.Exited", state: "running", atMs: 10 },
+      { type: "child.Continued", childId: "child:email", spawnContractId: "spawn:email", atMs: 11 },
+    ],
+  }),
 ]);
 
 export const badResilienceFixtures = Object.freeze([
@@ -146,6 +207,41 @@ export const badResilienceFixtures = Object.freeze([
       { type: "effect.Succeeded", attempt: 1, atMs: 1 },
       { type: "inspection.Replayed", effectCounterBefore: 1, effectCounterAfter: 2, atMs: 200 },
       { type: "inspection.TerminalState", state: "succeeded", source: "persisted-facts", atMs: 201 },
+    ],
+  }),
+  freezeFixture({
+    name: "bad-illegal-lifecycle-transition",
+    assertions: ["lifecycle-transition-table"],
+    facts: [
+      { type: "actor.StateAppended", from: "pending", event: "effect.Succeeded", to: "succeeded", atMs: 0 },
+    ],
+  }),
+  freezeFixture({
+    name: "bad-snapshot-without-causative-event",
+    assertions: ["lifecycle-event-derived-inspection"],
+    facts: [
+      { type: "inspection.StateSnapshot", state: "running", source: "object-memory", atMs: 1 },
+    ],
+  }),
+  freezeFixture({
+    name: "bad-terminal-duplicate-side-effect",
+    assertions: ["terminal-duplicate-no-second-side-effect"],
+    facts: [
+      { type: "effect.Attempted", attempt: 1, atMs: 0 },
+      { type: "effect.Succeeded", attempt: 1, atMs: 1 },
+      { type: "workflow.Terminal", state: "succeeded", atMs: 2 },
+      { type: "input.DuplicateReceived", event: "effect.Succeeded", atMs: 3 },
+      { type: "effect.Attempted", attempt: 2, atMs: 4 },
+    ],
+  }),
+  freezeFixture({
+    name: "bad-child-outlives-parent",
+    assertions: ["child-lifecycle-requires-spawn-contract"],
+    facts: [
+      { type: "parent.StateEntered", state: "running", atMs: 0 },
+      { type: "child.Spawned", childId: "child:email", atMs: 1 },
+      { type: "parent.Exited", state: "running", atMs: 10 },
+      { type: "child.Continued", childId: "child:email", atMs: 11 },
     ],
   }),
 ]);
@@ -229,6 +325,21 @@ function validateAssertion(assertion, fixture, facts) {
   }
   if (assertion === "replay-no-effect-rerun") {
     return validateReplayNoEffectRerun(facts);
+  }
+  if (assertion === "lifecycle-transition-table") {
+    return validateLifecycleTransitionTable(facts);
+  }
+  if (assertion === "lifecycle-replay-hydration") {
+    return validateLifecycleReplayHydration(facts);
+  }
+  if (assertion === "lifecycle-event-derived-inspection") {
+    return validateLifecycleEventDerivedInspection(facts);
+  }
+  if (assertion === "terminal-duplicate-no-second-side-effect") {
+    return validateTerminalDuplicateNoSecondSideEffect(facts);
+  }
+  if (assertion === "child-lifecycle-requires-spawn-contract") {
+    return validateChildLifecycleSpawnContract(facts);
   }
 
   return fail("resilience.unknown_assertion", `unknown assertion: ${assertion}`);
@@ -352,6 +463,108 @@ function validateReplayNoEffectRerun(facts) {
   return null;
 }
 
+function validateLifecycleTransitionTable(facts) {
+  const transitions = facts.filter((fact) => fact.type === "actor.StateAppended");
+  if (transitions.length === 0) {
+    return fail("lifecycle.transition_missing", "transition-table fixture has no lifecycle transition facts");
+  }
+
+  for (const transition of transitions) {
+    if (!isAllowedTransition(transition)) {
+      return fail(
+        "lifecycle.illegal_transition",
+        `illegal ${transition.from} -> ${transition.to} transition on ${transition.event}`,
+      );
+    }
+  }
+
+  return null;
+}
+
+function validateLifecycleReplayHydration(facts) {
+  const hydration = facts.find((fact) => fact.type === "inspection.HydratedState");
+  if (!hydration) {
+    return fail("lifecycle.hydration_missing", "replay fixture has no hydrated-state inspection fact");
+  }
+  if (hydration.source !== "persisted-facts") {
+    return fail("lifecycle.hydration_not_persisted", "hydrated state was not derived from persisted facts");
+  }
+
+  const lastState = lastTransitionState(facts);
+  if (!lastState || hydration.state !== lastState) {
+    return fail("lifecycle.hydration_state_mismatch", "hydrated state does not match the event-derived terminal state");
+  }
+
+  return validateReplayNoEffectRerun(facts);
+}
+
+function validateLifecycleEventDerivedInspection(facts) {
+  const snapshot = facts.find((fact) => fact.type === "inspection.StateSnapshot");
+  if (!snapshot) {
+    return fail("lifecycle.snapshot_missing", "inspection fixture has no state snapshot");
+  }
+  if (snapshot.source !== "persisted-facts" || snapshot.causedBy !== "actor.StateAppended") {
+    return fail("lifecycle.snapshot_without_causative_event", "inspection snapshot was not caused by a persisted transition fact");
+  }
+  if (!facts.some((fact) => fact.type === "actor.StateAppended" && fact.to === snapshot.state && fact.atMs <= snapshot.atMs)) {
+    return fail("lifecycle.snapshot_without_causative_event", "inspection snapshot has no causative transition fact");
+  }
+  return null;
+}
+
+function validateTerminalDuplicateNoSecondSideEffect(facts) {
+  const terminal = facts.find((fact) => fact.type === "workflow.Terminal");
+  if (!terminal) {
+    return fail("lifecycle.terminal_missing", "duplicate fixture has no terminal workflow fact");
+  }
+
+  const duplicate = facts.find((fact) => fact.type === "input.DuplicateReceived" && fact.atMs > terminal.atMs);
+  if (!duplicate) {
+    return fail("lifecycle.duplicate_missing", "duplicate fixture has no post-terminal duplicate input");
+  }
+
+  if (facts.some((fact) => fact.type === "effect.Attempted" && fact.atMs > terminal.atMs)) {
+    return fail("lifecycle.terminal_duplicate_side_effect", "post-terminal duplicate caused a second side effect");
+  }
+
+  const handled = facts.some(
+    (fact) =>
+      (fact.type === "terminal.DuplicateIgnored" || fact.type === "terminal.DuplicateRefused") &&
+      fact.atMs > duplicate.atMs,
+  );
+  if (!handled) {
+    return fail("lifecycle.terminal_duplicate_unhandled", "post-terminal duplicate was not ignored or refused");
+  }
+
+  return null;
+}
+
+function validateChildLifecycleSpawnContract(facts) {
+  const parentExit = facts.find((fact) => fact.type === "parent.Exited");
+  if (!parentExit) {
+    return fail("lifecycle.parent_exit_missing", "child lifecycle fixture has no parent exit fact");
+  }
+
+  const spawned = new Map(
+    facts
+      .filter((fact) => fact.type === "child.Spawned" && fact.childId)
+      .map((fact) => [fact.childId, fact.spawnContractId]),
+  );
+
+  for (const fact of facts) {
+    if (!fact.type.startsWith("child.") || fact.type === "child.Spawned" || fact.atMs <= parentExit.atMs) {
+      continue;
+    }
+
+    const spawnContractId = spawned.get(fact.childId);
+    if (!spawnContractId || fact.spawnContractId !== spawnContractId) {
+      return fail("lifecycle.child_outlived_parent", "child lifecycle outlived parent without an explicit spawn contract");
+    }
+  }
+
+  return null;
+}
+
 function hasRetryAfter(facts, atMs) {
   return facts.some((fact) => fact.type === "retry.Scheduled" && fact.atMs > atMs);
 }
@@ -367,6 +580,30 @@ function priorFailureAt(facts, attempt) {
       fact.attempt === attempt,
   );
   return failure?.atMs;
+}
+
+function lastTransitionState(facts) {
+  return facts
+    .filter((fact) => fact.type === "actor.StateAppended")
+    .at(-1)?.to;
+}
+
+function isAllowedTransition(transition) {
+  const allowed = {
+    pending: {
+      "workflow.Started": "running",
+    },
+    running: {
+      "caller.Cancelled": "cleanup",
+      "effect.Succeeded": "succeeded",
+      "sdk.Failed": "failed",
+    },
+    cleanup: {
+      "cleanup.Audited": "cancelled",
+    },
+  };
+
+  return allowed[transition.from]?.[transition.event] === transition.to;
 }
 
 function sortFacts(facts) {

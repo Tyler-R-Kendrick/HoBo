@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/customer-assurance-evidence-packet-contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --import tsx \"test/**/*.test.ts\""
+  }
+}

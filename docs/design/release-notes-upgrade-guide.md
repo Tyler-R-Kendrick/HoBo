@@ -145,6 +145,10 @@ Executable proof lives in
 [`../../src/draft/v1-release-notes-upgrade-guide-contract`](../../src/draft/v1-release-notes-upgrade-guide-contract/README.md).
 The M1 dogfood/alpha evidence gate lives in
 [`../../src/draft/v1-release-notes-dogfood-alpha-evidence`](../../src/draft/v1-release-notes-dogfood-alpha-evidence/README.md).
+The M2 private-beta evidence gate for HOBO-466 lives in
+[`../../src/draft/v1-release-notes-private-beta-evidence-contract`](../../src/draft/v1-release-notes-private-beta-evidence-contract/README.md)
+with design proof notes at
+[`proofs/hobo-466-release-notes-private-beta-evidence`](./proofs/hobo-466-release-notes-private-beta-evidence/README.md).
 The HOBO-401 v1 cutline dependency is recorded by
 [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md).
 The HOBO-485 customer-facing limitations dependency is recorded by

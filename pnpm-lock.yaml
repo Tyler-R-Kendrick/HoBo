@@ -1095,6 +1095,8 @@ importers:
 
   src/draft/v1-release-notes-dogfood-alpha-evidence: {}
 
+  src/draft/v1-release-notes-private-beta-evidence-contract: {}
+
   src/draft/v1-release-notes-upgrade-guide-contract: {}
 
   src/draft/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract: {}

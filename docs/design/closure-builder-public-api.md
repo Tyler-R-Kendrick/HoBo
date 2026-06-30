@@ -7,10 +7,10 @@ tags: [hobo, design]
 
 # Closure Builder Public API
 
-Source issue: HOBO-532. This record is the v1 public contract for explicit
-Bindle authoring in `@hobo/bindles`. It replaces pre-release factory-object
-assembly examples with a closure builder that has one vocabulary for agents,
-docs, and downstream implementation slices.
+Source issues: HOBO-532 and HOBO-533. This record is the v1 public contract for
+explicit Bindle authoring in `@hobo/bindles`. It replaces pre-release
+factory-object assembly examples with a closure builder that has one vocabulary
+for agents, docs, and downstream implementation slices.
 
 ## Contract
 
@@ -35,7 +35,8 @@ export default bindle("shop", (b) => {
   `b.api(() => importedApp.run())` do not take resource name arguments in v1.
 - Resource identity is HoBo-generated. Local variables and returned object keys
   are aliases for authoring, generated types, and downstream examples only.
-- `dependsOn()` is the only v1 relationship verb.
+- `dependsOn()` is the only v1 relationship verb and records a manifest-lowering
+  relationship between handles.
 
 ## Scope
 
@@ -49,7 +50,13 @@ flow proof.
 
 ## Proof
 
-The executable proof lives in
+The public API vocabulary proof lives in
 [`../../src/draft/closure-builder-public-api-contract`](../../src/draft/closure-builder-public-api-contract/README.md).
 It includes TypeScript contract tests, protobuf shapes, CUE constraints, and a
 Pact expectation for downstream SDK implementation work.
+
+The resource-handle proof lives in
+[`../../src/draft/closure-builder-resource-handles-contract`](../../src/draft/closure-builder-resource-handles-contract/README.md).
+It proves anonymous handle creation, inert workload descriptors, invalid
+dependency refusal, `dependsOn()` relationship emission, and inert provider
+annotations.

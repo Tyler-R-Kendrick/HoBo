@@ -19,3 +19,6 @@ node_modules/
 #   .mcp.json, .cursor/, .codex/, .claude/skills/, .agents/skills/,
 #   AGENTS.md, CLAUDE.md, skills-lock.json
 .agents/vendor/
+
+# Turborepo local cache
+.turbo/

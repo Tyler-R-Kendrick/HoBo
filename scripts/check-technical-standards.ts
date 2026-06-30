@@ -120,7 +120,7 @@ function isJavaScriptImplementationFile(file: string): boolean {
 }
 
 requireText("package.json", /"typescript"\s*:/, "package.json: missing TypeScript dev dependency");
-requireText("package-lock.json", /node_modules\/typescript/, "package-lock.json: missing locked TypeScript toolchain");
+requireText("pnpm-lock.yaml", /typescript@6\.0\.3/, "pnpm-lock.yaml: missing locked TypeScript toolchain");
 requireText("AGENTS.md", /Protobuf/, "AGENTS.md: missing Protobuf agent guidance");
 requireText("AGENTS.md", /CUE/, "AGENTS.md: missing CUE agent guidance");
 requireText("AGENTS.md", /Parse, don't validate/, "AGENTS.md: missing parse-don't-validate guidance");
@@ -140,12 +140,12 @@ if (newJavaScriptFiles.length > 0) {
   );
 }
 
-const npmCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm";
-const npmArgs =
+const packageManagerCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "pnpm";
+const packageManagerArgs =
   process.platform === "win32"
-    ? ["/d", "/c", "npm.cmd", "run", "--silent", "contracts:data-models"]
+    ? ["/d", "/c", "pnpm.cmd", "run", "--silent", "contracts:data-models"]
     : ["run", "--silent", "contracts:data-models"];
-const contractsResult = spawnSync(npmCommand, npmArgs, {
+const contractsResult = spawnSync(packageManagerCommand, packageManagerArgs, {
   encoding: "utf8",
   shell: false,
 });
@@ -156,7 +156,7 @@ if (contractsResult.status !== 0) {
   if (contractsResult.stderr) {
     process.stderr.write(contractsResult.stderr);
   }
-  fail("data-model contracts are stale; run npm run contracts:data-models");
+  fail("data-model contracts are stale; run pnpm run contracts:data-models");
 }
 
 if (failures.length > 0) {

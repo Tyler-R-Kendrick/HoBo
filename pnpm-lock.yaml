@@ -851,6 +851,8 @@ importers:
 
   src/draft/secretless-config-resolution-contract: {}
 
+  src/draft/security-verification-scope-acceptance: {}
+
   src/draft/self-host-bootstrap-ordering-spike: {}
 
   src/draft/self-host-bootstrap-saga-contract: {}

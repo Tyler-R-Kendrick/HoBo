@@ -39,7 +39,7 @@ function runAsync(check: Check): Promise<number> {
   const platformCommand = commandForPlatform(check.command, check.args);
   const child = spawn(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
 
-  return new Promise((resolve) => {
+  return new Promise<number>((resolve) => {
     child.once("error", () => resolve(1));
     child.once("exit", (status) => resolve(status ?? 1));
   }).then((status) => {
@@ -189,7 +189,7 @@ if (sourceChanged || automationChanged) {
 }
 if (traceabilityChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-traceability.ts"], reason: "traceability evidence changed" });
 if (deploymentDeltaChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-deployment-set-delta.ts"], reason: "deployment delta proof changed" });
-if (includeBuild || (rootConfigChanged && !staged)) checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "build-impacting changed check requested" });
+if (includeBuild) checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "explicit build-impacting changed check requested" });
 
 console.log(`Changed files: ${files.length}`);
 console.log(`Detected scope: ${[

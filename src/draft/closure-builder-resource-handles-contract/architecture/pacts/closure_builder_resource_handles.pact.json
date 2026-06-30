@@ -18,11 +18,11 @@
           "bindleName": "shop",
           "resources": [
             {
-              "generatedId": "res_0001",
+              "generatedId": "res_cache_0001",
               "kind": "cache"
             },
             {
-              "generatedId": "res_0002",
+              "generatedId": "res_api_0001",
               "kind": "api",
               "workload": {
                 "kind": "inert-workload-factory"
@@ -31,9 +31,25 @@
           ],
           "relationships": [
             {
-              "from": "res_0002",
-              "to": "res_0001",
+              "from": "res_api_0001",
+              "to": "res_cache_0001",
               "verb": "dependsOn"
+            }
+          ],
+          "identityDiagnostics": [
+            {
+              "alias": "cache",
+              "generatedId": "res_cache_0001",
+              "kind": "cache",
+              "ownerBindleId": "shop",
+              "physicalNameSeed": "shop:res_cache_0001"
+            },
+            {
+              "alias": "api",
+              "generatedId": "res_api_0001",
+              "kind": "api",
+              "ownerBindleId": "shop",
+              "physicalNameSeed": "shop:res_api_0001"
             }
           ]
         }

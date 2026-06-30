@@ -7,7 +7,7 @@ tags: [hobo, design]
 
 # Closure Builder Public API
 
-Source issues: HOBO-532, HOBO-533, HOBO-534, HOBO-535, and HOBO-538. This record is the v1 public contract for
+Source issues: HOBO-532, HOBO-533, HOBO-534, HOBO-535, HOBO-536, HOBO-537, and HOBO-538. This record is the v1 public contract for
 explicit Bindle authoring in `@hobo/bindles`. It replaces pre-release
 factory-object assembly examples with a closure builder that has one vocabulary
 for agents, docs, and downstream implementation slices.
@@ -75,6 +75,12 @@ The manifest-lowering proof lives in
 It proves captured closure-builder facts lower to `hobo:sdk` calls and
 `hobo.manifest/v1` while keeping aliases out of deployment identity and leaving
 same-kind identity-ledger behavior to HOBO-538.
+
+The tooling proof lives in
+[`../../src/draft/closure-builder-tooling-contract`](../../src/draft/closure-builder-tooling-contract/README.md).
+It proves that collection coverage, manifest collection, codegen bindings, and
+`hobo new` scaffold samples consume the closure-builder contract while keeping
+generated resource identities separate from returned aliases.
 
 The end-to-end author-flow proof lives in
 [`../../src/draft/closure-builder-author-flow-contract`](../../src/draft/closure-builder-author-flow-contract/README.md).

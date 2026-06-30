@@ -31,6 +31,11 @@ test("resilience annex emits stable case names for the later SDK conformance lan
       { name: "deadline-escalates-from-state", status: "passed" },
       { name: "cleanup-after-interruption", status: "passed" },
       { name: "replay-no-effect-rerun", status: "passed" },
+      { name: "lifecycle-transition-table", status: "passed" },
+      { name: "lifecycle-replay-hydration", status: "passed" },
+      { name: "lifecycle-event-derived-inspection", status: "passed" },
+      { name: "terminal-duplicate-no-second-side-effect", status: "passed" },
+      { name: "child-lifecycle-requires-spawn-contract", status: "passed" },
     ],
   );
   assert.deepEqual(report.unsupportedBehavior, [
@@ -53,6 +58,10 @@ test("resilience annex fails bad fixtures with precise stable codes", () => {
       { name: "bad-missed-deadline-escalation", status: "failed", code: "resilience.deadline_not_escalated" },
       { name: "bad-skipped-cleanup", status: "failed", code: "resilience.cleanup_missing" },
       { name: "bad-replay-reruns-effects", status: "failed", code: "resilience.replay_reran_effect" },
+      { name: "bad-illegal-lifecycle-transition", status: "failed", code: "lifecycle.illegal_transition" },
+      { name: "bad-snapshot-without-causative-event", status: "failed", code: "lifecycle.snapshot_without_causative_event" },
+      { name: "bad-terminal-duplicate-side-effect", status: "failed", code: "lifecycle.terminal_duplicate_side_effect" },
+      { name: "bad-child-outlives-parent", status: "failed", code: "lifecycle.child_outlived_parent" },
     ],
   );
 });
@@ -76,5 +85,20 @@ test("deadline escalation is proven from persisted state without a fresh command
       code: undefined,
       reason: undefined,
     },
+  );
+});
+
+test("lifecycle transition-table vectors are published as stable conformance cases", () => {
+  const report = runResilienceSemanticsAnnex(canonicalResilienceFixtures);
+
+  assert.deepEqual(
+    report.resilienceSemanticsLane.cases.slice(-5).map(({ name, status }) => ({ name, status })),
+    [
+      { name: "lifecycle-transition-table", status: "passed" },
+      { name: "lifecycle-replay-hydration", status: "passed" },
+      { name: "lifecycle-event-derived-inspection", status: "passed" },
+      { name: "terminal-duplicate-no-second-side-effect", status: "passed" },
+      { name: "child-lifecycle-requires-spawn-contract", status: "passed" },
+    ],
   );
 });

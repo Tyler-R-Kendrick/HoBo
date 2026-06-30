@@ -75,6 +75,19 @@ must consume before publication.
 | Known-limitations register | V1 Release Notes & Upgrade Guide | Unsupported claims move to scope-out or follow-up before publication. |
 | Demo asset manifest | V1 Launch Site, Messaging & Demo Assets | Launch demos can be refreshed when claims or proof sources change. |
 
+## Private Beta Evidence Gate
+
+HOBO-465 adds the M2 private beta gate for this project. The executable proof lives in
+[`src/draft/launch-site-private-beta-evidence-contract`](../../src/draft/launch-site-private-beta-evidence-contract/README.md),
+with branch evidence summarized in
+[`proofs/hobo-465-launch-site-private-beta`](./proofs/hobo-465-launch-site-private-beta/README.md).
+
+Private beta launch messaging may consume the claim register and golden-path demo records only when
+required evidence has owners, accepted sources, demo asset refresh triggers, blockers, accepted
+risks, cross-project dependencies, and release-readiness sync. This gate does not publish final
+copy, build the launch site, or promote private beta evidence to public, release-candidate, or GA
+claims.
+
 ## Follow-Up Gate
 
 Future launch-site, demo, release-note, and public-copy work must consume this register. A claim with

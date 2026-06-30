@@ -569,6 +569,8 @@ importers:
 
   src/draft/launch-performance-capacity-envelope-contract: {}
 
+  src/draft/launch-site-private-beta-evidence-contract: {}
+
   src/draft/launch-support-escalation-matrix: {}
 
   src/draft/legal-privacy-terms-readiness-contract: {}

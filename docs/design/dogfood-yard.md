@@ -13,6 +13,10 @@ Executable proof lives in
 [`src/draft/dogfood-yard-acceptance-contract`](../../src/draft/dogfood-yard-acceptance-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-403-dogfood-yard-acceptance`](./proofs/hobo-403-dogfood-yard-acceptance/README.md).
+M1 dogfood/alpha evidence proof lives in
+[`src/draft/dogfood-yard-m1-evidence-contract`](../../src/draft/dogfood-yard-m1-evidence-contract/README.md)
+and is summarized in
+[`proofs/hobo-455-dogfood-yard-m1-evidence`](./proofs/hobo-455-dogfood-yard-m1-evidence/README.md).
 
 ## M0 Acceptance Record
 
@@ -97,3 +101,13 @@ private local setup, hidden customer data, or unbounded "it worked once" claims.
 M1/M2/M3/M4 dogfood evidence, admin UI, bootstrap installer, and reliability implementation issues
 must wait until this M0 evidence scope is accepted. This branch records the gate and its executable
 guard; it does not create follow-up implementation issues.
+
+## M1 Dogfood/Alpha Evidence Gate
+
+HOBO-455 records the first follow-up evidence gate for V1 Dogfood Yard & Hosted Operations. The M1
+record requires scenario fixture manifests, safe telemetry bundles, rollback or recovery paths, a
+gap classification ledger, and a release-cutline dependency map for the hosted preview,
+self-hosted seed handover, upgrade/rollback, and incident restore scenarios. The evidence gate
+routes missing proof to beta blockers, launch notes, or owning follow-up work; it does not build
+the Yard runtime, admin UI, bootstrap installer, observability pipeline, release notes, or release
+cutline workflow.

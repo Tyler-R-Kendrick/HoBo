@@ -1089,6 +1089,19 @@ message DenyCeilingAlgebraPocDenyCeilingAlgebraDataModel {
   bool cue_annotated = 6;
 }
 
+message DeploymentDashboardTopologyScopeContractDeploymentDashboardTopologyScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.deployment-dashboard-topology-scope-contract.deployment-dashboard-topology-scope";
+  option (hobo.source_path) = "src/draft/deployment-dashboard-topology-scope-contract/src/deployment-dashboard-topology-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#DeploymentDashboardTopologyScopeContractDeploymentDashboardTopologyScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message DeploymentPlanIrContractDeploymentPlanIrDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.deployment-plan-ir-contract.deployment-plan-ir";
   option (hobo.source_path) = "src/draft/deployment-plan-ir-contract/src/deployment-plan-ir.ts";
@@ -5119,6 +5132,19 @@ message TutorialsWalkthroughsScopeAcceptanceTutorialsWalkthroughsScopeDataModel 
   bool cue_annotated = 6;
 }
 
+message UpgradeRollbackDryRunContractUpgradeRollbackDryRunDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.upgrade-rollback-dry-run-contract.upgrade-rollback-dry-run";
+  option (hobo.source_path) = "src/draft/upgrade-rollback-dry-run-contract/src/upgrade-rollback-dry-run.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#UpgradeRollbackDryRunContractUpgradeRollbackDryRunDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message UpgradeTestSuiteScopeContractUpgradeTestSuiteDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.upgrade-test-suite-scope-contract.upgrade-test-suite";
   option (hobo.source_path) = "src/draft/upgrade-test-suite-scope-contract/src/upgrade-test-suite.ts";
@@ -5149,6 +5175,19 @@ message V1CutlineContractV1CutlineDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.v1-cutline-contract.v1-cutline";
   option (hobo.source_path) = "src/draft/v1-cutline-contract/src/v1-cutline.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#V1CutlineContractV1CutlineDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message V1ReadinessDashboardContractV1ReadinessDashboardDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.v1-readiness-dashboard-contract.v1-readiness-dashboard";
+  option (hobo.source_path) = "src/draft/v1-readiness-dashboard-contract/src/v1-readiness-dashboard.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#V1ReadinessDashboardContractV1ReadinessDashboardDataModel";
 
   string contract_id = 1;
   string source_path = 2;

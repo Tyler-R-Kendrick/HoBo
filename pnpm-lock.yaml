@@ -220,6 +220,8 @@ importers:
 
   src/draft/deny-ceiling-algebra-poc: {}
 
+  src/draft/deployment-dashboard-topology-scope-contract: {}
+
   src/draft/deployment-plan-ir-contract: {}
 
   src/draft/deployment-strategy-saga-templates-contract: {}
@@ -989,6 +991,8 @@ importers:
 
   src/draft/upgrade-migration-scope-contract: {}
 
+  src/draft/upgrade-rollback-dry-run-contract: {}
+
   src/draft/upgrade-test-suite-scope-contract: {}
 
   src/draft/usage-inferred-permissions-contract: {}
@@ -1000,6 +1004,8 @@ importers:
   src/draft/v1-e2e-persona-matrix-contract: {}
 
   src/draft/v1-outcome-activation-rail-contract: {}
+
+  src/draft/v1-readiness-dashboard-contract: {}
 
   src/draft/v1-release-notes-upgrade-guide-contract: {}
 

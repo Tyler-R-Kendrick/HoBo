@@ -7,7 +7,7 @@ tags: [hobo, design]
 
 # Closure Builder Public API
 
-Source issues: HOBO-532, HOBO-533, and HOBO-534. This record is the v1 public contract for
+Source issues: HOBO-532, HOBO-533, HOBO-534, and HOBO-535. This record is the v1 public contract for
 explicit Bindle authoring in `@hobo/bindles`. It replaces pre-release
 factory-object assembly examples with a closure builder that has one vocabulary
 for agents, docs, and downstream implementation slices.
@@ -43,12 +43,11 @@ export default bindle("shop", (b) => {
 ## Scope
 
 This contract pins public API vocabulary, package ownership, relationship
-spelling, and app-host boundary language for downstream HOBO-533 through
-HOBO-537 work.
+spelling, app-host boundary language, generated-identity separation, and the
+first manifest-lowering proof for downstream HOBO-533 through HOBO-537 work.
 
-Out of scope: runtime app-host behavior, manifest lowering, generated resource
-identity implementation, codegen, collection coverage, and end-to-end author
-flow proof.
+Out of scope: runtime app-host behavior, provider resolution, production
+codegen, collection coverage, and end-to-end author flow proof.
 
 ## Proof
 
@@ -63,3 +62,9 @@ It proves anonymous handle creation, inert workload descriptors, invalid
 dependency refusal, `dependsOn()` relationship emission, and inert provider
 annotations. The same proof now covers HOBO-534 generated-ID stability and alias
 separation diagnostics.
+
+The manifest-lowering proof lives in
+[`../../src/draft/closure-builder-manifest-lowering-contract`](../../src/draft/closure-builder-manifest-lowering-contract/README.md).
+It proves captured closure-builder facts lower to `hobo:sdk` calls and
+`hobo.manifest/v1` while keeping aliases out of deployment identity and leaving
+same-kind identity-ledger behavior to HOBO-538.

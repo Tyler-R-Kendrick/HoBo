@@ -50,6 +50,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`walkthrough.md`](./walkthrough.md) | Role-organized ideal-state walkthrough: one app, six workflows (app dev · platform eng · GitOps · SecOps · DevOps · SRE) | — |
 | [`billing-launch-policy.md`](./billing-launch-policy.md) | Productization M0 launch billing policy for plans, credits, invoices, payment failures, refunds, and provider/legal boundaries | — |
 | [`usage-metering.md`](./usage-metering.md) | Productization M0 scope and acceptance for usage facts, showback dimensions, reconciliation evidence, and support/audit boundaries | — |
+| [`usage-to-invoice-reconciliation.md`](./usage-to-invoice-reconciliation.md) | Productization M1 contract for usage-event to invoice-line evidence, corrections, late events, replay, disputes, privacy, and audit handoff | — |
 | [`entitlements-plan-limits.md`](./entitlements-plan-limits.md) | Productization M0 scope and acceptance for plan tiers, entitlement categories, limit decisions, support overrides, and follow-up gates | — |
 | [`tax-currency-receipt-obligations.md`](./tax-currency-receipt-obligations.md) | Productization M0 launch posture for tax, currency, receipts, invoice metadata, and unsupported jurisdictions | — |
 | [`tenant-data-lifecycle.md`](./tenant-data-lifecycle.md) | Productization M0 tenant data inventory, deletion/export obligations, retention posture, residency sensitivity, and customer assurance handoffs | — |
@@ -89,6 +90,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`settings-project-lifecycle.md`](./settings-project-lifecycle.md) | Productization M0 settings and project lifecycle scope, state model, ownership, and evidence gate | — |
 | [`environment-lifecycle.md`](./environment-lifecycle.md) | Productization M0 scope and acceptance for environment classes, lifecycle states, transition owners, support evidence, and follow-up gates | — |
 | [`admin-console.md`](./admin-console.md) | Productization M0 scope and acceptance for Admin Console navigation, read models, action intents, audit/redaction, and support/security boundaries | — |
+| [`admin-support-breakglass-boundaries.md`](./admin-support-breakglass-boundaries.md) | Productization M0 boundary for admin/support emergency access, approval, audit, TTL, notification, revocation, and unsupported actions | — |
 | [`audit-explorer.md`](./audit-explorer.md) | Productization M0 scope and acceptance for Audit Explorer audit facts, tenant-first filters, export evidence, redaction, and support/security/governance boundaries | — |
 | [`member-rbac-administration.md`](./member-rbac-administration.md) | Productization M0 scope and acceptance for member lifecycle, RBAC administration, role boundaries, and audit handoff | — |
 | [`tenant-isolation-quotas.md`](./tenant-isolation-quotas.md) | Productization M0 scope and acceptance for tenant isolation axes, quota dimensions, owning boundaries, and M1 evidence gates | — |

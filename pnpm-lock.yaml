@@ -35,6 +35,8 @@ importers:
 
   src/draft/admin-console-scope: {}
 
+  src/draft/admin-support-breakglass-boundaries: {}
+
   src/draft/adopt-in-place-contract: {}
 
   src/draft/ai-generation-launch-posture-contract: {}
@@ -1004,6 +1006,8 @@ importers:
   src/draft/usage-inferred-permissions-contract: {}
 
   src/draft/usage-metering-scope-contract: {}
+
+  src/draft/usage-to-invoice-reconciliation-contract: {}
 
   src/draft/v1-beta-pilot-private-beta-evidence: {}
 

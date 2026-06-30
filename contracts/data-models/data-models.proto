@@ -2896,6 +2896,19 @@ message LaunchDemoGoldenPathContractLaunchDemoGoldenPathDataModel {
   bool cue_annotated = 6;
 }
 
+message LaunchSiteDemoAlphaEvidenceContractLaunchSiteDemoAlphaEvidenceDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.launch-site-demo-alpha-evidence-contract.launch-site-demo-alpha-evidence";
+  option (hobo.source_path) = "src/draft/launch-site-demo-alpha-evidence-contract/src/launch-site-demo-alpha-evidence.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#LaunchSiteDemoAlphaEvidenceContractLaunchSiteDemoAlphaEvidenceDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message LaunchSupportEscalationMatrixLaunchSupportEscalationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.launch-support-escalation-matrix.launch-support-escalation";
   option (hobo.source_path) = "src/draft/launch-support-escalation-matrix/src/launch-support-escalation.ts";
@@ -5162,6 +5175,19 @@ message UsageInferredPermissionsContractUsagePermissionsDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.usage-inferred-permissions-contract.usage-permissions";
   option (hobo.source_path) = "src/draft/usage-inferred-permissions-contract/src/usage-permissions.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#UsageInferredPermissionsContractUsagePermissionsDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message V1BetaPilotPrivateBetaEvidenceV1BetaPilotPrivateBetaEvidenceDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.v1-beta-pilot-private-beta-evidence.v1-beta-pilot-private-beta-evidence";
+  option (hobo.source_path) = "src/draft/v1-beta-pilot-private-beta-evidence/src/v1-beta-pilot-private-beta-evidence.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#V1BetaPilotPrivateBetaEvidenceV1BetaPilotPrivateBetaEvidenceDataModel";
 
   string contract_id = 1;
   string source_path = 2;

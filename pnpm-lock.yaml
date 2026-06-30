@@ -119,6 +119,8 @@ importers:
 
   src/draft/closure-builder-resource-handles-contract: {}
 
+  src/draft/closure-builder-tooling-contract: {}
+
   src/draft/collection-coverage-gate-contract: {}
 
   src/draft/compensation-escalation-contract: {}

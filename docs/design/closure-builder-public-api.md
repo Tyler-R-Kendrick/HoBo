@@ -60,3 +60,9 @@ The resource-handle proof lives in
 It proves anonymous handle creation, inert workload descriptors, invalid
 dependency refusal, `dependsOn()` relationship emission, and inert provider
 annotations.
+
+The tooling proof lives in
+[`../../src/draft/closure-builder-tooling-contract`](../../src/draft/closure-builder-tooling-contract/README.md).
+It proves that collection coverage, manifest collection, codegen bindings, and
+`hobo new` scaffold samples consume the closure-builder contract while keeping
+generated resource identities separate from returned aliases.

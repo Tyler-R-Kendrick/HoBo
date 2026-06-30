@@ -139,6 +139,10 @@ Chosen stack:
 
 pnpm v11 build-script security is configured in `pnpm-workspace.yaml`: only `esbuild` and `protobufjs` may run install-time build scripts. The recent `turbo` and `@typescript/native-preview` platform packages are listed in `minimumReleaseAgeExclude` so the repo can intentionally use current toolchain binaries while retaining pnpm's supply-chain policy checks for the rest of the graph.
 
+### Isolated test temp/log directories
+
+`scripts/run-tests.ts` creates one isolated directory per invocation under `.tmp/test-runs/` and one child temp directory per test batch. The child process receives `TMPDIR`, `TMP`, and `TEMP` pointing at that batch directory, so parallel workers do not share global `/tmp` logs or unrelated temp context. Passing batches delete their temp directory; failed runs keep the isolated artifact path in output for debugging. Set `HOBO_TEST_TMPDIR` only to another per-worker location.
+
 ### Fast docs linting
 
 Docs linting follows the same rule as tests: local hooks lint only changed markdown. `pnpm run lint:docs:staged` reads staged paths, skips immediately when no markdown changed, and passes only relevant files into the CLI/design doc linters. It automatically falls back to a full design-doc scan when a shared catalog changes (`cli-spec.md`, glossary, ADR index, event-family catalog, or traceability), because those files can invalidate references outside the touched file set. Full lint remains available with `pnpm run lint:docs` for CI or broad documentation refactors.

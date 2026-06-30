@@ -1,0 +1,44 @@
+---
+type: Reference
+title: "Contract-First Testing Strategy"
+description: "Testing policy for deterministic validation without traditional full-stack E2E tests."
+tags: [hobo, design, testing, contracts]
+---
+
+# Contract-First Testing Strategy
+
+HoBo does not use traditional full-stack E2E tests. Service behavior is proven at the boundary with protobuf/CUE schema checks and Pact-style consumer/provider contracts. UI behavior is tested with deterministic mocks derived from those contracts or schema fixtures.
+
+## Test lanes
+
+| Lane | Command | Purpose |
+|---|---|---|
+| Unit | `pnpm test:unit` | Fast implementation tests for isolated logic. |
+| Types | `pnpm test:types` | Type-level API expectations and compile-time checks. |
+| Schema | `pnpm test:schema` | Protobuf/CUE/generated-contract compatibility. |
+| Consumer contract | `pnpm test:contract:consumer` | Consumer expectations over actual client/data-access behavior. |
+| Provider contract | `pnpm test:contract:provider` | Provider verification with mocked dependencies, never live downstream services. |
+| DOM | `pnpm test:dom` | Rendered state and interaction state in a simulated DOM. |
+| Component | `pnpm test:component` | Browser/component behavior, including Shadow DOM/focus/events when needed. |
+| Behavior | `pnpm test:behavior` | Gherkin/Cucumber or Playwright-driven browser behavior with mocked service boundaries. |
+| Visual | `pnpm test:visual` | Deterministic visual states. |
+| Agent eval | `pnpm eval:agent:mock` | Mocked tools/models for default agent validation. |
+| Live agent eval | `pnpm eval:agent:live` | Manual or release-gated live model/provider evaluation. |
+
+## Non-goals
+
+Do not add `test:e2e`, `e2e/`, full-stack Playwright suites, browser tests that call live downstream services, or UI mocks that drift from Pact/provider/schema fixtures.
+
+## Targeted routing
+
+`pnpm agent:check` inspects changed files and chooses the smallest lane that can prove the change:
+
+- protobuf/CUE changes run schema plus consumer/provider contract lanes;
+- Pact artifacts run contract lanes;
+- UI/component changes run DOM and component lanes;
+- behavior specs run behavior tests with mocked service boundaries;
+- stories/visual fixtures run visual tests;
+- agent prompt/eval changes run mocked agent evals;
+- root/package-manager changes add install and build-impacting checks.
+
+This keeps pre-commit and PR feedback fast while preserving contract-first coverage.

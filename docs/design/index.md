@@ -5,7 +5,7 @@
 
 ## Index
 
-Each capability doc is one coherent decision area; some absorb more than one plan (the folded plan keeps its `#plan-NN` anchor in the host doc). Contract records pin public surfaces that cross multiple capability docs.
+Each capability doc is one coherent decision area; some absorb more than one plan (the folded plan keeps its `#plan-NN` anchor in the host doc). Contract records pin public surfaces that cross multiple capability docs. Post-core cross-cutting capability deltas get their own discoverable row here, plus a Linear owner, proof README, traceability row, and executable `src/draft/` proof instead of being folded into completed epics.
 
 | Doc | Covers | Plans |
 |---|---|---|
@@ -30,10 +30,12 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`pre-launch-outcome-contract.md`](./pre-launch-outcome-contract.md) | Productization M0 contract for pre-launch outcome baselines and v1 value evidence | — |
 | [`ai-generation-launch-posture.md`](./ai-generation-launch-posture.md) | Productization M0 launch posture for AI-generation safety claims, limitations, and review routing | — |
 | [`launch-blocker-taxonomy.md`](./launch-blocker-taxonomy.md) | Productization M0 launch-blocker severity taxonomy and go/no-go exception posture | — |
+| [`go-no-go-decision-record.md`](./go-no-go-decision-record.md) | Productization M0 go/no-go decision record and risk-acceptance workflow | — |
 | [`organization-workspace-model.md`](./organization-workspace-model.md) | Productization M0 scope and acceptance for organization, workspace, project, tenant, and environment ownership | — |
 | [`workspace-activation-telemetry-contract.md`](./workspace-activation-telemetry-contract.md) | Productization M0 contract for first-run workspace activation telemetry and privacy boundaries | — |
 | [`e2e-test-matrix.md`](./e2e-test-matrix.md) | Productization M0 scope and acceptance for the E2E Test Matrix project | — |
 | [`performance-load-tests.md`](./performance-load-tests.md) | Productization M0 scope, launch envelope, capacity assumptions, deterministic fixtures, threshold handoffs, and acceptance for Performance & Load Tests | — |
+| [`chaos-resilience-tests.md`](./chaos-resilience-tests.md) | Productization M0 scope and acceptance for Chaos & Resilience Tests scenarios, steady-state hypotheses, blast-radius limits, abort rules, evidence handoffs, and follow-up gates | — |
 | [`persona-operating-profile.md`](./persona-operating-profile.md) | Productization M0 contract for persona operating profile fields and v1 recommendation memory boundaries | — |
 | [`launch-e2e-persona-matrix.md`](./launch-e2e-persona-matrix.md) | Productization M0 contract for launch e2e persona journeys and pass/fail thresholds | — |
 | [`wasm-runtime-wit.md`](./wasm-runtime-wit.md#plan-20) | WASM/WASI runtime & WIT interface reference | 20 |
@@ -49,31 +51,48 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`usage-metering.md`](./usage-metering.md) | Productization M0 scope and acceptance for usage facts, showback dimensions, reconciliation evidence, and support/audit boundaries | — |
 | [`entitlements-plan-limits.md`](./entitlements-plan-limits.md) | Productization M0 scope and acceptance for plan tiers, entitlement categories, limit decisions, support overrides, and follow-up gates | — |
 | [`tax-currency-receipt-obligations.md`](./tax-currency-receipt-obligations.md) | Productization M0 launch posture for tax, currency, receipts, invoice metadata, and unsupported jurisdictions | — |
+| [`tenant-data-lifecycle.md`](./tenant-data-lifecycle.md) | Productization M0 tenant data inventory, deletion/export obligations, retention posture, residency sensitivity, and customer assurance handoffs | — |
+| [`customer-assurance-evidence-packet.md`](./customer-assurance-evidence-packet.md) | Productization M0 customer assurance packet outline for DPA needs, subprocessors, evidence owners, launch limitations, and support/security handoffs | — |
 | [`product-notifications-lifecycle.md`](./product-notifications-lifecycle.md) | Productization M0 taxonomy for product lifecycle notifications, preferences, delivery evidence, and scope boundaries | — |
 | [`sbom-vulnerability-notice-evidence.md`](./sbom-vulnerability-notice-evidence.md) | Productization M0 evidence contract for SBOMs, dependency vulnerability posture, third-party notices, artifact provenance, and customer assurance readiness | — |
 | [`release-artifact-provenance-retention.md`](./release-artifact-provenance-retention.md) | Productization M0 handoff for release artifact provenance, retention, invalidation/yank, offline bundles, and support/debug access | — |
 | [`marketplace-publisher-trust-evidence.md`](./marketplace-publisher-trust-evidence.md) | Productization M0 evidence contract for marketplace publisher trust tiers, review evidence, and launch limitations | — |
+| [`marketplace-payout-hooks.md`](./marketplace-payout-hooks.md) | Productization M0 scope and acceptance for publisher payout-readiness states, tax/identity handoffs, billing reconciliation, and payout launch limitations | — |
+| [`marketplace-ux.md`](./marketplace-ux.md) | Productization M0 scope and acceptance for marketplace browse, trust warnings, installability outcomes, org-catalog visibility, accessibility, and support handoffs | — |
+| [`publisher-portal.md`](./publisher-portal.md) | Productization M0 scope and acceptance for publisher profile, maintainer roles, listing evidence, review status, payout-readiness handoffs, support wording, and follow-up gates | — |
 | [`capability-review-approval.md`](./capability-review-approval.md) | Productization M0 scope and acceptance for capability review states, approval outcomes, trust-tier evidence, yanking, escalation, and follow-up gates | — |
 | [`provenance-retention.md`](./provenance-retention.md) | Productization M0 scope and acceptance for artifact provenance, retention classes, audit export, support handoff, and customer assurance evidence | — |
 | [`meta-cloud-broker.md`](./meta-cloud-broker.md) | Productization M0 scope and acceptance for hosted broker authority, broker artifacts, Resolution Receipts, Resolution Rejections, and follow-up gates | — |
 | [`launch-support-escalation.md`](./launch-support-escalation.md) | Productization M0 launch support escalation matrix, incident communication templates, and support gap routing | — |
+| [`incident-communications.md`](./incident-communications.md) | Productization M0 scope and acceptance for incident communication states, templates, customer-safe publication gates, support handoffs, and follow-up gates | — |
 | [`public-status-page-incident-communication.md`](./public-status-page-incident-communication.md) | Productization M0 public status-page scope, component taxonomy, incident states, maintenance notices, update cadence, and customer communication boundaries | — |
+| [`support-workflow.md`](./support-workflow.md) | Productization M0 scope and acceptance for support intake, triage states, customer-safe evidence, owner routing, redaction/access boundaries, and follow-up gates | — |
 | [`support-sla-channels.md`](./support-sla-channels.md) | Productization M0 support SLA language, channel coverage, response targets, unsupported request routing, and owner signoff boundaries | — |
+| [`enterprise-deployment-hardening.md`](./enterprise-deployment-hardening.md) | Productization M0 scope for enterprise deployment hardening postures, evidence handoffs, customer-facing claim limits, and follow-up gates | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
+| [`tutorials-walkthroughs.md`](./tutorials-walkthroughs.md) | Productization M0 scope and acceptance for Tutorials & Walkthroughs | — |
+| [`troubleshooting-guides.md`](./troubleshooting-guides.md) | Productization M0 scope and acceptance for Troubleshooting Guides | — |
+| [`launch-demo-golden-path.md`](./launch-demo-golden-path.md) | Productization M0 golden path and proof asset checklist for the launch demo | — |
 | [`launch-messaging-claims.md`](./launch-messaging-claims.md) | Productization M0 evidence register for launch claims and demo assets | — |
 | [`outcome-activation-rail.md`](./outcome-activation-rail.md) | Productization M0 scope and acceptance for the v1 outcome activation rail | — |
 | [`workspace-onboarding-ux.md`](./workspace-onboarding-ux.md) | Productization M0 scope and acceptance for Workspace & Onboarding UX | — |
 | [`accessibility-usability-launch-baseline.md`](./accessibility-usability-launch-baseline.md) | Productization M0 launch baseline for accessibility, usability, evidence, and exception boundaries | — |
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
+| [`docs-portal.md`](./docs-portal.md) | Productization M0 scope and acceptance for docs portal content areas, source ownership, search metadata, support handoffs, known limitations, and follow-up gates | — |
 | [`beta-pilot-feedback.md`](./beta-pilot-feedback.md) | Productization M0 private-beta cohort, feedback intake, triage, and release-candidate exit contract | — |
 | [`dogfood-yard.md`](./dogfood-yard.md) | Productization M0 dogfood Yard acceptance scenarios and telemetry evidence | 04, 05, 07, 40 |
 | [`upgrade-migration-engine.md`](./upgrade-migration-engine.md) | Productization M0 scope and acceptance for upgrade paths, migration dry-run, rollback evidence, and support handoff | — |
+| [`upgrade-test-suite.md`](./upgrade-test-suite.md) | Productization M0 scope and acceptance for upgrade scenario coverage, fixtures, evidence fields, result states, and suite handoffs | — |
 | [`bootstrap-installer.md`](./bootstrap-installer.md) | Productization M0 scope and acceptance for SaaS, self-host, and local/dev bootstrap installer paths | — |
 | [`backup-restore.md`](./backup-restore.md) | Productization M0 scope and acceptance for backup sources, restore paths, RPO/RTO drill evidence, and recovery handoffs | — |
 | [`settings-project-lifecycle.md`](./settings-project-lifecycle.md) | Productization M0 settings and project lifecycle scope, state model, ownership, and evidence gate | — |
+| [`environment-lifecycle.md`](./environment-lifecycle.md) | Productization M0 scope and acceptance for environment classes, lifecycle states, transition owners, support evidence, and follow-up gates | — |
+| [`admin-console.md`](./admin-console.md) | Productization M0 scope and acceptance for Admin Console navigation, read models, action intents, audit/redaction, and support/security boundaries | — |
+| [`audit-explorer.md`](./audit-explorer.md) | Productization M0 scope and acceptance for Audit Explorer audit facts, tenant-first filters, export evidence, redaction, and support/security/governance boundaries | — |
 | [`member-rbac-administration.md`](./member-rbac-administration.md) | Productization M0 scope and acceptance for member lifecycle, RBAC administration, role boundaries, and audit handoff | — |
 | [`tenant-isolation-quotas.md`](./tenant-isolation-quotas.md) | Productization M0 scope and acceptance for tenant isolation axes, quota dimensions, owning boundaries, and M1 evidence gates | — |
 | [`org-catalogs.md`](./org-catalogs.md) | Productization M0 scope and acceptance for org catalog kinds, approval states, evidence fields, owner handoffs, and scope boundaries | — |
+| [`resource-garbage-collection.md`](./resource-garbage-collection.md) | Productization M0 scope and acceptance for resource garbage classes, cleanup eligibility, orphan evidence, owner handoffs, and safe cleanup boundaries | — |
 | [`compatibility-matrix.md`](./compatibility-matrix.md) | Productization M0 browser, device, platform, CLI bootstrap, and support-routing compatibility matrix | — |
 
 **Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/index.md) (each decision is a `#adr-NNNN` section). The current ADR/Plan -> Linear coverage gate is [`traceability.md`](./traceability.md). Executable draft proofs and contract packages live under [`../../src/draft/`](../../src/draft/); epic-level reference implementations live in [`../../src/draft/epic-reference-implementations/`](../../src/draft/epic-reference-implementations/) and are registered in [`../../src/draft/epic-reference-implementations/_registry.md`](../../src/draft/epic-reference-implementations/_registry.md).
@@ -122,4 +141,6 @@ All implementation-facing design work follows the cross-cutting standards in [`t
 
 ## Keeping docs current
 
-When a draft package, validation script, workflow, or public contract changes, update this design suite or the nearest proof/contract README in the same change. CI runs `npm run docs:freshness` so implementation-facing changes cannot merge without a documentation update.
+When a draft package, validation script, workflow, or public contract changes, update this design suite or the nearest proof/contract README in the same change. CI runs `pnpm run docs:freshness` so implementation-facing changes cannot merge without a documentation update.
+
+- [Contract-First Testing Strategy](./contract-first-testing.md)

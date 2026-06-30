@@ -9,11 +9,15 @@ tags: [hobo, design]
 
 Source issue: HOBO-521.
 
-Executable proof:
-[`meta-cloud-broker-scope-contract`](../../src/draft/meta-cloud-broker-scope-contract/README.md)
+Executable proofs:
+
+- [`meta-cloud-broker-scope-contract`](../../src/draft/meta-cloud-broker-scope-contract/README.md)
+- [`yard-receipt-consumption-contract`](../../src/draft/yard-receipt-consumption-contract/README.md)
 
 Branch evidence:
-[`proof record`](./proofs/hobo-521-meta-cloud-broker/README.md)
+
+- [`HOBO-521 proof record`](./proofs/hobo-521-meta-cloud-broker/README.md)
+- [`HOBO-523 proof record`](./proofs/hobo-523-yard-receipt-consumption/README.md)
 
 This M0 record defines the accepted productization scope for the Meta-cloud Broker. It does not
 build broker runtime code, Yard planner behavior, provider adapters, admin UI, Gatekeeper policy
@@ -130,7 +134,7 @@ decision with its own evidence.
 |---|---|---|
 | Artifact schema contract | Schema test | Contract Manifest, Broker Environment, Mapping Contract, catalog snapshot, receipt, and rejection schemas are pinned. |
 | Authority boundary fixture | Contract test | Broker, Yard, admin controls, and Gatekeeper cannot silently overwrite each other. |
-| Receipt consumption fixture | Integration fixture | Yard consumes Resolution Receipts without re-running hosted broker resolution. |
+| Receipt consumption fixture | Integration fixture | Yard consumes Resolution Receipts without re-running hosted broker resolution; HOBO-523 proves this with `yard-receipt-consumption-contract`. |
 | Catalog snapshot fixture | Deterministic fixture | Provider/catalog mapping inputs are versioned and stale states are visible. |
 | Rejection taxonomy fixture | Negative test | Stale, incompatible, ambiguous, and unsupported mappings fail with structured Resolution Rejections. |
 | Scope-boundary register | Policy fixture | Runtime, planner, provider, admin UI, Gatekeeper, and public-claim work route to follow-up owners. |

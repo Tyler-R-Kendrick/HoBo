@@ -98,6 +98,12 @@ preflight status, compatibility inputs, backup requirement, migration plan summa
 rollback evidence, and support handoff. A dry-run is evidence, not execution. It must not mutate live
 schema, provider state, customer data, package registries, or support queues.
 
+HOBO-499 proves this M1 dry-run shape in
+[`src/draft/upgrade-rollback-dry-run-contract`](../../src/draft/upgrade-rollback-dry-run-contract/README.md)
+with deterministic clean, blocked, failed-migration, and rollback-ready fixtures plus a scope guard
+that rejects live migration, rollback executor, provider-state rewrite, and support automation
+requests.
+
 ## Rollback And Recovery Boundaries
 
 Rollback evidence is required before a release or support surface may describe an upgrade path as

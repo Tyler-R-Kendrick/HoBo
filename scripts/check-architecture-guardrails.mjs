@@ -259,7 +259,7 @@ function isImplementationFile(file) {
   if (DOC_ONLY_EXTENSIONS.has(ext)) return false;
 
   const basename = path.basename(file);
-  if (basename === "package.json" || basename === "package-lock.json") return true;
+  if (basename === "package.json" || basename === "pnpm-lock.yaml" || basename === "pnpm-workspace.yaml") return true;
 
   return IMPLEMENTATION_EXTENSIONS.has(ext);
 }

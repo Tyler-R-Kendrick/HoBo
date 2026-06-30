@@ -25,6 +25,14 @@ package resilience_semantics_annex_v1
 	reason?:  string
 	allow?:   bool
 	delayMs?: uint
+	state?:   string
+	source?:  string
+	from?:    string
+	event?:   string
+	to?:      string
+	causedBy?: string
+	childId?: string
+	spawnContractId?: string
 }
 
 #ResilienceFixture: {
@@ -41,4 +49,34 @@ package resilience_semantics_annex_v1
 	code?:    string
 	reason?:  string
 	seed?:    string
+}
+
+#DiagnosticRetryAttempt: {
+	fromAttempt: uint & >=1
+	toAttempt:   uint & >=1
+	delayMs:     uint
+	causedBy:    string & !=""
+}
+
+#LocalDiagnosticScenario: {
+	name:       string & !=""
+	outcome:    "transient-retry" | "policy-denied" | "caller-cancelled" | "deadline-expired"
+	source:     "replay-derived-persisted-facts"
+	terminalCauses: [...string]
+	retriedAttempts: [...#DiagnosticRetryAttempt]
+	cleanupFacts:    [...string]
+	escalationFacts: [...string]
+	freshAttemptAfterTerminal: bool
+}
+
+#LocalDiagnosticGuarantees: {
+	requiresEffectOrXState: false
+	authoritativeState:    "persisted-facts-only"
+}
+
+#LocalDiagnosticReport: {
+	command:   "npm.cmd --prefix src\\draft\\resilience-semantics-annex run diagnostics"
+	source:    "replay-derived-persisted-facts"
+	scenarios: [...#LocalDiagnosticScenario] & [_, ...]
+	guarantees: #LocalDiagnosticGuarantees
 }

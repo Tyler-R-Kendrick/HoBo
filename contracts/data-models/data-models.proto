@@ -1726,6 +1726,19 @@ message GitopsCiJourneyContractGitopsCiJourneyDataModel {
   bool cue_annotated = 6;
 }
 
+message GoNoGoDecisionRecordContractGoNoGoDecisionRecordDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.go-no-go-decision-record-contract.go-no-go-decision-record";
+  option (hobo.source_path) = "src/draft/go-no-go-decision-record-contract/src/go-no-go-decision-record.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#GoNoGoDecisionRecordContractGoNoGoDecisionRecordDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message GoldenSuiteChaosVerificationContractGoldenSuiteChaosVerificationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.golden-suite-chaos-verification-contract.golden-suite-chaos-verification";
   option (hobo.source_path) = "src/draft/golden-suite-chaos-verification-contract/src/golden-suite-chaos-verification.ts";

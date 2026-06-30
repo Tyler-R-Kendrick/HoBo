@@ -46,6 +46,6 @@ pnpm run check:relevant:staged
 ```
 
 The staged gate also records two package-manager repairs for this Windows ARM64
-worker: PNPM installs the local Windows ARM64 optional binaries, and Turbo is
-pinned to `2.9.14` because the current `2.10.1` Windows package starts with a
+worker: PNPM installs the local Windows ARM64 optional binaries, and Turbo stays
+pinned to `2.8.6` because the current `2.10.1` Windows package starts with a
 missing `ghostty-vt.dll` dependency before package tests can run.

@@ -1271,6 +1271,19 @@ message EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel {
   bool cue_annotated = 6;
 }
 
+message EnvironmentLifecycleScopeEnvironmentLifecycleDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.environment-lifecycle-scope.environment-lifecycle";
+  option (hobo.source_path) = "src/draft/environment-lifecycle-scope/src/environment-lifecycle.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EnvironmentLifecycleScopeEnvironmentLifecycleDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ErrorBudgetDeployGateContractErrorBudgetDeployGateDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.error-budget-deploy-gate-contract.error-budget-deploy-gate";
   option (hobo.source_path) = "src/draft/error-budget-deploy-gate-contract/src/error-budget-deploy-gate.ts";

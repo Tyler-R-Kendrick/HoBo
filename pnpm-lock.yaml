@@ -989,6 +989,8 @@ importers:
 
   src/draft/upgrade-migration-scope-contract: {}
 
+  src/draft/upgrade-rollback-dry-run-contract: {}
+
   src/draft/upgrade-test-suite-scope-contract: {}
 
   src/draft/usage-inferred-permissions-contract: {}

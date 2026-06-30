@@ -19,6 +19,30 @@ evidence owner, an evidence source, a risk rating, and a current capability stat
 not write final launch copy; it defines the claim register that future launch-site and demo work
 must consume before publication.
 
+## M1 Dogfood/Alpha Evidence Gate
+
+Source issue: HOBO-458.
+
+Executable proof lives in
+[`src/draft/launch-site-demo-alpha-evidence-contract`](../../src/draft/launch-site-demo-alpha-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-458-launch-site-demo-alpha-evidence`](./proofs/hobo-458-launch-site-demo-alpha-evidence/README.md).
+
+The M1 dogfood/alpha gate accepts the launch-site, messaging, and demo-asset evidence map without
+building the launch site. The gate records owner-mapped evidence, blockers, accepted risks, release
+cutline dependencies, follow-up rules, and parent-initiative status behavior.
+
+### M1 Gate Rules
+
+| Rule | Requirement |
+|---|---|
+| Owner-mapped evidence | Claim register, golden-path checklist, recording-manifest slot, cutline documentation domain, and known-limitations register all carry owner project and source. |
+| Blockers and risks | Alpha-only recording evidence and reference-fixture demo behavior are recorded as accepted risks with mitigations. |
+| Release cutline | Documentation, productization, and operations-readiness dependencies map to the v1 cutline blocker domains. |
+| Follow-up creation | Execution follow-ups are allowed only when evidence is explicitly marked missing. |
+| Parent initiative | The HoBo v1 Release Readiness initiative needs a status update only when the gate changes launch risk. |
+| Public claims | Public claims require accepted live evidence; reference fixtures and alpha-only slots cannot be promoted to production-readiness wording. |
+
 ## Claim States
 
 | State | Meaning | Publication rule |
@@ -32,7 +56,7 @@ must consume before publication.
 
 | Claim | State | Evidence owner | Evidence source | Risk | Disposition |
 |---|---|---|---|---|---|
-| HoBo is an AI-native meta-cloud that maps one app description onto provider-owned infrastructure through cloud-agnostic ports. | `implemented` | V1 Release Program & Cutline | [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md) | Medium | Candidate, pending cutline evidence review. |
+| HoBo is an AI-native meta-cloud that maps one app description onto provider-owned infrastructure through cloud-agnostic ports. | `implemented` | V1 Release Program & Cutline | [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md) | Medium | Candidate with M1 dogfood/alpha cutline evidence; beta/GA evidence still required before broader operational claims. |
 | Launch demos can use accepted example-app proof modes to separate live behavior from reference or simulated evidence. | `simulated-reference` | Example Apps | [example-apps.md#M0 Acceptance Record](./example-apps.md#m0-acceptance-record) | Medium | Candidate with proof-mode label. |
 | Dogfood and beta operations evidence can support private-beta messaging before broader GA operational claims are made. | `beta-only` | V1 Dogfood Yard & Hosted Operations | HOBO-403 | High | Follow-up before public use. |
 | Customer-facing release notes will distinguish supported install paths, upgrade guidance, known limitations, and support contacts. | `future-roadmap` | V1 Release Notes & Upgrade Guide | HOBO-407 | Medium | Follow-up before launch publication. |

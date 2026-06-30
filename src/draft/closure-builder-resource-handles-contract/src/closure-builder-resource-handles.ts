@@ -27,6 +27,26 @@ export interface BindleManifest<TAliases extends Record<string, ResourceHandle>>
   readonly relationships: readonly ResourceRelationship[];
 }
 
+export interface ResourceIdentityLedgerEntry {
+  readonly kind: ResourceKind;
+  readonly occurrence: number;
+  readonly generatedId: string;
+  readonly identitySource: "hobo-generated";
+  readonly reviewState: "accepted" | "pending-new";
+}
+
+export interface ResourceIdentityLedger {
+  readonly bindleName: string;
+  readonly artifactOwner: "hobo-collector";
+  readonly updateFlow: "collector-proposes-review-accepts";
+  readonly reviewBoundary: "code-review";
+  readonly entries: readonly ResourceIdentityLedgerEntry[];
+}
+
+export interface BindleOptions {
+  readonly identityLedger?: ResourceIdentityLedger;
+}
+
 export interface ResourceIdentityDiagnostic {
   readonly alias: string;
   readonly generatedId: string;
@@ -60,15 +80,94 @@ export class ClosureBuilderResourceError extends Error {
   }
 }
 
+export function createResourceIdentityLedger(input: unknown): ResourceIdentityLedger {
+  if (typeof input !== "object" || input === null) {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_SHAPE",
+      "resource identity ledger must be an object",
+    );
+  }
+
+  const record = input as Record<string, unknown>;
+  const bindleName = requireNonEmptyString(record.bindleName, "bindleName");
+  if (record.artifactOwner !== "hobo-collector") {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_OWNER",
+      "resource identity ledger must be owned by the HoBo collector artifact",
+      { artifactOwner: record.artifactOwner },
+    );
+  }
+  if (record.updateFlow !== "collector-proposes-review-accepts") {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_UPDATE_FLOW",
+      "resource identity ledger updates must be proposed by collection and accepted at review",
+      { updateFlow: record.updateFlow },
+    );
+  }
+  if (record.reviewBoundary !== "code-review") {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_REVIEW_BOUNDARY",
+      "resource identity ledger changes must cross a code review boundary",
+      { reviewBoundary: record.reviewBoundary },
+    );
+  }
+  if (!Array.isArray(record.entries)) {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_ENTRIES",
+      "resource identity ledger entries must be an array",
+    );
+  }
+
+  const seenOccurrences = new Set<string>();
+  const seenGeneratedIds = new Set<string>();
+  const entries = record.entries.map((entry) => {
+    const parsed = parseResourceIdentityLedgerEntry(entry);
+    const occurrenceKey = `${parsed.kind}:${parsed.occurrence}`;
+    if (seenOccurrences.has(occurrenceKey)) {
+      throw new ClosureBuilderResourceError(
+        "CLOSURE_BUILDER_LEDGER_DUPLICATE_OCCURRENCE",
+        "resource identity ledger cannot map one kind occurrence twice",
+        { occurrenceKey },
+      );
+    }
+    if (seenGeneratedIds.has(parsed.generatedId)) {
+      throw new ClosureBuilderResourceError(
+        "CLOSURE_BUILDER_LEDGER_DUPLICATE_ID",
+        "resource identity ledger cannot reuse generated IDs",
+        { generatedId: parsed.generatedId },
+      );
+    }
+    seenOccurrences.add(occurrenceKey);
+    seenGeneratedIds.add(parsed.generatedId);
+    return parsed;
+  });
+
+  return deepFreeze({
+    bindleName,
+    artifactOwner: "hobo-collector",
+    updateFlow: "collector-proposes-review-accepts",
+    reviewBoundary: "code-review",
+    entries,
+  });
+}
+
 export function bindle<TAliases extends Record<string, ResourceHandle>>(
   name: string,
   builderFn: (builder: ClosureBuilder) => TAliases,
+  options: BindleOptions = {},
 ): BindleManifest<TAliases> {
   if (!name.trim()) {
     throw new ClosureBuilderResourceError("CLOSURE_BUILDER_BINDLE_NAME", "bindle name must be non-empty");
   }
+  if (options.identityLedger && options.identityLedger.bindleName !== name) {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_BINDLE_MISMATCH",
+      "resource identity ledger can only be used with its recorded Bindle",
+      { expected: options.identityLedger.bindleName, actual: name },
+    );
+  }
 
-  const context = new BuilderContext(name);
+  const context = new BuilderContext(name, options.identityLedger);
   const builder = context.builder();
   const aliases = builderFn(builder);
 
@@ -109,8 +208,15 @@ class BuilderContext {
   readonly relationships: ResourceRelationship[] = [];
   private readonly handles: ResourceHandleImpl[] = [];
   private readonly kindCounts = new Map<ResourceKind, number>();
+  private readonly allocatedGeneratedIds = new Set<string>();
+  private readonly ledgerGeneratedIds: ReadonlySet<string>;
 
-  constructor(readonly ownerBindleId: string) {}
+  constructor(
+    readonly ownerBindleId: string,
+    private readonly identityLedger: ResourceIdentityLedger | undefined,
+  ) {
+    this.ledgerGeneratedIds = new Set(identityLedger?.entries.map((entry) => entry.generatedId) ?? []);
+  }
 
   builder(): ClosureBuilder {
     return {
@@ -141,12 +247,38 @@ class BuilderContext {
     this.kindCounts.set(kind, kindOrdinal);
     const handle = new ResourceHandleImpl<TKind>(
       this,
-      generatedResourceId(kind, kindOrdinal),
+      this.allocateGeneratedId(kind, kindOrdinal),
       kind,
       workload,
     );
     this.handles.push(handle);
     return handle;
+  }
+
+  private allocateGeneratedId(kind: ResourceKind, occurrence: number): string {
+    const ledgerEntry = this.identityLedger?.entries.find(
+      (entry) => entry.kind === kind && entry.occurrence === occurrence,
+    );
+    const generatedId = ledgerEntry?.generatedId ?? this.nextGeneratedId(kind, occurrence);
+    if (this.allocatedGeneratedIds.has(generatedId)) {
+      throw new ClosureBuilderResourceError(
+        "CLOSURE_BUILDER_LEDGER_DUPLICATE_ALLOCATION",
+        "resource identity ledger allocated a generated ID more than once",
+        { generatedId },
+      );
+    }
+    this.allocatedGeneratedIds.add(generatedId);
+    return generatedId;
+  }
+
+  private nextGeneratedId(kind: ResourceKind, startingOrdinal: number): string {
+    let ordinal = startingOrdinal;
+    let generatedId = generatedResourceId(kind, ordinal);
+    while (this.allocatedGeneratedIds.has(generatedId) || this.ledgerGeneratedIds.has(generatedId)) {
+      ordinal += 1;
+      generatedId = generatedResourceId(kind, ordinal);
+    }
+    return generatedId;
   }
 }
 
@@ -229,6 +361,87 @@ function assertNoFactoryArgs(kind: ResourceKind, args: readonly unknown[]): void
     "CLOSURE_BUILDER_NAMED_RESOURCE_ARG",
     `b.${kind}() does not accept resource name arguments in the v1 closure builder`,
     { kind, args },
+  );
+}
+
+function parseResourceIdentityLedgerEntry(input: unknown): ResourceIdentityLedgerEntry {
+  if (typeof input !== "object" || input === null) {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_ENTRY_SHAPE",
+      "resource identity ledger entry must be an object",
+    );
+  }
+  const record = input as Record<string, unknown>;
+  if (
+    record.identitySource !== "hobo-generated" ||
+    "alias" in record ||
+    "returnedKey" in record ||
+    "physicalNameSeed" in record
+  ) {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_ALIAS_IDENTITY",
+      "resource identity ledger entries cannot derive identity from aliases, returned keys, or physical names",
+      { identitySource: record.identitySource },
+    );
+  }
+  const kind = requireResourceKind(record.kind);
+  const occurrence = requirePositiveInteger(record.occurrence, "occurrence");
+  const generatedId = requireNonEmptyString(record.generatedId, "generatedId");
+  const expectedPrefix = `res_${kind}_`;
+  if (!new RegExp(`^${expectedPrefix}\\d{4}$`).test(generatedId)) {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_GENERATED_ID",
+      "resource identity ledger generated ID must match its resource kind",
+      { kind, generatedId },
+    );
+  }
+  if (record.reviewState !== "accepted" && record.reviewState !== "pending-new") {
+    throw new ClosureBuilderResourceError(
+      "CLOSURE_BUILDER_LEDGER_REVIEW_STATE",
+      "resource identity ledger entry must be accepted or pending-new",
+      { reviewState: record.reviewState },
+    );
+  }
+
+  return {
+    kind,
+    occurrence,
+    generatedId,
+    identitySource: "hobo-generated",
+    reviewState: record.reviewState,
+  };
+}
+
+function requireResourceKind(value: unknown): ResourceKind {
+  if (value === "api" || value === "cache" || value === "queue") {
+    return value;
+  }
+  throw new ClosureBuilderResourceError(
+    "CLOSURE_BUILDER_LEDGER_KIND",
+    "resource identity ledger kind must be a supported closure-builder resource kind",
+    { kind: value },
+  );
+}
+
+function requirePositiveInteger(value: unknown, field: string): number {
+  if (Number.isSafeInteger(value) && typeof value === "number" && value > 0) {
+    return value;
+  }
+  throw new ClosureBuilderResourceError(
+    "CLOSURE_BUILDER_LEDGER_POSITIVE_INTEGER",
+    `${field} must be a positive integer`,
+    { [field]: value },
+  );
+}
+
+function requireNonEmptyString(value: unknown, field: string): string {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+  throw new ClosureBuilderResourceError(
+    "CLOSURE_BUILDER_LEDGER_STRING",
+    `${field} must be a non-empty string`,
+    { [field]: value },
   );
 }
 

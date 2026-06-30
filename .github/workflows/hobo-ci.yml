@@ -2,8 +2,10 @@ name: HoBo CI Fabric
 
 on:
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened, labeled]
   merge_group:
+    branches: [main]
     types: [checks_requested]
   schedule:
     - cron: "17 3 * * 1"

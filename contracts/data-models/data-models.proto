@@ -4716,6 +4716,19 @@ message TelemetryEnvelopeContractTelemetryEnvelopeContractDataModel {
   bool cue_annotated = 6;
 }
 
+message TenantDataLifecycleContractTenantDataLifecycleDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.tenant-data-lifecycle-contract.tenant-data-lifecycle";
+  option (hobo.source_path) = "src/draft/tenant-data-lifecycle-contract/src/tenant-data-lifecycle.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#TenantDataLifecycleContractTenantDataLifecycleDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message TierFivePublicMtlsContractTierFivePublicMtlsDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.tier-five-public-mtls-contract.tier-five-public-mtls";
   option (hobo.source_path) = "src/draft/tier-five-public-mtls-contract/src/tier-five-public-mtls.ts";

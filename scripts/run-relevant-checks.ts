@@ -178,7 +178,15 @@ if (docsChanged || automationChanged) {
   checks.push({ command: "pnpm", args: ["run", "docs:coverage"], reason: "documentation coverage may be affected" });
 }
 
-if (sourceChanged || automationChanged) checks.push({ command: "pnpm", args: ["run", staged ? "docs:freshness:staged" : "docs:freshness"], reason: "docs freshness gate for code/config changes" });
+if (sourceChanged || automationChanged) {
+  checks.push({
+    command: "pnpm",
+    args: staged
+      ? ["run", "docs:freshness:staged"]
+      : ["run", "docs:freshness", "--", `--base=${base}`],
+    reason: "docs freshness gate for code/config changes",
+  });
+}
 if (traceabilityChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-traceability.ts"], reason: "traceability evidence changed" });
 if (deploymentDeltaChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-deployment-set-delta.ts"], reason: "deployment delta proof changed" });
 if (includeBuild || (rootConfigChanged && !staged)) checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "build-impacting changed check requested" });

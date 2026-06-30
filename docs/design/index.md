@@ -34,6 +34,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`workspace-activation-telemetry-contract.md`](./workspace-activation-telemetry-contract.md) | Productization M0 contract for first-run workspace activation telemetry and privacy boundaries | — |
 | [`e2e-test-matrix.md`](./e2e-test-matrix.md) | Productization M0 scope and acceptance for the E2E Test Matrix project | — |
 | [`performance-load-tests.md`](./performance-load-tests.md) | Productization M0 scope, launch envelope, capacity assumptions, deterministic fixtures, threshold handoffs, and acceptance for Performance & Load Tests | — |
+| [`chaos-resilience-tests.md`](./chaos-resilience-tests.md) | Productization M0 scope and acceptance for Chaos & Resilience Tests scenarios, steady-state hypotheses, blast-radius limits, abort rules, evidence handoffs, and follow-up gates | — |
 | [`persona-operating-profile.md`](./persona-operating-profile.md) | Productization M0 contract for persona operating profile fields and v1 recommendation memory boundaries | — |
 | [`launch-e2e-persona-matrix.md`](./launch-e2e-persona-matrix.md) | Productization M0 contract for launch e2e persona journeys and pass/fail thresholds | — |
 | [`wasm-runtime-wit.md`](./wasm-runtime-wit.md#plan-20) | WASM/WASI runtime & WIT interface reference | 20 |
@@ -68,6 +69,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`support-sla-channels.md`](./support-sla-channels.md) | Productization M0 support SLA language, channel coverage, response targets, unsupported request routing, and owner signoff boundaries | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
 | [`tutorials-walkthroughs.md`](./tutorials-walkthroughs.md) | Productization M0 scope and acceptance for Tutorials & Walkthroughs | — |
+| [`troubleshooting-guides.md`](./troubleshooting-guides.md) | Productization M0 scope and acceptance for Troubleshooting Guides | — |
 | [`launch-demo-golden-path.md`](./launch-demo-golden-path.md) | Productization M0 golden path and proof asset checklist for the launch demo | — |
 | [`launch-messaging-claims.md`](./launch-messaging-claims.md) | Productization M0 evidence register for launch claims and demo assets | — |
 | [`outcome-activation-rail.md`](./outcome-activation-rail.md) | Productization M0 scope and acceptance for the v1 outcome activation rail | — |

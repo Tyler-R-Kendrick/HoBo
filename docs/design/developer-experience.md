@@ -138,6 +138,13 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./generated-stack.md#plan-09)).
 
+Local resilience diagnostics use the same rule: the developer-facing output is a
+projection of persisted facts, not process memory. The HOBO-520 proof command in
+`src/draft/resilience-semantics-annex` shows transient retry attempts, policy
+denial, caller cancellation cleanup, and deadline escalation from replay-derived
+facts, while keeping hosted dashboards and production observability out of this
+slice.
+
 ##### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042))
 "Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./generated-stack.md#plan-09)).
 - **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector).

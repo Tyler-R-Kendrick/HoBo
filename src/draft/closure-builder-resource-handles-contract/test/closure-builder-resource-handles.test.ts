@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   bindle,
   ClosureBuilderResourceError,
+  createResourceIdentityLedger,
   resourceIdentityDiagnostics,
 } from "../src/closure-builder-resource-handles.ts";
 
@@ -142,4 +143,158 @@ test("identity diagnostics keep aliases separate from generated IDs and physical
       physicalNameSeed: "shop:res_api_0001",
     },
   ]);
+});
+
+test("collector-owned identity ledger preserves existing generated IDs across same-kind insertion", () => {
+  const ledger = createResourceIdentityLedger({
+    bindleName: "shop",
+    artifactOwner: "hobo-collector",
+    updateFlow: "collector-proposes-review-accepts",
+    reviewBoundary: "code-review",
+    entries: [
+      {
+        kind: "cache",
+        occurrence: 1,
+        generatedId: "res_cache_0002",
+        identitySource: "hobo-generated",
+        reviewState: "pending-new",
+      },
+      {
+        kind: "cache",
+        occurrence: 2,
+        generatedId: "res_cache_0001",
+        identitySource: "hobo-generated",
+        reviewState: "accepted",
+      },
+      {
+        kind: "api",
+        occurrence: 1,
+        generatedId: "res_api_0001",
+        identitySource: "hobo-generated",
+        reviewState: "accepted",
+      },
+    ],
+  });
+
+  const shop = bindle(
+    "shop",
+    (b) => {
+      const insertedCache = b.cache();
+      const existingCache = b.cache();
+      const api = b.api(() => undefined).dependsOn(existingCache);
+
+      return { insertedCache, renamedExistingCache: existingCache, api };
+    },
+    { identityLedger: ledger },
+  );
+
+  assert.deepEqual(resourceIdentityDiagnostics(shop), [
+    {
+      alias: "insertedCache",
+      generatedId: "res_cache_0002",
+      kind: "cache",
+      ownerBindleId: "shop",
+      physicalNameSeed: "shop:res_cache_0002",
+    },
+    {
+      alias: "renamedExistingCache",
+      generatedId: "res_cache_0001",
+      kind: "cache",
+      ownerBindleId: "shop",
+      physicalNameSeed: "shop:res_cache_0001",
+    },
+    {
+      alias: "api",
+      generatedId: "res_api_0001",
+      kind: "api",
+      ownerBindleId: "shop",
+      physicalNameSeed: "shop:res_api_0001",
+    },
+  ]);
+  assert.deepEqual(shop.relationships, [
+    {
+      from: "res_api_0001",
+      to: "res_cache_0001",
+      verb: "dependsOn",
+    },
+  ]);
+});
+
+test("identity ledger rejects alias-derived identity and does not re-enable named resource factories", () => {
+  assert.throws(
+    () =>
+      createResourceIdentityLedger({
+        bindleName: "shop",
+        artifactOwner: "hobo-collector",
+        updateFlow: "collector-proposes-review-accepts",
+        reviewBoundary: "code-review",
+        entries: [
+          {
+            kind: "cache",
+            occurrence: 1,
+            generatedId: "res_cache_0001",
+            identitySource: "local-alias",
+            reviewState: "accepted",
+            alias: "cache",
+          },
+        ],
+      }),
+    (error) =>
+      error instanceof ClosureBuilderResourceError &&
+      error.code === "CLOSURE_BUILDER_LEDGER_ALIAS_IDENTITY",
+  );
+
+  assert.throws(
+    () =>
+      createResourceIdentityLedger({
+        bindleName: "shop",
+        artifactOwner: "hobo-collector",
+        updateFlow: "collector-proposes-review-accepts",
+        reviewBoundary: "code-review",
+        entries: [
+          {
+            kind: "cache",
+            occurrence: 1,
+            generatedId: "res_cache_0001",
+            identitySource: "hobo-generated",
+            reviewState: "accepted",
+            returnedKey: "cache",
+          },
+        ],
+      }),
+    (error) =>
+      error instanceof ClosureBuilderResourceError &&
+      error.code === "CLOSURE_BUILDER_LEDGER_ALIAS_IDENTITY",
+  );
+
+  const ledger = createResourceIdentityLedger({
+    bindleName: "shop",
+    artifactOwner: "hobo-collector",
+    updateFlow: "collector-proposes-review-accepts",
+    reviewBoundary: "code-review",
+    entries: [
+      {
+        kind: "cache",
+        occurrence: 1,
+        generatedId: "res_cache_0001",
+        identitySource: "hobo-generated",
+        reviewState: "accepted",
+      },
+    ],
+  });
+
+  assert.throws(
+    () =>
+      bindle(
+        "shop",
+        (b) => {
+          const cache = (b.cache as (...args: unknown[]) => unknown)("cache");
+          return { cache: cache as never };
+        },
+        { identityLedger: ledger },
+      ),
+    (error) =>
+      error instanceof ClosureBuilderResourceError &&
+      error.code === "CLOSURE_BUILDER_NAMED_RESOURCE_ARG",
+  );
 });

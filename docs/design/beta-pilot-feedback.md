@@ -69,5 +69,8 @@ feedback. It only defines the intake and triage contract those later issues use.
 
 ## Proof
 
-Executable proof lives in
+M0 executable proof lives in
 [`../../src/draft/beta-pilot-feedback-contract`](../../src/draft/beta-pilot-feedback-contract/README.md).
+
+M2 private-beta evidence proof lives in
+[`../../src/draft/v1-beta-pilot-private-beta-evidence`](../../src/draft/v1-beta-pilot-private-beta-evidence/README.md).

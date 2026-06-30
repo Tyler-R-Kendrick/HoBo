@@ -73,6 +73,8 @@ importers:
 
   src/draft/bootstrap-installer-scope-contract: {}
 
+  src/draft/bootstrap-launch-smoke-matrix-contract: {}
+
   src/draft/budget-quota-policy-contract: {}
 
   src/draft/build-dagger-provider-contract: {}
@@ -105,6 +107,8 @@ importers:
 
   src/draft/chaos-experiment-orchestration-contract: {}
 
+  src/draft/chaos-resilience-tests-scope-acceptance: {}
+
   src/draft/choreographed-compensation-contract: {}
 
   src/draft/choreography-saga-engine-contract: {}
@@ -115,6 +119,8 @@ importers:
 
   src/draft/client-optimistic-update-contract: {}
 
+  src/draft/closure-builder-author-flow-contract: {}
+
   src/draft/closure-builder-manifest-lowering-contract: {}
 
   src/draft/closure-builder-public-api-contract: {}
@@ -122,6 +128,8 @@ importers:
   src/draft/closure-builder-resource-handles-contract: {}
 
   src/draft/collection-coverage-gate-contract: {}
+
+  src/draft/compatibility-matrix-scope-contract: {}
 
   src/draft/compensation-escalation-contract: {}
 
@@ -212,6 +220,8 @@ importers:
 
   src/draft/deny-ceiling-algebra-poc: {}
 
+  src/draft/deployment-dashboard-topology-scope-contract: {}
+
   src/draft/deployment-plan-ir-contract: {}
 
   src/draft/deployment-strategy-saga-templates-contract: {}
@@ -235,6 +245,8 @@ importers:
   src/draft/dns-validation-gate-threat-model: {}
 
   src/draft/dns-validation-rebinding-guard-contract: {}
+
+  src/draft/docs-portal-scope-contract: {}
 
   src/draft/document-projection-sink-contract: {}
 
@@ -261,6 +273,10 @@ importers:
   src/draft/end-user-authorization-policy-contract: {}
 
   src/draft/endpoint-monitor-operator-contract: {}
+
+  src/draft/enterprise-deployment-hardening-scope-contract: {}
+
+  src/draft/entitlement-abuse-rate-limit-policy-contract: {}
 
   src/draft/entitlements-plan-limits-scope: {}
 
@@ -554,6 +570,8 @@ importers:
   src/draft/launch-messaging-claim-register: {}
 
   src/draft/launch-performance-capacity-envelope-contract: {}
+
+  src/draft/launch-site-demo-alpha-evidence-contract: {}
 
   src/draft/launch-support-escalation-matrix: {}
 
@@ -965,11 +983,15 @@ importers:
 
   src/draft/training-engine-port-contract: {}
 
+  src/draft/troubleshooting-guides-scope-acceptance: {}
+
   src/draft/trust-tier-policy-contract: {}
 
   src/draft/tutorials-walkthroughs-scope-acceptance: {}
 
   src/draft/upgrade-migration-scope-contract: {}
+
+  src/draft/upgrade-rollback-dry-run-contract: {}
 
   src/draft/upgrade-test-suite-scope-contract: {}
 
@@ -979,11 +1001,15 @@ importers:
 
   src/draft/usage-to-invoice-reconciliation-contract: {}
 
+  src/draft/v1-beta-pilot-private-beta-evidence: {}
+
   src/draft/v1-cutline-contract: {}
 
   src/draft/v1-e2e-persona-matrix-contract: {}
 
   src/draft/v1-outcome-activation-rail-contract: {}
+
+  src/draft/v1-readiness-dashboard-contract: {}
 
   src/draft/v1-release-notes-upgrade-guide-contract: {}
 

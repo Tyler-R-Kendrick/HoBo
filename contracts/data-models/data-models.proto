@@ -439,6 +439,19 @@ message ChaosExperimentOrchestrationContractChaosExperimentOrchestrationDataMode
   bool cue_annotated = 6;
 }
 
+message ChaosResilienceTestsScopeAcceptanceChaosResilienceTestsScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.chaos-resilience-tests-scope-acceptance.chaos-resilience-tests-scope";
+  option (hobo.source_path) = "src/draft/chaos-resilience-tests-scope-acceptance/src/chaos-resilience-tests-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ChaosResilienceTestsScopeAcceptanceChaosResilienceTestsScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ChoreographedCompensationContractChoreographedCompensationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.choreographed-compensation-contract.choreographed-compensation";
   option (hobo.source_path) = "src/draft/choreographed-compensation-contract/src/choreographed-compensation.ts";
@@ -547,6 +560,19 @@ message CollectionCoverageGateContractCollectionCoverageGateDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.collection-coverage-gate-contract.collection-coverage-gate";
   option (hobo.source_path) = "src/draft/collection-coverage-gate-contract/src/collection-coverage-gate.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CollectionCoverageGateContractCollectionCoverageGateDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message CompatibilityMatrixScopeContractCompatibilityMatrixScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.compatibility-matrix-scope-contract.compatibility-matrix-scope";
+  option (hobo.source_path) = "src/draft/compatibility-matrix-scope-contract/src/compatibility-matrix-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CompatibilityMatrixScopeContractCompatibilityMatrixScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -1310,6 +1336,19 @@ message EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel {
   bool cue_annotated = 6;
 }
 
+message EntitlementAbuseRateLimitPolicyContractEntitlementAbuseRateLimitPolicyDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.entitlement-abuse-rate-limit-policy-contract.entitlement-abuse-rate-limit-policy";
+  option (hobo.source_path) = "src/draft/entitlement-abuse-rate-limit-policy-contract/src/entitlement-abuse-rate-limit-policy.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EntitlementAbuseRateLimitPolicyContractEntitlementAbuseRateLimitPolicyDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message EnvironmentLifecycleScopeEnvironmentLifecycleDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.environment-lifecycle-scope.environment-lifecycle";
   option (hobo.source_path) = "src/draft/environment-lifecycle-scope/src/environment-lifecycle.ts";
@@ -1743,6 +1782,19 @@ message GitopsCiJourneyContractGitopsCiJourneyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.gitops-ci-journey-contract.gitops-ci-journey";
   option (hobo.source_path) = "src/draft/gitops-ci-journey-contract/src/gitops-ci-journey.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#GitopsCiJourneyContractGitopsCiJourneyDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message GoNoGoDecisionRecordContractGoNoGoDecisionRecordDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.go-no-go-decision-record-contract.go-no-go-decision-record";
+  option (hobo.source_path) = "src/draft/go-no-go-decision-record-contract/src/go-no-go-decision-record.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#GoNoGoDecisionRecordContractGoNoGoDecisionRecordDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -4703,6 +4755,19 @@ message SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel {
   bool cue_annotated = 6;
 }
 
+message SupportWorkflowScopeContractSupportWorkflowScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.support-workflow-scope-contract.support-workflow-scope";
+  option (hobo.source_path) = "src/draft/support-workflow-scope-contract/src/support-workflow-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#SupportWorkflowScopeContractSupportWorkflowScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message SvidAutoRotationContractSvidRotationDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.svid-auto-rotation-contract.svid-rotation";
   option (hobo.source_path) = "src/draft/svid-auto-rotation-contract/src/svid-rotation.ts";
@@ -4941,6 +5006,19 @@ message TrainingEnginePortContractTrainingEngineContractDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.training-engine-port-contract.training-engine-contract";
   option (hobo.source_path) = "src/draft/training-engine-port-contract/src/training-engine-contract.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#TrainingEnginePortContractTrainingEngineContractDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message TroubleshootingGuidesScopeAcceptanceTroubleshootingGuidesScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.troubleshooting-guides-scope-acceptance.troubleshooting-guides-scope";
+  option (hobo.source_path) = "src/draft/troubleshooting-guides-scope-acceptance/src/troubleshooting-guides-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#TroubleshootingGuidesScopeAcceptanceTroubleshootingGuidesScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;

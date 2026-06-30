@@ -40,6 +40,20 @@ so each owner can feed the correct source of truth without inventing unsupported
 | Compatibility Matrix | Compatibility matrix, migration notes | Supported surfaces, unsupported environments, test evidence |
 | Support Workflow | Limitations, rollback guidance, support contacts | Support channel, severity route, escalation coverage |
 
+## Hosted Broker Entries
+
+HOBO-530 adds broker-specific release-note inputs. Release notes may reference the hosted broker only
+when they cite accepted handoff evidence for:
+
+- receipt schema v1 compatibility and Broker Environment snapshot versioning;
+- catalog snapshot freshness and known stale-catalog limitations;
+- rollback/restore wording that describes receipt replay as audit/planning evidence, not mutable
+  receipt repair; and
+- support/debug routing for Resolution Receipt and Resolution Rejection evidence.
+
+Final release copy must keep live hosted broker GA claims out of customer-facing text until Dogfood
+Yard and release cutline evidence are accepted by their owners.
+
 ## Missing Evidence Policy
 
 Missing evidence is classified before any release claim is written:

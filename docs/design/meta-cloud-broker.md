@@ -160,6 +160,25 @@ expired, tenant-mismatched, environment-mismatched, broker-snapshot-mismatched, 
 manifest-mismatched receipts with customer-safe refusal evidence. It keeps Gatekeeper as a
 downstream apply-time policy boundary rather than a broker receipt-integrity shortcut.
 
+## M4 Hosted Broker GA Handoff Evidence
+
+HOBO-530 records the hosted broker GA handoff evidence with
+[`hosted-broker-ga-handoff-evidence-contract`](../../src/draft/hosted-broker-ga-handoff-evidence-contract/README.md).
+The handoff checklist names the Meta-cloud Broker, Dogfood Yard, Release Notes, Launch Support, and
+provider/catalog owner lanes before any GA language can be used.
+
+The M4 record requires:
+
+- an operational owner checklist with source evidence;
+- Dogfood Yard deploy-readiness links for Resolution Receipts and Resolution Rejections;
+- compatibility windows for receipt schema v1, Broker Environment snapshots, and catalog snapshot
+  versions;
+- rollback/restore limits that preserve receipt replay without mutating issued receipts; and
+- broker-specific release-note and support/debug entries.
+
+This is handoff evidence, not live hosted broker GA proof. Local fixtures, docs, manually edited
+receipts, or unresolved Dogfood/cutline evidence cannot publish a hosted broker GA claim.
+
 ## Authoritative Dependencies
 
 - [Architecture](./architecture.md) supplies Yard, Registry, Identity, Provider, and Capability

@@ -527,6 +527,8 @@ importers:
 
   src/draft/host-version-upgrade-contract: {}
 
+  src/draft/hosted-broker-ga-handoff-evidence-contract: {}
+
   src/draft/human-approval-generation-gate-contract: {}
 
   src/draft/human-operator-console-contract: {}

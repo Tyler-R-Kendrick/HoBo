@@ -168,3 +168,13 @@ evidence. It carries manual release-candidate support drill and redaction rehear
 creating support tooling, ticket automation, status-page publication, live customer operations,
 customer-data access, commercial support terms, customer-facing SLA guarantees, or GA support
 readiness claims.
+
+## Hosted Broker Support/Debug Handoff
+
+HOBO-530 adds a broker-specific support/debug input for GA handoff review. Support can route
+Resolution Receipt and Resolution Rejection evidence when the bundle names manifest digest,
+Broker Environment snapshot, catalog snapshot, decision/reason code, and redaction status.
+
+This handoff does not grant support access to customer payloads, provider credentials, broker
+runtime state, or admin mutation paths. If a broker question requires those surfaces, Support routes
+the gap to the owning implementation project instead of promoting a GA support claim.

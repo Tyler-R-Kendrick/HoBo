@@ -264,6 +264,8 @@ importers:
 
   src/draft/endpoint-monitor-operator-contract: {}
 
+  src/draft/entitlement-abuse-rate-limit-policy-contract: {}
+
   src/draft/entitlements-plan-limits-scope: {}
 
   src/draft/environment-lifecycle-scope: {}

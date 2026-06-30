@@ -92,6 +92,27 @@ private local setup, hidden customer data, or unbounded "it worked once" claims.
 - Do not use live customer data for proof or support/debug fixtures.
 - Do not mark beta or GA readiness; this issue defines the acceptance evidence required later.
 
+## Release-Candidate Evidence Gate
+
+HOBO-469 adds the M3 release-candidate evidence gate for this project. Executable proof lives in
+[`src/draft/dogfood-yard-release-candidate-contract`](../../src/draft/dogfood-yard-release-candidate-contract/README.md),
+with branch evidence summarized in
+[`proofs/hobo-469-dogfood-yard-release-candidate`](./proofs/hobo-469-dogfood-yard-release-candidate/README.md).
+
+The M3 gate records owner-mapped release-candidate evidence for the dogfood scenario ledger,
+support/debug readiness, rollback and restore drill fixtures, and the v1 cutline handoff. It also
+records blockers and accepted risks, including the explicit gap that GA hosted-operations handoff
+evidence remains missing and is already routed to HOBO-476.
+
+Cross-project dependencies are reflected into the release cutline for operations-readiness,
+documentation, support, and reliability owners. Follow-up execution issues are allowed only when
+evidence is missing. The parent HoBo v1 Release Readiness initiative requires a status update only
+when this gate changes launch risk.
+
+This release-candidate proof does not build hosted Yard runtime, provision live provider resources,
+use customer data, create support automation, or promote release-candidate fixtures into GA/public
+operational claims.
+
 ## Follow-Up Gate
 
 M1/M2/M3/M4 dogfood evidence, admin UI, bootstrap installer, and reliability implementation issues

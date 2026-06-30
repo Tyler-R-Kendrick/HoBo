@@ -252,6 +252,8 @@ importers:
 
   src/draft/dogfood-yard-acceptance-contract: {}
 
+  src/draft/dogfood-yard-release-candidate-contract: {}
+
   src/draft/domain-cutover-saga-contract: {}
 
   src/draft/domain-event-body-contract: {}

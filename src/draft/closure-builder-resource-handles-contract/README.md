@@ -1,13 +1,13 @@
 ---
 type: Reference
 title: "Closure Builder Resource Handles Contract"
-description: "HOBO-533 proof for anonymous closure-builder resource handles and dependsOn relationships."
+description: "HOBO-533/HOBO-534 proof for anonymous closure-builder resource handles, dependsOn relationships, and generated identity stability."
 tags: [hobo, proof]
 ---
 
 # Closure Builder Resource Handles Contract
 
-Source issue: HOBO-533.
+Source issues: HOBO-533 and HOBO-534.
 
 This proof turns the HOBO-532 public closure-builder vocabulary into an
 executable handle contract for `@hobo/bindles` v1 authoring.
@@ -23,17 +23,22 @@ executable handle contract for `@hobo/bindles` v1 authoring.
 - Provider `.with(...)` values are inert annotations on the resource, not new
   relationship verbs.
 - Invalid dependencies fail closed with stable error codes.
+- Generated IDs are kind-scoped HoBo identities such as `res_cache_0001` and
+  `res_api_0001`; local variables and returned keys are aliases only.
+- Identity diagnostics display alias and generated ID separately and use
+  `bindle:generatedId` as the physical-name seed, never an alias.
 
 Scope out: runtime app-host implementation, manifest lowering, generated
-resource identity persistence across edits, codegen, collection coverage, and
-end-to-end author flow proof.
+resource identity persistence for ambiguous same-kind insertions, codegen,
+collection coverage, and end-to-end author flow proof. HOBO-538 owns the
+persisted-ledger requirement for same-kind insertion stability.
 
 ## Acceptance Evidence
 
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\closure-builder-resource-handles-contract test
+corepack pnpm -C src\draft\closure-builder-resource-handles-contract test
 ```
 
 The package gate runs `tsc --noEmit` over the type fixture, then the Node test
@@ -45,6 +50,10 @@ suite. It proves:
 - invalid raw and cross-Bindle dependencies fail clearly;
 - `dependsOn()` emits a manifest-lowering relationship; and
 - provider `.with(...)` annotations stay inert resource annotations.
+- generated IDs survive alias renames, returned-key reordering, and insertion
+  of another resource kind; and
+- diagnostics keep alias, generated ID, kind, owner Bindle, and physical-name
+  seed as distinct fields.
 
 ## Architecture Evidence
 
@@ -61,7 +70,8 @@ relationship emission accepts parsed handles, not broad raw DTOs.
 Event architecture:
 
 - Command: `CollectClosureBuilderResourceHandles`.
-- Event: `closureBuilder.ResourceHandlesCollected`.
+- Events: `closureBuilder.ResourceHandlesCollected` and
+  `closureBuilder.ResourceIdentityProjected`.
 - Actor: the SDK contract actor owns one Bindle builder closure collection.
 - Event store: accepted resource handle and relationship facts append to the
   design-contract event store.

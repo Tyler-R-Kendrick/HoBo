@@ -7,7 +7,7 @@ tags: [hobo, design]
 
 # Closure Builder Public API
 
-Source issues: HOBO-532 and HOBO-533. This record is the v1 public contract for
+Source issues: HOBO-532, HOBO-533, and HOBO-534. This record is the v1 public contract for
 explicit Bindle authoring in `@hobo/bindles`. It replaces pre-release
 factory-object assembly examples with a closure builder that has one vocabulary
 for agents, docs, and downstream implementation slices.
@@ -35,6 +35,8 @@ export default bindle("shop", (b) => {
   `b.api(() => importedApp.run())` do not take resource name arguments in v1.
 - Resource identity is HoBo-generated. Local variables and returned object keys
   are aliases for authoring, generated types, and downstream examples only.
+- Generated identity is surfaced separately from aliases in diagnostics and
+  physical naming seeds derive from the generated ID, not the local alias.
 - `dependsOn()` is the only v1 relationship verb and records a manifest-lowering
   relationship between handles.
 
@@ -59,4 +61,5 @@ The resource-handle proof lives in
 [`../../src/draft/closure-builder-resource-handles-contract`](../../src/draft/closure-builder-resource-handles-contract/README.md).
 It proves anonymous handle creation, inert workload descriptors, invalid
 dependency refusal, `dependsOn()` relationship emission, and inert provider
-annotations.
+annotations. The same proof now covers HOBO-534 generated-ID stability and alias
+separation diagnostics.

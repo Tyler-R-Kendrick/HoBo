@@ -16,6 +16,14 @@ message ClosureBuilderResource {
   repeated string annotation_kinds = 5;
 }
 
+message ClosureBuilderResourceIdentityDiagnostic {
+  string alias = 1;
+  string generated_id = 2;
+  string kind = 3;
+  string owner_bindle_id = 4;
+  string physical_name_seed = 5;
+}
+
 message ClosureBuilderWorkloadDescriptor {
   string kind = 1;
 }

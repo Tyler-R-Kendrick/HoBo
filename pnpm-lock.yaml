@@ -222,6 +222,8 @@ importers:
 
   src/draft/deny-ceiling-algebra-poc: {}
 
+  src/draft/deployment-dashboard-topology-scope-contract: {}
+
   src/draft/deployment-plan-ir-contract: {}
 
   src/draft/deployment-strategy-saga-templates-contract: {}
@@ -570,6 +572,8 @@ importers:
   src/draft/launch-messaging-claim-register: {}
 
   src/draft/launch-performance-capacity-envelope-contract: {}
+
+  src/draft/launch-site-demo-alpha-evidence-contract: {}
 
   src/draft/launch-support-escalation-matrix: {}
 
@@ -997,11 +1001,15 @@ importers:
 
   src/draft/usage-metering-scope-contract: {}
 
+  src/draft/v1-beta-pilot-private-beta-evidence: {}
+
   src/draft/v1-cutline-contract: {}
 
   src/draft/v1-e2e-persona-matrix-contract: {}
 
   src/draft/v1-outcome-activation-rail-contract: {}
+
+  src/draft/v1-readiness-dashboard-contract: {}
 
   src/draft/v1-release-notes-upgrade-guide-contract: {}
 

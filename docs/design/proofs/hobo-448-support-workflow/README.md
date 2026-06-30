@@ -17,6 +17,8 @@ This proof backs the M0 productization record for
   [`src/draft/support-workflow-scope-contract`](../../../../src/draft/support-workflow-scope-contract/README.md)
 - Focused gate:
   `npm.cmd --prefix src\draft\support-workflow-scope-contract test`
+- Workspace registration:
+  `pnpm-lock.yaml` includes the draft package importer so frozen installs keep the proof runnable.
 
 ## Acceptance Mapping
 

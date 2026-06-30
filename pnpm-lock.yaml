@@ -210,6 +210,8 @@ importers:
 
   src/draft/customer-assurance-evidence-packet-contract: {}
 
+  src/draft/customer-onboarding-script-contract: {}
+
   src/draft/data-flywheel-privacy-spike: {}
 
   src/draft/data-governance-policy-contract: {}

@@ -29,7 +29,7 @@ Naming: `hobo:sdk` is the WIT contract/package for app primitives and capability
 
 | Surface | Package boundary | Contract tier | Implementation issue | Conformance issue / suite |
 |---|---|---|---|---|
-| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-532 / HOBO-533 | HOBO-32 / `@hobo/conformance/sdk` |
+| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-532 / HOBO-533 / HOBO-534 / HOBO-535 | HOBO-32 / `@hobo/conformance/sdk` |
 | `.allow(...verbs)` | app idiom layer: `@hobo/bindles`; WIT-owned verb set in `hobo:sdk` | language idiom lowering + manifest IR | HOBO-70 | HOBO-32 / `@hobo/conformance/sdk` |
 | `connector(name)` | `@hobo/bindles` | language idiom lowering + manifest IR | HOBO-43 | HOBO-32 / `@hobo/conformance/sdk` |
 | `config(...)`, `secretRef(...)`, `env(...)`, `fromBinding(...)` | `@hobo/bindles` | app config reference lowering + manifest IR | HOBO-40 | HOBO-32 / `@hobo/conformance/sdk` |
@@ -72,8 +72,11 @@ keys are aliases only. `dependsOn()` is the only v1 relationship verb.
 ownership, and app-host boundary language. HOBO-533 proves anonymous builder
 handles, inert workload descriptors, invalid dependency refusal, and
 `dependsOn()` relationship emission. HOBO-534 proves generated identity stability
-across alias-only edits and diagnostic separation before HOBO-535 through
-HOBO-537 build lowering, tooling, and end-to-end flow.
+across alias-only edits and diagnostic separation. HOBO-535 proves those captured
+closure-builder facts lower to `hobo:sdk` calls and `hobo.manifest/v1`, while
+provider `.with(...)` annotations stay inert and aliases remain separate from
+deployment identity. Same-kind generated-ID ledger behavior remains outside the
+lowering contract until HOBO-538 lands.
 
 **Conformance issue.** HOBO-32 covers SDK lowering. This proof contributes the
 public vocabulary fixture that downstream conformance vectors consume.
@@ -225,6 +228,6 @@ const internalAgent = connector("internal-agent", { protocol: "acp" });
 
 **Default.** No SDK layer can claim retry, deadline, lifecycle, supervision, or inspection support until the corresponding resilience vector exists and passes. Off-corpus helper behavior is unsupported by default and must be listed in the conformance report.
 
-**Implementation issue.** HOBO-514 records the parent scope, child issue matrix, initiative links, and adversarial guardrails. HOBO-515 records the vocabulary, target paths, and proof sequence. HOBO-516 implements the first `src/draft/resilience-semantics-annex` proof with a deterministic retry seed. HOBO-518 extends that annex with lifecycle transition-table, replay hydration, event-derived inspection, terminal duplicate, and explicit child-spawn-contract vectors.
+**Implementation issue.** HOBO-514 records the parent scope, child issue matrix, initiative links, and adversarial guardrails. HOBO-515 records the vocabulary, target paths, and proof sequence. HOBO-516 implements the first `src/draft/resilience-semantics-annex` proof with a deterministic retry seed. HOBO-518 extends that annex with lifecycle transition-table, replay hydration, event-derived inspection, terminal duplicate, and explicit child-spawn-contract vectors. HOBO-520 adds the local diagnostics command that renders retry, denial, cancellation, and deadline outcomes from persisted facts for SDK/DX docs.
 
 **Conformance issue.** HOBO-517 extends the SDK conformance gate with a required resilience lane, explicit existing-semantics separation, generated/hand-authored parity, and off-corpus helper-claim refusal so golden-IR success cannot hide bad resilience or lifecycle semantics.

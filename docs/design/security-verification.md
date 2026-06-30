@@ -53,7 +53,7 @@ M1 evidence required before follow-up work can start:
 - support escalation handoff.
 
 Executable proof:
-[`security-verification-scope-acceptance`](../../src/draft/security-verification-scope-acceptance/README.md).
+[`security-verification-scope-acceptance`](../../src/draft/exp-proofs/security-verification-scope-acceptance/README.md).
 
 ## Goal
 
@@ -135,9 +135,9 @@ evidence.
 ## Proof
 
 The M0 scope proof is
-[`security-verification-scope-acceptance`](../../src/draft/security-verification-scope-acceptance/README.md).
+[`security-verification-scope-acceptance`](../../src/draft/exp-proofs/security-verification-scope-acceptance/README.md).
 
 The HOBO-494 process proof is
-[`vulnerability-disclosure-launch-blocker-contract`](../../src/draft/vulnerability-disclosure-launch-blocker-contract/README.md).
+[`vulnerability-disclosure-launch-blocker-contract`](../../src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract/README.md).
 It validates the process record, beta/GA differences, scope-out guard for external bug bounty, and
 release-blocker classification.

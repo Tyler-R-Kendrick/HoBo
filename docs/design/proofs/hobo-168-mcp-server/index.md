@@ -14,8 +14,8 @@ This proof records the branch-local contract package for HOBO-168.
 
 ## Executable Proof
 
-- Package: `src/draft/hobo-mcp-server-contract`
-- Focused gate: `npm.cmd --prefix src\draft\hobo-mcp-server-contract test`
+- Package: `src/draft/technical-proofs/hobo-mcp-server-contract`
+- Focused gate: `npm.cmd --prefix src\draft\technical-proofs\hobo-mcp-server-contract test`
 
 The tests exercise all acceptance bullets and adversarial cases in HOBO-168,
 including output-schema metadata, deploy progress streaming, and schema-drift

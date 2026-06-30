@@ -2,7 +2,7 @@
 
 This proof covers the authoring side of [`hobo:auth`](../../ai-native-agent-auth.md#plan-06), aligned to [ADR-0038](../../adr/02-identity-security.md#adr-0038) and [ADR-0070](../../adr/02-identity-security.md#adr-0070).
 
-Executable package: [`src/draft/hobo-auth-authoring-surface`](../../../../src/draft/hobo-auth-authoring-surface/README.md).
+Executable package: [`src/draft/technical-proofs/hobo-auth-authoring-surface`](../../../../src/draft/technical-proofs/hobo-auth-authoring-surface/README.md).
 
 Proven boundaries:
 

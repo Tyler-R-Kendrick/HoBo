@@ -1,7 +1,7 @@
 # HOBO-470 Beta Pilot Release Candidate Proof
 
 HOBO-470 is proven by the focused M3 contract at
-[`src/draft/beta-pilot-release-candidate-evidence-contract`](../../../../src/draft/beta-pilot-release-candidate-evidence-contract/README.md)
+[`src/draft/exp-proofs/beta-pilot-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/beta-pilot-release-candidate-evidence-contract/README.md)
 and the durable beta pilot scope record at [beta-pilot-feedback.md](../../beta-pilot-feedback.md).
 
 ## Acceptance Evidence
@@ -27,5 +27,5 @@ and the durable beta pilot scope record at [beta-pilot-feedback.md](../../beta-p
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\beta-pilot-release-candidate-evidence-contract test
+pnpm.cmd --dir src\draft\exp-proofs\beta-pilot-release-candidate-evidence-contract test
 ```

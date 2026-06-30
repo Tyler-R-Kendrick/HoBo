@@ -7,7 +7,7 @@ and four-lens model/prompt promotion gate in
 
 ## Acceptance Evidence
 
-- `src/draft/guardrail-policy-gate-contract` emits `policy.Decided` and
+- `src/draft/technical-proofs/guardrail-policy-gate-contract` emits `policy.Decided` and
   `guardrail.Blocked` for failed guardrail checks, and the blocked state rebuilds
   from the event stream.
 - Guardrail checker errors are treated as failures, so the output is blocked
@@ -32,7 +32,7 @@ runner, or eval-score computation.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\guardrail-policy-gate-contract test
+npm.cmd --prefix src\draft\technical-proofs\guardrail-policy-gate-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

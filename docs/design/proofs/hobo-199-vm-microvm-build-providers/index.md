@@ -2,8 +2,8 @@
 
 HOBO-199 is proven by the independent draft package:
 
-- package: [`src/draft/vm-microvm-build-providers-contract`](../../../../src/draft/vm-microvm-build-providers-contract/README.md)
-- focused gate: `npm.cmd --prefix src/draft/vm-microvm-build-providers-contract test`
+- package: [`src/draft/technical-proofs/vm-microvm-build-providers-contract`](../../../../src/draft/technical-proofs/vm-microvm-build-providers-contract/README.md)
+- focused gate: `npm.cmd --prefix src/draft/technical-proofs/vm-microvm-build-providers-contract test`
 
 ## Design Coverage
 

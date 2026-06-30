@@ -19,7 +19,7 @@ queryable candidate list, not an install or resolver decision.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\capability-indexed-discovery-contract test
+npm.cmd --prefix src\draft\technical-proofs\capability-indexed-discovery-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

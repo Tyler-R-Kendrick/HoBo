@@ -12,7 +12,7 @@ useful Effect and XState ideas into HoBo-native SDK semantics without adding
 either library as a public dependency. HOBO-514 owns the parent project scope,
 initiative linkage, and child issue matrix; HOBO-515 owns the vocabulary slice.
 The goal is to make later coding-agent work precise: the next proof package is
-`src/draft/resilience-semantics-annex`, and the public claim is bounded to
+`src/draft/technical-proofs/resilience-semantics-annex`, and the public claim is bounded to
 durable WIT calls, manifest IR, and replayable event facts.
 
 ## Requirements Sources
@@ -24,9 +24,9 @@ durable WIT calls, manifest IR, and replayable event facts.
   bindings plus thin idiom layers.
 - [ADR-0093](./adr/01-architecture-core.md#adr-0093) separates the SDK
   semantics annex from golden-IR lowering parity.
-- [`src/draft/idiom-semantics-annex`](../../src/draft/idiom-semantics-annex)
+- [`src/draft/technical-proofs/idiom-semantics-annex`](../../src/draft/technical-proofs/idiom-semantics-annex)
   proves error mapping, cancellation, async ordering, and IfC side-effect order.
-- [`src/draft/sdk-idiom-conformance-gate`](../../src/draft/sdk-idiom-conformance-gate)
+- [`src/draft/technical-proofs/sdk-idiom-conformance-gate`](../../src/draft/technical-proofs/sdk-idiom-conformance-gate)
   composes golden-IR and semantics-annex lanes.
 - Effect references: [Expected Errors](https://effect.website/docs/error-management/expected-errors/),
   [Retrying](https://effect.website/docs/error-management/retrying/), and
@@ -63,15 +63,15 @@ durable WIT calls, manifest IR, and replayable event facts.
 
 ## First Proof Package
 
-Build `src/draft/resilience-semantics-annex` first. It should be a small
+Build `src/draft/technical-proofs/resilience-semantics-annex` first. It should be a small
 independent POC that produces a stable report consumed by later issues.
 
 Target files for HOBO-516:
 
-- `src/draft/resilience-semantics-annex/package.json`
-- `src/draft/resilience-semantics-annex/README.md`
-- `src/draft/resilience-semantics-annex/src/resilience-semantics-annex.mjs`
-- `src/draft/resilience-semantics-annex/test/resilience-semantics-annex.test.mjs`
+- `src/draft/technical-proofs/resilience-semantics-annex/package.json`
+- `src/draft/technical-proofs/resilience-semantics-annex/README.md`
+- `src/draft/technical-proofs/resilience-semantics-annex/src/resilience-semantics-annex.mjs`
+- `src/draft/technical-proofs/resilience-semantics-annex/test/resilience-semantics-annex.test.mjs`
 
 Required report categories:
 
@@ -94,12 +94,12 @@ Required report categories:
 Focused command:
 
 ```powershell
-npm.cmd --prefix src\draft\resilience-semantics-annex test
+npm.cmd --prefix src\draft\technical-proofs\resilience-semantics-annex test
 ```
 
 ## Lifecycle Transition-Table Extension
 
-HOBO-518 extends `src/draft/resilience-semantics-annex` rather than creating a
+HOBO-518 extends `src/draft/technical-proofs/resilience-semantics-annex` rather than creating a
 separate runtime proof because lifecycle behavior shares the same conformance
 lane, replay-derived inspection posture, and no-Effect/no-XState dependency
 boundary.
@@ -125,21 +125,21 @@ Required negative fixtures:
 
 | Issue | Target path | Required command | Scope guard |
 |---|---|---|---|
-| HOBO-514 | `src/draft/dx-sdk-resilience-scope-contract` | `npm.cmd --prefix src\draft\dx-sdk-resilience-scope-contract test` | Parent scope only: no SDK helpers, no conformance rewrite, no runtime engine. |
-| HOBO-516 | `src/draft/resilience-semantics-annex` | `npm.cmd --prefix src\draft\resilience-semantics-annex test` | No Effect/XState dependency; no production conformance package change. |
-| HOBO-517 | `src/draft/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
+| HOBO-514 | `src/draft/exp-proofs/dx-sdk-resilience-scope-contract` | `npm.cmd --prefix src\draft\exp-proofs\dx-sdk-resilience-scope-contract test` | Parent scope only: no SDK helpers, no conformance rewrite, no runtime engine. |
+| HOBO-516 | `src/draft/technical-proofs/resilience-semantics-annex` | `npm.cmd --prefix src\draft\technical-proofs\resilience-semantics-annex test` | No Effect/XState dependency; no production conformance package change. |
+| HOBO-517 | `src/draft/technical-proofs/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\technical-proofs\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
 | HOBO-518 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No generic statechart interpreter and no XState dependency. |
-| HOBO-519 | `src/draft/supervision-child-lifetime-contract` | `npm.cmd --prefix src\draft\supervision-child-lifetime-contract test` plus `npm.cmd run docs:design-lint` | No distributed scheduler, production supervision tree, or new queue backend. |
-| HOBO-520 | SDK docs and local diagnostic example | `npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics`; `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector, remote dashboard, or production observability pipeline. |
+| HOBO-519 | `src/draft/technical-proofs/supervision-child-lifetime-contract` | `npm.cmd --prefix src\draft\technical-proofs\supervision-child-lifetime-contract test` plus `npm.cmd run docs:design-lint` | No distributed scheduler, production supervision tree, or new queue backend. |
+| HOBO-520 | SDK docs and local diagnostic example | `npm.cmd --prefix src\draft\technical-proofs\resilience-semantics-annex run diagnostics`; `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector, remote dashboard, or production observability pipeline. |
 
 ## Local Diagnostics Example
 
 HOBO-520 extends the existing
-[`../../src/draft/resilience-semantics-annex`](../../src/draft/resilience-semantics-annex/README.md)
+[`../../src/draft/technical-proofs/resilience-semantics-annex`](../../src/draft/technical-proofs/resilience-semantics-annex/README.md)
 proof with a local diagnostics command:
 
 ```powershell
-npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics
+npm.cmd --prefix src\draft\technical-proofs\resilience-semantics-annex run diagnostics
 ```
 
 The command renders replay-derived persisted facts for four developer-facing
@@ -164,7 +164,7 @@ issue matrix, design discoverability, initiative linkage, and adversarial rules
 must be stable before the later SDK and conformance work continues.
 
 The executable parent proof lives at
-[`../../src/draft/dx-sdk-resilience-scope-contract`](../../src/draft/dx-sdk-resilience-scope-contract/README.md).
+[`../../src/draft/exp-proofs/dx-sdk-resilience-scope-contract`](../../src/draft/exp-proofs/dx-sdk-resilience-scope-contract/README.md).
 It verifies:
 
 - child issues HOBO-515 through HOBO-520 span M0 through M4;

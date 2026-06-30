@@ -1,7 +1,7 @@
 # HOBO-88 SDK Codegen Surface Proof
 
 HOBO-88 is proven by the focused POC at
-`src/draft/sdk-codegen-surface-contract`.
+`src/draft/technical-proofs/sdk-codegen-surface-contract`.
 
 ## Acceptance Evidence
 
@@ -36,7 +36,7 @@ generation.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\sdk-codegen-surface-contract test
+npm.cmd --prefix src\draft\technical-proofs\sdk-codegen-surface-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

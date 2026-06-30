@@ -5,7 +5,7 @@ This executable proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0004](../../adr/01-architecture-core.md#adr-0004).
 
 The executable POC in
-[`src/draft/orchestrator-choreography-skeleton-contract`](../../../../src/draft/orchestrator-choreography-skeleton-contract)
+[`src/draft/technical-proofs/orchestrator-choreography-skeleton-contract`](../../../../src/draft/technical-proofs/orchestrator-choreography-skeleton-contract)
 proves the M1 orchestrator choreography skeleton:
 
 - a DeploymentPlan fixture provisions in dependency order;

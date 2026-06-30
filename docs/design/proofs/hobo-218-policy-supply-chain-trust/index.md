@@ -9,7 +9,7 @@ chain inputs from [Plan 29](../../contracts-policy-flags.md#plan-29),
 [ADR-0096](../../adr/02-identity-security.md#adr-0096).
 
 The executable proof lives in
-[`src/draft/policy-supply-chain-trust-contract`](../../../../src/draft/policy-supply-chain-trust-contract/README.md).
+[`src/draft/technical-proofs/policy-supply-chain-trust-contract`](../../../../src/draft/technical-proofs/policy-supply-chain-trust-contract/README.md).
 
 The proof covers:
 
@@ -28,5 +28,5 @@ attestation, KMS internals, registry storage, and generalized SBOM/SLSA CI.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\policy-supply-chain-trust-contract test
+npm.cmd --prefix src\draft\technical-proofs\policy-supply-chain-trust-contract test
 ```

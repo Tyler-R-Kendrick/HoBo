@@ -5,7 +5,7 @@ This proof backs [PLAN-29](../../contracts-policy-flags.md#plan-29),
 [ADR-0074](../../adr/02-identity-security.md#adr-0074).
 
 The branch adds
-[`src/draft/cross-yard-policy-attestation-contract`](../../../../src/draft/cross-yard-policy-attestation-contract/README.md),
+[`src/draft/technical-proofs/cross-yard-policy-attestation-contract`](../../../../src/draft/technical-proofs/cross-yard-policy-attestation-contract/README.md),
 an independent POC for detective cross-Yard policy assurance. It models signed
 per-Yard decision logs, signed policy-engine build measurements, central
 reconciliation, and the doctor-facing guarantee projection without implementing
@@ -32,6 +32,6 @@ KMS, attestation primitives, OCSF export, or rogue-Yard prevention.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\cross-yard-policy-attestation-contract test
+npm.cmd --prefix src\draft\technical-proofs\cross-yard-policy-attestation-contract test
 npm.cmd test
 ```

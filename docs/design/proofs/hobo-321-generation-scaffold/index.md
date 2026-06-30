@@ -7,7 +7,7 @@ skeleton hook.
 
 ## Acceptance Evidence
 
-- `src/draft/generation-scaffold-stage-contract` exposes a template registry
+- `src/draft/technical-proofs/generation-scaffold-stage-contract` exposes a template registry
   keyed by artifact kind and target port.
 - A database-provider `GenRequest` emits deterministic scaffold bytes plus a
   valid `gen.CandidateGenerated` event.
@@ -19,6 +19,6 @@ skeleton hook.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\generation-scaffold-stage-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-scaffold-stage-contract test
 npm.cmd test
 ```

@@ -1,3 +1,11 @@
+---
+type: Design Proof Evidence
+title: "HOBO-482 V1 Readiness Dashboard Proof"
+description: "M0 proof record for the V1 readiness dashboard evidence contract."
+tags: [hobo, proof, readiness-dashboard, v1]
+timestamp: 2026-06-30T00:00:00Z
+---
+
 # HOBO-482 V1 Readiness Dashboard Proof
 
 This proof records the M0 V1 readiness dashboard contract.
@@ -5,8 +13,8 @@ This proof records the M0 V1 readiness dashboard contract.
 ## Evidence
 
 - Source record: [`v1-readiness-dashboard.md`](../../v1-readiness-dashboard.md).
-- Executable proof: [`v1-readiness-dashboard-contract`](../../../../src/draft/v1-readiness-dashboard-contract/README.md).
-- Related cutline contract: [`v1-cutline-contract`](../../../../src/draft/v1-cutline-contract/README.md).
+- Executable proof: [`v1-readiness-dashboard-contract`](../../../../src/draft/exp-proofs/v1-readiness-dashboard-contract/README.md).
+- Related cutline contract: [`v1-cutline-contract`](../../../../src/draft/technical-proofs/v1-cutline-contract/README.md).
 
 ## Acceptance Coverage
 

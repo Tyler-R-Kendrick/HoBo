@@ -94,12 +94,13 @@ function existsAtBase(file: string): boolean {
 }
 
 function changedFiles(): string[] {
+  const baseForDiff = mode === "staged" ? "" : effectiveBase();
   const nameStatus =
     mode === "staged"
-      ? run("git", ["diff", "--cached", "--name-status", "--diff-filter=ACMR"])
-      : effectiveBase()
-        ? run("git", ["diff", "--name-status", "--diff-filter=ACMR", `${effectiveBase()}...HEAD`])
-        : run("git", ["diff", "--name-status", "--diff-filter=ACMR", "HEAD"]);
+      ? run("git", ["diff", "--cached", "--name-status", "--find-renames=50%", "--diff-filter=ACMR"])
+      : baseForDiff
+        ? run("git", ["diff", "--name-status", "--find-renames=50%", "--diff-filter=ACMR", `${baseForDiff}...HEAD`])
+        : run("git", ["diff", "--name-status", "--find-renames=50%", "--diff-filter=ACMR", "HEAD"]);
 
   const changed = nameStatus
     .split(/\r?\n/)
@@ -110,7 +111,10 @@ function changedFiles(): string[] {
       if (!status) {
         return [];
       }
-      if (status.startsWith("R") || status.startsWith("C")) {
+      if (status.startsWith("R")) {
+        return [];
+      }
+      if (status.startsWith("C")) {
         return secondPath ? [{ status: "A", file: secondPath }] : [];
       }
       return firstPath ? [{ status, file: firstPath }] : [];

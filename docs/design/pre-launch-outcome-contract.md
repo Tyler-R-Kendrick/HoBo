@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-509.
 
 Executable proof lives in
-[`src/draft/pre-launch-outcome-contract`](../../src/draft/pre-launch-outcome-contract/README.md).
+[`src/draft/exp-proofs/pre-launch-outcome-contract`](../../src/draft/exp-proofs/pre-launch-outcome-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-509-pre-launch-outcome-contract`](./proofs/hobo-509-pre-launch-outcome-contract/index.md).
 

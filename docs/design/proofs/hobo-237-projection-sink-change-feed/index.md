@@ -2,7 +2,7 @@
 
 HOBO-237 generalizes `change-feed` from the database port to a capability any `projection-sink` provider may advertise.
 
-Proof package: [`src/draft/projection-sink-change-feed-conformance-contract`](../../../../src/draft/projection-sink-change-feed-conformance-contract)
+Proof package: [`src/draft/technical-proofs/projection-sink-change-feed-conformance-contract`](../../../../src/draft/technical-proofs/projection-sink-change-feed-conformance-contract)
 
 ## Requirement Coverage
 
@@ -16,7 +16,7 @@ Proof package: [`src/draft/projection-sink-change-feed-conformance-contract`](..
 ## Verification
 
 ```powershell
-npm.cmd --prefix src/draft/projection-sink-change-feed-conformance-contract test
+npm.cmd --prefix src/draft/technical-proofs/projection-sink-change-feed-conformance-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
 node scripts/validate-traceability.ts

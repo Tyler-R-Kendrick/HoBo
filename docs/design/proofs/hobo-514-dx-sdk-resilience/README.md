@@ -18,7 +18,7 @@ conformance, lifecycle, supervision, and diagnostic work continues.
 - Linear: HOBO-514
 - Design record: [DX SDK resilience semantics](../../dx-sdk-resilience-semantics.md)
 - SDK contract map: [SDK contracts](../../sdk-contracts.md)
-- Proof package: [`dx-sdk-resilience-scope-contract`](../../../../src/draft/dx-sdk-resilience-scope-contract/README.md)
+- Proof package: [`dx-sdk-resilience-scope-contract`](../../../../src/draft/exp-proofs/dx-sdk-resilience-scope-contract/README.md)
 
 ## Acceptance Evidence
 
@@ -37,7 +37,7 @@ conformance, lifecycle, supervision, and diagnostic work continues.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\dx-sdk-resilience-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\dx-sdk-resilience-scope-contract test
 npm.cmd run docs:design-lint
 node scripts\validate-sdk-contracts.mjs
 git diff --check

@@ -5,7 +5,7 @@ This proof records the branch evidence for the M1 LLM-fill stage in the
 
 ## Acceptance Evidence
 
-- `src/draft/generation-llm-fill-contract` fills a HOBO-321 scaffold candidate
+- `src/draft/technical-proofs/generation-llm-fill-contract` fills a HOBO-321 scaffold candidate
   into a new `hobo.gen.llm-fill-candidate/v1` artifact.
 - A seeded database-provider request emits a filled candidate that targets the
   claimed `hobo:database/postgres@0.1.0` port and emits `gen.CandidateGenerated`.
@@ -19,5 +19,5 @@ This proof records the branch evidence for the M1 LLM-fill stage in the
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\generation-llm-fill-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-llm-fill-contract test
 ```

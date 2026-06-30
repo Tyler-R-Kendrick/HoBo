@@ -1,6 +1,6 @@
 # HOBO-169 Provider Hetzner Proof
 
-Branch proof path: `src/draft/provider-hetzner-contract`.
+Branch proof path: `src/draft/technical-proofs/provider-hetzner-contract`.
 
 ## Acceptance Mapping
 
@@ -25,5 +25,5 @@ Branch proof path: `src/draft/provider-hetzner-contract`.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\provider-hetzner-contract test
+npm.cmd --prefix src\draft\technical-proofs\provider-hetzner-contract test
 ```

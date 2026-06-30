@@ -25,11 +25,11 @@ This executable proof pins the M1 `hobo add` install-time gate from
 ## Boundary
 
 The proof lives in
-[`src/draft/hobo-add-install-verification-contract`](../../../../src/draft/hobo-add-install-verification-contract/README.md).
+[`src/draft/technical-proofs/hobo-add-install-verification-contract`](../../../../src/draft/technical-proofs/hobo-add-install-verification-contract/README.md).
 It composes the existing
-[`signed-artifact-publish-install-contract`](../../../../src/draft/signed-artifact-publish-install-contract/README.md)
+[`signed-artifact-publish-install-contract`](../../../../src/draft/technical-proofs/signed-artifact-publish-install-contract/README.md)
 and
-[`registry-artifact-descriptor-contract`](../../../../src/draft/registry-artifact-descriptor-contract/README.md).
+[`registry-artifact-descriptor-contract`](../../../../src/draft/technical-proofs/registry-artifact-descriptor-contract/README.md).
 
 It does not implement resolver semantics, mirror ranking, Matching selection, air-gap import,
 production signing infrastructure, or trust-tier minimum policy authoring.
@@ -37,5 +37,5 @@ production signing infrastructure, or trust-tier minimum policy authoring.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-add-install-verification-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-add-install-verification-contract test
 ```

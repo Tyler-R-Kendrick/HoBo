@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-423 Capability Review & Approval M0 Scope Proof
 
 HOBO-423 is proven by the focused M0 contract at
-[`src/draft/capability-review-approval-scope`](../../../../src/draft/capability-review-approval-scope/README.md)
+[`src/draft/exp-proofs/capability-review-approval-scope`](../../../../src/draft/exp-proofs/capability-review-approval-scope/README.md)
 and the durable scope record at
 [capability-review-approval.md](../../capability-review-approval.md).
 
@@ -40,5 +40,5 @@ and the durable scope record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\capability-review-approval-scope test
+npm.cmd --prefix src\draft\exp-proofs\capability-review-approval-scope test
 ```

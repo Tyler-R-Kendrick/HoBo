@@ -9,7 +9,7 @@ requirements in:
 
 Executable artifact:
 
-- [`src/draft/delivery-orchestrator-skeleton-contract`](../../../../src/draft/delivery-orchestrator-skeleton-contract)
+- [`src/draft/technical-proofs/delivery-orchestrator-skeleton-contract`](../../../../src/draft/technical-proofs/delivery-orchestrator-skeleton-contract)
 
 Acceptance evidence:
 

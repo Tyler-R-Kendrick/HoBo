@@ -31,5 +31,5 @@ slices.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\planner-dag-skeleton-contract test
+npm.cmd --prefix src\draft\technical-proofs\planner-dag-skeleton-contract test
 ```

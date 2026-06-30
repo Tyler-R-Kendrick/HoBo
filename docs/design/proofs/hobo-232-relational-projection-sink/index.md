@@ -5,7 +5,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32),
 [ADR-0052](../../adr/03-data-plane.md#adr-0052).
 
 The executable POC in
-[`src/draft/relational-projection-sink-contract`](../../../../src/draft/relational-projection-sink-contract)
+[`src/draft/technical-proofs/relational-projection-sink-contract`](../../../../src/draft/technical-proofs/relational-projection-sink-contract)
 pins the M2 Postgres projection-sink reference boundary:
 
 - read-model WIT fields map to a Postgres table, columns, primary key, secondary indexes, and
@@ -25,5 +25,5 @@ migration machinery, the Mongo/document adapter, and the `@hobo/sql` idiom packa
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\relational-projection-sink-contract test
+npm.cmd --prefix src\draft\technical-proofs\relational-projection-sink-contract test
 ```

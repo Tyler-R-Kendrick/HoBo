@@ -1,7 +1,7 @@
 # HOBO-130 Up Convergence Proof
 
 HOBO-130 is proven by the focused POC at
-[`src/draft/hobo-up-convergence-contract`](../../../../src/draft/hobo-up-convergence-contract/README.md).
+[`src/draft/technical-proofs/hobo-up-convergence-contract`](../../../../src/draft/technical-proofs/hobo-up-convergence-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -27,5 +27,5 @@ real rollback compensation, or policy/gate internals.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-up-convergence-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-up-convergence-contract test
 ```

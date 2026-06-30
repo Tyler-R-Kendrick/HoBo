@@ -10,11 +10,11 @@ tags: [hobo, design]
 Source issue: HOBO-428.
 
 Executable proof lives in
-[`src/draft/bootstrap-installer-scope-contract`](../../src/draft/bootstrap-installer-scope-contract/README.md).
+[`src/draft/exp-proofs/bootstrap-installer-scope-contract`](../../src/draft/exp-proofs/bootstrap-installer-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-428-bootstrap-installer`](./proofs/hobo-428-bootstrap-installer/README.md).
 Launch smoke matrix proof lives in
-[`src/draft/bootstrap-launch-smoke-matrix-contract`](../../src/draft/bootstrap-launch-smoke-matrix-contract/README.md).
+[`src/draft/exp-proofs/bootstrap-launch-smoke-matrix-contract`](../../src/draft/exp-proofs/bootstrap-launch-smoke-matrix-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-501-bootstrap-launch-smoke-matrix`](./proofs/hobo-501-bootstrap-launch-smoke-matrix/README.md).
 

@@ -4,7 +4,7 @@ This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20),
 [ADR-0031](../../adr/01-architecture-core.md#adr-0031), and
 [ADR-0069](../../adr/01-architecture-core.md#adr-0069).
 
-The branch adds `src/draft/wrpc-lattice-transport-contract`, an independent POC for the M3
+The branch adds `src/draft/technical-proofs/wrpc-lattice-transport-contract`, an independent POC for the M3
 NATS/JetStream lattice transport slice. It keeps the WIT contract stable while changing only the
 transport/link-resolution path.
 
@@ -30,5 +30,5 @@ Scope boundary:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\wrpc-lattice-transport-contract test
+npm.cmd --prefix src\draft\technical-proofs\wrpc-lattice-transport-contract test
 ```

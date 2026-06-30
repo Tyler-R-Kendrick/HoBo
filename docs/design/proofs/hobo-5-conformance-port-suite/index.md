@@ -1,7 +1,7 @@
 # HOBO-5 Conformance Harness Proof
 
 HOBO-5 is proven by the focused POC at
-[`src/draft/conformance-port-suite-contract`](../../../../src/draft/conformance-port-suite-contract/README.md).
+[`src/draft/technical-proofs/conformance-port-suite-contract`](../../../../src/draft/technical-proofs/conformance-port-suite-contract/README.md).
 
 Acceptance mapping:
 
@@ -17,5 +17,5 @@ Scope note: this proof defines the harness/report contract only. Real port suite
 Focused verification:
 
 ```powershell
-npm.cmd --prefix src\draft\conformance-port-suite-contract test
+npm.cmd --prefix src\draft\technical-proofs\conformance-port-suite-contract test
 ```

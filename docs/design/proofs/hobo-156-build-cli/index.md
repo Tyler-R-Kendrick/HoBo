@@ -1,7 +1,7 @@
 # HOBO-156 Build CLI Proof
 
 HOBO-156 is proven by the focused POC at
-[`src/draft/hobo-build-cli-contract`](../../../../src/draft/hobo-build-cli-contract/README.md).
+[`src/draft/technical-proofs/hobo-build-cli-contract`](../../../../src/draft/technical-proofs/hobo-build-cli-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -35,7 +35,7 @@ signing, or attestation.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-build-cli-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-build-cli-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

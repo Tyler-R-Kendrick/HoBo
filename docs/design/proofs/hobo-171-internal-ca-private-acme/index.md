@@ -30,7 +30,7 @@ or real KMS/HSM internals.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\internal-ca-private-acme-contract test
+npm.cmd --prefix src\draft\technical-proofs\internal-ca-private-acme-contract test
 ```
 
 The checks cover zero-egress issuance, validation-gate ACME evidence from a

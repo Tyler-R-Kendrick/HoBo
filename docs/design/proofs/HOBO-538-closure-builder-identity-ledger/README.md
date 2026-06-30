@@ -31,7 +31,7 @@ not become deployment identity.
 - Source record: [`../../closure-builder-public-api.md`](../../closure-builder-public-api.md).
 - SDK contract index: [`../../sdk-contracts.md`](../../sdk-contracts.md).
 - Executable proof package:
-  [`../../../../src/draft/closure-builder-resource-handles-contract`](../../../../src/draft/closure-builder-resource-handles-contract/README.md).
+  [`../../../../src/draft/technical-proofs/closure-builder-resource-handles-contract`](../../../../src/draft/technical-proofs/closure-builder-resource-handles-contract/README.md).
 
 ## Verified Assertions
 
@@ -55,5 +55,5 @@ surfaces lower and present closure-builder resources.
 ## Gate
 
 ```powershell
-corepack pnpm -C src\draft\closure-builder-resource-handles-contract test
+corepack pnpm -C src\draft\technical-proofs\closure-builder-resource-handles-contract test
 ```

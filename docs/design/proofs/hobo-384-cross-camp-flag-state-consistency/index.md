@@ -26,11 +26,11 @@ This executable proof pins the Harness feature-flag cross-Camp consistency contr
 ## Boundary
 
 The proof lives in
-[`src/draft/cross-camp-flag-state-consistency-contract`](../../../../src/draft/cross-camp-flag-state-consistency-contract/README.md).
+[`src/draft/technical-proofs/cross-camp-flag-state-consistency-contract`](../../../../src/draft/technical-proofs/cross-camp-flag-state-consistency-contract/README.md).
 It consumes the existing flag-event contract and ADR-0040 topology language. Replication backbone implementation, single-Camp partition behavior, flip governance, and provider adapters remain out of scope.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\cross-camp-flag-state-consistency-contract test
+npm.cmd --prefix src\draft\technical-proofs\cross-camp-flag-state-consistency-contract test
 ```

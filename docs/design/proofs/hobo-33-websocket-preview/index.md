@@ -4,12 +4,12 @@ This proof records the branch-local contract package for the preview `wasi:webso
 
 Executable package:
 
-- [`src/draft/websocket-preview-wit-contract`](../../../../src/draft/websocket-preview-wit-contract)
+- [`src/draft/technical-proofs/websocket-preview-wit-contract`](../../../../src/draft/technical-proofs/websocket-preview-wit-contract)
 
 Evidence command:
 
 ```powershell
-npm.cmd --prefix src/draft/websocket-preview-wit-contract test
+npm.cmd --prefix src/draft/technical-proofs/websocket-preview-wit-contract test
 ```
 
 The package proves `jco` guest binding generation, a TypeScript guest server stub, manifest `interface@version@stability` metadata, static preview warnings, and fail-closed preview bump validation that requires an upcaster edge. It does not implement `ws.*` event sourcing, Streamer fan-out, provider runtime behavior, or a future ratification upcaster.

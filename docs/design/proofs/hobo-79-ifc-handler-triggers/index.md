@@ -1,6 +1,6 @@
 # HOBO-79 IfC Handler Trigger Proof
 
-This proof package lives at `src/draft/ifc-handler-trigger-contract`.
+This proof package lives at `src/draft/technical-proofs/ifc-handler-trigger-contract`.
 
 It covers the HOBO-79 acceptance surface:
 

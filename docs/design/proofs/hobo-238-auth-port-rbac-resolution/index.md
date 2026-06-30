@@ -7,7 +7,7 @@ behavior.
 
 ## Scope
 
-- `src/draft/auth-port-rbac-resolution-contract` resolves `hobo:auth` SCIM group
+- `src/draft/technical-proofs/auth-port-rbac-resolution-contract` resolves `hobo:auth` SCIM group
   snapshots for user principals into RBAC subjects using the existing
   role/binding contract.
 - Custom roles are accepted only as validated action-taxonomy subsets from the
@@ -40,5 +40,5 @@ behavior.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\auth-port-rbac-resolution-contract test
+npm.cmd --prefix src\draft\technical-proofs\auth-port-rbac-resolution-contract test
 ```

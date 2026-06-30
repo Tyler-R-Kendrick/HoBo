@@ -6,7 +6,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05),
 [ADR-0025](../../adr/03-data-plane.md#adr-0025).
 
 The executable POC in
-[`src/draft/openinference-trajectory-capture-contract`](../../../../src/draft/openinference-trajectory-capture-contract)
+[`src/draft/technical-proofs/openinference-trajectory-capture-contract`](../../../../src/draft/technical-proofs/openinference-trajectory-capture-contract)
 proves the M1 OpenInference trajectory-capture skeleton:
 
 - a fixture `"use training"` invocation emits OpenInference `CHAIN`/`LLM` span events and appends a

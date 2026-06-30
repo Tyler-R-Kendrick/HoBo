@@ -8,7 +8,7 @@ This proof backs [PLAN-11](../../data-plane.md#plan-11),
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/camp-eventstore-runtime-port-contract`](../../../../src/draft/camp-eventstore-runtime-port-contract)
+[`src/draft/technical-proofs/camp-eventstore-runtime-port-contract`](../../../../src/draft/technical-proofs/camp-eventstore-runtime-port-contract)
 pins the HOBO-20 runtime-local EventStore boundary:
 
 - `append/read/subscribe/snapshot` operate over an append-only per-stream log;
@@ -30,5 +30,5 @@ cross-Camp replication, and ActorHost/CQRS ergonomics.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\camp-eventstore-runtime-port-contract test
+npm.cmd --prefix src\draft\technical-proofs\camp-eventstore-runtime-port-contract test
 ```

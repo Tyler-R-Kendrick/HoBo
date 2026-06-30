@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-504 Release Artifact Provenance Retention Proof
 
 Executable artifact:
-[`release-artifact-provenance-retention-contract`](../../../../src/draft/release-artifact-provenance-retention-contract/README.md).
+[`release-artifact-provenance-retention-contract`](../../../../src/draft/technical-proofs/release-artifact-provenance-retention-contract/README.md).
 
 The proof validates the M0 handoff record for artifact classes, provenance source, retention period,
 invalidation/yank handling, offline bundle expectations, support/debug access, owner lanes, and
@@ -26,5 +26,5 @@ Acceptance coverage:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\release-artifact-provenance-retention-contract test
+npm.cmd --prefix src\draft\technical-proofs\release-artifact-provenance-retention-contract test
 ```

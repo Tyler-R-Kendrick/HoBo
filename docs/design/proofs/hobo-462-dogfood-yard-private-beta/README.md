@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-462 Dogfood Yard Private Beta Evidence Proof
 
 HOBO-462 is proven by the focused M2 contract at
-[`src/draft/dogfood-yard-private-beta-evidence-contract`](../../../../src/draft/dogfood-yard-private-beta-evidence-contract/README.md)
+[`src/draft/exp-proofs/dogfood-yard-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/dogfood-yard-private-beta-evidence-contract/README.md)
 and the durable Dogfood Yard scope record at [dogfood-yard.md](../../dogfood-yard.md).
 
 ## Acceptance Evidence
@@ -34,6 +34,6 @@ and the durable Dogfood Yard scope record at [dogfood-yard.md](../../dogfood-yar
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\dogfood-yard-private-beta-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\dogfood-yard-private-beta-evidence-contract test
 pnpm.cmd agent:check -- --staged
 ```

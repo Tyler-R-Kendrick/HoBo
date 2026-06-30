@@ -14,7 +14,7 @@ Issue: HOBO-498.
 Focused gate:
 
 ```powershell
-pnpm.cmd --dir src\draft\backup-restore-launch-drill-contract test
+pnpm.cmd --dir src\draft\exp-proofs\backup-restore-launch-drill-contract test
 ```
 
 ## Acceptance Evidence

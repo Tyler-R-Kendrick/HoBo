@@ -5,9 +5,9 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0071](../../adr/01-architecture-core.md#adr-0071).
 
 The executable hardening harness in
-[`src/draft/dispatcher-reservation-hardening-contract`](../../../../src/draft/dispatcher-reservation-hardening-contract)
+[`src/draft/technical-proofs/dispatcher-reservation-hardening-contract`](../../../../src/draft/technical-proofs/dispatcher-reservation-hardening-contract)
 extends the existing
-[`dispatcher-maximize-credits-contract`](../../../../src/draft/dispatcher-maximize-credits-contract)
+[`dispatcher-maximize-credits-contract`](../../../../src/draft/technical-proofs/dispatcher-maximize-credits-contract)
 with reservation lifecycle and burst-safety assertions.
 
 ## Acceptance Evidence
@@ -41,8 +41,8 @@ surface proves the required reservation semantics before those runtime pieces ex
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\dispatcher-reservation-hardening-contract test
-npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
+npm.cmd --prefix src\draft\technical-proofs\dispatcher-reservation-hardening-contract test
+npm.cmd --prefix src\draft\technical-proofs\dispatcher-maximize-credits-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
 node scripts\validate-traceability.ts

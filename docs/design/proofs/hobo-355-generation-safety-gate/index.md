@@ -24,7 +24,7 @@ behavior.
 ## Boundary
 
 The proof lives in
-[`src/draft/generation-safety-gate-contract`](../../../../src/draft/generation-safety-gate-contract/README.md).
+[`src/draft/technical-proofs/generation-safety-gate-contract`](../../../../src/draft/technical-proofs/generation-safety-gate-contract/README.md).
 It consumes the HOBO-320 sandbox event shape and extends the HOBO-307
 generation event family with `gen.SafetyRejected`.
 
@@ -35,8 +35,8 @@ malware adjudication beyond the contract checks named by HOBO-355.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\generation-safety-gate-contract test
-npm.cmd --prefix src\draft\generation-pipeline-io-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-safety-gate-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-pipeline-io-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

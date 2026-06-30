@@ -1,6 +1,6 @@
 # HOBO-240 Snapshot Compaction Proof
 
-HOBO-240 proves the Plan 11 / ADR-0050 snapshot and domain-stream lifecycle policy as an independent draft contract under `src/draft/snapshot-compaction-contract`.
+HOBO-240 proves the Plan 11 / ADR-0050 snapshot and domain-stream lifecycle policy as an independent draft contract under `src/draft/technical-proofs/snapshot-compaction-contract`.
 
 ## Scope
 
@@ -27,7 +27,7 @@ This proof models policy and lifecycle behavior above the EventStore primitive. 
 ## Evidence
 
 ```powershell
-npm.cmd --prefix src\draft\snapshot-compaction-contract test
+npm.cmd --prefix src\draft\technical-proofs\snapshot-compaction-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

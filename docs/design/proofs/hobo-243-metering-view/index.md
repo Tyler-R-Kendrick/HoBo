@@ -2,7 +2,7 @@
 
 This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and [ADR-0039](../../adr/02-identity-security.md#adr-0039).
 
-The branch adds `src/draft/metering-view-projection-contract`, an independent POC for the M1 MeteringView projection skeleton. It proves usage and cost counters can be rebuilt from the event log, folded incrementally, attributed across the principal hierarchy, and emitted as deterministic rollups without implementing showback, quotas, CreditLedgerView, or billing reconciliation.
+The branch adds `src/draft/technical-proofs/metering-view-projection-contract`, an independent POC for the M1 MeteringView projection skeleton. It proves usage and cost counters can be rebuilt from the event log, folded incrementally, attributed across the principal hierarchy, and emitted as deterministic rollups without implementing showback, quotas, CreditLedgerView, or billing reconciliation.
 
 ## Acceptance Evidence
 
@@ -23,6 +23,6 @@ The branch adds `src/draft/metering-view-projection-contract`, an independent PO
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\metering-view-projection-contract test
+npm.cmd --prefix src\draft\technical-proofs\metering-view-projection-contract test
 npm.cmd test
 ```

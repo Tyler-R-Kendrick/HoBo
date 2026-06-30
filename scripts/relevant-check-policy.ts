@@ -21,8 +21,8 @@ export type RelevantCheckPolicy = {
 
 export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
-  const match = normalized.match(/^src\/draft\/([^/]+)\//u);
-  return match ? `src/draft/${match[1]}` : undefined;
+  const match = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
+  return match ? `src/draft/${match[1]}/${match[2]}` : undefined;
 }
 
 function defaultWorkspacePackageExists(workspace: string) {
@@ -49,8 +49,8 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
     || (touchedAny([/^package\.json$/u]) && !rootPackageJsonScriptsOnlyChanged);
   const sourceChanged = touched(["src", "contracts", "test", "tests"]);
   const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/u, /^CONTRIBUTING\.md$/u, /^AGENTS\.md$/u, /^CLAUDE\.md$/u]);
-  const draftSchemaChanged = files.some((file) => /^src\/draft\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
-  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/[^/]+\//u.test(file));
+  const draftSchemaChanged = files.some((file) => /^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
+  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\//u.test(file));
   const schemaChanged = rootSchemaChanged || draftSchemaChanged;
   const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
   const uiChanged = touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/u]);
@@ -85,16 +85,26 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
 
   if (workspaces.length > 0) {
     const workspaceFilters = workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]);
+    const turboArgs = ["exec", "turbo", "run", "test", ...workspaceFilters];
+    const turboCommandLength = ["pnpm", ...turboArgs].join(" ").length;
 
-    checks.push({
-      command: "pnpm",
-      args: turboAvailable
-        ? ["exec", "turbo", "run", "test", ...workspaceFilters]
-        : [...workspaceFilters, "test"],
-      reason: turboAvailable
-        ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s); turbo runs isolated draft contract regenerations in parallel`
-        : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
-    });
+    if (process.platform === "win32" && turboAvailable && turboCommandLength > 24_000) {
+      checks.push({
+        command: "pnpm",
+        args: ["run", "test:unit"],
+        reason: `bulk draft package tests for ${workspaces.length} changed workspace(s); Windows command length is too large for one Turbo filter command`,
+      });
+    } else {
+      checks.push({
+        command: "pnpm",
+        args: turboAvailable
+          ? turboArgs
+          : [...workspaceFilters, "test"],
+        reason: turboAvailable
+          ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s); turbo runs isolated draft contract regenerations in parallel`
+          : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
+      });
+    }
   }
 
   if (uiChanged) {

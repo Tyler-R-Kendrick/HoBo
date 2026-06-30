@@ -26,7 +26,7 @@ becomes a certified registry listing; uncertified artifacts remain unlisted.
 ## Boundary
 
 The proof lives in
-[`src/draft/registry-publish-flow-contract`](../../../../src/draft/registry-publish-flow-contract/README.md).
+[`src/draft/technical-proofs/registry-publish-flow-contract`](../../../../src/draft/technical-proofs/registry-publish-flow-contract/README.md).
 It consumes HOBO-7 signing/install verification facts and proves handoff to an OCI-shaped store
 boundary. It does not implement a production OCI adapter, install, discovery ranking, yanking,
 trust-tier computation, or real conformance execution.
@@ -34,5 +34,5 @@ trust-tier computation, or real conformance execution.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\registry-publish-flow-contract test
+npm.cmd --prefix src\draft\technical-proofs\registry-publish-flow-contract test
 ```

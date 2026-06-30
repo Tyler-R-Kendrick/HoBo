@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-511 Supported Platform Matrix Proof
 
 HOBO-511 is proven by the focused M0 contract at
-[`src/draft/v1-supported-platform-matrix-contract`](../../../../src/draft/v1-supported-platform-matrix-contract/README.md)
+[`src/draft/exp-proofs/v1-supported-platform-matrix-contract`](../../../../src/draft/exp-proofs/v1-supported-platform-matrix-contract/README.md)
 and the durable support record at [compatibility-matrix.md](../../compatibility-matrix.md).
 
 ## Acceptance Evidence
@@ -29,5 +29,5 @@ and the durable support record at [compatibility-matrix.md](../../compatibility-
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\v1-supported-platform-matrix-contract test
+npm.cmd --prefix src\draft\exp-proofs\v1-supported-platform-matrix-contract test
 ```

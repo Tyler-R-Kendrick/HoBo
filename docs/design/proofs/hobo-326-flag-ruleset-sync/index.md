@@ -9,7 +9,7 @@ This proof connects the M1 Harness sync slice to:
 
 Executable artifact:
 
-- [`src/draft/flag-ruleset-sync-contract`](../../../../src/draft/flag-ruleset-sync-contract)
+- [`src/draft/technical-proofs/flag-ruleset-sync-contract`](../../../../src/draft/technical-proofs/flag-ruleset-sync-contract)
 
 Acceptance evidence:
 

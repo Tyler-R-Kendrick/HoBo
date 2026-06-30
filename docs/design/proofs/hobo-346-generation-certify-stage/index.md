@@ -20,7 +20,7 @@ provenance, and Registry verification.
 ## Boundary
 
 The proof lives in
-[`src/draft/generation-certify-stage-contract`](../../../../src/draft/generation-certify-stage-contract/README.md).
+[`src/draft/technical-proofs/generation-certify-stage-contract`](../../../../src/draft/technical-proofs/generation-certify-stage-contract/README.md).
 It reuses the signed provenance predicate shape from HOBO-312 and consumes the
 policy-gate result shape from HOBO-333, but remains an independent draft POC.
 
@@ -31,7 +31,7 @@ or provider runtime behavior.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\generation-certify-stage-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-certify-stage-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

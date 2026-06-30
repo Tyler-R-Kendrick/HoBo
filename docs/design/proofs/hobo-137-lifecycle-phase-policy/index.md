@@ -5,7 +5,7 @@ This proof package anchors the HOBO-137 branch implementation.
 ## Issue
 
 - Linear: HOBO-137
-- Draft package: `src/draft/lifecycle-phase-policy-contract`
+- Draft package: `src/draft/technical-proofs/lifecycle-phase-policy-contract`
 - Design refs: `contracts-policy-flags.md#plan-29`, ADR-0015, ADR-0074
 
 ## Proven Acceptance
@@ -25,5 +25,5 @@ This proof package anchors the HOBO-137 branch implementation.
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/lifecycle-phase-policy-contract test
+npm.cmd --prefix src/draft/technical-proofs/lifecycle-phase-policy-contract test
 ```

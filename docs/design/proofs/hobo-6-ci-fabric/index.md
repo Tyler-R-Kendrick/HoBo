@@ -23,7 +23,7 @@ and [Plan 9](../../generated-stack.md#plan-09).
 ## Boundary
 
 The executable proof lives in
-[`src/draft/ci-fabric-oidc-e2e-contract`](../../../../src/draft/ci-fabric-oidc-e2e-contract/README.md).
+[`src/draft/technical-proofs/ci-fabric-oidc-e2e-contract`](../../../../src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/README.md).
 The reviewable workflow skeleton is
 [`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml). The impact gate
 runs on `pull_request` and `merge_group: checks_requested` for the `main`
@@ -45,5 +45,5 @@ provisioning.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\ci-fabric-oidc-e2e-contract test
+npm.cmd --prefix src\draft\technical-proofs\ci-fabric-oidc-e2e-contract test
 ```

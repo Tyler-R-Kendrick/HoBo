@@ -6,8 +6,8 @@ This proof records the M0 spike for the DNS validation-gate threat model from
 
 ## Proof Surface
 
-- [Draft package](../../../../src/draft/dns-validation-gate-threat-model/README.md)
-- [Executable checks](../../../../src/draft/dns-validation-gate-threat-model/test/threat-model.test.ts)
+- [Draft package](../../../../src/draft/technical-proofs/dns-validation-gate-threat-model/README.md)
+- [Executable checks](../../../../src/draft/technical-proofs/dns-validation-gate-threat-model/test/threat-model.test.ts)
 
 ## Proven Constraints
 
@@ -28,5 +28,5 @@ checks, staged cutover, gateway behavior, or the HOBO-193 adversarial hardening 
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\dns-validation-gate-threat-model test
+npm.cmd --prefix src\draft\technical-proofs\dns-validation-gate-threat-model test
 ```

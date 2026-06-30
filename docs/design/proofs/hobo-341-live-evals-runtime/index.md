@@ -6,7 +6,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05),
 
 Executable artifact:
 
-- [`src/draft/live-evals-runtime-contract`](../../../../src/draft/live-evals-runtime-contract)
+- [`src/draft/technical-proofs/live-evals-runtime-contract`](../../../../src/draft/technical-proofs/live-evals-runtime-contract)
 
 Acceptance evidence:
 

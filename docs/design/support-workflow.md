@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-448.
 
 Executable proof lives in
-[`src/draft/support-workflow-scope-contract`](../../src/draft/support-workflow-scope-contract/README.md).
+[`src/draft/exp-proofs/support-workflow-scope-contract`](../../src/draft/exp-proofs/support-workflow-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-448-support-workflow`](./proofs/hobo-448-support-workflow/README.md).
 

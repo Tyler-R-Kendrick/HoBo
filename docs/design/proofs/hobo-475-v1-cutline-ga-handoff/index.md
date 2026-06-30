@@ -1,7 +1,7 @@
 # HOBO-475 V1 Cutline GA Handoff Proof
 
 HOBO-475 is proven by the focused M4 contract at
-[`src/draft/v1-cutline-contract`](../../../../src/draft/v1-cutline-contract/README.md)
+[`src/draft/technical-proofs/v1-cutline-contract`](../../../../src/draft/technical-proofs/v1-cutline-contract/README.md)
 and the GA decision source record at
 [`go-no-go-decision-record.md`](../../go-no-go-decision-record.md#m4-ga-handoff-evidence-gate).
 
@@ -29,5 +29,5 @@ and the GA decision source record at
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\v1-cutline-contract test
+pnpm.cmd --dir src\draft\technical-proofs\v1-cutline-contract test
 ```

@@ -8,7 +8,7 @@ the accepted child and RCR evidence has landed.
 - Canonical public API record:
   [`closure-builder-public-api.md`](../../closure-builder-public-api.md).
 - Finalization contract:
-  [`closure-builder-v1-finalization-contract`](../../../../src/draft/closure-builder-v1-finalization-contract/README.md).
+  [`closure-builder-v1-finalization-contract`](../../../../src/draft/technical-proofs/closure-builder-v1-finalization-contract/README.md).
 - Child/RCR proof set: HOBO-532, HOBO-533, HOBO-534, HOBO-535, HOBO-536,
   HOBO-537, and HOBO-538.
 
@@ -25,5 +25,5 @@ the accepted child and RCR evidence has landed.
 ## Verification
 
 ```powershell
-corepack pnpm -C src\draft\closure-builder-v1-finalization-contract test
+corepack pnpm -C src\draft\technical-proofs\closure-builder-v1-finalization-contract test
 ```

@@ -7,8 +7,8 @@ model from [ADR-0058](../../adr/03-data-plane.md#adr-0058).
 
 Executable proof:
 
-- package: `src/draft/runbook-execution-engine-contract`
-- test command: `npm.cmd --prefix src\draft\runbook-execution-engine-contract test`
+- package: `src/draft/technical-proofs/runbook-execution-engine-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\runbook-execution-engine-contract test`
 
 Acceptance coverage:
 

@@ -26,7 +26,7 @@ Those remain separate identity, executor, and policy slices.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\workload-attestation-intake-contract test
+npm.cmd --prefix src\draft\technical-proofs\workload-attestation-intake-contract test
 ```
 
 The checks prove valid attestation, tamper/forgery/absence failures, measured

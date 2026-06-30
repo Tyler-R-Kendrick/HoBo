@@ -25,5 +25,5 @@ adapters, or the ResourceActor reconcile loop.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\adopt-in-place-contract test
+npm.cmd --prefix src\draft\technical-proofs\adopt-in-place-contract test
 ```

@@ -4,7 +4,7 @@ This proof backs [PLAN-25](../../platform-engineering.md#plan-25) and
 [ADR-0006](../../adr/01-architecture-core.md#adr-0006).
 
 The executable POC in
-[`src/draft/iac-state-model-contract`](../../../../src/draft/iac-state-model-contract)
+[`src/draft/technical-proofs/iac-state-model-contract`](../../../../src/draft/technical-proofs/iac-state-model-contract)
 proves the M1 IaC state model boundary:
 
 - stack keys are isolated by `tenant/deployment/resource`;

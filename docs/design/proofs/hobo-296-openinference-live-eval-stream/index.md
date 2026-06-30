@@ -7,7 +7,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05),
 
 Executable artifact:
 
-- [`src/draft/openinference-live-eval-stream-contract`](../../../../src/draft/openinference-live-eval-stream-contract)
+- [`src/draft/technical-proofs/openinference-live-eval-stream-contract`](../../../../src/draft/technical-proofs/openinference-live-eval-stream-contract)
 
 Acceptance evidence:
 

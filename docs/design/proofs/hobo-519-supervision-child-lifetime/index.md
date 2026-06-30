@@ -5,7 +5,7 @@ to workflows, steps, actors, sagas, and runbook-style parents.
 
 ## Evidence
 
-- [`supervision-child-lifetime-contract`](../../../../src/draft/supervision-child-lifetime-contract/README.md)
+- [`supervision-child-lifetime-contract`](../../../../src/draft/technical-proofs/supervision-child-lifetime-contract/README.md)
   proves invoked child cleanup on parent exit, spawned child teardown ownership,
   retry-budget escalation, cleanup trap audit, and replay-derived supervision
   inspection.
@@ -16,7 +16,7 @@ to workflows, steps, actors, sagas, and runbook-style parents.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\supervision-child-lifetime-contract test
+npm.cmd --prefix src\draft\technical-proofs\supervision-child-lifetime-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
 git diff --check

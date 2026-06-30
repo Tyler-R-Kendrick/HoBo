@@ -17,7 +17,7 @@ adapter contract.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\iac-crossplane-backend-contract test
+npm.cmd --prefix src\draft\technical-proofs\iac-crossplane-backend-contract test
 ```
 
 ## Scope Boundary

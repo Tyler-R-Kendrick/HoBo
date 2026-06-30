@@ -9,8 +9,8 @@ the autonomous safety rails from
 
 Executable proof:
 
-- package: `src/draft/gated-autonomous-remediation-contract`
-- test command: `npm.cmd --prefix src\draft\gated-autonomous-remediation-contract test`
+- package: `src/draft/technical-proofs/gated-autonomous-remediation-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\gated-autonomous-remediation-contract test`
 
 Acceptance coverage:
 

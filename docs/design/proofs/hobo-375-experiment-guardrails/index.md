@@ -9,7 +9,7 @@ under-power guardrails to:
 
 Executable artifact:
 
-- [`src/draft/experiment-statistical-analysis-contract`](../../../../src/draft/experiment-statistical-analysis-contract)
+- [`src/draft/technical-proofs/experiment-statistical-analysis-contract`](../../../../src/draft/technical-proofs/experiment-statistical-analysis-contract)
 
 Acceptance evidence:
 
@@ -45,5 +45,5 @@ Scope boundary:
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\experiment-statistical-analysis-contract test
+npm.cmd --prefix src\draft\technical-proofs\experiment-statistical-analysis-contract test
 ```

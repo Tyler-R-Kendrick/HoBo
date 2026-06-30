@@ -1,7 +1,7 @@
 # HOBO-479 Launch Site GA Handoff Evidence
 
 HOBO-479 is proven by the focused M4 contract at
-[`src/draft/launch-site-ga-handoff-evidence-contract`](../../../../src/draft/launch-site-ga-handoff-evidence-contract/README.md).
+[`src/draft/exp-proofs/launch-site-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/launch-site-ga-handoff-evidence-contract/README.md).
 
 ## Evidence Summary
 

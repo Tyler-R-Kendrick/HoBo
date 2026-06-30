@@ -14,9 +14,9 @@ This proof backs the M3 receipt-integrity hardening evidence for
 
 - Issue: HOBO-529
 - Draft package:
-  [`src/draft/broker-receipt-integrity-contract`](../../../../src/draft/broker-receipt-integrity-contract/README.md)
+  [`src/draft/technical-proofs/broker-receipt-integrity-contract`](../../../../src/draft/technical-proofs/broker-receipt-integrity-contract/README.md)
 - Focused gate:
-  `npm.cmd --prefix src\draft\broker-receipt-integrity-contract test`
+  `npm.cmd --prefix src\draft\technical-proofs\broker-receipt-integrity-contract test`
 
 ## Acceptance Mapping
 

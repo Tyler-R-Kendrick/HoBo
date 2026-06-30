@@ -7,7 +7,7 @@ deny path, not an implicit cross-tenant-admin path.
 
 Proof package:
 
-- `src/draft/no-privilege-escalation-policy-contract`
+- `src/draft/technical-proofs/no-privilege-escalation-policy-contract`
 
 Coverage:
 
@@ -34,5 +34,5 @@ Scope held:
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\no-privilege-escalation-policy-contract test
+npm.cmd --prefix src\draft\technical-proofs\no-privilege-escalation-policy-contract test
 ```

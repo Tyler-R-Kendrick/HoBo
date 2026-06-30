@@ -4,7 +4,7 @@ HOBO-295 proves the Plan 32 / ADR-0032 / ADR-0051 hardening rule for right-to-er
 
 ## Scope
 
-This proof lives in `src/draft/crypto-shred-erasure-contract`. It models field-level encryption under per-subject keys, tenant-level key hierarchy erasure, notification recipient shredding, projection rebuild exclusion, write-side invariant linting, and pre-erasure snapshot invalidation. It does not implement the EventStore, production key management, tenant stream-key isolation, projection sink adapters, or identity/security-plane KMS wiring.
+This proof lives in `src/draft/technical-proofs/crypto-shred-erasure-contract`. It models field-level encryption under per-subject keys, tenant-level key hierarchy erasure, notification recipient shredding, projection rebuild exclusion, write-side invariant linting, and pre-erasure snapshot invalidation. It does not implement the EventStore, production key management, tenant stream-key isolation, projection sink adapters, or identity/security-plane KMS wiring.
 
 ## Acceptance Coverage
 
@@ -27,7 +27,7 @@ This proof lives in `src/draft/crypto-shred-erasure-contract`. It models field-l
 ## Evidence
 
 ```powershell
-npm.cmd --prefix src\draft\crypto-shred-erasure-contract test
+npm.cmd --prefix src\draft\technical-proofs\crypto-shred-erasure-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

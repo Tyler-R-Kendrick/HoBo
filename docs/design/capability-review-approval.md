@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-423.
 
 Executable proof lives in
-[`src/draft/capability-review-approval-scope`](../../src/draft/capability-review-approval-scope/README.md).
+[`src/draft/exp-proofs/capability-review-approval-scope`](../../src/draft/exp-proofs/capability-review-approval-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-423-capability-review-approval`](./proofs/hobo-423-capability-review-approval/README.md).
 
@@ -116,9 +116,9 @@ M1 designs must account for these review states before implementation begins:
   dependencies for approval decisions without implementing policy enforcement here.
 - [ADR-0075](./adr/07-portability-extensibility.md#adr-0075) defines interface stability tiers and
   capability-spec evidence consumed by review decisions.
-- [Curated catalog policy contract](../../src/draft/curated-catalog-policy-contract/README.md)
+- [Curated catalog policy contract](../../src/draft/technical-proofs/curated-catalog-policy-contract/README.md)
   defines curated catalog approval/revoke behavior consumed as downstream enforcement.
-- [Trust-tier policy contract](../../src/draft/trust-tier-policy-contract/README.md) defines
+- [Trust-tier policy contract](../../src/draft/technical-proofs/trust-tier-policy-contract/README.md) defines
   minimum trust-tier can-deploy policy consumed by review outcomes without making ratings
   sufficient for safety.
 

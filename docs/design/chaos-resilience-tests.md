@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-439.
 
 Executable proof lives in
-[`src/draft/chaos-resilience-tests-scope-acceptance`](../../src/draft/chaos-resilience-tests-scope-acceptance/README.md).
+[`src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance`](../../src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-439-chaos-resilience-tests`](./proofs/hobo-439-chaos-resilience-tests/README.md).
 

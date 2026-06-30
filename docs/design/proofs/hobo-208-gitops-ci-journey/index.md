@@ -1,7 +1,7 @@
 # HOBO-208 GitOps CI Journey Proof
 
 HOBO-208 is proven by the focused POC at
-[`src/draft/gitops-ci-journey-contract`](../../../../src/draft/gitops-ci-journey-contract/README.md).
+[`src/draft/exp-proofs/gitops-ci-journey-contract`](../../../../src/draft/exp-proofs/gitops-ci-journey-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -34,5 +34,5 @@ canary flags, OIDC broker internals, or CI provider runner fabric.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\gitops-ci-journey-contract test
+npm.cmd --prefix src\draft\exp-proofs\gitops-ci-journey-contract test
 ```

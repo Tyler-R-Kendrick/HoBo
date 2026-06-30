@@ -1,7 +1,7 @@
 # HOBO-140 Inspect Projections Proof
 
 HOBO-140 is proven by the focused POC at
-[`src/draft/hobo-inspect-projection-contract`](../../../../src/draft/hobo-inspect-projection-contract/README.md).
+[`src/draft/technical-proofs/hobo-inspect-projection-contract`](../../../../src/draft/technical-proofs/hobo-inspect-projection-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -26,5 +26,5 @@ HOBO-140 is proven by the focused POC at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-inspect-projection-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-inspect-projection-contract test
 ```

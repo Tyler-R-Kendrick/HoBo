@@ -8,12 +8,12 @@ Refs:
 
 Package:
 
-- `src/draft/outbound-xaa-token-exchange-contract`
+- `src/draft/technical-proofs/outbound-xaa-token-exchange-contract`
 
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\outbound-xaa-token-exchange-contract test
+npm.cmd --prefix src\draft\technical-proofs\outbound-xaa-token-exchange-contract test
 ```
 
 Acceptance mapping:

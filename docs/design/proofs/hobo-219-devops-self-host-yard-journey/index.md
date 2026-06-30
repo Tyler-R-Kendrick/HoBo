@@ -9,7 +9,7 @@ It composes the self-host bootstrap ordering pinned by
 
 Executable proof lives in the repo-standard draft path:
 
-- [`src/draft/devops-self-host-yard-journey-contract`](../../../../src/draft/devops-self-host-yard-journey-contract)
+- [`src/draft/exp-proofs/devops-self-host-yard-journey-contract`](../../../../src/draft/exp-proofs/devops-self-host-yard-journey-contract)
 
 ## Proven boundaries
 
@@ -27,5 +27,5 @@ Executable proof lives in the repo-standard draft path:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\devops-self-host-yard-journey-contract test
+npm.cmd --prefix src\draft\exp-proofs\devops-self-host-yard-journey-contract test
 ```

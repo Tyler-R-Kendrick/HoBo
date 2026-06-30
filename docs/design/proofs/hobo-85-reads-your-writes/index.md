@@ -4,7 +4,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32) and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/reads-your-writes-contract`](../../../../src/draft/reads-your-writes-contract)
+[`src/draft/technical-proofs/reads-your-writes-contract`](../../../../src/draft/technical-proofs/reads-your-writes-contract)
 proves the M2 reads-your-writes contract:
 
 - a command ack is held until native log-backed subscriptions advance to the emitted event seq;
@@ -19,5 +19,5 @@ cross-Camp subscriptions, GraphQL facade generation, and Reactor backpressure sc
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\reads-your-writes-contract test
+npm.cmd --prefix src\draft\technical-proofs\reads-your-writes-contract test
 ```

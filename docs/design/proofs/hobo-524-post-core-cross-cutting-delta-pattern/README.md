@@ -14,9 +14,9 @@ This proof backs the documentation pattern for post-399 cross-cutting capability
 - Issue: HOBO-524
 - Source M0 record: [Meta-cloud Broker](../../meta-cloud-broker.md)
 - Draft package:
-  [`src/draft/post-core-cross-cutting-delta-pattern`](../../../../src/draft/post-core-cross-cutting-delta-pattern/README.md)
+  [`src/draft/technical-proofs/post-core-cross-cutting-delta-pattern`](../../../../src/draft/technical-proofs/post-core-cross-cutting-delta-pattern/README.md)
 - Focused gate:
-  `npm.cmd --prefix src\draft\post-core-cross-cutting-delta-pattern test`
+  `npm.cmd --prefix src\draft\technical-proofs\post-core-cross-cutting-delta-pattern test`
 
 ## Acceptance Mapping
 

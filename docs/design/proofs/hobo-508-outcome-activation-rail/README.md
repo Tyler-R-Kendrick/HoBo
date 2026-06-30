@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-508 V1 Outcome Activation Rail Proof
 
 HOBO-508 is proven by the focused M0 contract at
-[`src/draft/v1-outcome-activation-rail-contract`](../../../../src/draft/v1-outcome-activation-rail-contract/README.md)
+[`src/draft/technical-proofs/v1-outcome-activation-rail-contract`](../../../../src/draft/technical-proofs/v1-outcome-activation-rail-contract/README.md)
 and the durable design record at [outcome-activation-rail.md](../../outcome-activation-rail.md).
 
 ## Acceptance Evidence
@@ -30,5 +30,5 @@ and the durable design record at [outcome-activation-rail.md](../../outcome-acti
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\v1-outcome-activation-rail-contract test
+npm.cmd --prefix src\draft\technical-proofs\v1-outcome-activation-rail-contract test
 ```

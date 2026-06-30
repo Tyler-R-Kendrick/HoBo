@@ -1,7 +1,7 @@
 # HOBO-483 Go/No-Go Decision Record Proof
 
 HOBO-483 is proven by the focused M0 contract at
-[`src/draft/go-no-go-decision-record-contract`](../../../../src/draft/go-no-go-decision-record-contract/README.md)
+[`src/draft/technical-proofs/go-no-go-decision-record-contract`](../../../../src/draft/technical-proofs/go-no-go-decision-record-contract/README.md)
 and the durable design record at
 [`go-no-go-decision-record.md`](../../go-no-go-decision-record.md).
 
@@ -23,5 +23,5 @@ and the durable design record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\go-no-go-decision-record-contract test
+npm.cmd --prefix src\draft\technical-proofs\go-no-go-decision-record-contract test
 ```

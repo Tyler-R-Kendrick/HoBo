@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-427.
 
 Executable proof lives in
-[`src/draft/audit-explorer-scope-contract`](../../src/draft/audit-explorer-scope-contract/README.md).
+[`src/draft/exp-proofs/audit-explorer-scope-contract`](../../src/draft/exp-proofs/audit-explorer-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-427-audit-explorer`](./proofs/hobo-427-audit-explorer/README.md).
 

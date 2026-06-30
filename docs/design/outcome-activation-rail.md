@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-508.
 
 Executable proof lives in
-[`src/draft/v1-outcome-activation-rail-contract`](../../src/draft/v1-outcome-activation-rail-contract/README.md).
+[`src/draft/technical-proofs/v1-outcome-activation-rail-contract`](../../src/draft/technical-proofs/v1-outcome-activation-rail-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-508-outcome-activation-rail`](./proofs/hobo-508-outcome-activation-rail/README.md).
 

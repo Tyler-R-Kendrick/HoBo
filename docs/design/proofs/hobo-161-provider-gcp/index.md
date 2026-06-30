@@ -6,7 +6,7 @@ package slot in [architecture.md](../../architecture.md#monorepo--package-archit
 conformance.
 
 The executable POC in
-[`src/draft/provider-gcp-contract`](../../../../src/draft/provider-gcp-contract)
+[`src/draft/technical-proofs/provider-gcp-contract`](../../../../src/draft/technical-proofs/provider-gcp-contract)
 proves the GCP seed provider contract:
 
 - `@hobo/provider-gcp` exposes a factory, Capability Manifest, default Resource

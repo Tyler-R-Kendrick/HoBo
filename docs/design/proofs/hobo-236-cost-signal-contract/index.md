@@ -14,7 +14,7 @@ HOBO-236 — Define the CreditLedger + metering cost-signal contract (`cost.json
 
 ## Proof Surface
 
-- `src/draft/cost-signal-contract` defines the versioned `cost.json` provider signal, typed
+- `src/draft/technical-proofs/cost-signal-contract` defines the versioned `cost.json` provider signal, typed
   metering/spend/credit event schemas, and deterministic `CreditLedgerView` snapshot serialization.
   The spend schema includes the runaway-spend circuit breaker and degradation lifecycle events named
   in ADR-0039.

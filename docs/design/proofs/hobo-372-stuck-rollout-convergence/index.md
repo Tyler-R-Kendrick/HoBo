@@ -9,7 +9,7 @@ This proof connects stuck/partial rollout convergence to:
 
 Executable artifact:
 
-- [`src/draft/stuck-rollout-convergence-contract`](../../../../src/draft/stuck-rollout-convergence-contract)
+- [`src/draft/technical-proofs/stuck-rollout-convergence-contract`](../../../../src/draft/technical-proofs/stuck-rollout-convergence-contract)
 
 Acceptance evidence:
 

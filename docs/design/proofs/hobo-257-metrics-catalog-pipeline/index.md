@@ -5,7 +5,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 
 Executable artifact:
 
-- [`src/draft/metrics-catalog-pipeline-contract`](../../../../src/draft/metrics-catalog-pipeline-contract)
+- [`src/draft/technical-proofs/metrics-catalog-pipeline-contract`](../../../../src/draft/technical-proofs/metrics-catalog-pipeline-contract)
 
 Acceptance evidence:
 

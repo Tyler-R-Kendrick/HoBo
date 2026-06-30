@@ -1,6 +1,6 @@
 # HOBO-103 Delta Set Apply Reconcile Proof
 
-This branch adds `src/draft/delta-set-apply-reconcile-contract`, an independent executable POC
+This branch adds `src/draft/technical-proofs/delta-set-apply-reconcile-contract`, an independent executable POC
 for applying Deployment Deltas into immutable Deployment Sets and driving incremental reconciliation.
 
 It proves:
@@ -20,5 +20,5 @@ cross-Camp replication mechanics, real provider applies, drift detection, and De
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\delta-set-apply-reconcile-contract test
+npm.cmd --prefix src\draft\technical-proofs\delta-set-apply-reconcile-contract test
 ```

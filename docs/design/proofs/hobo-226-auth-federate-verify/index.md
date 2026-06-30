@@ -24,5 +24,5 @@ built-in dev provider remain owned by their separate slices.
 ## Command
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-auth-federate-verify-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-auth-federate-verify-contract test
 ```

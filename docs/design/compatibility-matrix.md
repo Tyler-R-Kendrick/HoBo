@@ -10,9 +10,9 @@ tags: [hobo, design]
 Source issues: HOBO-432 and HOBO-511.
 
 Executable proof lives in
-[`src/draft/v1-supported-platform-matrix-contract`](../../src/draft/v1-supported-platform-matrix-contract/README.md).
+[`src/draft/exp-proofs/v1-supported-platform-matrix-contract`](../../src/draft/exp-proofs/v1-supported-platform-matrix-contract/README.md).
 M0 scope proof lives in
-[`src/draft/compatibility-matrix-scope-contract`](../../src/draft/compatibility-matrix-scope-contract/README.md).
+[`src/draft/exp-proofs/compatibility-matrix-scope-contract`](../../src/draft/exp-proofs/compatibility-matrix-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-511-supported-platform-matrix`](./proofs/hobo-511-supported-platform-matrix/README.md).
 M0 branch evidence is summarized in

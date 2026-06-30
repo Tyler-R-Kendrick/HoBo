@@ -4,7 +4,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 [ADR-0004](../../adr/01-architecture-core.md#adr-0004).
 
 The executable POC in
-[`src/draft/saga-compensation-engine-contract`](../../../../src/draft/saga-compensation-engine-contract)
+[`src/draft/technical-proofs/saga-compensation-engine-contract`](../../../../src/draft/technical-proofs/saga-compensation-engine-contract)
 proves the M2 saga compensation engine:
 
 - a failure past the no-go threshold emits `deployment.RolledBack`;

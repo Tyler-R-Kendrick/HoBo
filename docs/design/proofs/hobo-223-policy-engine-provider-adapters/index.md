@@ -1,7 +1,7 @@
 # HOBO-223 Policy Engine Provider Adapters Proof
 
 This proof makes the Plan 29 OPA/Rego and Cedar policy-engine provider adapters executable in
-[`src/draft/policy-engine-provider-adapters-contract`](../../../../src/draft/policy-engine-provider-adapters-contract/README.md).
+[`src/draft/technical-proofs/policy-engine-provider-adapters-contract`](../../../../src/draft/technical-proofs/policy-engine-provider-adapters-contract/README.md).
 
 ## Acceptance Mapping
 
@@ -25,5 +25,5 @@ deny-ceiling algebra remain owned by their separate issues.
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/policy-engine-provider-adapters-contract test
+npm.cmd --prefix src/draft/technical-proofs/policy-engine-provider-adapters-contract test
 ```

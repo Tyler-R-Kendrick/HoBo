@@ -22,12 +22,12 @@ This executable proof pins the M2 Junction registry/signed-artifact federation s
 
 ## Boundary
 
-The proof lives in [`src/draft/junction-registry-federation-contract`](../../../../src/draft/junction-registry-federation-contract/README.md). It consumes [`registry-import-contract`](../../../../src/draft/registry-import-contract/README.md), [`signed-offline-bundle-contract`](../../../../src/draft/signed-offline-bundle-contract/README.md), and the install verification contract.
+The proof lives in [`src/draft/technical-proofs/junction-registry-federation-contract`](../../../../src/draft/technical-proofs/junction-registry-federation-contract/README.md). It consumes [`registry-import-contract`](../../../../src/draft/technical-proofs/registry-import-contract/README.md), [`signed-offline-bundle-contract`](../../../../src/draft/technical-proofs/signed-offline-bundle-contract/README.md), and the install verification contract.
 
 It does not implement Junction identity trust establishment/revocation, cross-cloud connectivity inference, cross-cloud policy packs, production Registry storage, or the signed bundle/importer internals.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\junction-registry-federation-contract test
+npm.cmd --prefix src\draft\technical-proofs\junction-registry-federation-contract test
 ```

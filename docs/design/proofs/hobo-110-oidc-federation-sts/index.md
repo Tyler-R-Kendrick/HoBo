@@ -8,7 +8,7 @@ This executable proof pins the M2 provider-federation slice from
 ## Contract Surface
 
 - The proof package is
-  [`src/draft/oidc-federation-sts-contract`](../../../../src/draft/oidc-federation-sts-contract).
+  [`src/draft/technical-proofs/oidc-federation-sts-contract`](../../../../src/draft/technical-proofs/oidc-federation-sts-contract).
 - AWS, GCP, and Azure mock STS exchanges receive SVID-bound OIDC assertions
   whose audience matches the provider trust config.
 - Missing provider trust setup fails closed before assertion minting or STS
@@ -33,7 +33,7 @@ XAA/ID-JAG, use static API-key fallback, or build broker HA/cache runtime.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\oidc-federation-sts-contract test
+npm.cmd --prefix src\draft\technical-proofs\oidc-federation-sts-contract test
 ```
 
 The tests cover the HOBO-110 acceptance and adversarial cases: scoped fixture

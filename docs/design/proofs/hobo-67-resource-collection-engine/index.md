@@ -2,7 +2,7 @@
 
 This executable proof backs [PLAN-02](../../sdk-api.md#plan-02), [PLAN-21](../../authoring-resources-wiring.md#plan-21), [PLAN-19](../../worked-example.md#plan-19), and the usage-inferred grant portion of [ADR-0069](../../adr/01-architecture-core.md#adr-0069).
 
-The proof lives in [`../../../src/draft/resource-collection-engine-contract`](../../../src/draft/resource-collection-engine-contract).
+The proof lives in [`../../../src/draft/technical-proofs/resource-collection-engine-contract`](../../../src/draft/technical-proofs/resource-collection-engine-contract).
 
 It verifies:
 

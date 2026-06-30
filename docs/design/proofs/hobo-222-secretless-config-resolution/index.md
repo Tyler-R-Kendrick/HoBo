@@ -7,7 +7,7 @@ This executable proof backs [Plan 21](../../authoring-resources-wiring.md#plan-2
 ## Contract Surface
 
 - The proof package is
-  [`src/draft/secretless-config-resolution-contract`](../../../../src/draft/secretless-config-resolution-contract).
+  [`src/draft/technical-proofs/secretless-config-resolution-contract`](../../../../src/draft/technical-proofs/secretless-config-resolution-contract).
 - Bound-resource config resolves to a brokered provider token without reading a
   secret.
 - Federated `secretRef` resolves through the Camp's `secrets` port adapter at
@@ -32,7 +32,7 @@ static-secret hatch hardening, and IaC-state secret-sink reference migration.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\secretless-config-resolution-contract test
+npm.cmd --prefix src\draft\technical-proofs\secretless-config-resolution-contract test
 ```
 
 The tests cover the HOBO-222 acceptance and adversarial cases: ladder paths

@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 This capability doc covers the authoring surface end to end: the resource catalog and the `.allow()` model, wiring and the manifest IR, configuration and secretless secrets, and the Hobo Code DSL — one model from declaration to deployable artifact.
 
-> **Reference architecture:** the SDK & Authoring epic rollup lives at [`sdk-authoring-ifc-bindles`](../../src/draft/epic-reference-implementations/sdk-authoring-ifc-bindles/README.md). It ties the relevant POCs into one mocked simulation and Pact inventory for IfC resource collection, config/secret refs, XAA/auth declarations, Hobo Code lowering, coverage/permission gates, topology, and local dev replay.
+> **Reference architecture:** the SDK & Authoring epic rollup lives at [`sdk-authoring-ifc-bindles`](../../src/draft/epic-proofs/sdk-authoring-ifc-bindles/README.md). It ties the relevant POCs into one mocked simulation and Pact inventory for IfC resource collection, config/secret refs, XAA/auth declarations, Hobo Code lowering, coverage/permission gates, topology, and local dev replay.
 
 ## Plan 21
 

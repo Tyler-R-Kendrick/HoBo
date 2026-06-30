@@ -8,8 +8,8 @@ incident management from [ADR-0058](../../adr/03-data-plane.md#adr-0058).
 
 Executable proof:
 
-- package: `src/draft/human-operator-console-contract`
-- test command: `npm.cmd --prefix src\draft\human-operator-console-contract test`
+- package: `src/draft/technical-proofs/human-operator-console-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\human-operator-console-contract test`
 
 Acceptance coverage:
 

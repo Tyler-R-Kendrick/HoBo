@@ -1,7 +1,7 @@
 # HOBO-75 Collection Coverage Gate Proof
 
 HOBO-75 is proven by the focused POC at
-[`src/draft/collection-coverage-gate-contract`](../../../../src/draft/collection-coverage-gate-contract/README.md).
+[`src/draft/technical-proofs/collection-coverage-gate-contract`](../../../../src/draft/technical-proofs/collection-coverage-gate-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -23,5 +23,5 @@ separate slices.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\collection-coverage-gate-contract test
+npm.cmd --prefix src\draft\technical-proofs\collection-coverage-gate-contract test
 ```

@@ -28,14 +28,14 @@ scope.
 ## Boundary
 
 The proof lives in
-[`src/draft/version-pinning-drift-guard-contract`](../../../../src/draft/version-pinning-drift-guard-contract/README.md).
+[`src/draft/technical-proofs/version-pinning-drift-guard-contract`](../../../../src/draft/technical-proofs/version-pinning-drift-guard-contract/README.md).
 It intentionally delegates version compatibility and distributed resolution to
 the existing HOBO-336 and HOBO-370 packages.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\version-pinning-drift-guard-contract test
+npm.cmd --prefix src\draft\technical-proofs\version-pinning-drift-guard-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

@@ -10,7 +10,7 @@ This proof connects the M2 provider-adapter slice to:
 
 Executable artifact:
 
-- [`src/draft/openfeature-provider-adapters-contract`](../../../../src/draft/openfeature-provider-adapters-contract)
+- [`src/draft/technical-proofs/openfeature-provider-adapters-contract`](../../../../src/draft/technical-proofs/openfeature-provider-adapters-contract)
 
 Acceptance evidence:
 

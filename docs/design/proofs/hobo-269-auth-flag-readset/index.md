@@ -8,6 +8,6 @@ This proof pins the Reactor contract for auth and feature-flag state as first-cl
 - Subscriptions without the matching session or flag read-set member are not woken.
 - Auth recomputation failure is fail-closed (`auth-recompute-failed`), never a stale privileged push.
 
-Executable proof lives in `src/draft/auth-flag-readset-contract`.
+Executable proof lives in `src/draft/technical-proofs/auth-flag-readset-contract`.
 
 Scope intentionally excludes bounded fan-out/coalescing and session/flag event producers; HOBO-288 owns the fan-out hardening that this issue unblocks.

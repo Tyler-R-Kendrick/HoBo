@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-484.
 
 Executable proof lives in
-[`src/draft/v1-critical-path-dependency-map-contract`](../../src/draft/v1-critical-path-dependency-map-contract/README.md).
+[`src/draft/exp-proofs/v1-critical-path-dependency-map-contract`](../../src/draft/exp-proofs/v1-critical-path-dependency-map-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-484-v1-critical-path-dependencies`](./proofs/hobo-484-v1-critical-path-dependencies/README.md).
 
@@ -65,7 +65,7 @@ publish paid or broad-availability launch claims.
 
 ## Design Links
 
-- [V1 cutline proof](../../src/draft/v1-cutline-contract/README.md) defines launch scope
+- [V1 cutline proof](../../src/draft/technical-proofs/v1-cutline-contract/README.md) defines launch scope
   boundaries.
 - [Launch blocker taxonomy](./launch-blocker-taxonomy.md) defines blocker and exception language.
 - [Release notes and upgrade guide](./release-notes-upgrade-guide.md) consumes accepted evidence for

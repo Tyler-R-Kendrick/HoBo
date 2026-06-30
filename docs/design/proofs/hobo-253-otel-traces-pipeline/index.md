@@ -6,7 +6,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05),
 
 Executable artifact:
 
-- [`src/draft/otel-traces-pipeline-contract`](../../../../src/draft/otel-traces-pipeline-contract)
+- [`src/draft/technical-proofs/otel-traces-pipeline-contract`](../../../../src/draft/technical-proofs/otel-traces-pipeline-contract)
 
 Acceptance evidence:
 

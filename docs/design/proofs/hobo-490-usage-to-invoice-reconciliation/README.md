@@ -1,7 +1,15 @@
+---
+type: Design Proof Evidence
+title: "HOBO-490 Usage-To-Invoice Reconciliation Proof"
+description: "M1 proof record for usage-to-invoice reconciliation mappings, fixtures, and customer-visible redaction."
+tags: [hobo, proof, usage, invoice]
+timestamp: 2026-06-30T00:00:00Z
+---
+
 # HOBO-490 Usage-To-Invoice Reconciliation Proof
 
 HOBO-490 is proven by the focused M1 contract at
-[`src/draft/usage-to-invoice-reconciliation-contract`](../../../../src/draft/usage-to-invoice-reconciliation-contract/README.md)
+[`src/draft/technical-proofs/usage-to-invoice-reconciliation-contract`](../../../../src/draft/technical-proofs/usage-to-invoice-reconciliation-contract/README.md)
 and the durable design record at
 [`usage-to-invoice-reconciliation.md`](../../usage-to-invoice-reconciliation.md).
 
@@ -26,5 +34,5 @@ and the durable design record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\usage-to-invoice-reconciliation-contract test
+npm.cmd --prefix src\draft\technical-proofs\usage-to-invoice-reconciliation-contract test
 ```

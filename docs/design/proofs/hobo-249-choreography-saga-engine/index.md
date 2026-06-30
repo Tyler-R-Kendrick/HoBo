@@ -4,7 +4,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 [ADR-0004](../../adr/01-architecture-core.md#adr-0004).
 
 The executable POC in
-[`src/draft/choreography-saga-engine-contract`](../../../../src/draft/choreography-saga-engine-contract)
+[`src/draft/technical-proofs/choreography-saga-engine-contract`](../../../../src/draft/technical-proofs/choreography-saga-engine-contract)
 proves the M1 event-sourced choreography saga skeleton:
 
 - a three-step saga reaches `Completed` and reconstructs from `saga.*` events;

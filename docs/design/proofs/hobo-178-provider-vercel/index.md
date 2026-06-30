@@ -7,7 +7,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0090](../../adr/01-architecture-core.md#adr-0090).
 
 The executable POC in
-[`src/draft/provider-vercel-contract`](../../../../src/draft/provider-vercel-contract/README.md)
+[`src/draft/technical-proofs/provider-vercel-contract`](../../../../src/draft/technical-proofs/provider-vercel-contract/README.md)
 pins the `@hobo/provider-vercel` contract:
 
 - factory, `.with(...)` builders, default Resource Definitions,

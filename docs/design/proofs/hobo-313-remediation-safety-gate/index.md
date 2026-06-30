@@ -28,7 +28,7 @@ remediation apply runtime.
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\remediation-safety-gate-contract test
+npm.cmd --prefix src\draft\technical-proofs\remediation-safety-gate-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

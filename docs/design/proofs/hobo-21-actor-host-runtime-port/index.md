@@ -5,7 +5,7 @@ This proof backs [PLAN-02](../../sdk-api.md#plan-02),
 [ADR-0002](../../adr/01-architecture-core.md#adr-0002), and
 [ADR-0053](../../adr/03-data-plane.md#adr-0053).
 
-The branch adds `src/draft/actor-host-runtime-port-contract`, an independent POC
+The branch adds `src/draft/technical-proofs/actor-host-runtime-port-contract`, an independent POC
 for the Layer 1 `ActorHost` runtime port. It proves actor-key ownership,
 fencing-token rejection, lease expiry/renewal, and durable state replay without
 implementing the separate EventStore port, command aggregate idiom, Reactor, or
@@ -36,6 +36,6 @@ poison quarantine, or EventEnvelope publication is implemented here.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\actor-host-runtime-port-contract test
+npm.cmd --prefix src\draft\technical-proofs\actor-host-runtime-port-contract test
 npm.cmd test
 ```

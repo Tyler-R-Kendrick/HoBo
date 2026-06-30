@@ -25,7 +25,7 @@ and token exchange remain separate identity slices.
 Run:
 
 ```powershell
-node --test src\draft\hobo-jwt-svid-contract\test\jwt-svid-contract.test.ts
+node --test src\draft\technical-proofs\hobo-jwt-svid-contract\test\jwt-svid-contract.test.ts
 ```
 
 The checks prove:

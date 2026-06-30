@@ -140,7 +140,7 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 
 Local resilience diagnostics use the same rule: the developer-facing output is a
 projection of persisted facts, not process memory. The HOBO-520 proof command in
-`src/draft/resilience-semantics-annex` shows transient retry attempts, policy
+`src/draft/technical-proofs/resilience-semantics-annex` shows transient retry attempts, policy
 denial, caller cancellation cleanup, and deadline escalation from replay-derived
 facts, while keeping hosted dashboards and production observability out of this
 slice.

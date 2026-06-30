@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-412.
 
 Executable proof lives in
-[`src/draft/settings-project-lifecycle-scope`](../../src/draft/settings-project-lifecycle-scope/README.md).
+[`src/draft/exp-proofs/settings-project-lifecycle-scope`](../../src/draft/exp-proofs/settings-project-lifecycle-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-412-settings-project-lifecycle`](./proofs/hobo-412-settings-project-lifecycle/README.md).
 

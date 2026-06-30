@@ -10,7 +10,7 @@ This proof connects the runtime data-collection half of OpenExperiment to:
 
 Executable artifact:
 
-- [`src/draft/openexperiment-runtime-data-contract`](../../../../src/draft/openexperiment-runtime-data-contract)
+- [`src/draft/technical-proofs/openexperiment-runtime-data-contract`](../../../../src/draft/technical-proofs/openexperiment-runtime-data-contract)
 
 Acceptance evidence:
 

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-497 Public Status Page Incident Communication Proof
 
 HOBO-497 is proven by the focused M0 contract at
-[`src/draft/public-status-page-incident-communication-contract`](../../../../src/draft/public-status-page-incident-communication-contract/README.md)
+[`src/draft/technical-proofs/public-status-page-incident-communication-contract`](../../../../src/draft/technical-proofs/public-status-page-incident-communication-contract/README.md)
 and the durable source record at
 [public-status-page-incident-communication.md](../../public-status-page-incident-communication.md).
 
@@ -35,5 +35,5 @@ and the durable source record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\public-status-page-incident-communication-contract test
+npm.cmd --prefix src\draft\technical-proofs\public-status-page-incident-communication-contract test
 ```

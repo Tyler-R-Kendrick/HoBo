@@ -13,7 +13,7 @@ This proof records the branch evidence for
 ## Summary
 
 - Issue: HOBO-442
-- Package: [`drift-reconciliation-scope-contract`](../../../../src/draft/drift-reconciliation-scope-contract/README.md)
+- Package: [`drift-reconciliation-scope-contract`](../../../../src/draft/exp-proofs/drift-reconciliation-scope-contract/README.md)
 - Focused gate: `pnpm --prefix src\draft\drift-reconciliation-scope-contract test`
 
 ## Acceptance Evidence

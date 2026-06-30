@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-497.
 
 Executable proof lives in
-[`src/draft/public-status-page-incident-communication-contract`](../../src/draft/public-status-page-incident-communication-contract/README.md).
+[`src/draft/technical-proofs/public-status-page-incident-communication-contract`](../../src/draft/technical-proofs/public-status-page-incident-communication-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-497-public-status-page-incident-communication`](./proofs/hobo-497-public-status-page-incident-communication/README.md).
 

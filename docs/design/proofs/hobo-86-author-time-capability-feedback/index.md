@@ -24,7 +24,7 @@ Registry storage, deploy-time Gatekeeper, provider adapters, or the hard `PlanRe
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\author-time-capability-feedback-contract test
+npm.cmd --prefix src\draft\technical-proofs\author-time-capability-feedback-contract test
 ```
 
 The checks prove the issue acceptance and adversarial cases: named remediation, stability-aware

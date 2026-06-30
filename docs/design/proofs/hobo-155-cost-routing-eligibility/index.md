@@ -7,7 +7,7 @@ ADR-0035, ADR-0040, and ADR-0071.
 
 | Issue acceptance | Executable proof |
 |---|---|
-| Can-deploy refuses cost-routing for a route whose reachable set includes single-writer and allows all-eligible routes. | `src/draft/cost-routing-eligibility-contract/test/cost-routing-eligibility.test.ts` asserts refusal for `single-writer` reachability and approval for `active-active-eventual`/`pinned` reachability. |
+| Can-deploy refuses cost-routing for a route whose reachable set includes single-writer and allows all-eligible routes. | `src/draft/technical-proofs/cost-routing-eligibility-contract/test/cost-routing-eligibility.test.ts` asserts refusal for `single-writer` reachability and approval for `active-active-eventual`/`pinned` reachability. |
 | Mixed domain routes single-writer paths home and cost-routes eligible paths. | The mixed-domain test keeps a checkout path on its home Camp while routing a catalog path to the cheapest healthy Camp. |
 | Cost flips are hysteresis-bounded. | The hysteresis test holds the previous Camp through rapid sub-threshold cost oscillation and flips only after savings exceed the configured bound. |
 | `can-deploy` asserts no single-writer route is cost-routed. | `assertNoSingleWriterCostRoutes()` throws when a planned `cost` route reaches single-writer state and passes for home-routed single-writer paths. |

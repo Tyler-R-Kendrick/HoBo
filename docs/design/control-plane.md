@@ -17,7 +17,7 @@ This capability doc covers the Yard control plane end to end: its services and r
 
 > **Contracts & policy (gates).** Two governance planes back grains: a **contract-engine** and a **policy-engine**, each a WIT port with a built-in default ([Plan 29](./contracts-policy-flags.md#plan-29)). The Orchestrator invokes the **Gatekeeper** at Delta→Set/promote (contracts + policy + evals + conformance + cost); **obligations** from a policy decision (e.g. require-canary) shape the rollout; every gate result is an event.
 
-Reference implementation: the [Control Plane epic rollup](../../src/draft/epic-reference-implementations/control-plane-planner-matching-orchestrator/README.md) synthesizes the Planner, Matching, Delta-to-Set reconcile, ResourceActor choreography, drift/rollback, dispatcher safety, and self-host bootstrap POCs with mocked service boundaries and Pact fixtures.
+Reference implementation: the [Control Plane epic rollup](../../src/draft/epic-proofs/control-plane-planner-matching-orchestrator/README.md) synthesizes the Planner, Matching, Delta-to-Set reconcile, ResourceActor choreography, drift/rollback, dispatcher safety, and self-host bootstrap POCs with mocked service boundaries and Pact fixtures.
 
 The Yard is the orchestrator that maps Bindle deployments to real hosting. It is **itself a HoBo Bindle** (dogfood) and runs on the TS-native core; Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement.
 
@@ -109,7 +109,7 @@ flowchart TB
 
 ### Providers, IaC & build/VM adapters
 
-Reference implementation: the [Providers, IaC & Build Adapters epic rollup](../../src/draft/epic-reference-implementations/providers-iac-build-adapters/README.md) synthesizes provider package shape, conformance, equivalence, manifests, realize/IaC/build/driver adapters, provider matrix, generation certification, Resource Packs, drift/import/partial-apply safety, and the multi-cloud shop gate with mocked boundaries and Pact fixtures.
+Reference implementation: the [Providers, IaC & Build Adapters epic rollup](../../src/draft/epic-proofs/providers-iac-build-adapters/README.md) synthesizes provider package shape, conformance, equivalence, manifests, realize/IaC/build/driver adapters, provider matrix, generation certification, Resource Packs, drift/import/partial-apply safety, and the multi-cloud shop gate with mocked boundaries and Pact fixtures.
 
 This is the layer the Yard's Planner, Orchestrator, and Executors drive: how an abstract resource resolves to a concrete provider, and how that provider realizes it through IaC and build adapters.
 
@@ -272,7 +272,7 @@ Agnostic ports map to provider services via curated equivalence classes (extensi
 | `queue` | SQS | Service Bus | Pub/Sub | Queues | (NATS) |
 | `cache` | ElastiCache | Cache for Redis | Memorystore | KV | Upstash |
 
-ADR-0090 fixes the model behind this table: equivalence entries are shipped by provider packages as their default Resource Definitions and indexed by the Registry into a catalog snapshot; HoBo core owns only the schema and the deterministic `satisfies(request, entry) -> full | partial(missing) | none` negotiation function. `require` misses reject a candidate, `prefer` misses may degrade with a `PlanWarning`, conformance failure makes an entry unavailable, and third-party/generated providers extend the catalog without editing a central enum ([ADR-0090](./adr/01-architecture-core.md#adr-0090)). The executable POC for the decision lives in [`../../src/draft/cross-cloud-equivalence-model`](../../src/draft/cross-cloud-equivalence-model).
+ADR-0090 fixes the model behind this table: equivalence entries are shipped by provider packages as their default Resource Definitions and indexed by the Registry into a catalog snapshot; HoBo core owns only the schema and the deterministic `satisfies(request, entry) -> full | partial(missing) | none` negotiation function. `require` misses reject a candidate, `prefer` misses may degrade with a `PlanWarning`, conformance failure makes an entry unavailable, and third-party/generated providers extend the catalog without editing a central enum ([ADR-0090](./adr/01-architecture-core.md#adr-0090)). The executable POC for the decision lives in [`../../src/draft/technical-proofs/cross-cloud-equivalence-model`](../../src/draft/technical-proofs/cross-cloud-equivalence-model).
 
 #### Build / VM adapters
 - **Dagger** — reproducible container build pipelines, defined in TS, run in containers; primary image path for `compute`/`containerService`.

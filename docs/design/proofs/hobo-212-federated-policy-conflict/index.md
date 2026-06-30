@@ -6,7 +6,7 @@ adds adversarial federation checks around it.
 
 Proof package:
 
-- `src/draft/federated-policy-pack-conflict-contract`
+- `src/draft/technical-proofs/federated-policy-pack-conflict-contract`
 
 Coverage:
 
@@ -26,5 +26,5 @@ Scope held:
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\federated-policy-pack-conflict-contract test
+npm.cmd --prefix src\draft\technical-proofs\federated-policy-pack-conflict-contract test
 ```

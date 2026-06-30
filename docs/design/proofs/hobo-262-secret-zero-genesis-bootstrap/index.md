@@ -31,5 +31,5 @@ genesis Org-Admin or break-glass policy, KMS adapter internals, or cross-Yard Ju
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\secret-zero-genesis-bootstrap-contract test
+npm.cmd --prefix src\draft\technical-proofs\secret-zero-genesis-bootstrap-contract test
 ```

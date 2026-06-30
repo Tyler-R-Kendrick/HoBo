@@ -1,6 +1,6 @@
 # HOBO-385 Trust Tier Policy Proof
 
-This proof package lives at `src/draft/trust-tier-policy-contract`.
+This proof package lives at `src/draft/technical-proofs/trust-tier-policy-contract`.
 
 It covers the HOBO-385 acceptance surface from
 [`ADR-0062`](../../adr/07-portability-extensibility.md#adr-0062) and

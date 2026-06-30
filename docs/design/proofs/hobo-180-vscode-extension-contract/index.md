@@ -26,5 +26,5 @@ slice in Plan 07.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\vscode-extension-contract test
+npm.cmd --prefix src\draft\technical-proofs\vscode-extension-contract test
 ```

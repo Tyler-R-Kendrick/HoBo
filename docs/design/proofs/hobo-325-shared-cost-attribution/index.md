@@ -6,7 +6,7 @@ variants must not double-count, leak tenant cost, or leave platform-owned
 overhead unattributed.
 
 The proof package is
-[`src/draft/shared-cost-attribution-contract`](../../../../src/draft/shared-cost-attribution-contract/README.md).
+[`src/draft/technical-proofs/shared-cost-attribution-contract`](../../../../src/draft/technical-proofs/shared-cost-attribution-contract/README.md).
 
 ## Acceptance Mapping
 
@@ -39,13 +39,13 @@ the shared-resource attribution layer that HOBO-293 intentionally deferred.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\shared-cost-attribution-contract test
+npm.cmd --prefix src\draft\technical-proofs\shared-cost-attribution-contract test
 ```
 
 Full gate used for this proof:
 
 ```powershell
-npm.cmd --prefix src\draft\shared-cost-attribution-contract test
+npm.cmd --prefix src\draft\technical-proofs\shared-cost-attribution-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

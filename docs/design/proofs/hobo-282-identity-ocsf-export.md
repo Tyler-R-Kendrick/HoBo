@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-282 Identity OCSF Export Proof
 
 HOBO-282 implements a replayable, one-way OCSF projection proof in
-`src/draft/identity-ocsf-export-contract`.
+`src/draft/technical-proofs/identity-ocsf-export-contract`.
 
 The proof package covers the issue acceptance criteria:
 

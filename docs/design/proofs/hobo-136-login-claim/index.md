@@ -1,7 +1,7 @@
 # HOBO-136 Login + Claim Proof
 
 HOBO-136 is proven by the focused POC at
-[`src/draft/hobo-login-claim-contract`](../../../../src/draft/hobo-login-claim-contract/README.md).
+[`src/draft/technical-proofs/hobo-login-claim-contract`](../../../../src/draft/technical-proofs/hobo-login-claim-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -31,5 +31,5 @@ anonymous deployment creation, or MCP tool scoping.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-login-claim-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-login-claim-contract test
 ```

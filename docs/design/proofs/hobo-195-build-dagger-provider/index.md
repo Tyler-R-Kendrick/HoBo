@@ -5,7 +5,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0005](../../adr/01-architecture-core.md#adr-0005).
 
 The executable POC in
-[`src/draft/build-dagger-provider-contract`](../../../../src/draft/build-dagger-provider-contract/README.md)
+[`src/draft/technical-proofs/build-dagger-provider-contract`](../../../../src/draft/technical-proofs/build-dagger-provider-contract/README.md)
 proves the M2 `@hobo/build-dagger` container fallback BuildProvider:
 
 - a fixture container `BuildSpec` produces a reproducible OCI `ImageRef` using a

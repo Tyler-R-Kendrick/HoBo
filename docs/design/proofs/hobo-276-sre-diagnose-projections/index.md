@@ -1,7 +1,7 @@
 # HOBO-276 SRE Diagnose Projection Proof
 
 HOBO-276 is proven by the focused POC at
-[`src/draft/sre-diagnose-projection-contract`](../../../../src/draft/sre-diagnose-projection-contract/README.md).
+[`src/draft/technical-proofs/sre-diagnose-projection-contract`](../../../../src/draft/technical-proofs/sre-diagnose-projection-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -21,5 +21,5 @@ HOBO-276 is proven by the focused POC at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\sre-diagnose-projection-contract test
+npm.cmd --prefix src\draft\technical-proofs\sre-diagnose-projection-contract test
 ```

@@ -1,7 +1,7 @@
 # HOBO-34 WebSocket Streamer Fan-out Proof
 
 HOBO-34 is proven by the focused POC at
-[`src/draft/websocket-streamer-fanout-contract`](../../../../src/draft/websocket-streamer-fanout-contract/README.md).
+[`src/draft/technical-proofs/websocket-streamer-fanout-contract`](../../../../src/draft/technical-proofs/websocket-streamer-fanout-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -29,5 +29,5 @@ Gateway transport, and real Streamer backends remain outside this slice.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\websocket-streamer-fanout-contract test
+npm.cmd --prefix src\draft\technical-proofs\websocket-streamer-fanout-contract test
 ```

@@ -1,7 +1,7 @@
 # HOBO-454 V1 Cutline Dogfood/Alpha Proof
 
 HOBO-454 is proven by the focused M1 contract at
-[`src/draft/v1-cutline-contract`](../../../../src/draft/v1-cutline-contract/README.md).
+[`src/draft/technical-proofs/v1-cutline-contract`](../../../../src/draft/technical-proofs/v1-cutline-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -24,5 +24,5 @@ HOBO-454 is proven by the focused M1 contract at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\v1-cutline-contract test
+npm.cmd --prefix src\draft\technical-proofs\v1-cutline-contract test
 ```

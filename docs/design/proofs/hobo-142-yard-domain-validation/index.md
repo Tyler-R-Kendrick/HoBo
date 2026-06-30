@@ -26,7 +26,7 @@ Junction.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\yard-domain-validation-contract test
+npm.cmd --prefix src\draft\technical-proofs\yard-domain-validation-contract test
 ```
 
 The checks cover happy-path shadow validation, forced failures for each

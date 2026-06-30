@@ -4,7 +4,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32) and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/default-read-surface-contract`](../../../../src/draft/default-read-surface-contract)
+[`src/draft/technical-proofs/default-read-surface-contract`](../../../../src/draft/technical-proofs/default-read-surface-contract)
 proves the M1 default read-surface boundary:
 
 - `subscribe(materialization)` delivers replay-then-live: a new subscriber gets the folded current

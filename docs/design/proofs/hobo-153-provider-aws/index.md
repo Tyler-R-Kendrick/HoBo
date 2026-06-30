@@ -6,7 +6,7 @@ provider package slot in [architecture.md](../../architecture.md#monorepo--packa
 conformance.
 
 The executable POC in
-[`src/draft/provider-aws-contract`](../../../../src/draft/provider-aws-contract)
+[`src/draft/technical-proofs/provider-aws-contract`](../../../../src/draft/technical-proofs/provider-aws-contract)
 proves the AWS seed provider contract:
 
 - `@hobo/provider-aws` exposes a factory, Capability Manifest, default Resource

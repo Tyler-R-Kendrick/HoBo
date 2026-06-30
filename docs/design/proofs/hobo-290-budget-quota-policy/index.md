@@ -5,7 +5,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05),
 [ADR-0039](../../adr/02-identity-security.md#adr-0039).
 
 The branch adds
-[`src/draft/budget-quota-policy-contract`](../../../../src/draft/budget-quota-policy-contract/README.md),
+[`src/draft/technical-proofs/budget-quota-policy-contract`](../../../../src/draft/technical-proofs/budget-quota-policy-contract/README.md),
 an independent POC for enforcing Camp/tenant budgets and agent spend caps through
 the policy plane. It consumes a seq-pinned `MeteringView`, emits an auditable
 `policy.Decided`, and records supporting `spend.*` facts without building the
@@ -32,6 +32,6 @@ policy engine, showback UI, spend-velocity circuit breaker, or degradation tiers
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\budget-quota-policy-contract test
+npm.cmd --prefix src\draft\technical-proofs\budget-quota-policy-contract test
 npm.cmd test
 ```

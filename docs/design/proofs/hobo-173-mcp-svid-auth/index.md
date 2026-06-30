@@ -10,7 +10,7 @@ This executable proof pins MCP tool authorization from
 ## Contract Surface
 
 - The proof package is
-  [`src/draft/hobo-mcp-server-contract`](../../../../src/draft/hobo-mcp-server-contract).
+  [`src/draft/technical-proofs/hobo-mcp-server-contract`](../../../../src/draft/technical-proofs/hobo-mcp-server-contract).
 - `createSvidBoundHoboMcpServer` binds every tool call to an injected SVID
   verifier result and passes the verified agent principal into the MCP tool
   runtime.
@@ -36,7 +36,7 @@ composition, prompt-injection defenses, or the base MCP tool catalog.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-mcp-server-contract test -- --test-name-pattern SVID
+npm.cmd --prefix src\draft\technical-proofs\hobo-mcp-server-contract test -- --test-name-pattern SVID
 ```
 
 The focused tests cover the HOBO-173 acceptance and adversarial cases: verified

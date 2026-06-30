@@ -8,7 +8,7 @@ tags: [hobo, design, proof]
 # HOBO-478 Legal Privacy GA Handoff Evidence
 
 HOBO-478 is proven by the focused M4 contract at
-[`src/draft/legal-privacy-ga-handoff-evidence-contract`](../../../../src/draft/legal-privacy-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract/README.md)
 and the durable M4 gate record in
 [`legal-privacy-terms-readiness.md`](../../legal-privacy-terms-readiness.md#m4-ga-handoff-evidence-gate).
 
@@ -28,7 +28,7 @@ and the durable M4 gate record in
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\legal-privacy-ga-handoff-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\legal-privacy-ga-handoff-evidence-contract test
 ```
 
 The package also carries protobuf, CUE, and PACT boundary artifacts under its

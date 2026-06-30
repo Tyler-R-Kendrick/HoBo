@@ -26,8 +26,8 @@ dispatcher slices.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\matching-engine-skeleton-contract test
+npm.cmd --prefix src\draft\technical-proofs\matching-engine-skeleton-contract test
 ```
 
 The checks live in
-`src/draft/matching-engine-skeleton-contract/test/matching-engine.test.ts`.
+`src/draft/technical-proofs/matching-engine-skeleton-contract/test/matching-engine.test.ts`.

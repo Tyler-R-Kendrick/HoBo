@@ -29,5 +29,5 @@ ResourceActor resync trigger, and adopt-in-place importer to their owning issues
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\iac-drift-refresh-fidelity-contract test
+npm.cmd --prefix src\draft\technical-proofs\iac-drift-refresh-fidelity-contract test
 ```

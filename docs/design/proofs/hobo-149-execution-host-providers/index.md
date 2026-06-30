@@ -5,7 +5,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0071](../../adr/01-architecture-core.md#adr-0071).
 
 The executable POC in
-[`src/draft/execution-host-provider-contract`](../../../../src/draft/execution-host-provider-contract)
+[`src/draft/technical-proofs/execution-host-provider-contract`](../../../../src/draft/technical-proofs/execution-host-provider-contract)
 proves the M1 execution-host provider skeleton:
 
 - `RunnerProvider` exposes `capabilityManifest()` plus `run(job) -> RunnerResult`;

@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-482.
 
 Executable proof lives in
-[`src/draft/v1-readiness-dashboard-contract`](../../src/draft/v1-readiness-dashboard-contract/README.md).
+[`src/draft/exp-proofs/v1-readiness-dashboard-contract`](../../src/draft/exp-proofs/v1-readiness-dashboard-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-482-v1-readiness-dashboard`](./proofs/hobo-482-v1-readiness-dashboard/README.md).
 
@@ -52,7 +52,7 @@ legal/privacy, documentation, and operations projects.
 
 ## Design Links
 
-- [V1 cutline proof](../../src/draft/v1-cutline-contract/README.md) defines launch scope
+- [V1 cutline proof](../../src/draft/technical-proofs/v1-cutline-contract/README.md) defines launch scope
   boundaries.
 - [Launch Blocker Taxonomy](./launch-blocker-taxonomy.md) defines blocker and accepted-risk classes.
 - [Pre-Launch Outcome Contract](./pre-launch-outcome-contract.md#surface-mapping) maps launch

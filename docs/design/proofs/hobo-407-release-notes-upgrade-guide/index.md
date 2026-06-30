@@ -1,7 +1,7 @@
 # HOBO-407 Release Notes and Upgrade Guide Proof
 
 HOBO-407 is proven by the focused M0 contract at
-[`src/draft/v1-release-notes-upgrade-guide-contract`](../../../../src/draft/v1-release-notes-upgrade-guide-contract/README.md)
+[`src/draft/technical-proofs/v1-release-notes-upgrade-guide-contract`](../../../../src/draft/technical-proofs/v1-release-notes-upgrade-guide-contract/README.md)
 and the durable outline record at [release-notes-upgrade-guide.md](../../release-notes-upgrade-guide.md).
 
 ## Acceptance Evidence
@@ -20,5 +20,5 @@ and the durable outline record at [release-notes-upgrade-guide.md](../../release
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\v1-release-notes-upgrade-guide-contract test
+npm.cmd --prefix src\draft\technical-proofs\v1-release-notes-upgrade-guide-contract test
 ```

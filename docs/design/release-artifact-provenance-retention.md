@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-504.
 
 Executable proof lives in
-[`src/draft/release-artifact-provenance-retention-contract`](../../src/draft/release-artifact-provenance-retention-contract/README.md).
+[`src/draft/technical-proofs/release-artifact-provenance-retention-contract`](../../src/draft/technical-proofs/release-artifact-provenance-retention-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-504-release-artifact-provenance-retention`](./proofs/hobo-504-release-artifact-provenance-retention/README.md).
 

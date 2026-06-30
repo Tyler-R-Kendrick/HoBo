@@ -1,13 +1,13 @@
 # HOBO-134 Tier-Five Public mTLS Proof
 
-Proof package: [`src/draft/tier-five-public-mtls-contract`](../../../../src/draft/tier-five-public-mtls-contract/README.md)
+Proof package: [`src/draft/technical-proofs/tier-five-public-mtls-contract`](../../../../src/draft/technical-proofs/tier-five-public-mtls-contract/README.md)
 
 This branch proves the public-connectivity fallback without expanding into Identity issuance,
 governance policy authoring, provider ingress provisioning, or adjacent tier implementation.
 
 Executable evidence:
 
-- `npm.cmd --prefix src\draft\tier-five-public-mtls-contract test`
+- `npm.cmd --prefix src\draft\technical-proofs\tier-five-public-mtls-contract test`
 
 Acceptance mapping:
 

@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-488.
 
 Executable proof lives in
-[`src/draft/launch-demo-golden-path-contract`](../../src/draft/launch-demo-golden-path-contract/README.md).
+[`src/draft/exp-proofs/launch-demo-golden-path-contract`](../../src/draft/exp-proofs/launch-demo-golden-path-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-488-launch-demo-golden-path`](./proofs/hobo-488-launch-demo-golden-path/README.md).
 

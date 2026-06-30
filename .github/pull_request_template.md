@@ -6,7 +6,7 @@
 
 - [ ] README/design/proof docs updated, or not needed because:
 - [ ] If code/tooling changed, `npm run docs:freshness` passes.
-- [ ] If `src/draft/*` implementation changed, `npm run architecture:guard` passes with PACT/protobuf/CUE/parse/event evidence.
+- [ ] If `src/draft/<kind>/<slug>` implementation changed, `npm run architecture:guard` passes with PACT/protobuf/CUE/parse/event evidence.
 - [ ] If public CLI examples changed, `npm run docs:cli-lint` passes.
 - [ ] If design terms/events/ADRs changed, `npm run docs:design-lint` and traceability validation pass.
 

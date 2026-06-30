@@ -16,7 +16,7 @@ compromise defenses.
 | A bad or absent inclusion proof is refused against the pinned root. | `refuses missing or bad transparency inclusion proofs against the pinned root` covers missing proof material and root mismatch; `applies transparency and anti-rollback gates to base images` proves base images are also gated. |
 | All checks run with no egress. | The success, transparency-failure, and missing-offline-material tests install an `onEgressAttempt` counter and assert it remains zero; `offline importer source exposes no network egress sinks` guards against direct live fallback. |
 | Each failure is recorded on `registry.BundleImported`. | The gate tests assert `event.verification.<gate>` is `failed` and artifact reasons name the failing gate. |
-| Each is a standing CI assertion. | `npm.cmd --prefix src\draft\offline-import-integrity-contract test` is a Node test package and root `npm.cmd test` discovers it. |
+| Each is a standing CI assertion. | `npm.cmd --prefix src\draft\technical-proofs\offline-import-integrity-contract test` is a Node test package and root `npm.cmd test` discovers it. |
 
 ## Adversarial Mapping
 
@@ -31,7 +31,7 @@ compromise defenses.
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\offline-import-integrity-contract test
+npm.cmd --prefix src\draft\technical-proofs\offline-import-integrity-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

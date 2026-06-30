@@ -15,14 +15,14 @@ Metering design/build work can fan out.
 - Design record:
   [`docs/design/usage-metering.md`](../../usage-metering.md)
 - Executable contract:
-  [`src/draft/usage-metering-scope-contract`](../../../../src/draft/usage-metering-scope-contract/README.md)
+  [`src/draft/exp-proofs/usage-metering-scope-contract`](../../../../src/draft/exp-proofs/usage-metering-scope-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 
 ## Focused Check
 
 ```powershell
-npm.cmd --prefix src\draft\usage-metering-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\usage-metering-scope-contract test
 ```
 
 The check proves the HOBO-417 acceptance bullets and adversarial boundaries:

@@ -7,8 +7,8 @@ receiver boundary from [ADR-0059](../../adr/03-data-plane.md#adr-0059).
 
 Executable proof:
 
-- package: `src/draft/on-call-escalation-contract`
-- test command: `npm.cmd --prefix src\draft\on-call-escalation-contract test`
+- package: `src/draft/technical-proofs/on-call-escalation-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\on-call-escalation-contract test`
 
 Acceptance coverage:
 

@@ -14,7 +14,7 @@ Issue: HOBO-429.
 Focused gate:
 
 ```powershell
-npm.cmd --prefix src\draft\backup-restore-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\backup-restore-scope-contract test
 ```
 
 ## Acceptance Evidence

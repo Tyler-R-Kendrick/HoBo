@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-438 E2E Test Matrix M0 Scope Proof
 
 HOBO-438 is proven by the focused M0 contract at
-[`src/draft/e2e-test-matrix-scope-acceptance`](../../../../src/draft/e2e-test-matrix-scope-acceptance/README.md)
+[`src/draft/exp-proofs/e2e-test-matrix-scope-acceptance`](../../../../src/draft/exp-proofs/e2e-test-matrix-scope-acceptance/README.md)
 and the durable scope record at [e2e-test-matrix.md](../../e2e-test-matrix.md).
 
 ## Acceptance Evidence
@@ -34,5 +34,5 @@ and the durable scope record at [e2e-test-matrix.md](../../e2e-test-matrix.md).
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\e2e-test-matrix-scope-acceptance test
+npm.cmd --prefix src\draft\exp-proofs\e2e-test-matrix-scope-acceptance test
 ```

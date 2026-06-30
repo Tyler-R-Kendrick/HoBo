@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-510.
 
 Executable proof lives in
-[`src/draft/ai-generation-launch-posture-contract`](../../src/draft/ai-generation-launch-posture-contract/README.md).
+[`src/draft/exp-proofs/ai-generation-launch-posture-contract`](../../src/draft/exp-proofs/ai-generation-launch-posture-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-510-ai-generation-launch-posture`](./proofs/hobo-510-ai-generation-launch-posture/README.md).
 
@@ -48,11 +48,11 @@ This is a launch-readiness contract, not an implementation of AI safety infrastr
 
 | Control | Beta posture | GA posture | Evidence |
 |---|---|---|---|
-| Material input sanitization | Required | Required | [`generation-material-sanitization-contract`](../../src/draft/generation-material-sanitization-contract/README.md) |
-| No-egress validation sandbox | Required | Required | [`no-egress-generation-sandbox-contract`](../../src/draft/no-egress-generation-sandbox-contract/README.md) |
-| Guardrail output policy gate | Required with known limitations | Required | [`guardrail-policy-gate-contract`](../../src/draft/guardrail-policy-gate-contract/README.md) |
+| Material input sanitization | Required | Required | [`generation-material-sanitization-contract`](../../src/draft/technical-proofs/generation-material-sanitization-contract/README.md) |
+| No-egress validation sandbox | Required | Required | [`no-egress-generation-sandbox-contract`](../../src/draft/technical-proofs/no-egress-generation-sandbox-contract/README.md) |
+| Guardrail output policy gate | Required with known limitations | Required | [`guardrail-policy-gate-contract`](../../src/draft/technical-proofs/guardrail-policy-gate-contract/README.md) |
 | Generated-code review and SBOM | Required with manual review | Required | HOBO-512 |
-| Human approval for high-risk promotion | Required | Required | [`human-approval-generation-gate-contract`](../../src/draft/human-approval-generation-gate-contract/README.md) |
+| Human approval for high-risk promotion | Required | Required | [`human-approval-generation-gate-contract`](../../src/draft/technical-proofs/human-approval-generation-gate-contract/README.md) |
 | Red-team regression evidence | Seeded regression set | Required for launch claims | [Plan 46](./governance-planes.md#plan-46) |
 
 ## Finding Route Map

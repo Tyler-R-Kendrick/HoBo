@@ -4,7 +4,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and 
 
 Executable artifact:
 
-- [`src/draft/observability-cost-guard-contract`](../../../../src/draft/observability-cost-guard-contract)
+- [`src/draft/technical-proofs/observability-cost-guard-contract`](../../../../src/draft/technical-proofs/observability-cost-guard-contract)
 
 Acceptance evidence:
 

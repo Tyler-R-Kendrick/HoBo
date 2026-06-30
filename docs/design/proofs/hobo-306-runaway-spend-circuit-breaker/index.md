@@ -4,7 +4,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 [ADR-0039](../../adr/02-identity-security.md#adr-0039).
 
 The branch adds
-[`src/draft/runaway-spend-circuit-breaker-contract`](../../../../src/draft/runaway-spend-circuit-breaker-contract/README.md),
+[`src/draft/technical-proofs/runaway-spend-circuit-breaker-contract`](../../../../src/draft/technical-proofs/runaway-spend-circuit-breaker-contract/README.md),
 an independent POC for the durable, last-resort spend circuit-breaker saga. It consumes
 seq-pinned `MeteringView` snapshots and degradation-exhausted velocity samples, emits
 `spend.CircuitTripped` / `spend.CircuitReset`, replays breaker state after restart, and gates
@@ -35,6 +35,6 @@ provider-resilience circuit breakers, runtime wiring, and provider adapters.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\runaway-spend-circuit-breaker-contract test
+npm.cmd --prefix src\draft\technical-proofs\runaway-spend-circuit-breaker-contract test
 npm.cmd test
 ```

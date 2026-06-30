@@ -10,8 +10,8 @@ surface from [Plan 09](../../generated-stack.md#plan-09), the chaos policy budge
 
 Executable proof:
 
-- package: `src/draft/golden-suite-chaos-verification-contract`
-- test command: `npm.cmd --prefix src\draft\golden-suite-chaos-verification-contract test`
+- package: `src/draft/technical-proofs/golden-suite-chaos-verification-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\golden-suite-chaos-verification-contract test`
 
 Acceptance coverage:
 

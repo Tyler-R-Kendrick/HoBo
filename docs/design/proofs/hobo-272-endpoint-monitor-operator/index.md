@@ -1,7 +1,7 @@
 # HOBO-272 Endpoint Monitor Operator Proof
 
 HOBO-272 is proven by the focused POC at
-[`src/draft/endpoint-monitor-operator-contract`](../../../../src/draft/endpoint-monitor-operator-contract/README.md).
+[`src/draft/technical-proofs/endpoint-monitor-operator-contract`](../../../../src/draft/technical-proofs/endpoint-monitor-operator-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -23,5 +23,5 @@ HOBO-272 is proven by the focused POC at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\endpoint-monitor-operator-contract test
+npm.cmd --prefix src\draft\technical-proofs\endpoint-monitor-operator-contract test
 ```

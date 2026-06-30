@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-430.
 
 Executable proof lives in
-[`src/draft/upgrade-migration-scope-contract`](../../src/draft/upgrade-migration-scope-contract/README.md).
+[`src/draft/exp-proofs/upgrade-migration-scope-contract`](../../src/draft/exp-proofs/upgrade-migration-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-430-upgrade-migration`](./proofs/hobo-430-upgrade-migration/README.md).
 
@@ -99,7 +99,7 @@ rollback evidence, and support handoff. A dry-run is evidence, not execution. It
 schema, provider state, customer data, package registries, or support queues.
 
 HOBO-499 proves this M1 dry-run shape in
-[`src/draft/upgrade-rollback-dry-run-contract`](../../src/draft/upgrade-rollback-dry-run-contract/README.md)
+[`src/draft/technical-proofs/upgrade-rollback-dry-run-contract`](../../src/draft/technical-proofs/upgrade-rollback-dry-run-contract/README.md)
 with deterministic clean, blocked, failed-migration, and rollback-ready fixtures plus a scope guard
 that rejects live migration, rollback executor, provider-state rewrite, and support automation
 requests.

@@ -6,7 +6,7 @@ obligations with deployment strategies and feature flags.
 
 ## Scope
 
-- `src/draft/error-budget-deploy-gate-contract` defines a pure contract over a
+- `src/draft/technical-proofs/error-budget-deploy-gate-contract` defines a pure contract over a
   deploy request, an SLO budget snapshot, prior policy decisions, and
   auto-revert obligations.
 - The gate emits replayable `policy.Decided` events with SLO evidence for
@@ -40,5 +40,5 @@ obligations with deployment strategies and feature flags.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\error-budget-deploy-gate-contract test
+npm.cmd --prefix src\draft\technical-proofs\error-budget-deploy-gate-contract test
 ```

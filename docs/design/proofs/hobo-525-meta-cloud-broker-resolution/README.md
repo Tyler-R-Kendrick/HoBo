@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-525 Meta-cloud Broker Resolution Proof
 
 HOBO-525 is proven by the focused M2 contract at
-[`src/draft/meta-cloud-broker-resolution-contract`](../../../../src/draft/meta-cloud-broker-resolution-contract/README.md)
+[`src/draft/technical-proofs/meta-cloud-broker-resolution-contract`](../../../../src/draft/technical-proofs/meta-cloud-broker-resolution-contract/README.md)
 and the durable boundary record at [meta-cloud-broker.md](../../meta-cloud-broker.md).
 
 ## Acceptance Evidence
@@ -28,5 +28,5 @@ and the durable boundary record at [meta-cloud-broker.md](../../meta-cloud-broke
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\meta-cloud-broker-resolution-contract test
+pnpm.cmd --prefix src\draft\technical-proofs\meta-cloud-broker-resolution-contract test
 ```

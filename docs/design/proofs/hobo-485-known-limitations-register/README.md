@@ -15,7 +15,7 @@ created for HOBO-485.
 ## Gates
 
 ```powershell
-pnpm.cmd --prefix src\draft\known-limitations-register-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\known-limitations-register-contract test
 ```
 
 The package also carries architecture-guard evidence:

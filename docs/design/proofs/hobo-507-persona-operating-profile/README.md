@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-507 Persona Operating Profile Proof
 
 HOBO-507 is proven by the focused M0 contract at
-[`src/draft/persona-operating-profile-contract`](../../../../src/draft/persona-operating-profile-contract/README.md)
+[`src/draft/technical-proofs/persona-operating-profile-contract`](../../../../src/draft/technical-proofs/persona-operating-profile-contract/README.md)
 and the durable scope record at
 [`persona-operating-profile.md`](../../persona-operating-profile.md).
 
@@ -36,5 +36,5 @@ and the durable scope record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\persona-operating-profile-contract test
+npm.cmd --prefix src\draft\technical-proofs\persona-operating-profile-contract test
 ```

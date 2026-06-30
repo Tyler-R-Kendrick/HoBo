@@ -6,7 +6,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0006](../../adr/01-architecture-core.md#adr-0006).
 
 The executable POC in
-[`src/draft/iac-partial-apply-compensation-contract`](../../../../src/draft/iac-partial-apply-compensation-contract)
+[`src/draft/technical-proofs/iac-partial-apply-compensation-contract`](../../../../src/draft/technical-proofs/iac-partial-apply-compensation-contract)
 proves the M3 provider/IaC partial-apply boundary:
 
 - `iac-pulumi` and `iac-opentofu` fixture backends both leave recoverable

@@ -15,7 +15,7 @@ air-gap integrity work out of scope.
 | Mirror A/B serving the same `name@version` with different digests fails resolve closed and surfaces both digests. | `mirror digest disagreement for one pinned coordinate fails closed and surfaces every digest` asserts no selection, no cost-eligible mirrors, and both mirror digests in the error. |
 | Cheaper mirror with a different digest is never preferred. | `a cheaper mirror with a different digest is never cost-eligible` asserts Dispatcher is not called and no selection is made. |
 | Typosquatted or shadowed name does not resolve in place of the pinned coordinate. | `typosquatted, namespace-shadowed, and higher-version listings cannot replace an immutable pin` rejects a near-name listing, an alternate-scope namespace shadow, and a higher-version same-name listing when the exact pin is absent. |
-| CI assertion exists. | `npm.cmd --prefix src\draft\registry-dependency-confusion-guard-contract test` runs the guard as a Node test package, and the root `npm.cmd test` gate discovers it. |
+| CI assertion exists. | `npm.cmd --prefix src\draft\technical-proofs\registry-dependency-confusion-guard-contract test` runs the guard as a Node test package, and the root `npm.cmd test` gate discovers it. |
 
 ## Adversarial Mapping
 
@@ -28,7 +28,7 @@ air-gap integrity work out of scope.
 ## Boundary
 
 The proof lives in
-[`src/draft/registry-dependency-confusion-guard-contract`](../../../../src/draft/registry-dependency-confusion-guard-contract/README.md).
+[`src/draft/technical-proofs/registry-dependency-confusion-guard-contract`](../../../../src/draft/technical-proofs/registry-dependency-confusion-guard-contract/README.md).
 It models the adversarial guard around an already resolved immutable artifact
 pin. It does not implement happy-path mirror cost economics, the full
 distributed-artifact resolver, registry-compromise/sig-bypass defenses, or
@@ -37,7 +37,7 @@ air-gap/offline install integrity.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\registry-dependency-confusion-guard-contract test
+npm.cmd --prefix src\draft\technical-proofs\registry-dependency-confusion-guard-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

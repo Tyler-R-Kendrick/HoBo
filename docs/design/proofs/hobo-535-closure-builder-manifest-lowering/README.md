@@ -8,7 +8,7 @@ tags: [hobo, proof]
 # HOBO-535 Closure Builder Manifest Lowering Proof
 
 HOBO-535 is proven by the focused lowering contract at
-[`src/draft/closure-builder-manifest-lowering-contract`](../../../../src/draft/closure-builder-manifest-lowering-contract/README.md).
+[`src/draft/technical-proofs/closure-builder-manifest-lowering-contract`](../../../../src/draft/technical-proofs/closure-builder-manifest-lowering-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -30,7 +30,7 @@ HOBO-535 is proven by the focused lowering contract at
 
 ## Gate Evidence
 
-- TypeScript proof: `corepack pnpm --prefix src/draft/closure-builder-manifest-lowering-contract test`.
+- TypeScript proof: `corepack pnpm --prefix src/draft/technical-proofs/closure-builder-manifest-lowering-contract test`.
 - Protobuf/CUE proof: `pnpm test:schema` checks repository schema validators while package-local data-model folders own indexed
   data model contracts including the lowering source module.
 - PACT proof: `architecture/pacts/closure_builder_manifest_lowering.pact.json` pins the SDK

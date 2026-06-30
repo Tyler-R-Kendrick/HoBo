@@ -9,8 +9,8 @@ swappable integration-port decision from
 
 Executable proof:
 
-- package: `src/draft/operator-integration-ports-contract`
-- test command: `npm.cmd --prefix src\draft\operator-integration-ports-contract test`
+- package: `src/draft/technical-proofs/operator-integration-ports-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\operator-integration-ports-contract test`
 
 Acceptance coverage:
 

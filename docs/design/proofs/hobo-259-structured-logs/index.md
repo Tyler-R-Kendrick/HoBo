@@ -5,7 +5,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 
 Executable artifact:
 
-- [`src/draft/structured-log-pipeline-contract`](../../../../src/draft/structured-log-pipeline-contract)
+- [`src/draft/technical-proofs/structured-log-pipeline-contract`](../../../../src/draft/technical-proofs/structured-log-pipeline-contract)
 
 Acceptance evidence:
 

@@ -44,16 +44,16 @@ the Reliability health-signal source.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\domain-cutover-saga-contract test
+npm.cmd --prefix src\draft\technical-proofs\domain-cutover-saga-contract test
 ```
 
 The package is at
-[`src/draft/domain-cutover-saga-contract`](../../../../src/draft/domain-cutover-saga-contract/README.md).
+[`src/draft/technical-proofs/domain-cutover-saga-contract`](../../../../src/draft/technical-proofs/domain-cutover-saga-contract/README.md).
 
 Full gate used for this proof:
 
 ```powershell
-npm.cmd --prefix src\draft\domain-cutover-saga-contract test
+npm.cmd --prefix src\draft\technical-proofs\domain-cutover-saga-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

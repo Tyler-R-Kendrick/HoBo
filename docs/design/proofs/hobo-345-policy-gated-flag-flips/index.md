@@ -16,13 +16,13 @@ This proof pins the contract for policy-gated `flag.Changed` commits:
 The executable package lives at:
 
 ```text
-src/draft/policy-gated-flag-flips-contract
+src/draft/technical-proofs/policy-gated-flag-flips-contract
 ```
 
 Verification:
 
 ```sh
-npm test -- src/draft/policy-gated-flag-flips-contract/test/policy-gated-flag-flips.test.ts
+npm test -- src/draft/technical-proofs/policy-gated-flag-flips-contract/test/policy-gated-flag-flips.test.ts
 ```
 
 Scope intentionally excludes the policy engine internals, RBAC who-may-flip decisions, SLO burn

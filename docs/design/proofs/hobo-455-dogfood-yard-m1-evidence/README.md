@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-455 Dogfood Yard M1 Evidence Proof
 
 HOBO-455 is proven by the focused M1 contract at
-[`src/draft/dogfood-yard-m1-evidence-contract`](../../../../src/draft/dogfood-yard-m1-evidence-contract/README.md)
+[`src/draft/exp-proofs/dogfood-yard-m1-evidence-contract`](../../../../src/draft/exp-proofs/dogfood-yard-m1-evidence-contract/README.md)
 and the durable source record at [dogfood-yard.md](../../dogfood-yard.md).
 
 ## Acceptance Evidence
@@ -31,5 +31,5 @@ and the durable source record at [dogfood-yard.md](../../dogfood-yard.md).
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\dogfood-yard-m1-evidence-contract test
+npm.cmd --prefix src\draft\exp-proofs\dogfood-yard-m1-evidence-contract test
 ```

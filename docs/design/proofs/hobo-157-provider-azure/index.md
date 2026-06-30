@@ -1,7 +1,7 @@
 # HOBO-157 Azure Provider Contract Proof
 
 This proof records the acceptance evidence for the independent
-`src/draft/provider-azure-contract` package.
+`src/draft/technical-proofs/provider-azure-contract` package.
 
 ## Acceptance Mapping
 
@@ -32,5 +32,5 @@ or broker secretless credentials.
 ## Local Gate
 
 ```powershell
-npm.cmd --prefix src\draft\provider-azure-contract test
+npm.cmd --prefix src\draft\technical-proofs\provider-azure-contract test
 ```

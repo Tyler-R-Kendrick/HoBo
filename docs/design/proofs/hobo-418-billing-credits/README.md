@@ -13,13 +13,13 @@ This proof covers [HOBO-418](https://linear.app/quickdeploy-ai/issue/HOBO-418/m0
 
 - Design record: [`billing-credits.md`](../../billing-credits.md)
 - Executable proof package:
-  [`billing-credits-scope-contract`](../../../../src/draft/billing-credits-scope-contract/README.md)
+  [`billing-credits-scope-contract`](../../../../src/draft/exp-proofs/billing-credits-scope-contract/README.md)
 - Traceability row: [`docs/design/traceability.md`](../../traceability.md)
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\billing-credits-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\billing-credits-scope-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

@@ -3,7 +3,7 @@
 HOBO-35 decides that the first opt-in `component-host` adapter certification
 target is **SpinKube / containerd-wasm**, not provider-native wasm. The
 branch-level proof is
-[`src/draft/component-host-adapter-certification-spike`](../../../../src/draft/component-host-adapter-certification-spike/README.md).
+[`src/draft/technical-proofs/component-host-adapter-certification-spike`](../../../../src/draft/technical-proofs/component-host-adapter-certification-spike/README.md).
 
 Evidence:
 

@@ -1,6 +1,6 @@
 # HOBO-13 Runtime Primitive Interfaces
 
-Proof package: [`src/draft/hobo-runtime-primitives`](../../../src/draft/hobo-runtime-primitives)
+Proof package: [`src/draft/technical-proofs/hobo-runtime-primitives`](../../../src/draft/technical-proofs/hobo-runtime-primitives)
 
 This POC records the first `hobo:runtime@0.1.0` WIT primitive contract from
 Plan 20 / ADR-0072:

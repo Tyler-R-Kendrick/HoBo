@@ -1,6 +1,6 @@
 # HOBO-366 Drift Detection Loop Proof
 
-This branch adds `src/draft/drift-detection-loop-contract`, an independent executable POC for
+This branch adds `src/draft/technical-proofs/drift-detection-loop-contract`, an independent executable POC for
 the periodic ResourceActor refresh -> DriftReport -> reconcile loop.
 
 It proves:
@@ -19,5 +19,5 @@ implementations, cost/observability cadence tuning, and provider-specific retry 
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\drift-detection-loop-contract test
+npm.cmd --prefix src\draft\technical-proofs\drift-detection-loop-contract test
 ```

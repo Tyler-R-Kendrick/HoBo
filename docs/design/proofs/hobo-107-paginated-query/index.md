@@ -4,7 +4,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32) and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/paginated-query-contract`](../../../../src/draft/paginated-query-contract)
+[`src/draft/technical-proofs/paginated-query-contract`](../../../../src/draft/technical-proofs/paginated-query-contract)
 proves cursor-based pagination over a consistent snapshot@`seq`:
 
 - pages use a cursor that encodes the sort-key position and id, not an offset;

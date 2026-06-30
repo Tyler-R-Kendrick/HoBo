@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-437.
 
 Executable proof lives in
-[`src/draft/troubleshooting-guides-scope-acceptance`](../../src/draft/troubleshooting-guides-scope-acceptance/README.md).
+[`src/draft/exp-proofs/troubleshooting-guides-scope-acceptance`](../../src/draft/exp-proofs/troubleshooting-guides-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-437-troubleshooting-guides-scope`](./proofs/hobo-437-troubleshooting-guides-scope/index.md).
 

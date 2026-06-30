@@ -17,7 +17,7 @@ handles and record `dependsOn()` relationships without starting app-host code.
 - Source record: [`../../closure-builder-public-api.md`](../../closure-builder-public-api.md).
 - SDK contract index: [`../../sdk-contracts.md`](../../sdk-contracts.md).
 - Executable proof package:
-  [`../../../../src/draft/closure-builder-resource-handles-contract`](../../../../src/draft/closure-builder-resource-handles-contract/README.md).
+  [`../../../../src/draft/technical-proofs/closure-builder-resource-handles-contract`](../../../../src/draft/technical-proofs/closure-builder-resource-handles-contract/README.md).
 
 ## Verified Assertions
 
@@ -31,5 +31,5 @@ handles and record `dependsOn()` relationships without starting app-host code.
 ## Gate
 
 ```powershell
-npm.cmd --prefix src\draft\closure-builder-resource-handles-contract test
+npm.cmd --prefix src\draft\technical-proofs\closure-builder-resource-handles-contract test
 ```

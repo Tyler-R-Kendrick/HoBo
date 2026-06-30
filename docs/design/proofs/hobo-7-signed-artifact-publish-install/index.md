@@ -27,7 +27,7 @@ This executable proof pins the M2 signed artifact trust boundary from
 ## Boundary
 
 The proof lives in
-[`src/draft/signed-artifact-publish-install-contract`](../../../../src/draft/signed-artifact-publish-install-contract/README.md).
+[`src/draft/technical-proofs/signed-artifact-publish-install-contract`](../../../../src/draft/technical-proofs/signed-artifact-publish-install-contract/README.md).
 It does not implement registry listing lifecycle, air-gap offline revocation, anti-rollback,
 transparency-log validation, offline bundle import, production signing-key operations, or
 malicious-publisher detection. Those remain outside HOBO-7's scope.
@@ -35,5 +35,5 @@ malicious-publisher detection. Those remain outside HOBO-7's scope.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\signed-artifact-publish-install-contract test
+npm.cmd --prefix src\draft\technical-proofs\signed-artifact-publish-install-contract test
 ```

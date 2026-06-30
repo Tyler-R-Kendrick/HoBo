@@ -81,7 +81,7 @@ The **golden suite** ([ADR-0082](./adr/02-identity-security.md#adr-0082)) is a f
 
 ### Epic reference implementation
 
-The branch-scoped reference implementation for this plane lives at [`../../src/draft/epic-reference-implementations/contracts-policy-governance/README.md`](../../src/draft/epic-reference-implementations/contracts-policy-governance/README.md). It synthesizes the contract, policy, RBAC, obligation, provenance, quota, and governance-conformance POCs into a mocked Gatekeeper vertical slice. Its simulation proves:
+The branch-scoped reference implementation for this plane lives at [`../../src/draft/epic-proofs/contracts-policy-governance/README.md`](../../src/draft/epic-proofs/contracts-policy-governance/README.md). It synthesizes the contract, policy, RBAC, obligation, provenance, quota, and governance-conformance POCs into a mocked Gatekeeper vertical slice. Its simulation proves:
 
 - compatible producer/consumer contracts can produce an auditable allow-with-obligations result;
 - mandatory deny-ceiling policy blocks lower-scope attempts to disable prod gates;
@@ -238,7 +238,7 @@ The **Harness** ([ADR-0083](./adr/02-identity-security.md#adr-0083)) is HoBo's *
 
 **Honest about status:** OpenFeature + OpenTelemetry are real adopted standards; **OpenDelivery / OpenExperiment are HoBo-shaped port abstractions** (named adapters above), not standards today — HoBo speaks the real standard at the boundary if one emerges. The Harness's built-in engines are per-Camp Matching selections; the **core pattern** changes only if the industry's dominant release pattern does. The flag port detailed below is the OpenFeature leg; delivery composes with [Plan 5](./reliability-observability-cost.md#plan-05) and the `gateway`/`domain` traffic-split ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)), experiment with the eval surface ([Plan 23](./generated-stack.md#plan-23)).
 
-**Reference implementation:** the epic rollup for Progressive Delivery — The Harness lives at [`src/draft/epic-reference-implementations/progressive-delivery-harness`](../../src/draft/epic-reference-implementations/progressive-delivery-harness/README.md). It composes the flag, delivery, SLO, experiment, policy, event-stream, and rollback-hardening POCs into one mocked-boundary simulation with Pact-style contracts for every service boundary.
+**Reference implementation:** the epic rollup for Progressive Delivery — The Harness lives at [`src/draft/epic-proofs/progressive-delivery-harness`](../../src/draft/epic-proofs/progressive-delivery-harness/README.md). It composes the flag, delivery, SLO, experiment, policy, event-stream, and rollback-hardening POCs into one mocked-boundary simulation with Pact-style contracts for every service boundary.
 
 #### The `feature-flag` port — OpenFeature-compatible
 A first-class **`feature-flag` capability** (`hobo:feature-flag`) that **speaks the [OpenFeature](../standards/openfeature.md) evaluation API** — the same "speak the standard, engine behind a port" stance the policy plane takes (OPA/Cedar as optional `policy-engine` providers, above). (The `contract-engine` is *not* of this shape — its PACT-style testing is built-in default behavior, not a swappable provider, as established above and in [ADR-0015](./adr/02-identity-security.md#adr-0015).)

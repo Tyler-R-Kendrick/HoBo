@@ -5,7 +5,7 @@ This proof backs [PLAN-29](../../contracts-policy-flags.md#plan-29),
 [ADR-0060](../../adr/02-identity-security.md#adr-0060).
 
 The branch adds
-[`src/draft/data-governance-policy-contract`](../../../../src/draft/data-governance-policy-contract/README.md),
+[`src/draft/technical-proofs/data-governance-policy-contract`](../../../../src/draft/technical-proofs/data-governance-policy-contract/README.md),
 an independent POC for consuming `data.Classified` facts into policy context and
 enforcing residency, retention, runtime-boundary, and subprocessor obligations at
 can-deploy and runtime. It emits policy IR decisions and auditable
@@ -35,6 +35,6 @@ engine.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\data-governance-policy-contract test
+npm.cmd --prefix src\draft\technical-proofs\data-governance-policy-contract test
 npm.cmd test
 ```

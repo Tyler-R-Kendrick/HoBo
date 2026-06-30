@@ -29,7 +29,7 @@ networking, and lifecycle slices.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\non-iac-driver-adapters-contract test
+npm.cmd --prefix src\draft\technical-proofs\non-iac-driver-adapters-contract test
 ```
 
 The checks prove the four non-IaC adapters, Resource Definition selection, output return paths,

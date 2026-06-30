@@ -5,7 +5,7 @@ availability.
 
 ## Scope
 
-- `src/draft/availability-view-contract` computes an `AvailabilityView` as a
+- `src/draft/technical-proofs/availability-view-contract` computes an `AvailabilityView` as a
   pure projection over a dependency graph plus declared SLAs.
 - Serial dependencies multiply availability, redundant sets compose in
   parallel, and shared failure domains bound redundancy gains.
@@ -36,5 +36,5 @@ availability.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\availability-view-contract test
+npm.cmd --prefix src\draft\technical-proofs\availability-view-contract test
 ```

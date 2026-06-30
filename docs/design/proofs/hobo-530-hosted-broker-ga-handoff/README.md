@@ -1,7 +1,7 @@
 # HOBO-530 Hosted Broker GA Handoff Proof
 
 HOBO-530 is proven by the focused M4 contract at
-[`src/draft/hosted-broker-ga-handoff-evidence-contract`](../../../../src/draft/hosted-broker-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/hosted-broker-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/hosted-broker-ga-handoff-evidence-contract/README.md)
 and the broker source record at [meta-cloud-broker.md](../../meta-cloud-broker.md#m4-hosted-broker-ga-handoff-evidence).
 
 ## Acceptance Evidence
@@ -27,5 +27,5 @@ and the broker source record at [meta-cloud-broker.md](../../meta-cloud-broker.m
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\hosted-broker-ga-handoff-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\hosted-broker-ga-handoff-evidence-contract test
 ```

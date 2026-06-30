@@ -33,163 +33,381 @@ importers:
         specifier: ^4.1.13
         version: 4.4.3
 
-  src/draft/accessibility-usability-launch-baseline-contract: {}
+  src/draft/epic-proofs/cli-mcp-developer-experience: {}
 
-  src/draft/acme-dns01-cert-issuance-contract: {}
+  src/draft/epic-proofs/contracts-policy-governance: {}
 
-  src/draft/actor-host-runtime-port-contract: {}
+  src/draft/epic-proofs/control-plane-planner-matching-orchestrator: {}
 
-  src/draft/admin-console-scope: {}
+  src/draft/epic-proofs/data-plane-event-sourcing-cqrs-reactivity: {}
 
-  src/draft/admin-support-breakglass-boundaries: {}
+  src/draft/epic-proofs/foundations-build-conformance-harness: {}
 
-  src/draft/adopt-in-place-contract: {}
+  src/draft/epic-proofs/generation-pipeline-training-ai-safety: {}
 
-  src/draft/ai-generation-launch-posture-contract: {}
+  src/draft/epic-proofs/identity-auth-secrets-cross-app-access-xaa: {}
 
-  src/draft/alertmanager-routing-contract: {}
+  src/draft/epic-proofs/networking-connectivity-dns-relay: {}
 
-  src/draft/anonymous-preview-path-contract: {}
+  src/draft/epic-proofs/operators-sre-crew: {}
 
-  src/draft/app-dev-journey-contract: {}
+  src/draft/epic-proofs/portability-registry-distribution: {}
 
-  src/draft/artifact-repo-port-contract: {}
+  src/draft/epic-proofs/progressive-delivery-harness: {}
 
-  src/draft/artifact-store-scope-contract: {}
+  src/draft/epic-proofs/providers-iac-build-adapters: {}
 
-  src/draft/audit-explorer-scope-contract:
+  src/draft/epic-proofs/reliability-observability-cost-finops: {}
+
+  src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
+
+  src/draft/epic-proofs/wit-component-model-runtime-membrane: {}
+
+  src/draft/exp-proofs/accessibility-usability-launch-baseline-contract: {}
+
+  src/draft/exp-proofs/admin-console-scope: {}
+
+  src/draft/exp-proofs/admin-support-breakglass-boundaries: {}
+
+  src/draft/exp-proofs/ai-generation-launch-posture-contract: {}
+
+  src/draft/exp-proofs/app-dev-journey-contract: {}
+
+  src/draft/exp-proofs/artifact-store-scope-contract: {}
+
+  src/draft/exp-proofs/audit-explorer-scope-contract:
     devDependencies:
       '@types/node':
         specifier: 26.0.1
         version: 26.0.1
 
-  src/draft/auth-flag-readset-contract: {}
+  src/draft/exp-proofs/backup-restore-launch-drill-contract: {}
 
-  src/draft/auth-port-rbac-resolution-contract: {}
+  src/draft/exp-proofs/backup-restore-scope-contract: {}
 
-  src/draft/author-time-capability-feedback-contract: {}
+  src/draft/exp-proofs/beta-pilot-dogfood-alpha-evidence-contract: {}
 
-  src/draft/autonomous-drift-remediation-contract: {}
+  src/draft/exp-proofs/beta-pilot-feedback-contract: {}
 
-  src/draft/availability-view-contract: {}
+  src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract: {}
 
-  src/draft/backup-restore-launch-drill-contract: {}
+  src/draft/exp-proofs/beta-pilot-release-candidate-evidence-contract: {}
 
-  src/draft/backup-restore-scope-contract: {}
+  src/draft/exp-proofs/billing-credits-scope-contract: {}
 
-  src/draft/beta-pilot-dogfood-alpha-evidence-contract: {}
+  src/draft/exp-proofs/billing-launch-policy-contract: {}
 
-  src/draft/beta-pilot-feedback-contract: {}
+  src/draft/exp-proofs/bootstrap-installer-scope-contract: {}
 
-  src/draft/beta-pilot-ga-handoff-evidence-contract: {}
+  src/draft/exp-proofs/bootstrap-launch-smoke-matrix-contract: {}
 
-  src/draft/beta-pilot-release-candidate-evidence-contract: {}
+  src/draft/exp-proofs/capability-review-approval-scope: {}
 
-  src/draft/billing-credits-scope-contract: {}
+  src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance: {}
 
-  src/draft/billing-launch-policy-contract: {}
+  src/draft/exp-proofs/compatibility-matrix-scope-contract: {}
 
-  src/draft/bind-reference-wiring-contract: {}
+  src/draft/exp-proofs/compliance-evidence-pack-scope: {}
 
-  src/draft/bindles-api-freeze-contract: {}
+  src/draft/exp-proofs/customer-assurance-evidence-packet-contract: {}
 
-  src/draft/bootstrap-installer-scope-contract: {}
+  src/draft/exp-proofs/customer-onboarding-scope-acceptance: {}
 
-  src/draft/bootstrap-launch-smoke-matrix-contract: {}
+  src/draft/exp-proofs/customer-onboarding-script-contract: {}
 
-  src/draft/broker-environment-publication-contract: {}
+  src/draft/exp-proofs/data-flywheel-privacy-spike: {}
 
-  src/draft/broker-receipt-integrity-contract: {}
+  src/draft/exp-proofs/default-role-action-matrix-contract: {}
 
-  src/draft/budget-quota-policy-contract: {}
+  src/draft/exp-proofs/deployment-dashboard-topology-scope-contract: {}
 
-  src/draft/build-dagger-provider-contract: {}
+  src/draft/exp-proofs/devops-canary-rollout-journey-contract: {}
 
-  src/draft/build-wasm-provider-contract: {}
+  src/draft/exp-proofs/devops-self-host-yard-journey-contract: {}
 
-  src/draft/built-in-flag-store-contract: {}
+  src/draft/exp-proofs/docs-portal-scope-contract: {}
 
-  src/draft/built-in-opto-training-engine-contract: {}
+  src/draft/exp-proofs/dogfood-yard-acceptance-contract: {}
 
-  src/draft/built-in-policy-engine-contract: {}
+  src/draft/exp-proofs/dogfood-yard-ga-handoff-evidence-contract: {}
 
-  src/draft/camp-eventstore-runtime-port-contract: {}
+  src/draft/exp-proofs/dogfood-yard-m1-evidence-contract: {}
 
-  src/draft/camp-mapping-sugar-compiler: {}
+  src/draft/exp-proofs/dogfood-yard-private-beta-evidence-contract: {}
 
-  src/draft/can-deploy-compatibility-gate-contract: {}
+  src/draft/exp-proofs/dogfood-yard-release-candidate-contract: {}
 
-  src/draft/capability-enforcement-contract: {}
+  src/draft/exp-proofs/drift-reconciliation-scope-contract: {}
 
-  src/draft/capability-indexed-discovery-contract: {}
+  src/draft/exp-proofs/dx-sdk-resilience-scope-contract: {}
 
-  src/draft/capability-negotiation-contract: {}
+  src/draft/exp-proofs/e2e-test-matrix-scope-acceptance: {}
 
-  src/draft/capability-review-approval-scope: {}
+  src/draft/exp-proofs/enterprise-deployment-hardening-scope-contract: {}
 
-  src/draft/capability-spec-contract: {}
+  src/draft/exp-proofs/entitlements-plan-limits-scope: {}
 
-  src/draft/champion-challenger-promotion-contract: {}
+  src/draft/exp-proofs/environment-lifecycle-scope: {}
 
-  src/draft/chaos-experiment-orchestration-contract: {}
+  src/draft/exp-proofs/example-apps-scope-acceptance: {}
 
-  src/draft/chaos-resilience-tests-scope-acceptance: {}
+  src/draft/exp-proofs/gitops-ci-journey-contract: {}
 
-  src/draft/choreographed-compensation-contract: {}
+  src/draft/exp-proofs/hosted-broker-ga-handoff-evidence-contract: {}
 
-  src/draft/choreography-saga-engine-contract: {}
+  src/draft/exp-proofs/incident-communications-scope-contract: {}
 
-  src/draft/ci-fabric-oidc-e2e-contract: {}
+  src/draft/exp-proofs/known-limitations-register-contract: {}
 
-  src/draft/cli-credential-hardening-contract: {}
+  src/draft/exp-proofs/launch-blocker-taxonomy-contract: {}
 
-  src/draft/client-optimistic-update-contract: {}
+  src/draft/exp-proofs/launch-demo-golden-path-contract: {}
 
-  src/draft/closure-builder-author-flow-contract: {}
+  src/draft/exp-proofs/launch-messaging-claim-register: {}
 
-  src/draft/closure-builder-manifest-lowering-contract: {}
+  src/draft/exp-proofs/launch-performance-capacity-envelope-contract: {}
 
-  src/draft/closure-builder-public-api-contract: {}
+  src/draft/exp-proofs/launch-site-demo-alpha-evidence-contract: {}
 
-  src/draft/closure-builder-resource-handles-contract: {}
+  src/draft/exp-proofs/launch-site-ga-handoff-evidence-contract: {}
 
-  src/draft/closure-builder-tooling-contract: {}
+  src/draft/exp-proofs/launch-site-private-beta-evidence-contract: {}
 
-  src/draft/closure-builder-v1-finalization-contract: {}
+  src/draft/exp-proofs/launch-site-release-candidate-evidence-contract: {}
 
-  src/draft/collection-coverage-gate-contract: {}
+  src/draft/exp-proofs/launch-support-dogfood-alpha-evidence: {}
 
-  src/draft/compatibility-matrix-scope-contract: {}
+  src/draft/exp-proofs/launch-support-escalation-matrix: {}
 
-  src/draft/compensation-escalation-contract: {}
+  src/draft/exp-proofs/launch-support-ga-handoff-evidence-contract: {}
 
-  src/draft/compliance-evidence-pack-scope: {}
+  src/draft/exp-proofs/launch-support-private-beta-evidence-contract: {}
 
-  src/draft/component-host-adapter-certification-spike: {}
+  src/draft/exp-proofs/launch-support-release-candidate-evidence-contract: {}
 
-  src/draft/component-host-conformance-suite: {}
+  src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract: {}
 
-  src/draft/component-host-oci-floor-contract: {}
+  src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract: {}
 
-  src/draft/conformance-port-suite-contract: {}
+  src/draft/exp-proofs/legal-privacy-release-candidate-evidence-contract: {}
 
-  src/draft/connectivity-cost-feedback-contract: {}
+  src/draft/exp-proofs/legal-privacy-terms-readiness-contract: {}
 
-  src/draft/connectivity-policy-enforcement-contract: {}
+  src/draft/exp-proofs/marketplace-payout-hooks-scope-contract: {}
 
-  src/draft/connectivity-tier-ir-contract: {}
+  src/draft/exp-proofs/marketplace-publisher-trust-evidence-contract: {}
 
-  src/draft/connector-authoring-contract: {}
+  src/draft/exp-proofs/marketplace-ux-scope-contract: {}
 
-  src/draft/connector-runtime-broker-contract: {}
+  src/draft/exp-proofs/member-rbac-administration-scope: {}
 
-  src/draft/contract-engine-port-contract: {}
+  src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract: {}
 
-  src/draft/control-plane-action-taxonomy-contract: {}
+  src/draft/exp-proofs/meta-cloud-broker-scope-contract: {}
 
-  src/draft/control-plane-authz-cache-contract: {}
+  src/draft/exp-proofs/org-catalogs-scope-acceptance: {}
 
-  src/draft/control-plane-event-schema-contract:
+  src/draft/exp-proofs/organization-workspace-model-contract: {}
+
+  src/draft/exp-proofs/package-cache-scope-contract: {}
+
+  src/draft/exp-proofs/per-app-tenant-routing-contract: {}
+
+  src/draft/exp-proofs/performance-load-tests-scope-contract: {}
+
+  src/draft/exp-proofs/plan-diff-viewer-scope-acceptance: {}
+
+  src/draft/exp-proofs/policy-audit-export-contract: {}
+
+  src/draft/exp-proofs/pre-launch-outcome-contract: {}
+
+  src/draft/exp-proofs/provenance-retention-scope-acceptance: {}
+
+  src/draft/exp-proofs/publisher-portal-scope-contract: {}
+
+  src/draft/exp-proofs/resource-garbage-collection-scope-acceptance: {}
+
+  src/draft/exp-proofs/sbom-vulnerability-notice-evidence-contract: {}
+
+  src/draft/exp-proofs/secops-policy-audit-journey-contract: {}
+
+  src/draft/exp-proofs/security-verification-scope-acceptance: {}
+
+  src/draft/exp-proofs/settings-project-lifecycle-scope: {}
+
+  src/draft/exp-proofs/sre-drift-remediation-journey-contract: {}
+
+  src/draft/exp-proofs/support-debug-tools-scope-contract:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
+
+  src/draft/exp-proofs/support-sla-channels-contract: {}
+
+  src/draft/exp-proofs/support-workflow-scope-contract: {}
+
+  src/draft/exp-proofs/svid-cross-tenant-guard-contract: {}
+
+  src/draft/exp-proofs/teardown-recovery-scope-acceptance: {}
+
+  src/draft/exp-proofs/tenant-data-lifecycle-contract: {}
+
+  src/draft/exp-proofs/tenant-isolation-quotas-scope: {}
+
+  src/draft/exp-proofs/troubleshooting-guides-scope-acceptance: {}
+
+  src/draft/exp-proofs/tutorials-walkthroughs-scope-acceptance: {}
+
+  src/draft/exp-proofs/upgrade-migration-scope-contract: {}
+
+  src/draft/exp-proofs/upgrade-test-suite-scope-contract: {}
+
+  src/draft/exp-proofs/usage-metering-scope-contract: {}
+
+  src/draft/exp-proofs/v1-beta-pilot-private-beta-evidence: {}
+
+  src/draft/exp-proofs/v1-critical-path-dependency-map-contract: {}
+
+  src/draft/exp-proofs/v1-e2e-persona-matrix-contract: {}
+
+  src/draft/exp-proofs/v1-readiness-dashboard-contract: {}
+
+  src/draft/exp-proofs/v1-release-notes-dogfood-alpha-evidence: {}
+
+  src/draft/exp-proofs/v1-release-notes-private-beta-evidence-contract: {}
+
+  src/draft/exp-proofs/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract: {}
+
+  src/draft/exp-proofs/v1-supported-platform-matrix-contract: {}
+
+  src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract: {}
+
+  src/draft/exp-proofs/workspace-activation-telemetry-contract: {}
+
+  src/draft/exp-proofs/workspace-onboarding-scope-acceptance: {}
+
+  src/draft/exp-proofs/wrpc-wit-baseline-poc:
+    devDependencies:
+      '@bytecodealliance/jco':
+        specifier: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+
+  src/draft/exp-proofs/xaa-scope-inference-contract: {}
+
+  src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}
+
+  src/draft/technical-proofs/actor-host-runtime-port-contract: {}
+
+  src/draft/technical-proofs/adopt-in-place-contract: {}
+
+  src/draft/technical-proofs/alertmanager-routing-contract: {}
+
+  src/draft/technical-proofs/anonymous-preview-path-contract: {}
+
+  src/draft/technical-proofs/artifact-repo-port-contract: {}
+
+  src/draft/technical-proofs/auth-flag-readset-contract: {}
+
+  src/draft/technical-proofs/auth-port-rbac-resolution-contract: {}
+
+  src/draft/technical-proofs/author-time-capability-feedback-contract: {}
+
+  src/draft/technical-proofs/autonomous-drift-remediation-contract: {}
+
+  src/draft/technical-proofs/availability-view-contract: {}
+
+  src/draft/technical-proofs/bind-reference-wiring-contract: {}
+
+  src/draft/technical-proofs/bindles-api-freeze-contract: {}
+
+  src/draft/technical-proofs/broker-environment-publication-contract: {}
+
+  src/draft/technical-proofs/broker-receipt-integrity-contract: {}
+
+  src/draft/technical-proofs/budget-quota-policy-contract: {}
+
+  src/draft/technical-proofs/build-dagger-provider-contract: {}
+
+  src/draft/technical-proofs/build-wasm-provider-contract: {}
+
+  src/draft/technical-proofs/built-in-flag-store-contract: {}
+
+  src/draft/technical-proofs/built-in-opto-training-engine-contract: {}
+
+  src/draft/technical-proofs/built-in-policy-engine-contract: {}
+
+  src/draft/technical-proofs/camp-eventstore-runtime-port-contract: {}
+
+  src/draft/technical-proofs/camp-mapping-sugar-compiler: {}
+
+  src/draft/technical-proofs/can-deploy-compatibility-gate-contract: {}
+
+  src/draft/technical-proofs/capability-enforcement-contract: {}
+
+  src/draft/technical-proofs/capability-indexed-discovery-contract: {}
+
+  src/draft/technical-proofs/capability-negotiation-contract: {}
+
+  src/draft/technical-proofs/capability-spec-contract: {}
+
+  src/draft/technical-proofs/champion-challenger-promotion-contract: {}
+
+  src/draft/technical-proofs/chaos-experiment-orchestration-contract: {}
+
+  src/draft/technical-proofs/choreographed-compensation-contract: {}
+
+  src/draft/technical-proofs/choreography-saga-engine-contract: {}
+
+  src/draft/technical-proofs/ci-fabric-oidc-e2e-contract: {}
+
+  src/draft/technical-proofs/cli-credential-hardening-contract: {}
+
+  src/draft/technical-proofs/client-optimistic-update-contract: {}
+
+  src/draft/technical-proofs/closure-builder-author-flow-contract: {}
+
+  src/draft/technical-proofs/closure-builder-manifest-lowering-contract: {}
+
+  src/draft/technical-proofs/closure-builder-public-api-contract: {}
+
+  src/draft/technical-proofs/closure-builder-resource-handles-contract: {}
+
+  src/draft/technical-proofs/closure-builder-tooling-contract: {}
+
+  src/draft/technical-proofs/closure-builder-v1-finalization-contract: {}
+
+  src/draft/technical-proofs/collection-coverage-gate-contract: {}
+
+  src/draft/technical-proofs/compensation-escalation-contract: {}
+
+  src/draft/technical-proofs/component-host-adapter-certification-spike: {}
+
+  src/draft/technical-proofs/component-host-conformance-suite: {}
+
+  src/draft/technical-proofs/component-host-oci-floor-contract: {}
+
+  src/draft/technical-proofs/conformance-port-suite-contract: {}
+
+  src/draft/technical-proofs/connectivity-cost-feedback-contract: {}
+
+  src/draft/technical-proofs/connectivity-policy-enforcement-contract: {}
+
+  src/draft/technical-proofs/connectivity-tier-ir-contract: {}
+
+  src/draft/technical-proofs/connector-authoring-contract: {}
+
+  src/draft/technical-proofs/connector-runtime-broker-contract: {}
+
+  src/draft/technical-proofs/contract-engine-port-contract: {}
+
+  src/draft/technical-proofs/control-plane-action-taxonomy-contract: {}
+
+  src/draft/technical-proofs/control-plane-authz-cache-contract: {}
+
+  src/draft/technical-proofs/control-plane-event-schema-contract:
     devDependencies:
       protobufjs:
         specifier: ^7.6.4
@@ -198,217 +416,173 @@ importers:
         specifier: ^4.1.13
         version: 4.4.3
 
-  src/draft/control-plane-policy-bypass-guard: {}
+  src/draft/technical-proofs/control-plane-policy-bypass-guard: {}
 
-  src/draft/cost-degradation-saga-contract: {}
+  src/draft/technical-proofs/cost-degradation-saga-contract: {}
 
-  src/draft/cost-routing-eligibility-contract: {}
+  src/draft/technical-proofs/cost-routing-eligibility-contract: {}
 
-  src/draft/cost-signal-contract: {}
+  src/draft/technical-proofs/cost-signal-contract: {}
 
-  src/draft/cqrs-command-aggregate-contract:
+  src/draft/technical-proofs/cqrs-command-aggregate-contract:
     devDependencies:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/credit-ledger-view-contract: {}
+  src/draft/technical-proofs/credit-ledger-view-contract: {}
 
-  src/draft/crew-event-contract: {}
+  src/draft/technical-proofs/crew-event-contract: {}
 
-  src/draft/cross-camp-bounded-staleness-contract: {}
+  src/draft/technical-proofs/cross-camp-bounded-staleness-contract: {}
 
-  src/draft/cross-camp-flag-state-consistency-contract: {}
+  src/draft/technical-proofs/cross-camp-flag-state-consistency-contract: {}
 
-  src/draft/cross-camp-routing-policy-contract: {}
+  src/draft/technical-proofs/cross-camp-routing-policy-contract: {}
 
-  src/draft/cross-cloud-equivalence-model: {}
+  src/draft/technical-proofs/cross-cloud-equivalence-model: {}
 
-  src/draft/cross-layer-generated-stack-propagation-contract: {}
+  src/draft/technical-proofs/cross-layer-generated-stack-propagation-contract: {}
 
-  src/draft/cross-yard-policy-attestation-contract: {}
+  src/draft/technical-proofs/cross-yard-policy-attestation-contract: {}
 
-  src/draft/crypto-shred-erasure-contract: {}
+  src/draft/technical-proofs/crypto-shred-erasure-contract: {}
 
-  src/draft/curated-catalog-policy-contract: {}
+  src/draft/technical-proofs/curated-catalog-policy-contract: {}
 
-  src/draft/customer-assurance-evidence-packet-contract: {}
+  src/draft/technical-proofs/data-governance-policy-contract: {}
 
-  src/draft/customer-onboarding-scope-acceptance: {}
+  src/draft/technical-proofs/data-paradigm-authoring-contract: {}
 
-  src/draft/customer-onboarding-script-contract: {}
+  src/draft/technical-proofs/default-read-surface-contract: {}
 
-  src/draft/data-flywheel-privacy-spike: {}
+  src/draft/technical-proofs/delivery-experiment-adapter-conformance-suite: {}
 
-  src/draft/data-governance-policy-contract: {}
+  src/draft/technical-proofs/delivery-orchestrator-skeleton-contract: {}
 
-  src/draft/data-paradigm-authoring-contract: {}
+  src/draft/technical-proofs/delta-set-apply-reconcile-contract: {}
 
-  src/draft/default-read-surface-contract: {}
+  src/draft/technical-proofs/deny-ceiling-algebra-poc: {}
 
-  src/draft/default-role-action-matrix-contract: {}
+  src/draft/technical-proofs/deployment-plan-ir-contract: {}
 
-  src/draft/delivery-experiment-adapter-conformance-suite: {}
+  src/draft/technical-proofs/deployment-strategy-saga-templates-contract: {}
 
-  src/draft/delivery-orchestrator-skeleton-contract: {}
+  src/draft/technical-proofs/deployment-view-saga-graph-contract: {}
 
-  src/draft/delta-set-apply-reconcile-contract: {}
+  src/draft/technical-proofs/disaster-recovery-failover-contract: {}
 
-  src/draft/deny-ceiling-algebra-poc: {}
+  src/draft/technical-proofs/dispatcher-maximize-credits-contract: {}
 
-  src/draft/deployment-dashboard-topology-scope-contract: {}
+  src/draft/technical-proofs/dispatcher-reservation-hardening-contract: {}
 
-  src/draft/deployment-plan-ir-contract: {}
+  src/draft/technical-proofs/distributed-artifact-resolver-contract: {}
 
-  src/draft/deployment-strategy-saga-templates-contract: {}
+  src/draft/technical-proofs/distributed-artifact-version-policy: {}
 
-  src/draft/deployment-view-saga-graph-contract: {}
+  src/draft/technical-proofs/dns-validation-gate-threat-model: {}
 
-  src/draft/devops-canary-rollout-journey-contract: {}
+  src/draft/technical-proofs/dns-validation-rebinding-guard-contract: {}
 
-  src/draft/devops-self-host-yard-journey-contract: {}
+  src/draft/technical-proofs/document-projection-sink-contract: {}
 
-  src/draft/disaster-recovery-failover-contract: {}
+  src/draft/technical-proofs/domain-cutover-saga-contract: {}
 
-  src/draft/dispatcher-maximize-credits-contract: {}
+  src/draft/technical-proofs/domain-event-body-contract: {}
 
-  src/draft/dispatcher-reservation-hardening-contract: {}
+  src/draft/technical-proofs/domain-validation-gate-contract: {}
 
-  src/draft/distributed-artifact-resolver-contract: {}
+  src/draft/technical-proofs/dr-failover-integrity-contract: {}
 
-  src/draft/distributed-artifact-version-policy: {}
+  src/draft/technical-proofs/drift-detection-loop-contract: {}
 
-  src/draft/dns-validation-gate-threat-model: {}
+  src/draft/technical-proofs/drift-orphan-sweep-contract: {}
 
-  src/draft/dns-validation-rebinding-guard-contract: {}
+  src/draft/technical-proofs/driver-dispatch-routing-contract: {}
 
-  src/draft/docs-portal-scope-contract: {}
+  src/draft/technical-proofs/end-user-authorization-policy-contract: {}
 
-  src/draft/document-projection-sink-contract: {}
+  src/draft/technical-proofs/endpoint-monitor-operator-contract: {}
 
-  src/draft/dogfood-yard-acceptance-contract: {}
+  src/draft/technical-proofs/entitlement-abuse-rate-limit-policy-contract: {}
 
-  src/draft/dogfood-yard-ga-handoff-evidence-contract: {}
+  src/draft/technical-proofs/error-budget-deploy-gate-contract: {}
 
-  src/draft/dogfood-yard-m1-evidence-contract: {}
+  src/draft/technical-proofs/eval-promotion-gate-contract: {}
 
-  src/draft/dogfood-yard-private-beta-evidence-contract: {}
+  src/draft/technical-proofs/event-body-upcaster-gate: {}
 
-  src/draft/dogfood-yard-release-candidate-contract: {}
+  src/draft/technical-proofs/execution-host-provider-contract: {}
 
-  src/draft/domain-cutover-saga-contract: {}
+  src/draft/technical-proofs/executor-skeleton-contract: {}
 
-  src/draft/domain-event-body-contract: {}
+  src/draft/technical-proofs/experiment-statistical-analysis-contract: {}
 
-  src/draft/domain-validation-gate-contract: {}
+  src/draft/technical-proofs/failure-taxonomy-safe-fix-classifier: {}
 
-  src/draft/dr-failover-integrity-contract: {}
+  src/draft/technical-proofs/feature-flag-governance-contract: {}
 
-  src/draft/drift-detection-loop-contract: {}
+  src/draft/technical-proofs/federated-policy-pack-conflict-contract: {}
 
-  src/draft/drift-orphan-sweep-contract: {}
+  src/draft/technical-proofs/flag-debt-auto-cleanup-contract: {}
 
-  src/draft/drift-reconciliation-scope-contract: {}
+  src/draft/technical-proofs/flag-event-contract: {}
 
-  src/draft/driver-dispatch-routing-contract: {}
+  src/draft/technical-proofs/flag-partition-consistency-contract: {}
 
-  src/draft/dx-sdk-resilience-scope-contract: {}
+  src/draft/technical-proofs/flag-ruleset-sync-contract: {}
 
-  src/draft/e2e-test-matrix-scope-acceptance: {}
+  src/draft/technical-proofs/full-text-search-contract: {}
 
-  src/draft/end-user-authorization-policy-contract: {}
+  src/draft/technical-proofs/gated-autonomous-remediation-contract: {}
 
-  src/draft/endpoint-monitor-operator-contract: {}
+  src/draft/technical-proofs/gatekeeper-verify-contract: {}
 
-  src/draft/enterprise-deployment-hardening-scope-contract: {}
+  src/draft/technical-proofs/gateway-realization-contract: {}
 
-  src/draft/entitlement-abuse-rate-limit-policy-contract: {}
+  src/draft/technical-proofs/generateprovider-correctness-spike: {}
 
-  src/draft/entitlements-plan-limits-scope: {}
+  src/draft/technical-proofs/generation-bounded-repair-loop-contract: {}
 
-  src/draft/environment-lifecycle-scope: {}
+  src/draft/technical-proofs/generation-certify-stage-contract: {}
 
-  src/draft/error-budget-deploy-gate-contract: {}
+  src/draft/technical-proofs/generation-eval-methodology-spike: {}
 
-  src/draft/eval-promotion-gate-contract: {}
+  src/draft/technical-proofs/generation-llm-fill-contract: {}
 
-  src/draft/event-body-upcaster-gate: {}
+  src/draft/technical-proofs/generation-material-sanitization-contract: {}
 
-  src/draft/example-apps-scope-acceptance: {}
+  src/draft/technical-proofs/generation-pipeline-io-contract: {}
 
-  src/draft/execution-host-provider-contract: {}
+  src/draft/technical-proofs/generation-promotion-policy-gate-contract: {}
 
-  src/draft/executor-skeleton-contract: {}
+  src/draft/technical-proofs/generation-provider-loop-contract: {}
 
-  src/draft/experiment-statistical-analysis-contract: {}
+  src/draft/technical-proofs/generation-reference-run-contract: {}
 
-  src/draft/failure-taxonomy-safe-fix-classifier: {}
+  src/draft/technical-proofs/generation-safety-gate-contract: {}
 
-  src/draft/feature-flag-governance-contract: {}
+  src/draft/technical-proofs/generation-scaffold-stage-contract: {}
 
-  src/draft/federated-policy-pack-conflict-contract: {}
+  src/draft/technical-proofs/generation-validation-stage-contract: {}
 
-  src/draft/flag-debt-auto-cleanup-contract: {}
+  src/draft/technical-proofs/genesis-breakglass-contract: {}
 
-  src/draft/flag-event-contract: {}
+  src/draft/technical-proofs/go-no-go-decision-record-contract: {}
 
-  src/draft/flag-partition-consistency-contract: {}
+  src/draft/technical-proofs/golden-suite-chaos-verification-contract: {}
 
-  src/draft/flag-ruleset-sync-contract: {}
+  src/draft/technical-proofs/governance-conformance-suite-contract: {}
 
-  src/draft/full-text-search-contract: {}
+  src/draft/technical-proofs/graphql-facade-generation-poc: {}
 
-  src/draft/gated-autonomous-remediation-contract: {}
+  src/draft/technical-proofs/graphql-facade-runtime-contract: {}
 
-  src/draft/gatekeeper-verify-contract: {}
+  src/draft/technical-proofs/guardrail-policy-gate-contract: {}
 
-  src/draft/gateway-realization-contract: {}
+  src/draft/technical-proofs/hobo-add-install-verification-contract: {}
 
-  src/draft/generateprovider-correctness-spike: {}
-
-  src/draft/generation-bounded-repair-loop-contract: {}
-
-  src/draft/generation-certify-stage-contract: {}
-
-  src/draft/generation-eval-methodology-spike: {}
-
-  src/draft/generation-llm-fill-contract: {}
-
-  src/draft/generation-material-sanitization-contract: {}
-
-  src/draft/generation-pipeline-io-contract: {}
-
-  src/draft/generation-promotion-policy-gate-contract: {}
-
-  src/draft/generation-provider-loop-contract: {}
-
-  src/draft/generation-reference-run-contract: {}
-
-  src/draft/generation-safety-gate-contract: {}
-
-  src/draft/generation-scaffold-stage-contract: {}
-
-  src/draft/generation-validation-stage-contract: {}
-
-  src/draft/genesis-breakglass-contract: {}
-
-  src/draft/gitops-ci-journey-contract: {}
-
-  src/draft/go-no-go-decision-record-contract: {}
-
-  src/draft/golden-suite-chaos-verification-contract: {}
-
-  src/draft/governance-conformance-suite-contract: {}
-
-  src/draft/graphql-facade-generation-poc: {}
-
-  src/draft/graphql-facade-runtime-contract: {}
-
-  src/draft/guardrail-policy-gate-contract: {}
-
-  src/draft/hobo-add-install-verification-contract: {}
-
-  src/draft/hobo-async-building-block-ports:
+  src/draft/technical-proofs/hobo-async-building-block-ports:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
@@ -417,109 +591,109 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/hobo-auth-authoring-surface: {}
+  src/draft/technical-proofs/hobo-auth-authoring-surface: {}
 
-  src/draft/hobo-auth-consumer-contract: {}
+  src/draft/technical-proofs/hobo-auth-consumer-contract: {}
 
-  src/draft/hobo-auth-federate-verify-contract: {}
+  src/draft/technical-proofs/hobo-auth-federate-verify-contract: {}
 
-  src/draft/hobo-auth-json-contract: {}
+  src/draft/technical-proofs/hobo-auth-json-contract: {}
 
-  src/draft/hobo-bindles-resource-catalog:
+  src/draft/technical-proofs/hobo-bindles-resource-catalog:
     devDependencies:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/hobo-build-cli-contract: {}
+  src/draft/technical-proofs/hobo-build-cli-contract: {}
 
-  src/draft/hobo-cli-shell-contract: {}
+  src/draft/technical-proofs/hobo-cli-shell-contract: {}
 
-  src/draft/hobo-code-dsl-contract: {}
+  src/draft/technical-proofs/hobo-code-dsl-contract: {}
 
-  src/draft/hobo-codegen-cli-contract: {}
+  src/draft/technical-proofs/hobo-codegen-cli-contract: {}
 
-  src/draft/hobo-collect-cli-contract: {}
+  src/draft/technical-proofs/hobo-collect-cli-contract: {}
 
-  src/draft/hobo-componentize-contract: {}
+  src/draft/technical-proofs/hobo-componentize-contract: {}
 
-  src/draft/hobo-config-secret-schema-contract: {}
+  src/draft/technical-proofs/hobo-config-secret-schema-contract: {}
 
-  src/draft/hobo-contract-ir: {}
+  src/draft/technical-proofs/hobo-contract-ir: {}
 
-  src/draft/hobo-core-contract: {}
+  src/draft/technical-proofs/hobo-core-contract: {}
 
-  src/draft/hobo-delivery-port:
+  src/draft/technical-proofs/hobo-delivery-port:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: ^1.24.3
         version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  src/draft/hobo-dev-fidelity-drift-contract: {}
+  src/draft/technical-proofs/hobo-dev-fidelity-drift-contract: {}
 
-  src/draft/hobo-dev-loop-contract: {}
+  src/draft/technical-proofs/hobo-dev-loop-contract: {}
 
-  src/draft/hobo-dns-port-contract: {}
+  src/draft/technical-proofs/hobo-dns-port-contract: {}
 
-  src/draft/hobo-doctor-contract: {}
+  src/draft/technical-proofs/hobo-doctor-contract: {}
 
-  src/draft/hobo-down-lifecycle-contract: {}
+  src/draft/technical-proofs/hobo-down-lifecycle-contract: {}
 
-  src/draft/hobo-experiment-port:
+  src/draft/technical-proofs/hobo-experiment-port:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  src/draft/hobo-feature-flag-port:
+  src/draft/technical-proofs/hobo-feature-flag-port:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  src/draft/hobo-gateway-port: {}
+  src/draft/technical-proofs/hobo-gateway-port: {}
 
-  src/draft/hobo-inspect-projection-contract: {}
+  src/draft/technical-proofs/hobo-inspect-projection-contract: {}
 
-  src/draft/hobo-jwt-svid-contract: {}
+  src/draft/technical-proofs/hobo-jwt-svid-contract: {}
 
-  src/draft/hobo-login-claim-contract: {}
+  src/draft/technical-proofs/hobo-login-claim-contract: {}
 
-  src/draft/hobo-logs-cli-contract: {}
+  src/draft/technical-proofs/hobo-logs-cli-contract: {}
 
-  src/draft/hobo-manifest-contract: {}
+  src/draft/technical-proofs/hobo-manifest-contract: {}
 
-  src/draft/hobo-mcp-server-contract: {}
+  src/draft/technical-proofs/hobo-mcp-server-contract: {}
 
-  src/draft/hobo-monorepo-skeleton-contract: {}
+  src/draft/technical-proofs/hobo-monorepo-skeleton-contract: {}
 
-  src/draft/hobo-new-scaffold-contract: {}
+  src/draft/technical-proofs/hobo-new-scaffold-contract: {}
 
-  src/draft/hobo-package-namespace-map: {}
+  src/draft/technical-proofs/hobo-package-namespace-map: {}
 
-  src/draft/hobo-plan-preview-contract: {}
+  src/draft/technical-proofs/hobo-plan-preview-contract: {}
 
-  src/draft/hobo-policy-ir-contract:
+  src/draft/technical-proofs/hobo-policy-ir-contract:
     devDependencies:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
 
-  src/draft/hobo-principal-ref-contract: {}
+  src/draft/technical-proofs/hobo-principal-ref-contract: {}
 
-  src/draft/hobo-projection-port-contract:
+  src/draft/technical-proofs/hobo-projection-port-contract:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  src/draft/hobo-realize-emission-contract: {}
+  src/draft/technical-proofs/hobo-realize-emission-contract: {}
 
-  src/draft/hobo-relay-contract: {}
+  src/draft/technical-proofs/hobo-relay-contract: {}
 
-  src/draft/hobo-remediation-action-contract: {}
+  src/draft/technical-proofs/hobo-remediation-action-contract: {}
 
-  src/draft/hobo-runtime-primitives:
+  src/draft/technical-proofs/hobo-runtime-primitives:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
@@ -528,15 +702,15 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/hobo-sdk-aggregate-wit-contract:
+  src/draft/technical-proofs/hobo-sdk-aggregate-wit-contract:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  src/draft/hobo-up-convergence-contract: {}
+  src/draft/technical-proofs/hobo-up-convergence-contract: {}
 
-  src/draft/hobo-wit-toolchain-contract:
+  src/draft/technical-proofs/hobo-wit-toolchain-contract:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
@@ -545,583 +719,451 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
-  src/draft/host-version-upgrade-contract: {}
+  src/draft/technical-proofs/host-version-upgrade-contract: {}
 
-  src/draft/hosted-broker-ga-handoff-evidence-contract: {}
+  src/draft/technical-proofs/human-approval-generation-gate-contract: {}
 
-  src/draft/human-approval-generation-gate-contract: {}
+  src/draft/technical-proofs/human-operator-console-contract: {}
 
-  src/draft/human-operator-console-contract: {}
-
-  src/draft/iac-cdktf-import-only-contract:
+  src/draft/technical-proofs/iac-cdktf-import-only-contract:
     devDependencies:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/iac-crossplane-backend-contract: {}
+  src/draft/technical-proofs/iac-crossplane-backend-contract: {}
 
-  src/draft/iac-drift-refresh-fidelity-contract: {}
+  src/draft/technical-proofs/iac-drift-refresh-fidelity-contract: {}
 
-  src/draft/iac-opentofu-backend-contract: {}
+  src/draft/technical-proofs/iac-opentofu-backend-contract: {}
 
-  src/draft/iac-partial-apply-compensation-contract: {}
+  src/draft/technical-proofs/iac-partial-apply-compensation-contract: {}
 
-  src/draft/iac-pulumi-backend-contract: {}
+  src/draft/technical-proofs/iac-pulumi-backend-contract: {}
 
-  src/draft/iac-state-model-contract: {}
+  src/draft/technical-proofs/iac-state-model-contract: {}
 
-  src/draft/id-jag-threat-model-spike: {}
+  src/draft/technical-proofs/id-jag-threat-model-spike: {}
 
-  src/draft/id-jag-token-exchange-contract: {}
+  src/draft/technical-proofs/id-jag-token-exchange-contract: {}
 
-  src/draft/identity-event-contract: {}
+  src/draft/technical-proofs/identity-event-contract: {}
 
-  src/draft/identity-ocsf-export-contract: {}
+  src/draft/technical-proofs/identity-ocsf-export-contract: {}
 
-  src/draft/idiom-layer-lowering-contract: {}
+  src/draft/technical-proofs/idiom-layer-lowering-contract: {}
 
-  src/draft/idiom-semantics-annex: {}
+  src/draft/technical-proofs/idiom-semantics-annex: {}
 
-  src/draft/ifc-author-flow-contract: {}
+  src/draft/technical-proofs/ifc-author-flow-contract: {}
 
-  src/draft/ifc-handler-trigger-contract:
+  src/draft/technical-proofs/ifc-handler-trigger-contract:
     devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
 
-  src/draft/inbound-xaa-resource-server-contract: {}
+  src/draft/technical-proofs/inbound-xaa-resource-server-contract: {}
 
-  src/draft/incident-aggregate-contract: {}
+  src/draft/technical-proofs/incident-aggregate-contract: {}
 
-  src/draft/incident-communications-scope-contract: {}
+  src/draft/technical-proofs/internal-ca-private-acme-contract: {}
 
-  src/draft/internal-ca-private-acme-contract: {}
+  src/draft/technical-proofs/internal-service-discovery-contract: {}
 
-  src/draft/internal-service-discovery-contract: {}
+  src/draft/technical-proofs/junction-connectivity-inference-spike: {}
 
-  src/draft/junction-connectivity-inference-spike: {}
+  src/draft/technical-proofs/junction-connectivity-plan-contract: {}
 
-  src/draft/junction-connectivity-plan-contract: {}
+  src/draft/technical-proofs/junction-federated-domain-contract: {}
 
-  src/draft/junction-federated-domain-contract: {}
+  src/draft/technical-proofs/junction-registry-federation-contract: {}
 
-  src/draft/junction-registry-federation-contract: {}
+  src/draft/technical-proofs/jwt-svid-issuance-contract: {}
 
-  src/draft/jwt-svid-issuance-contract: {}
+  src/draft/technical-proofs/lifecycle-phase-policy-contract: {}
 
-  src/draft/known-limitations-register-contract: {}
+  src/draft/technical-proofs/listing-lifecycle-yank-contract: {}
 
-  src/draft/launch-blocker-taxonomy-contract: {}
+  src/draft/technical-proofs/live-evals-runtime-contract: {}
 
-  src/draft/launch-demo-golden-path-contract: {}
+  src/draft/technical-proofs/live-fix-gated-candidate-contract: {}
 
-  src/draft/launch-messaging-claim-register: {}
+  src/draft/technical-proofs/local-dev-test-authoring-contract: {}
 
-  src/draft/launch-performance-capacity-envelope-contract: {}
+  src/draft/technical-proofs/malicious-provider-containment-contract: {}
 
-  src/draft/launch-site-demo-alpha-evidence-contract: {}
+  src/draft/technical-proofs/matching-engine-skeleton-contract: {}
 
-  src/draft/launch-site-ga-handoff-evidence-contract: {}
+  src/draft/technical-proofs/matching-specificity-vectors: {}
 
-  src/draft/launch-site-private-beta-evidence-contract: {}
+  src/draft/technical-proofs/materialization-subscription-contract: {}
 
-  src/draft/launch-site-release-candidate-evidence-contract: {}
+  src/draft/technical-proofs/mcp-server-hardening-contract: {}
 
-  src/draft/launch-support-dogfood-alpha-evidence: {}
+  src/draft/technical-proofs/meta-cloud-broker-resolution-contract: {}
 
-  src/draft/launch-support-escalation-matrix: {}
+  src/draft/technical-proofs/metering-view-projection-contract: {}
 
-  src/draft/launch-support-ga-handoff-evidence-contract: {}
+  src/draft/technical-proofs/metrics-catalog-pipeline-contract: {}
 
-  src/draft/launch-support-private-beta-evidence-contract: {}
+  src/draft/technical-proofs/mirror-digest-selection-contract: {}
 
-  src/draft/launch-support-release-candidate-evidence-contract: {}
+  src/draft/technical-proofs/mtls-by-default-conformance-gate: {}
 
-  src/draft/legal-privacy-ga-handoff-evidence-contract: {}
+  src/draft/technical-proofs/mtls-data-path-contract: {}
 
-  src/draft/legal-privacy-private-beta-evidence-contract: {}
+  src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract: {}
 
-  src/draft/legal-privacy-release-candidate-evidence-contract: {}
+  src/draft/technical-proofs/native-log-projection-contract: {}
 
-  src/draft/legal-privacy-terms-readiness-contract: {}
+  src/draft/technical-proofs/no-egress-generation-sandbox-contract: {}
 
-  src/draft/lifecycle-phase-policy-contract: {}
+  src/draft/technical-proofs/no-privilege-escalation-policy-contract: {}
 
-  src/draft/listing-lifecycle-yank-contract: {}
+  src/draft/technical-proofs/non-iac-driver-adapters-contract: {}
 
-  src/draft/live-evals-runtime-contract: {}
+  src/draft/technical-proofs/obligation-engine-contract: {}
 
-  src/draft/live-fix-gated-candidate-contract: {}
+  src/draft/technical-proofs/observability-cost-guard-contract: {}
 
-  src/draft/local-dev-test-authoring-contract: {}
+  src/draft/technical-proofs/observed-contract-promotion-contract: {}
 
-  src/draft/malicious-provider-containment-contract: {}
+  src/draft/technical-proofs/oci-artifact-storage-contract: {}
 
-  src/draft/marketplace-payout-hooks-scope-contract: {}
+  src/draft/technical-proofs/offline-import-integrity-contract: {}
 
-  src/draft/marketplace-publisher-trust-evidence-contract: {}
+  src/draft/technical-proofs/oidc-federation-sts-contract: {}
 
-  src/draft/marketplace-ux-scope-contract: {}
+  src/draft/technical-proofs/on-call-escalation-contract: {}
 
-  src/draft/matching-engine-skeleton-contract: {}
+  src/draft/technical-proofs/openexperiment-runtime-data-contract: {}
 
-  src/draft/matching-specificity-vectors: {}
+  src/draft/technical-proofs/openfeature-provider-adapters-contract: {}
 
-  src/draft/materialization-subscription-contract: {}
+  src/draft/technical-proofs/openinference-live-eval-stream-contract: {}
 
-  src/draft/mcp-server-hardening-contract: {}
+  src/draft/technical-proofs/openinference-trajectory-capture-contract: {}
 
-  src/draft/member-rbac-administration-scope: {}
+  src/draft/technical-proofs/operations-manifests-contract: {}
 
-  src/draft/meta-cloud-broker-rejection-matrix-contract: {}
+  src/draft/technical-proofs/operator-integration-ports-contract: {}
 
-  src/draft/meta-cloud-broker-resolution-contract: {}
+  src/draft/technical-proofs/orchestrator-choreography-skeleton-contract: {}
 
-  src/draft/meta-cloud-broker-scope-contract: {}
+  src/draft/technical-proofs/otel-traces-pipeline-contract: {}
 
-  src/draft/metering-view-projection-contract: {}
+  src/draft/technical-proofs/outbound-xaa-token-exchange-contract: {}
 
-  src/draft/metrics-catalog-pipeline-contract: {}
+  src/draft/technical-proofs/paginated-query-contract: {}
 
-  src/draft/mirror-digest-selection-contract: {}
+  src/draft/technical-proofs/paradigm-idiom-packages-contract: {}
 
-  src/draft/mtls-by-default-conformance-gate: {}
+  src/draft/technical-proofs/partial-realize-rollback-contract: {}
 
-  src/draft/mtls-data-path-contract: {}
+  src/draft/technical-proofs/persona-operating-profile-contract: {}
 
-  src/draft/multi-cloud-shop-provider-e2e-contract: {}
+  src/draft/technical-proofs/planner-dag-skeleton-contract: {}
 
-  src/draft/native-log-projection-contract: {}
+  src/draft/technical-proofs/platform-engineer-flow-contract: {}
 
-  src/draft/no-egress-generation-sandbox-contract: {}
+  src/draft/technical-proofs/poison-event-quarantine-contract: {}
 
-  src/draft/no-privilege-escalation-policy-contract: {}
+  src/draft/technical-proofs/policy-authoring-waiver-contract: {}
 
-  src/draft/non-iac-driver-adapters-contract: {}
+  src/draft/technical-proofs/policy-engine-port-contract: {}
 
-  src/draft/obligation-engine-contract: {}
+  src/draft/technical-proofs/policy-engine-provider-adapters-contract: {}
 
-  src/draft/observability-cost-guard-contract: {}
+  src/draft/technical-proofs/policy-fail-closed-contract: {}
 
-  src/draft/observed-contract-promotion-contract: {}
+  src/draft/technical-proofs/policy-gated-flag-flips-contract: {}
 
-  src/draft/oci-artifact-storage-contract: {}
+  src/draft/technical-proofs/policy-pack-federation-contract: {}
 
-  src/draft/offline-import-integrity-contract: {}
+  src/draft/technical-proofs/policy-supply-chain-trust-contract: {}
 
-  src/draft/oidc-federation-sts-contract: {}
+  src/draft/technical-proofs/portability-report-contract: {}
 
-  src/draft/on-call-escalation-contract: {}
+  src/draft/technical-proofs/portability-swap-equivalent-contract: {}
 
-  src/draft/openexperiment-runtime-data-contract: {}
+  src/draft/technical-proofs/post-core-cross-cutting-delta-pattern: {}
 
-  src/draft/openfeature-provider-adapters-contract: {}
+  src/draft/technical-proofs/preview-ephemeral-environments-contract: {}
 
-  src/draft/openinference-live-eval-stream-contract: {}
+  src/draft/technical-proofs/product-notification-taxonomy-contract: {}
 
-  src/draft/openinference-trajectory-capture-contract: {}
+  src/draft/technical-proofs/projection-consistency-reactivity-contract: {}
 
-  src/draft/operations-manifests-contract: {}
+  src/draft/technical-proofs/projection-lag-consistency-contract: {}
 
-  src/draft/operator-integration-ports-contract: {}
+  src/draft/technical-proofs/projection-rebuild-contract: {}
 
-  src/draft/orchestrator-choreography-skeleton-contract: {}
+  src/draft/technical-proofs/projection-sink-change-feed-conformance-contract: {}
 
-  src/draft/org-catalogs-scope-acceptance: {}
-
-  src/draft/organization-workspace-model-contract: {}
-
-  src/draft/otel-traces-pipeline-contract: {}
-
-  src/draft/outbound-xaa-token-exchange-contract: {}
-
-  src/draft/package-cache-scope-contract: {}
-
-  src/draft/paginated-query-contract: {}
-
-  src/draft/paradigm-idiom-packages-contract: {}
-
-  src/draft/partial-realize-rollback-contract: {}
-
-  src/draft/per-app-tenant-routing-contract: {}
-
-  src/draft/performance-load-tests-scope-contract: {}
-
-  src/draft/persona-operating-profile-contract: {}
-
-  src/draft/plan-diff-viewer-scope-acceptance: {}
-
-  src/draft/planner-dag-skeleton-contract: {}
-
-  src/draft/platform-engineer-flow-contract: {}
-
-  src/draft/poison-event-quarantine-contract: {}
-
-  src/draft/policy-audit-export-contract: {}
-
-  src/draft/policy-authoring-waiver-contract: {}
-
-  src/draft/policy-engine-port-contract: {}
-
-  src/draft/policy-engine-provider-adapters-contract: {}
-
-  src/draft/policy-fail-closed-contract: {}
-
-  src/draft/policy-gated-flag-flips-contract: {}
-
-  src/draft/policy-pack-federation-contract: {}
-
-  src/draft/policy-supply-chain-trust-contract: {}
-
-  src/draft/portability-report-contract: {}
-
-  src/draft/portability-swap-equivalent-contract: {}
-
-  src/draft/post-core-cross-cutting-delta-pattern: {}
-
-  src/draft/pre-launch-outcome-contract: {}
-
-  src/draft/preview-ephemeral-environments-contract: {}
-
-  src/draft/product-notification-taxonomy-contract: {}
-
-  src/draft/projection-consistency-reactivity-contract: {}
-
-  src/draft/projection-lag-consistency-contract: {}
-
-  src/draft/projection-rebuild-contract: {}
-
-  src/draft/projection-sink-change-feed-conformance-contract: {}
-
-  src/draft/provenance-retention-scope-acceptance: {}
-
-  src/draft/provider-authoring-contract:
+  src/draft/technical-proofs/provider-authoring-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-aws-contract:
+  src/draft/technical-proofs/provider-aws-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-azure-contract:
+  src/draft/technical-proofs/provider-azure-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-capability-conformance-suites: {}
+  src/draft/technical-proofs/provider-capability-conformance-suites: {}
 
-  src/draft/provider-capability-manifest-contract: {}
+  src/draft/technical-proofs/provider-capability-manifest-contract: {}
 
-  src/draft/provider-cloudflare-contract:
+  src/draft/technical-proofs/provider-cloudflare-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-default-definitions-contract: {}
+  src/draft/technical-proofs/provider-default-definitions-contract: {}
 
-  src/draft/provider-fly-contract: {}
+  src/draft/technical-proofs/provider-fly-contract: {}
 
-  src/draft/provider-gcp-contract:
+  src/draft/technical-proofs/provider-gcp-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-hetzner-contract: {}
+  src/draft/technical-proofs/provider-hetzner-contract: {}
 
-  src/draft/provider-kubernetes-contract:
+  src/draft/technical-proofs/provider-kubernetes-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-local-zero-infra: {}
+  src/draft/technical-proofs/provider-local-zero-infra: {}
 
-  src/draft/provider-options-pattern-contract:
+  src/draft/technical-proofs/provider-options-pattern-contract:
     devDependencies:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
 
-  src/draft/provider-port-contract: {}
+  src/draft/technical-proofs/provider-port-contract: {}
 
-  src/draft/provider-vercel-contract: {}
+  src/draft/technical-proofs/provider-vercel-contract: {}
 
-  src/draft/public-status-page-incident-communication-contract: {}
+  src/draft/technical-proofs/public-status-page-incident-communication-contract: {}
 
-  src/draft/publisher-portal-scope-contract: {}
+  src/draft/technical-proofs/queue-clock-runtime-port-contract: {}
 
-  src/draft/queue-clock-runtime-port-contract: {}
+  src/draft/technical-proofs/raw-driver-escape-hatch-contract: {}
 
-  src/draft/raw-driver-escape-hatch-contract: {}
+  src/draft/technical-proofs/rbac-role-binding-contract: {}
 
-  src/draft/rbac-role-binding-contract: {}
+  src/draft/technical-proofs/reactor-coalescing-fanout-contract: {}
 
-  src/draft/reactor-coalescing-fanout-contract: {}
+  src/draft/technical-proofs/reactor-skeleton-contract: {}
 
-  src/draft/reactor-skeleton-contract: {}
+  src/draft/technical-proofs/reads-your-writes-contract: {}
 
-  src/draft/reads-your-writes-contract: {}
+  src/draft/technical-proofs/region-objective-ranking-contract: {}
 
-  src/draft/region-objective-ranking-contract: {}
+  src/draft/technical-proofs/registry-artifact-descriptor-contract: {}
 
-  src/draft/registry-artifact-descriptor-contract: {}
+  src/draft/technical-proofs/registry-compromise-guard-contract: {}
 
-  src/draft/registry-compromise-guard-contract: {}
+  src/draft/technical-proofs/registry-dependency-confusion-guard-contract: {}
 
-  src/draft/registry-dependency-confusion-guard-contract: {}
+  src/draft/technical-proofs/registry-import-contract: {}
 
-  src/draft/registry-import-contract: {}
+  src/draft/technical-proofs/registry-publish-flow-contract: {}
 
-  src/draft/registry-publish-flow-contract: {}
+  src/draft/technical-proofs/relational-projection-sink-contract: {}
 
-  src/draft/relational-projection-sink-contract: {}
+  src/draft/technical-proofs/release-artifact-provenance-retention-contract: {}
 
-  src/draft/release-artifact-provenance-retention-contract: {}
+  src/draft/technical-proofs/reliability-sla-rollup-contract: {}
 
-  src/draft/reliability-sla-rollup-contract: {}
+  src/draft/technical-proofs/remediation-safety-gate-contract: {}
 
-  src/draft/remediation-safety-gate-contract: {}
+  src/draft/technical-proofs/replay-live-equivalence-poc: {}
 
-  src/draft/replay-live-equivalence-poc: {}
+  src/draft/technical-proofs/repo-view-escape-hatches-contract: {}
 
-  src/draft/repo-view-escape-hatches-contract: {}
+  src/draft/technical-proofs/resilience-semantics-annex: {}
 
-  src/draft/resilience-semantics-annex: {}
+  src/draft/technical-proofs/resource-collection-engine-contract: {}
 
-  src/draft/resource-collection-engine-contract: {}
+  src/draft/technical-proofs/resource-definition-driver-contract: {}
 
-  src/draft/resource-definition-driver-contract: {}
+  src/draft/technical-proofs/resource-pack-distribution-contract: {}
 
-  src/draft/resource-garbage-collection-scope-acceptance: {}
+  src/draft/technical-proofs/resourceactor-fsm-contract: {}
 
-  src/draft/resource-pack-distribution-contract: {}
+  src/draft/technical-proofs/resourceactor-reconcile-loop-contract: {}
 
-  src/draft/resourceactor-fsm-contract: {}
+  src/draft/technical-proofs/rollback-failure-compensation-contract: {}
 
-  src/draft/resourceactor-reconcile-loop-contract: {}
+  src/draft/technical-proofs/run-inspector-projection-contract: {}
 
-  src/draft/rollback-failure-compensation-contract: {}
+  src/draft/technical-proofs/runaway-remediation-guard-contract: {}
 
-  src/draft/run-inspector-projection-contract: {}
+  src/draft/technical-proofs/runaway-spend-circuit-breaker-contract: {}
 
-  src/draft/runaway-remediation-guard-contract: {}
+  src/draft/technical-proofs/runbook-contract: {}
 
-  src/draft/runaway-spend-circuit-breaker-contract: {}
+  src/draft/technical-proofs/runbook-execution-engine-contract: {}
 
-  src/draft/runbook-contract: {}
+  src/draft/technical-proofs/runtime-local-component-host: {}
 
-  src/draft/runbook-execution-engine-contract: {}
+  src/draft/technical-proofs/runtime-local-execution-limits-contract: {}
 
-  src/draft/runtime-local-component-host: {}
+  src/draft/technical-proofs/runtime-port-conformance-contract: {}
 
-  src/draft/runtime-local-execution-limits-contract: {}
+  src/draft/technical-proofs/saga-compensation-engine-contract: {}
 
-  src/draft/runtime-port-conformance-contract: {}
+  src/draft/technical-proofs/saga-credit-reconciliation-spike: {}
 
-  src/draft/saga-compensation-engine-contract: {}
-
-  src/draft/saga-credit-reconciliation-spike: {}
-
-  src/draft/sbom-vulnerability-notice-evidence-contract: {}
-
-  src/draft/sdk-codegen-surface-contract:
+  src/draft/technical-proofs/sdk-codegen-surface-contract:
     devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
 
-  src/draft/sdk-flag-surface-contract: {}
+  src/draft/technical-proofs/sdk-flag-surface-contract: {}
 
-  src/draft/sdk-idiom-conformance-gate: {}
+  src/draft/technical-proofs/sdk-idiom-conformance-gate: {}
 
-  src/draft/search-extension-packages-contract: {}
+  src/draft/technical-proofs/search-extension-packages-contract: {}
 
-  src/draft/secops-policy-audit-journey-contract: {}
+  src/draft/technical-proofs/secret-zero-genesis-bootstrap-contract: {}
 
-  src/draft/secret-zero-genesis-bootstrap-contract: {}
+  src/draft/technical-proofs/secretless-config-resolution-contract: {}
 
-  src/draft/secretless-config-resolution-contract: {}
+  src/draft/technical-proofs/self-host-bootstrap-ordering-spike: {}
 
-  src/draft/security-verification-scope-acceptance: {}
+  src/draft/technical-proofs/self-host-bootstrap-saga-contract: {}
 
-  src/draft/self-host-bootstrap-ordering-spike: {}
+  src/draft/technical-proofs/session-revocation-contract: {}
 
-  src/draft/self-host-bootstrap-saga-contract: {}
+  src/draft/technical-proofs/shared-cost-attribution-contract: {}
 
-  src/draft/session-revocation-contract: {}
+  src/draft/technical-proofs/showback-attribution-contract: {}
 
-  src/draft/settings-project-lifecycle-scope: {}
+  src/draft/technical-proofs/signed-artifact-publish-install-contract: {}
 
-  src/draft/shared-cost-attribution-contract: {}
+  src/draft/technical-proofs/signed-offline-bundle-contract: {}
 
-  src/draft/showback-attribution-contract: {}
+  src/draft/technical-proofs/slo-as-code-contract: {}
 
-  src/draft/signed-artifact-publish-install-contract: {}
+  src/draft/technical-proofs/slo-computation-engine-contract: {}
 
-  src/draft/signed-offline-bundle-contract: {}
+  src/draft/technical-proofs/slo-gaming-guard-contract: {}
 
-  src/draft/slo-as-code-contract: {}
+  src/draft/technical-proofs/slo-gated-rollback-analysis-contract: {}
 
-  src/draft/slo-computation-engine-contract: {}
+  src/draft/technical-proofs/slo-promotion-gate-contract: {}
 
-  src/draft/slo-gaming-guard-contract: {}
+  src/draft/technical-proofs/slo-rollback-decision-correctness-spike: {}
 
-  src/draft/slo-gated-rollback-analysis-contract: {}
+  src/draft/technical-proofs/slsa-provenance-certification-contract: {}
 
-  src/draft/slo-promotion-gate-contract: {}
-
-  src/draft/slo-rollback-decision-correctness-spike: {}
-
-  src/draft/slsa-provenance-certification-contract: {}
-
-  src/draft/snapshot-compaction-contract:
+  src/draft/technical-proofs/snapshot-compaction-contract:
     devDependencies:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/snapshot-replay-divergence-contract: {}
+  src/draft/technical-proofs/snapshot-replay-divergence-contract: {}
 
-  src/draft/split-horizon-partition-connectivity-contract: {}
+  src/draft/technical-proofs/split-horizon-partition-connectivity-contract: {}
 
-  src/draft/sre-decision-tree-contract: {}
+  src/draft/technical-proofs/sre-decision-tree-contract: {}
 
-  src/draft/sre-diagnose-projection-contract: {}
+  src/draft/technical-proofs/sre-diagnose-projection-contract: {}
 
-  src/draft/sre-drift-remediation-journey-contract: {}
+  src/draft/technical-proofs/sre-mttd-mttr-postmortem-contract: {}
 
-  src/draft/sre-mttd-mttr-postmortem-contract: {}
+  src/draft/technical-proofs/sre-operator-skeleton-contract: {}
 
-  src/draft/sre-operator-skeleton-contract: {}
+  src/draft/technical-proofs/static-key-escape-hatch-contract: {}
 
-  src/draft/static-key-escape-hatch-contract: {}
+  src/draft/technical-proofs/streamer-runtime-port-contract: {}
 
-  src/draft/streamer-runtime-port-contract: {}
+  src/draft/technical-proofs/structured-log-pipeline-contract: {}
 
-  src/draft/structured-log-pipeline-contract: {}
+  src/draft/technical-proofs/stuck-rollout-convergence-contract: {}
 
-  src/draft/stuck-rollout-convergence-contract: {}
+  src/draft/technical-proofs/supervision-child-lifetime-contract: {}
 
-  src/draft/supervision-child-lifetime-contract: {}
+  src/draft/technical-proofs/svid-auto-rotation-contract: {}
 
-  src/draft/support-debug-tools-scope-contract:
-    devDependencies:
-      '@types/node':
-        specifier: 26.0.1
-        version: 26.0.1
+  src/draft/technical-proofs/svid-partition-grace-spike: {}
 
-  src/draft/support-sla-channels-contract: {}
+  src/draft/technical-proofs/system-failure-classifier-contract: {}
 
-  src/draft/support-workflow-scope-contract: {}
+  src/draft/technical-proofs/tax-currency-receipt-obligations-contract: {}
 
-  src/draft/svid-auto-rotation-contract: {}
+  src/draft/technical-proofs/telemetry-envelope-contract: {}
 
-  src/draft/svid-cross-tenant-guard-contract: {}
+  src/draft/technical-proofs/tier-five-public-mtls-contract: {}
 
-  src/draft/svid-partition-grace-spike: {}
+  src/draft/technical-proofs/tier-four-overlay-mesh-contract: {}
 
-  src/draft/system-failure-classifier-contract: {}
+  src/draft/technical-proofs/tier-one-private-network-contract: {}
 
-  src/draft/tax-currency-receipt-obligations-contract: {}
+  src/draft/technical-proofs/tier-three-private-interconnect-contract: {}
 
-  src/draft/teardown-recovery-scope-acceptance: {}
+  src/draft/technical-proofs/tier-two-cross-region-network-contract: {}
 
-  src/draft/telemetry-envelope-contract: {}
+  src/draft/technical-proofs/token-broker-ha-cache-contract: {}
 
-  src/draft/tenant-data-lifecycle-contract: {}
+  src/draft/technical-proofs/token-broker-skeleton-contract: {}
 
-  src/draft/tenant-isolation-quotas-scope: {}
+  src/draft/technical-proofs/token-replay-resistance-contract: {}
 
-  src/draft/tier-five-public-mtls-contract: {}
+  src/draft/technical-proofs/topology-objects-contract: {}
 
-  src/draft/tier-four-overlay-mesh-contract: {}
+  src/draft/technical-proofs/topology-override-conflict-contract: {}
 
-  src/draft/tier-one-private-network-contract: {}
+  src/draft/technical-proofs/trace-context-propagation-contract: {}
 
-  src/draft/tier-three-private-interconnect-contract: {}
+  src/draft/technical-proofs/training-data-poisoning-guard-contract: {}
 
-  src/draft/tier-two-cross-region-network-contract: {}
+  src/draft/technical-proofs/training-engine-port-contract: {}
 
-  src/draft/token-broker-ha-cache-contract: {}
+  src/draft/technical-proofs/trust-tier-policy-contract: {}
 
-  src/draft/token-broker-skeleton-contract: {}
+  src/draft/technical-proofs/upgrade-rollback-dry-run-contract: {}
 
-  src/draft/token-replay-resistance-contract: {}
+  src/draft/technical-proofs/usage-inferred-permissions-contract: {}
 
-  src/draft/topology-objects-contract: {}
+  src/draft/technical-proofs/usage-to-invoice-reconciliation-contract: {}
 
-  src/draft/topology-override-conflict-contract: {}
+  src/draft/technical-proofs/v1-cutline-contract: {}
 
-  src/draft/trace-context-propagation-contract: {}
+  src/draft/technical-proofs/v1-outcome-activation-rail-contract: {}
 
-  src/draft/training-data-poisoning-guard-contract: {}
+  src/draft/technical-proofs/v1-release-notes-upgrade-guide-contract: {}
 
-  src/draft/training-engine-port-contract: {}
+  src/draft/technical-proofs/version-compat-resolution-semantics: {}
 
-  src/draft/troubleshooting-guides-scope-acceptance: {}
+  src/draft/technical-proofs/version-pinning-drift-guard-contract: {}
 
-  src/draft/trust-tier-policy-contract: {}
+  src/draft/technical-proofs/vm-microvm-build-providers-contract: {}
 
-  src/draft/tutorials-walkthroughs-scope-acceptance: {}
+  src/draft/technical-proofs/vscode-extension-contract: {}
 
-  src/draft/upgrade-migration-scope-contract: {}
+  src/draft/technical-proofs/wasi-interface-pins: {}
 
-  src/draft/upgrade-rollback-dry-run-contract: {}
-
-  src/draft/upgrade-test-suite-scope-contract: {}
-
-  src/draft/usage-inferred-permissions-contract: {}
-
-  src/draft/usage-metering-scope-contract: {}
-
-  src/draft/usage-to-invoice-reconciliation-contract: {}
-
-  src/draft/v1-beta-pilot-private-beta-evidence: {}
-
-  src/draft/v1-critical-path-dependency-map-contract: {}
-
-  src/draft/v1-cutline-contract: {}
-
-  src/draft/v1-e2e-persona-matrix-contract: {}
-
-  src/draft/v1-outcome-activation-rail-contract: {}
-
-  src/draft/v1-readiness-dashboard-contract: {}
-
-  src/draft/v1-release-notes-dogfood-alpha-evidence: {}
-
-  src/draft/v1-release-notes-private-beta-evidence-contract: {}
-
-  src/draft/v1-release-notes-upgrade-guide-contract: {}
-
-  src/draft/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract: {}
-
-  src/draft/v1-release-notes-upgrade-guide-release-candidate-evidence-contract: {}
-
-  src/draft/v1-supported-platform-matrix-contract: {}
-
-  src/draft/version-compat-resolution-semantics: {}
-
-  src/draft/version-pinning-drift-guard-contract: {}
-
-  src/draft/vm-microvm-build-providers-contract: {}
-
-  src/draft/vscode-extension-contract: {}
-
-  src/draft/vulnerability-disclosure-launch-blocker-contract: {}
-
-  src/draft/wasi-interface-pins: {}
-
-  src/draft/websocket-preview-wit-contract:
+  src/draft/technical-proofs/websocket-preview-wit-contract:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
@@ -1130,43 +1172,31 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
-  src/draft/websocket-streamer-fanout-contract: {}
+  src/draft/technical-proofs/websocket-streamer-fanout-contract: {}
 
-  src/draft/wire-version-negotiation-contract: {}
+  src/draft/technical-proofs/wire-version-negotiation-contract: {}
 
-  src/draft/workload-attestation-intake-contract: {}
+  src/draft/technical-proofs/workload-attestation-intake-contract: {}
 
-  src/draft/workspace-activation-telemetry-contract: {}
+  src/draft/technical-proofs/wrpc-deadline-propagation-contract: {}
 
-  src/draft/workspace-onboarding-scope-acceptance: {}
+  src/draft/technical-proofs/wrpc-in-process-link-contract: {}
 
-  src/draft/wrpc-deadline-propagation-contract: {}
+  src/draft/technical-proofs/wrpc-lattice-transport-contract: {}
 
-  src/draft/wrpc-in-process-link-contract: {}
+  src/draft/technical-proofs/wrpc-membrane-failure-contract: {}
 
-  src/draft/wrpc-lattice-transport-contract: {}
+  src/draft/technical-proofs/x509-svid-mtls-contract: {}
 
-  src/draft/wrpc-membrane-failure-contract: {}
+  src/draft/technical-proofs/xaa-confused-deputy-guard-contract: {}
 
-  src/draft/wrpc-wit-baseline-poc:
-    devDependencies:
-      '@bytecodealliance/jco':
-        specifier: 1.24.3
-        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+  src/draft/technical-proofs/yard-domain-validation-contract: {}
 
-  src/draft/x509-svid-mtls-contract: {}
+  src/draft/technical-proofs/yard-identity-issuer-contract: {}
 
-  src/draft/xaa-confused-deputy-guard-contract: {}
+  src/draft/technical-proofs/yard-receipt-consumption-contract: {}
 
-  src/draft/xaa-scope-inference-contract: {}
-
-  src/draft/yard-domain-validation-contract: {}
-
-  src/draft/yard-identity-issuer-contract: {}
-
-  src/draft/yard-receipt-consumption-contract: {}
-
-  src/draft/yard-topology-manifest-contract: {}
+  src/draft/technical-proofs/yard-topology-manifest-contract: {}
 
 packages:
 

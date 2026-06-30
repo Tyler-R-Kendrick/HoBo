@@ -81,6 +81,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`workspace-onboarding-ux.md`](./workspace-onboarding-ux.md) | Productization M0 scope and acceptance for Workspace & Onboarding UX | — |
 | [`accessibility-usability-launch-baseline.md`](./accessibility-usability-launch-baseline.md) | Productization M0 launch baseline for accessibility, usability, evidence, and exception boundaries | — |
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
+| [`known-limitations-register.md`](./known-limitations-register.md) | Customer-facing v1 known limitations, scope-out states, support/docs/messaging handoffs, and beta/GA review checkpoints | [`known-limitations-register-contract`](../../src/draft/known-limitations-register-contract/README.md) |
 | [`docs-portal.md`](./docs-portal.md) | Productization M0 scope and acceptance for docs portal content areas, source ownership, search metadata, support handoffs, known limitations, and follow-up gates | — |
 | [`beta-pilot-feedback.md`](./beta-pilot-feedback.md) | Productization M0 private-beta cohort, feedback intake, triage, and release-candidate exit contract | — |
 | [`dogfood-yard.md`](./dogfood-yard.md) | Productization M0 dogfood Yard acceptance scenarios and telemetry evidence | 04, 05, 07, 40 |

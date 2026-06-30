@@ -169,6 +169,34 @@ creating support tooling, ticket automation, status-page publication, live custo
 customer-data access, commercial support terms, customer-facing SLA guarantees, or GA support
 readiness claims.
 
+## M4 GA Handoff Evidence
+
+Source issue: HOBO-481.
+
+Executable proof lives in
+[`src/draft/launch-support-ga-handoff-evidence-contract`](../../src/draft/launch-support-ga-handoff-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-481-launch-support-ga-handoff`](./proofs/hobo-481-launch-support-ga-handoff/index.md).
+
+The M4 gate records eight support evidence items:
+
+- M0 launch support escalation baseline from this support record;
+- private beta support baseline from HOBO-467;
+- release-candidate support drill evidence from HOBO-474;
+- GA support owner signoff owned by Launch Support;
+- GA support SLA/channel boundary owned by Support SLA Channels;
+- incident communication redaction handoff owned by Public Status Page & Incident Communication;
+- security-sensitive support data route owned by Security Verification;
+- release-cutline GA support signoff owned by V1 Release Program & Cutline.
+
+The accepted M4 state clears the HOBO-474 GA support handoff gap, reduces launch risk for the
+parent HoBo v1 Release Readiness initiative, and leaves no missing-evidence follow-up issue in this
+gate. It preserves accepted risks for manual support owner signoff, customer-data access remaining
+behind security approval, and public status-page publication staying with the status-page owner.
+Support runtime services, ticket queues, status-page publication, live customer-data access,
+customer-facing SLA approval, paid support terms, and unsupported GA support claims remain out of
+scope.
+
 ## Hosted Broker Support/Debug Handoff
 
 HOBO-530 adds a broker-specific support/debug input for GA handoff review. Support can route

@@ -84,10 +84,17 @@ if (schemaChanged) {
 }
 
 if (workspaces.length > 0) {
+  const workspaceFilters = workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]);
+  const turboVersion = capture("pnpm", ["exec", "turbo", "--version"]);
+
   checks.push({
     command: "pnpm",
-    args: ["exec", "turbo", "run", "test", ...workspaces.flatMap((workspace) => ["--filter", `./${workspace}`])],
-    reason: `draft package unit/contract tests for ${workspaces.length} changed workspace(s)`,
+    args: turboVersion
+      ? ["exec", "turbo", "run", "test", ...workspaceFilters]
+      : [...workspaceFilters, "test"],
+    reason: turboVersion
+      ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s)`
+      : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
   });
 }
 

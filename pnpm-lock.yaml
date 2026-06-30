@@ -951,6 +951,8 @@ importers:
 
   src/draft/trust-tier-policy-contract: {}
 
+  src/draft/tutorials-walkthroughs-scope-acceptance: {}
+
   src/draft/upgrade-migration-scope-contract: {}
 
   src/draft/usage-inferred-permissions-contract: {}

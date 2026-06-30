@@ -53,10 +53,10 @@ Before committing a technical change, agents must verify:
 
 ## Performance-oriented local gates
 
-Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and Turborepo-filtered `src/draft/*` package tests. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
+Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and pnpm-filtered `src/draft/*` package tests. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
 
 TypeScript proof code should use the repository-pinned latest stable TypeScript version. For experiments that need the Go-native TypeScript toolchain, the repository also pins `@typescript/native-preview`; keep proof packages on the shared TypeScript pin instead of adding older per-package compiler versions.
 
-Package-manager standard: use pnpm, not npm, Yarn, or Bun, for repository-wide dependency installs and scripted gates. pnpm's content-addressable store and workspace filtering are the default performance path; Turborepo provides task graph caching; Vite is reserved for browser app packages that need a dev server; Bun is reserved for explicit Bun-runtime experiments with parity proof.
+Package-manager standard: use pnpm, not npm, Yarn, or Bun, for repository-wide dependency installs and scripted gates. pnpm's content-addressable store and workspace filtering are the default performance path; Turborepo provides task graph caching; when the local Turbo native runner cannot start, relevant-check gates must fall back to filtered pnpm package proofs rather than skipping package tests. Vite is reserved for browser app packages that need a dev server; Bun is reserved for explicit Bun-runtime experiments with parity proof.
 
 Linting standard: pre-commit lint must be path-scoped and cache-friendly. Use `pnpm run lint:docs:staged` for local commits, `pnpm run lint:docs:changed -- --base=<ref>` for branch work, and reserve `pnpm run lint:docs` for full verification. Shared documentation catalogs may widen a changed-file lint to a full scan when their contents affect global references.

@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
 
 const args = new Set(process.argv.slice(2));
@@ -9,19 +9,45 @@ const all = args.has("--all");
 const explain = args.has("--explain");
 const includeBuild = args.has("--build");
 
-type Check = { command: string; args: string[]; reason: string };
+type Check = { command: string; args: string[]; reason: string; serial?: boolean };
 
-function run(command: string, commandArgs: string[], options: { allowFailure?: boolean } = {}) {
+function commandForPlatform(command: string, commandArgs: string[]) {
+  if (process.platform === "win32" && command === "pnpm") {
+    return {
+      command: process.env.ComSpec ?? "cmd.exe",
+      args: ["/d", "/c", "pnpm.cmd", ...commandArgs],
+    };
+  }
+
+  return { command, args: commandArgs };
+}
+
+function run(command: string, commandArgs: string[]) {
   const printable = [command, ...commandArgs].join(" ");
   console.log(`\n▶ ${printable}`);
-  const result = spawnSync(command, commandArgs, { stdio: "inherit", shell: false });
-  if (result.status !== 0 && !options.allowFailure) {
-    if (isTurboWorkspaceTest(command, commandArgs) && runWorkspaceTestFallback(commandArgs) === 0) {
+  const platformCommand = commandForPlatform(command, commandArgs);
+  const result = spawnSync(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
+  if (result.status !== 0 && isTurboWorkspaceTest(command, commandArgs) && runWorkspaceTestFallback(commandArgs) === 0) {
+    return 0;
+  }
+  return result.status ?? 1;
+}
+
+function runAsync(check: Check): Promise<number> {
+  const printable = [check.command, ...check.args].join(" ");
+  console.log(`\n▶ ${printable}`);
+  const platformCommand = commandForPlatform(check.command, check.args);
+  const child = spawn(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
+
+  return new Promise((resolve) => {
+    child.once("error", () => resolve(1));
+    child.once("exit", (status) => resolve(status ?? 1));
+  }).then((status) => {
+    if (status !== 0 && isTurboWorkspaceTest(check.command, check.args) && runWorkspaceTestFallback(check.args) === 0) {
       return 0;
     }
-    process.exit(result.status ?? 1);
-  }
-  return result.status ?? 0;
+    return status;
+  });
 }
 
 function isTurboWorkspaceTest(command: string, commandArgs: string[]) {
@@ -49,7 +75,8 @@ function runWorkspaceTestFallback(commandArgs: string[]) {
 }
 
 function capture(command: string, commandArgs: string[]) {
-  const result = spawnSync(command, commandArgs, { encoding: "utf8", shell: false });
+  const platformCommand = commandForPlatform(command, commandArgs);
+  const result = spawnSync(platformCommand.command, platformCommand.args, { encoding: "utf8", shell: false });
   if (result.status !== 0) return "";
   return result.stdout.trim();
 }
@@ -83,15 +110,19 @@ const automationChanged = touched(["scripts", ".githooks", ".github", ".codex", 
 const rootConfigChanged = touchedAny([/^package\.json$/, /^pnpm-lock\.yaml$/, /^pnpm-workspace\.yaml$/, /^turbo\.json$/, /^tsconfig.*\.json$/]);
 const sourceChanged = touched(["src", "contracts", "test", "tests"]);
 const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/, /^CONTRIBUTING\.md$/, /^AGENTS\.md$/, /^CLAUDE\.md$/]);
-const schemaChanged = touched(["contracts"]) || touchedAny([/\.(proto|cue)$/]);
+const draftSchemaChanged = files.some((file) => /^src\/draft\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
+const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/[^/]+\//u.test(file));
+const schemaChanged = rootSchemaChanged || draftSchemaChanged;
 const pactChanged = touchedAny([/(^|\/)pacts\//, /\.pact\.json$/]);
 const uiChanged = touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/]);
 const behaviorChanged = touched(["tests/behavior", "features"]) || touchedAny([/playwright\.behavior\.config\./, /cucumber\.config\./]);
 const visualChanged = touched(["tests/visual", "storybook"]) || touchedAny([/playwright\.visual\.config\./, /\.stories\./]);
-const agentEvalChanged = touched(["evals"]) || touchedAny([/agent/i, /prompt/i]);
+const agentEvalChanged = touched(["evals"]) || touchedAny([/(^|\/)(prompts?|agent-evals?)(\/|$)/i, /\.(?:prompt|eval)\.(?:ts|md|json)$/i]);
+const deploymentDeltaChanged = touched(["docs/design/proofs/hobo-50-deployment-set-delta"]) || touchedAny([/^scripts\/validate-deployment-set-delta\.ts$/]);
+const traceabilityChanged = touched(["docs/design/proofs"]) || touchedAny([/^docs\/design\/(?:traceability|index)\.md$/, /^docs\/design\/adr\//, /^scripts\/validate-traceability\.ts$/]);
 
 if (rootConfigChanged) {
-  checks.push({ command: "pnpm", args: ["run", "install:check"], reason: "package manager or root task graph changed" });
+  checks.push({ command: "pnpm", args: ["run", "install:check"], reason: "package manager or root task graph changed", serial: true });
 }
 
 if (sourceChanged || automationChanged) {
@@ -102,10 +133,10 @@ if (sourceChanged || automationChanged) {
   });
 }
 
-if (schemaChanged) {
-  checks.push({ command: "pnpm", args: ["run", "test:schema"], reason: "protobuf/CUE/schema changed; run schema compatibility lane" });
-  checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "schema changes can affect consumer contracts" });
-  checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "schema changes can affect provider verification" });
+if (rootSchemaChanged) {
+  checks.push({ command: "pnpm", args: ["run", "test:schema"], reason: "root protobuf/CUE/schema changed; run repository schema compatibility lane" });
+  checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "root schema changes can affect consumer contracts" });
+  checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "root schema changes can affect provider verification" });
 } else if (pactChanged) {
   checks.push({ command: "pnpm", args: ["run", "test:contract"], reason: "PACT artifacts changed" });
 }
@@ -120,7 +151,7 @@ if (workspaces.length > 0) {
       ? ["exec", "turbo", "run", "test", ...workspaceFilters]
       : [...workspaceFilters, "test"],
     reason: turboVersion
-      ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s)`
+      ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s); turbo runs isolated draft contract regenerations in parallel`
       : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
   });
 }
@@ -147,9 +178,17 @@ if (docsChanged || automationChanged) {
   checks.push({ command: "pnpm", args: ["run", "docs:coverage"], reason: "documentation coverage may be affected" });
 }
 
-if (sourceChanged || automationChanged) checks.push({ command: "pnpm", args: ["run", staged ? "docs:freshness:staged" : "docs:freshness"], reason: "docs freshness gate for code/config changes" });
-if (sourceChanged || automationChanged || docsChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-traceability.ts"], reason: "traceability evidence may be affected" });
-if (sourceChanged || touched(["contracts"])) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-deployment-set-delta.ts"], reason: "deployment delta contracts may be affected" });
+if (sourceChanged || automationChanged) {
+  checks.push({
+    command: "pnpm",
+    args: staged
+      ? ["run", "docs:freshness:staged"]
+      : ["run", "docs:freshness", "--", `--base=${base}`],
+    reason: "docs freshness gate for code/config changes",
+  });
+}
+if (traceabilityChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-traceability.ts"], reason: "traceability evidence changed" });
+if (deploymentDeltaChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-deployment-set-delta.ts"], reason: "deployment delta proof changed" });
 if (includeBuild || (rootConfigChanged && !staged)) checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "build-impacting changed check requested" });
 
 console.log(`Changed files: ${files.length}`);
@@ -166,4 +205,13 @@ console.log(`Detected scope: ${[
 for (const check of checks) console.log(`- ${check.command} ${check.args.join(" ")} (${check.reason})`);
 
 if (explain) process.exit(0);
-for (const check of checks) run(check.command, check.args);
+
+for (const check of checks.filter((check) => check.serial)) {
+  const status = run(check.command, check.args);
+  if (status !== 0) process.exit(status);
+}
+
+const parallelChecks = checks.filter((check) => !check.serial);
+const statuses = await Promise.all(parallelChecks.map(runAsync));
+const failed = statuses.find((status) => status !== 0);
+if (failed) process.exit(failed);

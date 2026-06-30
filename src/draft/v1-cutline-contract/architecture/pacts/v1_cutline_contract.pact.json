@@ -19,6 +19,40 @@
           "schema": "hobo.draft.v1_cutline_contract/v1"
         }
       }
+    },
+    {
+      "description": "V1 Cutline Contract boundary returns M1 dogfood alpha evidence",
+      "request": {
+        "method": "GET",
+        "path": "/v1-cutline-contract/dogfood-alpha"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "schema": "hobo.draft.v1_cutline_contract.m1_dogfood_alpha/v1",
+          "issue": "HOBO-454",
+          "phase": "M1",
+          "milestoneGate": "M1 Dogfood/alpha proof"
+        }
+      }
+    },
+    {
+      "description": "V1 Cutline Contract boundary returns M2 private beta evidence",
+      "request": {
+        "method": "GET",
+        "path": "/v1-cutline-contract/private-beta"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "schema": "hobo.draft.v1_cutline_contract.m2_private_beta/v1",
+          "issue": "HOBO-461",
+          "phase": "M2",
+          "milestoneGate": "M2 Private beta proof"
+        }
+      }
     }
   ],
   "metadata": {

@@ -309,6 +309,19 @@ message BootstrapLaunchSmokeMatrixContractBootstrapLaunchSmokeMatrixDataModel {
   bool cue_annotated = 6;
 }
 
+message BrokerReceiptIntegrityContractBrokerReceiptIntegrityDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.broker-receipt-integrity-contract.broker-receipt-integrity";
+  option (hobo.source_path) = "src/draft/broker-receipt-integrity-contract/src/broker-receipt-integrity.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#BrokerReceiptIntegrityContractBrokerReceiptIntegrityDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message BudgetQuotaPolicyContractBudgetQuotaPolicyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.budget-quota-policy-contract.budget-quota-policy";
   option (hobo.source_path) = "src/draft/budget-quota-policy-contract/src/budget-quota-policy.ts";

@@ -14,12 +14,14 @@ Executable proofs:
 - [`meta-cloud-broker-scope-contract`](../../src/draft/meta-cloud-broker-scope-contract/README.md)
 - [`yard-receipt-consumption-contract`](../../src/draft/yard-receipt-consumption-contract/README.md)
 - [`meta-cloud-broker-resolution-contract`](../../src/draft/meta-cloud-broker-resolution-contract/README.md)
+- [`broker-receipt-integrity-contract`](../../src/draft/broker-receipt-integrity-contract/README.md)
 
 Branch evidence:
 
 - [`HOBO-521 proof record`](./proofs/hobo-521-meta-cloud-broker/README.md)
 - [`HOBO-523 proof record`](./proofs/hobo-523-yard-receipt-consumption/README.md)
 - [`HOBO-525 proof record`](./proofs/hobo-525-meta-cloud-broker-resolution/README.md)
+- [`HOBO-529 proof record`](./proofs/hobo-529-broker-receipt-integrity/README.md)
 
 This M0 record defines the accepted productization scope for the Meta-cloud Broker. It does not
 build broker runtime code, Yard planner behavior, provider adapters, admin UI, Gatekeeper policy
@@ -149,6 +151,14 @@ produce identical receipt or rejection output, snapshot identity is an explicit 
 ambiguous/incompatible/unavailable mappings fail with structured Resolution Rejections, provider
 defaults cannot act as implicit broker decisions, and missing mappings never fall back to Yard-local
 Matching.
+
+## M3 Receipt Integrity Evidence
+
+HOBO-529 proves Resolution Receipt integrity hardening with `broker-receipt-integrity-contract`.
+The proof accepts valid Ed25519-signed fixture receipts and rejects tampered, replayed, downgraded,
+expired, tenant-mismatched, environment-mismatched, broker-snapshot-mismatched, and
+manifest-mismatched receipts with customer-safe refusal evidence. It keeps Gatekeeper as a
+downstream apply-time policy boundary rather than a broker receipt-integrity shortcut.
 
 ## Authoritative Dependencies
 

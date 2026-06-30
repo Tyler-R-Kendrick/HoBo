@@ -53,6 +53,23 @@
           "milestoneGate": "M2 Private beta proof"
         }
       }
+    },
+    {
+      "description": "V1 Cutline Contract boundary returns M3 release candidate evidence",
+      "request": {
+        "method": "GET",
+        "path": "/v1-cutline-contract/release-candidate"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "schema": "hobo.draft.v1_cutline_contract.m3_release_candidate/v1",
+          "issue": "HOBO-468",
+          "phase": "M3",
+          "milestoneGate": "M3 Release candidate"
+        }
+      }
     }
   ],
   "metadata": {

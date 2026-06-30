@@ -13,6 +13,7 @@ enum V1CutlineContractEvidenceKind {
   EVIDENCE_KIND_CONTRACT_TEST = 2;
   EVIDENCE_KIND_M1_DOGFOOD_ALPHA = 3;
   EVIDENCE_KIND_M2_PRIVATE_BETA = 4;
+  EVIDENCE_KIND_M3_RELEASE_CANDIDATE = 5;
 }
 
 message V1CutlineContractRecord {
@@ -45,4 +46,19 @@ message V1CutlinePrivateBetaEvidence {
   repeated string missing_evidence = 8;
   repeated string follow_up_issues = 9;
   bool parent_status_updated = 10;
+}
+
+message V1CutlineReleaseCandidateEvidence {
+  string issue = 1;
+  string phase = 2;
+  string milestone_gate = 3;
+  repeated string required_evidence_ids = 4;
+  repeated string blockers = 5;
+  repeated string accepted_risks = 6;
+  repeated string cross_project_dependencies = 7;
+  repeated string missing_evidence = 8;
+  repeated string follow_up_issues = 9;
+  bool parent_status_updated = 10;
+  repeated string scope_out = 11;
+  repeated string public_claim_guards = 12;
 }

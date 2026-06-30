@@ -83,6 +83,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
 | [`docs-portal.md`](./docs-portal.md) | Productization M0 scope and acceptance for docs portal content areas, source ownership, search metadata, support handoffs, known limitations, and follow-up gates | — |
 | [`beta-pilot-feedback.md`](./beta-pilot-feedback.md) | Productization M0 private-beta cohort, feedback intake, triage, and release-candidate exit contract | — |
+| [`customer-onboarding.md`](./customer-onboarding.md) | Productization M0 first-customer onboarding script, success criteria, support handoff, and pilot-note routing contract | — |
 | [`dogfood-yard.md`](./dogfood-yard.md) | Productization M0 dogfood Yard acceptance scenarios and telemetry evidence | 04, 05, 07, 40 |
 | [`upgrade-migration-engine.md`](./upgrade-migration-engine.md) | Productization M0 scope and acceptance for upgrade paths, migration dry-run, rollback evidence, and support handoff | — |
 | [`upgrade-test-suite.md`](./upgrade-test-suite.md) | Productization M0 scope and acceptance for upgrade scenario coverage, fixtures, evidence fields, result states, and suite handoffs | — |

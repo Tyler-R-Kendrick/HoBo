@@ -71,8 +71,9 @@ keys are aliases only. `dependsOn()` is the only v1 relationship verb.
 **Implementation issue.** HOBO-532 pins the public API vocabulary, package
 ownership, and app-host boundary language. HOBO-533 proves anonymous builder
 handles, inert workload descriptors, invalid dependency refusal, and
-`dependsOn()` relationship emission before HOBO-534 through HOBO-537 build
-identity separation, lowering, tooling, and end-to-end flow.
+`dependsOn()` relationship emission. HOBO-534 proves generated identity stability
+across alias-only edits and diagnostic separation before HOBO-535 through
+HOBO-537 build lowering, tooling, and end-to-end flow.
 
 **Conformance issue.** HOBO-32 covers SDK lowering. This proof contributes the
 public vocabulary fixture that downstream conformance vectors consume.

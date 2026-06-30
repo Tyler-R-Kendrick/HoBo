@@ -4924,6 +4924,19 @@ message TrustTierPolicyContractTrustTierPolicyDataModel {
   bool cue_annotated = 6;
 }
 
+message UpgradeTestSuiteScopeContractUpgradeTestSuiteDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.upgrade-test-suite-scope-contract.upgrade-test-suite";
+  option (hobo.source_path) = "src/draft/upgrade-test-suite-scope-contract/src/upgrade-test-suite.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#UpgradeTestSuiteScopeContractUpgradeTestSuiteDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message UsageInferredPermissionsContractUsagePermissionsDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.usage-inferred-permissions-contract.usage-permissions";
   option (hobo.source_path) = "src/draft/usage-inferred-permissions-contract/src/usage-permissions.ts";

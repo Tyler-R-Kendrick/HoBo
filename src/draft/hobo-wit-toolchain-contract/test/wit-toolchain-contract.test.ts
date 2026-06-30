@@ -103,13 +103,13 @@ test("trivial guest imports the generated hobo:sdk world and builds", async () =
     "ES2022",
   ];
   const localTsc = join(PACKAGE_ROOT, "node_modules", "typescript", "bin", "tsc");
-  const command =
-    existsSync(localTsc) ? process.execPath : process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm";
+  const hasLocalTsc = existsSync(localTsc);
+  const command = hasLocalTsc ? process.execPath : process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm";
 
   await withTempDir(async (outDir) => {
     const buildArgs = [...args, "--outDir", outDir, join(PACKAGE_ROOT, "fixtures", "trivial-guest.ts")];
     const npmExecArgs = ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...buildArgs];
-    const commandArgs = existsSync(localTsc)
+    const commandArgs = hasLocalTsc
       ? [localTsc, ...buildArgs]
       : process.platform === "win32"
         ? ["/d", "/c", "npm.cmd", ...npmExecArgs]

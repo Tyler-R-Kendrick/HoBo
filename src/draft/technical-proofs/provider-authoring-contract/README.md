@@ -18,13 +18,19 @@ It pins this public surface:
 - `auditProviderCatalog(...)` reports same-named unqualified option builders
   across providers so call sites use provider-scoped access.
 
+The source module exports the same provider, capability, client, and option
+block type surface that the declaration file advertises. The proof intentionally
+keeps runtime tests and type tests together so the provider authoring API fails
+closed both for invalid dynamic packages and for incompatible compile-time
+callers.
+
 Out of scope by issue contract: `realize()` emission, equivalence mappings,
 default Resource Definitions, and conformance harness internals.
 
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\technical-proofs\provider-authoring-contract test
+pnpm.cmd --prefix src\draft\technical-proofs\provider-authoring-contract test
 ```
 
 

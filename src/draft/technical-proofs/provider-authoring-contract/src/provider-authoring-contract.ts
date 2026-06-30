@@ -1,24 +1,142 @@
-export function createOptionBuilder(providerId, port, optionName) {
+export type PortKind = "database" | "compute" | "objectStore" | "queue" | "cache" | "dns";
+
+export type Negotiation = "prefer" | "require";
+
+export type Stability = "stable" | "preview" | "experimental" | "deprecated";
+
+export type Outputs = Record<string, unknown>;
+
+export interface CapabilitySpec<P extends PortKind = PortKind> {
+  readonly port: P;
+  readonly stability: Stability;
+}
+
+export interface PortClient<P extends PortKind, Id extends string = string> {
+  readonly port: P;
+  readonly providerId: Id;
+}
+
+export type ClientMap<Ports extends PortKind, Id extends string> = {
+  readonly [P in Ports]: PortClient<P, Id>;
+};
+
+export interface CapabilityManifest<Id extends string = string> {
+  readonly providerId: Id;
+  readonly capabilities: readonly CapabilitySpec[];
+  readonly auth: { readonly mode: "brokered" | "static" };
+  readonly optionBuilders: readonly string[];
+}
+
+export interface ProviderOptionBlock<
+  Id extends string,
+  Port extends PortKind,
+  Options extends object
+> {
+  readonly providerId: Id;
+  readonly port: Port;
+  readonly optionName: string;
+  readonly negotiation: Negotiation;
+  readonly options: Options;
+}
+
+export interface ProviderOptionBuilder<
+  Id extends string,
+  Port extends PortKind,
+  Options extends object
+> {
+  (options: Options & { readonly negotiation?: Negotiation }): ProviderOptionBlock<Id, Port, Options>;
+  readonly providerId: Id;
+  readonly port: Port;
+  readonly optionName: string;
+}
+
+type CapabilityPorts<Capabilities extends readonly CapabilitySpec[]> = Capabilities[number]["port"];
+
+type ProviderOptionBuilders<
+  Id extends string,
+  Capabilities extends readonly CapabilitySpec[]
+> = Record<string, ProviderOptionBuilder<Id, CapabilityPorts<Capabilities>, any>>;
+
+export interface ProviderSpec<
+  Id extends string,
+  Capabilities extends readonly CapabilitySpec[],
+  Clients extends ClientMap<CapabilityPorts<Capabilities>, Id>,
+  Builders extends ProviderOptionBuilders<Id, Capabilities>
+> {
+  readonly id: Id;
+  readonly capabilities: Capabilities;
+  readonly with: Builders;
+  readonly client: (port: CapabilityPorts<Capabilities>, outputs: Outputs) => Clients[CapabilityPorts<Capabilities>];
+  readonly capabilityManifest: (input: {
+    readonly id: Id;
+    readonly capabilities: Capabilities;
+    readonly optionBuilders: readonly string[];
+  }) => CapabilityManifest<Id>;
+}
+
+export interface ProviderDefinition<
+  Id extends string,
+  Capabilities extends readonly CapabilitySpec[],
+  Clients extends ClientMap<CapabilityPorts<Capabilities>, Id>,
+  Builders extends ProviderOptionBuilders<Id, Capabilities>
+> {
+  readonly id: Id;
+  readonly capabilities: Capabilities;
+  readonly with: Builders;
+  readonly client: <P extends CapabilityPorts<Capabilities>>(port: P, outputs: Outputs) => Clients[P];
+  readonly capabilityManifest: () => CapabilityManifest<Id>;
+}
+
+type AnyProviderDefinition = ProviderDefinition<
+  string,
+  readonly CapabilitySpec[],
+  ClientMap<PortKind, string>,
+  ProviderOptionBuilders<string, readonly CapabilitySpec[]>
+>;
+
+type ResolvedProviderOption = {
+  readonly optionName: string;
+  readonly negotiation: Negotiation;
+  readonly options: object;
+};
+
+type DroppedProviderOption = {
+  readonly providerId: string;
+  readonly port: PortKind;
+  readonly optionName: string;
+  readonly reason: string;
+};
+
+export function createOptionBuilder<
+  const Id extends string,
+  const Port extends PortKind,
+  Options extends object = Record<string, unknown>
+>(providerId: Id, port: Port, optionName: string): ProviderOptionBuilder<Id, Port, Options> {
   return Object.assign(
     ({ negotiation = "prefer", ...options } = {}) => ({
       providerId,
       port,
       optionName,
       negotiation,
-      options
+      options: options as Options
     }),
     {
       providerId,
       port,
       optionName
     }
-  );
+  ) as ProviderOptionBuilder<Id, Port, Options>;
 }
 
-export function defineProvider(spec) {
-  const capabilities = [...spec.capabilities];
+export function defineProvider<
+  const Id extends string,
+  const Capabilities extends readonly CapabilitySpec[],
+  Clients extends ClientMap<CapabilityPorts<Capabilities>, Id>,
+  Builders extends ProviderOptionBuilders<Id, Capabilities>
+>(spec: ProviderSpec<Id, Capabilities, Clients, Builders>): ProviderDefinition<Id, Capabilities, Clients, Builders> {
+  const capabilities = spec.capabilities;
   const declaredPorts = new Set(capabilities.map((capability) => capability.port));
-  for (const [name, builder] of Object.entries(spec.with)) {
+  for (const [name, builder] of Object.entries(spec.with) as Array<[string, Builders[keyof Builders]]>) {
     if (builder.providerId !== spec.id) {
       throw new Error(`option builder ${name} belongs to provider ${builder.providerId}, not ${spec.id}`);
     }
@@ -31,11 +149,11 @@ export function defineProvider(spec) {
     id: spec.id,
     capabilities,
     with: Object.freeze({ ...spec.with }),
-    client(port, outputs) {
+    client<P extends CapabilityPorts<Capabilities>>(port: P, outputs: Outputs) {
       if (!declaredPorts.has(port)) {
         throw new Error(`provider ${spec.id} does not declare port ${port}`);
       }
-      return spec.client(port, outputs);
+      return spec.client(port, outputs) as Clients[P];
     },
     capabilityManifest() {
       return spec.capabilityManifest({
@@ -46,26 +164,46 @@ export function defineProvider(spec) {
     }
   };
 
-  return Object.freeze(provider);
+  return Object.freeze(provider) as ProviderDefinition<Id, Capabilities, Clients, Builders>;
 }
 
-export function createFixtureAwsProvider() {
-  return defineProvider({
+export function createFixtureAwsProvider(): ProviderDefinition<
+  "aws",
+  readonly [CapabilitySpec<"database">, CapabilitySpec<"compute">],
+  {
+    readonly database: PortClient<"database", "aws"> & { readonly connectionString: string };
+    readonly compute: PortClient<"compute", "aws"> & { readonly endpoint: unknown };
+  },
+  {
+    readonly rds: ProviderOptionBuilder<"aws", "database", { readonly instanceClass: string }>;
+    readonly fargate: ProviderOptionBuilder<"aws", "compute", { readonly cpu?: number }>;
+  }
+> {
+  return defineProvider<"aws", readonly [
+    CapabilitySpec<"database">,
+    CapabilitySpec<"compute">
+  ], {
+    readonly database: PortClient<"database", "aws"> & { readonly connectionString: string };
+    readonly compute: PortClient<"compute", "aws"> & { readonly endpoint: unknown };
+  }, {
+    readonly rds: ProviderOptionBuilder<"aws", "database", { readonly instanceClass: string }>;
+    readonly fargate: ProviderOptionBuilder<"aws", "compute", { readonly cpu?: number }>;
+  }>({
     id: "aws",
     capabilities: [
       { port: "database", stability: "stable" },
       { port: "compute", stability: "stable" }
-    ],
+    ] as const,
     with: {
-      rds: createOptionBuilder("aws", "database", "rds"),
-      fargate: createOptionBuilder("aws", "compute", "fargate")
+      rds: createOptionBuilder<"aws", "database", { readonly instanceClass: string }>("aws", "database", "rds"),
+      fargate: createOptionBuilder<"aws", "compute", { readonly cpu?: number }>("aws", "compute", "fargate")
     },
     client(port, outputs) {
       if (port === "database") {
         return {
           port,
           providerId: "aws",
-          connectionString: outputs.endpoint
+          connectionString: outputs.endpoint as string
         };
       }
       return {
@@ -85,16 +223,36 @@ export function createFixtureAwsProvider() {
   });
 }
 
-export function createFixtureAzureProvider() {
-  return defineProvider({
+export function createFixtureAzureProvider(): ProviderDefinition<
+  "azure",
+  readonly [CapabilitySpec<"database">, CapabilitySpec<"compute">],
+  {
+    readonly database: PortClient<"database", "azure"> & { readonly endpoint: unknown };
+    readonly compute: PortClient<"compute", "azure"> & { readonly endpoint: unknown };
+  },
+  {
+    readonly postgres: ProviderOptionBuilder<"azure", "database", { readonly sku: string }>;
+    readonly containerApp: ProviderOptionBuilder<"azure", "compute", { readonly cpu?: number }>;
+  }
+> {
+  return defineProvider<"azure", readonly [
+    CapabilitySpec<"database">,
+    CapabilitySpec<"compute">
+  ], {
+    readonly database: PortClient<"database", "azure"> & { readonly endpoint: unknown };
+    readonly compute: PortClient<"compute", "azure"> & { readonly endpoint: unknown };
+  }, {
+    readonly postgres: ProviderOptionBuilder<"azure", "database", { readonly sku: string }>;
+    readonly containerApp: ProviderOptionBuilder<"azure", "compute", { readonly cpu?: number }>;
+  }>({
     id: "azure",
     capabilities: [
       { port: "database", stability: "stable" },
       { port: "compute", stability: "stable" }
-    ],
+    ] as const,
     with: {
-      postgres: createOptionBuilder("azure", "database", "postgres"),
-      containerApp: createOptionBuilder("azure", "compute", "containerApp")
+      postgres: createOptionBuilder<"azure", "database", { readonly sku: string }>("azure", "database", "postgres"),
+      containerApp: createOptionBuilder<"azure", "compute", { readonly cpu?: number }>("azure", "compute", "containerApp")
     },
     client(port, outputs) {
       return {
@@ -114,9 +272,15 @@ export function createFixtureAzureProvider() {
   });
 }
 
-export function resolveProviderOptions(provider, optionBlocks) {
-  const merged = {};
-  const dropped = [];
+export function resolveProviderOptions<Id extends string>(
+  provider: { readonly id: Id; readonly capabilities?: readonly CapabilitySpec[] },
+  optionBlocks: readonly ProviderOptionBlock<string, PortKind, object>[]
+): {
+  readonly merged: Record<string, ResolvedProviderOption>;
+  readonly dropped: readonly DroppedProviderOption[];
+} {
+  const merged: Record<string, ResolvedProviderOption> = {};
+  const dropped: DroppedProviderOption[] = [];
   const declaredPorts = new Set((provider.capabilities ?? []).map((capability) => capability.port));
 
   for (const block of optionBlocks) {
@@ -143,20 +307,30 @@ export function resolveProviderOptions(provider, optionBlocks) {
   return { merged, dropped };
 }
 
-export function mergeResolvedProviderOptions(provider, optionBlocks) {
+export function mergeResolvedProviderOptions<const Provider extends { readonly id: string; readonly capabilities?: readonly CapabilitySpec[] }>(
+  provider: Provider,
+  optionBlocks: readonly ProviderOptionBlock<Provider["id"], PortKind, object>[]
+): ReturnType<typeof resolveProviderOptions> {
   return resolveProviderOptions(provider, optionBlocks);
 }
 
-export function auditProviderCatalog(providers) {
-  const providersByOption = new Map();
+export function auditProviderCatalog(providers: readonly { readonly id: string; readonly with: Record<string, unknown> }[]): {
+  readonly ok: boolean;
+  readonly conflicts: readonly {
+    readonly optionName: string;
+    readonly providers: readonly string[];
+    readonly reason: string;
+  }[];
+} {
+  const providersByOption = new Map<string, string[]>();
 
   for (const provider of providers) {
     for (const builder of Object.values(provider.with)) {
-      const optionName = builder.optionName;
+      const optionName = (builder as { readonly optionName: string }).optionName;
       if (!providersByOption.has(optionName)) {
         providersByOption.set(optionName, []);
       }
-      providersByOption.get(optionName).push(provider.id);
+      providersByOption.get(optionName)?.push(provider.id);
     }
   }
 
@@ -174,29 +348,33 @@ export function auditProviderCatalog(providers) {
   };
 }
 
-export function validateProviderPackage(provider) {
-  const errors = [];
+export function validateProviderPackage(provider: unknown): {
+  readonly ok: boolean;
+  readonly errors: readonly string[];
+} {
+  const errors: string[] = [];
+  const candidate = provider as Partial<AnyProviderDefinition> | null | undefined;
 
-  if (!provider?.id) {
+  if (!candidate?.id) {
     errors.push("provider id is required");
   }
-  if (!Array.isArray(provider?.capabilities) || provider.capabilities.length === 0) {
+  if (!Array.isArray(candidate?.capabilities) || candidate.capabilities.length === 0) {
     errors.push("provider must declare at least one capability");
   }
-  if (!provider?.with || typeof provider.with !== "object") {
+  if (!candidate?.with || typeof candidate.with !== "object") {
     errors.push("provider must export scoped .with option builders");
   }
-  if (typeof provider?.client !== "function") {
+  if (typeof candidate?.client !== "function") {
     errors.push("provider must export a runtime client(port, outputs) function");
   }
-  if (typeof provider?.capabilityManifest !== "function") {
+  if (typeof candidate?.capabilityManifest !== "function") {
     errors.push("provider must export capabilityManifest()");
   }
 
-  if (typeof provider?.client === "function") {
-    for (const capability of provider.capabilities ?? []) {
-      const client = provider.client(capability.port, { endpoint: "fixture://endpoint" });
-      if (!client || client.port !== capability.port || client.providerId !== provider.id) {
+  if (typeof candidate?.client === "function") {
+    for (const capability of candidate.capabilities ?? []) {
+      const client = candidate.client(capability.port, { endpoint: "fixture://endpoint" });
+      if (!client || client.port !== capability.port || client.providerId !== candidate.id) {
         errors.push(`client(${capability.port}) returned untyped surface`);
       }
     }

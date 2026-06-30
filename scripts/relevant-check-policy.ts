@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+
 export type Check = { command: string; args: string[]; reason: string; serial?: boolean };
 
 export type RelevantCheckPolicyOptions = {
@@ -8,6 +10,7 @@ export type RelevantCheckPolicyOptions = {
   includeBuild?: boolean;
   rootPackageJsonScriptsOnlyChanged?: boolean;
   turboAvailable?: boolean;
+  workspacePackageExists?: (workspace: string) => boolean;
 };
 
 export type RelevantCheckPolicy = {
@@ -22,14 +25,20 @@ export function workspaceFor(file: string) {
   return match ? `src/draft/${match[1]}` : undefined;
 }
 
+function defaultWorkspacePackageExists(workspace: string) {
+  return existsSync(`${workspace}/package.json`);
+}
+
 export function selectRelevantChecks(options: RelevantCheckPolicyOptions): RelevantCheckPolicy {
   const files = options.files.map((file) => file.replaceAll("\\", "/"));
   const staged = Boolean(options.staged);
   const includeBuild = Boolean(options.includeBuild);
   const rootPackageJsonScriptsOnlyChanged = Boolean(options.rootPackageJsonScriptsOnlyChanged);
   const turboAvailable = options.turboAvailable !== false;
+  const workspacePackageExists = options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
-  const workspaces = [...new Set(files.map(workspaceFor).filter((value): value is string => Boolean(value)))];
+  const workspaces = [...new Set(files.map(workspaceFor).filter((value): value is string => Boolean(value)))]
+    .filter(workspacePackageExists);
   const touched = (prefixes: string[]) => files.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const touchedAny = (patterns: RegExp[]) => files.some((file) => patterns.some((pattern) => pattern.test(file)));
 

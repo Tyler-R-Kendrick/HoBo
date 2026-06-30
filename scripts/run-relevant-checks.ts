@@ -39,7 +39,7 @@ function runAsync(check: Check): Promise<number> {
   const platformCommand = commandForPlatform(check.command, check.args);
   const child = spawn(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
 
-  return new Promise((resolve) => {
+  return new Promise<number>((resolve) => {
     child.once("error", () => resolve(1));
     child.once("exit", (status) => resolve(status ?? 1));
   }).then((status) => {

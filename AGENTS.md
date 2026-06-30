@@ -1,6 +1,6 @@
 # Agent tooling for this repo
 
-This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with nine installable agent tools. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
+This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with twelve installable agent tools. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
 
 | Tool | Type | What it does | Invoke |
 |---|---|---|---|
@@ -9,12 +9,15 @@ This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub
 | **mattpocock/skills** (`mattpocock/skills`) | skills collection | Engineering disciplines: **`grill-with-docs`** (relentless design interview that writes ADRs + glossary), `domain-modeling`, `codebase-design`, `diagnosing-bugs`, `tdd`, `to-prd`, `to-issues`, `prototype`, … No keys. | `/grill-with-docs`, `/ask-matt`, `/domain-modeling`, `/setup-matt-pocock-skills` (one-time config) |
 | **caveman** (`JuliusBrussee/caveman`) | skill + rules | Compresses **agent output** (~65–87% fewer tokens) while keeping technical accuracy. | active by default (see below); `/caveman [lite\|full\|ultra\|wenyan]`, `/caveman-commit`, `/caveman-review`, `/caveman-stats` |
 | **ponytail** (`DietrichGebert/ponytail`) | skill | Pushes the **minimalist solution** — YAGNI, stdlib/native before dependencies, one line before fifty; reviews/audits for over-engineering. No keys. | `/ponytail [lite\|full\|ultra]`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help` |
+| **tgrep** (`microsoft/tgrep`) | CLI | Fast trigram-indexed exact/regex search for repo discovery before tests or semantic search. Local, no keys. | `pnpm run search <pattern>` |
+| **ast-grep** (`ast-grep/ast-grep`) | CLI | AST structural search/rewrite for code-shape queries; repo-pinned through `@ast-grep/cli` plus `sgconfig.yml`. Local, no keys. | `pnpm run search:structure`, `pnpm exec ast-grep run -p <pattern> -l ts` |
 | **Serena** (`oraios/serena`) | MCP server | IDE-like semantic code retrieval, symbol-aware editing/refactoring, and project memory through LSPs. Local-first, no keys. | MCP tools after `serena init`; shared launcher `scripts/agent-mcp-serena.sh` |
 | **headroom** (`chopratejas/headroom`) | MCP server | Compresses **context fed to the model** (tool outputs, logs, files); reversible via `headroom_retrieve`. Local-first, no keys. | MCP tools `mcp__headroom__*`; optional proxy `headroom proxy` |
+| **RTK** (`rtk-ai/rtk`) | CLI proxy/hooks | Rust Token Killer compresses noisy shell-command output before agents see it. Local, no keys. | installed by `scripts/setup-agent-tools.sh`; `rtk <cmd>`, `rtk gain` |
 | **gbrain** (`garrytan/gbrain`) | MCP server | Knowledge-graph **memory**: capture notes, hybrid search + synthesis. | MCP tools after `gbrain init`; CLI `gbrain capture/search/query` |
 | **SkillOpt** (`microsoft/SkillOpt`) | optimizer / research harness | Trains reusable markdown skills from scored rollouts and exports `best_skill.md` artifacts for multiple harnesses. Optional, not runtime config. | `skillopt-train`; `scripts/skillopt-sleep.sh status|dry-run|run|adopt`; installed from microsoft/SkillOpt |
 
-How they fit together: **Serena** gives agents semantic code tools, **superpowers** + **mattpocock/skills** supply the *workflow & rigor* (brainstorm → grill-with-docs → plan → build/TDD → review), **improve** decides *what* to do, **ponytail** keeps the code itself minimal (YAGNI / stdlib-first), **headroom** + **caveman** keep token use down (context-in vs output-out — complementary), **gbrain** remembers across sessions, and **SkillOpt** is reserved for offline improvement of reusable skills when we have scored tasks.
+How they fit together: **Serena** gives agents semantic code tools, **superpowers** + **mattpocock/skills** supply the *workflow & rigor* (brainstorm → grill-with-docs → plan → build/TDD → review), **improve** decides *what* to do, **ponytail** keeps the code itself minimal (YAGNI / stdlib-first), **headroom** + **RTK** + **caveman** keep token use down (context-in, shell-output, and agent-output — complementary), **gbrain** remembers across sessions, and **SkillOpt** is reserved for offline improvement of reusable skills when we have scored tasks.
 
 
 ## Parallel work rule
@@ -142,7 +145,7 @@ Local and CI gates enforce this with `pnpm run docs:freshness`: code changes und
 
 ## Keys & risks (read before enabling gbrain)
 - **gbrain needs an embedding key** (`OPENAI_API_KEY` *or* `ZEROENTROPY_API_KEY` *or* `VOYAGE_API_KEY`) and **sends the text it embeds + your queries to that provider** — recurring cost + data egress. It is **inert until you run `gbrain init` and set a key**. Don't point it at sensitive content you don't want leaving your machine. Configure via `.env` (see `.env.example`).
-- **Serena / headroom / improve / caveman / ponytail / superpowers** need **no keys** and run locally; superpowers has optional telemetry (set `SUPERPOWERS_DISABLE_TELEMETRY=1` to disable).
+- **Serena / headroom / RTK / improve / caveman / ponytail / superpowers** need **no keys** and run locally; superpowers has optional telemetry (set `SUPERPOWERS_DISABLE_TELEMETRY=1` to disable).
 - **SkillOpt** is installed from `microsoft/SkillOpt`; its default sleep mock backend is no-spend, but real `codex`, `claude`, OpenAI, Azure OpenAI, Qwen, or MiniMax backends use the credentials/budget you configure.
 - **caveman** was installed via a `curl … | bash` shim (forwarding to `npx github:JuliusBrussee/caveman`); the pinned installer is handled in `scripts/setup-agent-tools.sh`.
 - Committing `.mcp.json` / `.cursor/mcp.json` means opening this repo in Claude Code or Cursor will prompt to launch the `serena`, `headroom`, and `gbrain` MCP servers. Decline if you don't want them.
@@ -183,6 +186,35 @@ Switch level: /caveman lite|full|ultra|wenyan. Stop: "stop caveman" or "normal m
 Auto-Clarity: drop caveman for security warnings, irreversible actions, or a confused user. Resume after.
 Boundaries: code/commits/PRs written normal.
 <!-- caveman:end -->
+
+## Performance-first command policy
+
+Never use tests for discovery. Search first.
+
+Use this ladder:
+
+1. `pnpm run search "<exact text>"`
+2. `pnpm run search:structure --filter <rule>` or `pnpm exec ast-grep run -p "<pattern>" -l ts`
+3. `pnpm run test:smoke <single test file>`
+4. `pnpm run test:file <single test file>`
+5. `pnpm run test:name "<test name>" <single test file>`
+6. `HOBO_CHECK_BASE=origin/main pnpm run test:changed`
+7. `pnpm run test:affected`
+8. `HOBO_CHECK_BASE=origin/main pnpm run validate:local`
+9. `pnpm run validate:final`
+
+Rules:
+
+- Do not run `node --test` during implementation.
+- Do not run `scripts/run-tests.ts --category=*` during implementation.
+- Do not run `--test-concurrency=1` with more than one file.
+- Do not run broad globs like `test/*.test.ts`.
+- Do not run provider and consumer contract suites as diagnostics.
+- Do not retry the same slow command after timeout.
+- Do not run coverage, artifact generation, or full contract suites unless doing final validation.
+- Prefer Bun for smoke tests when compatible.
+- Prefer Vitest for normal local validation.
+- Prefer Node only for final compatibility validation.
 
 ## Testing policy
 

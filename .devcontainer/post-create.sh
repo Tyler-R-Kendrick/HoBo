@@ -4,5 +4,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-npm install
+corepack enable pnpm
+pnpm install --frozen-lockfile --config.confirmModulesPurge=false
 bash scripts/setup-agent-tools.sh --common-only --no-gbrain

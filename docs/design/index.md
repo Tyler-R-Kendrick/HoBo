@@ -61,6 +61,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`meta-cloud-broker.md`](./meta-cloud-broker.md) | Productization M0 scope and acceptance for hosted broker authority, broker artifacts, Resolution Receipts, Resolution Rejections, and follow-up gates | — |
 | [`launch-support-escalation.md`](./launch-support-escalation.md) | Productization M0 launch support escalation matrix, incident communication templates, and support gap routing | — |
 | [`public-status-page-incident-communication.md`](./public-status-page-incident-communication.md) | Productization M0 public status-page scope, component taxonomy, incident states, maintenance notices, update cadence, and customer communication boundaries | — |
+| [`support-workflow.md`](./support-workflow.md) | Productization M0 scope and acceptance for support intake, triage states, customer-safe evidence, owner routing, redaction/access boundaries, and follow-up gates | — |
 | [`support-sla-channels.md`](./support-sla-channels.md) | Productization M0 support SLA language, channel coverage, response targets, unsupported request routing, and owner signoff boundaries | — |
 | [`example-apps.md`](./example-apps.md) | Productization M0 scope and acceptance for example apps | — |
 | [`launch-demo-golden-path.md`](./launch-demo-golden-path.md) | Productization M0 golden path and proof asset checklist for the launch demo | — |

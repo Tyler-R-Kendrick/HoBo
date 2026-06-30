@@ -1003,6 +1003,8 @@ importers:
 
   src/draft/v1-outcome-activation-rail-contract: {}
 
+  src/draft/v1-readiness-dashboard-contract: {}
+
   src/draft/v1-release-notes-upgrade-guide-contract: {}
 
   src/draft/v1-supported-platform-matrix-contract: {}

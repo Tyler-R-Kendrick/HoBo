@@ -29,6 +29,14 @@ message ResilienceFact {
   string reason = 5;
   bool allow = 6;
   uint32 delay_ms = 7;
+  string state = 8;
+  string source = 9;
+  string from = 10;
+  string event = 11;
+  string to = 12;
+  string caused_by = 13;
+  string child_id = 14;
+  string spawn_contract_id = 15;
 }
 
 message ResilienceFixture {

@@ -504,6 +504,19 @@ message ClientOptimisticUpdateContractClientOptimisticUpdateContractDataModel {
   bool cue_annotated = 6;
 }
 
+message ClosureBuilderManifestLoweringContractClosureBuilderManifestLoweringDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-manifest-lowering-contract.closure-builder-manifest-lowering";
+  option (hobo.source_path) = "src/draft/closure-builder-manifest-lowering-contract/src/closure-builder-manifest-lowering.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderManifestLoweringContractClosureBuilderManifestLoweringDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ClosureBuilderPublicApiContractClosureBuilderPublicApiDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-public-api-contract.closure-builder-public-api";
   option (hobo.source_path) = "src/draft/closure-builder-public-api-contract/src/closure-builder-public-api.ts";
@@ -885,6 +898,19 @@ message CuratedCatalogPolicyContractCuratedCatalogPolicyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.curated-catalog-policy-contract.curated-catalog-policy";
   option (hobo.source_path) = "src/draft/curated-catalog-policy-contract/src/curated-catalog-policy.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CuratedCatalogPolicyContractCuratedCatalogPolicyDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message CustomerAssuranceEvidencePacketContractCustomerAssuranceEvidencePacketDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.customer-assurance-evidence-packet-contract.customer-assurance-evidence-packet";
+  option (hobo.source_path) = "src/draft/customer-assurance-evidence-packet-contract/src/customer-assurance-evidence-packet.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CustomerAssuranceEvidencePacketContractCustomerAssuranceEvidencePacketDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -2636,6 +2662,19 @@ message IncidentAggregateContractIncidentAggregateDataModel {
   bool cue_annotated = 6;
 }
 
+message IncidentCommunicationsScopeContractIncidentCommunicationsScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.incident-communications-scope-contract.incident-communications-scope";
+  option (hobo.source_path) = "src/draft/incident-communications-scope-contract/src/incident-communications-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#IncidentCommunicationsScopeContractIncidentCommunicationsScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message InternalCaPrivateAcmeContractInternalCaPrivateAcmeDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.internal-ca-private-acme-contract.internal-ca-private-acme";
   option (hobo.source_path) = "src/draft/internal-ca-private-acme-contract/src/internal-ca-private-acme.ts";
@@ -4300,6 +4339,19 @@ message SecretlessConfigResolutionContractSecretlessConfigResolutionDataModel {
   bool cue_annotated = 6;
 }
 
+message SecurityVerificationScopeAcceptanceSecurityVerificationScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.security-verification-scope-acceptance.security-verification-scope";
+  option (hobo.source_path) = "src/draft/security-verification-scope-acceptance/src/security-verification-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#SecurityVerificationScopeAcceptanceSecurityVerificationScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message SelfHostBootstrapOrderingSpikeBootstrapOrderingDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.self-host-bootstrap-ordering-spike.bootstrap-ordering";
   option (hobo.source_path) = "src/draft/self-host-bootstrap-ordering-spike/src/bootstrap-ordering.ts";
@@ -4915,6 +4967,19 @@ message TrustTierPolicyContractTrustTierPolicyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.trust-tier-policy-contract.trust-tier-policy";
   option (hobo.source_path) = "src/draft/trust-tier-policy-contract/src/trust-tier-policy.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#TrustTierPolicyContractTrustTierPolicyDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message TutorialsWalkthroughsScopeAcceptanceTutorialsWalkthroughsScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.tutorials-walkthroughs-scope-acceptance.tutorials-walkthroughs-scope";
+  option (hobo.source_path) = "src/draft/tutorials-walkthroughs-scope-acceptance/src/tutorials-walkthroughs-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#TutorialsWalkthroughsScopeAcceptanceTutorialsWalkthroughsScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;

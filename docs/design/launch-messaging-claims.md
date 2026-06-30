@@ -19,6 +19,30 @@ evidence owner, an evidence source, a risk rating, and a current capability stat
 not write final launch copy; it defines the claim register that future launch-site and demo work
 must consume before publication.
 
+## M1 Dogfood/Alpha Evidence Gate
+
+Source issue: HOBO-458.
+
+Executable proof lives in
+[`src/draft/launch-site-demo-alpha-evidence-contract`](../../src/draft/launch-site-demo-alpha-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-458-launch-site-demo-alpha-evidence`](./proofs/hobo-458-launch-site-demo-alpha-evidence/README.md).
+
+The M1 dogfood/alpha gate accepts the launch-site, messaging, and demo-asset evidence map without
+building the launch site. The gate records owner-mapped evidence, blockers, accepted risks, release
+cutline dependencies, follow-up rules, and parent-initiative status behavior.
+
+### M1 Gate Rules
+
+| Rule | Requirement |
+|---|---|
+| Owner-mapped evidence | Claim register, golden-path checklist, recording-manifest slot, cutline documentation domain, and known-limitations register all carry owner project and source. |
+| Blockers and risks | Alpha-only recording evidence and reference-fixture demo behavior are recorded as accepted risks with mitigations. |
+| Release cutline | Documentation, productization, and operations-readiness dependencies map to the v1 cutline blocker domains. |
+| Follow-up creation | Execution follow-ups are allowed only when evidence is explicitly marked missing. |
+| Parent initiative | The HoBo v1 Release Readiness initiative needs a status update only when the gate changes launch risk. |
+| Public claims | Public claims require accepted live evidence; reference fixtures and alpha-only slots cannot be promoted to production-readiness wording. |
+
 ## Claim States
 
 | State | Meaning | Publication rule |

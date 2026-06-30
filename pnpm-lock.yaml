@@ -625,6 +625,8 @@ importers:
 
   src/draft/member-rbac-administration-scope: {}
 
+  src/draft/meta-cloud-broker-resolution-contract: {}
+
   src/draft/meta-cloud-broker-scope-contract: {}
 
   src/draft/metering-view-projection-contract: {}

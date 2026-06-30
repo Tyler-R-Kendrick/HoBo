@@ -13,11 +13,13 @@ Executable proofs:
 
 - [`meta-cloud-broker-scope-contract`](../../src/draft/meta-cloud-broker-scope-contract/README.md)
 - [`yard-receipt-consumption-contract`](../../src/draft/yard-receipt-consumption-contract/README.md)
+- [`meta-cloud-broker-resolution-contract`](../../src/draft/meta-cloud-broker-resolution-contract/README.md)
 
 Branch evidence:
 
 - [`HOBO-521 proof record`](./proofs/hobo-521-meta-cloud-broker/README.md)
 - [`HOBO-523 proof record`](./proofs/hobo-523-yard-receipt-consumption/README.md)
+- [`HOBO-525 proof record`](./proofs/hobo-525-meta-cloud-broker-resolution/README.md)
 
 This M0 record defines the accepted productization scope for the Meta-cloud Broker. It does not
 build broker runtime code, Yard planner behavior, provider adapters, admin UI, Gatekeeper policy
@@ -138,6 +140,15 @@ decision with its own evidence.
 | Catalog snapshot fixture | Deterministic fixture | Provider/catalog mapping inputs are versioned and stale states are visible. |
 | Rejection taxonomy fixture | Negative test | Stale, incompatible, ambiguous, and unsupported mappings fail with structured Resolution Rejections. |
 | Scope-boundary register | Policy fixture | Runtime, planner, provider, admin UI, Gatekeeper, and public-claim work route to follow-up owners. |
+
+## M2 Deterministic Resolution Evidence
+
+HOBO-525 proves the first working broker-resolution slice with
+`meta-cloud-broker-resolution-contract`: the same Contract Manifest and Broker Environment snapshot
+produce identical receipt or rejection output, snapshot identity is an explicit replay input,
+ambiguous/incompatible/unavailable mappings fail with structured Resolution Rejections, provider
+defaults cannot act as implicit broker decisions, and missing mappings never fall back to Yard-local
+Matching.
 
 ## Authoritative Dependencies
 

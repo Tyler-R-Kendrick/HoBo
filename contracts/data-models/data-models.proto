@@ -3208,6 +3208,19 @@ message McpServerHardeningContractMcpServerHardeningDataModel {
   bool cue_annotated = 6;
 }
 
+message MetaCloudBrokerResolutionContractBrokerResolutionDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.meta-cloud-broker-resolution-contract.broker-resolution";
+  option (hobo.source_path) = "src/draft/meta-cloud-broker-resolution-contract/src/broker-resolution.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#MetaCloudBrokerResolutionContractBrokerResolutionDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message MeteringViewProjectionContractMeteringViewDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.metering-view-projection-contract.metering-view";
   option (hobo.source_path) = "src/draft/metering-view-projection-contract/src/metering-view.ts";

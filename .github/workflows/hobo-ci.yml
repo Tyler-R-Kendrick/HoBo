@@ -3,12 +3,18 @@ name: HoBo CI Fabric
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pr-gate:
@@ -28,7 +34,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Relevant checks only
-        run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+        run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
 
   hello-bindle-fixture:
     name: hello-bindle sandbox fixture

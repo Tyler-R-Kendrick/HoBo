@@ -16,6 +16,38 @@ This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub
 
 How they fit together: **Serena** gives agents semantic code tools, **superpowers** + **mattpocock/skills** supply the *workflow & rigor* (brainstorm → grill-with-docs → plan → build/TDD → review), **improve** decides *what* to do, **ponytail** keeps the code itself minimal (YAGNI / stdlib-first), **headroom** + **caveman** keep token use down (context-in vs output-out — complementary), **gbrain** remembers across sessions, and **SkillOpt** is reserved for offline improvement of reusable skills when we have scored tasks.
 
+
+## Parallel work rule
+
+Only edit files directly related to the assigned task.
+
+Prefer changes inside one package, app, feature folder, or test folder.
+
+Avoid shared/global files unless the task explicitly requires them:
+
+- `package.json`
+- `pnpm-lock.yaml`
+- `pnpm-workspace.yaml`
+- `turbo.json`
+- root `tsconfig*.json`
+- `.github/workflows/**`
+- `AGENTS.md`
+- generated files
+- shared fixtures
+- central registry/barrel files
+
+Do not hand-edit generated files. Avoid manual barrel-file edits; prefer direct imports or generated barrels. Split shared fixtures into scenario/domain-local files when a task needs fixture changes. Change `package.json` or lockfiles only for dependency-related tasks.
+
+Before finishing:
+
+```bash
+git fetch origin
+git rebase origin/main
+pnpm agent:check
+```
+
+If there are conflicts, resolve them before finalizing.
+
 ## Technical standards for code and contracts
 
 These rules are harness-neutral and apply to Claude Code, Cursor, Codex, Copilot CLI, and any other agent editing this repo:

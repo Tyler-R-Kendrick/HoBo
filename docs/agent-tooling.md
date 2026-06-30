@@ -102,7 +102,7 @@ Agent-tooling changes count as repo behavior changes. Prefer cross-agent config 
 
 ## Fast local checks with Turborepo
 
-Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
+Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. Protobuf/CUE edits inside draft packages stay on that isolated workspace path; only root contract/schema edits outside `src/draft/*` trigger the repository-wide `test:schema` and contract lanes. Multiple touched draft workspaces are passed to one Turbo invocation so their contract regeneration and tests can run in parallel. Independent relevant checks also run in parallel after any package-install guard, while expensive global validators stay impact-scoped: traceability runs for traceability/design-proof edits, deployment-set validation runs for that proof, and agent evals run only for eval/prompt paths. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
 
 On Windows, `scripts/run-relevant-checks.ts` invokes nested pnpm commands through `cmd.exe /d /c pnpm.cmd`.
 This keeps the staged hook path usable in shells where `pnpm` is not directly executable from
@@ -138,6 +138,10 @@ Chosen stack:
 - Bun: not default. Use only for isolated proof packages that deliberately target Bun APIs or can prove Node-compatibility parity and faster measured gates.
 
 pnpm v11 build-script security is configured in `pnpm-workspace.yaml`: only `esbuild` and `protobufjs` may run install-time build scripts. The recent `turbo` and `@typescript/native-preview` platform packages are listed in `minimumReleaseAgeExclude` so the repo can intentionally use current toolchain binaries while retaining pnpm's supply-chain policy checks for the rest of the graph.
+
+### Isolated test temp/log directories
+
+`scripts/run-tests.ts` creates one isolated directory per invocation under `.tmp/test-runs/` and one child temp directory per test batch. The child process receives `TMPDIR`, `TMP`, and `TEMP` pointing at that batch directory, so parallel workers do not share global `/tmp` logs or unrelated temp context. Passing batches delete their temp directory; failed runs keep the isolated artifact path in output for debugging. Set `HOBO_TEST_TMPDIR` only to another per-worker location.
 
 ### Fast docs linting
 

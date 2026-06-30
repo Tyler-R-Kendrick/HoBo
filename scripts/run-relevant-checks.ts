@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 
 const args = new Set(process.argv.slice(2));
@@ -84,8 +85,32 @@ function capture(command: string, commandArgs: string[]) {
 function changedFiles() {
   if (all) return capture("git", ["ls-files"]).split(/\r?\n/).filter(Boolean);
   if (staged) return capture("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]).split(/\r?\n/).filter(Boolean);
-  const mergeBase = capture("git", ["merge-base", base, "HEAD"]) || base;
-  return capture("git", ["diff", "--name-only", "--diff-filter=ACMR", mergeBase, "HEAD"]).split(/\r?\n/).filter(Boolean);
+  return capture("git", ["diff", "--name-only", "--diff-filter=ACMR", diffBase, "HEAD"]).split(/\r?\n/).filter(Boolean);
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableJson(entryValue)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function rootPackageJsonScriptsOnlyChanged() {
+  if (staged || all) return false;
+  const beforeRaw = capture("git", ["show", `${diffBase}:package.json`]);
+  if (!beforeRaw || !fs.existsSync("package.json")) return false;
+
+  try {
+    const before = JSON.parse(beforeRaw) as Record<string, unknown>;
+    const after = JSON.parse(fs.readFileSync("package.json", "utf8")) as Record<string, unknown>;
+    delete before.scripts;
+    delete after.scripts;
+    return stableJson(before) === stableJson(after);
+  } catch {
+    return false;
+  }
 }
 
 function workspaceFor(file: string) {
@@ -94,6 +119,7 @@ function workspaceFor(file: string) {
   return match ? `src/draft/${match[1]}` : undefined;
 }
 
+const diffBase = capture("git", ["merge-base", base, "HEAD"]) || base;
 const files = changedFiles();
 if (files.length === 0) {
   console.log("No changed files; skipping relevant checks.");
@@ -108,6 +134,8 @@ const checks: Check[] = [];
 const automationChanged = touched(["scripts", ".githooks", ".github", ".codex", ".cursor", ".claude", ".agents"])
   || touchedAny([/^package\.json$/, /^pnpm-lock\.yaml$/, /^pnpm-workspace\.yaml$/, /^turbo\.json$/]);
 const rootConfigChanged = touchedAny([/^package\.json$/, /^pnpm-lock\.yaml$/, /^pnpm-workspace\.yaml$/, /^turbo\.json$/, /^tsconfig.*\.json$/]);
+const rootBuildImpactChanged = touchedAny([/^pnpm-workspace\.yaml$/, /^turbo\.json$/, /^tsconfig.*\.json$/])
+  || (touchedAny([/^package\.json$/]) && !rootPackageJsonScriptsOnlyChanged());
 const sourceChanged = touched(["src", "contracts", "test", "tests"]);
 const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/, /^CONTRIBUTING\.md$/, /^AGENTS\.md$/, /^CLAUDE\.md$/]);
 const draftSchemaChanged = files.some((file) => /^src\/draft\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
@@ -189,7 +217,7 @@ if (sourceChanged || automationChanged) {
 }
 if (traceabilityChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-traceability.ts"], reason: "traceability evidence changed" });
 if (deploymentDeltaChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-deployment-set-delta.ts"], reason: "deployment delta proof changed" });
-if (includeBuild || (rootConfigChanged && !staged)) checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "build-impacting changed check requested" });
+if (includeBuild || (rootBuildImpactChanged && !staged)) checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "build-impacting changed check requested" });
 
 console.log(`Changed files: ${files.length}`);
 console.log(`Detected scope: ${[

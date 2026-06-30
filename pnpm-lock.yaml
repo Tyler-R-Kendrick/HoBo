@@ -577,6 +577,8 @@ importers:
 
   src/draft/launch-performance-capacity-envelope-contract: {}
 
+  src/draft/launch-site-private-beta-evidence-contract: {}
+
   src/draft/launch-site-demo-alpha-evidence-contract: {}
 
   src/draft/launch-support-escalation-matrix: {}
@@ -1006,6 +1008,8 @@ importers:
   src/draft/usage-inferred-permissions-contract: {}
 
   src/draft/usage-metering-scope-contract: {}
+
+  src/draft/usage-to-invoice-reconciliation-contract: {}
 
   src/draft/v1-beta-pilot-private-beta-evidence: {}
 

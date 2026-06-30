@@ -41,7 +41,7 @@ and the durable scope record at [docs-portal.md](../../docs-portal.md).
 
 ```powershell
 pnpm --prefix src\draft\docs-portal-scope-contract test
-pnpm run contracts:data-models
+pnpm test:schema
 pnpm run check:relevant:staged
 ```
 

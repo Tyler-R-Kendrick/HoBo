@@ -33,6 +33,6 @@ and the durable M3 gate record in
 pnpm.cmd --prefix src\draft\legal-privacy-release-candidate-evidence-contract test
 ```
 
-The branch gate also verifies this proof package's workspace registration and
-generated data-model catalog through `pnpm.cmd run install:check` and
-`pnpm.cmd run contracts:data-models`.
+The branch gate also verifies this proof package's workspace registration,
+package-local protobuf/CUE/Pact evidence, and repository schema compatibility
+through `pnpm.cmd run install:check` and `pnpm.cmd run test:schema`.

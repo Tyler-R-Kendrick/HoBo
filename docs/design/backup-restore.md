@@ -13,6 +13,10 @@ Executable proof lives in
 [`src/draft/backup-restore-scope-contract`](../../src/draft/backup-restore-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-429-backup-restore`](./proofs/hobo-429-backup-restore/README.md).
+M1 launch-drill proof lives in
+[`src/draft/backup-restore-launch-drill-contract`](../../src/draft/backup-restore-launch-drill-contract/README.md)
+with branch evidence in
+[`proofs/hobo-498-backup-restore-launch-drill`](./proofs/hobo-498-backup-restore-launch-drill/README.md).
 
 ## M0 Acceptance Record
 
@@ -150,6 +154,25 @@ Non-goals:
 | Failure-mode recovery register | Support engineer | Failure-mode register | Contract test | Missing, stale, corrupt, partial, denied, and unsupported recovery states route safely. |
 | Support/compliance handoff | Security/compliance reviewer | Owning-initiative boundary table | Support handoff | Support and compliance can consume backup/restore limitations without approving final claims. |
 | Rollback/cleanup boundary | Platform engineer | Scope-out and non-goals | Security review | Rollback, migration, cleanup, scheduler, storage, and live restore work stay in owning follow-up issues. |
+
+## M1 Launch Drill Contract
+
+HOBO-498 records the first deterministic launch-drill contract for Backup & Restore. The contract
+requires each drill to name:
+
+- accepted data sets: control-plane metadata, deployment state projections, artifact provenance,
+  audit export, and support bundle;
+- one restore path each for SaaS, self-host, and local/dev contexts;
+- RPO/RTO targets, evidence-output fields, fixture source, unsupported states, and rollback path for
+  each restore context;
+- required routing for missing, stale, corrupted, partial, permission-denied, and unsupported
+  customer-data restore failures; and
+- owner handoffs for support, compliance/customer assurance, installation/bootstrap, and release
+  notes gaps.
+
+The launch-drill contract is not a production restore service. A production restore readiness claim
+is invalid until successful deterministic drill evidence exists, and the drill cannot use live
+customer data or destructive customer recovery.
 
 ## Follow-Up Gate
 

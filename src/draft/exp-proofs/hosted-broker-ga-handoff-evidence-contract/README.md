@@ -45,4 +45,4 @@ This package ships the architecture-guard evidence required by
 
 - `architecture/` - protobuf data shapes and CUE constraints for the GA handoff evidence record.
 - `architecture/pacts/` - PACT contract for the package boundary.
-- `ARCHITECTURE.md` - parse-don't-validate and event-architecture evidence.
+- `ADR.md` - parse-don't-validate and event-architecture evidence.

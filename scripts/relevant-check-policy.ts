@@ -19,6 +19,9 @@ export type RelevantCheckPolicy = {
   workspaces: string[];
 };
 
+const MAX_WINDOWS_TURBO_COMMAND_LENGTH = 24_000;
+const TURBO_TEST_PREFIX = ["exec", "turbo", "run", "test"];
+
 export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
   const match = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
@@ -27,6 +30,35 @@ export function workspaceFor(file: string) {
 
 function defaultWorkspacePackageExists(workspace: string) {
   return existsSync(`${workspace}/package.json`);
+}
+
+function turboTestArgsFor(workspaces: string[]) {
+  return [
+    ...TURBO_TEST_PREFIX,
+    ...workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]),
+  ];
+}
+
+function commandLength(command: string, args: string[]) {
+  return [command, ...args].join(" ").length;
+}
+
+function chunkTurboWorkspaceTests(workspaces: string[]) {
+  const chunks: string[][] = [];
+  let current: string[] = [];
+
+  for (const workspace of workspaces) {
+    const candidate = [...current, workspace];
+    if (current.length > 0 && commandLength("pnpm", turboTestArgsFor(candidate)) > MAX_WINDOWS_TURBO_COMMAND_LENGTH) {
+      chunks.push(current);
+      current = [workspace];
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current.length > 0) chunks.push(current);
+  return chunks;
 }
 
 export function selectRelevantChecks(options: RelevantCheckPolicyOptions): RelevantCheckPolicy {
@@ -53,6 +85,7 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\//u.test(file));
   const schemaChanged = rootSchemaChanged || draftSchemaChanged;
   const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
+  const rootPactChanged = files.some((file) => (/(^|\/)pacts\//u.test(file) || /\.pact\.json$/u.test(file)) && !workspaceFor(file));
   const uiChanged = touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/u]);
   const behaviorChanged = touched(["tests/behavior", "features"]) || touchedAny([/playwright\.behavior\.config\./u, /cucumber\.config\./u]);
   const visualChanged = touched(["tests/visual", "storybook"]) || touchedAny([/playwright\.visual\.config\./u, /\.stories\./u]);
@@ -79,30 +112,35 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
     checks.push({ command: "pnpm", args: ["run", "test:schema"], reason: "root protobuf/CUE/schema changed; run repository schema compatibility lane" });
     checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "root schema changes can affect consumer contracts" });
     checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "root schema changes can affect provider verification" });
-  } else if (pactChanged) {
-    checks.push({ command: "pnpm", args: ["run", "test:contract"], reason: "PACT artifacts changed" });
+  } else if (rootPactChanged) {
+    checks.push({ command: "pnpm", args: ["run", "test:contract"], reason: "root or shared PACT artifacts changed" });
   }
 
   if (workspaces.length > 0) {
-    const workspaceFilters = workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]);
-    const turboArgs = ["exec", "turbo", "run", "test", ...workspaceFilters];
-    const turboCommandLength = ["pnpm", ...turboArgs].join(" ").length;
+    const turboArgs = turboTestArgsFor(workspaces);
+    const turboCommandLength = commandLength("pnpm", turboArgs);
 
-    if (process.platform === "win32" && turboAvailable && turboCommandLength > 24_000) {
-      checks.push({
-        command: "pnpm",
-        args: ["run", "test:unit"],
-        reason: `bulk draft package tests for ${workspaces.length} changed workspace(s); Windows command length is too large for one Turbo filter command`,
-      });
+    if (!turboAvailable) {
+      for (const workspace of workspaces) {
+        checks.push({
+          command: "pnpm",
+          args: ["--prefix", workspace, "test"],
+          reason: `draft package unit/contract tests for ${workspace}; local turbo binary unavailable`,
+        });
+      }
+    } else if (turboCommandLength > MAX_WINDOWS_TURBO_COMMAND_LENGTH) {
+      for (const [index, chunk] of chunkTurboWorkspaceTests(workspaces).entries()) {
+        checks.push({
+          command: "pnpm",
+          args: turboTestArgsFor(chunk),
+          reason: `draft package unit/contract tests for changed workspace chunk ${index + 1} (${chunk.length}/${workspaces.length}); command length is bounded`,
+        });
+      }
     } else {
       checks.push({
         command: "pnpm",
-        args: turboAvailable
-          ? turboArgs
-          : [...workspaceFilters, "test"],
-        reason: turboAvailable
-          ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s); turbo runs isolated draft contract regenerations in parallel`
-          : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
+        args: turboArgs,
+        reason: `draft package unit/contract tests for ${workspaces.length} changed workspace(s); turbo runs isolated draft contract regenerations in parallel`,
       });
     }
   }

@@ -19,6 +19,22 @@ function isAllPackageTurbo(check: Check) {
     && check.args.join(" ") === "exec turbo run build typecheck lint test --filter=[HEAD^...HEAD]";
 }
 
+function isGlobalUnit(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:unit";
+}
+
+function isGlobalContract(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:contract";
+}
+
+function isWorkspaceTurboTest(check: Check) {
+  return check.command === "pnpm"
+    && check.args[0] === "exec"
+    && check.args[1] === "turbo"
+    && check.args[2] === "run"
+    && check.args[3] === "test";
+}
+
 test("root script-only package changes do not select all-package Turbo", () => {
   const { checks } = plan(["package.json"], { rootPackageJsonScriptsOnlyChanged: true });
 
@@ -49,22 +65,65 @@ test("root dependency and task-graph config changes select all-package Turbo", (
 
 test("draft aggregate folders without package metadata do not select workspace tests", () => {
   const { checks, workspaces } = plan(
-    ["src/draft/epic-reference-implementations/_registry.md"],
+    ["src/draft/epic-proofs/_registry.md"],
     { workspacePackageExists: () => false },
   );
 
   assert.deepEqual(workspaces, []);
-  assert.equal(checks.some((check) => check.args.includes("./src/draft/epic-reference-implementations")), false);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/epic-proofs")), false);
 });
 
 test("draft package files select workspace tests when package metadata exists", () => {
   const { checks, workspaces } = plan(
-    ["src/draft/example-proof/src/index.ts"],
-    { workspacePackageExists: (workspace: string) => workspace === "src/draft/example-proof" },
+    ["src/draft/technical-proofs/example-proof/src/index.ts"],
+    { workspacePackageExists: (workspace: string) => workspace === "src/draft/technical-proofs/example-proof" },
   );
 
-  assert.deepEqual(workspaces, ["src/draft/example-proof"]);
-  assert.equal(checks.some((check) => check.args.includes("./src/draft/example-proof")), true);
+  assert.deepEqual(workspaces, ["src/draft/technical-proofs/example-proof"]);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), true);
+});
+
+test("draft Pact changes stay on workspace tests instead of selecting global contract sweep", () => {
+  const { checks } = plan([
+    "src/draft/technical-proofs/broker-receipt-integrity-contract/architecture/pacts/broker_receipt_integrity.pact.json",
+  ]);
+
+  assert.equal(checks.some(isGlobalContract), false);
+  assert.equal(checks.some(isWorkspaceTurboTest), true);
+});
+
+test("shared Pact changes still select the global contract sweep", () => {
+  const { checks } = plan(["tests/pacts/runtime-provider.pact.json"]);
+
+  assert.equal(checks.some(isGlobalContract), true);
+});
+
+test("oversized draft workspace selections are chunked instead of falling back to global unit sweep", () => {
+  const files = Array.from({ length: 520 }, (_, index) => {
+    const slug = `very-long-draft-proof-package-name-${index.toString().padStart(4, "0")}-with-contract-fixtures-and-tests`;
+    return `src/draft/technical-proofs/${slug}/test/proof.test.ts`;
+  });
+  const { checks, workspaces } = plan(files, { workspacePackageExists: () => true });
+  const workspaceTestChecks = checks.filter(isWorkspaceTurboTest);
+
+  assert.equal(workspaces.length, 520);
+  assert.equal(checks.some(isGlobalUnit), false);
+  assert.ok(workspaceTestChecks.length > 1);
+  assert.ok(
+    workspaceTestChecks.every((check) => ["pnpm", ...check.args].join(" ").length <= 24_000),
+  );
+});
+
+test("turbo-unavailable draft fallback uses direct workspace prefixes", () => {
+  const { checks } = plan(
+    ["src/draft/technical-proofs/provider-authoring-contract/src/provider-authoring-contract.ts"],
+    { turboAvailable: false },
+  );
+
+  assert.equal(
+    checks.some((check) => check.args.join(" ") === "--prefix src/draft/technical-proofs/provider-authoring-contract test"),
+    true,
+  );
 });
 
 test("fast test script is root-only and full quiet unit lane remains explicit", () => {

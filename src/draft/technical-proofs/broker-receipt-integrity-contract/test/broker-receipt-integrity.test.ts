@@ -160,7 +160,7 @@ test("Gatekeeper apply-time policy remains outside broker receipt integrity", ()
 });
 
 test("architecture evidence pins protobuf, CUE, and Pact receipt-integrity boundaries", () => {
-  const architecture = readFileSync(new URL("../ARCHITECTURE.md", import.meta.url), "utf8");
+  const architecture = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
   const proto = readFileSync(
     new URL("../architecture/broker_receipt_integrity.proto", import.meta.url),
     "utf8",

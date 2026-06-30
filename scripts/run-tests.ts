@@ -1,11 +1,28 @@
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 const MAX_BATCH_CHARS = process.platform === "win32" ? 500 : 12000;
 const HEARTBEAT_MS = 5_000;
+const MAX_OUTPUT_CHARS = 96 * 1024;
+const STALE_RUN_MS = 24 * 60 * 60 * 1000;
 const TEST_CONCURRENCY_ARGS = process.platform === "win32" ? ["--test-concurrency=1"] : [];
-const RUN_TMP_ROOT = process.env.HOBO_TEST_TMPDIR ?? join(process.cwd(), ".tmp", "test-runs");
+const args = new Set(process.argv.slice(2));
+const quiet = args.has("--quiet");
+const artifactsEnabled = !quiet && !args.has("--no-artifacts");
+const workspaceHash = createHash("sha256").update(process.cwd()).digest("hex").slice(0, 12);
+const workerId = safePathSegment(
+  process.env.HOBO_TEST_WORKER_ID
+    ?? process.env.TURBO_TASK_ID
+    ?? process.env.TURBO_HASH
+    ?? process.env.CI_NODE_INDEX
+    ?? "local",
+);
+const RUN_TMP_ROOT = process.env.HOBO_TEST_TMPDIR
+  ? resolve(process.env.HOBO_TEST_TMPDIR)
+  : join(tmpdir(), "hobo-design-tests", workspaceHash, `worker-${workerId}`);
 const categoryArg = process.argv.find((arg) => arg.startsWith("--category="));
 const category = categoryArg?.slice("--category=".length) ?? "unit";
 const rootOnly = process.argv.includes("--root-only");
@@ -98,6 +115,7 @@ if (testFiles.length === 0) {
 }
 
 mkdirSync(RUN_TMP_ROOT, { recursive: true });
+pruneStaleRuns(RUN_TMP_ROOT);
 const runTmpDir = mkdtempSync(join(RUN_TMP_ROOT, `run-${process.pid}-`));
 
 let failed = false;
@@ -106,46 +124,63 @@ for (const [index, batch] of testBatches.entries()) {
   const batchNumber = index + 1;
   const batchTmpDir = join(runTmpDir, `batch-${batchNumber}`);
   mkdirSync(batchTmpDir, { recursive: true });
-  const outputPath = join(batchTmpDir, "node-test.log");
-  const outputFd = openSync(outputPath, "w");
-  const result = await runBatch(batch, batchNumber, testBatches.length, outputFd, batchTmpDir);
-  closeSync(outputFd);
+  const result = await runBatch(batch, batchNumber, testBatches.length, batchTmpDir);
 
   if (result.status !== 0 || result.error) {
-    process.stdout.write(readFileSync(outputPath, "utf8"));
+    if (result.output && (quiet || artifactsEnabled)) process.stdout.write(result.output);
     console.error(
       `test batch ${batchNumber}/${testBatches.length} failed with status ${result.status ?? result.signal ?? "unknown"}${result.error ? ` (${result.error.message})` : ""}: ${batch[0]} .. ${batch[batch.length - 1]}`,
     );
+    if (artifactsEnabled) {
+      const outputPath = join(batchTmpDir, "node-test.log");
+      writeFileSync(outputPath, result.output ?? "", "utf8");
+      console.error(`test batch ${batchNumber}/${testBatches.length} failure log: ${outputPath}`);
+    }
     failed = true;
   } else {
-    console.log(
-      `test batch ${batchNumber}/${testBatches.length} passed: ${batch.length} file(s), ${batch[0]} .. ${batch[batch.length - 1]}`,
-    );
-    rmSync(batchTmpDir, { force: true, recursive: true });
+    if (!quiet) {
+      console.log(
+        `test batch ${batchNumber}/${testBatches.length} passed: ${batch.length} file(s), ${batch[0]} .. ${batch[batch.length - 1]}`,
+      );
+    }
+    removeTempDir(batchTmpDir);
   }
 }
 
 if (failed) {
-  console.error(`failed test artifacts kept in ${runTmpDir}`);
+  if (artifactsEnabled) console.error(`failed test artifacts kept in ${runTmpDir}`);
+  else removeTempDir(runTmpDir);
   process.exitCode = 1;
 } else {
-  rmSync(runTmpDir, { force: true, recursive: true });
+  removeTempDir(runTmpDir);
 }
 
 function runBatch(
   batch: string[],
   batchNumber: number,
   batchCount: number,
-  outputFd: number,
   tmpDir: string,
-): Promise<{ status: number | null; signal: NodeJS.Signals | null; error?: Error }> {
+): Promise<{ status: number | null; signal: NodeJS.Signals | null; error?: Error; output: string }> {
+  const outputTail = createOutputTail(MAX_OUTPUT_CHARS);
   const child = spawn(process.execPath, ["--import", "tsx", "--test", ...TEST_CONCURRENCY_ARGS, ...batch], {
     shell: false,
-    stdio: ["ignore", outputFd, outputFd],
+    stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, TMPDIR: tmpDir, TMP: tmpDir, TEMP: tmpDir },
   });
 
-  const heartbeat = setInterval(() => {
+  child.stdout?.on("data", (chunk: Buffer) => {
+    const text = chunk.toString("utf8");
+    outputTail.append(text);
+    if (!quiet && !artifactsEnabled) process.stdout.write(text);
+  });
+
+  child.stderr?.on("data", (chunk: Buffer) => {
+    const text = chunk.toString("utf8");
+    outputTail.append(text);
+    if (!quiet && !artifactsEnabled) process.stderr.write(text);
+  });
+
+  const heartbeat = quiet ? undefined : setInterval(() => {
     console.log(
       `test batch ${batchNumber}/${batchCount} still running: ${batch.length} file(s), ${batch[0]} .. ${batch[batch.length - 1]}`,
     );
@@ -153,12 +188,57 @@ function runBatch(
 
   return new Promise((resolve) => {
     child.once("error", (error) => {
-      clearInterval(heartbeat);
-      resolve({ status: null, signal: null, error });
+      if (heartbeat) clearInterval(heartbeat);
+      resolve({ status: null, signal: null, error, output: outputTail.text() });
     });
     child.once("exit", (status, signal) => {
-      clearInterval(heartbeat);
-      resolve({ status, signal });
+      if (heartbeat) clearInterval(heartbeat);
+      resolve({ status, signal, output: outputTail.text() });
     });
   });
+}
+
+function safePathSegment(value: string) {
+  const sanitized = value.replace(/[^a-zA-Z0-9._-]/gu, "_").slice(0, 48);
+  return sanitized || "local";
+}
+
+function pruneStaleRuns(root: string) {
+  if (!existsSync(root)) return;
+  const cutoff = Date.now() - STALE_RUN_MS;
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^run-\d+-/u.test(entry.name)) continue;
+    const fullPath = join(root, entry.name);
+    try {
+      if (statSync(fullPath).mtimeMs < cutoff) rmSync(fullPath, { force: true, recursive: true });
+    } catch {
+      // Another worker may be pruning or deleting its own stale run.
+    }
+  }
+}
+
+function removeTempDir(path: string) {
+  try {
+    rmSync(path, { force: true, recursive: true });
+  } catch (error) {
+    if (!quiet) console.warn(`could not remove temp directory ${path}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function createOutputTail(maxChars: number) {
+  let value = "";
+  let truncated = false;
+
+  return {
+    append(chunk: string) {
+      value += chunk;
+      if (value.length > maxChars) {
+        value = value.slice(value.length - maxChars);
+        truncated = true;
+      }
+    },
+    text() {
+      return truncated ? `[output truncated to last ${maxChars} chars]\n${value}` : value;
+    },
+  };
 }

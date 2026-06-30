@@ -1,39 +1,45 @@
-# Cli Mcp Developer Experience — Architecture Evidence
+# CLI, MCP & Developer Experience Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Architecture role
 
-## Schema And Constraints
+The selected epic owns the developer and agent control surface. The reference implementation therefore treats CLI verbs and MCP tools as one contract surface, then runs persona journeys through mocked downstream boundaries.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## Personas and slices
 
-## Parse, Don't Validate
+| Persona | BDD scenario | Vertical slice | Reference role |
+|---|---|---|---|
+| App developer | Build, inspect, and deploy Snapshop without cloud-specific code | CLI local-to-Camp loop | Proves `new`, `dev`, `plan`, `up`, `inspect`, `doctor`, `logs`, `codegen`, `collect`, and anonymous preview fit one path. |
+| AI agent operator | Run SVID-bound MCP plan and fail-closed deploy | MCP parity and auth | Proves CLI/MCP parity, tool input validation, SVID scoping, token denial, and audit events. |
+| GitOps operator | Run CI preview and guarded promotion | CI control path | Proves read-only plan, keyless OIDC, preview lifecycle, no mutation on can-deploy skew, and rollback command evidence. |
+| SecOps reviewer | Deny unsafe prod object delete and preserve replay evidence | Policy audit | Proves mandatory deny ceiling, policy.Decided replay input, and credential audit evidence. |
+| SRE operator | Diagnose drift and wait for gated remediation | Drift remediation | Proves projection diagnosis, approval guard, replayable event stream, and CLI read projections. |
+| DevOps operator | Promote canary and roll back on SLO burn | Progressive rollout | Proves `hobo up --strategy canary`, inspect/log progress, SLO gate reuse, and rollback reconstruction. |
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Service boundaries
 
-## Event Architecture
+| Boundary | Consumer | Provider | Mock strategy | Contract |
+|---|---|---|---|---|
+| CLI command path | Reference simulation and tests | `hobo` command registry/POC command handlers | In-process command registry plus POC harnesses | `cli-command-path.pact.json` |
+| MCP control surface | Agent MCP client | `@hobo/mcp` SVID-bound server | Fixture SVID verifier, in-memory audit sink, deterministic handlers | `mcp-control-surface.pact.json` |
+| Runtime projection boundary | CLI/MCP reference app | Dev loop, plan/up, inspect/logs, doctor, Camp projections | Local fixture project, deterministic events, in-memory projection stores | `runtime-projection-boundary.pact.json` |
+| Identity and policy boundary | CLI/MCP reference app | Identity, token broker, OIDC STS, policy gate | In-memory credential store, fixture OIDC/STSes, deterministic policy decisions | `identity-policy-boundary.pact.json` |
+| Operations manifest boundary | Agents and docs clients | `llms.txt`, `llms-full.txt`, `docs.json` | Generated manifests served from memory | `operations-manifest-boundary.pact.json` |
 
-The package's accepted record is the read model behind a small event flow:
+## Scope review
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+The accepted POCs map to the selected epic because they prove command surfaces, agent surfaces, auth/credential behavior, local-fidelity honesty, and role workflows that use the CLI/MCP surface. The implementation keeps their behavior and testable contracts, not their production assumptions.
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+Discarded or deferred details:
+
+- Real cloud provider drivers, Yard bootstrap, provider matching internals, and platform-engineering topology stay outside this epic.
+- VS Code UI implementation is deferred because the epic reference path only needs the underlying projection/manifest contract.
+- Wasm provider build output is deferred because production build-provider host behavior belongs to runtime/provider work.
+- Live HTTP, STS, registry, or cloud calls are not used; all simulation providers are mocked.
+
+Adversarial decisions:
+
+- MCP deploy without exact scope must fail closed.
+- Static cloud keys must be rejected and redacted from failure reports.
+- Local-dev claims from mocked or camp-only evidence must not become prod-ready claims.
+- Policy denial must preserve replayable `policy.Decided` evidence.
+- Canary rollback and SRE remediation must be reconstructable from events, not inferred from final state alone.

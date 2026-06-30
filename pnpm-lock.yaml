@@ -51,7 +51,11 @@ importers:
 
   src/draft/artifact-store-scope-contract: {}
 
-  src/draft/audit-explorer-scope-contract: {}
+  src/draft/audit-explorer-scope-contract:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
 
   src/draft/auth-flag-readset-contract: {}
 

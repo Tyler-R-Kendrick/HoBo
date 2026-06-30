@@ -88,3 +88,41 @@ follow-ups.
 M1/M2/M3/M4 legal, privacy, support, communications, or evidence work must wait until this M0
 checklist is accepted. This branch records the checklist and its executable guard; it does not fan
 out downstream work.
+
+## M2 Private Beta Evidence Gate
+
+HOBO-464 accepts private beta legal/privacy evidence only when the beta record stays narrower than
+public launch or paid GA approval. The executable proof lives in
+[`src/draft/legal-privacy-private-beta-evidence-contract`](../../src/draft/legal-privacy-private-beta-evidence-contract/README.md)
+and branch evidence is summarized in
+[`proofs/hobo-464-legal-privacy-private-beta`](./proofs/hobo-464-legal-privacy-private-beta/README.md).
+
+Required M2 evidence:
+
+- M0 checklist baseline remains accepted from
+  [`legal-privacy-terms-readiness-contract`](../../src/draft/legal-privacy-terms-readiness-contract/README.md).
+- Privacy notice beta review records telemetry purpose, retention posture, customer messaging, and
+  beta limitations.
+- Terms beta limitation records that private beta language is not public launch, paid GA, final DPA,
+  or regional legal approval.
+- Subprocessor/provider beta register distinguishes required, optional, mocked, unsupported, and
+  unconfirmed services for beta.
+- Data retention and telemetry boundaries consume the tenant data lifecycle record before customer
+  data can enter beta workflows.
+- Customer assurance and support handoff routes questions to named owners without inventing
+  unsupported SLA or compliance promises.
+- Legal risk register maps blockers, accepted risks, mitigations, launch notes, and revisit dates
+  into the release cutline.
+
+Blockers and accepted risks remain visible:
+
+- Public paid launch remains blocked until final terms, privacy notice, DPA, and regional notice
+  approval exist.
+- Enterprise assurance remains limited until subprocessor/provider evidence is complete.
+- Public security, privacy, compliance, provider, and paid-launch claims remain blocked unless the
+  owning evidence surface accepts them.
+
+Follow-up execution is allowed only for missing evidence. HOBO-471 owns release-candidate
+legal/privacy signoff gaps, and HOBO-478 owns GA public legal/privacy signoff gaps. This gate does
+not draft final legal text, implement a legal workflow, enable billing, approve support tooling, or
+publish compliance claims.

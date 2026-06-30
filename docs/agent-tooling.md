@@ -145,7 +145,9 @@ pnpm v11 build-script security is configured in `pnpm-workspace.yaml`: only `esb
 
 ### Isolated test temp/log directories
 
-`scripts/run-tests.ts` creates one isolated directory per invocation under `.tmp/test-runs/` and one child temp directory per test batch. The child process receives `TMPDIR`, `TMP`, and `TEMP` pointing at that batch directory, so parallel workers do not share global `/tmp` logs or unrelated temp context. Passing batches delete their temp directory; failed runs keep the isolated artifact path in output for debugging. Set `HOBO_TEST_TMPDIR` only to another per-worker location.
+`scripts/run-tests.ts` creates one isolated directory per invocation under the OS temp root, scoped by workspace hash and worker id: `<os-tmp>/hobo-design-tests/<workspace-hash>/<worker-id>/run-*`. Each batch receives its own child temp directory through `TMPDIR`, `TMP`, and `TEMP`, so parallel workers do not share global temp logs or unrelated temp context. Set `HOBO_TEST_TMPDIR` only when a worker needs a different temp base; the runner still creates isolated run and batch children beneath it.
+
+The runner does not write batch logs for passing tests. Failed batches keep a bounded output tail in memory; normal runs persist that failure tail to the isolated batch directory, while `--quiet` or `--no-artifacts` keep it off disk and print it only on failure. Use `pnpm run test:fast` for the quiet unit lane when a fast local check should avoid runner log artifacts.
 
 ### Fast docs linting
 

@@ -1,39 +1,37 @@
-# Wit Component Model Runtime Membrane — Architecture Evidence
+# WIT Runtime Membrane Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+The epic-level reference architecture treats the runtime membrane as four cooperating planes:
 
-## Schema And Constraints
+- **Contract plane:** WIT pins, vendored WASI interfaces, `hobo:sdk` aggregate world, websocket preview surfaces, and manifest host pins.
+- **Host plane:** runtime-local component host, wasm-in-container floor, adapter certification, host-version upgrade gates, and fuel/epoch execution limits.
+- **Link plane:** wRPC in-process and lattice transports, deadline propagation, wire-version negotiation, bounded backpressure, and ambiguous-failure reconciliation.
+- **Runtime-port plane:** EventStore, ActorHost, Queue/Clock, Streamer, capability grants, websocket fan-out, and runtime-port conformance.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+```mermaid
+flowchart LR
+  B["Bindle component"] --> W["WIT contract registry"]
+  W --> H["Component host"]
+  H --> L["wRPC membrane"]
+  L --> R["Runtime ports"]
+  R --> E["Event log and stream facts"]
+  H --> C["Conformance suites"]
+  C --> U["Host upgrade gate"]
+```
 
-## Parse, Don't Validate
+## Service Boundary Map
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+| Boundary | Consumer | Provider | Role |
+|---|---|---|---|
+| WIT contract registry | Runtime reference app | WIT/version lock provider | Pins interface identity before host/link decisions. |
+| Component host lifecycle | Runtime reference app | Component host adapter | Instantiates components and releases leases. |
+| wRPC link transport | Runtime reference app | Link transport provider | Routes WIT calls across in-process or lattice links. |
+| Runtime EventStore | Runtime workflow | EventStore runtime port | Appends and replays durable facts. |
+| ActorHost | Runtime workflow | ActorHost runtime port | Enforces single-writer state mutation. |
+| Queue and Clock | Runtime workflow | Queue/Clock runtime ports | Handles at-least-once work and deterministic timers. |
+| Streamer and websocket | Runtime workflow | Streamer runtime port | Delivers run frames and websocket fan-out without Yard data path. |
+| Capability grant gate | Component host | Capability linker | Denies unlinked or uninferred grants. |
+| Conformance and upgrade gate | Runtime operator | Conformance suite provider | Certifies host/runtime-port behavior before selection or upgrade. |
 
-## Event Architecture
+## Deferred
 
-The package's accepted record is the read model behind a small event flow:
-
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
-
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+Real Wasmtime, wasmCloud, NATS/JetStream, container runtime, Queue/EventStore providers, gateway transport, and cloud-provider adapters stay mocked. Provider verification is documented as unavailable until those providers exist outside draft POCs.

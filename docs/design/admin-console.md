@@ -110,6 +110,9 @@ M1 must prove.
   console may expose while leaving enforcement out of scope.
 - [Support SLA Channels](./support-sla-channels.md) defines support context, SLA, and escalation
   handoffs consumed by support-visible console views.
+- [Admin Support Break-Glass Boundaries](./admin-support-breakglass-boundaries.md) defines emergency
+  access approval, audit, TTL, customer-notification, and revocation boundaries for later console
+  visibility without granting live access.
 - [security-networking.md#plan-50](./security-networking.md#plan-50) defines tenant isolation and
   security/networking boundaries for admin visibility.
 - [ADR-0074](./adr/02-identity-security.md#adr-0074) pins org governance, RBAC, mandatory policy
@@ -129,6 +132,7 @@ M1 must prove.
 | Tenant Isolation & Quotas | Tenant, quota, limit, and noisy-neighbor visibility for console summaries. | Tenant isolation, quota enforcement, and billing/entitlement behavior remain outside Admin Console. |
 | Support Workflow | Console-safe context, redaction state, owners, and escalation fields for support triage. | Ticketing, SLA routing, and support automation stay in Support Workflow. |
 | Security Verification | Redaction, no-secret exposure, break-glass visibility, and cross-tenant guardrails as M1 evidence inputs. | Security conformance suites, credential checks, and leak tests stay in Security Verification. |
+| Admin Support Break-Glass Boundaries | Emergency access classes, approval path, audit events, TTL, customer-notification posture, and revocation state for later visibility. | Break-glass tooling, live sessions, static credentials, and support/admin access brokers stay outside Admin Console M0. |
 | Meta-cloud Broker | Broker environment proposal and approval visibility requirements for later admin surfaces. | Broker resolution, Yard planner behavior, provider mapping, and receipt mutation stay outside Admin Console. |
 
 ## Evidence Required For M1

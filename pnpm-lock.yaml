@@ -1011,6 +1011,8 @@ importers:
 
   src/draft/tax-currency-receipt-obligations-contract: {}
 
+  src/draft/teardown-recovery-scope-acceptance: {}
+
   src/draft/telemetry-envelope-contract: {}
 
   src/draft/tenant-data-lifecycle-contract: {}

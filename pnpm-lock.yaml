@@ -49,6 +49,8 @@ importers:
 
   src/draft/artifact-repo-port-contract: {}
 
+  src/draft/artifact-store-scope-contract: {}
+
   src/draft/audit-explorer-scope-contract: {}
 
   src/draft/auth-flag-readset-contract: {}

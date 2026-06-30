@@ -23,6 +23,15 @@ export const REQUIRED_PRIVATE_BETA_EVIDENCE_IDS = [
   "cross-project-handoff"
 ];
 
+export const REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS = [
+  "cutline-baseline",
+  "release-candidate-go-no-go",
+  "blocker-delta",
+  "accepted-risk-register",
+  "cross-project-handoff",
+  "release-notes-readiness"
+];
+
 export const v1Cutline = {
   schema: "hobo.v1.cutline/2026-06-29",
   issue: "HOBO-401",
@@ -481,6 +490,161 @@ export const v1CutlinePrivateBetaEvidence = {
   }
 };
 
+export const v1CutlineReleaseCandidateEvidence = {
+  schema: "hobo.v1.cutline.m3-release-candidate/2026-06-30",
+  issue: "HOBO-468",
+  parentIssue: "HOBO-401",
+  phase: "M3",
+  milestoneGate: "M3 Release candidate",
+  decisionStatus: "release-candidate-evidence-accepted-with-ga-follow-up",
+  requiredEvidence: [
+    {
+      id: "cutline-baseline",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "src/draft/v1-cutline-contract",
+      proves: "The accepted v1 cutline, M1 dogfood/alpha gate, and M2 private-beta gate form the release-candidate baseline.",
+      status: "accepted"
+    },
+    {
+      id: "release-candidate-go-no-go",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md",
+      proves: "Release-candidate decisions name inputs, allowed outcomes, blocker deltas, accepted-risk owners, and revisit dates.",
+      status: "accepted"
+    },
+    {
+      id: "blocker-delta",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/launch-blocker-taxonomy.md",
+      proves: "M3 blockers, high-risk non-blockers, launch notes, and post-GA follow-ups are classified without waiving gates.",
+      status: "accepted"
+    },
+    {
+      id: "accepted-risk-register",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md#risk-acceptance-rules",
+      proves: "Accepted release-candidate risks carry owner, mitigation, launch note or follow-up, and revisit date.",
+      status: "accepted"
+    },
+    {
+      id: "cross-project-handoff",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/launch-messaging-claims.md",
+      proves: "Release notes, support, legal/privacy, dogfood operations, launch-site messaging, and beta feedback consume only owner-mapped evidence.",
+      status: "accepted"
+    },
+    {
+      id: "release-notes-readiness",
+      ownerProject: "V1 Release Notes & Upgrade Guide",
+      evidenceSource: "docs/design/release-notes-upgrade-guide.md",
+      proves: "Release notes consume release-candidate evidence without drafting final notes or promoting GA claims.",
+      status: "accepted"
+    }
+  ],
+  blockers: [
+    {
+      id: "owner-m3-gates-still-independent",
+      category: "high-risk-non-blocker",
+      ownerProject: "V1 Release Program & Cutline",
+      sourceEvidenceId: "cross-project-handoff",
+      disposition: "The cutline can record M3 release-candidate routing, but owner gates for release notes, legal/privacy, launch site, support, beta, and operations remain independently reviewable.",
+      launchRisk: "medium"
+    },
+    {
+      id: "ga-handoff-not-yet-proven",
+      category: "launch-blocker",
+      ownerProject: "V1 Release Program & Cutline",
+      sourceEvidenceId: "release-candidate-go-no-go",
+      disposition: "GA readiness stays blocked until HOBO-475 records release-program GA handoff evidence.",
+      launchRisk: "high"
+    }
+  ],
+  acceptedRisks: [
+    {
+      id: "release-candidate-with-open-owner-gates",
+      ownerRole: "release-owner",
+      mitigation: "Keep release-candidate status conditional on each owner lane's accepted evidence and list unresolved owner gates as launch notes or blockers.",
+      followUpOrLaunchNote: "Release notes and launch messaging must call out owner-gate status instead of implying final launch readiness.",
+      revisitDate: "2026-08-31",
+      evidenceId: "accepted-risk-register"
+    },
+    {
+      id: "rc-not-ga-claim-boundary",
+      ownerRole: "release-owner",
+      mitigation: "Use release-candidate language only; GA/public launch claims require the M4 handoff issue and owner signoff.",
+      followUpOrLaunchNote: "Known limitation in launch messaging until HOBO-475 is accepted.",
+      revisitDate: "2026-09-15",
+      evidenceId: "release-candidate-go-no-go"
+    }
+  ],
+  crossProjectDependencies: [
+    {
+      ownerProject: "V1 Release Notes & Upgrade Guide",
+      consumesEvidenceId: "release-notes-readiness",
+      cutlineImpact: "Release notes may summarize accepted RC evidence and must keep unresolved owner gates visible."
+    },
+    {
+      ownerProject: "V1 Launch Support Desk & Escalation",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Support readiness consumes RC owner state without promising GA support targets."
+    },
+    {
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      consumesEvidenceId: "accepted-risk-register",
+      cutlineImpact: "Legal/privacy findings remain blockers, high-risk non-blockers, or limitations until owner evidence is accepted."
+    },
+    {
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      consumesEvidenceId: "cutline-baseline",
+      cutlineImpact: "Dogfood and hosted operations evidence bounds operational claims before GA handoff."
+    },
+    {
+      ownerProject: "V1 Launch Site, Messaging & Demo Assets",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Launch messaging consumes only evidence-backed claims and keeps RC separate from GA."
+    },
+    {
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      consumesEvidenceId: "release-candidate-go-no-go",
+      cutlineImpact: "Beta feedback informs release-candidate go/no-go without becoming GA customer proof."
+    }
+  ],
+  missingEvidence: [
+    {
+      id: "release-program-ga-handoff",
+      ownerProject: "V1 Release Program & Cutline",
+      reason: "M3 release-candidate evidence does not prove final GA handoff readiness.",
+      launchDisposition: "existing-follow-up"
+    }
+  ],
+  followUpIssues: [
+    {
+      id: "HOBO-475",
+      ownerProject: "V1 Release Program & Cutline",
+      missingEvidenceId: "release-program-ga-handoff",
+      allowedReason: "Existing M4 GA handoff issue owns final release-program GA evidence."
+    }
+  ],
+  parentInitiativeSync: {
+    initiative: "HoBo v1 Release Readiness",
+    launchRiskChanged: true,
+    statusUpdated: true,
+    statusUpdateReason: "M3 release-candidate release-program evidence is accepted with GA handoff still explicitly missing and tracked by HOBO-475."
+  },
+  scopeOut: [
+    "Do not publish public GA, general availability, or final launch claims from M3 release-candidate evidence.",
+    "Do not implement release automation, approval UI, customer-facing release notes, support tooling, legal text, or runtime launch gates in this proof."
+  ],
+  publicClaimGuards: [
+    {
+      id: "rc-is-not-ga",
+      claim: "Release-candidate evidence proves only RC cutline readiness, not GA readiness.",
+      evidenceId: "release-candidate-go-no-go",
+      disposition: "hold"
+    }
+  ]
+};
+
 export function validateV1Cutline(record) {
   const errors = [];
 
@@ -563,6 +727,31 @@ export function validatePrivateBetaEvidence(record) {
     requiredEvidenceLabel: "M2",
     gateName: "M2 private beta"
   });
+}
+
+export function validateReleaseCandidateEvidence(record) {
+  const result = validateReleaseGateEvidence(record, {
+    recordName: "release candidate evidence record",
+    issue: "HOBO-468",
+    phase: "M3",
+    milestoneGate: "M3 Release candidate",
+    requiredEvidenceIds: REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS,
+    requiredEvidenceLabel: "M3",
+    gateName: "M3 release candidate"
+  });
+  const errors = [...result.errors];
+
+  for (const guard of record?.publicClaimGuards ?? []) {
+    if (!guard.id || !guard.claim || !guard.evidenceId || !guard.disposition) {
+      errors.push(`${guard.id ?? "<missing>"} public claim guard must name id, claim, evidenceId, and disposition`);
+      continue;
+    }
+    if (guard.disposition === "publish" && /\bGA\b|\bgeneral availability\b/i.test(guard.claim)) {
+      errors.push(`${guard.id}: GA claims require GA handoff evidence`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors };
 }
 
 function validateReleaseGateEvidence(record, config) {

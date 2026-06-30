@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-530 Hosted Broker GA Handoff Proof"
+description: "Source issue: HOBO-530."
+tags: [hobo, design, proof]
+---
+
 # HOBO-530 Hosted Broker GA Handoff Proof
 
 HOBO-530 is proven by the focused M4 contract at

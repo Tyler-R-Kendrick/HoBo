@@ -1,10 +1,3 @@
----
-type: Reference
-title: "HOBO-478 Legal Privacy GA Handoff Evidence"
-description: "Source issue: HOBO-478."
-tags: [hobo, design, proof]
----
-
 # HOBO-478 Legal Privacy GA Handoff Evidence
 
 HOBO-478 is proven by the focused M4 contract at

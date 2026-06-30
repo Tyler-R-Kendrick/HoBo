@@ -530,6 +530,19 @@ message ClientOptimisticUpdateContractClientOptimisticUpdateContractDataModel {
   bool cue_annotated = 6;
 }
 
+message ClosureBuilderAuthorFlowContractClosureBuilderAuthorFlowDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-author-flow-contract.closure-builder-author-flow";
+  option (hobo.source_path) = "src/draft/closure-builder-author-flow-contract/src/closure-builder-author-flow.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderAuthorFlowContractClosureBuilderAuthorFlowDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ClosureBuilderManifestLoweringContractClosureBuilderManifestLoweringDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-manifest-lowering-contract.closure-builder-manifest-lowering";
   option (hobo.source_path) = "src/draft/closure-builder-manifest-lowering-contract/src/closure-builder-manifest-lowering.ts";

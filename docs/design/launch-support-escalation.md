@@ -97,3 +97,25 @@ the release owner explicitly approves customer-facing SLA language.
 Downstream support, admin console, operators/SRE, and reliability implementation issues may cite this
 record only after it is accepted. Until then, the branch proves readiness shape and scope guards, not
 production support capability.
+
+## M1 Dogfood/Alpha Evidence
+
+Source issue: HOBO-460.
+
+Executable proof lives in
+[`src/draft/launch-support-dogfood-alpha-evidence`](../../src/draft/launch-support-dogfood-alpha-evidence/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-460-launch-support-dogfood-alpha`](./proofs/hobo-460-launch-support-dogfood-alpha/README.md).
+
+The M1 gate records six support evidence items:
+
+- accepted support escalation model from this M0 record;
+- SEV0/SEV1 handoff drill to incident command and Operators/SRE;
+- alpha known-limitation FAQ evidence gap, tracked as a non-blocking launch-note follow-up;
+- customer-safe redaction sample from Incident Communications;
+- scoped debug access fixture from Reliability/Observability/Cost;
+- support finding export into the launch blocker taxonomy and release cutline.
+
+The accepted M1 state has no launch blockers. It carries one non-blocking follow-up for the alpha
+known-limitation FAQ and keeps support tooling, ticket automation, status-page publication, live
+customer support operations, and customer-facing SLA commitments out of this branch.

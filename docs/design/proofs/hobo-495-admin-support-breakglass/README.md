@@ -35,3 +35,9 @@ and the durable boundary record at
 ```powershell
 pnpm.cmd --prefix src\draft\admin-support-breakglass-boundaries test
 ```
+
+## Maintenance Notes
+
+- The PR branch refreshes `pnpm-lock.yaml` workspace importers after merging current `origin/main`
+  so the admin break-glass proof and concurrently merged draft proof packages remain installable
+  through the normal frozen-lockfile gate.

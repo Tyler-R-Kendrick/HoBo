@@ -30,3 +30,7 @@ and the durable M2 gate record in
 ```powershell
 pnpm.cmd --prefix src\draft\legal-privacy-private-beta-evidence-contract test
 ```
+
+The branch gate also verifies this proof package's workspace registration and
+generated data-model catalog through `pnpm.cmd run install:check` and
+`pnpm.cmd run contracts:data-models`.

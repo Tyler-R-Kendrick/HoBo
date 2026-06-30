@@ -5,9 +5,11 @@ import {
   REQUIRED_READINESS_DOMAINS,
   assertV1Cutline,
   validateDogfoodAlphaEvidence,
+  validatePrivateBetaEvidence,
   validateV1Cutline,
   v1Cutline,
-  v1CutlineDogfoodAlphaEvidence
+  v1CutlineDogfoodAlphaEvidence,
+  v1CutlinePrivateBetaEvidence
 } from "../src/v1-cutline.js";
 
 test("cutline writes explicit v1 in-scope and out-of-scope lists", () => {
@@ -105,6 +107,44 @@ test("M1 dogfood alpha guard rejects pending evidence, speculative follow-ups, a
 
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /dogfood-alpha-outcome must be accepted/);
+  assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
+  assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
+});
+
+test("M2 private beta evidence records owners, blockers, risks, dependencies, follow-ups, and parent sync", () => {
+  const result = validatePrivateBetaEvidence(v1CutlinePrivateBetaEvidence);
+
+  assert.equal(result.ok, true, result.errors.join("\n"));
+  assert.equal(v1CutlinePrivateBetaEvidence.issue, "HOBO-461");
+  assert.equal(v1CutlinePrivateBetaEvidence.phase, "M2");
+  assert.equal(v1CutlinePrivateBetaEvidence.milestoneGate, "M2 Private beta proof");
+  assert.ok(v1CutlinePrivateBetaEvidence.requiredEvidence.every((item) => item.ownerProject));
+  assert.ok(v1CutlinePrivateBetaEvidence.blockers.length > 0);
+  assert.ok(v1CutlinePrivateBetaEvidence.acceptedRisks.length > 0);
+  assert.ok(v1CutlinePrivateBetaEvidence.crossProjectDependencies.length > 0);
+  assert.ok(
+    v1CutlinePrivateBetaEvidence.followUpIssues.every((item) =>
+      v1CutlinePrivateBetaEvidence.missingEvidence.some((missing) => missing.id === item.missingEvidenceId)
+    )
+  );
+  assert.equal(v1CutlinePrivateBetaEvidence.parentInitiativeSync.statusUpdated, true);
+});
+
+test("M2 private beta guard rejects pending evidence, duplicate follow-ups, and unsynced launch risk", () => {
+  const invalid = structuredClone(v1CutlinePrivateBetaEvidence);
+  invalid.requiredEvidence.find((item) => item.id === "private-beta-go-no-go").status = "pending";
+  invalid.followUpIssues.push({
+    id: "duplicate-beta-pilot-follow-up",
+    ownerProject: "V1 Beta Pilot & Feedback Loop",
+    missingEvidenceId: "cutline-baseline",
+    allowedReason: "Create a duplicate beta pilot issue even though cutline baseline evidence is accepted"
+  });
+  invalid.parentInitiativeSync.statusUpdated = false;
+
+  const result = validatePrivateBetaEvidence(invalid);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /private-beta-go-no-go must be accepted/);
   assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
   assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
 });

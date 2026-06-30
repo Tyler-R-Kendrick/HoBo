@@ -15,6 +15,14 @@ export const REQUIRED_DOGFOOD_ALPHA_EVIDENCE_IDS = [
   "cross-project-handoff"
 ];
 
+export const REQUIRED_PRIVATE_BETA_EVIDENCE_IDS = [
+  "cutline-baseline",
+  "private-beta-go-no-go",
+  "blocker-delta",
+  "accepted-risk-register",
+  "cross-project-handoff"
+];
+
 export const v1Cutline = {
   schema: "hobo.v1.cutline/2026-06-29",
   issue: "HOBO-401",
@@ -318,6 +326,161 @@ export const v1CutlineDogfoodAlphaEvidence = {
   }
 };
 
+export const v1CutlinePrivateBetaEvidence = {
+  schema: "hobo.v1.cutline.m2-private-beta/2026-06-30",
+  issue: "HOBO-461",
+  parentIssue: "HOBO-401",
+  phase: "M2",
+  milestoneGate: "M2 Private beta proof",
+  decisionStatus: "private-beta-evidence-accepted-with-open-follow-ups",
+  requiredEvidence: [
+    {
+      id: "cutline-baseline",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "src/draft/v1-cutline-contract",
+      proves: "The v1 cutline and M1 dogfood/alpha evidence are accepted before private-beta release governance.",
+      status: "accepted"
+    },
+    {
+      id: "private-beta-go-no-go",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md",
+      proves: "Private-beta decisions name decision inputs, allowed outcomes, accepted-risk owners, and revisit dates.",
+      status: "accepted"
+    },
+    {
+      id: "blocker-delta",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/launch-blocker-taxonomy.md",
+      proves: "Private-beta blockers and high-risk non-blockers are classified without bypassing required gates.",
+      status: "accepted"
+    },
+    {
+      id: "accepted-risk-register",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md",
+      proves: "Accepted private-beta risks name owner, mitigation, launch note or follow-up, and revisit date.",
+      status: "accepted"
+    },
+    {
+      id: "cross-project-handoff",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/release-notes-upgrade-guide.md",
+      proves: "Release notes, support, legal/privacy, dogfood, and beta-pilot evidence owners are reflected in the cutline.",
+      status: "accepted"
+    }
+  ],
+  blockers: [
+    {
+      id: "private-beta-pilot-feedback-open",
+      category: "high-risk-non-blocker",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      sourceEvidenceId: "cross-project-handoff",
+      disposition: "Private-beta pilot feedback evidence remains tracked by HOBO-463 and cannot be promoted to RC or GA proof.",
+      launchRisk: "high"
+    },
+    {
+      id: "private-beta-operations-evidence-open",
+      category: "launch-note",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      sourceEvidenceId: "cutline-baseline",
+      disposition: "Hosted/self-hosted operations private-beta evidence remains tracked by HOBO-462 before broader operations claims.",
+      launchRisk: "medium"
+    },
+    {
+      id: "private-beta-legal-privacy-open",
+      category: "high-risk-non-blocker",
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      sourceEvidenceId: "accepted-risk-register",
+      disposition: "Legal/privacy private-beta evidence remains tracked by HOBO-464 and must stay a limitation until accepted.",
+      launchRisk: "high"
+    }
+  ],
+  acceptedRisks: [
+    {
+      id: "private-beta-limited-evidence-window",
+      ownerRole: "release-owner",
+      mitigation: "Keep release status conditional on accepted owner evidence and route missing private-beta inputs to existing execution issues.",
+      followUpOrLaunchNote: "Private beta may proceed only with explicit limitation text for missing operations, legal/privacy, and beta-feedback evidence.",
+      revisitDate: "2026-08-15",
+      evidenceId: "accepted-risk-register"
+    }
+  ],
+  crossProjectDependencies: [
+    {
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Pilot feedback supplies the private-beta customer signal before release-candidate claims."
+    },
+    {
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      consumesEvidenceId: "cutline-baseline",
+      cutlineImpact: "Hosted/self-hosted operations evidence constrains private-beta support and operations claims."
+    },
+    {
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      consumesEvidenceId: "accepted-risk-register",
+      cutlineImpact: "Legal/privacy evidence stays a launch blocker or limitation until the owner accepts it."
+    },
+    {
+      ownerProject: "V1 Release Notes & Upgrade Guide",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Release notes list private-beta limitations and unsupported claims from the current cutline."
+    },
+    {
+      ownerProject: "V1 Launch Support Desk & Escalation",
+      consumesEvidenceId: "private-beta-go-no-go",
+      cutlineImpact: "Support escalation language must match the accepted private-beta decision outcome."
+    }
+  ],
+  missingEvidence: [
+    {
+      id: "operations-private-beta-evidence",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      reason: "Operations private-beta proof is not part of the release-program cutline package.",
+      launchDisposition: "existing-follow-up"
+    },
+    {
+      id: "beta-pilot-feedback-evidence",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      reason: "Pilot feedback proof is owned by the beta project and is already in progress.",
+      launchDisposition: "existing-follow-up"
+    },
+    {
+      id: "legal-privacy-private-beta-evidence",
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      reason: "Legal/privacy private-beta proof is a separate owner gate.",
+      launchDisposition: "existing-follow-up"
+    }
+  ],
+  followUpIssues: [
+    {
+      id: "HOBO-462",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      missingEvidenceId: "operations-private-beta-evidence",
+      allowedReason: "Existing M2 private-beta issue owns hosted/self-hosted operations evidence."
+    },
+    {
+      id: "HOBO-463",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      missingEvidenceId: "beta-pilot-feedback-evidence",
+      allowedReason: "Existing M2 private-beta issue owns beta pilot feedback evidence."
+    },
+    {
+      id: "HOBO-464",
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      missingEvidenceId: "legal-privacy-private-beta-evidence",
+      allowedReason: "Existing M2 private-beta issue owns legal/privacy evidence."
+    }
+  ],
+  parentInitiativeSync: {
+    initiative: "HoBo v1 Release Readiness",
+    launchRiskChanged: true,
+    statusUpdated: true,
+    statusUpdateReason: "M2 private-beta release-program evidence is accepted with operations, beta-feedback, and legal/privacy evidence explicitly tracked as existing follow-ups."
+  }
+};
+
 export function validateV1Cutline(record) {
   const errors = [];
 
@@ -379,26 +542,50 @@ export function validateV1Cutline(record) {
 }
 
 export function validateDogfoodAlphaEvidence(record) {
+  return validateReleaseGateEvidence(record, {
+    recordName: "dogfood alpha evidence record",
+    issue: "HOBO-454",
+    phase: "M1",
+    milestoneGate: "M1 Dogfood/alpha proof",
+    requiredEvidenceIds: REQUIRED_DOGFOOD_ALPHA_EVIDENCE_IDS,
+    requiredEvidenceLabel: "M1",
+    gateName: "M1 dogfood/alpha"
+  });
+}
+
+export function validatePrivateBetaEvidence(record) {
+  return validateReleaseGateEvidence(record, {
+    recordName: "private beta evidence record",
+    issue: "HOBO-461",
+    phase: "M2",
+    milestoneGate: "M2 Private beta proof",
+    requiredEvidenceIds: REQUIRED_PRIVATE_BETA_EVIDENCE_IDS,
+    requiredEvidenceLabel: "M2",
+    gateName: "M2 private beta"
+  });
+}
+
+function validateReleaseGateEvidence(record, config) {
   const errors = [];
 
   if (!record || typeof record !== "object") {
-    return { ok: false, errors: ["dogfood alpha evidence record is required"] };
+    return { ok: false, errors: [`${config.recordName} is required`] };
   }
 
-  if (record.issue !== "HOBO-454") {
-    errors.push("issue must be HOBO-454");
+  if (record.issue !== config.issue) {
+    errors.push(`issue must be ${config.issue}`);
   }
-  if (record.phase !== "M1") {
-    errors.push("phase must be M1");
+  if (record.phase !== config.phase) {
+    errors.push(`phase must be ${config.phase}`);
   }
-  if (record.milestoneGate !== "M1 Dogfood/alpha proof") {
-    errors.push("milestone gate must be M1 Dogfood/alpha proof");
+  if (record.milestoneGate !== config.milestoneGate) {
+    errors.push(`milestone gate must be ${config.milestoneGate}`);
   }
 
   const evidenceIds = new Set((record.requiredEvidence ?? []).map((item) => item.id));
-  for (const evidenceId of REQUIRED_DOGFOOD_ALPHA_EVIDENCE_IDS) {
+  for (const evidenceId of config.requiredEvidenceIds) {
     if (!evidenceIds.has(evidenceId)) {
-      errors.push(`missing required M1 evidence: ${evidenceId}`);
+      errors.push(`missing required ${config.requiredEvidenceLabel} evidence: ${evidenceId}`);
     }
   }
   for (const evidence of record.requiredEvidence ?? []) {
@@ -406,7 +593,7 @@ export function validateDogfoodAlphaEvidence(record) {
       errors.push(`${evidence.id ?? "<missing>"} must map evidence to ownerProject, evidenceSource, and proof statement`);
     }
     if (evidence.status !== "accepted") {
-      errors.push(`${evidence.id ?? "<missing>"} must be accepted before the M1 dogfood/alpha gate can pass`);
+      errors.push(`${evidence.id ?? "<missing>"} must be accepted before the ${config.gateName} gate can pass`);
     }
   }
 

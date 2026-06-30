@@ -61,6 +61,8 @@ importers:
 
   src/draft/backup-restore-scope-contract: {}
 
+  src/draft/beta-pilot-dogfood-alpha-evidence-contract: {}
+
   src/draft/beta-pilot-feedback-contract: {}
 
   src/draft/billing-credits-scope-contract: {}
@@ -114,6 +116,8 @@ importers:
   src/draft/cli-credential-hardening-contract: {}
 
   src/draft/client-optimistic-update-contract: {}
+
+  src/draft/closure-builder-manifest-lowering-contract: {}
 
   src/draft/closure-builder-public-api-contract: {}
 
@@ -918,6 +922,8 @@ importers:
   src/draft/supervision-child-lifetime-contract: {}
 
   src/draft/support-sla-channels-contract: {}
+
+  src/draft/support-workflow-scope-contract: {}
 
   src/draft/svid-auto-rotation-contract: {}
 

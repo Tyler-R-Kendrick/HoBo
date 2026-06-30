@@ -29,12 +29,12 @@ function checkFile(file: string) {
   const content = fs.readFileSync(file, "utf8");
 
   if (name === "index.md") {
-    if (content.startsWith("---\n")) problems.push(`${rel(file)}: OKF index files must not use concept frontmatter`);
+    if (/^---\r?\n/.test(content)) problems.push(`${rel(file)}: OKF index files must not use concept frontmatter`);
     return;
   }
 
   if (name === "log.md") {
-    if (content.startsWith("---\n")) problems.push(`${rel(file)}: OKF log files must not use concept frontmatter`);
+    if (/^---\r?\n/.test(content)) problems.push(`${rel(file)}: OKF log files must not use concept frontmatter`);
     for (const [index, line] of content.split(/\r?\n/).entries()) {
       if (line.startsWith("## ") && !/^## \d{4}-\d{2}-\d{2}$/.test(line)) {
         problems.push(`${rel(file)}:${index + 1}: OKF log date headings must use YYYY-MM-DD`);
@@ -43,7 +43,7 @@ function checkFile(file: string) {
     return;
   }
 
-  const match = content.match(/^---\n([\s\S]*?)\n---\n/);
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
   if (!match) {
     problems.push(`${rel(file)}: OKF concept documents need YAML frontmatter`);
     return;

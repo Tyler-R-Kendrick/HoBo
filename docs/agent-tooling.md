@@ -73,7 +73,7 @@ The **repo** skill is mirrored in `.agents/skills/repo` and `.claude/skills/repo
 
 The **draft** skill is mirrored in `.agents/skills/draft` and `.claude/skills/draft`. Use it when creating, moving, or reviewing draft proof material under `src/draft/<kind>/<slug>`, including technical proofs, experience proofs, epic proofs, and project MVP rollups.
 
-Both repo-local skills keep Codex-valid `SKILL.md` frontmatter. Their bundled `references/` directories are Open Knowledge Format concept bundles with OKF metadata in the reference files. `pnpm.cmd run docs:okf` validates the docs OKF bundle and the `repo` and `draft` skill reference bundles in both mirrors.
+Both repo-local skills keep Codex-valid `SKILL.md` frontmatter. Their bundled `references/` directories are Open Knowledge Format concept bundles with OKF metadata in the reference files. `pnpm.cmd run docs:okf` validates the docs OKF bundle and the `repo` and `draft` skill reference bundles in both mirrors, accepting LF or CRLF frontmatter line endings so Windows-authored docs use the same gate.
 
 ## Progressive setup
 

@@ -17,4 +17,6 @@ message SdkIdiomConformanceGateRecord {
   string issue = 1;
   string summary = 2;
   repeated string evidence = 3;
+  repeated string required_lanes = 4;
+  repeated string helper_claims = 5;
 }

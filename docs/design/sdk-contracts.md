@@ -224,6 +224,6 @@ const internalAgent = connector("internal-agent", { protocol: "acp" });
 
 **Default.** No SDK layer can claim retry, deadline, lifecycle, supervision, or inspection support until the corresponding resilience vector exists and passes. Off-corpus helper behavior is unsupported by default and must be listed in the conformance report.
 
-**Implementation issue.** HOBO-514 records the parent scope, child issue matrix, initiative links, and adversarial guardrails. HOBO-515 records the vocabulary, target paths, and proof sequence. HOBO-516 implements the first `src/draft/resilience-semantics-annex` proof.
+**Implementation issue.** HOBO-514 records the parent scope, child issue matrix, initiative links, and adversarial guardrails. HOBO-515 records the vocabulary, target paths, and proof sequence. HOBO-516 implements the first `src/draft/resilience-semantics-annex` proof with a deterministic retry seed.
 
-**Conformance issue.** HOBO-517 extends the SDK conformance gate so golden-IR success cannot hide bad resilience semantics.
+**Conformance issue.** HOBO-517 extends the SDK conformance gate with a required resilience lane, explicit existing-semantics separation, generated/hand-authored parity, and off-corpus helper-claim refusal so golden-IR success cannot hide bad resilience semantics.

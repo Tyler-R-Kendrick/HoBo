@@ -11,6 +11,9 @@ resilience facts map onto the platform's event flow.
   [`proto/resilience_semantics_annex.proto`](./proto/resilience_semantics_annex.proto).
 - CUE constraints for every protobuf type live in
   [`cue/resilience_semantics_annex.cue`](./cue/resilience_semantics_annex.cue).
+- The retry-plan schema carries a deterministic seed. HOBO-517 consumes that
+  seed through the SDK resilience lane before an idiom layer can claim retry
+  helper parity.
 
 ## Parse, Don't Validate
 

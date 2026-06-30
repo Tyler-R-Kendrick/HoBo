@@ -93,6 +93,34 @@ records final evidence. It carries draft copy and evidence-window risks without 
 release notes, customer emails, docs-portal updates, compatibility guarantees, zero-downtime
 upgrade promises, support response-time promises, or GA release readiness claims.
 
+## M4 GA Handoff Evidence
+
+Source issue: HOBO-480.
+
+Executable proof lives in
+[`../../src/draft/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract`](../../src/draft/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-480-release-notes-ga-handoff`](./proofs/hobo-480-release-notes-ga-handoff/index.md).
+
+The M4 gate records GA release-note and upgrade-guide handoff evidence for:
+
+- the M0 outline baseline owned by V1 Release Notes & Upgrade Guide;
+- the M3 release-candidate handoff owned by HOBO-473;
+- final release-note and upgrade-guide signoff owned by V1 Release Notes & Upgrade Guide;
+- release-cutline GA signoff owned by V1 Release Program & Cutline;
+- install-path smoke evidence owned by Bootstrap Installer;
+- compatibility and known-limitation register evidence owned by Compatibility Matrix;
+- upgrade and rollback evidence owned by Upgrade & Migration Engine;
+- support contact handoff owned by V1 Launch Support Desk & Escalation; and
+- docs-portal publication handoff owned by Docs Portal.
+
+The accepted M4 state clears the HOBO-473 GA handoff gap for release-owner review and requires a
+HoBo v1 Release Readiness status update because launch risk is reduced. It records no missing
+evidence and creates no follow-up execution issues. Publication mechanics, docs portal delivery,
+customer email, compatibility harnesses, upgrade engines, support workflow, runtime launch gates,
+GA release decisions, customer-facing compatibility guarantees, zero-downtime upgrade promises, and
+support response-time promises stay outside this proof.
+
 ## Proof
 
 Executable proof lives in

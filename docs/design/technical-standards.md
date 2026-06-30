@@ -11,8 +11,8 @@ HoBo favors compile-time feedback over runtime error discovery. New production-f
 
 ## Language and type feedback
 
-- Use the latest stable TypeScript toolchain for HoBo-authored JavaScript-family code. As of 2026-06-29, npm and the TypeScript project identify TypeScript 6.0.3 / 6.0 as the stable latest line; keep the repo on the current stable line rather than adding new vanilla JavaScript modules.
-- Do not add `.js`, `.mjs`, or `.cjs` implementation files when a `.ts` source can provide static feedback. The repo should remain free of tracked JavaScript-family implementation files unless an ADR records a narrow exception.
+- Use the latest stable TypeScript toolchain for HoBo-authored JavaScript-family code. As of 2026-06-29, the package registry and the TypeScript project identify TypeScript 6.0.3 / 6.0 as the stable latest line; keep the repo on the current stable line rather than adding new vanilla JavaScript modules.
+- Do not add `.js`, `.jsx`, `.mjs`, or `.cjs` implementation files when a TypeScript-family source can provide static feedback. Use `.ts` by default, `.tsx` for React/JSX, `.mts` for ESM scripts that would otherwise be `.mjs`, and `.cts` only for explicit CommonJS requirements. The repo should remain free of tracked JavaScript-family implementation files unless an ADR records a narrow exception.
 - Prefer generated, checked-in type views over hand-maintained structural duplicates: WIT remains the portable component interface, TypeScript is the authoring/reference language, Protobuf is the data-contract wire shape, and CUE carries invariants that TypeScript alone cannot prove.
 - Compiler/typecheck failures should be treated as design feedback. A change that relies on a runtime exception for shape, range, state-machine, or boundary mismatch is incomplete unless the mismatch is inherently runtime-only and documented.
 
@@ -32,9 +32,9 @@ HoBo favors compile-time feedback over runtime error discovery. New production-f
 
 ## Enforcement
 
-The repo-level `npm run standards:check` gate runs locally, in the pre-commit hook, and in CI. It currently enforces the standards that can be checked without product-specific context:
+The repo-level `pnpm run standards:check` gate runs locally, in the pre-commit hook, and in CI. It currently enforces the standards that can be checked without product-specific context:
 
-- `package.json` and `package-lock.json` must keep the TypeScript toolchain declared and locked.
+- `package.json` and `pnpm-lock.yaml` must keep the TypeScript toolchain declared and locked.
 - `AGENTS.md` and this document must retain the canonical Protobuf, CUE, parse-don't-validate, and PACT guidance.
 - Implementation files under `src/`, `scripts/`, or `test/` may not use `.js`, `.mjs`, or `.cjs`; use `.ts` unless an ADR/proof note records why the file cannot be TypeScript. The standards gate also fails if any tracked `.js`, `.mjs`, or `.cjs` file remains in the repository.
 
@@ -50,3 +50,13 @@ Before committing a technical change, agents must verify:
 4. Parsed/refined domain objects are passed inward instead of raw input DTOs.
 5. Integration boundaries have PACT-style consumer/provider coverage or a tracked proof gap.
 6. Matching docs and proof/contract READMEs describe the contract source, generated views, and gates.
+
+## Performance-oriented local gates
+
+Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and Turborepo-filtered `src/draft/*` package tests. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
+
+TypeScript proof code should use the repository-pinned latest stable TypeScript version. For experiments that need the Go-native TypeScript toolchain, the repository also pins `@typescript/native-preview`; keep proof packages on the shared TypeScript pin instead of adding older per-package compiler versions.
+
+Package-manager standard: use pnpm, not npm, Yarn, or Bun, for repository-wide dependency installs and scripted gates. pnpm's content-addressable store and workspace filtering are the default performance path; Turborepo provides task graph caching; Vite is reserved for browser app packages that need a dev server; Bun is reserved for explicit Bun-runtime experiments with parity proof.
+
+Linting standard: pre-commit lint must be path-scoped and cache-friendly. Use `pnpm run lint:docs:staged` for local commits, `pnpm run lint:docs:changed -- --base=<ref>` for branch work, and reserve `pnpm run lint:docs` for full verification. Shared documentation catalogs may widen a changed-file lint to a full scan when their contents affect global references.

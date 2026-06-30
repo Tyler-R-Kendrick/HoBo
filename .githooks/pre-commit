@@ -1,13 +1,5 @@
 #!/usr/bin/env sh
 set -eu
 
-npm run architecture:guard:staged -- --base="${HOBO_ARCHITECTURE_BASE:-origin/main}"
-npm test
-npm run standards:check -- --staged --base="${HOBO_STANDARDS_BASE:-origin/main}"
-npm run docs:cli-lint
-npm run docs:design-lint
-npm run docs:coverage
-npm run docs:freshness:staged
-node --import tsx scripts/validate-traceability.ts
-node --import tsx scripts/validate-sdk-contracts.ts
-node --import tsx scripts/validate-deployment-set-delta.ts
+pnpm run generated:guard
+pnpm run check:relevant:staged -- --base="${HOBO_ARCHITECTURE_BASE:-origin/main}"

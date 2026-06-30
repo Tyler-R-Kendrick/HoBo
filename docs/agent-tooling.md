@@ -15,7 +15,7 @@ Nine third-party AI-coding tools are wired into this repo for **Claude Code**, *
 
 Agents implementing HoBo code must follow the canonical architecture rules in [`../AGENTS.md`](../AGENTS.md): every service boundary is pinned by PACT contracts; records, messages, data shapes, and objects are defined in protobuf with CUE constraints; runtime code parses into derived types instead of validating broad values in place; and flows use CQRS, event stores, materialized views, and actors. Actors consume commands, emit events, and coordinate durable state. Query paths use rx-style projections with cached current snapshots and persisted historical snapshots in a read store.
 
-The fail-fast check is `npm run architecture:guard` (`npm run architecture:guard:staged` in pre-commit). It scans changed `src/draft/*` implementation packages for PACT, protobuf, CUE, parse-don't-validate, and event-architecture evidence before the slower test and CI gates run.
+The fail-fast check is `pnpm run architecture:guard` (`pnpm run architecture:guard:staged` in pre-commit). It scans changed `src/draft/*` implementation packages for PACT, protobuf, CUE, parse-don't-validate, and event-architecture evidence before the slower test and CI gates run.
 
 ## The nine tools
 
@@ -97,3 +97,34 @@ Requires: Node ≥18 (`npx`), Python ≥3.10 (`pip`) for headroom/SkillOpt, `uv`
 ## Maintenance gates
 
 Agent-tooling changes count as repo behavior changes. Prefer cross-agent config first: shared wrapper scripts under `scripts/`, devcontainer/common-layer setup, shared skills under `.agents/skills/` where supported, then minimal Claude/Cursor/Codex/Copilot shims. When changing one supported agent config (`.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, `.claude/settings.json`, or setup scripts), check and update the peer configs in the same PR. Update `AGENTS.md`, this file, or another relevant README in the same change when editing `.agents/`, `.claude/`, `.codex/`, `.cursor/`, `.mcp.json`, or setup scripts. The `architecture:guard`, `docs:freshness`, CI, and `.githooks/pre-commit` gates enforce architecture evidence and documentation freshness before merge.
+
+## Fast local checks with Turborepo
+
+Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
+
+Use these commands when working locally or as an agent:
+
+- `pnpm run check:relevant:staged` before commit; this is the hook path and should stay fast.
+- `pnpm run check:relevant -- --base=origin/main` while iterating on a branch; it compares changed files with the merge base.
+- `pnpm exec turbo run test --filter ./src/draft/<package>` when editing one draft proof package.
+- `pnpm run test:all` only for full-repo verification or before merging large cross-cutting changes.
+
+Agents should prefer the narrowest command that covers the changed files, and should avoid running `pnpm test` or `pnpm run test:all` after edits that touch only one isolated draft package unless a shared script, root dependency, or contract generator changed.
+
+### Tooling choice: pnpm + Turborepo
+
+Research pass, 2026-06-29: Bun has the fastest headline installer and is worth revisiting for Bun-runtime packages, but this repo remains Node-based and needs strict monorepo filtering, workspace linking, lockfile auditability, and CI-compatible security gates. pnpm is the best package-manager fit for HoBo because it combines a content-addressable store, strict dependency graph, strong workspace filtering, and mature Node compatibility. Turborepo remains the task runner because it adds cross-package task caching on top of whichever package manager owns installs, without requiring the repo to adopt Vite or Bun as a runtime.
+
+Chosen stack:
+
+- Package manager: `pnpm@11.9.0` via `packageManager` and `pnpm-lock.yaml`.
+- Task runner/cache: `turbo@2.10.1` via `pnpm exec turbo`.
+- Runtime for checks: Node >=24, matching `package.json` engines.
+- Bundler/dev server: none by default; add Vite only for runnable browser apps, not for docs/proof packages where it would add startup and dependency cost without serving a hot-reload UI.
+- Bun: not default. Use only for isolated proof packages that deliberately target Bun APIs or can prove Node-compatibility parity and faster measured gates.
+
+pnpm v11 build-script security is configured in `pnpm-workspace.yaml`: only `esbuild` and `protobufjs` may run install-time build scripts. The recent `turbo` and `@typescript/native-preview` platform packages are listed in `minimumReleaseAgeExclude` so the repo can intentionally use current toolchain binaries while retaining pnpm's supply-chain policy checks for the rest of the graph.
+
+### Fast docs linting
+
+Docs linting follows the same rule as tests: local hooks lint only changed markdown. `pnpm run lint:docs:staged` reads staged paths, skips immediately when no markdown changed, and passes only relevant files into the CLI/design doc linters. It automatically falls back to a full design-doc scan when a shared catalog changes (`cli-spec.md`, glossary, ADR index, event-family catalog, or traceability), because those files can invalidate references outside the touched file set. Full lint remains available with `pnpm run lint:docs` for CI or broad documentation refactors.

@@ -13,16 +13,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - run: corepack enable pnpm
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run architecture:guard -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
-      - run: npm test
-      - run: npm run standards:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
-      - run: npm run docs:cli-lint
-      - run: npm run docs:design-lint
-      - run: npm run docs:coverage
-      - run: npm run docs:freshness -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - run: pnpm run architecture:guard -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+      - run: pnpm test
+      - run: pnpm run standards:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+      - run: pnpm run docs:cli-lint
+      - run: pnpm run docs:design-lint
+      - run: pnpm run docs:coverage
+      - run: pnpm run docs:freshness -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
       - run: node --import tsx scripts/validate-traceability.ts

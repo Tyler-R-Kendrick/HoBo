@@ -30,6 +30,51 @@ These rules are harness-neutral and apply to Claude Code, Cursor, Codex, Copilot
 
 Canonical detail lives in [`docs/design/technical-standards.md`](docs/design/technical-standards.md).
 
+
+## JavaScript-family implementation file policy
+
+This repo requires new JavaScript-family implementation files to be TypeScript-family files.
+
+Do not create new implementation files with these extensions:
+
+- `.js`
+- `.jsx`
+- `.mjs`
+- `.cjs`
+
+Use one of these instead:
+
+- `.ts` for normal TypeScript source
+- `.tsx` for React/JSX TypeScript source
+- `.mts` for TypeScript ESM files that should behave like `.mjs`
+- `.cts` only when CommonJS semantics are explicitly required
+
+Prefer `.ts` unless the file needs explicit ESM behavior independent of the nearest `package.json` `"type"` field. For ESM repo scripts that would previously have been written as `.mjs`, use `.mts`.
+
+Examples:
+
+```txt
+scripts/no-hand-edited-generated-files.mts
+scripts/check-targeted.mts
+scripts/agent-standards-hook.mts
+```
+
+Invoke TypeScript repo scripts through `tsx`:
+
+```bash
+node --import tsx scripts/no-hand-edited-generated-files.mts
+```
+
+Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it.
+
+Before finalizing changes that add, rename, or modify implementation files, scripts, generated-file guards, package config, TypeScript config, Turbo config, or CI config, run:
+
+```bash
+pnpm run standards:check -- --base=origin/main
+```
+
+If this check fails, fix the violation rather than bypassing it.
+
 ## HoBo implementation architecture rules
 
 All HoBo implementation work, including `src/draft/*` proof packages, must preserve these architectural contracts:
@@ -42,13 +87,26 @@ All HoBo implementation work, including `src/draft/*` proof packages, must prese
 - Keep query surfaces event-driven: expose rx-style projections over materialized views, use cached snapshots for current reads, and persist historical snapshots in a read store.
 - For new behavior, name the command/event families, replay expectations, projection behavior, snapshot/read-store persistence, and the PACT/protobuf/CUE proof that pins the boundary.
 
-Local and CI gates enforce this early with `npm run architecture:guard`. The staged pre-commit path runs `npm run architecture:guard:staged` before the heavier test suite so missing architecture evidence is caught before CI.
+Local and CI gates enforce this early with `pnpm run architecture:guard`. The staged pre-commit path runs `pnpm agent:check -- --staged` so only relevant architecture/test/doc lanes run before CI.
+
+
+## Validation failure policy
+
+Failed validation is not an acceptable completion state. If a check fails, either fix the failing code/configuration in the same change or clearly stop and report that the task is blocked; do not commit or present the work as complete while required checks are failing.
+
+Use the staged targeted path for pre-commit-sized work:
+
+```bash
+pnpm agent:check -- --staged
+```
+
+Use broader build-impacting checks only when intentionally validating a branch/root tooling change, not as a default staged hook substitute.
 
 ## Documentation maintenance rule
 
 Whenever a change touches code, automation, package metadata, CI, hooks, or agent tooling, update the matching documentation in the same change. At minimum, check whether `README.md`, `docs/design/index.md`, `docs/agent-tooling.md`, and the relevant proof/contract README still describe the current state. If no user-facing docs change is needed, add or update the closest maintenance note so reviewers can see that docs were considered.
 
-Local and CI gates enforce this with `npm run docs:freshness`: code changes under `src/`, `scripts/`, `test/`, package metadata, workflows, or agent config must be accompanied by a docs change. The repo hook in `.githooks/pre-commit` runs the architecture guard, tests, docs linters, docs coverage, traceability checks, contract validators, and docs freshness; enable it with `npm run prepare-hooks`.
+Local and CI gates enforce this with `pnpm run docs:freshness`: code changes under `src/`, `scripts/`, `test/`, package metadata, workflows, or agent config must be accompanied by a docs change. The repo hook in `.githooks/pre-commit` runs `pnpm run check:relevant:staged`, which routes to the smallest relevant architecture, test, docs, traceability, and contract lanes; enable it with `pnpm run prepare-hooks`.
 
 ## Keys & risks (read before enabling gbrain)
 - **gbrain needs an embedding key** (`OPENAI_API_KEY` *or* `ZEROENTROPY_API_KEY` *or* `VOYAGE_API_KEY`) and **sends the text it embeds + your queries to that provider** — recurring cost + data egress. It is **inert until you run `gbrain init` and set a key**. Don't point it at sensitive content you don't want leaving your machine. Configure via `.env` (see `.env.example`).
@@ -93,3 +151,26 @@ Switch level: /caveman lite|full|ultra|wenyan. Stop: "stop caveman" or "normal m
 Auto-Clarity: drop caveman for security warnings, irreversible actions, or a confused user. Resume after.
 Boundaries: code/commits/PRs written normal.
 <!-- caveman:end -->
+
+## Testing policy
+
+This repo does not use traditional E2E tests. Do not add `test:e2e`, `e2e/`, or Playwright tests that require real downstream services.
+
+Allowed browser-driven tests must use mocked service boundaries derived from Pact contracts, protobuf/CUE schema fixtures, or shared contract fixtures. Playwright may be used only as a browser driver, not as a full-stack E2E framework.
+
+Use these lanes instead:
+
+- `pnpm test:unit` for unit tests.
+- `pnpm test:types` for type-level checks.
+- `pnpm test:schema` for protobuf/CUE/schema compatibility and generated contract checks.
+- `pnpm test:contract:consumer` for consumer Pact-style contracts.
+- `pnpm test:contract:provider` for provider verification against mocked dependencies.
+- `pnpm test:dom` for DOM/rendered state tests.
+- `pnpm test:component` for real-browser component behavior with mocked service boundaries.
+- `pnpm test:behavior` for Gherkin/Cucumber or Playwright-driven behavior specs with Pact-derived mocks.
+- `pnpm test:visual` for deterministic visual state regression.
+- `pnpm eval:agent:mock` for deterministic agent evals.
+
+Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services.
+
+Run the smallest sufficient lane through `pnpm agent:check`; it never selects E2E and escalates only to schema, contract, UI, behavior, visual, or mock-agent eval lanes based on changed files.

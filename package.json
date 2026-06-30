@@ -5,7 +5,7 @@
   "scripts": {
     "architecture:guard": "node scripts/check-architecture-guardrails.mjs",
     "architecture:guard:staged": "node scripts/check-architecture-guardrails.mjs --staged",
-    "test": "node --import tsx scripts/run-tests.ts",
+    "test": "pnpm run test:unit",
     "standards:check": "node --import tsx scripts/check-technical-standards.ts",
     "docs:cli-lint": "node --import tsx scripts/check-cli-docs.ts",
     "docs:design-lint": "node --import tsx scripts/check-design-docs.ts",
@@ -14,15 +14,49 @@
     "prepare-hooks": "git config core.hooksPath .githooks",
     "docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
     "docs:okf": "node scripts/check-okf-docs.mjs",
-    "contracts:data-models": "node --import tsx scripts/generate-data-model-contracts.ts --check"
+    "contracts:data-models": "node --import tsx scripts/generate-data-model-contracts.ts --check",
+    "test:root": "node --import tsx scripts/run-tests.ts --root-only",
+    "test:all": "pnpm exec turbo run test",
+    "check:relevant": "node --import tsx scripts/run-relevant-checks.ts",
+    "check:relevant:staged": "node --import tsx scripts/run-relevant-checks.ts --staged",
+    "lint": "pnpm run lint:docs",
+    "lint:docs": "node --import tsx scripts/run-linters.ts --all",
+    "lint:docs:changed": "node --import tsx scripts/run-linters.ts",
+    "lint:docs:staged": "node --import tsx scripts/run-linters.ts --staged",
+    "test:unit": "node --import tsx scripts/run-tests.ts --category=unit",
+    "test:types": "node --import tsx scripts/run-tests.ts --category=types",
+    "test:schema": "pnpm run contracts:data-models && node --import tsx scripts/validate-sdk-contracts.ts && node --import tsx scripts/validate-deployment-set-delta.ts",
+    "test:contract": "pnpm run test:contract:consumer && pnpm run test:contract:provider",
+    "test:contract:consumer": "node --import tsx scripts/run-tests.ts --category=contract-consumer",
+    "test:contract:provider": "node --import tsx scripts/run-tests.ts --category=contract-provider",
+    "test:dom": "node --import tsx scripts/run-tests.ts --category=dom",
+    "test:component": "node --import tsx scripts/run-tests.ts --category=component",
+    "test:behavior": "node --import tsx scripts/run-tests.ts --category=behavior",
+    "test:visual": "node --import tsx scripts/run-tests.ts --category=visual",
+    "eval:agent": "pnpm run eval:agent:mock",
+    "eval:agent:mock": "node --import tsx scripts/run-tests.ts --category=agent-mock",
+    "eval:agent:live": "node --import tsx scripts/run-tests.ts --category=agent-live",
+    "agent:check": "node --import tsx scripts/run-relevant-checks.ts",
+    "check:changed": "node --import tsx scripts/run-relevant-checks.ts",
+    "check:changed:build": "node --import tsx scripts/run-relevant-checks.ts --build",
+    "check:all": "pnpm run architecture:guard && pnpm run lint:docs && pnpm run test:schema && pnpm run test:unit && pnpm run standards:check && pnpm run docs:coverage && pnpm run docs:freshness",
+    "install:check": "pnpm install --frozen-lockfile --config.confirmModulesPurge=false",
+    "setup": "corepack enable pnpm && pnpm run install:check && pnpm run contracts:data-models",
+    "doctor": "node --import tsx scripts/doctor.ts",
+    "generated:guard": "node --import tsx scripts/no-hand-edited-generated-files.mts",
+    "ci:preflight": "node --import tsx scripts/ci-preflight.ts",
+    "actions:lint": "node --import tsx scripts/lint-actions.ts"
   },
   "devDependencies": {
     "protobufjs": "^7.6.4",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "turbo": "^2.10.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260629.1"
   },
   "engines": {
-    "node": ">=24"
-  }
+    "node": ">=20.20.0"
+  },
+  "packageManager": "pnpm@10.33.4"
 }

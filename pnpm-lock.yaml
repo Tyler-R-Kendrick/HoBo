@@ -115,6 +115,8 @@ importers:
 
   src/draft/client-optimistic-update-contract: {}
 
+  src/draft/closure-builder-manifest-lowering-contract: {}
+
   src/draft/closure-builder-public-api-contract: {}
 
   src/draft/closure-builder-resource-handles-contract: {}
@@ -331,6 +333,8 @@ importers:
   src/draft/genesis-breakglass-contract: {}
 
   src/draft/gitops-ci-journey-contract: {}
+
+  src/draft/go-no-go-decision-record-contract: {}
 
   src/draft/golden-suite-chaos-verification-contract: {}
 
@@ -918,6 +922,8 @@ importers:
   src/draft/supervision-child-lifetime-contract: {}
 
   src/draft/support-sla-channels-contract: {}
+
+  src/draft/support-workflow-scope-contract: {}
 
   src/draft/svid-auto-rotation-contract: {}
 

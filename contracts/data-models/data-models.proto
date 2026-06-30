@@ -504,6 +504,19 @@ message ClientOptimisticUpdateContractClientOptimisticUpdateContractDataModel {
   bool cue_annotated = 6;
 }
 
+message ClosureBuilderManifestLoweringContractClosureBuilderManifestLoweringDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-manifest-lowering-contract.closure-builder-manifest-lowering";
+  option (hobo.source_path) = "src/draft/closure-builder-manifest-lowering-contract/src/closure-builder-manifest-lowering.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderManifestLoweringContractClosureBuilderManifestLoweringDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ClosureBuilderPublicApiContractClosureBuilderPublicApiDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-public-api-contract.closure-builder-public-api";
   option (hobo.source_path) = "src/draft/closure-builder-public-api-contract/src/closure-builder-public-api.ts";
@@ -1743,6 +1756,19 @@ message GitopsCiJourneyContractGitopsCiJourneyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.gitops-ci-journey-contract.gitops-ci-journey";
   option (hobo.source_path) = "src/draft/gitops-ci-journey-contract/src/gitops-ci-journey.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#GitopsCiJourneyContractGitopsCiJourneyDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message GoNoGoDecisionRecordContractGoNoGoDecisionRecordDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.go-no-go-decision-record-contract.go-no-go-decision-record";
+  option (hobo.source_path) = "src/draft/go-no-go-decision-record-contract/src/go-no-go-decision-record.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#GoNoGoDecisionRecordContractGoNoGoDecisionRecordDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -4694,6 +4720,19 @@ message SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.supervision-child-lifetime-contract.supervision-child-lifetime";
   option (hobo.source_path) = "src/draft/supervision-child-lifetime-contract/src/supervision-child-lifetime.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#SupervisionChildLifetimeContractSupervisionChildLifetimeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message SupportWorkflowScopeContractSupportWorkflowScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.support-workflow-scope-contract.support-workflow-scope";
+  option (hobo.source_path) = "src/draft/support-workflow-scope-contract/src/support-workflow-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#SupportWorkflowScopeContractSupportWorkflowScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;

@@ -102,13 +102,13 @@ Agent-tooling changes count as repo behavior changes. Prefer cross-agent config 
 
 ## Fast local checks with Turborepo
 
-Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
+Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through pnpm workspace filters instead of replaying every proof in the repository. Full-repo task sweeps still use Turborepo, which stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
 
 Use these commands when working locally or as an agent:
 
 - `pnpm run check:relevant:staged` before commit; this is the hook path and should stay fast.
 - `pnpm run check:relevant -- --base=origin/main` while iterating on a branch; it compares changed files with the merge base.
-- `pnpm exec turbo run test --filter ./src/draft/<package>` when editing one draft proof package.
+- `pnpm --filter ./src/draft/<package> test` when editing one draft proof package.
 - `pnpm run test:all` only for full-repo verification or before merging large cross-cutting changes.
 
 Agents should prefer the narrowest command that covers the changed files, and should avoid running `pnpm test` or `pnpm run test:all` after edits that touch only one isolated draft package unless a shared script, root dependency, or contract generator changed.

@@ -86,7 +86,7 @@ if (schemaChanged) {
 if (workspaces.length > 0) {
   checks.push({
     command: "pnpm",
-    args: ["exec", "turbo", "run", "test", ...workspaces.flatMap((workspace) => ["--filter", `./${workspace}`])],
+    args: [...workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]), "test"],
     reason: `draft package unit/contract tests for ${workspaces.length} changed workspace(s)`,
   });
 }

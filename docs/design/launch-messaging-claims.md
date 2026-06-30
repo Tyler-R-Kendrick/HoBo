@@ -56,7 +56,7 @@ cutline dependencies, follow-up rules, and parent-initiative status behavior.
 
 | Claim | State | Evidence owner | Evidence source | Risk | Disposition |
 |---|---|---|---|---|---|
-| HoBo is an AI-native meta-cloud that maps one app description onto provider-owned infrastructure through cloud-agnostic ports. | `implemented` | V1 Release Program & Cutline | [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md) | Medium | Candidate, pending cutline evidence review. |
+| HoBo is an AI-native meta-cloud that maps one app description onto provider-owned infrastructure through cloud-agnostic ports. | `implemented` | V1 Release Program & Cutline | [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md) | Medium | Candidate with M1 dogfood/alpha cutline evidence; beta/GA evidence still required before broader operational claims. |
 | Launch demos can use accepted example-app proof modes to separate live behavior from reference or simulated evidence. | `simulated-reference` | Example Apps | [example-apps.md#M0 Acceptance Record](./example-apps.md#m0-acceptance-record) | Medium | Candidate with proof-mode label. |
 | Dogfood and beta operations evidence can support private-beta messaging before broader GA operational claims are made. | `beta-only` | V1 Dogfood Yard & Hosted Operations | HOBO-403 | High | Follow-up before public use. |
 | Customer-facing release notes will distinguish supported install paths, upgrade guidance, known limitations, and support contacts. | `future-roadmap` | V1 Release Notes & Upgrade Guide | HOBO-407 | Medium | Follow-up before launch publication. |

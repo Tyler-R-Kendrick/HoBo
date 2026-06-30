@@ -6,6 +6,7 @@ message ClosureBuilderResourceManifest {
   string bindle_name = 1;
   repeated ClosureBuilderResource resources = 2;
   repeated ClosureBuilderRelationship relationships = 3;
+  ClosureBuilderResourceIdentityLedger identity_ledger = 4;
 }
 
 message ClosureBuilderResource {
@@ -22,6 +23,22 @@ message ClosureBuilderResourceIdentityDiagnostic {
   string kind = 3;
   string owner_bindle_id = 4;
   string physical_name_seed = 5;
+}
+
+message ClosureBuilderResourceIdentityLedger {
+  string bindle_name = 1;
+  string artifact_owner = 2;
+  string update_flow = 3;
+  string review_boundary = 4;
+  repeated ClosureBuilderResourceIdentityLedgerEntry entries = 5;
+}
+
+message ClosureBuilderResourceIdentityLedgerEntry {
+  string kind = 1;
+  uint32 occurrence = 2;
+  string generated_id = 3;
+  string identity_source = 4;
+  string review_state = 5;
 }
 
 message ClosureBuilderWorkloadDescriptor {

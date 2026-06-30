@@ -73,6 +73,8 @@ importers:
 
   src/draft/bootstrap-installer-scope-contract: {}
 
+  src/draft/bootstrap-launch-smoke-matrix-contract: {}
+
   src/draft/budget-quota-policy-contract: {}
 
   src/draft/build-dagger-provider-contract: {}
@@ -105,6 +107,8 @@ importers:
 
   src/draft/chaos-experiment-orchestration-contract: {}
 
+  src/draft/chaos-resilience-tests-scope-acceptance: {}
+
   src/draft/choreographed-compensation-contract: {}
 
   src/draft/choreography-saga-engine-contract: {}
@@ -115,6 +119,10 @@ importers:
 
   src/draft/client-optimistic-update-contract: {}
 
+  src/draft/closure-builder-author-flow-contract: {}
+
+  src/draft/closure-builder-manifest-lowering-contract: {}
+
   src/draft/closure-builder-public-api-contract: {}
 
   src/draft/closure-builder-resource-handles-contract: {}
@@ -122,6 +130,8 @@ importers:
   src/draft/closure-builder-tooling-contract: {}
 
   src/draft/collection-coverage-gate-contract: {}
+
+  src/draft/compatibility-matrix-scope-contract: {}
 
   src/draft/compensation-escalation-contract: {}
 
@@ -192,6 +202,8 @@ importers:
 
   src/draft/curated-catalog-policy-contract: {}
 
+  src/draft/customer-assurance-evidence-packet-contract: {}
+
   src/draft/data-flywheel-privacy-spike: {}
 
   src/draft/data-governance-policy-contract: {}
@@ -209,6 +221,8 @@ importers:
   src/draft/delta-set-apply-reconcile-contract: {}
 
   src/draft/deny-ceiling-algebra-poc: {}
+
+  src/draft/deployment-dashboard-topology-scope-contract: {}
 
   src/draft/deployment-plan-ir-contract: {}
 
@@ -233,6 +247,8 @@ importers:
   src/draft/dns-validation-gate-threat-model: {}
 
   src/draft/dns-validation-rebinding-guard-contract: {}
+
+  src/draft/docs-portal-scope-contract: {}
 
   src/draft/document-projection-sink-contract: {}
 
@@ -259,6 +275,10 @@ importers:
   src/draft/end-user-authorization-policy-contract: {}
 
   src/draft/endpoint-monitor-operator-contract: {}
+
+  src/draft/enterprise-deployment-hardening-scope-contract: {}
+
+  src/draft/entitlement-abuse-rate-limit-policy-contract: {}
 
   src/draft/entitlements-plan-limits-scope: {}
 
@@ -329,6 +349,8 @@ importers:
   src/draft/genesis-breakglass-contract: {}
 
   src/draft/gitops-ci-journey-contract: {}
+
+  src/draft/go-no-go-decision-record-contract: {}
 
   src/draft/golden-suite-chaos-verification-contract: {}
 
@@ -526,6 +548,8 @@ importers:
   src/draft/inbound-xaa-resource-server-contract: {}
 
   src/draft/incident-aggregate-contract: {}
+
+  src/draft/incident-communications-scope-contract: {}
 
   src/draft/internal-ca-private-acme-contract: {}
 
@@ -851,6 +875,8 @@ importers:
 
   src/draft/secretless-config-resolution-contract: {}
 
+  src/draft/security-verification-scope-acceptance: {}
+
   src/draft/self-host-bootstrap-ordering-spike: {}
 
   src/draft/self-host-bootstrap-saga-contract: {}
@@ -913,6 +939,8 @@ importers:
 
   src/draft/support-sla-channels-contract: {}
 
+  src/draft/support-workflow-scope-contract: {}
+
   src/draft/svid-auto-rotation-contract: {}
 
   src/draft/svid-cross-tenant-guard-contract: {}
@@ -955,11 +983,15 @@ importers:
 
   src/draft/training-engine-port-contract: {}
 
+  src/draft/troubleshooting-guides-scope-acceptance: {}
+
   src/draft/trust-tier-policy-contract: {}
 
   src/draft/tutorials-walkthroughs-scope-acceptance: {}
 
   src/draft/upgrade-migration-scope-contract: {}
+
+  src/draft/upgrade-rollback-dry-run-contract: {}
 
   src/draft/upgrade-test-suite-scope-contract: {}
 
@@ -972,6 +1004,8 @@ importers:
   src/draft/v1-e2e-persona-matrix-contract: {}
 
   src/draft/v1-outcome-activation-rail-contract: {}
+
+  src/draft/v1-readiness-dashboard-contract: {}
 
   src/draft/v1-release-notes-upgrade-guide-contract: {}
 

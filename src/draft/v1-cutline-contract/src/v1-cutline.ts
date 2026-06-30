@@ -7,6 +7,14 @@ export const REQUIRED_READINESS_DOMAINS = [
   "operations-readiness"
 ];
 
+export const REQUIRED_DOGFOOD_ALPHA_EVIDENCE_IDS = [
+  "cutline-baseline",
+  "dogfood-alpha-outcome",
+  "blocker-delta",
+  "accepted-risk-register",
+  "cross-project-handoff"
+];
+
 export const v1Cutline = {
   schema: "hobo.v1.cutline/2026-06-29",
   issue: "HOBO-401",
@@ -200,6 +208,116 @@ export const v1Cutline = {
   }
 };
 
+export const v1CutlineDogfoodAlphaEvidence = {
+  schema: "hobo.v1.cutline.m1-dogfood-alpha/2026-06-30",
+  issue: "HOBO-454",
+  parentIssue: "HOBO-401",
+  phase: "M1",
+  milestoneGate: "M1 Dogfood/alpha proof",
+  decisionStatus: "dogfood-alpha-evidence-accepted",
+  requiredEvidence: [
+    {
+      id: "cutline-baseline",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "src/draft/v1-cutline-contract",
+      proves: "The M0 launch cutline has explicit v1 scope, scope-out, and owner map records.",
+      status: "accepted"
+    },
+    {
+      id: "dogfood-alpha-outcome",
+      ownerProject: "V1 Dogfood Yard & Hosted Operations",
+      evidenceSource: "docs/design/dogfood-yard.md",
+      proves: "Dogfood and alpha outcome evidence can feed the release cutline without becoming GA proof.",
+      status: "accepted"
+    },
+    {
+      id: "blocker-delta",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/launch-blocker-taxonomy.md",
+      proves: "New, resolved, downgraded, or removed blockers are classified with launch action.",
+      status: "accepted"
+    },
+    {
+      id: "accepted-risk-register",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/go-no-go-decision-record.md",
+      proves: "Accepted risks have owner, mitigation, launch note or follow-up, and revisit date.",
+      status: "accepted"
+    },
+    {
+      id: "cross-project-handoff",
+      ownerProject: "V1 Release Program & Cutline",
+      evidenceSource: "docs/design/launch-messaging-claims.md",
+      proves: "Release notes, support, legal/privacy, dogfood, and launch messaging inputs stay reflected in the cutline.",
+      status: "accepted"
+    }
+  ],
+  blockers: [
+    {
+      id: "alpha-public-claim-boundary",
+      category: "launch-note",
+      ownerProject: "V1 Release Program & Cutline",
+      sourceEvidenceId: "dogfood-alpha-outcome",
+      disposition: "Dogfood/alpha evidence may support private alpha messaging but cannot promote GA operational claims.",
+      launchRisk: "medium"
+    }
+  ],
+  acceptedRisks: [
+    {
+      id: "dogfood-only-support-window",
+      ownerRole: "release-owner",
+      mitigation: "Keep support and launch language scoped to dogfood/alpha until beta evidence is accepted.",
+      followUpOrLaunchNote: "Known limitation in release notes and launch messaging.",
+      revisitDate: "2026-07-31",
+      evidenceId: "accepted-risk-register"
+    }
+  ],
+  crossProjectDependencies: [
+    {
+      ownerProject: "V1 Release Notes & Upgrade Guide",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Known limitations and release summary consume only accepted cutline evidence."
+    },
+    {
+      ownerProject: "V1 Launch Support Desk & Escalation",
+      consumesEvidenceId: "dogfood-alpha-outcome",
+      cutlineImpact: "Alpha support commitments stay within approved support channel language."
+    },
+    {
+      ownerProject: "V1 Legal, Privacy & Terms Readiness",
+      consumesEvidenceId: "accepted-risk-register",
+      cutlineImpact: "Legal/privacy unknowns remain blockers or explicit limitations before public launch."
+    },
+    {
+      ownerProject: "V1 Launch Site, Messaging & Demo Assets",
+      consumesEvidenceId: "cross-project-handoff",
+      cutlineImpact: "Public claims require state, owner, evidence source, risk, and disposition."
+    }
+  ],
+  missingEvidence: [
+    {
+      id: "beta-operational-evidence",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      reason: "Dogfood/alpha evidence does not prove beta or GA readiness.",
+      launchDisposition: "follow-up"
+    }
+  ],
+  followUpIssues: [
+    {
+      id: "HOBO-463",
+      ownerProject: "V1 Beta Pilot & Feedback Loop",
+      missingEvidenceId: "beta-operational-evidence",
+      allowedReason: "Existing M2 private-beta evidence issue exists because beta operational evidence is missing."
+    }
+  ],
+  parentInitiativeSync: {
+    initiative: "HoBo v1 Release Readiness",
+    launchRiskChanged: true,
+    statusUpdated: true,
+    statusUpdateReason: "M1 dogfood/alpha evidence is accepted with beta/GA proof still explicitly missing."
+  }
+};
+
 export function validateV1Cutline(record) {
   const errors = [];
 
@@ -255,6 +373,91 @@ export function validateV1Cutline(record) {
 
   if (record.followUpTaskPolicy?.createdExecutionTasksBeforeM0Acceptance) {
     errors.push("M1-M4 execution tasks require accepted M0 criteria");
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateDogfoodAlphaEvidence(record) {
+  const errors = [];
+
+  if (!record || typeof record !== "object") {
+    return { ok: false, errors: ["dogfood alpha evidence record is required"] };
+  }
+
+  if (record.issue !== "HOBO-454") {
+    errors.push("issue must be HOBO-454");
+  }
+  if (record.phase !== "M1") {
+    errors.push("phase must be M1");
+  }
+  if (record.milestoneGate !== "M1 Dogfood/alpha proof") {
+    errors.push("milestone gate must be M1 Dogfood/alpha proof");
+  }
+
+  const evidenceIds = new Set((record.requiredEvidence ?? []).map((item) => item.id));
+  for (const evidenceId of REQUIRED_DOGFOOD_ALPHA_EVIDENCE_IDS) {
+    if (!evidenceIds.has(evidenceId)) {
+      errors.push(`missing required M1 evidence: ${evidenceId}`);
+    }
+  }
+  for (const evidence of record.requiredEvidence ?? []) {
+    if (!evidence.ownerProject || !evidence.evidenceSource || !evidence.proves) {
+      errors.push(`${evidence.id ?? "<missing>"} must map evidence to ownerProject, evidenceSource, and proof statement`);
+    }
+    if (evidence.status !== "accepted") {
+      errors.push(`${evidence.id ?? "<missing>"} must be accepted before the M1 dogfood/alpha gate can pass`);
+    }
+  }
+
+  if (!Array.isArray(record.blockers) || record.blockers.length === 0) {
+    errors.push("blockers must be recorded, even when they are launch notes or non-blockers");
+  }
+  for (const blocker of record.blockers ?? []) {
+    if (!blocker.id || !blocker.category || !blocker.ownerProject || !blocker.sourceEvidenceId || !blocker.disposition) {
+      errors.push(`${blocker.id ?? "<missing>"} blocker must name category, ownerProject, sourceEvidenceId, and disposition`);
+    }
+    if (blocker.sourceEvidenceId && !evidenceIds.has(blocker.sourceEvidenceId)) {
+      errors.push(`${blocker.id ?? "<missing>"} blocker cites unknown evidence ${blocker.sourceEvidenceId}`);
+    }
+  }
+
+  if (!Array.isArray(record.acceptedRisks) || record.acceptedRisks.length === 0) {
+    errors.push("accepted risks must be recorded");
+  }
+  for (const risk of record.acceptedRisks ?? []) {
+    if (!risk.id || !risk.ownerRole || !risk.mitigation || !risk.followUpOrLaunchNote || !risk.revisitDate) {
+      errors.push(`${risk.id ?? "<missing>"} accepted risk must name ownerRole, mitigation, followUpOrLaunchNote, and revisitDate`);
+    }
+    if (risk.evidenceId && !evidenceIds.has(risk.evidenceId)) {
+      errors.push(`${risk.id ?? "<missing>"} accepted risk cites unknown evidence ${risk.evidenceId}`);
+    }
+  }
+
+  if (!Array.isArray(record.crossProjectDependencies) || record.crossProjectDependencies.length === 0) {
+    errors.push("cross-project dependencies must be reflected in the cutline");
+  }
+  for (const dependency of record.crossProjectDependencies ?? []) {
+    if (!dependency.ownerProject || !dependency.consumesEvidenceId || !dependency.cutlineImpact) {
+      errors.push(`${dependency.ownerProject ?? "<missing>"} dependency must name ownerProject, consumesEvidenceId, and cutlineImpact`);
+    }
+    if (dependency.consumesEvidenceId && !evidenceIds.has(dependency.consumesEvidenceId)) {
+      errors.push(`${dependency.ownerProject ?? "<missing>"} dependency cites unknown evidence ${dependency.consumesEvidenceId}`);
+    }
+  }
+
+  const missingEvidenceIds = new Set((record.missingEvidence ?? []).map((item) => item.id));
+  for (const followUp of record.followUpIssues ?? []) {
+    if (!followUp.id || !followUp.ownerProject || !followUp.missingEvidenceId || !followUp.allowedReason) {
+      errors.push(`${followUp.id ?? "<missing>"} follow-up must name ownerProject, missingEvidenceId, and allowedReason`);
+    }
+    if (followUp.missingEvidenceId && !missingEvidenceIds.has(followUp.missingEvidenceId)) {
+      errors.push(`${followUp.id ?? "<missing>"} follow-up is allowed only for missing evidence`);
+    }
+  }
+
+  if (record.parentInitiativeSync?.launchRiskChanged && !record.parentInitiativeSync.statusUpdated) {
+    errors.push("parent initiative status must be updated when launch risk changes");
   }
 
   return { ok: errors.length === 0, errors };

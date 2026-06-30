@@ -29,6 +29,14 @@ message ResilienceFact {
   string reason = 5;
   bool allow = 6;
   uint32 delay_ms = 7;
+  string state = 8;
+  string source = 9;
+  string from = 10;
+  string event = 11;
+  string to = 12;
+  string caused_by = 13;
+  string child_id = 14;
+  string spawn_contract_id = 15;
 }
 
 message ResilienceFixture {
@@ -45,4 +53,34 @@ message ResilienceCaseResult {
   string code = 4;
   string reason = 5;
   string seed = 6;
+}
+
+message DiagnosticRetryAttempt {
+  uint32 from_attempt = 1;
+  uint32 to_attempt = 2;
+  uint32 delay_ms = 3;
+  string caused_by = 4;
+}
+
+message LocalDiagnosticScenario {
+  string name = 1;
+  string outcome = 2;
+  string source = 3;
+  repeated string terminal_causes = 4;
+  repeated DiagnosticRetryAttempt retried_attempts = 5;
+  repeated string cleanup_facts = 6;
+  repeated string escalation_facts = 7;
+  bool fresh_attempt_after_terminal = 8;
+}
+
+message LocalDiagnosticGuarantees {
+  bool requires_effect_or_xstate = 1;
+  string authoritative_state = 2;
+}
+
+message LocalDiagnosticReport {
+  string command = 1;
+  string source = 2;
+  repeated LocalDiagnosticScenario scenarios = 3;
+  LocalDiagnosticGuarantees guarantees = 4;
 }

@@ -79,17 +79,47 @@ Required report categories:
   with HOBO-32.
 - `existingSemanticsLane`: imported or mirrored from HOBO-31 where needed.
 - `resilienceSemanticsLane`: transient retry, denial, terminal failure,
-  cancellation, deadline, cleanup, replay inspection.
+  cancellation, deadline, cleanup, replay inspection, and HOBO-518 lifecycle
+  transition-table vectors.
 - `transient-retry-schedule` must carry the deterministic retry seed consumed
   by the HOBO-517 SDK conformance resilience lane.
 - `unsupportedBehavior`: explicit callouts for any helper claim without a
   vector.
+- HOBO-518 extends this same package with stable lifecycle cases:
+  `lifecycle-transition-table`, `lifecycle-replay-hydration`,
+  `lifecycle-event-derived-inspection`,
+  `terminal-duplicate-no-second-side-effect`, and
+  `child-lifecycle-requires-spawn-contract`.
 
 Focused command:
 
 ```powershell
 npm.cmd --prefix src\draft\resilience-semantics-annex test
 ```
+
+## Lifecycle Transition-Table Extension
+
+HOBO-518 extends `src/draft/resilience-semantics-annex` rather than creating a
+separate runtime proof because lifecycle behavior shares the same conformance
+lane, replay-derived inspection posture, and no-Effect/no-XState dependency
+boundary.
+
+Use a transition table when a lifecycle owns impossible transitions, terminal
+duplicate handling, replay hydration, or child lifetime obligations. A simpler
+state enum is enough when the value is display-only and does not drive cleanup,
+retry, child work, operator escalation, or diagnostics. Inspection output must
+come from persisted `actor.StateAppended` facts; process-memory snapshots are
+not authoritative.
+
+Required negative fixtures:
+
+- illegal transition -> `lifecycle.illegal_transition`
+- snapshot without a causative persisted transition ->
+  `lifecycle.snapshot_without_causative_event`
+- duplicate terminal input causing a second side effect ->
+  `lifecycle.terminal_duplicate_side_effect`
+- child work outliving the parent without an explicit spawn contract ->
+  `lifecycle.child_outlived_parent`
 
 ## Later Issue Map
 
@@ -100,7 +130,31 @@ npm.cmd --prefix src\draft\resilience-semantics-annex test
 | HOBO-517 | `src/draft/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
 | HOBO-518 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No generic statechart interpreter and no XState dependency. |
 | HOBO-519 | `src/draft/supervision-child-lifetime-contract` | `npm.cmd --prefix src\draft\supervision-child-lifetime-contract test` plus `npm.cmd run docs:design-lint` | No distributed scheduler, production supervision tree, or new queue backend. |
-| HOBO-520 | SDK docs and local diagnostic example | `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector or remote dashboard. |
+| HOBO-520 | SDK docs and local diagnostic example | `npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics`; `npm.cmd run docs:cli-lint`; `node scripts\validate-sdk-contracts.mjs` | No polished hosted inspector, remote dashboard, or production observability pipeline. |
+
+## Local Diagnostics Example
+
+HOBO-520 extends the existing
+[`../../src/draft/resilience-semantics-annex`](../../src/draft/resilience-semantics-annex/README.md)
+proof with a local diagnostics command:
+
+```powershell
+npm.cmd --prefix src\draft\resilience-semantics-annex run diagnostics
+```
+
+The command renders replay-derived persisted facts for four developer-facing
+outcomes:
+
+- transient retry: attempt chain, retry delay, and provider failure cause;
+- policy denial: `policy.Decided` as terminal, with no retry wording;
+- caller cancellation: caller-owned cancellation plus cleanup facts; and
+- deadline expiry: persisted deadline expiration plus workflow escalation and
+  no fresh post-terminal effect attempt.
+
+What this does not guarantee: the command is not a polished inspector UI,
+remote hosted dashboard, production observability pipeline, scheduler, or SDK
+dependency on Effect or XState. It is a local proof that diagnostics come from
+persisted event facts rather than process memory.
 
 ## Parent Scope Proof
 

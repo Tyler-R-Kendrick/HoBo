@@ -76,7 +76,9 @@ across alias-only edits and diagnostic separation. HOBO-535 proves those capture
 closure-builder facts lower to `hobo:sdk` calls and `hobo.manifest/v1`, while
 provider `.with(...)` annotations stay inert and aliases remain separate from
 deployment identity. Same-kind generated-ID ledger behavior remains outside the
-lowering contract until HOBO-538 lands.
+lowering contract until HOBO-538 lands. HOBO-537 ties the public worked example,
+collection, lowering, generated aliases, and SDK conformance corpus into one v1
+author-flow proof.
 
 **Conformance issue.** HOBO-32 covers SDK lowering. This proof contributes the
 public vocabulary fixture that downstream conformance vectors consume.

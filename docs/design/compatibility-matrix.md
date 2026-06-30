@@ -1,18 +1,42 @@
 ---
 type: Reference
 title: "V1 Supported Browser, Device, And Platform Matrix"
-description: "Source issue: HOBO-511."
+description: "Source issues: HOBO-432 and HOBO-511."
 tags: [hobo, design]
 ---
 
 # V1 Supported Browser, Device, And Platform Matrix
 
-Source issue: HOBO-511.
+Source issues: HOBO-432 and HOBO-511.
 
 Executable proof lives in
 [`src/draft/v1-supported-platform-matrix-contract`](../../src/draft/v1-supported-platform-matrix-contract/README.md).
+M0 scope proof lives in
+[`src/draft/compatibility-matrix-scope-contract`](../../src/draft/compatibility-matrix-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-511-supported-platform-matrix`](./proofs/hobo-511-supported-platform-matrix/README.md).
+M0 branch evidence is summarized in
+[`proofs/hobo-432-compatibility-matrix`](./proofs/hobo-432-compatibility-matrix/README.md).
+
+## M0 Scope Acceptance
+
+HOBO-432 accepts the Compatibility Matrix project scope before downstream design/build issues fan
+out. The M0 boundary is:
+
+- **Goal:** publish environment support claims only when browser, device, OS, CLI bootstrap, docs,
+  release, and support routing use the same evidence contract.
+- **Primary personas:** app developer, platform engineer, support operator, and release owner.
+- **Scope in:** browser/device/platform support classes, claim evidence sources, limitation wording,
+  and unsupported-report routing.
+- **Scope out:** browser grid/device lab implementation, native mobile app or full mobile authoring,
+  live e2e or performance certification, and runtime/package compatibility replacement.
+- **Owner boundaries:** product owns claim posture; UX owns browser-visible behavior evidence; DX/CLI
+  owns local bootstrap evidence; support/release owns unsupported routing and known limitation
+  publication; security/privacy owns diagnostic-data capture boundaries.
+- **M1 evidence:** deterministic matrix fixtures, support-claim evidence mapping, and unsupported
+  report routing cases.
+- **Follow-up gate:** M1/M2/M3/M4 work may start only after this M0 record, proof README,
+  traceability row, and executable contract are accepted.
 
 ## Goal
 

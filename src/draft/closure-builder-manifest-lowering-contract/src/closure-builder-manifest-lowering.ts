@@ -363,10 +363,10 @@ function parseClosureBuilderLoweringInput(
   const ids = new Set<string>();
 
   for (const resource of resources) {
-    if (!/^res_[0-9]{4}$/u.test(resource.generatedId)) {
+    if (!isGeneratedResourceId(resource.generatedId, resource.kind)) {
       throw new ClosureBuilderLoweringError(
         "CLOSURE_LOWERING_RESOURCE_ID",
-        "generated resource IDs must be stable res_0000-style identifiers",
+        "generated resource IDs must be stable res_0000 or res_kind_0000 identifiers",
         { generatedId: resource.generatedId },
       );
     }
@@ -429,6 +429,15 @@ function parseClosureBuilderLoweringInput(
     aliases: [...(input.aliases ?? [])],
     relationships: [...(input.relationships ?? [])],
   };
+}
+
+function isGeneratedResourceId(generatedId: string, kind: ClosureBuilderResourceKind): boolean {
+  return /^res_[0-9]{4}$/u.test(generatedId) || generatedId === generatedIdForKind(kind, generatedId);
+}
+
+function generatedIdForKind(kind: ClosureBuilderResourceKind, generatedId: string): string {
+  const match = /^res_(?:api|cache|queue)_([0-9]{4})$/u.exec(generatedId);
+  return match ? `res_${kind}_${match[1]}` : "";
 }
 
 function lowerResource(

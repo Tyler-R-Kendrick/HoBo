@@ -13,6 +13,7 @@ node_modules/
 
 # Logs / OS cruft
 *.log
+.tmp/
 .DS_Store
 
 # NOTE: committed on purpose so clones get the tooling wired up —

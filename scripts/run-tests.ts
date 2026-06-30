@@ -1,11 +1,11 @@
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const MAX_BATCH_CHARS = process.platform === "win32" ? 500 : 12000;
 const HEARTBEAT_MS = 5_000;
 const TEST_CONCURRENCY_ARGS = process.platform === "win32" ? ["--test-concurrency=1"] : [];
+const RUN_TMP_ROOT = process.env.HOBO_TEST_TMPDIR ?? join(process.cwd(), ".tmp", "test-runs");
 const categoryArg = process.argv.find((arg) => arg.startsWith("--category="));
 const category = categoryArg?.slice("--category=".length) ?? "unit";
 const rootOnly = process.argv.includes("--root-only");
@@ -97,13 +97,18 @@ if (testFiles.length === 0) {
   process.exit(0);
 }
 
+mkdirSync(RUN_TMP_ROOT, { recursive: true });
+const runTmpDir = mkdtempSync(join(RUN_TMP_ROOT, `run-${process.pid}-`));
+
 let failed = false;
 const testBatches = batches(testFiles);
 for (const [index, batch] of testBatches.entries()) {
   const batchNumber = index + 1;
-  const outputPath = join(tmpdir(), `hobo-test-batch-${process.pid}-${batchNumber}.log`);
+  const batchTmpDir = join(runTmpDir, `batch-${batchNumber}`);
+  mkdirSync(batchTmpDir, { recursive: true });
+  const outputPath = join(batchTmpDir, "node-test.log");
   const outputFd = openSync(outputPath, "w");
-  const result = await runBatch(batch, batchNumber, testBatches.length, outputFd);
+  const result = await runBatch(batch, batchNumber, testBatches.length, outputFd, batchTmpDir);
   closeSync(outputFd);
 
   if (result.status !== 0 || result.error) {
@@ -116,12 +121,15 @@ for (const [index, batch] of testBatches.entries()) {
     console.log(
       `test batch ${batchNumber}/${testBatches.length} passed: ${batch.length} file(s), ${batch[0]} .. ${batch[batch.length - 1]}`,
     );
-    rmSync(outputPath, { force: true });
+    rmSync(batchTmpDir, { force: true, recursive: true });
   }
 }
 
 if (failed) {
+  console.error(`failed test artifacts kept in ${runTmpDir}`);
   process.exitCode = 1;
+} else {
+  rmSync(runTmpDir, { force: true, recursive: true });
 }
 
 function runBatch(
@@ -129,10 +137,12 @@ function runBatch(
   batchNumber: number,
   batchCount: number,
   outputFd: number,
+  tmpDir: string,
 ): Promise<{ status: number | null; signal: NodeJS.Signals | null; error?: Error }> {
   const child = spawn(process.execPath, ["--import", "tsx", "--test", ...TEST_CONCURRENCY_ARGS, ...batch], {
     shell: false,
     stdio: ["ignore", outputFd, outputFd],
+    env: { ...process.env, TMPDIR: tmpDir, TMP: tmpDir, TEMP: tmpDir },
   });
 
   const heartbeat = setInterval(() => {

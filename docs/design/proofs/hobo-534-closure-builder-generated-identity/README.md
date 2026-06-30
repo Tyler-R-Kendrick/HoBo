@@ -32,8 +32,9 @@ separate from local author aliases.
 
 The proof does not introduce user-supplied resource names, alias-derived
 physical names, manifest lowering, codegen, collection coverage, or runtime
-provider behavior. Ambiguous same-kind insertions remain outside this M1 proof
-until the HOBO-538 persisted identity ledger requirement is accepted.
+provider behavior. Ambiguous same-kind insertions are accepted by HOBO-538's
+collector-owned identity ledger proof instead of this alias-only stability
+slice.
 
 ## Gate
 

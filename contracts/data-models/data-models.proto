@@ -218,6 +218,19 @@ message AvailabilityViewContractAvailabilityViewDataModel {
   bool cue_annotated = 6;
 }
 
+message BackupRestoreLaunchDrillContractBackupRestoreLaunchDrillDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.backup-restore-launch-drill-contract.backup-restore-launch-drill";
+  option (hobo.source_path) = "src/draft/backup-restore-launch-drill-contract/src/backup-restore-launch-drill.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#BackupRestoreLaunchDrillContractBackupRestoreLaunchDrillDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message BillingCreditsScopeContractBillingCreditsScopeDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.billing-credits-scope-contract.billing-credits-scope";
   option (hobo.source_path) = "src/draft/billing-credits-scope-contract/src/billing-credits-scope.ts";
@@ -248,6 +261,19 @@ message BindReferenceWiringContractBindReferenceContractDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.bind-reference-wiring-contract.bind-reference-contract";
   option (hobo.source_path) = "src/draft/bind-reference-wiring-contract/src/bind-reference-contract.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#BindReferenceWiringContractBindReferenceContractDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message BootstrapLaunchSmokeMatrixContractBootstrapLaunchSmokeMatrixDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.bootstrap-launch-smoke-matrix-contract.bootstrap-launch-smoke-matrix";
+  option (hobo.source_path) = "src/draft/bootstrap-launch-smoke-matrix-contract/src/bootstrap-launch-smoke-matrix.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#BootstrapLaunchSmokeMatrixContractBootstrapLaunchSmokeMatrixDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -530,6 +556,19 @@ message ClientOptimisticUpdateContractClientOptimisticUpdateContractDataModel {
   bool cue_annotated = 6;
 }
 
+message ClosureBuilderAuthorFlowContractClosureBuilderAuthorFlowDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-author-flow-contract.closure-builder-author-flow";
+  option (hobo.source_path) = "src/draft/closure-builder-author-flow-contract/src/closure-builder-author-flow.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#ClosureBuilderAuthorFlowContractClosureBuilderAuthorFlowDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message ClosureBuilderManifestLoweringContractClosureBuilderManifestLoweringDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.closure-builder-manifest-lowering-contract.closure-builder-manifest-lowering";
   option (hobo.source_path) = "src/draft/closure-builder-manifest-lowering-contract/src/closure-builder-manifest-lowering.ts";
@@ -573,6 +612,19 @@ message CollectionCoverageGateContractCollectionCoverageGateDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.collection-coverage-gate-contract.collection-coverage-gate";
   option (hobo.source_path) = "src/draft/collection-coverage-gate-contract/src/collection-coverage-gate.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CollectionCoverageGateContractCollectionCoverageGateDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message CompatibilityMatrixScopeContractCompatibilityMatrixScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.compatibility-matrix-scope-contract.compatibility-matrix-scope";
+  option (hobo.source_path) = "src/draft/compatibility-matrix-scope-contract/src/compatibility-matrix-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#CompatibilityMatrixScopeContractCompatibilityMatrixScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -1063,6 +1115,19 @@ message DenyCeilingAlgebraPocDenyCeilingAlgebraDataModel {
   bool cue_annotated = 6;
 }
 
+message DeploymentDashboardTopologyScopeContractDeploymentDashboardTopologyScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.deployment-dashboard-topology-scope-contract.deployment-dashboard-topology-scope";
+  option (hobo.source_path) = "src/draft/deployment-dashboard-topology-scope-contract/src/deployment-dashboard-topology-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#DeploymentDashboardTopologyScopeContractDeploymentDashboardTopologyScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message DeploymentPlanIrContractDeploymentPlanIrDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.deployment-plan-ir-contract.deployment-plan-ir";
   option (hobo.source_path) = "src/draft/deployment-plan-ir-contract/src/deployment-plan-ir.ts";
@@ -1206,6 +1271,19 @@ message DnsValidationRebindingGuardContractDnsValidationRebindingGuardDataModel 
   bool cue_annotated = 6;
 }
 
+message DocsPortalScopeContractDocsPortalScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.docs-portal-scope-contract.docs-portal-scope";
+  option (hobo.source_path) = "src/draft/docs-portal-scope-contract/src/docs-portal-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#DocsPortalScopeContractDocsPortalScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message DocumentProjectionSinkContractDocumentProjectionSinkDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.document-projection-sink-contract.document-projection-sink";
   option (hobo.source_path) = "src/draft/document-projection-sink-contract/src/document-projection-sink.ts";
@@ -1327,6 +1405,19 @@ message EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.endpoint-monitor-operator-contract.endpoint-monitor-operator";
   option (hobo.source_path) = "src/draft/endpoint-monitor-operator-contract/src/endpoint-monitor-operator.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EndpointMonitorOperatorContractEndpointMonitorOperatorDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message EnterpriseDeploymentHardeningScopeContractEnterpriseDeploymentHardeningScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.enterprise-deployment-hardening-scope-contract.enterprise-deployment-hardening-scope";
+  option (hobo.source_path) = "src/draft/enterprise-deployment-hardening-scope-contract/src/enterprise-deployment-hardening-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#EnterpriseDeploymentHardeningScopeContractEnterpriseDeploymentHardeningScopeDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -2822,6 +2913,19 @@ message LaunchDemoGoldenPathContractLaunchDemoGoldenPathDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.launch-demo-golden-path-contract.launch-demo-golden-path";
   option (hobo.source_path) = "src/draft/launch-demo-golden-path-contract/src/launch-demo-golden-path.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#LaunchDemoGoldenPathContractLaunchDemoGoldenPathDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message LaunchSiteDemoAlphaEvidenceContractLaunchSiteDemoAlphaEvidenceDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.launch-site-demo-alpha-evidence-contract.launch-site-demo-alpha-evidence";
+  option (hobo.source_path) = "src/draft/launch-site-demo-alpha-evidence-contract/src/launch-site-demo-alpha-evidence.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#LaunchSiteDemoAlphaEvidenceContractLaunchSiteDemoAlphaEvidenceDataModel";
 
   string contract_id = 1;
   string source_path = 2;
@@ -5054,6 +5158,19 @@ message TutorialsWalkthroughsScopeAcceptanceTutorialsWalkthroughsScopeDataModel 
   bool cue_annotated = 6;
 }
 
+message UpgradeRollbackDryRunContractUpgradeRollbackDryRunDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.upgrade-rollback-dry-run-contract.upgrade-rollback-dry-run";
+  option (hobo.source_path) = "src/draft/upgrade-rollback-dry-run-contract/src/upgrade-rollback-dry-run.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#UpgradeRollbackDryRunContractUpgradeRollbackDryRunDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message UpgradeTestSuiteScopeContractUpgradeTestSuiteDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.upgrade-test-suite-scope-contract.upgrade-test-suite";
   option (hobo.source_path) = "src/draft/upgrade-test-suite-scope-contract/src/upgrade-test-suite.ts";
@@ -5080,10 +5197,36 @@ message UsageInferredPermissionsContractUsagePermissionsDataModel {
   bool cue_annotated = 6;
 }
 
+message V1BetaPilotPrivateBetaEvidenceV1BetaPilotPrivateBetaEvidenceDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.v1-beta-pilot-private-beta-evidence.v1-beta-pilot-private-beta-evidence";
+  option (hobo.source_path) = "src/draft/v1-beta-pilot-private-beta-evidence/src/v1-beta-pilot-private-beta-evidence.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#V1BetaPilotPrivateBetaEvidenceV1BetaPilotPrivateBetaEvidenceDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message V1CutlineContractV1CutlineDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.v1-cutline-contract.v1-cutline";
   option (hobo.source_path) = "src/draft/v1-cutline-contract/src/v1-cutline.ts";
   option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#V1CutlineContractV1CutlineDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
+message V1ReadinessDashboardContractV1ReadinessDashboardDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.v1-readiness-dashboard-contract.v1-readiness-dashboard";
+  option (hobo.source_path) = "src/draft/v1-readiness-dashboard-contract/src/v1-readiness-dashboard.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#V1ReadinessDashboardContractV1ReadinessDashboardDataModel";
 
   string contract_id = 1;
   string source_path = 2;

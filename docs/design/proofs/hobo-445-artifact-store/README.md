@@ -39,7 +39,7 @@ and the durable scope record at [artifact-store.md](../../artifact-store.md).
 ## Gate Evidence
 
 - TypeScript proof: `pnpm --prefix src/draft/artifact-store-scope-contract test`.
-- Protobuf/CUE proof: `pnpm run contracts:data-models` regenerates and checks the indexed data model
+- Protobuf/CUE proof: `pnpm test:schema` checks repository schema validators; package-local data-model folders own data model
   contracts including `ArtifactStoreScopeRecord`.
 - PACT proof: `architecture/pacts/artifact_store_scope.pact.json` pins the M0 scope acceptance
   consumer expectations.

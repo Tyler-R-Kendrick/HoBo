@@ -11,7 +11,8 @@
     "vscode": {
       "extensions": [
         "ms-vscode.vscode-typescript-next",
-        "GitHub.copilot"
+        "GitHub.copilot",
+        "ast-grep.ast-grep-vscode"
       ]
     }
   },

@@ -1,13 +1,13 @@
 ---
 type: Agent Tooling Reference
 title: "Agent tooling"
-description: "Seven third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the refere"
+description: "Twelve third-party AI-coding tools are wired into this repo for Claude Code, Cursor, Codex, and GitHub Copilot CLI."
 tags: [hobo, agent-tooling.md]
 ---
 
 # Agent tooling
 
-Nine third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh).
+Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh).
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
@@ -17,9 +17,11 @@ Agents implementing HoBo code must follow the canonical architecture rules in [`
 
 The fail-fast check is `pnpm run architecture:guard` (`pnpm run architecture:guard:staged` in pre-commit). It scans changed `src/draft/*` implementation packages for PACT, protobuf, CUE, parse-don't-validate, and event-architecture evidence before the slower test and CI gates run.
 
-The full local test gate is `npm test`, backed by [`../scripts/run-tests.ts`](../scripts/run-tests.ts). It discovers tracked `*test.ts` and `*test.mjs` files, batches ordinary contract tests conservatively for speed, and isolates compile-heavy TypeScript consumer tests that are known to report grouped Node test-file wrapper failures on Windows even when their assertions pass individually. Keep those isolated entries unless the full pre-commit gate proves a grouped runner is stable; update the isolated list when adding contract tests that shell out to `tsc` or compile TypeScript consumers.
+The full compatibility gate is `pnpm run validate:final`, backed by [`../scripts/run-tests.ts`](../scripts/run-tests.ts). It discovers tracked `*test.ts` and `*test.mjs` files, batches ordinary contract tests conservatively for speed, and isolates compile-heavy TypeScript consumer tests that are known to report grouped Node test-file wrapper failures on Windows even when their assertions pass individually. Keep those isolated entries unless the full pre-commit gate proves a grouped runner is stable; update the isolated list when adding contract tests that shell out to `tsc` or compile TypeScript consumers.
 
-## The nine tools
+Agent edit loops should not use Node test suites for discovery or broad diagnostics. Use `pnpm run search <text>` for exact indexed search, `pnpm run search:structure --filter <rule>` or `pnpm exec ast-grep run -p <pattern> -l ts` for AST search, then the narrowest compatible test command: `pnpm run test:smoke <file>` when Bun can run it, `pnpm run test:file <file>` or `pnpm run test:name <name> <file>` for normal local feedback, `HOBO_CHECK_BASE=origin/main pnpm run test:changed` for changed-scope validation, and `pnpm run validate:final` only after implementation is complete. `scripts/run-tests.ts` refuses broad agent edit-loop categories when `CI_AGENT`, `CODEX`, `CLAUDECODE`, or `CURSOR_AGENT` is set unless `--final` is passed.
+
+## The twelve tools
 
 ### improve — `shadcn/improve` (MIT)
 A **read-only agent skill**: surveys the codebase and writes prioritized, self-contained implementation **plans** to `docs/plans/` for other (cheaper) agents to execute. It never edits source. Commands: `/improve`, `/improve quick`, `/improve deep`, `/improve security|perf|tests|bugs`, `/improve branch`, `/improve next`, `/improve plan <desc>`, `/improve execute <plan>`, `/improve reconcile`. No API keys. Installed to `.claude/skills/improve` (Claude Code) and `.agents/skills/improve` (Cursor + Codex).
@@ -42,8 +44,17 @@ A **minimalist-coding skill**: channels a senior dev who pushes the laziest solu
 - **Invocation-based here, not always-on.** Run `/ponytail` to activate it for a session. (Upstream also supports an always-on plugin install via `/plugin marketplace add DietrichGebert/ponytail` → `/plugin install ponytail@ponytail` in Claude Code; we use the skills route to keep it opt-in and committable, and to avoid stacking a second always-on directive on top of caveman.) Optional global config: `~/.config/ponytail/config.json` or `PONYTAIL_DEFAULT_MODE`.
 
 
+### tgrep — `microsoft/tgrep` (MIT)
+A **trigram-indexed grep** for fast exact/regex search in large local checkouts. It is a local binary with no keys and no data egress. Use `pnpm run search <pattern>` before tests or semantic search. The setup script installs it in the common/devcontainer layer when possible: existing `tgrep` wins; otherwise it tries a GitHub release download through `gh`, then `cargo install --git https://github.com/microsoft/tgrep.git --locked tgrep-cli`, then a curl/python GitHub API release download for common Linux/macOS architectures.
+
+### ast-grep — `ast-grep/ast-grep` (MIT)
+A **structural search and rewrite** tool for AST-shaped queries. The repo pins `@ast-grep/cli` as a dev dependency, allows its postinstall in `pnpm-workspace.yaml`, commits `sgconfig.yml`, and exposes `pnpm run search:structure` for configured scans. Use ad hoc patterns with `pnpm exec ast-grep run -p '<pattern>' -l ts` when you do not need a committed rule. The devcontainer recommends the VS Code ast-grep extension.
+
 ### Serena — `oraios/serena` (MIT)
 A **semantic-code MCP server**: it gives coding agents IDE-like symbol search, reference lookup, and safer symbol-aware edits/refactors through language servers. It is agent/harness agnostic because it speaks MCP; this repo exposes one shared launcher, [`../scripts/agent-mcp-serena.sh`](../scripts/agent-mcp-serena.sh), and points Claude Code, Cursor, and Codex at that wrapper instead of duplicating hard-coded commands. Install with `uv tool install -p 3.13 serena-agent`, then run `serena init`. No API keys. Serena may install/use language-server dependencies for the languages in the checkout.
+
+### RTK — `rtk-ai/rtk` (Apache-2.0)
+A **Rust Token Killer command proxy** that compresses noisy shell-command output before it reaches coding agents. It is local, uses no API keys, and supports direct use (`rtk git status`, `rtk pnpm test:file <file>`, `rtk gain`) plus hook initialization for Claude Code/Copilot (`rtk init -g`), Codex (`rtk init -g --codex`), and Cursor (`rtk init -g --agent cursor`). The setup script installs it in the common/devcontainer layer when possible (existing `rtk`, Homebrew, Cargo, then upstream install script) and initializes hooks only in the selected agent-specific layer.
 
 ### headroom — `chopratejas/headroom` (Apache-2.0)
 A **token-compression MCP server** (also a CLI/proxy) that shrinks the **context fed to the model** — tool outputs, logs, file dumps — reversibly (`headroom_retrieve` fetches originals). Local-first, **no API keys**. MCP tools surface as `mcp__headroom__headroom_compress|retrieve|stats`. Launch: `headroom mcp serve` (wired in `.mcp.json` / `.cursor/mcp.json` / `.codex/config.toml`). For automatic compression of *all* traffic you can also run the proxy: `headroom proxy --port 8787` then `ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude` (optional; see `headroom mcp --help`).
@@ -69,7 +80,7 @@ bash scripts/setup-agent-tools.sh --agent codex --no-gbrain
 bash scripts/setup-agent-tools.sh --agent copilot --no-gbrain
 ```
 
-The common layer installs agent-agnostic runtimes (`serena`, `headroom`, `skillopt-train`, `skillopt-sleep`) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and key-requiring gbrain setup during container creation.
+The common layer installs agent-agnostic runtimes (`tgrep`, repo-pinned `ast-grep`, `rtk`, `serena`, `headroom`, `skillopt-train`, `skillopt-sleep`) and leaves per-agent plugin/skill registration alone. Agent-specific layers only install shims for the selected supported client. Devcontainers run the common layer by default through [`.devcontainer/post-create.sh`](../.devcontainer/post-create.sh), avoiding prompts, global CLI mutations, and key-requiring gbrain setup during container creation.
 
 ## Per-agent wiring
 | | MCP servers (Serena, headroom, gbrain) | Skills (improve, mattpocock, caveman, ponytail) | Plugin / optimizer |
@@ -88,10 +99,10 @@ bash scripts/setup-agent-tools.sh --agent codex --no-gbrain # add one supported 
 bash scripts/setup-agent-tools.sh              # common + all supported shims
 bash scripts/setup-agent-tools.sh --no-skillopt # skip microsoft/SkillOpt install
 ```
-Requires: Node ≥18 (`npx`), Python ≥3.10 (`pip`) for headroom/SkillOpt, `uv` (or Python to install `uv`) for Serena, and Bun for gbrain. Put `$HOME/.local/bin` (headroom, Serena fallback, SkillOpt CLIs) and `$HOME/.bun/bin` (gbrain) on your `PATH`.
+Requires: Node ≥18 (`npx`/`pnpm`) for ast-grep and skills, Python ≥3.10 (`pip`) for headroom/SkillOpt, `uv` (or Python to install `uv`) for Serena, GitHub CLI, Cargo, or curl/python/tar for tgrep, Homebrew/Cargo/curl for RTK, and Bun for gbrain. Put `$HOME/.local/bin` (RTK, headroom, Serena fallback, SkillOpt CLIs) and `$HOME/.bun/bin` (gbrain) on your `PATH`.
 
 ## Trust / provenance
-- All nine are MIT/Apache-2.0 OSS. `improve`, `mattpocock/skills`, `ponytail`, `superpowers`, `Serena`, and `headroom` are local with no egress (superpowers has optional, disable-able telemetry). `caveman` installs via a `curl|bash` shim that forwards to `npx github:JuliusBrussee/caveman`. `gbrain` is the only always-configured MCP tool with third-party data egress + cost; SkillOpt may call whatever model/backend you configure for offline training or sleep runs; its default sleep `mock` backend is no-spend and deterministic.
+- All twelve are MIT/Apache-2.0 OSS. `improve`, `mattpocock/skills`, `ponytail`, `superpowers`, `Serena`, `headroom`, and `RTK` are local with no egress (superpowers has optional, disable-able telemetry). `caveman` installs via a `curl|bash` shim that forwards to `npx github:JuliusBrussee/caveman`. `gbrain` is the only always-configured MCP tool with third-party data egress + cost; SkillOpt may call whatever model/backend you configure for offline training or sleep runs; its default sleep `mock` backend is no-spend and deterministic.
 - `npx skills add … --copy` writes real files (not symlinks) so they're committable and reviewable. `skills-lock.json` pins versions.
 - Review skill files before trusting them — they run with full agent permissions.
 
@@ -102,13 +113,17 @@ Agent-tooling changes count as repo behavior changes. Prefer cross-agent config 
 
 ## Fast local checks with Turborepo
 
-Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. Protobuf/CUE edits inside draft packages stay on that isolated workspace path; only root contract/schema edits outside `src/draft/*` trigger the repository-wide `test:schema` and contract lanes. Multiple touched draft workspaces are passed to one Turbo invocation so their contract regeneration and tests can run in parallel. Independent relevant checks also run in parallel after any package-install guard, while expensive global validators stay impact-scoped: traceability runs for traceability/design-proof edits, deployment-set validation runs for that proof, and agent evals run only for eval/prompt paths. Root `package.json` changes that only add or update scripts, plus lockfile importer-only updates, still run install, root-test, standards, docs, architecture guards, and touched workspace tests, but they do not force the all-package `turbo run build typecheck lint test --filter=[HEAD^...HEAD]` lane unless `--build`, root TypeScript/Turbo/workspace config, or non-script package metadata changes request it. The selector lives in `scripts/relevant-check-policy.ts` so root tests can assert gate choice without executing those gates. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. The relevant-check path also runs `pnpm run case:check` for source or automation changes; tracked paths that differ only by case should be handled as separate Windows hygiene work instead of being folded into unrelated cleanup. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
+Pre-commit checks now route through `pnpm run check:relevant:staged`, which discovers staged files and runs only the gates tied to those paths. Draft proof packages under `src/draft/*` are treated as independent pnpm workspaces, so package tests run through Turborepo filters instead of replaying every proof in the repository. Protobuf/CUE edits inside draft packages stay on that isolated workspace path; CUE-backed data-model folders must live inside the owning project/package, and root schema edits outside `src/draft/*` trigger the repository-wide `test:schema` and contract lanes. Multiple touched draft workspaces are passed to one Turbo invocation so their contract regeneration and tests can run in parallel. Independent relevant checks also run in parallel after any package-install guard, while expensive global validators stay impact-scoped: traceability runs for traceability/design-proof edits, deployment-set validation runs for that proof, and agent evals run only for eval/prompt paths. Root `package.json` changes that only add or update scripts, plus lockfile importer-only updates, still run install, root-test, standards, docs, architecture guards, and touched workspace tests, but they do not force the all-package `turbo run build typecheck lint test --filter=[HEAD^...HEAD]` lane unless `--build`, root TypeScript/Turbo/workspace config, or non-script package metadata changes request it. The selector lives in `scripts/relevant-check-policy.ts` so root tests can assert gate choice without executing those gates. If the local Turbo native binary cannot start, the relevant-check runner falls back to the equivalent `pnpm --filter ./src/draft/<package> test` command for the changed workspaces. The relevant-check path also runs `pnpm run case:check` for source or automation changes; tracked paths that differ only by case should be handled as separate Windows hygiene work instead of being folded into unrelated cleanup. Turborepo stores cache entries under `.turbo/` and reuses them across Windows, macOS, Linux, and devcontainer runs when inputs are unchanged.
 
 On Windows, `scripts/run-relevant-checks.ts` invokes nested pnpm commands through `cmd.exe /d /c pnpm.cmd`.
 This keeps the staged hook path usable in shells where `pnpm` is not directly executable from
 `child_process.spawnSync(..., { shell: false })`.
 
 Use these commands when working locally or as an agent:
+
+Use `pnpm run check:changed:build -- --base=<ref>` only when you intentionally need the broad package graph build/typecheck/lint/test lane; the default changed-file agent check stays on impact-scoped install, root tests, docs, standards, and architecture gates.
+
+`standards:check` accepts `--base=<ref>` and falls back to `HEAD~1` when that ref is unavailable in a sandbox checkout without remotes; normal clones should still pass `origin/main` or the PR base.
 
 - `pnpm run check:relevant:staged` before commit; this is the hook path and should stay fast.
 - `pnpm run check:relevant -- --base=origin/main` while iterating on a branch; it compares changed files with the merge base.
@@ -126,7 +141,7 @@ workspaces may require fresh `pnpm-lock.yaml` importer entries. Keep those
 lockfile updates with the merge repair and rerun the normal relevant check path
 instead of treating them as unrelated churn.
 
-Agents should prefer the narrowest command that covers the changed files, and should avoid running `pnpm test` or `pnpm run test:all` after edits that touch only one isolated draft package unless a shared script, root dependency, or contract generator changed.
+Agents should prefer the narrowest command that covers the changed files, and should avoid running `pnpm test` or `pnpm run test:all` after edits that touch only one isolated draft package unless a shared script, root dependency, or contract generator changed. Search first (`pnpm run search <text>`, then ast-grep for code shape), run single-file Bun/Vitest feedback during implementation, and reserve Node-based `scripts/run-tests.ts` for `pnpm run validate:final`.
 
 ### Tooling choice: pnpm + Turborepo
 

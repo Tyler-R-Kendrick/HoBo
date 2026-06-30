@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 type Mode = "worktree" | "staged";
@@ -6,6 +6,7 @@ type Mode = "worktree" | "staged";
 let base = "";
 let mode: Mode = "worktree";
 let baseRefExists: boolean | undefined;
+let resolvedBase: string | undefined;
 const failures: string[] = [];
 
 for (const arg of process.argv.slice(2)) {
@@ -20,7 +21,9 @@ Enforces HoBo's compile-time-first technical standards on changed files:
 - TypeScript toolchain is declared in package metadata.
 - New JavaScript-family implementation files are rejected in favor of .ts.
 - Canonical agent/design docs keep the Protobuf, CUE, parse-don't-validate,
-  and PACT guidance present.`);
+  and PACT guidance present.
+- Repository-wide data-model catalogs stay forbidden; CUE-backed data models
+  live beside the package/project that owns the type.`);
     process.exit(0);
   }
 }
@@ -49,22 +52,42 @@ function run(command: string, args: string[]): string {
   return result.stdout;
 }
 
-function baseRefAvailable(): boolean {
-  if (!base) {
-    return false;
-  }
-  baseRefExists ??= spawnSync("git", ["rev-parse", "--verify", `${base}^{commit}`], {
+function refAvailable(ref: string): boolean {
+  return spawnSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
     shell: false,
     stdio: "ignore",
   }).status === 0;
-  return baseRefExists;
+}
+
+function effectiveBase(): string {
+  if (!base) return "";
+  if (resolvedBase !== undefined) return resolvedBase;
+  if (refAvailable(base)) {
+    resolvedBase = base;
+    baseRefExists = true;
+    return resolvedBase;
+  }
+  if (refAvailable("HEAD~1")) {
+    console.warn(`Base ref ${base} is unavailable; falling back to HEAD~1.`);
+    resolvedBase = "HEAD~1";
+    baseRefExists = false;
+    return resolvedBase;
+  }
+  console.warn(`Base ref ${base} is unavailable; falling back to working tree diff.`);
+  resolvedBase = "";
+  baseRefExists = false;
+  return resolvedBase;
+}
+
+function baseRefAvailable(): boolean {
+  return Boolean(effectiveBase());
 }
 
 function existsAtBase(file: string): boolean {
   if (!baseRefAvailable()) {
     return false;
   }
-  return spawnSync("git", ["cat-file", "-e", `${base}:${file}`], {
+  return spawnSync("git", ["cat-file", "-e", `${effectiveBase()}:${file}`], {
     shell: false,
     stdio: "ignore",
   }).status === 0;
@@ -74,8 +97,8 @@ function changedFiles(): string[] {
   const nameStatus =
     mode === "staged"
       ? run("git", ["diff", "--cached", "--name-status", "--diff-filter=ACMR"])
-      : base
-        ? run("git", ["diff", "--name-status", "--diff-filter=ACMR", `${base}...HEAD`])
+      : effectiveBase()
+        ? run("git", ["diff", "--name-status", "--diff-filter=ACMR", `${effectiveBase()}...HEAD`])
         : run("git", ["diff", "--name-status", "--diff-filter=ACMR", "HEAD"]);
 
   const changed = nameStatus
@@ -140,23 +163,13 @@ if (newJavaScriptFiles.length > 0) {
   );
 }
 
-const packageManagerCommand = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "pnpm";
-const packageManagerArgs =
-  process.platform === "win32"
-    ? ["/d", "/c", "pnpm.cmd", "run", "--silent", "contracts:data-models"]
-    : ["run", "--silent", "contracts:data-models"];
-const contractsResult = spawnSync(packageManagerCommand, packageManagerArgs, {
-  encoding: "utf8",
-  shell: false,
-});
-if (contractsResult.status !== 0) {
-  if (contractsResult.stdout) {
-    process.stderr.write(contractsResult.stdout);
-  }
-  if (contractsResult.stderr) {
-    process.stderr.write(contractsResult.stderr);
-  }
-  fail("data-model contracts are stale; run pnpm run contracts:data-models");
+if (existsSync("contracts/data-models")) {
+  fail("central contracts/data-models is forbidden; CUE-backed data models must live in the owning project/package data-models folder");
+}
+
+const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as { scripts?: Record<string, string> };
+if (packageJson.scripts?.["contracts:data-models"]) {
+  fail("package.json must not define contracts:data-models; do not regenerate a central data-model catalog");
 }
 
 if (failures.length > 0) {

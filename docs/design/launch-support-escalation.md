@@ -119,3 +119,27 @@ The M1 gate records six support evidence items:
 The accepted M1 state has no launch blockers. It carries one non-blocking follow-up for the alpha
 known-limitation FAQ and keeps support tooling, ticket automation, status-page publication, live
 customer support operations, and customer-facing SLA commitments out of this branch.
+
+## M2 Private Beta Evidence
+
+Source issue: HOBO-467.
+
+Executable proof lives in
+[`src/draft/launch-support-private-beta-evidence-contract`](../../src/draft/launch-support-private-beta-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-467-launch-support-private-beta`](./proofs/hobo-467-launch-support-private-beta/README.md).
+
+The M2 gate records six support evidence items:
+
+- private beta support escalation baseline from this support record;
+- support workflow intake, triage, owner route, and customer-safe update states;
+- support SLA/channel language that separates private beta promises from GA commitments;
+- incident communication redaction gates for customer-visible updates;
+- security-sensitive escalation routing through Security Verification;
+- support readiness export into the V1 Release Program & Cutline.
+
+The accepted M2 state carries private beta limitations and accepted risks without converting them
+into public SLA promises. M3/M4 follow-ups are limited to missing release-candidate support drill
+evidence and GA support handoff evidence. Support runtime services, ticket queues, status-page
+publication, live support operations, customer-data access, and commercial terms remain out of this
+branch.

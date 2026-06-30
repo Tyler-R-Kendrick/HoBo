@@ -2987,6 +2987,19 @@ message LaunchSupportEscalationMatrixLaunchSupportEscalationDataModel {
   bool cue_annotated = 6;
 }
 
+message LaunchSupportPrivateBetaEvidenceContractLaunchSupportPrivateBetaEvidenceDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.launch-support-private-beta-evidence-contract.launch-support-private-beta-evidence";
+  option (hobo.source_path) = "src/draft/launch-support-private-beta-evidence-contract/src/launch-support-private-beta-evidence.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#LaunchSupportPrivateBetaEvidenceContractLaunchSupportPrivateBetaEvidenceDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message LifecyclePhasePolicyContractLifecyclePhasePolicyDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.lifecycle-phase-policy-contract.lifecycle-phase-policy";
   option (hobo.source_path) = "src/draft/lifecycle-phase-policy-contract/src/lifecycle-phase-policy.ts";

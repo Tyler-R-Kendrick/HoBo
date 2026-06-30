@@ -2818,6 +2818,19 @@ message MarketplacePayoutHooksScopeContractMarketplacePayoutHooksScopeDataModel 
   bool cue_annotated = 6;
 }
 
+message MarketplaceUxScopeContractMarketplaceUxScopeDataModel {
+  option (hobo.data_model_contract_id) = "hobo.datamodel.marketplace-ux-scope-contract.marketplace-ux-scope";
+  option (hobo.source_path) = "src/draft/marketplace-ux-scope-contract/src/marketplace-ux-scope.ts";
+  option (hobo.cue_annotation) = "contracts/data-models/data-models.cue#MarketplaceUxScopeContractMarketplaceUxScopeDataModel";
+
+  string contract_id = 1;
+  string source_path = 2;
+  string package_name = 3;
+  string domain = 4;
+  repeated string integration_boundaries = 5;
+  bool cue_annotated = 6;
+}
+
 message MatchingEngineSkeletonContractMatchingEngineDataModel {
   option (hobo.data_model_contract_id) = "hobo.datamodel.matching-engine-skeleton-contract.matching-engine";
   option (hobo.source_path) = "src/draft/matching-engine-skeleton-contract/src/matching-engine.ts";

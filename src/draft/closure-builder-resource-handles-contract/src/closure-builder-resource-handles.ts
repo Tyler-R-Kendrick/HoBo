@@ -27,6 +27,14 @@ export interface BindleManifest<TAliases extends Record<string, ResourceHandle>>
   readonly relationships: readonly ResourceRelationship[];
 }
 
+export interface ResourceIdentityDiagnostic {
+  readonly alias: string;
+  readonly generatedId: string;
+  readonly kind: ResourceKind;
+  readonly ownerBindleId: string;
+  readonly physicalNameSeed: string;
+}
+
 export interface ResourceHandle<TKind extends ResourceKind = ResourceKind> {
   readonly generatedId: string;
   readonly kind: TKind;
@@ -72,9 +80,35 @@ export function bindle<TAliases extends Record<string, ResourceHandle>>(
   });
 }
 
+export function resourceIdentityDiagnostics(
+  manifest: BindleManifest<Record<string, ResourceHandle>>,
+): readonly ResourceIdentityDiagnostic[] {
+  const resourcesById = new Map(manifest.resources.map((resource) => [resource.generatedId, resource]));
+  return deepFreeze(
+    Object.entries(manifest.aliases).map(([alias, handle]) => {
+      const resource = resourcesById.get(handle.generatedId);
+      if (!resource) {
+        throw new ClosureBuilderResourceError(
+          "CLOSURE_BUILDER_ALIAS_RESOURCE_MISSING",
+          "identity diagnostics can only project aliases for collected resources",
+          { alias, generatedId: handle.generatedId },
+        );
+      }
+      return {
+        alias,
+        generatedId: resource.generatedId,
+        kind: resource.kind,
+        ownerBindleId: resource.ownerBindleId,
+        physicalNameSeed: `${resource.ownerBindleId}:${resource.generatedId}`,
+      };
+    }),
+  );
+}
+
 class BuilderContext {
   readonly relationships: ResourceRelationship[] = [];
   private readonly handles: ResourceHandleImpl[] = [];
+  private readonly kindCounts = new Map<ResourceKind, number>();
 
   constructor(readonly ownerBindleId: string) {}
 
@@ -103,15 +137,21 @@ class BuilderContext {
     kind: TKind,
     workload: WorkloadDescriptor | null,
   ): ResourceHandle<TKind> {
+    const kindOrdinal = (this.kindCounts.get(kind) ?? 0) + 1;
+    this.kindCounts.set(kind, kindOrdinal);
     const handle = new ResourceHandleImpl<TKind>(
       this,
-      `res_${String(this.handles.length + 1).padStart(4, "0")}`,
+      generatedResourceId(kind, kindOrdinal),
       kind,
       workload,
     );
     this.handles.push(handle);
     return handle;
   }
+}
+
+function generatedResourceId(kind: ResourceKind, ordinal: number): string {
+  return `res_${kind}_${String(ordinal).padStart(4, "0")}`;
 }
 
 class ResourceHandleImpl<TKind extends ResourceKind = ResourceKind> implements ResourceHandle<TKind> {

@@ -40,6 +40,7 @@ The test suite proves:
 
 - closure-builder resources feed coverage, collect, and manifest lowering;
 - generated aliases type-check without becoming resource IDs;
+- generated alias consumers use explicit NodeNext-compatible import specifiers;
 - unobserved closure-builder resources fail closed; and
 - scaffolds use the canonical v1 closure-builder sample without pre-v1 syntax.
 

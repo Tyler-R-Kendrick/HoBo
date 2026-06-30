@@ -157,7 +157,7 @@ export async function typecheckGeneratedAliases(declarations: string): Promise<v
     await writeFile(join(dir, "generated.d.ts"), declarations);
     await writeFile(
       join(dir, "consumer.ts"),
-      `import type { ClosureBuilderAliases } from "./generated";\n\n` +
+      `import type { ClosureBuilderAliases } from "./generated.js";\n\n` +
         `declare const aliases: ClosureBuilderAliases;\n` +
         `const cacheId: "res_0001" = aliases.cache.generatedId;\n` +
         `const apiKind: "api" = aliases.api.kind;\n` +

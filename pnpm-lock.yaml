@@ -115,6 +115,8 @@ importers:
 
   src/draft/client-optimistic-update-contract: {}
 
+  src/draft/closure-builder-manifest-lowering-contract: {}
+
   src/draft/closure-builder-public-api-contract: {}
 
   src/draft/closure-builder-resource-handles-contract: {}
@@ -190,6 +192,8 @@ importers:
 
   src/draft/curated-catalog-policy-contract: {}
 
+  src/draft/customer-assurance-evidence-packet-contract: {}
+
   src/draft/data-flywheel-privacy-spike: {}
 
   src/draft/data-governance-policy-contract: {}
@@ -257,6 +261,8 @@ importers:
   src/draft/end-user-authorization-policy-contract: {}
 
   src/draft/endpoint-monitor-operator-contract: {}
+
+  src/draft/entitlement-abuse-rate-limit-policy-contract: {}
 
   src/draft/entitlements-plan-limits-scope: {}
 
@@ -524,6 +530,8 @@ importers:
   src/draft/inbound-xaa-resource-server-contract: {}
 
   src/draft/incident-aggregate-contract: {}
+
+  src/draft/incident-communications-scope-contract: {}
 
   src/draft/internal-ca-private-acme-contract: {}
 
@@ -848,6 +856,8 @@ importers:
   src/draft/secret-zero-genesis-bootstrap-contract: {}
 
   src/draft/secretless-config-resolution-contract: {}
+
+  src/draft/security-verification-scope-acceptance: {}
 
   src/draft/self-host-bootstrap-ordering-spike: {}
 

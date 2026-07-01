@@ -8,25 +8,27 @@ Accepted for HOBO-561 proof work.
 
 HOBO-561 asks for a topology/status reference prototype over projection
 snapshots. The upstream M1 slices already define deployment dashboard mockups
-(HOBO-544) and freshness/RBAC/support fixtures (HOBO-545). Recreating those
-surfaces here would drift from accepted evidence and risk inventing production
-behavior.
+(HOBO-544), freshness/RBAC/support fixtures (HOBO-545), and the canonical
+resource-lifecycle quickstart fixture ids (HOBO-577). Recreating those surfaces
+here would drift from accepted evidence and risk inventing production behavior.
 
 ## Decision
 
-The prototype is a thin composition layer over the accepted M1 proofs. It parses
-both upstream proof exports, then maps their fixtures into nine dashboard
-states: fresh, stale, unavailable, redacted, unauthorized, partial, failed,
-rolled-back, and completed. Every state carries source issue, source fixture,
-projection source, freshness label, tenant/RBAC disposition, safe next action,
-proof mode, and optional redacted support handoff packet.
+The prototype is a thin composition layer over the accepted M1 proofs and
+HOBO-577 quickstart references. It parses both upstream proof exports, pins the
+accepted quickstart fixture ids and proof-mode labels, then maps their fixtures
+into nine dashboard states: fresh, stale, unavailable, redacted, unauthorized,
+partial, failed, rolled-back, and completed. Every state carries source issue,
+source fixture, projection source, freshness label, tenant/RBAC disposition,
+safe next action, proof mode, and optional redacted support handoff packet.
 
 ## Consequences
 
 - Downstream vibe artifacts get one deterministic topology/status shape without
   importing live providers or dashboard runtime.
 - Failed and rolled-back states are represented as reference/simulated evidence
-  from accepted dashboard/quickstart records instead of optimistic live claims.
+  from accepted dashboard and HOBO-577 quickstart records instead of optimistic
+  live claims.
 - RBAC and support remain fixture dispositions, not enforcement or ticketing
   systems.
 
@@ -54,10 +56,11 @@ are `DashboardProjectionRefreshed`, `DashboardProjectionStale`,
 `SupportHandoffRouted`. Actors are `DeploymentProjectionActor`,
 `RunProjectionActor`, `TopologyProjectionActor`, and `SupportHandoffActor`.
 The event-store expectation is replayable projection history from the accepted
-fixtures. Materialized views and projections are the checked `*View` projection
-sources. Snapshots are the parsed topology/status records and their freshness
-labels. Read store behavior is fixture-only reference reads for downstream
-vibe surfaces; this proof does not implement a production read store,
+fixtures plus HOBO-577 quickstart fixture ids for deploy, inspect, manage stale,
+recover, and scope-out paths. Materialized views and projections are the checked
+`*View` projection sources. Snapshots are the parsed topology/status records and
+their freshness labels. Read store behavior is fixture-only reference reads for
+downstream vibe surfaces; this proof does not implement a production read store,
 subscription, or GraphQL facade.
 
 ## Alternatives Rejected

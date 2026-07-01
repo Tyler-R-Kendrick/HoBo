@@ -3,9 +3,18 @@ syntax = "proto3";
 package hobo.draft.vibe_topology_status_prototype.v1;
 
 message SourceDependency {
+  string issue = 1;
+  string title = 2;
+  string status = 3;
+  string evidence = 4;
+}
+
+message QuickstartFixtureRef {
   string source_issue = 1;
-  string status = 2;
-  string evidence = 3;
+  string fixture_id = 2;
+  string proof_mode = 3;
+  string consuming_surface = 4;
+  string topology_use = 5;
 }
 
 message Surface {
@@ -60,4 +69,5 @@ message Prototype {
   repeated Scenario scenarios = 9;
   repeated string accessibility_notes = 10;
   repeated string scope_out = 11;
+  repeated QuickstartFixtureRef quickstart_fixture_refs = 12;
 }

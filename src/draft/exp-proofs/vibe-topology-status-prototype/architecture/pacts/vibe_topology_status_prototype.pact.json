@@ -22,7 +22,8 @@
           "designRefs": [
             "docs/design/deployment-dashboard-topology-explorer.md",
             "docs/design/developer-experience.md#plan-07",
-            "docs/design/data-plane.md#plan-32"
+            "docs/design/data-plane.md#plan-32",
+            "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md"
           ],
           "sourceDependencies": [
             {
@@ -36,25 +37,68 @@
               "title": "Vibe dashboard freshness/RBAC fixtures",
               "status": "accepted",
               "evidence": "src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures"
+            },
+            {
+              "issue": "HOBO-577",
+              "title": "Vibe resource lifecycle quickstart examples",
+              "status": "accepted",
+              "evidence": "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md"
+            }
+          ],
+          "quickstartFixtureRefs": [
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-deploy-run-accepted-v1",
+              "proofMode": "simulated",
+              "consumingSurface": "deployment-timeline",
+              "topologyUse": "deployment timeline states reuse the accepted deploy-run fixture instead of inventing a dashboard-only deploy story"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-inspect-event-projection-v1",
+              "proofMode": "reference-fixture",
+              "consumingSurface": "topology-graph",
+              "topologyUse": "topology graph nodes cite accepted projection evidence instead of live provider traversal"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-manage-stale-evidence-v1",
+              "proofMode": "reference-fixture",
+              "consumingSurface": "freshness-rbac-state",
+              "topologyUse": "freshness and RBAC strips reuse the stale-evidence quickstart copy and owner route"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-snapshot-restore-v1",
+              "proofMode": "live",
+              "consumingSurface": "run-inspector",
+              "topologyUse": "run inspector rollback copy marks recovery as gated live evidence, not a production restore implementation"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-scope-out-v1",
+              "proofMode": "scope-out",
+              "consumingSurface": "support-handoff",
+              "topologyUse": "support handoff keeps recovery scope-out claims explicit and customer safe"
             }
           ],
           "surfaces": [
             {
               "id": "deployment-timeline",
               "title": "Deployment timeline over accepted projection snapshots",
-              "consumesFrom": ["HOBO-544", "HOBO-545"],
+              "consumesFrom": ["HOBO-544", "HOBO-545", "HOBO-577"],
               "operatingQuestion": "What deployment state is current, failed, rolled back, or completed, and which event-backed snapshot proves it?"
             },
             {
               "id": "topology-graph",
               "title": "Topology graph status from projection-backed mockups",
-              "consumesFrom": ["HOBO-544", "HOBO-545"],
+              "consumesFrom": ["HOBO-544", "HOBO-545", "HOBO-577"],
               "operatingQuestion": "Which topology nodes and edges are visible, stale, unavailable, redacted, or scope-limited without live provider traversal?"
             },
             {
               "id": "run-inspector",
               "title": "Run inspector state from redacted replay and support fixtures",
-              "consumesFrom": ["HOBO-544", "HOBO-545"],
+              "consumesFrom": ["HOBO-544", "HOBO-545", "HOBO-577"],
               "operatingQuestion": "Which run, event, actor, and replay snapshot explain the deployment outcome for a developer or support operator?"
             },
             {
@@ -66,7 +110,7 @@
             {
               "id": "support-handoff",
               "title": "Support-safe evidence handoff",
-              "consumesFrom": ["HOBO-544", "HOBO-545"],
+              "consumesFrom": ["HOBO-544", "HOBO-545", "HOBO-577"],
               "operatingQuestion": "What redacted packet can support use, and what stays withheld, without creating a live ticket or SLA promise?"
             }
           ],
@@ -151,7 +195,7 @@
             {
               "state": "rolled-back",
               "surface": "deployment-timeline",
-              "sourceIssue": "HOBO-544",
+              "sourceIssue": "HOBO-577",
               "sourceFixtureId": "rlq-recover-snapshot-restore-v1",
               "projectionSource": "DeploymentView",
               "freshnessLabel": "rollback represented by accepted quickstart recovery fixture",

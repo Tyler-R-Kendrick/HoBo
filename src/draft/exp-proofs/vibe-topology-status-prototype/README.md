@@ -2,12 +2,12 @@
 
 Independent M2 experience proof for HOBO-561.
 
-This package composes the accepted HOBO-544 dashboard mockups and HOBO-545
-freshness/RBAC fixtures into a deterministic topology/status reference
-prototype. It proves deployment timeline, topology graph, run inspector,
-freshness/RBAC, and support handoff states without building a production
-dashboard, graph renderer, projection runtime, RBAC engine, live provider
-traversal, or launch claim.
+This package composes the accepted HOBO-544 dashboard mockups, HOBO-545
+freshness/RBAC fixtures, and HOBO-577 resource-lifecycle quickstart fixture ids
+into a deterministic topology/status reference prototype. It proves deployment
+timeline, topology graph, run inspector, freshness/RBAC, and support handoff
+states without building a production dashboard, graph renderer, projection
+runtime, RBAC engine, live provider traversal, or launch claim.
 
 ## Proof
 
@@ -22,7 +22,8 @@ workspace importer and current main-branch draft importers stay in sync.
 
 | Acceptance | Evidence |
 |---|---|
-| Consumes M1 dashboard mockups and freshness/RBAC/support fixtures. | `resolveTopologyStatusDependencies()` parses HOBO-544 and HOBO-545 proof exports and marks both as accepted dependencies. |
+| Consumes M1 dashboard mockups and freshness/RBAC/support fixtures. | `resolveTopologyStatusDependencies()` parses HOBO-544 and HOBO-545 proof exports and marks them as accepted dependencies. |
+| Reuses canonical quickstart behavior for downstream dashboard consumers. | `quickstartFixtureRefs` pins accepted HOBO-577 fixture ids, proof-mode labels, and the topology/status surface that consumes each fixture. |
 | Projection snapshots include fresh, stale, unavailable, redacted, unauthorized, partial, failed, rolled back, and completed states. | `REQUIRED_TOPOLOGY_STATUS_STATES` and parser tests require all nine states in order. |
 | Target package and proof path are pinned. | `parseVibeTopologyStatusPrototype()` rejects target package or proof-note drift. |
 | Covers happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels. | Scenario and accessibility tests assert all required coverage paths and labels. |
@@ -31,6 +32,7 @@ workspace importer and current main-branch draft importers stay in sync.
 ## Mocked Boundaries
 
 - Projection data is imported from accepted reference fixtures.
+- Quickstart behavior is referenced through accepted HOBO-577 fixture ids and proof modes.
 - Support handoff packets are redacted fixture records; no live ticket or SLA is created.
 - RBAC appears only as disposition and redaction evidence from fixtures.
 - Provider topology is never traversed live.

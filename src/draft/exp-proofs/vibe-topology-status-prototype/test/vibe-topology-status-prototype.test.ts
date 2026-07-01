@@ -4,6 +4,8 @@ import { describe, it } from "vitest";
 
 import {
   REQUIRED_TOPOLOGY_STATUS_PROOF_MODES,
+  REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS,
+  REQUIRED_TOPOLOGY_STATUS_QUICKSTART_PROOF_MODES,
   REQUIRED_TOPOLOGY_STATUS_SCENARIOS,
   REQUIRED_TOPOLOGY_STATUS_STATES,
   REQUIRED_TOPOLOGY_STATUS_SURFACES,
@@ -35,12 +37,13 @@ describe("HOBO-561 topology/status prototype", () => {
     );
   });
 
-  it("consumes accepted M1 dashboard mockups and freshness/RBAC/support fixtures", () => {
+  it("consumes accepted M1 dashboard, freshness/RBAC, and HOBO-577 quickstart fixtures", () => {
     const dependencies = resolveTopologyStatusDependencies();
+    const prototype = parseVibeTopologyStatusPrototype(VIBE_TOPOLOGY_STATUS_PROTOTYPE);
 
     assert.deepEqual(
       dependencies.map((dependency) => dependency.issue),
-      ["HOBO-544", "HOBO-545"],
+      ["HOBO-544", "HOBO-545", "HOBO-577"],
     );
     assert.ok(
       dependencies.every((dependency) => dependency.status === "accepted"),
@@ -55,6 +58,24 @@ describe("HOBO-561 topology/status prototype", () => {
       dependencies.some((dependency) =>
         dependency.evidence.includes("vibe-dashboard-freshness-rbac-fixtures"),
       ),
+    );
+    assert.ok(
+      dependencies.some((dependency) =>
+        dependency.evidence.includes("resource-lifecycle-quickstart-examples"),
+      ),
+    );
+    assert.deepEqual(
+      prototype.quickstartFixtureRefs.map((ref) => ref.fixtureId),
+      REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS,
+    );
+    assert.ok(prototype.quickstartFixtureRefs.every((ref) => ref.sourceIssue === "HOBO-577"));
+    assert.deepEqual(
+      new Set(prototype.quickstartFixtureRefs.map((ref) => ref.proofMode)),
+      new Set(REQUIRED_TOPOLOGY_STATUS_QUICKSTART_PROOF_MODES),
+    );
+    assert.deepEqual(
+      new Set(prototype.quickstartFixtureRefs.map((ref) => ref.consumingSurface)),
+      new Set(REQUIRED_TOPOLOGY_STATUS_SURFACES),
     );
   });
 
@@ -140,13 +161,23 @@ describe("HOBO-561 topology/status prototype", () => {
       pactPrototype.snapshots.map((snapshot) => snapshot.state),
       REQUIRED_TOPOLOGY_STATUS_STATES,
     );
+    assert.deepEqual(
+      pactPrototype.sourceDependencies.map((dependency) => dependency.issue),
+      ["HOBO-544", "HOBO-545", "HOBO-577"],
+    );
+    assert.deepEqual(
+      pactPrototype.quickstartFixtureRefs.map((ref) => ref.fixtureId),
+      REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS,
+    );
 
     const cue = readFileSync(
       new URL("../architecture/vibe_topology_status_prototype.cue", import.meta.url),
       "utf8",
     );
     for (const field of [
+      "quickstartFixtureRefs",
       "sourceIssue",
+      "fixtureId",
       "sourceFixtureId",
       "projectionSource",
       "freshnessLabel",
@@ -207,7 +238,7 @@ describe("HOBO-561 topology/status prototype", () => {
         parseVibeTopologyStatusPrototype({
           ...VIBE_TOPOLOGY_STATUS_PROTOTYPE,
           sourceDependencies: VIBE_TOPOLOGY_STATUS_PROTOTYPE.sourceDependencies.filter(
-            (dependency) => dependency.issue !== "HOBO-545",
+            (dependency) => dependency.issue !== "HOBO-577",
           ),
         }),
       /source dependency/,
@@ -220,6 +251,32 @@ describe("HOBO-561 topology/status prototype", () => {
           accessibilityNotes: ["Keyboard order is documented.", "Screen reader labels exist."],
         }),
       /accessibility/,
+    );
+
+    assert.throws(
+      () =>
+        parseVibeTopologyStatusPrototype({
+          ...VIBE_TOPOLOGY_STATUS_PROTOTYPE,
+          quickstartFixtureRefs: VIBE_TOPOLOGY_STATUS_PROTOTYPE.quickstartFixtureRefs.filter(
+            (ref) => ref.fixtureId !== "rlq-recover-scope-out-v1",
+          ),
+        }),
+      /quickstart fixture/,
+    );
+
+    assert.throws(
+      () =>
+        parseVibeTopologyStatusPrototype({
+          ...VIBE_TOPOLOGY_STATUS_PROTOTYPE,
+          quickstartFixtureRefs: [
+            {
+              ...VIBE_TOPOLOGY_STATUS_PROTOTYPE.quickstartFixtureRefs[0],
+              sourceIssue: "HOBO-544",
+            },
+            ...VIBE_TOPOLOGY_STATUS_PROTOTYPE.quickstartFixtureRefs.slice(1),
+          ],
+        }),
+      /sourceIssue/,
     );
   });
 });

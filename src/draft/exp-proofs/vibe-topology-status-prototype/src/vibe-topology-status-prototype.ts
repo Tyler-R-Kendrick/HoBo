@@ -1,4 +1,6 @@
 import {
+  REQUIRED_DASHBOARD_QUICKSTART_FIXTURE_IDS,
+  REQUIRED_DASHBOARD_QUICKSTART_PROOF_MODES,
   VIBE_DEPLOYMENT_DASHBOARD_MOCKUPS,
   parseVibeDeploymentDashboardMockups,
 } from "../../vibe-deployment-dashboard-mockups/src/vibe-deployment-dashboard-mockups.ts";
@@ -43,11 +45,27 @@ export const REQUIRED_TOPOLOGY_STATUS_PROOF_MODES = [
   "scope-out",
 ] as const;
 
+export const REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS =
+  REQUIRED_DASHBOARD_QUICKSTART_FIXTURE_IDS;
+
+export const REQUIRED_TOPOLOGY_STATUS_QUICKSTART_PROOF_MODES =
+  REQUIRED_DASHBOARD_QUICKSTART_PROOF_MODES;
+
+const REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES = [
+  "HOBO-544",
+  "HOBO-545",
+  "HOBO-577",
+] as const;
+
 type TopologyStatusSurfaceId = (typeof REQUIRED_TOPOLOGY_STATUS_SURFACES)[number];
 type TopologyStatusState = (typeof REQUIRED_TOPOLOGY_STATUS_STATES)[number];
 type TopologyStatusScenarioId = (typeof REQUIRED_TOPOLOGY_STATUS_SCENARIOS)[number];
 type TopologyStatusProofMode = (typeof REQUIRED_TOPOLOGY_STATUS_PROOF_MODES)[number];
-type SourceIssue = "HOBO-544" | "HOBO-545";
+type TopologyStatusQuickstartFixtureId =
+  (typeof REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS)[number];
+type TopologyStatusQuickstartProofMode =
+  (typeof REQUIRED_TOPOLOGY_STATUS_QUICKSTART_PROOF_MODES)[number];
+type SourceIssue = (typeof REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES)[number];
 
 export type TopologyStatusRequestClassification =
   | { readonly allowed: true; readonly reason: "reference-prototype" }
@@ -67,6 +85,14 @@ export interface TopologyStatusSourceDependency {
   readonly title: string;
   readonly status: "accepted";
   readonly evidence: string;
+}
+
+export interface TopologyStatusQuickstartFixtureRef {
+  readonly sourceIssue: "HOBO-577";
+  readonly fixtureId: TopologyStatusQuickstartFixtureId;
+  readonly proofMode: TopologyStatusQuickstartProofMode;
+  readonly consumingSurface: TopologyStatusSurfaceId;
+  readonly topologyUse: string;
 }
 
 export interface TopologyStatusSurface {
@@ -116,6 +142,7 @@ export interface VibeTopologyStatusPrototype {
   readonly proofNote: "docs/design/proofs/vibe-topology-status-prototype/README.md";
   readonly designRefs: readonly string[];
   readonly sourceDependencies: readonly TopologyStatusSourceDependency[];
+  readonly quickstartFixtureRefs: readonly TopologyStatusQuickstartFixtureRef[];
   readonly surfaces: readonly TopologyStatusSurface[];
   readonly snapshots: readonly TopologyStatusSnapshot[];
   readonly scenarios: readonly TopologyStatusScenario[];
@@ -179,6 +206,46 @@ const redacted = snapshotFromFixture(fixtureByState("redacted"));
 const unauthorized = snapshotFromFixture(fixtureByState("unauthorized"));
 const partial = snapshotFromFixture(fixtureByState("partial"));
 
+const QUICKSTART_FIXTURE_REFS: readonly TopologyStatusQuickstartFixtureRef[] = [
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-deploy-run-accepted-v1",
+    proofMode: "simulated",
+    consumingSurface: "deployment-timeline",
+    topologyUse:
+      "deployment timeline states reuse the accepted deploy-run fixture instead of inventing a dashboard-only deploy story",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-inspect-event-projection-v1",
+    proofMode: "reference-fixture",
+    consumingSurface: "topology-graph",
+    topologyUse: "topology graph nodes cite accepted projection evidence instead of live provider traversal",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-manage-stale-evidence-v1",
+    proofMode: "reference-fixture",
+    consumingSurface: "freshness-rbac-state",
+    topologyUse: "freshness and RBAC strips reuse the stale-evidence quickstart copy and owner route",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-recover-snapshot-restore-v1",
+    proofMode: "live",
+    consumingSurface: "run-inspector",
+    topologyUse:
+      "run inspector rollback copy marks recovery as gated live evidence, not a production restore implementation",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-recover-scope-out-v1",
+    proofMode: "scope-out",
+    consumingSurface: "support-handoff",
+    topologyUse: "support handoff keeps recovery scope-out claims explicit and customer safe",
+  },
+];
+
 export const VIBE_TOPOLOGY_STATUS_PROTOTYPE = {
   issue: "HOBO-561",
   phase: "M2",
@@ -190,27 +257,29 @@ export const VIBE_TOPOLOGY_STATUS_PROTOTYPE = {
     "docs/design/data-plane.md#plan-32",
     "docs/design/proofs/vibe-deployment-dashboard-mockups/README.md",
     "docs/design/proofs/vibe-dashboard-freshness-rbac-fixtures/README.md",
+    "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
   ],
   sourceDependencies: resolveTopologyStatusDependencies(),
+  quickstartFixtureRefs: QUICKSTART_FIXTURE_REFS,
   surfaces: [
     {
       id: "deployment-timeline",
       title: "Deployment timeline over accepted projection snapshots",
-      consumesFrom: ["HOBO-544", "HOBO-545"],
+      consumesFrom: ["HOBO-544", "HOBO-545", "HOBO-577"],
       operatingQuestion:
         "What deployment state is current, failed, rolled back, or completed, and which event-backed snapshot proves it?",
     },
     {
       id: "topology-graph",
       title: "Topology graph status from projection-backed mockups",
-      consumesFrom: ["HOBO-544", "HOBO-545"],
+      consumesFrom: ["HOBO-544", "HOBO-545", "HOBO-577"],
       operatingQuestion:
         "Which topology nodes and edges are visible, stale, unavailable, redacted, or scope-limited without live provider traversal?",
     },
     {
       id: "run-inspector",
       title: "Run inspector state from redacted replay and support fixtures",
-      consumesFrom: ["HOBO-544", "HOBO-545"],
+      consumesFrom: ["HOBO-544", "HOBO-545", "HOBO-577"],
       operatingQuestion:
         "Which run, event, actor, and replay snapshot explain the deployment outcome for a developer or support operator?",
     },
@@ -224,7 +293,7 @@ export const VIBE_TOPOLOGY_STATUS_PROTOTYPE = {
     {
       id: "support-handoff",
       title: "Support-safe evidence handoff",
-      consumesFrom: ["HOBO-544", "HOBO-545"],
+      consumesFrom: ["HOBO-544", "HOBO-545", "HOBO-577"],
       operatingQuestion:
         "What redacted packet can support use, and what stays withheld, without creating a live ticket or SLA promise?",
     },
@@ -263,7 +332,7 @@ export const VIBE_TOPOLOGY_STATUS_PROTOTYPE = {
     {
       state: "rolled-back",
       surface: "deployment-timeline",
-      sourceIssue: "HOBO-544",
+      sourceIssue: "HOBO-577",
       sourceFixtureId: "rlq-recover-snapshot-restore-v1",
       projectionSource: "DeploymentView",
       freshnessLabel: "rollback represented by accepted quickstart recovery fixture",
@@ -273,7 +342,7 @@ export const VIBE_TOPOLOGY_STATUS_PROTOTYPE = {
       proofMode: "simulated",
       supportHandoff: {
         issue: "HOBO-561",
-        sourceIssue: "HOBO-544",
+        sourceIssue: "HOBO-577",
         correlationId: "cor_hobo_561_rollback",
         customerSafeWording:
           "No customer payloads or provider credentials are included in the rollback handoff.",
@@ -381,6 +450,12 @@ export function resolveTopologyStatusDependencies(): readonly TopologyStatusSour
       status: "accepted",
       evidence: fixtures.targetPackage,
     },
+    {
+      issue: "HOBO-577",
+      title: "Vibe resource lifecycle quickstart examples",
+      status: "accepted",
+      evidence: "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
+    },
   ];
 }
 
@@ -400,6 +475,7 @@ export function parseVibeTopologyStatusPrototype(value: unknown): VibeTopologySt
   );
 
   assertSourceDependencies(expectArray(prototype.sourceDependencies, "sourceDependencies"));
+  assertQuickstartFixtureRefs(expectArray(prototype.quickstartFixtureRefs, "quickstartFixtureRefs"));
   assertSurfaces(expectArray(prototype.surfaces, "surfaces"));
   const snapshots = expectArray(prototype.snapshots, "snapshots").map(expectSnapshot);
   assertExactOrder(
@@ -469,16 +545,65 @@ function assertSourceDependencies(values: readonly unknown[]): void {
   const dependencies = values.map((value) => {
     const dependency = expectRecord(value, "source dependency");
     return {
-      issue: expectOneOf(dependency.issue, ["HOBO-544", "HOBO-545"] as const, "source dependency issue"),
+      issue: expectOneOf(
+        dependency.issue,
+        REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES,
+        "source dependency issue",
+      ),
+      title: expectString(dependency.title, "source dependency title"),
       status: expectLiteral(dependency.status, "accepted", "source dependency status"),
       evidence: expectString(dependency.evidence, "source dependency evidence"),
     };
   });
   assertExactOrder(
     dependencies.map((dependency) => dependency.issue),
-    ["HOBO-544", "HOBO-545"] as const,
+    REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES,
     "source dependency",
   );
+}
+
+function assertQuickstartFixtureRefs(values: readonly unknown[]): void {
+  const refs = values.map((value) => {
+    const ref = expectRecord(value, "quickstart fixture ref");
+    const fixtureId = expectOneOf(
+      ref.fixtureId,
+      REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS,
+      "quickstart fixture id",
+    );
+    const proofMode = expectOneOf(
+      ref.proofMode,
+      REQUIRED_TOPOLOGY_STATUS_QUICKSTART_PROOF_MODES,
+      `${fixtureId}.proofMode`,
+    );
+    const consumingSurface = expectOneOf(
+      ref.consumingSurface,
+      REQUIRED_TOPOLOGY_STATUS_SURFACES,
+      `${fixtureId}.consumingSurface`,
+    );
+    expectLiteral(ref.sourceIssue, "HOBO-577", `${fixtureId}.sourceIssue`);
+    expectString(ref.topologyUse, `${fixtureId}.topologyUse`);
+    return { fixtureId, proofMode, consumingSurface };
+  });
+
+  assertExactOrder(
+    refs.map((ref) => ref.fixtureId),
+    REQUIRED_TOPOLOGY_STATUS_QUICKSTART_FIXTURE_IDS,
+    "quickstart fixture",
+  );
+
+  const proofModes = new Set(refs.map((ref) => ref.proofMode));
+  for (const proofMode of REQUIRED_TOPOLOGY_STATUS_QUICKSTART_PROOF_MODES) {
+    if (!proofModes.has(proofMode)) {
+      throw new TypeError(`required quickstart proof mode ${proofMode} has no fixture coverage`);
+    }
+  }
+
+  const surfaces = new Set(refs.map((ref) => ref.consumingSurface));
+  for (const surface of REQUIRED_TOPOLOGY_STATUS_SURFACES) {
+    if (!surfaces.has(surface)) {
+      throw new TypeError(`required surface ${surface} has no quickstart fixture coverage`);
+    }
+  }
 }
 
 function assertSurfaces(values: readonly unknown[]): void {
@@ -487,7 +612,14 @@ function assertSurfaces(values: readonly unknown[]): void {
     expectString(surface.title, "surface title");
     expectString(surface.operatingQuestion, "surface operatingQuestion");
     const consumesFrom = expectStringArray(surface.consumesFrom, "surface consumesFrom");
-    if (!consumesFrom.includes("HOBO-544") && !consumesFrom.includes("HOBO-545")) {
+    for (const issue of consumesFrom) {
+      expectOneOf(issue, REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES, "surface consumesFrom");
+    }
+    if (
+      !consumesFrom.includes("HOBO-544") &&
+      !consumesFrom.includes("HOBO-545") &&
+      !consumesFrom.includes("HOBO-577")
+    ) {
       throw new TypeError("surface must consume an upstream proof");
     }
     return expectOneOf(surface.id, REQUIRED_TOPOLOGY_STATUS_SURFACES, "surface id");
@@ -499,7 +631,11 @@ function expectSnapshot(value: unknown): TopologyStatusSnapshot {
   const snapshot = expectRecord(value, "snapshot");
   const state = expectOneOf(snapshot.state, REQUIRED_TOPOLOGY_STATUS_STATES, "snapshot state");
   expectOneOf(snapshot.surface, REQUIRED_TOPOLOGY_STATUS_SURFACES, `${state}.surface`);
-  expectOneOf(snapshot.sourceIssue, ["HOBO-544", "HOBO-545"] as const, `${state}.sourceIssue`);
+  expectOneOf(
+    snapshot.sourceIssue,
+    REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES,
+    `${state}.sourceIssue`,
+  );
   expectString(snapshot.sourceFixtureId, `${state}.sourceFixtureId`);
   const projectionSource = expectString(snapshot.projectionSource, `${state}.projectionSource`);
   if (!projectionSource.endsWith("View")) {
@@ -520,7 +656,7 @@ function expectSnapshot(value: unknown): TopologyStatusSnapshot {
 function expectSupportHandoff(value: unknown, label: string): TopologyStatusSupportHandoff {
   const packet = expectRecord(value, label);
   expectLiteral(packet.issue, "HOBO-561", `${label}.issue`);
-  expectOneOf(packet.sourceIssue, ["HOBO-544", "HOBO-545"] as const, `${label}.sourceIssue`);
+  expectOneOf(packet.sourceIssue, REQUIRED_TOPOLOGY_STATUS_SOURCE_DEPENDENCIES, `${label}.sourceIssue`);
   expectString(packet.correlationId, `${label}.correlationId`);
   expectString(packet.customerSafeWording, `${label}.customerSafeWording`);
   const visibleFields = expectStringArray(packet.visibleFields, `${label}.visibleFields`);

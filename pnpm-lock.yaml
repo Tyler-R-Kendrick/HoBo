@@ -163,6 +163,8 @@ importers:
 
   src/draft/compensation-escalation-contract: {}
 
+  src/draft/compliance-evidence-pack-scope: {}
+
   src/draft/component-host-adapter-certification-spike: {}
 
   src/draft/component-host-conformance-suite: {}

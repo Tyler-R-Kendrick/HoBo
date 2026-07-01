@@ -17,6 +17,11 @@ Focused gate:
 pnpm --prefix src\draft\compliance-evidence-pack-scope test
 ```
 
+Workspace metadata:
+
+- `pnpm-lock.yaml` includes `src/draft/compliance-evidence-pack-scope` as a workspace importer so
+  install and relevant-check lanes see the proof package consistently.
+
 ## Acceptance Evidence
 
 - User/business goal and primary personas are recorded in

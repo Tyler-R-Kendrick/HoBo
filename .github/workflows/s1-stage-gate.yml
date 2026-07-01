@@ -55,7 +55,17 @@ jobs:
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Offline hello-bindle (no network, no credentials)
         run: |
-          sudo unshare -rn sh -c "ip link set lo up && sudo -u runner -E bash -lc 'cd \"${GITHUB_WORKSPACE}\" && HOBO_OFFLINE_GUARD=1 node --import tsx --test src/draft/technical-proofs/s1-stage-gate/test/s1-stage-gate.offline.test.ts'"
+          docker run --rm \
+            --network=none \
+            -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" \
+            -w "${GITHUB_WORKSPACE}" \
+            -e HOBO_OFFLINE_GUARD=1 \
+            -e AWS_ACCESS_KEY_ID= \
+            -e AWS_SECRET_ACCESS_KEY= \
+            -e AZURE_CLIENT_ID= \
+            -e GOOGLE_APPLICATION_CREDENTIALS= \
+            node:24-bookworm-slim \
+            bash -lc 'node --import tsx --test src/draft/technical-proofs/s1-stage-gate/test/s1-stage-gate.offline.test.ts'
         env:
           AWS_ACCESS_KEY_ID: ""
           AWS_SECRET_ACCESS_KEY: ""

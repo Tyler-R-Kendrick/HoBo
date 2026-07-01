@@ -1,0 +1,29 @@
+{
+  "name": "@hobo/ci-guard",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "HOBO-586 CI fabric contract validator, workflow guard, and examples E2E fixture runner.",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/src/contract.d.ts",
+      "default": "./dist/src/contract.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "biome check .",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:contract:consumer": "vitest run --passWithNoTests contracts/token-broker.contract.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

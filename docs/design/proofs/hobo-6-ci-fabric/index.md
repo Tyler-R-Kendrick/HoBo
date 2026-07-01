@@ -23,10 +23,13 @@ and [Plan 9](../../generated-stack.md#plan-09).
 ## Boundary
 
 The executable proof lives in
-[`src/draft/technical-proofs/ci-fabric-oidc-e2e-contract`](../../../../src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/README.md).
-The reviewable workflow skeleton is
-[`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml). The impact gate
-runs on `pull_request` and `merge_group: checks_requested` for the `main`
+[`src/draft/technical-proofs/ci-fabric-oidc-e2e-contract`](../../../../src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/README.md)
+(historical HOBO-6 evidence). **HOBO-586** promotes the contract to
+[`packages/ci-guard`](../../../../packages/ci-guard/README.md)
+as the production `@hobo/ci-guard` package. Reviewable workflows:
+[`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml) and
+[`.github/workflows/examples-e2e.yml`](../../../../.github/workflows/examples-e2e.yml).
+The impact gate runs on `pull_request` and `merge_group: checks_requested` for the `main`
 base branch only, preserving the same job/check identity for merge-queue
 compatibility without spending CI on non-landing queues. PR runs use
 `pnpm agent:check -- --base=origin/<base-ref>`; merge-group runs compare against

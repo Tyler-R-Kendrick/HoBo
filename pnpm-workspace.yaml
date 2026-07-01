@@ -4,6 +4,7 @@ packages:
   - "packages/providers/*"
   - "packages/iac/*"
   - "packages/build/*"
+  - "examples/*"
   - "src/draft/technical-proofs/*"
   - "src/draft/exp-proofs/*"
   - "src/draft/epic-proofs/*"

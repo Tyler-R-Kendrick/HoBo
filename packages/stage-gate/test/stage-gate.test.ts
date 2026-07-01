@@ -1,0 +1,114 @@
+import { describe, expect, it } from "vitest";
+
+import { defineStageGateS0 } from "../src/definition.js";
+import { parseStageGateRecord, serializeStageGateRecord } from "../src/parse.js";
+import { runStageGate } from "../src/runner.js";
+import { StageGateParseError } from "../src/types.js";
+
+function validRecordPayload() {
+	return {
+		gate_id: "s0",
+		status: "passed",
+		repo_commit: "deadbeef",
+		ci_run_url: "https://github.com/example/hobo/actions/runs/99",
+		started_at: "2024-01-01T00:00:00.000Z",
+		finished_at: "2024-01-01T00:05:00.000Z",
+		checks: [
+			{
+				check_id: "boundary-lint",
+				command: ["pnpm", "run", "lint:boundaries"],
+				exit_code: 0,
+				status: "passed",
+				evidence: {},
+			},
+		],
+		artifact: {
+			digest_sha256: `sha256:${"a".repeat(64)}`,
+			byte_length: 42,
+			media_type: "application/vnd.wasm.component.v1+wasm",
+		},
+		signature: {
+			verified: true,
+			signer_identity: "https://hobo.dev/stage-gate/s0",
+			provenance_tier: "sandboxed-builder",
+			conformance_report_digest: `sha256:${"b".repeat(64)}`,
+		},
+	};
+}
+
+describe("parseStageGateRecord", () => {
+	it("accepts a valid passed record", () => {
+		const record = parseStageGateRecord(validRecordPayload());
+		expect(record.gateId).toBe("s0");
+		expect(record.signature.verified).toBe(true);
+	});
+
+	it("rejects malformed digests", () => {
+		const payload = validRecordPayload();
+		payload.artifact.digest_sha256 = "sha256:short";
+		expect(() => parseStageGateRecord(payload)).toThrow(StageGateParseError);
+	});
+
+	it("rejects passed records with failed checks", () => {
+		const payload = validRecordPayload();
+		payload.checks[0] = {
+			...payload.checks[0]!,
+			status: "failed",
+			exit_code: 1,
+		};
+		expect(() => parseStageGateRecord(payload)).toThrow(
+			/passed record requires every check passed/,
+		);
+	});
+
+	it("rejects tampered artifact digest evidence on passed records", () => {
+		const payload = validRecordPayload();
+		payload.signature.verified = false;
+		expect(() => parseStageGateRecord(payload)).toThrow(
+			/signature.verified/,
+		);
+	});
+
+	it("round-trips through serialize", () => {
+		const first = parseStageGateRecord(validRecordPayload());
+		const second = parseStageGateRecord(serializeStageGateRecord(first));
+		expect(second).toEqual(first);
+	});
+});
+
+describe("runStageGate", () => {
+	it("fails closed when a check exits non-zero", async () => {
+		const definition = {
+			gateId: "s0",
+			checks: [
+				{
+					checkId: "always-fails",
+					kind: "lint" as const,
+					command: [process.execPath, "-e", "process.exit(2)"],
+				},
+			],
+		};
+		const result = await runStageGate(definition, { cwd: process.cwd() });
+		expect(result.exitCode).toBe(1);
+		expect(result.record.status).toBe("failed");
+		expect(result.record.checks[0]?.status).toBe("failed");
+		expect(result.record.checks[0]?.exitCode).toBe(2);
+	});
+
+	it("defines the S0 toolchain check list in order", () => {
+		const definition = defineStageGateS0();
+		expect(definition.gateId).toBe("s0");
+		expect(definition.checks.map((check) => check.checkId)).toEqual([
+			"boundary-lint",
+			"architecture-guard",
+			"schema-drift",
+			"contract-consumer",
+			"contract-provider",
+			"conformance-self-test",
+			"hello-bindle-determinism",
+			"hello-bindle-health",
+			"sign-provenance-verify",
+			"tampered-artifact-refused",
+		]);
+	});
+});

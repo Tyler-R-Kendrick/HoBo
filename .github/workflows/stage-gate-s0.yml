@@ -1,0 +1,69 @@
+name: Stage Gate S0
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  merge_group:
+    branches: [main]
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage-gate:
+    name: S0 stage gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Build stage-gate CLI
+        run: pnpm exec turbo run build --filter @hobo/stage-gate
+      - name: Run S0 stage gate
+        env:
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_DATE_EPOCH: "1704067200"
+        run: pnpm exec hobo-stage-gate run s0 --out artifacts/stage-gate-s0.record.json
+      - name: Upload stage-gate record
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-gate-s0-record-${{ matrix.os }}
+          path: artifacts/stage-gate-s0.record.json
+          if-no-files-found: error
+
+  digest-parity:
+    name: Cross-OS digest parity
+    needs: stage-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Assert identical hello-bindle digests
+        env:
+          SOURCE_DATE_EPOCH: "1704067200"
+        run: node --import tsx packages/stage-gate/scripts/check-hello-bindle-determinism.mts

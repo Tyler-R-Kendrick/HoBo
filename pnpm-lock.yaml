@@ -244,6 +244,8 @@ importers:
 
   src/draft/epic-proofs/data-plane-event-sourcing-cqrs-reactivity: {}
 
+  src/draft/epic-proofs/deployment-strategy-saga-orchestrator: {}
+
   src/draft/epic-proofs/finops-budget-routing-control-plane: {}
 
   src/draft/epic-proofs/foundations-build-conformance-harness: {}
@@ -598,6 +600,8 @@ importers:
   src/draft/projects/s0-03-hobo-core: {}
 
   src/draft/projects/s1-23-hobo-build: {}
+
+  src/draft/projects/s1-24-conformance-sdk: {}
 
   src/draft/projects/s6-06-finops-plane: {}
 
@@ -1431,6 +1435,12 @@ importers:
   src/draft/technical-proofs/s1-21-collect-codegen-cli-poc: {}
 
   src/draft/technical-proofs/s1-stage-gate: {}
+
+  src/draft/technical-proofs/s2-03-cloud-yard-shell-hobo-618: {}
+
+  src/draft/technical-proofs/s2-04-planner-deployment-plan-dag-poc: {}
+
+  src/draft/technical-proofs/s2-06-iac-pulumi-automation-adapter: {}
 
   src/draft/technical-proofs/s3-07-agent-guardrails-contract: {}
 

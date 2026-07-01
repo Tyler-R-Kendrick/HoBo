@@ -1,4 +1,4 @@
-export interface SnapshotCompactionEvent<TData = Record<string, unknown>> {
+export interface SnapshotCompactionEvent<TData = unknown> {
   readonly data: TData;
   readonly seq?: number;
   readonly streamId: string;
@@ -43,7 +43,7 @@ export type SnapshotFold<TState> = (
 ) => TState;
 
 export interface SnapshotCompactionLog {
-  append<TData = Record<string, unknown>>(event: SnapshotCompactionEvent<TData>): SnapshotCompactionEvent<TData>;
+  append<TData = unknown>(event: SnapshotCompactionEvent<TData>): SnapshotCompactionEvent<TData>;
   writeSnapshot<TState>(
     streamId: string,
     options: { fold: SnapshotFold<TState>; throughSeq: number },

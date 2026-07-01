@@ -25,3 +25,4 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Snapshot Compaction Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+- `type-tests/` — strict TypeScript consumer proof that the implementation exports the same typed surface as the declaration file without ambient Node runtime types.

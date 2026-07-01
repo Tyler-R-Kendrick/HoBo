@@ -39,6 +39,13 @@
             },
             {
               "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-collect-manifest-ir-v1",
+              "proofMode": "simulated",
+              "consumingStep": "local-run",
+              "storyboardUse": "local run scene reuses the accepted manifest collection fixture instead of inventing runtime behavior"
+            },
+            {
+              "sourceIssue": "HOBO-577",
               "fixtureId": "rlq-plan-safe-preview-v1",
               "proofMode": "simulated",
               "consumingStep": "plan",
@@ -53,6 +60,13 @@
             },
             {
               "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-inspect-event-projection-v1",
+              "proofMode": "reference-fixture",
+              "consumingStep": "inspect",
+              "storyboardUse": "inspect scene uses accepted projection evidence before layering freshness warnings"
+            },
+            {
+              "sourceIssue": "HOBO-577",
               "fixtureId": "rlq-manage-stale-evidence-v1",
               "proofMode": "reference-fixture",
               "consumingStep": "inspect",
@@ -60,10 +74,17 @@
             },
             {
               "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-snapshot-restore-v1",
+              "proofMode": "reference-fixture",
+              "consumingStep": "failure-recovery",
+              "storyboardUse": "failure recovery scene cites accepted snapshot restore preview evidence without claiming production recovery"
+            },
+            {
+              "sourceIssue": "HOBO-577",
               "fixtureId": "rlq-recover-scope-out-v1",
               "proofMode": "scope-out",
-              "consumingStep": "failure-recovery",
-              "storyboardUse": "failure recovery scene labels unsupported remediation and routes it to docs/support"
+              "consumingStep": "support-docs-handoff",
+              "storyboardUse": "support handoff scene labels unsupported remediation and routes it to docs/support"
             }
           ],
           "storyboardSteps": [
@@ -81,7 +102,7 @@
             {
               "id": "local-run",
               "title": "Run snapshop locally through the simulated Camp",
-              "commandOrSurface": "hobo dev --fixture rlq-define-object-graph-v1",
+              "commandOrSurface": "hobo dev --fixture rlq-collect-manifest-ir-v1",
               "proofMode": "simulated",
               "fixtureId": "rlq-collect-manifest-ir-v1",
               "evidenceObject": "local runtime activity screen with simulated service boundary markers",
@@ -92,9 +113,9 @@
             {
               "id": "inspect",
               "title": "Inspect run evidence and freshness",
-              "commandOrSurface": "hobo inspect run snapshop-preview-001 --fixture rlq-manage-stale-evidence-v1",
+              "commandOrSurface": "hobo inspect run snapshop-preview-001 --fixture rlq-inspect-event-projection-v1",
               "proofMode": "reference fixture",
-              "fixtureId": "rlq-manage-stale-evidence-v1",
+              "fixtureId": "rlq-inspect-event-projection-v1",
               "evidenceObject": "run inspector timeline with projection freshness and unknown-evidence markers",
               "owner": "CLI, MCP & Developer Experience",
               "safeClaim": "Shows the inspection evidence shape without implementing the inspector runtime.",
@@ -124,20 +145,20 @@
             },
             {
               "id": "failure-recovery",
-              "title": "Route failure recovery without overclaiming remediation",
-              "commandOrSurface": "hobo doctor --fixture rlq-recover-scope-out-v1",
-              "proofMode": "scope-out",
-              "fixtureId": "rlq-recover-scope-out-v1",
-              "evidenceObject": "blocked recovery panel with missing auth, policy denial, and unsupported provider routes",
+              "title": "Preview snapshot restore recovery without overclaiming remediation",
+              "commandOrSurface": "hobo up --rollback deployment-set:previous --fixture rlq-recover-snapshot-restore-v1 --dry-run",
+              "proofMode": "reference fixture",
+              "fixtureId": "rlq-recover-snapshot-restore-v1",
+              "evidenceObject": "rollback preview panel with snapshot restore evidence and production-recovery guardrails",
               "owner": "Troubleshooting Guides",
-              "safeClaim": "Names recovery paths and unsupported states without promising automated production recovery.",
-              "supportDocsHandoff": "Support Workflow receives the owner route, customer-safe wording, and accepted limitation."
+              "safeClaim": "Shows accepted recovery preview evidence without promising automated production restore.",
+              "supportDocsHandoff": "Support Workflow receives the owner route, customer-safe recovery wording, and accepted limitation."
             },
             {
               "id": "support-docs-handoff",
               "title": "Hand off evidence to support and docs owners",
               "commandOrSurface": "support/docs handoff matrix for snapshop launch demo assets",
-              "proofMode": "reference fixture",
+              "proofMode": "scope-out",
               "fixtureId": "rlq-recover-scope-out-v1",
               "evidenceObject": "handoff matrix naming docs route, support owner, stale downgrade, and limitation text",
               "owner": "V1 Launch Site, Messaging & Demo Assets",

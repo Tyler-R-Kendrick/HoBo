@@ -28,8 +28,13 @@ protobuf, CUE, and Pact-style artifacts. The required storyboard steps are:
 The asset map is explicit for screenshots, recording manifest, command
 transcript, fixture data, and docs. Every asset carries a source, owner, refresh
 trigger, validation route, stale downgrade behavior, and proof mode. The parser
-fails closed when acceptance metadata is missing or scenario paths reference
-unknown steps or assets.
+fails closed when acceptance metadata is missing, scenario paths reference
+unknown steps or assets, or storyboard steps drift away from accepted HOBO-577
+quickstart fixtures. The required launch-demo fixture set is
+`rlq-define-object-graph-v1`, `rlq-collect-manifest-ir-v1`,
+`rlq-plan-safe-preview-v1`, `rlq-deploy-run-accepted-v1`,
+`rlq-inspect-event-projection-v1`, `rlq-manage-stale-evidence-v1`,
+`rlq-recover-snapshot-restore-v1`, and `rlq-recover-scope-out-v1`.
 
 The package applies Parse, don't validate discipline at the fixture boundary.
 Unknown JSON enters `parseVibeSnapshopLaunchDemoStoryboard` once and becomes a

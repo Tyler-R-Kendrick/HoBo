@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   REQUIRED_SNAPSHOP_ASSETS,
   REQUIRED_SNAPSHOP_PROOF_MODES,
+  REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS,
   REQUIRED_SNAPSHOP_SCENARIOS,
   REQUIRED_SNAPSHOP_STORY_STEPS,
   VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD,
@@ -99,14 +100,35 @@ test("storyboard consumes accepted HOBO-577 quickstart fixture ids", () => {
   assert.ok(parsed.quickstartFixtureRefs.every((ref) => ref.sourceIssue === "HOBO-577"));
   assert.deepEqual(
     parsed.quickstartFixtureRefs.map((ref) => ref.fixtureId),
-    [
-      "rlq-define-object-graph-v1",
-      "rlq-plan-safe-preview-v1",
-      "rlq-deploy-run-accepted-v1",
-      "rlq-manage-stale-evidence-v1",
-      "rlq-recover-scope-out-v1",
-    ],
+    REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS,
   );
+
+  const byFixture = new Map(
+    parsed.quickstartFixtureRefs.map((ref) => [ref.fixtureId, ref.proofMode]),
+  );
+  assert.equal(byFixture.get("rlq-collect-manifest-ir-v1"), "simulated");
+  assert.equal(byFixture.get("rlq-inspect-event-projection-v1"), "reference-fixture");
+  assert.equal(byFixture.get("rlq-recover-snapshot-restore-v1"), "reference-fixture");
+  assert.equal(byFixture.get("rlq-recover-scope-out-v1"), "scope-out");
+});
+
+test("every storyboard step cites an accepted HOBO-577 quickstart fixture", () => {
+  const parsed = parseVibeSnapshopLaunchDemoStoryboard(
+    VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD,
+  );
+
+  for (const step of parsed.storyboardSteps) {
+    assert.ok(
+      REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS.includes(step.fixtureId),
+      `${step.id} must use an accepted HOBO-577 fixture id`,
+    );
+    assert.ok(
+      parsed.quickstartFixtureRefs.some(
+        (ref) => ref.fixtureId === step.fixtureId && ref.consumingStep === step.id,
+      ),
+      `${step.id} must cite ${step.fixtureId} in quickstartFixtureRefs`,
+    );
+  }
 });
 
 test("architecture Pact and CUE fixtures align with the parsed proof", () => {
@@ -141,10 +163,14 @@ test("architecture Pact and CUE fixtures align with the parsed proof", () => {
     "assetMap",
     "scenarioPaths",
     "accessibilityNotes",
+    "QuickstartFixtureId",
     "proofMode",
     "refreshTrigger",
   ]) {
     assert.match(cue, new RegExp(`\\b${field}\\b`));
+  }
+  for (const fixtureId of REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS) {
+    assert.match(cue, new RegExp(fixtureId));
   }
 });
 
@@ -199,6 +225,30 @@ test("parser rejects missing acceptance metadata and disconnected scenario fixtu
           },
           ...VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD.scenarioPaths.slice(1),
         ],
+      }),
+    VibeSnapshopLaunchDemoStoryboardParseError,
+  );
+});
+
+test("parser rejects quickstart fixture drift from accepted HOBO-577 evidence", () => {
+  assert.throws(
+    () =>
+      parseVibeSnapshopLaunchDemoStoryboard({
+        ...VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD,
+        quickstartFixtureRefs: VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD.quickstartFixtureRefs.filter(
+          (ref) => ref.fixtureId !== "rlq-collect-manifest-ir-v1",
+        ),
+      }),
+    VibeSnapshopLaunchDemoStoryboardParseError,
+  );
+
+  assert.throws(
+    () =>
+      parseVibeSnapshopLaunchDemoStoryboard({
+        ...VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD,
+        storyboardSteps: VIBE_SNAPSHOP_LAUNCH_DEMO_STORYBOARD.storyboardSteps.map((step) =>
+          step.id === "local-run" ? { ...step, fixtureId: "rlq-define-object-graph-v1" } : step,
+        ),
       }),
     VibeSnapshopLaunchDemoStoryboardParseError,
   );

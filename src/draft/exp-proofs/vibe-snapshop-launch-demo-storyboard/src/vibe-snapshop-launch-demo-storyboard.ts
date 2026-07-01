@@ -30,18 +30,30 @@ export const REQUIRED_SNAPSHOP_PROOF_MODES = [
   "scope-out",
 ] as const;
 
+export const REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS = [
+  "rlq-define-object-graph-v1",
+  "rlq-collect-manifest-ir-v1",
+  "rlq-plan-safe-preview-v1",
+  "rlq-deploy-run-accepted-v1",
+  "rlq-inspect-event-projection-v1",
+  "rlq-manage-stale-evidence-v1",
+  "rlq-recover-snapshot-restore-v1",
+  "rlq-recover-scope-out-v1",
+] as const;
+
+export const REQUIRED_SNAPSHOP_QUICKSTART_PROOF_MODES = [
+  "reference-fixture",
+  "simulated",
+  "live",
+  "scope-out",
+] as const;
+
 type SnapshopStoryStepId = (typeof REQUIRED_SNAPSHOP_STORY_STEPS)[number];
 type SnapshopAssetKind = (typeof REQUIRED_SNAPSHOP_ASSETS)[number];
 type SnapshopScenarioId = (typeof REQUIRED_SNAPSHOP_SCENARIOS)[number];
 type SnapshopProofMode = (typeof REQUIRED_SNAPSHOP_PROOF_MODES)[number];
-type QuickstartProofMode = "reference-fixture" | "simulated" | "live" | "scope-out";
-
-type QuickstartFixtureId =
-  | "rlq-define-object-graph-v1"
-  | "rlq-plan-safe-preview-v1"
-  | "rlq-deploy-run-accepted-v1"
-  | "rlq-manage-stale-evidence-v1"
-  | "rlq-recover-scope-out-v1";
+type QuickstartProofMode = (typeof REQUIRED_SNAPSHOP_QUICKSTART_PROOF_MODES)[number];
+type QuickstartFixtureId = (typeof REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS)[number];
 
 export type SnapshopQuickstartFixtureReference = {
   readonly sourceIssue: "HOBO-577";
@@ -56,7 +68,7 @@ export type SnapshopStoryboardStep = {
   readonly title: string;
   readonly commandOrSurface: string;
   readonly proofMode: SnapshopProofMode;
-  readonly fixtureId: string;
+  readonly fixtureId: QuickstartFixtureId;
   readonly evidenceObject: string;
   readonly owner: string;
   readonly safeClaim: string;
@@ -121,6 +133,13 @@ const QUICKSTART_REFS: readonly SnapshopQuickstartFixtureReference[] = [
   },
   {
     sourceIssue: "HOBO-577",
+    fixtureId: "rlq-collect-manifest-ir-v1",
+    proofMode: "simulated",
+    consumingStep: "local-run",
+    storyboardUse: "local run scene reuses the accepted manifest collection fixture instead of inventing runtime behavior",
+  },
+  {
+    sourceIssue: "HOBO-577",
     fixtureId: "rlq-plan-safe-preview-v1",
     proofMode: "simulated",
     consumingStep: "plan",
@@ -135,6 +154,13 @@ const QUICKSTART_REFS: readonly SnapshopQuickstartFixtureReference[] = [
   },
   {
     sourceIssue: "HOBO-577",
+    fixtureId: "rlq-inspect-event-projection-v1",
+    proofMode: "reference-fixture",
+    consumingStep: "inspect",
+    storyboardUse: "inspect scene uses accepted projection evidence before layering freshness warnings",
+  },
+  {
+    sourceIssue: "HOBO-577",
     fixtureId: "rlq-manage-stale-evidence-v1",
     proofMode: "reference-fixture",
     consumingStep: "inspect",
@@ -142,10 +168,17 @@ const QUICKSTART_REFS: readonly SnapshopQuickstartFixtureReference[] = [
   },
   {
     sourceIssue: "HOBO-577",
+    fixtureId: "rlq-recover-snapshot-restore-v1",
+    proofMode: "reference-fixture",
+    consumingStep: "failure-recovery",
+    storyboardUse: "failure recovery scene cites accepted snapshot restore preview evidence without claiming production recovery",
+  },
+  {
+    sourceIssue: "HOBO-577",
     fixtureId: "rlq-recover-scope-out-v1",
     proofMode: "scope-out",
-    consumingStep: "failure-recovery",
-    storyboardUse: "failure recovery scene labels unsupported remediation and routes it to docs/support",
+    consumingStep: "support-docs-handoff",
+    storyboardUse: "support handoff scene labels unsupported remediation and routes it to docs/support",
   },
 ];
 
@@ -164,7 +197,7 @@ const STORYBOARD_STEPS: readonly SnapshopStoryboardStep[] = [
   {
     id: "local-run",
     title: "Run snapshop locally through the simulated Camp",
-    commandOrSurface: "hobo dev --fixture rlq-define-object-graph-v1",
+    commandOrSurface: "hobo dev --fixture rlq-collect-manifest-ir-v1",
     proofMode: "simulated",
     fixtureId: "rlq-collect-manifest-ir-v1",
     evidenceObject: "local runtime activity screen with simulated service boundary markers",
@@ -175,9 +208,9 @@ const STORYBOARD_STEPS: readonly SnapshopStoryboardStep[] = [
   {
     id: "inspect",
     title: "Inspect run evidence and freshness",
-    commandOrSurface: "hobo inspect run snapshop-preview-001 --fixture rlq-manage-stale-evidence-v1",
+    commandOrSurface: "hobo inspect run snapshop-preview-001 --fixture rlq-inspect-event-projection-v1",
     proofMode: "reference fixture",
-    fixtureId: "rlq-manage-stale-evidence-v1",
+    fixtureId: "rlq-inspect-event-projection-v1",
     evidenceObject: "run inspector timeline with projection freshness and unknown-evidence markers",
     owner: "CLI, MCP & Developer Experience",
     safeClaim: "Shows the inspection evidence shape without implementing the inspector runtime.",
@@ -207,20 +240,20 @@ const STORYBOARD_STEPS: readonly SnapshopStoryboardStep[] = [
   },
   {
     id: "failure-recovery",
-    title: "Route failure recovery without overclaiming remediation",
-    commandOrSurface: "hobo doctor --fixture rlq-recover-scope-out-v1",
-    proofMode: "scope-out",
-    fixtureId: "rlq-recover-scope-out-v1",
-    evidenceObject: "blocked recovery panel with missing auth, policy denial, and unsupported provider routes",
+    title: "Preview snapshot restore recovery without overclaiming remediation",
+    commandOrSurface: "hobo up --rollback deployment-set:previous --fixture rlq-recover-snapshot-restore-v1 --dry-run",
+    proofMode: "reference fixture",
+    fixtureId: "rlq-recover-snapshot-restore-v1",
+    evidenceObject: "rollback preview panel with snapshot restore evidence and production-recovery guardrails",
     owner: "Troubleshooting Guides",
-    safeClaim: "Names recovery paths and unsupported states without promising automated production recovery.",
-    supportDocsHandoff: "Support Workflow receives the owner route, customer-safe wording, and accepted limitation.",
+    safeClaim: "Shows accepted recovery preview evidence without promising automated production restore.",
+    supportDocsHandoff: "Support Workflow receives the owner route, customer-safe recovery wording, and accepted limitation.",
   },
   {
     id: "support-docs-handoff",
     title: "Hand off evidence to support and docs owners",
     commandOrSurface: "support/docs handoff matrix for snapshop launch demo assets",
-    proofMode: "reference fixture",
+    proofMode: "scope-out",
     fixtureId: "rlq-recover-scope-out-v1",
     evidenceObject: "handoff matrix naming docs route, support owner, stale downgrade, and limitation text",
     owner: "V1 Launch Site, Messaging & Demo Assets",
@@ -400,8 +433,13 @@ export function validateVibeSnapshopLaunchDemoStoryboard(
     }
   }
 
+  validateQuickstartFixtureRefs(value.quickstartFixtureRefs, errors);
+
   const stepIds = new Set(value.storyboardSteps.map((step) => step.id));
   const assetKinds = new Set(value.assetMap.map((asset) => asset.kind));
+  const quickstartStepRefs = new Set(
+    value.quickstartFixtureRefs.map((ref) => `${ref.consumingStep}:${ref.fixtureId}`),
+  );
 
   for (const step of value.storyboardSteps) {
     requireText(errors, step.title, `storyboard step ${step.id} title`);
@@ -410,6 +448,18 @@ export function validateVibeSnapshopLaunchDemoStoryboard(
     requireText(errors, step.owner, `storyboard step ${step.id} owner`);
     requireText(errors, step.safeClaim, `storyboard step ${step.id} safe claim`);
     requireText(errors, step.supportDocsHandoff, `storyboard step ${step.id} support docs handoff`);
+    if (!REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS.includes(step.fixtureId)) {
+      errors.push({
+        code: "unknown-storyboard-fixture",
+        message: `Storyboard step ${step.id} references unknown HOBO-577 fixture ${step.fixtureId}.`,
+      });
+    }
+    if (!quickstartStepRefs.has(`${step.id}:${step.fixtureId}`)) {
+      errors.push({
+        code: "uncited-storyboard-fixture",
+        message: `Storyboard step ${step.id} fixture ${step.fixtureId} must be cited in quickstartFixtureRefs.`,
+      });
+    }
   }
 
   for (const asset of value.assetMap) {
@@ -485,6 +535,63 @@ export function classifySnapshopStoryboardRequest(request: string): "in-scope-pr
   ];
 
   return scopeOutTerms.some((term) => normalized.includes(term)) ? "scope-out" : "in-scope-proof";
+}
+
+function validateQuickstartFixtureRefs(
+  refs: readonly SnapshopQuickstartFixtureReference[],
+  errors: ValidationError[],
+): void {
+  const fixtureIds = refs.map((ref) => ref.fixtureId);
+  const proofModes = new Set<QuickstartProofMode>();
+
+  if (!arraysEqual(fixtureIds, REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS)) {
+    errors.push({
+      code: "missing-quickstart-fixture",
+      message: "Snapshop launch demo must cite the required accepted HOBO-577 quickstart fixture ids.",
+    });
+  }
+
+  for (const ref of refs) {
+    if (ref.sourceIssue !== "HOBO-577") {
+      errors.push({
+        code: "wrong-quickstart-source",
+        message: `${ref.fixtureId} must cite HOBO-577.`,
+      });
+    }
+    if (!REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS.includes(ref.fixtureId)) {
+      errors.push({
+        code: "unknown-quickstart-fixture",
+        message: `${ref.fixtureId} is not an accepted HOBO-577 launch-demo fixture.`,
+      });
+    }
+    if (!REQUIRED_SNAPSHOP_QUICKSTART_PROOF_MODES.includes(ref.proofMode)) {
+      errors.push({
+        code: "unknown-quickstart-proof-mode",
+        message: `${ref.fixtureId} uses unsupported HOBO-577 proof mode ${String(ref.proofMode)}.`,
+      });
+    } else {
+      proofModes.add(ref.proofMode);
+    }
+    if (!REQUIRED_SNAPSHOP_STORY_STEPS.includes(ref.consumingStep)) {
+      errors.push({
+        code: "unknown-quickstart-consuming-step",
+        message: `${ref.fixtureId} targets unsupported storyboard step ${String(ref.consumingStep)}.`,
+      });
+    }
+    requireText(errors, ref.storyboardUse, `quickstart fixture ${ref.fixtureId} storyboard use`);
+  }
+
+  for (const mode of REQUIRED_SNAPSHOP_QUICKSTART_PROOF_MODES) {
+    if (proofModes.has(mode)) continue;
+    errors.push({
+      code: "missing-quickstart-proof-mode",
+      message: "Snapshop launch demo must preserve HOBO-577 reference-fixture, simulated, live, and scope-out labels.",
+    });
+  }
+}
+
+function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function requireText(errors: ValidationError[], value: string, field: string): void {

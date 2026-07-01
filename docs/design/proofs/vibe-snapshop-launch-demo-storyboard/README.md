@@ -8,11 +8,25 @@ proof-mode asset map. The executable proof lives in
 
 | Acceptance requirement | Branch evidence |
 | --- | --- |
-| Storyboard covers scaffold, local run, inspect, plan, live recording slot, failure recovery, and support/docs handoff. | `REQUIRED_SNAPSHOP_STORY_STEPS` and `storyboardSteps` require all seven steps, each with command/surface, evidence object, owner, safe claim, and handoff route. |
+| Storyboard covers scaffold, local run, inspect, plan, live recording slot, failure recovery, and support/docs handoff. | `REQUIRED_SNAPSHOP_STORY_STEPS` and `storyboardSteps` require all seven steps, each with command/surface, evidence object, owner, safe claim, handoff route, and accepted HOBO-577 fixture citation. |
 | Asset map names screenshots, recording manifest, command transcript, fixture data, docs, owner, refresh trigger, and proof mode. | `REQUIRED_SNAPSHOP_ASSETS` and `assetMap` require all five asset kinds plus source, owner, proof mode, refresh trigger, validation route, and stale downgrade. |
 | Target package path is `src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard`. | Parser and tests assert the package path. |
 | Target proof path is `docs/design/proofs/vibe-snapshop-launch-demo-storyboard/README.md`. | Parser and tests assert the proof path. |
 | Covers happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels. | `scenarioPaths`, `accessibilityNotes`, and tests require `happy-path`, `blocked-path`, `stale-or-unknown-evidence`, and `support-handoff`, plus live/simulated/reference fixture/scope-out labels. |
+
+## HOBO-577 Fixture Reuse
+
+The storyboard consumes the accepted quickstart fixtures without inventing local
+ids:
+
+- `rlq-define-object-graph-v1`
+- `rlq-collect-manifest-ir-v1`
+- `rlq-plan-safe-preview-v1`
+- `rlq-deploy-run-accepted-v1`
+- `rlq-inspect-event-projection-v1`
+- `rlq-manage-stale-evidence-v1`
+- `rlq-recover-snapshot-restore-v1`
+- `rlq-recover-scope-out-v1`
 
 ## Asset Map
 

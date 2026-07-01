@@ -4,6 +4,8 @@ This executable proof pins the M0 contract for reused WASI interfaces from
 [Plan 20](../../wasm-runtime-wit.md#plan-20) and
 [ADR-0031](../../adr/01-architecture-core.md#adr-0031).
 
+**Promoted to production:** vendored `wasi:*` pins and round-trip fixtures live in [`packages/wit`](../../../../packages/wit/README.md) (`@hobo/wit`, HOBO-583).
+
 ## Contract Surface
 
 - HoBo records exact `wasi:*` interface pins for HTTP, keyvalue, blobstore, messaging, SQL,

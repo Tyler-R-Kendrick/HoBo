@@ -2,6 +2,8 @@
 
 HOBO-3 is proven by the focused POC at [`src/draft/technical-proofs/hobo-wit-toolchain-contract`](../../../../src/draft/technical-proofs/hobo-wit-toolchain-contract/README.md).
 
+**Promoted to production:** [`packages/wit`](../../../../packages/wit/README.md) (`@hobo/wit`, HOBO-583).
+
 Acceptance mapping:
 
 - `wit:gen` determinism is checked by the package test and `pnpm wit:check`.

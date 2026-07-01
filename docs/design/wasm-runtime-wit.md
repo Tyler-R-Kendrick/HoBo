@@ -11,6 +11,8 @@ This capability doc covers the WASM/WASI runtime — the polyglot spine — toge
 
 Epic reference implementation: [`src/draft/epic-proofs/wit-component-model-runtime-membrane`](../../src/draft/epic-proofs/wit-component-model-runtime-membrane/).
 
+Production package: [`packages/wit`](../../packages/wit/README.md) (`@hobo/wit`, HOBO-583) — vendored `wasi:*` pins, `hobo:sdk@0.1.0` aggregate WIT, deterministic jco bindings, and round-trip surface parity checks.
+
 ## Plan 20
 
 > **Contracts & policy (gates):** each **Camp** (via its runtime + wasm host) **declares the contract/policy enforcement modes it supports** — e.g. `record-and-verify` (local), `strict`/`enforce` (prod), `verify-at-build-observe-at-runtime` (edge) — so the Gatekeeper ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)) knows what a target can enforce, just as a WIT interface announces its capabilities.

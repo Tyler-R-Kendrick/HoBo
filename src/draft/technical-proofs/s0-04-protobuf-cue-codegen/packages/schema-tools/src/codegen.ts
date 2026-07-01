@@ -49,15 +49,22 @@ function resolveBufBinary(repoRoot: string): string {
 
 async function listFilesRecursive(root: string): Promise<string[]> {
   if (!existsSync(root)) return [];
-  const entries = await readdir(root, { withFileTypes: true, recursive: true });
   const files: string[] = [];
-  for (const entry of entries) {
-    if (entry.isFile()) {
-      const parent = "path" in entry && typeof entry.path === "string" ? entry.path : root;
-      files.push(join(parent, entry.name));
+
+  async function walk(directory: string): Promise<void> {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      const absolute = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(absolute);
+      } else if (entry.isFile()) {
+        files.push(absolute);
+      }
     }
   }
-  return files.sort((left, right) => left.localeCompare(right));
+
+  await walk(root);
+  return files;
 }
 
 function pluginPathEnv(repoRoot: string): NodeJS.ProcessEnv {

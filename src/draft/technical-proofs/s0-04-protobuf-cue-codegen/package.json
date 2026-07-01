@@ -7,7 +7,7 @@
   "scripts": {
     "codegen": "node --import tsx packages/schema-tools/src/cli.ts",
     "codegen:check": "node --import tsx packages/schema-tools/src/cli.ts --check",
-    "test": "vitest run --no-isolate packages/schema-tools/test"
+    "test": "vitest run --no-isolate --maxWorkers=1 packages/schema-tools/test"
   },
   "devDependencies": {
     "@bufbuild/buf": "1.71.0",

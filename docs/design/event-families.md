@@ -12,6 +12,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | Family | Example events |
 |---|---|
 | `actor.*` | `actor.Activated`, `actor.StateAppended` |
+| `agent.*` | `agent.GuardrailBlocked`, `agent.GuardrailCleared`, `agent.DestroyDenied` |
 | `aggregate.*` | `aggregate.PastTenseFact` |
 | `alert.*` | `alert.Fired`, `alert.Grouped`, `alert.Routed`, `alert.Silenced`, `alert.Inhibited`, `alert.Deduped`, `alert.InhibitionCycleRejected`, `alert.Resolved` |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |

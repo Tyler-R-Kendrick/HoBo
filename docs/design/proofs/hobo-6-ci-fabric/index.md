@@ -36,6 +36,9 @@ compatibility without spending CI on non-landing queues. PR runs use
 `origin/main` so queued candidates get the same change-impact gate before they
 can land. The workflow also uses event-aware concurrency so newer PR pushes
 cancel stale runs without sharing a concurrency group with merge queue runs.
+The `pr-gate` job fetches `origin/<base-ref>` and sets `TURBO_SCM_BASE` before
+`turbo run --affected` so detached-head GitHub Actions checkouts resolve the
+impact scope instead of assuming a local `main` branch exists.
 The standalone docs workflow is path-filtered to documentation/doc-linter inputs
 and the CI workflow file that this proof documents, runs only changed-doc lint
 plus docs freshness, and uses the same event-aware PR concurrency cancellation

@@ -54,9 +54,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Fetch base branch for Turbo affected
+        run: git fetch origin "${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
       - name: Relevant checks only
         run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
       - name: Affected package lanes
+        env:
+          TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
         run: pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer --affected --continue=never
       - name: Production contract provider lane
         run: pnpm exec turbo run test:contract:provider --filter "./packages/*"

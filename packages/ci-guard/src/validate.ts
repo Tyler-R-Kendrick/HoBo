@@ -551,7 +551,7 @@ export function simulateHelloBindleE2e(
 
 	return {
 		status: failure ? "failed" : "passed",
-		failure,
+		...(failure ? { failure } : {}),
 		token,
 		deployment,
 		cleanup: { teardownAttempted: true, orphanSweeperRan: true },

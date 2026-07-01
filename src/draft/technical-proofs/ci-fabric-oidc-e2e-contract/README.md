@@ -4,6 +4,10 @@ Independent proof for HOBO-6. It pins the PR CI and opt-in sandbox E2E
 contract without implementing the out-of-scope cost-routed runner fabric or a
 full multi-cloud E2E matrix.
 
+> **Promotion (HOBO-586):** production guard + split workflows now live in
+> [`packages/ci-guard/README.md`](../../../../packages/ci-guard/README.md).
+> This folder remains historical HOBO-6 evidence; do not delete.
+
 ## Contract Surface
 
 - `createHoboCiFabricContract()` returns the canonical PR gate, E2E gate,

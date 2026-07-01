@@ -7,7 +7,7 @@ tags: [hobo, competitors]
 
 # HoBo vs competitors — gap analysis
 
-> A cross-competitor synthesis: where HoBo's [design suite](../design/index.md) (Plans 0–48) leads, matches, or **falls short** of [Aspire](aspire.md), [Nitric](nitric.md), [Humanitec](humanitec.md), [Convex](convex.md), and [shoo.dev](shoo.md). HoBo positions as an **AI-native meta-cloud**, competing head-on with the **Convex / Lakebed / Nitric** set ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)). Produced with the [Superpowers](../agent-tooling.md) methodology — **brainstorm → compare → review → iterate**. Companion to each folder's `differentiators.md` (their strengths) and `hobo-mapping.md` (per-feature parity ✅ has / ➕ adds / 🔜 planned).
+> A cross-competitor synthesis: where HoBo's [design suite](../design/index.md) (Plans 0–48) leads, matches, or **falls short** of [Aspire](aspire.md), [Nitric](nitric.md), [Humanitec](humanitec.md), [Convex](convex.md), [InsForge](insforge.md), and [shoo.dev](shoo.md). HoBo positions as an **AI-native meta-cloud**, competing head-on with the **Convex / Lakebed / Nitric** set ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)). Produced with the [Superpowers](../agent-tooling.md) methodology — **brainstorm → compare → review → iterate**. Companion to each folder's `differentiators.md` (their strengths) and `hobo-mapping.md` (per-feature parity ✅ has / ➕ adds / 🔜 planned).
 >
 > **Bottom line (updated 2026-06-22):** the original analysis found the architecture broad with most gaps *tracked* as open questions, one true blind spot (**reactive / live-query**, now Plan 32/ADR-0029), and two designed-but-shallow surfaces (**AI generation**, **search/ingress**). **All of those — and every tracked open question — are now remediated in design** (gaps G1–G8 + open questions #3/#10/#15–20/#22–23, via Plans 32–36 + ADRs 0029–0043). The sections below record the original findings with their ✅ closures inline.
 >
@@ -91,6 +91,20 @@ After the backlog closed, two of the closest **un-captured** comparables were ad
 - **Minor — explicit app-facing `lock()` primitive + declarative per-binding resiliency policies** (Dapr exposes distributed-lock + retry/timeout/circuit-breaker config). HoBo *has* the mechanisms (ActorHost lease, [Plan 5](../design/reliability-observability-cost.md#plan-05) circuit-breakers/retries) but not as app-declared surface; exposing them is a small DX add. *Low priority.* **Mostly subsumed:** the common "serialize writes to this entity" case is now the **aggregate boundary** — an aggregate is an actor's single-writer lease ([ADR-0053](../design/adr/03-data-plane.md#adr-0053)), so you model the entity as an aggregate rather than reaching for a lock. A standalone `lock()` is only needed for **cross-aggregate / cross-resource** critical sections (the residual minor DX add).
 
 **Net:** the two closest comparables surface **no major new gaps** — they primarily *validate* HoBo's architecture, with a couple of minor additive capabilities worth a future tranche if demand appears.
+
+## 3c. Re-survey — InsForge (2026-07-01)
+[`InsForge`](insforge.md) is the strongest captured pressure on HoBo's **agent-operable backend** story: it packages Postgres, auth, storage, realtime, Deno functions, sites, compute, payments, analytics, and an OpenAI-compatible model gateway behind an MCP/CLI/skills/dashboard loop that coding agents can drive. It is adjacent rather than head-on: InsForge is a batteries-included backend-as-a-service, while HoBo is an AI-native meta-cloud.
+
+**No new major architecture gap.** InsForge's shipped surfaces map to existing HoBo design:
+
+- **Agent backend operation** maps to `@hobo/mcp`, agents-as-principals, brokered tokens, and control-plane query/projection APIs ([Plan 6](../design/ai-native-agent-auth.md#plan-06)).
+- **Backend branching** maps to preview Camps, sandbox lanes, and Deployment Sets/Deltas ([Plan 25](../design/platform-engineering.md#plan-25)).
+- **Config as code** maps to Resource Definitions, policy packs, and versioned HoBo config ([Plan 21](../design/authoring-resources-wiring.md#plan-21), [Plan 29](../design/contracts-policy-flags.md#plan-29)).
+- **Postgres/RLS/storage/realtime/functions/model-gateway** map to existing data, auth, blobstore, notify/realtime, wasm/OCI runtime, and model/embed ports ([Plan 21](../design/authoring-resources-wiring.md#plan-21), [Plan 32](../design/data-plane.md#plan-32), [Plan 46](../design/governance-planes.md#plan-46)).
+
+**Execution pressure added:** HoBo's design already goes further architecturally, but InsForge sets a practical DX bar: an agent should be able to fetch current backend state, branch safely, edit migrations/config, apply, diagnose, read logs/advisor findings, and repair without dashboard clicks. That is not a new Plan, but it should harden the acceptance criteria for HoBo CLI/MCP/projection work.
+
+**Deliberate non-gap:** InsForge's payments, analytics, and web-scraper integrations make it compelling for AI-generated SaaS MVPs. HoBo should keep those as provider/resource-pack opportunities unless product scope changes; ADR-0064 keeps app-business functions outside the platform core.
 
 ## 4. Review verdict
 *(Superpowers `receiving-code-review` framing.)* **Strong-but-uneven** *(original verdict)*. HoBo's intersection bet (agnostic IfC + durable event-sourced runtime + agents/generation pipeline, self-hostable) is genuinely uncontested — no competitor spans it. The risks were **depth, not breadth**: (a) the **unique** differentiator (AI generation) was the least-specified; (b) HoBo lacked the one piece of mainstream DX a TS-backend audience expects (**reactive queries**); (c) several "designed" capabilities were blocked on unresolved open questions (wasm host, matching algorithm, data migration) that competitors had already shipped answers to. None fatal; all addressable in the design phase.

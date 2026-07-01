@@ -39,3 +39,10 @@ that later runtime work must preserve:
 - **Materialized view / projection** - `ClickableFirstRunWalkthroughView`
   folds accepted events into the read model consumed by workspace onboarding,
   docs, support, and launch slices.
+- **Snapshot** - the parsed HOBO-559 record is replayable from its accepted
+  event and carries step-level proof-mode and handoff labels.
+- **Read store** - later prototype work reads the snapshot, not issue-body text
+  or live customer state.
+
+No production onboarding UI, auth/account/billing, live provider, customer-data,
+or launch claim is implemented here.

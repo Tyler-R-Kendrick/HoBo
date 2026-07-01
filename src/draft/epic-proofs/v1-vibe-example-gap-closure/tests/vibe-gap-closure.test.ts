@@ -39,6 +39,7 @@ test("every child issue carries common vibe scenario and proof-mode coverage", (
       "accessibility notes",
     ]);
     assert.deepEqual(issue.proofModes, ["live", "simulated", "reference fixture", "scope-out"]);
+    assert.equal(issue.scopeOut.some((entry) => /production CLI\/API\/SDK/i.test(entry)), true);
   }
 });
 
@@ -66,6 +67,15 @@ test("DX M2 transcript and quickstart slices remain blocked by accepted DX found
   assert.deepEqual(issueById.get("HOBO-577")?.blockedBy, ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"]);
   assert.equal(issueById.get("HOBO-577")?.blocks.includes("HOBO-555"), true);
   assert.equal(issueById.get("HOBO-570")?.blocks.includes("HOBO-558"), true);
+});
+
+test("HOBO-577 quickstart consumers match the downstream child backlog", () => {
+  const expectedConsumers = VIBE_GAP_CLOSURE_BACKLOG.childIssues
+    .map((issue) => issue.id)
+    .filter((id) => id !== DX_BACKBONE_GRAPH.terminalErrorConsumer.id)
+    .sort();
+
+  assert.deepEqual([...DX_BACKBONE_GRAPH.quickstartConsumerIds].sort(), expectedConsumers);
 });
 
 test("launch-demo asset issues use M5 while non-launch children stay in M1 or M2", () => {
@@ -103,6 +113,9 @@ test("validation fails closed when a child loses required proof coverage", () =>
   invalid.childIssues[0].proofModes = ["live", "simulated"];
   invalid.childIssues[1].requiredScenarios = ["happy path"];
   invalid.childIssues[2].targetPackagePath = "src/draft/technical-proofs/not-an-exp-proof";
+  invalid.childIssues[3].scopeOut = invalid.childIssues[3].scopeOut.filter(
+    (entry) => !/production CLI\/API\/SDK/i.test(entry),
+  );
   invalid.childIssues[15].phase = "M1";
 
   const result = evaluateVibeGapClosure(invalid);
@@ -111,6 +124,7 @@ test("validation fails closed when a child loses required proof coverage", () =>
   assert.match(result.violations.join("\n"), /missing proof mode label: reference fixture/);
   assert.match(result.violations.join("\n"), /missing scenario coverage: blocked path/);
   assert.match(result.violations.join("\n"), /must target src\/draft\/exp-proofs/);
+  assert.match(result.violations.join("\n"), /CLI\/API\/SDK/);
   assert.match(result.violations.join("\n"), /launch-demo issue must use M5/);
 });
 
@@ -120,6 +134,7 @@ test("DX validation fails closed when the rewritten acceptance graph drifts", ()
   invalid.childSlices[0].labels = ["slice"];
   invalid.childSlices.find((issue) => issue.id === "HOBO-573")!.blockedBy = [];
   invalid.childSlices.find((issue) => issue.id === "HOBO-577")!.blocks = [];
+  invalid.quickstartConsumerIds = invalid.quickstartConsumerIds.filter((id) => id !== "HOBO-540");
 
   const result = evaluateDxBackboneGraph(invalid);
 
@@ -128,4 +143,14 @@ test("DX validation fails closed when the rewritten acceptance graph drifts", ()
   assert.match(result.violations.join("\n"), /must keep dx-first and contract labels/);
   assert.match(result.violations.join("\n"), /must be blocked by at least one M1 DX foundation slice/);
   assert.match(result.violations.join("\n"), /HOBO-577 must block downstream consumer/);
+});
+
+test("parent validation fails closed when quickstart consumer coverage drifts from children", () => {
+  const invalid = structuredClone(VIBE_GAP_CLOSURE_BACKLOG);
+  invalid.dxBackbone.quickstartConsumerIds = invalid.dxBackbone.quickstartConsumerIds.filter((id) => id !== "HOBO-540");
+
+  const result = evaluateVibeGapClosure(invalid);
+
+  assert.equal(result.ok, false);
+  assert.match(result.violations.join("\n"), /HOBO-577 downstream child consumers missing HOBO-540/);
 });

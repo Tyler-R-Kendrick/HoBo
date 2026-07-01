@@ -24,6 +24,7 @@ const FORBIDDEN_SCOPE_PATTERNS = [
 const REQUIRED_SCOPE_OUT_GUARDS = [
   /live provider calls?/i,
   /production ui/i,
+  /production (cli|api|sdk)/i,
   /customer data/i,
   /real credentials?/i,
   /launch claims?/i,
@@ -492,11 +493,13 @@ export function evaluateVibeGapClosure(backlog: VibeGapClosureBacklog = VIBE_GAP
   }
 
   const seen = new Set<string>();
+  const childIds = new Set<string>();
   for (const issue of backlog.childIssues) {
     if (seen.has(issue.id)) {
       violations.push(`${issue.id} is duplicated`);
     }
     seen.add(issue.id);
+    childIds.add(issue.id);
 
     if (!issue.targetPackagePath.startsWith("src/draft/exp-proofs/")) {
       violations.push(`${issue.id} must target src/draft/exp-proofs/<slug>`);
@@ -528,9 +531,17 @@ export function evaluateVibeGapClosure(backlog: VibeGapClosureBacklog = VIBE_GAP
     }
     const forbiddenScope = findForbiddenScope(issue.scopeOut);
     if (forbiddenScope.length < REQUIRED_SCOPE_OUT_GUARDS.length) {
-      violations.push(`${issue.id} scope-out guard must cover provider, UI, data, credential, and launch-claim creep`);
+      violations.push(`${issue.id} scope-out guard must cover provider, UI, CLI/API/SDK, data, credential, and launch-claim creep`);
     }
   }
+
+  const expectedQuickstartConsumers = new Set([...childIds].filter((id) => id !== backlog.dxBackbone.terminalErrorConsumer.id));
+  assertSetEquals(
+    backlog.dxBackbone.quickstartConsumerIds,
+    [...expectedQuickstartConsumers],
+    "HOBO-577 downstream child consumers",
+    violations,
+  );
 
   return {
     ok: violations.length === 0,
@@ -628,7 +639,7 @@ export function evaluateDxBackboneGraph(graph: VibeDxBackboneGraph = DX_BACKBONE
     }
     const forbiddenScope = findForbiddenScope(issue.scopeOut);
     if (forbiddenScope.length < REQUIRED_SCOPE_OUT_GUARDS.length) {
-      violations.push(`${issue.id} scope-out guard must cover provider, UI, data, credential, and launch-claim creep`);
+      violations.push(`${issue.id} scope-out guard must cover provider, UI, CLI/API/SDK, data, credential, and launch-claim creep`);
     }
     for (const blocker of issue.blockedBy) {
       if (!issueById.has(blocker)) {
@@ -725,6 +736,7 @@ function child(
     scopeOut: [
       "No live provider calls.",
       "No production UI implementation.",
+      "No production CLI/API/SDK implementation.",
       "No live customer data.",
       "No real credentials or secrets.",
       "No launch claims without evidence.",

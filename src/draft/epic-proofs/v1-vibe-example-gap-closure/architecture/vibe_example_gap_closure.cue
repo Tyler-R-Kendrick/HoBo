@@ -12,7 +12,7 @@ package vibe_example_gap_closure
 	required_scenarios: [...string] & {if len(required_scenarios) < 5 {_|_}}
 	proof_modes: [...string] & {if len(proof_modes) < 4 {_|_}}
 	source_design_docs: [...string] & {if len(source_design_docs) < 1 {_|_}}
-	scope_out: [...string] & {if len(scope_out) < 5 {_|_}}
+	scope_out: [...string] & {if len(scope_out) < 6 {_|_}}
 }
 
 #VibeDxSliceIssue: {

@@ -15,8 +15,12 @@ stay downstream of accepted quickstart and envelope evidence instead of inventin
   across CLI, MCP & Developer Experience slices.
 - Tests prove M1 shape slices block M2 deploy/manage/migrate transcript work before HOBO-577
   quickstart examples unblock downstream docs, support, launch, visual, and accessibility artifacts.
+- Tests prove the HOBO-577 downstream consumer list matches the actual HOBO-540 through HOBO-565
+  child matrix, with HOBO-558 held back by CLI/refusal/fixture foundations.
 - Tests prove the shared vibe coverage requirements: happy path, blocked path, stale/unknown
   evidence path, support handoff, accessibility notes, and proof-mode labels.
+- Tests prove every child scope-out guard includes production CLI/API/SDK, production UI, live
+  provider, customer data, credential, and unsupported launch-claim exclusions.
 - Pact-style fixtures record the mocked child backlog, DX backbone, scope guard, and unblock ledger
   boundaries.
 

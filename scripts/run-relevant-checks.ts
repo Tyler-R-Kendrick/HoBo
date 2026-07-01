@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
-import path from "node:path";
 
 import { selectRelevantChecks, type Check } from "./relevant-check-policy.js";
 
@@ -33,9 +32,6 @@ function run(command: string, commandArgs: string[]) {
   console.log(`\n▶ ${printable}`);
   const platformCommand = commandForPlatform(command, commandArgs);
   const result = spawnSync(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
-  if (result.status !== 0 && isTurboWorkspaceTest(command, commandArgs) && runWorkspaceTestFallback(commandArgs) === 0) {
-    return 0;
-  }
   return result.status ?? 1;
 }
 
@@ -48,40 +44,7 @@ function runAsync(check: Check): Promise<number> {
   return new Promise<number>((resolve) => {
     child.once("error", () => resolve(1));
     child.once("exit", (status) => resolve(status ?? 1));
-  }).then((status) => {
-    if (status !== 0 && isTurboWorkspaceTest(check.command, check.args) && runWorkspaceTestFallback(check.args) === 0) {
-      return 0;
-    }
-    return status;
   });
-}
-
-function isTurboWorkspaceTest(command: string, commandArgs: string[]) {
-  return command === "pnpm"
-    && commandArgs[0] === "exec"
-    && commandArgs[1] === "turbo"
-    && commandArgs[2] === "run"
-    && commandArgs[3] === "test";
-}
-
-function runWorkspaceTestFallback(commandArgs: string[]) {
-  const workspaces = commandArgs
-    .flatMap((arg, index) => arg === "--filter" ? [commandArgs[index + 1]] : [])
-    .filter((workspace): workspace is string => Boolean(workspace))
-    .map((workspace) => workspace.replace(/^\.\//u, ""));
-
-  if (workspaces.length === 0) return 1;
-
-  console.warn("Turbo workspace test runner failed before completion; falling back to direct workspace test scripts.");
-  for (const workspace of workspaces) {
-    if (!fs.existsSync(path.join(workspace, "package.json"))) {
-      console.warn(`Skipping ${workspace}; no package.json test script manifest exists.`);
-      continue;
-    }
-    const status = run("pnpm", ["--prefix", workspace, "test"]);
-    if (status !== 0) return status;
-  }
-  return 0;
 }
 
 function capture(command: string, commandArgs: string[]) {
@@ -154,7 +117,6 @@ if (files.length === 0) {
   process.exit(0);
 }
 
-const turboAvailable = Boolean(capture("pnpm", ["exec", "turbo", "--version"]));
 const { checks, scopes } = selectRelevantChecks({
   files,
   base,
@@ -163,7 +125,6 @@ const { checks, scopes } = selectRelevantChecks({
   all,
   includeBuild,
   rootPackageJsonScriptsOnlyChanged: rootPackageJsonScriptsOnlyChanged(),
-  turboAvailable,
 });
 
 console.log(`Changed files: ${files.length}`);

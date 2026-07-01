@@ -9,7 +9,6 @@ function plan(files: string[], overrides = {}) {
   return selectRelevantChecks({
     files,
     base: "origin/main",
-    turboAvailable: true,
     ...overrides,
   });
 }
@@ -27,12 +26,10 @@ function isGlobalContract(check: Check) {
   return check.command === "pnpm" && check.args.join(" ") === "run test:contract";
 }
 
-function isWorkspaceTurboTest(check: Check) {
+function isWorkspacePrefixTest(check: Check) {
   return check.command === "pnpm"
-    && check.args[0] === "exec"
-    && check.args[1] === "turbo"
-    && check.args[2] === "run"
-    && check.args[3] === "test";
+    && check.args[0] === "--prefix"
+    && check.args[2] === "test";
 }
 
 test("root script-only package changes do not select all-package Turbo", () => {
@@ -55,12 +52,14 @@ test("--build still selects all-package Turbo", () => {
   assert.equal(checks.some(isAllPackageTurbo), true);
 });
 
-test("root dependency and task-graph config changes select all-package Turbo", () => {
+test("root dependency and task-graph config changes do not select all-package Turbo by default", () => {
   const dependencyPlan = plan(["package.json"], { rootPackageJsonScriptsOnlyChanged: false });
   const configPlan = plan(["turbo.json"], { rootPackageJsonScriptsOnlyChanged: true });
 
-  assert.equal(dependencyPlan.checks.some(isAllPackageTurbo), true);
-  assert.equal(configPlan.checks.some(isAllPackageTurbo), true);
+  assert.equal(dependencyPlan.checks.some(isAllPackageTurbo), false);
+  assert.equal(configPlan.checks.some(isAllPackageTurbo), false);
+  assert.equal(dependencyPlan.checks.some((check) => check.args.join(" ") === "run install:check"), true);
+  assert.equal(configPlan.checks.some((check) => check.args.join(" ") === "run install:check"), true);
 });
 
 test("draft aggregate folders without package metadata do not select workspace tests", () => {
@@ -80,7 +79,7 @@ test("draft package files select workspace tests when package metadata exists", 
   );
 
   assert.deepEqual(workspaces, ["src/draft/technical-proofs/example-proof"]);
-  assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), true);
+  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix src/draft/technical-proofs/example-proof test"), true);
 });
 
 test("draft package README-only changes do not select workspace tests", () => {
@@ -112,7 +111,7 @@ test("draft Pact changes stay on workspace tests instead of selecting global con
   ]);
 
   assert.equal(checks.some(isGlobalContract), false);
-  assert.equal(checks.some(isWorkspaceTurboTest), true);
+  assert.equal(checks.some(isWorkspacePrefixTest), true);
 });
 
 test("shared Pact changes still select the global contract sweep", () => {
@@ -121,26 +120,25 @@ test("shared Pact changes still select the global contract sweep", () => {
   assert.equal(checks.some(isGlobalContract), true);
 });
 
-test("oversized draft workspace selections are chunked instead of falling back to global unit sweep", () => {
+test("oversized draft workspace selections stay direct instead of falling back to global unit sweep", () => {
   const files = Array.from({ length: 520 }, (_, index) => {
     const slug = `very-long-draft-proof-package-name-${index.toString().padStart(4, "0")}-with-contract-fixtures-and-tests`;
     return `src/draft/technical-proofs/${slug}/test/proof.test.ts`;
   });
   const { checks, workspaces } = plan(files, { workspacePackageExists: () => true });
-  const workspaceTestChecks = checks.filter(isWorkspaceTurboTest);
+  const workspaceTestChecks = checks.filter(isWorkspacePrefixTest);
 
   assert.equal(workspaces.length, 520);
   assert.equal(checks.some(isGlobalUnit), false);
-  assert.ok(workspaceTestChecks.length > 1);
+  assert.equal(workspaceTestChecks.length, 520);
   assert.ok(
-    workspaceTestChecks.every((check) => ["pnpm", ...check.args].join(" ").length <= 24_000),
+    workspaceTestChecks.every((check) => check.args[0] === "--prefix" && check.args[2] === "test"),
   );
 });
 
-test("turbo-unavailable draft fallback uses direct workspace prefixes", () => {
+test("draft package tests use direct workspace prefixes", () => {
   const { checks } = plan(
     ["src/draft/technical-proofs/provider-authoring-contract/src/provider-authoring-contract.ts"],
-    { turboAvailable: false },
   );
 
   assert.equal(

@@ -11,6 +11,8 @@ This POC proves the end-to-end IfC authoring path on a sample Bindle without tou
 - `.allow()` narrowing below observed usage fails the permission contract before codegen or manifest publication.
 - Re-running the flow yields byte-identical manifest hashes and generated artifacts.
 - The manifest artifact writer fails closed if collection coverage or permission contracts fail, so tests never publish a partial manifest IR.
+- Tests run through `node --import tsx` so this isolated proof imports sibling TypeScript proof
+  sources directly instead of depending on an out-of-band build artifact.
 
 Scope stays integration-only: no cloud deploy, provider planning, runtime handler execution, conformance harness internals, or SLO/policy implementation.
 

@@ -15,6 +15,8 @@ The proof covers:
 - Fail-closed unknown or unsupported tier validation.
 - Fail-closed no-resolvable-tier behavior: no silent public fallback.
 - Policy-bound `.with(...)` override rejection when an override widens beyond the configured ceiling.
+- Type-consumer coverage imports the package export so public `.d.mts` declarations, not private
+  implementation inference, define the API/SDK surface.
 
 Scope boundary: this POC does not provision any tier, perform Junction inference, implement Planner objective ranking, or realize provider networking. It only defines and validates the IR that those later slices consume.
 

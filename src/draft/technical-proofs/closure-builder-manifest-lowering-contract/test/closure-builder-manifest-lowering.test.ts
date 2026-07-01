@@ -16,6 +16,10 @@ test("golden closure-builder corpus lowers to hobo:sdk calls and hobo.manifest/v
   assert.deepEqual(result.witCalls, fixture.expectedWitCalls);
   assert.deepEqual(result.manifest, fixture.expectedManifest);
   assert.equal(result.manifestJson, canonicalJson(fixture.expectedManifest));
+  assert.equal(
+    result.manifestHash,
+    "sha256:dafdd61811b290a90dc55739644a65387bebb2d757ddb73207798c06c8bffb8b",
+  );
   assert.equal(result.manifest.schema, "hobo.manifest/v1");
 });
 

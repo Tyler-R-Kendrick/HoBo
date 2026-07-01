@@ -32,6 +32,9 @@ legacy migration guide, same-kind identity ledger, or production codegen.
 corepack pnpm --prefix src\draft\technical-proofs\closure-builder-author-flow-contract test
 ```
 
+The package typecheck covers source files plus `test/type-fixtures/`; runtime `node:test` files are
+validated by the same test command through `tsx` without requiring repo-global Node type definitions.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

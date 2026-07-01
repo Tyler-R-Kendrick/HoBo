@@ -3,7 +3,7 @@ import {
   type ConnectivityPlan,
   type ConnectivityPolicy,
   validateConnectivityPlan
-} from "../src/connectivity-tier-ir.js";
+} from "@hobo/draft-connectivity-tier-ir-contract";
 
 const policy: ConnectivityPolicy = {
   maxTier: ConnectivityTier.OVERLAY_MESH,

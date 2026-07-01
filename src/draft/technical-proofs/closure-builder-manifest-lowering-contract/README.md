@@ -20,6 +20,8 @@ HOBO-535 proof for the closure-builder lowering seam.
 - Provider `.with(...)` annotations stay inert manifest data; lowering does not resolve providers.
 - Runtime workload factories stay inert and are never executed by the lowering proof.
 - The same-kind insertion identity-ledger gap fails closed and is left to HOBO-538.
+- Manifest hashing uses a package-local deterministic SHA-256 helper so the proof stays isolated
+  from Node ambient type packages while preserving the `sha256:` digest contract.
 
 ## Boundary
 
@@ -32,6 +34,9 @@ coverage, codegen, scaffolding, app-host imports, or same-kind generated-ID pers
 ```powershell
 corepack pnpm --prefix src\draft\technical-proofs\closure-builder-manifest-lowering-contract test
 ```
+
+The package typecheck covers source files only; runtime `node:test` files remain validated by the
+same test command through `tsx` instead of requiring repo-global Node type definitions.
 
 ## Architecture Evidence
 

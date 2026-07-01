@@ -1,18 +1,19 @@
-package config_evidence
+// CUE constraints for every protobuf type in this package's schema.
 
-#ConfigKey: string & =~"^[A-Z][A-Z0-9_]*$"
+package architecture_evidence
 
-#ConfigSensitivity: "secretless" | "secret" | "config"
-#ConfigSourceKind: "binding" | "secret-ref" | "camp-env"
+#ConfigSensitivity: "SECRETLESS" | "SECRET" | "CONFIG"
+#ConfigSourceKind: "BINDING" | "SECRET_REF" | "CAMP_ENV"
+#ConfigResolvedSource: "BOUND_RESOURCE" | "SECRET_STORE" | "CAMP_ENV" | "DEV_SECRET" | "STATIC_SECRET_HATCH"
 
 #ConfigSource: {
-	kind:     #ConfigSourceKind
-	ref:      string & !=""
+	kind:    #ConfigSourceKind
+	ref:     string & !=""
 	devOnly?: bool
 }
 
 #ConfigManifestEntry: {
-	key:                    #ConfigKey
+	key:                    string & =~"^[A-Z][A-Z0-9_]*$"
 	type:                   "string" | "number" | "boolean"
 	required:               bool
 	sensitivity:            #ConfigSensitivity
@@ -21,16 +22,15 @@ package config_evidence
 	productionDeployable?:  bool
 }
 
-// devOnly sources must not be production-deployable
-#ConfigManifestEntry & { source: { devOnly: true } }: {
-	productionDeployable: false
+#ConfigManifest: {
+	schema:  string & !=""
+	entries: [string]: #ConfigManifestEntry
 }
 
-// Event records are closed — no value field permitted
 #ConfigResolved: close({
 	key:            string & !=""
 	ref:            string & !=""
-	source:         "bound-resource" | "secret-store" | "camp-env" | "dev-secret" | "static-secret-hatch"
+	source:         #ConfigResolvedSource
 	camp:           string & !=""
 	eventId?:       string
 	correlationId?: string

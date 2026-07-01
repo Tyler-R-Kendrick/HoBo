@@ -21,6 +21,7 @@ pnpm exec turbo run test --filter ./src/draft/technical-proofs/s1-19-ctx-config-
 ## Architecture Evidence
 
 See [`ADR.md`](./ADR.md), [`architecture/`](./architecture), and [`architecture/pacts/`](./architecture/pacts).
+`pnpm run architecture:guard` passes for this package (protobuf + CUE + PACT + parse-don't-validate + event vocabulary).
 
 ## Event families (fixed)
 

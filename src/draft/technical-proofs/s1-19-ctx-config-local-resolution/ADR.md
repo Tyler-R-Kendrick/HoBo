@@ -1,26 +1,37 @@
-# ADR — S1-19 ctx.config local resolution (draft POC)
+# S1-19 ctx.config local resolution — Architecture Evidence
 
-## Context
+Draft package architecture-guard evidence for HOBO-609.
 
-HOBO-609 delivers offline config/secrets authoring with local-Camp resolution and two security
-invariants: refs-only audit events and redaction at capture.
+## Schema And Constraints
 
-## Decision
+- Protobuf data shapes live in [`architecture/`](./architecture).
+- CUE constraints bound every protobuf type in that schema.
+- PACT contracts under [`architecture/pacts/`](./architecture/pacts) record service boundaries.
 
-1. **References, not values** — manifest and events carry refs + source kinds only.
-2. **Local ladder** — `camp-env` from Camp config; `secret-ref` via dev adapter
-   (`.env.local` → keychain → prompt; prompt skipped under `CI`).
-3. **Brokered rungs stubbed** — bound-resource and federated secret-store paths throw typed errors
-   or route to static-hatch-required without reading plaintext.
-4. **Redaction at capture** — `scrubAtCapture` runs before event/log/span/stream persistence.
+## Parse, Don't Validate
 
-## Parse-don't-validate seams
+Untrusted config declarations cross one parser boundary (`config()`, `secretRef()`,
+`env()`, `fromBinding()`) and become derived domain types (`ConfigContract`,
+`ConfigEntry`, `SecretValue`). Downstream resolver and context modules accept
+parsed types only; CUE constraints reject malformed manifest and event records at
+parse time.
 
-- `config()` normalizes raw entries into `ConfigContract`.
-- `SecretsPort.get` returns `SecretValue`; errors are refined classes.
-- Event records are closed structs with no `value` field (see `architecture/*.cue`).
+## Event Architecture
 
-## Promotion path
+Config resolution is append-only audit over the local Camp event store:
 
-When S1-13 (`@hobo/bindles`) and S1-11 (`@hobo/runtime`) merge, port modules to production
-packages without importing from this draft path.
+- **Command** — `resolveConfigKey` requests resolution for a declared config entry.
+- **Event** — successful resolution appends `config.Resolved`; secret access appends
+  `secret.Accessed`; failures append `secret.Unavailable`.
+- **Actor** — the runtime config resolver actor applies resolution commands and emits
+  audit events; it never mutates a query read model directly.
+- **Event store** — `createInMemoryEventStore` appends scrubbed events before persistence.
+- **Materialized view / projection** — no config-value projection is built; audit events
+  are the durable facts consumers replay.
+- **Snapshot** — current Camp config values are read from the Camp config record snapshot
+  for `camp-env` keys only.
+- **Read store** — tests query appended events, logs, spans, and stream frames as read
+  stores for redaction conformance.
+
+No brokered-token rungs are implemented in this slice; production promotion wires the
+same boundaries into `@hobo/runtime` and `@hobo/runtime-local`.

@@ -1,9 +1,0 @@
-{"type":"e2e.FixtureDeployed","fixture":"examples/hello-bindle","runId":"local-dev","recordedAtMs":1782946993295}
-{"type":"e2e.LiveUrlAsserted","fixture":"examples/hello-bindle","runId":"local-dev","liveUrl":"https://hello-bindle.local-dev.sandbox.hobo.dev","ok":true,"recordedAtMs":1782946993295}
-{"type":"e2e.FixtureTornDown","fixture":"examples/hello-bindle","runId":"local-dev","recordedAtMs":1782946993537}
-{"type":"e2e.OrphanSwept","fixture":"examples/hello-bindle","runId":"local-dev","selector":"hobo.dev/fixture=hello-bindle","maxAgeMinutes":60,"recordedAtMs":1782946993732}
-{"type":"e2e.FixtureDeployed","fixture":"examples/hello-bindle","runId":"local-fail","recordedAtMs":1782946993915}
-{"type":"e2e.LiveUrlAsserted","fixture":"examples/hello-bindle","runId":"local-fail","liveUrl":"https://hello-bindle.local-fail.sandbox.hobo.dev","ok":false,"recordedAtMs":1782946993915}
-{"type":"e2e.FixtureTornDown","fixture":"examples/hello-bindle","runId":"local-fail","recordedAtMs":1782946994138}
-{"type":"e2e.FixtureDeployed","fixture":"examples/hello-bindle","runId":"local-dev-2","recordedAtMs":1782946998541}
-{"type":"e2e.LiveUrlAsserted","fixture":"examples/hello-bindle","runId":"local-dev-2","liveUrl":"https://hello-bindle.local-dev-2.sandbox.hobo.dev","ok":true,"recordedAtMs":1782946998542}

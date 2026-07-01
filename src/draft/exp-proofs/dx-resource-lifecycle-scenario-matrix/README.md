@@ -33,6 +33,11 @@ The TypeScript parser is the single runtime boundary for this proof. Downstream
 proof packages consume `parseDxResourceLifecycleScenarioMatrix` and receive a
 branded parsed object, not raw fixture data.
 
+The Pact fixture and CUE constraints use the same lower-camel protobuf JSON
+field shape as the TypeScript parser (`targetPackage`, `sdkCalls`,
+`scenarioPaths`, and related fields) so downstream proof consumers do not need
+parallel schema adapters.
+
 ## Scope guard
 
 `classifyDxScenarioScope` fails closed for the issue's adversarial scope-out

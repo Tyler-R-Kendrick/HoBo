@@ -9,24 +9,24 @@ package dx_resource_lifecycle_scenario_matrix
 	role:                #RequiredRole
 	intent:              string & =~"\\S"
 	commands:            [...string] & >0
-	sdk_calls:           [...string] & >0
-	api_calls:           [...string] & >0
-	mcp_tools:           [...string] & >0
-	expected_artifacts:  [...string] & >0
-	proof_mode:          #ProofMode
-	fixture_requirements: [...string] & >0
-	scenario_paths:      [#RequiredPath, #RequiredPath, #RequiredPath, #RequiredPath, #RequiredPath]
-	design_terms:        [...string] & >0
+	sdkCalls:            [...string] & >0
+	apiCalls:            [...string] & >0
+	mcpTools:            [...string] & >0
+	expectedArtifacts:   [...string] & >0
+	proofMode:           #ProofMode
+	fixtureRequirements: [...string] & >0
+	scenarioPaths:       [#RequiredPath, #RequiredPath, #RequiredPath, #RequiredPath, #RequiredPath]
+	designTerms:         [...string] & >0
 }
 
 #DxResourceLifecycleScenarioMatrix: {
 	issue:          "HOBO-567"
 	phase:          "M1"
-	target_package: "src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix"
-	proof_note:     "docs/design/proofs/dx-resource-lifecycle-scenario-matrix/README.md"
-	design_refs:    [...string] & >0
-	design_terms:   [...string] & >0
-	scope_out: [
+	targetPackage:  "src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix"
+	proofNote:      "docs/design/proofs/dx-resource-lifecycle-scenario-matrix/README.md"
+	designRefs:     [...string] & >0
+	designTerms:    [...string] & >0
+	scopeOut: [
 		"production CLI/API/SDK implementation",
 		"live providers",
 		"real credentials",

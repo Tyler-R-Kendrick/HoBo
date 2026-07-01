@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "vitest";
 
 import {
@@ -57,6 +58,67 @@ describe("DX resource lifecycle scenario matrix", () => {
 
     for (const term of REQUIRED_DESIGN_TERMS) {
       assert.ok(terms.has(term), `expected design term ${term}`);
+    }
+  });
+
+  it("keeps Pact and CUE architecture artifacts aligned with the parsed matrix shape", () => {
+    const pact = JSON.parse(
+      readFileSync(
+        new URL(
+          "../architecture/pacts/dx_resource_lifecycle_scenario_matrix.pact.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as {
+      readonly interactions: ReadonlyArray<{
+        readonly response: { readonly body: unknown };
+      }>;
+    };
+    const pactMatrix = parseDxResourceLifecycleScenarioMatrix(
+      pact.interactions[0].response.body,
+    );
+
+    assert.deepEqual(
+      pactMatrix.journeys.map((journey) => journey.role),
+      REQUIRED_ROLES,
+    );
+
+    const cue = readFileSync(
+      new URL("../architecture/dx_resource_lifecycle_scenario_matrix.cue", import.meta.url),
+      "utf8",
+    );
+    for (const field of [
+      "targetPackage",
+      "proofNote",
+      "designRefs",
+      "designTerms",
+      "scopeOut",
+      "sdkCalls",
+      "apiCalls",
+      "mcpTools",
+      "expectedArtifacts",
+      "proofMode",
+      "fixtureRequirements",
+      "scenarioPaths",
+    ]) {
+      assert.match(cue, new RegExp(`\\b${field}\\b`));
+    }
+    for (const staleField of [
+      "target_package",
+      "proof_note",
+      "design_refs",
+      "design_terms",
+      "scope_out",
+      "sdk_calls",
+      "api_calls",
+      "mcp_tools",
+      "expected_artifacts",
+      "proof_mode",
+      "fixture_requirements",
+      "scenario_paths",
+    ]) {
+      assert.doesNotMatch(cue, new RegExp(`\\b${staleField}\\b`));
     }
   });
 

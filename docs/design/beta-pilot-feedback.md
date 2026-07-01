@@ -71,6 +71,22 @@ the M4 handoff issue records GA evidence.
 Executable proof lives in
 [`../../src/draft/beta-pilot-release-candidate-evidence-contract`](../../src/draft/beta-pilot-release-candidate-evidence-contract/README.md).
 
+## M4 GA Handoff Evidence
+
+HOBO-477 records the M4 GA handoff evidence gate. The gate maps feedback intake, private-beta
+evidence, release-candidate evidence, support routing, release-cutline handoff, and GA feedback
+summary evidence to owner projects. It records cleared blockers and accepted risks, reflects
+documentation, productization, operations-readiness, support, and release-cutline dependencies, and
+allows follow-up execution only for missing evidence.
+
+Parent HoBo v1 Release Readiness status is updated because this gate clears the M3 GA-handoff gap
+and reduces launch risk. The gate does not onboard beta customers, expand the pilot cohort, build a
+feedback portal, implement support tooling, resolve launch blockers, or publish GA readiness claims
+from beta evidence alone.
+
+Executable proof lives in
+[`../../src/draft/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md).
+
 ## Scope Boundaries
 
 This record does not onboard beta customers, implement support tooling, create
@@ -84,3 +100,6 @@ M0 executable proof lives in
 
 M2 private-beta evidence proof lives in
 [`../../src/draft/v1-beta-pilot-private-beta-evidence`](../../src/draft/v1-beta-pilot-private-beta-evidence/README.md).
+
+M4 GA handoff evidence proof lives in
+[`../../src/draft/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md).

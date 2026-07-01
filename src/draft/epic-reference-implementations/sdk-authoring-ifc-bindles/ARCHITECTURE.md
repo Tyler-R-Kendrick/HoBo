@@ -1,39 +1,58 @@
-# Sdk Authoring Ifc Bindles — Architecture Evidence
+# SDK & Authoring Epic Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Persona
 
-## Schema And Constraints
+Primary persona: app developer or coding agent authoring a Bindle without choosing a cloud. Secondary personas are platform engineers who approve topology defaults and SDK authors who maintain idiom-layer parity.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## BDD Scenarios
 
-## Parse, Don't Validate
+```gherkin
+Feature: IfC authoring to manifest IR
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+  Persona: App developer
 
-## Event Architecture
+  Scenario: Declare a portable Bindle and prove it before deploy
+    Given an app declares resources, handlers, config, auth, and connector dependencies through @hobo/bindles
+    When collection runs with mocked SDK, auth, codegen, and local runtime boundaries
+    Then HoBo emits a deterministic hobo.manifest/v1, generated type surface, and contract evidence without live cloud calls
+```
 
-The package's accepted record is the read model behind a small event flow:
+```gherkin
+Feature: Authoring guardrails
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+  Persona: App developer
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+  Scenario: Unsafe authoring choices are surfaced before deploy
+    Given an app narrows allow below observed usage, hides a resource behind an unobserved branch, requests a wider XAA scope, or uses raw driver access
+    When the reference implementation evaluates the authoring graph
+    Then can-deploy evidence fails closed or records portability debt with machine-readable reasons
+```
+
+```gherkin
+Feature: Alternate authoring front doors
+
+  Persona: SDK author
+
+  Scenario: Hobo Code and non-TypeScript idiom layers lower to the same contract
+    Given Hobo Code input and an extracted non-TypeScript component surface
+    When the reference implementation compares their lowering records
+    Then both must target hobo:sdk calls, hobo.manifest/v1 records, and semantics-annex parity instead of adding hidden runtime behavior
+```
+
+## Vertical Slices
+
+| Slice | POCs | Outcome |
+|---|---|---|
+| Authoring graph | HOBO-37, HOBO-49, HOBO-52, HOBO-62 | Resource handles, bind edges, provider options, and topology remain authoring metadata. |
+| Manifest and contract gates | HOBO-38, HOBO-40, HOBO-70, HOBO-75, HOBO-399 | Manifest, config refs, least-privilege grants, coverage, and API freeze produce fail-closed evidence. |
+| Identity-aware app dependencies | HOBO-43, HOBO-83, HOBO-98 | XAA and end-user auth are declared and scoped without live token brokering. |
+| Generated and local proof loop | HOBO-67, HOBO-79, HOBO-88, HOBO-392, HOBO-396 | Collection, handlers, codegen, local runtime, and end-to-end IfC flow compose. |
+| Alternate front doors and parity | HOBO-58, HOBO-106, HOBO-386, HOBO-389, HOBO-394, HOBO-398 | Namespace, thin lowering, upcasters, data paradigm opt-in, DSL, and non-TS parity stay bounded. |
+
+## Service Boundaries
+
+The reference architecture treats every external dependency as a mocked contract boundary. The app-facing slice consumes provider-like services for WIT collection, manifest registration, coverage decisions, capability contract decisions, XAA metadata, codegen storage, local runtime replay, topology lowering, DSL parsing, auth contracts, secret-source resolution, and SDK parity reports.
+
+## Scope Control
+
+This implementation does not copy POC internals wholesale. It preserves each POC's accepted behavior as a vertical-slice decision and leaves production package implementation, provider realization, real OAuth, and live clouds out of scope.

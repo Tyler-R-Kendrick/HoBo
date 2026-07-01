@@ -1,39 +1,45 @@
-# Providers Iac Build Adapters — Architecture Evidence
+# Providers, IaC & Build Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Overview
 
-## Schema And Constraints
+Providers turn HoBo's abstract resource graph into deployable infrastructure while preserving the same ports/adapters contract across clouds, IaC engines, build engines, and generated provider packages. This reference implementation keeps the epic scoped to the provider layer:
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+1. Provider packages publish factory builders, typed `.with(...)` options, default Resource Definitions, runtime clients, and signed Capability Manifests.
+2. The conformance gate decides whether a claimed port can be selected.
+3. The equivalence resolver maps abstract ports to provider-owned defaults and rejects hard capability misses.
+4. `realize()` emits `IacProgram`, `BuildSpec`, and runtime link fixtures.
+5. IaC, build, and non-IaC drivers consume those fixtures through mocked boundaries.
+6. Drift, partial apply, import/adopt, malicious-provider, generation, and Resource Pack paths all fail closed unless evidence is present.
 
-## Parse, Don't Validate
+## Boundary Map
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+| Boundary | What crosses it | Mock strategy |
+|---|---|---|
+| ProviderPackageRegistry | Provider package metadata, defaults, clients, manifests | Deterministic registry fixture |
+| ProviderConformanceGate | Claimed WIT/provider ports and reports | Static pass/fail report fixture |
+| EquivalenceResolverCatalog | Provider-owned equivalence entries and require/prefer decisions | Catalog snapshot fixture |
+| CapabilityManifestRegistry | Signed capabilities/auth/cost/regions | Signed manifest fixture |
+| RealizeEmissionBoundary | ResourcePlan -> IacProgram/BuildSpec/link outputs | Static emission fixture |
+| PortabilityReportGate | Lock-in report and can-deploy signal | Static report fixture |
+| IacBackendAdapter | preview/apply/destroy/refresh/import | Mock adapter fixture |
+| BuildProviderAdapter | wasm/container/VM/microVM image refs | Mock OCI ref fixture |
+| LocalContainerProvider | zero-infra local provider | Offline local fixture |
+| ConcreteCloudProviderMatrix | concrete provider family coverage | Provider matrix fixture |
+| DriverTaxonomyAdapter | terraform/template/echo/container/custom-webhook | Mock driver fixture |
+| DriftImportRefreshBoundary | drift, orphan sweep, adopted/external resources | Drift/import fixture |
+| GenerationCertificationSandbox | generated provider conformance and repair budget | No-egress sandbox fixture |
+| ResourcePackDistribution | signed provider defaults bundle | Signed pack fixture |
+| ExecutionHostDispatch | runner/build-machine provider decision | Pinned credit-ledger fixture |
 
-## Event Architecture
+## Architecture Decisions Preserved
 
-The package's accepted record is the read model behind a small event flow:
+- ADR-0005: one ports/adapters shape spans cloud, IaC, build, runner, and build-machine providers.
+- ADR-0006: IaC is pluggable and state is per resource.
+- ADR-0024: portability is a gate over declared non-portable surface, not a narrative claim.
+- ADR-0033 and ADR-0090: provider-owned equivalence entries feed deterministic Matching and capability negotiation.
+- ADR-0071: execution-host selection consumes a pinned credit ledger snapshot.
+- ADR-0010: AI-generated providers can be trusted only through sandboxed conformance, provenance, and bounded repair.
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+## Not Production Implementation
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+The service module is a deterministic reference harness. It does not import provider SDKs, run IaC tools, invoke build engines, call registries, call model providers, provision resources, or touch live networks.

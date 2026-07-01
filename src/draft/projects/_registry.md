@@ -8,6 +8,7 @@ Project MVP rollups live under `src/draft/projects/<slug>`.
 | `s6-06-finops-plane` | HOBO-661 | draft POC | Plan estimates, budget gates, showback; promotes finops epic proofs |
 | `s1-23-hobo-build` | HOBO-613 | draft POC | `hobo build` orchestration; promotes to `packages/cli` when S0-07/S1-20 merge |
 | `s1-24-conformance-sdk` | HOBO-614 | draft POC | SDK idiom-layer parity gate; promotion target `packages/conformance/src/sdk/` |
+| `s2-08-provider-cloudflare` | HOBO-623 | draft POC | Cloudflare provider + Capability Manifest; promotes HOBO-165 contract proof |
 
 Each project entry must list:
 

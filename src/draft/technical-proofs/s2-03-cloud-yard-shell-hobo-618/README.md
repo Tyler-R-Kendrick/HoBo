@@ -53,4 +53,4 @@ npm --prefix src/draft/technical-proofs/s2-03-cloud-yard-shell-hobo-618 test
 
 - `architecture/cloud_yard_shell.proto` + `.cue` — protobuf/CUE contract shapes
 - `architecture/pacts/gateway_boundary.pact.json` — Gateway boundary PACT
-- `ADR.md` — parse-don't-validate and event architecture notes
+- `ADR.md` — parse-don't-validate derived types and event-architecture evidence

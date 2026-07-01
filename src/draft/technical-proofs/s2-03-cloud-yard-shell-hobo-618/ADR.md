@@ -13,19 +13,20 @@ projection folds those events under NFR-008 replay equivalence.
 ## Parse, don't validate
 
 `parseDeployCommand` and `authenticate` are the only ingress parsers. Downstream
-Gateway, event store, and projection host code consume parsed command and
-principal records — not raw HTTP/RPC bodies.
+Gateway, event store, and projection host code consume **parsed derived types**
+— `DeployCommand`, `Principal`, and `TimelineState` — not raw HTTP/RPC bodies.
 
 ## Event architecture
 
 | Role | This package |
 | --- | --- |
-| Command | `Deploy` via REST `/v1/commands/deploy` or RPC `Deploy` |
-| Event | `deployment.DeployRequested` appended to `deployment:<key>` stream |
-| Actor | Yard control-plane aggregate (implicit; events only, no read-model mutation) |
-| Event store | Mock `@hobo/runtime-postgres` append-only streams |
-| Projection | `foldDeploymentTimeline` materializes deployment timeline read model |
-| Read surface | `GET /v1/read-models/deployment-timeline` |
+| **Command** | `Deploy` via REST `/v1/commands/deploy` or RPC `Deploy` |
+| **Event** | `deployment.DeployRequested` appended to `deployment:<key>` stream |
+| **Actor** | Yard control-plane aggregate applies commands by emitting events only |
+| **Event store** | Mock `@hobo/runtime-postgres` append-only streams |
+| **Materialized view / projection** | `foldDeploymentTimeline` folds events into timeline entries |
+| **Snapshot** | `projectionHost.liveState()` is the cached snapshot at current log position |
+| **Read store** | `GET /v1/read-models/deployment-timeline` queries the snapshot read store |
 
 No live Postgres, Planner, or Orchestrator is implemented here. Production
 promotion to `packages/cloud/` inherits this vocabulary.

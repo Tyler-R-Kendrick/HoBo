@@ -28,12 +28,13 @@ The `S1 Stage Gate` workflow (`.github/workflows/s1-stage-gate.yml`) must stay g
 
 ## Workflow Runs
 
-Pending first green PR run. Update these URLs after merge:
+Green on PR #677 (`8c2f60e`):
 
-- conformance: _pending_
-- offline-hello-bindle: _pending_
-- replay-equals-live: _pending_
-- record: _pending_
+- [S1 Stage Gate workflow](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/28555660256)
+- [conformance](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/28555660256/job/84662422575)
+- [offline-hello-bindle](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/28555660256/job/84662422572)
+- [replay-equals-live](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/28555660256/job/84662422560)
+- [record](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/28555660256/job/84662492898)
 
 ## Sample Record
 

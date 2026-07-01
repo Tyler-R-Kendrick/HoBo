@@ -15,14 +15,14 @@ migration compatibility evidence.
 - Design record:
   [`docs/design/upgrade-migration-engine.md`](../../upgrade-migration-engine.md)
 - Executable contract:
-  [`src/draft/upgrade-rollback-dry-run-contract`](../../../../src/draft/upgrade-rollback-dry-run-contract/README.md)
+  [`src/draft/technical-proofs/upgrade-rollback-dry-run-contract`](../../../../src/draft/technical-proofs/upgrade-rollback-dry-run-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 
 ## Focused Check
 
 ```powershell
-npm.cmd --prefix src\draft\upgrade-rollback-dry-run-contract test
+npm.cmd --prefix src\draft\technical-proofs\upgrade-rollback-dry-run-contract test
 ```
 
 The check proves the HOBO-499 acceptance bullets and scope boundary:

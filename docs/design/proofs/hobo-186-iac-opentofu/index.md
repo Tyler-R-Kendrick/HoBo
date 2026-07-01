@@ -4,7 +4,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04) and
 [ADR-0041](../../adr/07-portability-extensibility.md#adr-0041).
 
 The executable POC in
-[`src/draft/iac-opentofu-backend-contract`](../../../../src/draft/iac-opentofu-backend-contract)
+[`src/draft/technical-proofs/iac-opentofu-backend-contract`](../../../../src/draft/technical-proofs/iac-opentofu-backend-contract)
 proves the M2 OpenTofu backend contract:
 
 - the OpenTofu adapter consumes the same fixture resource shape used by the

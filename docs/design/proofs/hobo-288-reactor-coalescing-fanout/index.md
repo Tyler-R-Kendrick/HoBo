@@ -13,7 +13,7 @@ events, coalescing/backpressure, and bounded cross-cutting fan-out:
 - Duplicate event ids are idempotent and do not double-apply.
 - Local subscription work is prioritized while global fan-out remains queued.
 
-Executable proof lives in `src/draft/reactor-coalescing-fanout-contract`.
+Executable proof lives in `src/draft/technical-proofs/reactor-coalescing-fanout-contract`.
 
 Scope intentionally excludes Reactor core implementation, queue provider ports,
 auth/flag read-set ownership, and poison event handling.

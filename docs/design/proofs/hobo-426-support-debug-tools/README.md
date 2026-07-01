@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-426 Support & Debug Tools M0 Scope Proof
 
 HOBO-426 is proven by the focused M0 contract at
-[`src/draft/support-debug-tools-scope-contract`](../../../../src/draft/support-debug-tools-scope-contract/README.md)
+[`src/draft/exp-proofs/support-debug-tools-scope-contract`](../../../../src/draft/exp-proofs/support-debug-tools-scope-contract/README.md)
 and the durable scope record at [support-debug-tools.md](../../support-debug-tools.md).
 
 ## Acceptance Evidence

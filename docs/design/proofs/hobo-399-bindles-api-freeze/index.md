@@ -1,6 +1,6 @@
 # HOBO-399 Bindles API Freeze Proof
 
-The proof lives in `src/draft/bindles-api-freeze-contract`.
+The proof lives in `src/draft/technical-proofs/bindles-api-freeze-contract`.
 
 It freezes:
 
@@ -12,5 +12,5 @@ It freezes:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\bindles-api-freeze-contract test
+npm.cmd --prefix src\draft\technical-proofs\bindles-api-freeze-contract test
 ```

@@ -2,7 +2,7 @@
 
 This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20), [ADR-0031](../../adr/01-architecture-core.md#adr-0031), and [ADR-0069](../../adr/01-architecture-core.md#adr-0069).
 
-The branch adds `src/draft/runtime-local-component-host`, an independent POC for the M1 `runtime-local` `component-host` skeleton. It proves component lifecycle, static import-to-export linking, local HTTP handler invocation, trap isolation, and teardown cleanup without implementing the later cross-process or conformance-suite slices.
+The branch adds `src/draft/technical-proofs/runtime-local-component-host`, an independent POC for the M1 `runtime-local` `component-host` skeleton. It proves component lifecycle, static import-to-export linking, local HTTP handler invocation, trap isolation, and teardown cleanup without implementing the later cross-process or conformance-suite slices.
 
 ## Acceptance Evidence
 

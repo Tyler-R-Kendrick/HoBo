@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-513.
 
 Executable proof lives in
-[`src/draft/tax-currency-receipt-obligations-contract`](../../src/draft/tax-currency-receipt-obligations-contract/README.md).
+[`src/draft/technical-proofs/tax-currency-receipt-obligations-contract`](../../src/draft/technical-proofs/tax-currency-receipt-obligations-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-513-tax-currency-receipt-obligations`](./proofs/hobo-513-tax-currency-receipt-obligations/README.md).
 

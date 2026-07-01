@@ -21,7 +21,7 @@ tooling path without becoming resource identities.
 - Upstream resource-handle proof:
   [`../hobo-533-closure-builder-resource-handles`](../hobo-533-closure-builder-resource-handles/README.md).
 - Executable proof package:
-  [`../../../../src/draft/closure-builder-tooling-contract`](../../../../src/draft/closure-builder-tooling-contract/README.md).
+  [`../../../../src/draft/technical-proofs/closure-builder-tooling-contract`](../../../../src/draft/technical-proofs/closure-builder-tooling-contract/README.md).
 
 ## Verified Assertions
 
@@ -36,5 +36,5 @@ tooling path without becoming resource identities.
 ## Gate
 
 ```powershell
-npm.cmd --prefix src\draft\closure-builder-tooling-contract test
+npm.cmd --prefix src\draft\technical-proofs\closure-builder-tooling-contract test
 ```

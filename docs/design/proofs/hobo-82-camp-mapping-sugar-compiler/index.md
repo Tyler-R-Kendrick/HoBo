@@ -30,8 +30,8 @@ provider, matching, and planner slices.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\camp-mapping-sugar-compiler test
+npm.cmd --prefix src\draft\technical-proofs\camp-mapping-sugar-compiler test
 ```
 
 The checks live in
-`src/draft/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.ts`.
+`src/draft/technical-proofs/camp-mapping-sugar-compiler/test/camp-mapping-sugar-compiler.test.ts`.

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-411 Plan/Diff Viewer M0 Scope Proof
 
 HOBO-411 is proven by the focused M0 contract at
-[`src/draft/plan-diff-viewer-scope-acceptance`](../../../../src/draft/plan-diff-viewer-scope-acceptance/README.md)
+[`src/draft/exp-proofs/plan-diff-viewer-scope-acceptance`](../../../../src/draft/exp-proofs/plan-diff-viewer-scope-acceptance/README.md)
 and the durable scope record at [plan-diff-viewer.md](../../plan-diff-viewer.md).
 
 ## Acceptance Evidence
@@ -35,5 +35,5 @@ and the durable scope record at [plan-diff-viewer.md](../../plan-diff-viewer.md)
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\plan-diff-viewer-scope-acceptance test
+npm.cmd --prefix src\draft\exp-proofs\plan-diff-viewer-scope-acceptance test
 ```

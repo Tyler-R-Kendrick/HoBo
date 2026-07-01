@@ -1,7 +1,7 @@
 # HOBO-152 Codegen CLI Proof
 
 HOBO-152 is proven by the focused POC at
-`src/draft/hobo-codegen-cli-contract`.
+`src/draft/technical-proofs/hobo-codegen-cli-contract`.
 
 ## Acceptance Evidence
 
@@ -36,7 +36,7 @@ regeneration behavior.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-codegen-cli-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-codegen-cli-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

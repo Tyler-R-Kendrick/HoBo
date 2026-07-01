@@ -1,7 +1,7 @@
 # HOBO-164 Anonymous Preview Path Proof
 
 HOBO-164 is proven by the focused POC at
-[`src/draft/anonymous-preview-path-contract`](../../../../src/draft/anonymous-preview-path-contract/README.md).
+[`src/draft/technical-proofs/anonymous-preview-path-contract`](../../../../src/draft/technical-proofs/anonymous-preview-path-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -28,5 +28,5 @@ or `hobo claim` binding mechanics.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\anonymous-preview-path-contract test
+npm.cmd --prefix src\draft\technical-proofs\anonymous-preview-path-contract test
 ```

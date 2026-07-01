@@ -1,7 +1,7 @@
 # HOBO-132 - `hobo down` Lifecycle Contract Proof
 
 This proof covers the branch-local POC at
-[`src/draft/hobo-down-lifecycle-contract`](../../../../src/draft/hobo-down-lifecycle-contract).
+[`src/draft/technical-proofs/hobo-down-lifecycle-contract`](../../../../src/draft/technical-proofs/hobo-down-lifecycle-contract).
 
 ## Acceptance Mapping
 
@@ -30,7 +30,7 @@ choreographed rollback, provider destroy adapters, policy approval rules, or inc
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-down-lifecycle-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-down-lifecycle-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

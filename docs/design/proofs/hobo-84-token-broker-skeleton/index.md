@@ -31,9 +31,9 @@ deny-by-default policy hook.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\token-broker-skeleton-contract test
+npm.cmd --prefix src\draft\technical-proofs\token-broker-skeleton-contract test
 ```
 
 The checks live in
-`src/draft/token-broker-skeleton-contract/test/token-broker-skeleton.test.ts`
+`src/draft/technical-proofs/token-broker-skeleton-contract/test/token-broker-skeleton.test.ts`
 and include both `ctx.token(...)` and MCP `request_token` delegation.

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-513 Tax Currency Receipt Obligations Proof
 
 HOBO-513 is proven by the focused M0 contract at
-[`src/draft/tax-currency-receipt-obligations-contract`](../../../../src/draft/tax-currency-receipt-obligations-contract/README.md)
+[`src/draft/technical-proofs/tax-currency-receipt-obligations-contract`](../../../../src/draft/technical-proofs/tax-currency-receipt-obligations-contract/README.md)
 and the durable scope record at
 [tax-currency-receipt-obligations.md](../../tax-currency-receipt-obligations.md).
 
@@ -33,5 +33,5 @@ and the durable scope record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\tax-currency-receipt-obligations-contract test
+npm.cmd --prefix src\draft\technical-proofs\tax-currency-receipt-obligations-contract test
 ```

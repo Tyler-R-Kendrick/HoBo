@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-503 Marketplace Publisher Trust Evidence Proof
 
 HOBO-503 is proven by the focused M0 contract at
-[`src/draft/marketplace-publisher-trust-evidence-contract`](../../../../src/draft/marketplace-publisher-trust-evidence-contract/README.md)
+[`src/draft/exp-proofs/marketplace-publisher-trust-evidence-contract`](../../../../src/draft/exp-proofs/marketplace-publisher-trust-evidence-contract/README.md)
 and the durable scope record at
 [marketplace-publisher-trust-evidence.md](../../marketplace-publisher-trust-evidence.md).
 
@@ -33,5 +33,5 @@ and the durable scope record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\marketplace-publisher-trust-evidence-contract test
+npm.cmd --prefix src\draft\exp-proofs\marketplace-publisher-trust-evidence-contract test
 ```

@@ -9,8 +9,8 @@ and the incident-management decision in
 
 Executable proof:
 
-- package: `src/draft/sre-mttd-mttr-postmortem-contract`
-- test command: `npm.cmd --prefix src\draft\sre-mttd-mttr-postmortem-contract test`
+- package: `src/draft/technical-proofs/sre-mttd-mttr-postmortem-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\sre-mttd-mttr-postmortem-contract test`
 
 Acceptance coverage:
 

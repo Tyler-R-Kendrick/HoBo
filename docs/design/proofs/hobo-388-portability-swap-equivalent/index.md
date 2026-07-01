@@ -25,7 +25,7 @@ dependency artifact, not the app source.
 ## Boundary
 
 Executable proof:
-[`src/draft/portability-swap-equivalent-contract`](../../../../src/draft/portability-swap-equivalent-contract/README.md).
+[`src/draft/technical-proofs/portability-swap-equivalent-contract`](../../../../src/draft/technical-proofs/portability-swap-equivalent-contract/README.md).
 
 It composes with the existing discovery, install verification, publish, and
 version-resolution proofs, but does not reimplement those systems.
@@ -33,7 +33,7 @@ version-resolution proofs, but does not reimplement those systems.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\portability-swap-equivalent-contract test
+npm.cmd --prefix src\draft\technical-proofs\portability-swap-equivalent-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

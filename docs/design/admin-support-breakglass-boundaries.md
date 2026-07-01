@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-495.
 
 Executable proof lives in
-[`src/draft/admin-support-breakglass-boundaries`](../../src/draft/admin-support-breakglass-boundaries/README.md).
+[`src/draft/exp-proofs/admin-support-breakglass-boundaries`](../../src/draft/exp-proofs/admin-support-breakglass-boundaries/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-495-admin-support-breakglass`](./proofs/hobo-495-admin-support-breakglass/README.md).
 

@@ -7,7 +7,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0004](../../adr/01-architecture-core.md#adr-0004).
 
 The executable POC in
-[`src/draft/deployment-view-saga-graph-contract`](../../../../src/draft/deployment-view-saga-graph-contract/README.md)
+[`src/draft/technical-proofs/deployment-view-saga-graph-contract`](../../../../src/draft/technical-proofs/deployment-view-saga-graph-contract/README.md)
 proves the GA DeploymentView projection boundary:
 
 - replaying control-plane events reconstructs the deployment saga DAG, per-node
@@ -25,5 +25,5 @@ cross-deployment/fleet rollups.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\deployment-view-saga-graph-contract test
+npm.cmd --prefix src\draft\technical-proofs\deployment-view-saga-graph-contract test
 ```

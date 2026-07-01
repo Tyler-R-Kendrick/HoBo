@@ -6,7 +6,7 @@ This proof backs [PLAN-29](../../contracts-policy-flags.md#plan-29),
 [ADR-0074](../../adr/02-identity-security.md#adr-0074).
 
 The executable POC in
-[`src/draft/policy-fail-closed-contract`](../../../../src/draft/policy-fail-closed-contract)
+[`src/draft/technical-proofs/policy-fail-closed-contract`](../../../../src/draft/technical-proofs/policy-fail-closed-contract)
 faults the policy evaluator, Gatekeeper composition, and guardrail/contract
 steps without implementing those out-of-scope engines.
 
@@ -32,7 +32,7 @@ decision-cache / revocation-propagation hardening from HOBO-200.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\policy-fail-closed-contract test
+npm.cmd --prefix src\draft\technical-proofs\policy-fail-closed-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

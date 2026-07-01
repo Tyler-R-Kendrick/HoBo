@@ -1,7 +1,7 @@
 # HOBO-409 Workspace & Onboarding UX M0 Scope Proof
 
 HOBO-409 is proven by the focused M0 contract at
-[`src/draft/workspace-onboarding-scope-acceptance`](../../../../src/draft/workspace-onboarding-scope-acceptance/README.md)
+[`src/draft/exp-proofs/workspace-onboarding-scope-acceptance`](../../../../src/draft/exp-proofs/workspace-onboarding-scope-acceptance/README.md)
 and the durable scope record at [workspace-onboarding-ux.md](../../workspace-onboarding-ux.md).
 
 ## Acceptance Evidence
@@ -28,5 +28,5 @@ and the durable scope record at [workspace-onboarding-ux.md](../../workspace-onb
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\workspace-onboarding-scope-acceptance test
+npm.cmd --prefix src\draft\exp-proofs\workspace-onboarding-scope-acceptance test
 ```

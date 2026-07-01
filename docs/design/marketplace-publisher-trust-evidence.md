@@ -35,7 +35,7 @@ for publisher review. It does not build review UI or marketplace operations.
 ## Evidence Contract
 
 The executable contract lives in
-[`../../src/draft/marketplace-publisher-trust-evidence-contract`](../../src/draft/marketplace-publisher-trust-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/marketplace-publisher-trust-evidence-contract`](../../src/draft/exp-proofs/marketplace-publisher-trust-evidence-contract/README.md).
 It defines required trust tiers and validates that each tier carries publisher identity, artifact
 provenance, conformance, security review, deprecation/yank, customer warning, and handoff evidence.
 

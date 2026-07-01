@@ -6,7 +6,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 
 Executable artifact:
 
-- [`src/draft/provider-fly-contract`](../../../../src/draft/provider-fly-contract)
+- [`src/draft/technical-proofs/provider-fly-contract`](../../../../src/draft/technical-proofs/provider-fly-contract)
 
 Acceptance evidence:
 

@@ -1,7 +1,7 @@
 # HOBO-205 Control-Plane Policy Bypass Proof
 
 This proof makes the Plan 29 / ADR-0074 adversarial control-plane bypass case executable in
-[`src/draft/control-plane-policy-bypass-guard`](../../../../src/draft/control-plane-policy-bypass-guard/README.md).
+[`src/draft/technical-proofs/control-plane-policy-bypass-guard`](../../../../src/draft/technical-proofs/control-plane-policy-bypass-guard/README.md).
 
 ## Acceptance Mapping
 
@@ -23,5 +23,5 @@ side effects remain out of scope for this slice.
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/control-plane-policy-bypass-guard test
+npm.cmd --prefix src/draft/technical-proofs/control-plane-policy-bypass-guard test
 ```

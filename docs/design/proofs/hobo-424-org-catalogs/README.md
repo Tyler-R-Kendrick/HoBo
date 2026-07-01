@@ -14,9 +14,9 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-424
 - Draft package:
-  [`src/draft/org-catalogs-scope-acceptance`](../../../../src/draft/org-catalogs-scope-acceptance/README.md)
+  [`src/draft/exp-proofs/org-catalogs-scope-acceptance`](../../../../src/draft/exp-proofs/org-catalogs-scope-acceptance/README.md)
 - Focused gate:
-  `npm.cmd --prefix src\draft\org-catalogs-scope-acceptance test`
+  `npm.cmd --prefix src\draft\exp-proofs\org-catalogs-scope-acceptance test`
 
 ## Acceptance Mapping
 

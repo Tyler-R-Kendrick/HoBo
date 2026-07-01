@@ -23,7 +23,7 @@ certificates. It proves the issuer/JWKS seam those later slices consume.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\yard-identity-issuer-contract test
+npm.cmd --prefix src\draft\technical-proofs\yard-identity-issuer-contract test
 ```
 
 The checks prove discovery/JWKS validation, stable issuer handoff, rollover overlap, air-gap

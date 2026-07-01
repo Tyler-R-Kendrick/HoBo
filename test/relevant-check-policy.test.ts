@@ -9,7 +9,6 @@ function plan(files: string[], overrides = {}) {
   return selectRelevantChecks({
     files,
     base: "origin/main",
-    turboAvailable: true,
     ...overrides,
   });
 }
@@ -17,6 +16,32 @@ function plan(files: string[], overrides = {}) {
 function isAllPackageTurbo(check: Check) {
   return check.command === "pnpm"
     && check.args.join(" ") === "exec turbo run build typecheck lint test --filter=[HEAD^...HEAD]";
+}
+
+function isGlobalUnit(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:unit";
+}
+
+function isGlobalContract(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:contract";
+}
+
+function isGlobalContractConsumer(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:contract:consumer";
+}
+
+function isGlobalContractProvider(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:contract:provider";
+}
+
+function isWorkspacePrefixTest(check: Check) {
+  return check.command === "pnpm"
+    && check.args[0] === "--prefix"
+    && check.args[2] === "test";
+}
+
+function standardsCheck(check: Check) {
+  return check.command === "pnpm" && check.args[0] === "run" && check.args[1] === "standards:check";
 }
 
 test("root script-only package changes do not select all-package Turbo", () => {
@@ -39,32 +64,143 @@ test("--build still selects all-package Turbo", () => {
   assert.equal(checks.some(isAllPackageTurbo), true);
 });
 
-test("root dependency and task-graph config changes select all-package Turbo", () => {
+test("root dependency and task-graph config changes do not select all-package Turbo by default", () => {
   const dependencyPlan = plan(["package.json"], { rootPackageJsonScriptsOnlyChanged: false });
   const configPlan = plan(["turbo.json"], { rootPackageJsonScriptsOnlyChanged: true });
 
-  assert.equal(dependencyPlan.checks.some(isAllPackageTurbo), true);
-  assert.equal(configPlan.checks.some(isAllPackageTurbo), true);
+  assert.equal(dependencyPlan.checks.some(isAllPackageTurbo), false);
+  assert.equal(configPlan.checks.some(isAllPackageTurbo), false);
+  assert.equal(dependencyPlan.checks.some((check) => check.args.join(" ") === "run install:check"), true);
+  assert.equal(configPlan.checks.some((check) => check.args.join(" ") === "run install:check"), true);
+});
+
+test("worktree relevant checks pass standards base without staged mode", () => {
+  const { checks } = plan(["scripts/run-relevant-checks.ts"]);
+  const check = checks.find(standardsCheck);
+
+  assert.ok(check);
+  assert.equal(check.args.includes("--staged"), false);
+  assert.equal(check.args.includes("--base=origin/main"), true);
+});
+
+test("staged relevant checks pass staged mode to standards", () => {
+  const { checks } = plan(["scripts/run-relevant-checks.ts"], { staged: true });
+  const check = checks.find(standardsCheck);
+
+  assert.ok(check);
+  assert.equal(check.args.includes("--staged"), true);
+  assert.equal(check.args.includes("--base=origin/main"), true);
 });
 
 test("draft aggregate folders without package metadata do not select workspace tests", () => {
   const { checks, workspaces } = plan(
-    ["src/draft/epic-reference-implementations/_registry.md"],
+    ["src/draft/epic-proofs/_registry.md"],
     { workspacePackageExists: () => false },
   );
 
   assert.deepEqual(workspaces, []);
-  assert.equal(checks.some((check) => check.args.includes("./src/draft/epic-reference-implementations")), false);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/epic-proofs")), false);
 });
 
 test("draft package files select workspace tests when package metadata exists", () => {
   const { checks, workspaces } = plan(
-    ["src/draft/example-proof/src/index.ts"],
-    { workspacePackageExists: (workspace: string) => workspace === "src/draft/example-proof" },
+    ["src/draft/technical-proofs/example-proof/src/index.ts"],
+    { workspacePackageExists: (workspace: string) => workspace === "src/draft/technical-proofs/example-proof" },
   );
 
-  assert.deepEqual(workspaces, ["src/draft/example-proof"]);
-  assert.equal(checks.some((check) => check.args.includes("./src/draft/example-proof")), true);
+  assert.deepEqual(workspaces, ["src/draft/technical-proofs/example-proof"]);
+  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix src/draft/technical-proofs/example-proof test"), true);
+});
+
+test("draft package README-only changes do not select workspace tests", () => {
+  const { checks, workspaces } = plan(
+    ["src/draft/technical-proofs/example-proof/README.md"],
+    { workspacePackageExists: (workspace: string) => workspace === "src/draft/technical-proofs/example-proof" },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), false);
+});
+
+test("move-only draft package files can be excluded from workspace tests", () => {
+  const { checks, workspaces } = plan(
+    ["src/draft/technical-proofs/example-proof/src/index.ts"],
+    {
+      workspacePackageExists: (workspace: string) => workspace === "src/draft/technical-proofs/example-proof",
+      workspaceTestFiles: [],
+    },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), false);
+});
+
+test("draft Pact changes stay on workspace tests instead of selecting global contract sweep", () => {
+  const { checks } = plan([
+    "src/draft/technical-proofs/broker-receipt-integrity-contract/architecture/pacts/broker_receipt_integrity.pact.json",
+  ]);
+
+  assert.equal(checks.some(isGlobalContract), false);
+  assert.equal(checks.some(isWorkspacePrefixTest), true);
+});
+
+test("shared Pact changes do not select global contract sweeps by default", () => {
+  const { checks } = plan(["tests/pacts/runtime-provider.pact.json"]);
+
+  assert.equal(checks.some(isGlobalContract), false);
+  assert.equal(checks.some(isGlobalContractConsumer), false);
+  assert.equal(checks.some(isGlobalContractProvider), false);
+});
+
+test("shared Pact final validation can opt into broad contract sweeps", () => {
+  const { checks } = plan(["tests/pacts/runtime-provider.pact.json"], { includeBroadSweeps: true });
+
+  assert.equal(checks.some(isGlobalContract), false);
+  assert.equal(checks.some(isGlobalContractConsumer), true);
+  assert.equal(checks.some(isGlobalContractProvider), true);
+});
+
+test("root schema changes do not select broad contract sweeps by default", () => {
+  const { checks } = plan(["contracts/runtime/runtime.proto"]);
+
+  assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), true);
+  assert.equal(checks.some(isGlobalContractConsumer), false);
+  assert.equal(checks.some(isGlobalContractProvider), false);
+});
+
+test("root schema final validation can opt into broad contract sweeps", () => {
+  const { checks } = plan(["contracts/runtime/runtime.proto"], { includeBroadSweeps: true });
+
+  assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), true);
+  assert.equal(checks.some(isGlobalContractConsumer), true);
+  assert.equal(checks.some(isGlobalContractProvider), true);
+});
+
+test("oversized draft workspace selections stay direct instead of falling back to global unit sweep", () => {
+  const files = Array.from({ length: 520 }, (_, index) => {
+    const slug = `very-long-draft-proof-package-name-${index.toString().padStart(4, "0")}-with-contract-fixtures-and-tests`;
+    return `src/draft/technical-proofs/${slug}/test/proof.test.ts`;
+  });
+  const { checks, workspaces } = plan(files, { workspacePackageExists: () => true });
+  const workspaceTestChecks = checks.filter(isWorkspacePrefixTest);
+
+  assert.equal(workspaces.length, 520);
+  assert.equal(checks.some(isGlobalUnit), false);
+  assert.equal(workspaceTestChecks.length, 520);
+  assert.ok(
+    workspaceTestChecks.every((check) => check.args[0] === "--prefix" && check.args[2] === "test"),
+  );
+});
+
+test("draft package tests use direct workspace prefixes", () => {
+  const { checks } = plan(
+    ["src/draft/technical-proofs/provider-authoring-contract/src/provider-authoring-contract.ts"],
+  );
+
+  assert.equal(
+    checks.some((check) => check.args.join(" ") === "--prefix src/draft/technical-proofs/provider-authoring-contract test"),
+    true,
+  );
 });
 
 test("fast test script is root-only and full quiet unit lane remains explicit", () => {

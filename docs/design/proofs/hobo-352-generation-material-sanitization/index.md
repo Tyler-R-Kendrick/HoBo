@@ -2,7 +2,7 @@
 
 HOBO-352 proves the Plan 23 and ADR-0023 prompt-injection boundary for
 generation material. The draft package is
-`src/draft/generation-material-sanitization-contract`.
+`src/draft/technical-proofs/generation-material-sanitization-contract`.
 
 ## Evidence
 
@@ -19,5 +19,5 @@ generation material. The draft package is
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\generation-material-sanitization-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-material-sanitization-contract test
 ```

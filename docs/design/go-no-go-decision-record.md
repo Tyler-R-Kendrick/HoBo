@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-483.
 
 Executable proof lives in
-[`src/draft/go-no-go-decision-record-contract`](../../src/draft/go-no-go-decision-record-contract/README.md).
+[`src/draft/technical-proofs/go-no-go-decision-record-contract`](../../src/draft/technical-proofs/go-no-go-decision-record-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-483-go-no-go-decision-record`](./proofs/hobo-483-go-no-go-decision-record/index.md).
 
@@ -44,7 +44,7 @@ for risk acceptance. It does not approve any current risk.
 ## M3 Release Candidate Evidence Gate
 
 HOBO-468 records the V1 Release Program & Cutline M3 evidence gate in
-[`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md). The gate requires:
+[`v1-cutline-contract`](../../src/draft/technical-proofs/v1-cutline-contract/README.md). The gate requires:
 
 - accepted cutline baseline, release-candidate go/no-go, blocker delta, accepted-risk register,
   cross-project handoff, and release-notes readiness evidence;
@@ -62,7 +62,7 @@ remains a separate M4 gate.
 ## M4 GA Handoff Evidence Gate
 
 HOBO-475 records the V1 Release Program & Cutline M4 GA handoff evidence gate in
-[`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md). The gate requires:
+[`v1-cutline-contract`](../../src/draft/technical-proofs/v1-cutline-contract/README.md). The gate requires:
 
 - accepted cutline baseline, GA go/no-go input record, signed launch checklist, support handoff,
   legal/privacy posture, blocker delta, accepted-risk register, cross-project handoff, and

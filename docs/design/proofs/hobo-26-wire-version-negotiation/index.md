@@ -5,7 +5,7 @@ This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20),
 [ADR-0085](../../adr/01-architecture-core.md#adr-0085), and ADR-0024's
 pin-and-gate version policy.
 
-The branch adds `src/draft/wire-version-negotiation-contract`, an independent
+The branch adds `src/draft/technical-proofs/wire-version-negotiation-contract`, an independent
 POC for the M3 membrane version-negotiation slice.
 
 Acceptance evidence:
@@ -27,5 +27,5 @@ Scope boundary:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\wire-version-negotiation-contract test
+npm.cmd --prefix src\draft\technical-proofs\wire-version-negotiation-contract test
 ```

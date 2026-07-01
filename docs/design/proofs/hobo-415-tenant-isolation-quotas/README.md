@@ -14,9 +14,9 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-415
 - Draft package:
-  [`src/draft/tenant-isolation-quotas-scope`](../../../../src/draft/tenant-isolation-quotas-scope/README.md)
+  [`src/draft/exp-proofs/tenant-isolation-quotas-scope`](../../../../src/draft/exp-proofs/tenant-isolation-quotas-scope/README.md)
 - Focused gate:
-  `npm.cmd --prefix src\draft\tenant-isolation-quotas-scope test`
+  `npm.cmd --prefix src\draft\exp-proofs\tenant-isolation-quotas-scope test`
 
 ## Acceptance Mapping
 

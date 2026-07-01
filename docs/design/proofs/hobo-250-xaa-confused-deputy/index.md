@@ -13,7 +13,7 @@ Design refs:
 
 Executable artifact:
 
-- [`src/draft/xaa-confused-deputy-guard-contract`](../../../../src/draft/xaa-confused-deputy-guard-contract)
+- [`src/draft/technical-proofs/xaa-confused-deputy-guard-contract`](../../../../src/draft/technical-proofs/xaa-confused-deputy-guard-contract)
 
 Acceptance evidence:
 

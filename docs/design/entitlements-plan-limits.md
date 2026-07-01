@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-419.
 
 Executable proof:
-[`entitlements-plan-limits-scope`](../../src/draft/entitlements-plan-limits-scope/README.md)
+[`entitlements-plan-limits-scope`](../../src/draft/exp-proofs/entitlements-plan-limits-scope/README.md)
 
 Branch evidence:
 [`proof record`](./proofs/hobo-419-entitlements-plan-limits/README.md)
@@ -99,7 +99,7 @@ record and executable proof agree on:
   automation, and support ticket automation.
 
 The executable proof lives in
-[`entitlement-abuse-rate-limit-policy-contract`](../../src/draft/entitlement-abuse-rate-limit-policy-contract/README.md).
+[`entitlement-abuse-rate-limit-policy-contract`](../../src/draft/technical-proofs/entitlement-abuse-rate-limit-policy-contract/README.md).
 HOBO-491 remains a policy contract: fraud scoring, runtime enforcement, billing provider
 integration, support queue implementation, and live customer suspension remain out of scope.
 

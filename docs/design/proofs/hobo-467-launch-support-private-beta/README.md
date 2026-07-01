@@ -1,7 +1,15 @@
+---
+type: Design Proof Evidence
+title: "HOBO-467 Launch Support Private Beta Evidence"
+description: "Evidence proof for private beta launch support posture, blockers, and release-readiness synchronization."
+tags: [hobo, proof, launch-support, private-beta]
+timestamp: 2026-06-30T00:00:00Z
+---
+
 # HOBO-467 Launch Support Private Beta Evidence
 
 HOBO-467 is proven by the focused M2 contract at
-[`src/draft/launch-support-private-beta-evidence-contract`](../../../../src/draft/launch-support-private-beta-evidence-contract/README.md).
+[`src/draft/exp-proofs/launch-support-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/launch-support-private-beta-evidence-contract/README.md).
 
 ## Evidence Summary
 
@@ -18,7 +26,7 @@ HOBO-467 is proven by the focused M2 contract at
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\launch-support-private-beta-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\launch-support-private-beta-evidence-contract test
 ```
 
 The package also carries protobuf, CUE, and PACT boundary artifacts under its `architecture/`

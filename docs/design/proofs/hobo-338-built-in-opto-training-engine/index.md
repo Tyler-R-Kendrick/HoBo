@@ -18,7 +18,7 @@ and returns a candidate rewrite without creating a new trust path.
 ## Boundary
 
 The proof lives in
-[`src/draft/built-in-opto-training-engine-contract`](../../../../src/draft/built-in-opto-training-engine-contract/README.md).
+[`src/draft/technical-proofs/built-in-opto-training-engine-contract`](../../../../src/draft/technical-proofs/built-in-opto-training-engine-contract/README.md).
 It consumes the HOBO-317 port contract, HOBO-335 trajectory shape, and HOBO-309
 promotion-gate discipline, but remains an independent draft POC.
 
@@ -29,7 +29,7 @@ region-persistence.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\built-in-opto-training-engine-contract test
+npm.cmd --prefix src\draft\technical-proofs\built-in-opto-training-engine-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

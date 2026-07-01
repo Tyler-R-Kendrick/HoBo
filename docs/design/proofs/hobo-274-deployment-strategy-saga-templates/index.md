@@ -8,7 +8,7 @@ This proof connects the M2 deployment-strategy template slice to:
 
 Executable artifact:
 
-- [`src/draft/deployment-strategy-saga-templates-contract`](../../../../src/draft/deployment-strategy-saga-templates-contract)
+- [`src/draft/technical-proofs/deployment-strategy-saga-templates-contract`](../../../../src/draft/technical-proofs/deployment-strategy-saga-templates-contract)
 
 Acceptance evidence:
 

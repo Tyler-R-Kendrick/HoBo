@@ -8,7 +8,7 @@ This proof connects canary, blue/green, and progressive rollout saga templates t
 
 Executable artifact:
 
-- [`src/draft/deployment-strategy-saga-templates-contract`](../../../../src/draft/deployment-strategy-saga-templates-contract)
+- [`src/draft/technical-proofs/deployment-strategy-saga-templates-contract`](../../../../src/draft/technical-proofs/deployment-strategy-saga-templates-contract)
 
 Acceptance evidence:
 

@@ -18,7 +18,7 @@ closure-builder API in `@hobo/bindles`.
 - SDK contract index: [`../../sdk-contracts.md`](../../sdk-contracts.md).
 - Package ownership: [`../../package-namespaces.md`](../../package-namespaces.md).
 - Executable proof package:
-  [`../../../../src/draft/closure-builder-public-api-contract`](../../../../src/draft/closure-builder-public-api-contract/README.md).
+  [`../../../../src/draft/technical-proofs/closure-builder-public-api-contract`](../../../../src/draft/technical-proofs/closure-builder-public-api-contract/README.md).
 - Downstream handle proof:
   [`../hobo-533-closure-builder-resource-handles`](../hobo-533-closure-builder-resource-handles/README.md).
 
@@ -34,5 +34,5 @@ closure-builder API in `@hobo/bindles`.
 ## Gate
 
 ```powershell
-npm.cmd --prefix src\draft\closure-builder-public-api-contract test
+npm.cmd --prefix src\draft\technical-proofs\closure-builder-public-api-contract test
 ```

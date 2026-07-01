@@ -5,7 +5,7 @@ This proof backs [PLAN-29](../../contracts-policy-flags.md#plan-29),
 [ADR-0076](../../adr/02-identity-security.md#adr-0076).
 
 The executable POC in
-[`src/draft/observed-contract-promotion-contract`](../../../../src/draft/observed-contract-promotion-contract)
+[`src/draft/technical-proofs/observed-contract-promotion-contract`](../../../../src/draft/technical-proofs/observed-contract-promotion-contract)
 proves the M2 observed-contract slice:
 
 - trace corpora mine Contract IR `observed` contracts with recorded sample
@@ -22,5 +22,5 @@ proves the M2 observed-contract slice:
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\observed-contract-promotion-contract test
+npm.cmd --prefix src\draft\technical-proofs\observed-contract-promotion-contract test
 ```

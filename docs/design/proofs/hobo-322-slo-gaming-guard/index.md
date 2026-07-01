@@ -4,7 +4,7 @@ This proof connects [PLAN-05](../../reliability-observability-cost.md#plan-05),
 [ADR-0045](../../adr/02-identity-security.md#adr-0045), and
 [ADR-0078](../../adr/02-identity-security.md#adr-0078) to the executable draft package:
 
-- [`src/draft/slo-gaming-guard-contract`](../../../../src/draft/slo-gaming-guard-contract)
+- [`src/draft/technical-proofs/slo-gaming-guard-contract`](../../../../src/draft/technical-proofs/slo-gaming-guard-contract)
 
 ## Scope
 
@@ -36,7 +36,7 @@ It does not implement the SLO computation engine, deploy gate, or AvailabilityVi
 ## Evidence
 
 ```powershell
-npm.cmd --prefix src\draft\slo-gaming-guard-contract test
+npm.cmd --prefix src\draft\technical-proofs\slo-gaming-guard-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

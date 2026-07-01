@@ -31,7 +31,7 @@ tenant routing context that those later gates consume.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\per-app-tenant-routing-contract test
+npm.cmd --prefix src\draft\exp-proofs\per-app-tenant-routing-contract test
 ```
 
 The checks cover subdomain routing with wildcard cert metadata, tenant-owned

@@ -5,11 +5,21 @@ import { selectRelevantChecks, type Check } from "./relevant-check-policy.js";
 
 const args = new Set(process.argv.slice(2));
 const baseArg = process.argv.find((arg) => arg.startsWith("--base="));
-const base = baseArg?.slice("--base=".length) ?? process.env.HOBO_CHECK_BASE ?? "origin/main";
+const base = baseArg?.slice("--base=".length) ?? process.env.HOBO_CHECK_BASE ?? "HEAD~1";
 const staged = args.has("--staged");
 const all = args.has("--all");
 const explain = args.has("--explain");
 const includeBuild = args.has("--build");
+const finalValidation = args.has("--final");
+const parallelLimit = Math.max(
+  1,
+  Number.parseInt(process.env.HOBO_RELEVANT_CHECK_CONCURRENCY ?? "4", 10) || 4,
+);
+
+type ChangedFileRecord = {
+  path: string;
+  status: string;
+};
 
 function commandForPlatform(command: string, commandArgs: string[]) {
   if (process.platform === "win32" && command === "pnpm") {
@@ -27,9 +37,6 @@ function run(command: string, commandArgs: string[]) {
   console.log(`\n▶ ${printable}`);
   const platformCommand = commandForPlatform(command, commandArgs);
   const result = spawnSync(platformCommand.command, platformCommand.args, { stdio: "inherit", shell: false });
-  if (result.status !== 0 && isTurboWorkspaceTest(command, commandArgs) && runWorkspaceTestFallback(commandArgs) === 0) {
-    return 0;
-  }
   return result.status ?? 1;
 }
 
@@ -42,36 +49,58 @@ function runAsync(check: Check): Promise<number> {
   return new Promise<number>((resolve) => {
     child.once("error", () => resolve(1));
     child.once("exit", (status) => resolve(status ?? 1));
-  }).then((status) => {
-    if (status !== 0 && isTurboWorkspaceTest(check.command, check.args) && runWorkspaceTestFallback(check.args) === 0) {
-      return 0;
-    }
-    return status;
   });
 }
 
-function isTurboWorkspaceTest(command: string, commandArgs: string[]) {
-  return command === "pnpm"
-    && commandArgs[0] === "exec"
-    && commandArgs[1] === "turbo"
-    && commandArgs[2] === "run"
-    && commandArgs[3] === "test";
+function broadSweepScript(check: Check): string | undefined {
+  if (check.command !== "pnpm" || check.args[0] !== "run") return undefined;
+  const script = check.args[1];
+  return [
+    "check:all",
+    "test:all",
+    "test:contract",
+    "test:contract:consumer",
+    "test:contract:provider",
+    "test:unit",
+    "test:unit:quiet",
+    "validate:final",
+  ].includes(script)
+    ? script
+    : undefined;
 }
 
-function runWorkspaceTestFallback(commandArgs: string[]) {
-  const workspaces = commandArgs
-    .flatMap((arg, index) => arg === "--filter" ? [commandArgs[index + 1]] : [])
-    .filter((workspace): workspace is string => Boolean(workspace))
-    .map((workspace) => workspace.replace(/^\.\//u, ""));
+function assertNoImplicitBroadSweeps(checks: Check[]) {
+  if (all || finalValidation) return;
 
-  if (workspaces.length === 0) return 1;
+  const broadChecks = checks
+    .map((check) => ({ check, script: broadSweepScript(check) }))
+    .filter((entry): entry is { check: Check; script: string } => Boolean(entry.script));
 
-  console.warn("Turbo workspace test runner failed before completion; falling back to direct workspace test scripts.");
-  for (const workspace of workspaces) {
-    const status = run("pnpm", ["--prefix", workspace, "test"]);
-    if (status !== 0) return status;
+  if (broadChecks.length === 0) return;
+
+  console.error("Relevant-check policy selected broad root sweep(s) without --final or --all:");
+  for (const { check, script } of broadChecks) {
+    console.error(`- pnpm run ${script}: ${check.reason}`);
   }
-  return 0;
+  console.error("Use changed-scope, workspace-prefix, or root-only checks while iterating.");
+  process.exit(1);
+}
+
+async function runBounded(checks: Check[], concurrency: number): Promise<number[]> {
+  const statuses = new Array<number>(checks.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < checks.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      statuses[index] = await runAsync(checks[index]);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, checks.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return statuses;
 }
 
 function capture(command: string, commandArgs: string[]) {
@@ -81,10 +110,34 @@ function capture(command: string, commandArgs: string[]) {
   return result.stdout.trim();
 }
 
-function changedFiles() {
-  if (all) return capture("git", ["ls-files"]).split(/\r?\n/).filter(Boolean);
-  if (staged) return capture("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]).split(/\r?\n/).filter(Boolean);
-  return capture("git", ["diff", "--name-only", "--diff-filter=ACMR", diffBase, "HEAD"]).split(/\r?\n/).filter(Boolean);
+function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
+  return raw
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const [status, firstPath, secondPath] = line.split("\t");
+      return { status, path: secondPath ?? firstPath };
+    })
+    .filter((record) => Boolean(record.path));
+}
+
+function changedFileRecords(): ChangedFileRecord[] {
+  if (all) {
+    return capture("git", ["ls-files"])
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((file) => ({ status: "M", path: file }));
+  }
+  if (staged) {
+    return parseChangedFileRecords(capture("git", ["diff", "--cached", "--name-status", "--find-renames=100%", "--diff-filter=ACMR"]));
+  }
+  return parseChangedFileRecords(capture("git", ["diff", "--name-status", "--find-renames=100%", "--diff-filter=ACMR", diffBase, "HEAD"]));
+}
+
+function workspaceTestFiles(records: ChangedFileRecord[]) {
+  return records
+    .filter((record) => record.status !== "R100")
+    .map((record) => record.path);
 }
 
 function stableJson(value: unknown): string {
@@ -113,26 +166,29 @@ function rootPackageJsonScriptsOnlyChanged() {
 }
 
 const diffBase = capture("git", ["merge-base", base, "HEAD"]) || base;
-const files = changedFiles();
+const records = changedFileRecords();
+const files = records.map((record) => record.path);
 if (files.length === 0) {
   console.log("No changed files; skipping relevant checks.");
   process.exit(0);
 }
 
-const turboAvailable = Boolean(capture("pnpm", ["exec", "turbo", "--version"]));
 const { checks, scopes } = selectRelevantChecks({
   files,
   base,
+  workspaceTestFiles: workspaceTestFiles(records),
   staged,
   all,
   includeBuild,
+  includeBroadSweeps: all || finalValidation,
   rootPackageJsonScriptsOnlyChanged: rootPackageJsonScriptsOnlyChanged(),
-  turboAvailable,
 });
 
 console.log(`Changed files: ${files.length}`);
 console.log(`Detected scope: ${scopes.join(", ") || "standard"}`);
 for (const check of checks) console.log(`- ${check.command} ${check.args.join(" ")} (${check.reason})`);
+
+assertNoImplicitBroadSweeps(checks);
 
 if (explain) process.exit(0);
 
@@ -142,6 +198,9 @@ for (const check of checks.filter((check) => check.serial)) {
 }
 
 const parallelChecks = checks.filter((check) => !check.serial);
-const statuses = await Promise.all(parallelChecks.map(runAsync));
+if (parallelChecks.length > 0) {
+  console.log(`Running ${parallelChecks.length} parallel-capable check(s) with concurrency ${parallelLimit}.`);
+}
+const statuses = await runBounded(parallelChecks, parallelLimit);
 const failed = statuses.find((status) => status !== 0);
 if (failed) process.exit(failed);

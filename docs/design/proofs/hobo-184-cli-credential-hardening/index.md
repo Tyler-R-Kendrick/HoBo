@@ -1,7 +1,7 @@
 # HOBO-184 CLI Credential Hardening Proof
 
 HOBO-184 is proven by the focused POC at
-[`src/draft/cli-credential-hardening-contract`](../../../../src/draft/cli-credential-hardening-contract/README.md).
+[`src/draft/technical-proofs/cli-credential-hardening-contract`](../../../../src/draft/technical-proofs/cli-credential-hardening-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -31,5 +31,5 @@ internals, and it does not address MCP prompt-injection hardening, which remains
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\cli-credential-hardening-contract test
+npm.cmd --prefix src\draft\technical-proofs\cli-credential-hardening-contract test
 ```

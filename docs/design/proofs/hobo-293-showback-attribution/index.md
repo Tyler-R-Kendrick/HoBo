@@ -4,7 +4,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05)
 and [ADR-0039](../../adr/02-identity-security.md#adr-0039).
 
 The branch adds
-[`src/draft/showback-attribution-contract`](../../../../src/draft/showback-attribution-contract/README.md),
+[`src/draft/technical-proofs/showback-attribution-contract`](../../../../src/draft/technical-proofs/showback-attribution-contract/README.md),
 an independent POC for attributing `MeteringView` cost facts across tenant,
 Camp, Bindle, run, agent, and team showback rows. It consumes retained source
 events from a seq-pinned MeteringView and emits run-inspector cost annotations
@@ -32,7 +32,7 @@ or the MeteringView fold.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\showback-attribution-contract test
+npm.cmd --prefix src\draft\technical-proofs\showback-attribution-contract test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint
 node scripts\validate-traceability.ts

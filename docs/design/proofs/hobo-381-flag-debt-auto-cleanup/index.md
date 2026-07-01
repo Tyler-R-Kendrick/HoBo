@@ -8,7 +8,7 @@ This proof connects the M4 flag-debt lifecycle slice to:
 
 Executable artifact:
 
-- [`src/draft/flag-debt-auto-cleanup-contract`](../../../../src/draft/flag-debt-auto-cleanup-contract)
+- [`src/draft/technical-proofs/flag-debt-auto-cleanup-contract`](../../../../src/draft/technical-proofs/flag-debt-auto-cleanup-contract)
 
 Acceptance evidence:
 

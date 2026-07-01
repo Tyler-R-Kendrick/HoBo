@@ -28,7 +28,7 @@ production DNS/ACME/gateway implementations out of scope.
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\dns-validation-rebinding-guard-contract test
+npm.cmd --prefix src\draft\technical-proofs\dns-validation-rebinding-guard-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

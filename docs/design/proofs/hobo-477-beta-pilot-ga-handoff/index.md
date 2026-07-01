@@ -1,7 +1,7 @@
 # HOBO-477 Beta Pilot GA Handoff Evidence
 
 HOBO-477 is proven by the focused M4 contract at
-[`src/draft/beta-pilot-ga-handoff-evidence-contract`](../../../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract/README.md)
 and the durable beta pilot scope record at [beta-pilot-feedback.md](../../beta-pilot-feedback.md).
 
 ## Evidence Summary
@@ -28,7 +28,7 @@ and the durable beta pilot scope record at [beta-pilot-feedback.md](../../beta-p
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\beta-pilot-ga-handoff-evidence-contract test
+pnpm.cmd --dir src\draft\exp-proofs\beta-pilot-ga-handoff-evidence-contract test
 ```
 
 The package also carries protobuf, CUE, and PACT boundary artifacts under its `architecture/`

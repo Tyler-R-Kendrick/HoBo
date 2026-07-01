@@ -6,7 +6,7 @@ This proof backs [PLAN-11](../../data-plane.md#plan-11),
 [ADR-0086](../../adr/03-data-plane.md#adr-0086).
 
 The executable POC in
-[`src/draft/native-log-projection-contract`](../../../../src/draft/native-log-projection-contract)
+[`src/draft/technical-proofs/native-log-projection-contract`](../../../../src/draft/technical-proofs/native-log-projection-contract)
 pins the M1 native projection boundary:
 
 - `projection(name, { key, on })` declares the typed authoring surface and derives the event
@@ -25,5 +25,5 @@ rebuild-from-zero scale behavior.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\native-log-projection-contract test
+npm.cmd --prefix src\draft\technical-proofs\native-log-projection-contract test
 ```

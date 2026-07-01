@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-458 Launch Site Demo Alpha Evidence Proof
 
 HOBO-458 is proven by the focused M1 contract at
-[`src/draft/launch-site-demo-alpha-evidence-contract`](../../../../src/draft/launch-site-demo-alpha-evidence-contract/README.md)
+[`src/draft/exp-proofs/launch-site-demo-alpha-evidence-contract`](../../../../src/draft/exp-proofs/launch-site-demo-alpha-evidence-contract/README.md)
 and the durable design record in
 [`launch-messaging-claims.md`](../../launch-messaging-claims.md#m1-dogfoodalpha-evidence-gate).
 
@@ -31,5 +31,5 @@ and the durable design record in
 ## Verification
 
 ```powershell
-pnpm --dir src\draft\launch-site-demo-alpha-evidence-contract test
+pnpm --dir src\draft\exp-proofs\launch-site-demo-alpha-evidence-contract test
 ```

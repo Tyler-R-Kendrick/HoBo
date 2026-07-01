@@ -27,14 +27,14 @@ This executable proof pins the M4 provider Resource Pack distribution slice from
 ## Boundary
 
 The proof lives in
-[`src/draft/resource-pack-distribution-contract`](../../../../src/draft/resource-pack-distribution-contract/README.md).
+[`src/draft/technical-proofs/resource-pack-distribution-contract`](../../../../src/draft/technical-proofs/resource-pack-distribution-contract/README.md).
 It composes the existing
-[`signed-artifact-publish-install-contract`](../../../../src/draft/signed-artifact-publish-install-contract/README.md)
+[`signed-artifact-publish-install-contract`](../../../../src/draft/technical-proofs/signed-artifact-publish-install-contract/README.md)
 fixture and keeps production signing, Registry lifecycle, capability discovery, Matching internals,
 monetization, and revocation internals out of scope.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\resource-pack-distribution-contract test
+npm.cmd --prefix src\draft\technical-proofs\resource-pack-distribution-contract test
 ```

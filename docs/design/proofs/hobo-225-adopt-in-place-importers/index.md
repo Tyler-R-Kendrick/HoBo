@@ -20,12 +20,12 @@ This executable proof backs [PLAN-04](../../control-plane.md#plan-04),
 
 ## Proof Boundaries
 
-This is a contract POC under `src/draft/adopt-in-place-contract`. It does not
+This is a contract POC under `src/draft/technical-proofs/adopt-in-place-contract`. It does not
 implement real Terraform, Pulumi, OpenTofu, or CDKTF state readers; the full
 migration playbook; provider realization; or ResourceActor runtime reconciliation.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\adopt-in-place-contract test
+npm.cmd --prefix src\draft\technical-proofs\adopt-in-place-contract test
 ```

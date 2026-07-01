@@ -1,7 +1,7 @@
 # HOBO-474 Launch Support Release Candidate Evidence
 
 HOBO-474 is proven by the focused M3 contract at
-[`src/draft/launch-support-release-candidate-evidence-contract`](../../../../src/draft/launch-support-release-candidate-evidence-contract/README.md).
+[`src/draft/exp-proofs/launch-support-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/launch-support-release-candidate-evidence-contract/README.md).
 
 ## Evidence Summary
 
@@ -19,7 +19,7 @@ HOBO-474 is proven by the focused M3 contract at
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\launch-support-release-candidate-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\launch-support-release-candidate-evidence-contract test
 ```
 
 The package also carries protobuf, CUE, and PACT boundary artifacts under its `architecture/`

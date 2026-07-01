@@ -14,9 +14,9 @@ This proof backs the M0 follow-up policy record for
 
 - Issue: HOBO-491
 - Draft package:
-  [`src/draft/entitlement-abuse-rate-limit-policy-contract`](../../../../src/draft/entitlement-abuse-rate-limit-policy-contract/README.md)
+  [`src/draft/technical-proofs/entitlement-abuse-rate-limit-policy-contract`](../../../../src/draft/technical-proofs/entitlement-abuse-rate-limit-policy-contract/README.md)
 - Focused gate:
-  `corepack pnpm --prefix src\draft\entitlement-abuse-rate-limit-policy-contract test`
+  `corepack pnpm --prefix src\draft\technical-proofs\entitlement-abuse-rate-limit-policy-contract test`
 
 ## Acceptance Mapping
 

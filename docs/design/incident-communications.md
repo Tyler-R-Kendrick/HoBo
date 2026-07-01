@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-450.
 
 Executable proof lives in
-[`src/draft/incident-communications-scope-contract`](../../src/draft/incident-communications-scope-contract/README.md).
+[`src/draft/exp-proofs/incident-communications-scope-contract`](../../src/draft/exp-proofs/incident-communications-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-450-incident-communications`](./proofs/hobo-450-incident-communications/README.md).
 

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-403 Dogfood Yard Acceptance Proof
 
 HOBO-403 is proven by the focused M0 contract at
-[`src/draft/dogfood-yard-acceptance-contract`](../../../../src/draft/dogfood-yard-acceptance-contract/README.md)
+[`src/draft/exp-proofs/dogfood-yard-acceptance-contract`](../../../../src/draft/exp-proofs/dogfood-yard-acceptance-contract/README.md)
 and the durable scope record at [dogfood-yard.md](../../dogfood-yard.md).
 
 ## Acceptance Evidence
@@ -31,5 +31,5 @@ and the durable scope record at [dogfood-yard.md](../../dogfood-yard.md).
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\dogfood-yard-acceptance-contract test
+npm.cmd --prefix src\draft\exp-proofs\dogfood-yard-acceptance-contract test
 ```

@@ -5,7 +5,7 @@ This proof covers the applier side of self-healing live-fix from
 [PLAN-40](../../operators-sre.md#plan-40), and [PLAN-06](../../ai-native-agent-auth.md#plan-06).
 
 The executable contract lives in
-`src/draft/live-fix-gated-candidate-contract` and proves:
+`src/draft/technical-proofs/live-fix-gated-candidate-contract` and proves:
 
 - A captured failing trace becomes a permanent regression test.
 - A generated candidate must pass sandbox validation, conformance, and failing-trace replay before policy evaluation.
@@ -19,5 +19,5 @@ the live-fix applier path.
 ## Verification
 
 ```powershell
-npm.cmd test -- src/draft/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.ts
+npm.cmd test -- src/draft/technical-proofs/live-fix-gated-candidate-contract/test/live-fix-gated-candidate.test.ts
 ```

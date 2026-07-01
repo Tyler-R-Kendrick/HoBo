@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-417.
 
 Executable proof lives in
-[`src/draft/usage-metering-scope-contract`](../../src/draft/usage-metering-scope-contract/README.md).
+[`src/draft/exp-proofs/usage-metering-scope-contract`](../../src/draft/exp-proofs/usage-metering-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-417-usage-metering`](./proofs/hobo-417-usage-metering/README.md).
 

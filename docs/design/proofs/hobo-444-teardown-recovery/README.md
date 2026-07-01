@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-444 Teardown & Recovery M0 Scope Proof
 
 HOBO-444 is proven by the focused M0 contract at
-[`src/draft/teardown-recovery-scope-acceptance`](../../../../src/draft/teardown-recovery-scope-acceptance/README.md)
+[`src/draft/exp-proofs/teardown-recovery-scope-acceptance`](../../../../src/draft/exp-proofs/teardown-recovery-scope-acceptance/README.md)
 and the durable scope record at [teardown-recovery.md](../../teardown-recovery.md).
 
 ## Acceptance Evidence
@@ -37,5 +37,5 @@ and the durable scope record at [teardown-recovery.md](../../teardown-recovery.m
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\teardown-recovery-scope-acceptance test
+npm.cmd --prefix src\draft\exp-proofs\teardown-recovery-scope-acceptance test
 ```

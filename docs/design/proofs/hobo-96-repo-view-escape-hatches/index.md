@@ -4,7 +4,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32) and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/repo-view-escape-hatches-contract`](../../../../src/draft/repo-view-escape-hatches-contract)
+[`src/draft/technical-proofs/repo-view-escape-hatches-contract`](../../../../src/draft/technical-proofs/repo-view-escape-hatches-contract)
 proves the snapshot / `repo` / `view` escape-hatch contract:
 
 - `snapshot` serves cached projection state with a per-stream `seq`;

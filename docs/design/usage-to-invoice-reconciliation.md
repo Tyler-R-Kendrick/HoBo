@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-490.
 
 Executable proof lives in
-[`src/draft/usage-to-invoice-reconciliation-contract`](../../src/draft/usage-to-invoice-reconciliation-contract/README.md).
+[`src/draft/technical-proofs/usage-to-invoice-reconciliation-contract`](../../src/draft/technical-proofs/usage-to-invoice-reconciliation-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-490-usage-to-invoice-reconciliation`](./proofs/hobo-490-usage-to-invoice-reconciliation/README.md).
 

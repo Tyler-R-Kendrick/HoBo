@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-506.
 
 Executable proof lives in
-[`src/draft/product-notification-taxonomy-contract`](../../src/draft/product-notification-taxonomy-contract/README.md).
+[`src/draft/technical-proofs/product-notification-taxonomy-contract`](../../src/draft/technical-proofs/product-notification-taxonomy-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-506-product-notification-taxonomy`](./proofs/hobo-506-product-notification-taxonomy/README.md).
 

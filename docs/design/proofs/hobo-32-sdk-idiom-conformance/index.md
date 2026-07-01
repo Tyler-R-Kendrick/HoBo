@@ -12,10 +12,10 @@ hand-authored and generated idiom layers over `hobo:sdk`.
 - The report is explicit that golden-IR parity is bounded by the checked corpus; off-corpus behavior
   needs annex vectors or an unsupported-behavior callout.
 
-Executable proof bundle: [`../../../../src/draft/sdk-idiom-conformance-gate`](../../../../src/draft/sdk-idiom-conformance-gate).
+Executable proof bundle: [`../../../../src/draft/technical-proofs/sdk-idiom-conformance-gate`](../../../../src/draft/technical-proofs/sdk-idiom-conformance-gate).
 
 Focused verification:
 
 ```powershell
-npm.cmd --prefix src\draft\sdk-idiom-conformance-gate test
+npm.cmd --prefix src\draft\technical-proofs\sdk-idiom-conformance-gate test
 ```

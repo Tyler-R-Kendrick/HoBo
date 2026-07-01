@@ -2,7 +2,7 @@
 
 This branch proves the `hobo dev` local-to-Camp fidelity hardening slice with an independent
 contract package:
-[`src/draft/hobo-dev-fidelity-drift-contract`](../../../../src/draft/hobo-dev-fidelity-drift-contract).
+[`src/draft/technical-proofs/hobo-dev-fidelity-drift-contract`](../../../../src/draft/technical-proofs/hobo-dev-fidelity-drift-contract).
 
 ## Acceptance Coverage
 
@@ -29,5 +29,5 @@ or the `hobo dev` daemon. It hardens the honesty boundary consumed by those syst
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-dev-fidelity-drift-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-dev-fidelity-drift-contract test
 ```

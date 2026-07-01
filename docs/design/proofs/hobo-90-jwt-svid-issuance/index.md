@@ -28,7 +28,7 @@ certificate issuance. Those remain separate identity, policy, broker, and provid
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\jwt-svid-issuance-contract test
+npm.cmd --prefix src\draft\technical-proofs\jwt-svid-issuance-contract test
 ```
 
 The checks prove JWKS verification for attested workloads, scope clamping to inferred grants,

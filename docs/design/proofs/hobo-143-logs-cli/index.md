@@ -1,7 +1,7 @@
 # HOBO-143 Logs CLI Proof
 
 HOBO-143 is proven by the focused POC at
-[`src/draft/hobo-logs-cli-contract`](../../../../src/draft/hobo-logs-cli-contract/README.md).
+[`src/draft/technical-proofs/hobo-logs-cli-contract`](../../../../src/draft/technical-proofs/hobo-logs-cli-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -22,5 +22,5 @@ HOBO-143 is proven by the focused POC at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-logs-cli-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-logs-cli-contract test
 ```

@@ -14,9 +14,9 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-419
 - Draft package:
-  [`src/draft/entitlements-plan-limits-scope`](../../../../src/draft/entitlements-plan-limits-scope/README.md)
+  [`src/draft/exp-proofs/entitlements-plan-limits-scope`](../../../../src/draft/exp-proofs/entitlements-plan-limits-scope/README.md)
 - Focused gate:
-  `npm.cmd --prefix src\draft\entitlements-plan-limits-scope test`
+  `npm.cmd --prefix src\draft\exp-proofs\entitlements-plan-limits-scope test`
 
 ## Acceptance Mapping
 

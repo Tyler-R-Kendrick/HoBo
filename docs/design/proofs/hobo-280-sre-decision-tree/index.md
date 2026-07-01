@@ -6,8 +6,8 @@ This proof pins the SRE decision tree contract from
 
 Executable proof:
 
-- package: `src/draft/sre-decision-tree-contract`
-- test command: `npm.cmd --prefix src\draft\sre-decision-tree-contract test`
+- package: `src/draft/technical-proofs/sre-decision-tree-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\sre-decision-tree-contract test`
 
 Acceptance coverage:
 

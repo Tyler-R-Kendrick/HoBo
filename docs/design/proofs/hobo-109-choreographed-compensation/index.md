@@ -6,8 +6,8 @@ This executable proof backs [PLAN-04](../../control-plane.md#plan-04),
 
 ## Proof Surface
 
-- [Draft package](../../../../src/draft/choreographed-compensation-contract/README.md)
-- [Executable checks](../../../../src/draft/choreographed-compensation-contract/test/choreographed-compensation.test.ts)
+- [Draft package](../../../../src/draft/technical-proofs/choreographed-compensation-contract/README.md)
+- [Executable checks](../../../../src/draft/technical-proofs/choreographed-compensation-contract/test/choreographed-compensation.test.ts)
 
 ## Proven Constraints
 
@@ -29,5 +29,5 @@ production ResourceActor runtime.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\choreographed-compensation-contract test
+npm.cmd --prefix src\draft\technical-proofs\choreographed-compensation-contract test
 ```

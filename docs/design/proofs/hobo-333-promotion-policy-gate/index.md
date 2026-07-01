@@ -5,7 +5,7 @@ gate in the [generation pipeline](../../generated-stack.md#the-generation-pipeli
 
 ## Acceptance Evidence
 
-- `src/draft/generation-promotion-policy-gate-contract` builds a policy request
+- `src/draft/technical-proofs/generation-promotion-policy-gate-contract` builds a policy request
   with `{ subject, action: "gen.certify", resource, phase: "promote", context }`.
 - A low-risk preview fixture with green conformance and eval evidence
   auto-certifies through `policy.Decided` and emits `gen.Certified`.
@@ -25,7 +25,7 @@ suites.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\generation-promotion-policy-gate-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-promotion-policy-gate-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

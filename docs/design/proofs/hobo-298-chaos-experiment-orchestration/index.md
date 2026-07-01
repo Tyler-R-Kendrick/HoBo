@@ -7,8 +7,8 @@ This proof pins the chaos verification tier from
 
 Executable proof:
 
-- package: `src/draft/chaos-experiment-orchestration-contract`
-- test command: `npm.cmd --prefix src\draft\chaos-experiment-orchestration-contract test`
+- package: `src/draft/technical-proofs/chaos-experiment-orchestration-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\chaos-experiment-orchestration-contract test`
 
 Acceptance coverage:
 

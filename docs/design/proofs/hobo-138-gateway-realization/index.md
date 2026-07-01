@@ -25,7 +25,7 @@ HOBO-138 Scope (out).
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\gateway-realization-contract test
+npm.cmd --prefix src\draft\technical-proofs\gateway-realization-contract test
 ```
 
 The checks cover TLS + host/path routing, 95/5 and flipped traffic splits, mounted vertical routing,

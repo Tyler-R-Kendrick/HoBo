@@ -29,8 +29,8 @@ audience, expiry, or revocation. Those checks belong to the fixture-IdP
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-auth-consumer-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-auth-consumer-contract test
 ```
 
 The checks live in
-`src/draft/hobo-auth-consumer-contract/test/auth-consumer-contract.test.ts`.
+`src/draft/technical-proofs/hobo-auth-consumer-contract/test/auth-consumer-contract.test.ts`.

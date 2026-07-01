@@ -1,7 +1,7 @@
 # HOBO-270 SRE Operator Skeleton Proof
 
 HOBO-270 is proven by the focused POC at
-[`src/draft/sre-operator-skeleton-contract`](../../../../src/draft/sre-operator-skeleton-contract/README.md).
+[`src/draft/technical-proofs/sre-operator-skeleton-contract`](../../../../src/draft/technical-proofs/sre-operator-skeleton-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -25,5 +25,5 @@ integration.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\sre-operator-skeleton-contract test
+npm.cmd --prefix src\draft\technical-proofs\sre-operator-skeleton-contract test
 ```

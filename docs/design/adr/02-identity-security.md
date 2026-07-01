@@ -500,7 +500,7 @@ by reacting to its own remediation.
 5. **Most-restrictive wins for bounded mandatory values.** For numeric ceilings such as `agent.maxSpendCents`, the effective value is the smallest maximum; ties are broken by deterministic source id.
 6. **Federated mandatory conflicts resolve to the union of denies.** Two signed Junction/Yard packs that deny different or overlapping surfaces produce the same union on every honest Yard. There is no undefined conflict state.
 
-The executable proof vectors live in `src/draft/deny-ceiling-algebra-poc` and cover deterministic Yard replay, scope monotonicity, default override, mandatory widening rejection, federated-union behavior, most-restrictive numeric limits, and malicious pack-order permutations.
+The executable proof vectors live in `src/draft/technical-proofs/deny-ceiling-algebra-poc` and cover deterministic Yard replay, scope monotonicity, default override, mandatory widening rejection, federated-union behavior, most-restrictive numeric limits, and malicious pack-order permutations.
 
 ### Consequences
 - **(+)** Mandatory policy packs now have one replayable algebra that policy engines, conformance tests, and future OPA/Cedar adapters can implement against.
@@ -521,7 +521,7 @@ As of 2026-06-26, the official IETF Datatracker page shows `draft-ietf-oauth-ide
 3. **Threat families are fixed for the adversarial handoff.** The HOBO-271 matrix covers stage-1 assertion theft/replay, stage-2 audience/resource confusion, IdP-compromise blast radius, scope upgrade at redemption, draft-version skew, forced fallback from `oauth2-xaa` to `oauth2-obo`, actor-token confusion, sender-constrained token downgrade, and refresh-token-as-subject-token broadening.
 4. **Fallback is explicit and policy-gated.** HoBo may use `oauth2-obo` or MCP OAuth only when target discovery does not advertise compatible XAA, or a policy allows that lower-governance route. If a target supports XAA and a mandatory rule requires it, downgrade attempts fail closed and are recorded in CredentialAudit.
 5. **Unsupported extension paths fail closed.** HoBo rejects unexpected `actor_token` use in XAA until a supported profile defines actor processing. When sender-constrained ID-JAG use is required, `cnf` and DPoP proof must match; missing proof or mismatched thumbprint is not treated as bearer fallback.
-6. **The spike output is executable.** The matrix and guard requirements live in `src/draft/id-jag-threat-model-spike`, and the proof doc lives in `docs/design/proofs/hobo-271-id-jag-threat-model`. Future adversarial slices consume this as the minimum coverage list.
+6. **The spike output is executable.** The matrix and guard requirements live in `src/draft/technical-proofs/id-jag-threat-model-spike`, and the proof doc lives in `docs/design/proofs/hobo-271-id-jag-threat-model`. Future adversarial slices consume this as the minimum coverage list.
 
 ### Consequences
 - **(+)** XAA hardening now has a concrete threat matrix and draft-tracking rule instead of a generic "track the draft" note.
@@ -562,7 +562,7 @@ outages. A naive fail-open rule lets stale credentials live for an unbounded par
    once to `epoch + 1` and emits `identity.Rotated`. Replay or duplicate heal attempts that observe
    the next epoch reuse it, avoiding double issue and validity gaps.
 
-The executable spike vectors live in `src/draft/svid-partition-grace-spike`. They cover the standard
+The executable spike vectors live in `src/draft/technical-proofs/svid-partition-grace-spike`. They cover the standard
 15 minute TTL / 5 minute grace recommendation, in-grace cached renewal, post-grace fail-closed,
 scope-widening rejection, workload grace-extension rejection, and idempotent heal.
 
@@ -601,7 +601,7 @@ hysteresis catches slow-burn bad rollouts without rolling back one-sample noise?
    `(snapshot@seq, Golden-suite result, thresholds, window, samples)`; replay validates the same
    verdict from pinned evidence instead of re-reading live telemetry.
 
-The executable spike vectors live in `src/draft/slo-rollback-decision-correctness-spike`. They show
+The executable spike vectors live in `src/draft/technical-proofs/slo-rollback-decision-correctness-spike`. They show
 the recommended policy at 0 FP / 0 FN for the labeled corpus, the five-minute window missing the
 slow-burn bad rollout, the one-sample policy over-rolling a transient blip, and missing data yielding
 `hold`.

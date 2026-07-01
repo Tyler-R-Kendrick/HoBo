@@ -2,7 +2,7 @@
 
 HOBO-278 hardens the CAP-honest projection read boundary: lagging change-feed sink reads must be bounded-staleness reads, `projection.Lagged` must fire when bounds are exceeded, and strong cross-Camp declarations that cannot be met must be flagged.
 
-Proof package: [`src/draft/projection-lag-consistency-contract`](../../../../src/draft/projection-lag-consistency-contract)
+Proof package: [`src/draft/technical-proofs/projection-lag-consistency-contract`](../../../../src/draft/technical-proofs/projection-lag-consistency-contract)
 
 ## Requirement Coverage
 
@@ -17,7 +17,7 @@ Proof package: [`src/draft/projection-lag-consistency-contract`](../../../../src
 ## Verification
 
 ```powershell
-npm.cmd --prefix src/draft/projection-lag-consistency-contract test
+npm.cmd --prefix src/draft/technical-proofs/projection-lag-consistency-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
 node scripts/validate-traceability.ts

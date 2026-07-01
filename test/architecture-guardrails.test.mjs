@@ -23,11 +23,11 @@ async function withFixture(callback) {
 
 test("architecture guard rejects implementation packages without contract and state proofs", async () => {
   await withFixture(async (root) => {
-    await write(root, "src/draft/demo-contract/src/demo.mjs", "export const ok = true;\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/src/demo.mjs", "export const ok = true;\n");
 
     const result = await checkArchitectureGuardrails({
       root,
-      files: ["src/draft/demo-contract/src/demo.mjs"],
+      files: ["src/draft/technical-proofs/demo-contract/src/demo.mjs"],
     });
 
     assert.deepEqual(
@@ -45,21 +45,21 @@ test("architecture guard rejects implementation packages without contract and st
 
 test("architecture guard accepts packages with PACT, protobuf, CUE, parsed types, and event architecture evidence", async () => {
   await withFixture(async (root) => {
-    await write(root, "src/draft/demo-contract/src/demo.mjs", "export const ok = true;\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/src/demo.mjs", "export const ok = true;\n");
     await write(
       root,
-      "src/draft/demo-contract/contracts/pacts/demo-boundary.pact.json",
+      "src/draft/technical-proofs/demo-contract/contracts/pacts/demo-boundary.pact.json",
       JSON.stringify({
         consumer: { name: "demo-consumer" },
         provider: { name: "demo-provider" },
         interactions: [],
       }),
     );
-    await write(root, "src/draft/demo-contract/proto/demo.proto", 'syntax = "proto3";\nmessage Demo {}\n');
-    await write(root, "src/draft/demo-contract/proto/demo.cue", "Demo: {}\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/proto/demo.proto", 'syntax = "proto3";\nmessage Demo {}\n');
+    await write(root, "src/draft/technical-proofs/demo-contract/proto/demo.cue", "Demo: {}\n");
     await write(
       root,
-      "src/draft/demo-contract/architecture.md",
+      "src/draft/technical-proofs/demo-contract/architecture.md",
       [
         "# Demo Architecture",
         "",
@@ -72,7 +72,7 @@ test("architecture guard accepts packages with PACT, protobuf, CUE, parsed types
 
     const result = await checkArchitectureGuardrails({
       root,
-      files: ["src/draft/demo-contract/src/demo.mjs"],
+      files: ["src/draft/technical-proofs/demo-contract/src/demo.mjs"],
     });
 
     assert.deepEqual(result.problems, []);
@@ -81,10 +81,10 @@ test("architecture guard accepts packages with PACT, protobuf, CUE, parsed types
 
 test("architecture guard requires CUE constraints for every protobuf type", async () => {
   await withFixture(async (root) => {
-    await write(root, "src/draft/demo-contract/src/demo.mjs", "export const ok = true;\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/src/demo.mjs", "export const ok = true;\n");
     await write(
       root,
-      "src/draft/demo-contract/contracts/pacts/demo-boundary.pact.json",
+      "src/draft/technical-proofs/demo-contract/contracts/pacts/demo-boundary.pact.json",
       JSON.stringify({
         consumer: { name: "demo-consumer" },
         provider: { name: "demo-provider" },
@@ -93,13 +93,13 @@ test("architecture guard requires CUE constraints for every protobuf type", asyn
     );
     await write(
       root,
-      "src/draft/demo-contract/proto/demo.proto",
+      "src/draft/technical-proofs/demo-contract/proto/demo.proto",
       'syntax = "proto3";\nmessage Demo {}\nenum DemoState { DEMO_STATE_UNSPECIFIED = 0; }\n',
     );
-    await write(root, "src/draft/demo-contract/proto/demo.cue", "Demo: {}\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/proto/demo.cue", "Demo: {}\n");
     await write(
       root,
-      "src/draft/demo-contract/architecture.md",
+      "src/draft/technical-proofs/demo-contract/architecture.md",
       [
         "# Demo Architecture",
         "",
@@ -112,7 +112,7 @@ test("architecture guard requires CUE constraints for every protobuf type", asyn
 
     const result = await checkArchitectureGuardrails({
       root,
-      files: ["src/draft/demo-contract/src/demo.mjs"],
+      files: ["src/draft/technical-proofs/demo-contract/src/demo.mjs"],
     });
 
     assert.deepEqual(result.problems.map((problem) => problem.code), ["missing-cue-constraints"]);
@@ -121,11 +121,11 @@ test("architecture guard requires CUE constraints for every protobuf type", asyn
 
 test("architecture guard ignores docs-only draft package edits", async () => {
   await withFixture(async (root) => {
-    await write(root, "src/draft/demo-contract/README.md", "# Demo\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/README.md", "# Demo\n");
 
     const result = await checkArchitectureGuardrails({
       root,
-      files: ["src/draft/demo-contract/README.md"],
+      files: ["src/draft/technical-proofs/demo-contract/README.md"],
     });
 
     assert.deepEqual(result.problems, []);

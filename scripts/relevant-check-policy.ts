@@ -5,11 +5,12 @@ export type Check = { command: string; args: string[]; reason: string; serial?: 
 export type RelevantCheckPolicyOptions = {
   files: string[];
   base: string;
+  workspaceTestFiles?: string[];
   staged?: boolean;
   all?: boolean;
   includeBuild?: boolean;
+  includeBroadSweeps?: boolean;
   rootPackageJsonScriptsOnlyChanged?: boolean;
-  turboAvailable?: boolean;
   workspacePackageExists?: (workspace: string) => boolean;
 };
 
@@ -21,8 +22,20 @@ export type RelevantCheckPolicy = {
 
 export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
-  const match = normalized.match(/^src\/draft\/([^/]+)\//u);
-  return match ? `src/draft/${match[1]}` : undefined;
+  const match = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
+  return match ? `src/draft/${match[1]}/${match[2]}` : undefined;
+}
+
+function workspaceTestRelevant(file: string) {
+  const normalized = file.replaceAll("\\", "/");
+  const workspace = workspaceFor(normalized);
+  if (!workspace) return false;
+
+  const relative = normalized.slice(workspace.length + 1);
+  return /^(src|test|tests|type-tests|features|contracts|simulation|scripts)\//u.test(relative)
+    || /^(package|package-lock|tsconfig(?:\.[^.]+)?)\.json$/u.test(relative)
+    || /^(pnpm-lock\.yaml|turbo\.json)$/u.test(relative)
+    || /\.(?:proto|cue|pact\.json)$/u.test(relative);
 }
 
 function defaultWorkspacePackageExists(workspace: string) {
@@ -31,13 +44,14 @@ function defaultWorkspacePackageExists(workspace: string) {
 
 export function selectRelevantChecks(options: RelevantCheckPolicyOptions): RelevantCheckPolicy {
   const files = options.files.map((file) => file.replaceAll("\\", "/"));
+  const workspaceTestFiles = (options.workspaceTestFiles ?? options.files).map((file) => file.replaceAll("\\", "/"));
   const staged = Boolean(options.staged);
   const includeBuild = Boolean(options.includeBuild);
+  const includeBroadSweeps = Boolean(options.includeBroadSweeps || options.all);
   const rootPackageJsonScriptsOnlyChanged = Boolean(options.rootPackageJsonScriptsOnlyChanged);
-  const turboAvailable = options.turboAvailable !== false;
   const workspacePackageExists = options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
-  const workspaces = [...new Set(files.map(workspaceFor).filter((value): value is string => Boolean(value)))]
+  const workspaces = [...new Set(workspaceTestFiles.filter(workspaceTestRelevant).map(workspaceFor).filter((value): value is string => Boolean(value)))]
     .filter(workspacePackageExists);
   const touched = (prefixes: string[]) => files.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const touchedAny = (patterns: RegExp[]) => files.some((file) => patterns.some((pattern) => pattern.test(file)));
@@ -45,14 +59,13 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const automationChanged = touched(["scripts", ".githooks", ".github", ".codex", ".cursor", ".claude", ".agents"])
     || touchedAny([/^package\.json$/u, /^pnpm-lock\.yaml$/u, /^pnpm-workspace\.yaml$/u, /^turbo\.json$/u]);
   const rootConfigChanged = touchedAny([/^package\.json$/u, /^pnpm-lock\.yaml$/u, /^pnpm-workspace\.yaml$/u, /^turbo\.json$/u, /^tsconfig.*\.json$/u]);
-  const rootBuildImpactChanged = touchedAny([/^pnpm-workspace\.yaml$/u, /^turbo\.json$/u, /^tsconfig.*\.json$/u])
-    || (touchedAny([/^package\.json$/u]) && !rootPackageJsonScriptsOnlyChanged);
   const sourceChanged = touched(["src", "contracts", "test", "tests"]);
   const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/u, /^CONTRIBUTING\.md$/u, /^AGENTS\.md$/u, /^CLAUDE\.md$/u]);
-  const draftSchemaChanged = files.some((file) => /^src\/draft\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
-  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/[^/]+\//u.test(file));
+  const draftSchemaChanged = files.some((file) => /^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
+  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\//u.test(file));
   const schemaChanged = rootSchemaChanged || draftSchemaChanged;
   const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
+  const rootPactChanged = files.some((file) => (/(^|\/)pacts\//u.test(file) || /\.pact\.json$/u.test(file)) && !workspaceFor(file));
   const uiChanged = touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/u]);
   const behaviorChanged = touched(["tests/behavior", "features"]) || touchedAny([/playwright\.behavior\.config\./u, /cucumber\.config\./u]);
   const visualChanged = touched(["tests/visual", "storybook"]) || touchedAny([/playwright\.visual\.config\./u, /\.stories\./u]);
@@ -77,24 +90,23 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
 
   if (rootSchemaChanged) {
     checks.push({ command: "pnpm", args: ["run", "test:schema"], reason: "root protobuf/CUE/schema changed; run repository schema compatibility lane" });
-    checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "root schema changes can affect consumer contracts" });
-    checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "root schema changes can affect provider verification" });
-  } else if (pactChanged) {
-    checks.push({ command: "pnpm", args: ["run", "test:contract"], reason: "PACT artifacts changed" });
+    if (includeBroadSweeps) {
+      checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "final/all root schema validation can affect consumer contracts" });
+      checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "final/all root schema validation can affect provider verification" });
+    }
+  } else if (rootPactChanged && includeBroadSweeps) {
+    checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "final/all root Pact validation can affect consumer contracts" });
+    checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "final/all root Pact validation can affect provider verification" });
   }
 
   if (workspaces.length > 0) {
-    const workspaceFilters = workspaces.flatMap((workspace) => ["--filter", `./${workspace}`]);
-
-    checks.push({
-      command: "pnpm",
-      args: turboAvailable
-        ? ["exec", "turbo", "run", "test", ...workspaceFilters]
-        : [...workspaceFilters, "test"],
-      reason: turboAvailable
-        ? `draft package unit/contract tests for ${workspaces.length} changed workspace(s); turbo runs isolated draft contract regenerations in parallel`
-        : `draft package unit/contract tests for ${workspaces.length} changed workspace(s); local turbo binary unavailable`,
-    });
+    for (const workspace of workspaces) {
+      checks.push({
+        command: "pnpm",
+        args: ["--prefix", workspace, "test"],
+        reason: `draft package unit/contract tests for ${workspace}; direct package script avoids Turbo dependency expansion`,
+      });
+    }
   }
 
   if (uiChanged) {
@@ -111,7 +123,13 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   }
 
   if (automationChanged || sourceChanged) {
-    checks.push({ command: "pnpm", args: ["run", "standards:check", "--", "--staged", `--base=${options.base}`], reason: "technical standards evidence may need refreshing" });
+    checks.push({
+      command: "pnpm",
+      args: staged
+        ? ["run", "standards:check", "--", "--staged", `--base=${options.base}`]
+        : ["run", "standards:check", "--", `--base=${options.base}`],
+      reason: "technical standards evidence may need refreshing",
+    });
   }
 
   if (docsChanged || automationChanged) {
@@ -130,8 +148,8 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   }
   if (traceabilityChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-traceability.ts"], reason: "traceability evidence changed" });
   if (deploymentDeltaChanged) checks.push({ command: "node", args: ["--import", "tsx", "scripts/validate-deployment-set-delta.ts"], reason: "deployment delta proof changed" });
-  if (includeBuild || (rootBuildImpactChanged && !staged)) {
-    checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "build-impacting changed check requested" });
+  if (includeBuild) {
+    checks.push({ command: "pnpm", args: ["exec", "turbo", "run", "build", "typecheck", "lint", "test", "--filter=[HEAD^...HEAD]"], reason: "explicit build-impact check requested" });
   }
 
   const scopes = [

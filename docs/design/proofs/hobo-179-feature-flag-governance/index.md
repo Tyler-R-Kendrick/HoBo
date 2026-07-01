@@ -7,7 +7,7 @@ This proof connects the M2 feature-flag governance slice to:
 
 Executable artifact:
 
-- [`src/draft/feature-flag-governance-contract`](../../../../src/draft/feature-flag-governance-contract)
+- [`src/draft/technical-proofs/feature-flag-governance-contract`](../../../../src/draft/technical-proofs/feature-flag-governance-contract)
 
 Acceptance evidence:
 

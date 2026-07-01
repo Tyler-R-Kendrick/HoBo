@@ -1,3 +1,11 @@
+---
+type: Design Proof Evidence
+title: "HOBO-410 Deployment Dashboard and Topology Scope Proof"
+description: "Branch evidence for the Deployment Dashboard and Topology Explorer M0 scope and acceptance proof."
+tags: [hobo, proof, deployment-dashboard, topology]
+timestamp: 2026-06-30T00:00:00Z
+---
+
 # HOBO-410 Deployment Dashboard & Topology Scope Proof
 
 This proof records the branch evidence for the Deployment Dashboard & Topology
@@ -23,5 +31,5 @@ RBAC/policy engine scope creep.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\deployment-dashboard-topology-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\deployment-dashboard-topology-scope-contract test
 ```

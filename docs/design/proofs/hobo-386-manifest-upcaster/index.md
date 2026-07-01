@@ -1,6 +1,6 @@
 # HOBO-386 Manifest Upcaster Proof
 
-This branch extends `src/draft/hobo-manifest-contract` with a versioned manifest upcaster contract.
+This branch extends `src/draft/technical-proofs/hobo-manifest-contract` with a versioned manifest upcaster contract.
 
 Proof coverage:
 
@@ -14,5 +14,5 @@ Proof coverage:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-manifest-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-manifest-contract test
 ```

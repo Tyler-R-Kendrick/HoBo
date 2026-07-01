@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-432 Compatibility Matrix Proof
 
 HOBO-432 is proven by the focused M0 contract at
-[`src/draft/compatibility-matrix-scope-contract`](../../../../src/draft/compatibility-matrix-scope-contract/README.md)
+[`src/draft/exp-proofs/compatibility-matrix-scope-contract`](../../../../src/draft/exp-proofs/compatibility-matrix-scope-contract/README.md)
 and the durable scope record at
 [compatibility-matrix.md](../../compatibility-matrix.md).
 
@@ -30,5 +30,5 @@ and the durable scope record at
 ## Verification
 
 ```powershell
-pnpm --dir src\draft\compatibility-matrix-scope-contract test
+pnpm --dir src\draft\exp-proofs\compatibility-matrix-scope-contract test
 ```

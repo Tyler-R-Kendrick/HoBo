@@ -15,7 +15,7 @@ outline before customer-facing assurance claims or follow-up implementation work
 - Design record:
   [`docs/design/customer-assurance-evidence-packet.md`](../../customer-assurance-evidence-packet.md)
 - Executable contract:
-  [`src/draft/customer-assurance-evidence-packet-contract`](../../../../src/draft/customer-assurance-evidence-packet-contract/README.md)
+  [`src/draft/exp-proofs/customer-assurance-evidence-packet-contract`](../../../../src/draft/exp-proofs/customer-assurance-evidence-packet-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

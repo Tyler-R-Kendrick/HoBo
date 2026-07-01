@@ -7,7 +7,7 @@ decision.
 
 ## Scope
 
-- `src/draft/rbac-role-binding-contract` defines a pure RBAC role and
+- `src/draft/technical-proofs/rbac-role-binding-contract` defines a pure RBAC role and
   role-binding model over the existing control-plane action taxonomy.
 - Built-in roles are represented as named role definitions with concrete grant
   sets; custom roles can compose validated subsets of `hobo:*` action ids.
@@ -41,5 +41,5 @@ decision.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\rbac-role-binding-contract test
+npm.cmd --prefix src\draft\technical-proofs\rbac-role-binding-contract test
 ```

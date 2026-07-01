@@ -6,8 +6,8 @@ DR runbook path in [Plan 40](../../operators-sre.md#plan-40).
 
 ## Proof Surface
 
-- [Draft package](../../../../src/draft/dr-failover-integrity-contract/README.md)
-- [Executable checks](../../../../src/draft/dr-failover-integrity-contract/test/dr-failover-integrity.test.ts)
+- [Draft package](../../../../src/draft/technical-proofs/dr-failover-integrity-contract/README.md)
+- [Executable checks](../../../../src/draft/technical-proofs/dr-failover-integrity-contract/test/dr-failover-integrity.test.ts)
 
 ## Proven Constraints
 
@@ -26,5 +26,5 @@ provider-region routing, bootstrap internals, or the production DR engine.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\dr-failover-integrity-contract test
+npm.cmd --prefix src\draft\technical-proofs\dr-failover-integrity-contract test
 ```

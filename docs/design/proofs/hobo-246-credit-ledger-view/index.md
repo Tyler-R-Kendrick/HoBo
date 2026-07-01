@@ -2,7 +2,7 @@
 
 This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and [ADR-0071](../../adr/01-architecture-core.md#adr-0071).
 
-The branch adds `src/draft/credit-ledger-view-contract`, an independent POC for the M1 credit-aware cost projection. It proves the Dispatcher can receive a deterministic `CreditLedgerView@seq` input without implementing the later selector, reservation-CAS, budget gate, or billing reconciliation.
+The branch adds `src/draft/technical-proofs/credit-ledger-view-contract`, an independent POC for the M1 credit-aware cost projection. It proves the Dispatcher can receive a deterministic `CreditLedgerView@seq` input without implementing the later selector, reservation-CAS, budget gate, or billing reconciliation.
 
 ## Acceptance Evidence
 
@@ -20,6 +20,6 @@ This POC uses local fixture event shapes for `credit.*`, `meter.*`, and `spend.*
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\credit-ledger-view-contract test
+npm.cmd --prefix src\draft\technical-proofs\credit-ledger-view-contract test
 npm.cmd test
 ```

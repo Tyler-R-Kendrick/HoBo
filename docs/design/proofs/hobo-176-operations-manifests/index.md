@@ -15,9 +15,9 @@ This proof records the branch-local contract package for HOBO-176.
 
 ## Executable Proof
 
-- Package: `src/draft/operations-manifests-contract`
-- Generate snapshots: `npm.cmd --prefix src\draft\operations-manifests-contract run generate`
-- Focused gate: `npm.cmd --prefix src\draft\operations-manifests-contract test`
+- Package: `src/draft/technical-proofs/operations-manifests-contract`
+- Generate snapshots: `npm.cmd --prefix src\draft\technical-proofs\operations-manifests-contract run generate`
+- Focused gate: `npm.cmd --prefix src\draft\technical-proofs\operations-manifests-contract test`
 
 The tests exercise the acceptance bullets and adversarial cases in HOBO-176:
 fresh generated snapshots, schema validity, route lookup without human docs,

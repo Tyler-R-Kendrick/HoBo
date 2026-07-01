@@ -4,7 +4,7 @@ HOBO-283 proves the Plan 11 / Plan 32 / ADR-0050 / ADR-0051 hardening rule that 
 
 ## Scope
 
-This proof lives in `src/draft/snapshot-replay-divergence-contract`. It builds on the completed replay/live, upcaster, and snapshot lifecycle POCs without modifying them. It does not implement storage, Reactor delivery, poison-event incident handling, or crypto-shred key management.
+This proof lives in `src/draft/technical-proofs/snapshot-replay-divergence-contract`. It builds on the completed replay/live, upcaster, and snapshot lifecycle POCs without modifying them. It does not implement storage, Reactor delivery, poison-event incident handling, or crypto-shred key management.
 
 ## Acceptance Coverage
 
@@ -26,7 +26,7 @@ This proof lives in `src/draft/snapshot-replay-divergence-contract`. It builds o
 ## Evidence
 
 ```powershell
-npm.cmd --prefix src\draft\snapshot-replay-divergence-contract test
+npm.cmd --prefix src\draft\technical-proofs\snapshot-replay-divergence-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

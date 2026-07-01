@@ -31,5 +31,5 @@ Stateless JWKS verification remains HOBO-226. The full data-plane reactor,
 ## Command
 
 ```powershell
-npm.cmd --prefix src\draft\session-revocation-contract test
+npm.cmd --prefix src\draft\technical-proofs\session-revocation-contract test
 ```

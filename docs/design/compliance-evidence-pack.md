@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-452.
 
 Executable proof lives in
-[`src/draft/compliance-evidence-pack-scope`](../../src/draft/compliance-evidence-pack-scope/README.md).
+[`src/draft/exp-proofs/compliance-evidence-pack-scope`](../../src/draft/exp-proofs/compliance-evidence-pack-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-452-compliance-evidence-pack`](./proofs/hobo-452-compliance-evidence-pack/README.md).
 

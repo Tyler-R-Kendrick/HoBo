@@ -24,5 +24,5 @@ inbound HoBo resource-server verification.
 ## Executable Checks
 
 ```powershell
-npm.cmd --prefix src\draft\id-jag-token-exchange-contract test
+npm.cmd --prefix src\draft\technical-proofs\id-jag-token-exchange-contract test
 ```

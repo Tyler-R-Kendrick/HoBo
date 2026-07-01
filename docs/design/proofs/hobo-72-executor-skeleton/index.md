@@ -25,7 +25,7 @@ pool warmup, or persistent queueing. It proves the executor seam those later sli
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\executor-skeleton-contract test
+npm.cmd --prefix src\draft\technical-proofs\executor-skeleton-contract test
 ```
 
 The checks prove successful streaming, typed failure classification, concurrency rejection,

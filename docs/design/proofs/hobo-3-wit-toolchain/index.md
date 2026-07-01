@@ -1,6 +1,6 @@
 # HOBO-3 WIT Toolchain Proof
 
-HOBO-3 is proven by the focused POC at [`src/draft/hobo-wit-toolchain-contract`](../../../../src/draft/hobo-wit-toolchain-contract/README.md).
+HOBO-3 is proven by the focused POC at [`src/draft/technical-proofs/hobo-wit-toolchain-contract`](../../../../src/draft/technical-proofs/hobo-wit-toolchain-contract/README.md).
 
 Acceptance mapping:
 

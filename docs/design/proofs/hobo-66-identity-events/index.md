@@ -22,7 +22,7 @@ and config audit events from [Plan 6](../../ai-native-agent-auth.md#plan-06),
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\identity-event-contract test
+npm.cmd --prefix src\draft\technical-proofs\identity-event-contract test
 ```
 
 The checks prove that the event schemas validate fixtures, the CredentialAudit

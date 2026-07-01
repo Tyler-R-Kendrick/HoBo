@@ -1,7 +1,7 @@
 # HOBO-468 V1 Cutline Release Candidate Proof
 
 HOBO-468 is proven by the focused M3 contract at
-[`src/draft/v1-cutline-contract`](../../../../src/draft/v1-cutline-contract/README.md)
+[`src/draft/technical-proofs/v1-cutline-contract`](../../../../src/draft/technical-proofs/v1-cutline-contract/README.md)
 and the release decision source record at
 [`go-no-go-decision-record.md`](../../go-no-go-decision-record.md#m3-release-candidate-evidence-gate).
 
@@ -28,5 +28,5 @@ and the release decision source record at
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\v1-cutline-contract test
+pnpm.cmd --prefix src\draft\technical-proofs\v1-cutline-contract test
 ```

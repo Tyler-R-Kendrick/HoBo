@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-402.
 
 Executable proof lives in
-[`src/draft/launch-blocker-taxonomy-contract`](../../src/draft/launch-blocker-taxonomy-contract/README.md).
+[`src/draft/exp-proofs/launch-blocker-taxonomy-contract`](../../src/draft/exp-proofs/launch-blocker-taxonomy-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-402-launch-blocker-taxonomy`](./proofs/hobo-402-launch-blocker-taxonomy/index.md).
 
@@ -78,7 +78,7 @@ around required reviewers or turn missing evidence into a launch claim.
 
 ## Design Links
 
-- [V1 cutline proof](../../src/draft/v1-cutline-contract/README.md) defines launch scope boundaries.
+- [V1 cutline proof](../../src/draft/technical-proofs/v1-cutline-contract/README.md) defines launch scope boundaries.
 - [Pre-launch outcome contract](./pre-launch-outcome-contract.md#surface-mapping) maps outcome
   evidence into launch go/no-go decisions.
 - [ADR-0023](./adr/02-identity-security.md#adr-0023) preserves secure-by-default behavior.

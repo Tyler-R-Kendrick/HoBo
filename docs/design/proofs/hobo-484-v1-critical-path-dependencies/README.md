@@ -13,7 +13,7 @@ This proof records the M0 dependency map for V1 Release Program & Cutline.
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\v1-critical-path-dependency-map-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\v1-critical-path-dependency-map-contract test
 ```
 
 ## Scope

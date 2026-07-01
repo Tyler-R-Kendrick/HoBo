@@ -18,6 +18,7 @@ const IMPLEMENTATION_EXTENSIONS = new Set([
 ]);
 
 const DOC_ONLY_EXTENSIONS = new Set([".md", ".mdx", ".txt"]);
+const DRAFT_PROOF_KINDS = new Set(["technical-proofs", "exp-proofs", "epic-proofs", "projects"]);
 
 const TEXT_EXTENSIONS = new Set([
   ".cue",
@@ -250,9 +251,13 @@ function implementationPackageRoot(file) {
   const parts = normalizePath(file).split("/");
   if (parts[0] !== "src" || parts[1] !== "draft" || !parts[2]) return undefined;
 
-  return parts[2] === "epic-reference-implementations" && parts[3]
-    ? parts.slice(0, 4).join("/")
-    : parts.slice(0, 3).join("/");
+  if (DRAFT_PROOF_KINDS.has(parts[2]) && parts[3]) {
+    return parts.slice(0, 4).join("/");
+  }
+
+  return parts[2] && parts[2] !== "README.md" && parts[2] !== "AGENTS.md"
+    ? parts.slice(0, 3).join("/")
+    : undefined;
 }
 
 function split(output) {

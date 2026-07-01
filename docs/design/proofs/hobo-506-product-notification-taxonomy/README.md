@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-506 Product Notification Taxonomy Proof
 
 HOBO-506 is proven by the focused M0 contract at
-[`src/draft/product-notification-taxonomy-contract`](../../../../src/draft/product-notification-taxonomy-contract/README.md)
+[`src/draft/technical-proofs/product-notification-taxonomy-contract`](../../../../src/draft/technical-proofs/product-notification-taxonomy-contract/README.md)
 and the durable design record at
 [`product-notifications-lifecycle.md`](../../product-notifications-lifecycle.md).
 
@@ -37,5 +37,5 @@ and the durable design record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\product-notification-taxonomy-contract test
+npm.cmd --prefix src\draft\technical-proofs\product-notification-taxonomy-contract test
 ```

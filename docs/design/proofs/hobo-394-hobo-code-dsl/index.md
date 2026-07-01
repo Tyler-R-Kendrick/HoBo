@@ -8,8 +8,8 @@ two-level Hobo Code decision from
 
 Executable proof:
 
-- package: `src/draft/hobo-code-dsl-contract`
-- test command: `npm.cmd --prefix src\draft\hobo-code-dsl-contract test`
+- package: `src/draft/technical-proofs/hobo-code-dsl-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\hobo-code-dsl-contract test`
 
 Acceptance coverage:
 

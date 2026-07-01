@@ -2,7 +2,7 @@
 
 This branch proves the hostile third-party provider package boundary with an
 independent contract package:
-[`src/draft/malicious-provider-containment-contract`](../../../../src/draft/malicious-provider-containment-contract).
+[`src/draft/technical-proofs/malicious-provider-containment-contract`](../../../../src/draft/technical-proofs/malicious-provider-containment-contract).
 
 ## Acceptance Coverage
 
@@ -32,5 +32,5 @@ SLSA plumbing, registry yank lifecycle mechanics, or provider generation.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\malicious-provider-containment-contract test
+npm.cmd --prefix src\draft\technical-proofs\malicious-provider-containment-contract test
 ```

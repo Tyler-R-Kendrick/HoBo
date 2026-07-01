@@ -16,14 +16,14 @@ follow-up implementation work can fan out.
 - Design record:
   [`docs/design/tenant-data-lifecycle.md`](../../tenant-data-lifecycle.md)
 - Executable contract:
-  [`src/draft/tenant-data-lifecycle-contract`](../../../../src/draft/tenant-data-lifecycle-contract/README.md)
+  [`src/draft/exp-proofs/tenant-data-lifecycle-contract`](../../../../src/draft/exp-proofs/tenant-data-lifecycle-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 
 ## Focused Check
 
 ```powershell
-npm.cmd --prefix src\draft\tenant-data-lifecycle-contract test
+npm.cmd --prefix src\draft\exp-proofs\tenant-data-lifecycle-contract test
 ```
 
 The check proves the HOBO-492 acceptance bullets and scope boundaries:

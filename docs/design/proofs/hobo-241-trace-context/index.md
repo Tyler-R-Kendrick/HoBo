@@ -4,7 +4,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 [PLAN-11](../../data-plane.md#plan-11).
 
 The executable POC in
-[`src/draft/trace-context-propagation-contract`](../../../../src/draft/trace-context-propagation-contract)
+[`src/draft/technical-proofs/trace-context-propagation-contract`](../../../../src/draft/technical-proofs/trace-context-propagation-contract)
 proves the M1 trace-context skeleton:
 
 - ingress without `meta.traceparent` synthesizes a W3C root traceparent;

@@ -5,8 +5,8 @@ This proof records the compensation-of-compensation hardening contract for
 
 ## Proof Surface
 
-- [Draft package](../../../../src/draft/compensation-escalation-contract/README.md)
-- [Executable checks](../../../../src/draft/compensation-escalation-contract/test/compensation-escalation.test.ts)
+- [Draft package](../../../../src/draft/technical-proofs/compensation-escalation-contract/README.md)
+- [Executable checks](../../../../src/draft/technical-proofs/compensation-escalation-contract/test/compensation-escalation.test.ts)
 
 ## Proven Constraints
 
@@ -27,5 +27,5 @@ provider adapters, SRE remediation applier, spend breaker, or dashboard UI.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\compensation-escalation-contract test
+npm.cmd --prefix src\draft\technical-proofs\compensation-escalation-contract test
 ```

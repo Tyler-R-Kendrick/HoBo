@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-411.
 
 Executable proof lives in
-[`src/draft/plan-diff-viewer-scope-acceptance`](../../src/draft/plan-diff-viewer-scope-acceptance/README.md).
+[`src/draft/exp-proofs/plan-diff-viewer-scope-acceptance`](../../src/draft/exp-proofs/plan-diff-viewer-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-411-plan-diff-viewer-scope`](./proofs/hobo-411-plan-diff-viewer-scope/README.md).
 

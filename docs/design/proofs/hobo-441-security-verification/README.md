@@ -14,9 +14,9 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-441
 - Draft package:
-  [`src/draft/security-verification-scope-acceptance`](../../../../src/draft/security-verification-scope-acceptance/README.md)
+  [`src/draft/exp-proofs/security-verification-scope-acceptance`](../../../../src/draft/exp-proofs/security-verification-scope-acceptance/README.md)
 - Focused gate:
-  `pnpm.exe --prefix src\draft\security-verification-scope-acceptance test`
+  `pnpm.exe --prefix src\draft\exp-proofs\security-verification-scope-acceptance test`
 
 ## Acceptance Mapping
 

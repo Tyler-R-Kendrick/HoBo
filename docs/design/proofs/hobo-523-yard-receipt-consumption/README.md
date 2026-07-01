@@ -14,9 +14,9 @@ This proof backs the M1 receipt-consumption evidence for
 
 - Issue: HOBO-523
 - Draft package:
-  [`src/draft/yard-receipt-consumption-contract`](../../../../src/draft/yard-receipt-consumption-contract/README.md)
+  [`src/draft/technical-proofs/yard-receipt-consumption-contract`](../../../../src/draft/technical-proofs/yard-receipt-consumption-contract/README.md)
 - Focused gate:
-  `npm.cmd --prefix src\draft\yard-receipt-consumption-contract test`
+  `npm.cmd --prefix src\draft\technical-proofs\yard-receipt-consumption-contract test`
 
 ## Acceptance Mapping
 

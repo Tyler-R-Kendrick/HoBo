@@ -87,7 +87,7 @@ Custom-domain safety depends on the validation gate being more than a list of ha
 
 Residual risks are explicit: a coordinated authoritative-zone compromise can serve consistent malicious answers to every vantage and must be caught through signed-change provenance and audit; rollback RTO is still bounded by cached TTL, not instant; regional internet partitions make the safe result "block promotion" rather than "promote on partial evidence."
 
-**Consequences.** HOBO-142 implements the four concrete checks and must expose enough evidence for the pinned digest. HOBO-193 owns the red-team cases for rebinding, spoofed resolvers, sibling-name ACME, and promote races. The executable spike is `src/draft/dns-validation-gate-threat-model`.
+**Consequences.** HOBO-142 implements the four concrete checks and must expose enough evidence for the pinned digest. HOBO-193 owns the red-team cases for rebinding, spoofed resolvers, sibling-name ACME, and promote races. The executable spike is `src/draft/technical-proofs/dns-validation-gate-threat-model`.
 
 ## ADR-0036
 **Air-gapped / sovereign Yard mode.**
@@ -315,7 +315,7 @@ The distributed-artifact version policy defines the accepted range forms, immuta
 7. **Deprecation windows are enforced before selection.** A deprecated candidate remains selectable only before expiry and carries a warning; after expiry it is unservable and cannot satisfy a redeploy. Floating installs and upgrades prefer non-deprecated candidates over deprecated candidates when both satisfy the same constraints.
 
 ### Executable Vectors
-The HOBO-340 spike vectors live in [`../../../src/draft/version-compat-resolution-semantics`](../../../src/draft/version-compat-resolution-semantics). They cover highest-compatible selection, ordinary-plan pin preservation, explicit upgrade, compatible and incompatible diamond dependencies, preview upcaster requirements, lockfile/manifest mismatch, deprecation-window selection, and catalog ordering determinism. HOBO-370 must either import these vectors directly or preserve them as a compatibility fixture set.
+The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version-compat-resolution-semantics`](../../../src/draft/technical-proofs/version-compat-resolution-semantics). They cover highest-compatible selection, ordinary-plan pin preservation, explicit upgrade, compatible and incompatible diamond dependencies, preview upcaster requirements, lockfile/manifest mismatch, deprecation-window selection, and catalog ordering determinism. HOBO-370 must either import these vectors directly or preserve them as a compatibility fixture set.
 
 ### Consequences
 - **(+)** The resolver can be implemented without hidden policy choices: each selection mode, transitive conflict, and preview-upgrade branch has a fixture-backed expected result.
@@ -333,7 +333,7 @@ The HOBO-340 spike vectors live in [`../../../src/draft/version-compat-resolutio
 2. **Every accepted cross-Yard link emits exactly two mirrored halves.** The source Yard receives the source-side half, the target Yard receives the target-side half, and `halvesByYard` is the exact projection of those halves. A missing mirror is invalid even if one side could provision something locally.
 3. **Tier selection is explicit and fail-closed.** Cross-Yard links can use only tier 3 private interconnect, tier 4 overlay mesh, or tier 5 public+mTLS. The manifest-required tier is the worst allowed tier; the fold selects the most private supported tier from 3 -> 4 -> 5 that is at or better than that requirement. Public+mTLS is not an implicit escape hatch: if no legal tier exists, inference emits a conflict diagnostic and no half-plan.
 4. **Residency and symmetry are hard guards.** Endpoint residency tags from both Yard manifests must match the link's declared residency and each other. Asymmetric manifests (one side references a peer endpoint the other Yard does not expose), unsupported same-Yard tiers, and residency mismatches fail closed with explicit diagnostics.
-5. **HOBO-159 consumes the executable spike contract.** The independent proof package at `src/draft/junction-connectivity-inference-spike` models generated manifest pairs and checks completeness, soundness, residency legality, determinism, asymmetric-manifest rejection, and no-legal-tier rejection. The production slice should preserve those properties while adding real DNS/provider realization outside this ADR's spike scope.
+5. **HOBO-159 consumes the executable spike contract.** The independent proof package at `src/draft/technical-proofs/junction-connectivity-inference-spike` models generated manifest pairs and checks completeness, soundness, residency legality, determinism, asymmetric-manifest rejection, and no-legal-tier rejection. The production slice should preserve those properties while adding real DNS/provider realization outside this ADR's spike scope.
 
 ### Consequences
 - **(+)** HOBO-159 gets a precise implementation contract: fold validated manifests, choose a legal tier from declared intent + capabilities, emit mirrored halves, and reject ambiguity before any Yard provisions.

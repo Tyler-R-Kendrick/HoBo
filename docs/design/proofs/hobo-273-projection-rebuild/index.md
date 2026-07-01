@@ -4,7 +4,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32) and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/projection-rebuild-contract`](../../../../src/draft/projection-rebuild-contract)
+[`src/draft/technical-proofs/projection-rebuild-contract`](../../../../src/draft/technical-proofs/projection-rebuild-contract)
 pins the derived projection sink rebuild contract:
 
 - rebuild-from-zero materializes a large event stream into the new read-model shape and records a
@@ -21,5 +21,5 @@ snapshot primitive, provider sink adapters, and embedding model execution.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\projection-rebuild-contract test
+npm.cmd --prefix src\draft\technical-proofs\projection-rebuild-contract test
 ```

@@ -22,5 +22,5 @@ This proof package pins the launch performance, cost, and capacity envelope for 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\launch-performance-capacity-envelope-contract test
+npm.cmd --prefix src\draft\exp-proofs\launch-performance-capacity-envelope-contract test
 ```

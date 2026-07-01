@@ -18,7 +18,7 @@ This proof ties the M1 registry storage slice to the descriptor and artifact-rep
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\oci-artifact-storage-contract test
+npm.cmd --prefix src\draft\technical-proofs\oci-artifact-storage-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

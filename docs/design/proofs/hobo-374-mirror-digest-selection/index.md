@@ -27,7 +27,7 @@ of scope.
 ## Boundary
 
 The proof lives in
-[`src/draft/mirror-digest-selection-contract`](../../../../src/draft/mirror-digest-selection-contract/README.md).
+[`src/draft/technical-proofs/mirror-digest-selection-contract`](../../../../src/draft/technical-proofs/mirror-digest-selection-contract/README.md).
 It models the mirror-selection consumer of HOBO-365's verified install boundary rather than
 duplicating signing, provenance, or conformance checks.
 
@@ -37,7 +37,7 @@ the Dispatcher cost model, and air-gap mirror import.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\mirror-digest-selection-contract test
+npm.cmd --prefix src\draft\technical-proofs\mirror-digest-selection-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

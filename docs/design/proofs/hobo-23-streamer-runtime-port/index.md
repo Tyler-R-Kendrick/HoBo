@@ -8,7 +8,7 @@ This proof backs [PLAN-11](../../data-plane.md#plan-11), [PLAN-20](../../wasm-ru
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/streamer-runtime-port-contract`](../../../../src/draft/streamer-runtime-port-contract)
+[`src/draft/technical-proofs/streamer-runtime-port-contract`](../../../../src/draft/technical-proofs/streamer-runtime-port-contract)
 pins the HOBO-23 runtime-local Streamer boundary:
 
 - `getWritable(stream).write(chunk)` appends per-run frames that a consumer reads
@@ -34,5 +34,5 @@ replicated streams, provider persistence, and message coalescing.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\streamer-runtime-port-contract test
+npm.cmd --prefix src\draft\technical-proofs\streamer-runtime-port-contract test
 ```

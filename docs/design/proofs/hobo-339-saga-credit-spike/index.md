@@ -7,8 +7,8 @@ CreditLedger estimate-vs-actual reconciliation from [Plan 05](../../reliability-
 
 ## Proof Surface
 
-- [Draft package](../../../../src/draft/saga-credit-reconciliation-spike/README.md)
-- [Executable checks](../../../../src/draft/saga-credit-reconciliation-spike/test/spike.test.ts)
+- [Draft package](../../../../src/draft/technical-proofs/saga-credit-reconciliation-spike/README.md)
+- [Executable checks](../../../../src/draft/technical-proofs/saga-credit-reconciliation-spike/test/spike.test.ts)
 
 ## Proven Constraints
 
@@ -31,5 +31,5 @@ Dispatcher routing implementation.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\saga-credit-reconciliation-spike test
+npm.cmd --prefix src\draft\technical-proofs\saga-credit-reconciliation-spike test
 ```

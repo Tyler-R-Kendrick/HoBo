@@ -4,7 +4,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32) and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
 The executable POC in
-[`src/draft/client-optimistic-update-contract`](../../../../src/draft/client-optimistic-update-contract)
+[`src/draft/technical-proofs/client-optimistic-update-contract`](../../../../src/draft/technical-proofs/client-optimistic-update-contract)
 proves the M3 client optimistic-update contract:
 
 - a command's optimistic patch is visible immediately while the displayed `seq` remains the last authoritative one;
@@ -21,5 +21,5 @@ updates, cross-aggregate saga conflict resolution, and persistent client cache s
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\client-optimistic-update-contract test
+npm.cmd --prefix src\draft\technical-proofs\client-optimistic-update-contract test
 ```

@@ -15,14 +15,14 @@ Migration Engine design/build work can fan out.
 - Design record:
   [`docs/design/upgrade-migration-engine.md`](../../upgrade-migration-engine.md)
 - Executable contract:
-  [`src/draft/upgrade-migration-scope-contract`](../../../../src/draft/upgrade-migration-scope-contract/README.md)
+  [`src/draft/exp-proofs/upgrade-migration-scope-contract`](../../../../src/draft/exp-proofs/upgrade-migration-scope-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 
 ## Focused Check
 
 ```powershell
-npm.cmd --prefix src\draft\upgrade-migration-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\upgrade-migration-scope-contract test
 ```
 
 The check proves the HOBO-430 acceptance bullets and scope boundaries:

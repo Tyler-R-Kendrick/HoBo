@@ -1,7 +1,7 @@
 # HOBO-327 Generation Validation Stage Proof
 
 This proof maps HOBO-327 to an executable POC in
-`src/draft/generation-validation-stage-contract`.
+`src/draft/technical-proofs/generation-validation-stage-contract`.
 
 ## Acceptance Mapping
 
@@ -30,5 +30,5 @@ sandbox runner, trace capture, repair, promotion, or provider publishing.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\generation-validation-stage-contract test
+npm.cmd --prefix src\draft\technical-proofs\generation-validation-stage-contract test
 ```

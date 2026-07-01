@@ -21,12 +21,12 @@ This executable proof pins the M2 `hobo registry import` slice from [Plan 25](..
 
 ## Boundary
 
-The proof lives in [`src/draft/registry-import-contract`](../../../../src/draft/registry-import-contract/README.md). It consumes [`signed-offline-bundle-contract`](../../../../src/draft/signed-offline-bundle-contract/README.md), [`hobo-add-install-verification-contract`](../../../../src/draft/hobo-add-install-verification-contract/README.md), and the registry descriptor contract.
+The proof lives in [`src/draft/technical-proofs/registry-import-contract`](../../../../src/draft/technical-proofs/registry-import-contract/README.md). It consumes [`signed-offline-bundle-contract`](../../../../src/draft/technical-proofs/signed-offline-bundle-contract/README.md), [`hobo-add-install-verification-contract`](../../../../src/draft/technical-proofs/hobo-add-install-verification-contract/README.md), and the registry descriptor contract.
 
 It does not implement offline revocation, anti-rollback, transparency-inclusion enforcement, production OCI storage, Junction federation, model provisioning, or live registry crawling.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\registry-import-contract test
+npm.cmd --prefix src\draft\technical-proofs\registry-import-contract test
 ```

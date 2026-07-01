@@ -14,7 +14,7 @@ This proof backs the M2 provider/catalog mapping publication evidence for
 
 - Issue: HOBO-526
 - Draft package:
-  [`src/draft/broker-environment-publication-contract`](../../../../src/draft/broker-environment-publication-contract/README.md)
+  [`src/draft/technical-proofs/broker-environment-publication-contract`](../../../../src/draft/technical-proofs/broker-environment-publication-contract/README.md)
 - Focused gate:
   `pnpm --prefix src\draft\broker-environment-publication-contract test`
 

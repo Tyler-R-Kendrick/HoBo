@@ -13,7 +13,7 @@ This proof pins the component-host compatibility contract from
 - `hobo doctor` reports host lock-in and whether a target host is ready,
   ready-with-upcaster, or blocked.
 
-Executable proof lives in `src/draft/host-version-upgrade-contract`.
+Executable proof lives in `src/draft/technical-proofs/host-version-upgrade-contract`.
 
 Scope intentionally excludes an upcaster authoring framework and concrete
 adapter upgrades; this POC only defines the planning/doctor contract that those

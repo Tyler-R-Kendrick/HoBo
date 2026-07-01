@@ -1,6 +1,6 @@
 # HOBO-192 Cost/Quota Policy Input Proof
 
-This proof extends `src/draft/budget-quota-policy-contract` for the M2 policy
+This proof extends `src/draft/technical-proofs/budget-quota-policy-contract` for the M2 policy
 input slice described by [Plan 29](../../contracts-policy-flags.md#plan-29) and
 [ADR-0039](../../adr/02-identity-security.md#adr-0039).
 
@@ -27,6 +27,6 @@ execution levers. It only proves the policy input and decision contract.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\budget-quota-policy-contract test
+npm.cmd --prefix src\draft\technical-proofs\budget-quota-policy-contract test
 npm.cmd test
 ```

@@ -109,7 +109,7 @@ HoBo realizes the "runtime + membrane + provider" shape (proven by Nitric: app c
 
 HOBO-12 fixes the first version floor for the runtime membrane so downstream WIT and host slices build on one reproducible contract rather than a moving "latest" toolchain. The baseline is recorded as exact pins, not ranges: **Wasmtime/Component Model host `46.0.1`**, **`@bytecodealliance/jco` `1.24.3`**, **`@bytecodealliance/componentize-js` `0.21.0`**, **`wit-bindgen-cli` `0.58.0`**, **`wrpc` `0.17.0`**, and **wasmCloud `2.4.0`** as the self-hosted lattice integration floor. Wasmtime is the compatibility floor for local/component-host semantics; wasmCloud remains the default lattice host because it speaks wRPC natively ([ADR-0031](#adr-0031)/[ADR-0069](#adr-0069)).
 
-The vendoring layout is `wit/deps/<namespace-package>/...` plus a lock manifest that records each imported/exported WIT contract as **`namespace:package/interface@semver@stability`** with a SHA-256 hash of the vendored source. The first smoke fixture vendors `wasi:clocks/wall-clock@0.2.0@stable` in `src/draft/wrpc-wit-baseline-poc`; HOBO-15 expands this to the full reused `wasi:*` catalog. The manifest IR records the same per-interface pin shape, the component-model floor (`wasmtime@46.0.1`), and the selected link transport (`wrpc@0.17.0+nats`) so caller/provider skew fails planning instead of failing at runtime.
+The vendoring layout is `wit/deps/<namespace-package>/...` plus a lock manifest that records each imported/exported WIT contract as **`namespace:package/interface@semver@stability`** with a SHA-256 hash of the vendored source. The first smoke fixture vendors `wasi:clocks/wall-clock@0.2.0@stable` in `src/draft/exp-proofs/wrpc-wit-baseline-poc`; HOBO-15 expands this to the full reused `wasi:*` catalog. The manifest IR records the same per-interface pin shape, the component-model floor (`wasmtime@46.0.1`), and the selected link transport (`wrpc@0.17.0+nats`) so caller/provider skew fails planning instead of failing at runtime.
 
 Preview and experimental interfaces may move faster than stable interfaces, but they still cannot silently mutate a deployed Bindle. Any breaking `preview` bump requires **an upcaster, a new Bindle version, and a deprecation window**; CI must reject a preview pin change that lacks those artifacts. A stable interface can take additive semver-compatible changes, but a hash drift or breaking shape change must either be pinned as a new version or fail the vendored-tree check. This applies equally to HoBo-authored `hobo:*` and vendored `wasi:*` packages.
 
@@ -203,7 +203,7 @@ enough for providers, generated packs, and tests to reproduce.
    change under the same catalog hash is a determinism bug.
 
 The executable golden vectors for this decision live in
-[`../../../src/draft/matching-specificity-vectors`](../../../src/draft/matching-specificity-vectors).
+[`../../../src/draft/technical-proofs/matching-specificity-vectors`](../../../src/draft/technical-proofs/matching-specificity-vectors).
 
 ### Consequences
 - **(+)** The Matching engine gets reproducible golden vectors for the subtle cases: true ties,
@@ -240,7 +240,7 @@ Provider equivalence is not a closed HoBo-owned matrix. Each provider package ow
 5. **No cross-paradigm equivalence by accident.** An equivalence entry carries a semantic paradigm (`relational`, `document`, `blob`, `container`, etc.). Cross-paradigm substitutions such as relational Postgres to document Mongo are `none` unless a separate, explicit paradigm package defines a higher-level port that permits that translation.
 6. **Extensibility is catalog extension, not enum editing.** Third-party and generated providers add entries by publishing packages; the resolver accepts any provider/resource-class string that satisfies the schema and conformance gate. This keeps provider addition off the app-code path and avoids a central closed enum.
 
-The executable spike POC is [`../../../src/draft/cross-cloud-equivalence-model`](../../../src/draft/cross-cloud-equivalence-model): it resolves database, object-store, and compute requests across AWS/Azure/Cloudflare/Fly fixtures; demonstrates `full`/`partial`/`none`; accepts a `prefer` degradation; rejects a hard requirement when every candidate is partial or none; accepts a third-party extension entry; rejects a failed-conformance claim; and rejects cross-paradigm substitution.
+The executable spike POC is [`../../../src/draft/technical-proofs/cross-cloud-equivalence-model`](../../../src/draft/technical-proofs/cross-cloud-equivalence-model): it resolves database, object-store, and compute requests across AWS/Azure/Cloudflare/Fly fixtures; demonstrates `full`/`partial`/`none`; accepts a `prefer` degradation; rejects a hard requirement when every candidate is partial or none; accepts a third-party extension entry; rejects a failed-conformance claim; and rejects cross-paradigm substitution.
 
 ### Consequences
 - **(+)** Concrete providers can evolve independently while the Planner remains deterministic and replayable: all provider variation enters as signed catalog facts, then ADR-0033's pure Matching path selects among them.
@@ -259,7 +259,7 @@ ADR-0072 makes `hobo:sdk` the contract and `@hobo/bindles` the first idiom layer
 5. **Non-TS collection reaches the same manifest by explicit collection facts.** A Rust or Python guest does not need JavaScript module execution. It may use macro/decorator registration, an explicit registrar function, or build-time extracted declarations, but the output is the same ordered collection fact stream consumed by `hobo.manifest/v1`. Static analysis remains a supplement for coverage, not the source of truth.
 6. **Recommendation for M2: keep `@hobo/bindles`, but freeze the lowering seam.** No pre-M2 refactor is required solely for non-TS support if `@hobo/bindles` exposes no TS-only semantic as contract. HOBO-399 should freeze public exports plus the lowering records, and any new ergonomic feature must name its lowering record and semantics-annex coverage before landing.
 
-The spike proof bundle is [`../../../src/draft/non-ts-idiom-roundtrip-spike`](../../../src/draft/non-ts-idiom-roundtrip-spike). It works a sample component through extracted WIT surface -> parity report -> Rust skeleton sketch, identifies TypeScript-only assumptions and mitigations, and recommends keeping the TypeScript idiom layer while freezing the lowering seam.
+The spike proof bundle is [`../../../src/draft/technical-proofs/non-ts-idiom-roundtrip-spike`](../../../src/draft/technical-proofs/non-ts-idiom-roundtrip-spike). It works a sample component through extracted WIT surface -> parity report -> Rust skeleton sketch, identifies TypeScript-only assumptions and mitigations, and recommends keeping the TypeScript idiom layer while freezing the lowering seam.
 
 ### Consequences
 - **(+)** Non-TS SDKs have a concrete starting point that is mechanically tied to `hobo:sdk`, not to TypeScript syntax.
@@ -277,7 +277,7 @@ The Yard is itself a Bindle, so its first existence cannot depend on the target 
 4. **Recovery is idempotent by bootstrap attempt id.** A seed crash resumes the same attempt from the seed log plus observed target state. A second bootstrap for the same target is blocked unless it carries the same attempt id. Created-but-not-recorded resources use ADR-0006's tagged-state/orphan-sweep discipline.
 5. **Air-gapped bootstrap runs the same state machine with in-boundary inputs.** The seed verifies a signed offline bundle and uses in-boundary Identity/CA/KMS substitutes before any apply. It does not require a public Registry, hosted IdP, public ACME, hosted model service, or other egress dependency.
 
-The executable proof bundle is [`../../../src/draft/self-host-bootstrap-ordering-spike`](../../../src/draft/self-host-bootstrap-ordering-spike). It encodes the accepted order, credential lifecycle, handover trigger, air-gap delta, double-bootstrap guard, and failure-injection table for HOBO-59.
+The executable proof bundle is [`../../../src/draft/technical-proofs/self-host-bootstrap-ordering-spike`](../../../src/draft/technical-proofs/self-host-bootstrap-ordering-spike). It encodes the accepted order, credential lifecycle, handover trigger, air-gap delta, double-bootstrap guard, and failure-injection table for HOBO-59.
 
 ### Consequences
 - **(+)** Self-host bootstrap is reproducible and auditable without depending on the service it is creating.
@@ -296,7 +296,7 @@ Golden-IR lowering equivalence proves only the mechanical boundary: identical au
 4. **Cancellation is caller-owned and visible.** Cancellation lowers to a typed cancelled result or language equivalent. Hidden retries, silent success, or deadline erasure are annex failures.
 5. **Collection facts are ordered contract data.** IfC side effects lower to an ordered declaration fact stream. Async language machinery may schedule work however it wants, but the observed fact order must be deterministic and a handler observed before its resource declaration fails closed.
 
-The executable proof bundle is [`../../../src/draft/idiom-semantics-annex`](../../../src/draft/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31. The HOBO-5 conformance harness proof adds the report-level gate at [`../proofs/hobo-5-conformance-port-suite`](../proofs/hobo-5-conformance-port-suite/index.md), including language-specific golden-IR rejection and required annex vector coverage.
+The executable proof bundle is [`../../../src/draft/technical-proofs/idiom-semantics-annex`](../../../src/draft/technical-proofs/idiom-semantics-annex). It shows a wrong TypeScript adapter passing golden-IR lowering equivalence while failing the semantics-annex `error-mapping` vector, and it covers cancellation, async ordering, and IfC side-effect guards for HOBO-31. The HOBO-5 conformance harness proof adds the report-level gate at [`../proofs/hobo-5-conformance-port-suite`](../proofs/hobo-5-conformance-port-suite/index.md), including language-specific golden-IR rejection and required annex vector coverage.
 
 ### Consequences
 - **(+)** SDK parity no longer overclaims what WIT-call equality can prove.
@@ -373,7 +373,7 @@ HOBO-35 spikes the first opt-in adapter named by [ADR-0031](#adr-0031) and [Plan
 3. **Covered vs non-covered behavior is explicit.** The adapter report must list conformance-covered assertions: deterministic-clock replay, pinned `wasi:*` round trips, link late-binding, capability-handle isolation, NaN canonicalization, fuel/epoch scheduling, and resource-limit semantics. Wall-clock scheduling jitter and host-specific partial-failure timing stay declared non-covered divergences unless a later suite adds them.
 4. **Host-specific options are typed lock-in.** Host-specific features such as SpinKube link migration are exposed only as `host.<kind>.with(...)` options. They are inert on other hosts and always surfaced by `hobo doctor`/PortabilityReport as host lock-in.
 
-The executable spike is [`../../../src/draft/component-host-adapter-certification-spike`](../../../src/draft/component-host-adapter-certification-spike/README.md), with proof notes in [`../proofs/hobo-35-component-host-adapter-certification`](../proofs/hobo-35-component-host-adapter-certification/index.md).
+The executable spike is [`../../../src/draft/technical-proofs/component-host-adapter-certification-spike`](../../../src/draft/technical-proofs/component-host-adapter-certification-spike/README.md), with proof notes in [`../proofs/hobo-35-component-host-adapter-certification`](../proofs/hobo-35-component-host-adapter-certification/index.md).
 
 ### Consequences
 - **(+)** The opt-in adapter story has a concrete first certification target rather than an open-ended "support N hosts" claim.

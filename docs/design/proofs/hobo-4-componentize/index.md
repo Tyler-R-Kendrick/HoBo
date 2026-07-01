@@ -1,6 +1,6 @@
 # HOBO-4 Componentize Proof
 
-HOBO-4 is proven by the focused POC at [`src/draft/hobo-componentize-contract`](../../../../src/draft/hobo-componentize-contract/README.md).
+HOBO-4 is proven by the focused POC at [`src/draft/technical-proofs/hobo-componentize-contract`](../../../../src/draft/technical-proofs/hobo-componentize-contract/README.md).
 
 Acceptance mapping:
 

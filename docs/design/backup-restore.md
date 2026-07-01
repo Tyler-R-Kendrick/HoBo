@@ -10,11 +10,11 @@ tags: [hobo, design]
 Source issue: HOBO-429.
 
 Executable proof lives in
-[`src/draft/backup-restore-scope-contract`](../../src/draft/backup-restore-scope-contract/README.md).
+[`src/draft/exp-proofs/backup-restore-scope-contract`](../../src/draft/exp-proofs/backup-restore-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-429-backup-restore`](./proofs/hobo-429-backup-restore/README.md).
 M1 launch-drill proof lives in
-[`src/draft/backup-restore-launch-drill-contract`](../../src/draft/backup-restore-launch-drill-contract/README.md)
+[`src/draft/exp-proofs/backup-restore-launch-drill-contract`](../../src/draft/exp-proofs/backup-restore-launch-drill-contract/README.md)
 with branch evidence in
 [`proofs/hobo-498-backup-restore-launch-drill`](./proofs/hobo-498-backup-restore-launch-drill/README.md).
 

@@ -10,7 +10,7 @@ This proof backs [PLAN-29](../../contracts-policy-flags.md#plan-29),
 [ADR-0074](../../adr/02-identity-security.md#adr-0074).
 
 The branch adds
-[`src/draft/governance-conformance-suite-contract`](../../../../src/draft/governance-conformance-suite-contract/README.md),
+[`src/draft/technical-proofs/governance-conformance-suite-contract`](../../../../src/draft/technical-proofs/governance-conformance-suite-contract/README.md),
 an independent POC for the GA `hobo verify` composition boundary. It consumes gate results from the
 contract, policy, obligation, residency, guardrail, quota, and signing slices, then produces one
 replayable deployability decision plus a governance ADR/Plan traceability check.
@@ -45,7 +45,7 @@ replayable deployability decision plus a governance ADR/Plan traceability check.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\governance-conformance-suite-contract test
+npm.cmd --prefix src\draft\technical-proofs\governance-conformance-suite-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

@@ -7,7 +7,7 @@ This proof backs the self-host bootstrap implementation slice in
 
 It keeps the executable contract inside the repo-standard draft path:
 
-- [`src/draft/self-host-bootstrap-saga-contract`](../../../../src/draft/self-host-bootstrap-saga-contract)
+- [`src/draft/technical-proofs/self-host-bootstrap-saga-contract`](../../../../src/draft/technical-proofs/self-host-bootstrap-saga-contract)
 
 ## Proven boundaries
 
@@ -24,5 +24,5 @@ It keeps the executable contract inside the repo-standard draft path:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\self-host-bootstrap-saga-contract test
+npm.cmd --prefix src\draft\technical-proofs\self-host-bootstrap-saga-contract test
 ```

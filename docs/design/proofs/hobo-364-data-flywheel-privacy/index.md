@@ -23,10 +23,10 @@ notes in [generated-stack.md](../../generated-stack.md#plan-23).
 ## Executable proof
 
 The dependency-free proof package lives at
-`src/draft/data-flywheel-privacy-spike`.
+`src/draft/exp-proofs/data-flywheel-privacy-spike`.
 
 ```bash
-npm.cmd --prefix src/draft/data-flywheel-privacy-spike test
+npm.cmd --prefix src/draft/exp-proofs/data-flywheel-privacy-spike test
 ```
 
 It covers:

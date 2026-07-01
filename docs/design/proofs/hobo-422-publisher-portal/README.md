@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-422 Publisher Portal M0 Scope Proof
 
 HOBO-422 is proven by the focused M0 contract at
-[`src/draft/publisher-portal-scope-contract`](../../../../src/draft/publisher-portal-scope-contract/README.md)
+[`src/draft/exp-proofs/publisher-portal-scope-contract`](../../../../src/draft/exp-proofs/publisher-portal-scope-contract/README.md)
 and the durable scope record at
 [publisher-portal.md](../../publisher-portal.md).
 
@@ -43,5 +43,5 @@ and the durable scope record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\publisher-portal-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\publisher-portal-scope-contract test
 ```

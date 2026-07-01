@@ -66,7 +66,7 @@ environments must route through this register before publication.
 ## Proof
 
 Executable proof lives in
-[`../../src/draft/known-limitations-register-contract`](../../src/draft/known-limitations-register-contract/README.md).
+[`../../src/draft/exp-proofs/known-limitations-register-contract`](../../src/draft/exp-proofs/known-limitations-register-contract/README.md).
 The proof includes protobuf data shapes, CUE constraints, a PACT boundary, and
 tests for required fields, handoff mapping, scope-out claim rejection, beta/GA
 review checkpoints, and customer-safe release-note projection.

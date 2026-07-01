@@ -12,7 +12,7 @@ Design refs:
 
 Executable artifact:
 
-- [`src/draft/human-approval-generation-gate-contract`](../../../../src/draft/human-approval-generation-gate-contract)
+- [`src/draft/technical-proofs/human-approval-generation-gate-contract`](../../../../src/draft/technical-proofs/human-approval-generation-gate-contract)
 
 Acceptance evidence:
 

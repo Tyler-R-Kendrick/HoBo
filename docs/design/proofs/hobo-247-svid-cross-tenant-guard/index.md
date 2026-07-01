@@ -12,7 +12,7 @@ Design refs:
 
 Executable artifact:
 
-- [`src/draft/svid-cross-tenant-guard-contract`](../../../../src/draft/svid-cross-tenant-guard-contract)
+- [`src/draft/exp-proofs/svid-cross-tenant-guard-contract`](../../../../src/draft/exp-proofs/svid-cross-tenant-guard-contract)
 
 Acceptance evidence:
 

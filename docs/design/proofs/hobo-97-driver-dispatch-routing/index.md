@@ -28,7 +28,7 @@ ResourceActor reconcile loop.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\driver-dispatch-routing-contract test
+npm.cmd --prefix src\draft\technical-proofs\driver-dispatch-routing-contract test
 ```
 
 The checks prove all five Driver ids at the dispatch seam, output capture,

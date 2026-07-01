@@ -7,7 +7,7 @@ This executable proof backs [PLAN-06](../../ai-native-agent-auth.md#plan-06),
 [ADR-0027](../../adr/02-identity-security.md#adr-0027).
 
 The proof lives in
-[`src/draft/static-key-escape-hatch-contract`](../../../../src/draft/static-key-escape-hatch-contract)
+[`src/draft/technical-proofs/static-key-escape-hatch-contract`](../../../../src/draft/technical-proofs/static-key-escape-hatch-contract)
 and models the static-secret branch only. It proves that the last-resort path is
 bounded by:
 
@@ -23,5 +23,5 @@ bounded by:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\static-key-escape-hatch-contract test
+npm.cmd --prefix src\draft\technical-proofs\static-key-escape-hatch-contract test
 ```

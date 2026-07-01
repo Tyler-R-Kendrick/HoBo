@@ -7,12 +7,12 @@ Refs:
 
 Package:
 
-- `src/draft/inbound-xaa-resource-server-contract`
+- `src/draft/technical-proofs/inbound-xaa-resource-server-contract`
 
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\inbound-xaa-resource-server-contract test
+npm.cmd --prefix src\draft\technical-proofs\inbound-xaa-resource-server-contract test
 ```
 
 Acceptance mapping:

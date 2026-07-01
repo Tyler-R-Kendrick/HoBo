@@ -2,7 +2,7 @@
 
 HOBO-194 hardens the MCP control surface against prompt injection and over-broad
 agent permissions. The executable proof lives in
-[`src/draft/mcp-server-hardening-contract`](../../../../src/draft/mcp-server-hardening-contract)
+[`src/draft/technical-proofs/mcp-server-hardening-contract`](../../../../src/draft/technical-proofs/mcp-server-hardening-contract)
 and is intentionally a contract POC, not the production MCP runtime.
 
 ## Proven Acceptance
@@ -21,7 +21,7 @@ and is intentionally a contract POC, not the production MCP runtime.
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\mcp-server-hardening-contract test
+npm.cmd --prefix src\draft\technical-proofs\mcp-server-hardening-contract test
 ```
 
 This proof consumes the shared policy IR and identity event contracts, so the

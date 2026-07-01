@@ -58,12 +58,12 @@ codegen, collection coverage, and end-to-end author flow proof.
 ## Proof
 
 The public API vocabulary proof lives in
-[`../../src/draft/closure-builder-public-api-contract`](../../src/draft/closure-builder-public-api-contract/README.md).
+[`../../src/draft/technical-proofs/closure-builder-public-api-contract`](../../src/draft/technical-proofs/closure-builder-public-api-contract/README.md).
 It includes TypeScript contract tests, protobuf shapes, CUE constraints, and a
 Pact expectation for downstream SDK implementation work.
 
 The resource-handle proof lives in
-[`../../src/draft/closure-builder-resource-handles-contract`](../../src/draft/closure-builder-resource-handles-contract/README.md).
+[`../../src/draft/technical-proofs/closure-builder-resource-handles-contract`](../../src/draft/technical-proofs/closure-builder-resource-handles-contract/README.md).
 It proves anonymous handle creation, inert workload descriptors, invalid
 dependency refusal, `dependsOn()` relationship emission, and inert provider
 annotations. The same proof now covers HOBO-534 generated-ID stability, alias
@@ -71,25 +71,25 @@ separation diagnostics, and the HOBO-538 collector-owned identity ledger for
 same-kind insertion stability.
 
 The manifest-lowering proof lives in
-[`../../src/draft/closure-builder-manifest-lowering-contract`](../../src/draft/closure-builder-manifest-lowering-contract/README.md).
+[`../../src/draft/technical-proofs/closure-builder-manifest-lowering-contract`](../../src/draft/technical-proofs/closure-builder-manifest-lowering-contract/README.md).
 It proves captured closure-builder facts lower to `hobo:sdk` calls and
 `hobo.manifest/v1` while keeping aliases out of deployment identity and leaving
 same-kind identity-ledger behavior to HOBO-538.
 
 The tooling proof lives in
-[`../../src/draft/closure-builder-tooling-contract`](../../src/draft/closure-builder-tooling-contract/README.md).
+[`../../src/draft/technical-proofs/closure-builder-tooling-contract`](../../src/draft/technical-proofs/closure-builder-tooling-contract/README.md).
 It proves that collection coverage, manifest collection, codegen bindings, and
 `hobo new` scaffold samples consume the closure-builder contract while keeping
 generated resource identities separate from returned aliases.
 
 The end-to-end author-flow proof lives in
-[`../../src/draft/closure-builder-author-flow-contract`](../../src/draft/closure-builder-author-flow-contract/README.md).
+[`../../src/draft/technical-proofs/closure-builder-author-flow-contract`](../../src/draft/technical-proofs/closure-builder-author-flow-contract/README.md).
 It names the v1 closure-builder corpus consumed by SDK conformance, keeps app-host code outside
 Bindle assembly, proves cache/API/queue authoring, proves `dependsOn()` manifest edges, and
 type-checks generated aliases without making aliases deployment identity.
 
 The parent finalization proof lives in
-[`../../src/draft/closure-builder-v1-finalization-contract`](../../src/draft/closure-builder-v1-finalization-contract/README.md).
+[`../../src/draft/technical-proofs/closure-builder-v1-finalization-contract`](../../src/draft/technical-proofs/closure-builder-v1-finalization-contract/README.md).
 It records that HOBO-532 through HOBO-538 have accepted evidence, keeps this
 canonical public API record as the leading v1 Bindle authoring contract, and
 rejects legacy explicit-Bindle syntax as a compatibility requirement.

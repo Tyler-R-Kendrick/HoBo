@@ -2,7 +2,7 @@
 
 This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20), [PLAN-05](../../reliability-observability-cost.md#plan-05), and [ADR-0069](../../adr/01-architecture-core.md#adr-0069).
 
-The branch adds `src/draft/wrpc-deadline-propagation-contract`, an independent POC for the M3 in-process wRPC deadline slice. It proves caller deadlines are carried on `link.Called`, exceeded deadlines return a typed `deadline-exceeded` result with the Plan-5 transient timeout classification, cancellable providers receive an abort signal, nested in-process calls inherit the parent's absolute deadline and shrink remaining time, and a hung in-process provider cannot hold the caller past the deadline.
+The branch adds `src/draft/technical-proofs/wrpc-deadline-propagation-contract`, an independent POC for the M3 in-process wRPC deadline slice. It proves caller deadlines are carried on `link.Called`, exceeded deadlines return a typed `deadline-exceeded` result with the Plan-5 transient timeout classification, cancellable providers receive an abort signal, nested in-process calls inherit the parent's absolute deadline and shrink remaining time, and a hung in-process provider cannot hold the caller past the deadline.
 
 Acceptance evidence:
 
@@ -19,5 +19,5 @@ Scope boundary:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\wrpc-deadline-propagation-contract test
+npm.cmd --prefix src\draft\technical-proofs\wrpc-deadline-propagation-contract test
 ```

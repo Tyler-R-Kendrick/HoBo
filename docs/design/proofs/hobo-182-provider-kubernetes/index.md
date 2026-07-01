@@ -7,7 +7,7 @@ portability conformance, and [ADR-0031](../../adr/01-architecture-core.md#adr-00
 wasmCloud-on-k8s host selection.
 
 The executable POC in
-[`src/draft/provider-kubernetes-contract`](../../../../src/draft/provider-kubernetes-contract)
+[`src/draft/technical-proofs/provider-kubernetes-contract`](../../../../src/draft/technical-proofs/provider-kubernetes-contract)
 proves the Kubernetes seed provider contract:
 
 - `@hobo/provider-kubernetes` exposes a factory, Capability Manifest, default

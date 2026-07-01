@@ -5,7 +5,7 @@ This proof backs [PLAN-11](../../data-plane.md#plan-11),
 [ADR-0053](../../adr/03-data-plane.md#adr-0053).
 
 The executable POC in
-[`src/draft/cqrs-command-aggregate-contract`](../../../../src/draft/cqrs-command-aggregate-contract)
+[`src/draft/technical-proofs/cqrs-command-aggregate-contract`](../../../../src/draft/technical-proofs/cqrs-command-aggregate-contract)
 proves the M1 write-path boundary:
 
 - `command(type, { key, initialState, fold }, handler)` provides a typed command surface;

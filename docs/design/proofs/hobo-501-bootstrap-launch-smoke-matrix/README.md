@@ -16,7 +16,7 @@ fan out.
 - Design record:
   [`docs/design/bootstrap-installer.md`](../../bootstrap-installer.md)
 - Executable contract:
-  [`src/draft/bootstrap-launch-smoke-matrix-contract`](../../../../src/draft/bootstrap-launch-smoke-matrix-contract/README.md)
+  [`src/draft/exp-proofs/bootstrap-launch-smoke-matrix-contract`](../../../../src/draft/exp-proofs/bootstrap-launch-smoke-matrix-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

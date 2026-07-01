@@ -5,7 +5,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0005](../../adr/01-architecture-core.md#adr-0005).
 
 The executable POC in
-[`src/draft/build-wasm-provider-contract`](../../../../src/draft/build-wasm-provider-contract/README.md)
+[`src/draft/technical-proofs/build-wasm-provider-contract`](../../../../src/draft/technical-proofs/build-wasm-provider-contract/README.md)
 proves the M1 `@hobo/build-wasm` BuildProvider skeleton:
 
 - a fixture `BuildSpec` produces a reproducible wasm-component OCI `ImageRef`

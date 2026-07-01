@@ -2,7 +2,7 @@
 
 This proof maps the preview-environment design requirements to executable
 vectors in
-[`src/draft/preview-ephemeral-environments-contract`](../../../../src/draft/preview-ephemeral-environments-contract/).
+[`src/draft/technical-proofs/preview-ephemeral-environments-contract`](../../../../src/draft/technical-proofs/preview-ephemeral-environments-contract/).
 
 ## Requirements Covered
 
@@ -26,7 +26,7 @@ state transitions that later runtime slices can bind to provider operations.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\preview-ephemeral-environments-contract test
+npm.cmd --prefix src\draft\technical-proofs\preview-ephemeral-environments-contract test
 ```
 
 The acceptance tests prove PR-open creation, live URL assignment, baseline clone

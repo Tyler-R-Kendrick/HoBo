@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-408.
 
 Executable proof lives in
-[`src/draft/launch-support-escalation-matrix`](../../src/draft/launch-support-escalation-matrix/README.md).
+[`src/draft/exp-proofs/launch-support-escalation-matrix`](../../src/draft/exp-proofs/launch-support-escalation-matrix/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-408-launch-support-escalation`](./proofs/hobo-408-launch-support-escalation/index.md).
 
@@ -103,7 +103,7 @@ production support capability.
 Source issue: HOBO-460.
 
 Executable proof lives in
-[`src/draft/launch-support-dogfood-alpha-evidence`](../../src/draft/launch-support-dogfood-alpha-evidence/README.md).
+[`src/draft/exp-proofs/launch-support-dogfood-alpha-evidence`](../../src/draft/exp-proofs/launch-support-dogfood-alpha-evidence/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-460-launch-support-dogfood-alpha`](./proofs/hobo-460-launch-support-dogfood-alpha/README.md).
 
@@ -125,7 +125,7 @@ customer support operations, and customer-facing SLA commitments out of this bra
 Source issue: HOBO-467.
 
 Executable proof lives in
-[`src/draft/launch-support-private-beta-evidence-contract`](../../src/draft/launch-support-private-beta-evidence-contract/README.md).
+[`src/draft/exp-proofs/launch-support-private-beta-evidence-contract`](../../src/draft/exp-proofs/launch-support-private-beta-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-467-launch-support-private-beta`](./proofs/hobo-467-launch-support-private-beta/README.md).
 
@@ -149,7 +149,7 @@ branch.
 Source issue: HOBO-474.
 
 Executable proof lives in
-[`src/draft/launch-support-release-candidate-evidence-contract`](../../src/draft/launch-support-release-candidate-evidence-contract/README.md).
+[`src/draft/exp-proofs/launch-support-release-candidate-evidence-contract`](../../src/draft/exp-proofs/launch-support-release-candidate-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-474-launch-support-release-candidate`](./proofs/hobo-474-launch-support-release-candidate/index.md).
 
@@ -174,7 +174,7 @@ readiness claims.
 Source issue: HOBO-481.
 
 Executable proof lives in
-[`src/draft/launch-support-ga-handoff-evidence-contract`](../../src/draft/launch-support-ga-handoff-evidence-contract/README.md).
+[`src/draft/exp-proofs/launch-support-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/launch-support-ga-handoff-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-481-launch-support-ga-handoff`](./proofs/hobo-481-launch-support-ga-handoff/index.md).
 

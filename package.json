@@ -13,7 +13,7 @@
     "docs:freshness:staged": "node --import tsx scripts/check-docs-freshness.ts --staged",
     "prepare-hooks": "git config core.hooksPath .githooks",
     "docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
-    "docs:okf": "node scripts/check-okf-docs.mjs",
+    "docs:okf": "node --import tsx scripts/check-okf-docs.mts",
     "case:check": "node --import tsx scripts/check-case-collisions.ts",
     "test:fast": "node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts",
     "search": "sh -c 'if command -v tgrep >/dev/null 2>&1; then tgrep \"$@\"; else rg \"$@\"; fi' --",

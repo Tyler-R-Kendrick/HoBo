@@ -29,7 +29,7 @@ Contracts/Policy authorization engine, or data-plane connectivity tier selection
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-relay-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-relay-contract test
 ```
 
 The checks prove outbound-only registration, SVID-authenticated attach, no inbound listener,

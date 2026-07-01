@@ -1,7 +1,7 @@
 # HOBO-461 V1 Cutline Private Beta Proof
 
 HOBO-461 is proven by the focused M2 contract at
-[`src/draft/v1-cutline-contract`](../../../../src/draft/v1-cutline-contract/README.md).
+[`src/draft/technical-proofs/v1-cutline-contract`](../../../../src/draft/technical-proofs/v1-cutline-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -25,5 +25,5 @@ HOBO-461 is proven by the focused M2 contract at
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\v1-cutline-contract test
+pnpm.cmd --prefix src\draft\technical-proofs\v1-cutline-contract test
 ```

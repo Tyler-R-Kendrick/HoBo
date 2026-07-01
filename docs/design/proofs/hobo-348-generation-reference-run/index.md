@@ -2,7 +2,7 @@
 
 This branch proves the end-to-end cold-start generation reference run as an
 independent draft contract:
-[`src/draft/generation-reference-run-contract`](../../../../src/draft/generation-reference-run-contract).
+[`src/draft/technical-proofs/generation-reference-run-contract`](../../../../src/draft/technical-proofs/generation-reference-run-contract).
 
 ## Acceptance Mapping
 

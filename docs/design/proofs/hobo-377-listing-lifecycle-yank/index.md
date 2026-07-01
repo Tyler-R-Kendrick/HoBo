@@ -3,7 +3,7 @@
 This proof package links HOBO-377 to [ADR-0062](../../adr/07-portability-extensibility.md#adr-0062)
 section 6, [ADR-0075](../../adr/07-portability-extensibility.md#adr-0075) section 6, and
 [ADR-0074](../../adr/02-identity-security.md#adr-0074). The executable POC lives at
-[listing-lifecycle-yank-contract](../../../../src/draft/listing-lifecycle-yank-contract).
+[listing-lifecycle-yank-contract](../../../../src/draft/technical-proofs/listing-lifecycle-yank-contract).
 
 Acceptance coverage:
 

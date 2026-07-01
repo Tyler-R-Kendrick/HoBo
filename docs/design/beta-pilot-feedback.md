@@ -81,7 +81,7 @@ is missing. It keeps private-beta evidence separate from GA readiness: GA claims
 the M4 handoff issue records GA evidence.
 
 Executable proof lives in
-[`../../src/draft/beta-pilot-release-candidate-evidence-contract`](../../src/draft/beta-pilot-release-candidate-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/beta-pilot-release-candidate-evidence-contract`](../../src/draft/exp-proofs/beta-pilot-release-candidate-evidence-contract/README.md).
 
 ## M4 GA Handoff Evidence
 
@@ -97,7 +97,7 @@ feedback portal, implement support tooling, resolve launch blockers, or publish 
 from beta evidence alone.
 
 Executable proof lives in
-[`../../src/draft/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract/README.md).
 
 ## Scope Boundaries
 
@@ -108,12 +108,12 @@ feedback. It only defines the intake and triage contract those later issues use.
 ## Proof
 
 M0 executable proof lives in
-[`../../src/draft/beta-pilot-feedback-contract`](../../src/draft/beta-pilot-feedback-contract/README.md).
+[`../../src/draft/exp-proofs/beta-pilot-feedback-contract`](../../src/draft/exp-proofs/beta-pilot-feedback-contract/README.md).
 M1 dogfood/alpha evidence proof lives in
-[`../../src/draft/beta-pilot-dogfood-alpha-evidence-contract`](../../src/draft/beta-pilot-dogfood-alpha-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/beta-pilot-dogfood-alpha-evidence-contract`](../../src/draft/exp-proofs/beta-pilot-dogfood-alpha-evidence-contract/README.md).
 
 M2 private-beta evidence proof lives in
-[`../../src/draft/v1-beta-pilot-private-beta-evidence`](../../src/draft/v1-beta-pilot-private-beta-evidence/README.md).
+[`../../src/draft/exp-proofs/v1-beta-pilot-private-beta-evidence`](../../src/draft/exp-proofs/v1-beta-pilot-private-beta-evidence/README.md).
 
 M4 GA handoff evidence proof lives in
-[`../../src/draft/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract/README.md).

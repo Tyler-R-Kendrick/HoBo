@@ -5,7 +5,7 @@ SLO-as-code contract and ADR-0045's SLO/error-budget decision.
 
 ## Scope
 
-- `src/draft/slo-computation-engine-contract` defines a pure computation
+- `src/draft/technical-proofs/slo-computation-engine-contract` defines a pure computation
   boundary over an `SLISource` port.
 - The engine evaluates SLI ratio samples over the objective window and over the
   configured burn-rate threshold windows.
@@ -35,5 +35,5 @@ SLO-as-code contract and ADR-0045's SLO/error-budget decision.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\slo-computation-engine-contract test
+npm.cmd --prefix src\draft\technical-proofs\slo-computation-engine-contract test
 ```

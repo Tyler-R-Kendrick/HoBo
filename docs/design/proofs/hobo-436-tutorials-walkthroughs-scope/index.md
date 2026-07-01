@@ -1,7 +1,7 @@
 # HOBO-436 Tutorials & Walkthroughs M0 Scope Proof
 
 HOBO-436 is proven by the focused M0 contract at
-[`src/draft/tutorials-walkthroughs-scope-acceptance`](../../../../src/draft/tutorials-walkthroughs-scope-acceptance/README.md)
+[`src/draft/exp-proofs/tutorials-walkthroughs-scope-acceptance`](../../../../src/draft/exp-proofs/tutorials-walkthroughs-scope-acceptance/README.md)
 and the durable scope record at [tutorials-walkthroughs.md](../../tutorials-walkthroughs.md).
 
 ## Acceptance Evidence
@@ -29,5 +29,5 @@ and the durable scope record at [tutorials-walkthroughs.md](../../tutorials-walk
 ## Verification
 
 ```powershell
-pnpm --prefix src\draft\tutorials-walkthroughs-scope-acceptance test
+pnpm --prefix src\draft\exp-proofs\tutorials-walkthroughs-scope-acceptance test
 ```

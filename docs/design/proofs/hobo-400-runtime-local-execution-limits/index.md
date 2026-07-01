@@ -7,7 +7,7 @@ and the follow-up called out by the [HOBO-17 proof](../hobo-17-runtime-local-com
 
 ## Scope
 
-- `src/draft/runtime-local-execution-limits-contract` defines a pure
+- `src/draft/technical-proofs/runtime-local-execution-limits-contract` defines a pure
   runtime-local host model over Wasmtime-shaped limits.
 - Guest fixtures can exhaust fuel, cross an epoch deadline, allocate beyond a
   memory limit, trap during cleanup, or return a later healthy response.
@@ -36,5 +36,5 @@ and the follow-up called out by the [HOBO-17 proof](../hobo-17-runtime-local-com
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\runtime-local-execution-limits-contract test
+npm.cmd --prefix src\draft\technical-proofs\runtime-local-execution-limits-contract test
 ```

@@ -1,6 +1,6 @@
 # HOBO-95 ResourceActor Reconcile Loop Proof
 
-This branch adds `src/draft/resourceactor-reconcile-loop-contract`, an independent executable POC
+This branch adds `src/draft/technical-proofs/resourceactor-reconcile-loop-contract`, an independent executable POC
 for the ResourceActor idempotent load -> diff -> apply -> outputs loop.
 
 It proves:
@@ -19,5 +19,5 @@ routing, Executor sandbox internals, and real IaC adapter internals.
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\resourceactor-reconcile-loop-contract test
+npm.cmd --prefix src\draft\technical-proofs\resourceactor-reconcile-loop-contract test
 ```

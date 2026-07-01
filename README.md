@@ -4,7 +4,7 @@
 
 A developer or agent should be able to describe an app once, then let HoBo place it on a provider, mix of providers, or self-hosted yard without rewriting app code. The design uses **WIT/WASM Component Model interfaces** as the portable membrane, provider adapters as the integration boundary, and an event-sourced control plane as the operating model.
 
-> **Current state:** active design + executable contract/proof repository. This is not a shipped HoBo product yet. The repo contains design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/*` proof/contract packages that pin behavior before production implementation.
+> **Current state:** active design + executable contract/proof repository. This is not a shipped HoBo product yet. The repo contains design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof/contract packages that pin behavior before production implementation.
 
 ## Why HoBo exists
 
@@ -41,8 +41,8 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 |---|---|
 | [`docs/`](./docs/index.md) | OKF bundle root for HoBo docs; `index.md` files provide directory listings and concept docs carry OKF frontmatter. |
 | [`docs/design/`](./docs/design/index.md) | Current design suite: capability docs, ADRs, CLI spec, traceability, glossary, event-family catalog. |
-| [`src/draft/`](./src/draft/) | Executable proof/contract packages for individual backlog slices and design claims. These are draft fixtures, not a production product. |
-| [`docs/design/proofs/`](./docs/design/proofs/) | Human-readable proof records linked to `src/draft/*` packages. |
+| [`src/draft/`](./src/draft/) | Executable draft taxonomy: `technical-proofs/`, `exp-proofs/`, `epic-proofs/`, and `projects/`. These are draft fixtures, not a production product. |
+| [`docs/design/proofs/`](./docs/design/proofs/) | Human-readable proof records linked to `src/draft/<kind>/<slug>` packages. |
 | [`docs/implementation-plan.md`](./docs/implementation-plan.md) | Durable mirror of the Linear backlog structure. Linear remains live status source. |
 | [`docs/competitors/`](./docs/competitors/index.md) | Competitive analysis and positioning notes. |
 | [`docs/standards/`](./docs/standards/index.md), [`docs/technologies/`](./docs/technologies/index.md), [`docs/patterns/`](./docs/patterns/index.md) | Reference material used by design decisions. |
@@ -65,7 +65,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 2. Read the matching design doc in [`docs/design/`](./docs/design/index.md).
 3. Check the corresponding proof note under [`docs/design/proofs/`](./docs/design/proofs/).
 4. Apply the implementation architecture rules in [`AGENTS.md`](./AGENTS.md): PACT service boundaries, protobuf definitions with CUE constraints, parse-don't-validate derived types, and event-driven CQRS/actors/materialized views.
-5. Update or add the `src/draft/*` contract package that proves the slice.
+5. Update or add the `src/draft/<kind>/<slug>` proof package that proves the slice.
 6. Update docs in the same change so the repo continues to describe reality.
 
 ### If you are reviewing architecture
@@ -154,7 +154,7 @@ This repo is configured for agent/harness-agnostic helper tooling first, with su
 
 Important rules for agents and humans:
 
-- Do not treat `src/draft/*` as production HoBo code; it is executable design proof material.
+- Do not treat `src/draft/<kind>/<slug>` as production HoBo code; it is executable design proof material.
 - Implement HoBo code through the architecture guardrails in [`AGENTS.md`](./AGENTS.md): PACT, protobuf, CUE, parse-don't-validate types, CQRS, event stores, materialized views, actors, rx-style projections, cached snapshots, and persisted historical read-store snapshots.
 - Run `pnpm run architecture:guard` when implementation packages change; CI runs the same changed-package guard before the expensive build and test lanes.
 - Keep docs, ADRs, proof notes, and README claims aligned with code changes.
@@ -166,7 +166,7 @@ Important rules for agents and humans:
 - **Product implementation:** not shipped.
 - **Design suite:** active and canonical under [`docs/design/`](./docs/design/index.md).
 - **Backlog mirror:** [`docs/implementation-plan.md`](./docs/implementation-plan.md); Linear is live operational source.
-- **Executable proof material:** `src/draft/*` packages and repo validation scripts.
+- **Executable proof material:** `src/draft/<kind>/<slug>` packages and repo validation scripts.
 - **Primary command surface under design:** `hobo` CLI, specified in [`docs/design/cli-spec.md`](./docs/design/cli-spec.md).
 
 ## License

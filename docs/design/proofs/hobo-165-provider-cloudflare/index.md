@@ -8,7 +8,7 @@ provider-native wasm opt-in, and [ADR-0035](../../adr/07-portability-extensibili
 safe DNS rollout.
 
 The executable POC in
-[`src/draft/provider-cloudflare-contract`](../../../../src/draft/provider-cloudflare-contract)
+[`src/draft/technical-proofs/provider-cloudflare-contract`](../../../../src/draft/technical-proofs/provider-cloudflare-contract)
 proves the Cloudflare seed provider contract:
 
 - `@hobo/provider-cloudflare` exposes a factory, Capability Manifest, default

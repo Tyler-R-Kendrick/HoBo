@@ -5,7 +5,7 @@ This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05) and
 Dispatcher slice.
 
 The executable POC in
-[`src/draft/dispatcher-maximize-credits-contract`](../../../../src/draft/dispatcher-maximize-credits-contract)
+[`src/draft/technical-proofs/dispatcher-maximize-credits-contract`](../../../../src/draft/technical-proofs/dispatcher-maximize-credits-contract)
 extends the existing Dispatcher ranking proof with reservation-CAS and recorded hysteresis behavior.
 
 ## Acceptance Evidence
@@ -36,7 +36,7 @@ enforcement, or shared-resource attribution.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
+npm.cmd --prefix src\draft\technical-proofs\dispatcher-maximize-credits-contract test
 npm.cmd test
 npm.cmd run docs:design-lint
 node scripts\validate-traceability.ts

@@ -14,7 +14,7 @@ HoBo is design-first. A useful contribution either clarifies the design, proves 
 Good changes usually fall into one of these buckets:
 
 - Design docs, ADRs, glossary entries, CLI/spec changes, or traceability updates.
-- `src/draft/*` proof/contract packages that make a design claim executable.
+- `src/draft/<kind>/<slug>` proof/contract packages that make a design claim executable.
 - Validation scripts, CI gates, and repository-maintenance automation.
 - Reference notes in `docs/standards/`, `docs/technologies/`, `docs/patterns/`, or `docs/competitors/` that support a design decision.
 

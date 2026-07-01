@@ -6,8 +6,8 @@ This executable proof backs [PLAN-04](../../control-plane.md#plan-04),
 
 ## Proof Surface
 
-- [Draft package](../../../../src/draft/partial-realize-rollback-contract/README.md)
-- [Executable checks](../../../../src/draft/partial-realize-rollback-contract/test/partial-realize-rollback.test.ts)
+- [Draft package](../../../../src/draft/technical-proofs/partial-realize-rollback-contract/README.md)
+- [Executable checks](../../../../src/draft/technical-proofs/partial-realize-rollback-contract/test/partial-realize-rollback.test.ts)
 
 ## Proven Constraints
 
@@ -30,5 +30,5 @@ ResourceActor runtime integration, the base compensation path, or SRE incident p
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\partial-realize-rollback-contract test
+npm.cmd --prefix src\draft\technical-proofs\partial-realize-rollback-contract test
 ```

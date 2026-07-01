@@ -2,7 +2,7 @@
 
 This proof backs [PLAN-04](../../control-plane.md#plan-04), [PLAN-25](../../platform-engineering.md#plan-25), and [ADR-0033](../../adr/01-architecture-core.md#adr-0033).
 
-The branch adds `src/draft/region-objective-ranking-contract`, an independent executable POC for the Planner step that applies region and colocation constraints before objective ranking.
+The branch adds `src/draft/technical-proofs/region-objective-ranking-contract`, an independent executable POC for the Planner step that applies region and colocation constraints before objective ranking.
 
 It proves:
 
@@ -22,5 +22,5 @@ Scope kept out: `maximize-credits`/CreditLedgerView routing, live cost solvers, 
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\region-objective-ranking-contract test
+npm.cmd --prefix src\draft\technical-proofs\region-objective-ranking-contract test
 ```

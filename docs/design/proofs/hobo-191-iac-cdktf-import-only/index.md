@@ -5,7 +5,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04) and
 
 Executable artifact:
 
-- [`src/draft/iac-cdktf-import-only-contract`](../../../../src/draft/iac-cdktf-import-only-contract)
+- [`src/draft/technical-proofs/iac-cdktf-import-only-contract`](../../../../src/draft/technical-proofs/iac-cdktf-import-only-contract)
 
 Acceptance evidence:
 

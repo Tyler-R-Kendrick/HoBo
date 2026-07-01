@@ -30,7 +30,7 @@ air-gapped Yards, or wire provider-managed certificate APIs.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\acme-dns01-cert-issuance-contract test
+npm.cmd --prefix src\draft\technical-proofs\acme-dns01-cert-issuance-contract test
 ```
 
 The checks cover shadow-only DNS-01 issuance across multiple Camps, wildcard

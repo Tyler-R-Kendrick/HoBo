@@ -1,6 +1,6 @@
 # HOBO-83 XAA Scope Inference Proof
 
-HOBO-83 is proven by `src/draft/xaa-scope-inference-contract`.
+HOBO-83 is proven by `src/draft/exp-proofs/xaa-scope-inference-contract`.
 
 The proof consumes the M0 `connector()` authoring contract and adds the M2 inference behavior:
 
@@ -14,7 +14,7 @@ The proof consumes the M0 `connector()` authoring contract and adds the M2 infer
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\xaa-scope-inference-contract test
+npm.cmd --prefix src\draft\exp-proofs\xaa-scope-inference-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

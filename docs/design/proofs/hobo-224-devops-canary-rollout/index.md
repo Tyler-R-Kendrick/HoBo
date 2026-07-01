@@ -1,7 +1,7 @@
 # HOBO-224 DevOps Canary Rollout Proof
 
 HOBO-224 is proven by the focused POC at
-[`src/draft/devops-canary-rollout-journey-contract`](../../../../src/draft/devops-canary-rollout-journey-contract/README.md).
+[`src/draft/exp-proofs/devops-canary-rollout-journey-contract`](../../../../src/draft/exp-proofs/devops-canary-rollout-journey-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -34,5 +34,5 @@ SLO metric pipeline internals, rollout controller internals, or manual blue/gree
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\devops-canary-rollout-journey-contract test
+npm.cmd --prefix src\draft\exp-proofs\devops-canary-rollout-journey-contract test
 ```

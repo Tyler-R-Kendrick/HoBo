@@ -11,7 +11,7 @@ This proof connects the M1 built-in feature-flag store slice to:
 
 Executable artifact:
 
-- [`src/draft/built-in-flag-store-contract`](../../../../src/draft/built-in-flag-store-contract)
+- [`src/draft/technical-proofs/built-in-flag-store-contract`](../../../../src/draft/technical-proofs/built-in-flag-store-contract)
 
 Acceptance evidence:
 

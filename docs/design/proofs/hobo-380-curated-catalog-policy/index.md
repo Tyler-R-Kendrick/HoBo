@@ -26,14 +26,14 @@ mandatory policy rule behavior from
 ## Boundary
 
 The proof lives in
-[`src/draft/curated-catalog-policy-contract`](../../../../src/draft/curated-catalog-policy-contract/README.md).
+[`src/draft/technical-proofs/curated-catalog-policy-contract`](../../../../src/draft/technical-proofs/curated-catalog-policy-contract/README.md).
 It does not implement trust-tier composite computation, the full policy engine,
 yank propagation, Registry persistence, or storefront UX.
 
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\curated-catalog-policy-contract test
+npm.cmd --prefix src\draft\technical-proofs\curated-catalog-policy-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

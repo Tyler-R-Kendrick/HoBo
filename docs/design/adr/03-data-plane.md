@@ -437,7 +437,7 @@ across tenants or be re-emitted through trained methods.
   redaction happens before persistence, external trainer providers stay behind
   redacted boundaries, and tenant isolation fails closed.
 - **(+)** The privacy contract is executable in
-  `src/draft/data-flywheel-privacy-spike`, including cross-tenant leakage and
+  `src/draft/exp-proofs/data-flywheel-privacy-spike`, including cross-tenant leakage and
   PII re-emission adversarial cases.
 - **(-)** Tokenized/redacted trajectories can reduce optimizer quality for tasks
   that depend on exact raw text. Those tasks need explicit in-boundary approval
@@ -476,7 +476,7 @@ claim can be made falsifiable for a reference database provider without building
 
 ### Consequences
 - **(+)** Plan 23 provider-generation correctness now has an executable, reviewable reference proof
-  in `src/draft/generateprovider-correctness-spike`.
+  in `src/draft/technical-proofs/generateprovider-correctness-spike`.
 - **(+)** HOBO-307, HOBO-320, HOBO-327, HOBO-330, HOBO-346, and HOBO-102 remain the production
   building blocks; this ADR only fixes their acceptance boundary.
 - **(-)** The production loop still needs to wire these gates together and obtain real Camp evidence;

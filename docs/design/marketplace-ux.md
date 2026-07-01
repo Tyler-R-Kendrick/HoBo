@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-421.
 
 Executable proof lives in
-[`src/draft/marketplace-ux-scope-contract`](../../src/draft/marketplace-ux-scope-contract/README.md).
+[`src/draft/exp-proofs/marketplace-ux-scope-contract`](../../src/draft/exp-proofs/marketplace-ux-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-421-marketplace-ux`](./proofs/hobo-421-marketplace-ux/README.md).
 

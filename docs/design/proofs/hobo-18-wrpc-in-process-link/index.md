@@ -2,7 +2,7 @@
 
 This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20) and [ADR-0069](../../adr/01-architecture-core.md#adr-0069).
 
-The branch adds `src/draft/wrpc-in-process-link-contract`, an independent POC for the M1 wRPC membrane link slice. It proves import-to-provider-export routing through an in-process link table, default live boundary mode, typed no-route denial, and `link.Called` event evidence with a deadline field.
+The branch adds `src/draft/technical-proofs/wrpc-in-process-link-contract`, an independent POC for the M1 wRPC membrane link slice. It proves import-to-provider-export routing through an in-process link table, default live boundary mode, typed no-route denial, and `link.Called` event evidence with a deadline field.
 
 Acceptance evidence:
 
@@ -19,5 +19,5 @@ Scope boundary:
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\wrpc-in-process-link-contract test
+npm.cmd --prefix src\draft\technical-proofs\wrpc-in-process-link-contract test
 ```

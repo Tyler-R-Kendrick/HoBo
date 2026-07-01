@@ -9,8 +9,8 @@ and the SRE runbook decision in
 
 Executable proof:
 
-- package: `src/draft/disaster-recovery-failover-contract`
-- test command: `npm.cmd --prefix src\draft\disaster-recovery-failover-contract test`
+- package: `src/draft/technical-proofs/disaster-recovery-failover-contract`
+- test command: `npm.cmd --prefix src\draft\technical-proofs\disaster-recovery-failover-contract test`
 
 Acceptance coverage:
 

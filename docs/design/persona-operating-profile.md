@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-507.
 
 Executable proof lives in
-[`src/draft/persona-operating-profile-contract`](../../src/draft/persona-operating-profile-contract/README.md).
+[`src/draft/technical-proofs/persona-operating-profile-contract`](../../src/draft/technical-proofs/persona-operating-profile-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-507-persona-operating-profile`](./proofs/hobo-507-persona-operating-profile/README.md).
 

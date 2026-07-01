@@ -4,7 +4,7 @@ This proof backs [PLAN-29](../../contracts-policy-flags.md#plan-29) and
 [ADR-0015](../../adr/02-identity-security.md#adr-0015).
 
 The executable POC in
-[`src/draft/can-deploy-compatibility-gate-contract`](../../../../src/draft/can-deploy-compatibility-gate-contract)
+[`src/draft/technical-proofs/can-deploy-compatibility-gate-contract`](../../../../src/draft/technical-proofs/can-deploy-compatibility-gate-contract)
 proves the M1 compatibility-matrix gate:
 
 - producer removals that break still-running consumers emit `compat.GateFailed`

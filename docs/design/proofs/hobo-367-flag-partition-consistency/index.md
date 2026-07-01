@@ -29,7 +29,7 @@ This executable proof pins the Harness feature-flag partition contract from
 ## Boundary
 
 The proof lives in
-[`src/draft/flag-partition-consistency-contract`](../../../../src/draft/flag-partition-consistency-contract/README.md).
+[`src/draft/technical-proofs/flag-partition-consistency-contract`](../../../../src/draft/technical-proofs/flag-partition-consistency-contract/README.md).
 It composes the existing HOBO-319 built-in evaluator and HOBO-326 ruleset-sync
 draft packages. Sync transport implementation, evaluator internals,
 cross-Camp consistency, provider adapters, and policy-gated flag changes remain
@@ -38,5 +38,5 @@ out of scope.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\flag-partition-consistency-contract test
+npm.cmd --prefix src\draft\technical-proofs\flag-partition-consistency-contract test
 ```

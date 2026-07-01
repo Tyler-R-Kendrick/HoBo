@@ -6,7 +6,7 @@ This proof covers the generated-stack verification path from
 and [ADR-0056](../../adr/03-data-plane.md#adr-0056).
 
 The executable contract lives in
-`src/draft/cross-layer-generated-stack-propagation-contract` and proves:
+`src/draft/technical-proofs/cross-layer-generated-stack-propagation-contract` and proves:
 
 - A WIT `SupportTicket.priority` domain-record change regenerates and gates data,
   business, message, intelligence, and UI artifacts.
@@ -22,5 +22,5 @@ runtime. This proof owns only the cross-layer verification contract.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\cross-layer-generated-stack-propagation-contract test
+npm.cmd --prefix src\draft\technical-proofs\cross-layer-generated-stack-propagation-contract test
 ```

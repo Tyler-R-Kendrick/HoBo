@@ -2,7 +2,7 @@
 
 Issue: HOBO-291
 
-Proof package: `src/draft/poison-event-quarantine-contract`
+Proof package: `src/draft/technical-proofs/poison-event-quarantine-contract`
 
 This branch proves the runtime poison-event path described by PLAN-11 and ADR-0050:
 
@@ -15,5 +15,5 @@ This branch proves the runtime poison-event path described by PLAN-11 and ADR-00
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\poison-event-quarantine-contract test
+npm.cmd --prefix src\draft\technical-proofs\poison-event-quarantine-contract test
 ```

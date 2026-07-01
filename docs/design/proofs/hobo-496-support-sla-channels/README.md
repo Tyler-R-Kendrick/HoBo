@@ -15,14 +15,14 @@ before follow-up Support Workflow design/build work can fan out.
 - Design record:
   [`docs/design/support-sla-channels.md`](../../support-sla-channels.md)
 - Executable contract:
-  [`src/draft/support-sla-channels-contract`](../../../../src/draft/support-sla-channels-contract/README.md)
+  [`src/draft/exp-proofs/support-sla-channels-contract`](../../../../src/draft/exp-proofs/support-sla-channels-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 
 ## Focused Check
 
 ```powershell
-npm.cmd --prefix src\draft\support-sla-channels-contract test
+npm.cmd --prefix src\draft\exp-proofs\support-sla-channels-contract test
 ```
 
 The check proves the HOBO-496 acceptance bullets and scope boundaries:

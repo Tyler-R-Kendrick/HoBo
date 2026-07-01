@@ -1,7 +1,7 @@
 # HOBO-115 CLI Shell Proof
 
 HOBO-115 is proven by the focused POC at
-[`src/draft/hobo-cli-shell-contract`](../../../../src/draft/hobo-cli-shell-contract/README.md).
+[`src/draft/technical-proofs/hobo-cli-shell-contract`](../../../../src/draft/technical-proofs/hobo-cli-shell-contract/README.md).
 
 ## Acceptance Evidence
 
@@ -23,5 +23,5 @@ CLI/MCP/runtime slices.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-cli-shell-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-cli-shell-contract test
 ```

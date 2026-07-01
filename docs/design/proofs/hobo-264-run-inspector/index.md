@@ -3,7 +3,7 @@
 This proof backs [PLAN-05](../../reliability-observability-cost.md#plan-05).
 
 The executable POC in
-[`src/draft/run-inspector-projection-contract`](../../../../src/draft/run-inspector-projection-contract)
+[`src/draft/technical-proofs/run-inspector-projection-contract`](../../../../src/draft/technical-proofs/run-inspector-projection-contract)
 pins the Run Inspector projection contract:
 
 - completed `run.*` / `actor.*` / `saga.*` event streams render a step/saga/actor timeline with
@@ -19,5 +19,5 @@ adapters, and the HOBO-115 CLI shell.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\run-inspector-projection-contract test
+npm.cmd --prefix src\draft\technical-proofs\run-inspector-projection-contract test
 ```

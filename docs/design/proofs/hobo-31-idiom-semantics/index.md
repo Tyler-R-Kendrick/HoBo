@@ -8,10 +8,10 @@ This proof records the HOBO-31 spike decision: SDK parity has two independent la
 - A wrong TypeScript adapter that swallows a WIT `result.err` must fail the annex even if it lowers
   to identical WIT calls and manifest IR.
 
-Executable proof bundle: [`../../../../src/draft/idiom-semantics-annex`](../../../../src/draft/idiom-semantics-annex).
+Executable proof bundle: [`../../../../src/draft/technical-proofs/idiom-semantics-annex`](../../../../src/draft/technical-proofs/idiom-semantics-annex).
 
 Focused verification:
 
 ```powershell
-npm.cmd --prefix src\draft\idiom-semantics-annex test
+npm.cmd --prefix src\draft\technical-proofs\idiom-semantics-annex test
 ```

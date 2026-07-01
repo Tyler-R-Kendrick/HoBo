@@ -23,7 +23,7 @@ broker credential-cache HA, or production signing-key operations.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\svid-auto-rotation-contract test
+npm.cmd --prefix src\draft\technical-proofs\svid-auto-rotation-contract test
 ```
 
 The checks prove timely rotation, `identity.Rotated` emission, scope non-escalation, fail-closed

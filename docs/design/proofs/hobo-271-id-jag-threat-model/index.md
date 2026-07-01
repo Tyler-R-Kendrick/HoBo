@@ -3,7 +3,7 @@
 HOBO-271 is the Cross-App Access spike for ID-JAG threat modeling and draft
 version tracking. The decision is recorded in
 [ADR-0097](../../adr/02-identity-security.md#adr-0097), and the executable
-proof lives in `src/draft/id-jag-threat-model-spike`.
+proof lives in `src/draft/technical-proofs/id-jag-threat-model-spike`.
 
 The proof covers:
 
@@ -27,5 +27,5 @@ remain with the wire-contract and adversarial implementation slices.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\id-jag-threat-model-spike test
+npm.cmd --prefix src\draft\technical-proofs\id-jag-threat-model-spike test
 ```

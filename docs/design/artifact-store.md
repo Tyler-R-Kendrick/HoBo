@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-445.
 
 Executable proof lives in
-[`src/draft/artifact-store-scope-contract`](../../src/draft/artifact-store-scope-contract/README.md).
+[`src/draft/exp-proofs/artifact-store-scope-contract`](../../src/draft/exp-proofs/artifact-store-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-445-artifact-store`](./proofs/hobo-445-artifact-store/README.md).
 

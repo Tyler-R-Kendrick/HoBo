@@ -5,7 +5,7 @@ This proof backs [PLAN-07](../../developer-experience.md#plan-07),
 and the DeploymentPlan IR from HOBO-41.
 
 The executable POC in
-[`src/draft/hobo-plan-preview-contract`](../../../../src/draft/hobo-plan-preview-contract)
+[`src/draft/technical-proofs/hobo-plan-preview-contract`](../../../../src/draft/technical-proofs/hobo-plan-preview-contract)
 proves the M2 `hobo plan [--camp]` preview contract:
 
 - `hobo plan --camp prod` renders every sample resource with provider,

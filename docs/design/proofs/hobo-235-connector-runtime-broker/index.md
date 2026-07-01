@@ -8,12 +8,12 @@ Refs:
 
 Package:
 
-- `src/draft/connector-runtime-broker-contract`
+- `src/draft/technical-proofs/connector-runtime-broker-contract`
 
 Verification:
 
 ```powershell
-npm.cmd --prefix src\draft\connector-runtime-broker-contract test
+npm.cmd --prefix src\draft\technical-proofs\connector-runtime-broker-contract test
 ```
 
 Acceptance mapping:

@@ -9,11 +9,11 @@ Design refs:
 - [ai-native-agent-auth.md](../../ai-native-agent-auth.md#plan-06)
 - [ADR-0008](../../adr/02-identity-security.md#adr-0008)
 - [ADR-0100](../../adr/02-identity-security.md#adr-0100)
-- [HOBO-266 partition grace spike](../../../../src/draft/svid-partition-grace-spike)
+- [HOBO-266 partition grace spike](../../../../src/draft/technical-proofs/svid-partition-grace-spike)
 
 Executable artifact:
 
-- [`src/draft/token-broker-ha-cache-contract`](../../../../src/draft/token-broker-ha-cache-contract)
+- [`src/draft/technical-proofs/token-broker-ha-cache-contract`](../../../../src/draft/technical-proofs/token-broker-ha-cache-contract)
 
 Acceptance evidence:
 

@@ -7,7 +7,7 @@ This proof backs [PLAN-02](../../sdk-api.md#plan-02),
 [ADR-0028](../../adr/01-architecture-core.md#adr-0028).
 
 The executable POC in
-[`src/draft/topology-objects-contract`](../../../../src/draft/topology-objects-contract)
+[`src/draft/technical-proofs/topology-objects-contract`](../../../../src/draft/technical-proofs/topology-objects-contract)
 proves the M1 first-class topology object contract.
 
 ## Acceptance Mapping
@@ -31,5 +31,5 @@ out of scope for this slice.
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/topology-objects-contract test
+npm.cmd --prefix src/draft/technical-proofs/topology-objects-contract test
 ```

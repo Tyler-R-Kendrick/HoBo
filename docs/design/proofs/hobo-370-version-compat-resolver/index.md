@@ -1,7 +1,7 @@
 # HOBO-370 Version/Compat Resolver Proof
 
 HOBO-370 is proven by the focused POC at
-[`src/draft/distributed-artifact-resolver-contract`](../../../../src/draft/distributed-artifact-resolver-contract/README.md).
+[`src/draft/technical-proofs/distributed-artifact-resolver-contract`](../../../../src/draft/technical-proofs/distributed-artifact-resolver-contract/README.md).
 It implements the ADR-0095 resolver semantics over a catalog snapshot without
 crossing into install verification, yanks, mirror costing, codemods, or air-gap
 import.
@@ -10,7 +10,7 @@ import.
 
 | Requirement | Executable proof |
 |---|---|
-| Passes committed HOBO-340 spike vectors. | Each vector from `src/draft/version-compat-resolution-semantics/fixtures/resolution-vectors.json` is imported and asserted through `canonicalResolutionResult(resolveDistributedArtifacts(vector))`. |
+| Passes committed HOBO-340 spike vectors. | Each vector from `src/draft/technical-proofs/version-compat-resolution-semantics/fixtures/resolution-vectors.json` is imported and asserted through `canonicalResolutionResult(resolveDistributedArtifacts(vector))`. |
 | Same snapshot twice gives identical output. | `catalog order is not part of resolver output identity` compares canonical outputs for forward and reversed catalog order. |
 | Diamond conflict produces deterministic error. | The HOBO-340 incompatible diamond vector asserts `dependency-conflict` with sorted path evidence. |
 | Compatible transitive constraints resolve to the intersection. | `late transitive constraint narrows an already selected root to the intersection` reselects the lower shared artifact version instead of failing a satisfiable graph. |
@@ -25,7 +25,7 @@ import.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\distributed-artifact-resolver-contract test
+npm.cmd --prefix src\draft\technical-proofs\distributed-artifact-resolver-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

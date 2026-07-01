@@ -9,7 +9,7 @@ This proof connects the M1 SDK feature-flag surface slice to:
 
 Executable artifact:
 
-- [`src/draft/sdk-flag-surface-contract`](../../../../src/draft/sdk-flag-surface-contract)
+- [`src/draft/technical-proofs/sdk-flag-surface-contract`](../../../../src/draft/technical-proofs/sdk-flag-surface-contract)
 
 Acceptance evidence:
 

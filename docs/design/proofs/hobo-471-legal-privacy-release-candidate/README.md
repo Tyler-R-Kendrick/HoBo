@@ -8,7 +8,7 @@ tags: [hobo, design, proof]
 # HOBO-471 Legal Privacy Release Candidate Proof
 
 HOBO-471 is proven by the focused M3 contract at
-[`src/draft/legal-privacy-release-candidate-evidence-contract`](../../../../src/draft/legal-privacy-release-candidate-evidence-contract/README.md)
+[`src/draft/exp-proofs/legal-privacy-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/legal-privacy-release-candidate-evidence-contract/README.md)
 and the durable M3 gate record in
 [`legal-privacy-terms-readiness.md`](../../legal-privacy-terms-readiness.md#m3-release-candidate-evidence-gate).
 
@@ -30,7 +30,7 @@ and the durable M3 gate record in
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\legal-privacy-release-candidate-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\legal-privacy-release-candidate-evidence-contract test
 ```
 
 The branch gate also verifies this proof package's workspace registration,

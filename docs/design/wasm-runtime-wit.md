@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 This capability doc covers the WASM/WASI runtime — the polyglot spine — together with the WIT interface reference that is its canonical port catalog.
 
-Epic reference implementation: [`src/draft/epic-reference-implementations/wit-component-model-runtime-membrane`](../../src/draft/epic-reference-implementations/wit-component-model-runtime-membrane/).
+Epic reference implementation: [`src/draft/epic-proofs/wit-component-model-runtime-membrane`](../../src/draft/epic-proofs/wit-component-model-runtime-membrane/).
 
 ## Plan 20
 

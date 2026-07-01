@@ -33,5 +33,5 @@ wiring.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\genesis-breakglass-contract test
+npm.cmd --prefix src\draft\technical-proofs\genesis-breakglass-contract test
 ```

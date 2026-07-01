@@ -1,7 +1,7 @@
 # HOBO-466 Release Notes Private Beta Evidence Proof
 
 HOBO-466 is proven by the focused M2 contract at
-[`src/draft/v1-release-notes-private-beta-evidence-contract`](../../../../src/draft/v1-release-notes-private-beta-evidence-contract/README.md)
+[`src/draft/exp-proofs/v1-release-notes-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/v1-release-notes-private-beta-evidence-contract/README.md)
 and the durable release-note outline at [release-notes-upgrade-guide.md](../../release-notes-upgrade-guide.md).
 
 ## Acceptance Evidence

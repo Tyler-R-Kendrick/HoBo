@@ -5,7 +5,7 @@ This proof backs [PLAN-32](../../data-plane.md#plan-32),
 [ADR-0052](../../adr/03-data-plane.md#adr-0052).
 
 The executable POC in
-[`src/draft/document-projection-sink-contract`](../../../../src/draft/document-projection-sink-contract)
+[`src/draft/technical-proofs/document-projection-sink-contract`](../../../../src/draft/technical-proofs/document-projection-sink-contract)
 pins the M2 Mongo/document projection-sink reference boundary:
 
 - read-model WIT fields map to a Mongo collection, `_id` document key, embedded nested records,
@@ -29,5 +29,5 @@ Scope kept out: the generalized sink change-feed capability, the relational adap
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\document-projection-sink-contract test
+npm.cmd --prefix src\draft\technical-proofs\document-projection-sink-contract test
 ```

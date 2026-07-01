@@ -1,7 +1,7 @@
 # HOBO-122 Dev Loop Proof
 
 HOBO-122 is proven by the focused POC at
-[`src/draft/hobo-dev-loop-contract`](../../../../src/draft/hobo-dev-loop-contract).
+[`src/draft/technical-proofs/hobo-dev-loop-contract`](../../../../src/draft/technical-proofs/hobo-dev-loop-contract).
 
 ## Acceptance Coverage
 

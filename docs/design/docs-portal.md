@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-434.
 
 Executable proof lives in
-[`src/draft/docs-portal-scope-contract`](../../src/draft/docs-portal-scope-contract/README.md).
+[`src/draft/exp-proofs/docs-portal-scope-contract`](../../src/draft/exp-proofs/docs-portal-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-434-docs-portal`](./proofs/hobo-434-docs-portal/README.md).
 

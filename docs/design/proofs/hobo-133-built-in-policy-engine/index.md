@@ -1,7 +1,7 @@
 # HOBO-133 Built-In Policy Engine Proof
 
 This proof makes the Plan 29 built-in, deny-by-default policy engine executable in
-[`src/draft/built-in-policy-engine-contract`](../../../../src/draft/built-in-policy-engine-contract/README.md).
+[`src/draft/technical-proofs/built-in-policy-engine-contract`](../../../../src/draft/technical-proofs/built-in-policy-engine-contract/README.md).
 
 ## Acceptance Mapping
 
@@ -25,5 +25,5 @@ obligation execution, deny-ceiling algebra design, and OCSF export remain out of
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/built-in-policy-engine-contract test
+npm.cmd --prefix src/draft/technical-proofs/built-in-policy-engine-contract test
 ```

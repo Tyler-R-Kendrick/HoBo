@@ -1,7 +1,7 @@
 # HOBO-154 Control-Plane Action Taxonomy Proof
 
 This proof makes the Plan 29 `hobo:<resource>:<verb>` taxonomy executable in
-[`src/draft/control-plane-action-taxonomy-contract`](../../../../src/draft/control-plane-action-taxonomy-contract/README.md).
+[`src/draft/technical-proofs/control-plane-action-taxonomy-contract`](../../../../src/draft/technical-proofs/control-plane-action-taxonomy-contract/README.md).
 
 ## Acceptance Mapping
 
@@ -21,5 +21,5 @@ and secret value resolution remain out of scope for this slice.
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/control-plane-action-taxonomy-contract test
+npm.cmd --prefix src/draft/technical-proofs/control-plane-action-taxonomy-contract test
 ```

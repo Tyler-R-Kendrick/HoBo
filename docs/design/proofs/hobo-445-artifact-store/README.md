@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-445 Artifact Store M0 Scope Proof
 
 HOBO-445 is proven by the focused M0 contract at
-[`src/draft/artifact-store-scope-contract`](../../../../src/draft/artifact-store-scope-contract/README.md)
+[`src/draft/exp-proofs/artifact-store-scope-contract`](../../../../src/draft/exp-proofs/artifact-store-scope-contract/README.md)
 and the durable scope record at [artifact-store.md](../../artifact-store.md).
 
 ## Acceptance Evidence
@@ -38,7 +38,7 @@ and the durable scope record at [artifact-store.md](../../artifact-store.md).
 
 ## Gate Evidence
 
-- TypeScript proof: `pnpm --prefix src/draft/artifact-store-scope-contract test`.
+- TypeScript proof: `pnpm --prefix src/draft/exp-proofs/artifact-store-scope-contract test`.
 - Protobuf/CUE proof: `pnpm test:schema` checks repository schema validators; package-local data-model folders own data model
   contracts including `ArtifactStoreScopeRecord`.
 - PACT proof: `architecture/pacts/artifact_store_scope.pact.json` pins the M0 scope acceptance

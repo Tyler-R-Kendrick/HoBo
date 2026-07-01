@@ -28,7 +28,7 @@ new remediation kinds out of scope.
 ## Commands
 
 ```powershell
-npm.cmd --prefix src\draft\runaway-remediation-guard-contract test
+npm.cmd --prefix src\draft\technical-proofs\runaway-remediation-guard-contract test
 npm.cmd test
 npm.cmd run docs:cli-lint
 npm.cmd run docs:design-lint

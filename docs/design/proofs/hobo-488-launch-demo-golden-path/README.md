@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-488 Launch Demo Golden Path Proof
 
 HOBO-488 is proven by the focused M0 contract at
-[`src/draft/launch-demo-golden-path-contract`](../../../../src/draft/launch-demo-golden-path-contract/README.md)
+[`src/draft/exp-proofs/launch-demo-golden-path-contract`](../../../../src/draft/exp-proofs/launch-demo-golden-path-contract/README.md)
 and the durable design record at
 [`launch-demo-golden-path.md`](../../launch-demo-golden-path.md).
 
@@ -30,5 +30,5 @@ and the durable design record at
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\launch-demo-golden-path-contract test
+npm.cmd --prefix src\draft\exp-proofs\launch-demo-golden-path-contract test
 ```

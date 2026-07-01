@@ -5,7 +5,7 @@ This proof backs [ADR-0092](../../adr/01-architecture-core.md#adr-0092) and the
 
 It keeps the spike inside the repo-standard draft path:
 
-- [`src/draft/self-host-bootstrap-ordering-spike`](../../../../src/draft/self-host-bootstrap-ordering-spike)
+- [`src/draft/technical-proofs/self-host-bootstrap-ordering-spike`](../../../../src/draft/technical-proofs/self-host-bootstrap-ordering-spike)
 
 ## Proven boundaries
 
@@ -20,5 +20,5 @@ It keeps the spike inside the repo-standard draft path:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\self-host-bootstrap-ordering-spike test
+npm.cmd --prefix src\draft\technical-proofs\self-host-bootstrap-ordering-spike test
 ```

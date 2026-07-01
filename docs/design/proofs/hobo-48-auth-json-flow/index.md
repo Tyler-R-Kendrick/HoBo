@@ -30,8 +30,8 @@ verify production cryptographic signatures.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\hobo-auth-json-contract test
+npm.cmd --prefix src\draft\technical-proofs\hobo-auth-json-contract test
 ```
 
 The checks live in
-`src/draft/hobo-auth-json-contract/test/auth-json-contract.test.ts`.
+`src/draft/technical-proofs/hobo-auth-json-contract/test/auth-json-contract.test.ts`.

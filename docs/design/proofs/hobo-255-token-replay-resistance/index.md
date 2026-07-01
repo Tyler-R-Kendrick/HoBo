@@ -14,7 +14,7 @@ Design refs:
 
 Executable artifact:
 
-- [`src/draft/token-replay-resistance-contract`](../../../../src/draft/token-replay-resistance-contract)
+- [`src/draft/technical-proofs/token-replay-resistance-contract`](../../../../src/draft/technical-proofs/token-replay-resistance-contract)
 
 Acceptance evidence:
 

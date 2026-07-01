@@ -30,6 +30,6 @@ wiring. It only proves the emergency bootstrap and break-glass decision surface.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\genesis-breakglass-contract test
+npm.cmd --prefix src\draft\technical-proofs\genesis-breakglass-contract test
 npm.cmd test
 ```

@@ -6,7 +6,7 @@ This proof backs [PLAN-04](../../control-plane.md#plan-04),
 [ADR-0071](../../adr/01-architecture-core.md#adr-0071).
 
 The executable POC in
-[`src/draft/dispatcher-maximize-credits-contract`](../../../../src/draft/dispatcher-maximize-credits-contract)
+[`src/draft/technical-proofs/dispatcher-maximize-credits-contract`](../../../../src/draft/technical-proofs/dispatcher-maximize-credits-contract)
 pins the M2 Dispatcher contract for `maximize-credits` placement and dispatch decisions.
 HOBO-286 extends the same POC with reservation-CAS and recorded hysteresis proof.
 
@@ -40,7 +40,7 @@ package.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\dispatcher-maximize-credits-contract test
+npm.cmd --prefix src\draft\technical-proofs\dispatcher-maximize-credits-contract test
 npm.cmd test
 node scripts\validate-traceability.ts
 ```

@@ -1,7 +1,7 @@
 # HOBO-489 Billing Launch Policy Proof
 
 HOBO-489 is proven by the focused M0 contract at
-[`src/draft/billing-launch-policy-contract`](../../../../src/draft/billing-launch-policy-contract/README.md)
+[`src/draft/exp-proofs/billing-launch-policy-contract`](../../../../src/draft/exp-proofs/billing-launch-policy-contract/README.md)
 and the durable policy record at [billing-launch-policy.md](../../billing-launch-policy.md).
 
 ## Acceptance Evidence
@@ -24,5 +24,5 @@ and the durable policy record at [billing-launch-policy.md](../../billing-launch
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\billing-launch-policy-contract test
+npm.cmd --prefix src\draft\exp-proofs\billing-launch-policy-contract test
 ```

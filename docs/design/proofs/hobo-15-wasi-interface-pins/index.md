@@ -24,7 +24,7 @@ same checks across real hosts/providers.
 Run:
 
 ```powershell
-node --test src\draft\wasi-interface-pins\test\wasi-pins.test.ts
+node --test src\draft\technical-proofs\wasi-interface-pins\test\wasi-pins.test.ts
 ```
 
 The checks prove:

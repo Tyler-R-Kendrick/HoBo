@@ -1,6 +1,6 @@
 # HOBO-220 End-User Authorization Policy Proof
 
-This proof records `src/draft/end-user-authorization-policy-contract` for the
+This proof records `src/draft/technical-proofs/end-user-authorization-policy-contract` for the
 M2 end-user authorization slice described by
 [Plan 29](../../contracts-policy-flags.md#plan-29) and
 [ADR-0038](../../adr/02-identity-security.md#adr-0038).
@@ -27,6 +27,6 @@ only consumes verified `ctx.user` claims and proves the policy-plane lowering.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\end-user-authorization-policy-contract test
+npm.cmd --prefix src\draft\technical-proofs\end-user-authorization-policy-contract test
 npm.cmd test
 ```

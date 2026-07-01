@@ -28,7 +28,7 @@ tunnels, public endpoint mTLS gateway configuration, or production ACME/TLS hand
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\x509-svid-mtls-contract test
+npm.cmd --prefix src\draft\technical-proofs\x509-svid-mtls-contract test
 ```
 
 The checks prove fixture mTLS, SPIFFE SAN contents, private-key possession, rotation overlap,

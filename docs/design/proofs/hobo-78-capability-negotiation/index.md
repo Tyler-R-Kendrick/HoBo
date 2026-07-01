@@ -25,8 +25,8 @@ Gatekeeper remain outside this slice.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\capability-negotiation-contract test
+npm.cmd --prefix src\draft\technical-proofs\capability-negotiation-contract test
 ```
 
 The draft proof package is
-`src/draft/capability-negotiation-contract`.
+`src/draft/technical-proofs/capability-negotiation-contract`.

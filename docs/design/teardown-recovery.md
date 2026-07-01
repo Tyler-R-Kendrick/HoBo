@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-444.
 
 Executable proof lives in
-[`src/draft/teardown-recovery-scope-acceptance`](../../src/draft/teardown-recovery-scope-acceptance/README.md).
+[`src/draft/exp-proofs/teardown-recovery-scope-acceptance`](../../src/draft/exp-proofs/teardown-recovery-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-444-teardown-recovery`](./proofs/hobo-444-teardown-recovery/README.md).
 

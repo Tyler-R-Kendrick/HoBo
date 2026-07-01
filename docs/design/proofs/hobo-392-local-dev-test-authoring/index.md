@@ -1,6 +1,6 @@
 # HOBO-392 Local Dev/Test Authoring Proof
 
-This proof package lives at `src/draft/local-dev-test-authoring-contract`.
+This proof package lives at `src/draft/technical-proofs/local-dev-test-authoring-contract`.
 
 It covers the HOBO-392 acceptance surface:
 

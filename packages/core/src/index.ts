@@ -23,6 +23,20 @@ export type {
 } from "./ports.js";
 export { createPortDescriptor } from "./ports.js";
 
+export type {
+	AppendOptions,
+	AppendResult,
+	Clock,
+	EventInput,
+	EventStore,
+	FoldHandlers,
+	FoldResult,
+	QuarantineRecord,
+	SnapshotRecord,
+	StreamFilter,
+	Subscription,
+} from "./ports/eventstore.js";
+
 export type { CapabilityManifestBundle, ParseCapabilityManifestOptions } from "./manifest.js";
 export { parseCapabilityManifestBundle, CORE_SCHEMA_VERSION } from "./manifest.js";
 

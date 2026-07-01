@@ -16,3 +16,13 @@ export type {
 	CapabilityHostFactory,
 	CapabilityHostFactoryOptions,
 } from "./capability-enforcement/suite.js";
+export {
+	CAMP_EVENTSTORE_RUNTIME_PORT_CONTRACT_VERSION,
+	runEventStoreConformance,
+} from "./suites/eventstore.js";
+export type {
+	AssertionStatus,
+	CreateRuntimeLocalEventStore,
+	EventStoreConformanceAssertion,
+	EventStoreConformanceReport,
+} from "./suites/eventstore.js";

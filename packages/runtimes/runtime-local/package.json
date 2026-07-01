@@ -25,6 +25,9 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm --filter @hobo/core build",
-		"test": "vitest run"
+		"test": "vitest run && node --import tsx --test contracts/consumer/*.test.ts contracts/provider/*.test.ts",
+		"test:unit": "vitest run",
+		"test:contract:consumer": "node --import tsx --test contracts/consumer/*.test.ts",
+		"test:contract:provider": "node --import tsx --test contracts/provider/*.test.ts"
 	}
 }

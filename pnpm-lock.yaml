@@ -154,8 +154,16 @@ importers:
         specifier: workspace:*
         version: link:../../core
     devDependencies:
+<<<<<<< HEAD
       '@types/node':
         specifier: ^22.15.29
+=======
+      '@hobo/conformance':
+        specifier: workspace:*
+        version: link:../../conformance
+      '@types/node':
+        specifier: ^22.15.3
+>>>>>>> 7a77a472 (feat(core): add EventStore port types for Camp runtime (HOBO-594))
         version: 22.20.0
 
   packages/stage-gate:

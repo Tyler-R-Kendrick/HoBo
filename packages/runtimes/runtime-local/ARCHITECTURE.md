@@ -1,6 +1,7 @@
 # @hobo/runtime-local — Architecture Evidence
 
-Production Wasmtime runtime-local component host (S1-02 / HOBO-591).
+Production Wasmtime runtime-local component host (S1-02 / HOBO-591) and
+SQLite-backed Camp EventStore port (S1-05 / HOBO-594).
 
 ## Schema and constraints
 
@@ -15,7 +16,13 @@ Raw descriptors cross `src/parse.ts` once and become parsed derived types
 Downstream host code never re-checks raw DTO strings; invalid interface ids and
 empty ids are unrepresentable past the parser boundary.
 
-## Event architecture
+Untrusted EventStore caller input crosses `src/eventstore/parse.ts` once into
+derived types (`ParsedStreamId`, `ParsedEventInput`, `ParsedAppendContext`,
+`ParsedExpectedSeq`). Store internals and SQLite adapters accept only parsed
+values; persisted rows re-enter through `parseStoredEnvelope` →
+`parseEventEnvelope`.
+
+## Component host — event architecture
 
 - **Command** — `LoadComponent`, `RegisterProvider`, `LinkImport`, `InvokeLinkedImport`,
   `HandleHttp`, `TeardownComponent` requests enter the host port.
@@ -56,3 +63,31 @@ mutates read models directly.
 - Port type lives in `@hobo/core` (`ports/binding-resolver.ts`).
 - Local adapter lives in `src/binding-resolver.ts` (`createLocalBindingResolver`).
 - PACT evidence consumed by `@hobo/camps`: [`../camps/contracts/pacts/local-runtime-binding-resolver.pact.json`](../camps/contracts/pacts/local-runtime-binding-resolver.pact.json).
+
+## EventStore — command / event families
+
+- **Command** — SDK/runtime callers invoke `append` with `expectedSeq` and
+  `EventInput` facts.
+- **Event** — accepted commands persist `aggregate.PastTenseFact` envelopes in
+  the append-only log.
+- **Quarantine audit facts** — `*.Quarantined` events record poison-handler
+  failures (`offendingSeq`, `offendingType`, `reason`) without mutating prior
+  rows.
+
+## EventStore — actor / projection behavior
+
+- **Actor** — the `actor` principal on each envelope names who emitted the
+  fact; actors append events, never mutate read models directly.
+- **Event store** — `events` table is the durable source of truth (WAL +
+  `synchronous=FULL`, one transaction per append batch).
+- **Materialized view / projection** — `fold` replays the log through handlers
+  to derive state; downstream reactors/projections (Plan 32) consume the same
+  log.
+- **Snapshot** — `snapshots` table caches fold state at a `seq` for faster
+  replay (snapshots + cache, not always from seq 0).
+- **Read store** — callers query fold output or snapshots; the raw log remains
+  append-only.
+
+## Contracts
+
+- EventStore PACT evidence: [`contracts/pacts/runtime-sdk-eventstore.pact.json`](./contracts/pacts/runtime-sdk-eventstore.pact.json).

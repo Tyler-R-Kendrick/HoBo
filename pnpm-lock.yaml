@@ -356,11 +356,15 @@ importers:
 
   src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard: {}
 
+  src/draft/exp-proofs/vibe-support-case-redacted-evidence: {}
+
   src/draft/exp-proofs/vibe-support-workflow-mockups: {}
 
   src/draft/exp-proofs/vibe-topology-status-prototype: {}
 
   src/draft/exp-proofs/vibe-troubleshooting-decision-trees: {}
+
+  src/draft/exp-proofs/vibe-workspace-project-states: {}
 
   src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract: {}
 

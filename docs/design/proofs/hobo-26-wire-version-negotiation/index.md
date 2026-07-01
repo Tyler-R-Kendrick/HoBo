@@ -29,3 +29,9 @@ Run:
 ```powershell
 npm.cmd --prefix src\draft\technical-proofs\wire-version-negotiation-contract test
 ```
+
+## Promotion note
+
+Combined draft POC for S1-03 (HOBO-592) lives at
+`src/draft/technical-proofs/wrpc-link-layer-contract`. Production promotion
+target: `packages/runtimes/runtime-local` once S1-02 lands.

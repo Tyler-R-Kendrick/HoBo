@@ -38,7 +38,7 @@ The repo-level `pnpm run standards:check` gate runs locally, in the pre-commit h
 - `AGENTS.md` and this document must retain the canonical Protobuf, CUE, parse-don't-validate, and PACT guidance.
 - Implementation files under `src/`, `scripts/`, or `test/` may not use `.js`, `.mjs`, or `.cjs`; use `.ts` unless an ADR/proof note records why the file cannot be TypeScript. The standards gate also fails if any tracked `.js`, `.mjs`, or `.cjs` file remains in the repository.
 
-The repo-wide data-model catalog in `contracts/data-models/` is generated from tracked TypeScript data-model modules and gives each model a Protobuf message plus a CUE definition with source-path, package, domain, integration-boundary, and `cueAnnotated: true` invariants. Boundary-specific checks still belong in the relevant proof package: Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests should be implemented beside the contract they protect.
+Repository-wide data-model catalogs are forbidden. Each project/package that owns a CUE-constrained type must keep its own `data-models/` folder beside the protobuf contract or proof package that owns that type. Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests must be implemented beside the contract they protect, not through a central `contracts/data-models` bridge.
 
 ## Agent checklist
 
@@ -53,7 +53,7 @@ Before committing a technical change, agents must verify:
 
 ## Performance-oriented local gates
 
-Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and Turborepo-filtered `src/draft/*` package tests. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
+Local and pre-commit automation must prefer changed-file scopes over whole-repository sweeps. The default hook runs `pnpm run check:relevant:staged`, which maps staged paths to root gates, documentation gates, contract validators, and pnpm-filtered `src/draft/*` package tests. Full-repository checks remain available for merge confidence, but agents and humans should use the relevant check runner while iterating.
 
 TypeScript proof code should use the repository-pinned latest stable TypeScript version. For experiments that need the Go-native TypeScript toolchain, the repository also pins `@typescript/native-preview`; keep proof packages on the shared TypeScript pin instead of adding older per-package compiler versions.
 

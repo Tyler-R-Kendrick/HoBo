@@ -73,6 +73,31 @@ owning capability project. Follow-up issues are created only for missing
 accepted evidence, owner blockers, or scope changes. If the evidence changes
 launch risk, the parent HoBo v1 Release Readiness initiative must get a status
 update; a no-risk-delta gate records why no update is required.
+## M3 Release Candidate Evidence
+
+HOBO-470 records the M3 release-candidate evidence gate. The gate lists owner-mapped evidence,
+blockers, accepted risks, cross-project cutline dependencies, and follow-up work only where evidence
+is missing. It keeps private-beta evidence separate from GA readiness: GA claims remain blocked until
+the M4 handoff issue records GA evidence.
+
+Executable proof lives in
+[`../../src/draft/beta-pilot-release-candidate-evidence-contract`](../../src/draft/beta-pilot-release-candidate-evidence-contract/README.md).
+
+## M4 GA Handoff Evidence
+
+HOBO-477 records the M4 GA handoff evidence gate. The gate maps feedback intake, private-beta
+evidence, release-candidate evidence, support routing, release-cutline handoff, and GA feedback
+summary evidence to owner projects. It records cleared blockers and accepted risks, reflects
+documentation, productization, operations-readiness, support, and release-cutline dependencies, and
+allows follow-up execution only for missing evidence.
+
+Parent HoBo v1 Release Readiness status is updated because this gate clears the M3 GA-handoff gap
+and reduces launch risk. The gate does not onboard beta customers, expand the pilot cohort, build a
+feedback portal, implement support tooling, resolve launch blockers, or publish GA readiness claims
+from beta evidence alone.
+
+Executable proof lives in
+[`../../src/draft/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md).
 
 ## Scope Boundaries
 
@@ -82,7 +107,13 @@ feedback. It only defines the intake and triage contract those later issues use.
 
 ## Proof
 
-Executable proof lives in
+M0 executable proof lives in
 [`../../src/draft/beta-pilot-feedback-contract`](../../src/draft/beta-pilot-feedback-contract/README.md).
 M1 dogfood/alpha evidence proof lives in
 [`../../src/draft/beta-pilot-dogfood-alpha-evidence-contract`](../../src/draft/beta-pilot-dogfood-alpha-evidence-contract/README.md).
+
+M2 private-beta evidence proof lives in
+[`../../src/draft/v1-beta-pilot-private-beta-evidence`](../../src/draft/v1-beta-pilot-private-beta-evidence/README.md).
+
+M4 GA handoff evidence proof lives in
+[`../../src/draft/beta-pilot-ga-handoff-evidence-contract`](../../src/draft/beta-pilot-ga-handoff-evidence-contract/README.md).

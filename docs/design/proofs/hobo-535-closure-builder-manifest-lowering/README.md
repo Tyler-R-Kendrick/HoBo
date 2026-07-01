@@ -31,7 +31,7 @@ HOBO-535 is proven by the focused lowering contract at
 ## Gate Evidence
 
 - TypeScript proof: `corepack pnpm --prefix src/draft/closure-builder-manifest-lowering-contract test`.
-- Protobuf/CUE proof: `corepack pnpm run contracts:data-models` regenerates and checks the indexed
+- Protobuf/CUE proof: `pnpm test:schema` checks repository schema validators while package-local data-model folders own indexed
   data model contracts including the lowering source module.
 - PACT proof: `architecture/pacts/closure_builder_manifest_lowering.pact.json` pins the SDK
   conformance consumer expectation for the lowering boundary.

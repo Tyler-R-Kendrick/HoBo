@@ -270,6 +270,8 @@ importers:
 
   src/draft/epic-proofs/s1-10-conformance-trust-boundary: {}
 
+  src/draft/epic-proofs/s2-stage-gate-first-cloud-yard: {}
+
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
 
   src/draft/epic-proofs/v1-vibe-example-gap-closure: {}
@@ -317,6 +319,8 @@ importers:
   src/draft/exp-proofs/capability-review-approval-scope: {}
 
   src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance: {}
+
+  src/draft/exp-proofs/cli-cloud-yard-path: {}
 
   src/draft/exp-proofs/cli-deploy-transcript-prototype: {}
 
@@ -603,6 +607,8 @@ importers:
 
   src/draft/projects/s1-24-conformance-sdk: {}
 
+  src/draft/projects/s2-08-provider-cloudflare: {}
+
   src/draft/projects/s3-02-hobo-identity:
     devDependencies:
       '@types/node':
@@ -873,6 +879,8 @@ importers:
   src/draft/technical-proofs/full-text-search-contract: {}
 
   src/draft/technical-proofs/gated-autonomous-remediation-contract: {}
+
+  src/draft/technical-proofs/gatekeeper-v1-policy-contracts: {}
 
   src/draft/technical-proofs/gatekeeper-verify-contract: {}
 
@@ -1226,6 +1234,8 @@ importers:
 
   src/draft/technical-proofs/orchestrator-choreography-skeleton-contract: {}
 
+  src/draft/technical-proofs/orchestrator-reconciliation-fsm-contract: {}
+
   src/draft/technical-proofs/otel-traces-pipeline-contract: {}
 
   src/draft/technical-proofs/outbound-xaa-token-exchange-contract: {}
@@ -1361,6 +1371,8 @@ importers:
 
   src/draft/technical-proofs/registry-artifact-descriptor-contract: {}
 
+  src/draft/technical-proofs/registry-capability-manifest-ingest-contract: {}
+
   src/draft/technical-proofs/registry-compromise-guard-contract: {}
 
   src/draft/technical-proofs/registry-dependency-confusion-guard-contract: {}
@@ -1457,6 +1469,8 @@ importers:
   src/draft/technical-proofs/saga-compensation-engine-contract: {}
 
   src/draft/technical-proofs/saga-credit-reconciliation-spike: {}
+
+  src/draft/technical-proofs/sandboxed-executors-contract: {}
 
   src/draft/technical-proofs/sdk-codegen-surface-contract:
     devDependencies:

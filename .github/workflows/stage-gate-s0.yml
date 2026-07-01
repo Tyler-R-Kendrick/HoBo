@@ -42,7 +42,7 @@ jobs:
         env:
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SOURCE_DATE_EPOCH: "1704067200"
-        run: pnpm exec hobo-stage-gate run s0 --out artifacts/stage-gate-s0.record.json
+        run: node packages/stage-gate/dist/cli.js run s0 --out artifacts/stage-gate-s0.record.json
       - name: Upload stage-gate record
         uses: actions/upload-artifact@v4
         with:

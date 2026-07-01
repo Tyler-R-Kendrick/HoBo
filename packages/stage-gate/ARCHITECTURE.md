@@ -1,0 +1,32 @@
+# @hobo/stage-gate — Architecture Evidence
+
+S0-12 production package. Reusable stage-gate runner that executes ordered
+toolchain checks, captures evidence, and emits an append-only `StageGateRecord`.
+
+## Schema and constraints
+
+- Protobuf records live in [`data-models/`](./data-models).
+- CUE constraints bound every protobuf type in that folder.
+- PACT consumer evidence lives under [`contracts/`](./contracts).
+
+## Parse, don't validate
+
+Untrusted JSON crosses one parser boundary via `parseStageGateRecord`. The
+parser applies protobuf shape plus CUE constraints and returns deep-frozen
+derived types (`StageGateRecord`, `CheckResult`, `ComponentArtifact`,
+`SignatureEvidence`). Downstream code and acceptance surfaces only consume
+parsed records; malformed or tampered input throws `StageGateParseError`.
+
+## Event architecture
+
+- **Command** — `hobo-stage-gate run <gateId>` requests a full gate execution.
+- **Event** — each check completion appends a `CheckResult` to the run record.
+- **Actor** — CI workflow or local runner identity is captured in record metadata.
+- **Event store** — gate records are append-only evidence; runs are never mutated.
+- **Materialized view / projection** — `docs/design/build-s0-stage-gate-acceptance.md`
+  projects the latest passed record into the gate table.
+- **Snapshot** — the emitted `stage-gate-s0.record.json` is the current-run snapshot.
+- **Read store** — acceptance docs and CI artifacts read from stored gate records.
+
+No durable event engine is implemented here; this package orchestrates checks and
+serializes the evidence envelope other surfaces consume.

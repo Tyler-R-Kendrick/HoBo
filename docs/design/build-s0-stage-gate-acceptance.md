@@ -15,6 +15,9 @@ signals are:
 - `.github/workflows/stage-gate-s0.yml` (green on `main` means S0 is done)
 - `packages/stage-gate/` unit and consumer-contract tests (`pnpm --filter @hobo/stage-gate test`)
 
+CI builds `@hobo/stage-gate` then invokes `node packages/stage-gate/dist/cli.js run s0` (workspace
+bins are not linked at the repo root until the package is a declared dependency).
+
 ## Scope In
 
 - `@hobo/stage-gate` runner that executes and records the S0 toolchain check list fail-closed.

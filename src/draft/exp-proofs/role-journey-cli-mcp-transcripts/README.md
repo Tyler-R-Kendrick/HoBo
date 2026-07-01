@@ -26,6 +26,9 @@ visual mockups.
 - Every role journey starts from an accepted `HOBO-577` quickstart fixture id.
 - Every step records a CLI command, terminal output, JSON result shape, MCP
   result shape, proof-mode label, support handoff, and accessibility note.
+- The Pact fixture carries the complete parsed lower-camel contract body, and
+  CUE constrains the same JSON boundary instead of a protobuf-only snake_case
+  projection.
 - Aggregate coverage proves deploy, manage, migrate, rollback, policy or
   contract denial, and support handoff.
 - `classifyRoleJourneyScope` rejects production CLI, live provider or

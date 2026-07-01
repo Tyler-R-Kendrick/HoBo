@@ -123,7 +123,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
       sequence: [
         step({
           id: "app.define",
-          command: "hobo collect ./examples/snapshop --fixture rlq-define-object-graph-v1 --json",
+          command: "hobo collect ./examples/shop-api --fixture rlq-define-object-graph-v1 --json",
           status: "ready",
           fixtureId: "rlq-define-object-graph-v1",
           proofMode: "reference-fixture",
@@ -211,7 +211,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
           fixtureId: "rlq-deploy-run-accepted-v1",
           proofMode: "simulated",
           output: "ready: promotion uses existing Deployment Set evidence and Gatekeeper receipt",
-          tool: "hobo_promote",
+          tool: "hobo_up",
         }),
         step({
           id: "gitops.rollback",
@@ -220,7 +220,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
           fixtureId: "rlq-recover-snapshot-restore-v1",
           proofMode: "reference-fixture",
           output: "rollback: dry-run recovery preserves previous Deployment Set and support handoff",
-          tool: "hobo_rollback",
+          tool: "hobo_up",
         }),
       ],
     }),
@@ -234,12 +234,12 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
       sequence: [
         step({
           id: "secops.can-deploy",
-          command: "hobo can-deploy --fixture rlq-plan-safe-preview-v1 --target prod --json",
+          command: "hobo up --camp prod --plan-fixture rlq-plan-safe-preview-v1 --dry-run --json",
           status: "blocked",
           fixtureId: "rlq-plan-safe-preview-v1",
           proofMode: "simulated",
           output: "blocked: policy or contract denial returns Gatekeeper explanation",
-          tool: "hobo_can_deploy",
+          tool: "hobo_up",
         }),
         step({
           id: "secops.doctor-policy",
@@ -248,7 +248,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
           fixtureId: "rlq-manage-stale-evidence-v1",
           proofMode: "reference-fixture",
           output: "support: customer-safe policy wording routes owner without exposing internals",
-          tool: "hobo_doctor_policy",
+          tool: "hobo_doctor",
         }),
         step({
           id: "secops.scope-out",
@@ -294,7 +294,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
           fixtureId: "rlq-recover-snapshot-restore-v1",
           proofMode: "reference-fixture",
           output: "rollback: restore preview names snapshot fixture and support handoff",
-          tool: "hobo_rollback",
+          tool: "hobo_up",
         }),
       ],
     }),
@@ -322,7 +322,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
           fixtureId: "rlq-manage-stale-evidence-v1",
           proofMode: "reference-fixture",
           output: "support: redacted log transcript points support to fixture refresh",
-          tool: "hobo_tail_logs",
+          tool: "hobo_logs",
         }),
         step({
           id: "sre.rollback",
@@ -331,7 +331,7 @@ export const ROLE_JOURNEY_CLI_MCP_TRANSCRIPTS = {
           fixtureId: "rlq-recover-snapshot-restore-v1",
           proofMode: "reference-fixture",
           output: "rollback: rollback preview includes customer-safe support handoff",
-          tool: "hobo_rollback",
+          tool: "hobo_up",
         }),
       ],
     }),
@@ -370,6 +370,11 @@ export function parseRoleJourneyCliMcpTranscripts(input: unknown): RoleJourneyCl
     "proofNote",
   );
   assertLiteral(input.sourceQuickstartIssue, "HOBO-577", "sourceQuickstartIssue");
+  assertLiteral(
+    input.sourceQuickstartProof,
+    "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
+    "sourceQuickstartProof",
+  );
   assertNonEmptyStringArray(input.designRefs, "designRefs");
   assertNonEmptyStringArray(input.scopeOut, "scopeOut");
 
@@ -508,8 +513,14 @@ function assertStepArray(value: unknown, role: string): RoleJourneyStep[] {
     assertObject(entry.mcpResult, `${role}.sequence.${index}.mcpResult`);
     assertLiteral(entry.jsonResult.schema, "hobo.role-journey-cli-mcp-result/v1", `${entry.id}.json.schema`);
     assertLiteral(entry.jsonResult.fixtureId, entry.quickstartFixtureId, `${entry.id}.json.fixtureId`);
+    assertLiteral(entry.jsonResult.proofMode, entry.proofMode, `${entry.id}.json.proofMode`);
     assertLiteral(entry.mcpResult.fixtureId, entry.quickstartFixtureId, `${entry.id}.mcp.fixtureId`);
     assertLiteral(entry.mcpResult.proofMode, entry.proofMode, `${entry.id}.mcp.proofMode`);
+    assertLiteral(
+      entry.mcpResult.resultSchema,
+      "hobo.role-journey-cli-mcp-result/v1",
+      `${entry.id}.mcp.resultSchema`,
+    );
     assertMcpTool(entry.mcpResult.tool, `${entry.id}.mcp.tool`);
     assertNonEmptyString(entry.supportHandoff, `${entry.id}.supportHandoff`);
     assertNonEmptyString(entry.accessibilityNote, `${entry.id}.accessibilityNote`);

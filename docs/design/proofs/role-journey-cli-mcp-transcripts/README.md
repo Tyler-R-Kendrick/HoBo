@@ -14,6 +14,10 @@ SRE. The executable proof lives in
 | Journeys cover deploy, manage, migrate, rollback, policy/contract denial, and support handoff from the CLI first. | `REQUIRED_ROLE_JOURNEY_COVERAGE` is aggregated across all six journeys and every step command must start with `hobo `. |
 | Examples avoid enterprise dashboard walkthroughs unless secondary to terminal/API/SDK shape. | `classifyRoleJourneyScope` rejects dashboard-first, production CLI, live provider/credential, and customer-data requests. |
 
+The Pact response body serializes the complete parsed proof record for all six
+journeys, while CUE constrains the same lower-camel JSON surface used by the
+TypeScript parser and Pact fixture.
+
 ## Design References
 
 - [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07)

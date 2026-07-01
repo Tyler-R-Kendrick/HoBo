@@ -329,19 +329,19 @@ export function parseKnownLimitationsRegister(input: unknown): ParsedKnownLimita
 }
 
 export function classifyScopeOutClaim(text: string) {
-  if (LIMITED_CLAIM_PATTERN.test(text)) {
-    return {
-      allowed: true,
-      reason: "claim is framed as limited, beta, simulated, deferred, unsupported, or follow-up",
-      route: "release-notes",
-    } as const;
-  }
-
   if (SUPPORTED_CLAIM_PATTERN.test(text) && SCOPE_OUT_MARKETING_PATTERN.test(text)) {
     return {
       allowed: false,
       reason: "scope-out item cannot be marketed as supported v1 capability",
       route: "known-limitations-register",
+    } as const;
+  }
+
+  if (LIMITED_CLAIM_PATTERN.test(text)) {
+    return {
+      allowed: true,
+      reason: "claim is framed as limited, beta, simulated, deferred, unsupported, or follow-up",
+      route: "release-notes",
     } as const;
   }
 

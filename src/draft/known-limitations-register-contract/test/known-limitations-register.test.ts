@@ -50,6 +50,16 @@ test("scope-out items cannot be marketed as supported v1 capability", () => {
     reason: "scope-out item cannot be marketed as supported v1 capability",
     route: "known-limitations-register",
   });
+  assert.deepEqual(classifyScopeOutClaim("unsupported environment is supported at v1"), {
+    allowed: false,
+    reason: "scope-out item cannot be marketed as supported v1 capability",
+    route: "known-limitations-register",
+  });
+  assert.deepEqual(classifyScopeOutClaim("post-ga roadmap ships in v1"), {
+    allowed: false,
+    reason: "scope-out item cannot be marketed as supported v1 capability",
+    route: "known-limitations-register",
+  });
 
   assert.deepEqual(classifyScopeOutClaim("reference fixture proof is beta-only"), {
     allowed: true,

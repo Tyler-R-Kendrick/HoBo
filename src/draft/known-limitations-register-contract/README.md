@@ -8,6 +8,9 @@ HOBO-485 proof for customer-facing known limitations and scope-out register.
   impact, workaround, owner, and follow-up issue when needed.
 - Entries map to release notes, support scripts, docs, and launch messaging.
 - Scope-out or unsupported items cannot be marketed as supported v1 capability.
+  Supported-capability wording wins over limited/unsupported framing when both
+  appear in one claim, so mixed claims such as "unsupported environment is
+  supported at v1" fail closed into the register.
 - Beta and GA checkpoints require owner/customer-visible text review and block
   stale publication.
 - Raw register input parses once into the `ParsedKnownLimitationsRegister`

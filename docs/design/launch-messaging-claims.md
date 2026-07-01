@@ -59,7 +59,7 @@ cutline dependencies, follow-up rules, and parent-initiative status behavior.
 | HoBo is an AI-native meta-cloud that maps one app description onto provider-owned infrastructure through cloud-agnostic ports. | `implemented` | V1 Release Program & Cutline | [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md) | Medium | Candidate with M1 dogfood/alpha cutline evidence; beta/GA evidence still required before broader operational claims. |
 | Launch demos can use accepted example-app proof modes to separate live behavior from reference or simulated evidence. | `simulated-reference` | Example Apps | [example-apps.md#M0 Acceptance Record](./example-apps.md#m0-acceptance-record) | Medium | Candidate with proof-mode label. |
 | Dogfood and beta operations evidence can support private-beta messaging before broader GA operational claims are made. | `beta-only` | V1 Dogfood Yard & Hosted Operations | HOBO-403 | High | Follow-up before public use. |
-| Customer-facing release notes will distinguish supported install paths, upgrade guidance, known limitations, and support contacts. | `future-roadmap` | V1 Release Notes & Upgrade Guide | HOBO-407 | Medium | Follow-up before launch publication. |
+| Customer-facing release notes will distinguish supported install paths, upgrade guidance, known limitations, and support contacts. | `future-roadmap` | V1 Release Notes & Upgrade Guide | [known-limitations-register.md](./known-limitations-register.md) | Medium | Follow-up before launch publication; scope-out claims must pass the known-limitation guard. |
 | Built-in operator agents are part of the product story, but launch wording must stay tied to current Crew design and proof evidence. | `future-roadmap` | Operators/SRE | [operators-sre.md#PLAN-40](./operators-sre.md#plan-40) | High | Scope out until proof evidence exists. |
 
 ## Required Demo Assets
@@ -96,7 +96,7 @@ cutline dependencies, follow-up rules, and parent-initiative status behavior.
 | Claim register | Launch messaging owner | Every claim has state, owner, source, risk, and disposition. |
 | Cutline evidence | V1 Release Program & Cutline | Implemented claims match the accepted v1 support boundary. |
 | Proof-mode labels | Example Apps and Demo maintainer | Simulated/reference/beta/live evidence is not overclaimed. |
-| Known-limitations register | V1 Release Notes & Upgrade Guide | Unsupported claims move to scope-out or follow-up before publication. |
+| Known-limitations register | V1 Release Notes & Upgrade Guide | Unsupported claims move to scope-out or follow-up before publication, and supported-v1 wording for scoped-out items is rejected. |
 | Demo asset manifest | V1 Launch Site, Messaging & Demo Assets | Launch demos can be refreshed when claims or proof sources change. |
 
 ## Private Beta Evidence Gate
@@ -157,3 +157,5 @@ release-candidate/private-beta evidence into unconditional GA production-readine
 Future launch-site, demo, release-note, and public-copy work must consume this register. A claim with
 no evidence source, unsupported state, or high-risk publish disposition without follow-up/scope-out
 routing is not ready for launch publication.
+The customer-facing scope-out register is
+[`known-limitations-register.md`](./known-limitations-register.md).

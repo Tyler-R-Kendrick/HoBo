@@ -25,7 +25,7 @@ so each owner can feed the correct source of truth without inventing unsupported
 | Supported install paths | Bootstrap smoke matrix | Bootstrap | SaaS, self-host, or local path has smoke evidence |
 | Upgrade paths | Upgrade dry-run, artifact provenance | Release | Source/target path has compatibility evidence |
 | Compatibility matrix | Browser/device/platform matrix and e2e thresholds | Compatibility | Each supported surface has test or smoke evidence |
-| Known limitations | Known-limitation register and blocker taxonomy | Docs | Limitation owner and customer-visible wording are approved |
+| Known limitations | [Known-limitation register](./known-limitations-register.md), blocker taxonomy, support route, and launch-message disposition | Docs/support/launch | Limitation owner, customer-visible wording, workaround, follow-up, and beta/GA review checkpoint are approved |
 | Rollback guidance | Backup/restore drill and upgrade dry-run | Release/support | Drill evidence is distinguished from production recovery claims |
 | Migration notes | Migration compatibility and tenant-data inventory | Docs/compatibility | Data/config/artifact changes have source evidence |
 | Support contacts | Support SLA and incident communications | Support | Channel, severity route, and escalation coverage are recorded |
@@ -35,7 +35,7 @@ so each owner can feed the correct source of truth without inventing unsupported
 | Source project | Feeds | Evidence |
 |---|---|---|
 | Release Engineering | Summary, upgrade paths, rollback guidance | Release-candidate decision, artifact provenance, rollback decision |
-| V1 Docs | Summary, limitations, migration notes | Outline owner, customer-facing copy owner, limitation register |
+| V1 Docs | Summary, limitations, migration notes | Outline owner, customer-facing copy owner, [known-limitation register](./known-limitations-register.md) |
 | Bootstrap Installer | Install paths, support contacts | Smoke matrix, troubleshooting handoff |
 | Compatibility Matrix | Compatibility matrix, migration notes | Supported surfaces, unsupported environments, test evidence |
 | Support Workflow | Limitations, rollback guidance, support contacts | Support channel, severity route, escalation coverage |
@@ -147,3 +147,6 @@ The M1 dogfood/alpha evidence gate lives in
 [`../../src/draft/v1-release-notes-dogfood-alpha-evidence`](../../src/draft/v1-release-notes-dogfood-alpha-evidence/README.md).
 The HOBO-401 v1 cutline dependency is recorded by
 [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md).
+The HOBO-485 customer-facing limitations dependency is recorded by
+[`known-limitations-register.md`](./known-limitations-register.md) and
+[`known-limitations-register-contract`](../../src/draft/known-limitations-register-contract/README.md).

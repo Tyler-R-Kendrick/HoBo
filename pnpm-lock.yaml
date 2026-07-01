@@ -597,6 +597,8 @@ importers:
 
   src/draft/jwt-svid-issuance-contract: {}
 
+  src/draft/known-limitations-register-contract: {}
+
   src/draft/launch-blocker-taxonomy-contract: {}
 
   src/draft/launch-demo-golden-path-contract: {}

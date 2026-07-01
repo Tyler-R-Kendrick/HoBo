@@ -18,6 +18,10 @@ The Pact response body serializes the complete parsed proof record for all six
 journeys, while CUE constrains the same lower-camel JSON surface used by the
 TypeScript parser and Pact fixture.
 
+Reviewer maintenance note: final merge validation also refreshes workspace
+lockfile importer rows for already-merged proof packages when `origin/main`
+advances, so `pnpm.cmd run install:check` leaves the branch clean.
+
 ## Design References
 
 - [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07)

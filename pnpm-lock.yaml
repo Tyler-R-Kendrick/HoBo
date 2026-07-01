@@ -41,6 +41,8 @@ importers:
 
   src/draft/epic-proofs/data-plane-event-sourcing-cqrs-reactivity: {}
 
+  src/draft/epic-proofs/finops-budget-routing-control-plane: {}
+
   src/draft/epic-proofs/foundations-build-conformance-harness: {}
 
   src/draft/epic-proofs/generation-pipeline-training-ai-safety: {}
@@ -331,6 +333,8 @@ importers:
   src/draft/exp-proofs/vibe-first-customer-pilot-storyboard: {}
 
   src/draft/exp-proofs/vibe-marketplace-installability-mockups: {}
+
+  src/draft/exp-proofs/vibe-publisher-portal-review-mockups: {}
 
   src/draft/exp-proofs/vibe-support-workflow-mockups: {}
 

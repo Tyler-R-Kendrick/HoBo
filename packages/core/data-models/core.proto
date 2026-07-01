@@ -1,7 +1,0 @@
-syntax = "proto3";
-package hobo.core.v1;
-
-message CoreScaffoldRecord {
-  string package_name = 1;
-  string owner_issue = 2;
-}

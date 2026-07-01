@@ -10,6 +10,10 @@ This POC keeps the work intentionally contract-only:
 
 It does not implement runtime behavior, provider adapters, or the WIT package.
 
+> **Promotion (S0-03 / HOBO-580):** strict TypeScript re-authoring with typed parse errors
+> promoted to `packages/core/` (`@hobo/core`). OCSF/OTLP mappings remain in this proof only.
+> Draft POC retained at `src/draft/projects/s0-03-hobo-core/` for traceability.
+
 
 ## Architecture Evidence
 

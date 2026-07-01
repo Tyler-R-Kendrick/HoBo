@@ -20,6 +20,7 @@ handoff, and customer-safe support wording mockups.
 - Payout source: [`marketplace-payout-hooks.md`](../../marketplace-payout-hooks.md).
 - Catalog source: [`org-catalogs.md`](../../org-catalogs.md).
 - Support source: [`launch-support-escalation.md`](../../launch-support-escalation.md).
+- Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
 - Executable proof: [`vibe-publisher-portal-review-mockups`](../../../../src/draft/exp-proofs/vibe-publisher-portal-review-mockups/README.md).
 
 ## Acceptance Coverage
@@ -30,6 +31,7 @@ handoff, and customer-safe support wording mockups.
 | Fixtures include artifact metadata, evidence state, review outcome, payout-readiness handoff, support wording, and customer-visible limitation state. | `fixtures` carry those fields and the parser rejects missing fixture metadata. |
 | Package and proof path match the issue. | `parseVibePublisherPortalReviewMockups` rejects path drift from the target package and proof path. |
 | Happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels are covered. | `scenarioPaths`, `accessibilityNotes`, and proof-mode validation cover each acceptance state and label. |
+| Downstream publisher portal mockups consume accepted HOBO-577 quickstart fixture ids/proof-mode labels. | `quickstartFixtureRefs` pins `rlq-define-object-graph-v1`, `rlq-collect-manifest-ir-v1`, `rlq-manage-stale-evidence-v1`, `rlq-recover-snapshot-restore-v1`, and `rlq-recover-scope-out-v1`. |
 | Scope-out work is refused. | `classifyPublisherPortalReviewMockupRequest` fails closed for publisher services, artifact hosting, Registry storage, payout implementation, scanners, production UI, support automation, customer data, and proofless launch claims. |
 
 ## Adversarial Evidence

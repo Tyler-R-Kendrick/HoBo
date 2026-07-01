@@ -9,6 +9,8 @@ import {
   REQUIRED_PUBLISHER_PORTAL_FIXTURE_FIELDS,
   REQUIRED_PUBLISHER_PORTAL_PERSONAS,
   REQUIRED_PUBLISHER_PORTAL_PROOF_MODES,
+  REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS,
+  REQUIRED_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODES,
   REQUIRED_PUBLISHER_PORTAL_SCENARIOS,
   REQUIRED_PUBLISHER_PORTAL_STATES,
   VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS,
@@ -87,9 +89,23 @@ test("scenario paths, proof modes, accessibility notes, and dependency refs cove
     "docs/design/marketplace-payout-hooks.md",
     "docs/design/org-catalogs.md",
     "docs/design/launch-support-escalation.md",
+    "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
   ]) {
     assert.ok(VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.designRefs.includes(requiredRef));
   }
+});
+
+test("publisher portal mockups consume accepted HOBO-577 quickstart fixture ids", () => {
+  assert.deepEqual(
+    VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.map((ref) => ref.fixtureId),
+    REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS,
+  );
+  assert.ok(VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.every((ref) => ref.sourceIssue === "HOBO-577"));
+  assert.deepEqual(
+    [...new Set(VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.map((ref) => ref.proofMode))],
+    REQUIRED_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODES,
+  );
+  assert.ok(VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.every((ref) => ref.publisherUse.length > 30));
 });
 
 test("Pact and CUE artifacts stay aligned with the parsed fixture shape", () => {
@@ -113,6 +129,10 @@ test("Pact and CUE artifacts stay aligned with the parsed fixture shape", () => 
     pactMockups.fixtures.map((fixture) => fixture.id),
     VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.fixtures.map((fixture) => fixture.id),
   );
+  assert.deepEqual(
+    pactMockups.quickstartFixtureRefs.map((ref) => ref.fixtureId),
+    REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS,
+  );
 
   const cue = readFileSync(
     join(packageRoot, "architecture", "vibe_publisher_portal_review_mockups.cue"),
@@ -125,6 +145,15 @@ test("Pact and CUE artifacts stay aligned with the parsed fixture shape", () => 
   assert.match(cue, /reviewOutcome:\s+string & !=""/);
   assert.match(cue, /payoutReadinessHandoff:\s+string & !=""/);
   assert.match(cue, /customerVisibleLimitation:\s+string & !=""/);
+  assert.match(cue, /quickstartFixtureRefs:\s+\[#VibePublisherPortalQuickstartFixtureReference/);
+  assert.match(cue, /sourceIssue:\s+"HOBO-577"/);
+
+  const proto = readFileSync(
+    join(packageRoot, "architecture", "vibe_publisher_portal_review_mockups.proto"),
+    "utf8",
+  );
+  assert.match(proto, /message VibePublisherPortalQuickstartFixtureReference/);
+  assert.match(proto, /repeated VibePublisherPortalQuickstartFixtureReference quickstart_fixture_refs/);
 });
 
 test("parser rejects missing fixture metadata and unsupported proof modes", () => {
@@ -195,4 +224,32 @@ test("validator reports missing required states and fixture fields", () => {
 
   assert.equal(validation.ok, false);
   assert.ok(validation.errors.some((error) => error.code === "missing-mockup-state"));
+});
+
+test("validator rejects quickstart fixture drift from HOBO-577", () => {
+  assert.throws(
+    () =>
+      parseVibePublisherPortalReviewMockups({
+        ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS,
+        quickstartFixtureRefs: VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.filter(
+          (ref) => ref.fixtureId !== "rlq-manage-stale-evidence-v1",
+        ),
+      }),
+    VibePublisherPortalReviewMockupsParseError,
+  );
+
+  assert.throws(
+    () =>
+      parseVibePublisherPortalReviewMockups({
+        ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS,
+        quickstartFixtureRefs: [
+          {
+            ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs[0],
+            sourceIssue: "HOBO-548" as never,
+          },
+          ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.slice(1),
+        ],
+      }),
+    VibePublisherPortalReviewMockupsParseError,
+  );
 });

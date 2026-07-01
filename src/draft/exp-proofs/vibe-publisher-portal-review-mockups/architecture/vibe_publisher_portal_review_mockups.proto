@@ -13,6 +13,14 @@ enum VibePublisherPortalProofMode {
   VIBE_PUBLISHER_PORTAL_PROOF_MODE_SCOPE_OUT = 4;
 }
 
+enum VibePublisherPortalQuickstartProofMode {
+  VIBE_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODE_UNSPECIFIED = 0;
+  VIBE_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODE_REFERENCE_FIXTURE = 1;
+  VIBE_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODE_SIMULATED = 2;
+  VIBE_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODE_LIVE = 3;
+  VIBE_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODE_SCOPE_OUT = 4;
+}
+
 message VibePublisherPortalMockup {
   string id = 1;
   string state = 2;
@@ -40,16 +48,24 @@ message VibePublisherPortalScenarioPath {
   string safe_outcome = 4;
 }
 
+message VibePublisherPortalQuickstartFixtureReference {
+  string source_issue = 1;
+  string fixture_id = 2;
+  VibePublisherPortalQuickstartProofMode proof_mode = 3;
+  string publisher_use = 4;
+}
+
 message VibePublisherPortalReviewMockupsRecord {
   string issue = 1;
   string phase = 2;
   string package_path = 3;
   string proof_path = 4;
   repeated string design_refs = 5;
-  repeated string personas = 6;
-  repeated VibePublisherPortalMockup mockups = 7;
-  repeated VibePublisherPortalFixture fixtures = 8;
-  repeated VibePublisherPortalScenarioPath scenario_paths = 9;
-  repeated string accessibility_notes = 10;
-  repeated string scope_out = 11;
+  repeated VibePublisherPortalQuickstartFixtureReference quickstart_fixture_refs = 6;
+  repeated string personas = 7;
+  repeated VibePublisherPortalMockup mockups = 8;
+  repeated VibePublisherPortalFixture fixtures = 9;
+  repeated VibePublisherPortalScenarioPath scenario_paths = 10;
+  repeated string accessibility_notes = 11;
+  repeated string scope_out = 12;
 }

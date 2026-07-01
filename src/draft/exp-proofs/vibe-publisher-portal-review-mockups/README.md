@@ -18,7 +18,8 @@ without evidence.
   fail-closed scope guards.
 - Consumed but not owned: Publisher Portal, Capability Review & Approval,
   Marketplace Publisher Trust Evidence, Marketplace Payout Hooks, Org Catalogs,
-  and Launch Support Escalation records.
+  Launch Support Escalation, and accepted HOBO-577 Resource Lifecycle
+  Quickstart fixture records.
 - Out of scope: publisher onboarding service, artifact hosting, Registry
   storage, payout implementation, security scanner, production UI, support
   queue, customer data, and launch claims without evidence.
@@ -37,6 +38,7 @@ pnpm.cmd --prefix src\draft\exp-proofs\vibe-publisher-portal-review-mockups test
 | Fixtures include artifact metadata, evidence state, review outcome, payout-readiness handoff, support wording, and customer-visible limitation state. | `fixtures` carry each required field and `validateVibePublisherPortalReviewMockups` rejects missing fields. |
 | Target package and proof paths are pinned. | `parseVibePublisherPortalReviewMockups` rejects path drift. |
 | Happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels are covered. | `scenarioPaths`, `accessibilityNotes`, and proof-mode validation cover all required states and labels. |
+| Publisher portal mockups reuse the accepted HOBO-577 quickstart source instead of inventing product behavior. | `quickstartFixtureRefs` pins `rlq-define-object-graph-v1`, `rlq-collect-manifest-ir-v1`, `rlq-manage-stale-evidence-v1`, `rlq-recover-snapshot-restore-v1`, and `rlq-recover-scope-out-v1` with publisher-use notes and proof-mode labels. |
 | Scope out remains hard. | `classifyPublisherPortalReviewMockupRequest` rejects publisher services, artifact hosting, payout implementation, scanners, production UI, support automation, customer-data access, and proofless launch claims. |
 
 ## Architecture Evidence

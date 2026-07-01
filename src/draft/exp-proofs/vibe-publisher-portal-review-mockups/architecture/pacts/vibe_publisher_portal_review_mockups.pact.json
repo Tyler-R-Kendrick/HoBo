@@ -25,7 +25,40 @@
             "docs/design/marketplace-publisher-trust-evidence.md",
             "docs/design/marketplace-payout-hooks.md",
             "docs/design/org-catalogs.md",
-            "docs/design/launch-support-escalation.md"
+            "docs/design/launch-support-escalation.md",
+            "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md"
+          ],
+          "quickstartFixtureRefs": [
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-define-object-graph-v1",
+              "proofMode": "reference-fixture",
+              "publisherUse": "publisher submission mockups reuse the accepted object graph fixture as artifact source evidence"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-collect-manifest-ir-v1",
+              "proofMode": "simulated",
+              "publisherUse": "evidence upload states reuse the accepted collect fixture without claiming Registry storage or live upload"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-manage-stale-evidence-v1",
+              "proofMode": "reference-fixture",
+              "publisherUse": "stale evidence and rejection remediation copy reuse the accepted quickstart stale-evidence fixture"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-snapshot-restore-v1",
+              "proofMode": "live",
+              "publisherUse": "yank remediation can point to accepted recovery proof labels while avoiding runtime migration automation"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-scope-out-v1",
+              "proofMode": "scope-out",
+              "publisherUse": "scope-out quickstart claims stay visible as launch, payout, and customer-data limitations"
+            }
           ],
           "personas": [
             "publisher owner",

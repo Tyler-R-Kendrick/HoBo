@@ -31,6 +31,21 @@ export const REQUIRED_PUBLISHER_PORTAL_PROOF_MODES = [
   "scope-out",
 ] as const;
 
+export const REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS = [
+  "rlq-define-object-graph-v1",
+  "rlq-collect-manifest-ir-v1",
+  "rlq-manage-stale-evidence-v1",
+  "rlq-recover-snapshot-restore-v1",
+  "rlq-recover-scope-out-v1",
+] as const;
+
+export const REQUIRED_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODES = [
+  "reference-fixture",
+  "simulated",
+  "live",
+  "scope-out",
+] as const;
+
 export const REQUIRED_PUBLISHER_PORTAL_ACCESSIBILITY_TOPICS = [
   "keyboard",
   "screen reader",
@@ -42,6 +57,8 @@ type PublisherPortalPersona = (typeof REQUIRED_PUBLISHER_PORTAL_PERSONAS)[number
 type PublisherPortalState = (typeof REQUIRED_PUBLISHER_PORTAL_STATES)[number];
 type PublisherPortalScenario = (typeof REQUIRED_PUBLISHER_PORTAL_SCENARIOS)[number];
 type PublisherPortalProofMode = (typeof REQUIRED_PUBLISHER_PORTAL_PROOF_MODES)[number];
+type PublisherPortalQuickstartFixtureId = (typeof REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS)[number];
+type PublisherPortalQuickstartProofMode = (typeof REQUIRED_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODES)[number];
 
 type PublisherPortalMockup = {
   readonly id: string;
@@ -79,12 +96,20 @@ type PublisherPortalScenarioPath = {
   readonly safeOutcome: string;
 };
 
+type PublisherPortalQuickstartFixtureReference = {
+  readonly sourceIssue: "HOBO-577";
+  readonly fixtureId: PublisherPortalQuickstartFixtureId;
+  readonly proofMode: PublisherPortalQuickstartProofMode;
+  readonly publisherUse: string;
+};
+
 type VibePublisherPortalReviewMockups = {
   readonly issue: "HOBO-548";
   readonly phase: "M1";
   readonly packagePath: "src/draft/exp-proofs/vibe-publisher-portal-review-mockups";
   readonly proofPath: "docs/design/proofs/vibe-publisher-portal-review-mockups/README.md";
   readonly designRefs: readonly string[];
+  readonly quickstartFixtureRefs: readonly PublisherPortalQuickstartFixtureReference[];
   readonly personas: readonly PublisherPortalPersona[];
   readonly mockups: readonly PublisherPortalMockup[];
   readonly fixtures: readonly PublisherPortalFixture[];
@@ -167,6 +192,39 @@ const FIXTURES: readonly PublisherPortalFixture[] = [
   },
 ];
 
+const QUICKSTART_FIXTURE_REFS: readonly PublisherPortalQuickstartFixtureReference[] = [
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-define-object-graph-v1",
+    proofMode: "reference-fixture",
+    publisherUse: "publisher submission mockups reuse the accepted object graph fixture as artifact source evidence",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-collect-manifest-ir-v1",
+    proofMode: "simulated",
+    publisherUse: "evidence upload states reuse the accepted collect fixture without claiming Registry storage or live upload",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-manage-stale-evidence-v1",
+    proofMode: "reference-fixture",
+    publisherUse: "stale evidence and rejection remediation copy reuse the accepted quickstart stale-evidence fixture",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-recover-snapshot-restore-v1",
+    proofMode: "live",
+    publisherUse: "yank remediation can point to accepted recovery proof labels while avoiding runtime migration automation",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-recover-scope-out-v1",
+    proofMode: "scope-out",
+    publisherUse: "scope-out quickstart claims stay visible as launch, payout, and customer-data limitations",
+  },
+];
+
 export const VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS: VibePublisherPortalReviewMockups = {
   issue: "HOBO-548",
   phase: "M1",
@@ -179,7 +237,9 @@ export const VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS: VibePublisherPortalReviewMock
     "docs/design/marketplace-payout-hooks.md",
     "docs/design/org-catalogs.md",
     "docs/design/launch-support-escalation.md",
+    "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
   ],
+  quickstartFixtureRefs: QUICKSTART_FIXTURE_REFS,
   personas: REQUIRED_PUBLISHER_PORTAL_PERSONAS,
   mockups: [
     {
@@ -360,6 +420,7 @@ export function validateVibePublisherPortalReviewMockups(
       message: "mockups must cover publisher portal states in accepted order",
     });
   }
+  validateQuickstartRefs(mockups.quickstartFixtureRefs, errors);
 
   const fixtureIds = new Set(mockups.fixtures.map((fixture) => fixture.id));
   for (const mockup of mockups.mockups) {
@@ -446,6 +507,55 @@ export function classifyPublisherPortalReviewMockupRequest(
   summary: string,
 ): PublisherPortalReviewMockupRequestClassification {
   return SCOPE_OUT_PATTERNS.some((pattern) => pattern.test(summary)) ? "scope-out" : "in-scope-proof";
+}
+
+function validateQuickstartRefs(
+  refs: readonly PublisherPortalQuickstartFixtureReference[],
+  errors: ValidationError[],
+): void {
+  if (!arraysEqual(refs.map((ref) => ref.fixtureId), REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS)) {
+    errors.push({
+      code: "missing-quickstart-fixture",
+      message: "publisher portal mockups must cite required HOBO-577 quickstart fixture ids",
+    });
+  }
+
+  const proofModes = new Set<PublisherPortalQuickstartProofMode>();
+  for (const ref of refs) {
+    if (ref.sourceIssue !== "HOBO-577") {
+      errors.push({
+        code: "wrong-quickstart-source",
+        message: `${ref.fixtureId} must cite HOBO-577`,
+      });
+    }
+    if (!REQUIRED_PUBLISHER_PORTAL_QUICKSTART_FIXTURE_IDS.includes(ref.fixtureId)) {
+      errors.push({
+        code: "unknown-quickstart-fixture",
+        message: `${ref.fixtureId} is not an accepted HOBO-577 publisher fixture`,
+      });
+    }
+    if (!REQUIRED_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODES.includes(ref.proofMode)) {
+      errors.push({
+        code: "unknown-quickstart-proof-mode",
+        message: `${ref.fixtureId} uses unsupported HOBO-577 proof mode ${String(ref.proofMode)}`,
+      });
+    } else {
+      proofModes.add(ref.proofMode);
+    }
+    if (!ref.publisherUse || ref.publisherUse.length < 30) {
+      errors.push({
+        code: "missing-quickstart-publisher-use",
+        message: `${ref.fixtureId} must explain how publisher portal mockups consume the quickstart fixture`,
+      });
+    }
+  }
+
+  if (!arraysEqual([...proofModes], REQUIRED_PUBLISHER_PORTAL_QUICKSTART_PROOF_MODES)) {
+    errors.push({
+      code: "missing-quickstart-proof-mode",
+      message: "publisher portal mockups must preserve HOBO-577 reference-fixture, simulated, live, and scope-out labels",
+    });
+  }
 }
 
 function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {

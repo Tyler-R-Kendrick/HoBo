@@ -61,6 +61,13 @@ Minimum durable records for a post-core delta:
 Meta-cloud Broker is the first accepted example of this pattern: HOBO-521 owns the M0 scope record
 and proof, and HOBO-524 owns this documentation-pattern hardening.
 
+### Intent-alignment gap review — root [`GAPS.md`](../GAPS.md)
+
+The five-pillar intent review (Nomad × Aspire × Nitric × FinOps × agent-native) keeps a
+long-running register at the repo root. Iteration 0 seeds the scaffold (pillar map, method
+appendix, empty registers); confirmed findings and remediations append in later commits. Linear
+delivery issues for remediations are filed when an iteration confirms them — not in the seed PR.
+
 ### Meta-cloud Broker - `3b77f153-55ea-46e1-b1d5-2683901576ba` - **Backlog**
 
 The Meta-cloud Broker project owns the hosted broker authority boundary: Contract Manifest

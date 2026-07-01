@@ -21,3 +21,7 @@ Run:
 ```powershell
 npm.cmd --prefix src\draft\technical-proofs\wrpc-deadline-propagation-contract test
 ```
+
+## Promotion note (S1-09 / HOBO-598)
+
+Integrated draft POC at `src/draft/technical-proofs/membrane-deadline-backpressure-contract/` combines HOBO-24 deadline propagation with HOBO-25 membrane failure taxonomy for production promotion to `@hobo/core` + `@hobo/runtime-local` + `@hobo/conformance` (pending S1-03/S1-05 merge).

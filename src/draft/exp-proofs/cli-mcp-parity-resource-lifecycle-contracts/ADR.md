@@ -36,6 +36,10 @@ envelopes, and scope-creep command verbs fail before consumers use the record.
 
 ## Event Architecture
 
+The parity checker now compares both the CLI invocation intent against the MCP tool/input and the
+result envelope. This keeps transcript fixtures from passing when the output happens to match but
+the tool target or input fields drift.
+
 The accepted contract is the read model behind a small event flow:
 
 - **Command** - `cliMcpParity.RecordRequested` asks the DX contract owner to accept or amend the

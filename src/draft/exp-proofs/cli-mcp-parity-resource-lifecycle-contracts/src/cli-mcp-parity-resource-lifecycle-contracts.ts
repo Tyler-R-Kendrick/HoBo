@@ -103,6 +103,11 @@ type Fixture = {
   readonly result: ResultEnvelope;
 };
 
+type CanonicalInvocation = {
+  readonly tool: string;
+  readonly input: Record<string, unknown>;
+};
+
 type CliMcpParityContract = {
   readonly issue: "HOBO-570";
   readonly phase: "M1";
@@ -347,9 +352,16 @@ export function assertCliMcpParity(fixtureItem: Fixture): {
   readonly case: FixtureCase;
   readonly equivalent: boolean;
 } {
+  const cliInvocation = canonicalCliInvocation(fixtureItem.cli.command);
+  const mcpInvocation = {
+    tool: fixtureItem.mcp.tool,
+    input: fixtureItem.mcp.input,
+  };
+
   return {
     case: fixtureItem.case,
-    equivalent: semanticResult(fixtureItem.cli.stdout) === semanticResult(fixtureItem.mcp.result)
+    equivalent: semanticInvocation(cliInvocation) === semanticInvocation(mcpInvocation)
+      && semanticResult(fixtureItem.cli.stdout) === semanticResult(fixtureItem.mcp.result)
       && semanticResult(fixtureItem.result) === semanticResult(fixtureItem.mcp.result),
   };
 }
@@ -475,6 +487,71 @@ function semanticResult(result: ResultEnvelope): string {
     fixtureId: result.fixtureId,
     correlationId: result.correlationId,
     redactionClass: result.redactionClass,
+  });
+}
+
+function canonicalCliInvocation(command: string): CanonicalInvocation {
+  const tokens = command.trim().split(/\s+/);
+  const [binary, verb] = tokens;
+  const input: Record<string, unknown> = {};
+
+  if (binary !== "hobo" || !verb) {
+    return { tool: "", input };
+  }
+
+  let index = 2;
+  if (verb === "inspect" && tokens[index] && !tokens[index].startsWith("--")) {
+    input.target = tokens[index];
+    index += 1;
+    if (tokens[index] && !tokens[index].startsWith("--")) {
+      input.id = tokens[index];
+      index += 1;
+    }
+  }
+  if (verb === "import") {
+    input.provider = tokens[index];
+    input.source = tokens[index + 1];
+    index += 2;
+  }
+
+  for (; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (!token.startsWith("--")) {
+      continue;
+    }
+    if (token === "--json" || token === "--rollback" || token === "--follow") {
+      input[flagToInputName(token)] = true;
+      continue;
+    }
+    const value = tokens[index + 1];
+    if (value && !value.startsWith("--")) {
+      input[flagToInputName(token)] = value;
+      index += 1;
+    }
+  }
+
+  return {
+    tool: `hobo.${verb}`,
+    input,
+  };
+}
+
+function flagToInputName(flagName: string): string {
+  return flagName
+    .replace(/^--/, "")
+    .replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+}
+
+function semanticInvocation(invocation: CanonicalInvocation): string {
+  const sortedInput = Object.fromEntries(
+    Object.entries(invocation.input)
+      .filter(([, value]) => value !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+
+  return JSON.stringify({
+    tool: invocation.tool,
+    input: sortedInput,
   });
 }
 

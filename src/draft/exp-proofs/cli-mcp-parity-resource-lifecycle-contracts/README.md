@@ -11,8 +11,8 @@ HOBO-570 proof for terminal-first lifecycle command contracts and their MCP tool
 - Brownfield import produces `resource.Adopted` evidence that feeds `plan` and migration; migration
   consumes that adopted-resource state before entering the gated `up` path through expand,
   backfill, and contract.
-- CLI JSON output and MCP tool results are semantically equivalent for success, blocked, stale,
-  non-portable, and support-handoff fixture outcomes.
+- CLI invocation intent, MCP tool input, JSON output, and MCP tool results are semantically
+  equivalent for success, blocked, stale, non-portable, and support-handoff fixture outcomes.
 - Scope guards reject production parser/runtime work, live auth or MCP runtime wiring, dashboard
   implementation, and lifecycle verbs not already accepted in the design docs.
 
@@ -50,8 +50,8 @@ The proof pins five reference fixtures:
 
 ## Scope
 
-In scope: command and MCP schema shapes, MCP input fields, output envelopes, semantic parity
-checks, fixture outcome records, proof-mode labels, and scope guards.
+In scope: command and MCP schema shapes, MCP input fields, output envelopes, invocation and result
+semantic parity checks, fixture outcome records, proof-mode labels, and scope guards.
 
 Out of scope: production argument parsing, live auth broker, live MCP server, dashboards, live
 providers, customer data, and new command behavior not present in the design docs.

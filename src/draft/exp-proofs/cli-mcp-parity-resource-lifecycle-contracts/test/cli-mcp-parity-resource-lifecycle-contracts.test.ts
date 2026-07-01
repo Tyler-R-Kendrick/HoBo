@@ -128,6 +128,29 @@ test("CLI transcript and MCP tool result stay semantically equivalent", () => {
   };
 
   assert.equal(assertCliMcpParity(divergentFixture).equivalent, false);
+
+  const mismatchedInputFixture = {
+    ...contract.fixtures[0],
+    mcp: {
+      ...contract.fixtures[0].mcp,
+      input: {
+        camp: "prod",
+        json: true,
+      },
+    },
+  };
+
+  assert.equal(assertCliMcpParity(mismatchedInputFixture).equivalent, false);
+
+  const mismatchedToolFixture = {
+    ...contract.fixtures[0],
+    mcp: {
+      ...contract.fixtures[0].mcp,
+      tool: "hobo.plan",
+    },
+  };
+
+  assert.equal(assertCliMcpParity(mismatchedToolFixture).equivalent, false);
 });
 
 test("scope guard rejects production parser, live auth, live MCP server, dashboards, and invented verbs", () => {

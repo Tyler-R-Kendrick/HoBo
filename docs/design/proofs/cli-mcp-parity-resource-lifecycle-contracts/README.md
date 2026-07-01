@@ -24,7 +24,7 @@ and MCP examples must reuse.
   that adopted-resource state before feeding `up` through expand, backfill, and contract phases.
 - Fixture outcomes cover success, blocked deployment, stale projection, non-portable edge, and
   support handoff.
-- CLI transcript output and MCP tool result envelopes are compared for semantic parity.
+- CLI transcript invocation, MCP tool input, and result envelopes are compared for semantic parity.
 
 ## Proof Command
 

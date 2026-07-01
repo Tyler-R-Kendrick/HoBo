@@ -322,6 +322,8 @@ importers:
 
   src/draft/exp-proofs/v1-supported-platform-matrix-contract: {}
 
+  src/draft/exp-proofs/vibe-accessibility-usability-checklist: {}
+
   src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures: {}
 
   src/draft/exp-proofs/vibe-deployment-dashboard-mockups: {}

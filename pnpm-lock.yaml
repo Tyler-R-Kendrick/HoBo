@@ -346,6 +346,8 @@ importers:
 
   src/draft/exp-proofs/vibe-plan-annotation-pseudocode: {}
 
+  src/draft/exp-proofs/vibe-pilot-first-proof-walkthrough: {}
+
   src/draft/exp-proofs/vibe-publisher-portal-review-mockups: {}
 
   src/draft/exp-proofs/vibe-representative-a11y-usability-checks: {}

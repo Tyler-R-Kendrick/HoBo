@@ -61,6 +61,26 @@ Minimum durable records for a post-core delta:
 Meta-cloud Broker is the first accepted example of this pattern: HOBO-521 owns the M0 scope record
 and proof, and HOBO-524 owns this documentation-pattern hardening.
 
+### Meta-cloud Broker — `3b77f153-55ea-46e1-b1d5-2683901576ba` — **Done**
+
+The Meta-cloud Broker project owns the hosted broker authority boundary: Contract Manifest
+validation against Broker Environment snapshots, Mapping Contracts from HoBo-native services to
+cloud/IaC configurations, Resolution Receipts, Resolution Rejections, and Yard receipt handoff.
+
+- HOBO-521 — M0: Define Meta-cloud Broker scope and acceptance — M0 — hardening — 3 — **Done**
+- HOBO-522 — M1: Define broker artifact schemas and validation contract — M1 — slice/hardening — 3 — **Done**
+- HOBO-523 — M1: Prove Yard consumes Resolution Receipts without re-resolving broker authority — M1 — slice/adversarial — 3 — **Done**
+- HOBO-524 — M1: Update docs pattern for post-core cross-cutting capabilities — M1 — hardening — 2 — **Done**
+- HOBO-525 — M2: Implement deterministic meta-cloud broker resolution contract proof — M2 — slice — 5 — **Done**
+- HOBO-526 — M2: Prove provider/catalog mapping publication into Broker Environment snapshots — M2 — slice — 5 — **Done**
+- HOBO-527 — M2: Add admin controls for broker environment proposals and approvals — M2 — slice/security — 5 — **Done**
+- HOBO-528 — M3: Adversarial broker rejection matrix for stale, incompatible, and ambiguous mappings — M3 — adversarial/hardening — 5 — **Done**
+- HOBO-529 — M3: Adversarial receipt integrity and replay/tamper refusal — M3 — adversarial/security — 5 — **Done**
+- HOBO-530 — M4: Prove hosted broker GA handoff evidence — M4 — slice — 3 — **Done**
+
+Design record: [`docs/design/meta-cloud-broker.md`](./design/meta-cloud-broker.md). Brainstorming
+spec: [`docs/superpowers/specs/2026-06-29-meta-cloud-broker-design.md`](./superpowers/specs/2026-06-29-meta-cloud-broker-design.md).
+
 ### Provenance — the subagents that authored each subsystem
 
 Each subsystem was authored by a dedicated subagent holding the **full templated issue bodies**.

@@ -35,9 +35,12 @@ This M0 record defines the accepted productization scope for the Meta-cloud Brok
 build broker runtime code, Yard planner behavior, provider adapters, admin UI, Gatekeeper policy
 changes, token broker changes, Contract IR changes, or provider Capability Manifest changes.
 
-The Linear issue cites `docs/superpowers/specs/2026-06-29-meta-cloud-broker-design.md`; that file
-is absent on `origin/main` for this branch. The HOBO-521 issue body, the cited design docs, and this
-M0 record are the reviewable source of truth for this branch.
+Brainstorming source:
+
+- [`docs/superpowers/specs/2026-06-29-meta-cloud-broker-design.md`](../superpowers/specs/2026-06-29-meta-cloud-broker-design.md)
+
+The HOBO-521 issue body, the brainstorming spec, the cited design docs, and this M0 record are the
+reviewable source of truth for this branch.
 
 ## M0 Acceptance Record
 

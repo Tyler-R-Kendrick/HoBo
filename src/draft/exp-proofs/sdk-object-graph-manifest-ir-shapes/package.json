@@ -1,0 +1,12 @@
+{
+  "name": "@hobo/sdk-object-graph-manifest-ir-shapes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}

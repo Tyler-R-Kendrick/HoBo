@@ -16,6 +16,7 @@ Executable proofs:
 - [`meta-cloud-broker-resolution-contract`](../../src/draft/meta-cloud-broker-resolution-contract/README.md)
 - [`meta-cloud-broker-rejection-matrix-contract`](../../src/draft/meta-cloud-broker-rejection-matrix-contract/README.md)
 - [`broker-receipt-integrity-contract`](../../src/draft/broker-receipt-integrity-contract/README.md)
+- [`broker-environment-publication-contract`](../../src/draft/broker-environment-publication-contract/README.md)
 
 Branch evidence:
 
@@ -24,6 +25,7 @@ Branch evidence:
 - [`HOBO-525 proof record`](./proofs/hobo-525-meta-cloud-broker-resolution/README.md)
 - [`HOBO-528 proof record`](./proofs/hobo-528-meta-cloud-broker-rejection-matrix/README.md)
 - [`HOBO-529 proof record`](./proofs/hobo-529-broker-receipt-integrity/README.md)
+- [`HOBO-526 proof record`](./proofs/hobo-526-broker-environment-publication/README.md)
 
 This M0 record defines the accepted productization scope for the Meta-cloud Broker. It does not
 build broker runtime code, Yard planner behavior, provider adapters, admin UI, Gatekeeper policy
@@ -141,7 +143,7 @@ decision with its own evidence.
 | Artifact schema contract | Schema test | Contract Manifest, Broker Environment, Mapping Contract, catalog snapshot, receipt, and rejection schemas are pinned. |
 | Authority boundary fixture | Contract test | Broker, Yard, admin controls, and Gatekeeper cannot silently overwrite each other. |
 | Receipt consumption fixture | Integration fixture | Yard consumes Resolution Receipts without re-running hosted broker resolution; HOBO-523 proves this with `yard-receipt-consumption-contract`. |
-| Catalog snapshot fixture | Deterministic fixture | Provider/catalog mapping inputs are versioned and stale states are visible. |
+| Catalog snapshot fixture | Deterministic fixture | Provider/catalog mapping inputs are versioned and stale states are visible; HOBO-526 proves approved provider/catalog/mapping publications become immutable Broker Environment snapshots. |
 | Rejection taxonomy fixture | Negative test | Stale, incompatible, ambiguous, and unsupported mappings fail with structured Resolution Rejections. |
 | Scope-boundary register | Policy fixture | Runtime, planner, provider, admin UI, Gatekeeper, and public-claim work route to follow-up owners. |
 

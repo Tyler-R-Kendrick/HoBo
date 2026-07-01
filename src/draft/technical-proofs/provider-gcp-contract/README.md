@@ -39,4 +39,5 @@ This package ships the architecture-guard evidence required by
 
 - `architecture/` — protobuf data shapes and CUE constraints for Provider Gcp Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
+- `type-tests/provider-gcp-types.ts` — public declaration consumer for the typed GCP provider API.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.

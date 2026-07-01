@@ -25,12 +25,18 @@ and [Plan 9](../../generated-stack.md#plan-09).
 The executable proof lives in
 [`src/draft/ci-fabric-oidc-e2e-contract`](../../../../src/draft/ci-fabric-oidc-e2e-contract/README.md).
 The reviewable workflow skeleton is
-[`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml). The PR gate
-uses `pnpm agent:check -- --base=origin/<base-ref>` so CI follows the same
-change-impact scope as the local hook instead of replaying repository-wide
-build, typecheck, lint, test, docs, schema, and traceability lanes on every PR.
+[`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml). The impact gate
+runs on `pull_request` and `merge_group: checks_requested` for the `main`
+base branch only, preserving the same job/check identity for merge-queue
+compatibility without spending CI on non-landing queues. PR runs use
+`pnpm agent:check -- --base=origin/<base-ref>`; merge-group runs compare against
+`origin/main` so queued candidates get the same change-impact gate before they
+can land. The workflow also uses event-aware concurrency so newer PR pushes
+cancel stale runs without sharing a concurrency group with merge queue runs.
 The standalone docs workflow is path-filtered to documentation/doc-linter inputs
-and runs only changed-doc lint plus docs freshness.
+and the CI workflow file that this proof documents, runs only changed-doc lint
+plus docs freshness, and uses the same event-aware PR concurrency cancellation
+for stale branch pushes.
 
 This is a branch POC. It does not implement the runner/build-machine
 cost-routed CI fabric, full multi-cloud E2E matrix, or real provider IAM

@@ -21,15 +21,20 @@ time rather than passed downstream.
 
 ## Event Architecture
 
-The package's accepted record is the read model behind a small event flow:
+The package's accepted cutline, M1 dogfood/alpha, M2 private-beta, M3
+release-candidate, and M4 GA handoff records are read models behind a small event flow:
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
+- **Command** — `v1CutlineEvidence.RecordRequested` asks the release-program
+  owner aggregate to record or change an accepted gate.
+- **Event** — `v1CutlineEvidence.RecordAccepted` appends the parsed gate,
+  blocker ledger, accepted-risk register, cross-project handoffs, follow-up
+  ledger, and public-claim guards.
+- **Actor** — the V1 Release Program & Cutline owner aggregate applies evidence
+  events in order.
 - **Event store** — accepted events are appended to the platform event store as
   the durable source of truth.
 - **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
+  the current M0/M1/M2/M3/M4 cutline gate read model consumers query.
 - **Snapshot** — the accepted record is the snapshot of that projection.
 - **Read store** — downstream surfaces query that read store rather than the raw
   event log.

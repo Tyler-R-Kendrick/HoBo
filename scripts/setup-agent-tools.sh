@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Set up agent tooling in layers:
-#   1. common, harness-agnostic runtimes (Serena, headroom, SkillOpt, optional gbrain)
+#   1. common, harness-agnostic runtimes (Serena, headroom, RTK, SkillOpt, optional gbrain)
 #   2. selected supported-agent shims (Claude Code, Cursor, Codex, Copilot)
 #
 # Examples:
@@ -39,11 +39,84 @@ want_agent() { case ",$AGENT_FILTER," in *",$1,"*) return 0 ;; *) return 1 ;; es
 NPX() { env -u NODE_OPTIONS npx "$@"; }
 
 say "Probing runtimes"
-for c in node npx python3 pip3 uv serena headroom skillopt-train skillopt-sleep bun claude codex copilot; do
+for c in node npx pnpm python3 pip3 uv cargo gh curl tar brew serena headroom rtk tgrep skillopt-train skillopt-sleep bun claude codex copilot; do
   if have "$c"; then echo "  ok   $c"; else echo "  MISS $c"; fi
 done
 
 # Common layer: agent/harness-agnostic binaries and shared repo launchers.
+
+say "Search tools (microsoft/tgrep + ast-grep) -> common/devcontainer layer"
+if have tgrep; then
+  echo "  tgrep present ($(tgrep --version 2>/dev/null || echo '?'))"
+elif have gh && have tar; then
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) TGREP_TARGET="x86_64-unknown-linux-musl" ;;
+    Linux-aarch64|Linux-arm64) TGREP_TARGET="aarch64-unknown-linux-musl" ;;
+    Darwin-x86_64) TGREP_TARGET="x86_64-apple-darwin" ;;
+    Darwin-arm64) TGREP_TARGET="aarch64-apple-darwin" ;;
+    *) TGREP_TARGET="" ;;
+  esac
+  if [ -n "$TGREP_TARGET" ]; then
+    mkdir -p "$HOME/.local/bin" /tmp/tgrep-dl
+    rm -f /tmp/tgrep-dl/tgrep-*.tar.gz
+    gh release download --repo microsoft/tgrep --pattern "*${TGREP_TARGET}*.tar.gz" -D /tmp/tgrep-dl \
+      && tar -xzf /tmp/tgrep-dl/tgrep-*.tar.gz -C "$HOME/.local/bin" \
+      && echo "  installed tgrep release to $HOME/.local/bin" || echo "  tgrep release install FAILED"
+  else
+    echo "  SKIP: unsupported tgrep release platform $(uname -s)-$(uname -m)"
+  fi
+elif have cargo; then
+  cargo install --git https://github.com/microsoft/tgrep.git --locked tgrep-cli \
+    && echo "  installed tgrep via cargo" || echo "  tgrep install FAILED"
+elif have curl && have python3 && have tar; then
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) TGREP_TARGET="x86_64-unknown-linux-musl" ;;
+    Linux-aarch64|Linux-arm64) TGREP_TARGET="aarch64-unknown-linux-musl" ;;
+    Darwin-x86_64) TGREP_TARGET="x86_64-apple-darwin" ;;
+    Darwin-arm64) TGREP_TARGET="aarch64-apple-darwin" ;;
+    *) TGREP_TARGET="" ;;
+  esac
+  if [ -n "$TGREP_TARGET" ]; then
+    mkdir -p "$HOME/.local/bin" /tmp/tgrep-dl
+    TGREP_URL="$(
+      python3 - "$TGREP_TARGET" <<'PY'
+import json
+import sys
+import urllib.request
+
+needle = sys.argv[1]
+with urllib.request.urlopen("https://api.github.com/repos/microsoft/tgrep/releases/latest", timeout=20) as response:
+    data = json.load(response)
+print(next((asset["browser_download_url"] for asset in data.get("assets", []) if needle in asset.get("name", "") and asset.get("name", "").endswith(".tar.gz")), ""))
+PY
+    )"
+    if [ -n "$TGREP_URL" ]; then
+      curl -fsSL "$TGREP_URL" -o /tmp/tgrep-dl/tgrep.tar.gz \
+        && tar -xzf /tmp/tgrep-dl/tgrep.tar.gz -C "$HOME/.local/bin" \
+        && echo "  installed tgrep release to $HOME/.local/bin" || echo "  tgrep release install FAILED"
+    else echo "  tgrep release not found for $TGREP_TARGET"; fi
+  else
+    echo "  SKIP: unsupported tgrep release platform $(uname -s)-$(uname -m)"
+  fi
+else echo "  SKIP: gh/tar, cargo, or curl/python/tar missing for tgrep"; fi
+if have pnpm; then
+  pnpm exec ast-grep --version >/dev/null 2>&1 && echo "  ast-grep verified via pnpm" || echo "  ast-grep unavailable; run pnpm install"
+else echo "  SKIP: pnpm missing for ast-grep verification"; fi
+
+
+say "RTK (rtk-ai/rtk) -> token-compressing command proxy"
+if have rtk; then
+  echo "  rtk present ($(rtk --version 2>/dev/null || echo '?'))"
+elif have brew; then
+  brew install rtk && echo "  installed ($(rtk --version 2>/dev/null || echo '?'))" || echo "  rtk brew install FAILED"
+elif have cargo; then
+  cargo install --git https://github.com/rtk-ai/rtk \
+    && echo "  installed rtk via cargo" || echo "  rtk cargo install FAILED"
+elif have curl; then
+  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
+    && echo "  installed rtk to $HOME/.local/bin" || echo "  rtk install script FAILED"
+else echo "  SKIP: brew, cargo, or curl missing for rtk"; fi
+
 say "Serena (oraios/serena) -> uv tool + shared MCP wrapper"
 SERENA_BIN="$(command -v serena || true)"
 if have uv; then
@@ -101,7 +174,7 @@ if [ "$COMMON_ONLY" = "1" ]; then
   say "Agent-specific setup skipped (--common-only)"
   echo "  Next: rerun with --agent claude-code|cursor|codex|copilot when you know which client to configure."
   say "Done"
-  echo "Ensure these are on PATH: $HOME/.local/bin (headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
+  echo "Ensure these are on PATH: $HOME/.local/bin (rtk/headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
   exit 0
 fi
 
@@ -147,6 +220,16 @@ if want_agent codex; then
   fi
 fi
 
+
+say "RTK hooks -> selected coding agents"
+if have rtk; then
+  mkdir -p "$HOME/.claude" "$HOME/.cursor"
+  want_agent claude-code && { rtk init -g --auto-patch 2>/dev/null && echo "  claude-code: initialized" || echo "  claude-code: skipped / already initialized"; }
+  want_agent codex && { rtk init -g --codex 2>/dev/null && echo "  codex: initialized" || echo "  codex: skipped / already initialized"; }
+  want_agent cursor && { rtk init -g --agent cursor --auto-patch 2>/dev/null && echo "  cursor: initialized" || echo "  cursor: skipped / already initialized"; }
+  want_agent copilot && { rtk init -g --auto-patch 2>/dev/null && echo "  copilot: initialized via default hook" || echo "  copilot: skipped / already initialized"; }
+else echo "  SKIP: rtk missing; rerun common layer after installing it"; fi
+
 say "superpowers (obra/Superpowers) -> selected plugin marketplaces"
 for pair in "claude-code:claude" "codex:codex" "copilot:copilot"; do
   ag="${pair%%:*}"; cli="${pair##*:}"
@@ -160,5 +243,5 @@ done
 echo "  NOTE: superpowers skills load at SESSION START — open a fresh session to use them."
 
 say "Done"
-echo "Ensure these are on PATH: $HOME/.local/bin (headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
+echo "Ensure these are on PATH: $HOME/.local/bin (rtk/headroom/uv/serena/skillopt), $HOME/.bun/bin (gbrain)."
 echo "See AGENTS.md and docs/agent-tooling.md. Keys for gbrain/SkillOpt live runs go in .env (see .env.example)."

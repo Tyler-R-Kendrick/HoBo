@@ -126,3 +126,77 @@ Follow-up execution is allowed only for missing evidence. HOBO-471 owns release-
 legal/privacy signoff gaps, and HOBO-478 owns GA public legal/privacy signoff gaps. This gate does
 not draft final legal text, implement a legal workflow, enable billing, approve support tooling, or
 publish compliance claims.
+
+## M3 Release Candidate Evidence Gate
+
+HOBO-471 accepts release-candidate legal/privacy evidence only when the record stays narrower than
+paid GA, public regional legal approval, final DPA approval, or compliance certification. The
+executable proof lives in
+[`src/draft/legal-privacy-release-candidate-evidence-contract`](../../src/draft/legal-privacy-release-candidate-evidence-contract/README.md)
+and branch evidence is summarized in
+[`proofs/hobo-471-legal-privacy-release-candidate`](./proofs/hobo-471-legal-privacy-release-candidate/README.md).
+
+Required M3 evidence:
+
+- M0 checklist baseline remains accepted from
+  [`legal-privacy-terms-readiness-contract`](../../src/draft/legal-privacy-terms-readiness-contract/README.md).
+- M2 private beta legal/privacy evidence remains accepted and its release-candidate/GA gaps are
+  explicit.
+- Privacy release-candidate review records telemetry purpose, retention posture, data-class
+  boundaries, customer messaging, and beta-to-release-candidate limitations.
+- Terms release-candidate limitation records that release-candidate language is not paid GA, final
+  DPA, final privacy-policy, or regional legal approval.
+- Subprocessor/provider release-candidate register distinguishes confirmed, optional, mocked,
+  unsupported, and still-unconfirmed services.
+- Data retention and telemetry release-candidate boundaries consume tenant data lifecycle evidence
+  before customer data enters release-candidate workflows.
+- Customer assurance and support handoff routes questions to named owners without inventing
+  unsupported SLA, compliance, DPA, or provider promises.
+- Legal/privacy risk register maps blockers, accepted risks, mitigations, launch notes, and revisit
+  dates into the release cutline.
+
+Blockers and accepted risks remain visible:
+
+- Paid GA remains blocked until final terms, privacy notice, DPA, and regional notices are approved.
+- Enterprise assurance remains limited until subprocessor/provider evidence is complete.
+- Public security, privacy, compliance, provider, and paid-launch claims remain blocked unless the
+  owning evidence surface accepts them.
+
+Follow-up execution is allowed only for missing evidence. HOBO-478 owns GA public legal/privacy
+signoff gaps. This gate does not draft final legal text, implement a legal workflow, enable billing,
+approve support tooling, or publish compliance claims.
+
+## M4 GA Handoff Evidence Gate
+
+HOBO-478 accepts GA legal/privacy handoff evidence only when the public launch signoff remains an
+evidence record rather than final legal text, billing enablement, or broad compliance claim
+publication. The executable proof lives in
+[`src/draft/legal-privacy-ga-handoff-evidence-contract`](../../src/draft/legal-privacy-ga-handoff-evidence-contract/README.md)
+and branch evidence is summarized in
+[`proofs/hobo-478-legal-privacy-ga-handoff`](./proofs/hobo-478-legal-privacy-ga-handoff/index.md).
+
+Required M4 evidence:
+
+- The M0 checklist baseline remains accepted from
+  [`legal-privacy-terms-readiness-contract`](../../src/draft/legal-privacy-terms-readiness-contract/README.md).
+- The private beta baseline remains accepted from
+  [`legal-privacy-private-beta-evidence-contract`](../../src/draft/legal-privacy-private-beta-evidence-contract/README.md).
+- Final public terms/privacy/DPA signoff is recorded as evidence, not drafted or approved inside
+  this proof package.
+- Customer-assurance, subprocessor/provider, security/privacy claim, and release cutline owners
+  each have source-backed handoff evidence.
+- The release cutline reflects legal, privacy, customer-assurance, security, and release-owner
+  dependencies using v1-blocker-prefixed categories.
+- Parent HoBo v1 Release Readiness status is updated because this gate reduces launch risk.
+
+Blockers and accepted risks remain visible:
+
+- Scoped v1 GA public legal/privacy signoff is recorded as accepted evidence.
+- Localized notices, jurisdiction-specific expansion, and post-GA provider/subprocessor changes
+  remain accepted risks rather than hidden launch blockers.
+- Unsupported SOC2/GDPR/HIPAA/all-region/compliance-certified claims remain blocked unless a
+  separate owner evidence surface accepts them.
+
+Follow-up execution is allowed only for missing evidence. This M4 gate records no missing evidence
+and creates no follow-up issues. It does not draft final legal text, implement a legal workflow,
+enable billing, approve commercial terms, or publish unsupported compliance claims.

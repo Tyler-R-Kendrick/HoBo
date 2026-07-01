@@ -33,6 +33,10 @@ M1/M2/M3/M4 Audit Explorer work can fan out.
 
 ## Commands
 
+`@types/node` is declared in this package because `tsconfig.json` requests the
+Node type library and CI runs package typechecks without relying on hoisted
+transitive types.
+
 ```powershell
 npm.cmd --prefix src\draft\audit-explorer-scope-contract test
 npm.cmd --prefix src\draft\audit-explorer-scope-contract run typecheck

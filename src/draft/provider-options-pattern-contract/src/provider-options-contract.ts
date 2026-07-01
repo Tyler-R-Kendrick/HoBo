@@ -1,25 +1,104 @@
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
 export const CONTRACT_VERSION = "hobo.provider-options/v1";
 
+type ResourceKind = "data" | "component";
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
+type RequirementMode = "prefer" | "require";
+
+type RequirementOptions = {
+  prefer?: string;
+  require?: string;
+};
+
+type DatabaseOptions = RequirementOptions & {
+  engine?: string;
+};
+
+type ServiceOptions = RequirementOptions & {
+  workloadProfile?: string;
+};
+
+type RdsOptions = JsonObject & {
+  multiAz?: boolean;
+  backupRetentionDays?: number;
+};
+
+type FargateOptions = JsonObject & {
+  cpu?: number;
+};
+
+type AzureFlexibleServerOptions = JsonObject & {
+  haMode?: string;
+};
+
+type AzureContainerAppOptions = JsonObject & {
+  workloadProfile?: string;
+};
+
+type ProviderOption<K extends ResourceKind, V extends JsonObject> = {
+  __kind: "hobo.provider-option";
+  provider: string;
+  optionName: string;
+  annotationKey: string;
+  resourceKinds: readonly K[];
+  value: V;
+};
+
+type Requirement = {
+  mode: RequirementMode;
+  capability: string;
+};
+
+type LockInMarker = {
+  source: ".with()";
+  annotation: string;
+  provider: string;
+  path: string;
+  reason: string;
+};
+
+type ManifestResource = {
+  type: string;
+  port: string;
+  className: string;
+  requirement?: Requirement;
+  annotations?: {
+    with: Record<string, JsonValue>;
+  };
+  portability?: {
+    lockInMarkers: LockInMarker[];
+  };
+};
+
+type Manifest = {
+  schema: typeof MANIFEST_SCHEMA;
+  contract: typeof CONTRACT_VERSION;
+  resources: Record<string, ManifestResource>;
+};
+
+type AnyResourceHandle = ResourceHandle<"data"> | ResourceHandle<"component">;
+
 export const aws = {
-  rds(options) {
+  rds(options: RdsOptions): ProviderOption<"data", RdsOptions> {
     return providerOption("aws", "rds", ["data"], options);
   },
-  fargate(options) {
+  fargate(options: FargateOptions): ProviderOption<"component", FargateOptions> {
     return providerOption("aws", "fargate", ["component"], options);
   }
 };
 
 export const azure = {
-  flexibleServer(options) {
+  flexibleServer(options: AzureFlexibleServerOptions): ProviderOption<"data", AzureFlexibleServerOptions> {
     return providerOption("azure", "flexibleServer", ["data"], options);
   },
-  containerApp(options) {
+  containerApp(options: AzureContainerAppOptions): ProviderOption<"component", AzureContainerAppOptions> {
     return providerOption("azure", "containerApp", ["component"], options);
   }
 };
 
-export function database(name, options = {}) {
+export function database(name: string, options: DatabaseOptions = {}): ResourceHandle<"data"> {
   const { engine = "generic", prefer, require } = options;
   return new ResourceHandle({
     id: name,
@@ -31,7 +110,7 @@ export function database(name, options = {}) {
   });
 }
 
-export function service(name, options = {}) {
+export function service(name: string, options: ServiceOptions = {}): ResourceHandle<"component"> {
   return new ResourceHandle({
     id: name,
     kind: "component",
@@ -42,7 +121,7 @@ export function service(name, options = {}) {
   });
 }
 
-export function createManifest(resources) {
+export function createManifest(resources: readonly AnyResourceHandle[]): Manifest {
   const entries = resources.map((resource) => [resource.id, resource.toManifestResource()]);
   return {
     schema: MANIFEST_SCHEMA,
@@ -51,20 +130,36 @@ export function createManifest(resources) {
   };
 }
 
-export function resolvedProviderOptions(resource, providerKey) {
+export function resolvedProviderOptions(resource: ManifestResource | undefined, providerKey: string): Record<string, JsonValue> {
   const annotations = resource?.annotations?.with ?? {};
   return Object.fromEntries(
     Object.entries(annotations).filter(([annotationKey]) => annotationKey.startsWith(`${providerKey}.`))
   );
 }
 
-export function projectAgnosticResource(resource) {
+export function projectAgnosticResource(resource: ManifestResource): JsonValue {
   const { annotations: _annotations, portability: _portability, ...agnostic } = resource;
-  return sortKeys(agnostic);
+  return sortKeys(agnostic as JsonObject);
 }
 
-class ResourceHandle {
-  constructor({ id, kind, type, port, className, requirement }) {
+class ResourceHandle<K extends ResourceKind> {
+  readonly id: string;
+  readonly kind: K;
+  readonly type: string;
+  readonly port: string;
+  readonly className: string;
+  readonly requirement: Requirement | undefined;
+  private providerAnnotations: Record<string, JsonValue>;
+  private lockInMarkers: LockInMarker[];
+
+  constructor({ id, kind, type, port, className, requirement }: {
+    id: string;
+    kind: K;
+    type: string;
+    port: string;
+    className: string;
+    requirement: Requirement | undefined;
+  }) {
     this.id = id;
     this.kind = kind;
     this.type = type;
@@ -75,14 +170,14 @@ class ResourceHandle {
     this.lockInMarkers = [];
   }
 
-  with(...options) {
+  with(...options: ProviderOption<K, JsonObject>[]): this {
     for (const option of options) {
       this.addProviderOption(option);
     }
     return this;
   }
 
-  addProviderOption(option) {
+  addProviderOption(option: ProviderOption<K, JsonObject>): void {
     if (!option || option.__kind !== "hobo.provider-option") {
       throw new TypeError("with(...) accepts provider option builders only");
     }
@@ -97,8 +192,8 @@ class ResourceHandle {
     this.lockInMarkers = buildLockInMarkers(this.id, this.providerAnnotations);
   }
 
-  toManifestResource() {
-    const resource = {
+  toManifestResource(): ManifestResource {
+    const resource: ManifestResource = {
       type: this.type,
       port: this.port,
       className: this.className
@@ -121,7 +216,12 @@ class ResourceHandle {
   }
 }
 
-function providerOption(provider, optionName, resourceKinds, value) {
+function providerOption<K extends ResourceKind, V extends JsonObject>(
+  provider: string,
+  optionName: string,
+  resourceKinds: readonly K[],
+  value: V
+): ProviderOption<K, V> {
   if (!isPlainObject(value)) {
     throw new TypeError(`${provider}.${optionName} options must be an object`);
   }
@@ -136,16 +236,16 @@ function providerOption(provider, optionName, resourceKinds, value) {
   };
 }
 
-function toRequirement({ prefer, require }) {
-  if (prefer && require) {
+function toRequirement({ prefer, require: required }: RequirementOptions): Requirement | undefined {
+  if (prefer && required) {
     throw new TypeError("prefer and require are mutually exclusive");
   }
   if (prefer) return { mode: "prefer", capability: prefer };
-  if (require) return { mode: "require", capability: require };
+  if (required) return { mode: "require", capability: required };
   return undefined;
 }
 
-function mergeOptionValues(left, right, path) {
+function mergeOptionValues(left: JsonValue, right: JsonValue, path: string): JsonValue {
   if (!isPlainObject(left) || !isPlainObject(right)) {
     if (Object.is(left, right)) return left;
     throw new TypeError(`conflicting provider option ${path}`);
@@ -162,11 +262,11 @@ function mergeOptionValues(left, right, path) {
   return merged;
 }
 
-function buildLockInMarkers(resourceId, annotations) {
+function buildLockInMarkers(resourceId: string, annotations: Record<string, JsonValue>): LockInMarker[] {
   return Object.keys(annotations)
     .sort()
     .map((annotationKey) => {
-      const [provider] = annotationKey.split(".");
+      const provider = annotationKey.split(".")[0] ?? annotationKey;
       return {
         source: ".with()",
         annotation: annotationKey,
@@ -177,16 +277,16 @@ function buildLockInMarkers(resourceId, annotations) {
     });
 }
 
-function isPlainObject(value) {
+function isPlainObject(value: unknown): value is JsonObject {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function sortKeys(value) {
+function sortKeys<T extends JsonValue>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map(sortKeys);
+    return value.map((item) => sortKeys(item)) as T;
   }
   if (!isPlainObject(value)) {
     return value;
   }
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])])) as T;
 }

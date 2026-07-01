@@ -1,39 +1,25 @@
-# Data Plane Event Sourcing Cqrs Reactivity — Architecture Evidence
+# Data Plane Reference Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+The reference architecture composes the Data Plane epic into a single vertical slice:
 
-## Schema And Constraints
+1. A typed domain event body is compiled from a WIT-record fixture and round-tripped through the protobuf wire contract.
+2. A CQRS command appends `order.Placed` through the mocked EventStore boundary.
+3. The projection fold proves replay/live equivalence and feeds both Reactor and GraphQL facade reads.
+4. Projection sink decisions stay behind mocked relational/document/native boundaries and expose `data.Changed`.
+5. Search remains the query side of data: in-core full text is reactive, vector/graph extensions run as steps, and local embed keeps air-gapped Camps in boundary.
+6. Adversarial behavior fails closed: projection lag is labeled, divergent snapshots rebuild from zero, poison events emit quarantine facts, auth/flag read-set changes repush, and crypto-shred erasure tombstones forgettable fields.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## Boundary Map
 
-## Parse, Don't Validate
+| Boundary | Consumer | Provider | Mock strategy | Notes |
+|---|---|---|---|---|
+| EventStore append | CQRS aggregate runtime | Camp EventStore | Pact fixture + in-memory command runtime | Exactly-once effect over expected seq. |
+| Projection sink | Projection engine | Relational/document/native sinks | Deterministic sink summaries | Change-feed emits `data.Changed`. |
+| Subscription gateway | Reactor | Gateway/Streamer | Captured push collector | Monotonic per-stream seq vector. |
+| GraphQL facade | Snapshop client | Materialization snapshot facade | In-memory GraphQL runtime | Tenant and scope checked before read. |
+| Search/embed | Search materialization | Full-text/vector/embed providers | In-memory search and local embed fixtures | Vector/graph stay off reactive path. |
+| Governance/erasure | Privacy projection | Governance/erasure service | Crypto-shred POC keyring/log | Erasure appends tombstones, never rewrites prior events. |
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Deferred Provider Work
 
-## Event Architecture
-
-The package's accepted record is the read model behind a small event flow:
-
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
-
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+Provider-side Pact verification is deferred until real EventStore, sink, gateway, GraphQL, search, and governance services exist. This PR pins the consumer-driven interactions and mocked provider strategies so later provider work can verify against the same inventory.

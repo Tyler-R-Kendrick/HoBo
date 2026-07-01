@@ -13,6 +13,10 @@ Executable proof lives in
 [`src/draft/dogfood-yard-acceptance-contract`](../../src/draft/dogfood-yard-acceptance-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-403-dogfood-yard-acceptance`](./proofs/hobo-403-dogfood-yard-acceptance/README.md).
+M1 dogfood/alpha evidence proof lives in
+[`src/draft/dogfood-yard-m1-evidence-contract`](../../src/draft/dogfood-yard-m1-evidence-contract/README.md)
+and is summarized in
+[`proofs/hobo-455-dogfood-yard-m1-evidence`](./proofs/hobo-455-dogfood-yard-m1-evidence/README.md).
 
 ## M0 Acceptance Record
 
@@ -97,3 +101,47 @@ private local setup, hidden customer data, or unbounded "it worked once" claims.
 M1/M2/M3/M4 dogfood evidence, admin UI, bootstrap installer, and reliability implementation issues
 must wait until this M0 evidence scope is accepted. This branch records the gate and its executable
 guard; it does not create follow-up implementation issues.
+
+## M1 Dogfood/Alpha Evidence Gate
+
+HOBO-455 records the first follow-up evidence gate for V1 Dogfood Yard & Hosted Operations. The M1
+record requires scenario fixture manifests, safe telemetry bundles, rollback or recovery paths, a
+gap classification ledger, and a release-cutline dependency map for the hosted preview,
+self-hosted seed handover, upgrade/rollback, and incident restore scenarios. The evidence gate
+routes missing proof to beta blockers, launch notes, or owning follow-up work; it does not build
+the Yard runtime, admin UI, bootstrap installer, observability pipeline, release notes, or release
+cutline workflow.
+
+## Hosted Broker GA Handoff Link
+
+HOBO-530 consumes Dogfood Yard evidence as a deploy-readiness link for the hosted broker. Resolution
+Receipts prove that Yard can consume broker authority from signed manifest, environment, and catalog
+digests. Resolution Rejections prove stale, incompatible, ambiguous, or unsupported broker mappings
+fail closed before Yard planning.
+
+This link does not mark the hosted broker live GA-ready on its own. Dogfood evidence remains an
+input to release-cutline and broker handoff review, and cannot be replaced by local fixtures, docs,
+or manually edited receipts.
+
+## M4 GA Handoff Evidence
+
+Source issue: HOBO-476.
+
+Executable proof lives in
+[`src/draft/dogfood-yard-ga-handoff-evidence-contract`](../../src/draft/dogfood-yard-ga-handoff-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-476-dogfood-yard-ga-handoff`](./proofs/hobo-476-dogfood-yard-ga-handoff/index.md).
+
+The M4 gate records Dogfood Yard and hosted operations handoff evidence for:
+
+- accepted Dogfood Yard M0/M1 evidence plus current M2/M3 predecessor review state;
+- hosted broker deploy-readiness links from HOBO-530;
+- safe smoke, telemetry, support/debug, rollback, restore, and self-host handoff evidence;
+- release-cutline dependencies across operations-readiness, release-cutline, support,
+  documentation, reliability, bootstrap, and broker owner lanes; and
+- the existing HOBO-475 release-program GA handoff follow-up for final go/no-go evidence.
+
+The accepted M4 handoff lowers launch risk for Dogfood Yard evidence review, but it does not publish
+public GA readiness, production recovery, SLA, or live hosted-operations claims. Yard runtime,
+hosted operations runtime, admin UI, bootstrap installer, support tooling, status-page publication,
+release automation, provider operations, and customer-data handling remain outside this branch.

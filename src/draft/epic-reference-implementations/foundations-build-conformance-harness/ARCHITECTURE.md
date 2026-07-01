@@ -1,39 +1,44 @@
-# Foundations Build Conformance Harness — Architecture Evidence
+# Foundations Reference Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Overview
 
-## Schema And Constraints
+The Foundations epic supplies the first trust boundary for the rest of HoBo: package layout, shared contracts, WIT generation, component build artifacts, CI gates, artifact trust, and design hardening.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+This reference implementation keeps those concerns in one vertical path:
 
-## Parse, Don't Validate
+1. `WorkspaceSkeletonBoundary` validates the pnpm/Turborepo skeleton and adapter import rules.
+2. `CoreContractBoundary` validates the `@hobo/core` manifest, event envelope, and public type surface.
+3. `WitToolchainBoundary` validates the `hobo:sdk` WIT skeleton and pinned generator lock.
+4. `ComponentizeBuildBoundary` builds and validates the `hello-bindle` wasm component and OCI descriptor.
+5. `ArtifactTrustBoundary` verifies signed artifact provenance before Matching visibility.
+6. `CiFabricBoundary` proves PR gates plus opt-in E2E with mocked OIDC and teardown.
+7. `HardeningTraceabilityBoundary` proves package namespace and ADR/Plan traceability alignment.
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Service Boundary Map
 
-## Event Architecture
+| Boundary | Kept from POCs | Revised for reference architecture | Mock strategy |
+|---|---|---|---|
+| WorkspaceSkeletonBoundary | Required packages, scripts, boundary import rejection | Treated as the first vertical slice rather than a standalone package proof | In-memory skeleton fixture |
+| CoreContractBoundary | Capability Manifest bundle, EventEnvelope, public API guard | Cross-boundary event mappings are surfaced as simulation output | Fixture manifest and local declarations |
+| WitToolchainBoundary | `hobo:sdk@0.1.0`, generator lock, vendored deps | Runtime primitive contents stay out of Foundations scope | Checked-in WIT and lock file |
+| ComponentizeBuildBoundary | deterministic source collection, wasm validation, OCI descriptor | Real toolchain execution remains out of scope | Local fixture build bytes |
+| CiFabricBoundary | PR gates, OIDC, hello-bindle E2E, teardown, sweeper | Live cloud execution is replaced by deterministic sandbox events | In-memory GitHub/OIDC/sandbox mocks |
+| ArtifactTrustBoundary | signing, provenance, conformance, install verification | Registry listing lifecycle and transparency log are out of scope | Fixture Ed25519 key and trust policy |
+| HardeningTraceabilityBoundary | CLI/API/namespace/traceability hardening | Reads docs as aggregate evidence, not a product feature | Local markdown docs |
 
-The package's accepted record is the read model behind a small event flow:
+## Personas and Vertical Slices
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+| Persona | Scenario | Vertical slice | Acceptance |
+|---|---|---|---|
+| Platform engineer | Bootstrap a workspace skeleton | `workspace-contract` | Required packages/scripts exist and adapter cross-imports are denied |
+| Provider author | Compile against shared contracts | `contract-surface` | Core schema, EventEnvelope mappings, and WIT lock validate |
+| Application developer | Build a deterministic component | `artifact-build` | wasm component validates and smoke invocation exits 0 |
+| SecOps reviewer | Verify artifact trust | `trust-gate` | Signed artifact is available to Matching, not auto-selected |
+| Maintainer | Run CI and E2E gates | `ci-conformance` | OIDC, teardown, sweeper, quarantine, and cost gates are covered |
+| Design maintainer | Keep docs aligned | `hardening-traceability` | PLAN-10 and ADR coverage remain linked to issue families |
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+## Follow-ups
+
+- Provider-side Pact verification should be added when production providers exist.
+- HOBO-5's standalone PR remains separate; this rollup consumes its conformance-harness behavior as reference architecture evidence.
+- WIT runtime adapter certification remains owned by the WIT Runtime epic, not this Foundations rollup.

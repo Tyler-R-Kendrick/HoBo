@@ -143,3 +143,66 @@ into public SLA promises. M3/M4 follow-ups are limited to missing release-candid
 evidence and GA support handoff evidence. Support runtime services, ticket queues, status-page
 publication, live support operations, customer-data access, and commercial terms remain out of this
 branch.
+
+## M3 Release Candidate Evidence
+
+Source issue: HOBO-474.
+
+Executable proof lives in
+[`src/draft/launch-support-release-candidate-evidence-contract`](../../src/draft/launch-support-release-candidate-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-474-launch-support-release-candidate`](./proofs/hobo-474-launch-support-release-candidate/index.md).
+
+The M3 gate records seven support evidence items:
+
+- private beta support baseline from HOBO-467;
+- release-candidate support drill evidence owned by Launch Support;
+- incident-command handoff rehearsal owned by Operators/SRE;
+- customer-update redaction rehearsal owned by Public Status Page & Incident Communication;
+- security-sensitive support escalation route owned by Security Verification;
+- release-cutline support signoff owned by V1 Release Program & Cutline;
+- missing GA support handoff evidence owned by HOBO-481.
+
+The accepted M3 state keeps GA support commitments blocked until HOBO-481 records final handoff
+evidence. It carries manual release-candidate support drill and redaction rehearsal risks without
+creating support tooling, ticket automation, status-page publication, live customer operations,
+customer-data access, commercial support terms, customer-facing SLA guarantees, or GA support
+readiness claims.
+
+## M4 GA Handoff Evidence
+
+Source issue: HOBO-481.
+
+Executable proof lives in
+[`src/draft/launch-support-ga-handoff-evidence-contract`](../../src/draft/launch-support-ga-handoff-evidence-contract/README.md).
+Branch evidence is summarized in
+[`proofs/hobo-481-launch-support-ga-handoff`](./proofs/hobo-481-launch-support-ga-handoff/index.md).
+
+The M4 gate records eight support evidence items:
+
+- M0 launch support escalation baseline from this support record;
+- private beta support baseline from HOBO-467;
+- release-candidate support drill evidence from HOBO-474;
+- GA support owner signoff owned by Launch Support;
+- GA support SLA/channel boundary owned by Support SLA Channels;
+- incident communication redaction handoff owned by Public Status Page & Incident Communication;
+- security-sensitive support data route owned by Security Verification;
+- release-cutline GA support signoff owned by V1 Release Program & Cutline.
+
+The accepted M4 state clears the HOBO-474 GA support handoff gap, reduces launch risk for the
+parent HoBo v1 Release Readiness initiative, and leaves no missing-evidence follow-up issue in this
+gate. It preserves accepted risks for manual support owner signoff, customer-data access remaining
+behind security approval, and public status-page publication staying with the status-page owner.
+Support runtime services, ticket queues, status-page publication, live customer-data access,
+customer-facing SLA approval, paid support terms, and unsupported GA support claims remain out of
+scope.
+
+## Hosted Broker Support/Debug Handoff
+
+HOBO-530 adds a broker-specific support/debug input for GA handoff review. Support can route
+Resolution Receipt and Resolution Rejection evidence when the bundle names manifest digest,
+Broker Environment snapshot, catalog snapshot, decision/reason code, and redaction status.
+
+This handoff does not grant support access to customer payloads, provider credentials, broker
+runtime state, or admin mutation paths. If a broker question requires those surfaces, Support routes
+the gap to the owning implementation project instead of promoting a GA support claim.

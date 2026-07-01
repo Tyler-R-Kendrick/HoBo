@@ -29,7 +29,7 @@ Naming: `hobo:sdk` is the WIT contract/package for app primitives and capability
 
 | Surface | Package boundary | Contract tier | Implementation issue | Conformance issue / suite |
 |---|---|---|---|---|
-| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-532 / HOBO-533 / HOBO-534 / HOBO-535 / HOBO-536 / HOBO-537 / HOBO-538 | HOBO-32 / `@hobo/conformance/sdk` |
+| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-531 / HOBO-532 / HOBO-533 / HOBO-534 / HOBO-535 / HOBO-536 / HOBO-537 / HOBO-538 | HOBO-32 / `@hobo/conformance/sdk` |
 | `.allow(...verbs)` | app idiom layer: `@hobo/bindles`; WIT-owned verb set in `hobo:sdk` | language idiom lowering + manifest IR | HOBO-70 | HOBO-32 / `@hobo/conformance/sdk` |
 | `connector(name)` | `@hobo/bindles` | language idiom lowering + manifest IR | HOBO-43 | HOBO-32 / `@hobo/conformance/sdk` |
 | `config(...)`, `secretRef(...)`, `env(...)`, `fromBinding(...)` | `@hobo/bindles` | app config reference lowering + manifest IR | HOBO-40 | HOBO-32 / `@hobo/conformance/sdk` |

@@ -1,39 +1,41 @@
-# Networking Connectivity Dns Relay — Architecture Evidence
+# Networking Reference Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Overview
 
-## Schema And Constraints
+The epic architecture is a policy-first networking plane. Authoring and planning produce a connectivity intent; the reference implementation folds Yard topology, selects the lowest legal tier, enforces data-path policy, and drives DNS, gateway, Relay, and tenant ingress through mocked service boundaries.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## Vertical Slice Map
 
-## Parse, Don't Validate
+| Slice | Persona | Inputs | Boundary decisions | Observable proof |
+|---|---|---|---|---|
+| Secure cross-cloud connectivity fabric | Platform engineer | Bind edge, Yard manifests, mTLS fixture, policy decision | Tier 3 private interconnect, policy ceiling, mTLS, internal service discovery, Junction mirrored halves | `crossCloudBind.outcome = deployable` |
+| Safe custom-domain and gateway promotion | Domain operator | Domain record, DNS evidence, ACME challenge, gateway route, cost inputs | Shadow DNS only, four validation checks, ACME and private ACME, weighted routing, cost routing single-writer refusal | `domainPromotion.validation.status = validated` and `liveZoneWrites = 0` |
+| Outbound-only Relay execution | SecOps engineer | Relay spec, policy decisions, private work request | Outbound TCP 443 attach, SVID mTLS, target-id routing, no forward proxy, no credential egress | `relay.status = attached` and denial taxonomy |
+| Tenant-aware ingress | Application operator | Tenant routing table, request host/path/JWT | Tenant claims before handler, placement selection, mismatch denial | `tenantIngress.resolved.ctx.tenant = tenant-alpha` |
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Service Boundaries
 
-## Event Architecture
+| Boundary | Consumer | Provider role | Mock strategy |
+|---|---|---|---|
+| ConnectivityTierSelector | Reference service | Selects connectivity tier from bind edge | Existing `connectivity-tier-ir-contract` module |
+| ConnectivityPolicyGate | Reference service | Enforces tier ceilings, residency, and override rules | Existing `connectivity-policy-enforcement-contract` module |
+| IdentityMtlsDataPath | Reference service | Validates SVID keyed transport | Existing `mtls-data-path-contract` module |
+| YardTopologyManifest | Reference service | Projects Yard topology and content hash | Existing `yard-topology-manifest-contract` module |
+| JunctionConnectivityPlanner | Reference service | Folds manifests into per-Yard halves | Existing `junction-connectivity-plan-contract` module |
+| DnsShadowPort | Domain orchestrator | Stages DNS before live mutation | In-memory adapter from `hobo-dns-port-contract` |
+| DomainValidationGate | Domain orchestrator | Runs multi-vantage, TTL, ACME, health checks | Existing validation gate module |
+| CertificateAuthority | Domain orchestrator | Issues public and private DNS-01 certificates | Fixture identity CA and private ACME endpoint |
+| GatewayTrafficRouter | Domain orchestrator and tenant ingress | Terminates TLS and routes traffic | Existing gateway realization module |
+| CostRoutingLedger | Routing planner | Checks single-writer cost-routing eligibility | Existing cost-routing eligibility module |
+| HoBoRelayPrivateExecutor | Relay controller | Executes private scoped work | Existing Relay contract module |
+| TenantRoutingClaims | Gateway ingress | Resolves tenant context before handler | Existing tenant routing module |
 
-The package's accepted record is the read model behind a small event flow:
+## Contract Strategy
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+Pact files under `contracts/pacts/` are consumer-driven boundary fixtures. They intentionally verify request/response or message compatibility only. Business logic remains in focused POC modules and the reference tests.
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+Provider verification is marked `mocked_provider_unavailable` because the selected epic still lives in reference architecture space. This is not a missing boundary: every service boundary has a contract fixture and a simulation assertion.
+
+## Scope Control
+
+The implementation does not create production networking providers, live DNS changes, live ACME orders, real Relay sockets, tenant databases, or cross-epic Identity/Policy features. Identity, policy, reliability, and control-plane POCs are consumed only as mocked boundaries where the Networking epic crosses them.

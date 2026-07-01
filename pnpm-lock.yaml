@@ -350,6 +350,8 @@ importers:
 
   src/draft/exp-proofs/vibe-troubleshooting-decision-trees: {}
 
+  src/draft/exp-proofs/vibe-topology-status-prototype: {}
+
   src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract: {}
 
   src/draft/exp-proofs/workspace-activation-telemetry-contract: {}

@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-topology-status-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-topology-status-prototype/test/vibe-topology-status-prototype.test.ts"
+  }
+}

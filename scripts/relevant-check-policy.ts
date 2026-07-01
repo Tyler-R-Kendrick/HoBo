@@ -5,6 +5,7 @@ export type Check = { command: string; args: string[]; reason: string; serial?: 
 export type RelevantCheckPolicyOptions = {
   files: string[];
   base: string;
+  workspaceTestFiles?: string[];
   staged?: boolean;
   all?: boolean;
   includeBuild?: boolean;
@@ -26,6 +27,18 @@ export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
   const match = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
   return match ? `src/draft/${match[1]}/${match[2]}` : undefined;
+}
+
+function workspaceTestRelevant(file: string) {
+  const normalized = file.replaceAll("\\", "/");
+  const workspace = workspaceFor(normalized);
+  if (!workspace) return false;
+
+  const relative = normalized.slice(workspace.length + 1);
+  return /^(src|test|tests|type-tests|features|contracts|simulation|scripts)\//u.test(relative)
+    || /^(package|package-lock|tsconfig(?:\.[^.]+)?)\.json$/u.test(relative)
+    || /^(pnpm-lock\.yaml|turbo\.json)$/u.test(relative)
+    || /\.(?:proto|cue|pact\.json)$/u.test(relative);
 }
 
 function defaultWorkspacePackageExists(workspace: string) {
@@ -63,13 +76,14 @@ function chunkTurboWorkspaceTests(workspaces: string[]) {
 
 export function selectRelevantChecks(options: RelevantCheckPolicyOptions): RelevantCheckPolicy {
   const files = options.files.map((file) => file.replaceAll("\\", "/"));
+  const workspaceTestFiles = (options.workspaceTestFiles ?? options.files).map((file) => file.replaceAll("\\", "/"));
   const staged = Boolean(options.staged);
   const includeBuild = Boolean(options.includeBuild);
   const rootPackageJsonScriptsOnlyChanged = Boolean(options.rootPackageJsonScriptsOnlyChanged);
   const turboAvailable = options.turboAvailable !== false;
   const workspacePackageExists = options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
-  const workspaces = [...new Set(files.map(workspaceFor).filter((value): value is string => Boolean(value)))]
+  const workspaces = [...new Set(workspaceTestFiles.filter(workspaceTestRelevant).map(workspaceFor).filter((value): value is string => Boolean(value)))]
     .filter(workspacePackageExists);
   const touched = (prefixes: string[]) => files.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const touchedAny = (patterns: RegExp[]) => files.some((file) => patterns.some((pattern) => pattern.test(file)));

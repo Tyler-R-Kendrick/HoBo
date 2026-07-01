@@ -12,6 +12,11 @@ const all = args.has("--all");
 const explain = args.has("--explain");
 const includeBuild = args.has("--build");
 
+type ChangedFileRecord = {
+  path: string;
+  status: string;
+};
+
 function commandForPlatform(command: string, commandArgs: string[]) {
   if (process.platform === "win32" && command === "pnpm") {
     return {
@@ -86,10 +91,34 @@ function capture(command: string, commandArgs: string[]) {
   return result.stdout.trim();
 }
 
-function changedFiles() {
-  if (all) return capture("git", ["ls-files"]).split(/\r?\n/).filter(Boolean);
-  if (staged) return capture("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]).split(/\r?\n/).filter(Boolean);
-  return capture("git", ["diff", "--name-only", "--diff-filter=ACMR", diffBase, "HEAD"]).split(/\r?\n/).filter(Boolean);
+function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
+  return raw
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const [status, firstPath, secondPath] = line.split("\t");
+      return { status, path: secondPath ?? firstPath };
+    })
+    .filter((record) => Boolean(record.path));
+}
+
+function changedFileRecords(): ChangedFileRecord[] {
+  if (all) {
+    return capture("git", ["ls-files"])
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((file) => ({ status: "M", path: file }));
+  }
+  if (staged) {
+    return parseChangedFileRecords(capture("git", ["diff", "--cached", "--name-status", "--find-renames=100%", "--diff-filter=ACMR"]));
+  }
+  return parseChangedFileRecords(capture("git", ["diff", "--name-status", "--find-renames=100%", "--diff-filter=ACMR", diffBase, "HEAD"]));
+}
+
+function workspaceTestFiles(records: ChangedFileRecord[]) {
+  return records
+    .filter((record) => record.status !== "R100")
+    .map((record) => record.path);
 }
 
 function stableJson(value: unknown): string {
@@ -118,7 +147,8 @@ function rootPackageJsonScriptsOnlyChanged() {
 }
 
 const diffBase = capture("git", ["merge-base", base, "HEAD"]) || base;
-const files = changedFiles();
+const records = changedFileRecords();
+const files = records.map((record) => record.path);
 if (files.length === 0) {
   console.log("No changed files; skipping relevant checks.");
   process.exit(0);
@@ -128,6 +158,7 @@ const turboAvailable = Boolean(capture("pnpm", ["exec", "turbo", "--version"]));
 const { checks, scopes } = selectRelevantChecks({
   files,
   base,
+  workspaceTestFiles: workspaceTestFiles(records),
   staged,
   all,
   includeBuild,

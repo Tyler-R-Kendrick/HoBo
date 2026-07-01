@@ -83,6 +83,29 @@ test("draft package files select workspace tests when package metadata exists", 
   assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), true);
 });
 
+test("draft package README-only changes do not select workspace tests", () => {
+  const { checks, workspaces } = plan(
+    ["src/draft/technical-proofs/example-proof/README.md"],
+    { workspacePackageExists: (workspace: string) => workspace === "src/draft/technical-proofs/example-proof" },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), false);
+});
+
+test("move-only draft package files can be excluded from workspace tests", () => {
+  const { checks, workspaces } = plan(
+    ["src/draft/technical-proofs/example-proof/src/index.ts"],
+    {
+      workspacePackageExists: (workspace: string) => workspace === "src/draft/technical-proofs/example-proof",
+      workspaceTestFiles: [],
+    },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), false);
+});
+
 test("draft Pact changes stay on workspace tests instead of selecting global contract sweep", () => {
   const { checks } = plan([
     "src/draft/technical-proofs/broker-receipt-integrity-contract/architecture/pacts/broker_receipt_integrity.pact.json",

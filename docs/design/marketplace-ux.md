@@ -147,6 +147,18 @@ the result, and which adjacent initiatives remain out of scope.
 | Support handoff export | Support operator | Support handoff | Blocked, deprecated, yanked, unsupported, and lifecycle messages have owner and support-visible evidence. |
 | Scope boundary register | Release owner | Design record | Live marketplace UI, install runtime, registry, monetization, publisher portal, scanner, policy, and support tooling stay out. |
 
+HOBO-547 branch evidence for the trust-warning, installable-with-evidence,
+policy-block, deprecated-guidance, yanked-support-route, and hidden-listing copy
+states lives in
+[`src/draft/exp-proofs/vibe-marketplace-trust-copy-states`](../../src/draft/exp-proofs/vibe-marketplace-trust-copy-states/README.md)
+and
+[`proofs/vibe-marketplace-trust-copy-states`](./proofs/vibe-marketplace-trust-copy-states/README.md).
+It is a copy-state proof only; production UI, publisher portal UI, approval
+services, scanners, policy engines, notification delivery, support queues, and
+unsupported launch claims remain out of scope. The proof consumes accepted
+HOBO-577 quickstart fixture ids before marketplace copy can describe preview,
+policy-blocked, installable, deprecated, yanked, or hidden listing states.
+
 ## Follow-Up Gate
 
 M1/M2/M3/M4 marketplace screen, browse/search, install-intent, trust-warning, org-catalog filter,

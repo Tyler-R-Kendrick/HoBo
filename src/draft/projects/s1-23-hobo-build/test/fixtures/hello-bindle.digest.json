@@ -1,0 +1,6 @@
+{
+  "service": "hello-bindle",
+  "digest": "sha256:3810bde887b5e8d763dca98e0f6c725e0c5d72d54cdac600d8cb7443b9c282d7",
+  "sourceDateEpoch": "2026-01-01T00:00:00.000Z",
+  "witWorld": "hobo:examples/hello-bindle@0.1.0/service"
+}

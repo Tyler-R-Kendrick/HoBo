@@ -3,6 +3,11 @@
 HOBO-156 is proven by the focused POC at
 [`src/draft/technical-proofs/hobo-build-cli-contract`](../../../../src/draft/technical-proofs/hobo-build-cli-contract/README.md).
 
+**S1-23 draft rollup (HOBO-613):** integrated project POC at
+[`src/draft/projects/s1-23-hobo-build`](../../../../src/draft/projects/s1-23-hobo-build/README.md)
+composes build + codegen + componentize proofs with digest parity against the
+golden `hello-bindle` fixture. Promotes to `packages/cli/` when S0-07/S1-20 merge.
+
 ## Acceptance Evidence
 
 - `hobo build emits wasm and OCI fallback artifacts with JSON digests` proves

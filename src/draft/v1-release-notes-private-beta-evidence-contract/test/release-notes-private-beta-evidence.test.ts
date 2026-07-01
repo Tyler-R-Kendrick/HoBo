@@ -85,3 +85,31 @@ test("M2 private beta gate completes only when all required evidence is accepted
 
   assert.equal(canCompletePrivateBetaGate(invalid), false);
 });
+
+test("malformed evidence payloads fail closed without throwing", () => {
+  const record = assertReleaseNotesPrivateBetaEvidence(RELEASE_NOTES_PRIVATE_BETA_EVIDENCE);
+  const invalid = structuredClone(record) as unknown as {
+    requiredEvidence: unknown[];
+    releaseCutline: { dependencies: unknown };
+    followUps: unknown;
+  };
+  invalid.requiredEvidence = [
+    null,
+    {
+      ...record.requiredEvidence[0],
+      status: "pending-review"
+    }
+  ];
+  invalid.releaseCutline.dependencies = {};
+  invalid.followUps = {};
+
+  assert.doesNotThrow(() => validateReleaseNotesPrivateBetaEvidence(invalid));
+  const result = validateReleaseNotesPrivateBetaEvidence(invalid);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /requiredEvidence\[0\] must be an object/);
+  assert.match(result.errors.join("\n"), /release-notes-private-beta-outline must use a valid evidence status/);
+  assert.match(result.errors.join("\n"), /releaseCutline\.dependencies must be an array/);
+  assert.match(result.errors.join("\n"), /followUps must be an array/);
+  assert.equal(canCompletePrivateBetaGate(invalid), false);
+});

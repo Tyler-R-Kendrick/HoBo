@@ -194,9 +194,12 @@ export const RELEASE_NOTES_PRIVATE_BETA_EVIDENCE: ReleaseNotesPrivateBetaEvidenc
 };
 
 export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: boolean; errors: string[] } {
-  const record = input as Partial<ReleaseNotesPrivateBetaEvidenceRecord>;
+  const record = isRecord(input) ? input as Partial<ReleaseNotesPrivateBetaEvidenceRecord> : {};
   const errors: string[] = [];
 
+  if (!isRecord(input)) {
+    errors.push("evidence record must be an object");
+  }
   if (record.issue !== "HOBO-466") {
     errors.push("issue must be HOBO-466");
   }
@@ -207,8 +210,19 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     errors.push("milestone gate must be M2 Private beta proof");
   }
 
-  const requiredEvidence = Array.isArray(record.requiredEvidence) ? record.requiredEvidence : [];
+  const requiredEvidence = objectArray(record.requiredEvidence, "requiredEvidence", errors) as Partial<RequiredEvidence>[];
   const evidenceById = new Map(requiredEvidence.map((evidence) => [evidence.id, evidence]));
+  const seenEvidenceIds = new Set<unknown>();
+  for (const evidence of requiredEvidence) {
+    const evidenceLabel = evidence.id ?? "<missing evidence>";
+    if (seenEvidenceIds.has(evidence.id)) {
+      errors.push(`duplicate required evidence: ${String(evidenceLabel)}`);
+    }
+    seenEvidenceIds.add(evidence.id);
+    if (!isEvidenceStatus(evidence.status)) {
+      errors.push(`${String(evidenceLabel)} must use a valid evidence status`);
+    }
+  }
   for (const evidenceId of REQUIRED_PRIVATE_BETA_EVIDENCE) {
     const evidence = evidenceById.get(evidenceId);
     if (!evidence) {
@@ -226,7 +240,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
-  const blockers = Array.isArray(record.blockers) ? record.blockers : [];
+  const blockers = objectArray(record.blockers, "blockers", errors) as Partial<RecordedBlocker>[];
   if (blockers.length === 0) {
     errors.push("blockers must be recorded even when none are open");
   }
@@ -236,7 +250,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
-  const acceptedRisks = Array.isArray(record.acceptedRisks) ? record.acceptedRisks : [];
+  const acceptedRisks = objectArray(record.acceptedRisks, "acceptedRisks", errors) as Partial<AcceptedRisk>[];
   if (acceptedRisks.length === 0) {
     errors.push("accepted risks must be recorded");
   }
@@ -246,14 +260,24 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
-  const cutlineProjects = new Set((record.releaseCutline?.dependencies ?? []).map((dependency) => dependency.project));
+  const releaseCutline = isRecord(record.releaseCutline) ? record.releaseCutline : undefined;
+  if (!releaseCutline) {
+    errors.push("release cutline must be recorded");
+  }
+  const releaseCutlineDependencies = objectArray(
+    releaseCutline?.dependencies,
+    "releaseCutline.dependencies",
+    errors
+  ) as Partial<ReleaseCutlineDependency>[];
+  const cutlineProjects = new Set(releaseCutlineDependencies.map((dependency) => dependency.project));
   for (const evidence of requiredEvidence) {
     if (evidence.owningProject && !cutlineProjects.has(evidence.owningProject)) {
       errors.push(`release cutline is missing dependency project: ${evidence.owningProject}`);
     }
   }
 
-  for (const followUp of record.followUps ?? []) {
+  const followUps = objectArray(record.followUps, "followUps", errors) as Partial<FollowUpIssue>[];
+  for (const followUp of followUps) {
     const evidence = evidenceById.get(followUp.evidenceId);
     if (!evidence) {
       errors.push(`follow-up ${followUp.id} references unknown evidence ${followUp.evidenceId}`);
@@ -267,9 +291,24 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
+  const parentInitiativeStatus = isRecord(record.parentInitiativeStatus)
+    ? record.parentInitiativeStatus as Partial<ReleaseNotesPrivateBetaEvidenceRecord["parentInitiativeStatus"]>
+    : undefined;
+  if (!parentInitiativeStatus) {
+    errors.push("parent initiative status must be recorded");
+  }
+  if (parentInitiativeStatus?.initiative && parentInitiativeStatus.initiative !== "HoBo v1 Release Readiness") {
+    errors.push("parent initiative must be HoBo v1 Release Readiness");
+  }
   if (
-    record.parentInitiativeStatus?.gateChangesLaunchRisk &&
-    !record.parentInitiativeStatus.statusUpdateEvidence
+    parentInitiativeStatus
+    && typeof parentInitiativeStatus.gateChangesLaunchRisk !== "boolean"
+  ) {
+    errors.push("gateChangesLaunchRisk must be boolean");
+  }
+  if (
+    parentInitiativeStatus?.gateChangesLaunchRisk &&
+    !parentInitiativeStatus.statusUpdateEvidence
   ) {
     errors.push("parent initiative status update evidence is required when launch risk changes");
   }
@@ -301,4 +340,29 @@ export function canCompletePrivateBetaGate(input: unknown): boolean {
 
 function isAcceptedEvidence(status: EvidenceStatus): boolean {
   return status === "accepted" || status === "accepted-substitute";
+}
+
+function isEvidenceStatus(status: unknown): status is EvidenceStatus {
+  return status === "accepted" || status === "accepted-substitute" || status === "missing";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function objectArray(value: unknown, field: string, errors: string[]): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    errors.push(`${field} must be an array`);
+    return [];
+  }
+
+  const records: Record<string, unknown>[] = [];
+  for (const [index, entry] of value.entries()) {
+    if (isRecord(entry)) {
+      records.push(entry);
+    } else {
+      errors.push(`${field}[${index}] must be an object`);
+    }
+  }
+  return records;
 }

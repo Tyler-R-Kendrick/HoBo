@@ -15,6 +15,8 @@ This focused proof records:
 This package does not publish final release notes, write launch copy, implement an upgrade runner,
 change support workflows, or create speculative follow-up work. It records the private-beta evidence
 gate and fails closed when evidence, cutline, risk, or status-update facts are missing.
+Malformed nested payloads and unsupported evidence statuses are reported as parser errors instead of
+throwing before the gate can make a decision.
 
 ## Verification
 

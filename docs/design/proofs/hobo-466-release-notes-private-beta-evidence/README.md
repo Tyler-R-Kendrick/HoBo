@@ -20,6 +20,7 @@ and the durable release-note outline at [release-notes-upgrade-guide.md](../../r
 - Speculative follow-ups for already accepted evidence fail validation.
 - The M2 private-beta gate cannot complete while required evidence is missing.
 - Parent release-readiness launch-risk changes fail without status-update evidence.
+- Malformed nested evidence payloads and unsupported evidence statuses fail closed without throwing.
 
 ## Verification
 

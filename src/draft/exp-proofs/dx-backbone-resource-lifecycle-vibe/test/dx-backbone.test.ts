@@ -143,3 +143,21 @@ test("proof-mode labels are closed and scope-out requests fail closed", () => {
     inScope: false,
   });
 });
+
+test("malformed untrusted records fail closed with validation errors", () => {
+  const empty = validateDxBackboneRecord({});
+
+  assert.equal(empty.ok, false);
+  assert.match(empty.errors.join("\n"), /child slices must be an array/);
+  assert.throws(() => parseDxBackboneRecord({}), /child slices must be an array/);
+
+  const malformed = structuredClone(DX_BACKBONE_RECORD) as typeof DX_BACKBONE_RECORD & {
+    childSlices: Array<{ scopeOut?: string[] }>;
+  };
+  delete malformed.childSlices[0]!.scopeOut;
+
+  const result = validateDxBackboneRecord(malformed);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /HOBO-567 scope out must be an array/);
+});

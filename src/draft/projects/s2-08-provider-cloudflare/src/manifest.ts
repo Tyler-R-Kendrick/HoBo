@@ -134,7 +134,20 @@ export function publishCapabilityManifest(input: CloudflareManifestInput = {}): 
   };
 }
 
-export function parsePublishedManifest(documents: PublishedManifestDocuments) {
+export interface PublishedManifestParseResult {
+  ok: boolean;
+  errors: string[];
+  index: Record<string, unknown>;
+  capabilities: Record<string, unknown>;
+  auth: Record<string, unknown>;
+  cost: Record<string, unknown>;
+}
+
+/**
+ * Parse-don't-validate boundary: untrusted well-known manifest documents become
+ * a parsed derived type or structured errors — no broad DTO checks downstream.
+ */
+export function parsePublishedManifest(documents: PublishedManifestDocuments): PublishedManifestParseResult {
   const index = JSON.parse(documents["/.well-known/capability-manifest/index.json"]);
   const capabilities = JSON.parse(documents["/.well-known/capability-manifest/capabilities.json"]);
   const auth = JSON.parse(documents["/.well-known/capability-manifest/auth.json"]);

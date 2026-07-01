@@ -59,3 +59,12 @@ package build_manifest
 	code:    string & =~"^HOBO_BUILD_[A-Z0-9_]+$"
 	message: string & !=""
 }
+
+#BuildEvent: {
+	started?:          #BuildStarted
+	artifact_produced?: #BuildArtifactProduced
+	completed?:        #BuildCompleted
+	failed?:           #BuildFailed
+}
+
+ArtifactKind: #ArtifactKind

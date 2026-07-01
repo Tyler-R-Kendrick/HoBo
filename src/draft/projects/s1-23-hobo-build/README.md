@@ -9,7 +9,7 @@ when blockers HOBO-584 (S0-07) and HOBO-610 (S1-21) merge.
 - `runBuild` orchestration with codegen drift gate, sorted service discovery,
   wasm componentize or OCI fallback, manifest projection last
 - Parse-don't-validate boundary (`parseBuildRequest`, `parseServiceDeclaration`,
-  `parseBuildManifest`)
+  `parseBuildManifest`) producing parsed derived types
 - Event-sourced build record (`build.Started`, `build.ArtifactProduced`,
   `build.Completed`)
 - CLI seam (`createBuildCli`, `registerBuildCommand`) with `--json` envelopes

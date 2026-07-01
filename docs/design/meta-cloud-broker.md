@@ -14,6 +14,7 @@ Executable proofs:
 - [`meta-cloud-broker-scope-contract`](../../src/draft/meta-cloud-broker-scope-contract/README.md)
 - [`yard-receipt-consumption-contract`](../../src/draft/yard-receipt-consumption-contract/README.md)
 - [`meta-cloud-broker-resolution-contract`](../../src/draft/meta-cloud-broker-resolution-contract/README.md)
+- [`meta-cloud-broker-rejection-matrix-contract`](../../src/draft/meta-cloud-broker-rejection-matrix-contract/README.md)
 - [`broker-receipt-integrity-contract`](../../src/draft/broker-receipt-integrity-contract/README.md)
 
 Branch evidence:
@@ -21,6 +22,7 @@ Branch evidence:
 - [`HOBO-521 proof record`](./proofs/hobo-521-meta-cloud-broker/README.md)
 - [`HOBO-523 proof record`](./proofs/hobo-523-yard-receipt-consumption/README.md)
 - [`HOBO-525 proof record`](./proofs/hobo-525-meta-cloud-broker-resolution/README.md)
+- [`HOBO-528 proof record`](./proofs/hobo-528-meta-cloud-broker-rejection-matrix/README.md)
 - [`HOBO-529 proof record`](./proofs/hobo-529-broker-receipt-integrity/README.md)
 
 This M0 record defines the accepted productization scope for the Meta-cloud Broker. It does not
@@ -151,6 +153,16 @@ produce identical receipt or rejection output, snapshot identity is an explicit 
 ambiguous/incompatible/unavailable mappings fail with structured Resolution Rejections, provider
 defaults cannot act as implicit broker decisions, and missing mappings never fall back to Yard-local
 Matching.
+
+## M3 Adversarial Rejection Matrix Evidence
+
+HOBO-528 hardens the broker rejection boundary with
+`meta-cloud-broker-rejection-matrix-contract`: stale catalog, incompatible mapping, ambiguous
+mapping, missing mapping, and unsupported capability fixtures each emit signed structured
+Resolution Rejections; no case emits a partial receipt, optimistic Yard plan, or unsigned evidence;
+support/debug evidence keeps replay digests and evidence IDs while excluding secrets and raw
+customer payloads; and ambiguous best-effort selection, stale catalog optimism, provider-default
+fallback, and hidden Yard-local planning all fail closed.
 
 ## M3 Receipt Integrity Evidence
 

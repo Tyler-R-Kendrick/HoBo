@@ -55,7 +55,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Offline hello-bindle (no network, no credentials)
         run: |
-          sudo unshare -rn sh -c 'ip link set lo up && HOBO_OFFLINE_GUARD=1 corepack pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1:offline'
+          sudo unshare -rn sh -c "ip link set lo up && sudo -u runner -E bash -lc 'cd \"${GITHUB_WORKSPACE}\" && HOBO_OFFLINE_GUARD=1 node --import tsx --test src/draft/technical-proofs/s1-stage-gate/test/s1-stage-gate.offline.test.ts'"
         env:
           AWS_ACCESS_KEY_ID: ""
           AWS_SECRET_ACCESS_KEY: ""

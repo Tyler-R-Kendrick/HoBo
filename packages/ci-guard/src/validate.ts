@@ -298,11 +298,13 @@ function validateHoboCiWorkflow(
 	}
 	if (
 		!/turbo run build typecheck lint/u.test(content) ||
-		!/--affected/u.test(content)
+		(!/--affected/u.test(content) &&
+			!content.includes("{packages/*}[origin"))
 	) {
 		violations.push({
 			code: "workflow.pr-gate.affected",
-			message: "pr-gate must run turbo affected lanes",
+			message:
+				"pr-gate must run turbo affected lanes (or production git-range impact filter)",
 		});
 	}
 	for (const check of REQUIRED_PR_CHECKS) {

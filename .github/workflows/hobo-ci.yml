@@ -61,7 +61,11 @@ jobs:
       - name: Affected package lanes
         env:
           TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
-        run: pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer --affected --continue=never
+        run: |
+          pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer \
+            --filter='{packages/*}[origin/main...HEAD]' \
+            --filter='{examples/*}[origin/main...HEAD]' \
+            --continue=never
       - name: Production contract provider lane
         run: pnpm exec turbo run test:contract:provider --filter "./packages/*"
       - name: Production packages gate

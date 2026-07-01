@@ -109,6 +109,8 @@ importers:
 
   src/draft/exp-proofs/cli-deploy-transcript-prototype: {}
 
+  src/draft/exp-proofs/cli-error-refusal-examples: {}
+
   src/draft/exp-proofs/cli-manage-inspect-logs-drift-prototype: {}
 
   src/draft/exp-proofs/cli-mcp-parity-resource-lifecycle-contracts: {}

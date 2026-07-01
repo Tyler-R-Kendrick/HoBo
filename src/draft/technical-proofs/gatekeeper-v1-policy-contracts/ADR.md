@@ -12,20 +12,29 @@ This draft package carries the architecture-guard evidence required by
 
 ## Parse, Don't Validate
 
-Deploy verification parses fixtures and policy IR once at the boundary. Downstream
-gate composition receives parsed compatibility decisions, policy decisions, and
-obligation replays — not raw DTOs with repeated boolean checks.
+This package applies the **parse, don't validate** discipline: untrusted fixture
+and policy IR input is parsed once at the boundary into derived domain types, and
+downstream gate composition receives those parsed, derived types instead of
+re-checking raw input. The CUE constraints bound the same derived types so
+malformed input is rejected at parse time rather than passed downstream.
 
 ## Event Architecture
 
-Deploy-point verification appends:
+Deploy-point verification is the read model behind this event flow:
 
-- `compat.GatePassed` / `compat.GateFailed` — contract compatibility gate
-- `policy.Decided` — policy engine audit event
-- `policy.ObligationCreated` — durable obligation from policy effect
-- `gatekeeper.GatePassed` / `gatekeeper.GateFailed` — per-gate composite results
-- `gatekeeper.VerifyPassed` / `gatekeeper.VerifyFailed` — composite verify decision
-- `gatekeeper.DeployVerified` — deploy-path rollup for replay
+- **Command** — `VerifyDeploy` requests Gatekeeper evaluation at the Yard deploy point.
+- **Event** — `compat.Gate*`, `policy.Decided`, `policy.ObligationCreated`, and
+  `gatekeeper.Verify*` events append to the log.
+- **Actor** — the Gatekeeper aggregate applies compatibility, policy, and obligation
+  events in order.
+- **Event store** — deploy verification events are appended to the platform event
+  store as the durable source of truth.
+- **Materialized view / projection** — a projection folds verification events into
+  the deployable/blocked decision consumers query.
+- **Snapshot** — `gatekeeper.DeployVerified` is the snapshot of that projection.
+- **Read store** — `hobo verify` and deploy-path callers query that read store
+  rather than the raw event log.
 
-Replay consumers fold these events to answer "why did this deploy block?" without
-re-running engines.
+No runtime engine, projector, or event store is implemented here; this is a
+design-time contract that names the command, event, actor, and projection
+boundaries so later implementation inherits a consistent vocabulary.

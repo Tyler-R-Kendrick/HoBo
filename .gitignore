@@ -29,3 +29,4 @@ dist/
 
 # Pinned toolchain binaries downloaded on demand (e.g. CUE v0.14.0)
 .tools/
+test-results/

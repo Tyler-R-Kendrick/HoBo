@@ -1,5 +1,11 @@
 # Review findings — HoBo requirements suite (security · ease-of-use · portability)
 
+> **Plans in this directory:** [`0001-scope-refactor-review.md`](0001-scope-refactor-review.md)
+> (Yard⊃Camp⊃Bindle scope audit) · [`production-build-backlog.md`](production-build-backlog.md)
+> (HoBo v1 Production Build — staged Linear scope). The long-running intent-alignment gap register
+> lives at the repo root: [`GAPS.md`](../../GAPS.md). The rest of this file is the legacy PR #1
+> findings log.
+
 > Output of the `/improve` audit (three fresh-context lens reviewers + a mechanical traceability check) **reconciled with the GitHub PR #1 review** (Copilot, 7 comments). Audited against commit `b3cf64d`. Scope: `docs/requirements/{BRD,PRD,TRD,README}.md` + `docs/design/adr/ADR-0018..0022`, cross-checked vs `docs/design/`. This repo is docs-only — findings are documentation/requirements gaps, not code bugs.
 >
 > **Status key:** ✅ resolved in the hardening pass (commit after `b3cf64d`) · ⏳ deferred (needs user decision) · ❎ rejected (not a real issue).

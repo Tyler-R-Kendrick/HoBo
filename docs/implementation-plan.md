@@ -68,6 +68,20 @@ long-running register at the repo root. Iteration 0 seeds the scaffold (pillar m
 appendix, empty registers); confirmed findings and remediations append in later commits. Linear
 delivery issues for remediations are filed when an iteration confirms them — not in the seed PR.
 
+### HoBo v1 Production Build — staged, pending Linear import
+
+The 399-issue baseline above was executed as **draft proofs** (`src/draft/`); no production code
+exists. The production build is scoped as a new Linear **initiative** ("HoBo v1 Production Build"):
+seven stage-ordered projects (S0 Toolchain & Contracts Bootstrap → S1 Local SDK & Runtime → S2 First
+Cloud + Yard → S3 Agent Autonomy → S4 Multi-Cloud → S5 Forge & Extensibility → S6 Production
+Hardening), each closing with an executable gate issue keyed to the requirements Release Criteria,
+with later stages opened by M0 acceptance-record issues (the post-core-delta pattern applied to the
+build). 79 issues with dependency wiring, plus the companion **Intent-Alignment Gap Remediation**
+project (one issue per confirmed [`GAPS.md`](../GAPS.md) remediation), are staged in
+[`docs/plans/production-build-backlog.md`](plans/production-build-backlog.md) together with an
+import runbook — Linear import runs paced single-writer once MCP access is approved. The 15
+completed proof projects stay closed; draft material is promotion source only.
+
 ### Meta-cloud Broker - `3b77f153-55ea-46e1-b1d5-2683901576ba` - **Backlog**
 
 The Meta-cloud Broker project owns the hosted broker authority boundary: Contract Manifest

@@ -4,6 +4,8 @@ Independent POC for HOBO-1. It models the intended pnpm + Turborepo workspace,
 the package tree from `docs/design/architecture.md`, and the first boundary lint
 rules without converting the design repository itself into the product monorepo.
 
+**Promotion (S0-01 / HOBO-578):** boundary lint (`validateBoundaryImports`, `detectWorkspaceCycles`, `classifyPackage`) and the workspace-skeleton pact now live in production at `packages/conformance/` with `scripts/check-package-boundaries.mts` enforcing the seven-package scaffold under `packages/*`.
+
 ## Proven Behaviors
 
 - Root workspace scripts are pinned: `build`, `typecheck`, `lint`, and `test`.

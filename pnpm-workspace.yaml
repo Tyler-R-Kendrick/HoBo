@@ -1,4 +1,9 @@
 packages:
+  - "packages/*"
+  - "packages/runtimes/*"
+  - "packages/providers/*"
+  - "packages/iac/*"
+  - "packages/build/*"
   - "src/draft/technical-proofs/*"
   - "src/draft/exp-proofs/*"
   - "src/draft/epic-proofs/*"

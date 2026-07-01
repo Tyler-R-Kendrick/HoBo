@@ -38,6 +38,9 @@ jobs:
       - name: Relevant checks only
         run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
 
+      - name: Production packages gate
+        run: pnpm run build:packages
+
   hello-bindle-fixture:
     name: hello-bindle sandbox fixture
     needs: pr-gate

@@ -379,3 +379,19 @@ The executable spike is [`../../../src/draft/technical-proofs/component-host-ada
 - **(+)** The opt-in adapter story has a concrete first certification target rather than an open-ended "support N hosts" claim.
 - **(+)** Provider-native wasm remains supported by the architecture without weakening the portability guarantee; unsupported `wasi:*` surfaces fail planning with reasons.
 - **(-)** SpinKube certification still creates Kubernetes-specific operational surface area, so host options must stay typed and visible as portability lock-in.
+
+## ADR-0105
+**Componentize-js S0 stage gate: stable inputs digest + smoke + OCI manifest determinism; byte-identical wasm deferred.**
+
+HOBO-603 spikes whether `@bytecodealliance/componentize-js@0.21.0` can satisfy HOBO-584's byte-identical double-build acceptance after HoBo applies every contractual determinism control (`SOURCE_DATE_EPOCH`, sorted sources, workspace path remap, exact toolchain pins, `disableFeatures` for clocks/random/stdio/http). The spike at [`../../../src/draft/technical-proofs/componentize-js-determinism-spike`](../../../src/draft/technical-proofs/componentize-js-determinism-spike/README.md) still emits **different wasm bytes on every clean build** while `inputsDigest` and jco smoke output remain stable. Root cause: ComponentizeJS snapshots the StarlingMonkey JS engine via Wizer; upstream reproducibility is tracked in [bytecodealliance/ComponentizeJS#321](https://github.com/bytecodealliance/ComponentizeJS/issues/321) with no fix in 0.21.0.
+
+1. **S0 stage gate (HOBO-584).** `@hobo/componentize` acceptance requires: (a) stable `inputsDigest` across rebuilds, (b) smoke equivalence on the pinned export (`health` → `hello-bindle:ok`), (c) OCI manifest determinism from canonical JSON over deterministic inputs, and (d) `wasm-tools validate` (pinned `1.235.0`) in scoped CI. These gates prove the build path is input-stable and component-valid without claiming byte-identical wasm from componentize-js today.
+2. **Deferred byte-identical wasm.** Digest-equality double-build and signing-time digest gates move to the artifact signing / provenance slice ([HOBO-7](../proofs/hobo-7-signed-artifact-publish-install/index.md) / HOBO-587) when upstream reproducibility lands or `wasm-tools` canonicalization is adopted. S0 must not silently treat digest drift as success — CI and tests must assert the relaxed gate explicitly and fail if `inputsDigest` or smoke regresses.
+3. **Upstream tracking.** Toolchain pins stay on ADR-0085 floors; a future componentize-js release that achieves byte stability can tighten the gate without changing the inputs/smoke/OCI contract.
+
+Executable spike: [`../../../src/draft/technical-proofs/componentize-js-determinism-spike`](../../../src/draft/technical-proofs/componentize-js-determinism-spike/README.md). Repro: `pnpm --prefix src/draft/technical-proofs/componentize-js-determinism-spike repro`.
+
+### Consequences
+- **(+)** S0 can close the TS→component→OCI path with provable input stability and validation instead of blocking on upstream snapshot nondeterminism.
+- **(+)** Trade-off is explicit — digest drift is documented, tested, and deferred rather than ignored.
+- **(−)** Registry consumers cannot rely on wasm byte identity for cache keys until the signing slice adds canonicalization or upstream fixes land; `inputsDigest` + content-addressed manifest layers remain the S0 identity surface.

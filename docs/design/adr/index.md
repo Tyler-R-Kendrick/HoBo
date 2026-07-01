@@ -110,3 +110,4 @@
 | 0102 | Opt-in component-host adapter certification target | [architecture-core](01-architecture-core.md#adr-0102) |
 | 0103 | Junction connectivity inference is a pure Yard-manifest fold with mirrored halves | [portability-extensibility](07-portability-extensibility.md#adr-0103) |
 | 0104 | SLO-gated rollback decisions use sustained evidence, not single-sample panic | [identity-security](02-identity-security.md#adr-0104) |
+| 0105 | Componentize-js S0 stage gate: stable inputs digest + smoke + OCI manifest determinism; byte-identical wasm deferred | [architecture-core](01-architecture-core.md#adr-0105) |

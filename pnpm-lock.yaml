@@ -157,6 +157,8 @@ importers:
 
   src/draft/exp-proofs/dx-result-refusal-proof-envelopes: {}
 
+  src/draft/exp-proofs/resource-lifecycle-quickstart-examples: {}
+
   src/draft/exp-proofs/dx-sdk-resilience-scope-contract: {}
 
   src/draft/exp-proofs/e2e-test-matrix-scope-acceptance: {}

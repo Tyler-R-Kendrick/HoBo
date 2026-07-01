@@ -29,7 +29,7 @@ Naming: `hobo:sdk` is the WIT contract/package for app primitives and capability
 
 | Surface | Package boundary | Contract tier | Implementation issue | Conformance issue / suite |
 |---|---|---|---|---|
-| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-532 / HOBO-533 / HOBO-534 / HOBO-535 / HOBO-538 | HOBO-32 / `@hobo/conformance/sdk` |
+| `bindle(name, builderFn)` closure builder | `@hobo/bindles` | app manifest assembly vocabulary + manifest IR boundary | HOBO-531 / HOBO-532 / HOBO-533 / HOBO-534 / HOBO-535 / HOBO-536 / HOBO-537 / HOBO-538 | HOBO-32 / `@hobo/conformance/sdk` |
 | `.allow(...verbs)` | app idiom layer: `@hobo/bindles`; WIT-owned verb set in `hobo:sdk` | language idiom lowering + manifest IR | HOBO-70 | HOBO-32 / `@hobo/conformance/sdk` |
 | `connector(name)` | `@hobo/bindles` | language idiom lowering + manifest IR | HOBO-43 | HOBO-32 / `@hobo/conformance/sdk` |
 | `config(...)`, `secretRef(...)`, `env(...)`, `fromBinding(...)` | `@hobo/bindles` | app config reference lowering + manifest IR | HOBO-40 | HOBO-32 / `@hobo/conformance/sdk` |
@@ -77,11 +77,14 @@ handles, inert workload descriptors, invalid dependency refusal, and
 across alias-only edits and diagnostic separation. HOBO-535 proves those captured
 closure-builder facts lower to `hobo:sdk` calls and `hobo.manifest/v1`, while
 provider `.with(...)` annotations stay inert and aliases remain separate from
-deployment identity. Same-kind generated-ID ledger behavior remains outside the
-lowering contract and is owned by HOBO-538. HOBO-538 defines the collector-owned
-identity ledger for ambiguous same-kind insertions. HOBO-537 ties the public
-worked example, collection, lowering, generated aliases, and SDK conformance
-corpus into one v1 author-flow proof.
+deployment identity. HOBO-536 proves that static collection coverage, manifest
+collection, codegen bindings, and `hobo new` scaffold samples consume the
+closure-builder contract without turning aliases into resource IDs. Same-kind
+generated-ID ledger behavior remains outside the lowering contract and is owned
+by HOBO-538. HOBO-538 defines the collector-owned identity ledger for ambiguous
+same-kind insertions. HOBO-537 ties the public worked example, collection,
+lowering, generated aliases, and SDK conformance corpus into one v1 author-flow
+proof.
 
 **Conformance issue.** HOBO-32 covers SDK lowering. This proof contributes the
 public vocabulary fixture that downstream conformance vectors consume.

@@ -1,39 +1,41 @@
-# Portability Registry Distribution — Architecture Evidence
+# Reference Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Epic outcome
 
-## Schema And Constraints
+Portability, Registry & Distribution needs one common flow: a listing is certified, discoverable, resolvable, verifiable, policy-gated, installable, yanked when compromised, and importable offline. The reference implementation composes existing POC contracts into that flow with mocked boundaries.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## Personas
 
-## Parse, Don't Validate
+| Persona | Goal | Reference slice |
+|---|---|---|
+| Platform engineer | Curate trusted provider inputs for production | Certified listing install and catalog policy gate |
+| Planning agent | Discover a capability and freeze a digest pin | Capability index plus distributed-artifact resolver |
+| SecOps responder | Block a compromised listing without rewriting running Sets | Yank lifecycle, doctor findings, remediation obligation |
+| Sovereign Yard operator | Import signed bundles without egress | Offline bundle import into an in-boundary mirror |
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Vertical slice map
 
-## Event Architecture
+| Slice | Inputs | Boundaries | Observable outcome |
+|---|---|---|---|
+| Certified install | Registry descriptor, signed artifact, conformance report | Artifact repository, trust verifier, catalog policy | Artifact available to Matching, not selected |
+| Agent discovery | WIT interface query and catalog snapshot | Capability discovery index, resolver | Deterministic digest pin in manifest IR |
+| Safe mirror fetch | Frozen digest pin and mirror set | Artifact mirrors, Dispatcher cost tie-break | Cost selected only among digest-identical mirrors |
+| Supply-chain response | Critical yank command | Listing lifecycle, policy obligation | New deploy blocked, running Set flagged |
+| Air-gap import | Signed offline bundle plus offline trust material | Offline importer, in-boundary mirror | BundleImported event, no live egress |
 
-The package's accepted record is the read model behind a small event flow:
+## Service boundaries
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+| Boundary | Type | Consumer | Provider | Contract strategy |
+|---|---|---|---|---|
+| Capability discovery | Internal service boundary | Registry reference app | Capability discovery index | Pact request-response fixture over query/result shape |
+| Artifact repository | External integration port | Registry reference app | Artifact repository mirror | Pact request-response fixture over digest-pinned pull |
+| Trust and policy gate | Internal service boundary | Registry reference app | Install verifier plus trust/catalog policies | Pact message fixture over decision/evidence shape |
+| Offline import | External air-gap boundary | Registry reference app | Bundle importer and in-boundary mirror | Pact message fixture over import command/event shape |
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+## Scope review
+
+Accepted POCs map to the epic because they describe either the registry listing lifecycle, the install/verification boundary, the resolver, the artifact repository port, distribution trust policy, or air-gap import. Their implementation ideas kept here are pure functions, deterministic fixtures, fail-closed decisions, and event-shaped outputs.
+
+Discarded or deferred details are production transports, real signing infrastructure, real external registries, storefront UX, full Junction federation, and global Matching scoring. Copying those into this reference implementation would make the simulation misleading by implying live infrastructure exists.
+
+Contract brittleness risk is controlled by using consumer-owned boundary fixtures that assert request/response compatibility and decision evidence, not internal helper call order. The Pact fixtures intentionally avoid over-specific timestamps and real network locations.

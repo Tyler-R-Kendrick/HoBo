@@ -1,39 +1,49 @@
-# Reliability Observability Cost Finops — Architecture Evidence
+# Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+The Reliability, Observability & Cost reference implementation composes four slices around one event-sourced operating model:
 
-## Schema And Constraints
+1. Telemetry, trace context, SLO computation, rollback analysis, and SLO gaming guard feed an SRE rollback decision.
+2. Metering, credit headroom, quota policy, showback, shared-cost attribution, runaway-spend breaking, and observability cost shedding feed FinOps control.
+3. Failure taxonomy, choreography saga, compensation engine, and Run Inspector feed incident recovery.
+4. Golden Suite chaos verification and SLA rollup feed reliability status.
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## Persona Map
 
-## Parse, Don't Validate
+| Persona | Goal | Reference slice |
+|---|---|---|
+| SRE on-call | Know when to rollback, why, and whether the signal is fresh | `telemetry-slo-gate` |
+| FinOps lead | Bound spend while preserving availability | `finops-budget-guard` |
+| Incident commander | Explain and recover partial deploy failures | `saga-compensation-recovery` |
+| SRE on-call | Trust Golden Suite, chaos, and status evidence | `golden-chaos-status-rollup` |
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Boundary Map
 
-## Event Architecture
+```mermaid
+flowchart LR
+  App["ReliabilityReferenceApp"] --> Telemetry["TelemetryBoundaryExport"]
+  App --> Trace["TraceContextQueue"]
+  App --> SLO["SloPolicyGate"]
+  App --> Ledger["MeteringCreditLedger"]
+  App --> Quota["BudgetQuotaPolicyGate"]
+  App --> Saga["SagaCompensationBoundary"]
+  App --> Chaos["GoldenChaosBoundary"]
+  App --> Status["ReliabilityStatusRollup"]
+```
 
-The package's accepted record is the read model behind a small event flow:
+Every provider in the diagram is mocked in memory. The reference implementation proves consumer expectations and architecture shape, not provider deployment.
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+## Contract Strategy
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+Contracts stay consumer-focused:
+
+- Each boundary has one Pact fixture under `contracts/pacts/`.
+- `contracts/consumer/reliability-boundaries.test.ts` verifies the simulation advertises every provider named by Pact fixtures.
+- Provider verification is documented as unavailable until production services exist.
+
+## Drift Controls
+
+- Stale or missing SLI data returns `no-data` and prevents optimistic green status.
+- Malformed trace context is regenerated and marked with `traceRepair`.
+- Missing quota context denies spend-incurring actions.
+- Stale saga leases fail before duplicate side effects.
+- Chaos blast-radius leaks abort before status can remain green.

@@ -1,39 +1,52 @@
-# Progressive Delivery Harness — Architecture Evidence
+# Progressive Delivery Harness Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Roles
 
-## Schema And Constraints
+| Persona | Goal | Reference behavior |
+|---|---|---|
+| Platform operator | Release a deployed change without unsafe traffic exposure | Canary traffic advances only when policy and SLO gates pass. |
+| App operator | Control runtime behavior without redeploying | Feature flags evaluate deterministically from `ruleset@seq` and fail safe when stale. |
+| Growth engineer | Measure release impact without p-hacking | Experiment analysis refuses underpowered or unscheduled conclusions. |
+| SecOps reviewer | Keep risky release-affecting actions governed | Flag flips and rollback obligations pass through policy decisions. |
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+## Boundary Map
 
-## Parse, Don't Validate
+```mermaid
+flowchart LR
+  H["Progressive Delivery Harness"] --> F["Feature-flag provider"]
+  H --> R["Ruleset sync stream"]
+  H --> P["Policy gate"]
+  H --> G["Gateway traffic split"]
+  H --> S["Reliability SLO snapshots"]
+  H --> E["Experiment analytics"]
+  H --> L["Event stream"]
+  H --> C["Rollback compensator"]
+```
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+All providers in this reference are mocked and verified with Pact-style consumer contracts.
 
-## Event Architecture
+## Vertical Slices
 
-The package's accepted record is the read model behind a small event flow:
+| Slice | Behavior | Negative proof |
+|---|---|---|
+| Flag leg | Evaluates `checkout-v2` from a fresh ruleset and records `flag.Evaluated` | Stale ruleset returns default and holds release. |
+| Delivery leg | Starts rollout, applies 10/50/100 traffic splits, promotes on healthy SLO windows | Non-converged observed traffic escalates to `needs-human`. |
+| SLO gate | Reads pinned SLO snapshots and maps verdicts to promote/hold/rollback | SLO burn creates auto-revert obligation and rollback. |
+| Experiment leg | Assigns, exposes, and concludes only when sample and schedule are valid | Underpowered favorable look returns `do-not-conclude`. |
+| Rollback leg | Resets traffic and satisfies obligation on successful compensation | Failed compensation emits `rollout.NeedsHuman` and escalates obligation. |
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+## Contract Decisions
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+- Pact files live in `contracts/pacts/`.
+- The inventory in `contracts/pact-inventory.md` names every boundary.
+- Provider verification is performed against deterministic mock providers because real policy, gateway, SLO, and vendor systems are outside this draft reference.
+- Missing real providers are documented as mocked-provider decisions, not omitted boundaries.
+
+## POC Synthesis
+
+The lower-level POCs remain as evidence. This reference keeps their durable behaviors and drops accidental implementation details:
+
+- WIT and port vocabulary becomes an in-process reference API.
+- Event families become one audit stream.
+- PACT-style contracts become JSON pact fixtures verified by `tests/harness-reference.test.ts`.
+- Vendor adapters and live services are represented only by consumer contracts and mocks.

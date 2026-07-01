@@ -1,39 +1,57 @@
-# Generation Pipeline Training Ai Safety — Architecture Evidence
+# Reference Architecture
 
-This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
-how its records map onto the platform's event flow.
+## Overview
 
-## Schema And Constraints
+The epic is represented as one reference service with three vertical slices:
 
-- Protobuf data shapes live in [`architecture/`](./architecture).
-- CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
-  package's boundary.
+1. Cold-start generation certifies a database provider.
+2. Training/eval promotion improves a `use training` method.
+3. Live-fix and cross-layer propagation keep generated regions gated and synchronized.
 
-## Parse, Don't Validate
+The architecture keeps the Generation epic inside the common reference implementation root and avoids product runtime changes. Each boundary is mocked and covered by a Pact decision.
 
-This package applies the **parse, don't validate** discipline: untrusted input is
-parsed once at the boundary into derived domain types, and downstream consumers
-receive those parsed, derived types instead of re-checking raw input. The CUE
-constraints bound the same derived types so malformed input is rejected at parse
-time rather than passed downstream.
+## Service Boundary Map
 
-## Event Architecture
+```mermaid
+flowchart LR
+  APP["GenerationReferenceApp"] --> SBX["GenerationSandboxValidation"]
+  APP --> REG["GenerationCertificationRegistry"]
+  APP --> STORE["TrainingTrajectoryStore"]
+  APP --> GATE["TrainingPromotionPolicyGate"]
+  APP --> HUMAN["HumanApprovalSafetyGate"]
+  STORE --> GATE
+  SBX --> REG
+  HUMAN --> REG
+```
 
-The package's accepted record is the read model behind a small event flow:
+## Boundary Decisions
 
-- **Command** — a request to record or change the package's accepted state.
-- **Event** — a successful command appends a domain event to the log.
-- **Actor** — the owning aggregate is the actor that applies events in order.
-- **Event store** — accepted events are appended to the platform event store as
-  the durable source of truth.
-- **Materialized view / projection** — a projection folds the event store into
-  the read model consumers query.
-- **Snapshot** — the accepted record is the snapshot of that projection.
-- **Read store** — downstream surfaces query that read store rather than the raw
-  event log.
+| Boundary | Decision | Rationale |
+|---|---|---|
+| GenerationSandboxValidation | Consumer tested with mocked provider | The reference proves no-egress validation and trace replay without a live sandbox service. |
+| GenerationCertificationRegistry | Consumer tested with mocked provider | The reference publishes signed certification events in memory. |
+| TrainingTrajectoryStore | Consumer tested with mocked provider | The reference captures OpenInference trajectories and privacy filters payloads locally. |
+| TrainingPromotionPolicyGate | Consumer tested with mocked provider | The reference composes evals, poisoning guard, and champion/challenger logic locally. |
+| HumanApprovalSafetyGate | Consumer tested with mocked provider | The reference proves fail-closed prod/high-risk approval semantics without a live hook. |
 
-No runtime engine, projector, or event store is implemented here; this is a
-design-time contract that names the command, event, actor, and projection
-boundaries so later implementation inherits a consistent vocabulary.
+## Scope Review
+
+Kept:
+
+- Contract-first generation with WIT/conformance as the hard boundary.
+- Sanitized untrusted material and post-conformance safety rejection.
+- Bounded repair with explicit `gen.NeedsHuman` on non-convergence.
+- Training-engine port, OpenInference trajectory capture, live eval rewards, poisoning guard, privacy model, and champion/challenger promotion.
+- Live-fix gating and generated-stack propagation as one approval-bound flow.
+
+Discarded:
+
+- Any live provider calls, live registries, live telemetry backends, or production approval hooks.
+- Blind copying of POC internals outside their exported contract APIs.
+- Automatic production promotion for generated or trained candidates.
+
+Deferred:
+
+- Provider-side Pact verification against production services.
+- UI for approval hooks and operator dashboards.
+- Integration with real sandbox/Registry/trajectory-store deployments.

@@ -27,13 +27,13 @@ and the durable Dogfood Yard scope record at [dogfood-yard.md](../../dogfood-yar
 
 - Validation rejects pending evidence, speculative follow-ups, and changed launch risk without
   parent status sync.
-- Validation rejects live customer data, live provider calls, production readiness promotion, and
-  scope creep into hosted runtime, admin UI, support automation, provider adapters, or bootstrap
-  implementation.
+- Validation rejects live customer data, live provider calls, production readiness promotion in any
+  claim boundary, and scope creep into hosted runtime, admin UI, support automation, provider
+  adapters, or bootstrap implementation.
 
 ## Verification
 
 ```powershell
 pnpm.cmd --prefix src\draft\dogfood-yard-private-beta-evidence-contract test
-pnpm.cmd run contracts:data-models
+pnpm.cmd agent:check -- --staged
 ```

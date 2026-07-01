@@ -17,7 +17,8 @@ pnpm.cmd --prefix src\draft\dogfood-yard-private-beta-evidence-contract test
   parent release-readiness sync.
 - `validateDogfoodPrivateBetaEvidence` fails closed when required evidence is pending, follow-ups
   are speculative, launch-risk sync is missing, scenarios use live customer data, live provider work
-  appears, or private beta proof is promoted to production readiness.
+  appears, or any private/public/unsupported claim boundary promotes private beta proof to production
+  readiness.
 - `summarizePrivateBetaEvidence` emits release-cutline, support, and beta-readiness entries.
 - `classifyDogfoodPrivateBetaWork` routes adjacent runtime, admin UI, provider, and support
   implementation to owning projects instead of expanding HOBO-462.

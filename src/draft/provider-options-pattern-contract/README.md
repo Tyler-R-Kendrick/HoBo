@@ -7,6 +7,9 @@ Independent POC for HOBO-52. It pins the `.with(provider.option(...))` authoring
 - `prefer` and `require` serialize as distinct requirement markers;
 - repeated options for the same provider merge deterministically unless a value conflicts;
 - every `.with()` annotation records a PortabilityReport-readable lock-in marker.
+- `test-types/` keeps provider/resource pairing and provider option value types
+  compile-time enforced, so invalid `.with()` combinations do not silently
+  degrade to runtime-only guards.
 
 Run:
 

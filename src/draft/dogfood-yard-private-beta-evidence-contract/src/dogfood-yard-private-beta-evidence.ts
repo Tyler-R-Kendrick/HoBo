@@ -521,9 +521,10 @@ export function validateDogfoodPrivateBetaEvidence(
     errors.push("parent initiative status must be updated when launch risk changes");
   }
 
-  const publicClaim = target.claimBoundaries?.publicClaim ?? "";
-  if (/\b(production|ga|all customers|public support readiness)\b/i.test(publicClaim) && !/\bno\b/i.test(publicClaim)) {
-    errors.push("production readiness claim is not allowed from M2 private beta evidence");
+  for (const [claimName, claimValue] of Object.entries(target.claimBoundaries ?? {})) {
+    if (claimsForbiddenReadiness(String(claimValue))) {
+      errors.push(`${claimName} cannot promote M2 private beta evidence to production readiness`);
+    }
   }
 
   for (const scopeItem of target.scopeIn ?? []) {
@@ -649,5 +650,20 @@ function dependency(
     ownerProject,
     consumesEvidenceId,
     cutlineImpact,
+  });
+}
+
+function claimsForbiddenReadiness(value: string): boolean {
+  return value.split(/[.;\n]/).some((statement) => {
+    const claimsReadiness =
+      /\b(production ready|production readiness|production hosted|production recovery|ga ready|ga readiness|ga support readiness|all customers|public support readiness|support sla|sla)\b/i.test(
+        statement,
+      );
+    const deniesReadiness =
+      /\b(no|not|never|without|cannot|can't|must not|does not|do not|is not|are not|waits? for|outside|out of scope)\b/i.test(
+        statement,
+      );
+
+    return claimsReadiness && !deniesReadiness;
   });
 }

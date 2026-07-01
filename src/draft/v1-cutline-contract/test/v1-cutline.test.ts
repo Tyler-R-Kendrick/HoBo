@@ -2,14 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  REQUIRED_GA_HANDOFF_EVIDENCE_IDS,
+  REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS,
   REQUIRED_READINESS_DOMAINS,
   assertV1Cutline,
   validateDogfoodAlphaEvidence,
+  validateGaHandoffEvidence,
   validatePrivateBetaEvidence,
+  validateReleaseCandidateEvidence,
   validateV1Cutline,
   v1Cutline,
   v1CutlineDogfoodAlphaEvidence,
-  v1CutlinePrivateBetaEvidence
+  v1CutlineGaHandoffEvidence,
+  v1CutlinePrivateBetaEvidence,
+  v1CutlineReleaseCandidateEvidence
 } from "../src/v1-cutline.js";
 
 test("cutline writes explicit v1 in-scope and out-of-scope lists", () => {
@@ -147,4 +153,102 @@ test("M2 private beta guard rejects pending evidence, duplicate follow-ups, and 
   assert.match(result.errors.join("\n"), /private-beta-go-no-go must be accepted/);
   assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
   assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
+});
+
+test("M3 release candidate evidence records owners, blockers, risks, dependencies, follow-ups, and parent sync", () => {
+  const result = validateReleaseCandidateEvidence(v1CutlineReleaseCandidateEvidence);
+
+  assert.equal(result.ok, true, result.errors.join("\n"));
+  assert.equal(v1CutlineReleaseCandidateEvidence.issue, "HOBO-468");
+  assert.equal(v1CutlineReleaseCandidateEvidence.phase, "M3");
+  assert.equal(v1CutlineReleaseCandidateEvidence.milestoneGate, "M3 Release candidate");
+  assert.deepEqual(
+    v1CutlineReleaseCandidateEvidence.requiredEvidence.map((item) => item.id).sort(),
+    [...REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS].sort(),
+  );
+  assert.ok(v1CutlineReleaseCandidateEvidence.requiredEvidence.every((item) => item.ownerProject));
+  assert.ok(v1CutlineReleaseCandidateEvidence.blockers.length > 0);
+  assert.ok(v1CutlineReleaseCandidateEvidence.acceptedRisks.length > 0);
+  assert.ok(v1CutlineReleaseCandidateEvidence.crossProjectDependencies.length > 0);
+  assert.ok(
+    v1CutlineReleaseCandidateEvidence.followUpIssues.every((item) =>
+      v1CutlineReleaseCandidateEvidence.missingEvidence.some((missing) => missing.id === item.missingEvidenceId)
+    )
+  );
+  assert.equal(v1CutlineReleaseCandidateEvidence.parentInitiativeSync.statusUpdated, true);
+});
+
+test("M3 release candidate guard rejects pending evidence, speculative follow-ups, unsynced risk, and GA promotion", () => {
+  const invalid = structuredClone(v1CutlineReleaseCandidateEvidence);
+  invalid.requiredEvidence.find((item) => item.id === "release-candidate-go-no-go").status = "pending";
+  invalid.followUpIssues.push({
+    id: "duplicate-release-notes-follow-up",
+    ownerProject: "V1 Release Notes & Upgrade Guide",
+    missingEvidenceId: "cutline-baseline",
+    allowedReason: "Create release-note work even though cutline baseline evidence is accepted"
+  });
+  invalid.parentInitiativeSync.statusUpdated = false;
+  invalid.publicClaimGuards.push({
+    id: "ga-ready-from-rc",
+    claim: "Release-candidate evidence proves GA readiness.",
+    evidenceId: "release-candidate-go-no-go",
+    disposition: "publish"
+  });
+
+  const result = validateReleaseCandidateEvidence(invalid);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /release-candidate-go-no-go must be accepted/);
+  assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
+  assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
+  assert.match(result.errors.join("\n"), /GA claims require GA handoff evidence/);
+});
+
+test("M4 GA handoff evidence records owners, blockers, risks, dependencies, allowed follow-ups, and parent sync", () => {
+  const result = validateGaHandoffEvidence(v1CutlineGaHandoffEvidence);
+
+  assert.equal(result.ok, true, result.errors.join("\n"));
+  assert.equal(v1CutlineGaHandoffEvidence.issue, "HOBO-475");
+  assert.equal(v1CutlineGaHandoffEvidence.phase, "M4");
+  assert.equal(v1CutlineGaHandoffEvidence.milestoneGate, "M4 GA handoff");
+  assert.deepEqual(
+    v1CutlineGaHandoffEvidence.requiredEvidence.map((item) => item.id).sort(),
+    [...REQUIRED_GA_HANDOFF_EVIDENCE_IDS].sort(),
+  );
+  assert.ok(v1CutlineGaHandoffEvidence.requiredEvidence.every((item) => item.ownerProject));
+  assert.ok(v1CutlineGaHandoffEvidence.blockers.length > 0);
+  assert.ok(v1CutlineGaHandoffEvidence.acceptedRisks.length > 0);
+  assert.ok(v1CutlineGaHandoffEvidence.crossProjectDependencies.length > 0);
+  assert.ok(
+    v1CutlineGaHandoffEvidence.followUpIssues.every((item) =>
+      v1CutlineGaHandoffEvidence.missingEvidence.some((missing) => missing.id === item.missingEvidenceId)
+    )
+  );
+  assert.equal(v1CutlineGaHandoffEvidence.parentInitiativeSync.statusUpdated, true);
+});
+
+test("M4 GA handoff guard rejects pending evidence, speculative follow-ups, unsynced risk, and unsupported GA publication", () => {
+  const invalid = structuredClone(v1CutlineGaHandoffEvidence);
+  invalid.requiredEvidence.find((item) => item.id === "ga-go-no-go").status = "pending";
+  invalid.followUpIssues.push({
+    id: "duplicate-dashboard-follow-up",
+    ownerProject: "V1 Readiness Dashboard",
+    missingEvidenceId: "cutline-baseline",
+    allowedReason: "Create dashboard work even though cutline baseline evidence is accepted"
+  });
+  invalid.parentInitiativeSync.statusUpdated = false;
+  invalid.publicClaimGuards.push({
+    id: "ga-ready-with-open-handoffs",
+    claim: "GA is ready while Dogfood Yard and Beta Pilot M4 handoffs remain open.",
+    evidenceId: "ga-go-no-go",
+    disposition: "publish"
+  });
+
+  const result = validateGaHandoffEvidence(invalid);
+
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /ga-go-no-go must be accepted/);
+  assert.match(result.errors.join("\n"), /follow-up is allowed only for missing evidence/);
+  assert.match(result.errors.join("\n"), /parent initiative status must be updated/);
+  assert.match(result.errors.join("\n"), /GA publication requires every M4 handoff dependency to be closed/);
 });

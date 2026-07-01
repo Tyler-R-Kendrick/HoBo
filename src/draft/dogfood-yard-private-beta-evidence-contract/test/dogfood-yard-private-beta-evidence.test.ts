@@ -97,6 +97,7 @@ test("validation rejects live-provider work, customer data, and production readi
     callsLiveProviders: true,
   };
   invalid.claimBoundaries.publicClaim = "Production hosted Yard is ready for all customers.";
+  invalid.claimBoundaries.unsupportedClaim = "Hosted operations are production ready for all customers.";
   invalid.scopeIn.push("Provision live cloud resources and inspect live customer payloads.");
 
   const result = validateDogfoodPrivateBetaEvidence(invalid);
@@ -104,7 +105,8 @@ test("validation rejects live-provider work, customer data, and production readi
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /live customer data/i);
   assert.match(result.errors.join("\n"), /live provider/i);
-  assert.match(result.errors.join("\n"), /production readiness claim/i);
+  assert.match(result.errors.join("\n"), /publicClaim cannot promote/i);
+  assert.match(result.errors.join("\n"), /unsupportedClaim cannot promote/i);
   assert.match(result.errors.join("\n"), /scope creep/i);
 });
 

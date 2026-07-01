@@ -41,6 +41,44 @@ for risk acceptance. It does not approve any current risk.
 | Release-candidate | Release notes, upgrade guidance, compatibility evidence, blocker delta, and evidence links. | Go, conditional go, or no-go. |
 | GA | Signed launch checklist, support handoff, legal/privacy posture, blocker delta, and evidence links. | Go, conditional go, or no-go. |
 
+## M3 Release Candidate Evidence Gate
+
+HOBO-468 records the V1 Release Program & Cutline M3 evidence gate in
+[`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md). The gate requires:
+
+- accepted cutline baseline, release-candidate go/no-go, blocker delta, accepted-risk register,
+  cross-project handoff, and release-notes readiness evidence;
+- blockers and accepted risks with owner, source evidence, disposition, mitigation, launch note or
+  follow-up, and revisit date;
+- release notes, support, legal/privacy, dogfood operations, launch-site messaging, and beta-pilot
+  dependencies reflected in the cutline;
+- follow-up issues only for missing evidence, currently the existing HOBO-475 GA handoff; and
+- parent HoBo v1 Release Readiness sync when this gate changes launch risk.
+
+This gate does not publish GA readiness, final release notes, support commitments, legal text, or
+release automation. Release-candidate evidence is a conditional release-program record; GA handoff
+remains a separate M4 gate.
+
+## M4 GA Handoff Evidence Gate
+
+HOBO-475 records the V1 Release Program & Cutline M4 GA handoff evidence gate in
+[`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md). The gate requires:
+
+- accepted cutline baseline, GA go/no-go input record, signed launch checklist, support handoff,
+  legal/privacy posture, blocker delta, accepted-risk register, cross-project handoff, and
+  readiness-dashboard refresh evidence;
+- blockers and accepted risks with owner, source evidence, disposition, mitigation, launch note or
+  follow-up, and revisit date;
+- Dogfood Yard, Beta Pilot, legal/privacy, support, release notes, and launch-site dependencies
+  reflected in the cutline;
+- follow-up issues only for missing evidence, currently the existing HOBO-476 Dogfood Yard and
+  HOBO-477 Beta Pilot M4 handoff issues; and
+- parent HoBo v1 Release Readiness sync when this gate changes launch risk.
+
+This gate accepts the release-program GA handoff record without implementing release automation,
+approval UI, runtime launch gates, support tooling, customer-facing release notes, legal text, or
+public GA publication. Public GA claims remain held while dependent M4 owner handoffs are open.
+
 ## Risk Acceptance Rules
 
 Exception requests are allowed only for high-risk non-blockers, launch notes, or post-GA follow-ups.

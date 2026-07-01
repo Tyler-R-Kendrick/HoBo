@@ -263,3 +263,14 @@ Use these lanes instead:
 Live service checks and `pnpm eval:agent:live` are manual/release-only lanes. Default PR and agent checks must not require live external services.
 
 Run the smallest sufficient lane through `pnpm agent:check`; no-arg mode validates the latest commit, `--staged` validates staged files, and `--base=origin/main` validates the whole PR branch. It never selects E2E, avoids broad unit/contract sweeps unless final/all validation explicitly asks for them, and escalates only to schema, contract, UI, behavior, visual, or mock-agent eval lanes based on changed files.
+
+## Cursor Cloud specific instructions
+
+Durable, non-obvious notes for this environment. The startup update script already runs `corepack enable pnpm` + `pnpm install --frozen-lockfile`, so dependencies are ready; do not re-add install steps here.
+
+- **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
+- **Node version.** Local Node 22 satisfies `engines` (`>=20.20.0`); CI uses Node 24. The `pnpm install` warnings about `wizer-win32-x64` bins are expected on Linux (Windows-arch optional deps) and are harmless.
+- **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.
+- **`bun` is not installed**, so the `test:smoke` lane (`bun test`) is unavailable. Use `pnpm run test:file <file>` (Vitest) or `pnpm test` (node --test) instead.
+- **`tgrep` is not installed**, so `pnpm run search` falls back to `rg`. Always pass explicit path args (e.g. `pnpm run search "pattern" src docs`); running it with no path scope over the full worktree can be very slow.
+- **Known pre-existing failures on `main` (not environment issues; do not chase as setup breakage):** `pnpm test` reports 2/477 failing in `closure-builder-v1-finalization-contract` (its test computes `repoRoot` one dir short and reads `src/docs/design/*` instead of `docs/design/*`), and `pnpm run docs:okf` fails on 4 `docs/design/proofs/*/README.md` files missing OKF YAML frontmatter. All other gates (`lint`, `standards:check`, `architecture:guard`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, traceability, SDK/deployment validators) pass clean.

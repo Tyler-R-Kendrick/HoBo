@@ -4,7 +4,7 @@
 
 A developer or agent should be able to describe an app once, then let HoBo place it on a provider, mix of providers, or self-hosted yard without rewriting app code. The design uses **WIT/WASM Component Model interfaces** as the portable membrane, provider adapters as the integration boundary, and an event-sourced control plane as the operating model.
 
-> **Current state:** active design + executable contract/proof repository. This is not a shipped HoBo product yet. The repo contains design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof/contract packages that pin behavior before production implementation.
+> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace scaffold (`@hobo/core`, `@hobo/wit`, `@hobo/bindles`, `@hobo/runtime`, `@hobo/componentize`, `@hobo/conformance`, `@hobo/cli`). Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior before fuller production surfaces land in later S0 slices.
 
 ## Why HoBo exists
 

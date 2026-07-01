@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**Repo:** HoBo — a cloud-agnostic, AI-native hosting platform, currently in the **design phase**. The design suite is in [`docs/design/`](docs/design/index.md); formal requirements are archived in [`docs/archive/requirements/`](docs/archive/requirements/index.md); competitor research is in [`docs/competitors/`](docs/competitors/index.md). No **HoBo product** implementation code yet — the only code present is third-party agent-tooling under `.agents/`/`.claude/`/`scripts/`.
+**Repo:** HoBo — a cloud-agnostic, AI-native hosting platform, currently in the **design phase** with an initial **production `packages/` scaffold** (S0-01). The design suite is in [`docs/design/`](docs/design/index.md); formal requirements are archived in [`docs/archive/requirements/`](docs/archive/requirements/index.md); competitor research is in [`docs/competitors/`](docs/competitors/index.md). Production package skeletons live under `packages/`; draft proofs and agent tooling remain under `src/draft/` and `.agents/`/`.claude/`/`scripts/`.
 
 ## Agent tooling
 This repo is wired with nine agent tools for Claude Code, Cursor, and Codex (Superpowers also targets GitHub Copilot CLI) — see **[`AGENTS.md`](AGENTS.md)** for the full table and **[`docs/agent-tooling.md`](docs/agent-tooling.md)** for setup/keys/risks. Quick map:

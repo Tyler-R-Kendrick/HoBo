@@ -336,6 +336,8 @@ importers:
 
   src/draft/exp-proofs/vibe-first-customer-pilot-storyboard: {}
 
+  src/draft/exp-proofs/vibe-launch-asset-refresh-plan: {}
+
   src/draft/exp-proofs/vibe-marketplace-discovery-prototype: {}
 
   src/draft/exp-proofs/vibe-marketplace-installability-mockups: {}
@@ -350,9 +352,9 @@ importers:
 
   src/draft/exp-proofs/vibe-support-workflow-mockups: {}
 
-  src/draft/exp-proofs/vibe-troubleshooting-decision-trees: {}
-
   src/draft/exp-proofs/vibe-topology-status-prototype: {}
+
+  src/draft/exp-proofs/vibe-troubleshooting-decision-trees: {}
 
   src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract: {}
 

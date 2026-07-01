@@ -37,6 +37,11 @@ accepted [Example Apps scope](./example-apps.md).
 - Required proof assets: screenshots, recording manifest, command transcript, fixture data, and docs.
 - Refresh ownership for proof assets when commands, screens, outputs, or claim boundaries change.
 
+The executable refresh-plan proof for downstream vibe examples lives in
+[`src/draft/exp-proofs/vibe-launch-asset-refresh-plan`](../../src/draft/exp-proofs/vibe-launch-asset-refresh-plan/README.md),
+with branch evidence summarized in
+[`proofs/vibe-launch-asset-refresh-plan`](./proofs/vibe-launch-asset-refresh-plan/README.md).
+
 ## Scope Out And Non-Goals
 
 - Do not build the example application in this issue.

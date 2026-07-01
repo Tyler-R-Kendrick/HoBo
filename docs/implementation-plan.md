@@ -61,6 +61,29 @@ Minimum durable records for a post-core delta:
 Meta-cloud Broker is the first accepted example of this pattern: HOBO-521 owns the M0 scope record
 and proof, and HOBO-524 owns this documentation-pattern hardening.
 
+### Meta-cloud Broker - `3b77f153-55ea-46e1-b1d5-2683901576ba` - **Backlog**
+
+The Meta-cloud Broker project owns the hosted broker authority boundary: Contract Manifest
+validation against Broker Environment snapshots, Mapping Contracts from HoBo-native services to
+cloud/IaC configurations, Resolution Receipts, Resolution Rejections, and Yard receipt handoff.
+Its durable M0 proof remains
+[`meta-cloud-broker-scope-contract`](../src/draft/exp-proofs/meta-cloud-broker-scope-contract/README.md).
+
+- HOBO-521 - M0: Define Meta-cloud Broker scope and acceptance - M0 - hardening - 3.
+- HOBO-522 - M1: Define broker artifact schemas and validation contract - M1 - slice/hardening - 3.
+- HOBO-523 - M1: Prove Yard consumes Resolution Receipts without re-resolving broker authority - M1 - slice/adversarial - 3.
+- HOBO-524 - M1: Update docs pattern for post-core cross-cutting capabilities - M1 - hardening - 2.
+- HOBO-525 - M2: Implement deterministic meta-cloud broker resolution contract proof - M2 - slice - 5.
+- HOBO-526 - M2: Prove provider/catalog mapping publication into Broker Environment snapshots - M2 - slice - 5.
+- HOBO-527 - M2: Add admin controls for broker environment proposals and approvals - M2 - slice/security - 5.
+- HOBO-528 - M3: Adversarial broker rejection matrix for stale, incompatible, and ambiguous mappings - M3 - adversarial/hardening - 5.
+- HOBO-529 - M3: Adversarial receipt integrity and replay/tamper refusal - M3 - adversarial/security - 5.
+- HOBO-530 - M4: Prove hosted broker GA handoff evidence - M4 - slice - 3.
+
+All M1-M4 issues are blocked by HOBO-521 until the M0 acceptance record is accepted. The completed
+Contracts, Policy & Governance, Control Plane, and Providers/IaC projects have status updates
+pointing to this delta while preserving their completed scope.
+
 ### Provenance — the subagents that authored each subsystem
 
 Each subsystem was authored by a dedicated subagent holding the **full templated issue bodies**.

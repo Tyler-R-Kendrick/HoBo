@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-troubleshooting-decision-trees",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-troubleshooting-decision-trees/test/vibe-troubleshooting-decision-trees.test.ts"
+  }
+}

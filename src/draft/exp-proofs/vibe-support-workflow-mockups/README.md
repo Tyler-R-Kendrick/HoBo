@@ -44,6 +44,8 @@ pnpm.cmd --prefix src\draft\exp-proofs\vibe-support-workflow-mockups test
 ## Architecture Evidence
 
 - `architecture/` - protobuf data shapes and CUE constraints for the mockup
-  record.
-- `architecture/pacts/` - Pact-style package boundary fixture.
+  record. CUE uses the same lower-camel field names as the parsed TypeScript
+  boundary.
+- `architecture/pacts/` - Pact-style package boundary fixture that parses
+  through `parseVibeSupportWorkflowMockups`.
 - `ADR.md` - parse-don't-validate and event/projection architecture note.

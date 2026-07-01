@@ -37,12 +37,19 @@ export const REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_FIXTURE_IDS = [
   "rlq-recover-scope-out-v1",
 ] as const;
 
+export const REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_PROOF_MODES = [
+  "reference-fixture",
+  "simulated",
+  "live",
+  "scope-out",
+] as const;
+
 type SupportWorkflowMockupPersona = (typeof REQUIRED_SUPPORT_WORKFLOW_MOCKUP_PERSONAS)[number];
 type SupportWorkflowMockupState = (typeof REQUIRED_SUPPORT_WORKFLOW_MOCKUP_STATES)[number];
 type SupportWorkflowMockupScenario = (typeof REQUIRED_SUPPORT_WORKFLOW_MOCKUP_SCENARIOS)[number];
 type SupportWorkflowMockupProofMode = (typeof REQUIRED_SUPPORT_WORKFLOW_MOCKUP_PROOF_MODES)[number];
 type SupportWorkflowQuickstartFixtureId = (typeof REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_FIXTURE_IDS)[number];
-type SupportWorkflowQuickstartProofMode = "reference-fixture" | "simulated" | "live" | "scope-out";
+type SupportWorkflowQuickstartProofMode = (typeof REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_PROOF_MODES)[number];
 
 type RedactionState = "customer-safe" | "internal-only" | "requires-security-approval" | "scope-out";
 
@@ -510,6 +517,8 @@ function validateQuickstartRefs(
   errors: ValidationError[],
 ): void {
   const fixtureIds = refs.map((ref) => ref.fixtureId);
+  const proofModes = new Set<SupportWorkflowQuickstartProofMode>();
+
   if (!arraysEqual(fixtureIds, REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_FIXTURE_IDS)) {
     errors.push({
       code: "missing-quickstart-fixture",
@@ -523,12 +532,33 @@ function validateQuickstartRefs(
         message: `${ref.fixtureId} must cite HOBO-577`,
       });
     }
+    if (!REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_FIXTURE_IDS.includes(ref.fixtureId)) {
+      errors.push({
+        code: "unknown-quickstart-fixture",
+        message: `${ref.fixtureId} is not an accepted HOBO-577 support fixture`,
+      });
+    }
+    if (!REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_PROOF_MODES.includes(ref.proofMode)) {
+      errors.push({
+        code: "unknown-quickstart-proof-mode",
+        message: `${ref.fixtureId} uses unsupported HOBO-577 proof mode ${String(ref.proofMode)}`,
+      });
+    } else {
+      proofModes.add(ref.proofMode);
+    }
     if (!ref.supportUse) {
       errors.push({
         code: "missing-quickstart-support-use",
         message: `${ref.fixtureId} must explain support workflow consumption`,
       });
     }
+  }
+  for (const proofMode of REQUIRED_SUPPORT_WORKFLOW_QUICKSTART_PROOF_MODES) {
+    if (proofModes.has(proofMode)) continue;
+    errors.push({
+      code: "missing-quickstart-proof-mode",
+      message: "support workflow mockups must preserve HOBO-577 reference-fixture, simulated, live, and scope-out labels",
+    });
   }
 }
 

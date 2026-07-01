@@ -18,12 +18,17 @@ Run the focused proof with:
 pnpm.cmd --prefix src\draft\exp-proofs\sdk-object-graph-manifest-ir-shapes test
 ```
 
+The package test first runs `tsc --noEmit` through the local `tsconfig.json` so
+the compile consumers must typecheck before runtime assertions execute.
+
 The tests prove:
 
 - the HOBO-568 proof parses into a derived parsed record;
 - app developer, platform engineer, and agent/MCP caller audiences are explicit;
 - SDK examples compile as TypeScript interface shapes against `@hobo/bindles`
   and generated `hobo:sdk/*` binding names;
+- the typecheck consumer binds manifest IR, resource references, DeploymentPlan,
+  migration-plan, inspect-reader, and log-reader request shapes together;
 - desired resource, provider/capability, DeploymentPlan, migration plan, and
   inspect/log reader examples all name deterministic fixture ids, inputs,
   outputs, and artifacts;

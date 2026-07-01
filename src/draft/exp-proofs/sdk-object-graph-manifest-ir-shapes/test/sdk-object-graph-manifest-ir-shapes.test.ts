@@ -8,11 +8,12 @@ import {
   REQUIRED_DESIGN_ANCHORS,
   REQUIRED_EXAMPLE_KINDS,
   SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES,
+  SDK_TYPECHECK_CONSUMERS,
   type ExampleConsumer,
   isParsedSdkObjectGraphProof,
   parseSdkObjectGraphProof,
   validateSdkObjectGraphProof,
-} from "../src/sdk-object-graph-manifest-ir-shapes.ts";
+} from "../src/sdk-object-graph-manifest-ir-shapes.js";
 
 test("HOBO-568 proof parses and covers the accepted SDK object graph shape", () => {
   const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
@@ -22,6 +23,7 @@ test("HOBO-568 proof parses and covers the accepted SDK object graph shape", () 
   assert.equal(parsed.parentIssue, "HOBO-566");
   assert.equal(parsed.phase, "M1");
   assert.deepEqual(validateSdkObjectGraphProof(parsed), []);
+  assert.equal(parsed.compileConsumers[0]?.importFrom, "@hobo/bindles");
 
   for (const anchor of REQUIRED_DESIGN_ANCHORS) {
     assert.ok(parsed.designAnchors.includes(anchor));
@@ -51,6 +53,19 @@ test("example consumers compile against the public interface shape and generated
   assert.ok(desiredResourceExample.typeSurface.generatedBindings.every((binding) => binding.startsWith("hobo:sdk/")));
 });
 
+test("typecheck consumers cover bindles, WIT bindings, manifest IR, resource refs, and typed client calls", () => {
+  const consumer = SDK_TYPECHECK_CONSUMERS.todoApi;
+
+  assert.equal(consumer.objectGraph.importFrom, "@hobo/bindles");
+  assert.ok(consumer.manifestIr.generatedBindings.every((binding) => binding.module.startsWith("hobo:sdk/")));
+  assert.equal(consumer.manifestIr.version, "hobo.manifest/v1");
+  assert.ok(consumer.objectGraph.resources.some((resource) => resource.kind === "provider-capability"));
+  assert.equal(consumer.typedClientCalls.deploymentPlanRequest.objective, "balanced");
+  assert.deepEqual(consumer.typedClientCalls.migrationPlanRequest.phases, ["expand", "backfill", "contract"]);
+  assert.equal(consumer.typedClientCalls.inspectReader.stream, "inspect");
+  assert.equal(consumer.typedClientCalls.logReader.stream, "logs");
+});
+
 test("all required consumer examples have stable fixture ids and expected artifacts", () => {
   const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
   const examplesByKind = new Map(parsed.exampleConsumers.map((example) => [example.kind, example]));
@@ -68,6 +83,7 @@ test("all required consumer examples have stable fixture ids and expected artifa
 test("raw provider and authoritative-external paths are surfaced as debt instead of hidden", () => {
   const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
   const markers = new Map(parsed.debtMarkers.map((marker) => [marker.kind, marker]));
+  const consumer = SDK_TYPECHECK_CONSUMERS.todoApi;
 
   for (const debtKind of REQUIRED_DEBT_MARKERS) {
     const marker = markers.get(debtKind);
@@ -75,6 +91,9 @@ test("raw provider and authoritative-external paths are surfaced as debt instead
     assert.ok(marker.surfacedBy.length >= 2);
     assert.match(marker.authorMessage, /raw|external|adopted|provider/i);
   }
+
+  assert.ok(consumer.manifestIr.rawProviderEdges.includes("azure.flexible-server"));
+  assert.ok(consumer.manifestIr.authoritativeExternalResources.includes("billing-db"));
 });
 
 test("scope creep is rejected for live cloud, published SDK, production binding, and new semantic claims", () => {

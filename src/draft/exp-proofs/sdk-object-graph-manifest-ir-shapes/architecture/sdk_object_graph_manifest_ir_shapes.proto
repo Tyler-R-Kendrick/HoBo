@@ -10,6 +10,15 @@ message TypeSurface {
   string compile_proof = 5;
 }
 
+message CompileConsumer {
+  string import_from = 1;
+  repeated string generated_bindings = 2;
+  string manifest_version = 3;
+  repeated string resource_refs = 4;
+  repeated string typed_client_calls = 5;
+  repeated string debt_markers = 6;
+}
+
 message Audience {
   string actor = 1;
   string goal = 2;
@@ -54,4 +63,5 @@ message SdkObjectGraphProof {
   repeated DebtMarker debt_markers = 11;
   ScopeBoundary scope_boundary = 12;
   repeated string compile_expectations = 13;
+  repeated CompileConsumer compile_consumers = 14;
 }

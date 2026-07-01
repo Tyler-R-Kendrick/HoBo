@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "tsc --project tsconfig.json --noEmit && node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
     "tsx": "^4.22.4",

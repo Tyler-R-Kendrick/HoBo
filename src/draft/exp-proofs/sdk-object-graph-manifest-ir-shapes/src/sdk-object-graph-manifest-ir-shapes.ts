@@ -39,6 +39,89 @@ export interface TypeSurface {
   compileProof: "type-test";
 }
 
+export interface CompileConsumerEvidence {
+  importFrom: "@hobo/bindles";
+  generatedBindings: string[];
+  manifestVersion: "hobo.manifest/v1";
+  resourceRefs: string[];
+  typedClientCalls: string[];
+  debtMarkers: DebtMarkerKind[];
+}
+
+export type ResourceReferenceKind =
+  | "bindle"
+  | "camp"
+  | "yard"
+  | "junction"
+  | "api"
+  | "cache"
+  | "provider-capability"
+  | "authoritative-external";
+
+export interface ResourceReference {
+  generatedId: `res_${string}`;
+  alias: string;
+  kind: ResourceReferenceKind;
+  proofMode: ProofMode;
+  debtMarkers: DebtMarkerKind[];
+}
+
+export interface HoboBindlesObjectGraph {
+  importFrom: "@hobo/bindles";
+  bindle: ResourceReference;
+  camp: ResourceReference;
+  yard: ResourceReference;
+  junction: ResourceReference;
+  resources: [ResourceReference, ResourceReference, ...ResourceReference[]];
+}
+
+export interface GeneratedWitBindingReference {
+  module: `hobo:sdk/${string}`;
+  exportName: string;
+}
+
+export interface ManifestIrFixture {
+  version: "hobo.manifest/v1";
+  generatedBindings: [GeneratedWitBindingReference, GeneratedWitBindingReference, ...GeneratedWitBindingReference[]];
+  resources: [ResourceReference, ResourceReference, ...ResourceReference[]];
+  rawProviderEdges: string[];
+  authoritativeExternalResources: string[];
+}
+
+export interface DeploymentPlanRequestFixture {
+  manifestDigest: `sha256:${string}`;
+  camp: string;
+  objective: "balanced" | "lowest-cost" | "least-change";
+  policyContext: "reference-fixture";
+}
+
+export interface MigrationPlanRequestFixture {
+  adoptedResource: ResourceReference;
+  phases: ["expand", "backfill", "contract"];
+  snapshotRequired: true;
+}
+
+export interface SubscriptionReaderFixture {
+  stream: "inspect" | "logs";
+  projection: string;
+  seq: number;
+  freshness: "snapshot" | "tail";
+  redaction: "tenant-safe";
+}
+
+export interface TypedClientCallsFixture {
+  deploymentPlanRequest: DeploymentPlanRequestFixture;
+  migrationPlanRequest: MigrationPlanRequestFixture;
+  inspectReader: SubscriptionReaderFixture;
+  logReader: SubscriptionReaderFixture;
+}
+
+export interface SdkCompileConsumer {
+  objectGraph: HoboBindlesObjectGraph;
+  manifestIr: ManifestIrFixture;
+  typedClientCalls: TypedClientCallsFixture;
+}
+
 export interface ExampleConsumer {
   kind: ExampleKind;
   proofMode: ProofMode;
@@ -76,6 +159,7 @@ export interface SdkObjectGraphProof {
   debtMarkers: DebtMarker[];
   scopeBoundary: ScopeBoundary;
   compileExpectations: string[];
+  compileConsumers: CompileConsumerEvidence[];
 }
 
 const PARSED = Symbol("ParsedSdkObjectGraphProof");
@@ -157,7 +241,7 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
       fixtureId: "sdk-object-graph.provider-capability.postgres.v1",
       fixtureInput: "fixtures/input/provider-capability-ref.json",
       fixtureOutput: "fixtures/output/provider-capability-manifest.json",
-      sdkSnippet: "camp('prod').prefer(provider.azure.postgres()).require('managed-postgres')",
+      sdkSnippet: "camp('prod').prefer(provider.azure.postgres().raw('azure.flexible-server')).require('managed-postgres')",
       manifestIrShape: "providerCapabilityRef + portabilityDebt[] + capabilityRequirement[]",
       expectedArtifact: "manifest-ir/provider-capability-refs.json",
       typeSurface: {
@@ -249,17 +333,161 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
   },
   compileExpectations: [
     "Example consumers use `@hobo/bindles` declarations only as interface shape, not a published package.",
+    "The package test runs `tsc --noEmit` over SDK compile consumers before runtime proof assertions.",
     "Generated binding names are stable strings that follow the hobo:sdk WIT contract.",
     "Manifest IR fixtures carry generated resource ids, dependency edges, portability/adoption debt, and proof-mode labels.",
   ],
+  compileConsumers: [
+    {
+      importFrom: "@hobo/bindles",
+      generatedBindings: ["hobo:sdk/bindle", "hobo:sdk/manifest", "hobo:sdk/deployment-plan", "hobo:sdk/migration"],
+      manifestVersion: "hobo.manifest/v1",
+      resourceRefs: ["res_api", "res_cache", "res_provider_postgres", "res_external_billing_db"],
+      typedClientCalls: ["deploymentPlanRequest", "migrationPlanRequest", "inspectReader", "logReader"],
+      debtMarkers: ["raw-provider-edge", "authoritative-external-resource"],
+    },
+  ],
 };
+
+export const SDK_TYPECHECK_CONSUMERS = {
+  todoApi: {
+    objectGraph: {
+      importFrom: "@hobo/bindles",
+      bindle: {
+        generatedId: "res_bindle_todo_api",
+        alias: "todo-api",
+        kind: "bindle",
+        proofMode: "type-test",
+        debtMarkers: [],
+      },
+      camp: {
+        generatedId: "res_camp_prod",
+        alias: "prod",
+        kind: "camp",
+        proofMode: "reference-fixture",
+        debtMarkers: [],
+      },
+      yard: {
+        generatedId: "res_yard_app",
+        alias: "app-yard",
+        kind: "yard",
+        proofMode: "reference-fixture",
+        debtMarkers: [],
+      },
+      junction: {
+        generatedId: "res_junction_api_cache",
+        alias: "api-cache",
+        kind: "junction",
+        proofMode: "reference-fixture",
+        debtMarkers: [],
+      },
+      resources: [
+        {
+          generatedId: "res_api",
+          alias: "api",
+          kind: "api",
+          proofMode: "type-test",
+          debtMarkers: [],
+        },
+        {
+          generatedId: "res_cache",
+          alias: "cache",
+          kind: "cache",
+          proofMode: "reference-fixture",
+          debtMarkers: [],
+        },
+        {
+          generatedId: "res_provider_postgres",
+          alias: "postgres",
+          kind: "provider-capability",
+          proofMode: "reference-fixture",
+          debtMarkers: ["raw-provider-edge"],
+        },
+        {
+          generatedId: "res_external_billing_db",
+          alias: "billing-db",
+          kind: "authoritative-external",
+          proofMode: "reference-fixture",
+          debtMarkers: ["authoritative-external-resource"],
+        },
+      ],
+    },
+    manifestIr: {
+      version: "hobo.manifest/v1",
+      generatedBindings: [
+        { module: "hobo:sdk/bindle", exportName: "Bindle" },
+        { module: "hobo:sdk/manifest", exportName: "ManifestIr" },
+        { module: "hobo:sdk/deployment-plan", exportName: "DeploymentPlanRequest" },
+        { module: "hobo:sdk/migration", exportName: "MigrationPlanRequest" },
+      ],
+      resources: [
+        {
+          generatedId: "res_api",
+          alias: "api",
+          kind: "api",
+          proofMode: "type-test",
+          debtMarkers: [],
+        },
+        {
+          generatedId: "res_cache",
+          alias: "cache",
+          kind: "cache",
+          proofMode: "reference-fixture",
+          debtMarkers: [],
+        },
+        {
+          generatedId: "res_provider_postgres",
+          alias: "postgres",
+          kind: "provider-capability",
+          proofMode: "reference-fixture",
+          debtMarkers: ["raw-provider-edge"],
+        },
+      ],
+      rawProviderEdges: ["azure.flexible-server"],
+      authoritativeExternalResources: ["billing-db"],
+    },
+    typedClientCalls: {
+      deploymentPlanRequest: {
+        manifestDigest: "sha256:todoapifixture000000000000000000000000000000000000000000000000000000",
+        camp: "prod",
+        objective: "balanced",
+        policyContext: "reference-fixture",
+      },
+      migrationPlanRequest: {
+        adoptedResource: {
+          generatedId: "res_external_billing_db",
+          alias: "billing-db",
+          kind: "authoritative-external",
+          proofMode: "reference-fixture",
+          debtMarkers: ["authoritative-external-resource"],
+        },
+        phases: ["expand", "backfill", "contract"],
+        snapshotRequired: true,
+      },
+      inspectReader: {
+        stream: "inspect",
+        projection: "deployment.current",
+        seq: 42,
+        freshness: "snapshot",
+        redaction: "tenant-safe",
+      },
+      logReader: {
+        stream: "logs",
+        projection: "resource.api.logs",
+        seq: 43,
+        freshness: "tail",
+        redaction: "tenant-safe",
+      },
+    },
+  },
+} satisfies Record<string, SdkCompileConsumer>;
 
 export function parseSdkObjectGraphProof(input: unknown): ParsedSdkObjectGraphProof {
   if (!isRecord(input)) {
     throw new Error("SDK object graph proof must be an object");
   }
 
-  const proof = input as SdkObjectGraphProof;
+  const proof = input as unknown as SdkObjectGraphProof;
   const errors = validateSdkObjectGraphProof(proof);
 
   if (errors.length > 0) {
@@ -364,6 +592,33 @@ export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[
 
   if ((proof.compileExpectations ?? []).length < 3) {
     errors.push("compile expectations must cover interface-only examples, WIT binding names, and manifest IR fixtures");
+  }
+  if ((proof.compileConsumers ?? []).length < 1) {
+    errors.push("compile consumers must include at least one SDK typecheck consumer");
+  }
+  for (const compileConsumer of proof.compileConsumers ?? []) {
+    if (compileConsumer.importFrom !== "@hobo/bindles") {
+      errors.push("compile consumer must import from @hobo/bindles");
+    }
+    if (
+      (compileConsumer.generatedBindings ?? []).length < 2 ||
+      !compileConsumer.generatedBindings.every((binding) => binding.startsWith("hobo:sdk/"))
+    ) {
+      errors.push("compile consumer must name generated hobo:sdk bindings");
+    }
+    if (compileConsumer.manifestVersion !== "hobo.manifest/v1") {
+      errors.push("compile consumer must target hobo.manifest/v1");
+    }
+    for (const debtKind of REQUIRED_DEBT_MARKERS) {
+      if (!(compileConsumer.debtMarkers ?? []).includes(debtKind)) {
+        errors.push(`compile consumer missing debt marker: ${debtKind}`);
+      }
+    }
+    for (const clientCall of ["deploymentPlanRequest", "migrationPlanRequest", "inspectReader", "logReader"]) {
+      if (!(compileConsumer.typedClientCalls ?? []).includes(clientCall)) {
+        errors.push(`compile consumer missing typed client call: ${clientCall}`);
+      }
+    }
   }
 
   return errors;

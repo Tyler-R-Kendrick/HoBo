@@ -10,6 +10,15 @@ package sdk_object_graph_manifest_ir_shapes
 	compile_proof:      "type-test"
 }
 
+#CompileConsumer: {
+	import_from:        "@hobo/bindles"
+	generated_bindings: [_, _, ...=~"^hobo:sdk/"]
+	manifest_version:   "hobo.manifest/v1"
+	resource_refs:      [_, _, ...string]
+	typed_client_calls: [_, _, _, ...string]
+	debt_markers:       ["raw-provider-edge", "authoritative-external-resource", ...string]
+}
+
 #Audience: {
 	actor:            =~"^(app developer|platform engineer|agent/MCP caller)$"
 	goal:             string & != ""
@@ -54,4 +63,5 @@ package sdk_object_graph_manifest_ir_shapes
 	debt_markers:         [#DebtMarker, #DebtMarker, ...#DebtMarker]
 	scope_boundary:       #ScopeBoundary
 	compile_expectations: [_, _, _, ...string]
+	compile_consumers:    [#CompileConsumer, ...#CompileConsumer]
 }

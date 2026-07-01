@@ -33,6 +33,8 @@ reader examples.
 - SDK examples remain interface-only and compile/typecheck against the intended
   `@hobo/bindles` shape.
 - Generated binding names lower to `hobo:sdk/*` and `hobo.manifest/v1`.
+- A local `tsc --noEmit` consumer typechecks the SDK object graph, generated WIT
+  binding refs, manifest IR, resource refs, and typed plan/migration/read calls.
 - Desired resources, provider/capability refs, DeploymentPlan requests,
   migration-plan requests, and inspect/log readers all have deterministic
   fixture ids, inputs, and outputs.

@@ -34,6 +34,7 @@
             "inspect-log-subscription-reader"
           ],
           "debtMarkers": ["raw-provider-edge", "authoritative-external-resource"],
+          "compileConsumers": ["todoApi"],
           "fixtureInputs": ["fixtures/input/todo-api.sdk.ts"],
           "fixtureOutputs": ["fixtures/output/todo-api.manifest.json"]
         }

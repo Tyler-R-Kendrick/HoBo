@@ -68,6 +68,24 @@ Missing evidence is classified before any release claim is written:
 - Do not invent compatibility guarantees without supporting tests.
 - Do not resolve release blockers in this issue; the outline only routes missing evidence.
 
+## M1 Dogfood/Alpha Evidence Gate
+
+HOBO-459 adds the M1 dogfood/alpha gate for this release-note surface. The gate records the
+accepted proof needed before dogfood/alpha wording can appear in the release-note outline, while
+still blocking final release notes until release-candidate evidence exists.
+
+The M1 gate requires:
+
+- dogfood/alpha evidence mapped to owning launch projects, release-note sections, and v1 cutline
+  blocker categories;
+- blockers and accepted risks recorded as explicit gate fields;
+- cross-project dependencies reflected through the release cutline;
+- follow-up execution issues only where evidence is missing; and
+- a parent HoBo v1 Release Readiness status update whenever this gate changes launch risk.
+
+The accepted gate may record dogfood-only copy risk. That risk must not be promoted into production
+upgrade, compatibility, or support claims until release-candidate evidence replaces it.
+
 ## M3 Release Candidate Evidence
 
 Source issue: HOBO-473.
@@ -125,5 +143,7 @@ support response-time promises stay outside this proof.
 
 Executable proof lives in
 [`../../src/draft/v1-release-notes-upgrade-guide-contract`](../../src/draft/v1-release-notes-upgrade-guide-contract/README.md).
+The M1 dogfood/alpha evidence gate lives in
+[`../../src/draft/v1-release-notes-dogfood-alpha-evidence`](../../src/draft/v1-release-notes-dogfood-alpha-evidence/README.md).
 The HOBO-401 v1 cutline dependency is recorded by
 [`v1-cutline-contract`](../../src/draft/v1-cutline-contract/README.md).

@@ -33,6 +33,51 @@
             "docs/design/adr/03-data-plane.md#adr-0050",
             "docs/design/adr/02-identity-security.md#adr-0077"
           ],
+          "proofModeLabels": [
+            "live",
+            "simulated",
+            "reference fixture",
+            "scope-out"
+          ],
+          "coveragePaths": [
+            {
+              "id": "happy-path",
+              "fixtureIds": ["hobo-545-dashboard-fresh"],
+              "accessibilityNote": "Screen reader labels announce fresh projection source, proof mode, and next action.",
+              "proofModeLabels": ["reference fixture"],
+              "safeOutcome": "Dashboard consumers can render current state without implying live provider proof."
+            },
+            {
+              "id": "blocked-path",
+              "fixtureIds": ["hobo-545-dashboard-redacted", "hobo-545-dashboard-unauthorized"],
+              "accessibilityNote": "Denied and redacted states use text labels and explicit hidden-field reasons, not color alone.",
+              "proofModeLabels": ["reference fixture", "scope-out"],
+              "safeOutcome": "Blocked states hand off correlation evidence without implementing authorization or redaction runtime."
+            },
+            {
+              "id": "stale-or-unknown-evidence",
+              "fixtureIds": [
+                "hobo-545-dashboard-stale",
+                "hobo-545-dashboard-unavailable",
+                "hobo-545-dashboard-partial"
+              ],
+              "accessibilityNote": "Stale, unavailable, and partial cards expose freshness age and recovery action in text.",
+              "proofModeLabels": ["reference fixture", "simulated"],
+              "safeOutcome": "Unknown evidence stays labeled as fixture or simulated instead of becoming optimistic live status."
+            },
+            {
+              "id": "support-handoff",
+              "fixtureIds": ["hobo-545-dashboard-support-routed"],
+              "accessibilityNote": "Support handoff keeps keyboard-visible correlation id, owner actor, and safe next action.",
+              "proofModeLabels": ["reference fixture", "live"],
+              "safeOutcome": "Support routing shows a reference packet without creating a live ticket or SLA workflow."
+            }
+          ],
+          "accessibilityNotes": [
+            "Screen reader labels include projection source, freshness, tenant/RBAC disposition, owner actor, proof mode, and next action.",
+            "Color is never the only signal; stale, unavailable, redacted, unauthorized, partial, and scope-out states carry text labels.",
+            "Keyboard-visible support handoff content exposes correlation id, owner actor, customer-safe wording, and redacted evidence boundaries."
+          ],
           "fixtures": [
             {
               "state": "fresh",

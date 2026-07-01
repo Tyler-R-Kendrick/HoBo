@@ -1,13 +1,27 @@
 package vibe_dashboard_freshness_rbac_fixtures
 
+#DashboardCoveragePath: "happy-path" | "blocked-path" | "stale-or-unknown-evidence" | "support-handoff"
+#DashboardProofMode: "live" | "simulated" | "reference fixture" | "scope-out"
+
 #DashboardFreshnessRbacFixtureProof: {
 	issue: "HOBO-545"
 	phase: "M1"
 	targetPackage: "src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures"
 	proofNote: "docs/design/proofs/vibe-dashboard-freshness-rbac-fixtures/README.md"
 	designRefs: [...string]
+	proofModeLabels: [...#DashboardProofMode]
+	coveragePaths: [...#DashboardFixtureCoveragePath]
+	accessibilityNotes: [...=~"^.+$"] & {0: string}
 	fixtures: [...#DashboardReadStateFixture]
 	scopeOut: [...string]
+}
+
+#DashboardFixtureCoveragePath: {
+	id: #DashboardCoveragePath
+	fixtureIds: [...=~"^hobo-545-dashboard-"] & {0: string}
+	accessibilityNote: =~"^.+$"
+	proofModeLabels: [...#DashboardProofMode] & {0: string}
+	safeOutcome: =~"^.+$"
 }
 
 #DashboardReadStateFixture: {
@@ -19,7 +33,7 @@ package vibe_dashboard_freshness_rbac_fixtures
 	evidenceLink: =~"^proof://hobo-545/"
 	customerSafeWording: =~"No customer payloads or provider credentials"
 	nextAction: string & != ""
-	proofMode: "reference fixture"
+	proofMode: #DashboardProofMode
 	correlationId: =~"^cor_hobo_545_"
 	status: string & != ""
 	freshness: #DashboardFixtureFreshness

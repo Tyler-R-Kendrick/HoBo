@@ -7,6 +7,9 @@ HOBO-545 adds a branch-local proof package at `src/draft/exp-proofs/vibe-dashboa
 - Accepted states: fresh, stale, unavailable, redacted, unauthorized, partial, support-routed.
 - Boundary shape: protobuf message definitions in `architecture/proto/vibe_dashboard_freshness_rbac_fixtures.proto`.
 - Constraints: CUE keeps projection sources view-backed, tenant-first scope mandatory, support owner actor present, customer wording safe, and `proofMode` fixed to `reference fixture`.
+- Coverage paths: happy path, blocked path, stale/unknown evidence, and support handoff are mapped to fixture ids with safe outcomes.
+- Accessibility notes: fixtures carry screen-reader, color-independent status, and keyboard-visible support handoff guidance.
+- Proof-mode labels: `live`, `simulated`, `reference fixture`, and `scope-out` are named explicitly; current read-state fixtures remain `reference fixture` evidence.
 - Pact-style consumer proof: `architecture/pacts/vibe_dashboard_freshness_rbac_fixtures.pact.json` returns the parsed fixture body.
 - Adversarial guard: `classifyDashboardFixtureScope` rejects authorization engine, redaction runtime, read-store runtime, live support tooling, production UI, and launch-claim creep.
 

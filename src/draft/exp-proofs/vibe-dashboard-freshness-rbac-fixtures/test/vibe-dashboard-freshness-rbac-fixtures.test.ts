@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "vitest";
 
 import {
+  REQUIRED_DASHBOARD_COVERAGE_PATHS,
   REQUIRED_DASHBOARD_FIXTURE_FIELDS,
+  REQUIRED_DASHBOARD_PROOF_MODES,
   REQUIRED_DASHBOARD_READ_STATES,
   VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES,
   classifyDashboardFixtureScope,
@@ -32,6 +34,12 @@ describe("HOBO-545 dashboard freshness/RBAC fixtures", () => {
       proof.fixtures.map((fixture) => fixture.state),
       REQUIRED_DASHBOARD_READ_STATES,
     );
+    assert.deepEqual(proof.proofModeLabels, REQUIRED_DASHBOARD_PROOF_MODES);
+    assert.deepEqual(
+      proof.coveragePaths.map((path) => path.id),
+      REQUIRED_DASHBOARD_COVERAGE_PATHS,
+    );
+    assert.ok(proof.accessibilityNotes.length > 0);
   });
 
   it("each fixture carries accepted projection, tenant/RBAC, owner, evidence, wording, and next-action fields", () => {
@@ -52,7 +60,31 @@ describe("HOBO-545 dashboard freshness/RBAC fixtures", () => {
       assert.ok(fixture.evidenceLink.startsWith("proof://hobo-545/"));
       assert.ok(fixture.customerSafeWording.length > 0);
       assert.ok(fixture.nextAction.length > 0);
-      assert.equal(fixture.proofMode, "reference fixture");
+      assert.ok(REQUIRED_DASHBOARD_PROOF_MODES.includes(fixture.proofMode));
+    }
+  });
+
+  it("covers happy, blocked, stale or unknown evidence, support handoff, accessibility, and proof-mode labels", () => {
+    const proof = parseDashboardFreshnessRbacFixtures(
+      VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES,
+    );
+    const fixtureIds = new Set(proof.fixtures.map((fixture) => fixture.fixtureId));
+
+    for (const path of proof.coveragePaths) {
+      assert.ok(path.fixtureIds.every((fixtureId) => fixtureIds.has(fixtureId)));
+      assert.ok(path.accessibilityNote.length > 0);
+      assert.ok(path.safeOutcome.length > 0);
+      assert.ok(path.proofModeLabels.every((mode) => REQUIRED_DASHBOARD_PROOF_MODES.includes(mode)));
+    }
+
+    const pathModes = new Set(proof.coveragePaths.flatMap((path) => path.proofModeLabels));
+    for (const mode of REQUIRED_DASHBOARD_PROOF_MODES) {
+      assert.ok(pathModes.has(mode), `missing proof mode ${mode}`);
+    }
+
+    const accessibilityText = proof.accessibilityNotes.join(" ").toLowerCase();
+    for (const requiredNote of ["screen reader", "color", "keyboard"]) {
+      assert.match(accessibilityText, new RegExp(requiredNote));
     }
   });
 
@@ -113,6 +145,9 @@ describe("HOBO-545 dashboard freshness/RBAC fixtures", () => {
       "customerSafeWording",
       "nextAction",
       "proofMode",
+      "proofModeLabels",
+      "coveragePaths",
+      "accessibilityNotes",
     ]) {
       assert.match(cue, new RegExp(`\\b${field}\\b`));
     }
@@ -149,7 +184,55 @@ describe("HOBO-545 dashboard freshness/RBAC fixtures", () => {
     );
   });
 
-  it("fails closed if tenant-first scoping or redaction evidence is removed", () => {
+  it("fails closed if acceptance evidence is removed or disconnected", () => {
+    assert.throws(
+      () =>
+        parseDashboardFreshnessRbacFixtures({
+          ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES,
+          accessibilityNotes: ["Screen reader labels exist.", "Keyboard handoff exists."],
+        }),
+      /color/,
+    );
+
+    assert.throws(
+      () =>
+        parseDashboardFreshnessRbacFixtures({
+          ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES,
+          proofModeLabels: ["reference fixture"],
+        }),
+      /proofModeLabels/,
+    );
+
+    assert.throws(
+      () =>
+        parseDashboardFreshnessRbacFixtures({
+          ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES,
+          coveragePaths: [
+            {
+              ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES.coveragePaths[0],
+              proofModeLabels: [],
+            },
+            ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES.coveragePaths.slice(1),
+          ],
+        }),
+      /proof-mode/,
+    );
+
+    assert.throws(
+      () =>
+        parseDashboardFreshnessRbacFixtures({
+          ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES,
+          coveragePaths: [
+            {
+              ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES.coveragePaths[0],
+              fixtureIds: ["missing-fixture"],
+            },
+            ...VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES.coveragePaths.slice(1),
+          ],
+        }),
+      /unknown fixture/,
+    );
+
     assert.throws(
       () =>
         parseDashboardFreshnessRbacFixtures({

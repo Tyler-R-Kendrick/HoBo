@@ -17,8 +17,23 @@ export const REQUIRED_DASHBOARD_FIXTURE_FIELDS = [
   "nextAction",
 ] as const;
 
+export const REQUIRED_DASHBOARD_COVERAGE_PATHS = [
+  "happy-path",
+  "blocked-path",
+  "stale-or-unknown-evidence",
+  "support-handoff",
+] as const;
+
+export const REQUIRED_DASHBOARD_PROOF_MODES = [
+  "live",
+  "simulated",
+  "reference fixture",
+  "scope-out",
+] as const;
+
 export type DashboardReadState = (typeof REQUIRED_DASHBOARD_READ_STATES)[number];
-export type DashboardProofMode = "reference fixture";
+export type DashboardCoveragePath = (typeof REQUIRED_DASHBOARD_COVERAGE_PATHS)[number];
+export type DashboardProofMode = (typeof REQUIRED_DASHBOARD_PROOF_MODES)[number];
 export type ProjectionSource =
   | "DeploymentView"
   | "TopologyView"
@@ -53,6 +68,14 @@ export interface DashboardFixtureRedaction {
   readonly withheldFields: readonly string[];
 }
 
+export interface DashboardFixtureCoveragePath {
+  readonly id: DashboardCoveragePath;
+  readonly fixtureIds: readonly string[];
+  readonly accessibilityNote: string;
+  readonly proofModeLabels: readonly DashboardProofMode[];
+  readonly safeOutcome: string;
+}
+
 export interface DashboardReadStateFixture {
   readonly state: DashboardReadState;
   readonly fixtureId: string;
@@ -82,6 +105,9 @@ export interface DashboardFreshnessRbacFixtureProof {
   readonly targetPackage: "src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures";
   readonly proofNote: "docs/design/proofs/vibe-dashboard-freshness-rbac-fixtures/README.md";
   readonly designRefs: readonly string[];
+  readonly proofModeLabels: readonly DashboardProofMode[];
+  readonly coveragePaths: readonly DashboardFixtureCoveragePath[];
+  readonly accessibilityNotes: readonly string[];
   readonly fixtures: readonly DashboardReadStateFixture[];
   readonly scopeOut: readonly string[];
 }
@@ -145,6 +171,54 @@ export const VIBE_DASHBOARD_FRESHNESS_RBAC_FIXTURES = {
     "docs/design/data-plane.md#plan-32",
     "docs/design/adr/03-data-plane.md#adr-0050",
     "docs/design/adr/02-identity-security.md#adr-0077",
+  ],
+  proofModeLabels: REQUIRED_DASHBOARD_PROOF_MODES,
+  coveragePaths: [
+    {
+      id: "happy-path",
+      fixtureIds: ["hobo-545-dashboard-fresh"],
+      accessibilityNote:
+        "Screen reader labels announce fresh projection source, proof mode, and next action.",
+      proofModeLabels: ["reference fixture"],
+      safeOutcome:
+        "Dashboard consumers can render current state without implying live provider proof.",
+    },
+    {
+      id: "blocked-path",
+      fixtureIds: ["hobo-545-dashboard-redacted", "hobo-545-dashboard-unauthorized"],
+      accessibilityNote:
+        "Denied and redacted states use text labels and explicit hidden-field reasons, not color alone.",
+      proofModeLabels: ["reference fixture", "scope-out"],
+      safeOutcome:
+        "Blocked states hand off correlation evidence without implementing authorization or redaction runtime.",
+    },
+    {
+      id: "stale-or-unknown-evidence",
+      fixtureIds: [
+        "hobo-545-dashboard-stale",
+        "hobo-545-dashboard-unavailable",
+        "hobo-545-dashboard-partial",
+      ],
+      accessibilityNote:
+        "Stale, unavailable, and partial cards expose freshness age and recovery action in text.",
+      proofModeLabels: ["reference fixture", "simulated"],
+      safeOutcome:
+        "Unknown evidence stays labeled as fixture or simulated instead of becoming optimistic live status.",
+    },
+    {
+      id: "support-handoff",
+      fixtureIds: ["hobo-545-dashboard-support-routed"],
+      accessibilityNote:
+        "Support handoff keeps keyboard-visible correlation id, owner actor, and safe next action.",
+      proofModeLabels: ["reference fixture", "live"],
+      safeOutcome:
+        "Support routing shows a reference packet without creating a live ticket or SLA workflow.",
+    },
+  ],
+  accessibilityNotes: [
+    "Screen reader labels include projection source, freshness, tenant/RBAC disposition, owner actor, proof mode, and next action.",
+    "Color is never the only signal; stale, unavailable, redacted, unauthorized, partial, and scope-out states carry text labels.",
+    "Keyboard-visible support handoff content exposes correlation id, owner actor, customer-safe wording, and redacted evidence boundaries.",
   ],
   fixtures: [
     {
@@ -409,9 +483,24 @@ export function parseDashboardFreshnessRbacFixtures(
     "proofNote",
   );
 
-  const fixtures = expectArray(proof.fixtures, "fixtures");
-  const states = fixtures.map((fixture) => expectFixture(fixture).state);
+  const fixtures = expectArray(proof.fixtures, "fixtures").map((fixture) =>
+    expectFixture(fixture),
+  );
+  const states = fixtures.map((fixture) => fixture.state);
   assertSameStates(states);
+
+  assertSameProofModes(expectStringArray(proof.proofModeLabels, "proofModeLabels"));
+  const coveragePaths = expectArray(proof.coveragePaths, "coveragePaths");
+  const parsedCoveragePaths = coveragePaths.map((path) => expectCoveragePath(path));
+  const coveragePathIds = parsedCoveragePaths.map((path) => path.id);
+  assertSameCoveragePaths(coveragePathIds);
+  assertCoverageFixtureIds(
+    parsedCoveragePaths,
+    new Set(fixtures.map((fixture) => fixture.fixtureId)),
+  );
+  assertAccessibilityNotes(
+    expectStringArray(proof.accessibilityNotes, "accessibilityNotes"),
+  );
 
   return value as DashboardFreshnessRbacFixtureProof;
 }
@@ -476,7 +565,7 @@ function expectFixture(value: unknown): DashboardReadStateFixture {
   }
   expectString(fixture.customerSafeWording, `${state}.customerSafeWording`);
   expectString(fixture.nextAction, `${state}.nextAction`);
-  expectLiteral(fixture.proofMode, "reference fixture", `${state}.proofMode`);
+  expectOneOf(fixture.proofMode, REQUIRED_DASHBOARD_PROOF_MODES, `${state}.proofMode`);
   expectString(fixture.correlationId, `${state}.correlationId`);
 
   const redaction = expectRecord(fixture.redaction, `${state}.redaction`);
@@ -492,6 +581,25 @@ function expectFixture(value: unknown): DashboardReadStateFixture {
   return fixture as DashboardReadStateFixture;
 }
 
+function expectCoveragePath(value: unknown): DashboardFixtureCoveragePath {
+  const path = expectRecord(value, "coveragePath");
+  const id = expectOneOf(path.id, REQUIRED_DASHBOARD_COVERAGE_PATHS, "coveragePath.id");
+  const fixtureIds = expectStringArray(path.fixtureIds, `${id}.fixtureIds`);
+  if (fixtureIds.length === 0) {
+    throw new TypeError(`${id} must reference at least one fixture`);
+  }
+  expectString(path.accessibilityNote, `${id}.accessibilityNote`);
+  const proofModeLabels = expectStringArray(path.proofModeLabels, `${id}.proofModeLabels`);
+  if (proofModeLabels.length === 0) {
+    throw new TypeError(`${id} must carry at least one proof-mode label`);
+  }
+  for (const proofMode of proofModeLabels) {
+    expectOneOf(proofMode, REQUIRED_DASHBOARD_PROOF_MODES, `${id}.proofModeLabels`);
+  }
+  expectString(path.safeOutcome, `${id}.safeOutcome`);
+  return path as DashboardFixtureCoveragePath;
+}
+
 function assertSameStates(states: readonly string[]): void {
   const expected = REQUIRED_DASHBOARD_READ_STATES;
   if (states.length !== expected.length) {
@@ -500,6 +608,52 @@ function assertSameStates(states: readonly string[]): void {
   for (const [index, state] of expected.entries()) {
     if (states[index] !== state) {
       throw new TypeError(`fixtures must keep read state order at ${state}`);
+    }
+  }
+}
+
+function assertSameCoveragePaths(paths: readonly string[]): void {
+  const expected = REQUIRED_DASHBOARD_COVERAGE_PATHS;
+  if (paths.length !== expected.length) {
+    throw new TypeError("coveragePaths must cover every required HOBO-545 path");
+  }
+  for (const [index, path] of expected.entries()) {
+    if (paths[index] !== path) {
+      throw new TypeError(`coveragePaths must keep path order at ${path}`);
+    }
+  }
+}
+
+function assertSameProofModes(proofModes: readonly string[]): void {
+  const expected = REQUIRED_DASHBOARD_PROOF_MODES;
+  if (proofModes.length !== expected.length) {
+    throw new TypeError("proofModeLabels must name every allowed HOBO-545 proof mode");
+  }
+  for (const [index, proofMode] of expected.entries()) {
+    if (proofModes[index] !== proofMode) {
+      throw new TypeError(`proofModeLabels must keep proof mode order at ${proofMode}`);
+    }
+  }
+}
+
+function assertCoverageFixtureIds(
+  coveragePaths: readonly DashboardFixtureCoveragePath[],
+  fixtureIds: ReadonlySet<string>,
+): void {
+  for (const path of coveragePaths) {
+    for (const fixtureId of path.fixtureIds) {
+      if (!fixtureIds.has(fixtureId)) {
+        throw new TypeError(`${path.id} references unknown fixture ${fixtureId}`);
+      }
+    }
+  }
+}
+
+function assertAccessibilityNotes(notes: readonly string[]): void {
+  const joined = notes.join(" ").toLowerCase();
+  for (const required of ["screen reader", "color", "keyboard"]) {
+    if (!joined.includes(required)) {
+      throw new TypeError(`accessibilityNotes must include ${required} guidance`);
     }
   }
 }
@@ -523,6 +677,14 @@ function expectString(value: unknown, label: string): string {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
+}
+
+function expectStringArray(value: unknown, label: string): readonly string[] {
+  const values = expectArray(value, label);
+  for (const [index, item] of values.entries()) {
+    expectString(item, `${label}[${index}]`);
+  }
+  return values as readonly string[];
 }
 
 function expectLiteral<T extends string>(

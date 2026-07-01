@@ -172,17 +172,18 @@ describe("ci-fabric contract", () => {
 		});
 	});
 
-	it("stored cloud secrets are rejected; CI must use the OIDC token broker", () => {
-		const report = validateCiFabricContract(
-			createHoboCiFabricContract({
-				e2e: {
-					env: {
-						AWS_SECRET_ACCESS_KEY: "${{ secrets.AWS_SECRET_ACCESS_KEY }}",
-					},
-				},
-			}),
-			SAMPLE_WORKFLOWS,
-		);
+  it("stored cloud secrets are rejected; CI must use the OIDC token broker", () => {
+    const secretPlaceholder = "${{" + " secrets.AWS_SECRET_ACCESS_KEY }}";
+    const report = validateCiFabricContract(
+      createHoboCiFabricContract({
+        e2e: {
+          env: {
+            AWS_SECRET_ACCESS_KEY: secretPlaceholder,
+          },
+        },
+      }),
+      SAMPLE_WORKFLOWS,
+    );
 
 		expect(report.passed).toBe(false);
 		expect(report.violations).toContainEqual({

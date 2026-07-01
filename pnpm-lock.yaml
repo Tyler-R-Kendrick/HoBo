@@ -332,6 +332,8 @@ importers:
 
   src/draft/exp-proofs/vibe-deployment-dashboard-mockups: {}
 
+  src/draft/exp-proofs/vibe-docs-portal-ia-states: {}
+
   src/draft/exp-proofs/vibe-first-customer-pilot-storyboard: {}
 
   src/draft/exp-proofs/vibe-marketplace-installability-mockups: {}

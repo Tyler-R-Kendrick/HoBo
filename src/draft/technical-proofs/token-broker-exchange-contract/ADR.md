@@ -12,20 +12,25 @@ This draft package carries the architecture-guard evidence required by
 
 ## Parse, Don't Validate
 
-Untrusted SVID and exchange requests cross one parser boundary (`parseSvid`,
-`normalizeExchangeRequest`) into derived domain types. Downstream broker logic accepts
-parsed SVID scope and principal refs — invalid or expired inputs are unrepresentable
-beyond the exchange seam.
+This package applies the **parse, don't validate** discipline: untrusted SVID and
+exchange requests cross one parser boundary (`parseSvid`, `normalizeExchangeRequest`)
+into derived domain types. Downstream broker logic accepts parsed SVID scope and
+principal refs — invalid or expired inputs are unrepresentable beyond the exchange
+seam.
 
 ## Event Architecture
 
 - **Command** — `ExchangeSvidForProviderToken`, `RenewBrokeredGrant`, `RevokeBrokeredGrant`.
 - **Event** — `token.Granted`, `token.Used`, `token.Revoked`, `token.Denied`.
 - **Actor** — Yard Identity broker service.
-- **Projection** — `CredentialAudit` folds token events into the replayable credential audit.
+- **Event store** — accepted token events append to the platform event store.
+- **Materialized view / projection** — `CredentialAudit` folds token events into the replayable credential audit.
+- **Snapshot** — the latest grant record is the snapshot of active brokered credentials.
+- **Read store** — downstream surfaces query `CredentialAudit` rather than the raw event log.
 
-No runtime engine or event store is implemented here; this is design-time contract evidence
-for the S3-03 production broker module.
+No runtime engine, projector, or event store is implemented here; this is a
+design-time contract that names the command, event, actor, and projection
+boundaries so later implementation inherits a consistent vocabulary.
 
 ## Dependencies
 

@@ -2,10 +2,10 @@
 
 ## Tools & channels
 
-- **GitHub** — `Tyler-R-Kendrick/HoBo` repo; PRs numbered; Cursor Cloud agents use `cursor/<descriptive-name>-9ed9` branches
+- **GitHub** — `Tyler-R-Kendrick/HoBo` repo; PRs numbered; Cursor Cloud agents use `cursor/<descriptive-name>-<suffix>` branches
 - **Linear** — team HoBo, issue keys `HOBO-N`; projects map to design epics; Done status + PR link comments
 - **CI** — Docs + PR impact gate on every PR; `pnpm agent:check -- --base=origin/main` locally
-- **Agent permissions** — can merge PRs and push branches; cannot `gh pr close` or comment on PRs (GraphQL integration limit)
+- **Agent permissions** — can merge PRs, push branches, and post PR reviews via Cursor Automation MCP; cannot `gh pr close` via GraphQL integration
 
 ## Terminology
 

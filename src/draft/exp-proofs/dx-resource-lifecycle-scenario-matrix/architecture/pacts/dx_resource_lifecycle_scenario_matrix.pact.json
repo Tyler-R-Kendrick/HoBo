@@ -1,0 +1,57 @@
+{
+  "consumer": {
+    "name": "dx-resource-lifecycle-proof-consumer"
+  },
+  "provider": {
+    "name": "dx-resource-lifecycle-scenario-matrix"
+  },
+  "interactions": [
+    {
+      "description": "reads the canonical resource lifecycle DX scenario matrix",
+      "providerStates": [
+        {
+          "name": "HOBO-567 matrix fixture is published"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "issue": "HOBO-567",
+          "phase": "M1",
+          "roles": [
+            "app-developer",
+            "platform-engineer",
+            "gitops",
+            "secops",
+            "devops",
+            "sre",
+            "agent-mcp-caller"
+          ],
+          "scenarioPaths": [
+            "happy-path",
+            "blocked-path",
+            "stale-or-unknown-evidence",
+            "migration-or-rollback",
+            "support-handoff"
+          ]
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    },
+    "hobo": {
+      "issue": "HOBO-567",
+      "proof": "docs/design/proofs/dx-resource-lifecycle-scenario-matrix/README.md"
+    }
+  }
+}

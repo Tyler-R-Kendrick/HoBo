@@ -2,5 +2,8 @@
   "name": "hello-bindle",
   "private": true,
   "type": "module",
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "scripts": {
+    "test": "node --eval \"process.exit(0)\""
+  }
 }

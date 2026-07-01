@@ -27,6 +27,8 @@
           "targetPackage": "src/draft/exp-proofs/cli-error-refusal-examples",
           "proofNote": "docs/design/proofs/cli-error-refusal-examples/README.md",
           "requiredOperations": ["doctor", "plan", "up", "inspect", "logs", "mcp-action"],
+          "acceptedFixtureCorpus": "HOBO-572",
+          "acceptedFixturePrefix": "dx.lifecycle.",
           "requiredCases": [
             "missing-dependency",
             "credential-auth-failure",
@@ -41,6 +43,7 @@
           ],
           "outputs": ["terminal", "json", "mcp"],
           "proofModes": ["reference-fixture", "simulated-transcript"],
+          "fixtureProofModes": ["reference fixture"],
           "scopeOut": [
             "production error handler implementation",
             "live auth or provider checks",

@@ -10,6 +10,9 @@ vibe slice.
   capability, destructive migration blocked, and support bundle handoff.
 - Each example pins human terminal copy, JSON output, MCP tool result shape, exit code, proof mode,
   fixture id, accessibility notes, and customer-safe wording.
+- Fixture ids are accepted HOBO-572 `dx.lifecycle.*` fixture facts, not local
+  one-off refusal ids; JSON and MCP metadata also carry the HOBO-572 fixture
+  proof mode.
 - Non-live examples fail closed and never claim live success from simulated transcripts or
   reference fixtures.
 - Scope guards reject production handler implementation, live auth/provider checks, support ticket
@@ -20,6 +23,11 @@ vibe slice.
 This package is a reference example catalog, not a runtime handler. It uses parse, don't validate:
 untrusted catalog records cross one parser boundary and become derived parsed types before any
 downstream proof can consume them.
+
+The catalog consumes the accepted
+`dx-resource-lifecycle-fixture-corpus` proof so every refusal example references
+redacted, tenant-safe HOBO-572 fixture facts such as `dx.lifecycle.policy-denial.gatekeeper-decision.v1`
+or `dx.lifecycle.stale-projection.projection-snapshot.v1`.
 
 The command family is the CLI/API/MCP refusal-example read model. Later actors can emit
 `cliErrorRefusalExample.Recorded` events into an event-store; projections and materialized views can

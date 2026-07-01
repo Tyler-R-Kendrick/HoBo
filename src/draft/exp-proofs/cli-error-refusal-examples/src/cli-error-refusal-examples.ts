@@ -1,3 +1,5 @@
+import { DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS } from "../../dx-resource-lifecycle-fixture-corpus/src/dx-resource-lifecycle-fixture-corpus.js";
+
 export const REQUIRED_ERROR_CASES = [
   "missing-dependency",
   "credential-auth-failure",
@@ -24,6 +26,8 @@ type CliErrorCaseId = (typeof REQUIRED_ERROR_CASES)[number];
 type OperationId = (typeof REQUIRED_OPERATIONS)[number];
 type ProofMode = "reference-fixture" | "simulated-transcript" | "live";
 type McpStatus = "error" | "blocked" | "needs-human";
+type AcceptedFixtureFact = (typeof DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS.scenarios)[number]["fixtureFacts"][number];
+type AcceptedFixtureProofMode = AcceptedFixtureFact["proofMode"];
 
 type CliJsonOutput = {
   readonly status: "blocked" | "refused" | "unknown" | "handoff";
@@ -32,6 +36,7 @@ type CliJsonOutput = {
   readonly remediation: string;
   readonly proofMode: ProofMode;
   readonly fixtureId: string;
+  readonly fixtureProofMode: AcceptedFixtureProofMode;
   readonly correlationId: string;
 };
 
@@ -47,6 +52,7 @@ type McpToolResult = {
     readonly code: string;
     readonly proofMode: ProofMode;
     readonly fixtureId: string;
+    readonly fixtureProofMode: AcceptedFixtureProofMode;
     readonly exitCode: number;
     readonly redactionClass: "public" | "tenant-safe" | "support-safe";
   };
@@ -64,6 +70,7 @@ type CliErrorRefusalExample = {
   readonly exitCode: number;
   readonly proofMode: ProofMode;
   readonly fixtureId: string;
+  readonly fixtureProofMode: AcceptedFixtureProofMode;
   readonly accessibilityNotes: readonly string[];
   readonly customerSafeWording: readonly string[];
 };
@@ -96,6 +103,30 @@ const DESIGN_REFS = [
   "docs/design/operators-sre.md#plan-40",
 ] as const;
 
+const ACCEPTED_FIXTURE_FACTS = new Map(
+  DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS.scenarios.flatMap((scenario) =>
+    scenario.fixtureFacts.map((fact) => [fact.id, fact] as const),
+  ),
+);
+
+function requireAcceptedFixtureFact(fixtureId: string): AcceptedFixtureFact {
+  const fixtureFact = ACCEPTED_FIXTURE_FACTS.get(fixtureId);
+
+  if (!fixtureFact) {
+    throw new TypeError(`fixtureId must reference accepted HOBO-572 fixture fact: ${fixtureId}`);
+  }
+
+  if (
+    fixtureFact.source !== "fixture-corpus" ||
+    fixtureFact.redacted !== true ||
+    fixtureFact.tenantSafe !== true
+  ) {
+    throw new TypeError(`fixtureId must reference redacted tenant-safe HOBO-572 fixture fact: ${fixtureId}`);
+  }
+
+  return fixtureFact;
+}
+
 export const CLI_ERROR_REFUSAL_EXAMPLES = {
   issue: "HOBO-558",
   phase: "M1",
@@ -112,6 +143,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "blocked",
       exitCode: 2,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.deploy.manifest-ir.v1",
       terminal: [
         "blocked: hobo doctor cannot find the component toolchain dependency.",
         "reference fixture only: install the named dependency, then rerun hobo doctor.",
@@ -136,6 +168,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "refused",
       exitCode: 3,
       proofMode: "simulated-transcript",
+      fixtureId: "dx.lifecycle.deploy.deployment-plan.v1",
       terminal: [
         "refused: hobo up cannot continue because the auth contract is not satisfied.",
         "simulated transcript: refresh the brokered session; no provider credential was used.",
@@ -160,6 +193,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "blocked",
       exitCode: 4,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.policy-denial.gatekeeper-decision.v1",
       terminal: [
         "blocked: Gatekeeper denied this Delta under policy.Decided fixture pol_558.",
         "reference fixture only: request approval or change the plan before hobo up.",
@@ -184,6 +218,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "blocked",
       exitCode: 5,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.contract-incompatibility.gatekeeper-decision.v1",
       terminal: [
         "blocked: hobo plan found a contract incompatibility in the fixture corpus.",
         "reference fixture only: publish a dual-read shim or keep the current contract.",
@@ -208,6 +243,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "unknown",
       exitCode: 6,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.stale-projection.projection-snapshot.v1",
       terminal: [
         "unknown: hobo inspect is reading a projection snapshot outside the freshness window.",
         "reference fixture only: wait for projection catch-up or use the event id for support handoff.",
@@ -232,6 +268,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "blocked",
       exitCode: 7,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.deploy.links.v1",
       terminal: [
         "blocked: hobo up cannot find accepted evidence for this fixture id.",
         "reference fixture only: rerun hobo plan and attach the new evidence packet.",
@@ -256,6 +293,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "unknown",
       exitCode: 8,
       proofMode: "simulated-transcript",
+      fixtureId: "dx.lifecycle.manage.logs.v1",
       terminal: [
         "unknown: hobo logs cannot prove the sink is reactive from this simulated transcript.",
         "simulated transcript: inspect the last event-store snapshot before trusting the stream.",
@@ -280,6 +318,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "blocked",
       exitCode: 9,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.deploy.deployment-plan.v1",
       terminal: [
         "blocked: hobo plan found provider capability coverage is partial or none.",
         "reference fixture only: choose a supported Camp or keep the capability marked unavailable.",
@@ -304,6 +343,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "refused",
       exitCode: 10,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.migrate.migration-phase.v1",
       terminal: [
         "refused: hobo up blocked a destructive migration without an accepted migration.* proof.",
         "reference fixture only: add expand/backfill/contract proof before retrying.",
@@ -328,6 +368,7 @@ export const CLI_ERROR_REFUSAL_EXAMPLES = {
       status: "needs-human",
       exitCode: 11,
       proofMode: "reference-fixture",
+      fixtureId: "dx.lifecycle.support-evidence.support-evidence.v1",
       terminal: [
         "handoff: hobo doctor assembled a support-safe bundle from reference fixtures.",
         "reference fixture only: attach the bundle id to the owner route; no support ticket was created.",
@@ -431,6 +472,7 @@ export function summarizeCliErrorRefusalExamples(
   readonly operations: readonly OperationId[];
   readonly fixtureId: string;
   readonly proofMode: ProofMode;
+  readonly fixtureProofMode: AcceptedFixtureProofMode;
   readonly outputs: readonly ["terminal", "json", "mcp"];
 }> {
   return catalog.examples.map((entry) => ({
@@ -438,6 +480,7 @@ export function summarizeCliErrorRefusalExamples(
     operations: entry.operations,
     fixtureId: entry.fixtureId,
     proofMode: entry.proofMode,
+    fixtureProofMode: entry.fixtureProofMode,
     outputs: ["terminal", "json", "mcp"],
   }));
 }
@@ -451,13 +494,14 @@ function example(input: {
   readonly status: McpStatus;
   readonly exitCode: number;
   readonly proofMode: ProofMode;
+  readonly fixtureId: string;
   readonly terminal: readonly string[];
   readonly message: string;
   readonly remediation: string;
   readonly accessibility: readonly string[];
   readonly safe: readonly string[];
 }): CliErrorRefusalExample {
-  const fixtureId = `cli-error-refusal.${input.caseId}.v1`;
+  const fixtureFact = requireAcceptedFixtureFact(input.fixtureId);
   const outputStatus = input.status === "needs-human"
     ? "handoff"
     : input.status === "error"
@@ -476,7 +520,8 @@ function example(input: {
       message: input.message,
       remediation: input.remediation,
       proofMode: input.proofMode,
-      fixtureId,
+      fixtureId: input.fixtureId,
+      fixtureProofMode: fixtureFact.proofMode,
       correlationId: `corr-${input.caseId}`,
     },
     mcpToolResult: {
@@ -490,7 +535,8 @@ function example(input: {
       metadata: {
         code: input.code,
         proofMode: input.proofMode,
-        fixtureId,
+        fixtureId: input.fixtureId,
+        fixtureProofMode: fixtureFact.proofMode,
         exitCode: input.exitCode,
         redactionClass: input.caseId === "support-bundle-handoff" ? "support-safe" : "tenant-safe",
       },
@@ -498,7 +544,8 @@ function example(input: {
     mcpStatus: input.status,
     exitCode: input.exitCode,
     proofMode: input.proofMode,
-    fixtureId,
+    fixtureId: input.fixtureId,
+    fixtureProofMode: fixtureFact.proofMode,
     accessibilityNotes: input.accessibility,
     customerSafeWording: input.safe,
   };
@@ -530,8 +577,9 @@ function assertExamples(value: unknown): CliErrorRefusalExample[] {
     if (entry.proofMode !== "live") {
       assertNoLiveSuccessClaim(entry);
     }
-    if (entry.fixtureId !== `cli-error-refusal.${entry.caseId}.v1`) {
-      throw new TypeError(`${entry.caseId}.fixtureId must be stable`);
+    const fixtureFact = requireAcceptedFixtureFact(entry.fixtureId);
+    if (entry.fixtureProofMode !== fixtureFact.proofMode) {
+      throw new TypeError(`${entry.caseId}.fixtureProofMode must match accepted fixture proof mode`);
     }
 
     return entry as CliErrorRefusalExample;
@@ -570,6 +618,11 @@ function assertJsonOutput(
   assertLiteral(value.code, parent.code, `${String(parent.caseId)}.jsonOutput.code`);
   assertLiteral(value.proofMode, parent.proofMode, `${String(parent.caseId)}.jsonOutput.proofMode`);
   assertLiteral(value.fixtureId, parent.fixtureId, `${String(parent.caseId)}.jsonOutput.fixtureId`);
+  assertLiteral(
+    value.fixtureProofMode,
+    parent.fixtureProofMode,
+    `${String(parent.caseId)}.jsonOutput.fixtureProofMode`,
+  );
   assertNonEmptyString(value.message, `${String(parent.caseId)}.jsonOutput.message`);
   assertNonEmptyString(value.remediation, `${String(parent.caseId)}.jsonOutput.remediation`);
   assertNonEmptyString(value.correlationId, `${String(parent.caseId)}.jsonOutput.correlationId`);
@@ -602,6 +655,11 @@ function assertMcpToolResult(
     value.metadata.fixtureId,
     parent.fixtureId,
     `${String(parent.caseId)}.mcpToolResult.metadata.fixtureId`,
+  );
+  assertLiteral(
+    value.metadata.fixtureProofMode,
+    parent.fixtureProofMode,
+    `${String(parent.caseId)}.mcpToolResult.metadata.fixtureProofMode`,
   );
   assertLiteral(
     value.metadata.exitCode,

@@ -30,5 +30,8 @@ dashboard dependencies.
 - The proof package carries protobuf, CUE, and Pact boundary evidence.
 - Terminal copy, JSON output, MCP tool result shape, exit code, proof mode, fixture id,
   accessibility notes, and customer-safe wording are checked together.
+- Refusal examples consume accepted HOBO-572 `dx.lifecycle.*` fixture facts and
+  repeat the fixture proof mode so downstream consumers do not invent one-off
+  evidence.
 - Live auth/provider checks, production error handlers, support ticket automation, and dashboard
   copy remain out of scope until the CLI/API/SDK envelopes are accepted.

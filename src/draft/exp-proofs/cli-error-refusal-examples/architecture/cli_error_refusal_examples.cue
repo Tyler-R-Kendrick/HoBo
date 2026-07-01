@@ -1,6 +1,7 @@
 package cli_error_refusal_examples
 
 #ProofMode: "reference-fixture" | "simulated-transcript" | "live"
+#FixtureProofMode: "reference fixture" | "simulated" | "live" | "scope-out"
 #McpStatus: "error" | "blocked" | "needs-human"
 
 #CliJsonOutput: {
@@ -9,7 +10,8 @@ package cli_error_refusal_examples
 	message:        string & != ""
 	remediation:    string & != ""
 	proof_mode:     #ProofMode
-	fixture_id:     =~"^cli-error-refusal\\."
+	fixture_id:     =~"^dx\\.lifecycle\\."
+	fixture_proof_mode: #FixtureProofMode
 	correlation_id: =~"^corr-"
 }
 
@@ -21,7 +23,8 @@ package cli_error_refusal_examples
 #McpMetadata: {
 	code:            string & != ""
 	proof_mode:      #ProofMode
-	fixture_id:      =~"^cli-error-refusal\\."
+	fixture_id:      =~"^dx\\.lifecycle\\."
+	fixture_proof_mode: #FixtureProofMode
 	exit_code:       int & >0
 	redaction_class: "public" | "tenant-safe" | "support-safe"
 }
@@ -45,7 +48,8 @@ package cli_error_refusal_examples
 	mcp_status:           #McpStatus
 	exit_code:            int & >0
 	proof_mode:           #ProofMode
-	fixture_id:           =~"^cli-error-refusal\\."
+	fixture_id:           =~"^dx\\.lifecycle\\."
+	fixture_proof_mode:   #FixtureProofMode
 	accessibility_notes:  [_, _, ...string]
 	customer_safe_wording: [_, _, ...string]
 }

@@ -10,6 +10,13 @@ import {
   parseCliErrorRefusalCatalog,
   summarizeCliErrorRefusalExamples,
 } from "../src/cli-error-refusal-examples.ts";
+import { DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS } from "../../dx-resource-lifecycle-fixture-corpus/src/dx-resource-lifecycle-fixture-corpus.ts";
+
+const ACCEPTED_FIXTURE_IDS = new Set(
+  DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS.scenarios.flatMap((scenario) =>
+    scenario.fixtureFacts.map((fact) => fact.id),
+  ),
+);
 
 describe("CLI error and refusal examples", () => {
   it("covers every required error/refusal case across doctor, plan, up, inspect, logs, and MCP actions", () => {
@@ -38,12 +45,16 @@ describe("CLI error and refusal examples", () => {
       assert.equal(example.jsonOutput.code, example.code);
       assert.equal(example.jsonOutput.proofMode, example.proofMode);
       assert.equal(example.jsonOutput.fixtureId, example.fixtureId);
+      assert.equal(example.jsonOutput.fixtureProofMode, example.fixtureProofMode);
       assert.equal(example.mcpToolResult.status, example.mcpStatus);
       assert.equal(example.mcpToolResult.metadata.code, example.code);
       assert.equal(example.mcpToolResult.metadata.proofMode, example.proofMode);
       assert.equal(example.mcpToolResult.metadata.fixtureId, example.fixtureId);
+      assert.equal(example.mcpToolResult.metadata.fixtureProofMode, example.fixtureProofMode);
       assert.ok(example.exitCode > 0, `${example.caseId} uses a non-zero exit code`);
-      assert.match(example.fixtureId, /^cli-error-refusal\./);
+      assert.match(example.fixtureId, /^dx\.lifecycle\./);
+      assert.ok(ACCEPTED_FIXTURE_IDS.has(example.fixtureId), `${example.caseId} uses accepted HOBO-572 fixture`);
+      assert.equal(example.fixtureProofMode, "reference fixture");
       assert.ok(example.accessibilityNotes.length >= 2, `${example.caseId} has accessibility notes`);
       assert.ok(example.customerSafeWording.length >= 2, `${example.caseId} has customer-safe wording`);
     }
@@ -85,6 +96,25 @@ describe("CLI error and refusal examples", () => {
 
     assert.throws(() => parseCliErrorRefusalCatalog(unsafe), /live success claim/i);
 
+    const staleFixture = structuredClone(CLI_ERROR_REFUSAL_EXAMPLES);
+    staleFixture.examples[0] = {
+      ...staleFixture.examples[0],
+      fixtureId: "cli-error-refusal.missing-dependency.v1",
+      jsonOutput: {
+        ...staleFixture.examples[0].jsonOutput,
+        fixtureId: "cli-error-refusal.missing-dependency.v1",
+      },
+      mcpToolResult: {
+        ...staleFixture.examples[0].mcpToolResult,
+        metadata: {
+          ...staleFixture.examples[0].mcpToolResult.metadata,
+          fixtureId: "cli-error-refusal.missing-dependency.v1",
+        },
+      },
+    };
+
+    assert.throws(() => parseCliErrorRefusalCatalog(staleFixture), /accepted HOBO-572 fixture fact/i);
+
     assert.deepEqual(classifyCliErrorRefusalScope("Implement the production CLI error handler"), {
       allowed: false,
       reason: "production-handler",
@@ -116,7 +146,8 @@ describe("CLI error and refusal examples", () => {
     assert.ok(summary.every((row) => row.outputs.includes("terminal")));
     assert.ok(summary.every((row) => row.outputs.includes("json")));
     assert.ok(summary.every((row) => row.outputs.includes("mcp")));
-    assert.ok(summary.every((row) => row.fixtureId.startsWith("cli-error-refusal.")));
+    assert.ok(summary.every((row) => row.fixtureId.startsWith("dx.lifecycle.")));
+    assert.ok(summary.every((row) => row.fixtureProofMode === "reference fixture"));
   });
 
   it("reconciles protobuf, CUE, and Pact evidence for the design-time boundary", () => {

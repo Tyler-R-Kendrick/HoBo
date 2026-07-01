@@ -21,6 +21,9 @@ dashboard, support, docs, and launch proof packages must reuse.
   partial/none, destructive migration blocked, and support bundle handoff.
 - Every example carries human terminal copy, JSON output, MCP tool result shape, exit code, proof
   mode, fixture id, accessibility notes, and customer-safe wording.
+- Fixture ids are accepted HOBO-572 `dx.lifecycle.*` facts from the deterministic
+  resource lifecycle fixture corpus, with fixture proof mode repeated in JSON and
+  MCP metadata.
 - Non-live examples fail closed and avoid live-success claims when proof mode is simulated or
   reference fixture.
 - Scope guards reject production error handlers, live auth/provider checks, support ticket

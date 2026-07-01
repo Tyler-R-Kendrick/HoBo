@@ -10,6 +10,7 @@ message CliJsonOutput {
   string proof_mode = 5;
   string fixture_id = 6;
   string correlation_id = 7;
+  string fixture_proof_mode = 8;
 }
 
 message McpContent {
@@ -23,6 +24,7 @@ message McpMetadata {
   string fixture_id = 3;
   int32 exit_code = 4;
   string redaction_class = 5;
+  string fixture_proof_mode = 6;
 }
 
 message McpToolResult {
@@ -47,6 +49,7 @@ message CliErrorRefusalExample {
   string fixture_id = 11;
   repeated string accessibility_notes = 12;
   repeated string customer_safe_wording = 13;
+  string fixture_proof_mode = 14;
 }
 
 message ScopeBoundary {

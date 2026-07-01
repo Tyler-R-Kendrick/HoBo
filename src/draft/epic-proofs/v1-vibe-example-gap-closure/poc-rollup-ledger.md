@@ -1,0 +1,10 @@
+# POC Rollup Ledger
+
+| POC | Source | Related Linear | Persona | BDD scenario | Vertical slice | Service boundaries | Pact contracts | Reference impl status | Disposition | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Vibe child backlog matrix | Linear HOBO-539 child relations | HOBO-540..HOBO-565 | Product/design maintainer | Coordinate branch-sized artifact children | child-backlog | VibeChildBacklogBoundary | vibe-child-backlog-boundary | verified | implemented_in_reference_impl | Fixture records target `exp-proofs` paths and proof-note paths |
+| Vibe scenario coverage | HOBO-539 acceptance | HOBO-539 | Reviewer | Verify every child carries common vibe scenarios | child-coverage | VibeChildBacklogBoundary | vibe-child-backlog-boundary | verified | implemented_in_reference_impl | Happy, blocked, stale/unknown, support handoff, and accessibility notes required |
+| Vibe proof modes | HOBO-539 acceptance | HOBO-539 | Reviewer | Verify proof-mode labels | proof-mode-labels | VibeChildBacklogBoundary | vibe-child-backlog-boundary | verified | implemented_in_reference_impl | Live, simulated, reference fixture, and scope-out labels required |
+| Launch demo exception | HOBO-539 acceptance | HOBO-555, HOBO-556 | Launch owner | Keep launch-demo asset work in M5 | milestone-exception | VibeChildBacklogBoundary | vibe-child-backlog-boundary | verified | implemented_in_reference_impl | Only launch-site demo assets use M5 vibe refresh |
+| Scope guard | HOBO-539 scope out | HOBO-539 | Automation worker | Reject production UI, provider, data, credential, and launch-claim creep | scope-guard | VibeScopeGuardBoundary | vibe-scope-guard-boundary | verified | implemented_in_reference_impl | Denials are explicit and deterministic |
+| Unblock ledger | HOBO-539 blocks relations | HOBO-540..HOBO-565 | Automation worker | Name downstream unblock condition | unblock-ledger | VibeUnblockLedgerBoundary | vibe-unblock-ledger-boundary | verified | implemented_in_reference_impl | Children become claimable only after HOBO-539 is Done |

@@ -6,6 +6,7 @@ import {
   REQUIRED_ANNOTATION_CASES,
   REQUIRED_PSEUDOCODE_FIELDS,
   VIBE_PLAN_ANNOTATION_PSEUDOCODE,
+  classifyPlanAnnotationRequest,
   evaluatePlanAnnotationPseudocode,
   parsePlanAnnotationPseudocode,
   rejectPlanAnnotationScopeCreep,
@@ -89,12 +90,34 @@ describe("vibe plan annotation pseudocode", () => {
       "Implement the production policy engine for plan approval.",
       "Call a live cloud cost API for realistic prices.",
       "Build the approval runtime and quota enforcement service.",
+      "Implement billing for plan annotations.",
+      "Add quota limits to annotations.",
       "Store provider credentials to enrich annotations.",
+      "Build dashboard for plan review.",
       "Ship the production UI and launch claims from this proof.",
     ]);
 
-    assert.equal(denials.length, 5);
+    assert.equal(denials.length, 8);
     assert.equal(denials.every((denial) => denial.decision === "reject"), true);
+  });
+
+  it("classifies in-scope proof requests and rejects scope creep with sibling-package patterns", () => {
+    assert.deepEqual(
+      [
+        "add annotation fixture for policy denial",
+        "add pseudocode for cost estimate",
+        "pin support owner routing for stale SLO signal",
+      ].map(classifyPlanAnnotationRequest),
+      ["in-scope-proof", "in-scope-proof", "in-scope-proof"],
+    );
+    assert.deepEqual(
+      [
+        "Implement billing for plan annotations.",
+        "Build dashboard for plan review.",
+        "Call a live cloud cost API for realistic prices.",
+      ].map(classifyPlanAnnotationRequest),
+      ["scope-out", "scope-out", "scope-out"],
+    );
   });
 
   it("fails closed when acceptance evidence is missing or unsafe", () => {
@@ -104,6 +127,8 @@ describe("vibe plan annotation pseudocode", () => {
     invalid.annotations[1].supportOwnerRoute = "";
     invalid.annotations[2].accessibilityNote = "uses color only";
     invalid.annotations[3].proofMode = "live";
+    invalid.annotations[4].evidenceState = "invalid";
+    invalid.annotations[3].displayGroup = "invalid";
 
     const result = evaluatePlanAnnotationPseudocode(invalid);
 
@@ -113,5 +138,7 @@ describe("vibe plan annotation pseudocode", () => {
     assert.match(result.errors.join("\n"), /support owner route is required/);
     assert.match(result.errors.join("\n"), /accessibility note must be terminal-friendly/);
     assert.match(result.errors.join("\n"), /live proof mode is out of scope/);
+    assert.match(result.errors.join("\n"), /evidence state is required/);
+    assert.match(result.errors.join("\n"), /display grouping is required/);
   });
 });

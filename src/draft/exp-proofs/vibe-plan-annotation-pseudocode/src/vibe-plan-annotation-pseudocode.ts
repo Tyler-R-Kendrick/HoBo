@@ -184,6 +184,16 @@ export type ScopeCreepDenial = {
   request: string;
 };
 
+export type PlanAnnotationRequestClassification = "in-scope-proof" | "scope-out";
+
+const SCOPE_OUT_PATTERNS: readonly RegExp[] = [
+  /\b(production policy|policy engine|approval runtime|quota enforcement|billing engine|billing service)\b/i,
+  /\b(billing integration|billing system|billing for|quota limits?|quota service)\b/i,
+  /\b(live.*(cost|cloud|provider)|cloud cost api|provider cost api|AWS|Azure|GCP|Cloudflare)\b/i,
+  /\b(credentials?|secret|customer data|real account)\b/i,
+  /\b(production ui|dashboard implementation|production dashboard|build dashboard|ship.*ui|launch claim|final launch)\b/i,
+];
+
 export function parsePlanAnnotationPseudocode(input: unknown): PlanAnnotationPseudocode {
   const result = evaluatePlanAnnotationPseudocode(input);
   if (!result.record || result.errors.length > 0) {
@@ -294,6 +304,12 @@ export function renderAnnotationPseudocode(contract: PlanAnnotationPseudocode): 
   ].join("\n");
 }
 
+export function classifyPlanAnnotationRequest(
+  summary: string,
+): PlanAnnotationRequestClassification {
+  return SCOPE_OUT_PATTERNS.some((pattern) => pattern.test(summary)) ? "scope-out" : "in-scope-proof";
+}
+
 export function rejectPlanAnnotationScopeCreep(requests: string[]): ScopeCreepDenial[] {
   return requests.flatMap((request) => {
     const reason = forbiddenReason(request);
@@ -308,11 +324,14 @@ function validateAnnotation(annotation: Partial<PlanAnnotationFixture>, errors: 
   if (!annotation.annotationInput) {
     errors.push(`${annotation.case}: annotation input is required`);
   }
-  if (!annotation.displayGroup) {
+  if (!isDisplayGroup(annotation.displayGroup)) {
     errors.push(`${annotation.case}: display grouping is required`);
   }
-  if (!annotation.severity) {
+  if (!isSeverity(annotation.severity)) {
     errors.push(`${annotation.case}: severity is required`);
+  }
+  if (!isEvidenceState(annotation.evidenceState)) {
+    errors.push(`${annotation.case}: evidence state is required`);
   }
   if (!isProofMode(annotation.proofMode)) {
     errors.push(`${annotation.case}: proof mode is required`);
@@ -338,23 +357,40 @@ function validateAnnotation(annotation: Partial<PlanAnnotationFixture>, errors: 
 }
 
 function forbiddenReason(request: string): string | undefined {
-  if (/production.*(policy|engine)|policy engine|approval runtime|quota enforcement/i.test(request)) {
+  if (classifyPlanAnnotationRequest(request) === "scope-out") {
+    if (/billing|quota/i.test(request)) {
+      return "production policy, approval, quota, or billing engines are out of scope";
+    }
+    if (/live.*(cost|cloud|provider)|cloud cost api|provider cost|AWS|Azure|GCP|Cloudflare/i.test(request)) {
+      return "live provider and cloud cost API calls are out of scope";
+    }
+    if (/credentials?|secret|customer data|real account/i.test(request)) {
+      return "credentials, secrets, real accounts, and customer data are out of scope";
+    }
+    if (/dashboard|production ui|ship.*ui|launch claim|final launch/i.test(request)) {
+      return "production UI and launch claims require accepted evidence outside this proof";
+    }
     return "production policy, approval, quota, or billing engines are out of scope";
-  }
-  if (/live.*(cost|cloud|provider)|cloud cost API|AWS|Azure|GCP|Cloudflare/i.test(request)) {
-    return "live provider and cloud cost API calls are out of scope";
-  }
-  if (/credential|secret|customer data|real account/i.test(request)) {
-    return "credentials, secrets, real accounts, and customer data are out of scope";
-  }
-  if (/production UI|dashboard implementation|ship.*UI|launch claim|final launch/i.test(request)) {
-    return "production UI and launch claims require accepted evidence outside this proof";
   }
   return undefined;
 }
 
 function isAnnotationCase(value: unknown): value is AnnotationCase {
   return REQUIRED_ANNOTATION_CASES.includes(value as AnnotationCase);
+}
+
+function isDisplayGroup(value: unknown): value is AnnotationDisplayGroup {
+  return (
+    value === "policy" ||
+    value === "cost" ||
+    value === "capacity" ||
+    value === "approval" ||
+    value === "readiness"
+  );
+}
+
+function isSeverity(value: unknown): value is AnnotationSeverity {
+  return value === "info" || value === "warning" || value === "blocked" || value === "critical";
 }
 
 function isProofMode(value: unknown): value is ProofMode {

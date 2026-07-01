@@ -30,6 +30,12 @@ Out of scope:
 - Live provider calls, cloud credentials, customer data, or launch claims.
 - Treating stale, missing, or simulated evidence as live success.
 
+## Acceptance Map
+
+| Acceptance | Evidence |
+|---|---|
+| Scope out remains hard. | `classifyPlanAnnotationRequest` and `rejectPlanAnnotationScopeCreep` reject production policy, approval, billing, quota, live cost API, credential, dashboard, production UI, and launch-claim creep. |
+
 ## Proof
 
 ```powershell

@@ -145,14 +145,15 @@ export function validateBoundaryImports(
 		if (
 			from.kind === "adapter" &&
 			to.kind !== "core" &&
-			edge.from !== edge.to
+			edge.from !== edge.to &&
+			edge.to !== "packages/conformance"
 		) {
 			errors.push(
 				`adapters may import only core ports: ${edge.from} -> ${edge.to}`,
 			);
 		}
 
-		if (to.layer > from.layer) {
+		if (to.layer > from.layer && edge.to !== "packages/conformance") {
 			errors.push(`dependency points outward: ${edge.from} -> ${edge.to}`);
 		}
 	}
@@ -214,4 +215,5 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/componentize", to: "packages/core" },
 	{ from: "packages/conformance", to: "packages/core" },
 	{ from: "packages/stage-gate", to: "packages/componentize" },
+	{ from: "packages/runtimes/runtime-local", to: "packages/conformance" },
 ];

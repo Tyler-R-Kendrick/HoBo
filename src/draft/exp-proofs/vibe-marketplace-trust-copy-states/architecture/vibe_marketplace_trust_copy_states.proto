@@ -9,8 +9,9 @@ message MarketplaceTrustCopyStates {
   string proof_note = 4;
   repeated string design_refs = 5;
   repeated string scope_out = 6;
-  repeated MarketplaceTrustCopyScenario scenarios = 7;
-  repeated MarketplaceTrustHandoff handoffs = 8;
+  repeated MarketplaceTrustQuickstartFixtureReference quickstart_fixture_refs = 7;
+  repeated MarketplaceTrustCopyScenario scenarios = 8;
+  repeated MarketplaceTrustHandoff handoffs = 9;
 }
 
 message MarketplaceTrustCopyScenario {
@@ -42,4 +43,12 @@ message MarketplaceTrustHandoff {
   string owner = 1;
   string consumes = 2;
   repeated string must_not_own = 3;
+}
+
+message MarketplaceTrustQuickstartFixtureReference {
+  string source_issue = 1;
+  string fixture_id = 2;
+  string proof_mode = 3;
+  repeated string copy_states = 4;
+  string trust_copy_use = 5;
 }

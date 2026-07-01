@@ -19,6 +19,7 @@ fixture must name:
 - a branch-sized scenario id;
 - listing state and user path;
 - proof-mode label (`reference-fixture`, `simulated`, `live`, or `scope-out`);
+- accepted HOBO-577 quickstart fixture ids and proof-mode labels;
 - owner route and evidence source;
 - customer-safe copy;
 - complete accessibility notes.
@@ -26,6 +27,13 @@ fixture must name:
 Unsafe wording is rejected before it can become a parsed proof. The classifier
 refuses security, popularity, installability, registry-guarantee, and
 support-readiness overclaims.
+
+The parsed record also pins `rlq-collect-manifest-ir-v1`,
+`rlq-plan-safe-preview-v1`, `rlq-deploy-run-accepted-v1`,
+`rlq-manage-stale-evidence-v1`, and `rlq-recover-scope-out-v1` from HOBO-577.
+These references keep preview, policy-block, installable, deprecated, yanked,
+and hidden-listing copy downstream of accepted quickstart evidence instead of
+letting marketplace wording invent runtime behavior.
 
 The package applies parse, don't validate discipline: unknown proof input is
 parsed once into the `ParsedMarketplaceTrustCopyStates` derived domain type, and

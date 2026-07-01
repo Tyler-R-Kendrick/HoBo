@@ -8,6 +8,8 @@ import {
   MARKETPLACE_TRUST_COPY_SCENARIOS,
   MARKETPLACE_TRUST_COPY_STATES,
   REQUIRED_MARKETPLACE_COPY_SCENARIOS,
+  REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS,
+  REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES,
   classifyMarketplaceCopyClaim,
   listMarketplaceTrustCopyScenarios,
   parseMarketplaceTrustCopyStates,
@@ -33,6 +35,26 @@ describe("vibe marketplace trust copy states", () => {
     );
     assert.ok(proof.designRefs.includes("docs/design/marketplace-ux.md"));
     assert.ok(proof.designRefs.includes("docs/design/org-catalogs.md"));
+  });
+
+  it("cites accepted HOBO-577 quickstart fixture ids and proof-mode labels", () => {
+    const proof = parseMarketplaceTrustCopyStates(MARKETPLACE_TRUST_COPY_STATES);
+
+    assert.deepEqual(
+      proof.quickstartFixtureRefs.map((ref) => ref.fixtureId),
+      REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS,
+    );
+    assert.ok(proof.quickstartFixtureRefs.every((ref) => ref.sourceIssue === "HOBO-577"));
+    assert.deepEqual(
+      [...new Set(proof.quickstartFixtureRefs.map((ref) => ref.proofMode))],
+      REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES,
+    );
+
+    const coveredCopyStates = new Set(proof.quickstartFixtureRefs.flatMap((ref) => ref.copyStates));
+    for (const scenario of REQUIRED_MARKETPLACE_COPY_SCENARIOS) {
+      assert.ok(coveredCopyStates.has(scenario), `expected HOBO-577 ref for ${scenario}`);
+    }
+    assert.ok(proof.quickstartFixtureRefs.every((ref) => ref.trustCopyUse.length > 30));
   });
 
   it("makes each fixture carry owner, evidence, customer-safe copy, proof mode, and accessibility notes", () => {
@@ -147,6 +169,32 @@ describe("vibe marketplace trust copy states", () => {
         }),
       /scopeOut missing/,
     );
+
+    assert.throws(
+      () =>
+        parseMarketplaceTrustCopyStates({
+          ...MARKETPLACE_TRUST_COPY_STATES,
+          quickstartFixtureRefs: MARKETPLACE_TRUST_COPY_STATES.quickstartFixtureRefs.filter(
+            (ref) => ref.fixtureId !== "rlq-manage-stale-evidence-v1",
+          ),
+        }),
+      /required HOBO-577 fixture ids/,
+    );
+
+    assert.throws(
+      () =>
+        parseMarketplaceTrustCopyStates({
+          ...MARKETPLACE_TRUST_COPY_STATES,
+          quickstartFixtureRefs: [
+            {
+              ...MARKETPLACE_TRUST_COPY_STATES.quickstartFixtureRefs[0],
+              sourceIssue: "HOBO-546",
+            },
+            ...MARKETPLACE_TRUST_COPY_STATES.quickstartFixtureRefs.slice(1),
+          ],
+        }),
+      /sourceIssue/,
+    );
   });
 
   it("keeps Pact and CUE boundary artifacts aligned with the parsed proof shape", () => {
@@ -169,6 +217,10 @@ describe("vibe marketplace trust copy states", () => {
       pactProof.scenarios.map((scenario) => scenario.kind),
       REQUIRED_MARKETPLACE_COPY_SCENARIOS,
     );
+    assert.deepEqual(
+      pactProof.quickstartFixtureRefs,
+      MARKETPLACE_TRUST_COPY_STATES.quickstartFixtureRefs,
+    );
 
     const cue = readFileSync(
       new URL("../architecture/vibe_marketplace_trust_copy_states.cue", import.meta.url),
@@ -184,6 +236,9 @@ describe("vibe marketplace trust copy states", () => {
       "accessibilityNotes",
       "safeClaim",
       "mustNotOwn",
+      "quickstartFixtureRefs",
+      "sourceIssue",
+      "trustCopyUse",
     ]) {
       assert.match(cue, new RegExp(`\\b${field}\\b`));
     }

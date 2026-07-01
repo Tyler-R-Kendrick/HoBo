@@ -4,8 +4,10 @@ package vibe_marketplace_trust_copy_states
 #ListingState: "not-visible" | "preview-only" | "limited-beta" | "installable" | "blocked-by-policy" | "deprecated" | "yanked"
 #Path: "happy" | "blocked" | "stale-or-unknown" | "support-handoff"
 #ProofMode: "reference-fixture" | "simulated" | "live" | "scope-out"
+#QuickstartProofMode: "reference-fixture" | "simulated" | "live" | "scope-out"
 #AccessibilityCheck: "keyboard-only" | "focus-order" | "semantic-labels" | "contrast" | "responsive-layout" | "reduced-motion" | "screen-reader-smoke" | "state-copy-clarity"
 #FixtureId: =~"^mtc-[a-z0-9-]+-v[0-9]+$"
+#QuickstartFixtureId: "rlq-collect-manifest-ir-v1" | "rlq-plan-safe-preview-v1" | "rlq-deploy-run-accepted-v1" | "rlq-manage-stale-evidence-v1" | "rlq-recover-scope-out-v1"
 
 #Copy: {
 	headline:   string & =~"\\S"
@@ -38,12 +40,21 @@ package vibe_marketplace_trust_copy_states
 	mustNotOwn: [...string] & >0
 }
 
+#QuickstartRef: {
+	sourceIssue:  "HOBO-577"
+	fixtureId:    #QuickstartFixtureId
+	proofMode:    #QuickstartProofMode
+	copyStates:   [...#ScenarioKind] & >0
+	trustCopyUse: string & =~"\\S"
+}
+
 #MarketplaceTrustCopyStates: {
 	issue:         "HOBO-547"
 	phase:         "M1"
 	targetPackage: "src/draft/exp-proofs/vibe-marketplace-trust-copy-states"
 	proofNote:     "docs/design/proofs/vibe-marketplace-trust-copy-states/README.md"
 	designRefs:    [...string] & >0
+	quickstartFixtureRefs: [...#QuickstartRef] & >=5
 	scopeOut: [
 		"production UI",
 		"publisher portal UI",
@@ -66,3 +77,4 @@ MarketplaceTrustCopyScenario: #Scenario
 MarketplaceTrustCopy: #Copy
 MarketplaceAccessibilityNote: #AccessibilityNote
 MarketplaceTrustHandoff: #Handoff
+MarketplaceTrustQuickstartFixtureReference: #QuickstartRef

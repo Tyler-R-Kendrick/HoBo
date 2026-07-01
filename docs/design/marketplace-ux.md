@@ -155,7 +155,9 @@ and
 [`proofs/vibe-marketplace-trust-copy-states`](./proofs/vibe-marketplace-trust-copy-states/README.md).
 It is a copy-state proof only; production UI, publisher portal UI, approval
 services, scanners, policy engines, notification delivery, support queues, and
-unsupported launch claims remain out of scope.
+unsupported launch claims remain out of scope. The proof consumes accepted
+HOBO-577 quickstart fixture ids before marketplace copy can describe preview,
+policy-blocked, installable, deprecated, yanked, or hidden listing states.
 
 ## Follow-Up Gate
 

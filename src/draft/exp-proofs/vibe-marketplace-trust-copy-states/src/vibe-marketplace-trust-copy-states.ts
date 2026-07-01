@@ -25,6 +25,21 @@ export const MARKETPLACE_ACCESSIBILITY_CHECKS = [
   "state-copy-clarity",
 ] as const;
 
+export const REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS = [
+  "rlq-collect-manifest-ir-v1",
+  "rlq-plan-safe-preview-v1",
+  "rlq-deploy-run-accepted-v1",
+  "rlq-manage-stale-evidence-v1",
+  "rlq-recover-scope-out-v1",
+] as const;
+
+export const REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES = [
+  "reference-fixture",
+  "simulated",
+  "live",
+  "scope-out",
+] as const;
+
 const HANDOFF_OWNERS = [
   "Marketplace UX",
   "Capability Review & Approval",
@@ -49,6 +64,10 @@ const REQUIRED_SCOPE_OUT = [
 type MarketplaceScenarioKind = (typeof REQUIRED_MARKETPLACE_COPY_SCENARIOS)[number];
 type MarketplaceProofMode = (typeof MARKETPLACE_PROOF_MODES)[number];
 type MarketplaceAccessibilityCheck = (typeof MARKETPLACE_ACCESSIBILITY_CHECKS)[number];
+type MarketplaceTrustQuickstartFixtureId =
+  (typeof REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS)[number];
+type MarketplaceTrustQuickstartProofMode =
+  (typeof REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES)[number];
 type MarketplaceHandoffOwner = (typeof HANDOFF_OWNERS)[number];
 
 type MarketplaceListingState =
@@ -93,12 +112,21 @@ export type MarketplaceTrustHandoff = {
   readonly mustNotOwn: readonly string[];
 };
 
+export type MarketplaceTrustQuickstartFixtureReference = {
+  readonly sourceIssue: "HOBO-577";
+  readonly fixtureId: MarketplaceTrustQuickstartFixtureId;
+  readonly proofMode: MarketplaceTrustQuickstartProofMode;
+  readonly copyStates: readonly MarketplaceScenarioKind[];
+  readonly trustCopyUse: string;
+};
+
 export type MarketplaceTrustCopyStates = {
   readonly issue: "HOBO-547";
   readonly phase: "M1";
   readonly targetPackage: "src/draft/exp-proofs/vibe-marketplace-trust-copy-states";
   readonly proofNote: "docs/design/proofs/vibe-marketplace-trust-copy-states/README.md";
   readonly designRefs: readonly string[];
+  readonly quickstartFixtureRefs: readonly MarketplaceTrustQuickstartFixtureReference[];
   readonly scopeOut: readonly string[];
   readonly scenarios: readonly MarketplaceTrustCopyScenario[];
   readonly handoffs: readonly MarketplaceTrustHandoff[];
@@ -219,6 +247,49 @@ export const MARKETPLACE_TRUST_COPY_SCENARIOS = [
   },
 ] as const satisfies readonly MarketplaceTrustCopyScenario[];
 
+const QUICKSTART_FIXTURE_REFS: readonly MarketplaceTrustQuickstartFixtureReference[] = [
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-collect-manifest-ir-v1",
+    proofMode: "reference-fixture",
+    copyStates: ["preview-warning"],
+    trustCopyUse:
+      "Preview warning copy cites accepted collect fixture evidence before surfacing missing-review limits.",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-plan-safe-preview-v1",
+    proofMode: "simulated",
+    copyStates: ["policy-block"],
+    trustCopyUse:
+      "Policy-block wording reuses the accepted plan preview boundary instead of inventing a policy engine.",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-deploy-run-accepted-v1",
+    proofMode: "live",
+    copyStates: ["installable-with-evidence"],
+    trustCopyUse:
+      "Installable-with-evidence copy can cite accepted deploy evidence while still requiring review links.",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-manage-stale-evidence-v1",
+    proofMode: "reference-fixture",
+    copyStates: ["deprecated-guidance"],
+    trustCopyUse:
+      "Deprecated guidance uses stale-evidence quickstart labels instead of implying current installability.",
+  },
+  {
+    sourceIssue: "HOBO-577",
+    fixtureId: "rlq-recover-scope-out-v1",
+    proofMode: "scope-out",
+    copyStates: ["yanked-support-route", "hidden-listing"],
+    trustCopyUse:
+      "Yanked and hidden-listing copy reuse scope-out quickstart evidence for support and visibility limits.",
+  },
+];
+
 export const MARKETPLACE_TRUST_COPY_STATES = {
   issue: "HOBO-547",
   phase: "M1",
@@ -236,6 +307,7 @@ export const MARKETPLACE_TRUST_COPY_STATES = {
     "docs/design/adr/02-identity-security.md#adr-0074",
     "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
   ],
+  quickstartFixtureRefs: QUICKSTART_FIXTURE_REFS,
   scopeOut: [
     "production UI",
     "publisher portal UI",
@@ -338,12 +410,14 @@ export function parseMarketplaceTrustCopyStates(proof: unknown): MarketplaceTrus
     "proofNote",
   );
   assertNonEmptyStringArray(proof.designRefs, "designRefs");
+  const quickstartFixtureRefs = assertQuickstartRefs(proof.quickstartFixtureRefs);
   assertScopeOut(proof.scopeOut);
   const scenarios = assertScenarioArray(proof.scenarios);
   const handoffs = assertHandoffArray(proof.handoffs);
   assertScenarioCoverage(scenarios);
   assertProofModeCoverage(scenarios);
   assertPathCoverage(scenarios);
+  assertQuickstartScenarioCoverage(quickstartFixtureRefs);
   assertHandoffCoverage(handoffs);
 
   return {
@@ -365,6 +439,50 @@ export function summarizeMarketplaceTrustHandoffs(
     owner: handoff.owner,
     mustNotOwn: handoff.mustNotOwn,
   }));
+}
+
+function assertQuickstartRefs(value: unknown): MarketplaceTrustQuickstartFixtureReference[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError("quickstartFixtureRefs must be an array");
+  }
+
+  const refs = value.map((entry, index) => {
+    assertObject(entry, `quickstartFixtureRef ${index}`);
+    assertLiteral(entry.sourceIssue, "HOBO-577", `quickstartFixtureRef ${index}.sourceIssue`);
+    assertQuickstartFixtureId(entry.fixtureId, `quickstartFixtureRef ${index}.fixtureId`);
+    assertQuickstartProofMode(entry.proofMode, `quickstartFixtureRef ${index}.proofMode`);
+    assertScenarioKindArray(entry.copyStates, `quickstartFixtureRef ${index}.copyStates`);
+    assertNonEmptyString(entry.trustCopyUse, `quickstartFixtureRef ${index}.trustCopyUse`);
+    if (entry.trustCopyUse.length < 30) {
+      throw new TypeError(`quickstartFixtureRef ${index}.trustCopyUse must explain consumption`);
+    }
+    return entry as MarketplaceTrustQuickstartFixtureReference;
+  });
+
+  const fixtureIds = refs.map((ref) => ref.fixtureId);
+  if (!arraysEqual(fixtureIds, REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS)) {
+    throw new TypeError("marketplace trust copy states must cite required HOBO-577 fixture ids");
+  }
+
+  const proofModes = new Set(refs.map((ref) => ref.proofMode));
+  for (const proofMode of REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES) {
+    if (!proofModes.has(proofMode)) {
+      throw new TypeError(`quickstartFixtureRefs missing proof mode ${proofMode}`);
+    }
+  }
+
+  return refs;
+}
+
+function assertQuickstartScenarioCoverage(
+  refs: readonly MarketplaceTrustQuickstartFixtureReference[],
+): void {
+  const covered = new Set(refs.flatMap((ref) => ref.copyStates));
+  for (const kind of REQUIRED_MARKETPLACE_COPY_SCENARIOS) {
+    if (!covered.has(kind)) {
+      throw new TypeError(`quickstartFixtureRefs missing copy state ${kind}`);
+    }
+  }
 }
 
 function assertScenarioArray(value: unknown): MarketplaceTrustCopyScenario[] {
@@ -541,9 +659,47 @@ function assertScenarioKind(value: unknown): asserts value is MarketplaceScenari
   }
 }
 
+function assertScenarioKindArray(value: unknown, name: string): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new TypeError(`${name} must include marketplace copy states`);
+  }
+  for (const kind of value) {
+    assertScenarioKind(kind);
+  }
+  if (new Set(value).size !== value.length) {
+    throw new TypeError(`${name} must be unique`);
+  }
+}
+
 function assertProofMode(value: unknown): asserts value is MarketplaceProofMode {
   if (!MARKETPLACE_PROOF_MODES.includes(value as MarketplaceProofMode)) {
     throw new TypeError(`unknown proof mode ${String(value)}`);
+  }
+}
+
+function assertQuickstartFixtureId(
+  value: unknown,
+  name: string,
+): asserts value is MarketplaceTrustQuickstartFixtureId {
+  if (
+    !REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS.includes(
+      value as MarketplaceTrustQuickstartFixtureId,
+    )
+  ) {
+    throw new TypeError(`${name} must be an accepted HOBO-577 fixture id`);
+  }
+}
+
+function assertQuickstartProofMode(
+  value: unknown,
+  name: string,
+): asserts value is MarketplaceTrustQuickstartProofMode {
+  if (
+    !REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES.includes(
+      value as MarketplaceTrustQuickstartProofMode,
+    )
+  ) {
+    throw new TypeError(`${name} must be an accepted HOBO-577 proof mode`);
   }
 }
 
@@ -579,4 +735,8 @@ function assertPath(value: unknown, name: string): asserts value is MarketplaceC
   if (!paths.includes(value as MarketplaceCopyPath)) {
     throw new TypeError(`unknown ${name}: ${String(value)}`);
   }
+}
+
+function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }

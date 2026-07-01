@@ -12,7 +12,8 @@ The parser in
 [`src/vibe-marketplace-trust-copy-states.ts`](./src/vibe-marketplace-trust-copy-states.ts)
 turns an untrusted proof record into a parsed `MarketplaceTrustCopyStates` object.
 It fails closed when a required fixture, proof mode, path, handoff owner, evidence
-source, accessibility note, or scope boundary is missing.
+source, accessibility note, accepted HOBO-577 quickstart reference, or scope
+boundary is missing.
 
 The proof shape is mirrored by:
 
@@ -37,6 +38,19 @@ the complete accessibility note set:
 `responsive-layout`, `reduced-motion`, `screen-reader-smoke`, and
 `state-copy-clarity`.
 
+## HOBO-577 Quickstart References
+
+Marketplace copy states consume accepted resource-lifecycle quickstart fixture
+ids instead of inventing install, policy, stale-evidence, or support behavior:
+
+| Quickstart fixture | Proof mode | Copy state use |
+|---|---|---|
+| `rlq-collect-manifest-ir-v1` | `reference-fixture` | Preview warnings cite collected evidence before naming missing review limits. |
+| `rlq-plan-safe-preview-v1` | `simulated` | Policy block wording reuses plan-preview boundaries without claiming a policy engine. |
+| `rlq-deploy-run-accepted-v1` | `live` | Installable copy can cite accepted deploy evidence while requiring review links. |
+| `rlq-manage-stale-evidence-v1` | `reference-fixture` | Deprecated guidance keeps stale evidence visible instead of implying current installability. |
+| `rlq-recover-scope-out-v1` | `scope-out` | Yanked and hidden states reuse scope-out evidence for support and visibility limits. |
+
 ## Negative Guards
 
 `classifyMarketplaceCopyClaim` rejects copy that overstates:
@@ -59,9 +73,13 @@ Run the package test:
 pnpm --prefix src/draft/exp-proofs/vibe-marketplace-trust-copy-states test
 ```
 
+The root `pnpm-lock.yaml` keeps this proof package as a workspace importer so
+frozen install checks include the HOBO-547 proof metadata.
+
 The test suite proves fixture coverage, proof-mode coverage, happy/blocked/stale
 evidence/support paths, support handoff summaries, scope-out enforcement, safe-copy
-classification, and Pact/CUE artifact alignment.
+classification, HOBO-577 quickstart fixture references, and Pact/CUE artifact
+alignment.
 
 ## Design Evidence
 

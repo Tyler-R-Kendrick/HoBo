@@ -17,6 +17,7 @@ experience proof. The implementation package is
 |---|---|
 | Copy examples avoid overstating security, popularity, installability, registry guarantee, or support readiness. | `classifyMarketplaceCopyClaim` rejects those five overclaim families and the test suite asserts each refusal. |
 | Fixtures cover preview warning, installable with evidence, policy block, deprecated guidance, yanked support route, and hidden listing. | `REQUIRED_MARKETPLACE_COPY_SCENARIOS` and `MARKETPLACE_TRUST_COPY_SCENARIOS` enumerate the six fixtures and `parseMarketplaceTrustCopyStates` fails closed if any are missing. |
+| Reuse accepted HOBO-577 quickstart fixture evidence for downstream marketplace copy. | `quickstartFixtureRefs` pins `rlq-collect-manifest-ir-v1`, `rlq-plan-safe-preview-v1`, `rlq-deploy-run-accepted-v1`, `rlq-manage-stale-evidence-v1`, and `rlq-recover-scope-out-v1` with source issue, proof-mode labels, copy-state coverage, and marketplace trust-copy use notes. |
 | Covers happy path, blocked path, stale or unknown evidence path, support handoff, accessibility notes, and proof-mode labels. | Tests assert `happy`, `blocked`, `stale-or-unknown`, and `support-handoff` path coverage plus all proof modes: `reference-fixture`, `simulated`, `live`, and `scope-out`. |
 | Preserve hard scope boundaries. | The parsed proof requires scope-out entries for production UI, publisher portal UI, approval service, security scanner, policy engine, notification delivery, support queue, and launch claims without evidence. |
 | Prove the contract boundary, not a product UI. | The package includes TypeScript parser tests, protobuf shape, local CUE constraints, and a Pact-style mocked response fixture. |
@@ -31,6 +32,16 @@ experience proof. The implementation package is
 | `mtc-deprecated-guidance-v1` | `deprecated` | Registry Distribution | `docs/design/adr/07-portability-extensibility.md#adr-0062` |
 | `mtc-yanked-support-route-v1` | `yanked` | Support Workflow | `docs/design/support-workflow.md` |
 | `mtc-hidden-listing-v1` | `not-visible` | Marketplace UX | `docs/design/marketplace-ux.md` |
+
+## Quickstart References
+
+| HOBO-577 fixture | Proof mode | Copy states |
+|---|---|---|
+| `rlq-collect-manifest-ir-v1` | `reference-fixture` | `preview-warning` |
+| `rlq-plan-safe-preview-v1` | `simulated` | `policy-block` |
+| `rlq-deploy-run-accepted-v1` | `live` | `installable-with-evidence` |
+| `rlq-manage-stale-evidence-v1` | `reference-fixture` | `deprecated-guidance` |
+| `rlq-recover-scope-out-v1` | `scope-out` | `yanked-support-route`, `hidden-listing` |
 
 ## Verification
 

@@ -10,3 +10,9 @@ export * from "./sdk-parity.js";
 export * from "./seed.js";
 export * from "./suite.js";
 export * from "./types.js";
+
+export { capabilityEnforcementSuite } from "./capability-enforcement/suite.js";
+export type {
+	CapabilityHostFactory,
+	CapabilityHostFactoryOptions,
+} from "./capability-enforcement/suite.js";

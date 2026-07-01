@@ -27,6 +27,14 @@ export const CORE_API_SNAPSHOT = deepFreeze({
     "EnvelopeParseError",
     "ManifestParseError",
     "PortDescriptorParseError",
+    "CapabilityDeniedError",
+    "CapabilityParseError",
+    "CapabilityGrant",
+    "CapabilityUsageResult",
+    "GrantEvaluation",
+    "inferCapabilityUsage",
+    "evaluateCapabilityGrants",
+    "parseCapabilityGrant",
   ],
 });
 

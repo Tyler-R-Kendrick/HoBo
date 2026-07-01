@@ -51,15 +51,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/wit
 
-
   packages/bindles:
     dependencies:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
-      '@hobo/wit':
-        specifier: workspace:*
-        version: link:../wit
     devDependencies:
       '@types/node':
         specifier: ^22.15.29
@@ -725,6 +721,8 @@ importers:
   src/draft/technical-proofs/drift-orphan-sweep-contract: {}
 
   src/draft/technical-proofs/driver-dispatch-routing-contract: {}
+
+  src/draft/technical-proofs/durable-agent-primitive-contract: {}
 
   src/draft/technical-proofs/end-user-authorization-policy-contract: {}
 
@@ -4872,7 +4870,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.1
-      '@types/node': 22.20.0
+      '@types/node': 26.0.1
       long: 5.3.2
 
   quansync@0.2.11: {}

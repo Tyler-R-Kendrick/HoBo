@@ -719,6 +719,8 @@ importers:
 
   src/draft/outbound-xaa-token-exchange-contract: {}
 
+  src/draft/package-cache-scope-contract: {}
+
   src/draft/paginated-query-contract: {}
 
   src/draft/paradigm-idiom-packages-contract: {}

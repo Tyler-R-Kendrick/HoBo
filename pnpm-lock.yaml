@@ -342,6 +342,8 @@ importers:
 
   src/draft/exp-proofs/vibe-publisher-portal-review-mockups: {}
 
+  src/draft/exp-proofs/vibe-representative-a11y-usability-checks: {}
+
   src/draft/exp-proofs/vibe-role-tutorial-outlines: {}
 
   src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard: {}

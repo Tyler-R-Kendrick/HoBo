@@ -14,3 +14,5 @@ proves the S3-05 `.allow()` triple-effect boundary:
 - unknown verbs fail closed at compile time.
 
 Scope kept out: production promotion to `packages/identity/`, S2-06 IaC program emission, and S1-04 wasm host runtime enforcement.
+
+Architecture-guard evidence (PACT, protobuf, CUE, parse-don't-validate, event vocabulary) lives in the package `ADR.md` and `architecture/` folder.

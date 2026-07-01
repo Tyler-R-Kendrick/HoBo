@@ -20,6 +20,7 @@ experience proof. The implementation package is
 | Target package path is `src/draft/exp-proofs/vibe-marketplace-discovery-prototype`. | Package path is pinned in parser tests. |
 | Target proof path is `docs/design/proofs/vibe-marketplace-discovery-prototype/README.md`. | Proof note path is pinned in parser tests. |
 | Covers happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels. | `paths`, `accessibilityNotes`, Pact, and CUE artifacts require all four paths plus live, simulated, reference fixture, and scope-out labels. |
+| Scope out remains hard. | `classifyMarketplaceDiscoveryRequest` rejects live storefront, registry, resolver, install runtime, ranking, monetization, publisher workflow, production UI, support queue automation, and launch claims without evidence; `scopeOut` validation pins the same boundaries. |
 
 ## Verification
 

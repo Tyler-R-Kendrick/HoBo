@@ -47,6 +47,7 @@ const REQUIRED_SCOPE_OUT = [
   "monetization",
   "publisher workflow",
   "production UI",
+  "support queue",
   "launch claims without evidence",
 ] as const;
 
@@ -464,6 +465,7 @@ export function classifyMarketplaceDiscoveryRequest(
     /\b(monetization|payout|commerce)\b/i,
     /\b(publisher workflow|publisher portal|evidence upload|maintainer workflow)\b/i,
     /\b(production ui|ship ui|customer-facing ui)\b/i,
+    /\b(support queue|support tooling|live ticket|notification delivery)\b/i,
     /\b(launch claims without evidence|launch claim|launch readiness)\b/i,
   ].some((pattern) => pattern.test(summary))
     ? "scope-out"

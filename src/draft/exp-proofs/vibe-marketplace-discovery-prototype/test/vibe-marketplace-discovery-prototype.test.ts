@@ -101,10 +101,12 @@ describe("vibe marketplace discovery prototype", () => {
       "add monetization and payouts",
       "ship publisher workflow",
       "turn this into production UI",
+      "wire support queue automation",
       "publish launch claims without evidence",
     ].map(classifyMarketplaceDiscoveryRequest);
 
     assert.deepEqual(classifications, [
+      "scope-out",
       "scope-out",
       "scope-out",
       "scope-out",

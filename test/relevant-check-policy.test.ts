@@ -40,6 +40,10 @@ function isWorkspacePrefixTest(check: Check) {
     && check.args[2] === "test";
 }
 
+function standardsCheck(check: Check) {
+  return check.command === "pnpm" && check.args[0] === "run" && check.args[1] === "standards:check";
+}
+
 test("root script-only package changes do not select all-package Turbo", () => {
   const { checks } = plan(["package.json"], { rootPackageJsonScriptsOnlyChanged: true });
 
@@ -68,6 +72,24 @@ test("root dependency and task-graph config changes do not select all-package Tu
   assert.equal(configPlan.checks.some(isAllPackageTurbo), false);
   assert.equal(dependencyPlan.checks.some((check) => check.args.join(" ") === "run install:check"), true);
   assert.equal(configPlan.checks.some((check) => check.args.join(" ") === "run install:check"), true);
+});
+
+test("worktree relevant checks pass standards base without staged mode", () => {
+  const { checks } = plan(["scripts/run-relevant-checks.ts"]);
+  const check = checks.find(standardsCheck);
+
+  assert.ok(check);
+  assert.equal(check.args.includes("--staged"), false);
+  assert.equal(check.args.includes("--base=origin/main"), true);
+});
+
+test("staged relevant checks pass staged mode to standards", () => {
+  const { checks } = plan(["scripts/run-relevant-checks.ts"], { staged: true });
+  const check = checks.find(standardsCheck);
+
+  assert.ok(check);
+  assert.equal(check.args.includes("--staged"), true);
+  assert.equal(check.args.includes("--base=origin/main"), true);
 });
 
 test("draft aggregate folders without package metadata do not select workspace tests", () => {
@@ -122,10 +144,20 @@ test("draft Pact changes stay on workspace tests instead of selecting global con
   assert.equal(checks.some(isWorkspacePrefixTest), true);
 });
 
-test("shared Pact changes still select the global contract sweep", () => {
+test("shared Pact changes do not select global contract sweeps by default", () => {
   const { checks } = plan(["tests/pacts/runtime-provider.pact.json"]);
 
-  assert.equal(checks.some(isGlobalContract), true);
+  assert.equal(checks.some(isGlobalContract), false);
+  assert.equal(checks.some(isGlobalContractConsumer), false);
+  assert.equal(checks.some(isGlobalContractProvider), false);
+});
+
+test("shared Pact final validation can opt into broad contract sweeps", () => {
+  const { checks } = plan(["tests/pacts/runtime-provider.pact.json"], { includeBroadSweeps: true });
+
+  assert.equal(checks.some(isGlobalContract), false);
+  assert.equal(checks.some(isGlobalContractConsumer), true);
+  assert.equal(checks.some(isGlobalContractProvider), true);
 });
 
 test("root schema changes do not select broad contract sweeps by default", () => {

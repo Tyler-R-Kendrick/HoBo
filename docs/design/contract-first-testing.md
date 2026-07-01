@@ -33,12 +33,13 @@ Do not add `test:e2e`, `e2e/`, full-stack Playwright suites, browser tests that 
 
 `pnpm agent:check` inspects changed files and chooses the smallest lane that can prove the change:
 
-- protobuf/CUE changes run schema plus consumer/provider contract lanes;
-- Pact artifacts run contract lanes;
+- draft-local protobuf/CUE/Pact changes run the owning proof workspace with mocked boundaries;
+- root protobuf/CUE changes run schema checks by default, with consumer/provider contract lanes reserved for explicit final/all validation;
+- root/shared Pact artifacts mark contract scope, but broad consumer/provider sweeps require `--final` or `--all`;
 - UI/component changes run DOM and component lanes;
 - behavior specs run behavior tests with mocked service boundaries;
 - stories/visual fixtures run visual tests;
 - agent prompt/eval changes run mocked agent evals;
-- root/package-manager changes add install and build-impacting checks.
+- root/package-manager changes add install, root-test, architecture, standards, and docs gates, with all-package build/test impact checks reserved for explicit `--build`, `--final`, or `--all` validation.
 
 This keeps pre-commit and PR feedback fast while preserving contract-first coverage.

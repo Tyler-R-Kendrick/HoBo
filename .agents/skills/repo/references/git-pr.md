@@ -22,11 +22,11 @@ Use git as the source of truth for state, ownership, and history.
 1. `git fetch origin`
 2. `git rebase origin/main`
 3. Resolve conflicts without dropping either side's unrelated work.
-4. Run `pnpm.cmd run agent:check`.
+4. Run `pnpm.cmd run agent:check -- --base=origin/main` for final PR-base validation.
 5. Open or update the PR.
 6. Request squash auto-merge only when mergeability and required checks are clean.
 7. Resolve requested changes and actionable comments.
-8. Re-run the relevant gate after repairs.
+8. Re-run the narrow relevant gate after repairs, then repeat PR-base validation only when the repair changes branch-level risk.
 9. Clean the worktree and archive the thread only when supported by the active client tooling.
 
 ## Merge Discipline

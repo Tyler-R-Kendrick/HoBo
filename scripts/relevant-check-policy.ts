@@ -94,8 +94,9 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
       checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "final/all root schema validation can affect consumer contracts" });
       checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "final/all root schema validation can affect provider verification" });
     }
-  } else if (rootPactChanged) {
-    checks.push({ command: "pnpm", args: ["run", "test:contract"], reason: "root or shared PACT artifacts changed" });
+  } else if (rootPactChanged && includeBroadSweeps) {
+    checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "final/all root Pact validation can affect consumer contracts" });
+    checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "final/all root Pact validation can affect provider verification" });
   }
 
   if (workspaces.length > 0) {
@@ -122,7 +123,13 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   }
 
   if (automationChanged || sourceChanged) {
-    checks.push({ command: "pnpm", args: ["run", "standards:check", "--", "--staged", `--base=${options.base}`], reason: "technical standards evidence may need refreshing" });
+    checks.push({
+      command: "pnpm",
+      args: staged
+        ? ["run", "standards:check", "--", "--staged", `--base=${options.base}`]
+        : ["run", "standards:check", "--", `--base=${options.base}`],
+      reason: "technical standards evidence may need refreshing",
+    });
   }
 
   if (docsChanged || automationChanged) {

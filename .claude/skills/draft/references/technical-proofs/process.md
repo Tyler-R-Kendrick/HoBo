@@ -27,7 +27,13 @@ Prove one atomic technical concept in complete isolation. Mock everything outsid
 Run package-scoped checks first:
 
 ```bash
-pnpm exec turbo run test --filter ./src/draft/technical-proofs/<slug>
+pnpm --prefix src/draft/technical-proofs/<slug> test
 ```
 
-Then run repo gates selected by changed files, especially `pnpm run architecture:guard`, `pnpm run test:schema`, `pnpm run test:unit`, `pnpm run test:types`, and `pnpm run standards:check -- --base=origin/main` when scripts, contracts, or TypeScript implementation changed.
+Then run the relevant-check router for the narrow changed scope:
+
+```bash
+pnpm run agent:check -- --staged
+```
+
+After committing a focused proof fix, use no-arg `pnpm run agent:check` for latest-commit validation. Use PR-base, full unit, contract, or all-package sweeps only when final/all validation is explicit.

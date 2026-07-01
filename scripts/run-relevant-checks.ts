@@ -5,7 +5,7 @@ import { selectRelevantChecks, type Check } from "./relevant-check-policy.js";
 
 const args = new Set(process.argv.slice(2));
 const baseArg = process.argv.find((arg) => arg.startsWith("--base="));
-const base = baseArg?.slice("--base=".length) ?? process.env.HOBO_CHECK_BASE ?? "origin/main";
+const base = baseArg?.slice("--base=".length) ?? process.env.HOBO_CHECK_BASE ?? "HEAD~1";
 const staged = args.has("--staged");
 const all = args.has("--all");
 const explain = args.has("--explain");
@@ -50,6 +50,40 @@ function runAsync(check: Check): Promise<number> {
     child.once("error", () => resolve(1));
     child.once("exit", (status) => resolve(status ?? 1));
   });
+}
+
+function broadSweepScript(check: Check): string | undefined {
+  if (check.command !== "pnpm" || check.args[0] !== "run") return undefined;
+  const script = check.args[1];
+  return [
+    "check:all",
+    "test:all",
+    "test:contract",
+    "test:contract:consumer",
+    "test:contract:provider",
+    "test:unit",
+    "test:unit:quiet",
+    "validate:final",
+  ].includes(script)
+    ? script
+    : undefined;
+}
+
+function assertNoImplicitBroadSweeps(checks: Check[]) {
+  if (all || finalValidation) return;
+
+  const broadChecks = checks
+    .map((check) => ({ check, script: broadSweepScript(check) }))
+    .filter((entry): entry is { check: Check; script: string } => Boolean(entry.script));
+
+  if (broadChecks.length === 0) return;
+
+  console.error("Relevant-check policy selected broad root sweep(s) without --final or --all:");
+  for (const { check, script } of broadChecks) {
+    console.error(`- pnpm run ${script}: ${check.reason}`);
+  }
+  console.error("Use changed-scope, workspace-prefix, or root-only checks while iterating.");
+  process.exit(1);
 }
 
 async function runBounded(checks: Check[], concurrency: number): Promise<number[]> {
@@ -153,6 +187,8 @@ const { checks, scopes } = selectRelevantChecks({
 console.log(`Changed files: ${files.length}`);
 console.log(`Detected scope: ${scopes.join(", ") || "standard"}`);
 for (const check of checks) console.log(`- ${check.command} ${check.args.join(" ")} (${check.reason})`);
+
+assertNoImplicitBroadSweeps(checks);
 
 if (explain) process.exit(0);
 

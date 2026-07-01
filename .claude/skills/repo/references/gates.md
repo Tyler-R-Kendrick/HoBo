@@ -20,8 +20,9 @@ Failed validation is not a completion state. Fix the failure or report the block
 ## Common Commands
 
 - Staged path: `pnpm.cmd run check:relevant:staged`
+- Latest-commit path: `pnpm.cmd run agent:check`
 - Branch path: `pnpm.cmd run check:relevant -- --base=origin/main`
-- Final agent path: `pnpm.cmd run agent:check`
+- Final PR-base path: `pnpm.cmd run agent:check -- --base=origin/main`
 - Technical standards: `pnpm.cmd run standards:check -- --base=origin/main`
 - OKF structure: `pnpm.cmd run docs:okf`
 - Skill validation: `py -3 C:\Users\conta\.codex\skills\.system\skill-creator\scripts\quick_validate.py <skill-folder>`
@@ -31,4 +32,5 @@ Failed validation is not a completion state. Fix the failure or report the block
 - Do not bypass hooks or use `--no-verify`.
 - Do not run full repo lint, test, typecheck, build, or codegen during implementation when an affected or changed-scope command exists.
 - If a command times out or starts broad work unexpectedly, stop and narrow scope before retrying.
-- Run final validation once the implementation is complete and conflicts are resolved.
+- Use latest-commit or staged validation for small iteration and post-rebase repair.
+- Run explicit PR-base validation once the implementation is complete and conflicts are resolved.

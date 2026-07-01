@@ -468,6 +468,8 @@ importers:
 
   src/draft/projects/s0-03-hobo-core: {}
 
+  src/draft/projects/s6-06-finops-plane: {}
+
   src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}
 
   src/draft/technical-proofs/actor-host-runtime-port-contract: {}
@@ -562,6 +564,8 @@ importers:
 
   src/draft/technical-proofs/component-host-oci-floor-contract: {}
 
+  src/draft/technical-proofs/componentize-artifact-trust-contract: {}
+
   src/draft/technical-proofs/componentize-js-determinism-spike:
     dependencies:
       '@bytecodealliance/componentize-js':
@@ -579,6 +583,8 @@ importers:
         version: 6.0.3
 
   src/draft/technical-proofs/conformance-port-suite-contract: {}
+
+  src/draft/technical-proofs/conformance-port-suite-harness: {}
 
   src/draft/technical-proofs/connectivity-cost-feedback-contract: {}
 

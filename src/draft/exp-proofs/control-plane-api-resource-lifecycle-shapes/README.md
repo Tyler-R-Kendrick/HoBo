@@ -7,7 +7,8 @@ and MCP callers consume for resource lifecycle work.
 
 - Every accepted operation has request and response shape examples for plan,
   apply/up, inspect, logs, import/adopt, migrate, rollback, and support
-  evidence pack flows.
+  evidence pack flows, including `GatekeeperDecision`, `DriftReport`,
+  `ResourceActorState`, `LogCursor`, and `MigrationPhase`.
 - Refusal envelopes fail closed for policy denied, contract incompatible,
   provider capability partial/none, stale projection, unknown evidence,
   non-reactive sink, and destructive migration blocked paths.
@@ -45,8 +46,8 @@ pnpm.cmd --prefix src\draft\exp-proofs\control-plane-api-resource-lifecycle-shap
 - `architecture/control_plane_api_resource_lifecycle_shapes.proto` defines the
   boundary data shapes.
 - `architecture/control_plane_api_resource_lifecycle_shapes.cue` constrains the
-  protobuf shapes.
+  lower-camel protobuf JSON shapes consumed by the parser.
 - `architecture/pacts/control_plane_api_resource_lifecycle_shapes.pact.json`
-  pins a Pact-style API/MCP parity boundary.
+  pins a Pact-style API/MCP parity boundary with the full parsed contract body.
 - `ARCHITECTURE.md` records parse-don't-validate and event architecture
   evidence.

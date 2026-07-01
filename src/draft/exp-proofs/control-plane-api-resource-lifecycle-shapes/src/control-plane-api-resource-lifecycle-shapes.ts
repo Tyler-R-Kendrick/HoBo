@@ -20,6 +20,18 @@ export const REQUIRED_BOUNDARY_CASES = [
   "destructive-migration-blocked",
 ] as const;
 
+export const REQUIRED_ACCEPTANCE_SHAPE_TERMS = [
+  "DeploymentPlan",
+  "Deployment Set",
+  "Delta",
+  "ResourceActorState",
+  "GatekeeperDecision",
+  "DriftReport",
+  "RunProjection",
+  "LogCursor",
+  "MigrationPhase",
+] as const;
+
 type OperationId = (typeof REQUIRED_OPERATIONS)[number];
 type BoundaryCase = (typeof REQUIRED_BOUNDARY_CASES)[number];
 
@@ -107,7 +119,7 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       apiEndpoint: "/control-plane/plan",
       mcpTool: "hobo_plan",
       requestShape: ["manifestRef", "campRef", "objective", "requestedBy", "proofMode"],
-      responseShape: ["DeploymentPlan", "PlanWarning[]", ...commonResultFields],
+      responseShape: ["DeploymentPlan", "GatekeeperDecision", "PlanWarning[]", ...commonResultFields],
       domainTerms: ["DeploymentPlan", "ResourcePlan", "Gatekeeper", "match.Decided"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.plan.preview.success",
@@ -131,8 +143,15 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       apiEndpoint: "/control-plane/inspect/run",
       mcpTool: "hobo_inspect_run",
       requestShape: ["runId", "campRef", "projectionSeq", "freshnessBound", "redactionClass"],
-      responseShape: ["RunProjection", "ResourceActorTimeline", "freshness", ...commonResultFields],
-      domainTerms: ["ResourceActor", "projection.Lagged", "materialized view", "snapshot"],
+      responseShape: [
+        "RunProjection",
+        "ResourceActorState",
+        "ResourceActorTimeline",
+        "DriftReport",
+        "freshness",
+        ...commonResultFields,
+      ],
+      domainTerms: ["ResourceActor", "projection.Lagged", "drift", "materialized view", "snapshot"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.inspect.run.fresh",
     },
@@ -142,8 +161,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo logs --follow api --json",
       apiEndpoint: "/control-plane/logs/tail",
       mcpTool: "hobo_tail_logs",
-      requestShape: ["resourceId", "cursor", "since", "redactionClass", "limit"],
-      responseShape: ["LogSlice", "nextCursor", "redactionSummary", ...commonResultFields],
+      requestShape: ["resourceId", "LogCursor", "since", "redactionClass", "limit"],
+      responseShape: ["LogSlice", "LogCursor", "nextCursor", "redactionSummary", ...commonResultFields],
       domainTerms: ["support-safe evidence", "read store", "projection", "ResourceActor"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.logs.api.support-safe",
@@ -167,7 +186,7 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       apiEndpoint: "/control-plane/migrate/dry-run",
       mcpTool: "hobo_migrate_dry_run",
       requestShape: ["currentVersion", "targetVersion", "schemaDigest", "snapshotRef", "campRef"],
-      responseShape: ["MigrationPlan", "Phase[]", "blockedReason", "rollbackEvidence", ...commonResultFields],
+      responseShape: ["MigrationPlan", "MigrationPhase", "blockedReason", "rollbackEvidence", ...commonResultFields],
       domainTerms: ["migration.Planned", "migration.PhaseApplied", "expand", "backfill", "contract"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.migrate.expand-backfill-contract",
@@ -330,6 +349,7 @@ export function parseControlPlaneApiResourceLifecycleShapes(
   const operations = assertOperationArray(contract.operations);
   const refusals = assertRefusalArray(contract.refusalEnvelopes);
   assertRequiredOperations(operations);
+  assertRequiredAcceptanceShapes(operations);
   assertRequiredBoundaryCases(refusals);
   assertContractFixtures(contract.contractFixtures);
 
@@ -454,6 +474,22 @@ function assertRequiredOperations(operations: readonly ControlPlaneOperationShap
   }
   if (new Set(ids).size !== ids.length) {
     throw new TypeError("operations must be unique");
+  }
+}
+
+function assertRequiredAcceptanceShapes(operations: readonly ControlPlaneOperationShape[]): void {
+  const shapeTerms = new Set(
+    operations.flatMap((operation) => [
+      ...operation.requestShape,
+      ...operation.responseShape,
+      ...operation.domainTerms,
+    ]),
+  );
+
+  for (const term of REQUIRED_ACCEPTANCE_SHAPE_TERMS) {
+    if (!shapeTerms.has(term)) {
+      throw new TypeError(`missing acceptance shape ${term}`);
+    }
   }
 }
 

@@ -19,7 +19,8 @@ Represent the proof as an exp-proof package with one parsed contract object:
   response shape, domain terms, and fixture id;
 - refusal envelopes are shared across surfaces and include remediation, proof
   mode, fixture id, and redaction class;
-- protobuf, CUE, and Pact artifacts live inside the package; and
+- protobuf, CUE, and Pact artifacts live inside the package and use the same
+  lower-camel parsed fixture body where JSON is exchanged; and
 - `parseControlPlaneApiResourceLifecycleShapes` is the only boundary that turns
   raw fixture data into a parsed derived type.
 

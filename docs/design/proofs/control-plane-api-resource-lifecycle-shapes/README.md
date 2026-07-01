@@ -10,9 +10,9 @@ Package:
 
 | Acceptance | Executable proof |
 |---|---|
-| Request/response shapes for DeploymentPlan, Deployment Set, Delta, ResourceActor state, Gatekeeper decision, drift, run inspector, logs cursor, and migration phases. | `specifies every shared control-plane operation with request and response shapes` |
+| Request/response shapes for DeploymentPlan, Deployment Set, Delta, ResourceActor state, Gatekeeper decision, drift, run inspector, logs cursor, and migration phases. | `pins the named HOBO-569 API shape vocabulary` |
 | Error/refusal envelopes for policy denied, contract incompatible, provider capability partial/none, stale projection, unknown evidence, non-reactive sink, and destructive migration blocked. | `pins fail-closed refusal envelopes for every required boundary case` |
-| Deterministic protobuf/CUE/Pact fixture expectations. | `requires protobuf, CUE, and Pact fixture expectations for the boundary` |
+| Deterministic protobuf/CUE/Pact fixture expectations. | `keeps Pact and CUE architecture artifacts aligned with the parsed contract shape` |
 | API/MCP parity. | `proves API and MCP callers receive equivalent typed results` |
 | Scope-out enforcement. | `guards scope-out requests for production implementation and live state` |
 

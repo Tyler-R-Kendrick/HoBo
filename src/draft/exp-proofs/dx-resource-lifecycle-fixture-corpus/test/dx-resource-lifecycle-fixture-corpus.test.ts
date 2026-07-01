@@ -6,6 +6,7 @@ import {
   REQUIRED_ARTIFACTS,
   REQUIRED_BOUNDARY_CONTRACTS,
   REQUIRED_CONSUMERS,
+  REQUIRED_FACT_KINDS,
   REQUIRED_SCENARIOS,
   parseDxResourceLifecycleFixtureCorpus,
   validateDxResourceLifecycleFixtureCorpus,
@@ -26,6 +27,24 @@ test("HOBO-572 corpus covers the required lifecycle scenarios and artifacts", ()
     for (const artifact of REQUIRED_ARTIFACTS) {
       assert.ok(scenario.artifacts.includes(artifact), `${scenario.id} missing ${artifact}`);
     }
+  }
+});
+
+test("each scenario carries concrete shared fixture facts for downstream proofs", () => {
+  const parsed = parseDxResourceLifecycleFixtureCorpus(DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS);
+
+  assert.equal(parsed.ok, true);
+
+  for (const scenario of parsed.value.scenarios) {
+    assert.deepEqual(
+      scenario.fixtureFacts.map((fact) => fact.kind),
+      REQUIRED_FACT_KINDS,
+    );
+    assert.equal(new Set(scenario.fixtureFacts.map((fact) => fact.id)).size, REQUIRED_FACT_KINDS.length);
+    assert.equal(scenario.fixtureFacts.every((fact) => fact.source === "fixture-corpus"), true);
+    assert.equal(scenario.fixtureFacts.every((fact) => fact.redacted === true), true);
+    assert.equal(scenario.fixtureFacts.every((fact) => fact.tenantSafe === true), true);
+    assert.equal(scenario.fixtureFacts.every((fact) => fact.proofMode === scenario.proofMode), true);
   }
 });
 
@@ -76,6 +95,7 @@ test("validation fails closed on missing scenarios, unsafe data, or unsupported 
         deterministic: false,
         redacted: false,
         tenantSafe: false,
+        fixtureFacts: [],
         scopeOutGuard: "Use real customer data, live providers, and production catalog output.",
       },
     ],
@@ -86,6 +106,7 @@ test("validation fails closed on missing scenarios, unsafe data, or unsupported 
   assert.match(result.errors.join("\n"), /redacted/i);
   assert.match(result.errors.join("\n"), /tenant-safe/i);
   assert.match(result.errors.join("\n"), /live proof/i);
+  assert.match(result.errors.join("\n"), /missing fixture fact: resources/i);
   assert.match(result.errors.join("\n"), /scope creep/i);
 });
 
@@ -115,6 +136,7 @@ test("parser fails closed on malformed nested raw fixture records", () => {
         id: "deploy",
         artifacts: "resources",
         fixtureIds: [],
+        fixtureFacts: [],
         deterministic: true,
         redacted: true,
         tenantSafe: true,
@@ -127,5 +149,6 @@ test("parser fails closed on malformed nested raw fixture records", () => {
   assert.equal("value" in parsed, false);
   assert.match(parsed.errors.join("\n"), /source refs must be an array/i);
   assert.match(parsed.errors.join("\n"), /scenario deploy missing artifact: resources/i);
+  assert.match(parsed.errors.join("\n"), /scenario deploy missing fixture fact: resources/i);
   assert.match(parsed.errors.join("\n"), /scenario deploy must name its scope-out guard/i);
 });

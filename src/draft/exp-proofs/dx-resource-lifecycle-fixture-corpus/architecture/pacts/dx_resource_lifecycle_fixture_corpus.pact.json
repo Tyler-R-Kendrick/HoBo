@@ -17,7 +17,23 @@
         "body": {
           "ok": true,
           "schema": "hobo.draft.dx_resource_lifecycle_fixture_corpus/v1",
-          "issue": "HOBO-572"
+          "issue": "HOBO-572",
+          "requiredFactKinds": [
+            "resources",
+            "links",
+            "manifest-ir",
+            "deployment-plan",
+            "deployment-set",
+            "delta",
+            "gatekeeper-decision",
+            "resourceactor-events",
+            "projection-snapshot",
+            "logs",
+            "drift-report",
+            "import-adopt-state",
+            "migration-phase",
+            "support-evidence"
+          ]
         }
       }
     }

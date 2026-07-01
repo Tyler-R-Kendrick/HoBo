@@ -14,6 +14,16 @@ enum DxFixtureProofMode {
   DX_FIXTURE_PROOF_MODE_SCOPE_OUT = 4;
 }
 
+message DxLifecycleFixtureFact {
+  string kind = 1;
+  string id = 2;
+  string summary = 3;
+  bool redacted = 4;
+  bool tenant_safe = 5;
+  DxFixtureProofMode proof_mode = 6;
+  string source = 7;
+}
+
 message DxLifecycleScenario {
   string id = 1;
   string persona = 2;
@@ -25,6 +35,7 @@ message DxLifecycleScenario {
   bool deterministic = 8;
   bool redacted = 9;
   bool tenant_safe = 10;
+  repeated DxLifecycleFixtureFact fixture_facts = 11;
 }
 
 message DxResourceLifecycleFixtureCorpus {

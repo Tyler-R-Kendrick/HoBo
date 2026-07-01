@@ -18,6 +18,9 @@ HOBO-572 is proven by the focused experience proof at
 - Every scenario names resources, links, manifest IR, DeploymentPlan,
   Deployment Set, Delta, Gatekeeper decision, ResourceActor events, projection,
   and log artifacts.
+- Every scenario carries concrete `dx.lifecycle.<scenario>.<fact-kind>.v1`
+  fixture facts for those artifacts plus drift reports, import/adopt state,
+  migration phases, and support evidence, all sourced from the shared corpus.
 - Fixtures are deterministic, redacted, tenant-safe, and labeled as
   `reference fixture` unless explicit live or simulated evidence is present.
 - Protobuf, CUE, Pact, fixture JSON, and type-consumer expectations are named as
@@ -28,6 +31,7 @@ HOBO-572 is proven by the focused experience proof at
 ## Negative Coverage
 
 - Validation rejects missing lifecycle scenarios.
+- Validation rejects scenarios that omit shared fixture facts.
 - Validation rejects non-deterministic, unredacted, or non-tenant-safe fixture
   entries.
 - Validation rejects `live` proof mode without explicit live evidence.

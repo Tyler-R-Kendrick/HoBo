@@ -2,6 +2,16 @@ package architecture_evidence
 
 #DxFixtureProofMode: "unspecified" | "reference fixture" | "simulated" | "live" | "scope-out"
 
+#DxLifecycleFixtureFact: {
+	kind:        string & !=""
+	id:          =~"^dx\\.lifecycle\\."
+	summary:     string & !=""
+	redacted:    true
+	tenant_safe: true
+	proof_mode:  "reference fixture" | "simulated" | "live" | "scope-out"
+	source:      "fixture-corpus"
+}
+
 #DxLifecycleScenario: {
 	id:             string & !=""
 	persona:        string & !=""
@@ -9,6 +19,7 @@ package architecture_evidence
 	commands:       [...string]
 	artifacts:      [...string]
 	fixture_ids:    [...string]
+	fixture_facts:  [...#DxLifecycleFixtureFact]
 	proof_mode:     "reference fixture" | "simulated" | "live" | "scope-out"
 	deterministic:  true
 	redacted:       true

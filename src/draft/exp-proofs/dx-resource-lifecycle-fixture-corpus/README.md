@@ -28,6 +28,9 @@ In scope:
 - Resources, links, manifest IR, DeploymentPlan, Deployment Set, Delta,
   Gatekeeper decision, ResourceActor event, projection, log, drift,
   import/adopt, and migration-phase fixture facts.
+- Concrete `dx.lifecycle.<scenario>.<fact-kind>.v1` fixture facts on every
+  scenario, all sourced from `fixture-corpus`, redacted, tenant-safe, and
+  aligned to the scenario proof mode.
 - Proof-mode labels with `reference fixture` as the default.
 - Protobuf, CUE, Pact, fixture JSON, and type-consumer boundary expectations.
 
@@ -50,6 +53,9 @@ pnpm --prefix src\draft\exp-proofs\dx-resource-lifecycle-fixture-corpus test
 The tests prove:
 
 - every required lifecycle scenario and artifact is present;
+- every scenario carries shared resources, links, manifest IR, DeploymentPlan,
+  Deployment Set, Delta, Gatekeeper decision, ResourceActor event, projection,
+  log, drift, import/adopt, migration-phase, and support-evidence facts;
 - fixtures are deterministic, redacted, tenant-safe, and reference-labeled by
   default;
 - protobuf, CUE, and Pact boundaries are named for later packages;

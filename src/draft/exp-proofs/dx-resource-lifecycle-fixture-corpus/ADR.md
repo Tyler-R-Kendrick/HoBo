@@ -9,7 +9,9 @@ proof packages consume it.
 Record one deterministic, redacted, tenant-safe fixture corpus for resource
 lifecycle examples. The corpus includes deploy, manage, migrate, rollback,
 import/adopt, drift, stale projection, policy-denial, contract-incompatibility,
-and support-evidence paths.
+and support-evidence paths. Each path carries shared `dx.lifecycle.*` fixture
+facts so downstream proofs consume the same accepted resource, plan, gatekeeper,
+actor, projection, log, drift, import/adopt, migration, and support evidence.
 
 ## Alternatives
 

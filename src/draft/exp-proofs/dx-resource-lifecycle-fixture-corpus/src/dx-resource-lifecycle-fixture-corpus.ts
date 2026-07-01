@@ -24,6 +24,14 @@ export const REQUIRED_ARTIFACTS = [
   "logs",
 ] as const;
 
+export const REQUIRED_FACT_KINDS = [
+  ...REQUIRED_ARTIFACTS,
+  "drift-report",
+  "import-adopt-state",
+  "migration-phase",
+  "support-evidence",
+] as const;
+
 export const REQUIRED_BOUNDARY_CONTRACTS = [
   "protobuf",
   "CUE",
@@ -64,9 +72,20 @@ const SCOPE_CREEP_PATTERNS = [
 
 type RequiredScenario = (typeof REQUIRED_SCENARIOS)[number];
 type Artifact = (typeof REQUIRED_ARTIFACTS)[number];
+type FixtureFactKind = (typeof REQUIRED_FACT_KINDS)[number];
 type BoundaryContract = (typeof REQUIRED_BOUNDARY_CONTRACTS)[number];
 type Consumer = (typeof REQUIRED_CONSUMERS)[number];
 type ProofMode = "reference fixture" | "simulated" | "live" | "scope-out";
+
+interface LifecycleFixtureFact {
+  kind: FixtureFactKind;
+  id: string;
+  summary: string;
+  redacted: boolean;
+  tenantSafe: boolean;
+  proofMode: ProofMode;
+  source: "fixture-corpus";
+}
 
 interface LifecycleScenario {
   id: RequiredScenario | string;
@@ -75,6 +94,7 @@ interface LifecycleScenario {
   commands: string[];
   artifacts: Artifact[];
   fixtureIds: string[];
+  fixtureFacts: LifecycleFixtureFact[];
   migrationPhase?: "expand" | "backfill" | "contract";
   deterministic: boolean;
   redacted: boolean;
@@ -100,6 +120,35 @@ export type ParsedDxResourceLifecycleFixtureCorpus = ResourceLifecycleFixtureCor
   readonly __parsed: "DxResourceLifecycleFixtureCorpus";
 };
 
+const FACT_SUMMARIES: Record<FixtureFactKind, string> = {
+  resources: "Resource fixture entries for component, database, image, queue, and ownership examples.",
+  links: "Typed relation fixture entries connecting manifests, deployment sets, actors, and evidence packs.",
+  "manifest-ir": "Manifest IR fixture entries describing stable resource ids, ports, and capability references.",
+  "deployment-plan": "DeploymentPlan fixture entries for ordered actions, checks, rollback handles, and refusal points.",
+  "deployment-set": "Deployment Set fixture entries for target camps, revisions, ownership, and selected resources.",
+  delta: "Delta fixture entries for proposed, accepted, denied, and rollback state transitions.",
+  "gatekeeper-decision": "Gatekeeper decision fixture entries for allow, deny, incompatibility, and remediation labels.",
+  "resourceactor-events": "ResourceActor event fixture entries for provisioned, drifted, adopted, denied, and rolled-back evidence.",
+  "projection-snapshot": "Projection snapshot fixture entries for fresh, stale, and support-safe read-model states.",
+  logs: "Redacted log fixture entries for command output, run traces, and support bundles.",
+  "drift-report": "DriftReport fixture entries for observed differences, proposed reconcile deltas, and safe next actions.",
+  "import-adopt-state": "Import/adopt fixture entries for redacted external state, adopted resources, and no-op plans.",
+  "migration-phase": "Migration phase fixture entries for expand, backfill, contract, and blocked destructive changes.",
+  "support-evidence": "Support evidence fixture entries for redacted bundles, owner routes, and customer-safe status updates.",
+};
+
+function lifecycleFixtureFacts(scenarioId: RequiredScenario): LifecycleFixtureFact[] {
+  return REQUIRED_FACT_KINDS.map((kind) => ({
+    kind,
+    id: `dx.lifecycle.${scenarioId}.${kind}.v1`,
+    summary: FACT_SUMMARIES[kind],
+    redacted: true,
+    tenantSafe: true,
+    proofMode: "reference fixture",
+    source: "fixture-corpus",
+  }));
+}
+
 export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpus = {
   issue: "HOBO-572",
   packagePath: "src/draft/exp-proofs/dx-resource-lifecycle-fixture-corpus",
@@ -124,6 +173,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo collect --out manifest.json", "hobo plan --camp preview", "hobo up --camp preview", "hobo inspect run --last"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["snapshop-api", "snapshop-db", "snapshop-images", "gatekeeper-allow", "resource.Provisioned"],
+      fixtureFacts: lifecycleFixtureFacts("deploy"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -137,6 +187,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo inspect topology", "hobo logs --follow api", "hobo doctor --support-bundle"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["projection-fresh", "run-log-redacted", "support-bundle-safe", "topology-readmodel"],
+      fixtureFacts: lifecycleFixtureFacts("manage"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -150,6 +201,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo plan --camp prod --migration expand", "hobo up --camp prod --to migration-expand"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["migration-expand", "migration-backfill", "migration-contract", "schema-change-additive"],
+      fixtureFacts: lifecycleFixtureFacts("migrate"),
       migrationPhase: "expand",
       deterministic: true,
       redacted: true,
@@ -164,6 +216,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo up --camp prod --rollback", "hobo inspect deploy --last"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["rollback-last-good", "delta-reverts-to-set", "rollout-health-failed"],
+      fixtureFacts: lifecycleFixtureFacts("rollback"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -177,6 +230,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo import terraform ./infra", "hobo plan --camp prod"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["terraform-state-redacted", "resource-adopted", "authoritative-external", "no-op-plan"],
+      fixtureFacts: lifecycleFixtureFacts("import-adopt"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -190,6 +244,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo inspect deploy --drift", "hobo plan --camp prod"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["resource.DriftDetected", "drift-report-safe", "reconcile-delta-proposed"],
+      fixtureFacts: lifecycleFixtureFacts("drift"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -203,6 +258,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo inspect topology --json", "mcp.hobo.inspectTopology"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["projection-stale", "freshness-lag-warning", "safe-next-action"],
+      fixtureFacts: lifecycleFixtureFacts("stale-projection"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -216,6 +272,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo plan --camp prod", "hobo up --camp prod"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["policy.Decided-deny", "gatekeeper-denial", "approval-required"],
+      fixtureFacts: lifecycleFixtureFacts("policy-denial"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -229,6 +286,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo verify --target prod", "hobo up --camp prod"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["compat.GateFailed", "consumer-still-reads-field", "dual-publish-remediation"],
+      fixtureFacts: lifecycleFixtureFacts("contract-incompatibility"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -242,6 +300,7 @@ export const DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS: ResourceLifecycleFixtureCorpu
       commands: ["hobo doctor --support-bundle", "hobo inspect run --last --redacted"],
       artifacts: [...REQUIRED_ARTIFACTS],
       fixtureIds: ["redacted-evidence-pack", "owner-route-support", "customer-safe-update"],
+      fixtureFacts: lifecycleFixtureFacts("support-evidence"),
       deterministic: true,
       redacted: true,
       tenantSafe: true,
@@ -307,6 +366,8 @@ export function validateDxResourceLifecycleFixtureCorpus(corpus: ResourceLifecyc
     const scenarioId = typeof scenario.id === "string" ? scenario.id : "unknown";
     const artifacts = stringList(scenario.artifacts);
     const fixtureIds = stringList(scenario.fixtureIds);
+    const fixtureFacts = recordList(scenario.fixtureFacts);
+    const factKinds = new Set(fixtureFacts.map((fact) => fact.kind));
     const scopeOutGuard = typeof scenario.scopeOutGuard === "string" ? scenario.scopeOutGuard : "";
 
     if (!scenario.deterministic) {
@@ -334,6 +395,36 @@ export function validateDxResourceLifecycleFixtureCorpus(corpus: ResourceLifecyc
     }
     if (fixtureIds.length < 3) {
       errors.push(`scenario ${scenarioId} must name deterministic fixture ids`);
+    }
+    for (const factKind of REQUIRED_FACT_KINDS) {
+      if (!factKinds.has(factKind)) {
+        errors.push(`scenario ${scenarioId} missing fixture fact: ${factKind}`);
+      }
+    }
+    for (const fact of fixtureFacts) {
+      const factId = typeof fact.id === "string" ? fact.id : "";
+      const factSummary = typeof fact.summary === "string" ? fact.summary : "";
+      if (!factId) {
+        errors.push(`scenario ${scenarioId} has fixture fact without an id`);
+      }
+      if (!factSummary) {
+        errors.push(`scenario ${scenarioId} fixture fact ${String(fact.kind)} must have a summary`);
+      }
+      if (fact.redacted !== true) {
+        errors.push(`scenario ${scenarioId} fixture fact ${factId || String(fact.kind)} must be redacted`);
+      }
+      if (fact.tenantSafe !== true) {
+        errors.push(`scenario ${scenarioId} fixture fact ${factId || String(fact.kind)} must be tenant-safe`);
+      }
+      if (fact.proofMode !== scenario.proofMode) {
+        errors.push(`scenario ${scenarioId} fixture fact ${factId || String(fact.kind)} must match scenario proof mode`);
+      }
+      if (fact.source !== "fixture-corpus") {
+        errors.push(`scenario ${scenarioId} fixture fact ${factId || String(fact.kind)} must come from the fixture corpus`);
+      }
+      if (SCOPE_CREEP_PATTERNS.some((pattern) => pattern.test(factSummary))) {
+        errors.push(`scenario ${scenarioId} fixture fact ${factId || String(fact.kind)} has scope creep in summary`);
+      }
     }
     if (!scopeOutGuard) {
       errors.push(`scenario ${scenarioId} must name its scope-out guard`);

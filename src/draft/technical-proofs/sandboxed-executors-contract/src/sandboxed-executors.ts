@@ -105,6 +105,74 @@ export function createSandboxEgressGuard(allowedTargets) {
   };
 }
 
+export function parseExecutorJob(raw) {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("executor job must be an object");
+  }
+
+  const kind = raw.kind;
+  if (kind === "iac-pulumi") {
+    if (!raw.programId || !raw.stackName) {
+      throw new Error("iac-pulumi job requires programId and stackName");
+    }
+    if (raw.action !== "preview" && raw.action !== "apply") {
+      throw new Error("iac-pulumi action must be preview or apply");
+    }
+
+    return {
+      kind,
+      programId: String(raw.programId),
+      stackName: String(raw.stackName),
+      action: raw.action,
+      output: Array.isArray(raw.output) ? raw.output.map(String) : [],
+      outputs: raw.outputs ?? undefined,
+      egressAttempts: parseEgressAttempts(raw.egressAttempts)
+    };
+  }
+
+  if (kind === "componentize") {
+    if (!raw.serviceId) {
+      throw new Error("componentize job requires serviceId");
+    }
+    if (raw.action !== "build") {
+      throw new Error("componentize action must be build");
+    }
+
+    return {
+      kind,
+      serviceId: String(raw.serviceId),
+      action: "build",
+      output: Array.isArray(raw.output) ? raw.output.map(String) : [],
+      outputs: raw.outputs ?? undefined,
+      egressAttempts: parseEgressAttempts(raw.egressAttempts)
+    };
+  }
+
+  throw new Error(`unsupported executor job kind: ${String(kind)}`);
+}
+
+function parseEgressAttempts(raw) {
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(raw)) {
+    throw new Error("egressAttempts must be an array");
+  }
+
+  return raw.map((attempt) => {
+    if (!attempt?.target) {
+      throw new Error("egress attempt requires target");
+    }
+
+    const channel = attempt.channel === "covert" ? "covert" : "normal";
+    return {
+      target: String(attempt.target),
+      channel
+    };
+  });
+}
+
 export function createSandboxedExecutor({
   firecrackerAvailable = true,
   allowedEgress = [],
@@ -113,7 +181,8 @@ export function createSandboxedExecutor({
   const egressGuard = createSandboxEgressGuard(allowedEgress);
 
   return {
-  async run(job, options = {}) {
+  async run(rawJob, options = {}) {
+      const job = parseExecutorJob(rawJob);
       const execId = options.execId ?? `exec-${job.kind}-${stableDigest(job).slice(0, 8)}`;
       const correlationId = options.correlationId ?? `corr-${execId}`;
       const resourceId = job.kind === "iac-pulumi" ? job.programId : job.serviceId;

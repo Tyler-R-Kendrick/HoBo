@@ -32,4 +32,4 @@ pnpm exec turbo run test --filter ./src/draft/technical-proofs/sandboxed-executo
 
 ## Proof package
 
-[`src/draft/technical-proofs/sandboxed-executors-contract`](../../../src/draft/technical-proofs/sandboxed-executors-contract/README.md)
+[`src/draft/technical-proofs/sandboxed-executors-contract`](../../../../src/draft/technical-proofs/sandboxed-executors-contract/README.md)

@@ -18,6 +18,7 @@ Executable proofs:
 - [`meta-cloud-broker-rejection-matrix-contract`](../../src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract/README.md)
 - [`broker-receipt-integrity-contract`](../../src/draft/technical-proofs/broker-receipt-integrity-contract/README.md)
 - [`broker-environment-publication-contract`](../../src/draft/technical-proofs/broker-environment-publication-contract/README.md)
+- [`broker-admin-controls-contract`](../../src/draft/technical-proofs/broker-admin-controls-contract/README.md)
 
 Branch evidence:
 
@@ -28,6 +29,7 @@ Branch evidence:
 - [`HOBO-528 proof record`](./proofs/hobo-528-meta-cloud-broker-rejection-matrix/README.md)
 - [`HOBO-529 proof record`](./proofs/hobo-529-broker-receipt-integrity/README.md)
 - [`HOBO-526 proof record`](./proofs/hobo-526-broker-environment-publication/README.md)
+- [`HOBO-527 proof record`](./proofs/hobo-527-broker-admin-controls/README.md)
 
 This M0 record defines the accepted productization scope for the Meta-cloud Broker. It does not
 build broker runtime code, Yard planner behavior, provider adapters, admin UI, Gatekeeper policy
@@ -214,3 +216,11 @@ scope record and its executable proof. Adjacent decisions route to the owning in
 Yard receipt consumption to Control Plane, provider/catalog publication to Providers/IaC, policy and
 waiver behavior to Contracts & Policy, environment proposal UX to Admin Console, and customer-safe
 debugging to Support Workflow.
+
+## M2 Admin-Control Proof
+
+HOBO-527 proves the Admin Console to Meta-cloud Broker admin-control boundary with
+`broker-admin-controls-contract`: admin proposal, approval, and revocation commands create auditable
+Broker Environment input events and snapshots, reject malformed or cross-environment approvals, and
+do not mutate issued Resolution Receipts, execute hosted broker runtime behavior, build admin UI
+navigation, change Yard planner behavior, or rewrite Gatekeeper policy outcomes.

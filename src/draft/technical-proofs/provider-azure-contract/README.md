@@ -31,7 +31,7 @@ and services beyond the seed ports.
 Run:
 
 ```powershell
-npm.cmd --prefix src\draft\technical-proofs\provider-azure-contract test
+pnpm.cmd --prefix src\draft\technical-proofs\provider-azure-contract test
 ```
 
 
@@ -43,3 +43,4 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Provider Azure Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+- `type-tests/provider-azure.ts` — public declaration consumer for the typed Azure provider API.

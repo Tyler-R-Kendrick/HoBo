@@ -1,13 +1,14 @@
-import {
-  AZURE_PROVIDER_ID,
-  azure,
-  createAzureMultiCloudShopPlan,
-  createAzureProvider,
-  evaluateAzurePlan,
-  realizeAzurePlan
-} from "../src/provider-azure.js";
+import type * as ProviderAzureContract from "../src/provider-azure.d.mts";
+import type { AzureProvider } from "../src/provider-azure.d.mts";
 
-const provider = createAzureProvider({ campEvidence: "pass" });
+declare const AZURE_PROVIDER_ID: typeof ProviderAzureContract.AZURE_PROVIDER_ID;
+declare const azure: typeof ProviderAzureContract.azure;
+declare const createAzureMultiCloudShopPlan: typeof ProviderAzureContract.createAzureMultiCloudShopPlan;
+declare const createAzureProvider: typeof ProviderAzureContract.createAzureProvider;
+declare const evaluateAzurePlan: typeof ProviderAzureContract.evaluateAzurePlan;
+declare const realizeAzurePlan: typeof ProviderAzureContract.realizeAzurePlan;
+
+const provider: AzureProvider = createAzureProvider({ campEvidence: "pass" });
 const manifest = provider.capabilityManifest();
 const plan = createAzureMultiCloudShopPlan({
   resourceOptions: {

@@ -26,6 +26,14 @@ function isGlobalContract(check: Check) {
   return check.command === "pnpm" && check.args.join(" ") === "run test:contract";
 }
 
+function isGlobalContractConsumer(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:contract:consumer";
+}
+
+function isGlobalContractProvider(check: Check) {
+  return check.command === "pnpm" && check.args.join(" ") === "run test:contract:provider";
+}
+
 function isWorkspacePrefixTest(check: Check) {
   return check.command === "pnpm"
     && check.args[0] === "--prefix"
@@ -118,6 +126,22 @@ test("shared Pact changes still select the global contract sweep", () => {
   const { checks } = plan(["tests/pacts/runtime-provider.pact.json"]);
 
   assert.equal(checks.some(isGlobalContract), true);
+});
+
+test("root schema changes do not select broad contract sweeps by default", () => {
+  const { checks } = plan(["contracts/runtime/runtime.proto"]);
+
+  assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), true);
+  assert.equal(checks.some(isGlobalContractConsumer), false);
+  assert.equal(checks.some(isGlobalContractProvider), false);
+});
+
+test("root schema final validation can opt into broad contract sweeps", () => {
+  const { checks } = plan(["contracts/runtime/runtime.proto"], { includeBroadSweeps: true });
+
+  assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), true);
+  assert.equal(checks.some(isGlobalContractConsumer), true);
+  assert.equal(checks.some(isGlobalContractProvider), true);
 });
 
 test("oversized draft workspace selections stay direct instead of falling back to global unit sweep", () => {

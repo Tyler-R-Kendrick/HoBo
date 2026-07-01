@@ -9,6 +9,7 @@ export type RelevantCheckPolicyOptions = {
   staged?: boolean;
   all?: boolean;
   includeBuild?: boolean;
+  includeBroadSweeps?: boolean;
   rootPackageJsonScriptsOnlyChanged?: boolean;
   workspacePackageExists?: (workspace: string) => boolean;
 };
@@ -46,6 +47,7 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const workspaceTestFiles = (options.workspaceTestFiles ?? options.files).map((file) => file.replaceAll("\\", "/"));
   const staged = Boolean(options.staged);
   const includeBuild = Boolean(options.includeBuild);
+  const includeBroadSweeps = Boolean(options.includeBroadSweeps || options.all);
   const rootPackageJsonScriptsOnlyChanged = Boolean(options.rootPackageJsonScriptsOnlyChanged);
   const workspacePackageExists = options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
@@ -88,8 +90,10 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
 
   if (rootSchemaChanged) {
     checks.push({ command: "pnpm", args: ["run", "test:schema"], reason: "root protobuf/CUE/schema changed; run repository schema compatibility lane" });
-    checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "root schema changes can affect consumer contracts" });
-    checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "root schema changes can affect provider verification" });
+    if (includeBroadSweeps) {
+      checks.push({ command: "pnpm", args: ["run", "test:contract:consumer"], reason: "final/all root schema validation can affect consumer contracts" });
+      checks.push({ command: "pnpm", args: ["run", "test:contract:provider"], reason: "final/all root schema validation can affect provider verification" });
+    }
   } else if (rootPactChanged) {
     checks.push({ command: "pnpm", args: ["run", "test:contract"], reason: "root or shared PACT artifacts changed" });
   }

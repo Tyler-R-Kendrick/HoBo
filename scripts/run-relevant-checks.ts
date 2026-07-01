@@ -10,6 +10,11 @@ const staged = args.has("--staged");
 const all = args.has("--all");
 const explain = args.has("--explain");
 const includeBuild = args.has("--build");
+const finalValidation = args.has("--final");
+const parallelLimit = Math.max(
+  1,
+  Number.parseInt(process.env.HOBO_RELEVANT_CHECK_CONCURRENCY ?? "4", 10) || 4,
+);
 
 type ChangedFileRecord = {
   path: string;
@@ -45,6 +50,23 @@ function runAsync(check: Check): Promise<number> {
     child.once("error", () => resolve(1));
     child.once("exit", (status) => resolve(status ?? 1));
   });
+}
+
+async function runBounded(checks: Check[], concurrency: number): Promise<number[]> {
+  const statuses = new Array<number>(checks.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < checks.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      statuses[index] = await runAsync(checks[index]);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, checks.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return statuses;
 }
 
 function capture(command: string, commandArgs: string[]) {
@@ -124,6 +146,7 @@ const { checks, scopes } = selectRelevantChecks({
   staged,
   all,
   includeBuild,
+  includeBroadSweeps: all || finalValidation,
   rootPackageJsonScriptsOnlyChanged: rootPackageJsonScriptsOnlyChanged(),
 });
 
@@ -139,6 +162,9 @@ for (const check of checks.filter((check) => check.serial)) {
 }
 
 const parallelChecks = checks.filter((check) => !check.serial);
-const statuses = await Promise.all(parallelChecks.map(runAsync));
+if (parallelChecks.length > 0) {
+  console.log(`Running ${parallelChecks.length} parallel-capable check(s) with concurrency ${parallelLimit}.`);
+}
+const statuses = await runBounded(parallelChecks, parallelLimit);
 const failed = statuses.find((status) => status !== 0);
 if (failed) process.exit(failed);

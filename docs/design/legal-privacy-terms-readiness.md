@@ -89,6 +89,34 @@ M1/M2/M3/M4 legal, privacy, support, communications, or evidence work must wait 
 checklist is accepted. This branch records the checklist and its executable guard; it does not fan
 out downstream work.
 
+## M1 Dogfood/alpha Evidence Gate
+
+HOBO-457 accepts dogfood/alpha legal/privacy/terms evidence only when each required record maps to
+an owning project and release cutline reference, and when blockers, accepted risks, parent readiness
+updates, and follow-up boundaries are represented explicitly. The executable proof lives in
+[`src/draft/technical-proofs/legal-privacy-terms-dogfood-alpha-evidence`](../../src/draft/technical-proofs/legal-privacy-terms-dogfood-alpha-evidence/README.md)
+and branch evidence is summarized in
+[`proofs/hobo-457-legal-privacy-terms-dogfood-alpha`](./proofs/hobo-457-legal-privacy-terms-dogfood-alpha/README.md).
+
+Required M1 evidence:
+
+- Terms approval path and owner routing are recorded for dogfood/alpha only.
+- Privacy notice review maps telemetry, retention, support access, and subprocessors.
+- Data retention classes link deletion/export expectations before dogfood data enters alpha.
+- Telemetry usage states purpose, owner, retention posture, and customer-facing disclosure status.
+- Subprocessor/provider claims distinguish confirmed, optional, mocked, unsupported, and unknown
+  services before release wording can reference them.
+- Security claims are evidence-backed or downgraded before public copy.
+- Support obligations and customer communications align with known limitations and release notes.
+
+Scope guards:
+
+- The gate does not draft final legal terms, privacy notices, DPAs, billing terms, SLAs, or legal
+  workflow product.
+- Alpha evidence cannot approve paid, public, beta, release-candidate, or GA claims.
+- Accepted evidence cannot create extra follow-up execution issues; missing evidence must create a
+  targeted follow-up and block milestone completion.
+
 ## M2 Private Beta Evidence Gate
 
 HOBO-464 accepts private beta legal/privacy evidence only when the beta record stays narrower than

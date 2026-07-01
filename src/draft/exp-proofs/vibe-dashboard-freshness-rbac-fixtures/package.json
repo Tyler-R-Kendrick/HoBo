@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-dashboard-freshness-rbac-fixtures",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures/test/vibe-dashboard-freshness-rbac-fixtures.test.ts"
+  }
+}

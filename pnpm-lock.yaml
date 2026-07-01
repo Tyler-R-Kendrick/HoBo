@@ -161,8 +161,6 @@ importers:
 
   src/draft/exp-proofs/dx-result-refusal-proof-envelopes: {}
 
-  src/draft/exp-proofs/resource-lifecycle-quickstart-examples: {}
-
   src/draft/exp-proofs/dx-sdk-resilience-scope-contract: {}
 
   src/draft/exp-proofs/e2e-test-matrix-scope-acceptance: {}
@@ -253,6 +251,8 @@ importers:
 
   src/draft/exp-proofs/resource-garbage-collection-scope-acceptance: {}
 
+  src/draft/exp-proofs/resource-lifecycle-quickstart-examples: {}
+
   src/draft/exp-proofs/sbom-vulnerability-notice-evidence-contract: {}
 
   src/draft/exp-proofs/sdk-object-graph-manifest-ir-shapes:
@@ -321,6 +321,8 @@ importers:
   src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract: {}
 
   src/draft/exp-proofs/v1-supported-platform-matrix-contract: {}
+
+  src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures: {}
 
   src/draft/exp-proofs/vibe-deployment-dashboard-mockups: {}
 

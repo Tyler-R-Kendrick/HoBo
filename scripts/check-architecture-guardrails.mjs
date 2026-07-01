@@ -33,6 +33,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const PRODUCTION_PACKAGE_PARENTS = new Set(["packages", "examples"]);
+const NESTED_PRODUCTION_CATEGORIES = new Set(["runtimes", "providers", "iac", "build"]);
 
 export function isProductionPackageRoot(packageRoot) {
   return PRODUCTION_PACKAGE_PARENTS.has(normalizePath(packageRoot).split("/")[0]);
@@ -299,6 +300,9 @@ function filterExistingBasePackages(files, base) {
 function implementationPackageRoot(file) {
   const parts = normalizePath(file).split("/");
   if (PRODUCTION_PACKAGE_PARENTS.has(parts[0]) && parts.length >= 3) {
+    if (parts[1] && NESTED_PRODUCTION_CATEGORIES.has(parts[1]) && parts[2]) {
+      return parts.slice(0, 3).join("/");
+    }
     return parts.slice(0, 2).join("/");
   }
 

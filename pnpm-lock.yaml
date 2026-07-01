@@ -153,6 +153,8 @@ importers:
 
   src/draft/exp-proofs/dx-backbone-resource-lifecycle-vibe: {}
 
+  src/draft/exp-proofs/dx-resource-lifecycle-fixture-corpus: {}
+
   src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix: {}
 
   src/draft/exp-proofs/dx-result-refusal-proof-envelopes: {}

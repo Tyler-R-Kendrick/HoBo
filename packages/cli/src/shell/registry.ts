@@ -1,0 +1,81 @@
+import type { CliContext, CommandResult } from "../types/envelope.js";
+import { UsageError } from "./errors.js";
+import { CANONICAL_VERBS, verbNames } from "./verbs.js";
+
+export interface CommandRunInput {
+	readonly context: CliContext;
+	readonly flags: {
+		readonly json: boolean;
+		readonly camp: string | null;
+		readonly cwd: string;
+		readonly verbose: boolean;
+		readonly quiet: boolean;
+		readonly help: boolean;
+		readonly to: string | null;
+		readonly rollback: boolean;
+		readonly seed: boolean;
+		readonly restore: string | null;
+		readonly strategy: string | null;
+		readonly target: string | null;
+		readonly check: boolean;
+		readonly last: boolean;
+		readonly offline: boolean;
+		readonly template: string | null;
+		readonly force: boolean;
+	};
+	readonly args: readonly string[];
+	readonly verb: string;
+	readonly emitProgress: (message: string) => void;
+}
+
+export interface CommandModule {
+	readonly run: (input: CommandRunInput) => Promise<CommandResult>;
+}
+
+export interface CommandRegistry {
+	readonly get: (verb: string) => CommandModule;
+	readonly listVerbs: () => readonly string[];
+}
+
+export function createCommandRegistry(
+	overrides: Record<string, CommandModule> = {},
+): CommandRegistry {
+	const registry = new Map<string, CommandModule>();
+	for (const verb of CANONICAL_VERBS) {
+		registry.set(verb.name, stubCommand(verb.name));
+	}
+
+	for (const [name, command] of Object.entries(overrides)) {
+		if (!verbNames.has(name)) {
+			throw new UsageError(`Cannot register unknown HoBo verb "${name}".`, [
+				"Register only verbs from docs/design/cli-spec.md.",
+			]);
+		}
+		registry.set(name, command);
+	}
+
+	return {
+		get(verb: string) {
+			const command = registry.get(verb);
+			if (!command) {
+				throw new UsageError(`Cannot dispatch unknown HoBo verb "${verb}".`);
+			}
+			return command;
+		},
+		listVerbs() {
+			return CANONICAL_VERBS.map((verb) => verb.name);
+		},
+	};
+}
+
+function stubCommand(verb: string): CommandModule {
+	return {
+		run: async () => ({
+			ok: true,
+			status: "not_implemented",
+			code: "HOBO_CLI_STUB",
+			message: `${verb} is not yet implemented`,
+			data: {},
+		}),
+	};
+}

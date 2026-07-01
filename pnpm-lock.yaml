@@ -255,6 +255,8 @@ importers:
 
   src/draft/exp-proofs/tenant-isolation-quotas-scope: {}
 
+  src/draft/exp-proofs/threat-model-security-review-scope-acceptance: {}
+
   src/draft/exp-proofs/troubleshooting-guides-scope-acceptance: {}
 
   src/draft/exp-proofs/tutorials-walkthroughs-scope-acceptance: {}

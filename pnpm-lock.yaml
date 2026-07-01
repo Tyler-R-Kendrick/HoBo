@@ -328,6 +328,8 @@ importers:
 
   src/draft/exp-proofs/vibe-first-customer-pilot-storyboard: {}
 
+  src/draft/exp-proofs/vibe-marketplace-installability-mockups: {}
+
   src/draft/exp-proofs/vibe-support-workflow-mockups: {}
 
   src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract: {}

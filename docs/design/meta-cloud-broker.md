@@ -12,6 +12,7 @@ Source issue: HOBO-521.
 Executable proofs:
 
 - [`meta-cloud-broker-scope-contract`](../../src/draft/exp-proofs/meta-cloud-broker-scope-contract/README.md)
+- [`meta-cloud-broker-artifact-contract`](../../src/draft/technical-proofs/meta-cloud-broker-artifact-contract/README.md)
 - [`yard-receipt-consumption-contract`](../../src/draft/technical-proofs/yard-receipt-consumption-contract/README.md)
 - [`meta-cloud-broker-resolution-contract`](../../src/draft/technical-proofs/meta-cloud-broker-resolution-contract/README.md)
 - [`meta-cloud-broker-rejection-matrix-contract`](../../src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract/README.md)
@@ -21,6 +22,7 @@ Executable proofs:
 Branch evidence:
 
 - [`HOBO-521 proof record`](./proofs/hobo-521-meta-cloud-broker/README.md)
+- [`HOBO-522 proof record`](./proofs/hobo-522-meta-cloud-broker-artifacts/README.md)
 - [`HOBO-523 proof record`](./proofs/hobo-523-yard-receipt-consumption/README.md)
 - [`HOBO-525 proof record`](./proofs/hobo-525-meta-cloud-broker-resolution/README.md)
 - [`HOBO-528 proof record`](./proofs/hobo-528-meta-cloud-broker-rejection-matrix/README.md)

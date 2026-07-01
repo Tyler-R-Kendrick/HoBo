@@ -801,6 +801,8 @@ importers:
 
   src/draft/technical-proofs/mcp-server-hardening-contract: {}
 
+  src/draft/technical-proofs/meta-cloud-broker-artifact-contract: {}
+
   src/draft/technical-proofs/meta-cloud-broker-resolution-contract: {}
 
   src/draft/technical-proofs/metering-view-projection-contract: {}

@@ -95,6 +95,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`admin-console.md`](./admin-console.md) | Productization M0 scope and acceptance for Admin Console navigation, read models, action intents, audit/redaction, and support/security boundaries | — |
 | [`admin-support-breakglass-boundaries.md`](./admin-support-breakglass-boundaries.md) | Productization M0 boundary for admin/support emergency access, approval, audit, TTL, notification, revocation, and unsupported actions | — |
 | [`audit-explorer.md`](./audit-explorer.md) | Productization M0 scope and acceptance for Audit Explorer audit facts, tenant-first filters, export evidence, redaction, and support/security/governance boundaries | — |
+| [`support-debug-tools.md`](./support-debug-tools.md) | Productization M0 scope and acceptance for support-safe diagnostic bundles, recovery routes, redaction, incident handoff, and support/debug boundaries | — |
 | [`member-rbac-administration.md`](./member-rbac-administration.md) | Productization M0 scope and acceptance for member lifecycle, RBAC administration, role boundaries, and audit handoff | — |
 | [`tenant-isolation-quotas.md`](./tenant-isolation-quotas.md) | Productization M0 scope and acceptance for tenant isolation axes, quota dimensions, owning boundaries, and M1 evidence gates | — |
 | [`org-catalogs.md`](./org-catalogs.md) | Productization M0 scope and acceptance for org catalog kinds, approval states, evidence fields, owner handoffs, and scope boundaries | — |

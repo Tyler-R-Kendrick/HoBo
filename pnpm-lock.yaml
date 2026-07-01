@@ -344,6 +344,8 @@ importers:
 
   src/draft/exp-proofs/vibe-marketplace-trust-copy-states: {}
 
+  src/draft/exp-proofs/vibe-plan-annotation-pseudocode: {}
+
   src/draft/exp-proofs/vibe-publisher-portal-review-mockups: {}
 
   src/draft/exp-proofs/vibe-representative-a11y-usability-checks: {}

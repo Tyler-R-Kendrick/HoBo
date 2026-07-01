@@ -25,6 +25,7 @@ This bundle follows Open Knowledge Format v0.1 conventions: `index.md` files pro
 | [`standards/`](./standards/index.md) | External standards referenced by design decisions. |
 | [`technologies/`](./technologies/index.md) | Technology notes for adapters, engines, and possible implementation choices. |
 | [`archive/`](./archive/) | Deferred or superseded planning artifacts. |
+| [`../workflows/`](../workflows/) | Loop-me workflow specs for recurring agent/human maintenance loops (`NOTES.md` holds shared vocabulary). |
 
 ## Maintenance checklist
 

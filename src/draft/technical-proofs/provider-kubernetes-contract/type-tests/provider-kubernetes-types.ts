@@ -1,4 +1,4 @@
-import { createKubernetesClusterFixturePlan, createKubernetesProvider, kubernetes, type KubernetesProvider } from "../src/provider-kubernetes.js";
+import { createKubernetesClusterFixturePlan, createKubernetesProvider, kubernetes, type KubernetesProvider } from "@hobo-draft/provider-kubernetes-contract";
 
 const provider: KubernetesProvider = createKubernetesProvider();
 const deployment = kubernetes.with.deployment({ replicas: 2, runtimeClassName: "wasmtime" });

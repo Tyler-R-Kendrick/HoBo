@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import * as bindlesCatalog from "../../hobo-bindles-resource-catalog/src/catalog.js";
+import * as bindlesCatalog from "../../hobo-bindles-resource-catalog/src/catalog.ts";
 import {
   assertManifestFreeze,
   assertNoInternalCloudSymbols,

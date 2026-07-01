@@ -19,6 +19,10 @@ Run:
 npm.cmd --prefix src\draft\technical-proofs\provider-kubernetes-contract test
 ```
 
+The runtime tests exercise the implementation directly; the type consumer uses
+the package export so the public declaration surface stays aligned with
+downstream API/SDK usage.
+
 
 ## Architecture Evidence
 

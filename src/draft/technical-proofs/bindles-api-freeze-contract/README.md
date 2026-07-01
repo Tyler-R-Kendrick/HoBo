@@ -42,6 +42,9 @@ changelog output.
 npm.cmd --prefix src\draft\technical-proofs\bindles-api-freeze-contract test
 ```
 
+The test runs through `tsx` because it intentionally imports the neighboring
+`hobo-bindles-resource-catalog` TypeScript source after the draft taxonomy move.
+
 
 ## Architecture Evidence
 

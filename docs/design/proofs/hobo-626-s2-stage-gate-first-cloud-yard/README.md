@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-626 — S2 Stage Gate proof record
 
 Branch evidence for the Stage-2 gate drill. Executable proof lives at
-[`src/draft/epic-proofs/s2-stage-gate-first-cloud-yard`](../../../src/draft/epic-proofs/s2-stage-gate-first-cloud-yard/README.md).
+[`src/draft/epic-proofs/s2-stage-gate-first-cloud-yard`](../../../../src/draft/epic-proofs/s2-stage-gate-first-cloud-yard/README.md).
 
 ## Branch Evidence
 

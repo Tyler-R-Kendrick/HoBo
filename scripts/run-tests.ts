@@ -39,7 +39,7 @@ const categories: Record<string, string[]> = {
   unit: rootOnly ? ["test/*test.ts", "test/*test.mjs"] : ["test/*test.ts", "test/*test.mjs", "src/draft/*/*/test/*test.ts", "src/draft/*/*/test/*test.mjs", "src/draft/*/*/tests/*test.ts", "src/draft/*/*/tests/*test.mjs"],
   types: ["src/draft/*/*/type-tests/*.ts", "src/draft/*/*/test-types/*.ts", "**/*.test-d.ts"],
   "contract-consumer": ["src/draft/*/*/test/*contract*.test.ts", "src/draft/*/*/test/*contract*.test.mjs", "src/draft/*/*/tests/*contract*.test.ts", "src/draft/*/*/tests/*contract*.test.mjs", "src/draft/*/*/contracts/consumer/*test.ts", "test/*contract*.test.ts"],
-  "contract-provider": ["src/draft/*/*/test/*provider*.test.ts", "src/draft/*/*/test/*provider*.test.mjs", "src/draft/*/*/tests/*provider*.test.ts", "src/draft/*/*/tests/*provider*.test.mjs", "test/*provider*.test.ts"],
+  "contract-provider": ["src/draft/*/*/test/*provider*.test.ts", "src/draft/*/*/test/*provider*.test.mjs", "src/draft/*/*/tests/*provider*.test.ts", "src/draft/*/*/tests/*provider*.test.mjs", "src/draft/*/*/contracts/provider/*test.ts", "test/*provider*.test.ts"],
   dom: ["tests/dom/**/*test.ts", "test/dom/**/*test.ts"],
   component: ["tests/component/**/*test.ts", "test/component/**/*test.ts"],
   behavior: ["tests/behavior/**/*test.ts", "features/**/*.feature"],

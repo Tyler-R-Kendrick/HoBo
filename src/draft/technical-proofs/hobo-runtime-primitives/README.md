@@ -2,6 +2,8 @@
 
 > **Promoted to production:** `hobo:runtime@0.1.0` primitive interfaces now ship from [`packages/wit/wit/deps/hobo-runtime/`](../../../../packages/wit/wit/deps/hobo-runtime/) (`@hobo/wit`, HOBO-590).
 
+> **Reference implementation (draft):** TS runtime primitives (`workflow`, `step`, `actor`, `saga`, hooks, timers) live in [`hobo-runtime-ts-primitives/`](../hobo-runtime-ts-primitives/) (HOBO-600); production promotion to `packages/runtime/` follows S1-01/S1-05/S1-06 merge.
+
 This package proves the HOBO-13 `hobo:runtime@0.1.0` primitive contract:
 
 - `workflow`: durable steps, sleep, event emission, hooks, run start.

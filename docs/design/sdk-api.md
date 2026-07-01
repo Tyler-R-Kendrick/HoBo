@@ -154,6 +154,8 @@ export default handler(async (req, ctx) => {
 ### Layer 4 — Runtime primitives (actors, workflows, steps, sagas, agents)
 This is the Vercel-feel surface. Both **directive** sugar and **wrapper** form are supported (the directive compiles to the wrapper; same semantics).
 
+> **Reference implementation (draft POC):** [`src/draft/technical-proofs/hobo-runtime-ts-primitives/`](../../src/draft/technical-proofs/hobo-runtime-ts-primitives/) (HOBO-600) implements the wrapper-form primitives below over draft runtime-port mocks; public signatures match this section. Production `@hobo/runtime` / `@hobo/events` promotion is blocked on S1-01/S1-05/S1-06.
+
 ```ts
 import { workflow, step, actor, sleep, cron, start, createHook } from "@hobo/runtime";
 import { saga } from "@hobo/events";

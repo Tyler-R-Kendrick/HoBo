@@ -82,6 +82,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`v1-critical-path-dependencies.md`](./v1-critical-path-dependencies.md) | Productization M0 dependency map for beta and GA release critical path blockers | — |
 | [`outcome-activation-rail.md`](./outcome-activation-rail.md) | Productization M0 scope and acceptance for the v1 outcome activation rail | — |
 | [`workspace-onboarding-ux.md`](./workspace-onboarding-ux.md) | Productization M0 scope and acceptance for Workspace & Onboarding UX | — |
+| [`customer-onboarding.md`](./customer-onboarding.md) | Productization M0 scope and acceptance for Customer Onboarding pilot entry, first-run success criteria, support handoffs, and follow-up gates | — |
 | [`accessibility-usability-launch-baseline.md`](./accessibility-usability-launch-baseline.md) | Productization M0 launch baseline for accessibility, usability, evidence, and exception boundaries | — |
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
 | [`known-limitations-register.md`](./known-limitations-register.md) | Customer-facing v1 known limitations, scope-out states, support/docs/messaging handoffs, and beta/GA review checkpoints | [`known-limitations-register-contract`](../../src/draft/known-limitations-register-contract/README.md) |

@@ -788,6 +788,25 @@ importers:
 
   src/draft/technical-proofs/hobo-collect-cli-contract: {}
 
+  src/draft/technical-proofs/hobo-componentize:
+    dependencies:
+      '@bytecodealliance/componentize-js':
+        specifier: 0.21.0
+        version: 0.21.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+      '@bytecodealliance/jco':
+        specifier: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+    devDependencies:
+      '@bytecodealliance/preview2-shim':
+        specifier: 0.17.4
+        version: 0.17.4
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@types/node@26.0.1)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(terser@5.48.0)(tsx@4.22.4))
+
   src/draft/technical-proofs/hobo-componentize-contract: {}
 
   src/draft/technical-proofs/hobo-config-secret-schema-contract: {}

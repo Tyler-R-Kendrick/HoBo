@@ -2,7 +2,7 @@
 
 HOBO-4 is proven by the focused POC at [`src/draft/technical-proofs/hobo-componentize-contract`](../../../../src/draft/technical-proofs/hobo-componentize-contract/README.md).
 
-The executable S0-07 draft POC is tracked on HOBO-584 (PR #660). HOBO-603 spike evidence is at [`src/draft/technical-proofs/componentize-js-determinism-spike`](../../../../src/draft/technical-proofs/componentize-js-determinism-spike/README.md).
+S0-07 draft implementation (real `componentize-js` + `jco` toolchain) lives at [`src/draft/technical-proofs/hobo-componentize`](../../../../src/draft/technical-proofs/hobo-componentize/README.md) pending promotion to `packages/componentize/` now that S0-06 (`@hobo/wit`) has merged. HOBO-603 spike evidence is at [`src/draft/technical-proofs/componentize-js-determinism-spike`](../../../../src/draft/technical-proofs/componentize-js-determinism-spike/README.md).
 
 Acceptance mapping:
 

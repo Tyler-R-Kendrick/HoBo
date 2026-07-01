@@ -161,6 +161,9 @@ importers:
         specifier: workspace:*
         version: link:../../core
     devDependencies:
+      '@hobo/conformance':
+        specifier: workspace:*
+        version: link:../../conformance
       '@types/node':
         specifier: '>=24.0.0'
         version: 26.0.1

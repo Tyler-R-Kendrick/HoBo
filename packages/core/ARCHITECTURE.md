@@ -28,3 +28,9 @@ receives parsed types instead of re-checking raw DTOs.
 
 No runtime engine is implemented here; this package defines the envelope and
 contract surfaces other packages compile against.
+
+## Streamer port (HOBO-597)
+
+- Port interfaces and branded parsers: [`src/ports/streamer.ts`](./src/ports/streamer.ts)
+- Protobuf + CUE records: [`data-models/streamer_port.proto`](./data-models/streamer_port.proto)
+- Production adapter: `@hobo/runtime-local` (`createLocalStreamer`)

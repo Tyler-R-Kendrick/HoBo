@@ -121,3 +121,28 @@ export type {
 	ResolvedBinding,
 } from "./ports/binding-resolver.js";
 export { parseResourceId, RESOURCE_ID_PATTERN } from "./ports/binding-resolver.js";
+
+export type {
+	RunId,
+	Seq,
+	StreamName,
+	Streamer,
+	StreamerFrame,
+	StreamerFrameRecord,
+	StreamerRunHandle,
+	StreamerRunResult,
+	StreamerRunResultRecord,
+	StreamerRunStatus,
+	StreamerWritable,
+} from "./ports/streamer.js";
+export {
+	DEFAULT_STREAM_NAME,
+	StreamerBackpressureError,
+	StreamerClosedError,
+	StreamerParseError,
+	createStreamerFrame,
+	createStreamerRunResult,
+	parseRunId,
+	parseSeq,
+	parseStreamName,
+} from "./ports/streamer.js";

@@ -1,7 +1,8 @@
 # @hobo/runtime-local — Architecture Evidence
 
-Production Wasmtime runtime-local component host (S1-02 / HOBO-591) and
-SQLite-backed Camp EventStore port (S1-05 / HOBO-594).
+Production Wasmtime runtime-local component host (S1-02 / HOBO-591),
+SQLite-backed Camp EventStore port (S1-05 / HOBO-594), and Streamer runtime
+port with replay-then-live reads (S1-08 / HOBO-597).
 
 ## Schema and constraints
 
@@ -21,6 +22,10 @@ derived types (`ParsedStreamId`, `ParsedEventInput`, `ParsedAppendContext`,
 `ParsedExpectedSeq`). Store internals and SQLite adapters accept only parsed
 values; persisted rows re-enter through `parseStoredEnvelope` →
 `parseEventEnvelope`.
+
+Streamer inputs cross parser boundaries in `@hobo/core` (`parseRunId`,
+`parseStreamName`, `parseSeq`) and return derived branded types. The frame
+journal and local streamer adapter accept only parsed types at their seams.
 
 ## Component host — event architecture
 
@@ -88,11 +93,34 @@ mutates read models directly.
 - **Read store** — callers query fold output or snapshots; the raw log remains
   append-only.
 
+## Streamer — event architecture (S1-08 / HOBO-597)
+
+- **Command** — `createRun`, `getRun`, `write`, and `teardownRun` requests.
+- **Event** — append-only lifecycle records `StreamRunOpened` / `StreamRunClosed`
+  folded into run state; per-frame payloads ride the Streamer journal, not the
+  EventStore log (Plan 11).
+- **Actor** — upstream workflow/CLI producers write frames through
+  `getWritable(stream)`.
+- **Event store** — lifecycle transitions only; frame bodies stay in the in-memory
+  append-only journal until teardown.
+- **Materialized view / projection** — readers iterate replay-then-live frames
+  from independent cursors.
+- **Snapshot** — mid-run attach via `getRun(runId).read({ fromSeq })` backfills
+  journaled frames before joining the live tail.
+- **Read store** — consumers read frames from the Streamer port; the Yard is never
+  on the streaming data path.
+
+Per-frame messages ride the **Streamer**, not the durable event log. Run
+lifecycle is event-sourced; frame retention is dev-grade in-memory until
+`teardownRun` releases the run.
+
 ## Contracts
 
 - EventStore PACT evidence: [`contracts/pacts/runtime-sdk-eventstore.pact.json`](./contracts/pacts/runtime-sdk-eventstore.pact.json).
+- Streamer PACT evidence: [`contracts/streamer-port.pact.json`](./contracts/streamer-port.pact.json).
 
 Runtime-local uses Node's built-in `node:sqlite` adapter for the durable
 EventStore, so package type support must stay on Node 24 or newer. Pact replay
 tests load package-local fixtures from [`contracts/`](./contracts) so the
-capability and EventStore contracts remain self-contained with this runtime.
+capability, EventStore, and Streamer contracts remain self-contained with this
+runtime.

@@ -7,6 +7,16 @@ This proof backs [PLAN-11](../../data-plane.md#plan-11), [PLAN-20](../../wasm-ru
 [ADR-0040](../../adr/01-architecture-core.md#adr-0040), and
 [ADR-0050](../../adr/03-data-plane.md#adr-0050).
 
+## Promotion (HOBO-597)
+
+Production implementation lives in [`packages/runtimes/runtime-local`](../../../../packages/runtimes/runtime-local):
+
+- `@hobo/core` port surface: `packages/core/src/ports/streamer.ts`
+- conformance suite: `packages/conformance/src/streamer.ts`
+- runtime-local adapter: `createLocalStreamer()` with append-only frame journal and replay-then-live reads
+
+The draft POC below remains historical evidence for HOBO-23.
+
 The executable POC in
 [`src/draft/technical-proofs/streamer-runtime-port-contract`](../../../../src/draft/technical-proofs/streamer-runtime-port-contract)
 pins the HOBO-23 runtime-local Streamer boundary:

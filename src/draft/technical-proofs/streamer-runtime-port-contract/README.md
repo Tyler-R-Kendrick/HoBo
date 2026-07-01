@@ -4,6 +4,13 @@ Independent POC for HOBO-23. It pins the runtime-local Layer 1 `Streamer`
 boundary before Gateway WebSocket transport, Reactor scheduling, or provider
 backends exist.
 
+## Promotion (HOBO-597)
+
+Production home: [`packages/runtimes/runtime-local`](../../../../packages/runtimes/runtime-local)
+(`createLocalStreamer`, frame journal, PACT at `contracts/streamer-port.pact.json`).
+Port types and parsers live in `@hobo/core`; conformance assertions in
+`@hobo/conformance`. This draft package code is unchanged historical evidence.
+
 ## Public Surface
 
 - `createRuntimeLocalStreamer({ bufferLimit, runIdPrefix })` creates an

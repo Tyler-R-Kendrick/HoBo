@@ -38,3 +38,11 @@ export type {
 	RuntimeLocalEventStore,
 	RuntimeLocalEventStoreOptions,
 } from "./eventstore/eventstore.js";
+export {
+	createFailedRunResult,
+	createLocalStreamer,
+	createRuntimeLocal,
+} from "./streamer/local-streamer.js";
+export type { LocalStreamerOptions, Runtime } from "./streamer/local-streamer.js";
+export { createFrameJournal, foldLifecycleStatus } from "./streamer/frame-journal.js";
+export type { FrameJournal, LifecycleEvent } from "./streamer/frame-journal.js";

@@ -81,6 +81,25 @@ test("coverage paths, proof-mode labels, accessibility, and HOBO-577 fixture ref
   assert.match(accessibilityText, /non-visual/i);
 });
 
+test("tutorial command paths consume accepted HOBO-577 deploy, inspect, and recovery fixtures", () => {
+  const parsed = parseVibeRoleTutorialOutlines(VIBE_ROLE_TUTORIAL_OUTLINES);
+  const commandText = parsed.outlines.flatMap((outline) => outline.commandPath).join("\n");
+  const outlineFixtureIds = new Set(parsed.outlines.flatMap((outline) => outline.quickstartFixtureIds));
+
+  for (const fixtureId of REQUIRED_ROLE_TUTORIAL_QUICKSTART_FIXTURE_IDS) {
+    assert.ok(outlineFixtureIds.has(fixtureId), `missing outline use for ${fixtureId}`);
+  }
+  assert.match(commandText, /rlq-deploy-run-accepted-v1/);
+  assert.match(commandText, /rlq-inspect-event-projection-v1/);
+  assert.match(commandText, /rlq-recover-snapshot-restore-v1/);
+
+  for (const command of parsed.outlines.flatMap((outline) => outline.commandPath)) {
+    if (/^hobo (inspect|doctor)\b/.test(command)) {
+      assert.doesNotMatch(command, /rlq-plan-safe-preview-v1/, `${command} must not inspect or diagnose plan-only evidence`);
+    }
+  }
+});
+
 test("Pact and CUE artifacts stay aligned with the parsed tutorial outline shape", () => {
   const pact = JSON.parse(
     readFileSync(

@@ -22,10 +22,14 @@ export const REQUIRED_ROLE_TUTORIAL_PROOF_MODES = [
 ] as const;
 
 export const REQUIRED_ROLE_TUTORIAL_QUICKSTART_FIXTURE_IDS = [
+  "rlq-define-object-graph-v1",
   "rlq-collect-manifest-ir-v1",
   "rlq-plan-safe-preview-v1",
+  "rlq-deploy-run-accepted-v1",
+  "rlq-inspect-event-projection-v1",
   "rlq-manage-stale-evidence-v1",
   "rlq-migrate-brownfield-preview-v1",
+  "rlq-recover-snapshot-restore-v1",
   "rlq-recover-scope-out-v1",
 ] as const;
 
@@ -126,6 +130,12 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
   quickstartFixtureRefs: [
     {
       sourceIssue: "HOBO-577",
+      fixtureId: "rlq-define-object-graph-v1",
+      proofMode: "reference-fixture",
+      tutorialUse: "role outlines start from the accepted object graph fixture rather than inventing tutorial resources",
+    },
+    {
+      sourceIssue: "HOBO-577",
       fixtureId: "rlq-collect-manifest-ir-v1",
       proofMode: "simulated",
       tutorialUse: "all role outlines can start from accepted manifest collection output without running a live collector",
@@ -138,6 +148,18 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
     },
     {
       sourceIssue: "HOBO-577",
+      fixtureId: "rlq-deploy-run-accepted-v1",
+      proofMode: "simulated",
+      tutorialUse: "deploy-oriented tutorial checkpoints consume the accepted simulated Deployment Set receipt",
+    },
+    {
+      sourceIssue: "HOBO-577",
+      fixtureId: "rlq-inspect-event-projection-v1",
+      proofMode: "reference-fixture",
+      tutorialUse: "inspect and doctor tutorial steps read replayed projection evidence instead of plan-only state",
+    },
+    {
+      sourceIssue: "HOBO-577",
       fixtureId: "rlq-manage-stale-evidence-v1",
       proofMode: "reference-fixture",
       tutorialUse: "blocked and stale tutorial branches use the accepted doctor/stale-evidence fixture",
@@ -147,6 +169,12 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       fixtureId: "rlq-migrate-brownfield-preview-v1",
       proofMode: "simulated",
       tutorialUse: "platform, GitOps, and DevOps outlines can reference migration preview evidence without adoption authority",
+    },
+    {
+      sourceIssue: "HOBO-577",
+      fixtureId: "rlq-recover-snapshot-restore-v1",
+      proofMode: "reference-fixture",
+      tutorialUse: "rollback and recovery tutorial branches use accepted snapshot-restore preview evidence",
     },
     {
       sourceIssue: "HOBO-577",
@@ -191,10 +219,10 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
         "hobo collect ./examples/snapshop --fixture rlq-collect-manifest-ir-v1 --json",
         "hobo plan --fixture rlq-collect-manifest-ir-v1 --camp preview --json",
         "hobo up --plan-fixture rlq-plan-safe-preview-v1 --mode simulated --json",
-        "hobo inspect run --fixture rlq-plan-safe-preview-v1 --last --json",
+        "hobo inspect run --fixture rlq-deploy-run-accepted-v1 --last --json",
       ],
       mcpTools: ["hobo_read_resource_lifecycle_fixture", "hobo_collect", "hobo_plan", "hobo_up", "hobo_inspect_run"],
-      fixtureStrategy: "Reuse HOBO-577 collect, plan, stale-evidence, and scope-out fixtures so the tutorial proves workflow shape without provider execution.",
+      fixtureStrategy: "Reuse HOBO-577 define, collect, plan, deploy, inspect, stale-evidence, and scope-out fixtures so the tutorial proves workflow shape without provider execution.",
       expectedOutputs: [
         "hobo.manifest/v1 fixture reference",
         "DeploymentPlan preview with proof mode",
@@ -204,8 +232,11 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       failureBranch: "If plan evidence is stale or unknown, route to hobo doctor over rlq-manage-stale-evidence-v1 and stop before deploy claims.",
       proofModeLabels: allProofModes,
       quickstartFixtureIds: [
+        "rlq-define-object-graph-v1",
         "rlq-collect-manifest-ir-v1",
         "rlq-plan-safe-preview-v1",
+        "rlq-deploy-run-accepted-v1",
+        "rlq-inspect-event-projection-v1",
         "rlq-manage-stale-evidence-v1",
         "rlq-recover-scope-out-v1",
       ],
@@ -226,8 +257,8 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       commandPath: [
         "hobo plan ./platform --camp prod --fixture rlq-plan-safe-preview-v1 --json",
         "hobo up ./platform --camp prod --mode simulated --json",
-        "hobo doctor --camp prod --fixture rlq-manage-stale-evidence-v1",
-        "hobo inspect topology --camp prod --fixture rlq-plan-safe-preview-v1",
+        "hobo doctor --camp prod --fixture rlq-inspect-event-projection-v1",
+        "hobo inspect topology --camp prod --fixture rlq-inspect-event-projection-v1",
       ],
       mcpTools: ["hobo_plan_platform", "hobo_up_platform", "hobo_doctor", "hobo_inspect_topology"],
       fixtureStrategy: "Bind platform-default tutorial steps to DeploymentPlan, stale-evidence, and migration-preview fixtures while keeping provider catalogs mocked.",
@@ -240,6 +271,8 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       proofModeLabels: allProofModes,
       quickstartFixtureIds: [
         "rlq-plan-safe-preview-v1",
+        "rlq-deploy-run-accepted-v1",
+        "rlq-inspect-event-projection-v1",
         "rlq-manage-stale-evidence-v1",
         "rlq-migrate-brownfield-preview-v1",
         "rlq-recover-scope-out-v1",
@@ -262,10 +295,10 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
         "git push origin feature/snapshop",
         "hobo plan --camp pr-42 --fixture rlq-plan-safe-preview-v1 --json",
         "hobo up --camp pr-42 --mode simulated --json",
-        "hobo up --camp prod --rollback deployment-set:previous --fixture rlq-recover-scope-out-v1 --dry-run",
+        "hobo up --camp prod --rollback deployment-set:previous --fixture rlq-recover-snapshot-restore-v1 --dry-run",
       ],
       mcpTools: ["hobo_plan_ci", "hobo_up_ci", "hobo_promote", "hobo_rollback"],
-      fixtureStrategy: "Reuse plan, migration, and recovery scope-out fixtures so GitOps learns PR automation behavior without mutable production deploys.",
+      fixtureStrategy: "Reuse plan, deploy, migration, snapshot-recovery, and recovery scope-out fixtures so GitOps learns PR automation behavior without mutable production deploys.",
       expectedOutputs: [
         "PR plan comment fixture",
         "preview Camp proof-mode label",
@@ -275,8 +308,10 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       proofModeLabels: allProofModes,
       quickstartFixtureIds: [
         "rlq-plan-safe-preview-v1",
+        "rlq-deploy-run-accepted-v1",
         "rlq-manage-stale-evidence-v1",
         "rlq-migrate-brownfield-preview-v1",
+        "rlq-recover-snapshot-restore-v1",
         "rlq-recover-scope-out-v1",
       ],
       accessibilityNotes: [
@@ -295,7 +330,7 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       ],
       commandPath: [
         "hobo plan --fixture rlq-plan-safe-preview-v1 --camp prod --json",
-        "hobo doctor --fixture rlq-manage-stale-evidence-v1 --policy-pack platform",
+        "hobo doctor --fixture rlq-inspect-event-projection-v1 --policy-pack platform",
         "hobo up --camp prod --mode simulated --json",
       ],
       mcpTools: ["hobo_plan", "hobo_doctor_policy", "hobo_policy_decision", "hobo_up"],
@@ -309,6 +344,8 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       proofModeLabels: allProofModes,
       quickstartFixtureIds: [
         "rlq-plan-safe-preview-v1",
+        "rlq-deploy-run-accepted-v1",
+        "rlq-inspect-event-projection-v1",
         "rlq-manage-stale-evidence-v1",
         "rlq-recover-scope-out-v1",
       ],
@@ -329,7 +366,7 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       commandPath: [
         "hobo up ./platform --seed --mode simulated --json",
         "hobo import terraform ./infra --fixture rlq-migrate-brownfield-preview-v1 --dry-run --json",
-        "hobo inspect topology --camp prod --fixture rlq-plan-safe-preview-v1",
+        "hobo inspect topology --camp prod --fixture rlq-inspect-event-projection-v1",
         "hobo logs --follow runner --fixture rlq-manage-stale-evidence-v1",
       ],
       mcpTools: ["hobo_seed_platform", "hobo_import_terraform", "hobo_inspect_topology", "hobo_tail_runner_logs"],
@@ -343,8 +380,10 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       proofModeLabels: allProofModes,
       quickstartFixtureIds: [
         "rlq-plan-safe-preview-v1",
+        "rlq-inspect-event-projection-v1",
         "rlq-manage-stale-evidence-v1",
         "rlq-migrate-brownfield-preview-v1",
+        "rlq-recover-snapshot-restore-v1",
         "rlq-recover-scope-out-v1",
       ],
       accessibilityNotes: [
@@ -362,10 +401,10 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
         "rollback remains a dry-run or scope-out boundary until release gates exist",
       ],
       commandPath: [
-        "hobo inspect run --last --camp prod --fixture rlq-plan-safe-preview-v1",
+        "hobo inspect run --last --camp prod --fixture rlq-deploy-run-accepted-v1",
         "hobo logs --follow api --fixture rlq-manage-stale-evidence-v1",
-        "hobo doctor --fixture rlq-manage-stale-evidence-v1 --focus stale-projection",
-        "hobo up --camp prod --rollback deployment-set:previous --fixture rlq-recover-scope-out-v1 --dry-run",
+        "hobo doctor --fixture rlq-inspect-event-projection-v1 --focus stale-projection",
+        "hobo up --camp prod --rollback deployment-set:previous --fixture rlq-recover-snapshot-restore-v1 --dry-run",
       ],
       mcpTools: ["hobo_inspect_incident", "hobo_tail_logs", "hobo_doctor", "hobo_rollback"],
       fixtureStrategy: "Pin SRE tutorial steps to stale projection and recovery scope-out fixtures so the outline proves diagnosis workflow, not live remediation.",
@@ -379,7 +418,10 @@ export const VIBE_ROLE_TUTORIAL_OUTLINES: VibeRoleTutorialOutlines = {
       proofModeLabels: allProofModes,
       quickstartFixtureIds: [
         "rlq-plan-safe-preview-v1",
+        "rlq-deploy-run-accepted-v1",
+        "rlq-inspect-event-projection-v1",
         "rlq-manage-stale-evidence-v1",
+        "rlq-recover-snapshot-restore-v1",
         "rlq-recover-scope-out-v1",
       ],
       accessibilityNotes: [

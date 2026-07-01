@@ -27,8 +27,8 @@ without becoming final tutorial content.
 | Each tutorial outline includes persona goal, prerequisites, command path, fixture strategy, expected outputs, failure branch, and proof-mode labels. | `test/vibe-role-tutorial-outlines.test.ts` asserts every role outline carries those fields. |
 | Outlines map to existing role walkthrough and CLI/MCP surfaces without inventing new lifecycle verbs. | Tests require `walkthrough.md` anchors, canonical `hobo` or `git push` command paths, and MCP tool names. |
 | Package and proof path match the issue. | `parseVibeRoleTutorialOutlines` rejects path drift from the target package and proof path. |
-| Happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels are covered. | `coveragePaths`, accessibility notes, proof-mode validation, and HOBO-577 fixture refs cover each required state and label. |
-| Quickstart fixtures remain the accepted source for tutorial examples. | `quickstartFixtureRefs` pins HOBO-577 fixture ids and proof-mode labels. |
+| Happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels are covered. | `coveragePaths`, accessibility notes, proof-mode validation, and HOBO-577 deploy/inspect/recovery fixture checks cover each required state and label. |
+| Quickstart fixtures remain the accepted source for tutorial examples. | `quickstartFixtureRefs` pins the accepted HOBO-577 define, collect, plan, deploy, inspect, manage, migrate, recovery, and scope-out fixture ids with proof-mode labels. |
 
 ## Adversarial Evidence
 

@@ -346,7 +346,11 @@ importers:
 
   src/draft/exp-proofs/vibe-plan-annotation-pseudocode: {}
 
+<<<<<<< HEAD
   src/draft/exp-proofs/vibe-pilot-first-proof-walkthrough: {}
+=======
+  src/draft/exp-proofs/vibe-plan-review-states: {}
+>>>>>>> 1c572d4a (feat(draft): add plan review state proof (HOBO-542))
 
   src/draft/exp-proofs/vibe-publisher-portal-review-mockups: {}
 

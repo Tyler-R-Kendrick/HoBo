@@ -25,6 +25,7 @@
 		"test:contract:consumer": "vitest run --passWithNoTests contracts/token-broker.contract.test.ts"
 	},
 	"devDependencies": {
+		"@types/node": "^22.15.29",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.9"
 	}

@@ -148,5 +148,5 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 		);
 	}
 
-	return input as CiFabricContract;
+	return input as unknown as CiFabricContract;
 }

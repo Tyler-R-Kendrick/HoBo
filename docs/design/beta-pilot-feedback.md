@@ -61,6 +61,18 @@ Beta evidence can support release-candidate promotion only when:
 - required feedback evidence is attached or explicitly accepted as a limitation;
 - unresolved high-risk non-blockers have owner-approved launch notes or exceptions.
 
+## Dogfood/Alpha Evidence Gate
+
+HOBO-456 records the M1 dogfood/alpha gate for this project. The gate accepts the
+M0 intake contract only when it has a pilot cohort snapshot, workflow evidence
+matrix, feedback intake ledger, triage routing snapshot, blocker/risk register,
+cross-project cutline map, follow-up gap register, and initiative risk delta.
+
+Every blocker or risk must route to Cutline, Support, Product UX, Docs, or an
+owning capability project. Follow-up issues are created only for missing
+accepted evidence, owner blockers, or scope changes. If the evidence changes
+launch risk, the parent HoBo v1 Release Readiness initiative must get a status
+update; a no-risk-delta gate records why no update is required.
 ## M3 Release Candidate Evidence
 
 HOBO-470 records the M3 release-candidate evidence gate. The gate lists owner-mapped evidence,
@@ -97,6 +109,8 @@ feedback. It only defines the intake and triage contract those later issues use.
 
 M0 executable proof lives in
 [`../../src/draft/beta-pilot-feedback-contract`](../../src/draft/beta-pilot-feedback-contract/README.md).
+M1 dogfood/alpha evidence proof lives in
+[`../../src/draft/beta-pilot-dogfood-alpha-evidence-contract`](../../src/draft/beta-pilot-dogfood-alpha-evidence-contract/README.md).
 
 M2 private-beta evidence proof lives in
 [`../../src/draft/v1-beta-pilot-private-beta-evidence`](../../src/draft/v1-beta-pilot-private-beta-evidence/README.md).

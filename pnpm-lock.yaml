@@ -77,6 +77,8 @@ importers:
 
   src/draft/backup-restore-scope-contract: {}
 
+  src/draft/beta-pilot-dogfood-alpha-evidence-contract: {}
+
   src/draft/beta-pilot-feedback-contract: {}
 
   src/draft/beta-pilot-ga-handoff-evidence-contract: {}

@@ -7,7 +7,7 @@
   },
   "interactions": [
     {
-      "description": "evaluate HOBO-539 child backlog closure",
+      "description": "evaluate HOBO-539 DX-first backlog closure",
       "request": {
         "method": "POST",
         "path": "/vibe-gap-closure/evaluate",
@@ -19,7 +19,12 @@
         "status": 200,
         "body": {
           "ok": true,
-          "childCount": 26
+          "childCount": 26,
+          "dxBackbone": {
+            "backboneIssue": "HOBO-566",
+            "childCount": 11,
+            "quickstartConsumers": 25
+          }
         }
       }
     }

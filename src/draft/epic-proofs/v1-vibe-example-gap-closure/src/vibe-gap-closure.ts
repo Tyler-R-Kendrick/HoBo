@@ -8,9 +8,12 @@ const REQUIRED_CHILD_SCENARIOS = [
 
 const REQUIRED_PROOF_MODES = ["live", "simulated", "reference fixture", "scope-out"] as const;
 
+const REQUIRED_DX_LABELS = ["dx-first", "api", "sdk", "cli", "contract"] as const;
+
 const FORBIDDEN_SCOPE_PATTERNS = [
   /live provider calls?/i,
   /production ui/i,
+  /production (cli|api|sdk)/i,
   /customer data/i,
   /real credentials?/i,
   /launch claims?/i,
@@ -66,15 +69,307 @@ export interface VibeChildIssue {
 export interface VibeGapClosureBacklog {
   parentIssue: "HOBO-539";
   parentTitle: string;
+  dxBackbone: VibeDxBackboneGraph;
   childIssues: VibeChildIssue[];
   unblockRule: string;
 }
 
+export type DxPhase = "M1" | "M2";
+
+export interface VibeDxSliceIssue {
+  id: string;
+  title: string;
+  parentId: "HOBO-566";
+  project: "CLI, MCP & Developer Experience";
+  phase: DxPhase;
+  estimate: 3 | 5 | 8;
+  labels: string[];
+  targetPackagePath: `src/draft/exp-proofs/${string}`;
+  proofNotePath: `docs/design/proofs/${string}/README.md`;
+  blockedBy: string[];
+  blocks: string[];
+  lifecycleCoverage: string[];
+  proofModes: string[];
+  scopeOut: string[];
+}
+
+export interface VibeDxBackboneGraph {
+  parentIssue: "HOBO-539";
+  backboneIssue: {
+    id: "HOBO-566";
+    parentId: "HOBO-539";
+    project: "CLI, MCP & Developer Experience";
+    labels: string[];
+  };
+  childSlices: VibeDxSliceIssue[];
+  quickstartConsumerIds: string[];
+  terminalErrorConsumer: {
+    id: "HOBO-558";
+    blockedBy: string[];
+  };
+}
+
+export const DX_BACKBONE_GRAPH: VibeDxBackboneGraph = {
+  parentIssue: "HOBO-539",
+  backboneIssue: {
+    id: "HOBO-566",
+    parentId: "HOBO-539",
+    project: "CLI, MCP & Developer Experience",
+    labels: ["contract", "cli", "sdk", "api", "dx-first", "epic", "hcd", "persona-driven"],
+  },
+  childSlices: [
+    dxSlice("HOBO-567", "DX scenario matrix for deploy, manage, and migrate resources", "M1", 3, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "user-story",
+      "slice",
+    ], "dx-resource-lifecycle-scenario-matrix", [], ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], [
+      "api",
+      "sdk",
+      "cli",
+      "mcp",
+      "deploy",
+      "manage",
+      "migrate",
+      "rollback",
+      "support",
+    ]),
+    dxSlice("HOBO-568", "@hobo/bindles SDK object graph and manifest IR consumer examples", "M1", 5, [
+      "contract",
+      "sdk",
+      "api",
+      "dx-first",
+      "slice",
+    ], "sdk-object-graph-manifest-ir-shapes", [], ["HOBO-573", "HOBO-575", "HOBO-576"], [
+      "sdk",
+      "api",
+      "deploy",
+      "manage",
+      "migrate",
+    ]),
+    dxSlice("HOBO-569", "control-plane API shapes for DeploymentPlan, DeploymentSet, Delta, and migration", "M1", 5, [
+      "contract",
+      "api",
+      "dx-first",
+      "slice",
+    ], "control-plane-api-resource-lifecycle-shapes", [], ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], [
+      "api",
+      "mcp",
+      "cli",
+      "deploy",
+      "manage",
+      "migrate",
+      "rollback",
+      "support",
+    ]),
+    dxSlice("HOBO-570", "CLI/MCP parity contracts for plan, up, collect, inspect, logs, doctor", "M1", 5, [
+      "contract",
+      "cli",
+      "api",
+      "dx-first",
+      "slice",
+    ], "cli-mcp-parity-resource-lifecycle-contracts", [], ["HOBO-558", "HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], [
+      "cli",
+      "mcp",
+      "plan",
+      "up",
+      "collect",
+      "inspect",
+      "logs",
+      "doctor",
+      "migrate",
+    ]),
+    dxSlice("HOBO-571", "typed result, gate, refusal, and proof-mode envelope examples", "M1", 3, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "slice",
+    ], "dx-result-refusal-proof-envelopes", [], ["HOBO-558", "HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], [
+      "api",
+      "sdk",
+      "cli",
+      "mcp",
+      "refusal",
+      "proof-mode",
+      "support",
+    ]),
+    dxSlice("HOBO-572", "deterministic resource lifecycle fixture corpus for DX examples", "M1", 5, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "slice",
+    ], "dx-resource-lifecycle-fixture-corpus", [], ["HOBO-558", "HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], [
+      "api",
+      "sdk",
+      "cli",
+      "mcp",
+      "fixture",
+      "deploy",
+      "manage",
+      "migrate",
+      "rollback",
+      "support",
+    ]),
+    dxSlice("HOBO-573", "CLI deploy transcript prototype over DeploymentPlan and Gatekeeper fixtures", "M2", 5, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "user-story",
+      "slice",
+    ], "cli-deploy-transcript-prototype", ["HOBO-567", "HOBO-568", "HOBO-569", "HOBO-570", "HOBO-571", "HOBO-572"], ["HOBO-577"], [
+      "cli",
+      "mcp",
+      "deploy",
+      "blocked",
+      "stale",
+      "support",
+    ]),
+    dxSlice("HOBO-574", "CLI manage transcript prototype for inspect, logs, drift, and support bundles", "M2", 5, [
+      "contract",
+      "cli",
+      "api",
+      "dx-first",
+      "user-story",
+      "slice",
+    ], "cli-manage-inspect-logs-drift-prototype", ["HOBO-567", "HOBO-569", "HOBO-570", "HOBO-571", "HOBO-572"], ["HOBO-577"], [
+      "cli",
+      "mcp",
+      "manage",
+      "inspect",
+      "logs",
+      "drift",
+      "support",
+    ]),
+    dxSlice("HOBO-575", "CLI migration transcript prototype for import, adopt-in-place, expand/backfill/contract, cutover", "M2", 8, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "user-story",
+      "slice",
+    ], "cli-migration-transcript-prototype", ["HOBO-567", "HOBO-568", "HOBO-569", "HOBO-570", "HOBO-571", "HOBO-572"], ["HOBO-577"], [
+      "cli",
+      "api",
+      "sdk",
+      "mcp",
+      "migrate",
+      "rollback",
+      "blocked",
+    ]),
+    dxSlice("HOBO-576", "SDK-to-CLI golden path compile consumer and terminal transcript", "M2", 5, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "user-story",
+      "slice",
+    ], "sdk-to-cli-golden-path", ["HOBO-567", "HOBO-568", "HOBO-569", "HOBO-570", "HOBO-571", "HOBO-572"], ["HOBO-577"], [
+      "sdk",
+      "cli",
+      "api",
+      "mcp",
+      "deploy",
+      "blocked",
+      "stale",
+      "support",
+    ]),
+    dxSlice("HOBO-577", "resource lifecycle quickstart examples for docs, tutorials, and launch demo", "M2", 5, [
+      "contract",
+      "cli",
+      "sdk",
+      "api",
+      "dx-first",
+      "user-story",
+      "slice",
+    ], "resource-lifecycle-quickstart-examples", ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], [
+      "HOBO-540",
+      "HOBO-541",
+      "HOBO-542",
+      "HOBO-543",
+      "HOBO-544",
+      "HOBO-545",
+      "HOBO-546",
+      "HOBO-547",
+      "HOBO-548",
+      "HOBO-549",
+      "HOBO-550",
+      "HOBO-551",
+      "HOBO-552",
+      "HOBO-553",
+      "HOBO-554",
+      "HOBO-555",
+      "HOBO-556",
+      "HOBO-557",
+      "HOBO-559",
+      "HOBO-560",
+      "HOBO-561",
+      "HOBO-562",
+      "HOBO-563",
+      "HOBO-564",
+      "HOBO-565",
+    ], [
+      "sdk",
+      "cli",
+      "api",
+      "mcp",
+      "quickstart",
+      "deploy",
+      "manage",
+      "migrate",
+      "rollback",
+      "support",
+    ]),
+  ],
+  quickstartConsumerIds: [
+    "HOBO-540",
+    "HOBO-541",
+    "HOBO-542",
+    "HOBO-543",
+    "HOBO-544",
+    "HOBO-545",
+    "HOBO-546",
+    "HOBO-547",
+    "HOBO-548",
+    "HOBO-549",
+    "HOBO-550",
+    "HOBO-551",
+    "HOBO-552",
+    "HOBO-553",
+    "HOBO-554",
+    "HOBO-555",
+    "HOBO-556",
+    "HOBO-557",
+    "HOBO-559",
+    "HOBO-560",
+    "HOBO-561",
+    "HOBO-562",
+    "HOBO-563",
+    "HOBO-564",
+    "HOBO-565",
+  ],
+  terminalErrorConsumer: {
+    id: "HOBO-558",
+    blockedBy: ["HOBO-570", "HOBO-571", "HOBO-572"],
+  },
+};
+
 export const VIBE_GAP_CLOSURE_BACKLOG: VibeGapClosureBacklog = {
   parentIssue: "HOBO-539",
-  parentTitle: "Epic: Close v1 vibe example gaps across UX, DX, CX, docs, support, and launch",
+  parentTitle: "Epic: Close v1 vibe gaps with DX-first API, SDK, and CLI resource lifecycle examples",
   unblockRule:
-    "HOBO-539 can move to Done after this proof shows every branch-sized child issue owns an artifact slice, target exp proof path, proof note path, common scenario coverage, milestone phase, and scope-out guard.",
+    "HOBO-539 can move to Done after this proof shows the DX-first backbone exists, M1 shape slices block M2 transcript/prototype work, quickstart examples block downstream artifact slices, and scope-out guards reject production/runtime creep.",
+  dxBackbone: DX_BACKBONE_GRAPH,
   childIssues: [
     child("HOBO-540", "first-run activation rail mockups and state model", "Workspace & Onboarding UX", "M1", 3, [
       "mockups",
@@ -186,6 +481,8 @@ export const VIBE_GAP_CLOSURE_BACKLOG: VibeGapClosureBacklog = {
 
 export function evaluateVibeGapClosure(backlog: VibeGapClosureBacklog = VIBE_GAP_CLOSURE_BACKLOG) {
   const violations: string[] = [];
+  const dxResult = evaluateDxBackboneGraph(backlog.dxBackbone);
+  violations.push(...dxResult.violations);
 
   if (backlog.parentIssue !== "HOBO-539") {
     violations.push("parent issue must be HOBO-539");
@@ -244,11 +541,140 @@ export function evaluateVibeGapClosure(backlog: VibeGapClosureBacklog = VIBE_GAP
       phases: countBy(backlog.childIssues.map((issue) => issue.phase)),
       projects: countBy(backlog.childIssues.map((issue) => issue.project)),
       contracts: {
-        covered: ["VibeChildBacklogBoundary", "VibeScopeGuardBoundary", "VibeUnblockLedgerBoundary"],
+        covered: [
+          "VibeChildBacklogBoundary",
+          "VibeDxBackboneBoundary",
+          "VibeScopeGuardBoundary",
+          "VibeUnblockLedgerBoundary",
+        ],
         missing: [] as string[],
       },
+      dxBackbone: dxResult.summary,
       unblockOutcome:
-        "After this PR merges and HOBO-539 moves Done, all child issues blocked only by HOBO-539 can be claimed in normal Backlog reduction runs.",
+        "After this PR merges and HOBO-539 moves Done, the DX backbone can continue through HOBO-566 and downstream visual/support/launch/docs slices stay gated by accepted DX quickstart evidence.",
+    },
+  };
+}
+
+export function evaluateDxBackboneGraph(graph: VibeDxBackboneGraph = DX_BACKBONE_GRAPH) {
+  const violations: string[] = [];
+
+  if (graph.parentIssue !== "HOBO-539") {
+    violations.push("DX graph parent issue must be HOBO-539");
+  }
+  if (graph.backboneIssue.id !== "HOBO-566" || graph.backboneIssue.parentId !== "HOBO-539") {
+    violations.push("HOBO-566 must be the DX backbone child under HOBO-539");
+  }
+  if (graph.backboneIssue.project !== "CLI, MCP & Developer Experience") {
+    violations.push("HOBO-566 must live in CLI, MCP & Developer Experience");
+  }
+
+  const childIds = graph.childSlices.map((issue) => issue.id);
+  assertSetEquals(childIds, [
+    "HOBO-567",
+    "HOBO-568",
+    "HOBO-569",
+    "HOBO-570",
+    "HOBO-571",
+    "HOBO-572",
+    "HOBO-573",
+    "HOBO-574",
+    "HOBO-575",
+    "HOBO-576",
+    "HOBO-577",
+  ], "DX child slices", violations);
+
+  const foundationIds = graph.childSlices.filter((issue) => issue.phase === "M1").map((issue) => issue.id);
+  const prototypeIds = graph.childSlices.filter((issue) => issue.phase === "M2").map((issue) => issue.id);
+  assertSetEquals(foundationIds, ["HOBO-567", "HOBO-568", "HOBO-569", "HOBO-570", "HOBO-571", "HOBO-572"], "M1 foundation slices", violations);
+  assertSetEquals(prototypeIds, ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576", "HOBO-577"], "M2 transcript/prototype slices", violations);
+
+  const allLabels = new Set([...graph.backboneIssue.labels, ...graph.childSlices.flatMap((issue) => issue.labels)]);
+  for (const label of REQUIRED_DX_LABELS) {
+    if (!allLabels.has(label)) {
+      violations.push(`DX backbone missing required label family: ${label}`);
+    }
+  }
+
+  const requiredLifecycle = ["deploy", "manage", "migrate", "rollback", "support", "api", "sdk", "cli", "mcp"];
+  const lifecycleCoverage = new Set(graph.childSlices.flatMap((issue) => issue.lifecycleCoverage));
+  for (const coverage of requiredLifecycle) {
+    if (!lifecycleCoverage.has(coverage)) {
+      violations.push(`DX backbone missing lifecycle coverage: ${coverage}`);
+    }
+  }
+
+  const issueById = new Map(graph.childSlices.map((issue) => [issue.id, issue]));
+  for (const issue of graph.childSlices) {
+    if (issue.parentId !== "HOBO-566") {
+      violations.push(`${issue.id} must be a child of HOBO-566`);
+    }
+    if (issue.project !== "CLI, MCP & Developer Experience") {
+      violations.push(`${issue.id} must live in CLI, MCP & Developer Experience`);
+    }
+    if (!issue.labels.includes("dx-first") || !issue.labels.includes("contract")) {
+      violations.push(`${issue.id} must keep dx-first and contract labels`);
+    }
+    if (!issue.targetPackagePath.startsWith("src/draft/exp-proofs/")) {
+      violations.push(`${issue.id} must target src/draft/exp-proofs/<slug>`);
+    }
+    if (!issue.proofNotePath.startsWith("docs/design/proofs/")) {
+      violations.push(`${issue.id} proof note must live under docs/design/proofs/<slug>/README.md`);
+    }
+    for (const mode of REQUIRED_PROOF_MODES) {
+      if (!issue.proofModes.includes(mode)) {
+        violations.push(`${issue.id} missing proof mode label: ${mode}`);
+      }
+    }
+    const forbiddenScope = findForbiddenScope(issue.scopeOut);
+    if (forbiddenScope.length < REQUIRED_SCOPE_OUT_GUARDS.length) {
+      violations.push(`${issue.id} scope-out guard must cover provider, UI, data, credential, and launch-claim creep`);
+    }
+    for (const blocker of issue.blockedBy) {
+      if (!issueById.has(blocker)) {
+        violations.push(`${issue.id} references unknown DX blocker ${blocker}`);
+      }
+      if (issue.phase === "M1" && issueById.get(blocker)?.phase === "M2") {
+        violations.push(`${issue.id} M1 foundation slice must not be blocked by M2 transcript/prototype work`);
+      }
+    }
+  }
+
+  for (const issue of graph.childSlices.filter((childIssue) => childIssue.phase === "M2" && childIssue.id !== "HOBO-577")) {
+    if (!issue.blockedBy.some((blocker) => foundationIds.includes(blocker))) {
+      violations.push(`${issue.id} must be blocked by at least one M1 DX foundation slice`);
+    }
+  }
+
+  const quickstart = issueById.get("HOBO-577");
+  if (!quickstart) {
+    violations.push("HOBO-577 quickstart slice is missing");
+  } else {
+    assertSetEquals(quickstart.blockedBy, ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"], "HOBO-577 transcript blockers", violations);
+    for (const consumer of graph.quickstartConsumerIds) {
+      if (!quickstart.blocks.includes(consumer)) {
+        violations.push(`HOBO-577 must block downstream consumer ${consumer}`);
+      }
+    }
+  }
+
+  for (const blocker of graph.terminalErrorConsumer.blockedBy) {
+    const blockerIssue = issueById.get(blocker);
+    if (!blockerIssue?.blocks.includes(graph.terminalErrorConsumer.id)) {
+      violations.push(`${blocker} must block ${graph.terminalErrorConsumer.id}`);
+    }
+  }
+
+  return {
+    ok: violations.length === 0,
+    violations,
+    summary: {
+      backboneIssue: graph.backboneIssue.id,
+      childCount: graph.childSlices.length,
+      phases: countBy(graph.childSlices.map((issue) => issue.phase)),
+      labels: [...allLabels].sort(),
+      quickstartConsumers: graph.quickstartConsumerIds.length,
+      terminalErrorConsumer: graph.terminalErrorConsumer.id,
     },
   };
 }
@@ -259,7 +685,8 @@ export function rejectVibeScopeCreep(requests: string[]) {
     .map((request) => ({
       request,
       decision: "reject",
-      reason: "HOBO-539 coordinates artifact-proof child backlog only; production behavior and launch claims stay out of scope.",
+      reason:
+        "HOBO-539 coordinates DX-first artifact-proof backlog only; production behavior, live data, credentials, and launch claims stay out of scope.",
     }));
 }
 
@@ -305,6 +732,42 @@ function child(
   };
 }
 
+function dxSlice(
+  id: string,
+  title: string,
+  phase: DxPhase,
+  estimate: 3 | 5 | 8,
+  labels: string[],
+  packageSlug: string,
+  blockedBy: string[],
+  blocks: string[],
+  lifecycleCoverage: string[],
+): VibeDxSliceIssue {
+  return {
+    id,
+    title: `Vibe slice: ${title}`,
+    parentId: "HOBO-566",
+    project: "CLI, MCP & Developer Experience",
+    phase,
+    estimate,
+    labels,
+    targetPackagePath: `src/draft/exp-proofs/${packageSlug}`,
+    proofNotePath: `docs/design/proofs/${packageSlug}/README.md`,
+    blockedBy,
+    blocks,
+    lifecycleCoverage,
+    proofModes: [...REQUIRED_PROOF_MODES],
+    scopeOut: [
+      "No live provider calls.",
+      "No production UI implementation.",
+      "No production CLI/API/SDK implementation.",
+      "No live customer data.",
+      "No real credentials or secrets.",
+      "No launch claims without evidence.",
+    ],
+  };
+}
+
 function findForbiddenScope(scopeOut: string[]) {
   return REQUIRED_SCOPE_OUT_GUARDS.filter((pattern) => scopeOut.some((entry) => pattern.test(entry)));
 }
@@ -314,4 +777,19 @@ function countBy(values: string[]) {
     counts[value] = (counts[value] ?? 0) + 1;
     return counts;
   }, {});
+}
+
+function assertSetEquals(actual: string[], expected: string[], label: string, violations: string[]) {
+  const actualSet = new Set(actual);
+  const expectedSet = new Set(expected);
+  for (const value of expectedSet) {
+    if (!actualSet.has(value)) {
+      violations.push(`${label} missing ${value}`);
+    }
+  }
+  for (const value of actualSet) {
+    if (!expectedSet.has(value)) {
+      violations.push(`${label} has unexpected ${value}`);
+    }
+  }
 }

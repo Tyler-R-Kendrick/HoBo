@@ -1,25 +1,31 @@
 # V1 Vibe Example Gap Closure Reference Implementation
 
-HOBO-539 is the parent blocker for the v1 vibe example backlog. This package proves the parent
-acceptance by checking that every child issue is a branch-sized artifact slice under the current
-draft taxonomy instead of production implementation work.
+HOBO-539 is the parent blocker for the v1 vibe example backlog. This package proves the corrected
+DX-first parent acceptance by checking that HOBO-566 owns the API/SDK/CLI/MCP backbone, HOBO-567
+through HOBO-577 carry branch-sized DX slices, and the older visual/support/docs/launch artifacts
+stay downstream of accepted quickstart and envelope evidence instead of inventing behavior.
 
 ## What is real
 
 - `src/vibe-gap-closure.ts` contains a deterministic child issue matrix for HOBO-540 through
-  HOBO-565.
+  HOBO-565 plus the corrected DX backbone graph for HOBO-566 through HOBO-577.
 - Tests prove each child targets `src/draft/exp-proofs/<slug>` and
   `docs/design/proofs/<issue-slug>/README.md`.
+- Tests prove the DX backbone keeps `dx-first`, `api`, `sdk`, `cli`, and `contract` label coverage
+  across CLI, MCP & Developer Experience slices.
+- Tests prove M1 shape slices block M2 deploy/manage/migrate transcript work before HOBO-577
+  quickstart examples unblock downstream docs, support, launch, visual, and accessibility artifacts.
 - Tests prove the shared vibe coverage requirements: happy path, blocked path, stale/unknown
   evidence path, support handoff, accessibility notes, and proof-mode labels.
-- Pact-style fixtures record the mocked backlog, scope guard, and unblock ledger boundaries.
+- Pact-style fixtures record the mocked child backlog, DX backbone, scope guard, and unblock ledger
+  boundaries.
 
 ## What is mocked
 
 - Linear child issue retrieval is represented by a checked-in fixture so tests do not need live
   Linear access.
-- The production UI, provider calls, customer data, credentials, support tooling, and launch-site
-  publication are explicitly out of scope.
+- The production CLI/API/SDK, production UI, provider calls, customer data, credentials, support
+  tooling, and launch-site publication are explicitly out of scope.
 
 ## Running
 
@@ -34,6 +40,12 @@ npm.cmd --prefix src\draft\epic-proofs\v1-vibe-example-gap-closure run simulate
 Feature: V1 vibe example backlog closure
 
   Persona: Product/design maintainer
+  Scenario: enforce the DX-first backbone
+    Given HOBO-539 was corrected to prioritize API, SDK, CLI, and MCP resource lifecycle examples
+    When the DX backbone graph is evaluated
+    Then HOBO-566 owns HOBO-567 through HOBO-577 with M1 foundations before M2 transcript work
+
+  Persona: Product/design maintainer
   Scenario: coordinate branch-sized artifact children
     Given HOBO-539 blocks the vibe example child backlog
     When the child matrix is evaluated
@@ -41,7 +53,7 @@ Feature: V1 vibe example backlog closure
 
   Persona: Reviewer
   Scenario: reject production scope creep
-    Given a requested addition to live UI, providers, customer data, credentials, or launch claims
+    Given a requested addition to production CLI/API/SDK, live UI, providers, customer data, credentials, or launch claims
     When the scope guard evaluates the request
     Then the request is rejected as outside HOBO-539
 
@@ -49,7 +61,7 @@ Feature: V1 vibe example backlog closure
   Scenario: unblock downstream Backlog work after merge
     Given the parent acceptance is branch-reviewable and tests pass
     When HOBO-539 is merged and moved Done
-    Then the 26 child issues can become normal claimable Backlog work
+    Then the DX backbone and downstream artifact issues can continue under their own blockers
 ```
 
 ## Files

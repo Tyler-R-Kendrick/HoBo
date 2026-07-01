@@ -7,19 +7,19 @@
   },
   "interactions": [
     {
-      "description": "reject scope creep outside artifact proof coordination",
+      "description": "reject scope creep outside DX-first artifact proof coordination",
       "request": {
         "method": "POST",
         "path": "/hobo-539/scope-guard",
         "body": {
-          "request": "Implement the production UI and publish launch claims."
+          "request": "Implement the production CLI/API/SDK/UI and publish launch claims."
         }
       },
       "response": {
         "status": 409,
         "body": {
           "decision": "reject",
-          "reason": "artifact-proof child backlog only"
+          "reason": "DX-first artifact-proof backlog only"
         }
       }
     }

@@ -9,6 +9,7 @@ const pactRoot = new URL("../pacts/", import.meta.url);
 
 const expectedProviders = [
   "VibeChildBacklogBoundary",
+  "VibeDxBackboneBoundary",
   "VibeScopeGuardBoundary",
   "VibeUnblockLedgerBoundary",
 ];
@@ -17,6 +18,7 @@ test("vibe gap closure simulation satisfies every declared Pact-style boundary",
   const result = evaluateVibeGapClosure();
   const pacts = await Promise.all([
     loadPact("vibe-child-backlog-boundary.pact.json"),
+    loadPact("vibe-dx-backbone-boundary.pact.json"),
     loadPact("vibe-scope-guard-boundary.pact.json"),
     loadPact("vibe-unblock-ledger-boundary.pact.json"),
   ]);

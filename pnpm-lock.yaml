@@ -997,7 +997,11 @@ importers:
 
   src/draft/supervision-child-lifetime-contract: {}
 
-  src/draft/support-debug-tools-scope-contract: {}
+  src/draft/support-debug-tools-scope-contract:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
 
   src/draft/support-sla-channels-contract: {}
 

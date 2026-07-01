@@ -42,6 +42,8 @@ and the durable scope record at [support-debug-tools.md](../../support-debug-too
 
 The proof package is registered in `pnpm-lock.yaml` so frozen installs include
 the workspace importer before PR gates run.
+It also declares `@types/node` locally because its TypeScript contract includes
+Node test APIs and CI runs the package typecheck in workspace isolation.
 
 ```powershell
 pnpm --dir src\draft\support-debug-tools-scope-contract test

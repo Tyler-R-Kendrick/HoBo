@@ -1,0 +1,31 @@
+{
+  "consumer": {
+    "name": "ControlPlaneApiResourceLifecycleShapeConsumer"
+  },
+  "provider": {
+    "name": "ControlPlaneApiResourceLifecycleBoundary"
+  },
+  "interactions": [
+    {
+      "description": "Control-plane API shape boundary returns shared API and MCP operation parity",
+      "request": {
+        "method": "GET",
+        "path": "/control-plane-api-resource-lifecycle-shapes/contract"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "issue": "HOBO-569",
+          "operationCount": 8,
+          "refusalCount": 8
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  }
+}

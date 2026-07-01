@@ -113,6 +113,8 @@ importers:
 
   src/draft/exp-proofs/compliance-evidence-pack-scope: {}
 
+  src/draft/exp-proofs/control-plane-api-resource-lifecycle-shapes: {}
+
   src/draft/exp-proofs/customer-assurance-evidence-packet-contract: {}
 
   src/draft/exp-proofs/customer-onboarding-scope-acceptance: {}

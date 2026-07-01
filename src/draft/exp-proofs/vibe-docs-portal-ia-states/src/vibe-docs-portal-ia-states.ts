@@ -33,13 +33,28 @@ export const REQUIRED_DOCS_PORTAL_PROOF_MODES = [
   "scope-out",
 ] as const;
 
+export const REQUIRED_DOCS_PORTAL_FRESHNESS_STATUSES = [
+  "fresh",
+  "bounded-stale",
+  "unknown",
+  "scope-out",
+] as const;
+
+export const REQUIRED_DOCS_PORTAL_LIMITATION_STATES = [
+  "supported",
+  "known-limitation",
+  "unsupported",
+  "missing-evidence",
+  "scope-out",
+] as const;
+
 type DocsPortalContentArea = (typeof REQUIRED_DOCS_PORTAL_CONTENT_AREAS)[number];
 type DocsPortalAudience = (typeof REQUIRED_DOCS_PORTAL_AUDIENCES)[number];
 type DocsPortalScenario = (typeof REQUIRED_DOCS_PORTAL_SCENARIOS)[number];
 type DocsPortalProofMode = (typeof REQUIRED_DOCS_PORTAL_PROOF_MODES)[number];
 
-type FreshnessStatus = "fresh" | "bounded-stale" | "unknown" | "scope-out" | "unspecified";
-type LimitationState = "supported" | "known-limitation" | "unsupported" | "missing-evidence" | "scope-out";
+type FreshnessStatus = (typeof REQUIRED_DOCS_PORTAL_FRESHNESS_STATUSES)[number];
+type LimitationState = (typeof REQUIRED_DOCS_PORTAL_LIMITATION_STATES)[number];
 
 type FreshnessSignal = {
   readonly status: FreshnessStatus;
@@ -567,6 +582,13 @@ function validateContentInventory(
         message: `${entry.id} must name at least one audience path`,
       });
     }
+    for (const audience of entry.audiencePaths) {
+      if (REQUIRED_DOCS_PORTAL_AUDIENCES.includes(audience)) continue;
+      errors.push({
+        code: "unknown-content-audience",
+        message: `${entry.id} references unknown audience ${String(audience)}`,
+      });
+    }
     if (!REQUIRED_DOCS_PORTAL_PROOF_MODES.includes(entry.proofMode)) {
       errors.push({
         code: "unsupported-proof-mode",
@@ -575,18 +597,13 @@ function validateContentInventory(
     } else {
       proofModes.add(entry.proofMode);
     }
-    if (
-      !entry.freshnessSignal ||
-      entry.freshnessSignal.status === "unspecified" ||
-      !entry.freshnessSignal.signal ||
-      !entry.freshnessSignal.refreshTrigger ||
-      !entry.freshnessSignal.staleDisposition
-    ) {
+    if (!REQUIRED_DOCS_PORTAL_LIMITATION_STATES.includes(entry.limitationState)) {
       errors.push({
-        code: "missing-freshness-signal",
-        message: `${entry.id} must name freshness signal, refresh trigger, and stale disposition`,
+        code: "unsupported-limitation-state",
+        message: `${entry.id} uses unsupported limitation state ${String(entry.limitationState)}`,
       });
     }
+    validateFreshnessSignal(entry.freshnessSignal, entry.id || entry.contentArea, errors);
   }
 
   for (const proofMode of REQUIRED_DOCS_PORTAL_PROOF_MODES) {
@@ -612,7 +629,6 @@ function validateSearchMetadata(metadata: readonly SearchMetadataRecord[], error
       !entry.slug ||
       !entry.sourceRecord ||
       !entry.owner ||
-      !entry.freshnessSignal.signal ||
       !entry.supportOrReleaseOwner ||
       !entry.searchableSummary
     ) {
@@ -621,6 +637,26 @@ function validateSearchMetadata(metadata: readonly SearchMetadataRecord[], error
         message: `${entry.contentArea} search metadata must name source, owner, freshness, handoff owner, and summary`,
       });
     }
+    for (const audience of entry.audiences) {
+      if (REQUIRED_DOCS_PORTAL_AUDIENCES.includes(audience)) continue;
+      errors.push({
+        code: "unknown-search-audience",
+        message: `${entry.contentArea} search metadata references unknown audience ${String(audience)}`,
+      });
+    }
+    if (!REQUIRED_DOCS_PORTAL_PROOF_MODES.includes(entry.proofMode)) {
+      errors.push({
+        code: "unsupported-search-proof-mode",
+        message: `${entry.contentArea} search metadata uses unsupported proof mode ${String(entry.proofMode)}`,
+      });
+    }
+    if (!REQUIRED_DOCS_PORTAL_LIMITATION_STATES.includes(entry.limitationState)) {
+      errors.push({
+        code: "unsupported-search-limitation-state",
+        message: `${entry.contentArea} search metadata uses unsupported limitation state ${String(entry.limitationState)}`,
+      });
+    }
+    validateFreshnessSignal(entry.freshnessSignal, `${entry.contentArea} search metadata`, errors);
   }
 }
 
@@ -662,6 +698,38 @@ function validateAccessibilityNotes(notes: readonly string[], errors: Validation
     errors.push({
       code: "missing-accessibility-note",
       message: `accessibility notes must include ${requiredNote}`,
+    });
+  }
+}
+
+function validateFreshnessSignal(
+  freshnessSignal: FreshnessSignal | undefined,
+  recordId: string,
+  errors: ValidationError[],
+): void {
+  if (!freshnessSignal) {
+    errors.push({
+      code: "missing-freshness-signal",
+      message: `${recordId} must name a freshness signal`,
+    });
+    return;
+  }
+
+  if (!REQUIRED_DOCS_PORTAL_FRESHNESS_STATUSES.includes(freshnessSignal.status)) {
+    errors.push({
+      code: "unsupported-freshness-status",
+      message: `${recordId} uses unsupported freshness status ${String(freshnessSignal.status)}`,
+    });
+  }
+  if (
+    !freshnessSignal.signal ||
+    !freshnessSignal.checkedAt ||
+    !freshnessSignal.refreshTrigger ||
+    !freshnessSignal.staleDisposition
+  ) {
+    errors.push({
+      code: "missing-freshness-signal",
+      message: `${recordId} must name freshness signal, checked time, refresh trigger, and stale disposition`,
     });
   }
 }

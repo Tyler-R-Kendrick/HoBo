@@ -24,7 +24,7 @@ docs.
 | Acceptance | Proof |
 |---|---|
 | IA covers getting started, API reference, architecture, operations, troubleshooting, release notes, known limitations, security, and support. | `contentInventory` is parsed in the required content-area order. |
-| Fixtures name title, slug, audience, content area, source record, owner, freshness signal, proof mode, limitation state, and support/release owner. | `contentInventory` and `searchMetadata` carry those fields for every launch-critical page class. |
+| Fixtures name title, slug, audience, content area, source record, owner, freshness signal, proof mode, limitation state, and support/release owner. | `contentInventory` and `searchMetadata` carry those fields for every launch-critical page class and reject unsupported audience, freshness, proof-mode, and limitation labels. |
 | Package and proof path match the issue. | `parseVibeDocsPortalIaStates` rejects path drift from the target package and proof path. |
 | Happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof modes are covered. | `scenarioPaths`, `accessibilityNotes`, and proof-mode validation cover each acceptance state and label. |
 

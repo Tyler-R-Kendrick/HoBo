@@ -2,7 +2,7 @@
 
 package architecture_evidence
 
-#VibeDocsPortalProofMode: "unspecified" | "live" | "simulated" | "reference fixture" | "scope-out"
+#VibeDocsPortalProofMode: "live" | "simulated" | "reference fixture" | "scope-out"
 
 #VibeDocsPortalFreshnessSignal: {
 	status:            "fresh" | "bounded-stale" | "unknown" | "scope-out"

@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   REQUIRED_DOCS_PORTAL_AUDIENCES,
   REQUIRED_DOCS_PORTAL_CONTENT_AREAS,
+  REQUIRED_DOCS_PORTAL_FRESHNESS_STATUSES,
+  REQUIRED_DOCS_PORTAL_LIMITATION_STATES,
   REQUIRED_DOCS_PORTAL_PROOF_MODES,
   REQUIRED_DOCS_PORTAL_SCENARIOS,
   VIBE_DOCS_PORTAL_IA_STATES,
@@ -46,12 +48,13 @@ test("content inventory and search metadata name source, owner, freshness, proof
     assert.match(entry.slug, /^\/docs/);
     assert.match(entry.sourceRecord, /docs\/design|proofs\//);
     assert.match(entry.owner, /\w/);
-    assert.notEqual(entry.freshnessSignal.status, "unspecified");
+    assert.ok(REQUIRED_DOCS_PORTAL_FRESHNESS_STATUSES.includes(entry.freshnessSignal.status));
     assert.match(entry.freshnessSignal.signal, /\w/);
+    assert.match(entry.freshnessSignal.checkedAt, /\d{4}-\d{2}-\d{2}T/);
     assert.match(entry.freshnessSignal.refreshTrigger, /\w/);
     assert.match(entry.freshnessSignal.staleDisposition, /route|downgrade|block|show/i);
     assert.ok(REQUIRED_DOCS_PORTAL_PROOF_MODES.includes(entry.proofMode));
-    assert.match(entry.limitationState, /supported|known-limitation|unsupported|missing-evidence|scope-out/);
+    assert.ok(REQUIRED_DOCS_PORTAL_LIMITATION_STATES.includes(entry.limitationState));
     assert.match(entry.supportOrReleaseOwner, /\w/);
   }
 
@@ -172,4 +175,49 @@ test("validator reports missing required content area and scenario references", 
   assert.equal(validation.ok, false);
   assert.ok(validation.errors.some((error) => error.code === "missing-content-area"));
   assert.ok(validation.errors.some((error) => error.code === "unknown-scenario-content-entry"));
+});
+
+test("validator rejects unsupported freshness, audience, proof-mode, and limitation boundary labels", () => {
+  const validation = validateVibeDocsPortalIaStates({
+    ...VIBE_DOCS_PORTAL_IA_STATES,
+    contentInventory: [
+      {
+        ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory[0],
+        audiencePaths: ["external-buyer" as never],
+        freshnessSignal: {
+          ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory[0].freshnessSignal,
+          status: "unreviewed" as never,
+          checkedAt: "",
+        },
+        limitationState: "production-ready" as never,
+      },
+      ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory.slice(1),
+    ],
+    searchMetadata: [
+      {
+        ...VIBE_DOCS_PORTAL_IA_STATES.searchMetadata[0],
+        audiences: ["anonymous-reader" as never],
+        freshnessSignal: {
+          ...VIBE_DOCS_PORTAL_IA_STATES.searchMetadata[0].freshnessSignal,
+          status: "unspecified" as never,
+        },
+        proofMode: "published-production" as never,
+        limitationState: "unlimited" as never,
+      },
+      ...VIBE_DOCS_PORTAL_IA_STATES.searchMetadata.slice(1),
+    ],
+  });
+
+  assert.equal(validation.ok, false);
+  for (const code of [
+    "unknown-content-audience",
+    "unsupported-freshness-status",
+    "missing-freshness-signal",
+    "unsupported-limitation-state",
+    "unknown-search-audience",
+    "unsupported-search-proof-mode",
+    "unsupported-search-limitation-state",
+  ]) {
+    assert.ok(validation.errors.some((error) => error.code === code), code);
+  }
 });

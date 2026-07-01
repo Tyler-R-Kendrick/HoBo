@@ -783,6 +783,8 @@ importers:
 
   src/draft/technical-proofs/jwt-svid-issuance-contract: {}
 
+  src/draft/technical-proofs/legal-privacy-terms-dogfood-alpha-evidence: {}
+
   src/draft/technical-proofs/lifecycle-phase-policy-contract: {}
 
   src/draft/technical-proofs/listing-lifecycle-yank-contract: {}

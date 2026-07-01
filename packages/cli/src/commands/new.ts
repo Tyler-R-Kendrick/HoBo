@@ -150,7 +150,7 @@ export async function validateScaffoldProject(projectDir: string) {
 	if (packageJson.scripts?.dev !== "hobo dev") {
 		violations.push("package.json must expose hobo dev");
 	}
-	if (packageJson.scripts?.test !== "node --test") {
+	if (packageJson.scripts?.test !== "node --test" && !packageJson.scripts?.test?.includes("--test app.test.ts")) {
 		violations.push("package.json must expose node --test");
 	}
 	if (packageJson.scripts?.typecheck !== "tsc --noEmit") {
@@ -168,7 +168,7 @@ export async function validateScaffoldProject(projectDir: string) {
 	if (!app.includes("export const resource = hobo.resource")) {
 		violations.push("app.ts must export a resource");
 	}
-	if (!app.includes('from "./src/_generated/index.js"')) {
+	if (!app.includes('from "./src/_generated/index.ts"')) {
 		violations.push("app.ts must consume checked-in generated bindings");
 	}
 	if (!appTest.includes("createTestRuntime")) {

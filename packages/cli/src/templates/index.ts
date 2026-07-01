@@ -25,7 +25,7 @@ function packageJson(input: { readonly name: ProjectName }) {
 		type: "module",
 		scripts: {
 			dev: "hobo dev",
-			test: "node --test",
+			test: "node --experimental-strip-types --test app.test.ts",
 			typecheck: "tsc --noEmit",
 		},
 		devDependencies: {
@@ -73,7 +73,7 @@ function tsconfig() {
 
 function appSource(input: { readonly name: ProjectName; readonly template: ParsedTemplateId }) {
 	const details = templateDetails(input.template);
-	return `import { createHobo, create${details.runtimeName}Store } from "./src/_generated/index.js";
+	return `import { createHobo, create${details.runtimeName}Store } from "./src/_generated/index.ts";
 
 const hobo = createHobo({
   name: "${input.name}",
@@ -101,8 +101,8 @@ export const api = hobo.api("${details.route}", async (request) => {
 
 function appTestSource(input: { readonly name: ProjectName; readonly template: ParsedTemplateId }) {
 	const details = templateDetails(input.template);
-	return `import { createTestRuntime } from "./src/_generated/index.js";
-import { api, resource } from "./app.js";
+	return `import { createTestRuntime } from "./src/_generated/index.ts";
+import { api, resource } from "./app.ts";
 
 const runtime = createTestRuntime({
   app: "${input.name}",

@@ -193,9 +193,7 @@ describe("hobo new scaffold", () => {
 });
 
 function assertGeneratedProjectRuns(projectDir: string) {
-	const command = process.platform === "win32" ? "cmd.exe" : "npm";
-	const args = process.platform === "win32" ? ["/d", "/s", "/c", "npm.cmd test"] : ["test"];
-	const result = spawnSync(command, args, {
+	const result = spawnSync(process.execPath, ["--experimental-strip-types", "--test", "app.test.ts"], {
 		cwd: projectDir,
 		encoding: "utf8",
 		shell: false,
@@ -205,27 +203,14 @@ function assertGeneratedProjectRuns(projectDir: string) {
 }
 
 function assertGeneratedProjectTypechecks(projectDir: string) {
-	const command = process.platform === "win32" ? "cmd.exe" : "npm";
-	const args =
-		process.platform === "win32"
-			? [
-					"/d",
-					"/s",
-					"/c",
-					"npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.json",
-				]
-			: [
-					"exec",
-					"--yes",
-					"--package",
-					"typescript@5.5.4",
-					"--",
-					"tsc",
-					"--noEmit",
-					"--project",
-					"tsconfig.json",
-				];
-	const result = spawnSync(command, args, {
+	const install = spawnSync("npm", ["install", "--silent"], {
+		cwd: projectDir,
+		encoding: "utf8",
+		shell: false,
+	});
+	expect(install.status).toBe(0);
+
+	const result = spawnSync("npx", ["tsc", "--noEmit", "--project", "tsconfig.json"], {
 		cwd: projectDir,
 		encoding: "utf8",
 		shell: false,

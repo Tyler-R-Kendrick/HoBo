@@ -1,5 +1,7 @@
 # HoBo async building-block ports POC
 
+> **Promoted to production:** `hobo:queue`, `hobo:scheduler`, and `hobo:blob-events` capability interfaces now ship from [`packages/wit/wit/deps/`](../../../../packages/wit/wit/deps/) (`@hobo/wit`, HOBO-590).
+
 This draft implements HOBO-14: the `hobo:queue`, `hobo:scheduler`, and
 `hobo:blob-events` WIT capability-interface contracts. It is intentionally
 isolated from the future product monorepo.

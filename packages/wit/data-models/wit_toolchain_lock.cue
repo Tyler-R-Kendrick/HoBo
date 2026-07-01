@@ -21,7 +21,7 @@ package data_models
 	interface_name:  string & =~"^[a-z0-9-]+$"
 	version:         string & =~"^[0-9]+\\.[0-9]+\\.[0-9]+$"
 	stability:       "stable" | "preview" | "experimental" | "deprecated"
-	path:            string & =~"^wit/deps/.+\\.wit$"
+	path:            string & =~"^wit/.+\\.wit$"
 	sha256:          string & =~"^sha256:[0-9a-f]{64}$"
 }
 

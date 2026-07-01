@@ -130,6 +130,8 @@ DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07
 
 ### Wiring & the manifest IR (Aspire model)
 
+> **S1-15 draft POC (HOBO-605):** integrated bind-reference wiring + local binding resolution lives at [`s1-15-bind-wiring-topology-contract`](../../src/draft/technical-proofs/s1-15-bind-wiring-topology-contract/README.md) (promotes [`bind-reference-wiring-contract`](../../src/draft/technical-proofs/bind-reference-wiring-contract/README.md) + [`topology-objects-contract`](../../src/draft/technical-proofs/topology-objects-contract/README.md)). Production target: `packages/bindles/src/wiring/*`, `packages/camps/*`, `packages/yards/*`, `packages/runtimes/runtime-local/src/binding-resolver.ts` after S1-13/S1-14 merge.
+
 > **Deltas & Sets (Humanitec parity).** The manifest IR is the immutable **Deployment Set**; a **Delta** is a mutable diff against it (draft→review→promote), both event-sourced ([Plan 25](./platform-engineering.md#plan-25)). Placeholders/output-refs align to Humanitec syntax (`${resources.<type>.<class>#<id>.outputs.<name>}`, `${context.*}`) — see [Plan 25](./platform-engineering.md#plan-25). Besides direct apply, a **GitOps publisher** can write the Set to Git for Argo/Flux ([Plan 25](./platform-engineering.md#plan-25)).
 
 `bind` is a **reference**: lazy, convention-based, adopting Aspire `.WithReference()` semantics.

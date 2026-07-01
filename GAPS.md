@@ -30,9 +30,19 @@ Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived
 
 ## Verdict summary
 
+**Iteration 0 (2026-07-01):** register scaffold seeded; **zero** confirmed gaps or drifts. Review
+iterations begin in follow-up commits on this branch or successor PRs.
+
 _Populated per iteration; latest verdict wins._
 
 ## Iteration log
+
+### Iteration 0 — 2026-07-01 — scaffold seed (`8a5e2c5`)
+
+- **Lenses:** none (register bootstrap only)
+- **New findings:** none
+- **Confirmed / rejected:** none
+- **Stop rule:** open — minimum two review iterations remain before closure
 
 _One section per iteration: date, commit, lenses run, new/confirmed/rejected finding IDs, stop-rule status._
 

@@ -22,9 +22,15 @@ pnpm --prefix src/draft/technical-proofs/deterministic-replay-engine test
 
 ## Architecture evidence
 
-- `architecture/replay_report.proto` + `replay_report.cue`
-- `architecture/pacts/replayer_eventstore.pact.json`
-- `ADR.md`
+This package ships architecture-guard evidence for `scripts/check-architecture-guardrails.mjs`:
+
+- `architecture/replay_report.proto` + `replay_report.cue` — protobuf records with CUE constraints.
+- `architecture/pacts/replayer_eventstore.pact.json` — replayer consumer ↔ EventStore provider PACT.
+- `ADR.md` — parse-don't-validate derived types and event architecture vocabulary.
+
+**Parse, don't validate:** `parseReplayReport` / `parseReplayDivergence` cross one boundary into parsed domain types.
+
+**Event architecture:** workflow commands append `run.*` events to the event store; the workflow run actor replays by folding the stream into a materialized view; `ReplayReport.state_digest` is a snapshot digest over canonical state; downstream tests query the read store via `testRuntime().state()`.
 
 ## Related proofs
 

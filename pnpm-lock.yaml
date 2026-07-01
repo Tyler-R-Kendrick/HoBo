@@ -253,6 +253,8 @@ importers:
 
   src/draft/exp-proofs/resource-lifecycle-quickstart-examples: {}
 
+  src/draft/exp-proofs/role-journey-cli-mcp-transcripts: {}
+
   src/draft/exp-proofs/sbom-vulnerability-notice-evidence-contract: {}
 
   src/draft/exp-proofs/sdk-object-graph-manifest-ir-shapes:

@@ -1,0 +1,72 @@
+{
+  "consumer": {
+    "name": "role-journey-cli-mcp-transcripts-consumer"
+  },
+  "provider": {
+    "name": "resource-lifecycle-quickstart-examples"
+  },
+  "interactions": [
+    {
+      "description": "renders six role journeys from accepted HOBO-577 quickstart fixture ids",
+      "providerStates": [
+        {
+          "name": "HOBO-577 quickstart fixture ids are published"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/draft/exp-proofs/role-journey-cli-mcp-transcripts"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "issue": "HOBO-557",
+          "phase": "M2",
+          "targetPackage": "src/draft/exp-proofs/role-journey-cli-mcp-transcripts",
+          "proofNote": "docs/design/proofs/role-journey-cli-mcp-transcripts/README.md",
+          "sourceQuickstartIssue": "HOBO-577",
+          "sourceQuickstartProof": "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md",
+          "journeys": [
+            {
+              "role": "app-developer",
+              "primaryQuickstartFixtureId": "rlq-define-object-graph-v1",
+              "coverage": ["deploy", "support-handoff"],
+              "negativePaths": ["blocked", "stale-or-unknown-evidence"],
+              "sequence": [
+                {
+                  "id": "app.deploy",
+                  "command": "hobo up --plan-fixture rlq-plan-safe-preview-v1 --mode simulated --json",
+                  "quickstartFixtureId": "rlq-deploy-run-accepted-v1",
+                  "proofMode": "simulated",
+                  "jsonResult": {
+                    "schema": "hobo.role-journey-cli-mcp-result/v1",
+                    "fixtureId": "rlq-deploy-run-accepted-v1",
+                    "proofMode": "simulated"
+                  },
+                  "mcpResult": {
+                    "tool": "hobo_up",
+                    "fixtureId": "rlq-deploy-run-accepted-v1",
+                    "proofMode": "simulated",
+                    "resultSchema": "hobo.role-journey-cli-mcp-result/v1"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    },
+    "hobo": {
+      "issue": "HOBO-557",
+      "source": "HOBO-577"
+    }
+  }
+}

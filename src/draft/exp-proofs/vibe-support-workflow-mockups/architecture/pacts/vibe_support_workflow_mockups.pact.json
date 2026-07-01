@@ -1,0 +1,103 @@
+{
+  "consumer": {
+    "name": "VibeSupportWorkflowMockupsConsumer"
+  },
+  "provider": {
+    "name": "VibeSupportWorkflowMockupsBoundary"
+  },
+  "interactions": [
+    {
+      "description": "Vibe Support Workflow Mockups boundary returns accepted HOBO-550 evidence",
+      "request": {
+        "method": "GET",
+        "path": "/vibe-support-workflow-mockups/contract"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "schema": "hobo.draft.vibe_support_workflow_mockups/v1",
+          "issue": "HOBO-550",
+          "packagePath": "src/draft/exp-proofs/vibe-support-workflow-mockups",
+          "states": [
+            "received",
+            "classified",
+            "evidence-linked",
+            "owner-routed",
+            "customer-updated",
+            "closed"
+          ],
+          "requiredFixtureFields": [
+            "requester",
+            "customerSafeSummary",
+            "severity",
+            "affectedSurface",
+            "ownerRoute",
+            "evidenceLinks",
+            "redactionState",
+            "nextUpdateCondition"
+          ],
+          "fixtures": [
+            {
+              "id": "swm-received-admin-request",
+              "requester": "customer admin for workspace acme-prod",
+              "customerSafeSummary": "customer-safe intake summary with no raw secrets or tenant payloads",
+              "severity": "SEV2",
+              "affectedSurface": "workspace onboarding support form",
+              "ownerRoute": "Support Workflow / Customer Onboarding",
+              "evidenceLinks": [
+                "docs/design/support-workflow.md#required-support-evidence",
+                "docs/design/proofs/resource-lifecycle-quickstart-examples/README.md#fixture-ids"
+              ],
+              "redactionState": "customer-safe",
+              "nextUpdateCondition": "when support classifies severity and affected surface",
+              "proofMode": "live"
+            },
+            {
+              "id": "swm-owner-routed-security-approval",
+              "requester": "security/compliance reviewer",
+              "customerSafeSummary": "scope-out raw customer-data request routed without disclosure",
+              "severity": "SEV0",
+              "affectedSurface": "support evidence redaction gate",
+              "ownerRoute": "Security Verification / Legal",
+              "evidenceLinks": [
+                "docs/design/security-verification.md#customer-communication",
+                "docs/design/support-workflow.md#scope-out-and-non-goals"
+              ],
+              "redactionState": "requires-security-approval",
+              "nextUpdateCondition": "before any customer-visible evidence leaves internal review",
+              "proofMode": "scope-out"
+            }
+          ],
+          "quickstartFixtureRefs": [
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-deploy-run-accepted-v1",
+              "proofMode": "simulated"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-manage-stale-evidence-v1",
+              "proofMode": "reference-fixture"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-snapshot-restore-v1",
+              "proofMode": "live"
+            },
+            {
+              "sourceIssue": "HOBO-577",
+              "fixtureId": "rlq-recover-scope-out-v1",
+              "proofMode": "scope-out"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  }
+}

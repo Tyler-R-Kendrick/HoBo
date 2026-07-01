@@ -23,14 +23,24 @@ async function runCommand(
   env?: NodeJS.ProcessEnv,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
   return new Promise((resolvePromise, reject) => {
-    execFile(command, [...args], { cwd, encoding: "utf8", maxBuffer: 16 * 1024 * 1024, env }, (error, stdout, stderr) => {
-      if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
-        reject(new Error(`command not found: ${command}`));
-        return;
-      }
-      const code = typeof error?.code === "number" ? error.code : error ? 1 : 0;
-      resolvePromise({ stdout: String(stdout), stderr: String(stderr), code });
-    });
+    execFile(
+      command,
+      [...args],
+      {
+        cwd,
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+        env,
+      },
+      (error, stdout, stderr) => {
+        if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+          reject(new Error(`command not found: ${command}`));
+          return;
+        }
+        const code = typeof error?.code === "number" ? error.code : error ? 1 : 0;
+        resolvePromise({ stdout: String(stdout), stderr: String(stderr), code });
+      },
+    );
   });
 }
 
@@ -49,7 +59,7 @@ function resolveBufCommand(repoRoot: string): { command: string; args: string[] 
   }
 
   const candidates = [
-    join(repoRoot, "node_modules", ".bin", "buf"),
+    join(repoRoot, "node_modules", "@bufbuild", "buf", "bin", "buf"),
     join(
       repoRoot,
       "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/node_modules/.bin",

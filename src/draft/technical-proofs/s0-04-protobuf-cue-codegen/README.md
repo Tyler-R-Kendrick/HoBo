@@ -24,8 +24,9 @@ pnpm --prefix src/draft/technical-proofs/s0-04-protobuf-cue-codegen test
 
 Root shortcuts: `pnpm run codegen`, `pnpm run codegen:check` (extended `test:schema`).
 
-`resolveBufBinary` resolves `buf` from root `.bin`, the S0-04 POC `@bufbuild/buf` install, then
-`PATH` so `test:schema` works before root `pnpm install` materializes `.bin/buf`.
+`resolveBufCommand` resolves Buf from root installs, the S0-04 POC package install, and
+`PATH`; on Windows it invokes the package entrypoint through the current Node executable so
+root `test:schema` does not depend on Unix-style shims.
 
 ## Proven surface
 

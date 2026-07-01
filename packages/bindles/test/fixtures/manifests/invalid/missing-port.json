@@ -1,0 +1,29 @@
+{
+  "schema": "hobo.manifest/v1",
+  "componentHost": {
+    "kind": "wasmtime",
+    "version": "1.0.0"
+  },
+  "resources": {
+    "db": {
+      "type": "data.v1",
+      "paradigm": "relational",
+      "allow": ["query"],
+      "connectionString": "{db.connectionString}"
+    },
+    "api": {
+      "type": "component.v1",
+      "image": "oci://registry.example.com/api@sha256:abc123",
+      "runtime": "wasm",
+      "exports": ["wasi:http/incoming-handler"],
+      "links": [{ "import": "hobo:data", "to": "db" }],
+      "env": {
+        "ConnectionStrings__db": "{db.connectionString}"
+      }
+    },
+    "site": {
+      "type": "website.v1",
+      "bind": ["api"]
+    }
+  }
+}

@@ -60,6 +60,10 @@ importers:
       '@hobo/wit':
         specifier: workspace:*
         version: link:../wit
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
 
   packages/ci-guard:
     devDependencies:
@@ -4868,7 +4872,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.1
-      '@types/node': 26.0.1
+      '@types/node': 22.20.0
       long: 5.3.2
 
   quansync@0.2.11: {}

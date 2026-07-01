@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "baseUrl": ".",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "strict": true,
+    "types": [],
+    "target": "ES2022",
+    "paths": {
+      "./src/triggers.js": ["./src/triggers.d.mts"],
+      "../src/triggers.js": ["./src/triggers.d.mts"]
+    }
+  },
+  "include": ["test/type-consumer.ts"],
+  "exclude": ["src/triggers.ts", "src/trigger-dispatcher.ts", "src/runtime-ports.ts", "src/index.ts"]
+}

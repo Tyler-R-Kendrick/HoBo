@@ -1077,6 +1077,12 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
 
+  src/draft/technical-proofs/ifc-handler-trigger-hobo-608:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
   src/draft/technical-proofs/inbound-xaa-resource-server-contract: {}
 
   src/draft/technical-proofs/incident-aggregate-contract: {}

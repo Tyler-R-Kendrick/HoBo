@@ -1,8 +1,8 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "."
-  },
-  "include": ["src/**/*.ts", "bin/**/*.ts", "test/**/*.ts", "contracts/**/*.ts"]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "dist",
+		"rootDir": "."
+	},
+	"include": ["src/**/*.ts", "bin/**/*.ts", "test/**/*.ts", "contracts/**/*.ts"]
 }

@@ -1,1 +1,2 @@
-No service boundary yet; the first boundary this package exposes must land with a consumer/provider pact in this folder.
+Package-local PACT evidence lives under `contracts/pacts/`. See
+[`ARCHITECTURE.md`](../ARCHITECTURE.md) for parse-don't-validate and event-flow notes.

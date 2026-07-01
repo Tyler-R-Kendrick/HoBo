@@ -40,6 +40,8 @@ The repo-level `pnpm run standards:check` gate runs locally, in the pre-commit h
 
 Repository-wide data-model catalogs are forbidden. Each project/package that owns a CUE-constrained type must keep its own `data-models/` folder beside the protobuf contract or proof package that owns that type. Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests must be implemented beside the contract they protect, not through a central `contracts/data-models` bridge.
 
+`pnpm run architecture:guard` now covers production implementation packages under `packages/*` and `examples/*` in addition to draft proof packages under `src/draft/<kind>/<slug>`. Production packages must keep protobuf and CUE records under a package-local `data-models/` folder (no `.proto`/`.cue` elsewhere in the package) and executable PACT consumer/provider evidence (`*.pact.json` with `consumer`, `provider`, and `interactions`) under a package-local `contracts/` folder, in addition to the five architecture evidence checks that already apply to every changed implementation package.
+
 ## Agent checklist
 
 Before committing a technical change, agents must verify:

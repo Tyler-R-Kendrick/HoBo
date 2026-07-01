@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-marketplace-trust-copy-states",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-marketplace-trust-copy-states/test/vibe-marketplace-trust-copy-states.test.ts"
+  }
+}

@@ -340,6 +340,8 @@ importers:
 
   src/draft/exp-proofs/vibe-role-tutorial-outlines: {}
 
+  src/draft/exp-proofs/vibe-marketplace-trust-copy-states: {}
+
   src/draft/exp-proofs/vibe-support-workflow-mockups: {}
 
   src/draft/exp-proofs/vibe-troubleshooting-decision-trees: {}

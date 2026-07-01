@@ -30,4 +30,6 @@ pnpm.cmd --prefix src\draft\exp-proofs\cli-migration-transcript-prototype test
 
 The package includes local protobuf, CUE, and Pact artifacts so future docs,
 quickstarts, visual slices, and support handoff work consume one replayable
-transcript contract instead of raw transcript text.
+transcript contract instead of raw transcript text. Its package ADR records the
+parse-once boundary into derived domain types plus the command, event-store,
+projection, snapshot, and read-store behavior.

@@ -12,13 +12,12 @@ In Review PRs waiting on merge ownership.
 ## Decision
 
 Model the transcript as a parsed design-proof record instead of a production
-CLI runner. Parse, don't validate: this package parses untrusted
-fixture input is parsed once at the boundary into derived domain types, and
-downstream consumers receive the parsed `ParsedCliMigrationTranscriptPrototype`
-instead of re-checking raw transcript DTOs. The parser accepts one
-fixture-shaped object and returns that derived type only when it contains the
-required transcript cases, migration event fixtures, gate blockers, safe next
-steps, and SDK/API example parity.
+CLI runner. Parse, don't validate: this package parses untrusted fixture input
+once at the boundary into derived domain types, and downstream consumers receive
+the parsed `ParsedCliMigrationTranscriptPrototype` instead of re-checking raw
+transcript DTOs. The parser accepts one fixture-shaped object and returns that
+derived type only when it contains the required transcript cases, migration
+event fixtures, gate blockers, safe next steps, and SDK/API example parity.
 
 The command family is `migration.import`, `migration.plan`, `migration.apply`,
 `migration.verify`, `migration.rollback`, `migration.export`,

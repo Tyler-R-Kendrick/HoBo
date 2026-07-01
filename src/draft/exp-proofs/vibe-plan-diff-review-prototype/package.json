@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-plan-diff-review-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-plan-diff-review-prototype/test/vibe-plan-diff-review-prototype.test.ts"
+  }
+}

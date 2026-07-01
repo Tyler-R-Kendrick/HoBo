@@ -26,6 +26,12 @@ message ComplianceEvidencePackScopeSection {
   string customer_safe_limitation = 7;
 }
 
+message ComplianceEvidencePackScopeBoundary {
+  string id = 1;
+  string owner = 2;
+  string rule = 3;
+}
+
 message ComplianceEvidencePackScopeRecord {
   string issue = 1;
   string goal = 2;
@@ -33,4 +39,6 @@ message ComplianceEvidencePackScopeRecord {
   repeated ComplianceEvidencePackScopeSection assurance_sections = 4;
   repeated string m1_evidence = 5;
   repeated string scope_out = 6;
+  repeated string non_goals = 7;
+  repeated ComplianceEvidencePackScopeBoundary boundaries = 8;
 }

@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   COMPLIANCE_EVIDENCE_PACK_SCOPE,
   REQUIRED_ASSURANCE_SECTIONS,
+  REQUIRED_BOUNDARIES,
   REQUIRED_M1_EVIDENCE,
+  REQUIRED_PERSONAS,
   canCreateComplianceEvidenceFollowUp,
   classifyComplianceEvidenceRequest,
   cloneMutableComplianceEvidencePackScope,
@@ -19,14 +21,10 @@ test("M0 record names the compliance evidence pack goal, personas, and required 
   assert.equal(COMPLIANCE_EVIDENCE_PACK_SCOPE.phase, "M0");
   assert.deepEqual(
     COMPLIANCE_EVIDENCE_PACK_SCOPE.primaryPersonas.map((persona) => persona.id),
-    [
-      "customer-security-reviewer",
-      "privacy-legal-owner",
-      "compliance-lead",
-      "support-owner",
-      "release-owner",
-    ],
+    REQUIRED_PERSONAS,
   );
+  assert.ok(COMPLIANCE_EVIDENCE_PACK_SCOPE.scopeOut.length >= 5);
+  assert.ok(COMPLIANCE_EVIDENCE_PACK_SCOPE.nonGoals.length >= 4);
   assert.deepEqual(
     COMPLIANCE_EVIDENCE_PACK_SCOPE.assuranceSections.map((section) => section.id),
     REQUIRED_ASSURANCE_SECTIONS,
@@ -45,6 +43,14 @@ test("each assurance section names owner, evidence source, beta state, GA state,
 });
 
 test("authoritative dependencies map service, UX, security, support, legal, and release boundaries", () => {
+  assert.deepEqual(
+    COMPLIANCE_EVIDENCE_PACK_SCOPE.boundaries.map((boundary) => boundary.id),
+    REQUIRED_BOUNDARIES,
+  );
+  for (const boundary of COMPLIANCE_EVIDENCE_PACK_SCOPE.boundaries) {
+    assert.ok(boundary.owner, `${boundary.id} missing owner`);
+    assert.ok(boundary.rule, `${boundary.id} missing rule`);
+  }
   assert.deepEqual(COMPLIANCE_EVIDENCE_PACK_SCOPE.designRefs, [
     "docs/design/security-verification.md",
     "docs/design/tenant-data-lifecycle.md",
@@ -116,6 +122,13 @@ test("request classifier routes adjacent legal, security, data, support, and rel
 
 test("validation rejects scope creep into legal approval, live systems, and proofless customer claims", () => {
   const invalid = cloneMutableComplianceEvidencePackScope();
+  invalid.goal = "";
+  invalid.primaryPersonas = invalid.primaryPersonas.filter(
+    (persona) => persona.id !== "customer-security-reviewer",
+  );
+  invalid.scopeOut = [];
+  invalid.nonGoals = [];
+  invalid.boundaries = invalid.boundaries.filter((boundary) => boundary.id !== "ux");
   invalid.scopeIn.push("Approve final DPA and subprocessor list for customers.");
   invalid.scopeIn.push("Implement live compliance portal and scanner integrations.");
   invalid.scopeIn.push("Grant support access to production customer data.");
@@ -131,6 +144,11 @@ test("validation rejects scope creep into legal approval, live systems, and proo
   const result = validateComplianceEvidencePackScope(invalid);
 
   assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /user\/business goal/);
+  assert.match(result.errors.join("\n"), /missing primary persona customer-security-reviewer/);
+  assert.match(result.errors.join("\n"), /scopeOut must be recorded/);
+  assert.match(result.errors.join("\n"), /nonGoals must be recorded/);
+  assert.match(result.errors.join("\n"), /missing ux boundary/);
   assert.match(result.errors.join("\n"), /legal approval/i);
   assert.match(result.errors.join("\n"), /live compliance implementation/i);
   assert.match(result.errors.join("\n"), /support data access/i);

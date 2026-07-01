@@ -12,10 +12,11 @@ pnpm --prefix src\draft\compliance-evidence-pack-scope test
 ## Proof Surface
 
 - `COMPLIANCE_EVIDENCE_PACK_SCOPE` records goal, personas, scope in/out, non-goals, assurance
-  packet sections, design/ADR references, owning initiative dependencies, M1 evidence, and follow-up
-  gate.
+  packet sections, service/UX/security/support/legal/release boundaries, design/ADR references,
+  owning initiative dependencies, M1 evidence, and follow-up gate.
 - `validateComplianceEvidencePackScope` fails closed when M0 scope drifts into legal approval, live
-  compliance implementation, support data access, or proofless customer-facing claims.
+  compliance implementation, support data access, or proofless customer-facing claims, and when the
+  accepted M0 record loses its goal, personas, scope-out/non-goal text, or required boundaries.
 - `classifyComplianceEvidenceRequest` routes adjacent requests to Legal, Privacy & Terms Readiness,
   Security Verification, Tenant Data Lifecycle, Support Workflow, V1 Release Program & Cutline, or
   Backup & Restore.

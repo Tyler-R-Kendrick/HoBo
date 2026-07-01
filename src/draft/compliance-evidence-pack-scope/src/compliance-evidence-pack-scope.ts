@@ -18,17 +18,31 @@ export const REQUIRED_M1_EVIDENCE = Object.freeze([
   "scope-boundary-guard",
 ] as const);
 
+export const REQUIRED_PERSONAS = Object.freeze([
+  "customer-security-reviewer",
+  "privacy-legal-owner",
+  "compliance-lead",
+  "support-owner",
+  "release-owner",
+] as const);
+
+export const REQUIRED_BOUNDARIES = Object.freeze([
+  "service",
+  "ux",
+  "security",
+  "support",
+  "legal-privacy",
+  "release",
+] as const);
+
 type Phase = "M0" | "M1" | "M2" | "M3" | "M4";
 type AssuranceSectionId = (typeof REQUIRED_ASSURANCE_SECTIONS)[number];
 type M1EvidenceId = (typeof REQUIRED_M1_EVIDENCE)[number];
+type PersonaId = (typeof REQUIRED_PERSONAS)[number];
+type BoundaryId = (typeof REQUIRED_BOUNDARIES)[number];
 
 type Persona = Readonly<{
-  id:
-    | "customer-security-reviewer"
-    | "privacy-legal-owner"
-    | "compliance-lead"
-    | "support-owner"
-    | "release-owner";
+  id: PersonaId;
   need: string;
 }>;
 
@@ -48,6 +62,12 @@ type OwningInitiativeDependency = Readonly<{
   boundary: string;
 }>;
 
+type ScopeBoundary = Readonly<{
+  id: BoundaryId;
+  owner: string;
+  rule: string;
+}>;
+
 type M1Evidence = Readonly<{
   id: M1EvidenceId;
   owner: string;
@@ -64,6 +84,7 @@ type ComplianceEvidencePackScope = Readonly<{
   scopeIn: readonly string[];
   scopeOut: readonly string[];
   nonGoals: readonly string[];
+  boundaries: readonly ScopeBoundary[];
   assuranceSections: readonly AssuranceSection[];
   designRefs: readonly string[];
   adrRefs: readonly string[];
@@ -74,16 +95,36 @@ type ComplianceEvidencePackScope = Readonly<{
 
 type MutableComplianceEvidencePackScope = Omit<
   ComplianceEvidencePackScope,
-  "scopeIn" | "assuranceSections"
+  | "goal"
+  | "primaryPersonas"
+  | "scopeIn"
+  | "scopeOut"
+  | "nonGoals"
+  | "boundaries"
+  | "assuranceSections"
+  | "owningInitiativeDependencies"
+  | "m1Evidence"
 > & {
+  goal: string;
+  primaryPersonas: Persona[];
   scopeIn: string[];
+  scopeOut: string[];
+  nonGoals: string[];
+  boundaries: ScopeBoundary[];
   assuranceSections: AssuranceSection[];
+  owningInitiativeDependencies: OwningInitiativeDependency[];
+  m1Evidence: M1Evidence[];
 };
 
 type ValidationTarget = Partial<ComplianceEvidencePackScope> & {
+  primaryPersonas?: readonly Partial<Persona>[];
   assuranceSections?: readonly Partial<AssuranceSection>[];
+  boundaries?: readonly Partial<ScopeBoundary>[];
+  owningInitiativeDependencies?: readonly Partial<OwningInitiativeDependency>[];
   m1Evidence?: readonly Partial<M1Evidence>[];
   scopeIn?: readonly string[];
+  scopeOut?: readonly string[];
+  nonGoals?: readonly string[];
 };
 
 type FollowUpGateRequest = Readonly<{
@@ -169,6 +210,44 @@ export const COMPLIANCE_EVIDENCE_PACK_SCOPE: ComplianceEvidencePackScope = Objec
     "Replace Security Verification, tenant data lifecycle, backup/restore, support, or release cutline records.",
     "Claim SOC2, ISO, compliance certification, production readiness, or formal audit completion.",
     "Collect or expose live customer data as part of this M0 scope record.",
+  ]),
+  boundaries: Object.freeze([
+    boundary({
+      id: "service",
+      owner: "Compliance Evidence Pack",
+      rule:
+        "Records packet sections, owners, sources, readiness, blocker routes, limitations, and M1 evidence; does not build collection services or compliance portals.",
+    }),
+    boundary({
+      id: "ux",
+      owner: "Compliance Evidence Pack",
+      rule:
+        "Defines customer-safe packet vocabulary and response states for future UX; does not build portal, dashboard, or automated response flows.",
+    }),
+    boundary({
+      id: "security",
+      owner: "Security Verification",
+      rule:
+        "Names security evidence routes and blocked claims; does not certify posture, grant customer-data access, or bypass launch blockers.",
+    }),
+    boundary({
+      id: "support",
+      owner: "Support Workflow",
+      rule:
+        "Receives manual-review, escalation, limitation, and unavailable-claim routes; support queue implementation and customer-data access remain out of scope.",
+    }),
+    boundary({
+      id: "legal-privacy",
+      owner: "Legal, Privacy & Terms Readiness",
+      rule:
+        "Names legal and privacy dependencies and gaps; final DPA, subprocessor, terms, privacy notice, and legal approval stay with Legal.",
+    }),
+    boundary({
+      id: "release",
+      owner: "V1 Release Program & Cutline",
+      rule:
+        "Consumes gaps and accepted-risk states; go/no-go authority and public launch claims stay with the release program.",
+    }),
   ]),
   assuranceSections: Object.freeze([
     assuranceSection({
@@ -385,12 +464,44 @@ export function validateComplianceEvidencePackScope(
   if (scope.phase !== "M0") {
     errors.push("Scope record must remain an M0 acceptance record.");
   }
+  if (!scope.goal) {
+    errors.push("Scope record must name the user/business goal.");
+  }
+
+  const personaIds = new Set(scope.primaryPersonas?.map((persona) => persona.id) ?? []);
+  for (const persona of REQUIRED_PERSONAS) {
+    if (!personaIds.has(persona)) {
+      errors.push(`missing primary persona ${persona}`);
+    }
+  }
+  for (const persona of scope.primaryPersonas ?? []) {
+    if (!persona.need) {
+      errors.push(`${persona.id ?? "<unknown-persona>"} missing need`);
+    }
+  }
+  for (const section of ["scopeIn", "scopeOut", "nonGoals"] as const) {
+    if ((scope[section] ?? []).length === 0) {
+      errors.push(`${section} must be recorded.`);
+    }
+  }
 
   for (const entry of scope.scopeIn ?? []) {
     for (const { label, pattern } of FORBIDDEN_SCOPE_PATTERNS) {
       if (pattern.test(entry)) {
         errors.push(`M0 scope-in includes out-of-scope ${label} work: ${entry}`);
       }
+    }
+  }
+
+  const boundaryIds = new Set(scope.boundaries?.map((boundary) => boundary.id) ?? []);
+  for (const boundaryId of REQUIRED_BOUNDARIES) {
+    if (!boundaryIds.has(boundaryId)) {
+      errors.push(`missing ${boundaryId} boundary`);
+    }
+  }
+  for (const boundaryEntry of scope.boundaries ?? []) {
+    if (!boundaryEntry.owner || !boundaryEntry.rule) {
+      errors.push(`${boundaryEntry.id ?? "<unknown-boundary>"} missing owner or rule`);
     }
   }
 
@@ -416,10 +527,21 @@ export function validateComplianceEvidencePackScope(
     }
   }
 
+  for (const dependencyEntry of scope.owningInitiativeDependencies ?? []) {
+    if (!dependencyEntry.owner || !dependencyEntry.consumes || !dependencyEntry.boundary) {
+      errors.push(`${dependencyEntry.owner ?? "<unknown-dependency>"} missing owner, consumes, or boundary`);
+    }
+  }
+
   const m1EvidenceIds = new Set(scope.m1Evidence?.map((entry) => entry.id) ?? []);
   for (const evidenceId of REQUIRED_M1_EVIDENCE) {
     if (!m1EvidenceIds.has(evidenceId)) {
       errors.push(`missing M1 evidence ${evidenceId}`);
+    }
+  }
+  for (const evidenceEntry of scope.m1Evidence ?? []) {
+    if (!evidenceEntry.owner || !evidenceEntry.mode || !evidenceEntry.proves) {
+      errors.push(`${evidenceEntry.id ?? "<unknown-evidence>"} missing owner, mode, or proof claim`);
     }
   }
 
@@ -434,8 +556,16 @@ export function validateComplianceEvidencePackScope(
 export function cloneMutableComplianceEvidencePackScope(): MutableComplianceEvidencePackScope {
   return {
     ...COMPLIANCE_EVIDENCE_PACK_SCOPE,
+    primaryPersonas: COMPLIANCE_EVIDENCE_PACK_SCOPE.primaryPersonas.map((persona) => ({ ...persona })),
     scopeIn: [...COMPLIANCE_EVIDENCE_PACK_SCOPE.scopeIn],
+    scopeOut: [...COMPLIANCE_EVIDENCE_PACK_SCOPE.scopeOut],
+    nonGoals: [...COMPLIANCE_EVIDENCE_PACK_SCOPE.nonGoals],
+    boundaries: COMPLIANCE_EVIDENCE_PACK_SCOPE.boundaries.map((entry) => ({ ...entry })),
     assuranceSections: COMPLIANCE_EVIDENCE_PACK_SCOPE.assuranceSections.map((section) => ({ ...section })),
+    owningInitiativeDependencies: COMPLIANCE_EVIDENCE_PACK_SCOPE.owningInitiativeDependencies.map(
+      (entry) => ({ ...entry }),
+    ),
+    m1Evidence: COMPLIANCE_EVIDENCE_PACK_SCOPE.m1Evidence.map((entry) => ({ ...entry })),
   };
 }
 
@@ -445,6 +575,10 @@ function assuranceSection(section: AssuranceSection): AssuranceSection {
 
 function dependency(dependency: OwningInitiativeDependency): OwningInitiativeDependency {
   return Object.freeze(dependency);
+}
+
+function boundary(boundary: ScopeBoundary): ScopeBoundary {
+  return Object.freeze(boundary);
 }
 
 function evidence(evidence: M1Evidence): M1Evidence {

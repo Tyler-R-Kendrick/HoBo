@@ -23,6 +23,8 @@ pnpm --prefix src\draft\compliance-evidence-pack-scope test
   `docs/design/compliance-evidence-pack.md` and `COMPLIANCE_EVIDENCE_PACK_SCOPE`.
 - Scope in/out, non-goals, and service/UX/security/support/legal/release boundaries are executable
   in the validator.
+- The validator fails closed if the accepted M0 record loses its goal, required personas,
+  scope-out/non-goal text, or required service/UX/security/support/legal/release boundaries.
 - Assurance packet sections are mapped to Security Verification, Tenant Data Lifecycle, SBOM and
   notices, Legal/Privacy/Terms, Backup & Restore, Support Workflow, and V1 Release Program &
   Cutline.

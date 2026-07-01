@@ -15,6 +15,12 @@ package architecture_evidence
 	customer_safe_limitation: string & !=""
 }
 
+#ComplianceEvidencePackScopeBoundary: {
+	id:    "service" | "ux" | "security" | "support" | "legal-privacy" | "release"
+	owner: string & !=""
+	rule:  string & !=""
+}
+
 #ComplianceEvidencePackScopeRecord: {
 	issue:              "HOBO-452"
 	goal:               string & !=""
@@ -22,5 +28,6 @@ package architecture_evidence
 	assurance_sections: [...#ComplianceEvidencePackScopeSection]
 	m1_evidence:        [...string]
 	scope_out:          [...string]
+	non_goals:          [...string]
+	boundaries:         [...#ComplianceEvidencePackScopeBoundary]
 }
-

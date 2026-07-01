@@ -258,6 +258,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  src/draft/exp-proofs/sdk-to-cli-golden-path: {}
+
   src/draft/exp-proofs/secops-policy-audit-journey-contract: {}
 
   src/draft/exp-proofs/security-verification-scope-acceptance: {}

@@ -1386,6 +1386,8 @@ importers:
 
   src/draft/technical-proofs/s1-19-ctx-config-local-resolution: {}
 
+  src/draft/technical-proofs/s1-stage-gate: {}
+
   src/draft/technical-proofs/saga-compensation-engine-contract: {}
 
   src/draft/technical-proofs/saga-credit-reconciliation-spike: {}

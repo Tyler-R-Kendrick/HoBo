@@ -37,7 +37,7 @@ pnpm.cmd --prefix src\draft\exp-proofs\vibe-support-case-redacted-evidence test
 | Evidence pack examples include redacted logs, incident/support references, admin context, docs source, proof package link, redaction state, and next update condition. | `evidencePacks` carry each required field and `parseVibeSupportCaseRedactedEvidence` rejects missing metadata. |
 | Target package and proof paths match the issue. | Parser path checks reject package or proof path drift. |
 | Happy, blocked, stale/unknown evidence, support handoff, accessibility notes, and proof-mode labels are covered. | `scenarioPaths`, `accessibilityNotes`, and proof-mode validation cover each required path and label. |
-| Scope out remains hard. | `classifySupportCasePrototypeRequest` rejects helpdesk, support queue, customer-data, incident-command, on-call, production UI, SLA, and commercial support creep. |
+| Scope out remains hard. | `classifySupportCasePrototypeRequest` rejects helpdesk, support queue, customer-data, incident-command, on-call, production UI, SLA, commercial support creep, and proofless launch claims. |
 
 ## Architecture Evidence
 

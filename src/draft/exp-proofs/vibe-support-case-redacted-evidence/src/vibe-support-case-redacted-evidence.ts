@@ -263,6 +263,7 @@ export const VIBE_SUPPORT_CASE_REDACTED_EVIDENCE: VibeSupportCaseRedactedEvidenc
     "No incident command ownership, runbook execution, on-call staffing, or notification dispatch.",
     "No production support UI or support portal implementation.",
     "No contractual SLA promise, paid support term, or public response-time guarantee.",
+    "No launch claim without evidence.",
   ],
 };
 
@@ -273,6 +274,7 @@ const SCOPE_OUT_PATTERNS: readonly RegExp[] = [
   /\b(on-call staffing|oncall staffing|on-call schedule)\b/i,
   /\b(production support ui|support portal|production ui)\b/i,
   /\b(contractual sla|response-time guarantee|paid support term|promise.*sla)\b/i,
+  /\b(launch claim|launch readiness).*\bwithout evidence\b/i,
 ];
 
 export type SupportCasePrototypeRequestClassification = "in-scope-proof" | "scope-out";

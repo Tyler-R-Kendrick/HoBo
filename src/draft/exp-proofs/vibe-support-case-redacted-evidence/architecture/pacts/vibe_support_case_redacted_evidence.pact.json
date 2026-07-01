@@ -172,7 +172,8 @@
             "No customer-data access, support impersonation, tenant browsing, or secret exposure.",
             "No incident command ownership, runbook execution, on-call staffing, or notification dispatch.",
             "No production support UI or support portal implementation.",
-            "No contractual SLA promise, paid support term, or public response-time guarantee."
+            "No contractual SLA promise, paid support term, or public response-time guarantee.",
+            "No launch claim without evidence."
           ]
         }
       }

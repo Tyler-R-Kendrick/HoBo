@@ -162,9 +162,11 @@ test("adversarial scope-out requests fail closed instead of becoming support run
     "add on-call staffing schedule",
     "ship the production support UI",
     "promise a contractual SLA",
+    "publish launch claims without evidence",
   ].map(classifySupportCasePrototypeRequest);
 
   assert.deepEqual(classifications, [
+    "scope-out",
     "scope-out",
     "scope-out",
     "scope-out",

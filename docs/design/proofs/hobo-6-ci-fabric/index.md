@@ -37,8 +37,10 @@ compatibility without spending CI on non-landing queues. PR runs use
 can land. The workflow also uses event-aware concurrency so newer PR pushes
 cancel stale runs without sharing a concurrency group with merge queue runs.
 The `pr-gate` job fetches `origin/<base-ref>` and sets `TURBO_SCM_BASE` before
-`turbo run --affected` so detached-head GitHub Actions checkouts resolve the
-impact scope instead of assuming a local `main` branch exists.
+Turbo impact lanes. Production package tasks use
+`--filter='{packages/*}[origin/main...HEAD]'` (and the matching `examples/*`
+filter) so workspace-root edits do not fan out into hundreds of draft proof
+packages; draft impact stays in `pnpm agent:check -- --base=...`.
 The standalone docs workflow is path-filtered to documentation/doc-linter inputs
 and the CI workflow file that this proof documents, runs only changed-doc lint
 plus docs freshness, and uses the same event-aware PR concurrency cancellation

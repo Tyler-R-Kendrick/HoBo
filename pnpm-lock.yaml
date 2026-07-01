@@ -225,6 +225,8 @@ importers:
 
   src/draft/exp-proofs/publisher-portal-scope-contract: {}
 
+  src/draft/exp-proofs/release-channels-scope: {}
+
   src/draft/exp-proofs/resource-garbage-collection-scope-acceptance: {}
 
   src/draft/exp-proofs/sbom-vulnerability-notice-evidence-contract: {}

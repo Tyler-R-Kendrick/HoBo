@@ -86,6 +86,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`customer-onboarding.md`](./customer-onboarding.md) | Productization M0 scope and acceptance for Customer Onboarding pilot entry, first-run success criteria, support handoffs, and follow-up gates | — |
 | [`accessibility-usability-launch-baseline.md`](./accessibility-usability-launch-baseline.md) | Productization M0 launch baseline for accessibility, usability, evidence, and exception boundaries | — |
 | [`release-notes-upgrade-guide.md`](./release-notes-upgrade-guide.md) | V1 release notes and upgrade-guide outline contract | — |
+| [`release-channels.md`](./release-channels.md) | Productization M0 scope and acceptance for release channel taxonomy, states, evidence gates, and follow-up boundaries | — |
 | [`known-limitations-register.md`](./known-limitations-register.md) | Customer-facing v1 known limitations, scope-out states, support/docs/messaging handoffs, and beta/GA review checkpoints | [`known-limitations-register-contract`](../../src/draft/exp-proofs/known-limitations-register-contract/README.md) |
 | [`docs-portal.md`](./docs-portal.md) | Productization M0 scope and acceptance for docs portal content areas, source ownership, search metadata, support handoffs, known limitations, and follow-up gates | — |
 | [`beta-pilot-feedback.md`](./beta-pilot-feedback.md) | Productization private-beta cohort, feedback intake, triage, release-candidate exit, and GA handoff evidence contract | — |

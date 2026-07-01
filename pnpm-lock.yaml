@@ -107,6 +107,8 @@ importers:
 
   src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance: {}
 
+  src/draft/exp-proofs/cli-deploy-transcript-prototype: {}
+
   src/draft/exp-proofs/cli-mcp-parity-resource-lifecycle-contracts: {}
 
   src/draft/exp-proofs/compatibility-matrix-scope-contract: {}

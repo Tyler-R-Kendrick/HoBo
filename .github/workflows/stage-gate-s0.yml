@@ -44,11 +44,12 @@ jobs:
           SOURCE_DATE_EPOCH: "1704067200"
         run: node packages/stage-gate/dist/cli.js run s0 --out artifacts/stage-gate-s0.record.json
       - name: Upload stage-gate record
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stage-gate-s0-record-${{ matrix.os }}
           path: artifacts/stage-gate-s0.record.json
-          if-no-files-found: error
+          if-no-files-found: warn
 
   digest-parity:
     name: Cross-OS digest parity

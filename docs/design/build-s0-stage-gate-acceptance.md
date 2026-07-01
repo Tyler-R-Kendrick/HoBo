@@ -16,7 +16,8 @@ signals are:
 - `packages/stage-gate/` unit and consumer-contract tests (`pnpm --filter @hobo/stage-gate test`)
 
 CI builds `@hobo/stage-gate` then invokes `node packages/stage-gate/dist/cli.js run s0` (workspace
-bins are not linked at the repo root until the package is a declared dependency).
+bins are not linked at the repo root until the package is a declared dependency). Failed runs still
+upload `stage-gate-s0.record.json` as a workflow artifact (`if: always()`).
 
 ## Scope In
 

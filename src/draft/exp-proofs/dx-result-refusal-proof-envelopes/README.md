@@ -30,7 +30,8 @@ notes, and copy notes.
 - Defines the common envelope vocabulary and deterministic fixtures for
   downstream DX examples.
 - Builds SDK consumer, CLI JSON, and MCP tool-result examples for the same
-  cases.
+  cases, including equivalent non-error semantics for warning, rollback, and
+  support handoff outcomes.
 - Fails closed when proof evidence, remediation, or required cases are missing.
 - Labels proof evidence as `live`, `simulated`, `reference-fixture`, or
   `scope-out`.
@@ -62,4 +63,6 @@ npm.cmd --prefix src\draft\exp-proofs\dx-result-refusal-proof-envelopes test
   fields, proof modes, redaction classes, and fail-closed outcomes.
 - `architecture/pacts/dx_result_refusal_proof_envelopes.pact.json` records the
   read contract consumed by SDK, CLI JSON, and MCP tool-result examples.
+- The deterministic fixture set carries a stable SHA-256 digest over the
+  unsigned fixture payload for downstream transcript/doc reuse.
 - `ADR.md` records the experience decision and alternatives.

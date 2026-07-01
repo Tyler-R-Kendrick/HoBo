@@ -105,6 +105,24 @@ export interface McpToolResultExample {
   };
 }
 
+export interface DeterministicFixtureRecord {
+  kind: EnvelopeKind;
+  code: string;
+  fixtureId: string;
+  proofMode: ProofMode;
+  traceId: string;
+  correlationId: string;
+  redactionClass: RedactionClass;
+}
+
+export interface DeterministicFixtureSet {
+  schema: "hobo.dx-result-refusal-proof-envelopes/fixture-set/v1";
+  issue: "HOBO-571";
+  happyPaths: DeterministicFixtureRecord[];
+  failClosedPaths: DeterministicFixtureRecord[];
+  stableDigest: string;
+}
+
 export const DX_RESULT_REFUSAL_PROOF_ENVELOPES = {
   issue: "HOBO-571",
   phase: "M1",
@@ -275,7 +293,7 @@ export function buildSdkConsumerExamples(record: DxResultRefusalProof): SdkConsu
     outcome: result.outcome,
     call: `await hobo.planOrExplain("${result.fixtureId}")`,
     result: {
-      ok: result.outcome === "success",
+      ok: !isFailureOutcome(result.outcome),
       code: result.code,
       message: result.humanCopy,
       remediation: result.remediation,
@@ -294,7 +312,7 @@ export function buildCliJsonExamples(record: DxResultRefusalProof): CliJsonExamp
     outcome: result.outcome,
     command: `hobo plan --fixture ${result.fixtureId} --json`,
     json: {
-      ok: result.outcome === "success",
+      ok: !isFailureOutcome(result.outcome),
       code: result.code,
       message: result.humanCopy,
       remediation: result.remediation,
@@ -313,7 +331,7 @@ export function buildMcpToolResultExamples(record: DxResultRefusalProof): McpToo
     outcome: result.outcome,
     tool: "hobo.plan_or_explain",
     toolResult: {
-      isError: result.outcome === "refusal",
+      isError: isFailureOutcome(result.outcome),
       content: [
         {
           type: "json",
@@ -331,7 +349,7 @@ export function buildMcpToolResultExamples(record: DxResultRefusalProof): McpToo
   }));
 }
 
-export function createDeterministicFixtureSet(record: DxResultRefusalProof) {
+export function createDeterministicFixtureSet(record: DxResultRefusalProof): DeterministicFixtureSet {
   const fixtures = record.envelopes.map((result) => ({
     kind: result.kind,
     code: result.code,
@@ -342,7 +360,7 @@ export function createDeterministicFixtureSet(record: DxResultRefusalProof) {
     redactionClass: result.redactionClass,
   }));
 
-  return {
+  const unsignedFixtureSet: Omit<DeterministicFixtureSet, "stableDigest"> = {
     schema: "hobo.dx-result-refusal-proof-envelopes/fixture-set/v1",
     issue: record.issue,
     happyPaths: fixtures.filter((fixture) =>
@@ -359,6 +377,11 @@ export function createDeterministicFixtureSet(record: DxResultRefusalProof) {
         "migration-blocked",
       ].includes(fixture.kind),
     ),
+  };
+
+  return {
+    ...unsignedFixtureSet,
+    stableDigest: stableFixtureDigest(unsignedFixtureSet),
   };
 }
 
@@ -386,6 +409,10 @@ export function classifyOptimisticClaim(claim: string) {
     reason: "claim is scoped to accepted proof evidence",
     route: "dx-result-refusal-proof-envelopes",
   };
+}
+
+function isFailureOutcome(outcome: EnvelopeOutcome): boolean {
+  return outcome === "refusal";
 }
 
 function envelope(

@@ -33,9 +33,10 @@ and MCP resource lifecycle examples.
   fixture id, trace id, correlation id, redaction class, accessibility notes,
   and copy notes.
 - SDK, CLI JSON, and MCP tool-result examples are generated from the same
-  parsed record.
+  parsed record, and warning/handoff outcomes carry the same non-error
+  semantics on every surface.
 - Deterministic fixtures separate happy paths from fail-closed paths and hash
-  stably.
+  stably with a carried digest for downstream examples.
 - Optimistic live or production success claims are rejected without accepted
   fixture evidence.
 

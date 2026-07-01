@@ -45,11 +45,18 @@ test("SDK, CLI JSON, and MCP tool examples expose equivalent machine-readable ca
   const sdkCases = sdk.map((entry) => [entry.kind, entry.result.code, entry.result.fixtureId]);
   const cliCases = cli.map((entry) => [entry.kind, entry.json.code, entry.json.fixture_id]);
   const mcpCases = mcp.map((entry) => [entry.kind, entry.toolResult.content[0].code, entry.toolResult.content[0].fixtureId]);
+  const sdkErrorSemantics = sdk.map((entry) => [entry.kind, entry.result.ok]);
+  const cliErrorSemantics = cli.map((entry) => [entry.kind, entry.json.ok]);
+  const mcpErrorSemantics = mcp.map((entry) => [entry.kind, !entry.toolResult.isError]);
 
   assert.deepEqual(sdkCases, cliCases);
   assert.deepEqual(mcpCases, sdkCases);
+  assert.deepEqual(cliErrorSemantics, sdkErrorSemantics);
+  assert.deepEqual(mcpErrorSemantics, sdkErrorSemantics);
   assert.ok(cli.every((entry) => entry.json.proof_mode));
   assert.ok(mcp.every((entry) => entry.toolResult.isError === (entry.outcome === "refusal")));
+  assert.equal(cli.find((entry) => entry.kind === "plan-warning")?.json.ok, true);
+  assert.equal(cli.find((entry) => entry.kind === "support-handoff")?.json.ok, true);
 });
 
 test("deterministic fixtures separate happy paths from fail-closed paths and hash stably", () => {
@@ -72,7 +79,10 @@ test("deterministic fixtures separate happy paths from fail-closed paths and has
       "migration-blocked",
     ],
   );
-  assert.equal(stableFixtureDigest(fixtures), stableFixtureDigest(createDeterministicFixtureSet(parsed)));
+  const { stableDigest, ...unsignedFixtures } = fixtures;
+  assert.match(stableDigest, /^[a-f0-9]{64}$/);
+  assert.equal(stableDigest, stableFixtureDigest(unsignedFixtures));
+  assert.equal(stableDigest, createDeterministicFixtureSet(parsed).stableDigest);
 });
 
 test("raw records parse once and fail closed when required proof evidence is absent", () => {

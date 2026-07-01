@@ -3,6 +3,14 @@
 HOBO-152 is proven by the focused POC at
 `src/draft/technical-proofs/hobo-codegen-cli-contract`.
 
+## Integrated S1-21 POC (HOBO-611)
+
+Draft integration at
+[`src/draft/technical-proofs/s1-21-collect-codegen-cli-poc`](../../../../src/draft/technical-proofs/s1-21-collect-codegen-cli-poc/README.md)
+combines `hobo codegen --check` with seeded-drift CI gate tests.
+Production promotion target: `packages/cli/src/commands/codegen.ts` (blocked on
+HOBO-606 + HOBO-610).
+
 ## Acceptance Evidence
 
 - `hobo codegen writes the documented generated layout deterministically`

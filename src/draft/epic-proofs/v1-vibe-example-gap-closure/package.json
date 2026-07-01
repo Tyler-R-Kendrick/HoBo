@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/epic-reference-v1-vibe-example-gap-closure",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts contracts/consumer/*.test.ts",
+    "simulate": "node --import tsx simulation/run-simulation.ts"
+  }
+}

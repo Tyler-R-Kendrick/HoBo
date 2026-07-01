@@ -61,6 +61,8 @@ importers:
 
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
 
+  src/draft/epic-proofs/v1-vibe-example-gap-closure: {}
+
   src/draft/epic-proofs/wit-component-model-runtime-membrane: {}
 
   src/draft/exp-proofs/accessibility-usability-launch-baseline-contract: {}

@@ -14,6 +14,8 @@ Acceptance mapping:
 
 Scope note: this proof defines the harness/report contract only. Real port suites, provider certification, CI unlisting, and artifact signing remain owned by downstream slices.
 
+S1-10 draft POC (`src/draft/epic-proofs/s1-10-conformance-trust-boundary`, HOBO-599) ports the runtime-port durability and component-host portability suites as an independent epic proof pending promotion to `packages/conformance/`.
+
 Focused verification:
 
 ```powershell

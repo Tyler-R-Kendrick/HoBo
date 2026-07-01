@@ -33,6 +33,10 @@ conformance, and concrete Wasmtime or OCI execution.
 npm.cmd --prefix src\draft\technical-proofs\component-host-conformance-suite test
 ```
 
+## Promotion note (S1-10 / HOBO-599)
+
+Epic draft POC at `src/draft/epic-proofs/s1-10-conformance-trust-boundary/` ports this proof's suite behavior for production promotion to `packages/conformance/src/suites/component-host/`.
+
 
 ## Architecture Evidence
 

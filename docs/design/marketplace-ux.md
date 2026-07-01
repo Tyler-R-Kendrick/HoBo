@@ -159,6 +159,18 @@ unsupported launch claims remain out of scope. The proof consumes accepted
 HOBO-577 quickstart fixture ids before marketplace copy can describe preview,
 policy-blocked, installable, deprecated, yanked, or hidden listing states.
 
+HOBO-562 branch evidence for the deterministic marketplace discovery and
+install-intent prototype lives in
+[`src/draft/exp-proofs/vibe-marketplace-discovery-prototype`](../../src/draft/exp-proofs/vibe-marketplace-discovery-prototype/README.md)
+and
+[`proofs/vibe-marketplace-discovery-prototype`](./proofs/vibe-marketplace-discovery-prototype/README.md).
+It composes accepted HOBO-546 mockup fixtures, HOBO-547 trust-copy fixtures, and
+HOBO-577 quickstart fixture ids into preview-only, limited-beta, installable,
+policy-blocked, deprecated, and yanked discovery paths. The proof is still a
+deterministic prototype: live storefronts, registry/resolver behavior, install
+runtime, ranking, monetization, publisher workflow, production UI, support
+queues, and launch claims without evidence remain out of scope.
+
 ## Follow-Up Gate
 
 M1/M2/M3/M4 marketplace screen, browse/search, install-intent, trust-warning, org-catalog filter,

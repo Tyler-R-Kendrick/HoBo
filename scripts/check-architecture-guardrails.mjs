@@ -32,6 +32,33 @@ const TEXT_EXTENSIONS = new Set([
   ".wit",
 ]);
 
+const PRODUCTION_PACKAGE_PARENTS = new Set(["packages", "examples"]);
+
+export function isProductionPackageRoot(packageRoot) {
+  return PRODUCTION_PACKAGE_PARENTS.has(normalizePath(packageRoot).split("/")[0]);
+}
+
+const PRODUCTION_CHECKS = [
+  {
+    code: "missing-data-models-folder",
+    message:
+      "Define protobuf records and CUE constraints inside the package-local data-models/ folder (at least one .proto and one .cue).",
+    passes: (evidence) => evidence.hasDataModelsProto && evidence.hasDataModelsCue,
+  },
+  {
+    code: "misplaced-data-model",
+    message:
+      "Move all .proto/.cue files under the package-local data-models/ folder; production packages allow no other location.",
+    passes: (evidence) => !evidence.hasMisplacedDataModel,
+  },
+  {
+    code: "missing-contracts-pact",
+    message:
+      "Keep executable PACT consumer/provider evidence (*.pact.json with consumer, provider, interactions) under the package-local contracts/ folder.",
+    passes: (evidence) => evidence.hasContractsPact,
+  },
+];
+
 const REQUIRED_CHECKS = [
   {
     code: "missing-pact-contract",
@@ -73,8 +100,11 @@ export async function checkArchitectureGuardrails({ root = process.cwd(), files 
     })),
   );
 
+  const checksFor = (packageRoot) =>
+    isProductionPackageRoot(packageRoot) ? [...REQUIRED_CHECKS, ...PRODUCTION_CHECKS] : REQUIRED_CHECKS;
+
   for (const { packageRoot, evidence } of evidenceByPackage) {
-    for (const check of REQUIRED_CHECKS) {
+    for (const check of checksFor(packageRoot)) {
       if (!check.passes(evidence)) {
         problems.push({
           code: check.code,
@@ -112,6 +142,10 @@ async function collectEvidence(root, packageRoot) {
   const cueTexts = [];
   let hasPactContract = false;
   let hasProtobufDefinition = false;
+  let hasDataModelsProto = false;
+  let hasDataModelsCue = false;
+  let hasMisplacedDataModel = false;
+  let hasContractsPact = false;
 
   for (const file of files) {
     const normalized = normalizePath(file);
@@ -128,6 +162,17 @@ async function collectEvidence(root, packageRoot) {
     }
     if (ext === ".cue") {
       cueTexts.push(await readFile(path.join(absolutePackageRoot, file), "utf8"));
+    }
+    if (ext === ".proto" || ext === ".cue") {
+      if (/^data-models\//.test(normalized)) {
+        if (ext === ".proto") hasDataModelsProto = true;
+        if (ext === ".cue") hasDataModelsCue = true;
+      } else {
+        hasMisplacedDataModel = true;
+      }
+    }
+    if (/^contracts\//.test(normalized) && /\.pact\.json$/i.test(normalized)) {
+      hasContractsPact = hasContractsPact || (await isPactContract(path.join(absolutePackageRoot, file)));
     }
 
     if (TEXT_EXTENSIONS.has(ext)) {
@@ -154,6 +199,10 @@ async function collectEvidence(root, packageRoot) {
       /\b(materialized\s+views?|projections?)\b/i.test(combinedText) &&
       /\bsnapshots?\b/i.test(combinedText) &&
       /\bread\s+stores?\b/i.test(combinedText),
+    hasDataModelsProto,
+    hasDataModelsCue,
+    hasMisplacedDataModel,
+    hasContractsPact,
   };
 }
 
@@ -249,6 +298,10 @@ function filterExistingBasePackages(files, base) {
 
 function implementationPackageRoot(file) {
   const parts = normalizePath(file).split("/");
+  if (PRODUCTION_PACKAGE_PARENTS.has(parts[0]) && parts.length >= 3) {
+    return parts.slice(0, 2).join("/");
+  }
+
   if (parts[0] !== "src" || parts[1] !== "draft" || !parts[2]) return undefined;
 
   if (DRAFT_PROOF_KINDS.has(parts[2]) && parts[3]) {

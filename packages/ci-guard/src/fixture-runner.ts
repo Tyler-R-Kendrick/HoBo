@@ -7,88 +7,94 @@ import { simulateHelloBindleE2e } from "./validate.js";
 export type FixturePhase = "deploy-and-assert" | "teardown" | "sweep-orphans";
 
 export interface RunExampleFixtureOptions {
-  readonly fixture: string;
-  readonly phase: FixturePhase;
-  readonly runId: string;
-  readonly eventsPath?: string;
+	readonly fixture: string;
+	readonly phase: FixturePhase;
+	readonly runId: string;
+	readonly eventsPath?: string;
 }
 
-export async function runExampleFixture(opts: RunExampleFixtureOptions): Promise<void> {
-  const eventsPath = opts.eventsPath ?? path.join(process.cwd(), "test-results", "e2e-events.jsonl");
-  await mkdir(path.dirname(eventsPath), { recursive: true });
+export async function runExampleFixture(
+	opts: RunExampleFixtureOptions,
+): Promise<void> {
+	const eventsPath =
+		opts.eventsPath ??
+		path.join(process.cwd(), "test-results", "e2e-events.jsonl");
+	await mkdir(path.dirname(eventsPath), { recursive: true });
 
-  const fixturePath = path.resolve(opts.fixture);
-  const fixtureJsonPath = path.join(fixturePath, "fixture.json");
-  let fixtureId = path.basename(fixturePath);
+	const fixturePath = path.resolve(opts.fixture);
+	const fixtureJsonPath = path.join(fixturePath, "fixture.json");
+	let fixtureId = path.basename(fixturePath);
 
-  try {
-    const raw = await readFile(fixtureJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { id?: string };
-    if (parsed.id) {
-      fixtureId = parsed.id;
-    }
-  } catch {
-    // stub fixtures may omit fixture.json during early bootstrap
-  }
+	try {
+		const raw = await readFile(fixtureJsonPath, "utf8");
+		const parsed = JSON.parse(raw) as { id?: string };
+		if (parsed.id) {
+			fixtureId = parsed.id;
+		}
+	} catch {
+		// stub fixtures may omit fixture.json during early bootstrap
+	}
 
-  if (opts.phase === "deploy-and-assert") {
-    const contract = createHoboCiFabricContract({ e2e: { fixture: opts.fixture } });
-    const run = simulateHelloBindleE2e(contract, { githubRunId: opts.runId });
+	if (opts.phase === "deploy-and-assert") {
+		const contract = createHoboCiFabricContract({
+			e2e: { fixture: opts.fixture },
+		});
+		const run = simulateHelloBindleE2e(contract, { githubRunId: opts.runId });
 
-    await appendEvent(eventsPath, {
-      type: "e2e.FixtureDeployed",
-      fixture: opts.fixture,
-      runId: opts.runId,
-      recordedAtMs: Date.now(),
-    });
+		await appendEvent(eventsPath, {
+			type: "e2e.FixtureDeployed",
+			fixture: opts.fixture,
+			runId: opts.runId,
+			recordedAtMs: Date.now(),
+		});
 
-    const forceFail = process.env.HOBO_E2E_FORCE_FAIL === "1";
-    const liveOk = !forceFail && run.status === "passed";
+		const forceFail = process.env.HOBO_E2E_FORCE_FAIL === "1";
+		const liveOk = !forceFail && run.status === "passed";
 
-    await appendEvent(eventsPath, {
-      type: "e2e.LiveUrlAsserted",
-      fixture: opts.fixture,
-      runId: opts.runId,
-      liveUrl: run.deployment.liveUrl,
-      ok: liveOk,
-      recordedAtMs: Date.now(),
-    });
+		await appendEvent(eventsPath, {
+			type: "e2e.LiveUrlAsserted",
+			fixture: opts.fixture,
+			runId: opts.runId,
+			liveUrl: run.deployment.liveUrl,
+			ok: liveOk,
+			recordedAtMs: Date.now(),
+		});
 
-    if (!liveOk) {
-      throw new Error(`live URL assertion failed for ${fixtureId}`);
-    }
-    return;
-  }
+		if (!liveOk) {
+			throw new Error(`live URL assertion failed for ${fixtureId}`);
+		}
+		return;
+	}
 
-  if (opts.phase === "teardown") {
-    await appendEvent(eventsPath, {
-      type: "e2e.FixtureTornDown",
-      fixture: opts.fixture,
-      runId: opts.runId,
-      recordedAtMs: Date.now(),
-    });
-    return;
-  }
+	if (opts.phase === "teardown") {
+		await appendEvent(eventsPath, {
+			type: "e2e.FixtureTornDown",
+			fixture: opts.fixture,
+			runId: opts.runId,
+			recordedAtMs: Date.now(),
+		});
+		return;
+	}
 
-  if (opts.phase === "sweep-orphans") {
-    const contract = createHoboCiFabricContract();
-    await appendEvent(eventsPath, {
-      type: "e2e.OrphanSwept",
-      fixture: opts.fixture,
-      runId: opts.runId,
-      selector: contract.e2e.teardown.orphanSweeper.selector,
-      maxAgeMinutes: contract.e2e.teardown.orphanSweeper.maxAgeMinutes,
-      recordedAtMs: Date.now(),
-    });
-    return;
-  }
+	if (opts.phase === "sweep-orphans") {
+		const contract = createHoboCiFabricContract();
+		await appendEvent(eventsPath, {
+			type: "e2e.OrphanSwept",
+			fixture: opts.fixture,
+			runId: opts.runId,
+			selector: contract.e2e.teardown.orphanSweeper.selector,
+			maxAgeMinutes: contract.e2e.teardown.orphanSweeper.maxAgeMinutes,
+			recordedAtMs: Date.now(),
+		});
+		return;
+	}
 
-  throw new Error(`unknown phase: ${opts.phase satisfies never}`);
+	throw new Error(`unknown phase: ${opts.phase satisfies never}`);
 }
 
 async function appendEvent(
-  eventsPath: string,
-  event: Record<string, unknown>,
+	eventsPath: string,
+	event: Record<string, unknown>,
 ): Promise<void> {
-  await appendFile(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
+	await appendFile(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
 }

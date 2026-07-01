@@ -21,5 +21,6 @@ minimumReleaseAgeExclude:
   - turbo@2.10.1
 allowBuilds:
   "@ast-grep/cli": true
+  "@bufbuild/buf": true
   esbuild: true
   protobufjs: true

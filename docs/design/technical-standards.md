@@ -40,6 +40,13 @@ The repo-level `pnpm run standards:check` gate runs locally, in the pre-commit h
 
 Repository-wide data-model catalogs are forbidden. Each project/package that owns a CUE-constrained type must keep its own `data-models/` folder beside the protobuf contract or proof package that owns that type. Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests must be implemented beside the contract they protect, not through a central `contracts/data-models` bridge.
 
+Schema codegen and drift gates:
+
+- `pnpm run codegen` — regenerate checked-in `src/_generated/` TypeScript views from protobuf sources (draft POC: `src/draft/technical-proofs/s0-04-protobuf-cue-codegen/`; production target: `packages/schema-tools/`).
+- `pnpm run codegen:check` — regenerate to a temp tree, byte-compare, exit non-zero on drift; never mutates the working tree.
+- `pnpm run test:schema` — includes SDK/deployment validators plus `codegen:check` and the CUE vet lane.
+- `pnpm run generated:guard` — pre-commit guard blocking hand-edits under `generated/`, `_generated/`, or `src/gen/` unless matching `.proto`/`.cue`/generator sources are staged.
+
 ## Agent checklist
 
 Before committing a technical change, agents must verify:

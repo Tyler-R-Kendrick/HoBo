@@ -59,10 +59,13 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const automationChanged = touched(["scripts", ".githooks", ".github", ".codex", ".cursor", ".claude", ".agents"])
     || touchedAny([/^package\.json$/u, /^pnpm-lock\.yaml$/u, /^pnpm-workspace\.yaml$/u, /^turbo\.json$/u]);
   const rootConfigChanged = touchedAny([/^package\.json$/u, /^pnpm-lock\.yaml$/u, /^pnpm-workspace\.yaml$/u, /^turbo\.json$/u, /^tsconfig.*\.json$/u]);
-  const sourceChanged = touched(["src", "contracts", "test", "tests"]);
+  const sourceChanged = touched(["src", "contracts", "test", "tests", "packages"]);
   const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/u, /^CONTRIBUTING\.md$/u, /^AGENTS\.md$/u, /^CLAUDE\.md$/u]);
   const draftSchemaChanged = files.some((file) => /^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
-  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\//u.test(file));
+  const rootSchemaChanged =
+    touched(["contracts"])
+    || touchedAny([/(^|\/)_generated\//u, /(^|\/)buf(\.gen)?\.yaml$/u])
+    || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\//u.test(file));
   const schemaChanged = rootSchemaChanged || draftSchemaChanged;
   const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
   const rootPactChanged = files.some((file) => (/(^|\/)pacts\//u.test(file) || /\.pact\.json$/u.test(file)) && !workspaceFor(file));

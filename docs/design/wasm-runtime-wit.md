@@ -11,7 +11,7 @@ This capability doc covers the WASM/WASI runtime — the polyglot spine — toge
 
 Epic reference implementation: [`src/draft/epic-proofs/wit-component-model-runtime-membrane`](../../src/draft/epic-proofs/wit-component-model-runtime-membrane/).
 
-Production package: [`packages/wit`](../../packages/wit/README.md) (`@hobo/wit`, HOBO-583) — vendored `wasi:*` pins, `hobo:sdk@0.1.0` aggregate WIT, deterministic jco bindings, and round-trip surface parity checks.
+Production package: [`packages/wit`](../../packages/wit/README.md) (`@hobo/wit`) — vendored `wasi:*` pins, `hobo:runtime@0.1.0` primitives, `hobo:queue`/`hobo:scheduler`/`hobo:blob-events` capability ports, import-only `hobo:sdk@0.1.0` aggregate, deterministic jco bindings, and round-trip surface parity checks (HOBO-583, HOBO-590).
 
 ## Plan 20
 

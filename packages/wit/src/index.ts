@@ -8,7 +8,7 @@ const SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 const PACKAGE_RE = /^\s*package\s+([\w-]+:[\w-]+)(?:@([\w.+-]+))?\s*;/m;
 const INTERFACE_RE = /^\s*interface\s+([\w-]+)\s*\{([\s\S]*?)^\s*\}/gm;
 const WORLD_RE = /^\s*world\s+([\w-]+)\s*\{([\s\S]*?)^\s*\}/m;
-const IMPORT_EXPORT_RE = /^\s*(import|export)\s+([\w-]+)\s*;/gm;
+const IMPORT_EXPORT_RE = /^\s*(import|export)\s+([^;]+)\s*;/gm;
 const FUNC_RE = /^\s*([\w-]+):\s*func\s*\(([^)]*)\)\s*(?:->\s*([^;]+))?;/gm;
 
 const STABILITY_VALUES = new Set(["stable", "preview", "experimental", "deprecated"]);
@@ -501,8 +501,8 @@ function parseInterfacePinRecord(raw: unknown, index: number): InterfacePin {
 	const path = typeof entry.path === "string" ? entry.path : "";
 	const sha256 = typeof entry.sha256 === "string" ? entry.sha256 : String(entry.digest ?? "");
 
-	if (!path.startsWith("wit/deps/") || !path.endsWith(".wit")) {
-		throw new Error(`wit.lock.invalid: wit_deps[${index}].path must be wit/deps/*.wit`);
+	if (!path.startsWith("wit/") || !path.endsWith(".wit")) {
+		throw new Error(`wit.lock.invalid: wit_deps[${index}].path must be wit/**/*.wit`);
 	}
 	if (!SHA256_RE.test(sha256)) {
 		throw new Error(`wit.lock.invalid: wit_deps[${index}].sha256 must match sha256:<hex>`);
@@ -530,9 +530,12 @@ function readExactVersion(
 
 function assertVendoredWitShape(pin: InterfacePin, source: string) {
 	const packageDecl = `package ${pin.namespace}:${pin.packageName}@${pin.version};`;
-	const interfaceDecl = `interface ${pin.interfaceName}`;
+	const surfaceDecl =
+		pin.path === "wit/hobo-sdk.wit"
+			? `world ${pin.interfaceName}`
+			: `interface ${pin.interfaceName}`;
 
-	if (!source.includes(packageDecl) || !source.includes(interfaceDecl)) {
+	if (!source.includes(packageDecl) || !source.includes(surfaceDecl)) {
 		throw new Error(`wasi_pin.invalid_wit_surface: ${pin.id}`);
 	}
 
@@ -567,6 +570,9 @@ function compareSignatureRecords(forward: ComponentSurface, reverse: ComponentSu
 	for (const name of forward.imports.filter((importName) => reverse.imports.includes(importName))) {
 		const declared = forward.functionSignatures.find((entry) => entry.name === name);
 		const extracted = reverse.functionSignatures.find((entry) => entry.name === name);
+		if (!declared && !extracted) {
+			continue;
+		}
 		if (!extracted) {
 			drift.push({ interface: name, reason: "missing extracted interface" });
 			continue;
@@ -593,9 +599,9 @@ function parseWorldEntries(worldBody: string) {
 			continue;
 		}
 		if (direction === "import") {
-			imports.push(name);
+			imports.push(name.trim());
 		} else {
-			exports.push(name);
+			exports.push(name.trim());
 		}
 	}
 
@@ -804,3 +810,7 @@ export function interfaceRefFromPin(pin: InterfacePin): string {
 export function vendorFileName(pin: InterfacePin): string {
 	return basename(pin.path);
 }
+
+export { assertGeneratedMatches, writeGeneratedBindings, WIT_ROOT } from "./wit-gen.js";
+
+export type * as HoboSdk from "./generated/sdk/sdk.js";

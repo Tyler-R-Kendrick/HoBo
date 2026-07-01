@@ -48,9 +48,11 @@ describe("wasi:* round-trip shape identity", () => {
 		).rejects.toMatchObject({ code: "wit.digest_mismatch" });
 	});
 
-	it("verifies all 15 vendored WASI pins", async () => {
+	it("verifies all vendored WASI pins", async () => {
 		const lock = await loadToolchainLock(LOCK_PATH);
 		const verification = await verifyVendoredWit(lock, PACKAGE_ROOT);
-		expect(verification.verified).toBe(15);
+		const wasiPins = lock.witDeps.filter((pin) => pin.namespace === "wasi");
+		expect(wasiPins).toHaveLength(15);
+		expect(verification.verified).toBe(lock.witDeps.length);
 	});
 });

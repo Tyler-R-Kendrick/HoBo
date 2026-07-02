@@ -23,4 +23,11 @@ test("hooks and streams append catalog events", async () => {
   await rt.continueRun(run);
   await rt.resumeHook(run, "approved");
   assert.equal(await rt.state(run), "approved");
+
+  const log = await rt.eventLog(run);
+  const types = log.map((event) => event.type);
+  assert.ok(types.includes("run.HookCreated"), "expected run.HookCreated");
+  assert.ok(types.includes("run.HookResumed"), "expected run.HookResumed");
+  assert.ok(types.includes("run.SleepScheduled"), "expected run.SleepScheduled");
+  assert.ok(types.includes("run.StepCompleted"), "expected run.StepCompleted");
 });

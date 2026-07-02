@@ -18,8 +18,7 @@ test("FatalError short-circuits retries", async () => {
   });
 
   await assert.rejects(() => rt.start(checkout, []), FatalError);
-  const run = { runId: "run-1" };
-  const log = await rt.eventLog(run);
+  const log = await rt.eventLog({ runId: "run-1" });
   assert.equal(attempts, 1);
   assert.ok(log.some((event) => event.type === "run.StepFailed"));
 });
@@ -50,7 +49,6 @@ test("exhausted retries append run.StepFailed and rethrow", async () => {
   const wf = workflow("exhaust", async () => fail());
 
   await assert.rejects(() => rt.start(wf, []), /always fails/);
-  const run = { runId: "run-1" };
-  const log = await rt.eventLog(run);
+  const log = await rt.eventLog({ runId: "run-1" });
   assert.ok(log.some((event) => event.type === "run.StepFailed"));
 });

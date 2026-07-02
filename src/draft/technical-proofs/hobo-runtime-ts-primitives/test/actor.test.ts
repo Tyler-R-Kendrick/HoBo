@@ -8,7 +8,6 @@ import {
   getSharedActorHostForTests,
   resetActorHostForTests,
   signal,
-  StaleFenceError,
 } from "../src/index.js";
 
 test("duplicate signal with same idempotency key applied once", async () => {

@@ -9,11 +9,8 @@ import {
   type ToolchainPin,
 } from "./types.js";
 
-const jcoVersion = pkgVersion("@bytecodealliance/jco", "@bytecodealliance/jco");
-const componentizeJsVersion = pkgVersion(
-  "@bytecodealliance/componentize-js",
-  "@bytecodealliance/componentize-js",
-);
+const jcoVersion = pkgVersion("@bytecodealliance/jco");
+const componentizeJsVersion = pkgVersion("@bytecodealliance/componentize-js");
 
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const EPOCH_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T/;
@@ -109,23 +106,20 @@ function readString(value: Record<string, unknown>, key: string): string {
   return candidate;
 }
 
-function pkgVersion(name: string, entry: string): string {
-  let dir = dirname(fileURLToPath(import.meta.resolve(entry)));
-  while (true) {
-    const packageJsonPath = join(dir, "package.json");
-    try {
-      const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { name?: string; version?: string };
-      if (parsed.name === name && parsed.version) {
-        return parsed.version;
-      }
-    } catch {
-      // keep walking
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
+function pkgVersion(name: string): string {
+  const packageRoot = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "node_modules",
+    ...name.split("/"),
+  );
+  const packageJsonPath = join(packageRoot, "package.json");
+  const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    name?: string;
+    version?: string;
+  };
+  if (parsed.name !== name || !parsed.version) {
+    throw new Error(`componentize.toolchain_skew: unable to resolve runtime version for ${name}`);
   }
-  throw new Error(`componentize.toolchain_skew: unable to resolve runtime version for ${name}`);
+  return parsed.version;
 }

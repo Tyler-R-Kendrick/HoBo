@@ -2,7 +2,9 @@
 
 Independent draft proof for S0-07: TypeScript service → wasm component → OCI artifact via pinned `jco` + `componentize-js`.
 
-Promotion target: `packages/componentize/` once S0-06 (`@hobo/wit`) lands on `main`.
+Promotion target: `packages/componentize/` now that S0-06 (`@hobo/wit`) is on `main`.
+
+`parseComponentizeSpec` verifies installed `jco` / `componentize-js` versions by reading each package's local `node_modules` `package.json` (Vitest-safe; no `import.meta.resolve` on export-gated ESM packages).
 
 ## Determinism controls
 

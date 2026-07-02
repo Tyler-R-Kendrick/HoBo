@@ -51,6 +51,18 @@ Additional views the runtime/IfC model adds, each a projection/stream like the r
 | **Link map** | manifest links | each component's imports → resolved capability providers ([Plan 20](./wasm-runtime-wit.md#plan-20)) |
 | **WIT-call traces** | `link.Called` / stub recordings | cross-port calls; the basis for AI implement/evolve/live-fix **proposals + gate approvals** ([Plan 23](./generated-stack.md#plan-23)) |
 
+### Local dashboard (hobo dev)
+
+The hosted developer dashboard ([Tech & structure](#tech--structure)) ships as a Yard `web` resource and reads via the Gateway. **`hobo dev` uses a different serving mode** with the same SPA and projection shapes — see [ADR-0111](./adr/07-portability-extensibility.md#adr-0111) and the Aspire local-dashboard reference ([`docs/competitors/aspire.md`](../competitors/aspire.md#dashboard-dcp--observability)).
+
+| Question | Answer |
+|---|---|
+| **Serving mode** | `hobo dev` **co-launches** a local dashboard listener (default `http://127.0.0.1:8787`) serving `@hobo/dashboard` with a **`local` read adapter**. It is not a Yard `web` resource and is not provisioned by `hobo up`. |
+| **Read path (no Gateway/Yard/auth)** | Reads go to **`runtime-local`'s in-process local read API** — same projection shapes as the Gateway read API, backed by `.hobo/` event log + snapshots and in-memory dev materializations. No Gateway, no Yard, no auth ([ADR-0070](./adr/02-identity-security.md#adr-0070)); MCP/CLI parity uses the same API during an active dev session. |
+| **Local vs Camp-backed views** | Every panel carries a **`scope` label**: **`local`** (local read API), **`camp-deferred`** (needs Camp/Yard), or **`hybrid`** (local facts + optional Camp enrichment). **Local:** Local emulation, collected manifest, link map, WIT-call traces, run inspector, local deployment timeline/topology, live tail, fidelity labels, local plan preview. **Camp-deferred:** [Plan 49](#plan-49) fleet/ops rollups, cross-Camp topology, FinOps actuals, drift, architecture availability, status pages, live registry (unless cached), broker credential audit, camp-only fidelity behaviors ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042)). |
+| **Per-resource logs/traces/metrics** | **Bundled local OTLP ingest** (gRPC `:4317`, HTTP `:4318`) co-launched with the dashboard; `runtime-local` and dev services export OTLP by default. Per-resource structured logs, traces, and metrics render from the sink + `runtime-local` streams. Panels that need Camp rollups are explicitly **`camp-deferred`**, not empty charts. |
+| **Offline behavior** | **`local`-scoped** views work offline from persisted `.hobo/` state (replay/time-travel included). OTLP buffers to local disk. **`camp-deferred`** panels show **"Requires Camp connection"** with the deferral reason — never silent empty/stale operational readings. |
+
 ### CLI & developer experience
 
 The same projection-and-event model the dashboard renders is what the CLI drives: every view above has a command that produces it, and every command an agent can call. The dashboard is the agent's view rendered for humans; the CLI is that view scripted.

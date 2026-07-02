@@ -2,7 +2,7 @@
 
 ## Parse, don't validate
 
-`examples/hello-bindle/src/bindle.ts` exports a `defineHelloBindle` function consumed by the collector draft proof. Collection crosses `parseCollectionInput` once and returns parsed manifest derived types.
+`examples/hello-bindle/src/collector-target.ts` exports a `defineHelloBindle` function consumed by the collector draft proof. Collection crosses `parseCollectionInput` once and returns parsed manifest derived types.
 
 ## Event architecture
 

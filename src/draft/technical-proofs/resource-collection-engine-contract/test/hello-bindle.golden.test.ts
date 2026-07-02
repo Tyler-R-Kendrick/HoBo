@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 
 import { sortKeys } from "../src/sort-keys.js";
 import { collectBindleResources } from "../src/index.js";
-import { defineHelloBindle } from "../../../../../examples/hello-bindle/src/bindle.ts";
+import { defineHelloBindle } from "../../../../../examples/hello-bindle/src/collector-target.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = join(

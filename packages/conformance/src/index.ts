@@ -47,3 +47,30 @@ export type {
 	QueueClockConformanceReport,
 	ReplayClockTraceFn,
 } from "./queue-clock.js";
+
+export {
+	COMPONENT_HOST_CONFORMANCE_SCHEMA,
+	CapabilityIsolationError,
+	ComponentHostPlanningError,
+	createReferenceComponentHostManifest,
+	createReferenceInContainerHost,
+	createReferenceRuntimeLocalHost,
+	planComponentHost,
+	runComponentHostConformance,
+} from "./suites/component-host/index.js";
+export type {
+	ComponentHostAdapter,
+	ComponentHostConformanceReport,
+	ComponentHostManifest,
+} from "./suites/component-host/index.js";
+
+export {
+	RUNTIME_PORT_CONFORMANCE_VERSION,
+	proveCheckoutDurability,
+	parseRuntimePortReport,
+	runRuntimePortDurabilitySuite,
+} from "./suites/runtime-port/index.js";
+export type {
+	RuntimeDurabilityBackend,
+	RuntimePortConformanceReport,
+} from "./suites/runtime-port/index.js";

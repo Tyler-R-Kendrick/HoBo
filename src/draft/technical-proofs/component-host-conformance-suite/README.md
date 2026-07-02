@@ -35,7 +35,7 @@ npm.cmd --prefix src\draft\technical-proofs\component-host-conformance-suite tes
 
 ## Promotion note (S1-10 / HOBO-599)
 
-Epic draft POC at `src/draft/epic-proofs/s1-10-conformance-trust-boundary/` ports this proof's suite behavior for production promotion to `packages/conformance/src/suites/component-host/`.
+Promoted to `packages/conformance/src/suites/component-host/` (production). Draft proof retained for historical evidence.
 
 
 ## Architecture Evidence

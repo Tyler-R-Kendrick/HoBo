@@ -35,7 +35,7 @@ npm.cmd --prefix src\draft\technical-proofs\runtime-port-conformance-contract te
 
 ## Promotion note (S1-10 / HOBO-599)
 
-Epic draft POC at `src/draft/epic-proofs/s1-10-conformance-trust-boundary/` ports this proof's suite behavior for production promotion to `packages/conformance/src/suites/runtime-port/`.
+Promoted to `packages/conformance/src/suites/runtime-port/` (production). Draft proof retained for historical evidence.
 
 
 ## Architecture Evidence

@@ -35,3 +35,22 @@ The port-suite runner appends `conformance.RunStarted`,
 `conformance.CaseChecked`, `conformance.CoverageEvaluated`, and
 `conformance.RunCompleted` events; `projectPortSuiteReport` derives the
 `PortSuiteReport` read model from that append-only log.
+
+## S1-10 trust-boundary suites (HOBO-599)
+
+Production suites under `src/suites/`:
+
+- **runtime-port** — `hobo.runtime-port-conformance/v1` durability checks
+  (EventStore, Queue, ActorHost, checkout replay==live). Parse boundary:
+  `src/suites/runtime-port/parse.ts`.
+- **component-host** — `@hobo/conformance/component-host/v1` cross-host
+  portability assertions with manifest host pins. Parse boundary:
+  `src/suites/component-host/parse.ts`.
+
+Protobuf + CUE for both report shapes live in `data-models/runtime_port_conformance.*`
+and `data-models/component_host_conformance.*`. PACT contracts under
+`contracts/pacts/conformance-runtime-port-backend.pact.json` and
+`conformance-component-host.pact.json`.
+
+The checkout proof appends events and folds them — actors emit events via
+ActorHost leases; replay-equals-live is asserted, not assumed.

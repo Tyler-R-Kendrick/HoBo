@@ -8,8 +8,7 @@ Promotes behavior from:
 - `src/draft/technical-proofs/runtime-port-conformance-contract/` (HOBO-30)
 - `src/draft/technical-proofs/component-host-conformance-suite/` (HOBO-29)
 
-Production target: `packages/conformance/src/suites/{runtime-port,component-host}/`
-(blocked on S0-08 harness merge + S1-05..S1-08 runtime-local adapters).
+Production target: `packages/conformance/src/suites/{runtime-port,component-host}/` (promoted in S1-10 / HOBO-599).
 
 ## What this proves
 

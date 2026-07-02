@@ -10,6 +10,6 @@
   },
   "scripts": {
     "test": "node --import tsx --test test/*.test.ts",
-    "typecheck": "npx -y -p typescript@5.5.4 tsc --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 test/type-consumer.ts"
+    "typecheck": "tsc --ignoreConfig --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 test/type-consumer.ts"
   }
 }

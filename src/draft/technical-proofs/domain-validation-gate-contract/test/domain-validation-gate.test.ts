@@ -19,6 +19,17 @@ import {
 } from "../src/domain-validation-gate.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const tscPath = path.resolve(
+  packageRoot,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 
 test("WIT and TypeScript surfaces publish the domain validation gate contract", async () => {
   const wit = await readFile(path.join(packageRoot, "wit", "world.wit"), "utf8");
@@ -41,26 +52,7 @@ test("WIT and TypeScript surfaces publish the domain validation gate contract", 
 });
 
 test("typed declarations compile a validation gate consumer", () => {
-  const command = process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "npm";
-  const args =
-    process.platform === "win32"
-      ? [
-          "/d",
-          "/c",
-          "npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.json",
-        ]
-      : [
-          "exec",
-          "--yes",
-          "--package",
-          "typescript@5.5.4",
-          "--",
-          "tsc",
-          "--noEmit",
-          "--project",
-          "tsconfig.json",
-        ];
-  const result = spawnSync(command, args, {
+  const result = spawnSync(process.execPath, [tscPath, "--noEmit", "--project", "tsconfig.json"], {
     cwd: packageRoot,
     encoding: "utf8",
   });

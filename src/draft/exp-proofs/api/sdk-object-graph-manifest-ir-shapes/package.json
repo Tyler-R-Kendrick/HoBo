@@ -6,7 +6,6 @@
     "test": "tsc --project tsconfig.json --noEmit && node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "tsx": "^4.22.4"
   }
 }

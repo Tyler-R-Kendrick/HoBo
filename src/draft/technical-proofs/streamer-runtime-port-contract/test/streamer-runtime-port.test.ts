@@ -14,6 +14,9 @@ import {
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const declarationsUrl = new URL("../src/streamer-runtime-port.d.mts", import.meta.url);
+const tscPath = fileURLToPath(
+  new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url),
+);
 
 test("runtime-local Streamer writes chunks and reads them back in run order", async () => {
   const runtime = createRuntimeLocalStreamer({ bufferLimit: 8 });
@@ -159,31 +162,15 @@ test("TypeScript declarations publish the generic Streamer producer and consumer
   assert.match(declarations, /readable: AsyncIterable<StreamerFrame<TChunk>>/);
   assert.match(declarations, /start<TChunk = unknown>/);
 
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args =
-    process.platform === "win32"
-      ? [
-          "/d",
-          "/s",
-          "/c",
-          "npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.types.json",
-        ]
-      : [
-          "exec",
-          "--yes",
-          "--package",
-          "typescript@5.5.4",
-          "--",
-          "tsc",
-          "--noEmit",
-          "--project",
-          "tsconfig.types.json",
-        ];
-  const result = spawnSync(command, args, {
-    cwd: packageRoot,
-    encoding: "utf8",
-    shell: false,
-  });
+  const result = spawnSync(
+    process.execPath,
+    [tscPath, "--noEmit", "--project", "tsconfig.types.json"],
+    {
+      cwd: packageRoot,
+      encoding: "utf8",
+      shell: false,
+    },
+  );
 
   assert.equal(
     result.status,

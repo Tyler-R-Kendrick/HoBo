@@ -76,7 +76,7 @@ test("type declarations prove declared keys callable and undeclared keys rejecte
   execFileSync(
     process.execPath,
     [
-      path.join(repoRoot, "node_modules", ".pnpm", "typescript@5.5.4", "node_modules", "typescript", "bin", "tsc"),
+      path.join(repoRoot, "node_modules", "typescript", "bin", "tsc"),
       "-p",
       path.join(packageRoot, "tsconfig.types.json"),
       "--noEmit",

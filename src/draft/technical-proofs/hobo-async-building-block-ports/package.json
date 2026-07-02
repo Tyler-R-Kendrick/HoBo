@@ -10,7 +10,6 @@
     "test": "npm run generate && npm run compile:stub && node --import tsx --test test/*.test.ts"
   },
   "devDependencies": {
-    "@bytecodealliance/jco": "1.24.3",
-    "typescript": "5.9.2"
+    "@bytecodealliance/jco": "1.24.3"
   }
 }

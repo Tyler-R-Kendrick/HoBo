@@ -5,8 +5,5 @@
   "scripts": {
     "test": "node --import tsx --test test/*.test.ts && npm run test:types",
     "test:types": "tsx scripts/write-type-fixture.ts && tsc --noEmit -p tsconfig.json"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.2"
   }
 }

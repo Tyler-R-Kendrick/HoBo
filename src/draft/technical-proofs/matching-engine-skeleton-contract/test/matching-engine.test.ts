@@ -14,6 +14,9 @@ import {
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const declarationsUrl = new URL("../src/matching-engine.d.mts", import.meta.url);
+const tscPath = fileURLToPath(
+  new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url)
+);
 
 const context = Object.freeze({
   resourceType: "database",
@@ -33,26 +36,7 @@ test("declarations expose the matching engine boundary and compile for consumers
   assert.match(declarations, /export declare function matchingDecisionToEvent/);
   assert.match(declarations, /objectiveScore: 0/);
 
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? [
-        "/d",
-        "/s",
-        "/c",
-        "npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.json"
-      ]
-    : [
-        "exec",
-        "--yes",
-        "--package",
-        "typescript@5.5.4",
-        "--",
-        "tsc",
-        "--noEmit",
-        "--project",
-        "tsconfig.json"
-      ];
-  const result = spawnSync(command, args, {
+  const result = spawnSync(process.execPath, [tscPath, "--noEmit", "--project", "tsconfig.json"], {
     cwd: packageRoot,
     encoding: "utf8",
     shell: false

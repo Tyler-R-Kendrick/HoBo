@@ -14,8 +14,5 @@
   },
   "scripts": {
     "test": "node --import tsx --test test/*.test.ts && tsc --noEmit -p tsconfig.types.json"
-  },
-  "devDependencies": {
-    "typescript": "5.5.4"
   }
 }

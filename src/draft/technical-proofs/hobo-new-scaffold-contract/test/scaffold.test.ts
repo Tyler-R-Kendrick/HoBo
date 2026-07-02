@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   VALID_TEMPLATES,
@@ -11,6 +12,10 @@ import {
   scaffoldHoboProject,
   validateScaffoldProject
 } from "../src/scaffold.js";
+
+const tscPath = fileURLToPath(
+  new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url)
+);
 
 const expectedCreatedFiles = [
   ".gitignore",
@@ -200,26 +205,7 @@ function assertGeneratedProjectRuns(projectDir) {
 }
 
 function assertGeneratedProjectTypechecks(projectDir) {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? [
-        "/d",
-        "/s",
-        "/c",
-        "npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.json"
-      ]
-    : [
-        "exec",
-        "--yes",
-        "--package",
-        "typescript@5.5.4",
-        "--",
-        "tsc",
-        "--noEmit",
-        "--project",
-        "tsconfig.json"
-      ];
-  const result = spawnSync(command, args, {
+  const result = spawnSync(process.execPath, [tscPath, "--noEmit", "--project", "tsconfig.json"], {
     cwd: projectDir,
     encoding: "utf8",
     shell: false

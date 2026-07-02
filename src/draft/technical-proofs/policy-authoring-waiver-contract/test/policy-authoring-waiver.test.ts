@@ -17,6 +17,17 @@ import {
 } from "../src/policy-authoring-waiver.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const tscPath = path.resolve(
+  packageRoot,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 const now = new Date("2026-06-26T00:00:00.000Z");
 const expiresAt = new Date("2026-06-26T01:00:00.000Z");
 
@@ -42,22 +53,9 @@ const target = Object.freeze({
 });
 
 test("typed declarations compile a TypeScript policy authoring consumer", () => {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : npmCommand;
-  const args = [
-    "exec",
-    "--yes",
-    "--package",
-    "typescript@5.5.4",
-    "--",
-    "tsc",
-    "--noEmit",
-    "--project",
-    "tsconfig.types.json",
-  ];
   const result = spawnSync(
-    command,
-    process.platform === "win32" ? ["/d", "/c", npmCommand, ...args] : args,
+    process.execPath,
+    [tscPath, "--noEmit", "--project", "tsconfig.types.json"],
     {
       cwd: packageRoot,
       encoding: "utf8",

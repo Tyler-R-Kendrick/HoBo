@@ -60,7 +60,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `notification.*` | `notification.Requested`, `notification.Delivered` |
 | `pack.*` | `pack.Imported` |
 | `pipeline.*` | `pipeline.Triggered`, `pipeline.Completed` |
-| `policy.*` | `policy.Decided`, `policy.ObligationCreated` |
+| `policy.*` | `policy.Decided`, `policy.ObligationCreated`, `policy.ObligationSatisfied` |
 | `projection.*` | `projection.Declared`, `projection.Lagged` |
 | `provider.*` | `provider.Registered`, `provider.Deprecated` |
 | `query.*` | `query.*` |
@@ -76,7 +76,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `session.*` | `session.Started`, `session.Refreshed`, `session.Revoked` |
 | `set.*` | `set.Created` |
 | `slo.*` | `slo.Declared`, `slo.BudgetBurned` |
-| `spend.*` | `spend.Recorded`, `spend.CircuitTripped`, `spend.CircuitReset`, `spend.DegradationRequired`, `spend.DegradationApplied`, `spend.DegradationRolledBack` |
+| `spend.*` | `spend.Recorded`, `spend.CapGateEvaluated`, `spend.CircuitTripped`, `spend.CircuitReset`, `spend.DegradationRequired`, `spend.DegradationApplied`, `spend.DegradationRolledBack` |
 | `statuspage.*` | `statuspage.Published`, `statuspage.IncidentPosted` |
 | `stub.*` | `stub.Recorded` |
 | `subscription.*` | `subscription.Opened`, `subscription.Pushed` |

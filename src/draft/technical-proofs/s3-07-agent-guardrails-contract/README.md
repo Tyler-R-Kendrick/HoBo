@@ -1,9 +1,8 @@
 # S3-07 Agent Guardrails Contract POC
 
-Independent draft POC for HOBO-633 (FR-022, BR-011). Pins the Gateway and
-agent-runtime guardrail obligations for autonomous agents without implementing
-the production `packages/policy/` engine, Gateway middleware, or durable
-`agent()` runtime.
+Draft promotion source for HOBO-633 (FR-022, BR-011). Production implementation
+lives in `packages/policy/` (`@hobo/policy`). This package pins the Gateway and
+agent-runtime guardrail obligations and remains the contract traceability source.
 
 ## Contract Surface
 
@@ -29,9 +28,8 @@ the production `packages/policy/` engine, Gateway middleware, or durable
 
 Excluded:
 
-- Production promotion to `packages/policy/`.
-- Durable `agent()` step execution (HOBO-632).
-- Policy pack authoring, NeMo guardrails, or live Gateway wiring.
+- Live Gateway middleware wiring (production engine is `@hobo/policy`).
+- Policy pack authoring, NeMo guardrails, or external OPA/Cedar adapters.
 
 ## Verification
 

@@ -66,4 +66,6 @@ The `@hobo/contract-harness` package (zero runtime dependencies) supplies:
 
 Root `pnpm test:contract:consumer` and `pnpm test:contract:provider` sweep draft proofs first, then `turbo run test:contract:* --filter "./packages/*"` for production packages.
 
-**Draft POC (HOBO-582):** Until S0-01 merges, the harness and reference `core-contract-surface` boundary live in [`src/draft/technical-proofs/pact-contract-harness`](../../src/draft/technical-proofs/pact-contract-harness/README.md), promoted from the epic-proof pact inventories under `src/draft/epic-proofs/*/contracts/`.
+`@hobo/contract-harness` lives in [`packages/contract-harness`](../../packages/contract-harness/README.md). The reference `core-contract-surface` boundary is in [`packages/core/contracts`](../../packages/core/contracts/pact-inventory.md), promoted from the epic-proof pact inventories under `src/draft/epic-proofs/*/contracts/`.
+
+A draft POC mirror remains at [`src/draft/technical-proofs/pact-contract-harness`](../../src/draft/technical-proofs/pact-contract-harness/README.md) for isolated harness development.

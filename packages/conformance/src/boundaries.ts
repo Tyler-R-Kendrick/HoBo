@@ -18,6 +18,7 @@ export type PackageClassification = {
 
 const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/core",
+	"packages/contract-harness",
 	"packages/wit",
 	"packages/bindles",
 	"packages/runtime",
@@ -70,6 +71,10 @@ export function classifyPackage(path: string): PackageClassification {
 		return { kind: "core", layer: 0 };
 	}
 
+	if (path === "packages/contract-harness") {
+		return { kind: "package", layer: 0 };
+	}
+
 	if (path === "packages/wit") {
 		return { kind: "contract", layer: 1 };
 	}
@@ -116,6 +121,9 @@ export function validateBoundaryImports(
 		}
 
 		if (from.kind === "core" && to.kind !== "external") {
+			if (edge.to === "packages/contract-harness") {
+				continue;
+			}
 			errors.push(
 				`core must not import HoBo packages: ${edge.from} -> ${edge.to}`,
 			);
@@ -191,6 +199,7 @@ export function detectWorkspaceCycles(edges: readonly WorkspaceEdge[]): {
 }
 
 export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
+	{ from: "packages/core", to: "packages/contract-harness" },
 	{ from: "packages/bindles", to: "packages/core" },
 	{ from: "packages/bindles", to: "packages/wit" },
 	{ from: "packages/runtime", to: "packages/core" },

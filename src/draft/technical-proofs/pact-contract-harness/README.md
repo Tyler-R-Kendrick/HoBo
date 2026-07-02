@@ -1,11 +1,9 @@
 # PACT contract harness (draft POC)
 
-Draft technical proof for **HOBO-582 / S0-05**. Implements the production `@hobo/contract-harness` API and the reference `core-contract-surface` boundary as an isolated package under `src/draft/technical-proofs/pact-contract-harness`.
+Draft technical proof mirror for **HOBO-582 / S0-05**. Production harness and reference boundary live in:
 
-Promotion target after **S0-01** lands:
-
-- `packages/contract-harness/` — harness library (`dependencies: {}`)
-- `packages/core/contracts/` — reference boundary using the harness as a `devDependency`
+- `packages/contract-harness/` — `@hobo/contract-harness` (`dependencies: {}`)
+- `packages/core/contracts/` — reference `core-contract-surface` boundary
 
 ## Per-package `contracts/` convention
 

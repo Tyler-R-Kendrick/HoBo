@@ -1,11 +1,11 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
 
 import {
   createHelloBindlePlan,
-  createProviderCloudflareDraft,
   parsePublishedManifest,
   publishCapabilityManifest,
 } from "../src/index.js";
@@ -24,11 +24,11 @@ describe("ProviderCloudflareBoundary pact", () => {
     const published = publishCapabilityManifest();
     const parsed = parsePublishedManifest(published);
 
-    expect(pact.consumer.name).toBe("@hobo/runtime");
-    expect(pact.provider.name).toBe("ProviderCloudflareBoundary");
-    expect(pact.interactions[0]?.response.body.ok).toBe(true);
-    expect(parsed.ok).toBe(true);
-    expect(Object.keys(published).sort()).toEqual(pact.interactions[0]?.response.body.paths.sort());
+    assert.equal(pact.consumer.name, "@hobo/runtime");
+    assert.equal(pact.provider.name, "ProviderCloudflareBoundary");
+    assert.equal(pact.interactions[0]?.response.body.ok, true);
+    assert.equal(parsed.ok, true);
+    assert.deepEqual(Object.keys(published).sort(), pact.interactions[0]?.response.body.paths.sort());
   });
 
   it("realize hello-bindle satisfies the boundary contract resource ids", () => {
@@ -36,8 +36,9 @@ describe("ProviderCloudflareBoundary pact", () => {
     const provider = createCloudflareProvider();
     const emission = realizeCloudflarePlan(provider, createHelloBindlePlan());
 
-    expect(pact.interactions[1]?.response.body.ok).toBe(true);
-    expect(emission.iac.nodes.map((node) => node.id).sort()).toEqual(
+    assert.equal(pact.interactions[1]?.response.body.ok, true);
+    assert.deepEqual(
+      emission.iac.nodes.map((node) => node.id).sort(),
       pact.interactions[1]?.response.body.resourceIds.sort(),
     );
   });

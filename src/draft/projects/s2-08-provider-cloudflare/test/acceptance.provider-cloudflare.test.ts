@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
 import { hoboVerify, runProviderCapabilitySuites } from "../../../technical-proofs/provider-capability-conformance-suites/src/provider-capability-conformance.js";
 import { validateEmission } from "../../../technical-proofs/hobo-realize-emission-contract/src/realize-emission-contract.js";
@@ -19,15 +20,14 @@ describe("BDD: Platform engineer registers Cloudflare provider-owned defaults", 
     const draft = createProviderCloudflareDraft();
     const capabilities = JSON.parse(draft.publishedManifest["/.well-known/capability-manifest/capabilities.json"]);
 
-    expect(draft.id).toBe(CLOUDFLARE_PROVIDER_ID);
-    expect(capabilities.capabilities.map((c: { port: string }) => c.port).sort()).toEqual([
-      "compute",
-      "kv",
-      "objectStore",
-    ]);
-    expect(draft.coversInitialPort("web/service")).toBe(true);
-    expect(draft.coversInitialPort("kv")).toBe(true);
-    expect(draft.coversInitialPort("objectStore")).toBe(true);
+    assert.equal(draft.id, CLOUDFLARE_PROVIDER_ID);
+    assert.deepEqual(
+      capabilities.capabilities.map((c: { port: string }) => c.port).sort(),
+      ["compute", "kv", "objectStore"],
+    );
+    assert.equal(draft.coversInitialPort("web/service"), true);
+    assert.equal(draft.coversInitialPort("kv"), true);
+    assert.equal(draft.coversInitialPort("objectStore"), true);
   });
 
   it("Given scoped .with builders, When only Cloudflare options are merged, Then foreign provider options are dropped", () => {
@@ -40,8 +40,8 @@ describe("BDD: Platform engineer registers Cloudflare provider-owned defaults", 
     const emission = realizeCloudflarePlan(provider, plan);
     const worker = emission.iac.nodes.find((node) => node.id === "service");
 
-    expect(worker?.inputs.options.cpuMs).toBe(15_000);
-    expect(emission.provider).toBe(CLOUDFLARE_PROVIDER_ID);
+    assert.equal(worker?.inputs.options.cpuMs, 15_000);
+    assert.equal(emission.provider, CLOUDFLARE_PROVIDER_ID);
   });
 });
 
@@ -51,14 +51,17 @@ describe("BDD: Application developer realizes hello-bindle through Cloudflare", 
     const emission = realizeCloudflarePlan(provider, createHelloBindlePlan());
     const validation = validateEmission(emission);
 
-    expect(validation.ok).toBe(true);
-    expect(emission.iac.nodes.map((node) => [node.id, node.resourceClass, node.driverIntent.iacProvider])).toEqual([
-      ["service", "cloudflare:workers-script", CLOUDFLARE_WRANGLER_DRIVER],
-      ["assets", "cloudflare:r2-bucket", CLOUDFLARE_TERRAFORM_DRIVER],
-      ["sessions", "cloudflare:kv-namespace", CLOUDFLARE_TERRAFORM_DRIVER],
-    ]);
-    expect(emission.build?.artifacts[0]?.id).toBe("hello-bindle-wasm");
-    expect(emission.iac.links).toHaveLength(2);
+    assert.equal(validation.ok, true);
+    assert.deepEqual(
+      emission.iac.nodes.map((node) => [node.id, node.resourceClass, node.driverIntent.iacProvider]),
+      [
+        ["service", "cloudflare:workers-script", CLOUDFLARE_WRANGLER_DRIVER],
+        ["assets", "cloudflare:r2-bucket", CLOUDFLARE_TERRAFORM_DRIVER],
+        ["sessions", "cloudflare:kv-namespace", CLOUDFLARE_TERRAFORM_DRIVER],
+      ],
+    );
+    assert.equal(emission.build?.artifacts[0]?.id, "hello-bindle-wasm");
+    assert.equal(emission.iac.links.length, 2);
   });
 });
 
@@ -74,9 +77,9 @@ describe("BDD: Maintainer runs provider-capability conformance", () => {
     });
     const kv = provider.verifyKvEvidence({ tags: ["local", "camp"] });
 
-    expect(report.status).toBe("pass");
-    expect(verify.status).toBe("pass");
-    expect(kv.status).toBe("pass");
+    assert.equal(report.status, "pass");
+    assert.equal(verify.status, "pass");
+    assert.equal(kv.status, "pass");
   });
 });
 
@@ -95,8 +98,8 @@ describe("Adversarial: capability gaps reject with precise reasons", () => {
       ],
     });
 
-    expect(result.type).toBe("deployment.PlanRejected");
-    expect(result.reason?.code).toBe("cloudflare-r2-s3-compat-divergence");
+    assert.equal(result.type, "deployment.PlanRejected");
+    assert.equal(result.reason?.code, "cloudflare-r2-s3-compat-divergence");
   });
 
   it("rejects Worker CPU limits exceeded", () => {
@@ -105,20 +108,20 @@ describe("Adversarial: capability gaps reject with precise reasons", () => {
     plan.resources[0].options = [cloudflare.with.worker({ cpuMs: 60_000 })];
     const result = evaluateCloudflarePlan(provider, plan);
 
-    expect(result.type).toBe("deployment.PlanRejected");
-    expect(result.reason?.code).toBe("cloudflare-worker-limit-exceeded");
+    assert.equal(result.type, "deployment.PlanRejected");
+    assert.equal(result.reason?.code, "cloudflare-worker-limit-exceeded");
   });
 
   it("rejects account quota exhaustion before apply", () => {
     const provider = createCloudflareProvider();
     const evaluation = evaluateCloudflarePlan(provider, createHelloBindlePlan());
-    expect(evaluation.type).toBe("deployment.Planned");
+    assert.equal(evaluation.type, "deployment.Planned");
 
     const result = simulateCloudflareApply(provider, createHelloBindlePlan(), {
       accountQuota: { compute: 0 },
     });
 
-    expect(result.type).toBe("deployment.PlanRejected");
-    expect(result.reason?.code).toBe("cloudflare-account-quota-exhausted");
+    assert.equal(result.type, "deployment.PlanRejected");
+    assert.equal(result.reason?.code, "cloudflare-account-quota-exhausted");
   });
 });

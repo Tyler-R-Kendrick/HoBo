@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
 import {
   INITIAL_CAPABILITY_PORTS,
@@ -13,15 +14,14 @@ describe("Capability Manifest publication (FR-031)", () => {
     const documents = publishCapabilityManifest();
     const parsed = parsePublishedManifest(documents);
 
-    expect(parsed.ok).toBe(true);
-    expect(parsed.auth.schema).toBe("hobo.provider-auth/v1");
-    expect(parsed.cost.schema).toBe("hobo.cost/v1");
-    expect(parsed.capabilities.capabilities).toHaveLength(3);
-    expect(parsed.capabilities.capabilities.map((c: { port: string }) => c.port).sort()).toEqual([
-      "compute",
-      "kv",
-      "objectStore",
-    ]);
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.auth.schema, "hobo.provider-auth/v1");
+    assert.equal(parsed.cost.schema, "hobo.cost/v1");
+    assert.equal(parsed.capabilities.capabilities.length, 3);
+    assert.deepEqual(
+      parsed.capabilities.capabilities.map((c: { port: string }) => c.port).sort(),
+      ["compute", "kv", "objectStore"],
+    );
   });
 
   it("rejects manifests that publish static secrets", () => {
@@ -31,17 +31,17 @@ describe("Capability Manifest publication (FR-031)", () => {
     documents["/.well-known/capability-manifest/auth.json"] = `${JSON.stringify(auth, null, 2)}\n`;
     const parsed = parsePublishedManifest(documents);
 
-    expect(parsed.ok).toBe(false);
-    expect(parsed.errors).toContain("auth must not publish static secrets");
+    assert.equal(parsed.ok, false);
+    assert.ok(parsed.errors.includes("auth must not publish static secrets"));
   });
 });
 
 describe("Equivalence-class mappings", () => {
   it("maps web/service, kv, and objectStore to Cloudflare resource classes", () => {
-    expect(equivalenceForPort("web/service").resourceClass).toBe("cloudflare:workers-script");
-    expect(equivalenceForPort("kv").resourceClass).toBe("cloudflare:kv-namespace");
-    expect(equivalenceForPort("objectStore").resourceClass).toBe("cloudflare:r2-bucket");
-    expect(INITIAL_CAPABILITY_PORTS).toEqual(["web/service", "kv", "objectStore"]);
+    assert.equal(equivalenceForPort("web/service").resourceClass, "cloudflare:workers-script");
+    assert.equal(equivalenceForPort("kv").resourceClass, "cloudflare:kv-namespace");
+    assert.equal(equivalenceForPort("objectStore").resourceClass, "cloudflare:r2-bucket");
+    assert.deepEqual(INITIAL_CAPABILITY_PORTS, ["web/service", "kv", "objectStore"]);
   });
 });
 
@@ -49,7 +49,7 @@ describe("Provider factory", () => {
   it("covers all initial ports via claimed capabilities", () => {
     const provider = createProviderCloudflareDraft();
     for (const port of INITIAL_CAPABILITY_PORTS) {
-      expect(provider.coversInitialPort(port)).toBe(true);
+      assert.equal(provider.coversInitialPort(port), true);
     }
   });
 });

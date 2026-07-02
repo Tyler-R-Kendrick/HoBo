@@ -44,6 +44,7 @@ pnpm --prefix src/draft/technical-proofs/multi-region-dr-replay-contract test
 
 - `architecture/` — protobuf data shapes and CUE constraints.
 - `architecture/pacts/` — PACT contract for the package boundary.
+- `src/parse.ts` — parse-don't-validate boundary (`ParsedRestoreRequest`, `ParsedMultiRegionTopology`, `ParsedReplicatedLog`).
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
 
 ## References

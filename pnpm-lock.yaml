@@ -592,6 +592,8 @@ importers:
 
   src/draft/projects/s0-03-hobo-core: {}
 
+  src/draft/projects/s1-23-hobo-build: {}
+
   src/draft/projects/s6-06-finops-plane: {}
 
   src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}
@@ -1171,6 +1173,8 @@ importers:
 
   src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract: {}
 
+  src/draft/technical-proofs/multi-region-dr-replay-contract: {}
+
   src/draft/technical-proofs/native-log-projection-contract: {}
 
   src/draft/technical-proofs/no-egress-generation-sandbox-contract: {}
@@ -1410,11 +1414,15 @@ importers:
 
   src/draft/technical-proofs/s1-19-ctx-config-local-resolution: {}
 
+  src/draft/technical-proofs/s1-21-collect-codegen-cli-poc: {}
+
   src/draft/technical-proofs/s1-stage-gate: {}
 
   src/draft/technical-proofs/s3-07-agent-guardrails-contract: {}
 
   src/draft/technical-proofs/s6-02-control-plane-ha-contract: {}
+
+  src/draft/technical-proofs/s6-05-observability-drift-loop-contract: {}
 
   src/draft/technical-proofs/saga-compensation-engine-contract: {}
 

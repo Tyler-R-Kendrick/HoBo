@@ -3,61 +3,30 @@ export const CONTRACT_VERSION = "hobo.multi-region-dr-replay/v1";
 export const RTO_TARGET_MS = 15 * 60 * 1000;
 export const RPO_ASYNC_TARGET_MS = 5_000;
 
-const AUTHORITATIVE_LOG_MODES = new Set(["active-passive-log", "sync-quorum"]);
-const STATELESS_TIER_ROLES = new Set(["gateway", "planner", "executor"]);
+export {
+  parseLogPath,
+  parseMultiRegionTopology,
+  parseReplicatedLog,
+  parseRegionId,
+  parseRestoreRequest,
+} from "./parse.ts";
 
-export function parseMultiRegionTopology(raw = {}) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error("topology manifest is required");
-  }
+export type {
+  LogPath,
+  ParsedMultiRegionTopology,
+  ParsedReplicatedLog,
+  ParsedRestoreRequest,
+  RegionId,
+  StreamId,
+} from "./parse.ts";
 
-  const authoritativeLog = requiredObject(raw.authoritativeLog, "authoritativeLog");
-  const statelessTier = requiredObject(raw.statelessTier, "statelessTier");
-  const regions = requiredStringArray(raw.regions, "regions", { minLength: 2 });
+import {
+  parseMultiRegionTopology,
+  parseReplicatedLog,
+  parseRestoreRequest,
+} from "./parse.ts";
 
-  const logMode = requiredEnum(
-    authoritativeLog.mode,
-    "authoritativeLog.mode",
-    AUTHORITATIVE_LOG_MODES,
-  );
-  const primaryRegion = requiredString(authoritativeLog.primaryRegion, "authoritativeLog.primaryRegion");
-
-  if (!regions.includes(primaryRegion)) {
-    throw new Error("authoritativeLog.primaryRegion must be listed in regions");
-  }
-
-  const passiveRegions = regions.filter((region) => region !== primaryRegion);
-  const statelessMode = requiredEnum(
-    statelessTier.mode,
-    "statelessTier.mode",
-    new Set(["active-active"]),
-  );
-  const roles = requiredStringArray(statelessTier.roles, "statelessTier.roles", { minLength: 1 });
-
-  for (const role of roles) {
-    if (!STATELESS_TIER_ROLES.has(role)) {
-      throw new Error(`unsupported stateless role: ${role}`);
-    }
-  }
-
-  return deepFreeze({
-    contractVersion: CONTRACT_VERSION,
-    regions,
-    authoritativeLog: {
-      mode: logMode,
-      primaryRegion,
-      passiveRegions,
-      replication: authoritativeLog.replication ?? "cross-region-quorum",
-    },
-    statelessTier: {
-      mode: statelessMode,
-      roles,
-      horizontallyScaled: true,
-    },
-  });
-}
-
-export function assessCrossRegionReplication(rawLog) {
+export function assessCrossRegionReplication(rawLog: unknown) {
   const log = parseReplicatedLog(rawLog);
   const lagMs = log.replicationLagMs;
   const seqGap = log.lastCommittedSeq - log.replicatedSeq;
@@ -82,7 +51,7 @@ export function assessCrossRegionReplication(rawLog) {
   });
 }
 
-export function yardUpRestore(input = {}) {
+export function yardUpRestore(input: Record<string, unknown> = {}) {
   const request = parseRestoreRequest(input);
   const log = parseReplicatedLog(input.log ?? input.sourceLog);
   const topology = input.topology ? parseMultiRegionTopology(input.topology) : null;
@@ -126,10 +95,10 @@ export function yardUpRestore(input = {}) {
   });
 }
 
-export function replayEventLog(rawLog) {
+export function replayEventLog(rawLog: unknown) {
   const log = parseReplicatedLog(rawLog);
-  const projectionSnapshots = {};
-  const actorStreams = {};
+  const projectionSnapshots: Record<string, string> = {};
+  const actorStreams: Record<string, { lastSeq: number; head: string }> = {};
   let replayedEvents = 0;
 
   for (const [streamId, events] of Object.entries(log.streams)) {
@@ -170,14 +139,14 @@ export function replayEventLog(rawLog) {
   });
 }
 
-export function runRegionLossDrill(scenario = {}) {
+export function runRegionLossDrill(scenario: Record<string, unknown> = {}) {
   const lostRegion = requiredString(scenario.lostRegion, "lostRegion");
   const targetRegion = requiredString(scenario.targetRegion, "targetRegion");
   const topology = parseMultiRegionTopology(scenario.topology);
   const log = parseReplicatedLog(scenario.log);
   const detectedAt = validateIso(scenario.detectedAt, "detectedAt");
   const restoredAt = validateIso(
-    scenario.restoredAt ?? addMilliseconds(detectedAt, scenario.restoreDurationMs ?? 8 * 60 * 1000),
+    scenario.restoredAt ?? addMilliseconds(detectedAt, (scenario.restoreDurationMs as number) ?? 8 * 60 * 1000),
     "restoredAt",
   );
 
@@ -185,14 +154,14 @@ export function runRegionLossDrill(scenario = {}) {
     throw new Error("targetRegion must differ from lostRegion");
   }
 
-  if (!topology.regions.includes(lostRegion) || !topology.regions.includes(targetRegion)) {
+  if (!topology.regions.includes(lostRegion as never) || !topology.regions.includes(targetRegion as never)) {
     throw new Error("drill regions must be declared in topology manifest");
   }
 
   const restore = yardUpRestore({
-    logPath: scenario.logPath ?? `/replicated/${targetRegion}/yard-event-log`,
+    logPath: (scenario.logPath as string) ?? `/replicated/${targetRegion}/yard-event-log`,
     log,
-    topology,
+    topology: scenario.topology,
     preLossSnapshots: scenario.preLossSnapshots ?? log.preLossSnapshots,
     startedAt: detectedAt,
     completedAt: restoredAt,
@@ -216,10 +185,10 @@ export function runRegionLossDrill(scenario = {}) {
   });
 }
 
-export function verifyProjectionIntegrity({ before, after } = {}) {
+export function verifyProjectionIntegrity({ before, after }: { before?: unknown; after?: unknown } = {}) {
   const beforeSnapshots = requiredObject(before ?? {}, "before");
   const afterSnapshots = requiredObject(after ?? {}, "after");
-  const mismatches = [];
+  const mismatches: Array<Record<string, string>> = [];
 
   for (const [streamId, expectedHash] of Object.entries(beforeSnapshots)) {
     const actualHash = afterSnapshots[streamId];
@@ -245,55 +214,7 @@ export function verifyProjectionIntegrity({ before, after } = {}) {
   });
 }
 
-function parseRestoreRequest(input) {
-  const logPath = requiredString(input.logPath ?? input.log, "logPath");
-  return {
-    logPath,
-    startedAt: validateIso(input.startedAt ?? new Date(0).toISOString(), "startedAt"),
-    completedAt: input.completedAt ? validateIso(input.completedAt, "completedAt") : null,
-  };
-}
-
-function parseReplicatedLog(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error("replicated log is required");
-  }
-
-  const streams = requiredObject(raw.streams, "streams");
-  const streamEntries = Object.entries(streams);
-
-  if (streamEntries.length === 0) {
-    throw new Error("replicated log streams must not be empty");
-  }
-
-  for (const [streamId, events] of streamEntries) {
-    if (!Array.isArray(events)) {
-      throw new Error(`stream ${streamId} must be an event array`);
-    }
-  }
-
-  const lastCommittedSeq = nonNegativeInteger(raw.lastCommittedSeq, "lastCommittedSeq");
-  const replicatedSeq = nonNegativeInteger(raw.replicatedSeq, "replicatedSeq");
-
-  if (replicatedSeq > lastCommittedSeq) {
-    throw new Error("replicatedSeq must not exceed lastCommittedSeq");
-  }
-
-  return {
-    topology: requiredString(raw.topology ?? "cross-region-quorum", "topology"),
-    primaryRegion: requiredString(raw.primaryRegion ?? "us-east-1", "primaryRegion"),
-    replicaRegion: requiredString(raw.replicaRegion ?? "us-west-2", "replicaRegion"),
-    lastCommittedSeq,
-    replicatedSeq,
-    replicationLagMs: nonNegativeInteger(raw.replicationLagMs ?? 0, "replicationLagMs"),
-    snapshotSeq: nonNegativeInteger(raw.snapshotSeq ?? 0, "snapshotSeq"),
-    streams,
-    preLossSnapshots: raw.preLossSnapshots ?? null,
-    restoreCompletedAt: raw.restoreCompletedAt ?? null,
-  };
-}
-
-function foldProjectionStream(events) {
+function foldProjectionStream(events: Array<{ seq: number; type: string; payload?: unknown }>) {
   const payload = events.map((event) => `${event.seq}:${event.type}:${stablePayload(event.payload)}`).join("|");
   return {
     lastSeq: events.at(-1)?.seq ?? 0,
@@ -301,14 +222,14 @@ function foldProjectionStream(events) {
   };
 }
 
-function foldActorStream(events) {
+function foldActorStream(events: Array<{ seq: number; type: string; payload?: { state?: string } }>) {
   return {
     lastSeq: events.at(-1)?.seq ?? 0,
     head: events.at(-1)?.payload?.state ?? "rehydrated",
   };
 }
 
-function stablePayload(payload) {
+function stablePayload(payload: unknown) {
   if (payload === undefined || payload === null) {
     return "";
   }
@@ -318,7 +239,7 @@ function stablePayload(payload) {
   return JSON.stringify(payload);
 }
 
-function hashText(value) {
+function hashText(value: string) {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
@@ -327,46 +248,21 @@ function hashText(value) {
   return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
-function requiredObject(value, fieldName) {
+function requiredObject(value: unknown, fieldName: string): Record<string, string> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${fieldName} is required`);
   }
-  return value;
+  return value as Record<string, string>;
 }
 
-function requiredString(value, fieldName) {
+function requiredString(value: unknown, fieldName: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
 }
 
-function requiredStringArray(value, fieldName, { minLength = 0 } = {}) {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || entry.trim().length === 0)) {
-    throw new Error(`${fieldName} must be a non-empty string array`);
-  }
-  if (value.length < minLength) {
-    throw new Error(`${fieldName} must contain at least ${minLength} entries`);
-  }
-  return value.map((entry) => entry.trim());
-}
-
-function requiredEnum(value, fieldName, allowed) {
-  const normalized = requiredString(value, fieldName);
-  if (!allowed.has(normalized)) {
-    throw new Error(`${fieldName} must be one of ${[...allowed].join(", ")}`);
-  }
-  return normalized;
-}
-
-function nonNegativeInteger(value, fieldName) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`${fieldName} must be a non-negative integer`);
-  }
-  return value;
-}
-
-function validateIso(value, fieldName) {
+function validateIso(value: unknown, fieldName: string): string {
   const text = requiredString(value, fieldName);
   if (Number.isNaN(Date.parse(text))) {
     throw new Error(`${fieldName} must be ISO-8601`);
@@ -374,16 +270,16 @@ function validateIso(value, fieldName) {
   return text;
 }
 
-function addMilliseconds(iso, milliseconds) {
+function addMilliseconds(iso: string, milliseconds: number) {
   return new Date(Date.parse(iso) + milliseconds).toISOString();
 }
 
-function deepFreeze(value) {
+function deepFreeze<T>(value: T): T {
   if (!value || typeof value !== "object" || Object.isFrozen(value)) {
     return value;
   }
   Object.freeze(value);
-  for (const child of Object.values(value)) {
+  for (const child of Object.values(value as Record<string, unknown>)) {
     deepFreeze(child);
   }
   return value;

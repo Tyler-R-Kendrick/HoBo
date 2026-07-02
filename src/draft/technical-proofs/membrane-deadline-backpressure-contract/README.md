@@ -2,7 +2,7 @@
 
 Independent S1-09 draft POC promoting [HOBO-24](https://linear.app/quickdeploy-ai/issue/HOBO-24) deadline propagation and [HOBO-25](https://linear.app/quickdeploy-ai/issue/HOBO-25) membrane failure taxonomy into a single integrated membrane surface.
 
-Production promotion target (when S1-03/S1-05 merge):
+Production promotion target (S1-03 merged; pending S1-05 EventStore on `main`):
 
 - `packages/core/src/failure/` — taxonomy, deadline, typed errors, parsers
 - `packages/runtimes/runtime-local/src/membrane/` — deadline propagation, backpressure, reconciliation

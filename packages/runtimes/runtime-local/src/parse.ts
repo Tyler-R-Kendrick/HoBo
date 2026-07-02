@@ -54,6 +54,7 @@ export function parseLinkRequest(raw: {
 	exportInterface: string;
 }): ParsedLinkRequest {
 	return Object.freeze({
+		parsed: true as const,
 		componentId: assertNonEmptyId(raw.componentId, "component_id_required"),
 		importInterface: parseInterfaceId(raw.importInterface),
 		providerId: assertNonEmptyId(raw.providerId, "provider_id_required"),

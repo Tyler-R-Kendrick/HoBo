@@ -1,5 +1,3 @@
-import type { ComponentHostErrorCode } from "./errors.js";
-
 export class ComponentHostError extends Error {
 	readonly code: ComponentHostErrorCode;
 

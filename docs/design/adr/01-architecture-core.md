@@ -76,7 +76,7 @@ Four nested scopes, each owning a distinct kind of "what varies":
 ## ADR-0031
 **wasm host of record: self-hosted wasmCloud (default), wasm-in-container floor.**
 
-HoBo is **wasm-first, OCI-container fallback** ([Plan 20](../wasm-runtime-wit.md#plan-20)), with WIT interfaces as the port contracts and late-bound **links** binding a component's imports to a provider's exports. The **host of record** — *what actually executes components* locally and in prod — is concrete so the "any language, one artifact, runs anywhere" claim holds and [ADR-0026](#adr-0026)'s "a Camp selects its runtime backend" has an answer at the wasm execution layer.
+HoBo is **wasm-first, OCI-container fallback** ([Plan 20](../wasm-runtime-wit.md#plan-20)), with WIT interfaces as the port contracts and late-bound **links** binding a component's imports to a provider's exports. The **host of record** — *what actually executes components* locally and in prod — is concrete so the "any language, one artifact, runs anywhere" claim holds and [ADR-0026](#adr-0026)'s "a Camp selects its runtime backend" has an answer at the wasm execution layer. Nomad was the evaluated scheduler alternative this decision displaces — see [ADR-0106](#adr-0106) and the [Nomad parity tracker](../../competitors/nomad.md#hobo-mapping).
 
 1. **The wasm host is a port, not a mandate.** Introduce a **`component-host`** capability/port (the WASI interface impls + the link table + the component lifecycle). The host is a **property of a Camp** ([ADR-0026](#adr-0026)) — a Camp selects its `component-host` the same way it independently selects its runtime backend and infra Provider. Camps stay heterogeneous ([ADR-0028](#adr-0028)): one Camp may run SpinKube while another runs provider-native.
 2. **Default = self-hosted wasmCloud.** The default host is the **wasmCloud lattice** (CNCF; hosts mesh over **NATS/JetStream**), **self-hosted on your own infrastructure** — **Kubernetes** (the `wasmcloud-operator` + Helm-bundled NATS), **Coolify/Docker**, or **bare metal/VPS** — with no managed-cloud dependency. wasmCloud is the deliberate default because its lattice **speaks wRPC natively** — exactly HoBo's membrane ([ADR-0069](#adr-0069)) — so the whole stack (WIT ports + wRPC links + cross-host late binding) is coherent end-to-end, and it **embeds Wasmtime**, preserving dev/prod parity. Self-hosting keeps it portable: any k8s (Hetzner/k3s/Talos/AKS/EKS/GKE) or any Docker host runs it.
@@ -395,3 +395,14 @@ Executable spike: [`../../../src/draft/technical-proofs/componentize-js-determin
 - **(+)** S0 can close the TS→component→OCI path with provable input stability and validation instead of blocking on upstream snapshot nondeterminism.
 - **(+)** Trade-off is explicit — digest drift is documented, tested, and deferred rather than ignored.
 - **(−)** Registry consumers cannot rely on wasm byte identity for cache keys until the signing slice adds canonicalization or upstream fixes land; `inputsDigest` + content-addressed manifest layers remain the S0 identity surface.
+
+## ADR-0106
+**Nomad evaluated and displaced: self-hosted wasmCloud + Matching + Dispatcher subsume the scheduler pillar; Nomad is accepted-future as a deploy-target/host adapter, rejected as the foundation.**
+
+1. **The evaluation.** Nomad (+ Nomad Pack) was assessed as a direct scheduler/runtime/control-plane competitor and candidate substrate; full capture + parity tracker in [`../../competitors/nomad.md#hobo-mapping`](../../competitors/nomad.md#hobo-mapping).
+2. **Why displaced.** The scheduler pillar is subsumed by self-hosted wasmCloud as host of record ([ADR-0031](#adr-0031)), deterministic Matching for placement ([ADR-0033](#adr-0033)), and the Dispatcher for execution-host routing ([ADR-0071](#adr-0071)). Nomad jobspec → Manifest IR; allocation → `match.Decided`; task drivers → `component-host`/OCI adapters.
+3. **Disposition of Nomad-as-provider** (closes the floated-but-undispositioned question in [nomad.md#positioning](../../competitors/nomad.md#positioning)): **accepted-future** as a Camp deploy-target/host adapter (component-host-in-container scheduled by Nomad, or an OCI driver adapter, generatable by the generation pipeline like any adapter); **rejected** as HoBo's scheduler foundation or a core dependency. Not in the seed provider set.
+
+### Consequences
+- **(+)** Lineage auditable; one-way mapping becomes two-way; brownfield Nomad shops have a stated path.
+- **(−)** One more adapter surface if/when accepted-future is exercised.

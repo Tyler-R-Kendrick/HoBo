@@ -55,6 +55,7 @@ _One section per iteration: date, commit, lenses run, new/confirmed/rejected fin
 
 | ID | Lens | Class | Status | Intent | Actual | Evidence |
 |---|---|---|---|---|---|---|
+| DRIFT-001 | L-DRIFT | deliberate-undocumented | ✔ remediated | Nomad pillar lineage visible in design suite | Nomad evaluation/displacement recorded in ADR-0106 with two-way links | ADR-0106, `docs/design/vision.md`, `docs/competitors/nomad.md` |
 
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
 required beyond mapping) · **deliberate-undocumented** (evidently intentional but no decision record) ·
@@ -62,7 +63,12 @@ required beyond mapping) · **deliberate-undocumented** (evidently intentional b
 
 ## Remediations
 
-_One `### REM-NNN` per confirmed finding: Action · Acceptance criteria · Effort (S/M/L) · Delivery link._
+### REM-001 (for DRIFT-001)
+
+- **Action:** Record Nomad evaluation/displacement as ADR-0106; make Nomad lineage visible with two-way links across design suite and competitor docs.
+- **Acceptance:** `docs:design-lint`, `validate-traceability.ts`, and staged `agent:check` pass; design suite contains Nomad references and back-links to `nomad.md#hobo-mapping`.
+- **Effort:** S
+- **Delivery:** ✔ [HOBO-666](https://linear.app/quickdeploy-ai/issue/HOBO-666) — ADR-0106 in `docs/design/adr/01-architecture-core.md`
 
 ## Verified non-issues
 

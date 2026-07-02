@@ -19,7 +19,6 @@
 		"@hobo/runtime-local": "workspace:*"
 	},
 	"devDependencies": {
-		"@hobo/runtime-local": "workspace:*",
 		"@types/node": "^22.15.3",
 		"tsx": "^4.20.3"
 	},

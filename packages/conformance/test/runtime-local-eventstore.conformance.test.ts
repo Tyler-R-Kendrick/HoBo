@@ -9,7 +9,7 @@ import {
 	collectStream,
 	createManualClock,
 	createRuntimeLocalEventStore,
-} from "@hobo/runtime-local";
+} from "../../runtimes/runtime-local/src/index.js";
 
 import { runEventStoreConformance } from "../src/suites/eventstore.js";
 

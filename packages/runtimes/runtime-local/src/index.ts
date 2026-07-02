@@ -1,4 +1,9 @@
 export {
+	createDefaultWrpcLinkLayer,
+	createWrpcLinkLayer,
+} from "./wrpc/link-layer.js";
+export { createInProcessTransport, createJsonWitCodec } from "./wrpc/in-process-transport.js";
+export {
 	createRuntimeLocalComponentHost,
 	HTTP_INCOMING_HANDLER,
 	type RuntimeLocalComponentHostOptions,

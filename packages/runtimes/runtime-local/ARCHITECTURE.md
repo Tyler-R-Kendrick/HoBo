@@ -31,3 +31,10 @@ empty ids are unrepresentable past the parser boundary.
 
 The internal `eventMirror` array exists only as a test convenience; production callers
 must treat the append-only sink as authoritative.
+
+## wRPC link layer (S1-03 / HOBO-592)
+
+- Port types live in `@hobo/core` (`ports/wrpc-link.ts`).
+- Implementation lives in `src/wrpc/` (`link-layer.ts`, `in-process-transport.ts`, `wire-version.ts`).
+- Membrane PACT evidence: [`contracts/wrpc-membrane.pact.json`](./contracts/wrpc-membrane.pact.json).
+- Protobuf + CUE records: [`data-models/wrpc_link.proto`](./data-models/wrpc_link.proto), [`data-models/wrpc_link.cue`](./data-models/wrpc_link.cue).

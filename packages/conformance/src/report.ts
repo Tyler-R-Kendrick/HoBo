@@ -1,4 +1,4 @@
-import { REPORT_SCHEMA, type ConformanceRunEvent, type PortSuiteReport } from "./types.ts";
+import { REPORT_SCHEMA, type ConformanceRunEvent, type PortSuiteReport } from "./types.js";
 
 export function projectPortSuiteReport(events: readonly ConformanceRunEvent[]): PortSuiteReport {
   const started = events.find((event) => event.type === "conformance.RunStarted");

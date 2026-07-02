@@ -3,9 +3,10 @@
 Independent POC for HOBO-5. It pins the branch-sized contract for the
 `@hobo/conformance` port-suite harness and the SDK parity report lane.
 
-> **Promotion note (HOBO-585):** the typed, event-sourced harness draft lives at
-> [`conformance-port-suite-harness/`](../conformance-port-suite-harness/README.md)
-> and targets `packages/conformance/` once S0-01/S0-03 land on `main`.
+> **Promotion note (HOBO-585):** the typed, event-sourced harness is promoted to
+> [`packages/conformance/`](../../../../packages/conformance/README.md) as the
+> production `@hobo/conformance` package. This proof remains historical evidence
+> for the branch-sized contract semantics.
 
 ## Requirements Source
 
@@ -33,7 +34,7 @@ Independent POC for HOBO-5. It pins the branch-sized contract for the
 
 ## Scope Boundary
 
-This does not implement the production `@hobo/conformance` package, real port suites, provider certification, CI publishing integration, signing, or the full multi-language SDK matrix. It is the executable contract slice those later packages consume.
+This proof is not the production package; HOBO-585 promotes its harness semantics to `packages/conformance/`. Real runtime/provider port suites, provider certification, CI publishing integration, signing, and the full multi-language SDK matrix remain separate slices.
 
 ## Verification
 

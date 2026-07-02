@@ -600,8 +600,6 @@ importers:
 
   src/draft/technical-proofs/conformance-port-suite-contract: {}
 
-  src/draft/technical-proofs/conformance-port-suite-harness: {}
-
   src/draft/technical-proofs/connectivity-cost-feedback-contract: {}
 
   src/draft/technical-proofs/connectivity-policy-enforcement-contract: {}

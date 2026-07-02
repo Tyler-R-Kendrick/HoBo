@@ -1,9 +1,9 @@
 import {
-  SUITE_SCHEMA,
-  type ConformanceSuite,
-  type ConformanceSuiteDefinition,
-  type SuiteCase,
-} from "./types.ts";
+	SUITE_SCHEMA,
+	type ConformanceSuite,
+	type ConformanceSuiteDefinition,
+	type SuiteCase,
+} from "./types.js";
 
 export function createConformanceSuite(definition: ConformanceSuiteDefinition): ConformanceSuite {
   if (!definition || typeof definition !== "object") {

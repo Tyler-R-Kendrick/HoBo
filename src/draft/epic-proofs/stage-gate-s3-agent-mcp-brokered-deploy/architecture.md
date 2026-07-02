@@ -28,6 +28,14 @@ HOBO-636 closes the Stage 3 acceptance gate ([requirements.md Stage 3](../../../
 
 ## Guardrail evidence
 
-Parse, don't validate: MCP inputs, token requests, and drill scenario records cross parser boundaries before actors consume them.
+Parse, don't validate: MCP inputs, token requests, and drill scenario records cross a parser boundary and become **parsed domain types** (`J2ToolCall`, `BrokerTokenRequest`, `ExplainFailure`) before the drill **actor** consumes them. Callers never pass raw DTOs with repeated boolean checks.
 
-Event architecture: token broker emits `token.Granted` / `token.Used` into an append-only store; replay reconstructs the credential trail without reading mutable provider state.
+Event architecture:
+
+- **Commands:** `DeployBindle`, `RequestBrokerToken`, `ApproveHighRiskDeploy`.
+- **Events:** `token.Granted`, `token.Used`, `token.Denied`, `deployment.Succeeded`, `policy.Decided`, `policy.ApprovalSatisfied`.
+- **Actor:** `StageGateJ2Agent` issues commands through the MCP seam and reacts to failure events.
+- **Event store:** append-only in-memory store captures the brokered-deploy credential trail.
+- **Materialized view / projection:** `CredentialAudit` projection rebuilds grant/use timeline from the event stream.
+- **Snapshot:** current run timeline for `inspect_run` is a cached snapshot of the deployment projection.
+- **Read store:** historical token events remain in the read store for replay digest verification.

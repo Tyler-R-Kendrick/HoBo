@@ -63,7 +63,8 @@
     "generated:guard": "node --import tsx scripts/no-hand-edited-generated-files.mts",
     "ci:preflight": "node --import tsx scripts/ci-preflight.ts",
     "actions:lint": "node --import tsx scripts/lint-actions.ts",
-    "fetch:pr-base": "node --import tsx scripts/fetch-pr-base.ts"
+    "fetch:pr-base": "node --import tsx scripts/fetch-pr-base.ts",
+    "gate:s1": "pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.0",

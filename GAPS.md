@@ -1330,7 +1330,7 @@ Documentation-only; no code, no requirement changes, and the Nomad→wasmCloud p
 
 - **Finding** (cand-28, L-CONS, LOW, votes uphold/uphold/uphold): docs/plans/ is still missing from docs/index.md's directory map (commit 59e387ae touched only README.md, GAPS.md, and implementation-plan.md), and docs/plans/index.md is not a directory listing at all but a stale review-findings doc referencing removed paths, violating the stated OKF convention that index.md files provide directory listings.
 - **Evidence:** `docs/index.md:18-27` · `docs/plans/index.md:3` · `docs/plans/index.md:54-55` · `CLAUDE.md`
-- **Effort:** M · **Delivery:** [HOBO-688](https://linear.app/quickdeploy-ai/issue/HOBO-688) (Intent-Alignment Gap Remediation project)
+- **Effort:** M · **Delivery:** ✔ [HOBO-688](https://linear.app/quickdeploy-ai/issue/HOBO-688) — `docs/plans/` OKF index + hub discoverability
 
 **Action**
 
@@ -1349,7 +1349,7 @@ Remediation for cand-28 (docs/plans/ missing from the docs hub; docs/plans/index
 
 2. CREATE (rewrite in place): new `docs/plans/index.md` with NO frontmatter (OKF rule for index files). Outline:
    - H1 `HoBo plans` — one line: directory listing for audit/review logs and improvement plans written to `docs/plans/` by the `/improve` tooling (per CLAUDE.md).
-   - H2 `Documents` — table (File | Type | Purpose) with exactly two rows: [`0000-requirements-suite-review.md`](./0000-requirements-suite-review.md) | Review Findings | Historical /improve audit of the requirements suite at b3cf64d, reconciled with PR #1 review. — and — [`0001-scope-refactor-review.md`](./0001-scope-refactor-review.md) | Implementation Plan | Review-and-improve log for the Yard⊃Camp⊃Bindle scope refactor.
+   - H2 `Documents` — table (File | Type | Purpose) with the historical review row [`0000-requirements-suite-review.md`](./0000-requirements-suite-review.md), the existing [`0001-scope-refactor-review.md`](./0001-scope-refactor-review.md), and any current main plan docs already in the directory (for example [`production-build-backlog.md`](./production-build-backlog.md)).
    - H2 `Conventions` — three bullets: new plans take the next free zero-padded `NNNN-slug.md`; every plan doc carries OKF frontmatter with a non-empty `type:`; this `index.md` stays a bare directory listing with no frontmatter (run `pnpm run docs:okf`).
 
 3. AMEND `docs/index.md`: in the "Reference directories outside `docs/`" table (lines 20–27), insert a row after the `patterns/` row: `| [`plans/`](./plans/index.md) | Audit/review logs and improvement plans produced by the `/improve` tooling. |`
@@ -1842,13 +1842,6 @@ Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-00
 - **Action:** Add `### Historical open-question ledger` to generated-stack.md; retarget Q-ID cross-links in gap-analysis.md, competitors/index.md, data-plane.md, and platform-engineering.md.
 - **Acceptance:** `docs:okf`, `docs:design-lint`, staged `agent:check`, rot grep checks pass; exactly the remediation doc files changed.
 - **Delivery:** ✔ [HOBO-687](https://linear.app/quickdeploy-ai/issue/HOBO-687) — historical open-question ledger + link retargets
-
-### REM-023 (for GAP-015)
-
-- **Action:** Move stale `docs/plans/index.md` review content to `0000-requirements-suite-review.md` with OKF frontmatter; restore `docs/plans/index.md` as a bare OKF directory listing; add `plans/` rows to `docs/index.md` and `README.md`; fix the requirements archive link.
-- **Acceptance:** `docs:okf`, `docs:design-lint`, and staged `agent:check` pass; cross-links resolve to the new directory listing and numbered plan docs.
-- **Effort:** M
-- **Delivery:** ✔ [HOBO-688](https://linear.app/quickdeploy-ai/issue/HOBO-688) — `docs/plans/` OKF index + hub discoverability
 
 ## Verified non-issues
 

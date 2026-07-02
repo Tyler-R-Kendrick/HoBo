@@ -21,14 +21,22 @@ than re-checking raw DTOs.
 
 ## Event Architecture
 
-The E2E lane composes event flows from upstream contracts:
+The package's accepted record is the read model behind a small event flow:
 
-- **Telemetry** — deploy/run spans and structured logs correlate through W3C
-  `traceparent` on command/event envelopes.
-- **SLO burn** — `slo.BudgetBurned` feeds AlertManager-style `alert.Fired` /
-  `alert.Routed` events.
-- **Drift loop** — `resource.DriftDetected` from periodic resync routes to
-  `drift.RemediationRouted`, `drift.DiffProposed`, or `drift.Ignored` per policy.
+- **Command** — `healDrift` and periodic `runDriftSchedulerTick` requests reconcile
+  drifted resources.
+- **Event** — telemetry, `slo.BudgetBurned`, `alert.*`, `resource.DriftDetected`,
+  and `drift.*` events append to the platform event store.
+- **Actor** — the drift scheduler singleton and SLO evaluator actors own their
+  respective command handlers.
+- **Event store** — accepted events are appended as the durable source of truth.
+- **Materialized view / projection** — drift and alert projections fold the event
+  store into queryable read models (`getDrift` surfaces the drift projection).
+- **Snapshot** — the accepted E2E record is the snapshot of those projections at
+  evaluation time.
+- **Read store** — MCP `get_drift` and CLI `hobo drift` query the drift read store
+  rather than replaying raw provider state.
 
-No runtime engine is implemented here; this is a design-time contract composing
-existing proof seams for HOBO-660 acceptance.
+No runtime engine, projector, or event store is implemented here; this is a
+design-time contract naming the command, event, actor, and projection boundaries
+so later implementation inherits a consistent vocabulary.

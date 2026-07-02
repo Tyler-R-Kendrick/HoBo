@@ -56,7 +56,8 @@ async function downloadCue(repoRoot: string): Promise<string> {
 
   const os = cuePlatform();
   const cpu = cueArch();
-  const archive = `cue_${CUE_VERSION}_${os}_${cpu}.tar.gz`;
+  const archiveExtension = os === "windows" ? "zip" : "tar.gz";
+  const archive = `cue_${CUE_VERSION}_${os}_${cpu}.${archiveExtension}`;
   const url = `https://github.com/cue-lang/cue/releases/download/${CUE_VERSION}/${archive}`;
   const cacheDir = join(repoRoot, ".tools", "cue", CUE_VERSION);
   await mkdir(cacheDir, { recursive: true });
@@ -78,12 +79,13 @@ async function downloadCue(repoRoot: string): Promise<string> {
   const tarPath = join(cacheDir, archive);
   const bytes = Buffer.from(await response.arrayBuffer());
   await writeFile(tarPath, bytes);
-  const extract = await runCommand("tar", ["-xzf", tarPath, "-C", cacheDir]);
+  const extractArgs = os === "windows" ? ["-xf", tarPath, "-C", cacheDir] : ["-xzf", tarPath, "-C", cacheDir];
+  const extract = await runCommand("tar", extractArgs);
   if (extract.code !== 0) {
     throw new Error(`failed to extract CUE archive: ${extract.stderr}`);
   }
 
-  const extracted = join(cacheDir, "cue");
+  const extracted = join(cacheDir, platform() === "win32" ? "cue.exe" : "cue");
   if (existsSync(extracted) && extracted !== target) {
     const { rename } = await import("node:fs/promises");
     await rename(extracted, target);

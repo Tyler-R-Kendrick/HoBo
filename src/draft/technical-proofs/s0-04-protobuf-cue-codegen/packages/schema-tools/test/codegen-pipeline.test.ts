@@ -14,9 +14,13 @@ const POC_PACKAGES = join(
   REPO_ROOT,
   "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages",
 );
+const CODEGEN_INTEGRATION_TIMEOUT_MS = 60_000;
 
 function invocation(check = false) {
-  return parseCodegenArgv(check ? ["--check"] : [], REPO_ROOT);
+  return Object.freeze({
+    ...parseCodegenArgv(check ? ["--check"] : [], REPO_ROOT),
+    packagesRoot: POC_PACKAGES,
+  });
 }
 
 describe("codegen determinism", () => {
@@ -26,7 +30,7 @@ describe("codegen determinism", () => {
     const second = await runCodegen(opts);
     expect(first.status).toBe("CLEAN");
     expect(second.status).toBe("CLEAN");
-  });
+  }, CODEGEN_INTEGRATION_TIMEOUT_MS);
 });
 
 describe("drift gate", () => {
@@ -52,14 +56,14 @@ describe("drift gate", () => {
     } finally {
       await writeFile(generated, before);
     }
-  });
+  }, CODEGEN_INTEGRATION_TIMEOUT_MS);
 });
 
 describe("CUE lane", () => {
   it("accepts valid fixtures and rejects invalid fixtures fail-closed", async () => {
     const report = await checkCodegen(invocation(true));
     expect(report.cueViolations).toHaveLength(0);
-  });
+  }, CODEGEN_INTEGRATION_TIMEOUT_MS);
 });
 
 describe("json envelope", () => {
@@ -81,7 +85,7 @@ describe("json envelope", () => {
 
     const sample = createCodegenReport({ status: "CLEAN", durationMs: 1 });
     expect(JSON.parse(reportToJson(sample)).status).toBe("CLEAN");
-  });
+  }, CODEGEN_INTEGRATION_TIMEOUT_MS);
 });
 
 describe("pact consumer", () => {

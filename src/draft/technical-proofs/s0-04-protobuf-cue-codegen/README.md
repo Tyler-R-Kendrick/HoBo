@@ -31,3 +31,5 @@ Root shortcuts: `pnpm run codegen`, `pnpm run codegen:check` (extended `test:sch
 - `--json` emits one `CodegenReport` object; exit 0 only when `status` is CLEAN
 - CUE vet: valid fixtures pass, invalid fixtures fail closed
 - Hand-edited `_generated/` files fail `generated:guard` and drift check
+- Windows pathing is covered: schema-tools resolves package-local Buf/CUE binaries, uses the
+  platform PATH delimiter, and downloads the CUE `.zip` release asset before drift checks run

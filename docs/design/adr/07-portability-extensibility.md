@@ -361,3 +361,6 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **ADR-P3:** policy language for ABAC — **Resolved by [ADR-0015](02-identity-security.md#adr-0015)** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
 - **ADR-P4:** default Planner objective — **Resolved by [ADR-0033](01-architecture-core.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
 - **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../sdk-api.md#plan-02).
+- **ADR-P6:** preemption policy for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P7:** oversubscription/density limits per component-host — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).

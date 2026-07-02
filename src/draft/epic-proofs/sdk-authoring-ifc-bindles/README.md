@@ -1,5 +1,7 @@
 # SDK & Authoring Reference Implementation
 
+> **Runtime primitives (draft):** durable workflow/step/actor/saga TS surface is exercised in [`hobo-runtime-ts-primitives/`](../../technical-proofs/hobo-runtime-ts-primitives/) (HOBO-600); epic scenarios will wire it once `@hobo/runtime` lands in `packages/`.
+
 This epic reference implementation rolls the SDK and IfC authoring POCs into one common architecture slice for app authors.
 
 It demonstrates an app developer declaring resources, config, handlers, XAA access, auth, topology, and Hobo Code DSL input, then lowering all authoring front doors to one deterministic `hobo.manifest/v1` with mocked boundaries.

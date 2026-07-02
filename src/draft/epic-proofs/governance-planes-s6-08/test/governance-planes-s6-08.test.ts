@@ -24,6 +24,7 @@ describe("S6-08 governance planes stage-6 evidence", () => {
     for (const item of STAGE6_EVIDENCE_ITEMS) {
       assert.equal(suite.evidence[item], true, item);
     }
+    assert.equal(suite.results.registryInstall.listingId, "listing-certified");
   });
 });
 

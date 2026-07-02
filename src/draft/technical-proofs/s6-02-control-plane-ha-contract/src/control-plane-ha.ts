@@ -1,3 +1,5 @@
+import { parseQuorumFencedAppend } from "./parse.js";
+
 export const CONTROL_PLANE_HA_SCHEMA_VERSION = "hobo.control-plane-ha/v1";
 export const NFR_009_RESUME_BUDGET_MS = 30_000;
 export const CONTROL_PLANE_AVAILABILITY_TARGET = 0.999;
@@ -66,10 +68,11 @@ export function createQuorumEventStore(options) {
     },
 
     appendFenced(request) {
-      const streamId = requireNonEmpty(request.streamId, "streamId");
-      const fenceToken = requireBigInt(request.fenceToken, "fenceToken");
-      const eventType = requireNonEmpty(request.eventType, "eventType");
-      const actionId = request.actionId ?? null;
+      const parsed = parseQuorumFencedAppend(request);
+      const streamId = parsed.streamId;
+      const fenceToken = parsed.fenceToken;
+      const eventType = parsed.eventType;
+      const actionId = parsed.actionId;
 
       if (healthyNodes.size < majority) {
         throw new QuorumRejectedError(
@@ -277,16 +280,3 @@ function getStream(streams, streamId) {
   return streams.get(streamId);
 }
 
-function requireNonEmpty(value, label) {
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new TypeError(`${label} must be a non-empty string`);
-  }
-  return value;
-}
-
-function requireBigInt(value, label) {
-  if (typeof value !== "bigint") {
-    throw new TypeError(`${label} must be a bigint`);
-  }
-  return value;
-}

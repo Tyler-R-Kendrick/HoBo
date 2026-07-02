@@ -10,9 +10,10 @@ This draft package carries architecture-guard evidence for HOBO-657.
 
 ## Parse, Don't Validate
 
-Untrusted chaos inputs are parsed once into derived types (`QuorumFencedAppend`,
-`LeaderFailoverOutcome`) at the simulation boundary. Downstream assertions consume
-parsed records — not raw DTOs with repeated guards.
+Untrusted append requests and failover outcomes are parsed once into derived types
+(`QuorumFencedAppend`, `LeaderFailoverOutcome`) at the simulation boundary via
+[`src/parse.ts`](./src/parse.ts). Downstream assertions consume parsed records — not raw DTOs
+with repeated guards.
 
 ## Event Architecture
 

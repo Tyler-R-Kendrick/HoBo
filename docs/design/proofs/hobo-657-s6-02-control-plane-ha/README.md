@@ -40,5 +40,6 @@ actor failover, provider resilience).
 
 ## Maintenance Note
 
-2026-07-02: Draft POC added on branch `cursor/hobo-657-hobo-agent-workflow-4c9e`; soft-unblocked
-pending S6-01 M0 acceptance record (HOBO-656).
+2026-07-02: Draft POC on branch `cursor/hobo-657-hobo-agent-workflow-4c9e`; S6-01 M0 acceptance
+record (HOBO-656) merged — production promotion to `packages/cloud` + `runtime-postgres` remains
+follow-up per stage-6 acceptance scope.

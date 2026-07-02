@@ -131,19 +131,15 @@ export function createReplayHarness({ membrane, adapter }) {
       }
 
       const actual = await handler(structuredClone(entry.input));
-      for (const field of ["input", "output"]) {
-        const expected = entry[field];
-        const actualValue = field === "input" ? structuredClone(entry.input) : actual;
-        if (!deepEqual(expected, actualValue)) {
-          failures.push({
-            code: "stub.replay-divergence",
-            index,
-            function: functionName,
-            field,
-            expected,
-            actual: actualValue,
-          });
-        }
+      if (!deepEqual(entry.output, actual)) {
+        failures.push({
+          code: "stub.replay-divergence",
+          index,
+          function: functionName,
+          field: "output",
+          expected: entry.output,
+          actual,
+        });
       }
     }
 

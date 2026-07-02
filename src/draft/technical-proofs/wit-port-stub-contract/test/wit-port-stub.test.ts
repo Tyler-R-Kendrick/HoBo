@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -196,4 +197,38 @@ test("report records HOBO-651 scope and S1-12 replay harness stand-in", () => {
   assert.deepEqual(report.boundaryModes, ["live", "mock"]);
   assert.ok(report.events.includes("stub.Recorded"));
   assert.ok(report.scopeIn.some((item) => item.includes("S1-12")));
+});
+
+test("architecture artifacts pin protobuf, CUE, Pact, and ADR boundaries", () => {
+  const adr = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
+  const proto = readFileSync(
+    new URL("../architecture/wit_port_stub_contract.proto", import.meta.url),
+    "utf8",
+  );
+  const cue = readFileSync(
+    new URL("../architecture/wit_port_stub_contract.cue", import.meta.url),
+    "utf8",
+  );
+  const pact = JSON.parse(
+    readFileSync(
+      new URL("../architecture/pacts/wit_port_stub_contract.pact.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  for (const typeName of ["WitPortStubContractRecord", "StubRecordedTraceEntry", "StubRecordedTrace"]) {
+    assert.match(proto, new RegExp(`message ${typeName}`));
+    assert.match(cue, new RegExp(`#${typeName}:`));
+  }
+
+  assert.equal(pact.consumer.name, "WitPortStubContractConsumer");
+  assert.equal(pact.provider.name, "WitPortStubContractBoundary");
+  assert.equal(pact.interactions[0].response.body.ok, true);
+  assert.match(adr, /parse, don't validate/i);
+  assert.match(adr, /Command/i);
+  assert.match(adr, /Event/i);
+  assert.match(adr, /Actor/i);
+  assert.match(adr, /event store/i);
+  assert.match(adr, /projection/i);
+  assert.match(adr, /read store/i);
 });

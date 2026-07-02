@@ -3,6 +3,36 @@ export const OPERATOR_CREW_YARD_SERVICES_SCHEMA_VERSION =
 
 const PROD_ENVIRONMENTS = new Set(["prod", "production"]);
 
+export type CrewPrincipal = {
+  agentId: string;
+  svid: string;
+  policyId: string;
+  mcpTools: readonly string[];
+  autonomousReads: boolean;
+  writeGated: boolean;
+  roles: readonly string[];
+};
+
+export type SloBreachSignal = {
+  id: string;
+  service: string;
+  burnRate: number;
+  correlationId: string;
+  incidentId: string;
+};
+
+export type RemediationPlan = {
+  action: string;
+  failureClass: string;
+  evidence: readonly string[];
+  riskClass: string;
+  blastRadius: {
+    maxResources: number;
+    destructive: boolean;
+    reversible: boolean;
+  };
+};
+
 /** Built-in Crew roster as Yard service principals (Plan 40). */
 export const CREW_ROSTER = Object.freeze({
   "endpoint-monitor": {
@@ -316,6 +346,81 @@ export function attemptGitOpsPromote(input = {}) {
   };
 }
 
+/** Attempt a Platform Engineer definition proposal — write-gated per Plan 40. */
+export function attemptPlatformDefinition(input = {}) {
+  const principal = parsePlatformPrincipal(input.principal);
+  const environment = parseEnvironment(input.environment ?? "staging");
+  const humanApproval = input.humanApproval ?? null;
+  const events = [];
+  const emit = (type, data) => {
+    events.push({
+      id: `platform:${events.length + 1}`,
+      type,
+      schemaVersion: OPERATOR_CREW_YARD_SERVICES_SCHEMA_VERSION,
+      seq: events.length + 1,
+      data,
+    });
+  };
+
+  emit("crew.ActionProposed", {
+    agentId: principal.agentId,
+    action: "propose-definition",
+    environment,
+    mcpTool: "propose-definition",
+  });
+
+  if (PROD_ENVIRONMENTS.has(environment)) {
+    emit("policy.Decided", {
+      effect: "require-approval",
+      reason: "production-definition-change",
+      agentId: principal.agentId,
+    });
+    emit("crew.HandoffRequested", {
+      agentId: principal.agentId,
+      to: "platform-owner",
+      reason: "production-definition-change",
+      approvalKind: "human",
+    });
+
+    if (humanApproval !== "approve") {
+      return {
+        status: "waiting-for-approval",
+        events,
+        audit: buildAuditViews(events),
+      };
+    }
+
+    emit("console.ApprovalDecided", {
+      decision: "approve",
+      approver: "platform-owner-primary",
+      candidateAction: "propose-definition",
+    });
+  } else {
+    emit("policy.Decided", {
+      effect: "allow",
+      reason: "staging-definition-proposal",
+      agentId: principal.agentId,
+    });
+  }
+
+  emit("crew.ActionApplied", {
+    agentId: principal.agentId,
+    action: "propose-definition",
+    svid: principal.svid,
+  });
+  emit("definition.Proposed", {
+    environment,
+    agentId: principal.agentId,
+    definitionRef: input.definitionRef ?? "pack:checkout-api/v2",
+  });
+
+  return {
+    status: "proposed",
+    events,
+    audit: buildAuditViews(events),
+  };
+}
+
 /** Fold crew events into credential + agent-activity audit views. */
 export function buildAuditViews(events) {
   const credentialAudit = [];
@@ -430,7 +535,7 @@ function parseEnvironment(value) {
   return value.trim().toLowerCase();
 }
 
-function parseSloBreachSignal(raw) {
+function parseSloBreachSignal(raw): SloBreachSignal {
   const signal = raw ?? {};
   if (!signal.service || !signal.correlationId) {
     throw new OperatorCrewYardServicesError(
@@ -448,7 +553,7 @@ function parseSloBreachSignal(raw) {
   };
 }
 
-function parseRemediation(raw) {
+function parseRemediation(raw): RemediationPlan {
   const remediation = raw ?? {};
   return {
     action: remediation.action ?? "failover-provider",
@@ -483,10 +588,22 @@ function parseGovernance(raw) {
   };
 }
 
-function parseGitOpsPrincipal(raw) {
+function parseGitOpsPrincipal(raw): CrewPrincipal {
   const base = CREW_ROSTER.gitops;
   const principal = raw ?? {};
   return {
+    ...base,
+    agentId: principal.agentId ?? base.agentId,
+    svid: principal.svid ?? base.svid,
+    roles: Array.isArray(principal.roles) ? principal.roles : base.roles,
+  };
+}
+
+function parsePlatformPrincipal(raw): CrewPrincipal {
+  const base = CREW_ROSTER["platform-engineer"];
+  const principal = raw ?? {};
+  return {
+    ...base,
     agentId: principal.agentId ?? base.agentId,
     svid: principal.svid ?? base.svid,
     roles: Array.isArray(principal.roles) ? principal.roles : base.roles,

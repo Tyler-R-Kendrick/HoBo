@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.js";
 import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.js";
 
 export const HOBO_COLLECT_CLI_CONTRACT_VERSION = "hobo.collect-cli/v1";
@@ -52,6 +53,17 @@ export async function executeCollect({ project, engine, request }) {
     fileName: project.fileName,
     sourceText: project.sourceText,
     define: project.define,
+    ...(project.sourceText
+      ? {
+          coverageEvaluator: (context) =>
+            evaluateCollectionCoverage({
+              sourceText: context.sourceText,
+              observedResourceIds: [...context.observedResourceIds],
+              observedBindKeys: [...context.observedBindKeys],
+              fileName: context.fileName,
+            }),
+        }
+      : {}),
   });
   const status = collection.coverage.ok ? "complete" : "coverage-incomplete";
   const envelope = {

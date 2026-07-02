@@ -3,6 +3,14 @@
 HOBO-160 is proven by the focused POC at
 [`src/draft/technical-proofs/hobo-collect-cli-contract`](../../../../src/draft/technical-proofs/hobo-collect-cli-contract/README.md).
 
+## Integrated S1-21 POC (HOBO-611)
+
+Draft integration at
+[`src/draft/technical-proofs/s1-21-collect-codegen-cli-poc`](../../../../src/draft/technical-proofs/s1-21-collect-codegen-cli-poc/README.md)
+combines `hobo collect` with `hello-bindle` golden manifest byte-equality tests.
+Production promotion target: `packages/cli/src/commands/collect.ts` (HOBO-606 +
+HOBO-610 Done; awaits `@hobo/collector` production package).
+
 ## Acceptance Evidence
 
 - `collect prints hobo.manifest/v1 with inferred allow sets and stable JSON envelope`

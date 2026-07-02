@@ -22,6 +22,8 @@ WIT, Zod resource schemas, `.allow()` scopes, and the bindle graph.
 npm.cmd --prefix src\draft\technical-proofs\hobo-codegen-cli-contract test
 ```
 
+Promoted to draft POC `src/draft/technical-proofs/s0-04-protobuf-cue-codegen/` (HOBO-581 / S0-04); production target is `packages/schema-tools/`.
+
 
 ## Architecture Evidence
 

@@ -64,7 +64,10 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const sourceChanged = touched(["src", "contracts", "test", "tests", "packages", "examples"]);
   const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/u, /^CONTRIBUTING\.md$/u, /^AGENTS\.md$/u, /^CLAUDE\.md$/u]);
   const workspaceSchemaChanged = files.some((file) => /\.(?:proto|cue)$/u.test(file) && Boolean(workspaceFor(file)));
-  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !workspaceFor(file));
+  const rootSchemaChanged =
+    touched(["contracts"])
+    || touchedAny([/(^|\/)_generated\//u, /(^|\/)buf(\.gen)?\.yaml$/u])
+    || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !workspaceFor(file));
   const schemaChanged = rootSchemaChanged || workspaceSchemaChanged;
   const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
   const rootPactChanged = files.some((file) => (/(^|\/)pacts\//u.test(file) || /\.pact\.json$/u.test(file)) && !workspaceFor(file));

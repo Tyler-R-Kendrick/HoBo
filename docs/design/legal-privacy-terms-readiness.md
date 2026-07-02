@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-405.
 
 Executable proof lives in
-[`src/draft/exp-proofs/legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/legal-privacy-terms-readiness-contract/README.md).
+[`src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-405-legal-privacy-terms-readiness`](./proofs/hobo-405-legal-privacy-terms-readiness/README.md).
 
@@ -121,14 +121,14 @@ Scope guards:
 
 HOBO-464 accepts private beta legal/privacy evidence only when the beta record stays narrower than
 public launch or paid GA approval. The executable proof lives in
-[`src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract`](../../src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/legal-privacy-private-beta-evidence-contract`](../../src/draft/exp-proofs/cx/legal-privacy-private-beta-evidence-contract/README.md)
 and branch evidence is summarized in
 [`proofs/hobo-464-legal-privacy-private-beta`](./proofs/hobo-464-legal-privacy-private-beta/README.md).
 
 Required M2 evidence:
 
 - M0 checklist baseline remains accepted from
-  [`legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/legal-privacy-terms-readiness-contract/README.md).
+  [`legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract/README.md).
 - Privacy notice beta review records telemetry purpose, retention posture, customer messaging, and
   beta limitations.
 - Terms beta limitation records that private beta language is not public launch, paid GA, final DPA,
@@ -160,14 +160,14 @@ publish compliance claims.
 HOBO-471 accepts release-candidate legal/privacy evidence only when the record stays narrower than
 paid GA, public regional legal approval, final DPA approval, or compliance certification. The
 executable proof lives in
-[`src/draft/exp-proofs/legal-privacy-release-candidate-evidence-contract`](../../src/draft/exp-proofs/legal-privacy-release-candidate-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/legal-privacy-release-candidate-evidence-contract`](../../src/draft/exp-proofs/cx/legal-privacy-release-candidate-evidence-contract/README.md)
 and branch evidence is summarized in
 [`proofs/hobo-471-legal-privacy-release-candidate`](./proofs/hobo-471-legal-privacy-release-candidate/README.md).
 
 Required M3 evidence:
 
 - M0 checklist baseline remains accepted from
-  [`legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/legal-privacy-terms-readiness-contract/README.md).
+  [`legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract/README.md).
 - M2 private beta legal/privacy evidence remains accepted and its release-candidate/GA gaps are
   explicit.
 - Privacy release-candidate review records telemetry purpose, retention posture, data-class
@@ -199,16 +199,16 @@ approve support tooling, or publish compliance claims.
 HOBO-478 accepts GA legal/privacy handoff evidence only when the public launch signoff remains an
 evidence record rather than final legal text, billing enablement, or broad compliance claim
 publication. The executable proof lives in
-[`src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/legal-privacy-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/cx/legal-privacy-ga-handoff-evidence-contract/README.md)
 and branch evidence is summarized in
 [`proofs/hobo-478-legal-privacy-ga-handoff`](./proofs/hobo-478-legal-privacy-ga-handoff/index.md).
 
 Required M4 evidence:
 
 - The M0 checklist baseline remains accepted from
-  [`legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/legal-privacy-terms-readiness-contract/README.md).
+  [`legal-privacy-terms-readiness-contract`](../../src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract/README.md).
 - The private beta baseline remains accepted from
-  [`legal-privacy-private-beta-evidence-contract`](../../src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract/README.md).
+  [`legal-privacy-private-beta-evidence-contract`](../../src/draft/exp-proofs/cx/legal-privacy-private-beta-evidence-contract/README.md).
 - Final public terms/privacy/DPA signoff is recorded as evidence, not drafted or approved inside
   this proof package.
 - Customer-assurance, subprocessor/provider, security/privacy claim, and release cutline owners

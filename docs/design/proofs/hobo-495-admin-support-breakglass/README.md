@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-495 Admin Support Break-Glass Boundaries Proof
 
 HOBO-495 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/admin-support-breakglass-boundaries`](../../../../src/draft/exp-proofs/admin-support-breakglass-boundaries/README.md)
+[`src/draft/exp-proofs/ux/admin-support-breakglass-boundaries`](../../../../src/draft/exp-proofs/ux/admin-support-breakglass-boundaries/README.md)
 and the durable boundary record at
 [admin-support-breakglass-boundaries.md](../../admin-support-breakglass-boundaries.md).
 

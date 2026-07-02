@@ -15,7 +15,7 @@ artifact must apply before it can be treated as launch-useful evidence.
 
 - Source baseline: [`accessibility-usability-launch-baseline.md`](../../accessibility-usability-launch-baseline.md).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-accessibility-usability-checklist`](../../../../src/draft/exp-proofs/vibe-accessibility-usability-checklist/README.md).
+- Executable proof: [`vibe-accessibility-usability-checklist`](../../../../src/draft/exp-proofs/ux/vibe-accessibility-usability-checklist/README.md).
 
 ## Acceptance Coverage
 
@@ -38,5 +38,5 @@ named evidence.
 ## Verification
 
 ```powershell
-pnpm.cmd run test:file src/draft/exp-proofs/vibe-accessibility-usability-checklist/test/vibe-accessibility-usability-checklist.test.ts
+pnpm.cmd run test:file src/draft/exp-proofs/ux/vibe-accessibility-usability-checklist/test/vibe-accessibility-usability-checklist.test.ts
 ```

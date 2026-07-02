@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-459 Release Notes Dogfood Alpha Proof
 
 HOBO-459 is proven by the focused M1 contract at
-[`src/draft/exp-proofs/v1-release-notes-dogfood-alpha-evidence`](../../../../src/draft/exp-proofs/v1-release-notes-dogfood-alpha-evidence/README.md)
+[`src/draft/exp-proofs/cx/v1-release-notes-dogfood-alpha-evidence`](../../../../src/draft/exp-proofs/cx/v1-release-notes-dogfood-alpha-evidence/README.md)
 and the durable release-notes record at
 [release-notes-upgrade-guide.md](../../release-notes-upgrade-guide.md).
 

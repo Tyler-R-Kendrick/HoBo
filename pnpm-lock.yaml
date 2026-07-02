@@ -250,6 +250,8 @@ importers:
 
   src/draft/epic-proofs/foundations-build-conformance-harness: {}
 
+  src/draft/epic-proofs/gated-live-fix-loop: {}
+
   src/draft/epic-proofs/generation-pipeline-training-ai-safety: {}
 
   src/draft/epic-proofs/governance-planes-s6-08: {}
@@ -274,6 +276,8 @@ importers:
 
   src/draft/epic-proofs/s2-stage-gate-first-cloud-yard: {}
 
+  src/draft/epic-proofs/s5-stage-gate-forge-extensibility: {}
+
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
 
   src/draft/epic-proofs/stage-6-acceptance-gate: {}
@@ -284,203 +288,19 @@ importers:
 
   src/draft/epic-proofs/wit-component-model-runtime-membrane: {}
 
-  src/draft/exp-proofs/accessibility-usability-launch-baseline-contract: {}
+  src/draft/exp-proofs/api/control-plane-api-resource-lifecycle-shapes: {}
 
-  src/draft/exp-proofs/admin-console-scope: {}
+  src/draft/exp-proofs/api/meta-cloud-broker-rejection-matrix-contract: {}
 
-  src/draft/exp-proofs/admin-support-breakglass-boundaries: {}
+  src/draft/exp-proofs/api/meta-cloud-broker-scope-contract: {}
 
-  src/draft/exp-proofs/ai-generation-launch-posture-contract: {}
+  src/draft/exp-proofs/api/organization-workspace-model-contract: {}
 
-  src/draft/exp-proofs/app-dev-journey-contract: {}
+  src/draft/exp-proofs/api/per-app-tenant-routing-contract: {}
 
-  src/draft/exp-proofs/artifact-store-scope-contract: {}
+  src/draft/exp-proofs/api/policy-audit-export-contract: {}
 
-  src/draft/exp-proofs/audit-explorer-scope-contract:
-    devDependencies:
-      '@types/node':
-        specifier: 26.0.1
-        version: 26.0.1
-
-  src/draft/exp-proofs/backup-restore-launch-drill-contract: {}
-
-  src/draft/exp-proofs/backup-restore-scope-contract: {}
-
-  src/draft/exp-proofs/beta-pilot-dogfood-alpha-evidence-contract: {}
-
-  src/draft/exp-proofs/beta-pilot-feedback-contract: {}
-
-  src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/beta-pilot-release-candidate-evidence-contract: {}
-
-  src/draft/exp-proofs/billing-credits-scope-contract: {}
-
-  src/draft/exp-proofs/billing-launch-policy-contract: {}
-
-  src/draft/exp-proofs/bootstrap-installer-scope-contract: {}
-
-  src/draft/exp-proofs/bootstrap-launch-smoke-matrix-contract: {}
-
-  src/draft/exp-proofs/capability-review-approval-scope: {}
-
-  src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance: {}
-
-  src/draft/exp-proofs/cli-cloud-yard-path: {}
-
-  src/draft/exp-proofs/cli-deploy-transcript-prototype: {}
-
-  src/draft/exp-proofs/cli-error-refusal-examples: {}
-
-  src/draft/exp-proofs/cli-manage-inspect-logs-drift-prototype: {}
-
-  src/draft/exp-proofs/cli-mcp-parity-resource-lifecycle-contracts: {}
-
-  src/draft/exp-proofs/cli-migration-transcript-prototype: {}
-
-  src/draft/exp-proofs/compatibility-matrix-scope-contract: {}
-
-  src/draft/exp-proofs/compliance-evidence-pack-scope: {}
-
-  src/draft/exp-proofs/control-plane-api-resource-lifecycle-shapes: {}
-
-  src/draft/exp-proofs/customer-assurance-evidence-packet-contract: {}
-
-  src/draft/exp-proofs/customer-onboarding-scope-acceptance: {}
-
-  src/draft/exp-proofs/customer-onboarding-script-contract: {}
-
-  src/draft/exp-proofs/data-flywheel-privacy-spike: {}
-
-  src/draft/exp-proofs/default-role-action-matrix-contract: {}
-
-  src/draft/exp-proofs/deployment-dashboard-topology-scope-contract: {}
-
-  src/draft/exp-proofs/devops-canary-rollout-journey-contract: {}
-
-  src/draft/exp-proofs/devops-self-host-yard-journey-contract: {}
-
-  src/draft/exp-proofs/docs-portal-scope-contract: {}
-
-  src/draft/exp-proofs/dogfood-yard-acceptance-contract: {}
-
-  src/draft/exp-proofs/dogfood-yard-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/dogfood-yard-m1-evidence-contract: {}
-
-  src/draft/exp-proofs/dogfood-yard-private-beta-evidence-contract: {}
-
-  src/draft/exp-proofs/dogfood-yard-release-candidate-contract: {}
-
-  src/draft/exp-proofs/drift-reconciliation-scope-contract: {}
-
-  src/draft/exp-proofs/dx-backbone-resource-lifecycle-vibe: {}
-
-  src/draft/exp-proofs/dx-resource-lifecycle-fixture-corpus: {}
-
-  src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix: {}
-
-  src/draft/exp-proofs/dx-result-refusal-proof-envelopes: {}
-
-  src/draft/exp-proofs/dx-sdk-resilience-scope-contract: {}
-
-  src/draft/exp-proofs/e2e-test-matrix-scope-acceptance: {}
-
-  src/draft/exp-proofs/enterprise-deployment-hardening-scope-contract: {}
-
-  src/draft/exp-proofs/entitlements-plan-limits-scope: {}
-
-  src/draft/exp-proofs/environment-lifecycle-scope: {}
-
-  src/draft/exp-proofs/example-apps-scope-acceptance: {}
-
-  src/draft/exp-proofs/full-dashboard-projection-views-contract: {}
-
-  src/draft/exp-proofs/gitops-ci-journey-contract: {}
-
-  src/draft/exp-proofs/hosted-broker-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/incident-communications-scope-contract: {}
-
-  src/draft/exp-proofs/known-limitations-register-contract: {}
-
-  src/draft/exp-proofs/launch-blocker-taxonomy-contract: {}
-
-  src/draft/exp-proofs/launch-demo-golden-path-contract: {}
-
-  src/draft/exp-proofs/launch-messaging-claim-register: {}
-
-  src/draft/exp-proofs/launch-performance-capacity-envelope-contract: {}
-
-  src/draft/exp-proofs/launch-site-demo-alpha-evidence-contract: {}
-
-  src/draft/exp-proofs/launch-site-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/launch-site-private-beta-evidence-contract: {}
-
-  src/draft/exp-proofs/launch-site-release-candidate-evidence-contract: {}
-
-  src/draft/exp-proofs/launch-support-dogfood-alpha-evidence: {}
-
-  src/draft/exp-proofs/launch-support-escalation-matrix: {}
-
-  src/draft/exp-proofs/launch-support-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/launch-support-private-beta-evidence-contract: {}
-
-  src/draft/exp-proofs/launch-support-release-candidate-evidence-contract: {}
-
-  src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract: {}
-
-  src/draft/exp-proofs/legal-privacy-release-candidate-evidence-contract: {}
-
-  src/draft/exp-proofs/legal-privacy-terms-readiness-contract: {}
-
-  src/draft/exp-proofs/marketplace-payout-hooks-scope-contract: {}
-
-  src/draft/exp-proofs/marketplace-publisher-trust-evidence-contract: {}
-
-  src/draft/exp-proofs/marketplace-ux-scope-contract: {}
-
-  src/draft/exp-proofs/member-rbac-administration-scope: {}
-
-  src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract: {}
-
-  src/draft/exp-proofs/meta-cloud-broker-scope-contract: {}
-
-  src/draft/exp-proofs/org-catalogs-scope-acceptance: {}
-
-  src/draft/exp-proofs/organization-workspace-model-contract: {}
-
-  src/draft/exp-proofs/package-cache-scope-contract: {}
-
-  src/draft/exp-proofs/per-app-tenant-routing-contract: {}
-
-  src/draft/exp-proofs/performance-load-tests-scope-contract: {}
-
-  src/draft/exp-proofs/plan-diff-viewer-scope-acceptance: {}
-
-  src/draft/exp-proofs/policy-audit-export-contract: {}
-
-  src/draft/exp-proofs/pre-launch-outcome-contract: {}
-
-  src/draft/exp-proofs/provenance-retention-scope-acceptance: {}
-
-  src/draft/exp-proofs/publisher-portal-scope-contract: {}
-
-  src/draft/exp-proofs/release-channels-scope: {}
-
-  src/draft/exp-proofs/resource-garbage-collection-scope-acceptance: {}
-
-  src/draft/exp-proofs/resource-lifecycle-quickstart-examples: {}
-
-  src/draft/exp-proofs/role-journey-cli-mcp-transcripts: {}
-
-  src/draft/exp-proofs/sbom-vulnerability-notice-evidence-contract: {}
-
-  src/draft/exp-proofs/sdk-object-graph-manifest-ir-shapes:
+  src/draft/exp-proofs/api/sdk-object-graph-manifest-ir-shapes:
     devDependencies:
       tsx:
         specifier: ^4.22.4
@@ -489,125 +309,319 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  src/draft/exp-proofs/sdk-to-cli-golden-path: {}
+  src/draft/exp-proofs/api/sdk-to-cli-golden-path: {}
 
-  src/draft/exp-proofs/secops-policy-audit-journey-contract: {}
-
-  src/draft/exp-proofs/security-verification-scope-acceptance: {}
-
-  src/draft/exp-proofs/settings-project-lifecycle-scope: {}
-
-  src/draft/exp-proofs/sre-drift-remediation-journey-contract: {}
-
-  src/draft/exp-proofs/support-debug-tools-scope-contract:
-    devDependencies:
-      '@types/node':
-        specifier: 26.0.1
-        version: 26.0.1
-
-  src/draft/exp-proofs/support-sla-channels-contract: {}
-
-  src/draft/exp-proofs/support-workflow-scope-contract: {}
-
-  src/draft/exp-proofs/svid-cross-tenant-guard-contract: {}
-
-  src/draft/exp-proofs/teardown-recovery-scope-acceptance: {}
-
-  src/draft/exp-proofs/tenant-data-lifecycle-contract: {}
-
-  src/draft/exp-proofs/tenant-isolation-quotas-scope: {}
-
-  src/draft/exp-proofs/threat-model-security-review-scope-acceptance: {}
-
-  src/draft/exp-proofs/troubleshooting-guides-scope-acceptance: {}
-
-  src/draft/exp-proofs/tutorials-walkthroughs-scope-acceptance: {}
-
-  src/draft/exp-proofs/upgrade-migration-scope-contract: {}
-
-  src/draft/exp-proofs/upgrade-test-suite-scope-contract: {}
-
-  src/draft/exp-proofs/usage-metering-scope-contract: {}
-
-  src/draft/exp-proofs/v1-beta-pilot-private-beta-evidence: {}
-
-  src/draft/exp-proofs/v1-critical-path-dependency-map-contract: {}
-
-  src/draft/exp-proofs/v1-e2e-persona-matrix-contract: {}
-
-  src/draft/exp-proofs/v1-readiness-dashboard-contract: {}
-
-  src/draft/exp-proofs/v1-release-notes-dogfood-alpha-evidence: {}
-
-  src/draft/exp-proofs/v1-release-notes-private-beta-evidence-contract: {}
-
-  src/draft/exp-proofs/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract: {}
-
-  src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract: {}
-
-  src/draft/exp-proofs/v1-supported-platform-matrix-contract: {}
-
-  src/draft/exp-proofs/vibe-accessibility-usability-checklist: {}
-
-  src/draft/exp-proofs/vibe-clickable-first-run-walkthrough: {}
-
-  src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures: {}
-
-  src/draft/exp-proofs/vibe-deployment-dashboard-mockups: {}
-
-  src/draft/exp-proofs/vibe-docs-portal-ia-states: {}
-
-  src/draft/exp-proofs/vibe-first-customer-pilot-storyboard: {}
-
-  src/draft/exp-proofs/vibe-first-run-activation-rail: {}
-
-  src/draft/exp-proofs/vibe-launch-asset-refresh-plan: {}
-
-  src/draft/exp-proofs/vibe-marketplace-discovery-prototype: {}
-
-  src/draft/exp-proofs/vibe-marketplace-installability-mockups: {}
-
-  src/draft/exp-proofs/vibe-marketplace-trust-copy-states: {}
-
-  src/draft/exp-proofs/vibe-pilot-first-proof-walkthrough: {}
-
-  src/draft/exp-proofs/vibe-plan-annotation-pseudocode: {}
-
-  src/draft/exp-proofs/vibe-plan-diff-review-prototype: {}
-
-  src/draft/exp-proofs/vibe-plan-review-states: {}
-
-  src/draft/exp-proofs/vibe-publisher-portal-review-mockups: {}
-
-  src/draft/exp-proofs/vibe-representative-a11y-usability-checks: {}
-
-  src/draft/exp-proofs/vibe-role-tutorial-outlines: {}
-
-  src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard: {}
-
-  src/draft/exp-proofs/vibe-support-case-redacted-evidence: {}
-
-  src/draft/exp-proofs/vibe-support-workflow-mockups: {}
-
-  src/draft/exp-proofs/vibe-topology-status-prototype: {}
-
-  src/draft/exp-proofs/vibe-troubleshooting-decision-trees: {}
-
-  src/draft/exp-proofs/vibe-workspace-project-states: {}
-
-  src/draft/exp-proofs/vulnerability-disclosure-launch-blocker-contract: {}
-
-  src/draft/exp-proofs/workspace-activation-telemetry-contract: {}
-
-  src/draft/exp-proofs/workspace-onboarding-scope-acceptance: {}
-
-  src/draft/exp-proofs/wrpc-wit-baseline-poc:
+  src/draft/exp-proofs/api/wrpc-wit-baseline-poc:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
-  src/draft/exp-proofs/xaa-scope-inference-contract: {}
+  src/draft/exp-proofs/api/xaa-scope-inference-contract: {}
+
+  src/draft/exp-proofs/ax/cli-mcp-parity-resource-lifecycle-contracts: {}
+
+  src/draft/exp-proofs/ax/rem-030-crew-mcp-autonomy-limitation: {}
+
+  src/draft/exp-proofs/ax/role-journey-cli-mcp-transcripts: {}
+
+  src/draft/exp-proofs/cx/ai-generation-launch-posture-contract: {}
+
+  src/draft/exp-proofs/cx/beta-pilot-dogfood-alpha-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/beta-pilot-feedback-contract: {}
+
+  src/draft/exp-proofs/cx/beta-pilot-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/beta-pilot-release-candidate-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/billing-credits-scope-contract: {}
+
+  src/draft/exp-proofs/cx/billing-launch-policy-contract: {}
+
+  src/draft/exp-proofs/cx/capability-review-approval-scope: {}
+
+  src/draft/exp-proofs/cx/compatibility-matrix-scope-contract: {}
+
+  src/draft/exp-proofs/cx/compliance-evidence-pack-scope: {}
+
+  src/draft/exp-proofs/cx/customer-assurance-evidence-packet-contract: {}
+
+  src/draft/exp-proofs/cx/customer-onboarding-scope-acceptance: {}
+
+  src/draft/exp-proofs/cx/customer-onboarding-script-contract: {}
+
+  src/draft/exp-proofs/cx/entitlements-plan-limits-scope: {}
+
+  src/draft/exp-proofs/cx/hosted-broker-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/incident-communications-scope-contract: {}
+
+  src/draft/exp-proofs/cx/known-limitations-register-contract: {}
+
+  src/draft/exp-proofs/cx/launch-blocker-taxonomy-contract: {}
+
+  src/draft/exp-proofs/cx/launch-messaging-claim-register: {}
+
+  src/draft/exp-proofs/cx/launch-site-demo-alpha-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/launch-site-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/launch-site-private-beta-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/launch-site-release-candidate-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/launch-support-dogfood-alpha-evidence: {}
+
+  src/draft/exp-proofs/cx/launch-support-escalation-matrix: {}
+
+  src/draft/exp-proofs/cx/launch-support-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/launch-support-private-beta-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/launch-support-release-candidate-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/legal-privacy-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/legal-privacy-private-beta-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/legal-privacy-release-candidate-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract: {}
+
+  src/draft/exp-proofs/cx/marketplace-payout-hooks-scope-contract: {}
+
+  src/draft/exp-proofs/cx/marketplace-publisher-trust-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/pre-launch-outcome-contract: {}
+
+  src/draft/exp-proofs/cx/sbom-vulnerability-notice-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/support-debug-tools-scope-contract:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
+
+  src/draft/exp-proofs/cx/support-sla-channels-contract: {}
+
+  src/draft/exp-proofs/cx/support-workflow-scope-contract: {}
+
+  src/draft/exp-proofs/cx/tenant-data-lifecycle-contract: {}
+
+  src/draft/exp-proofs/cx/upgrade-migration-scope-contract: {}
+
+  src/draft/exp-proofs/cx/usage-metering-scope-contract: {}
+
+  src/draft/exp-proofs/cx/v1-beta-pilot-private-beta-evidence: {}
+
+  src/draft/exp-proofs/cx/v1-release-notes-dogfood-alpha-evidence: {}
+
+  src/draft/exp-proofs/cx/v1-release-notes-private-beta-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-release-candidate-evidence-contract: {}
+
+  src/draft/exp-proofs/cx/v1-supported-platform-matrix-contract: {}
+
+  src/draft/exp-proofs/cx/vulnerability-disclosure-launch-blocker-contract: {}
+
+  src/draft/exp-proofs/cx/workspace-activation-telemetry-contract: {}
+
+  src/draft/exp-proofs/dx/adr-0064-ui-generation-citation-contract: {}
+
+  src/draft/exp-proofs/dx/app-dev-journey-contract: {}
+
+  src/draft/exp-proofs/dx/artifact-store-scope-contract: {}
+
+  src/draft/exp-proofs/dx/backup-restore-launch-drill-contract: {}
+
+  src/draft/exp-proofs/dx/backup-restore-scope-contract: {}
+
+  src/draft/exp-proofs/dx/bootstrap-installer-scope-contract: {}
+
+  src/draft/exp-proofs/dx/bootstrap-launch-smoke-matrix-contract: {}
+
+  src/draft/exp-proofs/dx/chaos-resilience-tests-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/cli-cloud-yard-path: {}
+
+  src/draft/exp-proofs/dx/cli-deploy-transcript-prototype: {}
+
+  src/draft/exp-proofs/dx/cli-error-refusal-examples: {}
+
+  src/draft/exp-proofs/dx/cli-manage-inspect-logs-drift-prototype: {}
+
+  src/draft/exp-proofs/dx/cli-migration-transcript-prototype: {}
+
+  src/draft/exp-proofs/dx/dapr-parity-anchor-audit: {}
+
+  src/draft/exp-proofs/dx/data-flywheel-privacy-spike: {}
+
+  src/draft/exp-proofs/dx/default-role-action-matrix-contract: {}
+
+  src/draft/exp-proofs/dx/devops-canary-rollout-journey-contract: {}
+
+  src/draft/exp-proofs/dx/devops-self-host-yard-journey-contract: {}
+
+  src/draft/exp-proofs/dx/docs-portal-scope-contract: {}
+
+  src/draft/exp-proofs/dx/dogfood-yard-acceptance-contract: {}
+
+  src/draft/exp-proofs/dx/dogfood-yard-ga-handoff-evidence-contract: {}
+
+  src/draft/exp-proofs/dx/dogfood-yard-m1-evidence-contract: {}
+
+  src/draft/exp-proofs/dx/dogfood-yard-private-beta-evidence-contract: {}
+
+  src/draft/exp-proofs/dx/dogfood-yard-release-candidate-contract: {}
+
+  src/draft/exp-proofs/dx/drift-reconciliation-scope-contract: {}
+
+  src/draft/exp-proofs/dx/dx-backbone-resource-lifecycle-vibe: {}
+
+  src/draft/exp-proofs/dx/dx-resource-lifecycle-fixture-corpus: {}
+
+  src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix: {}
+
+  src/draft/exp-proofs/dx/dx-result-refusal-proof-envelopes: {}
+
+  src/draft/exp-proofs/dx/dx-sdk-resilience-scope-contract: {}
+
+  src/draft/exp-proofs/dx/e2e-test-matrix-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/enterprise-deployment-hardening-scope-contract: {}
+
+  src/draft/exp-proofs/dx/environment-lifecycle-scope: {}
+
+  src/draft/exp-proofs/dx/example-apps-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/gitops-ci-journey-contract: {}
+
+  src/draft/exp-proofs/dx/inline-budget-authoring: {}
+
+  src/draft/exp-proofs/dx/intent-alignment-iter2: {}
+
+  src/draft/exp-proofs/dx/launch-demo-golden-path-contract: {}
+
+  src/draft/exp-proofs/dx/launch-performance-capacity-envelope-contract: {}
+
+  src/draft/exp-proofs/dx/org-catalogs-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/package-cache-scope-contract: {}
+
+  src/draft/exp-proofs/dx/performance-load-tests-scope-contract: {}
+
+  src/draft/exp-proofs/dx/provenance-retention-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/release-channels-scope: {}
+
+  src/draft/exp-proofs/dx/resource-garbage-collection-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples: {}
+
+  src/draft/exp-proofs/dx/secops-policy-audit-journey-contract: {}
+
+  src/draft/exp-proofs/dx/security-verification-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract: {}
+
+  src/draft/exp-proofs/dx/svid-cross-tenant-guard-contract: {}
+
+  src/draft/exp-proofs/dx/teardown-recovery-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/tenant-isolation-quotas-scope: {}
+
+  src/draft/exp-proofs/dx/threat-model-security-review-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/troubleshooting-guides-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/tutorials-walkthroughs-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/upgrade-test-suite-scope-contract: {}
+
+  src/draft/exp-proofs/dx/v1-critical-path-dependency-map-contract: {}
+
+  src/draft/exp-proofs/dx/v1-e2e-persona-matrix-contract: {}
+
+  src/draft/exp-proofs/ux/accessibility-usability-launch-baseline-contract: {}
+
+  src/draft/exp-proofs/ux/admin-console-scope: {}
+
+  src/draft/exp-proofs/ux/admin-support-breakglass-boundaries: {}
+
+  src/draft/exp-proofs/ux/audit-explorer-scope-contract:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
+
+  src/draft/exp-proofs/ux/deployment-dashboard-topology-scope-contract: {}
+
+  src/draft/exp-proofs/ux/full-dashboard-projection-views-contract: {}
+
+  src/draft/exp-proofs/ux/marketplace-ux-scope-contract: {}
+
+  src/draft/exp-proofs/ux/member-rbac-administration-scope: {}
+
+  src/draft/exp-proofs/ux/plan-diff-viewer-scope-acceptance: {}
+
+  src/draft/exp-proofs/ux/publisher-portal-scope-contract: {}
+
+  src/draft/exp-proofs/ux/settings-project-lifecycle-scope: {}
+
+  src/draft/exp-proofs/ux/v1-readiness-dashboard-contract: {}
+
+  src/draft/exp-proofs/ux/vibe-accessibility-usability-checklist: {}
+
+  src/draft/exp-proofs/ux/vibe-clickable-first-run-walkthrough: {}
+
+  src/draft/exp-proofs/ux/vibe-dashboard-freshness-rbac-fixtures: {}
+
+  src/draft/exp-proofs/ux/vibe-deployment-dashboard-mockups: {}
+
+  src/draft/exp-proofs/ux/vibe-docs-portal-ia-states: {}
+
+  src/draft/exp-proofs/ux/vibe-first-customer-pilot-storyboard: {}
+
+  src/draft/exp-proofs/ux/vibe-first-run-activation-rail: {}
+
+  src/draft/exp-proofs/ux/vibe-launch-asset-refresh-plan: {}
+
+  src/draft/exp-proofs/ux/vibe-marketplace-discovery-prototype: {}
+
+  src/draft/exp-proofs/ux/vibe-marketplace-installability-mockups: {}
+
+  src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states: {}
+
+  src/draft/exp-proofs/ux/vibe-pilot-first-proof-walkthrough: {}
+
+  src/draft/exp-proofs/ux/vibe-plan-annotation-pseudocode: {}
+
+  src/draft/exp-proofs/ux/vibe-plan-diff-review-prototype: {}
+
+  src/draft/exp-proofs/ux/vibe-plan-review-states: {}
+
+  src/draft/exp-proofs/ux/vibe-publisher-portal-review-mockups: {}
+
+  src/draft/exp-proofs/ux/vibe-representative-a11y-usability-checks: {}
+
+  src/draft/exp-proofs/ux/vibe-role-tutorial-outlines: {}
+
+  src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard: {}
+
+  src/draft/exp-proofs/ux/vibe-support-case-redacted-evidence: {}
+
+  src/draft/exp-proofs/ux/vibe-support-workflow-mockups: {}
+
+  src/draft/exp-proofs/ux/vibe-topology-status-prototype: {}
+
+  src/draft/exp-proofs/ux/vibe-troubleshooting-decision-trees: {}
+
+  src/draft/exp-proofs/ux/vibe-workspace-project-states: {}
+
+  src/draft/exp-proofs/ux/workspace-onboarding-scope-acceptance: {}
 
   src/draft/projects/s0-03-hobo-core: {}
 
@@ -636,6 +650,8 @@ importers:
   src/draft/technical-proofs/anonymous-preview-path-contract: {}
 
   src/draft/technical-proofs/artifact-repo-port-contract: {}
+
+  src/draft/technical-proofs/aspire-hosting-testing-tracker-contract: {}
 
   src/draft/technical-proofs/auth-flag-readset-contract: {}
 
@@ -868,6 +884,8 @@ importers:
 
   src/draft/technical-proofs/eval-promotion-gate-contract: {}
 
+  src/draft/technical-proofs/evals-training-promotion-gates-poc: {}
+
   src/draft/technical-proofs/event-body-upcaster-gate: {}
 
   src/draft/technical-proofs/execution-host-provider-contract: {}
@@ -943,6 +961,10 @@ importers:
   src/draft/technical-proofs/guardrail-policy-gate-contract: {}
 
   src/draft/technical-proofs/hobo-612-dev-local-loop-poc: {}
+
+  src/draft/technical-proofs/hobo-700-runtime-code-mutation-pattern-adr-contract: {}
+
+  src/draft/technical-proofs/hobo-703-aspire-waitfor-parity-audit: {}
 
   src/draft/technical-proofs/hobo-add-install-verification-contract: {}
 
@@ -1162,6 +1184,8 @@ importers:
 
   src/draft/technical-proofs/internal-service-discovery-contract: {}
 
+  src/draft/technical-proofs/issue-worker-guardrail-mapping-contract: {}
+
   src/draft/technical-proofs/junction-connectivity-inference-spike: {}
 
   src/draft/technical-proofs/junction-connectivity-plan-contract: {}
@@ -1187,6 +1211,8 @@ importers:
   src/draft/technical-proofs/local-dev-test-authoring-contract: {}
 
   src/draft/technical-proofs/malicious-provider-containment-contract: {}
+
+  src/draft/technical-proofs/manifest-resource-intent-bridge-contract: {}
 
   src/draft/technical-proofs/matching-engine-skeleton-contract: {}
 
@@ -1272,6 +1298,8 @@ importers:
   src/draft/technical-proofs/paradigm-idiom-packages-contract: {}
 
   src/draft/technical-proofs/partial-realize-rollback-contract: {}
+
+  src/draft/technical-proofs/patterns-standards-cross-links: {}
 
   src/draft/technical-proofs/persona-operating-profile-contract: {}
 
@@ -1411,6 +1439,8 @@ importers:
 
   src/draft/technical-proofs/reliability-sla-rollup-contract: {}
 
+  src/draft/technical-proofs/rem-038-stage6-notify-separation: {}
+
   src/draft/technical-proofs/remediation-safety-gate-contract: {}
 
   src/draft/technical-proofs/replay-live-equivalence-poc: {}
@@ -1504,6 +1534,8 @@ importers:
 
   src/draft/technical-proofs/s5-02-wit-interface-conformance-coverage: {}
 
+  src/draft/technical-proofs/s5-03-forge-ingestion-contract: {}
+
   src/draft/technical-proofs/s5-05-forge-signing-registry-certification-contract: {}
 
   src/draft/technical-proofs/s6-02-control-plane-ha-contract: {}
@@ -1586,6 +1618,8 @@ importers:
 
   src/draft/technical-proofs/structured-log-pipeline-contract: {}
 
+  src/draft/technical-proofs/stub-implementation-generation-contract: {}
+
   src/draft/technical-proofs/stuck-rollout-convergence-contract: {}
 
   src/draft/technical-proofs/supervision-child-lifetime-contract: {}
@@ -1615,6 +1649,8 @@ importers:
   src/draft/technical-proofs/token-broker-ha-cache-contract: {}
 
   src/draft/technical-proofs/token-broker-skeleton-contract: {}
+
+  src/draft/technical-proofs/token-budget-governance-contract: {}
 
   src/draft/technical-proofs/token-replay-resistance-contract: {}
 
@@ -1664,6 +1700,8 @@ importers:
   src/draft/technical-proofs/websocket-streamer-fanout-contract: {}
 
   src/draft/technical-proofs/wire-version-negotiation-contract: {}
+
+  src/draft/technical-proofs/wit-port-stub-contract: {}
 
   src/draft/technical-proofs/workload-attestation-intake-contract: {}
 

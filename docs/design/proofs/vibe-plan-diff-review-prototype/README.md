@@ -17,7 +17,7 @@ that composes accepted M1 plan review states and annotation pseudocode.
 - Annotation pseudocode source: [`vibe-plan-annotation-pseudocode`](../vibe-plan-annotation-pseudocode/README.md).
 - Quickstart fixture source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
 - Source record: [`plan-diff-viewer.md`](../../plan-diff-viewer.md).
-- Executable proof: [`vibe-plan-diff-review-prototype`](../../../../src/draft/exp-proofs/vibe-plan-diff-review-prototype/README.md).
+- Executable proof: [`vibe-plan-diff-review-prototype`](../../../../src/draft/exp-proofs/ux/vibe-plan-diff-review-prototype/README.md).
 
 ## Acceptance Coverage
 

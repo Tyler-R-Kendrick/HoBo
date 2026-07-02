@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-410.
 
 Executable proof lives in
-[`src/draft/exp-proofs/deployment-dashboard-topology-scope-contract`](../../src/draft/exp-proofs/deployment-dashboard-topology-scope-contract/README.md).
+[`src/draft/exp-proofs/ux/deployment-dashboard-topology-scope-contract`](../../src/draft/exp-proofs/ux/deployment-dashboard-topology-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-410-deployment-dashboard-topology`](./proofs/hobo-410-deployment-dashboard-topology/README.md).
 
@@ -160,7 +160,7 @@ source of truth beside the event log and projections.
 M1/M2/M3/M4 design, implementation, UI, projection, provider, GraphQL, RBAC,
 status-page, and support workflow issues must wait until this M0 scope record is
 accepted. The executable guard in
-[`deployment-dashboard-topology-scope-contract`](../../src/draft/exp-proofs/deployment-dashboard-topology-scope-contract/README.md)
+[`deployment-dashboard-topology-scope-contract`](../../src/draft/exp-proofs/ux/deployment-dashboard-topology-scope-contract/README.md)
 rejects follow-up creation when M0 is not accepted and rejects scope text that
 tries to implement production UI, live providers, projection runtime, status
 publishing, or RBAC inside this M0 issue.

@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-484.
 
 Executable proof lives in
-[`src/draft/exp-proofs/v1-critical-path-dependency-map-contract`](../../src/draft/exp-proofs/v1-critical-path-dependency-map-contract/README.md).
+[`src/draft/exp-proofs/dx/v1-critical-path-dependency-map-contract`](../../src/draft/exp-proofs/dx/v1-critical-path-dependency-map-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-484-v1-critical-path-dependencies`](./proofs/hobo-484-v1-critical-path-dependencies/README.md).
 

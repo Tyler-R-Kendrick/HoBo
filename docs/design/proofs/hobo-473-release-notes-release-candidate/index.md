@@ -1,7 +1,7 @@
 # HOBO-473 Release Notes Release Candidate Evidence
 
 HOBO-473 is proven by the focused M3 contract at
-[`src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract/README.md).
+[`src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-release-candidate-evidence-contract/README.md).
 
 ## Evidence Summary
 

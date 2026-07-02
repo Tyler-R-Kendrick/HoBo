@@ -9,7 +9,7 @@ timestamp: 2026-06-30T00:00:00Z
 # HOBO-487 Customer Onboarding Script Proof
 
 HOBO-487 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/customer-onboarding-script-contract`](../../../../src/draft/exp-proofs/customer-onboarding-script-contract/README.md)
+[`src/draft/exp-proofs/cx/customer-onboarding-script-contract`](../../../../src/draft/exp-proofs/cx/customer-onboarding-script-contract/README.md)
 and the durable script record at [customer-onboarding.md](../../customer-onboarding.md).
 
 ## Acceptance Evidence

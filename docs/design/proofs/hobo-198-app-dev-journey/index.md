@@ -1,7 +1,7 @@
 # HOBO-198 App Developer Journey Proof
 
 HOBO-198 is proven by the focused POC at
-[`src/draft/exp-proofs/app-dev-journey-contract`](../../../../src/draft/exp-proofs/app-dev-journey-contract/README.md).
+[`src/draft/exp-proofs/dx/app-dev-journey-contract`](../../../../src/draft/exp-proofs/dx/app-dev-journey-contract/README.md).
 
 ## Acceptance Evidence
 

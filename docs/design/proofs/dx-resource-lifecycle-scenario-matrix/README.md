@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 `HOBO-567` creates the canonical resource lifecycle DX matrix for the HoBo
 greenfield design. The executable proof lives in
-`src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix`.
+`src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix`.
 
 ## Acceptance evidence
 
@@ -36,11 +36,11 @@ greenfield design. The executable proof lives in
 ## Verification
 
 ```bash
-pnpm run test:file src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix/test/dx-resource-lifecycle-scenario-matrix.test.ts
+pnpm run test:file src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix/test/dx-resource-lifecycle-scenario-matrix.test.ts
 ```
 
 Architecture and boundary artifacts:
 
-- Protobuf: `src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix/architecture/dx_resource_lifecycle_scenario_matrix.proto`
-- CUE: `src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix/architecture/dx_resource_lifecycle_scenario_matrix.cue`
-- Pact-style fixture: `src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix/architecture/pacts/dx_resource_lifecycle_scenario_matrix.pact.json`
+- Protobuf: `src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix/architecture/dx_resource_lifecycle_scenario_matrix.proto`
+- CUE: `src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix/architecture/dx_resource_lifecycle_scenario_matrix.cue`
+- Pact-style fixture: `src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix/architecture/pacts/dx_resource_lifecycle_scenario_matrix.pact.json`

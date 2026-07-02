@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-416.
 
 Executable proof lives in
-[`src/draft/exp-proofs/member-rbac-administration-scope`](../../src/draft/exp-proofs/member-rbac-administration-scope/README.md).
+[`src/draft/exp-proofs/ux/member-rbac-administration-scope`](../../src/draft/exp-proofs/ux/member-rbac-administration-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-416-member-rbac-administration`](./proofs/hobo-416-member-rbac-administration/README.md).
 

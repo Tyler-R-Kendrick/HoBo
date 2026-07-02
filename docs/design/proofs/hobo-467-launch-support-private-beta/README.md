@@ -9,7 +9,7 @@ timestamp: 2026-06-30T00:00:00Z
 # HOBO-467 Launch Support Private Beta Evidence
 
 HOBO-467 is proven by the focused M2 contract at
-[`src/draft/exp-proofs/launch-support-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/launch-support-private-beta-evidence-contract/README.md).
+[`src/draft/exp-proofs/cx/launch-support-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/cx/launch-support-private-beta-evidence-contract/README.md).
 
 ## Evidence Summary
 

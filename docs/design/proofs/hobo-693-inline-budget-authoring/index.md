@@ -5,7 +5,7 @@ and [ADR-0039](../../adr/02-identity-security.md#adr-0039) §4
 (`costAvailabilityProfile` inline authoring).
 
 The executable POC in
-[`src/draft/exp-proofs/inline-budget-authoring`](../../../../src/draft/exp-proofs/inline-budget-authoring/README.md)
+[`src/draft/exp-proofs/dx/inline-budget-authoring`](../../../../src/draft/exp-proofs/dx/inline-budget-authoring/README.md)
 proves REM-028 acceptance:
 
 | Acceptance | Test evidence |

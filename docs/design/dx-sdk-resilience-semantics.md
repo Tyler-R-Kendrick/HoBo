@@ -125,7 +125,7 @@ Required negative fixtures:
 
 | Issue | Target path | Required command | Scope guard |
 |---|---|---|---|
-| HOBO-514 | `src/draft/exp-proofs/dx-sdk-resilience-scope-contract` | `npm.cmd --prefix src\draft\exp-proofs\dx-sdk-resilience-scope-contract test` | Parent scope only: no SDK helpers, no conformance rewrite, no runtime engine. |
+| HOBO-514 | `src/draft/exp-proofs/dx/dx-sdk-resilience-scope-contract` | `npm.cmd --prefix src\draft\exp-proofs\dx-sdk-resilience-scope-contract test` | Parent scope only: no SDK helpers, no conformance rewrite, no runtime engine. |
 | HOBO-516 | `src/draft/technical-proofs/resilience-semantics-annex` | `npm.cmd --prefix src\draft\technical-proofs\resilience-semantics-annex test` | No Effect/XState dependency; no production conformance package change. |
 | HOBO-517 | `src/draft/technical-proofs/sdk-idiom-conformance-gate` | `npm.cmd --prefix src\draft\technical-proofs\sdk-idiom-conformance-gate test` | Do not claim SDK helper parity without resilience vectors. |
 | HOBO-518 | focused draft package or HOBO-516 extension | focused package test plus `npm.cmd run docs:design-lint` | No generic statechart interpreter and no XState dependency. |
@@ -164,7 +164,7 @@ issue matrix, design discoverability, initiative linkage, and adversarial rules
 must be stable before the later SDK and conformance work continues.
 
 The executable parent proof lives at
-[`../../src/draft/exp-proofs/dx-sdk-resilience-scope-contract`](../../src/draft/exp-proofs/dx-sdk-resilience-scope-contract/README.md).
+[`../../src/draft/exp-proofs/dx/dx-sdk-resilience-scope-contract`](../../src/draft/exp-proofs/dx/dx-sdk-resilience-scope-contract/README.md).
 It verifies:
 
 - child issues HOBO-515 through HOBO-520 span M0 through M4;

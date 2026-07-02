@@ -13,7 +13,7 @@ M1-M4 work can depend on beta, release-candidate, GA, or patch channel claims.
 ## Evidence
 
 - Design record: [`docs/design/release-channels.md`](../../release-channels.md)
-- Executable POC: [`src/draft/exp-proofs/release-channels-scope`](../../../../src/draft/exp-proofs/release-channels-scope/README.md)
+- Executable POC: [`src/draft/exp-proofs/dx/release-channels-scope`](../../../../src/draft/exp-proofs/dx/release-channels-scope/README.md)
 - Issue: HOBO-431
 
 ## Acceptance Mapping

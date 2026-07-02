@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-500.
 
 Executable proof lives in
-[`src/draft/exp-proofs/v1-e2e-persona-matrix-contract`](../../src/draft/exp-proofs/v1-e2e-persona-matrix-contract/README.md).
+[`src/draft/exp-proofs/dx/v1-e2e-persona-matrix-contract`](../../src/draft/exp-proofs/dx/v1-e2e-persona-matrix-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-500-launch-e2e-persona-matrix`](./proofs/hobo-500-launch-e2e-persona-matrix/README.md).
 

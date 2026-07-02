@@ -15,10 +15,10 @@ handoff records.
 ## Evidence
 
 - Proof package:
-  [`sdk-to-cli-golden-path`](../../../../src/draft/exp-proofs/sdk-to-cli-golden-path/README.md)
+  [`sdk-to-cli-golden-path`](../../../../src/draft/exp-proofs/api/sdk-to-cli-golden-path/README.md)
 - Fixture id: `dx.lifecycle.shop-api.v1`
 - Source record:
-  `src/draft/exp-proofs/sdk-to-cli-golden-path/src/sdk-to-cli-golden-path.ts#createSdkToCliGoldenPathProof`
+  `src/draft/exp-proofs/api/sdk-to-cli-golden-path/src/sdk-to-cli-golden-path.ts#createSdkToCliGoldenPathProof`
 - Contract artifacts:
   `architecture/sdk_to_cli_golden_path.proto`,
   `architecture/sdk_to_cli_golden_path.cue`, and

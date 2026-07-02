@@ -15,7 +15,7 @@ checks across the downstream vibe artifact family.
 
 - Source checklist: [`vibe-accessibility-usability-checklist`](../vibe-accessibility-usability-checklist/README.md).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-representative-a11y-usability-checks`](../../../../src/draft/exp-proofs/vibe-representative-a11y-usability-checks/README.md).
+- Executable proof: [`vibe-representative-a11y-usability-checks`](../../../../src/draft/exp-proofs/ux/vibe-representative-a11y-usability-checks/README.md).
 
 ## Acceptance Coverage
 
@@ -37,5 +37,5 @@ evidence.
 ## Verification
 
 ```powershell
-pnpm.cmd run test:file src/draft/exp-proofs/vibe-representative-a11y-usability-checks/test/vibe-representative-a11y-usability-checks.test.ts
+pnpm.cmd run test:file src/draft/exp-proofs/ux/vibe-representative-a11y-usability-checks/test/vibe-representative-a11y-usability-checks.test.ts
 ```

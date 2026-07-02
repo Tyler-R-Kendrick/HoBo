@@ -7,7 +7,7 @@ contractual support SLAs, and paid support terms out of scope.
 
 ## Evidence
 
-- Executable proof: [`launch-support-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/launch-support-ga-handoff-evidence-contract/README.md)
+- Executable proof: [`launch-support-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/cx/launch-support-ga-handoff-evidence-contract/README.md)
 - Design record: [`launch-support-escalation.md`](../../launch-support-escalation.md#m4-ga-handoff-evidence)
 - Parent readiness update: [Linear initiative update](https://linear.app/quickdeploy-ai/initiative/hobo-v1-release-readiness-ee7ae99011b6/activity#initiative-update-bb231636)
 - Focused gate: `pnpm.cmd --prefix src\draft\exp-proofs\launch-support-ga-handoff-evidence-contract test`

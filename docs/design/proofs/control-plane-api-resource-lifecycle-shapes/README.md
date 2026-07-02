@@ -11,7 +11,7 @@ This proof records the shared control-plane API shape examples for resource
 lifecycle work.
 
 Package:
-[`src/draft/exp-proofs/control-plane-api-resource-lifecycle-shapes`](../../../../src/draft/exp-proofs/control-plane-api-resource-lifecycle-shapes/README.md).
+[`src/draft/exp-proofs/api/control-plane-api-resource-lifecycle-shapes`](../../../../src/draft/exp-proofs/api/control-plane-api-resource-lifecycle-shapes/README.md).
 
 ## Acceptance Map
 

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-510 AI Generation Launch Posture Proof
 
 HOBO-510 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/ai-generation-launch-posture-contract`](../../../../src/draft/exp-proofs/ai-generation-launch-posture-contract/README.md)
+[`src/draft/exp-proofs/cx/ai-generation-launch-posture-contract`](../../../../src/draft/exp-proofs/cx/ai-generation-launch-posture-contract/README.md)
 and the durable scope record at
 [`ai-generation-launch-posture.md`](../../ai-generation-launch-posture.md).
 

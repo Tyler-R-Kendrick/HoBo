@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-575.
 
 Package:
-[`src/draft/exp-proofs/cli-migration-transcript-prototype`](../../../../src/draft/exp-proofs/cli-migration-transcript-prototype/README.md).
+[`src/draft/exp-proofs/dx/cli-migration-transcript-prototype`](../../../../src/draft/exp-proofs/dx/cli-migration-transcript-prototype/README.md).
 
 ## Proven Acceptance
 

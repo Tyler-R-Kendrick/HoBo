@@ -1,7 +1,7 @@
 # HOBO-478 Legal Privacy GA Handoff Evidence
 
 HOBO-478 is proven by the focused M4 contract at
-[`src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/legal-privacy-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/legal-privacy-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/cx/legal-privacy-ga-handoff-evidence-contract/README.md)
 and the durable M4 gate record in
 [`legal-privacy-terms-readiness.md`](../../legal-privacy-terms-readiness.md#m4-ga-handoff-evidence-gate).
 

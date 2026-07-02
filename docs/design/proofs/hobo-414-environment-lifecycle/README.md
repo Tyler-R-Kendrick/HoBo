@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-414 Environment Lifecycle M0 Scope Proof
 
 HOBO-414 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/environment-lifecycle-scope`](../../../../src/draft/exp-proofs/environment-lifecycle-scope/README.md)
+[`src/draft/exp-proofs/dx/environment-lifecycle-scope`](../../../../src/draft/exp-proofs/dx/environment-lifecycle-scope/README.md)
 and the durable scope record at [environment-lifecycle.md](../../environment-lifecycle.md).
 
 ## Acceptance Evidence

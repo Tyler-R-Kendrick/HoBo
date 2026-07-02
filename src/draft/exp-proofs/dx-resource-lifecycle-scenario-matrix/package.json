@@ -1,8 +1,0 @@
-{
-  "name": "@hobo/draft-dx-resource-lifecycle-scenario-matrix",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix/test/dx-resource-lifecycle-scenario-matrix.test.ts"
-  }
-}

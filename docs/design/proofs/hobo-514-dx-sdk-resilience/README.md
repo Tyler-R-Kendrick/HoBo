@@ -18,7 +18,7 @@ conformance, lifecycle, supervision, and diagnostic work continues.
 - Linear: HOBO-514
 - Design record: [DX SDK resilience semantics](../../dx-sdk-resilience-semantics.md)
 - SDK contract map: [SDK contracts](../../sdk-contracts.md)
-- Proof package: [`dx-sdk-resilience-scope-contract`](../../../../src/draft/exp-proofs/dx-sdk-resilience-scope-contract/README.md)
+- Proof package: [`dx-sdk-resilience-scope-contract`](../../../../src/draft/exp-proofs/dx/dx-sdk-resilience-scope-contract/README.md)
 
 ## Acceptance Evidence
 

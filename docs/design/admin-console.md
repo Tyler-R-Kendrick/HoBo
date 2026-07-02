@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-425.
 
 Executable proof lives in
-[`src/draft/exp-proofs/admin-console-scope`](../../src/draft/exp-proofs/admin-console-scope/README.md).
+[`src/draft/exp-proofs/ux/admin-console-scope`](../../src/draft/exp-proofs/ux/admin-console-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-425-admin-console`](./proofs/hobo-425-admin-console/README.md).
 

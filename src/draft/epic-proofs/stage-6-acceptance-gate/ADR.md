@@ -21,5 +21,5 @@ Drill fails if any prior gate record is not `pass`. Adversarial `priorGateRegres
 Replace fixture adapters with merged blocker seams while keeping the same `AcceptanceCheckId` enum and PACT inventory:
 
 - DR: `src/draft/technical-proofs/multi-region-dr-replay-contract` (HOBO-659)
-- Dashboard: `src/draft/exp-proofs/full-dashboard-projection-views-contract` (HOBO-662)
+- Dashboard: `src/draft/exp-proofs/ux/full-dashboard-projection-views-contract` (HOBO-662)
 - Operator Crew: `src/draft/technical-proofs/s6-09-operator-crew-yard-services-contract` (HOBO-664)

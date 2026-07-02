@@ -11,11 +11,11 @@ Source issue: HOBO-521.
 
 Executable proofs:
 
-- [`meta-cloud-broker-scope-contract`](../../src/draft/exp-proofs/meta-cloud-broker-scope-contract/README.md)
+- [`meta-cloud-broker-scope-contract`](../../src/draft/exp-proofs/api/meta-cloud-broker-scope-contract/README.md)
 - [`meta-cloud-broker-artifact-contract`](../../src/draft/technical-proofs/meta-cloud-broker-artifact-contract/README.md)
 - [`yard-receipt-consumption-contract`](../../src/draft/technical-proofs/yard-receipt-consumption-contract/README.md)
 - [`meta-cloud-broker-resolution-contract`](../../src/draft/technical-proofs/meta-cloud-broker-resolution-contract/README.md)
-- [`meta-cloud-broker-rejection-matrix-contract`](../../src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract/README.md)
+- [`meta-cloud-broker-rejection-matrix-contract`](../../src/draft/exp-proofs/api/meta-cloud-broker-rejection-matrix-contract/README.md)
 - [`broker-receipt-integrity-contract`](../../src/draft/technical-proofs/broker-receipt-integrity-contract/README.md)
 - [`broker-environment-publication-contract`](../../src/draft/technical-proofs/broker-environment-publication-contract/README.md)
 - [`broker-admin-controls-contract`](../../src/draft/technical-proofs/broker-admin-controls-contract/README.md)
@@ -180,7 +180,7 @@ downstream apply-time policy boundary rather than a broker receipt-integrity sho
 ## M4 Hosted Broker GA Handoff Evidence
 
 HOBO-530 records the hosted broker GA handoff evidence with
-[`hosted-broker-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/hosted-broker-ga-handoff-evidence-contract/README.md).
+[`hosted-broker-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/cx/hosted-broker-ga-handoff-evidence-contract/README.md).
 The handoff checklist names the Meta-cloud Broker, Dogfood Yard, Release Notes, Launch Support, and
 provider/catalog owner lanes before any GA language can be used.
 

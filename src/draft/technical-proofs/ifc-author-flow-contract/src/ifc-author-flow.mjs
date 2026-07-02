@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.ts";
 import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.ts";
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.ts";
-import { inferConnectorScopes } from "../../../exp-proofs/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
+import { inferConnectorScopes } from "../../../exp-proofs/api/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { generateSdkCodegenArtifacts } from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.ts";
 
 const SAMPLE_BINDLE_ID = "support-desk";

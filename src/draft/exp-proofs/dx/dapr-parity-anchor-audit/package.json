@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-dapr-parity-anchor-audit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/dx/dapr-parity-anchor-audit/test/dapr-parity-anchor-audit.test.ts"
+  }
+}

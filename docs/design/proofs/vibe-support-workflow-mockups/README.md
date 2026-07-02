@@ -17,7 +17,7 @@ evidence linking, owner routing, customer-safe updates, and closure mockups.
 - Support SLA source: [`support-sla-channels.md`](../../support-sla-channels.md).
 - Incident handoff source: [`incident-communications.md`](../../incident-communications.md).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-support-workflow-mockups`](../../../../src/draft/exp-proofs/vibe-support-workflow-mockups/README.md).
+- Executable proof: [`vibe-support-workflow-mockups`](../../../../src/draft/exp-proofs/ux/vibe-support-workflow-mockups/README.md).
 
 ## Acceptance Coverage
 

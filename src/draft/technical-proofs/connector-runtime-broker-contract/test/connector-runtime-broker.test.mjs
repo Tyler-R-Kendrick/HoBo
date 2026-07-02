@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
-import { inferConnectorScopes } from "../../../exp-proofs/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
+import { inferConnectorScopes } from "../../../exp-proofs/api/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { parseJwtBearerGrantRequest } from "../../id-jag-token-exchange-contract/src/id-jag-token-exchange.ts";
 import { createOutboundXaaTokenBroker } from "../../outbound-xaa-token-exchange-contract/src/outbound-xaa-token-exchange.ts";
 import { createConnectorRuntime } from "../src/connector-runtime-broker.mjs";

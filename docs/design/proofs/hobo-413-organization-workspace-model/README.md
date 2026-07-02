@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-413 Organization & Workspace Model Proof
 
 HOBO-413 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/organization-workspace-model-contract`](../../../../src/draft/exp-proofs/organization-workspace-model-contract/README.md)
+[`src/draft/exp-proofs/api/organization-workspace-model-contract`](../../../../src/draft/exp-proofs/api/organization-workspace-model-contract/README.md)
 and the durable scope record at
 [`organization-workspace-model.md`](../../organization-workspace-model.md).
 

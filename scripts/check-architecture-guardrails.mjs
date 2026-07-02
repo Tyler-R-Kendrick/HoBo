@@ -310,13 +310,19 @@ function implementationPackageRoot(file) {
 
   if (parts[0] !== "src" || parts[1] !== "draft" || !parts[2]) return undefined;
 
-  if (DRAFT_PROOF_KINDS.has(parts[2]) && parts[3]) {
-    return parts.slice(0, 4).join("/");
+  // Aggregate metadata (underscore-prefixed like _templates/_registry.md) and loose files
+  // directly under src/draft/<kind>/ are never proof packages.
+  const isPackageDir = (segment, next) => segment && !segment.startsWith("_") && next !== undefined;
+
+  if (parts[2] === "exp-proofs" && parts[3] && !parts[3].startsWith("_")) {
+    return isPackageDir(parts[4], parts[5]) ? parts.slice(0, 5).join("/") : undefined;
   }
 
-  return parts[2] && parts[2] !== "README.md" && parts[2] !== "AGENTS.md"
-    ? parts.slice(0, 3).join("/")
-    : undefined;
+  if (DRAFT_PROOF_KINDS.has(parts[2])) {
+    return isPackageDir(parts[3], parts[4]) ? parts.slice(0, 4).join("/") : undefined;
+  }
+
+  return undefined;
 }
 
 function split(output) {

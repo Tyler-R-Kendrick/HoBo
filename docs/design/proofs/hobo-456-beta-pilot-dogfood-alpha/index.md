@@ -1,7 +1,7 @@
 # HOBO-456 Beta Pilot Dogfood/Alpha Evidence Proof
 
 HOBO-456 is proven by the focused M1 contract at
-[`src/draft/exp-proofs/beta-pilot-dogfood-alpha-evidence-contract`](../../../../src/draft/exp-proofs/beta-pilot-dogfood-alpha-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/beta-pilot-dogfood-alpha-evidence-contract`](../../../../src/draft/exp-proofs/cx/beta-pilot-dogfood-alpha-evidence-contract/README.md)
 and the durable scope record at [beta-pilot-feedback.md](../../beta-pilot-feedback.md).
 
 ## Acceptance Evidence

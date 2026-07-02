@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-440 Performance & Load Tests M0 Scope Proof
 
 HOBO-440 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/performance-load-tests-scope-contract`](../../../../src/draft/exp-proofs/performance-load-tests-scope-contract/README.md)
+[`src/draft/exp-proofs/dx/performance-load-tests-scope-contract`](../../../../src/draft/exp-proofs/dx/performance-load-tests-scope-contract/README.md)
 and the durable scope record at [performance-load-tests.md](../../performance-load-tests.md).
 
 ## Acceptance Evidence

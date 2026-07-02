@@ -1,7 +1,7 @@
 # HOBO-474 Launch Support Release Candidate Evidence
 
 HOBO-474 is proven by the focused M3 contract at
-[`src/draft/exp-proofs/launch-support-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/launch-support-release-candidate-evidence-contract/README.md).
+[`src/draft/exp-proofs/cx/launch-support-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/cx/launch-support-release-candidate-evidence-contract/README.md).
 
 ## Evidence Summary
 

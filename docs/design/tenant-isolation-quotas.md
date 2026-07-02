@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-415
 
 Executable proof:
-[`tenant-isolation-quotas-scope`](../../src/draft/exp-proofs/tenant-isolation-quotas-scope/README.md)
+[`tenant-isolation-quotas-scope`](../../src/draft/exp-proofs/dx/tenant-isolation-quotas-scope/README.md)
 
 Branch evidence:
 [`proof record`](./proofs/hobo-415-tenant-isolation-quotas/README.md)

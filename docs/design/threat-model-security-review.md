@@ -64,7 +64,7 @@ M1 evidence required before follow-up work can start:
 - legal/privacy/incident communication owner handoff.
 
 Executable proof:
-[`threat-model-security-review-scope-acceptance`](../../src/draft/exp-proofs/threat-model-security-review-scope-acceptance/README.md).
+[`threat-model-security-review-scope-acceptance`](../../src/draft/exp-proofs/dx/threat-model-security-review-scope-acceptance/README.md).
 
 ## Intake Fields
 
@@ -101,4 +101,4 @@ required gates.
 ## Proof
 
 The M0 scope proof is
-[`threat-model-security-review-scope-acceptance`](../../src/draft/exp-proofs/threat-model-security-review-scope-acceptance/README.md).
+[`threat-model-security-review-scope-acceptance`](../../src/draft/exp-proofs/dx/threat-model-security-review-scope-acceptance/README.md).

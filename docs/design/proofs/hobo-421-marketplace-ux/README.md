@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-421 Marketplace UX Proof
 
 HOBO-421 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/marketplace-ux-scope-contract`](../../../../src/draft/exp-proofs/marketplace-ux-scope-contract/README.md)
+[`src/draft/exp-proofs/ux/marketplace-ux-scope-contract`](../../../../src/draft/exp-proofs/ux/marketplace-ux-scope-contract/README.md)
 and the durable scope record at
 [marketplace-ux.md](../../marketplace-ux.md).
 

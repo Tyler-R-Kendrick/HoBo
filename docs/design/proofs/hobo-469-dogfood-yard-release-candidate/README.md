@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-469 Dogfood Yard Release-Candidate Proof
 
 HOBO-469 is proven by the focused M3 contract at
-[`src/draft/exp-proofs/dogfood-yard-release-candidate-contract`](../../../../src/draft/exp-proofs/dogfood-yard-release-candidate-contract/README.md)
+[`src/draft/exp-proofs/dx/dogfood-yard-release-candidate-contract`](../../../../src/draft/exp-proofs/dx/dogfood-yard-release-candidate-contract/README.md)
 and the durable source record at [dogfood-yard.md](../../dogfood-yard.md#release-candidate-evidence-gate).
 
 ## Acceptance Evidence

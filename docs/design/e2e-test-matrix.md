@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-438.
 
 Executable proof lives in
-[`src/draft/exp-proofs/e2e-test-matrix-scope-acceptance`](../../src/draft/exp-proofs/e2e-test-matrix-scope-acceptance/README.md).
+[`src/draft/exp-proofs/dx/e2e-test-matrix-scope-acceptance`](../../src/draft/exp-proofs/dx/e2e-test-matrix-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-438-e2e-test-matrix`](./proofs/hobo-438-e2e-test-matrix/README.md).
 

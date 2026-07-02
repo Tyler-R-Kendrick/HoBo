@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 HOBO-573 proves the terminal-first deploy vibe prototype as an independent experience proof. The
 source package is
-[`src/draft/exp-proofs/cli-deploy-transcript-prototype`](../../../../src/draft/exp-proofs/cli-deploy-transcript-prototype/README.md).
+[`src/draft/exp-proofs/dx/cli-deploy-transcript-prototype`](../../../../src/draft/exp-proofs/dx/cli-deploy-transcript-prototype/README.md).
 
 ## Acceptance Mapping
 

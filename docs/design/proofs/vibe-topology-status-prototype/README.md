@@ -17,7 +17,7 @@ over accepted projection snapshots.
 - Freshness/RBAC fixture source: [`vibe-dashboard-freshness-rbac-fixtures`](../vibe-dashboard-freshness-rbac-fixtures/README.md).
 - Quickstart fixture source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
 - Source record: [`deployment-dashboard-topology-explorer.md`](../../deployment-dashboard-topology-explorer.md).
-- Executable proof: [`vibe-topology-status-prototype`](../../../../src/draft/exp-proofs/vibe-topology-status-prototype/README.md).
+- Executable proof: [`vibe-topology-status-prototype`](../../../../src/draft/exp-proofs/ux/vibe-topology-status-prototype/README.md).
 
 ## Acceptance Coverage
 

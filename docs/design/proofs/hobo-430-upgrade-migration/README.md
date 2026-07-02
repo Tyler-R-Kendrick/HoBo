@@ -15,7 +15,7 @@ Migration Engine design/build work can fan out.
 - Design record:
   [`docs/design/upgrade-migration-engine.md`](../../upgrade-migration-engine.md)
 - Executable contract:
-  [`src/draft/exp-proofs/upgrade-migration-scope-contract`](../../../../src/draft/exp-proofs/upgrade-migration-scope-contract/README.md)
+  [`src/draft/exp-proofs/cx/upgrade-migration-scope-contract`](../../../../src/draft/exp-proofs/cx/upgrade-migration-scope-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

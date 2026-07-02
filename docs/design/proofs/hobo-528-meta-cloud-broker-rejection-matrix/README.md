@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-528 Meta-cloud Broker Rejection Matrix Proof
 
 HOBO-528 is proven by the focused M3 contract at
-[`src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract`](../../../../src/draft/exp-proofs/meta-cloud-broker-rejection-matrix-contract/README.md)
+[`src/draft/exp-proofs/api/meta-cloud-broker-rejection-matrix-contract`](../../../../src/draft/exp-proofs/api/meta-cloud-broker-rejection-matrix-contract/README.md)
 and the durable boundary record at [meta-cloud-broker.md](../../meta-cloud-broker.md).
 
 ## Acceptance Evidence

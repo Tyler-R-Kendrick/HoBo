@@ -16,7 +16,7 @@ blocked, destructive, stale, and unknown evidence states.
 - Source record: [`plan-diff-viewer.md`](../../plan-diff-viewer.md).
 - DX parity source: [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-plan-review-states`](../../../../src/draft/exp-proofs/vibe-plan-review-states/README.md).
+- Executable proof: [`vibe-plan-review-states`](../../../../src/draft/exp-proofs/ux/vibe-plan-review-states/README.md).
 
 ## Acceptance Coverage
 

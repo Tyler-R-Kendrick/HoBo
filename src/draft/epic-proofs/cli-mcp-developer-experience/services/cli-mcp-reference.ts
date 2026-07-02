@@ -14,7 +14,7 @@ import {
   runAnonymousNpxUpScenario,
   runBlockedDeployGateScenario,
   runDeclinedCardScenario,
-} from "../../../exp-proofs/app-dev-journey-contract/src/app-dev-journey.js";
+} from "../../../exp-proofs/dx/app-dev-journey-contract/src/app-dev-journey.js";
 import {
   createHealthyDoctorFixture,
   runDoctor,
@@ -48,21 +48,21 @@ import {
   runScriptedGitOpsCiScenario,
   runCanDeploySkewScenario,
   runRollbackScenario,
-} from "../../../exp-proofs/gitops-ci-journey-contract/src/gitops-ci-journey.js";
+} from "../../../exp-proofs/dx/gitops-ci-journey-contract/src/gitops-ci-journey.js";
 import {
   runSecopsPolicyAuditJourney,
   replaySecopsPolicyDecision,
-} from "../../../exp-proofs/secops-policy-audit-journey-contract/src/secops-policy-audit-journey.js";
+} from "../../../exp-proofs/dx/secops-policy-audit-journey-contract/src/secops-policy-audit-journey.js";
 import {
   runSreDriftRemediationJourney,
   replaySreDriftRemediationJourney,
   triageUnclassifiableIncident,
-} from "../../../exp-proofs/sre-drift-remediation-journey-contract/src/sre-drift-remediation-journey.js";
+} from "../../../exp-proofs/dx/sre-drift-remediation-journey-contract/src/sre-drift-remediation-journey.js";
 import {
   runHealthyCanaryJourney,
   runSloBurnRollbackJourney,
   reconstructRolloutState,
-} from "../../../exp-proofs/devops-canary-rollout-journey-contract/src/devops-canary-rollout-journey.js";
+} from "../../../exp-proofs/dx/devops-canary-rollout-journey-contract/src/devops-canary-rollout-journey.js";
 
 export const EPIC_REFERENCE = Object.freeze({
   epicId: "4783497d-6376-41ef-bf18-9c1fa068ade8",

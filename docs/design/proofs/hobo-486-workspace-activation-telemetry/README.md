@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-486 Workspace Activation Telemetry Proof
 
 HOBO-486 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/workspace-activation-telemetry-contract`](../../../../src/draft/exp-proofs/workspace-activation-telemetry-contract/README.md)
+[`src/draft/exp-proofs/cx/workspace-activation-telemetry-contract`](../../../../src/draft/exp-proofs/cx/workspace-activation-telemetry-contract/README.md)
 and the durable scope record at
 [`workspace-activation-telemetry-contract.md`](../../workspace-activation-telemetry-contract.md).
 

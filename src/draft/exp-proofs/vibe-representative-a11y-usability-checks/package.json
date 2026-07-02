@@ -1,8 +1,0 @@
-{
-  "name": "@hobo/draft-vibe-representative-a11y-usability-checks",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-representative-a11y-usability-checks/test/vibe-representative-a11y-usability-checks.test.ts"
-  }
-}

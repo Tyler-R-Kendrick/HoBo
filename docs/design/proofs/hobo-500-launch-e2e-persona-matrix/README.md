@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-500 Launch E2E Persona Matrix Proof
 
 HOBO-500 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/v1-e2e-persona-matrix-contract`](../../../../src/draft/exp-proofs/v1-e2e-persona-matrix-contract/README.md)
+[`src/draft/exp-proofs/dx/v1-e2e-persona-matrix-contract`](../../../../src/draft/exp-proofs/dx/v1-e2e-persona-matrix-contract/README.md)
 and the durable design record at
 [`launch-e2e-persona-matrix.md`](../../launch-e2e-persona-matrix.md).
 

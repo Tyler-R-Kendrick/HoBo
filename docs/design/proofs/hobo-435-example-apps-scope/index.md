@@ -1,7 +1,7 @@
 # HOBO-435 Example Apps M0 Scope Proof
 
 HOBO-435 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/example-apps-scope-acceptance`](../../../../src/draft/exp-proofs/example-apps-scope-acceptance/README.md)
+[`src/draft/exp-proofs/dx/example-apps-scope-acceptance`](../../../../src/draft/exp-proofs/dx/example-apps-scope-acceptance/README.md)
 and the durable scope record at [example-apps.md](../../example-apps.md).
 
 ## Acceptance Evidence

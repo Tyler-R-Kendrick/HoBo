@@ -2,7 +2,7 @@
 
 This proof makes the Plan 29 default role/action matrix and SoD obligations
 executable in
-[`src/draft/exp-proofs/default-role-action-matrix-contract`](../../../../src/draft/exp-proofs/default-role-action-matrix-contract/README.md).
+[`src/draft/exp-proofs/dx/default-role-action-matrix-contract`](../../../../src/draft/exp-proofs/dx/default-role-action-matrix-contract/README.md).
 
 ## Acceptance Mapping
 
@@ -26,5 +26,5 @@ path remain owned by their separate Linear slices.
 ## Verification
 
 ```sh
-npm.cmd --prefix src/draft/exp-proofs/default-role-action-matrix-contract test
+npm.cmd --prefix src/draft/exp-proofs/dx/default-role-action-matrix-contract test
 ```

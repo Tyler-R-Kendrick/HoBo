@@ -14,7 +14,7 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-449
 - Draft package:
-  [`src/draft/exp-proofs/customer-onboarding-scope-acceptance`](../../../../src/draft/exp-proofs/customer-onboarding-scope-acceptance/README.md)
+  [`src/draft/exp-proofs/cx/customer-onboarding-scope-acceptance`](../../../../src/draft/exp-proofs/cx/customer-onboarding-scope-acceptance/README.md)
 - Focused gate:
   `pnpm.cmd --prefix src\draft\customer-onboarding-scope-acceptance test`
 

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-425 Admin Console M0 Scope Proof
 
 HOBO-425 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/admin-console-scope`](../../../../src/draft/exp-proofs/admin-console-scope/README.md)
+[`src/draft/exp-proofs/ux/admin-console-scope`](../../../../src/draft/exp-proofs/ux/admin-console-scope/README.md)
 and the durable scope record at [admin-console.md](../../admin-console.md).
 
 ## Acceptance Evidence

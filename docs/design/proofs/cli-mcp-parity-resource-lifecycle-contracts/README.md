@@ -12,7 +12,7 @@ and MCP examples must reuse.
 
 ## Evidence
 
-- Proof package: [`../../../../src/draft/exp-proofs/cli-mcp-parity-resource-lifecycle-contracts/README.md`](../../../../src/draft/exp-proofs/cli-mcp-parity-resource-lifecycle-contracts/README.md)
+- Proof package: [`../../../../src/draft/exp-proofs/ax/cli-mcp-parity-resource-lifecycle-contracts/README.md`](../../../../src/draft/exp-proofs/ax/cli-mcp-parity-resource-lifecycle-contracts/README.md)
 - Source designs:
   - [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07)
   - [`sdk-api.md#plan-02`](../../sdk-api.md#plan-02)

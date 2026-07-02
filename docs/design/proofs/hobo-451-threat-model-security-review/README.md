@@ -14,7 +14,7 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-451
 - Draft package:
-  [`src/draft/exp-proofs/threat-model-security-review-scope-acceptance`](../../../../src/draft/exp-proofs/threat-model-security-review-scope-acceptance/README.md)
+  [`src/draft/exp-proofs/dx/threat-model-security-review-scope-acceptance`](../../../../src/draft/exp-proofs/dx/threat-model-security-review-scope-acceptance/README.md)
 - Focused gate:
   `pnpm.cmd --dir src\draft\exp-proofs\threat-model-security-review-scope-acceptance test`
 

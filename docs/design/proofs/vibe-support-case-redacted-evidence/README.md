@@ -21,7 +21,7 @@ closure examples.
 - Quickstart source consumed by the upstream support workflow proof:
   [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
 - Executable proof:
-  [`vibe-support-case-redacted-evidence`](../../../../src/draft/exp-proofs/vibe-support-case-redacted-evidence/README.md).
+  [`vibe-support-case-redacted-evidence`](../../../../src/draft/exp-proofs/ux/vibe-support-case-redacted-evidence/README.md).
 
 ## Acceptance Coverage
 

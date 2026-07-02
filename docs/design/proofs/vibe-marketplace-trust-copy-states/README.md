@@ -9,7 +9,7 @@ tags: [hobo, proof, marketplace, trust-copy]
 
 HOBO-547 proves a marketplace trust-copy state register as an independent M1
 experience proof. The implementation package is
-[`src/draft/exp-proofs/vibe-marketplace-trust-copy-states`](../../../../src/draft/exp-proofs/vibe-marketplace-trust-copy-states/README.md).
+[`src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states`](../../../../src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states/README.md).
 
 ## Acceptance Evidence
 
@@ -46,7 +46,7 @@ experience proof. The implementation package is
 ## Verification
 
 ```bash
-pnpm --prefix src/draft/exp-proofs/vibe-marketplace-trust-copy-states test
+pnpm --prefix src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states test
 ```
 
 The focused gate exercises the branch proof without live provider calls,

@@ -8,7 +8,7 @@ description: Use when creating, moving, reviewing, or planning HoBo draft proof 
 Use this skill for HoBo draft proof work. The old one-level draft layout is obsolete. All draft work belongs under one taxonomy path:
 
 - `src/draft/technical-proofs/<slug>`
-- `src/draft/exp-proofs/<slug>`
+- `src/draft/exp-proofs/<type>/<slug>`
 - `src/draft/epic-proofs/<slug>`
 - `src/draft/projects/<slug>`
 

@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-422.
 
 Executable proof lives in
-[`src/draft/exp-proofs/publisher-portal-scope-contract`](../../src/draft/exp-proofs/publisher-portal-scope-contract/README.md).
+[`src/draft/exp-proofs/ux/publisher-portal-scope-contract`](../../src/draft/exp-proofs/ux/publisher-portal-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-422-publisher-portal`](./proofs/hobo-422-publisher-portal/README.md).
 

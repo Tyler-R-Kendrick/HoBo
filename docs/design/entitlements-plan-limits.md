@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-419.
 
 Executable proof:
-[`entitlements-plan-limits-scope`](../../src/draft/exp-proofs/entitlements-plan-limits-scope/README.md)
+[`entitlements-plan-limits-scope`](../../src/draft/exp-proofs/cx/entitlements-plan-limits-scope/README.md)
 
 Branch evidence:
 [`proof record`](./proofs/hobo-419-entitlements-plan-limits/README.md)

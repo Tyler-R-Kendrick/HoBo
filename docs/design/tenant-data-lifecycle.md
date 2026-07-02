@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-492.
 
 Executable proof lives in
-[`src/draft/exp-proofs/tenant-data-lifecycle-contract`](../../src/draft/exp-proofs/tenant-data-lifecycle-contract/README.md).
+[`src/draft/exp-proofs/cx/tenant-data-lifecycle-contract`](../../src/draft/exp-proofs/cx/tenant-data-lifecycle-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-492-tenant-data-lifecycle`](./proofs/hobo-492-tenant-data-lifecycle/README.md).
 

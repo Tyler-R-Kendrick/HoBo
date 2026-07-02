@@ -22,8 +22,10 @@ export type RelevantCheckPolicy = {
 
 export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
-  const draft = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
+  const draft = normalized.match(/^src\/draft\/(technical-proofs|epic-proofs|projects)\/([^/]+)\//u);
   if (draft) return `src/draft/${draft[1]}/${draft[2]}`;
+  const exp = normalized.match(/^src\/draft\/exp-proofs\/(dx|ux|cx|ax|api)\/([^/]+)\//u);
+  if (exp) return `src/draft/exp-proofs/${exp[1]}/${exp[2]}`;
   const production = normalized.match(/^(packages|examples)\/([^/]+)\//u);
   return production ? `${production[1]}/${production[2]}` : undefined;
 }

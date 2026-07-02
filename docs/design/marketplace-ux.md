@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-421.
 
 Executable proof lives in
-[`src/draft/exp-proofs/marketplace-ux-scope-contract`](../../src/draft/exp-proofs/marketplace-ux-scope-contract/README.md).
+[`src/draft/exp-proofs/ux/marketplace-ux-scope-contract`](../../src/draft/exp-proofs/ux/marketplace-ux-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-421-marketplace-ux`](./proofs/hobo-421-marketplace-ux/README.md).
 
@@ -150,7 +150,7 @@ the result, and which adjacent initiatives remain out of scope.
 HOBO-547 branch evidence for the trust-warning, installable-with-evidence,
 policy-block, deprecated-guidance, yanked-support-route, and hidden-listing copy
 states lives in
-[`src/draft/exp-proofs/vibe-marketplace-trust-copy-states`](../../src/draft/exp-proofs/vibe-marketplace-trust-copy-states/README.md)
+[`src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states`](../../src/draft/exp-proofs/ux/vibe-marketplace-trust-copy-states/README.md)
 and
 [`proofs/vibe-marketplace-trust-copy-states`](./proofs/vibe-marketplace-trust-copy-states/README.md).
 It is a copy-state proof only; production UI, publisher portal UI, approval
@@ -161,7 +161,7 @@ policy-blocked, installable, deprecated, yanked, or hidden listing states.
 
 HOBO-562 branch evidence for the deterministic marketplace discovery and
 install-intent prototype lives in
-[`src/draft/exp-proofs/vibe-marketplace-discovery-prototype`](../../src/draft/exp-proofs/vibe-marketplace-discovery-prototype/README.md)
+[`src/draft/exp-proofs/ux/vibe-marketplace-discovery-prototype`](../../src/draft/exp-proofs/ux/vibe-marketplace-discovery-prototype/README.md)
 and
 [`proofs/vibe-marketplace-discovery-prototype`](./proofs/vibe-marketplace-discovery-prototype/README.md).
 It composes accepted HOBO-546 mockup fixtures, HOBO-547 trust-copy fixtures, and

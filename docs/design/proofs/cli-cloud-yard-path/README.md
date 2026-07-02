@@ -8,7 +8,7 @@ tags: [hobo, design, proof]
 # CLI Cloud Yard Path Proof Note
 
 HOBO-625 proves the CLI cloud command path as an independent experience proof. Source package:
-[`src/draft/exp-proofs/cli-cloud-yard-path`](../../../../src/draft/exp-proofs/cli-cloud-yard-path/README.md).
+[`src/draft/exp-proofs/dx/cli-cloud-yard-path`](../../../../src/draft/exp-proofs/dx/cli-cloud-yard-path/README.md).
 
 ## Acceptance Mapping
 

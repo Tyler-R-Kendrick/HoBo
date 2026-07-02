@@ -21,7 +21,7 @@ handoff, and customer-safe support wording mockups.
 - Catalog source: [`org-catalogs.md`](../../org-catalogs.md).
 - Support source: [`launch-support-escalation.md`](../../launch-support-escalation.md).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-publisher-portal-review-mockups`](../../../../src/draft/exp-proofs/vibe-publisher-portal-review-mockups/README.md).
+- Executable proof: [`vibe-publisher-portal-review-mockups`](../../../../src/draft/exp-proofs/ux/vibe-publisher-portal-review-mockups/README.md).
 
 ## Acceptance Coverage
 

@@ -18,7 +18,7 @@ without becoming final tutorial content.
 - Role source: [`walkthrough.md`](../../walkthrough.md).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
 - DX matrix source: [`dx-resource-lifecycle-scenario-matrix`](../dx-resource-lifecycle-scenario-matrix/README.md).
-- Executable proof: [`vibe-role-tutorial-outlines`](../../../../src/draft/exp-proofs/vibe-role-tutorial-outlines/README.md).
+- Executable proof: [`vibe-role-tutorial-outlines`](../../../../src/draft/exp-proofs/ux/vibe-role-tutorial-outlines/README.md).
 
 ## Acceptance Coverage
 

@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-416 Member/RBAC Administration M0 Scope Proof
 
 HOBO-416 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/member-rbac-administration-scope`](../../../../src/draft/exp-proofs/member-rbac-administration-scope/README.md)
+[`src/draft/exp-proofs/ux/member-rbac-administration-scope`](../../../../src/draft/exp-proofs/ux/member-rbac-administration-scope/README.md)
 and the durable scope record at [member-rbac-administration.md](../../member-rbac-administration.md).
 
 ## Acceptance Evidence

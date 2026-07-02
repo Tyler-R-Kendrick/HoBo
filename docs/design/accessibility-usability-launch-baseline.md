@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-505.
 
 Executable proof lives in
-[`src/draft/exp-proofs/accessibility-usability-launch-baseline-contract`](../../src/draft/exp-proofs/accessibility-usability-launch-baseline-contract/README.md).
+[`src/draft/exp-proofs/ux/accessibility-usability-launch-baseline-contract`](../../src/draft/exp-proofs/ux/accessibility-usability-launch-baseline-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-505-accessibility-usability-launch-baseline`](./proofs/hobo-505-accessibility-usability-launch-baseline/README.md).
 

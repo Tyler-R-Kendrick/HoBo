@@ -1,7 +1,7 @@
 # HOBO-437 Troubleshooting Guides M0 Scope Proof
 
 HOBO-437 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/troubleshooting-guides-scope-acceptance`](../../../../src/draft/exp-proofs/troubleshooting-guides-scope-acceptance/README.md)
+[`src/draft/exp-proofs/dx/troubleshooting-guides-scope-acceptance`](../../../../src/draft/exp-proofs/dx/troubleshooting-guides-scope-acceptance/README.md)
 and the durable scope record at [troubleshooting-guides.md](../../troubleshooting-guides.md).
 
 ## Acceptance Evidence

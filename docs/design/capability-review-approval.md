@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-423.
 
 Executable proof lives in
-[`src/draft/exp-proofs/capability-review-approval-scope`](../../src/draft/exp-proofs/capability-review-approval-scope/README.md).
+[`src/draft/exp-proofs/cx/capability-review-approval-scope`](../../src/draft/exp-proofs/cx/capability-review-approval-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-423-capability-review-approval`](./proofs/hobo-423-capability-review-approval/README.md).
 

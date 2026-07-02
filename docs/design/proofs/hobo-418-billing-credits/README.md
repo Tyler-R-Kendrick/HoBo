@@ -13,7 +13,7 @@ This proof covers [HOBO-418](https://linear.app/quickdeploy-ai/issue/HOBO-418/m0
 
 - Design record: [`billing-credits.md`](../../billing-credits.md)
 - Executable proof package:
-  [`billing-credits-scope-contract`](../../../../src/draft/exp-proofs/billing-credits-scope-contract/README.md)
+  [`billing-credits-scope-contract`](../../../../src/draft/exp-proofs/cx/billing-credits-scope-contract/README.md)
 - Traceability row: [`docs/design/traceability.md`](../../traceability.md)
 
 ## Verification

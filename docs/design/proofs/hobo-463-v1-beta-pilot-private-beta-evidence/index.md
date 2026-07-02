@@ -1,7 +1,7 @@
 # HOBO-463 V1 Beta Pilot Private Beta Evidence Proof
 
 HOBO-463 is proven by the focused M2 evidence-gate contract at
-[`src/draft/exp-proofs/v1-beta-pilot-private-beta-evidence`](../../../../src/draft/exp-proofs/v1-beta-pilot-private-beta-evidence/README.md)
+[`src/draft/exp-proofs/cx/v1-beta-pilot-private-beta-evidence`](../../../../src/draft/exp-proofs/cx/v1-beta-pilot-private-beta-evidence/README.md)
 and the durable scope record at [beta-pilot-feedback.md](../../beta-pilot-feedback.md).
 
 ## Acceptance Evidence

@@ -17,7 +17,7 @@ mockup slice.
 - Source record: [`deployment-dashboard-topology-explorer.md`](../../deployment-dashboard-topology-explorer.md).
 - DX parity source: [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-deployment-dashboard-mockups`](../../../../src/draft/exp-proofs/vibe-deployment-dashboard-mockups/README.md).
+- Executable proof: [`vibe-deployment-dashboard-mockups`](../../../../src/draft/exp-proofs/ux/vibe-deployment-dashboard-mockups/README.md).
 
 ## Acceptance Coverage
 

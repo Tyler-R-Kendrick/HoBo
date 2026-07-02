@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-402.
 
 Executable proof lives in
-[`src/draft/exp-proofs/launch-blocker-taxonomy-contract`](../../src/draft/exp-proofs/launch-blocker-taxonomy-contract/README.md).
+[`src/draft/exp-proofs/cx/launch-blocker-taxonomy-contract`](../../src/draft/exp-proofs/cx/launch-blocker-taxonomy-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-402-launch-blocker-taxonomy`](./proofs/hobo-402-launch-blocker-taxonomy/index.md).
 

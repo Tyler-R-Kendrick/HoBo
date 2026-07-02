@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-431.
 
 Executable proof lives in
-[`src/draft/exp-proofs/release-channels-scope`](../../src/draft/exp-proofs/release-channels-scope/README.md).
+[`src/draft/exp-proofs/dx/release-channels-scope`](../../src/draft/exp-proofs/dx/release-channels-scope/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-431-release-channels`](./proofs/hobo-431-release-channels/README.md).
 

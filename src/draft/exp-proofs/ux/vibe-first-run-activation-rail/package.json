@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-first-run-activation-rail",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/ux/vibe-first-run-activation-rail/test/vibe-first-run-activation-rail.test.ts"
+  }
+}

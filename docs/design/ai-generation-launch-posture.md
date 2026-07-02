@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-510.
 
 Executable proof lives in
-[`src/draft/exp-proofs/ai-generation-launch-posture-contract`](../../src/draft/exp-proofs/ai-generation-launch-posture-contract/README.md).
+[`src/draft/exp-proofs/cx/ai-generation-launch-posture-contract`](../../src/draft/exp-proofs/cx/ai-generation-launch-posture-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-510-ai-generation-launch-posture`](./proofs/hobo-510-ai-generation-launch-posture/README.md).
 

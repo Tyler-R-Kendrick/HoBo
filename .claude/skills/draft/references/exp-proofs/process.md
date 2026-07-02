@@ -8,7 +8,7 @@ timestamp: 2026-06-30T00:00:00Z
 
 # Experience proof reference
 
-Experience proofs live at `src/draft/exp-proofs/<slug>`.
+Experience proofs live at `src/draft/exp-proofs/<type>/<slug>`, where `<type>` is one of `dx` (developer), `ux` (user), `cx` (customer), `ax` (agent), or `api` (API/SDK surface) — classified in `src/draft/exp-proofs/_classification.md`.
 
 ## Purpose
 

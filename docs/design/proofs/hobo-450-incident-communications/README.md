@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-450 Incident Communications Proof
 
 HOBO-450 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/incident-communications-scope-contract`](../../../../src/draft/exp-proofs/incident-communications-scope-contract/README.md)
+[`src/draft/exp-proofs/cx/incident-communications-scope-contract`](../../../../src/draft/exp-proofs/cx/incident-communications-scope-contract/README.md)
 and the durable scope record at
 [incident-communications.md](../../incident-communications.md).
 

@@ -434,6 +434,8 @@ importers:
 
   src/draft/exp-proofs/xaa-scope-inference-contract: {}
 
+  src/draft/projects/s0-03-hobo-core: {}
+
   src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}
 
   src/draft/technical-proofs/actor-host-runtime-port-contract: {}
@@ -527,6 +529,22 @@ importers:
   src/draft/technical-proofs/component-host-conformance-suite: {}
 
   src/draft/technical-proofs/component-host-oci-floor-contract: {}
+
+  src/draft/technical-proofs/componentize-js-determinism-spike:
+    dependencies:
+      '@bytecodealliance/componentize-js':
+        specifier: 0.21.0
+        version: 0.21.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+      '@bytecodealliance/jco':
+        specifier: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+    devDependencies:
+      '@bytecodealliance/preview2-shim':
+        specifier: 0.17.4
+        version: 0.17.4
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
   src/draft/technical-proofs/conformance-port-suite-contract: {}
 
@@ -1467,6 +1485,9 @@ packages:
   '@bytecodealliance/jco@1.24.3':
     resolution: {integrity: sha512-2NGY31zFdnMqusmmBMrQ9Rlxw89P/BHyQ5BAcrzCMqRRoc95SzuuCtOy8DwWgZ3WeXlWpG9ozAIEW4YPwspgQw==}
     hasBin: true
+
+  '@bytecodealliance/preview2-shim@0.17.4':
+    resolution: {integrity: sha512-vRfxQ6ob5wCgXlpVNoeIUHrqJ2+JTcnQASNMpoi3OVPRYA2oUfhMJdWFP0u5JVL9FlC4YKe+QKqerr345B3T4A==}
 
   '@bytecodealliance/preview2-shim@0.17.9':
     resolution: {integrity: sha512-i0R3eQBe6PA/o/1EFE3Owe4In2rcccb6QxnjpntM/lPe3/duJ0bRQTVZM2Ufpo99X4eofGeltQUkape1C91FFA==}
@@ -3331,11 +3352,13 @@ snapshots:
       - '@emnapi/core'
       - '@emnapi/runtime'
 
+  '@bytecodealliance/preview2-shim@0.17.4': {}
+
   '@bytecodealliance/preview2-shim@0.17.9': {}
 
   '@bytecodealliance/preview3-shim@0.1.2':
     dependencies:
-      '@bytecodealliance/preview2-shim': 0.17.9
+      '@bytecodealliance/preview2-shim': 0.17.4
 
   '@bytecodealliance/weval@0.4.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:

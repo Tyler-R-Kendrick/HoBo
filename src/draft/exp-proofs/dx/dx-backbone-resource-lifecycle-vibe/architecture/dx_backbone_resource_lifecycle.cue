@@ -12,7 +12,7 @@ package dx_backbone_resource_lifecycle
 	issue: =~"^HOBO-[0-9]+$"
 	title: string & != ""
 	phase: #Phase
-	targetPackage: =~"^src/draft/exp-proofs/[a-z0-9-]+$"
+	targetPackage: =~"^src/draft/exp-proofs/(dx|ux|cx|ax|api)/[a-z0-9-]+$"
 	proofNote: =~"^docs/design/proofs/[a-z0-9-]+/README.md$"
 	coverage: [...string]
 	dependsOn: [...=~"^HOBO-[0-9]+$"]

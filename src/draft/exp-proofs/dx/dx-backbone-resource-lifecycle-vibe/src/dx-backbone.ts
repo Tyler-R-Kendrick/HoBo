@@ -47,11 +47,14 @@ interface DesignAnchor {
   reason: string;
 }
 
+type ExperienceType = "dx" | "ux" | "cx" | "ax" | "api";
+type ExpProofPackagePath = `src/draft/exp-proofs/${ExperienceType}/${string}`;
+
 interface ChildSlice {
   issue: `HOBO-${number}`;
   title: string;
   phase: Phase;
-  targetPackage: `src/draft/exp-proofs/${string}`;
+  targetPackage: ExpProofPackagePath;
   proofNote: `docs/design/proofs/${string}/README.md`;
   coverage: Coverage[];
   dependsOn: `HOBO-${number}`[];
@@ -93,6 +96,8 @@ export const DOWNSTREAM_CONSUMER_GATES: DownstreamConsumerGate[] = [
   consumerGate("Accessibility & Usability Quality"),
 ];
 
+const TYPED_EXP_PROOF_PATH = /^src\/draft\/exp-proofs\/(dx|ux|cx|ax|api)\/[a-z0-9-]+$/u;
+
 export const DX_BACKBONE_RECORD: DxBackboneRecord = {
   issue: "HOBO-566",
   targetPackage: "src/draft/exp-proofs/dx/dx-backbone-resource-lifecycle-vibe",
@@ -125,6 +130,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-567",
       title: "DX scenario matrix for deploy, manage, and migrate resources",
       phase: "M1",
+      experienceType: "dx",
       slug: "dx-resource-lifecycle-scenario-matrix",
       coverage: ["scenario-matrix", "api-shape", "sdk-shape", "cli-mcp-shape", "support-handoff", "proof-mode-labels"],
       dependsOn: ["HOBO-566"],
@@ -134,6 +140,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-568",
       title: "@hobo/bindles SDK object graph and manifest IR consumer examples",
       phase: "M1",
+      experienceType: "api",
       slug: "sdk-object-graph-manifest-ir-shapes",
       coverage: ["sdk-shape", "api-shape", "deterministic-fixtures", "proof-mode-labels"],
       dependsOn: ["HOBO-566", "HOBO-567"],
@@ -143,6 +150,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-569",
       title: "Control-plane API shapes for DeploymentPlan, DeploymentSet, Delta, and migration",
       phase: "M1",
+      experienceType: "api",
       slug: "control-plane-api-resource-lifecycle-shapes",
       coverage: ["api-shape", "result-envelope", "deterministic-fixtures", "proof-mode-labels"],
       dependsOn: ["HOBO-566", "HOBO-567"],
@@ -152,6 +160,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-570",
       title: "CLI/MCP parity contracts for plan, up, collect, inspect, logs, doctor",
       phase: "M1",
+      experienceType: "ax",
       slug: "cli-mcp-parity-resource-lifecycle-contracts",
       coverage: ["cli-mcp-shape", "api-shape", "proof-mode-labels", "deterministic-fixtures"],
       dependsOn: ["HOBO-566", "HOBO-567", "HOBO-568", "HOBO-569"],
@@ -161,6 +170,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-571",
       title: "Typed result, gate, refusal, and proof-mode envelope examples",
       phase: "M1",
+      experienceType: "dx",
       slug: "dx-result-refusal-proof-envelopes",
       coverage: ["result-envelope", "support-handoff", "proof-mode-labels", "deterministic-fixtures"],
       dependsOn: ["HOBO-566", "HOBO-567", "HOBO-569", "HOBO-570"],
@@ -170,6 +180,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-572",
       title: "Deterministic resource lifecycle fixture corpus for DX examples",
       phase: "M1",
+      experienceType: "dx",
       slug: "dx-resource-lifecycle-fixture-corpus",
       coverage: ["deterministic-fixtures", "api-shape", "sdk-shape", "cli-mcp-shape", "proof-mode-labels"],
       dependsOn: ["HOBO-566", "HOBO-567", "HOBO-568", "HOBO-569"],
@@ -179,6 +190,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-573",
       title: "CLI deploy transcript prototype over DeploymentPlan and Gatekeeper fixtures",
       phase: "M2",
+      experienceType: "dx",
       slug: "cli-deploy-transcript-prototype",
       coverage: ["deploy-transcript", "cli-mcp-shape", "support-handoff", "proof-mode-labels"],
       dependsOn: [...M1_FOUNDATION_ISSUES],
@@ -188,6 +200,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-574",
       title: "CLI manage transcript prototype for inspect, logs, drift, and support bundles",
       phase: "M2",
+      experienceType: "dx",
       slug: "cli-manage-inspect-logs-drift-prototype",
       coverage: ["manage-transcript", "cli-mcp-shape", "result-envelope", "support-handoff", "proof-mode-labels"],
       dependsOn: [...M1_FOUNDATION_ISSUES],
@@ -197,6 +210,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-575",
       title: "CLI migration transcript prototype for import, adopt-in-place, expand/backfill/contract, cutover",
       phase: "M2",
+      experienceType: "dx",
       slug: "cli-migration-transcript-prototype",
       coverage: ["migration-transcript", "cli-mcp-shape", "sdk-shape", "api-shape", "result-envelope", "proof-mode-labels"],
       dependsOn: [...M1_FOUNDATION_ISSUES],
@@ -206,6 +220,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-576",
       title: "SDK-to-CLI golden path compile consumer and terminal transcript",
       phase: "M2",
+      experienceType: "api",
       slug: "sdk-to-cli-golden-path",
       coverage: ["sdk-shape", "cli-mcp-shape", "deploy-transcript", "result-envelope", "support-handoff", "proof-mode-labels"],
       dependsOn: [...M1_FOUNDATION_ISSUES],
@@ -215,6 +230,7 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
       issue: "HOBO-577",
       title: "Resource lifecycle quickstart examples for docs, tutorials, and launch demo",
       phase: "M2",
+      experienceType: "dx",
       slug: "resource-lifecycle-quickstart-examples",
       coverage: ["quickstart", "deploy-transcript", "manage-transcript", "migration-transcript", "support-handoff", "proof-mode-labels"],
       dependsOn: ["HOBO-573", "HOBO-574", "HOBO-575", "HOBO-576"],
@@ -296,8 +312,8 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
     const targetPackage = typeof slice.targetPackage === "string" ? slice.targetPackage : "";
     const proofNote = typeof slice.proofNote === "string" ? slice.proofNote : "";
     const slug = targetPackage.split("/").at(-1);
-    if (!targetPackage.startsWith("src/draft/exp-proofs/")) {
-      errors.push(`${label} must target src/draft/exp-proofs`);
+    if (!TYPED_EXP_PROOF_PATH.test(targetPackage)) {
+      errors.push(`${label} must target src/draft/exp-proofs/<type>/<slug>`);
     }
     if (proofNote !== `docs/design/proofs/${slug}/README.md`) {
       errors.push(`${label} proof note must mirror its target package slug`);
@@ -310,14 +326,14 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
       isHoboIssue(slice.issue) &&
       typeof slice.title === "string" &&
       (slice.phase === "M1" || slice.phase === "M2") &&
-      targetPackage.startsWith("src/draft/exp-proofs/") &&
+      TYPED_EXP_PROOF_PATH.test(targetPackage) &&
       proofNote !== ""
     ) {
       normalizedChildSlices.push({
         issue: slice.issue,
         title: slice.title,
         phase: slice.phase,
-        targetPackage: targetPackage as `src/draft/exp-proofs/${string}`,
+        targetPackage: targetPackage as ExpProofPackagePath,
         proofNote: proofNote as `docs/design/proofs/${string}/README.md`,
         coverage: sliceCoverage as Coverage[],
         dependsOn: dependsOn.filter(isHoboIssue),
@@ -458,11 +474,13 @@ export function classifyBackboneRequest(request: unknown): { owner: string; inSc
   return { owner: "HOBO-566", inScope: true };
 }
 
-function childSlice(input: Omit<ChildSlice, "targetPackage" | "proofNote"> & { slug: string }): ChildSlice {
-  const { slug, ...slice } = input;
+function childSlice(
+  input: Omit<ChildSlice, "targetPackage" | "proofNote"> & { slug: string; experienceType: ExperienceType },
+): ChildSlice {
+  const { slug, experienceType, ...slice } = input;
   return {
     ...slice,
-    targetPackage: `src/draft/exp-proofs/${slug}`,
+    targetPackage: `src/draft/exp-proofs/${experienceType}/${slug}`,
     proofNote: `docs/design/proofs/${slug}/README.md`,
   };
 }

@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
 
+import { workspaceForDraftFile } from "./lib/proof-manifest.ts";
+
 export type Check = { command: string; args: string[]; reason: string; serial?: boolean };
 
 export type RelevantCheckPolicyOptions = {
@@ -56,6 +58,8 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const workspacePackageExists = options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
   const workspaces = [...new Set(workspaceTestFiles.filter(workspaceTestRelevant).map(workspaceFor).filter((value): value is string => Boolean(value)))]
+    .filter(workspacePackageExists);
+  const draftWorkspaces = [...new Set(files.map(workspaceForDraftFile).filter((value): value is string => Boolean(value)))]
     .filter(workspacePackageExists);
   const touched = (prefixes: string[]) => files.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const touchedAny = (patterns: RegExp[]) => files.some((file) => patterns.some((pattern) => pattern.test(file)));
@@ -114,6 +118,9 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
         reason: `draft package unit/contract tests for ${workspace}; direct package script avoids Turbo dependency expansion`,
       });
     }
+  }
+
+  if (draftWorkspaces.length > 0) {
     checks.push({
       command: "pnpm",
       args: ["run", staged ? "draft:artifacts:staged" : "draft:artifacts", "--", `--base=${options.base}`],

@@ -7,7 +7,7 @@ experience proof, not production CLI/API/SDK implementation.
 
 - Defines the child slice graph from HOBO-567 through HOBO-577.
 - Proves API, SDK, CLI/MCP, result-envelope, fixture, transcript, and quickstart
-  responsibilities are covered by isolated `src/draft/exp-proofs/<slug>` packages.
+  responsibilities are covered by isolated `src/draft/exp-proofs/<type>/<slug>` packages.
 - Enforces M1 shape/contract/fixture work before M2 transcript and quickstart work.
 - Forces downstream docs, tutorial, dashboard, marketplace, support, launch, and
   accessibility artifacts to consume accepted DX source material.

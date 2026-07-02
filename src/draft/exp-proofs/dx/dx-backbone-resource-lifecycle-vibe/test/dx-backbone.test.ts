@@ -69,7 +69,7 @@ test("each child slice names an isolated exp proof package and a matching design
   const parsed = parseDxBackboneRecord(DX_BACKBONE_RECORD);
 
   for (const slice of parsed.childSlices) {
-    assert.match(slice.targetPackage, /^src\/draft\/exp-proofs\/[a-z0-9-]+$/);
+    assert.match(slice.targetPackage, /^src\/draft\/exp-proofs\/(dx|ux|cx|ax|api)\/[a-z0-9-]+$/);
     assert.equal(
       slice.proofNote,
       `docs/design/proofs/${slice.targetPackage.split("/").at(-1)}/README.md`,

@@ -122,6 +122,19 @@ test("draft package README-only changes do not select workspace tests", () => {
   assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), false);
 });
 
+test("proof.json-only changes select draft artifact and cascade gates without workspace tests", () => {
+  const workspace = "src/draft/technical-proofs/example-proof";
+  const { checks, workspaces } = plan(
+    [`${workspace}/proof.json`],
+    { workspacePackageExists: (candidate: string) => candidate === workspace },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some(isWorkspacePrefixTest), false);
+  assert.equal(checks.some((check) => check.args.join(" ") === "run draft:artifacts -- --base=origin/main"), true);
+  assert.equal(checks.some((check) => check.args.join(" ") === "run draft:cascade -- --base=origin/main"), true);
+});
+
 test("move-only draft package files can be excluded from workspace tests", () => {
   const { checks, workspaces } = plan(
     ["src/draft/technical-proofs/example-proof/src/index.ts"],

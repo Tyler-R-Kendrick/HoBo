@@ -28,3 +28,5 @@ pnpm --prefix src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy test
 ## Scope Boundary
 
 Production `packages/mcp/`, live S2 cloud, and credentialed CI lane attachment to S3-01 remain out of scope for this draft POC.
+
+Architecture guard evidence (parse-don't-validate, event store, CredentialAudit projection) is documented in the package [`architecture.md`](../../../../src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy/architecture.md).

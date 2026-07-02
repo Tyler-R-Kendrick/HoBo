@@ -233,3 +233,28 @@ test("architecture guard does not apply production-only checks to draft packages
     assert.deepEqual(result.problems, []);
   });
 });
+
+test("architecture guard rejects nested npm/yarn/pnpm lockfiles anywhere in the tree", async () => {
+  await withFixture(async (root) => {
+    const result = await checkArchitectureGuardrails({
+      root,
+      files: [
+        "src/draft/technical-proofs/demo-contract/package-lock.json",
+        "packages/core/yarn.lock",
+        "src/draft/technical-proofs/demo-contract/pnpm-lock.yaml",
+        "pnpm-lock.yaml",
+      ],
+    });
+
+    assert.deepEqual(
+      result.problems
+        .filter((problem) => problem.code === "single-lockfile")
+        .map((problem) => problem.packageRoot),
+      [
+        "src/draft/technical-proofs/demo-contract/package-lock.json",
+        "packages/core/yarn.lock",
+        "src/draft/technical-proofs/demo-contract/pnpm-lock.yaml",
+      ],
+    );
+  });
+});

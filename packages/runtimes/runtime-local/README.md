@@ -41,5 +41,5 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for protobuf/CUE contracts, PACT bounda
 parse-don't-validate parsers, and event-sourced state naming.
 
 Promoted from `src/draft/technical-proofs/runtime-local-component-host` in S1-02
-(HOBO-591). wRPC link layer promoted from `src/draft/technical-proofs/wrpc-link-layer-contract`
+(HOBO-591). wRPC link layer promoted in S1-03 (HOBO-592 / PR #784). wRPC link layer promoted from `src/draft/technical-proofs/wrpc-link-layer-contract`
 in S1-03 (HOBO-592).

@@ -58,7 +58,7 @@ export function negotiateWireVersion(args: {
   );
 
   if (usable.length > 0) {
-    const selected = usable[0].version;
+		const selected = usable[0]!.version;
     return Object.freeze({
       interfaceId: args.caller.interfaceId,
       version: selected.raw,

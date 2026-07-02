@@ -613,3 +613,52 @@ slow-burn bad rollout, the one-sample policy over-rolling a transient blip, and 
   safety without pretending the rollout is healthy.
 - **(-)** Detection latency is at least two usable samples inside the 15-minute window. Faster
   rollback requires an explicitly reviewed policy override with its own replay evidence.
+
+## ADR-0113
+**Versioned managed secrets: `hobo:secrets` as a version-model extension over `wasi:config/store`.**
+
+### Context
+Nitric's secret API is versioned: `put` returns a version identifier, and `access` reads the
+latest value or a pinned version. HoBo's Nitric and Dapr parity tables claim `wasi:config`/
+`hobo:secrets` ✅ for "secret (versioned)", but the Plan 20 interface catalog defines no
+`hobo:secrets` port and no version model. The `secret()` catalog resource exposes only `put` and
+`access` verbs with no version semantics, and `wasi:config/store` is a flat latest-value read
+surface that cannot express Nitric's put→version / access-latest-or-pinned contract.
+
+### Decision
+1. **Define `hobo:secrets@0.1.0`** (stability tier `experimental`, [ADR-0075](07-portability-extensibility.md#adr-0075)) as the WIT port behind the `secret(name)` catalog resource ([Plan 21](../authoring-resources-wiring.md#plan-21)):
+   - `put(name, value) -> version-id` — write a new secret version.
+   - `access(name) -> (version-id, value)` — read the latest version.
+   - `access-version(name, version-id) -> value` — read a pinned version.
+   - `list-versions(name) -> list<version-id>` — enumerate versions for audit and rollback.
+2. **`wasi:config/store` remains the read-only latest-value view** for config-style consumption;
+   the version model is added by `hobo:secrets`, not by extending the WASI standard's shape.
+3. **`.allow()` verb set stays exactly `put`,`access`.** Version pinning is an argument to
+   `access` (latest vs pinned `version-id`), not a new verb — so IAM, wasm link, and token-scope
+   inference ([Plan 21](../authoring-resources-wiring.md#plan-21)) is unchanged.
+4. **`secret.Accessed` audit events carry the resolved `version-id`.** Values are never logged
+   ([ADR-0027](#adr-0027)).
+5. **Cloud equivalence:** AWS Secrets Manager version stages, Azure Key Vault secret versions, GCP
+   Secret Manager versions — each provider adapter maps `version-id` to its native version/stage
+   model behind the same port.
+
+### Relationship to secretless-first
+`secret()` / `hobo:secrets` is the **Nitric-parity managed-store surface**, not a new default.
+`fromBinding` / `secretRef` and SVID-brokered tokens ([ADR-0008](#adr-0008), [ADR-0023](#adr-0023),
+[ADR-0027](#adr-0027)) remain the recommended path for app configuration and credentials. Versioned
+managed secrets exist so parity tables and provider adapters can be honest; they do not weaken
+secretless-first.
+
+### Alternatives considered
+- **(a) Drop the "(versioned)" claim and the `hobo:secrets` alias** — rejected: the alias is
+  already load-bearing in Nitric and Dapr parity tables and in Plan 21's `secret()` resource row.
+- **(b) Fold versioning into `wasi:config/store`** — rejected: not in the standard's shape and
+  would couple HoBo-specific semantics to a reused WASI interface.
+
+### Consequences
+- **(+)** Nitric/Dapr "secret (versioned)" parity rows become honest; audit-by-version is
+  expressible without inventing parallel secret machinery.
+- **(+)** Provider adapters can map native version/stage models without changing the `.allow()`
+  verb surface.
+- **(-)** One more `hobo:*` interface to conform; the version model must survive provider mapping
+  and the `@hobo/conformance` secrets-port suite.

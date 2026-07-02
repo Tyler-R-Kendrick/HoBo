@@ -49,7 +49,7 @@ The portable HTTP/gRPC APIs Dapr exposes; each is backed by one or more swappabl
 | 4 | **State management** | key/value with pluggable stores + consistency | `wasi:keyvalue` / `kv()` |
 | 5 | **Bindings** | input/output connectors to external systems (triggers + outputs) | partial: `hobo:blob-events` + `hobo:scheduler` + handler triggers ([Plan 20](../design/wasm-runtime-wit.md#plan-20), [ADR-0072](../design/adr/01-architecture-core.md#adr-0072)); no unified bindings port — 🔜 |
 | 6 | **Actors** | virtual-actor model, single-threaded, GC'd | `hobo:actor` / Grain ([Plan 2](../design/sdk-api.md#plan-02)) |
-| 7 | **Secrets** | read secrets from cloud/local/K8s stores | `hobo:secrets` / secretless-first ([Plan 21](../design/authoring-resources-wiring.md#plan-21)) |
+| 7 | **Secrets** | read secrets from cloud/local/K8s stores | `hobo:secrets` / secretless-first ([Plan 20](../design/wasm-runtime-wit.md#plan-20), [Plan 21](../design/authoring-resources-wiring.md#plan-21)) |
 | 8 | **Configuration** | read + subscribe to app config items | `hobo:control/config` / `ctx.config` ([Plan 21](../design/authoring-resources-wiring.md#plan-21)) |
 | 9 | **Distributed lock** | resource locking across instances | actor single-writer lease/fencing for virtual-actor keys only ([Plan 5](../design/reliability-observability-cost.md#plan-05), [Plan 2](../design/sdk-api.md#plan-02)); no standalone lock port — 🔜 |
 | 10 | **Cryptography** | encrypt/decrypt without exposing keys to the app | envelope encryption + KMS ([Plan 12](../design/security-networking.md#plan-12)) |

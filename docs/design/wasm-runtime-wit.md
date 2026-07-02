@@ -144,7 +144,7 @@ The runtime's ports form a **Nitric-parity building-block set, each a first-clas
 | Queues | `hobo:queue` |
 | Key/value | `wasi:keyvalue/store` |
 | Storage / blob | `wasi:blobstore/blobstore` (+ `hobo:blob-events`) |
-| Secrets | `wasi:config/store` |
+| Secrets | `wasi:config/store` + `hobo:secrets` (versioned) ([ADR-0113](./adr/02-identity-security.md#adr-0113)) |
 | Data (relational/document/graph/vector/kv) | `hobo:data` — paradigm sub-interfaces `relational · document · graph · vector · key-value` ([ADR-0112](./adr/03-data-plane.md#adr-0112)); relational realizable over draft `wasi:sql` ([Plan 32](./data-plane.md#plan-32)) |
 | Websockets | `wasi:websocket` **(preview)** + `hobo:websocket` (extension) ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) |
 | Durable workflow / actors | `hobo:runtime/workflow`, `hobo:runtime/actor`, `hobo:runtime/saga` |
@@ -168,7 +168,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `wasi:blobstore/blobstore` | `bucket` | object RW; presigned-URL + events extended by `hobo:blob-events` |
 | `wasi:messaging` | `topic` (push) | publish/subscribe |
 | `wasi:sql` | `data` (relational; driver-level) | draft; a `hobo:data/relational` provider/sink driver may realize its mapping over it — not an app-facing catalog port ([ADR-0112](./adr/03-data-plane.md#adr-0112)) |
-| `wasi:config/store` | `secret`/config | config + secret access |
+| `wasi:config/store` | `secret`/config | config + latest-secret access; version model added by `hobo:secrets` ([ADR-0113](./adr/02-identity-security.md#adr-0113)) |
 | `wasi:logging/logging` | `ctx.log` | structured logging |
 | `wasi:filesystem`, `wasi:sockets`, `wasi:clocks`, `wasi:random`, `wasi:cli` | host primitives | granted per capability policy |
 
@@ -179,6 +179,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `hobo:runtime/actor` | virtual-actor (grain) state + messaging | `get-state`/`append-state`, `signal(key,msg)` |
 | `hobo:runtime/saga` | choreography process manager | `on(event)`, `emit(event)`, `compensate(event)` |
 | `hobo:runtime/agent` | durable AI agent | `run(messages)`, `tool(name,input)`, `token(provider,scope)` |
+| `hobo:secrets` | versioned managed secrets (Nitric parity) over `wasi:config/store` ([Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0113](./adr/02-identity-security.md#adr-0113)) | `put(name,value)` → version-id, `access(name)` → latest, `access-version(name,version)`, `list-versions(name)` |
 | `hobo:queue` | pull queue (Nitric parity) | `enqueue`, `dequeue(n)`, `complete` |
 | `hobo:blob-events` | bucket notifications + presigned URLs | `on(event,prefix)`, `download-url`, `upload-url` |
 | `hobo:websocket` | **thin extension** over the preview `wasi:websocket` ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) — the HoBo-specifics the bare interface won't carry | principal/`ctx.user` binding, `.allow()` verbs, **event-sourced connection lifecycle** `on(connect/message/disconnect)` |
@@ -296,6 +297,34 @@ chat.on("message", (c, msg) => chat.broadcast(`room:${c.user.tenant}`, msg));   
 - **Events & volume.** Connection *lifecycle* is event-sourced as the **`ws.*`** family ([Plan 11](./data-plane.md#plan-11)) — `Connected`/`Authenticated`/`Subscribed`/`Unsubscribed`/`Disconnected` — so "who connected, as whom, to which channel, and why they left" is auditable + replayable. **Per-frame messages ride the Streamer** (realtime, [Plan 11](./data-plane.md#plan-11)/[Plan 2](./sdk-api.md#plan-02)), **not** the durable log by default (avoids message-flooding the log); a policy may opt specific message types into audit.
 - **Auth + authz.** A connection is **principal-bound** (`ctx.user`/SVID, [ADR-0038](./adr/02-identity-security.md#adr-0038)); `.allow()` verbs (`accept`/`connect`/`send`/`broadcast`/`subscribe`) are deny-by-default and channel/room sends are policy-gated like any other action ([Plan 29](./contracts-policy-flags.md#plan-29)).
 - **Migration.** When the real `wasi:websocket` ratifies, HoBo repins it and ships an upcaster ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)); the `hobo:websocket` extension is stable across that change, so app code is unaffected.
+
+### `hobo:secrets` — versioned secrets over `wasi:config` ([ADR-0113](./adr/02-identity-security.md#adr-0113))
+Nitric-parity managed secrets need a version model (put→version, access latest or pinned) that
+`wasi:config/store` does not carry. `hobo:secrets@0.1.0` is an **`experimental`** extension
+([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) behind the `secret()` catalog resource;
+`secret.Accessed` records the resolved version-id for audit. Secretless-first brokering
+(`fromBinding` / `secretRef`, [ADR-0027](./adr/02-identity-security.md#adr-0027)) stays the default
+— this port is the managed-store surface, not the recommended credential path.
+
+```wit
+package hobo:secrets@0.1.0;
+
+interface store {
+  type version-id = string;
+
+  /// Write a new secret version; returns the provider-assigned version id.
+  put: func(name: string, value: list<u8>) -> result<version-id, string>;
+
+  /// Read the latest version and its value.
+  access: func(name: string) -> result<tuple<version-id, list<u8>>, string>;
+
+  /// Read a pinned version (`.allow(access)` + version argument at the SDK layer).
+  access-version: func(name: string, version: version-id) -> result<list<u8>, string>;
+
+  /// Enumerate version ids (newest-first) for audit and rollback.
+  list-versions: func(name: string) -> result<list<version-id>, string>;
+}
+```
 
 ### Versioning & evolution
 - Interfaces are versioned independently **with a stability tier** (`stable · preview · experimental · deprecated`, [ADR-0075](./adr/07-portability-extensibility.md#adr-0075)); the manifest IR ([Plan 21](./authoring-resources-wiring.md#plan-21)) records the exact `interface@version@stability` a component imports/exports.

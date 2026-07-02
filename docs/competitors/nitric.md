@@ -308,7 +308,7 @@ Direct cloud SDK access for anything outside the abstracted services; provider e
 | `bucket` (+ events, presigned) | `wasi:blobstore` (+ `hobo:blob-events`) | ✅ |
 | `queue` (pull) | `hobo:queue` (`wasi:messaging` profile) | ✅ |
 | `topic` (push pub/sub) | `wasi:messaging` | ✅ |
-| `secret` (versioned) | `wasi:config`/`hobo:secrets` | ✅ |
+| `secret` (versioned) | `wasi:config/store` + `hobo:secrets` (put → version, access latest\|pinned) ([Plan 20](../design/wasm-runtime-wit.md#plan-20), [ADR-0113](../design/adr/02-identity-security.md#adr-0113)) | ✅ |
 | `sql` | `hobo:data/relational` (realizable over draft `wasi:sql`) ([ADR-0112](../design/adr/03-data-plane.md#adr-0112)) | ✅ |
 | `schedule` (cron/interval) | `hobo:schedule` (control-plane `cron`) | ✅ |
 | `websocket` | `hobo:websocket` | ✅ |

@@ -115,7 +115,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 
 **Archived planning material** (not part of the current design state — revived when the work is scoped): the **roadmap / build sequence** and the formal **requirements suite** (BRD/PRD/TRD + BR→FR/NFR→TR traceability) live in [`../archive/`](../archive/). The design-relevant scope boundary and NFR/SLO targets are kept in the design itself ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)/[ADR-0021](./adr/07-portability-extensibility.md#adr-0021)).
 
-**Competitor references** live in [`../competitors/`](../competitors/).
+**Competitor references** live in [`../competitors/`](../competitors/). Displaced-alternative lineage is recorded as ADRs — e.g. the Nomad scheduler pillar ([ADR-0106](./adr/01-architecture-core.md#adr-0106), parity in [`../competitors/nomad.md`](../competitors/nomad.md#hobo-mapping)).
 
 **Scope.** The whole suite is **one scope** — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)). Build sequencing/phasing is deferred planning (archived).
 

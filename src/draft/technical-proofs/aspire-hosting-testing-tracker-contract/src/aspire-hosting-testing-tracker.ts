@@ -75,6 +75,17 @@ export function evaluateAspireHostingTestingTracker(input: {
     };
   }
 
+  if (status === "deferred" && !hasWholeGraphHarnessSpec) {
+    return {
+      feature: "Aspire.Hosting.Testing",
+      status: "overclaimed",
+      hasWholeGraphHarnessSpec,
+      ok: false,
+      reason:
+        "Aspire.Hosting.Testing is marked ◐ without the Plan 09 whole-graph harness iteration hook.",
+    };
+  }
+
   return {
     feature: "Aspire.Hosting.Testing",
     status,

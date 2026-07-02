@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Known Limitations Register"
+description: "Source issue: HOBO-485."
+tags: [hobo, design]
+---
+
 # Known Limitations Register
 
 This register is the customer-facing source for v1 limitations, scope-out

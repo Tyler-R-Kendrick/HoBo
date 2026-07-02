@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "CLI Deploy Transcript Prototype Proof"
+description: "Source issue: HOBO-573."
+tags: [hobo, design]
+---
+
 # CLI Deploy Transcript Prototype Proof Note
 
 HOBO-573 proves the terminal-first deploy vibe prototype as an independent experience proof. The

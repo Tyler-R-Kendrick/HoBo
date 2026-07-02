@@ -1,13 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(testDir, "../..");
 const repoRoot = join(packageRoot, "../..");
-const cueFile = join(packageRoot, "data-models/cue/hobo_manifest_v1.cue");
+const cueDir = join(packageRoot, "data-models/cue");
+const cueSchemaFile = join(cueDir, "hobo_manifest_v1.cue");
 const goldenDir = join(packageRoot, "test/fixtures/manifests/golden");
 const invalidDir = join(packageRoot, "test/fixtures/manifests/invalid");
 
@@ -29,8 +30,8 @@ function resolveCueBinary(): string {
 	}
 
 	try {
-		const lookup = process.platform === "win32" ? "where" : "which";
-		return execFileSync(lookup, ["cue"], { encoding: "utf8" })
+		const lookup = process.platform === "win32" ? "where.exe" : "which";
+		return execFileSync(lookup, ["cue"], { encoding: "utf8", windowsHide: true })
 			.split(/\r?\n/u)[0]
 			.trim();
 	} catch {
@@ -42,10 +43,16 @@ function resolveCueBinary(): string {
 
 function vetFixture(cueBin: string, fixturePath: string): number {
 	try {
-		execFileSync(cueBin, ["vet", cueFile, fixturePath, "-d", "#Manifest"], {
-			encoding: "utf8",
-			stdio: "pipe",
-		});
+		execFileSync(
+			cueBin,
+			["vet", "-d", "#Manifest", basename(cueSchemaFile), resolve(fixturePath)],
+			{
+				cwd: cueDir,
+				encoding: "utf8",
+				stdio: "pipe",
+				windowsHide: true,
+			},
+		);
 		return 0;
 	} catch (error) {
 		const status = (error as NodeJS.ErrnoException & { status?: number }).status;

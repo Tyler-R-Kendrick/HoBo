@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { execSync } from "node:child_process";
 
 import { serializeStageGateRecord } from "./parse.js";
@@ -26,8 +27,13 @@ function readRepoCommit(cwd: string): string {
 export function resolveCommandExecutable(
 	executable: string,
 	platform: NodeJS.Platform = process.platform,
+	cwd = process.cwd(),
 ): string {
 	if (platform === "win32" && executable === "pnpm") {
+		const localPnpm = join(cwd, "node_modules", ".bin", "pnpm.cmd");
+		if (existsSync(localPnpm)) {
+			return localPnpm;
+		}
 		return "pnpm.cmd";
 	}
 	return executable;
@@ -49,8 +55,9 @@ export function createCommandInvocation(
 	args: readonly string[],
 	platform: NodeJS.Platform = process.platform,
 	comspec = process.env.ComSpec ?? "cmd.exe",
+	cwd = process.cwd(),
 ): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
-	const resolvedExecutable = resolveCommandExecutable(executable, platform);
+	const resolvedExecutable = resolveCommandExecutable(executable, platform, cwd);
 	if (!shouldUseCommandShell(resolvedExecutable, platform)) {
 		return { executable: resolvedExecutable, args: [...args] };
 	}
@@ -74,23 +81,38 @@ function runCheck(
 	if (!executable) {
 		return { exitCode: 1, evidence: { error: "empty command" } };
 	}
-	const invocation = createCommandInvocation(executable, args);
+	const invocation = createCommandInvocation(executable, args, process.platform, process.env.ComSpec ?? "cmd.exe", cwd);
 	const result = spawnSync(invocation.executable, invocation.args, {
 		cwd,
 		env,
 		encoding: "utf8",
 		windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 		stdio: ["ignore", "pipe", "pipe"],
+		maxBuffer: 16 * 1024 * 1024,
 	});
+	const failed = (result.status ?? 1) !== 0;
 	const evidence: Record<string, string> = {};
 	if (result.error) {
 		evidence.error = `${result.error.name}: ${result.error.message}`;
 	}
 	if (result.stdout?.trim()) {
-		evidence.stdout = result.stdout.trim().slice(0, 4000);
+		const stdout = result.stdout.trim();
+		evidence.stdout = stdout.length <= 4000 || !failed ? stdout.slice(0, 4000) : stdout.slice(-4000);
 	}
 	if (result.stderr?.trim()) {
-		evidence.stderr = result.stderr.trim().slice(0, 4000);
+		const stderr = result.stderr.trim();
+		evidence.stderr = stderr.length <= 4000 || !failed ? stderr.slice(0, 4000) : stderr.slice(-4000);
+	}
+	if (failed) {
+		console.error(
+			`[stage-gate] check failed: ${command.join(" ")} (exit ${result.status ?? 1})`,
+		);
+		if (evidence.stderr) {
+			console.error(evidence.stderr);
+		}
+		if (evidence.stdout) {
+			console.error(evidence.stdout);
+		}
 	}
 	return {
 		exitCode: result.status ?? 1,
@@ -178,11 +200,21 @@ export async function runStageGate(
 	};
 	let failed = false;
 
+	const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
+	const reproducibleKinds = new Set(["build", "sign", "verify"]);
+
 	for (const check of definition.checks) {
+		const checkEnv =
+			sourceDateEpoch && reproducibleKinds.has(check.kind)
+				? { ...env, SOURCE_DATE_EPOCH: sourceDateEpoch }
+				: (() => {
+						const { SOURCE_DATE_EPOCH: _omit, ...rest } = env;
+						return rest;
+					})();
 		const { exitCode, evidence: rawEvidence } = runCheck(
 			check.command,
 			cwd,
-			env,
+			checkEnv,
 		);
 		const evidence = parseEvidenceJson(rawEvidence.stdout ?? undefined);
 		if (Object.keys(evidence).length === 0) {

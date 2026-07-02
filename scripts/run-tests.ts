@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, delimiter } from "node:path";
 
 const MAX_BATCH_CHARS = process.platform === "win32" ? 500 : 12000;
 const HEARTBEAT_MS = 5_000;
@@ -195,10 +195,20 @@ function runBatch(
   tmpDir: string,
 ): Promise<{ status: number | null; signal: NodeJS.Signals | null; error?: Error; output: string }> {
   const outputTail = createOutputTail(MAX_OUTPUT_CHARS);
+  const localBin = join(process.cwd(), "node_modules", ".bin");
+  const pathWithLocalBin = process.env.PATH
+    ? `${localBin}${delimiter}${process.env.PATH}`
+    : localBin;
   const child = spawn(process.execPath, ["--import", "tsx", "--test", ...TEST_CONCURRENCY_ARGS, ...batch], {
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, TMPDIR: tmpDir, TMP: tmpDir, TEMP: tmpDir },
+    env: {
+      ...process.env,
+      PATH: pathWithLocalBin,
+      TMPDIR: tmpDir,
+      TMP: tmpDir,
+      TEMP: tmpDir,
+    },
   });
 
   child.stdout?.on("data", (chunk: Buffer) => {

@@ -100,6 +100,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@hobo/componentize':
+        specifier: workspace:*
+        version: link:../componentize
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
@@ -206,7 +209,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0
@@ -586,11 +589,13 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
   src/draft/exp-proofs/xaa-scope-inference-contract: {}
 
   src/draft/projects/s0-03-hobo-core: {}
+
+  src/draft/projects/s1-23-hobo-build: {}
 
   src/draft/projects/s6-06-finops-plane: {}
 
@@ -697,7 +702,7 @@ importers:
         version: 0.21.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
     devDependencies:
       '@bytecodealliance/preview2-shim':
         specifier: 0.17.4
@@ -909,7 +914,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -945,7 +950,7 @@ importers:
         version: 0.21.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
     devDependencies:
       '@bytecodealliance/preview2-shim':
         specifier: 0.17.4
@@ -969,7 +974,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: ^1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
   src/draft/technical-proofs/hobo-dev-fidelity-drift-contract: {}
 
@@ -985,13 +990,13 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
   src/draft/technical-proofs/hobo-feature-flag-port:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
   src/draft/technical-proofs/hobo-gateway-port: {}
 
@@ -1027,7 +1032,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
   src/draft/technical-proofs/hobo-realize-emission-contract: {}
 
@@ -1039,7 +1044,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -1050,7 +1055,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
 
   src/draft/technical-proofs/hobo-up-convergence-contract: {}
 
@@ -1058,7 +1063,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -1410,6 +1415,8 @@ importers:
 
   src/draft/technical-proofs/s1-19-ctx-config-local-resolution: {}
 
+  src/draft/technical-proofs/s1-21-collect-codegen-cli-poc: {}
+
   src/draft/technical-proofs/s1-stage-gate: {}
 
   src/draft/technical-proofs/s3-07-agent-guardrails-contract: {}
@@ -1556,7 +1563,7 @@ importers:
     devDependencies:
       '@bytecodealliance/jco':
         specifier: 1.24.3
-        version: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -3679,16 +3686,19 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@bytecodealliance/componentize-js@0.19.3':
+  '@bytecodealliance/componentize-js@0.19.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:
-      '@bytecodealliance/jco': 1.24.3
+      '@bytecodealliance/jco': 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       '@bytecodealliance/wizer': 10.0.0
       es-module-lexer: 1.7.0
       oxc-parser: 0.76.0
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
 
   '@bytecodealliance/componentize-js@0.21.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:
-      '@bytecodealliance/jco': 1.24.3
+      '@bytecodealliance/jco': 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       '@bytecodealliance/weval': 0.4.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
       '@bytecodealliance/wizer': 10.0.0
       es-module-lexer: 1.7.0
@@ -3703,10 +3713,10 @@ snapshots:
       binaryen: 130.0.0
       terser: 5.48.0
 
-  '@bytecodealliance/jco@1.24.3':
+  '@bytecodealliance/jco@1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:
       '@bytecodealliance/componentize-js': 0.21.0(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
-      '@bytecodealliance/componentize-js-0-19-3': '@bytecodealliance/componentize-js@0.19.3'
+      '@bytecodealliance/componentize-js-0-19-3': '@bytecodealliance/componentize-js@0.19.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)'
       '@bytecodealliance/jco-transpile': 0.3.9
       '@bytecodealliance/preview2-shim': 0.17.9
       '@bytecodealliance/preview3-shim': 0.1.2

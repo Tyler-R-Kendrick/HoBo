@@ -36,3 +36,16 @@ test("stale forge/event-model cross-refs fail the acceptance gate", () => {
   assert.equal(gate.ok, false);
   assert.match(gate.errors.join("\n"), /stale link fragment/);
 });
+
+test("unanswered framing without historical deferral fails the acceptance gate", () => {
+  const baseline = readRuntimeCodeMutationPattern();
+  const stale = baseline.replace(
+    "Before [ADR-0048]",
+    "The unanswered question remains:",
+  );
+
+  const gate = evaluateRuntimeCodeMutationPatternAdrLinks(stale);
+
+  assert.equal(gate.ok, false);
+  assert.match(gate.errors.join("\n"), /unanswered/);
+});

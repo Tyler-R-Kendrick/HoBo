@@ -1,13 +1,15 @@
 # @hobo/conformance — Architecture Evidence
 
-S0-01 scaffold package. Validates workspace boundary rules and carries
-architecture-guard evidence for the production `packages/conformance` root.
+Production conformance package. It preserves the S0-01 workspace-boundary
+scaffold and adds the HOBO-585 port-suite harness for golden-IR capture, replay
+comparison, deterministic seed checks, coverage manifests, provenance, and
+claimed-port listing/blocking disposition.
 
 ## Schema and constraints
 
 - Protobuf records live in [`data-models/`](./data-models).
 - CUE constraints bound every protobuf type in that folder.
-- PACT consumer/provider evidence lives under [`contracts/pacts/`](./contracts/pacts).
+- PACT consumer/provider evidence lives under [`contracts/`](./contracts).
 
 ## Parse, don't validate
 
@@ -28,3 +30,8 @@ validation runs. CUE constraints on `WorkspaceEdgeRecord` and
 
 The harness implements parse/refinement tests; runtime projection is deferred to
 later conformance slices.
+
+The port-suite runner appends `conformance.RunStarted`,
+`conformance.CaseChecked`, `conformance.CoverageEvaluated`, and
+`conformance.RunCompleted` events; `projectPortSuiteReport` derives the
+`PortSuiteReport` read model from that append-only log.

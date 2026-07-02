@@ -1,9 +1,9 @@
-# Conformance Port Suite Harness POC
+# @hobo/conformance
 
-Independent draft POC for [HOBO-585](https://linear.app/quickdeploy-ai/issue/HOBO-585) /
+Production package for [HOBO-585](https://linear.app/quickdeploy-ai/issue/HOBO-585) /
 [S0-08](https://linear.app/quickdeploy-ai/issue/HOBO-585/s0-08-hoboconformance-port-suite-harness-core-with-golden-ir-capture).
-Promotes the [HOBO-5](https://linear.app/quickdeploy-ai/issue/HOBO-5) proof semantics into a
-typed, event-sourced harness ready for `packages/conformance/` once S0-01/S0-03 land on `main`.
+It promotes the [HOBO-5](https://linear.app/quickdeploy-ai/issue/HOBO-5) proof semantics into a
+typed, event-sourced port-suite harness under `packages/conformance/`.
 
 ## Requirements Source
 
@@ -24,11 +24,13 @@ typed, event-sourced harness ready for `packages/conformance/` once S0-01/S0-03 
 ## Verification
 
 ```bash
-pnpm --prefix src/draft/technical-proofs/conformance-port-suite-harness typecheck
-pnpm --prefix src/draft/technical-proofs/conformance-port-suite-harness test
+pnpm --filter @hobo/conformance typecheck
+pnpm exec turbo run test --filter ./packages/conformance
 ```
 
-## Promotion Target
+## Boundaries
 
-When S0-01 (`packages/*` workspace) and S0-03 (`@hobo/core`) merge, promote this package to
-`packages/conformance/` publishing `@hobo/conformance`.
+The package is generic over WIT ports and adapters. It does not import runtime,
+provider, IaC, build, registry, signing, or `hobo verify` implementations. It
+ships package-local Protobuf, CUE, and Pact evidence for the report envelope and
+records unrun `camp` tiers honestly for later production verification.

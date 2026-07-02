@@ -1,5 +1,10 @@
-import { SDK_PARITY_SCHEMA, type ConformanceFailure, type SdkParityInput, type SdkParityReport } from "./types.ts";
-import { findLanguageSpecificGoldenIrField } from "./golden-ir.ts";
+import { findLanguageSpecificGoldenIrField } from "./golden-ir.js";
+import {
+	SDK_PARITY_SCHEMA,
+	type ConformanceFailure,
+	type SdkParityInput,
+	type SdkParityReport,
+} from "./types.js";
 
 const defaultAnnexCategories = [
   "error-mapping",

@@ -1,4 +1,4 @@
-import type { ValueDiff } from "./types.ts";
+import type { ValueDiff } from "./types.js";
 
 export function firstDiff(expected: unknown, actual: unknown, path = "$"): ValueDiff | null {
   if (Object.is(expected, actual)) {

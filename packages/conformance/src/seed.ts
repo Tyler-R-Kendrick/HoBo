@@ -1,4 +1,4 @@
-import type { CaseContext } from "./types.ts";
+import type { CaseContext } from "./types.js";
 
 export function createSeededRandom(seed: string): () => number {
   let state = 2166136261;

@@ -1,6 +1,6 @@
-# Conformance Port Suite Harness — Architecture Evidence
+# @hobo/conformance Port Suite Harness — Architecture Evidence
 
-This draft package carries the architecture-guard evidence required by
+This production package carries the architecture-guard evidence required by
 `scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
 how its records map onto the platform's event flow.
 

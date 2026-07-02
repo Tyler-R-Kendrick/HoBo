@@ -1,4 +1,4 @@
-import type { AdapterRegistry, ConformanceAdapter } from "./types.ts";
+import type { AdapterRegistry, ConformanceAdapter } from "./types.js";
 
 export function createAdapterRegistry(): AdapterRegistry {
   const adapters = new Map<string, ConformanceAdapter>();

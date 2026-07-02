@@ -1,8 +1,8 @@
-import { firstDiff } from "./diff.ts";
-import { findLanguageSpecificGoldenIrField } from "./golden-ir.ts";
-import { projectPortSuiteReport } from "./report.ts";
-import { createCaseContext } from "./seed.ts";
-import { createConformanceSuite } from "./suite.ts";
+import { firstDiff } from "./diff.js";
+import { findLanguageSpecificGoldenIrField } from "./golden-ir.js";
+import { projectPortSuiteReport } from "./report.js";
+import { createCaseContext } from "./seed.js";
+import { createConformanceSuite } from "./suite.js";
 import {
   DEFAULT_SEED,
   type AdapterResult,
@@ -15,7 +15,7 @@ import {
   type ConformanceTier,
   type RunConformanceSuiteOptions,
   type SuiteCase,
-} from "./types.ts";
+} from "./types.js";
 
 export async function runConformanceSuite(
   definition: ConformanceSuiteDefinition | ConformanceSuite,

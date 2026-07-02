@@ -28,3 +28,6 @@ CI lane: `.github/workflows/hobo-ci.yml` job `s4-stage-gate-drill` (label `hobo/
 
 HOBO-645 owns this acceptance record. Blockers S4-07/S4-08 may extend production
 lanes; this draft POC remains the independent gate contract until those merge.
+
+Architecture evidence (parse-don't-validate, event flow) lives in
+`src/draft/technical-proofs/s4-stage-gate-multi-cloud-contract/ADR.md`.

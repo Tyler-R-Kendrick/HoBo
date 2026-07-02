@@ -20,6 +20,23 @@ tags: [hobo, automations]
 - **Pull requests:** open as draft, mark ready for review only after verification gates pass
 - **Reporting:** Linear, pull request comments/body, and related repo docs
 
+## Agent-native guardrails ([BR-011](../archive/requirements/requirements.md), [Plan 06](../design/ai-native-agent-auth.md#plan-06))
+
+Issue-worker automation is an **autonomous agent principal** operating on the HoBo repo. It must stay inside HoBo's agent-native safety model — not a side-channel script with ad-hoc rules.
+
+| Platform guardrail ([BR-011](../archive/requirements/requirements.md) / [Plan 06](../design/ai-native-agent-auth.md#plan-06)) | Issue-worker enforcement |
+|---|---|
+| High-risk actions gated (`require-approval` / `deny`) ([FR-022](../archive/requirements/requirements.md)) | `AUTO_MERGE=false`; never push to `main`; never force-push a shared branch; never merge own PR |
+| `spendCapUsd` / quota gates ([Plan 06 §6.2](../design/ai-native-agent-auth.md#62-agent-identity--the-token-broker)) | One issue per run (`MAX_ISSUES_PER_RUN=1`); narrow `agent:check` scope; no broad install/codegen/test sweeps as diagnostics |
+| Destroy protection | No deleting unrelated work; preserve user work; `Scope (out)` is a hard wall |
+| Agent tool contracts bound side effects ([Plan 29](../design/contracts-policy-flags.md#plan-29)) | Touch only the owned issue/PR; claim protocol prevents parallel collision |
+| Unified policy decisions + obligations ([Plan 29](../design/contracts-policy-flags.md#plan-29)) | Every **Adversarial** bullet becomes a required guard/test; RCR protocol for requirement drift |
+| `SafetyEnvelope` decision classes ([ADR-0094](../design/adr/02-identity-security.md#adr-0094)) | Claim + isolated worktree; feedback only on owned PR; fail-closed when verification gates are red |
+
+**Authoritative refs:** [BR-011](../archive/requirements/requirements.md) (safe autonomous operation), [FR-022](../archive/requirements/requirements.md) (`require-approval` / `auto-allow` / `deny`, `spendCapUsd`, destroy protection), [Plan 06](../design/ai-native-agent-auth.md#plan-06) (agents as principals + least-privilege guardrails), [Plan 29](../design/contracts-policy-flags.md#plan-29) (policy plane), [ADR-0094](../design/adr/02-identity-security.md#adr-0094) (autonomous-write safety envelope).
+
+Executable mapping proof: [`src/draft/technical-proofs/issue-worker-guardrail-mapping-contract/`](../../src/draft/technical-proofs/issue-worker-guardrail-mapping-contract/).
+
 ## Automation prompt
 
 ```text
@@ -144,7 +161,7 @@ Because LOOP=false and MAX_ISSUES_PER_RUN=1, stop after one newly claimed issue 
 
 Final report must include RUN_ID, HOBO issue id, branch, PR URL, Linear status, tests/checks run, and RCR sub-issues created if any.
 
-GUARDRAILS
+GUARDRAILS (agent-native — see BR-011 / Plan 06 mapping above)
 - Touch only the issue/PR this run owns.
 - Never edit, reassign, or claim another worker's in-progress issue.
 - Never push to main directly.

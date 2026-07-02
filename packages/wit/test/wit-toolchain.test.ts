@@ -80,7 +80,7 @@ describe("toolchain lock verification", () => {
 	it("verifies all vendored WIT deps against wit-lock.json", async () => {
 		const lock = await loadToolchainLock(LOCK_PATH);
 		const verification = await verifyVendoredWit(lock, PACKAGE_ROOT);
-		expect(verification.verified).toBe(15);
+		expect(verification.verified).toBe(lock.witDeps.length);
 		expect(verification.pins.every((pin) => pin.sha256.startsWith("sha256:"))).toBe(true);
 	});
 
@@ -127,14 +127,15 @@ describe("forward/reverse surface parity", () => {
 		const artifact = {
 			artifact: "fixtures/golden-sdk-component.wasm",
 			imports: [
-				"actor",
-				"agent",
-				"capability",
-				"command",
-				"data",
-				"saga",
-				"subscription",
-				"workflow",
+				"hobo:runtime/workflow@0.1.0",
+				"hobo:runtime/actor@0.1.0",
+				"hobo:runtime/saga@0.1.0",
+				"hobo:runtime/agent@0.1.0",
+				"hobo:runtime/command@0.1.0",
+				"hobo:runtime/subscribe@0.1.0",
+				"hobo:queue/queue@0.1.0",
+				"hobo:scheduler/scheduler@0.1.0",
+				"hobo:blob-events/blob-events@0.1.0",
 			],
 			exports: [] as string[],
 		};

@@ -4,7 +4,7 @@
 	"type": "module",
 	"files": [
 		"dist",
-		"generated",
+		"src/generated",
 		"wit",
 		"wit-lock.json"
 	],
@@ -22,6 +22,8 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"codegen": "tsx scripts/generate-bindings.ts",
+		"wit:gen": "tsx scripts/generate-bindings.ts",
+		"wit:check": "tsx scripts/generate-bindings.ts --check",
 		"roundtrip": "tsx bin/reverse-extract.ts --wit wit/hobo-sdk.wit --artifact fixtures/golden-component.imports-exports.json",
 		"test": "vitest run"
 	},

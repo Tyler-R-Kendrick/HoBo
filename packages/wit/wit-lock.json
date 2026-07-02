@@ -170,6 +170,106 @@
       "stability": "preview",
       "path": "wit/deps/wasi-sql-query.wit",
       "sha256": "sha256:0fbfc5006946def31ab331d8d7cc0d4ecad39bfd379c0788e042bd8306bc4e54"
+    },
+    {
+      "id": "hobo:sdk/sdk@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "sdk",
+      "interface_name": "sdk",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/hobo-sdk.wit",
+      "sha256": "sha256:fd3c785a595dd95a4aac559d9efa09e9572a012887857086aee839eb692fe275"
+    },
+    {
+      "id": "hobo:runtime/workflow@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "runtime",
+      "interface_name": "workflow",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-runtime/hobo-runtime.wit",
+      "sha256": "sha256:c1f5874b5c0c930f1ca68196f5be2f3bcd512821d9be94e1fe523945208e96cf"
+    },
+    {
+      "id": "hobo:runtime/actor@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "runtime",
+      "interface_name": "actor",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-runtime/hobo-runtime.wit",
+      "sha256": "sha256:c1f5874b5c0c930f1ca68196f5be2f3bcd512821d9be94e1fe523945208e96cf"
+    },
+    {
+      "id": "hobo:runtime/saga@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "runtime",
+      "interface_name": "saga",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-runtime/hobo-runtime.wit",
+      "sha256": "sha256:c1f5874b5c0c930f1ca68196f5be2f3bcd512821d9be94e1fe523945208e96cf"
+    },
+    {
+      "id": "hobo:runtime/agent@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "runtime",
+      "interface_name": "agent",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-runtime/hobo-runtime.wit",
+      "sha256": "sha256:c1f5874b5c0c930f1ca68196f5be2f3bcd512821d9be94e1fe523945208e96cf"
+    },
+    {
+      "id": "hobo:runtime/command@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "runtime",
+      "interface_name": "command",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-runtime/hobo-runtime.wit",
+      "sha256": "sha256:c1f5874b5c0c930f1ca68196f5be2f3bcd512821d9be94e1fe523945208e96cf"
+    },
+    {
+      "id": "hobo:runtime/subscribe@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "runtime",
+      "interface_name": "subscribe",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-runtime/hobo-runtime.wit",
+      "sha256": "sha256:c1f5874b5c0c930f1ca68196f5be2f3bcd512821d9be94e1fe523945208e96cf"
+    },
+    {
+      "id": "hobo:queue/queue@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "queue",
+      "interface_name": "queue",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-queue/hobo-queue.wit",
+      "sha256": "sha256:a76d08a1a9ca9dad0a90b4fbb2d0828a4ba986caf1581ab7a94275c7f8341aa7"
+    },
+    {
+      "id": "hobo:scheduler/scheduler@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "scheduler",
+      "interface_name": "scheduler",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-scheduler/hobo-scheduler.wit",
+      "sha256": "sha256:63985c77cee5ac44defb47a67c28c0e88258727757f32e48d6a4e63b9230a0cc"
+    },
+    {
+      "id": "hobo:blob-events/blob-events@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "blob-events",
+      "interface_name": "blob-events",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-blob-events/hobo-blob-events.wit",
+      "sha256": "sha256:1c8473c01beb90995cd22ceb68dedc8143cf7e145f0b464e9876f1c1a105dc3e"
     }
   ],
   "guards": [

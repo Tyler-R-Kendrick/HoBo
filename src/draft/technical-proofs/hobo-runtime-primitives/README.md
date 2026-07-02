@@ -1,5 +1,7 @@
 # HoBo Runtime Primitives POC
 
+> **Promoted to production:** `hobo:runtime@0.1.0` primitive interfaces now ship from [`packages/wit/wit/deps/hobo-runtime/`](../../../../packages/wit/wit/deps/hobo-runtime/) (`@hobo/wit`, HOBO-590).
+
 This package proves the HOBO-13 `hobo:runtime@0.1.0` primitive contract:
 
 - `workflow`: durable steps, sleep, event emission, hooks, run start.

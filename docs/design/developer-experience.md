@@ -139,6 +139,31 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./generated-stack.md#plan-09)).
 
+##### Local multi-service orchestration — lifecycle annotations under `hobo dev` ([Plan 21](./authoring-resources-wiring.md#plan-21), [Plan 4](./control-plane.md#plan-04))
+
+`hobo dev` stands up the **whole collected manifest** as a local graph — not one process at a time. The local orchestrator reuses the deploy **dependency DAG** (`bind` edges from resource collection plus explicit `waitFor` annotations) and applies the same **choreography** model as the control plane ([Plan 4](./control-plane.md#plan-04)): each resource self-activates when its declared gates are satisfied; there is no central step coordinator. Startup progress is surfaced in the local inspector as waves (**Starting** → **Ready** per resource).
+
+The normative matrix below pins **local lifecycle behavior per annotation class** from [Plan 21](./authoring-resources-wiring.md#plan-21). Deploy-only provider annotations (`.with(aws.fargate)` etc.) are **inert locally** — unchanged from Plan 21.
+
+| Annotation class | Authoring surface | Local `hobo dev` behavior | Ready gate |
+|---|---|---|---|
+| **Dependency edge** | `bind: { db }`, manifest `links` | Edge recorded in the local DAG; consumer env/refs stay unresolved until the producer is **Ready** | Producer **Ready** |
+| **Endpoints** | `withHttpEndpoint`, `withEndpoint` | Ports allocated on `localhost`; `external: true` publishes a host-reachable URL in the inspector; scheme/protocol honored for local routing | Listener bound |
+| **Env / args** | `withEnvironment`, `withArgs` | Lazy reference values (`{db.connectionString}`, `ConnectionStrings__*`) resolve when the referenced resource is **Ready**; static values apply at start | All lazy refs resolved |
+| **Storage** | `withBindMount`, `withVolume` | Bind mounts map host paths; named volumes live under `.hobo/volumes/<name>/` and survive hot reload; `withLifetime("persistent")` volumes also survive `hobo dev` process restart | Mount/volume attached |
+| **Lifetime** | `withLifetime("persistent")` | Persistent containers/volumes are **not** torn down on hot reload; on `hobo dev` restart they are reattached from `.hobo/` state when still valid | Reattach or first-create complete |
+| **Explicit startup** | `withExplicitStartup()` | Resource stays **Stopped** until the developer runs `hobo dev start <resource>` **or** every `waitFor` target is **Ready** (whichever comes first) | Manual start or `waitFor` gates cleared |
+| **Wait for resource** | `waitFor(dep)` | Dependent does not leave **Starting** until `dep` is **Ready** (started + health passed when annotated) — stricter than a bare `bind` edge, which only gates env injection | `dep` is **Ready** |
+| **Wait for job** | `waitForCompletion(job)` | One-shot/job workloads must exit **0** before dependents activate; non-zero exit surfaces **Start failed** with remediation | `job` exited 0 |
+| **Health** | `withHttpHealthCheck(path)`, `withHealthCheck()` | Local probe against `localhost` (same path/port as deploy); failure blocks **Ready** and keeps `waitFor` dependents in **Starting**; feeds the same rollout semantics as [Plan 5](./reliability-observability-cost.md#plan-05) but against local endpoints | Probe success |
+| **Replicas** | `replicas` annotation | Forced to **1** instance locally; inspector shows `replicas: 1 (local)` | Single instance running |
+| **Scaling** | `scaling { min, max }` | **Ignored for placement** — local graph always runs `min` instances capped at 1; inspector labels `scaling: local-fixed-1` | N/A (fixed local count) |
+| **Residency** | `residency` / region pins | **Advisory label only** — no placement effect locally; shown in inspector for parity with plan review | N/A |
+
+**Shutdown and reload.** On source hot reload, wasm/component lanes swap artifacts and replay event-backed state ([ADR-0037](./adr/01-architecture-core.md#adr-0037)); `addContainer` lanes restart-on-change per [ADR-0042](./adr/07-portability-extensibility.md#adr-0042). Tear-down on `hobo dev` stop walks the DAG in **reverse dependency order** (dependents first) — the inverse of startup choreography. `withLifetime("persistent")` resources may be left running across stop when `.hobo/persistent.keep` is set (opt-in; default is full tear-down).
+
+Executable acceptance for this matrix lives in [`src/draft/technical-proofs/local-dev-orchestration-contract`](../../src/draft/technical-proofs/local-dev-orchestration-contract/README.md) ([HOBO-694 proof](./proofs/hobo-694-local-dev-orchestration/index.md)).
+
 Local resilience diagnostics use the same rule: the developer-facing output is a
 projection of persisted facts, not process memory. The HOBO-520 proof command in
 `src/draft/technical-proofs/resilience-semantics-annex` shows transient retry attempts, policy

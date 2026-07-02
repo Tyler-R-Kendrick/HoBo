@@ -59,7 +59,7 @@ in the history of commit `d7bbc39c`.
 
 - **Lenses:** A1 P1-Nomad · A2 P2-Aspire · A3 P3-Nitric · A4 P4-FinOps · A5 P5-agent-native · A6 L-DRIFT · A7 L-CONS (7 parallel finders → merge/dedup → 3 diverse skeptics per candidate → remediation drafting; 123 agents in run B)
 - **Raw → merged → verdicts (run B):** 54 raw findings → 30 candidates (22 more pre-rejected by their own lens) → **25 confirmed** / 5 refuted
-- **New findings:** DRIFT-001, DRIFT-002, DRIFT-003, DRIFT-004, DRIFT-005, DRIFT-006, DRIFT-007, DRIFT-008, GAP-001, GAP-002, GAP-003, GAP-004, GAP-005, GAP-006, GAP-007, GAP-008, GAP-009, GAP-010, GAP-011, GAP-012, GAP-013, GAP-014, GAP-015, GAP-016, GAP-017
+- **New findings:** DRIFT-001, DRIFT-002, DRIFT-003, DRIFT-004, DRIFT-005, DRIFT-006, DRIFT-007, DRIFT-008, GAP-001, GAP-002, GAP-003, GAP-004, GAP-005, GAP-006, GAP-007, GAP-008, GAP-009, GAP-010, GAP-011, GAP-012, GAP-013, GAP-014, GAP-015, GAP-016, GAP-017, GAP-018
 - **Rejected:** NI-001…NI-027
 - **Stop rule:** open — iteration 2 (completeness critic + informed re-sweep + evidence audit) required before closure. The iteration loop is itself documented as executable Linear work: [HOBO-691](https://linear.app/quickdeploy-ai/issue/HOBO-691) (iteration 2) → [HOBO-692](https://linear.app/quickdeploy-ai/issue/HOBO-692) (closure sweeps until dry)
 
@@ -84,6 +84,7 @@ in the history of commit `d7bbc39c`.
 | GAP-015 | L-CONS | LOW | 🧯 | docs/plans/ is still missing from docs/index.md's directory map (commit 59e387ae touched only README.md, GAPS.md, and implementation-plan.md), and docs/plans/index.md is not a directory listing at all but a stale review-findings doc referencing removed paths, violating the stated OKF convention that index.md files provide directory listings. | `docs/index.md:18-27`<br>`docs/plans/index.md:3`<br>`docs/plans/index.md:54-55` … | [REM-023](#rem-023-for-gap-015) |
 | GAP-016 | L-CONS | LOW | ✔ | The requirements suite and roadmap were moved under docs/archive/ without rewriting relative links: every ../design/* link in docs/archive/requirements/*.md resolves to the nonexistent docs/archive/design/, and both docs also reference design files that no longer exist under any path (adr/08-scope-and-requirements.md, forge-generated-stack.md, roadmap.md#plan-08, per-stage anchors), so intent->requirements->design tracing misroutes at every hop. | `docs/archive/requirements/index.md:20-39`<br>`docs/archive/requirements/requirements.md:25-35`<br>`docs/archive/roadmap.md:22` … | [REM-024](#rem-024-for-gap-016) |
 | GAP-017 | L-CONS | LOW | ✔ | The canonical glossary — declared the single source of truth for canonical term definitions — omits the FinOps control plane's coined vocabulary (ResourceIntent, metric contract, MetricVector, ParetoFrontier, decision graph, DX/OpsX/FinX surfaces) and the ubiquitous 'Crew' alias, even though newer Meta-cloud Broker terms were added, showing the maintenance path exists but skipped the FinOps delta. | `docs/design/glossary.md:10-14`<br>`docs/design/finops-budget-routing-control-plane.md:51-83`<br>`docs/design/glossary.md:49-62`<br>`docs/design/index.md:24` | [REM-025](#rem-025-for-gap-017) |
+| GAP-018 | P2 | MED | ✔ | `hobo dev` local multi-service orchestration is unspecified — lifecycle APIs exist for deploy but the inner loop never states dependency-gated startup semantics per annotation class. | `docs/design/authoring-resources-wiring.md:150-151`<br>`docs/design/developer-experience.md:135-139`<br>`docs/design/control-plane.md:57-67` … | [REM-026](#rem-026-for-gap-018) |
 
 ## Drift register
 
@@ -1469,6 +1470,29 @@ Documentation-only change: touch a single existing file, no code, no new lint ru
 - **Acceptance:** `docs:okf`, `agent:check -- --staged`, `validate-traceability.ts`, `lint:docs:staged`; wadm hits in wasm-runtime-wit.md, adr/01-architecture-core.md, control-plane.md; all scheduling semantics labeled designed/delegated/deferred.
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-669](https://linear.app/quickdeploy-ai/issue/HOBO-669) — ADR-0108 in `docs/design/adr/01-architecture-core.md`
+
+### REM-026 (for GAP-018)
+
+- **Finding** (P2, MED): `hobo dev` local multi-service orchestration is unspecified — lifecycle APIs exist for deploy but the inner loop never states dependency-gated startup semantics per annotation class.
+- **Evidence:** `docs/design/authoring-resources-wiring.md:150-151` · `docs/design/developer-experience.md:135-139` · `docs/design/control-plane.md:57-67`
+- **Effort:** M · **Delivery:** [HOBO-694](https://linear.app/quickdeploy-ai/issue/HOBO-694) (Intent-Alignment Gap Remediation project)
+
+**Action**
+
+Documentation + executable proof (no new ADR):
+
+1. `docs/design/developer-experience.md` — Plan 07 inner-loop section gains `##### Local multi-service orchestration — lifecycle annotations under hobo dev` with a normative matrix naming local lifecycle behavior for each Plan 21 annotation class (`bind`, endpoints, env/args, storage, lifetime, explicit startup, `waitFor`, `waitForCompletion`, health, replicas, scaling, residency).
+2. `src/draft/technical-proofs/local-dev-orchestration-contract/` — independent POC proving dependency-gated startup, health/job gates, explicit startup, parallel roots, lazy env resolution, local replica labels, reverse shutdown order, and cycle detection.
+3. `docs/design/proofs/hobo-694-local-dev-orchestration/index.md` + `docs/design/traceability.md` HOBO-694 / PLAN-07 rows.
+
+**Acceptance**
+
+1. Plan 07 inner-loop section names local lifecycle behavior for each annotation class.
+2. `pnpm run docs:design-lint` + `pnpm agent:check -- --staged` pass.
+
+**Guardrails**
+
+Docs-first; Nomad→wasmCloud pivot accepted — never reverse. No production `runtime-local` or CLI daemon implementation in this slice.
 
 ## Verified non-issues
 

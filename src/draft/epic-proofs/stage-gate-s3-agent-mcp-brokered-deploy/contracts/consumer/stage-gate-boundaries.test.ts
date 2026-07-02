@@ -36,6 +36,7 @@ test("pact expectations align with simulated J2 drill outcomes", async () => {
   assert.equal(result.scenarios.failedDeploy.data.code, "DEPLOY_GATE_FAILED");
   assert.equal(result.scenarios.selfCorrection.deploy.ok, true);
   assert.equal(result.scenarios.overBroadToken.ok, false);
+  assert.equal(result.scenarios.overBroadToken.error.code, "MCP_SCOPE_DENIED");
   assert.equal(result.scenarios.prodDeployBlocked.decision.effect, "require-approval");
   assert.equal(result.scenarios.replay.replayable, true);
   assert.equal(result.scenarios.traceScan.staticSecretsFound, false);

@@ -18,4 +18,4 @@
 | Replayable run | `replay.replayable` |
 | NFR-017 self-correction | `selfCorrection.followedSteps` |
 | High-risk approval gate | `prodDeployBlocked.decision.effect` |
-| request_token bounded by .allow() | `overBroadToken.ok === false` |
+| request_token bounded by .allow() | `overBroadToken.ok === false`, `overBroadToken.error.code === "MCP_SCOPE_DENIED"` |

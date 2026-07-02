@@ -17,7 +17,7 @@ Executable evidence lives at
 - `token.Granted` and `token.Used` events with replayable event-store digest.
 - NFR-017 machine-readable `explainFailure` drives verify → redeploy self-correction.
 - High-risk prod deploy blocks on `require-approval` until human approves.
-- `request_token` outside `.allow()` ceiling refused.
+- `request_token` outside `.allow()` ceiling refused (`MCP_SCOPE_DENIED`).
 
 ## Verification
 

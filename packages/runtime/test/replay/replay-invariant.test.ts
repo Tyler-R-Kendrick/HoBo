@@ -25,21 +25,39 @@ const checkoutWorkflow = defineWorkflow("checkout", {
 		ctx.emit("actor.OrderPlaced", { orderId: order.id });
 		ctx.emit("saga.FulfillmentRequested", { orderId: order.id });
 		ctx.waitForHook("approval");
-		return { ...state, startedAt: ctx.now(), actorSignal: "placed", sagaReaction: "requested" };
+		return {
+			...state,
+			startedAt: ctx.now(),
+			actorSignal: "placed",
+			sagaReaction: "requested",
+		};
 	},
 	onHook(ctx, state, payload) {
 		if ((payload as { ok?: boolean }).ok !== true) {
 			return { ...state, status: "rejected" };
 		}
-		const timer = ctx.sleep(10_000, { id: "settle-payment", label: "payment-settle" });
-		return { ...state, approved: true, paymentDueAt: timer.fireAt, status: "waiting-for-payment" };
+		const timer = ctx.sleep(10_000, {
+			id: "settle-payment",
+			label: "payment-settle",
+		});
+		return {
+			...state,
+			approved: true,
+			paymentDueAt: timer.fireAt,
+			status: "waiting-for-payment",
+		};
 	},
 	onTimer(ctx, state, timer) {
 		if (timer.label !== "payment-settle") {
 			return state;
 		}
 		ctx.emit("checkout.Confirmed", { orderId: state.orderId });
-		return { ...state, charged: true, settledAt: timer.fireAt, status: "confirmed" };
+		return {
+			...state,
+			charged: true,
+			settledAt: timer.fireAt,
+			status: "confirmed",
+		};
 	},
 });
 
@@ -78,7 +96,9 @@ describe("replay invariant fixtures", () => {
 			}
 			expect(error.liveOrder.length).toBeGreaterThan(0);
 			expect(error.replayOrder.length).toBeGreaterThan(0);
-			expect(error.divergence.liveStateDigest).not.toBe(error.divergence.replayStateDigest);
+			expect(error.divergence.liveStateDigest).not.toBe(
+				error.divergence.replayStateDigest,
+			);
 			return true;
 		});
 	});

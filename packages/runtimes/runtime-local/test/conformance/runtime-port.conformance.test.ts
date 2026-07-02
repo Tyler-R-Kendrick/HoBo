@@ -7,7 +7,9 @@ import { createRuntimeLocalDurabilityBackend } from "./helpers.js";
 
 describe("@hobo/runtime-local runtime-port conformance gate", () => {
 	it("passes the full runtime-port durability suite", async () => {
-		const report = await runRuntimePortDurabilitySuite(createRuntimeLocalDurabilityBackend);
+		const report = await runRuntimePortDurabilitySuite(
+			createRuntimeLocalDurabilityBackend,
+		);
 
 		expect(report.status).toBe("pass");
 		expect(report.coverage.local).toEqual({
@@ -19,7 +21,9 @@ describe("@hobo/runtime-local runtime-port conformance gate", () => {
 	});
 
 	it("rejects a backend that accepts stale lease appends", async () => {
-		const report = await runRuntimePortDurabilitySuite(createBrokenFenceRuntimeBackend);
+		const report = await runRuntimePortDurabilitySuite(
+			createBrokenFenceRuntimeBackend,
+		);
 
 		expect(report.status).toBe("fail");
 		expect(report.failures).toEqual([

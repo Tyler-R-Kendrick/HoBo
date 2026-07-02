@@ -4,7 +4,8 @@ export const MANIFEST_SCHEMA = "hobo.manifest/v1" as const;
 
 const RESOURCE_TYPES = new Set(["data.v1", "component.v1", "website.v1"]);
 const RESOURCE_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
-const MANIFEST_REFERENCE = /^\{([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
+const MANIFEST_REFERENCE =
+	/^\{([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
 const RESOURCE_PLACEHOLDER =
 	/^\$\{resources\.([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_-]*)#([A-Za-z][A-Za-z0-9_-]*)\.outputs\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
 const CONTEXT_PLACEHOLDER = /^\$\{context\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
@@ -100,7 +101,10 @@ export function canonicalManifestHash(manifest: ManifestV1): ManifestHash {
 export function parseManifestReference(value: string): ManifestReference {
 	const match = MANIFEST_REFERENCE.exec(value);
 	if (!match) {
-		throw new ManifestParseError("reference", `invalid manifest token ${value}`);
+		throw new ManifestParseError(
+			"reference",
+			`invalid manifest token ${value}`,
+		);
 	}
 
 	return {
@@ -138,7 +142,9 @@ function capture(match: RegExpExecArray, index: number, path: string): string {
 	return value;
 }
 
-export function aspireFallbackEnv(manifest: ManifestV1): Record<string, string[]> {
+export function aspireFallbackEnv(
+	manifest: ManifestV1,
+): Record<string, string[]> {
 	const aspireEnv: Record<string, string[]> = {};
 
 	for (const [id, resource] of Object.entries(manifest.value.resources)) {
@@ -147,7 +153,10 @@ export function aspireFallbackEnv(manifest: ManifestV1): Record<string, string[]
 		}
 
 		for (const key of Object.keys(resource.env)) {
-			if (key.startsWith("ConnectionStrings__") || key.startsWith("services__")) {
+			if (
+				key.startsWith("ConnectionStrings__") ||
+				key.startsWith("services__")
+			) {
 				aspireEnv[id] ??= [];
 				aspireEnv[id].push(key);
 			}
@@ -172,7 +181,10 @@ function parseManifestRecord(input: unknown): ManifestRecord {
 
 	const resourceEntries = Object.entries(input.resources);
 	if (resourceEntries.length === 0) {
-		throw new ManifestParseError("resources", "must declare at least one resource");
+		throw new ManifestParseError(
+			"resources",
+			"must declare at least one resource",
+		);
 	}
 
 	const resources: Record<string, ResourceRecord> = {};
@@ -236,7 +248,10 @@ function validateResource(id: string, resource: unknown): ResourceRecord {
 	}
 
 	if (resource.bind !== undefined && !isStringArray(resource.bind)) {
-		throw new ManifestParseError(`resources.${id}.bind`, "must be an array of resource ids");
+		throw new ManifestParseError(
+			`resources.${id}.bind`,
+			"must be an array of resource ids",
+		);
 	}
 
 	return structuredClone(resource) as ResourceRecord;
@@ -278,7 +293,10 @@ function validateResourceReferences(
 	if (resource.links) {
 		resource.links.forEach((link, index) => {
 			assertRecord(link, `resources.${id}.links[${index}]`);
-			assertRequiredString(link.import, `resources.${id}.links[${index}].import`);
+			assertRequiredString(
+				link.import,
+				`resources.${id}.links[${index}].import`,
+			);
 			assertRequiredString(link.to, `resources.${id}.links[${index}].to`);
 
 			const target = resources[link.to];
@@ -333,7 +351,10 @@ function validateResourceReferences(
 
 	if (isRecord(resource.env)) {
 		for (const key of Object.keys(resource.env)) {
-			if (key.startsWith("ConnectionStrings__") || key.startsWith("services__")) {
+			if (
+				key.startsWith("ConnectionStrings__") ||
+				key.startsWith("services__")
+			) {
 				aspireEnv[id] ??= [];
 				aspireEnv[id].push(key);
 			}
@@ -351,7 +372,9 @@ function visitStrings(
 		return;
 	}
 	if (Array.isArray(value)) {
-		value.forEach((item, index) => visitStrings(item, `${path}[${index}]`, visitor));
+		value.forEach((item, index) =>
+			visitStrings(item, `${path}[${index}]`, visitor),
+		);
 		return;
 	}
 	if (isRecord(value)) {
@@ -383,13 +406,19 @@ function brandManifest(record: ManifestRecord): ManifestV1 {
 	};
 }
 
-function assertRecord(value: unknown, path: string): asserts value is Record<string, unknown> {
+function assertRecord(
+	value: unknown,
+	path: string,
+): asserts value is Record<string, unknown> {
 	if (!isRecord(value)) {
 		throw new ManifestParseError(path, "must be an object");
 	}
 }
 
-function assertRequiredString(value: unknown, path: string): asserts value is string {
+function assertRequiredString(
+	value: unknown,
+	path: string,
+): asserts value is string {
 	if (typeof value !== "string" || value.length === 0) {
 		throw new ManifestParseError(path, "required");
 	}
@@ -400,5 +429,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isStringArray(value: unknown): value is string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === "string");
+	return (
+		Array.isArray(value) && value.every((item) => typeof item === "string")
+	);
 }

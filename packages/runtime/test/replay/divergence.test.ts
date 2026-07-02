@@ -25,8 +25,12 @@ describe("ReplayDivergenceError", () => {
 			expect(error).toBeInstanceOf(ReplayDivergenceError);
 			const divergence = (error as ReplayDivergenceError).divergence;
 			expect(divergence.runId).toBe("divergence-case");
-			expect((error as ReplayDivergenceError).liveOrder.length).toBeGreaterThan(0);
-			expect((error as ReplayDivergenceError).replayOrder.length).toBeGreaterThan(0);
+			expect((error as ReplayDivergenceError).liveOrder.length).toBeGreaterThan(
+				0,
+			);
+			expect(
+				(error as ReplayDivergenceError).replayOrder.length,
+			).toBeGreaterThan(0);
 			expect(divergence.liveStateDigest).not.toBe(divergence.replayStateDigest);
 			expect(divergence.liveStateDigest).toMatch(/^[0-9a-f]{64}$/);
 			expect(divergence.replayStateDigest).toMatch(/^[0-9a-f]{64}$/);

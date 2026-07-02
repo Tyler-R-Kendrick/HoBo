@@ -33,9 +33,10 @@ export type ParsedTemplateId = TemplateId & { readonly __brand: "TemplateId" };
 
 export function parseProjectName(raw: string): ProjectName {
 	if (typeof raw !== "string" || raw.trim() === "") {
-		throw new UsageError("Invalid project name: project name cannot be empty.", [
-			"Provide a single directory name, for example `hobo new my-app`.",
-		]);
+		throw new UsageError(
+			"Invalid project name: project name cannot be empty.",
+			["Provide a single directory name, for example `hobo new my-app`."],
+		);
 	}
 	if (raw !== raw.trim()) {
 		throw new UsageError(
@@ -67,9 +68,10 @@ export function parseProjectName(raw: string): ProjectName {
 
 export function parseTemplateId(raw: string): ParsedTemplateId {
 	if (!VALID_TEMPLATES.includes(raw as TemplateId)) {
-		throw new UsageError(`Unknown template "${raw}". Valid templates: ${VALID_TEMPLATES.join(", ")}.`, [
-			`Pass -t with one of: ${VALID_TEMPLATES.join(", ")}.`,
-		]);
+		throw new UsageError(
+			`Unknown template "${raw}". Valid templates: ${VALID_TEMPLATES.join(", ")}.`,
+			[`Pass -t with one of: ${VALID_TEMPLATES.join(", ")}.`],
+		);
 	}
 	return raw as ParsedTemplateId;
 }

@@ -62,9 +62,7 @@ describe("stage-gate record consumer pact", () => {
 		const record = parseStageGateRecord(
 			serializeStageGateRecord(samplePassedRecord()),
 		);
-		expect(record.gateId).toBe(
-			passedInteraction?.response.body.gate_id,
-		);
+		expect(record.gateId).toBe(passedInteraction?.response.body.gate_id);
 		expect(record.status).toBe(passedInteraction?.response.body.status);
 		expect(record.signature.verified).toBe(
 			(

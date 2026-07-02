@@ -32,11 +32,15 @@ describe("runtime-sdk-eventstore pact", () => {
 
 		const happy = pact.interactions[0];
 		const happyBody = happy.request.body;
-		const happyResult = await store.append(happyBody.streamId, happyBody.events, {
-			expectedSeq: happyBody.expectedSeq,
-			actor: happyBody.actor,
-			tenant: happyBody.tenant,
-		});
+		const happyResult = await store.append(
+			happyBody.streamId,
+			happyBody.events,
+			{
+				expectedSeq: happyBody.expectedSeq,
+				actor: happyBody.actor,
+				tenant: happyBody.tenant,
+			},
+		);
 		expect(happyResult.appended[0]?.type).toBe("run.Started");
 		expect(happyResult.appended[0]?.seq).toBe(1);
 
@@ -46,11 +50,15 @@ describe("runtime-sdk-eventstore pact", () => {
 			tenant: "tenant-a",
 		});
 		await expect(
-			store.append("order:1", [{ type: "order.Discounted", data: { amount: 5 } }], {
-				expectedSeq: 0,
-				actor: { kind: "system", id: "runtime-local" },
-				tenant: "tenant-a",
-			}),
+			store.append(
+				"order:1",
+				[{ type: "order.Discounted", data: { amount: 5 } }],
+				{
+					expectedSeq: 0,
+					actor: { kind: "system", id: "runtime-local" },
+					tenant: "tenant-a",
+				},
+			),
 		).rejects.toBeInstanceOf(OptimisticSequenceConflictError);
 
 		const dedupEvent = pact.interactions[2].request.body.events[0];

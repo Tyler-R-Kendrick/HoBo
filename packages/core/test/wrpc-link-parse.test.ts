@@ -26,6 +26,8 @@ describe("wrpc-link parse boundaries", () => {
 
 	it("parseInterfaceId rejects malformed ids", () => {
 		expect(() => parseInterfaceId("")).toThrow(/interface_id_required/);
-		expect(() => parseInterfaceId("not-an-interface")).toThrow(/invalid_interface_id/);
+		expect(() => parseInterfaceId("not-an-interface")).toThrow(
+			/invalid_interface_id/,
+		);
 	});
 });

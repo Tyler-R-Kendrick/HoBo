@@ -8,10 +8,15 @@ import {
 
 import { ComponentHostError } from "./errors.js";
 
-export type ParsedProviderDescriptor = ProviderDescriptor & { readonly parsed: true };
+export type ParsedProviderDescriptor = ProviderDescriptor & {
+	readonly parsed: true;
+};
 export type ParsedLinkRequest = LinkRequest & { readonly parsed: true };
 
-function assertNonEmptyId(id: unknown, code: "component_id_required" | "provider_id_required"): string {
+function assertNonEmptyId(
+	id: unknown,
+	code: "component_id_required" | "provider_id_required",
+): string {
 	if (typeof id !== "string" || id.length === 0) {
 		throw new ComponentHostError(code, String(id));
 	}

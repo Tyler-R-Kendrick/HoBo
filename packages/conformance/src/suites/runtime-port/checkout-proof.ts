@@ -1,8 +1,16 @@
-import { parseIdempotencyKey, parseQueueName, parseRunId, type EventEnvelope, type FoldHandlers } from "@hobo/core";
+import {
+	parseIdempotencyKey,
+	parseQueueName,
+	parseRunId,
+	type EventEnvelope,
+	type FoldHandlers,
+} from "@hobo/core";
 
 import { readEventStream, type RuntimeDurabilityBackend } from "./types.js";
 
-export async function proveCheckoutDurability(backend: RuntimeDurabilityBackend) {
+export async function proveCheckoutDurability(
+	backend: RuntimeDurabilityBackend,
+) {
 	const runId = "checkout:run-1";
 	const streamId = runId;
 	const { eventStore, queue, clock, actorHost } = backend;
@@ -15,12 +23,17 @@ export async function proveCheckoutDurability(backend: RuntimeDurabilityBackend)
 
 	const cart = actorHost.state(`cart:${runId}`, {
 		initialState: { reservedItems: [] as string[] },
-		fold: (state: { reservedItems: string[] }, event: { type: string; sku?: string }) =>
+		fold: (
+			state: { reservedItems: string[] },
+			event: { type: string; sku?: string },
+		) =>
 			event.type === "cart.ItemReserved"
 				? { reservedItems: [...state.reservedItems, event.sku!] }
 				: state,
 	});
-	const cartLease = actorHost.acquire(`cart:${runId}`, { holderId: "checkout-worker" });
+	const cartLease = actorHost.acquire(`cart:${runId}`, {
+		holderId: "checkout-worker",
+	});
 	cart.append(cartLease, { type: "cart.ItemReserved", sku: "sku-hobo-mug" });
 
 	await eventStore.append(
@@ -35,15 +48,28 @@ export async function proveCheckoutDurability(backend: RuntimeDurabilityBackend)
 	});
 	const payments = parseQueueName("payments");
 	const chargeKey = parseIdempotencyKey(`charge:${runId}`);
-	const queued = await queue.enqueue(payments, { runId, cents: 4200 }, { idempotencyKey: chargeKey });
-	await queue.enqueue(payments, { runId, cents: 4200 }, { idempotencyKey: chargeKey });
+	const queued = await queue.enqueue(
+		payments,
+		{ runId, cents: 4200 },
+		{ idempotencyKey: chargeKey },
+	);
+	await queue.enqueue(
+		payments,
+		{ runId, cents: 4200 },
+		{ idempotencyKey: chargeKey },
+	);
 
 	const queueEffects: string[] = [];
 	await queue.handle(payments, async (message) => {
 		queueEffects.push(message.idempotencyKey);
 		await eventStore.append(
 			streamId,
-			[{ type: "checkout.PaymentCaptured", data: { cents: (message.body as { cents: number }).cents } }],
+			[
+				{
+					type: "checkout.PaymentCaptured",
+					data: { cents: (message.body as { cents: number }).cents },
+				},
+			],
 			appendOptions(2, "checkout-paid"),
 		);
 	});
@@ -62,7 +88,9 @@ export async function proveCheckoutDurability(backend: RuntimeDurabilityBackend)
 
 	const live = await eventStore.fold(streamId, {
 		initialState: checkoutInitialState(runId),
-		handlers: checkoutHandlers() as FoldHandlers<ReturnType<typeof checkoutInitialState>>,
+		handlers: checkoutHandlers() as FoldHandlers<
+			ReturnType<typeof checkoutInitialState>
+		>,
 	});
 	const events = await readEventStream(eventStore, streamId);
 	const replayState = foldCheckoutEvents(events, runId);
@@ -75,7 +103,8 @@ export async function proveCheckoutDurability(backend: RuntimeDurabilityBackend)
 			clock
 				.trace()
 				.filter(
-					(entry) => entry.type.startsWith("clock.") || entry.type.startsWith("timer."),
+					(entry) =>
+						entry.type.startsWith("clock.") || entry.type.startsWith("timer."),
 				),
 		),
 	});
@@ -95,19 +124,33 @@ function checkoutInitialState(runId: string) {
 function checkoutHandlers() {
 	type CheckoutState = ReturnType<typeof checkoutInitialState>;
 	return {
-		"checkout.Started": (state: CheckoutState) => ({ ...state, status: "started" }),
-		"checkout.ItemReserved": (state: CheckoutState, event: EventEnvelope<{ sku: string }>) => ({
+		"checkout.Started": (state: CheckoutState) => ({
+			...state,
+			status: "started",
+		}),
+		"checkout.ItemReserved": (
+			state: CheckoutState,
+			event: EventEnvelope<{ sku: string }>,
+		) => ({
 			...state,
 			reservedItems: [...state.reservedItems, event.data?.sku ?? ""],
 		}),
-		"checkout.PaymentCaptured": (state: CheckoutState, event: EventEnvelope<{ cents: number }>) => ({
+		"checkout.PaymentCaptured": (
+			state: CheckoutState,
+			event: EventEnvelope<{ cents: number }>,
+		) => ({
 			...state,
 			status: "paid",
 			duplicateCharges:
-				state.chargedCents > 0 ? state.duplicateCharges + 1 : state.duplicateCharges,
+				state.chargedCents > 0
+					? state.duplicateCharges + 1
+					: state.duplicateCharges,
 			chargedCents: state.chargedCents + (event.data?.cents ?? 0),
 		}),
-		"checkout.Completed": (state: CheckoutState, event: EventEnvelope<{ status: string }>) => ({
+		"checkout.Completed": (
+			state: CheckoutState,
+			event: EventEnvelope<{ status: string }>,
+		) => ({
 			...state,
 			status: event.data?.status ?? state.status,
 		}),

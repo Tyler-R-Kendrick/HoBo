@@ -10,7 +10,10 @@ export interface Yard {
 	readonly camps: readonly Camp[];
 }
 
-export function yard(name: string, config: { readonly camps: readonly Camp[] }): Yard {
+export function yard(
+	name: string,
+	config: { readonly camps: readonly Camp[] },
+): Yard {
 	requireName("yard name", name);
 	const camps = requireArray(config?.camps, "yard camps");
 	if (camps.length === 0) {
@@ -24,7 +27,9 @@ export function yard(name: string, config: { readonly camps: readonly Camp[] }):
 
 	const providerIds = [...new Set(camps.map((entry) => entry.providerId))];
 	if (providerIds.length !== 1) {
-		throw new Error(`Yard ${name} cannot mix providers: ${providerIds.join(", ")}`);
+		throw new Error(
+			`Yard ${name} cannot mix providers: ${providerIds.join(", ")}`,
+		);
 	}
 
 	return deepFreeze({
@@ -36,7 +41,10 @@ export function yard(name: string, config: { readonly camps: readonly Camp[] }):
 	});
 }
 
-function requireArray<T>(value: readonly T[] | undefined, fieldName: string): readonly T[] {
+function requireArray<T>(
+	value: readonly T[] | undefined,
+	fieldName: string,
+): readonly T[] {
 	if (!Array.isArray(value)) {
 		throw new TypeError(`${fieldName} must be an array`);
 	}

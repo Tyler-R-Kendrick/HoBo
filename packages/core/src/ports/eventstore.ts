@@ -73,5 +73,9 @@ export interface EventStore {
 		filter: StreamFilter,
 		handler: (event: EventEnvelope) => void | Promise<void>,
 	): Subscription;
-	snapshot(streamId: string, state: unknown, seq: number): Promise<SnapshotRecord>;
+	snapshot(
+		streamId: string,
+		state: unknown,
+		seq: number,
+	): Promise<SnapshotRecord>;
 }

@@ -18,7 +18,10 @@ export class CliError extends Error {
 }
 
 export class UsageError extends CliError {
-	constructor(message: string, remediation: readonly string[] = defaultUsageRemediation()) {
+	constructor(
+		message: string,
+		remediation: readonly string[] = defaultUsageRemediation(),
+	) {
 		super(message, 2, "HOBO_CLI_USAGE", remediation);
 		this.name = "UsageError";
 	}

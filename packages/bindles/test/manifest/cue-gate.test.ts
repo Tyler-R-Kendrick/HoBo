@@ -1,5 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	readdirSync,
+	readFileSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -31,7 +37,10 @@ function resolveCueBinary(): string {
 
 	try {
 		const lookup = process.platform === "win32" ? "where.exe" : "which";
-		return execFileSync(lookup, ["cue"], { encoding: "utf8", windowsHide: true })
+		return execFileSync(lookup, ["cue"], {
+			encoding: "utf8",
+			windowsHide: true,
+		})
 			.split(/\r?\n/u)[0]
 			.trim();
 	} catch {
@@ -55,7 +64,8 @@ function vetFixture(cueBin: string, fixturePath: string): number {
 		);
 		return 0;
 	} catch (error) {
-		const status = (error as NodeJS.ErrnoException & { status?: number }).status;
+		const status = (error as NodeJS.ErrnoException & { status?: number })
+			.status;
 		return typeof status === "number" ? status : 1;
 	}
 }
@@ -63,22 +73,31 @@ function vetFixture(cueBin: string, fixturePath: string): number {
 describe("hobo.manifest/v1 CUE gate", () => {
 	const cueBin = resolveCueBinary();
 
-	for (const file of readdirSync(goldenDir).filter((name) => name.endsWith(".json"))) {
+	for (const file of readdirSync(goldenDir).filter((name) =>
+		name.endsWith(".json"),
+	)) {
 		it(`accepts golden fixture ${file}`, () => {
 			expect(vetFixture(cueBin, join(goldenDir, file))).toBe(0);
 		});
 	}
 
-	for (const file of readdirSync(invalidDir).filter((name) => name.endsWith(".json"))) {
+	for (const file of readdirSync(invalidDir).filter((name) =>
+		name.endsWith(".json"),
+	)) {
 		it(`rejects invalid fixture ${file}`, () => {
 			expect(vetFixture(cueBin, join(invalidDir, file))).not.toBe(0);
 		});
 	}
 
 	it("rejects corrupted golden fixture when db.port is removed", () => {
-		const golden = JSON.parse(readFileSync(join(goldenDir, "db-api-site.json"), "utf8"));
+		const golden = JSON.parse(
+			readFileSync(join(goldenDir, "db-api-site.json"), "utf8"),
+		);
 		delete golden.resources.db.port;
-		const tempPath = join(packageRoot, "test/fixtures/manifests/invalid/.tmp-missing-port-runtime.json");
+		const tempPath = join(
+			packageRoot,
+			"test/fixtures/manifests/invalid/.tmp-missing-port-runtime.json",
+		);
 		writeFileSync(tempPath, JSON.stringify(golden));
 		try {
 			expect(vetFixture(cueBin, tempPath)).not.toBe(0);

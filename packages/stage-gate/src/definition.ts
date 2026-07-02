@@ -44,7 +44,9 @@ export function defineStageGateS0(): StageGateDefinition {
 		{
 			checkId: "hello-bindle-determinism",
 			kind: "build",
-			command: nodeTsxScript(`${scriptsRoot}/check-hello-bindle-determinism.mts`),
+			command: nodeTsxScript(
+				`${scriptsRoot}/check-hello-bindle-determinism.mts`,
+			),
 		},
 		{
 			checkId: "hello-bindle-health",

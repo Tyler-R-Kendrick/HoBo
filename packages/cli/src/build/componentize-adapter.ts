@@ -20,7 +20,9 @@ export type ComponentizeOutput = {
 	};
 };
 
-export type ComponentizeFn = (input: ComponentizeInput) => Promise<ComponentizeOutput>;
+export type ComponentizeFn = (
+	input: ComponentizeInput,
+) => Promise<ComponentizeOutput>;
 
 export const defaultComponentize: ComponentizeFn = async (input) => {
 	const result = await componentizeHelloBindle({

@@ -36,7 +36,10 @@ export interface ParseArgvOptions {
 	readonly cwd?: string;
 }
 
-export function parseArgv(argv: readonly string[], options: ParseArgvOptions = {}): CliRequest {
+export function parseArgv(
+	argv: readonly string[],
+	options: ParseArgvOptions = {},
+): CliRequest {
 	const flags = {
 		json: false,
 		camp: null as string | null,
@@ -195,7 +198,11 @@ function parseOption(
 	}
 }
 
-function takeValue(argv: readonly string[], index: number, flag: string): string {
+function takeValue(
+	argv: readonly string[],
+	index: number,
+	flag: string,
+): string {
 	const value = argv[index + 1];
 	if (value === undefined || value.startsWith("-")) {
 		throw new UsageError(`Option "${flag}" requires a value.`, [

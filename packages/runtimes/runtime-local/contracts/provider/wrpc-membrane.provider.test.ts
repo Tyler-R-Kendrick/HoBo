@@ -12,7 +12,10 @@ import {
 	parseWireVersion,
 } from "@hobo/core";
 
-import { createInProcessTransport, createWrpcLinkLayer } from "../../src/index.js";
+import {
+	createInProcessTransport,
+	createWrpcLinkLayer,
+} from "../../src/index.js";
 
 const pactPath = join(
 	dirname(fileURLToPath(import.meta.url)),

@@ -13,7 +13,10 @@ export function createBrokenFenceRuntimeBackend(): RuntimeDurabilityBackend {
 }
 
 function createBrokenFenceActorHost() {
-	const streams = new Map<string, { events: Array<{ type: string; amount?: number }> }>();
+	const streams = new Map<
+		string,
+		{ events: Array<{ type: string; amount?: number }> }
+	>();
 	const leases = new Map<string, { fenceToken: bigint }>();
 
 	return Object.freeze({
@@ -32,7 +35,16 @@ function createBrokenFenceActorHost() {
 			return lease;
 		},
 
-		state(key: string, request: { fold?: (state: unknown, event: { type: string; amount?: number }) => unknown; initialState?: unknown } = {}) {
+		state(
+			key: string,
+			request: {
+				fold?: (
+					state: unknown,
+					event: { type: string; amount?: number },
+				) => unknown;
+				initialState?: unknown;
+			} = {},
+		) {
 			const actorKey = requireNonEmptyString(key, "key");
 			if (typeof request.fold !== "function") {
 				throw new TypeError("request.fold must be a function");
@@ -41,7 +53,10 @@ function createBrokenFenceActorHost() {
 			const initialState = structuredClone(request.initialState);
 
 			return Object.freeze({
-				append(lease: { fenceToken?: bigint }, event: { type: string; amount?: number }) {
+				append(
+					lease: { fenceToken?: bigint },
+					event: { type: string; amount?: number },
+				) {
 					const record = Object.freeze({
 						...structuredClone(event),
 						streamId: actorKey,
@@ -58,7 +73,9 @@ function createBrokenFenceActorHost() {
 				read() {
 					let state = structuredClone(initialState) as { value: number };
 					for (const event of stream.events) {
-						state = request.fold!(state, structuredClone(event)) as { value: number };
+						state = request.fold!(state, structuredClone(event)) as {
+							value: number;
+						};
 					}
 					return Object.freeze({
 						streamId: actorKey,

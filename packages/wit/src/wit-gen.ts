@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+	cp,
+	mkdtemp,
+	readdir,
+	readFile,
+	rm,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
@@ -11,7 +18,14 @@ const execFileAsync = promisify(execFile);
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 export const WIT_ROOT = join(PACKAGE_ROOT, "wit");
 export const GENERATED_ROOT = join(PACKAGE_ROOT, "src", "generated");
-const JCO_PATH = join(PACKAGE_ROOT, "node_modules", "@bytecodealliance", "jco", "src", "jco.js");
+const JCO_PATH = join(
+	PACKAGE_ROOT,
+	"node_modules",
+	"@bytecodealliance",
+	"jco",
+	"src",
+	"jco.js",
+);
 
 const HOBO_DEP_DIRS = [
 	"hobo-runtime",
@@ -27,8 +41,16 @@ export const GENERATION_TARGETS = [
 		worldName: "runtime-primitives",
 		outSubdir: "runtime-primitives",
 	},
-	{ witPath: "wit/deps/hobo-queue/hobo-queue.wit", worldName: "queue-guest", outSubdir: "queue-guest" },
-	{ witPath: "wit/deps/hobo-queue/hobo-queue.wit", worldName: "queue-provider", outSubdir: "queue-provider" },
+	{
+		witPath: "wit/deps/hobo-queue/hobo-queue.wit",
+		worldName: "queue-guest",
+		outSubdir: "queue-guest",
+	},
+	{
+		witPath: "wit/deps/hobo-queue/hobo-queue.wit",
+		worldName: "queue-provider",
+		outSubdir: "queue-provider",
+	},
 	{
 		witPath: "wit/deps/hobo-scheduler/hobo-scheduler.wit",
 		worldName: "scheduler-guest",
@@ -52,7 +74,10 @@ export const GENERATION_TARGETS = [
 ] as const;
 
 export function digestSource(source: string | Buffer): string {
-	const bytes = typeof source === "string" ? Buffer.from(source.replace(/\r\n/g, "\n"), "utf8") : source;
+	const bytes =
+		typeof source === "string"
+			? Buffer.from(source.replace(/\r\n/g, "\n"), "utf8")
+			: source;
 	return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
@@ -61,12 +86,16 @@ async function stageHoboSdkWitRoot(): Promise<string> {
 	const stagedDeps = join(stagedRoot, "deps");
 	await cp(join(WIT_ROOT, "hobo-sdk.wit"), join(stagedRoot, "hobo-sdk.wit"));
 	for (const depDir of HOBO_DEP_DIRS) {
-		await cp(join(WIT_ROOT, "deps", depDir), join(stagedDeps, depDir), { recursive: true });
+		await cp(join(WIT_ROOT, "deps", depDir), join(stagedDeps, depDir), {
+			recursive: true,
+		});
 	}
 	return stagedRoot;
 }
 
-export async function writeGeneratedBindings(options: { outDir?: string } = {}): Promise<string[]> {
+export async function writeGeneratedBindings(
+	options: { outDir?: string } = {},
+): Promise<string[]> {
 	const outDir = options.outDir ?? GENERATED_ROOT;
 	await rm(outDir, { recursive: true, force: true });
 
@@ -83,12 +112,22 @@ export async function writeGeneratedBindings(options: { outDir?: string } = {}):
 
 			await execFileAsync(
 				process.execPath,
-				[JCO_PATH, "types", witInput, "--world-name", target.worldName, "--out-dir", targetOut],
+				[
+					JCO_PATH,
+					"types",
+					witInput,
+					"--world-name",
+					target.worldName,
+					"--out-dir",
+					targetOut,
+				],
 				{ cwd: PACKAGE_ROOT },
 			);
 			await normalizeGeneratedTree(targetOut);
 			for (const fileName of await listDeclarationFiles(targetOut)) {
-				allFiles.push(relative(outDir, join(targetOut, fileName)).replace(/\\/g, "/"));
+				allFiles.push(
+					relative(outDir, join(targetOut, fileName)).replace(/\\/g, "/"),
+				);
 			}
 		}
 	} finally {
@@ -100,13 +139,18 @@ export async function writeGeneratedBindings(options: { outDir?: string } = {}):
 	return allFiles.sort();
 }
 
-export async function assertGeneratedMatches(options: { generatedRoot?: string } = {}): Promise<{ checked: number }> {
+export async function assertGeneratedMatches(
+	options: { generatedRoot?: string } = {},
+): Promise<{ checked: number }> {
 	const generatedRoot = options.generatedRoot ?? GENERATED_ROOT;
 	const tempDir = await mkdtemp(join(tmpdir(), "hobo-wit-jco-"));
 
 	try {
 		const expectedFileNames = await writeGeneratedBindings({ outDir: tempDir });
-		const actualFileNames = await listDeclarationFiles(generatedRoot, generatedRoot);
+		const actualFileNames = await listDeclarationFiles(
+			generatedRoot,
+			generatedRoot,
+		);
 
 		if (actualFileNames.join("\n") !== expectedFileNames.join("\n")) {
 			throw new Error(
@@ -128,7 +172,10 @@ export async function assertGeneratedMatches(options: { generatedRoot?: string }
 	}
 }
 
-async function listDeclarationFiles(root: string, relativeRoot = root): Promise<string[]> {
+async function listDeclarationFiles(
+	root: string,
+	relativeRoot = root,
+): Promise<string[]> {
 	const files: string[] = [];
 
 	async function visit(directory: string) {
@@ -152,8 +199,13 @@ async function normalizeGeneratedTree(root: string) {
 	for (const fileName of await listDeclarationFiles(root)) {
 		const path = join(root, fileName);
 		const text = await readFile(path, "utf8");
-		const normalized = text.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").replace(/\s+$/u, "");
-		const moduleText = /\b(export|import)\b/.test(normalized) ? normalized : `${normalized}\nexport {};`;
+		const normalized = text
+			.replace(/\r\n/g, "\n")
+			.replace(/[ \t]+$/gm, "")
+			.replace(/\s+$/u, "");
+		const moduleText = /\b(export|import)\b/.test(normalized)
+			? normalized
+			: `${normalized}\nexport {};`;
 		await writeFile(path, `${moduleText}\n`);
 	}
 }

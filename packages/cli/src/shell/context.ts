@@ -5,7 +5,12 @@ import type { CliContext } from "../types/envelope.js";
 import { NoBindleError } from "./errors.js";
 import type { CliFlags } from "./parse.js";
 
-const markers = ["hobo.bindle.json", "bindle.ts", "bindle.js", ".hobo"] as const;
+const markers = [
+	"hobo.bindle.json",
+	"bindle.ts",
+	"bindle.js",
+	".hobo",
+] as const;
 
 export interface ContextFactoryRequest {
 	readonly cwd: string;
@@ -16,9 +21,13 @@ export interface ContextFactoryRequest {
 	readonly requiresProject: boolean;
 }
 
-export type ContextFactory = (request: ContextFactoryRequest) => Promise<CliContext>;
+export type ContextFactory = (
+	request: ContextFactoryRequest,
+) => Promise<CliContext>;
 
-export async function defaultContextFactory(request: ContextFactoryRequest): Promise<CliContext> {
+export async function defaultContextFactory(
+	request: ContextFactoryRequest,
+): Promise<CliContext> {
 	const projectDir = await findProjectDir(request.cwd);
 	if (request.requiresProject && !projectDir) {
 		throw new NoBindleError(request.cwd);

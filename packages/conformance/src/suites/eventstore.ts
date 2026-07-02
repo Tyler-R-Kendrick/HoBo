@@ -24,7 +24,9 @@ export type AssertionStatus = "pass" | "fail";
 export interface EventStoreConformanceReport {
 	readonly contract: typeof CAMP_EVENTSTORE_RUNTIME_PORT_CONTRACT_VERSION;
 	readonly backend: string;
-	readonly assertions: Readonly<Record<EventStoreConformanceAssertion, AssertionStatus>>;
+	readonly assertions: Readonly<
+		Record<EventStoreConformanceAssertion, AssertionStatus>
+	>;
 }
 
 export interface RuntimeLocalEventStoreFactoryOptions {
@@ -55,7 +57,10 @@ export async function runEventStoreConformance(
 		backend?: string;
 		dataDirFactory?: () => string;
 		removeDataDir?: (dir: string) => void;
-		crashProbe?: (createStore: CreateRuntimeLocalEventStore, dataDir: string) => Promise<boolean>;
+		crashProbe?: (
+			createStore: CreateRuntimeLocalEventStore,
+			dataDir: string,
+		) => Promise<boolean>;
 	} = {},
 ): Promise<EventStoreConformanceReport> {
 	if (typeof createStore !== "function") {
@@ -64,19 +69,36 @@ export async function runEventStoreConformance(
 
 	const backend = options.backend ?? "runtime-local";
 	const assertions: Record<EventStoreConformanceAssertion, AssertionStatus> = {
-		seqConditionalAppend: (await provesSeqConditionalAppend(createStore)) ? "pass" : "fail",
-		idempotencyKeyDedup: (await provesIdempotencyKeyDedup(createStore)) ? "pass" : "fail",
-		poisonEventQuarantine: (await provesPoisonEventQuarantine(createStore)) ? "pass" : "fail",
-		idempotencyCollisionScopedPerStream: (await provesIdempotencyCollisionScope(createStore))
+		seqConditionalAppend: (await provesSeqConditionalAppend(createStore))
 			? "pass"
 			: "fail",
-		orderedReplayAfterReopen: (await provesOrderedReplayAfterReopen(createStore, options))
+		idempotencyKeyDedup: (await provesIdempotencyKeyDedup(createStore))
 			? "pass"
 			: "fail",
-		dedupSurvivesReopen: (await provesDedupSurvivesReopen(createStore, options)) ? "pass" : "fail",
-		replayEqualsLive: (await provesReplayEqualsLive(createStore)) ? "pass" : "fail",
+		poisonEventQuarantine: (await provesPoisonEventQuarantine(createStore))
+			? "pass"
+			: "fail",
+		idempotencyCollisionScopedPerStream: (await provesIdempotencyCollisionScope(
+			createStore,
+		))
+			? "pass"
+			: "fail",
+		orderedReplayAfterReopen: (await provesOrderedReplayAfterReopen(
+			createStore,
+			options,
+		))
+			? "pass"
+			: "fail",
+		dedupSurvivesReopen: (await provesDedupSurvivesReopen(createStore, options))
+			? "pass"
+			: "fail",
+		replayEqualsLive: (await provesReplayEqualsLive(createStore))
+			? "pass"
+			: "fail",
 		crashMidAppendAtomicity: options.crashProbe
-			? (await provesCrashMidAppendAtomicity(createStore, options)) ? "pass" : "fail"
+			? (await provesCrashMidAppendAtomicity(createStore, options))
+				? "pass"
+				: "fail"
 			: "fail",
 	};
 
@@ -87,12 +109,22 @@ export async function runEventStoreConformance(
 	});
 }
 
-async function provesSeqConditionalAppend(createStore: CreateRuntimeLocalEventStore): Promise<boolean> {
+async function provesSeqConditionalAppend(
+	createStore: CreateRuntimeLocalEventStore,
+): Promise<boolean> {
 	const store = createStore();
 	try {
-		await store.append("conformance:seq", [{ type: "seq.Started", data: {} }], conformanceOptions(0));
+		await store.append(
+			"conformance:seq",
+			[{ type: "seq.Started", data: {} }],
+			conformanceOptions(0),
+		);
 		try {
-			await store.append("conformance:seq", [{ type: "seq.Raced", data: {} }], conformanceOptions(0));
+			await store.append(
+				"conformance:seq",
+				[{ type: "seq.Raced", data: {} }],
+				conformanceOptions(0),
+			);
 			return false;
 		} catch {
 			const events = await collect(store, "conformance:seq");
@@ -103,7 +135,9 @@ async function provesSeqConditionalAppend(createStore: CreateRuntimeLocalEventSt
 	}
 }
 
-async function provesIdempotencyKeyDedup(createStore: CreateRuntimeLocalEventStore): Promise<boolean> {
+async function provesIdempotencyKeyDedup(
+	createStore: CreateRuntimeLocalEventStore,
+): Promise<boolean> {
 	const store = createStore();
 	try {
 		const event: EventInput = {
@@ -112,20 +146,33 @@ async function provesIdempotencyKeyDedup(createStore: CreateRuntimeLocalEventSto
 			meta: { idempotencyKey: "capture-1" },
 		};
 		await store.append("conformance:dedup", [event], conformanceOptions(0));
-		const retry = await store.append("conformance:dedup", [event], conformanceOptions(0));
+		const retry = await store.append(
+			"conformance:dedup",
+			[event],
+			conformanceOptions(0),
+		);
 		const events = await collect(store, "conformance:dedup");
-		return retry.appended.length === 0 && retry.deduped.length === 1 && events.length === 1;
+		return (
+			retry.appended.length === 0 &&
+			retry.deduped.length === 1 &&
+			events.length === 1
+		);
 	} finally {
 		store.close();
 	}
 }
 
-async function provesPoisonEventQuarantine(createStore: CreateRuntimeLocalEventStore): Promise<boolean> {
+async function provesPoisonEventQuarantine(
+	createStore: CreateRuntimeLocalEventStore,
+): Promise<boolean> {
 	const store = createStore();
 	try {
 		await store.append(
 			"conformance:poison",
-			[{ type: "ticket.Opened", data: {} }, { type: "ticket.Commented", data: {} }],
+			[
+				{ type: "ticket.Opened", data: {} },
+				{ type: "ticket.Commented", data: {} },
+			],
 			conformanceOptions(0),
 		);
 		const folded = await store.fold("conformance:poison", {
@@ -138,7 +185,11 @@ async function provesPoisonEventQuarantine(createStore: CreateRuntimeLocalEventS
 			},
 		});
 		const events = await collect(store, "conformance:poison");
-		return folded.state.comments === 1 && folded.quarantined.length === 1 && events.length === 3;
+		return (
+			folded.state.comments === 1 &&
+			folded.quarantined.length === 1 &&
+			events.length === 3
+		);
 	} finally {
 		store.close();
 	}
@@ -172,7 +223,8 @@ async function provesOrderedReplayAfterReopen(
 		removeDataDir?: (dir: string) => void;
 	},
 ): Promise<boolean> {
-	const dataDir = options.dataDirFactory?.() ?? `conformance-reopen-${Date.now()}`;
+	const dataDir =
+		options.dataDirFactory?.() ?? `conformance-reopen-${Date.now()}`;
 	const remove = options.removeDataDir ?? (() => undefined);
 	try {
 		const first = createStore({ dataDir });
@@ -217,7 +269,8 @@ async function provesDedupSurvivesReopen(
 		removeDataDir?: (dir: string) => void;
 	},
 ): Promise<boolean> {
-	const dataDir = options.dataDirFactory?.() ?? `conformance-dedup-${Date.now()}`;
+	const dataDir =
+		options.dataDirFactory?.() ?? `conformance-dedup-${Date.now()}`;
 	const remove = options.removeDataDir ?? (() => undefined);
 	try {
 		const event: EventInput = {
@@ -231,7 +284,11 @@ async function provesDedupSurvivesReopen(
 
 		const reopened = createStore({ dataDir });
 		try {
-			const retry = await reopened.append("conformance:persist", [event], conformanceOptions(0));
+			const retry = await reopened.append(
+				"conformance:persist",
+				[event],
+				conformanceOptions(0),
+			);
 			return retry.appended.length === 0 && retry.deduped.length === 1;
 		} finally {
 			reopened.close();
@@ -241,7 +298,9 @@ async function provesDedupSurvivesReopen(
 	}
 }
 
-async function provesReplayEqualsLive(createStore: CreateRuntimeLocalEventStore): Promise<boolean> {
+async function provesReplayEqualsLive(
+	createStore: CreateRuntimeLocalEventStore,
+): Promise<boolean> {
 	const store = createStore();
 	try {
 		await store.append(
@@ -256,7 +315,10 @@ async function provesReplayEqualsLive(createStore: CreateRuntimeLocalEventStore)
 			initialState: { items: [] as string[] },
 			handlers: {
 				"cart.ItemAdded": (state, event) => ({
-					items: [...state.items, String((event.data as { sku?: string }).sku ?? "")],
+					items: [
+						...state.items,
+						String((event.data as { sku?: string }).sku ?? ""),
+					],
 				}),
 			},
 		});
@@ -264,11 +326,17 @@ async function provesReplayEqualsLive(createStore: CreateRuntimeLocalEventStore)
 			initialState: { items: [] as string[] },
 			handlers: {
 				"cart.ItemAdded": (state, event) => ({
-					items: [...state.items, String((event.data as { sku?: string }).sku ?? "")],
+					items: [
+						...state.items,
+						String((event.data as { sku?: string }).sku ?? ""),
+					],
 				}),
 			},
 		});
-		return JSON.stringify(live.state) === JSON.stringify(replay.state) && live.seq === replay.seq;
+		return (
+			JSON.stringify(live.state) === JSON.stringify(replay.state) &&
+			live.seq === replay.seq
+		);
 	} finally {
 		store.close();
 	}
@@ -279,7 +347,10 @@ async function provesCrashMidAppendAtomicity(
 	options: {
 		dataDirFactory?: () => string;
 		removeDataDir?: (dir: string) => void;
-		crashProbe?: (createStore: CreateRuntimeLocalEventStore, dataDir: string) => Promise<boolean>;
+		crashProbe?: (
+			createStore: CreateRuntimeLocalEventStore,
+			dataDir: string,
+		) => Promise<boolean>;
 	},
 ): Promise<boolean> {
 	if (!options.crashProbe || !options.dataDirFactory) {
@@ -294,7 +365,10 @@ async function provesCrashMidAppendAtomicity(
 	}
 }
 
-async function collect(store: EventStore, streamId: string): Promise<EventEnvelope[]> {
+async function collect(
+	store: EventStore,
+	streamId: string,
+): Promise<EventEnvelope[]> {
 	const events: EventEnvelope[] = [];
 	for await (const event of store.read(streamId)) {
 		events.push(event);

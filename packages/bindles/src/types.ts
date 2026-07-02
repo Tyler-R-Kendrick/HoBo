@@ -1,15 +1,35 @@
 export const CATALOG_ROWS = [
 	{ factory: "api", portRef: ["wasi:http", "hobo:http"], allowVerbs: [] },
-	{ factory: "kv", portRef: ["wasi:keyvalue"], allowVerbs: ["get", "set", "delete"] },
+	{
+		factory: "kv",
+		portRef: ["wasi:keyvalue"],
+		allowVerbs: ["get", "set", "delete"],
+	},
 	{
 		factory: "bucket",
 		portRef: ["wasi:blobstore", "hobo:blob-events"],
 		allowVerbs: ["read", "write", "delete"],
 	},
-	{ factory: "queue", portRef: ["hobo:queue"], allowVerbs: ["enqueue", "dequeue"] },
-	{ factory: "topic", portRef: ["wasi:messaging"], allowVerbs: ["publish", "subscribe"] },
-	{ factory: "secret", portRef: ["wasi:config", "hobo:secrets"], allowVerbs: ["put", "access"] },
-	{ factory: "data", portRef: ["hobo:data"], allowVerbs: ["read", "write", "query", "admin"] },
+	{
+		factory: "queue",
+		portRef: ["hobo:queue"],
+		allowVerbs: ["enqueue", "dequeue"],
+	},
+	{
+		factory: "topic",
+		portRef: ["wasi:messaging"],
+		allowVerbs: ["publish", "subscribe"],
+	},
+	{
+		factory: "secret",
+		portRef: ["wasi:config", "hobo:secrets"],
+		allowVerbs: ["put", "access"],
+	},
+	{
+		factory: "data",
+		portRef: ["hobo:data"],
+		allowVerbs: ["read", "write", "query", "admin"],
+	},
 	{ factory: "schedule", portRef: ["hobo:scheduler"], allowVerbs: [] },
 	{
 		factory: "websocket",
@@ -19,8 +39,16 @@ export const CATALOG_ROWS = [
 	{ factory: "job", portRef: ["hobo:job"], allowVerbs: ["submit"] },
 	{ factory: "web", portRef: ["wasi:http"], allowVerbs: [] },
 	{ factory: "service", portRef: ["wasi:http"], allowVerbs: [] },
-	{ factory: "flag", portRef: ["hobo:feature-flag"], allowVerbs: ["eval", "change"] },
-	{ factory: "auth", portRef: ["hobo:auth"], allowVerbs: ["verify", "session"] },
+	{
+		factory: "flag",
+		portRef: ["hobo:feature-flag"],
+		allowVerbs: ["eval", "change"],
+	},
+	{
+		factory: "auth",
+		portRef: ["hobo:auth"],
+		allowVerbs: ["verify", "session"],
+	},
 	{
 		factory: "crypto",
 		portRef: ["hobo:crypto"],
@@ -28,9 +56,17 @@ export const CATALOG_ROWS = [
 	},
 	{ factory: "notify", portRef: ["hobo:notify"], allowVerbs: ["send"] },
 	{ factory: "guardrail", portRef: ["hobo:guardrail"], allowVerbs: ["check"] },
-	{ factory: "ui", portRef: ["hobo:ui-render"], allowVerbs: ["render", "drive"] },
+	{
+		factory: "ui",
+		portRef: ["hobo:ui-render"],
+		allowVerbs: ["render", "drive"],
+	},
 	{ factory: "golden", portRef: ["hobo:golden"], allowVerbs: ["run", "bless"] },
-	{ factory: "experiment", portRef: ["hobo:experiment"], allowVerbs: ["assign", "expose", "analyze"] },
+	{
+		factory: "experiment",
+		portRef: ["hobo:experiment"],
+		allowVerbs: ["assign", "expose", "analyze"],
+	},
 ] as const;
 
 export type ResourceKind = (typeof CATALOG_ROWS)[number]["factory"];
@@ -94,7 +130,11 @@ export type ResourceHandle<K extends ResourceKind, A = never> = {
 	readonly name: string;
 	readonly stableId: `${K}:${string}`;
 	readonly portRef: readonly string[];
-	readonly identity: { readonly kind: K; readonly name: string; readonly stableId: string };
+	readonly identity: {
+		readonly kind: K;
+		readonly name: string;
+		readonly stableId: string;
+	};
 	readonly declaredAllow: readonly A[];
 	allow<V extends AllowVerbsFor<K>>(...verbs: V[]): ResourceHandle<K, V>;
 	toDescriptor(): ResourceDescriptor<K>;

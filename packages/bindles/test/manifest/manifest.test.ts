@@ -64,7 +64,9 @@ describe("hobo.manifest/v1 loader", () => {
 			output: "connectionString",
 		});
 
-		expect(parseOutputPlaceholder("${resources.data.postgres#db.outputs.url}")).toEqual({
+		expect(
+			parseOutputPlaceholder("${resources.data.postgres#db.outputs.url}"),
+		).toEqual({
 			type: "data",
 			className: "postgres",
 			resourceId: "db",
@@ -98,7 +100,10 @@ describe("hobo.manifest/v1 loader", () => {
 		{ file: "allow-not-strings.json", path: "resources.db.allow" },
 	];
 
-	it.each(invalidCases)("rejects invalid fixture %s at %s", ({ file, path }) => {
+	it.each(invalidCases)("rejects invalid fixture %s at %s", ({
+		file,
+		path,
+	}) => {
 		const raw = readFixture("invalid", file);
 		expect(() => parseManifest(raw)).toThrow(ManifestParseError);
 		try {

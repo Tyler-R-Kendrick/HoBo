@@ -1,52 +1,56 @@
 export type ReplayMode = "live" | "replay";
 
 export interface EventEnvelope {
-  id: string;
-  streamId: string;
-  seq: number;
-  type: string;
-  v?: number;
-  data: unknown;
-  ts?: string;
-  meta?: Record<string, unknown>;
+	id: string;
+	streamId: string;
+	seq: number;
+	type: string;
+	v?: number;
+	data: unknown;
+	ts?: string;
+	meta?: Record<string, unknown>;
 }
 
 export type SeqVector = Record<string, number>;
 
 export interface SeqVectorEntry {
-  streamId: string;
-  seq: number;
+	streamId: string;
+	seq: number;
 }
 
 export interface ReplayReport {
-  runId: string;
-  seqVector: readonly SeqVectorEntry[];
-  readSetHash: string;
-  stateDigest: string;
-  mode: ReplayMode;
-  seed: string;
+	runId: string;
+	seqVector: readonly SeqVectorEntry[];
+	readSetHash: string;
+	stateDigest: string;
+	mode: ReplayMode;
+	seed: string;
 }
 
 export interface ReplayDivergenceRecord {
-  runId: string;
-  liveStateDigest: string;
-  replayStateDigest: string;
-  liveOrder: readonly string[];
-  replayOrder: readonly string[];
-  firstDivergentEventKey: string;
+	runId: string;
+	liveStateDigest: string;
+	replayStateDigest: string;
+	liveOrder: readonly string[];
+	replayOrder: readonly string[];
+	firstDivergentEventKey: string;
 }
 
 export interface DeterministicContext {
-  seed: string;
-  mode: ReplayMode;
-  eventKey: string;
-  now(): string;
-  random(label?: string): number;
+	seed: string;
+	mode: ReplayMode;
+	eventKey: string;
+	now(): string;
+	random(label?: string): number;
 }
 
-export type FoldFn<S> = (state: S, event: EventEnvelope, context: DeterministicContext) => S;
+export type FoldFn<S> = (
+	state: S,
+	event: EventEnvelope,
+	context: DeterministicContext,
+) => S;
 
 export type UpcastFn = (
-  event: EventEnvelope,
-  context: DeterministicContext,
+	event: EventEnvelope,
+	context: DeterministicContext,
 ) => EventEnvelope;

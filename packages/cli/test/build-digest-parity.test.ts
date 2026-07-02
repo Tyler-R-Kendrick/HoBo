@@ -6,14 +6,21 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { componentizeHelloBindle } from "@hobo/componentize";
-import { createHoboCli, runBuild, writeBuildFixtureProject } from "../src/index.js";
+import {
+	createHoboCli,
+	runBuild,
+	writeBuildFixtureProject,
+} from "../src/index.js";
 import {
 	executeCodegenRequest,
 	generateCodegenArtifacts,
 } from "../../../src/draft/technical-proofs/hobo-codegen-cli-contract/src/codegen-cli-contract.js";
 
 const GOLDEN_DIGEST = JSON.parse(
-	readFileSync(new URL("./fixtures/hello-bindle.digest.json", import.meta.url), "utf8"),
+	readFileSync(
+		new URL("./fixtures/hello-bindle.digest.json", import.meta.url),
+		"utf8",
+	),
 ) as {
 	digest: string;
 	sourceDateEpoch: string;
@@ -53,10 +60,13 @@ describe("build digest parity", () => {
 		process.env.SOURCE_DATE_EPOCH = GOLDEN_DIGEST.sourceDateEpoch;
 		try {
 			await withHelloBindleProject(async (projectRoot) => {
-				const cli = await createHoboCli().run(["build", "--json"], { cwd: projectRoot });
+				const cli = await createHoboCli().run(["build", "--json"], {
+					cwd: projectRoot,
+				});
 				const envelope = JSON.parse(cli.stdout);
 				const helloArtifact = envelope.data.artifacts.find(
-					(artifact: { service: string }) => artifact.service === "hello-bindle",
+					(artifact: { service: string }) =>
+						artifact.service === "hello-bindle",
 				);
 				expect(helloArtifact?.digest).toBe(GOLDEN_DIGEST.digest);
 			});
@@ -70,7 +80,9 @@ describe("build digest parity", () => {
 	});
 });
 
-async function withHelloBindleProject(callback: (projectRoot: string) => Promise<void>) {
+async function withHelloBindleProject(
+	callback: (projectRoot: string) => Promise<void>,
+) {
 	const projectRoot = await mkdtemp(join(tmpdir(), "hobo-build-parity-"));
 	try {
 		await writeBuildFixtureProject(projectRoot, {

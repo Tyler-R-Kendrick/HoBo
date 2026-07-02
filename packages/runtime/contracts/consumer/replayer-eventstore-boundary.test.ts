@@ -4,11 +4,17 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { nextEnvelope, recordEffect } from "../../src/replay/recorder.js";
-import { createEventStoreReader, createInMemoryEventStore } from "../../src/replay/store.js";
+import {
+	createEventStoreReader,
+	createInMemoryEventStore,
+} from "../../src/replay/store.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
-	readFileSync(join(packageRoot, "../pacts/replayer_eventstore.pact.json"), "utf8"),
+	readFileSync(
+		join(packageRoot, "../pacts/replayer_eventstore.pact.json"),
+		"utf8",
+	),
 );
 
 describe("replayer EventStore consumer boundary", () => {
@@ -19,7 +25,9 @@ describe("replayer EventStore consumer boundary", () => {
 		const events = await memory.readStream("run/run-1");
 		const interaction = pact.interactions[0];
 
-		expect(events[0]?.streamId).toBe(interaction.response.body.events[0].streamId);
+		expect(events[0]?.streamId).toBe(
+			interaction.response.body.events[0].streamId,
+		);
 		expect(events[0]?.seq).toBe(interaction.response.body.events[0].seq);
 		expect(events[0]?.type).toBe(interaction.response.body.events[0].type);
 	});
@@ -38,7 +46,10 @@ describe("replayer EventStore consumer boundary", () => {
 
 	it("adapts @hobo/core EventStore read port through createEventStoreReader", async () => {
 		const memory = createInMemoryEventStore();
-		await recordEffect(memory, nextEnvelope("run/run-1", 1, "run.Started", { seed: "seed" }));
+		await recordEffect(
+			memory,
+			nextEnvelope("run/run-1", 1, "run.Started", { seed: "seed" }),
+		);
 
 		const reader = createEventStoreReader({
 			read(streamId, fromSeq) {

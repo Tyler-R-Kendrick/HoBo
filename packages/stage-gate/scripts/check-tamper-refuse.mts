@@ -1,4 +1,7 @@
-import { buildHelloBindleComponent, emitEvidence } from "./hello-bindle-fixture.mts";
+import {
+	buildHelloBindleComponent,
+	emitEvidence,
+} from "./hello-bindle-fixture.mts";
 
 const build = await buildHelloBindleComponent();
 const {
@@ -55,7 +58,9 @@ if (verdict.ok) {
 	process.exit(1);
 }
 if (!verdict.reasons.includes("artifact.digest_mismatch")) {
-	console.error(`expected artifact.digest_mismatch, got ${JSON.stringify(verdict.reasons)}`);
+	console.error(
+		`expected artifact.digest_mismatch, got ${JSON.stringify(verdict.reasons)}`,
+	);
 	process.exit(1);
 }
 

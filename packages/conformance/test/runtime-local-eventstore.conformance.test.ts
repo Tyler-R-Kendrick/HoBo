@@ -23,12 +23,15 @@ describe("@hobo/conformance EventStore suite", () => {
 		const report = await runEventStoreConformance(
 			(options) =>
 				createRuntimeLocalEventStore({
-					dataDir: options?.dataDir ?? mkdtempSync(join(tmpdir(), "hobo-es-conformance-")),
+					dataDir:
+						options?.dataDir ??
+						mkdtempSync(join(tmpdir(), "hobo-es-conformance-")),
 					clock: createManualClock("2026-06-26T00:00:00.000Z"),
 				}),
 			{
 				backend: "runtime-local",
-				dataDirFactory: () => mkdtempSync(join(tmpdir(), "hobo-es-conformance-")),
+				dataDirFactory: () =>
+					mkdtempSync(join(tmpdir(), "hobo-es-conformance-")),
 				removeDataDir: (dir) => rmSync(dir, { recursive: true, force: true }),
 				crashProbe: async (createStore, dataDir) => {
 					const acked = await runCrasher(crasherScript, dataDir);
@@ -82,9 +85,13 @@ describe("@hobo/conformance EventStore suite", () => {
 
 async function runCrasher(script: string, dataDir: string): Promise<number[]> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(process.execPath, ["--import", "tsx", script, dataDir], {
-			stdio: ["ignore", "pipe", "inherit"],
-		});
+		const child = spawn(
+			process.execPath,
+			["--import", "tsx", script, dataDir],
+			{
+				stdio: ["ignore", "pipe", "inherit"],
+			},
+		);
 		const acked: number[] = [];
 		let buffer = "";
 

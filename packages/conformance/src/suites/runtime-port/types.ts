@@ -19,7 +19,10 @@ export interface ActorHostLease {
 }
 
 export interface ActorHostState<S = unknown> {
-	append(lease: ActorHostLease, event: { type: string; [key: string]: unknown }): {
+	append(
+		lease: ActorHostLease,
+		event: { type: string; [key: string]: unknown },
+	): {
 		streamId: string;
 		seq: number;
 		fenceToken: bigint;

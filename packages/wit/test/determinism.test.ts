@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const RUNTIME_WIT = join(import.meta.dirname, "../wit/deps/hobo-runtime/hobo-runtime.wit");
+const RUNTIME_WIT = join(
+	import.meta.dirname,
+	"../wit/deps/hobo-runtime/hobo-runtime.wit",
+);
 const NONDETERMINISTIC_RE = /wall-clock|now-ms|random/i;
 
 describe("hobo:runtime determinism", () => {

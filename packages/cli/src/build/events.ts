@@ -32,7 +32,10 @@ export type BuildEvent =
 	| BuildCompletedEvent
 	| BuildFailedEvent;
 
-export function appendEvent(events: readonly BuildEvent[], event: BuildEvent): BuildEvent[] {
+export function appendEvent(
+	events: readonly BuildEvent[],
+	event: BuildEvent,
+): BuildEvent[] {
 	return [...events, event];
 }
 
@@ -42,7 +45,10 @@ export function projectBuildManifest(
 	sourceDateEpoch: string,
 ): BuildManifest {
 	const artifacts = events
-		.filter((event): event is BuildArtifactProducedEvent => event.type === "build.ArtifactProduced")
+		.filter(
+			(event): event is BuildArtifactProducedEvent =>
+				event.type === "build.ArtifactProduced",
+		)
 		.map((event) => event.artifact);
 
 	return {
@@ -57,10 +63,16 @@ export function projectBuildManifest(
 export function stableStringify(value: unknown): string {
 	return `${JSON.stringify(value, replacer)}\n`;
 
-	function replacer(this: Record<string, unknown>, key: string, inner: unknown): unknown {
+	function replacer(
+		this: Record<string, unknown>,
+		key: string,
+		inner: unknown,
+	): unknown {
 		if (inner && typeof inner === "object" && !Array.isArray(inner)) {
 			const sorted: Record<string, unknown> = {};
-			for (const childKey of Object.keys(inner as Record<string, unknown>).sort()) {
+			for (const childKey of Object.keys(
+				inner as Record<string, unknown>,
+			).sort()) {
 				sorted[childKey] = (inner as Record<string, unknown>)[childKey];
 			}
 			return sorted;
@@ -78,5 +90,8 @@ export function sha256Bytes(value: Buffer): string {
 }
 
 function normalizeText(value: string): string {
-	return `${String(value).replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").replace(/\s+$/u, "")}\n`;
+	return `${String(value)
+		.replace(/\r\n/g, "\n")
+		.replace(/[ \t]+$/gm, "")
+		.replace(/\s+$/u, "")}\n`;
 }

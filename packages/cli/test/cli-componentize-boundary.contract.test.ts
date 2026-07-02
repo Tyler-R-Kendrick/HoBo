@@ -22,7 +22,9 @@ describe("CLI componentize boundary pact", () => {
 		const pact = JSON.parse(readFileSync(pactPath, "utf8")) as {
 			consumer: { name: string };
 			provider: { name: string };
-			interactions: Array<{ response: { body: { component?: { mediaType: string } } } }>;
+			interactions: Array<{
+				response: { body: { component?: { mediaType: string } } };
+			}>;
 		};
 
 		expect(pact.consumer.name).toBe("@hobo/cli");

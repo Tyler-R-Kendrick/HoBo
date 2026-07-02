@@ -35,10 +35,12 @@ const managedSecrets = secret("payment-secrets");
 managedSecrets.access("stripe");
 
 // @ts-expect-error secretRef reads a value; it is not a catalog resource handle.
-const _secretRefAsHandle: ResourceHandle<"secret"> = secretRef("STRIPE_API_KEY");
+const _secretRefAsHandle: ResourceHandle<"secret"> =
+	secretRef("STRIPE_API_KEY");
 
 // @ts-expect-error search is the query side of data, not an exported catalog factory.
 type _SearchExport = BindlesModule["search"];
 
-type _SecretRefNotHandle = ResourceHandle<"secret"> extends SecretRef ? never : true;
+type _SecretRefNotHandle =
+	ResourceHandle<"secret"> extends SecretRef ? never : true;
 const _secretRefCheck: _SecretRefNotHandle = true;

@@ -13,7 +13,11 @@ describe("bindle()", () => {
 
 		expect(Object.isFrozen(definition)).toBe(true);
 		expect(definition.name).toBe("shop");
-		expect(Object.keys(definition.resources)).toEqual(["store", "orders", "api"]);
+		expect(Object.keys(definition.resources)).toEqual([
+			"store",
+			"orders",
+			"api",
+		]);
 		expect(definition.resources.store).toEqual({
 			kind: "data",
 			name: "store",
@@ -22,7 +26,10 @@ describe("bindle()", () => {
 			annotations: [],
 			dependsOn: [],
 		});
-		expect(definition.edges).toEqual([{ from: "api", to: "store" }, { from: "api", to: "orders" }]);
+		expect(definition.edges).toEqual([
+			{ from: "api", to: "store" },
+			{ from: "api", to: "orders" },
+		]);
 		expect(JSON.parse(JSON.stringify(definition))).toEqual({
 			name: "shop",
 			resources: {

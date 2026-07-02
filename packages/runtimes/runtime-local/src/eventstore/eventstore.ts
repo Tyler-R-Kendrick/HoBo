@@ -44,7 +44,9 @@ export interface ManualClock extends Clock {
 	advance(deltaMs: number): string;
 }
 
-export function createManualClock(startInstant = "2026-06-26T00:00:00.000Z"): ManualClock {
+export function createManualClock(
+	startInstant = "2026-06-26T00:00:00.000Z",
+): ManualClock {
 	let nowMs = Date.parse(startInstant);
 	if (Number.isNaN(nowMs)) {
 		throw new TypeError("startInstant must be a valid ISO-8601 string");
@@ -196,7 +198,10 @@ export function createRuntimeLocalEventStore(
 			return readIterable(storage, parsedStreamId, startSeq);
 		},
 
-		subscribe(filter: StreamFilter, handler: (event: EventEnvelope) => void | Promise<void>) {
+		subscribe(
+			filter: StreamFilter,
+			handler: (event: EventEnvelope) => void | Promise<void>,
+		) {
 			if (typeof handler !== "function") {
 				throw new TypeError("handler must be a function");
 			}
@@ -241,7 +246,10 @@ export function createRuntimeLocalEventStore(
 		): Promise<FoldResult<S>> {
 			const parsedStreamId = parseStreamId(streamId);
 			const handlers = normalizeHandlers(foldOptions.handlers);
-			let state = cloneRequired(foldOptions.initialState, "foldOptions.initialState");
+			let state = cloneRequired(
+				foldOptions.initialState,
+				"foldOptions.initialState",
+			);
 			const quarantined: FoldResult<S>["quarantined"] = [];
 			const events = storage.readStream(parsedStreamId);
 
@@ -272,7 +280,9 @@ export function createRuntimeLocalEventStore(
 						offendingSeq: event.seq,
 						quarantineSeq: quarantine.seq,
 						type: quarantine.type,
-						reason: String((quarantine.data as { reason?: string }).reason ?? ""),
+						reason: String(
+							(quarantine.data as { reason?: string }).reason ?? "",
+						),
 					});
 				}
 			}
@@ -317,7 +327,8 @@ function appendQuarantine({
 			.find(
 				(candidate) =>
 					isQuarantineEvent(candidate) &&
-					(candidate.data as { offendingSeq?: number }).offendingSeq === event.seq,
+					(candidate.data as { offendingSeq?: number }).offendingSeq ===
+						event.seq,
 			);
 		return existing as EventEnvelope;
 	}
@@ -373,7 +384,10 @@ async function* readIterable(
 	}
 }
 
-function publish(subscriptions: Set<LiveSubscription>, envelope: EventEnvelope): void {
+function publish(
+	subscriptions: Set<LiveSubscription>,
+	envelope: EventEnvelope,
+): void {
 	for (const subscription of subscriptions) {
 		if (matches(subscription.filter, envelope)) {
 			void subscription.handler(cloneJson(envelope));
@@ -388,14 +402,18 @@ function matches(filter: StreamFilter, envelope: EventEnvelope): boolean {
 	);
 }
 
-function normalizeHandlers<S>(handlers: FoldHandlers<S>): Map<string, FoldHandlers<S>[string]> {
+function normalizeHandlers<S>(
+	handlers: FoldHandlers<S>,
+): Map<string, FoldHandlers<S>[string]> {
 	if (!handlers || typeof handlers !== "object" || Array.isArray(handlers)) {
 		throw new TypeError("foldOptions.handlers must be an object");
 	}
 	return new Map(
-		Object.entries(handlers).filter((entry): entry is [string, FoldHandlers<S>[string]] => {
-			return typeof entry[1] === "function";
-		}),
+		Object.entries(handlers).filter(
+			(entry): entry is [string, FoldHandlers<S>[string]] => {
+				return typeof entry[1] === "function";
+			},
+		),
 	);
 }
 

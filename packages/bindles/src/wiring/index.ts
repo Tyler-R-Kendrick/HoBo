@@ -17,4 +17,8 @@ export type {
 	ManifestResource,
 	WiringManifest,
 } from "./types.js";
-export { LAZY_TOKEN_PATTERN, MANIFEST_SCHEMA, RESOURCE_ID_PATTERN } from "./types.js";
+export {
+	LAZY_TOKEN_PATTERN,
+	MANIFEST_SCHEMA,
+	RESOURCE_ID_PATTERN,
+} from "./types.js";

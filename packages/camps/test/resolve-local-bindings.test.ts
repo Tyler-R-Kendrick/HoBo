@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 
 import { camp, providerSelection, resolveLocalBindings } from "../src/index.js";
 
-function mockResolver(values: Record<string, Record<string, string>>): BindingResolverPort {
+function mockResolver(
+	values: Record<string, Record<string, string>>,
+): BindingResolverPort {
 	return {
 		async resolve(resourceId, property) {
 			const id = parseResourceId(resourceId);
@@ -25,7 +27,12 @@ describe("resolveLocalBindings()", () => {
 		const api = service("api", { bind: { db } });
 		const manifest = compileBindleManifest([db, api]);
 		const appBindle = bindleScope("app", (collector) => {
-			collector.use({ kind: "data", name: "db", stableId: "data:db", portRef: ["hobo:data"] });
+			collector.use({
+				kind: "data",
+				name: "db",
+				stableId: "data:db",
+				portRef: ["hobo:data"],
+			});
 		});
 		const devCamp = camp("dev", {
 			bindle: appBindle,
@@ -45,7 +52,12 @@ describe("resolveLocalBindings()", () => {
 		const api = service("api", { bind: { db } });
 		const manifest = compileBindleManifest([db, api]);
 		const appBindle = bindleScope("app", (collector) => {
-			collector.use({ kind: "data", name: "db", stableId: "data:db", portRef: ["hobo:data"] });
+			collector.use({
+				kind: "data",
+				name: "db",
+				stableId: "data:db",
+				portRef: ["hobo:data"],
+			});
 		});
 		const awsCamp = camp("prod", {
 			bindle: appBindle,
@@ -56,8 +68,8 @@ describe("resolveLocalBindings()", () => {
 			db: { connectionString: "sqlite://local.db" },
 		});
 
-		await expect(resolveLocalBindings(manifest, awsCamp, resolver)).rejects.toThrow(
-			/resolveLocalBindings requires local provider/,
-		);
+		await expect(
+			resolveLocalBindings(manifest, awsCamp, resolver),
+		).rejects.toThrow(/resolveLocalBindings requires local provider/);
 	});
 });

@@ -1,4 +1,7 @@
-import { buildHelloBindleComponent, emitEvidence } from "./hello-bindle-fixture.mts";
+import {
+	buildHelloBindleComponent,
+	emitEvidence,
+} from "./hello-bindle-fixture.mts";
 
 const first = await buildHelloBindleComponent();
 const second = await buildHelloBindleComponent();

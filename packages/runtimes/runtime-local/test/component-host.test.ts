@@ -8,9 +8,15 @@ import {
 	createInProcessWasmtimeEngine,
 	createRuntimeLocalComponentHost,
 } from "../src/index.js";
-import { helloBindleComponent, helloBindleProvider } from "./fixtures/hello-bindle.js";
+import {
+	helloBindleComponent,
+	helloBindleProvider,
+} from "./fixtures/hello-bindle.js";
 
-function collectEvents(): { events: ComponentHostEvent[]; appendEvent: (event: ComponentHostEvent) => void } {
+function collectEvents(): {
+	events: ComponentHostEvent[];
+	appendEvent: (event: ComponentHostEvent) => void;
+} {
 	const events: ComponentHostEvent[] = [];
 	return {
 		events,
@@ -102,7 +108,9 @@ describe("runtime-local component host", () => {
 
 	it("supports direct in-process import-to-export invocation", async () => {
 		const sink = collectEvents();
-		const host = createRuntimeLocalComponentHost({ appendEvent: sink.appendEvent });
+		const host = createRuntimeLocalComponentHost({
+			appendEvent: sink.appendEvent,
+		});
 		host.registerProvider({
 			id: "clock",
 			exports: {
@@ -181,7 +189,12 @@ describe("runtime-local component host", () => {
 		});
 
 		await expect(
-			host.handleHttp("bad-api", { method: "GET", path: "/panic", headers: [], body: "" }),
+			host.handleHttp("bad-api", {
+				method: "GET",
+				path: "/panic",
+				headers: [],
+				body: "",
+			}),
 		).rejects.toBeInstanceOf(ComponentTrapError);
 
 		expect(
@@ -257,7 +270,9 @@ describe("runtime-local component host", () => {
 
 	it("loads hello-bindle and returns hello-bindle:ok through a linked capability", async () => {
 		const sink = collectEvents();
-		const host = createRuntimeLocalComponentHost({ appendEvent: sink.appendEvent });
+		const host = createRuntimeLocalComponentHost({
+			appendEvent: sink.appendEvent,
+		});
 		host.registerProvider(helloBindleProvider);
 		host.loadComponent({ parsed: true, ...helloBindleComponent });
 		host.link({
@@ -281,7 +296,9 @@ describe("runtime-local component host", () => {
 			"link.Called",
 			"component.Invoked",
 		]);
-		const established = sink.events.find((event) => event.type === "link.Established");
+		const established = sink.events.find(
+			(event) => event.type === "link.Established",
+		);
 		expect(established).toMatchObject({
 			boundaryMode: "live",
 			transport: "in-process",

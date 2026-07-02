@@ -1,4 +1,8 @@
-import type { CliContext, CliEnvelope, CommandResult } from "../types/envelope.js";
+import type {
+	CliContext,
+	CliEnvelope,
+	CommandResult,
+} from "../types/envelope.js";
 import { buildEnvelope, publicContext } from "../types/envelope.js";
 import { CliError } from "./errors.js";
 import type { CliFlags } from "./parse.js";
@@ -52,7 +56,11 @@ ${envelope.message}
 
 export function renderError(
 	error: unknown,
-	input: { readonly verb: string | null; readonly flags: CliFlags; readonly context?: CliContext },
+	input: {
+		readonly verb: string | null;
+		readonly flags: CliFlags;
+		readonly context?: CliContext;
+	},
 ): CliRunResult {
 	if (error instanceof CliError) {
 		if (input.flags.json) {
@@ -127,7 +135,10 @@ function okText(stdout: string, exitCode = 0): CliRunResult {
 	};
 }
 
-export function envelopeToRunResult(envelope: CliEnvelope, flags: CliFlags): CliRunResult {
+export function envelopeToRunResult(
+	envelope: CliEnvelope,
+	flags: CliFlags,
+): CliRunResult {
 	if (flags.json) {
 		return okText(`${JSON.stringify(envelope)}\n`, envelope.ok ? 0 : 1);
 	}

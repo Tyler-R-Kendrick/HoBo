@@ -65,8 +65,12 @@ export function addContainer(
 			...(endpointOptions.targetPort !== undefined
 				? { targetPort: endpointOptions.targetPort }
 				: {}),
-			...(endpointOptions.external !== undefined ? { external: endpointOptions.external } : {}),
-			...(endpointOptions.protocol !== undefined ? { protocol: endpointOptions.protocol } : {}),
+			...(endpointOptions.external !== undefined
+				? { external: endpointOptions.external }
+				: {}),
+			...(endpointOptions.protocol !== undefined
+				? { protocol: endpointOptions.protocol }
+				: {}),
 		});
 
 	handle.withArgs = (...args) => {
@@ -76,7 +80,8 @@ export function addContainer(
 	};
 
 	handle.withBindMount = (mountSource, target, readOnly = false) => {
-		const mounts = (handle.annotations.bindMounts as unknown[] | undefined) ?? [];
+		const mounts =
+			(handle.annotations.bindMounts as unknown[] | undefined) ?? [];
 		mounts.push({ source: mountSource, target, readOnly });
 		handle.annotations.bindMounts = mounts;
 		return handle;

@@ -17,7 +17,9 @@ import {
 describe("hobo build", () => {
 	it("emits wasm and OCI fallback artifacts with JSON digests", async () => {
 		await withSeededBuildProject(async (projectRoot) => {
-			const result = await createHoboCli().run(["build", "--json"], { cwd: projectRoot });
+			const result = await createHoboCli().run(["build", "--json"], {
+				cwd: projectRoot,
+			});
 
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
@@ -30,13 +32,17 @@ describe("hobo build", () => {
 
 			const artifacts = byService(envelope.data.artifacts);
 			expect(artifacts.get("hello-bindle")?.kind).toBe("wasm-component");
-			expect(artifacts.get("hello-bindle")?.digest).toMatch(/^sha256:[a-f0-9]{64}$/);
+			expect(artifacts.get("hello-bindle")?.digest).toMatch(
+				/^sha256:[a-f0-9]{64}$/,
+			);
 			expect(artifacts.get("legacy-worker")?.kind).toBe("oci-container");
 			expect(artifacts.get("legacy-worker")?.fallbackReason).toBe(
 				"unsupported-language: python",
 			);
 
-			const manifest = JSON.parse(await readFile(join(projectRoot, BUILD_MANIFEST_PATH), "utf8"));
+			const manifest = JSON.parse(
+				await readFile(join(projectRoot, BUILD_MANIFEST_PATH), "utf8"),
+			);
 			expect(manifest.artifacts).toEqual(envelope.data.artifacts);
 		});
 	});
@@ -46,10 +52,12 @@ describe("hobo build", () => {
 
 		await withSeededBuildProject(async (projectRoot) => {
 			const first = JSON.parse(
-				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot })).stdout,
+				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot }))
+					.stdout,
 			);
 			const second = JSON.parse(
-				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot })).stdout,
+				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot }))
+					.stdout,
 			);
 
 			expect(second.data.artifacts).toEqual(first.data.artifacts);
@@ -58,7 +66,8 @@ describe("hobo build", () => {
 
 		await withSeededBuildProject(async (projectRoot) => {
 			const fresh = JSON.parse(
-				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot })).stdout,
+				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot }))
+					.stdout,
 			);
 			expect(fresh.data.artifacts).toEqual(cleanCheckoutArtifacts);
 		});
@@ -66,16 +75,23 @@ describe("hobo build", () => {
 
 	it("fails on stale _generated tree with regeneration hint before build output", async () => {
 		await withSeededBuildProject(async (projectRoot) => {
-			await writeFile(join(projectRoot, "src/_generated/hooks.d.ts"), "stale generated file\n");
+			await writeFile(
+				join(projectRoot, "src/_generated/hooks.d.ts"),
+				"stale generated file\n",
+			);
 
-			const result = await createHoboCli().run(["build", "--json"], { cwd: projectRoot });
+			const result = await createHoboCli().run(["build", "--json"], {
+				cwd: projectRoot,
+			});
 			const envelope = JSON.parse(result.stdout);
 
 			expect(result.exitCode).toBe(1);
 			expect(envelope.ok).toBe(false);
 			expect(envelope.code).toBe("HOBO_BUILD_CODEGEN_DRIFT");
 			expect(envelope.message).toMatch(/hobo codegen/);
-			await expect(access(join(projectRoot, BUILD_MANIFEST_PATH))).rejects.toMatchObject({
+			await expect(
+				access(join(projectRoot, BUILD_MANIFEST_PATH)),
+			).rejects.toMatchObject({
 				code: "ENOENT",
 			});
 		});
@@ -100,21 +116,30 @@ describe("hobo build", () => {
 						entrypoint: "services/hello-bindle/src/service.ts",
 					},
 				],
-				helloSource: 'export const health = () => ({ body: "bad", nonce: Date.now() });\n',
+				helloSource:
+					'export const health = () => ({ body: "bad", nonce: Date.now() });\n',
 			});
 			await seedGeneratedTree(projectRoot);
 
-			const result = await createHoboCli().run(["build", "--json"], { cwd: projectRoot });
+			const result = await createHoboCli().run(["build", "--json"], {
+				cwd: projectRoot,
+			});
 			const envelope = JSON.parse(result.stdout);
 
 			expect(result.exitCode).toBe(1);
 			expect(envelope.code).toBe("HOBO_BUILD_COMPONENTIZE_FAILED");
 			expect(envelope.data.detail?.service).toBe("hello-bindle");
-			expect(String(envelope.data.detail?.cause)).toMatch(/nondeterministic_source/);
+			expect(String(envelope.data.detail?.cause)).toMatch(
+				/nondeterministic_source/,
+			);
 			await expect(
-				access(join(projectRoot, ".hobo/build/artifacts/aaa-legacy-worker.oci.json")),
+				access(
+					join(projectRoot, ".hobo/build/artifacts/aaa-legacy-worker.oci.json"),
+				),
 			).rejects.toMatchObject({ code: "ENOENT" });
-			await expect(access(join(projectRoot, BUILD_MANIFEST_PATH))).rejects.toMatchObject({
+			await expect(
+				access(join(projectRoot, BUILD_MANIFEST_PATH)),
+			).rejects.toMatchObject({
 				code: "ENOENT",
 			});
 		});
@@ -125,11 +150,15 @@ describe("hobo build", () => {
 		process.env.HOBO_RUNTIME = "container";
 		try {
 			await withSeededBuildProject(async (projectRoot) => {
-				const result = await createHoboCli().run(["build", "--json"], { cwd: projectRoot });
+				const result = await createHoboCli().run(["build", "--json"], {
+					cwd: projectRoot,
+				});
 				expect(result.exitCode).toBe(0);
 				const artifacts = byService(JSON.parse(result.stdout).data.artifacts);
 				expect(artifacts.get("hello-bindle")?.kind).toBe("oci-container");
-				expect(artifacts.get("hello-bindle")?.fallbackReason).toBe("target-runtime: container");
+				expect(artifacts.get("hello-bindle")?.fallbackReason).toBe(
+					"target-runtime: container",
+				);
 				expect(artifacts.get("legacy-worker")?.kind).toBe("oci-container");
 			});
 		} finally {
@@ -156,17 +185,23 @@ describe("hobo build", () => {
 			});
 			await seedGeneratedTree(projectRoot);
 
-			const result = await createHoboCli().run(["build", "--json"], { cwd: projectRoot });
+			const result = await createHoboCli().run(["build", "--json"], {
+				cwd: projectRoot,
+			});
 			const artifacts = byService(JSON.parse(result.stdout).data.artifacts);
 
 			expect(result.exitCode).toBe(0);
 			expect(artifacts.get("queue-worker")?.kind).toBe("oci-container");
-			expect(artifacts.get("queue-worker")?.fallbackReason).toBe("declared-runtime: container");
+			expect(artifacts.get("queue-worker")?.fallbackReason).toBe(
+				"declared-runtime: container",
+			);
 		});
 	});
 });
 
-async function withSeededBuildProject(callback: (projectRoot: string) => Promise<void>) {
+async function withSeededBuildProject(
+	callback: (projectRoot: string) => Promise<void>,
+) {
 	return withTempBuildProject(async (projectRoot) => {
 		await writeBuildFixtureProject(projectRoot);
 		await seedGeneratedTree(projectRoot);
@@ -174,7 +209,9 @@ async function withSeededBuildProject(callback: (projectRoot: string) => Promise
 	});
 }
 
-async function withTempBuildProject(callback: (projectRoot: string) => Promise<void>) {
+async function withTempBuildProject(
+	callback: (projectRoot: string) => Promise<void>,
+) {
 	const projectRoot = await mkdtemp(join(tmpdir(), "hobo-build-cli-"));
 	try {
 		return await callback(projectRoot);

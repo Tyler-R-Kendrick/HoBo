@@ -34,7 +34,10 @@ function packageJson(input: { readonly name: ProjectName }) {
 	};
 }
 
-function bindle(input: { readonly name: ProjectName; readonly template: ParsedTemplateId }) {
+function bindle(input: {
+	readonly name: ProjectName;
+	readonly template: ParsedTemplateId;
+}) {
 	return {
 		schemaVersion: "hobo.bindle/v1",
 		name: input.name,
@@ -71,7 +74,10 @@ function tsconfig() {
 	};
 }
 
-function appSource(input: { readonly name: ProjectName; readonly template: ParsedTemplateId }) {
+function appSource(input: {
+	readonly name: ProjectName;
+	readonly template: ParsedTemplateId;
+}) {
 	const details = templateDetails(input.template);
 	return `import { createHobo, create${details.runtimeName}Store } from "./src/_generated/index.ts";
 
@@ -99,7 +105,10 @@ export const api = hobo.api("${details.route}", async (request) => {
 `;
 }
 
-function appTestSource(input: { readonly name: ProjectName; readonly template: ParsedTemplateId }) {
+function appTestSource(input: {
+	readonly name: ProjectName;
+	readonly template: ParsedTemplateId;
+}) {
 	const details = templateDetails(input.template);
 	return `import { createTestRuntime } from "./src/_generated/index.ts";
 import { api, resource } from "./app.ts";
@@ -311,6 +320,8 @@ function templateDetails(template: ParsedTemplateId) {
 				message: "Fullstack shell ready",
 			};
 		default:
-			throw new UsageError(`Unknown template "${template}". Valid templates: ${VALID_TEMPLATES.join(", ")}.`);
+			throw new UsageError(
+				`Unknown template "${template}". Valid templates: ${VALID_TEMPLATES.join(", ")}.`,
+			);
 	}
 }

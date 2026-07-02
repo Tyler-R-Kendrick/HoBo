@@ -45,9 +45,14 @@ type BindleResourceShape = {
 	readonly annotations?: { readonly with?: unknown };
 };
 
-export type BindleResourceInput = BindleResourceDescriptor | BindleResourceShape;
+export type BindleResourceInput =
+	| BindleResourceDescriptor
+	| BindleResourceShape;
 
-export function bindleScope(name: string, builder: (collector: BindleCollector) => void): BindleScope {
+export function bindleScope(
+	name: string,
+	builder: (collector: BindleCollector) => void,
+): BindleScope {
 	requireName("bindle name", name);
 	if (typeof builder !== "function") {
 		throw new TypeError("bindle builder must be a function");
@@ -90,7 +95,8 @@ export function descriptorFromHandle(handle: {
 }): BindleResourceDescriptor {
 	const kind = handle.kind === "resource" ? "data" : handle.kind;
 	const port =
-		handle.port ?? (kind === "service" || kind === "container" ? "wasi:http" : "hobo:data");
+		handle.port ??
+		(kind === "service" || kind === "container" ? "wasi:http" : "hobo:data");
 	return deepFreeze({
 		kind,
 		name: handle.name,
@@ -100,10 +106,14 @@ export function descriptorFromHandle(handle: {
 	});
 }
 
-function normalizeResourceDescriptor(resource: BindleResourceInput): BindleResourceDescriptor {
+function normalizeResourceDescriptor(
+	resource: BindleResourceInput,
+): BindleResourceDescriptor {
 	const shape = resource as BindleResourceShape;
 	const descriptor =
-		typeof shape.toDescriptor === "function" ? shape.toDescriptor() : (resource as BindleResourceDescriptor);
+		typeof shape.toDescriptor === "function"
+			? shape.toDescriptor()
+			: (resource as BindleResourceDescriptor);
 	if (!isPlainObject(descriptor)) {
 		throw new TypeError("Bindle resources must be descriptor objects");
 	}
@@ -128,7 +138,9 @@ function normalizeResourceDescriptor(resource: BindleResourceInput): BindleResou
 	});
 }
 
-export function assertNoProviderSpecificFields(value: BindleResourceInput): void {
+export function assertNoProviderSpecificFields(
+	value: BindleResourceInput,
+): void {
 	if (!value || typeof value !== "object") return;
 	const shape = value as BindleResourceShape;
 	const annotations = shape.annotations?.with;
@@ -142,7 +154,9 @@ export function assertNoProviderSpecificFields(value: BindleResourceInput): void
 		providerOptions ||
 		annotations
 	) {
-		throw new Error("provider-specific options belong on Camp mappings, not Bindle resources");
+		throw new Error(
+			"provider-specific options belong on Camp mappings, not Bindle resources",
+		);
 	}
 }
 

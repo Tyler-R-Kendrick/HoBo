@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { defineStageGateS0 } from "../src/definition.js";
-import { parseStageGateRecord, serializeStageGateRecord } from "../src/parse.js";
+import {
+	parseStageGateRecord,
+	serializeStageGateRecord,
+} from "../src/parse.js";
 import {
 	createCommandInvocation,
 	resolveCommandExecutable,
@@ -69,9 +72,7 @@ describe("parseStageGateRecord", () => {
 	it("rejects tampered artifact digest evidence on passed records", () => {
 		const payload = validRecordPayload();
 		payload.signature.verified = false;
-		expect(() => parseStageGateRecord(payload)).toThrow(
-			/signature.verified/,
-		);
+		expect(() => parseStageGateRecord(payload)).toThrow(/signature.verified/);
 	});
 
 	it("round-trips through serialize", () => {

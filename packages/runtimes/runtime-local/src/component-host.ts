@@ -16,7 +16,8 @@ import { createInProcessWasmtimeEngine } from "./engine/wasmtime.js";
 import type { ParsedLinkRequest, ParsedProviderDescriptor } from "./parse.js";
 import { parseLinkRequest, parseProviderDescriptor } from "./parse.js";
 
-export const HTTP_INCOMING_HANDLER = "wasi:http/incoming-handler@0.2.0" as InterfaceId;
+export const HTTP_INCOMING_HANDLER =
+	"wasi:http/incoming-handler@0.2.0" as InterfaceId;
 
 export interface RuntimeLocalComponentHostOptions {
 	engine?: WasmtimeEngine;
@@ -62,16 +63,25 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 		this.#components.set(component.id, instance);
 		this.#lifecycle.set(component.id, { id: component.id, state: "loaded" });
 		this.#leases.set(component.id, [...(component.leases ?? [])]);
-		this.#append({ type: "component.Loaded", componentId: component.id, engine: "wasmtime" });
+		this.#append({
+			type: "component.Loaded",
+			componentId: component.id,
+			engine: "wasmtime",
+		});
 		return instance;
 	}
 
-	link(request: ParsedLinkRequest | Parameters<typeof parseLinkRequest>[0]): LinkRecord {
+	link(
+		request: ParsedLinkRequest | Parameters<typeof parseLinkRequest>[0],
+	): LinkRecord {
 		const parsed = "parsed" in request ? request : parseLinkRequest(request);
 		const component = this.#requireLoaded(parsed.componentId);
 		const provider = this.#providers.get(parsed.providerId);
 		if (!provider) {
-			throw new ComponentHostError("provider_not_registered", parsed.providerId);
+			throw new ComponentHostError(
+				"provider_not_registered",
+				parsed.providerId,
+			);
 		}
 		if (!component.imports.includes(parsed.importInterface)) {
 			throw new ComponentHostError(
@@ -116,12 +126,18 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 		this.#requireLoaded(componentId);
 		const link = this.#links.get(linkKey(componentId, importInterface));
 		if (!link) {
-			throw new ComponentHostError("no_route", `${componentId}:${importInterface}`);
+			throw new ComponentHostError(
+				"no_route",
+				`${componentId}:${importInterface}`,
+			);
 		}
 		const provider = this.#providers.get(link.providerId);
 		const implementation = provider?.exports[link.exportInterface]?.[operation];
 		if (typeof implementation !== "function") {
-			throw new ComponentHostError("operation_not_found", `${link.exportInterface}.${operation}`);
+			throw new ComponentHostError(
+				"operation_not_found",
+				`${link.exportInterface}.${operation}`,
+			);
 		}
 
 		this.#append({
@@ -137,7 +153,10 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 		return implementation(payload);
 	}
 
-	async handleHttp(componentId: string, request: HttpRequest): Promise<HttpResponse> {
+	async handleHttp(
+		componentId: string,
+		request: HttpRequest,
+	): Promise<HttpResponse> {
 		const component = this.#requireLoaded(componentId);
 		const handler = component.exports[HTTP_INCOMING_HANDLER]?.handle;
 		if (typeof handler !== "function") {
@@ -146,8 +165,17 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 
 		try {
 			const response = (await handler(request, {
-				callImport: (importInterface: InterfaceId, operation: string, payload?: unknown) =>
-					this.invokeLinkedImport(componentId, importInterface, operation, payload),
+				callImport: (
+					importInterface: InterfaceId,
+					operation: string,
+					payload?: unknown,
+				) =>
+					this.invokeLinkedImport(
+						componentId,
+						importInterface,
+						operation,
+						payload,
+					),
 			})) as HttpResponse;
 			this.#append({
 				type: "component.Invoked",
@@ -182,7 +210,12 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 	}
 
 	lifecycle(componentId: string) {
-		return this.#lifecycle.get(componentId) ?? { id: componentId, state: "missing" as const };
+		return (
+			this.#lifecycle.get(componentId) ?? {
+				id: componentId,
+				state: "missing" as const,
+			}
+		);
 	}
 
 	activeLeases(): string[] {

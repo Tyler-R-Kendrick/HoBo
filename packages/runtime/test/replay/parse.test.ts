@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseReplayDivergence, parseReplayReport, ReplayParseError } from "../../src/replay/parse.js";
+import {
+	parseReplayDivergence,
+	parseReplayReport,
+	ReplayParseError,
+} from "../../src/replay/parse.js";
 
 describe("parseReplayReport", () => {
 	it("accepts a valid report", () => {

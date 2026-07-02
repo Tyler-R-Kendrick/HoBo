@@ -5,7 +5,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { collectStream, createManualClock, createRuntimeLocalEventStore } from "../../src/index.js";
+import {
+	collectStream,
+	createManualClock,
+	createRuntimeLocalEventStore,
+} from "../../src/index.js";
 
 const crasherScript = join(
 	dirname(fileURLToPath(import.meta.url)),
@@ -51,7 +55,11 @@ describe("runtime-local EventStore durability", () => {
 		first.close();
 
 		const reopened = createRuntimeLocalEventStore({ dataDir, clock });
-		const retry = await reopened.append("durability:pay", [event], appendOptions(0));
+		const retry = await reopened.append(
+			"durability:pay",
+			[event],
+			appendOptions(0),
+		);
 		expect(retry.appended).toHaveLength(0);
 		expect(retry.deduped).toHaveLength(1);
 		reopened.close();
@@ -72,7 +80,10 @@ describe("runtime-local EventStore durability", () => {
 			initialState: { items: [] as string[] },
 			handlers: {
 				"cart.ItemAdded": (state, event) => ({
-					items: [...state.items, String((event.data as { sku?: string }).sku ?? "")],
+					items: [
+						...state.items,
+						String((event.data as { sku?: string }).sku ?? ""),
+					],
 				}),
 			},
 		});
@@ -80,7 +91,10 @@ describe("runtime-local EventStore durability", () => {
 			initialState: { items: [] as string[] },
 			handlers: {
 				"cart.ItemAdded": (state, event) => ({
-					items: [...state.items, String((event.data as { sku?: string }).sku ?? "")],
+					items: [
+						...state.items,
+						String((event.data as { sku?: string }).sku ?? ""),
+					],
 				}),
 			},
 		});
@@ -92,7 +106,10 @@ describe("runtime-local EventStore durability", () => {
 	it("crashMidAppendAtomicity survives SIGKILL with whole batches only", async () => {
 		const dataDir = mkdtempSync(join(tmpdir(), "hobo-es-crash-"));
 		const acked = await runCrasher(crasherScript, dataDir);
-		const store = createRuntimeLocalEventStore({ dataDir, clock: createManualClock() });
+		const store = createRuntimeLocalEventStore({
+			dataDir,
+			clock: createManualClock(),
+		});
 		const events = await collectStream(store, "durability:crash");
 
 		for (const seq of acked) {
@@ -104,7 +121,10 @@ describe("runtime-local EventStore durability", () => {
 			if (!event.correlationId) {
 				continue;
 			}
-			groups.set(event.correlationId, (groups.get(event.correlationId) ?? 0) + 1);
+			groups.set(
+				event.correlationId,
+				(groups.get(event.correlationId) ?? 0) + 1,
+			);
 		}
 		for (const count of groups.values()) {
 			expect([0, 3]).toContain(count);
@@ -139,9 +159,13 @@ function appendOptions(expectedSeq: number) {
 
 async function runCrasher(script: string, dataDir: string): Promise<number[]> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(process.execPath, ["--import", "tsx", script, dataDir], {
-			stdio: ["ignore", "pipe", "inherit"],
-		});
+		const child = spawn(
+			process.execPath,
+			["--import", "tsx", script, dataDir],
+			{
+				stdio: ["ignore", "pipe", "inherit"],
+			},
+		);
 		const acked: number[] = [];
 		let buffer = "";
 

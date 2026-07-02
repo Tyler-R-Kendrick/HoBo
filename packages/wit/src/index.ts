@@ -11,11 +11,20 @@ const WORLD_RE = /^\s*world\s+([\w-]+)\s*\{([\s\S]*?)^\s*\}/m;
 const IMPORT_EXPORT_RE = /^\s*(import|export)\s+([^;]+)\s*;/gm;
 const FUNC_RE = /^\s*([\w-]+):\s*func\s*\(([^)]*)\)\s*(?:->\s*([^;]+))?;/gm;
 
-const STABILITY_VALUES = new Set(["stable", "preview", "experimental", "deprecated"]);
+const STABILITY_VALUES = new Set([
+	"stable",
+	"preview",
+	"experimental",
+	"deprecated",
+]);
 
 export const HOBO_WIT_PACKAGE = "@hobo/wit";
 
-export type StabilityTier = "stable" | "preview" | "experimental" | "deprecated";
+export type StabilityTier =
+	| "stable"
+	| "preview"
+	| "experimental"
+	| "deprecated";
 
 export type InterfacePin = Readonly<{
 	id: string;
@@ -127,7 +136,8 @@ const ROUND_TRIP_FIXTURES = new Map<string, Record<string, unknown>>([
 		{
 			name: "avatars/user-1.png",
 			"content-type": "image/png",
-			digest: "sha256:9a3c0a8a4ce0ce91d8ff1d357f179aef9f1e4a46358b82b223be99f6e6f9f1e1",
+			digest:
+				"sha256:9a3c0a8a4ce0ce91d8ff1d357f179aef9f1e4a46358b82b223be99f6e6f9f1e1",
 			size: 128,
 		},
 	],
@@ -136,13 +146,25 @@ const ROUND_TRIP_FIXTURES = new Map<string, Record<string, unknown>>([
 		{
 			id: "msg_001",
 			subject: "orders.created",
-			payload: [123, 34, 111, 114, 100, 101, 114, 73, 100, 34, 58, 34, 111, 114, 100, 95, 49, 50, 51, 34, 125],
-			attributes: [["traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"]],
+			payload: [
+				123, 34, 111, 114, 100, 101, 114, 73, 100, 34, 58, 34, 111, 114, 100,
+				95, 49, 50, 51, 34, 125,
+			],
+			attributes: [
+				[
+					"traceparent",
+					"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00",
+				],
+			],
 		},
 	],
 	[
 		"wasi:config/store@0.2.0",
-		{ key: "STRIPE_API_KEY", "value-ref": "stripe/api-key", sensitivity: "secret" },
+		{
+			key: "STRIPE_API_KEY",
+			"value-ref": "stripe/api-key",
+			sensitivity: "secret",
+		},
 	],
 	[
 		"wasi:logging/logging@0.2.0",
@@ -159,8 +181,14 @@ const ROUND_TRIP_FIXTURES = new Map<string, Record<string, unknown>>([
 
 const ROUND_TRIP_WIT_SNIPPETS = new Map<string, readonly string[]>([
 	["wasi:keyvalue/store@0.2.0", ["key: string", "value: list<u8>"]],
-	["wasi:blobstore/blobstore@0.2.0", ["content-type: string", "digest: string", "size: u64"]],
-	["wasi:messaging/messaging@0.2.0", ["payload: list<u8>", "attributes: list<tuple<string, string>>"]],
+	[
+		"wasi:blobstore/blobstore@0.2.0",
+		["content-type: string", "digest: string", "size: u64"],
+	],
+	[
+		"wasi:messaging/messaging@0.2.0",
+		["payload: list<u8>", "attributes: list<tuple<string, string>>"],
+	],
 	["wasi:config/store@0.2.0", ["value-ref: string", "sensitivity: string"]],
 	["wasi:logging/logging@0.2.0", ["fields: list<field>"]],
 ]);
@@ -175,7 +203,8 @@ export function parseInterfacePin(raw: string): InterfacePin {
 		throw new Error(`wit.pin.invalid: malformed pin id ${raw}`);
 	}
 
-	const { namespace, packageName, interfaceName, version, stability } = match.groups;
+	const { namespace, packageName, interfaceName, version, stability } =
+		match.groups;
 	if (
 		!namespace ||
 		!packageName ||
@@ -200,13 +229,20 @@ export function parseInterfacePin(raw: string): InterfacePin {
 }
 
 export async function loadToolchainLock(path: string): Promise<ToolchainLock> {
-	const raw = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+	const raw = JSON.parse(await readFile(path, "utf8")) as Record<
+		string,
+		unknown
+	>;
 	return parseToolchainLock(raw);
 }
 
-export function parseToolchainLock(raw: Record<string, unknown>): ToolchainLock {
+export function parseToolchainLock(
+	raw: Record<string, unknown>,
+): ToolchainLock {
 	if (raw.schema !== "hobo.wit-toolchain-lock/v1") {
-		throw new Error("wit.lock.invalid: schema must be hobo.wit-toolchain-lock/v1");
+		throw new Error(
+			"wit.lock.invalid: schema must be hobo.wit-toolchain-lock/v1",
+		);
 	}
 	if (raw.package !== "hobo:sdk@0.1.0") {
 		throw new Error("wit.lock.invalid: package must be hobo:sdk@0.1.0");
@@ -217,7 +253,9 @@ export function parseToolchainLock(raw: Record<string, unknown>): ToolchainLock 
 		"canonical_generator",
 	);
 	if (canonicalGenerator.name !== "@bytecodealliance/jco") {
-		throw new Error("wit.lock.invalid: canonical generator must be @bytecodealliance/jco");
+		throw new Error(
+			"wit.lock.invalid: canonical generator must be @bytecodealliance/jco",
+		);
 	}
 
 	const smokeSource = raw.smoke_generators ?? raw.smokeGenerators;
@@ -292,7 +330,10 @@ export function extractWitContract(witSource: string) {
 		throw new Error("wit.surface.missing_package");
 	}
 
-	const interfaces: Record<string, { name: string; functions: FunctionSignature[] }> = {};
+	const interfaces: Record<
+		string,
+		{ name: string; functions: FunctionSignature[] }
+	> = {};
 	for (const match of witSource.matchAll(INTERFACE_RE)) {
 		const name = match[1];
 		const body = match[2];
@@ -440,7 +481,10 @@ function parseGeneratorPin(raw: unknown, label: string): GeneratorPin {
 	if (typeof entry.name !== "string" || entry.name.length === 0) {
 		throw new Error(`wit.lock.invalid: ${label}.name required`);
 	}
-	if (typeof entry.version !== "string" || !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(entry.version)) {
+	if (
+		typeof entry.version !== "string" ||
+		!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(entry.version)
+	) {
 		throw new Error(`wit.lock.invalid: ${label}.version must be exact semver`);
 	}
 	if (typeof entry.role !== "string" || entry.role.length === 0) {
@@ -499,13 +543,20 @@ function parseInterfacePinRecord(raw: unknown, index: number): InterfacePin {
 
 	const parsed = parseInterfacePin(id);
 	const path = typeof entry.path === "string" ? entry.path : "";
-	const sha256 = typeof entry.sha256 === "string" ? entry.sha256 : String(entry.digest ?? "");
+	const sha256 =
+		typeof entry.sha256 === "string"
+			? entry.sha256
+			: String(entry.digest ?? "");
 
 	if (!path.startsWith("wit/") || !path.endsWith(".wit")) {
-		throw new Error(`wit.lock.invalid: wit_deps[${index}].path must be wit/**/*.wit`);
+		throw new Error(
+			`wit.lock.invalid: wit_deps[${index}].path must be wit/**/*.wit`,
+		);
 	}
 	if (!SHA256_RE.test(sha256)) {
-		throw new Error(`wit.lock.invalid: wit_deps[${index}].sha256 must match sha256:<hex>`);
+		throw new Error(
+			`wit.lock.invalid: wit_deps[${index}].sha256 must match sha256:<hex>`,
+		);
 	}
 
 	return Object.freeze({
@@ -525,7 +576,9 @@ function readExactVersion(
 			return value;
 		}
 	}
-	throw new Error(`wit.lock.invalid: compat floor missing exact version for ${keys[0]}`);
+	throw new Error(
+		`wit.lock.invalid: compat floor missing exact version for ${keys[0]}`,
+	);
 }
 
 function assertVendoredWitShape(pin: InterfacePin, source: string) {
@@ -547,7 +600,9 @@ function assertVendoredWitShape(pin: InterfacePin, source: string) {
 	}
 }
 
-function toComponentSurface(contract: ReturnType<typeof normalizeContract>): ComponentSurface {
+function toComponentSurface(
+	contract: ReturnType<typeof normalizeContract>,
+): ComponentSurface {
 	const digest = surfaceDigest(contract);
 	return Object.freeze({
 		package: contract.package,
@@ -565,11 +620,20 @@ function toComponentSurface(contract: ReturnType<typeof normalizeContract>): Com
 	});
 }
 
-function compareSignatureRecords(forward: ComponentSurface, reverse: ComponentSurface) {
+function compareSignatureRecords(
+	forward: ComponentSurface,
+	reverse: ComponentSurface,
+) {
 	const drift: { interface: string; reason: string }[] = [];
-	for (const name of forward.imports.filter((importName) => reverse.imports.includes(importName))) {
-		const declared = forward.functionSignatures.find((entry) => entry.name === name);
-		const extracted = reverse.functionSignatures.find((entry) => entry.name === name);
+	for (const name of forward.imports.filter((importName) =>
+		reverse.imports.includes(importName),
+	)) {
+		const declared = forward.functionSignatures.find(
+			(entry) => entry.name === name,
+		);
+		const extracted = reverse.functionSignatures.find(
+			(entry) => entry.name === name,
+		);
 		if (!declared && !extracted) {
 			continue;
 		}
@@ -577,14 +641,20 @@ function compareSignatureRecords(forward: ComponentSurface, reverse: ComponentSu
 			drift.push({ interface: name, reason: "missing extracted interface" });
 			continue;
 		}
-		if (JSON.stringify(declared?.functions) !== JSON.stringify(extracted.functions)) {
+		if (
+			JSON.stringify(declared?.functions) !==
+			JSON.stringify(extracted.functions)
+		) {
 			drift.push({ interface: name, reason: "function signatures differ" });
 		}
 	}
 	return drift;
 }
 
-function compareImportedSignatures(forward: ComponentSurface, reverse: ComponentSurface) {
+function compareImportedSignatures(
+	forward: ComponentSurface,
+	reverse: ComponentSurface,
+) {
 	return compareSignatureRecords(forward, reverse);
 }
 
@@ -626,7 +696,10 @@ function parseParams(params: string) {
 	});
 }
 
-function compareInterfaceLists(declared: readonly string[], extracted: readonly string[]) {
+function compareInterfaceLists(
+	declared: readonly string[],
+	extracted: readonly string[],
+) {
 	return {
 		missing: declared.filter((name) => !extracted.includes(name)),
 		extra: extracted.filter((name) => !declared.includes(name)),
@@ -654,7 +727,10 @@ function normalizeContract(contract: {
 function normalizeInterfaces(
 	interfaces: Record<string, { name: string; functions: FunctionSignature[] }>,
 ) {
-	const normalized: Record<string, { name: string; functions: FunctionSignature[] }> = {};
+	const normalized: Record<
+		string,
+		{ name: string; functions: FunctionSignature[] }
+	> = {};
 	for (const [name, details] of Object.entries(interfaces)) {
 		normalized[name] = {
 			name,
@@ -671,7 +747,9 @@ function normalizeInterfaces(
 		};
 	}
 
-	return Object.fromEntries(Object.entries(normalized).sort(([a], [b]) => a.localeCompare(b)));
+	return Object.fromEntries(
+		Object.entries(normalized).sort(([a], [b]) => a.localeCompare(b)),
+	);
 }
 
 function surfaceDigest(contract: ReturnType<typeof normalizeContract>) {
@@ -718,7 +796,10 @@ function clone<T>(value: T): T {
 	return JSON.parse(canonicalJson(value)) as T;
 }
 
-function assertRoundTripFixtureShape(interfaceRef: string, value: Record<string, unknown>) {
+function assertRoundTripFixtureShape(
+	interfaceRef: string,
+	value: Record<string, unknown>,
+) {
 	const validators: Record<string, () => void> = {
 		"wasi:keyvalue/store@0.2.0": () => {
 			assertString(value.key, "keyvalue.key");
@@ -811,6 +892,10 @@ export function vendorFileName(pin: InterfacePin): string {
 	return basename(pin.path);
 }
 
-export { assertGeneratedMatches, writeGeneratedBindings, WIT_ROOT } from "./wit-gen.js";
+export {
+	assertGeneratedMatches,
+	writeGeneratedBindings,
+	WIT_ROOT,
+} from "./wit-gen.js";
 
 export type * as HoboSdk from "./generated/sdk/sdk.js";

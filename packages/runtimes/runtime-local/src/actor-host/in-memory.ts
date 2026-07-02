@@ -1,4 +1,5 @@
-export const ACTOR_HOST_RUNTIME_PORT_VERSION = "hobo.actor-host-runtime-port/v1";
+export const ACTOR_HOST_RUNTIME_PORT_VERSION =
+	"hobo.actor-host-runtime-port/v1";
 
 export interface ActorHostLease {
 	readonly key: string;
@@ -9,7 +10,10 @@ export interface ActorHostLease {
 }
 
 export interface ActorHostState<S = unknown> {
-	append(lease: ActorHostLease, event: { type: string; [key: string]: unknown }): {
+	append(
+		lease: ActorHostLease,
+		event: { type: string; [key: string]: unknown },
+	): {
 		streamId: string;
 		seq: number;
 		fenceToken: bigint;
@@ -55,7 +59,9 @@ interface ManualClock {
 	advance(deltaMs: number): string;
 }
 
-export function createManualActorClock(startInstant = "2026-06-25T00:00:00.000Z"): ManualClock {
+export function createManualActorClock(
+	startInstant = "2026-06-25T00:00:00.000Z",
+): ManualClock {
 	let nowMs = normalizeInstantMs(startInstant, "startInstant");
 
 	return Object.freeze({
@@ -75,9 +81,14 @@ export function createManualActorClock(startInstant = "2026-06-25T00:00:00.000Z"
 	});
 }
 
-export function createInMemoryActorHost(options: { clock?: ManualClock; leaseTtlMs?: number } = {}) {
+export function createInMemoryActorHost(
+	options: { clock?: ManualClock; leaseTtlMs?: number } = {},
+) {
 	const clock = options.clock ?? createManualActorClock();
-	const leaseTtlMs = requirePositiveInteger(options.leaseTtlMs ?? 30_000, "options.leaseTtlMs");
+	const leaseTtlMs = requirePositiveInteger(
+		options.leaseTtlMs ?? 30_000,
+		"options.leaseTtlMs",
+	);
 	const leases = new Map<string, LeaseRecord>();
 	const leaseRecords = new WeakMap<ActorHostLease, LeaseRecord>();
 	const streams = new Map<string, ActorStream>();
@@ -85,7 +96,10 @@ export function createInMemoryActorHost(options: { clock?: ManualClock; leaseTtl
 	const port: ActorHostPort = Object.freeze({
 		acquire(key: string, request: { holderId: string }) {
 			const actorKey = requireNonEmptyString(key, "key");
-			const holderId = requireNonEmptyString(request.holderId, "request.holderId");
+			const holderId = requireNonEmptyString(
+				request.holderId,
+				"request.holderId",
+			);
 			const nowMs = clock.nowMs();
 			const current = leases.get(actorKey);
 
@@ -104,10 +118,21 @@ export function createInMemoryActorHost(options: { clock?: ManualClock; leaseTtl
 			};
 			leases.set(actorKey, next);
 
-			return createLeaseFacade(next, { clock, leaseTtlMs, leases, leaseRecords });
+			return createLeaseFacade(next, {
+				clock,
+				leaseTtlMs,
+				leases,
+				leaseRecords,
+			});
 		},
 
-		state<S>(key: string, request: { initialState: S; fold: (state: S, event: { type: string; [key: string]: unknown }) => S }) {
+		state<S>(
+			key: string,
+			request: {
+				initialState: S;
+				fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
+			},
+		) {
 			const actorKey = requireNonEmptyString(key, "key");
 			if (typeof request.fold !== "function") {
 				throw new TypeError("request.fold must be a function");
@@ -123,7 +148,13 @@ export function createInMemoryActorHost(options: { clock?: ManualClock; leaseTtl
 				stream: getStream(streams, actorKey),
 				clock,
 				validateLease(lease) {
-					return validateLeaseForAppend(leases, leaseRecords, clock, actorKey, lease);
+					return validateLeaseForAppend(
+						leases,
+						leaseRecords,
+						clock,
+						actorKey,
+						lease,
+					);
 				},
 			});
 		},
@@ -147,7 +178,10 @@ type ActorStream = {
 
 class DurableActorState<S> implements ActorHostState<S> {
 	readonly key: string;
-	readonly #fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
+	readonly #fold: (
+		state: S,
+		event: { type: string; [key: string]: unknown },
+	) => S;
 	readonly #initialState: S;
 	readonly #stream: ActorStream;
 	readonly #clock: ManualClock;
@@ -169,7 +203,10 @@ class DurableActorState<S> implements ActorHostState<S> {
 		this.#validateLease = options.validateLease;
 	}
 
-	append(lease: ActorHostLease, event: { type: string; [key: string]: unknown }) {
+	append(
+		lease: ActorHostLease,
+		event: { type: string; [key: string]: unknown },
+	) {
 		const leaseRecord = this.#validateLease(lease);
 		const body = normalizeEvent(event);
 		const seq = this.#stream.events.length + 1;
@@ -194,10 +231,15 @@ class DurableActorState<S> implements ActorHostState<S> {
 		const snapshot = this.#stream.snapshot;
 		const snapshotSeq = snapshot?.seq ?? 0;
 		let state = structuredClone(snapshot?.state ?? this.#initialState) as S;
-		const tail = this.#stream.events.filter((event) => Number(event.seq) > snapshotSeq);
+		const tail = this.#stream.events.filter(
+			(event) => Number(event.seq) > snapshotSeq,
+		);
 
 		for (const event of tail) {
-			state = this.#fold(state, structuredClone(event) as { type: string; [key: string]: unknown });
+			state = this.#fold(
+				state,
+				structuredClone(event) as { type: string; [key: string]: unknown },
+			);
 		}
 
 		return {
@@ -227,7 +269,9 @@ function createLeaseFacade(
 		renew() {
 			const current = ctx.leases.get(record.key);
 			if (!sameLease(current, record)) {
-				throw new StaleFenceError(`stale fence for ${record.key}: ${record.fenceToken.toString()}`);
+				throw new StaleFenceError(
+					`stale fence for ${record.key}: ${record.fenceToken.toString()}`,
+				);
 			}
 			if (record.expiresAtMs <= ctx.clock.nowMs()) {
 				throw new LeaseExpiredError(
@@ -262,10 +306,14 @@ function validateLeaseForAppend(
 
 	const current = leases.get(key);
 	if (!sameLease(current, leaseRecord)) {
-		throw new StaleFenceError(`stale fence for ${key}: ${leaseRecord.fenceToken.toString()}`);
+		throw new StaleFenceError(
+			`stale fence for ${key}: ${leaseRecord.fenceToken.toString()}`,
+		);
 	}
 	if (!current || current.released || current.expiresAtMs <= clock.nowMs()) {
-		throw new LeaseExpiredError(`expired lease for ${key}: ${leaseRecord.fenceToken.toString()}`);
+		throw new LeaseExpiredError(
+			`expired lease for ${key}: ${leaseRecord.fenceToken.toString()}`,
+		);
 	}
 	return leaseRecord;
 }

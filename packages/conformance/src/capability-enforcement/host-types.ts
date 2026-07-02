@@ -1,4 +1,7 @@
-import type { CapabilityLinkTableEvent, LinkEstablishedEvent } from "@hobo/core";
+import type {
+	CapabilityLinkTableEvent,
+	LinkEstablishedEvent,
+} from "@hobo/core";
 
 /** Minimal capability-host surface exercised by the conformance suite. */
 export interface CapabilityHandle {

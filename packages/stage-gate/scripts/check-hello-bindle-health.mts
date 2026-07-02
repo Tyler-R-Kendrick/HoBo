@@ -1,4 +1,7 @@
-import { buildHelloBindleComponent, emitEvidence } from "./hello-bindle-fixture.mts";
+import {
+	buildHelloBindleComponent,
+	emitEvidence,
+} from "./hello-bindle-fixture.mts";
 
 const build = await buildHelloBindleComponent();
 const { runWasmtimeSmoke } = await import("@hobo/componentize");

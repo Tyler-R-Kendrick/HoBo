@@ -81,11 +81,15 @@ function deterministicLedgerFold(
 	const nextByStream = {
 		...state.byStream,
 		[currentEvent.streamId]:
-			(state.byStream[currentEvent.streamId] ?? 0) + (currentEvent.data as { cents: number }).cents,
+			(state.byStream[currentEvent.streamId] ?? 0) +
+			(currentEvent.data as { cents: number }).cents,
 	};
 	const nextSeq = {
 		...state.seq,
-		[currentEvent.streamId]: Math.max(state.seq[currentEvent.streamId] ?? 0, currentEvent.seq),
+		[currentEvent.streamId]: Math.max(
+			state.seq[currentEvent.streamId] ?? 0,
+			currentEvent.seq,
+		),
 	};
 
 	return {
@@ -95,7 +99,10 @@ function deterministicLedgerFold(
 			...state.seededClockByEvent,
 			[`${currentEvent.streamId}:${currentEvent.seq}`]: context.now(),
 		}),
-		totalCents: Object.values(nextByStream).reduce((sum, cents) => sum + cents, 0),
+		totalCents: Object.values(nextByStream).reduce(
+			(sum, cents) => sum + cents,
+			0,
+		),
 	};
 }
 
@@ -117,7 +124,13 @@ function makeStreams(seed: number) {
 	};
 }
 
-function event(streamId: string, seq: number, type: string, data: unknown, version = 1): EventEnvelope {
+function event(
+	streamId: string,
+	seq: number,
+	type: string,
+	data: unknown,
+	version = 1,
+): EventEnvelope {
 	return { id: `${streamId}-${seq}`, streamId, seq, type, v: version, data };
 }
 
@@ -126,7 +139,9 @@ function emptyLedger() {
 }
 
 function sortObject<T extends Record<string, number>>(value: T): T {
-	return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right))) as T;
+	return Object.fromEntries(
+		Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
+	) as T;
 }
 
 function toEntries(vector: Record<string, number>) {

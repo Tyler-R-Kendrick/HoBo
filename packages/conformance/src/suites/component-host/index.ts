@@ -1,4 +1,7 @@
-import { CapabilityIsolationError, ComponentHostPlanningError } from "./errors.js";
+import {
+	CapabilityIsolationError,
+	ComponentHostPlanningError,
+} from "./errors.js";
 import {
 	CANONICAL_NAN_BITS,
 	REFERENCE_CLOCK_REPLAY,
@@ -8,14 +11,17 @@ import {
 	REFERENCE_WASI_ROUND_TRIP,
 } from "./reference.js";
 
-export const COMPONENT_HOST_CONFORMANCE_SCHEMA = "@hobo/conformance/component-host/v1";
+export const COMPONENT_HOST_CONFORMANCE_SCHEMA =
+	"@hobo/conformance/component-host/v1";
 
 const NON_COVERED_DIVERGENCES = Object.freeze([
 	"wall-clock scheduling jitter",
 	"host-specific partial-failure timing",
 ]);
 
-export type ComponentHostManifest = ReturnType<typeof createReferenceComponentHostManifest>;
+export type ComponentHostManifest = ReturnType<
+	typeof createReferenceComponentHostManifest
+>;
 
 export type ComponentHostAdapter = FixtureComponentHost;
 
@@ -53,7 +59,10 @@ type ConformanceFailure = {
 	readonly [key: string]: unknown;
 };
 
-export { CapabilityIsolationError, ComponentHostPlanningError } from "./errors.js";
+export {
+	CapabilityIsolationError,
+	ComponentHostPlanningError,
+} from "./errors.js";
 export { parseComponentHostManifest } from "./parse.js";
 export {
 	CANONICAL_NAN_BITS,
@@ -100,7 +109,10 @@ export function createReferenceInContainerHost(
 	});
 }
 
-export function planComponentHost(manifest: ComponentHostManifest, host: ComponentHostAdapter) {
+export function planComponentHost(
+	manifest: ComponentHostManifest,
+	host: ComponentHostAdapter,
+) {
 	const pins = normalizeHostPins(manifest);
 	const candidate = hostDescriptor(host);
 	const exact = pins.find(
@@ -110,12 +122,15 @@ export function planComponentHost(manifest: ComponentHostManifest, host: Compone
 		const expectedVersions = pins
 			.filter((pin) => pin.kind === candidate.kind)
 			.map((pin) => pin.version);
-		throw new ComponentHostPlanningError("component_host.host-version-incompatible", {
-			hostKind: candidate.kind,
-			hostVersion: candidate.version,
-			expectedVersions,
-			suite: manifest?.componentHost?.suite,
-		});
+		throw new ComponentHostPlanningError(
+			"component_host.host-version-incompatible",
+			{
+				hostKind: candidate.kind,
+				hostVersion: candidate.version,
+				expectedVersions,
+				suite: manifest?.componentHost?.suite,
+			},
+		);
 	}
 
 	return deepFreeze({
@@ -132,7 +147,9 @@ export async function runComponentHostConformance(input: {
 }): Promise<ComponentHostConformanceReport> {
 	const { manifest, hosts } = input;
 	if (!Array.isArray(hosts) || hosts.length < 2) {
-		throw new TypeError("hosts must include at least two component-host candidates");
+		throw new TypeError(
+			"hosts must include at least two component-host candidates",
+		);
 	}
 
 	const failures: ConformanceFailure[] = [];
@@ -160,7 +177,11 @@ export async function runComponentHostConformance(input: {
 	}
 
 	const crossHostAssertions: CrossHostAssertions = {
-		manifestHostCoverage: assertManifestHostCoverage({ manifest, hosts, failures }),
+		manifestHostCoverage: assertManifestHostCoverage({
+			manifest,
+			hosts,
+			failures,
+		}),
 		deterministicClockReplay: await assertSameAcrossHosts({
 			id: "deterministic-clock-replay",
 			hosts,
@@ -182,7 +203,10 @@ export async function runComponentHostConformance(input: {
 			expected: REFERENCE_LINK_LATE_BINDING,
 			read: (host) => host.invokeLinkedImport(referenceLinkCall()),
 		}),
-		capabilityHandleIsolation: await assertCapabilityIsolation({ hosts, failures }),
+		capabilityHandleIsolation: await assertCapabilityIsolation({
+			hosts,
+			failures,
+		}),
 		fpNanCanonicalization: await assertSameAcrossHosts({
 			id: "fp-nan-canonicalization",
 			hosts,
@@ -237,13 +261,24 @@ export class FixtureComponentHost {
 	readonly deterministicClockOffsetMs: number;
 	readonly allowAmbientCapability: boolean;
 
-	constructor(options: FixtureHostOptions & { kind: string; version: string; boundaryMode: string }) {
+	constructor(
+		options: FixtureHostOptions & {
+			kind: string;
+			version: string;
+			boundaryMode: string;
+		},
+	) {
 		this.kind = requireNonEmptyString(options.kind, "host.kind");
 		this.version = requireNonEmptyString(options.version, "host.version");
-		this.boundaryMode = requireNonEmptyString(options.boundaryMode, "host.boundaryMode");
+		this.boundaryMode = requireNonEmptyString(
+			options.boundaryMode,
+			"host.boundaryMode",
+		);
 		this.nanBits = options.nanBits ?? CANONICAL_NAN_BITS;
 		this.fuelSchedule = clone(options.fuelSchedule ?? REFERENCE_FUEL_SCHEDULE);
-		this.resourceLimit = clone(options.resourceLimit ?? REFERENCE_RESOURCE_LIMIT);
+		this.resourceLimit = clone(
+			options.resourceLimit ?? REFERENCE_RESOURCE_LIMIT,
+		);
 		this.deterministicClockOffsetMs = options.deterministicClockOffsetMs ?? 0;
 		this.allowAmbientCapability = options.allowAmbientCapability ?? false;
 	}
@@ -291,7 +326,9 @@ export class FixtureComponentHost {
 		};
 	}
 
-	callUnlinkedCapability(call: ReturnType<typeof referenceUnlinkedCapabilityCall>) {
+	callUnlinkedCapability(
+		call: ReturnType<typeof referenceUnlinkedCapabilityCall>,
+	) {
 		if (this.allowAmbientCapability) {
 			return {
 				leaked: true,
@@ -331,7 +368,10 @@ async function assertSameAcrossHosts<T>({
 	read: (host: FixtureComponentHost) => T | Promise<T>;
 	expected?: T;
 }) {
-	const observations: Array<{ host: ReturnType<typeof hostDescriptor>; value: T }> = [];
+	const observations: Array<{
+		host: ReturnType<typeof hostDescriptor>;
+		value: T;
+	}> = [];
 	for (const host of hosts) {
 		observations.push({
 			host: hostDescriptor(host),
@@ -340,7 +380,11 @@ async function assertSameAcrossHosts<T>({
 	}
 
 	const expectedValue = expected ?? observations[0]?.value;
-	if (observations.every((observation) => sameValue(observation.value, expectedValue))) {
+	if (
+		observations.every((observation) =>
+			sameValue(observation.value, expectedValue),
+		)
+	) {
 		return "pass" as const;
 	}
 
@@ -368,7 +412,9 @@ async function assertCapabilityIsolation({
 	const observations: Array<Record<string, unknown>> = [];
 	for (const host of hosts) {
 		try {
-			const value = await host.callUnlinkedCapability(referenceUnlinkedCapabilityCall());
+			const value = await host.callUnlinkedCapability(
+				referenceUnlinkedCapabilityCall(),
+			);
 			observations.push({ host: hostDescriptor(host), status: "fail", value });
 		} catch (error) {
 			observations.push({
@@ -408,7 +454,9 @@ function assertManifestHostCoverage({
 	const missingHosts = requiredHosts.filter(
 		(required) =>
 			!presentHosts.some(
-				(present) => present.kind === required.kind && present.version === required.version,
+				(present) =>
+					present.kind === required.kind &&
+					present.version === required.version,
 			),
 	);
 
@@ -418,7 +466,8 @@ function assertManifestHostCoverage({
 
 	failures.push({
 		checkId: "manifest-host-coverage",
-		message: "all manifest-certified component hosts must run in the conformance report",
+		message:
+			"all manifest-certified component hosts must run in the conformance report",
 		missingHosts,
 		hosts: presentHosts,
 	});
@@ -462,9 +511,12 @@ function referenceUnlinkedCapabilityCall() {
 function normalizeHostPins(manifest: ComponentHostManifest) {
 	const pins = manifest?.componentHost?.certifiedHosts;
 	if (!Array.isArray(pins) || pins.length === 0) {
-		throw new ComponentHostPlanningError("component_host.manifest-host-pins-required", {
-			suite: manifest?.componentHost?.suite,
-		});
+		throw new ComponentHostPlanningError(
+			"component_host.manifest-host-pins-required",
+			{
+				suite: manifest?.componentHost?.suite,
+			},
+		);
 	}
 	return pins.map((pin) => hostDescriptor(pin));
 }
@@ -476,7 +528,11 @@ function hostDescriptor(host: { kind?: string; version?: string }) {
 	};
 }
 
-function failure(checkId: string, message: string, hosts: readonly FixtureComponentHost[]) {
+function failure(
+	checkId: string,
+	message: string,
+	hosts: readonly FixtureComponentHost[],
+) {
 	return {
 		checkId,
 		message,

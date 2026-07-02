@@ -26,8 +26,13 @@ export interface CreateHoboCliOptions {
 }
 
 export interface HoboCli {
-	readonly run: (argv: readonly string[], runOptions?: RunOptions) => Promise<CliRunResult>;
-	readonly dispatchCommand: (invocation: CommandInvocation) => Promise<CliEnvelope>;
+	readonly run: (
+		argv: readonly string[],
+		runOptions?: RunOptions,
+	) => Promise<CliRunResult>;
+	readonly dispatchCommand: (
+		invocation: CommandInvocation,
+	) => Promise<CliEnvelope>;
 }
 
 export interface RunOptions {
@@ -50,7 +55,9 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 		});
 	const contextFactory = options.contextFactory ?? defaultContextFactory;
 
-	const dispatchCommand = async (invocation: CommandInvocation): Promise<CliEnvelope> => {
+	const dispatchCommand = async (
+		invocation: CommandInvocation,
+	): Promise<CliEnvelope> => {
 		assertKnownVerb(invocation.verb);
 		const command = registry.get(invocation.verb);
 		const result = await command.run({
@@ -72,7 +79,10 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 		async run(argv, runOptions = {}) {
 			let request;
 			try {
-				request = parseArgv(argv, runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd });
+				request = parseArgv(
+					argv,
+					runOptions.cwd === undefined ? {} : { cwd: runOptions.cwd },
+				);
 			} catch (error) {
 				return renderError(error, {
 					verb: null,
@@ -142,7 +152,10 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 	};
 }
 
-export async function runHobo(argv: readonly string[], options: RunOptions = {}): Promise<CliRunResult> {
+export async function runHobo(
+	argv: readonly string[],
+	options: RunOptions = {},
+): Promise<CliRunResult> {
 	return createHoboCli().run(argv, options);
 }
 

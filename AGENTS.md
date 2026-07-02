@@ -33,6 +33,15 @@ Use exact/slow compatibility tools last.
 
 The skill defaults to local hybrid retrieval: OKF `index.md` files, `tgrep` when available, `rg`, `fd`, `ast-grep`, `git grep`, and memory/semantic tools only after exact or structural search narrows the question. It does not use Google ingestion or querying products by default. It also repeats core repo rules: preserve user work, use `git mv` for tracked moves, avoid broad install/codegen/test commands as diagnostics, rebase on `origin/main`, run the narrowest relevant `agent:check` scope, and open or update an auto-merge squash PR only after checks and comments are clean. No-arg `agent:check` validates the latest commit against `HEAD~1`; use `agent:check -- --staged` before committing staged fixes and `agent:check -- --base=origin/main` only when intentionally validating the whole PR branch. `agent:check` must stay impact-scoped: direct draft workspace tests use `pnpm --prefix <workspace> test`, broad root unit/contract sweeps are explicit final/all validation, and concurrent checks are bounded by `HOBO_RELEVANT_CHECK_CONCURRENCY`.
 
+## Repo-local sdlc skill + implementer/reviewer subagents
+
+The repo-local **sdlc** skill (mirrored in `.agents/skills/sdlc` and `.claude/skills/sdlc`) coordinates full-loop feature development: brainstorm → adversarial/rubber-duck hardening → plan mode over the draft-proof cascade (technical → epic; experience proofs in parallel; projects aggregate) → Linear capture as one-shot issues (verifiable outputs + required draft artifacts named per issue) → **permission-gated** dispatch. Two Claude Code subagent definitions under `.claude/agents/` do the dispatched work:
+
+- **implementer** — one Linear issue, one isolated worktree, strict red/green TDD/BDD/ATDD (the acceptance checklist becomes the failing tests: unit, PACT contract, cucumber feature, bench). Zero Linear access; never edits shared files; hands back `.sdlc/report.json` with gates, cascade deltas, and requirement discoveries.
+- **reviewer** — read-only; independently re-runs the gates and walks the acceptance checklist.
+
+The coordinator owns ALL Linear state and shared-file mutations (single-writer), and an issue is Done only when GitHub reports the PR checks green **and** the reviewer passes — never on an implementer's self-report. Durable loop state lives in `docs/plans/<initiative>/sdlc-state.md`; dispatch outcomes feed `docs/plans/dispatch-log.md`, which the next Linear-planning pass consults to improve issue contracts.
+
 ## Repo-local draft skill
 
 The repo-local **draft** skill lives in both `.agents/skills/draft` and `.claude/skills/draft`. Use it when creating, moving, or reviewing draft proof material. It replaces the old one-level draft convention with the four-layer taxonomy:

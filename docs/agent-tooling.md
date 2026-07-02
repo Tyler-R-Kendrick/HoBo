@@ -7,7 +7,7 @@ tags: [hobo, agent-tooling.md]
 
 # Agent tooling
 
-Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh). The repo-local `repo` and `draft` skills are mirrored in `.agents/skills/` and `.claude/skills/`; use `repo` for lifecycle work and `draft` for draft taxonomy, proof artifacts, and SkillOpt-ready evaluation guidance.
+Twelve third-party AI-coding tools are wired into this repo for **Claude Code**, **Cursor**, and **Codex** (Superpowers also targets **GitHub Copilot CLI**). This page is the reference; the at-a-glance table + always-on caveman directive live in [`../AGENTS.md`](../AGENTS.md). Install the binaries with [`../scripts/setup-agent-tools.sh`](../scripts/setup-agent-tools.sh). The repo-local `repo` and `draft` skills are mirrored in `.agents/skills/` and `.claude/skills/`; use `repo` for lifecycle work, `draft` for draft taxonomy and gate-enforced proof artifacts, and `sdlc` to coordinate the full development loop (brainstorm → plan → Linear one-shot issues → permission-gated implementer/reviewer subagents under `.claude/agents/`).
 
 > **Note:** this is *tooling* config, not part of the HoBo product design (`docs/design/`). It was added on request to make the agents productive in this repo.
 
@@ -73,7 +73,7 @@ The **repo** skill is mirrored in `.agents/skills/repo` and `.claude/skills/repo
 
 The **draft** skill is mirrored in `.agents/skills/draft` and `.claude/skills/draft`. Use it when creating, moving, or reviewing draft proof material under `src/draft/<kind>/<slug>`, including technical proofs, experience proofs, epic proofs, and project MVP rollups.
 
-Both repo-local skills keep Codex-valid `SKILL.md` frontmatter. Their bundled `references/` directories are Open Knowledge Format concept bundles with OKF metadata in the reference files. `pnpm.cmd run docs:okf` validates the docs OKF bundle and the `repo` and `draft` skill reference bundles in both mirrors, accepting LF or CRLF frontmatter line endings so Windows-authored docs use the same gate.
+Both repo-local skills keep Codex-valid `SKILL.md` frontmatter. Their bundled `references/` directories are Open Knowledge Format concept bundles with OKF metadata in the reference files. `pnpm.cmd run docs:okf` validates the docs OKF bundle and the `repo`, `draft`, and `sdlc` skill reference bundles in both mirrors, accepting LF or CRLF frontmatter line endings so Windows-authored docs use the same gate.
 
 ## Progressive setup
 

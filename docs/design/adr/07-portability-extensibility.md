@@ -298,6 +298,7 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 - **(+)** Sharp, defensible identity: agnostic IfC + durable event-sourced runtime + agents/generation pipeline + conformance + patchability + **app generation**; only the business sprawl leaves.
 - **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit to maintain (commercialization is out of design scope).
 - **(↔)** Money-movement terms are removed across the suite; metering/showback/quota/spend-safety (FinOps) and the app-generation stack (UX Designer/design.md/OpenUI/json-render/mcp-apps/`ui-render`) stay.
+- **(↔)** Hosted-business commercial-operations records (billing launch policy, tax/currency/receipt posture, marketplace payout readiness) are governed by [ADR-0107](#adr-0107): launch-posture documentation for hosted HoBo, not a reinstated `billing` port or rev-share machinery.
 
 ## ADR-0095
 **Distributed-artifact version resolution semantics.**
@@ -338,6 +339,22 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 ### Consequences
 - **(+)** HOBO-159 gets a precise implementation contract: fold validated manifests, choose a legal tier from declared intent + capabilities, emit mirrored halves, and reject ambiguity before any Yard provisions.
 - **(−)** Some deploys that could be made to "work" by falling back to public+mTLS now require explicit intent or a capability update, but that preserves residency and the no-shared-controller Junction invariant.
+
+## ADR-0107
+**Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated marketplace monetization.**
+
+### Context
+[ADR-0064](#adr-0064) §2 removed the product `billing` port and the marketplace monetize/rev-share lifecycle; [ADR-0062](#adr-0062) §5 reaffirmed "No monetization … no commercial tiers"; [ADR-0063](#adr-0063) frames monetization as a positioning anti-goal. Meanwhile productization M0 records entered `docs/design/` ([marketplace-payout-hooks.md](../marketplace-payout-hooks.md) payout state machine incl. `approved-for-payout`; [tax-currency-receipt-obligations.md](../tax-currency-receipt-obligations.md) publisher tax-document posture and billing-reconciliation handoffs) with no amending decision record — the gap [GAPS.md](../../GAPS.md) finding DRIFT-003 confirmed.
+
+### Decision
+1. **ADR-0064's product-scope cut stands unchanged** — no `billing` port, no rev-share machinery, no commercial tiers in the meta-cloud product or Registry distribution; this ADR amends nothing in that cut.
+2. **Name two distinct lanes:** the **product-capability lane** (removed by ADR-0064) vs the **hosted-HoBo commercial-operations lane** — M0 launch-posture/acceptance records for operating hosted HoBo as a business ([billing-launch-policy.md](../billing-launch-policy.md), [tax-currency-receipt-obligations.md](../tax-currency-receipt-obligations.md), [marketplace-payout-hooks.md](../marketplace-payout-hooks.md)); lane-2 records define vocabulary, evidence fields, owner handoffs, and limitations only, and may never add ports, events, or runtime surface.
+3. **Marketplace publisher payout readiness is a deferred, evidence-gated launch capability in lane 2:** the payout-readiness state table is scope vocabulary; `approved-for-payout` asserts evidence sufficiency, never settlement or money movement; M1–M4 execution stays blocked behind the [marketplace-payout-hooks.md](../marketplace-payout-hooks.md) Follow-Up Gate plus an explicit v1-cutline decision.
+4. **Boundary test going forward:** any record that would add a `billing` port, money movement, rev-share policy, or commercial tiers to the product surface requires amending ADR-0064 first; every lane-2 record must cite this ADR and register its customer-visible limitation in [known-limitations-register.md](../known-limitations-register.md).
+
+### Consequences
+- **(+)** The anti-goal wording and the payout-readiness records no longer contradict; drift is closed with a decision record.
+- **(−)** Actually shipping payouts later still requires a real amending ADR plus legal/tax/provider evidence — this ADR does not pre-approve it.
 
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).

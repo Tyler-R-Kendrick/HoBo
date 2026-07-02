@@ -56,6 +56,7 @@ _One section per iteration: date, commit, lenses run, new/confirmed/rejected fin
 | ID | Lens | Class | Status | Intent | Actual | Evidence |
 |---|---|---|---|---|---|---|
 | DRIFT-001 | L-DRIFT | deliberate-undocumented | ✔ remediated | Nomad pillar lineage visible in design suite | Nomad evaluation/displacement recorded in ADR-0106 with two-way links | ADR-0106, `docs/design/vision.md`, `docs/competitors/nomad.md` |
+| DRIFT-003 | L-DRIFT | deliberate-undocumented | ✔ remediated | Marketplace payout-readiness re-entered monetize/rev-share scope without decision record | ADR-0107 records lane split; payout readiness is deferred commercial-operations posture | ADR-0107, `docs/design/marketplace-payout-hooks.md`, `docs/design/known-limitations-register.md` |
 
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
 required beyond mapping) · **deliberate-undocumented** (evidently intentional but no decision record) ·
@@ -69,6 +70,13 @@ required beyond mapping) · **deliberate-undocumented** (evidently intentional b
 - **Acceptance:** `docs:design-lint`, `validate-traceability.ts`, and staged `agent:check` pass; design suite contains Nomad references and back-links to `nomad.md#hobo-mapping`.
 - **Effort:** S
 - **Delivery:** ✔ [HOBO-666](https://linear.app/quickdeploy-ai/issue/HOBO-666) — ADR-0106 in `docs/design/adr/01-architecture-core.md`
+
+### REM-003 (for DRIFT-003)
+
+- **Action:** Record marketplace payout-readiness boundary as ADR-0107 in `docs/design/adr/07-portability-extensibility.md`; append ADR-0064 consequence cross-ref; update `adr/index.md`, `traceability.md`, `known-limitations-register.md`, `marketplace-payout-hooks.md`, and `tax-currency-receipt-obligations.md`. Lane-2 commercial-operations records stay; product `billing`/rev-share cut unchanged.
+- **Acceptance:** `pnpm run docs:okf`, `node --import tsx scripts/validate-traceability.ts`, and `pnpm agent:check -- --staged` pass; `adr-0107` hits in required files; one new ADR heading before ADR-Pn; deferred payout row in known-limitations register; ADR-0064 diff is consequences-only.
+- **Effort:** M
+- **Delivery:** ✔ [HOBO-668](https://linear.app/quickdeploy-ai/issue/HOBO-668) — ADR-0107 in `docs/design/adr/07-portability-extensibility.md`
 
 ## Verified non-issues
 

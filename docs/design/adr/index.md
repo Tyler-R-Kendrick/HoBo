@@ -112,3 +112,4 @@
 | 0104 | SLO-gated rollback decisions use sustained evidence, not single-sample panic | [identity-security](02-identity-security.md#adr-0104) |
 | 0105 | Componentize-js S0 stage gate: stable inputs digest + smoke + OCI manifest determinism; byte-identical wasm deferred | [architecture-core](01-architecture-core.md#adr-0105) |
 | 0106 | Nomad evaluated & displaced: wasmCloud + Matching + Dispatcher subsume the scheduler pillar; Nomad = accepted-future deploy-target adapter | [architecture-core](01-architecture-core.md#adr-0106) |
+| 0107 | Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated monetization | [portability-extensibility](07-portability-extensibility.md#adr-0107) |

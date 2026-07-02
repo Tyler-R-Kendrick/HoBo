@@ -124,6 +124,76 @@ test("request_token exceeding .allow() ceiling is refused with auditable token.D
   );
 });
 
+test("blobstore .allow() emits s3 IAM actions and bucket resource pattern", () => {
+  const triple = compileAllowTripleEffects(
+    {
+      resourceId: "assets",
+      port: "wasi:blobstore",
+      componentId: "api",
+      verbs: ["read"],
+      bindle: "hello-bindle",
+    },
+    { provider: "aws" },
+  );
+
+  assert.ok(triple.iam.actions.every((action) => action.startsWith("s3:")));
+  assert.equal(triple.iam.resourcePattern, "arn:aws:s3:::hello-bindle-assets/*");
+});
+
+test("request_token for unknown resource is refused with auditable token.Denied event", () => {
+  const triple = compileAllowTripleEffects({
+    resourceId: "todos",
+    port: "wasi:keyvalue",
+    componentId: "api",
+    verbs: ["get"],
+    bindle: "hello-bindle",
+  });
+  const broker = createAllowScopedTokenBroker([triple.tokenScopeCeiling]);
+
+  const result = broker.requestToken({
+    requestId: "req-unknown-resource",
+    subject: { kind: "agent", id: "agent:hello" },
+    request: {
+      provider: "aws",
+      scope: { port: "wasi:keyvalue", resource: "secrets", action: "get" },
+    },
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) {
+    return;
+  }
+  assert.equal(result.auditEvent.type, "token.Denied");
+  assert.match(result.reason, /outside allow ceiling/);
+});
+
+test("request_token with mismatched port is refused with auditable token.Denied event", () => {
+  const triple = compileAllowTripleEffects({
+    resourceId: "todos",
+    port: "wasi:keyvalue",
+    componentId: "api",
+    verbs: ["get"],
+    bindle: "hello-bindle",
+  });
+  const broker = createAllowScopedTokenBroker([triple.tokenScopeCeiling]);
+
+  const result = broker.requestToken({
+    requestId: "req-wrong-port",
+    subject: { kind: "agent", id: "agent:hello" },
+    request: {
+      provider: "aws",
+      scope: { port: "wasi:blobstore", resource: "todos", action: "get" },
+    },
+  });
+
+  assert.equal(result.ok, false);
+  if (result.ok) {
+    return;
+  }
+  assert.equal(result.auditEvent.type, "token.Denied");
+  assert.match(result.reason, /outside allow ceiling/);
+});
+
 test("adversarial: widening .allow() beyond declared verbs fails at compile time", () => {
   assert.throws(
     () =>

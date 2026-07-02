@@ -97,7 +97,12 @@ export function compileAllowTripleEffects(
       policyId: `${bindle}-${declaration.resourceId}-${verbs.join("-")}`,
       subject: `component:${declaration.componentId}`,
       actions,
-      resourcePattern: iamResourcePattern(provider, bindle, declaration.resourceId),
+      resourcePattern: iamResourcePattern(
+        provider,
+        declaration.port,
+        bindle,
+        declaration.resourceId,
+      ),
     }),
     linkTable: Object.freeze({
       componentId: declaration.componentId,
@@ -275,11 +280,26 @@ function mapVerbsToIamActions(port: string, verbs: readonly string[]): readonly 
   return sortedUnique(verbs.flatMap((verb) => portMap[verb] ?? []));
 }
 
-function iamResourcePattern(provider: string, bindle: string, resourceId: string): string {
-  if (provider === "aws") {
-    return `arn:aws:dynamodb:*:*:table/${bindle}-${resourceId}`;
+function iamResourcePattern(
+  provider: string,
+  port: string,
+  bindle: string,
+  resourceId: string,
+): string {
+  if (provider !== "aws") {
+    return `provider://${provider}/${bindle}/${resourceId}`;
   }
-  return `provider://${provider}/${bindle}/${resourceId}`;
+
+  switch (port) {
+    case "wasi:keyvalue":
+      return `arn:aws:dynamodb:*:*:table/${bindle}-${resourceId}`;
+    case "wasi:blobstore":
+      return `arn:aws:s3:::${bindle}-${resourceId}/*`;
+    case "wasi:messaging":
+      return `arn:aws:sns:*:*:${bindle}-${resourceId}`;
+    default:
+      return `provider://${provider}/${bindle}/${resourceId}`;
+  }
 }
 
 function tokenScopeKey(request: TokenScopeRequest): string {

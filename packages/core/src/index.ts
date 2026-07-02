@@ -66,8 +66,8 @@ export type {
 	ComponentRegistration,
 	EstablishedLink,
 	InterfacePin,
-	LinkCalledEvent,
-	LinkEstablishedEvent,
+	LinkCalledEvent as WrpcLinkCalledEvent,
+	LinkEstablishedEvent as WrpcLinkEstablishedEvent,
 	LinkRejectedEvent,
 	LinkRequest as WrpcLinkRequest,
 	MembraneEvent,
@@ -81,3 +81,22 @@ export type {
 	WrpcLinkPort,
 	WrpcTransport,
 } from "./ports/wrpc-link.js";
+
+export type {
+	CapabilityDenialCode,
+	CapabilityDiagnostic,
+	CapabilityGrant,
+	CapabilityGrantDeniedEvent,
+	CapabilityLinkTableEvent,
+	CapabilityUsageResult,
+	GrantEvaluation,
+	LinkCalledEvent,
+	LinkEstablishedEvent,
+} from "./capability/index.js";
+export {
+	CapabilityDeniedError,
+	CapabilityParseError,
+	evaluateCapabilityGrants,
+	inferCapabilityUsage,
+	parseCapabilityGrant,
+} from "./capability/index.js";

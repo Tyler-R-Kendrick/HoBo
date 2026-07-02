@@ -15,13 +15,14 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/runtime-local": "workspace:*"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"test": "vitest run --passWithNoTests",
+		"test": "pnpm --filter @hobo/core run build && pnpm --filter @hobo/runtime-local run build && vitest run --passWithNoTests",
 		"test:contract:consumer": "vitest run --passWithNoTests contracts/consumer"
 	}
 }

@@ -21,3 +21,5 @@ export {
 	type ParsedLinkRequest,
 	type ParsedProviderDescriptor,
 } from "./parse.js";
+export { createCapabilityLinkTable } from "./capability/link-table.js";
+export type { CapabilityHandle, CapabilityLinkTable } from "./capability/link-table.js";

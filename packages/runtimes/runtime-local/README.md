@@ -7,7 +7,9 @@ appends `component.*` / `link.*` events to an injected event-log sink.
 ## Scope
 
 **In:** component lifecycle, in-process link table, **wRPC in-process link layer**
-(encode → route → decode, wire-version negotiation, membrane PACT), `wasi:http/incoming-handler@0.2.0`
+(encode → route → decode, wire-version negotiation, membrane PACT), **capability
+enforcement at the link table** (usage-inferred grants, deny-by-default routing,
+`capability.GrantDenied` events), `wasi:http/incoming-handler@0.2.0`
 dispatch, trap isolation, teardown cleanup, Wasmtime engine seam (in-process stub +
 CLI version gate).
 
@@ -41,5 +43,6 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for protobuf/CUE contracts, PACT bounda
 parse-don't-validate parsers, and event-sourced state naming.
 
 Promoted from `src/draft/technical-proofs/runtime-local-component-host` in S1-02
-(HOBO-591). wRPC link layer promoted in S1-03 (HOBO-592 / PR #784). wRPC link layer promoted from `src/draft/technical-proofs/wrpc-link-layer-contract`
-in S1-03 (HOBO-592).
+(HOBO-591). wRPC link layer promoted in S1-03 (HOBO-592 / PR #784). Capability
+enforcement promoted from `src/draft/technical-proofs/capability-enforcement-contract`
+in S1-04 (HOBO-593).

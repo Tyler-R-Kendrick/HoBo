@@ -38,3 +38,15 @@ must treat the append-only sink as authoritative.
 - Implementation lives in `src/wrpc/` (`link-layer.ts`, `in-process-transport.ts`, `wire-version.ts`).
 - Membrane PACT evidence: [`contracts/wrpc-membrane.pact.json`](./contracts/wrpc-membrane.pact.json).
 - Protobuf + CUE records: [`data-models/wrpc_link.proto`](./data-models/wrpc_link.proto), [`data-models/wrpc_link.cue`](./data-models/wrpc_link.cue).
+
+## Capability enforcement (S1-04 / HOBO-593)
+
+- Port types and grant evaluation live in `@hobo/core` (`src/capability/`).
+- Link-table enforcement lives in `src/capability/link-table.ts`.
+- PACT evidence: [`contracts/capability-grant-gate.pact.json`](./contracts/capability-grant-gate.pact.json).
+- Protobuf + CUE records: [`data-models/capability_link_table.proto`](./data-models/capability_link_table.proto), [`data-models/capability_link_table.cue`](./data-models/capability_link_table.cue).
+
+`createCapabilityLinkTable` accepts parsed `CapabilityGrant` values from `@hobo/core`
+at the boundary. Enforcement appends `link.Established`, `link.Called`, and
+`capability.GrantDenied` events via the injected event sink; the link table never
+mutates read models directly.

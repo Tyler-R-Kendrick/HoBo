@@ -1,0 +1,8 @@
+{
+  "name": "@hobo-draft/container-fallback-wiring-parity-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  }
+}

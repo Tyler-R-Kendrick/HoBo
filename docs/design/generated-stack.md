@@ -202,6 +202,8 @@ Events ([Plan 11](./data-plane.md#plan-11)): `gen.Requested` · `gen.CandidateGe
 
 **Epic reference implementation.** The Generation Pipeline, Training & AI Safety rollup is now synthesized under `src/draft/epic-proofs/generation-pipeline-training-ai-safety/`. It combines the cold-start provider certification path, `use training` trajectory/eval promotion path, live-fix gating path, and five-layer generated-stack propagation path behind mocked service boundaries with Pact fixtures. The runnable simulation command is `npm.cmd --prefix src\draft\epic-proofs\generation-pipeline-training-ai-safety run simulate`; the Pact inventory and POC ledger live beside the reference implementation.
 
+**Gated live-fix loop (HOBO-654).** The S5 gated live-fix epic proof under `src/draft/epic-proofs/gated-live-fix-loop/` composes the live-fix gated candidate contract with SLO-gated canary rollback analysis: a simulated SLO regression drives a low-risk fix through canary and auto-rollback on failure, retains the failing trace as a permanent regression test, and blocks production-classified fixes until human approval. Run `pnpm --prefix src/draft/epic-proofs/gated-live-fix-loop run simulate`.
+
 ### The generated stack — one loop across five layers
 > **The thesis.** The same generate→validate→repair→certify→persist loop, the same self-healing reflexes, and the same audit/replay apply to **every layer** of the application HoBo manages — from the data plane up to the UI. The operator agents ([Plan 40](./operators-sre.md#plan-40)) drive it: **SWE** owns business/message, **UX Designer** owns ui, **Platform Engineer** owns infra config, **SRE** drives self-healing.
 

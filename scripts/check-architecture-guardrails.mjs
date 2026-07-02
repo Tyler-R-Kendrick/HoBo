@@ -297,6 +297,8 @@ function filterExistingBasePackages(files, base) {
   });
 }
 
+const NESTED_PACKAGE_PARENTS = new Set(["runtimes", "providers", "iac", "build"]);
+
 function implementationPackageRoot(file) {
   const parts = normalizePath(file).split("/");
   if (PRODUCTION_PACKAGE_PARENTS.has(parts[0]) && parts.length >= 3) {

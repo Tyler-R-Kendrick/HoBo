@@ -26,3 +26,12 @@ export type {
 	EventStoreConformanceAssertion,
 	EventStoreConformanceReport,
 } from "./suites/eventstore.js";
+
+export {
+	STREAMER_CONFORMANCE_CONTRACT,
+	runStreamerConformance,
+} from "./streamer.js";
+export type {
+	StreamerAssertionName,
+	StreamerConformanceReport,
+} from "./streamer.js";

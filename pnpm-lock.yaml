@@ -121,9 +121,6 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
-      '@hobo/runtime-local':
-        specifier: workspace:*
-        version: link:../runtimes/runtime-local
       '@types/node':
         specifier: ^22.15.3
         version: 22.20.0
@@ -161,6 +158,9 @@ importers:
         specifier: workspace:*
         version: link:../../core
     devDependencies:
+      '@hobo/conformance':
+        specifier: workspace:*
+        version: link:../../conformance
       '@types/node':
         specifier: '>=24.0.0'
         version: 26.0.1
@@ -875,6 +875,8 @@ importers:
 
   src/draft/technical-proofs/guardrail-policy-gate-contract: {}
 
+  src/draft/technical-proofs/hobo-612-dev-local-loop-poc: {}
+
   src/draft/technical-proofs/hobo-add-install-verification-contract: {}
 
   src/draft/technical-proofs/hobo-async-building-block-ports:
@@ -1015,6 +1017,8 @@ importers:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
+
+  src/draft/technical-proofs/hobo-runtime-ts-primitives: {}
 
   src/draft/technical-proofs/hobo-sdk-aggregate-wit-contract:
     devDependencies:

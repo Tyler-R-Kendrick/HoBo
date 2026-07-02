@@ -79,3 +79,4 @@ Feature: Gated live-fix with auto-rollback
 - `architecture/` — protobuf + CUE guard artifacts
 - `architecture.md` — parse-don't-validate and event-sourcing notes
 - `contracts/pacts/` — four mocked service boundaries
+- `tests/reference-architecture.test.ts` — architecture artifact boundary test pins proto/CUE/Pact/event-architecture evidence (S3-08 pattern)

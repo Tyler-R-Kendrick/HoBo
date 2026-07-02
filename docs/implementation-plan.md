@@ -92,15 +92,21 @@ S5 Forge → S6 hardening). Created 2026-07-01: **7 stage projects, 27 milestone
 The 15 completed proof projects stay closed; `src/draft/` is promotion source only. Durable mirror:
 [`docs/plans/production-build-backlog.md`](plans/production-build-backlog.md) (see its Import
 record for the full identifier map). S0/S1 slices and every stage-M0 acceptance issue carry full
-QA-verified one-shot bodies; S2–S6 skeletons are blocked by their stage M0 per the post-core delta
-pattern above.
+QA-verified one-shot bodies. S2–S6 slices are blocked by their stage M0 per the post-core delta
+pattern above and carry full build-instruction bodies (stage goal + gate, exact packages, context
+reading order, dependencies, acceptance sketch, guardrails); each stage M0 is required — per its
+pinned handoff comment — to sharpen those bodies in place into full one-shot checklists before it
+closes, so executing agents build the real app from the issues alone.
 
 Companion project **Intent-Alignment Gap Remediation** (`292efb1a-669c-4d79-93df-901d134b4832`,
 same initiative): 25 issues (HOBO-666…HOBO-690), one per confirmed finding of the gap-review
 iteration 1 recorded in [`GAPS.md`](../GAPS.md) (17 gaps + 8 drifts; REM-001…REM-025), labeled
 `intent-alignment`, milestoned by remediation class (ADR & scope records · design-doc amendments ·
 competitor & standards research · hygiene & traceability). Each issue's executable spec is its
-GAPS.md REM entry; all changes are documentation-level.
+GAPS.md REM entry; all changes are documentation-level. The review loop itself is Linear-documented
+work (milestone "Review iterations (engine)": HOBO-691 iteration 2, HOBO-692 closure sweeps until
+an iteration confirms zero new findings), so the multi-iteration audit continues without this
+session.
 
 ### Meta-cloud Broker - `3b77f153-55ea-46e1-b1d5-2683901576ba` - **Backlog**
 

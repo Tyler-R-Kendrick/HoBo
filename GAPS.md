@@ -38,7 +38,7 @@ Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived
 
 - **P1 Nomad/orchestration** — GAP-001 (in-Camp scheduling) is **✔ remediated** via ADR-0108 ([HOBO-669](https://linear.app/quickdeploy-ai/issue/HOBO-669)); GAP-003 (nomad.md tracker overclaims) is **✔ remediated** via HOBO-671.
 - **P2 Aspire/local DX** — GAP-004 (`hobo dev` for non-TS/OCI workloads) is **✔ remediated** via ADR-0109 ([HOBO-672](https://linear.app/quickdeploy-ai/issue/HOBO-672)); Aspire-grade local dashboard depth and external/adopted-resource semantics remain under-specified (two MED gaps).
-- **P3 Nitric/IfC** — strongest pillar, but parity claims run ahead of specs: `hobo:data` and `hobo:secrets` are cited by the catalog yet missing from the canonical WIT interface list, and route-level API security has no authoring surface (three MED gaps + a stale tracker mapping).
+- **P3 Nitric/IfC** — strongest pillar; `hobo:data` (**✔ remediated** via ADR-0112 [HOBO-675](https://linear.app/quickdeploy-ai/issue/HOBO-675)) and `hobo:secrets` (**✔ remediated** via ADR-0113 [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676)) now have canonical WIT definitions. Route-level API security still has no authoring surface (one MED gap + a stale tracker mapping).
 - **P4 FinOps** — the FinX advisory surface (forecasts, anomaly signals, commitments, optimization) is promised but nowhere specified, no Crew operator owns it, and the normatively-adopted OpenCost/FOCUS standards have no research notes (two MED + one LOW).
 - **P5 Agent-native** — held up best: only one LOW confirmed (Capability-Manifest prose is an unsanitized agent-facing injection surface); autonomy-algorithm, MCP-parity, and error-UX candidates were refuted with covering evidence.
 - **L-DRIFT** — a consistent *deliberate-undocumented* cluster: marketplace payout-readiness brushed the ADR-0064-removed rev-share scope until **✔ remediated** via ADR-0110 ([HOBO-668](https://linear.app/quickdeploy-ai/issue/HOBO-668)); the ~90-doc phased release program still contradicts ADR-0063's "no version ladder" without a recorded decision (DRIFT-004 + stale scope statement remain open). DRIFT-001 (Nomad lineage) is **✔ remediated** on main via ADR-0106 ([HOBO-666](https://linear.app/quickdeploy-ai/issue/HOBO-666)); DRIFT-002 (hosted-business boundary) is **✔ remediated** via ADR-0107 ([HOBO-667](https://linear.app/quickdeploy-ai/issue/HOBO-667)).
@@ -693,7 +693,7 @@ Documentation-level only — no code, no WIT files, nothing under src/draft chan
 
 - **Finding** (cand-10, P3, MED, votes uphold/uphold/uphold): The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` is not defined in the canonical interface catalog and no secret-versioning semantics (Nitric's put->version, access latest/specific version) exist anywhere in the design suite — the secret resource has only `put`/`access` verbs with no version model.
 - **Evidence:** `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/authoring-resources-wiring.md:225` · `docs/design/wasm-runtime-wit.md:151`
-- **Effort:** M · **Delivery:** [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) (Intent-Alignment Gap Remediation project)
+- **Effort:** M · **Delivery:** ✔ [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) — ADR-0113 in `docs/design/adr/02-identity-security.md`; `hobo:secrets` canonical definition in `docs/design/wasm-runtime-wit.md`
 
 **Action**
 

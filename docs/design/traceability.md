@@ -29,6 +29,18 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 - A coverage row is not considered enough if it only names a broad subsystem without a testable
   assertion; the `Coverage assertion` column states what the issue family must prove.
 
+## Intent Pillar Coverage
+
+Pillars come from the founding intent recorded in [`vision.md`](./vision.md#intent-lineage-five-pillars); the audit register is [`GAPS.md`](../../GAPS.md).
+
+| Pillar | Design home | Plan/ADR anchors | Implementation evidence |
+|---|---|---|---|
+| **P1 Nomad** | [`control-plane.md`](./control-plane.md#plan-04), [`platform-engineering.md`](./platform-engineering.md#plan-25), [`adr/01-architecture-core.md`](./adr/01-architecture-core.md); accepted wasmCloud pivot ([ADR-0031](./adr/01-architecture-core.md#adr-0031)), mapping in [`../competitors/nomad.md`](../competitors/nomad.md#hobo-mapping) | PLAN-04, PLAN-25, ADR-0031 | Control Plane: Planner, Matching & Orchestrator epic row |
+| **P2 Aspire** | [`developer-experience.md`](./developer-experience.md#plan-07), [`sdk-api.md`](./sdk-api.md#plan-02), [`authoring-resources-wiring.md`](./authoring-resources-wiring.md#plan-21), [`../competitors/aspire.md`](../competitors/aspire.md) | PLAN-07, PLAN-02, PLAN-21 | CLI, MCP & Developer Experience epic row |
+| **P3 Nitric** | [`authoring-resources-wiring.md`](./authoring-resources-wiring.md#plan-21), [`wasm-runtime-wit.md`](./wasm-runtime-wit.md#plan-20), [`../competitors/nitric.md`](../competitors/nitric.md) | PLAN-21, PLAN-20, ADR-0069 | SDK & Authoring (IfC / bindles) epic row |
+| **P4 FinOps** | [`reliability-observability-cost.md`](./reliability-observability-cost.md#plan-05), [`finops-budget-routing-control-plane.md`](./finops-budget-routing-control-plane.md), [ADR-0071](./adr/01-architecture-core.md#adr-0071) | PLAN-05, ADR-0071 | Reliability, Observability & Cost (FinOps) epic row |
+| **P5 Agent-native** | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06), [`operators-sre.md`](./operators-sre.md#plan-40), [`generated-stack.md`](./generated-stack.md#plan-23) | PLAN-06, PLAN-40, PLAN-23 | Identity, Auth, Secrets & Cross-App Access (XAA) epic row |
+
 ## Cross-Plan User Story Evidence
 
 | Issue | Proof package | Cross-plan assertion |

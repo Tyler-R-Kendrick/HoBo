@@ -25,6 +25,8 @@
 | **P4 FinOps** | Cost as a first-class input: estimates, budgets, showback, cost-aware placement | `docs/design/reliability-observability-cost.md`, `docs/design/finops-budget-routing-control-plane.md`, ADR-0039/0071 |
 | **P5 Agent-native** | Agents as first-class principals and operators: identity, MCP, Crew, generation | `docs/design/ai-native-agent-auth.md`, `docs/design/operators-sre.md`, `docs/design/generated-stack.md`, ADR-0054+ |
 
+Promoted into the design suite (REM for cand-03): [`docs/design/vision.md` — Intent lineage (five pillars)](docs/design/vision.md#intent-lineage-five-pillars) and [`docs/design/traceability.md` — Intent Pillar Coverage](docs/design/traceability.md#intent-pillar-coverage).
+
 Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived requirements) ·
 **L-CONS** (internal consistency and intent→design traceability).
 
@@ -68,7 +70,7 @@ in the history of commit `d7bbc39c`.
 | ID | Pillar | Sev | Status | Claim | Evidence | Remediation |
 |---|---|---|---|---|---|---|
 | GAP-001 | P1 | HIGH | ✔ | Node-level workload scheduling inside a Camp — Nomad's core competence — has no owner in the design: nothing specifies how service-component instances are placed onto wasmCloud lattice hosts (the wadm-equivalent), who consumes the `scaling {min,max}` annotation, or any bin-packing, failure-domain spread, preemption, oversubscription, host-drain, or capacity-reservation semantics, even though the default host is self-hosted wasmCloud on bare-metal/Coolify/Docker substrates that supply no scheduler of their own. | `docs/design/adr/01-architecture-core.md#adr-0031`<br>`docs/design/control-plane.md:121`<br>`docs/design/authoring-resources-wiring.md:161` … | [REM-004](#rem-004-for-gap-001) |
-| GAP-002 | L-CONS | MED | 🧯 | The five-pillar intent framing (Nomad+Aspire+Nitric+FinOps+agent-native) appears nowhere in docs/design/ as an organizing principle — vision.md's borrow-list never names Nomad, the only repo echoes of the composed intent are README's GAPS.md row and GAPS.md itself (both outside the design suite), and traceability.md traces plan/ADR->Linear only, never intent->design. Partially mitigated: GAPS.md now carries the pillar mapping and README links it, but the design suite itself remains silent. | `docs/design/vision.md:68-77`<br>`docs/design/vision.md:48-64`<br>`README.md:47` … | [REM-005](#rem-005-for-gap-002) |
+| GAP-002 | L-CONS | MED | ✔ | The five-pillar intent framing (Nomad+Aspire+Nitric+FinOps+agent-native) appears nowhere in docs/design/ as an organizing principle — vision.md's borrow-list never names Nomad, the only repo echoes of the composed intent are README's GAPS.md row and GAPS.md itself (both outside the design suite), and traceability.md traces plan/ADR->Linear only, never intent->design. Partially mitigated: GAPS.md now carries the pillar mapping and README links it, but the design suite itself remains silent. | `docs/design/vision.md:68-77`<br>`docs/design/vision.md:48-64`<br>`README.md:47`<br>`GAPS.md:20-26`<br>`docs/design/traceability.md:10-27` … | [REM-005](#rem-005-for-gap-002) |
 | GAP-003 | P1 | MED | 🧯 | The nomad.md HoBo-mapping tracker overclaims and under-anchors: 'Constraints/affinities/spread' is marked designed-at-parity although no affinity/anti-affinity/spread construct exists anywhere in docs/design/, and the 'System jobs' and 'Raw exec / Java / QEMU' rows carry no design-doc or issue anchor while no design text covers per-node/system workloads or raw-exec at all. | `docs/competitors/nomad.md:190`<br>`docs/competitors/nomad.md:174`<br>`docs/competitors/nomad.md:178` … | [REM-006](#rem-006-for-gap-003) |
 | GAP-004 | P2 | MED | ✔ | The `hobo dev` inner-loop mechanics (hot reload, codegen-in-watch, sub-minute boot) are specified only in TypeScript terms; how a non-TS wasm component (Rust/Python/Go/C#) or an OCI-container-fallback service participates in the local dev loop (watch-recompile path, state-preserving reload, per-idiom-layer codegen, whether fallback containers run locally at all) is nowhere specified, despite the Aspire parity tracker marking 'DCP -> local runtime-local host / dev loop' as designed-at-parity. | `docs/design/developer-experience.md#the-inner-loop-hobo-dev`<br>`docs/design/cli-spec.md:22`<br>`docs/design/wasm-runtime-wit.md:19` … | [REM-007](#rem-007-for-gap-004) |
 | GAP-005 | P2 | MED | 🧯 | Aspire's local dashboard is a core DX pillar (per-resource logs/traces/metrics/env, resource graph, OTLP sink), but HoBo's local dashboard is specified as a single 'Local emulation (Nitric-style)' table row plus a 'local inspector' code comment — and the dashboard's stated architecture (Next.js web resource in the Yard Bindle, reading via the Gateway) has no defined serving mode for `hobo dev`, which runs with no Yard/Gateway; local telemetry views during dev are unspecified. | `docs/design/developer-experience.md:22`<br>`docs/design/developer-experience.md:42`<br>`docs/design/developer-experience.md:49` … | [REM-008](#rem-008-for-gap-005) |
@@ -1493,6 +1495,13 @@ Documentation + executable proof (no new ADR):
 **Guardrails**
 
 Docs-first; Nomad→wasmCloud pivot accepted — never reverse. No production `runtime-local` or CLI daemon implementation in this slice.
+
+### REM-005 (for GAP-002)
+
+- **Finding** (cand-03, L-CONS, MED): The five-pillar intent framing (Nomad+Aspire+Nitric+FinOps+agent-native) appears nowhere in docs/design/ as an organizing principle — vision.md's borrow-list never names Nomad, the only repo echoes of the composed intent are README's GAPS.md row and GAPS.md itself (both outside the design suite), and traceability.md traces plan/ADR->Linear only, never intent->design.
+- **Evidence:** `docs/design/vision.md:68-77` · `docs/design/vision.md:48-64` · `README.md:47` · `GAPS.md:20-26` · `docs/design/traceability.md:10-27`
+- **Effort:** M
+- **Delivery:** ✔ [HOBO-670](https://linear.app/quickdeploy-ai/issue/HOBO-670) — intent lineage in `docs/design/vision.md` and intent pillar coverage in `docs/design/traceability.md`
 
 ## Verified non-issues
 

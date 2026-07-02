@@ -43,6 +43,7 @@ present.
 | Full migration automation is deferred | `deferred` | Workspace administrator planning a migration | Migration notes can describe supported manual guidance and compatibility evidence, not complete automation | Use documented migration guidance and compatibility notes until automation evidence lands | Upgrade & Migration | HOBO-430 | Release notes, docs portal, support scripts |
 | Live support automation is out of scope for M0 docs | `unsupported` | Support lead | Support copy can describe channels and escalation coverage, not live support automation | Use support SLA/channel records and manual support scripts until tooling evidence lands | Support Workflow | HOBO-448 | Release notes, docs portal, support scripts, launch messaging |
 | Marketplace publisher payouts and revenue share are not v1 capabilities | `deferred` | Publisher owner and marketplace operator | Listings may surface payout-readiness states, but no payout execution, settlement, tax documents, or revenue share is promised in v1 | None; payout commitments route to the Capability Review & Approval owner | Marketplace Payout Hooks | HOBO-420 | Release notes, docs portal, support scripts, launch messaging |
+| Crew and MCP write actions are policy-gated, not fully unsupervised | `real` | Platform operator and external MCP agent integrator | Launch and docs copy must not promise unattended Crew or MCP mutations; read and diagnose runs autonomously but remediation, deploy, and other writes require approval or policy gates | Route write-action expectations through dashboard or Slack approval flows and scoped MCP grants documented for the Crew roster ([operators-sre.md](./operators-sre.md#plan-40), [ai-native-agent-auth.md](./ai-native-agent-auth.md#plan-06)) | Operator Agents & SRE | None | Release notes, docs portal, support scripts, launch messaging |
 
 ## Handoff Targets
 
@@ -61,8 +62,9 @@ unsupported item, deferred item, or follow-up. It cannot be marketed as a
 supported v1 capability.
 
 Launch claims that mention live hosted dashboards, all-provider support,
-automated support desks, production recovery guarantees, or unsupported
-environments must route through this register before publication.
+automated support desks, production recovery guarantees, unsupported
+environments, or fully unsupervised Crew/MCP write autonomy must route through
+this register before publication.
 
 ## Review Checkpoints
 

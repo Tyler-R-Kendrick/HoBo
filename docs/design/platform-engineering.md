@@ -175,6 +175,7 @@ A **Workload Profile** declares **how a service is realized** on a target — th
 - `wasm-component` (default, [Plan 20](./wasm-runtime-wit.md#plan-20)) · `container` (OCI fallback) · `serverless-function` · `vm`/`microvm` ([Plan 21](./authoring-resources-wiring.md#plan-21)).
 - Platform engineers define custom profiles (e.g. a Dapr profile, a batch-job profile); the profile influences the manifest/Set the deploy produces ([Plan 21](./authoring-resources-wiring.md#plan-21)) and which provider compute port is used.
 - Selected by the resource (default per target) or pinned via `.with(...)`.
+- A profile may carry scheduling constraints (spread/anti-affinity, drain policy) realized per substrate by the component-host scheduler ([ADR-0108](./adr/01-architecture-core.md#adr-0108)).
 
 **Placeholders / output references** align to Humanitec syntax and HoBo's lazy references ([Plan 21](./authoring-resources-wiring.md#plan-21)) — resource outputs `${resources.<type>.<class>#<id>.outputs.<name>}` and context `${context.app|env|envType|res.id|class|type}` — resolved at deploy from the resolved graph; unresolved refs fail planning with a precise error.
 

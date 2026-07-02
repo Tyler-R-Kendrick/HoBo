@@ -109,6 +109,22 @@ A component proven on Wasmtime locally must behave **equivalently with respect t
 - **Host version pinned in the manifest IR** ([Plan 21](./authoring-resources-wiring.md#plan-21)). A Bindle records the `component-host` kind + version it was built/certified against; a Camp whose host is incompatible fails planning with a precise reason (mirrors the `wasi:*`/runtime version policy in [ADR-0024](./adr/07-portability-extensibility.md#adr-0024) §5). Host upgrades go through an explicit, gated path with an **upcaster** where semantics change — no silent rewrite of component behavior.
 - **Cross-host E2E** folded into `multi-cloud-shop` ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)): the same component runs on **Wasmtime local → self-hosted wasmCloud → wasm-in-container → (opt-in) provider-native** with identical behavior under trace replay. Host-specific capabilities (e.g. wasmCloud lattice link-migration) are typed as **host-`.with()`** options, inert on hosts that don't offer them, and flagged by **`hobo doctor`** as host lock-in (same model as provider `.with()`).
 
+### In-Camp scheduling & placement ([ADR-0108](./adr/01-architecture-core.md#adr-0108))
+- **The scheduler seam** — scheduling is part of the `component-host` port; each adapter names its scheduler of record ([ADR-0108](./adr/01-architecture-core.md#adr-0108)).
+- **Default: wadm on the wasmCloud lattice** — manifest IR → wadm/OAM manifest; `scaling {min,max}` → spreadscaler; spread/anti-affinity → host labels.
+- **Per-substrate delegation table**
+
+| Substrate | Scheduler of record | How `scaling` is realized |
+|---|---|---|
+| k8s | Two-level: k8s scheduler (host pods) + wadm (components) | wadm spreadscaler on lattice hosts; pod replica count for wasm-in-container floor |
+| Coolify/Docker | wadm across registered lattice hosts | spreadscaler min/max |
+| bare-metal/VPS | wadm across registered lattice hosts | spreadscaler min/max |
+| wasm-in-container floor | Substrate replica primitive (no lattice) | k8s Deployment replicas / Coolify service scale |
+| provider-native (Cloudflare Workers) | Provider scheduler | Provider-native scale; unmappable annotations inert |
+
+- **Semantics disposition** — **bin-packing**: delegated (wadm spreadscaler; k8s scheduler for host pods). **Spread/anti-affinity**: delegated (wadm spreadscaler host labels). **Host drain**: designed (cordon, re-place via lattice link late-binding, remove; compose with k8s node drain). **Preemption**: deferred ([ADR-P6](./adr/07-portability-extensibility.md#open--proposed-decisions-adr-pn)). **Oversubscription**: deferred ([ADR-P7](./adr/07-portability-extensibility.md#open--proposed-decisions-adr-pn)). **Capacity reservation**: deferred ([ADR-P8](./adr/07-portability-extensibility.md#open--proposed-decisions-adr-pn)).
+- **Not actor placement** — this is distinct from [Plan 5](./reliability-observability-cost.md#plan-05) actor-key leases (consistent-hash grain placement); [ADR-0108](./adr/01-architecture-core.md#adr-0108) governs service-component instances only.
+
 ### Security substrate
 - Deny-by-default: a component gets *only* the links its `.allow()` declarations grant.
 - Unforgeable handles: capabilities are passed in, never fabricated — strong multi-tenant isolation in-process, layered under the tenant/SVID model ([Plan 12](./security-networking.md#plan-12)).

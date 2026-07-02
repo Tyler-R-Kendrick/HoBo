@@ -384,14 +384,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0103 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0103) | Junction connectivity inference is pinned as a pure deterministic YardManifest fold that emits mirrored per-Yard halves and fails closed on asymmetric manifests, illegal residency, and no legal tier. | HOBO-185, HOBO-159, HOBO-204 |
 | ADR-0104 | [identity-security](./adr/02-identity-security.md#adr-0104) | SLO-gated rollback decisions are calibrated with a 15-minute window, sustained-breach and sustained-health hysteresis, fail-safe missing-data holds, and replayable verdict evidence. | HOBO-356 |
 | ADR-0105 | [architecture-core](./adr/01-architecture-core.md#adr-0105) | Componentize-js S0 stage gate uses stable inputs digest, smoke equivalence, OCI manifest determinism, and wasm-tools validate; byte-identical wasm deferred pending upstream reproducibility. | HOBO-603, HOBO-584 |
+| ADR-0108 | [architecture-core](./adr/01-architecture-core.md#adr-0108) | In-Camp scheduling is owned by the component-host scheduler seam: wadm on the default self-hosted wasmCloud lattice, substrate-delegated on k8s/floor/provider-native; scaling annotation consumer named; preemption/oversubscription/capacity-reservation deferred to ADR-Pn. | HOBO-669 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 93 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 95 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0104`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0108`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

@@ -18,3 +18,6 @@ mcp-apps, `ui-render` port) and must not cite ADR-0064 as removing UI generation
 ```bash
 pnpm --prefix src/draft/exp-proofs/adr-0064-ui-generation-citation-contract test
 ```
+
+Architecture-guard evidence: `ARCHITECTURE.md`, `architecture/*.proto`, `architecture/*.cue`,
+`architecture/pacts/*.pact.json`.

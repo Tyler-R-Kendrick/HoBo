@@ -128,6 +128,46 @@ test("Given failed validation When certifyAndPublish Then rejected before listin
   assert.deepEqual(forge.registry.certified(), []);
 });
 
+test("Given failed conformance When certifyAndPublish Then rejected before listing", () => {
+  const forge = createForgeSigningRegistry({ signingKey, trustBoundary });
+
+  assert.throws(
+    () =>
+      forge.certifyAndPublish(
+        forgeCertificationPass({
+          conformanceReport: {
+            ...conformanceReport(),
+            passed: false,
+          },
+        }),
+      ),
+    (error) =>
+      error instanceof ForgeSigningRegistryError &&
+      error.code === "forge.conformance_not_green",
+  );
+  assert.deepEqual(forge.registry.certified(), []);
+});
+
+test("Given tampered artifact bytes When install Then digest verification fails typed", () => {
+  const forge = createForgeSigningRegistry({ signingKey, trustBoundary });
+  const published = forge.certifyAndPublish(forgeCertificationPass());
+  const tampered = {
+    ...published.installCandidate,
+    artifact: {
+      ...published.installCandidate.artifact,
+      bytes: "forge-generated-postgres-provider-with-backdoor",
+    },
+  };
+
+  assert.throws(
+    () => forge.install({ installCandidate: tampered }),
+    (error) =>
+      error instanceof ForgeSigningRegistryError &&
+      error.code === "forge.install_verification_failed",
+  );
+  assert.equal(forge.catalog.entries().length, 0);
+});
+
 function forgeCertificationPass(overrides = {}) {
   return {
     requestId: "forge-hobo-650",

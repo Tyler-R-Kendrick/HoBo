@@ -11,7 +11,8 @@ output:
 - refuse unsigned or uncertified artifacts at install — they stay unlisted;
 - certified fixture provider installs from the Registry and participates in
   Matching without auto-selection;
-- tampered artifacts fail signature verification with a typed error.
+- tampered signatures fail with typed `forge.signature_verification_failed`; tampered
+  artifact bytes fail digest verification with typed `forge.install_verification_failed`.
 
 Composes `generation-certify-stage-contract`, `slsa-provenance-certification-contract`,
 `signed-artifact-publish-install-contract`, and `hobo-add-install-verification-contract`.

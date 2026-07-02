@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-full-dashboard-projection-views-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/full-dashboard-projection-views-contract/test/full-dashboard-projection-views.test.ts"
+  }
+}

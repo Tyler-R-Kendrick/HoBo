@@ -29,6 +29,7 @@ and event-source every validate/repair/gate step.
 |---|---|
 | Seeded-defect candidate repairs to green certification. | `Given seeded-defect candidate When bounded repair converges Then certification emits replayable gen events` |
 | Forged conformance report refused with audit evidence. | `Given forged conformance attachment When gate reruns in sandbox Then certification is refused with audit evidence` |
+| Matching-digest forged pass refused when in-boundary rerun fails. | `Given forged pass digest When in-boundary sandbox rerun fails Then certification is refused with audit evidence` |
 | Undeclared egress refused with auditable evidence. | `Given undeclared egress attempt When sandbox blocks escape Then certification is refused with auditable evidence` |
 | Bounded repair budget enforced. | `Given oscillating repair When budget exhausts Then one gen.NeedsHuman is emitted` |
 

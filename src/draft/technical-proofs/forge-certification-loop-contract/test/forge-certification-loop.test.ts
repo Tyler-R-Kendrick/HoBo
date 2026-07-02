@@ -191,6 +191,56 @@ test("Given forged conformance attachment When gate reruns in sandbox Then certi
   assert.match(result.auditEvents[0].reason, /report_mismatch/);
 });
 
+test("Given forged pass digest When in-boundary sandbox rerun fails Then certification is refused with audit evidence", async () => {
+  const forgedDigest = digest("a");
+  const forgedCandidate = candidate({
+    attachedConformanceReport: {
+      suiteId: "conformance.provider.database@0.1.0",
+      passed: true,
+      digest: forgedDigest
+    }
+  });
+
+  const gate = runCertificationGate({
+    candidate: forgedCandidate,
+    sandboxRerun: {
+      suiteId: "conformance.provider.database@0.1.0",
+      passed: false,
+      digest: forgedDigest
+    },
+    sandboxEvents: []
+  });
+
+  assert.equal(gate.ok, false);
+  assert.deepEqual(gate.failingAssertions, ["conformance.report_forged"]);
+  assert.equal(gate.auditEvents[0].type, "conformance.ReportRejected");
+  assert.equal(gate.auditEvents[0].reason, "conformance.in_boundary_rerun_failed");
+
+  const result = await runForgeCertificationLoop({
+    request: genRequest(),
+    sandboxProfile: sandboxProfile(),
+    initialCandidate: forgedCandidate,
+    conformanceSuites: conformanceSuites(),
+    maxRepairAttempts: 2,
+    validateInSandbox: async () => ({
+      ...passValidation(forgedCandidate, "3"),
+      sandboxRerun: {
+        suiteId: "conformance.provider.database@0.1.0",
+        passed: false,
+        digest: forgedDigest
+      }
+    }),
+    repairCandidate: async () => {
+      throw new Error("repair must not run for in-boundary rerun failure");
+    }
+  });
+
+  assert.equal(result.outcome, "refused");
+  assert.equal(result.refusalReason, "conformance.report_forged");
+  assert.equal(result.events.at(-1)?.type, "gen.SafetyRejected");
+  assert.equal(result.auditEvents[0].reason, "conformance.in_boundary_rerun_failed");
+});
+
 test("Given undeclared egress attempt When sandbox blocks escape Then certification is refused with auditable evidence", async () => {
   const egressCandidate = candidate();
   const escapeEvent = {

@@ -33,4 +33,4 @@ Excluded:
 pnpm --prefix src/draft/exp-proofs/inline-budget-authoring test
 ```
 
-Design source: [Plan 21 FinOps inline budget](../../../docs/design/authoring-resources-wiring.md#finops--inline-budget--cost-availability).
+Design source: [Plan 21 FinOps inline budget](../../../../docs/design/authoring-resources-wiring.md#finops--inline-budget--cost-availability).

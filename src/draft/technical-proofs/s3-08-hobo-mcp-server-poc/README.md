@@ -51,3 +51,9 @@ This package ships the architecture-guard evidence required by
 | Protobuf + CUE | MCP gateway record shapes |
 | PACT | Gateway MCP boundary expectations |
 | `pnpm agent:check -- --staged` | Docs freshness + architecture guard |
+
+## Testing
+
+Run `pnpm --filter @hobo-draft/s3-08-hobo-mcp-server-poc test` (Vitest). The
+adversarial scope-denial case pins the SVID auth clock (server `now`) before the
+fixture SVID's expiry so the scope check — not an expiry check — is what fails.

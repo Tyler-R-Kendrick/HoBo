@@ -33,3 +33,11 @@ pnpm --prefix src\draft\broker-environment-publication-contract test
 This package does not implement provider adapters, marketplace publishing UX, hosted broker
 runtime, Yard planner behavior, or live catalog sync. It only proves the Broker Environment
 snapshot publication boundary needed by HOBO-526.
+
+## Testing
+
+Run `pnpm --filter @hobo-draft/broker-environment-publication-contract test`
+(Vitest). The suite includes an architecture-evidence check that reads
+[`ARCHITECTURE.md`](./ARCHITECTURE.md) alongside the protobuf, CUE, and PACT
+fixtures and asserts the parse-don't-validate and event-sourcing boundary is
+named.

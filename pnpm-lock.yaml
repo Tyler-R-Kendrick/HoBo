@@ -274,6 +274,8 @@ importers:
 
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
 
+  src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy: {}
+
   src/draft/epic-proofs/v1-vibe-example-gap-closure: {}
 
   src/draft/epic-proofs/wit-component-model-runtime-membrane: {}
@@ -770,6 +772,8 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  src/draft/technical-proofs/credential-audit-projection-contract: {}
+
   src/draft/technical-proofs/credit-ledger-view-contract: {}
 
   src/draft/technical-proofs/crew-event-contract: {}
@@ -875,6 +879,8 @@ importers:
   src/draft/technical-proofs/flag-partition-consistency-contract: {}
 
   src/draft/technical-proofs/flag-ruleset-sync-contract: {}
+
+  src/draft/technical-proofs/forge-certification-loop-contract: {}
 
   src/draft/technical-proofs/full-text-search-contract: {}
 
@@ -1460,7 +1466,19 @@ importers:
 
   src/draft/technical-proofs/s2-06-iac-pulumi-automation-adapter: {}
 
+  src/draft/technical-proofs/s3-05-allow-triple-effects-poc: {}
+
   src/draft/technical-proofs/s3-07-agent-guardrails-contract: {}
+
+  src/draft/technical-proofs/s3-08-hobo-mcp-server-poc: {}
+
+  src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest:
+    devDependencies:
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+
+  src/draft/technical-proofs/s5-05-forge-signing-registry-certification-contract: {}
 
   src/draft/technical-proofs/s6-02-control-plane-ha-contract: {}
 

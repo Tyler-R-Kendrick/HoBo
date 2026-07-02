@@ -14,9 +14,9 @@ parsed and how its records map onto the platform's event flow.
 ## Parse, Don't Validate
 
 Untrusted identity and token audit events are validated once at the boundary via
-`validateIdentityEvent` from `identity-event-contract`. The projection consumes
-only parsed events and exposes derived `CredentialAuditView` snapshots to Gateway
-and MCP query surfaces.
+`validateIdentityEvent` from `identity-event-contract`. Parsed derived types
+(`CredentialAuditView`, `PrincipalTimeline`, `GrantSummary`) are the only values
+passed to projection folds and Gateway/MCP query surfaces.
 
 ## Event Architecture
 

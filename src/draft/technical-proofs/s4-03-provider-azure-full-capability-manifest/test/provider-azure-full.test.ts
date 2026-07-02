@@ -66,6 +66,16 @@ test("registry ingest rejects static-secret auth manifests", () => {
   assert.deepEqual(result.reasons, ["auth.staticSecrets.forbidden"]);
 });
 
+test("registry ingest rejects manifests missing workload-identity-federation", () => {
+  const provider = createAzureFullProvider();
+  const bundle = provider.publishManifestBundle();
+  bundle["auth.json"] = { ...bundle["auth.json"], flows: [] };
+  const result = ingestAzureCapabilityManifest(new Map(), bundle);
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.reasons, ["auth.workload-identity-federation.required"]);
+});
+
 test("bridged provider-capability conformance passes local and camp for seed-mapped ports", () => {
   const provider = createAzureFullProvider({ campEvidence: "pass" });
   const adapter = createConformanceAdapter(provider);

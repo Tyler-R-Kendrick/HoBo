@@ -31,6 +31,7 @@ Executable acceptance evidence for the independent draft package at
 | Unsatisfied `require` facts yield `deployment.PlanRejected`. | Same test rejects `global-writes` on sql. |
 | Quota exhaustion mid-apply is explicit. | Same test rejects zero `service` quota with `azure-quota-throttling`. |
 | Static-secret auth manifests refused at ingest. | `registry ingest rejects static-secret auth manifests` |
+| Manifests without workload-identity-federation refused at ingest. | `registry ingest rejects manifests missing workload-identity-federation` |
 
 ## Local Gate
 

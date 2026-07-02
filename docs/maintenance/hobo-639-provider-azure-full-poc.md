@@ -6,3 +6,5 @@ draft POC for S4-03 `@hobo/provider-azure` full capability manifest. Proof index
 
 Production promotion to `packages/providers/provider-azure/` deferred until
 S4-01 M0 acceptance record (HOBO-637) merges.
+
+Lockfile synced for draft package `typescript@5.5.4` devDependency (2026-07-02).

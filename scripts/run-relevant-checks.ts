@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
+import { commandForPlatform } from "./lib/env.ts";
 import { selectRelevantChecks, type Check } from "./relevant-check-policy.js";
 
 const args = new Set(process.argv.slice(2));
@@ -21,17 +22,6 @@ type ChangedFileRecord = {
 	path: string;
 	status: string;
 };
-
-function commandForPlatform(command: string, commandArgs: string[]) {
-	if (process.platform === "win32" && command === "pnpm") {
-		return {
-			command: process.env.ComSpec ?? "cmd.exe",
-			args: ["/d", "/c", "pnpm.cmd", ...commandArgs],
-		};
-	}
-
-	return { command, args: commandArgs };
-}
 
 function run(command: string, commandArgs: string[]) {
 	const printable = [command, ...commandArgs].join(" ");

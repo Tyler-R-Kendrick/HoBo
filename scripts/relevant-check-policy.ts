@@ -211,6 +211,12 @@ export function selectRelevantChecks(
 			],
 			reason: "architecture-sensitive source or automation changed",
 		});
+		checks.push({
+			command: "pnpm",
+			args: ["run", "lint:code"],
+			reason:
+				"Biome code formatting is enforced for source or automation changes",
+		});
 	}
 
 	if (rootSchemaChanged) {

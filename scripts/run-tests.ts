@@ -3,6 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { sanitizeNodeOptions } from "./lib/env.ts";
+
 const args = new Set(process.argv.slice(2));
 const quiet = args.has("--quiet");
 const categoryArg = process.argv.find((arg) => arg.startsWith("--category="));
@@ -145,7 +147,7 @@ try {
 		{
 			stdio: "inherit",
 			shell: false,
-			env: { ...process.env, NODE_OPTIONS: "" },
+			env: sanitizeNodeOptions(),
 		},
 	);
 	process.exitCode = result.status ?? 1;

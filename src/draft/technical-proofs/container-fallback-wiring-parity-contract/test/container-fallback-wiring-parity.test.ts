@@ -57,10 +57,8 @@ describe("container fallback wiring parity contract", () => {
 
     assert.equal(wasmApi.env.SHOP_REGION, "${context.region}");
     assert.equal(containerApi.env.FEATURE_CHECKOUT, "${context.flags.checkout}");
-    assert.deepEqual(wasmApi.config, {
-      SHOP_REGION: "${context.region}",
-      FEATURE_CHECKOUT: "${context.flags.checkout}",
-    });
+    assert.equal(wasmApi.config.ORDERS_DB, "{orders.connectionString}");
+    assert.equal(containerApi.config.STRIPE_KEY, "{secret.stripe/api-key}");
   });
 
   it("swaps component to container with zero non-runtime manifest edits", () => {
@@ -106,6 +104,30 @@ describe("container fallback wiring parity contract", () => {
     const wasm = createMultiCloudShopWiringFixture("wasm");
     const container = createMultiCloudShopWiringFixture("container");
     delete container.resources.api.env.SHOP_REGION;
+
+    assert.throws(
+      () => assertWiringParity(wasm, container, ["api"]),
+      /resources\.api\.wiring: wiring surfaces diverged/,
+    );
+  });
+
+  it("projects binding and secret-ref config entries from the multi-cloud-shop fixture", () => {
+    const wasm = createMultiCloudShopWiringFixture("wasm");
+    const apiWiring = projectWiringSurface(wasm, "api");
+
+    assert.deepEqual(apiWiring.config, {
+      ASSETS_STORE: "{assets.connectionString}",
+      FEATURE_CHECKOUT: "${context.flags.checkout}",
+      ORDERS_DB: "{orders.connectionString}",
+      SHOP_REGION: "${context.region}",
+      STRIPE_KEY: "{secret.stripe/api-key}",
+    });
+  });
+
+  it("fails closed when services__ endpoint env drifts on the container path", () => {
+    const wasm = createMultiCloudShopWiringFixture("wasm");
+    const container = createMultiCloudShopWiringFixture("container");
+    container.resources.api.env[aspireServiceEndpointKey("api", "http", 1)] = "9090";
 
     assert.throws(
       () => assertWiringParity(wasm, container, ["api"]),

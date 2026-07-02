@@ -66,11 +66,7 @@ export function createMultiCloudShopWiringFixture(runtimeMode: RuntimeMode = "wa
 
   const manifest = compileBindleManifest([orders, assets, api]);
   const apiResource = manifest.resources.api as Record<string, unknown>;
-  apiResource.env = {
-    ...(apiResource.env as Record<string, string>),
-    SHOP_REGION: "${context.region}",
-    FEATURE_CHECKOUT: "${context.flags.checkout}",
-  };
+  injectConfigEnv(apiResource, defaultMultiCloudShopConfig());
   manifest.resources.frontend = {
     type: "component.v1",
     env: {
@@ -295,6 +291,14 @@ function defaultMultiCloudShopConfig(): ConfigEntry[] {
     { key: "ASSETS_STORE", source: { kind: "binding", ref: "assets" } },
     { key: "STRIPE_KEY", source: { kind: "secret-ref", ref: "stripe/api-key" }, required: true },
   ];
+}
+
+function injectConfigEnv(resource: Record<string, unknown>, configEntries: ConfigEntry[]) {
+  resource.env ??= {};
+  const env = resource.env as Record<string, string>;
+  for (const entry of configEntries) {
+    env[entry.key] = configTokenForEntry(entry);
+  }
 }
 
 function configTokenForEntry(entry: ConfigEntry): string {

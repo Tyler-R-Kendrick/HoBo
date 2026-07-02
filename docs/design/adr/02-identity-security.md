@@ -667,7 +667,7 @@ secretless-first.
 **Route-level API security: per-route rules, middleware chain, and `hobo:http` enforcement.**
 
 ### Context
-[Plan 21](../authoring-resources-wiring.md#plan-21) catalogues `api()` with `.allow()` = "route-level security" but, before this ADR, no design text specified the authoring surface — Nitric's `oidcRule`/`securityRule` per route and `api.use()` middleware equivalents were unspecified, and the referenced `hobo:http` extension port was undefined in the canonical interface catalog ([GAP-009](../../GAPS.md)).
+[Plan 21](../authoring-resources-wiring.md#plan-21) catalogues `api()` with `.allow()` = "route-level security" but, before this ADR, no design text specified the authoring surface — Nitric's `oidcRule`/`securityRule` per route and `api.use()` middleware equivalents were unspecified, and the referenced `hobo:http` extension port was undefined in the canonical interface catalog ([GAP-009](../../../GAPS.md)).
 
 ### Decision
 1. **`api()` security is route-scoped, not a verb list.** The `api` resource declares named security rules at API scope (`api(name, { security: [rules] })`), per-route overrides (`{ security: "ruleName" }` on each handler), and explicit `{ public: true }` opt-out. Deny-by-default: routes without `public` require a matching rule.

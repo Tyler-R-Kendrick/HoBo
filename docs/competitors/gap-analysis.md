@@ -121,6 +121,21 @@ After the backlog closed, two of the closest **un-captured** comparables were ad
 
 **Deliberate non-gap:** Antimetal's broad integration catalog is valuable, but it is not a new HoBo core plane. HoBo should normalize external telemetry and incident tools behind provider/port boundaries while differentiating on canonical deploy-time authority, event-sourced governance, and sovereign in-boundary operation.
 
+## 3e. Survey — FinOps tooling (2026-07-02)
+
+[`FinOps tooling landscape`](finops-tooling.md) captures Kubecost/OpenCost, Infracost, Vantage, and Cast.ai — adjacent showback/optimization products that validate demand for cost visibility without replacing a control plane.
+
+**No new major architecture gap.** The landscape confirms existing HoBo FinOps design:
+
+- **Runtime allocation (Kubecost/OpenCost)** maps to `MeteringView`, OpenCost-shaped showback, and FOCUS export at the boundary ([ADR-0039](../design/adr/02-identity-security.md#adr-0039), [`focus-opencost.md`](../standards/focus-opencost.md)).
+- **Plan-time cost (Infracost)** maps to Planner cost estimates and deploy gates ([Plan 5](../design/reliability-observability-cost.md#plan-05)).
+- **Multi-cloud dashboards (Vantage)** maps to FinX attribution over event-sourced deploy history ([finops-budget-routing-control-plane](../design/finops-budget-routing-control-plane.md#product-surfaces)).
+- **Automated optimization (Cast.ai)** maps to cost-driven degradation tiers and credit-aware Dispatcher routing ([ADR-0039](../design/adr/02-identity-security.md#adr-0039), [ADR-0071](../design/adr/01-architecture-core.md#adr-0071)).
+
+**Known gaps unchanged:** Forecasting/anomaly computation ([GAP-010](../../GAPS.md)) and a dedicated FinOps Crew operator ([GAP-011](../../GAPS.md)) remain open — the tooling survey does not add new ones.
+
+**Differentiation confirmed:** HoBo embeds metering, quota enforcement, showback, and cost-aware placement in the same event-sourced platform that plans deployments — these tools bolt onto billing exports or clusters after the fact.
+
 ## 4. Review verdict
 *(Superpowers `receiving-code-review` framing.)* **Strong-but-uneven** *(original verdict)*. HoBo's intersection bet (agnostic IfC + durable event-sourced runtime + agents/generation pipeline, self-hostable) is genuinely uncontested — no competitor spans it. The risks were **depth, not breadth**: (a) the **unique** differentiator (AI generation) was the least-specified; (b) HoBo lacked the one piece of mainstream DX a TS-backend audience expects (**reactive queries**); (c) several "designed" capabilities were blocked on unresolved open questions (wasm host, matching algorithm, data migration) that competitors had already shipped answers to. None fatal; all addressable in the design phase.
 

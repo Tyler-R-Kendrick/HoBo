@@ -15,8 +15,9 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **OTel · OTLP · OTel-GenAI · OpenInference** | Telemetry standards: the OpenTelemetry model + wire protocol + GenAI semconv + AI-span convention | [`otel-otlp-genai-openinference.md`](./otel-otlp-genai-openinference.md) |
 | **OpenFeature** (CNCF) | Vendor-neutral feature-flag evaluation API + provider model | [`openfeature.md`](./openfeature.md) |
 | **OCSF** | Open Cybersecurity Schema Framework — normalized schema for security events | [`ocsf.md`](./ocsf.md) |
+| **FOCUS & OpenCost** (FinOps Foundation / CNCF) | Normalized cost/usage billing-data spec + cost-allocation spec | [`focus-opencost.md`](./focus-opencost.md) |
 
-> See also: the **feature-flags pattern** lives in [`../patterns/feature-flags.md`](../patterns/feature-flags.md) (OpenFeature is its standard); telemetry standards underpin both observability ([Plan 5](../design/reliability-observability-cost.md#plan-05)) and the training reward signal ([Plan 23](../design/generated-stack.md#plan-23)).
+> See also: the **feature-flags pattern** lives in [`../patterns/feature-flags.md`](../patterns/feature-flags.md) (OpenFeature is its standard); telemetry standards underpin both observability ([Plan 5](../design/reliability-observability-cost.md#plan-05)) and the training reward signal ([Plan 23](../design/generated-stack.md#plan-23)); cost standards ground showback ([ADR-0039](../design/adr/02-identity-security.md#adr-0039)) and the [FinOps budget-routing control plane](../design/finops-budget-routing-control-plane.md#standards-baseline).
 
 ## Sources & fair use
 Third-party reference captures; factual spec surface quoted under fair use for commentary/interoperability analysis, limited to what's needed to map each to HoBo. Trademarks/copyright remain their owners'; not part of the HoBo product.

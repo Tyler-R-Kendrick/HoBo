@@ -16,6 +16,7 @@
 | **Encore**             | Infrastructure-from-code for TS/Go (declare resources in code → provision AWS/GCP) — _closest product analog_                   | [`encore.md`](encore.md)         | [HoBo mapping](encore.md#hobo-mapping)     |
 | **Lakebed**            | Agent-native closed PaaS (Capsules, sync RPC, llms.txt) — _named head-on competitor_                                            | [`lakebed.md`](lakebed.md)       | [HoBo mapping](lakebed.md#hobo-mapping)    |
 | **Wasm hosts**         | The wasm component-hosting landscape (Wasmtime · Spin/SpinKube · wasmCloud) — _grounds ADR-0031's `component-host` adapters_    | [`wasm-hosts.md`](wasm-hosts.md) | [HoBo mapping](wasm-hosts.md#hobo-mapping) |
+| **FinOps tooling**     | Cost allocation/estimation/optimization landscape (Kubecost/OpenCost · Infracost · Vantage · Cast.ai) — _adjacent; showback/FinOps benchmark_ | [`finops-tooling.md`](finops-tooling.md) | [HoBo mapping](finops-tooling.md#hobo-mapping) |
 
 Each competitor is **one consolidated doc**: positioning, the feature surface (with quoted excerpts of factual API/CLI/config surface where it matters), differentiators, and gaps a competitor could exploit, ending with a `#hobo-mapping` section that shows HoBo's equivalent for every feature and where HoBo deliberately goes further. Some entries (Convex, shoo.dev) are **adjacent** rather than head-on — captured because they inform HoBo's design or could compose with it.
 

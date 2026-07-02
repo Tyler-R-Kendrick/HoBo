@@ -140,6 +140,8 @@ This design records the July 1, 2026 standards baseline:
 | Embedded policy | [CEL](https://cel.dev/) | Default proof expression surface |
 | Policy engine adapter | [OPA/Rego](https://www.openpolicyagent.org/docs/policy-language) | Optional adapter behind the policy-engine boundary |
 
+FOCUS and OpenCost are captured as a standards research note in [`../standards/focus-opencost.md`](../standards/focus-opencost.md).
+
 Terraform plan JSON, Pulumi Automation API, Crossplane compositions, and
 Kubernetes/runtime controllers are fixture-only execution adapter boundaries.
 Cloud-native budget APIs are signals, not hard enforcement guarantees.

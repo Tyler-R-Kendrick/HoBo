@@ -29,8 +29,3 @@ Run:
 ```powershell
 npm.cmd --prefix src\draft\technical-proofs\wire-version-negotiation-contract test
 ```
-
-## Promotion note
-
-Promoted to `packages/runtimes/runtime-local` + `@hobo/core` ports by S1-03 (HOBO-592).
-Draft POC retained at `src/draft/technical-proofs/wrpc-link-layer-contract`.

@@ -50,3 +50,9 @@ must treat the append-only sink as authoritative.
 at the boundary. Enforcement appends `link.Established`, `link.Called`, and
 `capability.GrantDenied` events via the injected event sink; the link table never
 mutates read models directly.
+
+## Binding resolver (S1-15 / HOBO-605)
+
+- Port type lives in `@hobo/core` (`ports/binding-resolver.ts`).
+- Local adapter lives in `src/binding-resolver.ts` (`createLocalBindingResolver`).
+- PACT evidence consumed by `@hobo/camps`: [`../camps/contracts/pacts/local-runtime-binding-resolver.pact.json`](../camps/contracts/pacts/local-runtime-binding-resolver.pact.json).

@@ -43,6 +43,23 @@ export { secretRef } from "./secret-ref.js";
 
 export { bindle } from "./bindle.js";
 
+export {
+	addContainer,
+	bindingTypesFor,
+	BindReferenceError,
+	compileBindleManifest,
+	data as wiringData,
+	service as wiringService,
+} from "./wiring/index.js";
+export type {
+	BindingMeta,
+	ComponentHandle,
+	Handle,
+	ManifestResource,
+	ResourceHandle as WiringResourceHandle,
+	WiringManifest,
+} from "./wiring/index.js";
+
 export const HOBO_BINDLES_PACKAGE = "@hobo/bindles";
 
 export {

@@ -23,6 +23,11 @@ Feature: Provider resolution by mapping style
     Given azure mapping and require database.ha
     When azure manifest lacks ha
     Then deployment.PlanRejected carries capability.require.unsatisfied
+
+  Scenario: Preferred capability miss degrades with planWarning
+    Given azure mapping and prefer database.ha
+    When azure manifest lacks ha
+    Then deployment.Planned succeeds with capability.prefer.degraded planWarning
 ```
 
 ## Verification

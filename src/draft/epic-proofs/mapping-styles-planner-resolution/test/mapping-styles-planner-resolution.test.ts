@@ -84,6 +84,33 @@ test("per-binding mapping style deploys the reference app", () => {
   assert.match(result.plan.rationale.join(" "), /mapping-style:per-binding/);
 });
 
+test("preferred-but-unoffered capability accepts with planWarning on deployment.Planned", () => {
+  const campObject = wholeAppCamp(shop, "azure");
+  const result = planCampDeployment({
+    campObject,
+    portRequestsByResource: {
+      "shop.db": [
+        capabilityRequest({ port: "database", features: ["managed", "postgres"], strictness: "require" }),
+        capabilityRequest({ port: "database", features: ["ha"], strictness: "prefer" })
+      ],
+      "shop.api": [
+        capabilityRequest({ port: "service", features: ["containerService"], strictness: "require" })
+      ],
+      "shop.web": [
+        capabilityRequest({ port: "web", features: ["cdn"], strictness: "require" })
+      ]
+    }
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.event.type, "deployment.Planned");
+  assert.ok(
+    result.plan.planWarnings.some((warning) => warning.kind === "capability.prefer.degraded"),
+    "expected prefer-degraded planWarning when azure lacks database.ha"
+  );
+  assert.ok(result.plan.planWarnings.some((warning) => warning.feature === "ha"));
+});
+
 test("required-but-unoffered capability emits deployment.PlanRejected with fixture reason", () => {
   const campObject = wholeAppCamp(shop, "azure");
   const result = planCampDeployment({

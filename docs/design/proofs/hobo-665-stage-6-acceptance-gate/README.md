@@ -35,4 +35,8 @@ pnpm --prefix src/draft/epic-proofs/stage-6-acceptance-gate run simulate
 
 ## Scope note
 
-Blockers S6-04/07/09 not merged — POC mocks their seams. Production promotion replaces fixtures with merged subsystem adapters.
+Blocker slices S6-04/07/09 are Done (HOBO-659/662/664). This POC still mocks their seams for deterministic CI; production promotion replaces fixtures with merged subsystem adapters.
+
+## Maintenance note
+
+2026-07-02: Blockers HOBO-659 (PR #718), HOBO-662 (PR #723), and HOBO-664 (PR #722) are Done. Drill remains fixture-backed until production `packages/*` promotion.

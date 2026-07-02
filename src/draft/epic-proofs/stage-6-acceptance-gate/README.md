@@ -2,7 +2,7 @@
 
 Epic rollup for **HOBO-665** (S6-10): scripted Stage-6 acceptance drill closing v1 GA readiness.
 
-Independent draft POC — mocks every subsystem boundary. Does not import unmerged blocker code from S6-04/S6-07/S6-09.
+Independent draft POC — mocks every subsystem boundary. Blocker slices S6-04/07/09 are Done (HOBO-659/662/664); production promotion wires their merged seams behind the same check IDs.
 
 ## Vertical slice
 
@@ -42,6 +42,7 @@ pnpm --prefix src/draft/epic-proofs/stage-6-acceptance-gate run simulate
 - [requirements.md Release criteria Stage 6](../../../../docs/archive/requirements/requirements.md)
 - [roadmap.md Stage 6](../../../../docs/archive/roadmap.md)
 - [ADR-0063](../../../../docs/design/adr/07-portability-extensibility.md#adr-0063) keep-prior-gates-green
+- Blocker seams (Done): [multi-region-dr-replay-contract](../../technical-proofs/multi-region-dr-replay-contract/README.md) (HOBO-659), [full-dashboard-projection-views-contract](../../exp-proofs/full-dashboard-projection-views-contract/README.md) (HOBO-662), [s6-09-operator-crew-yard-services-contract](../../technical-proofs/s6-09-operator-crew-yard-services-contract/README.md) (HOBO-664)
 - Proof note: [`docs/design/proofs/hobo-665-stage-6-acceptance-gate/README.md`](../../../../docs/design/proofs/hobo-665-stage-6-acceptance-gate/README.md)
 
 ## Architecture evidence

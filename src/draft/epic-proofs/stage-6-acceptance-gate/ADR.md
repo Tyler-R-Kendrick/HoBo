@@ -1,6 +1,6 @@
 # ADR — Stage-6 acceptance drill (HOBO-665)
 
-Draft package architecture-guard evidence. Production promotion deferred until S6-04/S6-07/S6-09 land.
+Draft package architecture-guard evidence. Blocker slices S6-04/07/09 are Done; production promotion replaces fixture adapters with their merged seams.
 
 ## Decision
 
@@ -18,4 +18,8 @@ Drill fails if any prior gate record is not `pass`. Adversarial `priorGateRegres
 
 ## Promotion path
 
-When S6-04 (DR), S6-07 (dashboard), and S6-09 (Operator Crew) merge, replace fixture adapters with their production seams while keeping the same `AcceptanceCheckId` enum and PACT inventory.
+Replace fixture adapters with merged blocker seams while keeping the same `AcceptanceCheckId` enum and PACT inventory:
+
+- DR: `src/draft/technical-proofs/multi-region-dr-replay-contract` (HOBO-659)
+- Dashboard: `src/draft/exp-proofs/full-dashboard-projection-views-contract` (HOBO-662)
+- Operator Crew: `src/draft/technical-proofs/s6-09-operator-crew-yard-services-contract` (HOBO-664)

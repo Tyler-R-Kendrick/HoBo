@@ -208,8 +208,8 @@ export async function assertGeneratedMatches(options = {}) {
     }
 
     for (const fileName of expectedFileNames) {
-      const expected = await readFile(join(tempDir, fileName), "utf8");
-      const actual = await readFile(join(generatedRoot, fileName), "utf8");
+      const expected = (await readFile(join(tempDir, fileName), "utf8")).replace(/\r\n/g, "\n");
+      const actual = (await readFile(join(generatedRoot, fileName), "utf8")).replace(/\r\n/g, "\n");
       if (actual !== expected) {
         throw new Error(`wit_toolchain.generated_content_drift: ${fileName}`);
       }

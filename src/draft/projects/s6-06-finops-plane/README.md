@@ -16,9 +16,10 @@ Promotes:
 ## Scope
 
 - `estimatePlanCost` — sums `cost.json` unit prices × plan usage profile +
-  egress tiers; validates region coverage.
+  egress tiers; plan regions fail closed unless present in `cost.json.regions`.
 - `evaluateFinOpsDeployGate` — wraps budget/quota/agent spend-cap policy
-  evaluation for deploy blocking or approval.
+  evaluation for deploy blocking or approval while preserving existing
+  MeteringView scope spend before projecting the new estimate.
 - `projectShowbackFromEvents` / `reconcileShowbackProjection` — folds
   `meter.UsageRecorded` events into MeteringView + showback rows.
 
@@ -40,6 +41,7 @@ pnpm --prefix src/draft/projects/s6-06-finops-plane test
 |---|---|
 | Plan estimate within ±20% of fixture (NFR-012) | `test/finops-plane.acceptance.test.ts` — `runs the end-to-end FinOps plane scenario` |
 | Budget breach blocks deploy | same — `budgetBreachBlocksDeploy` |
+| Existing spend plus estimate crosses hard budget | same — `blocks deploy when existing MeteringView spend plus estimate crosses the hard limit` |
 | Showback reconciles against recorded spend | same — `showbackReconciled` |
 
 ## Architecture evidence

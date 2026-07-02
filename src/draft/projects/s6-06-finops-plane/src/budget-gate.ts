@@ -34,9 +34,9 @@ export function evaluateFinOpsDeployGate(input) {
     },
   });
 
-  const scopedMeteringView = attachScopeCosts(meteringView, {
-    [`camp:${campScope}`]: estimateUsd,
-    [`agent:${agentScope}`]: readScopeCost(meteringView, `agent:${agentScope}`),
+  const scopedMeteringView = seedOwnerScopeCosts(meteringView, {
+    camp: campScope,
+    agent: agentScope,
   });
   const result = evaluateBudgetQuotaPolicy({
     request,
@@ -59,19 +59,14 @@ export function evaluateFinOpsDeployGate(input) {
   };
 }
 
-function readScopeCost(meteringView, scopeKey) {
-  const view = expectObject(meteringView, "meteringView");
-  const scopeCosts = view.scopeCosts ?? {};
-  return scopeCosts[scopeKey]?.cost ?? 0;
-}
-
-function attachScopeCosts(meteringView, scopeEntries) {
+function seedOwnerScopeCosts(meteringView, scopes) {
   const view = expectObject(meteringView, "meteringView");
   const existing = view.scopeCosts ?? {};
   const merged = { ...existing };
-  for (const [scopeKey, cost] of Object.entries(scopeEntries)) {
+  for (const [kind, id] of Object.entries(scopes)) {
+    const scopeKey = `${kind}:${id}`;
     merged[scopeKey] = {
-      cost,
+      cost: readExistingScopeCost(view, kind, id),
       currency: view.currency ?? "USD",
     };
   }
@@ -79,6 +74,49 @@ function attachScopeCosts(meteringView, scopeEntries) {
     ...view,
     scopeCosts: merged,
   };
+}
+
+function readExistingScopeCost(meteringView, kind, id) {
+  const key = `${kind}:${id}`;
+  const direct = readCounterValue(meteringView.scopeCosts?.[key]);
+  if (direct !== null) {
+    return direct;
+  }
+  const spendByScope = readCounterValue(meteringView.spendByScope?.[key]);
+  if (spendByScope !== null) {
+    return spendByScope;
+  }
+  const scopeSpendUsd = readCounterValue(meteringView.scopeSpendUsd?.[key]);
+  if (scopeSpendUsd !== null) {
+    return scopeSpendUsd;
+  }
+  if (singlePrincipalScopeMatches(meteringView, kind, id)) {
+    return readCounterValue(meteringView.totalCost) ?? 0;
+  }
+  return 0;
+}
+
+function readCounterValue(input) {
+  if (input === undefined || input === null) {
+    return null;
+  }
+  if (Number.isFinite(input) && input >= 0) {
+    return input;
+  }
+  if (typeof input === "object" && !Array.isArray(input)) {
+    for (const key of ["cost", "costUsd", "spendUsd", "value"]) {
+      if (Number.isFinite(input[key]) && input[key] >= 0) {
+        return input[key];
+      }
+    }
+  }
+  throw new TypeError("metering scope counter must be a non-negative USD number");
+}
+
+function singlePrincipalScopeMatches(meteringView, kind, id) {
+  const hierarchyKey = kind === "tenant" ? "tenants" : kind === "camp" ? "camps" : "agents";
+  const values = meteringView.principalHierarchy?.[hierarchyKey];
+  return Array.isArray(values) && values.length === 1 && values[0] === id;
 }
 
 function normalizePolicies(policies) {

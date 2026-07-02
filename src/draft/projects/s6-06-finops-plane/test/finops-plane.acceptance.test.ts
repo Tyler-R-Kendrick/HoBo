@@ -30,6 +30,7 @@ describe("FinOps plane acceptance (HOBO-661 / FR-070 / NFR-012)", () => {
 
   it("fails closed when plan region is missing from cost.json coverage", () => {
     const scenario = loadFinOpsPlaneScenario();
+    const resources = scenario.plan.resources.map(({ region: _region, ...resource }) => resource);
     assert.throws(
       () =>
         estimatePlanCost({
@@ -37,10 +38,47 @@ describe("FinOps plane acceptance (HOBO-661 / FR-070 / NFR-012)", () => {
           plan: {
             ...scenario.plan,
             regions: ["eu-west-1"],
+            resources,
           },
         }),
       /missing from cost\.json coverage/,
     );
+  });
+
+  it("blocks deploy when existing MeteringView spend plus estimate crosses the hard limit", () => {
+    const scenario = loadFinOpsPlaneScenario();
+    const projection = projectShowbackFromEvents({
+      events: scenario.meteringEvents,
+      seq: scenario.meteringEvents.length,
+      costCatalog: {
+        currency: scenario.costJson.currency,
+        unitPrices: scenario.costJson.unitPrices,
+      },
+      displayNames: scenario.displayNames,
+    });
+
+    const gate = evaluateFinOpsDeployGate({
+      costEstimateUsd: 15,
+      meteringView: {
+        ...projection.meteringView,
+        scopeCosts: {
+          "camp:tenant-a/camp-prod": { cost: 190, currency: "USD" },
+        },
+      },
+      policies: [
+        {
+          id: "camp-budget:tenant-a/camp-prod",
+          scope: { kind: "camp", id: "tenant-a/camp-prod" },
+          hardLimitUsd: 200,
+          lastEvaluatedSeq: projection.meteringView.seq,
+        },
+      ],
+      owner: scenario.meteringEvents[0].owner,
+    });
+
+    assert.equal(gate.blocksDeploy, true);
+    assert.equal(gate.effect, "deny");
+    assert.match(gate.violations.join("\n"), /projected spend 205 exceeds hard budget 200/);
   });
 
   it("rejects tampered showback totals that diverge from MeteringView", () => {

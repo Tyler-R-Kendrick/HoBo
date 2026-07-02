@@ -21,8 +21,8 @@ Design references:
 
 | Acceptance | Evidence |
 |---|---|
-| `hobo plan` projected cost from `cost.json` within ±20% (NFR-012 / FR-070) | `estimatePlanCost` + `withinCostTolerance` in acceptance test |
-| Budget breach blocks deploy | `evaluateFinOpsDeployGate` hard-limit deny path |
+| `hobo plan` projected cost from `cost.json` within ±20% (NFR-012 / FR-070) | `estimatePlanCost` + `withinCostTolerance` in acceptance test, including fail-closed `cost.json.regions` coverage |
+| Budget breach blocks deploy | `evaluateFinOpsDeployGate` hard-limit deny path, including current MeteringView spend + next estimate projection |
 | Showback reconciles against recorded spend | `reconcileShowbackProjection` matches MeteringView total |
 
 Run:

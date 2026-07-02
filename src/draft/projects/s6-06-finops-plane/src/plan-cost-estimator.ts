@@ -10,11 +10,17 @@ const ASSUMPTIONS = Object.freeze([
 
 export function estimatePlanCost(input) {
   const source = expectObject(input, "input");
-  const costJson = source.costJson;
+  const costJson = expectObject(source.costJson, "costJson");
   const plan = expectObject(source.plan, "plan");
   const regions = requireStringArray(plan.regions, "plan.regions");
   if (regions.length === 0) {
     throw new TypeError("plan.regions must not be empty");
+  }
+  const catalogRegions = requireStringArray(costJson.regions, "costJson.regions");
+  for (const region of regions) {
+    if (!catalogRegions.includes(region)) {
+      throw new RangeError(`plan region missing from cost.json coverage: ${region}`);
+    }
   }
 
   const lineItems = [];
@@ -27,7 +33,7 @@ export function estimatePlanCost(input) {
         costJson,
         priceKey: resource.tier ?? resource.priceKey ?? null,
         region: resource.region ?? regions[0],
-        declaredRegions: regions,
+        planRegions: regions,
       }),
     );
   }
@@ -45,7 +51,7 @@ export function estimatePlanCost(input) {
         costJson,
         priceKey: tier,
         region: edge.region ?? regions[0],
-        declaredRegions: regions,
+        planRegions: regions,
       }),
     );
   }
@@ -75,9 +81,9 @@ export function withinCostTolerance(estimateUsd, actualUsd, toleranceFraction) {
   return delta <= tolerance;
 }
 
-function priceLine({ resourceId, dimension, quantity, costJson, priceKey, region, declaredRegions }) {
-  if (!declaredRegions.includes(region)) {
-    throw new RangeError(`plan region missing from cost.json coverage: ${region}`);
+function priceLine({ resourceId, dimension, quantity, costJson, priceKey, region, planRegions }) {
+  if (!planRegions.includes(region)) {
+    throw new RangeError(`resource region ${region} must be declared in plan.regions`);
   }
   const unitPriceUsd = resolveUnitPrice(costJson, dimension, priceKey);
   const lineCostUsd = roundUsd(quantity * unitPriceUsd);

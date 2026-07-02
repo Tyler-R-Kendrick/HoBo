@@ -19,6 +19,8 @@ npm.cmd --prefix src\draft\technical-proofs\domain-event-body-contract test
 npm.cmd --prefix src\draft\technical-proofs\domain-event-body-contract run codegen:check
 ```
 
+Fixture comparisons normalize CRLF to LF so generated-artifact parity checks pass on Windows CI (S0 stage gate matrix).
+
 Promoted protobuf→TS + `codegen:check` drift gate to draft POC `src/draft/technical-proofs/s0-04-protobuf-cue-codegen/` (HOBO-581 / S0-04); production target is `packages/schema-tools/`.
 
 

@@ -16,6 +16,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`sdk-contracts.md`](./sdk-contracts.md) | Canonical public SDK signatures, defaults, conformance coverage, and implementation issue mapping | 02, 21 |
 | [`closure-builder-public-api.md`](./closure-builder-public-api.md) | V1 explicit Bindle closure-builder public contract for `@hobo/bindles` | 02, 21 |
 | [`technical-standards.md`](./technical-standards.md) | Cross-cutting implementation standards: latest stable TypeScript, Protobuf data contracts, CUE invariants/derivative object definitions, parse-don't-validate, and PACT boundary testing | — |
+| [`build-s0-stage-gate-acceptance.md`](./build-s0-stage-gate-acceptance.md) | S0 stage gate acceptance: signed hello-bindle through CI with toolchain guards green; runnable signal is `.github/workflows/stage-gate-s0.yml` plus `@hobo/stage-gate` tests | — |
 | [`dx-sdk-resilience-semantics.md`](./dx-sdk-resilience-semantics.md) | DX SDK resilience semantics vocabulary, acceptance matrix, and proof sequencing for retry/cancel/deadline/lifecycle behavior | — |
 | [`package-namespaces.md`](./package-namespaces.md) | Canonical package/import ownership for `@hobo/*` namespaces | 02, 10, 21 |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |

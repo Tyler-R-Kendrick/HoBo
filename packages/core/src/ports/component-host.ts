@@ -1,0 +1,129 @@
+export type InterfaceId = string & { readonly __brand: "InterfaceId" };
+
+const INTERFACE_ID_PATTERN =
+	/^[a-z][a-z0-9-]*:[a-z0-9-]+\/[a-z0-9-]+@[0-9]+\.[0-9]+\.[0-9]+$/;
+
+export function parseInterfaceId(raw: string): InterfaceId {
+	if (!INTERFACE_ID_PATTERN.test(raw)) {
+		throw new Error(`component_host.invalid_interface_id: ${raw}`);
+	}
+	return raw as InterfaceId;
+}
+
+export interface ComponentDescriptor {
+	id: string;
+	imports: InterfaceId[];
+	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	leases?: string[];
+}
+
+export interface ProviderDescriptor {
+	id: string;
+	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+}
+
+export type BoundaryMode = "live";
+export type LinkTransport = "in-process";
+
+export interface LinkRecord {
+	componentId: string;
+	importInterface: InterfaceId;
+	providerId: string;
+	exportInterface: InterfaceId;
+	boundaryMode: BoundaryMode;
+	transport: LinkTransport;
+}
+
+export interface LinkRequest {
+	componentId: string;
+	importInterface: InterfaceId;
+	providerId: string;
+	exportInterface: InterfaceId;
+}
+
+export type ComponentHostEvent =
+	| { type: "component.Loaded"; componentId: string; engine: "wasmtime" }
+	| {
+			type: "link.Established";
+			componentId: string;
+			importInterface: InterfaceId;
+			providerId: string;
+			exportInterface: InterfaceId;
+			boundaryMode: BoundaryMode;
+			transport: LinkTransport;
+	  }
+	| {
+			type: "link.Called";
+			componentId: string;
+			importInterface: InterfaceId;
+			providerId: string;
+			exportInterface: InterfaceId;
+			operation: string;
+			boundaryMode: BoundaryMode;
+			transport: LinkTransport;
+	  }
+	| {
+			type: "component.Invoked";
+			componentId: string;
+			interface: InterfaceId;
+			operation: string;
+	  }
+	| {
+			type: "component.Trapped";
+			componentId: string;
+			interface: InterfaceId;
+			message: string;
+	  }
+	| { type: "component.TornDown"; componentId: string };
+
+export interface ComponentInstance {
+	id: string;
+	imports: InterfaceId[];
+	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+}
+
+export interface ParsedComponentDescriptor extends ComponentDescriptor {
+	readonly parsed: true;
+}
+
+export interface WasmtimeEngine {
+	kind: "wasmtime";
+	version: string;
+	instantiate(component: ParsedComponentDescriptor): ComponentInstance;
+}
+
+export interface ComponentLifecycle {
+	id: string;
+	state: "loaded" | "torn-down" | "missing";
+}
+
+export interface HttpRequest {
+	method: string;
+	path: string;
+	headers: [string, string][];
+	body: string;
+}
+
+export interface HttpResponse {
+	status: number;
+	headers: [string, string][];
+	body: string;
+}
+
+export interface ComponentHostPort {
+	loadComponent(component: ParsedComponentDescriptor): ComponentInstance;
+	registerProvider(provider: ProviderDescriptor): void;
+	link(request: LinkRequest): LinkRecord;
+	invokeLinkedImport(
+		componentId: string,
+		importInterface: InterfaceId,
+		operation: string,
+		payload?: unknown,
+	): Promise<unknown>;
+	handleHttp(componentId: string, request: HttpRequest): Promise<HttpResponse>;
+	teardownComponent(componentId: string): Promise<void>;
+	lifecycle(componentId: string): ComponentLifecycle;
+	linkTable(): LinkRecord[];
+	activeLeases(): string[];
+	report(): Record<string, unknown>;
+}

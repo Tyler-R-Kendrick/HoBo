@@ -27,6 +27,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `data.*` | `data.Changed`, `data.Classified` |
 | `delta.*` | `delta.Opened`, `delta.Applied` |
 | `deploy.*` | `deploy.PreviewUrlAssigned`, `deploy.PreviewTeardownRequested` |
+| `dev.*` | `dev.SessionStarted`, `dev.RequestServed`, `dev.HandlerReloaded`, `dev.ReloadFailed`, `dev.CodegenRan`, `dev.SessionStopped` |
 | `deployment.*` | `deployment.Planned`, `deployment.PlanRejected` |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided` |

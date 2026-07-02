@@ -69,6 +69,9 @@ A **Provider** binds these ports to a backend and declares *how* it realizes the
 ---
 
 ### Layer 3 — Topology (first-class scope objects: bindle · camp · yard · junction)
+
+> **S1-15 production (HOBO-605):** `@hobo/bindles/wiring`, `@hobo/bindles/topology`, `@hobo/camps`, `@hobo/yards`, and `@hobo/runtime-local` binding resolver implement offline local Camp dev. Draft POC: [`s1-15-bind-wiring-topology-contract`](../../src/draft/technical-proofs/s1-15-bind-wiring-topology-contract/README.md).
+
 **Topology is optional.** Given the platform team's **approved default providers** ([ADR-0062](./adr/07-portability-extensibility.md#adr-0062)), the cloud **infers** a Camp and auto-places/**rebalances** the Bindle (the Dispatcher, [ADR-0071](./adr/01-architecture-core.md#adr-0071)); an inferred Camp is **approved by policy, not automatically** — an admin enables auto-approval or sets a passing policy ([ADR-0074](./adr/02-identity-security.md#adr-0074)). You build a Camp/Yard/Junction only to **pin** placement, residency, or cross-cloud wiring (or to reach a provider outside the approved set). When you do, the topology scopes are **first-class SDK objects, constructed and composed programmatically** ([ADR-0011](./adr/01-architecture-core.md#adr-0011)) — not `*.config.ts` files. A **`bindle()`** is the provider-agnostic app (resources + bindings); a **`camp()`** maps it to **one provider** (runtime backend + provider mapping, the "where/how"); a **`yard()`** is **provider-specific** and composes the Camps under that one provider (its cross-Camp policy + control plane); a **`junction()`** connects Yards **across clouds** for the multi-cloud / hybrid case, **inferring the cross-cloud connectivity plane** (tier/peering + `hobo:dns`) from the member Yards' manifests so each Yard realizes its own half. You build them in code and wire them together — the same values flow into deploy. By default a Camp needs only a **provider + IaC**: the Provider's built-in (default) Resource Definitions match every port in the Bindle's manifest automatically. The three mapping styles below are **overrides** for when you want explicit control:
 
 ```ts
@@ -150,6 +153,8 @@ export default handler(async (req, ctx) => {
 
 ### Layer 4 — Runtime primitives (actors, workflows, steps, sagas, agents)
 This is the Vercel-feel surface. Both **directive** sugar and **wrapper** form are supported (the directive compiles to the wrapper; same semantics).
+
+> **Reference implementation (draft POC):** [`src/draft/technical-proofs/hobo-runtime-ts-primitives/`](../../src/draft/technical-proofs/hobo-runtime-ts-primitives/) (HOBO-600) implements the wrapper-form primitives below over draft runtime-port mocks; public signatures match this section. Production `@hobo/runtime` / `@hobo/events` promotion is blocked on S1-01/S1-05/S1-06.
 
 ```ts
 import { workflow, step, actor, sleep, cron, start, createHook } from "@hobo/runtime";

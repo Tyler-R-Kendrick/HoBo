@@ -13,7 +13,6 @@ const jcoVersion = pkgVersion("@bytecodealliance/jco");
 const componentizeJsVersion = pkgVersion("@bytecodealliance/componentize-js");
 
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const EPOCH_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T/;
 
 export function parseComponentizeSpec(raw: unknown): ComponentizeSpec {
   if (!raw || typeof raw !== "object") {
@@ -35,7 +34,7 @@ export function parseComponentizeSpec(raw: unknown): ComponentizeSpec {
   if (!entrypoint.startsWith("src/") || !entrypoint.endsWith(".ts")) {
     throw new Error("componentize.invalid_spec: entrypoint must be src/**/*.ts");
   }
-  if (!EPOCH_PATTERN.test(sourceDateEpoch) || Number.isNaN(Date.parse(sourceDateEpoch))) {
+  if (!isValidSourceDateEpoch(sourceDateEpoch)) {
     throw new Error("componentize.invalid_source_date_epoch");
   }
 
@@ -104,6 +103,14 @@ function readString(value: Record<string, unknown>, key: string): string {
     throw new Error(`componentize.invalid_spec: ${key} required`);
   }
   return candidate;
+}
+
+function isValidSourceDateEpoch(sourceDateEpoch: string): boolean {
+  const trimmed = sourceDateEpoch.trim();
+  if (/^\d+$/u.test(trimmed)) {
+    return Number.isFinite(Number(trimmed));
+  }
+  return /^[0-9]{4}-[0-9]{2}-[0-9]{2}T/u.test(trimmed) && !Number.isNaN(Date.parse(trimmed));
 }
 
 function pkgVersion(name: string): string {

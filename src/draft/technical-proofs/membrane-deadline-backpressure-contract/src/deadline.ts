@@ -1,0 +1,77 @@
+export interface Deadline {
+  source: "caller" | "inherited";
+  startedAtMs: number;
+  expiresAtMs: number;
+  remainingAtDispatchMs: number;
+}
+
+export function deriveDeadline(
+  nowMs: number,
+  opts: {
+    deadlineAtMs?: number;
+    timeoutMs?: number;
+    parentDeadline?: Deadline | null;
+  } = {},
+): Deadline | null {
+  const parent = opts.parentDeadline ?? null;
+  const requestedExpiresAtMs = Number.isFinite(opts.deadlineAtMs)
+    ? opts.deadlineAtMs
+    : Number.isFinite(opts.timeoutMs)
+      ? nowMs + (opts.timeoutMs as number)
+      : null;
+
+  if (!parent && requestedExpiresAtMs === null) {
+    return null;
+  }
+
+  const expiresAtMs =
+    parent && requestedExpiresAtMs !== null
+      ? Math.min(parent.expiresAtMs, requestedExpiresAtMs)
+      : (parent?.expiresAtMs ?? requestedExpiresAtMs);
+
+  return Object.freeze({
+    source:
+      parent &&
+      (requestedExpiresAtMs === null || parent.expiresAtMs <= requestedExpiresAtMs)
+        ? "inherited"
+        : "caller",
+    startedAtMs: nowMs,
+    expiresAtMs: expiresAtMs as number,
+    remainingAtDispatchMs: Math.max(0, (expiresAtMs as number) - nowMs),
+  });
+}
+
+export function parseDeadline(raw: unknown): Deadline {
+  if (!raw || typeof raw !== "object") {
+    throw new TypeError("deadline must be an object");
+  }
+
+  const value = raw as Record<string, unknown>;
+  const source = value.source;
+  if (source !== "caller" && source !== "inherited") {
+    throw new TypeError("deadline source must be caller or inherited");
+  }
+
+  const startedAtMs = value.startedAtMs;
+  const expiresAtMs = value.expiresAtMs;
+  const remainingAtDispatchMs = value.remainingAtDispatchMs;
+
+  if (!Number.isFinite(startedAtMs) || !Number.isFinite(expiresAtMs)) {
+    throw new TypeError("deadline timestamps must be finite numbers");
+  }
+
+  if ((expiresAtMs as number) < (startedAtMs as number)) {
+    throw new TypeError("expires_at_ms must be >= started_at_ms");
+  }
+
+  if (!Number.isFinite(remainingAtDispatchMs) || (remainingAtDispatchMs as number) < 0) {
+    throw new TypeError("remaining_at_dispatch_ms must be >= 0");
+  }
+
+  return Object.freeze({
+    source,
+    startedAtMs: startedAtMs as number,
+    expiresAtMs: expiresAtMs as number,
+    remainingAtDispatchMs: remainingAtDispatchMs as number,
+  });
+}

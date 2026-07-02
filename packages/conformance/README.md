@@ -19,7 +19,10 @@ typed, event-sourced port-suite harness under `packages/conformance/`.
 - `runConformanceSuite(definition, adapter, options?)` — event-logged runner
 - `evaluateSdkParity(input)` — SDK parity report boundary
 - `firstDiff(expected, actual)` — JSON-path first difference
-- `projectPortSuiteReport(events)` / `replayPortSuiteReport(report)` — CQRS projection
+- `runEventStoreConformance(createStore)` — Camp EventStore durability assertions
+  (`hobo.camp-eventstore-runtime-port/v1`); provider verification for
+  `@hobo/runtime-local` lives in
+  `test/runtime-local-eventstore.conformance.test.ts` (dev-only edge to the adapter).
 
 ## Verification
 

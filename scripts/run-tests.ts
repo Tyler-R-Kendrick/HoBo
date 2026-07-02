@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, delimiter } from "node:path";
 
 const MAX_BATCH_CHARS = process.platform === "win32" ? 500 : 12000;
 const HEARTBEAT_MS = 5_000;
@@ -38,8 +38,8 @@ const broadAgentCategories = new Set(["contract-provider", "contract-consumer", 
 const categories: Record<string, string[]> = {
   unit: rootOnly ? ["test/*test.ts", "test/*test.mjs"] : ["test/*test.ts", "test/*test.mjs", "src/draft/*/*/test/*test.ts", "src/draft/*/*/test/*test.mjs", "src/draft/*/*/tests/*test.ts", "src/draft/*/*/tests/*test.mjs"],
   types: ["src/draft/*/*/type-tests/*.ts", "src/draft/*/*/test-types/*.ts", "**/*.test-d.ts"],
-  "contract-consumer": ["src/draft/*/*/test/*contract*.test.ts", "src/draft/*/*/test/*contract*.test.mjs", "src/draft/*/*/tests/*contract*.test.ts", "src/draft/*/*/tests/*contract*.test.mjs", "src/draft/*/*/contracts/consumer/*test.ts", "packages/*/test/*contract*.test.ts", "packages/*/tests/*contract*.test.ts", "packages/*/contracts/consumer/*test.ts", "test/*contract*.test.ts"],
-  "contract-provider": ["src/draft/*/*/test/*provider*.test.ts", "src/draft/*/*/test/*provider*.test.mjs", "src/draft/*/*/tests/*provider*.test.ts", "src/draft/*/*/tests/*provider*.test.mjs", "src/draft/*/*/contracts/provider/*test.ts", "packages/*/test/*provider*.test.ts", "packages/*/tests/*provider*.test.ts", "packages/*/contracts/provider/*test.ts", "test/*provider*.test.ts"],
+  "contract-consumer": ["src/draft/*/*/test/*contract*.test.ts", "src/draft/*/*/test/*contract*.test.mjs", "src/draft/*/*/tests/*contract*.test.ts", "src/draft/*/*/tests/*contract*.test.mjs", "src/draft/*/*/contracts/consumer/*test.ts", "packages/runtimes/*/contracts/consumer/*test.ts", "test/*contract*.test.ts"],
+  "contract-provider": ["src/draft/*/*/test/*provider*.test.ts", "src/draft/*/*/test/*provider*.test.mjs", "src/draft/*/*/tests/*provider*.test.ts", "src/draft/*/*/tests/*provider*.test.mjs", "src/draft/*/*/contracts/provider/*test.ts", "test/*provider*.test.ts"],
   dom: ["tests/dom/**/*test.ts", "test/dom/**/*test.ts"],
   component: ["tests/component/**/*test.ts", "test/component/**/*test.ts"],
   behavior: ["tests/behavior/**/*test.ts", "features/**/*.feature"],
@@ -195,10 +195,20 @@ function runBatch(
   tmpDir: string,
 ): Promise<{ status: number | null; signal: NodeJS.Signals | null; error?: Error; output: string }> {
   const outputTail = createOutputTail(MAX_OUTPUT_CHARS);
+  const localBin = join(process.cwd(), "node_modules", ".bin");
+  const pathWithLocalBin = process.env.PATH
+    ? `${localBin}${delimiter}${process.env.PATH}`
+    : localBin;
   const child = spawn(process.execPath, ["--import", "tsx", "--test", ...TEST_CONCURRENCY_ARGS, ...batch], {
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, TMPDIR: tmpDir, TMP: tmpDir, TEMP: tmpDir },
+    env: {
+      ...process.env,
+      PATH: pathWithLocalBin,
+      TMPDIR: tmpDir,
+      TMP: tmpDir,
+      TEMP: tmpDir,
+    },
   });
 
   child.stdout?.on("data", (chunk: Buffer) => {

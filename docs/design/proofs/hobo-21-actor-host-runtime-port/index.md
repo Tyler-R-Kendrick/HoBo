@@ -11,6 +11,17 @@ fencing-token rejection, lease expiry/renewal, and durable state replay without
 implementing the separate EventStore port, command aggregate idiom, Reactor, or
 cross-Camp ownership semantics.
 
+## HOBO-595 draft extension (S1-06)
+
+[HOBO-595](https://linear.app/quickdeploy-ai/issue/HOBO-595) extends this proof with:
+
+- `createLocalActorHost` over the draft camp EventStore (`actor:<key>` streams, lifecycle events).
+- Six ActorHost conformance checks (`actor-host.single-writer`, `actor-host.stale-fence-rejected`, and four siblings), dual-activation fixture, and broken-fence negative backend.
+- PACT interactions promoted from the wit-membrane actor-host boundary shape.
+
+Production promotion target remains `@hobo/runtime-local` once S1-05 (`@hobo/core` EventStore port)
+lands on `main`; this draft does not import production packages.
+
 ## Acceptance Evidence
 
 - Two active acquirers for one actor key cannot both win; the second acquirer is

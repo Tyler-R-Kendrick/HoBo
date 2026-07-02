@@ -6,7 +6,9 @@ This proof backs [PLAN-21](../../authoring-resources-wiring.md#plan-21),
 
 The executable POC in
 [`src/draft/technical-proofs/usage-inferred-permissions-contract`](../../../../src/draft/technical-proofs/usage-inferred-permissions-contract)
-proves the M2 authoring permission boundary:
+and the consolidated S1-17 draft at
+[`src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc`](../../../../src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc)
+(HOBO-607) prove the M2 authoring permission boundary:
 
 - resource calls lower to a least-privilege manifest `allow` set;
 - wasm capability `links` carry the same granted verb set as the manifest `allow` entries;

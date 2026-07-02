@@ -1,5 +1,7 @@
 # @hobo-draft/bindles-resource-catalog
 
+> **Promoted to `packages/bindles/` (S1-13 / HOBO-602).** Production implementation lives in `@hobo/bindles`; this draft proof remains as the HOBO-37 reference.
+
 POC for HOBO-37: the `@hobo/bindles` resource catalog declaration surface.
 
 This draft package proves the M0 contract before generated `hobo:sdk` bindings exist:

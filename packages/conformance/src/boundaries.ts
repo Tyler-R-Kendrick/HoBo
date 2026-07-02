@@ -21,10 +21,13 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/contract-harness",
 	"packages/wit",
 	"packages/bindles",
+	"packages/camps",
+	"packages/yards",
 	"packages/runtime",
 	"packages/componentize",
 	"packages/conformance",
 	"packages/cli",
+	"packages/stage-gate",
 ]);
 
 function isWorkspacePath(path: string): boolean {
@@ -142,14 +145,15 @@ export function validateBoundaryImports(
 		if (
 			from.kind === "adapter" &&
 			to.kind !== "core" &&
-			edge.from !== edge.to
+			edge.from !== edge.to &&
+			edge.to !== "packages/conformance"
 		) {
 			errors.push(
 				`adapters may import only core ports: ${edge.from} -> ${edge.to}`,
 			);
 		}
 
-		if (to.layer > from.layer) {
+		if (to.layer > from.layer && edge.to !== "packages/conformance") {
 			errors.push(`dependency points outward: ${edge.from} -> ${edge.to}`);
 		}
 	}
@@ -202,9 +206,14 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/core", to: "packages/contract-harness" },
 	{ from: "packages/bindles", to: "packages/core" },
 	{ from: "packages/bindles", to: "packages/wit" },
+	{ from: "packages/camps", to: "packages/bindles" },
+	{ from: "packages/camps", to: "packages/core" },
+	{ from: "packages/yards", to: "packages/camps" },
 	{ from: "packages/runtime", to: "packages/core" },
 	{ from: "packages/cli", to: "packages/core" },
 	{ from: "packages/cli", to: "packages/runtime" },
 	{ from: "packages/componentize", to: "packages/core" },
 	{ from: "packages/conformance", to: "packages/core" },
+	{ from: "packages/stage-gate", to: "packages/componentize" },
+	{ from: "packages/runtimes/runtime-local", to: "packages/conformance" },
 ];

@@ -14,6 +14,7 @@ catalog ports from
 - equivalence-class mappings and provider-owned default Resource Definitions
 - typed `awsFull.with.*` builders scoped to AWS-resolved resources
 - published Capability Manifest with OIDC-federation `auth.json` for the S3 broker
+- signed manifest bundle publish + registry ingest with brokered OIDC-federation guards
 - `realize()` emission through `@hobo/iac-pulumi`
 - `@hobo/conformance` provider-capability coverage via seed-suite adapter plus
   topic/secret extension checks

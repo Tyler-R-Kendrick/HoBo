@@ -15,7 +15,8 @@ This proof records acceptance evidence for the independent draft POC at
 | Requirement | Executable proof |
 |---|---|
 | Full capability port catalog (`web/service`, `kv`, `bucket`, `queue`, `topic`, `sql`, `secret`) with equivalence mappings and typed `.with(...)` builders. | `factory publishes full catalog ports, equivalence mappings, typed builders, and OIDC auth.json` |
-| Published Capability Manifest includes OIDC-federation `auth.json` for the S3 broker. | Same test asserts `oidc-federation` flow and `brokerTargets.bucket`. |
+| Published Capability Manifest includes OIDC-federation `auth.json` for the S3 broker. | Factory test asserts `oidc-federation` flow and `brokerTargets.bucket`; registry ingest tests pin signed bundle acceptance. |
+| Registry ingest accepts brokered OIDC manifests and rejects static secrets or missing federation. | `registry ingest accepts signed manifest bundle with brokered OIDC-federation auth only` plus three rejection cases. |
 | `@hobo/conformance` provider-capability suite green for claimed ports. | `AWS full catalog provider passes provider-capability conformance for every claimed port` |
 | Multi-cloud-shop topology realizes through `@hobo/iac-pulumi`. | `multi-cloud-shop fixture realizes all seven catalog ports through Pulumi-shaped AWS nodes` |
 | Brokered (keyless) apply succeeds without static secrets. | `brokered keyless apply succeeds with OIDC-federation S3 broker and no static secrets` |
@@ -31,8 +32,8 @@ This proof records acceptance evidence for the independent draft POC at
 
 ## Scope Boundary
 
-Draft POC only. Production promotion to `packages/providers/provider-aws/` waits on
-S4-01 (HOBO-637) M0 acceptance record merge.
+Draft POC only. Production promotion to `packages/providers/provider-aws/` follows
+the S4-01 (HOBO-637) package map now that the M0 record is Done.
 
 ## Local Gate
 

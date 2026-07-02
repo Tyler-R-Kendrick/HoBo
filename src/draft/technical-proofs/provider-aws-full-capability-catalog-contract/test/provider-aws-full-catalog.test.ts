@@ -9,6 +9,7 @@ import {
   createAwsFullCatalogProvider,
   createAwsFullCatalogShopPlan,
   evaluateAwsFullCatalogPlan,
+  ingestAwsCapabilityManifest,
   mergeAwsFullResolvedOptions,
   realizeAwsFullCatalogPlan,
   runAwsFullCatalogConformance,
@@ -49,6 +50,50 @@ test("factory publishes full catalog ports, equivalence mappings, typed builders
       ["aws.default.secret.secretsmanager", "secret", "aws:secretsmanager-secret"]
     ]
   );
+});
+
+test("registry ingest accepts signed manifest bundle with brokered OIDC-federation auth only", () => {
+  const provider = createAwsFullCatalogProvider();
+  const registry = new Map();
+  const result = ingestAwsCapabilityManifest(registry, provider.publishManifestBundle());
+
+  assert.equal(result.ok, true, result.reasons?.join("\n"));
+  assert.equal(result.includes.includes("auth.json"), true);
+  assert.equal(registry.get(AWS_PROVIDER_ID).authMode, "brokered-oidc");
+  assert.deepEqual(registry.get(AWS_PROVIDER_ID).claimedPorts, [...AWS_FULL_CATALOG_PORTS]);
+});
+
+test("registry ingest rejects static-secret auth manifests", () => {
+  const provider = createAwsFullCatalogProvider();
+  const bundle = provider.publishManifestBundle();
+  bundle["auth.json"] = { ...bundle["auth.json"], staticSecrets: true };
+  const result = ingestAwsCapabilityManifest(new Map(), bundle);
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.reasons, ["auth.staticSecrets.forbidden"]);
+});
+
+test("registry ingest rejects manifests missing OIDC-federation", () => {
+  const provider = createAwsFullCatalogProvider();
+  const bundle = provider.publishManifestBundle();
+  bundle["auth.json"] = { ...bundle["auth.json"], flows: [] };
+  const result = ingestAwsCapabilityManifest(new Map(), bundle);
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.reasons, ["auth.oidc-federation.required"]);
+});
+
+test("registry ingest rejects S3 broker manifests without OIDC-federation target", () => {
+  const provider = createAwsFullCatalogProvider();
+  const bundle = provider.publishManifestBundle();
+  bundle["auth.json"] = {
+    ...bundle["auth.json"],
+    brokerTargets: { bucket: { flow: "api-key" } }
+  };
+  const result = ingestAwsCapabilityManifest(new Map(), bundle);
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.reasons, ["auth.broker.bucket.oidc-federation.required"]);
 });
 
 test("AWS full catalog provider passes provider-capability conformance for every claimed port", () => {

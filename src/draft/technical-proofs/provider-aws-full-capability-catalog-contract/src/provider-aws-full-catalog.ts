@@ -201,6 +201,9 @@ export function createAwsFullCatalogProvider(options = {}) {
     publishAuthJson() {
       return createAuthJson(regions);
     },
+    publishManifestBundle() {
+      return publishAwsManifestBundle(provider);
+    },
     realize(plan) {
       return realizeAwsFullCatalogPlan(provider, plan);
     },
@@ -503,6 +506,94 @@ export function realizeAwsFullCatalogPlan(provider, plan) {
     throw new Error(validation.errors.join("; "));
   }
   return emission;
+}
+
+export function publishAwsManifestBundle(provider) {
+  const manifest = provider.capabilityManifest();
+  return {
+    "index.json": {
+      apiVersion: "hobo.capability-manifest/v1",
+      provider: AWS_PROVIDER_ID,
+      version: AWS_PROVIDER_VERSION,
+      issuer: AWS_PROVIDER_ID,
+      links: {
+        capabilities: "capabilities.json",
+        auth: "auth.json",
+        cost: "cost.json"
+      },
+      signature: "fixture:unsigned-draft-poc"
+    },
+    "capabilities.json": {
+      provider: AWS_PROVIDER_ID,
+      ports: manifest.capabilities.map((capability) => ({
+        port: capability.port,
+        service: capability.service,
+        resourceClass: capability.resourceClass,
+        features: capability.features,
+        regions: capability.regions
+      })),
+      equivalence: manifest.equivalence
+    },
+    "auth.json": createAuthJson(manifest.regions ?? []),
+    "cost.json": manifest.cost
+  };
+}
+
+export function ingestAwsCapabilityManifest(registry, bundle) {
+  const required = ["index.json", "capabilities.json", "auth.json", "cost.json"];
+  const missing = required.filter((file) => !bundle[file]);
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      provider: AWS_PROVIDER_ID,
+      reasons: missing.map((file) => `manifest.missing:${file}`)
+    };
+  }
+
+  const auth = bundle["auth.json"];
+  if (auth.staticSecrets === true) {
+    return {
+      ok: false,
+      provider: AWS_PROVIDER_ID,
+      reasons: ["auth.staticSecrets.forbidden"]
+    };
+  }
+
+  const hasOidcFederation = (auth.flows ?? []).some((flow) => flow.type === "oidc-federation");
+  if (!hasOidcFederation) {
+    return {
+      ok: false,
+      provider: AWS_PROVIDER_ID,
+      reasons: ["auth.oidc-federation.required"]
+    };
+  }
+
+  const broker = auth.brokerTargets?.bucket;
+  if (!broker || broker.flow !== "oidc-federation") {
+    return {
+      ok: false,
+      provider: AWS_PROVIDER_ID,
+      reasons: ["auth.broker.bucket.oidc-federation.required"]
+    };
+  }
+
+  const entry = {
+    provider: AWS_PROVIDER_ID,
+    version: bundle["index.json"].version,
+    claimedPorts: bundle["capabilities.json"].ports.map((port) => port.port),
+    equivalence: bundle["capabilities.json"].equivalence,
+    authMode: "brokered-oidc",
+    brokeredAuthOnly: true,
+    ingestedAt: new Date().toISOString()
+  };
+  registry.set(AWS_PROVIDER_ID, entry);
+
+  return {
+    ok: true,
+    provider: AWS_PROVIDER_ID,
+    entry,
+    includes: ["capabilities", "auth.json", "cost.json", "regions", "conformance"]
+  };
 }
 
 export function simulateBrokeredKeylessApply(provider, plan, options = {}) {

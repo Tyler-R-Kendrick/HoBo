@@ -13,6 +13,8 @@ export function createAwsFullCatalogShopPlan(options?: Record<string, unknown>):
 export function mergeAwsFullResolvedOptions(provider: unknown, optionBlocks?: unknown[]): any;
 export function evaluateAwsFullCatalogPlan(provider: unknown, plan: unknown): any;
 export function realizeAwsFullCatalogPlan(provider: unknown, plan: unknown): any;
+export function publishAwsManifestBundle(provider: unknown): any;
+export function ingestAwsCapabilityManifest(registry: unknown, bundle: unknown): any;
 export function simulateBrokeredKeylessApply(provider: unknown, plan: unknown, options?: Record<string, unknown>): any;
 export function conformanceAdapter(provider: unknown): any;
 export function runAwsFullCatalogConformance(provider: unknown, options?: Record<string, unknown>): any;

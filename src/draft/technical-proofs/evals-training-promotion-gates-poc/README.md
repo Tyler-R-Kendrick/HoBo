@@ -29,3 +29,4 @@ pnpm exec turbo run test --filter ./src/draft/technical-proofs/evals-training-pr
 
 - `architecture/` — protobuf + CUE + PACT for architecture guard
 - `ADR.md` — parse-don't-validate notes
+- `test/acceptance.test.ts` — architecture artifact boundary test pins proto/CUE/Pact/ADR

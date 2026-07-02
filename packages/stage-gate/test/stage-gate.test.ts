@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { defineStageGateS0 } from "../src/definition.js";
 import { parseStageGateRecord, serializeStageGateRecord } from "../src/parse.js";
-import { runStageGate } from "../src/runner.js";
+import {
+	createCommandInvocation,
+	resolveCommandExecutable,
+	runStageGate,
+	shouldUseCommandShell,
+} from "../src/runner.js";
 import { StageGateParseError } from "../src/types.js";
 
 function validRecordPayload() {
@@ -77,6 +82,26 @@ describe("parseStageGateRecord", () => {
 });
 
 describe("runStageGate", () => {
+	it("resolves pnpm through the Windows command shim", () => {
+		expect(resolveCommandExecutable("pnpm", "win32")).toBe("pnpm.cmd");
+		expect(resolveCommandExecutable("pnpm", "linux")).toBe("pnpm");
+		expect(resolveCommandExecutable("node", "win32")).toBe("node");
+		expect(shouldUseCommandShell("pnpm.cmd", "win32")).toBe(true);
+		expect(shouldUseCommandShell("pnpm.cmd", "linux")).toBe(false);
+		expect(shouldUseCommandShell("node.exe", "win32")).toBe(false);
+		const invocation = createCommandInvocation(
+			"pnpm",
+			["run", "test:schema"],
+			"win32",
+			"cmd.exe",
+		);
+		expect(invocation).toEqual({
+			executable: "cmd.exe",
+			args: ["/d", "/s", "/c", '"\"pnpm.cmd\" \"run\" \"test:schema\""'],
+			windowsVerbatimArguments: true,
+		});
+	});
+
 	it("fails closed when a check exits non-zero", async () => {
 		const definition = {
 			gateId: "s0",
@@ -93,6 +118,25 @@ describe("runStageGate", () => {
 		expect(result.record.status).toBe("failed");
 		expect(result.record.checks[0]?.status).toBe("failed");
 		expect(result.record.checks[0]?.exitCode).toBe(2);
+	});
+
+	it("records spawn errors as check evidence", async () => {
+		const definition = {
+			gateId: "s0",
+			checks: [
+				{
+					checkId: "missing-executable",
+					kind: "lint" as const,
+					command: ["hobo-stage-gate-missing-executable"],
+				},
+			],
+		};
+		const result = await runStageGate(definition, { cwd: process.cwd() });
+		expect(result.exitCode).toBe(1);
+		expect(result.record.status).toBe("failed");
+		expect(result.record.checks[0]?.evidence.error).toContain(
+			"hobo-stage-gate-missing-executable",
+		);
 	});
 
 	it("defines the S0 toolchain check list in order", () => {

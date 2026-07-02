@@ -1,6 +1,7 @@
 import path from "node:path";
+import { strict as assert } from "node:assert";
+import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
 import {
   checkPactInventory,
   createMockProviderFromPact,
@@ -17,18 +18,18 @@ describe("core-contract-surface consumer contract", () => {
   it("satisfies the pact via mock provider and inventory gate", async () => {
     const pacts = await loadPactDirectory(path.join(contractsDir, "pacts"));
     const pact = pacts.find((entry) => entry.provider.name === "CoreContractSurface");
-    expect(pact).toBeDefined();
+    assert.ok(pact);
 
-    const mockProvider = createMockProviderFromPact(pact!);
+    const mockProvider = createMockProviderFromPact(pact);
     const surface = await fetchCoreContractSurface(mockProvider);
 
-    expect(surface.schemaVersion).toBe("hobo.core/v1");
-    expect(surface.eventMappings.cloudEventSpecversion).toBe("1.0");
+    assert.equal(surface.schemaVersion, "hobo.core/v1");
+    assert.equal(surface.eventMappings.cloudEventSpecversion, "1.0");
 
     const error = await fetchUnsupportedSchemaError(mockProvider, "hobo.core/v0");
-    expect(error.code).toBe("HOBO_CORE_UNSUPPORTED_SCHEMA");
+    assert.equal(error.code, "HOBO_CORE_UNSUPPORTED_SCHEMA");
 
     const inventory = await checkPactInventory(contractsDir);
-    expect(inventory.ok).toBe(true);
+    assert.equal(inventory.ok, true);
   });
 });

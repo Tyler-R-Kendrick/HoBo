@@ -23,6 +23,48 @@ function readRepoCommit(cwd: string): string {
 	}
 }
 
+export function resolveCommandExecutable(
+	executable: string,
+	platform: NodeJS.Platform = process.platform,
+): string {
+	if (platform === "win32" && executable === "pnpm") {
+		return "pnpm.cmd";
+	}
+	return executable;
+}
+
+export function shouldUseCommandShell(
+	executable: string,
+	platform: NodeJS.Platform = process.platform,
+): boolean {
+	return platform === "win32" && /\.(?:bat|cmd)$/i.test(executable);
+}
+
+function quoteWindowsShellArg(value: string): string {
+	return `"${value.replaceAll('"', '\\"')}"`;
+}
+
+export function createCommandInvocation(
+	executable: string,
+	args: readonly string[],
+	platform: NodeJS.Platform = process.platform,
+	comspec = process.env.ComSpec ?? "cmd.exe",
+): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
+	const resolvedExecutable = resolveCommandExecutable(executable, platform);
+	if (!shouldUseCommandShell(resolvedExecutable, platform)) {
+		return { executable: resolvedExecutable, args: [...args] };
+	}
+	const commandText = [
+		quoteWindowsShellArg(resolvedExecutable),
+		...args.map(quoteWindowsShellArg),
+	].join(" ");
+	return {
+		executable: comspec,
+		args: ["/d", "/s", "/c", `"${commandText}"`],
+		windowsVerbatimArguments: true,
+	};
+}
+
 function runCheck(
 	command: readonly string[],
 	cwd: string,
@@ -32,13 +74,18 @@ function runCheck(
 	if (!executable) {
 		return { exitCode: 1, evidence: { error: "empty command" } };
 	}
-	const result = spawnSync(executable, args, {
+	const invocation = createCommandInvocation(executable, args);
+	const result = spawnSync(invocation.executable, invocation.args, {
 		cwd,
 		env,
 		encoding: "utf8",
+		windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	const evidence: Record<string, string> = {};
+	if (result.error) {
+		evidence.error = `${result.error.name}: ${result.error.message}`;
+	}
 	if (result.stdout?.trim()) {
 		evidence.stdout = result.stdout.trim().slice(0, 4000);
 	}

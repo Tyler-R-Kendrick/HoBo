@@ -38,6 +38,9 @@ jobs:
       - name: Relevant checks only
         run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
 
+      - name: Production contract lanes
+        run: pnpm exec turbo run test:contract:consumer test:contract:provider --filter "./packages/*"
+
       - name: Production packages gate
         run: pnpm run build:packages
 

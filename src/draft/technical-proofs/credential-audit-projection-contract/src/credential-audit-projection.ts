@@ -221,17 +221,33 @@ export function assertRetentionFloorPreservesAuditEvents(streamId, events, optio
     });
   }
 
+  const throughSeq = Math.max(...events.map((event) => event.seq));
+  let compactionRejected = false;
+  try {
+    log.compactDomainStream(streamId, {
+      fold: foldCounter,
+      retentionFloorSeq: 1,
+      throughSeq,
+    });
+  } catch (error) {
+    compactionRejected = error instanceof CompactionRejectedError;
+  }
+
   const oldest = Math.min(...log.activeEvents(streamId).map((event) => event.timestamp ?? now));
   const retained = log.activeEvents(streamId);
   const olderThanFloor = retained.filter((event) => now - (event.timestamp ?? now) > floorMs);
 
   return {
-    ok: olderThanFloor.length > 0 && retained.length === events.length,
+    ok:
+      compactionRejected &&
+      olderThanFloor.length > 0 &&
+      retained.length === events.length,
     streamId,
     retainedCount: retained.length,
     olderThanFloorCount: olderThanFloor.length,
     oldestEventAgeMs: now - oldest,
     floorMs,
+    compactionRejected,
   };
 }
 

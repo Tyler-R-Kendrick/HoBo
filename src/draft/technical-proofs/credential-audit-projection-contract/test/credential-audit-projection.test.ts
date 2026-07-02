@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -97,6 +98,7 @@ describe("CredentialAudit projection + NFR-018 retention (HOBO-635)", () => {
     );
 
     assert.equal(retention.ok, true);
+    assert.equal(retention.compactionRejected, true);
     assert.equal(retention.olderThanFloorCount, 1);
     assert.equal(retention.retainedCount, 3);
 
@@ -146,5 +148,53 @@ describe("CredentialAudit projection + NFR-018 retention (HOBO-635)", () => {
     const compaction = assertAuditStreamsNeverCompacted(["token.audit/grant-cf-deploy"]);
     assert.equal(compaction.ok, true);
     assert.deepEqual(compaction.failures, []);
+  });
+
+  it("pins architecture artifacts and satisfies PACT boundary interactions", () => {
+    const adr = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
+    const proto = readFileSync(
+      new URL("../architecture/credential_audit_projection_contract.proto", import.meta.url),
+      "utf8",
+    );
+    const cue = readFileSync(
+      new URL("../architecture/credential_audit_projection_contract.cue", import.meta.url),
+      "utf8",
+    );
+    const pact = JSON.parse(
+      readFileSync(
+        new URL("../architecture/pacts/credential_audit_projection_contract.pact.json", import.meta.url),
+        "utf8",
+      ),
+    );
+
+    for (const typeName of [
+      "CredentialAuditProjectionContractRecord",
+      "CredentialAuditTimelineEntry",
+      "CredentialAuditViewSnapshot",
+    ]) {
+      assert.match(proto, new RegExp(`message ${typeName}`));
+      assert.match(cue, new RegExp(`#${typeName}:`));
+    }
+
+    assert.equal(pact.consumer.name, "CredentialAuditProjectionContractConsumer");
+    assert.equal(pact.provider.name, "CredentialAuditProjectionContractBoundary");
+    assert.ok(pact.interactions.length >= 3);
+    assert.match(adr, /parse, don't validate/i);
+    assert.match(adr, /Event store/i);
+    assert.match(adr, /projection/i);
+
+    const { runId, events } = brokeredDeployCredentialTrail({ runId: "run-hello-bindle" });
+    const view = snapshotCredentialAuditView(events, { seq: 4 });
+    const gatewayGrant = queryCredentialAuditViaGateway(view, { grantId: "grant-cf-deploy" });
+    const mcpInspect = queryCredentialAuditViaMcp(view, "inspect_credential_audit", { runId });
+
+    assert.equal(gatewayGrant.ok, true);
+    assert.equal(gatewayGrant.surface, "gateway");
+    assert.equal(gatewayGrant.grant.grantId, "grant-cf-deploy");
+    assert.equal(gatewayGrant.grant.revoked, true);
+    assert.equal(mcpInspect.ok, true);
+    assert.equal(mcpInspect.surface, "mcp");
+    assert.equal(mcpInspect.tool, "inspect_credential_audit");
+    assert.equal(mcpInspect.chains.length, 1);
   });
 });

@@ -7,12 +7,11 @@ import test from "node:test";
 import {
   buildUsagePermissionManifest,
   parseUsagePermissionInput,
-} from "../src/usage-permissions.js";
+} from "../../src/usage-permissions.js";
 
 const pactPath = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
-  "contracts",
   "capability-contract-gate.pact.json",
 );
 

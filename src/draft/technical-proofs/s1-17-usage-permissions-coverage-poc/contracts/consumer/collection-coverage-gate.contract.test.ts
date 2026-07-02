@@ -4,12 +4,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { evaluateCollectionCoverage } from "../src/collection-coverage.js";
+import { evaluateCollectionCoverage } from "../../src/collection-coverage.js";
 
 const pactPath = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
-  "contracts",
   "collection-coverage-gate.pact.json",
 );
 

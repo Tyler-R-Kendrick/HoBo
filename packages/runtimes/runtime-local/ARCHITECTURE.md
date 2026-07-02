@@ -6,7 +6,8 @@ Production Wasmtime runtime-local component host (S1-02 / HOBO-591).
 
 - Protobuf records live in [`data-models/`](./data-models).
 - CUE constraints bound every protobuf type in that folder.
-- PACT consumer evidence lives under [`contracts/`](./contracts).
+- PACT consumer evidence lives under [`contracts/`](./contracts) (`component-host-lifecycle`,
+  `wrpc-membrane`).
 
 ## Parse, don't validate
 

@@ -8,6 +8,8 @@ pin-and-gate version policy.
 The branch adds `src/draft/technical-proofs/wire-version-negotiation-contract`, an independent
 POC for the M3 membrane version-negotiation slice.
 
+**Promotion (S1-03 / HOBO-592):** wire-version negotiation ships with the runtime-local wRPC link layer (`packages/runtimes/runtime-local/src/wrpc/wire-version.ts`).
+
 Acceptance evidence:
 
 - `caller@N and provider@N+1 negotiate the highest shared minor before establishing the link`

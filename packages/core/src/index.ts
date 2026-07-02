@@ -54,3 +54,32 @@ export type {
 	WasmtimeEngine,
 } from "./ports/component-host.js";
 export { parseInterfaceId } from "./ports/component-host.js";
+
+export type {
+	ComponentRegistration,
+	EstablishedLink,
+	InterfacePin,
+	LinkCalledEvent,
+	LinkEstablishedEvent,
+	LinkRejectedEvent,
+	LinkRequest as WrpcLinkRequest,
+	MembraneEvent,
+	NegotiatedWire,
+	ProviderHandler,
+	ProviderRegistration,
+	TransportInvocation,
+	TransportKind,
+	WireVersion,
+	WitCodec,
+	WrpcInterfaceId,
+	WrpcLinkPort,
+	WrpcTransport,
+} from "./ports/wrpc-link.js";
+export {
+	NoRouteError,
+	ProviderHandlerStore,
+	WireVersionIncompatibleError,
+	linkKey,
+	parseWireVersion,
+	parseWrpcInterfaceId,
+} from "./ports/wrpc-link.js";

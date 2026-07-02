@@ -16,3 +16,6 @@ export {
 	type ParsedLinkRequest,
 	type ParsedProviderDescriptor,
 } from "./parse.js";
+export { createJsonWitCodec, createInProcessTransport } from "./wrpc/in-process-transport.js";
+export { createDefaultWrpcLinkLayer, createWrpcLinkLayer } from "./wrpc/link-layer.js";
+export { negotiateWireVersion } from "./wrpc/wire-version.js";

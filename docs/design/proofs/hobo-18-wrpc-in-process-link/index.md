@@ -4,6 +4,8 @@ This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20) and [ADR-0069](../
 
 The branch adds `src/draft/technical-proofs/wrpc-in-process-link-contract`, an independent POC for the M1 wRPC membrane link slice. It proves import-to-provider-export routing through an in-process link table, default live boundary mode, typed no-route denial, and `link.Called` event evidence with a deadline field.
 
+**Promotion (S1-03 / HOBO-592):** production wRPC link port types live in `@hobo/core` (`ports/wrpc-link.ts`); runtime-local membrane implementation lives in `packages/runtimes/runtime-local/src/wrpc/` with PACT boundary `wrpc-membrane`.
+
 Acceptance evidence:
 
 - `linked WIT import routes to a provider export through the in-process wRPC membrane`

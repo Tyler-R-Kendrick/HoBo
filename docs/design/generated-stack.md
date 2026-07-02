@@ -369,3 +369,22 @@ A short list of genuinely-open *design* choices — each has a designed capabili
 - **`hobo:*` WIT interface naming/versioning** and which `hobo:*` interfaces to upstream as `wasi:*` proposals. ([24](./wasm-runtime-wit.md#plan-20))
 - **IfC-by-default fidelity for non-TS languages** — run-to-collect vs static analysis. ([21](./authoring-resources-wiring.md#plan-21))
 - **"Low-risk auto" threshold** for AI live-fix — self-healing experiments on a `shadow`/`fork` sandbox lane before any prod change ([ADR-0076](./adr/02-identity-security.md#adr-0076)), so the threshold governs promotion lane→canary; the threshold value itself is a policy choice. ([23](#plan-23),[5](./reliability-observability-cost.md#plan-05),[12](./security-networking.md#plan-12))
+
+### Historical open-question ledger
+
+The 2026-06-22 competitor gap analysis ([../competitors/gap-analysis.md](../competitors/gap-analysis.md)) cited Plan 9's then-numbered open questions by stable IDs (Q3–Q23); the list above is the *current* unnumbered set. This ledger preserves the historical IDs as permanent citation targets. IDs are frozen — never renumber; IDs not cited by any surviving cross-reference (Q1–Q2, Q4–Q9, Q11, Q13–Q14) are deliberately not reconstructed.
+
+| ID | Question (2026-06-22 snapshot) | Status | Resolution |
+|---|---|---|---|
+| Q3 | Matching algorithm choice | Resolved | [ADR-0033](./adr/01-architecture-core.md#adr-0033) |
+| Q10 | wasm host-of-record for prod | Resolved | [ADR-0031](./adr/01-architecture-core.md#adr-0031) |
+| Q12 | Non-TS IfC parity | Still open | carried forward as the "IfC-by-default fidelity for non-TS languages" bullet above ([Plan 21](./authoring-resources-wiring.md#plan-21)) |
+| Q15 | App-data schema evolution & migration | Resolved | [Plan 32](./data-plane.md#plan-32) / [ADR-0032](./adr/03-data-plane.md#adr-0032) |
+| Q16 | Cross-Camp stateful consistency | Resolved | [ADR-0040](./adr/01-architecture-core.md#adr-0040) |
+| Q17 | Local-dev fidelity + dev dashboard | Resolved | [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) |
+| Q18 | Billing / quota / runaway-spend | Resolved | [ADR-0039](./adr/02-identity-security.md#adr-0039) |
+| Q19 | Migration / onboarding | Resolved | [ADR-0041](./adr/07-portability-extensibility.md#adr-0041) |
+| Q20 | Multi-Yard federation | Resolved (clarified: v1 single-Yard; the Junction designed) | [ADR-0043](./adr/07-portability-extensibility.md#adr-0043) |
+| Q21 | Reactive / live-query model | Resolved | [Plan 32](./data-plane.md#plan-32) / [ADR-0050](./adr/03-data-plane.md#adr-0050) |
+| Q22 | Vector & full-text search | Resolved | [ADR-0034](./adr/03-data-plane.md#adr-0034) |
+| Q23 | Custom domains / multi-cloud ingress | Resolved | [ADR-0035](./adr/07-portability-extensibility.md#adr-0035) |

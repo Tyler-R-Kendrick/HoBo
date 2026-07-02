@@ -553,7 +553,7 @@ Cross-cloud sink moves use the export→import path above within an equivalence 
 - **Cross-cloud move test:** export→import a fixture DB **within the Postgres equivalence class** to a second Camp → assert row counts/checksums match and cutover/rollback both work.
 
 #### Migration scope
-Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see above). Multi-region active-active data is an [ADR-0040](./adr/01-architecture-core.md#adr-0040) topology concern ([Q16](./generated-stack.md#plan-09)).
+Declarative-diff authoring + raw escape hatch; expand/backfill/contract apply gated by `can-deploy`; pre-contract snapshot + restore rollback; PACT-contract-tested schema versioning; crypto-shred forgetting; intra-equivalence-class (managed-Postgres) cross-cloud move; cross-engine moves and large/live cutover via the CDC/dual-write adapter; in-place kv/blob/document migration where a sink needs it (derived projection sinks otherwise evolve by **rebuild-from-zero**, see above). Multi-region active-active data is an [ADR-0040](./adr/01-architecture-core.md#adr-0040) topology concern ([Q16](./generated-stack.md#historical-open-question-ledger)).
 
 ### Search — the generalized `search` capability
 

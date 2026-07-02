@@ -33,3 +33,4 @@ Branch evidence for S5-06 `stub()` recording typed stubs behind any WIT port.
 | Schema-invalid responses rejected | `schema-invalid stub responses fail closed at the boundary` |
 | Replay divergence fails closed | `replay harness rejects nondeterministic adapter output` |
 | Unlinked port fails typed no-route | `unlinked imports fail with typed no-route instead of panicking` |
+| Architecture artifacts pinned | `architecture artifacts pin protobuf, CUE, Pact, and ADR boundaries` |

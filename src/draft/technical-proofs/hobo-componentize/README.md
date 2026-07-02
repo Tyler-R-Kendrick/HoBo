@@ -39,7 +39,14 @@ Untrusted input crosses only `parseComponentizeSpec`. Downstream modules accept 
 
 ```bash
 pnpm --prefix src/draft/technical-proofs/hobo-componentize test
+pnpm --prefix src/draft/technical-proofs/hobo-componentize run test:contract:consumer
+pnpm --prefix src/draft/technical-proofs/hobo-componentize run test:contract:provider
 ```
+
+Boundary contract files under `contracts/consumer` and `contracts/provider` use
+Node's test runner because root `test:contract:*` executes draft contract lanes directly.
+Real component builds are skipped only on Windows ARM64, where upstream `wizer`
+does not publish a binary; source validation and fail-closed tests still run on that host.
 
 Scoped CI (`componentize.yml`) installs pinned `wasm-tools@1.235.0` for component validation and double-build digest checks.
 

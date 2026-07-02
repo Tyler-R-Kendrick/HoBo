@@ -4,10 +4,10 @@ import { COMPONENT_MEDIA_TYPE, DEFAULT_CI_MATRIX, type ComponentizeSpec, type Co
 import { inputsDigest, prepareSources, transpileEntry } from "./sources.js";
 
 export async function componentizeService(spec: ComponentizeSpec): Promise<ComponentizeResult> {
-  const { componentize } = await import("@bytecodealliance/componentize-js");
   const prepared = await prepareSources(spec);
   await transpileEntry(spec, prepared);
 
+  const { componentize } = await import("@bytecodealliance/componentize-js");
   const epochSeconds = Math.floor(Date.parse(spec.sourceDateEpoch) / 1000).toString();
   const output = await componentize({
     sourcePath: prepared.entryJsPath,

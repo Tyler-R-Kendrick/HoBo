@@ -20,6 +20,9 @@ backend selection.
   always revoked after the run.
 - Undeclared egress attempts are denied in the sandbox and end the run with
   `exec.Failed` (NFR-007).
+- Adversarial tests cover container fallback inside `executor.run`, declared egress
+  success, covert-channel audit behavior, and control-plane schema validation on
+  failure paths.
 
 ## Scope boundaries
 

@@ -28,6 +28,9 @@ pnpm exec turbo run test --filter ./src/draft/technical-proofs/sandboxed-executo
 ## Adversarial coverage
 
 - Undeclared egress to external URL → fatal `exec.Failed`, sandbox audit `denied`.
+- Failure-path `exec.*` events validate against the control-plane schema.
+- Container backend selected inside `executor.run` when Firecracker is unavailable.
+- Declared egress to an allowed target completes; covert channel is audited, not denied.
 - Credential always revoked after success and failure paths.
 
 ## Proof package

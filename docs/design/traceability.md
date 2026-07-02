@@ -408,6 +408,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0114 | [identity-security](./adr/02-identity-security.md#adr-0114) | Route-level API security authoring surface, `hobo:http` extension catalog entry, manifest IR per-route `security` lowering, and local-dev enforcement parity are documented in Plan 21 and the identity-security ADR. | HOBO-677 |
 | ADR-0115 | [identity-security](./adr/02-identity-security.md#adr-0115) | Cost anomaly detection, forecasting, and rightsizing/commitment recommendations are deterministic MeteringView projections emitting advisory cost.* facts; recommendations are gated Crew proposals, never auto-applied; enforcement remains with ADR-0039 breakers/tiers. | HOBO-678 |
 | ADR-0116 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0116) | The productization document category and M0→M4 phase-gate model are a recorded design decision; M0-acceptance-blocks-M1–M4 is proven by the HOBO-521 M0 acceptance record and enforced by this traceability gate. | HOBO-521, HOBO-11, HOBO-680 |
+| ADR-0117 | [data-plane](./adr/03-data-plane.md#adr-0117) | FinOps operator owns FinX advisory outputs and commitment optimization off the deterministic Matching/Dispatcher path; writes are gated Deltas/PRs. | HOBO-679 |
 
 ## ADR Numbering and Status Audit
 

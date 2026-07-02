@@ -234,6 +234,7 @@ HoBo treats agents as first-class principals ([Plan 6](../ai-native-agent-auth.m
    - **Platform Engineer** → Matching + packs + generation pipeline (authors Resource Definitions/policy packs).
    - **UX Designer** → app/UI generation ([ADR-0056](#adr-0056)): owns **design.md** (the required design-system spec), drives **OpenUI** + **json-render** + **mcp-apps**, and renders against the `ui-render` port; reactive to the data plane's materializations.
    - **SWE (software engineer)** → a general software-engineering operator: implements/refactors/repairs **business + message** code behind ports, drives the generation pipeline + `"use training"` loop and persisted code-mutation ([ADR-0048](#adr-0048)), opens gated Deltas/PRs. The generalist counterpart to the specialist operators.
+   - **FinOps** → cost forecasts + anomaly signals + commitment/optimization recommendations, advisory-only via gated Deltas ([ADR-0117](#adr-0117)).
 2. **Each operator is a named principal on the existing model** ([Plan 6](../ai-native-agent-auth.md#plan-06)): SVID identity, per-agent policy + spend caps, event-sourced runs, MCP surface, least-privilege `.allow()`. No new identity/policy mechanism — the roster *is* the agent-principal model applied to operations.
 3. **Reads are autonomous; writes are policy-gated** ([Plan 29](../contracts-policy-flags.md#plan-29)): diagnosis/monitoring run freely; mutations take an effect/obligation (auto / canary-with-auto-rollback / require-approval) keyed by blast radius + environment ([Plan 5](../reliability-observability-cost.md#plan-05)).
 4. **All operators run sandboxed under enforced AI governance by default** ([ADR-0061](02-identity-security.md#adr-0061)): every operator (its reasoning + tool calls) executes in a sandboxed environment with **NVIDIA NeMo Guardrails** and the **Microsoft AI governance / Responsible AI toolkit** enforced as the default guardrail layer — moderation, jailbreak/PII checks, and capability-scoped tool access. This is enforced, not opt-in.
@@ -509,3 +510,19 @@ The resource→WIT-port spine for the data block has three divergent spellings. 
 ### Consequences
 - **(+)** The resource→WIT-port spine for the data block is defined at one authoritative row and all four names reconcile.
 - **(-)** The frozen `hobo:database/*` alias survives in historical proofs/fixtures and must be read through the naming map.
+
+## ADR-0117
+**FinOps operator (the Crew's cost specialist): advisory-only ownership of the FinX outputs and commitment optimization.**
+
+### Context
+HoBo has the FinOps substrate — MeteringView/showback ([ADR-0039](02-identity-security.md#adr-0039)), CreditLedgerView/Dispatcher ([ADR-0071](01-architecture-core.md#adr-0071)), spend circuit-breaker + `costAvailabilityProfile` ([Plan 5](../reliability-observability-cost.md#plan-05)), and the FinX surface ([FinOps Budget Routing Control Plane](../finops-budget-routing-control-plane.md)) — but the ADR-0054 Crew roster names no cost operator. The FinX advisory outputs (forecasts, anomaly signals, commitments, optimization recommendations) and the "Commitment optimization" advisory in [Plan 5](../reliability-observability-cost.md#plan-05) have no named owner — a hole at the intersection of the FinOps and agent-native pillars.
+
+### Decision
+1. **Add FinOps to the ADR-0054 roster** on the unchanged shared model ([Plan 40](../operators-sre.md#plan-40)): SVID principal, per-agent policy + spend caps, engine behind a `finops-engine` port with a built-in default, sandboxed under [ADR-0061](02-identity-security.md#adr-0061) governance.
+2. **FinOps owns** forecasts, anomaly signals, commitment/savings-plan recommendations, and optimization proposals — the FinX surface outputs and the [Plan 5](../reliability-observability-cost.md#plan-05) "Commitment optimization" advisory.
+3. **Advisory-only and off-path:** reads MeteringView/CreditLedgerView/DecisionGraph projections autonomously; every write is a gated Delta/PR or require-approval obligation ([Plan 29](../contracts-policy-flags.md#plan-29)); it never auto-purchases commitments and never sits on the deterministic Matching/Dispatcher path — the AI/advisory layer stays off-path per [ADR-0071](01-architecture-core.md#adr-0071) point 3, and [ADR-0033](01-architecture-core.md#adr-0033) determinism is preserved.
+4. **Boundaries:** SRE keeps `spend.DegradationRequired` enforcement; Endpoint Monitor keeps signal emission; Platform Engineer keeps Resource Definitions; FinOps escalates via `crew.HandoffRequested`; **no new event families** (rides `crew.*`/`spend.*`/`policy.Decided`).
+
+### Consequences
+- **(+)** Every FinX advisory output has a named, audited, policy-gated owner at the intersection of FinOps and agent-native pillars.
+- **(−)** One more trust surface in the roster; recommendation quality is bounded by best-effort credit/usage reconciliation ([ADR-0071](01-architecture-core.md#adr-0071) point 6).

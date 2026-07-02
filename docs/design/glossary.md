@@ -54,7 +54,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Metric contract | Governed definition (`MetricContract`) of a routing metric's semantics, units, source, normalization, and version under the three-tier model: Tier 0 immutable system metrics, Tier 1 derived metrics via approved transforms, Tier 2 composition-only approved user metrics. |
 | MetricVector | Per-candidate vector of metric-contract values (cost, reliability, latency, risk, approved custom metrics) evaluated after constraint filtering and used to build the Pareto frontier. |
 | Obligation | Durable HoBo effect required by an allow decision, such as approval, canary, auth middleware, or budget action. |
-| Operator Agents | Built-in autonomous Yard services such as SRE, Endpoint Monitor, GitOps, Platform Engineer, UX Designer, and SWE. |
+| Operator Agents | Built-in autonomous Yard services such as SRE, Endpoint Monitor, GitOps, Platform Engineer, UX Designer, SWE, and FinOps. |
 | Pareto frontier | Non-dominated candidate set (`ParetoFrontier`) built across metric dimensions; preference weights select only within it — the router never uses one global weighted score, and a stability controller may still override the preferred candidate. |
 | Planner | Pure function that turns a Bindle plus mapping into a DeploymentPlan DAG. |
 | Planner objective | Soft ranking tiebreak such as `cost`, `latency`, `single-provider`, `carbon`, or `maximize-credits`. |

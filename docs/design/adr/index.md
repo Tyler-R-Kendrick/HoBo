@@ -122,3 +122,4 @@
 | 0114 | Route-level API security: per-route rules, middleware chain, and `hobo:http` enforcement | [identity-security](02-identity-security.md#adr-0114) |
 | 0115 | FinOps advisory plane: cost anomaly detection, forecasting & rightsizing as deterministic MeteringView projections (advisory `cost.*` facts, gated proposals only) | [identity-security](02-identity-security.md#adr-0115) |
 | 0116 | Productization release program: M0–M4 phase gates over the single designed scope | [portability-extensibility](07-portability-extensibility.md#adr-0116) |
+| 0117 | FinOps operator (Crew cost specialist): advisory-only ownership of FinX outputs & commitment optimization | [data-plane](03-data-plane.md#adr-0117) |

@@ -246,7 +246,7 @@ Breakers and degradation tiers above **enforce**; this plane **observes, predict
 
 #### Optional dimensions
 - **Carbon/sustainability** — providers may publish region carbon intensity alongside cost; the Planner objective can include a carbon term.
-- **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval), surfaced as `cost.RecommendationIssued` facts via the FinOps advisory plane above.
+- **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval), surfaced as `cost.RecommendationIssued` facts via the FinOps advisory plane above — owned by the **FinOps operator** ([Plan 40](./operators-sre.md#plan-40), [ADR-0117](./adr/03-data-plane.md#adr-0117)).
 
 #### Runtime cost inputs
 - **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./wasm-runtime-wit.md#plan-20)).

@@ -12,9 +12,9 @@ This draft package carries the architecture-guard evidence required by
 ## Parse, Don't Validate
 
 This package applies the **parse, don't validate** discipline: untrusted manifest IR
-crosses one lowering boundary and becomes derived `ResourceIntent` records. Downstream
-FinOps routing consumes only parsed intents; provider-specific `.with(...)` annotations
-never enter the intent surface. CUE constraints reject malformed manifest schemas,
+crosses one lowering boundary and becomes derived domain types (`ResourceIntent` records).
+Downstream FinOps routing consumes only parsed derived types; provider-specific
+`.with(...)` annotations never enter the intent surface. CUE constraints reject malformed manifest schemas,
 empty resource maps, and provider-leaking intent payloads at parse time.
 
 ## Event Architecture

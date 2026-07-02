@@ -118,3 +118,4 @@
 | 0110 | Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated monetization | [portability-extensibility](07-portability-extensibility.md#adr-0110) |
 | 0111 | Local dashboard (`hobo dev`): co-launched read surface over `runtime-local`, not the Yard Gateway | [portability-extensibility](07-portability-extensibility.md#adr-0111) |
 | 0112 | `hobo:data` is the canonical data() port; wasi:sql driver-level; retired SQL port; frozen proof alias | [data-plane](03-data-plane.md#adr-0112) |
+| 0113 | Versioned managed secrets: `hobo:secrets` over `wasi:config/store` | [identity-security](02-identity-security.md#adr-0113) |

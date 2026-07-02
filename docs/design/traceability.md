@@ -404,14 +404,15 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0110 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0110) | Marketplace payout readiness stays a deferred commercial-operations posture, distinct from the billing/rev-share product scope ADR-0064 removed. | HOBO-420, HOBO-513, HOBO-668 |
 | ADR-0111 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0111) | Local dashboard (`hobo dev`) co-launched listener, `runtime-local` read API, scope labels, bundled OTLP ingest, and offline deferral behavior — distinct from hosted Gateway dashboard path. | HOBO-673 |
 | ADR-0112 | [data-plane](./adr/03-data-plane.md#adr-0112) | Canonical data-port naming spine: hobo:data + paradigm sub-interfaces; wasi:sql demoted to driver level; retired SQL port; frozen legacy proof port ids. | HOBO-675 |
+| ADR-0113 | [identity-security](./adr/02-identity-security.md#adr-0113) | Versioned managed secrets: `hobo:secrets` put/access/list round-trip with pinned-version reads proven against the secrets port conformance suite. | HOBO-676, HOBO-9, HOBO-43, HOBO-54, HOBO-83, HOBO-110, HOBO-230, HOBO-233, HOBO-235, HOBO-250, HOBO-255, HOBO-271, HOBO-396 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 101 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 102 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0112`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0113`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

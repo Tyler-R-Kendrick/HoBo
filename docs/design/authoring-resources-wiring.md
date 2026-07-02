@@ -39,7 +39,7 @@ Permissions are **deny-by-default**: a verb your code never calls is never grant
 | **Bucket** | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` | S3 / Blob / GCS / R2 |
 | **Queue** (pull) | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` | SQS / Service Bus / Tasks / Queues |
 | **Topic** (push) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` | SNS / Event Grid / Pub/Sub / — |
-| **Secret** | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` | Secrets Mgr / Key Vault / Secret Mgr |
+| **Secret** | `secret(name)` | `wasi:config/store` + `hobo:secrets` (versioned, [ADR-0113](./adr/02-identity-security.md#adr-0113)) | `put`,`access` *(access = latest or pinned version)* | Secrets Mgr / Key Vault / Secret Mgr |
 | **Data** | `data(name)` | `hobo:data` (sub-interfaces `relational · document · graph · vector · key-value`, [ADR-0112](./adr/03-data-plane.md#adr-0112)) | `read`,`write`,`query`,`admin` | one abstract dep, paradigm-specific providers: relational/SQL · document/NoSQL · graph · vector · key/value ([ADR-0052](./adr/03-data-plane.md#adr-0052)) |
 | **Schedule** | `schedule(name)` | `hobo:scheduler` | n/a | EventBridge / Timer / Cloud Scheduler |
 | **WebSocket** | `websocket(name)` | `wasi:websocket` **(preview)** + `hobo:websocket` ext | `accept`,`connect`,`send`,`broadcast`,`subscribe` | API GW WS / Web PubSub / — — preview interface tracking the likely standard; principal-bound, rooms/broadcast, lifecycle as `ws.*`, migrates via upcaster ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) |
@@ -68,7 +68,7 @@ The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./a
 | Queues | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` |
 | Key/value store | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` |
 | Storage / blob (buckets) | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` |
-| Secrets | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` |
+| Secrets | `secret(name)` | `wasi:config/store` + `hobo:secrets` (versioned, [ADR-0113](./adr/02-identity-security.md#adr-0113)) | `put`,`access` *(access = latest or pinned version)* |
 | Data (relational/document/graph/vector/kv) | `data(name)` | `hobo:data` (sub-interfaces `relational · document · graph · vector · key-value`, [ADR-0112](./adr/03-data-plane.md#adr-0112)) | `read`,`write`,`query`,`admin` |
 | Websockets | `websocket(name)` | `wasi:websocket` (preview) + `hobo:websocket` ext | `accept`,`connect`,`send`,`broadcast`,`subscribe` |
 
@@ -228,6 +228,14 @@ export const charge = step(async (o: Order) => {
 ```
 - `fromBinding(name)` — **preferred**: no secret at all; the bound resource is reached with the app's SVID-brokered token (the `bind` edge already wires identity-aware connectivity, [Plan 12](./security-networking.md#plan-12)).
 - `secretRef(ref)` — a genuine third-party secret; `ref` is a logical name resolved per-Camp to the provider's `secrets` port path; the value is fetched at use-time and held in memory, never persisted. *(Named `secretRef`, **not** `secret`, to avoid colliding with the catalog's `secret()` resource, which **declares a managed secret store**; `secretRef` only **reads** a value from one.)*
+
+**Versioned managed secrets (`secret()` + `hobo:secrets`).** The `secret(name)` catalog resource
+backs a versioned managed store ([Plan 20](./wasm-runtime-wit.md#plan-20)/[ADR-0113](./adr/02-identity-security.md#adr-0113)):
+`put` yields a new `version-id`, `access` reads the latest value or a pinned version (version
+pinning is an argument to `access`, not a separate `.allow()` verb), and `list-versions` supports
+audit and rollback. `secret.Accessed` events carry the resolved version-id. This is the
+Nitric-parity managed-store surface; secretless brokering via `fromBinding` / `secretRef` remains
+the default ([ADR-0027](./adr/02-identity-security.md#adr-0027)).
 - `env(default)` — non-secret configuration; lives in the Camp's Deployment Set ([Plan 25](./platform-engineering.md#plan-25)) and is overridable per Camp/Delta.
 
 **The resolution ladder (secretless-first).**

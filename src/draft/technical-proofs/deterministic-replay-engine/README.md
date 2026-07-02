@@ -12,7 +12,7 @@ Independent draft POC for **S1-12 / HOBO-601**. Promotes the HOBO-60 equivalence
 
 ## Promotion target
 
-Production promotion path: `packages/runtime/src/replay/` exporting `@hobo/runtime/replay` (S1-07 + S1-11 merged; production promotion is follow-up).
+Production promotion path: `@hobo/runtime/replay` in `packages/runtime/src/replay/` (S1-12 / HOBO-601, promoted 2026-07-02). This draft POC remains as historical evidence.
 
 ## Verification
 

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-484 V1 Critical Path Dependencies Proof"
+description: "Source issue: HOBO-484."
+tags: [hobo, design]
+---
+
 # HOBO-484 V1 Critical Path Dependencies Proof
 
 This proof records the M0 dependency map for V1 Release Program & Cutline.

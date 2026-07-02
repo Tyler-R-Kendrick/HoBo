@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "CLI MCP Parity Resource Lifecycle Contracts Proof"
+description: "Source issue: HOBO-570."
+tags: [hobo, design]
+---
+
 # CLI/MCP Parity Resource Lifecycle Contracts Proof
 
 HOBO-570 records the terminal-first lifecycle contracts that later docs, transcripts, dashboards,

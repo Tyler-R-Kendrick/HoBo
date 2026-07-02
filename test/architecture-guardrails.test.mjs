@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { checkArchitectureGuardrails } from "../scripts/check-architecture-guardrails.mjs";
+import { checkArchitectureGuardrails, implementationPackageRoots } from "../scripts/check-architecture-guardrails.mjs";
 
 async function write(root, file, content = "") {
   await mkdir(path.dirname(path.join(root, file)), { recursive: true });
@@ -128,6 +128,107 @@ test("architecture guard ignores docs-only draft package edits", async () => {
       files: ["src/draft/technical-proofs/demo-contract/README.md"],
     });
 
+    assert.deepEqual(result.problems, []);
+  });
+});
+
+const architectureEvidence = [
+  "# Demo Architecture",
+  "",
+  "Parse, don't validate: constructors return derived parsed types after protobuf and CUE constraints pass.",
+  "The CQRS actor consumes commands, emits events, and appends to the event store.",
+  "A materialized view exposes rx-style projection streams with cached snapshots.",
+  "Historical snapshots persist in the read store.",
+].join("\n");
+
+test("implementationPackageRoots maps production package paths", () => {
+  assert.deepEqual(
+    implementationPackageRoots([
+      "packages/core/src/index.ts",
+      "examples/hello-bindle/src/main.ts",
+      "docs/design/index.md",
+    ]),
+    ["packages/core", "examples/hello-bindle"],
+  );
+});
+
+test("architecture guard rejects production packages with misplaced data models and contracts", async () => {
+  await withFixture(async (root) => {
+    await write(root, "packages/demo/src/demo.ts", "export const demo = true;\n");
+    await write(root, "packages/demo/proto/demo.proto", 'syntax = "proto3";\nmessage Demo {}\n');
+    await write(root, "packages/demo/proto/demo.cue", "Demo: {}\n");
+    await write(
+      root,
+      "packages/demo/pacts/demo.pact.json",
+      JSON.stringify({
+        consumer: { name: "demo-consumer" },
+        provider: { name: "demo-provider" },
+        interactions: [],
+      }),
+    );
+
+    const result = await checkArchitectureGuardrails({
+      root,
+      files: ["packages/demo/src/demo.ts"],
+    });
+
+    const codes = result.problems.map((problem) => problem.code);
+    assert.ok(codes.includes("missing-data-models-folder"));
+    assert.ok(codes.includes("misplaced-data-model"));
+    assert.ok(codes.includes("missing-contracts-pact"));
+  });
+});
+
+test("architecture guard accepts compliant production packages", async () => {
+  await withFixture(async (root) => {
+    await write(root, "packages/demo/src/demo.ts", "export const demo = true;\n");
+    await write(root, "packages/demo/data-models/demo.proto", 'syntax = "proto3";\nmessage Demo {}\n');
+    await write(root, "packages/demo/data-models/demo.cue", "Demo: {}\n");
+    await write(
+      root,
+      "packages/demo/contracts/pacts/demo-boundary.pact.json",
+      JSON.stringify({
+        consumer: { name: "c" },
+        provider: { name: "p" },
+        interactions: [],
+      }),
+    );
+    await write(root, "packages/demo/ARCHITECTURE.md", architectureEvidence);
+
+    const result = await checkArchitectureGuardrails({
+      root,
+      files: ["packages/demo/src/demo.ts"],
+    });
+
+    assert.deepEqual(result.problems, []);
+  });
+});
+
+test("architecture guard does not apply production-only checks to draft packages", async () => {
+  await withFixture(async (root) => {
+    await write(root, "src/draft/technical-proofs/demo-contract/src/demo.mjs", "export const ok = true;\n");
+    await write(
+      root,
+      "src/draft/technical-proofs/demo-contract/contracts/pacts/demo-boundary.pact.json",
+      JSON.stringify({
+        consumer: { name: "demo-consumer" },
+        provider: { name: "demo-provider" },
+        interactions: [],
+      }),
+    );
+    await write(root, "src/draft/technical-proofs/demo-contract/proto/demo.proto", 'syntax = "proto3";\nmessage Demo {}\n');
+    await write(root, "src/draft/technical-proofs/demo-contract/proto/demo.cue", "Demo: {}\n");
+    await write(root, "src/draft/technical-proofs/demo-contract/architecture.md", architectureEvidence);
+
+    const result = await checkArchitectureGuardrails({
+      root,
+      files: ["src/draft/technical-proofs/demo-contract/src/demo.mjs"],
+    });
+
+    const codes = result.problems.map((problem) => problem.code);
+    assert.equal(codes.includes("missing-data-models-folder"), false);
+    assert.equal(codes.includes("misplaced-data-model"), false);
+    assert.equal(codes.includes("missing-contracts-pact"), false);
     assert.deepEqual(result.problems, []);
   });
 });

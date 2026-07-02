@@ -219,3 +219,31 @@ test("case-collision helper reports tracked paths that differ only by case", () 
   );
   assert.deepEqual(findCaseCollisions(["docs/architecture.md", "src/ok.ts"]), []);
 });
+
+function architectureGuardCheck(check: Check) {
+  return check.command === "pnpm" && check.args[0] === "run" && check.args[1] === "architecture:guard";
+}
+
+test("production package source changes select architecture guard and workspace tests", () => {
+  const { checks, workspaces } = plan(["packages/core/src/index.ts"], { workspacePackageExists: () => true });
+
+  assert.deepEqual(workspaces, ["packages/core"]);
+  assert.equal(checks.some(architectureGuardCheck), true);
+  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix packages/core test"), true);
+});
+
+test("examples package source changes select architecture guard and workspace tests", () => {
+  const { checks, workspaces } = plan(["examples/hello-bindle/src/main.ts"], { workspacePackageExists: () => true });
+
+  assert.deepEqual(workspaces, ["examples/hello-bindle"]);
+  assert.equal(checks.some(architectureGuardCheck), true);
+  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix examples/hello-bindle test"), true);
+});
+
+test("production package schema changes select workspace tests instead of root schema lane", () => {
+  const { checks, workspaces } = plan(["packages/core/data-models/core.proto"], { workspacePackageExists: () => true });
+
+  assert.deepEqual(workspaces, ["packages/core"]);
+  assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), false);
+  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix packages/core test"), true);
+});

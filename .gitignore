@@ -23,3 +23,12 @@ node_modules/
 
 # Turborepo local cache
 .turbo/
+
+# Package build output
+dist/
+
+# Pinned toolchain binaries downloaded on demand (e.g. CUE v0.14.0)
+.tools/
+
+# CI fixture runner append-only event logs (local + CI artifacts)
+test-results/

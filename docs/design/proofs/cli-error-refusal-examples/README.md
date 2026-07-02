@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "CLI Error Refusal Examples Proof"
+description: "Source issue: HOBO-558."
+tags: [hobo, design]
+---
+
 # CLI Error Refusal Examples Proof
 
 HOBO-558 records the customer-safe terminal, JSON, and MCP refusal examples that later CLI/API/SDK,

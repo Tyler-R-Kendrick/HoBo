@@ -19,6 +19,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Future Changesets publish automation must declare `needs: artifact-trust`.
+  artifact-trust:
+    name: artifact signing and install verification
+    needs: pr-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Verify signed hello-bindle and refuse stripped signatures
+        run: pnpm test:file src/draft/technical-proofs/componentize-artifact-trust-contract/test/publish-verify.test.ts
+
   pr-gate:
     name: PR impact gate
     runs-on: ubuntu-latest
@@ -35,24 +54,69 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Fetch base branch for Turbo affected
+        run: git fetch origin "${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
+      - uses: cue-lang/setup-cue@v1.0.0
+        with:
+          version: v0.14.0
       - name: Relevant checks only
         run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
+      - name: Affected package lanes
+        env:
+          TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
+        run: |
+          mapfile -t PKG_FILTERS < <(
+            git diff --name-only "${TURBO_SCM_BASE}"...HEAD \
+              | rg '^packages/([^/]+)/' -or '$1' \
+              | sort -u \
+              | sed 's|^|--filter=./packages/|'
+          )
+          mapfile -t EX_FILTERS < <(
+            git diff --name-only "${TURBO_SCM_BASE}"...HEAD \
+              | rg '^examples/([^/]+)/' -or '$1' \
+              | sort -u \
+              | sed 's|^|--filter=./examples/|'
+          )
+          FILTERS=("${PKG_FILTERS[@]}" "${EX_FILTERS[@]}")
+          if [ "${#FILTERS[@]}" -eq 0 ]; then
+            echo "No production package or example paths changed; skipping turbo impact lanes"
+            exit 0
+          fi
+          pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer \
+            "${FILTERS[@]}" \
+            --continue=never
+      - name: Production packages gate
+        run: pnpm run build:packages
 
-  hello-bindle-fixture:
-    name: hello-bindle sandbox fixture
-    needs: pr-gate
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
+  main-gate:
+    name: Main full gate
+    if: github.event_name == 'merge_group' || github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     permissions:
       contents: read
-      id-token: write
-    concurrency:
-      group: hello-bindle-fixture-${{ github.ref }}
-      cancel-in-progress: false
-    env:
-      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
-      HOBO_E2E_FIXTURE: examples/hello-bindle
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Full S0 gate set
+        run: pnpm run check:all
+      - name: Architecture guard
+        run: pnpm run architecture:guard
+      - name: Full workspace tests
+        run: pnpm exec turbo run test
+
+  ci-guard:
+    name: CI fabric contract guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable pnpm
@@ -62,79 +126,19 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Assert keyless CI contract
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
-      - name: Deploy and assert hello-bindle fixture
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
-      - name: Tear down hello-bindle fixture
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
-      - name: Sweep orphaned hello-bindle fixtures
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
+      - name: Assert CI fabric contract
+        run: node --import tsx packages/ci-guard/bin/assert-ci-contract.ts
 
-  hello-bindle-fixture-quarantine:
-    name: hello-bindle fixture quarantine
-    needs: pr-gate
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture-quarantine')
+  secret-scan:
+    name: Secret scan
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    continue-on-error: true
     permissions:
       contents: read
-      id-token: write
-    env:
-      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
-      HOBO_E2E_FIXTURE: examples/hello-bindle
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
-      - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Assert keyless CI contract
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
-      - name: Run quarantine fixture lane
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}-quarantine"
-      - name: Tear down quarantine fixture
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}-quarantine"
-      - name: Sweep orphaned quarantine fixtures
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
-
-  multi-cloud-shop-fixture:
-    name: multi-cloud-shop provider fixture
-    needs: pr-gate
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      id-token: write
-    concurrency:
-      group: multi-cloud-shop-fixture-${{ github.ref }}
-      cancel-in-progress: false
-    env:
-      HOBO_E2E_FIXTURE: examples/multi-cloud-shop
-      HOBO_E2E_PROVIDERS: aws,azure
-    steps:
-      - uses: actions/checkout@v4
-      - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Deploy same Bindle to AWS and Azure
-        run: node --import tsx src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
-      - name: Tear down multi-cloud-shop fixture
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
-      - name: Sweep orphaned multi-cloud-shop fixtures
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase sweep-orphans
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

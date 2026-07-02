@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Troubleshooting Decision Trees Proof"
+description: "Source issue: HOBO-553."
+tags: [hobo, design]
+---
+
 # Vibe Troubleshooting Decision Trees Proof
 
 HOBO-553 creates fixture-backed troubleshooting decision trees for install,

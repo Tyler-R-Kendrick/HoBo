@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "DX Resource Lifecycle Scenario Matrix Proof"
+description: "Source issue: HOBO-567."
+tags: [hobo, design]
+---
+
 # DX resource lifecycle scenario matrix proof
 
 `HOBO-567` creates the canonical resource lifecycle DX matrix for the HoBo

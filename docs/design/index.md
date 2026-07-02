@@ -16,6 +16,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`sdk-contracts.md`](./sdk-contracts.md) | Canonical public SDK signatures, defaults, conformance coverage, and implementation issue mapping | 02, 21 |
 | [`closure-builder-public-api.md`](./closure-builder-public-api.md) | V1 explicit Bindle closure-builder public contract for `@hobo/bindles` | 02, 21 |
 | [`technical-standards.md`](./technical-standards.md) | Cross-cutting implementation standards: latest stable TypeScript, Protobuf data contracts, CUE invariants/derivative object definitions, parse-don't-validate, and PACT boundary testing | — |
+| [`build-s0-stage-gate-acceptance.md`](./build-s0-stage-gate-acceptance.md) | S0 stage gate acceptance: signed hello-bindle through CI with toolchain guards green; runnable signal is `.github/workflows/stage-gate-s0.yml` plus `@hobo/stage-gate` tests | — |
 | [`dx-sdk-resilience-semantics.md`](./dx-sdk-resilience-semantics.md) | DX SDK resilience semantics vocabulary, acceptance matrix, and proof sequencing for retry/cancel/deadline/lifecycle behavior | — |
 | [`package-namespaces.md`](./package-namespaces.md) | Canonical package/import ownership for `@hobo/*` namespaces | 02, 10, 21 |
 | [`ai-native-agent-auth.md`](./ai-native-agent-auth.md#plan-06) | AI-native platform, agent auth & end-user auth | 06 |
@@ -109,13 +110,14 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`resource-garbage-collection.md`](./resource-garbage-collection.md) | Productization M0 scope and acceptance for resource garbage classes, cleanup eligibility, orphan evidence, owner handoffs, and safe cleanup boundaries | — |
 | [`teardown-recovery.md`](./teardown-recovery.md) | Productization M0 scope and acceptance for teardown states, dependency-drain evidence, recovery decisions, cleanup/support handoffs, and safe teardown boundaries | — |
 | [`drift-reconciliation.md`](./drift-reconciliation.md) | Productization M0 scope and acceptance for drift classes, reconciliation states, source-of-truth evidence, owner handoffs, and follow-up gates | — |
+| [`stage-6-production-hardening-acceptance.md`](./stage-6-production-hardening-acceptance.md) | Stage-6 (Production Hardening) acceptance record: ratified HA/DR/canary/FinOps hooks, promoted epic proofs, restated stage gate, and the S6-02..S6-10 follow-up gate | — |
 | [`compatibility-matrix.md`](./compatibility-matrix.md) | Productization M0 browser, device, platform, CLI bootstrap, and support-routing compatibility matrix | — |
 
 **Decisions** live as 4 thematic ADR docs in [`adr/`](./adr/index.md) (each decision is a `#adr-NNNN` section). The current ADR/Plan -> Linear coverage gate is [`traceability.md`](./traceability.md). Executable draft proofs and contract packages live under [`../../src/draft/`](../../src/draft/): technical proofs in [`../../src/draft/technical-proofs/`](../../src/draft/technical-proofs/), experience proofs in [`../../src/draft/exp-proofs/`](../../src/draft/exp-proofs/), epic rollups in [`../../src/draft/epic-proofs/`](../../src/draft/epic-proofs/) and registered in [`../../src/draft/epic-proofs/_registry.md`](../../src/draft/epic-proofs/_registry.md), and project MVP rollups in [`../../src/draft/projects/`](../../src/draft/projects/). Registry `Status` is operational metadata: `complete` means the linked rollup PR has merged, while `in_review` is reserved for an open rollup PR.
 
 **Archived planning material** (not part of the current design state — revived when the work is scoped): the **roadmap / build sequence** and the formal **requirements suite** (BRD/PRD/TRD + BR→FR/NFR→TR traceability) live in [`../archive/`](../archive/). The design-relevant scope boundary and NFR/SLO targets are kept in the design itself ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)/[ADR-0021](./adr/07-portability-extensibility.md#adr-0021)).
 
-**Competitor references** live in [`../competitors/`](../competitors/).
+**Competitor references** live in [`../competitors/`](../competitors/). Displaced-alternative lineage is recorded as ADRs — e.g. the Nomad scheduler pillar ([ADR-0106](./adr/01-architecture-core.md#adr-0106), parity in [`../competitors/nomad.md`](../competitors/nomad.md#hobo-mapping)).
 
 **Scope.** The whole suite is **one scope** — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line ([ADR-0063](./adr/07-portability-extensibility.md#adr-0063)/[ADR-0064](./adr/07-portability-extensibility.md#adr-0064)). Build sequencing/phasing is deferred planning (archived).
 

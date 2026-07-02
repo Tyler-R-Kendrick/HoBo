@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "DX Backbone Resource Lifecycle Vibe Proof"
+description: "Source issue: HOBO-566."
+tags: [hobo, design]
+---
+
 # HOBO-566 DX Backbone Resource Lifecycle Vibe Proof
 
 HOBO-566 is proven by the focused experience proof at

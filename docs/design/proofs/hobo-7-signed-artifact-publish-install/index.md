@@ -24,6 +24,15 @@ This executable proof pins the M2 signed artifact trust boundary from
 | Provenance forged by compromised pipeline ties to sandboxed builder identity | `provenance is tied to the trusted sandbox builder identity and passing conformance` |
 | Dependency confusion on pulls | `dependency-confusion attempts fail closed by digest and coordinate scope` |
 
+## S0-10 draft POC (HOBO-587)
+
+S0-10 work-in-progress lives in
+[`src/draft/technical-proofs/componentize-artifact-trust-contract`](../../../../src/draft/technical-proofs/componentize-artifact-trust-contract/README.md)
+as an independent POC while S0-07/S0-09 land. Promotion target:
+`packages/componentize/src/publish/artifact-trust.ts`,
+`packages/componentize/src/publish/events.ts`, and
+`packages/componentize/test/publish-verify.test.ts`.
+
 ## Boundary
 
 The proof lives in

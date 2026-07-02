@@ -10,6 +10,10 @@ Independent POC for HOBO-40. It pins the varlock-style authoring surface:
 
 The tests prove refs-only manifest emission, plaintext leak detection, dev-only source marking, and the TypeScript key surface.
 
+> **Promotion note (S1-19 / HOBO-609):** integrated local-resolution draft POC at
+> `src/draft/technical-proofs/s1-19-ctx-config-local-resolution/`. Production target:
+> `packages/bindles/src/config/`.
+
 
 ## Architecture Evidence
 

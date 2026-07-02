@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe First-Run Activation Rail Proof"
+description: "Source issue: HOBO-540."
+tags: [hobo, design]
+---
+
 # Vibe first-run activation rail proof
 
 `HOBO-540` creates first-run activation rail mockups and a state model for Workspace & Onboarding

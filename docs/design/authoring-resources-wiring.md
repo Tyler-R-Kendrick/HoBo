@@ -160,7 +160,7 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
 
 **Annotations are typed extensibility (`.with(...)`).** Aspire attaches behavior via resource **annotations** consumed by deploy tools. HoBo's existing provider-specific options pattern **is** this: `.with(provider.options())` adds typed annotations that the resolved Provider/IaC adapter consumes; non-resolved providers' annotations are inert ([Plan 2](./sdk-api.md#plan-02)). First-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral.
 
-**The manifest IR (deployment intermediate representation).** Resource-collection emits a **HoBo manifest** — the union of Nitric's resource spec and Aspire's `aspire-manifest.json`. It is the single artifact the Planner/Orchestrator consume and that publishers/IaC adapters render to real infra. Sketch:
+**The manifest IR (deployment intermediate representation).** Resource-collection emits a **HoBo manifest** — the union of Nitric's resource spec and Aspire's `aspire-manifest.json`. It is the single artifact the Planner/Orchestrator consume and that publishers/IaC adapters render to real infra. The production schema, CUE constraints, and `parseManifest` loader live in [`packages/bindles/data-models/`](../../packages/bindles/data-models/) (`hobo.manifest/v1`). Sketch:
 ```jsonc
 {
   "schema": "hobo.manifest/v1",

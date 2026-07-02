@@ -22,8 +22,10 @@ export type RelevantCheckPolicy = {
 
 export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
-  const match = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
-  return match ? `src/draft/${match[1]}/${match[2]}` : undefined;
+  const draft = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
+  if (draft) return `src/draft/${draft[1]}/${draft[2]}`;
+  const production = normalized.match(/^(packages|examples)\/([^/]+)\//u);
+  return production ? `${production[1]}/${production[2]}` : undefined;
 }
 
 function workspaceTestRelevant(file: string) {
@@ -32,7 +34,7 @@ function workspaceTestRelevant(file: string) {
   if (!workspace) return false;
 
   const relative = normalized.slice(workspace.length + 1);
-  return /^(src|test|tests|type-tests|features|contracts|simulation|scripts)\//u.test(relative)
+  return /^(src|test|tests|type-tests|features|contracts|simulation|scripts|data-models)\//u.test(relative)
     || /^(package|package-lock|tsconfig(?:\.[^.]+)?)\.json$/u.test(relative)
     || /^(pnpm-lock\.yaml|turbo\.json)$/u.test(relative)
     || /\.(?:proto|cue|pact\.json)$/u.test(relative);
@@ -59,11 +61,14 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const automationChanged = touched(["scripts", ".githooks", ".github", ".codex", ".cursor", ".claude", ".agents"])
     || touchedAny([/^package\.json$/u, /^pnpm-lock\.yaml$/u, /^pnpm-workspace\.yaml$/u, /^turbo\.json$/u]);
   const rootConfigChanged = touchedAny([/^package\.json$/u, /^pnpm-lock\.yaml$/u, /^pnpm-workspace\.yaml$/u, /^turbo\.json$/u, /^tsconfig.*\.json$/u]);
-  const sourceChanged = touched(["src", "contracts", "test", "tests"]);
+  const sourceChanged = touched(["src", "contracts", "test", "tests", "packages", "examples"]);
   const docsChanged = touched(["docs"]) || touchedAny([/^README\.md$/u, /^CONTRIBUTING\.md$/u, /^AGENTS\.md$/u, /^CLAUDE\.md$/u]);
-  const draftSchemaChanged = files.some((file) => /^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\/.*\.(?:proto|cue)$/u.test(file));
-  const rootSchemaChanged = touched(["contracts"]) || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !/^src\/draft\/(?:technical-proofs|exp-proofs|epic-proofs|projects)\/[^/]+\//u.test(file));
-  const schemaChanged = rootSchemaChanged || draftSchemaChanged;
+  const workspaceSchemaChanged = files.some((file) => /\.(?:proto|cue)$/u.test(file) && Boolean(workspaceFor(file)));
+  const rootSchemaChanged =
+    touched(["contracts"])
+    || touchedAny([/(^|\/)_generated\//u, /(^|\/)buf(\.gen)?\.yaml$/u])
+    || files.some((file) => /\.(?:proto|cue)$/u.test(file) && !workspaceFor(file));
+  const schemaChanged = rootSchemaChanged || workspaceSchemaChanged;
   const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
   const rootPactChanged = files.some((file) => (/(^|\/)pacts\//u.test(file) || /\.pact\.json$/u.test(file)) && !workspaceFor(file));
   const uiChanged = touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/u]);

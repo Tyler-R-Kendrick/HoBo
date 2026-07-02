@@ -132,7 +132,17 @@ function assertPinnedToolchain(toolchain) {
 }
 
 function assertSourceDateEpoch(sourceDateEpoch) {
-  if (!sourceDateEpoch || Number.isNaN(Date.parse(sourceDateEpoch))) {
+  if (!sourceDateEpoch || typeof sourceDateEpoch !== "string") {
+    throw new Error("componentize.invalid_source_date_epoch");
+  }
+  const trimmed = sourceDateEpoch.trim();
+  if (/^\d+$/u.test(trimmed)) {
+    if (!Number.isFinite(Number(trimmed))) {
+      throw new Error("componentize.invalid_source_date_epoch");
+    }
+    return;
+  }
+  if (Number.isNaN(Date.parse(trimmed))) {
     throw new Error("componentize.invalid_source_date_epoch");
   }
 }

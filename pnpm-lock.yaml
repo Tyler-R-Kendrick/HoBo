@@ -1400,6 +1400,8 @@ importers:
 
   src/draft/technical-proofs/s1-stage-gate: {}
 
+  src/draft/technical-proofs/s6-02-control-plane-ha-contract: {}
+
   src/draft/technical-proofs/saga-compensation-engine-contract: {}
 
   src/draft/technical-proofs/saga-credit-reconciliation-spike: {}

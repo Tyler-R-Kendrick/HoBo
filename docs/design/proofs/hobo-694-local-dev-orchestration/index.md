@@ -9,7 +9,7 @@ HOBO-694 is proven by the focused POC at
   from Plan 21 (`bind`, endpoints, env/args, storage, lifetime, explicit startup,
   `waitFor`, `waitForCompletion`, health, replicas, scaling, residency).
 - Dependency-gated startup semantics align with Plan 4 choreography (no central
-  coordinator; dependents wait on producer `local.Ready`).
+  coordinator; dependents wait on producer **Ready**).
 - Executable tests prove `waitFor` + health gates, `waitForCompletion`, explicit
   startup, parallel roots, lazy env resolution, local replica/scaling labels, reverse
   shutdown order, and cycle detection.
@@ -17,7 +17,7 @@ HOBO-694 is proven by the focused POC at
 ## Adversarial Coverage
 
 - Failed health probe leaves dependents waiting (no silent ready).
-- Non-zero job exit emits `local.StartFailed` and blocks dependents.
+- Non-zero job exit emits **Start failed** and blocks dependents.
 - `withExplicitStartup` does not auto-start without manual start.
 - Dependency cycles fail at graph build time.
 

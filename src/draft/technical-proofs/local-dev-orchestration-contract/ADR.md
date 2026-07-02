@@ -14,18 +14,26 @@ how its records map onto the platform's event flow.
 ## Parse, Don't Validate
 
 This package applies the **parse, don't validate** discipline: untrusted manifest
-input is parsed once at the boundary into a derived local-dev graph, and the
-orchestrator consumes only parsed resources with normalized annotation gates.
+input is parsed once at the boundary into derived domain types, and downstream
+consumers receive those parsed, derived types instead of re-checking raw input.
+The CUE constraints bound the same derived types so malformed input is rejected
+at parse time rather than passed downstream.
 
 ## Event Architecture
 
 The package's local lifecycle is a small event flow:
 
 - **Command** — `hobo dev` session start / manual `hobo dev start <resource>`.
-- **Event** — `local.Starting`, `local.Ready`, `local.StartFailed`.
+- **Event** — lifecycle transitions recorded as orchestration events.
 - **Actor** — per-resource local orchestrator state keyed by resource id.
-- **Materialized view** — `activationLog` and `state` snapshots returned to callers.
+- **Event store** — accepted events are appended to the session event log as the
+  durable source of truth for replay.
+- **Materialized view / projection** — `activationLog` and `state` fold the event
+  log into caller-visible snapshots.
+- **Snapshot** — each returned `state` object is the snapshot of that projection.
+- **Read store** — downstream surfaces query that read store rather than the raw
+  event log.
 
 No runtime engine, projector, or event store is implemented here; this is a
-design-time contract naming the command, event, and projection boundaries for
-HOBO-694.
+design-time contract naming the command, event, actor, and projection boundaries
+for HOBO-694.

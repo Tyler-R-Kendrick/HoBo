@@ -122,6 +122,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/runtimes/runtime-local:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/stage-gate:
     devDependencies:
       '@hobo/componentize':

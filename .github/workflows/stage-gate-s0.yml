@@ -47,7 +47,7 @@ jobs:
           version: v0.14.0
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Build stage-gate CLI
-        run: pnpm exec turbo run build --filter @hobo/stage-gate
+        run: pnpm exec turbo run build --filter @hobo/stage-gate...
       - name: Run S0 stage gate
         shell: bash
         env:

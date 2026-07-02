@@ -603,6 +603,12 @@ importers:
 
   src/draft/projects/s1-24-conformance-sdk: {}
 
+  src/draft/projects/s3-02-hobo-identity:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
+
   src/draft/projects/s6-06-finops-plane: {}
 
   src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}

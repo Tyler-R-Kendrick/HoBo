@@ -143,10 +143,11 @@ The `docs:freshness` gate enforces the minimum rule: changes under `src/`, `scri
 
 ## CI and gates
 
-GitHub Actions run two lanes:
+GitHub Actions run three primary lanes:
 
-- [`Docs`](./.github/workflows/docs.yml): tests plus docs/traceability linting on pushes and pull requests.
-- [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): full PR gate, contract checks, docs freshness, and optional labeled behavior fixture lanes.
+- [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
+- [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated cloud fixture jobs (hello-bindle, multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
+- [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): simulate-mode hello-bindle fixture lanes, also label/schedule/manual gated.
 
 Core checks are intentionally ordinary Node scripts so they run locally, in CI, and inside agent sessions. `docs:coverage` also checks that required GitHub community-health and maintenance docs stay present.
 

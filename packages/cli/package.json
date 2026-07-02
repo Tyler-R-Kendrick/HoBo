@@ -1,7 +1,11 @@
 {
 	"name": "@hobo/cli",
 	"version": "0.0.1",
+	"description": "HoBo CLI shell with canonical verbs (up, down, dev, new, plan, doctor, codegen, build, inspect, logs, verify, sandbox, test, and more) and offline project scaffolds.",
 	"type": "module",
+	"bin": {
+		"hobo": "./dist/bin/hobo.js"
+	},
 	"files": [
 		"dist"
 	],
@@ -15,13 +19,15 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*",
-		"@hobo/runtime": "workspace:*"
+		"@hobo/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.15.29"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"test": "vitest run --passWithNoTests"
+		"test": "pnpm run build && vitest run --passWithNoTests"
 	}
 }

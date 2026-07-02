@@ -4,7 +4,10 @@ import {
   foldDeploymentProjections,
 } from "../../../../../docs/design/proofs/hobo-50-deployment-set-delta/projection-model.ts";
 
-import { validateControlPlaneEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
+import {
+  CURRENT_SCHEMA_VERSION,
+  validateControlPlaneEvent,
+} from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 import {
   decideResourceDefinition,
   matchingDecisionToEvent,
@@ -308,6 +311,12 @@ export function promoteDeltaToSet({ baseSet, deltaChanges, deltaId, newSetId, de
   const contentAddress = contentAddressDeploymentSet(newSet);
   const beforeSet = projection.sets[baseSet.setId];
   const changes = diffDeploymentSet(beforeSet, newSet);
+  const appliedEvent = deltaAppliedToEvent({
+    deltaId,
+    resultingSetId: newSetId,
+    causationId: "evt-delta-update",
+  });
+  const appliedEventValidation = validateControlPlaneEvent(appliedEvent);
 
   return {
     projection,
@@ -316,6 +325,26 @@ export function promoteDeltaToSet({ baseSet, deltaChanges, deltaId, newSetId, de
     changes,
     delta: projection.deltas[deltaId],
     incrementalNodes: changes.map((change) => change.resourceId),
+    appliedEvent,
+    appliedEventValid: appliedEventValidation.ok,
+  };
+}
+
+function deltaAppliedToEvent({ deltaId, resultingSetId, causationId }) {
+  return {
+    id: `evt-delta-applied-${deltaId}`,
+    type: "delta.Applied",
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    tenant: "tenant-hobo",
+    seq: 4,
+    time: "2026-07-02T00:00:00.000Z",
+    actor: { kind: "service", id: "yard/set-store" },
+    correlationId: `corr-${deltaId}`,
+    causationId,
+    data: {
+      deltaId,
+      resultingSetId,
+    },
   };
 }
 

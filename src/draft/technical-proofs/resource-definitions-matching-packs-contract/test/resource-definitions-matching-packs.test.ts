@@ -136,6 +136,10 @@ test("promoting a delta yields the expected immutable Set with incremental recon
   });
 
   assert.equal(result.delta.status, "applied");
+  assert.equal(result.appliedEvent.type, "delta.Applied");
+  assert.equal(result.appliedEvent.data.deltaId, "delta-shop-prod-1");
+  assert.equal(result.appliedEvent.data.resultingSetId, "set-shop-prod-v2");
+  assert.equal(result.appliedEventValid, true);
   assert.equal(result.newSet.id, "set-shop-prod-v2");
   assert.equal(result.newSet.previousSetId, "set-shop-prod-v1");
   assert.deepEqual(Object.keys(result.newSet.resources).sort(), ["shop.api", "shop.db", "shop.worker"]);

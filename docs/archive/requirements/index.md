@@ -3,7 +3,7 @@
 > The **requirements layer** over the [HoBo Design Plan Suite](../../design/index.md). Where the design docs (`docs/design/0–36`) explain *how* HoBo works, this layer states *why* (business), *what* (product), and *how — in requirements terms* (technical) — with stable IDs and end-to-end traceability so business intent, product scope, and engineering work cannot silently drift apart.
 >
 > **Status:** Draft for review · **Date:** 2026-06-20 · Phase: design.
-> **Archive note:** this suite was moved under docs/archive/ and its links remapped — design paths resolve via ../../design/, the roadmap lives beside this suite at ../roadmap.md, Plan 9/23 verification now lives in generated-stack.md, and the former ADR theme docs 04/05/06/08 were consolidated into the four current theme docs (see ../../design/adr/index.md).
+> **Archive note:** this suite was moved under docs/archive/ and its links remapped — design paths resolve via ../../design/, the roadmap lives beside this suite at ../roadmap.md, forge-generated-stack.md is now generated-stack.md, and the former ADR theme docs 04/05/06/08 were consolidated into the four current theme docs (see ../../design/adr/index.md).
 
 ## The document
 

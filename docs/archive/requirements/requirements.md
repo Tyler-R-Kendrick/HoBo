@@ -11,7 +11,7 @@ tags: [hobo, archive]
 >
 > Three sections own three ID families: **[Business Requirements](#business-requirements)** (`BR-NNN`), **[Product Requirements](#product-requirements)** (`FR-NNN`/`NFR-NNN`), **[Technical Requirements](#technical-requirements)** (`TR-NNN`). The authoritative **[Traceability matrix](#traceability-matrix)** at the end links `BR → FR/NFR → TR → design doc`.
 >
-> **Archive note:** this suite was moved under docs/archive/ and its links remapped — design paths resolve via ../../design/, the roadmap lives beside this suite at ../roadmap.md, Plan 9/23 verification now lives in generated-stack.md, and the former ADR theme docs 04/05/06/08 were consolidated into the four current theme docs (see ../../design/adr/index.md).
+> **Archive note:** this suite was moved under docs/archive/ and its links remapped — design paths resolve via ../../design/, the roadmap lives beside this suite at ../roadmap.md, forge-generated-stack.md is now generated-stack.md, and the former ADR theme docs 04/05/06/08 were consolidated into the four current theme docs (see ../../design/adr/index.md).
 
 ## Document control
 

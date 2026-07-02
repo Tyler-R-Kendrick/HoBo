@@ -9,7 +9,7 @@ tags: [hobo, archive]
 
 This capability doc consolidates Plan 8 of the HoBo design suite.
 
-> **Archive note:** this doc was moved under docs/archive/ and its links remapped — design paths resolve via ../design/, Plan 9/23 verification now lives in generated-stack.md, and the former ADR theme docs 04/05/08 were consolidated into the four current theme docs (see ../design/adr/index.md).
+> **Archive note:** this doc was moved under docs/archive/ and its links remapped — design paths resolve via ../design/, forge-generated-stack.md is now generated-stack.md, and the former ADR theme docs 04/05/08 were consolidated into the four current theme docs (see ../design/adr/index.md).
 
 ## Plan 08
 

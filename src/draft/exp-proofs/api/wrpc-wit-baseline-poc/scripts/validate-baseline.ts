@@ -4,7 +4,11 @@ import { readFile } from "node:fs/promises";
 
 const root = new URL("..", import.meta.url);
 const lock = JSON.parse(await readFile(new URL("toolchain-lock.json", root), "utf8"));
-const packageLock = JSON.parse(await readFile(new URL("package-lock.json", root), "utf8"));
+// The workspace is pnpm-managed (single root lockfile), so pin-verify the
+// installed jco against its resolved package manifest, not a per-package lock.
+const jcoManifest = JSON.parse(
+  await readFile(new URL("node_modules/@bytecodealliance/jco/package.json", root), "utf8"),
+);
 
 assert.equal(lock.decision, "ADR-0085");
 assert.equal(lock.issue, "HOBO-12");
@@ -14,10 +18,7 @@ assert.equal(lock.toolchain.componentizeJs.version, "0.21.0");
 assert.equal(lock.toolchain.witBindgenCli.version, "0.58.0");
 assert.equal(lock.toolchain.wrpc.version, "0.17.0");
 assert.equal(lock.toolchain.wasmCloud.version, "2.4.0");
-assert.equal(
-  packageLock.packages["node_modules/@bytecodealliance/jco"].version,
-  lock.toolchain.jco.version,
-);
+assert.equal(jcoManifest.version, lock.toolchain.jco.version);
 
 assert.deepEqual(lock.manifestFloor.previewBumpsRequire, [
   "upcaster",

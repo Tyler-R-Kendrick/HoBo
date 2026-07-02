@@ -6,7 +6,7 @@
   "description": "POC for the HOBO-12 wRPC and WIT version baseline decision.",
   "scripts": {
     "generate": "jco types wit --out-dir generated && tsx scripts/strip-generated-trailing-whitespace.ts",
-    "test": "npm run generate && tsx scripts/run-wit-bindgen-smoke.ts && tsx scripts/validate-baseline.ts && node --import tsx --test test/*.test.ts"
+    "test": "npm run generate && tsx scripts/run-wit-bindgen-smoke.ts && tsx scripts/validate-baseline.ts && vitest run --root ."
   },
   "devDependencies": {
     "@bytecodealliance/jco": "1.24.3"

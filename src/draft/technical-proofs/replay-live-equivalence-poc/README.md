@@ -23,6 +23,10 @@ Independent POC for HOBO-60. It pins the spike decision and reusable assertion s
 
 This POC does not implement the Reactor, Streamer transport, snapshot store, cross-Camp subscriptions, RX operators, sink adapters, or poison-event quarantine. It defines the proof primitive those later slices import.
 
+## Promotion
+
+S1-12 (HOBO-601) promotes this spike to production at `@hobo/runtime/replay`. Draft POC ahead of merge: `src/draft/technical-proofs/deterministic-replay-engine/`.
+
 ## Verification
 
 ```powershell

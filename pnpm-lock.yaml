@@ -50,6 +50,9 @@ importers:
       '@hobo/componentize':
         specifier: workspace:*
         version: link:../../packages/componentize
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../../packages/runtimes/runtime-local
@@ -151,6 +154,13 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      tsx:
+        specifier: ^4.20.3
+        version: 4.22.4
 
   packages/runtimes/runtime-local:
     dependencies:
@@ -764,6 +774,8 @@ importers:
   src/draft/technical-proofs/deployment-strategy-saga-templates-contract: {}
 
   src/draft/technical-proofs/deployment-view-saga-graph-contract: {}
+
+  src/draft/technical-proofs/deterministic-replay-engine: {}
 
   src/draft/technical-proofs/disaster-recovery-failover-contract: {}
 

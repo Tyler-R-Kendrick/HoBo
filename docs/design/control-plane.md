@@ -68,6 +68,12 @@ Cross-resource ordering (DB before API, network before VM) is expressed as a **d
 - **Con:** harder to see "the whole flow" — we mitigate with a **DeploymentView** projection that reconstructs the saga graph from events for the dashboard, and with explicit `correlationId` on every event.
 - **Compensation** is also choreographed: a `resource.Failed` past the no-go threshold emits `deployment.RolledBack`, which each already-`Provisioned` actor observes and reacts to by `Destroying` itself in reverse-dependency order (tracked via the DAG).
 
+### Health-gated dependency ordering (iteration hook)
+
+Aspire's `WaitFor` / `WaitForCompletion` family gates dependents on **running + healthy** (or run-to-completion exit 0) — see the [Aspire capture](../competitors/aspire.md#composition--wiring). HoBo's deploy DAG today gates only on **`resource.Provisioned`** (IaC apply succeeded and outputs recorded); a dependent ResourceActor self-activates once every dependency has emitted `resource.Provisioned`, with **no orchestrator-level health/readiness gate** between provision and unblock.
+
+Health checks **do** exist in [Plan 5](./reliability-observability-cost.md#plan-05) — inside **deployment-strategy sagas** (canary/blue-green rollout gates, auto-rollback on SLO burn) and provider health projections for operators — but those are rollout/ops surfaces, not the cross-resource dependency gate Aspire's `WaitFor` models. A first-class **readiness-gated dependency edge** (provisioned-but-not-ready blocks dependents; `WaitForCompletion`-style one-shot tasks) is **not yet designed**; tracked as [GAP-027 / REM-035](../../GAPS.md#rem-035-for-gap-027) and [HOBO-703](https://linear.app/quickdeploy-ai/issue/HOBO-703). When it lands, upgrade the [Aspire parity tracker](../competitors/aspire.md#hobo-mapping) `WaitFor` row and replace this hook with an ADR anchor.
+
 ### Executor sandbox model
 IaC apply and image builds run untrusted-ish provider code, so they are isolated:
 - Each exec runs in a **Firecracker microVM** (fast boot, hardware isolation), with no ambient cloud creds.

@@ -40,3 +40,10 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Iac Cdktf Import Only Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+
+## Testing
+
+Run `pnpm --filter @hobo-draft/iac-cdktf-import-only-contract test` (Vitest,
+followed by `tsc --noEmit -p tsconfig.types.json`). The implementation now
+exports `CdktfImportedResource`, `CdktfImportReport`, and `CdktfDriftReport`
+with fully typed drift/import shapes, exercised by `test/type-consumer.ts`.

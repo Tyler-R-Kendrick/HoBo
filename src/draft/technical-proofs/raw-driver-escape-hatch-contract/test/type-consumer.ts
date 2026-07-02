@@ -1,6 +1,8 @@
 import {
   createRawView,
   defineProjectionSink,
+  type MongoRawDriver,
+  type PostgresRawDriver,
   type RawResult,
 } from "../src/raw-driver-escape-hatch.js";
 
@@ -23,10 +25,10 @@ function assertRawDriverTypes() {
     }),
   );
 
-  const postgresRows: RawResult = postgresView.raw((pg) =>
+  const postgresRows: RawResult = postgresView.raw((pg: PostgresRawDriver) =>
     pg.query("select * from tickets where tenant_id = $1", ["tenant-a"], { tenantScope: "tenant-a" }),
   );
-  const mongoRows: RawResult = mongoView.raw((mongo) =>
+  const mongoRows: RawResult = mongoView.raw((mongo: MongoRawDriver) =>
     mongo.collection("tickets").find({ tenantId: "tenant-a" }, { tenantScope: "tenant-a" }),
   );
 

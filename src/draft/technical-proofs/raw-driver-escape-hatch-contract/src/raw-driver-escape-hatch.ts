@@ -1,26 +1,121 @@
-const RAW_DRIVER_NAMES = new Set(["postgres", "mongo", "native"]);
-const SINK_SOURCES = new Set(["projected", "authoritative-external"]);
+export type RawDriverName = "postgres" | "mongo" | "native";
+export type ProjectionSinkSource = "projected" | "authoritative-external";
 
-export function defineProjectionSink(input) {
+export interface ProjectionSinkDefinition<TDriver extends RawDriverName = RawDriverName> {
+  name: string;
+  driver: TDriver;
+  rawAccess: boolean;
+  source: ProjectionSinkSource;
+  pooledMultiTenant?: boolean;
+}
+
+export interface RawDriverOptions {
+  tenantScope?: string;
+}
+
+export interface RawDriverOperation {
+  driver: RawDriverName;
+  access: "read" | "write";
+  tenantScope?: string;
+  [key: string]: unknown;
+}
+
+export interface PostgresRawDriver {
+  query(sql: string, params?: unknown[], options?: RawDriverOptions): RawDriverOperation;
+  execute(sql: string, params?: unknown[], options?: RawDriverOptions): RawDriverOperation;
+}
+
+export interface MongoRawDriver {
+  collection(name: string): {
+    find(filter?: Record<string, unknown>, options?: RawDriverOptions): RawDriverOperation;
+    updateOne(filter?: Record<string, unknown>, update?: Record<string, unknown>, options?: RawDriverOptions): RawDriverOperation;
+  };
+}
+
+export interface NativeRawDriver {
+  read(): RawDriverOperation;
+}
+
+export interface RawDriverMap {
+  postgres: PostgresRawDriver;
+  mongo: MongoRawDriver;
+  native: NativeRawDriver;
+}
+
+export interface RawManifestEdge {
+  code: "RAW_DRIVER_ESCAPE_HATCH";
+  driver: RawDriverName;
+  projection: string;
+  readOnly: boolean;
+  satisfiedBy: RawDriverName[];
+}
+
+export interface PlanWarning {
+  code: "RAW_DRIVER_PORTABILITY_DEBT";
+  driver: RawDriverName;
+  projection: string;
+  severity: "portability-debt";
+}
+
+export type IsolationWarning =
+  | {
+      code: "RAW_TENANT_SCOPE_UNPROVEN";
+      projection: string;
+      severity: "isolation-debt";
+    }
+  | {
+      code: "RAW_TENANT_SCOPE_MISMATCH";
+      expectedTenant: string;
+      projection: string;
+      severity: "isolation-debt";
+      tenantScope: string;
+    };
+
+export interface RawResult {
+  operation: RawDriverOperation;
+  manifest: {
+    rawEdges: RawManifestEdge[];
+  };
+  planWarnings: PlanWarning[];
+  isolationWarnings: IsolationWarning[];
+}
+
+export interface RawView<TDriver extends RawDriverName> {
+  raw(callback: (driver: RawDriverMap[TDriver]) => RawDriverOperation): RawResult;
+}
+
+export type CanDeployResult =
+  | { ok: true; warnings: PlanWarning[] }
+  | { ok: false; reason: string; warnings: PlanWarning[] };
+
+const RAW_DRIVER_NAMES: Set<RawDriverName> = new Set(["postgres", "mongo", "native"]);
+const SINK_SOURCES: Set<ProjectionSinkSource> = new Set(["projected", "authoritative-external"]);
+
+export function defineProjectionSink<TDriver extends RawDriverName = RawDriverName>(
+  input: ProjectionSinkDefinition<TDriver>,
+): ProjectionSinkDefinition<TDriver> {
   if (!input || typeof input !== "object") {
     throw new TypeError("projection sink definition is required");
   }
 
   return Object.freeze({
     name: assertString(input.name, "sink.name"),
-    driver: assertOneOf(input.driver, RAW_DRIVER_NAMES, "sink.driver"),
+    driver: assertOneOf(input.driver, RAW_DRIVER_NAMES, "sink.driver") as TDriver,
     rawAccess: Boolean(input.rawAccess),
     source: assertOneOf(input.source, SINK_SOURCES, "sink.source"),
     pooledMultiTenant: Boolean(input.pooledMultiTenant),
   });
 }
 
-export function createRawView(sink, context = {}) {
+export function createRawView<TDriver extends RawDriverName>(
+  sink: ProjectionSinkDefinition<TDriver>,
+  context: { tenantId?: string } = {},
+): RawView<TDriver> {
   const normalizedSink = defineProjectionSink(sink);
   const normalizedContext = normalizeContext(context);
 
   return Object.freeze({
-    raw(callback) {
+    raw(callback: (driver: RawDriverMap[TDriver]) => RawDriverOperation): RawResult {
       if (!normalizedSink.rawAccess) {
         throw new Error(`raw access not advertised by ${normalizedSink.name}`);
       }
@@ -48,7 +143,7 @@ export function createRawView(sink, context = {}) {
   });
 }
 
-export function canDeployWithRawEdges(rawEdges, targetDrivers) {
+export function canDeployWithRawEdges(rawEdges: RawManifestEdge[], targetDrivers: RawDriverName[]): CanDeployResult {
   if (!Array.isArray(rawEdges)) {
     throw new TypeError("rawEdges must be an array");
   }
@@ -73,10 +168,11 @@ export function canDeployWithRawEdges(rawEdges, targetDrivers) {
   return Object.freeze({ ok: true, warnings });
 }
 
-function createDriver(driver) {
+function createDriver<TDriver extends RawDriverName>(driver: TDriver): RawDriverMap[TDriver];
+function createDriver(driver: RawDriverName): RawDriverMap[RawDriverName] {
   if (driver === "postgres") {
     return Object.freeze({
-      query(sql, params = [], options = {}) {
+      query(sql: string, params: unknown[] = [], options: RawDriverOptions = {}): RawDriverOperation {
         return rawOperation({
           driver,
           access: classifySqlAccess(sql, "read"),
@@ -85,7 +181,7 @@ function createDriver(driver) {
           tenantScope: options.tenantScope,
         });
       },
-      execute(sql, params = [], options = {}) {
+      execute(sql: string, params: unknown[] = [], options: RawDriverOptions = {}): RawDriverOperation {
         return rawOperation({
           driver,
           access: classifySqlAccess(sql, "write"),
@@ -99,10 +195,10 @@ function createDriver(driver) {
 
   if (driver === "mongo") {
     return Object.freeze({
-      collection(name) {
+      collection(name: string) {
         const collection = assertString(name, "collection");
         return Object.freeze({
-          find(filter = {}, options = {}) {
+          find(filter: Record<string, unknown> = {}, options: RawDriverOptions = {}): RawDriverOperation {
             return rawOperation({
               driver,
               access: "read",
@@ -111,7 +207,11 @@ function createDriver(driver) {
               tenantScope: options.tenantScope,
             });
           },
-          updateOne(filter = {}, update = {}, options = {}) {
+          updateOne(
+            filter: Record<string, unknown> = {},
+            update: Record<string, unknown> = {},
+            options: RawDriverOptions = {},
+          ): RawDriverOperation {
             return rawOperation({
               driver,
               access: "write",
@@ -127,7 +227,7 @@ function createDriver(driver) {
   }
 
   return Object.freeze({
-    read() {
+    read(): RawDriverOperation {
       return rawOperation({
         driver,
         access: "read",
@@ -137,65 +237,74 @@ function createDriver(driver) {
   });
 }
 
-function rawOperation(input) {
+function rawOperation(input: Record<string, unknown>): RawDriverOperation {
   return deepFreeze({
-    ...clone(input),
+    ...(clone(input) as Record<string, unknown>),
     driver: assertOneOf(input.driver, RAW_DRIVER_NAMES, "operation.driver"),
-    access: assertOneOf(input.access, new Set(["read", "write"]), "operation.access"),
+    access: assertOneOf(input.access, new Set<"read" | "write">(["read", "write"]), "operation.access"),
     ...(input.tenantScope === undefined ? {} : { tenantScope: assertString(input.tenantScope, "tenantScope") }),
-  });
+  }) as RawDriverOperation;
 }
 
-function normalizeOperation(operation, expectedDriver) {
+function normalizeOperation(operation: unknown, expectedDriver: RawDriverName): RawDriverOperation {
   if (!operation || typeof operation !== "object") {
     throw new TypeError("raw callback must return a raw driver operation");
   }
-  if (operation.driver !== expectedDriver) {
-    throw new TypeError(`raw operation driver ${operation.driver ?? "unknown"} does not match ${expectedDriver}`);
+  const candidate = operation as Record<string, unknown>;
+  if (candidate.driver !== expectedDriver) {
+    throw new TypeError(`raw operation driver ${candidate.driver ?? "unknown"} does not match ${expectedDriver}`);
   }
-  return rawOperation(operation);
+  return rawOperation(candidate);
 }
 
-function rawManifestEdge(sink, operation) {
+function rawManifestEdge(sink: ProjectionSinkDefinition, operation: RawDriverOperation): RawManifestEdge {
   return Object.freeze({
     code: "RAW_DRIVER_ESCAPE_HATCH",
     driver: sink.driver,
     projection: sink.name,
     readOnly: operation.access === "read",
     satisfiedBy: Object.freeze([sink.driver]),
-  });
+  }) as RawManifestEdge;
 }
 
-function normalizeRawEdge(edge) {
+function normalizeRawEdge(edge: unknown): RawManifestEdge {
   if (!edge || typeof edge !== "object") {
     throw new TypeError("raw edge must be an object");
   }
 
+  const candidate = edge as Record<string, unknown>;
   return Object.freeze({
     code: "RAW_DRIVER_ESCAPE_HATCH",
-    driver: assertOneOf(edge.driver, RAW_DRIVER_NAMES, "edge.driver"),
-    projection: assertString(edge.projection, "edge.projection"),
-    readOnly: Boolean(edge.readOnly),
-    satisfiedBy: Object.freeze((edge.satisfiedBy ?? []).map((driver) => assertOneOf(driver, RAW_DRIVER_NAMES, "edge.satisfiedBy"))),
-  });
-}
-
-function planWarningsForEdges(edges) {
-  return Object.freeze(
-    edges.map((edge) =>
-      Object.freeze({
-        code: "RAW_DRIVER_PORTABILITY_DEBT",
-        driver: edge.driver,
-        projection: edge.projection,
-        severity: "portability-debt",
-      }),
+    driver: assertOneOf(candidate.driver, RAW_DRIVER_NAMES, "edge.driver"),
+    projection: assertString(candidate.projection, "edge.projection"),
+    readOnly: Boolean(candidate.readOnly),
+    satisfiedBy: Object.freeze(
+      ((candidate.satisfiedBy as unknown[] | undefined) ?? []).map((driver) => assertOneOf(driver, RAW_DRIVER_NAMES, "edge.satisfiedBy")),
     ),
-  );
+  }) as RawManifestEdge;
 }
 
-function isolationWarningsFor(sink, context, operation) {
+function planWarningsForEdges(edges: RawManifestEdge[]): PlanWarning[] {
+  return Object.freeze(
+    edges.map(
+      (edge) =>
+        Object.freeze({
+          code: "RAW_DRIVER_PORTABILITY_DEBT",
+          driver: edge.driver,
+          projection: edge.projection,
+          severity: "portability-debt",
+        }) as PlanWarning,
+    ),
+  ) as PlanWarning[];
+}
+
+function isolationWarningsFor(
+  sink: ProjectionSinkDefinition,
+  context: { tenantId?: string },
+  operation: RawDriverOperation,
+): IsolationWarning[] {
   if (!sink.pooledMultiTenant || operation.access !== "read") {
-    return Object.freeze([]);
+    return Object.freeze([]) as unknown as IsolationWarning[];
   }
   if (!operation.tenantScope) {
     return Object.freeze([
@@ -204,7 +313,7 @@ function isolationWarningsFor(sink, context, operation) {
         projection: sink.name,
         severity: "isolation-debt",
       }),
-    ]);
+    ]) as IsolationWarning[];
   }
   if (context.tenantId && operation.tenantScope !== context.tenantId) {
     return Object.freeze([
@@ -215,13 +324,13 @@ function isolationWarningsFor(sink, context, operation) {
         severity: "isolation-debt",
         tenantScope: operation.tenantScope,
       }),
-    ]);
+    ]) as IsolationWarning[];
   }
 
-  return Object.freeze([]);
+  return Object.freeze([]) as unknown as IsolationWarning[];
 }
 
-function classifySqlAccess(sql, fallback) {
+function classifySqlAccess(sql: string, fallback: "read" | "write"): "read" | "write" {
   const verb = assertString(sql, "sql").trim().split(/\s+/, 1)[0]?.toLowerCase();
   if (["insert", "update", "delete", "merge", "create", "alter", "drop", "truncate"].includes(verb)) {
     return "write";
@@ -232,46 +341,47 @@ function classifySqlAccess(sql, fallback) {
   return fallback;
 }
 
-function normalizeContext(context) {
+function normalizeContext(context: unknown): { tenantId?: string } {
   if (!context || typeof context !== "object") {
     return Object.freeze({});
   }
+  const candidate = context as Record<string, unknown>;
   return Object.freeze({
-    ...(context.tenantId === undefined ? {} : { tenantId: assertString(context.tenantId, "context.tenantId") }),
+    ...(candidate.tenantId === undefined ? {} : { tenantId: assertString(candidate.tenantId, "context.tenantId") }),
   });
 }
 
-function assertString(value, label) {
+function assertString(value: unknown, label: string): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
 }
 
-function assertOneOf(value, allowed, label) {
-  if (!allowed.has(value)) {
+function assertOneOf<T>(value: unknown, allowed: Set<T>, label: string): T {
+  if (!allowed.has(value as T)) {
     throw new TypeError(`${label} must be one of: ${[...allowed].join(", ")}`);
   }
-  return value;
+  return value as T;
 }
 
-function deepFreeze(value) {
+function deepFreeze<T>(value: T): T {
   if (Array.isArray(value)) {
     for (const entry of value) {
       deepFreeze(entry);
     }
-    return Object.freeze(value);
+    return Object.freeze(value) as T;
   }
   if (value && typeof value === "object") {
     for (const entry of Object.values(value)) {
       deepFreeze(entry);
     }
-    return Object.freeze(value);
+    return Object.freeze(value) as T;
   }
   return value;
 }
 
-function clone(value) {
+function clone(value: unknown): unknown {
   if (value === undefined) {
     return undefined;
   }

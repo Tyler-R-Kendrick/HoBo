@@ -9,6 +9,6 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts && npx -y -p typescript@5.5.4 tsc -p tsconfig.typecheck.json"
+    "test": "vitest run --root . && tsc -p tsconfig.typecheck.json"
   }
 }

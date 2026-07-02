@@ -139,7 +139,7 @@ Cloudflare and self-hosted wasmCloud are first-class **wasm** targets; **Hetzner
 
 #### The three adapter families (one shape)
 Everything that touches the outside world is a port with swappable adapters:
-- **CloudProvider** — implements capability ports (now **WIT interfaces**: `wasi:keyvalue`, `wasi:blobstore`, `wasi:sql`, …, plus `hobo:*`) for a backend (self-hosted/Hetzner/AWS/Azure/GCP/Cloudflare/Vercel/Fly/K8s).
+- **CloudProvider** — implements capability ports (now **WIT interfaces**: `wasi:keyvalue`, `wasi:blobstore`, `hobo:data`, …, plus `hobo:*`) for a backend (self-hosted/Hetzner/AWS/Azure/GCP/Cloudflare/Vercel/Fly/K8s).
 - **IacProvider** — the *mechanism* a CloudProvider uses to realize resources (Pulumi/Terraform/OpenTofu/Crossplane).
 - **BuildProvider** — produces images/rootfs/**wasm components** (Dagger/Packer/Firecracker/Vagrant/jco+componentize) — the build *engine*.
 

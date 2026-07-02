@@ -309,7 +309,7 @@ Direct cloud SDK access for anything outside the abstracted services; provider e
 | `queue` (pull) | `hobo:queue` (`wasi:messaging` profile) | ✅ |
 | `topic` (push pub/sub) | `wasi:messaging` | ✅ |
 | `secret` (versioned) | `wasi:config`/`hobo:secrets` | ✅ |
-| `sql` | `wasi:sql` / `hobo:sql` | ✅ |
+| `sql` | `hobo:data/relational` (realizable over draft `wasi:sql`) ([ADR-0112](../design/adr/03-data-plane.md#adr-0112)) | ✅ |
 | `schedule` (cron/interval) | `hobo:schedule` (control-plane `cron`) | ✅ |
 | `websocket` | `hobo:websocket` | ✅ |
 | `job` (batch, cpu/mem/gpu) | `hobo:job` (+ IaaS `vm`/`microVm`) | ✅ |

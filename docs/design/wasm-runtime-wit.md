@@ -26,7 +26,7 @@ Production package: [`packages/wit`](../../packages/wit/README.md) (`@hobo/wit`)
 ### The model: components, interfaces, providers, links
 - **Service = component (default).** A HoBo service compiles to a WASI **component**. Fallback: workloads that can't compile to wasm yet (GPU/native deps) run as plain **OCI containers** through the identical OCI + wiring pipeline ([Plan 21](./authoring-resources-wiring.md#plan-21)).
 - **Port = WIT interface.** A capability port is a WIT interface. Reuse the standard cloud interfaces; author `hobo:*` interfaces for what WASI doesn't cover yet:
-  - **Reused:** `wasi:http`, `wasi:keyvalue`, `wasi:blobstore`, `wasi:messaging`, `wasi:sql`, `wasi:config`, `wasi:logging`, `wasi:filesystem/sockets/clocks/random`.
+  - **Reused:** `wasi:http`, `wasi:keyvalue`, `wasi:blobstore`, `wasi:messaging`, `wasi:sql` (driver-level under `hobo:data/relational`, [ADR-0112](./adr/03-data-plane.md#adr-0112)), `wasi:config`, `wasi:logging`, `wasi:filesystem/sockets/clocks/random`.
   - **HoBo interfaces:** `hobo:workflow` (durable workflow/step), `hobo:actor` (grains), `hobo:saga`, `hobo:agent`, and control-plane `hobo:scheduler`/`provisioning`/`observability`/`config`.
   - **Integration ports** ([ADR-0073](./adr/07-portability-extensibility.md#adr-0073)): `hobo:auth` (swappable IdPs — WorkOS/Auth0/Supabase Auth/Entra…), `hobo:artifact-repo` (npm/NuGet/PyPI/OCI… package + artifact repos), and the named operator-facing seams `hobo:issue-tracker` (JIRA/GitHub Issues/Linear) + `hobo:knowledge` (Confluence/Obsidian/Wikis) — all swappable adapters, only registered ones considered, auto-generatable.
 - **Provider = capability provider.** A Provider implements a WIT interface's *exports* for a backend (e.g. an S3 adapter exports `wasi:blobstore`). It has the same deploy + runtime split HoBo already uses ([Plan 4](./control-plane.md#plan-04)): `realize()` provisions infra; the runtime impl serves the interface.
@@ -145,7 +145,7 @@ The runtime's ports form a **Nitric-parity building-block set, each a first-clas
 | Key/value | `wasi:keyvalue/store` |
 | Storage / blob | `wasi:blobstore/blobstore` (+ `hobo:blob-events`) |
 | Secrets | `wasi:config/store` |
-| SQL | `wasi:sql` (+ `hobo:sql`, [Plan 32](./data-plane.md#plan-32)) |
+| Data (relational/document/graph/vector/kv) | `hobo:data` — paradigm sub-interfaces `relational · document · graph · vector · key-value` ([ADR-0112](./adr/03-data-plane.md#adr-0112)); relational realizable over draft `wasi:sql` ([Plan 32](./data-plane.md#plan-32)) |
 | Websockets | `wasi:websocket` **(preview)** + `hobo:websocket` (extension) ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) |
 | Durable workflow / actors | `hobo:runtime/workflow`, `hobo:runtime/actor`, `hobo:runtime/saga` |
 | Reactive materializations | `hobo:projection` ([Plan 32](./data-plane.md#plan-32)) |
@@ -167,7 +167,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `wasi:keyvalue/store` | `kv` | `get`/`set`/`delete`/`exists` (+ batch) |
 | `wasi:blobstore/blobstore` | `bucket` | object RW; presigned-URL + events extended by `hobo:blob-events` |
 | `wasi:messaging` | `topic` (push) | publish/subscribe |
-| `wasi:sql` | `sql` | connection + query (draft; HoBo `hobo:sql` fills gaps) |
+| `wasi:sql` | `data` (relational; driver-level) | draft; a `hobo:data/relational` provider/sink driver may realize its mapping over it — not an app-facing catalog port ([ADR-0112](./adr/03-data-plane.md#adr-0112)) |
 | `wasi:config/store` | `secret`/config | config + secret access |
 | `wasi:logging/logging` | `ctx.log` | structured logging |
 | `wasi:filesystem`, `wasi:sockets`, `wasi:clocks`, `wasi:random`, `wasi:cli` | host primitives | granted per capability policy |
@@ -187,6 +187,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `hobo:projection` | persistence-agnostic data plane: fold event streams into a sink + query it ([Plan 32](./data-plane.md#plan-32)) | `declare(spec)`, `fold(state,event)`, `materialize`, `rebuild`, `read(query)`, `read-raw(driver-call)` (escape hatch) |
 | `hobo:search` | full-text + vector + hybrid retrieval ([Plan 32](./data-plane.md#plan-32)); a projection-sink paradigm | `text-query(q,filter)` (reactive), `vector-query(vec,filter,k)`, `hybrid(q,vec,...)`, `upsert`/`delete` |
 | `hobo:embed` | embedding generation behind `search` ([Plan 32](./data-plane.md#plan-32)) | `embed(text)` → vector (local model or hosted API; secretless) |
+| `hobo:data` | canonical port of the `data()` resource ([Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0052](./adr/03-data-plane.md#adr-0052)/[ADR-0112](./adr/03-data-plane.md#adr-0112)) — one abstract data dep; paradigm sub-interfaces `relational · document · graph · vector · key-value`, each a provider export | `read(key/query)`, `write(record)`, `query(predicate)` (predicate DSL shared with `hobo:projection`/`hobo:search`), `admin` (migration-plan ops, [Plan 32](./data-plane.md#plan-32)); relational sub-port realizable over draft `wasi:sql` |
 | `hobo:dns` | DNS records + custom-domain routing ([Plan 12](./security-networking.md#plan-12)/[ADR-0035](./adr/07-portability-extensibility.md#adr-0035)) | `upsert-record`, `set-routing(policy)`, `verify`, health-checked failover across Camps |
 | `hobo:auth` | end-user auth: federate + verify ([Plan 6](./ai-native-agent-auth.md#plan-06)/[ADR-0038](./adr/02-identity-security.md#adr-0038)) | `verify(jwt)` → `ctx.user` claims (OIDC/JWKS/customJwt), `start-session`/`revoke-session`; thin built-in (passkey/email) for dev |
 | `hobo:crypto` | app-facing cryptography with **keys the app never holds** ([Plan 21](./authoring-resources-wiring.md#plan-21)) | `encrypt`/`decrypt` (envelope), `sign`/`verify` — key handles brokered via Identity; KMS/Key Vault/Cloud KMS/in-boundary HSM behind the port |

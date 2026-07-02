@@ -43,9 +43,25 @@ jobs:
         env:
           TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
         run: |
+          mapfile -t PKG_FILTERS < <(
+            git diff --name-only "${TURBO_SCM_BASE}"...HEAD \
+              | rg '^packages/([^/]+)/' -or '$1' \
+              | sort -u \
+              | sed 's|^|--filter=./packages/|'
+          )
+          mapfile -t EX_FILTERS < <(
+            git diff --name-only "${TURBO_SCM_BASE}"...HEAD \
+              | rg '^examples/([^/]+)/' -or '$1' \
+              | sort -u \
+              | sed 's|^|--filter=./examples/|'
+          )
+          FILTERS=("${PKG_FILTERS[@]}" "${EX_FILTERS[@]}")
+          if [ "${#FILTERS[@]}" -eq 0 ]; then
+            echo "No production package or example paths changed; skipping turbo impact lanes"
+            exit 0
+          fi
           pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer \
-            --filter='{packages/*}[origin/main...HEAD]' \
-            --filter='{examples/*}[origin/main...HEAD]' \
+            "${FILTERS[@]}" \
             --continue=never
       - name: Production packages gate
         run: pnpm run build:packages

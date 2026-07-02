@@ -298,7 +298,9 @@ function validateHoboCiWorkflow(
 	}
 	if (
 		!/turbo run build typecheck lint/u.test(content) ||
-		(!/--affected/u.test(content) && !content.includes("{packages/*}[origin"))
+		(!/--affected/u.test(content) &&
+			!content.includes("{packages/*}[origin") &&
+			!content.includes("--filter=./packages/"))
 	) {
 		violations.push({
 			code: "workflow.pr-gate.affected",

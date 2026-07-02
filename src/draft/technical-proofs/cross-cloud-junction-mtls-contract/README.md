@@ -40,7 +40,8 @@ This POC does not ship `packages/junctions/` production code, live AWS/Azure net
 
 - `architecture/` — protobuf + CUE constraints
 - `architecture/pacts/` — PACT boundary contract
-- `ADR.md` — parse-don't-validate + event vocabulary
+- `architecture.md` — parse-don't-validate + event architecture evidence
+- `ADR.md` — design rationale
 
 ## Design refs
 

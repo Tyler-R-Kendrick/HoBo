@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 
+import { LAZY_TOKEN_PATTERN, type WiringManifest } from "@hobo/bindles/wiring";
 import type { BindingResolverPort } from "@hobo/core";
 import { parseResourceId } from "@hobo/core";
-import { LAZY_TOKEN_PATTERN, type WiringManifest } from "@hobo/bindles/wiring";
 
 import type { Camp } from "./types.js";
 

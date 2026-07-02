@@ -1,4 +1,4 @@
-import type { BindleScope } from "@hobo/bindles/topology";
+import type { BindleResourceDescriptor, BindleScope } from "@hobo/bindles/topology";
 
 import { providerSelection } from "./provider-selection.js";
 import {
@@ -113,8 +113,8 @@ function buildResolutionPrecedence(
 	bindleObject: BindleScope,
 	mappings: Camp["mappings"],
 ): ResolutionPrecedenceRecord[] {
-	return bindleObject.resources.flatMap((resource) =>
-		resource.portRef.map((portRef) => {
+	return bindleObject.resources.flatMap((resource: BindleResourceDescriptor) =>
+		resource.portRef.map((portRef: string) => {
 			const binding = firstSelection(mappings.bindings, [
 				resource.stableId,
 				resource.name,

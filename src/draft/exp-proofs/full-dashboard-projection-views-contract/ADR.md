@@ -1,48 +1,51 @@
-# ADR: Full Dashboard Projection Views Contract
+# Full Dashboard Projection Views Contract - Architecture Evidence
 
-## Status
+Architecture-guard evidence for `scripts/check-architecture-guardrails.mjs`.
 
-Accepted for HOBO-662 proof work.
+## Schema And Constraints
 
-## Context
+- Protobuf data shapes live in [`architecture/`](./architecture).
+- CUE constraints bound every protobuf type in that schema.
+- PACT contract under [`architecture/pacts/`](./architecture/pacts).
 
-S6-07 requires `apps/dashboard` to render every Plan 07 view from projections only for
-`examples/multi-cloud-shop`, pass WCAG 2.1 AA, and pass pseudo-localization (200% string length,
-RTL) per NFR-016. Blockers S6-05 and S6-06 are not merged, so this proof composes projection
-fixtures from `cli-mcp-developer-experience` and `reliability-observability-cost-finops` epic
-references without importing unmerged production runtime.
+## Parse, Don't Validate
 
-## Decision
-
-The proof is a projection-only dashboard renderer over a deterministic `multi-cloud-shop` event
-fixture. Each view maps to a named projection source (`DeploymentView`, `TopologyView`, `RunView`,
-`Registry`, `CredentialAudit`, `CostView`, `DriftView`, `PlanPreviewView`, `PolicyGateView`,
-`CampPointerView`, `StreamView`). HTML rendering and audits are fixture-backed acceptance gates,
-not production Next.js UI.
-
-## Consequences
-
-- Downstream `apps/dashboard` work inherits a machine-checkable view inventory and audit gates.
-- WCAG and pseudo-loc checks run in CI without browser farms.
-- FinOps and drift semantics remain fixture-level until S6-05/S6-06 merge.
-
-## Parse Boundary
-
-Unknown dashboard render input crosses `parseDashboardRenderResult` once and becomes
-`ParsedDashboardRenderResult`. View payloads are derived from projection events; callers do not
-re-validate broad DTOs after parse.
+Untrusted dashboard render input crosses `parseDashboardRenderResult` once and
+becomes `ParsedDashboardRenderResult`. Nested constrained values become derived
+types such as `RenderedDashboardView`, `WcagAuditResult`, and
+`PseudoLocalizationResult`. Downstream HTML renderers and audit helpers accept
+those parsed derived types instead of re-checking broad DTOs. CUE constraints
+bind the same shapes so malformed view inventories are rejected at parse time.
 
 ## Event Architecture
 
-Command: `RenderFullDashboardFromProjections`. Source events include `deployment.*`, `topology.*`,
-`run.*`, `registry.*`, `credential.*`, `policy.*`, `cost.*`, `drift.*`, and `stream.*` families
-from the multi-cloud-shop fixture. Actors are projection actors only; this proof does not implement
-event stores, materialized views, or Gateway subscriptions.
+- **Command** — `RenderFullDashboardFromProjections`.
+- **Event** — `deployment.*`, `topology.*`, `run.*`, `registry.*`, `credential.*`,
+  `policy.*`, `cost.*`, `drift.*`, and `stream.*` families from the
+  multi-cloud-shop fixture.
+- **Actor** — `DeploymentProjectionActor`, `TopologyProjectionActor`,
+  `RunProjectionActor`, `RegistryProjectionActor`, `CredentialAuditActor`,
+  `CostProjectionActor`, `DriftProjectionActor`, and `StreamProjectionActor`.
+- **Event store** — replayable fixture history only; no production store here.
+- **Materialized view / projection** — each dashboard view reads a named
+  `*View` projection (`DeploymentView`, `TopologyView`, `RunView`, etc.).
+- **Snapshot** — parsed `DashboardRenderResult` is the snapshot consumers render.
+- **Read store** — fixture-only reference reads for HTML, WCAG, and
+  pseudo-localization audits; no Gateway subscription or GraphQL facade.
+
+No runtime engine, projector, Next.js UI, or production read store is
+implemented here. This proof names the command, event, actor, projection,
+snapshot, read-store, PACT, protobuf, and CUE boundaries for S6-07.
+
+## Status
+
+Accepted for HOBO-662 proof work. Blockers S6-05/S6-06 remain unmerged; this
+package composes projection fixtures without importing their production runtime.
 
 ## Alternatives Rejected
 
-- Build production `apps/dashboard` in this issue: rejected — blockers not merged and scope is proof-first.
-- Skip WCAG/pseudo-loc gates: rejected — NFR-016 is explicit acceptance for stage 6 dashboard work.
+- Build production `apps/dashboard` in this issue: rejected until blockers merge.
+- Skip WCAG/pseudo-loc gates: rejected — NFR-016 is explicit acceptance.
 
 ## Performance Applicability
 

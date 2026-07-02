@@ -1173,6 +1173,8 @@ importers:
 
   src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract: {}
 
+  src/draft/technical-proofs/multi-region-dr-replay-contract: {}
+
   src/draft/technical-proofs/native-log-projection-contract: {}
 
   src/draft/technical-proofs/no-egress-generation-sandbox-contract: {}

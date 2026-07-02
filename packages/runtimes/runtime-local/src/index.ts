@@ -9,6 +9,10 @@ export {
 	HELLO_BINDLE_LOCAL_ENDPOINTS,
 } from "./binding-resolver.js";
 export {
+	createInProcessWasmtimeEngine,
+	createWasmtimeCliEngine,
+} from "./engine/wasmtime.js";
+export {
 	isInterfaceId,
 	parseComponentDescriptor,
 	parseLinkRequest,

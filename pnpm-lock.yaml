@@ -44,12 +44,21 @@ importers:
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../../packages/bindles
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../../packages/camps
       '@hobo/componentize':
         specifier: workspace:*
         version: link:../../packages/componentize
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../../packages/runtimes/runtime-local
       '@hobo/wit':
         specifier: workspace:*
         version: link:../../packages/wit
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../../packages/yards
 
   packages/bindles:
     dependencies:
@@ -140,6 +149,10 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
 
   packages/stage-gate:
     devDependencies:
@@ -180,6 +193,9 @@ importers:
         specifier: workspace:*
         version: link:../camps
     devDependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0

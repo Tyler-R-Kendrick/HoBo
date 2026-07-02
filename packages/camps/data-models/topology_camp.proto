@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package hobo.camps.v1;
+
+message ProviderSelection {
+  string kind = 1;
+  string provider_id = 2;
+  string selector = 3;
+}
+
+message CampTopology {
+  string id = 1;
+  string env = 2;
+  string env_type = 3;
+  string provider_id = 4;
+  repeated string resolution_order = 5;
+}

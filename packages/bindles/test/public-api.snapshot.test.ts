@@ -42,6 +42,12 @@ function createBindlesPublicApiSnapshot(
 		"parseManifestReference",
 		"parseOutputPlaceholder",
 		"serializeManifest",
+		"addContainer",
+		"bindingTypesFor",
+		"BindReferenceError",
+		"compileBindleManifest",
+		"wiringData",
+		"wiringService",
 		...factoryNames,
 	]);
 
@@ -137,6 +143,38 @@ function createBindlesPublicApiSnapshot(
 				name: "aspireFallbackEnv",
 				kind: "manifest-helper",
 				signature: "aspireFallbackEnv(manifest: ManifestV1): Record<string, string[]>",
+			},
+			{
+				name: "addContainer",
+				kind: "wiring-factory",
+				signature:
+					"addContainer(name: string, source: string, options?: ContainerOptions): ComponentHandle",
+			},
+			{
+				name: "bindingTypesFor",
+				kind: "wiring-helper",
+				signature: "bindingTypesFor(handle: ComponentHandle): Readonly<Record<string, string>>",
+			},
+			{
+				name: "BindReferenceError",
+				kind: "wiring-error",
+				signature: "class BindReferenceError extends Error",
+			},
+			{
+				name: "compileBindleManifest",
+				kind: "wiring-compiler",
+				signature: "compileBindleManifest(handles: readonly Handle[]): WiringManifest",
+			},
+			{
+				name: "wiringData",
+				kind: "wiring-factory",
+				signature: "wiringData(name: string, options?: { paradigm?: string }): ResourceHandle",
+			},
+			{
+				name: "wiringService",
+				kind: "wiring-factory",
+				signature:
+					"wiringService(name: string, options?: ServiceOptions): ComponentHandle",
 			},
 			...extraExports,
 		],

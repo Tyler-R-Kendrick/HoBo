@@ -16,13 +16,14 @@
 		"@hobo/camps": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/bindles": "workspace:*",
 		"@types/node": "^22.15.29"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm --filter @hobo/camps build",
+		"pretest": "pnpm --filter @hobo/bindles build && pnpm --filter @hobo/camps build",
 		"test": "vitest run"
 	}
 }

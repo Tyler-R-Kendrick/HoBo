@@ -21,6 +21,13 @@ It does not implement registry listing lifecycle, production Sigstore/Cosign int
 rotation, transparency-log lookup, revocation, anti-rollback, offline bundle import, or malicious
 publisher detection beyond verified integrity metadata.
 
+## S0-10 promotion note
+
+S0-10 ([HOBO-587](https://linear.app/quickdeploy-ai/issue/HOBO-587)) extends this contract in
+[`../componentize-artifact-trust-contract/README.md`](../componentize-artifact-trust-contract/README.md)
+with typed `ArtifactVerificationRefusedError`, event projections, and CI `artifact-trust` gate.
+Production promotion target: `packages/componentize/src/publish/`.
+
 ## Verification
 
 ```powershell

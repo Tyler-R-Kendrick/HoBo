@@ -12,3 +12,5 @@ Acceptance mapping:
 - Adversarial guards fail closed on `Date.now()` source nondeterminism and jco version skew, and publish the pinned Ubuntu/Windows CI matrix tuple.
 
 Scope note: this is a walking-skeleton contract proof. Real `componentize-js`/jco execution, `wasm-tools` CLI validation, Wasmtime execution, non-TS language paths, Dagger/container builds, and signing remain owned by downstream build/provider/signing slices.
+
+**Promotion (S0-11 / HOBO-588):** the production seed fixture now lives at [`examples/hello-bindle`](../../../../examples/hello-bindle/README.md). `@hobo/componentize` on `packages/componentize/` supplies the consumed build API.

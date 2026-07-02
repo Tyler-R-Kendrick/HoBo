@@ -39,7 +39,18 @@ importers:
         specifier: ^4.1.13
         version: 4.4.3
 
-  examples/hello-bindle: {}
+  examples/hello-bindle:
+    dependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../../packages/bindles
+      '@hobo/componentize':
+        specifier: workspace:*
+        version: link:../../packages/componentize
+      '@hobo/wit':
+        specifier: workspace:*
+        version: link:../../packages/wit
+
 
   packages/bindles:
     dependencies:
@@ -76,6 +87,10 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.20.0
 
   packages/conformance:
     dependencies:
@@ -482,6 +497,8 @@ importers:
 
   src/draft/projects/s0-03-hobo-core: {}
 
+  src/draft/projects/s6-06-finops-plane: {}
+
   src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}
 
   src/draft/technical-proofs/actor-host-runtime-port-contract: {}
@@ -576,6 +593,8 @@ importers:
 
   src/draft/technical-proofs/component-host-oci-floor-contract: {}
 
+  src/draft/technical-proofs/componentize-artifact-trust-contract: {}
+
   src/draft/technical-proofs/componentize-js-determinism-spike:
     dependencies:
       '@bytecodealliance/componentize-js':
@@ -593,6 +612,8 @@ importers:
         version: 6.0.3
 
   src/draft/technical-proofs/conformance-port-suite-contract: {}
+
+  src/draft/technical-proofs/conformance-port-suite-harness: {}
 
   src/draft/technical-proofs/connectivity-cost-feedback-contract: {}
 

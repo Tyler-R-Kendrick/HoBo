@@ -10,6 +10,8 @@ This POC proves the `@hobo/componentize` walking-skeleton contract for a TypeScr
 
 The real language toolchains stay out of scope here: cargo-component, TinyGo, Dagger/container builds, signing, and provider build-machine execution belong to their own slices. This package is the branch proof for the contract shape those tools must satisfy.
 
+**Promotion (S0-11 / HOBO-588):** the production seed fixture now lives at [`examples/hello-bindle`](../../../../examples/hello-bindle/README.md).
+
 ## Verification
 
 ```powershell

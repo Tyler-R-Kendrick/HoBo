@@ -286,6 +286,8 @@ Everything in the suite ([Plan 0](../vision.md#plan-00)–[Plan 46](../governanc
 
 **Build sequencing and delivery phasing are deferred planning** (archived, `docs/archive/roadmap.md`) — to be scoped later, not part of the current design state. The only architectural anti-goals are positioning, not deferrals: HoBo **composes** IaC engines (Pulumi/Terraform/OpenTofu/Crossplane) via the IaC port rather than replacing them ([Plan 4](../control-plane.md#plan-04)); it is not a standalone secret-management product or a generic app framework ([vision non-goals](../vision.md#plan-00)).
 
+**Amended (2026-07, ADR-0116):** The "no version ladder and no deferred-feature bucket" claim applies to the **platform-capability design surface** only — every capability in the suite remains in scope with no capability-tier deferrals. The **productization/release-program** docs in `docs/design/` run the M0–M4 phase-gate model recorded in [ADR-0116](#adr-0116); that model phases *release-readiness evidence*, not capabilities. The archived [`docs/archive/roadmap.md`](../../archive/roadmap.md) stages 0–6 vocabulary is superseded by M0–M4 for release phasing.
+
 ## ADR-0064
 **Scope: AI-native meta-cloud (remove business/monetization; keep app generation).**
 
@@ -415,6 +417,29 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **(+)** Reuses one dashboard SPA and projection shapes; only the read adapter and scope labels differ between local dev and hosted Yard — same MCP/CLI parity story ([Plan 7](../developer-experience.md#plan-07)).
 - **(−)** Maintaining scope labels per view is ongoing discipline; mislabeling a Camp-only panel as `local` reintroduces the false-promise risk [ADR-0042](#adr-0042) guards against.
 - **(−)** The local OTLP sink is dev-time only ([Plan 5](../reliability-observability-cost.md#plan-05)); production telemetry still exports to the tenant's chosen backend via OTLP ([ADR-0046](02-identity-security.md#adr-0046)).
+
+## ADR-0116
+**Productization release program: the M0–M4 phase-gate model over the single designed scope.**
+
+### Context
+[ADR-0063](#adr-0063) states there is "no version ladder and no deferred-feature bucket in the design" and that delivery phasing is archived, yet `docs/design/` now carries a phased v1 release program: ~90 "Productization M0/M1" index rows ([`index.md`](../index.md)), beta/release-candidate/GA go/no-go gates with M3/M4 evidence gates ([`go-no-go-decision-record.md`](../go-no-go-decision-record.md)), a self-described "M0 traceability gate" ([`traceability.md`](../traceability.md)), and `deferred`/`post-ga` known-limitation states ([`known-limitations-register.md`](../known-limitations-register.md)) — while the M0–M4 taxonomy was defined only in the implementation-plan legend ([`implementation-plan.md`](../../implementation-plan.md)). No decision record covered the productization document category or the phase model.
+
+### Decision
+1. Recognize the **productization/release-program document category** in `docs/design/`: rows labeled "Productization M0/M1 …" define release-readiness scope and acceptance evidence, not new platform capabilities.
+2. Define the canonical **M0–M4 taxonomy inside the design**: `M0` Contracts → `M1` Skeleton → `M2` Core → `M3` Hardening → `M4` GA (the implementation-plan legend cites this ADR; it is not the definition source).
+3. **Phase-gate rule:** M0 acceptance blocks all M1–M4 work (mirrors [`implementation-plan.md`](../../implementation-plan.md) — M1–M4 blocked until the owning M0 acceptance record is Done). Beta/RC/GA go/no-go decisions attach to M3 (release candidate) and M4 (GA handoff) per [`go-no-go-decision-record.md`](../go-no-go-decision-record.md).
+4. **Scope ADR-0063's claim to the platform-capability surface:** capability docs remain one undivided scope with no deferred-feature bucket; M0–M4 sequences *release-readiness evidence*, and known-limitations `deferred`/`post-ga` states are customer-communication states, not capability cuts.
+5. The archived roadmap **stages 0–6** ([`docs/archive/roadmap.md`](../../archive/roadmap.md)) are **superseded** as phasing vocabulary — historical only. Mapping note:
+
+| Archived stages 0–6 | M0–M4 phase model |
+|---|---|
+| Stages 0–2 (foundations, SDK on local runtime, first real deploy) | M0 contracts + M1 skeleton |
+| Stages 3–5 (AI-native core, multi-provider depth, Forge) | M2 core |
+| Stage 6 (HA, FinOps, UX & governance planes) | M3 hardening + M4 GA |
+
+### Consequences
+- **(+)** The release program has a decision record; "M0" in any Productization doc resolves to one canonical M0–M4 definition inside `docs/design/`.
+- **(−)** Two ladders coexist — capability scope stays flat while readiness evidence is phased — so future docs must state which surface they phase.
 
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).

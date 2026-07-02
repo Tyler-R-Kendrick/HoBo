@@ -3,6 +3,9 @@
 Independent HOBO-19 proof for deny-by-default capability enforcement and the
 usage-inferred grant set.
 
+**Promoted to production:** `packages/core/src/capability/` and
+`packages/runtimes/runtime-local/src/capability/link-table.ts` (S1-04 / HOBO-593).
+
 This package models the security seam between the authoring/collection result
 and the runtime membrane:
 

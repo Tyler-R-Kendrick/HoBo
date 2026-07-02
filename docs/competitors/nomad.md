@@ -15,7 +15,7 @@ tags: [hobo, competitors]
 - **Nomad Pack:** a templating/packaging layer for Nomad job specifications: deploy popular apps, reuse internal patterns, and share jobspecs through registries.
 - **Paradigm:** operations-first workload orchestration. Developers or platform teams submit HCL jobspecs; Nomad schedules allocations onto client nodes and manages lifecycle, placement, networking, service registration, and rollout behavior.
 - **Target user:** infrastructure/platform teams that want a lighter-weight alternative or complement to Kubernetes, especially for mixed workloads: Docker, raw executables, Java, QEMU, batch, system jobs, and legacy services.
-- **Relation to HoBo:** direct competition at the **scheduler/runtime/control-plane** layer, especially when paired with Nomad Pack as the reusable app packaging story. It is not an Infrastructure-from-Code platform like Nitric; it is a programmable workload fabric HoBo could either compete with or target as a provider/host adapter.
+- **Relation to HoBo:** direct competition at the **scheduler/runtime/control-plane** layer, especially when paired with Nomad Pack as the reusable app packaging story. It is not an Infrastructure-from-Code platform like Nitric; it is a programmable workload fabric HoBo could either compete with or target as a provider/host adapter (dispositioned accepted-future in [ADR-0106](../design/adr/01-architecture-core.md#adr-0106)).
 
 ## Architecture
 
@@ -152,7 +152,7 @@ nomad-pack destroy prometheus
 
 ## HoBo mapping
 
-> For every Nomad/Nomad Pack feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ↔ = adjacent/composable · 🔜 = planned/iteration hook. HoBo design lives in [`../design/`](../design/index.md).
+> For every Nomad/Nomad Pack feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ↔ = adjacent/composable · 🔜 = planned/iteration hook. HoBo design lives in [`../design/`](../design/index.md). The displacement decision — why self-hosted wasmCloud ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) + Matching ([ADR-0033](../design/adr/01-architecture-core.md#adr-0033)) + Dispatcher ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) subsume the scheduler pillar, and Nomad's accepted-future deploy-target disposition — is recorded in [ADR-0106](../design/adr/01-architecture-core.md#adr-0106).
 
 ### Core model
 

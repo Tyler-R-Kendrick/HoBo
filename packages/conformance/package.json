@@ -9,6 +9,14 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./runtime-port": {
+			"types": "./dist/suites/runtime-port/index.d.ts",
+			"default": "./dist/suites/runtime-port/index.js"
+		},
+		"./component-host": {
+			"types": "./dist/suites/component-host/index.d.ts",
+			"default": "./dist/suites/component-host/index.js"
 		}
 	},
 	"publishConfig": {
@@ -17,10 +25,16 @@
 	"dependencies": {
 		"@hobo/core": "workspace:*"
 	},
+	"devDependencies": {
+		"@types/node": "^22.15.3",
+		"tsx": "^4.20.3"
+	},
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"test": "vitest run --passWithNoTests"
+		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime-local build",
+		"test": "vitest run",
+		"test:contract:consumer": "vitest run --passWithNoTests contracts/consumer"
 	}
 }

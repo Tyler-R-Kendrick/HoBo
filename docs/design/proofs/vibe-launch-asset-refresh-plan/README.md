@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Launch Asset Refresh Plan Proof"
+description: "Source issue: HOBO-556."
+tags: [hobo, design]
+---
+
 # Vibe Launch Asset Refresh Plan Proof
 
 Source issue: HOBO-556.

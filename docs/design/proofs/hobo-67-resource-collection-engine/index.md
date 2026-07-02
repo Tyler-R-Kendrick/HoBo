@@ -4,6 +4,8 @@ This executable proof backs [PLAN-02](../../sdk-api.md#plan-02), [PLAN-21](../..
 
 The proof lives in [`../../../src/draft/technical-proofs/resource-collection-engine-contract`](../../../src/draft/technical-proofs/resource-collection-engine-contract).
 
+**POC status (HOBO-606):** implemented as an independent draft POC on branch `cursor/hobo-606-hobo-agent-workflow-763f`; promotion to `packages/collector` (`@hobo/collector`) follows S1-13/S1-14 merge.
+
 It verifies:
 
 - a `kv` + `api` IfC Bindle collects into a valid `hobo.manifest/v1`;

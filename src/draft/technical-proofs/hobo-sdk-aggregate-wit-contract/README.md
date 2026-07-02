@@ -1,5 +1,7 @@
 # hobo:sdk aggregate WIT contract POC
 
+> **Promoted to production:** the import-only `hobo:sdk@0.1.0` aggregate world now ships from [`packages/wit/wit/hobo-sdk.wit`](../../../../packages/wit/wit/hobo-sdk.wit) with cross-package imports (`@hobo/wit`, HOBO-590). Reverse-extraction tooling remains draft-only.
+
 This draft owns HOBO-16's branch proof for the `hobo:sdk` aggregate WIT package and reverse-extraction drift gate.
 
 It models the canonical `hobo:sdk@0.1.0` world as a single WIT package that imports the runtime primitives (`workflow`, `actor`, `saga`, `agent`, `command`, `subscription`) plus capability/data interfaces. The checked-in test suite runs `jco types wit` to prove the aggregate parses and produces TypeScript guest types for the full surface.

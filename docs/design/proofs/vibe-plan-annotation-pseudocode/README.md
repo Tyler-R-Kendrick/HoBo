@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Plan Annotation Pseudocode Proof"
+description: "Source issue: HOBO-543."
+tags: [hobo, design]
+---
+
 # Vibe Plan Annotation Pseudocode Proof Note
 
 HOBO-543 proves the policy, cost, capacity, and approval annotation pseudocode for Plan/Diff Viewer

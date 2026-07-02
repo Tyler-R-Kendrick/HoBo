@@ -43,3 +43,29 @@ Do not add `test:e2e`, `e2e/`, full-stack Playwright suites, browser tests that 
 - root/package-manager changes add install, root-test, architecture, standards, and docs gates, with all-package build/test impact checks reserved for explicit `--build`, `--final`, or `--all` validation.
 
 This keeps pre-commit and PR feedback fast while preserving contract-first coverage.
+
+## Production packages
+
+When the S0 toolchain lands `packages/*`, every production package that owns a service boundary keeps a local `contracts/` tree:
+
+```text
+packages/<name>/contracts/
+  pact-inventory.md
+  pacts/<boundary>.pact.json
+  consumer/<boundary>.contract.test.ts
+  provider/<boundary>.provider.test.ts
+  provider/fixtures/*.ts
+```
+
+The `@hobo/contract-harness` package (zero runtime dependencies) supplies:
+
+- `parsePactDocument` / `loadPactDirectory` — parse-don't-validate pact JSON against package-local CUE constraints
+- `createMockProviderFromPact` — consumer-side in-process mocks
+- `verifyPact` — provider verification with superset-tolerant response bodies
+- `checkPactInventory` — inventory ↔ pact file drift gate
+
+Root `pnpm test:contract:consumer` and `pnpm test:contract:provider` sweep draft proofs first, then `turbo run test:contract:* --filter "./packages/*"` for production packages.
+
+`@hobo/contract-harness` lives in [`packages/contract-harness`](../../packages/contract-harness/README.md). The reference `core-contract-surface` boundary is in [`packages/core/contracts`](../../packages/core/contracts/pact-inventory.md), promoted from the epic-proof pact inventories under `src/draft/epic-proofs/*/contracts/`.
+
+A draft POC mirror remains at [`src/draft/technical-proofs/pact-contract-harness`](../../src/draft/technical-proofs/pact-contract-harness/README.md) for isolated harness development.

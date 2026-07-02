@@ -1,0 +1,146 @@
+import { describe, expect, it } from "vitest";
+
+import {
+	CATALOG,
+	api,
+	auth,
+	bucket,
+	catalogFactoryNames,
+	crypto,
+	data,
+	experiment,
+	flag,
+	golden,
+	guardrail,
+	job,
+	kv,
+	notify,
+	queue,
+	schedule,
+	secret,
+	service,
+	topic,
+	ui,
+	web,
+	websocket,
+} from "../src/index.js";
+import { secretRef } from "../src/secret-ref.js";
+
+const expectedCatalog = [
+	{ factory: "api", portRef: ["wasi:http", "hobo:http"], verbs: [] },
+	{ factory: "kv", portRef: ["wasi:keyvalue"], verbs: ["get", "set", "delete"] },
+	{
+		factory: "bucket",
+		portRef: ["wasi:blobstore", "hobo:blob-events"],
+		verbs: ["read", "write", "delete"],
+	},
+	{ factory: "queue", portRef: ["hobo:queue"], verbs: ["enqueue", "dequeue"] },
+	{ factory: "topic", portRef: ["wasi:messaging"], verbs: ["publish", "subscribe"] },
+	{ factory: "secret", portRef: ["wasi:config", "hobo:secrets"], verbs: ["put", "access"] },
+	{ factory: "data", portRef: ["hobo:data"], verbs: ["read", "write", "query", "admin"] },
+	{ factory: "schedule", portRef: ["hobo:scheduler"], verbs: [] },
+	{
+		factory: "websocket",
+		portRef: ["wasi:websocket", "hobo:websocket"],
+		verbs: ["accept", "connect", "send", "broadcast", "subscribe"],
+	},
+	{ factory: "job", portRef: ["hobo:job"], verbs: ["submit"] },
+	{ factory: "web", portRef: ["wasi:http"], verbs: [] },
+	{ factory: "service", portRef: ["wasi:http"], verbs: [] },
+	{ factory: "flag", portRef: ["hobo:feature-flag"], verbs: ["eval", "change"] },
+	{ factory: "auth", portRef: ["hobo:auth"], verbs: ["verify", "session"] },
+	{ factory: "crypto", portRef: ["hobo:crypto"], verbs: ["encrypt", "decrypt", "sign", "verify"] },
+	{ factory: "notify", portRef: ["hobo:notify"], verbs: ["send"] },
+	{ factory: "guardrail", portRef: ["hobo:guardrail"], verbs: ["check"] },
+	{ factory: "ui", portRef: ["hobo:ui-render"], verbs: ["render", "drive"] },
+	{ factory: "golden", portRef: ["hobo:golden"], verbs: ["run", "bless"] },
+	{ factory: "experiment", portRef: ["hobo:experiment"], verbs: ["assign", "expose", "analyze"] },
+] as const;
+
+const factories = {
+	api,
+	kv,
+	bucket,
+	queue,
+	topic,
+	secret,
+	data,
+	schedule,
+	websocket,
+	job,
+	web,
+	service,
+	flag,
+	auth,
+	crypto,
+	notify,
+	guardrail,
+	ui,
+	golden,
+	experiment,
+};
+
+describe("resource catalog", () => {
+	it("has exactly one factory per Plan 21 catalog row", () => {
+		expect(CATALOG).toHaveLength(20);
+		expect(catalogFactoryNames()).toHaveLength(20);
+		expect(new Set(catalogFactoryNames()).size).toBe(20);
+
+		for (const expected of expectedCatalog) {
+			const entry = CATALOG.find((row) => row.factory === expected.factory);
+			expect(entry).toBeDefined();
+			expect(entry?.portRef).toEqual(expected.portRef);
+			expect(entry?.allowVerbs).toEqual(expected.verbs);
+			expect(typeof factories[expected.factory as keyof typeof factories]).toBe("function");
+		}
+	});
+
+	it("returns frozen handles with deterministic lowering descriptors", () => {
+		for (const expected of expectedCatalog) {
+			const factory = factories[expected.factory as keyof typeof factories];
+			const handle = factory(`${expected.factory}-main`);
+
+			expect(Object.isFrozen(handle)).toBe(true);
+			expect(handle.kind).toBe(expected.factory);
+			expect(handle.stableId).toBe(`${expected.factory}:${expected.factory}-main`);
+			expect(handle.portRef).toEqual(expected.portRef);
+
+			const narrowed = handle.allow(...(expected.verbs as never[]));
+			expect(narrowed).not.toBe(handle);
+			expect(Object.isFrozen(narrowed)).toBe(true);
+			expect(narrowed.declaredAllow).toEqual(expected.verbs);
+
+			for (const verb of expected.verbs) {
+				const descriptor = (handle as Record<string, (...args: unknown[]) => unknown>)[verb]({
+					example: true,
+				});
+				expect(Object.isFrozen(descriptor)).toBe(true);
+				expect(descriptor).toEqual({
+					lowersTo: "hobo:sdk",
+					kind: expected.factory,
+					name: `${expected.factory}-main`,
+					handleStableId: `${expected.factory}:${expected.factory}-main`,
+					portRef: expected.portRef,
+					verb,
+					args: [{ example: true }],
+				});
+			}
+		}
+	});
+
+	it("throws TypeError for unknown allow verbs", () => {
+		expect(() => kv("state").allow("publish" as never)).toThrow(/kv does not allow verb "publish"/);
+	});
+
+	it("keeps secret resources distinct from secretRef value reads", () => {
+		const managedStore = secret("payment-secrets");
+		const valueReference = secretRef("STRIPE_API_KEY");
+
+		expect(managedStore.kind).toBe("secret");
+		expect(typeof managedStore.access).toBe("function");
+		expect(valueReference.kind).toBe("secret-ref");
+		expect(Object.isFrozen(valueReference)).toBe(true);
+		expect("access" in valueReference).toBe(false);
+		expect("allow" in valueReference).toBe(false);
+	});
+});

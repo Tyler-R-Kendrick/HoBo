@@ -4,6 +4,7 @@ packages:
   - "packages/providers/*"
   - "packages/iac/*"
   - "packages/build/*"
+  - "examples/*"
   - "src/draft/technical-proofs/*"
   - "src/draft/exp-proofs/*"
   - "src/draft/epic-proofs/*"
@@ -26,5 +27,6 @@ minimumReleaseAgeExclude:
   - turbo@2.10.1
 allowBuilds:
   "@ast-grep/cli": true
+  "@bufbuild/buf": true
   esbuild: true
   protobufjs: true

@@ -296,7 +296,7 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 
 ### Consequences
 - **(+)** Sharp, defensible identity: agnostic IfC + durable event-sourced runtime + agents/generation pipeline + conformance + patchability + **app generation**; only the business sprawl leaves.
-- **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit to maintain (commercialization is out of design scope).
+- **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit in the product (commercialization of HoBo-the-hosted-business is recorded as design-scope productization policy per [ADR-0107](#adr-0107)).
 - **(↔)** Money-movement terms are removed across the suite; metering/showback/quota/spend-safety (FinOps) and the app-generation stack (UX Designer/design.md/OpenUI/json-render/mcp-apps/`ui-render`) stay.
 
 ## ADR-0095
@@ -339,9 +339,28 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **(+)** HOBO-159 gets a precise implementation contract: fold validated manifests, choose a legal tier from declared intent + capabilities, emit mirrored halves, and reject ambiguity before any Yard provisions.
 - **(−)** Some deploys that could be made to "work" by falling back to public+mTLS now require explicit intent or a capability update, but that preserves residency and the no-shared-controller Junction invariant.
 
+## ADR-0107
+**Hosted-business commercialization records are design-scope productization; the product billing surface stays removed (boundary to ADR-0064).**
+
+### Context
+[ADR-0064](#adr-0064) removed business/monetization from HoBo's product surface ("no first-party commercial toolkit to maintain"), yet first-party commercial-launch design for HoBo-the-hosted-business now lives in `docs/design/` — billing plans/credits/invoice lifecycle ([billing-launch-policy.md](../billing-launch-policy.md)), the deterministic `meter.UsageRecorded` → `invoice.LineItem` reconciliation contract ([usage-to-invoice-reconciliation.md](../usage-to-invoice-reconciliation.md)), tax/currency/receipt posture ([tax-currency-receipt-obligations.md](../tax-currency-receipt-obligations.md)), and workspace plan tiers/entitlements ([entitlements-plan-limits.md](../entitlements-plan-limits.md)) — with the boundary asserted only per-doc, recorded in no ADR.
+
+### Decision
+1. **Commercial-launch policies for HoBo-the-hosted-business** (plans, prepaid credits, invoice lifecycle states, tax/currency/receipt posture, entitlements/plan tiers, usage-to-invoice reconciliation contracts) are **in design scope** as productization records.
+2. The product **`billing` port**, app-facing monetization (chargeback/invoicing/tax/rev-share/subscriptions for customer apps), and all money-movement machinery stay **removed** per [ADR-0064](#adr-0064).
+3. **Routing test for future docs:** does this monetize the customer's app or generated stack (out per ADR-0064) or HoBo's own hosted offering (in, as a policy/productization record only — never implementation machinery)?
+4. Every hosted-business commercial doc must cite this ADR in its Authoritative Dependencies section.
+
+### Consequences
+- **(+)** Per-doc scope disclaimers now have a single citable decision; ADR-0064's competitive cut (vs Convex/Lakebed/Nitric) is unchanged.
+- **(↔)** The archived-requirements business-model statement is re-pointed here.
+
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 12](../security-networking.md#plan-12).
 - **ADR-P3:** policy language for ABAC — **Resolved by [ADR-0015](02-identity-security.md#adr-0015)** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
 - **ADR-P4:** default Planner objective — **Resolved by [ADR-0033](01-architecture-core.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
 - **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../sdk-api.md#plan-02).
+- **ADR-P6:** preemption policy for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P7:** oversubscription/density limits per component-host — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).

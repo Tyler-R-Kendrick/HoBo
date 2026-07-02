@@ -1,0 +1,34 @@
+package data_models
+
+import "event_envelope.cue"
+
+#AppendRequest: {
+	stream_id:       string & !=""
+	events:          [...#EventInput] & [_, ...]
+	expected_seq:    int & >=0
+	actor:           #PrincipalRef
+	tenant:          string & !=""
+	project?:        string & !=""
+	causation_id?:   string & !=""
+	correlation_id?: string & !=""
+	lane?:           string & !=""
+}
+
+#AppendResult: {
+	stream_id: string & !=""
+	appended:  [...#EventEnvelope]
+	deduped:   [...#EventEnvelope]
+}
+
+#SnapshotRecord: {
+	stream_id: string & !=""
+	seq:       int & >0
+	state:     bytes
+	saved_at:  string & !="" & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
+}
+
+#QuarantineFact: {
+	offending_seq:  int & >0
+	offending_type: string & !=""
+	reason:         string & !=""
+}

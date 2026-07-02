@@ -84,6 +84,9 @@ and dispute/correction lineage for replay.
   posture.
 - [ADR-0039](./adr/02-identity-security.md#adr-0039) separates metering,
   showback, quota, and cost attribution from chargeback/invoicing machinery.
+- [ADR-0107](./adr/07-portability-extensibility.md#adr-0107) records that this reconciliation
+  contract is a hosted-business productization record while the product billing surface stays
+  removed per [ADR-0064](./adr/07-portability-extensibility.md#adr-0064).
 
 ## Acceptance Evidence
 

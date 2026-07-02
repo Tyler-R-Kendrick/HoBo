@@ -1,27 +1,75 @@
 {
   "consumer": {
-    "name": "ActorHostRuntimePortContractConsumer"
+    "name": "@hobo/conformance"
   },
   "provider": {
-    "name": "ActorHostRuntimePortContractBoundary"
+    "name": "@hobo/runtime-local"
   },
   "interactions": [
     {
-      "description": "Actor Host Runtime Port Contract boundary returns its recorded contract evidence",
+      "description": "append with current fence returns next state seq",
       "request": {
-        "method": "GET",
-        "path": "/actor-host-runtime-port-contract/contract"
+        "method": "POST",
+        "path": "/runtime/actor-host/append-state",
+        "body": {
+          "actorId": "cart-42",
+          "expectedFence": 7,
+          "snapshotSeq": 3,
+          "domainEvent": {
+            "type": "counter.Added",
+            "amount": 1
+          }
+        }
       },
       "response": {
         "status": 200,
         "body": {
-          "ok": true,
-          "schema": "hobo.draft.actor_host_runtime_port_contract/v1"
+          "fence": 7,
+          "seq": 4,
+          "snapshotReplayRequired": false
+        }
+      }
+    },
+    {
+      "description": "append with stale expectedFence returns StaleFenceError envelope",
+      "request": {
+        "method": "POST",
+        "path": "/runtime/actor-host/append-state",
+        "body": {
+          "actorId": "cart-42",
+          "expectedFence": 6,
+          "snapshotSeq": 3
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "error": "StaleFenceError",
+          "message": "stale fence for cart-42: 6"
+        }
+      }
+    },
+    {
+      "description": "snapshot replay handshake advertises snapshotSeq and replay requirement",
+      "request": {
+        "method": "GET",
+        "path": "/runtime/actor-host/state/cart-42",
+        "query": {
+          "snapshotSeq": "3"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "snapshotSeq": 3,
+          "snapshotReplayRequired": true,
+          "replayedEventCount": 2
         }
       }
     }
   ],
   "metadata": {
+    "boundaryId": "actor-host",
     "pactSpecification": {
       "version": "3.0.0"
     }

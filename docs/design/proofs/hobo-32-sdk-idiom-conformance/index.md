@@ -14,6 +14,8 @@ hand-authored and generated idiom layers over `hobo:sdk`.
 
 Executable proof bundle: [`../../../../src/draft/technical-proofs/sdk-idiom-conformance-gate`](../../../../src/draft/technical-proofs/sdk-idiom-conformance-gate).
 
+**Draft POC (HOBO-614):** [`../../../../src/draft/projects/s1-24-conformance-sdk`](../../../../src/draft/projects/s1-24-conformance-sdk) — five-lane gate without resilience-semantics; promotion target `packages/conformance/src/sdk/`.
+
 Focused verification:
 
 ```powershell

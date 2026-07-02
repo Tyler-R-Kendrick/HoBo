@@ -1,13 +1,15 @@
 # @hobo/conformance — Architecture Evidence
 
-S0-01 scaffold package. Validates workspace boundary rules and carries
-architecture-guard evidence for the production `packages/conformance` root.
+Production conformance package. It preserves the S0-01 workspace-boundary
+scaffold and adds the HOBO-585 port-suite harness for golden-IR capture, replay
+comparison, deterministic seed checks, coverage manifests, provenance, and
+claimed-port listing/blocking disposition.
 
 ## Schema and constraints
 
 - Protobuf records live in [`data-models/`](./data-models).
 - CUE constraints bound every protobuf type in that folder.
-- PACT consumer/provider evidence lives under [`contracts/pacts/`](./contracts/pacts).
+- PACT consumer/provider evidence lives under [`contracts/`](./contracts).
 
 ## Parse, don't validate
 
@@ -28,3 +30,27 @@ validation runs. CUE constraints on `WorkspaceEdgeRecord` and
 
 The harness implements parse/refinement tests; runtime projection is deferred to
 later conformance slices.
+
+The port-suite runner appends `conformance.RunStarted`,
+`conformance.CaseChecked`, `conformance.CoverageEvaluated`, and
+`conformance.RunCompleted` events; `projectPortSuiteReport` derives the
+`PortSuiteReport` read model from that append-only log.
+
+## S1-10 trust-boundary suites (HOBO-599)
+
+Production suites under `src/suites/`:
+
+- **runtime-port** — `hobo.runtime-port-conformance/v1` durability checks
+  (EventStore, Queue, ActorHost, checkout replay==live). Parse boundary:
+  `src/suites/runtime-port/parse.ts`.
+- **component-host** — `@hobo/conformance/component-host/v1` cross-host
+  portability assertions with manifest host pins. Parse boundary:
+  `src/suites/component-host/parse.ts`.
+
+Protobuf + CUE for both report shapes live in `data-models/runtime_port_conformance.*`
+and `data-models/component_host_conformance.*`. PACT contracts under
+`contracts/pacts/conformance-runtime-port-backend.pact.json` and
+`conformance-component-host.pact.json`.
+
+The checkout proof appends events and folds them — actors emit events via
+ActorHost leases; replay-equals-live is asserted, not assumed.

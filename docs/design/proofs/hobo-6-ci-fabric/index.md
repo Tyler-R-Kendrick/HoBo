@@ -23,16 +23,24 @@ and [Plan 9](../../generated-stack.md#plan-09).
 ## Boundary
 
 The executable proof lives in
-[`src/draft/technical-proofs/ci-fabric-oidc-e2e-contract`](../../../../src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/README.md).
-The reviewable workflow skeleton is
-[`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml). The impact gate
-runs on `pull_request` and `merge_group: checks_requested` for the `main`
+[`src/draft/technical-proofs/ci-fabric-oidc-e2e-contract`](../../../../src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/README.md)
+(historical HOBO-6 evidence). **HOBO-586** promotes the contract to
+[`packages/ci-guard`](../../../../packages/ci-guard/README.md)
+as the production `@hobo/ci-guard` package. Reviewable workflows:
+[`.github/workflows/hobo-ci.yml`](../../../../.github/workflows/hobo-ci.yml) and
+[`.github/workflows/examples-e2e.yml`](../../../../.github/workflows/examples-e2e.yml).
+The impact gate runs on `pull_request` and `merge_group: checks_requested` for the `main`
 base branch only, preserving the same job/check identity for merge-queue
 compatibility without spending CI on non-landing queues. PR runs use
 `pnpm agent:check -- --base=origin/<base-ref>`; merge-group runs compare against
 `origin/main` so queued candidates get the same change-impact gate before they
 can land. The workflow also uses event-aware concurrency so newer PR pushes
 cancel stale runs without sharing a concurrency group with merge queue runs.
+The `pr-gate` job fetches `origin/<base-ref>` and sets `TURBO_SCM_BASE` before
+Turbo impact lanes. Production package tasks derive `--filter=./packages/<name>`
+and `--filter=./examples/<name>` from `git diff --name-only` so workspace-root
+edits (for example `pnpm-workspace.yaml`) do not fan out into every package;
+draft impact stays in `pnpm agent:check -- --base=...`.
 The standalone docs workflow is path-filtered to documentation/doc-linter inputs
 and the CI workflow file that this proof documents, runs only changed-doc lint
 plus docs freshness, and uses the same event-aware PR concurrency cancellation

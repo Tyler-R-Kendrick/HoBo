@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "CLI Migration Transcript Prototype Proof"
+description: "Source issue: HOBO-575."
+tags: [hobo, design]
+---
+
 # HOBO-575 CLI Migration Transcript Prototype Proof
 
 Source issue: HOBO-575.

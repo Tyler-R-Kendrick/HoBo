@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Workspace Project States Proof"
+description: "Source issue: HOBO-541."
+tags: [hobo, design]
+---
+
 # Vibe workspace/project states proof
 
 `HOBO-541` proves deterministic workspace/project states for the v1 vibe

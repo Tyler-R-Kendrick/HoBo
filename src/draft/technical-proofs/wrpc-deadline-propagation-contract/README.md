@@ -12,6 +12,8 @@ It proves:
 
 Out of scope: NATS/JetStream lattice transport, cross-host hung-call timing divergence, backpressure, retry/provider-idempotency reconciliation, full classifier implementation, and wire-version negotiation.
 
+**S1-09 promotion:** integrated with HOBO-25 in `src/draft/technical-proofs/membrane-deadline-backpressure-contract/` (HOBO-598). Production target: `packages/core/src/failure/` + `packages/runtimes/runtime-local/src/membrane/deadline-propagation.ts`.
+
 ```powershell
 npm.cmd --prefix src\draft\technical-proofs\wrpc-deadline-propagation-contract test
 ```

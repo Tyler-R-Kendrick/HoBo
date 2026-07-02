@@ -1,7 +1,15 @@
 # Queue + Clock Runtime Port Contract POC
 
-Independent POC for HOBO-22, pinning the runtime-local `Queue` and `Clock`
-ports required by ADR-0002 and Plan 2 / Plan 11.
+Independent POC for [HOBO-22](https://linear.app/quickdeploy-ai/issue/HOBO-22)
+and [HOBO-596](https://linear.app/quickdeploy-ai/issue/HOBO-596), pinning the
+runtime-local `Queue` and `Clock` ports required by ADR-0002 and Plan 2 / Plan
+11.
+
+> **Promotion (S1-07 / HOBO-596):** production ports landed in `packages/core`
+> (`Queue`/`VirtualClock` interfaces + proto/CUE), `packages/runtimes/runtime-local`
+> (`createRuntimeLocalQueueClock`, `replayClockTrace`), and `packages/conformance/`
+> (`runQueueClockConformance` + `fixtures/runtime-ports/*`). This draft POC is
+> retained for historical contract evidence; use production packages for new work.
 
 ## Contract Surface
 
@@ -62,11 +70,18 @@ Excluded:
 - Scheduler provider implementation or full cron expression parsing.
 - Workflow replay-engine wiring beyond the clock trace conformance proof.
 
+## Conformance fixtures
+
+- `fixtures/redelivery-after-crash.ts` — crash before `complete`, snapshot
+  restore, at-least-once redelivery with exactly-once effect ledger.
+- `fixtures/time-travel-replay.ts` — interleaved `sleep` + `cron` under
+  `advance()`, seeded `replayClockTrace` reproduces fire order and rejects seed
+  mismatch / mutated fire facts.
+
 ## Verification
 
-```powershell
-npm.cmd --prefix src\draft\technical-proofs\queue-clock-runtime-port-contract test
-npm.cmd test
+```bash
+pnpm exec turbo run test --filter ./src/draft/technical-proofs/queue-clock-runtime-port-contract
 ```
 
 

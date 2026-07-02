@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "CLI Manage Inspect Logs Drift Prototype Proof"
+description: "Source issue: HOBO-574."
+tags: [hobo, design]
+---
+
 # CLI Manage Inspect Logs Drift Prototype Proof
 
 HOBO-574 records the manage transcript prototype that later docs, support,

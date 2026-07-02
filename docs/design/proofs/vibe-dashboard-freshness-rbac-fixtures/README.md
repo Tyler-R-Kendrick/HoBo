@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Dashboard Freshness RBAC Fixtures Proof"
+description: "Source issue: HOBO-545."
+tags: [hobo, design]
+---
+
 # HOBO-545 Vibe Dashboard Freshness/RBAC Fixtures
 
 HOBO-545 adds a branch-local proof package at `src/draft/exp-proofs/vibe-dashboard-freshness-rbac-fixtures`. The package gives Deployment Dashboard & Topology Explorer consumers deterministic reference fixtures for projection freshness, tenant/RBAC scope, redaction-safe rendering, and support handoff wording.

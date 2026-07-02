@@ -33,6 +33,10 @@ conformance, and concrete Wasmtime or OCI execution.
 npm.cmd --prefix src\draft\technical-proofs\component-host-conformance-suite test
 ```
 
+## Promotion note (S1-10 / HOBO-599)
+
+Promoted to `packages/conformance/src/suites/component-host/` (production). Draft proof retained for historical evidence.
+
 
 ## Architecture Evidence
 

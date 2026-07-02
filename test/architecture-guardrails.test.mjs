@@ -145,10 +145,11 @@ test("implementationPackageRoots maps production package paths", () => {
   assert.deepEqual(
     implementationPackageRoots([
       "packages/core/src/index.ts",
+      "packages/runtimes/runtime-local/src/index.ts",
       "examples/hello-bindle/src/main.ts",
       "docs/design/index.md",
     ]),
-    ["packages/core", "examples/hello-bindle"],
+    ["packages/core", "packages/runtimes/runtime-local", "examples/hello-bindle"],
   );
 });
 

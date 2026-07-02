@@ -71,6 +71,8 @@ Contracts:
 
 ## Architecture Evidence
 
+> **Promotion (S1-20 / HOBO-610):** production CLI shell + `hobo new` live in [`packages/cli`](../../../../packages/cli/). This epic proof still pins CLI↔MCP parity via `contracts/pacts/cli-command-path.pact.json`.
+
 This package ships the architecture-guard evidence required by
 `scripts/check-architecture-guardrails.mjs`:
 

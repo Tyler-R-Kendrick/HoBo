@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package hobo.runtime_local.v1;
+
+import "event_envelope.proto";
+
+message AppendRequest {
+  string stream_id = 1;
+  repeated EventInput events = 2;
+  int64 expected_seq = 3;
+  PrincipalRef actor = 4;
+  string tenant = 5;
+  optional string project = 6;
+  optional string causation_id = 7;
+  optional string correlation_id = 8;
+  optional string lane = 9;
+}
+
+message EventInput {
+  string type = 1;
+  int32 v = 2;
+  bytes data = 3;
+  map<string, string> meta = 4;
+}
+
+message AppendResult {
+  string stream_id = 1;
+  repeated EventEnvelope appended = 2;
+  repeated EventEnvelope deduped = 3;
+}
+
+message SnapshotRecord {
+  string stream_id = 1;
+  int64 seq = 2;
+  bytes state = 3;
+  string saved_at = 4;
+}
+
+message QuarantineFact {
+  int64 offending_seq = 1;
+  string offending_type = 2;
+  string reason = 3;
+}

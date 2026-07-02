@@ -1,56 +1,44 @@
 # ActorHost Runtime Port Contract POC
 
-Independent POC for HOBO-21. It pins the `ActorHost` runtime-port behavior from
-`docs/design/sdk-api.md#plan-02`, `docs/design/data-plane.md#plan-11`,
+Independent draft POC for [HOBO-21](https://linear.app/quickdeploy-ai/issue/HOBO-21) and
+[HOBO-595](https://linear.app/quickdeploy-ai/issue/HOBO-595). Pins the `ActorHost` runtime-port
+behavior from `docs/design/sdk-api.md#plan-02`, `docs/design/data-plane.md#plan-11`,
 ADR-0002, and ADR-0053.
 
 ## Contract Surface
 
-- `createInMemoryActorHost({ clock, leaseTtlMs })` exposes `acquire(key)` and `state(key)`.
-- `acquire(key, { holderId })` returns a lease with a monotonic `fenceToken`,
-  `expiresAt`, `renew()`, and `release()`.
-- Lease append authority is tied to the immutable, opaque lease object identity,
-  not to copied or mutated public lease fields.
-- Only one non-expired lease can exist for an actor key.
-- `state(key, { initialState, fold })` returns durable actor state backed by the
-  actor stream.
-- `append(lease, event)` rejects stale, released, expired, or key-mismatched
-  leases before mutating the stream.
-- `passivate(lease)` snapshots the folded state and releases the activation lease.
-- Later activations rebuild from the latest snapshot plus the event-log tail.
+- `createInMemoryActorHost({ clock, leaseTtlMs })` — in-memory stream oracle from HOBO-21.
+- `createLocalActorHost({ clock, eventStore, leaseTtlMs })` — EventStore-backed adapter (HOBO-595)
+  using the draft camp EventStore proof; actor streams use id `actor:<key>` and lifecycle facts
+  `actor.Activated` · `actor.StateAppended` · `actor.Passivated`.
+- `parseActorKey` / `parseHolderId` — branded parse-don't-validate boundary types.
+- `runActorHostConformance(createBackend)` — six `actor-host.*` checks plus dual-activation fixture.
+- `createBrokenFenceActorHostBackend()` — negative backend that must fail `actor-host.stale-fence-rejected`.
 
 ## Scope Boundaries
 
 Included:
 
-- Single-writer lease acquisition.
-- Monotonic fence tokens.
-- Lease renewal and expiry.
-- Stale-fence and expired-zombie write rejection.
-- Durable actor-state fold over the actor stream.
-- Snapshot-on-passivation and tail replay on activation.
+- Single-writer lease acquisition with monotonic fence tokens.
+- Opaque lease identity, renewal without new fence, expiry/zombie/stale-fence rejection.
+- Durable fold, snapshot-on-passivation, snapshot-plus-tail replay.
+- Conformance checks and PACT boundary for promotion to `@hobo/runtime-local`.
 
 Excluded:
 
-- Cross-Camp ownership/failover from ADR-0040.
-- CQRS command aggregate ergonomics from the Data Plane idiom layer.
-- Reactor, projection fan-out, queues, and provider-backed persistence.
-- Full HOBO-20 EventStore runtime port semantics; this POC uses a local in-memory
-  stream only to prove the ActorHost boundary.
+- Cross-Camp ownership/failover (ADR-0040).
+- CQRS command aggregate ergonomics, Queue/Clock, Streamer, WIT surface.
+- Production `packages/` promotion (blocked on S1-05 EventStore merge); this draft reuses the
+  camp EventStore proof instead of `@hobo/runtime-local`.
 
 ## Verification
 
-```powershell
-npm.cmd --prefix src\draft\technical-proofs\actor-host-runtime-port-contract test
-npm.cmd test
+```bash
+pnpm --prefix src/draft/technical-proofs/actor-host-runtime-port-contract test
 ```
-
 
 ## Architecture Evidence
 
-This package ships the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`:
-
-- `architecture/` — protobuf data shapes and CUE constraints for Actor Host Runtime Port Contract.
-- `architecture/pacts/` — PACT contract for the package boundary.
+- `architecture/` — protobuf + CUE for `LeaseInfo`, `ActorEventRecord`, `AppendReceipt`, `ActorStateSnapshot`.
+- `architecture/pacts/actor_host_runtime_port_contract.pact.json` — consumer `@hobo/conformance`, provider `@hobo/runtime-local`.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.

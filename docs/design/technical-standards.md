@@ -42,6 +42,13 @@ Repository-wide data-model catalogs are forbidden. Each project/package that own
 
 `pnpm run architecture:guard` now covers production implementation packages under `packages/*` and `examples/*` in addition to draft proof packages under `src/draft/<kind>/<slug>`. Production packages must keep protobuf and CUE records under a package-local `data-models/` folder (no `.proto`/`.cue` elsewhere in the package) and executable PACT consumer/provider evidence (`*.pact.json` with `consumer`, `provider`, and `interactions`) under a package-local `contracts/` folder, in addition to the five architecture evidence checks that already apply to every changed implementation package.
 
+Schema codegen and drift gates:
+
+- `pnpm run codegen` — regenerate checked-in `src/_generated/` TypeScript views from protobuf sources (draft POC: `src/draft/technical-proofs/s0-04-protobuf-cue-codegen/`; production target: `packages/schema-tools/`).
+- `pnpm run codegen:check` — regenerate to a temp tree, byte-compare, exit non-zero on drift; never mutates the working tree.
+- `pnpm run test:schema` — includes SDK/deployment validators plus `codegen:check` and the CUE vet lane.
+- `pnpm run generated:guard` — pre-commit guard blocking hand-edits under `generated/`, `_generated/`, or `src/gen/` unless matching `.proto`/`.cue`/generator sources are staged.
+
 ## Agent checklist
 
 Before committing a technical change, agents must verify:

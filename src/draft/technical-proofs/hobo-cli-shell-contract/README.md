@@ -2,6 +2,8 @@
 
 HOBO-115 proof for the `@hobo/cli` shell boundary.
 
+> **Promotion (S1-20 / HOBO-610):** shell behavior is implemented in production package [`packages/cli`](../../../../packages/cli/) (`src/shell/*`, `dispatchCommand` seam). This proof remains the contract reference until the production package fully replaces it in CI lanes.
+
 ## What This Proves
 
 - `hobo --help` is pinned to the canonical HOBO-8 verb table and global flags.

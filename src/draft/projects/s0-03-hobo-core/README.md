@@ -23,7 +23,11 @@ and should stay aligned with the production package when either changes.
 pnpm --prefix src/draft/projects/s0-03-hobo-core build
 pnpm --prefix src/draft/projects/s0-03-hobo-core test
 pnpm run test:file src/draft/projects/s0-03-hobo-core/test/envelope.test.ts
+pnpm run test:file src/draft/projects/s0-03-hobo-core/test/core-contract-boundary.contract.test.ts
 ```
+
+The `core-contract-boundary.contract.test.ts` file uses `node:test` (not Vitest) so
+`pnpm run test:contract:consumer` can execute it through the root contract lane.
 
 ## Architecture evidence
 

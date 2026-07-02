@@ -19,6 +19,12 @@ This is an executable contract for the local-loop surface, not a production daem
 implement the real file watcher, inspect/logs UI, provider-backed runtime, sandbox/test mocking,
 cloud credentials, or production deployment behavior.
 
+## Promotion path
+
+> **Promotion (S1-22 / HOBO-612):** production-shaped modules and stage-gate timing live in
+> `src/draft/technical-proofs/hobo-612-dev-local-loop-poc/` ahead of `packages/cli/` promotion.
+> This contract (HOBO-122) remains the behavioral reference; do not delete until production parity lands.
+
 ## Verification
 
 ```powershell

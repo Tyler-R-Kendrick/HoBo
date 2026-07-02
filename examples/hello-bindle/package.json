@@ -1,0 +1,23 @@
+{
+	"name": "@hobo/example-hello-bindle",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/componentize run build && pnpm --filter @hobo/bindles run build",
+		"build": "node --import tsx scripts/build.ts",
+	"pretest": "pnpm --filter @hobo/componentize run build && pnpm --filter @hobo/bindles run build && pnpm --filter @hobo/camps run build && pnpm --filter @hobo/yards run build && pnpm --filter @hobo/runtime-local run build && pnpm --filter @hobo/runtime run build",
+	"test": "vitest run",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check ."
+	},
+	"dependencies": {
+		"@hobo/bindles": "workspace:*",
+		"@hobo/camps": "workspace:*",
+		"@hobo/componentize": "workspace:*",
+		"@hobo/runtime": "workspace:*",
+		"@hobo/runtime-local": "workspace:*",
+		"@hobo/wit": "workspace:*",
+		"@hobo/yards": "workspace:*"
+	}
+}

@@ -63,6 +63,7 @@ The same projection-and-event model the dashboard renders is what the CLI drives
 
 #### DX principles
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
+   - **Maintenance (S1-20 / HOBO-610):** production CLI shell + offline `hobo new` scaffolds ship in `packages/cli` (`@hobo/cli`), promoting the HOBO-115/HOBO-118 draft proofs.
 2. **The agnostic path is the default path** — you can build, run, test, and inspect locally before ever choosing a provider.
 3. **Fast inner loop** — hot reload of handlers/workflows; local runtime with replay; no deploy needed to iterate.
 4. **Type-safe across the agnostic path** — bindings, workflow signatures, and provider options are all typed; the editor guides you. (The `.raw()` escape hatch is untyped by design and the run-to-collect resource graph is coverage-gated — the two declared exceptions, [Plan 2 §Type ergonomics](./sdk-api.md#plan-02).)
@@ -134,7 +135,7 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 
 #### The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
-2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/01-architecture-core.md#adr-0037)).
+2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/01-architecture-core.md#adr-0037)). S1-22 draft POC (`src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`, HOBO-612) exercises collect → link → run, event-sourced `dev.*` state, and the ≤60s cold-boot gate (`scripts/ci/dev-cold-loop-timing.mts`) ahead of `packages/cli/` promotion.
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./generated-stack.md#plan-09)).
 

@@ -36,10 +36,12 @@
     "test:unit": "node --import tsx scripts/run-tests.ts --category=unit",
     "test:unit:quiet": "node --import tsx scripts/run-tests.ts --category=unit --quiet --no-artifacts",
     "test:types": "node --import tsx scripts/run-tests.ts --category=types",
-    "test:schema": "node --import tsx scripts/validate-sdk-contracts.ts && node --import tsx scripts/validate-deployment-set-delta.ts",
+    "test:schema": "node --import tsx scripts/validate-sdk-contracts.ts && node --import tsx scripts/validate-deployment-set-delta.ts && node --import tsx src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools/src/cli.ts --check && pnpm --filter @hobo/bindles run test:schema",
+    "codegen": "node --import tsx src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools/src/cli.ts",
+    "codegen:check": "node --import tsx src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools/src/cli.ts --check",
     "test:contract": "pnpm run test:contract:consumer && pnpm run test:contract:provider",
-    "test:contract:consumer": "node --import tsx scripts/run-tests.ts --category=contract-consumer",
-    "test:contract:provider": "node --import tsx scripts/run-tests.ts --category=contract-provider",
+    "test:contract:consumer": "node --import tsx scripts/run-tests.ts --category=contract-consumer && pnpm exec turbo run test:contract:consumer --filter \"./packages/*\"",
+    "test:contract:provider": "node --import tsx scripts/run-tests.ts --category=contract-provider && pnpm exec turbo run test:contract:provider --filter \"./packages/*\"",
     "test:dom": "node --import tsx scripts/run-tests.ts --category=dom",
     "test:component": "node --import tsx scripts/run-tests.ts --category=component",
     "test:behavior": "node --import tsx scripts/run-tests.ts --category=behavior",
@@ -61,7 +63,8 @@
     "generated:guard": "node --import tsx scripts/no-hand-edited-generated-files.mts",
     "ci:preflight": "node --import tsx scripts/ci-preflight.ts",
     "actions:lint": "node --import tsx scripts/lint-actions.ts",
-    "fetch:pr-base": "node --import tsx scripts/fetch-pr-base.ts"
+    "fetch:pr-base": "node --import tsx scripts/fetch-pr-base.ts",
+    "gate:s1": "pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.0",

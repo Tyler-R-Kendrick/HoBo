@@ -107,7 +107,8 @@ cite tax/currency/receipt obligations, invoice reconciliation, and customer-visi
 - [billing-launch-policy.md](./billing-launch-policy.md) owns plans, credits, invoices, payment
   failures, refunds, and provider/legal boundaries.
 - [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) keeps business/monetization mechanics
-  outside HoBo's meta-cloud core.
+  outside HoBo's meta-cloud core; [ADR-0107](./adr/07-portability-extensibility.md#adr-0107)
+  records tax/currency/receipt posture as hosted-business productization records.
 - [ADR-0039](./adr/02-identity-security.md#adr-0039) owns metering, quota, cost attribution, and
   showback without chargeback/invoicing machinery.
 - [Plan 46](./governance-planes.md#plan-46) owns compliance/data-governance evidence posture.

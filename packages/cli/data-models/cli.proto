@@ -1,7 +1,0 @@
-syntax = "proto3";
-package hobo.cli.v1;
-
-message CliScaffoldRecord {
-  string package_name = 1;
-  string owner_issue = 2;
-}

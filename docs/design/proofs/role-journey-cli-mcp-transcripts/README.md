@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Role Journey CLI and MCP Transcripts Proof"
+description: "Source issue: HOBO-557."
+tags: [hobo, design]
+---
+
 # Role Journey CLI and MCP Transcripts Proof
 
 `HOBO-557` creates CLI transcript and MCP tool pseudocode examples for six

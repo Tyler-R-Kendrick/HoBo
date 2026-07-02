@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   createResourceCatalog,
@@ -19,6 +19,9 @@ import {
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 const declarationsUrl = new URL("../src/camp-mapping-sugar-compiler.d.mts", import.meta.url);
+const tscPath = fileURLToPath(
+  new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url)
+);
 
 const fixtureResources = Object.freeze([
   { id: "shop.db", type: "database", engine: "postgres", serviceModel: "saas" },
@@ -217,27 +220,7 @@ test("typed declarations publish the compiler boundary and compile for consumers
   assert.match(declarations, /export declare function compileCampMapping/);
   assert.match(declarations, /export declare function registerCompiledDefinitions/);
 
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args =
-    process.platform === "win32"
-      ? [
-          "/d",
-          "/s",
-          "/c",
-          "npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.json"
-        ]
-      : [
-          "exec",
-          "--yes",
-          "--package",
-          "typescript@5.5.4",
-          "--",
-          "tsc",
-          "--noEmit",
-          "--project",
-          "tsconfig.json"
-        ];
-  const result = spawnSync(command, args, {
+  const result = spawnSync(process.execPath, [tscPath, "--noEmit", "--project", "tsconfig.json"], {
     cwd: packageRoot,
     encoding: "utf8",
     shell: false

@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples/test/resource-lifecycle-quickstart-examples.test.ts"
+    "test": "vitest run --root ."
   }
 }

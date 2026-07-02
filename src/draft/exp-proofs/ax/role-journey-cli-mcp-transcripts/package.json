@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/ax/role-journey-cli-mcp-transcripts/test/role-journey-cli-mcp-transcripts.test.ts"
+    "test": "vitest run --root ."
   }
 }

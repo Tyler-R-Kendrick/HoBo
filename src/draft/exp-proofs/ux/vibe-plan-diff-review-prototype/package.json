@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/ux/vibe-plan-diff-review-prototype/test/vibe-plan-diff-review-prototype.test.ts"
+    "test": "vitest run --root ."
   }
 }

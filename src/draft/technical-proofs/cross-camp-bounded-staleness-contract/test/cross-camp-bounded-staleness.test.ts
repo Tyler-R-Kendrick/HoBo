@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { projection } from "../../native-log-projection-contract/src/native-log-projection.js";
 import {

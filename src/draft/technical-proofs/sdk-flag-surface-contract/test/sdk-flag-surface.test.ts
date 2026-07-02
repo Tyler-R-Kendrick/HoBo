@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import { createFlagArchived, createFlagChanged } from "../../flag-event-contract/src/flag-event-contract.js";
@@ -45,6 +45,17 @@ const controlClient = Object.freeze({
 });
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const tscPath = path.resolve(
+  packageRoot,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 
 test("server ctx.flags.eval uses request context and returns declaration-typed values", async () => {
   const contract = createSdkFlagContract({ knownTargetingAttributes: ["user.segment"] });
@@ -166,24 +177,15 @@ test("server eval outside a user request falls back to global/default context", 
 });
 
 test("type declarations carry flag declaration value types to call sites", () => {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : npmCommand;
-  const args = [
-    "exec",
-    "--yes",
-    "--package",
-    "typescript@5.5.4",
-    "--",
-    "tsc",
-    "--noEmit",
-    "--project",
-    "tsconfig.types.json",
-  ];
-  const result = spawnSync(command, process.platform === "win32" ? ["/d", "/c", npmCommand, ...args] : args, {
-    cwd: packageRoot,
-    encoding: "utf8",
-    shell: false,
-  });
+  const result = spawnSync(
+    process.execPath,
+    [tscPath, "--noEmit", "--project", "tsconfig.types.json"],
+    {
+      cwd: packageRoot,
+      encoding: "utf8",
+      shell: false,
+    },
+  );
 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });

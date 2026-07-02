@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 
 import * as catalogModule from "../src/catalog.js";
 import { CATALOG, catalogFactoryNames, secretRef } from "../src/catalog.js";

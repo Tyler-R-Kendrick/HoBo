@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -18,7 +18,7 @@ import {
 } from "../src/config-schema.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const repoRoot = path.resolve(packageRoot, "..", "..", "..");
+const repoRoot = path.resolve(packageRoot, "..", "..", "..", "..");
 
 test("config declarations emit refs-only varlock-style schema entries", () => {
   const cfg = config({
@@ -79,6 +79,7 @@ test("ctx.config accessors are generated only for declared keys", async () => {
 
 test("type declarations prove declared keys callable and undeclared keys rejected", () => {
   const args = [
+    "--ignoreConfig",
     "--noEmit",
     "--strict",
     "--skipLibCheck",
@@ -90,30 +91,11 @@ test("type declarations prove declared keys callable and undeclared keys rejecte
     "ES2022",
     path.join(packageRoot, "types", "config-surface.types.ts")
   ];
-  const pinnedTsc = path.join(
-    repoRoot,
-    "node_modules",
-    ".pnpm",
-    "typescript@5.5.4",
-    "node_modules",
-    "typescript",
-    "bin",
-    "tsc"
-  );
-  const command = existsSync(pinnedTsc)
-    ? process.execPath
-    : process.platform === "win32"
-      ? process.env.ComSpec ?? "cmd.exe"
-      : "npm";
-  const commandArgs = existsSync(pinnedTsc)
-    ? [pinnedTsc, ...args]
-    : process.platform === "win32"
-      ? ["/d", "/c", "npm.cmd", "exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...args]
-      : ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...args];
+  const tscPath = path.join(repoRoot, "node_modules", "typescript", "bin", "tsc");
 
   execFileSync(
-    command,
-    commandArgs,
+    process.execPath,
+    [tscPath, ...args],
     { cwd: packageRoot, stdio: "pipe" }
   );
 });

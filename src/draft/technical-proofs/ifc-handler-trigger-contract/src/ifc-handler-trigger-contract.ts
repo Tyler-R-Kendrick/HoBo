@@ -1,11 +1,189 @@
+type ResourceKind = "api" | "kv" | "queue" | "topic" | "schedule" | "bucket";
+
+// A handler accepts whatever arguments its trigger kind supplies; declaring
+// the rest-parameter as `never[]` makes this a safe "any function" shape
+// (every concrete handler signature is assignable to it) without resorting
+// to `Function` or `any`.
+type Handler = (...args: never[]) => unknown;
+
+interface WorkflowHandler {
+  readonly kind: "workflow";
+  readonly name: string;
+  readonly handler: Handler;
+}
+
+type HandlerLike = Handler | WorkflowHandler;
+
+interface KvClient {
+  get(key: string): Promise<unknown>;
+}
+
+interface QueueClient {
+  enqueue(message: unknown): Promise<void>;
+}
+
+interface BucketClient {}
+
+interface ScheduleClient {}
+
+interface TopicClient {}
+
+type ClientForKind<K extends ResourceKind> = K extends "kv"
+  ? KvClient
+  : K extends "queue"
+    ? QueueClient
+    : K extends "bucket"
+      ? BucketClient
+      : K extends "schedule"
+        ? ScheduleClient
+        : K extends "topic"
+          ? TopicClient
+          : never;
+
+interface BindingDescriptor {
+  readonly port: string | undefined;
+  readonly resource: string;
+  readonly clientType: string | undefined;
+}
+
+interface DurableRuntime {
+  readonly primitive: "workflow";
+  readonly interface: string;
+  readonly handler: string;
+}
+
+interface TriggerEdge {
+  readonly id: string;
+  readonly kind: string;
+  readonly resource: string;
+  readonly method?: string;
+  readonly path?: string;
+  readonly event?: string;
+  readonly cron?: string;
+  readonly exportInterface: string;
+  readonly handler: string;
+  readonly inferredPermissions?: readonly string[];
+  readonly durableRuntime?: DurableRuntime;
+}
+
+interface HostTriggerInput {
+  readonly id: string;
+  readonly kind: string;
+  readonly event?: string;
+  readonly cron?: string;
+  readonly exportInterface: string;
+  readonly handler: HandlerLike | undefined;
+  readonly inferredPermissions: readonly string[];
+}
+
+interface ComponentHost {
+  readonly kind: string;
+  readonly version: string;
+}
+
+interface ApiManifestResource {
+  readonly type: "component.v1";
+  readonly kind: "api";
+  readonly runtime: "wasm";
+  readonly exports: readonly string[];
+  readonly bindings: Record<string, BindingDescriptor>;
+  readonly links: ReadonlyArray<{ readonly import: string | undefined; readonly to: string }>;
+  readonly collection: { readonly stableId: string };
+}
+
+interface DataManifestResource {
+  readonly type: "data.v1";
+  readonly kind: Exclude<ResourceKind, "api">;
+  readonly port: string;
+  readonly allow: readonly string[];
+  readonly usage: { readonly inferred: readonly string[]; readonly source: string };
+  readonly collection: { readonly stableId: string };
+}
+
+type ManifestResource = ApiManifestResource | DataManifestResource;
+
+interface CompileManifestOptions {
+  readonly triggers?: TriggerEdge[];
+  readonly componentHost?: ComponentHost;
+}
+
+interface HandlerManifest {
+  readonly schema: string;
+  readonly componentHost: ComponentHost;
+  readonly resources: Record<string, ManifestResource>;
+  triggerEdges?: TriggerEdge[];
+}
+
+type BindMap = Record<string, ResourceHandle>;
+
+interface ResourceOptions {
+  readonly bind?: BindMap;
+  readonly durableEvents?: boolean;
+}
+
+interface ApiOptions<B extends BindMap = BindMap> {
+  readonly bind?: B;
+  readonly durableEvents?: boolean;
+}
+
+interface ResourceHandle<K extends ResourceKind = ResourceKind> {
+  readonly __hoboTriggerContract: true;
+  readonly kind: K;
+  readonly name: string;
+  readonly stableId: string;
+  readonly port: string;
+  readonly durableEvents: boolean;
+  readonly bindings: Record<string, BindingDescriptor>;
+  readonly triggers: TriggerEdge[];
+  readonly permissions: Set<string>;
+  readonly routeKeys: Set<string>;
+  readonly clientType: string | undefined;
+}
+
+interface KvHandle extends ResourceHandle<"kv"> {}
+
+interface QueueHandle extends ResourceHandle<"queue"> {}
+
+interface BucketHandle extends ResourceHandle<"bucket"> {
+  on(event: string, handler: HandlerLike): TriggerEdge;
+}
+
+interface ScheduleHandle extends ResourceHandle<"schedule"> {
+  cron(expression: string, handler: HandlerLike): TriggerEdge;
+}
+
+interface TopicHandle extends ResourceHandle<"topic"> {
+  subscribe(handler: HandlerLike): TriggerEdge;
+  subscribe(eventType: string, handler: HandlerLike): TriggerEdge;
+}
+
+type BindingsOf<B extends BindMap> = {
+  [Alias in keyof B]: B[Alias] extends ResourceHandle<infer K> ? ClientForKind<K> : never;
+};
+
+interface HandlerContext<B extends BindMap = BindMap> {
+  readonly params: Record<string, string>;
+  readonly bindings: BindingsOf<B>;
+}
+
+type HttpHandler<B extends BindMap> = (ctx: HandlerContext<B>) => unknown;
+
+interface ApiHandle<B extends BindMap = BindMap> extends ResourceHandle<"api"> {
+  get(path: string, handler: HttpHandler<B>): TriggerEdge;
+  post(path: string, handler: HttpHandler<B>): TriggerEdge;
+  put(path: string, handler: HttpHandler<B>): TriggerEdge;
+  patch(path: string, handler: HttpHandler<B>): TriggerEdge;
+  delete(path: string, handler: HttpHandler<B>): TriggerEdge;
+}
+
 const MANIFEST_SCHEMA = "hobo.manifest/v1";
-const DEFAULT_COMPONENT_HOST = Object.freeze({
+const DEFAULT_COMPONENT_HOST: ComponentHost = Object.freeze({
   kind: "wasmtime",
   version: "46.0.1",
 });
 const RESOURCE_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
-const PORT_BY_KIND = Object.freeze({
+const PORT_BY_KIND: Record<ResourceKind, string> = Object.freeze({
   api: "wasi:http",
   bucket: "wasi:blobstore",
   kv: "wasi:keyvalue",
@@ -14,7 +192,7 @@ const PORT_BY_KIND = Object.freeze({
   topic: "wasi:messaging",
 });
 
-const CLIENT_TYPE_BY_KIND = Object.freeze({
+const CLIENT_TYPE_BY_KIND: Partial<Record<ResourceKind, string>> = Object.freeze({
   bucket: "BucketClient",
   kv: "KvClient",
   queue: "QueueClient",
@@ -22,34 +200,40 @@ const CLIENT_TYPE_BY_KIND = Object.freeze({
   topic: "TopicClient",
 });
 
+const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+
 export class TriggerContractError extends Error {
-  constructor(path, message) {
+  readonly path: string;
+
+  constructor(path: string, message: string) {
     super(`${path}: ${message}`);
     this.name = "TriggerContractError";
     this.path = path;
   }
 }
 
-export function api(name, options = {}) {
+export function api<B extends BindMap = BindMap>(name: string, options: ApiOptions<B> = {}): ApiHandle<B> {
   const handle = createHandle("api", name, options);
-  for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"]) {
-    handle[method.toLowerCase()] = (path, handler) =>
+  const mutable = handle as ResourceHandle<"api"> & Record<string, unknown>;
+  for (const method of HTTP_METHODS) {
+    mutable[method.toLowerCase()] = (path: string, handler: HttpHandler<B>) =>
       registerHttpRoute(handle, method, path, handler);
   }
-  return Object.freeze(handle);
+  return Object.freeze(handle) as ApiHandle<B>;
 }
 
-export function kv(name) {
+export function kv(name: string): KvHandle {
   return createHandle("kv", name);
 }
 
-export function queue(name) {
+export function queue(name: string): QueueHandle {
   return createHandle("queue", name);
 }
 
-export function topic(name, options = {}) {
+export function topic(name: string, options: ResourceOptions = {}): TopicHandle {
   const handle = createHandle("topic", name, options);
-  handle.subscribe = (eventType, handler) => {
+  const mutable = handle as ResourceHandle<"topic"> & Record<string, unknown>;
+  mutable.subscribe = (eventType: string | HandlerLike, handler?: HandlerLike) => {
     const normalized =
       typeof eventType === "function" || isWorkflowHandler(eventType)
         ? { eventType: "*", handler: eventType }
@@ -63,12 +247,13 @@ export function topic(name, options = {}) {
       inferredPermissions: ["subscribe"],
     });
   };
-  return Object.freeze(handle);
+  return Object.freeze(handle) as TopicHandle;
 }
 
-export function schedule(name, options = {}) {
+export function schedule(name: string, options: ResourceOptions = {}): ScheduleHandle {
   const handle = createHandle("schedule", name, options);
-  handle.cron = (expression, handler) =>
+  const mutable = handle as ResourceHandle<"schedule"> & Record<string, unknown>;
+  mutable.cron = (expression: string, handler: HandlerLike) =>
     registerHostTrigger(handle, {
       id: `${name}.cron.${assertString(expression, `resources.${name}.triggers.cron.expression`)}`,
       kind: "schedule.cron",
@@ -77,12 +262,13 @@ export function schedule(name, options = {}) {
       handler,
       inferredPermissions: [],
     });
-  return Object.freeze(handle);
+  return Object.freeze(handle) as ScheduleHandle;
 }
 
-export function bucket(name, options = {}) {
+export function bucket(name: string, options: ResourceOptions = {}): BucketHandle {
   const handle = createHandle("bucket", name, options);
-  handle.on = (event, handler) => {
+  const mutable = handle as ResourceHandle<"bucket"> & Record<string, unknown>;
+  mutable.on = (event: string, handler: HandlerLike) => {
     const eventName = assertString(event, `resources.${name}.triggers.event`);
     const inferredPermissions = eventName === "write" ? ["event:write", "read"] : [`event:${eventName}`];
     return registerHostTrigger(handle, {
@@ -94,10 +280,10 @@ export function bucket(name, options = {}) {
       inferredPermissions,
     });
   };
-  return Object.freeze(handle);
+  return Object.freeze(handle) as BucketHandle;
 }
 
-export function workflow(name, handler) {
+export function workflow(name: string, handler: Handler): WorkflowHandler {
   const handlerName = assertString(name, "workflow.name");
   if (typeof handler !== "function") {
     throw new TriggerContractError("workflow.handler", "must be a function");
@@ -109,12 +295,15 @@ export function workflow(name, handler) {
   });
 }
 
-export function compileHandlerManifest(resources, options = {}) {
+export function compileHandlerManifest(
+  resources: ResourceHandle[],
+  options: CompileManifestOptions = {},
+): HandlerManifest {
   if (!Array.isArray(resources)) {
     throw new TriggerContractError("resources", "must be an array");
   }
 
-  const resourceMap = new Map();
+  const resourceMap = new Map<string, ResourceHandle>();
   for (const resource of resources) {
     assertHandle(resource, "resources");
     if (resourceMap.has(resource.name)) {
@@ -124,7 +313,7 @@ export function compileHandlerManifest(resources, options = {}) {
   }
 
   const triggerEdges = collectTriggerEdges(resources, options.triggers ?? [], resourceMap);
-  const manifest = {
+  const manifest: HandlerManifest = {
     schema: MANIFEST_SCHEMA,
     componentHost: options.componentHost ?? DEFAULT_COMPONENT_HOST,
     resources: Object.fromEntries(
@@ -140,10 +329,14 @@ export function compileHandlerManifest(resources, options = {}) {
   return manifest;
 }
 
-function createHandle(kind, name, options = {}) {
+function createHandle<K extends ResourceKind>(
+  kind: K,
+  name: string,
+  options: ResourceOptions = {},
+): ResourceHandle<K> {
   assertResourceName(name, `${kind}.name`);
   const bind = normalizeBindMap(options.bind ?? {}, `${kind}.${name}.bind`);
-  const handle = {
+  const handle: ResourceHandle<K> = {
     __hoboTriggerContract: true,
     kind,
     name,
@@ -168,7 +361,12 @@ function createHandle(kind, name, options = {}) {
   return handle;
 }
 
-function registerHttpRoute(handle, method, path, handler) {
+function registerHttpRoute(
+  handle: ResourceHandle<"api">,
+  method: string,
+  path: string,
+  handler: Handler,
+): TriggerEdge {
   const routePath = assertString(path, `resources.${handle.name}.routes.path`);
   assertHandler(handler, `resources.${handle.name}.routes.${method} ${routePath}`);
   const key = `${method} ${routePath}`;
@@ -177,7 +375,7 @@ function registerHttpRoute(handle, method, path, handler) {
   }
 
   handle.routeKeys.add(key);
-  const trigger = omitUndefined({
+  const trigger = omitUndefined<TriggerEdge>({
     id: `${handle.name}.${method}.${routePath}`,
     kind: "http.route",
     resource: handle.name,
@@ -190,9 +388,10 @@ function registerHttpRoute(handle, method, path, handler) {
   return trigger;
 }
 
-function registerHostTrigger(handle, trigger) {
-  assertHandler(trigger.handler, `resources.${handle.name}.triggers.${trigger.event ?? trigger.kind}`);
-  if (isWorkflowHandler(trigger.handler) && handle.durableEvents !== true) {
+function registerHostTrigger(handle: ResourceHandle, trigger: HostTriggerInput): TriggerEdge {
+  const handler = trigger.handler;
+  assertHandler(handler, `resources.${handle.name}.triggers.${trigger.event ?? trigger.kind}`);
+  if (isWorkflowHandler(handler) && handle.durableEvents !== true) {
     throw new TriggerContractError(
       `resources.${handle.name}.triggers.${trigger.event ?? trigger.kind}`,
       "workflow subscriber requires a durable event path",
@@ -203,23 +402,27 @@ function registerHostTrigger(handle, trigger) {
     handle.permissions.add(permission);
   }
 
-  const edge = omitUndefined({
+  const edge = omitUndefined<TriggerEdge>({
     id: trigger.id,
     kind: trigger.kind,
     resource: handle.name,
     event: trigger.event,
     cron: trigger.cron,
     exportInterface: trigger.exportInterface,
-    handler: handlerName(trigger.handler),
+    handler: handlerName(handler),
     inferredPermissions: trigger.inferredPermissions.length > 0 ? trigger.inferredPermissions : undefined,
-    durableRuntime: durableRuntimeFor(trigger.handler),
+    durableRuntime: durableRuntimeFor(handler),
   });
   handle.triggers.push(edge);
   return edge;
 }
 
-function collectTriggerEdges(resources, extraTriggers, resourceMap) {
-  const triggerEdges = [];
+function collectTriggerEdges(
+  resources: ResourceHandle[],
+  extraTriggers: TriggerEdge[],
+  resourceMap: Map<string, ResourceHandle>,
+): TriggerEdge[] {
+  const triggerEdges: TriggerEdge[] = [];
   for (const resource of resources) {
     triggerEdges.push(...resource.triggers);
   }
@@ -236,9 +439,9 @@ function collectTriggerEdges(resources, extraTriggers, resourceMap) {
   });
 }
 
-function manifestResource(handle) {
+function manifestResource(handle: ResourceHandle): ManifestResource {
   if (handle.kind === "api") {
-    return omitEmpty({
+    return omitEmpty<ApiManifestResource>({
       type: "component.v1",
       kind: handle.kind,
       runtime: "wasm",
@@ -271,7 +474,7 @@ function manifestResource(handle) {
   };
 }
 
-function normalizeBindMap(bind, path) {
+function normalizeBindMap(bind: BindMap, path: string): BindMap {
   if (!bind || typeof bind !== "object" || Array.isArray(bind)) {
     throw new TriggerContractError(path, "must be a resource map");
   }
@@ -283,43 +486,45 @@ function normalizeBindMap(bind, path) {
   return bind;
 }
 
-function assertHandle(handle, path) {
-  if (!handle?.__hoboTriggerContract || typeof handle.name !== "string") {
+function assertHandle(handle: unknown, path: string): asserts handle is ResourceHandle {
+  const candidate = handle as { __hoboTriggerContract?: unknown; name?: unknown } | null | undefined;
+  if (!candidate?.__hoboTriggerContract || typeof candidate.name !== "string") {
     throw new TriggerContractError(path, "must contain HoBo handler-trigger resource handles");
   }
 }
 
-function assertResourceName(name, path) {
+function assertResourceName(name: string, path: string): void {
   if (typeof name !== "string" || !RESOURCE_ID.test(name)) {
     throw new TriggerContractError(path, "invalid resource id");
   }
 }
 
-function assertString(value, path) {
+function assertString(value: string, path: string): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new TriggerContractError(path, "must be a non-empty string");
   }
   return value;
 }
 
-function assertHandler(handler, path) {
+function assertHandler(handler: unknown, path: string): asserts handler is HandlerLike {
   if (typeof handler !== "function" && !isWorkflowHandler(handler)) {
     throw new TriggerContractError(path, "handler must be a function or workflow handler");
   }
 }
 
-function isWorkflowHandler(handler) {
-  return handler?.kind === "workflow";
+function isWorkflowHandler(value: unknown): value is WorkflowHandler {
+  const candidate = value as { kind?: unknown } | null | undefined;
+  return candidate?.kind === "workflow";
 }
 
-function handlerName(handler) {
+function handlerName(handler: HandlerLike): string {
   if (isWorkflowHandler(handler)) {
     return handler.name;
   }
   return handler.name || "anonymous";
 }
 
-function durableRuntimeFor(handler) {
+function durableRuntimeFor(handler: HandlerLike): DurableRuntime | undefined {
   if (!isWorkflowHandler(handler)) {
     return undefined;
   }
@@ -330,7 +535,7 @@ function durableRuntimeFor(handler) {
   };
 }
 
-function omitEmpty(value) {
+function omitEmpty<T extends object>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => {
       if (Array.isArray(entry)) {
@@ -341,9 +546,9 @@ function omitEmpty(value) {
       }
       return entry !== undefined;
     }),
-  );
+  ) as T;
 }
 
-function omitUndefined(value) {
-  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
+function omitUndefined<T extends object>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
 }

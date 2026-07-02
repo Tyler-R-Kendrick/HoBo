@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -35,24 +35,22 @@ import {
 } from "../src/policy-engine-provider-adapters.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const tscPath = path.resolve(
+  packageRoot,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 
 test("typed declarations publish the OPA/Rego and Cedar adapter surface", () => {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : npmCommand;
-  const args = [
-    "exec",
-    "--yes",
-    "--package",
-    "typescript@5.5.4",
-    "--",
-    "tsc",
-    "--noEmit",
-    "--project",
-    "tsconfig.types.json",
-  ];
   const result = spawnSync(
-    command,
-    process.platform === "win32" ? ["/d", "/c", npmCommand, ...args] : args,
+    process.execPath,
+    [tscPath, "--noEmit", "--project", "tsconfig.types.json"],
     {
       cwd: packageRoot,
       encoding: "utf8",

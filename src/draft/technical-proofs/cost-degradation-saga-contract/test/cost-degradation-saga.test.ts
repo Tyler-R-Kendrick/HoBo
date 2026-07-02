@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { evaluateRunawaySpendCircuitBreaker } from "../../runaway-spend-circuit-breaker-contract/src/runaway-spend-circuit-breaker.js";
 

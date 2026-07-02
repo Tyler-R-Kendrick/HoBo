@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createHoboMcpServer } from "../../hobo-mcp-server-contract/src/mcp-server-contract.js";
 import {

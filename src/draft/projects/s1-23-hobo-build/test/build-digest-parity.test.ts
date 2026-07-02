@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "vitest";
 
 import { componentizeHelloBindle } from "../../../../../packages/componentize/src/index.js";
 import { createBuildCli, runBuild, writeBuildFixtureProject } from "../src/index.js";

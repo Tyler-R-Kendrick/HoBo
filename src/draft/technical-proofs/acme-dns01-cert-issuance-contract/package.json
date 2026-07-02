@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for ACME DNS-01 certificate issuance and rotation from HOBO-144.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

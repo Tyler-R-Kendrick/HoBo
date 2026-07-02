@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { command } from "../../cqrs-command-aggregate-contract/src/cqrs-command-aggregate-contract.js";
 import { defineMaterialization } from "../../reactor-skeleton-contract/src/reactor-skeleton-contract.js";

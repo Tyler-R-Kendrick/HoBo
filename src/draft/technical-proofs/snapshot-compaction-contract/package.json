@@ -13,9 +13,6 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts && npx tsc --noEmit -p tsconfig.types.json"
-  },
-  "devDependencies": {
-    "typescript": "5.9.2"
+    "test": "vitest run --root . && tsc --noEmit -p tsconfig.types.json"
   }
 }

@@ -25,3 +25,10 @@ pnpm --prefix src/draft/technical-proofs/resource-collection-engine-contract tes
 
 - `architecture/collector.proto` + `architecture/collector.cue` — collection records
 - `architecture/pacts/hobo-collector-hobo-bindles.pact.json` — collector ↔ bindles catalog pact
+
+## Testing
+
+Run `pnpm --filter @hobo-draft/resource-collection-engine-contract test`
+(Vitest). The golden-manifest case pins a local fixture under
+`test/fixtures/hello-bindle.manifest.json` (the shared example manifest was
+repurposed by the S1-15 bind-wiring promotion for other proofs).

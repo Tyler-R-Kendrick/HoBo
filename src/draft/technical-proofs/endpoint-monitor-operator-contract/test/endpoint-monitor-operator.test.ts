@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { processSreSignals } from "../../sre-operator-skeleton-contract/src/sre-operator-skeleton.js";
 import {

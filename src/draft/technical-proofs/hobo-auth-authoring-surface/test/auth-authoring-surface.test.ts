@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -14,6 +14,17 @@ import {
 import { generateDevPrincipalFixture } from "../../hobo-auth-consumer-contract/src/auth-consumer-contract.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const tscPath = path.resolve(
+  packageRoot,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 
 function declareAppAuth(overrides = {}) {
   return auth({
@@ -184,22 +195,9 @@ describe("hobo:auth authoring surface", () => {
   });
 
   it("type declarations narrow providers and carry ctx.user claims", () => {
-    const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-    const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : npmCommand;
-    const args = [
-      "exec",
-      "--yes",
-      "--package",
-      "typescript@5.5.4",
-      "--",
-      "tsc",
-      "--noEmit",
-      "--project",
-      "tsconfig.types.json",
-    ];
     const result = spawnSync(
-      command,
-      process.platform === "win32" ? ["/d", "/c", npmCommand, ...args] : args,
+      process.execPath,
+      [tscPath, "--noEmit", "--project", "tsconfig.types.json"],
       {
         cwd: packageRoot,
         encoding: "utf8",

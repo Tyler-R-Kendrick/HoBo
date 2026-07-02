@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for HOBO-159 Junction cross-cloud connectivity inference delivery.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

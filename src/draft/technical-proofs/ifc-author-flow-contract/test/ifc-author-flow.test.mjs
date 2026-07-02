@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
+import { fileURLToPath } from "node:url";
 
 import {
   withTempSdkProject,
@@ -16,6 +17,10 @@ import {
   stableManifestJson,
   writeSdkManifestIrArtifact,
 } from "../src/ifc-author-flow.mjs";
+
+const tscPath = fileURLToPath(
+  new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url),
+);
 
 test("sample Bindle drives declare to collect to infer to codegen to manifest", async () => {
   const result = await runIfcAuthorFlow();
@@ -68,29 +73,14 @@ test("generated TypeScript surface compiles for the sample Bindle consumer", asy
       ),
     );
 
-    const command = process.platform === "win32" ? (process.env.ComSpec ?? "cmd.exe") : "npm";
-    const args =
-      process.platform === "win32"
-        ? [
-            "/d",
-            "/c",
-            "npm.cmd exec --yes --package typescript@5.9.2 -- tsc --noEmit --project tsconfig.json",
-          ]
-        : [
-            "exec",
-            "--yes",
-            "--package",
-            "typescript@5.9.2",
-            "--",
-            "tsc",
-            "--noEmit",
-            "--project",
-            "tsconfig.json",
-          ];
-    const compile = spawnSync(command, args, {
-      cwd: projectRoot,
-      encoding: "utf8",
-    });
+    const compile = spawnSync(
+      process.execPath,
+      [tscPath, "--noEmit", "--project", "tsconfig.json"],
+      {
+        cwd: projectRoot,
+        encoding: "utf8",
+      },
+    );
 
     assert.equal(
       compile.status,

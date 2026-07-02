@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createRuntimeLocalStreamer } from "../../streamer-runtime-port-contract/src/streamer-runtime-port.js";
 import {

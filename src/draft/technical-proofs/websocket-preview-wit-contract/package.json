@@ -7,10 +7,9 @@
   "scripts": {
     "build:guest": "tsc --noEmit -p tsconfig.guest-stub.json",
     "generate": "tsx scripts/generate-types.ts",
-    "test": "npm run generate && npm run build:guest && node --import tsx --test test/*.test.ts"
+    "test": "npm run generate && npm run build:guest && vitest run --root ."
   },
   "devDependencies": {
-    "@bytecodealliance/jco": "1.24.3",
-    "typescript": "5.9.2"
+    "@bytecodealliance/jco": "1.24.3"
   }
 }

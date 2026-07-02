@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   },
   "description": "POC for HOBO-70 usage-inferred permissions and narrow-only .allow() contract markers."
 }

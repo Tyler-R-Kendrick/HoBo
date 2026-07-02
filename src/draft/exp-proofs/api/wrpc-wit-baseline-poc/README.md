@@ -18,14 +18,17 @@ The full rationale is recorded in `ADR-0085`.
 
 ## Verification
 
-```powershell
-npm.cmd install
-npm.cmd test
+```sh
+pnpm install
+pnpm test
 ```
 
-`npm.cmd test` regenerates bindings with the pinned `jco`, runs an exact-version
+`pnpm test` regenerates bindings with the pinned `jco`, runs an exact-version
 `wit-bindgen-cli` smoke generation, validates the lock and vendored interface
-digest, and checks the generated smoke binding surface.
+digest, and checks the generated smoke binding surface (Vitest). The jco pin
+is verified against the installed `@bytecodealliance/jco` manifest — the
+workspace uses a single root `pnpm-lock.yaml`, so there is no per-package
+lockfile to inspect.
 
 
 ## Architecture Evidence

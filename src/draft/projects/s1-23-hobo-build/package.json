@@ -5,6 +5,6 @@
   "type": "module",
   "description": "S1-23 draft POC: hobo build wires CLI orchestration to @hobo/componentize (HOBO-613).",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

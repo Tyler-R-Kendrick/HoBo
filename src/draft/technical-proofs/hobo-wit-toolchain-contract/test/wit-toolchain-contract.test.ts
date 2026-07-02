@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   EXPECTED_INTERFACES,
@@ -96,6 +96,7 @@ test("wit:gen produces byte-identical checked-in bindings on rerun", async (t) =
 
 test("trivial guest imports the generated hobo:sdk world and builds", async () => {
   const args = [
+    "--ignoreConfig",
     "--strict",
     "--skipLibCheck",
     "--module",
@@ -105,20 +106,12 @@ test("trivial guest imports the generated hobo:sdk world and builds", async () =
     "--target",
     "ES2022",
   ];
-  const localTsc = resolveLocalTsc();
-  const command =
-    localTsc === undefined ? (process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "npm") : process.execPath;
+  const tscPath = requireFromPackage.resolve("typescript/bin/tsc");
 
   await withTempDir(async (outDir) => {
     const buildArgs = [...args, "--outDir", outDir, join(PACKAGE_ROOT, "fixtures", "trivial-guest.ts")];
-    const npmExecArgs = ["exec", "--yes", "--package", "typescript@5.5.4", "--", "tsc", ...buildArgs];
-    const commandArgs = localTsc
-      ? [localTsc, ...buildArgs]
-      : process.platform === "win32"
-        ? ["/d", "/c", "npm.cmd", ...npmExecArgs]
-        : npmExecArgs;
 
-    execFileSync(command, commandArgs, { cwd: PACKAGE_ROOT, stdio: "pipe" });
+    execFileSync(process.execPath, [tscPath, ...buildArgs], { cwd: PACKAGE_ROOT, stdio: "pipe" });
   });
 });
 
@@ -155,13 +148,5 @@ async function withTempDir(callback) {
     return await callback(dir);
   } finally {
     await rm(dir, { recursive: true, force: true });
-  }
-}
-
-function resolveLocalTsc() {
-  try {
-    return requireFromPackage.resolve("typescript/bin/tsc");
-  } catch {
-    return undefined;
   }
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createExperimentEvent } from "../../hobo-experiment-port/src/experiment-contract.js";
 import {

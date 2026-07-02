@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "vitest run --root .",
     "build": "tsx scripts/verify-monorepo-skeleton.ts build",
     "typecheck": "tsx scripts/verify-monorepo-skeleton.ts typecheck",
     "lint": "tsx scripts/verify-monorepo-skeleton.ts lint"

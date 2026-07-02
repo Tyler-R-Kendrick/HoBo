@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import { canonicalJson } from "../../hobo-policy-ir-contract/src/policy-ir.js";
@@ -16,6 +16,17 @@ import {
 } from "../src/end-user-authorization-policy.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const tscPath = path.resolve(
+  packageRoot,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+  "typescript",
+  "bin",
+  "tsc",
+);
 
 test("verified ctx.user owner claims can read their own record and audit as the actor", () => {
   const result = authorizeUserRecord({
@@ -183,22 +194,9 @@ test(".allow() lowers to the same user-claim policy rule instead of a second aut
 });
 
 test("typed declarations compile an end-user authorization policy consumer", () => {
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : npmCommand;
-  const args = [
-    "exec",
-    "--yes",
-    "--package",
-    "typescript@5.5.4",
-    "--",
-    "tsc",
-    "--noEmit",
-    "--project",
-    "tsconfig.types.json",
-  ];
   const result = spawnSync(
-    command,
-    process.platform === "win32" ? ["/d", "/c", npmCommand, ...args] : args,
+    process.execPath,
+    [tscPath, "--noEmit", "--project", "tsconfig.types.json"],
     {
       cwd: packageRoot,
       encoding: "utf8",

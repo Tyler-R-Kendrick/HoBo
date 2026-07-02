@@ -2,17 +2,18 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { sortKeys } from "../src/sort-keys.js";
 import { collectBindleResources } from "../src/index.js";
 import { defineHelloBindle } from "../../../../../examples/hello-bindle/src/collector-target.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fixturePath = join(
-  here,
-  "../../../../../examples/hello-bindle/contracts/manifests/hello-bindle.manifest.json",
-);
+// Local golden for this engine's collector-target output. The shared example
+// manifest (examples/hello-bindle/contracts/manifests) was repurposed by the
+// S1-15 bind-wiring promotion to a different bindle shape that other proofs
+// consume, so this proof pins its own copy to stay byte-stable.
+const fixturePath = join(here, "fixtures/hello-bindle.manifest.json");
 
 function serializeCanonicalManifest(manifest) {
   return `${JSON.stringify(sortKeys(manifest), null, 2)}\n`;

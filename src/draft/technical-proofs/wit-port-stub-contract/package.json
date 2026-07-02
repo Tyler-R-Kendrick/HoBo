@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for HOBO-651: stub() recording typed stubs behind any WIT port.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

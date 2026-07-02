@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for the @hobo/conformance/component-host portability boundary from HOBO-29.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { canonicalResult, resolveVector } from "../src/resolution-semantics.js";
 
 const vectorsPath = path.resolve(import.meta.dirname, "..", "fixtures", "resolution-vectors.json");

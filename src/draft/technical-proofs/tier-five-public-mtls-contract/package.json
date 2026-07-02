@@ -4,6 +4,6 @@
   "type": "module",
   "description": "POC for realizing tier 5 public endpoints guarded by workload-SVID mutual TLS from HOBO-134.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

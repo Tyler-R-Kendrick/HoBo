@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createBrokenFenceRuntimeBackend } from "../src/fixtures/broken-fence-backend.js";
 import { createRuntimeLocalDurabilityBackend } from "../src/fixtures/reference-backend.js";

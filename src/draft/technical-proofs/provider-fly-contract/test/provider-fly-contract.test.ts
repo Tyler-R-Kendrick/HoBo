@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { hoboVerify } from "../../provider-capability-conformance-suites/src/provider-capability-conformance.js";
 import { validatePortabilityReport } from "../../portability-report-contract/src/portability-report-contract.js";

@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for policy-gated chaos experiment orchestration with blast-radius and abort bounds.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for vendored/pinned WASI interfaces and round-trip conformance fixtures.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

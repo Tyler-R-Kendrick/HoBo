@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Integrated draft POC for HOBO-605: bind reference wiring + bindle/camp/yard topology (local-first).",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

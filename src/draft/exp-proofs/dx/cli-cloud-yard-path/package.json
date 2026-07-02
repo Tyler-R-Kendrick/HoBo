@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/dx/cli-cloud-yard-path/test/cli-cloud-yard-path.test.ts"
+    "test": "vitest run --root ."
   }
 }

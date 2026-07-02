@@ -5,6 +5,6 @@
   "type": "module",
   "description": "HOBO-653 POC: evals promotion gates, use-training capture/lint, OTLP export.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

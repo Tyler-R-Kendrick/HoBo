@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "diagnostics": "node --import tsx src/local-diagnostics.mts",
-    "test": "node --import tsx --test test/*.test.mjs test/*.test.mts"
+    "test": "vitest run --root ."
   }
 }

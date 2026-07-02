@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix/test/dx-resource-lifecycle-scenario-matrix.test.ts"
+    "test": "vitest run --root ."
   }
 }

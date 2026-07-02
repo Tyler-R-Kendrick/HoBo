@@ -21,3 +21,10 @@ pnpm --prefix src/draft/exp-proofs/dx/adr-0064-ui-generation-citation-contract t
 
 Architecture-guard evidence: `ARCHITECTURE.md`, `architecture/*.proto`, `architecture/*.cue`,
 `architecture/pacts/*.pact.json`.
+
+## Testing
+
+Run `pnpm --filter @hobo/draft-adr-0064-ui-generation-citation-contract test`
+(Vitest). The citation check resolves the repo root six levels up from the test
+directory (the package sits under `exp-proofs/dx/`) before scanning the four
+REM-037 target docs.

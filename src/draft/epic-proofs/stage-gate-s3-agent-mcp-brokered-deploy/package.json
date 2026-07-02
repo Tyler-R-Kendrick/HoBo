@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test tests/*.test.ts contracts/consumer/*.test.ts",
+    "test": "vitest run --root .",
     "simulate": "node --import tsx simulation/run-simulation.ts"
   }
 }

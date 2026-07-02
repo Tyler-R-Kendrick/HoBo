@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createDomainValidationGate } from "../../domain-validation-gate-contract/src/domain-validation-gate.js";
 import { realizeGateway } from "../../gateway-realization-contract/src/gateway-realization.js";

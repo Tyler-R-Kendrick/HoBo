@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createConnectorBinding } from "../../../../technical-proofs/connector-authoring-contract/src/connector-authoring.mjs";
 import { inferConnectorScopes } from "../src/xaa-scope-inference.mjs";

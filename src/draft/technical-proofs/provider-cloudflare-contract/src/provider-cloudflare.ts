@@ -12,13 +12,344 @@ export const CLOUDFLARE_PROVIDER_TARGET = "cloudflare";
 export const CLOUDFLARE_TERRAFORM_DRIVER = "terraform:cloudflare";
 export const CLOUDFLARE_WRANGLER_DRIVER = "wrangler";
 
+export type CloudflareCapabilityPort =
+  | "compute"
+  | "objectStore"
+  | "database"
+  | "kv"
+  | "queue"
+  | "dns";
+
+type OptionValues = Record<string, any>;
+type OutputValues = Record<string, string>;
+type ServiceMatrix = Record<string, string[]>;
+type HintValue = string[] | Record<string, unknown>;
+
+interface CapabilityDefinition {
+  port: CloudflareCapabilityPort;
+  service: string;
+  resourceClass: string;
+  alternateResourceClasses?: string[];
+  className: string;
+  features: string[];
+  outputs: string[];
+  defaultId: string;
+  costSku: string;
+  costUnit: string;
+  drivers: string[];
+}
+
+interface CapabilityEquivalence {
+  providerService: string;
+  features: string[];
+  degradation?: string;
+}
+
+interface CapabilityDefaultDefinition {
+  id: string;
+  provider: string;
+  port: CloudflareCapabilityPort;
+  resourceClass: string;
+  className: string;
+  source: string;
+  driver: string;
+  satisfies: string[];
+  equivalence: CapabilityEquivalence;
+  regions: string[];
+}
+
+interface CloudflareOnlyFeature {
+  idSuffix: string;
+  detail: string;
+}
+
+interface CloudflareOptionBlock {
+  providerId: string;
+  port: CloudflareCapabilityPort;
+  optionName: string;
+  negotiation: string;
+  options: OptionValues;
+}
+
+interface MergedOptionEntry {
+  providerId: string;
+  port: CloudflareCapabilityPort;
+  resourceClass: string;
+  optionName: string;
+  options: OptionValues;
+}
+
+interface BuildSpec {
+  artifactId: string;
+  source?: string;
+  target?: string;
+  dependsOn?: string[];
+}
+
+interface ResourceBind {
+  import: string;
+  providerResourceId: string;
+  capability?: CloudflareCapabilityPort;
+}
+
+interface PlanResource {
+  id: string;
+  type: CloudflareCapabilityPort;
+  className?: string;
+  require?: string[];
+  prefer?: string[];
+  colo?: string;
+  options?: CloudflareOptionBlock[];
+  build?: BuildSpec;
+  binds?: ResourceBind[];
+  safeRolloutGate?: string;
+}
+
+interface ResolvedResource extends PlanResource {
+  planId: string;
+  className: string;
+  colo: string;
+  require: string[];
+  prefer: string[];
+  options: CloudflareOptionBlock[];
+}
+
+interface PlanContext {
+  app?: string;
+  env?: string;
+  envType?: string;
+  provider?: string;
+  colo?: string;
+}
+
+interface Plan {
+  id: string;
+  context?: PlanContext;
+  colo?: string;
+  resources?: PlanResource[];
+}
+
+interface EdgeShopPlanOptions {
+  id?: string;
+  colo?: string;
+  env?: string;
+  envType?: string;
+  resourceOptions?: Record<string, CloudflareOptionBlock[]>;
+  resources?: PlanResource[];
+}
+
+interface CapabilityInfo {
+  port: CloudflareCapabilityPort;
+  service: string;
+  resourceClass: string;
+  resourceClasses: string[];
+  resourceClassesByColo: Record<string, string[]>;
+  features: string[];
+  regions: string[];
+  conformance: { tags: string[] };
+  drivers: string[];
+}
+
+interface CapabilityManifest {
+  apiVersion: string;
+  provider: string;
+  claimedCapabilities: CloudflareCapabilityPort[];
+  auth: { mode: string; tokenBroker: string; staticSecrets: boolean };
+  hostRuntime: { providerNativeWasm: string; componentHost: string; adr: string };
+  colos: string[];
+  capabilities: CapabilityInfo[];
+  cost: {
+    currency: string;
+    source: string;
+    facts: Array<{ port: CloudflareCapabilityPort; sku: string; unit: string; trust: string }>;
+  };
+  conformance: { suites: string[]; tags: string[] };
+}
+
+interface CapabilityManifestSource {
+  capabilityManifest(): CapabilityManifest;
+}
+
+interface PlanRejectedResult {
+  type: "deployment.PlanRejected";
+  provider: string;
+  resourceId: string;
+  reason: {
+    code: string;
+    resourceId: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface PostgresPreferWarning {
+  code: string;
+  resourceId: string;
+  message: string;
+  provider: string;
+  resourceClass: string;
+}
+
+interface PlanPlannedResult {
+  type: "deployment.Planned";
+  provider: string;
+  planId: string;
+  colo: string;
+  warnings: PostgresPreferWarning[];
+  [key: string]: unknown;
+}
+
+type EvaluationResult = PlanRejectedResult | PlanPlannedResult;
+
+interface AppliedResult {
+  type: "deployment.Applied";
+  provider: string;
+  planId: string;
+  resources: string[];
+  [key: string]: unknown;
+}
+
+type ApplySimulationResult = PlanRejectedResult | AppliedResult;
+
+interface IacEdge {
+  from: string;
+  to: string;
+  reason: string;
+}
+
+interface IacLink {
+  component: string;
+  import: string;
+  providerNode: string;
+  capability: CloudflareCapabilityPort;
+}
+
+interface OutputPlaceholderEntry {
+  placeholder: string;
+  producerNode: string;
+  output: string;
+  consumerNode: string;
+  inputPath: string;
+}
+
+interface BuildArtifact {
+  id: string;
+  source: string;
+  target: string;
+  outputKind: string;
+  dependsOn: string[];
+}
+
+interface IacNode {
+  id: string;
+  type: CloudflareCapabilityPort;
+  className: string;
+  resourceClass: string;
+  driverIntent: {
+    capability: CloudflareCapabilityPort;
+    operation: string;
+    iacProvider: string;
+  };
+  inputs: {
+    colo: string;
+    name: string;
+    options: OptionValues;
+    metadata: { hoboPlan: string; hoboResource: string };
+    bundle?: { $build: string };
+    bindings?: Record<string, string>;
+  };
+  outputs: string[];
+}
+
+interface PortabilityReportEntry {
+  id: string;
+  category: string;
+  severity: string;
+  resourceId: string;
+  provider: string;
+  path: string;
+  detail: string;
+  gateEffect: string;
+}
+
+interface PortabilityReport {
+  apiVersion: string;
+  planId: string;
+  entries: PortabilityReportEntry[];
+  zeroSecretExceptions: unknown[];
+}
+
+interface RealizeEmission {
+  apiVersion: string;
+  provider: string;
+  planId: string;
+  portabilityReport: PortabilityReport;
+  iac: {
+    apiVersion: string;
+    intent: string;
+    context: PlanContext | undefined;
+    nodes: IacNode[];
+    edges: IacEdge[];
+    outputPlaceholders: OutputPlaceholderEntry[];
+    links: IacLink[];
+  };
+  build?: {
+    apiVersion: string;
+    artifacts: BuildArtifact[];
+  };
+  [key: string]: unknown;
+}
+
+interface CampEvidenceFields {
+  realProviderDrift: boolean;
+  iam: boolean;
+  mtls: boolean;
+  quota: boolean;
+}
+
+type CampEvidenceOverrides = Partial<Record<CloudflareCapabilityPort | "default", Partial<CampEvidenceFields>>>;
+type CampEvidenceOption = "pass" | "fail" | CampEvidenceOverrides;
+
+interface NegotiateHints {
+  require?: HintValue;
+  prefer?: HintValue;
+}
+
+interface NegotiateResult {
+  capability: CloudflareCapabilityPort;
+  provider: string;
+  requireSatisfied: boolean;
+  missing: string[];
+  preferHonored: string[];
+}
+
+interface ProvisionPlan {
+  colo?: string;
+  require?: { region?: string; colo?: string };
+}
+
+interface ProvisionedResource {
+  id: string;
+  capability: CloudflareCapabilityPort;
+  colo: string;
+  plan: ProvisionPlan;
+  outputs: OutputValues;
+  drifted?: boolean;
+}
+
+interface CloudflareProviderOptions {
+  colos?: string[];
+  serviceMatrix?: ServiceMatrix;
+  campEvidence?: CampEvidenceOption;
+}
+
 const WORKER_LIMITS = Object.freeze({
   cpuMs: 30_000,
   scriptSizeMb: 10,
   memoryMb: 128
 });
 
-const CAPABILITY_DEFINITIONS = [
+const CAPABILITY_DEFINITIONS: CapabilityDefinition[] = [
   {
     port: "compute",
     service: "Workers",
@@ -94,7 +425,7 @@ const CAPABILITY_DEFINITIONS = [
   }
 ];
 
-const HYPERDRIVE_DEFAULT_DEFINITION = Object.freeze({
+const HYPERDRIVE_DEFAULT_DEFINITION: CapabilityDefaultDefinition = Object.freeze({
   id: "cloudflare.default.database.hyperdrive-postgres",
   provider: CLOUDFLARE_PROVIDER_ID,
   port: "database",
@@ -111,7 +442,9 @@ const HYPERDRIVE_DEFAULT_DEFINITION = Object.freeze({
   regions: ["global"]
 });
 
-const CAPABILITY_BY_PORT = new Map(CAPABILITY_DEFINITIONS.map((definition) => [definition.port, definition]));
+const CAPABILITY_BY_PORT = new Map(
+  CAPABILITY_DEFINITIONS.map((definition): [CloudflareCapabilityPort, CapabilityDefinition] => [definition.port, definition])
+);
 const RESOURCE_CLASS_BY_BUILDER = new Map([
   ["worker", "cloudflare:workers-script"],
   ["r2", "cloudflare:r2-bucket"],
@@ -121,7 +454,7 @@ const RESOURCE_CLASS_BY_BUILDER = new Map([
   ["queues", "cloudflare:queue"],
   ["dns", "cloudflare:dns-record"]
 ]);
-const CLOUDFLARE_ONLY_FEATURES = new Map([
+const CLOUDFLARE_ONLY_FEATURES = new Map<string, CloudflareOnlyFeature>([
   ["worker.smartPlacement", {
     idSuffix: "smartPlacement",
     detail: "Cloudflare Workers Smart Placement requires target provider support."
@@ -138,7 +471,7 @@ const CLOUDFLARE_ONLY_FEATURES = new Map([
 
 export const cloudflare = {
   with: {
-    worker(options = {}) {
+    worker(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("compute", "worker", {
         compatibilityDate: "2026-01-01",
         cpuMs: 10_000,
@@ -146,38 +479,38 @@ export const cloudflare = {
         scriptSizeMb: 3
       }, options);
     },
-    r2(options = {}) {
+    r2(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("objectStore", "r2", {
         jurisdiction: "auto",
         s3Compatibility: "aws-sdk-v3-basic",
         publicAccess: false
       }, options);
     },
-    d1(options = {}) {
+    d1(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("database", "d1", {
         migrationsTable: "_cf_d1_migrations",
         readReplication: false
       }, options);
     },
-    hyperdrivePostgres(options = {}) {
+    hyperdrivePostgres(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("database", "hyperdrivePostgres", {
         backingProvider: "neon",
         pooledConnections: true
       }, options);
     },
-    kv(options = {}) {
+    kv(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("kv", "kv", {
         ttlSeconds: 0,
         eventualConsistency: true
       }, options);
     },
-    queues(options = {}) {
+    queues(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("queue", "queues", {
         delivery: "at-least-once",
         retentionDays: 4
       }, options);
     },
-    dns(options = {}) {
+    dns(options: OptionValues = {}): CloudflareOptionBlock {
       return optionBlock("dns", "dns", {
         proxied: false,
         ttl: 300
@@ -186,10 +519,10 @@ export const cloudflare = {
   }
 };
 
-export function createCloudflareProvider(options = {}) {
+export function createCloudflareProvider(options: CloudflareProviderOptions = {}) {
   const colos = options.colos ?? ["WNAM", "ENAM", "WEUR"];
   const serviceMatrix = normalizeServiceMatrix(options.serviceMatrix, colos);
-  const provisioned = new Map();
+  const provisioned = new Map<string, ProvisionedResource>();
   let nextId = 1;
 
   return {
@@ -201,23 +534,23 @@ export function createCloudflareProvider(options = {}) {
       claimedCapabilities: CAPABILITY_DEFINITIONS.map((definition) => definition.port)
     },
     with: cloudflare.with,
-    registerDefaultDefinitions(registry) {
+    registerDefaultDefinitions(registry: CapabilityDefaultDefinition[]): CapabilityDefaultDefinition[] {
       registry.push(...createDefaultDefinitions(colos));
       return registry;
     },
-    capabilityManifest() {
+    capabilityManifest(): CapabilityManifest {
       return createCapabilityManifest(colos, serviceMatrix);
     },
-    realize(plan) {
+    realize(plan: Plan): RealizeEmission {
       return realizeCloudflarePlan(this, plan);
     },
-    provision(capability, plan = {}) {
+    provision(capability: CloudflareCapabilityPort, plan: ProvisionPlan = {}): ProvisionedResource {
       const definition = requireCapability(capability);
       const colo = plan.colo ?? plan.require?.region ?? plan.require?.colo ?? colos[0];
       assertServiceAvailable(definition, colo, serviceMatrix);
 
       const id = `${capability}-${nextId++}`;
-      const resource = {
+      const resource: ProvisionedResource = {
         id,
         capability,
         colo,
@@ -227,10 +560,11 @@ export function createCloudflareProvider(options = {}) {
       provisioned.set(id, resource);
       return resource;
     },
-    client(capability, resource = {}) {
-      return createCloudflareClient(capability, resource.outputs ?? resource);
+    client(capability: CloudflareCapabilityPort, resource: Record<string, unknown> = {}) {
+      const outputs = (resource.outputs ?? resource) as OutputValues;
+      return createCloudflareClient(capability, outputs);
     },
-    negotiate(capability, hints = {}) {
+    negotiate(capability: CloudflareCapabilityPort, hints: NegotiateHints = {}): NegotiateResult {
       const definition = requireCapability(capability);
       const requested = normalizeHintValues(hints.require);
       const missing = [...requested].filter((feature) => !definition.features.includes(feature));
@@ -242,11 +576,11 @@ export function createCloudflareProvider(options = {}) {
         preferHonored: normalizePreferHints(hints.prefer, definition)
       };
     },
-    injectDrift(id) {
+    injectDrift(id: string): void {
       const resource = provisioned.get(id);
       if (resource) resource.drifted = true;
     },
-    refresh(id) {
+    refresh(id: string) {
       const resource = provisioned.get(id);
       return {
         id,
@@ -255,17 +589,17 @@ export function createCloudflareProvider(options = {}) {
         drifted: Boolean(resource?.drifted)
       };
     },
-    destroy(id) {
+    destroy(id: string): void {
       provisioned.delete(id);
     },
-    hasResource(id) {
+    hasResource(id: string): boolean {
       return provisioned.has(id);
     },
-    campEvidence(capability) {
+    campEvidence(capability: CloudflareCapabilityPort): CampEvidenceFields {
       requireCapability(capability);
       return normalizeCampEvidence(options.campEvidence, capability);
     },
-    verifyKvEvidence({ tags = ["local", "camp"] } = {}) {
+    verifyKvEvidence({ tags = ["local", "camp"] }: { tags?: string[] } = {}) {
       const evidence = normalizeCampEvidence(options.campEvidence, "kv");
       const localOk = !tags.includes("local") || this.negotiate("kv", {
         require: { region: "local" },
@@ -273,7 +607,7 @@ export function createCloudflareProvider(options = {}) {
       }).requireSatisfied;
       const campOk = !tags.includes("camp") || Boolean(evidence.realProviderDrift && evidence.iam && evidence.mtls && evidence.quota);
       return {
-        port: "kv",
+        port: "kv" as const,
         provider: CLOUDFLARE_PROVIDER_ID,
         tags,
         status: localOk && campOk ? "pass" : "fail",
@@ -286,7 +620,7 @@ export function createCloudflareProvider(options = {}) {
   };
 }
 
-export function createCloudflareEdgeShopPlan(options = {}) {
+export function createCloudflareEdgeShopPlan(options: EdgeShopPlanOptions = {}): Plan {
   const colo = options.colo ?? "WNAM";
   const resourceOptions = options.resourceOptions ?? {};
 
@@ -367,9 +701,9 @@ export function createCloudflareEdgeShopPlan(options = {}) {
   };
 }
 
-export function mergeCloudflareResolvedOptions(_provider, optionBlocks = []) {
-  const merged = new Map();
-  const dropped = [];
+export function mergeCloudflareResolvedOptions(_provider: unknown, optionBlocks: CloudflareOptionBlock[] = []) {
+  const merged = new Map<string, MergedOptionEntry>();
+  const dropped: CloudflareOptionBlock[] = [];
 
   for (const block of optionBlocks ?? []) {
     if (!block) continue;
@@ -402,9 +736,9 @@ export function mergeCloudflareResolvedOptions(_provider, optionBlocks = []) {
   };
 }
 
-export function evaluateCloudflarePlan(provider, plan) {
+export function evaluateCloudflarePlan(provider: CapabilityManifestSource, plan: Plan): EvaluationResult {
   const serviceMatrix = manifestServiceMatrix(provider);
-  const warnings = [];
+  const warnings: PostgresPreferWarning[] = [];
 
   for (const rawResource of plan.resources ?? []) {
     const resource = normalizeResource(rawResource, plan);
@@ -441,18 +775,18 @@ export function evaluateCloudflarePlan(provider, plan) {
   };
 }
 
-export function realizeCloudflarePlan(provider, plan) {
+export function realizeCloudflarePlan(provider: CapabilityManifestSource, plan: Plan): RealizeEmission {
   const evaluation = evaluateCloudflarePlan(provider, plan);
   if (evaluation.type === "deployment.PlanRejected") {
     throw new Error(`${evaluation.reason.code}: ${evaluation.reason.message}`);
   }
 
-  const resources = new Map((plan.resources ?? []).map((resource) => [resource.id, normalizeResource(resource, plan)]));
-  const nodes = [];
-  const edges = [];
-  const links = [];
-  const outputPlaceholders = [];
-  const buildArtifacts = [];
+  const resources = new Map((plan.resources ?? []).map((resource): [string, ResolvedResource] => [resource.id, normalizeResource(resource, plan)]));
+  const nodes: IacNode[] = [];
+  const edges: IacEdge[] = [];
+  const links: IacLink[] = [];
+  const outputPlaceholders: OutputPlaceholderEntry[] = [];
+  const buildArtifacts: BuildArtifact[] = [];
 
   for (const resource of resources.values()) {
     const node = createIacNode(resource);
@@ -500,7 +834,7 @@ export function realizeCloudflarePlan(provider, plan) {
     }
   }
 
-  const emission = {
+  const emission: RealizeEmission = {
     apiVersion: REALIZE_EMISSION_VERSION,
     provider: CLOUDFLARE_PROVIDER_ID,
     planId: plan.id,
@@ -530,7 +864,7 @@ export function realizeCloudflarePlan(provider, plan) {
   return emission;
 }
 
-export function simulateCloudflareApply(provider, plan, options = {}) {
+export function simulateCloudflareApply(provider: CapabilityManifestSource, plan: Plan, options: { accountQuota?: Record<string, number> } = {}): ApplySimulationResult {
   const evaluation = evaluateCloudflarePlan(provider, plan);
   if (evaluation.type === "deployment.PlanRejected") return evaluation;
 
@@ -553,7 +887,7 @@ export function simulateCloudflareApply(provider, plan, options = {}) {
   };
 }
 
-function optionBlock(port, builder, defaults, options, negotiation = "prefer") {
+function optionBlock(port: CloudflareCapabilityPort, builder: string, defaults: OptionValues, options: OptionValues, negotiation = "prefer"): CloudflareOptionBlock {
   return {
     providerId: CLOUDFLARE_PROVIDER_TARGET,
     port,
@@ -566,7 +900,7 @@ function optionBlock(port, builder, defaults, options, negotiation = "prefer") {
   };
 }
 
-function createCapabilities(serviceMatrix, colos) {
+function createCapabilities(serviceMatrix: ServiceMatrix, colos: string[]): CapabilityInfo[] {
   return CAPABILITY_DEFINITIONS.map((definition) => ({
     port: definition.port,
     service: definition.service,
@@ -580,7 +914,7 @@ function createCapabilities(serviceMatrix, colos) {
   }));
 }
 
-function createCapabilityManifest(colos, serviceMatrix) {
+function createCapabilityManifest(colos: string[], serviceMatrix: ServiceMatrix): CapabilityManifest {
   return {
     apiVersion: CLOUDFLARE_PROVIDER_VERSION,
     provider: CLOUDFLARE_PROVIDER_ID,
@@ -614,8 +948,8 @@ function createCapabilityManifest(colos, serviceMatrix) {
   };
 }
 
-function createDefaultDefinitions(colos) {
-  const defaults = [];
+function createDefaultDefinitions(colos: string[]): CapabilityDefaultDefinition[] {
+  const defaults: CapabilityDefaultDefinition[] = [];
   for (const definition of CAPABILITY_DEFINITIONS) {
     defaults.push({
       id: definition.defaultId,
@@ -642,7 +976,7 @@ function createDefaultDefinitions(colos) {
   return defaults;
 }
 
-function createIacNode(resource) {
+function createIacNode(resource: ResolvedResource): IacNode {
   const definition = requireCapability(resource.type);
   const resolved = mergeCloudflareResolvedOptions(null, resource.options).merged[resource.type];
   const options = resolved?.options ?? {};
@@ -671,7 +1005,7 @@ function createIacNode(resource) {
   };
 }
 
-function normalizeResource(resource, plan) {
+function normalizeResource(resource: PlanResource, plan: Plan): ResolvedResource {
   const definition = requireCapability(resource.type);
   return {
     ...resource,
@@ -684,7 +1018,7 @@ function normalizeResource(resource, plan) {
   };
 }
 
-function rejectCloudflareSpecificRequirements(resource, resolved) {
+function rejectCloudflareSpecificRequirements(resource: ResolvedResource, resolved: MergedOptionEntry | undefined): PlanRejectedResult | null {
   const resourceClass = resolved?.resourceClass;
   if (resource.type === "database" && resource.require.includes("strong-consistency")) {
     return planRejected("cloudflare-d1-strong-consistency-partial", resource.id, {
@@ -720,7 +1054,7 @@ function rejectCloudflareSpecificRequirements(resource, resolved) {
 
   if (resource.type === "compute") {
     const options = resolved?.options ?? {};
-    const violations = {};
+    const violations: Record<string, unknown> = {};
     if ((options.cpuMs ?? 0) > WORKER_LIMITS.cpuMs) violations.cpuMs = options.cpuMs;
     if ((options.scriptSizeMb ?? 0) > WORKER_LIMITS.scriptSizeMb) violations.scriptSizeMb = options.scriptSizeMb;
     if ((options.memoryMb ?? 0) > WORKER_LIMITS.memoryMb) violations.memoryMb = options.memoryMb;
@@ -747,7 +1081,7 @@ function rejectCloudflareSpecificRequirements(resource, resolved) {
   return null;
 }
 
-function postgresPreferWarning(resource, resolved) {
+function postgresPreferWarning(resource: ResolvedResource, resolved: MergedOptionEntry | undefined): PostgresPreferWarning | null {
   if (resource.type !== "database") return null;
   if (!resource.prefer.includes("postgres") && !resource.prefer.includes("managed")) return null;
 
@@ -760,7 +1094,7 @@ function postgresPreferWarning(resource, resolved) {
   };
 }
 
-function availabilityError(resource, definition, serviceMatrix, resourceClass) {
+function availabilityError(resource: ResolvedResource, definition: CapabilityDefinition, serviceMatrix: ServiceMatrix, resourceClass: string): PlanRejectedResult | null {
   if (serviceMatrix[resource.colo]?.includes(resourceClass)) return null;
 
   return planRejected("cloudflare-colo-service-unavailable", resource.id, {
@@ -772,16 +1106,16 @@ function availabilityError(resource, definition, serviceMatrix, resourceClass) {
   });
 }
 
-function assertServiceAvailable(definition, colo, serviceMatrix) {
+function assertServiceAvailable(definition: CapabilityDefinition, colo: string, serviceMatrix: ServiceMatrix): void {
   if (colo === "local") return;
   if (!serviceMatrix[colo]?.includes(definition.resourceClass)) {
     throw new Error(`${definition.service} is not available in ${colo}`);
   }
 }
 
-function manifestServiceMatrix(provider) {
+function manifestServiceMatrix(provider: CapabilityManifestSource): ServiceMatrix {
   const manifest = provider.capabilityManifest();
-  const matrix = {};
+  const matrix: ServiceMatrix = {};
   for (const colo of manifest.colos ?? []) {
     matrix[colo] = [];
   }
@@ -794,52 +1128,52 @@ function manifestServiceMatrix(provider) {
   return matrix;
 }
 
-function normalizeServiceMatrix(serviceMatrix, colos) {
+function normalizeServiceMatrix(serviceMatrix: ServiceMatrix | undefined, colos: string[]): ServiceMatrix {
   if (serviceMatrix) return serviceMatrix;
 
   const allResourceClasses = CAPABILITY_DEFINITIONS.flatMap(resourceClassesFor);
   return Object.fromEntries(colos.map((colo) => [colo, allResourceClasses]));
 }
 
-function availableColosFor(definition, serviceMatrix, colos) {
+function availableColosFor(definition: CapabilityDefinition, serviceMatrix: ServiceMatrix, colos: string[]): string[] {
   return colos.filter((colo) =>
     resourceClassesFor(definition).some((resourceClass) => serviceMatrix[colo]?.includes(resourceClass))
   );
 }
 
-function availableResourceClassesByColo(definition, serviceMatrix, colos) {
+function availableResourceClassesByColo(definition: CapabilityDefinition, serviceMatrix: ServiceMatrix, colos: string[]): Record<string, string[]> {
   return Object.fromEntries(colos.map((colo) => [
     colo,
     resourceClassesFor(definition).filter((resourceClass) => serviceMatrix[colo]?.includes(resourceClass))
   ]));
 }
 
-function resourceClassesFor(definition) {
+function resourceClassesFor(definition: CapabilityDefinition): string[] {
   return [definition.resourceClass, ...(definition.alternateResourceClasses ?? [])];
 }
 
-function supportedFeaturesFor(definition, resourceClass) {
+function supportedFeaturesFor(definition: CapabilityDefinition, resourceClass: string): string[] {
   if (resourceClass === "cloudflare:hyperdrive-postgres") {
     return ["postgres", "managed", "partial"];
   }
   return definition.features;
 }
 
-function driverFor(port, resourceClass) {
+function driverFor(port: CloudflareCapabilityPort, resourceClass: string): string {
   if (port === "compute" && resourceClass === "cloudflare:workers-script") {
     return CLOUDFLARE_WRANGLER_DRIVER;
   }
   return CLOUDFLARE_TERRAFORM_DRIVER;
 }
 
-function outputsFor(definition, resourceClass) {
+function outputsFor(definition: CapabilityDefinition, resourceClass: string): string[] {
   if (resourceClass === "cloudflare:hyperdrive-postgres") {
     return ["connectionString", "hyperdriveId", "secretRef"];
   }
   return definition.outputs;
 }
 
-function createPortabilityReport(plan, warnings = []) {
+function createPortabilityReport(plan: Plan, warnings: PostgresPreferWarning[] = []): PortabilityReport {
   return {
     apiVersion: "hobo.portabilityReport/v1",
     planId: plan.id,
@@ -860,8 +1194,8 @@ function createPortabilityReport(plan, warnings = []) {
   };
 }
 
-function collectProviderOptionEntries(plan) {
-  const entries = [];
+function collectProviderOptionEntries(plan: Plan): PortabilityReportEntry[] {
+  const entries: PortabilityReportEntry[] = [];
   for (const resource of plan.resources ?? []) {
     for (const block of resource.options ?? []) {
       if (block?.providerId !== CLOUDFLARE_PROVIDER_TARGET) continue;
@@ -885,7 +1219,7 @@ function collectProviderOptionEntries(plan) {
   return entries;
 }
 
-function normalizeCampEvidence(evidence = "pass", capability) {
+function normalizeCampEvidence(evidence: CampEvidenceOption = "pass", capability: CloudflareCapabilityPort): CampEvidenceFields {
   if (evidence === "pass") {
     return {
       realProviderDrift: true,
@@ -911,11 +1245,11 @@ function normalizeCampEvidence(evidence = "pass", capability) {
   };
 }
 
-function normalizeHintValues(value) {
+function normalizeHintValues(value: HintValue | undefined): Set<string> {
   if (Array.isArray(value)) return new Set(value);
   if (!value || typeof value !== "object") return new Set();
 
-  const features = new Set();
+  const features = new Set<string>();
   for (const [key, hintValue] of Object.entries(value)) {
     if (key === "region" || key === "colo") continue;
     features.add(key);
@@ -924,19 +1258,19 @@ function normalizeHintValues(value) {
   return features;
 }
 
-function normalizePreferHints(value, definition) {
+function normalizePreferHints(value: HintValue | undefined, definition: CapabilityDefinition): string[] {
   if (Array.isArray(value)) return value.filter((feature) => definition.features.includes(feature));
   if (!value || typeof value !== "object") return [];
   return Object.keys(value);
 }
 
-function requireCapability(port) {
+function requireCapability(port: CloudflareCapabilityPort): CapabilityDefinition {
   const definition = CAPABILITY_BY_PORT.get(port);
   if (!definition) throw new Error(`${CLOUDFLARE_PROVIDER_ID} does not implement port ${port}`);
   return definition;
 }
 
-function fakeOutputsFor(definition, id, colo) {
+function fakeOutputsFor(definition: CapabilityDefinition, id: string, colo: string): OutputValues {
   if (definition.port === "compute") {
     return {
       url: `https://${id}.${colo.toLowerCase()}.workers.dev`,
@@ -977,7 +1311,7 @@ function fakeOutputsFor(definition, id, colo) {
   };
 }
 
-function createCloudflareClient(port, outputs) {
+function createCloudflareClient(port: CloudflareCapabilityPort, outputs: OutputValues) {
   requireCapability(port);
   const base = {
     port,
@@ -1038,7 +1372,7 @@ function createCloudflareClient(port, outputs) {
   };
 }
 
-function planRejected(code, resourceId, reason) {
+function planRejected(code: string, resourceId: string, reason: Record<string, unknown>): PlanRejectedResult {
   return {
     type: "deployment.PlanRejected",
     provider: CLOUDFLARE_PROVIDER_ID,
@@ -1051,18 +1385,19 @@ function planRejected(code, resourceId, reason) {
   };
 }
 
-function primaryOutputFor(port) {
-  return {
+function primaryOutputFor(port: CloudflareCapabilityPort): string {
+  const outputByPort: Record<CloudflareCapabilityPort, string> = {
     compute: "url",
     objectStore: "bucketName",
     database: "connectionString",
     kv: "namespaceId",
     queue: "queueName",
     dns: "fqdn"
-  }[port];
+  };
+  return outputByPort[port];
 }
 
-function bindingNameFor(resourceId, output) {
+function bindingNameFor(resourceId: string, output: string): string {
   if (resourceId === "assets") return "ASSETS_BUCKET";
   if (resourceId === "app-db") return "APP_DB_CONNECTION";
   if (resourceId === "sessions") return "SESSIONS_KV_NAMESPACE";

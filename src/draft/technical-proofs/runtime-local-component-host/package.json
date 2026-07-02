@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for the Wasmtime-shaped runtime-local component-host skeleton from HOBO-17.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

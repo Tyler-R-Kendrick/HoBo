@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createEventEnvelope, createPortDescriptor } from "../../src/core-contract.js";
 import type { EventEnvelope, ProviderPort, RuntimePort } from "../../src/core-contract.d.js";

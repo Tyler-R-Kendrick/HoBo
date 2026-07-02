@@ -11,10 +11,7 @@
     }
   },
   "scripts": {
-    "test": "npm run typecheck && node --import tsx --test test/*.test.ts",
+    "test": "npm run typecheck && vitest run --root .",
     "typecheck": "tsc -p tsconfig.types.json"
-  },
-  "devDependencies": {
-    "typescript": "5.9.2"
   }
 }

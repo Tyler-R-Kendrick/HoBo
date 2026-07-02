@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for @hobo/cloud Yard shell: Gateway, event store wiring, projection host (HOBO-618).",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts contracts/consumer/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

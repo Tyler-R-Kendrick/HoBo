@@ -3,7 +3,8 @@ import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
+import { fileURLToPath } from "node:url";
 
 import {
   VALID_TEMPLATES,
@@ -11,6 +12,16 @@ import {
   scaffoldHoboProject,
   validateScaffoldProject
 } from "../src/scaffold.js";
+
+const tscPath = fileURLToPath(
+  new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url)
+);
+
+// The generated stub's `npm test` is plain `node --test` over TypeScript
+// sources with tsc-style `.js` specifiers, so the harness must hand the
+// child a TypeScript loader explicitly; inheriting one from ambient
+// NODE_OPTIONS made this pass only in tsx-wrapped environments.
+const tsxLoaderUrl = new URL("../../../../../node_modules/tsx/dist/loader.mjs", import.meta.url).href;
 
 const expectedCreatedFiles = [
   ".gitignore",
@@ -188,7 +199,8 @@ function assertGeneratedProjectRuns(projectDir) {
   const result = spawnSync(command, args, {
     cwd: projectDir,
     encoding: "utf8",
-    shell: false
+    shell: false,
+    env: { ...process.env, NODE_OPTIONS: `--import ${tsxLoaderUrl}` }
   });
 
   assert.equal(
@@ -200,26 +212,7 @@ function assertGeneratedProjectRuns(projectDir) {
 }
 
 function assertGeneratedProjectTypechecks(projectDir) {
-  const command = process.platform === "win32" ? "cmd.exe" : "npm";
-  const args = process.platform === "win32"
-    ? [
-        "/d",
-        "/s",
-        "/c",
-        "npm.cmd exec --yes --package typescript@5.5.4 -- tsc --noEmit --project tsconfig.json"
-      ]
-    : [
-        "exec",
-        "--yes",
-        "--package",
-        "typescript@5.5.4",
-        "--",
-        "tsc",
-        "--noEmit",
-        "--project",
-        "tsconfig.json"
-      ];
-  const result = spawnSync(command, args, {
+  const result = spawnSync(process.execPath, [tscPath, "--noEmit", "--project", "tsconfig.json"], {
     cwd: projectDir,
     encoding: "utf8",
     shell: false

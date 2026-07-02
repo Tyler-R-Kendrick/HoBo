@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { scaffoldGenerationRequest } from "../../generation-scaffold-stage-contract/src/scaffold.js";
 import { validateGenerationEvent } from "../../generation-pipeline-io-contract/src/contract.js";

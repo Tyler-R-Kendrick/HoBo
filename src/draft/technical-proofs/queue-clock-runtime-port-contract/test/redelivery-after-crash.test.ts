@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { runRedeliveryAfterCrash } from "../fixtures/redelivery-after-crash.js";
 import { createRuntimeLocalQueueClock } from "../src/queue-clock-runtime-port.js";

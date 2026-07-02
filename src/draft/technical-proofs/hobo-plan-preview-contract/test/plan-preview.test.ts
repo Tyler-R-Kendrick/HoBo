@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { validateDeploymentPlan } from "../../deployment-plan-ir-contract/src/deployment-plan-ir.js";
 import {

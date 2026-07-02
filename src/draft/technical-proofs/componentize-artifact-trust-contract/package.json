@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test contracts/consumer/*.test.ts",
+    "test": "vitest run --root . contracts/consumer/",
     "test:publish-verify": "vitest run --no-isolate test/publish-verify.test.ts"
   }
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { CANONICAL_VERBS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.js";
 import { MCP_TOOL_SPECS } from "../../hobo-mcp-server-contract/src/mcp-server-contract.js";
@@ -164,6 +164,10 @@ describe("HOBO-634 @hobo/mcp gateway server POC", () => {
   it("adversarial: deploy denied when SVID lacks tool capability", async () => {
     const server = createHoboMcpGatewayServer({
       svidAssertion: "fixture",
+      // Pin the auth clock before the SVID expiry so the scope check (not an
+      // expiry check) is what fails; otherwise this rots once wall-clock
+      // passes expiresAt, matching the fixed clock the fixture gateway uses.
+      now: () => new Date("2026-07-01T12:00:00.000Z"),
       verifySvid: async () => ({
         ok: true,
         principal: identity,

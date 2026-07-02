@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/dx/cli-manage-inspect-logs-drift-prototype/test/cli-manage-inspect-logs-drift-prototype.test.ts"
+    "test": "vitest run --root ."
   }
 }

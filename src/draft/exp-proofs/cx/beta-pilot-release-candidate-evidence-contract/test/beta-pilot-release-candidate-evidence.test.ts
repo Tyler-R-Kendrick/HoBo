@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 async function loadContract() {
   const module = await import("../src/beta-pilot-release-candidate-evidence.ts").catch((error) => ({

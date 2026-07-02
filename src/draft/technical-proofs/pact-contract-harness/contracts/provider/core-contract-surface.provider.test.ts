@@ -1,6 +1,6 @@
 import path from "node:path";
 import { strict as assert } from "node:assert";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import { loadPactDirectory, verifyPact } from "../../src/index.js";
 import { coreContractSurfaceStub } from "./fixtures/core-contract-surface.stub.js";

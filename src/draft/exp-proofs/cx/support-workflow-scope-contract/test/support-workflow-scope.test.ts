@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 const contract = await import("../src/support-workflow-scope.ts").catch(() => null);
 

@@ -1,15 +1,25 @@
-import { api, kv, queue } from "../src/triggers.js";
+import { api, kv, queue, type Handler } from "../src/triggers.js";
+
+const todos = kv("todos");
+const orders = queue("orders");
+type Bindings = { todos: typeof todos; orders: typeof orders };
 
 async function assertHandlerContextTypes() {
-  const todos = kv("todos");
-  const orders = queue("orders");
-  const app = api("api", { bind: { todos, orders } });
+  const app = api("api", { bind: { todos, orders } satisfies Bindings });
 
-  app.get!("/todos/:id", async (ctx) => {
+  const handler: Handler<Bindings> = async (ctx) => {
     const id: string = ctx.params.id;
-    const item: unknown = await (ctx.bindings as { todos: { get: (k: string) => Promise<unknown> } }).todos.get(id);
-    await (ctx.bindings as { orders: { enqueue: (m: unknown) => Promise<void> } }).orders.enqueue({ id, item });
-  });
+    const item: unknown = await ctx.bindings.todos.get(id);
+    await ctx.bindings.orders.enqueue({ id, item });
+
+    // @ts-expect-error only declared bindings are exposed.
+    ctx.bindings.missing;
+
+    // @ts-expect-error kv clients do not expose queue operations.
+    await ctx.bindings.todos.enqueue({ id });
+  };
+
+  app.get("/todos/:id", handler);
 }
 
 void assertHandlerContextTypes;

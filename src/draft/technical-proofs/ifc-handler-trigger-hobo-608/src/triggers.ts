@@ -34,9 +34,7 @@ export class TriggerContractError extends Error {
 export type BindingMap = Record<string, ResourceHandle>;
 
 export type BindingClients<Bindings extends BindingMap> = {
-  [Key in keyof Bindings]: Bindings[Key] extends ResourceHandle<infer K>
-    ? ClientForKind<K>
-    : never;
+  [Key in keyof Bindings]: ClientForKind<Bindings[Key]["kind"]>;
 };
 
 type ClientForKind<K extends string> = K extends "kv"

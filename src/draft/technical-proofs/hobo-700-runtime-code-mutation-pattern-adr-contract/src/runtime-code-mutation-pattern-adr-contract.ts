@@ -23,6 +23,8 @@ export const STALE_LINK_FRAGMENTS = [
   "verification.md#plan-09",
 ] as const;
 
+export const STALE_UNANSWERED_FRAMING = /\bunanswered\b/i;
+
 export interface PatternAdrLinkGate {
   ok: boolean;
   errors: string[];
@@ -55,6 +57,10 @@ export function evaluateRuntimeCodeMutationPatternAdrLinks(
     if (content.includes(stale)) {
       errors.push(`stale link fragment remains: ${stale}`);
     }
+  }
+
+  if (STALE_UNANSWERED_FRAMING.test(content)) {
+    errors.push('pattern doc still frames write-back as "unanswered" without historical deferral');
   }
 
   for (const link of RETARGETED_LINKS) {

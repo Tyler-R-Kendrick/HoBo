@@ -107,7 +107,7 @@ in the history of commit `d7bbc39c`.
 | GAP-025 | P3 | MED | ✔ | `dapr.md` HoBo-mapping overclaims parity on **Bindings** (general input/output connectors) and **Distributed lock** at ✅ while design has no bindings category, no `hobo:lock` port, and ActorHost lease/fencing ≠ app-level distributed lock API. | `docs/competitors/dapr.md:50,54,121`<br>`docs/design/wasm-runtime-wit.md:117-179`<br>`docs/design/reliability-observability-cost.md:56-60` … | [REM-033](#rem-033-for-gap-025) |
 | GAP-026 | P2 | MED | 🧯 | `aspire.md` marks `Aspire.Hosting.Testing` (in-process full AppHost + DCP + real containers) as ✅ parity with "Conformance suites + E2E replay tests" — HoBo `@hobo/conformance` gates adapters/hosts/WIT, not an equivalent whole-graph local integration harness. | `docs/competitors/aspire.md:385-399,468`<br>`docs/design/generated-stack.md#plan-09`<br>`docs/design/wasm-runtime-wit.md:108` … | [REM-034](#rem-034-for-gap-026) |
 | GAP-027 | P2 | MED | 🧯 | `aspire.md` marks health-gated `WaitFor`/`WaitForCompletion` as ✅ vs "Saga ordering + readiness gates" but orchestrator choreography gates on `resource.Provisioned` only — health probes and run-to-completion job semantics are unspecified at the control-plane seam (corroborates GAP-018 at the tracker layer). | `docs/competitors/aspire.md:452`<br>`docs/design/control-plane.md:57-67`<br>`docs/design/authoring-resources-wiring.md:150-151` … | [REM-035](#rem-035-for-gap-027) |
-| GAP-028 | L-CONS | LOW | 🧯 | `docs/patterns/runtime-code-mutation-persistence.md` still frames training promotion write-back as "unanswered" although ADR-0048 + generated-stack now specify AST-aware region-scoped persistence — the pattern library lags the design suite. | `docs/patterns/runtime-code-mutation-persistence.md:37`<br>`docs/design/generated-stack.md:35`<br>`docs/design/adr/03-data-plane.md#adr-0048` … | [REM-036](#rem-036-for-gap-028) |
+| GAP-028 | L-CONS | LOW | ✔ | `docs/patterns/runtime-code-mutation-persistence.md` still frames training promotion write-back as "unanswered" although ADR-0048 + generated-stack now specify AST-aware region-scoped persistence — the pattern library lags the design suite. | `docs/patterns/runtime-code-mutation-persistence.md:37`<br>`docs/design/generated-stack.md:35`<br>`docs/design/adr/03-data-plane.md#adr-0048` … | [REM-036](#rem-036-for-gap-028) |
 
 ## Drift register
 
@@ -1658,11 +1658,11 @@ Downgrade WaitFor/WaitForCompletion row to ◐ in `aspire.md`; align with REM-02
 
 - **Finding** (iter2-B1-008, L-CONS, LOW): runtime-code-mutation pattern stale vs ADR-0048.
 - **Evidence:** `docs/patterns/runtime-code-mutation-persistence.md:37` · `docs/design/generated-stack.md:35`
-- **Effort:** S · **Delivery:** [HOBO-700](https://linear.app/quickdeploy-ai/issue/HOBO-700)
+- **Effort:** S · **Delivery:** ✔ [HOBO-700](https://linear.app/quickdeploy-ai/issue/HOBO-700) — pattern doc cites ADR-0048, reframes write-back as decided; guard at `src/draft/technical-proofs/hobo-700-runtime-code-mutation-pattern-adr-contract/`
 
 **Action**
 
-Update pattern doc intro: cite ADR-0048 answer; reframe "unanswered" as historical; fix cross-links per REM-031 mapping.
+Update pattern doc intro: cite ADR-0048 answer; reframe "unanswered" as historical; fix cross-links per REM-031 mapping. Add executable guard at `src/draft/technical-proofs/hobo-700-runtime-code-mutation-pattern-adr-contract/`.
 
 **Acceptance**
 

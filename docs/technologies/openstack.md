@@ -35,7 +35,7 @@ API model:
 Private-cloud usage: OpenStack is most commonly used to run **on-prem / private / sovereign clouds** — via vendor distributions (Red Hat OpenStack Platform, Canonical Charmed OpenStack, Mirantis), turnkey appliances, or hosted private cloud. It gives organizations cloud-style self-service and APIs **without dependence on a public hyperscaler**, which is its core appeal for regulated, cost-sensitive, and data-residency-bound workloads.
 
 ## Relevance to HoBo
-OpenStack is a natural **HoBo provider** and **Camp target** — the private-cloud counterpart to the public hyperscalers HoBo already targets. In HoBo's ports/adapters model ([Plan 4](../design/control-plane.md#plan-04)), a `CloudProvider` implements capability ports (WIT interfaces: compute, network, `wasi:blobstore`, `wasi:sql`, etc.) for a backend; a **Camp** is a provider-specific deployment target on one provider/cloud ([ADR-0026](../design/adr/01-architecture-core.md#adr-0026)). An **`provider-openstack`** adapter would make any private OpenStack cloud a first-class Camp.
+OpenStack is a natural **HoBo provider** and **Camp target** — the private-cloud counterpart to the public hyperscalers HoBo already targets. In HoBo's ports/adapters model ([Plan 4](../design/control-plane.md#plan-04)), a `CloudProvider` implements capability ports (WIT interfaces: compute, network, `wasi:blobstore`, `hobo:data`, etc.) for a backend; a **Camp** is a provider-specific deployment target on one provider/cloud ([ADR-0026](../design/adr/01-architecture-core.md#adr-0026)). An **`provider-openstack`** adapter would make any private OpenStack cloud a first-class Camp.
 
 **Service → port mapping** (the integration is unusually clean because OpenStack's services are already capability-shaped):
 

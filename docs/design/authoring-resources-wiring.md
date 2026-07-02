@@ -40,7 +40,7 @@ Permissions are **deny-by-default**: a verb your code never calls is never grant
 | **Queue** (pull) | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` | SQS / Service Bus / Tasks / Queues |
 | **Topic** (push) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` | SNS / Event Grid / Pub/Sub / — |
 | **Secret** | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` | Secrets Mgr / Key Vault / Secret Mgr |
-| **Data** | `data(name)` | `hobo:data` (paradigm sub-ports) | `read`,`write`,`query`,`admin` | one abstract dep, paradigm-specific providers: relational/SQL · document/NoSQL · graph · vector · key/value ([ADR-0052](./adr/03-data-plane.md#adr-0052)) |
+| **Data** | `data(name)` | `hobo:data` (sub-interfaces `relational · document · graph · vector · key-value`, [ADR-0112](./adr/03-data-plane.md#adr-0112)) | `read`,`write`,`query`,`admin` | one abstract dep, paradigm-specific providers: relational/SQL · document/NoSQL · graph · vector · key/value ([ADR-0052](./adr/03-data-plane.md#adr-0052)) |
 | **Schedule** | `schedule(name)` | `hobo:scheduler` | n/a | EventBridge / Timer / Cloud Scheduler |
 | **WebSocket** | `websocket(name)` | `wasi:websocket` **(preview)** + `hobo:websocket` ext | `accept`,`connect`,`send`,`broadcast`,`subscribe` | API GW WS / Web PubSub / — — preview interface tracking the likely standard; principal-bound, rooms/broadcast, lifecycle as `ws.*`, migrates via upcaster ([ADR-0075](./adr/07-portability-extensibility.md#adr-0075)) |
 | **Batch job** | `job(name)` | `hobo:job` (+ `vm`/`microVm`) | `submit` | AWS Batch / Azure Batch / Cloud Batch |
@@ -69,7 +69,7 @@ The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./a
 | Key/value store | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` |
 | Storage / blob (buckets) | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` |
 | Secrets | `secret(name)` | `wasi:config`/`hobo:secrets` | `put`,`access` |
-| Data (relational/document/graph/vector/kv) | `data(name)` | `hobo:data` (paradigm sub-ports) | `read`,`write`,`query`,`admin` |
+| Data (relational/document/graph/vector/kv) | `data(name)` | `hobo:data` (sub-interfaces `relational · document · graph · vector · key-value`, [ADR-0112](./adr/03-data-plane.md#adr-0112)) | `read`,`write`,`query`,`admin` |
 | Websockets | `websocket(name)` | `wasi:websocket` (preview) + `hobo:websocket` ext | `accept`,`connect`,`send`,`broadcast`,`subscribe` |
 
 HoBo's runtime provides **everything Nitric's runtime does** — the full building-block set above — but realized as **WIT interfaces**, with providers implementing the WIT interface (not Go plugins) and invoked over the **wRPC membrane** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). A building block is just a port; HoBo's own durable workflow/actors, materializations, auth, and AI ports (the rest of the catalog) sit alongside the Nitric set on the same membrane.

@@ -452,6 +452,8 @@ Plan 09 makes conformance plus trace replay the verification boundary. HOBO-211 
 claim can be made falsifiable for a reference database provider without building the production
 `generateProvider` loop.
 
+*Naming note: `hobo:database/postgres@0.1.0` is the frozen reference-proof port id; the canonical catalog name is `hobo:data/relational` ([ADR-0112](#adr-0112)).*
+
 ### Decision
 1. **Correctness is a reference event-stream proof, not a prose claim.** A provider generation run
    starts from `gen.Requested` with authoritative WIT, conformance suite, Capability Manifest,
@@ -481,3 +483,29 @@ claim can be made falsifiable for a reference database provider without building
   building blocks; this ADR only fixes their acceptance boundary.
 - **(-)** The production loop still needs to wire these gates together and obtain real Camp evidence;
   this spike deliberately does not implement provider runtime defense or training optimizer internals.
+
+## ADR-0112
+**`hobo:data` is the canonical WIT port of the `data()` resource; `wasi:sql` is driver-level; the never-defined SQL WIT port is retired; `hobo:database/*` is a frozen proof alias.**
+
+### Context
+The resource→WIT-port spine for the data block has three divergent spellings. [Plan 21](../authoring-resources-wiring.md#plan-21) maps `data()` → `hobo:data` (catalog rows + manifest-IR example). [Plan 20](../wasm-runtime-wit.md#plan-20)'s self-described canonical port catalog instead lists a superseded `sql` resource over `wasi:sql` (plus a never-defined HoBo SQL extension) and never defines `hobo:data`. [ADR-0100](#adr-0100) and the HOBO-211 generation proofs target `hobo:database/postgres@0.1.0`. [ADR-0052](#adr-0052)'s "`data`, not `sql`" decision is settled semantics; this ADR gives that decision one naming spine.
+
+### Decision
+1. **`hobo:data` is the canonical app-facing WIT port** the `data()` resource links against, with paradigm sub-interfaces `hobo:data/relational · hobo:data/document · hobo:data/graph · hobo:data/vector · hobo:data/key-value` (exactly the [ADR-0052](#adr-0052) paradigm taxonomy; the key-value *paradigm* sub-port is distinct from the `kv()` resource over `wasi:keyvalue`). Key functions map 1:1 to the `.allow()` verbs: `read(key/query)`, `write(record)`, `query(predicate)` (the predicate DSL shared with `hobo:projection`/`hobo:search`, [Plan 32](../data-plane.md#plan-32)), `admin(migration-plan ops)`.
+2. **Port relationships stated once:** `hobo:projection` stays the projection/fold port and `hobo:search` the query-extension port ([ADR-0034](#adr-0034)); `hobo:data` is the resource-level port a `data()` link resolves to, and a paradigm sub-interface is what a provider exports.
+3. **There is no `sql` resource.** `wasi:sql` is demoted to a driver-level reused interface that a `hobo:data/relational` provider/sink driver MAY realize its mapping over (consistent with [Plan 32](../data-plane.md#plan-32) §Projection events & ports).
+4. **The never-defined SQL WIT port is retired**; the relational idiom layer is the `@hobo/sql` npm package ([ADR-0081](#adr-0081)), which lowers through `hobo:data` — package name unchanged.
+5. **`hobo:database/postgres@0.1.0` is the frozen provider-target id** used by [ADR-0100](#adr-0100) and the HOBO-211/HOBO-324 reference proofs/fixtures; it names a Postgres provider of `hobo:data/relational`. Proof code under `src/draft` is NOT rewritten; new docs must use `hobo:data/relational`.
+6. **Plan 20's interface catalog is the single authoritative registry** of port names; any resource→port row elsewhere must link a port defined there.
+
+| Layer | Name |
+|---|---|
+| Resource | `data()` |
+| Canonical port | `hobo:data` |
+| Sub-interfaces | `relational · document · graph · vector · key-value` |
+| Underlying reused WASI (relational drivers) | `wasi:sql` |
+| Legacy aliases (do not use in new docs) | `sql` resource · retired SQL port · `hobo:database/*` |
+
+### Consequences
+- **(+)** The resource→WIT-port spine for the data block is defined at one authoritative row and all four names reconcile.
+- **(-)** The frozen `hobo:database/*` alias survives in historical proofs/fixtures and must be read through the naming map.

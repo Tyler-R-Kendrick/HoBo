@@ -1,6 +1,7 @@
 import type { CliContext, CliEnvelope } from "../types/envelope.js";
 import { buildEnvelope } from "../types/envelope.js";
 import { createNewCommand } from "../commands/new.js";
+import { createBuildCommand } from "../commands/build.js";
 import { defaultContextFactory, type ContextFactory } from "./context.js";
 import { assertKnownVerb, parseArgv } from "./parse.js";
 import {
@@ -44,6 +45,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 		options.registry ??
 		createCommandRegistry({
 			new: createNewCommand(),
+			build: createBuildCommand(),
 			...(options.commands ?? {}),
 		});
 	const contextFactory = options.contextFactory ?? defaultContextFactory;
@@ -92,6 +94,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						offline: false,
 						template: null,
 						force: false,
+						runtime: null,
 					},
 				});
 			}

@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { componentizeHelloBindle } from "../../../technical-proofs/hobo-componentize-contract/src/componentize-contract.js";
+import { componentizeHelloBindle } from "../../../../../packages/componentize/src/index.js";
 import { createBuildCli, runBuild, writeBuildFixtureProject } from "../src/index.js";
 import {
   executeCodegenRequest,
@@ -17,7 +17,10 @@ const GOLDEN_DIGEST = JSON.parse(
   readFileSync(new URL("./fixtures/hello-bindle.digest.json", import.meta.url), "utf8"),
 );
 
-const HELLO_BINDLE_EXAMPLE = new URL("../examples/hello-bindle", import.meta.url);
+const HELLO_BINDLE_EXAMPLE = new URL(
+  "../../../../../packages/componentize/test/fixtures/hello-bindle",
+  import.meta.url,
+);
 
 test("runBuild digest matches componentize direct path and golden S0-07 fixture", async () => {
   const direct = await componentizeHelloBindle({
@@ -77,7 +80,9 @@ async function withHelloBindleProject(callback) {
 
 async function copyHelloBindleSources(projectRoot) {
   const target = join(projectRoot, "services/hello-bindle/src/service.ts");
-  const source = fileURLToPath(new URL("../examples/hello-bindle/src/service.ts", import.meta.url));
+  const source = fileURLToPath(
+    new URL("../../../../../packages/componentize/test/fixtures/hello-bindle/src/service.ts", import.meta.url),
+  );
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, await readFile(source, "utf8"));
 }

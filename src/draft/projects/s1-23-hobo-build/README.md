@@ -1,8 +1,7 @@
 # S1-23 hobo build draft POC (HOBO-613)
 
 Independent draft rollup for `hobo build` wiring CLI orchestration to
-`@hobo/componentize`. Promotes to `packages/cli/` + `packages/componentize/`
-when blockers HOBO-584 (S0-07) and HOBO-610 (S1-21) merge.
+`@hobo/componentize`. Production implementation lives in `packages/cli/` (S1-23 / HOBO-613).
 
 ## Scope
 

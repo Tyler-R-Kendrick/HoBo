@@ -21,6 +21,7 @@ export interface CliFlags {
 	readonly offline: boolean;
 	readonly template: string | null;
 	readonly force: boolean;
+	readonly runtime: string | null;
 }
 
 export interface CliRequest {
@@ -54,6 +55,7 @@ export function parseArgv(argv: readonly string[], options: ParseArgvOptions = {
 		offline: false,
 		template: null as string | null,
 		force: false,
+		runtime: null as string | null,
 	};
 	const args: string[] = [];
 	let verb: string | null = null;
@@ -119,6 +121,7 @@ function parseOption(
 		offline: boolean;
 		template: string | null;
 		force: boolean;
+		runtime: string | null;
 	},
 	verb: string | null,
 ): number {
@@ -178,6 +181,9 @@ function parseOption(
 		case "--force":
 			flags.force = true;
 			return index;
+		case "--runtime":
+			flags.runtime = takeValue(argv, index, token);
+			return index + 1;
 		case "--offline":
 			if (verb === "doctor") {
 				flags.offline = true;

@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { componentizeHelloBindle } from "../../../technical-proofs/hobo-componentize-contract/src/componentize-contract.js";
+import { PINNED_TOOLCHAIN, componentizeHelloBindle } from "../../../../../packages/componentize/src/index.js";
 import { defaultComponentize } from "../src/componentize-adapter.js";
 
 const pactPath = join(
@@ -21,7 +21,9 @@ test("cli-componentize boundary pact satisfies success and fail-closed interacti
   assert.equal(pact.provider.name, "@hobo/componentize");
 
   const success = await defaultComponentize({
-    sourceRoot: fileURLToPath(new URL("../examples/hello-bindle", import.meta.url)),
+    sourceRoot: fileURLToPath(
+      new URL("../../../../../packages/componentize/test/fixtures/hello-bindle", import.meta.url),
+    ),
     sourceDateEpoch: "2026-01-01T00:00:00.000Z",
   });
   assert.equal(
@@ -33,11 +35,11 @@ test("cli-componentize boundary pact satisfies success and fail-closed interacti
     () =>
       componentizeHelloBindle({
         sourceRoot: new URL(
-          "../../../technical-proofs/hobo-componentize-contract/examples/hello-bindle",
+          "../../../../../packages/componentize/test/fixtures/hello-bindle",
           import.meta.url,
         ),
         sourceDateEpoch: "2026-01-01T00:00:00.000Z",
-        toolchain: { jco: "1.24.4", componentizeJs: "0.21.0", wasmTools: "1.235.0", wasmtime: "46.0.1" },
+        toolchain: { ...PINNED_TOOLCHAIN, jco: "1.24.4" },
       }),
     /componentize\.toolchain_skew/,
   );

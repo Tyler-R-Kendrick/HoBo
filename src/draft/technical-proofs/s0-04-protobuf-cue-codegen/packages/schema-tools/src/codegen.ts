@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { delimiter, dirname, join, relative } from "node:path";
 import { discoverDataModelPackages, hydrateCueSchemas } from "./discover.js";
 import { ensureCueBinary, vetCueConstraints, withTempDirectory } from "./cue.js";
 import {
@@ -33,18 +33,32 @@ async function runCommand(
   });
 }
 
-function resolveBufBinary(repoRoot: string): string {
+function resolveBufCommand(repoRoot: string): { command: string; args: string[] } {
+  if (process.platform === "win32") {
+    const entrypoints = [
+      join(repoRoot, "node_modules", "@bufbuild", "buf", "bin", "buf"),
+      join(
+        repoRoot,
+        "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/node_modules/@bufbuild/buf/bin/buf",
+      ),
+    ];
+    for (const entrypoint of entrypoints) {
+      if (existsSync(entrypoint)) return { command: process.execPath, args: [entrypoint] };
+    }
+  }
+
   const candidates = [
     join(repoRoot, "node_modules", ".bin", "buf"),
     join(
       repoRoot,
-      "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/node_modules/.bin/buf",
+      "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/node_modules/.bin",
+      "buf",
     ),
   ];
   for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(candidate)) return { command: candidate, args: [] };
   }
-  return "buf";
+  return { command: "buf", args: [] };
 }
 
 async function listFilesRecursive(root: string): Promise<string[]> {
@@ -72,7 +86,7 @@ function pluginPathEnv(repoRoot: string): NodeJS.ProcessEnv {
     join(repoRoot, "node_modules", ".bin"),
     join(repoRoot, "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/node_modules/.bin"),
   ];
-  const pathValue = [...bins, process.env.PATH ?? ""].join(":");
+  const pathValue = [...bins, process.env.PATH ?? ""].join(delimiter);
   return { ...process.env, PATH: pathValue };
 }
 
@@ -82,10 +96,10 @@ async function generatePackageProtos(
   outputDir: string,
 ): Promise<void> {
   await mkdir(outputDir, { recursive: true });
-  const buf = resolveBufBinary(invocation.repoRoot);
+  const buf = resolveBufCommand(invocation.repoRoot);
   const result = await runCommand(
-    buf,
-    ["generate", pkg.dataModelsDir, "--template", invocation.bufTemplate, "-o", outputDir],
+    buf.command,
+    [...buf.args, "generate", pkg.dataModelsDir, "--template", invocation.bufTemplate, "-o", outputDir],
     invocation.repoRoot,
     pluginPathEnv(invocation.repoRoot),
   );

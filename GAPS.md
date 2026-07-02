@@ -55,7 +55,7 @@ _One section per iteration: date, commit, lenses run, new/confirmed/rejected fin
 
 | ID | Lens | Class | Status | Intent | Actual | Evidence |
 |---|---|---|---|---|---|---|
-| DRIFT-001 | L-DRIFT | deliberate-undocumented | ✔ remediated | Nomad pillar lineage visible in design suite | Nomad evaluation/displacement recorded in ADR-0106 with two-way links | ADR-0106, `docs/design/vision.md`, `docs/competitors/nomad.md` |
+| DRIFT-002 | L-DRIFT | deliberate-undocumented | ✔ remediated | First-party commercial-launch design vs ADR-0064 product-surface cut | Boundary ADR-0107 records hosted-business productization vs removed product billing port | `docs/design/adr/07-portability-extensibility.md#adr-0107` |
 
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
 required beyond mapping) · **deliberate-undocumented** (evidently intentional but no decision record) ·

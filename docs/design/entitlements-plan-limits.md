@@ -185,7 +185,8 @@ integration, support queue implementation, and live customer suspension remain o
 - [ADR-0074](./adr/02-identity-security.md#adr-0074) keeps mandatory policy and RBAC governance as
   security boundaries this scope cannot bypass.
 - [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) keeps business monetization outside
-  HoBo core.
+  HoBo core; [ADR-0107](./adr/07-portability-extensibility.md#adr-0107) records plan-tier and
+  entitlement productization for HoBo-the-hosted-business.
 
 ## Follow-Up Gate
 

@@ -100,7 +100,7 @@ in the history of commit `d7bbc39c`.
 | GAP-018 | P2 | MED | ✔ | `hobo dev` local multi-service orchestration is unspecified — lifecycle APIs exist for deploy but the inner loop never states dependency-gated startup semantics per annotation class. | `docs/design/authoring-resources-wiring.md:150-151`<br>`docs/design/developer-experience.md:135-139`<br>`docs/design/control-plane.md:57-67` … | [REM-026](#rem-026-for-gap-018) |
 | GAP-019 | P3×P4 | MED | ✔ | The FinOps routing pipeline's canonical input (`ResourceIntent → DecisionGraph → ActionPlan`) is disconnected from the IfC/planning spine: control-plane Planner still terminates at manifest IR → `DeploymentPlan` with no documented bridge from resource collection / Matching / `hobo plan` into `ResourceIntent` or the FinOps DX dry-run preview surface. | `docs/design/finops-budget-routing-control-plane.md:22-36`<br>`docs/design/control-plane.md:14-28`<br>`docs/design/reliability-observability-cost.md:175-177` … | [REM-027](#rem-027-for-gap-019) |
 | GAP-020 | P3×P4 | MED | 🧯 | Inline FinOps budget authoring is orphaned: `costAvailability({ budgetUsd, tiers, strategy })` appears only as an ADR-0039 example with no import path in `@hobo/bindles`/`@hobo/camps`, no sdk-api or authoring-resources-wiring surface, and no tie to `hobo plan` preview — Nitric-style cost posture cannot be declared alongside resources at collection time. | `docs/design/adr/02-identity-security.md:285-295`<br>`docs/design/reliability-observability-cost.md:175-177`<br>`docs/design/authoring-resources-wiring.md` … | [REM-028](#rem-028-for-gap-020) |
-| GAP-021 | P4×P5 | MED | 🧯 | Per-token / LLM inference spend budgets for the governance plane and Crew are promised (`governance-planes.md` "per-token cost/safety budgets") but never specified: MeteringView dimensions omit LLM tokens, no token-budget policy object or event family exists, and agent `spendCapUsd` gates infra provisioning USD only — not model inference. | `docs/design/governance-planes.md:118-119`<br>`docs/design/reliability-observability-cost.md:210-216`<br>`docs/design/event-families.md:77` … | [REM-029](#rem-029-for-gap-021) |
+| GAP-021 | P4×P5 | MED | ✔ | Per-token LLM inference budgets are promised in the AI governance plane (`per-token cost/safety budgets (riding the spend breaker)`) and MeteringView folds `gen.*`/`token.*`, but no design text defines a **`TokenBudget`** object, the pre-inference gate seam, which counters fold LLM input/output/total tokens (distinct from auth `token.*` credential events), or how hard denies and spend-velocity circuit-breakers apply to inference. | `docs/design/governance-planes.md:118-119`<br>`docs/design/reliability-observability-cost.md:210-216` | [REM-029](#rem-029-for-gap-021) |
 | GAP-022 | P5×L-DRIFT | MED | 🧯 | Agent-native Crew promises lack a known-limitations register row while launch-messaging scopes built-in operator agents to `future-roadmap`: vision/index sell autonomous Crew as core product, but `known-limitations-register.md` has zero Crew/MCP/autonomy entries — customer-facing guardrails for the largest agent-native promise are missing. | `docs/design/vision.md:14`<br>`docs/design/launch-messaging-claims.md:63`<br>`docs/design/known-limitations-register.md:38-44`<br>`docs/design/operators-sre.md:46-54` … | [REM-030](#rem-030-for-gap-022) |
 | GAP-023 | L-CONS | MED | 🧯 | `docs/patterns/` and `docs/standards/` cross-links systematically rot: ecosystem analysis docs link to renamed/moved design paths (`forge-generated-stack.md`, `event-model.md`, `verification.md`, `adr/05-config-matching-environments.md`, `adr/06-ai-generation-operators.md`) that no longer exist — intent→design traceability breaks for the doc families iteration 1 never audited. | `docs/patterns/gitops-runbook-promotion.md:44`<br>`docs/patterns/runtime-code-mutation-persistence.md:37-46`<br>`docs/standards/index.md`<br>`docs/index.md:18-27` … | [REM-031](#rem-031-for-gap-023) |
 | GAP-024 | P5 | MED | 🧯 | Repo-local issue-worker automation (`docs/automations/hobo-issue-worker.md`) defines an autonomous implementation worker with broad repo write access but zero mapping to BR-011/FR-022 agent safety guardrails (SVID, spend caps, policy gates, audit) — `grep automations docs/design/` returns no cross-reference. | `docs/automations/hobo-issue-worker.md:26-31`<br>`docs/archive/requirements/requirements.md:162`<br>`docs/design/ai-native-agent-auth.md` … | [REM-032](#rem-032-for-gap-024) |
@@ -693,7 +693,10 @@ Documentation-level only — no code, no WIT files, nothing under src/draft chan
 - **Finding** (cand-10, P3, MED, votes uphold/uphold/uphold): The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` is not defined in the canonical interface catalog and no secret-versioning semantics (Nitric's put->version, access latest/specific version) exist anywhere in the design suite — the secret resource has only `put`/`access` verbs with no version model.
 - **Evidence:** `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/authoring-resources-wiring.md:225` · `docs/design/wasm-runtime-wit.md:151`
 - **Effort:** M · **Delivery:** ✔ [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) — ADR-0113 in `docs/design/adr/02-identity-security.md`; `hobo:secrets` canonical definition in `docs/design/wasm-runtime-wit.md`
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0cb13115 (docs(governance): specify TokenBudget object and inference gate seam (HOBO-695))
 
 **Action**
 
@@ -1551,18 +1554,39 @@ Wire budget authoring: add `costAvailability()` (or camp/bindle-level equivalent
 
 ### REM-029 (for GAP-021)
 
-- **Finding** (iter2-B1-004, P4×P5, MED): LLM token/inference budgets unspecified despite governance-plane promise.
+- **Finding** (GAP-021, P4×P5, MED): Per-token LLM inference budgets are promised in the AI governance plane but unspecified — no `TokenBudget` object, pre-inference gate seam, inference-token metering dimensions (distinct from auth `token.*`), or spend-breaker coupling.
 - **Evidence:** `docs/design/governance-planes.md:118-119` · `docs/design/reliability-observability-cost.md:210-216`
-- **Effort:** M · **Delivery:** [HOBO-695](https://linear.app/quickdeploy-ai/issue/HOBO-695)
+- **Effort:** M · **Delivery:** ✔ [HOBO-695](https://linear.app/quickdeploy-ai/issue/HOBO-695) — `TokenBudget` object + `evaluateInferenceTokenBudget` gate seam in governance + Plan 05; glossary row; executable draft POC
 
 **Action**
 
-Specify token-budget model in `governance-planes.md` + `reliability-observability-cost.md`: metering dimension(s), policy gate, spend-breaker interaction, Crew operator ownership (or explicit deferral row in known-limitations-register).
+1. Amend `docs/design/governance-planes.md` — insert **Per-token inference budgets** subsection (object JSON, authoring, gate seam, post-call metering, spend-breaker coupling) before "The four lenses" under AI safety & model governance; link proof index + draft POC.
+2. Amend `docs/design/reliability-observability-cost.md` — extend **Budgets, caps & guardrails** with inference token budget bullet; extend **Metering** dimension list with `inference-tokens-input` / `inference-tokens-output` and OpenInference source; disambiguate from auth `token.*`.
+3. Amend `docs/design/glossary.md` — insert **Token budget** row alphabetically between `The notify port` and `WIT interface`.
+4. Add proof index `docs/design/proofs/hobo-695-token-budget-governance/index.md` linking acceptance to the draft POC.
+5. Add draft POC `src/draft/technical-proofs/token-budget-governance-contract/` (protobuf/CUE/PACT evidence + `evaluateInferenceTokenBudget` contract tests).
+
+Do NOT create a new ADR (extends ADR-0039/Plan 05 in place). Do NOT implement production MeteringView projection, policy engine, or model runtime.
 
 **Acceptance**
 
-1. Design names token budget object + gate seam or 📘 deferral with ADR-Pn pointer.
-2. Gates green.
+Checklist:
+1. Design docs define `TokenBudget` object fields (scope, period, input/output/total soft+hard limits) and `evaluateInferenceTokenBudget` pre-inference gate seam with seq-pinned `MeteringView`, `policy.Decided`, and `inference.BudgetGateEvaluated`.
+2. Docs explicitly distinguish LLM inference tokens from auth `token.*` credential events.
+3. Glossary gains exactly one **Token budget** row; no duplicate terms.
+4. Draft POC tests cover soft warn, hard deny, missing metering fail-closed, and scope-evasion guard.
+5. Gates green (see commands below).
+
+Runnable validation commands (from repo root):
+- `pnpm run docs:okf`
+- `pnpm run docs:design-lint`
+- `pnpm --prefix src/draft/technical-proofs/token-budget-governance-contract test`
+- `pnpm agent:check -- --staged`
+- `node --import tsx scripts/validate-traceability.ts`
+
+**Guardrails**
+
+Primary delivery is documentation; the draft POC is an independent contract proof only. Touch only the files listed in Action. Preserve existing OKF frontmatter. Use relative `.md` links. Do not edit `traceability.md` or `adr/index.md` unless a gate requires it.
 
 ### REM-030 (for GAP-022)
 

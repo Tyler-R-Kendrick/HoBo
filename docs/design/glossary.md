@@ -77,6 +77,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | SVID | SPIFFE-style workload identity issued by the Yard for keyless auth. |
 | Stub | Typed recording placeholder behind a WIT port so an app runs before a real implementation exists. |
 | The `notify` port | Canonical cloud-messaging transport for email, sms, push, webhooks, ops alerts, app comms, status, and paging. |
+| Token budget | Scoped **`TokenBudget`** object capping LLM inference input/output/total tokens per period (`per-run`, `daily`, `monthly`) for tenant/Camp/agent/model/run scopes; enforced by the pre-inference **`evaluateInferenceTokenBudget`** gate over a seq-pinned `MeteringView` ([governance-planes.md#per-token-inference-budgets](./governance-planes.md#per-token-inference-budgets)). Distinct from auth `token.*` credential events. |
 | WIT interface | Canonical language-neutral contract form for a HoBo port. |
 | WIT-first SDK | SDK model where each language uses generated `hobo:sdk` WIT bindings plus a thin idiom layer. |
 | Workload Profile | How a service is realized, such as wasm component, container, serverless, or VM. |

@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/epic-reference-s5-stage-gate-forge-extensibility",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts contracts/consumer/*.test.ts",
+    "simulate": "node simulation/run-simulation.ts"
+  }
+}

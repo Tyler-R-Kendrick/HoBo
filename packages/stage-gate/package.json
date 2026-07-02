@@ -16,6 +16,7 @@
 		"access": "public"
 	},
 	"devDependencies": {
+		"@hobo/componentize": "workspace:*",
 		"@types/node": "^22.19.11",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.9"

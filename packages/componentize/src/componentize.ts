@@ -171,7 +171,7 @@ async function readSources(root: string) {
 			.filter((file) => file.endsWith(".ts"))
 			.sort()
 			.map(async (file) => {
-				const content = await readFile(file, "utf8");
+				const content = normalizeSourceText(await readFile(file, "utf8"));
 				return {
 					path: normalizeRelativePath(relative(root, file)),
 					content,
@@ -335,4 +335,8 @@ function normalizePath(pathOrUrl: string | URL) {
 
 function normalizeRelativePath(filePath: string) {
 	return filePath.split(sep).join("/");
+}
+
+function normalizeSourceText(content: string): string {
+	return content.replaceAll("\r\n", "\n");
 }

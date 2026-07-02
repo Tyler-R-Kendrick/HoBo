@@ -1,9 +1,7 @@
 import { buildHelloBindleComponent, emitEvidence } from "./hello-bindle-fixture.mts";
 
 const build = await buildHelloBindleComponent();
-const { runWasmtimeSmoke } = await import(
-	"../../../src/draft/technical-proofs/hobo-componentize-contract/src/componentize-contract.ts"
-);
+const { runWasmtimeSmoke } = await import("@hobo/componentize");
 
 const smoke = await runWasmtimeSmoke(build.component, { exportName: "health" });
 const expected = "hello-bindle:ok\n";

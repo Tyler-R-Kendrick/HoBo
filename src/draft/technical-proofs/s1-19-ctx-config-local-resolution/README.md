@@ -26,3 +26,10 @@ See [`ADR.md`](./ADR.md), [`architecture/`](./architecture), and [`architecture/
 ## Event families (fixed)
 
 `config.Resolved` · `secret.Accessed` · `secret.Unavailable`
+
+## Maintenance
+
+- `camp-env` resolutions always append `config.Resolved`, including optional keys that fall back to
+  typed defaults when the Camp config record omits the ref.
+- Dev secrets ladder tests cover `.env.local` → keychain → prompt order; prompt is skipped when
+  `CI` is set.

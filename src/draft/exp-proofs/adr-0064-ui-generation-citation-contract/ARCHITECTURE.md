@@ -13,8 +13,9 @@ onto the platform's event flow.
 ## Parse, Don't Validate
 
 Untrusted citation-check input (repo root path and target doc list) is parsed once at the boundary
-into derived `CitationCheckResult` records. Downstream assertions consume those records instead of
-re-scanning raw filesystem paths or ad hoc regex lists.
+into derived domain types (`CitationCheckResult`, `UiGenerationCitationReport`). Downstream
+assertions consume those parsed types instead of re-scanning raw filesystem paths or ad hoc regex
+lists.
 
 ## Event Architecture
 

@@ -1,25 +1,41 @@
 # S4 Stage Gate Multi Cloud Contract — Architecture Evidence
 
 This draft package carries the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`.
+`scripts/check-architecture-guardrails.mjs`, stating how its data is parsed and
+how its records map onto the platform's event flow.
 
 ## Schema And Constraints
 
 - Protobuf data shapes live in [`architecture/`](./architecture).
 - CUE constraints bound every protobuf type in that schema.
-- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the package boundary.
+- A PACT contract under [`architecture/pacts/`](./architecture/pacts) records the
+  package's boundary.
 
 ## Parse, Don't Validate
 
-Untrusted drill input is parsed once at the boundary into derived evidence types.
-Downstream gate verification consumes those parsed records instead of re-checking raw DTOs.
+This package applies the **parse, don't validate** discipline: untrusted drill
+input is parsed once at the boundary into derived domain types, and downstream
+consumers receive those parsed, derived types instead of re-checking raw input.
+The CUE constraints bound the same derived types so malformed input is rejected
+at parse time rather than passed downstream.
 
 ## Event Architecture
 
-- **Command** — run the S4 stage gate drill against `examples/multi-cloud-shop`.
-- **Event** — `s4StageGate.DrillPassed` or `deployment.PlanRejected`.
-- **Actor** — the stage gate verifier aggregate.
-- **Projection** — the drill report attached to the S4-01 acceptance record.
+The package's accepted record is the read model behind a small event flow:
 
-No runtime engine is implemented here; this is a design-time contract naming the
-command, event, and projection boundaries for Stage 4 closure.
+- **Command** — `RunS4StageGateDrill` requests verification against
+  `examples/multi-cloud-shop`.
+- **Event** — a successful command appends `s4StageGate.DrillPassed` or
+  `deployment.PlanRejected` to the log.
+- **Actor** — the stage gate verifier aggregate applies events in order.
+- **Event store** — accepted events are appended to the platform event store as
+  the durable source of truth.
+- **Materialized view / projection** — a projection folds the event store into
+  the drill report consumers query.
+- **Snapshot** — the accepted evidence record is the snapshot of that projection.
+- **Read store** — downstream surfaces query that read store rather than the raw
+  event log.
+
+No runtime engine, projector, or event store is implemented here; this is a
+design-time contract that names the command, event, actor, and projection
+boundaries so later implementation inherits a consistent vocabulary.

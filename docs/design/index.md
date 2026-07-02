@@ -142,6 +142,9 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 **Intended outcome.** A self-hostable (or hosted) **hobo-cloud** orchestrator + an SDK such that a developer (or an agent) can `hobo up` an app and have it land on real infrastructure — agnostic by default, optimizable on demand.
 
 ### Competitive frame vs Lakebed (what we deliberately do differently)
+
+Full capture + parity tracker: [`docs/competitors/lakebed`](../competitors/lakebed.md#hobo-mapping).
+
 | Dimension | Lakebed | HoBo |
 |---|---|---|
 | Unit of deploy | "Capsule" (one full-stack TS app on their runtime) | **Bindle** (app topology mapped to *any* provider mix) |

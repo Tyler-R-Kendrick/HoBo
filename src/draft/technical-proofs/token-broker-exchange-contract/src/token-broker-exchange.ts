@@ -22,6 +22,11 @@ export const BROKER_EXCHANGE_ERROR = Object.freeze({
 
 const DEFAULT_TOKEN_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_EVENT_ACTOR = { kind: "service", id: "yard/identity/broker" };
+const ACTION_PRIVILEGE = Object.freeze({
+  read: 1,
+  write: 2,
+  admin: 3,
+});
 
 export function parseSvid(input) {
   if (!isPlainObject(input)) {
@@ -64,6 +69,7 @@ export function createTokenBrokerExchange(options = {}) {
       if (nowMs >= Date.parse(svid.expiresAt)) {
         return denied({
           request,
+          subject: svid.subject,
           code: BROKER_EXCHANGE_ERROR.SVID_EXPIRED,
           reason: "SVID is expired",
           now,
@@ -74,6 +80,7 @@ export function createTokenBrokerExchange(options = {}) {
       if (!svidAllows(svid.scope, request.scope)) {
         return denied({
           request,
+          subject: svid.subject,
           code: BROKER_EXCHANGE_ERROR.SCOPE_OUTSIDE_SVID,
           reason: "requested scope is outside caller SVID scope",
           now,
@@ -85,6 +92,7 @@ export function createTokenBrokerExchange(options = {}) {
       if (!envelope) {
         return denied({
           request,
+          subject: svid.subject,
           code: BROKER_EXCHANGE_ERROR.UNKNOWN_PROVIDER,
           reason: "unknown provider",
           now,
@@ -98,6 +106,7 @@ export function createTokenBrokerExchange(options = {}) {
       if (!handler) {
         return denied({
           request,
+          subject: svid.subject,
           code: BROKER_EXCHANGE_ERROR.UNSUPPORTED_FLOW,
           reason: `unsupported auth flow ${selected.flow.type}`,
           now,
@@ -200,6 +209,7 @@ export function createTokenBrokerExchange(options = {}) {
       if (revokedGrantIds.has(request.grantId)) {
         return denied({
           request: { requestId: request.requestId, provider: grant.provider, scope: request.scope },
+          subject: grant.subject,
           code: BROKER_EXCHANGE_ERROR.GRANT_REVOKED,
           reason: "grant revoked",
           now,
@@ -207,9 +217,10 @@ export function createTokenBrokerExchange(options = {}) {
         });
       }
 
-      if (!isSameOrNarrowerScope(request.scope, grant.scope)) {
+      if (!isSameOrNarrowerScope(request.scope, grant)) {
         return denied({
           request: { requestId: request.requestId, provider: grant.provider, scope: request.scope },
+          subject: grant.subject,
           code: BROKER_EXCHANGE_ERROR.SCOPE_WIDENING,
           reason: "scope-widening-requires-live-identity",
           now,
@@ -227,6 +238,7 @@ export function createTokenBrokerExchange(options = {}) {
 
       return denied({
         request: { requestId: request.requestId, provider: grant.provider, scope: request.scope },
+        subject: grant.subject,
         code: BROKER_EXCHANGE_ERROR.RENEWAL_GRACE_EXPIRED,
         reason: "renewal-grace-expired",
         now,
@@ -289,12 +301,12 @@ function sameGrantRenewal(grant, request, now, eventSink, mode = "cache-renewal"
   };
 }
 
-function denied({ request, code, reason, now, eventSink }) {
+function denied({ request, subject, code, reason, now, eventSink }) {
   const event = buildIdentityEvent(
     "token.Denied",
     {
       requestId: request.requestId,
-      subject: request.subject ?? { kind: "service", id: "unknown" },
+      subject: subject ?? request.subject ?? { kind: "service", id: "unknown" },
       target: { kind: "provider", id: request.provider },
       reason: `${code}: ${reason}`,
     },
@@ -407,12 +419,17 @@ function svidAllows(svidScope, requested) {
   );
 }
 
-function isSameOrNarrowerScope(requested, allowed) {
-  return (
-    requested.port === allowed.port &&
-    requested.resource === allowed.resource &&
-    requested.action === allowed.action
+function isSameOrNarrowerScope(requested, grant) {
+  const ceiling = grant.svidScope.find(
+    (entry) => entry.port === requested.port && entry.resource === requested.resource,
   );
+  if (!ceiling || !ceiling.actions.includes(requested.action)) {
+    return false;
+  }
+
+  const grantedLevel = ACTION_PRIVILEGE[grant.scope.action] ?? 0;
+  const requestedLevel = ACTION_PRIVILEGE[requested.action] ?? 0;
+  return requestedLevel > 0 && requestedLevel <= grantedLevel;
 }
 
 function normalizeCredential(rawCredential, provider, grantId, now) {

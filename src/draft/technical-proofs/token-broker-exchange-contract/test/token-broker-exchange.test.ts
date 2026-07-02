@@ -74,6 +74,7 @@ describe("Feature: Exchange attested SVID for provider token via OIDC federation
     assert.equal(result.code, BROKER_EXCHANGE_ERROR.SVID_EXPIRED);
     assert.deepEqual(result.events.map((event) => event.type), ["token.Denied"]);
     assert.match(result.events[0].data.reason, /svid-expired/);
+    assert.equal(result.events[0].data.subject.id, actor.id);
   });
 
   it("Given over-scoped request, When exchange runs, Then typed scope-outside-svid denial before manifest lookup", async () => {
@@ -129,6 +130,33 @@ describe("Feature: Grace-window-only renewal and revocation", () => {
     assert.deepEqual(graceRenewal.events.map((event) => event.type), ["token.Used"]);
   });
 
+  it("Given grant past rotateAt inside grace, When renew runs, Then renewal-grace mode", async () => {
+    let current = new Date("2026-06-25T10:00:00.000Z");
+    const broker = createTokenBrokerExchange({
+      registry: cloudflareRegistry(),
+      now: () => current,
+      idFactory: deterministicIds(),
+      tokenTtlMs: 5 * 60 * 1000,
+    });
+
+    const issued = await broker.exchange({
+      requestId: "req-issue-grace-mode",
+      provider: "cloudflare",
+      scope: { port: "database", resource: "shop.db", action: "write" },
+      svid: buildSvid(),
+    });
+
+    current = new Date("2026-06-25T10:04:00.000Z");
+    const graceRenewal = await broker.renew({
+      requestId: "req-grace-mode",
+      grantId: issued.grantId,
+      scope: { port: "database", resource: "shop.db", action: "write" },
+    });
+
+    assert.equal(graceRenewal.ok, true);
+    assert.equal(graceRenewal.mode, "renewal-grace");
+  });
+
   it("Given grace window elapsed, When renew runs, Then typed renewal-grace-expired denial", async () => {
     let current = new Date("2026-06-25T10:00:00.000Z");
     const broker = createTokenBrokerExchange({
@@ -182,6 +210,31 @@ describe("Feature: Grace-window-only renewal and revocation", () => {
 
     assert.equal(denied.ok, false);
     assert.equal(denied.code, BROKER_EXCHANGE_ERROR.GRANT_REVOKED);
+  });
+
+  it("Given scope narrowing on renew, When renew runs, Then token.Used with narrowed scope", async () => {
+    const broker = createTokenBrokerExchange({
+      registry: cloudflareRegistry(),
+      now: fixedNow,
+      idFactory: deterministicIds(),
+    });
+
+    const issued = await broker.exchange({
+      requestId: "req-narrow-down",
+      provider: "cloudflare",
+      scope: { port: "database", resource: "shop.db", action: "write" },
+      svid: buildSvid({ scope: [{ port: "database", resource: "shop.db", actions: ["read", "write"] }] }),
+    });
+
+    const narrowed = await broker.renew({
+      requestId: "req-narrow-down-renew",
+      grantId: issued.grantId,
+      scope: { port: "database", resource: "shop.db", action: "read" },
+    });
+
+    assert.equal(narrowed.ok, true);
+    assert.equal(narrowed.scope.action, "read");
+    assert.deepEqual(narrowed.events.map((event) => event.type), ["token.Used"]);
   });
 
   it("Given scope widening on renew, When renew runs, Then typed scope-widening denial", async () => {

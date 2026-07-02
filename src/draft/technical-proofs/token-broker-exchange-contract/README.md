@@ -36,6 +36,7 @@ Production promotion target: `packages/identity/src/broker/` (blocked on S3-02 /
 - Expired SVID denied before manifest lookup.
 - Over-scoped request denied before registry/STS dispatch.
 - Scope widening on renew denied with typed error.
+- Scope narrowing on renew allowed (e.g. write→read within SVID ceiling).
 - Revoked grant cannot renew.
 - Audit events never contain token plaintext or secret fields.
 

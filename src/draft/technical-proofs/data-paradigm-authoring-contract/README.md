@@ -44,3 +44,10 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Data Paradigm Authoring Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+
+## Testing
+
+Run `pnpm --filter @hobo/draft-data-paradigm-authoring-contract test` (Vitest,
+followed by a `tsc --noEmit` type-test). The implementation exports `DataHandle`,
+`ImportedParadigmPackage`, `LoweringDescriptor`, and `ProviderOption`, which
+`test/type-consumer.ts` pins; the concrete handle is `DataHandleImpl`.

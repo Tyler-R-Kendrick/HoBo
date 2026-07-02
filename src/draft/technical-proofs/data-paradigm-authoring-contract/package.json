@@ -12,6 +12,6 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts && npx -y -p typescript@5.5.4 tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 test/type-consumer.ts"
+    "test": "vitest run --root . && tsc --noEmit --skipLibCheck --module NodeNext --moduleResolution NodeNext --target ES2022 --ignoreConfig test/type-consumer.ts"
   }
 }

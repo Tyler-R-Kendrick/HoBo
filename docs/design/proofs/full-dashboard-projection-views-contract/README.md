@@ -16,6 +16,7 @@ Branch evidence for S6-07 full dashboard views over `examples/multi-cloud-shop` 
 - Accessibility requirement: [`requirements.md` NFR-016](../../../archive/requirements/requirements.md).
 - Epic fixture refs: [`cli-mcp-developer-experience`](../../../../src/draft/epic-proofs/cli-mcp-developer-experience/README.md), [`reliability-observability-cost-finops`](../../../../src/draft/epic-proofs/reliability-observability-cost-finops/README.md).
 - Executable proof: [`full-dashboard-projection-views-contract`](../../../../src/draft/exp-proofs/full-dashboard-projection-views-contract/README.md).
+- Architecture evidence: [`ADR.md`](../../../../src/draft/exp-proofs/full-dashboard-projection-views-contract/ADR.md).
 
 ## Acceptance Coverage
 

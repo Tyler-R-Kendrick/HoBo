@@ -32,14 +32,14 @@ jobs:
         run: |
           curl -fsSL "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.235.0/wasm-tools-1.235.0-x86_64-linux.tar.gz" -o wasm-tools.tgz
           tar -xzf wasm-tools.tgz
-          echo "$PWD" >> "$GITHUB_PATH"
+          echo "$PWD/wasm-tools-1.235.0-x86_64-linux" >> "$GITHUB_PATH"
       - name: Install pinned wasm-tools (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Invoke-WebRequest "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.235.0/wasm-tools-1.235.0-x86_64-windows.zip" -OutFile wasm-tools.zip
           Expand-Archive wasm-tools.zip -DestinationPath .
-          echo "$PWD" >> $env:GITHUB_PATH
+          echo "$PWD/wasm-tools-1.235.0-x86_64-windows" >> $env:GITHUB_PATH
       - name: Package tests
         run: pnpm --prefix src/draft/technical-proofs/hobo-componentize test
       - name: Build hello-bindle twice and compare digests

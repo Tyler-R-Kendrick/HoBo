@@ -44,6 +44,18 @@ test("entries map to release notes, support scripts, docs, and launch messaging"
   }
 });
 
+test("register includes Crew/MCP autonomy limitation (GAP-022 / HOBO-697)", () => {
+  const crewMcpLimitation = KNOWN_LIMITATIONS_REGISTER.limitations.find(
+    (limitation) =>
+      limitation.id === "crew-mcp-write-actions-policy-gated" ||
+      (/crew|mcp/i.test(limitation.summary) && /policy-gated|unsupervised/i.test(limitation.summary)),
+  );
+
+  assert.ok(crewMcpLimitation, "expected a Crew/MCP autonomy limitation row");
+  assert.equal(crewMcpLimitation?.state, "real");
+  assert.match(crewMcpLimitation?.userVisibleImpact ?? "", /approval|policy gate/i);
+});
+
 test("scope-out items cannot be marketed as supported v1 capability", () => {
   assert.deepEqual(classifyScopeOutClaim("live hosted dashboard is supported at v1"), {
     allowed: false,
@@ -56,6 +68,11 @@ test("scope-out items cannot be marketed as supported v1 capability", () => {
     route: "known-limitations-register",
   });
   assert.deepEqual(classifyScopeOutClaim("post-ga roadmap ships in v1"), {
+    allowed: false,
+    reason: "scope-out item cannot be marketed as supported v1 capability",
+    route: "known-limitations-register",
+  });
+  assert.deepEqual(classifyScopeOutClaim("fully unsupervised crew or mcp write autonomy ships in v1"), {
     allowed: false,
     reason: "scope-out item cannot be marketed as supported v1 capability",
     route: "known-limitations-register",

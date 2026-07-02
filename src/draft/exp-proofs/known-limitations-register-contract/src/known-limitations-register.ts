@@ -13,7 +13,7 @@ const REQUIRED_REVIEW_GATES = ["beta", "ga"] as const;
 
 const LIMITED_CLAIM_PATTERN = /\b(beta-only|simulated|reference|unsupported|deferred|post-ga|follow-up|known limitation|limited)\b/i;
 const SUPPORTED_CLAIM_PATTERN = /\b(supported|available|launch-ready|ga-ready|ships|included)\b/i;
-const SCOPE_OUT_MARKETING_PATTERN = /\b(live hosted dashboard|production provider deploy|automated support desk|full migration automation|all providers|unsupported environment|post-ga roadmap)\b/i;
+const SCOPE_OUT_MARKETING_PATTERN = /\b(live hosted dashboard|production provider deploy|automated support desk|full migration automation|all providers|unsupported environment|post-ga roadmap|fully unsupervised crew|unsupervised crew or mcp)\b/i;
 
 declare const parsedKnownLimitationsRegisterBrand: unique symbol;
 
@@ -189,6 +189,23 @@ export const KNOWN_LIMITATIONS_REGISTER: KnownLimitationsRegister = {
       docsRoute: "support-sla-channels#unsupported-request-classes",
       launchMessagingDisposition: "scope-out; cannot be marketed as supported v1 capability",
     },
+    {
+      id: "crew-mcp-write-actions-policy-gated",
+      summary: "Crew and MCP write actions are policy-gated, not fully unsupervised.",
+      state: "real",
+      affectedPersona: "platform operator and external MCP agent integrator",
+      userVisibleImpact:
+        "Launch and docs copy must not promise unattended Crew or MCP mutations; read and diagnose runs autonomously but remediation, deploy, and other writes require approval or policy gates.",
+      workaround:
+        "Route write-action expectations through dashboard or Slack approval flows and scoped MCP grants documented for the Crew roster.",
+      owner: "Operator Agents & SRE",
+      requiresFollowUp: false,
+      releaseNoteSection: "Known limitations",
+      supportScriptRoute: "crew and MCP autonomy limitation response",
+      docsRoute: "docs-portal/known-limitations#crew-mcp-autonomy",
+      launchMessagingDisposition:
+        "must not be described as fully unsupervised Crew or MCP write autonomy",
+    },
   ],
   handoffTargets: [
     {
@@ -237,6 +254,7 @@ export const KNOWN_LIMITATIONS_REGISTER: KnownLimitationsRegister = {
       "all providers are supported",
       "automated support desk ships in v1",
       "production recovery guarantee",
+      "fully unsupervised crew or mcp write autonomy ships in v1",
     ],
     allowedFraming: ["real", "beta-only", "simulated-reference", "unsupported", "deferred", "post-ga"],
   },

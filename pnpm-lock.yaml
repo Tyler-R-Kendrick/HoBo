@@ -239,6 +239,8 @@ importers:
 
   src/draft/epic-proofs/reliability-observability-cost-finops: {}
 
+  src/draft/epic-proofs/s1-10-conformance-trust-boundary: {}
+
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
 
   src/draft/epic-proofs/v1-vibe-example-gap-closure: {}

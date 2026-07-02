@@ -9,6 +9,14 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./runtime-port": {
+			"types": "./dist/suites/runtime-port/index.d.ts",
+			"default": "./dist/suites/runtime-port/index.js"
+		},
+		"./component-host": {
+			"types": "./dist/suites/component-host/index.d.ts",
+			"default": "./dist/suites/component-host/index.js"
 		}
 	},
 	"publishConfig": {
@@ -26,7 +34,7 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime-local build",
-		"test": "vitest run --passWithNoTests",
+		"test": "vitest run",
 		"test:contract:consumer": "vitest run --passWithNoTests contracts/consumer"
 	}
 }

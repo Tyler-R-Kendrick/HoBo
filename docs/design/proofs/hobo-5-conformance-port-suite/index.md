@@ -14,6 +14,8 @@ Acceptance mapping:
 
 Scope note: this proof defines the harness/report contract only. Real port suites, provider certification, CI unlisting, and artifact signing remain owned by downstream slices.
 
+S1-10 (`packages/conformance/src/suites/runtime-port` + `component-host`, HOBO-599) promotes the runtime-port durability and component-host portability suites to production. Draft epic evidence remains at `src/draft/epic-proofs/s1-10-conformance-trust-boundary/`.
+
 Focused verification:
 
 ```powershell

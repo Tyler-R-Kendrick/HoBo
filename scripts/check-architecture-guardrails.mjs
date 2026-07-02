@@ -297,8 +297,6 @@ function filterExistingBasePackages(files, base) {
   });
 }
 
-const NESTED_PACKAGE_PARENTS = new Set(["runtimes", "providers", "iac", "build"]);
-
 function implementationPackageRoot(file) {
   const parts = normalizePath(file).split("/");
   if (PRODUCTION_PACKAGE_PARENTS.has(parts[0]) && parts.length >= 3) {
@@ -310,8 +308,8 @@ function implementationPackageRoot(file) {
 
   if (parts[0] !== "src" || parts[1] !== "draft" || !parts[2]) return undefined;
 
-  // Aggregate metadata (underscore-prefixed like _templates/_registry.md) and loose files
-  // directly under src/draft/<kind>/ are never proof packages.
+  // Aggregate metadata (underscore-prefixed like _templates/_grandfathered.json/_registry.md)
+  // and loose files directly under src/draft/<kind>/ are never proof packages.
   const isPackageDir = (segment, next) => segment && !segment.startsWith("_") && next !== undefined;
 
   if (parts[2] === "exp-proofs" && parts[3] && !parts[3].startsWith("_")) {

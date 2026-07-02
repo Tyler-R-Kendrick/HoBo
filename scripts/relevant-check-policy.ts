@@ -114,6 +114,20 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
         reason: `draft package unit/contract tests for ${workspace}; direct package script avoids Turbo dependency expansion`,
       });
     }
+    checks.push({
+      command: "pnpm",
+      args: ["run", staged ? "draft:artifacts:staged" : "draft:artifacts", "--", `--base=${options.base}`],
+      reason: "changed proof packages must satisfy the draft-artifact requirements (grandfathered packages get advisories)",
+    });
+    checks.push({
+      command: "pnpm",
+      args: ["run", staged ? "draft:cascade:staged" : "draft:cascade", "--", `--base=${options.base}`],
+      reason: "changed technical/exp proofs must cascade into referencing epic/project rollups",
+    });
+  }
+
+  if (files.some((file) => /^\.(claude|agents)\/skills\/(draft|repo|sdlc)\//u.test(file))) {
+    checks.push({ command: "pnpm", args: ["run", "skills:mirror-check"], reason: "repo-local skill mirrors must stay byte-identical across .claude and .agents" });
   }
 
   if (uiChanged) {

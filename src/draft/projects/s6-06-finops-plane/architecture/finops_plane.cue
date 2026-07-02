@@ -17,9 +17,11 @@ package finops_plane
 }
 
 #FinOpsDeployGateDecision: {
-	effect: "allow" | "deny" | "allow-degraded"
+	effect: "allow" | "deny" | "allow-degraded" | "require-approval"
 	reason: string
 	cost_estimate_usd: number & >=0
+	violations: [...string]
+	obligations: [...string]
 }
 
 #ShowbackReconciliation: {
@@ -27,4 +29,11 @@ package finops_plane
 	metering_total_usd: number & >=0
 	showback_total_usd: number & >=0
 	reconciled: bool
+	rows: [...#ShowbackRowSummary]
+}
+
+#ShowbackRowSummary: {
+	kind: "tenant" | "camp" | "bindle" | "run" | "agent" | "team"
+	id: string & != ""
+	cost_usd: number & >=0
 }

@@ -403,7 +403,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0109 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0109) | Polyglot dev-loop lanes are pinned with replay-based state preservation, per-lane latency classes, layered codegen-in-watch, and a restart-on-change local container policy; only the TS lane is proof-backed. | HOBO-122, HOBO-156, HOBO-392, HOBO-672 |
 | ADR-0110 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0110) | Marketplace payout readiness stays a deferred commercial-operations posture, distinct from the billing/rev-share product scope ADR-0064 removed. | HOBO-420, HOBO-513, HOBO-668 |
 | ADR-0111 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0111) | Local dashboard (`hobo dev`) co-launched listener, `runtime-local` read API, scope labels, bundled OTLP ingest, and offline deferral behavior — distinct from hosted Gateway dashboard path. | HOBO-673 |
-| ADR-0112 | [data-plane](./adr/03-data-plane.md#adr-0112) | Canonical data-port naming spine: hobo:data + paradigm sub-interfaces; wasi:sql demoted to driver level; retired SQL port; hobo:database/* frozen proof alias. | HOBO-675 |
+| ADR-0112 | [data-plane](./adr/03-data-plane.md#adr-0112) | Canonical data-port naming spine: hobo:data + paradigm sub-interfaces; wasi:sql demoted to driver level; retired SQL port; frozen legacy proof port ids. | HOBO-675 |
 
 ## ADR Numbering and Status Audit
 

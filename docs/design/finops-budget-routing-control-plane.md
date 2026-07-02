@@ -42,6 +42,30 @@ must not depend on provider names, SKUs, concrete regions, account IDs, stacks,
 or backend API names. Those details live below the `ExecutionAdapterPort`
 boundary.
 
+## IfC and `hobo plan` spine
+
+`ResourceIntent` is the FinOps pipeline's canonical input, but authors do not
+write it directly. During **`hobo plan`** ([Plan 07](./developer-experience.md#plan-07)),
+the Planner lowers each **manifest IR** resource node ([Plan 21](./authoring-resources-wiring.md#plan-21))
+into one provider-neutral `ResourceIntent` before candidate generation begins:
+
+```text
+hobo collect (IfC) → hobo.manifest/v1
+  → manifest→ResourceIntent bridge (Planner, read-only at plan time)
+  → ResourceIntent → … → RoutingDecision + ActionPlan + DecisionGraph
+  → DeploymentPlan DAG + plan-time cost (merged back into hobo plan output)
+```
+
+The bridge copies capability class (`port`/`type` + `require`/`prefer`),
+budget scope, colocation/dependency edges from `bind`/`links`, and the tenant
+routing objective from the manifest node and deploy context. Provider-specific
+`.with(...)` annotations, SKUs, regions, and account identifiers **stay in the
+manifest** and enter only after `RoutingDecision` via `ExecutionAdapter`. This
+is the seam that connects P3 IfC authoring to P4 FinOps routing on the same
+`hobo plan` spine the control plane documents ([Plan 04](./control-plane.md#plan-04)).
+Executable bridge contract:
+[`../../src/draft/technical-proofs/manifest-resource-intent-bridge-contract/README.md`](../../src/draft/technical-proofs/manifest-resource-intent-bridge-contract/README.md).
+
 ## Contract Model
 
 The proof package at

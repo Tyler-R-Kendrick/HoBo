@@ -4,6 +4,7 @@ import {
   CapabilityDeniedError,
   evaluateCapabilityGrants,
   inferCapabilityUsage,
+  type CapabilityDiagnostic,
   type CapabilityGrant,
   type CapabilityLinkTableEvent,
 } from "@hobo/core";
@@ -211,7 +212,7 @@ export function capabilityEnforcementSuite(hostFactory: CapabilityHostFactory): 
     });
 
     expect(result.ok).toBe(false);
-    expect(result.diagnostics.some((d) => d.code === "capability.allow.narrow-below-usage")).toBe(
+    expect(result.diagnostics.some((d: CapabilityDiagnostic) => d.code === "capability.allow.narrow-below-usage")).toBe(
       true,
     );
   });
@@ -227,7 +228,7 @@ export function capabilityEnforcementSuite(hostFactory: CapabilityHostFactory): 
     });
 
     expect(usage.ok).toBe(false);
-    expect(usage.diagnostics.some((d) => d.code === "capability.usage.cannot-prove-operation")).toBe(
+    expect(usage.diagnostics.some((d: CapabilityDiagnostic) => d.code === "capability.usage.cannot-prove-operation")).toBe(
       true,
     );
   });

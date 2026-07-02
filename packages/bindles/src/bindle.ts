@@ -20,7 +20,9 @@ type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
 	readonly __bindleInternal: InternalBindleResource<K>;
 };
 
-function createBindleResource<K extends ResourceKind>(kind: K): TrackedBindleResource<K> {
+function createBindleResource<K extends ResourceKind>(
+	kind: K,
+): TrackedBindleResource<K> {
 	const internal: InternalBindleResource<K> = {
 		kind,
 		declaredAllow: [],
@@ -100,7 +102,10 @@ export function bindle(
 
 	const builder = createBuilder();
 	const built = build(builder);
-	const resourceByName = new Map<InternalBindleResource<ResourceKind>, string>();
+	const resourceByName = new Map<
+		InternalBindleResource<ResourceKind>,
+		string
+	>();
 	const resources: Record<string, BindleResourceRecord> = {};
 	const edges: BindleEdge[] = [];
 	const stableIds = new Set<string>();
@@ -113,7 +118,9 @@ export function bindle(
 		const tracked = resource as TrackedBindleResource<ResourceKind>;
 		const internal = tracked.__bindleInternal;
 		if (!internal) {
-			throw new TypeError("bindle build must return resources from the BindleBuilder");
+			throw new TypeError(
+				"bindle build must return resources from the BindleBuilder",
+			);
 		}
 
 		const stableId = `${internal.kind}:${resourceName}`;

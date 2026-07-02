@@ -35,10 +35,19 @@ export interface ComponentHandle {
 	withHttpHealthCheck?(path: string): ComponentHandle;
 	withHttpEndpoint?(
 		port: number,
-		options?: { name?: string; targetPort?: number; external?: boolean; protocol?: string },
+		options?: {
+			name?: string;
+			targetPort?: number;
+			external?: boolean;
+			protocol?: string;
+		},
 	): ComponentHandle;
 	withArgs?(...args: readonly (string | readonly string[])[]): ComponentHandle;
-	withBindMount?(source: string, target: string, readOnly?: boolean): ComponentHandle;
+	withBindMount?(
+		source: string,
+		target: string,
+		readOnly?: boolean,
+	): ComponentHandle;
 	withLifetime?(lifetime: "session" | "persistent"): ComponentHandle;
 	waitFor?(dependency: DependencyRef): ComponentHandle;
 	waitForCompletion?(dependency: DependencyRef): ComponentHandle;

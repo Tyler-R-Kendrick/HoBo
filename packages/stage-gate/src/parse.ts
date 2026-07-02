@@ -21,7 +21,11 @@ function pushIssue(issues: string[], message: string): void {
 	issues.push(message);
 }
 
-function parseCheckResult(raw: unknown, issues: string[], path: string): CheckResult | null {
+function parseCheckResult(
+	raw: unknown,
+	issues: string[],
+	path: string,
+): CheckResult | null {
 	if (!isObject(raw)) {
 		pushIssue(issues, `${path}: expected object`);
 		return null;
@@ -89,7 +93,11 @@ function parseComponentArtifact(
 		pushIssue(issues, `${path}.digest_sha256: expected sha256:<64 hex>`);
 	}
 	const byteLength = raw.byte_length ?? raw.byteLength;
-	if (typeof byteLength !== "number" || byteLength < 0 || !Number.isInteger(byteLength)) {
+	if (
+		typeof byteLength !== "number" ||
+		byteLength < 0 ||
+		!Number.isInteger(byteLength)
+	) {
 		pushIssue(issues, `${path}.byte_length: expected non-negative integer`);
 	}
 	const mediaType = raw.media_type ?? raw.mediaType;
@@ -148,13 +156,20 @@ function parseSignatureEvidence(
 	};
 }
 
-function compareIsoTimestamps(startedAt: string, finishedAt: string, issues: string[]): void {
+function compareIsoTimestamps(
+	startedAt: string,
+	finishedAt: string,
+	issues: string[],
+): void {
 	if (startedAt >= finishedAt) {
 		pushIssue(issues, "finished_at must be >= started_at");
 	}
 }
 
-function validatePassedRecordConstraints(record: StageGateRecord, issues: string[]): void {
+function validatePassedRecordConstraints(
+	record: StageGateRecord,
+	issues: string[],
+): void {
 	if (record.status !== "passed") {
 		return;
 	}
@@ -163,7 +178,10 @@ function validatePassedRecordConstraints(record: StageGateRecord, issues: string
 	}
 	for (const check of record.checks) {
 		if (check.status !== "passed") {
-			pushIssue(issues, `passed record requires every check passed (${check.checkId})`);
+			pushIssue(
+				issues,
+				`passed record requires every check passed (${check.checkId})`,
+			);
 		}
 	}
 	if (!record.signature.verified) {
@@ -278,7 +296,9 @@ export function parseStageGateRecord(raw: unknown): StageGateRecord {
 	return record;
 }
 
-export function serializeStageGateRecord(record: StageGateRecord): Record<string, unknown> {
+export function serializeStageGateRecord(
+	record: StageGateRecord,
+): Record<string, unknown> {
 	return {
 		gate_id: record.gateId,
 		status: record.status,

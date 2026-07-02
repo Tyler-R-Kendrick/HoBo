@@ -24,7 +24,10 @@ test("consumer expectations match wrpc-membrane pact fixtures", () => {
 	assert.equal(establishSuccess.response.body.negotiatedWire.minor, "1.2");
 
 	assert.equal(establishBelowFloor.response.body.code, "version-incompatible");
-	assert.equal(establishBelowFloor.response.body.reason, "shared-minor-below-floor");
+	assert.equal(
+		establishBelowFloor.response.body.reason,
+		"shared-minor-below-floor",
+	);
 	assert.equal(establishBelowFloor.response.body.phase, "link-establishment");
 
 	assert.equal(unlinkedCall.response.body.code, "no-route");
@@ -32,5 +35,8 @@ test("consumer expectations match wrpc-membrane pact fixtures", () => {
 	assert.equal(linkedCall.response.body.linkCalled.transport, "in-process");
 	assert.equal(linkedCall.response.body.linkCalled.boundaryMode, "live");
 	assert.equal(linkedCall.response.body.linkCalled.codec, "json-wit");
-	assert.equal(linkedCall.response.body.linkCalled.deadline, "2026-06-25T15:45:00.000Z");
+	assert.equal(
+		linkedCall.response.body.linkCalled.deadline,
+		"2026-06-25T15:45:00.000Z",
+	);
 });

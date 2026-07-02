@@ -1,4 +1,7 @@
-import { createManualClock, createRuntimeLocalEventStore } from "../../src/index.js";
+import {
+	createManualClock,
+	createRuntimeLocalEventStore,
+} from "../../src/index.js";
 
 const dataDir = process.argv[2];
 if (!dataDir) {

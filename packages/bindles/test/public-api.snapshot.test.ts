@@ -7,7 +7,8 @@ import * as bindles from "../src/index.js";
 import { CATALOG } from "../src/catalog.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
-const FORBIDDEN_PUBLIC_SYMBOL = /aws|azure|gcp|cloudflare|rds|fargate|cosmos|internal|cloud/i;
+const FORBIDDEN_PUBLIC_SYMBOL =
+	/aws|azure|gcp|cloudflare|rds|fargate|cosmos|internal|cloud/i;
 
 const snapshotPath = join(
 	dirname(fileURLToPath(import.meta.url)),
@@ -72,9 +73,11 @@ function createBindlesPublicApiSnapshot(
 		package: "@hobo/bindles",
 		version: SNAPSHOT_VERSION,
 		resourceHandleSignature: {
-			allow: "allow(...verbs: AllowVerb[]): ResourceHandle<Kind, NarrowedAllow>",
+			allow:
+				"allow(...verbs: AllowVerb[]): ResourceHandle<Kind, NarrowedAllow>",
 			descriptor: "toDescriptor(): ResourceDescriptor<Kind>",
-			identity: "readonly identity: { kind: Kind; name: string; stableId: string }",
+			identity:
+				"readonly identity: { kind: Kind; name: string; stableId: string }",
 		},
 		exports: [
 			{
@@ -102,12 +105,12 @@ function createBindlesPublicApiSnapshot(
 			{
 				name: "HOBO_BINDLES_PACKAGE",
 				kind: "package-constant",
-				signature: "const HOBO_BINDLES_PACKAGE: \"@hobo/bindles\"",
+				signature: 'const HOBO_BINDLES_PACKAGE: "@hobo/bindles"',
 			},
 			{
 				name: "MANIFEST_SCHEMA",
 				kind: "manifest-constant",
-				signature: "const MANIFEST_SCHEMA: \"hobo.manifest/v1\"",
+				signature: 'const MANIFEST_SCHEMA: "hobo.manifest/v1"',
 			},
 			{
 				name: "ManifestParseError",
@@ -142,7 +145,8 @@ function createBindlesPublicApiSnapshot(
 			{
 				name: "aspireFallbackEnv",
 				kind: "manifest-helper",
-				signature: "aspireFallbackEnv(manifest: ManifestV1): Record<string, string[]>",
+				signature:
+					"aspireFallbackEnv(manifest: ManifestV1): Record<string, string[]>",
 			},
 			{
 				name: "addContainer",
@@ -153,7 +157,8 @@ function createBindlesPublicApiSnapshot(
 			{
 				name: "bindingTypesFor",
 				kind: "wiring-helper",
-				signature: "bindingTypesFor(handle: ComponentHandle): Readonly<Record<string, string>>",
+				signature:
+					"bindingTypesFor(handle: ComponentHandle): Readonly<Record<string, string>>",
 			},
 			{
 				name: "BindReferenceError",
@@ -163,12 +168,14 @@ function createBindlesPublicApiSnapshot(
 			{
 				name: "compileBindleManifest",
 				kind: "wiring-compiler",
-				signature: "compileBindleManifest(handles: readonly Handle[]): WiringManifest",
+				signature:
+					"compileBindleManifest(handles: readonly Handle[]): WiringManifest",
 			},
 			{
 				name: "wiringData",
 				kind: "wiring-factory",
-				signature: "wiringData(name: string, options?: { paradigm?: string }): ResourceHandle",
+				signature:
+					"wiringData(name: string, options?: { paradigm?: string }): ResourceHandle",
 			},
 			{
 				name: "wiringService",
@@ -200,7 +207,9 @@ function assertNoInternalCloudSymbols(snapshot: Record<string, unknown>): void {
 	};
 	visit(snapshot, "$");
 	if (leaks.length > 0) {
-		throw new Error(`BINDLES_API_INTERNAL_SYMBOL_LEAK: ${JSON.stringify(leaks)}`);
+		throw new Error(
+			`BINDLES_API_INTERNAL_SYMBOL_LEAK: ${JSON.stringify(leaks)}`,
+		);
 	}
 }
 
@@ -215,7 +224,14 @@ describe("public API snapshot", () => {
 
 	it("does not export topology, runtime, or search symbols", () => {
 		const exportNames = new Set(Object.keys(bindles));
-		for (const forbidden of ["search", "camp", "yard", "junction", "workflow", "step"]) {
+		for (const forbidden of [
+			"search",
+			"camp",
+			"yard",
+			"junction",
+			"workflow",
+			"step",
+		]) {
 			expect(exportNames.has(forbidden)).toBe(false);
 		}
 	});

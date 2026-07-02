@@ -5,7 +5,12 @@ export {
 	PortDescriptorParseError,
 } from "./errors.js";
 
-export type { EventEnvelope, PrincipalRef, PrincipalKind, CloudEvent } from "./envelope.js";
+export type {
+	EventEnvelope,
+	PrincipalRef,
+	PrincipalKind,
+	CloudEvent,
+} from "./envelope.js";
 export {
 	parseEventEnvelope,
 	createEventEnvelope,
@@ -37,8 +42,14 @@ export type {
 	Subscription,
 } from "./ports/eventstore.js";
 
-export type { CapabilityManifestBundle, ParseCapabilityManifestOptions } from "./manifest.js";
-export { parseCapabilityManifestBundle, CORE_SCHEMA_VERSION } from "./manifest.js";
+export type {
+	CapabilityManifestBundle,
+	ParseCapabilityManifestOptions,
+} from "./manifest.js";
+export {
+	parseCapabilityManifestBundle,
+	CORE_SCHEMA_VERSION,
+} from "./manifest.js";
 
 export type { Container } from "./container.js";
 export { createContainer } from "./container.js";
@@ -120,7 +131,10 @@ export type {
 	ResourceId,
 	ResolvedBinding,
 } from "./ports/binding-resolver.js";
-export { parseResourceId, RESOURCE_ID_PATTERN } from "./ports/binding-resolver.js";
+export {
+	parseResourceId,
+	RESOURCE_ID_PATTERN,
+} from "./ports/binding-resolver.js";
 
 export type {
 	RunId,

@@ -107,19 +107,31 @@ export async function componentizeHelloBindle({
 	};
 }
 
-export function validateWasmComponentArtifact(component: WasmComponentArtifact) {
+export function validateWasmComponentArtifact(
+	component: WasmComponentArtifact,
+) {
 	if (component.mediaType !== COMPONENT_MEDIA_TYPE) {
 		throw new Error(`componentize.invalid_media_type: ${component.mediaType}`);
 	}
-	if (!component.bytes || !WebAssembly.validate(new Uint8Array(component.bytes))) {
-		throw new Error("componentize.invalid_wasm: wasm-tools validate would fail");
+	if (
+		!component.bytes ||
+		!WebAssembly.validate(new Uint8Array(component.bytes))
+	) {
+		throw new Error(
+			"componentize.invalid_wasm: wasm-tools validate would fail",
+		);
 	}
 	const actualDigest = sha256Bytes(component.bytes);
 	if (actualDigest !== component.digest) {
-		throw new Error(`componentize.digest_mismatch: expected ${component.digest} got ${actualDigest}`);
+		throw new Error(
+			`componentize.digest_mismatch: expected ${component.digest} got ${actualDigest}`,
+		);
 	}
 	const metadata = readContractMetadata(component.bytes);
-	if (metadata.schema !== CONTRACT_SCHEMA || metadata.witWorld !== component.witWorld) {
+	if (
+		metadata.schema !== CONTRACT_SCHEMA ||
+		metadata.witWorld !== component.witWorld
+	) {
 		throw new Error("componentize.metadata_mismatch");
 	}
 
@@ -194,7 +206,9 @@ async function listFiles(dir: string): Promise<string[]> {
 	return files;
 }
 
-function assertDeterministicSources(sources: { path: string; content: string }[]) {
+function assertDeterministicSources(
+	sources: { path: string; content: string }[],
+) {
 	const forbidden: [string, RegExp][] = [
 		["Date.now", /\bDate\.now\s*\(/],
 		["new Date", /\bnew\s+Date\s*\(/],
@@ -204,7 +218,9 @@ function assertDeterministicSources(sources: { path: string; content: string }[]
 	for (const source of sources) {
 		for (const [label, pattern] of forbidden) {
 			if (pattern.test(source.content)) {
-				throw new Error(`componentize.nondeterministic_source: ${label} in ${source.path}`);
+				throw new Error(
+					`componentize.nondeterministic_source: ${label} in ${source.path}`,
+				);
 			}
 		}
 	}
@@ -250,8 +266,17 @@ function buildWasmContractBytes(metadata: string) {
 	const header = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
 	const sectionName = Buffer.from(CUSTOM_SECTION_NAME, "utf8");
 	const sectionData = Buffer.from(metadata, "utf8");
-	const payload = Buffer.concat([encodeU32(sectionName.byteLength), sectionName, sectionData]);
-	return Buffer.concat([header, Buffer.from([0x00]), encodeU32(payload.byteLength), payload]);
+	const payload = Buffer.concat([
+		encodeU32(sectionName.byteLength),
+		sectionName,
+		sectionData,
+	]);
+	return Buffer.concat([
+		header,
+		Buffer.from([0x00]),
+		encodeU32(payload.byteLength),
+		payload,
+	]);
 }
 
 function readContractMetadata(bytes: Uint8Array) {
@@ -265,10 +290,14 @@ function readContractMetadata(bytes: Uint8Array) {
 		if (sectionId === 0) {
 			const nameLength = readU32(buffer, offset);
 			offset = nameLength.offset;
-			const name = buffer.subarray(offset, offset + nameLength.value).toString("utf8");
+			const name = buffer
+				.subarray(offset, offset + nameLength.value)
+				.toString("utf8");
 			offset += nameLength.value;
 			if (name === CUSTOM_SECTION_NAME) {
-				return JSON.parse(buffer.subarray(offset, sectionEnd).toString("utf8")) as {
+				return JSON.parse(
+					buffer.subarray(offset, sectionEnd).toString("utf8"),
+				) as {
 					schema: string;
 					witWorld: string;
 					smoke: { exportName: string; stdout: string };

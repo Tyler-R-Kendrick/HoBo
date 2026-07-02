@@ -1,9 +1,17 @@
 import { bindleScope } from "@hobo/bindles/topology";
 import { describe, expect, it } from "vitest";
 
-import { camp, providerSelection, resolutionPrecedenceFor } from "../src/index.js";
+import {
+	camp,
+	providerSelection,
+	resolutionPrecedenceFor,
+} from "../src/index.js";
 
-function resource(kind: string, name: string, portRef: readonly string[] = [`hobo:${kind}`]) {
+function resource(
+	kind: string,
+	name: string,
+	portRef: readonly string[] = [`hobo:${kind}`],
+) {
 	return Object.freeze({
 		kind,
 		name,
@@ -41,7 +49,11 @@ describe("camp()", () => {
 		expect(prod.kind).toBe("camp");
 		expect(prod.id).toBe("prod-aws");
 		expect(prod.providerId).toBe("aws");
-		expect(prod.resolutionOrder).toEqual(["bindings", "tiers", "defaultProvider"]);
+		expect(prod.resolutionOrder).toEqual([
+			"bindings",
+			"tiers",
+			"defaultProvider",
+		]);
 	});
 
 	it("rejects mixed provider mappings", () => {

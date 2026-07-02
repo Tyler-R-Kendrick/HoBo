@@ -5,13 +5,17 @@ import { join } from "node:path";
 import type { RuntimeDurabilityBackend } from "@hobo/conformance/runtime-port";
 
 import { createInMemoryActorHost } from "../../src/actor-host/in-memory.js";
-import { createManualClock, createRuntimeLocalEventStore } from "../../src/index.js";
+import {
+	createManualClock,
+	createRuntimeLocalEventStore,
+} from "../../src/index.js";
 import { createRuntimeLocalQueueClock } from "../../src/replay.js";
 
 export function createRuntimeLocalDurabilityBackend(
 	options: { dataDir?: string } = {},
 ): RuntimeDurabilityBackend {
-	const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), "hobo-runtime-port-"));
+	const dataDir =
+		options.dataDir ?? mkdtempSync(join(tmpdir(), "hobo-runtime-port-"));
 	const clock = createManualClock("2026-06-26T00:00:00.000Z");
 	const queueClock = createRuntimeLocalQueueClock({
 		seed: "runtime-port-conformance",
@@ -38,7 +42,10 @@ export function createBrokenFenceRuntimeBackend(): RuntimeDurabilityBackend {
 }
 
 function createBrokenFenceActorHost() {
-	const streams = new Map<string, { events: Array<{ type: string; amount?: number }> }>();
+	const streams = new Map<
+		string,
+		{ events: Array<{ type: string; amount?: number }> }
+	>();
 	const leases = new Map<string, { fenceToken: bigint }>();
 
 	return Object.freeze({
@@ -60,7 +67,10 @@ function createBrokenFenceActorHost() {
 		state(
 			key: string,
 			request: {
-				fold?: (state: unknown, event: { type: string; amount?: number }) => unknown;
+				fold?: (
+					state: unknown,
+					event: { type: string; amount?: number },
+				) => unknown;
 				initialState?: unknown;
 			} = {},
 		) {
@@ -72,7 +82,10 @@ function createBrokenFenceActorHost() {
 			const initialState = structuredClone(request.initialState);
 
 			return Object.freeze({
-				append(lease: { fenceToken?: bigint }, event: { type: string; amount?: number }) {
+				append(
+					lease: { fenceToken?: bigint },
+					event: { type: string; amount?: number },
+				) {
 					stream.events.push(structuredClone(event));
 					return Object.freeze({
 						streamId: actorKey,
@@ -83,7 +96,9 @@ function createBrokenFenceActorHost() {
 				read() {
 					let state = structuredClone(initialState) as { value: number };
 					for (const event of stream.events) {
-						state = request.fold!(state, structuredClone(event)) as { value: number };
+						state = request.fold!(state, structuredClone(event)) as {
+							value: number;
+						};
 					}
 					return Object.freeze({
 						streamId: actorKey,

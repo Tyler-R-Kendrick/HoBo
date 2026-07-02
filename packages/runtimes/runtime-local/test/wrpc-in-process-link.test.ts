@@ -19,7 +19,10 @@ const FLOOR = "0.2.0";
 
 function createTestLayer() {
 	const store = new ProviderHandlerStore();
-	const transport = createInProcessTransport({ store, codec: createJsonWitCodec() });
+	const transport = createInProcessTransport({
+		store,
+		codec: createJsonWitCodec(),
+	});
 	return createWrpcLinkLayer({ transport, compatibilityFloor: FLOOR, store });
 }
 
@@ -51,9 +54,15 @@ describe("wrpc in-process link layer", () => {
 			providerId: "local-kv",
 			exportInterface: KV,
 		});
-		const result = await layer.callImport("api", KV, "get", { key: "session" }, {
-			deadline: "2026-06-25T15:45:00.000Z",
-		});
+		const result = await layer.callImport(
+			"api",
+			KV,
+			"get",
+			{ key: "session" },
+			{
+				deadline: "2026-06-25T15:45:00.000Z",
+			},
+		);
 
 		expect(link.boundaryMode).toBe("live");
 		expect(link.transport).toBe("in-process");
@@ -85,10 +94,15 @@ describe("wrpc in-process link layer", () => {
 			},
 		});
 
-		await expect(layer.callImport("worker", KV, "get", { key: "session" })).rejects.toSatisfy(
-			(error: unknown) => error instanceof NoRouteError && error.code === "no-route",
+		await expect(
+			layer.callImport("worker", KV, "get", { key: "session" }),
+		).rejects.toSatisfy(
+			(error: unknown) =>
+				error instanceof NoRouteError && error.code === "no-route",
 		);
-		expect(layer.events.some((event) => event.type === "link.Called")).toBe(false);
+		expect(layer.events.some((event) => event.type === "link.Called")).toBe(
+			false,
+		);
 	});
 
 	it("a provider export cannot be reached unless the exact import is in the link table", async () => {
@@ -114,7 +128,9 @@ describe("wrpc in-process link layer", () => {
 			exportInterface: KV,
 		});
 
-		await expect(layer.callImport("api", BLOB, "read", { key: "secret" })).rejects.toSatisfy(
+		await expect(
+			layer.callImport("api", BLOB, "read", { key: "secret" }),
+		).rejects.toSatisfy(
 			(error: unknown) =>
 				error instanceof NoRouteError && error.routeKey === `api\0${BLOB}`,
 		);

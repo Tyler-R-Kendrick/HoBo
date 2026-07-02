@@ -35,7 +35,10 @@ describe("bindles → sdk-collector lowering pact", () => {
 					request: {
 						method: "POST",
 						path: "/lower",
-						body: { schema: "hobo.bindles.lowering/v1", descriptors: loweringBatch },
+						body: {
+							schema: "hobo.bindles.lowering/v1",
+							descriptors: loweringBatch,
+						},
 					},
 					response: {
 						status: 200,
@@ -47,7 +50,10 @@ describe("bindles → sdk-collector lowering pact", () => {
 					request: {
 						method: "POST",
 						path: "/resources",
-						body: { schema: "hobo.bindles.resource/v1", descriptors: resourceBatch },
+						body: {
+							schema: "hobo.bindles.resource/v1",
+							descriptors: resourceBatch,
+						},
 					},
 					response: {
 						status: 200,
@@ -55,7 +61,8 @@ describe("bindles → sdk-collector lowering pact", () => {
 					},
 				},
 				{
-					description: "secretRef value reads are distinct from managed secret resources",
+					description:
+						"secretRef value reads are distinct from managed secret resources",
 					request: {
 						method: "POST",
 						path: "/secret-ref",
@@ -76,7 +83,11 @@ describe("bindles → sdk-collector lowering pact", () => {
 		expect(written.consumer.name).toBe("@hobo/bindles");
 		expect(written.provider.name).toBe("hobo-sdk-collector");
 		expect(written.interactions).toHaveLength(3);
-		expect(loweringBatch.every((entry) => entry.lowersTo === "hobo:sdk")).toBe(true);
-		expect(resourceBatch.every((entry) => entry.stableId.includes(":"))).toBe(true);
+		expect(loweringBatch.every((entry) => entry.lowersTo === "hobo:sdk")).toBe(
+			true,
+		);
+		expect(resourceBatch.every((entry) => entry.stableId.includes(":"))).toBe(
+			true,
+		);
 	});
 });

@@ -2,7 +2,10 @@ export {
 	createDefaultWrpcLinkLayer,
 	createWrpcLinkLayer,
 } from "./wrpc/link-layer.js";
-export { createInProcessTransport, createJsonWitCodec } from "./wrpc/in-process-transport.js";
+export {
+	createInProcessTransport,
+	createJsonWitCodec,
+} from "./wrpc/in-process-transport.js";
 export {
 	createRuntimeLocalComponentHost,
 	HTTP_INCOMING_HANDLER,
@@ -26,7 +29,10 @@ export {
 	type ParsedProviderDescriptor,
 } from "./parse.js";
 export { createCapabilityLinkTable } from "./capability/link-table.js";
-export type { CapabilityHandle, CapabilityLinkTable } from "./capability/link-table.js";
+export type {
+	CapabilityHandle,
+	CapabilityLinkTable,
+} from "./capability/link-table.js";
 export {
 	collectStream,
 	createManualClock,
@@ -43,9 +49,18 @@ export {
 	createLocalStreamer,
 	createRuntimeLocal,
 } from "./streamer/local-streamer.js";
-export type { LocalStreamerOptions, Runtime } from "./streamer/local-streamer.js";
-export { createFrameJournal, foldLifecycleStatus } from "./streamer/frame-journal.js";
+export type {
+	LocalStreamerOptions,
+	Runtime,
+} from "./streamer/local-streamer.js";
+export {
+	createFrameJournal,
+	foldLifecycleStatus,
+} from "./streamer/frame-journal.js";
 export type { FrameJournal, LifecycleEvent } from "./streamer/frame-journal.js";
 export { createRuntimeLocalQueueClock, replayClockTrace } from "./replay.js";
 export type { RuntimeLocalQueueClock } from "./replay.js";
-export type { QueueClockSnapshot, RuntimeLocalQueueClockOptions } from "./queue-clock-store.js";
+export type {
+	QueueClockSnapshot,
+	RuntimeLocalQueueClockOptions,
+} from "./queue-clock-store.js";

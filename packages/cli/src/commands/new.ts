@@ -36,9 +36,10 @@ export function createNewCommand(): CommandModule {
 		run: async ({ context, flags, args }) => {
 			const rawName = args[0];
 			if (rawName === undefined) {
-				throw new UsageError("Invalid project name: provide a directory name for hobo new.", [
-					"Run `hobo new <name> [-t todo|api|agent|fullstack]`.",
-				]);
+				throw new UsageError(
+					"Invalid project name: provide a directory name for hobo new.",
+					["Run `hobo new <name> [-t todo|api|agent|fullstack]`."],
+				);
 			}
 			if (args.length > 1) {
 				throw new UsageError(
@@ -84,7 +85,9 @@ export async function scaffoldHoboProject(input: {
 	const existing = await existingDirectory(projectDir);
 
 	if (existing.exists && !existing.isDirectory) {
-		throw new DestinationExistsError(`${projectDir} already exists and is not a directory.`);
+		throw new DestinationExistsError(
+			`${projectDir} already exists and is not a directory.`,
+		);
 	}
 
 	if (existing.exists && existing.entries.length > 0 && !input.force) {
@@ -95,7 +98,10 @@ export async function scaffoldHoboProject(input: {
 
 	await mkdir(path.join(projectDir, "src/_generated"), { recursive: true });
 
-	const files = buildProjectFiles({ name: input.name, template: input.template });
+	const files = buildProjectFiles({
+		name: input.name,
+		template: input.template,
+	});
 	for (const relativePath of createdFileOrder) {
 		const content = files.get(relativePath);
 		if (content === undefined) {
@@ -134,29 +140,46 @@ export async function validateScaffoldProject(projectDir: string) {
 		};
 	}
 
-	const packageJson = JSON.parse(await readFile(path.join(projectDir, "package.json"), "utf8")) as {
+	const packageJson = JSON.parse(
+		await readFile(path.join(projectDir, "package.json"), "utf8"),
+	) as {
 		scripts?: Record<string, string>;
 	};
-	const bindle = JSON.parse(await readFile(path.join(projectDir, "hobo.bindle.json"), "utf8")) as {
+	const bindle = JSON.parse(
+		await readFile(path.join(projectDir, "hobo.bindle.json"), "utf8"),
+	) as {
 		template: string;
 	};
 	const app = await readFile(path.join(projectDir, "app.ts"), "utf8");
 	const appTest = await readFile(path.join(projectDir, "app.test.ts"), "utf8");
-	const generated = await readFile(path.join(projectDir, "src/_generated/index.ts"), "utf8");
-	const declarations = await readFile(path.join(projectDir, "src/_generated/hobo.d.ts"), "utf8");
+	const generated = await readFile(
+		path.join(projectDir, "src/_generated/index.ts"),
+		"utf8",
+	);
+	const declarations = await readFile(
+		path.join(projectDir, "src/_generated/hobo.d.ts"),
+		"utf8",
+	);
 	const gitignore = await readFile(path.join(projectDir, ".gitignore"), "utf8");
 
 	const violations: string[] = [];
 	if (packageJson.scripts?.dev !== "hobo dev") {
 		violations.push("package.json must expose hobo dev");
 	}
-	if (packageJson.scripts?.test !== "node --test" && !packageJson.scripts?.test?.includes("--test app.test.ts")) {
+	if (
+		packageJson.scripts?.test !== "node --test" &&
+		!packageJson.scripts?.test?.includes("--test app.test.ts")
+	) {
 		violations.push("package.json must expose node --test");
 	}
 	if (packageJson.scripts?.typecheck !== "tsc --noEmit") {
 		violations.push("package.json must expose tsc --noEmit");
 	}
-	if (!VALID_TEMPLATES.includes(bindle.template as (typeof VALID_TEMPLATES)[number])) {
+	if (
+		!VALID_TEMPLATES.includes(
+			bindle.template as (typeof VALID_TEMPLATES)[number],
+		)
+	) {
 		violations.push("bindle template must be one of the valid templates");
 	}
 	if (!app.includes(`template: "${bindle.template}"`)) {
@@ -183,8 +206,14 @@ export async function validateScaffoldProject(projectDir: string) {
 	if (!/^\.hobo\/$/m.test(gitignore)) {
 		violations.push(".gitignore must ignore .hobo/");
 	}
-	if (/fetch\(|registry|templateUrl|http:|https:/i.test(`${app}\n${generated}\n${declarations}`)) {
-		violations.push("scaffold must not depend on registry-hosted or network templates");
+	if (
+		/fetch\(|registry|templateUrl|http:|https:/i.test(
+			`${app}\n${generated}\n${declarations}`,
+		)
+	) {
+		violations.push(
+			"scaffold must not depend on registry-hosted or network templates",
+		);
 	}
 
 	return {
@@ -213,14 +242,23 @@ async function existingDirectory(projectDir: string) {
 			entries: info.isDirectory() ? await readdir(projectDir) : [],
 		};
 	} catch (error) {
-		if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+		if (
+			error &&
+			typeof error === "object" &&
+			"code" in error &&
+			error.code === "ENOENT"
+		) {
 			return { exists: false, isDirectory: false, entries: [] as string[] };
 		}
 		throw error;
 	}
 }
 
-async function writeOwnedFile(root: string, relativePath: string, content: string) {
+async function writeOwnedFile(
+	root: string,
+	relativePath: string,
+	content: string,
+) {
 	await mkdir(path.dirname(path.join(root, relativePath)), { recursive: true });
 
 	if (relativePath === ".gitignore") {
@@ -237,12 +275,20 @@ async function mergeGitignore(filePath: string, requiredContent: string) {
 	try {
 		current = await readFile(filePath, "utf8");
 	} catch (error) {
-		if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
+		if (
+			!(
+				error &&
+				typeof error === "object" &&
+				"code" in error &&
+				error.code === "ENOENT"
+			)
+		) {
 			throw error;
 		}
 	}
 
-	const currentLines = current.trimEnd() === "" ? [] : current.trimEnd().split(/\r?\n/);
+	const currentLines =
+		current.trimEnd() === "" ? [] : current.trimEnd().split(/\r?\n/);
 	const mergedLines = [...currentLines];
 	for (const line of requiredLines) {
 		if (!mergedLines.includes(line)) {

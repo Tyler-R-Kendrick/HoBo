@@ -17,7 +17,9 @@ describe("CLI command registry pact", () => {
 		const pact = JSON.parse(readFileSync(pactPath, "utf8")) as {
 			consumer: { name: string };
 			provider: { name: string };
-			interactions: Array<{ response: { body: { requiredCommands: string[]; parity: string } } }>;
+			interactions: Array<{
+				response: { body: { requiredCommands: string[]; parity: string } };
+			}>;
 		};
 
 		expect(pact.consumer.name).toBe("cli-mcp-developer-experience-reference");

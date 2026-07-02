@@ -3,7 +3,9 @@ import { parseEventEnvelope } from "@hobo/core";
 
 export type ParsedStreamId = string & { readonly __brand: "ParsedStreamId" };
 
-export type ParsedExpectedSeq = number & { readonly __brand: "ParsedExpectedSeq" };
+export type ParsedExpectedSeq = number & {
+	readonly __brand: "ParsedExpectedSeq";
+};
 
 export interface ParsedEventInput {
 	readonly type: string;
@@ -31,7 +33,10 @@ export function parseStreamId(value: unknown): ParsedStreamId {
 	return value as ParsedStreamId;
 }
 
-export function parseExpectedSeq(value: unknown, fieldName = "expectedSeq"): ParsedExpectedSeq {
+export function parseExpectedSeq(
+	value: unknown,
+	fieldName = "expectedSeq",
+): ParsedExpectedSeq {
 	if (!Number.isSafeInteger(value) || (value as number) < 0) {
 		throw new TypeError(`${fieldName} must be a non-negative safe integer`);
 	}
@@ -46,7 +51,10 @@ export function parseEventInput(value: unknown): ParsedEventInput {
 	const type = requireNonEmptyString(source.type, "event.type");
 	const v = normalizeVersion(source.v ?? 1);
 	const meta = Object.freeze(cloneJson(source.meta ?? {}));
-	const idempotencyKey = optionalString(meta.idempotencyKey, "event.meta.idempotencyKey");
+	const idempotencyKey = optionalString(
+		meta.idempotencyKey,
+		"event.meta.idempotencyKey",
+	);
 	return Object.freeze({
 		type,
 		v,
@@ -67,7 +75,11 @@ export function parseAppendContext(
 	streamId: unknown,
 	appendOptions: unknown,
 ): ParsedAppendContext {
-	if (!appendOptions || typeof appendOptions !== "object" || Array.isArray(appendOptions)) {
+	if (
+		!appendOptions ||
+		typeof appendOptions !== "object" ||
+		Array.isArray(appendOptions)
+	) {
 		throw new TypeError("appendOptions must be an object");
 	}
 	const options = appendOptions as Record<string, unknown>;
@@ -78,12 +90,21 @@ export function parseAppendContext(
 
 	return Object.freeze({
 		streamId: parseStreamId(streamId),
-		expectedSeq: parseExpectedSeq(options.expectedSeq, "appendOptions.expectedSeq"),
+		expectedSeq: parseExpectedSeq(
+			options.expectedSeq,
+			"appendOptions.expectedSeq",
+		),
 		actor: actor as PrincipalRef,
 		tenant: requireNonEmptyString(options.tenant, "appendOptions.tenant"),
 		project: optionalString(options.project, "appendOptions.project"),
-		causationId: optionalString(options.causationId, "appendOptions.causationId"),
-		correlationId: optionalString(options.correlationId, "appendOptions.correlationId"),
+		causationId: optionalString(
+			options.causationId,
+			"appendOptions.causationId",
+		),
+		correlationId: optionalString(
+			options.correlationId,
+			"appendOptions.correlationId",
+		),
 		lane: optionalString(options.lane, "appendOptions.lane"),
 	});
 }

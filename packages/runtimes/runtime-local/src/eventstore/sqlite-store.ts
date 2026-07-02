@@ -4,7 +4,11 @@ import { DatabaseSync } from "node:sqlite";
 
 import type { EventEnvelope, SnapshotRecord } from "@hobo/core";
 
-import { parseStoredEnvelope, type ParsedAppendContext, type ParsedEventInput } from "./parse.js";
+import {
+	parseStoredEnvelope,
+	type ParsedAppendContext,
+	type ParsedEventInput,
+} from "./parse.js";
 
 const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -61,7 +65,10 @@ export class SqliteEventStore {
 		return row.count;
 	}
 
-	findByIdempotencyKey(streamId: string, idempotencyKey: string): EventEnvelope | undefined {
+	findByIdempotencyKey(
+		streamId: string,
+		idempotencyKey: string,
+	): EventEnvelope | undefined {
 		const row = this.db
 			.prepare(
 				`SELECT id, type, v, stream_id, seq, ts, actor, tenant, project,
@@ -112,7 +119,10 @@ export class SqliteEventStore {
 
 		for (const input of pending) {
 			if (input.idempotencyKey) {
-				const existing = this.findByIdempotencyKey(context.streamId, input.idempotencyKey);
+				const existing = this.findByIdempotencyKey(
+					context.streamId,
+					input.idempotencyKey,
+				);
 				if (existing) {
 					deduped.push(existing);
 					continue;
@@ -127,7 +137,11 @@ export class SqliteEventStore {
 
 		const currentLength = this.getStreamLength(context.streamId);
 		if (currentLength !== context.expectedSeq) {
-			throw new StaleSequenceError(context.streamId, context.expectedSeq, currentLength);
+			throw new StaleSequenceError(
+				context.streamId,
+				context.expectedSeq,
+				currentLength,
+			);
 		}
 
 		const appended: EventEnvelope[] = [];
@@ -182,7 +196,8 @@ export class SqliteEventStore {
 			context: ParsedAppendContext,
 		) => EventEnvelope,
 	): EventEnvelope {
-		return this.appendBatch(context, [input], createEnvelope).appended[0] as EventEnvelope;
+		return this.appendBatch(context, [input], createEnvelope)
+			.appended[0] as EventEnvelope;
 	}
 
 	saveSnapshot<S>(record: SnapshotRecord<S>): SnapshotRecord<S> {
@@ -200,14 +215,21 @@ export class SqliteEventStore {
            state = excluded.state,
            saved_at = excluded.saved_at`,
 			)
-			.run(record.streamId, record.seq, JSON.stringify(record.state), record.savedAt);
+			.run(
+				record.streamId,
+				record.seq,
+				JSON.stringify(record.state),
+				record.savedAt,
+			);
 
 		return record;
 	}
 
 	loadSnapshot<S>(streamId: string): SnapshotRecord<S> | undefined {
 		const row = this.db
-			.prepare("SELECT stream_id, seq, state, saved_at FROM snapshots WHERE stream_id = ?")
+			.prepare(
+				"SELECT stream_id, seq, state, saved_at FROM snapshots WHERE stream_id = ?",
+			)
 			.get(streamId) as SnapshotRow | undefined;
 		if (!row) {
 			return undefined;
@@ -231,7 +253,9 @@ export class StaleSequenceError extends Error {
 		readonly expectedSeq: number,
 		readonly actualSeq: number,
 	) {
-		super(`stale expectedSeq for ${streamId}: expected ${expectedSeq}, actual ${actualSeq}`);
+		super(
+			`stale expectedSeq for ${streamId}: expected ${expectedSeq}, actual ${actualSeq}`,
+		);
 		this.name = "StaleSequenceError";
 	}
 }

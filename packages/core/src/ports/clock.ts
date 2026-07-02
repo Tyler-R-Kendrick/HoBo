@@ -1,10 +1,10 @@
 import { CoreParseError } from "../errors.js";
 import {
-  deepFreeze,
-  isoTimestamp,
-  nonEmptyString,
-  nonNegativeInteger,
-  positiveInteger,
+	deepFreeze,
+	isoTimestamp,
+	nonEmptyString,
+	nonNegativeInteger,
+	positiveInteger,
 } from "../parse-utils.js";
 import { parseRunId, type RunId } from "./streamer.js";
 
@@ -14,235 +14,264 @@ export type ScheduleId = string & { readonly __brand: "ScheduleId" };
 export type FireId = string & { readonly __brand: "FireId" };
 
 export interface TimerOptions {
-  readonly idempotencyKey: string;
-  readonly label?: string;
+	readonly idempotencyKey: string;
+	readonly label?: string;
 }
 
 export interface IntervalCronSpec {
-  readonly everyMs: number;
-  readonly startAtMs?: number;
+	readonly everyMs: number;
+	readonly startAtMs?: number;
 }
 
 export interface ScheduledTimer {
-  readonly timerId: TimerId;
-  readonly runId: RunId;
-  readonly idempotencyKey: string;
-  readonly fireAt: IsoInstant;
-  readonly deduped: boolean;
+	readonly timerId: TimerId;
+	readonly runId: RunId;
+	readonly idempotencyKey: string;
+	readonly fireAt: IsoInstant;
+	readonly deduped: boolean;
 }
 
 export interface CronSchedule {
-  readonly scheduleId: ScheduleId;
-  readonly everyMs: number;
-  readonly nextFireAt: IsoInstant;
-  readonly deduped: boolean;
+	readonly scheduleId: ScheduleId;
+	readonly everyMs: number;
+	readonly nextFireAt: IsoInstant;
+	readonly deduped: boolean;
 }
 
 export interface FiredTimer {
-  readonly fireId: FireId;
-  readonly kind: "sleep" | "cron";
-  readonly timerId?: TimerId;
-  readonly runId?: RunId;
-  readonly label?: string;
-  readonly scheduleId?: ScheduleId;
-  readonly occurrence?: number;
-  readonly at: IsoInstant;
-  readonly order: number;
+	readonly fireId: FireId;
+	readonly kind: "sleep" | "cron";
+	readonly timerId?: TimerId;
+	readonly runId?: RunId;
+	readonly label?: string;
+	readonly scheduleId?: ScheduleId;
+	readonly occurrence?: number;
+	readonly at: IsoInstant;
+	readonly order: number;
 }
 
 export type ClockTraceEntry =
-  | { readonly type: "clock.started"; readonly seed: string; readonly atMs: number; readonly at: IsoInstant }
-  | { readonly type: "clock.advanced"; readonly deltaMs: number; readonly fromMs: number; readonly toMs: number }
-  | {
-      readonly type: "timer.scheduled";
-      readonly timerId: string;
-      readonly runId: string;
-      readonly label?: string;
-      readonly idempotencyKey: string;
-      readonly delayMs: number;
-      readonly scheduledAtMs: number;
-      readonly fireAtMs: number;
-    }
-  | {
-      readonly type: "timer.fired";
-      readonly fireId: string;
-      readonly timerId: string;
-      readonly runId: string;
-      readonly atMs: number;
-      readonly order: number;
-    }
-  | {
-      readonly type: "cron.scheduled";
-      readonly scheduleId: string;
-      readonly everyMs: number;
-      readonly startAtMs: number;
-    }
-  | {
-      readonly type: "cron.fired";
-      readonly fireId: string;
-      readonly scheduleId: string;
-      readonly occurrence: number;
-      readonly atMs: number;
-      readonly order: number;
-    }
-  | {
-      readonly type: "queue.enqueued";
-      readonly queueName: string;
-      readonly messageId: string;
-      readonly idempotencyKey: string;
-    }
-  | {
-      readonly type: "queue.enqueue.deduped";
-      readonly queueName: string;
-      readonly messageId: string;
-      readonly idempotencyKey: string;
-    }
-  | {
-      readonly type: "queue.completed";
-      readonly queueName: string;
-      readonly messageId: string;
-      readonly idempotencyKey: string;
-    }
-  | {
-      readonly type: "queue.released";
-      readonly queueName: string;
-      readonly messageId: string;
-      readonly idempotencyKey: string;
-    }
-  | {
-      readonly type: "queue.redelivered";
-      readonly queueName: string;
-      readonly messageId: string;
-      readonly idempotencyKey: string;
-    };
+	| {
+			readonly type: "clock.started";
+			readonly seed: string;
+			readonly atMs: number;
+			readonly at: IsoInstant;
+	  }
+	| {
+			readonly type: "clock.advanced";
+			readonly deltaMs: number;
+			readonly fromMs: number;
+			readonly toMs: number;
+	  }
+	| {
+			readonly type: "timer.scheduled";
+			readonly timerId: string;
+			readonly runId: string;
+			readonly label?: string;
+			readonly idempotencyKey: string;
+			readonly delayMs: number;
+			readonly scheduledAtMs: number;
+			readonly fireAtMs: number;
+	  }
+	| {
+			readonly type: "timer.fired";
+			readonly fireId: string;
+			readonly timerId: string;
+			readonly runId: string;
+			readonly atMs: number;
+			readonly order: number;
+	  }
+	| {
+			readonly type: "cron.scheduled";
+			readonly scheduleId: string;
+			readonly everyMs: number;
+			readonly startAtMs: number;
+	  }
+	| {
+			readonly type: "cron.fired";
+			readonly fireId: string;
+			readonly scheduleId: string;
+			readonly occurrence: number;
+			readonly atMs: number;
+			readonly order: number;
+	  }
+	| {
+			readonly type: "queue.enqueued";
+			readonly queueName: string;
+			readonly messageId: string;
+			readonly idempotencyKey: string;
+	  }
+	| {
+			readonly type: "queue.enqueue.deduped";
+			readonly queueName: string;
+			readonly messageId: string;
+			readonly idempotencyKey: string;
+	  }
+	| {
+			readonly type: "queue.completed";
+			readonly queueName: string;
+			readonly messageId: string;
+			readonly idempotencyKey: string;
+	  }
+	| {
+			readonly type: "queue.released";
+			readonly queueName: string;
+			readonly messageId: string;
+			readonly idempotencyKey: string;
+	  }
+	| {
+			readonly type: "queue.redelivered";
+			readonly queueName: string;
+			readonly messageId: string;
+			readonly idempotencyKey: string;
+	  };
 
 export interface ClockReplayResult {
-  readonly seed: string;
-  readonly fireOrder: readonly FireId[];
-  readonly finalNow: IsoInstant;
+	readonly seed: string;
+	readonly fireOrder: readonly FireId[];
+	readonly finalNow: IsoInstant;
 }
 
 /** Read-only clock facet for timestamp queries. */
 export interface Clock {
-  now(): IsoInstant;
-  nowMs(): number;
+	now(): IsoInstant;
+	nowMs(): number;
 }
 
 /** Deterministic virtual clock port with sleep, cron, and advance. */
 export interface VirtualClock extends Clock {
-  sleep(runId: RunId, delayMs: number, options: TimerOptions): ScheduledTimer;
-  cron(scheduleId: ScheduleId, spec: IntervalCronSpec): CronSchedule;
-  advance(deltaMs: number): readonly FiredTimer[];
-  trace(): readonly ClockTraceEntry[];
+	sleep(runId: RunId, delayMs: number, options: TimerOptions): ScheduledTimer;
+	cron(scheduleId: ScheduleId, spec: IntervalCronSpec): CronSchedule;
+	advance(deltaMs: number): readonly FiredTimer[];
+	trace(): readonly ClockTraceEntry[];
 }
 
 export class ClockParseError extends CoreParseError {
-  constructor(path: string, expected: string, received: unknown, message?: string) {
-    super("HOBO_CORE_CLOCK_PARSE", path, expected, received, message);
-    this.name = "ClockParseError";
-  }
+	constructor(
+		path: string,
+		expected: string,
+		received: unknown,
+		message?: string,
+	) {
+		super("HOBO_CORE_CLOCK_PARSE", path, expected, received, message);
+		this.name = "ClockParseError";
+	}
 }
 
 export class NondeterministicClockError extends Error {
-  readonly code = "CLOCK_NONDETERMINISTIC" as const;
+	readonly code = "CLOCK_NONDETERMINISTIC" as const;
 
-  constructor(message: string) {
-    super(message);
-    this.name = "NondeterministicClockError";
-  }
+	constructor(message: string) {
+		super(message);
+		this.name = "NondeterministicClockError";
+	}
 }
 
 export function parseIsoInstant(value: string): IsoInstant {
-  return isoTimestamp(value, "instant", ClockParseError) as IsoInstant;
+	return isoTimestamp(value, "instant", ClockParseError) as IsoInstant;
 }
 
 export function parseTimerId(value: string): TimerId {
-  return nonEmptyString(value, "timerId", ClockParseError) as TimerId;
+	return nonEmptyString(value, "timerId", ClockParseError) as TimerId;
 }
 
 export function parseScheduleId(value: string): ScheduleId {
-  return nonEmptyString(value, "scheduleId", ClockParseError) as ScheduleId;
+	return nonEmptyString(value, "scheduleId", ClockParseError) as ScheduleId;
 }
 
 export function parseFireId(value: string): FireId {
-  return nonEmptyString(value, "fireId", ClockParseError) as FireId;
+	return nonEmptyString(value, "fireId", ClockParseError) as FireId;
 }
 
 export function parseDelayMs(value: number): number {
-  return nonNegativeInteger(value, "delayMs", ClockParseError);
+	return nonNegativeInteger(value, "delayMs", ClockParseError);
 }
 
 export function parseCronEveryMs(value: number): number {
-  return positiveInteger(value, "everyMs", ClockParseError);
+	return positiveInteger(value, "everyMs", ClockParseError);
 }
 
 export function createScheduledTimer(record: {
-  timer_id: string;
-  run_id: string;
-  idempotency_key: string;
-  fire_at: string;
-  deduped: boolean;
+	timer_id: string;
+	run_id: string;
+	idempotency_key: string;
+	fire_at: string;
+	deduped: boolean;
 }): ScheduledTimer {
-  return deepFreeze({
-    timerId: parseTimerId(record.timer_id),
-    runId: parseRunId(record.run_id),
-    idempotencyKey: nonEmptyString(record.idempotency_key, "idempotencyKey", ClockParseError),
-    fireAt: parseIsoInstant(record.fire_at),
-    deduped: record.deduped,
-  });
+	return deepFreeze({
+		timerId: parseTimerId(record.timer_id),
+		runId: parseRunId(record.run_id),
+		idempotencyKey: nonEmptyString(
+			record.idempotency_key,
+			"idempotencyKey",
+			ClockParseError,
+		),
+		fireAt: parseIsoInstant(record.fire_at),
+		deduped: record.deduped,
+	});
 }
 
 export function createCronSchedule(record: {
-  schedule_id: string;
-  every_ms: number;
-  next_fire_at: string;
-  deduped: boolean;
+	schedule_id: string;
+	every_ms: number;
+	next_fire_at: string;
+	deduped: boolean;
 }): CronSchedule {
-  return deepFreeze({
-    scheduleId: parseScheduleId(record.schedule_id),
-    everyMs: parseCronEveryMs(record.every_ms),
-    nextFireAt: parseIsoInstant(record.next_fire_at),
-    deduped: record.deduped,
-  });
+	return deepFreeze({
+		scheduleId: parseScheduleId(record.schedule_id),
+		everyMs: parseCronEveryMs(record.every_ms),
+		nextFireAt: parseIsoInstant(record.next_fire_at),
+		deduped: record.deduped,
+	});
 }
 
 export function createFiredTimer(record: {
-  fire_id: string;
-  kind: "sleep" | "cron";
-  at: string;
-  order: number;
-  timer_id?: string;
-  run_id?: string;
-  label?: string;
-  schedule_id?: string;
-  occurrence?: number;
+	fire_id: string;
+	kind: "sleep" | "cron";
+	at: string;
+	order: number;
+	timer_id?: string;
+	run_id?: string;
+	label?: string;
+	schedule_id?: string;
+	occurrence?: number;
 }): FiredTimer {
-  const fired: FiredTimer = {
-    fireId: parseFireId(record.fire_id),
-    kind: record.kind,
-    at: parseIsoInstant(record.at),
-    order: nonNegativeInteger(record.order, "order", ClockParseError),
-    ...(record.timer_id !== undefined ? { timerId: parseTimerId(record.timer_id) } : {}),
-    ...(record.run_id !== undefined ? { runId: parseRunId(record.run_id) } : {}),
-    ...(record.label !== undefined ? { label: record.label } : {}),
-    ...(record.schedule_id !== undefined
-      ? { scheduleId: parseScheduleId(record.schedule_id) }
-      : {}),
-    ...(record.occurrence !== undefined
-      ? { occurrence: nonNegativeInteger(record.occurrence, "occurrence", ClockParseError) }
-      : {}),
-  };
-  return deepFreeze(fired);
+	const fired: FiredTimer = {
+		fireId: parseFireId(record.fire_id),
+		kind: record.kind,
+		at: parseIsoInstant(record.at),
+		order: nonNegativeInteger(record.order, "order", ClockParseError),
+		...(record.timer_id !== undefined
+			? { timerId: parseTimerId(record.timer_id) }
+			: {}),
+		...(record.run_id !== undefined
+			? { runId: parseRunId(record.run_id) }
+			: {}),
+		...(record.label !== undefined ? { label: record.label } : {}),
+		...(record.schedule_id !== undefined
+			? { scheduleId: parseScheduleId(record.schedule_id) }
+			: {}),
+		...(record.occurrence !== undefined
+			? {
+					occurrence: nonNegativeInteger(
+						record.occurrence,
+						"occurrence",
+						ClockParseError,
+					),
+				}
+			: {}),
+	};
+	return deepFreeze(fired);
 }
 
 export function createClockReplayResult(record: {
-  seed: string;
-  fire_order: readonly string[];
-  final_now: string;
+	seed: string;
+	fire_order: readonly string[];
+	final_now: string;
 }): ClockReplayResult {
-  return deepFreeze({
-    seed: nonEmptyString(record.seed, "seed", ClockParseError),
-    fireOrder: record.fire_order.map((fireId) => parseFireId(fireId)),
-    finalNow: parseIsoInstant(record.final_now),
-  });
+	return deepFreeze({
+		seed: nonEmptyString(record.seed, "seed", ClockParseError),
+		fireOrder: record.fire_order.map((fireId) => parseFireId(fireId)),
+		finalNow: parseIsoInstant(record.final_now),
+	});
 }

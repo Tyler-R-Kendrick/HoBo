@@ -13,12 +13,17 @@ describe("component-host portability suite", () => {
 	it("runtime-local and wasm-in-container hosts pass the component-host conformance boundary", async () => {
 		const report = await runComponentHostConformance({
 			manifest: createReferenceComponentHostManifest(),
-			hosts: [createReferenceRuntimeLocalHost(), createReferenceInContainerHost()],
+			hosts: [
+				createReferenceRuntimeLocalHost(),
+				createReferenceInContainerHost(),
+			],
 		});
 
 		expect(report.schema).toBe("@hobo/conformance/component-host/v1");
 		expect(report.status).toBe("pass");
-		expect(report.hosts.map((host) => [host.kind, host.version, host.status])).toEqual([
+		expect(
+			report.hosts.map((host) => [host.kind, host.version, host.status]),
+		).toEqual([
 			["runtime-local", "wasmtime/46.0.1", "pass"],
 			["wasm-in-container", "wasmtime-container/46.0.1", "pass"],
 		]);
@@ -41,21 +46,32 @@ describe("component-host portability suite", () => {
 	it("all manifest-certified host kind/version pairs must be exercised", async () => {
 		const report = await runComponentHostConformance({
 			manifest: createReferenceComponentHostManifest(),
-			hosts: [createReferenceRuntimeLocalHost(), createReferenceRuntimeLocalHost()],
+			hosts: [
+				createReferenceRuntimeLocalHost(),
+				createReferenceRuntimeLocalHost(),
+			],
 		});
 
 		expect(report.status).toBe("fail");
 		expect(report.crossHostAssertions.manifestHostCoverage).toBe("fail");
 		expect(
-			report.failures.find((failure) => failure.checkId === "manifest-host-coverage")?.missingHosts,
-		).toEqual([{ kind: "wasm-in-container", version: "wasmtime-container/46.0.1" }]);
+			report.failures.find(
+				(failure) => failure.checkId === "manifest-host-coverage",
+			)?.missingHosts,
+		).toEqual([
+			{ kind: "wasm-in-container", version: "wasmtime-container/46.0.1" },
+		]);
 	});
 
 	it("manifest IR pins host kind and version before a component-host may plan", () => {
 		const manifest = createReferenceComponentHostManifest();
-		const staleWasmtime = createReferenceRuntimeLocalHost({ version: "wasmtime/45.0.0" });
+		const staleWasmtime = createReferenceRuntimeLocalHost({
+			version: "wasmtime/45.0.0",
+		});
 
-		expect(() => planComponentHost(manifest, staleWasmtime)).toThrow(ComponentHostPlanningError);
+		expect(() => planComponentHost(manifest, staleWasmtime)).toThrow(
+			ComponentHostPlanningError,
+		);
 		try {
 			planComponentHost(manifest, staleWasmtime);
 		} catch (error) {
@@ -64,7 +80,9 @@ describe("component-host portability suite", () => {
 				hostKind: "runtime-local",
 				hostVersion: "wasmtime/45.0.0",
 			});
-			expect((error as ComponentHostPlanningError).expectedVersions).toContain("wasmtime/46.0.1");
+			expect((error as ComponentHostPlanningError).expectedVersions).toContain(
+				"wasmtime/46.0.1",
+			);
 		}
 	});
 
@@ -77,8 +95,10 @@ describe("component-host portability suite", () => {
 			request: {},
 			response: { ok: true, value: "wasi:wrong-key" },
 		});
-		runtimeLocal.roundTripWasiInterface = wrongRoundTrip as typeof runtimeLocal.roundTripWasiInterface;
-		inContainer.roundTripWasiInterface = wrongRoundTrip as typeof inContainer.roundTripWasiInterface;
+		runtimeLocal.roundTripWasiInterface =
+			wrongRoundTrip as typeof runtimeLocal.roundTripWasiInterface;
+		inContainer.roundTripWasiInterface =
+			wrongRoundTrip as typeof inContainer.roundTripWasiInterface;
 
 		const report = await runComponentHostConformance({
 			manifest: createReferenceComponentHostManifest(),
@@ -87,9 +107,10 @@ describe("component-host portability suite", () => {
 
 		expect(report.status).toBe("fail");
 		expect(report.crossHostAssertions.wasiRoundTrip).toBe("fail");
-		expect(report.failures.find((failure) => failure.checkId === "wasi-round-trip")?.message).toBe(
-			"wasi-round-trip did not match expected reference semantics",
-		);
+		expect(
+			report.failures.find((failure) => failure.checkId === "wasi-round-trip")
+				?.message,
+		).toBe("wasi-round-trip did not match expected reference semantics");
 	});
 
 	it("deterministic-clock replay drift fails deterministic-clock-replay", async () => {

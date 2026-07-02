@@ -11,7 +11,10 @@ describe("@hobo/runtime-local component-host conformance gate", () => {
 	it("passes the component-host portability suite for certified fixture hosts", async () => {
 		const report = await runComponentHostConformance({
 			manifest: createReferenceComponentHostManifest(),
-			hosts: [createReferenceRuntimeLocalHost(), createReferenceInContainerHost()],
+			hosts: [
+				createReferenceRuntimeLocalHost(),
+				createReferenceInContainerHost(),
+			],
 		});
 
 		expect(report.status).toBe("pass");

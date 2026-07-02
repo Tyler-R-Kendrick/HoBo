@@ -18,9 +18,13 @@ describe("@hobo/componentize hello-bindle", () => {
 		});
 
 		expect(result.component.path).toBe("dist/hello-bindle.component.wasm");
-		expect(result.component.mediaType).toBe("application/vnd.wasm.component.v1+wasm");
+		expect(result.component.mediaType).toBe(
+			"application/vnd.wasm.component.v1+wasm",
+		);
 		expect(result.component.digest).toMatch(/^sha256:[a-f0-9]{64}$/);
-		expect(result.component.witWorld).toBe("hobo:examples/hello-bindle@0.1.0/service");
+		expect(result.component.witWorld).toBe(
+			"hobo:examples/hello-bindle@0.1.0/service",
+		);
 		expect(validateWasmComponentArtifact(result.component)).toEqual({
 			command: "wasm-tools validate dist/hello-bindle.component.wasm",
 			passed: true,
@@ -51,7 +55,9 @@ describe("@hobo/componentize hello-bindle", () => {
 			sourceDateEpoch: "2026-01-01T00:00:00.000Z",
 		});
 
-		await expect(runWasmtimeSmoke(result.component, { exportName: "health" })).resolves.toEqual({
+		await expect(
+			runWasmtimeSmoke(result.component, { exportName: "health" }),
+		).resolves.toEqual({
 			command: "wasmtime run dist/hello-bindle.component.wasm --invoke health",
 			engine: "wasmtime",
 			exitCode: 0,
@@ -66,6 +72,8 @@ describe("@hobo/componentize hello-bindle", () => {
 				sourceDateEpoch: "2026-01-01T00:00:00.000Z",
 				toolchain: { ...PINNED_TOOLCHAIN, jco: "1.24.4" },
 			}),
-		).rejects.toThrow(/componentize\.toolchain_skew: jco expected 1\.24\.3 got 1\.24\.4/);
+		).rejects.toThrow(
+			/componentize\.toolchain_skew: jco expected 1\.24\.3 got 1\.24\.4/,
+		);
 	});
 });

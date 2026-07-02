@@ -77,6 +77,8 @@ describe("agent guardrail Gateway consumer boundary", () => {
 		const interaction = pact.interactions[1];
 
 		expect(result.decision.effect).toBe(interaction.response.body.effect);
-		expect(result.events.some((event) => event.type === "agent.DestroyDenied")).toBe(true);
+		expect(
+			result.events.some((event) => event.type === "agent.DestroyDenied"),
+		).toBe(true);
 	});
 });

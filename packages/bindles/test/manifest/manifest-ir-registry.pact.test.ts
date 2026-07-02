@@ -11,9 +11,15 @@ import {
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const goldenManifest = JSON.parse(
-	readFileSync(join(testDir, "../fixtures/manifests/golden/db-api-site.json"), "utf8"),
+	readFileSync(
+		join(testDir, "../fixtures/manifests/golden/db-api-site.json"),
+		"utf8",
+	),
 );
-const pactPath = join(testDir, "../../contracts/pacts/manifest-ir-registry.pact.json");
+const pactPath = join(
+	testDir,
+	"../../contracts/pacts/manifest-ir-registry.pact.json",
+);
 
 describe("Manifest IR Registry pact", () => {
 	it("registers a manifest and writes the consumer pact fixture", () => {
@@ -52,6 +58,8 @@ describe("Manifest IR Registry pact", () => {
 
 		expect(pact.consumer.name).toBe("BindlesManifestEmitter");
 		expect(pact.provider.name).toBe("ManifestIrRegistry");
-		expect(pact.interactions[0]?.response.body.hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+		expect(pact.interactions[0]?.response.body.hash).toMatch(
+			/^sha256:[a-f0-9]{64}$/,
+		);
 	});
 });

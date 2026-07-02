@@ -1,4 +1,7 @@
-import type { BindleResourceDescriptor, BindleScope } from "@hobo/bindles/topology";
+import type {
+	BindleResourceDescriptor,
+	BindleScope,
+} from "@hobo/bindles/topology";
 
 import { providerSelection } from "./provider-selection.js";
 import {
@@ -87,24 +90,39 @@ function normalizeSelectorMap(
 		throw new TypeError(`camp ${fieldName} must be an object`);
 	}
 	return Object.fromEntries(
-		Object.entries(value).map(([key, selector]) => [key, normalizeProviderSelection(selector)]),
+		Object.entries(value).map(([key, selector]) => [
+			key,
+			normalizeProviderSelection(selector),
+		]),
 	);
 }
 
-function normalizeProviderSelection(value: ProviderSelection): ProviderSelection {
+function normalizeProviderSelection(
+	value: ProviderSelection,
+): ProviderSelection {
 	if (value?.kind !== "provider-selection") {
-		throw new TypeError("provider mappings must use providerSelection(...) descriptors");
+		throw new TypeError(
+			"provider mappings must use providerSelection(...) descriptors",
+		);
 	}
 	return value;
 }
 
-function singleProviderId(selectors: readonly (ProviderSelection | null)[]): string {
-	const ids = [...new Set(selectors.filter(Boolean).map((selector) => selector!.providerId))];
+function singleProviderId(
+	selectors: readonly (ProviderSelection | null)[],
+): string {
+	const ids = [
+		...new Set(
+			selectors.filter(Boolean).map((selector) => selector!.providerId),
+		),
+	];
 	if (ids.length === 0) {
 		throw new Error("camp requires at least one provider mapping");
 	}
 	if (ids.length > 1) {
-		throw new Error(`camp mappings must target one provider, got ${ids.join(", ")}`);
+		throw new Error(
+			`camp mappings must target one provider, got ${ids.join(", ")}`,
+		);
 	}
 	return ids[0]!;
 }
@@ -129,8 +147,16 @@ function buildResolutionPrecedence(
 				resourceKind: resource.kind,
 				portRef,
 				order: [
-					summarizeResolution("bindings", binding.key ?? resource.name, binding.selector),
-					summarizeResolution("tiers", tier.key ?? resource.kind, tier.selector),
+					summarizeResolution(
+						"bindings",
+						binding.key ?? resource.name,
+						binding.selector,
+					),
+					summarizeResolution(
+						"tiers",
+						tier.key ?? resource.kind,
+						tier.selector,
+					),
 					summarizeResolution("defaultProvider", "*", mappings.defaultProvider),
 				],
 			};
@@ -150,7 +176,10 @@ function firstSelection(
 	return { key: null, selector: null };
 }
 
-function normalizeCampId(name: string, providerId: string): { id: string; env: string } {
+function normalizeCampId(
+	name: string,
+	providerId: string,
+): { id: string; env: string } {
 	const suffix = `-${providerId}`;
 	if (name.endsWith(suffix)) {
 		const env = name.slice(0, -suffix.length);

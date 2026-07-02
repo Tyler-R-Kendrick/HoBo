@@ -40,7 +40,14 @@ const canonicalVerbNames = [
 	"runbook",
 ];
 
-const globalFlags = ["--json", "--camp <camp>", "--cwd <path>", "--verbose", "-q", "--help"];
+const globalFlags = [
+	"--json",
+	"--camp <camp>",
+	"--cwd <path>",
+	"--verbose",
+	"-q",
+	"--help",
+];
 
 const goldenHelp = `HoBo CLI
 
@@ -89,7 +96,10 @@ Canonical verbs:
 
 async function withBindle(callback: (cwd: string) => Promise<void>) {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-cli-shell-"));
-	await writeFile(path.join(dir, "hobo.bindle.json"), JSON.stringify({ name: "snapshop" }));
+	await writeFile(
+		path.join(dir, "hobo.bindle.json"),
+		JSON.stringify({ name: "snapshop" }),
+	);
 	try {
 		await callback(dir);
 	} finally {
@@ -108,7 +118,9 @@ async function withEmptyDir(callback: (cwd: string) => Promise<void>) {
 
 describe("HoBo CLI shell", () => {
 	it("pins hobo --help to the canonical HOBO-8 verbs and global flags", async () => {
-		expect(CANONICAL_VERBS.map((verb) => verb.name)).toEqual(canonicalVerbNames);
+		expect(CANONICAL_VERBS.map((verb) => verb.name)).toEqual(
+			canonicalVerbNames,
+		);
 
 		const result = await runHobo(["--help"], { cwd: process.cwd() });
 
@@ -119,7 +131,9 @@ describe("HoBo CLI shell", () => {
 
 		const verbHelp = await runHobo(["plan", "--help"], { cwd: process.cwd() });
 		expect(verbHelp.exitCode).toBe(0);
-		expect(verbHelp.stdout).toMatch(/Usage:\n  hobo plan \[global flags\] \[args\]/);
+		expect(verbHelp.stdout).toMatch(
+			/Usage:\n  hobo plan \[global flags\] \[args\]/,
+		);
 		expect(verbHelp.stdout).toMatch(/Status: not yet implemented/);
 
 		for (const flag of globalFlags) {
@@ -221,7 +235,9 @@ describe("HoBo CLI shell", () => {
 
 	it("rejects conflicting lifecycle flags at parse time", async () => {
 		await withBindle(async (cwd) => {
-			const result = await runHobo(["up", "--to", "rev-123", "--rollback"], { cwd });
+			const result = await runHobo(["up", "--to", "rev-123", "--rollback"], {
+				cwd,
+			});
 
 			expect(result.exitCode).toBe(2);
 			expect(result.stdout).toBe("");
@@ -253,7 +269,9 @@ describe("HoBo CLI shell", () => {
 								status: "not_implemented",
 								code: "HOBO_CLI_STUB",
 								message: "plan is not yet implemented",
-								data: { contextBuildId: (context as { buildId: string }).buildId },
+								data: {
+									contextBuildId: (context as { buildId: string }).buildId,
+								},
 							};
 						},
 					},
@@ -261,7 +279,9 @@ describe("HoBo CLI shell", () => {
 			});
 
 			const result = await cli.run(["plan", "--json"], { cwd });
-			const envelope = JSON.parse(result.stdout) as { data: { contextBuildId: string } };
+			const envelope = JSON.parse(result.stdout) as {
+				data: { contextBuildId: string };
+			};
 
 			expect(result.exitCode).toBe(0);
 			expect(contextBuilds).toBe(1);

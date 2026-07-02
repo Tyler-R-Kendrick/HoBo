@@ -1056,11 +1056,7 @@ importers:
 
   src/draft/technical-proofs/hobo-plan-preview-contract: {}
 
-  src/draft/technical-proofs/hobo-policy-ir-contract:
-    devDependencies:
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
+  src/draft/technical-proofs/hobo-policy-ir-contract: {}
 
   src/draft/technical-proofs/hobo-principal-ref-contract: {}
 
@@ -1104,11 +1100,7 @@ importers:
 
   src/draft/technical-proofs/human-operator-console-contract: {}
 
-  src/draft/technical-proofs/iac-cdktf-import-only-contract:
-    devDependencies:
-      typescript:
-        specifier: 5.9.2
-        version: 5.9.2
+  src/draft/technical-proofs/iac-cdktf-import-only-contract: {}
 
   src/draft/technical-proofs/iac-crossplane-backend-contract: {}
 
@@ -1136,11 +1128,7 @@ importers:
 
   src/draft/technical-proofs/ifc-author-flow-contract: {}
 
-  src/draft/technical-proofs/ifc-handler-trigger-contract:
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.2
+  src/draft/technical-proofs/ifc-handler-trigger-contract: {}
 
   src/draft/technical-proofs/ifc-handler-trigger-hobo-608: {}
 
@@ -1318,11 +1306,7 @@ importers:
 
   src/draft/technical-proofs/provider-capability-manifest-contract: {}
 
-  src/draft/technical-proofs/provider-cloudflare-contract:
-    devDependencies:
-      typescript:
-        specifier: 5.5.4
-        version: 5.5.4
+  src/draft/technical-proofs/provider-cloudflare-contract: {}
 
   src/draft/technical-proofs/provider-default-definitions-contract: {}
 
@@ -3901,11 +3885,6 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@5.5.4:
-    resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   typescript@5.9.2:
     resolution: {integrity: sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A==}
     engines: {node: '>=14.17'}
@@ -6131,8 +6110,6 @@ snapshots:
       is-typed-array: 1.1.15
 
   typescript@5.4.5: {}
-
-  typescript@5.5.4: {}
 
   typescript@5.9.2: {}
 

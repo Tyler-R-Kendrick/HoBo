@@ -3,7 +3,11 @@ import { BuildError, remediationFor } from "../build/errors.js";
 import { parseBuildRequestFromInvocation } from "../build/parse.js";
 import { runBuild } from "../build/run-build.js";
 
-export { runBuild, writeBuildFixtureProject, BUILD_MANIFEST_PATH } from "../build/run-build.js";
+export {
+	runBuild,
+	writeBuildFixtureProject,
+	BUILD_MANIFEST_PATH,
+} from "../build/run-build.js";
 export { BuildError, BuildCliError } from "../build/errors.js";
 export {
 	parseBuildRequestFromInvocation,
@@ -17,7 +21,11 @@ export function createBuildCommand(): CommandModule {
 	return {
 		run: async ({ context, flags }) => {
 			try {
-				const request = parseBuildRequestFromInvocation(context, flags, process.env);
+				const request = parseBuildRequestFromInvocation(
+					context,
+					flags,
+					process.env,
+				);
 				const result = await runBuild(request);
 				return {
 					ok: true,

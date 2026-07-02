@@ -28,16 +28,32 @@ import { secretRef } from "../src/secret-ref.js";
 
 const expectedCatalog = [
 	{ factory: "api", portRef: ["wasi:http", "hobo:http"], verbs: [] },
-	{ factory: "kv", portRef: ["wasi:keyvalue"], verbs: ["get", "set", "delete"] },
+	{
+		factory: "kv",
+		portRef: ["wasi:keyvalue"],
+		verbs: ["get", "set", "delete"],
+	},
 	{
 		factory: "bucket",
 		portRef: ["wasi:blobstore", "hobo:blob-events"],
 		verbs: ["read", "write", "delete"],
 	},
 	{ factory: "queue", portRef: ["hobo:queue"], verbs: ["enqueue", "dequeue"] },
-	{ factory: "topic", portRef: ["wasi:messaging"], verbs: ["publish", "subscribe"] },
-	{ factory: "secret", portRef: ["wasi:config", "hobo:secrets"], verbs: ["put", "access"] },
-	{ factory: "data", portRef: ["hobo:data"], verbs: ["read", "write", "query", "admin"] },
+	{
+		factory: "topic",
+		portRef: ["wasi:messaging"],
+		verbs: ["publish", "subscribe"],
+	},
+	{
+		factory: "secret",
+		portRef: ["wasi:config", "hobo:secrets"],
+		verbs: ["put", "access"],
+	},
+	{
+		factory: "data",
+		portRef: ["hobo:data"],
+		verbs: ["read", "write", "query", "admin"],
+	},
 	{ factory: "schedule", portRef: ["hobo:scheduler"], verbs: [] },
 	{
 		factory: "websocket",
@@ -47,14 +63,26 @@ const expectedCatalog = [
 	{ factory: "job", portRef: ["hobo:job"], verbs: ["submit"] },
 	{ factory: "web", portRef: ["wasi:http"], verbs: [] },
 	{ factory: "service", portRef: ["wasi:http"], verbs: [] },
-	{ factory: "flag", portRef: ["hobo:feature-flag"], verbs: ["eval", "change"] },
+	{
+		factory: "flag",
+		portRef: ["hobo:feature-flag"],
+		verbs: ["eval", "change"],
+	},
 	{ factory: "auth", portRef: ["hobo:auth"], verbs: ["verify", "session"] },
-	{ factory: "crypto", portRef: ["hobo:crypto"], verbs: ["encrypt", "decrypt", "sign", "verify"] },
+	{
+		factory: "crypto",
+		portRef: ["hobo:crypto"],
+		verbs: ["encrypt", "decrypt", "sign", "verify"],
+	},
 	{ factory: "notify", portRef: ["hobo:notify"], verbs: ["send"] },
 	{ factory: "guardrail", portRef: ["hobo:guardrail"], verbs: ["check"] },
 	{ factory: "ui", portRef: ["hobo:ui-render"], verbs: ["render", "drive"] },
 	{ factory: "golden", portRef: ["hobo:golden"], verbs: ["run", "bless"] },
-	{ factory: "experiment", portRef: ["hobo:experiment"], verbs: ["assign", "expose", "analyze"] },
+	{
+		factory: "experiment",
+		portRef: ["hobo:experiment"],
+		verbs: ["assign", "expose", "analyze"],
+	},
 ] as const;
 
 const factories = {
@@ -91,7 +119,9 @@ describe("resource catalog", () => {
 			expect(entry).toBeDefined();
 			expect(entry?.portRef).toEqual(expected.portRef);
 			expect(entry?.allowVerbs).toEqual(expected.verbs);
-			expect(typeof factories[expected.factory as keyof typeof factories]).toBe("function");
+			expect(typeof factories[expected.factory as keyof typeof factories]).toBe(
+				"function",
+			);
 		}
 	});
 
@@ -102,7 +132,9 @@ describe("resource catalog", () => {
 
 			expect(Object.isFrozen(handle)).toBe(true);
 			expect(handle.kind).toBe(expected.factory);
-			expect(handle.stableId).toBe(`${expected.factory}:${expected.factory}-main`);
+			expect(handle.stableId).toBe(
+				`${expected.factory}:${expected.factory}-main`,
+			);
 			expect(handle.portRef).toEqual(expected.portRef);
 
 			const narrowed = handle.allow(...(expected.verbs as never[]));
@@ -111,7 +143,9 @@ describe("resource catalog", () => {
 			expect(narrowed.declaredAllow).toEqual(expected.verbs);
 
 			for (const verb of expected.verbs) {
-				const descriptor = (handle as Record<string, (...args: unknown[]) => unknown>)[verb]({
+				const descriptor = (
+					handle as Record<string, (...args: unknown[]) => unknown>
+				)[verb]({
 					example: true,
 				});
 				expect(Object.isFrozen(descriptor)).toBe(true);
@@ -129,7 +163,9 @@ describe("resource catalog", () => {
 	});
 
 	it("throws TypeError for unknown allow verbs", () => {
-		expect(() => kv("state").allow("publish" as never)).toThrow(/kv does not allow verb "publish"/);
+		expect(() => kv("state").allow("publish" as never)).toThrow(
+			/kv does not allow verb "publish"/,
+		);
 	});
 
 	it("keeps secret resources distinct from secretRef value reads", () => {

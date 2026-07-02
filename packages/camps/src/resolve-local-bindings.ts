@@ -39,7 +39,10 @@ export async function resolveLocalBindings(
 				continue;
 			}
 			const [, tokenResourceId, property] = match;
-			const binding = await resolver.resolve(parseResourceId(tokenResourceId!), property!);
+			const binding = await resolver.resolve(
+				parseResourceId(tokenResourceId!),
+				property!,
+			);
 			env[key] = binding.value;
 		}
 	}

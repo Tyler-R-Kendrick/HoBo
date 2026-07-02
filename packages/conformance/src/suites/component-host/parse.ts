@@ -5,7 +5,11 @@ export function parseComponentHostManifest(raw: unknown) {
 
 	const source = raw as Record<string, unknown>;
 	const componentHost = source.componentHost;
-	if (!componentHost || typeof componentHost !== "object" || Array.isArray(componentHost)) {
+	if (
+		!componentHost ||
+		typeof componentHost !== "object" ||
+		Array.isArray(componentHost)
+	) {
 		throw new TypeError("componentHost is required");
 	}
 

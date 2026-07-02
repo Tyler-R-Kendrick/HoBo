@@ -75,14 +75,19 @@ export function createComponentHandle(
 	return componentHandle(kind, name, options);
 }
 
-export function compileBindleManifest(handles: readonly Handle[]): WiringManifest {
+export function compileBindleManifest(
+	handles: readonly Handle[],
+): WiringManifest {
 	const resources: Record<string, ManifestResource> = {};
 	const entries: Handle[] = [];
 
 	for (const handle of handles) {
 		assertHandle(handle);
 		if (resources[handle.name]) {
-			throw new BindReferenceError(`resources.${handle.name}`, "duplicate resource id");
+			throw new BindReferenceError(
+				`resources.${handle.name}`,
+				"duplicate resource id",
+			);
 		}
 		resources[handle.name] = handle.manifest();
 		entries.push(handle);
@@ -154,7 +159,8 @@ function componentHandle(
 
 			for (const [alias, target] of Object.entries(bind)) {
 				links.push({ import: target.port, to: target.name });
-				env[`ConnectionStrings__${alias}`] = `{${target.name}.connectionString}`;
+				env[`ConnectionStrings__${alias}`] =
+					`{${target.name}.connectionString}`;
 			}
 
 			const resource: ManifestResource = {
@@ -196,7 +202,10 @@ export function normalizeBindMap(
 	for (const [alias, target] of Object.entries(bind)) {
 		assertResourceName(alias, `bind.${alias}`);
 		if (!target || target.kind !== "resource") {
-			throw new BindReferenceError(`bind.${alias}`, "must reference a declared resource handle");
+			throw new BindReferenceError(
+				`bind.${alias}`,
+				"must reference a declared resource handle",
+			);
 		}
 	}
 
@@ -239,12 +248,17 @@ export function validateLazyReferences(
 
 		const referencedResource = match[1]!;
 		if (!resources[referencedResource]) {
-			throw new BindReferenceError(path, `unknown resource ${referencedResource}`);
+			throw new BindReferenceError(
+				path,
+				`unknown resource ${referencedResource}`,
+			);
 		}
 	});
 }
 
-function renderCtxBindings(bind: Readonly<Record<string, ResourceHandle>>): string {
+function renderCtxBindings(
+	bind: Readonly<Record<string, ResourceHandle>>,
+): string {
 	return Object.entries(bind)
 		.map(([alias, target]) => `readonly ${alias}: ${target.clientType};`)
 		.join("\n");
@@ -260,7 +274,9 @@ function visitStrings(
 		return;
 	}
 	if (Array.isArray(value)) {
-		value.forEach((item, index) => visitStrings(item, `${path}[${index}]`, visitor));
+		value.forEach((item, index) =>
+			visitStrings(item, `${path}[${index}]`, visitor),
+		);
 		return;
 	}
 	if (isRecord(value)) {
@@ -278,7 +294,10 @@ export function assertHandle(handle: unknown): asserts handle is Handle {
 		typeof (handle as Handle).name !== "string" ||
 		typeof (handle as { manifest?: unknown }).manifest !== "function"
 	) {
-		throw new BindReferenceError("handles", "must contain HoBo resource handles");
+		throw new BindReferenceError(
+			"handles",
+			"must contain HoBo resource handles",
+		);
 	}
 }
 

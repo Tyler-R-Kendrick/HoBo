@@ -95,14 +95,14 @@ describe("wrpc wire-version negotiation", () => {
 				exportInterface: KV,
 			}),
 		).toThrow(WireVersionIncompatibleError);
-		expect(
-			layer.events.some((event) => event.type === "link.Rejected"),
-		).toBe(true);
+		expect(layer.events.some((event) => event.type === "link.Rejected")).toBe(
+			true,
+		);
 		expect(providerCalls).toBe(0);
 
-		await expect(layer.callImport("api", KV, "get", { key: "session" })).rejects.toBeInstanceOf(
-			NoRouteError,
-		);
+		await expect(
+			layer.callImport("api", KV, "get", { key: "session" }),
+		).rejects.toBeInstanceOf(NoRouteError);
 	});
 
 	it("no shared minor at all rejects with version-incompatible no-shared-minor", () => {

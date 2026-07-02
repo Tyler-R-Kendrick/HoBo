@@ -45,7 +45,8 @@ function resolveWindowsPnpmExecutable(env: NodeJS.ProcessEnv): string {
 		.map((root) => join(root, "pnpm.cmd"))
 		.filter((candidate) => existsSync(candidate));
 	return (
-		candidates.find((candidate) => !isNodeModulesBinShim(candidate)) ?? "corepack"
+		candidates.find((candidate) => !isNodeModulesBinShim(candidate)) ??
+		"corepack"
 	);
 }
 
@@ -72,7 +73,11 @@ export function createCommandInvocation(
 	comspec = process.env.ComSpec ?? "cmd.exe",
 	env: NodeJS.ProcessEnv = process.env,
 ): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
-	const resolvedExecutable = resolveCommandExecutable(executable, platform, env);
+	const resolvedExecutable = resolveCommandExecutable(
+		executable,
+		platform,
+		env,
+	);
 	if (
 		platform === "win32" &&
 		executable === "pnpm" &&

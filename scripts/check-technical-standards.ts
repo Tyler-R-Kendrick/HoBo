@@ -10,12 +10,12 @@ let resolvedBase: string | undefined;
 const failures: string[] = [];
 
 for (const arg of process.argv.slice(2)) {
-  if (arg === "--staged") {
-    mode = "staged";
-  } else if (arg.startsWith("--base=")) {
-    base = arg.slice("--base=".length);
-  } else if (arg === "--help" || arg === "-h") {
-    console.log(`Usage: node --import tsx scripts/check-technical-standards.ts [--staged] [--base=<git-ref>]
+	if (arg === "--staged") {
+		mode = "staged";
+	} else if (arg.startsWith("--base=")) {
+		base = arg.slice("--base=".length);
+	} else if (arg === "--help" || arg === "-h") {
+		console.log(`Usage: node --import tsx scripts/check-technical-standards.ts [--staged] [--base=<git-ref>]
 
 Enforces HoBo's compile-time-first technical standards on changed files:
 - TypeScript toolchain is declared in package metadata.
@@ -24,161 +24,227 @@ Enforces HoBo's compile-time-first technical standards on changed files:
   and PACT guidance present.
 - Repository-wide data-model catalogs stay forbidden; CUE-backed data models
   live beside the package/project that owns the type.`);
-    process.exit(0);
-  }
+		process.exit(0);
+	}
 }
 
 function fail(message: string): void {
-  failures.push(message);
+	failures.push(message);
 }
 
 function requireText(file: string, pattern: RegExp, message: string): void {
-  const contents = readFileSync(file, "utf8");
-  if (!pattern.test(contents)) {
-    fail(message);
-  }
+	const contents = readFileSync(file, "utf8");
+	if (!pattern.test(contents)) {
+		fail(message);
+	}
 }
 
 function run(command: string, args: string[]): string {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    shell: false,
-  });
+	const result = spawnSync(command, args, {
+		encoding: "utf8",
+		shell: false,
+	});
 
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed\n${result.stdout}${result.stderr}`);
-  }
+	if (result.status !== 0) {
+		throw new Error(
+			`${command} ${args.join(" ")} failed\n${result.stdout}${result.stderr}`,
+		);
+	}
 
-  return result.stdout;
+	return result.stdout;
 }
 
 function refAvailable(ref: string): boolean {
-  return spawnSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
-    shell: false,
-    stdio: "ignore",
-  }).status === 0;
+	return (
+		spawnSync("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+			shell: false,
+			stdio: "ignore",
+		}).status === 0
+	);
 }
 
 function effectiveBase(): string {
-  if (!base) return "";
-  if (resolvedBase !== undefined) return resolvedBase;
-  if (refAvailable(base)) {
-    resolvedBase = base;
-    baseRefExists = true;
-    return resolvedBase;
-  }
-  if (refAvailable("HEAD~1")) {
-    console.warn(`Base ref ${base} is unavailable; falling back to HEAD~1.`);
-    resolvedBase = "HEAD~1";
-    baseRefExists = false;
-    return resolvedBase;
-  }
-  console.warn(`Base ref ${base} is unavailable; falling back to working tree diff.`);
-  resolvedBase = "";
-  baseRefExists = false;
-  return resolvedBase;
+	if (!base) return "";
+	if (resolvedBase !== undefined) return resolvedBase;
+	if (refAvailable(base)) {
+		resolvedBase = base;
+		baseRefExists = true;
+		return resolvedBase;
+	}
+	if (refAvailable("HEAD~1")) {
+		console.warn(`Base ref ${base} is unavailable; falling back to HEAD~1.`);
+		resolvedBase = "HEAD~1";
+		baseRefExists = false;
+		return resolvedBase;
+	}
+	console.warn(
+		`Base ref ${base} is unavailable; falling back to working tree diff.`,
+	);
+	resolvedBase = "";
+	baseRefExists = false;
+	return resolvedBase;
 }
 
 function baseRefAvailable(): boolean {
-  return Boolean(effectiveBase());
+	return Boolean(effectiveBase());
 }
 
 function existsAtBase(file: string): boolean {
-  if (!baseRefAvailable()) {
-    return false;
-  }
-  return spawnSync("git", ["cat-file", "-e", `${effectiveBase()}:${file}`], {
-    shell: false,
-    stdio: "ignore",
-  }).status === 0;
+	if (!baseRefAvailable()) {
+		return false;
+	}
+	return (
+		spawnSync("git", ["cat-file", "-e", `${effectiveBase()}:${file}`], {
+			shell: false,
+			stdio: "ignore",
+		}).status === 0
+	);
 }
 
 function changedFiles(): string[] {
-  const baseForDiff = mode === "staged" ? "" : effectiveBase();
-  const nameStatus =
-    mode === "staged"
-      ? run("git", ["diff", "--cached", "--name-status", "--find-renames=50%", "--diff-filter=ACMR"])
-      : baseForDiff
-        ? run("git", ["diff", "--name-status", "--find-renames=50%", "--diff-filter=ACMR", `${baseForDiff}...HEAD`])
-        : run("git", ["diff", "--name-status", "--find-renames=50%", "--diff-filter=ACMR", "HEAD"]);
+	const baseForDiff = mode === "staged" ? "" : effectiveBase();
+	const nameStatus =
+		mode === "staged"
+			? run("git", [
+					"diff",
+					"--cached",
+					"--name-status",
+					"--find-renames=50%",
+					"--diff-filter=ACMR",
+				])
+			: baseForDiff
+				? run("git", [
+						"diff",
+						"--name-status",
+						"--find-renames=50%",
+						"--diff-filter=ACMR",
+						`${baseForDiff}...HEAD`,
+					])
+				: run("git", [
+						"diff",
+						"--name-status",
+						"--find-renames=50%",
+						"--diff-filter=ACMR",
+						"HEAD",
+					]);
 
-  const changed = nameStatus
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .flatMap((line) => {
-      const [status, firstPath, secondPath] = line.split(/\t/);
-      if (!status) {
-        return [];
-      }
-      if (status.startsWith("R")) {
-        return [];
-      }
-      if (status.startsWith("C")) {
-        return secondPath ? [{ status: "A", file: secondPath }] : [];
-      }
-      return firstPath ? [{ status, file: firstPath }] : [];
-    })
-    .filter((entry) => entry.status.startsWith("A"))
-    .map((entry) => entry.file);
+	const changed = nameStatus
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.flatMap((line) => {
+			const [status, firstPath, secondPath] = line.split(/\t/);
+			if (!status) {
+				return [];
+			}
+			if (status.startsWith("R")) {
+				return [];
+			}
+			if (status.startsWith("C")) {
+				return secondPath ? [{ status: "A", file: secondPath }] : [];
+			}
+			return firstPath ? [{ status, file: firstPath }] : [];
+		})
+		.filter((entry) => entry.status.startsWith("A"))
+		.map((entry) => entry.file);
 
-  const addedFiles =
-    mode === "staged" && base
-      ? changed.filter((file) => !existsAtBase(file))
-      : changed;
+	const addedFiles =
+		mode === "staged" && base
+			? changed.filter((file) => !existsAtBase(file))
+			: changed;
 
-  if (mode === "worktree" && !base) {
-    const untracked = run("git", ["ls-files", "--others", "--exclude-standard"])
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    addedFiles.push(...untracked);
-  }
+	if (mode === "worktree" && !base) {
+		const untracked = run("git", ["ls-files", "--others", "--exclude-standard"])
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		addedFiles.push(...untracked);
+	}
 
-  return addedFiles;
+	return addedFiles;
 }
 
 function isJavaScriptImplementationFile(file: string): boolean {
-  const normalized = file.replace(/\\/g, "/");
-  return (
-    /^(src|scripts|test)\//.test(normalized) &&
-    /\.(?:js|mjs|cjs)$/.test(normalized)
-  );
+	const normalized = file.replace(/\\/g, "/");
+	return (
+		/^(src|scripts|test)\//.test(normalized) &&
+		/\.(?:js|mjs|cjs)$/.test(normalized)
+	);
 }
 
-requireText("package.json", /"typescript"\s*:/, "package.json: missing TypeScript dev dependency");
-requireText("pnpm-lock.yaml", /typescript@6\.0\.3/, "pnpm-lock.yaml: missing locked TypeScript toolchain");
-requireText("AGENTS.md", /Protobuf/, "AGENTS.md: missing Protobuf agent guidance");
+requireText(
+	"package.json",
+	/"typescript"\s*:/,
+	"package.json: missing TypeScript dev dependency",
+);
+requireText(
+	"pnpm-lock.yaml",
+	/typescript@6\.0\.3/,
+	"pnpm-lock.yaml: missing locked TypeScript toolchain",
+);
+requireText(
+	"AGENTS.md",
+	/Protobuf/,
+	"AGENTS.md: missing Protobuf agent guidance",
+);
 requireText("AGENTS.md", /CUE/, "AGENTS.md: missing CUE agent guidance");
-requireText("AGENTS.md", /Parse, don't validate/, "AGENTS.md: missing parse-don't-validate guidance");
+requireText(
+	"AGENTS.md",
+	/Parse, don't validate/,
+	"AGENTS.md: missing parse-don't-validate guidance",
+);
 requireText("AGENTS.md", /PACT/, "AGENTS.md: missing PACT agent guidance");
-requireText("docs/design/technical-standards.md", /Protobuf/, "technical standards: missing Protobuf guidance");
-requireText("docs/design/technical-standards.md", /CUE/, "technical standards: missing CUE guidance");
-requireText("docs/design/technical-standards.md", /Parse, don't validate/, "technical standards: missing parse-don't-validate guidance");
-requireText("docs/design/technical-standards.md", /PACT/, "technical standards: missing PACT guidance");
+requireText(
+	"docs/design/technical-standards.md",
+	/Protobuf/,
+	"technical standards: missing Protobuf guidance",
+);
+requireText(
+	"docs/design/technical-standards.md",
+	/CUE/,
+	"technical standards: missing CUE guidance",
+);
+requireText(
+	"docs/design/technical-standards.md",
+	/Parse, don't validate/,
+	"technical standards: missing parse-don't-validate guidance",
+);
+requireText(
+	"docs/design/technical-standards.md",
+	/PACT/,
+	"technical standards: missing PACT guidance",
+);
 
-const newJavaScriptFiles = changedFiles().filter(isJavaScriptImplementationFile).sort();
+const newJavaScriptFiles = changedFiles()
+	.filter(isJavaScriptImplementationFile)
+	.sort();
 if (newJavaScriptFiles.length > 0) {
-  fail(
-    [
-      "New JavaScript-family implementation files detected; use TypeScript (.ts) for new code or document an ADR exception:",
-      ...newJavaScriptFiles.map((file) => `- ${file}`),
-    ].join("\n"),
-  );
+	fail(
+		[
+			"New JavaScript-family implementation files detected; use TypeScript (.ts) for new code or document an ADR exception:",
+			...newJavaScriptFiles.map((file) => `- ${file}`),
+		].join("\n"),
+	);
 }
 
 if (existsSync("contracts/data-models")) {
-  fail("central contracts/data-models is forbidden; CUE-backed data models must live in the owning project/package data-models folder");
+	fail(
+		"central contracts/data-models is forbidden; CUE-backed data models must live in the owning project/package data-models folder",
+	);
 }
 
-const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as { scripts?: Record<string, string> };
+const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+	scripts?: Record<string, string>;
+};
 if (packageJson.scripts?.["contracts:data-models"]) {
-  fail("package.json must not define contracts:data-models; do not regenerate a central data-model catalog");
+	fail(
+		"package.json must not define contracts:data-models; do not regenerate a central data-model catalog",
+	);
 }
 
 if (failures.length > 0) {
-  console.error(failures.join("\n"));
-  process.exit(1);
+	console.error(failures.join("\n"));
+	process.exit(1);
 }
 
 console.log("technical standards ok");

@@ -17,7 +17,11 @@ export class BuildError extends Error {
 	readonly code: BuildErrorCode;
 	readonly detail: Record<string, unknown>;
 
-	constructor(code: BuildErrorCode, message: string, detail: Record<string, unknown> = {}) {
+	constructor(
+		code: BuildErrorCode,
+		message: string,
+		detail: Record<string, unknown> = {},
+	) {
 		super(message);
 		this.name = "BuildError";
 		this.code = code;

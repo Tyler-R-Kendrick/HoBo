@@ -25,9 +25,12 @@ describe("runtime-local EventStore", () => {
 	it("appends, reads, subscribes, and snapshots one stream", async () => {
 		const { store } = storeForTest();
 		const pushed: unknown[] = [];
-		const subscription = store.subscribe({ streamId: "run:checkout-1" }, (event) => {
-			pushed.push(event);
-		});
+		const subscription = store.subscribe(
+			{ streamId: "run:checkout-1" },
+			(event) => {
+				pushed.push(event);
+			},
+		);
 
 		const appended = await store.append(
 			"run:checkout-1",
@@ -59,7 +62,11 @@ describe("runtime-local EventStore", () => {
 		]);
 		expect(pushed.map((event) => (event as { seq: number }).seq)).toEqual([1]);
 
-		const snapshot = await store.snapshot("run:checkout-1", { status: "started" }, 1);
+		const snapshot = await store.snapshot(
+			"run:checkout-1",
+			{ status: "started" },
+			1,
+		);
 		expect(snapshot).toEqual({
 			streamId: "run:checkout-1",
 			seq: 1,
@@ -75,43 +82,70 @@ describe("runtime-local EventStore", () => {
 		const { store } = storeForTest();
 		const options = appendOptions();
 
-		await store.append("order:1", [{ type: "order.Created", data: { total: 25 } }], {
-			...options,
-			expectedSeq: 0,
-		});
-
-		await expect(
-			store.append("order:1", [{ type: "order.Discounted", data: { amount: 5 } }], {
+		await store.append(
+			"order:1",
+			[{ type: "order.Created", data: { total: 25 } }],
+			{
 				...options,
 				expectedSeq: 0,
-			}),
+			},
+		);
+
+		await expect(
+			store.append(
+				"order:1",
+				[{ type: "order.Discounted", data: { amount: 5 } }],
+				{
+					...options,
+					expectedSeq: 0,
+				},
+			),
 		).rejects.toBeInstanceOf(OptimisticSequenceConflictError);
 
 		expect(
-			(await collectStream(store, "order:1")).map((event) => [event.seq, event.type]),
+			(await collectStream(store, "order:1")).map((event) => [
+				event.seq,
+				event.type,
+			]),
 		).toEqual([[1, "order.Created"]]);
 		store.close();
 	});
 
 	it("dedups idempotency keys per stream", async () => {
 		const { store } = storeForTest();
-		const first = await store.append("invoice:1", [invoiceCharged("charge-123", 100)], {
-			...appendOptions(),
-			expectedSeq: 0,
-		});
-		const retry = await store.append("invoice:1", [invoiceCharged("charge-123", 100)], {
-			...appendOptions(),
-			expectedSeq: 0,
-		});
-		const otherStream = await store.append("invoice:2", [invoiceCharged("charge-123", 100)], {
-			...appendOptions(),
-			expectedSeq: 0,
-		});
+		const first = await store.append(
+			"invoice:1",
+			[invoiceCharged("charge-123", 100)],
+			{
+				...appendOptions(),
+				expectedSeq: 0,
+			},
+		);
+		const retry = await store.append(
+			"invoice:1",
+			[invoiceCharged("charge-123", 100)],
+			{
+				...appendOptions(),
+				expectedSeq: 0,
+			},
+		);
+		const otherStream = await store.append(
+			"invoice:2",
+			[invoiceCharged("charge-123", 100)],
+			{
+				...appendOptions(),
+				expectedSeq: 0,
+			},
+		);
 
 		expect(first.appended).toHaveLength(1);
 		expect(retry.appended).toHaveLength(0);
-		expect(retry.deduped.map((event) => event.id)).toEqual([first.appended[0]?.id]);
-		expect((await collectStream(store, "invoice:1")).map((event) => event.seq)).toEqual([1]);
+		expect(retry.deduped.map((event) => event.id)).toEqual([
+			first.appended[0]?.id,
+		]);
+		expect(
+			(await collectStream(store, "invoice:1")).map((event) => event.seq),
+		).toEqual([1]);
 		expect(otherStream.appended.map((event) => event.id)).toEqual([
 			expect.stringMatching(/^[\dA-Z]{26}$/),
 		]);
@@ -128,7 +162,9 @@ describe("runtime-local EventStore", () => {
 
 		expect(result.appended.map((event) => event.seq)).toEqual([1]);
 		expect(result.deduped.map((event) => event.seq)).toEqual([1]);
-		expect((await collectStream(store, "invoice:batch-1")).map((event) => event.seq)).toEqual([1]);
+		expect(
+			(await collectStream(store, "invoice:batch-1")).map((event) => event.seq),
+		).toEqual([1]);
 		store.close();
 	});
 
@@ -154,7 +190,10 @@ describe("runtime-local EventStore", () => {
 					}
 					return { ...state, title: (event.data as { title: string }).title };
 				},
-				"ticket.Commented": (state) => ({ ...state, comments: state.comments + 1 }),
+				"ticket.Commented": (state) => ({
+					...state,
+					comments: state.comments + 1,
+				}),
 			},
 		});
 

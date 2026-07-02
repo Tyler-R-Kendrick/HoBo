@@ -39,7 +39,9 @@ describe("toolchain lock", () => {
 			const source = await readFile(absolutePath, "utf8");
 			const expectedDigest = digestFile(source);
 			const pins = lock.witDeps.filter((dep) => dep.path === relativePath);
-			expect(pins.length, `${relativePath} missing lock pin`).toBeGreaterThan(0);
+			expect(pins.length, `${relativePath} missing lock pin`).toBeGreaterThan(
+				0,
+			);
 			for (const pin of pins) {
 				expect(pin.sha256).toBe(expectedDigest);
 			}

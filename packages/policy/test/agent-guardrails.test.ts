@@ -107,7 +107,9 @@ describe("agent guardrails", () => {
 			"policy.Decided",
 			"agent.GuardrailBlocked",
 		]);
-		expect(blocked.events[0].data.evidence.engine).toBe(AGENT_GUARDRAILS_ENGINE_ID);
+		expect(blocked.events[0].data.evidence.engine).toBe(
+			AGENT_GUARDRAILS_ENGINE_ID,
+		);
 		expect(canAgentProceed(blocked.events).canProceed).toBe(false);
 
 		const approved = evaluateAgentGuardrail({
@@ -156,7 +158,9 @@ describe("agent guardrails", () => {
 
 		expect(halted.decision.effect).toBe("require-approval");
 		expect(halted.decision.reason).toMatch(/spendCapUsd/);
-		expect(halted.events.some((event) => event.type === "spend.CapGateEvaluated")).toBe(true);
+		expect(
+			halted.events.some((event) => event.type === "spend.CapGateEvaluated"),
+		).toBe(true);
 		expect(canAgentProceed(halted.events).canProceed).toBe(false);
 
 		const approved = evaluateAgentGuardrail({
@@ -186,7 +190,9 @@ describe("agent guardrails", () => {
 		});
 
 		expect(approved.decision.effect).toBe("allow");
-		expect(approved.decision.approvals[0].approverId).toBe("user:finance-admin");
+		expect(approved.decision.approvals[0].approverId).toBe(
+			"user:finance-admin",
+		);
 	});
 
 	it("destroy without explicit grant is denied with auditable policy.Decided", () => {
@@ -209,8 +215,12 @@ describe("agent guardrails", () => {
 		});
 
 		expect(denied.decision.effect).toBe("deny");
-		expect(denied.decision.reason).toMatch(/destroy denied without explicit grant/);
-		expect(denied.events.some((event) => event.type === "agent.DestroyDenied")).toBe(true);
+		expect(denied.decision.reason).toMatch(
+			/destroy denied without explicit grant/,
+		);
+		expect(
+			denied.events.some((event) => event.type === "agent.DestroyDenied"),
+		).toBe(true);
 		expect(canAgentProceed(denied.events).canProceed).toBe(false);
 	});
 
@@ -219,7 +229,10 @@ describe("agent guardrails", () => {
 			request: decisionRequest({
 				action: "hobo:deployment:destroy",
 				context: {
-					destroyGrant: { granted: true, grantId: "grant:checkout-prod-destroy" },
+					destroyGrant: {
+						granted: true,
+						grantId: "grant:checkout-prod-destroy",
+					},
 				},
 			}),
 			policy: agentPolicy({
@@ -289,7 +302,10 @@ describe("agent guardrails", () => {
 describe("agent guardrail consumer boundary", () => {
 	const packageRoot = dirname(fileURLToPath(import.meta.url));
 	const pact = JSON.parse(
-		readFileSync(join(packageRoot, "../contracts/pacts/agent_guardrail.pact.json"), "utf8"),
+		readFileSync(
+			join(packageRoot, "../contracts/pacts/agent_guardrail.pact.json"),
+			"utf8",
+		),
 	);
 
 	it("matches require-approval pact for high-risk deploy at gateway", () => {
@@ -329,6 +345,8 @@ describe("agent guardrail consumer boundary", () => {
 		expect(
 			denied.events.some((event) => event.type === "agent.DestroyDenied"),
 		).toBe(true);
-		expect(denied.events.some((event) => event.type === "policy.Decided")).toBe(true);
+		expect(denied.events.some((event) => event.type === "policy.Decided")).toBe(
+			true,
+		);
 	});
 });

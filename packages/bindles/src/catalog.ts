@@ -93,7 +93,11 @@ function createHandle<K extends ResourceKind>(
 		Object.defineProperty(handle, verb, {
 			enumerable: true,
 			value: (...args: unknown[]) =>
-				makeLoweringDescriptor(handle as unknown as ResourceHandle<ResourceKind>, verb, args),
+				makeLoweringDescriptor(
+					handle as unknown as ResourceHandle<ResourceKind>,
+					verb,
+					args,
+				),
 		});
 	}
 

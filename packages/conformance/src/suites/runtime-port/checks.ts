@@ -1,10 +1,7 @@
 import { parseIdempotencyKey, parseQueueName } from "@hobo/core";
 
 import { proveCheckoutDurability } from "./checkout-proof.js";
-import {
-	readEventStream,
-	type RuntimeDurabilityBackend,
-} from "./types.js";
+import { readEventStream, type RuntimeDurabilityBackend } from "./types.js";
 
 type CheckDefinition = {
 	checkId: string;
@@ -74,7 +71,11 @@ async function provesEventStoreIdempotency(backend: RuntimeDurabilityBackend) {
 		meta: { idempotencyKey: "payment-1" },
 	};
 
-	await eventStore.append("eventstore-dedup", [event], appendOptions(0, "payment"));
+	await eventStore.append(
+		"eventstore-dedup",
+		[event],
+		appendOptions(0, "payment"),
+	);
 	const retry = await eventStore.append(
 		"eventstore-dedup",
 		[event],
@@ -109,7 +110,10 @@ function provesActorHostStaleFence(backend: RuntimeDurabilityBackend) {
 	const key = "actor:checkout:stale-fence";
 	const state = backend.actorHost.state(key, {
 		initialState: { value: 0 },
-		fold: (current: { value: number }, event: { type: string; amount?: number }) =>
+		fold: (
+			current: { value: number },
+			event: { type: string; amount?: number },
+		) =>
 			event.type === "counter.Added"
 				? { value: current.value + (event.amount ?? 0) }
 				: current,
@@ -128,9 +132,13 @@ function provesActorHostStaleFence(backend: RuntimeDurabilityBackend) {
 	}
 }
 
-async function provesCheckoutReplayEqualsLive(backend: RuntimeDurabilityBackend) {
+async function provesCheckoutReplayEqualsLive(
+	backend: RuntimeDurabilityBackend,
+) {
 	const proof = await proveCheckoutDurability(backend);
-	return stableStringify(proof.liveState) === stableStringify(proof.replayState);
+	return (
+		stableStringify(proof.liveState) === stableStringify(proof.replayState)
+	);
 }
 
 function appendOptions(expectedSeq: number, correlationId: string) {

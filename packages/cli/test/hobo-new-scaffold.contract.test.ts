@@ -22,7 +22,8 @@ describe("hobo new scaffold pact", () => {
 				response: { body: { offline: boolean; createdFiles: string[] } };
 			}>;
 		};
-		const expectedFiles = pact.interactions[0]?.response.body.createdFiles ?? [];
+		const expectedFiles =
+			pact.interactions[0]?.response.body.createdFiles ?? [];
 
 		const cwd = await mkdtemp(path.join(tmpdir(), "hobo-cli-pact-"));
 		try {

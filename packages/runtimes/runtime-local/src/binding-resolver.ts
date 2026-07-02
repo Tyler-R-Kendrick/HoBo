@@ -5,7 +5,10 @@ export function createLocalBindingResolver(
 	known: Readonly<Record<string, Readonly<Record<string, string>>>>,
 ): BindingResolverPort {
 	return {
-		async resolve(resourceId: ResourceId, property: string): Promise<ResolvedBinding> {
+		async resolve(
+			resourceId: ResourceId,
+			property: string,
+		): Promise<ResolvedBinding> {
 			const id = parseResourceId(resourceId);
 			const value = known[id]?.[property];
 			if (!value) {

@@ -3,7 +3,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadToolchainLock } from "../src/index.js";
-import { assertGeneratedMatches, writeGeneratedBindings } from "../src/wit-gen.js";
+import {
+	assertGeneratedMatches,
+	writeGeneratedBindings,
+} from "../src/wit-gen.js";
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const LOCK_PATH = join(PACKAGE_ROOT, "wit-lock.json");

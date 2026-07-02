@@ -3,7 +3,9 @@ import {
 	type RuntimePortConformanceReport,
 } from "./types.js";
 
-export function parseRuntimePortReport(raw: unknown): RuntimePortConformanceReport {
+export function parseRuntimePortReport(
+	raw: unknown,
+): RuntimePortConformanceReport {
 	if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
 		throw new TypeError("report must be an object");
 	}
@@ -19,11 +21,13 @@ export function parseRuntimePortReport(raw: unknown): RuntimePortConformanceRepo
 	}
 
 	const failures = Array.isArray(source.failures) ? source.failures : [];
-	if ((status === "fail") !== (failures.length > 0)) {
+	if ((status === "fail") !== failures.length > 0) {
 		throw new TypeError("status must be fail iff failures is non-empty");
 	}
 
-	const coverage = source.coverage as { local?: Record<string, unknown> } | undefined;
+	const coverage = source.coverage as
+		| { local?: Record<string, unknown> }
+		| undefined;
 	const local = coverage?.local;
 	if (!local || typeof local !== "object") {
 		throw new TypeError("coverage.local is required");
@@ -41,9 +45,13 @@ export function parseRuntimePortReport(raw: unknown): RuntimePortConformanceRepo
 		backend: String(source.backend ?? ""),
 		status,
 		checks: Object.freeze(
-			Array.isArray(source.checks) ? (source.checks as RuntimePortConformanceReport["checks"]) : [],
+			Array.isArray(source.checks)
+				? (source.checks as RuntimePortConformanceReport["checks"])
+				: [],
 		),
-		failures: Object.freeze(failures as RuntimePortConformanceReport["failures"]),
+		failures: Object.freeze(
+			failures as RuntimePortConformanceReport["failures"],
+		),
 		coverage: Object.freeze({
 			local: Object.freeze({
 				status: local.status === "pass" ? "pass" : "fail",

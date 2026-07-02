@@ -1,6 +1,10 @@
 import { spawnSync } from "node:child_process";
 
-import type { ComponentInstance, ParsedComponentDescriptor, WasmtimeEngine } from "@hobo/core";
+import type {
+	ComponentInstance,
+	ParsedComponentDescriptor,
+	WasmtimeEngine,
+} from "@hobo/core";
 
 import { ComponentHostError } from "../errors.js";
 
@@ -23,7 +27,9 @@ export function createInProcessWasmtimeEngine(
 	});
 }
 
-export function createWasmtimeCliEngine(options: { binPath?: string } = {}): WasmtimeEngine {
+export function createWasmtimeCliEngine(
+	options: { binPath?: string } = {},
+): WasmtimeEngine {
 	const binPath =
 		options.binPath ?? process.env.HOBO_WASMTIME_BIN ?? "wasmtime";
 	const versionOutput = spawnSync(binPath, ["--version"], { encoding: "utf8" });
@@ -48,7 +54,10 @@ export function createWasmtimeCliEngine(options: { binPath?: string } = {}): Was
 function parseWasmtimeVersion(output: string): string {
 	const match = output.match(/(\d+)\.(\d+)\.(\d+)/);
 	if (!match) {
-		throw new ComponentHostError("wasmtime_version_floor", `unparseable version: ${output.trim()}`);
+		throw new ComponentHostError(
+			"wasmtime_version_floor",
+			`unparseable version: ${output.trim()}`,
+		);
 	}
 	return `${match[1]}.${match[2]}.${match[3]}`;
 }

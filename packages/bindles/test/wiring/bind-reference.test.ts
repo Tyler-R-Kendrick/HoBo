@@ -18,8 +18,12 @@ describe("bind reference wiring", () => {
 
 		const manifest = compileBindleManifest([db, api]);
 
-		expect(manifest.resources.api?.links).toEqual([{ import: "hobo:data", to: "db" }]);
-		expect(manifest.resources.api?.env?.ConnectionStrings__db).toBe("{db.connectionString}");
+		expect(manifest.resources.api?.links).toEqual([
+			{ import: "hobo:data", to: "db" },
+		]);
+		expect(manifest.resources.api?.env?.ConnectionStrings__db).toBe(
+			"{db.connectionString}",
+		);
 		expect(manifest.resources.api?.bindings).toEqual({
 			db: {
 				port: "hobo:data",
@@ -69,8 +73,8 @@ describe("bind reference wiring", () => {
 		expect(() => service("api", { bind: { db }, camp: "prod-aws" })).toThrow(
 			/cross-Camp placement is resolved by enclosing scopes/,
 		);
-		expect(() => addContainer("api", "ghcr.io/acme/api:1").withDnsRecord!()).toThrow(
-			/DNS is Yard-level/,
-		);
+		expect(() =>
+			addContainer("api", "ghcr.io/acme/api:1").withDnsRecord!(),
+		).toThrow(/DNS is Yard-level/);
 	});
 });

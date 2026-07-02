@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+	mkdir,
+	mkdtemp,
+	readFile,
+	rm,
+	stat,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -22,7 +29,9 @@ const expectedCreatedFiles = [
 	"tsconfig.json",
 ];
 
-async function withScratch<T>(callback: (cwd: string) => Promise<T>): Promise<T> {
+async function withScratch<T>(
+	callback: (cwd: string) => Promise<T>,
+): Promise<T> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-new-scaffold-"));
 	try {
 		return await callback(dir);
@@ -39,7 +48,9 @@ async function assertFile(root: string, relativePath: string) {
 describe("hobo new scaffold", () => {
 	it("scaffolds an api project through the CLI shell and stays offline", async () => {
 		await withScratch(async (cwd) => {
-			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], { cwd });
+			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], {
+				cwd,
+			});
 
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
@@ -75,35 +86,33 @@ describe("hobo new scaffold", () => {
 		});
 	});
 
-	it(
-		"creates all four templates as runnable SDK project stubs",
-		async () => {
-			await withScratch(async (cwd) => {
-				expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
+	it("creates all four templates as runnable SDK project stubs", async () => {
+		await withScratch(async (cwd) => {
+			expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
 
-				for (const template of VALID_TEMPLATES) {
-					const { projectDir, createdFiles } = await scaffoldHoboProject({
-						cwd,
-						name: `sample-${template}` as never,
-						template,
-					});
+			for (const template of VALID_TEMPLATES) {
+				const { projectDir, createdFiles } = await scaffoldHoboProject({
+					cwd,
+					name: `sample-${template}` as never,
+					template,
+				});
 
-					expect(createdFiles).toEqual(expectedCreatedFiles);
+				expect(createdFiles).toEqual(expectedCreatedFiles);
 
-					const report = await validateScaffoldProject(projectDir);
-					expect(report.ok).toBe(true);
-					expect(report.template).toBe(template);
-					assertGeneratedProjectRuns(projectDir);
-					assertGeneratedProjectTypechecks(projectDir);
-				}
-			});
-		},
-		30_000,
-	);
+				const report = await validateScaffoldProject(projectDir);
+				expect(report.ok).toBe(true);
+				expect(report.template).toBe(template);
+				assertGeneratedProjectRuns(projectDir);
+				assertGeneratedProjectTypechecks(projectDir);
+			}
+		});
+	}, 30_000);
 
 	it("prints exact next steps for human output", async () => {
 		await withScratch(async (cwd) => {
-			const result = await runHobo(["new", "snapshop", "--template", "todo"], { cwd });
+			const result = await runHobo(["new", "snapshop", "--template", "todo"], {
+				cwd,
+			});
 
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
@@ -116,7 +125,10 @@ describe("hobo new scaffold", () => {
 		await withScratch(async (cwd) => {
 			const projectDir = path.join(cwd, "snapshop");
 			await mkdir(projectDir);
-			await writeFile(path.join(projectDir, "README.md"), "existing human work\n");
+			await writeFile(
+				path.join(projectDir, "README.md"),
+				"existing human work\n",
+			);
 
 			const result = await runHobo(["new", "snapshop", "-t", "api"], { cwd });
 
@@ -126,7 +138,9 @@ describe("hobo new scaffold", () => {
 			expect(await readFile(path.join(projectDir, "README.md"), "utf8")).toBe(
 				"existing human work\n",
 			);
-			await expect(stat(path.join(projectDir, "package.json"))).rejects.toThrow();
+			await expect(
+				stat(path.join(projectDir, "package.json")),
+			).rejects.toThrow();
 		});
 	});
 
@@ -136,7 +150,9 @@ describe("hobo new scaffold", () => {
 			await mkdir(projectDir);
 			await writeFile(path.join(projectDir, "README.md"), "existing\n");
 
-			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], { cwd });
+			const result = await runHobo(["new", "snapshop", "-t", "api", "--json"], {
+				cwd,
+			});
 			expect(result.exitCode).toBe(2);
 			expect(result.stderr).toBe("");
 
@@ -153,12 +169,22 @@ describe("hobo new scaffold", () => {
 
 	it("rejects invalid templates and unsafe project names without silently defaulting", async () => {
 		await withScratch(async (cwd) => {
-			const invalidTemplate = await runHobo(["new", "snapshop", "-t", "nope"], { cwd });
+			const invalidTemplate = await runHobo(["new", "snapshop", "-t", "nope"], {
+				cwd,
+			});
 			expect(invalidTemplate.exitCode).toBe(2);
 			expect(invalidTemplate.stdout).toBe("");
 			expect(invalidTemplate.stderr).toMatch(/Unknown template "nope"/);
 
-			for (const name of ["../snapshop", "snap/shop", "snap\\shop", "CON", "aux", "snap:shop", ""]) {
+			for (const name of [
+				"../snapshop",
+				"snap/shop",
+				"snap\\shop",
+				"CON",
+				"aux",
+				"snap:shop",
+				"",
+			]) {
 				const invalidName = await runHobo(["new", name, "-t", "api"], { cwd });
 				expect(invalidName.exitCode).toBe(2);
 				expect(invalidName.stdout).toBe("");
@@ -173,23 +199,33 @@ describe("hobo new scaffold", () => {
 			await mkdir(path.join(projectDir, ".git"), { recursive: true });
 			await writeFile(path.join(projectDir, "README.md"), "do not touch\n");
 			await writeFile(path.join(projectDir, ".gitignore"), "coverage/\n");
-			await writeFile(path.join(projectDir, ".git", "HEAD"), "ref: refs/heads/main\n");
+			await writeFile(
+				path.join(projectDir, ".git", "HEAD"),
+				"ref: refs/heads/main\n",
+			);
 
-			const result = await runHobo(["new", "snapshop", "-t", "fullstack", "--force", "--json"], {
-				cwd,
-			});
+			const result = await runHobo(
+				["new", "snapshop", "-t", "fullstack", "--force", "--json"],
+				{
+					cwd,
+				},
+			);
 
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
-			expect(await readFile(path.join(projectDir, "README.md"), "utf8")).toBe("do not touch\n");
-			expect(await readFile(path.join(projectDir, ".git", "HEAD"), "utf8")).toBe(
-				"ref: refs/heads/main\n",
+			expect(await readFile(path.join(projectDir, "README.md"), "utf8")).toBe(
+				"do not touch\n",
 			);
+			expect(
+				await readFile(path.join(projectDir, ".git", "HEAD"), "utf8"),
+			).toBe("ref: refs/heads/main\n");
 			expect(await readFile(path.join(projectDir, ".gitignore"), "utf8")).toBe(
 				"coverage/\n.hobo/\nnode_modules/\ndist/\n",
 			);
 
-			const envelope = JSON.parse(result.stdout) as { data: { createdFiles: string[] } };
+			const envelope = JSON.parse(result.stdout) as {
+				data: { createdFiles: string[] };
+			};
 			expect(envelope.data.createdFiles).toEqual(expectedCreatedFiles);
 			await assertFile(projectDir, "package.json");
 		});
@@ -197,11 +233,15 @@ describe("hobo new scaffold", () => {
 });
 
 function assertGeneratedProjectRuns(projectDir: string) {
-	const result = spawnSync(process.execPath, ["--experimental-strip-types", "--test", "app.test.ts"], {
-		cwd: projectDir,
-		encoding: "utf8",
-		shell: false,
-	});
+	const result = spawnSync(
+		process.execPath,
+		["--experimental-strip-types", "--test", "app.test.ts"],
+		{
+			cwd: projectDir,
+			encoding: "utf8",
+			shell: false,
+		},
+	);
 
 	expect(result.status).toBe(0);
 }
@@ -222,5 +262,13 @@ function assertGeneratedProjectTypechecks(projectDir: string) {
 }
 
 function typescriptCliPath() {
-	return path.resolve(process.cwd(), "..", "..", "node_modules", "typescript", "bin", "tsc");
+	return path.resolve(
+		process.cwd(),
+		"..",
+		"..",
+		"node_modules",
+		"typescript",
+		"bin",
+		"tsc",
+	);
 }

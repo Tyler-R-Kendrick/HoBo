@@ -2,7 +2,10 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REPO_ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "../../..");
+const REPO_ROOT = join(
+	fileURLToPath(new URL(".", import.meta.url)),
+	"../../..",
+);
 
 export function resolveSourceDateEpoch(): string {
 	const raw = process.env.SOURCE_DATE_EPOCH?.trim();

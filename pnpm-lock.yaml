@@ -120,9 +120,6 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
-      '@hobo/runtime-local':
-        specifier: workspace:*
-        version: link:../runtimes/runtime-local
     devDependencies:
       '@types/node':
         specifier: ^22.15.3

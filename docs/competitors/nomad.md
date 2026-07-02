@@ -152,7 +152,7 @@ nomad-pack destroy prometheus
 
 ## HoBo mapping
 
-> For every Nomad/Nomad Pack feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ↔ = adjacent/composable · 🔜 = planned/iteration hook. HoBo design lives in [`../design/`](../design/index.md). The displacement decision — why self-hosted wasmCloud ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) + Matching ([ADR-0033](../design/adr/01-architecture-core.md#adr-0033)) + Dispatcher ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) subsume the scheduler pillar, and Nomad's accepted-future deploy-target disposition — is recorded in [ADR-0106](../design/adr/01-architecture-core.md#adr-0106).
+> For every Nomad/Nomad Pack feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ↔ = adjacent/composable · 🔜 = planned/iteration hook. HoBo design lives in [`../design/`](../design/index.md). The displacement decision — why self-hosted wasmCloud ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) + Matching ([ADR-0033](../design/adr/01-architecture-core.md#adr-0033)) + Dispatcher ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) subsume the scheduler pillar, and Nomad's accepted-future deploy-target disposition — is recorded in [ADR-0106](../design/adr/01-architecture-core.md#adr-0106). Rows with no committed design text anchor to an explicit iteration hook, never to a bare status.
 
 ### Core model
 
@@ -167,27 +167,27 @@ nomad-pack destroy prometheus
 
 ### Workload and resource catalog
 
-| Nomad feature                | HoBo equivalent                                                           | Status |
-| ---------------------------- | ------------------------------------------------------------------------- | ------ |
-| Service jobs                 | Long-running service components                                           | ✅     |
-| Batch jobs                   | `hobo:job` / durable job resource                                         | ✅     |
-| System jobs                  | Yard/operator/system Bindles per Camp/node class                          | 🔜     |
-| Periodic jobs                | `hobo:schedule` + jobs/workflows                                          | ✅     |
-| Parameterized/dispatch jobs  | Commands/events into actor/workflow/job ports                             | ➕     |
-| Docker workloads             | OCI fallback/provider adapter                                             | ✅     |
-| Raw exec / Java / QEMU       | Host/runtime adapters selected by Matching                                | ↔      |
-| Dynamic ports/network blocks | `http`/network/domain/dns ports + provider-specific placement constraints | ✅     |
-| CSI/host volumes             | Blob/data/storage providers; host/volume escape hatches                   | ↔      |
-| Nomad Variables/templates    | `config`/`secret` ports + typed parsed configuration                      | ➕     |
-| Consul service discovery     | `service`/`http`/mesh provider; could target Consul                       | ↔      |
-| Vault secrets                | `secret` provider adapter; could target Vault                             | ↔      |
-| Autoscaler                   | HoBo reliability/cost policies + operator agents                          | ➕     |
+| Nomad feature                | HoBo equivalent                                                                                                      | Status | HoBo doc                                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| Service jobs                 | Long-running service components                                                                                      | ✅     | [20](../design/wasm-runtime-wit.md#plan-20)                                                         |
+| Batch jobs                   | `hobo:job` / durable job resource                                                                                    | ✅     | [21](../design/authoring-resources-wiring.md#plan-21), [02](../design/sdk-api.md#plan-02)           |
+| System jobs                  | Yard/operator/system Bindles per Camp/node class                                                                     | 🔜     | [iteration hook](../design/platform-engineering.md#node-placement-and-system-workloads-iteration-hooks) |
+| Periodic jobs                | `hobo:schedule` + jobs/workflows                                                                                     | ✅     | [21](../design/authoring-resources-wiring.md#plan-21)                                               |
+| Parameterized/dispatch jobs  | Commands/events into actor/workflow/job ports                                                                        | ➕     | [02](../design/sdk-api.md#plan-02), [11](../design/data-plane.md#plan-11)                           |
+| Docker workloads             | OCI fallback/provider adapter                                                                                        | ✅     | [20](../design/wasm-runtime-wit.md#plan-20), [04](../design/control-plane.md#plan-04)               |
+| Raw exec / Java / QEMU       | Host/runtime adapters selected by Matching; OCI/VM adapters designed, raw-exec host adapter not yet designed         | ↔      | [04](../design/control-plane.md#plan-04), [iteration hook](../design/platform-engineering.md#node-placement-and-system-workloads-iteration-hooks) |
+| Dynamic ports/network blocks | `http`/network/domain/dns ports + provider-specific placement constraints                                            | ✅     | [21](../design/authoring-resources-wiring.md#plan-21), [12](../design/security-networking.md#plan-12) |
+| CSI/host volumes             | Blob/data/storage providers; host/volume escape hatches                                                              | ↔      | [21](../design/authoring-resources-wiring.md#plan-21)                                               |
+| Nomad Variables/templates    | `config`/`secret` ports + typed parsed configuration                                                                 | ➕     | [21](../design/authoring-resources-wiring.md#plan-21)                                               |
+| Consul service discovery     | `service`/`http`/mesh provider; could target Consul                                                                  | ↔      | [21](../design/authoring-resources-wiring.md#plan-21)                                               |
+| Vault secrets                | `secret` provider adapter; could target Vault                                                                        | ↔      | [21](../design/authoring-resources-wiring.md#plan-21)                                               |
+| Autoscaler                   | HoBo reliability/cost policies + operator agents                                                                     | ➕     | [05](../design/reliability-observability-cost.md#plan-05), [40](../design/operators-sre.md#plan-40) |
 
 ### Operations, security, and rollout
 
 | Nomad feature                     | HoBo equivalent                                                          | Status | HoBo doc                                                                                            |
 | --------------------------------- | ------------------------------------------------------------------------ | ------ | --------------------------------------------------------------------------------------------------- |
-| Constraints/affinities/spread     | Matching rules, Resource Definitions, placement policy                   | ✅     | [25](../design/platform-engineering.md#plan-25)                                                     |
+| Constraints/affinities/spread     | Context-matching selects Resource Definitions (designed); node-level affinity/anti-affinity/topology-spread constructs not yet designed | 🔜     | [25](../design/platform-engineering.md#plan-25), [iteration hook](../design/platform-engineering.md#node-placement-and-system-workloads-iteration-hooks) |
 | Rolling update/canary/auto-revert | Deployment events, progressive delivery gates, rollback/replay           | ✅     | [05](../design/reliability-observability-cost.md#plan-05), [11](../design/data-plane.md#plan-11)    |
 | Service checks + drain lifecycle  | Endpoint Monitor/SRE operators + health projections + policy-gated drain | ➕     | [40](../design/operators-sre.md#plan-40), [05](../design/reliability-observability-cost.md#plan-05) |
 | ACLs/namespaces                   | Project/Yard/Camp RBAC and policy                                        | ✅     | [12](../design/security-networking.md#plan-12)                                                      |

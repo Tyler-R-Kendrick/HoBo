@@ -181,6 +181,74 @@ Each entry point compiles to a component exporting the right WIT interface:
 ### Declarations follow varlock's declarative schema
 Resource declarations, config items, and the DSL surface all use **varlock's declarative schema pattern** ([ADR-0027](./adr/02-identity-security.md#adr-0027)): each item is a **typed, annotation-driven declaration** carrying its **type, required, sensitivity, and source**. The annotations are provider-neutral; Matching and the Camp's adapters consume them.
 
+### FinOps — inline budget & cost-availability
+
+FinOps budget controls are **scope declarations**, not catalog resources — they carry no WIT port and are not inferred from component usage. Declare them inline on **Camp**, **Bindle**, **agent**, or **connector** policy surfaces via `@hobo/bindles` / `@hobo/camps` helpers; resource-collection folds them into the manifest IR `policy` block and the policy plane enforces them at deploy/runtime ([ADR-0039](./adr/02-identity-security.md#adr-0039), [Plan 5](./reliability-observability-cost.md#plan-05)).
+
+| Declaration | SDK helper | Typical scope | Policy-plane effect |
+|---|---|---|---|
+| **Budget** | `budget({ softLimitUsd, hardLimitUsd, period })` | camp · tenant · bindle | soft crossing → warn obligation; hard crossing → deny at gate |
+| **Spend cap** | `.policy({ spendCapUsd })` on `agent()` / `connector()` | agent · connector | approve/deny gate for autonomous spend ([Plan 6](./ai-native-agent-auth.md#plan-06)) |
+| **Cost-availability profile** | `costAvailabilityProfile({ budgetUsd, availabilitySlo, tiers, strategy })` | camp · bindle | spend-velocity → `allow-degraded` + durable tier obligation before hard-stop |
+
+```ts
+import { camp } from "@hobo/camps";
+import { budget, costAvailabilityProfile } from "@hobo/bindles";
+import app from "./src/app";
+
+const prod = camp("prod");
+prod.import(app);
+prod.policy({
+  budget: budget({ softLimitUsd: 4000, hardLimitUsd: 5000, period: "monthly" }),
+  costAvailabilityProfile: costAvailabilityProfile({
+    budgetUsd: 5000,
+    availabilitySlo: 0.999,
+    tiers: [
+      { name: "nominal", upToBudgetFrac: 0.80, slo: 0.999 },
+      { name: "reduced", upToBudgetFrac: 0.95, slo: 0.99, shed: ["batch", "analytics"] },
+      { name: "minimal", upToBudgetFrac: 1.00, slo: 0.95, shed: ["non-critical"] },
+    ],
+    strategy: "shed-low-priority-first",
+  }),
+});
+```
+
+Resources and handlers may carry a **`priority`** label (`critical` \| `standard` \| `low`) so degradation tiers shed lowest-priority load first. The profile's `budgetUsd` may be omitted when a sibling `budget.hardLimitUsd` is present — the policy normalizer treats them as the same period cap.
+
+**`hobo plan` surfacing.** Plan preview is read-only and surfaces FinOps declarations alongside per-resource cost estimates ([Plan 7](./developer-experience.md#plan-07), [HOBO-125 proof](./proofs/hobo-125-plan-preview/index.md)). After the resource table, `hobo plan` emits a **Cost & budget** block:
+
+```text
+Cost & budget (camp prod, monthly)
+  projected:  $63.50/mo
+  budget:     $5,000 hard / $4,000 soft  →  headroom $4,936.50
+  profile:    nominal tier (80% cap)      →  velocity OK for period
+```
+
+- **Projected monthly cost** — sum of matched resource list estimates for the selected Camp.
+- **Budget headroom** — declared `softLimitUsd` / `hardLimitUsd` (or profile `budgetUsd`) vs projected spend; crossing soft adds a **warning**; crossing hard adds a **would-deny** gate annotation (plan stays read-only).
+- **Degradation preview** — when MeteringView spend velocity would cross a `costAvailabilityProfile` tier before period end, the plan names the tier and shed targets as a **warn-only** line (runtime enforcement remains policy-plane `allow-degraded` + `spend.DegradationRequired`, not a plan block).
+
+The machine envelope (`hobo plan --json`) carries the same facts under `cost` (estimate) and `budget` (declared limits, headroom, tier preview, gate annotations) so CI and MCP clients can post approvable diffs without parsing human text.
+
+Manifest IR sketch (folded beside resources):
+
+```jsonc
+"policy": {
+  "budget": { "softLimitUsd": 4000, "hardLimitUsd": 5000, "period": "monthly" },
+  "costAvailabilityProfile": {
+    "budgetUsd": 5000,
+    "availabilitySlo": 0.999,
+    "strategy": "shed-low-priority-first",
+    "tiers": [
+      { "name": "nominal", "upToBudgetFrac": 0.80, "slo": 0.999 },
+      { "name": "reduced", "upToBudgetFrac": 0.95, "slo": 0.99, "shed": ["batch", "analytics"] }
+    ]
+  }
+}
+```
+
+Executable contract: [`inline-budget-authoring`](../../src/draft/exp-proofs/inline-budget-authoring/README.md) proof (HOBO-693).
+
 ### DNS is a Yard-level resource, not app/Bindle-level
 DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)). DNS is a **Yard-level** resource — provider-global, with **per-Camp overrides** — so a Bindle never declares it. Custom-domain binding (ACME DNS-01 certs; failover/weighted/latency across Camps) is resolved at the Yard layer and applied per Camp; the app references endpoints, not zones.
 

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Resource Lifecycle Quickstart Examples Proof"
+description: "Source issue: HOBO-577."
+tags: [hobo, design]
+---
+
 # Resource lifecycle quickstart examples proof
 
 `HOBO-577` creates the canonical resource lifecycle quickstart example set for

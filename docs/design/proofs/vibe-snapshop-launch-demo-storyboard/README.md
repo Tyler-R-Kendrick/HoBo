@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Snapshop Launch Demo Storyboard Proof"
+description: "Source issue: HOBO-555."
+tags: [hobo, design]
+---
+
 # Vibe Snapshop Launch Demo Storyboard Proof
 
 `HOBO-555` creates a deterministic `snapshop` launch-demo storyboard and

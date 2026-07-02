@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-485 Known Limitations Register Proof"
+description: "Source issue: HOBO-485."
+tags: [hobo, design]
+---
+
 # HOBO-485 Known Limitations Register Proof
 
 This proof records the customer-facing known limitations and scope-out register

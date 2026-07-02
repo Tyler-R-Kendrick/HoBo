@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-459 Release Notes Dogfood Alpha Proof"
+description: "Source issue: HOBO-459."
+tags: [hobo, design]
+---
+
 # HOBO-459 Release Notes Dogfood Alpha Proof
 
 HOBO-459 is proven by the focused M1 contract at

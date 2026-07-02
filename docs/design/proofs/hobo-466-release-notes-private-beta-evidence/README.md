@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-466 Release Notes Private Beta Evidence Proof"
+description: "Source issue: HOBO-466."
+tags: [hobo, design]
+---
+
 # HOBO-466 Release Notes Private Beta Evidence Proof
 
 HOBO-466 is proven by the focused M2 contract at

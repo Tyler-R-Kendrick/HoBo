@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "HOBO-469 Dogfood Yard Release Candidate Proof"
+description: "Source issue: HOBO-469."
+tags: [hobo, design]
+---
+
 # HOBO-469 Dogfood Yard Release-Candidate Proof
 
 HOBO-469 is proven by the focused M3 contract at

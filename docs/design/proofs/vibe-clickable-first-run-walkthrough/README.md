@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Clickable First-Run Walkthrough Proof"
+description: "Source issue: HOBO-559."
+tags: [hobo, design]
+---
+
 # Vibe clickable first-run walkthrough proof
 
 `HOBO-559` creates a clickable/reference first-run walkthrough using snapshop

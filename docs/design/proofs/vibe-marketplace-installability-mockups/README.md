@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Vibe Marketplace Installability Mockups Proof"
+description: "Source issue: HOBO-546."
+tags: [hobo, design]
+---
+
 # Vibe Marketplace Installability Mockups Proof
 
 HOBO-546 creates deterministic M1 marketplace browse, search, listing-detail, and installability mockups for the v1 vibe example chain. The executable proof lives in `src/draft/exp-proofs/vibe-marketplace-installability-mockups`.

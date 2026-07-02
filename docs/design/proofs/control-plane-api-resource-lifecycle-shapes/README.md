@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Control-Plane API Resource Lifecycle Shapes Proof"
+description: "Source issue: HOBO-569."
+tags: [hobo, design]
+---
+
 # HOBO-569 Control-Plane API Resource Lifecycle Shapes
 
 This proof records the shared control-plane API shape examples for resource

@@ -25,6 +25,7 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/componentize",
 	"packages/conformance",
 	"packages/cli",
+	"packages/stage-gate",
 ]);
 
 function isWorkspacePath(path: string): boolean {
@@ -207,4 +208,5 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/cli", to: "packages/runtime" },
 	{ from: "packages/componentize", to: "packages/core" },
 	{ from: "packages/conformance", to: "packages/core" },
+	{ from: "packages/stage-gate", to: "packages/componentize" },
 ];

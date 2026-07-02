@@ -28,6 +28,7 @@ This capability doc covers HoBo's security and multi-tenancy posture together wi
 | **Tenant data & event streams** | cross-tenant read/write, replay leakage | per-tenant isolation of streams/keys/pools; tenant claim enforced at the Gateway and in the store |
 | **Executors (run IaC + builds)** | malicious/compromised provider code, supply-chain | Firecracker isolation, no ambient creds, no egress except the scoped target, ephemeral |
 | **generation pipeline plugins (AI-generated)** | exfiltration, backdoors, prompt injection in source docs | sandboxed conformance run with no egress; signed provenance; capability-scoped; human gate for high-trust |
+| **Capability Manifest prose** (signs.md / llms.txt / auth.json descriptions) | prompt injection at discovery time — a malicious or compromised provider manifest steering planning/operating agents | classified untrusted input in every agent context ([ADR-0023](./adr/02-identity-security.md#adr-0023) item 3); Registry signature verifies publisher, not prose; inert-tool-output invariant — a tool result cannot trigger an out-of-scope follow-up call ([Plan 6](./ai-native-agent-auth.md#plan-06) §6.4, [HOBO-194 proof](./proofs/hobo-194-mcp-server-hardening/index.md)) |
 | **The Yard itself** | privilege escalation, tampering with history | append-only log + fencing tokens; least-privilege services; immutable audit; quorum writes |
 | **Agents** | confused-deputy, runaway spend/destroy | scoped SVIDs; policy gates on high-risk actions; spend caps; full replay |
 

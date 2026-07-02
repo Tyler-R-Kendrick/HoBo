@@ -12,6 +12,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | Family | Example events |
 |---|---|
 | `actor.*` | `actor.Activated`, `actor.StateAppended` |
+| `agent.*` | `agent.GuardrailBlocked`, `agent.GuardrailCleared`, `agent.DestroyDenied` |
 | `aggregate.*` | `aggregate.PastTenseFact` |
 | `alert.*` | `alert.Fired`, `alert.Grouped`, `alert.Routed`, `alert.Silenced`, `alert.Inhibited`, `alert.Deduped`, `alert.InhibitionCycleRejected`, `alert.Resolved` |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
@@ -27,6 +28,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `data.*` | `data.Changed`, `data.Classified` |
 | `delta.*` | `delta.Opened`, `delta.Applied` |
 | `deploy.*` | `deploy.PreviewUrlAssigned`, `deploy.PreviewTeardownRequested` |
+| `dev.*` | `dev.SessionStarted`, `dev.RequestServed`, `dev.HandlerReloaded`, `dev.ReloadFailed`, `dev.CodegenRan`, `dev.SessionStopped` |
 | `deployment.*` | `deployment.Planned`, `deployment.PlanRejected` |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided` |
@@ -58,7 +60,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `notification.*` | `notification.Requested`, `notification.Delivered` |
 | `pack.*` | `pack.Imported` |
 | `pipeline.*` | `pipeline.Triggered`, `pipeline.Completed` |
-| `policy.*` | `policy.Decided`, `policy.ObligationCreated` |
+| `policy.*` | `policy.Decided`, `policy.ObligationCreated`, `policy.ObligationSatisfied` |
 | `projection.*` | `projection.Declared`, `projection.Lagged` |
 | `provider.*` | `provider.Registered`, `provider.Deprecated` |
 | `query.*` | `query.*` |
@@ -74,7 +76,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `session.*` | `session.Started`, `session.Refreshed`, `session.Revoked` |
 | `set.*` | `set.Created` |
 | `slo.*` | `slo.Declared`, `slo.BudgetBurned` |
-| `spend.*` | `spend.Recorded`, `spend.CircuitTripped`, `spend.CircuitReset`, `spend.DegradationRequired`, `spend.DegradationApplied`, `spend.DegradationRolledBack` |
+| `spend.*` | `spend.Recorded`, `spend.CapGateEvaluated`, `spend.CircuitTripped`, `spend.CircuitReset`, `spend.DegradationRequired`, `spend.DegradationApplied`, `spend.DegradationRolledBack` |
 | `statuspage.*` | `statuspage.Published`, `statuspage.IncidentPosted` |
 | `stub.*` | `stub.Recorded` |
 | `subscription.*` | `subscription.Opened`, `subscription.Pushed` |

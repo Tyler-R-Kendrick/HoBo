@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package hobo.yards.v1;
+
+message YardTopology {
+  string name = 1;
+  string provider_id = 2;
+}

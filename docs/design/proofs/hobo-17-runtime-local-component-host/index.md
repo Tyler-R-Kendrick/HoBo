@@ -4,6 +4,8 @@ This proof backs [PLAN-20](../../wasm-runtime-wit.md#plan-20), [ADR-0031](../../
 
 The branch adds `src/draft/technical-proofs/runtime-local-component-host`, an independent POC for the M1 `runtime-local` `component-host` skeleton. It proves component lifecycle, static import-to-export linking, local HTTP handler invocation, trap isolation, and teardown cleanup without implementing the later cross-process or conformance-suite slices.
 
+**Promotion (S1-02 / HOBO-591):** production implementation lives at `packages/runtimes/runtime-local` (`@hobo/runtime-local`).
+
 ## Acceptance Evidence
 
 - `runtime-local host runs an HTTP component through a static in-process link table`

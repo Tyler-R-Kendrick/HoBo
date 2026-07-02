@@ -1,0 +1,58 @@
+export interface CliClients {
+	readonly readApi: string;
+	readonly runtime: string;
+}
+
+export interface CliContext {
+	readonly cwd: string;
+	readonly projectDir: string | null;
+	readonly identity: string | null;
+	readonly clients: CliClients;
+}
+
+export interface CliEnvelope {
+	readonly ok: boolean;
+	readonly verb: string;
+	readonly status: string;
+	readonly code: string;
+	readonly message: string;
+	readonly remediation: readonly string[];
+	readonly context: CliContext;
+	readonly data: Record<string, unknown>;
+}
+
+export interface CommandResult {
+	readonly ok?: boolean;
+	readonly status?: string;
+	readonly code?: string;
+	readonly message?: string;
+	readonly remediation?: readonly string[];
+	readonly data?: Record<string, unknown>;
+}
+
+export function publicContext(context: CliContext): CliContext {
+	return {
+		cwd: context.cwd,
+		projectDir: context.projectDir,
+		identity: context.identity ?? null,
+		clients: context.clients,
+	};
+}
+
+export function buildEnvelope(input: {
+	verb: string;
+	context: CliContext;
+	result: CommandResult;
+}): CliEnvelope {
+	const ok = input.result.ok !== false;
+	return {
+		ok,
+		verb: input.verb,
+		status: input.result.status ?? (ok ? "ok" : "error"),
+		code: input.result.code ?? (ok ? "HOBO_OK" : "HOBO_CLI_ERROR"),
+		message: input.result.message ?? "",
+		remediation: input.result.remediation ?? [],
+		context: publicContext(input.context),
+		data: input.result.data ?? {},
+	};
+}

@@ -1,0 +1,114 @@
+name: S1 Stage Gate
+
+on:
+  pull_request:
+    paths:
+      - "packages/**"
+      - "src/draft/technical-proofs/s1-stage-gate/**"
+      - "src/draft/technical-proofs/runtime-port-conformance-contract/**"
+      - "src/draft/technical-proofs/component-host-conformance-suite/**"
+      - "src/draft/technical-proofs/replay-live-equivalence-poc/**"
+      - "src/draft/technical-proofs/hobo-dev-loop-contract/**"
+      - "src/draft/technical-proofs/choreography-saga-engine-contract/**"
+      - ".github/workflows/s1-stage-gate.yml"
+      - "scripts/ci/s1-stage-gate-record.mts"
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s1-stage-gate-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  conformance:
+    name: conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Runtime-port + component-host conformance
+        run: pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1:conformance
+
+  offline-hello-bindle:
+    name: offline-hello-bindle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Offline hello-bindle (no network, no credentials)
+        run: |
+          docker run --rm \
+            --network=none \
+            -v "${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}" \
+            -w "${GITHUB_WORKSPACE}" \
+            -e HOBO_OFFLINE_GUARD=1 \
+            -e AWS_ACCESS_KEY_ID= \
+            -e AWS_SECRET_ACCESS_KEY= \
+            -e AZURE_CLIENT_ID= \
+            -e GOOGLE_APPLICATION_CREDENTIALS= \
+            node:24-bookworm-slim \
+            bash -lc 'node --import tsx --test src/draft/technical-proofs/s1-stage-gate/test/s1-stage-gate.offline.test.ts'
+        env:
+          AWS_ACCESS_KEY_ID: ""
+          AWS_SECRET_ACCESS_KEY: ""
+          AZURE_CLIENT_ID: ""
+          GOOGLE_APPLICATION_CREDENTIALS: ""
+
+  replay-equals-live:
+    name: replay-equals-live
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Replay equals live gate
+        run: pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1:replay
+
+  record:
+    name: record
+    needs: [conformance, offline-hello-bindle, replay-equals-live]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Assemble StageGateS1Record
+        run: node --import tsx scripts/ci/s1-stage-gate-record.mts
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+      - name: Upload s1-stage-gate-record artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: s1-stage-gate-record
+          path: s1-stage-gate-record.json

@@ -149,6 +149,7 @@ async function copyGeneratedTree(sourceDir: string, targetDir: string): Promise<
 }
 
 async function compareTrees(expectedRoot: string, actualRoot: string, labelPrefix: string): Promise<DriftEntry[]> {
+  const normalizeGeneratedText = (content: string) => content.replace(/\r\n/g, "\n");
   const [expectedFiles, actualFiles] = await Promise.all([
     listFilesRecursive(expectedRoot),
     listFilesRecursive(actualRoot),
@@ -169,7 +170,7 @@ async function compareTrees(expectedRoot: string, actualRoot: string, labelPrefi
       readFile(expectedPath, "utf8"),
       readFile(actualPath, "utf8"),
     ]);
-    if (expectedContent !== actualContent) {
+    if (normalizeGeneratedText(expectedContent) !== normalizeGeneratedText(actualContent)) {
       drift.push({ path: `${labelPrefix}/${rel}`, kind: "changed" });
     }
     actualRel.delete(rel);

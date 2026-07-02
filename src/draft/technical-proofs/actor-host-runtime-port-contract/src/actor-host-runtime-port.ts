@@ -1,5 +1,16 @@
 export const ACTOR_HOST_RUNTIME_PORT_VERSION = "hobo.actor-host-runtime-port/v1";
 
+export { parseActorKey, parseHolderId, type ActorKey, type HolderId } from "./parse.js";
+export { createLocalActorHost, ACTOR_STREAM_PREFIX, type LocalActorHostOptions } from "./local-actor-host.js";
+export {
+  runActorHostConformance,
+  runDualActivationFixture,
+  createActorHostConformanceBackend,
+  createBrokenFenceActorHostBackend,
+  ACTOR_HOST_CONFORMANCE_VERSION,
+  type ActorHostConformanceReport,
+} from "./conformance/actor-host-checks.js";
+
 export class LeaseConflictError extends Error {
   constructor(message) {
     super(message);

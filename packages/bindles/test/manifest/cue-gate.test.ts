@@ -1,12 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(testDir, "../..");
-const cueFile = join(packageRoot, "data-models/cue/hobo_manifest_v1.cue");
+const repoRoot = join(packageRoot, "../..");
+const cueDir = join(packageRoot, "data-models/cue");
+const cueSchemaFile = join(cueDir, "hobo_manifest_v1.cue");
 const goldenDir = join(packageRoot, "test/fixtures/manifests/golden");
 const invalidDir = join(packageRoot, "test/fixtures/manifests/invalid");
 
@@ -16,21 +18,41 @@ function resolveCueBinary(): string {
 		return configured;
 	}
 
+	const cached = join(
+		repoRoot,
+		".tools",
+		"cue",
+		"v0.14.0",
+		process.platform === "win32" ? "cue.exe" : "cue",
+	);
+	if (existsSync(cached)) {
+		return cached;
+	}
+
 	try {
-		return execFileSync("which", ["cue"], { encoding: "utf8" }).trim();
+		const lookup = process.platform === "win32" ? "where.exe" : "which";
+		return execFileSync(lookup, ["cue"], { encoding: "utf8", windowsHide: true })
+			.split(/\r?\n/u)[0]
+			.trim();
 	} catch {
 		throw new Error(
-			"CUE binary not found. Install with: go install cuelang.org/go/cmd/cue@latest or download from https://github.com/cue-lang/cue/releases",
+			"CUE binary not found. Run root test:schema to populate .tools/cue/v0.14.0 or install cue v0.14.0 on PATH.",
 		);
 	}
 }
 
 function vetFixture(cueBin: string, fixturePath: string): number {
 	try {
-		execFileSync(cueBin, ["vet", cueFile, fixturePath, "-d", "#Manifest"], {
-			encoding: "utf8",
-			stdio: "pipe",
-		});
+		execFileSync(
+			cueBin,
+			["vet", "-d", "#Manifest", basename(cueSchemaFile), resolve(fixturePath)],
+			{
+				cwd: cueDir,
+				encoding: "utf8",
+				stdio: "pipe",
+				windowsHide: true,
+			},
+		);
 		return 0;
 	} catch (error) {
 		const status = (error as NodeJS.ErrnoException & { status?: number }).status;

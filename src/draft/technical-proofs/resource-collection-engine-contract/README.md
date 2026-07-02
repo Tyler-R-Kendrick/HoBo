@@ -1,23 +1,27 @@
 # HOBO-67 resource collection engine contract
 
-This POC proves the run-to-collect seam for the TypeScript reference idiom layer.
+Independent draft POC for [HOBO-606](https://linear.app/quickdeploy-ai/issue/HOBO-606) / S1-16 resource-collection engine.
 
-- `collectBindleResources(...)` executes a Bindle definition in collection mode and emits a `hobo.manifest/v1`.
-- Resource declarations are observed from the `@hobo/bindles` catalog factories.
-- Bind edges are captured from component `bind` options or explicit `collect.bind(...)`.
-- Used verbs are inferred from resource handle calls and recorded in manifest `allow` / `usage`.
-- `bindle.ResourcesCollected` and `bindle.ManifestProduced` facts carry the collected resources, bind keys, manifest, and deterministic content hash.
-- Static collection coverage is reconciled through the existing collection-coverage gate so missed branches are surfaced, not silently omitted.
-- Network and clock reads through the collection context are sandboxed as ignored side effects so manifest hashes remain deterministic.
+Promotion target: `packages/collector` (`@hobo/collector`) once S1-13 (`@hobo/bindles` catalog) and S1-14 (`hobo.manifest/v1` inside bindles) land on `main`.
 
-Scope stays contract-only: this does not implement the later coverage gate, permission narrowing, non-TS collection, planner consumption, or production runtime hosting.
+## What this proves
 
+- `collectBindleResources(...)` executes a Bindle definition in collection mode and emits `hobo.manifest/v1`.
+- `parseCollectionInput(raw)` is the single parse-don't-validate boundary.
+- Resource declarations come from the `@hobo/bindles` catalog factories (draft catalog proof).
+- Bind edges become manifest `links`; used verbs infer manifest `allow` / `usage`.
+- Exactly two ordered facts: `bindle.ResourcesCollected` (seq 1) then `bindle.ManifestProduced` (seq 2), `source: "hobo.collector"`.
+- Injectable `CoverageEvaluator` seam (default pass-through; coverage gate injectable in tests).
+- Clock/network side effects sandboxed as `disposition: "ignored"` for deterministic hashing.
+- `examples/hello-bindle` golden manifest fixture (byte-stable).
 
-## Architecture Evidence
+## Tests
 
-This package ships the architecture-guard evidence required by
-`scripts/check-architecture-guardrails.mjs`:
+```bash
+pnpm --prefix src/draft/technical-proofs/resource-collection-engine-contract test
+```
 
-- `architecture/` — protobuf data shapes and CUE constraints for Resource Collection Engine Contract.
-- `architecture/pacts/` — PACT contract for the package boundary.
-- `ADR.md` — parse-don't-validate and event-architecture evidence.
+## Architecture evidence
+
+- `architecture/collector.proto` + `architecture/collector.cue` — collection records
+- `architecture/pacts/hobo-collector-hobo-bindles.pact.json` — collector ↔ bindles catalog pact

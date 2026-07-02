@@ -3,6 +3,12 @@
 HOBO-156 is proven by the focused POC at
 [`src/draft/technical-proofs/hobo-build-cli-contract`](../../../../src/draft/technical-proofs/hobo-build-cli-contract/README.md).
 
+**S1-23 promotion (HOBO-613):** `hobo build` is implemented in
+[`packages/cli`](../../../../packages/cli/README.md) with digest parity against
+[`@hobo/componentize`](../../../../packages/componentize/README.md). Draft rollup evidence
+remains at
+[`src/draft/projects/s1-23-hobo-build`](../../../../src/draft/projects/s1-23-hobo-build/README.md).
+
 ## Acceptance Evidence
 
 - `hobo build emits wasm and OCI fallback artifacts with JSON digests` proves

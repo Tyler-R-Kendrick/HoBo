@@ -14,6 +14,8 @@ provisioning, signing, or attestation.
   reason.
 - `HOBO_RUNTIME=container` forces wasm-capable services through the OCI fallback
   path and records the target hint.
+- Numeric `SOURCE_DATE_EPOCH` values are accepted as Unix seconds and normalized
+  before artifact manifests are written.
 - Repeated builds and clean checkouts produce stable artifact digests.
 - Stale `_generated/` files fail before build output with a regeneration hint.
 - Componentization failures name the service and cause and do not write a build
@@ -24,6 +26,9 @@ provisioning, signing, or attestation.
 ```powershell
 npm.cmd --prefix src\draft\technical-proofs\hobo-build-cli-contract test
 ```
+
+The Stage Gate S0 runner exercises this proof with `SOURCE_DATE_EPOCH=1704067200`
+so Windows and CI use the same reproducible timestamp input.
 
 
 ## Architecture Evidence

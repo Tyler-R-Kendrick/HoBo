@@ -296,9 +296,9 @@ HoBo is an **AI-native meta-cloud** — a direct competitor to **Convex, Lakebed
 
 ### Consequences
 - **(+)** Sharp, defensible identity: agnostic IfC + durable event-sourced runtime + agents/generation pipeline + conformance + patchability + **app generation**; only the business sprawl leaves.
-- **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit to maintain (commercialization is out of design scope).
+- **(+)** Clear competitive story vs Convex/Lakebed/Nitric; no first-party commercial toolkit in the product (commercialization of HoBo-the-hosted-business is recorded as design-scope productization policy per [ADR-0107](#adr-0107)).
 - **(↔)** Money-movement terms are removed across the suite; metering/showback/quota/spend-safety (FinOps) and the app-generation stack (UX Designer/design.md/OpenUI/json-render/mcp-apps/`ui-render`) stay.
-- **(↔)** Hosted-business commercial-operations records (billing launch policy, tax/currency/receipt posture, marketplace payout readiness) are governed by [ADR-0107](#adr-0107): launch-posture documentation for hosted HoBo, not a reinstated `billing` port or rev-share machinery.
+- **(↔)** Marketplace payout readiness is specifically governed by [ADR-0110](#adr-0110): a deferred commercial-operations posture for hosted HoBo, not a reinstated `billing` port or rev-share machinery.
 
 ## ADR-0095
 **Distributed-artifact version resolution semantics.**
@@ -341,10 +341,43 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **(−)** Some deploys that could be made to "work" by falling back to public+mTLS now require explicit intent or a capability update, but that preserves residency and the no-shared-controller Junction invariant.
 
 ## ADR-0107
+**Hosted-business commercialization records are design-scope productization; the product billing surface stays removed (boundary to ADR-0064).**
+
+### Context
+[ADR-0064](#adr-0064) removed business/monetization from HoBo's product surface ("no first-party commercial toolkit to maintain"), yet first-party commercial-launch design for HoBo-the-hosted-business now lives in `docs/design/` — billing plans/credits/invoice lifecycle ([billing-launch-policy.md](../billing-launch-policy.md)), the deterministic `meter.UsageRecorded` → `invoice.LineItem` reconciliation contract ([usage-to-invoice-reconciliation.md](../usage-to-invoice-reconciliation.md)), tax/currency/receipt posture ([tax-currency-receipt-obligations.md](../tax-currency-receipt-obligations.md)), and workspace plan tiers/entitlements ([entitlements-plan-limits.md](../entitlements-plan-limits.md)) — with the boundary asserted only per-doc, recorded in no ADR.
+
+### Decision
+1. **Commercial-launch policies for HoBo-the-hosted-business** (plans, prepaid credits, invoice lifecycle states, tax/currency/receipt posture, entitlements/plan tiers, usage-to-invoice reconciliation contracts) are **in design scope** as productization records.
+2. The product **`billing` port**, app-facing monetization (chargeback/invoicing/tax/rev-share/subscriptions for customer apps), and all money-movement machinery stay **removed** per [ADR-0064](#adr-0064).
+3. **Routing test for future docs:** does this monetize the customer's app or generated stack (out per ADR-0064) or HoBo's own hosted offering (in, as a policy/productization record only — never implementation machinery)?
+4. Every hosted-business commercial doc must cite this ADR in its Authoritative Dependencies section.
+
+### Consequences
+- **(+)** Per-doc scope disclaimers now have a single citable decision; ADR-0064's competitive cut (vs Convex/Lakebed/Nitric) is unchanged.
+- **(↔)** The archived-requirements business-model statement is re-pointed here.
+
+## ADR-0109
+**Polyglot inner loop: per-toolchain watch lanes, replay-based state preservation, and OCI-fallback services under `hobo dev`.**
+
+### Context
+[Plan 07](../developer-experience.md#plan-07)'s inner loop and the [HOBO-122 proof](../proofs/hobo-122-dev-loop/index.md) specify hot reload, codegen-in-watch, and sub-minute boot in TypeScript terms only. [Plan 20](../wasm-runtime-wit.md#plan-20) declares "any language, one artifact" — Rust via `cargo-component`, Go via TinyGo, Python via `componentize-py`, C# via `componentize-dotnet`, plus an OCI-container fallback for workloads that cannot compile to wasm yet. The Aspire tracker ([`docs/competitors/aspire.md`](../../competitors/aspire.md), "DCP (local Go orchestrator)" row) marks the dev loop designed-at-parity, but no design doc states how a non-TS component or a fallback container participates in the local dev loop: watch-recompile path, state-preserving reload, per-idiom-layer codegen, or whether fallback containers run locally at all.
+
+### Decision
+1. **State preservation is runtime-side and toolchain-neutral.** `hobo dev` run state lives in the event log under `.hobo/` and is restored by replay ([Plan 07](../developer-experience.md#plan-07) inner-loop point 2); a reload for **any** lane = swap the recompiled artifact + replay. In-memory, non-event-sourced state is never preserved for any lane (already true for TS).
+2. **Each workload lane declares a watch-recompile path and a latency class** (`fast` <2s · `medium` 2–15s · `slow` >15s), surfaced by `hobo dev` per service exactly like the [ADR-0042](#adr-0042) fidelity labels. The normative matrix lives in [Plan 07](../developer-experience.md#plan-07).
+3. **Codegen-in-watch is layered per idiom layer ([ADR-0072](01-architecture-core.md#adr-0072)):** a WIT edit regenerates bindings for every registered idiom layer (`jco` guest-types for TS, `wit-bindgen` for Rust/Go/Python/C#); TS-only inputs (Zod schemas, `.allow()`, `bind` edges) regenerate only the checked-in `_generated/` TS artifacts ([ADR-0037](01-architecture-core.md#adr-0037)); regeneration is debounced per lane.
+4. **OCI-fallback services DO run under `hobo dev`**, via the developer's local container runtime (Docker/Podman) through the same OCI pipeline ([Plan 21](../authoring-resources-wiring.md#plan-21)), with **restart-on-change** (no hot reload, no in-memory state preservation — only event-log-backed state survives). If no container runtime is present, `hobo doctor` flags it and the service can run as a contract-backed `hobo stub` instead — an honest degraded mode, never a silent skip.
+5. **Proof-scope honesty:** only the TS lane is proof-backed (HOBO-122); every other lane is design-pinned and each matrix cell carries `proven | design-pinned`; a lane's cell may not claim `proven` without its own proof under `docs/design/proofs/`.
+
+### Consequences
+- **(+)** The polyglot promise of [Plan 20](../wasm-runtime-wit.md#plan-20) now has a specified inner loop with honest per-lane labels, reusing replay + the [ADR-0042](#adr-0042) label pattern (net-new surface = a latency-class label + a container restart-on-change policy).
+- **(−)** Non-TS lanes are unproven until dedicated proof slices land, and slow lanes (NativeAOT C#, image rebuilds) make "sub-minute boot" a per-lane promise, not a universal one.
+
+## ADR-0110
 **Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated marketplace monetization.**
 
 ### Context
-[ADR-0064](#adr-0064) §2 removed the product `billing` port and the marketplace monetize/rev-share lifecycle; [ADR-0062](#adr-0062) §5 reaffirmed "No monetization … no commercial tiers"; [ADR-0063](#adr-0063) frames monetization as a positioning anti-goal. Meanwhile productization M0 records entered `docs/design/` ([marketplace-payout-hooks.md](../marketplace-payout-hooks.md) payout state machine incl. `approved-for-payout`; [tax-currency-receipt-obligations.md](../tax-currency-receipt-obligations.md) publisher tax-document posture and billing-reconciliation handoffs) with no amending decision record — the gap [GAPS.md](../../../GAPS.md) finding DRIFT-003 confirmed.
+[ADR-0064](#adr-0064) §2 removed the product `billing` port and the marketplace monetize/rev-share lifecycle; [ADR-0062](#adr-0062) §5 reaffirmed "No monetization … no commercial tiers"; [ADR-0063](#adr-0063) frames monetization as a positioning anti-goal. Meanwhile productization M0 records entered `docs/design/` ([marketplace-payout-hooks.md](../marketplace-payout-hooks.md) payout state machine incl. `approved-for-payout`; [tax-currency-receipt-obligations.md](../tax-currency-receipt-obligations.md) publisher tax-document posture and billing-reconciliation handoffs) with no amending decision record — the gap [GAPS.md](../../../GAPS.md) finding DRIFT-003 confirmed. [ADR-0107](#adr-0107) records the broader hosted-business commercialization boundary; this ADR pins the marketplace-payout subset so it cannot be mistaken for a product billing surface.
 
 ### Decision
 1. **ADR-0064's product-scope cut stands unchanged** — no `billing` port, no rev-share machinery, no commercial tiers in the meta-cloud product or Registry distribution; this ADR amends nothing in that cut.
@@ -362,3 +395,6 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **ADR-P3:** policy language for ABAC — **Resolved by [ADR-0015](02-identity-security.md#adr-0015)** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
 - **ADR-P4:** default Planner objective — **Resolved by [ADR-0033](01-architecture-core.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
 - **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../sdk-api.md#plan-02).
+- **ADR-P6:** preemption policy for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P7:** oversubscription/density limits per component-host — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).

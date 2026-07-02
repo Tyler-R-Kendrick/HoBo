@@ -8,7 +8,7 @@
     "AGENTS.md"
   ],
   "tasks": {
-    "build": { "outputs": ["dist/**", "generated/**", ".turbo/**"] },
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**", "generated/**", ".turbo/**"] },
     "typecheck": { "outputs": ["*.tsbuildinfo", ".cache/tsbuildinfo/**"] },
     "lint": { "outputs": [".cache/eslint/**"] },
     "test": { "dependsOn": ["^build"], "outputs": ["coverage/**", "test-results/**"] },

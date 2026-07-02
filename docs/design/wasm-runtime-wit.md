@@ -11,7 +11,7 @@ This capability doc covers the WASM/WASI runtime — the polyglot spine — toge
 
 Epic reference implementation: [`src/draft/epic-proofs/wit-component-model-runtime-membrane`](../../src/draft/epic-proofs/wit-component-model-runtime-membrane/).
 
-Production package: [`packages/wit`](../../packages/wit/README.md) (`@hobo/wit`, HOBO-583) — vendored `wasi:*` pins, `hobo:sdk@0.1.0` aggregate WIT, deterministic jco bindings, and round-trip surface parity checks.
+Production package: [`packages/wit`](../../packages/wit/README.md) (`@hobo/wit`) — vendored `wasi:*` pins, `hobo:runtime@0.1.0` primitives, `hobo:queue`/`hobo:scheduler`/`hobo:blob-events` capability ports, import-only `hobo:sdk@0.1.0` aggregate, deterministic jco bindings, and round-trip surface parity checks (HOBO-583, HOBO-590).
 
 ## Plan 20
 
@@ -92,7 +92,7 @@ The SDK isn't just *typed from* WIT — its **own surface is a WIT contract**. A
 | Go | TinyGo |
 | Python | `componentize-py` |
 | C#/.NET | `componentize-dotnet` (NativeAOT-LLVM) |
-`@hobo/componentize` wraps these; output is a component pushed as an **OCI artifact** (`wash push`-style). `build-wasm`/`build-dagger` ([Plan 10](./architecture.md#plan-10)) produce both wasm components and the container fallback.
+`@hobo/componentize` wraps these; output is a component pushed as an **OCI artifact** (`wash push`-style). `build-wasm`/`build-dagger` ([Plan 10](./architecture.md#plan-10)) produce both wasm components and the container fallback. Each toolchain adapter also implements `@hobo/componentize`'s watch contract; per-lane watch-recompile latency classes and reload semantics under `hobo dev` are pinned in [ADR-0109](./adr/07-portability-extensibility.md#adr-0109) with the matrix in [Plan 07](./developer-experience.md#plan-07).
 
 **S0 componentize stage gate ([ADR-0105](./adr/01-architecture-core.md#adr-0105), HOBO-603).** For the TypeScript lane, `@bytecodealliance/componentize-js@0.21.0` does not yet emit byte-identical wasm across clean rebuilds (StarlingMonkey/Wizer snapshot nondeterminism; [ComponentizeJS#321](https://github.com/bytecodealliance/ComponentizeJS/issues/321)). S0 therefore gates on **stable `inputsDigest`**, **smoke equivalence** (jco transpile + export invoke), **canonical OCI manifest determinism** from pinned inputs, and **`wasm-tools validate`** in scoped CI — not wasm byte identity. Byte-identical double-build and digest-equality signing gates defer to the artifact signing slice ([HOBO-7](./proofs/hobo-7-signed-artifact-publish-install/index.md)) when upstream reproducibility or `wasm-tools` canonicalization is available. Spike evidence: [`src/draft/technical-proofs/componentize-js-determinism-spike`](../../src/draft/technical-proofs/componentize-js-determinism-spike/README.md).
 
@@ -108,6 +108,22 @@ A component proven on Wasmtime locally must behave **equivalently with respect t
 - **`@hobo/conformance/component-host` suite** ([Plan 9](./generated-stack.md#plan-09)). Any host claiming conformance must pass: **deterministic-clock trace replay** (same run → identical state across hosts, [Plan 11](./data-plane.md#plan-11)), **`wasi:*` interface round-trip** (vendored/pinned interfaces behave identically), **link semantics** (imported-interface → provider-export late-binding resolves the same), **capability-handle isolation** (deny-by-default; an un-linked capability call fails), and the **determinism-relevant host behaviors** — **floating-point/NaN canonicalization, fuel/epoch scheduling, and resource-limit semantics** — that would otherwise diverge silently across hosts. A host may only be selected for a Camp if it passes. Behaviors *outside* the asserted set (wall-clock scheduling jitter, host-specific partial-failure timing) are **declared non-covered divergences**, documented rather than implied-equivalent.
 - **Host version pinned in the manifest IR** ([Plan 21](./authoring-resources-wiring.md#plan-21)). A Bindle records the `component-host` kind + version it was built/certified against; a Camp whose host is incompatible fails planning with a precise reason (mirrors the `wasi:*`/runtime version policy in [ADR-0024](./adr/07-portability-extensibility.md#adr-0024) §5). Host upgrades go through an explicit, gated path with an **upcaster** where semantics change — no silent rewrite of component behavior.
 - **Cross-host E2E** folded into `multi-cloud-shop` ([ADR-0024](./adr/07-portability-extensibility.md#adr-0024)): the same component runs on **Wasmtime local → self-hosted wasmCloud → wasm-in-container → (opt-in) provider-native** with identical behavior under trace replay. Host-specific capabilities (e.g. wasmCloud lattice link-migration) are typed as **host-`.with()`** options, inert on hosts that don't offer them, and flagged by **`hobo doctor`** as host lock-in (same model as provider `.with()`).
+
+### In-Camp scheduling & placement ([ADR-0108](./adr/01-architecture-core.md#adr-0108))
+- **The scheduler seam** — scheduling is part of the `component-host` port; each adapter names its scheduler of record ([ADR-0108](./adr/01-architecture-core.md#adr-0108)).
+- **Default: wadm on the wasmCloud lattice** — manifest IR → wadm/OAM manifest; `scaling {min,max}` → spreadscaler; spread/anti-affinity → host labels.
+- **Per-substrate delegation table**
+
+| Substrate | Scheduler of record | How `scaling` is realized |
+|---|---|---|
+| k8s | Two-level: k8s scheduler (host pods) + wadm (components) | wadm spreadscaler on lattice hosts; pod replica count for wasm-in-container floor |
+| Coolify/Docker | wadm across registered lattice hosts | spreadscaler min/max |
+| bare-metal/VPS | wadm across registered lattice hosts | spreadscaler min/max |
+| wasm-in-container floor | Substrate replica primitive (no lattice) | k8s Deployment replicas / Coolify service scale |
+| provider-native (Cloudflare Workers) | Provider scheduler | Provider-native scale; unmappable annotations inert |
+
+- **Semantics disposition** — **bin-packing**: delegated (wadm spreadscaler; k8s scheduler for host pods). **Spread/anti-affinity**: delegated (wadm spreadscaler host labels). **Host drain**: designed (cordon, re-place via lattice link late-binding, remove; compose with k8s node drain). **Preemption**: deferred ([ADR-P6](./adr/07-portability-extensibility.md#open--proposed-decisions-adr-pn)). **Oversubscription**: deferred ([ADR-P7](./adr/07-portability-extensibility.md#open--proposed-decisions-adr-pn)). **Capacity reservation**: deferred ([ADR-P8](./adr/07-portability-extensibility.md#open--proposed-decisions-adr-pn)).
+- **Not actor placement** — this is distinct from [Plan 5](./reliability-observability-cost.md#plan-05) actor-key leases (consistent-hash grain placement); [ADR-0108](./adr/01-architecture-core.md#adr-0108) governs service-component instances only.
 
 ### Security substrate
 - Deny-by-default: a component gets *only* the links its `.allow()` declarations grant.

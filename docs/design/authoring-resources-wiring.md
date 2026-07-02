@@ -130,6 +130,8 @@ DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07
 
 ### Wiring & the manifest IR (Aspire model)
 
+> **S1-15 production (HOBO-605):** bind-reference wiring lives in `@hobo/bindles` (`packages/bindles/src/wiring/*`), topology scope objects in `@hobo/camps` and `@hobo/yards`, and local binding resolution in `@hobo/camps` + `@hobo/runtime-local`. Draft POC: [`s1-15-bind-wiring-topology-contract`](../../src/draft/technical-proofs/s1-15-bind-wiring-topology-contract/README.md).
+
 > **Deltas & Sets (Humanitec parity).** The manifest IR is the immutable **Deployment Set**; a **Delta** is a mutable diff against it (draft→review→promote), both event-sourced ([Plan 25](./platform-engineering.md#plan-25)). Placeholders/output-refs align to Humanitec syntax (`${resources.<type>.<class>#<id>.outputs.<name>}`, `${context.*}`) — see [Plan 25](./platform-engineering.md#plan-25). Besides direct apply, a **GitOps publisher** can write the Set to Git for Argo/Flux ([Plan 25](./platform-engineering.md#plan-25)).
 
 `bind` is a **reference**: lazy, convention-based, adopting Aspire `.WithReference()` semantics.
@@ -158,7 +160,7 @@ addContainer("cuda-job", "ghcr.io/acme/cuda-job:1.2")    // wires + builds via B
 ```
 The BuildProvider is the programmable build seam: a prebuilt image short-circuits the build; a source dir is compiled (wasm-on-OCI by default) before the edge/link is finalized.
 
-**Annotations are typed extensibility (`.with(...)`).** Aspire attaches behavior via resource **annotations** consumed by deploy tools. HoBo's existing provider-specific options pattern **is** this: `.with(provider.options())` adds typed annotations that the resolved Provider/IaC adapter consumes; non-resolved providers' annotations are inert ([Plan 2](./sdk-api.md#plan-02)). First-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral.
+**Annotations are typed extensibility (`.with(...)`).** Aspire attaches behavior via resource **annotations** consumed by deploy tools. HoBo's existing provider-specific options pattern **is** this: `.with(provider.options())` adds typed annotations that the resolved Provider/IaC adapter consumes; non-resolved providers' annotations are inert ([Plan 2](./sdk-api.md#plan-02)). First-party annotations (health, lifetime, replicas, scaling, residency) are typed and provider-neutral. `scaling {min,max}` is consumed by the Camp's `component-host` scheduler ([ADR-0108](./adr/01-architecture-core.md#adr-0108)).
 
 **The manifest IR (deployment intermediate representation).** Resource-collection emits a **HoBo manifest** — the union of Nitric's resource spec and Aspire's `aspire-manifest.json`. It is the single artifact the Planner/Orchestrator consume and that publishers/IaC adapters render to real infra. The production schema, CUE constraints, and `parseManifest` loader live in [`packages/bindles/data-models/`](../../packages/bindles/data-models/) (`hobo.manifest/v1`). Sketch:
 ```jsonc

@@ -92,6 +92,9 @@ npm.cmd --prefix src/draft/epic-proofs/reliability-observability-cost-finops tes
 - Wire provider verification once production boundary services exist.
 - Split cross-epic connectivity and progressive-delivery policy details back to their owning epics.
 - Promote stable reference slices into production packages only after package ownership is decided.
+- **HOBO-660:** S6-05 observability drift loop draft POC at
+  [`s6-05-observability-drift-loop-contract`](../../technical-proofs/s6-05-observability-drift-loop-contract/README.md)
+  exercises OTLP export, SLO burn alerts, and drift heal/propose/ignore in an E2E lane.
 
 
 ## Architecture Evidence

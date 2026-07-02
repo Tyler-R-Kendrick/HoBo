@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHelloBindle } from "./helpers.js";
+import { buildHelloBindle, componentizeRealBuildSkipReason } from "./helpers.js";
+
+const realBuildIt = componentizeRealBuildSkipReason ? it.skip : it;
 
 describe("componentize OCI descriptor", () => {
-  it("builds a canonical manifest with expected annotations", async () => {
+  realBuildIt("builds a canonical manifest with expected annotations", async () => {
     const result = await buildHelloBindle();
 
     expect(result.oci.artifactType).toBe("application/vnd.wasm.component.v1+wasm");

@@ -21,7 +21,7 @@ for publisher payout readiness, eligibility states, tax/identity handoffs,
 billing reconciliation, payout hold reasons, and support-safe limitations. It
 does not build payout execution, settlement, provider integration, tax document
 flows, revenue sharing, marketplace UI, or money movement. The governing
-boundary decision is [ADR-0107](./adr/07-portability-extensibility.md#adr-0107):
+boundary decision is [ADR-0110](./adr/07-portability-extensibility.md#adr-0110):
 payout readiness is a launch-gated commercial-operations posture, not reinstated
 marketplace monetization.
 
@@ -108,7 +108,7 @@ which claims remain launch limitations.
   escalation and gap-routing posture for payout holds, unsupported states, and release blockers.
 - [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) keeps monetization mechanics outside
   HoBo's meta-cloud core.
-- [ADR-0107](./adr/07-portability-extensibility.md#adr-0107) records that payout readiness is a
+- [ADR-0110](./adr/07-portability-extensibility.md#adr-0110) records that payout readiness is a
   launch-gated commercial-operations posture and does not reinstate the marketplace monetize/rev-share
   scope removed by ADR-0064.
 

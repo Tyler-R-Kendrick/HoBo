@@ -1,0 +1,9 @@
+{
+  "name": "@hobo/draft-hobo-runtime-ts-primitives",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  }
+}

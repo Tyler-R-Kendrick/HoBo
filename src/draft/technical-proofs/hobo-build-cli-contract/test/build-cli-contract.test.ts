@@ -39,6 +39,19 @@ test("hobo build emits wasm and OCI fallback artifacts with JSON digests", async
   });
 });
 
+test("hobo build accepts SOURCE_DATE_EPOCH as Unix seconds", async () => {
+  await withSeededBuildProject(async (projectRoot) => {
+    const result = await createBuildCli().run(["build", "--json"], {
+      cwd: projectRoot,
+      env: { ...process.env, SOURCE_DATE_EPOCH: "1704067200" },
+    });
+
+    assert.equal(result.exitCode, 0);
+    const manifest = JSON.parse(await readFile(join(projectRoot, BUILD_MANIFEST_PATH), "utf8"));
+    assert.equal(manifest.sourceDateEpoch, "2024-01-01T00:00:00.000Z");
+  });
+});
+
 test("hobo build digests are stable on repeat and across clean checkouts", async () => {
   let cleanCheckoutArtifacts;
 

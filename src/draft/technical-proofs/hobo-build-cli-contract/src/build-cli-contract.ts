@@ -323,8 +323,20 @@ function parseArgv(argv, cwd, env) {
     json: flags.json,
     projectRoot: resolve(cwd),
     targetRuntime: flags.targetRuntime,
-    sourceDateEpoch: env.SOURCE_DATE_EPOCH ?? DEFAULT_SOURCE_DATE_EPOCH,
+    sourceDateEpoch: normalizeSourceDateEpoch(env.SOURCE_DATE_EPOCH ?? DEFAULT_SOURCE_DATE_EPOCH),
   };
+}
+
+function normalizeSourceDateEpoch(value) {
+  const raw = String(value);
+  if (/^\d+$/u.test(raw)) {
+    const epochMs = Number(raw) * 1000;
+    const date = new Date(epochMs);
+    if (Number.isFinite(epochMs) && !Number.isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+  return raw;
 }
 
 function renderSuccess(request, result) {

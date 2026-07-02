@@ -9,7 +9,18 @@ This proof backs [PLAN-11](../../data-plane.md#plan-11),
 
 The executable POC in
 [`src/draft/technical-proofs/camp-eventstore-runtime-port-contract`](../../../../src/draft/technical-proofs/camp-eventstore-runtime-port-contract)
-pins the HOBO-20 runtime-local EventStore boundary:
+pins the HOBO-20 runtime-local EventStore boundary.
+
+**Promoted to production:** [`packages/runtimes/runtime-local`](../../../../packages/runtimes/runtime-local)
+(S1-05 / HOBO-594) — SQLite-backed `createRuntimeLocalEventStore` with durability
+assertions. The `@hobo/conformance` EventStore suite runs from
+[`packages/conformance/test/runtime-local-eventstore.conformance.test.ts`](../../../../packages/conformance/test/runtime-local-eventstore.conformance.test.ts)
+(adapter boundary lint forbids `@hobo/conformance` imports inside runtime-local).
+The promoted runtime uses Node's built-in `node:sqlite` adapter, so
+`@hobo/runtime-local` keeps Node 24+ type support with the package. Pact replay
+fixtures remain package-local under `packages/runtimes/runtime-local/contracts/`.
+
+The draft POC still pins the HOBO-20 runtime-local EventStore boundary:
 
 - `append/read/subscribe/snapshot` operate over an append-only per-stream log;
 - `EventEnvelope` carries per-stream `seq`, runtime-clock timestamp, actor,

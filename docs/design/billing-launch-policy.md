@@ -80,7 +80,8 @@ provider integration boundaries, and legal/privacy blockers.
 ## Authoritative Dependencies
 
 - [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) keeps business/monetization mechanics
-  outside the meta-cloud core; HOBO-489 is a launch-readiness policy record, not core billing
+  outside the meta-cloud core; [ADR-0107](./adr/07-portability-extensibility.md#adr-0107) records
+  that this launch-readiness policy is design-scope hosted-business productization, not core billing
   machinery.
 - [Plan 05](./reliability-observability-cost.md#plan-05) and
   [ADR-0039](./adr/02-identity-security.md#adr-0039) own metering, showback, quotas, and cost

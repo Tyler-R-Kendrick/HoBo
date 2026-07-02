@@ -4,6 +4,13 @@ HOBO-4 is proven by the focused POC at [`src/draft/technical-proofs/hobo-compone
 
 S0-07 draft implementation (real `componentize-js` + `jco` toolchain) lives at [`src/draft/technical-proofs/hobo-componentize`](../../../../src/draft/technical-proofs/hobo-componentize/README.md) pending promotion to `packages/componentize/` now that S0-06 (`@hobo/wit`) has merged. HOBO-603 spike evidence is at [`src/draft/technical-proofs/componentize-js-determinism-spike`](../../../../src/draft/technical-proofs/componentize-js-determinism-spike/README.md).
 
+**S1-23 integration (HOBO-613):** `hobo build` is promoted to
+[`packages/cli`](../../../../packages/cli/README.md) (command + digest parity tests) and
+consumes [`@hobo/componentize`](../../../../packages/componentize/README.md);
+golden digest `sha256:c0d38866fc7ad727a9c2bf877919fb5aa0a3f8a5057f6bd59b55f38f8fe8dfc0`.
+Draft rollup evidence remains at
+[`src/draft/projects/s1-23-hobo-build`](../../../../src/draft/projects/s1-23-hobo-build/README.md).
+
 Acceptance mapping:
 
 - `hello-bindle` builds into a deterministic wasm component artifact envelope and OCI descriptor.

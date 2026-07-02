@@ -1,21 +1,82 @@
 import { describe, expect, it } from "vitest";
 
-import { bindle } from "../src/index.js";
+import { bindle } from "../src/bindle.js";
 
-describe("@hobo/bindles closure builder", () => {
-	it("assembles provider-agnostic manifest objects with dependsOn edges", () => {
-		const manifest = bindle("hello-bindle", (b) => {
-			const cache = b.cache();
-			const api = b.api(() => ({ ok: true })).dependsOn(cache);
-			return { cache, api };
+describe("bindle()", () => {
+	it("builds a graph with at least two resources and one dependsOn edge", () => {
+		const definition = bindle("shop", (b) => {
+			const store = b.data();
+			const orders = b.queue();
+			const api = b.api().dependsOn(store, orders);
+			return { store, orders, api };
 		});
 
-		expect(manifest.name).toBe("hello-bindle");
-		expect(manifest.resources).toHaveLength(2);
-		expect(manifest.resources.map((resource) => resource.kind)).toEqual(["cache", "api"]);
-		expect(manifest.relationships).toEqual([
-			{ from: "res_api_0001", to: "res_cache_0001", verb: "dependsOn" },
+		expect(Object.isFrozen(definition)).toBe(true);
+		expect(definition.name).toBe("shop");
+		expect(Object.keys(definition.resources)).toEqual(["store", "orders", "api"]);
+		expect(definition.resources.store).toEqual({
+			kind: "data",
+			name: "store",
+			stableId: "data:store",
+			declaredAllow: [],
+			annotations: [],
+			dependsOn: [],
+		});
+		expect(definition.edges).toEqual([{ from: "api", to: "store" }, { from: "api", to: "orders" }]);
+		expect(JSON.parse(JSON.stringify(definition))).toEqual({
+			name: "shop",
+			resources: {
+				store: {
+					kind: "data",
+					name: "store",
+					stableId: "data:store",
+					declaredAllow: [],
+					annotations: [],
+					dependsOn: [],
+				},
+				orders: {
+					kind: "queue",
+					name: "orders",
+					stableId: "queue:orders",
+					declaredAllow: [],
+					annotations: [],
+					dependsOn: [],
+				},
+				api: {
+					kind: "api",
+					name: "api",
+					stableId: "api:api",
+					declaredAllow: [],
+					annotations: [],
+					dependsOn: ["data", "queue"],
+				},
+			},
+			edges: [
+				{ from: "api", to: "store" },
+				{ from: "api", to: "orders" },
+			],
+		});
+	});
+
+	it("records allow narrowing and opaque provider annotations", () => {
+		const definition = bindle("annotated", (b) => ({
+			todos: b.kv().allow("get", "set"),
+			api: b
+				.api()
+				.with({ provider: "aws", option: "fargate", config: { cpu: 512 } }),
+		}));
+
+		expect(definition.resources.todos.declaredAllow).toEqual(["get", "set"]);
+		expect(definition.resources.api.annotations).toEqual([
+			{ provider: "aws", option: "fargate", config: { cpu: 512 } },
 		]);
-		expect(manifest.aliases.cache.generatedId).toBe("res_cache_0001");
+	});
+
+	it("rejects empty resource names", () => {
+		expect(() =>
+			bindle("shop", (b) => ({
+				"": b.kv(),
+			})),
+		).toThrow(/bindle resource names must be non-empty strings/);
 	});
 });

@@ -10,6 +10,8 @@ This proof records the HOBO-31 spike decision: SDK parity has two independent la
 
 Executable proof bundle: [`../../../../src/draft/technical-proofs/idiom-semantics-annex`](../../../../src/draft/technical-proofs/idiom-semantics-annex).
 
+**Draft POC (HOBO-614):** annex vectors and `runSemanticsAnnex` ported to [`../../../../src/draft/projects/s1-24-conformance-sdk/src/sdk`](../../../../src/draft/projects/s1-24-conformance-sdk/src/sdk).
+
 Focused verification:
 
 ```powershell

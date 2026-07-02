@@ -1,7 +1,10 @@
 # HOBO-75 Collection Coverage Gate Proof
 
 HOBO-75 is proven by the focused POC at
-[`src/draft/technical-proofs/collection-coverage-gate-contract`](../../../../src/draft/technical-proofs/collection-coverage-gate-contract/README.md).
+[`src/draft/technical-proofs/collection-coverage-gate-contract`](../../../../src/draft/technical-proofs/collection-coverage-gate-contract/README.md)
+and the consolidated S1-17 draft at
+[`src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc`](../../../../src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc)
+(HOBO-607).
 
 ## Acceptance Evidence
 

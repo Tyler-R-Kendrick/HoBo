@@ -112,4 +112,7 @@
 | 0104 | SLO-gated rollback decisions use sustained evidence, not single-sample panic | [identity-security](02-identity-security.md#adr-0104) |
 | 0105 | Componentize-js S0 stage gate: stable inputs digest + smoke + OCI manifest determinism; byte-identical wasm deferred | [architecture-core](01-architecture-core.md#adr-0105) |
 | 0106 | Nomad evaluated & displaced: wasmCloud + Matching + Dispatcher subsume the scheduler pillar; Nomad = accepted-future deploy-target adapter | [architecture-core](01-architecture-core.md#adr-0106) |
-| 0107 | Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated monetization | [portability-extensibility](07-portability-extensibility.md#adr-0107) |
+| 0107 | Hosted-business commercialization records are design-scope productization; the product billing surface stays removed | [portability-extensibility](07-portability-extensibility.md#adr-0107) |
+| 0108 | In-Camp workload scheduling: the component-host scheduler seam (wadm default; substrate-delegated) | [architecture-core](01-architecture-core.md#adr-0108) |
+| 0109 | Polyglot inner loop: per-toolchain watch lanes, replay-based state preservation & OCI-fallback under `hobo dev` | [portability-extensibility](07-portability-extensibility.md#adr-0109) |
+| 0110 | Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated monetization | [portability-extensibility](07-portability-extensibility.md#adr-0110) |

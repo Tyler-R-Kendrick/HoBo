@@ -63,6 +63,7 @@ The same projection-and-event model the dashboard renders is what the CLI drives
 
 #### DX principles
 1. **`npx hobo new` to running in under a minute** — no cloud account required for `hobo dev`.
+   - **Maintenance (S1-20 / HOBO-610):** production CLI shell + offline `hobo new` scaffolds ship in `packages/cli` (`@hobo/cli`), promoting the HOBO-115/HOBO-118 draft proofs.
 2. **The agnostic path is the default path** — you can build, run, test, and inspect locally before ever choosing a provider.
 3. **Fast inner loop** — hot reload of handlers/workflows; local runtime with replay; no deploy needed to iterate.
 4. **Type-safe across the agnostic path** — bindings, workflow signatures, and provider options are all typed; the editor guides you. (The `.raw()` escape hatch is untyped by design and the run-to-collect resource graph is coverage-gated — the two declared exceptions, [Plan 2 §Type ergonomics](./sdk-api.md#plan-02).)
@@ -134,9 +135,34 @@ The objects *are* the topology; provider choice and cross-cloud wiring live on C
 
 #### The inner loop (`hobo dev`)
 1. Resources resolve to **local equivalents** (containerized Postgres, in-memory queue, local object store) via the dev provider layer.
-2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/01-architecture-core.md#adr-0037)).
+2. Handlers/workflows hot-reload; the local runtime persists events to `.hobo/` so runs survive restarts and are replayable/inspectable offline. **Codegen runs in the watch loop** — editing a WIT interface, a Zod schema, an `.allow()`, or a `bind` regenerates the checked-in `_generated/` typed clients, so editor types stay live with no build step ([ADR-0037](./adr/01-architecture-core.md#adr-0037)). S1-22 draft POC (`src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`, HOBO-612) exercises collect → link → run, event-sourced `dev.*` state, and the ≤60s cold-boot gate (`scripts/ci/dev-cold-loop-timing.mts`) ahead of `packages/cli/` promotion.
 3. `hobo inspect`/`logs` work against localhost with no auth (matching Lakebed's local ergonomics).
 4. Determinism tests (`replay == state`) run in CI from the same local runtime ([Plan 2](./sdk-api.md#plan-02), [Plan 9](./generated-stack.md#plan-09)).
+
+##### Local multi-service orchestration — lifecycle annotations under `hobo dev` ([Plan 21](./authoring-resources-wiring.md#plan-21), [Plan 4](./control-plane.md#plan-04))
+
+`hobo dev` stands up the **whole collected manifest** as a local graph — not one process at a time. The local orchestrator reuses the deploy **dependency DAG** (`bind` edges from resource collection plus explicit `waitFor` annotations) and applies the same **choreography** model as the control plane ([Plan 4](./control-plane.md#plan-04)): each resource self-activates when its declared gates are satisfied; there is no central step coordinator. Startup progress is surfaced in the local inspector as waves (**Starting** → **Ready** per resource).
+
+The normative matrix below pins **local lifecycle behavior per annotation class** from [Plan 21](./authoring-resources-wiring.md#plan-21). Deploy-only provider annotations (`.with(aws.fargate)` etc.) are **inert locally** — unchanged from Plan 21.
+
+| Annotation class | Authoring surface | Local `hobo dev` behavior | Ready gate |
+|---|---|---|---|
+| **Dependency edge** | `bind: { db }`, manifest `links` | Edge recorded in the local DAG; consumer env/refs stay unresolved until the producer is **Ready** | Producer **Ready** |
+| **Endpoints** | `withHttpEndpoint`, `withEndpoint` | Ports allocated on `localhost`; `external: true` publishes a host-reachable URL in the inspector; scheme/protocol honored for local routing | Listener bound |
+| **Env / args** | `withEnvironment`, `withArgs` | Lazy reference values (`{db.connectionString}`, `ConnectionStrings__*`) resolve when the referenced resource is **Ready**; static values apply at start | All lazy refs resolved |
+| **Storage** | `withBindMount`, `withVolume` | Bind mounts map host paths; named volumes live under `.hobo/volumes/<name>/` and survive hot reload; `withLifetime("persistent")` volumes also survive `hobo dev` process restart | Mount/volume attached |
+| **Lifetime** | `withLifetime("persistent")` | Persistent containers/volumes are **not** torn down on hot reload; on `hobo dev` restart they are reattached from `.hobo/` state when still valid | Reattach or first-create complete |
+| **Explicit startup** | `withExplicitStartup()` | Resource stays **Stopped** until the developer runs `hobo dev start <resource>` **or** every `waitFor` target is **Ready** (whichever comes first) | Manual start or `waitFor` gates cleared |
+| **Wait for resource** | `waitFor(dep)` | Dependent does not leave **Starting** until `dep` is **Ready** (started + health passed when annotated) — stricter than a bare `bind` edge, which only gates env injection | `dep` is **Ready** |
+| **Wait for job** | `waitForCompletion(job)` | One-shot/job workloads must exit **0** before dependents activate; non-zero exit surfaces **Start failed** with remediation | `job` exited 0 |
+| **Health** | `withHttpHealthCheck(path)`, `withHealthCheck()` | Local probe against `localhost` (same path/port as deploy); failure blocks **Ready** and keeps `waitFor` dependents in **Starting**; feeds the same rollout semantics as [Plan 5](./reliability-observability-cost.md#plan-05) but against local endpoints | Probe success |
+| **Replicas** | `replicas` annotation | Forced to **1** instance locally; inspector shows `replicas: 1 (local)` | Single instance running |
+| **Scaling** | `scaling { min, max }` | **Ignored for placement** — local graph always runs `min` instances capped at 1; inspector labels `scaling: local-fixed-1` | N/A (fixed local count) |
+| **Residency** | `residency` / region pins | **Advisory label only** — no placement effect locally; shown in inspector for parity with plan review | N/A |
+
+**Shutdown and reload.** On source hot reload, wasm/component lanes swap artifacts and replay event-backed state ([ADR-0037](./adr/01-architecture-core.md#adr-0037)); `addContainer` lanes restart-on-change per [ADR-0042](./adr/07-portability-extensibility.md#adr-0042). Tear-down on `hobo dev` stop walks the DAG in **reverse dependency order** (dependents first) — the inverse of startup choreography. `withLifetime("persistent")` resources may be left running across stop when `.hobo/persistent.keep` is set (opt-in; default is full tear-down).
+
+Executable acceptance for this matrix lives in [`src/draft/technical-proofs/local-dev-orchestration-contract`](../../src/draft/technical-proofs/local-dev-orchestration-contract/README.md) ([HOBO-694 proof](./proofs/hobo-694-local-dev-orchestration/index.md)).
 
 Local resilience diagnostics use the same rule: the developer-facing output is a
 projection of persisted facts, not process memory. The HOBO-520 proof command in
@@ -144,6 +170,21 @@ projection of persisted facts, not process memory. The HOBO-520 proof command in
 denial, caller cancellation cleanup, and deadline escalation from replay-derived
 facts, while keeping hosted dashboards and production observability out of this
 slice.
+
+##### Per-workload dev loop — TS, non-TS components, and OCI-fallback services ([ADR-0109](./adr/07-portability-extensibility.md#adr-0109))
+
+State preservation is replay-based and therefore toolchain-neutral: run state lives in `.hobo/` and survives reload for every wasm lane. Lanes differ only in recompile latency, which generated artifacts refresh on edit, and how OCI-fallback services restart. `hobo dev` surfaces a per-lane **latency class** (`fast` · `medium` · `slow`) alongside the [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) fidelity labels.
+
+| Workload lane | Watch → recompile path | Latency class | Run state across reload | Regenerated artifacts | Under `hobo dev`? | Status |
+|---|---|---|---|---|---|---|
+| TS/JS (`jco` + `componentize-js`) | transpile + re-componentize on save | fast | preserved (replay from `.hobo/`) | `_generated/` TS clients on WIT/Zod/`.allow()`/`bind` edits | yes | **proven** ([HOBO-122 proof](./proofs/hobo-122-dev-loop/index.md)) |
+| Rust (`cargo-component`) | debounced `cargo component build` | medium | preserved (replay) | wit-bindgen bindings on WIT edits (+ `_generated/` TS only if the WIT changed) | yes | design-pinned |
+| Go (TinyGo) | debounced `tinygo build` to component | medium | preserved (replay) | same as Rust | yes | design-pinned |
+| Python (`componentize-py`) | re-componentize on save | medium | preserved (replay) | same as Rust | yes | design-pinned |
+| C#/.NET (`componentize-dotnet`, NativeAOT-LLVM) | debounced rebuild | slow | preserved (replay) | same as Rust | yes | design-pinned |
+| OCI-fallback container | image rebuild (or bind-mount) + restart-on-change via local Docker/Podman through the same OCI pipeline ([Plan 21](./authoring-resources-wiring.md#plan-21)) | slow | **not preserved in-memory** — only event-log-backed state | none (no idiom layer) | yes, restart-on-change; without a container runtime, `hobo doctor` flags it and the service runs as a `hobo stub` | design-pinned |
+
+Only the TS lane is proof-backed; the others are design-pinned pending their own proof slices (per [ADR-0109](./adr/07-portability-extensibility.md#adr-0109) point 5).
 
 ##### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042))
 "Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./generated-stack.md#plan-09)).

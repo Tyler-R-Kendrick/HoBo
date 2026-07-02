@@ -44,22 +44,43 @@ importers:
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../../packages/bindles
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../../packages/camps
       '@hobo/componentize':
         specifier: workspace:*
         version: link:../../packages/componentize
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../../packages/runtimes/runtime-local
       '@hobo/wit':
         specifier: workspace:*
         version: link:../../packages/wit
-
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../../packages/yards
 
   packages/bindles:
     dependencies:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
-      '@hobo/wit':
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+
+  packages/camps:
+    dependencies:
+      '@hobo/bindles':
         specifier: workspace:*
-        version: link:../wit
+        version: link:../bindles
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: ^22.15.29
@@ -79,12 +100,16 @@ importers:
 
   packages/cli:
     dependencies:
+      '@hobo/componentize':
+        specifier: workspace:*
+        version: link:../componentize
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
-      '@hobo/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
 
   packages/componentize:
     dependencies:
@@ -101,6 +126,13 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      tsx:
+        specifier: ^4.20.3
+        version: 4.22.4
 
   packages/contract-harness:
     devDependencies:
@@ -120,11 +152,58 @@ importers:
         specifier: workspace:*
         version: link:../contract-harness
 
+  packages/policy:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(terser@5.48.0)(tsx@4.22.4))
+
   packages/runtime:
     dependencies:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      tsx:
+        specifier: ^4.20.3
+        version: 4.22.4
+
+  packages/runtimes/runtime-local:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      '@hobo/conformance':
+        specifier: workspace:*
+        version: link:../../conformance
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 26.0.1
+
+  packages/stage-gate:
+    devDependencies:
+      '@hobo/componentize':
+        specifier: workspace:*
+        version: link:../componentize
+      '@types/node':
+        specifier: ^22.19.11
+        version: 22.20.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(terser@5.48.0)(tsx@4.22.4))
 
   packages/wit:
     devDependencies:
@@ -144,6 +223,19 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(terser@5.48.0)(tsx@4.22.4))
 
+  packages/yards:
+    dependencies:
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../camps
+    devDependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+
   src/draft/epic-proofs/cli-mcp-developer-experience: {}
 
   src/draft/epic-proofs/contracts-policy-governance: {}
@@ -152,13 +244,19 @@ importers:
 
   src/draft/epic-proofs/data-plane-event-sourcing-cqrs-reactivity: {}
 
+  src/draft/epic-proofs/deployment-strategy-saga-orchestrator: {}
+
   src/draft/epic-proofs/finops-budget-routing-control-plane: {}
 
   src/draft/epic-proofs/foundations-build-conformance-harness: {}
 
   src/draft/epic-proofs/generation-pipeline-training-ai-safety: {}
 
+  src/draft/epic-proofs/governance-planes-s6-08: {}
+
   src/draft/epic-proofs/identity-auth-secrets-cross-app-access-xaa: {}
+
+  src/draft/epic-proofs/mapping-styles-planner-resolution: {}
 
   src/draft/epic-proofs/networking-connectivity-dns-relay: {}
 
@@ -172,7 +270,13 @@ importers:
 
   src/draft/epic-proofs/reliability-observability-cost-finops: {}
 
+  src/draft/epic-proofs/s1-10-conformance-trust-boundary: {}
+
+  src/draft/epic-proofs/s2-stage-gate-first-cloud-yard: {}
+
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
+
+  src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy: {}
 
   src/draft/epic-proofs/v1-vibe-example-gap-closure: {}
 
@@ -219,6 +323,8 @@ importers:
   src/draft/exp-proofs/capability-review-approval-scope: {}
 
   src/draft/exp-proofs/chaos-resilience-tests-scope-acceptance: {}
+
+  src/draft/exp-proofs/cli-cloud-yard-path: {}
 
   src/draft/exp-proofs/cli-deploy-transcript-prototype: {}
 
@@ -285,6 +391,8 @@ importers:
   src/draft/exp-proofs/environment-lifecycle-scope: {}
 
   src/draft/exp-proofs/example-apps-scope-acceptance: {}
+
+  src/draft/exp-proofs/full-dashboard-projection-views-contract: {}
 
   src/draft/exp-proofs/gitops-ci-journey-contract: {}
 
@@ -501,6 +609,18 @@ importers:
 
   src/draft/projects/s0-03-hobo-core: {}
 
+  src/draft/projects/s1-23-hobo-build: {}
+
+  src/draft/projects/s1-24-conformance-sdk: {}
+
+  src/draft/projects/s2-08-provider-cloudflare: {}
+
+  src/draft/projects/s3-02-hobo-identity:
+    devDependencies:
+      '@types/node':
+        specifier: 26.0.1
+        version: 26.0.1
+
   src/draft/projects/s6-06-finops-plane: {}
 
   src/draft/technical-proofs/acme-dns01-cert-issuance-contract: {}
@@ -656,6 +776,8 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  src/draft/technical-proofs/credential-audit-projection-contract: {}
+
   src/draft/technical-proofs/credit-ledger-view-contract: {}
 
   src/draft/technical-proofs/crew-event-contract: {}
@@ -696,6 +818,8 @@ importers:
 
   src/draft/technical-proofs/deployment-view-saga-graph-contract: {}
 
+  src/draft/technical-proofs/deterministic-replay-engine: {}
+
   src/draft/technical-proofs/disaster-recovery-failover-contract: {}
 
   src/draft/technical-proofs/dispatcher-maximize-credits-contract: {}
@@ -725,6 +849,8 @@ importers:
   src/draft/technical-proofs/drift-orphan-sweep-contract: {}
 
   src/draft/technical-proofs/driver-dispatch-routing-contract: {}
+
+  src/draft/technical-proofs/durable-agent-primitive-contract: {}
 
   src/draft/technical-proofs/end-user-authorization-policy-contract: {}
 
@@ -758,9 +884,13 @@ importers:
 
   src/draft/technical-proofs/flag-ruleset-sync-contract: {}
 
+  src/draft/technical-proofs/forge-certification-loop-contract: {}
+
   src/draft/technical-proofs/full-text-search-contract: {}
 
   src/draft/technical-proofs/gated-autonomous-remediation-contract: {}
+
+  src/draft/technical-proofs/gatekeeper-v1-policy-contracts: {}
 
   src/draft/technical-proofs/gatekeeper-verify-contract: {}
 
@@ -805,6 +935,8 @@ importers:
   src/draft/technical-proofs/graphql-facade-runtime-contract: {}
 
   src/draft/technical-proofs/guardrail-policy-gate-contract: {}
+
+  src/draft/technical-proofs/hobo-612-dev-local-loop-poc: {}
 
   src/draft/technical-proofs/hobo-add-install-verification-contract: {}
 
@@ -947,6 +1079,8 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  src/draft/technical-proofs/hobo-runtime-ts-primitives: {}
+
   src/draft/technical-proofs/hobo-sdk-aggregate-wit-contract:
     devDependencies:
       '@bytecodealliance/jco':
@@ -1008,6 +1142,12 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
 
+  src/draft/technical-proofs/ifc-handler-trigger-hobo-608:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
   src/draft/technical-proofs/inbound-xaa-resource-server-contract: {}
 
   src/draft/technical-proofs/incident-aggregate-contract: {}
@@ -1048,6 +1188,8 @@ importers:
 
   src/draft/technical-proofs/mcp-server-hardening-contract: {}
 
+  src/draft/technical-proofs/membrane-deadline-backpressure-contract: {}
+
   src/draft/technical-proofs/meta-cloud-broker-artifact-contract: {}
 
   src/draft/technical-proofs/meta-cloud-broker-resolution-contract: {}
@@ -1063,6 +1205,8 @@ importers:
   src/draft/technical-proofs/mtls-data-path-contract: {}
 
   src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract: {}
+
+  src/draft/technical-proofs/multi-region-dr-replay-contract: {}
 
   src/draft/technical-proofs/native-log-projection-contract: {}
 
@@ -1099,6 +1243,8 @@ importers:
   src/draft/technical-proofs/operator-integration-ports-contract: {}
 
   src/draft/technical-proofs/orchestrator-choreography-skeleton-contract: {}
+
+  src/draft/technical-proofs/orchestrator-reconciliation-fsm-contract: {}
 
   src/draft/technical-proofs/otel-traces-pipeline-contract: {}
 
@@ -1171,6 +1317,12 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
+  src/draft/technical-proofs/provider-aws-full-capability-catalog-contract:
+    devDependencies:
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+
   src/draft/technical-proofs/provider-azure-contract:
     devDependencies:
       typescript:
@@ -1235,6 +1387,8 @@ importers:
 
   src/draft/technical-proofs/registry-artifact-descriptor-contract: {}
 
+  src/draft/technical-proofs/registry-capability-manifest-ingest-contract: {}
+
   src/draft/technical-proofs/registry-compromise-guard-contract: {}
 
   src/draft/technical-proofs/registry-dependency-confusion-guard-contract: {}
@@ -1285,6 +1439,15 @@ importers:
 
   src/draft/technical-proofs/runtime-port-conformance-contract: {}
 
+  src/draft/technical-proofs/runtime-postgres-ports:
+    dependencies:
+      pg:
+        specifier: ^8.16.0
+        version: 8.22.0
+      pg-mem:
+        specifier: ^3.0.5
+        version: 3.0.14
+
   src/draft/technical-proofs/s0-04-protobuf-cue-codegen:
     devDependencies:
       '@bufbuild/buf':
@@ -1297,11 +1460,45 @@ importers:
         specifier: 2.12.1
         version: 2.12.1(@bufbuild/protobuf@2.12.1)
 
+  src/draft/technical-proofs/s1-15-bind-wiring-topology-contract: {}
+
+  src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc: {}
+
   src/draft/technical-proofs/s1-19-ctx-config-local-resolution: {}
+
+  src/draft/technical-proofs/s1-21-collect-codegen-cli-poc: {}
+
+  src/draft/technical-proofs/s1-stage-gate: {}
+
+  src/draft/technical-proofs/s2-03-cloud-yard-shell-hobo-618: {}
+
+  src/draft/technical-proofs/s2-04-planner-deployment-plan-dag-poc: {}
+
+  src/draft/technical-proofs/s2-06-iac-pulumi-automation-adapter: {}
+
+  src/draft/technical-proofs/s3-05-allow-triple-effects-poc: {}
+
+  src/draft/technical-proofs/s3-07-agent-guardrails-contract: {}
+
+  src/draft/technical-proofs/s3-08-hobo-mcp-server-poc: {}
+
+  src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest:
+    devDependencies:
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+
+  src/draft/technical-proofs/s5-05-forge-signing-registry-certification-contract: {}
+
+  src/draft/technical-proofs/s6-02-control-plane-ha-contract: {}
+
+  src/draft/technical-proofs/s6-05-observability-drift-loop-contract: {}
 
   src/draft/technical-proofs/saga-compensation-engine-contract: {}
 
   src/draft/technical-proofs/saga-credit-reconciliation-spike: {}
+
+  src/draft/technical-proofs/sandboxed-executors-contract: {}
 
   src/draft/technical-proofs/sdk-codegen-surface-contract:
     devDependencies:
@@ -1395,6 +1592,8 @@ importers:
 
   src/draft/technical-proofs/tier-two-cross-region-network-contract: {}
 
+  src/draft/technical-proofs/token-broker-exchange-contract: {}
+
   src/draft/technical-proofs/token-broker-ha-cache-contract: {}
 
   src/draft/technical-proofs/token-broker-skeleton-contract: {}
@@ -1455,6 +1654,8 @@ importers:
   src/draft/technical-proofs/wrpc-in-process-link-contract: {}
 
   src/draft/technical-proofs/wrpc-lattice-transport-contract: {}
+
+  src/draft/technical-proofs/wrpc-link-layer-contract: {}
 
   src/draft/technical-proofs/wrpc-membrane-failure-contract: {}
 
@@ -2593,6 +2794,9 @@ packages:
     resolution: {integrity: sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA==}
     engines: {node: '>=8'}
 
+  discontinuous-range@1.0.0:
+    resolution: {integrity: sha512-c68LpLbO+7kP/b1Hr1qs8/BJ09F5khZGTxqxZuhzxpmwJKOgRFHJWIb9/KmqnqHhLdO55aOxFH/EGBvUQbL/RQ==}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -2707,6 +2911,9 @@ packages:
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
+  functional-red-black-tree@1.0.1:
+    resolution: {integrity: sha512-dsKNQNdj6xA3T+QlADDA7mOSlX0qiMINjn0cgr+eGHGsbSHzTabcIogz2+p/iqP1Xs6EP/sS2SbqH+brGTbq0g==}
+
   get-east-asian-width@1.6.0:
     resolution: {integrity: sha512-QRbvDIbx6YklUe6RxeTeleMR0yv3cYH6PsPZHcnVn7xv7zO1BHN8r0XETu8n6Ye3Q+ahtSarc3WgtNWmehIBfA==}
     engines: {node: '>=18'}
@@ -2767,6 +2974,9 @@ packages:
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
+
+  immutable@4.3.9:
+    resolution: {integrity: sha512-ObHy4YN7ycwZOUCLI1/6svfyAFu7vL8RhAvVu/bh/RZW9EPlOyDaQ9jDQWCtdqzaXUjgXZCW1migtHE7YI7UGQ==}
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -2835,8 +3045,15 @@ packages:
     resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
     hasBin: true
 
+  json-stable-stringify@1.3.0:
+    resolution: {integrity: sha512-qtYiSSFlwot9XHtF9bD9c7rwKjr+RecWT//ZnPvSmEjpV5mmPOCN4j8UjY5hbjNkOwZ/jQv3J6R1/pL7RwgMsg==}
+    engines: {node: '>= 0.4'}
+
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
+
+  jsonify@0.0.1:
+    resolution: {integrity: sha512-2/Ki0GcmuqSrgFyelQq9M05y7PS0mEwuIzrf3f1fPqkVDVRvZrPZtVSMHxdgo8Aq0sxAOb/cr2aqqA3LeWHVPg==}
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -2926,6 +3143,10 @@ packages:
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
 
+  lru-cache@6.0.0:
+    resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
+    engines: {node: '>=10'}
+
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -2954,6 +3175,12 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  moment@2.30.1:
+    resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
+
+  moo@0.5.3:
+    resolution: {integrity: sha512-m2fmM2dDm7GZQsY7KK2cme8agi+AAljILjQnof7p1ZMDe6dQ4bdnSMx0cPppudoeNv5hEFQirN6u+O4fDE0IWA==}
+
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
     engines: {node: '>=4'}
@@ -2966,9 +3193,21 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  nearley@2.20.1:
+    resolution: {integrity: sha512-+Mc8UaAebFzgV+KpI5n7DasuuQCHA89dmwm7JXw3TV43ukfNQ9DnBH3Mdb2g/I4Fdxc26pwimBWvjIw0UAILSQ==}
+    hasBin: true
+
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
+
+  object-hash@2.2.0:
+    resolution: {integrity: sha512-gScRMn0bS5fH+IuwyIFgnh9zBdo4DV+6GhygmWM9HyNJSgS0hScp1f5vjtm7oIIOiT9trXrShAkLFSc2IqKNgw==}
+    engines: {node: '>= 6'}
+
+  object-keys@1.1.1:
+    resolution: {integrity: sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==}
+    engines: {node: '>= 0.4'}
 
   obug@2.1.3:
     resolution: {integrity: sha512-9miFgM2OFba7hB+pRgvtV84pYTBaoTHohvmIgiRt6dRIzbwEOIaNaP+dIlGs2fNFoB0SeISs0Jz5WFVRid6Xyg==}
@@ -3033,6 +3272,78 @@ packages:
   pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
 
+  pg-cloudflare@1.4.0:
+    resolution: {integrity: sha512-Vo7z/6rrQYxpNRylp4Tlob2elzbh+N/MOQbxFVWCxS7oEx6jF53GTJFxK2WWpKuBRkmiin4Mt+xofFDjx09R0A==}
+
+  pg-connection-string@2.14.0:
+    resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
+
+  pg-int8@1.0.1:
+    resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
+    engines: {node: '>=4.0.0'}
+
+  pg-mem@3.0.14:
+    resolution: {integrity: sha512-G9m8OD0A+YS083smidSUJddTX2dEDPT8mRMG3sQGNiGfS/mkvAgd9Kf1/onD5633bFN7HcQK/Tn2x7qjBMFRUQ==}
+    peerDependencies:
+      '@mikro-orm/core': '>=4.5.3'
+      '@mikro-orm/postgresql': '>=4.5.3'
+      knex: '>=0.20'
+      kysely: '>=0.26'
+      mikro-orm: '*'
+      pg-promise: '>=10.8.7'
+      pg-server: ^0.1.5
+      postgres: ^3.4.4
+      slonik: '>=23.0.1'
+      typeorm: '>=0.2.29'
+    peerDependenciesMeta:
+      '@mikro-orm/core':
+        optional: true
+      '@mikro-orm/postgresql':
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mikro-orm:
+        optional: true
+      pg-promise:
+        optional: true
+      pg-server:
+        optional: true
+      postgres:
+        optional: true
+      slonik:
+        optional: true
+      typeorm:
+        optional: true
+
+  pg-pool@3.14.0:
+    resolution: {integrity: sha512-gKtPkFdQPU3DksooVLi9LsjZxrsBUZIpa+7aVx+LV5pNh0KzP4Zleud2po+ConrxbuXGBJ6Hfer6hdgpIBpBaw==}
+    peerDependencies:
+      pg: '>=8.0'
+
+  pg-protocol@1.15.0:
+    resolution: {integrity: sha512-cq9sECI5s0+uPUXjbz8ioyPJni6RzsRib0US67i5IoTZKw8fNeYlVE7u8F4dG7vEJJtc5wdD1K189lCCUwqWTQ==}
+
+  pg-types@2.2.0:
+    resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
+    engines: {node: '>=4'}
+
+  pg@8.22.0:
+    resolution: {integrity: sha512-8wih1vVIBMxoUM2oB4soJsD9tDnDpLv4OXBJ+EJzFsvycD+lfyIreC2gGHq78f8jbLLt+bvlPTFdFZfJkOuzAA==}
+    engines: {node: '>= 16.0.0'}
+    peerDependencies:
+      pg-native: '>=3.0.1'
+    peerDependenciesMeta:
+      pg-native:
+        optional: true
+
+  pgpass@1.0.5:
+    resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
+
+  pgsql-ast-parser@12.0.2:
+    resolution: {integrity: sha512-1WWa96Sw6h4uv9GLw98EzH/+xoBTC8j2TwV/AMW3E+Ir/fHOu/jLLbj6kPiz3y2bGISTKNYvKWwHoqvQ5FLuAw==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -3072,6 +3383,22 @@ packages:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  postgres-array@2.0.0:
+    resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
+    engines: {node: '>=4'}
+
+  postgres-bytea@1.0.1:
+    resolution: {integrity: sha512-5+5HqXnsZPE65IJZSMkZtURARZelel2oXUEO8rH83VS/hxH5vv1uHquPg5wZs8yMAfdv971IU+kcPUczi7NVBQ==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-date@1.0.7:
+    resolution: {integrity: sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-interval@1.2.0:
+    resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
+    engines: {node: '>=0.10.0'}
+
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
@@ -3090,6 +3417,13 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
+  railroad-diagrams@1.0.0:
+    resolution: {integrity: sha512-cz93DjNeLY0idrCNOH6PviZGRN9GJhsdm9hpn1YCS879fj4W+x5IFJhhkRZcwVgMmFF7R82UA/7Oh+R8lLZg6A==}
+
+  randexp@0.4.6:
+    resolution: {integrity: sha512-80WNmd9DA0tmZrw9qQa62GPPWfuXJknrmVmLcxvq4uZBdYqb1wYoKTmnlGUchvVWe0XiLupYkBoXVOxz3C8DYQ==}
+    engines: {node: '>=0.12'}
+
   read-yaml-file@1.1.0:
     resolution: {integrity: sha512-VIMnQi/Z4HT2Fxuwg5KrY174U1VdUIASQVWXXyqtNRtxSr9IYkn1rsI6Tb6HsrHCmB7gVpNwX6JxPTHcH6IoTA==}
     engines: {node: '>=6'}
@@ -3104,6 +3438,10 @@ packages:
   restore-cursor@5.1.0:
     resolution: {integrity: sha512-oMA2dcrw6u0YfxJQXm342bFKX/E4sG9rbTzO9ptUcR/e8A33cHuvStiYOwH7fszkZlZ1z/ta9AAoPk2F4qIOHA==}
     engines: {node: '>=18'}
+
+  ret@0.1.15:
+    resolution: {integrity: sha512-TTlYpa+OL+vMMNG24xSlQGEJ3B/RzEfUlLct7b5G/ytav+wPrplCpVMFuwzXbkecJrb6IYo1iFb0S9v37754mg==}
+    engines: {node: '>=0.12'}
 
   reusify@1.1.0:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
@@ -3171,6 +3509,10 @@ packages:
 
   spawndamnit@3.0.1:
     resolution: {integrity: sha512-MmnduQUuHCoFckZoWnXsTg7JaiLBJrKFj9UI2MbRPGaJeVpsLcVBu6P/IGZovziM/YBsellCmsprgNA+w0CzVg==}
+
+  split2@4.2.0:
+    resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
+    engines: {node: '>= 10.x'}
 
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
@@ -3432,6 +3774,9 @@ packages:
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
     engines: {node: '>=0.4'}
+
+  yallist@4.0.0:
+    resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
 
   yauzl@2.10.0:
     resolution: {integrity: sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==}
@@ -4423,6 +4768,8 @@ snapshots:
     dependencies:
       path-type: 4.0.0
 
+  discontinuous-range@1.0.0: {}
+
   dunder-proto@1.0.1:
     dependencies:
       call-bind-apply-helpers: 1.0.2
@@ -4549,6 +4896,8 @@ snapshots:
 
   function-bind@1.1.2: {}
 
+  functional-red-black-tree@1.0.1: {}
+
   get-east-asian-width@1.6.0: {}
 
   get-intrinsic@1.3.0:
@@ -4615,6 +4964,8 @@ snapshots:
 
   ignore@5.3.2: {}
 
+  immutable@4.3.9: {}
+
   inherits@2.0.4: {}
 
   is-callable@1.2.7: {}
@@ -4662,9 +5013,19 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
+  json-stable-stringify@1.3.0:
+    dependencies:
+      call-bind: 1.0.9
+      call-bound: 1.0.4
+      isarray: 2.0.5
+      jsonify: 0.0.1
+      object-keys: 1.1.1
+
   jsonfile@4.0.0:
     optionalDependencies:
       graceful-fs: 4.2.11
+
+  jsonify@0.0.1: {}
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -4728,6 +5089,10 @@ snapshots:
 
   long@5.3.2: {}
 
+  lru-cache@6.0.0:
+    dependencies:
+      yallist: 4.0.0
+
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -4749,13 +5114,28 @@ snapshots:
 
   mkdirp@3.0.1: {}
 
+  moment@2.30.1: {}
+
+  moo@0.5.3: {}
+
   mri@1.2.0: {}
 
   ms@2.1.3: {}
 
   nanoid@3.3.15: {}
 
+  nearley@2.20.1:
+    dependencies:
+      commander: 2.20.3
+      moo: 0.5.3
+      railroad-diagrams: 1.0.0
+      randexp: 0.4.6
+
   object-assign@4.1.1: {}
+
+  object-hash@2.2.0: {}
+
+  object-keys@1.1.1: {}
 
   obug@2.1.3: {}
 
@@ -4831,6 +5211,56 @@ snapshots:
 
   pend@1.2.0: {}
 
+  pg-cloudflare@1.4.0:
+    optional: true
+
+  pg-connection-string@2.14.0: {}
+
+  pg-int8@1.0.1: {}
+
+  pg-mem@3.0.14:
+    dependencies:
+      functional-red-black-tree: 1.0.1
+      immutable: 4.3.9
+      json-stable-stringify: 1.3.0
+      lru-cache: 6.0.0
+      moment: 2.30.1
+      object-hash: 2.2.0
+      pgsql-ast-parser: 12.0.2
+
+  pg-pool@3.14.0(pg@8.22.0):
+    dependencies:
+      pg: 8.22.0
+
+  pg-protocol@1.15.0: {}
+
+  pg-types@2.2.0:
+    dependencies:
+      pg-int8: 1.0.1
+      postgres-array: 2.0.0
+      postgres-bytea: 1.0.1
+      postgres-date: 1.0.7
+      postgres-interval: 1.2.0
+
+  pg@8.22.0:
+    dependencies:
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.22.0)
+      pg-protocol: 1.15.0
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.4.0
+
+  pgpass@1.0.5:
+    dependencies:
+      split2: 4.2.0
+
+  pgsql-ast-parser@12.0.2:
+    dependencies:
+      moo: 0.5.3
+      nearley: 2.20.1
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.2: {}
@@ -4857,6 +5287,16 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  postgres-array@2.0.0: {}
+
+  postgres-bytea@1.0.1: {}
+
+  postgres-date@1.0.7: {}
+
+  postgres-interval@1.2.0:
+    dependencies:
+      xtend: 4.0.2
+
   prettier@2.8.8: {}
 
   process-nextick-args@2.0.1: {}
@@ -4872,12 +5312,19 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.1
-      '@types/node': 22.20.0
+      '@types/node': 26.0.1
       long: 5.3.2
 
   quansync@0.2.11: {}
 
   queue-microtask@1.2.3: {}
+
+  railroad-diagrams@1.0.0: {}
+
+  randexp@0.4.6:
+    dependencies:
+      discontinuous-range: 1.0.0
+      ret: 0.1.15
 
   read-yaml-file@1.1.0:
     dependencies:
@@ -4902,6 +5349,8 @@ snapshots:
     dependencies:
       onetime: 7.0.0
       signal-exit: 4.1.0
+
+  ret@0.1.15: {}
 
   reusify@1.1.0: {}
 
@@ -4976,6 +5425,8 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
+
+  split2@4.2.0: {}
 
   sprintf-js@1.0.3: {}
 
@@ -5218,6 +5669,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   xtend@4.0.2: {}
+
+  yallist@4.0.0: {}
 
   yauzl@2.10.0:
     dependencies:

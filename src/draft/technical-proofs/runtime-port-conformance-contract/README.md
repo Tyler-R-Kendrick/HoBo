@@ -33,6 +33,10 @@ claims local durability while dropping the fencing invariant.
 npm.cmd --prefix src\draft\technical-proofs\runtime-port-conformance-contract test
 ```
 
+## Promotion note (S1-10 / HOBO-599)
+
+Promoted to `packages/conformance/src/suites/runtime-port/` (production). Draft proof retained for historical evidence.
+
 
 ## Architecture Evidence
 

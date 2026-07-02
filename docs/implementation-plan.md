@@ -68,6 +68,46 @@ long-running register at the repo root. Iteration 0 seeds the scaffold (pillar m
 appendix, empty registers); confirmed findings and remediations append in later commits. Linear
 delivery issues for remediations are filed when an iteration confirms them — not in the seed PR.
 
+### HoBo v1 Production Build — staged, pending Linear import
+
+The 399-issue baseline above was executed as **draft proofs** (`src/draft/`); no production code
+exists. The production build is scoped as a new Linear **initiative** ("HoBo v1 Production Build"):
+seven stage-ordered projects (S0 Toolchain & Contracts Bootstrap → S1 Local SDK & Runtime → S2 First
+Cloud + Yard → S3 Agent Autonomy → S4 Multi-Cloud → S5 Forge & Extensibility → S6 Production
+Hardening), each closing with an executable gate issue keyed to the requirements Release Criteria,
+with later stages opened by M0 acceptance-record issues (the post-core-delta pattern applied to the
+build). 79 issues with dependency wiring, plus the companion **Intent-Alignment Gap Remediation**
+project (one issue per confirmed [`GAPS.md`](../GAPS.md) remediation), are staged in
+[`docs/plans/production-build-backlog.md`](plans/production-build-backlog.md) together with an
+import runbook — Linear import runs paced single-writer once MCP access is approved. The 15
+completed proof projects stay closed; draft material is promotion source only.
+
+### HoBo v1 Production Build — initiative `bc463c40-f5a8-4246-8d71-0d4dd2f6c6c7` — **Active**
+
+The production-build initiative promotes the proven design suite + draft proofs into real
+implementation (runnable `packages/*`, real CLI, real control plane), stage-ordered by the
+requirements Release criteria (S0/S1 local → S2 first cloud → S3 agent autonomy → S4 multi-cloud →
+S5 Forge → S6 hardening). Created 2026-07-01: **7 stage projects, 27 milestones, 87 issues
+(HOBO-578…HOBO-665)**, all labeled `production-build`, dependencies wired as blocking relations.
+The 15 completed proof projects stay closed; `src/draft/` is promotion source only. Durable mirror:
+[`docs/plans/production-build-backlog.md`](plans/production-build-backlog.md) (see its Import
+record for the full identifier map). S0/S1 slices and every stage-M0 acceptance issue carry full
+QA-verified one-shot bodies. S2–S6 slices are blocked by their stage M0 per the post-core delta
+pattern above and carry full build-instruction bodies (stage goal + gate, exact packages, context
+reading order, dependencies, acceptance sketch, guardrails); each stage M0 is required — per its
+pinned handoff comment — to sharpen those bodies in place into full one-shot checklists before it
+closes, so executing agents build the real app from the issues alone.
+
+Companion project **Intent-Alignment Gap Remediation** (`292efb1a-669c-4d79-93df-901d134b4832`,
+same initiative): 25 issues (HOBO-666…HOBO-690), one per confirmed finding of the gap-review
+iteration 1 recorded in [`GAPS.md`](../GAPS.md) (17 gaps + 8 drifts; REM-001…REM-025), labeled
+`intent-alignment`, milestoned by remediation class (ADR & scope records · design-doc amendments ·
+competitor & standards research · hygiene & traceability). Each issue's executable spec is its
+GAPS.md REM entry; all changes are documentation-level. The review loop itself is Linear-documented
+work (milestone "Review iterations (engine)": HOBO-691 iteration 2, HOBO-692 closure sweeps until
+an iteration confirms zero new findings), so the multi-iteration audit continues without this
+session.
+
 ### Meta-cloud Broker - `3b77f153-55ea-46e1-b1d5-2683901576ba` - **Backlog**
 
 The Meta-cloud Broker project owns the hosted broker authority boundary: Contract Manifest

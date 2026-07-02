@@ -2,6 +2,8 @@
 
 HOBO-118 proof for `hobo new <name> [-t todo|api|agent|fullstack]`.
 
+> **Promotion (S1-20 / HOBO-610):** scaffold behavior is implemented in production package [`packages/cli`](../../../../packages/cli/) (`src/commands/new.ts`, `src/templates/`). This proof remains the contract reference for offline template constraints.
+
 ## What This Proves
 
 - `hobo new <name> -t api --json` creates a minimal SDK project with `package.json`,

@@ -24,11 +24,14 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Config and secrets | Secretless-first app configuration resolved through `ctx.config` to Camp-specific references rather than plaintext values. |
 | Contract | Typed expectation on a graph edge, declared, inferred, observed, or promoted, and checked by the compatibility gate. |
 | Contract Manifest | Application contract artifact presented to the Meta-cloud Broker; names requested capabilities, constraints, and declared application facts for broker validation. |
+| Crew | Alias for Operator Agents — the built-in autonomous Yard services roster; see the Operator Agents row and [operators-sre.md](./operators-sre.md#plan-40). |
 | Cross-App Access | IdP-brokered, policy-governed access from a HoBo app or agent to an external app on a user's behalf, using ID-JAG token exchange. |
+| Decision graph | Per-decision explainability artifact (`DecisionGraph`) emitted by the FinOps routing control plane, recording candidates generated/rejected, constraint results, policy outcomes, metric vectors, Pareto frontier, preference result, stability decision, rationale, and audit references; DX/OpsX/FinX surfaces read this same graph ([finops-budget-routing-control-plane.md](./finops-budget-routing-control-plane.md)). |
 | Delta | Mutable diff applied to an immutable Deployment Set before promotion. |
 | Deployment Set | Immutable resolved config of a Camp manifest. |
 | Dispatcher | Credit-aware deterministic selector used for placement, dispatch, and traffic decisions. |
 | Driver | Execution mechanism a Resource Definition uses, such as `terraform`, `template`, `echo`, `container`, or `custom-webhook`. |
+| DX / OpsX / FinX surfaces | The three FinOps control-plane product surfaces over the same decision graph: DX (intent spec, dry-run preview, simulation, "why this placement?"), OpsX (override, freeze, rollback, migrate, incident reroute, blast-radius controls), and FinX (budgets, forecasts, attribution, anomaly signals, commitments, optimization recommendations). |
 | Environment group | Member Camps of one logical environment, promoted or rolled back as a saga. |
 | Environment type | Environment classification such as `production` or `ephemeral`, used as a matching dimension. |
 | Event model | Durable append-only substrate where facts are `EventEnvelope` records and projections fold replayable streams. |
@@ -47,8 +50,11 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Manifest IR | Deployment intermediate representation produced by authoring and consumed by the Planner. |
 | Matching Criteria | Deterministic selector for Resource Definitions, ranked by hard requirements, specificity, priority, objective, and stable tiebreak. |
 | Meta-cloud Broker | Hosted authority that validates Contract Manifests against approved Broker Environments and emits Resolution Receipts or Resolution Rejections for Yard consumption. |
+| Metric contract | Governed definition (`MetricContract`) of a routing metric's semantics, units, source, normalization, and version under the three-tier model: Tier 0 immutable system metrics, Tier 1 derived metrics via approved transforms, Tier 2 composition-only approved user metrics. |
+| MetricVector | Per-candidate vector of metric-contract values (cost, reliability, latency, risk, approved custom metrics) evaluated after constraint filtering and used to build the Pareto frontier. |
 | Obligation | Durable HoBo effect required by an allow decision, such as approval, canary, auth middleware, or budget action. |
 | Operator Agents | Built-in autonomous Yard services such as SRE, Endpoint Monitor, GitOps, Platform Engineer, UX Designer, and SWE. |
+| Pareto frontier | Non-dominated candidate set (`ParetoFrontier`) built across metric dimensions; preference weights select only within it — the router never uses one global weighted score, and a stability controller may still override the preferred candidate. |
 | Planner | Pure function that turns a Bindle plus mapping into a DeploymentPlan DAG. |
 | Planner objective | Soft ranking tiebreak such as `cost`, `latency`, `single-provider`, `carbon`, or `maximize-credits`. |
 | Port | Contract boundary; may mean runtime substrate port, infra port, or capability WIT port depending on tier. |
@@ -63,6 +69,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Resource Definition | Rule for realizing a port in a context, including provider, driver, and options. |
 | Resource Pack | Shareable signed bundle of Resource Definitions. |
 | ResourceActor | Controller-style grain that reconciles one resource's desired and actual state. |
+| ResourceIntent | Provider-neutral infrastructure request that enters the FinOps routing pipeline as its canonical input, before candidate generation; the router core must not see provider names, SKUs, regions, account IDs, or backend API names. |
 | Run | One durable workflow or agent execution represented by a `run.*` event stream. |
 | Runtime | Reused term for the SDK primitives package, the `Runtime` interface, or a runtime backend; context names which one. |
 | Runtime ports | Durable substrate ports a Camp provides: EventStore, Queue, Streamer, ActorHost, and Clock. |

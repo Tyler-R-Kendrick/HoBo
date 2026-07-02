@@ -187,7 +187,9 @@ builder.AddProject<Projects.Worker>("worker")
        .WaitForCompletion(migrations);  // wait until a one-shot task exits 0
 ```
 
-Health checks gate those dependencies — `WaitFor(x)` blocks a dependent until `x` is running and all its health checks pass; `WaitForCompletion` handles run-to-completion jobs like migrations and seeders:
+Health checks gate those dependencies — `WaitFor(x)` blocks a dependent until `x` is running and all its health checks pass; `WaitForCompletion` handles run-to-completion jobs like migrations and seeders.
+
+> **HoBo gap (GAP-027):** HoBo's orchestrator gates deploy DAG edges on `resource.Provisioned` only (IaC apply succeeded) — not on running+healthy or one-shot exit 0. Health-gated ordering is an explicit iteration hook in [Plan 4 §Health-gated dependency ordering](../design/control-plane.md#health-gated-dependency-ordering-iteration-hook); the parity tracker marks this row ◐ until that design lands.
 
 ```csharp
 builder.AddProject<Projects.Api>("api").WithHttpHealthCheck("/health");      // GET /health → 200
@@ -437,7 +439,7 @@ The net for HoBo: Aspire nails the developer inner loop — code-first wiring, l
 
 ## HoBo mapping
 
-For every Aspire feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ◐ = designed but shallow/deferred · 🔜 = planned. HoBo design lives in [`../design/`](../design/index.md). Aspire directly inspired HoBo's wiring/manifest layer, so parity here is high by design. Rows marked ◐ must anchor to an explicit design gap or iteration hook — never a bare status.
+For every Aspire feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ◐ = designed but shallow/deferred · 🔜 = planned. HoBo design lives in [`../design/`](../design/index.md). Aspire directly inspired HoBo's wiring/manifest layer, so parity here is high by design. Rows marked ◐ must anchor to an explicit design gap or iteration hook — never a bare status; health/readiness-gate gaps anchor to the [Plan 4 iteration hook](../design/control-plane.md#health-gated-dependency-ordering-iteration-hook).
 
 ### Composition & wiring
 
@@ -449,7 +451,7 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 | Hosting vs **client** integrations | Provider `realize` (deploy) vs generated typed clients (`code`) | ✅ | [03](../design/control-plane.md#plan-04), [02](../design/sdk-api.md#plan-02) |
 | `WithReference` / `services__*` / `ConnectionStrings__*` | Aspire-style references + the same env conventions | ✅ | [22](../design/authoring-resources-wiring.md#plan-21) |
 | `ReferenceExpression` / `EndpointReference` / placeholders | Lazy refs + `${resources..outputs}` placeholders | ✅ | [22](../design/authoring-resources-wiring.md#plan-21), [27](../design/platform-engineering.md#plan-25) |
-| `WaitFor` / `WaitForCompletion` (health-gated) | Saga ordering + readiness gates in the deploy DAG | ✅ | [04](../design/control-plane.md#plan-04), [05](../design/reliability-observability-cost.md#plan-05) |
+| `WaitFor` / `WaitForCompletion` (health-gated) | Choreography on `resource.Provisioned` only today; health/readiness-gated DAG edges not yet designed | ◐ | [04](../design/control-plane.md#plan-04), [iteration hook](../design/control-plane.md#health-gated-dependency-ordering-iteration-hook) |
 | Endpoints / proxy / `WithExternalHttpEndpoints` | Endpoint model + ingress in the manifest | ✅ | [22](../design/authoring-resources-wiring.md#plan-21), [13](../design/security-networking.md#plan-12) |
 | Annotations (`IResourceAnnotation`) | Manifest annotations / extensibility metadata | ✅ | [22](../design/authoring-resources-wiring.md#plan-21) |
 | Custom resources/integrations | Custom providers (any wasm language) + AI-generated | ➕ | [03](../design/control-plane.md#plan-04), [23](../design/generated-stack.md#plan-23) |

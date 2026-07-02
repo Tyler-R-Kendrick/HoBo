@@ -1,0 +1,47 @@
+export const MANIFEST_SCHEMA = "hobo.manifest/v1" as const;
+export const RESOURCE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
+export const LAZY_TOKEN_PATTERN =
+  /^\{([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
+
+export type ResourceId = string & { readonly __brand: "ResourceId" };
+
+export function parseResourceId(raw: string): ResourceId {
+  if (!RESOURCE_ID_PATTERN.test(raw)) {
+    throw new TypeError(`invalid resource id: ${raw}`);
+  }
+  return raw as ResourceId;
+}
+
+export interface ManifestLink {
+  readonly import: string;
+  readonly to: string;
+}
+
+export interface BindingMeta {
+  readonly port: string;
+  readonly resource: string;
+  readonly clientType: string;
+}
+
+export interface ManifestResource {
+  readonly type: string;
+  readonly port?: string;
+  readonly paradigm?: string;
+  readonly connectionString?: string;
+  readonly runtime?: string;
+  readonly exports?: readonly string[];
+  readonly links?: readonly ManifestLink[];
+  readonly env?: Readonly<Record<string, string>>;
+  readonly bindings?: Readonly<Record<string, BindingMeta>>;
+  readonly image?: string;
+  readonly build?: Readonly<Record<string, unknown>>;
+  readonly endpoints?: Readonly<Record<string, unknown>>;
+  readonly annotations?: Readonly<Record<string, unknown>>;
+}
+
+export interface HoboManifest {
+  readonly schema: typeof MANIFEST_SCHEMA;
+  readonly resources: Readonly<Record<string, ManifestResource>>;
+}
+
+export type ResolvedEnv = Readonly<Record<string, string>>;

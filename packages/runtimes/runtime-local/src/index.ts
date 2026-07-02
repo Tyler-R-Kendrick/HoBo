@@ -27,3 +27,14 @@ export {
 } from "./parse.js";
 export { createCapabilityLinkTable } from "./capability/link-table.js";
 export type { CapabilityHandle, CapabilityLinkTable } from "./capability/link-table.js";
+export {
+	collectStream,
+	createManualClock,
+	createRuntimeLocalEventStore,
+	OptimisticSequenceConflictError,
+} from "./eventstore/eventstore.js";
+export type {
+	ManualClock,
+	RuntimeLocalEventStore,
+	RuntimeLocalEventStoreOptions,
+} from "./eventstore/eventstore.js";

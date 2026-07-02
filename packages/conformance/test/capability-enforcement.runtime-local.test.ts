@@ -1,6 +1,6 @@
 import { describe } from "vitest";
 
-import { createCapabilityLinkTable } from "@hobo/runtime-local";
+import { createCapabilityLinkTable } from "../../runtimes/runtime-local/src/capability/link-table.js";
 
 import { capabilityEnforcementSuite } from "../src/capability-enforcement/suite.js";
 

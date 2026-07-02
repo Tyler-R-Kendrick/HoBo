@@ -120,9 +120,16 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      tsx:
+        specifier: ^4.20.3
+        version: 4.22.4
 
   packages/contract-harness:
     devDependencies:
@@ -155,8 +162,8 @@ importers:
         version: link:../../core
     devDependencies:
       '@types/node':
-        specifier: ^22.15.29
-        version: 22.20.0
+        specifier: '>=24.0.0'
+        version: 26.0.1
 
   packages/stage-gate:
     devDependencies:
@@ -1362,6 +1369,8 @@ importers:
         version: 2.12.1(@bufbuild/protobuf@2.12.1)
 
   src/draft/technical-proofs/s1-15-bind-wiring-topology-contract: {}
+
+  src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc: {}
 
   src/draft/technical-proofs/s1-19-ctx-config-local-resolution: {}
 

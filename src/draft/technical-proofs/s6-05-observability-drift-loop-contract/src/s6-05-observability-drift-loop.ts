@@ -24,6 +24,11 @@ import {
 import {
   handleResourceDrift,
 } from "../../autonomous-drift-remediation-contract/src/autonomous-drift-remediation.js";
+import {
+  parseDriftResources,
+  parseGetDriftRequest,
+  parseHealDriftRequest,
+} from "./parse.js";
 
 export const S605_OBSERVABILITY_DRIFT_LOOP_VERSION = "hobo.s6-05-observability-drift-loop/v1";
 
@@ -293,9 +298,15 @@ export async function runDriftLoop({
   };
 }
 
-export function getDrift({ resourceId, projection }) {
-  const items = (projection ?? []).filter(
-    (entry) => !resourceId || entry.resourceId === resourceId,
+export function getDrift(input) {
+  const request = parseGetDriftRequest(input);
+  const items = request.projection.filter(
+    (entry) =>
+      !request.resourceId ||
+      (entry != null &&
+        typeof entry === "object" &&
+        "resourceId" in entry &&
+        entry.resourceId === request.resourceId),
   );
   return {
     schema: S605_OBSERVABILITY_DRIFT_LOOP_VERSION,
@@ -304,26 +315,38 @@ export function getDrift({ resourceId, projection }) {
   };
 }
 
-export async function healDrift({ resourceId, projection, policies, now = DEFAULT_NOW, gateway, gateSignal }) {
-  const entry = (projection ?? []).find((item) => item.resourceId === resourceId);
+export async function healDrift(input) {
+  const request = parseHealDriftRequest(input);
+  const entry = request.projection.find(
+    (item) =>
+      item != null &&
+      typeof item === "object" &&
+      "resourceId" in item &&
+      item.resourceId === request.resourceId,
+  );
   if (!entry?.drift) {
-    throw new Error(`no drift record for resource ${resourceId}`);
+    throw new Error(`no drift record for resource ${request.resourceId}`);
   }
 
+  const now = input?.now ?? DEFAULT_NOW;
   const result = await handleResourceDrift({
     drift: entry.drift,
     policies: {
-      ...defaultDriftPolicies([{ id: resourceId }]),
-      ...(policies ?? {}),
-      [resourceId]: { mode: "heal", environment: entry.environment ?? "staging", estimatedImpact: "medium" },
+      ...defaultDriftPolicies([{ id: request.resourceId }]),
+      ...(input?.policies ?? {}),
+      [request.resourceId]: {
+        mode: "heal",
+        environment: entry.environment ?? "staging",
+        estimatedImpact: "medium",
+      },
     },
     decidedAt: now,
-    gateway: gateway ?? recordingGateway(resourceId),
-    gateSignal: gateSignal ?? (() => ({ decision: "pass", reason: "healthy" })),
+    gateway: input?.gateway ?? recordingGateway(request.resourceId),
+    gateSignal: input?.gateSignal ?? (() => ({ decision: "pass", reason: "healthy" })),
   });
 
   return {
-    resourceId,
+    resourceId: request.resourceId,
     status: result.status,
     events: result.events.drift,
   };
@@ -382,11 +405,7 @@ function defaultDriftPolicies(resources = []) {
 }
 
 function normalizeResources(resources = []) {
-  return (resources ?? []).map((resource) => ({
-    id: requireString(resource.id, "resource.id"),
-    desiredRef: resource.desiredRef ?? `set:desired@${resource.id}`,
-    environment: resource.environment ?? "staging",
-  }));
+  return parseDriftResources(resources);
 }
 
 function minuteSamples(startIso, count, good, total) {
@@ -428,13 +447,6 @@ function recordingGateway(routeId) {
       throw new Error(`unexpected gateway command ${command.kind}`);
     },
   };
-}
-
-function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`${label} is required`);
-  }
-  return value;
 }
 
 function slug(value) {

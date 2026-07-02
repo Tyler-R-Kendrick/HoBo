@@ -7,6 +7,19 @@ import {
   parseKnownLimitationsRegister,
 } from "../../known-limitations-register-contract/src/known-limitations-register.ts";
 
+declare const parsedCrewMcpAutonomyLimitationBrand: unique symbol;
+
+export type ParsedCrewMcpAutonomyLimitation = {
+  readonly markdownRow: string;
+  readonly contractRow: {
+    readonly id: string;
+    readonly state: string;
+    readonly userVisibleImpact: string;
+    readonly launchMessagingDisposition: string;
+  };
+  readonly [parsedCrewMcpAutonomyLimitationBrand]: "ParsedCrewMcpAutonomyLimitation";
+};
+
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../../");
 const REGISTER_DOC = join(REPO_ROOT, "docs/design/known-limitations-register.md");
 
@@ -24,7 +37,7 @@ export function findCrewMcpLimitationRow(markdown: string) {
   return rows.find((row) => /crew|mcp/i.test(row) && /policy-gated|unsupervised|autonom/i.test(row));
 }
 
-export function assertCrewMcpAutonomyLimitationRegistered() {
+export function assertCrewMcpAutonomyLimitationRegistered(): ParsedCrewMcpAutonomyLimitation {
   const markdown = readKnownLimitationsRegisterDoc();
   const row = findCrewMcpLimitationRow(markdown);
   if (!row) {
@@ -37,5 +50,14 @@ export function assertCrewMcpAutonomyLimitationRegistered() {
     throw new Error("known-limitations contract is missing crew-mcp-write-actions-policy-gated");
   }
 
-  return { markdownRow: row, contractRow };
+  return {
+    markdownRow: row,
+    contractRow: {
+      id: contractRow.id,
+      state: contractRow.state,
+      userVisibleImpact: contractRow.userVisibleImpact,
+      launchMessagingDisposition: contractRow.launchMessagingDisposition,
+    },
+    [parsedCrewMcpAutonomyLimitationBrand]: "ParsedCrewMcpAutonomyLimitation",
+  };
 }

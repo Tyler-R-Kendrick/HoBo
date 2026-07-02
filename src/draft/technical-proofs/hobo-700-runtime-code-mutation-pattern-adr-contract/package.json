@@ -1,0 +1,8 @@
+{
+  "name": "@hobo-draft/hobo-700-runtime-code-mutation-pattern-adr-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  }
+}

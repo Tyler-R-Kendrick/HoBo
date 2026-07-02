@@ -32,6 +32,8 @@ Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived
 
 ## Verdict summary
 
+**After iteration 2 (2026-07-02, commit `ec5e9f70`):** **38 confirmed findings** (2 HIGH · 24 MED · 12 LOW) — iteration 1's 26 on main plus **12 new** (1 HIGH · 10 MED · 1 LOW); evidence audit flipped **2** additional remediations on main since iteration 1 (**DRIFT-001** ✔ ADR-0106, **DRIFT-003** ✔ ADR-0110, **GAP-002** ✔ HOBO-670). **Stop rule: open** — iteration 3+ required.
+
 **After iteration 1 (2026-07-01, commit `59e387ae`):** 25 confirmed findings (1 HIGH · 15 MED · 9 LOW), every one with a documented remediation below; 5 candidates refuted by skeptic majority and 22 rejected by their own lens (see Verified non-issues).
 
 - **P1 Nomad/orchestration** — GAP-001 (in-Camp scheduling) is **✔ remediated** via ADR-0108 ([HOBO-669](https://linear.app/quickdeploy-ai/issue/HOBO-669)); GAP-003 (nomad.md tracker overclaims) remediation still open.
@@ -40,7 +42,7 @@ Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived
 - **P4 FinOps** — the FinX advisory surface (forecasts, anomaly signals, commitments, optimization) is promised but nowhere specified, no Crew operator owns it, and the normatively-adopted OpenCost/FOCUS standards have no research notes (two MED + one LOW).
 - **P5 Agent-native** — held up best: only one LOW confirmed (Capability-Manifest prose is an unsanitized agent-facing injection surface); autonomy-algorithm, MCP-parity, and error-UX candidates were refuted with covering evidence.
 - **L-DRIFT** — a consistent *deliberate-undocumented* cluster: marketplace payout-readiness brushed the ADR-0064-removed rev-share scope until **✔ remediated** via ADR-0110 ([HOBO-668](https://linear.app/quickdeploy-ai/issue/HOBO-668)); the ~90-doc phased release program still contradicts ADR-0063's "no version ladder" without a recorded decision (DRIFT-004 + stale scope statement remain open). DRIFT-001 (Nomad lineage) is **✔ remediated** on main via ADR-0106 ([HOBO-666](https://linear.app/quickdeploy-ai/issue/HOBO-666)); DRIFT-002 (hosted-business boundary) is **✔ remediated** via ADR-0107 ([HOBO-667](https://linear.app/quickdeploy-ai/issue/HOBO-667)).
-- **L-CONS** — the five-pillar intent framing appears nowhere as an organizing principle; Lakebed is named a head-on competitor but never researched; archived-requirements links rot (`../design/*` resolves nowhere); the canonical glossary omits the FinOps control plane's coined vocabulary.
+- **L-CONS** — GAP-002 (five-pillar intent framing in design suite) is **✔ remediated** via HOBO-670; Lakebed competitor gap, archived-requirements link rot, and glossary FinOps vocabulary remain open.
 
 ## Iteration log
 
@@ -65,6 +67,15 @@ in the history of commit `d7bbc39c`.
 - **Rejected:** NI-001…NI-027
 - **Stop rule:** open — iteration 2 (completeness critic + informed re-sweep + evidence audit) required before closure. The iteration loop is itself documented as executable Linear work: [HOBO-691](https://linear.app/quickdeploy-ai/issue/HOBO-691) (iteration 2) → [HOBO-692](https://linear.app/quickdeploy-ai/issue/HOBO-692) (closure sweeps until dry)
 
+### Iteration 2 — 2026-07-02 — completeness critic + informed re-sweep + evidence audit (`ec5e9f70`)
+
+- **Lenses:** B1 completeness critic (pillar intersections + unaudited doc families) · B2 informed re-sweep (ADR-0064/0063 re-entry pattern + competitor tracker parity) · B3 evidence auditor (re-open all 25 iteration-1 evidence paths)
+- **Evidence audit:** 26 iteration-1 register rows re-checked — **DRIFT-001**, **DRIFT-003**, **GAP-002** now **✔** on main; **23** stay **🧯**; **0** refuted (**❎**)
+- **Raw → merged → verdicts:** 22 new candidates → **12 confirmed** / 10 refuted or downgraded to NI-028…NI-036
+- **New findings:** DRIFT-009, DRIFT-010, GAP-019, GAP-020, GAP-021, GAP-022, GAP-023, GAP-024, GAP-025, GAP-026, GAP-027, GAP-028 (GAP-018 confirmed in iteration 1 on main; not re-counted)
+- **Rejected:** NI-028…NI-036 (see Verified non-issues)
+- **Stop rule:** open — iteration 3+ required (12 new findings)
+
 ## Gap register
 
 | ID | Pillar | Sev | Status | Claim | Evidence | Remediation |
@@ -87,6 +98,16 @@ in the history of commit `d7bbc39c`.
 | GAP-016 | L-CONS | LOW | ✔ | The requirements suite and roadmap were moved under docs/archive/ without rewriting relative links: every ../design/* link in docs/archive/requirements/*.md resolves to the nonexistent docs/archive/design/, and both docs also reference design files that no longer exist under any path (adr/08-scope-and-requirements.md, forge-generated-stack.md, roadmap.md#plan-08, per-stage anchors), so intent->requirements->design tracing misroutes at every hop. | `docs/archive/requirements/index.md:20-39`<br>`docs/archive/requirements/requirements.md:25-35`<br>`docs/archive/roadmap.md:22` … | [REM-024](#rem-024-for-gap-016) |
 | GAP-017 | L-CONS | LOW | ✔ | The canonical glossary — declared the single source of truth for canonical term definitions — omits the FinOps control plane's coined vocabulary (ResourceIntent, metric contract, MetricVector, ParetoFrontier, decision graph, DX/OpsX/FinX surfaces) and the ubiquitous 'Crew' alias, even though newer Meta-cloud Broker terms were added, showing the maintenance path exists but skipped the FinOps delta. | `docs/design/glossary.md:10-14`<br>`docs/design/finops-budget-routing-control-plane.md:51-83`<br>`docs/design/glossary.md:49-62`<br>`docs/design/index.md:24` | [REM-025](#rem-025-for-gap-017) |
 | GAP-018 | P2 | MED | ✔ | `hobo dev` local multi-service orchestration is unspecified — lifecycle APIs exist for deploy but the inner loop never states dependency-gated startup semantics per annotation class. | `docs/design/authoring-resources-wiring.md:150-151`<br>`docs/design/developer-experience.md:135-139`<br>`docs/design/control-plane.md:57-67` … | [REM-026](#rem-026-for-gap-018) |
+| GAP-019 | P3×P4 | MED | 🧯 | The FinOps routing pipeline's canonical input (`ResourceIntent → DecisionGraph → ActionPlan`) is disconnected from the IfC/planning spine: control-plane Planner still terminates at manifest IR → `DeploymentPlan` with no documented bridge from resource collection / Matching / `hobo plan` into `ResourceIntent` or the FinOps DX dry-run preview surface. | `docs/design/finops-budget-routing-control-plane.md:22-36`<br>`docs/design/control-plane.md:14-28`<br>`docs/design/reliability-observability-cost.md:175-177` … | [REM-027](#rem-027-for-gap-019) |
+| GAP-020 | P3×P4 | MED | 🧯 | Inline FinOps budget authoring is orphaned: `costAvailability({ budgetUsd, tiers, strategy })` appears only as an ADR-0039 example with no import path in `@hobo/bindles`/`@hobo/camps`, no sdk-api or authoring-resources-wiring surface, and no tie to `hobo plan` preview — Nitric-style cost posture cannot be declared alongside resources at collection time. | `docs/design/adr/02-identity-security.md:285-295`<br>`docs/design/reliability-observability-cost.md:175-177`<br>`docs/design/authoring-resources-wiring.md` … | [REM-028](#rem-028-for-gap-020) |
+| GAP-021 | P4×P5 | MED | 🧯 | Per-token / LLM inference spend budgets for the governance plane and Crew are promised (`governance-planes.md` "per-token cost/safety budgets") but never specified: MeteringView dimensions omit LLM tokens, no token-budget policy object or event family exists, and agent `spendCapUsd` gates infra provisioning USD only — not model inference. | `docs/design/governance-planes.md:118-119`<br>`docs/design/reliability-observability-cost.md:210-216`<br>`docs/design/event-families.md:77` … | [REM-029](#rem-029-for-gap-021) |
+| GAP-022 | P5×L-DRIFT | MED | 🧯 | Agent-native Crew promises lack a known-limitations register row while launch-messaging scopes built-in operator agents to `future-roadmap`: vision/index sell autonomous Crew as core product, but `known-limitations-register.md` has zero Crew/MCP/autonomy entries — customer-facing guardrails for the largest agent-native promise are missing. | `docs/design/vision.md:14`<br>`docs/design/launch-messaging-claims.md:63`<br>`docs/design/known-limitations-register.md:38-44`<br>`docs/design/operators-sre.md:46-54` … | [REM-030](#rem-030-for-gap-022) |
+| GAP-023 | L-CONS | MED | 🧯 | `docs/patterns/` and `docs/standards/` cross-links systematically rot: ecosystem analysis docs link to renamed/moved design paths (`forge-generated-stack.md`, `event-model.md`, `verification.md`, `adr/05-config-matching-environments.md`, `adr/06-ai-generation-operators.md`) that no longer exist — intent→design traceability breaks for the doc families iteration 1 never audited. | `docs/patterns/gitops-runbook-promotion.md:44`<br>`docs/patterns/runtime-code-mutation-persistence.md:37-46`<br>`docs/standards/index.md`<br>`docs/index.md:18-27` … | [REM-031](#rem-031-for-gap-023) |
+| GAP-024 | P5 | MED | 🧯 | Repo-local issue-worker automation (`docs/automations/hobo-issue-worker.md`) defines an autonomous implementation worker with broad repo write access but zero mapping to BR-011/FR-022 agent safety guardrails (SVID, spend caps, policy gates, audit) — `grep automations docs/design/` returns no cross-reference. | `docs/automations/hobo-issue-worker.md:26-31`<br>`docs/archive/requirements/requirements.md:162`<br>`docs/design/ai-native-agent-auth.md` … | [REM-032](#rem-032-for-gap-024) |
+| GAP-025 | P3 | MED | 🧯 | `dapr.md` HoBo-mapping overclaims parity on **Bindings** (general input/output connectors) and **Distributed lock** at ✅ while design has no bindings category, no `hobo:lock` port, and ActorHost lease/fencing ≠ app-level distributed lock API. | `docs/competitors/dapr.md:50,54,121`<br>`docs/design/wasm-runtime-wit.md:117-179`<br>`docs/design/reliability-observability-cost.md:56-60` … | [REM-033](#rem-033-for-gap-025) |
+| GAP-026 | P2 | MED | 🧯 | `aspire.md` marks `Aspire.Hosting.Testing` (in-process full AppHost + DCP + real containers) as ✅ parity with "Conformance suites + E2E replay tests" — HoBo `@hobo/conformance` gates adapters/hosts/WIT, not an equivalent whole-graph local integration harness. | `docs/competitors/aspire.md:385-399,468`<br>`docs/design/generated-stack.md#plan-09`<br>`docs/design/wasm-runtime-wit.md:108` … | [REM-034](#rem-034-for-gap-026) |
+| GAP-027 | P2 | MED | 🧯 | `aspire.md` marks health-gated `WaitFor`/`WaitForCompletion` as ✅ vs "Saga ordering + readiness gates" but orchestrator choreography gates on `resource.Provisioned` only — health probes and run-to-completion job semantics are unspecified at the control-plane seam (corroborates GAP-018 at the tracker layer). | `docs/competitors/aspire.md:452`<br>`docs/design/control-plane.md:57-67`<br>`docs/design/authoring-resources-wiring.md:150-151` … | [REM-035](#rem-035-for-gap-027) |
+| GAP-028 | L-CONS | LOW | 🧯 | `docs/patterns/runtime-code-mutation-persistence.md` still frames training promotion write-back as "unanswered" although ADR-0048 + generated-stack now specify AST-aware region-scoped persistence — the pattern library lags the design suite. | `docs/patterns/runtime-code-mutation-persistence.md:37`<br>`docs/design/generated-stack.md:35`<br>`docs/design/adr/03-data-plane.md#adr-0048` … | [REM-036](#rem-036-for-gap-028) |
 
 ## Drift register
 
@@ -100,6 +121,8 @@ in the history of commit `d7bbc39c`.
 | DRIFT-006 | P3 | silent | 🧯 | nitric.md's HoBo-mapping layer has drifted from the current design: it maps `nitric up/down` -> `hobo deploy/destroy` and `nitric run` -> `hobo dev --containers` (the design collapsed to `hobo up/down` and defines no --containers flag), names the schedule port `hobo:schedule` vs the design's `hobo:scheduler`, and its 'Open parity items' still lists the WebSocket WIT shape and sql-migrations as open although ADR-0075 and ADR-0032/Plan 32 resolved them. | `docs/competitors/nitric.md:313`<br>`docs/competitors/nitric.md:336`<br>`docs/competitors/nitric.md:355` … | [REM-018](#rem-018-for-drift-006) |
 | DRIFT-007 | L-DRIFT | deliberate-undocumented | 🧯 | The design-suite scope statement (index.md: 'The whole suite is one scope — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line (ADR-0063/ADR-0064)') is stale: the same index now lists monetization-adjacent commercial records (billing, tax, invoicing evidence, payout hooks) and a phased launch program, so the stated bound no longer describes the suite's contents. | `docs/design/index.md:120`<br>`docs/design/index.md:53-57`<br>`docs/design/index.md:66-67` … | [REM-021](#rem-021-for-drift-007) |
 | DRIFT-008 | L-CONS | silent | 🧯 | gap-analysis.md's traceability anchors have rotted: matrix and §C rows cite numbered open questions (Q3/Q10/Q12/Q15-Q20/Q21-Q23, '09 §15-20') linking to generated-stack.md#plan-09, but the current Plan 9 'Open design questions' list is unnumbered and contains none of those IDs, and matrix rows retain partial/missing markers for capabilities the same doc later records as closed (only §2 is explicitly labeled historical). | `docs/competitors/gap-analysis.md:31`<br>`docs/competitors/gap-analysis.md:34`<br>`docs/competitors/gap-analysis.md:72` … | [REM-022](#rem-022-for-drift-008) |
+| DRIFT-009 | L-DRIFT | silent | 🧯 | UI/app generation is mis-cited as OUT while ADR-0064 §1 explicitly **keeps** app generation (UX Designer, design.md, OpenUI, json-render, mcp-apps, `ui-render` port per ADR-0056): `architecture.md:171`, `stage-6-production-hardening-acceptance.md:71`, `worked-example.md:70`, and `gap-analysis.md:14,18` claim UI-layer generation was removed under ADR-0064 — contradicting ADR-0064/0056 with no amending decision. | `docs/design/architecture.md:171`<br>`docs/design/stage-6-production-hardening-acceptance.md:71`<br>`docs/design/adr/07-portability-extensibility.md:293-300`<br>`docs/design/adr/03-data-plane.md:264-277`<br>`docs/competitors/gap-analysis.md:14,18` … | [REM-037](#rem-037-for-drift-009) |
+| DRIFT-010 | L-DRIFT | deliberate-undocumented | 🧯 | Stage-6 acceptance bundles `notify` inside "governance planes" after ADR-0064 §3 consolidated `notify` to a thin **resource-catalog port** (not a standalone plane): stage-6 lane table and acceptance bullets treat `notify` as a governance-plane deliverable alongside compliance/AI-safety/Registry — taxonomy drift from ADR-0059 catalog port + Plan 46 governance scope. | `docs/design/stage-6-production-hardening-acceptance.md:36,65,96`<br>`docs/design/adr/07-portability-extensibility.md:295`<br>`docs/design/governance-planes.md:1-25`<br>`docs/design/authoring-resources-wiring.md:53` … | [REM-038](#rem-038-for-drift-010) |
 
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
 required beyond mapping) · **deliberate-undocumented** (evidently intentional but no decision record) ·
@@ -1477,7 +1500,7 @@ Documentation-only change: touch a single existing file, no code, no new lint ru
 
 - **Finding** (P2, MED): `hobo dev` local multi-service orchestration is unspecified — lifecycle APIs exist for deploy but the inner loop never states dependency-gated startup semantics per annotation class.
 - **Evidence:** `docs/design/authoring-resources-wiring.md:150-151` · `docs/design/developer-experience.md:135-139` · `docs/design/control-plane.md:57-67`
-- **Effort:** M · **Delivery:** [HOBO-694](https://linear.app/quickdeploy-ai/issue/HOBO-694) (Intent-Alignment Gap Remediation project)
+- **Effort:** M · **Delivery:** ✔ [HOBO-694](https://linear.app/quickdeploy-ai/issue/HOBO-694) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1495,6 +1518,187 @@ Documentation + executable proof (no new ADR):
 **Guardrails**
 
 Docs-first; Nomad→wasmCloud pivot accepted — never reverse. No production `runtime-local` or CLI daemon implementation in this slice.
+
+### REM-027 (for GAP-019)
+
+- **Finding** (iter2-B1-002, P3×P4, MED): ResourceIntent FinOps pipeline disconnected from IfC/`hobo plan` spine.
+- **Evidence:** `docs/design/finops-budget-routing-control-plane.md:22-36` · `docs/design/control-plane.md:14-28`
+- **Effort:** M · **Delivery:** [HOBO-696](https://linear.app/quickdeploy-ai/issue/HOBO-696)
+
+**Action**
+
+Add a bridge subsection to `finops-budget-routing-control-plane.md` and `control-plane.md` Planner section: map manifest IR / Matching output / `hobo plan` preview → `ResourceIntent` construction, DecisionGraph emission, and DX dry-run surface. One sequence diagram or numbered pipeline acceptable.
+
+**Acceptance**
+
+1. Both docs cite the same bridge; grep `ResourceIntent` in control-plane + authoring returns hits.
+2. Gates green per REM-026.
+
+### REM-028 (for GAP-020)
+
+- **Finding** (iter2-B1-003, P3×P4, MED): `costAvailability()` orphaned in ADR-0039 only.
+- **Evidence:** `docs/design/adr/02-identity-security.md:285-295` · `docs/design/reliability-observability-cost.md:175-177`
+- **Effort:** M · **Delivery:** [HOBO-693](https://linear.app/quickdeploy-ai/issue/HOBO-693)
+
+**Action**
+
+Wire budget authoring: add `costAvailability()` (or camp/bindle-level equivalent) to `authoring-resources-wiring.md` + `sdk-api.md` with import path, plan-preview interaction, and link back to ADR-0039 example.
+
+**Acceptance**
+
+1. Authoring catalog documents inline budget declaration + `hobo plan` surfacing.
+2. Gates green.
+
+### REM-029 (for GAP-021)
+
+- **Finding** (iter2-B1-004, P4×P5, MED): LLM token/inference budgets unspecified despite governance-plane promise.
+- **Evidence:** `docs/design/governance-planes.md:118-119` · `docs/design/reliability-observability-cost.md:210-216`
+- **Effort:** M · **Delivery:** [HOBO-695](https://linear.app/quickdeploy-ai/issue/HOBO-695)
+
+**Action**
+
+Specify token-budget model in `governance-planes.md` + `reliability-observability-cost.md`: metering dimension(s), policy gate, spend-breaker interaction, Crew operator ownership (or explicit deferral row in known-limitations-register).
+
+**Acceptance**
+
+1. Design names token budget object + gate seam or 📘 deferral with ADR-Pn pointer.
+2. Gates green.
+
+### REM-030 (for GAP-022)
+
+- **Finding** (iter2-B1-005, P5×L-DRIFT, MED): Crew/MCP/autonomy missing from known-limitations register while launch-messaging scopes Crew to future-roadmap.
+- **Evidence:** `docs/design/launch-messaging-claims.md:63` · `docs/design/known-limitations-register.md:38-44`
+- **Effort:** S · **Delivery:** [HOBO-697](https://linear.app/quickdeploy-ai/issue/HOBO-697)
+
+**Action**
+
+Add known-limitations rows for built-in Crew autonomy scope (owner, workaround, customer-facing wording alignment with launch-messaging-claims.md).
+
+**Acceptance**
+
+1. Register contains ≥1 Crew/MCP limitation row with owner + workaround.
+2. `pnpm run docs:design-lint` passes.
+
+### REM-031 (for GAP-023)
+
+- **Finding** (iter2-B1-006, L-CONS, MED): patterns/standards cross-links rot to removed design paths.
+- **Evidence:** `docs/patterns/runtime-code-mutation-persistence.md:37-46` · `docs/patterns/gitops-runbook-promotion.md:44`
+- **Effort:** M · **Delivery:** [HOBO-698](https://linear.app/quickdeploy-ai/issue/HOBO-698)
+
+**Action**
+
+Bulk-fix relative links in `docs/patterns/*.md` and audit `docs/standards/*.md`: map `forge-generated-stack.md`→`generated-stack.md`, `event-model.md`→`data-plane.md#plan-11`, `verification.md`→`generated-stack.md#plan-09`, ADR theme file renames per current `docs/design/adr/index.md`.
+
+**Acceptance**
+
+1. `pnpm run docs:design-lint` passes on patterns + standards paths (or documented follow-up if lint scope excludes — note in issue).
+2. Zero links to nonexistent `forge-generated-stack.md` / `event-model.md` under patterns.
+
+### REM-032 (for GAP-024)
+
+- **Finding** (iter2-B1-007, P5, MED): issue-worker automation outside agent-native safety model.
+- **Evidence:** `docs/automations/hobo-issue-worker.md:26-31` · `docs/archive/requirements/requirements.md:162`
+- **Effort:** S · **Delivery:** [HOBO-702](https://linear.app/quickdeploy-ai/issue/HOBO-702)
+
+**Action**
+
+Add disposition subsection to `docs/automations/hobo-issue-worker.md` (or `docs/design/ai-native-agent-auth.md` cross-link): map worker to BR-011 guardrails — claim audit trail, spend/scope caps, approval hooks for destructive actions, explicit "repo tooling ≠ Yard Crew" boundary.
+
+**Acceptance**
+
+1. Automation doc cites BR-011/Plan 06 guardrail pattern.
+2. Gates green.
+
+### REM-033 (for GAP-025)
+
+- **Finding** (iter2-B2-001, P3, MED): dapr.md Bindings + Distributed lock overclaim.
+- **Evidence:** `docs/competitors/dapr.md:50,54,121`
+- **Effort:** S · **Delivery:** [HOBO-699](https://linear.app/quickdeploy-ai/issue/HOBO-699)
+
+**Action**
+
+Downgrade/fix `dapr.md` HoBo-mapping rows: Bindings → partial (name blob-events/triggers/schedule/api adapters); Distributed lock → ◐ actor-lease only unless `hobo:lock` added.
+
+**Acceptance**
+
+1. No ✅ on Bindings or Distributed lock without design anchor.
+2. Gates green.
+
+### REM-034 (for GAP-026)
+
+- **Finding** (iter2-B2-002, P2, MED): aspire.md Hosting.Testing overclaim vs conformance-only harness.
+- **Evidence:** `docs/competitors/aspire.md:468`
+- **Effort:** S · **Delivery:** [HOBO-705](https://linear.app/quickdeploy-ai/issue/HOBO-705)
+
+**Action**
+
+Change `Aspire.Hosting.Testing` row to ➕ or ◐; point to `@hobo/conformance` + epic proofs as partial; note missing DistributedApplicationTestingBuilder equivalent.
+
+**Acceptance**
+
+1. Row status not ✅ without whole-graph harness spec.
+2. Gates green.
+
+### REM-035 (for GAP-027)
+
+- **Finding** (iter2-B2-003, P2, MED): aspire.md WaitFor overclaim vs Provisioned-only orchestrator.
+- **Evidence:** `docs/competitors/aspire.md:452` · `docs/design/control-plane.md:57-67`
+- **Effort:** S · **Delivery:** [HOBO-703](https://linear.app/quickdeploy-ai/issue/HOBO-703)
+
+**Action**
+
+Downgrade WaitFor/WaitForCompletion row to ◐ in `aspire.md`; align with REM-026 local/deploy semantics once documented.
+
+**Acceptance**
+
+1. Tracker row ◐ or notes health/readiness gap.
+2. Gates green.
+
+### REM-036 (for GAP-028)
+
+- **Finding** (iter2-B1-008, L-CONS, LOW): runtime-code-mutation pattern stale vs ADR-0048.
+- **Evidence:** `docs/patterns/runtime-code-mutation-persistence.md:37` · `docs/design/generated-stack.md:35`
+- **Effort:** S · **Delivery:** [HOBO-700](https://linear.app/quickdeploy-ai/issue/HOBO-700)
+
+**Action**
+
+Update pattern doc intro: cite ADR-0048 answer; reframe "unanswered" as historical; fix cross-links per REM-031 mapping.
+
+**Acceptance**
+
+1. Pattern doc links ADR-0048; no "unanswered" without deferral pointer.
+2. Gates green.
+
+### REM-037 (for DRIFT-009)
+
+- **Finding** (iter2-B2-004, L-DRIFT, HIGH): UI generation mis-cited OUT contradicting ADR-0064 keep list.
+- **Evidence:** `docs/design/architecture.md:171` · `docs/design/stage-6-production-hardening-acceptance.md:71` · `docs/design/adr/07-portability-extensibility.md:293-300`
+- **Effort:** M · **Delivery:** [HOBO-704](https://linear.app/quickdeploy-ai/issue/HOBO-704)
+
+**Action**
+
+Fix mis-citations in architecture.md, stage-6 scope-out, worked-example.md, gap-analysis.md: replace "UI-layer generation out (ADR-0064)" with correct boundary — **business/monetization out; app generation IN per ADR-0064 §1 + ADR-0056**. Do not amend ADR-0064 decision text.
+
+**Acceptance**
+
+1. grep `UI-layer generation.*out.*ADR-0064` in docs/design returns zero false negatives.
+2. All four files cite ADR-0056/0064 keep list where UI generation mentioned.
+3. Gates green.
+
+### REM-038 (for DRIFT-010)
+
+- **Finding** (iter2-B2-005, L-DRIFT, MED): stage-6 bundles notify as governance plane after ADR-0064 consolidation.
+- **Evidence:** `docs/design/stage-6-production-hardening-acceptance.md:65,96` · `docs/design/adr/07-portability-extensibility.md:295`
+- **Effort:** S · **Delivery:** [HOBO-701](https://linear.app/quickdeploy-ai/issue/HOBO-701)
+
+**Action**
+
+Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-0059 catalog port lane; reserve "governance planes" for compliance + AI safety (Plan 46). Add footnote if "governance planes bundle" is release shorthand.
+
+**Acceptance**
+
+1. stage-6 table separates notify port from Plan 46 governance planes.
+2. Gates green.
 
 ### REM-005 (for GAP-002)
 

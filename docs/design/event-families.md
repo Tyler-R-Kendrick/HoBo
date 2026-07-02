@@ -23,6 +23,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |
 | `contract.*` | `contract.Observed`, `contract.Verified` |
+| `cost.*` | `cost.AnomalyDetected`, `cost.AnomalyResolved`, `cost.ForecastUpdated`, `cost.RecommendationIssued` |
 | `credit.*` | `credit.Registered`, `credit.Reset`, `credit.Exhausted`, `credit.BudgetCapSet` |
 | `crew.*` | `crew.ActionProposed`, `crew.HandoffRequested` |
 | `data.*` | `data.Changed`, `data.Classified` |

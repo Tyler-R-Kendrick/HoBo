@@ -89,7 +89,7 @@ in the history of commit `d7bbc39c`.
 | GAP-007 | P3 | MED | ✔ | The catalog's `data()` resource — HoBo's replacement for Nitric's `sql`/kv-paradigm building blocks (ADR-0052) — imports a `hobo:data` WIT port that is never defined in Plan 20's self-described 'canonical port catalog'; Plan 20 instead still lists the superseded `sql` resource over `wasi:sql`(+`hobo:sql`), and ADR-level proofs use a third name (`hobo:database/postgres`), so the resource->WIT-port spine for the data block is inconsistent and undefined at its most important row. | `docs/design/authoring-resources-wiring.md:43`<br>`docs/design/authoring-resources-wiring.md:72`<br>`docs/design/authoring-resources-wiring.md:168` … | [REM-010](#rem-010-for-gap-007) |
 | GAP-008 | P3 | MED | ✔ | The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` was not defined in the canonical interface catalog and no secret-versioning semantics existed in the design suite. | `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/wasm-runtime-wit.md:151` · [ADR-0113](docs/design/adr/02-identity-security.md#adr-0113) | [REM-011](#rem-011-for-gap-008) |
 | GAP-009 | P3 | MED | ✔ | The api resource's `.allow()` column says 'route-level security' (its only verb model) and nitric.md claims parity, but no design text specified the per-route security authoring surface — Nitric's oidcRule/securityRule-per-route and middleware equivalents were unspecified, and the referenced `hobo:http` extension port was undefined in the canonical interface catalog. | `docs/design/authoring-resources-wiring.md:37` · `docs/design/authoring-resources-wiring.md:65` · `docs/competitors/nitric.md:146` · [ADR-0114](docs/design/adr/02-identity-security.md#adr-0114) | [REM-012](#rem-012-for-gap-009) |
-| GAP-010 | P4 | MED | 🧯 | The design's own FinX surface and FinOps Framework baseline promise 'forecasts, anomaly signals, commitments, and optimization recommendations', but no design doc specifies how cost anomalies/trends/forecasts are detected or computed, no cost-anomaly/forecast event family exists (event-families.md has only credit.*/meter.*/spend.*), and 'rightsizing' appears nowhere in the repo; the only cost-reactive mechanisms are threshold breakers. | `docs/design/finops-budget-routing-control-plane.md:128`<br>`docs/design/finops-budget-routing-control-plane.md:51`<br>`docs/design/event-families.md:77` … | [REM-013](#rem-013-for-gap-010) |
+| GAP-010 | P4 | MED | ✔ | The design's own FinX surface and FinOps Framework baseline promise 'forecasts, anomaly signals, commitments, and optimization recommendations', but no design doc specified how cost anomalies/trends/forecasts are detected or computed, no cost-anomaly/forecast event family existed (event-families.md had only credit.*/meter.*/spend.*), and 'rightsizing' appeared nowhere; the only cost-reactive mechanisms were threshold breakers. | `docs/design/finops-budget-routing-control-plane.md:128` · `docs/design/finops-budget-routing-control-plane.md:51` · `docs/design/event-families.md:77` · `docs/design/reliability-observability-cost.md:238` · [ADR-0115](docs/design/adr/02-identity-security.md#adr-0115) | [REM-013](#rem-013-for-gap-010) |
 | GAP-011 | P4 | MED | 🧯 | The ADR-0054 Crew roster (SRE, Endpoint Monitor, GitOps, Platform Engineer, UX Designer, SWE) contains no FinOps/cost-optimization operator, and the FinX advisory outputs (forecasts, anomaly signals, commitments, optimization recommendations) plus the 'commitment optimization' advisory have no named owner — a hole at the intersection of the FinOps and agent-native pillars. | `docs/design/adr/03-data-plane.md:230`<br>`docs/design/operators-sre.md:46`<br>`docs/design/finops-budget-routing-control-plane.md:128` … | [REM-014](#rem-014-for-gap-011) |
 | GAP-012 | L-CONS | MED | 🧯 | Vision.md declares HoBo 'competes head-on with Convex, Lakebed, and Nitric' three times, borrows from Lakebed, and design/index.md carries a whole 'Competitive frame vs Lakebed' table — but no Lakebed capture exists in docs/competitors/ (which promises 'faithful captures'), it is absent from competitors/index.md and even from its future-competitor backlog list; Lakebed appears only in passing in encore.md and gap-analysis.md. | `docs/design/vision.md:14`<br>`docs/design/vision.md:43`<br>`docs/design/index.md:136-144` … | [REM-016](#rem-016-for-gap-012) |
 | GAP-013 | P4 | LOW | 🧯 | FinOps has zero dedicated research notes despite normative adoption: ADR-0039 §3 models showback on OpenCost and the control-plane doc baselines FOCUS 1.4/FinOps Framework, yet docs/standards/ has a note for every other adopted standard (CloudEvents, OCSF, OpenSLO, OpenFeature...) but none for FOCUS/OpenCost, and docs/competitors/ has no FinOps-market entry (Kubecost, Infracost, Vantage, Cast.ai). | `docs/design/adr/02-identity-security.md:282`<br>`docs/design/finops-budget-routing-control-plane.md:108`<br>`docs/standards/index.md` … | [REM-019](#rem-019-for-gap-013) |
@@ -1727,21 +1727,19 @@ Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-00
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-675](https://linear.app/quickdeploy-ai/issue/HOBO-675) — ADR-0112 in `docs/design/adr/03-data-plane.md`
 
-<<<<<<< HEAD
 ### REM-011 (for GAP-008)
 
 - **Finding** (cand-10, P3, MED): The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` was not defined in the canonical interface catalog and no secret-versioning semantics existed in the design suite.
 - **Evidence:** `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/wasm-runtime-wit.md:151`
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) — ADR-0113 in `docs/design/adr/02-identity-security.md`; `hobo:secrets` canonical definition in `docs/design/wasm-runtime-wit.md`
-=======
+
 ### REM-018 (for DRIFT-006)
 
 - **Action:** Reconcile `docs/competitors/nitric.md` HoBo-mapping layer with current design: `nitric up/down` → `hobo up/down` (not `deploy/destroy`), `nitric run` → `hobo dev` (no `--containers` flag), `schedule` port → `hobo:scheduler`, strike WebSocket/sql-migrations open-parity items with ADR-0075/ADR-0032 links; optionally fix `hobo:schedule` in `nomad.md`.
 - **Acceptance:** `docs:okf`, staged `agent:check`, `validate-traceability.ts` pass; grep assertions for removed stale strings and ADR link presence; Open parity items = 2 open + 2 resolved.
 - **Effort:** S
 - **Delivery:** ✔ [HOBO-683](https://linear.app/quickdeploy-ai/issue/HOBO-683) — `docs/competitors/nitric.md`, `docs/competitors/nomad.md`
->>>>>>> 65b62650 (docs(gaps): add REM-018 delivery entry for DRIFT-006 (HOBO-683))
 
 ### REM-012 (for GAP-009)
 
@@ -1749,6 +1747,13 @@ Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-00
 - **Acceptance:** `docs:okf`, staged `agent:check` (traceability), grep checks for `hobo:http` + `#route-level-api-security` anchor, exactly one new ADR-0114, GAPS status ✔.
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-677](https://linear.app/quickdeploy-ai/issue/HOBO-677) — ADR-0114 in `docs/design/adr/02-identity-security.md`
+
+### REM-013 (for GAP-010)
+
+- **Action:** Specify the FinOps advisory plane (anomaly detection, forecasts, rightsizing/commitment recommendations) at design level with `cost.*` event family and ADR-0115; amend `event-families.md`, `adr/02-identity-security.md`, `adr/index.md`, `traceability.md`, `reliability-observability-cost.md`, `finops-budget-routing-control-plane.md`, `operators-sre.md`, and `glossary.md`.
+- **Acceptance:** `docs:okf`, `docs:design-lint`, `validate-traceability.ts`, staged `agent:check` pass; `rightsizing` appears in ≥3 design docs; `cost.AnomalyDetected` catalog row in `event-families.md`; exactly one new ADR index row (ADR-0115).
+- **Effort:** M
+- **Delivery:** ✔ [HOBO-678](https://linear.app/quickdeploy-ai/issue/HOBO-678) — ADR-0115 FinOps advisory plane in `docs/design/adr/02-identity-security.md`
 
 ## Verified non-issues
 

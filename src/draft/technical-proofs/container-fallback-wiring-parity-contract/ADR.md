@@ -13,20 +13,27 @@ how its records map onto the platform's event flow.
 
 ## Parse, Don't Validate
 
-Untrusted manifest input is parsed once at the boundary through the bind-reference
-and hobo-manifest validators. Wiring parity comparisons operate on derived
-`WiringProjection` records so runtime-mode swaps cannot smuggle primitive env
-strings past the seam.
+This package applies the **parse, don't validate** discipline: untrusted manifest
+input is parsed once at the boundary into derived domain types (`WiringProjection`,
+`RuntimeMode`, `ConfigEntry`), and downstream consumers receive those parsed types
+instead of re-checking raw env maps. The CUE constraints bound the same derived
+types so malformed input is rejected at parse time rather than passed downstream.
 
 ## Event Architecture
 
 The conformance report is the read model behind a small event flow:
 
 - **Command** — `deployment.RuntimeModeSwapped` records a component↔container swap.
-- **Event** — successful swaps append `deployment.WiringParityAsserted`.
-- **Actor** — the manifest IR registry actor owns wiring invariants.
-- **Projection** — `runContainerFallbackWiringConformance()` folds accepted manifests
-  into the wiring parity report consumers query.
+- **Event** — successful swaps append `deployment.WiringParityAsserted` to the log.
+- **Actor** — the manifest IR registry actor applies wiring invariants in order.
+- **Event store** — accepted events are appended to the platform event store as
+  the durable source of truth.
+- **Materialized view / projection** — a projection folds the event store into the
+  wiring parity report consumers query.
+- **Snapshot** — the accepted conformance report is the snapshot of that projection.
+- **Read store** — downstream surfaces query that read store rather than the raw
+  event log.
 
-No runtime engine is implemented here; this is a design-time contract naming the
-command, event, actor, and projection boundaries for later promotion.
+No runtime engine, projector, or event store is implemented here; this is a
+design-time contract that names the command, event, actor, and projection
+boundaries so later implementation inherits a consistent vocabulary.

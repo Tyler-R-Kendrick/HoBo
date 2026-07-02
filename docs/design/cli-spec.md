@@ -19,7 +19,7 @@ surfaces.
 |---|---|---|---|
 | `up` | lifecycle | Realize the current object graph: build, plan, gate, provision, and deploy. `--camp`, `--strategy`, `--to`, `--rollback`, `--seed`, and `--restore` select target or revision without adding lifecycle verbs. | HOBO-130, HOBO-164, HOBO-198, HOBO-203, HOBO-208, HOBO-213, HOBO-219, HOBO-224 |
 | `down` | lifecycle | Tear down what `up` realized, in reverse dependency order. | HOBO-132 |
-| `dev` | local loop | Run against `runtime-local` with hot reload, replay, codegen-in-watch, and honest fidelity labels. | HOBO-122, HOBO-190, HOBO-198, HOBO-392, HOBO-612 (draft POC: `src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`) |
+| `dev` | local loop | Run against `runtime-local` with hot reload, replay, codegen-in-watch, and honest fidelity labels. Every workload lane participates: wasm components in any supported language recompile in-watch and OCI-fallback services restart-on-change per the dev-loop matrix ([ADR-0109](./adr/07-portability-extensibility.md#adr-0109)). | HOBO-122, HOBO-190, HOBO-198, HOBO-392, HOBO-612 (draft POC: `src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`) |
 | `new` | local loop | Scaffold a runnable SDK program. | HOBO-118, HOBO-198 |
 | `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. | HOBO-136, HOBO-184 |
 | `claim` | identity | Bind an anonymous `npx hobo up` deployment to an account while preserving state and URL. | HOBO-136, HOBO-164 |

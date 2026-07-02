@@ -78,7 +78,9 @@ Stage 2 is accepted only when all four assertions are green on a real cloud thro
 **Rationale:** The S2 target-package layout names `provider-cloudflare` as the first provider home.
 Cloudflare covers all three S2 capability ports required by the roadmap: `web`/`service` via
 Workers, `kv` via Workers KV, and `objectStore` via R2. A single provider with all three ports
-minimizes cross-provider wiring while proving the governed first deploy.
+minimizes cross-provider wiring while proving the governed first deploy. The provider publishes a
+Capability Manifest with equivalence-class mappings for those ports and must pass the
+`@hobo/conformance` provider suite before S2 gate evidence is accepted.
 
 **Rejected alternatives:**
 
@@ -89,12 +91,13 @@ minimizes cross-provider wiring while proving the governed first deploy.
 
 ### D2 — Per-resource IaC stacks (not grouped)
 
-**Decision:** IaC apply uses **per-resource stacks** with a pluggable state backend and outputs.
+**Decision:** IaC apply wraps the **Pulumi Automation API** (`preview`/`apply`/`destroy`/`refresh`)
+using **per-resource stacks** with a pluggable state backend and outputs (`@hobo/iac-pulumi`).
 
-**Rationale:** Roadmap Stage 2 item 1 already prescribes "per-resource stack model + state backend +
-outputs". Per-resource stacks bound blast radius to one resource, map 1:1 onto ResourceActor
-reconcile, and let reverse-dependency compensation destroy individual stacks during
-`saga.Compensated` rollback.
+**Rationale:** Roadmap Stage 2 item 1 already prescribes wrapping the Pulumi Automation API with a
+"per-resource stack model + state backend + outputs". Per-resource stacks bound blast radius to one
+resource, map 1:1 onto ResourceActor reconcile, and let reverse-dependency compensation destroy
+individual stacks during `saga.Compensated` rollback.
 
 **Rejected alternatives:**
 

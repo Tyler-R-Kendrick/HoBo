@@ -662,3 +662,20 @@ secretless-first.
   verb surface.
 - **(-)** One more `hobo:*` interface to conform; the version model must survive provider mapping
   and the `@hobo/conformance` secrets-port suite.
+
+## ADR-0114
+**Route-level API security: per-route rules, middleware chain, and `hobo:http` enforcement.**
+
+### Context
+[Plan 21](../authoring-resources-wiring.md#plan-21) catalogues `api()` with `.allow()` = "route-level security" but, before this ADR, no design text specified the authoring surface — Nitric's `oidcRule`/`securityRule` per route and `api.use()` middleware equivalents were unspecified, and the referenced `hobo:http` extension port was undefined in the canonical interface catalog ([GAP-009](../../GAPS.md)).
+
+### Decision
+1. **`api()` security is route-scoped, not a verb list.** The `api` resource declares named security rules at API scope (`api(name, { security: [rules] })`), per-route overrides (`{ security: "ruleName" }` on each handler), and explicit `{ public: true }` opt-out. Deny-by-default: routes without `public` require a matching rule.
+2. **Middleware is a first-class seam on `hobo:http`.** `api.use(middleware)` registers an ordered chain evaluated after route matching and before the handler. This is the same seam the Plan 29 policy obligation *allow public endpoint → require auth middleware* mutates ([Plan 29](../contracts-policy-flags.md#plan-29)).
+3. **`hobo:http` is the canonical extension over `wasi:http`.** It owns route matching, security-rule enforcement (via linked `hobo:auth`), middleware execution, and principal injection (`ctx.user` / `ctx.identity`) before delegating to `wasi:http/incoming-handler` ([Plan 20](../wasm-runtime-wit.md#plan-20)).
+4. **Manifest IR carries per-route `security` entries.** Resource-collection lowers declarations into `api.v1` resources with a `security` rule map, `middleware` list, and per-route `security` fields — consumed identically by gateway/IaC adapters and the runtime.
+5. **Local dev enforces the same rules.** `hobo dev` evaluates per-route security and middleware against the contract-asserted dev principal ([ADR-0070](#adr-0070)), closing Nitric's documented gap where `oidcRule`/`securityRule` are not enforced in `nitric start`.
+
+### Consequences
+- **(+)** Nitric API-security parity is explicit and testable; `hobo:http` is catalogued; gateway + runtime + dev share one IR.
+- **(−)** Providers must implement both gateway authorizers and the `hobo:http` runtime enforcement path; middleware authors must keep chains deterministic for replay/conformance.

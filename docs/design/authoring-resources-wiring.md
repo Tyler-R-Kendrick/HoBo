@@ -34,7 +34,7 @@ Permissions are **deny-by-default**: a verb your code never calls is never grant
 ### Catalog — resource → WIT port → permission verbs
 | Resource | `@hobo/bindles` | WIT port | `.allow()` verbs | Equivalence (AWS/Azure/GCP/CF) |
 |---|---|---|---|---|
-| **API / HTTP** | `api(name)` | `wasi:http` (+ `hobo:http`) | route-level security | API GW+Lambda / Container Apps / Cloud Run / Workers |
+| **API / HTTP** | `api(name)` | `wasi:http` (+ `hobo:http`) | [route-level security](#route-level-api-security) | API GW+Lambda / Container Apps / Cloud Run / Workers |
 | **KV** | `kv(name)` | `wasi:keyvalue` | `get`,`set`,`delete` | DynamoDB / Cosmos / Firestore / KV |
 | **Bucket** | `bucket(name)` | `wasi:blobstore` (+ `hobo:blob-events`) | `read`,`write`,`delete` | S3 / Blob / GCS / R2 |
 | **Queue** (pull) | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` | SQS / Service Bus / Tasks / Queues |
@@ -62,7 +62,7 @@ The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./a
 
 | Nitric building block | HoBo resource | WIT interface | `.allow()` verbs |
 |---|---|---|---|
-| APIs / HTTP routing | `api(name)` | `wasi:http` (+ `hobo:http`) | route-level security |
+| APIs / HTTP routing | `api(name)` | `wasi:http` (+ `hobo:http`) | [route-level security](#route-level-api-security) |
 | Schedules (cron) | `schedule(name)` | `hobo:scheduler` | n/a (cron trigger) |
 | Topics & subscriptions (pub/sub) | `topic(name)` | `wasi:messaging` | `publish`,`subscribe` |
 | Queues | `queue(name)` | `hobo:queue` | `enqueue`,`dequeue` |
@@ -73,6 +73,68 @@ The catalog reaches **capability parity with Nitric and Vercel** ([ADR-0002](./a
 | Websockets | `websocket(name)` | `wasi:websocket` (preview) + `hobo:websocket` ext | `accept`,`connect`,`send`,`broadcast`,`subscribe` |
 
 HoBo's runtime provides **everything Nitric's runtime does** — the full building-block set above — but realized as **WIT interfaces**, with providers implementing the WIT interface (not Go plugins) and invoked over the **wRPC membrane** ([ADR-0069](./adr/01-architecture-core.md#adr-0069)). A building block is just a port; HoBo's own durable workflow/actors, materializations, auth, and AI ports (the rest of the catalog) sit alongside the Nitric set on the same membrane.
+
+### Route-level API security
+The `api()` resource's `.allow()` column is **not** a verb list like `kv` or `topic` — it names **route-level security**: who may call which HTTP route, and with what verified identity. This is the authoring surface for Nitric's `oidcRule` / `securityRule` per route and `api.use()` middleware ([ADR-0114](./adr/02-identity-security.md#adr-0114)).
+
+**Three layers — default, override, public opt-out.**
+1. **API-level default** — `api(name, { security: [rules] })` declares named security rules (OIDC/JWT, API key, custom) that apply to every route unless overridden.
+2. **Per-route override** — each `app.get/post/...()` attaches a `security` rule name (or inline rule) for that path+method.
+3. **Public opt-out** — `{ public: true }` on a route explicitly marks it unauthenticated; deny-by-default holds for all other routes.
+
+```ts
+import { api } from "@hobo/bindles";
+
+const defaultRule = api.oidcRule({
+  name: "default",
+  issuer: "https://accounts.example.com",
+  audiences: ["https://api.example.com"],
+});
+
+const app = api("main", { security: [defaultRule] });
+
+app.get("/health", { public: true }, async (ctx) => ctx.json({ ok: true }));
+app.get("/todos/:id", { security: "default" }, async (ctx) => { /* ctx.user set */ });
+app.post("/admin/todos", { security: "admin" }, async (ctx) => { /* stricter rule */ });
+```
+
+**Middleware seam — same obligation as Plan 29 auth middleware.** Custom auth (`api.use(middleware)`) is an **ordered middleware chain** on the `hobo:http` port, evaluated **before** the handler and **after** route matching. It is the runtime realization of the Plan 29 policy obligation *allow public endpoint → require auth middleware* ([Plan 29](./contracts-policy-flags.md#plan-29)): when policy mutates a graph to add auth, it inserts middleware bindings on the affected routes. Named `security` rules and `use()` middleware compose in declaration order — rules verify identity (`ctx.user` / `ctx.identity`), middleware may enrich or reject the request.
+
+```ts
+async function requireApiKey(ctx, next) {
+  if (ctx.req.headers["x-api-key"] !== ctx.secrets.apiKey) {
+    ctx.res.status = 401;
+    return ctx;
+  }
+  return next(ctx);
+}
+app.use(requireApiKey);   // applies to all non-public routes on this api
+```
+
+**Manifest IR — per-route `security` entries.** Resource-collection lowers declarations into the manifest IR ([Plan 21](#wiring--the-manifest-ir-aspire-model)) as explicit per-route `security` on the `api` resource:
+
+```jsonc
+"main": {
+  "type": "api.v1",
+  "port": "hobo:http",
+  "security": {
+    "default": { "type": "oidc", "issuer": "https://accounts.example.com",
+                 "audiences": ["https://api.example.com"] },
+    "admin":   { "type": "oidc", "issuer": "https://accounts.example.com",
+                 "audiences": ["https://api.example.com"], "scopes": ["admin"] }
+  },
+  "middleware": ["requireApiKey"],
+  "routes": [
+    { "method": "GET",  "path": "/health",       "security": "public" },
+    { "method": "GET",  "path": "/todos/:id",    "security": "default" },
+    { "method": "POST", "path": "/admin/todos",  "security": "admin" }
+  ]
+}
+```
+
+**Enforcement — gateway + `hobo:http`.** At deploy, the gateway/IaC adapter materializes provider-native authorizers (API Gateway authorizer, Cloud Run/IAP, Container Apps auth, Workers access rules) from the `security` block. At runtime, the **`hobo:http` extension** ([Plan 20](./wasm-runtime-wit.md#plan-20)) enforces the same rules before invoking `wasi:http/incoming-handler`: JWT/OIDC verification via the linked `hobo:auth` port ([Plan 6](./ai-native-agent-auth.md#plan-06)), middleware chain execution, and principal injection into `ctx.user` / `ctx.identity`. Deny-by-default: a route with no matching rule and no `public` opt-out is rejected.
+
+**Local dev enforces security (Nitric gap closed).** Unlike Nitric — where `oidcRule` / `securityRule` are **not enforced in `nitric start`** — `hobo dev` evaluates the same per-route `security` entries and middleware chain against the contract-asserted dev principal ([ADR-0070](./adr/02-identity-security.md#adr-0070)). Public routes stay public; protected routes require a fixture principal whose claims satisfy the rule; middleware runs identically. Authorization (policy + `.allow()`) is never bypassed — only the IdP verification path is fixture-satisfied offline.
 
 > **Data resources vs the data plane.** For an app's **domain data**, the default path is **not** raw `ctx.bindings.db` access — it's the event-sourced **command → aggregate → projection** model ([Plan 32](./data-plane.md#plan-32)/[ADR-0050](./adr/03-data-plane.md#adr-0050)). The `data`/`kv`/`bucket`/`search` resources here are then **how a projection *sink* is realized** (a data architect maps a read model onto one via Matching — for `data`, the paradigm + backend is a provider/Matching choice, [ADR-0052](./adr/03-data-plane.md#adr-0052)), plus the **escape hatch** for direct access and the home of **adopted authoritative-external** stores ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)). They remain first-class resources; domain reads/writes go through `command`/`repo`/`view`, not hand-written queries by default.
 >

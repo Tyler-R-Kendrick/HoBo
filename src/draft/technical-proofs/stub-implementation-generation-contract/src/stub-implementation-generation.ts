@@ -86,6 +86,43 @@ export function loadPaymentsStubRecordingsFixture() {
   return parseStubRecordings(JSON.parse(readFileSync(fixturePath, "utf8")));
 }
 
+export function adaptStubRecordedTrace(rawTrace, { targetPort, stubId }) {
+  assertObject(rawTrace, "stub.recorded_trace", "$");
+  assertEqual(
+    rawTrace.schema,
+    "hobo.stub.recorded-trace/v1",
+    "stub.recorded_trace_schema",
+    "$.schema"
+  );
+  assertNonEmptyString(targetPort, "stub.target_port", "$.targetPort");
+  assertNonEmptyString(stubId, "stub.stub_id", "$.stubId");
+  if (!Array.isArray(rawTrace.entries) || rawTrace.entries.length === 0) {
+    throw new StubRecordingsParseError("stub.recordings_empty", "$.entries");
+  }
+
+  const recordings = rawTrace.entries.map((entry, index) => {
+    const path = `$.entries[${index}]`;
+    assertObject(entry, "stub.recorded_trace_entry", path);
+    assertNonEmptyString(entry.function, "stub.recorded_trace_function", `${path}.function`);
+    return Object.freeze({
+      id: `trace:${entry.function}-${index + 1}`,
+      type: "link.Called",
+      method: entry.function,
+      inputDigest: contentDigest(entry.input ?? {}),
+      outputDigest: contentDigest(entry.output ?? {}),
+      input: entry.input ?? null,
+      output: entry.output ?? null
+    });
+  });
+
+  return parseStubRecordings({
+    schema: "hobo.stub.recordings/v1",
+    port: targetPort,
+    stubId,
+    recordings
+  });
+}
+
 export function buildStubImplementationGenerationRequest(overrides = {}) {
   const stubRecordings = overrides.stubRecordings ?? loadPaymentsStubRecordingsFixture();
   return validateGenRequest({

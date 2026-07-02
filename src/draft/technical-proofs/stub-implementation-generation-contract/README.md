@@ -7,14 +7,15 @@ replay-as-tests, bounded repair, and gated promotion.
 
 ## Requirements Source
 
-- [Plan 23](../../../docs/design/generated-stack.md#plan-23): stub recordings are the specification-by-example oracle; "done" = conformance green + reproduces observed outputs.
-- [Plan 9](../../../docs/design/generated-stack.md#plan-09): per-interface `@hobo/conformance` is the hard gate.
+- [Plan 23](../../../../docs/design/generated-stack.md#plan-23): stub recordings are the specification-by-example oracle; "done" = conformance green + reproduces observed outputs.
+- [Plan 9](../../../../docs/design/generated-stack.md#plan-09): per-interface `@hobo/conformance` is the hard gate.
 - Promotes the stub-to-implementation slice from
-  [`generation-pipeline-training-ai-safety`](../epic-proofs/generation-pipeline-training-ai-safety/README.md).
+  [`generation-pipeline-training-ai-safety`](../../epic-proofs/generation-pipeline-training-ai-safety/README.md).
 
 ## Contract
 
 - `parseStubRecordings()` crosses the S5-06 stub recording boundary once into a derived type.
+- `adaptStubRecordedTrace()` bridges HOBO-651 `hobo.stub.recorded-trace/v1` exports into generation input.
 - `buildStubImplementationGenerationRequest()` binds authoritative WIT + conformance suite; stub material cannot override the target port.
 - `runStubImplementationGeneration()` composes scaffold, LLM-fill, sandbox validation (conformance + trace replay), bounded repair, and promotion.
 - Promotion requires **all** stub-recorded traces to replay and the per-interface conformance suite to pass.

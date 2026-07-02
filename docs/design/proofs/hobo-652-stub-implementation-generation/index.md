@@ -15,6 +15,7 @@ recorded trace as a regression test before promotion.
 | Trace mismatch blocks promotion | `adversarial: trace mismatch blocks promotion...` ends `needs-human` with no promotion. |
 | Repair budget exhaustion escalates | `adversarial: bounded non-convergence...` emits one `gen.NeedsHuman`. |
 | Authoritative WIT cannot be overridden by stub material | `adversarial: contradictory stub material...` rejects port mismatch at parse/run boundary. |
+| S5-06 recorded trace adapts into generation input | `integration: HOBO-651 recorded trace adapts...` promotes after adaptation. |
 
 ## Boundary
 

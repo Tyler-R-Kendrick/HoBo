@@ -1,9 +1,17 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { contentDigest } from "../../slsa-provenance-certification-contract/src/provenance.js";
 import {
+  createPaymentsPortSchema,
+  createStubMembrane,
+  exportRecordedTrace,
+  stub
+} from "../../wit-port-stub-contract/src/wit-port-stub.js";
+import {
   STUB_IMPLEMENTATION_REPAIR_BUDGET,
+  adaptStubRecordedTrace,
   buildStubImplementationGenerationRequest,
   loadPaymentsStubRecordingsFixture,
   parseStubRecordings,
@@ -106,4 +114,71 @@ test("determinism: pinned seed reproduces candidate and promotion payload digest
     contentDigest(second.promotion)
   );
   assert.notEqual(first.finalCandidateRef.digest, differentSeed.finalCandidateRef.digest);
+});
+
+test("integration: HOBO-651 recorded trace adapts into S5-07 generation input", async () => {
+  const membrane = createStubMembrane();
+  const portSchema = createPaymentsPortSchema();
+
+  membrane.registerComponent({ id: "checkout", imports: [portSchema.wit] });
+  stub({
+    membrane,
+    componentId: "checkout",
+    portInterface: portSchema.wit,
+    portSchema
+  });
+  await membrane.callImport("checkout", portSchema.wit, "charge", {
+    amountCents: 2500,
+    currency: "USD"
+  });
+
+  const trace = exportRecordedTrace(membrane);
+  const adapted = adaptStubRecordedTrace(trace, {
+    targetPort: "hobo:service/payments@0.1.0",
+    stubId: "stub-from-hobo-651"
+  });
+
+  assert.equal(adapted.recordings.length, 1);
+  assert.equal(adapted.recordings[0].method, "charge");
+  assert.equal(adapted.port, "hobo:service/payments@0.1.0");
+
+  const result = await runStubImplementationGeneration({
+    stubRecordings: adapted,
+    validationScript: ["pass"]
+  });
+  assert.equal(result.outcome, "promoted");
+});
+
+test("architecture artifacts pin protobuf, CUE, Pact, and ADR boundaries", () => {
+  const adr = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
+  const proto = readFileSync(
+    new URL("../architecture/stub_implementation_generation_contract.proto", import.meta.url),
+    "utf8"
+  );
+  const cue = readFileSync(
+    new URL("../architecture/stub_implementation_generation_contract.cue", import.meta.url),
+    "utf8"
+  );
+  const pact = JSON.parse(
+    readFileSync(
+      new URL("../architecture/pacts/stub_implementation_generation_contract.pact.json", import.meta.url),
+      "utf8"
+    )
+  );
+
+  for (const typeName of ["StubImplementationGenerationRecord"]) {
+    assert.match(proto, new RegExp(`message ${typeName}`));
+    assert.match(cue, new RegExp(`#${typeName}:`));
+  }
+
+  assert.equal(pact.consumer.name, "StubImplementationGenerationContractConsumer");
+  assert.equal(pact.provider.name, "StubImplementationGenerationContractBoundary");
+  assert.equal(pact.interactions[0].response.body.ok, true);
+  assert.match(adr, /parse, don't validate/i);
+  assert.match(adr, /Command/i);
+  assert.match(adr, /Event/i);
+  assert.match(adr, /Actor/i);
+  assert.match(adr, /event store/i);
+  assert.match(adr, /projection/i);
+  assert.match(adr, /read store/i);
 });

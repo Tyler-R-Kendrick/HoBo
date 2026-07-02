@@ -1714,6 +1714,13 @@ Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-00
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-671](https://linear.app/quickdeploy-ai/issue/HOBO-671) — nomad.md tracker re-audited; `platform-engineering.md#node-placement-and-system-workloads-iteration-hooks` added
 
+### REM-008 (for GAP-005)
+
+- **Action:** Add ADR-0111 for `hobo dev` local dashboard architecture; add Plan 07 § Local dashboard (`hobo dev`) answering serving mode, read path, local vs Camp-backed views, OTLP ingest/deferral, and offline behavior; close cross-links across `developer-experience.md`, `adr/07-portability-extensibility.md`, `aspire.md`, `deployment-dashboard-topology-explorer.md`, `adr/index.md`, and `traceability.md`.
+- **Acceptance:** `docs:okf`, traceability gate, and staged `agent:check` pass; five local-dashboard questions answered; cross-link web closed.
+- **Effort:** M
+- **Delivery:** 🧯 [HOBO-673](https://linear.app/quickdeploy-ai/issue/HOBO-673) — ADR-0111 + Plan 07 local dashboard section (PR pending merge)
+
 ## Verified non-issues
 
 | ID | Candidate | Why rejected (covering evidence) |

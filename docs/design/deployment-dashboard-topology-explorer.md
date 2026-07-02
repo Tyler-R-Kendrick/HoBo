@@ -109,6 +109,11 @@ source of truth beside the event log and projections.
   dashboard can display but must not own.
 - [cli-spec.md](./cli-spec.md) defines the command vocabulary that must stay in
   parity with dashboard-visible read fields.
+- [developer-experience.md#local-dashboard-hobo-dev](./developer-experience.md#local-dashboard-hobo-dev)
+  and [ADR-0111](./adr/07-portability-extensibility.md#adr-0111) define the
+  `hobo dev` local dashboard serving mode, local read path, view scope labels,
+  OTLP ingest, and offline behavior — distinct from the hosted Yard Gateway
+  dashboard path in [developer-experience.md#plan-07](./developer-experience.md#plan-07).
 - [ADR-0077](./adr/02-identity-security.md#adr-0077) pins project/environment
   grouping and tenant-first filtering.
 - [ADR-0078](./adr/02-identity-security.md#adr-0078) pins architecture-derived
@@ -129,6 +134,15 @@ source of truth beside the event log and projections.
 | Reliability, Observability & Cost | SLO, availability, cost, and incident signals surfaced in dashboard rollups. | Owns telemetry, alerting, cost attribution, and incident workflows. |
 | Security / RBAC | Tenant-first filtering, project/environment RBAC, and redaction rules. | Owns authorization and redaction implementation. |
 | Support Workflow | Handoff fields for customer diagnosis and safe next action. | Owns support queues, SLAs, and escalation automation. |
+
+## Gap Routing
+
+| Gap / adjacent concern | Routed to | Notes |
+|---|---|---|
+| `hobo dev` local dashboard serving mode, local read API, OTLP sink, offline scope labels | [developer-experience.md#local-dashboard-hobo-dev](./developer-experience.md#local-dashboard-hobo-dev), [ADR-0111](./adr/07-portability-extensibility.md#adr-0111) | Distinct from this M0 record's hosted/fleet dashboard scope; local dev telemetry is not a live-provider or Gateway read. |
+| Aspire local-dashboard parity (resource graph, per-resource telemetry) | [`docs/competitors/aspire.md`](../competitors/aspire.md#dashboard-dcp--observability), [ADR-0111](./adr/07-portability-extensibility.md#adr-0111) | Reference competitor surface; HoBo closes via co-launched local listener. |
+| Hosted Yard dashboard (Gateway read path) | [developer-experience.md#plan-07](./developer-experience.md#plan-07) | Next.js `web` resource in Yard Bindle; out of `hobo dev` scope. |
+| Operations/fleet dashboard & status pages | [developer-experience.md#plan-49](./developer-experience.md#plan-49), [ADR-0077](./adr/02-identity-security.md#adr-0077) | Camp-backed; labeled `camp-deferred` in local dashboard. |
 
 ## Evidence Required For M1
 

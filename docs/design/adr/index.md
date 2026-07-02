@@ -116,3 +116,4 @@
 | 0108 | In-Camp workload scheduling: the component-host scheduler seam (wadm default; substrate-delegated) | [architecture-core](01-architecture-core.md#adr-0108) |
 | 0109 | Polyglot inner loop: per-toolchain watch lanes, replay-based state preservation & OCI-fallback under `hobo dev` | [portability-extensibility](07-portability-extensibility.md#adr-0109) |
 | 0110 | Marketplace payout-readiness is a launch-gated commercial-operations record, not reinstated monetization | [portability-extensibility](07-portability-extensibility.md#adr-0110) |
+| 0111 | Local dashboard (`hobo dev`): co-launched read surface over `runtime-local`, not the Yard Gateway | [portability-extensibility](07-portability-extensibility.md#adr-0111) |

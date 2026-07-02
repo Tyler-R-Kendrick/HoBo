@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-s4-08-portability-conformance-lane-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  }
+}

@@ -88,10 +88,11 @@ describe("S3-02 identity acceptance (BDD)", () => {
       renewalGraceSeconds: 300,
     });
     const { document, hostPublicKeys } = attestedDocument();
+    const audience = "hobo-broker";
     const issued = await service.issueSvidFromAttestation({
       attestationDocument: document,
       requestedScope: { port: "database", resource: "shop.db", verbs: ["write"] },
-      audience: "hobo-gateway",
+      audience,
       agentName: "deployer",
       hostPublicKeys,
       knownImageDigests: [IMAGE_DIGEST],
@@ -113,14 +114,14 @@ describe("S3-02 identity acceptance (BDD)", () => {
 
     const oldStillValid = await service.authenticateAtGateway({
       token: issued.token,
-      audience: "hobo-gateway",
+      audience,
       now: rotateAt,
     });
     expect(oldStillValid.status).toBe("authenticated");
 
     const newValid = await service.authenticateAtGateway({
       token: rotated.token,
-      audience: "hobo-gateway",
+      audience,
       now: rotateAt,
     });
     expect(newValid.status).toBe("authenticated");

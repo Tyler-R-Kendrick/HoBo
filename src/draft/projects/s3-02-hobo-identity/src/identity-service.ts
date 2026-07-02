@@ -29,6 +29,7 @@ export type ActiveSvidRecord = Readonly<{
   identityId: string;
   subject: string;
   token: string;
+  audience: string;
   scope: readonly ScopeEntry[];
   expiresAt: string;
   signerKid: string;
@@ -156,6 +157,7 @@ export class IdentityService {
       identityId,
       subject,
       token,
+      audience: input.audience,
       scope: [input.requestedScope],
       expiresAt,
       signerKid: this.issuer.activeKeyId,
@@ -205,7 +207,7 @@ export class IdentityService {
 
     const claims: JwtSvidClaims = {
       sub: current.subject,
-      aud: "hobo-gateway",
+      aud: current.audience,
       tenant: current.subject.split("/")[2] ?? "unknown",
       parentPrincipal: { kind: "agent", id: current.identityId },
       codeVersion: { digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000", version: "rotation" },
@@ -220,6 +222,7 @@ export class IdentityService {
       identityId: newIdentityId,
       subject: current.subject,
       token,
+      audience: current.audience,
       scope: current.scope,
       expiresAt,
       signerKid: this.issuer.activeKeyId,

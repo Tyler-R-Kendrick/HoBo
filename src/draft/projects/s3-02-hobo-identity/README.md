@@ -9,6 +9,7 @@ independent POC without importing unmerged blocker code.
 
 - Workload attestation intake → JWT-SVID issuance (`identity.Issued`) via parse-don't-validate derived types
 - SVID rotation inside renewal grace (`identity.Rotated`)
+- Rotated JWT-SVID preserves original audience claim (broker vs gateway)
 - OIDC discovery + JWKS verification for Gateway auth
 - Protobuf + CUE `data-models/` for identity records
 - PACT boundary contract for `@hobo/gateway` consumer

@@ -37,14 +37,30 @@ export class NoRouteError extends Error {
   }
 }
 
+export function parseChargeInput(raw) {
+  validateChargeInput(raw);
+  return Object.freeze({
+    amountCents: raw.amountCents,
+    currency: raw.currency,
+  });
+}
+
+export function parseChargeOutput(raw) {
+  validateChargeOutput(raw);
+  return Object.freeze({
+    status: raw.status,
+    transactionId: raw.transactionId,
+  });
+}
+
 export function createPaymentsPortSchema() {
   return Object.freeze({
     wit: PAYMENTS_PORT,
     operations: Object.freeze({
       charge: {
-        input: validateChargeInput,
-        output: validateChargeOutput,
-        defaultResponse: () => ({ status: "ok", transactionId: "stub-txn-1" }),
+        input: (value) => parseChargeInput(value),
+        output: (value) => parseChargeOutput(value),
+        defaultResponse: () => parseChargeOutput({ status: "ok", transactionId: "stub-txn-1" }),
       },
     }),
   });

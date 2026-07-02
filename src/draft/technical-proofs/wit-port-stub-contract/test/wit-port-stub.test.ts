@@ -10,11 +10,27 @@ import {
   createReplayHarness,
   createStubMembrane,
   exportRecordedTrace,
+  parseChargeInput,
+  parseChargeOutput,
   replayRecordedTrace,
   stub,
 } from "../src/wit-port-stub.js";
 
 const chargeInput = { amountCents: 2500, currency: "USD" };
+
+test("parseChargeInput rejects invalid payloads at the boundary", () => {
+  assert.throws(() => parseChargeInput({ amountCents: -1, currency: "USD" }), StubSchemaError);
+  const parsed = parseChargeInput(chargeInput);
+  assert.equal(parsed.amountCents, 2500);
+});
+
+test("parseChargeOutput returns frozen derived type", () => {
+  const parsed = parseChargeOutput({ status: "ok", transactionId: "txn-1" });
+  assert.equal(parsed.status, "ok");
+  assert.throws(() => {
+    parsed.status = "declined";
+  });
+});
 
 test("reference checkout app runs end-to-end with payments port stubbed", async () => {
   const membrane = createStubMembrane();

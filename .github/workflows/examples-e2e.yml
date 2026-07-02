@@ -3,7 +3,9 @@ name: HoBo Examples E2E
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, labeled]
+    # Both jobs are label-gated, so opened/synchronize/reopened runs were
+    # all-skip no-ops; only label additions can select a job here.
+    types: [labeled]
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:

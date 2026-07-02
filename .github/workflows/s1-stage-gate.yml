@@ -29,6 +29,7 @@ jobs:
   conformance:
     name: conformance
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable pnpm
@@ -44,6 +45,7 @@ jobs:
   offline-hello-bindle:
     name: offline-hello-bindle
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable pnpm
@@ -75,6 +77,7 @@ jobs:
   replay-equals-live:
     name: replay-equals-live
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable pnpm
@@ -91,6 +94,7 @@ jobs:
     name: record
     needs: [conformance, offline-hello-bindle, replay-equals-live]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable pnpm

@@ -68,7 +68,7 @@ Six stage-6 implementation lanes and their planned production homes (scope decla
 ## Scope Out And Non-Goals
 
 - No implementation code in S6-01 — this issue ships documentation records only.
-- UI-layer generation and marketplace monetization are out of scope ([ADR-0064](./adr/07-portability-extensibility.md#adr-0064)).
+- Marketplace monetization is out of scope ([ADR-0064](./adr/07-portability-extensibility.md#adr-0064)); app/UI generation (UX Designer, design.md, OpenUI, json-render, mcp-apps, `ui-render` port) stays in the ADR-0064 keep list ([ADR-0056](./adr/03-data-plane.md#adr-0056)).
 - HoBo charges no money and ships no billing ([ADR-0064](./adr/07-portability-extensibility.md#adr-0064)).
 - No edits to the five promoted epic proofs under `src/draft/epic-proofs/`.
 - Each excluded implementation lane is owned by one of **S6-02..S6-10** and must not start until this record is accepted.

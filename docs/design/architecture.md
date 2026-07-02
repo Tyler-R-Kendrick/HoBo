@@ -168,7 +168,7 @@ examples/
 ```
 
 #### Projects (top-level surfaces → packages)
-The product's named **Projects** map to packages here: **Cloud / self-host** → `@hobo/sdk` (the operator SDK, + `registry`/`identity`); **App SDK** → `@hobo/bindles` (+ `runtime`); **topology** → `@hobo/camps`/`@hobo/yards`/`@hobo/junctions`; **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 21](./authoring-resources-wiring.md#plan-21)). *(A `@hobo/ui-render` / UI-generation surface is out of scope — [ADR-0064](./adr/07-portability-extensibility.md#adr-0064).)*
+The product's named **Projects** map to packages here: **Cloud / self-host** → `@hobo/sdk` (the operator SDK, + `registry`/`identity`); **App SDK** → `@hobo/bindles` (+ `runtime`); **topology** → `@hobo/camps`/`@hobo/yards`/`@hobo/junctions`; **CLI** → `@hobo/cli`; **MCP** → `@hobo/mcp`; **agent-skills** → `@hobo/agent-skills`; **DSL** → `@hobo/hobo-code` (the token-efficient IR for codegen + platform config, [Plan 21](./authoring-resources-wiring.md#plan-21)); **App/UI generation** → `@hobo/ui-render` (UX Designer operator + `ui-render` port — in scope per [ADR-0064](./adr/07-portability-extensibility.md#adr-0064)/[ADR-0056](./adr/03-data-plane.md#adr-0056)).
 
 #### Conventions
 - **Ports live in `core`**, implementations in adapter packages; adapters never import each other.

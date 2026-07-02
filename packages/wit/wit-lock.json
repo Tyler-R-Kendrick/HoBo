@@ -1,183 +1,183 @@
 {
-  "schema": "hobo.wit-toolchain-lock/v1",
-  "package": "hobo:sdk@0.1.0",
-  "canonical_generator": {
-    "name": "@bytecodealliance/jco",
-    "version": "1.24.3",
-    "role": "canonical-ts-bindings"
-  },
-  "smoke_generators": [
-    {
-      "name": "wit-bindgen-cli",
-      "version": "0.58.0",
-      "role": "compatibility-smoke"
-    }
-  ],
-  "compat_floor": {
-    "wasmtime": "46.0.1",
-    "componentize_js": "0.21.0",
-    "wrpc": "0.17.0",
-    "wasm_cloud": "2.4.0",
-    "default_transport": "wrpc@0.17.0+nats"
-  },
-  "wit_deps": [
-    {
-      "id": "wasi:blobstore/blobstore@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "blobstore",
-      "interface_name": "blobstore",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-blobstore-blobstore.wit",
-      "sha256": "sha256:a36ac275d878a2b25bc6a7f06748c658f0f766288358d1d899ae0d5415616f02"
-    },
-    {
-      "id": "wasi:cli/environment@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "cli",
-      "interface_name": "environment",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-cli-environment.wit",
-      "sha256": "sha256:a1bd78bab4dbaf3c3aa240dc53444afc4c977b1b9bf55f9d1d6d4cf12927547e"
-    },
-    {
-      "id": "wasi:clocks/monotonic-clock@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "clocks",
-      "interface_name": "monotonic-clock",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-clocks-monotonic-clock.wit",
-      "sha256": "sha256:a7cdae81be1c74e1ee77f87154bac56050374786fe4b3750ae4fdcf13d221a3d"
-    },
-    {
-      "id": "wasi:clocks/wall-clock@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "clocks",
-      "interface_name": "wall-clock",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-clocks-wall-clock.wit",
-      "sha256": "sha256:c8b0c82c23b0acd770b7fd2a53ca9e32779c046d544795fc17b74c6117c55911"
-    },
-    {
-      "id": "wasi:config/store@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "config",
-      "interface_name": "store",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-config-store.wit",
-      "sha256": "sha256:532b1e8a5deb534209fdc7bb52454158741ed72ac495b24fa667e85fcc5a28ce"
-    },
-    {
-      "id": "wasi:filesystem/types@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "filesystem",
-      "interface_name": "types",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-filesystem-types.wit",
-      "sha256": "sha256:20f626cdddb3c071a2a3ee39e2102df0c5b82bb9ddb8b6c9d6606e8cc253534c"
-    },
-    {
-      "id": "wasi:http/incoming-handler@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "http",
-      "interface_name": "incoming-handler",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-http-incoming-handler.wit",
-      "sha256": "sha256:c56e6243605e75a0b0b6ce7c434100e1077c54093f80f6d6f6951be89bd70b1a"
-    },
-    {
-      "id": "wasi:http/outgoing-handler@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "http",
-      "interface_name": "outgoing-handler",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-http-outgoing-handler.wit",
-      "sha256": "sha256:efc53e6df9a5f7267af0845dbc3e39bfdd433d9a0b4f5f9a05826fe70ca9f12b"
-    },
-    {
-      "id": "wasi:io/streams@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "io",
-      "interface_name": "streams",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-io-streams.wit",
-      "sha256": "sha256:567802dc4220ca08b06074ad8fbc1be2b4de6219505fbeaf96f5f8be27d792a1"
-    },
-    {
-      "id": "wasi:keyvalue/store@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "keyvalue",
-      "interface_name": "store",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-keyvalue-store.wit",
-      "sha256": "sha256:3cf309f0476533c780333aa2cb71ec5b8cb8a4b8a100c45734a00f146ea8623d"
-    },
-    {
-      "id": "wasi:logging/logging@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "logging",
-      "interface_name": "logging",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-logging-logging.wit",
-      "sha256": "sha256:72966da0fb2118685d590a5cac96bf9648350230e0ecef575913de0513924352"
-    },
-    {
-      "id": "wasi:messaging/messaging@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "messaging",
-      "interface_name": "messaging",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-messaging-messaging.wit",
-      "sha256": "sha256:2fffe459c0e4a254d366ce58b835198fbb0ae9a221b5e324c0d2a35b076e5df7"
-    },
-    {
-      "id": "wasi:random/random@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "random",
-      "interface_name": "random",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-random-random.wit",
-      "sha256": "sha256:ecc02ee5ca27548a97da1fd87e880c354ec188c2e258d752566c5df3edee9e83"
-    },
-    {
-      "id": "wasi:sockets/tcp@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "sockets",
-      "interface_name": "tcp",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-sockets-tcp.wit",
-      "sha256": "sha256:786f2cc5187edeafba854e93da3d0f80474062ad16863da84e0df0eb59682ca7"
-    },
-    {
-      "id": "wasi:sql/query@0.2.0@preview",
-      "namespace": "wasi",
-      "package_name": "sql",
-      "interface_name": "query",
-      "version": "0.2.0",
-      "stability": "preview",
-      "path": "wit/deps/wasi-sql-query.wit",
-      "sha256": "sha256:0fbfc5006946def31ab331d8d7cc0d4ecad39bfd379c0788e042bd8306bc4e54"
-    }
-  ],
-  "guards": [
-    "canonical-generator-is-jco",
-    "wit-bindgen-is-smoke-only",
-    "vendored-wit-deps-match-lock",
-    "wit-gen-byte-identical",
-    "trivial-guest-imports-generated-world",
-    "preview-bump-declares-upcaster"
-  ]
+	"schema": "hobo.wit-toolchain-lock/v1",
+	"package": "hobo:sdk@0.1.0",
+	"canonical_generator": {
+		"name": "@bytecodealliance/jco",
+		"version": "1.24.3",
+		"role": "canonical-ts-bindings"
+	},
+	"smoke_generators": [
+		{
+			"name": "wit-bindgen-cli",
+			"version": "0.58.0",
+			"role": "compatibility-smoke"
+		}
+	],
+	"compat_floor": {
+		"wasmtime": "46.0.1",
+		"componentize_js": "0.21.0",
+		"wrpc": "0.17.0",
+		"wasm_cloud": "2.4.0",
+		"default_transport": "wrpc@0.17.0+nats"
+	},
+	"wit_deps": [
+		{
+			"id": "wasi:blobstore/blobstore@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "blobstore",
+			"interface_name": "blobstore",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-blobstore-blobstore.wit",
+			"sha256": "sha256:a36ac275d878a2b25bc6a7f06748c658f0f766288358d1d899ae0d5415616f02"
+		},
+		{
+			"id": "wasi:cli/environment@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "cli",
+			"interface_name": "environment",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-cli-environment.wit",
+			"sha256": "sha256:a1bd78bab4dbaf3c3aa240dc53444afc4c977b1b9bf55f9d1d6d4cf12927547e"
+		},
+		{
+			"id": "wasi:clocks/monotonic-clock@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "clocks",
+			"interface_name": "monotonic-clock",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-clocks-monotonic-clock.wit",
+			"sha256": "sha256:a7cdae81be1c74e1ee77f87154bac56050374786fe4b3750ae4fdcf13d221a3d"
+		},
+		{
+			"id": "wasi:clocks/wall-clock@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "clocks",
+			"interface_name": "wall-clock",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-clocks-wall-clock.wit",
+			"sha256": "sha256:c8b0c82c23b0acd770b7fd2a53ca9e32779c046d544795fc17b74c6117c55911"
+		},
+		{
+			"id": "wasi:config/store@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "config",
+			"interface_name": "store",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-config-store.wit",
+			"sha256": "sha256:532b1e8a5deb534209fdc7bb52454158741ed72ac495b24fa667e85fcc5a28ce"
+		},
+		{
+			"id": "wasi:filesystem/types@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "filesystem",
+			"interface_name": "types",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-filesystem-types.wit",
+			"sha256": "sha256:20f626cdddb3c071a2a3ee39e2102df0c5b82bb9ddb8b6c9d6606e8cc253534c"
+		},
+		{
+			"id": "wasi:http/incoming-handler@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "http",
+			"interface_name": "incoming-handler",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-http-incoming-handler.wit",
+			"sha256": "sha256:c56e6243605e75a0b0b6ce7c434100e1077c54093f80f6d6f6951be89bd70b1a"
+		},
+		{
+			"id": "wasi:http/outgoing-handler@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "http",
+			"interface_name": "outgoing-handler",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-http-outgoing-handler.wit",
+			"sha256": "sha256:efc53e6df9a5f7267af0845dbc3e39bfdd433d9a0b4f5f9a05826fe70ca9f12b"
+		},
+		{
+			"id": "wasi:io/streams@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "io",
+			"interface_name": "streams",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-io-streams.wit",
+			"sha256": "sha256:567802dc4220ca08b06074ad8fbc1be2b4de6219505fbeaf96f5f8be27d792a1"
+		},
+		{
+			"id": "wasi:keyvalue/store@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "keyvalue",
+			"interface_name": "store",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-keyvalue-store.wit",
+			"sha256": "sha256:3cf309f0476533c780333aa2cb71ec5b8cb8a4b8a100c45734a00f146ea8623d"
+		},
+		{
+			"id": "wasi:logging/logging@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "logging",
+			"interface_name": "logging",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-logging-logging.wit",
+			"sha256": "sha256:72966da0fb2118685d590a5cac96bf9648350230e0ecef575913de0513924352"
+		},
+		{
+			"id": "wasi:messaging/messaging@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "messaging",
+			"interface_name": "messaging",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-messaging-messaging.wit",
+			"sha256": "sha256:2fffe459c0e4a254d366ce58b835198fbb0ae9a221b5e324c0d2a35b076e5df7"
+		},
+		{
+			"id": "wasi:random/random@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "random",
+			"interface_name": "random",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-random-random.wit",
+			"sha256": "sha256:ecc02ee5ca27548a97da1fd87e880c354ec188c2e258d752566c5df3edee9e83"
+		},
+		{
+			"id": "wasi:sockets/tcp@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "sockets",
+			"interface_name": "tcp",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-sockets-tcp.wit",
+			"sha256": "sha256:786f2cc5187edeafba854e93da3d0f80474062ad16863da84e0df0eb59682ca7"
+		},
+		{
+			"id": "wasi:sql/query@0.2.0@preview",
+			"namespace": "wasi",
+			"package_name": "sql",
+			"interface_name": "query",
+			"version": "0.2.0",
+			"stability": "preview",
+			"path": "wit/deps/wasi-sql-query.wit",
+			"sha256": "sha256:0fbfc5006946def31ab331d8d7cc0d4ecad39bfd379c0788e042bd8306bc4e54"
+		}
+	],
+	"guards": [
+		"canonical-generator-is-jco",
+		"wit-bindgen-is-smoke-only",
+		"vendored-wit-deps-match-lock",
+		"wit-gen-byte-identical",
+		"trivial-guest-imports-generated-world",
+		"preview-bump-declares-upcaster"
+	]
 }

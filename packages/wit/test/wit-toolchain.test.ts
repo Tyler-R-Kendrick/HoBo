@@ -48,14 +48,20 @@ describe("@hobo/wit contract registry pact", () => {
 			),
 		};
 
-		await expect(verifyVendoredWit(drifted, PACKAGE_ROOT)).rejects.toBeInstanceOf(
-			WitDigestMismatchError,
-		);
+		await expect(
+			verifyVendoredWit(drifted, PACKAGE_ROOT),
+		).rejects.toBeInstanceOf(WitDigestMismatchError);
 	});
 
 	it("surface comparison interaction matches parity report shape", () => {
-		const forward = extractComponentSurface({ imports: ["workflow", "actor"], exports: [] });
-		const reverse = extractComponentSurface({ imports: ["workflow", "crypto"], exports: [] });
+		const forward = extractComponentSurface({
+			imports: ["workflow", "actor"],
+			exports: [],
+		});
+		const reverse = extractComponentSurface({
+			imports: ["workflow", "crypto"],
+			exports: [],
+		});
 		const report = compareSurfaces(forward, reverse);
 		expect(report.parity).toBe("drifted");
 		expect(report.driftedImports).toEqual(["actor", "crypto"]);
@@ -81,7 +87,9 @@ describe("toolchain lock verification", () => {
 		const lock = await loadToolchainLock(LOCK_PATH);
 		const verification = await verifyVendoredWit(lock, PACKAGE_ROOT);
 		expect(verification.verified).toBe(15);
-		expect(verification.pins.every((pin) => pin.sha256.startsWith("sha256:"))).toBe(true);
+		expect(
+			verification.pins.every((pin) => pin.sha256.startsWith("sha256:")),
+		).toBe(true);
 	});
 
 	it("fails closed on digest mismatch naming the pin", async () => {
@@ -89,13 +97,13 @@ describe("toolchain lock verification", () => {
 		const drifted = {
 			...lock,
 			witDeps: lock.witDeps.map((pin, index) =>
-				index === 0
-					? { ...pin, sha256: `${pin.sha256.slice(0, -1)}0` }
-					: pin,
+				index === 0 ? { ...pin, sha256: `${pin.sha256.slice(0, -1)}0` } : pin,
 			),
 		};
 
-		await expect(verifyVendoredWit(drifted, PACKAGE_ROOT)).rejects.toMatchObject({
+		await expect(
+			verifyVendoredWit(drifted, PACKAGE_ROOT),
+		).rejects.toMatchObject({
 			code: "wit.digest_mismatch",
 			pinId: drifted.witDeps[0].id,
 		});

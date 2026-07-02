@@ -1,14 +1,14 @@
 {
-  "artifact": "fixtures/golden-sdk-component.wasm",
-  "imports": [
-    "actor",
-    "agent",
-    "capability",
-    "command",
-    "data",
-    "saga",
-    "subscription",
-    "workflow"
-  ],
-  "exports": []
+	"artifact": "fixtures/golden-sdk-component.wasm",
+	"imports": [
+		"actor",
+		"agent",
+		"capability",
+		"command",
+		"data",
+		"saga",
+		"subscription",
+		"workflow"
+	],
+	"exports": []
 }

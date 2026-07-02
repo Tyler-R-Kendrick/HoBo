@@ -37,9 +37,7 @@ describe("wasi:* round-trip shape identity", () => {
 		const drifted = {
 			...lock,
 			witDeps: lock.witDeps.map((pin, index) =>
-				index === 0
-					? { ...pin, sha256: `${pin.sha256.slice(0, -1)}0` }
-					: pin,
+				index === 0 ? { ...pin, sha256: `${pin.sha256.slice(0, -1)}0` } : pin,
 			),
 		};
 

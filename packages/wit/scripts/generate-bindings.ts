@@ -2,10 +2,14 @@ import { execFile } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
-import { digestSource, loadToolchainLock, resolvePackagePath } from "../src/index.js";
+import {
+	digestSource,
+	loadToolchainLock,
+	resolvePackagePath,
+} from "../src/index.js";
 
 const execFileAsync = promisify(execFile);
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -19,7 +23,9 @@ async function main() {
 
 	if (checkMode) {
 		const result = await assertGeneratedMatches();
-		console.log(`codegen --check ok (${result.checked} generated declaration files)`);
+		console.log(
+			`codegen --check ok (${result.checked} generated declaration files)`,
+		);
 		return;
 	}
 
@@ -100,8 +106,13 @@ async function normalizeGeneratedTree(root: string) {
 	for (const fileName of await listDeclarationFiles(root)) {
 		const path = join(root, fileName);
 		const text = await readFile(path, "utf8");
-		const normalized = text.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").replace(/\s+$/u, "");
-		const moduleText = /\b(export|import)\b/.test(normalized) ? normalized : `${normalized}\nexport {};`;
+		const normalized = text
+			.replace(/\r\n/g, "\n")
+			.replace(/[ \t]+$/gm, "")
+			.replace(/\s+$/u, "");
+		const moduleText = /\b(export|import)\b/.test(normalized)
+			? normalized
+			: `${normalized}\nexport {};`;
 		await writeFile(path, `${moduleText}\n`);
 	}
 }

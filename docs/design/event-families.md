@@ -48,6 +48,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `identity.*` | `identity.Issued`, `identity.Rotated`, `identity.PartitionGraceEntered`, `identity.PartitionGraceExpired` |
 | `impl.*` | `impl.Generated`, `impl.Promoted` |
 | `incident.*` | `incident.Opened`, `incident.Resolved` |
+| `inference.*` | `inference.BudgetGateEvaluated`, `inference.BudgetContextMissing` |
 | `invoice.*` | `invoice.LineItem`, `invoice.AdjustmentLine`, `invoice.LateUsageAdjustment` |
 | `junction.*` | `junction.TrustEstablished`, `junction.ArtifactShared` |
 | `lane.*` | `lane.Revoked` |

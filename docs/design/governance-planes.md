@@ -103,6 +103,32 @@ Eval-datasets are first-class governed artifacts (registry entries above): **ver
 #### Model cards as facts
 Every registered model carries a **model card** (intended use, training-data provenance class, eval results, known limitations, guardrail coverage) — a signed, replayable artifact assembled from the registry + `guardrail.*` + `redteam.*` + eval facts. Just as with data compliance above, HoBo exports these facts via the OCSF attestation export for an external GRC/responsible-AI tool to consume; it does **not** run a responsible-AI attestation *program* itself ([ADR-0064](./adr/07-portability-extensibility.md#adr-0064)). Model cards are the AI analog of the conformance/provenance bridge that underpins portability.
 
+#### Per-token inference budgets
+Governance promises **per-token cost/safety budgets riding the spend breaker** ([ADR-0039](./adr/02-identity-security.md#adr-0039), [Plan 5](./reliability-observability-cost.md#plan-05)) — this section pins the object and gate seam. **LLM inference tokens are not auth `token.*` credential events**; they are counted from OpenInference LLM spans (`llm.token_count.prompt` / `llm.token_count.completion` on `gen.*` / `agent()` trajectories) and folded into `MeteringView` as **`inference-tokens-input`** and **`inference-tokens-output`** dimensions (total = sum).
+
+A **`TokenBudget`** is a scoped, period-bound limit object:
+
+```json
+{
+  "id": "budget:inference/tenant-a/monthly",
+  "scope": { "kind": "tenant|camp|agent|model|run", "id": "tenant-a" },
+  "period": "per-run|daily|monthly",
+  "limits": {
+    "inputTokens":  { "soft": 1000000, "hard": 1200000 },
+    "outputTokens": { "soft": 200000,  "hard": 250000 },
+    "totalTokens":  { "soft": 1100000, "hard": 1300000 }
+  },
+  "modelId": null
+}
+```
+
+- **Authoring** — `agent({ policy: { tokenBudgetRef } })`, Camp/Bindle policy packs, and model-registry entries may bind a `TokenBudget` by ref; unset limits mean unbounded for that axis.
+- **Gate seam** — **`evaluateInferenceTokenBudget`** runs as a **pre-inference policy step** (after input guardrails, **before** model invocation in the diagram above). It consumes a **seq-pinned `MeteringView`** snapshot plus the call's **estimated** input/output tokens (from the prompt + `max_tokens` ceiling) and returns `allow` · `allow`+warn obligation · `require-approval` · `deny` via `policy.Decided`, emitting **`inference.BudgetGateEvaluated`** with the pinned `meteringViewSeq`, scope, and counter deltas. Hard denies block the model call; they do not silently truncate mid-stream unless policy explicitly chooses degrade/truncate.
+- **Post-call metering** — completed LLM spans append **`meter.UsageRecorded`** facts for the inference-token dimensions (owner = tenant → Camp → Bindle → run/agent/team), so showback and the spend circuit-breaker reuse the same projection as USD budgets ([Plan 5](./reliability-observability-cost.md#plan-05) budgets section).
+- **Spend-breaker coupling** — inference-token **velocity** and **hard** breaches feed the same policy plane and durable **`spend.CircuitTripped`** / **`spend.CircuitReset`** saga as Camp/tenant USD quotas; a tripped breaker halts further inference until acknowledged.
+
+Executable contract: [`proofs/hobo-695-token-budget-governance`](./proofs/hobo-695-token-budget-governance/index.md) → [`src/draft/technical-proofs/token-budget-governance-contract`](../../src/draft/technical-proofs/token-budget-governance-contract/README.md).
+
 #### The four lenses, applied to model & prompt changes
 A model/prompt promotion is governed by the same four-lens taxonomy as any change ([Plan 29](./contracts-policy-flags.md#plan-29)/[Plan 29](./contracts-policy-flags.md#plan-29)):
 - **Contract** — the model's I/O schema + the guardrail floor *must never break* (a guardrail-coverage regression blocks promotion).

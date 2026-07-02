@@ -32,6 +32,8 @@ Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived
 
 ## Verdict summary
 
+**FINAL (review closed 2026-07-02, iteration 3 closure sweep, base `caae932d`):** The intent-alignment review is **closed**. Iterations 1–2 confirmed **38 findings** (2 HIGH · 24 MED · 12 LOW), each with a documented remediation; iteration 3 fresh-eyes closure sweep confirmed **zero new findings** — stop rule met. Remediation execution (REM-001..036, HOBO-666..703) remains open independently.
+
 **After iteration 2 (2026-07-02, commit `ec5e9f70`):** **38 confirmed findings** (2 HIGH · 24 MED · 12 LOW) — iteration 1's 26 on main plus **12 new** (1 HIGH · 10 MED · 1 LOW); evidence audit flipped **2** additional remediations on main since iteration 1 (**DRIFT-001** ✔ ADR-0106, **DRIFT-003** ✔ ADR-0110, **GAP-002** ✔ HOBO-670). **Stop rule: open** — iteration 3+ required.
 
 **After iteration 1 (2026-07-01, commit `59e387ae`):** 25 confirmed findings (1 HIGH · 15 MED · 9 LOW), every one with a documented remediation below; 5 candidates refuted by skeptic majority and 22 rejected by their own lens (see Verified non-issues).
@@ -75,6 +77,22 @@ in the history of commit `d7bbc39c`.
 - **New findings:** DRIFT-009, DRIFT-010, GAP-019, GAP-020, GAP-021, GAP-022, GAP-023, GAP-024, GAP-025, GAP-026, GAP-027, GAP-028 (GAP-018 confirmed in iteration 1 on main; not re-counted)
 - **Rejected:** NI-028…NI-036 (see Verified non-issues)
 - **Stop rule:** open — iteration 3+ required (12 new findings)
+
+### Iteration 3 — 2026-07-02 — closure fresh-eyes sweep ([HOBO-692](https://linear.app/quickdeploy-ai/issue/HOBO-692), base `caae932d`)
+
+- **Lenses:** condensed fresh-eyes pass — P1 Nomad/orchestration · P2 Aspire/local-DX · P3 Nitric/IfC · P4 FinOps · P5 agent-native · L-DRIFT scope · L-CONS traceability (primary sources read before register diff; adversarial refute-if-uncertain on every candidate)
+- **Raw → verdicts:** 7 lens sweeps → 8 borderline candidates generated → **0 confirmed new** / 8 refuted (covering text, deliberate-documented deferral, or duplicate of existing GAP/DRIFT/NI rows)
+- **New findings:** none
+- **Candidates examined & refuted (not promoted):**
+  - P2 `Aspire.Hosting.Testing` tracker ✅ vs mock-first `hobo sandbox`/`hobo test` (ADR-0076) — deliberate architecture; testing model specified in Plan 09; same hygiene class as DRIFT-006 awaiting REM-018, not a new gap
+  - P3 Nitric `websites:` build/dev yaml vs `web(name)` catalog row — NI-011 closed building-block coverage; static/SSR path documented
+  - P3 `addContainer` IfC collection mode — IfC-default is wasm component path; explicit `bindle()` escape hatch documented
+  - P4 FinOps `ResourceIntent`/Pareto pipeline vs Matching/Dispatcher — post-core epic composes existing slices ([`traceability.md`](docs/design/traceability.md)); GAP-017 covers glossary delta
+  - P5 Crew operator MCP tools (`diagnose`/`implement`/…) vs Yard MCP catalog — NI-005; Crew composes existing Yard MCP reads/actions
+  - P5 `@hobo/agent-skills` extension seam — enumerated in ADR/extension seams + `architecture.md`; no separate design doc required at this depth
+  - L-CONS vision.md four-operator emphasis vs six-operator Plan 40 roster — section-specific emphasis (platform ops vs generation); glossary lists full roster
+  - P1 residual Nomad tracker rows — already GAP-003 / DRIFT-005 / DRIFT-001 ✔
+- **Stop rule:** **met** — zero new findings; intent-alignment **review closed** (remediations remain open)
 
 ## Gap register
 

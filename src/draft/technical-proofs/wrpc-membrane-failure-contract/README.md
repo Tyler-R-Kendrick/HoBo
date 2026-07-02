@@ -17,6 +17,8 @@ Independent POC for HOBO-25. It pins the membrane behavior that was explicitly o
 
 This POC does not implement NATS/JetStream, per-provider idempotency mechanisms, or Reactor client coalescing. It proves the contract a real membrane/host adapter must satisfy.
 
+**S1-09 promotion:** integrated with HOBO-24 in `src/draft/technical-proofs/membrane-deadline-backpressure-contract/` (HOBO-598). Production target: `packages/runtimes/runtime-local/src/membrane/backpressure.ts` + `packages/conformance/src/membrane/membrane-failure-lane.ts`.
+
 ## Verification
 
 ```powershell

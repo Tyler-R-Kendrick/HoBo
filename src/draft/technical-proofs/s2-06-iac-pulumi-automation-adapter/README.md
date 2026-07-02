@@ -25,9 +25,9 @@ bindings.
 
 ## Scope boundaries
 
-Draft POC only — production promotion to `packages/iac/iac-pulumi/` is deferred
-until HOBO-616 (S2-01 M0 acceptance record) merges. No real Pulumi SDK calls,
-Firecracker execution, or provider cloud APIs.
+Draft POC only — production promotion to `packages/iac/iac-pulumi/` is a
+follow-up after this proof merges (HOBO-616 S2-01 M0 record is Done). No real
+Pulumi SDK calls, Firecracker execution, or provider cloud APIs.
 
 ## Check
 

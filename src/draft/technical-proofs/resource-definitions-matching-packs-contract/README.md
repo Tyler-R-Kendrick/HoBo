@@ -53,7 +53,7 @@ pnpm --prefix src/draft/technical-proofs/resource-definitions-matching-packs-con
 ## Architecture Evidence
 
 - `architecture/` — protobuf + CUE + PACT boundary evidence
-- `architecture.md` — parse-don't-validate and event-driven Set/Delta notes
+- `ADR.md` — parse-don't-validate and event-driven Set/Delta notes
 
 ## Scope (out)
 

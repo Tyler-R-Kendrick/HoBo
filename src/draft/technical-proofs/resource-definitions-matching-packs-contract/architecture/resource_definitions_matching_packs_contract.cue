@@ -1,6 +1,12 @@
-// CUE constraints for HOBO-641 Resource Definitions + Matching + Packs POC.
+// CUE constraints for every protobuf type in HOBO-641 Resource Definitions + Matching + Packs POC.
 
 package architecture_evidence
+
+#ResourceDefinitionsMatchingPacksRecord: {
+	issue:    string & !=""
+	summary:  string & !=""
+	evidence: [...string]
+}
 
 #MatchDecidedEvidence: {
 	definition_id:         string & !=""

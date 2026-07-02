@@ -389,14 +389,15 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 | ADR-0105 | [architecture-core](./adr/01-architecture-core.md#adr-0105) | Componentize-js S0 stage gate uses stable inputs digest, smoke equivalence, OCI manifest determinism, and wasm-tools validate; byte-identical wasm deferred pending upstream reproducibility. | HOBO-603, HOBO-584 |
 | ADR-0108 | [architecture-core](./adr/01-architecture-core.md#adr-0108) | In-Camp scheduling is owned by the component-host scheduler seam: wadm on the default self-hosted wasmCloud lattice, substrate-delegated on k8s/floor/provider-native; scaling annotation consumer named; preemption/oversubscription/capacity-reservation deferred to ADR-Pn. | HOBO-669 |
 | ADR-0109 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0109) | Polyglot dev-loop lanes are pinned with replay-based state preservation, per-lane latency classes, layered codegen-in-watch, and a restart-on-change local container policy; only the TS lane is proof-backed. | HOBO-122, HOBO-156, HOBO-392, HOBO-672 |
+| ADR-0110 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0110) | Marketplace payout readiness stays a deferred commercial-operations posture, distinct from the billing/rev-share product scope ADR-0064 removed. | HOBO-420, HOBO-513, HOBO-668 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 98 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 99 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0109`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0110`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

@@ -276,6 +276,8 @@ importers:
 
   src/draft/epic-proofs/sdk-authoring-ifc-bindles: {}
 
+  src/draft/epic-proofs/stage-6-acceptance-gate: {}
+
   src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy: {}
 
   src/draft/epic-proofs/v1-vibe-example-gap-closure: {}
@@ -747,6 +749,8 @@ importers:
 
   src/draft/technical-proofs/connector-runtime-broker-contract: {}
 
+  src/draft/technical-proofs/container-fallback-wiring-parity-contract: {}
+
   src/draft/technical-proofs/contract-engine-port-contract: {}
 
   src/draft/technical-proofs/control-plane-action-taxonomy-contract: {}
@@ -789,6 +793,8 @@ importers:
   src/draft/technical-proofs/cross-camp-routing-policy-contract: {}
 
   src/draft/technical-proofs/cross-cloud-equivalence-model: {}
+
+  src/draft/technical-proofs/cross-cloud-junction-mtls-contract: {}
 
   src/draft/technical-proofs/cross-layer-generated-stack-propagation-contract: {}
 
@@ -1176,6 +1182,8 @@ importers:
 
   src/draft/technical-proofs/live-fix-gated-candidate-contract: {}
 
+  src/draft/technical-proofs/local-dev-orchestration-contract: {}
+
   src/draft/technical-proofs/local-dev-test-authoring-contract: {}
 
   src/draft/technical-proofs/malicious-provider-containment-contract: {}
@@ -1415,6 +1423,8 @@ importers:
 
   src/draft/technical-proofs/resource-definition-driver-contract: {}
 
+  src/draft/technical-proofs/resource-definitions-matching-packs-contract: {}
+
   src/draft/technical-proofs/resource-pack-distribution-contract: {}
 
   src/draft/technical-proofs/resourceactor-fsm-contract: {}
@@ -1488,11 +1498,19 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
+  src/draft/technical-proofs/s4-08-portability-conformance-lane-contract: {}
+
+  src/draft/technical-proofs/s4-stage-gate-multi-cloud-contract: {}
+
+  src/draft/technical-proofs/s5-02-wit-interface-conformance-coverage: {}
+
   src/draft/technical-proofs/s5-05-forge-signing-registry-certification-contract: {}
 
   src/draft/technical-proofs/s6-02-control-plane-ha-contract: {}
 
   src/draft/technical-proofs/s6-05-observability-drift-loop-contract: {}
+
+  src/draft/technical-proofs/s6-09-operator-crew-yard-services-contract: {}
 
   src/draft/technical-proofs/saga-compensation-engine-contract: {}
 

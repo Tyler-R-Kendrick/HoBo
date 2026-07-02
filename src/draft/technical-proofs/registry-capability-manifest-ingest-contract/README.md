@@ -81,3 +81,5 @@ This package ships the architecture-guard evidence required by
 ## Maintenance
 
 Source issue: HOBO-630 (S3-04). Gates: TypeScript contract tests, architecture guard, PACT fixture.
+2026-07-02 merge repair: refreshed `pnpm-lock.yaml` workspace importers after merging
+`origin/main`; rerun this package's direct package test before branch-level validation.

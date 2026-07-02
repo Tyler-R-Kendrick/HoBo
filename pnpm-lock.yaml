@@ -1564,6 +1564,8 @@ importers:
 
   src/draft/technical-proofs/tier-two-cross-region-network-contract: {}
 
+  src/draft/technical-proofs/token-broker-exchange-contract: {}
+
   src/draft/technical-proofs/token-broker-ha-cache-contract: {}
 
   src/draft/technical-proofs/token-broker-skeleton-contract: {}

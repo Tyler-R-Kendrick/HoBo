@@ -146,3 +146,62 @@ export {
 	parseSeq,
 	parseStreamName,
 } from "./ports/streamer.js";
+
+export type {
+	ActorKey,
+	CompleteResult,
+	DequeueOptions,
+	EnqueueOptions,
+	EnqueueResult,
+	HandleReport,
+	IdempotencyKey,
+	LeaseId,
+	LeasedMessage,
+	MessageId,
+	Queue,
+	QueueName,
+	ReleaseResult,
+	SignalResult,
+} from "./ports/queue.js";
+export {
+	QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION,
+	QueueLeaseLostError,
+	QueueParseError,
+	createEnqueueResult,
+	createLeasedMessage,
+	parseActorKey,
+	parseDequeueOptions,
+	parseIdempotencyKey,
+	parseLeaseId,
+	parseMessageId,
+	parseQueueName,
+} from "./ports/queue.js";
+
+export type {
+	ClockReplayResult,
+	ClockTraceEntry,
+	CronSchedule,
+	FiredTimer,
+	IntervalCronSpec,
+	IsoInstant,
+	FireId,
+	ScheduleId,
+	ScheduledTimer,
+	TimerId,
+	TimerOptions,
+	VirtualClock,
+} from "./ports/clock.js";
+export {
+	ClockParseError,
+	NondeterministicClockError,
+	createClockReplayResult,
+	createCronSchedule,
+	createFiredTimer,
+	createScheduledTimer,
+	parseCronEveryMs,
+	parseDelayMs,
+	parseFireId,
+	parseIsoInstant,
+	parseScheduleId,
+	parseTimerId,
+} from "./ports/clock.js";

@@ -30,3 +30,6 @@ Run:
 ```bash
 pnpm --prefix src/draft/projects/s6-06-finops-plane test
 ```
+
+Architecture evidence: `architecture/finops_plane.proto`, `architecture/finops_plane.cue`,
+`architecture.md`, and `contracts/pacts/finops_plane_boundary.pact.json`.

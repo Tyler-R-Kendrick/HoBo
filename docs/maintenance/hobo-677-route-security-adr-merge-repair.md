@@ -1,4 +1,13 @@
-# HOBO-677 route-security ADR merge repair
+---
+type: Reference
+title: "Maintenance note - HOBO-677"
+description: "Maintenance note for the HOBO-677 route-security ADR merge-conflict repair."
+tags: [hobo, maintenance]
+---
+
+# Maintenance note - HOBO-677
+
+Date: 2026-07-02
 
 Automation run `cursor/linear-issue-blockers-23d8` rebased
 `cursor/hobo-677-hobo-agent-workflow-c7ed` onto `origin/main` and resolved ADR

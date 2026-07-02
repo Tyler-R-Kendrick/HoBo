@@ -74,6 +74,23 @@ test("Given full event transcript When replayed Then state matches live orchestr
   assert.equal(replayed.status, "deployed");
 });
 
+test("Given rolled-back event transcript When replayed Then actor states match live compensation (NFR-011)", async () => {
+  const plan = fixtureDeploymentPlan();
+  const orchestrator = createTestOrchestrator();
+  const live = await orchestrator.run({
+    plan,
+    correlationId: CORRELATION_ID,
+    failApplyResourceIds: ["api"]
+  });
+  const replayed = replayOrchestration({ plan, events: live.events });
+
+  assert.deepEqual(
+    replayed.actors.map((actor) => actor.state),
+    live.state.actors.map((actor) => actor.state)
+  );
+  assert.equal(replayed.status, "rolled-back");
+});
+
 test("Given crash after deployment.RolledBack When events replay and orchestrator resumes Then compensation completes without duplicate rollback", async () => {
   const plan = fixtureDeploymentPlan();
   const orchestrator = createTestOrchestrator();

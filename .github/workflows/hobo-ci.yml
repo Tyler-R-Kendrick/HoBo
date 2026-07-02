@@ -163,3 +163,137 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  hello-bindle-fixture:
+    name: hello-bindle sandbox fixture
+    needs: pr-gate
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: hello-bindle-fixture-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
+      HOBO_E2E_FIXTURE: examples/hello-bindle
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Assert keyless CI contract
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
+      - name: Deploy and assert hello-bindle fixture
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
+      - name: Tear down hello-bindle fixture
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
+      - name: Sweep orphaned hello-bindle fixtures
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
+
+  hello-bindle-fixture-quarantine:
+    name: hello-bindle fixture quarantine
+    needs: pr-gate
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture-quarantine')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
+      HOBO_E2E_FIXTURE: examples/hello-bindle
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Assert keyless CI contract
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
+      - name: Run quarantine fixture lane
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}-quarantine"
+      - name: Tear down quarantine fixture
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}-quarantine"
+      - name: Sweep orphaned quarantine fixtures
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
+
+  multi-cloud-shop-fixture:
+    name: multi-cloud-shop provider fixture
+    needs: pr-gate
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: multi-cloud-shop-fixture-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      HOBO_E2E_FIXTURE: examples/multi-cloud-shop
+      HOBO_E2E_PROVIDERS: aws,azure
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Deploy same Bindle to AWS and Azure
+        run: node --import tsx src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
+      - name: Tear down multi-cloud-shop fixture
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
+      - name: Sweep orphaned multi-cloud-shop fixtures
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract/scripts/run-multi-cloud-shop-e2e-fixture.ts --phase sweep-orphans
+
+  s4-stage-gate-drill:
+    name: S4 stage gate multi-cloud drill
+    needs: pr-gate
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/s4-drill')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: s4-stage-gate-drill-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      HOBO_E2E_FIXTURE: examples/multi-cloud-shop
+      HOBO_E2E_PROVIDERS: aws,azure
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Run S4 stage gate drill
+        run: node --import tsx src/draft/technical-proofs/s4-stage-gate-multi-cloud-contract/scripts/run-s4-stage-gate-drill.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
+      - name: Tear down S4 stage gate drill
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/s4-stage-gate-multi-cloud-contract/scripts/run-s4-stage-gate-drill.ts --phase teardown --run-id "${{ github.run_id }}"
+      - name: Sweep orphaned S4 stage gate fixtures
+        if: always()
+        run: node --import tsx src/draft/technical-proofs/s4-stage-gate-multi-cloud-contract/scripts/run-s4-stage-gate-drill.ts --phase sweep-orphans

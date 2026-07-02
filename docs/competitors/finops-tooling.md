@@ -60,7 +60,7 @@ None replaces a control plane — each bolts onto existing infra or billing expo
 
 ## Gaps a competitor could exploit
 
-- **Forecasting and anomaly detection** — Vantage and Kubecost ship statistical alerts; HoBo's FinX surface promises forecasts/anomalies but design for computation is still open ([GAP-010](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/GAPS.md)).
+- **Forecasting and anomaly detection** — Vantage and Kubecost ship statistical alerts; HoBo's FinX advisory plane specifies deterministic anomaly/forecast projections ([ADR-0115](../design/adr/02-identity-security.md#adr-0115)) — execution pressure remains on tuning and UX parity with dedicated FinOps dashboards.
 - **Commitment/rate optimization** — Cast.ai and Vantage surface RI/Savings Plan/Spot guidance; HoBo's CreditLedgerView handles free-tier/credit rotation but not enterprise commitment purchasing workflows.
 - **Non-K8s allocation** — OpenCost assumes kube-metrics; HoBo wasm workloads need a first-class usage→price mapping story to claim OpenCost-shape parity beyond re-export.
 
@@ -74,8 +74,8 @@ None replaces a control plane — each bolts onto existing infra or billing expo
 | Automated rightsizing / spot (Cast.ai) | Cost-driven degradation tiers, scale-to-zero, Dispatcher credit-aware routing ([ADR-0039](../design/adr/02-identity-security.md#adr-0039), [ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) | Designed; Cast.ai-level automation is partial — policy-gated degradation not full autoscaling |
 | Budget / quota enforcement | Soft/hard budgets, spend-caps, runaway-spend breaker, synchronous reservation ([ADR-0039](../design/adr/02-identity-security.md#adr-0039) §2) | Designed |
 | Cost-aware placement | Dispatcher `maximize-credits` objective + effective marginal cost ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) | Designed |
-| Anomaly / forecast alerts | FinX promises forecasts/anomalies; only threshold breakers specified today | Gap — [GAP-010](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/GAPS.md) |
-| FinOps operator agent | No dedicated FinOps Crew role yet | Gap — [GAP-011](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/GAPS.md) |
+| Anomaly / forecast alerts | FinX `cost.AnomalyDetected` / `cost.ForecastUpdated` facts from MeteringView projections ([ADR-0115](../design/adr/02-identity-security.md#adr-0115)) | Designed |
+| FinOps operator agent | FinOps Crew operator owns FinX advisory outputs ([ADR-0117](../design/adr/03-data-plane.md#adr-0117), [Plan 40](../design/operators-sre.md#plan-40)) | Designed |
 
 ## Verdict
 

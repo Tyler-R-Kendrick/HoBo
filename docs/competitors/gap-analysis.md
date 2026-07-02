@@ -132,7 +132,7 @@ After the backlog closed, two of the closest **un-captured** comparables were ad
 - **Multi-cloud dashboards (Vantage)** maps to FinX attribution over event-sourced deploy history ([finops-budget-routing-control-plane](../design/finops-budget-routing-control-plane.md#product-surfaces)).
 - **Automated optimization (Cast.ai)** maps to cost-driven degradation tiers and credit-aware Dispatcher routing ([ADR-0039](../design/adr/02-identity-security.md#adr-0039), [ADR-0071](../design/adr/01-architecture-core.md#adr-0071)).
 
-**Known gaps unchanged:** Forecasting/anomaly computation ([GAP-010](../../GAPS.md)) and a dedicated FinOps Crew operator ([GAP-011](../../GAPS.md)) remain open — the tooling survey does not add new ones.
+**Known gaps unchanged:** The tooling survey does not add new architecture gaps beyond those already tracked in [`GAPS.md`](../../GAPS.md). FinOps advisory computation ([ADR-0115](../design/adr/02-identity-security.md#adr-0115)) and FinOps Crew ownership ([ADR-0117](../design/adr/03-data-plane.md#adr-0117)) are designed on main.
 
 **Differentiation confirmed:** HoBo embeds metering, quota enforcement, showback, and cost-aware placement in the same event-sourced platform that plans deployments — these tools bolt onto billing exports or clusters after the fact.
 

@@ -10,7 +10,7 @@ import {
   assertNoLegacyClosureBuilderFinalizationSyntax,
 } from "../src/closure-builder-v1-finalization.ts";
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 
 test("HOBO-531 finalization record proves every closure-builder child or RCR issue has accepted evidence", () => {
   const result = assertClosureBuilderV1Finalization(closureBuilderV1FinalizationRecord());

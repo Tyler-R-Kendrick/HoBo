@@ -16,7 +16,8 @@ built through `@hobo/build-dagger`.
 - `swapRuntimeMode(manifest, runtime)` changes only runtime-specific artifacts
   (`runtime`, `image`, `exports`, `build`).
 - `assertWiringParity(left, right, services)` fails closed when bind links,
-  env projection, or ctx.config tokens diverge.
+  env projection, ctx.config tokens (binding, secret-ref, camp-env), or
+  `services__*` endpoint env diverge.
 - `runContainerFallbackWiringConformance()` gates the multi-cloud-shop fixture
   for component↔container swaps with zero non-runtime manifest edits.
 

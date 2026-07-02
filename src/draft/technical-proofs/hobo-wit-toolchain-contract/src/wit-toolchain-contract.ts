@@ -33,7 +33,7 @@ export const EXPECTED_INTERFACES = Object.freeze([
 ]);
 
 export async function readWitSource(path = WIT_SOURCE_PATH) {
-  return readFile(path, "utf8");
+  return (await readFile(path, "utf8")).replace(/\r\n/g, "\n");
 }
 
 export async function readToolchainLock(path = LOCK_PATH) {
@@ -45,7 +45,8 @@ export async function readPackageJson(path = join(PACKAGE_ROOT, "package.json"))
 }
 
 export function parseHoboSdkSkeleton(source) {
-  const packageMatch = source.match(/^package\s+hobo:sdk@([0-9]+\.[0-9]+\.[0-9]+);/m);
+  const normalized = source.replace(/\r\n/g, "\n");
+  const packageMatch = normalized.match(/^package\s+hobo:sdk@([0-9]+\.[0-9]+\.[0-9]+);/m);
   if (!packageMatch) {
     throw new Error("wit_toolchain.missing_package: hobo:sdk@0.1.0");
   }
@@ -54,7 +55,7 @@ export function parseHoboSdkSkeleton(source) {
   const interfacePattern = /^interface\s+([a-z][a-z0-9-]*)\s+\{([\s\S]*?)^}/gm;
   let match;
 
-  while ((match = interfacePattern.exec(source)) !== null) {
+  while ((match = interfacePattern.exec(normalized)) !== null) {
     const [, name, body] = match;
     const functions = [...body.matchAll(/^\s*([a-z][a-z0-9-]*):\s+func\(/gm)].map(
       (funcMatch) => funcMatch[1],
@@ -62,7 +63,7 @@ export function parseHoboSdkSkeleton(source) {
     interfaces[name] = { functions };
   }
 
-  const worldMatch = source.match(/^world\s+sdk\s+\{([\s\S]*?)^}/m);
+  const worldMatch = normalized.match(/^world\s+sdk\s+\{([\s\S]*?)^}/m);
   if (!worldMatch) {
     throw new Error("wit_toolchain.missing_world: sdk");
   }

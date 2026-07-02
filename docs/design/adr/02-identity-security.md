@@ -679,3 +679,46 @@ secretless-first.
 ### Consequences
 - **(+)** Nitric API-security parity is explicit and testable; `hobo:http` is catalogued; gateway + runtime + dev share one IR.
 - **(−)** Providers must implement both gateway authorizers and the `hobo:http` runtime enforcement path; middleware authors must keep chains deterministic for replay/conformance.
+
+## ADR-0115
+**FinOps advisory plane: cost anomaly detection, forecasting & rightsizing as deterministic MeteringView projections emitting advisory `cost.*` facts.**
+
+### Context
+The FinX surface and FinOps Framework standards baseline promise "budgets, forecasts, attribution,
+anomaly signals, commitments, and optimization recommendations"
+([finops-budget-routing-control-plane.md](../finops-budget-routing-control-plane.md) Product Surfaces +
+Standards Baseline), and a `Forecast` contract shape already exists there; but no design doc
+specified how anomalies/forecasts are computed, no `cost.*` event family existed, "rightsizing"
+appeared nowhere, and the only cost-reactive mechanisms were threshold breakers/degradation tiers
+([ADR-0039](#adr-0039)).
+
+### Decision
+1. A **`FinOpsAdvisoryView` projection** (data-plane projection pattern,
+   [Plan 11](../data-plane.md#plan-11)) folds the existing `MeteringView` counters at a pinned `seq`
+   (same pinned-snapshot replayability discipline as
+   [ADR-0071](01-architecture-core.md#adr-0071)) into per-dimension, per-attribution-scope
+   (tenant→Camp→Bindle) rolling baselines and spend velocity — no new instrumentation.
+2. **Anomaly detection** is a deterministic rule — current-window spend deviating from the rolling
+   baseline beyond a policy-configured band emits `cost.AnomalyDetected` (carries dimension, scope,
+   baseline, observed value, ledger seq); recovery emits `cost.AnomalyResolved`; anomalies route
+   through existing `alert.*`/incident paths, never auto-remediate.
+3. **Forecasts** extrapolate spend velocity to period end per budget scope (the `Forecast` shape from
+   the FinOps control-plane contract) and emit `cost.ForecastUpdated`, feeding the policy plane's
+   "do we cross tier N before period end" question.
+4. **Rightsizing and commitment recommendations** are advisory `cost.RecommendationIssued` facts
+   comparing observed utilization against the provisioned Workload Profile and `cost.json` unit
+   prices (rightsizing = smaller profile / scale-to-zero candidates; commitments = savings-plan/reserved-capacity
+   opportunities); they are applied only through the Crew/SRE propose branch as gated Deltas/obligations
+   ([Plan 40](../operators-sre.md#plan-40)), never auto-purchased or auto-resized.
+5. The built-in deterministic detector/forecaster is the default; smarter models are an optional
+   `finops-engine` behind a port (engines-behind-ports pattern,
+   [ADR-0054](03-data-plane.md#adr-0054)); the `cost.*` facts remain the contract either way.
+6. Enforcement stays with the existing breakers/degradation tiers ([ADR-0039](#adr-0039)) — this
+   plane observes, predicts, and proposes only.
+
+### Consequences
+- **(+)** FinX promises now trace to a named mechanism, owner, and replayable facts.
+- **(+)** Reuses MeteringView, so every advisory figure traces to logged facts.
+- **(-)** The built-in window-based detector will miss seasonality — sophisticated detection is
+  deferred to the engine port.
+- **(-)** One more projection and event family to maintain.

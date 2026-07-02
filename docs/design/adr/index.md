@@ -120,3 +120,4 @@
 | 0112 | `hobo:data` is the canonical data() port; wasi:sql driver-level; retired SQL port; frozen proof alias | [data-plane](03-data-plane.md#adr-0112) |
 | 0113 | Versioned managed secrets: `hobo:secrets` over `wasi:config/store` | [identity-security](02-identity-security.md#adr-0113) |
 | 0114 | Route-level API security: per-route rules, middleware chain, and `hobo:http` enforcement | [identity-security](02-identity-security.md#adr-0114) |
+| 0115 | FinOps advisory plane: cost anomaly detection, forecasting & rightsizing as deterministic MeteringView projections (advisory `cost.*` facts, gated proposals only) | [identity-security](02-identity-security.md#adr-0115) |

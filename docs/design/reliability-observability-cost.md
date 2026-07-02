@@ -235,9 +235,17 @@ Cost is also an **availability lever** (the reliability framing above): cost con
 - **Graceful degradation is a durable saga, not a halt.** Crossing a tier emits **`spend.DegradationRequired`**; the **SRE operator** ([Plan 40](./operators-sre.md#plan-40)) + runtime enforce it by composing existing levers — **scale-to-zero** non-critical workloads (wasm economics, below), **feature-flag shed** ([Plan 29](./contracts-policy-flags.md#plan-29)), **cache-TTL increase / expensive-query shed**, **request-priority shedding** (an honest `503` + `Retry-After` to low-priority callers, never a silent hang), and **canary hold**. Recovery emits **`spend.DegradationRolledBack`** (`spend.DegradationApplied` records each enforced step). The **runaway-spend circuit-breaker becomes the last resort** *after* graceful tiers are exhausted — degradation is the path *to* it, not a synonym for it.
 - **SLO-bounded Planner objective.** The Planner objective ([ADR-0033](./adr/01-architecture-core.md#adr-0033)) becomes *"minimize cost **subject to** the availability floor"* — the cheapest realization that still meets `availabilitySlo`, not unbounded min-cost; the cost **and** the SLO rationale are recorded in `match.Decided`/`deployment.Planned`. Cost-induced degradation is a first-class **incident class** ([Plan 40](./operators-sre.md#plan-40)): the SRE operator may *propose* cost-efficient remediation as a gated obligation, and postmortem-by-replay shows exactly what was shed.
 
+#### FinOps advisory plane: anomaly detection, forecasts & rightsizing ([ADR-0115](./adr/02-identity-security.md#adr-0115))
+Breakers and degradation tiers above **enforce**; this plane **observes, predicts, and proposes** only.
+- **`FinOpsAdvisoryView` projection** — deterministic fold over `MeteringView` at a pinned `seq`, rebuildable from zero ([Plan 11](./data-plane.md#plan-11)).
+- **Anomaly detection** — `cost.AnomalyDetected`/`cost.AnomalyResolved` from a deterministic baseline-deviation rule; routes via `alert.*`/incident; never auto-remediates.
+- **Forecasts** — `cost.ForecastUpdated` extrapolates spend velocity per budget scope; feeds the tier-crossing policy question above and the FinX surface.
+- **Rightsizing & commitment recommendations** — `cost.RecommendationIssued` compares utilization vs Workload Profile + `cost.json`; gated propose-only path through Crew/SRE.
+- **Engine behind a port** — optional `finops-engine` for sophisticated models; `cost.*` facts remain the contract either way.
+
 #### Optional dimensions
 - **Carbon/sustainability** — providers may publish region carbon intensity alongside cost; the Planner objective can include a carbon term.
-- **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval).
+- **Commitment optimization** — surface savings-plan/reserved-capacity opportunities from observed steady-state usage (advisory, never auto-purchased without approval), surfaced as `cost.RecommendationIssued` facts via the FinOps advisory plane above.
 
 #### Runtime cost inputs
 - **Wasm economics.** Ms cold starts + tiny footprint enable higher instance **density** and **scale-to-zero**, materially changing per-workload cost — a Planner input alongside the `cost.json` signals above. The OCI-container fallback keeps the existing per-resource pricing ([Plan 20](./wasm-runtime-wit.md#plan-20)).

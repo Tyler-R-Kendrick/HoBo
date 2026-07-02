@@ -155,6 +155,12 @@ The proof exposes three surfaces over the same `DecisionGraph`:
 - FinX: budgets, forecasts, attribution, anomaly signals, commitments, and
   optimization recommendations.
 
+The FinX forecasts, anomaly signals, and optimization recommendations are the advisory
+`cost.ForecastUpdated`, `cost.AnomalyDetected`, and `cost.RecommendationIssued` facts computed by
+the FinOps advisory plane ([Plan 5](./reliability-observability-cost.md#plan-05),
+[ADR-0115](./adr/02-identity-security.md#adr-0115)); FinX reads them alongside the `DecisionGraph`
+rather than inventing a separate computation.
+
 ## Scope Boundaries
 
 Out of scope: billing, tax, payment collection, live provider billing sync,

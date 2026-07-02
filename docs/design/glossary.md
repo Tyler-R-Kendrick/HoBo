@@ -37,6 +37,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Event model | Durable append-only substrate where facts are `EventEnvelope` records and projections fold replayable streams. |
 | Executor | Sandboxed runner that applies IaC or builds artifacts with scoped short-lived credentials. |
 | Four-lens taxonomy | Contract means must not break; Eval means should improve; Policy means allowed or denied; Trace means what happened. |
+| FinOps advisory plane | Deterministic MeteringView projections that emit advisory cost anomaly, forecast, and rightsizing/commitment recommendation facts; it proposes through gated obligations and never enforces. |
 | Gatekeeper | Composite deploy gate combining contracts, policy, evals, conformance, cost, signing, and golden-suite decisions. |
 | Golden Suite | Signed bundle of conformance, contract, eval, benchmark, chaos, SLO, and golden-master checks for a deployment. |
 | Grain | Virtual actor, HoBo's default concurrency primitive. |
@@ -71,6 +72,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | ResourceActor | Controller-style grain that reconciles one resource's desired and actual state. |
 | ResourceIntent | Provider-neutral infrastructure request that enters the FinOps routing pipeline as its canonical input, before candidate generation; the router core must not see provider names, SKUs, regions, account IDs, or backend API names. |
 | Run | One durable workflow or agent execution represented by a `run.*` event stream. |
+| Rightsizing | Advisory recommendation to shrink or scale-to-zero an over-provisioned workload, derived from observed utilization versus the provisioned Workload Profile and applied only through gated proposals. |
 | Runtime | Reused term for the SDK primitives package, the `Runtime` interface, or a runtime backend; context names which one. |
 | Runtime ports | Durable substrate ports a Camp provides: EventStore, Queue, Streamer, ActorHost, and Clock. |
 | Scope listing | Bindle, Camp, Yard, or Junction distributed as an npm package or structured git repo that exports the constructed scope. |

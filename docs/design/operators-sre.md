@@ -120,6 +120,7 @@ One table unifies the scattered taxonomies (Plan 5 runtime classes + Plan 23/29 
 | **Security anomaly** | live-scan finding ([Plan 12](./security-networking.md#plan-12)) | rotate credential; tighten `.allow()`; bump dep |
 | **Runaway spend** | `spend.CircuitTripped` | halt spend-incurring actions; require approval ([ADR-0039](./adr/02-identity-security.md#adr-0039)) |
 | **Cost-induced degradation** | `spend.DegradationRequired` | shed QoS by priority through `costAvailabilityProfile` tiers; SRE proposes cost-efficient remediation, gated ([ADR-0039](./adr/02-identity-security.md#adr-0039)) |
+| **Cost anomaly** (spend deviates from baseline) | `cost.AnomalyDetected` | SRE *proposes* rightsizing/commitment remediation as a gated obligation ([ADR-0115](./adr/02-identity-security.md#adr-0115)); enforcement stays with breakers/tiers ([ADR-0039](./adr/02-identity-security.md#adr-0039)) |
 Each strategy is reversible + gated; an unclassifiable failure → escalate (never silent action). Cost-induced degradation is a first-class incident class: the SRE operator handles it by *proposing* cost-efficient remediation (e.g. *"hold 99% to stay under budget while the leak is fixed"*) as a gated obligation, and **postmortem-by-replay shows exactly which load was shed and when** ([ADR-0039](./adr/02-identity-security.md#adr-0039)).
 
 #### Declarative runbooks

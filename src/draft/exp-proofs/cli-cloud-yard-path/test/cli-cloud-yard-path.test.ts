@@ -133,6 +133,18 @@ test("contract artifacts and proof README exist", () => {
   assert.match(proto, /message CliCloudYardPathRecord/);
   assert.match(cue, /#CliCloudYardPathRecord/);
   assert.equal(pact.interactions[0].request.path, "/v1/auth/login");
+  assert.ok(
+    pact.interactions.some(
+      (interaction: { request: { path: string } }) =>
+        interaction.request.path === "/v1/commands/destroy",
+    ),
+  );
+  assert.ok(
+    pact.interactions.some(
+      (interaction: { request: { path: string } }) =>
+        interaction.request.path === "/v1/streams/logs/deploy-hello-bindle-001",
+    ),
+  );
   assert.match(proofReadme, /HOBO-625/);
   assert.match(proofReadme, /hello-bindle/);
 });

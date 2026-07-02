@@ -570,11 +570,6 @@ export function validateCliCloudYardPathRecord(record: CliCloudYardPathRecord) {
   if (record.j1Journey.length !== 4) {
     errors.push("J1 journey must include login, plan, deploy, inspect deploy");
   }
-  for (const command of CLOUD_COMMANDS) {
-    if (!record.gatewayRoutes.some((route) => route.includes(command.split(" ")[0]))) {
-      // logs/destroy/inspect have dedicated routes; skip loose match for multi-word commands
-    }
-  }
   if (record.gatewayRoutes.length < GATEWAY_ROUTES.length) {
     errors.push("gateway routes must cover the cloud command path");
   }

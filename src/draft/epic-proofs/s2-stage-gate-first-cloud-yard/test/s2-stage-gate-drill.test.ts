@@ -79,7 +79,7 @@ test("Gatekeeper blocks unsafe change with explainable event-sourced reason", ()
 test("deployment timeline projection reconstructs the full run", () => {
   const deploy = simulateGovernedDeploy();
   const resume = simulateYardRestartResume({ eventLog: deploy.events });
-  const timeline = reconstructDeploymentTimeline([...deploy.events, ...resume.events]);
+  const timeline = reconstructDeploymentTimeline(resume.events);
 
   assert.equal(timeline.status, "reconstructed");
   assert.ok(timeline.eventCount > 0);
@@ -133,12 +133,17 @@ test("adversarial: wrong compensation order fails closed", () => {
 });
 
 test("adversarial: timeline with temporal gap fails closed", () => {
+  const gappedLog = [
+    { type: "deployment.DeployStarted", atMs: 500 },
+    { type: "deployment.DeployCompleted", atMs: 100 },
+  ];
+
   assert.throws(
-    () =>
-      assertTimelineMonotonic([
-        { type: "deployment.DeployStarted", atMs: 500 },
-        { type: "deployment.DeployCompleted", atMs: 100 },
-      ]),
+    () => assertTimelineMonotonic(gappedLog),
+    (error: unknown) => error instanceof S2StageGateError && error.code === "timeline.gap",
+  );
+  assert.throws(
+    () => reconstructDeploymentTimeline(gappedLog),
     (error: unknown) => error instanceof S2StageGateError && error.code === "timeline.gap",
   );
 });

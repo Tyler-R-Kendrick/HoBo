@@ -313,6 +313,7 @@ export function reconstructDeploymentTimeline(eventLog: StageGateEvent[]) {
     (event) => event.type.startsWith("deployment.") || event.type.startsWith("saga."),
   );
 
+  assertTimelineMonotonic(deploymentEvents);
   const normalized = normalizeEventLogTimestamps(deploymentEvents);
   const timeline = normalized
     .filter((event) => event.type.startsWith("deployment.") || event.type.startsWith("saga."))
@@ -365,12 +366,7 @@ export function runStageGateDrill(
   const resume = simulateYardRestartResume({ eventLog: deploy.events });
   const compensation = simulateCompensationRollback();
   const gatekeeper = simulateGatekeeperBlock();
-  const timeline = reconstructDeploymentTimeline([
-    ...deploy.events,
-    ...resume.events,
-    ...compensation.events,
-    ...gatekeeper.events,
-  ]);
+  const timeline = reconstructDeploymentTimeline(resume.events);
 
   return Object.freeze({
     schema: S2_STAGE_GATE_SCHEMA,

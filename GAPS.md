@@ -692,7 +692,11 @@ Documentation-level only — no code, no WIT files, nothing under src/draft chan
 
 - **Finding** (cand-10, P3, MED, votes uphold/uphold/uphold): The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` is not defined in the canonical interface catalog and no secret-versioning semantics (Nitric's put->version, access latest/specific version) exist anywhere in the design suite — the secret resource has only `put`/`access` verbs with no version model.
 - **Evidence:** `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/authoring-resources-wiring.md:225` · `docs/design/wasm-runtime-wit.md:151`
+<<<<<<< HEAD
 - **Effort:** M · **Delivery:** ✔ [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) — ADR-0113 in `docs/design/adr/02-identity-security.md`; `hobo:secrets` canonical definition in `docs/design/wasm-runtime-wit.md`
+=======
+- **Effort:** M · **Delivery:** ✔ [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) — ADR-0113 in `docs/design/adr/02-identity-security.md`
+>>>>>>> 3c4b8d9e (fix(docs): resolve GAPS.md merge conflict markers and REM-011 delivery)
 
 **Action**
 
@@ -1727,21 +1731,19 @@ Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-00
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-675](https://linear.app/quickdeploy-ai/issue/HOBO-675) — ADR-0112 in `docs/design/adr/03-data-plane.md`
 
-<<<<<<< HEAD
 ### REM-011 (for GAP-008)
 
 - **Finding** (cand-10, P3, MED): The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` was not defined in the canonical interface catalog and no secret-versioning semantics existed in the design suite.
 - **Evidence:** `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/wasm-runtime-wit.md:151`
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) — ADR-0113 in `docs/design/adr/02-identity-security.md`; `hobo:secrets` canonical definition in `docs/design/wasm-runtime-wit.md`
-=======
+
 ### REM-018 (for DRIFT-006)
 
 - **Action:** Reconcile `docs/competitors/nitric.md` HoBo-mapping layer with current design: `nitric up/down` → `hobo up/down` (not `deploy/destroy`), `nitric run` → `hobo dev` (no `--containers` flag), `schedule` port → `hobo:scheduler`, strike WebSocket/sql-migrations open-parity items with ADR-0075/ADR-0032 links; optionally fix `hobo:schedule` in `nomad.md`.
 - **Acceptance:** `docs:okf`, staged `agent:check`, `validate-traceability.ts` pass; grep assertions for removed stale strings and ADR link presence; Open parity items = 2 open + 2 resolved.
 - **Effort:** S
 - **Delivery:** ✔ [HOBO-683](https://linear.app/quickdeploy-ai/issue/HOBO-683) — `docs/competitors/nitric.md`, `docs/competitors/nomad.md`
->>>>>>> 65b62650 (docs(gaps): add REM-018 delivery entry for DRIFT-006 (HOBO-683))
 
 ### REM-012 (for GAP-009)
 

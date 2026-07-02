@@ -34,7 +34,7 @@ export function resolveCommandExecutable(
 		if (existsSync(localPnpm)) {
 			return localPnpm;
 		}
-		return "pnpm.cmd";
+		return "corepack";
 	}
 	return executable;
 }
@@ -58,6 +58,9 @@ export function createCommandInvocation(
 	cwd = process.cwd(),
 ): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
 	const resolvedExecutable = resolveCommandExecutable(executable, platform, cwd);
+	if (platform === "win32" && executable === "pnpm" && resolvedExecutable === "corepack") {
+		return { executable: resolvedExecutable, args: ["pnpm", ...args] };
+	}
 	if (!shouldUseCommandShell(resolvedExecutable, platform)) {
 		return { executable: resolvedExecutable, args: [...args] };
 	}

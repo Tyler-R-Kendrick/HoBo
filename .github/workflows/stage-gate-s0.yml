@@ -36,6 +36,7 @@ jobs:
           git config --global core.eol lf
           git reset --hard HEAD
       - run: corepack enable pnpm
+      - run: corepack prepare pnpm@10.33.4 --activate
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -71,6 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable pnpm
+      - run: corepack prepare pnpm@10.33.4 --activate
       - uses: actions/setup-node@v4
         with:
           node-version: 24

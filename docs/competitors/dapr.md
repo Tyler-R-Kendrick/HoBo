@@ -47,11 +47,11 @@ The portable HTTP/gRPC APIs Dapr exposes; each is backed by one or more swappabl
 | 2 | **Publish & subscribe** | topic-based messaging, multiple brokers | `wasi:messaging` / `topic()` ([Plan 21](../design/authoring-resources-wiring.md#plan-21)) |
 | 3 | **Workflows** | durable, long-running multi-service processes | `hobo:workflow` / `workflow`+`step` ([Plan 2](../design/sdk-api.md#plan-02)) |
 | 4 | **State management** | key/value with pluggable stores + consistency | `wasi:keyvalue` / `kv()` |
-| 5 | **Bindings** | input/output connectors to external systems (triggers + outputs) | provider adapters + `hobo:blob-events`/triggers |
+| 5 | **Bindings** | input/output connectors to external systems (triggers + outputs) | partial: `hobo:blob-events` + `hobo:scheduler` + handler triggers ([Plan 20](../design/wasm-runtime-wit.md#plan-20), [ADR-0072](../design/adr/01-architecture-core.md#adr-0072)); no unified bindings port — 🔜 |
 | 6 | **Actors** | virtual-actor model, single-threaded, GC'd | `hobo:actor` / Grain ([Plan 2](../design/sdk-api.md#plan-02)) |
 | 7 | **Secrets** | read secrets from cloud/local/K8s stores | `hobo:secrets` / secretless-first ([Plan 21](../design/authoring-resources-wiring.md#plan-21)) |
 | 8 | **Configuration** | read + subscribe to app config items | `hobo:control/config` / `ctx.config` ([Plan 21](../design/authoring-resources-wiring.md#plan-21)) |
-| 9 | **Distributed lock** | resource locking across instances | ActorHost single-writer lease ([Plan 5](../design/reliability-observability-cost.md#plan-05)) |
+| 9 | **Distributed lock** | resource locking across instances | actor single-writer lease/fencing for virtual-actor keys only ([Plan 5](../design/reliability-observability-cost.md#plan-05), [Plan 2](../design/sdk-api.md#plan-02)); no standalone lock port — 🔜 |
 | 10 | **Cryptography** | encrypt/decrypt without exposing keys to the app | envelope encryption + KMS ([Plan 12](../design/security-networking.md#plan-12)) |
 | 11 | **Jobs** | schedule/orchestrate batch + maintenance tasks | `hobo:scheduler` / `schedule()` + `hobo:job` |
 | 12 | **Conversation** | call LLMs with prompt caching + PII obfuscation | `"use training"`/`agent()` + training-engine ([Plan 23](../design/generated-stack.md#plan-23)/[ADR-0025](../design/adr/03-data-plane.md#adr-0025)) |
@@ -111,14 +111,16 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 
 ## HoBo mapping
 
-> HoBo's equivalent for each Dapr concept (✅ has · ➕ goes further · 🔜 planned), and where the two architectures diverge.
+> HoBo's equivalent for each Dapr concept (✅ has · ➕ goes further · 🔜 planned/iteration hook), and where the two architectures diverge. Rows marked 🔜 must cite a design anchor or an explicit iteration hook — never a bare ✅.
 
 | Dapr concept | HoBo equivalent | Notes |
 |---|---|---|
 | **Building block** (portable HTTP/gRPC API) | **WIT port** ([Plan 20](../design/wasm-runtime-wit.md#plan-20)) | ✅ same idea; HoBo's contract is a WIT interface (typed, conformance-tested) rather than an HTTP/gRPC convention |
 | **Component** (swappable adapter + YAML) | **Capability provider + link** ([Plan 4](../design/control-plane.md#plan-04)/[Plan 20](../design/wasm-runtime-wit.md#plan-20)) | ✅ swap-without-code-change; HoBo links are late-bound + capability-scoped by `.allow()` |
 | **Sidecar** (per-app runtime) | **`component-host`** (in-process wasm) ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) | ➕ no per-app sidecar tax; wasm-in-container default, runs anywhere a container runs |
-| **State / pub/sub / bindings / actors / workflow / secrets / config / lock / crypto / jobs** | the matching HoBo ports/primitives (12-building-blocks table above) | ✅ near 1:1 — validates HoBo's port catalog |
+| **State / pub/sub / actors / workflow / secrets / config / crypto / jobs** | matching HoBo ports/primitives (12-building-blocks table above, excluding Bindings and Distributed lock) | ✅ near 1:1 for these blocks — validates HoBo's port catalog |
+| **Bindings** (input/output connectors) | partial via `hobo:blob-events`, `hobo:scheduler`, and messaging/handler triggers ([Plan 20](../design/wasm-runtime-wit.md#plan-20), [Plan 21](../design/authoring-resources-wiring.md#plan-21), [ADR-0072](../design/adr/01-architecture-core.md#adr-0072)); no unified bindings port | 🔜 Dapr's catch-all connector surface is adjacent, not yet a first-class HoBo port |
+| **Distributed lock** | ActorHost single-writer lease + fencing for virtual-actor keys ([Plan 5](../design/reliability-observability-cost.md#plan-05), [Plan 2](../design/sdk-api.md#plan-02)); not a general lock/unlock API | 🔜 actor leases cover actor single-writer only; arbitrary resource locks not yet designed |
 | **Conversation** (LLM API) | `agent()` + `"use training"` + training-engine ([Plan 23](../design/generated-stack.md#plan-23)/[ADR-0025](../design/adr/03-data-plane.md#adr-0025)) | ➕ HoBo treats AI as trainable semantic functions + durable agents-as-principals, not just an LLM call |
 | **mTLS via SPIFFE-style identity** | SVID identity + brokered tokens ([Plan 6](../design/ai-native-agent-auth.md#plan-06)/[Plan 12](../design/security-networking.md#plan-12)) | ✅ same SPIFFE lineage; HoBo extends it to agents + end-users as one PrincipalRef ([ADR-0038](../design/adr/02-identity-security.md#adr-0038)) |
 | **Name resolution** (mDNS/K8s/Consul) | identity-based service discovery ([Plan 12](../design/security-networking.md#plan-12)) | ✅ HoBo discovers by SVID/logical name across providers |

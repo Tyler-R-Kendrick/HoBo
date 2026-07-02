@@ -310,7 +310,7 @@ Direct cloud SDK access for anything outside the abstracted services; provider e
 | `topic` (push pub/sub) | `wasi:messaging` | ✅ |
 | `secret` (versioned) | `wasi:config/store` + `hobo:secrets` (put → version, access latest\|pinned) ([Plan 20](../design/wasm-runtime-wit.md#plan-20), [ADR-0113](../design/adr/02-identity-security.md#adr-0113)) | ✅ |
 | `sql` | `hobo:data/relational` (realizable over draft `wasi:sql`) ([ADR-0112](../design/adr/03-data-plane.md#adr-0112)) | ✅ |
-| `schedule` (cron/interval) | `hobo:schedule` (control-plane `cron`) | ✅ |
+| `schedule` (cron/interval) | `hobo:scheduler` (control-plane `cron`) | ✅ |
 | `websocket` | `hobo:websocket` | ✅ |
 | `job` (batch, cpu/mem/gpu) | `hobo:job` (+ IaaS `vm`/`microVm`) | ✅ |
 | `website` (static/SSR) | `web()` resource | ✅ |
@@ -333,8 +333,8 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 | Nitric | HoBo equivalent | Status | HoBo doc |
 |---|---|---|---|
 | `nitric start` (emulate + dashboard) | `hobo dev` on `runtime-local` + dashboard | ✅ | [15](../design/developer-experience.md#plan-07), [07](../design/developer-experience.md#plan-07) |
-| `nitric run` (containers) | `hobo dev --containers` (wasm host or OCI) | ✅ | [15](../design/developer-experience.md#plan-07) |
-| `nitric up/down/spec/build` | `hobo deploy/destroy/plan/build` | ✅ | [15](../design/developer-experience.md#plan-07) |
+| `nitric run` (containers) | `hobo dev` (wasm host; OCI fallback via runtime provider) | ✅ | [15](../design/developer-experience.md#plan-07) |
+| `nitric up/down/spec/build` | `hobo up/down/collect/plan/build` | ✅ | [15](../design/developer-experience.md#plan-07) |
 | Local dashboard (test APIs, view kv/sql, trigger schedules, etc.) | HoBo dashboard + **run inspector / replay / link & trace views** | ➕ | [07](../design/developer-experience.md#plan-07), [14](../design/reliability-observability-cost.md#plan-05) |
 | Multi-cloud, deploy to many at once | mapping rules: whole-app / per-tier / per-boundary | ✅ | [02](../design/sdk-api.md#plan-02), [03](../design/control-plane.md#plan-04) |
 
@@ -354,6 +354,6 @@ All resources detailed with `.allow()` verbs + cross-cloud equivalence in [21](.
 ### Open parity items (iteration hooks)
 
 - Bucket-event + presigned-URL semantics as a HoBo WIT extension (`hobo:blob-events`).
-- WebSocket port WIT shape (no standard `wasi:websocket` yet).
-- `sql` migrations workflow parity (Nitric's `migrations/<db>/*.up.sql`).
 - Per-language IfC collection fidelity (run-to-collect vs static analysis).
+- ~~WebSocket port WIT shape (no standard `wasi:websocket` yet).~~ ✅ **RESOLVED** — preview `wasi:websocket` + `hobo:websocket` extension ([ADR-0075](../design/adr/07-portability-extensibility.md#adr-0075), [Plan 20](../design/wasm-runtime-wit.md#plan-20)).
+- ~~`sql` migrations workflow parity (Nitric's `migrations/<db>/*.up.sql`).~~ ✅ **RESOLVED** — declarative desired-schema + auto-diff ([Plan 32](../design/data-plane.md#plan-32), [ADR-0032](../design/adr/03-data-plane.md#adr-0032)).

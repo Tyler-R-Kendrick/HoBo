@@ -19,6 +19,13 @@ This POC defines:
 Scope intentionally stops at the IR. It does not implement a policy engine,
 obligation execution, deny-ceiling algebra, or contract IR.
 
+The public type surface is exercised by a `tsc --noEmit` type-test
+(`test/types/policy-ir-usage.ts`): `Decision`, `DecisionRequest`, `Effect`,
+and `Phase` are exported as precise unions (e.g. `Effect = typeof EFFECTS[number]`)
+and evidence hashes are typed as `` `sha256:${string}` `` so mismatches fail at
+compile time. Run the suite with `pnpm --filter @hobo-draft/policy-ir-contract test`
+(Vitest, preceded by `npm run typecheck`).
+
 
 ## Architecture Evidence
 

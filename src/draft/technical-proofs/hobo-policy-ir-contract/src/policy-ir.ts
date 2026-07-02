@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 
-export const POLICY_IR_SCHEMA_VERSION = "hobo.policy-ir/v1";
-export const POLICY_DECIDED_EVENT_TYPE = "policy.Decided";
+export const POLICY_IR_SCHEMA_VERSION = "hobo.policy-ir/v1" as const;
+export const POLICY_DECIDED_EVENT_TYPE = "policy.Decided" as const;
 
-export const SUBJECT_KINDS = Object.freeze(["user", "service", "agent", "system"]);
+export const SUBJECT_KINDS = Object.freeze(["user", "service", "agent", "system"] as const);
 export const PHASES = Object.freeze([
   "author",
   "local",
@@ -15,7 +15,7 @@ export const PHASES = Object.freeze([
   "train",
   "promote",
   "repair",
-]);
+] as const);
 export const EFFECTS = Object.freeze([
   "allow",
   "allow-degraded",
@@ -23,14 +23,76 @@ export const EFFECTS = Object.freeze([
   "warn",
   "mutate",
   "require-approval",
-]);
+] as const);
 
-const SUBJECT_KIND_SET = new Set(SUBJECT_KINDS);
-const PHASE_SET = new Set(PHASES);
-const EFFECT_SET = new Set(EFFECTS);
+export type SubjectKind = (typeof SUBJECT_KINDS)[number];
+export type Phase = (typeof PHASES)[number];
+export type Effect = (typeof EFFECTS)[number];
+export type Sha256Hash = `sha256:${string}`;
+
+export interface PrincipalRef {
+  kind: SubjectKind;
+  id: string;
+}
+
+export interface DecisionSubject extends PrincipalRef {
+  roles?: string[];
+  scopes?: string[];
+  delegatedBy?: PrincipalRef | string;
+}
+
+export interface DecisionResource {
+  kind: string;
+  id: string;
+}
+
+export interface DecisionRequest {
+  schemaVersion: typeof POLICY_IR_SCHEMA_VERSION;
+  subject: DecisionSubject;
+  action: string;
+  resource: DecisionResource;
+  phase: Phase;
+  context: Record<string, unknown>;
+  inputHash: Sha256Hash;
+}
+
+export interface DecisionEvidence {
+  policyIds: string[];
+  inputHash: Sha256Hash;
+  engine: string;
+}
+
+export interface Decision {
+  schemaVersion: typeof POLICY_IR_SCHEMA_VERSION;
+  effect: Effect;
+  reason: string;
+  violations: unknown[];
+  mutations: unknown[];
+  approvals: unknown[];
+  obligations: Array<{ kind: string; [key: string]: unknown }>;
+  evidence: DecisionEvidence;
+}
+
+export interface PolicyDecidedEvent {
+  id: string;
+  type: typeof POLICY_DECIDED_EVENT_TYPE;
+  schemaVersion: typeof POLICY_IR_SCHEMA_VERSION;
+  subject: DecisionSubject;
+  action: string;
+  resource: DecisionResource;
+  phase: Phase;
+  data: Decision;
+}
+
+const SUBJECT_KIND_SET = new Set<string>(SUBJECT_KINDS);
+const PHASE_SET = new Set<string>(PHASES);
+const EFFECT_SET = new Set<string>(EFFECTS);
 
 export class PolicyIrValidationError extends Error {
-  constructor(code, message, path = "$") {
+  code: string;
+  path: string;
+
+  constructor(code: string, message: string, path = "$") {
     super(`${code} at ${path}: ${message}`);
     this.name = "PolicyIrValidationError";
     this.code = code;
@@ -38,11 +100,11 @@ export class PolicyIrValidationError extends Error {
   }
 }
 
-export function createDecisionRequest(input) {
+export function createDecisionRequest(input: unknown): DecisionRequest {
   return parseDecisionRequest(input);
 }
 
-export function parseDecisionRequest(input) {
+export function parseDecisionRequest(input: unknown): DecisionRequest {
   const source = expectObject(input, "$");
   assertVersion(source.schemaVersion, "$.schemaVersion");
 
@@ -55,12 +117,15 @@ export function parseDecisionRequest(input) {
   }
 
   const request = {
-    schemaVersion: source.schemaVersion,
+    schemaVersion: POLICY_IR_SCHEMA_VERSION,
     subject: parseSubject(source.subject, "$.subject"),
     action: expectNonEmptyString(source.action, "$.action"),
     resource: parseResource(source.resource, "$.resource"),
     phase: parsePhase(source.phase, "$.phase"),
-    context: source.context === undefined ? {} : canonicalJsonValue(source.context, "$.context"),
+    context:
+      source.context === undefined
+        ? {}
+        : (canonicalJsonValue(source.context, "$.context") as Record<string, unknown>),
   };
   const inputHash = hashDecisionRequest(request);
 
@@ -75,8 +140,9 @@ export function parseDecisionRequest(input) {
   return { ...request, inputHash };
 }
 
-export function createDecision(requestInput, decisionInput) {
+export function createDecision(requestInput: unknown, decisionInput: unknown): Decision {
   const request = parseDecisionRequest(requestInput);
+  const decisionSource = expectObject(decisionInput, "$");
   return parseDecision(
     {
       schemaVersion: POLICY_IR_SCHEMA_VERSION,
@@ -84,10 +150,10 @@ export function createDecision(requestInput, decisionInput) {
       mutations: [],
       approvals: [],
       obligations: [],
-      ...decisionInput,
+      ...decisionSource,
       evidence: {
         policyIds: [],
-        ...decisionInput.evidence,
+        ...(decisionSource.evidence as Record<string, unknown> | undefined),
         inputHash: request.inputHash,
       },
     },
@@ -95,13 +161,13 @@ export function createDecision(requestInput, decisionInput) {
   );
 }
 
-export function parseDecision(input, requestInput) {
+export function parseDecision(input: unknown, requestInput?: unknown): Decision {
   const source = expectObject(input, "$");
   assertVersion(source.schemaVersion, "$.schemaVersion");
   const request = requestInput === undefined ? undefined : parseDecisionRequest(requestInput);
 
-  const decision = {
-    schemaVersion: source.schemaVersion,
+  const decision: Decision = {
+    schemaVersion: POLICY_IR_SCHEMA_VERSION,
     effect: parseEffect(source.effect, "$.effect"),
     reason: expectNonEmptyString(source.reason, "$.reason"),
     violations: parseJsonArray(source.violations ?? [], "$.violations"),
@@ -114,12 +180,15 @@ export function parseDecision(input, requestInput) {
   return decision;
 }
 
-export function serializePolicyIrDocument(documentInput) {
+export function serializePolicyIrDocument(documentInput: unknown): string {
   const document = parsePolicyIrDocument(documentInput);
   return canonicalJson(document);
 }
 
-export function parsePolicyIrDocument(documentInput) {
+export function parsePolicyIrDocument(documentInput: unknown): {
+  request: DecisionRequest;
+  decision: Decision;
+} {
   const source =
     typeof documentInput === "string"
       ? expectObject(JSON.parse(documentInput), "$")
@@ -129,7 +198,7 @@ export function parsePolicyIrDocument(documentInput) {
   return { request, decision };
 }
 
-export function migratePolicyIrDocument(documentInput) {
+export function migratePolicyIrDocument(documentInput: unknown): DecisionRequest {
   const source = expectObject(documentInput, "$");
   if (source.schemaVersion === POLICY_IR_SCHEMA_VERSION) {
     return parseDecisionRequest(source);
@@ -158,7 +227,15 @@ export function migratePolicyIrDocument(documentInput) {
   });
 }
 
-export function createPolicyDecidedEvent({ request: requestInput, decision: decisionInput, id }) {
+export function createPolicyDecidedEvent({
+  request: requestInput,
+  decision: decisionInput,
+  id,
+}: {
+  request: unknown;
+  decision: unknown;
+  id?: string;
+}): PolicyDecidedEvent {
   const request = parseDecisionRequest(requestInput);
   const decision = parseDecision(decisionInput, request);
   return {
@@ -173,7 +250,7 @@ export function createPolicyDecidedEvent({ request: requestInput, decision: deci
   };
 }
 
-export function toWitDecisionRecord(decisionInput) {
+export function toWitDecisionRecord(decisionInput: unknown): unknown {
   const decision = parseDecision(decisionInput);
   return {
     schema_version: decision.schemaVersion,
@@ -191,7 +268,7 @@ export function toWitDecisionRecord(decisionInput) {
   };
 }
 
-export function fromWitDecisionRecord(recordInput, requestInput) {
+export function fromWitDecisionRecord(recordInput: unknown, requestInput?: unknown): Decision {
   const record = expectObject(recordInput, "$");
   return parseDecision(
     {
@@ -212,7 +289,7 @@ export function fromWitDecisionRecord(recordInput, requestInput) {
   );
 }
 
-export function hashDecisionRequest(requestInput) {
+export function hashDecisionRequest(requestInput: unknown): Sha256Hash {
   const source = expectObject(requestInput, "$");
   const request = {
     schemaVersion: source.schemaVersion,
@@ -226,11 +303,11 @@ export function hashDecisionRequest(requestInput) {
   return `sha256:${digest}`;
 }
 
-export function canonicalJson(value) {
+export function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalJsonValue(value));
 }
 
-function assertVersion(version, path) {
+function assertVersion(version: unknown, path: string): asserts version is typeof POLICY_IR_SCHEMA_VERSION {
   if (version !== POLICY_IR_SCHEMA_VERSION) {
     throw new PolicyIrValidationError(
       "unsupported-version",
@@ -240,14 +317,14 @@ function assertVersion(version, path) {
   }
 }
 
-function parseSubject(input, path) {
+function parseSubject(input: unknown, path: string): DecisionSubject {
   const subject = expectObject(input, path);
   const kind = expectNonEmptyString(subject.kind, `${path}.kind`);
   if (!SUBJECT_KIND_SET.has(kind)) {
     throw new PolicyIrValidationError("unknown-subject-kind", kind, `${path}.kind`);
   }
-  const parsed = {
-    kind,
+  const parsed: DecisionSubject = {
+    kind: kind as SubjectKind,
     id: expectNonEmptyString(subject.id, `${path}.id`),
   };
   if (subject.roles !== undefined) {
@@ -262,7 +339,7 @@ function parseSubject(input, path) {
   return parsed;
 }
 
-function parseDelegatedBy(input, path) {
+function parseDelegatedBy(input: unknown, path: string): PrincipalRef | string {
   if (typeof input === "string") {
     return expectNonEmptyString(input, path);
   }
@@ -273,15 +350,15 @@ function parseDelegatedBy(input, path) {
   };
 }
 
-function parseSubjectKind(input, path) {
+function parseSubjectKind(input: unknown, path: string): SubjectKind {
   const kind = expectNonEmptyString(input, path);
   if (!SUBJECT_KIND_SET.has(kind)) {
     throw new PolicyIrValidationError("unknown-subject-kind", kind, path);
   }
-  return kind;
+  return kind as SubjectKind;
 }
 
-function parseResource(input, path) {
+function parseResource(input: unknown, path: string): DecisionResource {
   const resource = expectObject(input, path);
   return {
     kind: expectNonEmptyString(resource.kind, `${path}.kind`),
@@ -289,32 +366,37 @@ function parseResource(input, path) {
   };
 }
 
-function parsePhase(input, path) {
+function parsePhase(input: unknown, path: string): Phase {
   const phase = expectNonEmptyString(input, path);
   if (!PHASE_SET.has(phase)) {
     throw new PolicyIrValidationError("unknown-phase", phase, path);
   }
-  return phase;
+  return phase as Phase;
 }
 
-function parseEffect(input, path) {
+function parseEffect(input: unknown, path: string): Effect {
   const effect = expectNonEmptyString(input, path);
   if (!EFFECT_SET.has(effect)) {
     throw new PolicyIrValidationError("unknown-effect", effect, path);
   }
-  return effect;
+  return effect as Effect;
 }
 
-function parseEvidence(input, request, path) {
+function parseEvidence(
+  input: unknown,
+  request: DecisionRequest | undefined,
+  path: string,
+): DecisionEvidence {
   const evidence = expectObject(input, path);
-  const parsed = {
+  const inputHash = expectNonEmptyString(evidence.inputHash, `${path}.inputHash`);
+  if (!/^sha256:[a-f0-9]{64}$/.test(inputHash)) {
+    throw new PolicyIrValidationError("invalid-input-hash", inputHash, `${path}.inputHash`);
+  }
+  const parsed: DecisionEvidence = {
     policyIds: parseStringArray(evidence.policyIds, `${path}.policyIds`),
-    inputHash: expectNonEmptyString(evidence.inputHash, `${path}.inputHash`),
+    inputHash: inputHash as Sha256Hash,
     engine: expectNonEmptyString(evidence.engine, `${path}.engine`),
   };
-  if (!/^sha256:[a-f0-9]{64}$/.test(parsed.inputHash)) {
-    throw new PolicyIrValidationError("invalid-input-hash", parsed.inputHash, `${path}.inputHash`);
-  }
   if (request !== undefined && parsed.inputHash !== request.inputHash) {
     throw new PolicyIrValidationError(
       "input-hash-mismatch",
@@ -325,44 +407,44 @@ function parseEvidence(input, request, path) {
   return parsed;
 }
 
-function parseObligations(input, path) {
+function parseObligations(input: unknown, path: string): Decision["obligations"] {
   const obligations = parseJsonArray(input, path);
   return obligations.map((obligation, index) => {
     const parsed = expectObject(obligation, `${path}[${index}]`);
     expectNonEmptyString(parsed.kind, `${path}[${index}].kind`);
-    return parsed;
+    return parsed as { kind: string; [key: string]: unknown };
   });
 }
 
-function parseJsonArray(input, path) {
+function parseJsonArray(input: unknown, path: string): unknown[] {
   if (!Array.isArray(input)) {
     throw new PolicyIrValidationError("expected-array", "expected an array", path);
   }
   return input.map((item, index) => canonicalJsonValue(item, `${path}[${index}]`));
 }
 
-function parseStringArray(input, path) {
+function parseStringArray(input: unknown, path: string): string[] {
   if (!Array.isArray(input)) {
     throw new PolicyIrValidationError("expected-array", "expected an array", path);
   }
   return input.map((item, index) => expectNonEmptyString(item, `${path}[${index}]`));
 }
 
-function expectNonEmptyString(input, path) {
+function expectNonEmptyString(input: unknown, path: string): string {
   if (typeof input !== "string" || input.trim() === "") {
     throw new PolicyIrValidationError("expected-string", "expected a non-empty string", path);
   }
   return input;
 }
 
-function expectObject(input, path) {
+function expectObject(input: unknown, path: string): Record<string, unknown> {
   if (!isPlainObject(input)) {
     throw new PolicyIrValidationError("expected-object", "expected a JSON object", path);
   }
   return input;
 }
 
-function isPlainObject(input) {
+function isPlainObject(input: unknown): input is Record<string, unknown> {
   return (
     input !== null &&
     typeof input === "object" &&
@@ -371,7 +453,7 @@ function isPlainObject(input) {
   );
 }
 
-function canonicalJsonValue(input, path = "$") {
+function canonicalJsonValue(input: unknown, path = "$"): unknown {
   if (input === null) {
     return null;
   }
@@ -388,7 +470,7 @@ function canonicalJsonValue(input, path = "$") {
     return input.map((item, index) => canonicalJsonValue(item, `${path}[${index}]`));
   }
   if (isPlainObject(input)) {
-    const output = {};
+    const output: Record<string, unknown> = {};
     for (const key of Object.keys(input).sort()) {
       if (input[key] === undefined) {
         throw new PolicyIrValidationError(

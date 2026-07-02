@@ -34,9 +34,14 @@ of the CQRS write-path contract.
 
 ## Verification
 
-```powershell
-npm.cmd --prefix src\draft\technical-proofs\cqrs-command-aggregate-contract test
+```sh
+pnpm --filter @hobo-draft/cqrs-command-aggregate-contract test
 ```
+
+The suite runs on Vitest and is followed by a `tsc --noEmit` type-test pass
+(`tsconfig.types.json`) that exercises the exported `CommandContext`,
+`CommandDefinition`, and `CommandResult` types, including the strongly typed
+`emitted` envelope stream returned from a command.
 
 
 ## Architecture Evidence

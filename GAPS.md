@@ -1806,6 +1806,13 @@ Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-00
 - **Effort:** M
 - **Delivery:** ✔ [HOBO-679](https://linear.app/quickdeploy-ai/issue/HOBO-679) — ADR-0117 in `docs/design/adr/03-data-plane.md`
 
+### REM-016 (for GAP-012)
+
+- **Action:** Add `docs/competitors/lakebed.md` faithful capture; link every design-suite Lakebed characterization to it (`vision.md`, `index.md`, `gap-analysis.md`, `competitors/index.md`).
+- **Acceptance:** OKF capture with `#hobo-mapping`; relative links resolve; docs gates pass; competitive claims unchanged.
+- **Effort:** M
+- **Delivery:** ✔ [HOBO-681](https://linear.app/quickdeploy-ai/issue/HOBO-681) — Lakebed competitor capture + cross-links
+
 ## Verified non-issues
 
 | ID | Candidate | Why rejected (covering evidence) |

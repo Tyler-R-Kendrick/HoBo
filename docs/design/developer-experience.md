@@ -171,6 +171,21 @@ denial, caller cancellation cleanup, and deadline escalation from replay-derived
 facts, while keeping hosted dashboards and production observability out of this
 slice.
 
+##### Per-workload dev loop — TS, non-TS components, and OCI-fallback services ([ADR-0109](./adr/07-portability-extensibility.md#adr-0109))
+
+State preservation is replay-based and therefore toolchain-neutral: run state lives in `.hobo/` and survives reload for every wasm lane. Lanes differ only in recompile latency, which generated artifacts refresh on edit, and how OCI-fallback services restart. `hobo dev` surfaces a per-lane **latency class** (`fast` · `medium` · `slow`) alongside the [ADR-0042](./adr/07-portability-extensibility.md#adr-0042) fidelity labels.
+
+| Workload lane | Watch → recompile path | Latency class | Run state across reload | Regenerated artifacts | Under `hobo dev`? | Status |
+|---|---|---|---|---|---|---|
+| TS/JS (`jco` + `componentize-js`) | transpile + re-componentize on save | fast | preserved (replay from `.hobo/`) | `_generated/` TS clients on WIT/Zod/`.allow()`/`bind` edits | yes | **proven** ([HOBO-122 proof](./proofs/hobo-122-dev-loop/index.md)) |
+| Rust (`cargo-component`) | debounced `cargo component build` | medium | preserved (replay) | wit-bindgen bindings on WIT edits (+ `_generated/` TS only if the WIT changed) | yes | design-pinned |
+| Go (TinyGo) | debounced `tinygo build` to component | medium | preserved (replay) | same as Rust | yes | design-pinned |
+| Python (`componentize-py`) | re-componentize on save | medium | preserved (replay) | same as Rust | yes | design-pinned |
+| C#/.NET (`componentize-dotnet`, NativeAOT-LLVM) | debounced rebuild | slow | preserved (replay) | same as Rust | yes | design-pinned |
+| OCI-fallback container | image rebuild (or bind-mount) + restart-on-change via local Docker/Podman through the same OCI pipeline ([Plan 21](./authoring-resources-wiring.md#plan-21)) | slow | **not preserved in-memory** — only event-log-backed state | none (no idiom layer) | yes, restart-on-change; without a container runtime, `hobo doctor` flags it and the service runs as a `hobo stub` | design-pinned |
+
+Only the TS lane is proof-backed; the others are design-pinned pending their own proof slices (per [ADR-0109](./adr/07-portability-extensibility.md#adr-0109) point 5).
+
 ##### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042))
 "Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./generated-stack.md#plan-09)).
 - **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector).

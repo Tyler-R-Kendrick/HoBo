@@ -355,6 +355,23 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **(+)** Per-doc scope disclaimers now have a single citable decision; ADR-0064's competitive cut (vs Convex/Lakebed/Nitric) is unchanged.
 - **(↔)** The archived-requirements business-model statement is re-pointed here.
 
+## ADR-0109
+**Polyglot inner loop: per-toolchain watch lanes, replay-based state preservation, and OCI-fallback services under `hobo dev`.**
+
+### Context
+[Plan 07](../developer-experience.md#plan-07)'s inner loop and the [HOBO-122 proof](../proofs/hobo-122-dev-loop/index.md) specify hot reload, codegen-in-watch, and sub-minute boot in TypeScript terms only. [Plan 20](../wasm-runtime-wit.md#plan-20) declares "any language, one artifact" — Rust via `cargo-component`, Go via TinyGo, Python via `componentize-py`, C# via `componentize-dotnet`, plus an OCI-container fallback for workloads that cannot compile to wasm yet. The Aspire tracker ([`docs/competitors/aspire.md`](../../competitors/aspire.md), "DCP (local Go orchestrator)" row) marks the dev loop designed-at-parity, but no design doc states how a non-TS component or a fallback container participates in the local dev loop: watch-recompile path, state-preserving reload, per-idiom-layer codegen, or whether fallback containers run locally at all.
+
+### Decision
+1. **State preservation is runtime-side and toolchain-neutral.** `hobo dev` run state lives in the event log under `.hobo/` and is restored by replay ([Plan 07](../developer-experience.md#plan-07) inner-loop point 2); a reload for **any** lane = swap the recompiled artifact + replay. In-memory, non-event-sourced state is never preserved for any lane (already true for TS).
+2. **Each workload lane declares a watch-recompile path and a latency class** (`fast` <2s · `medium` 2–15s · `slow` >15s), surfaced by `hobo dev` per service exactly like the [ADR-0042](#adr-0042) fidelity labels. The normative matrix lives in [Plan 07](../developer-experience.md#plan-07).
+3. **Codegen-in-watch is layered per idiom layer ([ADR-0072](01-architecture-core.md#adr-0072)):** a WIT edit regenerates bindings for every registered idiom layer (`jco` guest-types for TS, `wit-bindgen` for Rust/Go/Python/C#); TS-only inputs (Zod schemas, `.allow()`, `bind` edges) regenerate only the checked-in `_generated/` TS artifacts ([ADR-0037](01-architecture-core.md#adr-0037)); regeneration is debounced per lane.
+4. **OCI-fallback services DO run under `hobo dev`**, via the developer's local container runtime (Docker/Podman) through the same OCI pipeline ([Plan 21](../authoring-resources-wiring.md#plan-21)), with **restart-on-change** (no hot reload, no in-memory state preservation — only event-log-backed state survives). If no container runtime is present, `hobo doctor` flags it and the service can run as a contract-backed `hobo stub` instead — an honest degraded mode, never a silent skip.
+5. **Proof-scope honesty:** only the TS lane is proof-backed (HOBO-122); every other lane is design-pinned and each matrix cell carries `proven | design-pinned`; a lane's cell may not claim `proven` without its own proof under `docs/design/proofs/`.
+
+### Consequences
+- **(+)** The polyglot promise of [Plan 20](../wasm-runtime-wit.md#plan-20) now has a specified inner loop with honest per-lane labels, reusing replay + the [ADR-0042](#adr-0042) label pattern (net-new surface = a latency-class label + a container restart-on-change policy).
+- **(−)** Non-TS lanes are unproven until dedicated proof slices land, and slow lanes (NativeAOT C#, image rebuilds) make "sub-minute boot" a per-lane promise, not a universal one.
+
 ## Open / proposed decisions (ADR-Pn)
 - **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
 - **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 12](../security-networking.md#plan-12).

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "Maintenance note — HOBO-639"
+description: "Maintenance note for the S4-03 Azure full provider capability manifest draft POC."
+tags: [hobo, maintenance]
+---
+
 # Maintenance note — HOBO-639
 
 Added `src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest/`

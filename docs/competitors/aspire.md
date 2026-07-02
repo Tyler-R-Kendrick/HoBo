@@ -462,12 +462,12 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 | `aspire-manifest.json` (deploy IR) | **manifest IR = Deployment Set** | ✅➕ | [22](../design/authoring-resources-wiring.md#plan-21), [26](../design/platform-engineering.md#plan-25) |
 | Publishers (azd/Compose/K8s/custom) | Publisher targets incl. **GitOps publisher** | ✅ | [22](../design/authoring-resources-wiring.md#plan-21), [28](../design/platform-engineering.md#plan-25) |
 | Compute environments | Camps + **environment types** | ✅ | [26](../design/platform-engineering.md#plan-25) |
-| DCP (local Go orchestrator) | local `runtime-local` host / dev loop; the Yard for hosted | ✅ | [20](../design/wasm-runtime-wit.md#plan-20), [04](../design/control-plane.md#plan-04) |
+| DCP (local Go orchestrator) | local `runtime-local` host / dev loop; the Yard for hosted | ✅ | [20](../design/wasm-runtime-wit.md#plan-20), [04](../design/control-plane.md#plan-04), [07](../design/developer-experience.md#plan-07) |
 | Aspire Dashboard (resource graph, OTel) | Dashboard: resource graph + run inspector + replay | ➕ | [07](../design/developer-experience.md#plan-07), [14](../design/reliability-observability-cost.md#plan-05) |
 | OpenTelemetry-by-default | OTel + event-sourced traces/replay | ➕ | [14](../design/reliability-observability-cost.md#plan-05), [11](../design/data-plane.md#plan-11) |
 | `Aspire.Hosting.Testing` | Conformance suites + E2E replay tests | ✅ | [09](../design/generated-stack.md#plan-09) |
 | `aspire` CLI | `hobo` CLI | ✅ | [15](../design/developer-experience.md#plan-07) |
-| Polyglot (Python/Node/Go/Java/Rust) | **WASM/WASI components** (any language) + OCI fallback | ➕ | [20](../design/wasm-runtime-wit.md#plan-20) |
+| Polyglot (Python/Node/Go/Java/Rust) | **WASM/WASI components** (any language) + OCI fallback | ➕ | [20](../design/wasm-runtime-wit.md#plan-20), [07](../design/developer-experience.md#plan-07) |
 | AI integrations + Copilot-in-dashboard | Agents as principals + MCP + AI generation | ➕ | [06](../design/ai-native-agent-auth.md#plan-06), [23](../design/generated-stack.md#plan-23) |
 
 ### Where HoBo deliberately exceeds Aspire

@@ -1,3 +1,10 @@
+---
+type: Reference
+title: "CLI Cloud Yard Path Proof Note"
+description: "HOBO-625 acceptance evidence for the CLI cloud command path proof."
+tags: [hobo, design, proof]
+---
+
 # CLI Cloud Yard Path Proof Note
 
 HOBO-625 proves the CLI cloud command path as an independent experience proof. Source package:

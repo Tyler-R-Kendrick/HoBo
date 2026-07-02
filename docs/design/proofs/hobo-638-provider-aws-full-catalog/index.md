@@ -1,10 +1,3 @@
----
-type: Reference
-title: "HOBO-638 Provider AWS Full Catalog Proof"
-description: "Acceptance evidence for the @hobo/provider-aws full capability port catalog draft POC."
-tags: [hobo, design, proof]
----
-
 # HOBO-638 Provider AWS Full Catalog Proof
 
 This proof records acceptance evidence for the independent draft POC at

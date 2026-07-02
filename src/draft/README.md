@@ -5,7 +5,7 @@
 ## Taxonomy
 
 - `technical-proofs/<slug>`: isolated atomic technical concept. Mock everything outside the concept. Required artifacts: README, ADR, contract fixtures where boundaries exist, protobuf/CUE/Pact evidence when applicable, parse-don't-validate notes, capability tests, and a deterministic performance envelope or an ADR-recorded reason performance does not apply.
-- `exp-proofs/<slug>`: UX, DX, CX, API, SDK, and other experience proof. Required artifacts: README, ADR, audience model, friction inventory, measurable standards/specs, and either wireframes/image mockups for UX surfaces or interface declarations/type tests for API and SDK surfaces.
+- `exp-proofs/<type>/<slug>`: experience proof grouped by type (`dx` · `ux` · `cx` · `ax` · `api`; see `_classification.md`). Required artifacts: README, ADR, audience model, friction inventory, measurable standards/specs, and either wireframes/image mockups for UX surfaces or interface declarations/type tests for API and SDK surfaces.
 - `epic-proofs/<slug>`: isolated epic rollup. Reuse technical and experience proof artifacts instead of copying logic. Required artifacts: README, ADRs for compatibility changes, Gherkin/Cucumber feature suites, mocked service boundaries, Pact fixture inventory, simulation notes, and a rollup ledger.
 - `projects/<slug>`: project MVP rollup. Integrate epic proofs and propagate required design or implementation changes downward with ADRs. This layer starts with registry/templates only; do not invent MVPs without a scoped project.
 

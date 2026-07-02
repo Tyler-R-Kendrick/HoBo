@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-496.
 
 Executable proof lives in
-[`src/draft/exp-proofs/support-sla-channels-contract`](../../src/draft/exp-proofs/support-sla-channels-contract/README.md).
+[`src/draft/exp-proofs/cx/support-sla-channels-contract`](../../src/draft/exp-proofs/cx/support-sla-channels-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-496-support-sla-channels`](./proofs/hobo-496-support-sla-channels/README.md).
 

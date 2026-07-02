@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-405 Legal Privacy Terms Readiness Proof
 
 HOBO-405 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/legal-privacy-terms-readiness-contract`](../../../../src/draft/exp-proofs/legal-privacy-terms-readiness-contract/README.md)
+[`src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract`](../../../../src/draft/exp-proofs/cx/legal-privacy-terms-readiness-contract/README.md)
 and the durable scope record at [legal-privacy-terms-readiness.md](../../legal-privacy-terms-readiness.md).
 
 ## Acceptance Evidence

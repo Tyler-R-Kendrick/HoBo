@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-493.
 
 Executable proof lives in
-[`src/draft/exp-proofs/customer-assurance-evidence-packet-contract`](../../src/draft/exp-proofs/customer-assurance-evidence-packet-contract/README.md).
+[`src/draft/exp-proofs/cx/customer-assurance-evidence-packet-contract`](../../src/draft/exp-proofs/cx/customer-assurance-evidence-packet-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-493-customer-assurance-evidence-packet`](./proofs/hobo-493-customer-assurance-evidence-packet/README.md).
 

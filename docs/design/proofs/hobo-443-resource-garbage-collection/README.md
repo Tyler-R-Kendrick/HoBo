@@ -14,7 +14,7 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-443
 - Draft package:
-  [`src/draft/exp-proofs/resource-garbage-collection-scope-acceptance`](../../../../src/draft/exp-proofs/resource-garbage-collection-scope-acceptance/README.md)
+  [`src/draft/exp-proofs/dx/resource-garbage-collection-scope-acceptance`](../../../../src/draft/exp-proofs/dx/resource-garbage-collection-scope-acceptance/README.md)
 - Focused gate:
   `npm.cmd --prefix src\draft\exp-proofs\resource-garbage-collection-scope-acceptance test`
 

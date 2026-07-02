@@ -10,7 +10,7 @@ rails in [ADR-0094](../../adr/02-identity-security.md#adr-0094).
 
 Executable proof:
 
-- package: `src/draft/exp-proofs/sre-drift-remediation-journey-contract`
+- package: `src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract`
 - test command: `npm.cmd --prefix src\draft\exp-proofs\sre-drift-remediation-journey-contract test`
 
 Acceptance coverage:

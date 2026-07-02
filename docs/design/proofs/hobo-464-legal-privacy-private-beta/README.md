@@ -8,7 +8,7 @@ tags: [hobo, design, proof]
 # HOBO-464 Legal Privacy Private Beta Proof
 
 HOBO-464 is proven by the focused M2 contract at
-[`src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/legal-privacy-private-beta-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/legal-privacy-private-beta-evidence-contract`](../../../../src/draft/exp-proofs/cx/legal-privacy-private-beta-evidence-contract/README.md)
 and the durable M2 gate record in
 [`legal-privacy-terms-readiness.md`](../../legal-privacy-terms-readiness.md#m2-private-beta-evidence-gate).
 

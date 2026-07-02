@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-486.
 
 Executable proof lives in
-[`src/draft/exp-proofs/workspace-activation-telemetry-contract`](../../src/draft/exp-proofs/workspace-activation-telemetry-contract/README.md).
+[`src/draft/exp-proofs/cx/workspace-activation-telemetry-contract`](../../src/draft/exp-proofs/cx/workspace-activation-telemetry-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-486-workspace-activation-telemetry`](./proofs/hobo-486-workspace-activation-telemetry/README.md).
 

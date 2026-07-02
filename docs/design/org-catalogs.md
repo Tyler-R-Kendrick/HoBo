@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-424.
 
 Executable proof lives in
-[`src/draft/exp-proofs/org-catalogs-scope-acceptance`](../../src/draft/exp-proofs/org-catalogs-scope-acceptance/README.md).
+[`src/draft/exp-proofs/dx/org-catalogs-scope-acceptance`](../../src/draft/exp-proofs/dx/org-catalogs-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-424-org-catalogs`](./proofs/hobo-424-org-catalogs/README.md).
 

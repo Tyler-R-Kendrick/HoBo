@@ -1,8 +1,0 @@
-{
-  "name": "@hobo/draft-vibe-snapshop-launch-demo-storyboard",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "pnpm --dir ../../../../ run test:file src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard/test/vibe-snapshop-launch-demo-storyboard.test.ts"
-  }
-}

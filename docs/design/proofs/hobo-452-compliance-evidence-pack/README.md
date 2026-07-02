@@ -19,7 +19,7 @@ pnpm --prefix src\draft\compliance-evidence-pack-scope test
 
 Workspace metadata:
 
-- `pnpm-lock.yaml` includes `src/draft/exp-proofs/compliance-evidence-pack-scope` as a workspace importer so
+- `pnpm-lock.yaml` includes `src/draft/exp-proofs/cx/compliance-evidence-pack-scope` as a workspace importer so
   install and relevant-check lanes see the proof package consistently.
 
 ## Acceptance Evidence

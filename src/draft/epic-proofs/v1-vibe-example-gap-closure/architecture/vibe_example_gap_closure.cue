@@ -6,7 +6,7 @@ package vibe_example_gap_closure
 	project: string
 	phase: "M1" | "M2" | "M5"
 	estimate: 3 | 5
-	target_package_path: =~"^src/draft/exp-proofs/[a-z0-9-]+$"
+	target_package_path: =~"^src/draft/exp-proofs/(dx|ux|cx|ax|api)/[a-z0-9-]+$"
 	proof_note_path: =~"^docs/design/proofs/hobo-[0-9]+-[a-z0-9-]+/README\\.md$"
 	artifact_slices: [...string] & {if len(artifact_slices) < 1 {_|_}}
 	required_scenarios: [...string] & {if len(required_scenarios) < 5 {_|_}}
@@ -22,7 +22,7 @@ package vibe_example_gap_closure
 	phase: "M1" | "M2"
 	estimate: 3 | 5 | 8
 	labels: [...string] & {if len(labels) < 4 {_|_}}
-	target_package_path: =~"^src/draft/exp-proofs/[a-z0-9-]+$"
+	target_package_path: =~"^src/draft/exp-proofs/(dx|ux|cx|ax|api)/[a-z0-9-]+$"
 	proof_note_path: =~"^docs/design/proofs/[a-z0-9-]+/README\\.md$"
 	blocked_by: [...string]
 	blocks: [...string]

@@ -2,10 +2,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.ts";
 import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.ts";
 import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.ts";
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.ts";
-import { inferConnectorScopes } from "../../../exp-proofs/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
+import { inferConnectorScopes } from "../../../exp-proofs/api/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { generateSdkCodegenArtifacts } from "../../sdk-codegen-surface-contract/src/sdk-codegen-surface.ts";
 
 const SAMPLE_BINDLE_ID = "support-desk";
@@ -112,6 +113,13 @@ async function runFlow({ sourceText, define }) {
     fileName: SAMPLE_FILE_NAME,
     sourceText,
     define,
+    coverageEvaluator: (context) =>
+      evaluateCollectionCoverage({
+        sourceText: context.sourceText,
+        observedResourceIds: [...context.observedResourceIds],
+        observedBindKeys: [...context.observedBindKeys],
+        fileName: context.fileName,
+      }),
   });
 
   if (!collection.coverage.ok) {

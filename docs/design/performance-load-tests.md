@@ -10,9 +10,9 @@ tags: [hobo, design]
 Source issues: HOBO-440, HOBO-502.
 
 Executable proofs live in
-[`src/draft/exp-proofs/performance-load-tests-scope-contract`](../../src/draft/exp-proofs/performance-load-tests-scope-contract/README.md)
+[`src/draft/exp-proofs/dx/performance-load-tests-scope-contract`](../../src/draft/exp-proofs/dx/performance-load-tests-scope-contract/README.md)
 and
-[`src/draft/exp-proofs/launch-performance-capacity-envelope-contract`](../../src/draft/exp-proofs/launch-performance-capacity-envelope-contract/README.md).
+[`src/draft/exp-proofs/dx/launch-performance-capacity-envelope-contract`](../../src/draft/exp-proofs/dx/launch-performance-capacity-envelope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-440-performance-load-tests`](./proofs/hobo-440-performance-load-tests/README.md)
 and

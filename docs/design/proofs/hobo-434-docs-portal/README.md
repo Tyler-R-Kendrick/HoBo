@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-434 Docs Portal M0 Scope Proof
 
 HOBO-434 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/docs-portal-scope-contract`](../../../../src/draft/exp-proofs/docs-portal-scope-contract/README.md)
+[`src/draft/exp-proofs/dx/docs-portal-scope-contract`](../../../../src/draft/exp-proofs/dx/docs-portal-scope-contract/README.md)
 and the durable scope record at [docs-portal.md](../../docs-portal.md).
 
 ## Acceptance Evidence

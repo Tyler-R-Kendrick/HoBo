@@ -5,7 +5,7 @@ HOBO-235 proof package for the runtime side of `connector(...).connection().toke
 The package consumes the completed authoring and inference contracts:
 
 - `src/draft/technical-proofs/connector-authoring-contract`
-- `src/draft/exp-proofs/xaa-scope-inference-contract`
+- `src/draft/exp-proofs/api/xaa-scope-inference-contract`
 - `src/draft/technical-proofs/outbound-xaa-token-exchange-contract`
 
 It proves the runtime bridge that:

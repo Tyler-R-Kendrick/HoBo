@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-446 Package Cache M0 Scope Proof
 
 HOBO-446 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/package-cache-scope-contract`](../../../../src/draft/exp-proofs/package-cache-scope-contract/README.md)
+[`src/draft/exp-proofs/dx/package-cache-scope-contract`](../../../../src/draft/exp-proofs/dx/package-cache-scope-contract/README.md)
 and the durable scope record at [package-cache.md](../../package-cache.md).
 
 ## Acceptance Evidence
@@ -39,9 +39,9 @@ and the durable scope record at [package-cache.md](../../package-cache.md).
 
 ## Gate Evidence
 
-- TypeScript proof: `pnpm --prefix src/draft/exp-proofs/package-cache-scope-contract test`.
-- Protobuf/CUE proof: `src/draft/exp-proofs/package-cache-scope-contract/architecture/package_cache_scope.proto`
-  and `src/draft/exp-proofs/package-cache-scope-contract/architecture/package_cache_scope.cue` pin the local
+- TypeScript proof: `pnpm --prefix src/draft/exp-proofs/dx/package-cache-scope-contract test`.
+- Protobuf/CUE proof: `src/draft/exp-proofs/dx/package-cache-scope-contract/architecture/package_cache_scope.proto`
+  and `src/draft/exp-proofs/dx/package-cache-scope-contract/architecture/package_cache_scope.cue` pin the local
   `PackageCacheScopeRecord` shape and constraints.
 - PACT proof: `architecture/pacts/package_cache_scope.pact.json` pins the M0 scope acceptance
   consumer expectations.

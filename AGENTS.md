@@ -33,16 +33,34 @@ Use exact/slow compatibility tools last.
 
 The skill defaults to local hybrid retrieval: OKF `index.md` files, `tgrep` when available, `rg`, `fd`, `ast-grep`, `git grep`, and memory/semantic tools only after exact or structural search narrows the question. It does not use Google ingestion or querying products by default. It also repeats core repo rules: preserve user work, use `git mv` for tracked moves, avoid broad install/codegen/test commands as diagnostics, rebase on `origin/main`, run the narrowest relevant `agent:check` scope, and open or update an auto-merge squash PR only after checks and comments are clean. No-arg `agent:check` validates the latest commit against `HEAD~1`; use `agent:check -- --staged` before committing staged fixes and `agent:check -- --base=origin/main` only when intentionally validating the whole PR branch. `agent:check` must stay impact-scoped: direct draft workspace tests use `pnpm --prefix <workspace> test`, broad root unit/contract sweeps are explicit final/all validation, and concurrent checks are bounded by `HOBO_RELEVANT_CHECK_CONCURRENCY`.
 
+## Repo-local sdlc skill + implementer/reviewer subagents
+
+The repo-local **sdlc** skill (mirrored in `.agents/skills/sdlc` and `.claude/skills/sdlc`) coordinates full-loop feature development: brainstorm → adversarial/rubber-duck hardening → plan mode over the draft-proof cascade (technical → epic; experience proofs in parallel; projects aggregate) → Linear capture as one-shot issues (verifiable outputs + required draft artifacts named per issue) → **permission-gated** dispatch. Two Claude Code subagent definitions under `.claude/agents/` do the dispatched work:
+
+- **implementer** — one Linear issue, one isolated worktree, strict red/green TDD/BDD/ATDD (the acceptance checklist becomes the failing tests: unit, PACT contract, cucumber feature, bench). Zero Linear access; never edits shared files; hands back `.sdlc/report.json` with gates, cascade deltas, and requirement discoveries.
+- **reviewer** — read-only; independently re-runs the gates and walks the acceptance checklist.
+
+The coordinator owns ALL Linear state and shared-file mutations (single-writer), and an issue is Done only when GitHub reports the PR checks green **and** the reviewer passes — never on an implementer's self-report. Durable loop state lives in `docs/plans/<initiative>/sdlc-state.md`; dispatch outcomes feed `docs/plans/dispatch-log.md`, which the next Linear-planning pass consults to improve issue contracts.
+
 ## Repo-local draft skill
 
 The repo-local **draft** skill lives in both `.agents/skills/draft` and `.claude/skills/draft`. Use it when creating, moving, or reviewing draft proof material. It replaces the old one-level draft convention with the four-layer taxonomy:
 
 - `src/draft/technical-proofs/<slug>` for isolated atomic technical concepts.
-- `src/draft/exp-proofs/<slug>` for UX, DX, CX, API, SDK, and other experience proofs.
+- `src/draft/exp-proofs/<type>/<slug>` for experience proofs, grouped by experience type (`dx` developer · `ux` user · `cx` customer · `ax` agent · `api` API/SDK surface) per [`src/draft/exp-proofs/_classification.md`](src/draft/exp-proofs/_classification.md).
 - `src/draft/epic-proofs/<slug>` for isolated epic rollups that reuse technical and experience proofs.
 - `src/draft/projects/<slug>` for project MVP rollups that integrate epic proofs.
 
-Both repo-local skills keep Codex-valid `SKILL.md` frontmatter and store Open Knowledge Format concept metadata in their `references/` bundles. `pnpm.cmd run docs:okf` validates the docs OKF bundle plus the `repo` and `draft` skill reference bundles in both agent mirrors.
+Both repo-local skills keep Codex-valid `SKILL.md` frontmatter and store Open Knowledge Format concept metadata in their `references/` bundles. `pnpm.cmd run docs:okf` validates the docs OKF bundle plus the `repo` and `draft` skill reference bundles in both agent mirrors. `pnpm run skills:mirror-check` asserts the `.claude`/`.agents` skill mirrors stay byte-identical (runs automatically via `agent:check` when skill files change).
+
+### Draft-proof hardening
+
+Every proof layer has **folder-scoped `AGENTS.md` instructions** beside the packages (`src/draft/<kind>/AGENTS.md`, plus one per exp type folder) and scaffolding templates under `src/draft/_templates/<layer>/`. New/changed proofs are validated by two gates that run automatically through `agent:check`:
+
+- `pnpm run draft:artifacts` — per-layer artifact requirements from a `proof.json` manifest (`scripts/lib/proof-manifest.ts`): gate-**executed** `examples/`, executed tslab `notebook.ipynb`, bench for technical proofs, executable cucumber `features/` for epics (`pnpm run test:behavior`), per-type experience artifacts for exp proofs. Waivers need an ADR.
+- `pnpm run draft:cascade` — a changed technical/exp proof must update every referencing epic/project rollup in the same diff (references resolve from `proof.json` graphs + import/ledger scans).
+
+Packages predating the standard are listed in `src/draft/_grandfathered.json` (advisory-only until their backfill wave removes them; never add new packages there).
 
 
 ## Parallel work rule

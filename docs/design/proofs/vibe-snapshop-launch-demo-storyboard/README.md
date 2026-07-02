@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 `HOBO-555` creates a deterministic `snapshop` launch-demo storyboard and
 proof-mode asset map. The executable proof lives in
-`src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard`.
+`src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard`.
 
 ## Acceptance Evidence
 
@@ -17,7 +17,7 @@ proof-mode asset map. The executable proof lives in
 | --- | --- |
 | Storyboard covers scaffold, local run, inspect, plan, live recording slot, failure recovery, and support/docs handoff. | `REQUIRED_SNAPSHOP_STORY_STEPS` and `storyboardSteps` require all seven steps, each with command/surface, evidence object, owner, safe claim, handoff route, and accepted HOBO-577 fixture citation. |
 | Asset map names screenshots, recording manifest, command transcript, fixture data, docs, owner, refresh trigger, and proof mode. | `REQUIRED_SNAPSHOP_ASSETS` and `assetMap` require all five asset kinds plus source, owner, proof mode, refresh trigger, validation route, and stale downgrade. |
-| Target package path is `src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard`. | Parser and tests assert the package path. |
+| Target package path is `src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard`. | Parser and tests assert the package path. |
 | Target proof path is `docs/design/proofs/vibe-snapshop-launch-demo-storyboard/README.md`. | Parser and tests assert the proof path. |
 | Covers happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels. | `scenarioPaths`, `accessibilityNotes`, and tests require `happy-path`, `blocked-path`, `stale-or-unknown-evidence`, and `support-handoff`, plus live/simulated/reference fixture/scope-out labels. |
 
@@ -48,11 +48,11 @@ ids:
 ## Verification
 
 ```bash
-pnpm --dir src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard test
+pnpm --dir src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard test
 ```
 
 Architecture and boundary artifacts:
 
-- Protobuf: `src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard/architecture/proto/vibe_snapshop_launch_demo_storyboard.proto`
-- CUE: `src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard/architecture/vibe_snapshop_launch_demo_storyboard.cue`
-- Pact-style fixture: `src/draft/exp-proofs/vibe-snapshop-launch-demo-storyboard/architecture/pacts/vibe_snapshop_launch_demo_storyboard.pact.json`
+- Protobuf: `src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard/architecture/proto/vibe_snapshop_launch_demo_storyboard.proto`
+- CUE: `src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard/architecture/vibe_snapshop_launch_demo_storyboard.cue`
+- Pact-style fixture: `src/draft/exp-proofs/ux/vibe-snapshop-launch-demo-storyboard/architecture/pacts/vibe_snapshop_launch_demo_storyboard.pact.json`

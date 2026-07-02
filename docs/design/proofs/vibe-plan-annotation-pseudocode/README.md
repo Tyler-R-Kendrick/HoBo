@@ -9,7 +9,7 @@ tags: [hobo, design]
 
 HOBO-543 proves the policy, cost, capacity, and approval annotation pseudocode for Plan/Diff Viewer
 vibe artifacts. The source package is
-[`src/draft/exp-proofs/vibe-plan-annotation-pseudocode`](../../../../src/draft/exp-proofs/vibe-plan-annotation-pseudocode/README.md).
+[`src/draft/exp-proofs/ux/vibe-plan-annotation-pseudocode`](../../../../src/draft/exp-proofs/ux/vibe-plan-annotation-pseudocode/README.md).
 
 ## Acceptance Mapping
 

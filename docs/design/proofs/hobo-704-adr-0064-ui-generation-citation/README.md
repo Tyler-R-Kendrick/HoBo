@@ -18,8 +18,8 @@ Linear: [HOBO-704](https://linear.app/quickdeploy-ai/issue/HOBO-704)
 
 ## Contract
 
-[`adr-0064-ui-generation-citation-contract`](../../../../src/draft/exp-proofs/adr-0064-ui-generation-citation-contract/README.md)
+[`adr-0064-ui-generation-citation-contract`](../../../../src/draft/exp-proofs/dx/adr-0064-ui-generation-citation-contract/README.md)
 
 ```bash
-pnpm --prefix src/draft/exp-proofs/adr-0064-ui-generation-citation-contract test
+pnpm --prefix src/draft/exp-proofs/dx/adr-0064-ui-generation-citation-contract test
 ```

@@ -1,7 +1,7 @@
 # HOBO-509 Pre-Launch Outcome Contract Proof
 
 HOBO-509 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/pre-launch-outcome-contract`](../../../../src/draft/exp-proofs/pre-launch-outcome-contract/README.md)
+[`src/draft/exp-proofs/cx/pre-launch-outcome-contract`](../../../../src/draft/exp-proofs/cx/pre-launch-outcome-contract/README.md)
 and the durable scope record at
 [`pre-launch-outcome-contract.md`](../../pre-launch-outcome-contract.md).
 

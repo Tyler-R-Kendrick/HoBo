@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-488.
 
 Executable proof lives in
-[`src/draft/exp-proofs/launch-demo-golden-path-contract`](../../src/draft/exp-proofs/launch-demo-golden-path-contract/README.md).
+[`src/draft/exp-proofs/dx/launch-demo-golden-path-contract`](../../src/draft/exp-proofs/dx/launch-demo-golden-path-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-488-launch-demo-golden-path`](./proofs/hobo-488-launch-demo-golden-path/README.md).
 
@@ -38,7 +38,7 @@ accepted [Example Apps scope](./example-apps.md).
 - Refresh ownership for proof assets when commands, screens, outputs, or claim boundaries change.
 
 The executable refresh-plan proof for downstream vibe examples lives in
-[`src/draft/exp-proofs/vibe-launch-asset-refresh-plan`](../../src/draft/exp-proofs/vibe-launch-asset-refresh-plan/README.md),
+[`src/draft/exp-proofs/ux/vibe-launch-asset-refresh-plan`](../../src/draft/exp-proofs/ux/vibe-launch-asset-refresh-plan/README.md),
 with branch evidence summarized in
 [`proofs/vibe-launch-asset-refresh-plan`](./proofs/vibe-launch-asset-refresh-plan/README.md).
 

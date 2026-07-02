@@ -1,7 +1,7 @@
 # HOBO-477 Beta Pilot GA Handoff Evidence
 
 HOBO-477 is proven by the focused M4 contract at
-[`src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/beta-pilot-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/beta-pilot-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/cx/beta-pilot-ga-handoff-evidence-contract/README.md)
 and the durable beta pilot scope record at [beta-pilot-feedback.md](../../beta-pilot-feedback.md).
 
 ## Evidence Summary

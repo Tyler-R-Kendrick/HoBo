@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-572 DX Resource Lifecycle Fixture Corpus Proof
 
 HOBO-572 is proven by the focused experience proof at
-[`src/draft/exp-proofs/dx-resource-lifecycle-fixture-corpus`](../../../../src/draft/exp-proofs/dx-resource-lifecycle-fixture-corpus/README.md).
+[`src/draft/exp-proofs/dx/dx-resource-lifecycle-fixture-corpus`](../../../../src/draft/exp-proofs/dx/dx-resource-lifecycle-fixture-corpus/README.md).
 
 ## Acceptance Evidence
 

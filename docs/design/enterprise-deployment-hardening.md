@@ -93,7 +93,7 @@ M1 evidence required before follow-up work can start:
 - follow-up gate record.
 
 Executable proof:
-[`enterprise-deployment-hardening-scope-contract`](../../src/draft/exp-proofs/enterprise-deployment-hardening-scope-contract/README.md).
+[`enterprise-deployment-hardening-scope-contract`](../../src/draft/exp-proofs/dx/enterprise-deployment-hardening-scope-contract/README.md).
 
 ## Claim Boundary
 

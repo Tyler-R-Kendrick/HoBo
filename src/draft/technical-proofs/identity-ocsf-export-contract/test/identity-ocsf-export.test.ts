@@ -6,7 +6,7 @@ import {
   createIdentityEvent,
   IDENTITY_EVENT_TYPES,
 } from "../../identity-event-contract/src/identity-event-contract.js";
-import { createPolicyAuditFixtureEvent } from "../../../exp-proofs/policy-audit-export-contract/src/policy-audit-export.js";
+import { createPolicyAuditFixtureEvent } from "../../../exp-proofs/api/policy-audit-export-contract/src/policy-audit-export.js";
 import {
   exportCredentialAuditChainToOcsf,
   exportIdentityAuditToOcsf,

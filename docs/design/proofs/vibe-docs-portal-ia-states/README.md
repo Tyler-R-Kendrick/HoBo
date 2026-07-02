@@ -17,7 +17,7 @@ docs.
 - Source record: [`docs-portal.md`](../../docs-portal.md).
 - DX source: [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-docs-portal-ia-states`](../../../../src/draft/exp-proofs/vibe-docs-portal-ia-states/README.md).
+- Executable proof: [`vibe-docs-portal-ia-states`](../../../../src/draft/exp-proofs/ux/vibe-docs-portal-ia-states/README.md).
 
 ## Acceptance Coverage
 

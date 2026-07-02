@@ -438,7 +438,7 @@ across tenants or be re-emitted through trained methods.
   redaction happens before persistence, external trainer providers stay behind
   redacted boundaries, and tenant isolation fails closed.
 - **(+)** The privacy contract is executable in
-  `src/draft/exp-proofs/data-flywheel-privacy-spike`, including cross-tenant leakage and
+  `src/draft/exp-proofs/dx/data-flywheel-privacy-spike`, including cross-tenant leakage and
   PII re-emission adversarial cases.
 - **(-)** Tokenized/redacted trajectories can reduce optimizer quality for tasks
   that depend on exact raw text. Those tasks need explicit in-boundary approval

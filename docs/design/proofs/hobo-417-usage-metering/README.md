@@ -15,7 +15,7 @@ Metering design/build work can fan out.
 - Design record:
   [`docs/design/usage-metering.md`](../../usage-metering.md)
 - Executable contract:
-  [`src/draft/exp-proofs/usage-metering-scope-contract`](../../../../src/draft/exp-proofs/usage-metering-scope-contract/README.md)
+  [`src/draft/exp-proofs/cx/usage-metering-scope-contract`](../../../../src/draft/exp-proofs/cx/usage-metering-scope-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

@@ -10,15 +10,15 @@ tags: [hobo, design]
 Source issue: HOBO-403.
 
 Executable proof lives in
-[`src/draft/exp-proofs/dogfood-yard-acceptance-contract`](../../src/draft/exp-proofs/dogfood-yard-acceptance-contract/README.md).
+[`src/draft/exp-proofs/dx/dogfood-yard-acceptance-contract`](../../src/draft/exp-proofs/dx/dogfood-yard-acceptance-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-403-dogfood-yard-acceptance`](./proofs/hobo-403-dogfood-yard-acceptance/README.md).
 M1 dogfood/alpha evidence proof lives in
-[`src/draft/exp-proofs/dogfood-yard-m1-evidence-contract`](../../src/draft/exp-proofs/dogfood-yard-m1-evidence-contract/README.md)
+[`src/draft/exp-proofs/dx/dogfood-yard-m1-evidence-contract`](../../src/draft/exp-proofs/dx/dogfood-yard-m1-evidence-contract/README.md)
 and is summarized in
 [`proofs/hobo-455-dogfood-yard-m1-evidence`](./proofs/hobo-455-dogfood-yard-m1-evidence/README.md).
 M2 private beta evidence is proven in
-[`src/draft/exp-proofs/dogfood-yard-private-beta-evidence-contract`](../../src/draft/exp-proofs/dogfood-yard-private-beta-evidence-contract/README.md)
+[`src/draft/exp-proofs/dx/dogfood-yard-private-beta-evidence-contract`](../../src/draft/exp-proofs/dx/dogfood-yard-private-beta-evidence-contract/README.md)
 and summarized in
 [`proofs/hobo-462-dogfood-yard-private-beta`](./proofs/hobo-462-dogfood-yard-private-beta/README.md).
 
@@ -103,7 +103,7 @@ private local setup, hidden customer data, or unbounded "it worked once" claims.
 ## Release-Candidate Evidence Gate
 
 HOBO-469 adds the M3 release-candidate evidence gate for this project. Executable proof lives in
-[`src/draft/exp-proofs/dogfood-yard-release-candidate-contract`](../../src/draft/exp-proofs/dogfood-yard-release-candidate-contract/README.md),
+[`src/draft/exp-proofs/dx/dogfood-yard-release-candidate-contract`](../../src/draft/exp-proofs/dx/dogfood-yard-release-candidate-contract/README.md),
 with branch evidence summarized in
 [`proofs/hobo-469-dogfood-yard-release-candidate`](./proofs/hobo-469-dogfood-yard-release-candidate/README.md).
 
@@ -171,7 +171,7 @@ or manually edited receipts.
 Source issue: HOBO-476.
 
 Executable proof lives in
-[`src/draft/exp-proofs/dogfood-yard-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/dogfood-yard-ga-handoff-evidence-contract/README.md).
+[`src/draft/exp-proofs/dx/dogfood-yard-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/dx/dogfood-yard-ga-handoff-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-476-dogfood-yard-ga-handoff`](./proofs/hobo-476-dogfood-yard-ga-handoff/index.md).
 

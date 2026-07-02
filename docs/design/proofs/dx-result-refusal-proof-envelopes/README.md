@@ -21,7 +21,7 @@ and MCP resource lifecycle examples.
   - [Platform Engineering](../../platform-engineering.md)
   - [Data Plane](../../data-plane.md)
 - Proof package:
-  [`dx-result-refusal-proof-envelopes`](../../../../src/draft/exp-proofs/dx-result-refusal-proof-envelopes/README.md)
+  [`dx-result-refusal-proof-envelopes`](../../../../src/draft/exp-proofs/dx/dx-result-refusal-proof-envelopes/README.md)
 
 ## Acceptance Evidence
 

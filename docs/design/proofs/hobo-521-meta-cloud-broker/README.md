@@ -14,7 +14,7 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-521
 - Draft package:
-  [`src/draft/exp-proofs/meta-cloud-broker-scope-contract`](../../../../src/draft/exp-proofs/meta-cloud-broker-scope-contract/README.md)
+  [`src/draft/exp-proofs/api/meta-cloud-broker-scope-contract`](../../../../src/draft/exp-proofs/api/meta-cloud-broker-scope-contract/README.md)
 - Focused gate:
   `npm.cmd --prefix src\draft\exp-proofs\meta-cloud-broker-scope-contract test`
 

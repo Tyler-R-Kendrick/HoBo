@@ -1,7 +1,7 @@
 # HOBO-476 Dogfood Yard GA Handoff Proof
 
 This proof summarizes the executable M4 GA handoff contract in
-[`src/draft/exp-proofs/dogfood-yard-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/dogfood-yard-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/dx/dogfood-yard-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/dx/dogfood-yard-ga-handoff-evidence-contract/README.md)
 and the durable source record at [dogfood-yard.md](../../dogfood-yard.md).
 
 ## Acceptance Evidence

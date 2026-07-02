@@ -43,7 +43,7 @@ test("completed epics cannot become mutable catch-alls for post-core deltas", ()
       target: "completed-epic",
       claim: "Append the broker delta to the old Control Plane epic and skip a new project.",
       linearOwner: "HOBO-521",
-      proofPath: "src/draft/exp-proofs/meta-cloud-broker-scope-contract",
+      proofPath: "src/draft/exp-proofs/api/meta-cloud-broker-scope-contract",
     }),
     {
       allowed: false,
@@ -69,7 +69,7 @@ test("docs-only delta claims need a Linear owner and executable proof path", () 
       target: "new-cross-cutting-capability",
       claim: "Record the broker M0 acceptance as its own project with proof.",
       linearOwner: "HOBO-521",
-      proofPath: "src/draft/exp-proofs/meta-cloud-broker-scope-contract",
+      proofPath: "src/draft/exp-proofs/api/meta-cloud-broker-scope-contract",
     }).allowed,
     true,
   );

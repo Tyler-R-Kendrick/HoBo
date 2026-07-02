@@ -3,7 +3,7 @@ import * as catalogModule from "../../hobo-bindles-resource-catalog/src/catalog.
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.js";
 import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.js";
 import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
-import { inferConnectorScopes } from "../../../exp-proofs/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
+import { inferConnectorScopes } from "../../../exp-proofs/api/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { createRawView } from "../../raw-driver-escape-hatch-contract/src/raw-driver-escape-hatch.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";

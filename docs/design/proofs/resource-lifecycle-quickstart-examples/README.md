@@ -10,7 +10,7 @@ tags: [hobo, design]
 `HOBO-577` creates the canonical resource lifecycle quickstart example set for
 docs, tutorials, launch-demo, workspace, plan/diff, and dashboard consumers.
 The executable proof lives in
-`src/draft/exp-proofs/resource-lifecycle-quickstart-examples`.
+`src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples`.
 
 ## Acceptance evidence
 
@@ -37,11 +37,11 @@ The executable proof lives in
 ## Verification
 
 ```bash
-pnpm run test:file src/draft/exp-proofs/resource-lifecycle-quickstart-examples/test/resource-lifecycle-quickstart-examples.test.ts
+pnpm run test:file src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples/test/resource-lifecycle-quickstart-examples.test.ts
 ```
 
 Architecture and boundary artifacts:
 
-- Protobuf: `src/draft/exp-proofs/resource-lifecycle-quickstart-examples/architecture/resource_lifecycle_quickstart_examples.proto`
-- CUE: `src/draft/exp-proofs/resource-lifecycle-quickstart-examples/architecture/resource_lifecycle_quickstart_examples.cue`
-- Pact-style fixture: `src/draft/exp-proofs/resource-lifecycle-quickstart-examples/architecture/pacts/resource_lifecycle_quickstart_examples.pact.json`
+- Protobuf: `src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples/architecture/resource_lifecycle_quickstart_examples.proto`
+- CUE: `src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples/architecture/resource_lifecycle_quickstart_examples.cue`
+- Pact-style fixture: `src/draft/exp-proofs/dx/resource-lifecycle-quickstart-examples/architecture/pacts/resource_lifecycle_quickstart_examples.pact.json`

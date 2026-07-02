@@ -91,7 +91,7 @@ upgrade, compatibility, or support claims until release-candidate evidence repla
 Source issue: HOBO-473.
 
 Executable proof lives in
-[`../../src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract`](../../src/draft/exp-proofs/v1-release-notes-upgrade-guide-release-candidate-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-release-candidate-evidence-contract`](../../src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-release-candidate-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-473-release-notes-release-candidate`](./proofs/hobo-473-release-notes-release-candidate/index.md).
 
@@ -116,7 +116,7 @@ upgrade promises, support response-time promises, or GA release readiness claims
 Source issue: HOBO-480.
 
 Executable proof lives in
-[`../../src/draft/exp-proofs/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract/README.md).
+[`../../src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-480-release-notes-ga-handoff`](./proofs/hobo-480-release-notes-ga-handoff/index.md).
 
@@ -144,13 +144,13 @@ support response-time promises stay outside this proof.
 Executable proof lives in
 [`../../src/draft/technical-proofs/v1-release-notes-upgrade-guide-contract`](../../src/draft/technical-proofs/v1-release-notes-upgrade-guide-contract/README.md).
 The M1 dogfood/alpha evidence gate lives in
-[`../../src/draft/exp-proofs/v1-release-notes-dogfood-alpha-evidence`](../../src/draft/exp-proofs/v1-release-notes-dogfood-alpha-evidence/README.md).
+[`../../src/draft/exp-proofs/cx/v1-release-notes-dogfood-alpha-evidence`](../../src/draft/exp-proofs/cx/v1-release-notes-dogfood-alpha-evidence/README.md).
 The M2 private-beta evidence gate for HOBO-466 lives in
-[`../../src/draft/exp-proofs/v1-release-notes-private-beta-evidence-contract`](../../src/draft/exp-proofs/v1-release-notes-private-beta-evidence-contract/README.md)
+[`../../src/draft/exp-proofs/cx/v1-release-notes-private-beta-evidence-contract`](../../src/draft/exp-proofs/cx/v1-release-notes-private-beta-evidence-contract/README.md)
 with design proof notes at
 [`proofs/hobo-466-release-notes-private-beta-evidence`](./proofs/hobo-466-release-notes-private-beta-evidence/README.md).
 The HOBO-401 v1 cutline dependency is recorded by
 [`v1-cutline-contract`](../../src/draft/technical-proofs/v1-cutline-contract/README.md).
 The HOBO-485 customer-facing limitations dependency is recorded by
 [`known-limitations-register.md`](./known-limitations-register.md) and
-[`known-limitations-register-contract`](../../src/draft/exp-proofs/known-limitations-register-contract/README.md).
+[`known-limitations-register-contract`](../../src/draft/exp-proofs/cx/known-limitations-register-contract/README.md).

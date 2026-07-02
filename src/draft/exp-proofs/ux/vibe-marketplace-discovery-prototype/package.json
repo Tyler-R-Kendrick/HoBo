@@ -1,0 +1,8 @@
+{
+  "name": "@hobo/draft-vibe-marketplace-discovery-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/ux/vibe-marketplace-discovery-prototype/test/vibe-marketplace-discovery-prototype.test.ts"
+  }
+}

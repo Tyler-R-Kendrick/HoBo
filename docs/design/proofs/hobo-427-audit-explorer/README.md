@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-427 Audit Explorer M0 Scope Proof
 
 HOBO-427 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/audit-explorer-scope-contract`](../../../../src/draft/exp-proofs/audit-explorer-scope-contract/README.md)
+[`src/draft/exp-proofs/ux/audit-explorer-scope-contract`](../../../../src/draft/exp-proofs/ux/audit-explorer-scope-contract/README.md)
 and the durable scope record at [audit-explorer.md](../../audit-explorer.md).
 
 ## Acceptance Evidence

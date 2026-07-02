@@ -114,7 +114,7 @@ The Meta-cloud Broker project owns the hosted broker authority boundary: Contrac
 validation against Broker Environment snapshots, Mapping Contracts from HoBo-native services to
 cloud/IaC configurations, Resolution Receipts, Resolution Rejections, and Yard receipt handoff.
 Its durable M0 proof remains
-[`meta-cloud-broker-scope-contract`](../src/draft/exp-proofs/meta-cloud-broker-scope-contract/README.md).
+[`meta-cloud-broker-scope-contract`](../src/draft/exp-proofs/api/meta-cloud-broker-scope-contract/README.md).
 
 - HOBO-521 - M0: Define Meta-cloud Broker scope and acceptance - M0 - hardening - 3.
 - HOBO-522 - M1: Define broker artifact schemas and validation contract - M1 - slice/hardening - 3.

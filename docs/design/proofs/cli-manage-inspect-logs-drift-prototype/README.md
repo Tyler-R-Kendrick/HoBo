@@ -14,15 +14,15 @@ drift, and support-bundle behavior.
 ## Evidence
 
 - Proof package:
-  [`../../../../src/draft/exp-proofs/cli-manage-inspect-logs-drift-prototype/README.md`](../../../../src/draft/exp-proofs/cli-manage-inspect-logs-drift-prototype/README.md)
+  [`../../../../src/draft/exp-proofs/dx/cli-manage-inspect-logs-drift-prototype/README.md`](../../../../src/draft/exp-proofs/dx/cli-manage-inspect-logs-drift-prototype/README.md)
 - Source designs:
   - [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07)
   - [`data-plane.md#plan-11`](../../data-plane.md#plan-11)
   - [`support-debug-tools.md`](../../support-debug-tools.md)
   - [`drift-reconciliation.md`](../../drift-reconciliation.md)
   - [`audit-explorer.md`](../../audit-explorer.md)
-  - [`dx-resource-lifecycle-scenario-matrix`](../../../../src/draft/exp-proofs/dx-resource-lifecycle-scenario-matrix/README.md)
-  - [`cli-mcp-parity-resource-lifecycle-contracts`](../../../../src/draft/exp-proofs/cli-mcp-parity-resource-lifecycle-contracts/README.md)
+  - [`dx-resource-lifecycle-scenario-matrix`](../../../../src/draft/exp-proofs/dx/dx-resource-lifecycle-scenario-matrix/README.md)
+  - [`cli-mcp-parity-resource-lifecycle-contracts`](../../../../src/draft/exp-proofs/ax/cli-mcp-parity-resource-lifecycle-contracts/README.md)
 
 ## Acceptance Mapping
 

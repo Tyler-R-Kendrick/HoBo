@@ -83,7 +83,7 @@ import {
 import {
   createTenantRoutingTable,
   routeTenantRequest,
-} from "../../../exp-proofs/per-app-tenant-routing-contract/src/per-app-tenant-routing.js";
+} from "../../../exp-proofs/api/per-app-tenant-routing-contract/src/per-app-tenant-routing.js";
 
 const FIXTURE_URL = new URL("../simulation/fixtures/networking-reference-fixture.json", import.meta.url);
 

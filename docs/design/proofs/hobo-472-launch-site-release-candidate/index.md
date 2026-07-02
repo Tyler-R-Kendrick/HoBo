@@ -1,7 +1,7 @@
 # HOBO-472 Launch Site Release Candidate Evidence
 
 HOBO-472 is proven by the focused M3 contract at
-[`src/draft/exp-proofs/launch-site-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/launch-site-release-candidate-evidence-contract/README.md).
+[`src/draft/exp-proofs/cx/launch-site-release-candidate-evidence-contract`](../../../../src/draft/exp-proofs/cx/launch-site-release-candidate-evidence-contract/README.md).
 
 ## Evidence Summary
 

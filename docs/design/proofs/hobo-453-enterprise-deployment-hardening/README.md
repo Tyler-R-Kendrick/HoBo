@@ -14,7 +14,7 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-453
 - Draft package:
-  [`src/draft/exp-proofs/enterprise-deployment-hardening-scope-contract`](../../../../src/draft/exp-proofs/enterprise-deployment-hardening-scope-contract/README.md)
+  [`src/draft/exp-proofs/dx/enterprise-deployment-hardening-scope-contract`](../../../../src/draft/exp-proofs/dx/enterprise-deployment-hardening-scope-contract/README.md)
 - Focused gate:
   `pnpm.cmd --prefix src\draft\exp-proofs\enterprise-deployment-hardening-scope-contract test`
 

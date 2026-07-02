@@ -17,7 +17,7 @@ walkthrough with blocker routing.
 - Workspace source: [`workspace-onboarding-ux.md`](../../workspace-onboarding-ux.md).
 - Support workflow source: [`support-workflow.md`](../../support-workflow.md).
 - Consumed storyboard proof: [`vibe-first-customer-pilot-storyboard`](../vibe-first-customer-pilot-storyboard/README.md).
-- Executable proof: [`vibe-pilot-first-proof-walkthrough`](../../../../src/draft/exp-proofs/vibe-pilot-first-proof-walkthrough/README.md).
+- Executable proof: [`vibe-pilot-first-proof-walkthrough`](../../../../src/draft/exp-proofs/ux/vibe-pilot-first-proof-walkthrough/README.md).
 
 ## Acceptance Coverage
 
@@ -25,7 +25,7 @@ walkthrough with blocker routing.
 |---|---|
 | Walkthrough consumes the first-customer pilot storyboard and script artifacts. | `consumedStoryboard` pins HOBO-549 package, proof, and required stage order, and tests import the HOBO-549 stage constants. |
 | Deterministic scenario covers invite, workspace setup, sample-or-real project choice, first proof, failure recovery, support handoff, and feedback capture. | `steps` cover every accepted HOBO-549 stage and `scenarioPaths` cover happy, blocked, stale/unknown, and support handoff routes. |
-| Package and proof path match the issue. | `parseVibePilotFirstProofWalkthrough` rejects drift from `src/draft/exp-proofs/vibe-pilot-first-proof-walkthrough` and this proof path. |
+| Package and proof path match the issue. | `parseVibePilotFirstProofWalkthrough` rejects drift from `src/draft/exp-proofs/ux/vibe-pilot-first-proof-walkthrough` and this proof path. |
 | Happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels are covered. | Tests assert scenario coverage, support handoff fields, keyboard/screen reader/color/motion notes, and live/simulated/reference fixture/scope-out labels. |
 | Blockers route to cutline, docs, product UX, support, or engineering. | `blockerRoutes` pins those exact owner routes with trigger, owner, safe next action, and customer-safe message fields. |
 

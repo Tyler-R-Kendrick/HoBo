@@ -1,0 +1,21 @@
+{
+  "layer": "epic",
+  "slug": "__SLUG__",
+  "title": "__TITLE__",
+  "linear": "HOBO-000",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": [
+      "README.md"
+    ]
+  },
+  "waivers": []
+}

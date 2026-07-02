@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-447 Provenance & Retention M0 Scope Proof
 
 HOBO-447 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/provenance-retention-scope-acceptance`](../../../../src/draft/exp-proofs/provenance-retention-scope-acceptance/README.md)
+[`src/draft/exp-proofs/dx/provenance-retention-scope-acceptance`](../../../../src/draft/exp-proofs/dx/provenance-retention-scope-acceptance/README.md)
 and the durable scope record at [provenance-retention.md](../../provenance-retention.md).
 
 ## Acceptance Evidence

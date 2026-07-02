@@ -10,7 +10,7 @@ tags: [hobo, design]
 `HOBO-557` creates CLI transcript and MCP tool pseudocode examples for six
 role journeys: app developer, platform engineer, GitOps, SecOps, DevOps, and
 SRE. The executable proof lives in
-`src/draft/exp-proofs/role-journey-cli-mcp-transcripts`.
+`src/draft/exp-proofs/ax/role-journey-cli-mcp-transcripts`.
 
 ## Acceptance Evidence
 
@@ -47,6 +47,6 @@ pnpm.cmd --prefix src\draft\exp-proofs\role-journey-cli-mcp-transcripts test
 
 Architecture and boundary artifacts:
 
-- Protobuf: `src/draft/exp-proofs/role-journey-cli-mcp-transcripts/architecture/role_journey_cli_mcp_transcripts.proto`
-- CUE: `src/draft/exp-proofs/role-journey-cli-mcp-transcripts/architecture/role_journey_cli_mcp_transcripts.cue`
-- Pact-style fixture: `src/draft/exp-proofs/role-journey-cli-mcp-transcripts/architecture/pacts/role_journey_cli_mcp_transcripts.pact.json`
+- Protobuf: `src/draft/exp-proofs/ax/role-journey-cli-mcp-transcripts/architecture/role_journey_cli_mcp_transcripts.proto`
+- CUE: `src/draft/exp-proofs/ax/role-journey-cli-mcp-transcripts/architecture/role_journey_cli_mcp_transcripts.cue`
+- Pact-style fixture: `src/draft/exp-proofs/ax/role-journey-cli-mcp-transcripts/architecture/pacts/role_journey_cli_mcp_transcripts.pact.json`

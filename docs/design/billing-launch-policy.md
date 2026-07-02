@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-489.
 
 Executable proof lives in
-[`src/draft/exp-proofs/billing-launch-policy-contract`](../../src/draft/exp-proofs/billing-launch-policy-contract/README.md).
+[`src/draft/exp-proofs/cx/billing-launch-policy-contract`](../../src/draft/exp-proofs/cx/billing-launch-policy-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-489-billing-launch-policy`](./proofs/hobo-489-billing-launch-policy/index.md).
 

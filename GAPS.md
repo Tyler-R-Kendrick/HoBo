@@ -1565,7 +1565,7 @@ Docs-first remediation with an executable exp-proof (no new ADR — ADR-0039 alr
 
 2. `docs/design/adr/02-identity-security.md` — ADR-0039 §4: rename the example helper from `costAvailability(` to `costAvailabilityProfile(`; add one cross-link sentence pointing at Plan 21 `#finops-inline-budget--cost-availability`. Do not reword other decision bullets.
 
-3. CREATE `src/draft/exp-proofs/inline-budget-authoring/` — independent POC proving declaration normalization + plan budget surfacing (human + JSON) against mocked MeteringView/policy fixtures; link from Plan 21.
+3. CREATE `src/draft/exp-proofs/dx/inline-budget-authoring/` — independent POC proving declaration normalization + plan budget surfacing (human + JSON) against mocked MeteringView/policy fixtures; link from Plan 21.
 
 4. CREATE `docs/design/proofs/hobo-693-inline-budget-authoring/index.md` — proof record mapping acceptance bullets to test names.
 
@@ -1573,7 +1573,7 @@ Docs-first remediation with an executable exp-proof (no new ADR — ADR-0039 alr
 
 1. Plan 21 documents inline `budget()`, `costAvailabilityProfile()`, and agent `spendCapUsd` declarations plus `hobo plan` Cost & budget surfacing.
 2. ADR-0039 §4 example uses `costAvailabilityProfile(` and links back to Plan 21.
-3. `src/draft/exp-proofs/inline-budget-authoring` tests pass.
+3. `src/draft/exp-proofs/dx/inline-budget-authoring` tests pass.
 4. Gates green.
 
 **Guardrails**
@@ -1674,11 +1674,11 @@ Do not touch `docs/design/` files. No new ADR. Preserve OKF frontmatter on `hobo
 
 - **Finding** (iter2-B2-001, P3, MED): dapr.md Bindings + Distributed lock overclaim.
 - **Evidence:** `docs/competitors/dapr.md:50,54,121`
-- **Effort:** S · **Delivery:** ✔ [HOBO-699](https://linear.app/quickdeploy-ai/issue/HOBO-699) — dapr.md Bindings/Distributed lock downgraded to 🔜 with design anchors; guard at `src/draft/exp-proofs/dapr-parity-anchor-audit/`
+- **Effort:** S · **Delivery:** ✔ [HOBO-699](https://linear.app/quickdeploy-ai/issue/HOBO-699) — dapr.md Bindings/Distributed lock downgraded to 🔜 with design anchors; guard at `src/draft/exp-proofs/dx/dapr-parity-anchor-audit/`
 
 **Action**
 
-Downgrade/fix `dapr.md` HoBo-mapping rows: Bindings → partial (name blob-events/triggers/schedule/api adapters); Distributed lock → ◐ actor-lease only unless `hobo:lock` added. Add executable guard at `src/draft/exp-proofs/dapr-parity-anchor-audit/`.
+Downgrade/fix `dapr.md` HoBo-mapping rows: Bindings → partial (name blob-events/triggers/schedule/api adapters); Distributed lock → ◐ actor-lease only unless `hobo:lock` added. Add executable guard at `src/draft/exp-proofs/dx/dapr-parity-anchor-audit/`.
 
 **Acceptance**
 

@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-435.
 
 Executable proof lives in
-[`src/draft/exp-proofs/example-apps-scope-acceptance`](../../src/draft/exp-proofs/example-apps-scope-acceptance/README.md).
+[`src/draft/exp-proofs/dx/example-apps-scope-acceptance`](../../src/draft/exp-proofs/dx/example-apps-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-435-example-apps-scope`](./proofs/hobo-435-example-apps-scope/index.md).
 

@@ -12,7 +12,7 @@ dashboard, support, docs, and launch proof packages must reuse.
 
 ## Evidence
 
-- Proof package: [`../../../../src/draft/exp-proofs/cli-error-refusal-examples/README.md`](../../../../src/draft/exp-proofs/cli-error-refusal-examples/README.md)
+- Proof package: [`../../../../src/draft/exp-proofs/dx/cli-error-refusal-examples/README.md`](../../../../src/draft/exp-proofs/dx/cli-error-refusal-examples/README.md)
 - Source designs:
   - [`developer-experience.md#plan-07`](../../developer-experience.md#plan-07)
   - [`cli-spec.md`](../../cli-spec.md)

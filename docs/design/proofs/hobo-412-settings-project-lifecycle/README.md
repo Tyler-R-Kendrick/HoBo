@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-412 Settings & Project Lifecycle M0 Scope Proof
 
 HOBO-412 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/settings-project-lifecycle-scope`](../../../../src/draft/exp-proofs/settings-project-lifecycle-scope/README.md)
+[`src/draft/exp-proofs/ux/settings-project-lifecycle-scope`](../../../../src/draft/exp-proofs/ux/settings-project-lifecycle-scope/README.md)
 and the durable scope record at [settings-project-lifecycle.md](../../settings-project-lifecycle.md).
 
 ## Acceptance Evidence

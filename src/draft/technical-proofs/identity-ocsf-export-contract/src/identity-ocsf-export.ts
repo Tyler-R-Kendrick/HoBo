@@ -8,7 +8,7 @@ import {
 import {
   exportPolicyEventToOcsf,
   validatePolicyAuditEvent,
-} from "../../../exp-proofs/policy-audit-export-contract/src/policy-audit-export.js";
+} from "../../../exp-proofs/api/policy-audit-export-contract/src/policy-audit-export.js";
 
 export const IDENTITY_OCSF_EXPORT_VERSION = "hobo.identity-ocsf-export/v1";
 

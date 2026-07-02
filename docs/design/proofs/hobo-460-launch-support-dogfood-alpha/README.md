@@ -15,7 +15,7 @@ evidence mapped to owners, findings, release cutline dependencies, and non-block
 - Design record:
   [`docs/design/launch-support-escalation.md`](../../launch-support-escalation.md)
 - Executable contract:
-  [`src/draft/exp-proofs/launch-support-dogfood-alpha-evidence`](../../../../src/draft/exp-proofs/launch-support-dogfood-alpha-evidence/README.md)
+  [`src/draft/exp-proofs/cx/launch-support-dogfood-alpha-evidence`](../../../../src/draft/exp-proofs/cx/launch-support-dogfood-alpha-evidence/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

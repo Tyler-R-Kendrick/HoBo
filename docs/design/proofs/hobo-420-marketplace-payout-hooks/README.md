@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-420 Marketplace Payout Hooks Proof
 
 HOBO-420 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/marketplace-payout-hooks-scope-contract`](../../../../src/draft/exp-proofs/marketplace-payout-hooks-scope-contract/README.md)
+[`src/draft/exp-proofs/cx/marketplace-payout-hooks-scope-contract`](../../../../src/draft/exp-proofs/cx/marketplace-payout-hooks-scope-contract/README.md)
 and the durable scope record at
 [marketplace-payout-hooks.md](../../marketplace-payout-hooks.md).
 

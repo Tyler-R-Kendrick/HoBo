@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-420.
 
 Executable proof lives in
-[`src/draft/exp-proofs/marketplace-payout-hooks-scope-contract`](../../src/draft/exp-proofs/marketplace-payout-hooks-scope-contract/README.md).
+[`src/draft/exp-proofs/cx/marketplace-payout-hooks-scope-contract`](../../src/draft/exp-proofs/cx/marketplace-payout-hooks-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-420-marketplace-payout-hooks`](./proofs/hobo-420-marketplace-payout-hooks/README.md).
 

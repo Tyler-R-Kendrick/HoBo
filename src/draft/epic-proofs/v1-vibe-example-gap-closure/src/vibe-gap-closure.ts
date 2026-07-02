@@ -502,7 +502,7 @@ export function evaluateVibeGapClosure(backlog: VibeGapClosureBacklog = VIBE_GAP
     childIds.add(issue.id);
 
     if (!issue.targetPackagePath.startsWith("src/draft/exp-proofs/")) {
-      violations.push(`${issue.id} must target src/draft/exp-proofs/<slug>`);
+      violations.push(`${issue.id} must target src/draft/exp-proofs/<type>/<slug>`);
     }
     if (!issue.proofNotePath.startsWith(`docs/design/proofs/${issue.id.toLowerCase()}-`)) {
       violations.push(`${issue.id} proof note must live under docs/design/proofs/<issue-slug>/`);
@@ -627,7 +627,7 @@ export function evaluateDxBackboneGraph(graph: VibeDxBackboneGraph = DX_BACKBONE
       violations.push(`${issue.id} must keep dx-first and contract labels`);
     }
     if (!issue.targetPackagePath.startsWith("src/draft/exp-proofs/")) {
-      violations.push(`${issue.id} must target src/draft/exp-proofs/<slug>`);
+      violations.push(`${issue.id} must target src/draft/exp-proofs/<type>/<slug>`);
     }
     if (!issue.proofNotePath.startsWith("docs/design/proofs/")) {
       violations.push(`${issue.id} proof note must live under docs/design/proofs/<slug>/README.md`);
@@ -727,7 +727,7 @@ function child(
     project,
     phase,
     estimate,
-    targetPackagePath: `src/draft/exp-proofs/${packageSlug}`,
+    targetPackagePath: `src/draft/exp-proofs/ux/${packageSlug}`,
     proofNotePath: `docs/design/proofs/${issueSlug}/README.md`,
     artifactSlices,
     requiredScenarios: [...REQUIRED_CHILD_SCENARIOS],
@@ -763,7 +763,7 @@ function dxSlice(
     phase,
     estimate,
     labels,
-    targetPackagePath: `src/draft/exp-proofs/${packageSlug}`,
+    targetPackagePath: `src/draft/exp-proofs/dx/${packageSlug}`,
     proofNotePath: `docs/design/proofs/${packageSlug}/README.md`,
     blockedBy,
     blocks,

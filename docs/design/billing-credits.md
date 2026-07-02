@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-418.
 
 Executable proof lives in
-[`src/draft/exp-proofs/billing-credits-scope-contract`](../../src/draft/exp-proofs/billing-credits-scope-contract/README.md).
+[`src/draft/exp-proofs/cx/billing-credits-scope-contract`](../../src/draft/exp-proofs/cx/billing-credits-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-418-billing-credits`](./proofs/hobo-418-billing-credits/README.md).
 
@@ -102,7 +102,7 @@ launch.
 | Evidence | Owner | Proof mode | Source |
 |---|---|---|---|
 | Commercial scope map | Billing & Credits | Design record | This document |
-| Billing lifecycle state model | Billing & Credits | Contract test | [`billing-launch-policy-contract`](../../src/draft/exp-proofs/billing-launch-policy-contract/README.md) |
+| Billing lifecycle state model | Billing & Credits | Contract test | [`billing-launch-policy-contract`](../../src/draft/exp-proofs/cx/billing-launch-policy-contract/README.md) |
 | Credit ledger and entitlement boundary | Entitlements & Plan Limits | Contract test | [`credit-ledger-view-contract`](../../src/draft/technical-proofs/credit-ledger-view-contract/README.md) |
 | Usage-to-invoice reconciliation inputs | Usage Metering | Reference fixture | HOBO-490 |
 | Customer-visible billing limitations | Billing & Credits | Legal review | HOBO-513 |

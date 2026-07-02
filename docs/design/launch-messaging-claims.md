@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-406.
 
 Executable proof lives in
-[`src/draft/exp-proofs/launch-messaging-claim-register`](../../src/draft/exp-proofs/launch-messaging-claim-register/README.md).
+[`src/draft/exp-proofs/cx/launch-messaging-claim-register`](../../src/draft/exp-proofs/cx/launch-messaging-claim-register/README.md).
 
 ## M0 Acceptance Record
 
@@ -24,7 +24,7 @@ must consume before publication.
 Source issue: HOBO-458.
 
 Executable proof lives in
-[`src/draft/exp-proofs/launch-site-demo-alpha-evidence-contract`](../../src/draft/exp-proofs/launch-site-demo-alpha-evidence-contract/README.md).
+[`src/draft/exp-proofs/cx/launch-site-demo-alpha-evidence-contract`](../../src/draft/exp-proofs/cx/launch-site-demo-alpha-evidence-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-458-launch-site-demo-alpha-evidence`](./proofs/hobo-458-launch-site-demo-alpha-evidence/README.md).
 
@@ -102,7 +102,7 @@ cutline dependencies, follow-up rules, and parent-initiative status behavior.
 ## Private Beta Evidence Gate
 
 HOBO-465 adds the M2 private beta gate for this project. The executable proof lives in
-[`src/draft/exp-proofs/launch-site-private-beta-evidence-contract`](../../src/draft/exp-proofs/launch-site-private-beta-evidence-contract/README.md),
+[`src/draft/exp-proofs/cx/launch-site-private-beta-evidence-contract`](../../src/draft/exp-proofs/cx/launch-site-private-beta-evidence-contract/README.md),
 with branch evidence summarized in
 [`proofs/hobo-465-launch-site-private-beta`](./proofs/hobo-465-launch-site-private-beta/README.md).
 
@@ -116,7 +116,7 @@ claims.
 
 HOBO-472 records the M3 release-candidate evidence gate for launch site, messaging, and demo
 assets. The executable proof lives in
-[`src/draft/exp-proofs/launch-site-release-candidate-evidence-contract`](../../src/draft/exp-proofs/launch-site-release-candidate-evidence-contract/README.md),
+[`src/draft/exp-proofs/cx/launch-site-release-candidate-evidence-contract`](../../src/draft/exp-proofs/cx/launch-site-release-candidate-evidence-contract/README.md),
 with branch evidence summarized in
 [`proofs/hobo-472-launch-site-release-candidate`](./proofs/hobo-472-launch-site-release-candidate/index.md).
 
@@ -140,7 +140,7 @@ release-candidate evidence into GA/public launch claims.
 ## GA Handoff Evidence Gate
 
 HOBO-479 adds the M4 GA handoff gate for this project. The executable proof lives in
-[`src/draft/exp-proofs/launch-site-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/launch-site-ga-handoff-evidence-contract/README.md),
+[`src/draft/exp-proofs/cx/launch-site-ga-handoff-evidence-contract`](../../src/draft/exp-proofs/cx/launch-site-ga-handoff-evidence-contract/README.md),
 with branch evidence summarized in
 [`proofs/hobo-479-launch-site-ga-handoff`](./proofs/hobo-479-launch-site-ga-handoff/index.md).
 

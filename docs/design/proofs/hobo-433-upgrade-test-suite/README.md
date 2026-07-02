@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-433 Upgrade Test Suite M0 Scope Proof
 
 HOBO-433 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/upgrade-test-suite-scope-contract`](../../../../src/draft/exp-proofs/upgrade-test-suite-scope-contract/README.md)
+[`src/draft/exp-proofs/dx/upgrade-test-suite-scope-contract`](../../../../src/draft/exp-proofs/dx/upgrade-test-suite-scope-contract/README.md)
 and the durable scope record at [upgrade-test-suite.md](../../upgrade-test-suite.md).
 
 ## Acceptance Evidence
@@ -40,7 +40,7 @@ and the durable scope record at [upgrade-test-suite.md](../../upgrade-test-suite
 
 ## Gate Evidence
 
-- TypeScript proof: `pnpm --prefix src/draft/exp-proofs/upgrade-test-suite-scope-contract test`.
+- TypeScript proof: `pnpm --prefix src/draft/exp-proofs/dx/upgrade-test-suite-scope-contract test`.
 - Protobuf/CUE proof: `pnpm test:schema` checks repository schema validators; package-local data-model folders own data model
   contracts including `UpgradeTestSuiteScopeRecord`.
 - PACT proof: `architecture/pacts/upgrade_test_suite_scope.pact.json` pins the M0 scope acceptance

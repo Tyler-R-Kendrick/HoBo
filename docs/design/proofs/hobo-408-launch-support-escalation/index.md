@@ -1,7 +1,7 @@
 # HOBO-408 Launch Support Escalation Proof
 
 HOBO-408 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/launch-support-escalation-matrix`](../../../../src/draft/exp-proofs/launch-support-escalation-matrix/README.md)
+[`src/draft/exp-proofs/cx/launch-support-escalation-matrix`](../../../../src/draft/exp-proofs/cx/launch-support-escalation-matrix/README.md)
 and the durable source record at
 [launch-support-escalation.md](../../launch-support-escalation.md).
 

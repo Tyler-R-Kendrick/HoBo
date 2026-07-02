@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-566 DX Backbone Resource Lifecycle Vibe Proof
 
 HOBO-566 is proven by the focused experience proof at
-[`src/draft/exp-proofs/dx-backbone-resource-lifecycle-vibe`](../../../../src/draft/exp-proofs/dx-backbone-resource-lifecycle-vibe/README.md).
+[`src/draft/exp-proofs/dx/dx-backbone-resource-lifecycle-vibe`](../../../../src/draft/exp-proofs/dx/dx-backbone-resource-lifecycle-vibe/README.md).
 
 ## Acceptance Evidence
 

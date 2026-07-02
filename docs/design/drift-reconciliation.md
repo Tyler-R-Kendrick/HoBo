@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-442.
 
 Executable proof lives in
-[`src/draft/exp-proofs/drift-reconciliation-scope-contract`](../../src/draft/exp-proofs/drift-reconciliation-scope-contract/README.md).
+[`src/draft/exp-proofs/dx/drift-reconciliation-scope-contract`](../../src/draft/exp-proofs/dx/drift-reconciliation-scope-contract/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-442-drift-reconciliation`](./proofs/hobo-442-drift-reconciliation/README.md).
 

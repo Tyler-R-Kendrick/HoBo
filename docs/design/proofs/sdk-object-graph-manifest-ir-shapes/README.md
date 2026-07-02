@@ -17,7 +17,7 @@ reader examples.
 ## Evidence
 
 - Executable package:
-  [`sdk-object-graph-manifest-ir-shapes`](../../../../src/draft/exp-proofs/sdk-object-graph-manifest-ir-shapes/README.md).
+  [`sdk-object-graph-manifest-ir-shapes`](../../../../src/draft/exp-proofs/api/sdk-object-graph-manifest-ir-shapes/README.md).
 - SDK/API source:
   [`sdk-api.md`](../../sdk-api.md#plan-02),
   [`sdk-contracts.md`](../../sdk-contracts.md), and

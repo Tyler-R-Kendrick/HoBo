@@ -1,7 +1,7 @@
 # HOBO-208 GitOps CI Journey Proof
 
 HOBO-208 is proven by the focused POC at
-[`src/draft/exp-proofs/gitops-ci-journey-contract`](../../../../src/draft/exp-proofs/gitops-ci-journey-contract/README.md).
+[`src/draft/exp-proofs/dx/gitops-ci-journey-contract`](../../../../src/draft/exp-proofs/dx/gitops-ci-journey-contract/README.md).
 
 ## Acceptance Evidence
 

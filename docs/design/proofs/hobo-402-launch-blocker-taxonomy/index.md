@@ -1,7 +1,7 @@
 # HOBO-402 Launch Blocker Taxonomy Proof
 
 HOBO-402 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/launch-blocker-taxonomy-contract`](../../../../src/draft/exp-proofs/launch-blocker-taxonomy-contract/README.md)
+[`src/draft/exp-proofs/cx/launch-blocker-taxonomy-contract`](../../../../src/draft/exp-proofs/cx/launch-blocker-taxonomy-contract/README.md)
 and the durable design record at
 [`launch-blocker-taxonomy.md`](../../launch-blocker-taxonomy.md).
 

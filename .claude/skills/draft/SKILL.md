@@ -8,7 +8,7 @@ description: Use when creating, moving, reviewing, or planning HoBo draft proof 
 Use this skill for HoBo draft proof work. The old one-level draft layout is obsolete. All draft work belongs under one taxonomy path:
 
 - `src/draft/technical-proofs/<slug>`
-- `src/draft/exp-proofs/<slug>`
+- `src/draft/exp-proofs/<type>/<slug>`
 - `src/draft/epic-proofs/<slug>`
 - `src/draft/projects/<slug>`
 
@@ -33,6 +33,9 @@ Use this skill for HoBo draft proof work. The old one-level draft layout is obso
 
 - Never add live cloud, provider, identity, billing, or support dependencies to default proof tests.
 - Prefer protobuf, CUE, Pact, type tests, and deterministic fixtures over prose-only proof.
-- For technical proofs, performance is either measured deterministically or explicitly marked not applicable in the ADR.
-- For experience proofs, model the audience and measurable friction before choosing the mockup or interface shape.
-- For epic and project rollups, propagate compatibility changes downward with ADRs instead of hiding integration changes only at the rollup layer.
+- Every new proof carries a `proof.json` manifest, gate-executed `examples/`, and an executed `notebook.ipynb` (tslab); scaffold from `src/draft/_templates/<layer>/`. Waivers require an ADR and live in `proof.json`.
+- For technical proofs, performance is measured with `bench/*.bench.ts` (executable; numbers advisory) or explicitly waived in the ADR; add a mermaid architecture diagram where relevant.
+- For experience proofs, model the audience and measurable friction first, then ship the per-type artifacts (`ux` real visuals · `dx` pseudo-code+proto+CUE+diagrams · `cx` journeys · `ax` MCP transcripts/tool schemas · `api` type tests+consumers).
+- For epic proofs, the Gherkin suite is executable (`features/` + steps, `pnpm run test:behavior`), and the notebook demonstrates the simulation.
+- For epic and project rollups, propagate compatibility changes downward with ADRs; the inverse cascade is machine-enforced by `pnpm run draft:cascade` (changed leaf proofs must update referencing rollups in the same diff).
+- The gates (`draft:artifacts`, `draft:cascade`) run automatically via `agent:check`; grandfathered packages (`src/draft/_grandfathered.json`) get advisories until their backfill wave lands.

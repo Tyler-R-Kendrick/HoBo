@@ -14,7 +14,7 @@ This proof backs the M0 productization record for
 
 - Issue: HOBO-448
 - Draft package:
-  [`src/draft/exp-proofs/support-workflow-scope-contract`](../../../../src/draft/exp-proofs/support-workflow-scope-contract/README.md)
+  [`src/draft/exp-proofs/cx/support-workflow-scope-contract`](../../../../src/draft/exp-proofs/cx/support-workflow-scope-contract/README.md)
 - Focused gate:
   `npm.cmd --prefix src\draft\exp-proofs\support-workflow-scope-contract test`
 

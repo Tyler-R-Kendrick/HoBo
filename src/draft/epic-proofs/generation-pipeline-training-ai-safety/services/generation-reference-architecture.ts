@@ -38,7 +38,7 @@ import {
 import {
   createOptimizerPayload,
   evaluateTrajectoryPrivacy,
-} from "../../../exp-proofs/data-flywheel-privacy-spike/src/privacy-model.js";
+} from "../../../exp-proofs/dx/data-flywheel-privacy-spike/src/privacy-model.js";
 import {
   createChampionChallengerPromotion,
   findGeneratedRegion,

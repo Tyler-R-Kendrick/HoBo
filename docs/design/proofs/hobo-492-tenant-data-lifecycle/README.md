@@ -16,7 +16,7 @@ follow-up implementation work can fan out.
 - Design record:
   [`docs/design/tenant-data-lifecycle.md`](../../tenant-data-lifecycle.md)
 - Executable contract:
-  [`src/draft/exp-proofs/tenant-data-lifecycle-contract`](../../../../src/draft/exp-proofs/tenant-data-lifecycle-contract/README.md)
+  [`src/draft/exp-proofs/cx/tenant-data-lifecycle-contract`](../../../../src/draft/exp-proofs/cx/tenant-data-lifecycle-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

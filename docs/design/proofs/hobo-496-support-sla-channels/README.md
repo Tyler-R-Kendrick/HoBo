@@ -15,7 +15,7 @@ before follow-up Support Workflow design/build work can fan out.
 - Design record:
   [`docs/design/support-sla-channels.md`](../../support-sla-channels.md)
 - Executable contract:
-  [`src/draft/exp-proofs/support-sla-channels-contract`](../../../../src/draft/exp-proofs/support-sla-channels-contract/README.md)
+  [`src/draft/exp-proofs/cx/support-sla-channels-contract`](../../../../src/draft/exp-proofs/cx/support-sla-channels-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

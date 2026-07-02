@@ -1,7 +1,7 @@
 # HOBO-480 Release Notes GA Handoff Evidence
 
 HOBO-480 is proven by the focused M4 contract at
-[`src/draft/exp-proofs/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract/README.md)
+[`src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract`](../../../../src/draft/exp-proofs/cx/v1-release-notes-upgrade-guide-ga-handoff-evidence-contract/README.md)
 and the durable M4 gate record in
 [`release-notes-upgrade-guide.md`](../../release-notes-upgrade-guide.md#m4-ga-handoff-evidence).
 

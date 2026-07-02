@@ -8,7 +8,7 @@ tags: [hobo, design]
 # HOBO-505 Accessibility And Usability Launch Baseline Proof
 
 HOBO-505 is proven by the focused M0 contract at
-[`src/draft/exp-proofs/accessibility-usability-launch-baseline-contract`](../../../../src/draft/exp-proofs/accessibility-usability-launch-baseline-contract/README.md)
+[`src/draft/exp-proofs/ux/accessibility-usability-launch-baseline-contract`](../../../../src/draft/exp-proofs/ux/accessibility-usability-launch-baseline-contract/README.md)
 and the durable design record at
 [`accessibility-usability-launch-baseline.md`](../../accessibility-usability-launch-baseline.md).
 

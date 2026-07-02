@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
 
+import { workspaceForDraftFile } from "./lib/proof-manifest.ts";
+
 export type Check = { command: string; args: string[]; reason: string; serial?: boolean };
 
 export type RelevantCheckPolicyOptions = {
@@ -22,8 +24,10 @@ export type RelevantCheckPolicy = {
 
 export function workspaceFor(file: string) {
   const normalized = file.replaceAll("\\", "/");
-  const draft = normalized.match(/^src\/draft\/(technical-proofs|exp-proofs|epic-proofs|projects)\/([^/]+)\//u);
+  const draft = normalized.match(/^src\/draft\/(technical-proofs|epic-proofs|projects)\/([^/]+)\//u);
   if (draft) return `src/draft/${draft[1]}/${draft[2]}`;
+  const exp = normalized.match(/^src\/draft\/exp-proofs\/(dx|ux|cx|ax|api)\/([^/]+)\//u);
+  if (exp) return `src/draft/exp-proofs/${exp[1]}/${exp[2]}`;
   const production = normalized.match(/^(packages|examples)\/([^/]+)\//u);
   return production ? `${production[1]}/${production[2]}` : undefined;
 }
@@ -54,6 +58,8 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   const workspacePackageExists = options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
   const workspaces = [...new Set(workspaceTestFiles.filter(workspaceTestRelevant).map(workspaceFor).filter((value): value is string => Boolean(value)))]
+    .filter(workspacePackageExists);
+  const draftWorkspaces = [...new Set(files.map(workspaceForDraftFile).filter((value): value is string => Boolean(value)))]
     .filter(workspacePackageExists);
   const touched = (prefixes: string[]) => files.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const touchedAny = (patterns: RegExp[]) => files.some((file) => patterns.some((pattern) => pattern.test(file)));
@@ -112,6 +118,23 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
         reason: `draft package unit/contract tests for ${workspace}; direct package script avoids Turbo dependency expansion`,
       });
     }
+  }
+
+  if (draftWorkspaces.length > 0) {
+    checks.push({
+      command: "pnpm",
+      args: ["run", staged ? "draft:artifacts:staged" : "draft:artifacts", "--", `--base=${options.base}`],
+      reason: "changed proof packages must satisfy the draft-artifact requirements (grandfathered packages get advisories)",
+    });
+    checks.push({
+      command: "pnpm",
+      args: ["run", staged ? "draft:cascade:staged" : "draft:cascade", "--", `--base=${options.base}`],
+      reason: "changed technical/exp proofs must cascade into referencing epic/project rollups",
+    });
+  }
+
+  if (files.some((file) => /^\.(claude|agents)\/skills\/(draft|repo|sdlc)\//u.test(file))) {
+    checks.push({ command: "pnpm", args: ["run", "skills:mirror-check"], reason: "repo-local skill mirrors must stay byte-identical across .claude and .agents" });
   }
 
   if (uiChanged) {

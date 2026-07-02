@@ -1,6 +1,6 @@
 # HOBO-83 XAA Scope Inference Proof
 
-HOBO-83 is proven by `src/draft/exp-proofs/xaa-scope-inference-contract`.
+HOBO-83 is proven by `src/draft/exp-proofs/api/xaa-scope-inference-contract`.
 
 The proof consumes the M0 `connector()` authoring contract and adds the M2 inference behavior:
 

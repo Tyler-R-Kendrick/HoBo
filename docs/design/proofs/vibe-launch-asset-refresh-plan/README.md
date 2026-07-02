@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-556.
 
 Executable proof:
-[`src/draft/exp-proofs/vibe-launch-asset-refresh-plan`](../../../../src/draft/exp-proofs/vibe-launch-asset-refresh-plan/README.md).
+[`src/draft/exp-proofs/ux/vibe-launch-asset-refresh-plan`](../../../../src/draft/exp-proofs/ux/vibe-launch-asset-refresh-plan/README.md).
 
 ## Acceptance Mapping
 
@@ -18,7 +18,7 @@ Executable proof:
 |---|---|
 | Plan names every asset, source owner, proof mode, freshness rule, refresh trigger, validation route, and stale-asset downgrade behavior. | `VIBE_LAUNCH_ASSET_REFRESH_PLAN.assets` plus package tests. |
 | Fixture examples distinguish live product, simulated reference, reference fixture, and scope-out assets. | `fixtureExamples` covers `live`, `simulated`, `reference fixture`, and `scope-out`. |
-| Target package path is `src/draft/exp-proofs/vibe-launch-asset-refresh-plan`. | Package path and parser assertion. |
+| Target package path is `src/draft/exp-proofs/ux/vibe-launch-asset-refresh-plan`. | Package path and parser assertion. |
 | Target proof path is `docs/design/proofs/vibe-launch-asset-refresh-plan/README.md`. | This proof note and parser assertion. |
 | Covers happy path, blocked path, stale/unknown evidence path, support handoff, accessibility notes, and proof-mode labels. | `scenarios` covers all required scenario kinds with support and accessibility fields. |
 

@@ -15,7 +15,7 @@ Installer design/build work can fan out.
 - Design record:
   [`docs/design/bootstrap-installer.md`](../../bootstrap-installer.md)
 - Executable contract:
-  [`src/draft/exp-proofs/bootstrap-installer-scope-contract`](../../../../src/draft/exp-proofs/bootstrap-installer-scope-contract/README.md)
+  [`src/draft/exp-proofs/dx/bootstrap-installer-scope-contract`](../../../../src/draft/exp-proofs/dx/bootstrap-installer-scope-contract/README.md)
 - Traceability row:
   [`docs/design/traceability.md`](../../traceability.md)
 

@@ -247,7 +247,7 @@ Manifest IR sketch (folded beside resources):
 }
 ```
 
-Executable contract: [`inline-budget-authoring`](../../src/draft/exp-proofs/inline-budget-authoring/README.md) proof (HOBO-693).
+Executable contract: [`inline-budget-authoring`](../../src/draft/exp-proofs/dx/inline-budget-authoring/README.md) proof (HOBO-693).
 
 ### DNS is a Yard-level resource, not app/Bindle-level
 DNS and custom domains are **not** in the app-level catalog ([ADR-0035](./adr/07-portability-extensibility.md#adr-0035)). DNS is a **Yard-level** resource — provider-global, with **per-Camp overrides** — so a Bindle never declares it. Custom-domain binding (ACME DNS-01 certs; failover/weighted/latency across Camps) is resolved at the Yard layer and applied per Camp; the app references endpoints, not zones.

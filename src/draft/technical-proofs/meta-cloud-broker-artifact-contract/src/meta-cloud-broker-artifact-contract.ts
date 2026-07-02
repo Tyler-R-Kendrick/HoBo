@@ -306,7 +306,7 @@ function envelope(kind: BrokerArtifactKind, owner: string, payload: Record<strin
         refs: [
           "docs/design/meta-cloud-broker.md",
           "docs/design/contracts-policy-flags.md",
-          "src/draft/exp-proofs/meta-cloud-broker-scope-contract/README.md",
+          "src/draft/exp-proofs/api/meta-cloud-broker-scope-contract/README.md",
         ],
       },
       proofMode: kind === "resolution-rejection" ? "negative-test" : "schema-test",

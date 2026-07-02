@@ -10,7 +10,7 @@ tags: [hobo, design]
 Source issue: HOBO-447.
 
 Executable proof lives in
-[`src/draft/exp-proofs/provenance-retention-scope-acceptance`](../../src/draft/exp-proofs/provenance-retention-scope-acceptance/README.md).
+[`src/draft/exp-proofs/dx/provenance-retention-scope-acceptance`](../../src/draft/exp-proofs/dx/provenance-retention-scope-acceptance/README.md).
 Branch evidence is summarized in
 [`proofs/hobo-447-provenance-retention`](./proofs/hobo-447-provenance-retention/README.md).
 

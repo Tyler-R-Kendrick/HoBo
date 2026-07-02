@@ -17,7 +17,7 @@ script artifact slice.
 - Workspace source: [`workspace-onboarding-ux.md`](../../workspace-onboarding-ux.md).
 - Beta feedback source: [`beta-pilot-feedback.md`](../../beta-pilot-feedback.md).
 - Quickstart source: [`resource-lifecycle-quickstart-examples`](../resource-lifecycle-quickstart-examples/README.md).
-- Executable proof: [`vibe-first-customer-pilot-storyboard`](../../../../src/draft/exp-proofs/vibe-first-customer-pilot-storyboard/README.md).
+- Executable proof: [`vibe-first-customer-pilot-storyboard`](../../../../src/draft/exp-proofs/ux/vibe-first-customer-pilot-storyboard/README.md).
 
 ## Acceptance Coverage
 

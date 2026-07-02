@@ -122,6 +122,19 @@ test("draft package README-only changes do not select workspace tests", () => {
   assert.equal(checks.some((check) => check.args.includes("./src/draft/technical-proofs/example-proof")), false);
 });
 
+test("proof.json-only changes select draft artifact and cascade gates without workspace tests", () => {
+  const workspace = "src/draft/technical-proofs/example-proof";
+  const { checks, workspaces } = plan(
+    [`${workspace}/proof.json`],
+    { workspacePackageExists: (candidate: string) => candidate === workspace },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some(isWorkspacePrefixTest), false);
+  assert.equal(checks.some((check) => check.args.join(" ") === "run draft:artifacts -- --base=origin/main"), true);
+  assert.equal(checks.some((check) => check.args.join(" ") === "run draft:cascade -- --base=origin/main"), true);
+});
+
 test("move-only draft package files can be excluded from workspace tests", () => {
   const { checks, workspaces } = plan(
     ["src/draft/technical-proofs/example-proof/src/index.ts"],
@@ -210,6 +223,38 @@ test("fast test script is root-only and full quiet unit lane remains explicit", 
 
   assert.equal(packageJson.scripts["test:fast"], "node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts");
   assert.equal(packageJson.scripts["test:unit:quiet"], "node --import tsx scripts/run-tests.ts --category=unit --quiet --no-artifacts");
+});
+
+test("experience-proof packages resolve through their type subfolder", () => {
+  const workspace = "src/draft/exp-proofs/dx/app-dev-journey-contract";
+  const { checks, workspaces } = plan(
+    [`${workspace}/src/app-dev-journey.ts`],
+    { workspacePackageExists: (candidate: string) => candidate === workspace },
+  );
+
+  assert.deepEqual(workspaces, [workspace]);
+  assert.equal(checks.some((check) => check.args.join(" ") === `--prefix ${workspace} test`), true);
+});
+
+test("legacy two-level exp-proof paths no longer resolve to a workspace", () => {
+  const { checks, workspaces } = plan(
+    ["src/draft/exp-proofs/app-dev-journey-contract/src/app-dev-journey.ts"],
+    { workspacePackageExists: () => true },
+  );
+
+  assert.deepEqual(workspaces, []);
+  assert.equal(checks.some(isWorkspacePrefixTest), false);
+});
+
+test("exp-proof schema changes under type subfolders stay on workspace tests", () => {
+  const workspace = "src/draft/exp-proofs/ux/vibe-workspace-project-states";
+  const { checks } = plan(
+    [`${workspace}/architecture/vibe_workspace_project_states.cue`],
+    { workspacePackageExists: (candidate: string) => candidate === workspace },
+  );
+
+  assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), false);
+  assert.equal(checks.some(isWorkspacePrefixTest), true);
 });
 
 test("case-collision helper reports tracked paths that differ only by case", () => {

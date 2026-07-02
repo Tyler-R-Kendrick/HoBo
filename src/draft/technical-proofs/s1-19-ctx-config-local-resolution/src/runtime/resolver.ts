@@ -61,6 +61,7 @@ export function createConfigResolver(options: ConfigResolverOptions): ConfigReso
       if (entry.required) {
         throw new Error(`camp config ${ref} is required`);
       }
+      emitConfigResolved(key, ref, "camp-env");
       return entry.defaultType === "number" ? 0 : entry.defaultType === "boolean" ? false : "";
     }
 

@@ -44,6 +44,22 @@ test("dev ladder: keychain used when .env.local missing entry", async () => {
   assert.deepEqual(adapter.reads[0]?.source, "keychain");
 });
 
+test("dev ladder: prompt used when .env.local and keychain miss", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "hobo-secrets-"));
+  const envLocalPath = path.join(dir, ".env.local");
+
+  const adapter = createDevSecretsAdapter({
+    envLocalPath,
+    keychain: () => undefined,
+    prompt: () => "from-prompt",
+    isCi: false,
+  });
+
+  const secret = await adapter.get("hello/api-key", { camp: "local" });
+  assert.equal(secret.reveal(), "from-prompt");
+  assert.deepEqual(adapter.reads, [{ ref: "hello/api-key", source: "prompt" }]);
+});
+
 test("dev ladder: prompt skipped when CI=1", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "hobo-secrets-"));
   const envLocalPath = path.join(dir, ".env.local");

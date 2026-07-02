@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -114,6 +115,37 @@ describe("gated live-fix loop (HOBO-654)", () => {
     assert.equal(result.status, "needs-approval");
     assert.equal(result.reason, "max-blast-radius-exceeded");
     assert.ok(!result.events.some((event) => event.type === "deployment.CanaryStarted"));
+  });
+
+  it("architecture artifacts pin protobuf, CUE, Pact, and ADR boundaries", () => {
+    const adr = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
+    const proto = readFileSync(
+      new URL("../architecture/gated_live_fix_loop.proto", import.meta.url),
+      "utf8",
+    );
+    const cue = readFileSync(
+      new URL("../architecture/gated_live_fix_loop.cue", import.meta.url),
+      "utf8",
+    );
+    const pact = JSON.parse(
+      readFileSync(
+        new URL("../architecture/pacts/gated_live_fix_loop.pact.json", import.meta.url),
+        "utf8",
+      ),
+    );
+
+    assert.match(proto, /message GatedLiveFixLoopRecord/);
+    assert.match(cue, /#GatedLiveFixLoopRecord:/);
+    assert.equal(pact.consumer.name, "GatedLiveFixLoopConsumer");
+    assert.equal(pact.provider.name, "GatedLiveFixLoopBoundary");
+    assert.equal(pact.interactions[0].response.body.ok, true);
+    assert.match(adr, /parse, don't validate/i);
+    assert.match(adr, /Command/i);
+    assert.match(adr, /Event/i);
+    assert.match(adr, /Actor/i);
+    assert.match(adr, /event store/i);
+    assert.match(adr, /projection/i);
+    assert.match(adr, /read store/i);
   });
 });
 

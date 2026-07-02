@@ -5,9 +5,11 @@ import {
   diffDeploymentSet,
   foldDeploymentProjections,
   validateEnvGroup,
+  type DeploymentProjectionEvent,
+  type ResourceMap,
 } from "./projection-model.js";
 
-const baseResources = {
+const baseResources: ResourceMap = {
   "shop.api": {
     id: "shop.api",
     type: "service",
@@ -45,9 +47,9 @@ const baseResources = {
 };
 
 const updatedApi = {
-  ...baseResources["shop.api"],
+  ...baseResources["shop.api"]!,
   workload: { image: "registry.example/shop-api:v2" },
-  match: { ...baseResources["shop.api"].match, decisionId: "match-api-v2" },
+  match: { ...baseResources["shop.api"]!.match!, decisionId: "match-api-v2" },
 };
 
 const workerResource = {
@@ -72,7 +74,7 @@ const envGroup = {
   ],
 };
 
-const fixtureEvents = [
+const fixtureEvents: DeploymentProjectionEvent[] = [
   {
     seq: 1,
     type: "set.Created",
@@ -126,31 +128,31 @@ const fixtureEvents = [
 test("folds set.Created and delta.* into Set and Delta projections", () => {
   const projection = foldDeploymentProjections(fixtureEvents);
 
-  assert.equal(projection.currentSetsByCamp["prod-aws"].id, "set-prod-aws-v2");
-  assert.equal(projection.currentSetsByCamp["prod-aws"].previousSetId, "set-prod-aws-v1");
-  assert.deepEqual(Object.keys(projection.currentSetsByCamp["prod-aws"].resources).sort(), [
+  assert.equal(projection.currentSetsByCamp["prod-aws"]!.id, "set-prod-aws-v2");
+  assert.equal(projection.currentSetsByCamp["prod-aws"]!.previousSetId, "set-prod-aws-v1");
+  assert.deepEqual(Object.keys(projection.currentSetsByCamp["prod-aws"]!.resources).sort(), [
     "shop.api",
     "shop.db",
     "shop.worker",
   ]);
   assert.equal(
-    projection.currentSetsByCamp["prod-aws"].resources["shop.api"].workload.image,
+    projection.currentSetsByCamp["prod-aws"]!.resources["shop.api"]!.workload!.image,
     "registry.example/shop-api:v2",
   );
-  assert.equal(projection.deltas["delta-prod-aws-1"].status, "applied");
-  assert.equal(projection.deltas["delta-prod-aws-1"].appliedSetId, "set-prod-aws-v2");
-  assert.equal(projection.currentSetsByCamp["prod-aws"].envGroup.id, "production");
+  assert.equal(projection.deltas["delta-prod-aws-1"]!.status, "applied");
+  assert.equal(projection.deltas["delta-prod-aws-1"]!.appliedSetId, "set-prod-aws-v2");
+  assert.equal(projection.currentSetsByCamp["prod-aws"]!.envGroup!.id, "production");
 });
 
 test("computes a stable Set content address independent of object key order", () => {
-  const first = foldDeploymentProjections(fixtureEvents).currentSetsByCamp["prod-aws"];
+  const first = foldDeploymentProjections(fixtureEvents).currentSetsByCamp["prod-aws"]!;
   const reordered = {
     environmentType: first.environmentType,
     id: first.id,
     resources: {
-      "shop.worker": first.resources["shop.worker"],
-      "shop.db": first.resources["shop.db"],
-      "shop.api": first.resources["shop.api"],
+      "shop.worker": first.resources["shop.worker"]!,
+      "shop.db": first.resources["shop.db"]!,
+      "shop.api": first.resources["shop.api"]!,
     },
     manifestDigest: first.manifestDigest,
     campId: first.campId,
@@ -163,8 +165,8 @@ test("computes a stable Set content address independent of object key order", ()
 });
 
 test("computes add/update/remove changes between two Sets", () => {
-  const before = foldDeploymentProjections([fixtureEvents[0]]).currentSetsByCamp["prod-aws"];
-  const after = foldDeploymentProjections(fixtureEvents).currentSetsByCamp["prod-aws"];
+  const before = foldDeploymentProjections([fixtureEvents[0]!]).currentSetsByCamp["prod-aws"]!;
+  const after = foldDeploymentProjections(fixtureEvents).currentSetsByCamp["prod-aws"]!;
 
   assert.deepEqual(diffDeploymentSet(before, after), [
     { op: "update", resourceId: "shop.api", resource: updatedApi },
@@ -177,8 +179,8 @@ test("rejects overlapping open Deltas for the same Camp and base Set", () => {
   assert.throws(
     () =>
       foldDeploymentProjections([
-        fixtureEvents[0],
-        fixtureEvents[1],
+        fixtureEvents[0]!,
+        fixtureEvents[1]!,
         {
           seq: 3,
           type: "delta.Opened",
@@ -198,7 +200,7 @@ test("rejects opening a Delta against a stale non-current Set", () => {
   assert.throws(
     () =>
       foldDeploymentProjections([
-        fixtureEvents[0],
+        fixtureEvents[0]!,
         {
           seq: 2,
           type: "set.Created",
@@ -211,7 +213,7 @@ test("rejects opening a Delta against a stale non-current Set", () => {
             manifestDigest: "sha256:manifest-v2",
             resources: {
               "shop.api": updatedApi,
-              "shop.db": baseResources["shop.db"],
+              "shop.db": baseResources["shop.db"]!,
             },
             envGroup,
           },
@@ -235,8 +237,8 @@ test("rejects Delta changes that reference a resource absent from the current Se
   assert.throws(
     () =>
       foldDeploymentProjections([
-        fixtureEvents[0],
-        fixtureEvents[1],
+        fixtureEvents[0]!,
+        fixtureEvents[1]!,
         {
           seq: 3,
           type: "delta.Updated",
@@ -255,7 +257,7 @@ test("rejects out-of-order delta events", () => {
   assert.throws(
     () =>
       foldDeploymentProjections([
-        fixtureEvents[0],
+        fixtureEvents[0]!,
         {
           seq: 2,
           type: "delta.Updated",
@@ -284,7 +286,7 @@ test("validates env-group membership as a Yard-level orchestration type", () => 
   );
 });
 
-function test(name, fn) {
+function test(name: string, fn: () => void) {
   try {
     fn();
     console.log(`ok - ${name}`);

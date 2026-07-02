@@ -6,11 +6,11 @@ const traceabilityPath = path.join(root, "docs", "design", "traceability.md");
 const adrIndexPath = path.join(root, "docs", "design", "adr", "index.md");
 const designIndexPath = path.join(root, "docs", "design", "index.md");
 
-function read(relativeOrAbsolutePath) {
+function read(relativeOrAbsolutePath: string) {
   return fs.readFileSync(relativeOrAbsolutePath, "utf8");
 }
 
-function fail(message) {
+function fail(message: string) {
   console.error(message);
   process.exitCode = 1;
 }
@@ -69,7 +69,7 @@ if (hoboRefs.length < 50) {
 }
 
 const relativeLinks = [...traceability.matchAll(/\]\((?!https?:\/\/|mailto:|#)([^)#]+\.md)(#[^)]+)?\)/g)].map(
-  (match) => match[1],
+  (match) => match[1]!,
 );
 
 for (const link of relativeLinks) {

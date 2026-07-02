@@ -11,11 +11,24 @@ const DEFAULT_SCAN_PATHS = [
   "CLAUDE.md",
 ];
 
-export async function checkDesignDocs({ root, files } = {}) {
+type DesignDocProblem = {
+  code: string;
+  file: string;
+  line: number;
+  message: string;
+  target?: string;
+};
+
+type CheckDesignDocsOptions = {
+  root: string;
+  files?: string[] | undefined;
+};
+
+export async function checkDesignDocs({ root, files }: CheckDesignDocsOptions = {} as CheckDesignDocsOptions) {
   const targetFiles = files ?? (await collectMarkdownFiles(root));
-  const markdownByFile = new Map();
-  const anchorsByFile = new Map();
-  const problems = [];
+  const markdownByFile = new Map<string, string>();
+  const anchorsByFile = new Map<string, Set<string>>();
+  const problems: DesignDocProblem[] = [];
 
   for (const file of targetFiles) {
     const absolute = path.isAbsolute(file) ? file : path.join(root, file);
@@ -36,7 +49,10 @@ export async function checkDesignDocs({ root, files } = {}) {
   return { problems };
 }
 
-async function checkEventFamilies({ root, markdownByFile }) {
+async function checkEventFamilies({ root, markdownByFile }: {
+  root: string;
+  markdownByFile: Map<string, string>;
+}) {
   const catalogPath = path.join(root, "docs", "design", "event-families.md");
   if (!fs.existsSync(catalogPath)) {
     return [
@@ -55,7 +71,7 @@ async function checkEventFamilies({ root, markdownByFile }) {
       (match) => match[1],
     ),
   );
-  const problems = [];
+  const problems: DesignDocProblem[] = [];
 
   for (const [file, content] of markdownByFile) {
     if (file === "docs/design/event-families.md") continue;
@@ -79,8 +95,8 @@ async function checkEventFamilies({ root, markdownByFile }) {
   return problems;
 }
 
-function checkSdkDisambiguation({ markdownByFile }) {
-  const problems = [];
+function checkSdkDisambiguation({ markdownByFile }: { markdownByFile: Map<string, string> }) {
+  const problems: DesignDocProblem[] = [];
 
   for (const [file, content] of markdownByFile) {
     if (!content.includes("hobo:sdk") || !content.includes("@hobo/sdk")) {
@@ -109,7 +125,10 @@ function checkSdkDisambiguation({ markdownByFile }) {
   return problems;
 }
 
-async function checkAdrReferences({ root, markdownByFile }) {
+async function checkAdrReferences({ root, markdownByFile }: {
+  root: string;
+  markdownByFile: Map<string, string>;
+}) {
   const adrIndexPath = path.join(root, "docs", "design", "adr", "index.md");
   if (!fs.existsSync(adrIndexPath)) return [];
 
@@ -122,7 +141,7 @@ async function checkAdrReferences({ root, markdownByFile }) {
       (match) => `ADR-${match[1]}`,
     ),
   );
-  const problems = [];
+  const problems: DesignDocProblem[] = [];
 
   for (const [file, content] of markdownByFile) {
     for (const match of content.matchAll(/\bADR-(\d{4})\b/g)) {
@@ -146,12 +165,12 @@ async function checkAdrReferences({ root, markdownByFile }) {
   return problems;
 }
 
-function documentedAdrGaps(traceability) {
-  const gapLines = [];
+function documentedAdrGaps(traceability: string) {
+  const gapLines: string[] = [];
   const lines = traceability.split(/\r?\n/);
 
   for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
+    const line = lines[index]!;
     if (!line.includes("Explicit numbering gaps")) continue;
 
     gapLines.push(line);
@@ -165,7 +184,7 @@ function documentedAdrGaps(traceability) {
   return new Set(gapLines.join(" ").match(/\bADR-\d{4}\b/g) ?? []);
 }
 
-async function checkGlossary({ root }) {
+async function checkGlossary({ root }: { root: string }) {
   const glossaryPath = path.join(root, "docs", "design", "glossary.md");
   if (!fs.existsSync(glossaryPath)) {
     return [
@@ -179,8 +198,8 @@ async function checkGlossary({ root }) {
   }
 
   const content = await readFile(glossaryPath, "utf8");
-  const seen = new Map();
-  const problems = [];
+  const seen = new Map<string, { term: string; definition: string }>();
+  const problems: DesignDocProblem[] = [];
 
   content.split(/\r?\n/).forEach((line, index) => {
     if (!line.trim().startsWith("|")) return;
@@ -212,14 +231,19 @@ async function checkGlossary({ root }) {
   return problems;
 }
 
-function checkRelativeLinks({ root, file, content, anchorsByFile }) {
-  const problems = [];
+function checkRelativeLinks({ root, file, content, anchorsByFile }: {
+  root: string;
+  file: string;
+  content: string;
+  anchorsByFile: Map<string, Set<string>>;
+}) {
+  const problems: DesignDocProblem[] = [];
   const linkPattern = /!?\[[^\]]*]\((?!https?:\/\/|mailto:|#)([^)\s]+)(#[^)]+)?\)/g;
   const localAnchorPattern = /!?\[[^\]]*]\(#([^)]+)\)/g;
   let match;
 
   while ((match = localAnchorPattern.exec(content)) !== null) {
-    const expectedAnchor = match[1].toLowerCase();
+    const expectedAnchor = match[1]!.toLowerCase();
     const fileAnchors = anchorsByFile.get(file) ?? extractAnchors(content);
 
     if (!fileAnchors.has(expectedAnchor)) {
@@ -236,8 +260,8 @@ function checkRelativeLinks({ root, file, content, anchorsByFile }) {
   while ((match = linkPattern.exec(content)) !== null) {
     const [raw, target, anchor = ""] = match;
     const line = lineNumberAt(content, match.index);
-    const cleanTargetWithFragment = decodeURI(target.replace(/^<|>$/g, ""));
-    const [cleanTarget, inlineFragment = ""] = cleanTargetWithFragment.split("#");
+    const cleanTargetWithFragment = decodeURI(target!.replace(/^<|>$/g, ""));
+    const [cleanTarget, inlineFragment = ""] = cleanTargetWithFragment.split("#") as [string, ...string[]];
     const linkAnchor = anchor || (inlineFragment ? `#${inlineFragment}` : "");
 
     if (!cleanTarget.endsWith(".md")) {
@@ -279,19 +303,19 @@ function checkRelativeLinks({ root, file, content, anchorsByFile }) {
   return problems;
 }
 
-function extractAnchors(markdown) {
-  const anchors = new Set();
+function extractAnchors(markdown: string) {
+  const anchors = new Set<string>();
 
   markdown.split(/\r?\n/).forEach((line) => {
     const heading = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
     if (!heading) return;
-    anchors.add(slugifyHeading(heading[2]));
+    anchors.add(slugifyHeading(heading[2]!));
   });
 
   return anchors;
 }
 
-function slugifyHeading(heading) {
+function slugifyHeading(heading: string) {
   return heading
     .replace(/`([^`]+)`/g, "$1")
     .toLowerCase()
@@ -301,17 +325,17 @@ function slugifyHeading(heading) {
     .replace(/\s/g, "-");
 }
 
-function lineNumberAt(content, offset) {
+function lineNumberAt(content: string, offset: number) {
   return content.slice(0, offset).split(/\r?\n/).length;
 }
 
-function firstLineContaining(content, needle) {
+function firstLineContaining(content: string, needle: string) {
   const index = content.indexOf(needle);
   return index === -1 ? 1 : lineNumberAt(content, index);
 }
 
-async function collectMarkdownFiles(root) {
-  const files = [];
+async function collectMarkdownFiles(root: string) {
+  const files: string[] = [];
 
   for (const scanPath of DEFAULT_SCAN_PATHS) {
     const absolute = path.join(root, scanPath);
@@ -328,8 +352,8 @@ async function collectMarkdownFiles(root) {
   return files;
 }
 
-async function walkMarkdown(root, dir) {
-  const found = [];
+async function walkMarkdown(root: string, dir: string): Promise<string[]> {
+  const found: string[] = [];
 
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, entry.name);
@@ -343,7 +367,7 @@ async function walkMarkdown(root, dir) {
   return found;
 }
 
-function normalizePath(value) {
+function normalizePath(value: string) {
   return value.split(path.sep).join("/");
 }
 

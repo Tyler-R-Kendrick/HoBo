@@ -23,6 +23,7 @@ import {
   layerForWorkspace,
   proofManifestSchema,
   workspaceForDraftFile,
+  type ExperienceType,
   type ProofManifest,
 } from "./lib/proof-manifest.js";
 
@@ -165,14 +166,14 @@ export function checkWorkspace(
     const all = listFilesRecursive(abs).map((f) => path.relative(abs, f).replaceAll("\\", "/"));
     const assetRoot = manifest.artifacts.assets ?? "assets";
     const inAssets = all.filter((f) => f.startsWith(`${assetRoot}/`));
-    const requirementByType: Record<string, () => boolean> = {
+    const requirementByType: Record<ExperienceType, () => boolean> = {
       ux: () => inAssets.some((f) => /\.(svg|png|jpe?g|webp)$/u.test(f)),
       dx: () => all.some((f) => f.endsWith(".proto")) && all.some((f) => f.endsWith(".cue")),
       cx: () => inAssets.some((f) => f.endsWith(".md")) || all.some((f) => /journeys\/.+\.md$/u.test(f)),
       ax: () => inAssets.some((f) => /\.(json|md)$/u.test(f)) || all.some((f) => /transcripts\/.+\.(json|md)$/u.test(f)),
       api: () => all.some((f) => /(type-tests|test-types)\//u.test(f) || f.endsWith(".test-d.ts")),
     };
-    const message: Record<string, string> = {
+    const message: Record<ExperienceType, string> = {
       ux: "ux proof needs real visual assets (assets/*.svg|png|jpg|webp)",
       dx: "dx proof needs protobuf + CUE contracts",
       cx: "cx proof needs journey artifacts (assets/*.md or journeys/*.md)",

@@ -32,7 +32,7 @@ function parseClassification(): Map<string, ExperienceType> {
       continue;
     }
     const row = line.match(/^\| `([a-z0-9-]+)` \|/u);
-    if (row && current) map.set(row[1], current);
+    if (row && current) map.set(row[1]!, current);
   }
   if (map.size === 0) throw new Error("classification manifest parsed to zero rows");
   return map;
@@ -99,7 +99,7 @@ function main() {
   for (const file of git("ls-files").split("\n").filter(Boolean).filter(isTextFile)) {
     const match = file.match(/^src\/draft\/exp-proofs\/(?:dx|ux|cx|ax|api)\/[^/]+\/(.*)$/u);
     if (!match) continue;
-    const depth = match[1].split("/").length - 1; // directories between package root and the file
+    const depth = match[1]!.split("/").length - 1; // directories between package root and the file
     const abs = path.join(repoRoot, file);
     const before = readFileSync(abs, "utf8");
     const after = before.replaceAll(upRun, (run, offset: number, whole: string) => {

@@ -7,13 +7,123 @@ const REPLICATION_TOPOLOGIES = new Set([
   "pinned-single-camp",
 ]);
 
-export function foldDeploymentProjections(events) {
-  const projection = {
+export interface EnvGroupMember {
+  campId: string;
+  provider: string;
+  [key: string]: unknown;
+}
+
+export interface EnvGroup {
+  id: string;
+  environmentType: string;
+  members: EnvGroupMember[];
+  [key: string]: unknown;
+}
+
+export interface ResourceMatch {
+  decisionId: string;
+  definitionId: string;
+  catalogHash: string;
+  [key: string]: unknown;
+}
+
+export interface ResourceReplication {
+  topology: string;
+  [key: string]: unknown;
+}
+
+export interface DeploymentResource {
+  id: string;
+  type: string;
+  port: string;
+  match?: ResourceMatch | undefined;
+  replication?: ResourceReplication | undefined;
+  workload?: { image: string; [key: string]: unknown } | undefined;
+  [key: string]: unknown;
+}
+
+export type ResourceMap = Record<string, DeploymentResource>;
+
+export interface DeploymentSet {
+  id: string;
+  campId: string;
+  environmentType: string;
+  deploymentPlanId?: string | undefined;
+  manifestDigest: string;
+  previousSetId?: string | undefined;
+  resources: ResourceMap;
+  envGroup?: EnvGroup | undefined;
+  contentAddress?: string;
+}
+
+export type DeltaOp = "add" | "update" | "remove";
+
+export type DeltaChange =
+  | { op: "add" | "update"; resourceId: string; resource: DeploymentResource }
+  | { op: "remove"; resourceId: string };
+
+export interface DeltaChangeInput {
+  op: DeltaOp;
+  resourceId: string;
+  resource?: DeploymentResource | undefined;
+}
+
+export interface DeploymentDelta {
+  id: string;
+  baseSetId: string;
+  campId: string;
+  status: "open" | "applied";
+  changes: DeltaChange[];
+  appliedSetId?: string;
+}
+
+export interface DeploymentProjection {
+  sets: Record<string, DeploymentSet>;
+  currentSetsByCamp: Record<string, DeploymentSet>;
+  deltas: Record<string, DeploymentDelta>;
+}
+
+interface SetCreatedBody {
+  setId: string;
+  campId: string;
+  environmentType: string;
+  deploymentPlanId?: string | undefined;
+  manifestDigest: string;
+  resources: ResourceMap;
+  envGroup?: EnvGroup | undefined;
+}
+
+interface DeltaOpenedBody {
+  deltaId: string;
+  baseSetId: string;
+  campId: string;
+}
+
+interface DeltaUpdatedBody {
+  deltaId: string;
+  changes: DeltaChangeInput[];
+}
+
+interface DeltaAppliedBody {
+  deltaId: string;
+  newSetId: string;
+  deploymentPlanId?: string | undefined;
+  manifestDigest?: string | undefined;
+}
+
+export type DeploymentProjectionEvent =
+  | { seq: number; id?: string; type: "set.Created"; body: SetCreatedBody }
+  | { seq: number; id?: string; type: "delta.Opened"; body: DeltaOpenedBody }
+  | { seq: number; id?: string; type: "delta.Updated"; body: DeltaUpdatedBody }
+  | { seq: number; id?: string; type: "delta.Applied"; body: DeltaAppliedBody };
+
+export function foldDeploymentProjections(events: readonly DeploymentProjectionEvent[]): DeploymentProjection {
+  const projection: DeploymentProjection = {
     sets: {},
     currentSetsByCamp: {},
     deltas: {},
   };
-  const activeDeltasByCamp = new Map();
+  const activeDeltasByCamp = new Map<string, string>();
   let lastSeq = -1;
 
   for (const event of events) {
@@ -36,14 +146,16 @@ export function foldDeploymentProjections(events) {
         applyDelta(projection, activeDeltasByCamp, event.body);
         break;
       default:
-        throw new Error(`unsupported deployment projection event: ${event.type}`);
+        throw new Error(`unsupported deployment projection event: ${(event as { type: string }).type}`);
     }
   }
 
   return projection;
 }
 
-export function contentAddressDeploymentSet(set) {
+export function contentAddressDeploymentSet(
+  set: Pick<DeploymentSet, "campId" | "environmentType" | "envGroup" | "manifestDigest" | "resources">,
+): string {
   const hashableSet = {
     campId: set.campId,
     environmentType: set.environmentType,
@@ -55,9 +167,12 @@ export function contentAddressDeploymentSet(set) {
   return `${HASH_PREFIX}${createHash("sha256").update(canonicalJson(hashableSet)).digest("hex")}`;
 }
 
-export function diffDeploymentSet(before, after) {
+export function diffDeploymentSet(
+  before: Pick<DeploymentSet, "resources">,
+  after: Pick<DeploymentSet, "resources">,
+): DeltaChange[] {
   const resourceIds = [...new Set([...Object.keys(before.resources), ...Object.keys(after.resources)])].sort();
-  const changes = [];
+  const changes: DeltaChange[] = [];
 
   for (const resourceId of resourceIds) {
     const beforeResource = before.resources[resourceId];
@@ -74,26 +189,27 @@ export function diffDeploymentSet(before, after) {
     }
 
     if (canonicalJson(beforeResource) !== canonicalJson(afterResource)) {
-      changes.push({ op: "update", resourceId, resource: clone(afterResource) });
+      changes.push({ op: "update", resourceId, resource: clone(afterResource!) });
     }
   }
 
   return changes;
 }
 
-export function validateEnvGroup(envGroup) {
+export function validateEnvGroup(envGroup: unknown): EnvGroup {
   if (!envGroup || typeof envGroup !== "object") {
     throw new Error("env-group must be an object");
   }
-  if (!envGroup.id || !envGroup.environmentType) {
+  const candidate = envGroup as EnvGroup;
+  if (!candidate.id || !candidate.environmentType) {
     throw new Error("env-group requires id and environmentType");
   }
-  if (!Array.isArray(envGroup.members) || envGroup.members.length === 0) {
+  if (!Array.isArray(candidate.members) || candidate.members.length === 0) {
     throw new Error("env-group requires one or more member Camps");
   }
 
-  const campIds = new Set();
-  for (const member of envGroup.members) {
+  const campIds = new Set<string>();
+  for (const member of candidate.members) {
     if (!member.campId || !member.provider) {
       throw new Error("env-group member requires campId and provider");
     }
@@ -103,10 +219,10 @@ export function validateEnvGroup(envGroup) {
     campIds.add(member.campId);
   }
 
-  return clone(envGroup);
+  return clone(candidate);
 }
 
-function recordCreatedSet(projection, body) {
+function recordCreatedSet(projection: DeploymentProjection, body: SetCreatedBody) {
   const deploymentSet = buildDeploymentSet({
     id: body.setId,
     campId: body.campId,
@@ -121,7 +237,7 @@ function recordCreatedSet(projection, body) {
   projection.currentSetsByCamp[deploymentSet.campId] = deploymentSet;
 }
 
-function openDelta(projection, activeDeltasByCamp, body) {
+function openDelta(projection: DeploymentProjection, activeDeltasByCamp: Map<string, string>, body: DeltaOpenedBody) {
   const baseSet = projection.sets[body.baseSetId];
   if (!baseSet) {
     throw new Error(`delta.Opened references unknown base Set: ${body.baseSetId}`);
@@ -147,7 +263,7 @@ function openDelta(projection, activeDeltasByCamp, body) {
   activeDeltasByCamp.set(body.campId, body.deltaId);
 }
 
-function updateDelta(projection, body) {
+function updateDelta(projection: DeploymentProjection, body: DeltaUpdatedBody) {
   const delta = projection.deltas[body.deltaId];
   if (!delta) {
     throw new Error(`delta.Updated before delta.Opened: ${body.deltaId}`);
@@ -155,14 +271,14 @@ function updateDelta(projection, body) {
   if (delta.status !== "open") {
     throw new Error(`delta.Updated cannot modify ${delta.status} Delta: ${body.deltaId}`);
   }
-  const baseSet = projection.sets[delta.baseSetId];
+  const baseSet = projection.sets[delta.baseSetId]!;
   const nextChanges = [...delta.changes, ...body.changes.map(normalizeChange)];
 
   applyChanges(baseSet.resources, nextChanges);
   delta.changes = nextChanges;
 }
 
-function applyDelta(projection, activeDeltasByCamp, body) {
+function applyDelta(projection: DeploymentProjection, activeDeltasByCamp: Map<string, string>, body: DeltaAppliedBody) {
   const delta = projection.deltas[body.deltaId];
   if (!delta) {
     throw new Error(`delta.Applied before delta.Opened: ${body.deltaId}`);
@@ -171,7 +287,7 @@ function applyDelta(projection, activeDeltasByCamp, body) {
     throw new Error(`delta.Applied cannot re-apply ${delta.status} Delta: ${body.deltaId}`);
   }
 
-  const baseSet = projection.sets[delta.baseSetId];
+  const baseSet = projection.sets[delta.baseSetId]!;
   const resources = applyChanges(baseSet.resources, delta.changes);
   const deploymentSet = buildDeploymentSet({
     id: body.newSetId,
@@ -191,12 +307,23 @@ function applyDelta(projection, activeDeltasByCamp, body) {
   activeDeltasByCamp.delete(delta.campId);
 }
 
-function buildDeploymentSet(input) {
+interface DeploymentSetInput {
+  id: string;
+  campId: string;
+  environmentType: string;
+  deploymentPlanId?: string | undefined;
+  manifestDigest: string;
+  previousSetId?: string | undefined;
+  resources: ResourceMap;
+  envGroup?: EnvGroup | undefined;
+}
+
+function buildDeploymentSet(input: DeploymentSetInput): DeploymentSet {
   if (!input.id || !input.campId || !input.environmentType || !input.manifestDigest) {
     throw new Error("DeploymentSet requires id, campId, environmentType, and manifestDigest");
   }
 
-  const deploymentSet = {
+  const deploymentSet: DeploymentSet = {
     id: input.id,
     campId: input.campId,
     environmentType: input.environmentType,
@@ -211,7 +338,7 @@ function buildDeploymentSet(input) {
   return canonicalize(deploymentSet);
 }
 
-function applyChanges(baseResources, changes) {
+function applyChanges(baseResources: ResourceMap, changes: readonly DeltaChange[]): ResourceMap {
   const resources = clone(baseResources);
 
   for (const change of changes.map(normalizeChange)) {
@@ -235,27 +362,27 @@ function applyChanges(baseResources, changes) {
         delete resources[change.resourceId];
         break;
       default:
-        throw new Error(`unsupported Delta operation: ${change.op}`);
+        throw new Error(`unsupported Delta operation: ${(change as DeltaChangeInput).op}`);
     }
   }
 
   return resources;
 }
 
-function validateResources(resources) {
+function validateResources(resources: ResourceMap): ResourceMap {
   if (!resources || typeof resources !== "object" || Array.isArray(resources)) {
     throw new Error("DeploymentSet resources must be a resource map");
   }
 
-  const validated = {};
+  const validated: ResourceMap = {};
   for (const resourceId of Object.keys(resources).sort()) {
-    validated[resourceId] = validateResource(resourceId, resources[resourceId]);
+    validated[resourceId] = validateResource(resourceId, resources[resourceId]!);
   }
 
   return validated;
 }
 
-function validateResource(resourceId, resource) {
+function validateResource(resourceId: string, resource: DeploymentResource): DeploymentResource {
   if (!resource || typeof resource !== "object") {
     throw new Error(`resource ${resourceId} must be an object`);
   }
@@ -275,7 +402,7 @@ function validateResource(resourceId, resource) {
   return clone(resource);
 }
 
-function normalizeChange(change) {
+function normalizeChange(change: DeltaChangeInput): DeltaChange {
   if (!change || typeof change !== "object") {
     throw new Error("Delta change must be an object");
   }
@@ -288,30 +415,31 @@ function normalizeChange(change) {
 
   return change.op === "remove"
     ? { op: change.op, resourceId: change.resourceId }
-    : { op: change.op, resourceId: change.resourceId, resource: clone(change.resource) };
+    : { op: change.op, resourceId: change.resourceId, resource: clone(change.resource!) };
 }
 
-function canonicalJson(value) {
+function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalize(value));
 }
 
-function canonicalize(value) {
+function canonicalize<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map(canonicalize);
+    return value.map(canonicalize) as T;
   }
   if (!value || typeof value !== "object") {
     return value;
   }
 
-  const canonical = {};
-  for (const key of Object.keys(value).sort()) {
-    if (value[key] !== undefined) {
-      canonical[key] = canonicalize(value[key]);
+  const canonical: Record<string, unknown> = {};
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record).sort()) {
+    if (record[key] !== undefined) {
+      canonical[key] = canonicalize(record[key]);
     }
   }
-  return canonical;
+  return canonical as T;
 }
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }

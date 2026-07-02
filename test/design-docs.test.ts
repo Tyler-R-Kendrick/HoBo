@@ -9,7 +9,7 @@ import { checkDesignDocs } from "../scripts/check-design-docs.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-async function withDesignFixture(callback) {
+async function withDesignFixture(callback: (root: string) => Promise<void>) {
   const root = await mkdtemp(path.join(tmpdir(), "hobo-design-docs-"));
 
   try {

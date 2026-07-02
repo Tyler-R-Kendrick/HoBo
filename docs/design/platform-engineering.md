@@ -237,7 +237,7 @@ flowchart TD
   YARD --> MODEL
 ```
 
-> Air-gap is a **single in-boundary Yard** that may **stand alone or join a Junction** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); multi-Yard **federation** (multi-region/regulatory/cross-cloud) is designed first-class as the **Junction** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043), [Plan 4](./control-plane.md#plan-04) §Yard scope & multi-Yard).
+> Air-gap is a **single in-boundary Yard** that may **stand alone or join a Junction** ([ADR-0036](./adr/07-portability-extensibility.md#adr-0036)); multi-Yard **federation** (multi-region/regulatory/cross-cloud) is designed first-class as the **Junction** ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043), [Q20](./generated-stack.md#historical-open-question-ledger), [Plan 4](./control-plane.md#plan-04) §Yard scope & multi-Yard).
 
 ### GitOps publisher mode
 Beyond direct apply, a Camp can use a **GitOps publisher**: the Yard writes the resolved **Deployment Set** as manifests/CRs to a Git repo/branch, and **Argo CD / Flux** sync it to the cluster. It's just another **publisher** target ([Plan 21](./authoring-resources-wiring.md#plan-21)) — the resolution/matching/event-sourcing pipeline is unchanged; only the final apply step differs. Supports standalone, GitOps, or hybrid; the Relay can supply runtime data back.

@@ -17,7 +17,7 @@ This capability doc unifies reliability/HA, observability, and cost/FinOps as on
 
 ### Epic reference implementation
 
-The PLAN-05 reference implementation lives under [`../../src/draft/epic-proofs/reliability-observability-cost-finops/README.md`](../../src/draft/epic-proofs/reliability-observability-cost-finops/README.md). It synthesizes the telemetry/SLO, FinOps budget, saga compensation, and Golden Suite chaos POCs into four executable vertical slices with mocked service boundaries and Pact fixtures. Run it with:
+The PLAN-05 reference implementation lives under [`../../src/draft/epic-proofs/reliability-observability-cost-finops/README.md`](../../src/draft/epic-proofs/reliability-observability-cost-finops/README.md). It synthesizes the telemetry/SLO, FinOps budget, saga compensation, and Golden Suite chaos POCs into four executable vertical slices with mocked service boundaries and Pact fixtures. **HOBO-660** adds the S6-05 observability drift loop draft POC at [`../../src/draft/technical-proofs/s6-05-observability-drift-loop-contract/README.md`](../../src/draft/technical-proofs/s6-05-observability-drift-loop-contract/README.md) (OTLP export, SLO burn alerts, drift heal loop). Run it with:
 
 ```bash
 npm.cmd --prefix src/draft/epic-proofs/reliability-observability-cost-finops run simulate

@@ -12,7 +12,6 @@ import {
 } from "../../../technical-proofs/live-fix-gated-candidate-contract/src/live-fix-gated-candidate.js";
 import {
   createArtifactPayload,
-  createFixtureSigningKey,
   createTrustBoundary,
   publishSignedArtifact,
   verifyInstallCandidate,

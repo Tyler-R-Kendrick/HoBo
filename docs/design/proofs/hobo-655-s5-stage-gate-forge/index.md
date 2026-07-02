@@ -14,7 +14,7 @@ Executable Stage-5 gate drill as an independent epic rollup:
 ## Branch Evidence
 
 - Issue: HOBO-655 (S5-10 STAGE GATE S5)
-- Focused gate: `pnpm --prefix src/draft/epic-proofs/s5-stage-gate-forge-extensibility test`
+- Focused gate: `pnpm --prefix src/draft/epic-proofs/s5-stage-gate-forge-extensibility test` (9/9)
 - Simulation: `pnpm --prefix src/draft/epic-proofs/s5-stage-gate-forge-extensibility run simulate`
 
 ## Acceptance Mapping

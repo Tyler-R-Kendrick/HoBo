@@ -33,3 +33,10 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Hobo Realize Emission Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+
+## Testing
+
+Run `pnpm --filter @hobo/draft-realize-emission-contract test` (Vitest). The
+emission/IaC/build types are exported without index signatures so they stay
+structurally compatible with each provider's own stricter local interfaces;
+`provider-cloudflare-contract`'s strict type-test relies on that compatibility.

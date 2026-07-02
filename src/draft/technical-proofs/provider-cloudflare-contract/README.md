@@ -27,3 +27,11 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Provider Cloudflare Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+
+## Testing
+
+Run `pnpm --filter @hobo-draft/provider-cloudflare-contract test` (Vitest,
+followed by `tsc --noEmit -p tsconfig.types.json`). The provider is now fully
+typed (capability-port union, plan/emission/option shapes), and its type-test
+imports the source relatively, so the check also validates the shared
+`hobo-realize-emission-contract` types it consumes.

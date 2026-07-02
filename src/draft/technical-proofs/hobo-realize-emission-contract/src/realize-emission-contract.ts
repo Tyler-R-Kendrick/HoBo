@@ -18,11 +18,153 @@ const DRIVER_DIALECT_FIELDS = new Set([
   "terraformResourceType"
 ]);
 
-export function outputPlaceholder({ type, className = "standard", id, output }) {
+export interface OutputPlaceholderInput {
+  type: string;
+  className?: string;
+  id: string;
+  output: string;
+}
+
+/** A driver-agnostic IacProgram node: one provisionable resource in the resource graph. */
+export interface IacNode {
+  id: string;
+  type?: string;
+  className?: string;
+  coProvisionedFor?: string;
+  driverIntent?: Record<string, unknown>;
+  inputs?: Record<string, unknown>;
+  outputs?: string[];
+}
+
+export interface IacEdge {
+  from: string;
+  to: string;
+  reason?: string;
+}
+
+export interface IacLink {
+  import: string;
+  providerNode: string;
+  component?: string;
+  capability?: string;
+}
+
+export interface OutputPlaceholderEntry {
+  placeholder: string;
+  producerNode?: string;
+  output?: string;
+  consumerNode?: string;
+  inputPath?: string;
+}
+
+export interface BuildArtifact {
+  id: string;
+  source?: string;
+  target?: string;
+  outputKind?: string;
+  dependsOn?: string[];
+}
+
+export interface BuildOutputEntry {
+  artifactId: string;
+  imageRef: string;
+}
+
+export interface IacProgram {
+  apiVersion?: string;
+  intent?: string;
+  context?: unknown;
+  nodes?: IacNode[];
+  edges?: IacEdge[];
+  outputPlaceholders?: OutputPlaceholderEntry[];
+  links?: IacLink[];
+}
+
+export interface BuildSpec {
+  apiVersion?: string;
+  artifacts?: BuildArtifact[];
+  outputs?: BuildOutputEntry[];
+}
+
+/** The driver-agnostic emission a provider realizes from a resource plan: IacProgram + BuildSpec. */
+export interface RealizeEmission {
+  apiVersion?: string;
+  provider?: string;
+  planId?: string;
+  iac?: IacProgram;
+  build?: BuildSpec;
+}
+
+export interface LockInMarker {
+  path: string;
+  field: string;
+  reason: string;
+}
+
+export interface DriftPortabilityReport {
+  lockInMarkers: LockInMarker[];
+  warnings: string[];
+}
+
+export interface BuildRefEntry {
+  artifactId: string;
+  path: string;
+}
+
+export interface ValidationResult {
+  ok: boolean;
+  errors: string[];
+  buildRefs: BuildRefEntry[];
+  portabilityReport: DriftPortabilityReport;
+}
+
+export interface AcceptanceResult {
+  accepted: boolean;
+  errors: string[];
+  portabilityReport: DriftPortabilityReport;
+}
+
+export interface ReferenceIacBackend {
+  accept(emission: RealizeEmission | undefined): AcceptanceResult;
+}
+
+export interface FixtureResourceBuild {
+  artifactId: string;
+  source?: string;
+  target?: string;
+}
+
+export interface FixtureResourceBind {
+  import: string;
+  providerResourceId: string;
+}
+
+export interface FixtureResource {
+  id: string;
+  type: string;
+  className: string;
+  request?: Record<string, unknown>;
+  build?: FixtureResourceBuild;
+  binds?: FixtureResourceBind[];
+}
+
+export interface FixtureResourcePlanContext {
+  app: string;
+  env: string;
+  envType: string;
+}
+
+export interface FixtureResourcePlan {
+  id: string;
+  context: FixtureResourcePlanContext;
+  resources: FixtureResource[];
+}
+
+export function outputPlaceholder({ type, className = "standard", id, output }: OutputPlaceholderInput): string {
   return `\${resources.${type}.${className}#${id}.outputs.${output}}`;
 }
 
-export function createFixtureResourcePlan() {
+export function createFixtureResourcePlan(): FixtureResourcePlan {
   return {
     id: "fixture-object-store-and-api",
     context: {
@@ -59,7 +201,7 @@ export function createFixtureResourcePlan() {
   };
 }
 
-export function realizeFixtureProvider(plan = createFixtureResourcePlan()) {
+export function realizeFixtureProvider(plan: FixtureResourcePlan = createFixtureResourcePlan()): RealizeEmission {
   const assets = getRequiredResource(plan, "assets");
   const api = getRequiredResource(plan, "api");
   const imageArtifactId = api.build?.artifactId ?? "api-image";
@@ -77,7 +219,7 @@ export function realizeFixtureProvider(plan = createFixtureResourcePlan()) {
     output: "bucketArn"
   });
 
-  const iac = {
+  const iac: IacProgram = {
     apiVersion: IAC_PROGRAM_VERSION,
     intent: "driver-agnostic-resource-graph",
     context: plan.context,
@@ -180,9 +322,9 @@ export function realizeFixtureProvider(plan = createFixtureResourcePlan()) {
   };
 }
 
-export function validateEmission(emission) {
-  const errors = [];
-  const portabilityReport = {
+export function validateEmission(emission: RealizeEmission | undefined): ValidationResult {
+  const errors: string[] = [];
+  const portabilityReport: DriftPortabilityReport = {
     lockInMarkers: [],
     warnings: []
   };
@@ -194,7 +336,7 @@ export function validateEmission(emission) {
     errors.push(`expected iac.apiVersion ${IAC_PROGRAM_VERSION}`);
   }
 
-  const nodes = new Map();
+  const nodes = new Map<string, IacNode>();
   for (const node of emission?.iac?.nodes ?? []) {
     if (nodes.has(node.id)) {
       errors.push(`duplicate node id ${node.id}`);
@@ -213,7 +355,9 @@ export function validateEmission(emission) {
     }
   }
 
-  const buildArtifacts = new Map((emission?.build?.artifacts ?? []).map((artifact) => [artifact.id, artifact]));
+  const buildArtifacts = new Map(
+    (emission?.build?.artifacts ?? []).map((artifact): [string, BuildArtifact] => [artifact.id, artifact])
+  );
   for (const artifact of emission?.build?.artifacts ?? []) {
     for (const dependency of artifact.dependsOn ?? []) {
       if (!buildArtifacts.has(dependency)) {
@@ -226,7 +370,7 @@ export function validateEmission(emission) {
     errors.push(`build dependency cycle: ${cycle.join(" -> ")}`);
   }
 
-  const buildRefs = [];
+  const buildRefs: BuildRefEntry[] = [];
   visit(emission?.iac, (value, path, key) => {
     if (typeof key === "string" && DRIVER_DIALECT_FIELDS.has(key)) {
       portabilityReport.lockInMarkers.push({
@@ -279,9 +423,9 @@ export function validateEmission(emission) {
   };
 }
 
-export function wireBuildOutputs(emission, imageRefs) {
+export function wireBuildOutputs(emission: RealizeEmission, imageRefs: Record<string, string>): RealizeEmission {
   const imageRefByArtifact = new Map(Object.entries(imageRefs));
-  const iac = replaceBuildRefs(emission.iac, imageRefByArtifact);
+  const iac = replaceBuildRefs(emission.iac, imageRefByArtifact) as IacProgram | undefined;
 
   return {
     ...emission,
@@ -296,7 +440,7 @@ export function wireBuildOutputs(emission, imageRefs) {
   };
 }
 
-export function createReferenceIacBackend() {
+export function createReferenceIacBackend(): ReferenceIacBackend {
   return {
     accept(emission) {
       const result = validateEmission(emission);
@@ -324,15 +468,15 @@ export function createReferenceIacBackend() {
   };
 }
 
-export function canonicalJson(value) {
+export function canonicalJson(value: unknown): string {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
-export function stableDigest(value) {
+export function stableDigest(value: unknown): string {
   return createHash("sha256").update(canonicalJson(value)).digest("hex");
 }
 
-function getRequiredResource(plan, id) {
+function getRequiredResource(plan: FixtureResourcePlan, id: string): FixtureResource {
   const resource = plan.resources.find((candidate) => candidate.id === id);
   if (!resource) {
     throw new Error(`fixture plan missing required resource ${id}`);
@@ -340,7 +484,14 @@ function getRequiredResource(plan, id) {
   return resource;
 }
 
-function parseOutputPlaceholder(value) {
+interface ParsedOutputPlaceholder {
+  type: string;
+  className: string;
+  id: string;
+  output: string;
+}
+
+function parseOutputPlaceholder(value: string): ParsedOutputPlaceholder | null {
   const match = PLACEHOLDER_RE.exec(value);
   if (!match) return null;
   return {
@@ -351,17 +502,26 @@ function parseOutputPlaceholder(value) {
   };
 }
 
-function isBuildReference(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value) && typeof value.$build === "string");
+interface BuildReference {
+  $build: string;
 }
 
-function findBuildCycles(artifacts) {
-  const byId = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
-  const visiting = new Set();
-  const visited = new Set();
-  const cycles = [];
+function isBuildReference(value: unknown): value is BuildReference {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      typeof (value as { $build?: unknown }).$build === "string"
+  );
+}
 
-  function walk(id, stack) {
+function findBuildCycles(artifacts: BuildArtifact[]): string[][] {
+  const byId = new Map(artifacts.map((artifact): [string, BuildArtifact] => [artifact.id, artifact]));
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const cycles: string[][] = [];
+
+  function walk(id: string, stack: string[]): void {
     if (visiting.has(id)) {
       const start = stack.indexOf(id);
       cycles.push([...stack.slice(start), id]);
@@ -385,7 +545,11 @@ function findBuildCycles(artifacts) {
   return cycles;
 }
 
-function visit(value, callback, path = [], key = undefined) {
+type VisitPath = string[];
+type VisitKey = string | number | undefined;
+type VisitCallback = (value: unknown, path: VisitPath, key: VisitKey) => void;
+
+function visit(value: unknown, callback: VisitCallback, path: VisitPath = [], key: VisitKey = undefined): void {
   callback(value, path, key);
 
   if (!value || typeof value !== "object") return;
@@ -399,7 +563,7 @@ function visit(value, callback, path = [], key = undefined) {
   }
 }
 
-function replaceBuildRefs(value, imageRefByArtifact) {
+function replaceBuildRefs(value: unknown, imageRefByArtifact: Map<string, string>): unknown {
   if (isBuildReference(value)) {
     const imageRef = imageRefByArtifact.get(value.$build);
     if (!imageRef) return value;
@@ -422,12 +586,13 @@ function replaceBuildRefs(value, imageRefByArtifact) {
   return value;
 }
 
-function sortKeys(value) {
+function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
   if (!value || typeof value !== "object") {
     return value;
   }
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(record[key])]));
 }

@@ -154,7 +154,7 @@ For reference / future edits:
 
 ## Legend
 
-- **Phase:** `M0` Contracts → `M1` Skeleton → `M2` Core → `M3` Hardening → `M4` GA.
+- **Phase:** `M0` Contracts → `M1` Skeleton → `M2` Core → `M3` Hardening → `M4` GA (decision record: [ADR-0116](design/adr/07-portability-extensibility.md#adr-0116)).
 - **Labels:** `slice` (implementable deliverable), `spike` (time-boxed research/decision),
   `hardening` (contract-finalisation / normalisation), `security`, `user-story` (end-to-end role
   flow), `adversarial` (failure/abuse/edge case), `epic` (tracking parent).

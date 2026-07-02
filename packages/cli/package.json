@@ -19,6 +19,7 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@hobo/componentize": "workspace:*",
 		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {

@@ -1,7 +1,7 @@
 import {
-  componentizeHelloBindle,
-  validateWasmComponentArtifact,
-} from "../../../technical-proofs/hobo-componentize-contract/src/componentize-contract.js";
+	componentizeHelloBindle,
+	validateWasmComponentArtifact,
+} from "../../../../../packages/componentize/src/index.js";
 
 import type { BuildArtifact } from "./parse.js";
 

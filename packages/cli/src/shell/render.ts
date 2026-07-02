@@ -16,7 +16,11 @@ export function renderSuccess(input: {
 	readonly result: CommandResult;
 }): CliRunResult {
 	const envelope = buildEnvelope(input);
-	const exitCode = envelope.ok ? 0 : envelope.ok === false ? 1 : 0;
+	const exitCode = envelope.ok
+		? 0
+		: envelope.code === "HOBO_BUILD_USAGE" || envelope.code === "HOBO_CLI_USAGE"
+			? 2
+			: 1;
 
 	if (input.flags.json) {
 		return okText(`${JSON.stringify(envelope)}\n`, exitCode);

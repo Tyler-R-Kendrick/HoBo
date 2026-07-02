@@ -70,19 +70,18 @@ jobs:
     needs: stage-gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: corepack enable pnpm
-      - run: corepack prepare pnpm@10.33.4 --activate
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - uses: cue-lang/setup-cue@v1.0.0
-        with:
-          version: v0.14.0
-      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Assert identical hello-bindle digests
-        env:
-          SOURCE_DATE_EPOCH: "1704067200"
-        run: node --import tsx packages/stage-gate/scripts/check-hello-bindle-determinism.mts
+          pattern: stage-gate-s0-record-*
+          merge-multiple: false
+      - name: Assert identical hello-bindle digests across OS legs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ubuntu_record="stage-gate-s0-record-ubuntu-latest/stage-gate-s0.record.json"
+          windows_record="stage-gate-s0-record-windows-latest/stage-gate-s0.record.json"
+          ubuntu_digest="$(node -e "const r=require('./${ubuntu_record}'); console.log(r.artifact.digest_sha256)")"
+          windows_digest="$(node -e "const r=require('./${windows_record}'); console.log(r.artifact.digest_sha256)")"
+          echo "ubuntu digest: ${ubuntu_digest}"
+          echo "windows digest: ${windows_digest}"
+          test "${ubuntu_digest}" = "${windows_digest}"

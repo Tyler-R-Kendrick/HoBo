@@ -67,7 +67,9 @@ normalizes CRLF to LF before matching interface blocks so Windows checkouts do n
 
 ## Maintenance
 
-Promotion note: stage-gate check scripts currently fall back to the draft hello-bindle fixture at
-`src/draft/technical-proofs/hobo-componentize-contract/examples/hello-bindle` until
-`examples/hello-bindle` lands from S0-11. No draft code is imported at runtime from production
-package sources beyond these orchestration scripts.
+Promotion note: stage-gate check scripts use `@hobo/componentize` for hello-bindle build/smoke
+checks and fall back to the draft hello-bindle fixture path only when
+`examples/hello-bindle` is absent. Signing verification scripts still orchestrate the draft
+`signed-artifact-publish-install-contract` until `packages/componentize` publishes
+`artifact-trust` on main. Cross-OS digest parity compares uploaded stage-gate record
+artifacts from Ubuntu and Windows matrix legs.

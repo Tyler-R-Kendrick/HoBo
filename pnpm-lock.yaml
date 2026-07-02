@@ -124,6 +124,9 @@ importers:
 
   packages/stage-gate:
     devDependencies:
+      '@hobo/componentize':
+        specifier: workspace:*
+        version: link:../componentize
       '@types/node':
         specifier: ^22.19.11
         version: 22.20.0

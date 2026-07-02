@@ -33,6 +33,15 @@ function createBindlesPublicApiSnapshot(
 		"catalogFactoryNames",
 		"secretRef",
 		"bindle",
+		"HOBO_BINDLES_PACKAGE",
+		"MANIFEST_SCHEMA",
+		"ManifestParseError",
+		"aspireFallbackEnv",
+		"canonicalManifestHash",
+		"parseManifest",
+		"parseManifestReference",
+		"parseOutputPlaceholder",
+		"serializeManifest",
 		...factoryNames,
 	]);
 
@@ -83,6 +92,51 @@ function createBindlesPublicApiSnapshot(
 				kind: "topology-builder",
 				signature:
 					"bindle(name: string, build: (b: BindleBuilder) => Record<string, BindleResource>): BindleDefinition",
+			},
+			{
+				name: "HOBO_BINDLES_PACKAGE",
+				kind: "package-constant",
+				signature: "const HOBO_BINDLES_PACKAGE: \"@hobo/bindles\"",
+			},
+			{
+				name: "MANIFEST_SCHEMA",
+				kind: "manifest-constant",
+				signature: "const MANIFEST_SCHEMA: \"hobo.manifest/v1\"",
+			},
+			{
+				name: "ManifestParseError",
+				kind: "manifest-error",
+				signature: "class ManifestParseError extends Error",
+			},
+			{
+				name: "parseManifest",
+				kind: "manifest-parser",
+				signature: "parseManifest(input: unknown): ManifestV1",
+			},
+			{
+				name: "serializeManifest",
+				kind: "manifest-serializer",
+				signature: "serializeManifest(manifest: ManifestV1): string",
+			},
+			{
+				name: "canonicalManifestHash",
+				kind: "manifest-hasher",
+				signature: "canonicalManifestHash(manifest: ManifestV1): ManifestHash",
+			},
+			{
+				name: "parseManifestReference",
+				kind: "manifest-parser",
+				signature: "parseManifestReference(value: string): ManifestReference",
+			},
+			{
+				name: "parseOutputPlaceholder",
+				kind: "manifest-parser",
+				signature: "parseOutputPlaceholder(value: string): OutputPlaceholder",
+			},
+			{
+				name: "aspireFallbackEnv",
+				kind: "manifest-helper",
+				signature: "aspireFallbackEnv(manifest: ManifestV1): Record<string, string[]>",
 			},
 			...extraExports,
 		],

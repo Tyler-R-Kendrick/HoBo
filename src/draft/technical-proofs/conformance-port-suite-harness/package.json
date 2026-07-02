@@ -1,0 +1,11 @@
+{
+  "name": "@hobo-draft/conformance-port-suite-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HOBO-585 draft POC for @hobo/conformance port-suite harness with golden-IR capture + replay.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

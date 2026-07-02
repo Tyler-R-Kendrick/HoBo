@@ -3,6 +3,10 @@
 Independent POC for HOBO-5. It pins the branch-sized contract for the
 `@hobo/conformance` port-suite harness and the SDK parity report lane.
 
+> **Promotion note (HOBO-585):** the typed, event-sourced harness draft lives at
+> [`conformance-port-suite-harness/`](../conformance-port-suite-harness/README.md)
+> and targets `packages/conformance/` once S0-01/S0-03 land on `main`.
+
 ## Requirements Source
 
 - `docs/design/generated-stack.md#plan-09`: `@hobo/conformance` is the trust boundary for generated and third-party adapters.

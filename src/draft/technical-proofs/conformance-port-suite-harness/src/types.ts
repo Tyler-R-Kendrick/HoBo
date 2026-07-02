@@ -1,0 +1,218 @@
+export const SUITE_SCHEMA = "hobo.conformance.port-suite/v1" as const;
+export const REPORT_SCHEMA = "hobo.conformance.port-suite-report/v1" as const;
+export const SDK_PARITY_SCHEMA = "hobo.conformance.sdk-parity-report/v1" as const;
+export const DEFAULT_SEED = "hobo-conformance-default-seed" as const;
+
+export type ConformanceTier = "local" | "camp";
+
+export type FailureCode =
+  | "adapter.missing-function"
+  | "adapter.threw"
+  | "adapter.output-mismatch"
+  | "golden-ir.mismatch"
+  | "golden-ir.language-leak"
+  | "trace-replay.regression"
+  | "determinism.second-run-failed"
+  | "determinism.seed-drift"
+  | "coverage.claimed-unexercised"
+  | "semantics-annex.missing-vector";
+
+export type AssertionCode =
+  | "adapter.output"
+  | "golden-ir.equivalence"
+  | "trace-replay.equivalence";
+
+export interface ValueDiff {
+  path: string;
+  expected: unknown;
+  actual: unknown;
+}
+
+export interface SuiteCall {
+  function: string;
+  input: unknown;
+}
+
+export interface SuiteExpect {
+  output?: unknown;
+  goldenIr?: unknown;
+  replayTrace?: unknown;
+}
+
+export interface SuiteCase {
+  id: string;
+  tier: ConformanceTier;
+  exercises?: string[];
+  call: SuiteCall;
+  expect?: SuiteExpect;
+}
+
+export interface ConformanceSuiteDefinition {
+  id: string;
+  port: {
+    wit: string;
+    functions: string[];
+  };
+  coverage?: {
+    requiredFunctions?: string[];
+  };
+  cases: Array<
+    Omit<SuiteCase, "tier"> & {
+      tier?: ConformanceTier;
+    }
+  >;
+}
+
+export interface ConformanceSuite {
+  schema: typeof SUITE_SCHEMA;
+  id: string;
+  port: {
+    wit: string;
+    functions: string[];
+  };
+  coverage: {
+    requiredFunctions: string[];
+  };
+  cases: SuiteCase[];
+}
+
+export interface CaseContext {
+  seed: string;
+  caseId: string;
+  random: () => number;
+}
+
+export interface AdapterResult {
+  output: unknown;
+  goldenIr: unknown;
+  replayTrace: unknown;
+}
+
+export type AdapterFunction = (
+  input: unknown,
+  ctx: CaseContext,
+) => Promise<AdapterResult> | AdapterResult;
+
+export interface ConformanceAdapter {
+  id: string;
+  [fn: string]: AdapterFunction | string | number | undefined;
+}
+
+export interface CaseAssertion {
+  code: AssertionCode;
+  caseId: string;
+  function: string;
+}
+
+export interface ConformanceFailure {
+  code: FailureCode;
+  caseId?: string;
+  function?: string;
+  seed?: string;
+  path?: string;
+  language?: string;
+  categories?: string[];
+  functions?: string[];
+  message?: string;
+  diff?: ValueDiff;
+}
+
+export interface CoverageManifest {
+  exercisedFunctions: string[];
+  requiredFunctions: string[];
+  unexercisedFunctions: string[];
+}
+
+export interface RunProvenance {
+  suiteId: string;
+  port: string;
+  adapterId: string;
+  seed: string;
+  cases: string[];
+}
+
+export interface AdapterClaim {
+  status: "listed" | "blocked";
+  port: string;
+  adapterId: string;
+  failureCodes: FailureCode[];
+}
+
+export interface PortSuiteReport {
+  schema: typeof REPORT_SCHEMA;
+  ok: boolean;
+  suiteId: string;
+  port: string;
+  adapterId: string;
+  seed: string;
+  provenance: RunProvenance;
+  claim: AdapterClaim;
+  assertions: CaseAssertion[];
+  coverage: CoverageManifest;
+  failures: ConformanceFailure[];
+  events: ConformanceRunEvent[];
+}
+
+export type ConformanceRunEvent =
+  | {
+      type: "conformance.RunStarted";
+      suiteId: string;
+      port: string;
+      adapterId: string;
+      seed: string;
+      caseIds: string[];
+    }
+  | {
+      type: "conformance.CaseChecked";
+      caseId: string;
+      function: string;
+      tier: ConformanceTier;
+      skipped: boolean;
+      failures: ConformanceFailure[];
+      assertions: CaseAssertion[];
+    }
+  | {
+      type: "conformance.CoverageEvaluated";
+      coverage: CoverageManifest;
+      failures: ConformanceFailure[];
+    }
+  | {
+      type: "conformance.RunCompleted";
+      ok: boolean;
+      failureCodes: FailureCode[];
+    };
+
+export interface RunConformanceSuiteOptions {
+  seed?: string;
+  determinism?: boolean;
+  adapterId?: string;
+  tiers?: ConformanceTier[];
+  registry?: AdapterRegistry;
+}
+
+export interface AdapterRegistry {
+  register(adapter: ConformanceAdapter): void;
+  get(id: string): ConformanceAdapter | undefined;
+  list(): ConformanceAdapter[];
+}
+
+export interface SdkParityInput {
+  language?: string;
+  goldenIr?: {
+    equivalent?: boolean;
+    ir?: unknown;
+  };
+  semanticsAnnex?: {
+    vectors?: Array<{
+      category: string;
+      passed?: boolean;
+    }>;
+  };
+}
+
+export interface SdkParityReport {
+  schema: typeof SDK_PARITY_SCHEMA;
+  ok: boolean;
+  language: string;
+  failures: ConformanceFailure[];
+}

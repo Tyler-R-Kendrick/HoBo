@@ -25,7 +25,8 @@ without waiting on the S2-01 acceptance record merge.
 - `createPostgresDurabilityBackendFactory()` adapts the backend for
   `runRuntimePortDurabilitySuite()` from
   `src/draft/technical-proofs/runtime-port-conformance-contract`.
-- Tests use **pg-mem** when `DATABASE_URL` is unset; set `DATABASE_URL` for real Postgres.
+- Tests use **pg-mem** when `DATABASE_URL` is unset; set `DATABASE_URL` for real Postgres
+  (`pg` is a declared package dependency for that path).
 
 ## Scope Boundaries
 

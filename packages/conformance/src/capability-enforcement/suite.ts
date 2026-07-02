@@ -9,7 +9,7 @@ import {
   type CapabilityLinkTableEvent,
 } from "@hobo/core";
 
-import type { CapabilityHandle, CapabilityLinkTable } from "@hobo/runtime-local";
+import type { CapabilityHandle, CapabilityLinkTable } from "./host-types.js";
 
 export interface CapabilityHostFactoryOptions {
   grants?: readonly CapabilityGrant[];

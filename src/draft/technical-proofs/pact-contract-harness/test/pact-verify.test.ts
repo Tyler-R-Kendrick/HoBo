@@ -74,4 +74,17 @@ describe("verifyPact", () => {
     expect(report.ok).toBe(false);
     expect(report.failures[0]?.reason).toMatch(/content-type/);
   });
+
+  it("fails when provider identity does not match the pact", async () => {
+    const provider = stubFrom("OtherProvider", () => ({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: { id: 1, name: "alpha" },
+    }));
+
+    const report = await verifyPact(pact, provider);
+    expect(report.ok).toBe(false);
+    expect(report.failures[0]?.description).toBe("provider identity");
+    expect(report.failures[0]?.reason).toMatch(/TestProvider/);
+  });
 });

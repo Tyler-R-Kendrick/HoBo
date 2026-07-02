@@ -23,6 +23,13 @@ export async function verifyPact(
 ): Promise<VerificationReport> {
   const failures: InteractionFailure[] = [];
 
+  if (provider.name !== pact.provider.name) {
+    failures.push({
+      description: "provider identity",
+      reason: `provider expected ${pact.provider.name} but got ${provider.name}`,
+    });
+  }
+
   for (const interaction of pact.interactions) {
     const actual = await provider.handle(interaction.request);
     const expected = interaction.response;

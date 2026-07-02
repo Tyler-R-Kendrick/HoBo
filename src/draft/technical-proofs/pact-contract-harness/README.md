@@ -29,7 +29,7 @@ Status progresses `consumer_tested` → `provider_verified`.
 - `parsePactDocument` — parse-don't-validate entry for pact JSON (mirrors `data-models/contract-harness.cue`)
 - `loadPactDirectory` — load non-recursive `*.pact.json` from a directory
 - `createMockProviderFromPact` — consumer-side in-process mock
-- `verifyPact` — provider verification (exact status/headers; response body recursive-subset)
+- `verifyPact` — provider verification (exact provider identity/status/headers; response body recursive-subset)
 - `checkPactInventory` — pact file ↔ inventory drift gate
 
 ## Commands

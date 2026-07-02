@@ -325,6 +325,14 @@ the review-iteration loop itself is Linear work (HOBO-691/HOBO-692).
 
 ### S0-01 — Scaffold the production monorepo: pnpm workspaces + Turborepo + layered packages/ tree with boundary lint
 
+> **Landed early (verify, don't re-do):** main already carries the `packages/` tree with
+> nested category globs in `pnpm-workspace.yaml`, `tsconfig.base.json`, `lint:boundaries`
+> (`scripts/check-package-boundaries.mts`), Biome config for `packages/*`, an honest
+> Turborepo task graph with strict env, and change-impact recognition for
+> `packages/{runtimes,providers,iac,build}/<pkg>` in policy + architecture guard. An agent
+> picking this up should verify those pieces against the acceptance list below instead of
+> re-scaffolding them.
+
 > **Corrections to the architect's brief (verified against the repo on 2026-07-01):**
 > 1. The brief says the workspace-skeleton fixture is "in `src/draft/epic-proofs/foundations-build-conformance-harness/`". The **executable** workspace-skeleton contract (the HOBO-1 POC: `canonicalSkeleton`, `validateBoundaryImports`, `detectWorkspaceCycles`) actually lives in **`src/draft/technical-proofs/hobo-monorepo-skeleton-contract/`**. The epic proof only *consumes* it (`services/foundations-reference-architecture.ts` imports it) and carries the Pact fixture `contracts/pacts/workspace-skeleton-boundary.pact.json` plus `simulation/fixtures/foundations-fixture.json`. Both proofs are promoted by this issue.
 > 2. The brief says `npm run architecture:guard`; this repo is pnpm-first — the root script is `architecture:guard` in `package.json` and must be run as `pnpm run architecture:guard`.

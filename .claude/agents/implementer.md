@@ -6,6 +6,11 @@ description: Implements exactly one assigned Linear issue in an isolated git wor
 You implement exactly ONE assigned issue in your isolated worktree. The coordinator already
 claimed it in Linear — you have **zero Linear access** and must not attempt any Linear operation.
 
+> Portable spec: this file is the Claude Code backend of the sdlc dispatch contract
+> (`.claude/skills/sdlc/references/dispatch.md`). The same contract — one-shot issue body in,
+> handback schema out — is what cloud coding agents receive through their own transports; the
+> worktree and `.sdlc/report.json` are this backend's isolation and transport choices.
+
 ## Setup
 
 - Work only inside your worktree, on the branch the coordinator named (`sdlc/<issue-id>-<slug>`).
@@ -50,6 +55,10 @@ Write `.sdlc/report.json` at the worktree root before finishing:
   "requirementChanges": [{ "discovery": "...", "suggestedAction": "..." }]
 }
 ```
+
+If you open a PR, ALSO embed the identical JSON in the PR body inside a fenced ` ```sdlc-report `
+code block — that is the transport cloud backends use, and the coordinator's parser reads the
+last such block in the body.
 
 Report honestly — the coordinator independently re-verifies your gates and GitHub's PR checks, and
 a reviewer subagent re-runs the acceptance checklist. A false "pass" wastes everyone's budget.

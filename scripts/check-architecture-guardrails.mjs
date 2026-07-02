@@ -89,10 +89,24 @@ const REQUIRED_CHECKS = [
   },
 ];
 
+export function foreignLockfileProblems(files) {
+  const problems = [];
+  for (const file of unique(files.map(normalizePath))) {
+    if (/(^|\/)(package-lock\.json|yarn\.lock)$/u.test(file) || (/\/pnpm-lock\.yaml$/u.test(file) && file !== "pnpm-lock.yaml")) {
+      problems.push({
+        code: "single-lockfile",
+        message: "pnpm workspace allows only the root pnpm-lock.yaml; remove nested or npm/yarn lockfiles",
+        packageRoot: file,
+      });
+    }
+  }
+  return problems;
+}
+
 export async function checkArchitectureGuardrails({ root = process.cwd(), files } = {}) {
   const normalizedFiles = unique((files ?? []).map(normalizePath));
   const packageRoots = implementationPackageRoots(normalizedFiles);
-  const problems = [];
+  const problems = foreignLockfileProblems(normalizedFiles);
 
   const evidenceByPackage = await Promise.all(
     packageRoots.map(async (packageRoot) => ({
@@ -358,9 +372,20 @@ function formatProblems(problems) {
   return lines.join("\n");
 }
 
+function trackedForeignLockfiles() {
+  return split(git(["ls-files"])).filter((file) => {
+    const normalized = normalizePath(file);
+    return (
+      /(^|\/)(package-lock\.json|yarn\.lock)$/u.test(normalized)
+      || (/\/pnpm-lock\.yaml$/u.test(normalized) && normalized !== "pnpm-lock.yaml")
+    );
+  });
+}
+
 async function main() {
   const args = new Set(process.argv.slice(2));
-  const result = await checkArchitectureGuardrails({ files: changedFiles(args) });
+  const files = unique([...changedFiles(args), ...trackedForeignLockfiles()]);
+  const result = await checkArchitectureGuardrails({ files });
 
   if (result.problems.length > 0) {
     console.error(formatProblems(result.problems));

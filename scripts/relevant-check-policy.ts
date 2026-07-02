@@ -40,7 +40,7 @@ function workspaceTestRelevant(file: string) {
 
   const relative = normalized.slice(workspace.length + 1);
   return /^(src|test|tests|type-tests|features|contracts|simulation|scripts|data-models)\//u.test(relative)
-    || /^(package|package-lock|tsconfig(?:\.[^.]+)?)\.json$/u.test(relative)
+    || /^(package|tsconfig(?:\.[^.]+)?)\.json$/u.test(relative)
     || /^(pnpm-lock\.yaml|turbo\.json)$/u.test(relative)
     || /\.(?:proto|cue|pact\.json)$/u.test(relative);
 }

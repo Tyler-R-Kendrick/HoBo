@@ -1,7 +1,8 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
 
 import {
   parseLoweringCorpus,
@@ -30,11 +31,14 @@ describe("sdk conformance report pact", () => {
     const body = serializeReportForPact(report);
     const interaction = pact.interactions[0];
 
-    expect(body.suite).toBe(interaction.response.body.suite);
-    expect(body.contract).toBe(interaction.response.body.contract);
-    expect(body.status).toBe(interaction.response.body.status);
-    expect(body.lanes.some((lane) => lane.lane === "golden-ir-lowering-equivalence")).toBe(true);
-    expect(body.lanes.some((lane) => lane.lane === "semantics-annex")).toBe(true);
+    assert.equal(body.suite, interaction.response.body.suite);
+    assert.equal(body.contract, interaction.response.body.contract);
+    assert.equal(body.status, interaction.response.body.status);
+    assert.equal(
+      body.lanes.some((lane) => lane.lane === "golden-ir-lowering-equivalence"),
+      true,
+    );
+    assert.equal(body.lanes.some((lane) => lane.lane === "semantics-annex"), true);
   });
 
   it("provider emits failing semantics report with vector diff", async () => {
@@ -46,21 +50,22 @@ describe("sdk conformance report pact", () => {
     const semantics = report.lanes.find((lane) => lane.lane === "semantics-annex");
     const cancellation = semantics?.cases.find((entry) => entry.name === "caller-cancellation");
 
-    expect(report.status).toBe("failed");
-    expect(cancellation?.diffPaths?.length).toBeGreaterThan(0);
+    assert.equal(report.status, "failed");
+    assert.ok((cancellation?.diffPaths?.length ?? 0) > 0);
   });
 
   it("consumer expects TypeError envelope for empty corpus", async () => {
     const interaction = pact.interactions[2];
-    await expect(
-      runSdkIdiomConformance({
+    try {
+      await runSdkIdiomConformance({
         corpus: [],
         annexVectors,
         adapter: createReferenceAdapter(),
-      }),
-    ).rejects.toMatchObject({
-      name: "TypeError",
-      message: interaction.response.body.message,
-    });
+      });
+      assert.fail("expected TypeError for empty corpus");
+    } catch (error) {
+      assert.ok(error instanceof TypeError);
+      assert.equal(error.message, interaction.response.body.message);
+    }
   });
 });

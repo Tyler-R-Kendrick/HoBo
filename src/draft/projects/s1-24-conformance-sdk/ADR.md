@@ -2,8 +2,9 @@
 
 ## Context
 
-HOBO-614 promotes the composed SDK idiom-layer parity gate. Blockers S1-10/S1-11/S1-13 are In
-Review; this draft POC proves the gate shape without importing unmerged production packages.
+HOBO-614 promotes the composed SDK idiom-layer parity gate. Blockers S1-10/S1-11/S1-13
+are Done on `main`; this draft POC proves the gate shape ahead of production promotion to
+`packages/conformance/src/sdk/` and parity wiring in `@hobo/bindles` / `@hobo/runtime`.
 
 ## Decision
 

@@ -1,7 +1,8 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
 
 import {
   parseLoweringCorpus,
@@ -22,15 +23,15 @@ const annexVectors = parseSemanticsAnnexVectors(
 
 describe("sdk conformance gate", () => {
   it("declares the required SDK conformance lanes without resilience-semantics", () => {
-    expect(sdkConformanceGateSpec.lanes).toEqual([
+    assert.deepEqual(sdkConformanceGateSpec.lanes, [
       "golden-ir-lowering-equivalence",
       "semantics-annex",
       "thin-idiom-layer",
       "authorship-neutral-gate",
       "coverage-claim",
     ]);
-    expect(sdkConformanceGateSpec.contract).toBe("hobo:sdk@0.1.0");
-    expect(sdkConformanceGateSpec.corpusClaim).toMatch(/bounded by the checked corpus/);
+    assert.equal(sdkConformanceGateSpec.contract, "hobo:sdk@0.1.0");
+    assert.match(sdkConformanceGateSpec.corpusClaim, /bounded by the checked corpus/);
   });
 
   it("passing adapter passes all lanes and report parses", async () => {
@@ -43,45 +44,54 @@ describe("sdk conformance gate", () => {
       sourceFiles: [{ path: "src/reference.ts", source: "export const ok = true;" }],
     });
 
-    expect(report.status).toBe("passed");
-    expect(report.suite).toBe("@hobo/conformance/sdk");
-    expect(report.contract).toBe("hobo:sdk@0.1.0");
-    expect(report.lanes.map((lane) => lane.lane)).toEqual(sdkConformanceGateSpec.lanes);
+    assert.equal(report.status, "passed");
+    assert.equal(report.suite, "@hobo/conformance/sdk");
+    assert.equal(report.contract, "hobo:sdk@0.1.0");
+    assert.deepEqual(
+      report.lanes.map((lane) => lane.lane),
+      sdkConformanceGateSpec.lanes,
+    );
 
     const goldenIr = report.lanes.find((lane) => lane.lane === "golden-ir-lowering-equivalence");
     const semantics = report.lanes.find((lane) => lane.lane === "semantics-annex");
-    expect(goldenIr?.status).toBe("passed");
-    expect(goldenIr?.boundedByCorpus).toBe(true);
-    expect(semantics?.status).toBe("passed");
+    assert.equal(goldenIr?.status, "passed");
+    assert.equal(goldenIr?.boundedByCorpus, true);
+    assert.equal(semantics?.status, "passed");
 
     const parsed = parseSdkConformanceReport(report);
-    expect(parsed.status).toBe("passed");
+    assert.equal(parsed.status, "passed");
   });
 
   it("throws TypeError for empty corpus, empty annex vectors, or missing adapter", async () => {
-    await expect(
-      runSdkIdiomConformance({
-        corpus: [],
-        annexVectors,
-        adapter: createReferenceAdapter(),
-      }),
-    ).rejects.toThrow(TypeError);
+    await assert.rejects(
+      () =>
+        runSdkIdiomConformance({
+          corpus: [],
+          annexVectors,
+          adapter: createReferenceAdapter(),
+        }),
+      TypeError,
+    );
 
-    await expect(
-      runSdkIdiomConformance({
-        corpus,
-        annexVectors: [],
-        adapter: createReferenceAdapter(),
-      }),
-    ).rejects.toThrow(TypeError);
+    await assert.rejects(
+      () =>
+        runSdkIdiomConformance({
+          corpus,
+          annexVectors: [],
+          adapter: createReferenceAdapter(),
+        }),
+      TypeError,
+    );
 
-    await expect(
-      runSdkIdiomConformance({
-        corpus,
-        annexVectors,
-        adapter: undefined as never,
-      }),
-    ).rejects.toThrow(TypeError);
+    await assert.rejects(
+      () =>
+        runSdkIdiomConformance({
+          corpus,
+          annexVectors,
+          adapter: undefined as never,
+        }),
+      TypeError,
+    );
   });
 
   it("fails coverage lane when helper claim has no matching vector", async () => {
@@ -92,10 +102,11 @@ describe("sdk conformance gate", () => {
       helperClaims: ["sdk.retry.jitter"],
     });
 
-    expect(report.status).toBe("failed");
+    assert.equal(report.status, "failed");
     const coverage = report.lanes.find((lane) => lane.lane === "coverage-claim");
-    expect(coverage?.status).toBe("failed");
-    expect(coverage?.cases[0]?.reason).toBe(
+    assert.equal(coverage?.status, "failed");
+    assert.equal(
+      coverage?.cases[0]?.reason,
       "helper claim has no golden-IR or semantics-annex vector",
     );
   });

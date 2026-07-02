@@ -1,8 +1,9 @@
 # S1-24 @hobo/conformance/sdk draft POC (HOBO-614)
 
 Draft traceability copy of the S1-24 SDK idiom-layer parity gate. **Production promotion
-target:** `packages/conformance/src/sdk/` (`@hobo/conformance/sdk`). This tree implements the
-gate independently while blockers HOBO-599, HOBO-600, and HOBO-602 await merge.
+target:** `packages/conformance/src/sdk/` (`@hobo/conformance/sdk`). Blockers HOBO-599,
+HOBO-600, and HOBO-602 are Done; parity tests in `@hobo/bindles` and `@hobo/runtime` wire
+on promotion when `SdkIdiomAdapter` exports land on those packages.
 
 ## Scope
 
@@ -17,7 +18,7 @@ gate independently while blockers HOBO-599, HOBO-600, and HOBO-602 await merge.
 ## Out of scope
 
 - Resilience-semantics annex lane (HOBO-517)
-- Production wiring into `@hobo/bindles` / `@hobo/runtime` (await S1-11/S1-13 merge)
+- Production wiring into `@hobo/bindles` / `@hobo/runtime` (SdkIdiomAdapter exports + parity tests)
 - Runtime-port conformance harness (S1-10)
 
 ## Validation
@@ -37,7 +38,7 @@ pnpm run test:file src/draft/projects/s1-24-conformance-sdk/test/seeded-drift.te
 
 ## Promotion path
 
-Promote to `packages/conformance/src/sdk/` when S1-10/S1-11/S1-13 land on `main`.
+Promote to `packages/conformance/src/sdk/` when moving off the draft POC path.
 
 Reference drafts (read-only): `src/draft/technical-proofs/sdk-idiom-conformance-gate/`,
 `src/draft/technical-proofs/idiom-semantics-annex/`.

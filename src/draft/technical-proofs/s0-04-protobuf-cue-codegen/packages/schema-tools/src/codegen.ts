@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -43,6 +44,20 @@ function resolveBufBinary(repoRoot: string): string {
   ];
   for (const candidate of candidates) {
     if (existsSync(candidate)) return candidate;
+  }
+  const pocPackageJson = join(
+    repoRoot,
+    "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/package.json",
+  );
+  if (existsSync(pocPackageJson)) {
+    try {
+      const requireFromPoc = createRequire(pocPackageJson);
+      const bufPackageJson = requireFromPoc.resolve("@bufbuild/buf/package.json");
+      const bufBin = join(dirname(bufPackageJson), "bin", "buf");
+      if (existsSync(bufBin)) return bufBin;
+    } catch {
+      // fall through to PATH lookup
+    }
   }
   return "buf";
 }

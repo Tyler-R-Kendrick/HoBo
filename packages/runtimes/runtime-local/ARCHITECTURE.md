@@ -1,8 +1,9 @@
 # @hobo/runtime-local — Architecture Evidence
 
 Production Wasmtime runtime-local component host (S1-02 / HOBO-591),
-SQLite-backed Camp EventStore port (S1-05 / HOBO-594), and Streamer runtime
-port with replay-then-live reads (S1-08 / HOBO-597).
+SQLite-backed Camp EventStore port (S1-05 / HOBO-594), Queue + Clock runtime
+ports (S1-07 / HOBO-596), and Streamer runtime port with replay-then-live reads
+(S1-08 / HOBO-597).
 
 ## Schema and constraints
 
@@ -114,9 +115,27 @@ Per-frame messages ride the **Streamer**, not the durable event log. Run
 lifecycle is event-sourced; frame retention is dev-grade in-memory until
 `teardownRun` releases the run.
 
+## Queue + Clock — event architecture (S1-07 / HOBO-596)
+
+- **Command** — `queue.enqueue`, `queue.handle`, `queue.signal`, `clock.sleep`,
+  `clock.cron`, and `clock.advance` requests.
+- **Event** — append-only trace records (`queue.enqueued`, `timer.scheduled`,
+  `cron.fired`, etc.) folded into in-memory store state.
+- **Actor** — `queue.signal(actorKey, msg)` maps actor messages onto per-actor
+  queues with idempotency-key dedup.
+- **Event store** — queue/clock state is in-memory with `snapshot()` for simulated
+  restart; EventStore envelope timestamps can use `clock.now()` via
+  `createRuntimeLocal({ queueClock })`.
+- **Materialized view / projection** — completed-message dedup suppresses duplicate
+  handler effects on redelivery.
+- **Snapshot** — `snapshot()` serializes queues, timers, cron schedules, and trace.
+- **Read store** — `dequeue` / `handle` query current lease state; deterministic
+  replay uses `replayClockTrace`.
+
 ## Contracts
 
 - EventStore PACT evidence: [`contracts/pacts/runtime-sdk-eventstore.pact.json`](./contracts/pacts/runtime-sdk-eventstore.pact.json).
+- Queue + Clock PACT evidence: [`contracts/pacts/queue-clock-port.pact.json`](./contracts/pacts/queue-clock-port.pact.json).
 - Streamer PACT evidence: [`contracts/streamer-port.pact.json`](./contracts/streamer-port.pact.json).
 
 Runtime-local uses Node's built-in `node:sqlite` adapter for the durable

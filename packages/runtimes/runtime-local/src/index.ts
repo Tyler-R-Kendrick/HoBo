@@ -46,3 +46,6 @@ export {
 export type { LocalStreamerOptions, Runtime } from "./streamer/local-streamer.js";
 export { createFrameJournal, foldLifecycleStatus } from "./streamer/frame-journal.js";
 export type { FrameJournal, LifecycleEvent } from "./streamer/frame-journal.js";
+export { createRuntimeLocalQueueClock, replayClockTrace } from "./replay.js";
+export type { RuntimeLocalQueueClock } from "./replay.js";
+export type { QueueClockSnapshot, RuntimeLocalQueueClockOptions } from "./queue-clock-store.js";

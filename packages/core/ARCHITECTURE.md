@@ -34,3 +34,9 @@ contract surfaces other packages compile against.
 - Port interfaces and branded parsers: [`src/ports/streamer.ts`](./src/ports/streamer.ts)
 - Protobuf + CUE records: [`data-models/streamer_port.proto`](./data-models/streamer_port.proto)
 - Production adapter: `@hobo/runtime-local` (`createLocalStreamer`)
+
+## Queue + Clock ports (HOBO-596)
+
+- Port interfaces and branded parsers: [`src/ports/queue.ts`](./src/ports/queue.ts), [`src/ports/clock.ts`](./src/ports/clock.ts)
+- Protobuf + CUE records: [`data-models/queue_port.proto`](./data-models/queue_port.proto), [`data-models/clock_port.proto`](./data-models/clock_port.proto)
+- Production adapter: `@hobo/runtime-local` (`createRuntimeLocalQueueClock`)

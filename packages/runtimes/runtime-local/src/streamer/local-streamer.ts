@@ -20,9 +20,15 @@ import {
   type FrameJournal,
 } from "./frame-journal.js";
 
+import type { Queue, VirtualClock } from "@hobo/core";
+
+import { createRuntimeLocalQueueClock } from "../replay.js";
+import type { QueueClockSnapshot, RuntimeLocalQueueClockOptions } from "../queue-clock-store.js";
+
 export type LocalStreamerOptions = {
   bufferLimit?: number;
   runIdPrefix?: string;
+  queueClock?: RuntimeLocalQueueClockOptions;
 };
 
 const DEFAULT_BUFFER_LIMIT = 32;
@@ -111,11 +117,18 @@ function normalizeBufferLimit(value: number): number {
 
 export type Runtime = {
   readonly streams: Streamer;
+  readonly queue: Queue;
+  readonly clock: VirtualClock;
+  snapshotQueueClock(): QueueClockSnapshot;
 };
 
 export function createRuntimeLocal(options: LocalStreamerOptions = {}): Runtime {
+  const queueClock = createRuntimeLocalQueueClock(options.queueClock);
   return {
     streams: createLocalStreamer(options),
+    queue: queueClock.queue,
+    clock: queueClock.clock,
+    snapshotQueueClock: queueClock.snapshot,
   };
 }
 

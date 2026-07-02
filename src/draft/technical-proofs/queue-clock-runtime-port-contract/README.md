@@ -5,12 +5,11 @@ and [HOBO-596](https://linear.app/quickdeploy-ai/issue/HOBO-596), pinning the
 runtime-local `Queue` and `Clock` ports required by ADR-0002 and Plan 2 / Plan
 11.
 
-> **Promotion target (S1-07):** production ports land in `packages/core`
-> (`Queue`/`Clock` interfaces + proto/CUE) and `packages/runtimes/runtime-local`
-> (engine + replay), with conformance fixtures in `packages/conformance/`.
-> Blocked on S1-05 ([HOBO-594](https://linear.app/quickdeploy-ai/issue/HOBO-594))
-> EventStore merge; this draft POC proves semantics without importing unmerged
-> production runtime code.
+> **Promotion (S1-07 / HOBO-596):** production ports landed in `packages/core`
+> (`Queue`/`VirtualClock` interfaces + proto/CUE), `packages/runtimes/runtime-local`
+> (`createRuntimeLocalQueueClock`, `replayClockTrace`), and `packages/conformance/`
+> (`runQueueClockConformance` + `fixtures/runtime-ports/*`). This draft POC is
+> retained for historical contract evidence; use production packages for new work.
 
 ## Contract Surface
 

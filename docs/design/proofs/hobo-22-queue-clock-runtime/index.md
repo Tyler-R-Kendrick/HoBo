@@ -25,13 +25,19 @@ lease acquisition, Streamer port, and durable-workflow replay engine wiring.
 
 ## Promotion
 
-S1-07 ([HOBO-596](https://linear.app/quickdeploy-ai/issue/HOBO-596)) promotes
-semantics into `packages/core`, `packages/runtimes/runtime-local`, and
-`packages/conformance` once S1-05 EventStore ([HOBO-594](https://linear.app/quickdeploy-ai/issue/HOBO-594))
-lands on `main`.
+S1-07 ([HOBO-596](https://linear.app/quickdeploy-ai/issue/HOBO-596)) promoted draft semantics into
+`packages/core` (`Queue`/`VirtualClock` ports + proto/CUE),
+`packages/runtimes/runtime-local` (`createRuntimeLocalQueueClock`, `replayClockTrace`),
+and `packages/conformance` (`runQueueClockConformance` + runtime-port fixtures) on
+`main` after S1-05 EventStore ([HOBO-594](https://linear.app/quickdeploy-ai/issue/HOBO-594)).
+
+Draft POC remains at
+[`src/draft/technical-proofs/queue-clock-runtime-port-contract`](../../../../src/draft/technical-proofs/queue-clock-runtime-port-contract)
+for historical reference; production code is authoritative.
 
 ## Verification
 
 ```bash
+pnpm exec turbo run test --filter @hobo/runtime-local --filter @hobo/conformance
 pnpm exec turbo run test --filter ./src/draft/technical-proofs/queue-clock-runtime-port-contract
 ```

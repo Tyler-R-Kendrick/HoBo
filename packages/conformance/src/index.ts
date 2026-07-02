@@ -35,3 +35,15 @@ export type {
 	StreamerAssertionName,
 	StreamerConformanceReport,
 } from "./streamer.js";
+
+export {
+	QUEUE_CLOCK_CONFORMANCE_CONTRACT,
+	runQueueClockConformance,
+} from "./queue-clock.js";
+export type {
+	CreateRuntimeLocalQueueClock,
+	QueueClockAssertionName,
+	QueueClockConformanceOptions,
+	QueueClockConformanceReport,
+	ReplayClockTraceFn,
+} from "./queue-clock.js";

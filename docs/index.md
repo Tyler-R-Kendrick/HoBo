@@ -22,6 +22,7 @@ This bundle follows Open Knowledge Format v0.1 conventions: `index.md` files pro
 | [`../src/draft/`](../src/draft/README.md) | Executable proof/contract packages that make selected design claims testable. |
 | [`competitors/`](./competitors/index.md) | Product and platform positioning references. |
 | [`patterns/`](./patterns/index.md) | Architecture/operations patterns used by HoBo decisions. |
+| [`plans/`](./plans/index.md) | Audit/review logs and improvement plans produced by the `/improve` tooling. |
 | [`standards/`](./standards/index.md) | External standards referenced by design decisions. |
 | [`technologies/`](./technologies/index.md) | Technology notes for adapters, engines, and possible implementation choices. |
 | [`archive/`](./archive/) | Deferred or superseded planning artifacts. |

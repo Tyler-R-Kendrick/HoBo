@@ -181,6 +181,7 @@ The BuildProvider is the programmable build seam: a prebuilt image short-circuit
 ```
 - **Tokens** like `{db.connectionString}` are lazy references resolved at deploy (Aspire pattern).
 - **`links`** are the wasm capability bindings ([Plan 20](./wasm-runtime-wit.md#plan-20)); **`allow`** mirrors the permission model above.
+- **FinOps plan-time bridge.** During **`hobo plan`**, the Planner lowers each manifest resource node to provider-neutral **`ResourceIntent`** before FinOps routing ([Plan 04](./control-plane.md#plan-04), [finops-budget-routing-control-plane.md](./finops-budget-routing-control-plane.md#ifc-and-hobo-plan-spine)); provider-specific `.with(...)` annotations stay in the manifest until after `RoutingDecision`.
 - The manifest is **content-addressed and event-sourced** (`deployment.Planned` carries it), so it's auditable/replayable ([Plan 11](./data-plane.md#plan-11)).
 - SDK authoring tests also materialize the manifest IR as a stable JSON artifact
   under `contracts/manifests/`, analogous to Pact consumer tests writing

@@ -25,8 +25,8 @@ runtime. Promotes fixtures from `src/draft/epic-proofs/cli-mcp-developer-experie
 and composes `hobo-mcp-server-contract`, `operations-manifests-contract`, and
 `hobo-cli-shell-contract`.
 
-Production promotion target: `packages/mcp/` after S3-02 (HOBO-628) and S3-04
-(HOBO-630) merge.
+Production promotion target: `packages/mcp/` once S3-02 (HOBO-628) and S3-04
+(HOBO-630) contracts are on `main` (merged).
 
 ## Verification
 

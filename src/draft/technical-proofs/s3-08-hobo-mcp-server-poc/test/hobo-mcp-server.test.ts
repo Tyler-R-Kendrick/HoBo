@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { CANONICAL_VERBS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.js";
@@ -114,6 +115,41 @@ describe("HOBO-634 @hobo/mcp gateway server POC", () => {
     assert.equal(throttleEvents[0].data.principalId, "agent:flooder");
   });
 
+  it("NFR-019: tenant-wide flood throttles colliding principals while other tenants proceed", async () => {
+    const rateLimiter = createRateLimiter({
+      perPrincipal: { windowMs: 60_000, maxRequests: 100 },
+      perTenant: { windowMs: 60_000, maxRequests: 4 },
+    });
+    const now = Date.UTC(2026, 6, 1, 12, 0, 0);
+    const tenantAOne = createFixtureMcpGateway({
+      principalId: "agent:tenant-a-1",
+      tenantId: "tenant:acme",
+      rateLimiter,
+    });
+    const tenantATwo = createFixtureMcpGateway({
+      principalId: "agent:tenant-a-2",
+      tenantId: "tenant:acme",
+      rateLimiter,
+    });
+    const tenantBOther = createFixtureMcpGateway({
+      principalId: "agent:tenant-b-1",
+      tenantId: "tenant:beta",
+      rateLimiter,
+    });
+
+    for (const server of [tenantAOne, tenantATwo, tenantAOne, tenantATwo]) {
+      const result = await server.callTool("plan", { cwd: "/repo" }, { toolCallId: `tenant-a-${Math.random()}`, now });
+      assert.equal(result.ok, true);
+    }
+
+    const tenantOverflow = await tenantAOne.callTool("plan", { cwd: "/repo" }, { toolCallId: "tenant-a-overflow", now });
+    assert.equal(tenantOverflow.ok, false);
+    assert.equal(tenantOverflow.error.code, MCP_RATE_LIMIT_ERROR);
+
+    const otherTenant = await tenantBOther.callTool("plan", { cwd: "/repo" }, { toolCallId: "tenant-b-ok", now });
+    assert.equal(otherTenant.ok, true);
+  });
+
   it("adversarial: anonymous write tools fail closed before gateway dispatch", async () => {
     const server = createHoboMcpGatewayServer({
       verifySvid: async () => ({ ok: false, code: "SVID_INVALID", message: "no session" }),
@@ -150,5 +186,30 @@ describe("HOBO-634 @hobo/mcp gateway server POC", () => {
     }
 
     assert.deepEqual(server.listTransports().map((t) => t.kind), ["stdio", "http"]);
+  });
+
+  it("architecture artifacts pin protobuf, CUE, Pact, and ADR boundaries", () => {
+    const adr = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
+    const proto = readFileSync(new URL("../architecture/s3_08_hobo_mcp_server_poc.proto", import.meta.url), "utf8");
+    const cue = readFileSync(new URL("../architecture/s3_08_hobo_mcp_server_poc.cue", import.meta.url), "utf8");
+    const pact = JSON.parse(
+      readFileSync(new URL("../architecture/pacts/s3_08_hobo_mcp_server_poc.pact.json", import.meta.url), "utf8"),
+    );
+
+    for (const typeName of ["McpGatewayRateLimitDecision", "S308HoboMcpServerPocRecord"]) {
+      assert.match(proto, new RegExp(`message ${typeName}`));
+      assert.match(cue, new RegExp(`#${typeName}:`));
+    }
+
+    assert.equal(pact.consumer.name, "S308HoboMcpServerPocConsumer");
+    assert.equal(pact.provider.name, "S308HoboMcpServerPocBoundary");
+    assert.equal(pact.interactions[0].response.body.rateLimitCode, MCP_RATE_LIMIT_ERROR);
+    assert.match(adr, /parse, don't validate/i);
+    assert.match(adr, /Command/i);
+    assert.match(adr, /Event/i);
+    assert.match(adr, /Actor/i);
+    assert.match(adr, /event store/i);
+    assert.match(adr, /projection/i);
+    assert.match(adr, /read store/i);
   });
 });

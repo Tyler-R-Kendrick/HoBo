@@ -41,10 +41,18 @@ Turbo impact lanes. Production package tasks derive `--filter=./packages/<name>`
 and `--filter=./examples/<name>` from `git diff --name-only` so workspace-root
 edits (for example `pnpm-workspace.yaml`) do not fan out into every package;
 draft impact stays in `pnpm agent:check -- --base=...`.
-The standalone docs workflow is path-filtered to documentation/doc-linter inputs
-and the CI workflow file that this proof documents, runs only changed-doc lint
-plus docs freshness, and uses the same event-aware PR concurrency cancellation
-for stale branch pushes.
+Docs lanes run inside that same change-impact gate (the policy routes
+`lint:docs` and `docs:freshness` on doc-affecting diffs), so there is no
+standalone docs workflow to double-bill runner minutes.
+Cost controls on the fabric itself: the label/schedule/manual fixture lanes
+live in [`fixtures.yml`](../../../../.github/workflows/fixtures.yml)
+(`pull_request: [labeled]` only), so adding a label re-runs just those lanes
+instead of the whole PR gate, and `hobo-ci.yml` no longer retriggers on label
+events at all; the weekly schedule skips `pr-gate` (it exists for `main-gate`
+and the fixture sweeps); every job carries `timeout-minutes` instead of the
+360-minute default; and gate jobs persist `.turbo/cache` via `actions/cache`
+keyed by commit with an OS-scoped restore prefix so warm runs replay Turbo
+tasks instead of recomputing them.
 
 This is a branch POC. It does not implement the runner/build-machine
 cost-routed CI fabric, full multi-cloud E2E matrix, or real provider IAM

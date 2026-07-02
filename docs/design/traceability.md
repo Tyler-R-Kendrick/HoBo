@@ -390,7 +390,7 @@ until they are accepted as monotonic `ADR-NNNN` entries.
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 96 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 98 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.

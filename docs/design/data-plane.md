@@ -598,7 +598,7 @@ The boundary follows HoBo's determinism rules ([ADR-0050](./adr/03-data-plane.md
 
 #### Embeddings — the `embed` capability (for the vector extension)
 The **vector extension** can **auto-embed** indexed rows and text queries via an **`embed` capability** (`hobo:embed`), brokered secretlessly ([Plan 6](./ai-native-agent-auth.md#plan-06)/[Plan 21](./authoring-resources-wiring.md#plan-21)) so developers don't hand-wire an embedding API. The embedder is itself a capability **realized per Camp** and selected by Matching:
-- **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; relates to [Q20](./generated-stack.md#plan-09) / the air-gap gap).
+- **Local / in-boundary model** — for `hobo dev` and **air-gapped** Camps (no egress; the air-gapped profile, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 - **Hosted embedding API** — for prod scale/quality.
 
 **BYO precomputed vectors** is the escape hatch (compute embeddings in your own step, pass the vector in).

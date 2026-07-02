@@ -13,7 +13,9 @@ pins the HOBO-20 runtime-local EventStore boundary.
 
 **Promoted to production:** [`packages/runtimes/runtime-local`](../../../../packages/runtimes/runtime-local)
 (S1-05 / HOBO-594) — SQLite-backed `createRuntimeLocalEventStore` with durability
-assertions and `@hobo/conformance` suite wiring.
+assertions. The `@hobo/conformance` EventStore suite runs from
+[`packages/conformance/test/runtime-local-eventstore.conformance.test.ts`](../../../../packages/conformance/test/runtime-local-eventstore.conformance.test.ts)
+(adapter boundary lint forbids `@hobo/conformance` imports inside runtime-local).
 
 The draft POC still pins the HOBO-20 runtime-local EventStore boundary:
 

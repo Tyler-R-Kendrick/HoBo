@@ -123,6 +123,13 @@ importers:
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      tsx:
+        specifier: ^4.20.3
+        version: 4.22.4
 
   packages/contract-harness:
     devDependencies:
@@ -154,16 +161,8 @@ importers:
         specifier: workspace:*
         version: link:../../core
     devDependencies:
-<<<<<<< HEAD
       '@types/node':
         specifier: ^22.15.29
-=======
-      '@hobo/conformance':
-        specifier: workspace:*
-        version: link:../../conformance
-      '@types/node':
-        specifier: ^22.15.3
->>>>>>> 7a77a472 (feat(core): add EventStore port types for Camp runtime (HOBO-594))
         version: 22.20.0
 
   packages/stage-gate:
@@ -1368,6 +1367,8 @@ importers:
         version: 2.12.1(@bufbuild/protobuf@2.12.1)
 
   src/draft/technical-proofs/s1-15-bind-wiring-topology-contract: {}
+
+  src/draft/technical-proofs/s1-17-usage-permissions-coverage-poc: {}
 
   src/draft/technical-proofs/s1-19-ctx-config-local-resolution: {}
 

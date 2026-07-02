@@ -5,13 +5,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { runEventStoreConformance } from "@hobo/conformance";
+import {
+	collectStream,
+	createManualClock,
+	createRuntimeLocalEventStore,
+} from "@hobo/runtime-local";
 
-import { collectStream, createManualClock, createRuntimeLocalEventStore } from "../src/index.js";
+import { runEventStoreConformance } from "../src/suites/eventstore.js";
 
 const crasherScript = join(
 	dirname(fileURLToPath(import.meta.url)),
-	"fixtures/append-crasher.mts",
+	"../../runtimes/runtime-local/test/fixtures/append-crasher.mts",
 );
 
 describe("@hobo/conformance EventStore suite", () => {

@@ -193,7 +193,8 @@ append-only per CQRS/event-sourcing rules — actors emit events; projections re
 | `gen.Certified` | Certification succeeded; extends `gen.PluginCertified` / `impl.*`. |
 | `gen.PluginCertified` | Registry-ready signed provider certification projection. |
 
-Do **not** introduce `forge.*` tokens — that family is not cataloged and fails `docs:design-lint`.
+Do **not** introduce uncataloged generation event families — only `gen.*` tokens listed in
+[event families](./event-families.md) are valid.
 
 ## Promoted Proof Evidence
 

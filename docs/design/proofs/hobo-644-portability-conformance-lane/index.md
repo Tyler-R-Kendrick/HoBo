@@ -20,3 +20,5 @@ proves the `@hobo/conformance` NFR-001 lane and NFR-020 boundary extension:
 
 Scope kept out: production promotion into `packages/conformance/`, live AWS/Azure CI
 credentials, Matching/Resource Packs (HOBO-641), and cross-cloud Junction mTLS (HOBO-642).
+
+Maintenance: architecture-guard parse/event vocabulary lives in the draft package `ADR.md`.

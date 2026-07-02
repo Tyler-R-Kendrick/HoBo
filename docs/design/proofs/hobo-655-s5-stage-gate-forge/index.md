@@ -1,10 +1,3 @@
----
-type: Reference
-title: "HOBO-655 S5 Stage Gate Forge Proof"
-description: "Source issue: HOBO-655."
-tags: [hobo, design]
----
-
 # HOBO-655 S5 Stage Gate Forge Proof
 
 Executable Stage-5 gate drill as an independent epic rollup:

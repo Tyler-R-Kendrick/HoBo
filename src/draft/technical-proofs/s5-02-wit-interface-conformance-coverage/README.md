@@ -52,4 +52,4 @@ pnpm --prefix src/draft/technical-proofs/s5-02-wit-interface-conformance-coverag
 
 - `architecture/` — protobuf + CUE evidence for the coverage report boundary.
 - `architecture/pacts/` — PACT contract for the package boundary.
-- `ADR.md` — parse-don't-validate and event-architecture notes.
+- `ADR.md` — parse-don't-validate derived types plus command/event/actor/event-store/projection/snapshot/read-store naming for CQRS promotion.

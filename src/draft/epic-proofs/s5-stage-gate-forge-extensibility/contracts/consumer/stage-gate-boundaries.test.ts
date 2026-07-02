@@ -31,6 +31,34 @@ test("S5 stage gate simulation satisfies every declared Pact boundary", async ()
   assert.deepEqual(providers, [...result.contracts.covered].sort());
 });
 
+test("pact expectations align with simulated stage gate drill outcomes", async () => {
+  const result = await runS5StageGateForgeDrill();
+  const forgePact = await loadPact("forge-registry-certification.pact.json");
+  const bindlePact = await loadPact("bindle-deploy-journey.pact.json");
+  const stubPact = await loadPact("stub-impl-eval-promotion.pact.json");
+  const liveFixPact = await loadPact("live-fix-auto-rollback.pact.json");
+
+  const forgeExpectation = forgePact.interactions[0].contents;
+  assert.equal(result.forge.outcome, forgeExpectation.forgeOutcome);
+  assert.equal(result.registry.eventType, forgeExpectation.registryEvent);
+  assert.equal(result.registry.installOk, forgeExpectation.installVerified);
+  assert.equal(result.registry.availableToMatching, forgeExpectation.availableToMatching);
+  assert.equal(result.registry.selectedByMatching, forgeExpectation.selectedByMatching);
+
+  const bindleExpectation = bindlePact.interactions[0].contents;
+  assert.equal(result.bindleDeploy.outcome, bindleExpectation.deployOutcome);
+  assert.equal(result.bindleDeploy.resourceStatus, bindleExpectation.resourceStatus);
+
+  const stubExpectation = stubPact.interactions[0].contents;
+  assert.equal(result.stubImpl.traceReplay, stubExpectation.traceReplay);
+  assert.equal(result.stubImpl.promotionOutcome, stubExpectation.promotionOutcome);
+
+  const liveFixExpectation = liveFixPact.interactions[0].contents;
+  assert.equal(result.liveFix.status, liveFixExpectation.status);
+  assert.equal(result.liveFix.autoRollback, liveFixExpectation.autoRollback);
+  assert.equal(result.liveFix.regressionTestRetained, liveFixExpectation.regressionTestRetained);
+});
+
 async function loadPact(name) {
   return JSON.parse(await readFile(new URL(path.posix.join("./", name), pactRoot), "utf8"));
 }

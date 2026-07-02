@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { runS5StageGateForgeDrill } from "../services/s5-stage-gate-reference.js";
@@ -74,4 +75,35 @@ test("stage gate drill declares every mocked service boundary", async () => {
     "StubImplEvalPromotionGate",
   ]);
   assert.equal(result.contracts.missing.length, 0);
+});
+
+test("architecture artifacts pin protobuf, CUE, Pact, and event-architecture evidence", () => {
+  const architecture = readFileSync(new URL("../architecture.md", import.meta.url), "utf8");
+  const proto = readFileSync(
+    new URL("../architecture/s5_stage_gate_forge_extensibility.proto", import.meta.url),
+    "utf8",
+  );
+  const cue = readFileSync(
+    new URL("../architecture/s5_stage_gate_forge_extensibility.cue", import.meta.url),
+    "utf8",
+  );
+  const pact = JSON.parse(
+    readFileSync(
+      new URL("../architecture/pacts/s5_stage_gate_forge_extensibility.pact.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  assert.match(proto, /message S5StageGateForgeExtensibilityRecord/);
+  assert.match(cue, /#S5StageGateForgeExtensibilityRecord:/);
+  assert.equal(pact.consumer.name, "S5StageGateForgeDrill");
+  assert.equal(pact.provider.name, "S5StageGateForgeExtensibilityPackage");
+  assert.equal(pact.interactions[0].contents.contractsCovered, 4);
+  assert.match(architecture, /parse, don't validate/i);
+  assert.match(architecture, /Command/i);
+  assert.match(architecture, /Event/i);
+  assert.match(architecture, /Actor/i);
+  assert.match(architecture, /event[- ]store/i);
+  assert.match(architecture, /projection/i);
+  assert.match(architecture, /read store/i);
 });

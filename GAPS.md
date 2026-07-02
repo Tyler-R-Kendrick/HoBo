@@ -122,7 +122,7 @@ in the history of commit `d7bbc39c`.
 | DRIFT-007 | L-DRIFT | deliberate-undocumented | ✔ remediated | The design-suite scope statement (index.md: 'The whole suite is one scope — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line (ADR-0063/ADR-0064)') is stale: the same index now lists monetization-adjacent commercial records (billing, tax, invoicing evidence, payout hooks) and a phased launch program, so the stated bound no longer describes the suite's contents. | `docs/design/index.md:120`<br>`docs/design/index.md:53-57`<br>`docs/design/index.md:66-67` … | [REM-021](#rem-021-for-drift-007) |
 | DRIFT-008 | L-CONS | silent | ✔ remediated | gap-analysis.md's traceability anchors have rotted: matrix and §C rows cite numbered open questions (Q3/Q10/Q12/Q15-Q20/Q21-Q23, '09 §15-20') linking to generated-stack.md#plan-09, but the current Plan 9 'Open design questions' list is unnumbered and contains none of those IDs, and matrix rows retain partial/missing markers for capabilities the same doc later records as closed (only §2 is explicitly labeled historical). | `docs/competitors/gap-analysis.md:31`<br>`docs/competitors/gap-analysis.md:34`<br>`docs/competitors/gap-analysis.md:72` … | [REM-022](#rem-022-for-drift-008) |
 | DRIFT-009 | L-DRIFT | silent | 🧯 | UI/app generation is mis-cited as OUT while ADR-0064 §1 explicitly **keeps** app generation (UX Designer, design.md, OpenUI, json-render, mcp-apps, `ui-render` port per ADR-0056): `architecture.md:171`, `stage-6-production-hardening-acceptance.md:71`, `worked-example.md:70`, and `gap-analysis.md:14,18` claim UI-layer generation was removed under ADR-0064 — contradicting ADR-0064/0056 with no amending decision. | `docs/design/architecture.md:171`<br>`docs/design/stage-6-production-hardening-acceptance.md:71`<br>`docs/design/adr/07-portability-extensibility.md:293-300`<br>`docs/design/adr/03-data-plane.md:264-277`<br>`docs/competitors/gap-analysis.md:14,18` … | [REM-037](#rem-037-for-drift-009) |
-| DRIFT-010 | L-DRIFT | deliberate-undocumented | 🧯 | Stage-6 acceptance bundles `notify` inside "governance planes" after ADR-0064 §3 consolidated `notify` to a thin **resource-catalog port** (not a standalone plane): stage-6 lane table and acceptance bullets treat `notify` as a governance-plane deliverable alongside compliance/AI-safety/Registry — taxonomy drift from ADR-0059 catalog port + Plan 46 governance scope. | `docs/design/stage-6-production-hardening-acceptance.md:36,65,96`<br>`docs/design/adr/07-portability-extensibility.md:295`<br>`docs/design/governance-planes.md:1-25`<br>`docs/design/authoring-resources-wiring.md:53` … | [REM-038](#rem-038-for-drift-010) |
+| DRIFT-010 | L-DRIFT | deliberate-undocumented | ✔ remediated | stage-6-production-hardening-acceptance.md bundles the consolidated `notify` cloud-messaging port into a single "Governance planes" lane row, contradicting ADR-0064 §3 which demotes `notify` to a catalog port and keeps only compliance/AI-safety enforcement as governance planes. | `docs/design/stage-6-production-hardening-acceptance.md:65`<br>`docs/design/stage-6-production-hardening-acceptance.md:96`<br>`docs/design/adr/07-portability-extensibility.md:295` … | [REM-038](#rem-038-for-drift-010) |
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
 required beyond mapping) · **deliberate-undocumented** (evidently intentional but no decision record) ·
 **silent** (no evidence of a decision).
@@ -1723,16 +1723,27 @@ Fix mis-citations in architecture.md, stage-6 scope-out, worked-example.md, gap-
 
 - **Finding** (iter2-B2-005, L-DRIFT, MED): stage-6 bundles notify as governance plane after ADR-0064 consolidation.
 - **Evidence:** `docs/design/stage-6-production-hardening-acceptance.md:65,96` · `docs/design/adr/07-portability-extensibility.md:295`
-- **Effort:** S · **Delivery:** [HOBO-701](https://linear.app/quickdeploy-ai/issue/HOBO-701)
+- **Effort:** S · **Delivery:** ✔ [HOBO-701](https://linear.app/quickdeploy-ai/issue/HOBO-701) — split Scope In + Evidence Required tables
 
 **Action**
 
-Reclassify stage-6 acceptance: move `notify` demonstrations under Plan 21/ADR-0059 catalog port lane; reserve "governance planes" for compliance + AI safety (Plan 46). Add footnote if "governance planes bundle" is release shorthand.
+Amend `docs/design/stage-6-production-hardening-acceptance.md` only (plus the S6-01 proof README row count and this GAPS.md register update):
+
+1. In **Scope In**, replace the single "Governance planes" row with two rows:
+   - **`notify` port (cloud messaging)** — `packages/cloud`; cites ADR-0059 + ADR-0064 §3; explicitly states it is **not** a Plan 46 governance plane.
+   - **Governance planes (Plan 46)** — `packages/cloud`, `packages/registry`, `packages/policy`; classification/residency/retention, guardrails, Registry distribution per Plan 46 ADRs — **no** `notify` mention.
+2. In **Evidence Required**, mirror the same split: one row for `notify` port evidence, one for Plan 46 governance-plane evidence.
+3. Update the lane count from six to seven in the Scope In intro and in `docs/design/proofs/build-s6-01-stage6-acceptance/README.md`.
 
 **Acceptance**
 
-1. stage-6 table separates notify port from Plan 46 governance planes.
-2. Gates green.
+1. Scope In table has distinct `notify` port and Governance planes (Plan 46) rows; neither row bundles both concerns.
+2. Evidence Required table mirrors the split.
+3. `pnpm run docs:okf`, `pnpm run docs:design-lint`, `pnpm agent:check -- --staged` green.
+
+**Guardrails**
+
+Documentation-only. Do not amend ADR-0064 decision text. Do not edit production-build-backlog S6-05 wording in this change (separate slice). Preserve relative links and OKF frontmatter.
 
 ### REM-005 (for GAP-002)
 

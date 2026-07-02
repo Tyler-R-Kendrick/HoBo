@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contract/src/collection-coverage-gate.ts";
 import { canonicalManifestHash, validateManifest } from "../../hobo-manifest-contract/src/manifest.ts";
 import { collectBindleResources } from "../../resource-collection-engine-contract/src/resource-collection-engine.ts";
 import { buildUsagePermissionManifest } from "../../usage-inferred-permissions-contract/src/usage-permissions.ts";
@@ -112,6 +113,13 @@ async function runFlow({ sourceText, define }) {
     fileName: SAMPLE_FILE_NAME,
     sourceText,
     define,
+    coverageEvaluator: (context) =>
+      evaluateCollectionCoverage({
+        sourceText: context.sourceText,
+        observedResourceIds: [...context.observedResourceIds],
+        observedBindKeys: [...context.observedBindKeys],
+        fileName: context.fileName,
+      }),
   });
 
   if (!collection.coverage.ok) {

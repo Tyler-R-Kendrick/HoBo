@@ -17,7 +17,15 @@ signals are:
 
 CI builds `@hobo/stage-gate` then invokes `node packages/stage-gate/dist/cli.js run s0` (workspace
 bins are not linked at the repo root until the package is a declared dependency). Failed runs still
-upload `stage-gate-s0.record.json` as a workflow artifact (`if: always()`).
+upload `stage-gate-s0.record.json` as a workflow artifact (`if: always()`). The workflow installs
+`cue` via `cue-lang/setup-cue@v1.0.0` (v0.14.0, matching `hobo-ci.yml`) because
+`pnpm run test:schema` includes `@hobo/bindles` CUE vet gates, and normalizes LF line endings with
+`git reset --hard` after checkout so Windows legs match checked-in generated artifacts. The gate
+step runs under `bash` on all matrix OS legs and re-runs `git reset --hard` immediately before
+`hobo-stage-gate`; schema-tools and wit-toolchain drift checks compare LF-normalized generated text
+so Windows buf/jco output does not false-positive against Linux-checked-in files. WIT skeleton parsing
+normalizes CRLF to LF before matching interface blocks so Windows checkouts do not skip
+`scope_creep_filled_interfaces` guards.
 
 ## Scope In
 

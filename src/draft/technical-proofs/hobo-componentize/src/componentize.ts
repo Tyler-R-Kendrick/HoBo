@@ -8,7 +8,7 @@ export async function componentizeService(spec: ComponentizeSpec): Promise<Compo
   await transpileEntry(spec, prepared);
 
   const { componentize } = await import("@bytecodealliance/componentize-js");
-  const epochSeconds = Math.floor(Date.parse(spec.sourceDateEpoch) / 1000).toString();
+  const epochSeconds = sourceDateEpochSeconds(spec.sourceDateEpoch);
   const output = await componentize({
     sourcePath: prepared.entryJsPath,
     witPath: spec.witDir,
@@ -54,4 +54,16 @@ export async function componentizeService(spec: ComponentizeSpec): Promise<Compo
 
 function sha256Bytes(bytes: Uint8Array): string {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function sourceDateEpochSeconds(sourceDateEpoch: string): string {
+  const trimmed = sourceDateEpoch.trim();
+  if (/^\d+$/u.test(trimmed)) {
+    return trimmed;
+  }
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`invalid sourceDateEpoch: ${sourceDateEpoch}`);
+  }
+  return Math.floor(parsed / 1000).toString();
 }

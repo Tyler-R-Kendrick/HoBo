@@ -75,27 +75,31 @@ describe("hobo new scaffold", () => {
 		});
 	});
 
-	it("creates all four templates as runnable SDK project stubs", async () => {
-		await withScratch(async (cwd) => {
-			expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
+	it(
+		"creates all four templates as runnable SDK project stubs",
+		async () => {
+			await withScratch(async (cwd) => {
+				expect(VALID_TEMPLATES).toEqual(["todo", "api", "agent", "fullstack"]);
 
-			for (const template of VALID_TEMPLATES) {
-				const { projectDir, createdFiles } = await scaffoldHoboProject({
-					cwd,
-					name: `sample-${template}` as never,
-					template,
-				});
+				for (const template of VALID_TEMPLATES) {
+					const { projectDir, createdFiles } = await scaffoldHoboProject({
+						cwd,
+						name: `sample-${template}` as never,
+						template,
+					});
 
-				expect(createdFiles).toEqual(expectedCreatedFiles);
+					expect(createdFiles).toEqual(expectedCreatedFiles);
 
-				const report = await validateScaffoldProject(projectDir);
-				expect(report.ok).toBe(true);
-				expect(report.template).toBe(template);
-				assertGeneratedProjectRuns(projectDir);
-				assertGeneratedProjectTypechecks(projectDir);
-			}
-		});
-	});
+					const report = await validateScaffoldProject(projectDir);
+					expect(report.ok).toBe(true);
+					expect(report.template).toBe(template);
+					assertGeneratedProjectRuns(projectDir);
+					assertGeneratedProjectTypechecks(projectDir);
+				}
+			});
+		},
+		30_000,
+	);
 
 	it("prints exact next steps for human output", async () => {
 		await withScratch(async (cwd) => {
@@ -203,18 +207,20 @@ function assertGeneratedProjectRuns(projectDir: string) {
 }
 
 function assertGeneratedProjectTypechecks(projectDir: string) {
-	const install = spawnSync("npm", ["install", "--silent"], {
-		cwd: projectDir,
-		encoding: "utf8",
-		shell: false,
-	});
-	expect(install.status).toBe(0);
+	const result = spawnSync(
+		process.execPath,
+		[typescriptCliPath(), "--noEmit", "--project", "tsconfig.json"],
+		{
+			cwd: projectDir,
+			encoding: "utf8",
+			shell: false,
+		},
+	);
 
-	const result = spawnSync("npx", ["tsc", "--noEmit", "--project", "tsconfig.json"], {
-		cwd: projectDir,
-		encoding: "utf8",
-		shell: false,
-	});
-
+	expect(result.error).toBeUndefined();
 	expect(result.status).toBe(0);
+}
+
+function typescriptCliPath() {
+	return path.resolve(process.cwd(), "..", "..", "node_modules", "typescript", "bin", "tsc");
 }

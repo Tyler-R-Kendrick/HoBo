@@ -1,0 +1,294 @@
+import { parseResourceId } from "@hobo/core";
+
+import {
+	BindReferenceError,
+	type ComponentHandle,
+	type Handle,
+	type ResourceHandle,
+} from "./errors.js";
+import {
+	LAZY_TOKEN_PATTERN,
+	type ManifestResource,
+	RESOURCE_ID_PATTERN,
+	type WiringManifest,
+} from "./types.js";
+
+export { BindReferenceError } from "./errors.js";
+export type { ComponentHandle, Handle, ResourceHandle } from "./errors.js";
+
+export function data(
+	name: string,
+	options: { paradigm?: string } = {},
+): ResourceHandle {
+	assertResourceName(name, "data.name");
+
+	return {
+		kind: "resource",
+		name,
+		type: "data.v1",
+		port: "hobo:data",
+		clientType: "DataClient",
+		manifest() {
+			return {
+				type: "data.v1",
+				port: "hobo:data",
+				paradigm: options.paradigm ?? "relational",
+				connectionString: `{${name}.connectionString}`,
+			};
+		},
+	};
+}
+
+export function service(
+	name: string,
+	options: {
+		image?: string;
+		bind?: Readonly<Record<string, ResourceHandle>>;
+		env?: Readonly<Record<string, string>>;
+		camp?: string;
+	} = {},
+): ComponentHandle {
+	if (options.camp !== undefined) {
+		throw new BindReferenceError(
+			`resources.${name}.camp`,
+			"cross-Camp placement is resolved by enclosing scopes",
+		);
+	}
+
+	return componentHandle("service", name, {
+		...(options.image !== undefined ? { image: options.image } : {}),
+		...(options.bind !== undefined ? { bind: options.bind } : {}),
+		...(options.env !== undefined ? { env: options.env } : {}),
+	});
+}
+
+export function createComponentHandle(
+	kind: "service" | "container",
+	name: string,
+	options: {
+		image?: string;
+		bind?: Readonly<Record<string, ResourceHandle>>;
+		env?: Readonly<Record<string, string>>;
+		build?: Readonly<Record<string, unknown>>;
+	},
+): ComponentHandle {
+	return componentHandle(kind, name, options);
+}
+
+export function compileBindleManifest(handles: readonly Handle[]): WiringManifest {
+	const resources: Record<string, ManifestResource> = {};
+	const entries: Handle[] = [];
+
+	for (const handle of handles) {
+		assertHandle(handle);
+		if (resources[handle.name]) {
+			throw new BindReferenceError(`resources.${handle.name}`, "duplicate resource id");
+		}
+		resources[handle.name] = handle.manifest();
+		entries.push(handle);
+	}
+
+	for (const handle of entries) {
+		if (handle.kind === "service" || handle.kind === "container") {
+			validateLinks(handle, resources);
+		}
+	}
+
+	for (const [id, resource] of Object.entries(resources)) {
+		validateLazyReferences(id, resource, resources);
+	}
+
+	return {
+		schema: "hobo.manifest/v1",
+		resources,
+	};
+}
+
+function componentHandle(
+	kind: "service" | "container",
+	name: string,
+	options: {
+		image?: string;
+		bind?: Readonly<Record<string, ResourceHandle>>;
+		env?: Readonly<Record<string, string>>;
+		build?: Readonly<Record<string, unknown>>;
+	},
+): ComponentHandle {
+	assertResourceName(name, `${kind}.name`);
+
+	const bind = normalizeBindMap(options.bind);
+	const bindings = Object.fromEntries(
+		Object.entries(bind).map(([alias, target]) => [
+			alias,
+			{
+				port: target.port,
+				resource: target.name,
+				clientType: target.clientType,
+			},
+		]),
+	);
+
+	const handle: ComponentHandle = {
+		kind,
+		name,
+		bindings,
+		env: { ...(options.env ?? {}) },
+		endpoints: {},
+		annotations: {},
+		typescript: {
+			ctxBindings: renderCtxBindings(bind),
+		},
+		binding(alias) {
+			const found = bindings[alias];
+			if (!found) {
+				throw new BindReferenceError(
+					`resources.${name}.bindings.${alias}`,
+					`ctx.bindings.${alias} is not declared on service ${name}`,
+				);
+			}
+			return found;
+		},
+		manifest() {
+			const env = { ...this.env };
+			const links: Array<{ import: string; to: string }> = [];
+
+			for (const [alias, target] of Object.entries(bind)) {
+				links.push({ import: target.port, to: target.name });
+				env[`ConnectionStrings__${alias}`] = `{${target.name}.connectionString}`;
+			}
+
+			const resource: ManifestResource = {
+				type: "component.v1",
+				runtime: "wasm",
+				exports: ["wasi:http/incoming-handler"],
+				links,
+				env,
+				bindings,
+			};
+
+			if (options.image) {
+				Object.assign(resource, { image: options.image });
+			}
+			if (options.build) {
+				Object.assign(resource, { build: options.build });
+			}
+			if (Object.keys(this.endpoints).length > 0) {
+				Object.assign(resource, { endpoints: { ...this.endpoints } });
+			}
+			if (Object.keys(this.annotations).length > 0) {
+				Object.assign(resource, { annotations: { ...this.annotations } });
+			}
+
+			return resource;
+		},
+	};
+
+	return handle;
+}
+
+export function normalizeBindMap(
+	bind: Readonly<Record<string, ResourceHandle>> = {},
+): Readonly<Record<string, ResourceHandle>> {
+	if (!isRecord(bind)) {
+		throw new BindReferenceError("bind", "must be a resource map");
+	}
+
+	for (const [alias, target] of Object.entries(bind)) {
+		assertResourceName(alias, `bind.${alias}`);
+		if (!target || target.kind !== "resource") {
+			throw new BindReferenceError(`bind.${alias}`, "must reference a declared resource handle");
+		}
+	}
+
+	return bind;
+}
+
+export function validateLinks(
+	handle: ComponentHandle,
+	resources: Readonly<Record<string, ManifestResource>>,
+): void {
+	const links = resources[handle.name]?.links ?? [];
+
+	links.forEach((link, index) => {
+		const target = resources[link.to];
+		if (!target) {
+			throw new BindReferenceError(
+				`resources.${handle.name}.links[${index}].to`,
+				`unknown resource ${link.to}`,
+			);
+		}
+		if (target.port !== link.import) {
+			throw new BindReferenceError(
+				`resources.${handle.name}.links[${index}].import`,
+				`no matching declared resource for ${link.import}`,
+			);
+		}
+	});
+}
+
+export function validateLazyReferences(
+	resourceId: string,
+	resource: ManifestResource,
+	resources: Readonly<Record<string, ManifestResource>>,
+): void {
+	visitStrings(resource, `resources.${resourceId}`, (value, path) => {
+		const match = LAZY_TOKEN_PATTERN.exec(value);
+		if (!match) {
+			return;
+		}
+
+		const referencedResource = match[1]!;
+		if (!resources[referencedResource]) {
+			throw new BindReferenceError(path, `unknown resource ${referencedResource}`);
+		}
+	});
+}
+
+function renderCtxBindings(bind: Readonly<Record<string, ResourceHandle>>): string {
+	return Object.entries(bind)
+		.map(([alias, target]) => `readonly ${alias}: ${target.clientType};`)
+		.join("\n");
+}
+
+function visitStrings(
+	value: unknown,
+	path: string,
+	visitor: (value: string, path: string) => void,
+): void {
+	if (typeof value === "string") {
+		visitor(value, path);
+		return;
+	}
+	if (Array.isArray(value)) {
+		value.forEach((item, index) => visitStrings(item, `${path}[${index}]`, visitor));
+		return;
+	}
+	if (isRecord(value)) {
+		for (const [key, child] of Object.entries(value)) {
+			visitStrings(child, `${path}.${key}`, visitor);
+		}
+	}
+}
+
+export function assertHandle(handle: unknown): asserts handle is Handle {
+	if (
+		!handle ||
+		typeof handle !== "object" ||
+		!["resource", "service", "container"].includes((handle as Handle).kind) ||
+		typeof (handle as Handle).name !== "string" ||
+		typeof (handle as { manifest?: unknown }).manifest !== "function"
+	) {
+		throw new BindReferenceError("handles", "must contain HoBo resource handles");
+	}
+}
+
+export function assertResourceName(name: string, path: string): void {
+	if (typeof name !== "string" || !RESOURCE_ID_PATTERN.test(name)) {
+		throw new BindReferenceError(path, "invalid resource id");
+	}
+	parseResourceId(name);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}

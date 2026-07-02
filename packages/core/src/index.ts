@@ -54,3 +54,10 @@ export type {
 	WasmtimeEngine,
 } from "./ports/component-host.js";
 export { parseInterfaceId } from "./ports/component-host.js";
+
+export type {
+	BindingResolverPort,
+	ResourceId,
+	ResolvedBinding,
+} from "./ports/binding-resolver.js";
+export { parseResourceId, RESOURCE_ID_PATTERN } from "./ports/binding-resolver.js";

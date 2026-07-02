@@ -1,0 +1,59 @@
+import type { BindingMeta } from "./types.js";
+
+export class BindReferenceError extends Error {
+	readonly path: string;
+
+	constructor(path: string, message: string) {
+		super(`${path}: ${message}`);
+		this.name = "BindReferenceError";
+		this.path = path;
+	}
+}
+
+export interface ResourceHandle {
+	readonly kind: "resource";
+	readonly name: string;
+	readonly type: string;
+	readonly port: string;
+	readonly clientType: string;
+	manifest(): import("./types.js").ManifestResource;
+}
+
+export interface ComponentHandle {
+	readonly kind: "service" | "container";
+	readonly name: string;
+	readonly bindings: Readonly<Record<string, BindingMeta>>;
+	readonly env: Record<string, string>;
+	readonly endpoints: Record<string, unknown>;
+	readonly annotations: Record<string, unknown>;
+	readonly typescript: { readonly ctxBindings: string };
+	binding(alias: string): BindingMeta;
+	manifest(): import("./types.js").ManifestResource;
+	withEndpoint?(endpoint: EndpointSpec): ComponentHandle;
+	withEnvironment?(key: string, value: string): ComponentHandle;
+	withVolume?(name: string, target: string): ComponentHandle;
+	withHttpHealthCheck?(path: string): ComponentHandle;
+	withHttpEndpoint?(
+		port: number,
+		options?: { name?: string; targetPort?: number; external?: boolean; protocol?: string },
+	): ComponentHandle;
+	withArgs?(...args: readonly (string | readonly string[])[]): ComponentHandle;
+	withBindMount?(source: string, target: string, readOnly?: boolean): ComponentHandle;
+	withLifetime?(lifetime: "session" | "persistent"): ComponentHandle;
+	waitFor?(dependency: DependencyRef): ComponentHandle;
+	waitForCompletion?(dependency: DependencyRef): ComponentHandle;
+	withDnsRecord?(): never;
+}
+
+export type Handle = ResourceHandle | ComponentHandle;
+
+type DependencyRef = string | { readonly name: string };
+
+export type EndpointSpec = {
+	readonly name?: string;
+	readonly scheme: string;
+	readonly port: number;
+	readonly targetPort?: number;
+	readonly external?: boolean;
+	readonly protocol?: string;
+};

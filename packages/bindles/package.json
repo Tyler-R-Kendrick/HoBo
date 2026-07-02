@@ -9,6 +9,14 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
+		},
+		"./wiring": {
+			"types": "./dist/wiring/index.d.ts",
+			"default": "./dist/wiring/index.js"
+		},
+		"./topology": {
+			"types": "./dist/topology/index.d.ts",
+			"default": "./dist/topology/index.js"
 		}
 	},
 	"publishConfig": {

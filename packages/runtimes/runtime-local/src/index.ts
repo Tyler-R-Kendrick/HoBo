@@ -5,9 +5,9 @@ export {
 } from "./component-host.js";
 export { ComponentHostError, ComponentTrapError } from "./errors.js";
 export {
-	createInProcessWasmtimeEngine,
-	createWasmtimeCliEngine,
-} from "./engine/wasmtime.js";
+	createLocalBindingResolver,
+	HELLO_BINDLE_LOCAL_ENDPOINTS,
+} from "./binding-resolver.js";
 export {
 	isInterfaceId,
 	parseComponentDescriptor,

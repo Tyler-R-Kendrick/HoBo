@@ -1,0 +1,11 @@
+{
+  "name": "@hobo/draft-runtime-postgres-ports",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "pg-mem": "^3.0.5"
+  }
+}

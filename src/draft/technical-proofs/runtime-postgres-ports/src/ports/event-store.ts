@@ -1,0 +1,312 @@
+import type { Pool } from "pg";
+
+import {
+  OptimisticSequenceConflictError,
+} from "../../../camp-eventstore-runtime-port-contract/src/camp-eventstore-runtime-port.js";
+import { clone, optionalString, requireNonEmptyString } from "../postgres/json.js";
+import { withTransaction } from "../postgres/pool.js";
+
+type Clock = {
+  now(): string;
+};
+
+type Subscription = {
+  filter: { streamId?: string; type?: string };
+  handler: (event: unknown) => void;
+};
+
+export function createPostgresEventStore(pool: Pool, clock: Clock) {
+  const subscriptions = new Set<Subscription>();
+
+  return Object.freeze({
+    async append(streamId: string, events: unknown[], appendOptions: Record<string, unknown> = {}) {
+      const id = requireNonEmptyString(streamId, "streamId");
+      const inputs = normalizeEventInputs(events);
+      const expectedSeq = normalizeSeq(appendOptions.expectedSeq, "appendOptions.expectedSeq");
+
+      return withTransaction(pool, async (query) => {
+        await query(
+          `INSERT INTO hobo_event_streams (stream_id, current_seq)
+           VALUES ($1, 0)
+           ON CONFLICT (stream_id) DO NOTHING`,
+          [id],
+        );
+
+        const streamRow = await query(
+          `SELECT current_seq FROM hobo_event_streams WHERE stream_id = $1 FOR UPDATE`,
+          [id],
+        );
+        const currentSeq = Number(streamRow.rows[0]?.current_seq ?? 0);
+
+        const deduped = [];
+        const pending = [];
+        const pendingByKey = new Map<string, unknown>();
+        const pendingDuplicateKeys: string[] = [];
+
+        for (const input of inputs) {
+          const idempotencyKey = getIdempotencyKey(input);
+          if (idempotencyKey) {
+            const existing = await query(
+              `SELECT envelope FROM hobo_events
+               WHERE stream_id = $1 AND idempotency_key = $2`,
+              [id, idempotencyKey],
+            );
+            if (existing.rows[0]) {
+              deduped.push(existing.rows[0].envelope);
+              continue;
+            }
+            if (pendingByKey.has(idempotencyKey)) {
+              pendingDuplicateKeys.push(idempotencyKey);
+              continue;
+            }
+          }
+          pending.push(input);
+          if (idempotencyKey) {
+            pendingByKey.set(idempotencyKey, input);
+          }
+        }
+
+        if (pending.length === 0) {
+          return Object.freeze({
+            streamId: id,
+            appended: [],
+            deduped: clone(deduped),
+          });
+        }
+
+        if (currentSeq !== expectedSeq) {
+          throw new OptimisticSequenceConflictError(
+            `stale expectedSeq for ${id}: expected ${expectedSeq}, actual ${currentSeq}`,
+          );
+        }
+
+        const appended = [];
+        const appendedByKey = new Map<string, unknown>();
+        let seq = currentSeq;
+
+        for (const input of pending) {
+          seq += 1;
+          const envelope = createEnvelope({
+            streamId: id,
+            seq,
+            input,
+            appendOptions,
+            clock,
+          });
+          const idempotencyKey = getIdempotencyKey(input);
+          await query(
+            `INSERT INTO hobo_events (stream_id, seq, event_id, event_type, envelope, idempotency_key)
+             VALUES ($1, $2, $3, $4, $5::jsonb, $6)`,
+            [id, seq, envelope.id, envelope.type, JSON.stringify(envelope), idempotencyKey ?? null],
+          );
+          appended.push(envelope);
+          if (idempotencyKey) {
+            appendedByKey.set(idempotencyKey, envelope);
+          }
+          publish(subscriptions, envelope);
+        }
+
+        await query(`UPDATE hobo_event_streams SET current_seq = $2 WHERE stream_id = $1`, [id, seq]);
+
+        for (const key of pendingDuplicateKeys) {
+          deduped.push(appendedByKey.get(key));
+        }
+
+        return Object.freeze({
+          streamId: id,
+          appended: clone(appended),
+          deduped: clone(deduped),
+        });
+      });
+    },
+
+    async read(streamId: string, fromSeq = 1) {
+      const id = requireNonEmptyString(streamId, "streamId");
+      const startSeq = normalizeSeq(fromSeq, "fromSeq");
+      const result = await pool.query(
+        `SELECT envelope FROM hobo_events
+         WHERE stream_id = $1 AND seq >= $2
+         ORDER BY seq ASC`,
+        [id, startSeq],
+      );
+      return clone(result.rows.map((row) => row.envelope));
+    },
+
+    subscribe(filter: Record<string, unknown>, handler: (event: unknown) => void) {
+      if (typeof handler !== "function") {
+        throw new TypeError("handler must be a function");
+      }
+      const subscription = {
+        filter: Object.freeze({
+          streamId: optionalString(filter.streamId, "filter.streamId"),
+          type: optionalString(filter.type, "filter.type"),
+        }),
+        handler,
+      };
+      subscriptions.add(subscription);
+      return Object.freeze({
+        unsubscribe() {
+          subscriptions.delete(subscription);
+        },
+      });
+    },
+
+    async snapshot(streamId: string, state: unknown, seq: number) {
+      const id = requireNonEmptyString(streamId, "streamId");
+      const snapshotSeq = normalizeSeq(seq, "seq");
+      const streamRow = await pool.query(
+        `SELECT current_seq FROM hobo_event_streams WHERE stream_id = $1`,
+        [id],
+      );
+      const currentSeq = Number(streamRow.rows[0]?.current_seq ?? 0);
+      if (snapshotSeq > currentSeq) {
+        throw new OptimisticSequenceConflictError(
+          `snapshot seq ${snapshotSeq} is ahead of ${id}@${currentSeq}`,
+        );
+      }
+      return Object.freeze({
+        streamId: id,
+        seq: snapshotSeq,
+        state: clone(state),
+        savedAt: clock.now(),
+      });
+    },
+
+    async fold(streamId: string, foldOptions: Record<string, unknown> = {}) {
+      const events = await this.read(streamId);
+      const handlers = normalizeHandlers(foldOptions.handlers);
+      let state = cloneRequired(foldOptions.initialState, "foldOptions.initialState");
+      const quarantined: Array<Record<string, unknown>> = [];
+
+      for (const event of events) {
+        const typed = event as { type: string; seq: number };
+        if (typed.type.endsWith(".Quarantined")) {
+          continue;
+        }
+        const handler = handlers.get(typed.type);
+        if (!handler) {
+          continue;
+        }
+        try {
+          state = clone(handler(clone(state), clone(event)));
+        } catch (cause) {
+          quarantined.push({
+            offendingSeq: typed.seq,
+            quarantineSeq: typed.seq,
+            type: `${typed.type.split(".")[0]}.Quarantined`,
+            reason: cause instanceof Error ? cause.message : String(cause),
+          });
+        }
+      }
+
+      return Object.freeze({
+        streamId,
+        seq: events.length,
+        state: clone(state),
+        quarantined,
+      });
+    },
+  });
+}
+
+function createEnvelope({
+  streamId,
+  seq,
+  input,
+  appendOptions,
+  clock,
+}: {
+  streamId: string;
+  seq: number;
+  input: Record<string, unknown>;
+  appendOptions: Record<string, unknown>;
+  clock: Clock;
+}) {
+  const type = requireNonEmptyString(input.type, "event.type");
+  const actor = appendOptions.actor as Record<string, unknown>;
+  return Object.freeze({
+    id: `${streamId}:${seq}:${type}`,
+    streamId,
+    seq,
+    type,
+    v: normalizeVersion((input.v as number | undefined) ?? 1),
+    ts: clock.now(),
+    actor: clone(actor),
+    tenant: requireNonEmptyString(appendOptions.tenant, "appendOptions.tenant"),
+    causationId: optionalString(appendOptions.causationId, "appendOptions.causationId"),
+    correlationId: optionalString(appendOptions.correlationId, "appendOptions.correlationId"),
+    data: clone((input.data as unknown) ?? {}),
+    meta: Object.freeze(clone((input.meta as Record<string, unknown> | undefined) ?? {})),
+  });
+}
+
+function publish(subscriptions: Set<Subscription>, envelope: unknown) {
+  for (const subscription of subscriptions) {
+    if (matches(subscription.filter, envelope as { streamId: string; type: string })) {
+      subscription.handler(clone(envelope));
+    }
+  }
+}
+
+function matches(
+  filter: { streamId?: string; type?: string },
+  envelope: { streamId: string; type: string },
+) {
+  return (
+    (!filter.streamId || filter.streamId === envelope.streamId) &&
+    (!filter.type || filter.type === envelope.type)
+  );
+}
+
+function normalizeHandlers(handlers: unknown) {
+  if (!handlers || typeof handlers !== "object" || Array.isArray(handlers)) {
+    throw new TypeError("foldOptions.handlers must be an object");
+  }
+  return new Map(
+    Object.entries(handlers as Record<string, unknown>).filter(
+      ([, handler]) => typeof handler === "function",
+    ) as Array<[string, (state: unknown, event: unknown) => unknown]>,
+  );
+}
+
+function getIdempotencyKey(input: unknown) {
+  const record = input as { meta?: { idempotencyKey?: string } };
+  const key = record?.meta?.idempotencyKey;
+  if (key === undefined) {
+    return undefined;
+  }
+  return requireNonEmptyString(key, "event.meta.idempotencyKey");
+}
+
+function normalizeEventInputs(events: unknown) {
+  if (!Array.isArray(events) || events.length === 0) {
+    throw new TypeError("events must be a non-empty array");
+  }
+  return events.map((event) => {
+    if (!event || typeof event !== "object" || Array.isArray(event)) {
+      throw new TypeError("event must be an object");
+    }
+    return event as Record<string, unknown>;
+  });
+}
+
+function normalizeVersion(value: number) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError("event.v must be a positive safe integer");
+  }
+  return value;
+}
+
+function normalizeSeq(value: unknown, fieldName: string) {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    throw new TypeError(`${fieldName} must be a non-negative safe integer`);
+  }
+  return value as number;
+}
+
+function cloneRequired(value: unknown, fieldName: string) {
+  if (value === undefined) {
+    throw new TypeError(`${fieldName} is required`);
+  }
+  return clone(value);
+}

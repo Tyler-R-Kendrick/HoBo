@@ -76,6 +76,7 @@ A machine-readable standard each Provider publishes so any agent can understand 
 - **Discovery:** the Registry crawls/accepts `index.json`, verifies its signature, and indexes capabilities + auth for the Planner and agents.
 - **Preference order:** HoBo prefers **keyless** flows (`oidc-federation` > `oauth2-xaa` (Cross-App Access) > `oauth2-obo` > `device-code` > `api-key`) so static secrets are a last resort; `oauth2-xaa` is preferred for user-delegated access to an *external* app because the IdP brokers and governs it ([ADR-0084](./adr/02-identity-security.md#adr-0084)).
 - **Thematic anchor:** real hobo "signs" were a shared symbol language for finding resources & safe passage — `signs.md` is exactly that, for agents. This is the "standard like auth.md" the project calls for, and the Registry is the centralized place providers register it.
+- **Trust boundary:** `signs.md`/`llms.txt` and manifest description fields are untrusted input wherever an agent reads them — the signature authenticates the publisher, not the safety of the prose; instructions inside a manifest never widen what an agent may do ([ADR-0023](./adr/02-identity-security.md#adr-0023) item 3, [Plan 12](./security-networking.md#plan-12) threat table).
 
 ---
 
@@ -153,6 +154,8 @@ The Yard exposes an **MCP server** (`@hobo/mcp`) so any agent (Claude, etc.) can
 | `get_drift` / `heal` | drift status + reconcile |
 
 MCP auth uses the same Identity/SVID model; tools are capability-scoped. HoBo also publishes `llms.txt` / `llms-full.txt` / `docs.json` (matching Lakebed's machine-readable ethos) — but for *operations*, not just app contracts.
+
+**Inert-tool-output invariant.** Every MCP tool result — including `search_registry` results carrying Capability Manifest prose — is inert data: a tool output can never schedule, authorize, or widen a follow-up tool call beyond the agent's existing grant; prompt-injected content in a result is recorded but powerless ([ADR-0023](./adr/02-identity-security.md#adr-0023) item 3; proven in [HOBO-194](./proofs/hobo-194-mcp-server-hardening/index.md)).
 
 ---
 

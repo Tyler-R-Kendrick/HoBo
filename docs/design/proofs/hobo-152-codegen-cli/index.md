@@ -8,8 +8,8 @@ HOBO-152 is proven by the focused POC at
 Draft integration at
 [`src/draft/technical-proofs/s1-21-collect-codegen-cli-poc`](../../../../src/draft/technical-proofs/s1-21-collect-codegen-cli-poc/README.md)
 combines `hobo codegen --check` with seeded-drift CI gate tests.
-Production promotion target: `packages/cli/src/commands/codegen.ts` (blocked on
-HOBO-606 + HOBO-610).
+Production promotion target: `packages/cli/src/commands/codegen.ts` (HOBO-606 +
+HOBO-610 Done; awaits production codegen pipeline package).
 
 ## Acceptance Evidence
 

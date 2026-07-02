@@ -24,10 +24,8 @@ codegen pipeline draft proofs, with a `hello-bindle` golden manifest fixture.
 
 ## Promotion Target
 
-Production promotion deferred until blockers merge:
-
-- **HOBO-606** (S1-16) — `@hobo/collector` resource-collection engine
-- **HOBO-610** (S1-20) — `@hobo/cli` command shell/registry
+Production promotion deferred until `@hobo/collector` and production codegen
+pipeline packages land (HOBO-606 + HOBO-610 Done).
 
 Target paths: `packages/cli/src/commands/collect.ts`,
 `packages/cli/src/commands/codegen.ts`.

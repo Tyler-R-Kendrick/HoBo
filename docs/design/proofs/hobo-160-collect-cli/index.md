@@ -8,8 +8,8 @@ HOBO-160 is proven by the focused POC at
 Draft integration at
 [`src/draft/technical-proofs/s1-21-collect-codegen-cli-poc`](../../../../src/draft/technical-proofs/s1-21-collect-codegen-cli-poc/README.md)
 combines `hobo collect` with `hello-bindle` golden manifest byte-equality tests.
-Production promotion target: `packages/cli/src/commands/collect.ts` (blocked on
-HOBO-606 + HOBO-610).
+Production promotion target: `packages/cli/src/commands/collect.ts` (HOBO-606 +
+HOBO-610 Done; awaits `@hobo/collector` production package).
 
 ## Acceptance Evidence
 

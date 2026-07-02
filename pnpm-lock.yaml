@@ -162,8 +162,8 @@ importers:
         version: link:../../core
     devDependencies:
       '@types/node':
-        specifier: ^22.15.29
-        version: 22.20.0
+        specifier: '>=24.0.0'
+        version: 26.0.1
 
   packages/stage-gate:
     devDependencies:

@@ -91,3 +91,8 @@ mutates read models directly.
 ## Contracts
 
 - EventStore PACT evidence: [`contracts/pacts/runtime-sdk-eventstore.pact.json`](./contracts/pacts/runtime-sdk-eventstore.pact.json).
+
+Runtime-local uses Node's built-in `node:sqlite` adapter for the durable
+EventStore, so package type support must stay on Node 24 or newer. Pact replay
+tests load package-local fixtures from [`contracts/`](./contracts) so the
+capability and EventStore contracts remain self-contained with this runtime.

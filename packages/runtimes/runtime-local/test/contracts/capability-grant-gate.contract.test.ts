@@ -11,7 +11,6 @@ const pactPath = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
   "..",
-  "..",
   "contracts",
   "capability-grant-gate.pact.json",
 );

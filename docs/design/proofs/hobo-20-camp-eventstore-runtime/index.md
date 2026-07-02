@@ -16,6 +16,9 @@ pins the HOBO-20 runtime-local EventStore boundary.
 assertions. The `@hobo/conformance` EventStore suite runs from
 [`packages/conformance/test/runtime-local-eventstore.conformance.test.ts`](../../../../packages/conformance/test/runtime-local-eventstore.conformance.test.ts)
 (adapter boundary lint forbids `@hobo/conformance` imports inside runtime-local).
+The promoted runtime uses Node's built-in `node:sqlite` adapter, so
+`@hobo/runtime-local` keeps Node 24+ type support with the package. Pact replay
+fixtures remain package-local under `packages/runtimes/runtime-local/contracts/`.
 
 The draft POC still pins the HOBO-20 runtime-local EventStore boundary:
 

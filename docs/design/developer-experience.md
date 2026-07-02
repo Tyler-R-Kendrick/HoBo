@@ -200,15 +200,15 @@ Only the TS lane is proof-backed; the others are design-pinned pending their own
 
 ##### Local-dev fidelity — what's real vs simulated vs Camp-only ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042))
 "Works locally" is a *bounded, honest* promise. Behaviors are classified by **"does a wrong local answer hide a real bug?"**: **simulate** the correctness-determining ones at high fidelity, **mock** the environmental ones behind honest seams, **defer to a Camp** the irreducibly-real ones. Each capability reports a fidelity label (`real|simulated|mocked|camp-only`) that `hobo dev` surfaces, and the conformance suite tags every check `local` or `camp` so **`hobo verify` reports coverage = local ∪ camp and refuses a prod-ready claim for mocked-only behaviors** ([Plan 9](./generated-stack.md#plan-09)).
-- **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector).
-- **Mock (honest seam):** real cloud IAM, provider latency/egress/cost, secrets backends (KMS).
+- **Simulate (real locally):** determinism/replay, `.allow()` capability denials (wasm deny-by-default), auth/ABAC + policy decisions, `can-deploy`/contracts, resource interfaces (local PG/queue/object-store), embed/search (local model + pgvector), `addContainer` workloads (local container engine, deploy-identical env injection; labeled camp-only without one).
+- **Mock (honest seam):** real cloud IAM, provider latency/egress/cost, secrets backends (KMS), `external`/adopted resources (contract-backed stub; `hobo dev --connect` opt-in real; fail-with-remediation if neither).
 - **Camp-only:** cross-cloud mTLS, real quotas/spend limits, provider drift.
 
 #### Onboarding paths
 - **Anonymous `npx` deploy (zero setup):** `npx hobo up` deploys from any directory with **no account and no setup** — an instant, unclaimed deployment that returns a live URL (the Lakebed-style instant feel, now for *deploys*). The deployment is owned by nobody yet; `hobo claim` later binds it to an account, preserving its state and URL. This is the first-class try-it-now path: see a real URL before you ever sign up.
 - **Human:** `npx hobo new my-app -t fullstack && cd my-app && hobo dev` → edit → `hobo login` → `hobo up`.
 - **Agent:** an MCP client calls `list templates → new → plan → up`, obtaining tokens via the broker; never touches a key. The agent can `inspect_run`/`tail_logs` to verify and self-correct.
-- **Brownfield (existing estate):** `hobo import terraform ./infra` adopts the current resources in place (no re-provision) → `hobo plan` shows a no-op diff → bring services under IfC one at a time, binding to still-`external` resources until they're adopted too — the strangler-fig path ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)).
+- **Brownfield (existing estate):** `hobo import terraform ./infra` adopts the current resources in place (no re-provision) → `hobo plan` shows a no-op diff → bring services under IfC one at a time, binding to still-`external` resources until they're adopted too — the strangler-fig path ([ADR-0041](./adr/07-portability-extensibility.md#adr-0041)) — locally, `hobo dev` stubs still-`external` resources from their recorded contracts or connects via `--connect` ([ADR-0042](./adr/07-portability-extensibility.md#adr-0042)).
 
 #### Editor & ecosystem integration
 - TS types ship in every `@hobo/*` package; provider options autocomplete on `.with(...)`.

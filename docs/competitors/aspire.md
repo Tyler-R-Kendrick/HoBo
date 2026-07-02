@@ -454,6 +454,7 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 | Annotations (`IResourceAnnotation`) | Manifest annotations / extensibility metadata | ✅ | [22](../design/authoring-resources-wiring.md#plan-21) |
 | Custom resources/integrations | Custom providers (any wasm language) + AI-generated | ➕ | [03](../design/control-plane.md#plan-04), [23](../design/generated-stack.md#plan-23) |
 | Parameters & secrets | Parameters + brokered secrets (`secrets` port) | ✅ | [02](../design/sdk-api.md#plan-02), [12](../design/security-networking.md#plan-12) |
+| `AddContainer` local run / `ExternalServiceResource` / `AddConnectionString` (BYO) | `addContainer` runs under `hobo dev` (local engine, same env convention); `external` resource = contract-backed stub or `--connect` | ✅ | [ADR-0042](../design/adr/07-portability-extensibility.md#adr-0042), [ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041) |
 
 ### Runtime, deploy & ops
 

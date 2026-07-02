@@ -55,6 +55,7 @@ _One section per iteration: date, commit, lenses run, new/confirmed/rejected fin
 
 | ID | Lens | Class | Status | Intent | Actual | Evidence |
 |---|---|---|---|---|---|---|
+| DRIFT-001 | L-DRIFT | deliberate-undocumented | ✔ remediated | Nomad pillar lineage visible in design suite | Nomad evaluation/displacement recorded in ADR-0106 with two-way links | ADR-0106, `docs/design/vision.md`, `docs/competitors/nomad.md` |
 | DRIFT-002 | L-DRIFT | deliberate-undocumented | ✔ remediated | First-party commercial-launch design vs ADR-0064 product-surface cut | Boundary ADR-0107 records hosted-business productization vs removed product billing port | `docs/design/adr/07-portability-extensibility.md#adr-0107` |
 
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
@@ -69,6 +70,13 @@ required beyond mapping) · **deliberate-undocumented** (evidently intentional b
 - **Acceptance:** `docs:design-lint`, `validate-traceability.ts`, and staged `agent:check` pass; design suite contains Nomad references and back-links to `nomad.md#hobo-mapping`.
 - **Effort:** S
 - **Delivery:** ✔ [HOBO-666](https://linear.app/quickdeploy-ai/issue/HOBO-666) — ADR-0106 in `docs/design/adr/01-architecture-core.md`
+
+### REM-002 (for DRIFT-002)
+
+- **Action:** Record hosted-business commercialization boundary as ADR-0107; update ADR-0064 consequence, archived requirements, and four commercial design docs.
+- **Acceptance:** `docs:design-lint`, `docs:okf`, and staged `agent:check` pass; ADR-0107 cites billing-launch-policy, usage-to-invoice-reconciliation, tax-currency-receipt-obligations, entitlements-plan-limits.
+- **Effort:** M
+- **Delivery:** ✔ [HOBO-667](https://linear.app/quickdeploy-ai/issue/HOBO-667) — ADR-0107 in `docs/design/adr/07-portability-extensibility.md`
 
 ## Verified non-issues
 

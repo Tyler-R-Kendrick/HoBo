@@ -1,7 +1,7 @@
 ---
 type: Implementation Plan
 title: "HoBo v1 Production Build — staged Linear scope"
-description: "Initiative, stage projects (S0–S6), milestones, and one-shot issue specs that promote the design suite + draft proofs into real production implementation. Staged here for Linear import."
+description: "Initiative, stage projects (S0–S6), milestones, and one-shot issue specs that promote the design suite + draft proofs into real production implementation. Imported into Linear (team HoBo) on 2026-07-01; this doc is the durable mirror of that import."
 tags: [hobo, plans]
 ---
 
@@ -9,12 +9,13 @@ tags: [hobo, plans]
 
 > **Why this document exists.** The 399-issue backlog (15 subsystem projects, all complete) was
 > executed as **draft proofs** under `src/draft/` — there is no production code. This scope promotes
-> the proven designs into a real build. It is **staged for Linear import**: the Linear MCP connection
-> currently rejects tool calls pending user approval, so this doc is the durable source of truth;
-> once access is approved, import is mechanical (initiative → projects → milestones → issues, paced
-> single-writer per the rate-limit lesson in the implementation plan). Full one-shot bodies exist for
-> S0-01..S0-03 (appendix); remaining bodies are authored per stage as its M0 opens (the per-issue
-> briefs below carry exact paths, dependencies, and acceptance signals).
+> the proven designs into a real build. **Import status: DONE.** The full scope — richer than the
+> per-issue briefs below (42 QA-verified one-shot bodies for all of S0/S1 and every stage M0) — is
+> live in Linear under initiative **HoBo v1 Production Build**
+> (`bc463c40-f5a8-4246-8d71-0d4dd2f6c6c7`): 7 stage projects, 27 milestones, 87 issues
+> (HOBO-578…HOBO-665), plus the companion Intent-Alignment Gap Remediation project (25 issues,
+> HOBO-666…HOBO-690). **Do not re-import this document** — Linear is the live source; see the
+> Import record section below for the identifier map.
 >
 > **Structure rule (mirrors the requirements Release Criteria):** stages S0–S6 are dependency-ordered
 > projects; each closes with an executable gate issue; each later stage starts with an M0
@@ -295,13 +296,28 @@ one issue per REM entry; grows as later review iterations confirm more findings)
 | REM-002 | Record the first-party-commercial-launch vs product-billing boundary as an ADR | 1 | GAPS.md DRIFT-002 | New ADR (next free global ID) in `docs/design/adr/07-portability-extensibility.md` scoping ADR-0064's removal to product billing while first-party launch policies (billing-launch-policy, usage-to-invoice-reconciliation, tax-currency-receipt-obligations, billing-credits, entitlements-plan-limits) are launch collateral; each covered doc cites it; disposition the `invoice.*` event family. Acceptance: ADR in `docs/design/adr/index.md`; every covered doc cites it; `pnpm agent:check -- --staged` green. Effort M. |
 | REM-003 | Disposition the dormant marketplace payout hooks | 3 | GAPS.md DRIFT-003 | Extend the REM-002 ADR with a "deferred monetization hooks" clause (or scope note in `marketplace-payout-hooks.md` + `known-limitations-register.md` row): payout-readiness states are dormant, non-normative until an ADR re-admits rev-share. Effort S. |
 
-## Import runbook (when Linear MCP access is approved)
+## Import record (2026-07-01)
 
-1. `save_initiative` → "HoBo v1 Production Build" (description above).
-2. Per project S0→S6 then the remediation project: `save_project` (team **HoBo**, add to the initiative, state Planned) → `save_milestone` per milestone → `save_issue` per issue **one at a time** with retry-on-throttle (single-writer; the 2026-06-24 burst rate-limit lesson). Issue creation order = the Key order above so `blockedBy` targets exist.
-3. Labels: reuse `slice`/`spike`/`hardening`/`security`/`adversarial`/`user-story`; create `production-build` and `intent-alignment` workspace labels first.
-4. Set `blockedBy` from the "Depends on" column; stage M0 issues additionally block every skeleton in their project.
-5. After import, replace each staged brief with its full one-shot body as stages open (S0-01..03 bodies in the appendix are import-ready now); update GAPS.md REM entries with the created issue ids.
+Imported live via Linear MCP, paced single-writer, zero failures. **Linear is the live source of
+truth**; this doc remains the durable mirror. Identifier map:
+
+| Scope | Linear project ID | Issues |
+|---|---|---|
+| Initiative: HoBo v1 Production Build | `bc463c40-f5a8-4246-8d71-0d4dd2f6c6c7` | all below |
+| Build S0: Toolchain & Contracts Bootstrap | `a15e5df9-0326-481d-86c8-c40e0f28dacb` | S0-01…S0-12 → HOBO-578…589 |
+| Build S1: Local SDK & Runtime | `3eeb5b23-68eb-4e4b-be4f-c4420f92cefc` | S1-01…S1-25 → HOBO-590…602, 604…615 |
+| Build S2: First Cloud + Yard | `fc135048-8dd6-469d-95ab-1137fe7e99f3` | S2-01…S2-11 → HOBO-616…626 |
+| Build S3: Agent Autonomy | `8a322732-b6f8-4f9d-a662-bb89043b9844` | S3-01…S3-10 → HOBO-627…636 |
+| Build S4: Multi-Cloud | `579181ec-2472-444f-b696-506d2b66bd3e` | S4-01…S4-09 → HOBO-637…645 |
+| Build S5: Forge & Extensibility | `1602a539-4c2f-44da-b030-ad256857103f` | S5-01…S5-10 → HOBO-646…655 |
+| Build S6: Production Hardening | `cafc7067-23f2-45aa-9af3-828e62afd4e2` | S6-01…S6-10 → HOBO-656…665 |
+| Intent-Alignment Gap Remediation | `292efb1a-669c-4d79-93df-901d134b4832` | REM-001…REM-025 → HOBO-666…690 |
+
+Issue titles are prefixed with their stage key (`S0-01: …`, `REM-004: …`); dependencies are wired as
+Linear blocking relations; every issue carries the `production-build` or `intent-alignment` label.
+S0/S1 and each stage M0 carry full QA-verified one-shot bodies; S2–S6 skeletons are blocked by their
+stage M0 per the post-core delta pattern. Remediation issues point at root `GAPS.md` REM entries as
+their executable spec.
 
 ## Appendix — full one-shot bodies (import-ready)
 

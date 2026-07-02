@@ -108,7 +108,7 @@ required beyond mapping) · **deliberate-undocumented** (evidently intentional b
 
 - **Finding** (cand-04, P1, LOW, votes uphold/uphold/uphold, drift-class deliberate-undocumented): The Nomad pillar's lineage is invisible inside the design suite: docs/design/ contains zero 'Nomad' references (ADRs included), no ADR records the Nomad evaluation or why wasmCloud/Matching/Dispatcher subsumed it, vision.md's 15-row landscape table omits Nomad although competitors/index.md labels it a direct scheduler/control-plane competitor, the nomad.md HoBo-mapping is one-way (design never links back), and Nomad-as-a-provider/host-adapter floated in nomad.md is never dispositioned.
 - **Evidence:** `docs/competitors/nomad.md#hobo-mapping` · `docs/design/adr/01-architecture-core.md#adr-0031` · `docs/design/vision.md:48-64` · `docs/competitors/index.md:8` · `docs/design/control-plane.md:118` · `docs/competitors/gap-analysis.md:23`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-666](https://linear.app/quickdeploy-ai/issue/HOBO-666) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -159,7 +159,7 @@ Never propose reversing or reopening the Nomad→wasmCloud pivot — the new ADR
 
 - **Finding** (cand-16, L-DRIFT, MED, votes uphold/uphold/uphold, drift-class deliberate-undocumented): First-party commercial-launch design (billing plans/credits/invoice lifecycle, tax/currency/receipt posture, a deterministic meter.UsageRecorded->invoice.LineItem reconciliation contract, and workspace plan tiers) now lives in docs/design/ while ADR-0064's consequence says 'no first-party commercial toolkit to maintain (commercialization is out of design scope)' — the first-party-hosted-business vs product-billing-port boundary is asserted per-doc but recorded in no ADR.
 - **Evidence:** `docs/design/billing-launch-policy.md:41-61` · `docs/design/usage-to-invoice-reconciliation.md:50-56` · `docs/design/tax-currency-receipt-obligations.md:48-66` · `docs/design/entitlements-plan-limits.md:106-112` · `docs/design/adr/07-portability-extensibility.md:299` · `docs/archive/requirements/requirements.md:165`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-667](https://linear.app/quickdeploy-ai/issue/HOBO-667) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -211,7 +211,7 @@ Documentation-only: touch exactly the 7 named files; no src/, no scripts/, no pa
 
 - **Finding** (cand-02, L-DRIFT, MED, votes uphold/uphold/uphold, drift-class deliberate-undocumented): Marketplace payout-readiness design (payout state machine incl. `approved-for-payout`, publisher tax-document posture, billing-reconciliation handoffs) re-enters the marketplace monetize/rev-share scope that ADR-0064 §2 removed and ADR-0062 §5 reaffirmed ('No monetization ... no commercial tiers'), converting what ADR-0063 calls a positioning anti-goal into a deferred-until-evidence launch capability with no amending decision record.
 - **Evidence:** `docs/design/marketplace-payout-hooks.md:79-89` · `docs/design/marketplace-payout-hooks.md:51-52` · `docs/design/adr/07-portability-extensibility.md:294` · `docs/design/adr/07-portability-extensibility.md:170` · `docs/design/adr/07-portability-extensibility.md:282` · `docs/design/tax-currency-receipt-obligations.md:66`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-668](https://linear.app/quickdeploy-ai/issue/HOBO-668) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -257,7 +257,7 @@ Cross-links that must gain entries: docs/design/adr/index.md (Index table row), 
 
 - **Finding** (cand-01, P1, HIGH, votes uphold/uphold/uphold, drift-class silent): Node-level workload scheduling inside a Camp — Nomad's core competence — has no owner in the design: nothing specifies how service-component instances are placed onto wasmCloud lattice hosts (the wadm-equivalent), who consumes the `scaling {min,max}` annotation, or any bin-packing, failure-domain spread, preemption, oversubscription, host-drain, or capacity-reservation semantics, even though the default host is self-hosted wasmCloud on bare-metal/Coolify/Docker substrates that supply no scheduler of their own.
 - **Evidence:** `docs/design/adr/01-architecture-core.md#adr-0031` · `docs/design/control-plane.md:121` · `docs/design/authoring-resources-wiring.md:161` · `docs/design/reliability-observability-cost.md:56` · `docs/design/platform-engineering.md:174` · `docs/design/wasm-runtime-wit.md:95`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-669](https://linear.app/quickdeploy-ai/issue/HOBO-669) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -320,7 +320,7 @@ Checklist (all commands from C:/src/hobo):
 
 - **Finding** (cand-03, L-CONS, MED, votes uphold/uphold/uphold): The five-pillar intent framing (Nomad+Aspire+Nitric+FinOps+agent-native) appears nowhere in docs/design/ as an organizing principle — vision.md's borrow-list never names Nomad, the only repo echoes of the composed intent are README's GAPS.md row and GAPS.md itself (both outside the design suite), and traceability.md traces plan/ADR->Linear only, never intent->design. Partially mitigated: GAPS.md now carries the pillar mapping and README links it, but the design suite itself remains silent.
 - **Evidence:** `docs/design/vision.md:68-77` · `docs/design/vision.md:48-64` · `README.md:47` · `GAPS.md:20-26` · `docs/design/traceability.md:10-27`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-670](https://linear.app/quickdeploy-ai/issue/HOBO-670) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -371,7 +371,7 @@ Checklist (run from C:/src/hobo):
 
 - **Finding** (cand-05, P1, MED, votes uphold/uphold/uphold): The nomad.md HoBo-mapping tracker overclaims and under-anchors: 'Constraints/affinities/spread' is marked designed-at-parity although no affinity/anti-affinity/spread construct exists anywhere in docs/design/, and the 'System jobs' and 'Raw exec / Java / QEMU' rows carry no design-doc or issue anchor while no design text covers per-node/system workloads or raw-exec at all.
 - **Evidence:** `docs/competitors/nomad.md:190` · `docs/competitors/nomad.md:174` · `docs/competitors/nomad.md:178` · `docs/design/platform-engineering.md:50` · `docs/design/control-plane.md:227`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-671](https://linear.app/quickdeploy-ai/issue/HOBO-671) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -434,7 +434,7 @@ Checklist (run from C:/src/hobo):
 
 - **Finding** (cand-06, P2, MED, votes uphold/uphold/uphold): The `hobo dev` inner-loop mechanics (hot reload, codegen-in-watch, sub-minute boot) are specified only in TypeScript terms; how a non-TS wasm component (Rust/Python/Go/C#) or an OCI-container-fallback service participates in the local dev loop (watch-recompile path, state-preserving reload, per-idiom-layer codegen, whether fallback containers run locally at all) is nowhere specified, despite the Aspire parity tracker marking 'DCP -> local runtime-local host / dev loop' as designed-at-parity.
 - **Evidence:** `docs/design/developer-experience.md#the-inner-loop-hobo-dev` · `docs/design/cli-spec.md:22` · `docs/design/wasm-runtime-wit.md:19` · `docs/design/proofs/hobo-122-dev-loop/index.md` · `docs/competitors/aspire.md:465` · `docs/design/sdk-api.md:292`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-672](https://linear.app/quickdeploy-ai/issue/HOBO-672) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -495,7 +495,7 @@ Documentation-only: no `src/` changes, no watch tooling implemented, no new proo
 
 - **Finding** (cand-07, P2, MED, votes uphold/uphold/uphold): Aspire's local dashboard is a core DX pillar (per-resource logs/traces/metrics/env, resource graph, OTLP sink), but HoBo's local dashboard is specified as a single 'Local emulation (Nitric-style)' table row plus a 'local inspector' code comment — and the dashboard's stated architecture (Next.js web resource in the Yard Bindle, reading via the Gateway) has no defined serving mode for `hobo dev`, which runs with no Yard/Gateway; local telemetry views during dev are unspecified.
 - **Evidence:** `docs/design/developer-experience.md:22` · `docs/design/developer-experience.md:42` · `docs/design/developer-experience.md:49` · `docs/design/walkthrough.md:138` · `docs/design/deployment-dashboard-topology-explorer.md#scope-out-and-non-goals` · `docs/competitors/aspire.md:360-381`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-673](https://linear.app/quickdeploy-ai/issue/HOBO-673) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -547,7 +547,7 @@ Documentation-only — no code, no dashboard implementation, no CLI changes (cli
 
 - **Finding** (cand-08, P2, MED, votes uphold/uphold/uphold): Local-dev behavior for non-HoBo dependencies is unspecified: an `external`/adopted resource (the promoted brownfield strangler-fig path) has no stated `hobo dev` semantics (connect to the real endpoint, mock from contract, or fail), and `addContainer(...)` workloads are specified for wiring/building but not for whether hobo dev actually runs them locally — exactly Aspire's local-orchestration strength (AddContainer/ExternalService/AddConnectionString).
 - **Evidence:** `docs/design/adr/07-portability-extensibility.md#adr-0041` · `docs/design/developer-experience.md:158` · `docs/design/authoring-resources-wiring.md:146-159` · `docs/design/adr/07-portability-extensibility.md:195` · `docs/competitors/aspire.md:84-93`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-674](https://linear.app/quickdeploy-ai/issue/HOBO-674) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -606,7 +606,7 @@ Cross-links that must be updated (no index/hub files gain links since no files a
 
 - **Finding** (cand-09, P3, MED, votes uphold/uphold/uphold): The catalog's `data()` resource — HoBo's replacement for Nitric's `sql`/kv-paradigm building blocks (ADR-0052) — imports a `hobo:data` WIT port that is never defined in Plan 20's self-described 'canonical port catalog'; Plan 20 instead still lists the superseded `sql` resource over `wasi:sql`(+`hobo:sql`), and ADR-level proofs use a third name (`hobo:database/postgres`), so the resource->WIT-port spine for the data block is inconsistent and undefined at its most important row.
 - **Evidence:** `docs/design/authoring-resources-wiring.md:43` · `docs/design/authoring-resources-wiring.md:72` · `docs/design/authoring-resources-wiring.md:168` · `docs/design/wasm-runtime-wit.md:128` · `docs/design/wasm-runtime-wit.md:150` · `docs/design/adr/03-data-plane.md:461`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-675](https://linear.app/quickdeploy-ai/issue/HOBO-675) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -667,7 +667,7 @@ Documentation-level only — no code, no WIT files, nothing under src/draft chan
 
 - **Finding** (cand-10, P3, MED, votes uphold/uphold/uphold): The Nitric parity tables claim 'secret (versioned)' parity backed by `wasi:config`/`hobo:secrets`, but `hobo:secrets` is not defined in the canonical interface catalog and no secret-versioning semantics (Nitric's put->version, access latest/specific version) exist anywhere in the design suite — the secret resource has only `put`/`access` verbs with no version model.
 - **Evidence:** `docs/competitors/nitric.md:311` · `docs/design/authoring-resources-wiring.md:42` · `docs/design/authoring-resources-wiring.md:225` · `docs/design/wasm-runtime-wit.md:151`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-676](https://linear.app/quickdeploy-ai/issue/HOBO-676) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -717,7 +717,7 @@ Documentation-level only: no .wit files, no code under src/, no changes to .agen
 
 - **Finding** (cand-11, P3, MED, votes uphold/uphold/uphold): The api resource's `.allow()` column says 'route-level security' (its only verb model) and nitric.md claims parity, but no design text specifies the per-route security authoring surface — Nitric's oidcRule/securityRule-per-route and middleware equivalents are unspecified, and the referenced `hobo:http` extension port is likewise undefined in the canonical interface catalog.
 - **Evidence:** `docs/design/authoring-resources-wiring.md:37` · `docs/design/authoring-resources-wiring.md:65` · `docs/competitors/nitric.md:146` · `docs/competitors/nitric.md:306`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-677](https://linear.app/quickdeploy-ai/issue/HOBO-677) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -767,7 +767,7 @@ Documentation-level only: no code, no .wit files, no schema/scripts changes. Nev
 
 - **Finding** (cand-12, P4, MED, votes uphold/uphold/uphold): The design's own FinX surface and FinOps Framework baseline promise 'forecasts, anomaly signals, commitments, and optimization recommendations', but no design doc specifies how cost anomalies/trends/forecasts are detected or computed, no cost-anomaly/forecast event family exists (event-families.md has only credit.*/meter.*/spend.*), and 'rightsizing' appears nowhere in the repo; the only cost-reactive mechanisms are threshold breakers.
 - **Evidence:** `docs/design/finops-budget-routing-control-plane.md:128` · `docs/design/finops-budget-routing-control-plane.md:51` · `docs/design/event-families.md:77` · `docs/design/reliability-observability-cost.md:238` · `docs/design/operators-sre.md:121`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-678](https://linear.app/quickdeploy-ai/issue/HOBO-678) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -817,7 +817,7 @@ Documentation-level only: touch nothing outside docs/design/. Do not create new 
 
 - **Finding** (cand-13, P4, MED, votes uphold/uphold/uphold): The ADR-0054 Crew roster (SRE, Endpoint Monitor, GitOps, Platform Engineer, UX Designer, SWE) contains no FinOps/cost-optimization operator, and the FinX advisory outputs (forecasts, anomaly signals, commitments, optimization recommendations) plus the 'commitment optimization' advisory have no named owner — a hole at the intersection of the FinOps and agent-native pillars.
 - **Evidence:** `docs/design/adr/03-data-plane.md:230` · `docs/design/operators-sre.md:46` · `docs/design/finops-budget-routing-control-plane.md:128` · `docs/design/reliability-observability-cost.md:240` · `docs/design/usage-metering.md:35`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-679](https://linear.app/quickdeploy-ai/issue/HOBO-679) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -869,7 +869,7 @@ Documentation-only — no code, no `src/` changes. The FinOps operator is strict
 
 - **Finding** (cand-17, L-DRIFT, MED, votes uphold/uphold/uphold, drift-class deliberate-undocumented): ADR-0063 states there is 'no version ladder and no deferred-feature bucket in the design' and that delivery phasing is archived, yet docs/design/ now runs a full phased v1 release program (~90 Productization M0/M1 index rows, beta/RC/GA go-no-go gates, a self-described 'M0 traceability gate', known-limitations deferred/post-ga states, v1 critical-path blockers) whose M0-M4 taxonomy is defined only in docs/implementation-plan.md — ADR-0063 was never amended and no ADR records the productization-category/phase-gate decision or maps the archived stages 0-6 to M0-M4.
 - **Evidence:** `docs/design/adr/07-portability-extensibility.md:277-282` · `docs/design/index.md:28-112` · `docs/design/go-no-go-decision-record.md:36-95` · `docs/implementation-plan.md:117` · `docs/design/traceability.md:10` · `docs/design/known-limitations-register.md:35-36`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-680](https://linear.app/quickdeploy-ai/issue/HOBO-680) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -915,7 +915,7 @@ Do not renumber, retitle, or rewrite any existing ADR — ADR-0063 gets only the
 
 - **Finding** (cand-18, L-CONS, MED, votes uphold/uphold/uphold): Vision.md declares HoBo 'competes head-on with Convex, Lakebed, and Nitric' three times, borrows from Lakebed, and design/index.md carries a whole 'Competitive frame vs Lakebed' table — but no Lakebed capture exists in docs/competitors/ (which promises 'faithful captures'), it is absent from competitors/index.md and even from its future-competitor backlog list; Lakebed appears only in passing in encore.md and gap-analysis.md.
 - **Evidence:** `docs/design/vision.md:14` · `docs/design/vision.md:43` · `docs/design/index.md:136-144` · `docs/competitors/index.md:5-23` · `docs/competitors/gap-analysis.md:10`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-681](https://linear.app/quickdeploy-ai/issue/HOBO-681) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1001,7 +1001,7 @@ CROSS-LINK BOOKKEEPING: if `GAPS.md` carries a cand-18 row in its Gap register /
 
 - **Finding** (cand-19, P1, LOW, votes uphold/uphold/uphold, drift-class silent): platform-engineering.md still says 'multi-Yard federation (multi-region/regulatory) is out of scope (Q20)' citing a dangling anchor (generated-stack.md contains no Q20/open-questions text), contradicting ADR-0043 which fully designs multi-Yard federation (the Junction) and control-plane.md which says an air-gapped Yard 'may stand alone or join a Junction'.
 - **Evidence:** `docs/design/platform-engineering.md:229` · `docs/design/adr/07-portability-extensibility.md#adr-0043` · `docs/design/control-plane.md:93` · `docs/design/data-plane.md:601`
-- **Effort:** S · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** S · **Delivery:** [HOBO-682](https://linear.app/quickdeploy-ai/issue/HOBO-682) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1040,7 +1040,7 @@ Do NOT edit any file under docs/design/adr/ — ADR-0036 and ADR-0043 are alread
 
 - **Finding** (cand-20, P3, LOW, votes uphold/uphold/uphold, drift-class silent): nitric.md's HoBo-mapping layer has drifted from the current design: it maps `nitric up/down` -> `hobo deploy/destroy` and `nitric run` -> `hobo dev --containers` (the design collapsed to `hobo up/down` and defines no --containers flag), names the schedule port `hobo:schedule` vs the design's `hobo:scheduler`, and its 'Open parity items' still lists the WebSocket WIT shape and sql-migrations as open although ADR-0075 and ADR-0032/Plan 32 resolved them.
 - **Evidence:** `docs/competitors/nitric.md:313` · `docs/competitors/nitric.md:336` · `docs/competitors/nitric.md:355` · `docs/design/developer-experience.md:71` · `docs/design/wasm-runtime-wit.md:201` · `docs/design/authoring-resources-wiring.md:127`
-- **Effort:** S · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** S · **Delivery:** [HOBO-683](https://linear.app/quickdeploy-ai/issue/HOBO-683) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1106,7 +1106,7 @@ Cross-links to update: none in hub/index files — no files are created; docs/co
 
 - **Finding** (cand-22, P4, LOW, votes uphold/uphold/uphold): FinOps has zero dedicated research notes despite normative adoption: ADR-0039 §3 models showback on OpenCost and the control-plane doc baselines FOCUS 1.4/FinOps Framework, yet docs/standards/ has a note for every other adopted standard (CloudEvents, OCSF, OpenSLO, OpenFeature...) but none for FOCUS/OpenCost, and docs/competitors/ has no FinOps-market entry (Kubecost, Infracost, Vantage, Cast.ai).
 - **Evidence:** `docs/design/adr/02-identity-security.md:282` · `docs/design/finops-budget-routing-control-plane.md:108` · `docs/standards/index.md` · `docs/competitors/index.md` · `docs/competitors/antimetal.md:173`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-684](https://linear.app/quickdeploy-ai/issue/HOBO-684) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1156,7 +1156,7 @@ Documentation-only: create/amend the six listed files, nothing else. Do NOT crea
 
 - **Finding** (cand-25, P5, LOW, votes uphold/uphold/uphold): Capability Manifest prose (signs.md / llms.txt) is designed to be read by agents at discovery time, yet the ADR-0023 §3 untrusted-material/sanitization rule is scoped only to generation-pipeline inputs and the Plan 12 threat table's injection row covers only generation-pipeline plugins — manifest prose consumed by operating/planning agents is never classified as untrusted input in the design suite (the broader prompt-injection candidate is otherwise refuted by tool contracts, the MCP hardening proof, and enforced guardrails).
 - **Evidence:** `docs/design/ai-native-agent-auth.md:35` · `docs/design/ai-native-agent-auth.md:78` · `docs/design/adr/02-identity-security.md:37` · `docs/design/security-networking.md:30` · `docs/design/generated-stack.md:177`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-685](https://linear.app/quickdeploy-ai/issue/HOBO-685) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1199,7 +1199,7 @@ No index/hub updates needed: no new files are created, so `docs/design/index.md`
 
 - **Finding** (cand-26, L-DRIFT, LOW, votes uphold/uphold/uphold, drift-class deliberate-undocumented): The design-suite scope statement (index.md: 'The whole suite is one scope — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line (ADR-0063/ADR-0064)') is stale: the same index now lists monetization-adjacent commercial records (billing, tax, invoicing evidence, payout hooks) and a phased launch program, so the stated bound no longer describes the suite's contents.
 - **Evidence:** `docs/design/index.md:120` · `docs/design/index.md:53-57` · `docs/design/index.md:66-67` · `docs/design/adr/07-portability-extensibility.md:294`
-- **Effort:** S · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** S · **Delivery:** [HOBO-686](https://linear.app/quickdeploy-ai/issue/HOBO-686) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1248,7 +1248,7 @@ Cross-links to update: none gained elsewhere — the edit is inside the design-s
 
 - **Finding** (cand-27, L-CONS, LOW, votes uphold/uphold/refute, drift-class silent): gap-analysis.md's traceability anchors have rotted: matrix and §C rows cite numbered open questions (Q3/Q10/Q12/Q15-Q20/Q21-Q23, '09 §15-20') linking to generated-stack.md#plan-09, but the current Plan 9 'Open design questions' list is unnumbered and contains none of those IDs, and matrix rows retain partial/missing markers for capabilities the same doc later records as closed (only §2 is explicitly labeled historical).
 - **Evidence:** `docs/competitors/gap-analysis.md:31` · `docs/competitors/gap-analysis.md:34` · `docs/competitors/gap-analysis.md:72` · `docs/competitors/gap-analysis.md:138` · `docs/design/generated-stack.md:352`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-687](https://linear.app/quickdeploy-ai/issue/HOBO-687) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1305,7 +1305,7 @@ Documentation-only; no code, no requirement changes, and the Nomad→wasmCloud p
 
 - **Finding** (cand-28, L-CONS, LOW, votes uphold/uphold/uphold): docs/plans/ is still missing from docs/index.md's directory map (commit 59e387ae touched only README.md, GAPS.md, and implementation-plan.md), and docs/plans/index.md is not a directory listing at all but a stale review-findings doc referencing removed paths, violating the stated OKF convention that index.md files provide directory listings.
 - **Evidence:** `docs/index.md:18-27` · `docs/plans/index.md:3` · `docs/plans/index.md:54-55` · `CLAUDE.md`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-688](https://linear.app/quickdeploy-ai/issue/HOBO-688) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1355,7 +1355,7 @@ Do not delete or summarize the review-findings content — move it verbatim (onl
 
 - **Finding** (cand-29, L-CONS, LOW, votes uphold/uphold/uphold): The requirements suite and roadmap were moved under docs/archive/ without rewriting relative links: every ../design/* link in docs/archive/requirements/*.md resolves to the nonexistent docs/archive/design/, and both docs also reference design files that no longer exist under any path (adr/08-scope-and-requirements.md, forge-generated-stack.md, roadmap.md#plan-08, per-stage anchors), so intent->requirements->design tracing misroutes at every hop.
 - **Evidence:** `docs/archive/requirements/index.md:20-39` · `docs/archive/requirements/requirements.md:25-35` · `docs/archive/roadmap.md:22` · `docs/design/adr/index.md:10-14`
-- **Effort:** M · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** M · **Delivery:** [HOBO-689](https://linear.app/quickdeploy-ai/issue/HOBO-689) (Intent-Alignment Gap Remediation project)
 
 **Action**
 
@@ -1413,7 +1413,7 @@ Documentation-only: touch nothing outside docs/archive/requirements/index.md, do
 
 - **Finding** (cand-30, L-CONS, LOW, votes uphold/uphold/uphold): The canonical glossary — declared the single source of truth for canonical term definitions — omits the FinOps control plane's coined vocabulary (ResourceIntent, metric contract, MetricVector, ParetoFrontier, decision graph, DX/OpsX/FinX surfaces) and the ubiquitous 'Crew' alias, even though newer Meta-cloud Broker terms were added, showing the maintenance path exists but skipped the FinOps delta.
 - **Evidence:** `docs/design/glossary.md:10-14` · `docs/design/finops-budget-routing-control-plane.md:51-83` · `docs/design/glossary.md:49-62` · `docs/design/index.md:24`
-- **Effort:** S · **Delivery:** Linear issue pending (intent-alignment remediation project)
+- **Effort:** S · **Delivery:** [HOBO-690](https://linear.app/quickdeploy-ai/issue/HOBO-690) (Intent-Alignment Gap Remediation project)
 
 **Action**
 

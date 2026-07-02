@@ -58,6 +58,5 @@ export function assertCrewMcpAutonomyLimitationRegistered(): ParsedCrewMcpAutono
       userVisibleImpact: contractRow.userVisibleImpact,
       launchMessagingDisposition: contractRow.launchMessagingDisposition,
     },
-    [parsedCrewMcpAutonomyLimitationBrand]: "ParsedCrewMcpAutonomyLimitation",
-  };
+  } as ParsedCrewMcpAutonomyLimitation;
 }

@@ -61,7 +61,7 @@ in the history of commit `d7bbc39c`.
 - **Raw → merged → verdicts (run B):** 54 raw findings → 30 candidates (22 more pre-rejected by their own lens) → **25 confirmed** / 5 refuted
 - **New findings:** DRIFT-001, DRIFT-002, DRIFT-003, DRIFT-004, DRIFT-005, DRIFT-006, DRIFT-007, DRIFT-008, GAP-001, GAP-002, GAP-003, GAP-004, GAP-005, GAP-006, GAP-007, GAP-008, GAP-009, GAP-010, GAP-011, GAP-012, GAP-013, GAP-014, GAP-015, GAP-016, GAP-017
 - **Rejected:** NI-001…NI-027
-- **Stop rule:** open — iteration 2 (completeness critic + informed re-sweep + evidence audit) required before closure
+- **Stop rule:** open — iteration 2 (completeness critic + informed re-sweep + evidence audit) required before closure. The iteration loop is itself documented as executable Linear work: [HOBO-691](https://linear.app/quickdeploy-ai/issue/HOBO-691) (iteration 2) → [HOBO-692](https://linear.app/quickdeploy-ai/issue/HOBO-692) (closure sweeps until dry)
 
 ## Gap register
 
@@ -1508,4 +1508,4 @@ MED = present but under-specified for its stated build stage · LOW = hygiene/tr
 `docs/archive/requirements/requirements.md` for covering text. Deliberate deferrals are
 classified 📘 deliberate-documented, not gaps.
 
-**Stop rule:** minimum two iterations; the review closes when an iteration confirms zero new findings.
+**Stop rule:** minimum two iterations; the review closes when an iteration confirms zero new findings. Iterations are Linear-documented work items in the Intent-Alignment Gap Remediation project (milestone "Review iterations (engine)": [HOBO-691](https://linear.app/quickdeploy-ai/issue/HOBO-691), [HOBO-692](https://linear.app/quickdeploy-ai/issue/HOBO-692)) so any agent can run the next iteration from the issue alone.

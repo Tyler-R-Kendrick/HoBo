@@ -315,9 +315,11 @@ truth**; this doc remains the durable mirror. Identifier map:
 
 Issue titles are prefixed with their stage key (`S0-01: …`, `REM-004: …`); dependencies are wired as
 Linear blocking relations; every issue carries the `production-build` or `intent-alignment` label.
-S0/S1 and each stage M0 carry full QA-verified one-shot bodies; S2–S6 skeletons are blocked by their
-stage M0 per the post-core delta pattern. Remediation issues point at root `GAPS.md` REM entries as
-their executable spec.
+S0/S1 and each stage M0 carry full QA-verified one-shot bodies; S2–S6 slices carry full
+build-instruction bodies (upgraded in place 2026-07-02) and are blocked by their stage M0, whose
+pinned handoff comment requires sharpening each slice body into a full one-shot checklist before
+the M0 closes. Remediation issues point at root `GAPS.md` REM entries as their executable spec;
+the review-iteration loop itself is Linear work (HOBO-691/HOBO-692).
 
 ## Appendix — full one-shot bodies (import-ready)
 

@@ -13,7 +13,9 @@ This proof backs the M0 productionization record for
 ## Branch Evidence
 
 - Issue: HOBO-616 (S2-01)
-- Promoted epic proofs (read-only; deterministic/mocked):
+- Promoted epic proofs (deterministic/mocked). Their proof logic and fixtures stay read-only for
+  S2-01; the local `simulate` package scripts run through the same `tsx` loader as their tests so
+  the documented `npm --prefix ... run simulate` gates resolve TypeScript sources on Node 24.
 
 | Draft package | Focused gate |
 |---|---|

@@ -392,6 +392,8 @@ importers:
 
   src/draft/exp-proofs/example-apps-scope-acceptance: {}
 
+  src/draft/exp-proofs/full-dashboard-projection-views-contract: {}
+
   src/draft/exp-proofs/gitops-ci-journey-contract: {}
 
   src/draft/exp-proofs/hosted-broker-ga-handoff-evidence-contract: {}

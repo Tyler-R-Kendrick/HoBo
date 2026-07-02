@@ -39,3 +39,8 @@ Classifier rejects production `apps/dashboard` runtime, live Gateway streams, an
 ```bash
 pnpm --prefix src/draft/exp-proofs/full-dashboard-projection-views-contract test
 ```
+
+## Maintenance
+
+`pnpm-lock.yaml` registers `src/draft/exp-proofs/full-dashboard-projection-views-contract`
+as a workspace importer so frozen-lockfile CI includes the proof package after merge.

@@ -92,6 +92,26 @@ test("Given the Cloudflare provider manifest When ingested through well-known Th
   assert.notEqual(planner.providers().indexOf("provider-cloudflare"), -1);
 });
 
+test("Given a tampered document digest When ingest runs Then verification fails closed", () => {
+  const registry = createCapabilityRegistry();
+  const documents = { ...buildFixtureWellKnownBundle() };
+  const capabilitiesPath = `${WELL_KNOWN_PREFIX}capabilities.json`;
+  const capabilitiesDoc = JSON.parse(documents[capabilitiesPath]);
+  capabilitiesDoc.capabilities[0].features.push("tampered-feature");
+  documents[capabilitiesPath] = `${JSON.stringify(capabilitiesDoc, null, 2)}\n`;
+
+  assert.throws(
+    () =>
+      registry.ingestWellKnown({
+        documents,
+        conformance: createFixtureProvider().conformanceReport,
+        servedRegions: ["us-east-1", "us-west-2"],
+      }),
+    /document digest mismatch/,
+  );
+  assert.equal(registry.events().length, 0);
+});
+
 test("Given a tampered index signature When ingest runs Then verification fails closed", () => {
   const registry = createCapabilityRegistry();
   const documents = { ...buildFixtureWellKnownBundle() };

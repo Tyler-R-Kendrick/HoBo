@@ -408,14 +408,15 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0114 | [identity-security](./adr/02-identity-security.md#adr-0114) | Route-level API security authoring surface, `hobo:http` extension catalog entry, manifest IR per-route `security` lowering, and local-dev enforcement parity are documented in Plan 21 and the identity-security ADR. | HOBO-677 |
 | ADR-0115 | [identity-security](./adr/02-identity-security.md#adr-0115) | Cost anomaly detection, forecasting, and rightsizing/commitment recommendations are deterministic MeteringView projections emitting advisory cost.* facts; recommendations are gated Crew proposals, never auto-applied; enforcement remains with ADR-0039 breakers/tiers. | HOBO-678 |
 | ADR-0116 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0116) | The productization document category and M0→M4 phase-gate model are a recorded design decision; M0-acceptance-blocks-M1–M4 is proven by the HOBO-521 M0 acceptance record and enforced by this traceability gate. | HOBO-521, HOBO-11, HOBO-680 |
+| ADR-0117 | [data-plane](./adr/03-data-plane.md#adr-0117) | FinOps operator owns FinX advisory outputs and commitment optimization off the deterministic Matching/Dispatcher path; writes are gated Deltas/PRs. | HOBO-679 |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 105 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 106 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0116`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+- Explicit numbering gaps through `ADR-0117`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
   ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.

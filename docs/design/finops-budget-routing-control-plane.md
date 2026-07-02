@@ -159,7 +159,8 @@ The FinX forecasts, anomaly signals, and optimization recommendations are the ad
 `cost.ForecastUpdated`, `cost.AnomalyDetected`, and `cost.RecommendationIssued` facts computed by
 the FinOps advisory plane ([Plan 5](./reliability-observability-cost.md#plan-05),
 [ADR-0115](./adr/02-identity-security.md#adr-0115)); FinX reads them alongside the `DecisionGraph`
-rather than inventing a separate computation.
+rather than inventing a separate computation. The FinX outputs are owned and actioned by the
+**FinOps Crew operator** ([Plan 40](./operators-sre.md#plan-40), [ADR-0117](./adr/03-data-plane.md#adr-0117)), advisory-only; writes are gated.
 
 ## Scope Boundaries
 

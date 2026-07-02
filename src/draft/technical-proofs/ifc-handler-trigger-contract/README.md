@@ -27,3 +27,11 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Ifc Handler Trigger Contract.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+
+## Testing
+
+Run `pnpm --filter @hobo/draft-ifc-handler-trigger-contract test` (Vitest,
+followed by `tsc --noEmit -p tsconfig.types.json`). The handle/context types are
+generic over their bindings, so `test/type-consumer.ts` can assert that
+`ctx.bindings.<alias>` resolves to the correct per-resource client type and that
+misuse (`.get` on a non-API handle, missing bindings) fails at compile time.

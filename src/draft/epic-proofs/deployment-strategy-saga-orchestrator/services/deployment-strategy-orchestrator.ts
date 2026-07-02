@@ -12,21 +12,12 @@ import {
   evaluateRolloutMetricGate,
   replayMetricGateEvents,
 } from "../../../technical-proofs/slo-gated-rollback-analysis-contract/src/slo-gated-rollback-analysis.js";
-import {
-  loadScenarioFixture as loadHarnessFixture,
-} from "../../progressive-delivery-harness/src/harness-reference.js";
-
 const FIXTURE_URL = new URL("../simulation/fixtures/multi-cloud-shop-deploy-fixture.json", import.meta.url);
 
 export const STRATEGY_KINDS = Object.freeze(["recreate", "blue-green", "canary", "progressive"]);
 
 export async function loadDeployFixture(url = FIXTURE_URL) {
   return JSON.parse(await readFile(url, "utf8"));
-}
-
-export async function loadHarnessScenarios() {
-  const fixture = await loadHarnessFixture();
-  return fixture.scenarios;
 }
 
 export function selectStrategyForService(serviceConfig) {

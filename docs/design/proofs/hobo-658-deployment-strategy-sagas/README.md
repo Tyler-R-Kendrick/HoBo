@@ -20,10 +20,22 @@ Executable POC:
 | Health-gated promotion from data-plane + provider signals | `health-gates promotion from data-plane and provider health signals` |
 | Golden-suite failure adversarial guard | `rolls back on golden-suite failure adversarial case` |
 
+## Adversarial Mapping
+
+| Adversarial case | Executable proof |
+|---|---|
+| Provider health unhealthy | `health-gates promotion from data-plane and provider health signals` (rolled-back) |
+| Golden-suite failure | `rolls back on golden-suite failure adversarial case` |
+| Seeded canary SLO burn regression | `auto-rolls back seeded canary regression on multi-cloud-shop with event-sourced decision` |
+
 ## Verify
 
 ```bash
 pnpm --prefix src/draft/epic-proofs/deployment-strategy-saga-orchestrator test
 ```
 
-Production target remains `packages/cloud/src/orchestrator/` after S6-01 acceptance record merges.
+## Maintenance Note
+
+2026-07-02: Draft POC on branch `cursor/hobo-658-hobo-agent-workflow-d6d4`; S6-01 M0 acceptance
+record (HOBO-656) merged — production promotion to `packages/cloud/src/orchestrator/` remains
+follow-up per stage-6 acceptance scope.

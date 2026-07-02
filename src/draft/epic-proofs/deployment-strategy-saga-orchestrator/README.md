@@ -4,8 +4,8 @@ Epic-scoped draft POC for S6-03: per-service deployment strategy sagas
 (recreate, blue-green, canary, progressive) with health-gated promotion and
 S6-01 auto-rollback decision wiring.
 
-Production target: `packages/cloud/src/orchestrator/` (blocked on S6-01 acceptance
-record). This package promotes harness fixtures from
+Production target: `packages/cloud/src/orchestrator/` (S6-01 acceptance record merged).
+This package promotes harness fixtures from
 `src/draft/epic-proofs/progressive-delivery-harness/` and composes the existing
 `deployment-strategy-saga-templates-contract` + `slo-gated-rollback-analysis-contract`
 proofs without live providers.

@@ -105,7 +105,7 @@ Two more boxes on the map:
 **Invariant addendum.** A deployed component reaches a backend **only via a link the manifest declared** — deny-by-default capability security extends invariant #2 from the executor to the running data plane ([Plan 12](./security-networking.md#plan-12)).
 
 ### Monorepo & package architecture
-The architecture above is realized as a layered monorepo. **Tooling:** pnpm workspaces + Turborepo; TypeScript (strict, `nodenext`); `tsup`/`unbuild` for builds; Vitest; Biome; Changesets for versioned publishing.
+The architecture above is realized as a layered monorepo. **Tooling (current):** pnpm workspaces + Turborepo (strict env, honest task graph, single root TypeScript via `tsc` builds); Vitest for `packages/*`; Biome for `packages/*` lint. **Tooling (target):** `tsup`/`unbuild` bundled builds, Vitest and Biome repo-wide, and Changesets for versioned publishing land as packages become publishable.
 
 #### Layering & dependency rule
 Packages are layered; dependencies point **inward only** (`apps → adapters → sdk/runtime → core`). `@hobo/core` depends on nothing HoBo. This keeps adapters swappable and prevents the agnostic core from leaking provider details.

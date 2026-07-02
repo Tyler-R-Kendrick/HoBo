@@ -5,7 +5,10 @@ description: Use when creating, moving, reviewing, or planning HoBo draft proof 
 
 # Draft
 
-Use this skill for HoBo draft proof work. The old one-level draft layout is obsolete. All draft work belongs under one taxonomy path:
+Use this skill for HoBo draft proof work. Drafts iterate, roll up, and refine requirements;
+real implementations land under `packages/` via lift-and-leave promotion (never grown in place
+from a draft). The old one-level draft layout is obsolete. All draft work belongs under one
+taxonomy path:
 
 - `src/draft/technical-proofs/<slug>`
 - `src/draft/exp-proofs/<type>/<slug>`

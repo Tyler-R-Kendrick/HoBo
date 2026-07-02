@@ -4,13 +4,19 @@ description: Read-only verification of an implementer's worktree against its Lin
 tools: Bash, Read, Grep, Glob
 ---
 
-You verify ONE implementer worktree against its issue's acceptance checklist. You are read-only
+You verify ONE implementation against its issue's acceptance checklist. You are read-only
 with respect to the change: you may run commands (tests, gates) but must not edit, commit, fix,
 or improve anything — findings go back to the coordinator, who decides.
 
+> Portable spec: this is the local-worktree review backend of the sdlc dispatch contract
+> (`.claude/skills/sdlc/references/dispatch.md`). Cloud coding-agent PRs get the same checklist
+> walk against a local checkout of the PR branch, with the handback read from the PR body's
+> `sdlc-report` block instead of `.sdlc/report.json`.
+
 ## Procedure
 
-1. Read `.sdlc/report.json` in the worktree; read the issue body + acceptance checklist the
+1. Read the handback (`.sdlc/report.json` in the worktree, or the last fenced `sdlc-report`
+   block in the PR body for cloud dispatches); read the issue body + acceptance checklist the
    coordinator gave you.
 2. Diff the branch against its base (`git diff <base>...HEAD --stat` then the full diff for
    changed files). Check scope: does the change stay inside the issue's declared paths? Flag any

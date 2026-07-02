@@ -1,5 +1,10 @@
 # Draft package instructions
 
+Drafts iterate, roll up, and refine requirements — they are proof material, not the product.
+Real implementations land as monorepo packages under `packages/` via lift-and-leave promotion
+(with `reference-implementation.yaml` provenance back to the proof). Do not grow a draft into a
+production implementation in place.
+
 Run package-scoped checks first. For source or contract proof edits under one draft package, prefer:
 
 ```bash

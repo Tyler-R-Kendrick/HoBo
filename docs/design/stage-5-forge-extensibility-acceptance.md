@@ -236,13 +236,10 @@ Stage 4; HA/FinOps/Registry distribution productionization remains Stage 6.
 |---|---|---|---|
 | Conformance coverage + coverage report gate | S5-02 ([HOBO-647](https://linear.app/quickdeploy-ai/issue/HOBO-647)) | `packages/conformance/` | This record accepted |
 | Forge ingestion → candidate scaffold | S5-03 ([HOBO-648](https://linear.app/quickdeploy-ai/issue/HOBO-648)) | `packages/forge/` | This record accepted |
-| Forge validate/repair/certify + `hobo forge` CLI | S5-04 | `packages/forge/` | This record accepted |
-| Eval rubrics, thresholds, champion/challenger | S5-05 | `packages/evals/` | This record accepted |
-| Internal `training-engine` implementation | S5-06 | `packages/training/` | This record accepted |
-| `stub()` boundary modes + trace recording | S5-07 | `packages/runtime/` | This record accepted |
-| Registry certification + install verification | S5-08 | `packages/registry/` | This record accepted |
-| Sandbox hardening (no-egress, capability deny-by-default) | S5-09 | `packages/forge/`, `packages/conformance/` | This record accepted |
-| Gated live-fix saga + failing-trace retention | S5-10 | `packages/forge/`, `packages/runtime/` | This record accepted |
-
-S5-04..S5-10 are planned skeleton issues in the *Build S5: Forge & Extensibility* project; titles
-finalize when those issues are filed. Until then, this table is the authoritative lane→issue map.
+| Forge sandbox validate + bounded repair cycle | S5-04 ([HOBO-649](https://linear.app/quickdeploy-ai/issue/HOBO-649)) | `packages/forge/` | This record accepted |
+| Signing, SLSA provenance + Registry certification | S5-05 ([HOBO-650](https://linear.app/quickdeploy-ai/issue/HOBO-650)) | `packages/registry/`, `packages/forge/` | This record accepted |
+| `stub()` recording typed stubs behind any WIT port | S5-06 ([HOBO-651](https://linear.app/quickdeploy-ai/issue/HOBO-651)) | `packages/runtime/` | This record accepted |
+| Stub → implementation generation from traces | S5-07 ([HOBO-652](https://linear.app/quickdeploy-ai/issue/HOBO-652)) | `packages/forge/`, `packages/runtime/` | This record accepted |
+| Eval rubrics, `use training` capture + promotion gates | S5-08 ([HOBO-653](https://linear.app/quickdeploy-ai/issue/HOBO-653)) | `packages/evals/`, `packages/training/` | This record accepted |
+| Gated live-fix loop (risk class, auto-canary, trace-to-test) | S5-09 ([HOBO-654](https://linear.app/quickdeploy-ai/issue/HOBO-654)) | `packages/forge/`, `packages/runtime/` | This record accepted |
+| Stage gate drill (`hobo forge`, stub promotion, live-fix) | S5-10 ([HOBO-655](https://linear.app/quickdeploy-ai/issue/HOBO-655)) | cross-cutting Stage-5 packages | This record accepted |

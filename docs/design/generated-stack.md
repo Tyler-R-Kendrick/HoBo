@@ -306,6 +306,10 @@ flowchart LR
 
 > **Runtime/IfC integration.** Conformance is now **per WIT interface** ([Plan 20](./wasm-runtime-wit.md#plan-20)) and is the gate for both human- and AI-generated **providers and implementations** ([Plan 23](#plan-23)). Add: a **stub/replay test** (run with stubs, then assert an AI-generated impl reproduces recorded traces + passes conformance) and an **IfC-collection test** (collected manifest matches a fixture).
 
+### Whole-graph in-process test harness (iteration hook)
+
+Aspire's `Aspire.Hosting.Testing` spins up the full AppHost graph in-process for integration tests (`DistributedApplicationTestingBuilder` → `BuildAsync` → `StartAsync` → `CreateHttpClient`). HoBo's Plan 09 pyramid already specifies per-port `@hobo/conformance`, boundary `mock`/`replay`, SDK+runtime integration, and cost-gated Yard E2E — but **no committed spec yet** for an Aspire-shaped harness that boots a collected Bindle topology in-process, randomizes ports, disables the dashboard, and exposes `GetResource` / HTTP client helpers across the whole graph. Tracked so the [Aspire HoBo-mapping tracker](../competitors/aspire.md#hobo-mapping) cannot mark this row ✅ until this hook graduates to a concrete harness contract ([GAP-026](../../GAPS.md), [HOBO-705](https://linear.app/quickdeploy-ai/issue/HOBO-705)).
+
 ### Testing strategy (the pyramid)
 1. **Unit** — pure functions (the Planner, upcasters, capability negotiation) tested in isolation. The Planner being pure ([Plan 4](./control-plane.md#plan-04)) makes provider-resolution fully unit-testable without a cloud.
 2. **Conformance (contract) tests** — `@hobo/conformance` is the centerpiece (below).

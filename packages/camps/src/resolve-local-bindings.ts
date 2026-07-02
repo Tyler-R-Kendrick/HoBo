@@ -1,0 +1,67 @@
+import { createHash } from "node:crypto";
+
+import type { BindingResolverPort } from "@hobo/core";
+import { parseResourceId } from "@hobo/core";
+import { LAZY_TOKEN_PATTERN, type WiringManifest } from "@hobo/bindles/wiring";
+
+import type { Camp } from "./types.js";
+
+export class BindingResolutionError extends Error {
+	readonly path: string;
+
+	constructor(path: string, message: string) {
+		super(`${path}: ${message}`);
+		this.name = "BindingResolutionError";
+		this.path = path;
+	}
+}
+
+export type ResolvedEnv = Readonly<Record<string, string>>;
+
+export async function resolveLocalBindings(
+	manifest: WiringManifest,
+	camp: Camp,
+	resolver: BindingResolverPort,
+): Promise<ResolvedEnv> {
+	if (camp.providerId !== "local") {
+		throw new BindingResolutionError(
+			"camp.providerId",
+			`resolveLocalBindings requires local provider, got ${camp.providerId}`,
+		);
+	}
+
+	const env: Record<string, string> = {};
+	for (const resource of Object.values(manifest.resources)) {
+		for (const [key, value] of Object.entries(resource.env ?? {})) {
+			const match = LAZY_TOKEN_PATTERN.exec(value);
+			if (!match) {
+				env[key] = value;
+				continue;
+			}
+			const [, tokenResourceId, property] = match;
+			const binding = await resolver.resolve(parseResourceId(tokenResourceId!), property!);
+			env[key] = binding.value;
+		}
+	}
+
+	return Object.freeze(env);
+}
+
+export function canonicalManifestHash(manifest: WiringManifest): string {
+	const canonical = JSON.stringify(sortKeys(manifest));
+	return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
+}
+
+function sortKeys(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(sortKeys);
+	}
+	if (!value || typeof value !== "object") {
+		return value;
+	}
+	return Object.fromEntries(
+		Object.keys(value)
+			.sort()
+			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+	);
+}

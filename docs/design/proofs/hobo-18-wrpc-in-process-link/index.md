@@ -21,8 +21,3 @@ Run:
 ```powershell
 npm.cmd --prefix src\draft\technical-proofs\wrpc-in-process-link-contract test
 ```
-
-## Promotion note
-
-Promoted to `packages/runtimes/runtime-local` by S1-03 (HOBO-592). Draft POC retained at
-`src/draft/technical-proofs/wrpc-link-layer-contract`.

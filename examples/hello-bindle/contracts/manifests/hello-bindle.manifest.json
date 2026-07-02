@@ -1,62 +1,74 @@
 {
-  "componentHost": {
-    "kind": "wasmtime",
-    "version": "46.0.1"
-  },
+  "schema": "hobo.manifest/v1",
   "resources": {
-    "main": {
-      "bindings": {
-        "todos": {
-          "clientType": "KvClient",
-          "port": "wasi:keyvalue",
-          "resource": "todos"
-        }
-      },
-      "collection": {
-        "stableId": "api:main"
-      },
+    "db": {
+      "type": "data.v1",
+      "port": "hobo:data",
+      "paradigm": "relational",
+      "connectionString": "{db.connectionString}"
+    },
+    "api": {
+      "type": "component.v1",
+      "runtime": "wasm",
       "exports": [
         "wasi:http/incoming-handler"
       ],
-      "kind": "api",
       "links": [
         {
-          "import": "wasi:keyvalue",
-          "to": "todos"
+          "import": "hobo:data",
+          "to": "db"
         }
       ],
-      "routes": [
-        {
-          "method": "GET",
-          "path": "/todos/:id"
-        },
-        {
-          "method": "POST",
-          "path": "/todos"
-        }
-      ],
-      "runtime": "wasm",
-      "type": "component.v1"
-    },
-    "todos": {
-      "allow": [
-        "get",
-        "set"
-      ],
-      "collection": {
-        "stableId": "kv:todos"
+      "env": {
+        "ConnectionStrings__db": "{db.connectionString}"
       },
-      "kind": "kv",
-      "port": "wasi:keyvalue",
-      "type": "data.v1",
-      "usage": {
-        "inferred": [
-          "get",
-          "set"
-        ],
-        "source": "run-to-collect"
+      "bindings": {
+        "db": {
+          "port": "hobo:data",
+          "resource": "db",
+          "clientType": "DataClient"
+        }
+      },
+      "image": "oci://registry.example.com/hello-api@sha256:demo"
+    },
+    "worker": {
+      "type": "component.v1",
+      "runtime": "wasm",
+      "exports": [
+        "wasi:http/incoming-handler"
+      ],
+      "links": [
+        {
+          "import": "hobo:data",
+          "to": "db"
+        }
+      ],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "ConnectionStrings__db": "{db.connectionString}"
+      },
+      "bindings": {
+        "db": {
+          "port": "hobo:data",
+          "resource": "db",
+          "clientType": "DataClient"
+        }
+      },
+      "image": "ghcr.io/acme/hello-worker:1",
+      "build": {
+        "provider": "hobo:build",
+        "source": "ghcr.io/acme/hello-worker:1",
+        "defaultArtifact": "wasm-on-oci"
+      },
+      "endpoints": {
+        "http": {
+          "scheme": "http",
+          "port": 8080,
+          "targetPort": 8080,
+          "external": false,
+          "protocol": "tcp"
+        }
       }
     }
-  },
-  "schema": "hobo.manifest/v1"
+  }
 }

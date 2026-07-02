@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createResourceCatalog } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.js";
 import { validateControlPlaneEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.js";

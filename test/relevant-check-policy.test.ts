@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "vitest";
 
 import { findCaseCollisions } from "../scripts/check-case-collisions.js";
 import { selectRelevantChecks, type Check } from "../scripts/relevant-check-policy.js";

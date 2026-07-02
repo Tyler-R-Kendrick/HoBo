@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for champion/challenger shadow promotion with region-scoped persisted code mutation.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

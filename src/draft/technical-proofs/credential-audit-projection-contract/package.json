@@ -6,6 +6,6 @@
   "description": "POC for PLAN-05 CredentialAudit projection and NFR-018 never-compacted audit retention (HOBO-635).",
   "main": "./src/credential-audit-projection.ts",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts && npm run test:types",
+    "test": "vitest run --root . && npm run test:types",
     "test:types": "tsx scripts/write-type-fixture.ts && tsc --noEmit -p tsconfig.json"
   }
 }

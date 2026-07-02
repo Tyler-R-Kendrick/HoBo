@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
-import test from "node:test";
+import { test } from "vitest";
 
 import { denyRule } from "../../deny-ceiling-algebra-poc/src/deny-ceiling-algebra.js";
 import {

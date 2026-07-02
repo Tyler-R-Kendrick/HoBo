@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createSamplePlanFixture } from "../../hobo-plan-preview-contract/src/plan-preview.js";
 import { fixtureEvents } from "../../hobo-inspect-projection-contract/src/inspect-contract.js";

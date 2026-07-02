@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for the generation-pipeline IO contract and gen.* event family.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

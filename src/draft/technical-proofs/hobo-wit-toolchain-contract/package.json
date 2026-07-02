@@ -8,7 +8,7 @@
   "scripts": {
     "wit:gen": "tsx scripts/generate-bindings.ts",
     "wit:check": "tsx scripts/generate-bindings.ts --check",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   },
   "devDependencies": {
     "@bytecodealliance/jco": "1.24.3"

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { foldCrewStream } from "../../crew-event-contract/src/crew-event-contract.js";
 import { foldIncidentStream } from "../../incident-aggregate-contract/src/incident-aggregate.js";

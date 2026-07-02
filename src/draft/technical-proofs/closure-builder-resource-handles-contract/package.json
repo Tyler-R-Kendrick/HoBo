@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "compile:types": "tsc --noEmit --project tsconfig.json",
-    "test": "npm run compile:types && node --import tsx --test test/*.test.ts"
+    "test": "npm run compile:types && vitest run --root ."
   }
 }

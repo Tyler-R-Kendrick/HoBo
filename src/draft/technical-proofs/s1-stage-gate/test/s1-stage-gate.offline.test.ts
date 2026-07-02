@@ -3,7 +3,7 @@ import { mkdtemp } from "node:fs/promises";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   COLD_BOOT_BUDGET_MS,

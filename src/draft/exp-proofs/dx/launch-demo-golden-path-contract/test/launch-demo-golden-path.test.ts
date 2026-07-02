@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 const PROOF_MODES = ["live-product", "reference-fixture", "simulated-reference"];
 const REQUIRED_ASSETS = ["screenshots", "recording-manifest", "command-transcript", "fixture-data", "docs"];

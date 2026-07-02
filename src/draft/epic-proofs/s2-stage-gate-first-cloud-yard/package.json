@@ -9,7 +9,7 @@
     ".": "./src/s2-stage-gate-drill.ts"
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "vitest run --root .",
     "drill": "node --import tsx scripts/run-stage-gate-drill.ts"
   }
 }

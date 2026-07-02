@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { planJunctionConnectivity } from "../../junction-connectivity-plan-contract/src/junction-connectivity-plan.js";

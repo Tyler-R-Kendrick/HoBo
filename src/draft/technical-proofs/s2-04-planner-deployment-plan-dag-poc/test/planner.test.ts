@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { validateControlPlaneEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 import { canonicalManifestHash } from "../../hobo-manifest-contract/src/manifest.js";

@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -16,6 +16,12 @@ import {
 const tscPath = fileURLToPath(
   new URL("../../../../../node_modules/typescript/bin/tsc", import.meta.url)
 );
+
+// The generated stub's `npm test` is plain `node --test` over TypeScript
+// sources with tsc-style `.js` specifiers, so the harness must hand the
+// child a TypeScript loader explicitly; inheriting one from ambient
+// NODE_OPTIONS made this pass only in tsx-wrapped environments.
+const tsxLoaderUrl = new URL("../../../../../node_modules/tsx/dist/loader.mjs", import.meta.url).href;
 
 const expectedCreatedFiles = [
   ".gitignore",
@@ -193,7 +199,8 @@ function assertGeneratedProjectRuns(projectDir) {
   const result = spawnSync(command, args, {
     cwd: projectDir,
     encoding: "utf8",
-    shell: false
+    shell: false,
+    env: { ...process.env, NODE_OPTIONS: `--import ${tsxLoaderUrl}` }
   });
 
   assert.equal(

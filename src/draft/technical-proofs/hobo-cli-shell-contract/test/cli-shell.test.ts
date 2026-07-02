@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { CANONICAL_VERBS, createHoboCli, helpText, runHobo } from "../src/cli-shell.js";
 

@@ -10,6 +10,6 @@
   },
   "scripts": {
     "forge": "node --import tsx src/forge-cli.ts",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

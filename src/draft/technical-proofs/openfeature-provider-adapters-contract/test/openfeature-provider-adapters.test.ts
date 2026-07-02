@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createBuiltInFlagProvider } from "../../built-in-flag-store-contract/src/built-in-flag-store.js";
 import {

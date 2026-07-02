@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 const contract = await import("../src/dogfood-yard-m1-evidence.ts").catch(() => null);
 

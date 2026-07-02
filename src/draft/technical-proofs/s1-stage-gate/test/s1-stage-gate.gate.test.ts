@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { isValidGreenRecord } from "../src/record.js";
 import { runS1StageGateRecord } from "../src/stage-gate.js";

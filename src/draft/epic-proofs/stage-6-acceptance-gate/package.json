@@ -4,7 +4,7 @@
   "type": "module",
   "description": "HOBO-665: scripted Stage-6 acceptance drill for v1 GA readiness (HA, FinOps, UX, governance).",
   "scripts": {
-    "test": "node --import tsx --test tests/*.test.ts contracts/consumer/*.test.ts",
+    "test": "vitest run --root .",
     "simulate": "node --import tsx simulation/run-simulation.ts"
   }
 }

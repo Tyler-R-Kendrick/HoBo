@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strict as assert } from "node:assert";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 import { fileURLToPath } from "node:url";
 
 import { runComponentSmoke, validateWasmComponentArtifact } from "../../src/index.js";

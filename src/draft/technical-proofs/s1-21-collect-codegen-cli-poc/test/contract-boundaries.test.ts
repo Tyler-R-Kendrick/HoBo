@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "vitest";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const pactsDir = join(packageRoot, "contracts/pacts");

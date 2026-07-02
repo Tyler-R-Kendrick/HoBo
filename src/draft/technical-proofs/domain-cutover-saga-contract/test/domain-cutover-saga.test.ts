@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { realizeGateway } from "../../gateway-realization-contract/src/gateway-realization.js";
 import { gatewayPort, service } from "../../hobo-gateway-port/src/gateway-contract.js";

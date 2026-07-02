@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 
 import { validateEmission } from "../../hobo-realize-emission-contract/src/realize-emission-contract.js";
 import {

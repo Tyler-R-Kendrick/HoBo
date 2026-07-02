@@ -5,7 +5,7 @@
   "type": "module",
   "description": "POC for HOBO-632 durable agent() primitive: tools-as-steps, ctx.identity, ctx.token.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "vitest run --root .",
     "example": "node --import tsx examples/durable-agent/run.ts"
   }
 }

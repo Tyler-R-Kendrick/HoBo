@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { createHook, getWritable, sleep, step, testRuntime, workflow } from "../src/index.js";
 

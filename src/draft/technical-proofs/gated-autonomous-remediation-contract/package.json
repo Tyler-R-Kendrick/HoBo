@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for policy-gated SRE remediation application through live-fix canary rollback.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

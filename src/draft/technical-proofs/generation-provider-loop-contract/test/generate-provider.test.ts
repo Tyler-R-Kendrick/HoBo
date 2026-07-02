@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
-import test from "node:test";
+import { test } from "vitest";
 
 import { contentDigest } from "../../slsa-provenance-certification-contract/src/provenance.js";
 import { verifyCertificationRecord } from "../../generation-certify-stage-contract/src/certify-stage.js";

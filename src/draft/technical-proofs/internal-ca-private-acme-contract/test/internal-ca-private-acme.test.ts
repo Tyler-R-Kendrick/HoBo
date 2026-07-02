@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { assertNoStaticCertificateSecret } from "../../acme-dns01-cert-issuance-contract/src/acme-dns01-cert-issuance.js";
 import { createInMemoryDnsAdapter } from "../../hobo-dns-port-contract/src/dns-port.js";

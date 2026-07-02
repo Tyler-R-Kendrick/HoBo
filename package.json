@@ -23,7 +23,7 @@
     "test:fast": "node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts",
     "search": "sh -c 'if command -v tgrep >/dev/null 2>&1; then tgrep \"$@\"; else rg \"$@\"; fi' --",
     "search:structure": "ast-grep scan",
-    "test:smoke": "bun test",
+    "test:smoke": "vitest run --no-isolate --passWithNoTests",
     "test:file": "vitest run --no-isolate --passWithNoTests",
     "test:name": "vitest run --no-isolate --passWithNoTests -t",
     "test:changed": "sh -c 'base=\"${HOBO_CHECK_BASE:-HEAD~1}\"; files=$(git diff --name-only \"$base\"...HEAD -- \"*.test.ts\" \"*.test.mts\" \"*.spec.ts\" \"*.spec.mts\" 2>/dev/null || true); if [ -z \"$files\" ]; then echo \"No changed Vitest-compatible test files found; lane skipped.\"; else vitest run --no-isolate --passWithNoTests $files; fi'",

@@ -6,6 +6,6 @@
   "description": "POC for the hobo codegen --check wrapper contract and deterministic generated tree drift gate.",
   "scripts": {
     "codegen": "tsx scripts/hobo-codegen.ts",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

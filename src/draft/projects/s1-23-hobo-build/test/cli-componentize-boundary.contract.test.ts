@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import { test } from "vitest";
 
 import { PINNED_TOOLCHAIN, componentizeHelloBindle } from "../../../../../packages/componentize/src/index.js";
 import { defaultComponentize } from "../src/componentize-adapter.js";

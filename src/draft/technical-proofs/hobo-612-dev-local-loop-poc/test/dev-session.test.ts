@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { scaffoldHoboProject } from "../../hobo-new-scaffold-contract/src/scaffold.js";
 import { writeFixtureProject } from "../../hobo-codegen-cli-contract/src/codegen-cli-contract.js";

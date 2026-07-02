@@ -4,6 +4,6 @@
   "type": "module",
   "description": "S2-05 draft POC: Orchestrator + ResourceActor reconciliation FSM and compensation sagas (HOBO-620).",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

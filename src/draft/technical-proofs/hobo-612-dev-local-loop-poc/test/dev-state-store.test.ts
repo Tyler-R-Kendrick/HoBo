@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { DevParseError, parseDevPort, parseDevStateSnapshot } from "../src/types.js";
 import { DevStateStore, projectDevState } from "../src/dev-state-store.js";

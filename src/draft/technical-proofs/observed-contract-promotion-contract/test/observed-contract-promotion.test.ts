@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import { parseContract } from "../../hobo-contract-ir/src/contract-ir.js";
 import {

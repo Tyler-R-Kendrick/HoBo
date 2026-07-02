@@ -5,6 +5,6 @@
   "type": "module",
   "description": "POC for the Yard-level domain resource and validation checks from HOBO-142.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

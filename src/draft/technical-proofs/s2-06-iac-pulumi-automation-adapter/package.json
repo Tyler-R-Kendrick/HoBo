@@ -7,6 +7,6 @@
     ".": "./src/iac-pulumi-automation-adapter.ts"
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "vitest run --root ."
   }
 }

@@ -3,7 +3,7 @@ import {
   createHash,
   generateKeyPairSync,
 } from "node:crypto";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   bindFirstRealRole,

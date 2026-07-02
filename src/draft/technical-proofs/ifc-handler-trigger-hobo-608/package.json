@@ -12,6 +12,6 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts && tsc --noEmit -p tsconfig.types.json"
+    "test": "vitest run --root . && tsc --noEmit -p tsconfig.types.json"
   }
 }

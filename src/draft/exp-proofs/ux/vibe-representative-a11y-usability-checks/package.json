@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm --dir ../../../../../ run test:file src/draft/exp-proofs/ux/vibe-representative-a11y-usability-checks/test/vibe-representative-a11y-usability-checks.test.ts"
+    "test": "vitest run --root ."
   }
 }

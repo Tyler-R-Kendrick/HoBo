@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import { test } from "vitest";
 
 import { contentDigest } from "../../slsa-provenance-certification-contract/src/provenance.js";
 import {

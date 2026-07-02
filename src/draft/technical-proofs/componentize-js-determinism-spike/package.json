@@ -5,7 +5,7 @@
   "type": "module",
   "description": "HOBO-603 spike: document componentize-js 0.21.0 wasm byte nondeterminism and the relaxed S0 stage gate.",
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "vitest run --root . --pool=forks",
     "repro": "node --import tsx scripts/repro-nondeterminism.mts"
   },
   "dependencies": {

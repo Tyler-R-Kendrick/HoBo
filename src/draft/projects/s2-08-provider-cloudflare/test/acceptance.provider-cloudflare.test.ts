@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 import { hoboVerify, runProviderCapabilitySuites } from "../../../technical-proofs/provider-capability-conformance-suites/src/provider-capability-conformance.js";
 import { validateEmission } from "../../../technical-proofs/hobo-realize-emission-contract/src/realize-emission-contract.js";

@@ -9,7 +9,7 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "vitest run --root .",
     "typecheck": "tsc --ignoreConfig --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 test/type-consumer.ts"
   }
 }

@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/workspace-activation-telemetry.test.mjs"
+    "test": "vitest run --root ."
   }
 }

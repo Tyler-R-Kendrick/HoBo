@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 
 import {
   V1_BETA_PILOT_PRIVATE_BETA_EVIDENCE,

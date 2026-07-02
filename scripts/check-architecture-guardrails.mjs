@@ -372,9 +372,20 @@ function formatProblems(problems) {
   return lines.join("\n");
 }
 
+function trackedForeignLockfiles() {
+  return split(git(["ls-files"])).filter((file) => {
+    const normalized = normalizePath(file);
+    return (
+      /(^|\/)(package-lock\.json|yarn\.lock)$/u.test(normalized)
+      || (/\/pnpm-lock\.yaml$/u.test(normalized) && normalized !== "pnpm-lock.yaml")
+    );
+  });
+}
+
 async function main() {
   const args = new Set(process.argv.slice(2));
-  const result = await checkArchitectureGuardrails({ files: changedFiles(args) });
+  const files = unique([...changedFiles(args), ...trackedForeignLockfiles()]);
+  const result = await checkArchitectureGuardrails({ files });
 
   if (result.problems.length > 0) {
     console.error(formatProblems(result.problems));

@@ -28,8 +28,9 @@ export function workspaceFor(file: string) {
   if (draft) return `src/draft/${draft[1]}/${draft[2]}`;
   const exp = normalized.match(/^src\/draft\/exp-proofs\/(dx|ux|cx|ax|api)\/([^/]+)\//u);
   if (exp) return `src/draft/exp-proofs/${exp[1]}/${exp[2]}`;
-  const production = normalized.match(/^(packages|examples)\/([^/]+)\//u);
-  return production ? `${production[1]}/${production[2]}` : undefined;
+  const production = normalized.match(/^(packages|examples)\/(?:(runtimes|providers|iac|build)\/)?([^/]+)\//u);
+  if (!production) return undefined;
+  return production[2] ? `${production[1]}/${production[2]}/${production[3]}` : `${production[1]}/${production[3]}`;
 }
 
 function workspaceTestRelevant(file: string) {
@@ -111,13 +112,19 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
   }
 
   if (workspaces.length > 0) {
-    for (const workspace of workspaces) {
-      checks.push({
-        command: "pnpm",
-        args: ["--prefix", workspace, "test"],
-        reason: `draft package unit/contract tests for ${workspace}; direct package script avoids Turbo dependency expansion`,
-      });
-    }
+    checks.push({
+      command: "pnpm",
+      args: [
+        "exec",
+        "turbo",
+        "run",
+        "test",
+        ...workspaces.map((workspace) => `--filter=./${workspace}`),
+        "--continue",
+        "--output-logs=new-only",
+      ],
+      reason: `workspace tests for ${workspaces.length} changed package(s) via Turbo; strict env strips harness NODE_OPTIONS and warm runs replay from cache`,
+    });
   }
 
   if (draftWorkspaces.length > 0) {
@@ -148,6 +155,7 @@ export function selectRelevantChecks(options: RelevantCheckPolicyOptions): Relev
 
   if (touched(["scripts", "test", "tests"]) || rootConfigChanged) {
     checks.push({ command: "pnpm", args: ["run", "test:root"], reason: "root scripts/tests changed" });
+    checks.push({ command: "pnpm", args: ["run", "typecheck:root"], reason: "root scripts/tests must stay type-clean" });
   }
 
   if (automationChanged || sourceChanged) {

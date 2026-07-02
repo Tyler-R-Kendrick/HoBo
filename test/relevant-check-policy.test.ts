@@ -34,10 +34,17 @@ function isGlobalContractProvider(check: Check) {
   return check.command === "pnpm" && check.args.join(" ") === "run test:contract:provider";
 }
 
-function isWorkspacePrefixTest(check: Check) {
+function isWorkspaceTurboTest(check: Check) {
   return check.command === "pnpm"
-    && check.args[0] === "--prefix"
-    && check.args[2] === "test";
+    && check.args[0] === "exec"
+    && check.args[1] === "turbo"
+    && check.args[2] === "run"
+    && check.args[3] === "test"
+    && check.args.some((arg) => arg.startsWith("--filter=./"));
+}
+
+function turboTestSelects(checks: Check[], workspace: string) {
+  return checks.some((check) => isWorkspaceTurboTest(check) && check.args.includes(`--filter=./${workspace}`));
 }
 
 function standardsCheck(check: Check) {
@@ -109,7 +116,7 @@ test("draft package files select workspace tests when package metadata exists", 
   );
 
   assert.deepEqual(workspaces, ["src/draft/technical-proofs/example-proof"]);
-  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix src/draft/technical-proofs/example-proof test"), true);
+  assert.equal(turboTestSelects(checks, "src/draft/technical-proofs/example-proof"), true);
 });
 
 test("draft package README-only changes do not select workspace tests", () => {
@@ -130,7 +137,7 @@ test("proof.json-only changes select draft artifact and cascade gates without wo
   );
 
   assert.deepEqual(workspaces, []);
-  assert.equal(checks.some(isWorkspacePrefixTest), false);
+  assert.equal(checks.some(isWorkspaceTurboTest), false);
   assert.equal(checks.some((check) => check.args.join(" ") === "run draft:artifacts -- --base=origin/main"), true);
   assert.equal(checks.some((check) => check.args.join(" ") === "run draft:cascade -- --base=origin/main"), true);
 });
@@ -154,7 +161,7 @@ test("draft Pact changes stay on workspace tests instead of selecting global con
   ]);
 
   assert.equal(checks.some(isGlobalContract), false);
-  assert.equal(checks.some(isWorkspacePrefixTest), true);
+  assert.equal(checks.some(isWorkspaceTurboTest), true);
 });
 
 test("shared Pact changes do not select global contract sweeps by default", () => {
@@ -189,31 +196,27 @@ test("root schema final validation can opt into broad contract sweeps", () => {
   assert.equal(checks.some(isGlobalContractProvider), true);
 });
 
-test("oversized draft workspace selections stay direct instead of falling back to global unit sweep", () => {
+test("oversized draft workspace selections batch into one Turbo run instead of a global unit sweep", () => {
   const files = Array.from({ length: 520 }, (_, index) => {
     const slug = `very-long-draft-proof-package-name-${index.toString().padStart(4, "0")}-with-contract-fixtures-and-tests`;
     return `src/draft/technical-proofs/${slug}/test/proof.test.ts`;
   });
   const { checks, workspaces } = plan(files, { workspacePackageExists: () => true });
-  const workspaceTestChecks = checks.filter(isWorkspacePrefixTest);
+  const workspaceTestChecks = checks.filter(isWorkspaceTurboTest);
 
   assert.equal(workspaces.length, 520);
   assert.equal(checks.some(isGlobalUnit), false);
-  assert.equal(workspaceTestChecks.length, 520);
-  assert.ok(
-    workspaceTestChecks.every((check) => check.args[0] === "--prefix" && check.args[2] === "test"),
-  );
+  assert.equal(workspaceTestChecks.length, 1);
+  const filters = workspaceTestChecks[0]?.args.filter((arg) => arg.startsWith("--filter=./")) ?? [];
+  assert.equal(filters.length, 520);
 });
 
-test("draft package tests use direct workspace prefixes", () => {
+test("draft package tests are delegated to Turbo with a path filter", () => {
   const { checks } = plan(
     ["src/draft/technical-proofs/provider-authoring-contract/src/provider-authoring-contract.ts"],
   );
 
-  assert.equal(
-    checks.some((check) => check.args.join(" ") === "--prefix src/draft/technical-proofs/provider-authoring-contract test"),
-    true,
-  );
+  assert.equal(turboTestSelects(checks, "src/draft/technical-proofs/provider-authoring-contract"), true);
 });
 
 test("fast test script is root-only and full quiet unit lane remains explicit", () => {
@@ -233,7 +236,7 @@ test("experience-proof packages resolve through their type subfolder", () => {
   );
 
   assert.deepEqual(workspaces, [workspace]);
-  assert.equal(checks.some((check) => check.args.join(" ") === `--prefix ${workspace} test`), true);
+  assert.equal(turboTestSelects(checks, workspace), true);
 });
 
 test("legacy two-level exp-proof paths no longer resolve to a workspace", () => {
@@ -243,7 +246,7 @@ test("legacy two-level exp-proof paths no longer resolve to a workspace", () => 
   );
 
   assert.deepEqual(workspaces, []);
-  assert.equal(checks.some(isWorkspacePrefixTest), false);
+  assert.equal(checks.some(isWorkspaceTurboTest), false);
 });
 
 test("exp-proof schema changes under type subfolders stay on workspace tests", () => {
@@ -254,7 +257,7 @@ test("exp-proof schema changes under type subfolders stay on workspace tests", (
   );
 
   assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), false);
-  assert.equal(checks.some(isWorkspacePrefixTest), true);
+  assert.equal(checks.some(isWorkspaceTurboTest), true);
 });
 
 test("case-collision helper reports tracked paths that differ only by case", () => {
@@ -274,7 +277,7 @@ test("production package source changes select architecture guard and workspace 
 
   assert.deepEqual(workspaces, ["packages/core"]);
   assert.equal(checks.some(architectureGuardCheck), true);
-  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix packages/core test"), true);
+  assert.equal(turboTestSelects(checks, "packages/core"), true);
 });
 
 test("examples package source changes select architecture guard and workspace tests", () => {
@@ -282,7 +285,7 @@ test("examples package source changes select architecture guard and workspace te
 
   assert.deepEqual(workspaces, ["examples/hello-bindle"]);
   assert.equal(checks.some(architectureGuardCheck), true);
-  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix examples/hello-bindle test"), true);
+  assert.equal(turboTestSelects(checks, "examples/hello-bindle"), true);
 });
 
 test("production package schema changes select workspace tests instead of root schema lane", () => {
@@ -290,5 +293,22 @@ test("production package schema changes select workspace tests instead of root s
 
   assert.deepEqual(workspaces, ["packages/core"]);
   assert.equal(checks.some((check) => check.args.join(" ") === "run test:schema"), false);
-  assert.equal(checks.some((check) => check.args.join(" ") === "--prefix packages/core test"), true);
+  assert.equal(turboTestSelects(checks, "packages/core"), true);
+});
+
+test("root script and test changes select the root typecheck lane", () => {
+  const { checks } = plan(["scripts/run-relevant-checks.ts"]);
+
+  assert.equal(checks.some((check) => check.args.join(" ") === "run typecheck:root"), true);
+});
+
+test("nested production category packages resolve to their own workspace", () => {
+  const workspace = "packages/runtimes/runtime-local";
+  const { checks, workspaces } = plan(
+    [`${workspace}/src/host.ts`],
+    { workspacePackageExists: (candidate: string) => candidate === workspace },
+  );
+
+  assert.deepEqual(workspaces, [workspace]);
+  assert.equal(turboTestSelects(checks, workspace), true);
 });

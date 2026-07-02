@@ -9,7 +9,7 @@ import { checkDocsCoverage } from "../scripts/check-docs-coverage.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-async function write(root, file, content = `# ${path.basename(file)}\n`) {
+async function write(root: string, file: string, content = `# ${path.basename(file)}\n`) {
   await mkdir(path.dirname(path.join(root, file)), { recursive: true });
   await writeFile(path.join(root, file), content);
 }

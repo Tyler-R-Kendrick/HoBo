@@ -50,7 +50,7 @@ const ALLOW_DOCLESS_PATTERNS = [
 const args = new Set(process.argv.slice(2));
 const baseArg = process.argv.find((arg) => arg.startsWith("--base="));
 
-function git(args) {
+function git(args: string[]) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
 
@@ -70,15 +70,15 @@ function changedFiles() {
   ]);
 }
 
-function split(output) {
+function split(output: string) {
   return output ? output.split(/\r?\n/).map((file) => file.split(path.sep).join("/")) : [];
 }
 
-function unique(values) {
+function unique(values: string[]) {
   return [...new Set(values)];
 }
 
-function matchesAny(file, patterns) {
+function matchesAny(file: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(file));
 }
 

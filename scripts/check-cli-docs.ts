@@ -10,29 +10,43 @@ const DEFAULT_SCAN_PATHS = [
   "CLAUDE.md",
 ];
 
-export async function loadCliSpec(root) {
+type CliSpec = Awaited<ReturnType<typeof loadCliSpec>>;
+
+type CliDocProblem = {
+  file: string;
+  line: number;
+  command: string;
+  message: string;
+};
+
+type CheckCliDocsOptions = {
+  root: string;
+  files?: string[] | undefined;
+};
+
+export async function loadCliSpec(root: string) {
   const text = await readFile(path.join(root, SPEC_PATH), "utf8");
 
   const verbs = parseTableSection(text, "Canonical CLI Verbs").map((row) => ({
-    name: cleanCell(row[0]),
-    role: cleanCell(row[1]),
-    implementationIssues: extractIssues(row[3]),
+    name: cleanCell(row[0]!),
+    role: cleanCell(row[1]!),
+    implementationIssues: extractIssues(row[3]!),
   }));
 
   const retiredAliases = parseTableSection(text, "Retired or Rejected Commands").map(
     (row) => ({
-      name: cleanCell(row[0]),
-      replacement: cleanCell(row[1]),
+      name: cleanCell(row[0]!),
+      replacement: cleanCell(row[1]!),
     }),
   );
 
   return { verbs, retiredAliases };
 }
 
-export async function checkCliDocs({ root, files } = {}) {
+export async function checkCliDocs({ root, files }: CheckCliDocsOptions = {} as CheckCliDocsOptions) {
   const spec = await loadCliSpec(root);
   const targetFiles = files ?? (await collectMarkdownFiles(root));
-  const problems = [];
+  const problems: CliDocProblem[] = [];
 
   for (const file of targetFiles) {
     const absolute = path.isAbsolute(file) ? file : path.join(root, file);
@@ -45,12 +59,12 @@ export async function checkCliDocs({ root, files } = {}) {
   return { problems };
 }
 
-export function lintMarkdownContent(file, content, spec) {
+export function lintMarkdownContent(file: string, content: string, spec: CliSpec) {
   const allowed = new Set(spec.verbs.map((verb) => verb.name));
   const retired = new Map(
-    spec.retiredAliases.map((alias) => [alias.name, alias.replacement]),
+    spec.retiredAliases.map((alias): [string, string] => [alias.name, alias.replacement]),
   );
-  const problems = [];
+  const problems: CliDocProblem[] = [];
 
   content.split(/\r?\n/).forEach((line, index) => {
     if (/^\s*```/.test(line)) {
@@ -64,7 +78,7 @@ export function lintMarkdownContent(file, content, spec) {
       if (summary) {
         const commands = summary
           .split("|")
-          .map((part) => part.trim().split(/\s+/)[0])
+          .map((part) => part.trim().split(/\s+/)[0]!)
           .filter(Boolean);
 
         for (const command of commands) {
@@ -85,13 +99,19 @@ export function lintMarkdownContent(file, content, spec) {
   return problems;
 }
 
-function lintCommandsInLine(file, lineNumber, line, allowed, retired) {
-  const problems = [];
+function lintCommandsInLine(
+  file: string,
+  lineNumber: number,
+  line: string,
+  allowed: Set<string>,
+  retired: Map<string, string>,
+) {
+  const problems: CliDocProblem[] = [];
   const commandPattern = /(?:^|[\s;&|])(?:npx\s+)?hobo\s+([a-z][a-z-]*)\b/g;
   let match;
 
   while ((match = commandPattern.exec(line)) !== null) {
-    const verb = match[1];
+    const verb = match[1]!;
     addProblemIfInvalid({
       problems,
       file,
@@ -106,7 +126,15 @@ function lintCommandsInLine(file, lineNumber, line, allowed, retired) {
   return problems;
 }
 
-function addProblemIfInvalid({ problems, file, line, command, verb, allowed, retired }) {
+function addProblemIfInvalid({ problems, file, line, command, verb, allowed, retired }: {
+  problems: CliDocProblem[];
+  file: string;
+  line: number;
+  command: string;
+  verb: string;
+  allowed: Set<string>;
+  retired: Map<string, string>;
+}) {
   if (retired.has(verb)) {
     problems.push({
       file,
@@ -127,8 +155,8 @@ function addProblemIfInvalid({ problems, file, line, command, verb, allowed, ret
   }
 }
 
-async function collectMarkdownFiles(root) {
-  const files = [];
+async function collectMarkdownFiles(root: string) {
+  const files: string[] = [];
 
   for (const scanPath of DEFAULT_SCAN_PATHS) {
     const absolute = path.join(root, scanPath);
@@ -143,8 +171,8 @@ async function collectMarkdownFiles(root) {
   return files;
 }
 
-async function walkMarkdown(root, dir) {
-  const found = [];
+async function walkMarkdown(root: string, dir: string): Promise<string[]> {
+  const found: string[] = [];
 
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, entry.name);
@@ -158,14 +186,14 @@ async function walkMarkdown(root, dir) {
   return found;
 }
 
-function parseTableSection(text, heading) {
+function parseTableSection(text: string, heading: string) {
   const lines = text.split(/\r?\n/);
   const start = lines.findIndex((line) => line.trim() === `## ${heading}`);
   if (start === -1) {
     throw new Error(`Missing section: ${heading}`);
   }
 
-  const rows = [];
+  const rows: string[][] = [];
   for (const line of lines.slice(start + 1)) {
     if (/^##\s+/.test(line)) break;
     if (!line.trim().startsWith("|")) continue;
@@ -177,11 +205,11 @@ function parseTableSection(text, heading) {
   return rows;
 }
 
-function cleanCell(value) {
+function cleanCell(value: string) {
   return value.replace(/`/g, "").trim();
 }
 
-function extractIssues(value) {
+function extractIssues(value: string) {
   return [...value.matchAll(/HOBO-\d+/g)].map((match) => match[0]);
 }
 

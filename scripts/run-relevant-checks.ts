@@ -55,7 +55,7 @@ function runAsync(check: Check): Promise<number> {
 function broadSweepScript(check: Check): string | undefined {
   if (check.command !== "pnpm" || check.args[0] !== "run") return undefined;
   const script = check.args[1];
-  return [
+  return ([
     "check:all",
     "test:all",
     "test:contract",
@@ -64,7 +64,7 @@ function broadSweepScript(check: Check): string | undefined {
     "test:unit",
     "test:unit:quiet",
     "validate:final",
-  ].includes(script)
+  ] as readonly (string | undefined)[]).includes(script)
     ? script
     : undefined;
 }
@@ -94,7 +94,7 @@ async function runBounded(checks: Check[], concurrency: number): Promise<number[
     while (nextIndex < checks.length) {
       const index = nextIndex;
       nextIndex += 1;
-      statuses[index] = await runAsync(checks[index]);
+      statuses[index] = await runAsync(checks[index]!);
     }
   }
 
@@ -118,7 +118,7 @@ function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
       const [status, firstPath, secondPath] = line.split("\t");
       return { status, path: secondPath ?? firstPath };
     })
-    .filter((record) => Boolean(record.path));
+    .filter((record): record is ChangedFileRecord => Boolean(record.path));
 }
 
 function changedFileRecords(): ChangedFileRecord[] {

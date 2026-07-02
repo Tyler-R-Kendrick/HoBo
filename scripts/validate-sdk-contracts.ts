@@ -109,16 +109,16 @@ const importOwners = new Map([
   ["waiver", "@hobo/sdk"],
 ]);
 
-function fail(message) {
+function fail(message: string) {
   console.error(message);
   process.exitCode = 1;
 }
 
-function read(filePath) {
+function read(filePath: string) {
   return fs.readFileSync(filePath, "utf8");
 }
 
-function listMarkdownFiles(dir) {
+function listMarkdownFiles(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   return entries.flatMap((entry) => {
     const entryPath = path.join(dir, entry.name);
@@ -129,7 +129,7 @@ function listMarkdownFiles(dir) {
   });
 }
 
-function sectionFor(markdown, heading) {
+function sectionFor(markdown: string, heading: string) {
   const start = markdown.indexOf(heading);
   if (start === -1) {
     return null;
@@ -138,11 +138,11 @@ function sectionFor(markdown, heading) {
   return markdown.slice(start, next === -1 ? undefined : next);
 }
 
-function importedBindingName(specifier) {
+function importedBindingName(specifier: string) {
   return specifier
     .trim()
     .replace(/^type\s+/, "")
-    .split(/\s+as\s+/i)[0]
+    .split(/\s+as\s+/i)[0]!
     .trim();
 }
 
@@ -239,8 +239,8 @@ function validateImportOwners() {
     const relativePath = path.relative(root, filePath);
     const markdown = read(filePath);
     for (const match of markdown.matchAll(importPattern)) {
-      const specifiers = match[1].split(",").map((specifier) => specifier.trim()).filter(Boolean);
-      const packageName = match[2];
+      const specifiers = match[1]!.split(",").map((specifier) => specifier.trim()).filter(Boolean);
+      const packageName = match[2]!;
 
       for (const specifier of specifiers) {
         const bindingName = importedBindingName(specifier);

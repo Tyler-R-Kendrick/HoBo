@@ -16,7 +16,7 @@ const REQUIRED_FILES = [
   ".github/pull_request_template.md",
 ];
 
-const REQUIRED_README_PATTERNS = [
+const REQUIRED_README_PATTERNS: [RegExp, string][] = [
   [/## Why HoBo exists/, "README must explain why the project exists"],
   [/## Repository map/, "README must include a repository map"],
   [/## How to work in this repo/, "README must include local workflow"],
@@ -25,17 +25,22 @@ const REQUIRED_README_PATTERNS = [
   [/## AI agent workflow/, "README must describe agent workflow"],
 ];
 
-const REQUIRED_CONTRIBUTING_PATTERNS = [
+const REQUIRED_CONTRIBUTING_PATTERNS: [RegExp, string][] = [
   [/## Required local checks/, "CONTRIBUTING must list required local checks"],
   [/## Documentation rule/, "CONTRIBUTING must state docs-update rule"],
   [/## Pull request expectations/, "CONTRIBUTING must state PR expectations"],
 ];
 
-function read(root, file) {
+function read(root: string, file: string) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
-function checkPatterns({ problems, file, content, patterns }) {
+function checkPatterns({ problems, file, content, patterns }: {
+  problems: string[];
+  file: string;
+  content: string;
+  patterns: [RegExp, string][];
+}) {
   for (const [pattern, message] of patterns) {
     if (!pattern.test(content)) {
       problems.push(`${file}: ${message}`);
@@ -43,8 +48,8 @@ function checkPatterns({ problems, file, content, patterns }) {
   }
 }
 
-export function checkDocsCoverage(root) {
-  const problems = [];
+export function checkDocsCoverage(root: string) {
+  const problems: string[] = [];
 
   for (const file of REQUIRED_FILES) {
     const absolute = path.join(root, file);

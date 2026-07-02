@@ -3,26 +3,24 @@
   "globalDependencies": [
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
-    "package.json",
     "turbo.json",
-    "AGENTS.md"
+    "tsconfig.base.json"
   ],
+  "envMode": "strict",
+  "globalPassThroughEnv": ["CI", "HOBO_*", "TMPDIR", "TMP", "TEMP", "SOURCE_DATE_EPOCH"],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": ["dist/**", "generated/**", ".turbo/**"] },
-    "typecheck": { "outputs": ["*.tsbuildinfo", ".cache/tsbuildinfo/**"] },
-    "lint": { "outputs": [".cache/eslint/**"] },
-    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**", "test-results/**"] },
-    "test:unit": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "src/**", "test/**", "tests/unit/**"], "outputs": ["coverage/unit/**"] },
-    "test:types": { "dependsOn": ["^build"], "inputs": ["src/**", "tsconfig*.json", "**/*.test-d.ts", "test-d/**", "type-tests/**"], "outputs": [] },
-    "test:schema": { "inputs": ["**/*.proto", "**/*.cue", "contracts/**", "architecture/**", "cue.mod/**"], "outputs": [] },
-    "test:contract:consumer": { "dependsOn": ["^build"], "inputs": ["src/**", "test/**", "tests/contract/**", "architecture/pacts/**", "contracts/pacts/**"], "outputs": ["pacts/**"] },
-    "test:contract:provider": { "dependsOn": ["build"], "inputs": ["src/**", "tests/provider-contract/**", "architecture/pacts/**", "contracts/pacts/**", "pacts/**"], "outputs": ["reports/pact/**"] },
-    "test:dom": { "dependsOn": ["^build"], "inputs": ["src/**", "tests/dom/**", "test/dom/**", "vitest.config.*", "jest.config.*"], "outputs": ["coverage/dom/**"] },
-    "test:component": { "dependsOn": ["^build"], "inputs": ["src/**", "tests/component/**", "test/component/**", "storybook/**", "vitest.browser.config.*"], "outputs": ["coverage/component/**", "test-results/component/**"] },
-    "test:behavior": { "dependsOn": ["build", "^test:contract:consumer"], "inputs": ["src/**", "tests/behavior/**", "features/**", "playwright.behavior.config.*", "cucumber.config.*", "pacts/**"], "outputs": ["test-results/behavior/**", "reports/behavior/**"] },
-    "test:visual": { "dependsOn": ["build"], "inputs": ["src/**", "tests/visual/**", "storybook/**", "playwright.visual.config.*"], "outputs": ["test-results/visual/**", "reports/visual/**"] },
-    "eval:agent:mock": { "dependsOn": ["^build"], "inputs": ["src/**", "evals/datasets/**", "evals/rubrics/**", "evals/fixtures/**"], "outputs": ["eval-results/mock/**"] },
-    "eval:agent:live": { "cache": false, "dependsOn": ["^build"], "inputs": ["src/**", "evals/datasets/**", "evals/rubrics/**"], "outputs": ["eval-results/live/**"] },
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "typecheck": { "dependsOn": ["^build"], "outputs": [] },
+    "lint": { "outputs": [] },
+    "test": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:unit": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:schema": { "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "test:contract:consumer": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": ["pacts/**"] },
+    "test:contract:provider": { "dependsOn": ["build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "//#typecheck:root": {
+      "inputs": ["tsconfig.json", "tsconfig.base.json", "scripts/**", "test/**", "!scripts/ci/**"],
+      "outputs": []
+    },
     "dev": { "cache": false, "persistent": true }
   }
 }

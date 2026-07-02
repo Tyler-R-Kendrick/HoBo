@@ -51,7 +51,7 @@ function checkFile(file: string) {
     return;
   }
 
-  if (!/^type:\s*\S/m.test(match[1])) {
+  if (!/^type:\s*\S/m.test(match[1]!)) {
     problems.push(`${rel(file)}: OKF concept frontmatter needs non-empty type`);
   }
 }

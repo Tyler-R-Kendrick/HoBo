@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -57,6 +58,26 @@ function resolveBufCommand(repoRoot: string): { command: string; args: string[] 
   ];
   for (const candidate of candidates) {
     if (existsSync(candidate)) return { command: candidate, args: [] };
+  }
+
+  const pocPackageJson = join(
+    repoRoot,
+    "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/package.json",
+  );
+  if (existsSync(pocPackageJson)) {
+    try {
+      const requireFromPoc = createRequire(pocPackageJson);
+      const bufPackageJson = requireFromPoc.resolve("@bufbuild/buf/package.json");
+      const bufBin = join(dirname(bufPackageJson), "bin", "buf");
+      if (existsSync(bufBin)) {
+        if (process.platform === "win32") {
+          return { command: process.execPath, args: [bufBin] };
+        }
+        return { command: bufBin, args: [] };
+      }
+    } catch {
+      // fall through to PATH lookup
+    }
   }
   return { command: "buf", args: [] };
 }

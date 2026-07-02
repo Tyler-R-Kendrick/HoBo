@@ -144,6 +144,23 @@ test("withExplicitStartup keeps a resource stopped until manually started", asyn
   assert.deepEqual(started.state.readyResourceIds, ["batch", "db"]);
 });
 
+test("withExplicitStartup auto-starts when every waitFor target is Ready", async () => {
+  const manifest = {
+    sessionId: "dev-session-explicit-waitfor",
+    resources: [
+      { id: "db", deps: [] },
+      {
+        id: "batch",
+        deps: ["db"],
+        annotations: { explicitStartup: true, waitFor: ["db"] },
+      },
+    ],
+  };
+
+  const result = orchestrator().run({ manifest });
+  assert.deepEqual(result.state.readyResourceIds, ["batch", "db"]);
+});
+
 test("independent roots activate in the same wave", async () => {
   const manifest = {
     sessionId: "dev-session-parallel",
@@ -157,6 +174,17 @@ test("independent roots activate in the same wave", async () => {
   const result = orchestrator().run({ manifest });
   const waveZero = result.activationLog.filter((entry) => entry.wave === 0).map((entry) => entry.resourceId);
   assert.deepEqual(waveZero.sort(), ["cache", "db"]);
+});
+
+test("external endpoints publish a host-reachable label on Ready", async () => {
+  const result = orchestrator().run({
+    manifest: multiServiceManifest,
+    healthOutcomes: { db: true, api: true },
+  });
+
+  const apiReady = result.events.find((event) => event.type === "local.Ready" && event.resourceId === "api");
+  assert.equal(apiReady.data.endpointExternal, true);
+  assert.equal(apiReady.data.endpointLabel, "external:localhost");
 });
 
 test("lazy env refs resolve only after producer Ready", async () => {

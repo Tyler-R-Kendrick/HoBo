@@ -95,6 +95,8 @@ export function createLocalDevOrchestrator({
               replicas: resource.gates.localReplicas,
               scalingLabel: resource.gates.scalingLabel,
               residencyLabel: resource.gates.residencyLabel,
+              endpointExternal: resource.gates.endpointExternal,
+              endpointLabel: resource.gates.endpointExternal ? "external:localhost" : null,
               resolvedEnv: resolveEnv(resource, state),
             },
           });
@@ -218,7 +220,9 @@ function canActivate(state, resource, graph, manualStartSet) {
   }
 
   if (resource.gates.explicitStartup && !manualStartSet.has(resource.id) && phase === "stopped") {
-    return false;
+    if (resource.gates.waitFor.length === 0) {
+      return false;
+    }
   }
 
   return phase === "stopped" || phase === "starting";

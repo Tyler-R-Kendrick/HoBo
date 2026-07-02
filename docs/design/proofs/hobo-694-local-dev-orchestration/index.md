@@ -18,7 +18,8 @@ HOBO-694 is proven by the focused POC at
 
 - Failed health probe leaves dependents waiting (no silent ready).
 - Non-zero job exit emits **Start failed** and blocks dependents.
-- `withExplicitStartup` does not auto-start without manual start.
+- `withExplicitStartup` does not auto-start without manual start when no `waitFor` targets exist; auto-starts when every `waitFor` target is **Ready**.
+- External endpoints surface `external:localhost` on **Ready**.
 - Dependency cycles fail at graph build time.
 
 ## Scope Guard

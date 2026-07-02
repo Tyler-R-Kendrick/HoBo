@@ -24,3 +24,8 @@ pnpm exec turbo run test --filter ./src/draft/technical-proofs/credential-audit-
 The checks prove deterministic projection rebuild, brokered-deploy trail reconstruction,
 Gateway/MCP query parity, NFR-018 retention-floor preservation, and never-compact
 enforcement on `token.*` / `resource.*` / `policy.*` streams.
+
+## Maintenance
+
+- 2026-07-02: architecture guard evidence expanded with full protobuf CUE coverage and
+  parse-don't-validate derived-type notes in `ADR.md`.

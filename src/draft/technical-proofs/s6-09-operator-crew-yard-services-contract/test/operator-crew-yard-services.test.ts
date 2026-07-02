@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   CREW_ROSTER,
   attemptGitOpsPromote,
+  attemptPlatformDefinition,
   buildAuditViews,
   replayOperatorCrewEvents,
   runOperatorCrewScenario,
@@ -125,6 +126,53 @@ describe("S6-09 operator crew yard services contract", () => {
     assert.ok(result.events.some((e) => e.type === "crew.ActionDenied"));
     assert.ok(!result.events.some((e) => e.type === "deployment.Promoted"));
     assert.ok(result.audit.credentialAudit.length > 0);
+  });
+
+  it("promotes through GitOps when deployer role and can-deploy are green", () => {
+    const result = attemptGitOpsPromote({
+      principal: {
+        roles: ["deployer", "deployer-proposer"],
+      },
+      environment: "prod",
+      canDeploy: { green: true },
+    });
+
+    assert.equal(result.status, "promoted");
+    assert.ok(result.events.some((e) => e.type === "deployment.Promoted"));
+    assert.ok(result.events.some((e) => e.type === "crew.ActionApplied"));
+    assert.equal(
+      result.audit.credentialAudit[0]?.svid,
+      CREW_ROSTER.gitops.svid,
+    );
+  });
+
+  it("blocks platform-engineer definition proposals in prod until approval", () => {
+    const pending = attemptPlatformDefinition({ environment: "prod" });
+
+    assert.equal(pending.status, "waiting-for-approval");
+    assert.ok(pending.events.some((e) => e.type === "crew.HandoffRequested"));
+    assert.ok(!pending.events.some((e) => e.type === "definition.Proposed"));
+
+    const approved = attemptPlatformDefinition({
+      environment: "prod",
+      humanApproval: "approve",
+      definitionRef: "pack:checkout-api/v2",
+    });
+
+    assert.equal(approved.status, "proposed");
+    assert.ok(approved.events.some((e) => e.type === "definition.Proposed"));
+    assert.equal(
+      approved.events.find((e) => e.type === "definition.Proposed")?.data.agentId,
+      "platform-engineer",
+    );
+  });
+
+  it("allows platform-engineer definition proposals in staging without approval", () => {
+    const result = attemptPlatformDefinition({ environment: "staging" });
+
+    assert.equal(result.status, "proposed");
+    assert.ok(result.events.some((e) => e.type === "crew.ActionApplied"));
+    assert.ok(!result.events.some((e) => e.type === "crew.HandoffRequested"));
   });
 
   it("exposes each crew member with distinct SVID and per-agent policy", () => {

@@ -113,5 +113,6 @@ test("non-additive field rename without a version bump is flagged", () => {
 });
 
 async function readFixture(relativePath) {
-  return readFile(path.join(packageRoot, relativePath), "utf8");
+  const content = await readFile(path.join(packageRoot, relativePath), "utf8");
+  return content.replace(/\r\n/g, "\n");
 }

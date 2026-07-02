@@ -138,7 +138,7 @@ The runtime's ports form a **Nitric-parity building-block set, each a first-clas
 
 | Building block | WIT interface |
 |---|---|
-| APIs / HTTP | `wasi:http/incoming-handler`, `.../outgoing-handler` |
+| APIs / HTTP | `wasi:http/incoming-handler`, `.../outgoing-handler` (+ `hobo:http` route security) |
 | Schedules | `hobo:scheduler` |
 | Topics & subscriptions (pub/sub) | `wasi:messaging` |
 | Queues | `hobo:queue` |
@@ -163,7 +163,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 ### Reused WASI interfaces (don't reinvent)
 | WIT interface | HoBo resource | Notes |
 |---|---|---|
-| `wasi:http/incoming-handler`, `.../outgoing-handler` | `api` / `service` / `web`; outbound fetch | service exports incoming-handler; outbound is an import |
+| `wasi:http/incoming-handler`, `.../outgoing-handler` | `api` / `service` / `web`; outbound fetch | service exports incoming-handler; outbound is an import; **`hobo:http`** adds per-route security + middleware ([Plan 21](./authoring-resources-wiring.md#route-level-api-security)) |
 | `wasi:keyvalue/store` | `kv` | `get`/`set`/`delete`/`exists` (+ batch) |
 | `wasi:blobstore/blobstore` | `bucket` | object RW; presigned-URL + events extended by `hobo:blob-events` |
 | `wasi:messaging` | `topic` (push) | publish/subscribe |
@@ -175,6 +175,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 ### HoBo-authored interfaces (`hobo:*`) — what WASI doesn't cover
 | WIT interface | Purpose | Key functions (illustrative) |
 |---|---|---|
+| `hobo:http` | **thin extension** over `wasi:http` — route-level security + middleware ([ADR-0114](./adr/02-identity-security.md#adr-0114), [Plan 21](./authoring-resources-wiring.md#route-level-api-security)) | `match-route`, `enforce-security(rule)`, `run-middleware(chain)`, `inject-principal` → then delegate to `wasi:http/incoming-handler` |
 | `hobo:runtime/workflow` | durable workflow/step | `run-step(name,input,opts)`, `sleep(ms)`, `emit(type,data)` |
 | `hobo:runtime/actor` | virtual-actor (grain) state + messaging | `get-state`/`append-state`, `signal(key,msg)` |
 | `hobo:runtime/saga` | choreography process manager | `on(event)`, `emit(event)`, `compensate(event)` |

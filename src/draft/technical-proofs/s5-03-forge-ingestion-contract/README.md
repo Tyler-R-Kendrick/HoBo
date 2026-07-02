@@ -5,9 +5,9 @@ Forge ingestion from recorded backend fixtures (docs/OpenAPI/Terraform/Capabilit
 Manifest) into a compiling candidate `@hobo/provider-x` scaffold behind the
 generation-pipeline port with a pluggable reasoning-engine slot.
 
-Design refs: [Plan 23](../../../docs/design/generated-stack.md#plan-23),
+Design refs: [Plan 23](../../../../docs/design/generated-stack.md#plan-23),
 generation-pipeline epic proof
-[`generation-pipeline-training-ai-safety`](../epic-proofs/generation-pipeline-training-ai-safety/).
+[`generation-pipeline-training-ai-safety`](../../epic-proofs/generation-pipeline-training-ai-safety/).
 
 ## Contract
 

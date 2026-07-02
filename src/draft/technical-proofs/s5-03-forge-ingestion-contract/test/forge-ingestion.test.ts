@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -104,4 +105,38 @@ test("OpenAPI prompt injection is refused before scaffold emits a candidate pack
 test("forge CLI exits non-zero when material sanitization refuses injection fixture", async () => {
   const exitCode = await runForgeCli(["node", "forge", INJECTION_FIXTURE_URL]);
   assert.equal(exitCode, 2);
+});
+
+test("architecture artifacts pin protobuf, CUE, Pact, and ADR boundaries", () => {
+  const adr = readFileSync(new URL("../ADR.md", import.meta.url), "utf8");
+  const proto = readFileSync(
+    new URL("../architecture/s5_03_forge_ingestion_contract.proto", import.meta.url),
+    "utf8"
+  );
+  const cue = readFileSync(
+    new URL("../architecture/s5_03_forge_ingestion_contract.cue", import.meta.url),
+    "utf8"
+  );
+  const pact = JSON.parse(
+    readFileSync(
+      new URL("../architecture/pacts/s5_03_forge_ingestion_contract.pact.json", import.meta.url),
+      "utf8"
+    )
+  );
+
+  for (const typeName of ["ForgeIngestionFixtureIndex", "ForgeIngestionEventRecord"]) {
+    assert.match(proto, new RegExp(`message ${typeName}`));
+    assert.match(cue, new RegExp(`#${typeName}:`));
+  }
+
+  assert.equal(pact.consumer.name, "S503ForgeIngestionContractConsumer");
+  assert.equal(pact.provider.name, "S503ForgeIngestionContractBoundary");
+  assert.equal(pact.interactions[0].response.body.status, "compiled");
+  assert.match(adr, /parse, don't validate/i);
+  assert.match(adr, /Command/i);
+  assert.match(adr, /Event/i);
+  assert.match(adr, /Actor/i);
+  assert.match(adr, /event store/i);
+  assert.match(adr, /projection/i);
+  assert.match(adr, /read store/i);
 });

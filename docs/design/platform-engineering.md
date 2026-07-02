@@ -81,6 +81,16 @@ HOBO-55 pins the exact scoring vector in [ADR-0088](./adr/01-architecture-core.m
 
 **AI/solvers are advisory, off the deploy path.** `hobo plan` may *surface* a cheaper alternative; the **generation pipeline** may *generate* candidate definitions ([Plan 23](./generated-stack.md#plan-23)); an LLM may *suggest* definitions at authoring time — none select at deploy time, so replay + `match.Decided` stay honest. A constraint solver / LLM selector on-path is not part of the model ([ADR-0033](./adr/01-architecture-core.md#adr-0033)).
 
+### Node placement and system workloads (iteration hooks)
+
+Matching selects **which** Resource Definition realizes a resource; it does not yet express Nomad-class node-level placement. The surfaces below are explicitly **not yet designed** and are recorded here so the competitor parity tracker ([Nomad mapping](../competitors/nomad.md#hobo-mapping)) cannot silently overclaim; tracked as gap GAP-003 in [`GAPS.md`](../../GAPS.md) and Linear issue [HOBO-671](https://linear.app/quickdeploy-ai/issue/HOBO-671).
+
+- **Affinity / anti-affinity / topology spread** — soft/hard co-location and distribution across nodes/zones/Camps. Nearest existing constructs today: Planner step 4 "Region & colocation" ([Plan 4](./control-plane.md#plan-04)) and matching criteria; a first-class construct (matching-dimension extension or in-Camp scheduler hints) is planned, no committed design yet.
+- **System (per-node) workloads** — Nomad system jobs run one instance per eligible node/node class; HoBo's sketch is Yard/operator/system Bindles per Camp or node class, with no design text yet.
+- **Raw-exec / Java / QEMU legacy hosts** — OCI/container/VM adapters are designed as provider choices ([Plan 20](./wasm-runtime-wit.md#plan-20), [Plan 4](./control-plane.md#plan-04), BuildProvider packer/firecracker); a non-containerized raw-exec host adapter has no design coverage yet.
+
+When a design pass (see gap GAP-001 in the same register) lands real affinity/spread constructs, upgrade the tracker rows and replace the relevant bullet with a design/ADR anchor.
+
 ### Mapping is sugar over default definitions
 A Camp's inline mapping ([Plan 2](./sdk-api.md#plan-02)) is **not** a separate system — it **compiles to default Resource Definitions**:
 - `defaultProvider: azure` → a `match: {}` definition per port on Azure.

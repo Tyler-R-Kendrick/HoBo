@@ -1,0 +1,13 @@
+package hobo:examples@0.1.0;
+
+interface health {
+  record health-response {
+    status: u16,
+    body: string,
+  }
+  health: func() -> health-response;
+}
+
+world service {
+  export health;
+}

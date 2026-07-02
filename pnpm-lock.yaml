@@ -39,6 +39,18 @@ importers:
         specifier: ^4.1.13
         version: 4.4.3
 
+  examples/hello-bindle:
+    dependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../../packages/bindles
+      '@hobo/componentize':
+        specifier: workspace:*
+        version: link:../../packages/componentize
+      '@hobo/wit':
+        specifier: workspace:*
+        version: link:../../packages/wit
+
   packages/bindles:
     dependencies:
       '@hobo/core':
@@ -62,6 +74,10 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.20.0
 
   packages/conformance:
     dependencies:

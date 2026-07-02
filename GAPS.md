@@ -99,7 +99,7 @@ in the history of commit `d7bbc39c`.
 | GAP-017 | L-CONS | LOW | ✔ | The canonical glossary — declared the single source of truth for canonical term definitions — omits the FinOps control plane's coined vocabulary (ResourceIntent, metric contract, MetricVector, ParetoFrontier, decision graph, DX/OpsX/FinX surfaces) and the ubiquitous 'Crew' alias, even though newer Meta-cloud Broker terms were added, showing the maintenance path exists but skipped the FinOps delta. | `docs/design/glossary.md:10-14`<br>`docs/design/finops-budget-routing-control-plane.md:51-83`<br>`docs/design/glossary.md:49-62`<br>`docs/design/index.md:24` | [REM-025](#rem-025-for-gap-017) |
 | GAP-018 | P2 | MED | ✔ | `hobo dev` local multi-service orchestration is unspecified — lifecycle APIs exist for deploy but the inner loop never states dependency-gated startup semantics per annotation class. | `docs/design/authoring-resources-wiring.md:150-151`<br>`docs/design/developer-experience.md:135-139`<br>`docs/design/control-plane.md:57-67` … | [REM-026](#rem-026-for-gap-018) |
 | GAP-019 | P3×P4 | MED | ✔ | The FinOps routing pipeline's canonical input (`ResourceIntent → DecisionGraph → ActionPlan`) is disconnected from the IfC/planning spine: control-plane Planner still terminates at manifest IR → `DeploymentPlan` with no documented bridge from resource collection / Matching / `hobo plan` into `ResourceIntent` or the FinOps DX dry-run preview surface. | `docs/design/finops-budget-routing-control-plane.md:22-36`<br>`docs/design/control-plane.md:14-28`<br>`docs/design/reliability-observability-cost.md:175-177` … | [REM-027](#rem-027-for-gap-019) |
-| GAP-020 | P3×P4 | MED | 🧯 | Inline FinOps budget authoring is orphaned: `costAvailability({ budgetUsd, tiers, strategy })` appears only as an ADR-0039 example with no import path in `@hobo/bindles`/`@hobo/camps`, no sdk-api or authoring-resources-wiring surface, and no tie to `hobo plan` preview — Nitric-style cost posture cannot be declared alongside resources at collection time. | `docs/design/adr/02-identity-security.md:285-295`<br>`docs/design/reliability-observability-cost.md:175-177`<br>`docs/design/authoring-resources-wiring.md` … | [REM-028](#rem-028-for-gap-020) |
+| GAP-020 | P3×P4 | MED | ✔ | Inline FinOps budget authoring documented in Plan 21 with `costAvailabilityProfile()`, inline `budget()`/`spendCapUsd` declarations, ADR-0039 §4 alignment, and `hobo plan` Cost & budget surfacing. | `docs/design/adr/02-identity-security.md:285-295`<br>`docs/design/authoring-resources-wiring.md#finops-inline-budget--cost-availability` … | [REM-028](#rem-028-for-gap-020) |
 | GAP-021 | P4×P5 | MED | ✔ | Per-token LLM inference budgets are promised in the AI governance plane (`per-token cost/safety budgets (riding the spend breaker)`) and MeteringView folds `gen.*`/`token.*`, but no design text defines a **`TokenBudget`** object, the pre-inference gate seam, which counters fold LLM input/output/total tokens (distinct from auth `token.*` credential events), or how hard denies and spend-velocity circuit-breakers apply to inference. | `docs/design/governance-planes.md:118-119`<br>`docs/design/reliability-observability-cost.md:210-216` | [REM-029](#rem-029-for-gap-021) |
 | GAP-022 | P5×L-DRIFT | MED | 🧯 | Agent-native Crew promises lack a known-limitations register row while launch-messaging scopes built-in operator agents to `future-roadmap`: vision/index sell autonomous Crew as core product, but `known-limitations-register.md` has zero Crew/MCP/autonomy entries — customer-facing guardrails for the largest agent-native promise are missing. | `docs/design/vision.md:14`<br>`docs/design/launch-messaging-claims.md:63`<br>`docs/design/known-limitations-register.md:38-44`<br>`docs/design/operators-sre.md:46-54` … | [REM-030](#rem-030-for-gap-022) |
 | GAP-023 | L-CONS | MED | 🧯 | `docs/patterns/` and `docs/standards/` cross-links systematically rot: ecosystem analysis docs link to renamed/moved design paths (`forge-generated-stack.md`, `event-model.md`, `verification.md`, `adr/05-config-matching-environments.md`, `adr/06-ai-generation-operators.md`) that no longer exist — intent→design traceability breaks for the doc families iteration 1 never audited. | `docs/patterns/gitops-runbook-promotion.md:44`<br>`docs/patterns/runtime-code-mutation-persistence.md:37-46`<br>`docs/standards/index.md`<br>`docs/index.md:18-27` … | [REM-031](#rem-031-for-gap-023) |
@@ -1536,16 +1536,30 @@ Add a bridge subsection to `finops-budget-routing-control-plane.md` and `control
 
 - **Finding** (iter2-B1-003, P3×P4, MED): `costAvailability()` orphaned in ADR-0039 only.
 - **Evidence:** `docs/design/adr/02-identity-security.md:285-295` · `docs/design/reliability-observability-cost.md:175-177`
-- **Effort:** M · **Delivery:** [HOBO-693](https://linear.app/quickdeploy-ai/issue/HOBO-693)
+- **Effort:** M · **Delivery:** ✔ [HOBO-693](https://linear.app/quickdeploy-ai/issue/HOBO-693) — Plan 21 FinOps inline-budget section + ADR-0039 `costAvailabilityProfile` alignment + `inline-budget-authoring` proof
 
 **Action**
 
-Wire budget authoring: add `costAvailability()` (or camp/bindle-level equivalent) to `authoring-resources-wiring.md` + `sdk-api.md` with import path, plan-preview interaction, and link back to ADR-0039 example.
+Docs-first remediation with an executable exp-proof (no new ADR — ADR-0039 already decided the profile shape).
+
+1. `docs/design/authoring-resources-wiring.md` — add `### FinOps — inline budget & cost-availability` (anchor `#finops-inline-budget--cost-availability`) before the DNS section: scope-declaration table (`budget`, `spendCapUsd`, `costAvailabilityProfile`), inline Camp policy example, `hobo plan` Cost & budget surfacing (projected cost, headroom, tier preview, JSON envelope fields), manifest IR `policy` sketch, and link to the exp-proof.
+
+2. `docs/design/adr/02-identity-security.md` — ADR-0039 §4: rename the example helper from `costAvailability(` to `costAvailabilityProfile(`; add one cross-link sentence pointing at Plan 21 `#finops-inline-budget--cost-availability`. Do not reword other decision bullets.
+
+3. CREATE `src/draft/exp-proofs/inline-budget-authoring/` — independent POC proving declaration normalization + plan budget surfacing (human + JSON) against mocked MeteringView/policy fixtures; link from Plan 21.
+
+4. CREATE `docs/design/proofs/hobo-693-inline-budget-authoring/index.md` — proof record mapping acceptance bullets to test names.
 
 **Acceptance**
 
-1. Authoring catalog documents inline budget declaration + `hobo plan` surfacing.
-2. Gates green.
+1. Plan 21 documents inline `budget()`, `costAvailabilityProfile()`, and agent `spendCapUsd` declarations plus `hobo plan` Cost & budget surfacing.
+2. ADR-0039 §4 example uses `costAvailabilityProfile(` and links back to Plan 21.
+3. `src/draft/exp-proofs/inline-budget-authoring` tests pass.
+4. Gates green.
+
+**Guardrails**
+
+Documentation-first: do not implement policy-engine or MeteringView runtime. Do not create a new ADR or renumber existing ADRs. Keep relative `.md` links valid. The exp-proof is contract-only over mocked seams.
 
 ### REM-029 (for GAP-021)
 

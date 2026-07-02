@@ -15,3 +15,8 @@ and that stale cross-refs were retargeted to current design-suite paths.
 ```bash
 pnpm --prefix src/draft/technical-proofs/hobo-700-runtime-code-mutation-pattern-adr-contract test
 ```
+
+## Architecture Evidence
+
+Protobuf, CUE, PACT, and ADR notes live alongside this package for
+`architecture:guard` — see `ADR.md`.

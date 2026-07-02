@@ -1,12 +1,47 @@
-export { bindle } from "./bindle.js";
 export type {
-	BindleManifest,
-	ClosureBuilder,
+	AllowVerbsFor,
+	BindleBuilder,
+	BindleDefinition,
+	BindleEdge,
+	BindleResource,
+	BindleResourceRecord,
+	LoweringDescriptor,
+	ProviderAnnotation,
+	ResourceCatalogEntry,
 	ResourceDescriptor,
 	ResourceHandle,
 	ResourceKind,
-	ResourceRelationship,
-} from "./bindle.js";
+	SecretRef,
+} from "./types.js";
+
+export {
+	CATALOG,
+	api,
+	auth,
+	bucket,
+	catalogFactoryNames,
+	crypto,
+	data,
+	experiment,
+	flag,
+	golden,
+	guardrail,
+	job,
+	kv,
+	notify,
+	queue,
+	schedule,
+	secret,
+	service,
+	topic,
+	ui,
+	web,
+	websocket,
+} from "./catalog.js";
+
+export { secretRef } from "./secret-ref.js";
+
+export { bindle } from "./bindle.js";
 
 export const HOBO_BINDLES_PACKAGE = "@hobo/bindles";
 

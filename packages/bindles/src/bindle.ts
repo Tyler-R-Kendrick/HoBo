@@ -1,128 +1,144 @@
-export type ResourceKind = "api" | "cache";
+import type {
+	AllowVerbsFor,
+	BindleBuilder,
+	BindleDefinition,
+	BindleEdge,
+	BindleResource,
+	BindleResourceRecord,
+	ProviderAnnotation,
+	ResourceKind,
+} from "./types.js";
 
-export interface ResourceRelationship {
-	readonly from: string;
-	readonly to: string;
-	readonly verb: "dependsOn";
+interface InternalBindleResource<K extends ResourceKind> {
+	readonly kind: K;
+	declaredAllow: string[];
+	annotations: ProviderAnnotation[];
+	dependencies: Set<InternalBindleResource<ResourceKind>>;
 }
 
-export interface ResourceDescriptor {
-	readonly generatedId: string;
-	readonly kind: ResourceKind;
-	readonly ownerBindleId: string;
-	readonly workload: { kind: "inert-workload-factory"; factory: () => unknown } | null;
-}
+type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
+	readonly __bindleInternal: InternalBindleResource<K>;
+};
 
-export interface BindleManifest<TAliases extends Record<string, ResourceHandle>> {
-	readonly name: string;
-	readonly aliases: TAliases;
-	readonly resources: readonly ResourceDescriptor[];
-	readonly relationships: readonly ResourceRelationship[];
-}
+function createBindleResource<K extends ResourceKind>(kind: K): TrackedBindleResource<K> {
+	const internal: InternalBindleResource<K> = {
+		kind,
+		declaredAllow: [],
+		annotations: [],
+		dependencies: new Set(),
+	};
 
-export interface ResourceHandle<TKind extends ResourceKind = ResourceKind> {
-	readonly generatedId: string;
-	readonly kind: TKind;
-	dependsOn(...dependencies: readonly ResourceHandle[]): ResourceHandle<TKind>;
-}
-
-export interface ClosureBuilder {
-	api(workload: () => unknown): ResourceHandle<"api">;
-	cache(): ResourceHandle<"cache">;
-}
-
-class ResourceHandleImpl<TKind extends ResourceKind = ResourceKind> implements ResourceHandle<TKind> {
-	constructor(
-		private readonly context: BuilderContext,
-		readonly generatedId: string,
-		readonly kind: TKind,
-		private readonly workload: (() => unknown) | null,
-	) {}
-
-	dependsOn(...dependencies: readonly ResourceHandle[]): ResourceHandle<TKind> {
-		for (const dependency of dependencies) {
-			if (!(dependency instanceof ResourceHandleImpl)) {
-				throw new Error("bindles.invalid_dependency");
-			}
-			if (dependency.context !== this.context) {
-				throw new Error("bindles.cross_bindle_dependency");
-			}
-			this.context.relationships.push({
-				from: this.generatedId,
-				to: dependency.generatedId,
-				verb: "dependsOn",
-			});
-		}
-		return this;
-	}
-
-	snapshot(): ResourceDescriptor {
-		return {
-			generatedId: this.generatedId,
-			kind: this.kind,
-			ownerBindleId: this.context.ownerBindleId,
-			workload: this.workload
-				? { kind: "inert-workload-factory", factory: this.workload }
-				: null,
-		};
-	}
-}
-
-class BuilderContext {
-	readonly relationships: ResourceRelationship[] = [];
-	private readonly handles: ResourceHandleImpl[] = [];
-	private readonly kindCounts = new Map<ResourceKind, number>();
-
-	constructor(readonly ownerBindleId: string) {}
-
-	builder(): ClosureBuilder {
-		return {
-			api: (workload: () => unknown) => {
-				if (typeof workload !== "function") {
-					throw new Error("bindles.workload_factory_required");
+	const resource: TrackedBindleResource<K> = {
+		kind,
+		__bindleInternal: internal,
+		dependsOn(...deps: BindleResource[]): BindleResource<K> {
+			for (const dep of deps) {
+				const tracked = dep as TrackedBindleResource<ResourceKind>;
+				if (tracked.__bindleInternal) {
+					internal.dependencies.add(tracked.__bindleInternal);
 				}
-				return this.create("api", workload);
-			},
-			cache: () => this.create("cache", null),
-		};
-	}
+			}
+			return resource;
+		},
+		allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K> {
+			for (const verb of verbs) {
+				if (!internal.declaredAllow.includes(verb as string)) {
+					internal.declaredAllow.push(verb as string);
+				}
+			}
+			return resource;
+		},
+		with(...annotations: ProviderAnnotation[]): BindleResource<K> {
+			internal.annotations.push(...annotations);
+			return resource;
+		},
+	};
 
-	resourceSnapshots(): ResourceDescriptor[] {
-		return this.handles.map((handle) => handle.snapshot());
-	}
-
-	private create<TKind extends ResourceKind>(
-		kind: TKind,
-		workload: (() => unknown) | null,
-	): ResourceHandle<TKind> {
-		const ordinal = (this.kindCounts.get(kind) ?? 0) + 1;
-		this.kindCounts.set(kind, ordinal);
-		const handle = new ResourceHandleImpl(
-			this,
-			`res_${kind}_${String(ordinal).padStart(4, "0")}`,
-			kind,
-			workload,
-		);
-		this.handles.push(handle);
-		return handle;
-	}
+	return Object.freeze(resource);
 }
 
-export function bindle<TAliases extends Record<string, ResourceHandle>>(
+function createBuilder(): BindleBuilder {
+	return Object.freeze({
+		api: () => createBindleResource("api"),
+		web: () => createBindleResource("web"),
+		kv: () => createBindleResource("kv"),
+		bucket: () => createBindleResource("bucket"),
+		queue: () => createBindleResource("queue"),
+		topic: () => createBindleResource("topic"),
+		secret: () => createBindleResource("secret"),
+		data: () => createBindleResource("data"),
+		service: () => createBindleResource("service"),
+	});
+}
+
+function toResourceRecord<K extends ResourceKind>(
 	name: string,
-	builderFn: (builder: ClosureBuilder) => TAliases,
-): BindleManifest<TAliases> {
-	if (!name.trim()) {
-		throw new Error("bindles.bindle_name_required");
+	internal: InternalBindleResource<K>,
+): BindleResourceRecord<K> {
+	const stableId = `${internal.kind}:${name}` as `${K}:${string}`;
+	return Object.freeze({
+		kind: internal.kind,
+		name,
+		stableId,
+		declaredAllow: Object.freeze([...internal.declaredAllow]),
+		annotations: Object.freeze(
+			internal.annotations.map((entry) => Object.freeze({ ...entry })),
+		),
+		dependsOn: Object.freeze(
+			[...internal.dependencies].map((dep) => dep.kind as string),
+		),
+	});
+}
+
+export function bindle(
+	name: string,
+	build: (builder: BindleBuilder) => Record<string, BindleResource>,
+): BindleDefinition {
+	if (typeof name !== "string" || name.length === 0) {
+		throw new TypeError("bindle name must be a non-empty string");
 	}
 
-	const context = new BuilderContext(name);
-	const aliases = builderFn(context.builder());
+	const builder = createBuilder();
+	const built = build(builder);
+	const resourceByName = new Map<InternalBindleResource<ResourceKind>, string>();
+	const resources: Record<string, BindleResourceRecord> = {};
+	const edges: BindleEdge[] = [];
+	const stableIds = new Set<string>();
+
+	for (const [resourceName, resource] of Object.entries(built)) {
+		if (typeof resourceName !== "string" || resourceName.length === 0) {
+			throw new TypeError("bindle resource names must be non-empty strings");
+		}
+
+		const tracked = resource as TrackedBindleResource<ResourceKind>;
+		const internal = tracked.__bindleInternal;
+		if (!internal) {
+			throw new TypeError("bindle build must return resources from the BindleBuilder");
+		}
+
+		const stableId = `${internal.kind}:${resourceName}`;
+		if (stableIds.has(stableId)) {
+			throw new TypeError(`duplicate bindle resource stableId "${stableId}"`);
+		}
+		stableIds.add(stableId);
+
+		resourceByName.set(internal, resourceName);
+		resources[resourceName] = toResourceRecord(resourceName, internal);
+	}
+
+	for (const [resourceName, resource] of Object.entries(built)) {
+		const tracked = resource as TrackedBindleResource<ResourceKind>;
+		for (const dep of tracked.__bindleInternal.dependencies) {
+			const depName = resourceByName.get(dep);
+			if (depName) {
+				edges.push(Object.freeze({ from: resourceName, to: depName }));
+			}
+		}
+	}
 
 	return Object.freeze({
 		name,
-		aliases,
-		resources: Object.freeze(context.resourceSnapshots()),
-		relationships: Object.freeze([...context.relationships]),
+		resources: Object.freeze(resources),
+		edges: Object.freeze(edges),
 	});
 }

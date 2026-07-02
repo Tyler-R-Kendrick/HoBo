@@ -1,13 +1,3 @@
----
-concept_id: hobo-643-container-fallback-wiring-parity
-title: HOBO-643 Container Fallback Wiring Parity Proof
-status: draft
-refs:
-  - docs/design/authoring-resources-wiring.md#plan-21
-  - docs/design/wasm-runtime-wit.md#plan-20
-  - docs/design/proofs/hobo-195-build-dagger-provider/index.md
----
-
 # HOBO-643 Container Fallback Wiring Parity Proof
 
 This proof backs [Plan 21](../../authoring-resources-wiring.md#plan-21) and

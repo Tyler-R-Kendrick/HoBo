@@ -1,10 +1,3 @@
----
-type: Reference
-title: "HOBO-639 Azure Full Provider Capability Manifest Proof"
-description: "Acceptance evidence for S4-03 @hobo/provider-azure full capability manifest draft POC."
-tags: [hobo, design, proof]
----
-
 # HOBO-639 Azure Full Provider Capability Manifest Proof
 
 Executable acceptance evidence for the independent draft package at

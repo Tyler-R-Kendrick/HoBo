@@ -1,7 +1,0 @@
-syntax = "proto3";
-package hobo.wit.v1;
-
-message WitScaffoldRecord {
-  string package_name = 1;
-  string owner_issue = 2;
-}

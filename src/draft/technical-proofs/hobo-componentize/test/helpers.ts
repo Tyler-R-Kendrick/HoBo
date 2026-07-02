@@ -10,6 +10,11 @@ import {
 
 const FIXTURE_ROOT = fileURLToPath(new URL("./fixtures/hello-bindle", import.meta.url));
 
+export const componentizeRealBuildSkipReason =
+  process.platform === "win32" && process.arch === "arm64"
+    ? "@bytecodealliance/wizer does not publish a Windows ARM64 binary"
+    : undefined;
+
 export function helloBindleSpec(overrides: Partial<ComponentizeSpec> = {}): ComponentizeSpec {
   return parseComponentizeSpec({
     name: "hello-bindle",

@@ -2,8 +2,11 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
+
+const requireFromRepoRoot = createRequire(join(process.cwd(), "package.json"));
 
 export const GENERATED_LAYOUT = Object.freeze([".hobo/generated", "src/_generated"]);
 export const SOURCE_LAYOUT = Object.freeze({
@@ -291,9 +294,26 @@ export async function typecheckGeneratedTree(projectRoot) {
     "ES2022",
     consumerPath,
   ];
-  const command = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : "tsc";
-  const commandArgs = process.platform === "win32" ? ["/d", "/c", "tsc.cmd", ...args] : args;
+  const localTsc = resolveLocalTsc();
+  const command = localTsc
+    ? process.execPath
+    : process.platform === "win32"
+      ? process.env.ComSpec ?? "cmd.exe"
+      : "tsc";
+  const commandArgs = localTsc
+    ? [localTsc, ...args]
+    : process.platform === "win32"
+      ? ["/d", "/c", "tsc.cmd", ...args]
+      : args;
   execFileSync(command, commandArgs, { cwd: projectRoot, stdio: "pipe" });
+}
+
+function resolveLocalTsc(): string | undefined {
+  try {
+    return requireFromRepoRoot.resolve("typescript/bin/tsc");
+  } catch {
+    return undefined;
+  }
 }
 
 export async function withTempProject(callback) {

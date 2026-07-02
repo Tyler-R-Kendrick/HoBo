@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { runComponentSmoke } from "../src/index.js";
-import { buildHelloBindle } from "./helpers.js";
+import { buildHelloBindle, componentizeRealBuildSkipReason } from "./helpers.js";
+
+const realBuildIt = componentizeRealBuildSkipReason ? it.skip : it;
 
 describe("componentize determinism", () => {
-  it("keeps canonical inputs stable and smoke output consistent across rebuilds", async () => {
+  realBuildIt("keeps canonical inputs stable and smoke output consistent across rebuilds", async () => {
     const first = await buildHelloBindle();
     const second = await buildHelloBindle();
 

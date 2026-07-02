@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { runComponentSmoke, validateWasmComponentArtifact } from "../src/index.js";
-import { buildHelloBindle } from "./helpers.js";
+import { buildHelloBindle, componentizeRealBuildSkipReason } from "./helpers.js";
+
+const realBuildIt = componentizeRealBuildSkipReason ? it.skip : it;
 
 describe("componentize smoke", () => {
-  it("invokes health via jco transpile and returns hello-bindle:ok", async () => {
+  realBuildIt("invokes health via jco transpile and returns hello-bindle:ok", async () => {
     const result = await buildHelloBindle();
     expect(validateWasmComponentArtifact(result.component).passed).toBe(true);
 
@@ -13,7 +15,7 @@ describe("componentize smoke", () => {
     expect(smoke.stdout).toBe("hello-bindle:ok\n");
   }, 240_000);
 
-  it("throws for unknown exports", async () => {
+  realBuildIt("throws for unknown exports", async () => {
     const result = await buildHelloBindle();
     await expect(runComponentSmoke(result.component, { exportName: "missing" })).rejects.toThrow(
       /componentize\.unknown_export: missing/,

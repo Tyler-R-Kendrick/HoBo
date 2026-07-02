@@ -22,7 +22,7 @@
 		"lint": "biome check .",
 		"test": "vitest run --passWithNoTests",
 		"test:unit": "vitest run --passWithNoTests",
-		"test:contract:consumer": "vitest run --passWithNoTests contracts/token-broker.contract.test.ts"
+		"test:contract:consumer": "vitest run --passWithNoTests contracts/token-broker.contract.test.ts test/ci-fabric-contract.test.ts"
 	},
 	"devDependencies": {
 		"@types/node": "^22.15.29",

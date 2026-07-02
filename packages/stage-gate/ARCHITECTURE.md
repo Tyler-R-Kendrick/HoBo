@@ -17,9 +17,10 @@ derived types (`StageGateRecord`, `CheckResult`, `ComponentArtifact`,
 `SignatureEvidence`). Downstream code and acceptance surfaces only consume
 parsed records; malformed or tampered input throws `StageGateParseError`.
 
-Check execution resolves `pnpm` through `pnpm.cmd` on Windows and records spawn
-errors in check evidence, so cross-platform S0 failures remain diagnosable and
-fail closed instead of producing empty evidence.
+Check execution resolves `pnpm` through a non-repo-local Windows executable or
+the prepared Corepack shim and records spawn errors plus failure output tails in
+check evidence, so cross-platform S0 failures remain diagnosable and fail
+closed instead of producing empty evidence.
 
 ## Event architecture
 

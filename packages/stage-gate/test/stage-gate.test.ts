@@ -82,8 +82,10 @@ describe("parseStageGateRecord", () => {
 });
 
 describe("runStageGate", () => {
-	it("resolves pnpm through the Windows command shim", () => {
-		expect(resolveCommandExecutable("pnpm", "win32")).toBe("pnpm.cmd");
+	it("resolves pnpm through a non-local Windows executable", () => {
+		expect(resolveCommandExecutable("pnpm", "win32", { Path: "" })).toBe(
+			"corepack",
+		);
 		expect(resolveCommandExecutable("pnpm", "linux")).toBe("pnpm");
 		expect(resolveCommandExecutable("node", "win32")).toBe("node");
 		expect(shouldUseCommandShell("pnpm.cmd", "win32")).toBe(true);
@@ -94,11 +96,11 @@ describe("runStageGate", () => {
 			["run", "test:schema"],
 			"win32",
 			"cmd.exe",
+			{ Path: "" },
 		);
 		expect(invocation).toEqual({
-			executable: "cmd.exe",
-			args: ["/d", "/s", "/c", '"\"pnpm.cmd\" \"run\" \"test:schema\""'],
-			windowsVerbatimArguments: true,
+			executable: "corepack",
+			args: ["pnpm", "run", "test:schema"],
 		});
 	});
 

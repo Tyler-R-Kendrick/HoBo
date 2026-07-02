@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { execSync } from "node:child_process";
 
 import { serializeStageGateRecord } from "./parse.js";
@@ -27,16 +27,31 @@ function readRepoCommit(cwd: string): string {
 export function resolveCommandExecutable(
 	executable: string,
 	platform: NodeJS.Platform = process.platform,
-	cwd = process.cwd(),
+	env: NodeJS.ProcessEnv = process.env,
 ): string {
 	if (platform === "win32" && executable === "pnpm") {
-		const localPnpm = join(cwd, "node_modules", ".bin", "pnpm.cmd");
-		if (existsSync(localPnpm)) {
-			return localPnpm;
-		}
-		return "corepack";
+		return resolveWindowsPnpmExecutable(env);
 	}
 	return executable;
+}
+
+function resolveWindowsPnpmExecutable(env: NodeJS.ProcessEnv): string {
+	const pathValue = env.Path ?? env.PATH ?? "";
+	const pathEntries = pathValue.split(delimiter).filter(Boolean);
+	const searchRoots = [env.PNPM_HOME, ...pathEntries].filter(
+		(root): root is string => Boolean(root),
+	);
+	const candidates = searchRoots
+		.map((root) => join(root, "pnpm.cmd"))
+		.filter((candidate) => existsSync(candidate));
+	return (
+		candidates.find((candidate) => !isNodeModulesBinShim(candidate)) ?? "corepack"
+	);
+}
+
+function isNodeModulesBinShim(path: string): boolean {
+	const normalized = path.replaceAll("\\", "/").toLowerCase();
+	return normalized.includes("/node_modules/.bin/");
 }
 
 export function shouldUseCommandShell(
@@ -55,10 +70,14 @@ export function createCommandInvocation(
 	args: readonly string[],
 	platform: NodeJS.Platform = process.platform,
 	comspec = process.env.ComSpec ?? "cmd.exe",
-	cwd = process.cwd(),
+	env: NodeJS.ProcessEnv = process.env,
 ): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
-	const resolvedExecutable = resolveCommandExecutable(executable, platform, cwd);
-	if (platform === "win32" && executable === "pnpm" && resolvedExecutable === "corepack") {
+	const resolvedExecutable = resolveCommandExecutable(executable, platform, env);
+	if (
+		platform === "win32" &&
+		executable === "pnpm" &&
+		resolvedExecutable === "corepack"
+	) {
 		return { executable: resolvedExecutable, args: ["pnpm", ...args] };
 	}
 	if (!shouldUseCommandShell(resolvedExecutable, platform)) {
@@ -84,7 +103,13 @@ function runCheck(
 	if (!executable) {
 		return { exitCode: 1, evidence: { error: "empty command" } };
 	}
-	const invocation = createCommandInvocation(executable, args, process.platform, process.env.ComSpec ?? "cmd.exe", cwd);
+	const invocation = createCommandInvocation(
+		executable,
+		args,
+		process.platform,
+		process.env.ComSpec ?? "cmd.exe",
+		env,
+	);
 	const result = spawnSync(invocation.executable, invocation.args, {
 		cwd,
 		env,
@@ -93,22 +118,21 @@ function runCheck(
 		stdio: ["ignore", "pipe", "pipe"],
 		maxBuffer: 16 * 1024 * 1024,
 	});
-	const failed = (result.status ?? 1) !== 0;
+	const exitCode = result.status ?? 1;
+	const failed = exitCode !== 0;
 	const evidence: Record<string, string> = {};
 	if (result.error) {
 		evidence.error = `${result.error.name}: ${result.error.message}`;
 	}
 	if (result.stdout?.trim()) {
-		const stdout = result.stdout.trim();
-		evidence.stdout = stdout.length <= 4000 || !failed ? stdout.slice(0, 4000) : stdout.slice(-4000);
+		evidence.stdout = trimEvidence(result.stdout, exitCode);
 	}
 	if (result.stderr?.trim()) {
-		const stderr = result.stderr.trim();
-		evidence.stderr = stderr.length <= 4000 || !failed ? stderr.slice(0, 4000) : stderr.slice(-4000);
+		evidence.stderr = trimEvidence(result.stderr, exitCode);
 	}
 	if (failed) {
 		console.error(
-			`[stage-gate] check failed: ${command.join(" ")} (exit ${result.status ?? 1})`,
+			`[stage-gate] check failed: ${command.join(" ")} (exit ${exitCode})`,
 		);
 		if (evidence.stderr) {
 			console.error(evidence.stderr);
@@ -118,9 +142,20 @@ function runCheck(
 		}
 	}
 	return {
-		exitCode: result.status ?? 1,
+		exitCode,
 		evidence,
 	};
+}
+
+function trimEvidence(output: string, exitCode: number): string {
+	const text = output.trim();
+	if (exitCode === 0) {
+		return text.slice(0, 4000);
+	}
+	if (text.length <= 12_000) {
+		return text;
+	}
+	return `${text.slice(0, 4000)}\n\n... output truncated; failure tail follows ...\n\n${text.slice(-8000)}`;
 }
 
 function parseEvidenceJson(stdout: string | undefined): Record<string, string> {

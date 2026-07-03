@@ -178,6 +178,12 @@ export interface BindleDefinition {
 	readonly name: string;
 	readonly resources: Readonly<Record<string, BindleResourceRecord>>;
 	readonly edges: readonly BindleEdge[];
+	/**
+	 * Returns the app-host entrypoint handler bound to a resource via
+	 * `b.api(handler)` / `b.web(handler)`, or `undefined` when none was bound.
+	 * Non-enumerable, so it never appears in the serialized manifest graph.
+	 */
+	entrypoint(name: string): (() => unknown) | undefined;
 }
 
 export interface BindleBuilder {

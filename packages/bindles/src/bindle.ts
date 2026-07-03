@@ -14,6 +14,7 @@ interface InternalBindleResource<K extends ResourceKind> {
 	declaredAllow: string[];
 	annotations: ProviderAnnotation[];
 	dependencies: Set<InternalBindleResource<ResourceKind>>;
+	handler: (() => unknown) | undefined;
 }
 
 type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
@@ -22,12 +23,14 @@ type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
 
 function createBindleResource<K extends ResourceKind>(
 	kind: K,
+	handler?: () => unknown,
 ): TrackedBindleResource<K> {
 	const internal: InternalBindleResource<K> = {
 		kind,
 		declaredAllow: [],
 		annotations: [],
 		dependencies: new Set(),
+		handler,
 	};
 
 	const resource: TrackedBindleResource<K> = {
@@ -61,8 +64,8 @@ function createBindleResource<K extends ResourceKind>(
 
 function createBuilder(): BindleBuilder {
 	return Object.freeze({
-		api: () => createBindleResource("api"),
-		web: () => createBindleResource("web"),
+		api: (handler?: () => unknown) => createBindleResource("api", handler),
+		web: (handler?: () => unknown) => createBindleResource("web", handler),
 		kv: () => createBindleResource("kv"),
 		bucket: () => createBindleResource("bucket"),
 		queue: () => createBindleResource("queue"),
@@ -109,6 +112,7 @@ export function bindle(
 	const resources: Record<string, BindleResourceRecord> = {};
 	const edges: BindleEdge[] = [];
 	const stableIds = new Set<string>();
+	const handlers = new Map<string, () => unknown>();
 
 	for (const [resourceName, resource] of Object.entries(built)) {
 		if (typeof resourceName !== "string" || resourceName.length === 0) {
@@ -131,6 +135,9 @@ export function bindle(
 
 		resourceByName.set(internal, resourceName);
 		resources[resourceName] = toResourceRecord(resourceName, internal);
+		if (internal.handler) {
+			handlers.set(resourceName, internal.handler);
+		}
 	}
 
 	for (const [resourceName, resource] of Object.entries(built)) {
@@ -143,9 +150,16 @@ export function bindle(
 		}
 	}
 
-	return Object.freeze({
+	const definition: BindleDefinition = {
 		name,
 		resources: Object.freeze(resources),
 		edges: Object.freeze(edges),
-	});
+		entrypoint: (resourceName: string): (() => unknown) | undefined =>
+			handlers.get(resourceName),
+	};
+	// Keep the app-host entrypoints reachable for tooling/tests but out of the
+	// provider-agnostic manifest graph: non-enumerable so JSON.stringify and
+	// Object.keys still yield exactly { name, resources, edges }.
+	Object.defineProperty(definition, "entrypoint", { enumerable: false });
+	return Object.freeze(definition);
 }

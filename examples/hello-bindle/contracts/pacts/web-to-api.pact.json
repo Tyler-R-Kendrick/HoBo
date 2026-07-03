@@ -1,0 +1,31 @@
+{
+  "consumer": {
+    "name": "hello-bindle-web"
+  },
+  "provider": {
+    "name": "hello-bindle-api"
+  },
+  "interactions": [
+    {
+      "description": "web app fetches the hello greeting",
+      "request": {
+        "method": "GET",
+        "path": "/hello"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "message": "hello, world"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  }
+}

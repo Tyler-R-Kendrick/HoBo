@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package hobo.examples.hello_bindle.v1;
-
-message HelloBindleFixtureRecord {
-  string fixture_id = 1;
-  string mode = 2;
-  string owner_issue = 3;
-}

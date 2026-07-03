@@ -142,6 +142,24 @@ After the backlog closed, two of the closest **un-captured** comparables were ad
 
 **Differentiation confirmed:** HoBo embeds metering, quota enforcement, showback, and cost-aware placement in the same event-sourced platform that plans deployments — these tools bolt onto billing exports or clusters after the fact.
 
+## 3f. Re-survey — SST (2026-07-03)
+
+[`SST`](sst.md) joins Encore/Nitric as the closest pressure on HoBo's **IfC-authoring + IaC-substrate + local-DX** story. It is a close product analog but adjacent in ambition: an **AWS-centric Infrastructure-from-Code framework** (one `sst.config.ts`) whose v3 "Ion" engine runs on **Pulumi + Terraform** (150+ providers), with typed resource **Linking**, **Live-Lambda** local dev, and an optional **Console** — where HoBo is an agnostic, AI-native meta-cloud. Its v3 rewrite (CDK/CloudFormation → Pulumi/TF) also **dated the old landscape row** in [`vision.md`](../design/vision.md), now corrected.
+
+**No new major architecture gap.** SST's shipped surfaces map to existing HoBo design:
+
+- **Pulumi/Terraform engine** maps to `iac-pulumi` (primary) + Crossplane/OpenTofu adapters **behind a port** — HoBo keeps the engine swappable rather than welded ([Plan 4](../design/control-plane.md#plan-04), [ADR-0069](../design/adr/01-architecture-core.md#adr-0069)).
+- **Resource Linking + the typed `Resource` SDK** maps to triple-effect `.allow()` (IAM + wasm-cap + agent-token) and checked-in `_generated/` bindings ([Plan 21](../design/authoring-resources-wiring.md#plan-21), [ADR-0037](../design/adr/01-architecture-core.md#adr-0037)).
+- **High-level components** map to WIT ports with cross-cloud equivalence classes ([Plan 21](../design/authoring-resources-wiring.md#plan-21)); the raw Pulumi/TF escape hatch maps to `.with(...)` ([ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
+- **`sst dev` Live-Lambda** maps to `hobo dev` + the fidelity matrix ([ADR-0042](../design/adr/07-portability-extensibility.md#adr-0042)); **state/"Home"** maps to the event-sourced control plane ([Plan 11](../design/data-plane.md#plan-11)); **Console/Autodeploy + preview envs** map to the dashboard, Deployment Sets/Deltas, and preview Camps ([Plan 7](../design/developer-experience.md#plan-07), [Plan 25](../design/platform-engineering.md#plan-25)).
+- **Auth/Secret/Router/Realtime** map to `hobo:auth` ([ADR-0038](../design/adr/02-identity-security.md#adr-0038)), `hobo:secrets`, Yard-level `domain` ([ADR-0035](../design/adr/07-portability-extensibility.md#adr-0035)), and `hobo:websocket` ([ADR-0075](../design/adr/07-portability-extensibility.md#adr-0075)).
+
+**Execution pressure added:** SST sets a concrete DX bar HoBo's acceptance criteria should meet — **Live-Lambda local↔cloud fidelity** (real invocations proxied to local, `<10ms` reload, real IAM in the loop), **one-line full-stack framework deploys** (a Next.js app ≈ 70 low-level resources hidden), and **typed multi-language resource linking** (JS/TS/Python/Go/Rust). These are not new Plans, but `hobo dev`'s Camp-only tier and the `_generated/` linking DX should be held to this bar.
+
+**Deliberate non-gap:** SST's "150+ providers" is **multi-*provider*, not multi-*cloud-portable*** — the portable high-level components are AWS-centric, and the long tail is raw provider-specific resources. HoBo differentiates on genuinely portable ports + pluggable IaC + event-sourced governance + AI-native operation; SST's breadth is a validation of the Pulumi/TF substrate, not a new HoBo core plane.
+
+**Net:** like Dapr/Encore, SST surfaces **no major new gap** — it primarily *validates* HoBo's Pulumi/TF substrate, typed-linking DX, and local-first-with-real-cloud-fidelity bets, while its AWS-centric IaC framing is exactly the breadth/AI-native delta HoBo is built to fill.
+
 ## 4. Review verdict
 *(Superpowers `receiving-code-review` framing.)* **Strong-but-uneven** *(original verdict)*. HoBo's intersection bet (agnostic IfC + durable event-sourced runtime + agents/generation pipeline, self-hostable) is genuinely uncontested — no competitor spans it. The risks were **depth, not breadth**: (a) the **unique** differentiator (AI generation) was the least-specified; (b) HoBo lacked the one piece of mainstream DX a TS-backend audience expects (**reactive queries**); (c) several "designed" capabilities were blocked on unresolved open questions (wasm host, matching algorithm, data migration) that competitors had already shipped answers to. None fatal; all addressable in the design phase.
 

@@ -49,7 +49,7 @@ HoBo is an **AI-native meta-cloud** — a meta cloud-orchestration layer that is
 |---|---|---|---|---|---|---|
 | **Lakebed** | Agent-native PaaS | ❌ (own runtime) | endpoints/env only | sync RPC | reads contracts; basic auth | ❌ |
 | **Vercel + Workflow SDK** | PaaS + durable exec | partial (runtime ports) | Vercel-native | durable workflows/steps | DurableAgent | runtime self-host |
-| **SST** | AWS framework | ❌ (AWS) | full CDK | serverless | no | n/a |
+| **SST** (v3 "Ion") | IfC framework (Pulumi/TF) | ◐ (AWS-centric; 150+ providers, non-portable) | raw Pulumi/TF resources | serverless + containers (Fargate) | no | ✅ (OSS core; Console SaaS) |
 | **Encore** | Backend framework | ✅ (AWS/GCP) | config overrides | typed services | no | ✅ |
 | **Nitric** | Cloud-agnostic framework (IfC) | ✅ | plugin/custom provider (Go) | functions/resources | no | ✅ |
 | **Wing** | Cloud language | ✅ | `bring` modules | preflight/inflight | no | ✅ |
@@ -112,7 +112,7 @@ The only accepted intent-level pivot is Nomad's scheduler/runtime role moving to
 13. **Progressive delivery is the core, behind open ports — the Harness** — releasing a change isn't a bolt-on: the **Harness** ([ADR-0083](./adr/02-identity-security.md#adr-0083)) is a first-class core that takes a deployed change to users through three pluggable standard-shaped ports over OTEL — **OpenFeature** (flags), **OpenDelivery** (canary/blue-green/rollouts + Flagger-style automated rollback), **OpenExperiment** (A/B + stats) — built-in defaults with adapters for Argo Rollouts/Flagger/Spinnaker and Statsig/GrowthBook/Optimizely. The deploy gate decides *whether*, the Harness decides *how*; the core pattern only changes if the industry's dominant release pattern does.
 
 ### Who HoBo is NOT for (honest scoping)
-- Teams happy on a single cloud with deep native tooling and no agnostic need (SST/CDK is simpler).
+- Teams happy on a single cloud with deep native tooling and no agnostic need (SST or the AWS CDK is simpler). Detailed SST capture + parity in [`docs/competitors/sst`](../competitors/sst.md).
 - Pure-Kubernetes shops already invested in Crossplane/KubeVela (HoBo can sit on top, but it's not k8s-first).
 - Apps that need bare-metal/extreme-perf control where any abstraction is a liability.
 

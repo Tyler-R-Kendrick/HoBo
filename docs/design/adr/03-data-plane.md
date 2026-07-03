@@ -526,3 +526,38 @@ HoBo has the FinOps substrate — MeteringView/showback ([ADR-0039](02-identity-
 ### Consequences
 - **(+)** Every FinX advisory output has a named, audited, policy-gated owner at the intersection of FinOps and agent-native pillars.
 - **(−)** One more trust surface in the roster; recommendation quality is bounded by best-effort credit/usage reconciliation ([ADR-0071](01-architecture-core.md#adr-0071) point 6).
+
+## ADR-0118
+**App-facing `cache(name)` is a first-class catalog port (`hobo:cache`), distinct from the durable `kv` store: ephemeral, TTL-first, evictable, and never a source of truth.**
+
+### Context
+The resource catalog ([Plan 21](../authoring-resources-wiring.md#plan-21)) folds caching into `kv`/`data` (the catalog note reads "data/caching (`data`/`kv`)"), but `kv` is a **durable** key-value store — its equivalence class is DynamoDB/Cosmos/Firestore/CF-KV, stores that are a source of truth with no TTL or eviction contract. Every mainstream PaaS in the 2026-07-03 competitor expansion exposes an **ephemeral cache** as a separate primitive — Encore's `cache` (ElastiCache/Memorystore), Vercel KV / Upstash Redis, Railway and Render "Key Value (Redis)", Fly's Upstash — because a cache carries semantics a durable store does not: a bounded TTL, eviction under memory pressure (LRU/LFU), and "never the source of truth." Folding cache into `kv` is therefore both a **catalog gap** (no TTL/eviction surface an app can declare) and a latent **parity overclaim** — the same defect class the register keeps catching (GAP-025 dapr, DRIFT-006 nitric): a HoBo app that needs a cache-aside layer has no honest port to name. CDN/edge caching is already covered by `web()` and is out of scope here; this ADR is about **application-level** caching.
+
+### Decision
+1. **New catalog resource `cache(name)`** → **`hobo:cache`** WIT port, separate from `kv(name)`/`wasi:keyvalue`. `.allow()` verbs: `get`, `set`, `delete`, `invalidate` (admin `flush` is a distinct grant). Equivalence class (owned by [Plan 4](../control-plane.md#plan-04)): Redis/Valkey (self-host floor) · ElastiCache/MemoryDB · Azure Cache for Redis · Momento · Memorystore · Cloudflare Cache API.
+2. **Semantics that make it a cache, not a store:** every entry carries a TTL (required or defaulted); the provider MAY evict before TTL under pressure (documented policy, default LRU); reads return `value | miss` (a cold key is never an error); **the cache is never a source of truth** — a cold or evicted cache degrades to recompute-from-source, so correctness never depends on a hit. Surface: `set(key, value, { ttl, tags? })`, `get(key)`, `delete(key)`, `invalidate({ tag })`.
+3. **Event-sourced invalidation (opt-in), no new machinery:** tag-scoped invalidation can subscribe to the event log so a `data` write invalidates its tags — the reactor ([ADR-0050](#adr-0050)) already carries the change stream, so this adds **no new event family** (it rides `data.*`/projection events). Cache-aside is the default; write-through invalidation is opt-in.
+4. **`kv` is re-scoped to durable-only.** The `authoring-resources-wiring.md` catalog note "data/caching (`data`/`kv`)" is corrected: `kv` / `data.key-value` is the **durable** store (source of truth, no eviction contract); `cache` is the **ephemeral** layer. Escape hatch: `.with()` for provider-native tuning (maxmemory-policy, cluster mode).
+5. **Secretless and governed like every port:** the connection is a brokered reference, not a value (secretless-first, as with `secret`/`crypto` — [ADR-0113](02-identity-security.md#adr-0113)); deny-by-default falls out of linking; cost/QoS flow through metering and `costAvailabilityProfile` ([ADR-0039](02-identity-security.md#adr-0039)) — a cache is a natural graceful-degradation lever.
+
+### Consequences
+- **(+)** Closes the one genuine catalog gap the 2026-07-03 infra re-classification found, and removes a latent parity overclaim — apps declare a cache honestly, with TTL/eviction semantics a durable `kv` never promised.
+- **(+)** The new competitor captures (Encore/Vercel/Railway/Render/Fly/Modal) map to a real `hobo:cache` row instead of an over-broad `kv` ✅.
+- **(−)** One more port and equivalence class to conformance-gate; the `kv`-vs-`cache` distinction has to be taught (mitigated by the "never a source of truth" one-liner).
+
+## ADR-0119
+**Realtime collaboration (presence / awareness / multiplayer) composes from existing primitives — `websocket()` rooms + the reactor + the ephemeral `cache` port, with CRDT state-merge as the opt-in topology; a first-class `presence` capability stays an opt-in package, not a v1 core primitive.**
+
+### Context
+The 2026-07-03 infra re-classification flagged "realtime collaboration" as backlogged. The substrate already exists — `websocket(name)` with rooms/broadcast ([ADR-0075](07-portability-extensibility.md#adr-0075)), the reactive reactor with live `useQuery()` + consistent snapshots ([ADR-0050](#adr-0050)), and the cross-Camp `active-active-eventual` CRDT state topology ([ADR-0040](01-architecture-core.md#adr-0040)) — but there is no app-facing **presence/awareness** primitive (who's online, cursors, typing indicators, live selection) that a collaborative app (Figma/Notion-style) reaches for. Convex/Lakebed and the realtime-BaaS set make presence a first-class expectation. The open question is whether HoBo needs a dedicated `presence` primitive or whether presence composes from what already exists.
+
+### Decision
+1. **Presence composes from existing ports; no new core primitive in v1.** Awareness/presence is ephemeral per-connection state broadcast to a room: `websocket()` rooms carry the connection/broadcast channel ([ADR-0075](07-portability-extensibility.md#adr-0075)), the reactor fans out derived live views ([ADR-0050](#adr-0050)), and the new ephemeral **`cache` port** ([ADR-0118](#adr-0118)) is the natural store for TTL'd presence state — a presence entry is exactly "ephemeral, evictable, never a source of truth," so it self-heals when a client drops and its TTL lapses.
+2. **Shared-document co-editing uses the declared replication topology.** Multiplayer *state merge* is the `active-active-eventual` CRDT topology already designed ([ADR-0040](01-architecture-core.md#adr-0040)); presence (awareness) is explicitly the *ephemeral* layer above it and needs no durability.
+3. **A `@hobo/presence` convenience is an opt-in package (future iteration hook), not a catalog port.** If demand warrants, a thin package wires rooms + cache + reactor into a `usePresence()` ergonomic — the same opt-in-package pattern as `@hobo/vector`/`@hobo/graph` ([ADR-0081](#adr-0081)) — adding no new runtime and no new event family.
+4. **Non-goal:** a bespoke presence server or a proprietary awareness protocol. HoBo does not re-implement Yjs/Liveblocks; it exposes the primitives they build on and can adopt such an engine behind a package.
+
+### Consequences
+- **(+)** Records the realtime-collaboration decision (closing the re-classification item) without speculative surface — presence is buildable today from rooms + reactor + cache, and the `cache` port (ADR-0118) turns out to be the missing piece.
+- **(+)** Keeps the catalog lean; presence ergonomics arrive as an opt-in package if demand appears, not as premature core.
+- **(−)** A collaborative-app author composes three primitives (or reaches for the future package) rather than one turnkey `presence()` — a documented convenience gap, not a capability gap.

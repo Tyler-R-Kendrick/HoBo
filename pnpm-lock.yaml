@@ -667,6 +667,8 @@ importers:
 
   src/draft/technical-proofs/built-in-policy-engine-contract: {}
 
+  src/draft/technical-proofs/cache-port-catalog-contract: {}
+
   src/draft/technical-proofs/camp-eventstore-runtime-port-contract: {}
 
   src/draft/technical-proofs/camp-mapping-sugar-compiler: {}

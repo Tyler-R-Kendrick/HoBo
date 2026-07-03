@@ -360,11 +360,11 @@ The same mechanism powers **preview environments** (per-PR lane or ephemeral Cam
 A short list of genuinely-open *design* choices — each has a designed capability behind it; what's open is a which-option / how-deep choice:
 
 - **Capability Manifest standard:** open spec aligned with MCP-auth / OAuth-OBO / SPIFFE, or HoBo-proprietary first then standardize ([ADR-0046](./adr/02-identity-security.md#adr-0046)). ([6](./ai-native-agent-auth.md#plan-06))
-- **Compiler magic:** depth of a build-time transform for `"use workflow"`/`"use step"` vs pure runtime wrappers. ([2](./sdk-api.md#plan-02))
+- ~~**Compiler magic:** depth of a build-time transform for `"use workflow"`/`"use step"` vs pure runtime wrappers.~~ **Resolved** ([ADR-0123](./adr/01-architecture-core.md#adr-0123)): explicit `workflow`/`step` wrappers are canonical + language-neutral; the directive is opt-in TS sugar with a shallow transform + replay-safety lint. ([2](./sdk-api.md#plan-02))
 - **Built-in engine scope:** how much of Temporal/Restate `runtime-local` reimplements vs recommending an external runtime in prod. ([2](./sdk-api.md#plan-02),[5](./reliability-observability-cost.md#plan-05))
-- **Consensus / multi-region:** own Raft vs delegate; active-active vs active-passive log. ([5](./reliability-observability-cost.md#plan-05))
-- **Overlay-mesh tech** for cross-provider connectivity (WireGuard / eBPF-Cilium / a SaaS like Tailscale). ([13](./security-networking.md#plan-12))
-- **Policy language** for guardrails/ABAC (typed TS vs Rego/CEL). ([12](./security-networking.md#plan-12))
+- ~~**Consensus / multi-region:** own Raft vs delegate; active-active vs active-passive log.~~ **Resolved** ([ADR-0121](./adr/01-architecture-core.md#adr-0121)): delegate to the substrate log/store by default (single-writer quorum, active-passive), embedded library-Raft only for the self-host floor; active-active-eventual is the opt-in CRDT topology ([ADR-0040](./adr/01-architecture-core.md#adr-0040)). ([5](./reliability-observability-cost.md#plan-05))
+- ~~**Overlay-mesh tech** for cross-provider connectivity (WireGuard / eBPF-Cilium / a SaaS like Tailscale).~~ **Resolved** ([ADR-0122](./adr/07-portability-extensibility.md#adr-0122)): WireGuard portable default behind a `mesh` port, provider-native peering + managed meshes as opt-in adapters. ([13](./security-networking.md#plan-12))
+- ~~**Policy language** for guardrails/ABAC (typed TS vs Rego/CEL).~~ **Resolved** ([ADR-0015](./adr/02-identity-security.md#adr-0015), recorded as ADR-P3): typed TS default, with OPA/Cedar as optional providers behind the `policy-engine` port. ([12](./security-networking.md#plan-12))
 - **Governance/license** for OSS core + the hosted Yard business model. ([0](./vision.md#plan-00),[17](./vision.md#plan-17))
 - **`hobo:*` WIT interface naming/versioning** and which `hobo:*` interfaces to upstream as `wasi:*` proposals. ([24](./wasm-runtime-wit.md#plan-20))
 - **IfC-by-default fidelity for non-TS languages** — run-to-collect vs static analysis. ([21](./authoring-resources-wiring.md#plan-21))

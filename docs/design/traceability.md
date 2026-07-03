@@ -410,15 +410,22 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0115 | [identity-security](./adr/02-identity-security.md#adr-0115) | Cost anomaly detection, forecasting, and rightsizing/commitment recommendations are deterministic MeteringView projections emitting advisory cost.* facts; recommendations are gated Crew proposals, never auto-applied; enforcement remains with ADR-0039 breakers/tiers. | HOBO-678 |
 | ADR-0116 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0116) | The productization document category and M0→M4 phase-gate model are a recorded design decision; M0-acceptance-blocks-M1–M4 is proven by the HOBO-521 M0 acceptance record and enforced by this traceability gate. | HOBO-521, HOBO-11, HOBO-680 |
 | ADR-0117 | [data-plane](./adr/03-data-plane.md#adr-0117) | FinOps operator owns FinX advisory outputs and commitment optimization off the deterministic Matching/Dispatcher path; writes are gated Deltas/PRs. | HOBO-679 |
+| ADR-0118 | [data-plane](./adr/03-data-plane.md#adr-0118) | App-facing `cache` port (`hobo:cache`): ephemeral, TTL-first, evictable, never a source of truth — distinct from the durable `kv`; opt-in event-sourced invalidation rides `data.*`; pinned by the `cache-port-catalog-contract` proof. | — (2026-07-03 design-hardening; Linear import pending) |
+| ADR-0119 | [data-plane](./adr/03-data-plane.md#adr-0119) | Realtime collaboration/presence composes from `websocket` rooms + reactor + the ephemeral `cache` port; `@hobo/presence` stays an opt-in package, not a v1 core primitive. | — (2026-07-03 design-hardening; Linear import pending) |
+| ADR-0120 | [identity-security](./adr/02-identity-security.md#adr-0120) | API management (per-consumer keys, usage plans, developer catalog) is a composition over route security (ADR-0114) + identity + entitlements/quotas + policy; monetized API products stay out (ADR-0064). | — (2026-07-03 design-hardening; Linear import pending) |
+| ADR-0121 | [architecture-core](./adr/01-architecture-core.md#adr-0121) | Built-in-engine consensus (ADR-P1) delegates to the Camp substrate log/store by default (single-writer quorum, active-passive); embedded library-Raft only for the self-host floor. | — (2026-07-03 design-hardening; Linear import pending) |
+| ADR-0122 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0122) | Cross-provider overlay mesh (ADR-P2): WireGuard portable default behind a `mesh` port; provider-native peering + managed meshes are opt-in, only-registered-considered adapters. | — (2026-07-03 design-hardening; Linear import pending) |
+| ADR-0123 | [architecture-core](./adr/01-architecture-core.md#adr-0123) | Durable-workflow authoring (ADR-P5): explicit `workflow`/`step` wrappers are canonical + language-neutral; the `"use workflow"` directive is opt-in TS sugar with a shallow transform + replay-safety lint. | — (2026-07-03 design-hardening; Linear import pending) |
+| ADR-0124 | [architecture-core](./adr/01-architecture-core.md#adr-0124) | In-Camp scheduling policies (ADR-P6/P7/P8): preemption/oversubscription/capacity-reservation are substrate-delegated per-Camp policy knobs with safe deny-by-default defaults. | — (2026-07-03 design-hardening; Linear import pending) |
 
 ## ADR Numbering and Status Audit
 
-- Counted ADRs: 106 numbered entries from [adr/README.md](./adr/index.md).
+- Counted ADRs: 113 numbered entries from [adr/README.md](./adr/index.md).
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0117`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
-  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068.
+- Explicit numbering gaps through `ADR-0124`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0124 are contiguous — no new gaps.)
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.
 

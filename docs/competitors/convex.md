@@ -7,7 +7,7 @@ tags: [hobo, competitors]
 
 # Convex — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026, from docs.convex.dev / convex.dev / get-convex GitHub). A deep capture of Convex's developer surface — database, functions, sync, deployment, codegen, and the management plane — reproduced as factual API/CLI/config excerpts under the [fair-use note](README.md#sources--fair-use). HoBo↔Convex parity in [HoBo mapping](#hobo-mapping).
+> Captured for HoBo competitive analysis (research as of 2026, from docs.convex.dev / convex.dev / get-convex GitHub). A deep capture of Convex's developer surface — database, functions, sync, deployment, codegen, and the management plane — reproduced as factual API/CLI/config excerpts under the [fair-use note](index.md#sources--fair-use). HoBo↔Convex parity in [HoBo mapping](#hobo-mapping).
 
 **Convex** is a **reactive, TypeScript-first backend platform** — *"the backend building blocks for your apps and agents."* You express the whole backend in pure TypeScript — **database**, schema, server **functions**, auth, scheduling, search — and Convex keeps frontend ↔ backend ↔ database **in sync in real time**. Three pillars carry the whole model:
 

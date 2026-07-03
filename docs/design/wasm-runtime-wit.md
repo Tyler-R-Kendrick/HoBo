@@ -142,7 +142,8 @@ The runtime's ports form a **Nitric-parity building-block set, each a first-clas
 | Schedules | `hobo:scheduler` |
 | Topics & subscriptions (pub/sub) | `wasi:messaging` |
 | Queues | `hobo:queue` |
-| Key/value | `wasi:keyvalue/store` |
+| Key/value (durable) | `wasi:keyvalue/store` |
+| Cache (ephemeral) | `hobo:cache` — TTL-first, evictable, never a source of truth; verbs `get`/`set`/`delete`/`invalidate` (admin `flush`); distinct from the durable Key/value store ([ADR-0118](./adr/03-data-plane.md#adr-0118)) |
 | Storage / blob | `wasi:blobstore/blobstore` (+ `hobo:blob-events`) |
 | Secrets | `wasi:config/store` + `hobo:secrets` (versioned) ([ADR-0113](./adr/02-identity-security.md#adr-0113)) |
 | Data (relational/document/graph/vector/kv) | `hobo:data` — paradigm sub-interfaces `relational · document · graph · vector · key-value` ([ADR-0112](./adr/03-data-plane.md#adr-0112)); relational realizable over draft `wasi:sql` ([Plan 32](./data-plane.md#plan-32)) |

@@ -7,7 +7,7 @@ tags: [hobo, competitors]
 
 # Dapr — competitor reference
 
-> A faithful capture of **Dapr** (Distributed Application Runtime) for HoBo competitive analysis. Dapr is the **closest architectural analog** to HoBo's ports/adapters + capability-provider model — portable building-block APIs with **pluggable components** behind them — but it operates at the **runtime/sidecar** layer, not as a cloud-agnostic **control plane / infrastructure-from-code** system. Source: [dapr.io](https://dapr.io/) · [docs.dapr.io](https://docs.dapr.io/concepts/building-blocks-concept/). Excerpts quoted for analysis (see [`../README.md`](README.md#sources--fair-use)).
+> A faithful capture of **Dapr** (Distributed Application Runtime) for HoBo competitive analysis. Dapr is the **closest architectural analog** to HoBo's ports/adapters + capability-provider model — portable building-block APIs with **pluggable components** behind them — but it operates at the **runtime/sidecar** layer, not as a cloud-agnostic **control plane / infrastructure-from-code** system. Source: [dapr.io](https://dapr.io/) · [docs.dapr.io](https://docs.dapr.io/concepts/building-blocks-concept/). Excerpts quoted for analysis (see [`index.md`](index.md#sources--fair-use)).
 
 ## What it is
 

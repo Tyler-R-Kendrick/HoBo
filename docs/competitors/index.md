@@ -17,12 +17,13 @@
 | **Lakebed**            | Agent-native closed PaaS (Capsules, sync RPC, llms.txt) — _named head-on competitor_                                            | [`lakebed.md`](lakebed.md)       | [HoBo mapping](lakebed.md#hobo-mapping)    |
 | **Wasm hosts**         | The wasm component-hosting landscape (Wasmtime · Spin/SpinKube · wasmCloud) — _grounds ADR-0031's `component-host` adapters_    | [`wasm-hosts.md`](wasm-hosts.md) | [HoBo mapping](wasm-hosts.md#hobo-mapping) |
 | **FinOps tooling**     | Cost allocation/estimation/optimization landscape (Kubecost/OpenCost · Infracost · Vantage · Cast.ai) — _adjacent; showback/FinOps benchmark_ | [`finops-tooling.md`](finops-tooling.md) | [HoBo mapping](finops-tooling.md#hobo-mapping) |
+| **NetScaler**          | Application delivery controller (L4-L7 LB/GSLB/SSL/WAF/gateway) + its IaC surface ("NetScaler as Code": Terraform/Ansible/StyleBooks/Next-Gen API) and the `nsconf2iac` config→IaC migration utility — _adjacent; candidate `gateway` provider + `hobo import` analog_ | [`netscaler.md`](netscaler.md) | [HoBo mapping](netscaler.md#hobo-mapping) |
 
 Each competitor is **one consolidated doc**: positioning, the feature surface (with quoted excerpts of factual API/CLI/config surface where it matters), differentiators, and gaps a competitor could exploit, ending with a `#hobo-mapping` section that shows HoBo's equivalent for every feature and where HoBo deliberately goes further. Some entries (Convex, shoo.dev) are **adjacent** rather than head-on — captured because they inform HoBo's design or could compose with it.
 
 ➡️ **Cross-competitor [gap analysis](./gap-analysis.md)** — a synthesis of where HoBo's design leads / matches / falls short of the captured set, with a comparison matrix, prioritized gaps (the standout: a **reactive/live-query model**, à la Convex), and recommended next design moves. New gaps are filed as [open questions #21–23](../design/generated-stack.md#historical-open-question-ledger) (all since resolved — see the ledger).
 
-Pattern for future competitors (wasmCloud, Spin/Fermyon, Winglang, SST/Ion, Qovery, Northflank, Backstage, Crossplane, Radius, Supabase …): add a sibling `<vendor>.md` doc with the same section layout (overview → feature surface → differentiators → `## hobo-mapping`).
+Some entries are captured as **adjacent components** whose IaC/authoring tooling informs HoBo (NetScaler — an ADC appliance and candidate `gateway` provider, notable for its `nsconf2iac` config→IaC migration utility as a `hobo import` analog). Pattern for future competitors (wasmCloud, Spin/Fermyon, Winglang, SST/Ion, Qovery, Northflank, Backstage, Crossplane, Radius, Supabase …): add a sibling `<vendor>.md` doc with the same section layout (overview → feature surface → differentiators → `## hobo-mapping`).
 
 ## Sources & fair use
 

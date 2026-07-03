@@ -32,10 +32,12 @@ pnpm --filter @hobo/example-hello-bindle test
 ## How this maps to HoBo's architecture
 
 The API is protobuf-first: its request/response shapes live in `data-models/greeting.proto`
-with matching CUE constraints in `data-models/greeting.cue`. Following **parse, don't
-validate**, `src/api.ts` runs untrusted query input through a single parse boundary
-(`parseGreetingRequest`) that returns a **derived domain type** (`GreetingRequest`) instead
-of re-checking raw fields downstream.
+with matching CUE constraints in `data-models/greeting.cue`, and `src/api.ts` imports the
+**generated** `GreetingRequest`/`GreetingResponse` types from `src/_generated/greeting_pb.ts`
+(run `buf generate data-models --template ../../buf.gen.yaml -o src/_generated` to regenerate).
+Following **parse, don't validate**, `src/api.ts` runs untrusted query input through a single
+parse boundary (`parseGreetingRequest`) that returns that **derived domain type**
+(`GreetingRequest`) instead of re-checking raw fields downstream.
 
 In HoBo's event-driven model a greeting is a **command**; the API **actor** emits a
 `GreetingServed` **event** to the **event-store**; a **projection** (materialized view) folds

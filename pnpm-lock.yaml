@@ -47,6 +47,9 @@ importers:
 
   examples/hello-bindle:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../../packages/bindles

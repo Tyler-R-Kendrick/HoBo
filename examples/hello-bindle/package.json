@@ -10,6 +10,7 @@
 		"lint": "biome check --no-errors-on-unmatched ."
 	},
 	"dependencies": {
+		"@bufbuild/protobuf": "^2.12.1",
 		"@hobo/bindles": "workspace:*",
 		"hono": "^4.6.14"
 	}

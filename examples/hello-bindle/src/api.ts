@@ -1,29 +1,30 @@
+import { create } from "@bufbuild/protobuf";
 import { Hono } from "hono";
 
+import {
+	type GreetingRequest,
+	GreetingRequestSchema,
+	GreetingResponseSchema,
+} from "./_generated/greeting_pb.js";
+
 /**
- * Derived domain type. Untrusted query input is parsed into this once, at the
- * edge, so the rest of the handler works with a trusted value (parse, don't
- * validate) rather than re-checking raw fields.
+ * The single parse boundary: raw `?name` query → a derived {@link GreetingRequest}
+ * message generated from `data-models/greeting.proto` (parse, don't validate).
  */
-export interface GreetingRequest {
-	readonly name: string;
-}
-
-export interface GreetingResponse {
-	readonly message: string;
-}
-
-/** The single parse boundary: raw `?name` query → derived {@link GreetingRequest}. */
 export function parseGreetingRequest(
 	rawName: string | undefined,
 ): GreetingRequest {
 	const name = (rawName ?? "").trim();
-	return { name: name.length > 0 ? name : "world" };
+	return create(GreetingRequestSchema, {
+		name: name.length > 0 ? name : "world",
+	});
 }
 
 /** The hello-world API: a minimal Hono app exposing `GET /hello`. */
 export const app = new Hono().get("/hello", (c) => {
 	const request = parseGreetingRequest(c.req.query("name"));
-	const response: GreetingResponse = { message: `hello, ${request.name}` };
-	return c.json(response);
+	const response = create(GreetingResponseSchema, {
+		message: `hello, ${request.name}`,
+	});
+	return c.json({ message: response.message });
 });

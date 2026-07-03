@@ -6,7 +6,7 @@ import { describe, it } from "vitest";
 
 import { sortKeys } from "../src/sort-keys.js";
 import { collectBindleResources } from "../src/index.js";
-import { defineHelloBindle } from "../../../../../examples/hello-bindle/src/collector-target.ts";
+import { defineHelloBindle } from "./fixtures/hello-bindle-collector-target.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // Local golden for this engine's collector-target output. The shared example

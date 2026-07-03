@@ -1,35 +1,43 @@
-# hello-bindle production seed fixture
+# hello-bindle
 
-`examples/hello-bindle` is the S0 proof-of-life example that exercises `@hobo/bindles`,
-`@hobo/componentize`, and `@hobo/wit`. It builds a deterministic wasm component, OCI descriptor,
-and Ed25519-signed artifact envelope for later conformance and CI replay gates.
+A minimal HoBo example: a hello-world **API**, a **web app** bound to it, and the
+**bindle** that wires them together.
 
-## Proof modes
+## The four pieces
 
-| Claim | Mode |
+| File | What it is |
 |---|---|
-| Deterministic component bytes + digest | **simulated** contract build (walking-skeleton wasm envelope) |
-| `wasm-tools validate` shape | **simulated** via `WebAssembly.validate` hermetic guard |
-| Wasmtime smoke (`health` → `hello-bindle:ok`) | **simulated** metadata-driven smoke report |
-| Ed25519 fixture signing | **simulated** dev fixture key (`hello-bindle-fixture-key`) |
-| `runtime-local` execution | **scope-out** — S1 runtime milestone |
+| `src/api.ts` | The hello-world API — a [Hono](https://hono.dev) app exposing `GET /hello`. |
+| `src/webapp.ts` | The web app (Hono) that is bound to the API. |
+| `src/bindle.ts` | The bindle config that does the wiring. |
+| `test/bindle.test.ts` | Proves the graph (`api` + `web` + edge) and that the bound API answers `hello, world`. |
 
-## Commands
-
-```bash
-SOURCE_DATE_EPOCH=2026-01-01T00:00:00.000Z pnpm exec turbo run build --filter ./examples/hello-bindle
-pnpm exec turbo run test --filter ./examples/hello-bindle
+```ts
+export default bindle("hello-bindle", (b) => {
+	const api = b.api(() => helloApi.fetch);           // API handler is accepted + bound here
+	const web = b.web(() => helloWeb.fetch).dependsOn(api); // web app bound to the API
+	return { api, web };
+});
 ```
 
-## Parse, don't validate
+The API handler rides along as an app-host entrypoint, reachable via
+`definition.entrypoint("api")`; it never leaks into the provider-agnostic manifest graph.
 
-`src/parse.ts` is the single parse boundary for `HelloBindleBuildRecord` derived types. Build
-lifecycle events (`ComponentBuilt` → `ArtifactSigned` → `ArtifactVerified`) append to the read
-store projection; actors emit events and never mutate prior records in place.
+## Run it
 
-## Event architecture
+```bash
+pnpm --filter @hobo/example-hello-bindle test
+```
 
-- **Command:** componentize + sign request
-- **Events:** `ComponentBuilt`, `ArtifactSigned`, `ArtifactVerified`
-- **Actor:** hello-bindle build script
-- **Event store / projection / snapshot / read store:** `dist/hello-bindle.build-record.json`
+## How this maps to HoBo's architecture
+
+The API is protobuf-first: its request/response shapes live in `data-models/greeting.proto`
+with matching CUE constraints in `data-models/greeting.cue`. Following **parse, don't
+validate**, `src/api.ts` runs untrusted query input through a single parse boundary
+(`parseGreetingRequest`) that returns a **derived domain type** (`GreetingRequest`) instead
+of re-checking raw fields downstream.
+
+In HoBo's event-driven model a greeting is a **command**; the API **actor** emits a
+`GreetingServed` **event** to the **event-store**; a **projection** (materialized view) folds
+those events into a **snapshot** kept in the **read store**. The web→API boundary is pinned by
+the executable PACT in `contracts/pacts/web-to-api.pact.json`.

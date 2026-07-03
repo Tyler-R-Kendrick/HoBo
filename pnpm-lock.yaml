@@ -50,24 +50,9 @@ importers:
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../../packages/bindles
-      '@hobo/camps':
-        specifier: workspace:*
-        version: link:../../packages/camps
-      '@hobo/componentize':
-        specifier: workspace:*
-        version: link:../../packages/componentize
-      '@hobo/runtime':
-        specifier: workspace:*
-        version: link:../../packages/runtime
-      '@hobo/runtime-local':
-        specifier: workspace:*
-        version: link:../../packages/runtimes/runtime-local
-      '@hobo/wit':
-        specifier: workspace:*
-        version: link:../../packages/wit
-      '@hobo/yards':
-        specifier: workspace:*
-        version: link:../../packages/yards
+      hono:
+        specifier: ^4.6.14
+        version: 4.12.27
 
   packages/bindles:
     dependencies:
@@ -3052,6 +3037,10 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
+  hono@4.12.27:
+    resolution: {integrity: sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q==}
+    engines: {node: '>=16.9.0'}
+
   hosted-git-info@9.0.3:
     resolution: {integrity: sha512-Hc+ghLoSt6QaYZUv0WBiIvmMDZuZZ7oaDvdH8MbfOO4lOsxdXLEvuC6ePoGs9H1X9oCLyq6+NVN0MKqD+ydxyg==}
     engines: {node: ^20.17.0 || >=22.9.0}
@@ -5393,6 +5382,8 @@ snapshots:
   hasown@2.0.4:
     dependencies:
       function-bind: 1.1.2
+
+  hono@4.12.27: {}
 
   hosted-git-info@9.0.3:
     dependencies:

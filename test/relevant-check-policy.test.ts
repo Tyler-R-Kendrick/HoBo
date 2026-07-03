@@ -79,6 +79,10 @@ function lintCodeCheck(check: Check) {
 	return check.command === "pnpm" && check.args.join(" ") === "run lint:code";
 }
 
+function konsistentCheck(check: Check) {
+	return check.command === "pnpm" && check.args.join(" ") === "run konsistent";
+}
+
 test("root script-only package changes do not select all-package Turbo", () => {
 	const { checks } = plan(["package.json"], {
 		rootPackageJsonScriptsOnlyChanged: true,
@@ -165,6 +169,24 @@ test("docs-only changes do not select the Biome formatting lane", () => {
 	const { checks } = plan(["docs/agent-tooling.md"]);
 
 	assert.equal(checks.some(lintCodeCheck), false);
+});
+
+test("source changes select the konsistent structural lane", () => {
+	const { checks } = plan(["packages/core/src/index.ts"]);
+
+	assert.equal(checks.some(konsistentCheck), true);
+});
+
+test("konsistent.json changes select the konsistent structural lane", () => {
+	const { checks } = plan(["konsistent.json"]);
+
+	assert.equal(checks.some(konsistentCheck), true);
+});
+
+test("docs-only changes do not select the konsistent structural lane", () => {
+	const { checks } = plan(["docs/agent-tooling.md"]);
+
+	assert.equal(checks.some(konsistentCheck), false);
 });
 
 test("draft aggregate folders without package metadata do not select workspace tests", () => {

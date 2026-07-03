@@ -129,6 +129,7 @@ export function selectRelevantChecks(
 		/^turbo\.json$/u,
 		/^tsconfig.*\.json$/u,
 	]);
+	const konsistentConfigChanged = touchedAny([/^konsistent\.json$/u]);
 	const sourceChanged = touched([
 		"src",
 		"contracts",
@@ -216,6 +217,15 @@ export function selectRelevantChecks(
 			args: ["run", "lint:code"],
 			reason:
 				"Biome code formatting is enforced for source or automation changes",
+		});
+	}
+
+	if (sourceChanged || automationChanged || konsistentConfigChanged) {
+		checks.push({
+			command: "pnpm",
+			args: ["run", "konsistent"],
+			reason:
+				"structural package conventions (konsistent.json) are enforced when packages, automation, or the convention config change",
 		});
 	}
 

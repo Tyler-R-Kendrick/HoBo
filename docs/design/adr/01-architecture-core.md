@@ -421,4 +421,54 @@ The [Dispatcher](01-architecture-core.md#adr-0071) decides *which* provider or C
 
 ### Consequences
 - **(+)** Nomad's in-Camp scheduler competence has an explicit owner on the accepted wasmCloud architecture; `scaling {min,max}` has a named consumer; substrates without their own scheduler are covered by wadm.
-- **(−)** Preemption, oversubscription, and capacity-reservation semantics remain open (ADR-P6–P8); conformance suite gains scheduling assertions to build and certify per adapter.
+- **(−)** Preemption, oversubscription, and capacity-reservation semantics remain open (ADR-P6–P8); conformance suite gains scheduling assertions to build and certify per adapter. *(Resolved 2026-07-03 by [ADR-0124](#adr-0124).)*
+
+## ADR-0121
+**Built-in-engine consensus: delegate to the Camp substrate's log/store by default (single-writer quorum, active-passive); ship embedded consensus only for the self-hosted zero-dependency floor — never hand-roll Raft on the app path.**
+
+### Context
+ADR-P1 asked whether the built-in `runtime-local`/engine owns consensus (its own Raft) or delegates to the Camp's runtime store. The authoritative event log needs a linearizable append under the single-writer aggregate/actor-lease model ([ADR-0004](#adr-0004)/[ADR-0053](03-data-plane.md#adr-0053)); stage-6 acceptance already commits to "single-writer quorum replication (active-passive semantics)". The open choice is the *mechanism*, and whether HoBo maintains a bespoke consensus implementation.
+
+### Decision
+1. **Consensus is a `log-store`/`consensus` port; delegate to the substrate by default** (engines-behind-ports, [ADR-0054](03-data-plane.md#adr-0054) pattern): the managed store the Camp already runs provides the linearizable primitive — conditional-write/serializable stores (Postgres, DynamoDB, Cosmos) or the lattice/broker log (NATS JetStream on the self-hosted wasmCloud default). HoBo does not re-implement what the substrate guarantees.
+2. **Embedded consensus only for the zero-dependency self-host floor:** where no managed store exists, use a **library** Raft (an audited embedded implementation) for a single-writer quorum — never a hand-rolled protocol, and never on the app request path.
+3. **Active-passive is the default** (single-writer quorum; the stateless tier scales active-active); **active-active-eventual** stays the opt-in CRDT topology already designed ([ADR-0040](#adr-0040)). The `consensus` choice is per-Camp config, recorded, and conformance-gated for linearizable append + leader failover within a bound.
+4. **Determinism preserved:** consensus orders the log; it never runs an on-path solver/LLM ([ADR-0033](#adr-0033)).
+
+### Consequences
+- **(+)** No bespoke consensus to maintain in the common (managed-substrate) case; the self-host floor still works with a vetted library, not a hand-rolled protocol.
+- **(+)** Resolves ADR-P1 consistently with the existing active-passive/CRDT split ([ADR-0040](#adr-0040)) and engines-behind-ports.
+- **(−)** Behavior depends on each substrate's consistency guarantees — the `consensus` conformance suite must assert linearizable append per adapter, and a mis-declared store is a latent correctness risk (caught by conformance).
+
+## ADR-0123
+**Durable-workflow authoring: explicit `workflow`/`step` wrappers are the canonical, language-neutral API; the `"use workflow"`/`"use step"` directive is opt-in TypeScript build-time sugar that lowers to the same wrappers — the transform stays shallow (step-boundary insertion + replay-safety lint), never a deep rewrite.**
+
+### Context
+ADR-P5 (and the "compiler magic" open question) asked how deep the build-time transform for `"use workflow"`/`"use step"` should go, and whether the directive or the wrapper is canonical. HoBo borrows the durable feel from Vercel Workflows ([vision.md](../vision.md#what-hobo-borrows-deliberately)), but the runtime contract is language-neutral WIT ([ADR-0069](#adr-0069)) and determinism must stay auditable.
+
+### Decision
+1. **The wrapper is ground truth.** `workflow(...)`/`step(...)` explicit functions are always available and are the *only* form the runtime sees; they work in any Component-Model language ([ADR-0069](#adr-0069)) because they are ordinary calls, not a TS-toolchain feature.
+2. **The directive is opt-in sugar for the TS reference SDK**, lowered at build time to the wrappers by a **shallow** transform: it inserts step boundaries and threads the durable context — nothing more. No control-flow rewriting, no hidden state machine, no non-obvious semantics.
+3. **A replay-safety lint, not magic, enforces determinism:** the transform emits a lint over each `step` body (no unguarded clock/random/IO outside a step) rather than silently "fixing" code; violations are errors, not rewrites — keeping the compiler-magic risk out.
+4. **Parity is generation, not divergence:** other-language SDKs expose the wrapper form; the directive is a per-idiom-layer nicety ([ADR-0072](#adr-0072)), never a semantic fork.
+
+### Consequences
+- **(+)** Resolves ADR-P5 and the compiler-magic open question: the durable-workflow DX exists, but the runtime contract is explicit and language-neutral, and determinism is lint-enforced, not rewritten.
+- **(−)** The directive's convenience is TS-only; non-TS authors use the (equivalent) wrapper form — a DX asymmetry, not a capability one.
+
+## ADR-0124
+**In-Camp scheduling policies (preemption, oversubscription/density, capacity-reservation): per-Camp policy knobs on the component-host scheduler seam, safe deny-by-default, substrate-delegated where a scheduler exists; HoBo enforces only on the self-hosted bare floor.**
+
+### Context
+[ADR-0108](#adr-0108) named the component-host scheduler seam (wadm default; substrate-delegated) and explicitly deferred **preemption (P6)**, **oversubscription/density (P7)**, and **capacity-reservation (P8)** to the ADR-Pn list. This ADR closes all three consistently with ADR-0108's substrate-delegation stance and [ADR-0033](#adr-0033) determinism.
+
+### Decision
+1. **Preemption (P6): default *no preemption*.** A running instance is not evicted for a higher-priority one unless it opts in via `priorityClass` + `preemptible: true`. **`job()` batch workloads are preemptible by default; `service()` workloads are not.** Delegated to the substrate (k8s PriorityClass/preemption; wadm) where present; on the bare lattice floor HoBo's placement honors the flag. Every preemption is a recorded placement fact ([ADR-0033](#adr-0033)).
+2. **Oversubscription/density (P7): default *no oversubscription*** (requests = limits) for `service`; an **opt-in per-Camp ratio** allows burstable/batch density. Density is bounded by the host's declared capacity ([ADR-0031](#adr-0031)); delegated to the substrate's requests/limits where present.
+3. **Capacity-reservation (P8): a declarative Camp-level policy** (reserve N units for a workload class), realized via the substrate's reservation primitive (k8s ResourceQuota + reserved PriorityClass; cloud capacity reservations) or the self-host scheduler — **honest about limits: HoBo guarantees no more than the substrate does**, and a non-mappable reservation is inert + flagged by `hobo doctor` (the [ADR-0108](#adr-0108) §3 lock-in model).
+4. **All three are policy-plane-governed** ([Plan 29](../contracts-policy-flags.md#plan-29)), deterministic + replayable (no on-path solver, [ADR-0033](#adr-0033)), and gain `@hobo/conformance/component-host` assertions ([Plan 9](../generated-stack.md#plan-09)).
+
+### Consequences
+- **(+)** Closes ADR-P6–P8; the component-host seam now has a complete, honest scheduling-policy story that delegates first and enforces only where it must.
+- **(+)** Safe defaults (no preemption for services, no oversubscription) mean the common case needs no tuning.
+- **(−)** Guarantees are only as strong as the substrate's primitives; the conformance suite asserts per-adapter behavior, and bare-floor enforcement is simpler than a managed scheduler's.

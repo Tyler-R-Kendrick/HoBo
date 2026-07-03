@@ -32,7 +32,11 @@ Cross-cutting lenses: **L-DRIFT** (scope drift vs ADR-0063/0064 and the archived
 
 ## Verdict summary
 
-**FINAL (review closed 2026-07-02, iteration 3 closure sweep, base `caae932d`):** The intent-alignment review is **closed**. Iterations 1–2 confirmed **38 findings** (2 HIGH · 24 MED · 12 LOW), each with a documented remediation; iteration 3 fresh-eyes closure sweep confirmed **zero new findings** — stop rule met. Remediation execution (REM-001..036, HOBO-666..703) remains open independently.
+**Iteration 4 (2026-07-03, post-hardening delta sweep):** an independent adversarial sweep over the 2026-07-03 design-hardening surface (18 new competitor captures + ADRs 0118–0124 + the cache-port catalog change) confirmed **2 new findings** — GAP-029 (MED) and GAP-030 (LOW), both L-CONS and both residual edges of the one new primitive (the `cache` port) — **remediated same-pass** (REM-039/040); 9 candidates refuted. Register total is now **40 confirmed findings** (2 HIGH · 25 MED · 13 LOW), **all ✔ on main; zero at 🧯**.
+
+**Register reconciliation (2026-07-03):** the final two documented-not-applied findings were verified applied on main and flipped 🧯 → ✔ — **GAP-026** (the `Aspire.Hosting.Testing` row is ◐ at `aspire.md:471` with a whole-graph-harness iteration hook; no ✅ without a harness spec) and **DRIFT-009** (the `UI-layer generation…out…ADR-0064` mis-citation returns zero hits in `docs/design/`, pinned by proof `hobo-704-adr-0064-ui-generation-citation`). **All 38 findings are now ✔ on main; zero remain at 🧯.** Linear delivery closure (HOBO-704/705) is tracked independently.
+
+**FINAL (review closed 2026-07-02, iteration 3 closure sweep, base `caae932d`):** The intent-alignment review is **closed**. Iterations 1–2 confirmed **38 findings** (2 HIGH · 24 MED · 12 LOW), each with a documented remediation; iteration 3 fresh-eyes closure sweep confirmed **zero new findings** — stop rule met. Remediation execution (REM-001..038, HOBO-666..705) is tracked in Linear independently.
 
 **After iteration 2 (2026-07-02, commit `ec5e9f70`):** **38 confirmed findings** (2 HIGH · 24 MED · 12 LOW) — iteration 1's 26 on main plus **12 new** (1 HIGH · 10 MED · 1 LOW); evidence audit flipped **2** additional remediations on main since iteration 1 (**DRIFT-001** ✔ ADR-0106, **DRIFT-003** ✔ ADR-0110, **GAP-002** ✔ HOBO-670). **Stop rule: open** — iteration 3+ required.
 
@@ -94,6 +98,15 @@ in the history of commit `d7bbc39c`.
   - P1 residual Nomad tracker rows — already GAP-003 / DRIFT-005 / DRIFT-001 ✔
 - **Stop rule:** **met** — zero new findings; intent-alignment **review closed** (remediations remain open)
 
+### Iteration 4 — 2026-07-03 — post-hardening delta sweep (new surface only)
+
+- **Scope:** the 2026-07-03 design-hardening surface **only** — 18 new competitor captures, 7 new ADRs (0118–0124), the cache-port catalog change, and the register reconciliation. Not a re-audit of the closed iteration-1–3 surface.
+- **Lenses:** P1–P5 + L-DRIFT + L-CONS, refute-if-uncertain (independent adversarial verifier over the new surface).
+- **Raw → verdicts:** 11 candidates examined → **2 confirmed** (1 MED · 1 LOW, both L-CONS) / 9 refuted. The 7 new ADRs' cross-anchors were individually verified to resolve **and** substantiate; the ADR index and the ADR-Pn resolution list faithfully match ADRs 0121–0124; L-DRIFT is clean (ADR-0120 keeps monetized API products out; every capture marks monetization ✗-by-design); the register reconciliation (GAP-026/DRIFT-009 → ✔) verified honest and the `check-gaps-register-lag.ts` guard parses only live table rows.
+- **New findings:** GAP-029 (MED — `hobo:cache` absent from the Plan 20 canonical port catalog, same class as GAP-007/008/009), GAP-030 (LOW — `vercel.md` KV row a residual `kv`-conflation).
+- **Remediation:** both **applied in the same pass** (REM-039, REM-040) — the cache port added to the Plan 20 building-block table (`wasm-runtime-wit.md`); the `vercel.md` KV row split into durable-`kv` + ephemeral-`cache`.
+- **Stop rule:** met — the two findings are the residual edges of the one new primitive (the cache port), both closed; no further findings on the new surface.
+
 ## Gap register
 
 | ID | Pillar | Sev | Status | Claim | Evidence | Remediation |
@@ -123,9 +136,11 @@ in the history of commit `d7bbc39c`.
 | GAP-023 | L-CONS | MED | ✔ remediated | `docs/patterns/` and `docs/standards/` cross-links remapped from removed `forge-generated-stack.md`/`event-model.md` paths to consolidated design targets (`generated-stack.md`, `data-plane.md#plan-11`, current ADR theme files); link-guard proof at `patterns-standards-cross-links` (3/3). | `docs/patterns/gitops-runbook-promotion.md:44`<br>`docs/patterns/runtime-code-mutation-persistence.md:37-46`<br>`docs/standards/index.md`<br>`docs/index.md:18-27` … | [REM-031](#rem-031-for-gap-023) ([HOBO-698](https://linear.app/quickdeploy-ai/issue/HOBO-698)) |
 | GAP-024 | P5 | MED | ✔ | Issue-worker automation (`docs/automations/hobo-issue-worker.md`) defines claim protocol and repo guardrails but never maps them to the agent-native safety model — BR-011 / Plan 06 guardrails (`require-approval`, `spendCapUsd`, destroy protection, SafetyEnvelope) are absent, so the automation sits outside the platform's autonomous-operation contract. | `docs/automations/hobo-issue-worker.md:147-155`<br>`docs/archive/requirements/requirements.md:162`<br>`docs/design/ai-native-agent-auth.md:114-116` … | [REM-032](#rem-032-for-gap-024) |
 | GAP-025 | P3 | MED | ✔ | `dapr.md` HoBo-mapping overclaims parity on **Bindings** (general input/output connectors) and **Distributed lock** at ✅ while design has no bindings category, no `hobo:lock` port, and ActorHost lease/fencing ≠ app-level distributed lock API. | `docs/competitors/dapr.md:50,54,121`<br>`docs/design/wasm-runtime-wit.md:117-179`<br>`docs/design/reliability-observability-cost.md:56-60` … | [REM-033](#rem-033-for-gap-025) |
-| GAP-026 | P2 | MED | 🧯 | `aspire.md` marks `Aspire.Hosting.Testing` (in-process full AppHost + DCP + real containers) as ✅ parity with "Conformance suites + E2E replay tests" — HoBo `@hobo/conformance` gates adapters/hosts/WIT, not an equivalent whole-graph local integration harness. | `docs/competitors/aspire.md:385-399,468`<br>`docs/design/generated-stack.md#plan-09`<br>`docs/design/wasm-runtime-wit.md:108` … | [REM-034](#rem-034-for-gap-026) |
+| GAP-026 | P2 | MED | ✔ | `aspire.md` marks `Aspire.Hosting.Testing` (in-process full AppHost + DCP + real containers) as ✅ parity with "Conformance suites + E2E replay tests" — HoBo `@hobo/conformance` gates adapters/hosts/WIT, not an equivalent whole-graph local integration harness. | `docs/competitors/aspire.md:385-399,471`<br>`docs/design/generated-stack.md#plan-09`<br>`docs/design/wasm-runtime-wit.md:108` … | [REM-034](#rem-034-for-gap-026) — row now ◐ at `aspire.md:471` ("whole-graph in-process harness not yet specified") with a [whole-graph hook](docs/design/generated-stack.md#whole-graph-in-process-test-harness-iteration-hook); no ✅ without harness spec. |
 | GAP-027 | P2 | MED | ✔ | `aspire.md` marks health-gated `WaitFor`/`WaitForCompletion` as ✅ vs "Saga ordering + readiness gates" but orchestrator choreography gates on `resource.Provisioned` only — health probes and run-to-completion job semantics are unspecified at the control-plane seam (corroborates GAP-018 at the tracker layer). | `docs/competitors/aspire.md:452`<br>`docs/design/control-plane.md:57-67`<br>`docs/design/authoring-resources-wiring.md:150-151` … | [REM-035](#rem-035-for-gap-027) |
 | GAP-028 | L-CONS | LOW | ✔ | `docs/patterns/runtime-code-mutation-persistence.md` still frames training promotion write-back as "unanswered" although ADR-0048 + generated-stack now specify AST-aware region-scoped persistence — the pattern library lags the design suite. | `docs/patterns/runtime-code-mutation-persistence.md:37`<br>`docs/design/generated-stack.md:35`<br>`docs/design/adr/03-data-plane.md#adr-0048` … | [REM-036](#rem-036-for-gap-028) |
+| GAP-029 | L-CONS | MED | ✔ | The new `hobo:cache` port (ADR-0118) was catalogued in `authoring-resources-wiring.md:39` and referenced by 11 competitor captures, but was **absent from the canonical WIT/port catalog** (Plan 20, `wasm-runtime-wit.md`) — the same class as GAP-007/008/009 (`hobo:data`/`hobo:secrets`/`hobo:http`), which all appear in that table. Found by iteration-4 adversarial sweep. | `docs/design/wasm-runtime-wit.md:139-149`<br>`docs/design/authoring-resources-wiring.md:39,60`<br>`docs/design/adr/03-data-plane.md#adr-0118` | [REM-039](#rem-039-for-gap-029) |
+| GAP-030 | L-CONS | LOW | ✔ | `vercel.md` mapped "Vercel Storage — KV (Upstash Redis)" to the durable `kv` port at ✅, but Upstash Redis is an ephemeral cache (ADR-0118 names it as such) and the sibling Fly/Render/Heroku captures map it to the new `cache` port — a residual `kv`-conflation of the exact kind ADR-0118 corrected. | `docs/competitors/vercel.md:191`<br>`docs/design/adr/03-data-plane.md#adr-0118`<br>`docs/competitors/flyio.md`·`render.md`·`heroku.md` | [REM-040](#rem-040-for-gap-030) |
 
 ## Drift register
 
@@ -139,7 +154,7 @@ in the history of commit `d7bbc39c`.
 | DRIFT-006 | P3 | silent | ✔ | nitric.md's HoBo-mapping layer has drifted from the current design: it maps `nitric up/down` -> `hobo deploy/destroy` and `nitric run` -> `hobo dev --containers` (the design collapsed to `hobo up/down` and defines no --containers flag), names the schedule port `hobo:schedule` vs the design's `hobo:scheduler`, and its 'Open parity items' still lists the WebSocket WIT shape and sql-migrations as open although ADR-0075 and ADR-0032/Plan 32 resolved them. | `docs/competitors/nitric.md:313`<br>`docs/competitors/nitric.md:336`<br>`docs/competitors/nitric.md:355` … | [REM-018](#rem-018-for-drift-006) |
 | DRIFT-007 | L-DRIFT | deliberate-undocumented | ✔ remediated | The design-suite scope statement (index.md: 'The whole suite is one scope — every plan is in scope, bounded only by the AI-native-meta-cloud-minus-monetization line (ADR-0063/ADR-0064)') is stale: the same index now lists monetization-adjacent commercial records (billing, tax, invoicing evidence, payout hooks) and a phased launch program, so the stated bound no longer describes the suite's contents. | `docs/design/index.md:120`<br>`docs/design/index.md:53-57`<br>`docs/design/index.md:66-67` … | [REM-021](#rem-021-for-drift-007) |
 | DRIFT-008 | L-CONS | silent | ✔ remediated | gap-analysis.md's traceability anchors have rotted: matrix and §C rows cite numbered open questions (Q3/Q10/Q12/Q15-Q20/Q21-Q23, '09 §15-20') linking to generated-stack.md#plan-09, but the current Plan 9 'Open design questions' list is unnumbered and contains none of those IDs, and matrix rows retain partial/missing markers for capabilities the same doc later records as closed (only §2 is explicitly labeled historical). | `docs/competitors/gap-analysis.md:31`<br>`docs/competitors/gap-analysis.md:34`<br>`docs/competitors/gap-analysis.md:72` … | [REM-022](#rem-022-for-drift-008) |
-| DRIFT-009 | L-DRIFT | silent | 🧯 | UI/app generation is mis-cited as OUT while ADR-0064 §1 explicitly **keeps** app generation (UX Designer, design.md, OpenUI, json-render, mcp-apps, `ui-render` port per ADR-0056): `architecture.md:171`, `stage-6-production-hardening-acceptance.md:71`, `worked-example.md:70`, and `gap-analysis.md:14,18` claim UI-layer generation was removed under ADR-0064 — contradicting ADR-0064/0056 with no amending decision. | `docs/design/architecture.md:171`<br>`docs/design/stage-6-production-hardening-acceptance.md:71`<br>`docs/design/adr/07-portability-extensibility.md:293-300`<br>`docs/design/adr/03-data-plane.md:264-277`<br>`docs/competitors/gap-analysis.md:14,18` … | [REM-037](#rem-037-for-drift-009) |
+| DRIFT-009 | L-DRIFT | silent | ✔ | UI/app generation is mis-cited as OUT while ADR-0064 §1 explicitly **keeps** app generation (UX Designer, design.md, OpenUI, json-render, mcp-apps, `ui-render` port per ADR-0056): `architecture.md:171`, `stage-6-production-hardening-acceptance.md:71`, `worked-example.md:70`, and `gap-analysis.md:14,18` claimed UI-layer generation was removed under ADR-0064 — contradicting ADR-0064/0056 with no amending decision. | `docs/design/architecture.md:171`<br>`docs/design/stage-6-production-hardening-acceptance.md:71`<br>`docs/design/adr/07-portability-extensibility.md:293-300`<br>`docs/design/adr/03-data-plane.md:264-277`<br>`docs/competitors/gap-analysis.md:14,18` … | [REM-037](#rem-037-for-drift-009) — all four docs now affirm app/UI generation IN scope; `UI-layer generation…out…ADR-0064` grep returns zero hits in `docs/design/`; pinned by proof `hobo-704-adr-0064-ui-generation-citation`. |
 | DRIFT-010 | L-DRIFT | deliberate-undocumented | ✔ remediated | stage-6-production-hardening-acceptance.md bundles the consolidated `notify` cloud-messaging port into a single "Governance planes" lane row, contradicting ADR-0064 §3 which demotes `notify` to a catalog port and keeps only compliance/AI-safety enforcement as governance planes. | `docs/design/stage-6-production-hardening-acceptance.md:65`<br>`docs/design/stage-6-production-hardening-acceptance.md:96`<br>`docs/design/adr/07-portability-extensibility.md:295` … | [REM-038](#rem-038-for-drift-010) |
 Drift classes: **deliberate-documented** (decision recorded in an ADR/plan — reported 📘, no remediation
 required beyond mapping) · **deliberate-undocumented** (evidently intentional but no decision record) ·
@@ -1688,8 +1703,8 @@ Downgrade/fix `dapr.md` HoBo-mapping rows: Bindings → partial (name blob-event
 ### REM-034 (for GAP-026)
 
 - **Finding** (iter2-B2-002, P2, MED): aspire.md Hosting.Testing overclaim vs conformance-only harness.
-- **Evidence:** `docs/competitors/aspire.md:468`
-- **Effort:** S · **Delivery:** [HOBO-705](https://linear.app/quickdeploy-ai/issue/HOBO-705)
+- **Evidence:** `docs/competitors/aspire.md:471`
+- **Effort:** S · **Delivery:** ✔ [HOBO-705](https://linear.app/quickdeploy-ai/issue/HOBO-705) — `Aspire.Hosting.Testing` row is ◐ at `aspire.md:471` with a whole-graph-harness iteration hook; acceptance (no ✅ without harness spec) satisfied.
 
 **Action**
 
@@ -1734,7 +1749,7 @@ Update pattern doc intro: cite ADR-0048 answer; reframe "unanswered" as historic
 
 - **Finding** (iter2-B2-004, L-DRIFT, HIGH): UI generation mis-cited OUT contradicting ADR-0064 keep list.
 - **Evidence:** `docs/design/architecture.md:171` · `docs/design/stage-6-production-hardening-acceptance.md:71` · `docs/design/adr/07-portability-extensibility.md:293-300`
-- **Effort:** M · **Delivery:** [HOBO-704](https://linear.app/quickdeploy-ai/issue/HOBO-704)
+- **Effort:** M · **Delivery:** ✔ [HOBO-704](https://linear.app/quickdeploy-ai/issue/HOBO-704) — all four docs affirm app/UI generation IN scope (ADR-0056/0064 keep list); `UI-layer generation…out…ADR-0064` grep clean in `docs/design/`; pinned by proof `hobo-704-adr-0064-ui-generation-citation`.
 
 **Action**
 
@@ -1771,6 +1786,28 @@ Amend `docs/design/stage-6-production-hardening-acceptance.md` only (plus the S6
 **Guardrails**
 
 Documentation-only. Do not amend ADR-0064 decision text. Do not edit production-build-backlog S6-05 wording in this change (separate slice). Preserve relative links and OKF frontmatter.
+
+### REM-039 (for GAP-029)
+
+- **Finding** (iter4-001, L-CONS, MED): the `hobo:cache` port (ADR-0118) was catalogued in `authoring-resources-wiring.md` and referenced by 11 captures but was missing from the Plan 20 canonical WIT/port catalog — the same class as GAP-007/008/009.
+- **Evidence:** `docs/design/wasm-runtime-wit.md:139-149` · `docs/design/authoring-resources-wiring.md:39,60` · `docs/design/adr/03-data-plane.md#adr-0118`
+- **Effort:** S · **Delivery:** ✔ applied 2026-07-03 — added a `Cache (ephemeral)` row (`hobo:cache`; verbs get/set/delete/invalidate + admin flush; distinct from durable Key/value) to the Plan 20 building-block table in `wasm-runtime-wit.md`; marked the Key/value row "(durable)".
+
+**Acceptance**
+
+1. `wasm-runtime-wit.md` Plan 20 building-block table has a `hobo:cache` row anchored to ADR-0118.
+2. `docs:design-lint` + traceability gate green.
+
+### REM-040 (for GAP-030)
+
+- **Finding** (iter4-002, L-CONS, LOW): `vercel.md` KV row folded Upstash Redis (an ephemeral cache) into the durable `kv` port at ✅ — a residual `kv`-conflation.
+- **Evidence:** `docs/competitors/vercel.md:191` · `docs/design/adr/03-data-plane.md#adr-0118` · `docs/competitors/flyio.md`·`render.md`·`heroku.md` (sibling cache-port rows)
+- **Effort:** S · **Delivery:** ✔ applied 2026-07-03 — split the `vercel.md` KV row into durable-`kv` (✅) + ephemeral-`cache` (🔜, ADR-0118), matching the Fly/Render/Heroku sibling rows; tidied the Edge Config row's stale "in progress".
+
+**Acceptance**
+
+1. `vercel.md` KV row references the `cache` port (ADR-0118), consistent with the sibling captures.
+2. `docs:design-lint` green.
 
 ### REM-005 (for GAP-002)
 

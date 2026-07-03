@@ -123,3 +123,10 @@
 | 0115 | FinOps advisory plane: cost anomaly detection, forecasting & rightsizing as deterministic MeteringView projections (advisory `cost.*` facts, gated proposals only) | [identity-security](02-identity-security.md#adr-0115) |
 | 0116 | Productization release program: M0–M4 phase gates over the single designed scope | [portability-extensibility](07-portability-extensibility.md#adr-0116) |
 | 0117 | FinOps operator (Crew cost specialist): advisory-only ownership of FinX outputs & commitment optimization | [data-plane](03-data-plane.md#adr-0117) |
+| 0118 | App-facing `cache` port (`hobo:cache`): ephemeral, TTL-first, evictable — distinct from the durable `kv` store | [data-plane](03-data-plane.md#adr-0118) |
+| 0119 | Realtime collaboration/presence composes from `websocket` rooms + reactor + `cache`; `@hobo/presence` stays an opt-in package | [data-plane](03-data-plane.md#adr-0119) |
+| 0120 | API management (per-consumer keys, usage plans, dev catalog) is a composition over route security + policy + quotas; monetized API products out | [identity-security](02-identity-security.md#adr-0120) |
+| 0121 | Built-in-engine consensus (ADR-P1): delegate to the substrate log/store by default; embedded library-Raft only for the self-host floor | [architecture-core](01-architecture-core.md#adr-0121) |
+| 0122 | Cross-provider overlay mesh (ADR-P2): WireGuard portable default behind a `mesh` port; provider-native peering + managed meshes opt-in | [portability-extensibility](07-portability-extensibility.md#adr-0122) |
+| 0123 | Durable-workflow authoring (ADR-P5): explicit `workflow`/`step` wrappers canonical; `"use workflow"` directive = shallow opt-in TS sugar | [architecture-core](01-architecture-core.md#adr-0123) |
+| 0124 | In-Camp scheduling policies (ADR-P6/P7/P8): preemption/oversubscription/capacity-reservation as substrate-delegated per-Camp policy knobs | [architecture-core](01-architecture-core.md#adr-0124) |

@@ -117,7 +117,9 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
 /* ---------- top service row ---------- */
 .row-svc{grid-column:2;grid-row:2;display:flex;gap:8px}
 .row-res{grid-column:2;grid-row:4;display:flex;gap:8px}
-.row-svc .module,.row-res .module{flex:1;padding:12px 16px 10px}
+.row-svc .module,.row-res .module{flex:1;padding:12px 16px 30px;display:flex;flex-direction:column}
+.row-svc .ports,.row-res .ports{margin-top:auto}
+.row-res .controls{flex:1;align-items:center}
 .mod-head{display:flex;align-items:center;gap:12px;margin:2px 6px 0 6px}
 .mod-head .plate{font-size:13px}
 .mod-head .ledlbl{display:flex;flex-direction:column;align-items:center;gap:3px;margin-left:auto}
@@ -445,7 +447,7 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
         <span class="cap3 eng" style="color:var(--amber)">2/3 wired</span>
       </div>
       <div class="vents"></div>
-      <div class="mod-foot eng dim"><span>camp prod-fsn1 · wasmcloud host 2</span><span style="color:var(--amber)">conformance 12/12 · 1 port open</span></div>
+      <div class="mod-foot eng dim"><span>camp prod-fsn1 · host 2</span><span style="color:var(--amber)">12/12 · 1 port open</span></div>
     </section>
   </div>
 
@@ -667,7 +669,7 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
       </div>
       <div class="controls">
         <div class="ctl">
-          <svg width="170" height="96" viewBox="0 0 170 96">
+          <svg width="210" height="119" viewBox="0 0 170 96">
             <rect x="2" y="2" width="166" height="86" rx="5" fill="#E8E4D8"/>
             <rect x="2" y="2" width="166" height="86" rx="5" fill="none" stroke="#0B0C0E" stroke-width="2"/>
             <path d="M25 70 A 62 62 0 0 1 145 70" fill="none" stroke="#1B1E22" stroke-width="2"/>
@@ -687,9 +689,10 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
           </svg>
         </div>
         <div class="readout mono">
-          <div><span class="k">wal</span> 12MB/s · <span class="k">repl</span> ok</div>
+          <div><span class="k">wal</span> 12MB/s</div>
+          <div><span class="k">repl</span> ok · <span class="k">lag</span> 0s</div>
           <div><span class="k">disk</span> 118/240 GiB</div>
-          <div><span class="k">ref</span> pg-main · fsn1-dc14</div>
+          <div><span class="k">ref</span> pg-main · dc14</div>
         </div>
       </div>
       <div class="ports">
@@ -711,7 +714,7 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
       </div>
       <div class="controls">
         <div class="ctl">
-          <svg width="70" height="100" viewBox="0 0 70 100">
+          <svg width="94" height="134" viewBox="0 0 70 100">
             <rect x="18" y="2" width="34" height="90" rx="3" fill="#101215" stroke="#0B0C0E" stroke-width="2"/>
             <g>
               <rect x="23" y="8"  width="24" height="6" rx="1" fill="#3A3F47"/>
@@ -754,7 +757,7 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
       </div>
       <div class="controls">
         <div class="ctl">
-          <svg width="180" height="96" viewBox="0 0 180 96">
+          <svg width="224" height="119" viewBox="0 0 180 96">
             <text x="10" y="22" fill="#B9B4A4" font-size="7" letter-spacing="2">CAPACITY</text>
             <rect x="10" y="30" width="160" height="18" rx="9" fill="#101215" stroke="#0B0C0E" stroke-width="2"/>
             <rect x="13" y="33" width="66" height="12" rx="6" fill="#43AA8B"/>
@@ -768,9 +771,10 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
           </svg>
         </div>
         <div class="readout mono">
-          <div><span class="k">get</span> 1.9k/s · <span class="k">put</span> 66/s</div>
-          <div><span class="k">egress</span> 41 GiB/day</div>
-          <div><span class="k">ref</span> blob-media · r2/weur</div>
+          <div><span class="k">get</span> 1.9k/s</div>
+          <div><span class="k">put</span> 66/s</div>
+          <div><span class="k">egress</span> 41 GiB/d</div>
+          <div><span class="k">ref</span> blob-media</div>
         </div>
       </div>
       <div class="ports">
@@ -836,7 +840,23 @@ header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-siz
       <div class="c"><span class="led g"></span><span class="eng dim">PLATFORM</span></div>
     </div>
 
-    <div class="armbox">
+    <div class="hr"></div>
+    <div class="eng sect dim">drift reconciliation</div>
+    <div class="lcd mono" style="font-size:8.5px;line-height:1.7">
+      <div>desired == actual ✓ · 0 resources drifted</div>
+      <div class="dimtx">last sweep seq #48,196 · 92s ago · next 60s</div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="eng sect dim">log tail · append-only</div>
+    <div class="lcd mono" style="font-size:8.5px;line-height:1.7">
+      <div>#48,211 gitops · plan #219-next drafted</div>
+      <div class="dimtx">#48,196 sre · drift sweep clean</div>
+      <div class="dimtx">#48,180 deploy #219 applied ✓</div>
+      <div class="dimtx">#48,102 endpoint · p99 alert cleared</div>
+    </div>
+
+    <div class="armbox" style="margin-top:auto">
       <div class="cornlbl eng" style="background:var(--panel);width:110px;margin:0 auto">safety guard</div>
       <div class="toggle"><div class="lever"></div></div>
       <div class="armtx">

@@ -1,0 +1,285 @@
+<!-- 08 Metropolis — HoBo control-plane UX exploration -->
+<title>HoBo Metropolis — Junction Master Plan, Sheet 08</title>
+<style>
+:root{
+  --paper:#EAF1F7; --grid:#C9D8E6; --ink:#1B3A5B; --yellow:#F2B705; --brick:#C4553B;
+  --green:#5B8C5A; --white:#FFFFFF;
+  --b-top:#FDFEFF; --b-right:#D5E2EE; --b-left:#B4C9DC; --plate:#E2EBF3; --road:#C7D6E4;
+  --brick-top:#EFD9D1; --brick-topR:#F4E2DB; --brick-right:#D89E8D; --brick-left:#BE7965;
+  --win:#9FBAD1; --winL:#8CA9C2; --inkwash:#3D5F80; --parkfill:#CFE0CE; --paperW:#F5F9FC;
+  --f:'Arial Narrow','Helvetica Neue',Helvetica,Arial,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1600px;height:1000px;overflow:hidden;position:relative;color:var(--ink);
+  font-family:var(--f);background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(rgba(201,216,230,.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,216,230,.45) 1px, transparent 1px);
+  background-size:100px 100px,100px 100px,20px 20px,20px 20px;}
+.frame{position:absolute;inset:10px;border:2px solid var(--ink);pointer-events:none;z-index:60}
+.frame::after{content:"";position:absolute;inset:4px;border:1px solid var(--ink);opacity:.5}
+header{position:absolute;top:12px;left:16px;right:16px;height:72px;display:flex;align-items:center;
+  gap:28px;border-bottom:2px solid var(--ink);padding:0 18px;z-index:5}
+.brand{font-size:27px;font-weight:700;letter-spacing:.34em;white-space:nowrap}
+.brand small{font-size:12px;letter-spacing:.28em;display:block;font-weight:700;opacity:.75}
+.thesis{font-size:13px;letter-spacing:.18em;font-weight:700;text-transform:uppercase;
+  border:1.5px solid var(--ink);padding:7px 14px;background:var(--paperW)}
+.hmeta{margin-left:auto;text-align:right;font-size:12px;line-height:1.5;letter-spacing:.06em;
+  text-transform:uppercase;font-weight:600}
+.hmeta b{letter-spacing:.14em}
+.city{position:absolute;top:84px;left:14px;z-index:1}
+aside{position:absolute;top:96px;right:20px;width:396px;bottom:96px;z-index:5;display:flex;
+  flex-direction:column;gap:10px}
+.board{border:2px solid var(--ink);background:var(--paperW)}
+.board-haz{height:14px;background:repeating-linear-gradient(45deg,var(--yellow) 0 12px,var(--ink) 12px 24px)}
+.board h2{font-size:14px;letter-spacing:.3em;font-weight:700;padding:9px 12px 2px;text-transform:uppercase}
+.board .sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:0 12px 8px;opacity:.85;font-weight:600}
+.permit{margin:0 10px 10px;border:1.5px solid var(--ink);background:var(--white);padding:9px 11px 9px;position:relative}
+.permit::before{content:"";position:absolute;top:-5px;left:50%;width:9px;height:9px;border-radius:50%;
+  background:var(--ink);border:2px solid var(--paperW)}
+.permit.r1{transform:rotate(-.5deg)} .permit.r2{transform:rotate(.55deg)} .permit.r3{transform:rotate(-.35deg)}
+.pno{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:4px}
+.pno b{font-size:14px;letter-spacing:.12em}
+.pno span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;opacity:.75}
+.ptitle{font-size:13.5px;font-weight:700;letter-spacing:.04em;margin:6px 0 3px;text-transform:uppercase}
+.pline{font-size:11.5px;line-height:1.45;letter-spacing:.03em}
+.pgates{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;margin-top:5px;font-weight:600;opacity:.9}
+.stamp{position:absolute;right:8px;top:26px;font-size:10.5px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 7px;transform:rotate(-5deg)}
+.stamp.wait{background:var(--yellow);color:var(--ink);border:1.5px solid var(--ink)}
+.stamp.draft{border:1.5px dashed var(--ink);color:var(--ink);background:var(--paperW)}
+.stamp.ok{border:1.5px solid var(--green);color:var(--ink);background:var(--parkfill)}
+.tblock{border:2px solid var(--ink);background:var(--paperW);margin-top:auto}
+.tblock table{width:100%;border-collapse:collapse;font-size:11px}
+.tblock td{border:1px solid var(--ink);padding:4px 8px;letter-spacing:.05em}
+.tblock td:first-child{width:86px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:9.5px;background:var(--plate)}
+footer{position:absolute;left:16px;right:16px;bottom:14px;height:74px;border-top:2px solid var(--ink);
+  display:flex;align-items:center;gap:16px;padding:0 14px;z-index:5;background:rgba(234,241,247,.85)}
+.cityhall{font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+  border:1.5px solid var(--ink);padding:8px 10px;background:var(--paperW);line-height:1.4;white-space:nowrap}
+.cityhall small{display:block;font-size:9px;letter-spacing:.14em;opacity:.8}
+.log{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px 22px;font-size:11.5px;letter-spacing:.04em;flex:1}
+.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log b{letter-spacing:.1em}
+.log .seq{opacity:.65;font-weight:700}
+svg text{font-family:var(--f)}
+svg .ann{font-size:11px;letter-spacing:.06em;font-weight:600;text-transform:lowercase}
+svg .zoneT{font-size:13px;font-weight:700;letter-spacing:.2em}
+svg .sign{font-size:13px;font-weight:700;letter-spacing:.22em}
+svg .tag{font-size:10.5px;font-weight:700;letter-spacing:.12em;fill:var(--ink)}
+svg .keyH{font-size:12.5px;font-weight:700;letter-spacing:.26em}
+svg .stampT{font-size:12px;font-weight:700;letter-spacing:.3em}
+svg .stampB{font-size:14px;font-weight:700;letter-spacing:.18em}
+</style>
+<div class="frame"></div>
+<header>
+  <div class="brand">HOBO&#8202;&#8226;&#8202;METROPOLIS<small>JUNCTION MASTER PLAN &#8212; ISOMETRIC SURVEY</small></div>
+  <div class="thesis">Zoning is policy &#183; Deploys are construction</div>
+  <div class="hmeta">
+    <div><b>JUNCTION HOBO-PROD</b> &#183; BINDLE HARBOR-CRM &#183; 2 CAMPS &#183; 61 RESOURCES</div>
+    <div>FRI 2026-07-04 &#183; 09:58 UTC &#183; SURVEY: DRIFT NONE &#183; SPEND $31.42/DAY</div>
+  </div>
+</header>
+<div class="city"><svg width="1150" height="830" viewBox="0 0 1150 830" xmlns="http://www.w3.org/2000/svg" aria-label="Isometric city plan of junction hobo-prod"><defs>
+<pattern id="haz" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="12" height="12" fill="var(--yellow)"/><rect width="6" height="12" fill="var(--ink)"/>
+</pattern>
+<pattern id="scaff" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="9" height="9" fill="rgba(255,255,255,.72)"/><rect width="2" height="9" fill="var(--yellow)"/>
+</pattern>
+<pattern id="awn" width="10" height="10" patternUnits="userSpaceOnUse">
+  <rect width="10" height="10" fill="var(--white)"/><rect width="5" height="10" fill="var(--green)"/>
+</pattern>
+</defs>
+<g stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round">
+<polygon points="450.0,155.0 690.0,275.0 690.0,289.0 450.0,169.0" fill="var(--b-left)"/>
+<polygon points="880.0,180.0 690.0,275.0 690.0,289.0 880.0,194.0" fill="var(--b-right)"/>
+<polygon points="640.0,60.0 880.0,180.0 690.0,275.0 450.0,155.0" fill="var(--plate)"/></g>
+<g stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round">
+<polygon points="70.0,405.0 490.0,615.0 490.0,629.0 70.0,419.0" fill="var(--b-left)"/>
+<polygon points="830.0,445.0 490.0,615.0 490.0,629.0 830.0,459.0" fill="var(--b-right)"/>
+<polygon points="410.0,235.0 830.0,445.0 490.0,615.0 70.0,405.0" fill="var(--plate)"/></g>
+<text transform="matrix(1 0.5 -1 0.5 476.0 156.0)" font-size="24" letter-spacing="2.5" font-weight="700" fill="var(--ink)" opacity="0.12">CLOUDFLARE-EDGE</text>
+<text transform="matrix(1 0.5 -1 0.5 106.0 411.0)" font-size="30" letter-spacing="6" font-weight="700" fill="var(--ink)" opacity="0.11">HETZNER-FSN1</text>
+<g stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round">
+<polygon points="478.0,269.0 504.0,282.0 504.0,296.0 478.0,283.0" fill="var(--b-left)"/>
+<polygon points="604.0,232.0 504.0,282.0 504.0,296.0 604.0,246.0" fill="var(--b-right)"/>
+<polygon points="578.0,219.0 604.0,232.0 504.0,282.0 478.0,269.0" fill="var(--plate)"/></g>
+<g stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round">
+<polygon points="457.0,81.5 527.0,116.5 527.0,130.5 457.0,95.5" fill="var(--b-left)"/>
+<polygon points="557.0,101.5 527.0,116.5 527.0,130.5 557.0,115.5" fill="var(--b-right)"/>
+<polygon points="487.0,66.5 557.0,101.5 527.0,116.5 457.0,81.5" fill="var(--plate)"/></g>
+<polygon points="492.0,72.0 634.0,143.0 612.0,154.0 470.0,83.0" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><line x1="487.0" y1="80.4" x2="617.0" y2="145.4" stroke="var(--ink)" stroke-width="1" stroke-dasharray="7 7" opacity=".38"/><circle cx="491.0" cy="82.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="521.5" cy="97.5" r="2" fill="var(--ink)" opacity=".8"/><circle cx="552.0" cy="112.8" r="2" fill="var(--ink)" opacity=".8"/><circle cx="582.5" cy="128.1" r="2" fill="var(--ink)" opacity=".8"/><circle cx="613.0" cy="143.3" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="628.0,196.0 650.0,207.0 462.0,301.0 440.0,290.0" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><line x1="633.0" y1="204.4" x2="457.0" y2="292.4" stroke="var(--ink)" stroke-width="1" stroke-dasharray="7 7" opacity=".38"/><circle cx="625.0" cy="204.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="605.0" cy="222.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="569.0" cy="232.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="549.0" cy="250.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="513.0" cy="260.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="493.0" cy="278.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="457.0" cy="288.3" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="375.0,347.5 391.0,355.5 311.0,395.5 295.0,387.5" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><line x1="377.0" y1="354.4" x2="309.0" y2="388.4" stroke="var(--ink)" stroke-width="1" stroke-dasharray="7 7" opacity=".38"/><circle cx="369.0" cy="354.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="357.0" cy="368.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="329.0" cy="374.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="317.0" cy="388.3" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="482.0,359.0 563.0,399.5 551.0,405.5 470.0,365.0" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><circle cx="486.0" cy="366.8" r="2" fill="var(--ink)" opacity=".8"/><circle cx="516.5" cy="382.1" r="2" fill="var(--ink)" opacity=".8"/><circle cx="547.0" cy="397.3" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="539.0,399.5 551.0,405.5 501.0,430.5 489.0,424.5" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><circle cx="535.0" cy="407.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="505.0" cy="422.3" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="564.0,412.0 574.0,417.0 524.0,442.0 514.0,437.0" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><circle cx="559.0" cy="419.3" r="2" fill="var(--ink)" opacity=".8"/><circle cx="529.0" cy="434.3" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="458.0,371.0 624.0,454.0 617.0,457.5 451.0,374.5" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><circle cx="464.5" cy="377.6" r="2" fill="var(--ink)" opacity=".8"/><circle cx="537.5" cy="414.1" r="2" fill="var(--ink)" opacity=".8"/><circle cx="610.5" cy="450.6" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="610.0,454.0 617.0,457.5 526.0,503.0 519.0,499.5" fill="var(--road)" stroke="var(--ink)" stroke-width=".8" opacity=".95"/><circle cx="603.5" cy="460.6" r="2" fill="var(--ink)" opacity=".8"/><circle cx="532.5" cy="496.1" r="2" fill="var(--ink)" opacity=".8"/>
+<polygon points="235.0,332.5 420.0,425.0 280.0,495.0 95.0,402.5" fill="rgba(196,85,59,.06)" stroke="var(--brick)" stroke-width="2.4" stroke-dasharray="11 7" stroke-linejoin="round"/>
+<circle cx="235.0" cy="332.5" r="3" fill="var(--brick)"/>
+<circle cx="420.0" cy="425.0" r="3" fill="var(--brick)"/>
+<circle cx="280.0" cy="495.0" r="3" fill="var(--brick)"/>
+<circle cx="95.0" cy="402.5" r="3" fill="var(--brick)"/>
+<line x1="314.0" y1="372.0" x2="314.0" y2="358.0" stroke="var(--brick)" stroke-width="2"/>
+<circle cx="314.0" cy="355.0" r="2.6" fill="var(--brick)"/>
+<line x1="342.0" y1="386.0" x2="342.0" y2="372.0" stroke="var(--brick)" stroke-width="2"/>
+<circle cx="342.0" cy="369.0" r="2.6" fill="var(--brick)"/>
+<polygon points="710.0,419.5 780.0,454.5 710.0,489.5 640.0,454.5" fill="var(--parkfill)" stroke="var(--green)" stroke-width="1.4"/>
+<line x1="707.0" y1="438.5" x2="707.0" y2="425.5" stroke="var(--ink)" stroke-width="1.6"/>
+<circle cx="707.0" cy="419.5" r="7" fill="var(--green)" stroke="var(--ink)" stroke-width="1.2"/>
+<line x1="725.0" y1="460.5" x2="725.0" y2="447.5" stroke="var(--ink)" stroke-width="1.6"/>
+<circle cx="725.0" cy="441.5" r="7" fill="var(--green)" stroke="var(--ink)" stroke-width="1.2"/>
+<line x1="683.0" y1="459.5" x2="683.0" y2="446.5" stroke="var(--ink)" stroke-width="1.6"/>
+<circle cx="683.0" cy="440.5" r="7" fill="var(--green)" stroke="var(--ink)" stroke-width="1.2"/>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="580.0,94.0 660.0,134.0 660.0,210.0 580.0,170.0" fill="var(--b-left)"/>
+<polygon points="740.0,94.0 660.0,134.0 660.0,210.0 740.0,170.0" fill="var(--b-right)"/>
+<polygon points="660.0,54.0 740.0,94.0 660.0,134.0 580.0,94.0" fill="var(--b-top)"/><polygon points="730.0,109.0 714.0,117.0 714.0,135.0 730.0,127.0" fill="var(--win)" /><polygon points="708.0,120.0 692.0,128.0 692.0,146.0 708.0,138.0" fill="var(--win)" /><polygon points="686.0,131.0 670.0,139.0 670.0,157.0 686.0,149.0" fill="var(--win)" /><polygon points="704.0,162.0 668.0,180.0 668.0,206.0 704.0,188.0" fill="var(--inkwash)" /><polygon points="708.0,148.0 664.0,170.0 664.0,181.0 708.0,159.0" fill="url(#awn)" /><polygon points="592.0,110.0 608.0,118.0 608.0,136.0 592.0,128.0" fill="var(--winL)" /><polygon points="618.0,123.0 634.0,131.0 634.0,149.0 618.0,141.0" fill="var(--winL)" /></g>
+<polyline points="580.0,132.0 660.0,172.0 740.0,132.0" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="655.0,196.5 700.0,219.0 700.0,245.0 655.0,222.5" fill="var(--b-left)"/>
+<polygon points="745.0,196.5 700.0,219.0 700.0,245.0 745.0,222.5" fill="var(--b-right)"/>
+<polygon points="700.0,174.0 745.0,196.5 700.0,219.0 655.0,196.5" fill="var(--b-top)"/><polygon points="737.0,208.5 707.0,223.5 707.0,235.5 737.0,220.5" fill="var(--win)" /></g>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="350.0,221.0 440.0,266.0 440.0,380.0 350.0,335.0" fill="var(--b-left)"/>
+<polygon points="530.0,221.0 440.0,266.0 440.0,380.0 530.0,335.0" fill="var(--b-right)"/>
+<polygon points="440.0,176.0 530.0,221.0 440.0,266.0 350.0,221.0" fill="var(--b-top)"/><polygon points="516.0,316.0 500.0,324.0 500.0,342.0 516.0,334.0" fill="var(--win)" /><polygon points="492.0,328.0 476.0,336.0 476.0,354.0 492.0,346.0" fill="var(--win)" /><polygon points="468.0,340.0 452.0,348.0 452.0,366.0 468.0,358.0" fill="var(--win)" /><polygon points="516.0,278.0 500.0,286.0 500.0,304.0 516.0,296.0" fill="var(--win)" /><polygon points="492.0,290.0 476.0,298.0 476.0,316.0 492.0,308.0" fill="var(--win)" /><polygon points="468.0,302.0 452.0,310.0 452.0,328.0 468.0,320.0" fill="var(--win)" /><polygon points="364.0,316.0 380.0,324.0 380.0,342.0 364.0,334.0" fill="var(--winL)" /><polygon points="388.0,328.0 404.0,336.0 404.0,354.0 388.0,346.0" fill="var(--winL)" /><polygon points="412.0,340.0 428.0,348.0 428.0,366.0 412.0,358.0" fill="var(--winL)" /><polygon points="364.0,278.0 380.0,286.0 380.0,304.0 364.0,296.0" fill="var(--winL)" /><polygon points="388.0,290.0 404.0,298.0 404.0,316.0 388.0,308.0" fill="var(--winL)" /><polygon points="412.0,302.0 428.0,310.0 428.0,328.0 412.0,320.0" fill="var(--winL)" /><polygon points="530.0,221.0 440.0,266.0 440.0,304.0 530.0,259.0" fill="url(#scaff)" /><polygon points="350.0,221.0 440.0,266.0 440.0,304.0 350.0,259.0" fill="url(#scaff)" /><g stroke="var(--ink)" stroke-width="1" opacity=".6">
+    <line x1="530.0" y1="259.0" x2="440.0" y2="266.0" /><line x1="530.0" y1="221.0" x2="440.0" y2="304.0" /></g></g>
+<polyline points="350.0,297.0 440.0,342.0 530.0,297.0" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polygon points="530.0,255.0 440.0,300.0 440.0,308.0 530.0,263.0" fill="url(#haz)" stroke="var(--ink)" stroke-width=".8"/>
+<polygon points="350.0,255.0 440.0,300.0 440.0,308.0 350.0,263.0" fill="url(#haz)" stroke="var(--ink)" stroke-width=".8"/>
+<polygon points="440.0,176.0 530.0,221.0 440.0,266.0 350.0,221.0" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="5 4" opacity=".8"/>
+<line x1="440.0" y1="214.0" x2="440.0" y2="164.0" stroke="var(--ink)" stroke-width="1.3" opacity=".85"/>
+<line x1="530.0" y1="259.0" x2="530.0" y2="209.0" stroke="var(--ink)" stroke-width="1.3" opacity=".85"/>
+<line x1="440.0" y1="304.0" x2="440.0" y2="254.0" stroke="var(--ink)" stroke-width="1.3" opacity=".85"/>
+<line x1="350.0" y1="259.0" x2="350.0" y2="209.0" stroke="var(--ink)" stroke-width="1.3" opacity=".85"/>
+<line x1="440.0" y1="166.0" x2="530.0" y2="211.0" stroke="var(--ink)" stroke-width="1" opacity=".6"/>
+<line x1="530.0" y1="211.0" x2="440.0" y2="256.0" stroke="var(--ink)" stroke-width="1" opacity=".6"/>
+<line x1="440.0" y1="256.0" x2="350.0" y2="211.0" stroke="var(--ink)" stroke-width="1" opacity=".6"/>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="555.0,347.5 625.0,382.5 625.0,442.5 555.0,407.5" fill="var(--b-left)"/>
+<polygon points="695.0,347.5 625.0,382.5 625.0,442.5 695.0,407.5" fill="var(--b-right)"/>
+<polygon points="625.0,312.5 695.0,347.5 625.0,382.5 555.0,347.5" fill="var(--b-top)"/><polygon points="683.0,389.5 667.0,397.5 667.0,413.5 683.0,405.5" fill="var(--win)" /><polygon points="659.0,401.5 643.0,409.5 643.0,425.5 659.0,417.5" fill="var(--win)" /><polygon points="683.0,361.5 667.0,369.5 667.0,385.5 683.0,377.5" fill="var(--win)" /><polygon points="659.0,373.5 643.0,381.5 643.0,397.5 659.0,389.5" fill="var(--win)" /><polygon points="568.0,362.0 584.0,370.0 584.0,386.0 568.0,378.0" fill="var(--winL)" /><polygon points="592.0,374.0 608.0,382.0 608.0,398.0 592.0,390.0" fill="var(--winL)" /></g>
+<polyline points="555.0,377.5 625.0,412.5 695.0,377.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<g stroke="var(--ink)" stroke-width="1.1" stroke-linejoin="round">
+<polygon points="643.0,325.5 657.0,332.5 657.0,354.5 643.0,347.5" fill="var(--b-left)"/>
+<polygon points="671.0,325.5 657.0,332.5 657.0,354.5 671.0,347.5" fill="var(--b-right)"/>
+<polygon points="657.0,318.5 671.0,325.5 657.0,332.5 643.0,325.5" fill="var(--b-top)"/></g>
+<circle cx="657" cy="311.5" r="4" fill="none" stroke="var(--ink)" stroke-width="1.1" opacity=".55"/>
+<circle cx="665" cy="299.5" r="6" fill="none" stroke="var(--ink)" stroke-width="1.1" opacity=".35"/>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="445.0,292.5 485.0,312.5 485.0,462.5 445.0,442.5" fill="var(--b-left)"/>
+<polygon points="525.0,292.5 485.0,312.5 485.0,462.5 525.0,442.5" fill="var(--b-right)"/>
+<polygon points="485.0,272.5 525.0,292.5 485.0,312.5 445.0,292.5" fill="var(--b-top)"/></g>
+<polyline points="445.0,424.5 485.0,444.5 525.0,424.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,406.5 485.0,426.5 525.0,406.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,388.5 485.0,408.5 525.0,388.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,370.5 485.0,390.5 525.0,370.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,352.5 485.0,372.5 525.0,352.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,334.5 485.0,354.5 525.0,334.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,316.5 485.0,336.5 525.0,316.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<polyline points="445.0,298.5 485.0,318.5 525.0,298.5" fill="none" stroke="var(--ink)" stroke-width="1" opacity=".55"/>
+<line x1="485.0" y1="292.5" x2="485.0" y2="270.5" stroke="var(--ink)" stroke-width="1.4"/>
+<circle cx="485.0" cy="266.5" r="3.4" fill="var(--yellow)" stroke="var(--ink)" stroke-width="1.1"/>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="135.0,358.5 285.0,433.5 285.0,477.5 135.0,402.5" fill="var(--brick-left)"/>
+<polygon points="380.0,386.0 285.0,433.5 285.0,477.5 380.0,430.0" fill="var(--brick-right)"/>
+<polygon points="230.0,311.0 380.0,386.0 285.0,433.5 135.0,358.5" fill="var(--brick-top)"/><line x1="380.0" y1="418.0" x2="285.0" y2="465.5" stroke="var(--ink)" stroke-width=".7" opacity=".4"/><line x1="135.0" y1="390.5" x2="285.0" y2="465.5" stroke="var(--ink)" stroke-width=".7" opacity=".4"/><line x1="380.0" y1="406.0" x2="285.0" y2="453.5" stroke="var(--ink)" stroke-width=".7" opacity=".4"/><line x1="135.0" y1="378.5" x2="285.0" y2="453.5" stroke="var(--ink)" stroke-width=".7" opacity=".4"/><line x1="380.0" y1="394.0" x2="285.0" y2="441.5" stroke="var(--ink)" stroke-width=".7" opacity=".4"/><line x1="135.0" y1="366.5" x2="285.0" y2="441.5" stroke="var(--ink)" stroke-width=".7" opacity=".4"/></g>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="135.0,358.5 210.0,382.0 285.0,433.5 285.0,433.5" fill="var(--brick-left)"/>
+<polygon points="305.0,334.5 380.0,386.0 285.0,433.5 210.0,382.0" fill="var(--brick-right)"/>
+<polygon points="230.0,311.0 305.0,334.5 210.0,382.0 135.0,358.5" fill="var(--brick-topR)"/>
+</g>
+<path d="M 348 446 L 348 426 Q 333 419.5 318 441 L 318 461 Z" fill="var(--inkwash)" stroke="var(--ink)" stroke-width="1.2"/>
+<g stroke="var(--ink)" stroke-width="1.4" stroke-linejoin="round">
+<polygon points="385.0,477.5 500.0,535.0 500.0,575.0 385.0,517.5" fill="var(--b-left)"/>
+<polygon points="585.0,492.5 500.0,535.0 500.0,575.0 585.0,532.5" fill="var(--b-right)"/>
+<polygon points="470.0,435.0 585.0,492.5 500.0,535.0 385.0,477.5" fill="var(--b-top)"/><polygon points="470.0,439.0 577.0,492.5 568.0,497.0 461.0,443.5" fill="var(--b-right)" stroke="var(--ink)" stroke-width=".7" opacity=".8"/><polygon points="450.0,449.0 557.0,502.5 548.0,507.0 441.0,453.5" fill="var(--b-right)" stroke="var(--ink)" stroke-width=".7" opacity=".8"/><polygon points="430.0,459.0 537.0,512.5 528.0,517.0 421.0,463.5" fill="var(--b-right)" stroke="var(--ink)" stroke-width=".7" opacity=".8"/><polygon points="410.0,469.0 517.0,522.5 508.0,527.0 401.0,473.5" fill="var(--b-right)" stroke="var(--ink)" stroke-width=".7" opacity=".8"/><polygon points="567.0,515.5 523.0,537.5 523.0,563.5 567.0,541.5" fill="var(--inkwash)" /><line x1="545.0" y1="552.5" x2="545.0" y2="526.5" stroke="var(--white)" stroke-width="1.2" opacity=".7"/></g>
+<g stroke="var(--ink)" stroke-width="1.6" fill="none"><line x1="546" y1="352" x2="546" y2="140"/><line x1="556" y1="357" x2="556" y2="140"/><line x1="546" y1="146" x2="556" y2="156" stroke-width="1"/><line x1="546" y1="159" x2="556" y2="149" stroke-width="1"/><line x1="546" y1="172" x2="556" y2="182" stroke-width="1"/><line x1="546" y1="185" x2="556" y2="175" stroke-width="1"/><line x1="546" y1="198" x2="556" y2="208" stroke-width="1"/><line x1="546" y1="211" x2="556" y2="201" stroke-width="1"/><line x1="546" y1="224" x2="556" y2="234" stroke-width="1"/><line x1="546" y1="237" x2="556" y2="227" stroke-width="1"/><line x1="546" y1="250" x2="556" y2="260" stroke-width="1"/><line x1="546" y1="263" x2="556" y2="253" stroke-width="1"/><line x1="546" y1="276" x2="556" y2="286" stroke-width="1"/><line x1="546" y1="289" x2="556" y2="279" stroke-width="1"/><line x1="546" y1="302" x2="556" y2="312" stroke-width="1"/><line x1="546" y1="315" x2="556" y2="305" stroke-width="1"/><line x1="546" y1="328" x2="556" y2="338" stroke-width="1"/><line x1="546" y1="341" x2="556" y2="331" stroke-width="1"/><line x1="556" y1="150" x2="416" y2="80"/><line x1="556" y1="158" x2="424" y2="88"/><line x1="544" y1="144" x2="552" y2="156" stroke-width=".9"/><line x1="526" y1="135" x2="534" y2="147" stroke-width=".9"/><line x1="508" y1="126" x2="516" y2="138" stroke-width=".9"/><line x1="490" y1="117" x2="498" y2="129" stroke-width=".9"/><line x1="472" y1="108" x2="480" y2="120" stroke-width=".9"/><line x1="454" y1="99" x2="462" y2="111" stroke-width=".9"/><line x1="436" y1="90" x2="444" y2="102" stroke-width=".9"/><line x1="546" y1="150" x2="592" y2="168"/><path d="M 546 140 L 551 122 L 556 140" /><line x1="551" y1="122" x2="446" y2="93" stroke-width="1"/><line x1="551" y1="122" x2="588" y2="165" stroke-width="1"/></g><rect x="580" y="164" width="14" height="16" fill="var(--b-left)" stroke="var(--ink)" stroke-width="1.2"/><rect x="540" y="162" width="13" height="12" fill="var(--yellow)" stroke="var(--ink)" stroke-width="1.2"/><line x1="484" y1="108" x2="484" y2="152" stroke="var(--ink)" stroke-width="1.1"/><polygon points="466,158 498,142 498,150 466,166" fill="var(--yellow)" stroke="var(--ink)" stroke-width="1.2"/><text x="504" y="150" class="ann" fill="var(--ink)">v2.5.0</text>
+<g><rect x="447" y="288" width="88" height="18" fill="var(--yellow)" stroke="var(--ink)" stroke-width="1.2"/>
+<text x="491" y="301" text-anchor="middle" class="tag">ROLLING 25%</text>
+<line x1="447" y1="297" x2="436" y2="290" stroke="var(--ink)" stroke-width="1"/></g>
+<g><line x1="232" y1="242" x2="232" y2="254" stroke="var(--ink)" stroke-width="2.4"/><line x1="458" y1="242" x2="458" y2="254" stroke="var(--ink)" stroke-width="2.4"/><rect x="220" y="196" width="250" height="46" fill="var(--white)" stroke="var(--ink)" stroke-width="1.8"/><rect x="220" y="196" width="250" height="5" fill="var(--ink)"/><text x="345" y="215" text-anchor="middle" class="sign" fill="var(--ink)">CAMP CLOUDFLARE-EDGE</text><text x="345" y="230" text-anchor="middle" class="ann" fill="var(--ink)">cost $8.32/day · conformance 18/18</text></g>
+<g><line x1="427" y1="694" x2="427" y2="706" stroke="var(--ink)" stroke-width="2.4"/><line x1="693" y1="694" x2="693" y2="706" stroke="var(--ink)" stroke-width="2.4"/><rect x="415" y="648" width="290" height="46" fill="var(--white)" stroke="var(--ink)" stroke-width="1.8"/><rect x="415" y="648" width="290" height="5" fill="var(--ink)"/><text x="560" y="667" text-anchor="middle" class="sign" fill="var(--ink)">CAMP HETZNER-FSN1</text><text x="560" y="682" text-anchor="middle" class="ann" fill="var(--ink)">cost $23.10/day · 61 resources · conformance 36/36</text></g>
+<g><circle cx="443" cy="178" r="2.2" fill="var(--ink)"/><line x1="443" y1="178" x2="368" y2="152" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="363" y="155" text-anchor="end" class="ann" fill="var(--ink)">harbor-crm/api · 3 replicas · p95 212 ms</text><text x="363" y="168" text-anchor="end" class="ann" fill="var(--ink)">v2.4.9 → v2.5.0 · canary healthy</text></g>
+<g><circle cx="660" cy="60" r="2.2" fill="var(--ink)"/><line x1="660" y1="60" x2="758" y2="42" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="763" y="45" text-anchor="start" class="ann" fill="var(--ink)">web · cache hit 94% · p95 88 ms</text></g>
+<g><circle cx="700" cy="176" r="2.2" fill="var(--ink)"/><line x1="700" y1="176" x2="905" y2="186" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="910" y="189" text-anchor="start" class="ann" fill="var(--ink)">edge cache · kv 12 ms</text></g>
+<g><circle cx="725" cy="276" r="2.2" fill="var(--ink)"/><line x1="725" y1="276" x2="898" y2="258" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="903" y="261" text-anchor="start" class="ann" fill="var(--ink)">worker · 2 replicas · 12 msg/s</text></g>
+<g><circle cx="524" cy="384" r="2.2" fill="var(--ink)"/><line x1="524" y1="384" x2="862" y2="366" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="867" y="369" text-anchor="start" class="ann" fill="var(--ink)">events queue · 340 msg/s · lag 14</text></g>
+<g><circle cx="760" cy="448" r="2.2" fill="var(--ink)"/><line x1="760" y1="448" x2="868" y2="438" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="873" y="441" text-anchor="start" class="ann" fill="var(--ink)">reserved capacity · headroom 22%</text></g>
+<g><circle cx="232" cy="314" r="2.2" fill="var(--ink)"/><line x1="232" y1="314" x2="148" y2="296" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="143" y="299" text-anchor="end" class="ann" fill="var(--ink)">postgres 16 · 38 GB · drift: none</text><text x="143" y="312" text-anchor="end" class="ann" fill="var(--ink)">snapshot 04:00 · pitr 7 d</text></g>
+<g><circle cx="588" cy="494" r="2.2" fill="var(--ink)"/><line x1="588" y1="494" x2="836" y2="520" stroke="var(--ink)" stroke-width=".9" opacity=".75"/><text x="841" y="523" text-anchor="start" class="ann" fill="var(--ink)">blob store · 212 GB · $0.90/day</text></g>
+<g>
+<text x="30" y="428" class="zoneT" fill="var(--brick)">RESIDENCY ZONE</text>
+<text x="30" y="444" class="ann" fill="var(--brick)">EU DATA MAY NOT CROSS THIS LINE</text>
+<text x="30" y="459" class="ann" fill="var(--ink)" opacity=".8">policy eu-data-residency-v3 · gate: morgan (security)</text>
+<line x1="96" y1="412" x2="30" y2="432" stroke="var(--brick)" stroke-width="1" transform="translate(64 -18)"/>
+</g>
+<g>
+<text x="300" y="64" text-anchor="end" class="zoneT" fill="var(--ink)">PUBLIC INTERNET</text>
+<text x="300" y="78" text-anchor="end" class="ann" fill="var(--ink)">1.2k req/s · tls · waf on</text>
+<path d="M 310 68 L 462 82" stroke="var(--ink)" stroke-width="1" opacity=".7"/>
+<path d="M 462 82 l -10 -6 l 2 7 l -6 4 z" fill="var(--ink)"/>
+</g>
+<g transform="rotate(-10 1035 150)" opacity=".85">
+<circle cx="1035" cy="150" r="62" fill="none" stroke="var(--brick)" stroke-width="2.4"/>
+<circle cx="1035" cy="150" r="50" fill="none" stroke="var(--brick)" stroke-width="1"/>
+<text x="1035" y="132" text-anchor="middle" class="stampT" fill="var(--brick)">JUNCTION</text>
+<text x="1035" y="149" text-anchor="middle" class="stampB" fill="var(--brick)">HOBO-PROD</text>
+<text x="1035" y="165" text-anchor="middle" class="ann" fill="var(--brick)">2 camps · 61 resources</text>
+<text x="1035" y="180" text-anchor="middle" class="ann" fill="var(--brick)">drift: none</text>
+</g>
+<g><rect x="28" y="560" width="300" height="248" fill="var(--paperW)" stroke="var(--ink)" stroke-width="1.6"/><rect x="28" y="560" width="300" height="26" fill="none" stroke="var(--ink)" stroke-width="1.6"/><text x="42" y="578" class="keyH" fill="var(--ink)">SURVEYOR&#8217;S KEY</text><text x="252" y="578" class="ann" fill="var(--ink)">sheet 08</text><rect x="44" y="597" width="44" height="12" fill="var(--road)" stroke="var(--ink)" stroke-width=".8"/><text x="100" y="606" class="ann" fill="var(--ink)">road width = request volume (22 px ≈ 1.2k req/s)</text><rect x="44" y="630" width="44" height="5" fill="var(--road)" stroke="var(--ink)" stroke-width=".8"/><text x="100" y="636" class="ann" fill="var(--ink)">narrow lane ≈ &lt; 100 req/s</text><line x1="44" y1="663" x2="88" y2="663" stroke="var(--brick)" stroke-width="2.4" stroke-dasharray="10 6"/><text x="100" y="666" class="ann" fill="var(--ink)">dashed line = policy boundary (zoning)</text><rect x="44" y="686" width="44" height="12" fill="url(#haz)" stroke="var(--ink)" stroke-width=".8"/><text x="100" y="696" class="ann" fill="var(--ink)">hatch + ribbon = rolling deploy in progress</text><rect x="52" y="714" width="24" height="5" fill="var(--white)" stroke="var(--ink)" stroke-width=".9"/><rect x="52" y="719" width="24" height="5" fill="var(--white)" stroke="var(--ink)" stroke-width=".9"/><rect x="52" y="724" width="24" height="5" fill="var(--white)" stroke="var(--ink)" stroke-width=".9"/><text x="100" y="726" class="ann" fill="var(--ink)">1 storey = 1 replica (height = capacity)</text><rect x="44" y="746" width="44" height="12" fill="var(--parkfill)" stroke="var(--green)" stroke-width="1"/><text x="100" y="756" class="ann" fill="var(--ink)">green = reserved capacity (headroom)</text><g transform="translate(292 700)"><circle r="16" fill="none" stroke="var(--ink)" stroke-width="1.2"/>
+<path d="M 0 -13 L 5 8 L 0 4 L -5 8 Z" fill="var(--ink)"/><text y="30" text-anchor="middle" class="ann" fill="var(--ink)">N</text></g></g></svg></div>
+<aside>
+  <div class="board">
+    <div class="board-haz"></div>
+    <h2>Permit Board</h2>
+    <div class="sub">zoning &amp; construction &#183; plan &#8594; policy gates &#8594; deploy</div>
+    <div class="permit r1">
+      <div class="stamp wait">awaiting Morgan</div>
+      <div class="pno"><b>PERMIT &#8470; 481</b><span>zoning variance</span></div>
+      <div class="ptitle">Expose web to public internet</div>
+      <div class="pline">junction/hobo-prod &#183; camp/cloudflare-edge &#183; bindle/harbor-crm &#183; service/web</div>
+      <div class="pline">filed by platform engineer crew &#183; 09:12 &#183; plan diff: +1 route, +1 cert</div>
+      <div class="pgates">gates: plan &#10003; &#183; policy public-ingress-review &#9203; morgan (security) &#183; deploy &#9633;</div>
+    </div>
+    <div class="permit r2">
+      <div class="stamp draft">draft</div>
+      <div class="pno"><b>PERMIT &#8470; 482</b><span>new district</span></div>
+      <div class="ptitle">New camp on fly-ams</div>
+      <div class="pline">surveyed by priya (platform eng) &#183; 08:47 &#183; est. $12.40/day</div>
+      <div class="pgates">conformance pre-checks 34/36 &#183; residency: EU &#10003; &#183; not yet filed</div>
+    </div>
+    <div class="permit r3">
+      <div class="stamp ok">approved 07:58</div>
+      <div class="pno"><b>PERMIT &#8470; 479</b><span>expansion</span></div>
+      <div class="ptitle">Scale api 2 &#8594; 3 replicas</div>
+      <div class="pline">auto-approved: within zoning envelope &#183; SRE crew &#183; applied 08:02</div>
+    </div>
+  </div>
+  <div class="tblock">
+    <table>
+      <tr><td>project</td><td>HARBOR-CRM (bindle) &#183; junction HOBO-PROD</td></tr>
+      <tr><td>sheet</td><td>08 / 10 &#8212; &#8220;METROPOLIS&#8221; &#183; scale iso 2:1 &#183; 1 storey = 1 replica</td></tr>
+      <tr><td>drawn</td><td>GitOps crew &#183; 09:41 &#183; from event log seq #4208</td></tr>
+      <tr><td>checked</td><td>Sarah (admin) &#183; 09:47 &#183; gates 4/4 pass</td></tr>
+      <tr><td>revision</td><td>12 &#183; plan plan-8c21 &#183; replayable from seq #0</td></tr>
+    </table>
+  </div>
+</aside>
+<footer>
+  <div class="cityhall">City Hall &#8212; Notices<small>event log &#183; append-only &#183; replay any seq</small></div>
+  <div class="log">
+    <div><span class="seq">#4211</span> 09:58 <b>SVY</b> drift scan 61/61 clean</div>
+    <div><span class="seq">#4210</span> 09:52 <b>CNS</b> api v2.5.0 canary &#8594; 25% (hetzner-fsn1)</div>
+    <div><span class="seq">#4209</span> 09:47 <b>GATE</b> plan-8c21 passed 4/4 gates</div>
+    <div><span class="seq">#4208</span> 09:41 <b>PLAN</b> diff +2 ~1 &#8722;0 resources</div>
+    <div><span class="seq">#4207</span> 09:12 <b>PRMT</b> &#8470;481 filed &#8594; awaiting morgan</div>
+    <div><span class="seq">#4206</span> 08:47 <b>SRV</b> fly-ams surveyed (permit &#8470;482)</div>
+  </div>
+</footer>

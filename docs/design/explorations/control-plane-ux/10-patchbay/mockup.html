@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HoBo — Patchbay · harbor-crm resource wiring rack</title>
+<style>
+:root{
+  --charcoal:#23262B;
+  --panel:#2B2F35;
+  --panel-hi:#3A3F47;
+  --panel-lo:#1F2226;
+  --rail:#1A1D21;
+  --rail-lo:#141619;
+  --cream:#E8E4D8;
+  --cream-dim:#B9B4A4;
+  --ink:#1B1E22;
+  --led-green:#52D273;
+  --led-green-dk:#1C7A3D;
+  --amber:#E8B14E;
+  --amber-dk:#8A6420;
+  --cable-red:#F25C54;
+  --cable-yel:#F4D35E;
+  --cable-teal:#43AA8B;
+  --cable-blue:#577590;
+  --metal-hi:#A6ACB4;
+  --metal-md:#6E747D;
+  --metal-lo:#3E434A;
+  --hole:#0B0C0E;
+  --lcd:#8FE7A2;
+  --lcd-bg:#101812;
+  --danger:#E06C5E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  width:1600px;height:1000px;overflow:hidden;margin:0;
+  background:
+    radial-gradient(1200px 700px at 50% 30%, rgba(255,255,255,.045), transparent 60%),
+    radial-gradient(1600px 1000px at 50% 120%, rgba(0,0,0,.55), transparent 55%),
+    var(--charcoal);
+  font-family:"Trebuchet MS", Verdana, Geneva, sans-serif;
+  color:var(--cream);
+}
+.mono{font-family:Consolas, Menlo, "DejaVu Sans Mono", monospace}
+.rack{
+  width:1600px;height:1000px;padding:10px;
+  display:grid;
+  grid-template-columns:26px 1164px 340px 26px;
+  grid-template-rows:62px 280px 318px 296px;
+  gap:8px;
+}
+/* ---------- rack rails ---------- */
+.rail-v{
+  grid-row:1/5;border-radius:4px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--hole) 3.5px, rgba(255,255,255,.10) 4.5px, rgba(255,255,255,.02) 5.5px, transparent 6.5px) 50% 8px / 100% 30.5px repeat-y,
+    linear-gradient(90deg, var(--metal-lo), var(--metal-md) 30%, var(--metal-lo) 70%, var(--rail-lo));
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6), inset 2px 0 3px rgba(255,255,255,.07), 0 0 10px rgba(0,0,0,.5);
+}
+.rail-v.l{grid-column:1}
+.rail-v.r{grid-column:4}
+/* ---------- generic module panel ---------- */
+.module{
+  position:relative;border-radius:5px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--panel-hi), var(--panel) 9%, var(--panel-lo) 96%);
+  border:1px solid rgba(0,0,0,.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    inset 0 -2px 5px rgba(0,0,0,.45),
+    inset 1px 0 0 rgba(255,255,255,.03),
+    0 4px 10px rgba(0,0,0,.5);
+}
+.screw{
+  position:absolute;width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--metal-hi), var(--metal-md) 45%, var(--metal-lo) 75%, var(--hole));
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.7), 0 1px 1px rgba(255,255,255,.08);
+}
+.screw::after{
+  content:"";position:absolute;left:1.5px;right:1.5px;top:5.5px;height:2px;border-radius:1px;
+  background:linear-gradient(180deg, var(--hole), rgba(255,255,255,.18));
+}
+.screw.tl{top:6px;left:6px;transform:rotate(23deg)}
+.screw.tr{top:6px;right:6px;transform:rotate(-64deg)}
+.screw.bl{bottom:6px;left:6px;transform:rotate(81deg)}
+.screw.br{bottom:6px;right:6px;transform:rotate(-12deg)}
+/* engraved lettering */
+.eng{
+  letter-spacing:.14em;text-transform:uppercase;color:var(--cream);
+  text-shadow:0 -1px 0 rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.06);
+}
+.eng.dim{color:var(--cream-dim)}
+/* cream engraved plate */
+.plate{
+  display:inline-block;background:linear-gradient(180deg, var(--cream), var(--cream-dim));
+  color:var(--ink);border-radius:2px;padding:2px 10px 1px;
+  letter-spacing:.22em;text-transform:uppercase;font-weight:700;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 0 rgba(0,0,0,.35), 0 1px 2px rgba(0,0,0,.6);
+  text-shadow:0 1px 0 rgba(255,255,255,.35);
+}
+/* LEDs */
+.led{width:11px;height:11px;border-radius:50%;position:relative;flex:none;
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.5), 0 0 0 2px rgba(0,0,0,.55), 0 0 0 3px rgba(255,255,255,.05)}
+.led.g{background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.95), var(--led-green) 45%, var(--led-green-dk) 95%);
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.4), 0 0 0 2px rgba(0,0,0,.55), 0 0 0 3px rgba(255,255,255,.05), 0 0 9px 1px rgba(82,210,115,.55)}
+.led.a{background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.9), var(--amber) 45%, var(--amber-dk) 95%);
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.4), 0 0 0 2px rgba(0,0,0,.55), 0 0 0 3px rgba(255,255,255,.05), 0 0 9px 1px rgba(232,177,78,.55)}
+.led.off{background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.12), var(--panel-lo) 60%, var(--hole))}
+/* ---------- header ---------- */
+header.module{
+  grid-column:2/4;grid-row:1;display:flex;align-items:center;gap:18px;padding:0 40px;
+}
+header .plate{font-size:15px}
+header .crumb{font-size:10.5px;letter-spacing:.18em}
+header .crumb b{color:var(--cream);font-weight:700}
+header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:9.5px}
+/* ---------- top service row ---------- */
+.row-svc{grid-column:2;grid-row:2;display:flex;gap:8px}
+.row-res{grid-column:2;grid-row:4;display:flex;gap:8px}
+.row-svc .module,.row-res .module{flex:1;padding:12px 16px 10px}
+.mod-head{display:flex;align-items:center;gap:12px;margin:2px 6px 0 6px}
+.mod-head .plate{font-size:13px}
+.mod-head .ledlbl{display:flex;flex-direction:column;align-items:center;gap:3px;margin-left:auto}
+.mod-head .ledlbl span{font-size:6.5px}
+.controls{display:flex;align-items:flex-start;gap:14px;margin-top:8px;padding:0 6px}
+.ctl{display:flex;flex-direction:column;align-items:center;gap:1px}
+.ctl .cap{font-size:7px;margin-top:-2px}
+.readout{
+  margin-left:auto;background:linear-gradient(180deg, var(--rail-lo), var(--rail));
+  border-radius:3px;padding:7px 10px;min-width:118px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.8), inset 0 -1px 0 rgba(255,255,255,.05);
+  font-size:8.5px;line-height:1.75;color:var(--lcd);
+}
+.readout .k{color:rgba(143,231,162,.55)}
+.mod-foot{position:absolute;left:22px;right:22px;bottom:8px;display:flex;justify-content:space-between;font-size:7.5px}
+/* fader */
+.fader{position:relative;width:34px;height:86px}
+.fader .slot{position:absolute;left:15px;top:4px;bottom:12px;width:5px;border-radius:3px;
+  background:linear-gradient(90deg, var(--hole), var(--rail) 70%);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.06)}
+.fader .tick{position:absolute;left:2px;width:9px;height:1px;background:rgba(232,228,216,.28)}
+.fader .tick.r{left:auto;right:2px}
+.fader .cap2{position:absolute;left:4px;width:27px;height:13px;border-radius:2px;
+  background:linear-gradient(180deg, var(--metal-hi), var(--metal-md) 40%, var(--metal-lo) 60%, var(--panel-lo));
+  box-shadow:0 2px 4px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.35)}
+.fader .cap2::after{content:"";position:absolute;left:2px;right:2px;top:6px;height:1.5px;background:var(--hole)}
+/* provider badge */
+.badge{
+  position:absolute;top:10px;right:34px;display:inline-block;
+  background:linear-gradient(180deg, var(--cream), var(--cream-dim));color:var(--ink);
+  font-size:7.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  padding:2px 8px;border-radius:2px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 0 rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.6);
+}
+.badge::before,.badge::after{
+  content:"";position:absolute;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--metal-hi), var(--metal-lo) 80%);
+  box-shadow:inset 0 -1px 1px rgba(0,0,0,.6);
+}
+.badge::before{left:-9px}.badge::after{right:-9px}
+/* ---------- patch field ---------- */
+.patch{
+  grid-column:2;grid-row:3;position:relative;border-radius:5px;overflow:hidden;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, var(--rail-lo), var(--rail) 12%, var(--rail) 88%, var(--rail-lo));
+  border:1px solid rgba(0,0,0,.8);
+  box-shadow:inset 0 3px 9px rgba(0,0,0,.7), inset 0 -3px 9px rgba(0,0,0,.6), 0 4px 10px rgba(0,0,0,.5);
+}
+.patch svg{display:block}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+/* ---------- master section ---------- */
+.master{grid-column:3;grid-row:2/5;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.master .mod-head{margin:0}
+.lcd{
+  background:var(--lcd-bg);border-radius:3px;padding:9px 11px;color:var(--lcd);
+  font-size:9.5px;line-height:1.8;letter-spacing:.06em;
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.9), inset 0 0 22px rgba(143,231,162,.07), 0 1px 0 rgba(255,255,255,.05);
+}
+.lcd .bad{color:var(--danger)}
+.lcd .dimtx{color:rgba(143,231,162,.5)}
+.sect{font-size:8px;margin-top:2px}
+.transport{display:flex;gap:8px;justify-content:space-between}
+.tbtn{
+  flex:1;height:44px;border-radius:4px;position:relative;
+  background:linear-gradient(180deg, var(--panel-hi), var(--panel) 30%, var(--panel-lo));
+  border:1px solid rgba(0,0,0,.8);
+  box-shadow:0 3px 5px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -3px 5px rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--cream-dim);font-size:13px;
+}
+.tbtn.lit{
+  box-shadow:0 1px 2px rgba(0,0,0,.6), inset 0 2px 6px rgba(0,0,0,.7);
+  color:var(--led-green);text-shadow:0 0 8px rgba(82,210,115,.8);
+}
+.tbtn small{position:absolute;bottom:-11px;left:0;right:0;text-align:center;font-size:6px;color:var(--cream-dim);letter-spacing:.14em}
+/* scrub ribbon */
+.scrub{position:relative;height:64px;margin-top:8px}
+.scrub .groove{
+  position:absolute;left:2px;right:2px;top:22px;height:16px;border-radius:8px;
+  background:
+    repeating-linear-gradient(90deg, rgba(232,228,216,.14) 0 1px, transparent 1px 14px),
+    linear-gradient(180deg, var(--hole), var(--rail-lo) 70%);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.06);
+}
+.scrub .mark{position:absolute;top:24px;width:2px;height:12px;border-radius:1px}
+.scrub .head{
+  position:absolute;top:16px;width:10px;height:28px;border-radius:3px;
+  background:linear-gradient(180deg, var(--cream), var(--cream-dim) 60%, var(--metal-md));
+  box-shadow:0 2px 5px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.scrub .head::after{content:"";position:absolute;left:4px;top:3px;bottom:3px;width:1.5px;background:rgba(0,0,0,.55)}
+.scrub .lbl{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;font-size:7px}
+.scrub .lbl2{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;font-size:7px}
+/* arm switch */
+.armbox{
+  position:relative;border:2px solid var(--danger);border-radius:6px;padding:10px 12px 9px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.7), inset 0 0 14px rgba(224,108,94,.10);
+  display:flex;align-items:center;gap:14px;margin-top:10px;
+}
+.armbox .corner{position:absolute;top:-2px;left:18px;right:18px;height:2px;background:var(--panel);}
+.armbox .cornlbl{position:absolute;top:-7px;left:0;right:0;text-align:center;font-size:7.5px;color:var(--danger);letter-spacing:.3em}
+.toggle{width:34px;height:58px;border-radius:17px;position:relative;flex:none;
+  background:linear-gradient(180deg, var(--hole), var(--rail-lo) 60%, var(--rail));
+  box-shadow:inset 0 3px 7px rgba(0,0,0,.95), 0 1px 0 rgba(255,255,255,.07)}
+.toggle .lever{
+  position:absolute;left:5px;right:5px;bottom:5px;height:26px;border-radius:12px;
+  background:linear-gradient(180deg, var(--metal-hi), var(--metal-md) 45%, var(--metal-lo));
+  box-shadow:0 -2px 4px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.toggle .lever::after{content:"";position:absolute;left:8px;right:8px;top:11px;height:2px;border-radius:1px;background:rgba(0,0,0,.5)}
+.armtx{font-size:8px;line-height:1.9}
+.armtx .big{font-size:11px;font-weight:700;letter-spacing:.22em}
+.armtx .warn{color:var(--amber)}
+/* crew LEDs */
+.crew{display:flex;justify-content:space-between;padding:2px 4px 0}
+.crew .c{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:6.5px}
+.master .foot{margin-top:auto;display:flex;justify-content:space-between;font-size:7px;padding:0 2px}
+.hr{height:2px;border-radius:1px;background:linear-gradient(180deg, rgba(0,0,0,.8), rgba(255,255,255,.07));margin:2px 0}
+</style>
+</head>
+<body>
+<div class="rack">
+  <div class="rail-v l"></div>
+  <div class="rail-v r"></div>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="module">
+    <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+    <span class="plate">HoBo · Patchbay</span>
+    <span class="eng crumb dim">junction <b>acme-co</b> ▸ yard <b>hetzner-eu</b> ▸ camp <b>prod-fsn1</b> ▸ bindle <b>harbor-crm</b></span>
+    <span class="right eng dim">
+      <span class="led g"></span> drift reconciled 2m ago
+      <span class="led g"></span> operator sarah · morgan reviewing
+    </span>
+  </header>
+
+  <!-- ===================== TOP RACK ROW · SERVICES ===================== -->
+  <div class="row-svc">
+    <!-- API -->
+    <section class="module">
+      <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+      <div class="mod-head">
+        <span class="plate">API</span>
+        <span class="eng dim" style="font-size:7.5px">svc · harbor-crm/api</span>
+        <span class="ledlbl"><span class="led g"></span><span class="eng dim">run</span></span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <svg width="92" height="88" viewBox="0 0 92 88">
+            <g stroke="#B9B4A4" stroke-width="1.4">
+              <line x1="20.6" y1="65.4" x2="15" y2="71"/><line x1="13.4" y1="50.4" x2="5.6" y2="52.4"/>
+              <line x1="15.9" y1="33.5" x2="8.9" y2="29.5"/><line x1="27.4" y1="21" x2="22.4" y2="14.9"/>
+              <line x1="43.3" y1="14.1" x2="41.9" y2="6.2"/><line x1="59.8" y1="16.4" x2="62.6" y2="8.9"/>
+              <line x1="72.9" y1="27" x2="78.5" y2="21.3"/><line x1="78.9" y1="42.9" x2="86.8" y2="41.5"/>
+              <line x1="75.7" y1="59.5" x2="83" y2="62.8"/><line x1="71.4" y1="65.4" x2="77" y2="71"/>
+            </g>
+            <text x="10" y="84" fill="#B9B4A4" font-size="7" letter-spacing="1">0</text>
+            <text x="74" y="84" fill="#B9B4A4" font-size="7" letter-spacing="1">8</text>
+            <circle cx="46" cy="46" r="30" fill="#111317"/>
+            <circle cx="46" cy="46" r="28" fill="url(#knobA)"/>
+            <circle cx="46" cy="46" r="27" fill="none" stroke="#0B0C0E" stroke-width="2" stroke-dasharray="2.5 3.5"/>
+            <circle cx="43" cy="41" r="19" fill="rgba(255,255,255,.06)"/>
+            <line x1="46" y1="46" x2="60" y2="24" stroke="#E8E4D8" stroke-width="3" stroke-linecap="round"/>
+            <defs>
+              <radialGradient id="knobA" cx="38%" cy="30%">
+                <stop offset="0%" stop-color="#4A5058"/><stop offset="55%" stop-color="#2B2F35"/><stop offset="100%" stop-color="#15171B"/>
+              </radialGradient>
+            </defs>
+          </svg>
+          <span class="eng cap dim">replicas · 3</span>
+        </div>
+        <div class="ctl">
+          <div class="fader">
+            <div class="slot"></div>
+            <div class="tick" style="top:8px"></div><div class="tick" style="top:24px"></div>
+            <div class="tick" style="top:40px"></div><div class="tick" style="top:56px"></div>
+            <div class="tick r" style="top:16px"></div><div class="tick r" style="top:48px"></div>
+            <div class="cap2" style="top:30px"></div>
+          </div>
+          <span class="eng cap dim">mem · 512Mi</span>
+        </div>
+        <div class="readout mono">
+          <div><span class="k">p99</span> 84ms · <span class="k">rps</span> 412</div>
+          <div><span class="k">img</span> api@sha256:9f2c1e</div>
+          <div><span class="k">rev</span> deploy #219 · 41m</div>
+        </div>
+      </div>
+      <div class="mod-foot eng dim"><span>ports: pg · queue · secret · http</span><span>conformance 34/34</span></div>
+    </section>
+
+    <!-- WEB -->
+    <section class="module">
+      <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+      <div class="mod-head">
+        <span class="plate">WEB</span>
+        <span class="eng dim" style="font-size:7.5px">svc · harbor-crm/web</span>
+        <span class="ledlbl"><span class="led g"></span><span class="eng dim">run</span></span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <svg width="92" height="88" viewBox="0 0 92 88">
+            <g stroke="#B9B4A4" stroke-width="1.4">
+              <line x1="20.6" y1="65.4" x2="15" y2="71"/><line x1="13.4" y1="50.4" x2="5.6" y2="52.4"/>
+              <line x1="15.9" y1="33.5" x2="8.9" y2="29.5"/><line x1="27.4" y1="21" x2="22.4" y2="14.9"/>
+              <line x1="43.3" y1="14.1" x2="41.9" y2="6.2"/><line x1="59.8" y1="16.4" x2="62.6" y2="8.9"/>
+              <line x1="72.9" y1="27" x2="78.5" y2="21.3"/><line x1="78.9" y1="42.9" x2="86.8" y2="41.5"/>
+              <line x1="75.7" y1="59.5" x2="83" y2="62.8"/><line x1="71.4" y1="65.4" x2="77" y2="71"/>
+            </g>
+            <text x="10" y="84" fill="#B9B4A4" font-size="7" letter-spacing="1">0</text>
+            <text x="74" y="84" fill="#B9B4A4" font-size="7" letter-spacing="1">8</text>
+            <circle cx="46" cy="46" r="30" fill="#111317"/>
+            <circle cx="46" cy="46" r="28" fill="url(#knobB)"/>
+            <circle cx="46" cy="46" r="27" fill="none" stroke="#0B0C0E" stroke-width="2" stroke-dasharray="2.5 3.5"/>
+            <circle cx="43" cy="41" r="19" fill="rgba(255,255,255,.06)"/>
+            <line x1="46" y1="46" x2="56" y2="21" stroke="#E8E4D8" stroke-width="3" stroke-linecap="round"/>
+            <defs>
+              <radialGradient id="knobB" cx="38%" cy="30%">
+                <stop offset="0%" stop-color="#4A5058"/><stop offset="55%" stop-color="#2B2F35"/><stop offset="100%" stop-color="#15171B"/>
+              </radialGradient>
+            </defs>
+          </svg>
+          <span class="eng cap dim">replicas · 2</span>
+        </div>
+        <div class="ctl">
+          <div class="fader">
+            <div class="slot"></div>
+            <div class="tick" style="top:8px"></div><div class="tick" style="top:24px"></div>
+            <div class="tick" style="top:40px"></div><div class="tick" style="top:56px"></div>
+            <div class="tick r" style="top:16px"></div><div class="tick r" style="top:48px"></div>
+            <div class="cap2" style="top:48px"></div>
+          </div>
+          <span class="eng cap dim">mem · 256Mi</span>
+        </div>
+        <div class="readout mono">
+          <div><span class="k">p99</span> 121ms · <span class="k">rps</span> 977</div>
+          <div><span class="k">img</span> web@sha256:b31aa0</div>
+          <div><span class="k">rev</span> deploy #219 · 41m</div>
+        </div>
+      </div>
+      <div class="mod-foot eng dim"><span>ports: blob · http</span><span>conformance 18/18</span></div>
+    </section>
+
+    <!-- WORKER -->
+    <section class="module">
+      <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+      <div class="mod-head">
+        <span class="plate">WORKER</span>
+        <span class="eng dim" style="font-size:7.5px">svc · harbor-crm/worker</span>
+        <span class="ledlbl"><span class="led a"></span><span class="eng dim">wire</span></span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <svg width="92" height="88" viewBox="0 0 92 88">
+            <g stroke="#B9B4A4" stroke-width="1.4">
+              <line x1="20.6" y1="65.4" x2="15" y2="71"/><line x1="13.4" y1="50.4" x2="5.6" y2="52.4"/>
+              <line x1="15.9" y1="33.5" x2="8.9" y2="29.5"/><line x1="27.4" y1="21" x2="22.4" y2="14.9"/>
+              <line x1="43.3" y1="14.1" x2="41.9" y2="6.2"/><line x1="59.8" y1="16.4" x2="62.6" y2="8.9"/>
+              <line x1="72.9" y1="27" x2="78.5" y2="21.3"/><line x1="78.9" y1="42.9" x2="86.8" y2="41.5"/>
+              <line x1="75.7" y1="59.5" x2="83" y2="62.8"/><line x1="71.4" y1="65.4" x2="77" y2="71"/>
+            </g>
+            <text x="10" y="84" fill="#B9B4A4" font-size="7" letter-spacing="1">0</text>
+            <text x="74" y="84" fill="#B9B4A4" font-size="7" letter-spacing="1">8</text>
+            <circle cx="46" cy="46" r="30" fill="#111317"/>
+            <circle cx="46" cy="46" r="28" fill="url(#knobC)"/>
+            <circle cx="46" cy="46" r="27" fill="none" stroke="#0B0C0E" stroke-width="2" stroke-dasharray="2.5 3.5"/>
+            <circle cx="43" cy="41" r="19" fill="rgba(255,255,255,.06)"/>
+            <line x1="46" y1="46" x2="26" y2="29" stroke="#E8E4D8" stroke-width="3" stroke-linecap="round"/>
+            <defs>
+              <radialGradient id="knobC" cx="38%" cy="30%">
+                <stop offset="0%" stop-color="#4A5058"/><stop offset="55%" stop-color="#2B2F35"/><stop offset="100%" stop-color="#15171B"/>
+              </radialGradient>
+            </defs>
+          </svg>
+          <span class="eng cap dim">replicas · 1</span>
+        </div>
+        <div class="ctl">
+          <div class="fader">
+            <div class="slot"></div>
+            <div class="tick" style="top:8px"></div><div class="tick" style="top:24px"></div>
+            <div class="tick" style="top:40px"></div><div class="tick" style="top:56px"></div>
+            <div class="tick r" style="top:16px"></div><div class="tick r" style="top:48px"></div>
+            <div class="cap2" style="top:10px"></div>
+          </div>
+          <span class="eng cap dim">mem · 1Gi</span>
+        </div>
+        <div class="readout mono">
+          <div><span class="k">jobs</span> 3.1k/h · <span class="k">err</span> 0.2%</div>
+          <div><span class="k">img</span> worker@sha256:77d4c9</div>
+          <div><span class="bad" style="color:var(--danger)">▲ blob://media unwired</span></div>
+        </div>
+      </div>
+      <div class="mod-foot eng dim"><span>ports: pg · queue · blob</span><span style="color:var(--amber)">conformance 12/12 · 1 port open</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== PATCH FIELD ===================== -->
+  <div class="patch">
+    <svg width="1164" height="318" viewBox="0 0 1164 318">
+      <defs>
+        <radialGradient id="ringM" cx="35%" cy="30%">
+          <stop offset="0%" stop-color="#C9CDD3"/><stop offset="55%" stop-color="#83898F"/><stop offset="100%" stop-color="#3E434A"/>
+        </radialGradient>
+        <radialGradient id="holeG" cx="45%" cy="40%">
+          <stop offset="0%" stop-color="#000000"/><stop offset="75%" stop-color="#0B0C0E"/><stop offset="100%" stop-color="#25272B"/>
+        </radialGradient>
+        <linearGradient id="sleeveM" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#3E434A"/><stop offset="35%" stop-color="#C9CDD3"/><stop offset="70%" stop-color="#6E747D"/><stop offset="100%" stop-color="#3E434A"/>
+        </linearGradient>
+        <g id="jack">
+          <circle r="15.5" fill="#101215"/>
+          <circle r="14" fill="url(#ringM)"/>
+          <circle r="9.5" fill="#1A1D21"/>
+          <circle r="7" fill="url(#holeG)"/>
+          <path d="M -9.5 -7 A 12 12 0 0 1 8 -8.5" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.6" stroke-linecap="round"/>
+        </g>
+        <g id="tagS">
+          <rect x="-42" y="0" width="84" height="26" rx="2" fill="#E8E4D8"/>
+          <rect x="-42" y="0" width="84" height="26" rx="2" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1"/>
+          <circle cx="-35" cy="6" r="2.2" fill="none" stroke="#6E747D" stroke-width="1.4"/>
+        </g>
+      </defs>
+
+      <!-- rail engraving -->
+      <text x="14" y="20" fill="#B9B4A4" font-size="8" letter-spacing="3">SERVICE OUT</text>
+      <text x="14" y="306" fill="#B9B4A4" font-size="8" letter-spacing="3">RESOURCE IN</text>
+      <line x1="0" y1="158" x2="1164" y2="158" stroke="rgba(255,255,255,.03)" stroke-width="1"/>
+
+      <!-- ======== top jacks (service out) ======== -->
+      <!-- API group -->
+      <g transform="translate(60 48)"><use href="#jack"/></g>
+      <g transform="translate(150 48)"><use href="#jack"/></g>
+      <g transform="translate(240 48)"><use href="#jack"/></g>
+      <g transform="translate(330 48)"><use href="#jack"/></g>
+      <text x="60" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">pg://main</text>
+      <text x="150" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">queue://events</text>
+      <text x="240" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">secret://stripe-key</text>
+      <text x="330" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">http://public</text>
+      <!-- WEB group -->
+      <g transform="translate(470 48)"><use href="#jack"/></g>
+      <g transform="translate(580 48)"><use href="#jack"/></g>
+      <text x="470" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">blob://media</text>
+      <text x="580" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">http://public</text>
+      <!-- WORKER group -->
+      <g transform="translate(840 48)"><use href="#jack"/></g>
+      <g transform="translate(950 48)"><use href="#jack"/></g>
+      <g transform="translate(1060 48)"><use href="#jack"/></g>
+      <text x="840" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">pg://main</text>
+      <text x="950" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">queue://events</text>
+      <text x="1060" y="24" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">blob://media</text>
+
+      <!-- unwired pulsing ring + note -->
+      <circle cx="1060" cy="48" r="19" fill="none" stroke="#E8B14E" stroke-width="2" class="pulse"/>
+      <text x="1060" y="86" fill="#E8B14E" font-size="8" text-anchor="middle" letter-spacing="1">unwired — plan blocked</text>
+
+      <!-- ======== bottom jacks (resource in) ======== -->
+      <g transform="translate(140 262)"><use href="#jack"/></g>
+      <g transform="translate(240 262)"><use href="#jack"/></g>
+      <text x="140" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">pg://main · rw</text>
+      <text x="240" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">pg://main · ro</text>
+      <g transform="translate(460 262)"><use href="#jack"/></g>
+      <g transform="translate(560 262)"><use href="#jack"/></g>
+      <text x="460" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">queue://events · pub</text>
+      <text x="560" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">queue://events · sub</text>
+      <g transform="translate(700 262)"><use href="#jack"/></g>
+      <text x="700" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">secret://stripe-key</text>
+      <text x="700" y="306" fill="#B9B4A4" font-size="6.5" text-anchor="middle" letter-spacing="2">VAULT · YARD</text>
+      <g transform="translate(900 262)"><use href="#jack"/></g>
+      <text x="900" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">blob://media</text>
+      <g transform="translate(1030 262)"><use href="#jack"/></g>
+      <g transform="translate(1064 262)"><use href="#jack"/></g>
+      <text x="1047" y="294" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">http://public · mult</text>
+      <text x="1047" y="306" fill="#B9B4A4" font-size="6.5" text-anchor="middle" letter-spacing="2">EDGE · CLOUDFLARE</text>
+
+      <!-- ======== cables (shadow, body, highlight) ======== -->
+      <!-- 1 API.pg -> pg rw : red -->
+      <g>
+        <path d="M60 76 C60 166,140 184,140 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M60 76 C60 166,140 184,140 234" fill="none" stroke="#F25C54" stroke-width="7" stroke-linecap="round"/>
+        <path d="M60 76 C60 166,140 184,140 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 2 API.queue -> queue pub : yellow -->
+      <g>
+        <path d="M150 76 C150 206,460 179,460 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M150 76 C150 206,460 179,460 234" fill="none" stroke="#F4D35E" stroke-width="7" stroke-linecap="round"/>
+        <path d="M150 76 C150 206,460 179,460 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 3 API.secret -> vault : teal -->
+      <g>
+        <path d="M240 76 C240 256,700 204,700 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M240 76 C240 256,700 204,700 234" fill="none" stroke="#43AA8B" stroke-width="7" stroke-linecap="round"/>
+        <path d="M240 76 C240 256,700 204,700 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 4 API.http -> edge mult a : blue -->
+      <g>
+        <path d="M330 76 C330 276,1030 208,1030 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M330 76 C330 276,1030 208,1030 234" fill="none" stroke="#577590" stroke-width="7" stroke-linecap="round"/>
+        <path d="M330 76 C330 276,1030 208,1030 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 5 WEB.blob -> blob : teal -->
+      <g>
+        <path d="M470 76 C470 236,900 194,900 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M470 76 C470 236,900 194,900 234" fill="none" stroke="#43AA8B" stroke-width="7" stroke-linecap="round"/>
+        <path d="M470 76 C470 236,900 194,900 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 6 WEB.http -> edge mult b : blue -->
+      <g>
+        <path d="M580 76 C580 256,1064 204,1064 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M580 76 C580 256,1064 204,1064 234" fill="none" stroke="#577590" stroke-width="7" stroke-linecap="round"/>
+        <path d="M580 76 C580 256,1064 204,1064 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 7 WORKER.pg -> pg ro : red -->
+      <g>
+        <path d="M840 76 C840 266,240 198,240 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M840 76 C840 266,240 198,240 234" fill="none" stroke="#F25C54" stroke-width="7" stroke-linecap="round"/>
+        <path d="M840 76 C840 266,240 198,240 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+      <!-- 8 WORKER.queue -> queue sub : yellow -->
+      <g>
+        <path d="M950 76 C950 226,560 194,560 234" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="9" transform="translate(2 3)"/>
+        <path d="M950 76 C950 226,560 194,560 234" fill="none" stroke="#F4D35E" stroke-width="7" stroke-linecap="round"/>
+        <path d="M950 76 C950 226,560 194,560 234" fill="none" stroke="rgba(255,255,255,.30)" stroke-width="1.8" transform="translate(-1 -1.5)"/>
+      </g>
+
+      <!-- ======== plugs (sleeve + boot) at each wired jack ======== -->
+      <g id="plugs">
+        <!-- top plugs -->
+        <g transform="translate(60 48)"><circle r="5.5" fill="#F25C54"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#B3423C"/></g>
+        <g transform="translate(150 48)"><circle r="5.5" fill="#F4D35E"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#B29A3F"/></g>
+        <g transform="translate(240 48)"><circle r="5.5" fill="#43AA8B"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#2E7A63"/></g>
+        <g transform="translate(330 48)"><circle r="5.5" fill="#577590"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#3D5468"/></g>
+        <g transform="translate(470 48)"><circle r="5.5" fill="#43AA8B"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#2E7A63"/></g>
+        <g transform="translate(580 48)"><circle r="5.5" fill="#577590"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#3D5468"/></g>
+        <g transform="translate(840 48)"><circle r="5.5" fill="#F25C54"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#B3423C"/></g>
+        <g transform="translate(950 48)"><circle r="5.5" fill="#F4D35E"/><rect x="-4" y="8" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="17" width="10" height="13" rx="3" fill="#B29A3F"/></g>
+        <!-- bottom plugs -->
+        <g transform="translate(140 262)"><circle r="5.5" fill="#F25C54"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#B3423C"/></g>
+        <g transform="translate(240 262)"><circle r="5.5" fill="#F25C54"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#B3423C"/></g>
+        <g transform="translate(460 262)"><circle r="5.5" fill="#F4D35E"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#B29A3F"/></g>
+        <g transform="translate(560 262)"><circle r="5.5" fill="#F4D35E"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#B29A3F"/></g>
+        <g transform="translate(700 262)"><circle r="5.5" fill="#43AA8B"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#2E7A63"/></g>
+        <g transform="translate(900 262)"><circle r="5.5" fill="#43AA8B"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#2E7A63"/></g>
+        <g transform="translate(1030 262)"><circle r="5.5" fill="#577590"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#3D5468"/></g>
+        <g transform="translate(1064 262)"><circle r="5.5" fill="#577590"/><rect x="-4" y="-18" width="8" height="10" fill="url(#sleeveM)"/><rect x="-5" y="-30" width="10" height="13" rx="3" fill="#3D5468"/></g>
+      </g>
+
+      <!-- ======== hanging tags ======== -->
+      <g font-size="7.5" font-weight="700">
+        <g transform="translate(60 48)">
+          <line x1="0" y1="30" x2="6" y2="56" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(10 56) rotate(-4)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">secretless ref:</text><text x="-28" y="21" fill="#1B1E22">pg-main/rw</text>
+            <circle cx="34" cy="8" r="3" fill="#F25C54"/></g>
+        </g>
+        <g transform="translate(150 48)">
+          <line x1="0" y1="30" x2="4" y2="96" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(8 96) rotate(3)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">conformance:</text><text x="-28" y="21" fill="#1B1E22">PASS 34/34</text>
+            <circle cx="34" cy="8" r="3" fill="#F4D35E"/></g>
+        </g>
+        <g transform="translate(240 48)">
+          <line x1="0" y1="30" x2="6" y2="56" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(10 56) rotate(-3)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">secretless ref:</text><text x="-28" y="21" fill="#1B1E22">stripe-key/live</text>
+            <circle cx="34" cy="8" r="3" fill="#43AA8B"/></g>
+        </g>
+        <g transform="translate(330 48)">
+          <line x1="0" y1="30" x2="4" y2="96" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(8 96) rotate(4)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">edge ingress:</text><text x="-28" y="21" fill="#1B1E22">tls auto · cf</text>
+            <circle cx="34" cy="8" r="3" fill="#577590"/></g>
+        </g>
+        <g transform="translate(470 48)">
+          <line x1="0" y1="30" x2="6" y2="56" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(10 56) rotate(-3)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">cdn: cached</text><text x="-28" y="21" fill="#1B1E22">imgproc on</text>
+            <circle cx="34" cy="8" r="3" fill="#43AA8B"/></g>
+        </g>
+        <g transform="translate(580 48)">
+          <line x1="0" y1="30" x2="4" y2="96" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(8 96) rotate(3)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">mult: shared</text><text x="-28" y="21" fill="#1B1E22">with api</text>
+            <circle cx="34" cy="8" r="3" fill="#577590"/></g>
+        </g>
+        <g transform="translate(840 48)">
+          <line x1="0" y1="30" x2="6" y2="56" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(10 56) rotate(-4)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">secretless ref:</text><text x="-28" y="21" fill="#1B1E22">pg-main/ro</text>
+            <circle cx="34" cy="8" r="3" fill="#F25C54"/></g>
+        </g>
+        <g transform="translate(950 48)">
+          <line x1="0" y1="30" x2="4" y2="96" stroke="rgba(232,228,216,.5)" stroke-width="1"/>
+          <g transform="translate(8 96) rotate(4)"><use href="#tagS"/>
+            <text x="-28" y="11" fill="#1B1E22">conformance:</text><text x="-28" y="21" fill="#1B1E22">PASS 12/12</text>
+            <circle cx="34" cy="8" r="3" fill="#F4D35E"/></g>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- ===================== BOTTOM RACK ROW · RESOURCES ===================== -->
+  <div class="row-res">
+    <!-- POSTGRES-16 -->
+    <section class="module">
+      <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+      <span class="badge">hetzner · fsn1</span>
+      <div class="mod-head">
+        <span class="plate">Postgres-16</span>
+        <span class="ledlbl"><span class="led g"></span><span class="eng dim">up</span></span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <svg width="170" height="96" viewBox="0 0 170 96">
+            <rect x="2" y="2" width="166" height="86" rx="5" fill="#E8E4D8"/>
+            <rect x="2" y="2" width="166" height="86" rx="5" fill="none" stroke="#0B0C0E" stroke-width="2"/>
+            <path d="M25 70 A 62 62 0 0 1 145 70" fill="none" stroke="#1B1E22" stroke-width="2"/>
+            <path d="M118 33 A 62 62 0 0 1 145 70" fill="none" stroke="#B3423C" stroke-width="4"/>
+            <g stroke="#1B1E22" stroke-width="1.4">
+              <line x1="25" y1="70" x2="17" y2="66"/><line x1="34" y1="49" x2="27" y2="43"/>
+              <line x1="52" y1="34" x2="47" y2="26"/><line x1="74" y1="26" x2="72" y2="17"/>
+              <line x1="97" y1="26" x2="99" y2="17"/><line x1="118" y1="33" x2="123" y2="26"/>
+              <line x1="136" y1="49" x2="143" y2="43"/><line x1="145" y1="70" x2="153" y2="66"/>
+            </g>
+            <text x="18" y="82" fill="#1B1E22" font-size="7">0</text>
+            <text x="140" y="82" fill="#1B1E22" font-size="7">80</text>
+            <text x="85" y="20" fill="#1B1E22" font-size="7" text-anchor="middle" letter-spacing="2">CONN LOAD</text>
+            <line x1="85" y1="72" x2="112" y2="30" stroke="#B3423C" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="85" cy="72" r="5" fill="#1B1E22"/>
+            <text x="85" y="94" fill="#B9B4A4" font-size="7" text-anchor="middle" letter-spacing="1">VU · conn 41/80</text>
+          </svg>
+        </div>
+        <div class="readout mono">
+          <div><span class="k">wal</span> 12MB/s · <span class="k">repl</span> ok</div>
+          <div><span class="k">disk</span> 118/240 GiB</div>
+          <div><span class="k">ref</span> pg-main · fsn1-dc14</div>
+        </div>
+      </div>
+      <div class="mod-foot eng dim"><span>durable · camp prod-fsn1</span><span>backup 12m ago ✓</span></div>
+    </section>
+
+    <!-- EVENTS QUEUE -->
+    <section class="module">
+      <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+      <span class="badge">hetzner · fsn1</span>
+      <div class="mod-head">
+        <span class="plate">Events Queue</span>
+        <span class="ledlbl"><span class="led g"></span><span class="eng dim">up</span></span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <svg width="70" height="100" viewBox="0 0 70 100">
+            <rect x="18" y="2" width="34" height="90" rx="3" fill="#101215" stroke="#0B0C0E" stroke-width="2"/>
+            <g>
+              <rect x="23" y="8"  width="24" height="6" rx="1" fill="#3A3F47"/>
+              <rect x="23" y="17" width="24" height="6" rx="1" fill="#3A3F47"/>
+              <rect x="23" y="26" width="24" height="6" rx="1" fill="#E8B14E"/>
+              <rect x="23" y="35" width="24" height="6" rx="1" fill="#E8B14E"/>
+              <rect x="23" y="44" width="24" height="6" rx="1" fill="#52D273"/>
+              <rect x="23" y="53" width="24" height="6" rx="1" fill="#52D273"/>
+              <rect x="23" y="62" width="24" height="6" rx="1" fill="#52D273"/>
+              <rect x="23" y="71" width="24" height="6" rx="1" fill="#52D273"/>
+              <rect x="23" y="80" width="24" height="6" rx="1" fill="#52D273"/>
+            </g>
+            <text x="58" y="12" fill="#B9B4A4" font-size="6">5k</text>
+            <text x="58" y="88" fill="#B9B4A4" font-size="6">0</text>
+          </svg>
+          <span class="eng cap dim">depth · 1.2k</span>
+        </div>
+        <div class="readout mono">
+          <div><span class="k">in</span> 214/s · <span class="k">out</span> 209/s</div>
+          <div><span class="k">lag</span> 340ms · <span class="k">dlq</span> 3</div>
+          <div><span class="k">ref</span> q-events · streams</div>
+        </div>
+      </div>
+      <div class="mod-foot eng dim"><span>durable · camp prod-fsn1</span><span>retention 7d</span></div>
+    </section>
+
+    <!-- BLOB STORE -->
+    <section class="module">
+      <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+      <span class="badge">cloudflare · r2</span>
+      <div class="mod-head">
+        <span class="plate">Blob Store</span>
+        <span class="ledlbl"><span class="led g"></span><span class="eng dim">up</span></span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <svg width="180" height="96" viewBox="0 0 180 96">
+            <text x="10" y="22" fill="#B9B4A4" font-size="7" letter-spacing="2">CAPACITY</text>
+            <rect x="10" y="30" width="160" height="18" rx="9" fill="#101215" stroke="#0B0C0E" stroke-width="2"/>
+            <rect x="13" y="33" width="66" height="12" rx="6" fill="#43AA8B"/>
+            <g stroke="rgba(232,228,216,.35)" stroke-width="1">
+              <line x1="50" y1="52" x2="50" y2="58"/><line x1="90" y1="52" x2="90" y2="58"/>
+              <line x1="130" y1="52" x2="130" y2="58"/>
+            </g>
+            <text x="10" y="68" fill="#B9B4A4" font-size="7">0</text>
+            <text x="150" y="68" fill="#B9B4A4" font-size="7">500</text>
+            <text x="90" y="88" fill="#E8E4D8" font-size="8" text-anchor="middle" letter-spacing="1">212 GiB / 500 GiB · 42%</text>
+          </svg>
+        </div>
+        <div class="readout mono">
+          <div><span class="k">get</span> 1.9k/s · <span class="k">put</span> 66/s</div>
+          <div><span class="k">egress</span> 41 GiB/day</div>
+          <div><span class="k">ref</span> blob-media · r2/weur</div>
+        </div>
+      </div>
+      <div class="mod-foot eng dim"><span>durable · yard cloudflare</span><span>lifecycle 90d → cold</span></div>
+    </section>
+  </div>
+
+  <!-- ===================== MASTER SECTION ===================== -->
+  <aside class="module master">
+    <div class="screw tl"></div><div class="screw tr"></div><div class="screw bl"></div><div class="screw br"></div>
+    <div class="mod-head">
+      <span class="plate">Master</span>
+      <span class="ledlbl"><span class="led a"></span><span class="eng dim">hold</span></span>
+    </div>
+
+    <div class="lcd mono">
+      <div>PLAN #219-next · harbor-crm</div>
+      <div class="dimtx">diff: api replicas 3→4 · worker mem 1Gi→1.5Gi</div>
+      <div>gates  cost ✓  region ✓  secrets ✓</div>
+      <div class="bad">wiring ✗ worker.blob://media unwired</div>
+      <div>verdict — HOLD (fix 1 patch)</div>
+    </div>
+
+    <div class="eng sect dim">replay transport</div>
+    <div class="transport">
+      <div class="tbtn">⏮<small>seq 0</small></div>
+      <div class="tbtn">⏪<small>-100</small></div>
+      <div class="tbtn lit">▶<small>follow</small></div>
+      <div class="tbtn">⏸<small>hold</small></div>
+    </div>
+
+    <div class="scrub">
+      <div class="lbl eng dim"><span>event log</span><span>seq #48,211</span></div>
+      <div class="groove"></div>
+      <div class="mark" style="left:14%;background:var(--cable-blue)"></div>
+      <div class="mark" style="left:33%;background:var(--cable-yel)"></div>
+      <div class="mark" style="left:57%;background:var(--cable-red)"></div>
+      <div class="mark" style="left:74%;background:var(--cable-teal)"></div>
+      <div class="head" style="left:91%"></div>
+      <div class="lbl2 eng dim"><span>seq 0</span><span>scrub to replay</span><span>now</span></div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="eng sect dim">crew · operator agents</div>
+    <div class="crew">
+      <div class="c"><span class="led g"></span><span class="eng dim">SRE</span></div>
+      <div class="c"><span class="led a"></span><span class="eng dim">ENDPOINT</span></div>
+      <div class="c"><span class="led g"></span><span class="eng dim">GITOPS</span></div>
+      <div class="c"><span class="led g"></span><span class="eng dim">PLATFORM</span></div>
+    </div>
+
+    <div class="armbox">
+      <div class="cornlbl eng" style="background:var(--panel);width:110px;margin:0 auto">safety guard</div>
+      <div class="toggle"><div class="lever"></div></div>
+      <div class="armtx">
+        <div class="big eng">Apply Plan</div>
+        <div class="eng dim">power / arm · policy-gated</div>
+        <div class="warn mono">blocked: 1 unwired port</div>
+      </div>
+      <span class="led a" style="margin-left:auto"></span>
+    </div>
+
+    <div class="foot eng dim">
+      <span>append-only log · replay safe</span>
+      <span>hobo v0.4</span>
+    </div>
+  </aside>
+</div>
+</body>
+</html>

@@ -114,7 +114,7 @@ body{
       <line x1="0" y1="0" x2="0" y2="7" stroke="#A63D2F" stroke-width="1.6"/>
     </pattern>
     <path id="ring" d="M0,-40 C22,-38 38,-24 40,-4 C42,16 30,34 10,39 C-10,44 -32,34 -39,14 C-46,-6 -38,-28 -18,-37 C-12,-40 -6,-40 0,-40 Z" fill="none" vector-effect="non-scaling-stroke"/>
-    <path id="hetzArc" d="M118,600 C250,556 340,556 480,600" fill="none"/>
+    <path id="hetzArc" d="M96,308 C150,452 188,564 300,706" fill="none"/>
     <path id="cfArc" d="M716,300 C840,334 960,332 1092,292" fill="none"/>
     <path id="flyArc" d="M772,786 C866,812 990,806 1088,768" fill="none"/>
     <path id="soundArc" d="M470,900 C620,922 780,918 930,894" fill="none"/>
@@ -209,11 +209,11 @@ body{
     <use href="#ring" transform="translate(914,680) rotate(58) scale(.52)"/>
   </g>
   <!-- contour index labels -->
-  <g font-size="8.5" font-style="italic" fill="#C67B3B">
+  <g font-size="8.5" font-style="italic" fill="#C67B3B" paint-order="stroke" stroke="#F3EFE4" stroke-width="2.5">
     <text x="357" y="415">load 74%</text>
     <text x="864" y="152">61%</text>
   </g>
-  <g font-size="8.5" font-style="italic" fill="#6B6455">
+  <g font-size="8.5" font-style="italic" fill="#6B6455" paint-order="stroke" stroke="#F3EFE4" stroke-width="2.5">
     <text x="250" y="608">38%</text>
     <text x="478" y="236">21%</text>
     <text x="1042" y="228">58%</text>
@@ -246,7 +246,7 @@ body{
 
   <!-- ==== yard place names ==== -->
   <g font-style="italic" fill="#6B6455" opacity=".9">
-    <text font-size="27" letter-spacing="9"><textPath href="#hetzArc">YARD-HETZNER</textPath></text>
+    <text font-size="25" letter-spacing="8"><textPath href="#hetzArc">YARD-HETZNER</textPath></text>
     <text font-size="24" letter-spacing="8"><textPath href="#cfArc">YARD-CLOUDFLARE</textPath></text>
     <text font-size="22" letter-spacing="7"><textPath href="#flyArc">YARD-FLY</textPath></text>
   </g>
@@ -324,12 +324,12 @@ body{
 
   <!-- ==== interior survey annotations ==== -->
   <g font-style="italic" fill="#6B6455">
-    <g transform="translate(138,382) rotate(-7)">
+    <g transform="translate(398,172) rotate(-4)">
       <text font-size="10">open range — 22 vCPU,</text>
       <text y="13" font-size="10">96 GiB uncommitted</text>
       <path d="M4,20 l7,4 M16,22 l7,4 M28,24 l7,4" stroke="#6B6455" stroke-width=".7"/>
     </g>
-    <g transform="translate(706,232) rotate(4)">
+    <g transform="translate(930,126) rotate(3)">
       <text font-size="10">edge meadows — 280 PoPs</text>
     </g>
     <g transform="translate(756,600) rotate(-3)">
@@ -427,7 +427,7 @@ body{
   </div>
 
   <div class="conditions">
-    <h3 class="cap">Conditions at press time — Junction “northwind”</h3>
+    <h3 class="cap">Conditions at press time</h3>
     <div class="crow"><span>events logged since 00:00</span><span class="cv">1,204</span></div>
     <div class="crow"><span>deploys landed · rolled back</span><span class="cv">7 · 0</span></div>
     <div class="crow"><span>median gate crossing</span><span class="cv">3 m 40 s</span></div>

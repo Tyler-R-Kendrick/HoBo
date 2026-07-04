@@ -51,7 +51,7 @@ body{width:1600px;height:1000px;overflow:hidden;background:var(--cream);color:va
 .sr-c .spine{border-left-color:var(--sre)} .sr-c .role{color:var(--sre-deep)}
 .em-c .spine{border-left-color:var(--endpoint)} .em-c .role{color:var(--endpoint-deep)}
 /* ---------- plan card ---------- */
-.plan{width:660px;padding:0;overflow:hidden}
+.plan{width:704px;padding:0;overflow:hidden}
 .plan-head{display:flex;align-items:center;gap:var(--s2);padding:8px 14px;border-bottom:1px solid var(--line-soft)}
 .plan-head .pid{font-size:var(--fs-xs);color:var(--faint);font-weight:600}
 .plan-head .ttl{font-weight:700;font-size:var(--fs-md)}
@@ -203,7 +203,7 @@ body{width:1600px;height:1000px;overflow:hidden;background:var(--cream);color:va
             <div class="plan-sum">
               <span class="cost">est. $31.20/day</span>
               <span class="ok">✓ $8.80 under budget</span>
-              <span style="margin-left:auto;color:var(--muted)">2 gates required:</span>
+              <span style="margin-left:auto;color:var(--muted)">2 gates:</span>
               <span class="gate-chip">⛨ data-residency</span>
               <span class="gate-chip">⛨ public-exposure</span>
             </div>
@@ -257,7 +257,7 @@ body{width:1600px;height:1000px;overflow:hidden;background:var(--cream);color:va
                 <path d="M0 27 20 24 40 29 60 21 80 25 100 19 120 23 140 17 160 20 180 16 200 18 230 15"
                   fill="none" stroke="#7C5CFF" stroke-width="2" stroke-linecap="round"/>
                 <circle cx="230" cy="15" r="3" fill="#7C5CFF"/>
-                <text x="146" y="42" font-size="9" font-weight="700" fill="#5F41D9">p95 214 ms canary</text>
+                <text x="228" y="42" text-anchor="end" font-size="9" font-weight="700" fill="#5F41D9">canary p95 214 ms</text>
               </svg>
               <div class="stats">
                 <span>p95 <b>214 ms</b> vs 221 ms baseline</span>
@@ -366,11 +366,11 @@ body{width:1600px;height:1000px;overflow:hidden;background:var(--cream);color:va
 
 <!-- thread: plan-card line ↔ ground-truth row (same object) -->
 <svg class="thread" viewBox="0 0 1600 1000">
-  <path d="M742 232 C 860 232, 900 218, 1016 218" fill="none" stroke="#1C7ED6" stroke-width="1.5" stroke-dasharray="5 4" opacity=".55"/>
-  <circle cx="742" cy="232" r="4" fill="#1C7ED6"/>
-  <circle cx="1016" cy="218" r="4" fill="#1C7ED6"/>
+  <path d="M774 206 C 880 206, 910 228, 1029 228" fill="none" stroke="#1C7ED6" stroke-width="1.5" stroke-dasharray="5 4" opacity=".55"/>
+  <circle cx="774" cy="206" r="4" fill="#1C7ED6"/>
+  <circle cx="1029" cy="228" r="4" fill="#1C7ED6"/>
   <g font-family="system-ui, sans-serif">
-    <text x="866" y="210" font-size="10" font-weight="700" fill="#1C7ED6" text-anchor="middle">same object · camp/hetzner-fsn1</text>
+    <text x="900" y="196" font-size="10" font-weight="700" fill="#1C7ED6" text-anchor="middle">same object · camp/hetzner-fsn1</text>
   </g>
 </svg>
 

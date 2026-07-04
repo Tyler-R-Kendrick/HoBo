@@ -120,7 +120,7 @@ main{display:grid;grid-template-columns:1148px 406px;gap:14px;padding:14px;heigh
 /* ============ ticker ============ */
 .ticker{display:flex;flex-direction:column;overflow:hidden}
 .ticker .rows{flex:1;overflow:hidden;padding:4px 0}
-.trow{display:grid;grid-template-columns:96px 128px 1fr 90px;gap:10px;padding:4px 10px;font-size:11.5px;border-left:2px solid transparent}
+.trow{display:grid;grid-template-columns:96px 128px 1fr 90px;gap:10px;padding:3px 10px;font-size:11.5px;border-left:2px solid transparent}
 .trow:nth-child(odd){background:rgba(27,36,46,.35)}
 .trow .ts{color:var(--green)}
 .trow .src{color:var(--text-dim);font-family:var(--font-sans);text-transform:uppercase;letter-spacing:.1em;font-size:10.5px}
@@ -307,7 +307,6 @@ main{display:grid;grid-template-columns:1148px 406px;gap:14px;padding:14px;heigh
       <div class="trow ok"><span class="ts">T+00:01:57</span><span class="src">GATES</span><span class="msg">all policy gates green — proceeding to CANARY phase</span><span class="tag">GO</span></div>
       <div class="trow ok"><span class="ts">T+00:01:43</span><span class="src">COST GUARD</span><span class="msg">projected Δ +$4.20/day within $25.00/day cap</span><span class="tag">GO</span></div>
       <div class="trow ok"><span class="ts">T+00:01:12</span><span class="src">SECURITY</span><span class="msg">Morgan: image sha256:b7e4… cosign signature verified · SBOM attached</span><span class="tag">GO</span></div>
-      <div class="trow ok"><span class="ts">T+00:01:04</span><span class="src">CONFORMANCE</span><span class="msg">suite conf-suite: 47/47 passed on staging camp in 34 s</span><span class="tag">GO</span></div>
       <div class="trow info"><span class="ts">T+00:00:41</span><span class="src">PLAN</span><span class="msg">plan diff frozen: 12 changes · services api, worker, events touched</span><span class="tag">FROZEN</span></div>
       <div class="trow info"><span class="ts">T+00:00:18</span><span class="src">GITOPS CREW</span><span class="msg">commit 9f3e2a1 compiled to plan · secretless refs resolved (7/7)</span><span class="tag">PINNED</span></div>
       <div class="trow info"><span class="ts">T+00:00:00</span><span class="src">LAUNCH</span><span class="msg">deploy D-2481 committed to event log at seq 18,204 · v2.4.1 → v2.5.0</span><span class="tag">COMMIT</span></div>

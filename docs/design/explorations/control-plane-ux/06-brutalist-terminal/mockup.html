@@ -33,7 +33,7 @@
     padding: 18px 24px 14px 24px;
     display: flex; justify-content: space-between; align-items: flex-end;
   }
-  .stamp { text-align: right; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; font-size: 12px; line-height: 1.6; }
+  .stamp { text-align: right; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; font-size: 12px; line-height: 1.6; white-space: nowrap; }
   .stamp b { color: var(--black); }
   .path { font-size: var(--fs-path); font-weight: 700; letter-spacing: 0; }
   .path .sep { color: var(--gray); font-weight: 400; }
@@ -140,12 +140,12 @@
 <header>
   <div>
     <div class="path">junction:acme <span class="sep">/</span> yard:hetzner <span class="sep">/</span> camp:fsn1</div>
-    <div class="counts">
+    <div class="counts" style="white-space:nowrap">
       14 resources · <span class="drift">2 drifted</span> · event log seq <a href="#">#48211</a>
-      <span class="dim"> · bindle harbor-crm@1.4.2 pinned by plan#1931 · reconciled 12:04:56Z</span>
+      <span class="dim"> · bindle harbor-crm@1.4.2 pinned by plan#1931</span>
     </div>
   </div>
-  <div class="stamp"><b>HOBO CONTROL PLANE</b> — this view is a text file<br>fold of the log as of 2026-07-04 12:04:57Z · read-only until a plan passes its gates</div>
+  <div class="stamp"><b>HOBO CONTROL PLANE</b> — this view is a text file<br>fold of the log as of 2026-07-04 12:04:57Z</div>
 </header>
 
 <table class="inv">
@@ -221,15 +221,11 @@
 <a href="#">#48209</a> <span class="dim">12:04:41Z</span> health.pass          https://crm.acme.dev       200 in 84ms, probe fsn1→edge (crew:endpoint-monitor)
 <a href="#">#48201</a> <span class="dim">12:01:33Z</span> <span class="drift">drift.detected</span>       dns:crm.acme.dev           ttl 300→120 edited outside plan — reconcile queued
 <a href="#">#48196</a> <span class="dim">11:58:02Z</span> <span class="drift">drift.version</span>        actor:harbor-crm/worker    running 1.4.1, plan#1931 wants 1.4.2 — awaiting promote
-<a href="#">#48171</a> <span class="dim">11:52:10Z</span> host.heartbeat       host:fsn1-h02              3 actors, 2 providers, mem 41%, ok
 <a href="#">#48170</a> <span class="dim">11:52:10Z</span> host.heartbeat       host:fsn1-h01              4 actors, 2 providers, mem 38%, ok
 <a href="#">#48155</a> <span class="dim">11:45:00Z</span> backup.snapshot.ok   postgres:harbor-crm-db     wal-g full snapshot 1.2 GiB → harbor-crm-blobs
-<a href="#">#48122</a> <span class="dim">11:30:12Z</span> stream.lag=0         queue:harbor-crm-events    consumer worker-pool caught up, 0 pending, 312 msg/min
 <a href="#">#48108</a> <span class="dim">11:24:47Z</span> conformance.pass     bindle:harbor-crm@1.4.2    12/12 checks ✓ on camp fly-iad — portable to hetzner profile
 <a href="#">#48101</a> <span class="dim">11:21:09Z</span> gate.requested       security-review            plan#1932 assigned to morgan — sha256 of plan diff recorded
 <a href="#">#48100</a> <span class="dim">11:21:08Z</span> plan.created         plan#1932                  by marcus via `hobo promote harbor-crm --channel stable`
-<a href="#">#48090</a> <span class="dim">11:12:47Z</span> policy.applied       bucket:harbor-crm-blobs    lifecycle 90d → cold storage, public access DENY (priya)
-<a href="#">#48061</a> <span class="dim">10:58:20Z</span> cert.renew.ok        cert:crm.acme.dev          lets-encrypt R11, valid to 2026-08-30, chain pinned
 <a href="#">#48044</a> <span class="dim">10:41:05Z</span> ref.resolved         secret-ref:postgres-dsn    vault:kv/crm/db rev 7 — value never entered the log</pre>
 </section>
 

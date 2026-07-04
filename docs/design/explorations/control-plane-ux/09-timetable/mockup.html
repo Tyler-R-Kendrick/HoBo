@@ -13,7 +13,7 @@
     --size-xl: 88px;
     --gutter: 28px;
     --margin: 56px;
-    --cols: 128px 384px 152px 356px 108px 1fr;
+    --cols: 120px 380px 130px 340px 120px 1fr;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -22,61 +22,64 @@
     font-family: Helvetica, Arial, sans-serif;
     font-variant-numeric: tabular-nums;
     display: flex; flex-direction: column;
-    padding: 44px var(--margin) 40px var(--margin);
+    padding: 36px var(--margin) 32px var(--margin);
   }
   b, strong, .b { font-weight: bold; }
 
   /* ---- top band ---- */
   .masthead { display: flex; align-items: flex-start; justify-content: space-between; }
   .masthead h1 {
-    font-size: var(--size-xl); font-weight: bold; line-height: 0.95;
+    font-size: var(--size-xl); font-weight: bold; line-height: 0.92;
     letter-spacing: -2px;
   }
   .masthead .sub {
-    margin-top: 18px; font-size: var(--size-xs); color: var(--gray);
+    margin-top: 16px; font-size: var(--size-xs); color: var(--gray);
     letter-spacing: 2px; text-transform: uppercase; line-height: 1.6;
   }
-  .clock { flex: none; margin-top: 4px; }
+  .clock { flex: none; margin-top: 2px; }
 
   /* ---- board ---- */
-  .board { margin-top: 34px; flex: 1; display: flex; flex-direction: column; }
+  .board { margin-top: 24px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .row, .colhead {
     display: grid; grid-template-columns: var(--cols); column-gap: var(--gutter);
     align-items: baseline;
   }
   .colhead {
     font-size: var(--size-xs); font-weight: bold; letter-spacing: 2px;
-    color: var(--gray); padding-bottom: 10px;
+    color: var(--gray); padding-bottom: 9px;
     border-bottom: 2px solid var(--ink);
   }
-  .row { padding: 13px 0 12px 0; border-bottom: 1px solid var(--hairline); }
+  .row {
+    flex: 1; align-content: center;
+    border-bottom: 1px solid var(--hairline);
+  }
   .row .time { font-size: var(--size-l); font-weight: bold; letter-spacing: -1px; line-height: 1; }
-  .row .rel  { font-size: var(--size-s); font-weight: bold; }
+  .row .rel  { font-size: var(--size-s); font-weight: bold; white-space: nowrap; }
   .row .rel .ver { font-weight: normal; color: var(--gray); }
-  .row .from, .row .to { font-size: var(--size-s); }
+  .row .from, .row .to { font-size: var(--size-s); white-space: nowrap; }
   .row .to .camp { color: var(--gray); }
   .row .chan { font-size: var(--size-xs); letter-spacing: 2px; text-transform: uppercase; }
-  .row .status { font-size: var(--size-s); font-weight: bold; letter-spacing: 1px; }
+  .row .status { font-size: var(--size-s); font-weight: bold; letter-spacing: 0.5px; white-space: nowrap; }
   .row .status .why {
     display: block; font-size: var(--size-xs); font-weight: normal;
-    letter-spacing: 0; color: var(--gray); margin-top: 4px;
+    letter-spacing: 0; color: var(--gray); margin-top: 3px;
   }
   .delayed { color: var(--red); }
 
   /* ---- notices ---- */
-  .notices { margin-top: 26px; }
+  .notices { margin-top: 22px; }
   .notices h2 {
     font-size: var(--size-xs); font-weight: bold; letter-spacing: 2px;
     color: var(--gray); padding-bottom: 8px; border-bottom: 2px solid var(--ink);
   }
-  .notices p { font-size: var(--size-s); line-height: 1.5; margin-top: 8px; }
+  .notices p { font-size: var(--size-s); line-height: 1.45; margin-top: 7px; }
   .notices p .crew { color: var(--gray); }
 </style>
 
 <div class="masthead">
   <div>
     <h1>DEPARTURES —<br>JUNCTION ACME</h1>
-    <p class="sub">Append-only event log · every departure replayable · plan → policy gates → deploy<br>Yards: wasmCloud · Hetzner · Cloudflare · Vercel · AWS · Fly &nbsp;&nbsp; Board time 14:31</p>
+    <p class="sub">Append-only event log · every departure replayable · plan → policy gates → deploy · board time 14:31</p>
   </div>
   <svg class="clock" width="200" height="200" viewBox="0 0 200 200" aria-label="Station clock, 14:31">
     <circle cx="100" cy="100" r="97" fill="#FFFFFF" stroke="#0A0A0A" stroke-width="6"/>
@@ -188,7 +191,7 @@
     <span class="from">staging</span>
     <span class="to">production <span class="camp">— camp hetzner-fsn1</span></span>
     <span class="chan">stable</span>
-    <span class="status">BOARDING — CANARY 25%<span class="why">gate: error rate &lt; 0.1% — holding at 0.02%</span></span>
+    <span class="status">BOARDING — CANARY 25%<span class="why">gate: error rate &lt; 0.1% — holding 0.02%</span></span>
   </div>
 
   <div class="row">
@@ -210,7 +213,7 @@
   </div>
 
   <div class="row">
-    <span class="time delayed">14:55</span>
+    <span class="time">14:55</span>
     <span class="rel">harbor-crm events <span class="ver">v2.5.0</span></span>
     <span class="from">staging</span>
     <span class="to">production <span class="camp">— camp fly-ams</span></span>

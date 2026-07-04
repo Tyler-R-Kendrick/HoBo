@@ -8,7 +8,7 @@
 //   4. viewport   — has <title> and is sized for the 1600x1000 capture frame
 //   5. fonts      — <= 4 distinct font-family declarations (loop type discipline)
 // Usage: node design-lint.js <mockup.html> [...more]
-const fs = require('fs');
+import fs from 'node:fs';
 
 let failed = false;
 for (const file of process.argv.slice(2)) {

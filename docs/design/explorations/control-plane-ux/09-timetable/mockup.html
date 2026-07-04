@@ -22,7 +22,7 @@
     font-family: Helvetica, Arial, sans-serif;
     font-variant-numeric: tabular-nums;
     display: flex; flex-direction: column;
-    padding: 36px var(--margin) 32px var(--margin);
+    padding: 28px var(--margin) 28px var(--margin);
   }
   b, strong, .b { font-weight: bold; }
 
@@ -33,13 +33,13 @@
     letter-spacing: -2px;
   }
   .masthead .sub {
-    margin-top: 16px; font-size: var(--size-xs); color: var(--gray);
+    margin-top: 14px; font-size: var(--size-xs); color: var(--gray);
     letter-spacing: 2px; text-transform: uppercase; line-height: 1.6;
   }
   .clock { flex: none; margin-top: 2px; }
 
   /* ---- board ---- */
-  .board { margin-top: 24px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .board { margin-top: 16px; flex: 1; display: flex; flex-direction: column; min-height: 0; }
   .row, .colhead {
     display: grid; grid-template-columns: var(--cols); column-gap: var(--gutter);
     align-items: baseline;
@@ -50,7 +50,7 @@
     border-bottom: 2px solid var(--ink);
   }
   .row {
-    flex: 1; align-content: center;
+    flex: 1; align-content: start; padding-top: 11px;
     border-bottom: 1px solid var(--hairline);
   }
   .row .time { font-size: var(--size-l); font-weight: bold; letter-spacing: -1px; line-height: 1; }
@@ -62,17 +62,17 @@
   .row .status { font-size: var(--size-s); font-weight: bold; letter-spacing: 0.5px; white-space: nowrap; }
   .row .status .why {
     display: block; font-size: var(--size-xs); font-weight: normal;
-    letter-spacing: 0; color: var(--gray); margin-top: 3px;
+    letter-spacing: 0; color: var(--gray); margin-top: 2px;
   }
   .delayed { color: var(--red); }
 
   /* ---- notices ---- */
-  .notices { margin-top: 22px; }
+  .notices { margin-top: 16px; }
   .notices h2 {
     font-size: var(--size-xs); font-weight: bold; letter-spacing: 2px;
     color: var(--gray); padding-bottom: 8px; border-bottom: 2px solid var(--ink);
   }
-  .notices p { font-size: var(--size-s); line-height: 1.45; margin-top: 7px; }
+  .notices p { font-size: var(--size-s); line-height: 1.4; margin-top: 7px; }
   .notices p .crew { color: var(--gray); }
 </style>
 

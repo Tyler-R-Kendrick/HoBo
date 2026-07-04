@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>THE HOBO LEDGER — Morning Edition · July 4, 2026 · Junction: acme-industries</title>
+<style>
+:root{
+  --newsprint:#FAF8F2;
+  --ink:#141414;
+  --hairline:#C8C4BA;
+  --agate:#55524B;
+  --alert:#B3261E;
+  --serif:Georgia,'Times New Roman',Times,serif;
+  --body-size:13px;
+  --agate-size:9.5px;
+  --label-size:10px;
+  --gap:18px;
+  --rule-thin:1px;
+  --rule-heavy:3px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  width:1600px;height:1000px;overflow:hidden;margin:0;
+  background:var(--newsprint);color:var(--ink);
+  font-family:var(--serif);
+  padding:20px 30px 22px;
+  display:flex;flex-direction:column;
+}
+/* ---------- masthead ---------- */
+.ears{display:grid;grid-template-columns:250px 1fr 250px;align-items:end;column-gap:var(--gap)}
+.ear{border:var(--rule-thin) solid var(--ink);padding:6px 8px;font-size:var(--agate-size);line-height:1.5;color:var(--agate)}
+.ear b{color:var(--ink);font-size:11px;letter-spacing:.08em}
+.ear .fig{font-size:15px;color:var(--ink);letter-spacing:.02em}
+.title-block{text-align:center}
+.motto{font-size:9px;letter-spacing:.34em;text-transform:uppercase;color:var(--agate);margin-bottom:2px}
+.masthead-title{
+  font-weight:bold;font-size:64px;line-height:1;
+  letter-spacing:-0.015em;
+}
+.masthead-title .amp{font-weight:normal}
+.folio{
+  margin-top:10px;
+  border-top:var(--rule-heavy) solid var(--ink);
+  border-bottom:var(--rule-thin) solid var(--ink);
+  padding:4px 0;
+  display:flex;justify-content:space-between;
+  font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+}
+.folio .mid{letter-spacing:.2em}
+/* ---------- main sheet ---------- */
+main{flex:1;display:flex;margin-top:12px;min-height:0}
+.strip{min-width:0;display:flex;flex-direction:column}
+.strip + .strip{border-left:var(--rule-thin) solid var(--hairline);margin-left:var(--gap);padding-left:var(--gap)}
+.s-notices{flex:0 0 232px}
+.s-lead{flex:1 1 auto}
+.s-drift{flex:0 0 286px}
+.s-right{flex:0 0 286px}
+/* labels + rules */
+.kicker{
+  font-size:var(--label-size);letter-spacing:.26em;text-transform:uppercase;
+  text-align:center;
+  border-top:var(--rule-heavy) solid var(--ink);
+  border-bottom:var(--rule-thin) solid var(--ink);
+  padding:3px 0 2px;margin-bottom:8px;
+}
+hr.light{border:0;border-top:var(--rule-thin) solid var(--hairline);margin:10px 0}
+/* ---------- notices (agate) ---------- */
+.agate{font-size:var(--agate-size);line-height:1.5;color:var(--agate);text-align:justify;hyphens:auto}
+.agate h4{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);margin:8px 0 3px;text-align:center}
+.agate h4:first-child{margin-top:0}
+.agate p{margin-bottom:4px;text-indent:0}
+.agate b{color:var(--ink)}
+.urgent{color:var(--alert)}
+.corrections{
+  margin-top:auto;
+  border:var(--rule-thin) solid var(--ink);
+  padding:8px 9px 9px;
+}
+.corrections h4{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;text-align:center;margin-bottom:5px;
+  border-bottom:var(--rule-thin) solid var(--hairline);padding-bottom:4px}
+.corrections p{font-size:var(--agate-size);line-height:1.55;color:var(--agate);text-align:justify;hyphens:auto}
+/* ---------- lead ---------- */
+.hl{font-weight:bold;line-height:1.08;letter-spacing:-0.01em}
+.lead-hl{font-size:37px;text-align:center;margin:2px 8px 8px}
+.deck{font-size:15px;line-height:1.35;font-style:italic;text-align:center;margin:0 40px 8px;color:var(--ink)}
+.byline{
+  text-align:center;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--agate);
+  border-top:var(--rule-thin) solid var(--hairline);border-bottom:var(--rule-thin) solid var(--hairline);
+  padding:3px 0;margin:0 90px 10px;
+}
+.lead-body{
+  columns:3;column-gap:var(--gap);column-rule:var(--rule-thin) solid var(--hairline);
+  font-size:var(--body-size);line-height:1.5;text-align:justify;hyphens:auto;
+}
+.lead-body p{margin-bottom:7px;text-indent:14px}
+.lead-body p:first-child{text-indent:0}
+.lead-body p:first-child::first-letter{
+  float:left;font-size:56px;line-height:.82;font-weight:bold;
+  padding:4px 6px 0 0;
+}
+/* ---------- markets table ---------- */
+.markets{margin-top:10px}
+.markets table{width:100%;border-collapse:collapse;font-size:11px}
+.markets th{
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--agate);
+  border-bottom:var(--rule-thin) solid var(--ink);padding:2px 4px;font-weight:normal;
+}
+.markets td{padding:4px;border-bottom:var(--rule-thin) solid var(--hairline)}
+.markets td.n,.markets th.n{text-align:right;font-variant-numeric:tabular-nums}
+.markets td:first-child{font-weight:bold;letter-spacing:.02em}
+.markets tr:last-child td{border-bottom:var(--rule-heavy) double var(--ink)}
+.tabnote{font-size:9px;color:var(--agate);margin-top:4px;line-height:1.45;text-align:justify}
+/* ---------- secondary stories ---------- */
+.story h3{font-size:19px;line-height:1.12;font-weight:bold;margin-bottom:5px;letter-spacing:-0.005em}
+.story .sub-by{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--agate);margin-bottom:5px}
+.story p{font-size:12px;line-height:1.48;text-align:justify;hyphens:auto;margin-bottom:6px;text-indent:12px}
+.story p:first-of-type{text-indent:0}
+.forecast li{font-size:10.5px;line-height:1.45;color:var(--ink);margin-bottom:5px;list-style:none;text-align:justify}
+.forecast li b{letter-spacing:.04em}
+.logline{
+  margin-top:auto;border-top:var(--rule-thin) solid var(--ink);padding-top:6px;
+  font-size:10px;color:var(--agate);line-height:1.5;text-align:center;
+}
+.logline code{font-family:var(--serif);font-style:italic}
+.letters p{font-size:11px;line-height:1.45}
+.onthisday{margin-top:auto;border-top:var(--rule-heavy) double var(--ink);padding-top:6px}
+.onthisday h4{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;text-align:center;margin-bottom:4px}
+.onthisday p{font-size:10.5px;line-height:1.5;color:var(--agate);text-align:justify;hyphens:auto}
+footer.baseline{
+  border-top:var(--rule-thin) solid var(--ink);margin-top:10px;padding-top:5px;
+  font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--agate);text-align:center;
+}
+</style>
+</head>
+<body>
+
+<!-- ================= MASTHEAD ================= -->
+<header>
+  <div class="ears">
+    <div class="ear">
+      <b>FLEET WEATHER</b><br>
+      Uptime index <span class="fig">99.982</span> &#9650; 0.004<br>
+      Fair. No open incidents.<br>
+      Last page: none in 9 days.
+    </div>
+    <div class="title-block">
+      <div class="motto">All the State That&rsquo;s Fit to Replay</div>
+      <div class="masthead-title">The HoBo Ledger</div>
+    </div>
+    <div class="ear">
+      <b>SPEND</b><br>
+      <span class="fig">$412.07</span> per day &#9660; 3.1% wk<br>
+      July forecast $12,470,<br>
+      $310 under budget.
+    </div>
+  </div>
+  <div class="folio">
+    <span>Vol. II, No. 185 &middot; Morning Edition</span>
+    <span class="mid">Friday, July 4, 2026 &middot; Junction: acme-industries</span>
+    <span>Six Camps, Five Providers &middot; Price: One Plan Diff</span>
+  </div>
+</header>
+
+<!-- ================= SHEET ================= -->
+<main>
+
+  <!-- ---- Notices strip ---- -->
+  <section class="strip s-notices">
+    <div class="kicker">Public Notices</div>
+    <div class="agate">
+      <h4>Approvals Pending</h4>
+      <p><b>Plan #4190</b> — hetzner-hel1 worker count 4&#8594;5, +$3.40/day. Filed 04:12 UTC by Platform Engineer Crew; awaits P.&nbsp;Sharma.</p>
+      <p><b>Plan #4191</b> — Vercel preview retention 30&#8594;14 days, &#8722;$1.10/day. Awaits S.&nbsp;Okafor.</p>
+      <p><b>Plan #4193</b> — aws-use1 read replica for postgres, +$31/day. Held at cost gate; awaits P.&nbsp;Sharma.</p>
+      <h4>Certificates</h4>
+      <p class="urgent"><b>URGENT</b> — TLS certificate for api.harbor-crm.io expires in 36 h (July 5, 21:00 UTC). Renewal Plan #4189 is gated on security approval. See M.&nbsp;Reyes.</p>
+      <p>*.acme-ind.dev expires Aug 2; auto-renewal scheduled July 26, 03:00 UTC.</p>
+      <h4>Scheduled Reconciliations</h4>
+      <p>Nightly drift sweep, all Camps, 04:30 UTC. Deep conformance run, Sunday 02:00 UTC. Postgres 16.3&#8594;16.4 window, hetzner-hel1, July 6, 01:00&ndash;03:00 UTC; failover rehearsed July 1.</p>
+      <h4>Lost &amp; Found</h4>
+      <p>Found: one orphaned volume, 80 GB, fly-iad, unattached since June 12. Claim by Plan or it will be reaped July 11.</p>
+      <h4>Situations Vacant</h4>
+      <p>Endpoint Monitor Crew seeks one probe region, ap-southeast. Est. +$4/day. Apply by Plan.</p>
+      <h4>Decommissions</h4>
+      <p><b>legacy-pdf-service</b>, aged 3 years, 2 months, drained peacefully at aws-use1 on July 2 after 41&nbsp;million renders. Survived by worker, which inherits its queue. Replay of its last day: entries #87102&ndash;#87291.</p>
+      <h4>Tenders &amp; Spot Prices</h4>
+      <p>Hetzner CPX31 &euro;0.024/h, unch. &middot; Fly shared-1x $0.0067/h, unch. &middot; AWS m7g.large $0.0816/h, &#8722;2% on savings plan renewal &middot; Cloudflare req bundle $0.30/M, unch. Quotes gathered 04:45 UTC by Platform Engineer Crew.</p>
+      <h4>Meetings</h4>
+      <p>The Change Advisory Board holds no meeting today, or any day. The policy gates sit continuously and take minutes in the log.</p>
+    </div>
+    <div class="corrections">
+      <h4>Corrections &amp; Reconciliations</h4>
+      <p>Yesterday&rsquo;s edition reported the hetzner-hel1 worker count as 4. Observed state was 5 from June 30, 03:11 UTC until reconciled this morning (see Drift Report). Events #88413&ndash;#88429 preserve both states. This ledger regrets the drift, and has replayed it.</p>
+    </div>
+  </section>
+
+  <!-- ---- Lead strip ---- -->
+  <section class="strip s-lead">
+    <h1 class="hl lead-hl">GitOps Crew Promotes harbor-crm v2.5.0 to Production Across Three Camps; Canary Clean in 14 Minutes</h1>
+    <p class="deck">Plan #4182 cleared four policy gates without a human page; Sarah&rsquo;s standing approval covered the blast radius. The event log recorded 312 entries, every one replayable.</p>
+    <div class="byline">By Gitops Crew, with SRE Crew &middot; Junction acme-industries</div>
+    <div class="lead-body">
+      <p>The promotion began at 02:14 UTC, when the GitOps Crew observed commit 9f3e2a1 land on harbor-crm&rsquo;s release branch and opened Plan #4182 against the production Bindle. The plan proposed 27 changes across three Camps &mdash; wasmcloud-fra1 (self-hosted), hetzner-hel1, and fly-iad &mdash; touching the api, web, and worker services while leaving postgres, the events queue, and the blob store untouched. The plan diff ran to 118 lines; nothing in it was novel.</p>
+      <p>Policy gates cleared in sequence. Capability-diff found no new capabilities requested. Secretless-audit confirmed that every reference resolves to a vault handle &mdash; zero inline secrets, as has been the standard since March. Cost-ceiling projected +$1.12 per day, well under the $25 threshold. Conformance ran 147 of 147 tests green against each Camp&rsquo;s contract. Sarah Okafor&rsquo;s standing approval for minor-version promotions covered the blast radius, and no human was paged.</p>
+      <p>The canary took the longer road. SRE Crew held 5 percent of traffic on v2.5.0 at fly-iad for 14 minutes, watching p95 latency &mdash; it held at 88 ms against a 120 ms budget &mdash; and the error rate, which stayed at 0.02 percent. One warning surfaced: a transient queue-consumer lag of 340 ms at 02:21, which the crew ruled ordinary rebalancing and filed as event #4182.207 rather than a rollback trigger.</p>
+      <p>Full rollout completed at 02:47 UTC. The log holds 312 entries for the promotion; an operator who wishes to see the deployment again may replay the window 02:14&ndash;02:47 against any Camp. Plan diff, gate transcripts, and canary traces are filed under Plan #4182.</p>
+      <p>Notable in the margins: this was the first production promotion carrying a commit by Marcus Webb, who joined Tuesday. Mr. Webb touched no Camp directly &mdash; the Bindle abstraction held &mdash; and his commit message (&ldquo;fix invoice rounding, again&rdquo;) now sits in the permanent record.</p>
+      <p>Asked for comment, the SRE Crew&rsquo;s closing entry reads, in full: &ldquo;Nominal.&rdquo;</p>
+    </div>
+    <div class="markets">
+      <div class="kicker">Fleet Vitals &mdash; Camps at 05:00 UTC</div>
+      <table>
+        <tr><th>Camp</th><th>Provider</th><th class="n">Uptime %</th><th class="n">P95 ms</th><th class="n">Err %</th><th class="n">$/Day</th><th class="n">&Delta; Day</th></tr>
+        <tr><td>wasmcloud-fra1</td><td>self-hosted</td><td class="n">99.998</td><td class="n">41</td><td class="n">0.00</td><td class="n">96.20</td><td class="n">&#8722;4.10</td></tr>
+        <tr><td>hetzner-hel1</td><td>Hetzner</td><td class="n">99.991</td><td class="n">67</td><td class="n">0.02</td><td class="n">88.41</td><td class="n">+0.86</td></tr>
+        <tr><td>cf-edge</td><td>Cloudflare</td><td class="n">99.999</td><td class="n">12</td><td class="n">0.01</td><td class="n">41.00</td><td class="n">0.00</td></tr>
+        <tr><td>vercel-web</td><td>Vercel</td><td class="n">99.988</td><td class="n">58</td><td class="n">0.03</td><td class="n">63.10</td><td class="n">&#8722;0.22</td></tr>
+        <tr><td>aws-use1</td><td>AWS</td><td class="n">99.972</td><td class="n">94</td><td class="n">0.04</td><td class="n">89.12</td><td class="n">&#8722;8.87</td></tr>
+        <tr><td>fly-iad</td><td>Fly</td><td class="n">99.984</td><td class="n">88</td><td class="n">0.02</td><td class="n">34.24</td><td class="n">&#8722;0.94</td></tr>
+      </table>
+      <p class="tabnote">Composite uptime index 99.982 (&#9650;0.004 overnight). Junction spend $412.07/day (&#9660;3.1% on the week). Source: append-only event log, entries #88001&ndash;#88650; figures replayable to the entry.</p>
+    </div>
+  </section>
+
+  <!-- ---- Drift strip ---- -->
+  <section class="strip s-drift">
+    <div class="kicker">Drift Report</div>
+    <div class="story">
+      <h3>Hetzner Camp Wanders Overnight; Reconciler Walks It Back in Four Minutes</h3>
+      <div class="sub-by">By Platform Engineer Crew</div>
+      <p>At 03:56 UTC the nightly sweep flagged hetzner-hel1: five worker instances observed where declared state says four. The extra instance traces to a manual scale-up during the June 30 traffic spike &mdash; applied by hand, never committed.</p>
+      <p>The reconciler drained the orphan at 04:02 and restored declared state by 04:06, filing the affair as events #88413&ndash;#88429. No traffic was lost; the queue absorbed the wind-down.</p>
+      <p>The Platform Engineer Crew has since proposed Plan #4190 to raise the declared count to five permanently, the spike appearing to be seasonal. It awaits Priya Sharma&rsquo;s review. Declared and observed state agree everywhere else, per the 04:30 sweep of all six Camps.</p>
+    </div>
+    <hr class="light">
+    <div class="kicker">Tomorrow&rsquo;s Forecast</div>
+    <ul class="forecast">
+      <li><b>09:00 UTC</b> &mdash; Quarterly capability re-attestation, all Bindles; policy gate review, M.&nbsp;Reyes presiding.</li>
+      <li><b>11:00 UTC</b> &mdash; Planned rollout: harbor-crm web v2.5.1 (copy changes only) to cf-edge and vercel-web.</li>
+      <li><b>Sun 01:00 UTC</b> &mdash; postgres 16.3&#8594;16.4 window at hetzner-hel1. Failover rehearsed July 1; replay of rehearsal on file.</li>
+      <li><b>Mon 09:00 UTC</b> &mdash; Conformance suite v12 takes effect; two new contract tests for queue back-pressure at every Camp.</li>
+      <li><b>15:00 UTC</b> &mdash; First-timer&rsquo;s desk: M.&nbsp;Webb walks his own promotion replay with the SRE Crew, entries #88201 onward.</li>
+      <li><b>Outlook</b> &mdash; Calm. One gate expected to hold: cost ceiling on Plan #4193 (+$31/day) pending P.&nbsp;Sharma.</li>
+    </ul>
+    <div class="onthisday">
+      <h4>On This Day</h4>
+      <p>July 4, 2025 &mdash; the Junction&rsquo;s first Bindle, harbor-crm v0.1.0, deployed to a single self-hosted Camp with two services and no gates. 14,202 replayable events ago. The rounding bug was present then, too.</p>
+    </div>
+  </section>
+
+  <!-- ---- Right strip ---- -->
+  <section class="strip s-right">
+    <div class="kicker">The Cost Column</div>
+    <div class="story">
+      <h3>Junction Spend Falls to $412 a Day as Idle Fra1 Capacity Sheds</h3>
+      <p>Daily spend across acme-industries fell 3.1 percent this week to $412.07, the lowest figure since April. The savings trace almost entirely to wasmcloud-fra1, where the scale-to-zero policy for the worker pool took effect Monday and shed $4.10 a day of idle capacity.</p>
+      <p>Cloudflare and Vercel Camps were flat. hetzner-hel1 rose $0.86 on the drift incident&rsquo;s orphan instance (see Drift Report, this page). July is forecast at $12,470 &mdash; $310 under budget.</p>
+    </div>
+    <hr class="light">
+    <div class="kicker">Capability Review</div>
+    <div class="story">
+      <h3>Morgan Signs Off on Narrowed Blob-Store Grant</h3>
+      <div class="sub-by">Security Desk</div>
+      <p>Security review of harbor-crm&rsquo;s capability manifest concluded Thursday. Morgan Reyes approved the api service&rsquo;s request to write to the blob store, but narrowed it: the grant covers the invoices/ prefix only, expires in 90 days, and is secretless &mdash; the service holds a reference, never a key.</p>
+      <p>Two requests were declined: worker&rsquo;s ask for open egress to *.stripe.com, routed instead through the payments proxy, and a wildcard read left over from v1. &ldquo;Bindles ask for capabilities,&rdquo; the review note reads. &ldquo;They do not get credentials.&rdquo;</p>
+    </div>
+    <hr class="light">
+    <div class="kicker">Letters</div>
+    <div class="story letters">
+      <p><i>To the editors</i> &mdash; When an incident notice goes out, attach the replay link, not a screenshot of a graph. Support answers customers faster from the log than from a picture of the log. &mdash; <b>Elena Vasquez</b>, Support Desk, June 30.</p>
+      <p><i>The editors concur.</i> Effective this edition, every incident notice carries a replay window. The picture of the graph is hereby retired.</p>
+    </div>
+    <div class="logline">
+      From the event log, 02:47:12 UTC &mdash;<br>
+      <code>plan/4182 state=applied camps=3 entries=312 replayable=true</code>
+    </div>
+  </section>
+
+</main>
+<footer class="baseline">The HoBo Ledger is assembled each morning from the append-only event log &middot; Every figure on this page is an entry &middot; Every entry can be replayed &middot; Entries #88001&ndash;#88650 &middot; Printed at 05:00 UTC</footer>
+</body>
+</html>

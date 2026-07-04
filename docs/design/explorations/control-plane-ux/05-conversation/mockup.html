@@ -1,0 +1,377 @@
+<title>HoBo · 05 Conversation — Intent Stream</title>
+<style>
+:root{
+  --cream:#FBF9F6; --ink:#26221E; --bubble:#FFFFFF; --rail:#F1EDE6;
+  --sre:#7C5CFF; --gitops:#0E9F6E; --endpoint:#E8590C; --pe:#1C7ED6;
+  --diff-green-bg:#E6F4EA; --diff-green-tx:#137333;
+  --diff-red-bg:#FCE8E6; --diff-red-tx:#A50E0E;
+  --muted:#6E655B; --faint:#8A8075; --line:#E5DFD5; --line-soft:#EFEAE1;
+  --pe-deep:#155FA3; --gitops-deep:#0B7A55; --sre-deep:#5F41D9; --endpoint-deep:#C24608;
+  --chip:#F4F1EB; --amber:#B7791F; --amber-bg:#FCF3E3;
+  --r:14px; --r-sm:9px;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --fs-xs:11px; --fs-sm:12px; --fs-md:13.5px; --fs-lg:15px; --fs-xl:19px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1600px;height:1000px;overflow:hidden;background:var(--cream);color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  font-size:var(--fs-md);line-height:1.45;position:relative}
+/* ---------- top bar ---------- */
+.top{height:52px;display:flex;align-items:center;gap:var(--s4);padding:0 var(--s5);
+  border-bottom:1px solid var(--line);background:var(--bubble)}
+.mark{display:flex;align-items:center;gap:10px;font-weight:700;font-size:var(--fs-lg);letter-spacing:.2px}
+.crumbs{display:flex;align-items:center;gap:var(--s2);font-size:var(--fs-sm);color:var(--muted)}
+.crumbs b{color:var(--ink);font-weight:600}
+.crumbs .sep{color:var(--faint);font-size:10px}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:var(--s4);font-size:var(--fs-sm);color:var(--muted)}
+.live{display:flex;align-items:center;gap:6px}
+.live .dot{width:8px;height:8px;border-radius:50%;background:var(--gitops)}
+.me{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--bubble);
+  display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);font-weight:700}
+/* ---------- frame ---------- */
+.frame{display:flex;height:948px}
+.convo{width:992px;display:flex;flex-direction:column;padding:var(--s4) var(--s5) var(--s4) var(--s5)}
+.stream{flex:1;display:flex;flex-direction:column;gap:var(--s3);min-height:0}
+/* ---------- messages ---------- */
+.msg{display:flex;gap:var(--s3);max-width:760px}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.avatar{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.avatar.human{background:var(--ink);color:var(--bubble);font-weight:700;font-size:var(--fs-md)}
+.who{display:flex;align-items:baseline;gap:var(--s2);margin-bottom:3px;font-size:var(--fs-sm)}
+.who .name{font-weight:700}
+.who .role{font-weight:600;font-size:var(--fs-xs);letter-spacing:.4px;text-transform:uppercase}
+.who .t{color:var(--faint);font-size:var(--fs-xs)}
+.bubble{background:var(--bubble);border:1px solid var(--line);border-radius:var(--r);
+  padding:10px 14px;box-shadow:0 1px 2px rgba(38,34,30,.05)}
+.msg.user .bubble{background:var(--ink);color:var(--cream);border-color:var(--ink);border-bottom-right-radius:4px}
+.msg.user .who{justify-content:flex-end}
+.spine{border-left:3px solid var(--line)}
+.pe-c .spine{border-left-color:var(--pe)} .pe-c .role{color:var(--pe-deep)}
+.go-c .spine{border-left-color:var(--gitops)} .go-c .role{color:var(--gitops-deep)}
+.sr-c .spine{border-left-color:var(--sre)} .sr-c .role{color:var(--sre-deep)}
+.em-c .spine{border-left-color:var(--endpoint)} .em-c .role{color:var(--endpoint-deep)}
+/* ---------- plan card ---------- */
+.plan{width:660px;padding:0;overflow:hidden}
+.plan-head{display:flex;align-items:center;gap:var(--s2);padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+.plan-head .pid{font-size:var(--fs-xs);color:var(--faint);font-weight:600}
+.plan-head .ttl{font-weight:700;font-size:var(--fs-md)}
+.plan-head .scope{margin-left:auto;font-size:var(--fs-xs);color:var(--muted)}
+.diff{padding:6px 8px;display:flex;flex-direction:column;gap:3px}
+.dl{display:flex;align-items:center;gap:10px;border-radius:6px;padding:5px 8px;font-size:var(--fs-md)}
+.dl .m{width:14px;text-align:center;font-weight:800;flex:none}
+.dl small{margin-left:auto;color:var(--muted);font-size:var(--fs-xs);white-space:nowrap}
+.dl.add{background:var(--diff-green-bg);color:var(--diff-green-tx)}
+.dl.add small{color:var(--diff-green-tx);opacity:.75}
+.dl.del{background:var(--diff-red-bg);color:var(--diff-red-tx)}
+.dl.del small{color:var(--diff-red-tx);opacity:.75}
+.dl.mod{background:var(--chip)}
+.dl.mod .old{color:var(--diff-red-tx);text-decoration:line-through;text-decoration-thickness:1px}
+.dl.mod .new{color:var(--diff-green-tx);font-weight:600}
+.plan-sum{display:flex;align-items:center;gap:var(--s4);padding:9px 14px;border-top:1px solid var(--line-soft);font-size:var(--fs-sm)}
+.plan-sum .cost{font-weight:700;font-size:var(--fs-lg);font-variant-numeric:tabular-nums}
+.plan-sum .ok{color:var(--diff-green-tx);font-weight:600}
+.gate-chip{display:inline-flex;align-items:center;gap:5px;background:var(--amber-bg);color:var(--amber);
+  border:1px solid var(--amber);border-radius:999px;padding:2px 9px;font-size:var(--fs-xs);font-weight:700}
+.plan-foot{display:flex;gap:var(--s2);padding:10px 14px;border-top:1px solid var(--line-soft);background:var(--cream)}
+.btn{border-radius:var(--r-sm);padding:7px 14px;font-size:var(--fs-sm);font-weight:700;border:1px solid var(--line);background:var(--bubble);color:var(--ink)}
+.btn.primary{background:var(--pe);border-color:var(--pe);color:var(--bubble)}
+.plan-foot .hint{margin-left:auto;align-self:center;font-size:var(--fs-xs);color:var(--faint)}
+/* ---------- system chips ---------- */
+.syschip{align-self:center;display:flex;align-items:center;gap:8px;background:var(--bubble);
+  border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:var(--fs-sm);color:var(--muted)}
+.syschip b{color:var(--ink);font-weight:600}
+.syschip .t{color:var(--faint);font-size:var(--fs-xs)}
+.syschip .tick{color:var(--diff-green-tx);font-weight:800}
+/* ---------- checklist ---------- */
+.check{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.ck{display:flex;align-items:center;gap:9px;font-size:var(--fs-md)}
+.ck .st{width:17px;height:17px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center}
+.ck small{margin-left:auto;color:var(--faint);font-size:var(--fs-xs);white-space:nowrap}
+.ck.done .st{background:var(--gitops);color:var(--bubble);font-size:10px;font-weight:800}
+.ck.run .st{border:2px solid var(--gitops);border-right-color:var(--line)}
+.ck.wait{color:var(--muted)}
+.ck.wait .st{border:2px dashed var(--line)}
+.bar{height:5px;border-radius:3px;background:var(--line-soft);margin:2px 0 0 26px;width:420px}
+.bar i{display:block;height:5px;border-radius:3px;background:var(--gitops);width:64%}
+/* ---------- verdict ---------- */
+.verdict{display:flex;gap:var(--s4);align-items:center;margin-top:6px}
+.stats{display:flex;flex-direction:column;gap:2px;font-size:var(--fs-sm)}
+.stats b{font-variant-numeric:tabular-nums}
+.promote{display:inline-flex;align-items:center;gap:6px;background:var(--diff-green-bg);color:var(--diff-green-tx);
+  font-weight:700;font-size:var(--fs-sm);border-radius:999px;padding:4px 12px;margin-top:6px}
+/* ---------- composer ---------- */
+.composer{margin-top:var(--s3);flex:none}
+.suggest{display:flex;gap:var(--s2);margin-bottom:var(--s2)}
+.sg{background:var(--bubble);border:1px solid var(--line);border-radius:999px;padding:5px 13px;
+  font-size:var(--fs-sm);color:var(--muted)}
+.input{display:flex;align-items:center;gap:var(--s3);background:var(--bubble);border:1.5px solid var(--line);
+  border-radius:var(--r);padding:13px 16px;box-shadow:0 1px 3px rgba(38,34,30,.06)}
+.input .ph{color:var(--faint);flex:1;font-size:var(--fs-md)}
+.input .caret{width:2px;height:18px;background:var(--pe)}
+.send{width:34px;height:34px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center}
+/* ---------- rail ---------- */
+.rail{width:608px;background:var(--rail);border-left:1px solid var(--line);padding:var(--s4) var(--s5);
+  display:flex;flex-direction:column;gap:var(--s3);overflow:hidden}
+.rail-cap{font-size:var(--fs-xs);letter-spacing:1.2px;text-transform:uppercase;color:var(--faint);font-weight:700}
+.rail-head{display:flex;align-items:baseline;gap:var(--s2)}
+.rail-head h1{font-size:var(--fs-xl);font-weight:800;letter-spacing:-.2px}
+.tag{font-size:var(--fs-xs);font-weight:700;border-radius:5px;padding:1px 7px}
+.tag.bindle{background:var(--ink);color:var(--cream)}
+.tag.new{background:var(--diff-green-bg);color:var(--diff-green-tx)}
+.tag.roll{background:var(--amber-bg);color:var(--amber)}
+.scopeline{font-size:var(--fs-sm);color:var(--muted)}
+.svc{display:flex;gap:6px;flex-wrap:wrap}
+.svc span{background:var(--bubble);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:var(--fs-xs);color:var(--muted);font-weight:600}
+.sect{background:var(--bubble);border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden}
+.sect-h{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line-soft);
+  font-size:var(--fs-xs);font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.sect-h small{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;color:var(--faint)}
+.row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line-soft);font-size:var(--fs-sm)}
+.row:last-child{border-bottom:none}
+.row .grow{flex:1;min-width:0}
+.row .k{font-weight:700;font-size:var(--fs-md)}
+.row .sub{color:var(--muted);font-size:var(--fs-xs)}
+.row .v{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.row .t{color:var(--faint);font-size:var(--fs-xs);white-space:nowrap}
+.gate-ok{width:16px;height:16px;border-radius:50%;background:var(--diff-green-bg);color:var(--diff-green-tx);
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex:none}
+.costbar{height:7px;border-radius:4px;background:var(--line-soft);margin-top:5px}
+.costbar i{display:block;height:7px;border-radius:4px;background:var(--pe);width:72%}
+.ev .id{font-variant-numeric:tabular-nums;color:var(--faint);font-size:var(--fs-xs);font-weight:700;width:44px;flex:none}
+.crew{display:flex;gap:var(--s2)}
+.crew .cm{flex:1;background:var(--bubble);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.crew .cm b{font-size:var(--fs-xs);line-height:1.2}
+.crew .cm span{font-size:10px;color:var(--faint)}
+/* thread overlay */
+.thread{position:absolute;inset:0;width:1600px;height:1000px;pointer-events:none}
+.anchor-dot{width:7px;height:7px;border-radius:50%;background:var(--pe);flex:none}
+</style>
+<body>
+
+<header class="top">
+  <div class="mark">
+    <svg width="22" height="22" viewBox="0 0 22 22"><rect x="1" y="1" width="20" height="20" rx="6" fill="#26221E"/><path d="M6 15V7m0 4h5m0-4v8m4-8 3 4-3 4" stroke="#FBF9F6" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    HoBo <span style="color:var(--faint);font-weight:500">· Intent Stream</span>
+  </div>
+  <div class="crumbs">
+    <span>junction <b>meridian</b></span><span class="sep">⊃</span>
+    <span>yard <b>hetzner</b></span><span class="sep">⊃</span>
+    <span>camp <b>hetzner-fsn1</b></span><span class="sep">⊃</span>
+    <span>bindle <b>harbor-crm</b></span>
+  </div>
+  <div class="top-right">
+    <span class="live"><span class="dot"></span>event log at <b style="color:var(--ink)">#4823</b> · live</span>
+    <span>Fri 09:54 CEST</span>
+    <div class="me">M</div>
+  </div>
+</header>
+
+<div class="frame">
+  <main class="convo">
+    <div class="stream">
+
+      <!-- Marcus intent -->
+      <div class="msg user">
+        <div class="avatar human">M</div>
+        <div>
+          <div class="who"><span class="t">09:38</span><span class="name">Marcus</span></div>
+          <div class="bubble">take harbor-crm to production in europe, keep cost under $40/day</div>
+        </div>
+      </div>
+
+      <!-- Platform Engineer plan card -->
+      <div class="msg pe-c">
+        <div class="avatar" style="background:var(--pe)">
+          <svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 1.5 14.5 8 8 14.5 1.5 8Z" fill="#FFFFFF"/></svg>
+        </div>
+        <div>
+          <div class="who"><span class="name">Platform Engineer</span><span class="role">Crew</span><span class="t">09:39</span></div>
+          <div class="bubble plan spine" id="plancard">
+            <div class="plan-head">
+              <span class="ttl">Plan · prod-europe rollout</span>
+              <span class="pid">pl-0245 · rev 1</span>
+              <span class="scope">bindle harbor-crm → yard hetzner</span>
+            </div>
+            <div class="diff">
+              <div class="dl add" id="thread-src"><span class="m">+</span>camp <b>hetzner-fsn1</b> · wasmCloud host group ×3<small>eu-central · new</small></div>
+              <div class="dl mod"><span class="m" style="color:var(--amber)">~</span>postgres&nbsp;<span class="old">self-managed 15</span>&nbsp;→&nbsp;<span class="new">managed pg-16</span><small>zero-downtime migrate</small></div>
+              <div class="dl add"><span class="m">+</span>cloudflare edge in front of <b>web</b> · TLS + cache<small>yard cloudflare</small></div>
+              <div class="dl add"><span class="m">+</span>secretless ref <b>DATABASE_URL</b> → camp-scoped grant<small>no secret copied</small></div>
+              <div class="dl del"><span class="m">−</span>public port 5432 on postgres<small>closed</small></div>
+            </div>
+            <div class="plan-sum">
+              <span class="cost">est. $31.20/day</span>
+              <span class="ok">✓ $8.80 under budget</span>
+              <span style="margin-left:auto;color:var(--muted)">2 policy gates required:</span>
+              <span class="gate-chip">⛨ data-residency</span>
+              <span class="gate-chip">⛨ public-exposure</span>
+            </div>
+            <div class="plan-foot">
+              <button class="btn primary">Approve &amp; run</button>
+              <button class="btn">Edit plan</button>
+              <button class="btn">Explain</button>
+              <span class="hint">plan diff is replayable · event #4818</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- gate chips -->
+      <div class="syschip"><span class="tick">✓</span><b>data-residency</b> gate passed — all camps in eu-central<span class="t">auto · 09:40</span></div>
+      <div class="syschip"><span class="tick">✓</span><b>Morgan</b> approved <b>public-exposure</b> gate<span class="t">09:41</span></div>
+
+      <!-- GitOps progress -->
+      <div class="msg go-c">
+        <div class="avatar" style="background:var(--gitops)">
+          <svg width="14" height="14" viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="#FFFFFF"/></svg>
+        </div>
+        <div>
+          <div class="who"><span class="name">GitOps</span><span class="role">Crew</span><span class="t">09:49</span></div>
+          <div class="bubble spine" style="width:560px">
+            Executing <b>pl-0245</b> · 2 of 4 steps done
+            <div class="check">
+              <div class="ck done"><span class="st">✓</span>provision camp hetzner-fsn1 · wasmCloud 1.3<small>09:44</small></div>
+              <div class="ck done"><span class="st">✓</span>migrate postgres → managed pg-16 · 4.2 GB<small>09:47</small></div>
+              <div class="ck run"><span class="st"></span>deploy <b>web v1.42</b> behind cloudflare edge · 64%<small>running</small></div>
+              <div class="bar"><i></i></div>
+              <div class="ck wait"><span class="st"></span>roll api, worker, events queue<small>queued</small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SRE canary verdict -->
+      <div class="msg sr-c">
+        <div class="avatar" style="background:var(--sre)">
+          <svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="#FFFFFF"/></svg>
+        </div>
+        <div>
+          <div class="who"><span class="name">SRE</span><span class="role">Crew</span><span class="t">09:52</span></div>
+          <div class="bubble spine" style="width:560px">
+            Canary <b>web v1.42</b> @ 25% traffic · 12 min
+            <div class="verdict">
+              <svg width="230" height="52" viewBox="0 0 230 52">
+                <line x1="0" y1="26" x2="230" y2="26" stroke="#E5DFD5" stroke-dasharray="3 3"/>
+                <text x="2" y="22" font-size="8" fill="#8A8075">baseline p95 221 ms</text>
+                <path d="M0 30 20 27 40 32 60 24 80 28 100 22 120 26 140 20 160 23 180 19 200 21 230 18"
+                  fill="none" stroke="#7C5CFF" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="230" cy="18" r="3" fill="#7C5CFF"/>
+                <text x="150" y="46" font-size="9" font-weight="700" fill="#5F41D9">p95 214 ms canary</text>
+              </svg>
+              <div class="stats">
+                <span>p95 <b>214 ms</b> vs 221 ms baseline</span>
+                <span>errors <b>0.02%</b> · saturation 31%</span>
+                <span class="promote">▲ promoting to 100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Endpoint Monitor -->
+      <div class="msg em-c">
+        <div class="avatar" style="background:var(--endpoint)">
+          <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.8 13 12.2H1Z" fill="#FFFFFF"/></svg>
+        </div>
+        <div>
+          <div class="who"><span class="name">Endpoint Monitor</span><span class="role">Crew</span><span class="t">09:53</span></div>
+          <div class="bubble spine">edge probes green from 6 regions — TTFB fra <b>88 ms</b> · ams <b>91 ms</b> · lhr <b>97 ms</b></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- composer -->
+    <div class="composer">
+      <div class="suggest">
+        <span class="sg">why is cost forecast $31.20?</span>
+        <span class="sg">add a staging camp on fly-lhr</span>
+        <span class="sg">show drift since plan pl-0245</span>
+        <span class="sg">roll back web to v1.41</span>
+      </div>
+      <div class="input">
+        <span class="caret"></span>
+        <span class="ph">Tell your Crew what you want — they answer with plans, not promises…</span>
+        <div class="send"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7h9M8 3.5 11.5 7 8 10.5" stroke="#FBF9F6" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ground truth rail -->
+  <aside class="rail">
+    <div>
+      <div class="rail-cap">Ground truth · live from event log</div>
+      <div class="rail-head"><h1>harbor-crm</h1><span class="tag bindle">bindle</span></div>
+      <div class="scopeline">junction meridian ⊃ yards hetzner · cloudflare · fly</div>
+      <div class="svc" style="margin-top:6px">
+        <span>api</span><span>web</span><span>worker</span><span>postgres</span><span>events queue</span><span>blob store</span>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h">Camps<small>version per camp</small></div>
+      <div class="row" id="thread-dst">
+        <span class="anchor-dot"></span>
+        <div class="grow"><span class="k">hetzner-fsn1</span> <span class="tag new">new</span><div class="sub">yard hetzner · wasmCloud ×3 · production</div></div>
+        <span class="tag roll">rolling 64%</span>
+        <span class="v">v1.42</span>
+      </div>
+      <div class="row">
+        <div class="grow" style="margin-left:17px"><span class="k">cloudflare-edge</span> <span class="tag new">new</span><div class="sub">yard cloudflare · TLS + cache for web</div></div>
+        <span class="v">active</span>
+      </div>
+      <div class="row">
+        <div class="grow" style="margin-left:17px"><span class="k">fly-lhr</span><div class="sub">yard fly · staging</div></div>
+        <span class="v">v1.42</span>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h">Policy gates<small>plan pl-0245</small></div>
+      <div class="row"><span class="gate-ok">✓</span><div class="grow"><span class="k">data-residency</span><div class="sub">all camps eu-central · passed automatically</div></div><span class="t">09:40</span></div>
+      <div class="row"><span class="gate-ok">✓</span><div class="grow"><span class="k">public-exposure</span><div class="sub">approved by Morgan (security)</div></div><span class="t">09:41</span></div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h">Cost today<small>budget $40.00/day</small></div>
+      <div class="row" style="display:block">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span class="v" style="font-size:var(--fs-xl);font-weight:800">$28.74</span>
+          <span class="sub">spent so far · forecast <b style="color:var(--ink)">$31.20/day</b></span>
+          <span class="ok" style="margin-left:auto;color:var(--diff-green-tx);font-weight:700;font-size:var(--fs-sm)">✓ under</span>
+        </div>
+        <div class="costbar"><i></i></div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-h">Event log<small>append-only · replay from any point</small></div>
+      <div class="row ev"><span class="id">#4823</span><div class="grow"><span class="k">deploy.canary.promoted</span><div class="sub">web v1.42 → 100% · hetzner-fsn1</div></div><span class="t">09:52</span></div>
+      <div class="row ev"><span class="id">#4822</span><div class="grow"><span class="k">deploy.started</span><div class="sub">web v1.42 behind cloudflare edge</div></div><span class="t">09:49</span></div>
+      <div class="row ev"><span class="id">#4821</span><div class="grow"><span class="k">db.migrated</span><div class="sub">postgres → managed pg-16 · 4.2 GB</div></div><span class="t">09:47</span></div>
+    </div>
+
+    <div>
+      <div class="rail-cap" style="margin-bottom:6px">Crew on duty</div>
+      <div class="crew">
+        <div class="cm"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M8 1.5 14.5 8 8 14.5 1.5 8Z" fill="#1C7ED6"/></svg><b>Platform Engineer</b><span>planning</span></div>
+        <div class="cm"><svg width="18" height="18" viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="11" height="11" rx="2" fill="#0E9F6E"/></svg><b>GitOps</b><span>executing</span></div>
+        <div class="cm"><svg width="18" height="18" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="#7C5CFF"/></svg><b>SRE</b><span>watching canary</span></div>
+        <div class="cm"><svg width="18" height="18" viewBox="0 0 14 14"><path d="M7 1.8 13 12.2H1Z" fill="#E8590C"/></svg><b>Endpoint Monitor</b><span>probing edges</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- thread: plan-card line ↔ ground-truth row (same object) -->
+<svg class="thread" viewBox="0 0 1600 1000">
+  <path d="M742 232 C 860 232, 900 218, 1016 218" fill="none" stroke="#1C7ED6" stroke-width="1.5" stroke-dasharray="5 4" opacity=".55"/>
+  <circle cx="742" cy="232" r="4" fill="#1C7ED6"/>
+  <circle cx="1016" cy="218" r="4" fill="#1C7ED6"/>
+  <g font-family="system-ui, sans-serif">
+    <text x="866" y="210" font-size="10" font-weight="700" fill="#1C7ED6" text-anchor="middle">same object · camp/hetzner-fsn1</text>
+  </g>
+</svg>
+
+</body>

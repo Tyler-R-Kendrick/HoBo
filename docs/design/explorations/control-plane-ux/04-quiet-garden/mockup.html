@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>hobo · quiet garden — junction home</title>
+<style>
+  :root {
+    --bone: #F7F6F2;
+    --mist: #ECEAE3;
+    --sage: #8FA98F;
+    --sage-deep: #7A957A;
+    --sage-pale: #C9D6C9;
+    --graphite: #3A3A38;
+    --apricot: #E0A458;
+    --shadow: rgba(122, 149, 122, 0.22);
+    --shadow-far: rgba(58, 58, 56, 0.05);
+    --fs-whisper: 13px;
+    --fs-body: 16px;
+    --fs-voice: 26px;
+    --fs-presence: 64px;
+    --track-wide: 0.18em;
+    --track-soft: 0.04em;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1600px;
+    height: 1000px;
+    overflow: hidden;
+    margin: 0;
+    position: relative;
+    background: var(--bone);
+    color: var(--graphite);
+    font-family: system-ui, 'Segoe UI', 'Helvetica Neue', sans-serif;
+    font-weight: 300;
+    font-size: var(--fs-body);
+    line-height: 1.9;
+    text-transform: lowercase;
+  }
+
+  /* ---------- ambient wash ---------- */
+  .wash {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1100px 700px at 30% 38%, var(--mist) 0%, rgba(236,234,227,0) 62%),
+      radial-gradient(900px 600px at 88% 108%, var(--mist) 0%, rgba(236,234,227,0) 55%);
+  }
+
+  /* ---------- wordmark & whispers in the corners ---------- */
+  .corner { position: absolute; font-size: var(--fs-whisper); letter-spacing: var(--track-wide); line-height: 2.1; }
+  .corner .dim { opacity: 0.52; }
+  .top-left  { top: 58px; left: 72px; }
+  .top-right { top: 58px; right: 72px; text-align: right; }
+
+  /* ---------- the orb ---------- */
+  .orb-field { position: absolute; left: 236px; top: 208px; width: 560px; height: 560px; }
+
+  .halo {
+    position: absolute; inset: -110px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(143,169,143,0.20) 0%,
+      rgba(143,169,143,0.10) 40%,
+      rgba(143,169,143,0.03) 58%,
+      rgba(143,169,143,0) 72%);
+    animation: breathe 7s ease-in-out infinite;
+  }
+
+  .orb {
+    position: absolute; inset: 92px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 38% 26%,
+        rgba(247,246,242,0.82) 0%,
+        var(--sage-pale) 27%,
+        var(--sage) 60%,
+        var(--sage-deep) 108%);
+    box-shadow:
+      0 34px 110px var(--shadow),
+      0 6px 26px var(--shadow-far),
+      inset 0 -16px 70px rgba(122,149,122,0.20),
+      inset 0 14px 50px rgba(255,255,255,0.45);
+    filter: blur(0.4px);
+    animation: breathe 7s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.025); }
+  }
+
+  .orb .days {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: rgba(247, 246, 242, 0.96);
+    text-shadow: 0 2px 22px rgba(122,149,122,0.65);
+  }
+  .orb .days .n {
+    font-size: var(--fs-presence);
+    font-weight: 200;
+    line-height: 1.1;
+    letter-spacing: var(--track-soft);
+  }
+  .orb .days .unit {
+    font-size: var(--fs-whisper);
+    letter-spacing: var(--track-wide);
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+
+  .orb-caption {
+    position: absolute;
+    left: 236px; top: 786px; width: 560px;
+    text-align: center;
+    font-size: var(--fs-body);
+    opacity: 0.82;
+    letter-spacing: var(--track-soft);
+  }
+
+  /* ---------- greeting voice ---------- */
+  .voice {
+    position: absolute;
+    left: 72px; top: 128px;
+    font-size: var(--fs-voice);
+    font-weight: 200;
+    letter-spacing: var(--track-soft);
+    line-height: 1.5;
+    opacity: 0.9;
+  }
+
+  /* ---------- the one attention item ---------- */
+  .stem { position: absolute; left: 700px; top: 300px; pointer-events: none; }
+
+  .attention {
+    position: absolute;
+    left: 1012px; top: 268px;
+    width: 452px;
+  }
+  .attention .bloom {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #F2CE9A, var(--apricot));
+    box-shadow: 0 0 0 7px rgba(224,164,88,0.14), 0 0 22px rgba(224,164,88,0.35);
+    margin-right: 14px;
+    vertical-align: 2px;
+  }
+  .attention .what {
+    font-size: var(--fs-body);
+    letter-spacing: var(--track-soft);
+  }
+  .attention .who {
+    font-size: var(--fs-whisper);
+    letter-spacing: var(--track-soft);
+    opacity: 0.62;
+    margin: 6px 0 20px 23px;
+  }
+  .attention .choices { margin-left: 23px; font-size: var(--fs-whisper); letter-spacing: var(--track-wide); }
+  .attention .choices a {
+    color: var(--graphite);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(224,164,88,0.55);
+    padding-bottom: 3px;
+    cursor: pointer;
+  }
+  .attention .choices .apart { margin: 0 16px; opacity: 0.35; }
+
+  /* ---------- whisper-line of recent events ---------- */
+  .whispers {
+    position: absolute;
+    left: 1012px; top: 470px;
+    width: 500px;
+    font-size: var(--fs-whisper);
+    letter-spacing: var(--track-soft);
+    line-height: 2.5;
+  }
+  .whispers .lede {
+    letter-spacing: var(--track-wide);
+    opacity: 0.42;
+    margin-bottom: 6px;
+  }
+  .whispers .w1 { opacity: 0.80; }
+  .whispers .w2 { opacity: 0.62; }
+  .whispers .w3 { opacity: 0.48; }
+  .whispers .w4 { opacity: 0.36; }
+  .whispers .w5 { opacity: 0.26; }
+  .whispers .t { opacity: 0.75; margin-right: 10px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- sparkline garden ---------- */
+  .garden {
+    position: absolute;
+    left: 0; right: 0; bottom: 46px;
+    display: flex;
+    justify-content: center;
+    gap: 74px;
+  }
+  .plant { text-align: center; }
+  .plant svg { display: block; opacity: 0.85; }
+  .plant .name {
+    font-size: var(--fs-whisper);
+    letter-spacing: var(--track-wide);
+    opacity: 0.55;
+    margin-top: 6px;
+  }
+  .garden-lede {
+    position: absolute;
+    left: 0; right: 0; bottom: 126px;
+    text-align: center;
+    font-size: var(--fs-whisper);
+    letter-spacing: var(--track-wide);
+    opacity: 0.38;
+  }
+</style>
+</head>
+<body>
+  <div class="wash"></div>
+
+  <div class="corner top-left">
+    hobo<br>
+    <span class="dim">junction · harbor-crm &amp; 2 quieter bindles</span>
+  </div>
+
+  <div class="corner top-right">
+    saturday 04 july · 06:26 utc<br>
+    <span class="dim">$29.40 today · within budget</span>
+  </div>
+
+  <div class="voice">good morning, sarah.<br>the junction is quiet.</div>
+
+  <!-- whole-junction health -->
+  <div class="orb-field">
+    <div class="halo"></div>
+    <div class="orb">
+      <div class="days">
+        <div class="n">41</div>
+        <div class="unit">days settled</div>
+      </div>
+    </div>
+  </div>
+  <div class="orb-caption">all three yards settled · 41 days since last incident</div>
+
+  <!-- the single apricot stem -->
+  <svg class="stem" width="330" height="120" viewBox="0 0 330 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 116 C 110 98, 210 58, 318 6" stroke="var(--apricot)" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="4" cy="116" r="2.5" fill="var(--apricot)" opacity="0.7"/>
+  </svg>
+
+  <div class="attention">
+    <span class="bloom"></span><span class="what">worker queue depth is rising in camp fly-ams</span>
+    <div class="who">sre crew is watching · no action needed from you yet</div>
+    <div class="choices">
+      <a>let the crew handle it</a><span class="apart">·</span><a>look closer</a>
+    </div>
+  </div>
+
+  <!-- last five events, fading with age -->
+  <div class="whispers">
+    <div class="lede">lately, without your help</div>
+    <div class="w1"><span class="t">06:12</span>gitops crew reconciled drift on cloudflare-edge · quietly</div>
+    <div class="w2"><span class="t">05:47</span>endpoint monitor saw harbor-crm api green from six regions</div>
+    <div class="w3"><span class="t">04:58</span>platform crew rotated a secretless reference in yard aws</div>
+    <div class="w4"><span class="t">03:31</span>policy gates approved plan #482 for camp hetzner-fsn</div>
+    <div class="w5"><span class="t">02:04</span>conformance tests passed for bindle harbor-crm</div>
+  </div>
+
+  <!-- sparkline garden -->
+  <div class="garden-lede">the last six hours, one breath per service</div>
+  <div class="garden">
+    <div class="plant">
+      <svg width="150" height="34" viewBox="0 0 150 34" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,22 15,20 30,21 45,18 60,19 75,17 90,18 105,16 120,17 135,15 150,16"
+          fill="none" stroke="var(--sage-deep)" stroke-width="1.1"/>
+      </svg>
+      <div class="name">api</div>
+    </div>
+    <div class="plant">
+      <svg width="150" height="34" viewBox="0 0 150 34" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,18 15,19 30,17 45,18 60,16 75,18 90,17 105,19 120,18 135,17 150,18"
+          fill="none" stroke="var(--sage-deep)" stroke-width="1.1"/>
+      </svg>
+      <div class="name">web</div>
+    </div>
+    <div class="plant">
+      <svg width="150" height="34" viewBox="0 0 150 34" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,26 15,25 30,25 45,23 60,22 75,20 90,18 105,15 120,12 135,9 150,6"
+          fill="none" stroke="var(--sage-deep)" stroke-width="1.1"/>
+        <circle cx="150" cy="6" r="2.5" fill="var(--apricot)" opacity="0.85"/>
+      </svg>
+      <div class="name">worker</div>
+    </div>
+    <div class="plant">
+      <svg width="150" height="34" viewBox="0 0 150 34" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,17 15,17 30,18 45,17 60,17 75,18 90,17 105,17 120,18 135,17 150,17"
+          fill="none" stroke="var(--sage-deep)" stroke-width="1.1"/>
+      </svg>
+      <div class="name">postgres</div>
+    </div>
+    <div class="plant">
+      <svg width="150" height="34" viewBox="0 0 150 34" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,20 15,18 30,21 45,17 60,20 75,16 90,19 105,15 120,18 135,14 150,16"
+          fill="none" stroke="var(--sage-deep)" stroke-width="1.1"/>
+      </svg>
+      <div class="name">queue</div>
+    </div>
+    <div class="plant">
+      <svg width="150" height="34" viewBox="0 0 150 34" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,19 15,19 30,18 45,19 60,19 75,18 90,19 105,18 120,19 135,19 150,18"
+          fill="none" stroke="var(--sage-deep)" stroke-width="1.1"/>
+      </svg>
+      <div class="name">blob</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<meta charset="utf-8">
+<title>HoBo — 07 Organism — harbor-crm vitals</title>
+<style>
+  :root{
+    --plum:#140E1C;
+    --membrane:#241B33;
+    --teal:#2DD4BF;
+    --magenta:#E879F9;
+    --lime:#A3E635;
+    --ink:#C9C3D9;
+    --coral:#FB7185;
+    --ink-dim:rgba(201,195,217,.72);
+    --ink-faint:rgba(201,195,217,.55);
+    --teal-glow:rgba(45,212,191,.32);
+    --magenta-glow:rgba(232,121,249,.30);
+    --lime-glow:rgba(163,230,53,.28);
+    --coral-glow:rgba(251,113,133,.34);
+    --vein:rgba(45,212,191,.28);
+    --card:rgba(36,27,51,.55);
+    --r-blob-a:46% 54% 58% 42% / 52% 44% 56% 48%;
+    --r-blob-b:58% 42% 44% 56% / 46% 58% 42% 54%;
+    --r-soft:38px 52px 44px 58px;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{
+    width:1600px;height:1000px;overflow:hidden;margin:0;
+    background:
+      radial-gradient(900px 620px at 12% 8%, rgba(45,212,191,.07), transparent 60%),
+      radial-gradient(820px 560px at 88% 92%, rgba(232,121,249,.07), transparent 60%),
+      radial-gradient(600px 460px at 70% 20%, rgba(163,230,53,.04), transparent 60%),
+      var(--plum);
+    color:var(--ink);
+    font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;
+    font-size:14px;line-height:1.45;
+    padding:22px 24px;
+    display:flex;flex-direction:column;gap:16px;
+  }
+  /* ---------- header ---------- */
+  .crown{
+    display:flex;align-items:center;gap:18px;
+    background:linear-gradient(120deg, rgba(36,27,51,.85), rgba(36,27,51,.45));
+    border:1.5px solid rgba(45,212,191,.18);
+    border-radius:60px 44px 56px 40px / 44px 56px 40px 60px;
+    padding:14px 26px 14px 16px;flex:0 0 auto;
+  }
+  .nucleus{
+    width:54px;height:54px;border-radius:var(--r-blob-a);
+    background:radial-gradient(circle at 35% 30%, rgba(45,212,191,.85), rgba(45,212,191,.25) 60%, transparent 75%), var(--membrane);
+    box-shadow:0 0 26px var(--teal-glow), inset 0 0 14px rgba(45,212,191,.35);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--plum);font-weight:700;font-size:15px;letter-spacing:.02em;
+  }
+  .crown h1{font-size:21px;font-weight:600;letter-spacing:.01em}
+  .crown h1 em{font-style:normal;color:var(--teal)}
+  .lineage{color:var(--ink-dim);font-size:13px;margin-top:2px}
+  .lineage b{color:var(--ink);font-weight:600}
+  .crown .spacer{flex:1}
+  .pill{
+    border-radius:999px;padding:9px 18px;font-size:13px;color:var(--ink-dim);
+    background:rgba(36,27,51,.8);border:1.5px solid rgba(201,195,217,.14);
+    display:flex;align-items:center;gap:9px;white-space:nowrap;
+  }
+  .pill .dot{width:9px;height:9px;border-radius:50%}
+  .pill.vitality{border-color:rgba(45,212,191,.4);color:var(--ink)}
+  .pill.vitality .dot{background:var(--teal);box-shadow:0 0 12px var(--teal)}
+  .pill.crews .dot{background:var(--magenta);box-shadow:0 0 10px var(--magenta)}
+  /* ---------- main row ---------- */
+  .row{display:flex;gap:20px;flex:1;min-height:0}
+  .left{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+  /* ---------- organism ---------- */
+  .dish{
+    position:relative;flex:1;overflow:hidden;
+    background:
+      radial-gradient(520px 420px at 30% 55%, rgba(45,212,191,.06), transparent 70%),
+      radial-gradient(420px 360px at 78% 40%, rgba(163,230,53,.05), transparent 70%),
+      rgba(20,14,28,.6);
+    border:1.5px solid rgba(201,195,217,.10);
+    border-radius:64px 46px 58px 50px / 50px 60px 46px 62px;
+  }
+  .membrane{
+    position:absolute;z-index:1;
+    border:1.5px solid rgba(45,212,191,.22);
+    border-radius:var(--r-blob-a);
+    background:
+      radial-gradient(70% 60% at 42% 38%, rgba(45,212,191,.07), transparent 70%),
+      rgba(36,27,51,.42);
+    box-shadow:inset 0 0 60px rgba(45,212,191,.06), 0 0 50px rgba(45,212,191,.05);
+  }
+  .membrane.hetzner{left:26px;top:40px;width:600px;height:552px}
+  .membrane.edge{
+    left:612px;top:92px;width:348px;height:436px;
+    border-radius:var(--r-blob-b);
+    border-color:rgba(232,121,249,.16);
+    background:radial-gradient(70% 60% at 55% 40%, rgba(232,121,249,.05), transparent 70%), rgba(36,27,51,.26);
+    box-shadow:inset 0 0 50px rgba(232,121,249,.05);
+  }
+  .membrane .tag{
+    position:absolute;top:20px;left:44px;font-size:12.5px;color:var(--ink-dim);
+    letter-spacing:.06em;
+  }
+  .membrane .tag b{color:var(--ink);font-weight:600;letter-spacing:.02em}
+  .membrane.edge .tag{left:auto;right:44px;text-align:right}
+  .veins{position:absolute;inset:0;z-index:2;pointer-events:none}
+  .organelle{
+    position:absolute;z-index:3;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;gap:2px;
+    padding:10px 16px;
+    background:radial-gradient(circle at 36% 30%, rgba(45,212,191,.20), rgba(45,212,191,.04) 62%, transparent 78%), var(--membrane);
+    border:1.5px solid rgba(45,212,191,.35);
+    border-radius:42% 58% 60% 40% / 55% 45% 40% 60%;
+    box-shadow:0 0 34px var(--teal-glow), inset 0 0 22px rgba(45,212,191,.14);
+  }
+  .organelle .name{font-size:16px;font-weight:700;letter-spacing:.015em}
+  .organelle .meta{font-size:11.5px;color:var(--ink-dim);line-height:1.35}
+  .organelle .pulse{font-size:11.5px;color:var(--teal)}
+  .o-postgres{left:84px;top:352px;width:216px;height:184px;border-radius:56% 44% 42% 58% / 46% 56% 44% 54%}
+  .o-api{left:248px;top:104px;width:186px;height:152px}
+  .o-events{
+    left:300px;top:296px;width:126px;height:104px;
+    border-radius:60% 40% 55% 45% / 45% 60% 40% 55%;
+    border-color:rgba(232,121,249,.42);
+    background:radial-gradient(circle at 36% 30%, rgba(232,121,249,.22), rgba(232,121,249,.05) 62%, transparent 78%), var(--membrane);
+    box-shadow:0 0 30px var(--magenta-glow), inset 0 0 18px rgba(232,121,249,.16);
+  }
+  .o-events .pulse{color:var(--magenta)}
+  .o-worker{
+    left:438px;top:376px;width:154px;height:132px;
+    border-radius:44% 56% 48% 52% / 58% 42% 56% 44%;
+    border-color:rgba(251,113,133,.5);
+    background:radial-gradient(circle at 36% 30%, rgba(251,113,133,.24), rgba(251,113,133,.05) 62%, transparent 78%), var(--membrane);
+    box-shadow:0 0 36px var(--coral-glow), inset 0 0 20px rgba(251,113,133,.18);
+  }
+  .o-worker .pulse{color:var(--coral)}
+  .o-web{
+    left:686px;top:150px;width:166px;height:138px;
+    border-radius:52% 48% 60% 40% / 42% 58% 44% 56%;
+    border-color:rgba(163,230,53,.4);
+    background:radial-gradient(circle at 36% 30%, rgba(163,230,53,.18), rgba(163,230,53,.04) 62%, transparent 78%), var(--membrane);
+    box-shadow:0 0 30px var(--lime-glow), inset 0 0 18px rgba(163,230,53,.13);
+  }
+  .o-web .pulse{color:var(--lime)}
+  .o-blob{
+    left:726px;top:346px;width:140px;height:116px;
+    border-radius:40% 60% 52% 48% / 56% 44% 60% 40%;
+    border-color:rgba(163,230,53,.32);
+    background:radial-gradient(circle at 36% 30%, rgba(163,230,53,.14), transparent 70%), var(--membrane);
+    box-shadow:0 0 24px rgba(163,230,53,.18), inset 0 0 16px rgba(163,230,53,.10);
+  }
+  .o-blob .pulse{color:var(--lime)}
+  .note{
+    position:absolute;z-index:4;left:352px;top:534px;width:330px;
+    padding:10px 18px;font-size:12.5px;color:var(--ink-dim);
+    background:rgba(36,27,51,.9);
+    border:1.5px solid rgba(251,113,133,.4);
+    border-radius:26px 34px 30px 38px / 32px 26px 36px 28px;
+  }
+  .note b{color:var(--coral);font-weight:600}
+  .legend{
+    position:absolute;z-index:4;left:34px;bottom:22px;font-size:12px;color:var(--ink-faint);
+    letter-spacing:.03em;
+  }
+  /* ---------- immune log ---------- */
+  .immune{
+    flex:0 0 176px;padding:16px 26px 14px;
+    background:var(--card);
+    border:1.5px solid rgba(201,195,217,.10);
+    border-radius:var(--r-soft);
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .immune h2, .vitals h2{
+    font-size:12.5px;font-weight:600;letter-spacing:.14em;color:var(--ink-faint);
+  }
+  .immune .entry{
+    display:flex;align-items:center;gap:14px;
+    background:rgba(20,14,28,.5);
+    border-radius:999px;padding:8px 18px;font-size:13px;color:var(--ink-dim);
+  }
+  .entry .cell{width:12px;height:12px;flex:0 0 12px;border-radius:var(--r-blob-a)}
+  .entry.response .cell{background:var(--coral);box-shadow:0 0 12px var(--coral-glow)}
+  .entry.antibody .cell{background:var(--lime);box-shadow:0 0 12px var(--lime-glow)}
+  .entry.drift .cell{background:var(--teal);box-shadow:0 0 12px var(--teal-glow)}
+  .entry b{color:var(--ink);font-weight:600}
+  .entry .t{color:var(--ink-faint);margin-left:auto;font-size:12px;white-space:nowrap;padding-left:14px}
+  /* ---------- vitals ---------- */
+  .vitals{
+    flex:0 0 544px;display:flex;flex-direction:column;gap:14px;min-height:0;
+  }
+  .vital{
+    flex:1;padding:16px 24px 12px;min-height:0;
+    background:var(--card);
+    border:1.5px solid rgba(201,195,217,.10);
+    border-radius:46px 34px 42px 36px / 36px 46px 32px 44px;
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .vital .head{display:flex;align-items:baseline;gap:12px}
+  .vital .head .sense{
+    font-size:12.5px;font-weight:600;letter-spacing:.16em;color:var(--ink-faint);
+  }
+  .vital .head .what{font-size:12px;color:var(--ink-faint)}
+  .vital .head .reading{margin-left:auto;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap}
+  .vital .head .reading em{font-style:normal}
+  .v-heart .sense, .v-heart .reading em{color:var(--teal)}
+  .v-breath .sense, .v-breath .reading em{color:var(--magenta)}
+  .v-temp .sense, .v-temp .reading em{color:var(--lime)}
+  .v-cost .sense, .v-cost .reading em{color:var(--coral)}
+  .vital svg{width:100%;height:74px;flex:1;min-height:0}
+  .vital .foot{font-size:12px;color:var(--ink-faint)}
+</style>
+<body>
+
+  <header class="crown">
+    <div class="nucleus">HoBo</div>
+    <div>
+      <h1>harbor-crm <em>— organism vitals</em></h1>
+      <div class="lineage">junction <b>coastal</b> · yards <b>hetzner</b> + <b>cloudflare</b> · camps <b>hetzner-fsn1</b> · <b>cloudflare-edge</b></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill vitality"><span class="dot"></span>vitality 96 · thriving</div>
+    <div class="pill crews"><span class="dot"></span>crews awake: sre · endpoint monitor · gitops</div>
+    <div class="pill">10:03 utc · event log #48,112</div>
+  </header>
+
+  <div class="row">
+    <div class="left">
+      <section class="dish">
+        <div class="membrane hetzner"><div class="tag"><b>camp hetzner-fsn1</b><br>durable runtime · wasmCloud lattice</div></div>
+        <div class="membrane edge"><div class="tag"><b>camp cloudflare-edge</b><br>edge tissue · 214 pops</div></div>
+
+        <svg class="veins" viewBox="0 0 992 636" fill="none">
+          <!-- web -> api, crossing membranes -->
+          <path d="M700 218 C 590 158, 500 148, 428 172" stroke="#2DD4BF" stroke-opacity=".30" stroke-width="2.5"/>
+          <circle cx="612" cy="180" r="3.4" fill="#2DD4BF" opacity=".8"/>
+          <circle cx="530" cy="162" r="2.6" fill="#2DD4BF" opacity=".55"/>
+          <!-- api -> events -->
+          <path d="M352 256 C 348 276, 354 288, 360 298" stroke="#E879F9" stroke-opacity=".35" stroke-width="2.5"/>
+          <circle cx="352" cy="272" r="3" fill="#E879F9" opacity=".8"/>
+          <!-- events -> worker (queue flow, busy) -->
+          <path d="M424 360 C 460 372, 474 388, 462 402" stroke="#E879F9" stroke-opacity=".45" stroke-width="3"/>
+          <circle cx="440" cy="366" r="3.6" fill="#E879F9" opacity=".95"/>
+          <circle cx="460" cy="376" r="3" fill="#E879F9" opacity=".75"/>
+          <circle cx="470" cy="390" r="2.6" fill="#E879F9" opacity=".6"/>
+          <!-- api -> postgres -->
+          <path d="M300 250 C 258 300, 232 328, 210 358" stroke="#2DD4BF" stroke-opacity=".30" stroke-width="2.5"/>
+          <circle cx="252" cy="308" r="3" fill="#2DD4BF" opacity=".7"/>
+          <!-- worker -> postgres -->
+          <path d="M442 462 C 386 486, 348 486, 302 470" stroke="#2DD4BF" stroke-opacity=".28" stroke-width="2.5"/>
+          <circle cx="372" cy="482" r="2.8" fill="#2DD4BF" opacity=".6"/>
+          <!-- web -> blob store -->
+          <path d="M776 290 C 786 310, 792 326, 796 344" stroke="#A3E635" stroke-opacity=".30" stroke-width="2.5"/>
+          <circle cx="788" cy="318" r="2.8" fill="#A3E635" opacity=".65"/>
+          <!-- worker note connector -->
+          <path d="M512 510 C 516 522, 518 528, 520 534" stroke="#FB7185" stroke-opacity=".4" stroke-width="1.6" stroke-dasharray="2 5"/>
+          <!-- drifting plankton -->
+          <circle cx="90" cy="110" r="2" fill="#2DD4BF" opacity=".25"/>
+          <circle cx="140" cy="70" r="1.5" fill="#E879F9" opacity=".22"/>
+          <circle cx="930" cy="70" r="2" fill="#A3E635" opacity=".2"/>
+          <circle cx="640" cy="590" r="2" fill="#2DD4BF" opacity=".22"/>
+          <circle cx="900" cy="560" r="1.6" fill="#E879F9" opacity=".22"/>
+        </svg>
+
+        <div class="organelle o-api">
+          <div class="name">api</div>
+          <div class="meta">v2.5.0 · 3 cells · 512 MB each</div>
+          <div class="pulse">p95 84 ms · healthy glow</div>
+        </div>
+        <div class="organelle o-web">
+          <div class="name">web</div>
+          <div class="meta">v2.5.0 · edge-rendered</div>
+          <div class="pulse">ttfb 31 ms · bright</div>
+        </div>
+        <div class="organelle o-events">
+          <div class="name">events</div>
+          <div class="meta">queue · depth 214</div>
+          <div class="pulse">312 msg/min</div>
+        </div>
+        <div class="organelle o-worker">
+          <div class="name">worker</div>
+          <div class="meta">v2.4.9 · 2 cells · 768 MB</div>
+          <div class="pulse">mild inflammation</div>
+        </div>
+        <div class="organelle o-postgres">
+          <div class="name">postgres</div>
+          <div class="meta">16.3 · 4 vCPU · 32 GB<br>wal shipped 9 s ago</div>
+          <div class="pulse">largest organ · steady</div>
+        </div>
+        <div class="organelle o-blob">
+          <div class="name">blob store</div>
+          <div class="meta">18.2 GB · 41k objects</div>
+          <div class="pulse">cool · quiet</div>
+        </div>
+
+        <div class="note"><b>mild inflammation</b> — worker-2 retried events intake 3× in 10 min; sre crew attending, no fever yet</div>
+        <div class="legend">glow = vitality · size = allocated resources · vesicles = event flow · membranes = camps</div>
+      </section>
+
+      <section class="immune">
+        <h2>immune log — replayable, append-only</h2>
+        <div class="entry response"><span class="cell"></span><span><b>immune response</b> — sre crew isolated worker-2, replayed 1,840 events from the log; tissue regenerated in 74 s</span><span class="t">09:12</span></div>
+        <div class="entry antibody"><span class="cell"></span><span><b>antibody added</b> — conformance test now covers queue back-pressure; every future plan gates on it</span><span class="t">08:47</span></div>
+        <div class="entry drift"><span class="cell"></span><span><b>drift resorbed</b> — gitops crew reconciled camp hetzner-fsn1 back to plan #482; no scar tissue</span><span class="t">07:58</span></div>
+      </section>
+    </div>
+
+    <aside class="vitals">
+      <div class="vital v-heart">
+        <div class="head"><span class="sense">heartbeat</span><span class="what">deploy cadence</span><span class="reading">last beat: <em>v2.5.0</em>, 41 min ago</span></div>
+        <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
+          <path d="M0 46 H36 q5 -7 10 0 H88 l4 -5 4 5 3 -26 5 36 4 -12 6 2 H188 l4 -5 4 5 3 -26 5 36 4 -12 6 2 H298 l4 -5 4 5 3 -26 5 36 4 -12 6 2 H414 l4 -5 4 5 3 -30 5 42 4 -14 6 2 H496" stroke="#2DD4BF" stroke-width="2" stroke-opacity=".85"/>
+          <circle cx="425" cy="20" r="4" fill="#E879F9"/>
+          <text x="104" y="66" fill="#C9C3D9" opacity=".5" font-size="10" font-family="Trebuchet MS">v2.4.7</text>
+          <text x="204" y="66" fill="#C9C3D9" opacity=".5" font-size="10" font-family="Trebuchet MS">v2.4.8</text>
+          <text x="314" y="66" fill="#C9C3D9" opacity=".5" font-size="10" font-family="Trebuchet MS">v2.4.9</text>
+          <text x="430" y="66" fill="#E879F9" opacity=".9" font-size="10" font-family="Trebuchet MS">v2.5.0</text>
+        </svg>
+        <div class="foot">steady rhythm · 4 beats in 26 h · every beat replayable from the event log</div>
+      </div>
+
+      <div class="vital v-breath">
+        <div class="head"><span class="sense">respiration</span><span class="what">request throughput</span><span class="reading"><em>1.2k req/min</em> · deep, even</span></div>
+        <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
+          <path d="M0 54 C 24 54 34 26 58 26 S 92 54 116 54 S 150 24 174 24 S 208 54 232 54 S 266 22 290 22 S 324 54 348 54 S 382 18 406 18 S 440 54 464 54 S 486 30 496 28" stroke="#E879F9" stroke-width="2" stroke-opacity=".8"/>
+          <path d="M0 54 C 24 54 34 26 58 26 S 92 54 116 54 S 150 24 174 24 S 208 54 232 54 S 266 22 290 22 S 324 54 348 54 S 382 18 406 18 S 440 54 464 54 S 486 30 496 28 V74 H0 Z" fill="#E879F9" opacity=".08"/>
+        </svg>
+        <div class="foot">inhale 09:40 (checkout burst, +38%) · exhaled smoothly, no gasping</div>
+      </div>
+
+      <div class="vital v-temp">
+        <div class="head"><span class="sense">temperature</span><span class="what">error heat</span><span class="reading"><em>36.8°</em> nominal · 0.02% errors</span></div>
+        <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
+          <path d="M0 44 C 40 42 80 46 120 44 S 200 40 240 44 S 300 46 320 42" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <path d="M320 42 C 332 38 340 24 352 24 S 372 40 384 44" stroke="#FB7185" stroke-width="2" stroke-opacity=".85"/>
+          <path d="M384 44 C 420 46 460 44 496 44" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <circle cx="352" cy="24" r="3.6" fill="#FB7185" opacity=".9"/>
+          <text x="336" y="14" fill="#FB7185" opacity=".85" font-size="10" font-family="Trebuchet MS">09:12 fever, resorbed</text>
+        </svg>
+        <div class="foot">brief fever during worker-2 isolation · back to nominal within 74 s</div>
+      </div>
+
+      <div class="vital v-cost">
+        <div class="head"><span class="sense">metabolism</span><span class="what">cost burn</span><span class="reading"><em>$1.23/hr</em> · lean</span></div>
+        <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
+          <path d="M0 50 C 50 48 90 44 140 46 S 240 52 300 48 S 420 40 496 44 V74 H0 Z" fill="#FB7185" opacity=".10"/>
+          <path d="M0 50 C 50 48 90 44 140 46 S 240 52 300 48 S 420 40 496 44" stroke="#FB7185" stroke-width="2" stroke-opacity=".7"/>
+          <text x="360" y="30" fill="#C9C3D9" opacity=".55" font-size="10" font-family="Trebuchet MS">hetzner $0.91 · cloudflare $0.32</text>
+        </svg>
+        <div class="foot">$29.52/day pace · 12% under last week · no wasted calories detected</div>
+      </div>
+    </aside>
+  </div>
+
+</body>

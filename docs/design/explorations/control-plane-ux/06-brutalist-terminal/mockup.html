@@ -1,0 +1,253 @@
+<meta charset="utf-8">
+<title>HoBo — camp fsn1 — brutalist terminal</title>
+<style>
+  :root {
+    --white: #FFFFFF;
+    --black: #000000;
+    --link: #0000EE;
+    --sel: #FFFF00;
+    --gray: #767676;
+    --red: #CC0000;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --fs: 13px;
+    --fs-path: 22px;
+    --cell-x: 10px;
+    --cell-y: 9px;
+  }
+  * { box-sizing: border-box; border-radius: 0 !important; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1600px; height: 1000px; overflow: hidden;
+    background: var(--white); color: var(--black);
+    font-family: var(--mono);
+    font-size: var(--fs); line-height: 1.35;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  a { color: var(--link); text-decoration: underline; }
+
+  /* ============ header ============ */
+  header {
+    flex: none;
+    border-bottom: 3px solid var(--black);
+    padding: 18px 24px 14px 24px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .stamp { text-align: right; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; font-size: 12px; line-height: 1.6; }
+  .stamp b { color: var(--black); }
+  .path { font-size: var(--fs-path); font-weight: 700; letter-spacing: 0; }
+  .path .sep { color: var(--gray); font-weight: 400; }
+  .counts { margin-top: 6px; }
+  .counts .dim { color: var(--gray); }
+  .counts .drift { color: var(--red); font-weight: 700; }
+
+  /* ============ inventory table ============ */
+  table.inv {
+    flex: none;
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  table.inv th, table.inv td {
+    border: 1px solid var(--black);
+    padding: var(--cell-y) var(--cell-x);
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    font-weight: 400;
+  }
+  table.inv th {
+    background: var(--black); color: var(--white);
+    text-transform: uppercase; letter-spacing: 1px;
+    font-size: 12px;
+  }
+  td.dim, span.dim { color: var(--gray); }
+  tr.drifted td { color: var(--red); }
+  tr.drifted td a { color: var(--link); }
+  tr.selected td { background: var(--sel); color: var(--black); }
+  tr.selected td .dim { color: var(--black); }
+  .ok::before { content: "✓ "; }
+  .bad::before { content: "× "; font-weight: 700; }
+  .cursor-mark { font-weight: 700; }
+
+  /* ============ event log tail ============ */
+  .tail {
+    flex: 1 1 auto; overflow: hidden;
+    border-top: 3px solid var(--black);
+    padding: 10px 24px 0 24px;
+  }
+  .tail h2 {
+    margin: 0 0 6px 0; font-size: var(--fs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .tail pre { margin: 0; font-family: var(--mono); font-size: var(--fs); line-height: 1.65; }
+  .tail .dim { color: var(--gray); }
+  .tail .drift { color: var(--red); }
+
+  /* ============ footer keys ============ */
+  footer {
+    flex: none;
+    border-top: 3px solid var(--black);
+    background: var(--black); color: var(--white);
+    padding: 8px 24px;
+    display: flex; justify-content: space-between;
+  }
+  footer kbd { font-family: var(--mono); font-weight: 700; }
+
+  /* ============ command palette ============ */
+  .palette {
+    position: absolute;
+    left: 50%; top: 168px;
+    transform: translateX(-50%);
+    width: 820px;
+    background: var(--white);
+    border: 1px solid var(--black);
+    box-shadow: 6px 6px 0 0 var(--black); /* hard offset block, zero blur */
+  }
+  .palette .bar {
+    background: var(--black); color: var(--white);
+    padding: 4px 12px;
+    text-transform: uppercase; letter-spacing: 1px; font-size: 12px;
+    display: flex; justify-content: space-between;
+  }
+  .palette .input {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--black);
+    font-size: 15px; font-weight: 700;
+  }
+  .palette .input .caret { background: var(--black); color: var(--white); }
+  .palette .section-label {
+    padding: 6px 12px 2px 12px;
+    color: var(--gray); text-transform: uppercase; letter-spacing: 1px; font-size: 11px;
+  }
+  .palette ol { list-style: none; margin: 0; padding: 0; }
+  .palette li {
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--black);
+    white-space: nowrap; overflow: hidden;
+  }
+  .palette li:last-child { border-bottom: 0; }
+  .palette li.sel { background: var(--sel); }
+  .palette .step { display: inline-block; width: 78px; font-weight: 700; }
+  .palette .pending { color: var(--red); font-weight: 700; }
+  .palette .meta { padding: 6px 12px; border-top: 1px solid var(--black); }
+  .palette .actions {
+    border-top: 1px solid var(--black);
+    padding: 6px 12px; color: var(--gray);
+  }
+</style>
+
+<header>
+  <div>
+    <div class="path">junction:acme <span class="sep">/</span> yard:hetzner <span class="sep">/</span> camp:fsn1</div>
+    <div class="counts">
+      14 resources · <span class="drift">2 drifted</span> · event log seq <a href="#">#48211</a>
+      <span class="dim"> · bindle harbor-crm@1.4.2 pinned by plan#1931 · reconciled 12:04:56Z</span>
+    </div>
+  </div>
+  <div class="stamp"><b>HOBO CONTROL PLANE</b> — this view is a text file<br>fold of the log as of 2026-07-04 12:04:57Z · read-only until a plan passes its gates</div>
+</header>
+
+<table class="inv">
+  <colgroup>
+    <col style="width:120px"><col style="width:340px"><col style="width:110px">
+    <col style="width:180px"><col style="width:170px"><col style="width:410px"><col>
+  </colgroup>
+  <tr>
+    <th>Kind</th><th>Name</th><th>State</th><th>Version</th><th>Drift</th><th>Last event</th><th>Owner</th>
+  </tr>
+  <tr class="selected">
+    <td><span class="cursor-mark">▸</span> actor</td><td>harbor-crm/api</td><td>running</td><td>1.4.2</td>
+    <td class="ok">in sync</td><td><a href="#">#48211</a> reconcile.ok <span class="dim">12:04:56Z</span></td><td>crew:sre</td>
+  </tr>
+  <tr>
+    <td>actor</td><td>harbor-crm/web</td><td>running</td><td>1.4.2</td>
+    <td class="ok">in sync</td><td><a href="#">#48209</a> health.pass <span class="dim">12:04:41Z</span></td><td>crew:endpoint-monitor</td>
+  </tr>
+  <tr class="drifted">
+    <td>actor</td><td>harbor-crm/worker</td><td>running</td><td>1.4.1</td>
+    <td class="bad">behind plan</td><td><a href="#">#48196</a> drift.version <span class="dim">11:58:02Z</span></td><td>crew:gitops</td>
+  </tr>
+  <tr>
+    <td>provider</td><td>wasmcloud/httpserver</td><td>running</td><td>0.19.1</td>
+    <td class="ok">in sync</td><td><a href="#">#48170</a> provider.heartbeat <span class="dim">11:52:10Z</span></td><td>crew:platform-eng</td>
+  </tr>
+  <tr>
+    <td>provider</td><td>wasmcloud/nats-messaging</td><td>running</td><td>0.17.4</td>
+    <td class="ok">in sync</td><td><a href="#">#48168</a> provider.heartbeat <span class="dim">11:52:09Z</span></td><td>crew:platform-eng</td>
+  </tr>
+  <tr>
+    <td>postgres</td><td>harbor-crm-db</td><td>running</td><td>postgres-16.3</td>
+    <td class="ok">in sync</td><td><a href="#">#48155</a> backup.snapshot.ok <span class="dim">11:45:00Z</span></td><td>sarah</td>
+  </tr>
+  <tr>
+    <td>queue</td><td>harbor-crm-events <span class="dim">(jetstream)</span></td><td>running</td><td>nats 2.10.16</td>
+    <td class="ok">in sync</td><td><a href="#">#48122</a> stream.lag=0 <span class="dim">11:30:12Z</span></td><td>crew:sre</td>
+  </tr>
+  <tr>
+    <td>bucket</td><td>harbor-crm-blobs <span class="dim">(s3-compat)</span></td><td>bound</td><td>rev 12</td>
+    <td class="ok">in sync</td><td><a href="#">#48090</a> policy.applied <span class="dim">11:12:47Z</span></td><td>priya</td>
+  </tr>
+  <tr class="drifted">
+    <td>dns</td><td>crm.acme.dev → 65.108.24.17</td><td>active</td><td>A / ttl 120</td>
+    <td class="bad">manual edit</td><td><a href="#">#48201</a> drift.detected <span class="dim">12:01:33Z</span></td><td>crew:gitops</td>
+  </tr>
+  <tr>
+    <td>cert</td><td>crm.acme.dev <span class="dim">(lets-encrypt)</span></td><td>valid</td><td>exp 2026-08-30</td>
+    <td class="ok">in sync</td><td><a href="#">#48061</a> cert.renew.ok <span class="dim">10:58:20Z</span></td><td>crew:endpoint-monitor</td>
+  </tr>
+  <tr>
+    <td>secret-ref</td><td>postgres-dsn → vault:kv/crm/db</td><td>resolved</td><td>rev 7</td>
+    <td class="ok">no value held</td><td><a href="#">#48044</a> ref.resolved <span class="dim">10:41:05Z</span></td><td>morgan</td>
+  </tr>
+  <tr>
+    <td>secret-ref</td><td>smtp-token → vault:kv/crm/mail</td><td>resolved</td><td>rev 3</td>
+    <td class="ok">no value held</td><td><a href="#">#48044</a> ref.resolved <span class="dim">10:41:05Z</span></td><td>morgan</td>
+  </tr>
+  <tr>
+    <td>host</td><td>fsn1-h01 <span class="dim">(cx42 · lattice a1)</span></td><td>healthy</td><td>wasmcloud 1.3.0</td>
+    <td class="ok">in sync</td><td><a href="#">#48170</a> host.heartbeat <span class="dim">11:52:10Z</span></td><td>crew:platform-eng</td>
+  </tr>
+  <tr>
+    <td>host</td><td>fsn1-h02 <span class="dim">(cx42 · lattice a1)</span></td><td>healthy</td><td>wasmcloud 1.3.0</td>
+    <td class="ok">in sync</td><td><a href="#">#48171</a> host.heartbeat <span class="dim">11:52:10Z</span></td><td>crew:platform-eng</td>
+  </tr>
+</table>
+
+<section class="tail">
+  <h2>event log — tail (append-only, replayable)</h2>
+  <pre><a href="#">#48211</a> <span class="dim">12:04:56Z</span> reconcile.ok         actor:harbor-crm/api       plan#1931 applied cleanly, 0 changes outstanding
+<a href="#">#48210</a> <span class="dim">12:04:55Z</span> gate.pass            policy/cost-ceiling        plan#1932 estimated Δ +€0.00/mo — under ceiling €120/mo
+<a href="#">#48209</a> <span class="dim">12:04:41Z</span> health.pass          https://crm.acme.dev       200 in 84ms, probe fsn1→edge (crew:endpoint-monitor)
+<a href="#">#48201</a> <span class="dim">12:01:33Z</span> <span class="drift">drift.detected</span>       dns:crm.acme.dev           ttl 300→120 edited outside plan — reconcile queued
+<a href="#">#48196</a> <span class="dim">11:58:02Z</span> <span class="drift">drift.version</span>        actor:harbor-crm/worker    running 1.4.1, plan#1931 wants 1.4.2 — awaiting promote
+<a href="#">#48171</a> <span class="dim">11:52:10Z</span> host.heartbeat       host:fsn1-h02              3 actors, 2 providers, mem 41%, ok
+<a href="#">#48170</a> <span class="dim">11:52:10Z</span> host.heartbeat       host:fsn1-h01              4 actors, 2 providers, mem 38%, ok
+<a href="#">#48155</a> <span class="dim">11:45:00Z</span> backup.snapshot.ok   postgres:harbor-crm-db     wal-g full snapshot 1.2 GiB → harbor-crm-blobs
+<a href="#">#48122</a> <span class="dim">11:30:12Z</span> stream.lag=0         queue:harbor-crm-events    consumer worker-pool caught up, 0 pending, 312 msg/min
+<a href="#">#48108</a> <span class="dim">11:24:47Z</span> conformance.pass     bindle:harbor-crm@1.4.2    12/12 checks ✓ on camp fly-iad — portable to hetzner profile
+<a href="#">#48101</a> <span class="dim">11:21:09Z</span> gate.requested       security-review            plan#1932 assigned to morgan — sha256 of plan diff recorded
+<a href="#">#48100</a> <span class="dim">11:21:08Z</span> plan.created         plan#1932                  by marcus via `hobo promote harbor-crm --channel stable`
+<a href="#">#48090</a> <span class="dim">11:12:47Z</span> policy.applied       bucket:harbor-crm-blobs    lifecycle 90d → cold storage, public access DENY (priya)
+<a href="#">#48061</a> <span class="dim">10:58:20Z</span> cert.renew.ok        cert:crm.acme.dev          lets-encrypt R11, valid to 2026-08-30, chain pinned
+<a href="#">#48044</a> <span class="dim">10:41:05Z</span> ref.resolved         secret-ref:postgres-dsn    vault:kv/crm/db rev 7 — value never entered the log</pre>
+</section>
+
+<footer>
+  <div><kbd>[j/k]</kbd> row · <kbd>[enter]</kbd> inspect · <kbd>[:]</kbd> command · <kbd>[d]</kbd> diff · <kbd>[r]</kbd> replay events · <kbd>[?]</kbd> help</div>
+  <div>hobo 0.3.1 · every view is a fold over the log</div>
+</footer>
+
+<div class="palette">
+  <div class="bar"><span>command</span><span>plan is a preview — nothing has run</span></div>
+  <div class="input">&gt; promote harbor-crm --channel stable<span class="caret">&nbsp;</span></div>
+  <div class="section-label">will run — plan#1932 · 4 steps · 2 gates · 2 camps</div>
+  <ol>
+    <li class="sel"><span class="cursor-mark">▸</span> <span class="step">1 build</span> harbor-crm@1.4.2 already in registry oci:acme/harbor-crm — cached ✓, step skipped</li>
+    <li><span class="step">2 verify</span> conformance tests 12/12 ✓ on camp fly-iad (channel staging, run <a href="#">#48108</a>)</li>
+    <li><span class="step">3 gate</span> security-review (morgan) — <span class="pending">PENDING</span> · policy/cost-ceiling — ✓ passed at <a href="#">#48210</a></li>
+    <li><span class="step">4 deploy</span> actors api, web, worker → 1.4.2 · rolling swap, 0 downtime · then reconcile drift</li>
+  </ol>
+  <div class="meta">affected camps: <b>hetzner-fsn1</b> (this) · fly-iad <span class="dim">· fixes drift on harbor-crm/worker (×→✓)</span></div>
+  <div class="actions">[enter] queue plan#1932 — blocked until gate 3 clears · [tab] next completion · [esc] cancel</div>
+</div>

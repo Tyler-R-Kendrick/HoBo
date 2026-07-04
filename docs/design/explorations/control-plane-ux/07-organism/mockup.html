@@ -11,14 +11,12 @@
     --coral:#FB7185;
     --ink-dim:rgba(201,195,217,.72);
     --ink-faint:rgba(201,195,217,.55);
-    --teal-glow:rgba(45,212,191,.32);
+    --teal-glow:rgba(45,212,191,.34);
     --magenta-glow:rgba(232,121,249,.30);
     --lime-glow:rgba(163,230,53,.28);
-    --coral-glow:rgba(251,113,133,.34);
-    --vein:rgba(45,212,191,.28);
+    --coral-glow:rgba(251,113,133,.36);
     --card:rgba(36,27,51,.55);
     --r-blob-a:46% 54% 58% 42% / 52% 44% 56% 48%;
-    --r-blob-b:58% 42% 44% 56% / 46% 58% 42% 54%;
     --r-soft:38px 52px 44px 58px;
   }
   *{box-sizing:border-box;margin:0}
@@ -45,10 +43,10 @@
   }
   .nucleus{
     width:54px;height:54px;border-radius:var(--r-blob-a);
-    background:radial-gradient(circle at 35% 30%, rgba(45,212,191,.85), rgba(45,212,191,.25) 60%, transparent 75%), var(--membrane);
+    background:radial-gradient(circle at 35% 30%, rgba(45,212,191,.9), rgba(45,212,191,.3) 60%, transparent 78%), var(--membrane);
     box-shadow:0 0 26px var(--teal-glow), inset 0 0 14px rgba(45,212,191,.35);
     display:flex;align-items:center;justify-content:center;
-    color:var(--plum);font-weight:700;font-size:15px;letter-spacing:.02em;
+    color:var(--plum);font-weight:700;font-size:15px;
   }
   .crown h1{font-size:21px;font-weight:600;letter-spacing:.01em}
   .crown h1 em{font-style:normal;color:var(--teal)}
@@ -71,92 +69,100 @@
   .dish{
     position:relative;flex:1;overflow:hidden;
     background:
-      radial-gradient(520px 420px at 30% 55%, rgba(45,212,191,.06), transparent 70%),
-      radial-gradient(420px 360px at 78% 40%, rgba(163,230,53,.05), transparent 70%),
+      radial-gradient(560px 460px at 30% 58%, rgba(45,212,191,.08), transparent 70%),
+      radial-gradient(440px 380px at 80% 38%, rgba(163,230,53,.06), transparent 70%),
+      radial-gradient(380px 300px at 55% 90%, rgba(232,121,249,.05), transparent 70%),
       rgba(20,14,28,.6);
     border:1.5px solid rgba(201,195,217,.10);
     border-radius:64px 46px 58px 50px / 50px 60px 46px 62px;
   }
   .membrane{
     position:absolute;z-index:1;
-    border:1.5px solid rgba(45,212,191,.22);
-    border-radius:var(--r-blob-a);
+    border:1.5px solid rgba(45,212,191,.24);
+    border-radius:53% 47% 56% 44% / 47% 55% 45% 53%;
     background:
-      radial-gradient(70% 60% at 42% 38%, rgba(45,212,191,.07), transparent 70%),
-      rgba(36,27,51,.42);
-    box-shadow:inset 0 0 60px rgba(45,212,191,.06), 0 0 50px rgba(45,212,191,.05);
+      radial-gradient(70% 60% at 42% 38%, rgba(45,212,191,.08), transparent 70%),
+      rgba(36,27,51,.44);
+    box-shadow:inset 0 0 70px rgba(45,212,191,.07), 0 0 60px rgba(45,212,191,.06);
   }
-  .membrane.hetzner{left:26px;top:40px;width:600px;height:552px}
+  .membrane.hetzner{left:20px;top:34px;width:624px;height:594px}
   .membrane.edge{
-    left:612px;top:92px;width:348px;height:436px;
-    border-radius:var(--r-blob-b);
-    border-color:rgba(232,121,249,.16);
-    background:radial-gradient(70% 60% at 55% 40%, rgba(232,121,249,.05), transparent 70%), rgba(36,27,51,.26);
-    box-shadow:inset 0 0 50px rgba(232,121,249,.05);
+    left:618px;top:76px;width:352px;height:478px;
+    border-radius:42% 58% 46% 54% / 56% 42% 58% 44%;
+    border-color:rgba(232,121,249,.18);
+    background:radial-gradient(70% 60% at 55% 40%, rgba(232,121,249,.06), transparent 70%), rgba(36,27,51,.26);
+    box-shadow:inset 0 0 55px rgba(232,121,249,.06);
   }
   .membrane .tag{
-    position:absolute;top:20px;left:44px;font-size:12.5px;color:var(--ink-dim);
+    position:absolute;top:22px;left:52px;font-size:12.5px;color:var(--ink-dim);
     letter-spacing:.06em;
   }
   .membrane .tag b{color:var(--ink);font-weight:600;letter-spacing:.02em}
-  .membrane.edge .tag{left:auto;right:44px;text-align:right}
-  .veins{position:absolute;inset:0;z-index:2;pointer-events:none}
+  .membrane.edge .tag{left:auto;right:46px;text-align:right}
+  .veins{position:absolute;inset:0;z-index:2;pointer-events:none;width:100%;height:100%}
   .organelle{
     position:absolute;z-index:3;display:flex;flex-direction:column;
     align-items:center;justify-content:center;text-align:center;gap:2px;
     padding:10px 16px;
-    background:radial-gradient(circle at 36% 30%, rgba(45,212,191,.20), rgba(45,212,191,.04) 62%, transparent 78%), var(--membrane);
-    border:1.5px solid rgba(45,212,191,.35);
-    border-radius:42% 58% 60% 40% / 55% 45% 40% 60%;
-    box-shadow:0 0 34px var(--teal-glow), inset 0 0 22px rgba(45,212,191,.14);
+    background:radial-gradient(circle at 36% 30%, rgba(45,212,191,.22), rgba(45,212,191,.05) 62%, transparent 80%), var(--membrane);
+    border:1.5px solid rgba(45,212,191,.38);
+    box-shadow:0 0 38px var(--teal-glow), inset 0 0 24px rgba(45,212,191,.15);
   }
   .organelle .name{font-size:16px;font-weight:700;letter-spacing:.015em}
   .organelle .meta{font-size:11.5px;color:var(--ink-dim);line-height:1.35}
   .organelle .pulse{font-size:11.5px;color:var(--teal)}
-  .o-postgres{left:84px;top:352px;width:216px;height:184px;border-radius:56% 44% 42% 58% / 46% 56% 44% 54%}
-  .o-api{left:248px;top:104px;width:186px;height:152px}
+  .o-api{left:246px;top:92px;width:192px;height:160px;
+    border-radius:42% 58% 60% 40% / 55% 45% 40% 60%;transform:rotate(-3deg)}
+  .o-api > *{transform:rotate(3deg)}
+  .o-postgres{left:72px;top:382px;width:228px;height:192px;
+    border-radius:61% 39% 47% 53% / 45% 61% 39% 55%;transform:rotate(2deg)}
+  .o-postgres > *{transform:rotate(-2deg)}
   .o-events{
-    left:300px;top:296px;width:126px;height:104px;
-    border-radius:60% 40% 55% 45% / 45% 60% 40% 55%;
-    border-color:rgba(232,121,249,.42);
-    background:radial-gradient(circle at 36% 30%, rgba(232,121,249,.22), rgba(232,121,249,.05) 62%, transparent 78%), var(--membrane);
-    box-shadow:0 0 30px var(--magenta-glow), inset 0 0 18px rgba(232,121,249,.16);
+    left:304px;top:298px;width:134px;height:112px;
+    border-radius:65% 35% 55% 45% / 40% 65% 35% 60%;transform:rotate(-4deg);
+    border-color:rgba(232,121,249,.45);
+    background:radial-gradient(circle at 36% 30%, rgba(232,121,249,.24), rgba(232,121,249,.06) 62%, transparent 80%), var(--membrane);
+    box-shadow:0 0 32px var(--magenta-glow), inset 0 0 20px rgba(232,121,249,.17);
   }
+  .o-events > *{transform:rotate(4deg)}
   .o-events .pulse{color:var(--magenta)}
   .o-worker{
-    left:438px;top:376px;width:154px;height:132px;
-    border-radius:44% 56% 48% 52% / 58% 42% 56% 44%;
-    border-color:rgba(251,113,133,.5);
-    background:radial-gradient(circle at 36% 30%, rgba(251,113,133,.24), rgba(251,113,133,.05) 62%, transparent 78%), var(--membrane);
-    box-shadow:0 0 36px var(--coral-glow), inset 0 0 20px rgba(251,113,133,.18);
+    left:452px;top:382px;width:160px;height:138px;
+    border-radius:39% 61% 55% 45% / 60% 40% 58% 42%;transform:rotate(3deg);
+    border-color:rgba(251,113,133,.55);
+    background:radial-gradient(circle at 36% 30%, rgba(251,113,133,.26), rgba(251,113,133,.06) 62%, transparent 80%), var(--membrane);
+    box-shadow:0 0 40px var(--coral-glow), inset 0 0 22px rgba(251,113,133,.19);
   }
+  .o-worker > *{transform:rotate(-3deg)}
   .o-worker .pulse{color:var(--coral)}
   .o-web{
-    left:686px;top:150px;width:166px;height:138px;
-    border-radius:52% 48% 60% 40% / 42% 58% 44% 56%;
-    border-color:rgba(163,230,53,.4);
-    background:radial-gradient(circle at 36% 30%, rgba(163,230,53,.18), rgba(163,230,53,.04) 62%, transparent 78%), var(--membrane);
-    box-shadow:0 0 30px var(--lime-glow), inset 0 0 18px rgba(163,230,53,.13);
+    left:692px;top:136px;width:172px;height:144px;
+    border-radius:55% 45% 63% 37% / 40% 60% 42% 58%;transform:rotate(-2deg);
+    border-color:rgba(163,230,53,.42);
+    background:radial-gradient(circle at 36% 30%, rgba(163,230,53,.20), rgba(163,230,53,.05) 62%, transparent 80%), var(--membrane);
+    box-shadow:0 0 32px var(--lime-glow), inset 0 0 20px rgba(163,230,53,.14);
   }
+  .o-web > *{transform:rotate(2deg)}
   .o-web .pulse{color:var(--lime)}
   .o-blob{
-    left:726px;top:346px;width:140px;height:116px;
-    border-radius:40% 60% 52% 48% / 56% 44% 60% 40%;
-    border-color:rgba(163,230,53,.32);
-    background:radial-gradient(circle at 36% 30%, rgba(163,230,53,.14), transparent 70%), var(--membrane);
-    box-shadow:0 0 24px rgba(163,230,53,.18), inset 0 0 16px rgba(163,230,53,.10);
+    left:734px;top:360px;width:146px;height:122px;
+    border-radius:37% 63% 50% 50% / 58% 42% 62% 38%;transform:rotate(4deg);
+    border-color:rgba(163,230,53,.34);
+    background:radial-gradient(circle at 36% 30%, rgba(163,230,53,.15), transparent 72%), var(--membrane);
+    box-shadow:0 0 26px rgba(163,230,53,.2), inset 0 0 18px rgba(163,230,53,.11);
   }
+  .o-blob > *{transform:rotate(-4deg)}
   .o-blob .pulse{color:var(--lime)}
   .note{
-    position:absolute;z-index:4;left:352px;top:534px;width:330px;
+    position:absolute;z-index:4;left:356px;top:556px;width:344px;
     padding:10px 18px;font-size:12.5px;color:var(--ink-dim);
-    background:rgba(36,27,51,.9);
-    border:1.5px solid rgba(251,113,133,.4);
+    background:rgba(36,27,51,.92);
+    border:1.5px solid rgba(251,113,133,.42);
     border-radius:26px 34px 30px 38px / 32px 26px 36px 28px;
   }
   .note b{color:var(--coral);font-weight:600}
   .legend{
-    position:absolute;z-index:4;left:34px;bottom:22px;font-size:12px;color:var(--ink-faint);
+    position:absolute;z-index:4;left:36px;bottom:20px;font-size:12px;color:var(--ink-faint);
     letter-spacing:.03em;
   }
   /* ---------- immune log ---------- */
@@ -167,9 +173,7 @@
     border-radius:var(--r-soft);
     display:flex;flex-direction:column;gap:8px;
   }
-  .immune h2, .vitals h2{
-    font-size:12.5px;font-weight:600;letter-spacing:.14em;color:var(--ink-faint);
-  }
+  .immune h2{font-size:12.5px;font-weight:600;letter-spacing:.14em;color:var(--ink-faint)}
   .immune .entry{
     display:flex;align-items:center;gap:14px;
     background:rgba(20,14,28,.5);
@@ -182,9 +186,7 @@
   .entry b{color:var(--ink);font-weight:600}
   .entry .t{color:var(--ink-faint);margin-left:auto;font-size:12px;white-space:nowrap;padding-left:14px}
   /* ---------- vitals ---------- */
-  .vitals{
-    flex:0 0 544px;display:flex;flex-direction:column;gap:14px;min-height:0;
-  }
+  .vitals{flex:0 0 544px;display:flex;flex-direction:column;gap:14px;min-height:0}
   .vital{
     flex:1;padding:16px 24px 12px;min-height:0;
     background:var(--card);
@@ -193,16 +195,14 @@
     display:flex;flex-direction:column;gap:4px;
   }
   .vital .head{display:flex;align-items:baseline;gap:12px}
-  .vital .head .sense{
-    font-size:12.5px;font-weight:600;letter-spacing:.16em;color:var(--ink-faint);
-  }
+  .vital .head .sense{font-size:12.5px;font-weight:600;letter-spacing:.16em;color:var(--ink-faint)}
   .vital .head .what{font-size:12px;color:var(--ink-faint)}
   .vital .head .reading{margin-left:auto;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap}
   .vital .head .reading em{font-style:normal}
   .v-heart .sense, .v-heart .reading em{color:var(--teal)}
   .v-breath .sense, .v-breath .reading em{color:var(--magenta)}
-  .v-temp .sense, .v-temp .reading em{color:var(--lime)}
-  .v-cost .sense, .v-cost .reading em{color:var(--coral)}
+  .v-temp .sense, .v-temp .reading em{color:var(--coral)}
+  .v-cost .sense, .v-cost .reading em{color:var(--lime)}
   .vital svg{width:100%;height:74px;flex:1;min-height:0}
   .vital .foot{font-size:12px;color:var(--ink-faint)}
 </style>
@@ -226,36 +226,42 @@
         <div class="membrane hetzner"><div class="tag"><b>camp hetzner-fsn1</b><br>durable runtime · wasmCloud lattice</div></div>
         <div class="membrane edge"><div class="tag"><b>camp cloudflare-edge</b><br>edge tissue · 214 pops</div></div>
 
-        <svg class="veins" viewBox="0 0 992 636" fill="none">
+        <svg class="veins" viewBox="0 0 988 662" preserveAspectRatio="none" fill="none">
           <!-- web -> api, crossing membranes -->
-          <path d="M700 218 C 590 158, 500 148, 428 172" stroke="#2DD4BF" stroke-opacity=".30" stroke-width="2.5"/>
-          <circle cx="612" cy="180" r="3.4" fill="#2DD4BF" opacity=".8"/>
-          <circle cx="530" cy="162" r="2.6" fill="#2DD4BF" opacity=".55"/>
+          <path d="M700 190 C 590 132, 505 126, 430 148" stroke="#2DD4BF" stroke-opacity=".38" stroke-width="2.5"/>
+          <circle cx="617" cy="158" r="3.6" fill="#2DD4BF" opacity=".85"/>
+          <circle cx="536" cy="136" r="2.8" fill="#2DD4BF" opacity=".6"/>
           <!-- api -> events -->
-          <path d="M352 256 C 348 276, 354 288, 360 298" stroke="#E879F9" stroke-opacity=".35" stroke-width="2.5"/>
-          <circle cx="352" cy="272" r="3" fill="#E879F9" opacity=".8"/>
+          <path d="M356 250 C 350 274, 356 288, 364 300" stroke="#E879F9" stroke-opacity=".45" stroke-width="2.5"/>
+          <circle cx="353" cy="270" r="3.2" fill="#E879F9" opacity=".85"/>
           <!-- events -> worker (queue flow, busy) -->
-          <path d="M424 360 C 460 372, 474 388, 462 402" stroke="#E879F9" stroke-opacity=".45" stroke-width="3"/>
-          <circle cx="440" cy="366" r="3.6" fill="#E879F9" opacity=".95"/>
-          <circle cx="460" cy="376" r="3" fill="#E879F9" opacity=".75"/>
-          <circle cx="470" cy="390" r="2.6" fill="#E879F9" opacity=".6"/>
+          <path d="M430 372 C 472 384, 498 406, 512 428" stroke="#E879F9" stroke-opacity=".55" stroke-width="3"/>
+          <circle cx="450" cy="378" r="3.8" fill="#E879F9" opacity=".95"/>
+          <circle cx="478" cy="392" r="3.2" fill="#E879F9" opacity=".8"/>
+          <circle cx="498" cy="410" r="2.8" fill="#E879F9" opacity=".65"/>
           <!-- api -> postgres -->
-          <path d="M300 250 C 258 300, 232 328, 210 358" stroke="#2DD4BF" stroke-opacity=".30" stroke-width="2.5"/>
-          <circle cx="252" cy="308" r="3" fill="#2DD4BF" opacity=".7"/>
+          <path d="M300 246 C 260 306, 232 342, 208 388" stroke="#2DD4BF" stroke-opacity=".38" stroke-width="2.5"/>
+          <circle cx="253" cy="312" r="3.2" fill="#2DD4BF" opacity=".75"/>
+          <circle cx="224" cy="356" r="2.6" fill="#2DD4BF" opacity=".55"/>
           <!-- worker -> postgres -->
-          <path d="M442 462 C 386 486, 348 486, 302 470" stroke="#2DD4BF" stroke-opacity=".28" stroke-width="2.5"/>
-          <circle cx="372" cy="482" r="2.8" fill="#2DD4BF" opacity=".6"/>
+          <path d="M456 474 C 398 500, 352 502, 302 490" stroke="#2DD4BF" stroke-opacity=".34" stroke-width="2.5"/>
+          <circle cx="378" cy="497" r="3" fill="#2DD4BF" opacity=".65"/>
           <!-- web -> blob store -->
-          <path d="M776 290 C 786 310, 792 326, 796 344" stroke="#A3E635" stroke-opacity=".30" stroke-width="2.5"/>
-          <circle cx="788" cy="318" r="2.8" fill="#A3E635" opacity=".65"/>
+          <path d="M786 278 C 794 304, 800 328, 806 356" stroke="#A3E635" stroke-opacity=".38" stroke-width="2.5"/>
+          <circle cx="797" cy="316" r="3" fill="#A3E635" opacity=".7"/>
           <!-- worker note connector -->
-          <path d="M512 510 C 516 522, 518 528, 520 534" stroke="#FB7185" stroke-opacity=".4" stroke-width="1.6" stroke-dasharray="2 5"/>
+          <path d="M528 520 C 530 534, 530 546, 528 556" stroke="#FB7185" stroke-opacity=".5" stroke-width="1.6" stroke-dasharray="2 5"/>
           <!-- drifting plankton -->
-          <circle cx="90" cy="110" r="2" fill="#2DD4BF" opacity=".25"/>
-          <circle cx="140" cy="70" r="1.5" fill="#E879F9" opacity=".22"/>
-          <circle cx="930" cy="70" r="2" fill="#A3E635" opacity=".2"/>
-          <circle cx="640" cy="590" r="2" fill="#2DD4BF" opacity=".22"/>
-          <circle cx="900" cy="560" r="1.6" fill="#E879F9" opacity=".22"/>
+          <circle cx="92" cy="112" r="2" fill="#2DD4BF" opacity=".3"/>
+          <circle cx="146" cy="72" r="1.5" fill="#E879F9" opacity=".26"/>
+          <circle cx="560" cy="60" r="1.8" fill="#2DD4BF" opacity=".24"/>
+          <circle cx="930" cy="70" r="2" fill="#A3E635" opacity=".24"/>
+          <circle cx="948" cy="600" r="1.8" fill="#2DD4BF" opacity=".24"/>
+          <circle cx="660" cy="606" r="2" fill="#E879F9" opacity=".24"/>
+          <circle cx="120" cy="610" r="1.6" fill="#A3E635" opacity=".22"/>
+          <circle cx="40" cy="330" r="1.8" fill="#2DD4BF" opacity=".22"/>
+          <!-- faint current -->
+          <path d="M-10 640 C 200 600, 420 660, 640 620 S 940 600, 1000 616" stroke="#2DD4BF" stroke-opacity=".07" stroke-width="26" stroke-linecap="round"/>
         </svg>
 
         <div class="organelle o-api">
@@ -320,6 +326,7 @@
         <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
           <path d="M0 54 C 24 54 34 26 58 26 S 92 54 116 54 S 150 24 174 24 S 208 54 232 54 S 266 22 290 22 S 324 54 348 54 S 382 18 406 18 S 440 54 464 54 S 486 30 496 28" stroke="#E879F9" stroke-width="2" stroke-opacity=".8"/>
           <path d="M0 54 C 24 54 34 26 58 26 S 92 54 116 54 S 150 24 174 24 S 208 54 232 54 S 266 22 290 22 S 324 54 348 54 S 382 18 406 18 S 440 54 464 54 S 486 30 496 28 V74 H0 Z" fill="#E879F9" opacity=".08"/>
+          <text x="380" y="64" fill="#E879F9" opacity=".7" font-size="10" font-family="Trebuchet MS">09:40 checkout burst</text>
         </svg>
         <div class="foot">inhale 09:40 (checkout burst, +38%) · exhaled smoothly, no gasping</div>
       </div>
@@ -327,21 +334,22 @@
       <div class="vital v-temp">
         <div class="head"><span class="sense">temperature</span><span class="what">error heat</span><span class="reading"><em>36.8°</em> nominal · 0.02% errors</span></div>
         <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
-          <path d="M0 44 C 40 42 80 46 120 44 S 200 40 240 44 S 300 46 320 42" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
-          <path d="M320 42 C 332 38 340 24 352 24 S 372 40 384 44" stroke="#FB7185" stroke-width="2" stroke-opacity=".85"/>
-          <path d="M384 44 C 420 46 460 44 496 44" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
-          <circle cx="352" cy="24" r="3.6" fill="#FB7185" opacity=".9"/>
-          <text x="336" y="14" fill="#FB7185" opacity=".85" font-size="10" font-family="Trebuchet MS">09:12 fever, resorbed</text>
+          <path d="M0 46 C 40 44 80 48 120 46 S 200 42 240 46 S 300 48 320 44" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <path d="M320 44 C 332 40 340 22 352 22 S 372 42 384 46" stroke="#FB7185" stroke-width="2" stroke-opacity=".9"/>
+          <path d="M384 46 C 420 48 460 46 496 46" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <circle cx="352" cy="22" r="3.6" fill="#FB7185" opacity=".9"/>
+          <text x="308" y="12" fill="#FB7185" opacity=".85" font-size="10" font-family="Trebuchet MS">09:12 fever, resorbed in 74 s</text>
         </svg>
-        <div class="foot">brief fever during worker-2 isolation · back to nominal within 74 s</div>
+        <div class="foot">brief fever during worker-2 isolation · lymph (retries) draining normally</div>
       </div>
 
       <div class="vital v-cost">
         <div class="head"><span class="sense">metabolism</span><span class="what">cost burn</span><span class="reading"><em>$1.23/hr</em> · lean</span></div>
         <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
-          <path d="M0 50 C 50 48 90 44 140 46 S 240 52 300 48 S 420 40 496 44 V74 H0 Z" fill="#FB7185" opacity=".10"/>
-          <path d="M0 50 C 50 48 90 44 140 46 S 240 52 300 48 S 420 40 496 44" stroke="#FB7185" stroke-width="2" stroke-opacity=".7"/>
-          <text x="360" y="30" fill="#C9C3D9" opacity=".55" font-size="10" font-family="Trebuchet MS">hetzner $0.91 · cloudflare $0.32</text>
+          <path d="M0 44 C 50 42 90 36 140 38 S 240 48 300 42 S 420 30 496 36 V74 H0 Z" fill="#A3E635" opacity=".10"/>
+          <path d="M0 44 C 50 42 90 36 140 38 S 240 48 300 42 S 420 30 496 36" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <circle cx="470" cy="35" r="3" fill="#A3E635" opacity=".85"/>
+          <text x="330" y="20" fill="#C9C3D9" opacity=".6" font-size="10" font-family="Trebuchet MS">hetzner $0.91 · cloudflare $0.32</text>
         </svg>
         <div class="foot">$29.52/day pace · 12% under last week · no wasted calories detected</div>
       </div>

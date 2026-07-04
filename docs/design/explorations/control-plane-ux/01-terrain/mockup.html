@@ -96,6 +96,10 @@ body{
 .grow{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;font-style:italic}
 .grow .gs{font-style:normal;font-size:8px;letter-spacing:.16em;color:var(--moss)}
 .grow .gs.wait{color:var(--ochre)}
+.conditions{margin-top:10px}
+.conditions h3{font-size:9px;font-weight:400;letter-spacing:.2em;border-top:1px solid var(--ink);padding-top:7px;margin-bottom:4px}
+.crow{display:flex;justify-content:space-between;font-size:11.5px;font-style:italic;padding:2px 0;border-bottom:1px dotted var(--hairline)}
+.crow .cv{font-style:normal;font-size:10.5px}
 .notes .colophon{margin-top:auto;padding-top:8px;border-top:1px solid var(--hairline);font-size:8px;color:var(--ink-soft);text-align:center;line-height:1.7}
 </style>
 
@@ -285,25 +289,54 @@ body{
   </g>
 
   <!-- ==== harbor-crm structures ==== -->
-  <g transform="translate(268,498)">
+  <g transform="translate(250,502)">
     <g stroke="#33302A" stroke-width="1.1" fill="#F3EFE4">
-      <path d="M0,8 h11 v9 h-11 z M-1,8 L5.5,1 L12,8 Z"/>
-      <path d="M26,10 h11 v9 h-11 z M25,10 L31.5,3 L38,10 Z"/>
-      <path d="M52,7 h11 v9 h-11 z M51,7 L57.5,0 L64,7 Z"/>
-      <path d="M12,28 h11 v9 h-11 z M11,28 L17.5,21 L24,28 Z"/>
-      <path d="M40,27 h11 v9 h-11 z M39,27 L45.5,20 L52,27 Z"/>
-      <path d="M66,25 h11 v9 h-11 z M65,25 L71.5,18 L78,25 Z"/>
+      <path d="M0,7 h11 v9 h-11 z M-1,7 L5.5,0 L12,7 Z"/>
+      <path d="M34,9 h11 v9 h-11 z M33,9 L39.5,2 L46,9 Z"/>
+      <path d="M68,6 h11 v9 h-11 z M67,6 L73.5,-1 L80,6 Z"/>
+      <path d="M8,40 h11 v9 h-11 z M7,40 L13.5,33 L20,40 Z"/>
+      <path d="M44,42 h11 v9 h-11 z M43,42 L49.5,35 L56,42 Z"/>
+      <path d="M78,38 h11 v9 h-11 z M77,38 L83.5,31 L90,38 Z"/>
     </g>
-    <g font-size="8" font-style="italic" fill="#33302A" paint-order="stroke" stroke="#F3EFE4" stroke-width="2.5">
-      <text x="-2" y="26">api</text>
-      <text x="25" y="28">web</text>
-      <text x="50" y="25">worker</text>
-      <text x="8" y="47">postgres</text>
-      <text x="39" y="46">events</text>
-      <text x="66" y="44">blob</text>
+    <g font-size="8" font-style="italic" fill="#33302A" paint-order="stroke" stroke="#F3EFE4" stroke-width="2.5" text-anchor="middle">
+      <text x="5.5" y="26">api</text>
+      <text x="39.5" y="28">web</text>
+      <text x="73.5" y="25">worker</text>
+      <text x="13.5" y="59">postgres</text>
+      <text x="49.5" y="61">events</text>
+      <text x="83.5" y="57">blob</text>
     </g>
-    <path d="M40,-4 C36,-16 30,-26 40,-38" stroke="#6B6455" stroke-width=".8" fill="none"/>
-    <text x="46" y="60" font-size="9.5" font-style="italic" fill="#33302A" text-anchor="middle" paint-order="stroke" stroke="#F3EFE4" stroke-width="2.5">the harbor-crm bindle</text>
+    <path d="M46,-6 C42,-18 36,-28 48,-40" stroke="#6B6455" stroke-width=".8" fill="none"/>
+    <text x="50" y="74" font-size="9.5" font-style="italic" fill="#33302A" text-anchor="middle" paint-order="stroke" stroke="#F3EFE4" stroke-width="2.5">the harbor-crm bindle</text>
+  </g>
+
+  <!-- ==== water depth soundings (latency of the sound, ms) ==== -->
+  <g font-size="9" font-style="italic" fill="#7FA0AE" text-anchor="middle">
+    <text x="628" y="152">21</text>
+    <text x="608" y="326">24</text>
+    <text x="656" y="596">19</text>
+    <text x="582" y="702">27</text>
+    <text x="760" y="468">18</text>
+    <text x="1082" y="452">34</text>
+    <text x="1124" y="892">31</text>
+    <text x="196" y="884">23</text>
+    <text x="80,">&#8203;</text>
+  </g>
+
+  <!-- ==== interior survey annotations ==== -->
+  <g font-style="italic" fill="#6B6455">
+    <g transform="translate(138,382) rotate(-7)">
+      <text font-size="10">open range — 22 vCPU,</text>
+      <text y="13" font-size="10">96 GiB uncommitted</text>
+      <path d="M4,20 l7,4 M16,22 l7,4 M28,24 l7,4" stroke="#6B6455" stroke-width=".7"/>
+    </g>
+    <g transform="translate(706,232) rotate(4)">
+      <text font-size="10">edge meadows — 280 PoPs</text>
+    </g>
+    <g transform="translate(756,600) rotate(-3)">
+      <text font-size="10">preview grounds — ephemeral,</text>
+      <text y="13" font-size="10">reclaimed nightly at 02:00</text>
+    </g>
   </g>
 
   <!-- ==== compass rose (in the sound) ==== -->
@@ -392,6 +425,14 @@ body{
     <div class="grow"><span>policy · secretless-references-only</span><span class="gs cap">cleared 07:41</span></div>
     <div class="grow"><span>conformance · harbor-crm suite, 34 checks</span><span class="gs cap">cleared 07:39</span></div>
     <div class="grow"><span>capacity · production head-room ≥ 20%</span><span class="gs cap wait">awaiting survey</span></div>
+  </div>
+
+  <div class="conditions">
+    <h3 class="cap">Conditions at press time — Junction “northwind”</h3>
+    <div class="crow"><span>events logged since 00:00</span><span class="cv">1,204</span></div>
+    <div class="crow"><span>deploys landed · rolled back</span><span class="cv">7 · 0</span></div>
+    <div class="crow"><span>median gate crossing</span><span class="cv">3 m 40 s</span></div>
+    <div class="crow"><span>spend elevation, all yards</span><span class="cv">$412 / day ↘</span></div>
   </div>
 
   <div class="colophon cap">Surveyor: GitOps Crew · countersigned S. Chen, admin<br>All marks derived from events #48,101–#48,112 — dispute a mark, replay the log</div>

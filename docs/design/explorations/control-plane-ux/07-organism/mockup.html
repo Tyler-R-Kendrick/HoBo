@@ -165,6 +165,11 @@
     position:absolute;z-index:4;left:36px;bottom:20px;font-size:12px;color:var(--ink-faint);
     letter-spacing:.03em;
   }
+  .osmosis{
+    position:absolute;z-index:4;left:704px;top:492px;width:246px;
+    font-size:11.5px;color:var(--ink-faint);text-align:center;line-height:1.4;
+  }
+  .osmosis b{color:var(--ink-dim);font-weight:600}
   /* ---------- immune log ---------- */
   .immune{
     flex:0 0 176px;padding:16px 26px 14px;
@@ -296,6 +301,7 @@
         </div>
 
         <div class="note"><b>mild inflammation</b> — worker-2 retried events intake 3× in 10 min; sre crew attending, no fever yet</div>
+        <div class="osmosis"><b>osmosis is secretless</b> — web binds postgres by reference through the membrane; no keys live inside cells</div>
         <div class="legend">glow = vitality · size = allocated resources · vesicles = event flow · membranes = camps</div>
       </section>
 
@@ -334,11 +340,12 @@
       <div class="vital v-temp">
         <div class="head"><span class="sense">temperature</span><span class="what">error heat</span><span class="reading"><em>36.8°</em> nominal · 0.02% errors</span></div>
         <svg viewBox="0 0 496 74" preserveAspectRatio="none" fill="none">
-          <path d="M0 46 C 40 44 80 48 120 46 S 200 42 240 46 S 300 48 320 44" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
-          <path d="M320 44 C 332 40 340 22 352 22 S 372 42 384 46" stroke="#FB7185" stroke-width="2" stroke-opacity=".9"/>
-          <path d="M384 46 C 420 48 460 46 496 46" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
-          <circle cx="352" cy="22" r="3.6" fill="#FB7185" opacity=".9"/>
-          <text x="308" y="12" fill="#FB7185" opacity=".85" font-size="10" font-family="Trebuchet MS">09:12 fever, resorbed in 74 s</text>
+          <path d="M0 40 C 40 38 80 42 120 40 S 200 36 240 40 S 300 42 320 38" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <path d="M320 38 C 332 34 340 16 352 16 S 372 36 384 40" stroke="#FB7185" stroke-width="2" stroke-opacity=".9"/>
+          <path d="M384 40 C 420 42 460 40 496 40" stroke="#A3E635" stroke-width="2" stroke-opacity=".75"/>
+          <circle cx="352" cy="16" r="3.6" fill="#FB7185" opacity=".9"/>
+          <text x="376" y="20" fill="#FB7185" opacity=".85" font-size="10" font-family="Trebuchet MS">09:12 fever, resorbed in 74 s</text>
+          <text x="10" y="60" fill="#C9C3D9" opacity=".45" font-size="10" font-family="Trebuchet MS">36.6°</text>
         </svg>
         <div class="foot">brief fever during worker-2 isolation · lymph (retries) draining normally</div>
       </div>

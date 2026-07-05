@@ -78,6 +78,8 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Scope listing | Bindle, Camp, Yard, or Junction distributed as an npm package or structured git repo that exports the constructed scope. |
 | SVID | SPIFFE-style workload identity issued by the Yard for keyless auth. |
 | Stub | Typed recording placeholder behind a WIT port so an app runs before a real implementation exists. |
+| Trainable signature | Signature-only trainable-method declaration (`training.define`): intent + contract + rubric with no body, served by a contract-derived stub until the training engine synthesizes an implementation ([ADR-0125](./adr/03-data-plane.md#adr-0125)). |
+| Training artifact | Serialized optimized program (instructions + demos, provenance-pinned JSON) produced by a `training-engine` run and applied at instantiation as the low-risk promotion mode ([ADR-0125](./adr/03-data-plane.md#adr-0125)). |
 | The `notify` port | Canonical cloud-messaging transport for email, sms, push, webhooks, ops alerts, app comms, status, and paging. |
 | Token budget | Scoped **`TokenBudget`** object capping LLM inference input/output/total tokens per period (`per-run`, `daily`, `monthly`) for tenant/Camp/agent/model/run scopes; enforced by the pre-inference **`evaluateInferenceTokenBudget`** gate over a seq-pinned `MeteringView` ([governance-planes.md#per-token-inference-budgets](./governance-planes.md#per-token-inference-budgets)). Distinct from auth `token.*` credential events. |
 | WIT interface | Canonical language-neutral contract form for a HoBo port. |

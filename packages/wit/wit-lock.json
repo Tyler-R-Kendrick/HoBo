@@ -270,6 +270,26 @@
       "stability": "experimental",
       "path": "wit/deps/hobo-blob-events/hobo-blob-events.wit",
       "sha256": "sha256:1c8473c01beb90995cd22ceb68dedc8143cf7e145f0b464e9876f1c1a105dc3e"
+    },
+    {
+      "id": "hobo:training-engine/types@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "training-engine",
+      "interface_name": "types",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-training-engine/hobo-training-engine.wit",
+      "sha256": "sha256:1f8779dd64b611eb2e711accb7789e7b12b74e10d741f024164d622b26cb944d"
+    },
+    {
+      "id": "hobo:training-engine/training-engine@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "training-engine",
+      "interface_name": "training-engine",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-training-engine/hobo-training-engine.wit",
+      "sha256": "sha256:1f8779dd64b611eb2e711accb7789e7b12b74e10d741f024164d622b26cb944d"
     }
   ],
   "guards": [

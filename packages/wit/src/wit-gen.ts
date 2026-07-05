@@ -71,6 +71,11 @@ export const GENERATION_TARGETS = [
 		worldName: "blob-events-provider",
 		outSubdir: "blob-events-provider",
 	},
+	{
+		witPath: "wit/deps/hobo-training-engine/hobo-training-engine.wit",
+		worldName: "training-engine-provider",
+		outSubdir: "training-engine-provider",
+	},
 ] as const;
 
 export function digestSource(source: string | Buffer): string {

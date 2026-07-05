@@ -43,6 +43,30 @@
 			"promotedTo": "packages/componentize/src",
 			"status": "reference",
 			"note": "Partial promotion (S0 scope, ADR-0105): oci/smoke/sources modules are S1+ scope and stay in the proof as reference (GAPS.md IMPL-006)."
+		},
+		{
+			"proof": "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools",
+			"promotedTo": "packages/schema-tools",
+			"status": "frozen",
+			"note": "S0-04 promotion gate: production codegen orchestrator. Promoted with nested-package + buf.yaml opt-in discovery and strict-tsconfig fixes; the POC copy remains its own executable proof fixture.",
+			"digests": {
+				"contracts/pacts/schema_tools_codegen_report.pact.json": "sha256:bc246cf883752dc4ca4bd8e70d24df2177deed49d578c013f9789c388275bbba",
+				"data-models/buf.yaml": "sha256:b91555931d75c55b4ab15530a6be430649a9a1de07577a3963612b90b186434c",
+				"data-models/codegen_report.cue": "sha256:b7f492bc670ef15d9c43ac9e1b449ce18a6eeb133211249031f38ec4de6d42af",
+				"data-models/fixtures/invalid/negative-duration.json": "sha256:dd87d538183e3cc8a699c463f6eb85678d81765f9c67dd7d27ca2a61d2c21818",
+				"data-models/fixtures/valid/clean-report.json": "sha256:6ee3ef6b78daffc96962deff1c333c6191711ac10d0445097857c6d5fb7a6476",
+				"data-models/hobo/schematools/v1/codegen_report.proto": "sha256:de5cb403525016175c1e511e4292a580b7b74f718cefc908db694adcc1389afa",
+				"package.json": "sha256:6ab362f11ef3a3ecfe640c58b8ee513d50805540aeaf5f5bbc96827802132ee3",
+				"src/_generated/hobo/schematools/v1/codegen_report_pb.ts": "sha256:f882b88ea9305180334fa8e46ed9e3c600c2e62e6225810782ca56061becb105",
+				"src/cli.ts": "sha256:a6408260db5ba1912f02de0d24fb940553fa8ee789d05e90b2a14ae870dd92f2",
+				"src/codegen.ts": "sha256:e2cb6e220cc8ef85ed68ab3bea673a2bfbd0181152226432cb1a6eadcea23b86",
+				"src/cue.ts": "sha256:6c120eb8eae063f1e385cc8fb7c57e7bc4792968bdd73c98677a2cc5f0badfd1",
+				"src/discover.ts": "sha256:61eaefb81f281cbd94664cd247826e4a44e9ff6e3b986211ee9f1b8269a276ec",
+				"src/parse.ts": "sha256:2750ed6d6ac8d3ed6bcbe60c6f1f9a06f43b6903398d615fce901781c6dd0b4a",
+				"src/types.ts": "sha256:2fd23e4a87f8feb36d65841ad16b9fa90bcab6d6cfb4a18df206d244807fdbac",
+				"test/codegen-pipeline.test.ts": "sha256:5113466f5fbe62a9d5e31917e9ecaff7cdd62c5b825488b867c91c11a30e80c9",
+				"tsconfig.json": "sha256:72909bdc6a21c90a32d98bf1a5bc1b40109b130f1d71e3b22b8b90f0ef36fb0b"
+			}
 		}
 	]
 }

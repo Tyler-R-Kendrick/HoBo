@@ -3,13 +3,29 @@ package hobo:training-engine@0.1.0;
 // The training-engine port (ADR-0025 / ADR-0125). Engines are internal
 // providers selected per tenant/Camp; this package is deliberately NOT
 // imported by the hobo:sdk world — the SDK surface never sees the optimizer.
+// Record shapes mirror hobo.core.v1 (data-models/training_engine.proto);
+// the proto is the canonical schema and this WIT is its component-model view.
 
 interface types {
+  enum open-inference-span-kind {
+    unspecified,
+    llm,
+    chain,
+    tool,
+    retriever,
+    reranker,
+    embedding,
+    agent,
+    guardrail,
+    evaluator,
+    prompt,
+  }
+
   record generated-region-ref {
     region-id: string,
     artifact-ref: string,
-    start-offset: u64,
-    end-offset: u64,
+    start-offset: u32,
+    end-offset: u32,
     owner: string,
   }
 
@@ -25,10 +41,19 @@ interface types {
     agent: agent-ref,
   }
 
+  record subject-ref {
+    method: string,
+    contract-ref: string,
+    generated-region: generated-region-ref,
+  }
+
   record span {
     id: string,
     parent-id: option<string>,
+    kind: open-inference-span-kind,
     name: string,
+    start-time: string,
+    end-time: string,
     attributes-json: string,
     inputs-json: string,
     outputs-json: string,
@@ -41,13 +66,10 @@ interface types {
   }
 
   record trajectory {
-    schema: string,
     id: string,
     traceparent: string,
     run: run-ref,
-    method: string,
-    contract-ref: string,
-    generated-region: generated-region-ref,
+    subject: subject-ref,
     spans: list<span>,
     payloads-json: string,
     reward: reward,
@@ -65,7 +87,6 @@ interface types {
   }
 
   record optimize-request {
-    schema: string,
     request-id: string,
     generated-region: generated-region-ref,
     trajectories: list<trajectory>,
@@ -74,36 +95,43 @@ interface types {
   }
 
   record candidate-edit {
-    start-offset: u64,
-    end-offset: u64,
+    start-offset: u32,
+    end-offset: u32,
     replacement: string,
   }
 
+  // ADR-0048: region-scoped source rewrite.
   record candidate-patch {
-    schema: string,
-    id: string,
-    engine-id: string,
     region: generated-region-ref,
     edits: list<candidate-edit>,
-    provenance-json: string,
   }
 
   // ADR-0125: the serialized-optimized-program candidate form, applied at
-  // component instantiation. program-json is engine-defined and opaque,
-  // pinned by engine id + version.
+  // component instantiation. program-json carries the platform-normalized
+  // TrainingArtifactProgram.
   record training-artifact {
-    schema: string,
-    id: string,
     engine-id: string,
     engine-version: string,
     method-ref: string,
     program-json: string,
-    provenance-json: string,
   }
 
-  variant candidate {
+  variant candidate-body {
     patch(candidate-patch),
     artifact(training-artifact),
+  }
+
+  record candidate-provenance {
+    trajectory-hashes: list<string>,
+    rubric-ref: string,
+    contract-ref: string,
+  }
+
+  record candidate {
+    id: string,
+    engine-id: string,
+    provenance: candidate-provenance,
+    body: candidate-body,
   }
 
   record training-error {

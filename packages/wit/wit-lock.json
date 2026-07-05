@@ -279,7 +279,7 @@
       "version": "0.1.0",
       "stability": "experimental",
       "path": "wit/deps/hobo-training-engine/hobo-training-engine.wit",
-      "sha256": "sha256:1f8779dd64b611eb2e711accb7789e7b12b74e10d741f024164d622b26cb944d"
+      "sha256": "sha256:9c6a5ac9cec50169a66865551cfa6a4b8e7434907d62c26c445fc7d16bedc6de"
     },
     {
       "id": "hobo:training-engine/training-engine@0.1.0@experimental",
@@ -289,7 +289,7 @@
       "version": "0.1.0",
       "stability": "experimental",
       "path": "wit/deps/hobo-training-engine/hobo-training-engine.wit",
-      "sha256": "sha256:1f8779dd64b611eb2e711accb7789e7b12b74e10d741f024164d622b26cb944d"
+      "sha256": "sha256:9c6a5ac9cec50169a66865551cfa6a4b8e7434907d62c26c445fc7d16bedc6de"
     }
   ],
   "guards": [

@@ -104,6 +104,12 @@ const REQUIRED_CHECKS = [
 			"Name command/event, actor, event-store, materialized-view/projection, snapshot, and read-store behavior.",
 		passes: (evidence) => evidence.hasEventArchitecture,
 	},
+	{
+		code: "parallel-proto-type",
+		message: (evidence) =>
+			`Import generated types from src/_generated/**_pb.ts instead of hand-declaring proto-shaped types (technical-standards.md); annotate deliberate exceptions with // parallel-type-allowed: <why>. Offenders: ${evidence.parallelTypeDeclarations.join(", ")}`,
+		passes: (evidence) => evidence.parallelTypeDeclarations.length === 0,
+	},
 ];
 
 export function foreignLockfileProblems(files) {
@@ -149,7 +155,10 @@ export async function checkArchitectureGuardrails({
 			if (!check.passes(evidence)) {
 				problems.push({
 					code: check.code,
-					message: check.message,
+					message:
+						typeof check.message === "function"
+							? check.message(evidence)
+							: check.message,
 					packageRoot,
 				});
 			}
@@ -179,6 +188,7 @@ async function collectEvidence(root, packageRoot) {
 		? await listFiles(absolutePackageRoot, absolutePackageRoot)
 		: [];
 	const text = [];
+	const typeScriptSources = [];
 	const protoTypes = new Set();
 	const cueTexts = [];
 	let hasPactContract = false;
@@ -228,7 +238,18 @@ async function collectEvidence(root, packageRoot) {
 		}
 
 		if (TEXT_EXTENSIONS.has(ext)) {
-			text.push(await readFile(path.join(absolutePackageRoot, file), "utf8"));
+			const contents = await readFile(
+				path.join(absolutePackageRoot, file),
+				"utf8",
+			);
+			text.push(contents);
+			if (
+				ext === ".ts" &&
+				/^src\//.test(normalized) &&
+				!/(^|\/)_generated(\/|$)/.test(normalized)
+			) {
+				typeScriptSources.push({ file: normalized, contents });
+			}
 		}
 	}
 
@@ -258,7 +279,37 @@ async function collectEvidence(root, packageRoot) {
 		hasDataModelsCue,
 		hasMisplacedDataModel,
 		hasContractsPact,
+		parallelTypeDeclarations: parallelTypeDeclarations(
+			typeScriptSources,
+			protoTypes,
+		),
 	};
+}
+
+// Hand-declared TS types that duplicate a proto message/enum name are the
+// "parallel interfaces" the architecture rules forbid — record types must be
+// the generated ones (technical-standards.md). Escape hatch: annotate the
+// declaration (same or previous line) with // parallel-type-allowed: <why>.
+function parallelTypeDeclarations(typeScriptSources, protoTypes) {
+	if (protoTypes.size === 0) return [];
+	const offenders = [];
+	for (const { file, contents } of typeScriptSources) {
+		const lines = contents.split(/\r?\n/u);
+		for (const [index, line] of lines.entries()) {
+			// Declarations only: `interface X ...` or `type X = {` (an alias whose
+			// right-hand side derives from another type is a legitimate narrowing,
+			// and `type X,` inside import/export lists is not a declaration).
+			const match = line.match(
+				/^\s*(?:export\s+)?(?:interface\s+([A-Za-z_$][\w$]*)[\s<{]|type\s+([A-Za-z_$][\w$]*)(?:<[^>]*>)?\s*=\s*\{)/u,
+			);
+			const name = match?.[1] ?? match?.[2];
+			if (!name || !protoTypes.has(name)) continue;
+			const context = `${lines[index - 1] ?? ""}\n${line}`;
+			if (context.includes("parallel-type-allowed:")) continue;
+			offenders.push(`${file}:${index + 1} ${name}`);
+		}
+	}
+	return offenders;
 }
 
 function protoTypeNames(content) {

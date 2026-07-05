@@ -1,6 +1,7 @@
 import { CoreParseError } from "../errors.js";
 import { deepFreeze, nonEmptyString, positiveInteger } from "../parse-utils.js";
 
+// public-contract: the streamer port default stream name (port contract).
 export const DEFAULT_STREAM_NAME = "default" as StreamName;
 
 export type RunId = string & { readonly __brand: "RunId" };
@@ -21,6 +22,7 @@ export interface StreamerRunResultRecord {
 	readonly reason: string;
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface StreamerFrame<TChunk = unknown> {
 	readonly run_id: string;
 	readonly runId: RunId;
@@ -29,6 +31,7 @@ export interface StreamerFrame<TChunk = unknown> {
 	readonly chunk: TChunk;
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface StreamerRunResult {
 	readonly run_id: string;
 	readonly runId: RunId;

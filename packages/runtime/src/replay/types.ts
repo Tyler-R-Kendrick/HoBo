@@ -13,11 +13,13 @@ export interface EventEnvelope {
 
 export type SeqVector = Record<string, number>;
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface SeqVectorEntry {
 	streamId: string;
 	seq: number;
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface ReplayReport {
 	runId: string;
 	seqVector: readonly SeqVectorEntry[];

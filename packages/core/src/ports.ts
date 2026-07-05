@@ -9,6 +9,7 @@ import {
 export type PortKind = "runtime" | "provider" | "port";
 export type InterfaceStability = "stable" | "preview" | "experimental";
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface PortDescriptor {
 	kind: PortKind;
 	name: string;

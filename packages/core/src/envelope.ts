@@ -11,12 +11,14 @@ import {
 
 export type PrincipalKind = "user" | "agent" | "service" | "system";
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface PrincipalRef {
 	kind: PrincipalKind;
 	id: string;
 	delegatedBy?: PrincipalRef;
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface EventEnvelope<T = unknown> {
 	id: string;
 	type: string;

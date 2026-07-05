@@ -18,6 +18,7 @@ export type CapabilityDiagnosticCode =
 
 export type DiagnosticSeverity = "error" | "warning" | "info";
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface CapabilityGrant {
 	componentId: string;
 	importInterface: string;
@@ -25,11 +26,13 @@ export interface CapabilityGrant {
 	operations: readonly string[];
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface CapabilityUsage {
 	inferred: readonly string[];
 	source: "static-analysis";
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface CapabilityDiagnostic {
 	code: CapabilityDiagnosticCode;
 	severity: DiagnosticSeverity;
@@ -56,6 +59,7 @@ export interface CapabilityUsageResult {
 	diagnostics: readonly CapabilityDiagnostic[];
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface GrantEvaluation {
 	schema: "hobo.capability-enforcement/v1";
 	ok: boolean;

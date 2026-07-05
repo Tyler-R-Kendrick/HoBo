@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { JsonValue } from "@bufbuild/protobuf";
-import { fromJson, toJson } from "@bufbuild/protobuf";
+import { fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import {
 	type GeneratedRegion,
 	OpenInferenceSpanKind,
@@ -301,11 +301,13 @@ function assertArtifactInvariants(artifact: TrainingArtifact): void {
 }
 
 export function parseTrainingArtifact(value: unknown): TrainingArtifact {
-	const artifact = fromJsonOrFail<TrainingArtifact>(
-		TrainingArtifactSchema,
-		typeof value === "string" ? JSON.parse(value) : value,
-		"trainingArtifact",
-	);
+	const artifact = isMessage(value, TrainingArtifactSchema)
+		? value
+		: fromJsonOrFail<TrainingArtifact>(
+				TrainingArtifactSchema,
+				typeof value === "string" ? JSON.parse(value) : value,
+				"trainingArtifact",
+			);
 	assertArtifactInvariants(artifact);
 	return deepFreeze(artifact);
 }

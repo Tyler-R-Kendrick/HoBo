@@ -16,6 +16,7 @@ import {
 	uniqueStringArray,
 } from "./parse-utils.js";
 
+// public-contract: the core manifest schema version consumers pin against.
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 
 const STABILITIES = new Set<InterfaceStability>([
@@ -38,6 +39,7 @@ const REQUIRED_MANIFEST_FILES = [
 	"cost.json",
 ] as const;
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface CapabilityManifestBundle {
 	index: {
 		schemaVersion: "hobo.core/v1";

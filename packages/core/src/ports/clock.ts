@@ -31,6 +31,7 @@ export interface ScheduledTimer {
 	readonly deduped: boolean;
 }
 
+// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
 export interface CronSchedule {
 	readonly scheduleId: ScheduleId;
 	readonly everyMs: number;

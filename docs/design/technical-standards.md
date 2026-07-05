@@ -39,6 +39,8 @@ The repo-level `pnpm run standards:check` gate runs locally, in the pre-commit h
 - `package.json` and `pnpm-lock.yaml` must keep the TypeScript toolchain declared and locked.
 - `AGENTS.md` and this document must retain the canonical Protobuf, CUE, parse-don't-validate, and PACT guidance.
 - Implementation files under `src/`, `scripts/`, or `test/` may not use `.js`, `.mjs`, or `.cjs`; use `.ts` unless an ADR/proof note records why the file cannot be TypeScript. The standards gate also fails if any tracked `.js`, `.mjs`, or `.cjs` file remains in the repository.
+- Changed files under `packages/*/src/` may not add exported string-literal constants without a `// public-contract: <why>` marker on or above the declaration (see "Minimal public surface" above). The repo-wide backlog is surfaced by the `no-exported-literal-const` ast-grep rule via `pnpm run search:structure`.
+- `pnpm run architecture:guard` additionally fails a changed package that hand-declares a TS `interface`/`type` named after one of its own proto messages outside `src/_generated/` (`parallel-proto-type`); deliberate exceptions carry `// parallel-type-allowed: <why>` and are tracked in the GAPS.md implementation-gap register (IMPL-011).
 
 Repository-wide data-model catalogs are forbidden. Each project/package that owns a CUE-constrained type must keep its own `data-models/` folder beside the protobuf contract or proof package that owns that type. Protobuf descriptor parity, CUE evaluation, PACT fixtures, and parse/refinement tests must be implemented beside the contract they protect, not through a central `contracts/data-models` bridge.
 

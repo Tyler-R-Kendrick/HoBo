@@ -1,5 +1,12 @@
-import { parseTrainingArtifact, type TrainingArtifact } from "@hobo/core";
+import { create } from "@bufbuild/protobuf";
 import {
+	parseTrainingArtifact,
+	parseTrainingArtifactProgram,
+	type TrainingArtifact,
+} from "@hobo/core";
+import { TrainableManifestFactSchema } from "../_generated/trainable_manifest_fact_pb.js";
+import {
+	type FieldDescription,
 	type RecordedTrainableCall,
 	TRAINABLE,
 	type Trainable,
@@ -71,19 +78,34 @@ function lowerToFact(
 	options: TrainingOptions,
 	baseline: "body" | "stub",
 ): TrainableManifestFact {
-	return Object.freeze({
-		methodRef,
-		intent: options.intent,
-		contractRef: options.contract.ref,
-		rubric: Object.freeze({ ...options.rubric }),
-		params: Object.freeze({ ...(options.params ?? {}) }),
-		output: Object.freeze({ ...(options.output ?? {}) }),
-		invariants: Object.freeze([...(options.contract.invariants ?? [])]),
-		forbiddenOutputs: Object.freeze([
-			...(options.contract.forbiddenOutputs ?? []),
+	return Object.freeze(
+		create(TrainableManifestFactSchema, {
+			methodRef,
+			intent: options.intent,
+			contractRef: options.contract.ref,
+			rubric: { ...options.rubric },
+			params: lowerFields(options.params),
+			output: lowerFields(options.output),
+			invariants: [...(options.contract.invariants ?? [])],
+			forbiddenOutputs: [...(options.contract.forbiddenOutputs ?? [])],
+			baseline,
+		}),
+	);
+}
+
+function lowerFields(
+	fields: Readonly<Record<string, FieldDescription>> | undefined,
+): Record<string, { description: string; exampleJson: string }> {
+	return Object.fromEntries(
+		Object.entries(fields ?? {}).map(([name, field]) => [
+			name,
+			{
+				description: field.description,
+				exampleJson:
+					field.example === undefined ? "" : JSON.stringify(field.example),
+			},
 		]),
-		baseline,
-	});
+	);
 }
 
 function record(
@@ -94,23 +116,23 @@ function record(
 	entry.calls.push(Object.freeze({ ...call, order: entry.calls.length }));
 }
 
+/** Demos from an applied artifact's platform-normalized program. */
 function artifactDemos(
 	artifact: TrainingArtifact | null,
 ): readonly TrainingExample[] {
 	if (!artifact) return [];
-	const demos = artifact.program.demos;
-	if (!Array.isArray(demos)) return [];
-	return demos.filter(
-		(demo): demo is TrainingExample =>
-			!!demo && typeof demo === "object" && "input" in demo && "output" in demo,
-	);
+	const program = parseTrainingArtifactProgram(artifact.programJson);
+	return program.demos.map((demo) => ({
+		input: JSON.parse(demo.inputJson),
+		output: JSON.parse(demo.outputJson),
+	}));
 }
 
 /**
- * The stub baseline (ADR-0076 mock mode): serve the recorded contract
- * examples — exact input match first, then applied-artifact demos, then the
- * first example as the canned typed response. Every call is recorded as
- * specification-by-example for the training loop.
+ * The stub baseline (ADR-0076 mock mode): serve applied-artifact demos
+ * first, then the recorded contract examples — exact input match, falling
+ * back to the first example as the canned typed response. Every call is
+ * recorded as specification-by-example for the training loop.
  */
 async function serveStub(
 	entry: MutableRecord,
@@ -288,9 +310,7 @@ export function applyTrainingArtifact(
 		entry.artifact = null;
 		return null;
 	}
-	const parsed = parseTrainingArtifact(
-		typeof artifact === "string" ? JSON.parse(artifact) : artifact,
-	);
+	const parsed = parseTrainingArtifact(artifact);
 	if (parsed.methodRef !== methodRef) {
 		throw new TrainingArtifactError(
 			`artifact targets "${parsed.methodRef}", not "${methodRef}"`,

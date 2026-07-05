@@ -1,5 +1,5 @@
 export { createDeterministicContext } from "./context.js";
-export { ReplayDivergenceError, digest } from "./divergence.js";
+export { digest, ReplayDivergenceError } from "./divergence.js";
 export {
 	assertReplayEqualsLive,
 	compareCanonicalEventOrder,
@@ -19,9 +19,9 @@ export {
 export { nextEnvelope, recordEffect } from "./recorder.js";
 export {
 	canonicalStateBytes,
-	replayRun,
 	type ReplayOptions,
 	type ReplayResult,
+	replayRun,
 	type WorkflowDefinition,
 	type WorkflowReplayContext,
 } from "./replayer.js";
@@ -33,9 +33,9 @@ export {
 } from "./store.js";
 export {
 	defineWorkflow,
-	testRuntime,
 	type RunRef,
 	type TestRuntime,
+	testRuntime,
 	type WorkflowHandlers,
 } from "./test-runtime.js";
 export type {

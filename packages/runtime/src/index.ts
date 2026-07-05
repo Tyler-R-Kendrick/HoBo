@@ -4,6 +4,7 @@ export const HOBO_RUNTIME_PACKAGE = "@hobo/runtime";
 // `import { training } from "@hobo/runtime"` (sdk-api.md §Trainable methods).
 export {
 	applyTrainingArtifact,
+	type FieldDescription,
 	type FieldMetadata,
 	getAppliedArtifact,
 	getTrainable,
@@ -25,7 +26,6 @@ export {
 	type TrainingOptions,
 	trainable,
 	training,
-	USE_TRAINING_LINT_SCHEMA,
 	type UseTrainingLintFinding,
 	type UseTrainingLintResult,
 } from "./training/index.js";

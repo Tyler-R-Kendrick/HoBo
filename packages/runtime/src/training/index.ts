@@ -1,7 +1,6 @@
 export { TRAINABLE_METADATA, trainable } from "./decorators.js";
 export {
 	lintUseTrainingSource,
-	USE_TRAINING_LINT_SCHEMA,
 	type UseTrainingLintFinding,
 	type UseTrainingLintResult,
 } from "./lint.js";
@@ -16,6 +15,7 @@ export {
 	training,
 } from "./training.js";
 export {
+	type FieldDescription,
 	type FieldMetadata,
 	type RecordedTrainableCall,
 	TRAINABLE,

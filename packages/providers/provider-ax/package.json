@@ -21,6 +21,7 @@
 	},
 	"dependencies": {
 		"@ax-llm/ax": "22.0.9",
+		"@bufbuild/protobuf": "2.12.1",
 		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {

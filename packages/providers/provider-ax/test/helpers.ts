@@ -1,8 +1,4 @@
 import { AxMockAIService } from "@ax-llm/ax";
-import {
-	TRAINING_OPTIMIZE_REQUEST_SCHEMA,
-	TRAINING_TRAJECTORY_SCHEMA,
-} from "@hobo/core";
 
 export const REGION = {
 	regionId: "region-classifyTicket-body",
@@ -19,7 +15,6 @@ export function trajectory(
 	reward: number,
 ) {
 	return {
-		schema: TRAINING_TRAJECTORY_SCHEMA,
 		id,
 		traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
 		run: {
@@ -40,13 +35,12 @@ export function trajectory(
 		spans: [
 			{
 				id: `${id}-root`,
-				parentId: null,
+				kind: "CHAIN",
 				name: "support.classifyTicket",
 				startTime: "2026-06-25T09:00:00.000Z",
 				endTime: "2026-06-25T09:00:00.120Z",
-				attributes: { "openinference.span.kind": "CHAIN" },
-				inputs: { subject },
-				outputs: { category },
+				inputsJson: JSON.stringify({ subject }),
+				outputsJson: JSON.stringify({ category }),
 			},
 		],
 		payloads: {},
@@ -62,7 +56,6 @@ export function optimizeRequest(
 	trajectories: readonly ReturnType<typeof trajectory>[],
 ) {
 	return {
-		schema: TRAINING_OPTIMIZE_REQUEST_SCHEMA,
 		requestId: "optimize-request-1",
 		generatedRegion: REGION,
 		trajectories,

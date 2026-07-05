@@ -10,13 +10,15 @@ configuration.
 
 ## Schema and constraints
 
-- Protobuf records live in
-  [`data-models/training_artifact_program.proto`](./data-models/training_artifact_program.proto)
-  (the platform-normalized artifact program this engine emits); the port's
-  trajectory/candidate records are owned by `@hobo/core`
-  (`data-models/training_trajectory.proto`, `training_candidate.proto`).
+- Record shapes are the **generated** proto types: the port records
+  (trajectory, optimize request, candidate, artifact program) come from
+  `@hobo/core`'s `data-models/training_engine.proto`; this package's own
+  [`data-models/ax_engine_payload.proto`](./data-models/ax_engine_payload.proto)
+  describes only the engine-internal payload stored in the platform
+  program's `engine_payload_json`. Codegen is opted in via
+  `data-models/buf.yaml`; generated types live in `src/_generated/`.
 - CUE constraints bound every protobuf type in
-  [`data-models/training_artifact_program.cue`](./data-models/training_artifact_program.cue).
+  [`data-models/ax_engine_payload.cue`](./data-models/ax_engine_payload.cue).
 - PACT boundary evidence for the optimize edge lives under
   [`contracts/pacts/`](./contracts/pacts/).
 
@@ -24,10 +26,10 @@ configuration.
 
 The engine's boundary crosses two parsers and only derived types flow
 between them: `optimize()` re-parses even trusted callers with
-`parseOptimizeRequest` (deep-frozen parsed `OptimizeRequest`), and re-parses
-its own output with `parseTrainingCandidate`, so an engine bug can never
-emit an out-of-contract candidate. Trajectory hashes are canonical-JSON
-sha256 derived values.
+`parseOptimizeRequest` (deep-frozen parsed generated `OptimizeRequest`),
+and re-parses its own output with `parseTrainingCandidate`, so an engine
+bug can never emit an out-of-contract candidate. Trajectory hashes are
+canonical proto-JSON sha256 derived values (`hashTrajectory`, `@hobo/core`).
 
 ## Event architecture
 

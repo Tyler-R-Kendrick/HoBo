@@ -54,19 +54,18 @@ const OPTIONS = {
 
 function artifactFor(methodRef: string) {
 	return {
-		schema: "hobo.training.artifact/v1",
 		engineId: "hobo.training-engine/built-in-opto@0.1.0",
 		engineVersion: "1.0.0",
 		methodRef,
-		program: {
+		programJson: JSON.stringify({
 			instructions: "Classify the ticket into a known category.",
 			demos: [
 				{
-					input: { subject: "billing question" },
-					output: { category: "billing" },
+					inputJson: JSON.stringify({ subject: "billing question" }),
+					outputJson: JSON.stringify({ category: "billing" }),
 				},
 			],
-		},
+		}),
 	};
 }
 

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { BUILT_IN_ENGINE_ID, TrainingEngineParseError } from "@hobo/core";
-import { test } from "vitest";
+import { readFileSync } from "node:fs";
 import {
-	AX_ENGINE_VERSION,
-	createAxTrainingEngine,
-	deriveSignature,
-	hashTrajectory,
-} from "../src/index.js";
+	parseTrainingArtifactProgram,
+	TrainingEngineParseError,
+} from "@hobo/core";
+import { test } from "vitest";
+
+import { createAxTrainingEngine } from "../src/index.js";
 import { mockModel, optimizeRequest, trajectory } from "./helpers.js";
 
 const TRAJECTORIES = [
@@ -15,44 +15,36 @@ const TRAJECTORIES = [
 	trajectory("t3", "weird gibberish", "other", 0.2),
 ];
 
-test("deriveSignature lowers intent + recorded I/O shape to an ax signature", () => {
-	const request = optimizeRequest(TRAJECTORIES);
-	const signature = deriveSignature(
-		// deriveSignature takes a parsed request; the engine parses internally,
-		// so mirror that here via the engine's own boundary types.
-		JSON.parse(JSON.stringify(request)),
-	);
-	assert.equal(
-		signature,
-		'"maximize classification reward" subject:string -> category:string',
-	);
-});
-
 test("optimize returns a provenance-pinned artifact candidate", async () => {
 	const engine = createAxTrainingEngine({
 		ai: mockModel("access"),
 		maxMetricCalls: 8,
 	});
-	assert.equal(engine.engineId, BUILT_IN_ENGINE_ID);
 
 	const candidate = await engine.optimize(
 		optimizeRequest(TRAJECTORIES) as never,
 	);
 
-	assert.equal(candidate.kind, "artifact");
-	if (candidate.kind !== "artifact") return;
-	assert.equal(candidate.engineId, BUILT_IN_ENGINE_ID);
-	assert.equal(candidate.artifact.engineVersion, AX_ENGINE_VERSION);
-	assert.equal(candidate.artifact.methodRef, "classifyTicket");
-	assert.ok(candidate.artifact.program);
-	assert.equal(candidate.provenance.trajectoryHashes.length, 3);
+	assert.equal(candidate.body.case, "artifact");
+	if (candidate.body.case !== "artifact") return;
+	const artifact = candidate.body.value;
+	assert.equal(artifact.engineId, engine.engineId);
+	assert.equal(artifact.methodRef, "classifyTicket");
+	assert.match(artifact.engineVersion, /^\d+\.\d+\.\d+/);
+
+	// The program is the platform-normalized shape; only high-reward
+	// trajectories (t1, t2) qualify as demos.
+	const program = parseTrainingArtifactProgram(artifact.programJson);
+	assert.equal(program.demos.length, 2);
+
+	assert.equal(candidate.provenance?.trajectoryHashes.length, 3);
 	assert.equal(
-		candidate.provenance.rubricRef,
+		candidate.provenance?.rubricRef,
 		"rubric://support/classifier@1.0.0",
 	);
 });
 
-test("optimize is deterministic for the same request (byte-stable candidate)", async () => {
+test("optimize is deterministic for the same request (stable provenance)", async () => {
 	const engine = createAxTrainingEngine({
 		ai: mockModel("access"),
 		maxMetricCalls: 8,
@@ -69,17 +61,26 @@ test("optimize is deterministic for the same request (byte-stable candidate)", a
 test("optimize parses its boundary and rejects malformed requests", async () => {
 	const engine = createAxTrainingEngine({ ai: mockModel("access") });
 	await assert.rejects(
-		engine.optimize({ schema: "wrong" } as never),
+		engine.optimize({ requestId: "" } as never),
 		TrainingEngineParseError,
 	);
 });
 
-test("hashTrajectory is canonical (key order independent)", () => {
-	const base = TRAJECTORIES[0];
-	assert.ok(base);
-	const reordered = Object.fromEntries(Object.entries(base).reverse());
-	assert.equal(
-		hashTrajectory(base as never),
-		hashTrajectory(reordered as never),
-	);
+test("the engine version constant matches the installed ax package", () => {
+	const installed = JSON.parse(
+		readFileSync(
+			new URL("../node_modules/@ax-llm/ax/package.json", import.meta.url),
+			"utf8",
+		),
+	) as { version: string };
+	// AX_ENGINE_VERSION is engine-internal; it surfaces on every artifact.
+	// Re-derive it from an emitted candidate to avoid exporting the constant.
+	return createAxTrainingEngine({ ai: mockModel("access"), maxMetricCalls: 4 })
+		.optimize(optimizeRequest(TRAJECTORIES) as never)
+		.then((candidate) => {
+			assert.equal(candidate.body.case, "artifact");
+			if (candidate.body.case === "artifact") {
+				assert.equal(candidate.body.value.engineVersion, installed.version);
+			}
+		});
 });

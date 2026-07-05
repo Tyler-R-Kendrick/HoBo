@@ -55,15 +55,12 @@ test("empty implementation -> train -> apply artifact", async () => {
 	const candidate = await engine.optimize(
 		optimizeRequest(trajectories) as never,
 	);
-	assert.equal(candidate.kind, "artifact");
-	if (candidate.kind !== "artifact") return;
+	assert.equal(candidate.body.case, "artifact");
+	if (candidate.body.case !== "artifact") return;
 
 	// 4. Apply-at-load (post-gate promotion): the callable now serves the
 	//    tuned behavior for the recorded high-reward executions.
-	applyTrainingArtifact(
-		classify,
-		JSON.parse(JSON.stringify(candidate.artifact)),
-	);
+	applyTrainingArtifact(classify, candidate.body.value);
 	const tuned = await classify({ subject: "site is down" });
 	assert.equal(tuned.category, "outage");
 

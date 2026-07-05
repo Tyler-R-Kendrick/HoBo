@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	ReplayDivergenceError,
 	canonicalStateBytes,
 	defineWorkflow,
+	ReplayDivergenceError,
 	stableStringify,
 	testRuntime,
 } from "../../src/replay/index.js";

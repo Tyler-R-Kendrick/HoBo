@@ -2,8 +2,6 @@
 // (src/lint/use-training-lint.ts): the grounding lint ADR-0025 point 2
 // requires — a "use training" method must carry intent + contract + rubric.
 
-export const USE_TRAINING_LINT_SCHEMA = "hobo.lint.use-training/v1";
-
 const REQUIRED_GROUNDINGS = ["intent", "contract", "rubric"] as const;
 
 export interface UseTrainingLintFinding {
@@ -13,7 +11,6 @@ export interface UseTrainingLintFinding {
 }
 
 export interface UseTrainingLintResult {
-	readonly schema: typeof USE_TRAINING_LINT_SCHEMA;
 	readonly ok: boolean;
 	readonly findings: readonly UseTrainingLintFinding[];
 	readonly required?: readonly string[];
@@ -28,7 +25,7 @@ export function lintUseTrainingSource(source: string): UseTrainingLintResult {
 		!source.includes('"use training"') &&
 		!source.includes("'use training'")
 	) {
-		return { schema: USE_TRAINING_LINT_SCHEMA, ok: true, findings: [] };
+		return { ok: true, findings: [] };
 	}
 
 	const findings: UseTrainingLintFinding[] = [];
@@ -60,7 +57,6 @@ export function lintUseTrainingSource(source: string): UseTrainingLintResult {
 	}
 
 	return {
-		schema: USE_TRAINING_LINT_SCHEMA,
 		ok: findings.length === 0,
 		findings,
 		required: [...REQUIRED_GROUNDINGS],

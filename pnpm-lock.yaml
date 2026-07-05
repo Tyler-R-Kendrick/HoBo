@@ -164,6 +164,9 @@ importers:
       '@ax-llm/ax':
         specifier: 22.0.9
         version: 22.0.9(zod@4.4.3)
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
@@ -186,6 +189,9 @@ importers:
 
   packages/runtime:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@hobo/core':
         specifier: workspace:*
         version: link:../core

@@ -1,12 +1,24 @@
 import type { TrainingArtifact } from "@hobo/core";
+import type { TrainableManifestFact } from "../_generated/trainable_manifest_fact_pb.js";
 
 // The trainable-method authoring surface (ADR-0025 / ADR-0125). All four
 // authoring forms — the "use training" directive, the training() wrapper,
 // the signature-only training.define(), and the @trainable decorator —
-// lower to the same TrainableManifestFact; the optimizer stays behind the
-// training-engine port and is never reachable from here.
+// lower to the same generated TrainableManifestFact record
+// (data-models/trainable_manifest_fact.proto); the optimizer stays behind
+// the training-engine port and is never reachable from here.
+
+export type {
+	FieldMetadata,
+	TrainableManifestFact,
+} from "../_generated/trainable_manifest_fact_pb.js";
 
 export const TRAINABLE = Symbol.for("hobo.trainable");
+
+// The types below are the authoring-time surface, deliberately hand-written
+// (parallel-type-allowed): they carry functions, validators, and arbitrary
+// example values that never cross a wire — the wire record they lower to is
+// the generated TrainableManifestFact.
 
 export interface TrainingExample<I = unknown, O = unknown> {
 	readonly input: I;
@@ -29,7 +41,8 @@ export interface TrainingContract<I = unknown, O = unknown> {
 	readonly examples?: readonly TrainingExample<I, O>[];
 }
 
-export interface FieldMetadata {
+/** Authoring input for per-param/output metadata; lowers to FieldMetadata. */
+export interface FieldDescription {
 	readonly description: string;
 	readonly example?: unknown;
 }
@@ -39,24 +52,11 @@ export interface TrainingOptions<I = unknown, O = unknown> {
 	readonly contract: TrainingContract<I, O>;
 	readonly rubric: Readonly<Record<string, number>>;
 	/** Per-parameter trainable metadata — rides the contract (ADR-0125). */
-	readonly params?: Readonly<Record<string, FieldMetadata>>;
+	readonly params?: Readonly<Record<string, FieldDescription>>;
 	/** Per-output trainable metadata — rides the contract (ADR-0125). */
-	readonly output?: Readonly<Record<string, FieldMetadata>>;
+	readonly output?: Readonly<Record<string, FieldDescription>>;
 	/** Stable method reference; defaults to the function/member name. */
 	readonly methodRef?: string;
-}
-
-/** What every authoring form lowers to — the unit the manifest collects. */
-export interface TrainableManifestFact {
-	readonly methodRef: string;
-	readonly intent: string;
-	readonly contractRef: string;
-	readonly rubric: Readonly<Record<string, number>>;
-	readonly params: Readonly<Record<string, FieldMetadata>>;
-	readonly output: Readonly<Record<string, FieldMetadata>>;
-	readonly invariants: readonly string[];
-	readonly forbiddenOutputs: readonly string[];
-	readonly baseline: "body" | "stub";
 }
 
 export interface RecordedTrainableCall<I = unknown, O = unknown> {

@@ -1,7 +1,7 @@
 # @hobo/provider-ax contracts
 
 The boundary this package provides is the `hobo:training-engine` port
-(ADR-0025 / ADR-0125): `optimize(optimize-request) -> candidate`.
+(ADR-0025 / ADR-0125): `optimize(OptimizeRequest) -> TrainingCandidate` (generated proto types from `@hobo/core`).
 
 - `pacts/training_engine_optimize.pact.json` — the port boundary pact: an
   optimize request over recorded trajectories yields a provenance-pinned

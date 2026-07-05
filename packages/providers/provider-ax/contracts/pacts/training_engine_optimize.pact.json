@@ -12,7 +12,6 @@
         "method": "POST",
         "path": "/training-engine/optimize",
         "body": {
-          "schema": "hobo.training.optimize-request/v1",
           "requestId": "optimize-request-1",
           "contract": {
             "ref": "contract://support/classification@1.0.0",
@@ -24,12 +23,9 @@
       "response": {
         "status": 200,
         "body": {
-          "schema": "hobo.training.candidate-patch/v1",
-          "kind": "artifact",
           "id": "candidate-optimize-request-1",
           "engineId": "hobo.training-engine/built-in-opto@0.1.0",
           "artifact": {
-            "schema": "hobo.training.artifact/v1",
             "engineId": "hobo.training-engine/built-in-opto@0.1.0",
             "engineVersion": "22.0.9",
             "methodRef": "classifyTicket"

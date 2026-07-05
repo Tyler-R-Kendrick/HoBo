@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package hobo.core.v1;
+
+// Training-engine port records (ADR-0025 / ADR-0125): the trajectory is the
+// unit of training data — an OpenInference span tree + reward + correlation.
+
+message GeneratedRegion {
+  string region_id = 1;
+  string artifact_ref = 2;
+  int64 start_offset = 3;
+  int64 end_offset = 4;
+  string owner = 5;
+}
+
+message TrajectoryAgent {
+  string id = 1;
+  string principal_ref = 2;
+}
+
+message TrajectoryRun {
+  string id = 1;
+  string tenant_id = 2;
+  string bindle = 3;
+  TrajectoryAgent agent = 4;
+}
+
+message TrajectorySubject {
+  string method = 1;
+  string contract_ref = 2;
+  GeneratedRegion generated_region = 3;
+}
+
+message OpenInferenceSpan {
+  string id = 1;
+  string parent_id = 2;
+  string name = 3;
+  string start_time = 4;
+  string end_time = 5;
+  map<string, string> attributes = 6;
+}
+
+message TrajectoryReward {
+  string source = 1;
+  string rubric_ref = 2;
+  string event_id = 3;
+  double score = 4;
+  string observed_at = 5;
+}
+
+message TrajectoryPayload {
+  string classification = 1;
+  string redaction = 2;
+  string token_ref = 3;
+  string encrypted_ref = 4;
+}
+
+message Trajectory {
+  string schema = 1;
+  string id = 2;
+  string traceparent = 3;
+  TrajectoryRun run = 4;
+  TrajectorySubject subject = 5;
+  repeated OpenInferenceSpan spans = 6;
+  map<string, TrajectoryPayload> payloads = 7;
+  TrajectoryReward reward = 8;
+}

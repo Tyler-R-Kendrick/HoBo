@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package hobo.core.v1;
+
+import "training_trajectory.proto";
+
+// Training-engine candidate (ADR-0025 / ADR-0048 / ADR-0125): either an AST
+// region-scoped patch or an apply-at-load training artifact; both pass the
+// same promotion gate.
+
+message CandidateEdit {
+  int64 start_offset = 1;
+  int64 end_offset = 2;
+  string replacement = 3;
+}
+
+message CandidateProvenance {
+  repeated string trajectory_hashes = 1;
+  string rubric_ref = 2;
+  string contract_ref = 3;
+}
+
+message TrainingCandidate {
+  string schema = 1;
+  string kind = 2; // "patch" | "artifact"
+  string id = 3;
+  string engine_id = 4;
+  GeneratedRegion region = 5;
+  repeated CandidateEdit edits = 6;
+  TrainingArtifact artifact = 7;
+  CandidateProvenance provenance = 8;
+}
+
+message TrainingArtifact {
+  string schema = 1;
+  string engine_id = 2;
+  string engine_version = 3;
+  string method_ref = 4;
+  // Engine-defined serialized optimized program (instructions + demos),
+  // opaque to the platform, pinned by engine id + version.
+  string program_json = 5;
+}

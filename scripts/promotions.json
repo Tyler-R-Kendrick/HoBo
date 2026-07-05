@@ -1,0 +1,48 @@
+{
+	"schema": "hobo.promotions-ledger/v1",
+	"promotions": [
+		{
+			"proof": "src/draft/technical-proofs/deterministic-replay-engine/src",
+			"promotedTo": "packages/runtime/src/replay",
+			"status": "frozen",
+			"note": "Promoted with typing/format hardening; the package copy is canonical (GAPS.md IMPL-005).",
+			"digests": {
+				"context.ts": "sha256:48a51b61ccb05ea48594807606df36302afb85b66c0dbfc3745434a0b6b5496c",
+				"divergence.ts": "sha256:dcc24c61c10e131187ab91fa4303da5ed7d9835357394f1f197b73c799941352",
+				"equivalence.ts": "sha256:8b169a0d2f8fa85efe1d0c2d4bddc35e39a7070f9269377982959e10e4deaf7e",
+				"index.ts": "sha256:3b9f6ddd2ad0d3c9ab36a759f26a551ca3732625e5f943ef1b4633d3f0649f81",
+				"parse.ts": "sha256:c65d76dedea6d7e49e3d0bfd71864633280447613b454a5b57d8bf5cbc5cf316",
+				"recorder.ts": "sha256:8556f00fe2d054da37f0f5fd9aef01c84f8598d796a0b337e9b2a55d4ddfe185",
+				"replayer.ts": "sha256:a984b3f1ac58488efbad79d53cfb6476906841d20b0a60ec2d54394b851cd008",
+				"store.ts": "sha256:c1558f0b7f931f7ef49943aac00637ef43e294c27357406430aeb2ccb49534e4",
+				"test-runtime.ts": "sha256:6ff20013c2c7bc75643ee16a8142f319c8eb0b0a53cf888a7c7521e0b02444fc",
+				"types.ts": "sha256:9e48d761a5e97ff01c57254ad05c1fa1e25917ee538fca0a27aa09b81f43e260"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/training-engine-port-contract/src",
+			"promotedTo": "packages/core/src/ports/training-engine.ts + packages/wit/wit/deps/hobo-training-engine",
+			"status": "frozen",
+			"note": "Promoted as parse-don't-validate port types + vendored WIT; extended with the ADR-0125 artifact form.",
+			"digests": {
+				"training-engine-contract.d.mts": "sha256:ca33e3b4fdfc51161d860992bd316c2228d76fff4fd8a11f6ad91c8dec6d2d2b",
+				"training-engine-contract.ts": "sha256:d50eba5e9ae02b13feee9bc66f2e3774445dace6ae840a6fb86794d78c09c299"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/evals-training-promotion-gates-poc/src/lint",
+			"promotedTo": "packages/runtime/src/training/lint.ts",
+			"status": "frozen",
+			"note": "The use-training grounding lint; the rest of the poc (evals/promotion pipeline) remains reference until its slice lands.",
+			"digests": {
+				"use-training-lint.ts": "sha256:146aaa2800c400a76b378f973bc6c1d92a7dd490b8cad4d3a119853a92f2a50b"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/hobo-componentize/src",
+			"promotedTo": "packages/componentize/src",
+			"status": "reference",
+			"note": "Partial promotion (S0 scope, ADR-0105): oci/smoke/sources modules are S1+ scope and stay in the proof as reference (GAPS.md IMPL-006)."
+		}
+	]
+}

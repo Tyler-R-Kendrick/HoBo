@@ -23,6 +23,8 @@ HoBo favors compile-time feedback over runtime error discovery. New production-f
 - Use CUE for invariants, refinements, and dependent constraints: ranges, formats, cross-field relationships, state-transition preconditions, provider capability predicates, environment-specific obligations, and compatibility rules.
 - Apply "Parse, don't validate": unknown/untrusted inputs cross one parser boundary that produces a refined domain object. Downstream code consumes the parsed/refined type, not raw DTOs plus repeated boolean validation.
 - Represent post-parse states as derivative object definitions. Example: `RawDeploymentRequest` parses to `DeployableBindle` only after CUE constraints, Protobuf shape, policy obligations, and dependency constraints succeed; functions that deploy accept `DeployableBindle`, not `RawDeploymentRequest`.
+- **Generated types are the only record types.** A package with a `data-models/` folder opts into codegen by adding `data-models/buf.yaml`, runs `pnpm run codegen`, and imports its record types from the checked-in `src/_generated/**_pb.ts` (protoc-gen-es; parse with `fromJson(Schema, …)`, construct with `create(Schema, …)`). Hand-declaring a TypeScript `interface`/`type` that duplicates a proto message is a violation — derived types must be brands or narrowings **of** the generated types (branded ids, invariant-asserting parse functions returning the frozen generated message). Reference consumers: `examples/hello-bindle/src/api.ts` and `packages/core/src/ports/training-engine.ts`. Enum/state vocabularies belong in the proto (`enum`), not hand-written string arrays.
+- **Minimal public surface — no exported magic strings.** Do not export string-literal constants for schema ids, versions, type names, or enum vocabularies: schema identity is the generated message's fully-qualified type name and enums come from the generated `enum`. A constant may be exported only when the constant itself *is* the contract (a WIT port id, a pinned contract version) and its declaration line carries a `// public-contract: <why>` marker. Internal thresholds, prefixes, and defaults stay module-private.
 
 ## Integration boundaries and contract testing
 
@@ -44,7 +46,7 @@ Repository-wide data-model catalogs are forbidden. Each project/package that own
 
 Schema codegen and drift gates:
 
-- `pnpm run codegen` — regenerate checked-in `src/_generated/` TypeScript views from protobuf sources (draft POC: `src/draft/technical-proofs/s0-04-protobuf-cue-codegen/`; production target: `packages/schema-tools/`).
+- `pnpm run codegen` — regenerate checked-in `src/_generated/` TypeScript views from protobuf sources via `packages/schema-tools` (promoted from the s0-04 POC); coverage is opt-in per package via `data-models/buf.yaml`, including nested category packages (`packages/{providers,runtimes,iac,build}/*`).
 - `pnpm run codegen:check` — regenerate to a temp tree, byte-compare, exit non-zero on drift; never mutates the working tree.
 - `pnpm run test:schema` — includes SDK/deployment validators plus `codegen:check` and the CUE vet lane.
 - `pnpm run generated:guard` — pre-commit guard blocking hand-edits under `generated/`, `_generated/`, or `src/gen/` unless matching `.proto`/`.cue`/generator sources are staged.
@@ -57,8 +59,10 @@ Before committing a technical change, agents must verify:
 2. Boundary payloads have Protobuf contracts or an explicit documented reason they do not.
 3. Invariants/dependent constraints live in CUE, not scattered runtime checks.
 4. Parsed/refined domain objects are passed inward instead of raw input DTOs.
-5. Integration boundaries have PACT-style consumer/provider coverage or a tracked proof gap.
-6. Matching docs and proof/contract READMEs describe the contract source, generated views, and gates.
+5. Record types are imported from `src/_generated/**_pb.ts`, never hand-declared in parallel with a proto message; new packages with data-models opt into `pnpm run codegen`.
+6. No new exported string-literal constants without a `// public-contract:` justification; enums/schema ids come from generated code.
+7. Integration boundaries have PACT-style consumer/provider coverage or a tracked proof gap.
+8. Matching docs and proof/contract READMEs describe the contract source, generated views, and gates.
 
 ## Performance-oriented local gates
 

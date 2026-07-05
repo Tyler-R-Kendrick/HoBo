@@ -1,54 +1,51 @@
+import { createHash } from "node:crypto";
+import type { JsonValue } from "@bufbuild/protobuf";
+import { fromJson, toJson } from "@bufbuild/protobuf";
+import {
+	type GeneratedRegion,
+	OpenInferenceSpanKind,
+	type OptimizeRequest,
+	OptimizeRequestSchema,
+	type TrainingArtifact,
+	type TrainingArtifactProgram,
+	TrainingArtifactProgramSchema,
+	TrainingArtifactSchema,
+	type TrainingCandidate,
+	TrainingCandidateSchema,
+	type Trajectory,
+	TrajectorySchema,
+} from "../_generated/training_engine_pb.js";
 import { CoreParseError } from "../errors.js";
 import { deepFreeze } from "../parse-utils.js";
 
-// Promoted from src/draft/technical-proofs/training-engine-port-contract
-// (frozen in scripts/promotions.json) and extended with the ADR-0125
-// training-artifact candidate form.
+// The hobo:training-engine port (ADR-0025 / ADR-0125). Record shapes are the
+// generated protobuf types (data-models/training_engine.proto); this module
+// adds only the port interface, branded ids, and parse-don't-validate
+// constructors that enforce the CUE-mirrored invariants at the boundary.
 
+// public-contract: the WIT port identity engines register under (ADR-0025).
 export const TRAINING_ENGINE_PORT =
 	"hobo:training-engine/training-engine@0.1.0";
-export const BUILT_IN_ENGINE_ID = "hobo.training-engine/built-in-opto@0.1.0";
 
-export const TRAINING_TRAJECTORY_SCHEMA = "hobo.training.trajectory/v1";
-export const TRAINING_OPTIMIZE_REQUEST_SCHEMA =
-	"hobo.training.optimize-request/v1";
-export const TRAINING_CANDIDATE_SCHEMA = "hobo.training.candidate-patch/v1";
-export const TRAINING_ARTIFACT_SCHEMA = "hobo.training.artifact/v1";
-
-export const TRAINING_EVENT_TYPES = deepFreeze([
-	"training.RunStarted",
-	"training.TrajectoryCaptured",
-	"training.RewardObserved",
-	"training.CandidateProposed",
-	"training.CandidateEvaluated",
-	"training.Promoted",
-	"training.Rejected",
-] as const);
-
-export const OPENINFERENCE_SPAN_KINDS = deepFreeze([
-	"LLM",
-	"CHAIN",
-	"TOOL",
-	"RETRIEVER",
-	"RERANKER",
-	"EMBEDDING",
-	"AGENT",
-	"GUARDRAIL",
-	"EVALUATOR",
-	"PROMPT",
-] as const);
-
-const TRACEPARENT_PATTERN = /^00-[a-f0-9]{32}-[a-f0-9]{16}-[a-f0-9]{2}$/;
-const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const SENSITIVE_CLASSIFICATIONS = new Set([
-	"pii",
-	"secret",
-	"confidential",
-	"regulated",
-]);
-
-export type TrainingEventType = (typeof TRAINING_EVENT_TYPES)[number];
-export type OpenInferenceSpanKind = (typeof OPENINFERENCE_SPAN_KINDS)[number];
+export type {
+	CandidateEdit,
+	CandidatePatch,
+	CandidateProvenance,
+	ContractRef,
+	GeneratedRegion,
+	OpenInferenceSpan,
+	OptimizeRequest,
+	ProgramDemo,
+	TrainingArtifact,
+	TrainingArtifactProgram,
+	TrainingCandidate,
+	TrainingRubric,
+	Trajectory,
+	TrajectoryPayload,
+	TrajectoryReward,
+	TrajectoryRun,
+} from "../_generated/training_engine_pb.js";
+export { OpenInferenceSpanKind } from "../_generated/training_engine_pb.js";
 
 export type TrajectoryId = string & { readonly __brand: "TrajectoryId" };
 export type CandidateId = string & { readonly __brand: "CandidateId" };
@@ -70,154 +67,72 @@ export class TrainingEngineParseError extends CoreParseError {
 	}
 }
 
-export interface GeneratedRegion {
-	readonly regionId: string;
-	readonly artifactRef: string;
-	readonly startOffset: number;
-	readonly endOffset: number;
-	readonly owner: string;
-}
-
-export interface TrajectoryRunCorrelation {
-	readonly id: string;
-	readonly tenantId: string;
-	readonly bindle: string;
-	readonly agent: {
-		readonly id: string;
-		readonly principalRef: string;
-	};
-}
-
-export interface OpenInferenceSpan {
-	readonly id: string;
-	readonly parentId: string | null;
-	readonly name: string;
-	readonly startTime: string;
-	readonly endTime: string;
-	readonly attributes: Readonly<Record<string, unknown>>;
-	readonly inputs?: Readonly<Record<string, unknown>>;
-	readonly outputs?: Readonly<Record<string, unknown>>;
-}
-
-export interface TrajectoryReward {
-	readonly source: string;
-	readonly rubricRef: string;
-	readonly eventId?: string;
-	readonly score: number;
-	readonly observedAt?: string;
-}
-
-export interface TrajectoryPayload {
-	readonly classification?: string;
-	readonly redaction?: "none" | "tokenized" | "encrypted";
-	readonly value?: unknown;
-	readonly tokenRef?: string;
-	readonly encryptedRef?: string;
-}
-
-export interface Trajectory {
-	readonly schema: typeof TRAINING_TRAJECTORY_SCHEMA;
-	readonly id: TrajectoryId;
-	readonly traceparent: Traceparent;
-	readonly run: TrajectoryRunCorrelation;
-	readonly subject: {
-		readonly method: string;
-		readonly contractRef: string;
-		readonly generatedRegion: GeneratedRegion;
-	};
-	readonly spans: readonly OpenInferenceSpan[];
-	readonly payloads: Readonly<Record<string, TrajectoryPayload>>;
-	readonly reward: TrajectoryReward;
-}
-
-export interface TrainingRubric {
-	readonly id: string;
-	readonly objective: string;
-	readonly thresholds?: Readonly<Record<string, number>>;
-}
-
-export interface OptimizeRequest {
-	readonly schema: typeof TRAINING_OPTIMIZE_REQUEST_SCHEMA;
-	readonly requestId: string;
-	readonly generatedRegion: GeneratedRegion;
-	readonly trajectories: readonly Trajectory[];
-	readonly rubric: TrainingRubric;
-	readonly contract: {
-		readonly ref: string;
-		readonly method: string;
-		readonly allowedRegionId: string;
-	};
-}
-
-export interface CandidateEdit {
-	readonly startOffset: number;
-	readonly endOffset: number;
-	readonly replacement: string;
-}
-
-export interface CandidateProvenance {
-	readonly trajectoryHashes: readonly TrajectoryHash[];
-	readonly rubricRef: string;
-	readonly contractRef: string;
-}
-
 /**
- * ADR-0125: the serialized-optimized-program candidate form. Applied at
- * component instantiation (no source mutation); the `program` payload is
- * engine-defined and opaque to the platform, pinned by engine id + version.
- */
-export interface TrainingArtifact {
-	readonly schema: typeof TRAINING_ARTIFACT_SCHEMA;
-	readonly engineId: TrainingEngineId;
-	readonly engineVersion: string;
-	readonly methodRef: string;
-	readonly program: Readonly<Record<string, unknown>>;
-}
-
-export type TrainingCandidate =
-	| {
-			readonly schema: typeof TRAINING_CANDIDATE_SCHEMA;
-			readonly kind: "patch";
-			readonly id: CandidateId;
-			readonly engineId: TrainingEngineId;
-			readonly region: GeneratedRegion;
-			readonly edits: readonly CandidateEdit[];
-			readonly provenance: CandidateProvenance;
-	  }
-	| {
-			readonly schema: typeof TRAINING_CANDIDATE_SCHEMA;
-			readonly kind: "artifact";
-			readonly id: CandidateId;
-			readonly engineId: TrainingEngineId;
-			readonly artifact: TrainingArtifact;
-			readonly provenance: CandidateProvenance;
-	  };
-
-/**
- * The `hobo:training-engine` port (ADR-0025). Engines are internal: the SDK
- * surface never exposes this interface; swapping engines is configuration.
+ * The port every training engine implements; engines are internal providers
+ * selected per tenant/Camp and never part of the SDK surface (ADR-0025).
  */
 export interface TrainingEnginePort {
 	readonly engineId: TrainingEngineId;
 	optimize(request: OptimizeRequest): Promise<TrainingCandidate>;
 }
 
+const TRACEPARENT_PATTERN = /^00-[a-f0-9]{32}-[a-f0-9]{16}-[a-f0-9]{2}$/;
+const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
+const SENSITIVE_CLASSIFICATIONS = new Set([
+	"pii",
+	"secret",
+	"confidential",
+	"regulated",
+]);
+const SPAN_KIND_JSON_PREFIX = "OPEN_INFERENCE_SPAN_KIND_";
+
 function fail(path: string, expected: string, received: unknown): never {
 	throw new TrainingEngineParseError(path, expected, received);
 }
 
-function parseObject(value: unknown, path: string): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
-		fail(path, "object", value);
-	}
-	return value as Record<string, unknown>;
+function required<T>(value: T | undefined, path: string): T {
+	if (value === undefined) fail(path, "present", value);
+	return value;
 }
 
-function parseNonEmptyString(value: unknown, path: string): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
-		fail(path, "non-empty string", value);
-	}
+function nonEmpty(value: string, path: string): string {
+	if (value.trim().length === 0) fail(path, "non-empty string", value);
 	return value;
+}
+
+/**
+ * Accept OpenInference's bare span-kind tokens ("LLM", "CHAIN", …) alongside
+ * the canonical proto JSON enum names by prefixing before fromJson.
+ */
+function normalizeSpanKinds(value: unknown): unknown {
+	if (!value || typeof value !== "object") return value;
+	const source = value as { spans?: unknown };
+	if (!Array.isArray(source.spans)) return value;
+	const spans = source.spans.map((span) => {
+		if (!span || typeof span !== "object") return span;
+		const kind = (span as { kind?: unknown }).kind;
+		if (
+			typeof kind === "string" &&
+			kind.length > 0 &&
+			!kind.startsWith(SPAN_KIND_JSON_PREFIX)
+		) {
+			return { ...span, kind: `${SPAN_KIND_JSON_PREFIX}${kind}` };
+		}
+		return span;
+	});
+	return { ...source, spans };
+}
+
+function fromJsonOrFail<T>(
+	schema: Parameters<typeof fromJson>[0],
+	value: unknown,
+	path: string,
+): T {
+	try {
+		return fromJson(schema, value as JsonValue) as T;
+	} catch (error) {
+		fail(path, schema.typeName, error instanceof Error ? error.message : error);
+	}
 }
 
 export function parseTraceparent(value: unknown): Traceparent {
@@ -235,94 +150,57 @@ export function parseTrajectoryHash(value: unknown): TrajectoryHash {
 }
 
 export function parseTrainingEngineId(value: unknown): TrainingEngineId {
-	return parseNonEmptyString(value, "engineId") as TrainingEngineId;
+	if (typeof value !== "string" || value.trim().length === 0) {
+		fail("engineId", "non-empty string", value);
+	}
+	return value as TrainingEngineId;
 }
 
-export function parseGeneratedRegion(
-	value: unknown,
-	path = "generatedRegion",
-): GeneratedRegion {
-	const source = parseObject(value, path);
-	const startOffset = source.startOffset;
-	const endOffset = source.endOffset;
-	if (!Number.isInteger(startOffset) || (startOffset as number) < 0) {
-		fail(`${path}.startOffset`, "non-negative integer", startOffset);
+function assertRegionInvariants(region: GeneratedRegion, path: string): void {
+	nonEmpty(region.regionId, `${path}.regionId`);
+	nonEmpty(region.artifactRef, `${path}.artifactRef`);
+	nonEmpty(region.owner, `${path}.owner`);
+	if (region.endOffset <= region.startOffset) {
+		fail(`${path}.endOffset`, "greater than startOffset", region.endOffset);
 	}
-	if (
-		!Number.isInteger(endOffset) ||
-		(endOffset as number) <= (startOffset as number)
-	) {
-		fail(`${path}.endOffset`, "integer greater than startOffset", endOffset);
-	}
-	return deepFreeze({
-		regionId: parseNonEmptyString(source.regionId, `${path}.regionId`),
-		artifactRef: parseNonEmptyString(source.artifactRef, `${path}.artifactRef`),
-		startOffset: startOffset as number,
-		endOffset: endOffset as number,
-		owner: parseNonEmptyString(source.owner, `${path}.owner`),
-	});
 }
 
-function parseRunCorrelation(value: unknown): TrajectoryRunCorrelation {
-	const source = parseObject(value, "trajectory.run");
-	const agent = parseObject(source.agent, "trajectory.run.agent");
-	return deepFreeze({
-		id: parseNonEmptyString(source.id, "trajectory.run.id"),
-		tenantId: parseNonEmptyString(source.tenantId, "trajectory.run.tenantId"),
-		bindle: parseNonEmptyString(source.bindle, "trajectory.run.bindle"),
-		agent: {
-			id: parseNonEmptyString(agent.id, "trajectory.run.agent.id"),
-			principalRef: parseNonEmptyString(
-				agent.principalRef,
-				"trajectory.run.agent.principalRef",
-			),
-		},
-	});
-}
+function assertTrajectoryInvariants(trajectory: Trajectory): void {
+	nonEmpty(trajectory.id, "trajectory.id");
+	parseTraceparent(trajectory.traceparent);
 
-function parseSpans(value: unknown): readonly OpenInferenceSpan[] {
-	if (!Array.isArray(value) || value.length === 0) {
-		fail("trajectory.spans", "non-empty array", value);
+	const run = required(trajectory.run, "trajectory.run");
+	nonEmpty(run.id, "trajectory.run.id");
+	nonEmpty(run.tenantId, "trajectory.run.tenantId");
+	nonEmpty(run.bindle, "trajectory.run.bindle");
+	const agent = required(run.agent, "trajectory.run.agent");
+	nonEmpty(agent.id, "trajectory.run.agent.id");
+	nonEmpty(agent.principalRef, "trajectory.run.agent.principalRef");
+
+	const subject = required(trajectory.subject, "trajectory.subject");
+	nonEmpty(subject.method, "trajectory.subject.method");
+	nonEmpty(subject.contractRef, "trajectory.subject.contractRef");
+	assertRegionInvariants(
+		required(subject.generatedRegion, "trajectory.subject.generatedRegion"),
+		"trajectory.subject.generatedRegion",
+	);
+
+	if (trajectory.spans.length === 0) {
+		fail("trajectory.spans", "non-empty array", trajectory.spans);
 	}
-	const kinds = new Set<string>(OPENINFERENCE_SPAN_KINDS);
 	const spanIds = new Set<string>();
-	const spans = value.map((entry, index) => {
+	for (const [index, span] of trajectory.spans.entries()) {
 		const path = `trajectory.spans.${index}`;
-		const source = parseObject(entry, path);
-		const id = parseNonEmptyString(source.id, `${path}.id`);
-		if (spanIds.has(id)) {
-			fail(`${path}.id`, "unique span id", id);
+		nonEmpty(span.id, `${path}.id`);
+		if (spanIds.has(span.id)) fail(`${path}.id`, "unique span id", span.id);
+		spanIds.add(span.id);
+		nonEmpty(span.name, `${path}.name`);
+		if (span.kind === OpenInferenceSpanKind.UNSPECIFIED) {
+			fail(`${path}.kind`, "a specified OpenInference span kind", span.kind);
 		}
-		spanIds.add(id);
-		const attributes = parseObject(source.attributes, `${path}.attributes`);
-		const kind = attributes["openinference.span.kind"];
-		if (typeof kind !== "string" || !kinds.has(kind)) {
-			fail(
-				`${path}.attributes.openinference.span.kind`,
-				`one of ${OPENINFERENCE_SPAN_KINDS.join(", ")}`,
-				kind,
-			);
-		}
-		return {
-			id,
-			parentId:
-				source.parentId === null || source.parentId === undefined
-					? null
-					: parseNonEmptyString(source.parentId, `${path}.parentId`),
-			name: parseNonEmptyString(source.name, `${path}.name`),
-			startTime: parseNonEmptyString(source.startTime, `${path}.startTime`),
-			endTime: parseNonEmptyString(source.endTime, `${path}.endTime`),
-			attributes: attributes as Readonly<Record<string, unknown>>,
-			...(source.inputs === undefined
-				? {}
-				: { inputs: source.inputs as Readonly<Record<string, unknown>> }),
-			...(source.outputs === undefined
-				? {}
-				: { outputs: source.outputs as Readonly<Record<string, unknown>> }),
-		};
-	});
-	for (const [index, span] of spans.entries()) {
-		if (span.parentId !== null && !spanIds.has(span.parentId)) {
+	}
+	for (const [index, span] of trajectory.spans.entries()) {
+		if (span.parentId !== "" && !spanIds.has(span.parentId)) {
 			fail(
 				`trajectory.spans.${index}.parentId`,
 				"reference to another span",
@@ -330,240 +208,167 @@ function parseSpans(value: unknown): readonly OpenInferenceSpan[] {
 			);
 		}
 	}
-	return deepFreeze(spans);
-}
 
-function parseReward(value: unknown): TrajectoryReward {
-	const source = parseObject(value, "trajectory.reward");
-	const score = source.score;
-	if (
-		typeof score !== "number" ||
-		!Number.isFinite(score) ||
-		score < 0 ||
-		score > 1
-	) {
-		fail("trajectory.reward.score", "number in [0, 1]", score);
+	const reward = required(trajectory.reward, "trajectory.reward");
+	nonEmpty(reward.source, "trajectory.reward.source");
+	nonEmpty(reward.rubricRef, "trajectory.reward.rubricRef");
+	if (!Number.isFinite(reward.score) || reward.score < 0 || reward.score > 1) {
+		fail("trajectory.reward.score", "number in [0, 1]", reward.score);
 	}
-	return deepFreeze({
-		source: parseNonEmptyString(source.source, "trajectory.reward.source"),
-		rubricRef: parseNonEmptyString(
-			source.rubricRef,
-			"trajectory.reward.rubricRef",
-		),
-		score,
-		...(source.eventId === undefined
-			? {}
-			: { eventId: String(source.eventId) }),
-		...(source.observedAt === undefined
-			? {}
-			: { observedAt: String(source.observedAt) }),
-	});
-}
 
-function parsePayloads(
-	value: unknown,
-	runId: string,
-): Readonly<Record<string, TrajectoryPayload>> {
-	const source = parseObject(value, "trajectory.payloads");
-	const payloads: Record<string, TrajectoryPayload> = {};
-	for (const [name, entry] of Object.entries(source)) {
-		const path = `trajectory.payloads.${name}`;
-		const payload = parseObject(entry, path);
-		const classification = (payload.classification ?? "public") as string;
-		if (SENSITIVE_CLASSIFICATIONS.has(classification)) {
-			const tokenized =
-				payload.redaction === "tokenized" &&
-				typeof payload.tokenRef === "string" &&
-				payload.tokenRef.length > 0;
-			const encrypted =
-				payload.redaction === "encrypted" &&
-				typeof payload.encryptedRef === "string" &&
-				payload.encryptedRef.startsWith(`run://${runId}/`);
-			if (!tokenized && !encrypted) {
-				fail(
-					path,
-					"sensitive payload tokenized or run-scoped encrypted (ADR-0099)",
-					payload.redaction,
-				);
-			}
+	// ADR-0099 fail-closed: sensitive payloads are tokenized or run-scoped
+	// encrypted references; cleartext never enters the trajectory store.
+	for (const [name, payload] of Object.entries(trajectory.payloads)) {
+		if (!SENSITIVE_CLASSIFICATIONS.has(payload.classification)) continue;
+		const tokenized =
+			payload.redaction === "tokenized" && payload.tokenRef.length > 0;
+		const encrypted =
+			payload.redaction === "encrypted" &&
+			payload.encryptedRef.startsWith(`run://${run.id}/`);
+		if (!tokenized && !encrypted) {
+			fail(
+				`trajectory.payloads.${name}`,
+				"sensitive payload tokenized or run-scoped encrypted (ADR-0099)",
+				payload.redaction,
+			);
 		}
-		payloads[name] = payload as TrajectoryPayload;
 	}
-	return deepFreeze(payloads);
 }
 
 export function parseTrajectory(value: unknown): Trajectory {
-	const source = parseObject(value, "trajectory");
-	if (source.schema !== TRAINING_TRAJECTORY_SCHEMA) {
-		fail("trajectory.schema", TRAINING_TRAJECTORY_SCHEMA, source.schema);
-	}
-	const subject = parseObject(source.subject, "trajectory.subject");
-	const run = parseRunCorrelation(source.run);
-	return deepFreeze({
-		schema: TRAINING_TRAJECTORY_SCHEMA,
-		id: parseNonEmptyString(source.id, "trajectory.id") as TrajectoryId,
-		traceparent: parseTraceparent(source.traceparent),
-		run,
-		subject: {
-			method: parseNonEmptyString(subject.method, "trajectory.subject.method"),
-			contractRef: parseNonEmptyString(
-				subject.contractRef,
-				"trajectory.subject.contractRef",
-			),
-			generatedRegion: parseGeneratedRegion(
-				subject.generatedRegion,
-				"trajectory.subject.generatedRegion",
-			),
-		},
-		spans: parseSpans(source.spans),
-		payloads: parsePayloads(source.payloads ?? {}, run.id),
-		reward: parseReward(source.reward),
-	});
+	const trajectory = fromJsonOrFail<Trajectory>(
+		TrajectorySchema,
+		normalizeSpanKinds(value),
+		"trajectory",
+	);
+	assertTrajectoryInvariants(trajectory);
+	return deepFreeze(trajectory);
 }
 
 export function parseOptimizeRequest(value: unknown): OptimizeRequest {
-	const source = parseObject(value, "optimizeRequest");
-	if (source.schema !== TRAINING_OPTIMIZE_REQUEST_SCHEMA) {
-		fail(
-			"optimizeRequest.schema",
-			TRAINING_OPTIMIZE_REQUEST_SCHEMA,
-			source.schema,
-		);
-	}
-	const generatedRegion = parseGeneratedRegion(
-		source.generatedRegion,
+	const source =
+		value && typeof value === "object"
+			? {
+					...(value as Record<string, unknown>),
+					trajectories: Array.isArray(
+						(value as { trajectories?: unknown }).trajectories,
+					)
+						? (value as { trajectories: unknown[] }).trajectories.map(
+								normalizeSpanKinds,
+							)
+						: (value as { trajectories?: unknown }).trajectories,
+				}
+			: value;
+	const request = fromJsonOrFail<OptimizeRequest>(
+		OptimizeRequestSchema,
+		source,
+		"optimizeRequest",
+	);
+	nonEmpty(request.requestId, "optimizeRequest.requestId");
+	const region = required(
+		request.generatedRegion,
 		"optimizeRequest.generatedRegion",
 	);
-	if (!Array.isArray(source.trajectories) || source.trajectories.length === 0) {
-		fail(
-			"optimizeRequest.trajectories",
-			"non-empty array",
-			source.trajectories,
-		);
+	assertRegionInvariants(region, "optimizeRequest.generatedRegion");
+	if (request.trajectories.length === 0) {
+		fail("optimizeRequest.trajectories", "non-empty array", []);
 	}
-	const rubric = parseObject(source.rubric, "optimizeRequest.rubric");
-	const contract = parseObject(source.contract, "optimizeRequest.contract");
-	const allowedRegionId = parseNonEmptyString(
-		contract.allowedRegionId,
-		"optimizeRequest.contract.allowedRegionId",
-	);
-	if (allowedRegionId !== generatedRegion.regionId) {
+	for (const trajectory of request.trajectories) {
+		assertTrajectoryInvariants(trajectory);
+	}
+	const rubric = required(request.rubric, "optimizeRequest.rubric");
+	nonEmpty(rubric.id, "optimizeRequest.rubric.id");
+	nonEmpty(rubric.objective, "optimizeRequest.rubric.objective");
+	const contract = required(request.contract, "optimizeRequest.contract");
+	nonEmpty(contract.ref, "optimizeRequest.contract.ref");
+	nonEmpty(contract.method, "optimizeRequest.contract.method");
+	if (contract.allowedRegionId !== region.regionId) {
 		fail(
 			"optimizeRequest.contract.allowedRegionId",
-			`generatedRegion.regionId (${generatedRegion.regionId})`,
-			allowedRegionId,
+			`generatedRegion.regionId (${region.regionId})`,
+			contract.allowedRegionId,
 		);
 	}
-	return deepFreeze({
-		schema: TRAINING_OPTIMIZE_REQUEST_SCHEMA,
-		requestId: parseNonEmptyString(
-			source.requestId,
-			"optimizeRequest.requestId",
-		),
-		generatedRegion,
-		trajectories: source.trajectories.map((entry) => parseTrajectory(entry)),
-		rubric: {
-			id: parseNonEmptyString(rubric.id, "optimizeRequest.rubric.id"),
-			objective: parseNonEmptyString(
-				rubric.objective,
-				"optimizeRequest.rubric.objective",
-			),
-			...(rubric.thresholds === undefined
-				? {}
-				: {
-						thresholds: rubric.thresholds as Readonly<Record<string, number>>,
-					}),
-		},
-		contract: {
-			ref: parseNonEmptyString(contract.ref, "optimizeRequest.contract.ref"),
-			method: parseNonEmptyString(
-				contract.method,
-				"optimizeRequest.contract.method",
-			),
-			allowedRegionId,
-		},
-	});
+	return deepFreeze(request);
+}
+
+function assertArtifactInvariants(artifact: TrainingArtifact): void {
+	parseTrainingEngineId(artifact.engineId);
+	nonEmpty(artifact.engineVersion, "trainingArtifact.engineVersion");
+	nonEmpty(artifact.methodRef, "trainingArtifact.methodRef");
+	nonEmpty(artifact.programJson, "trainingArtifact.programJson");
+	parseTrainingArtifactProgram(artifact.programJson);
 }
 
 export function parseTrainingArtifact(value: unknown): TrainingArtifact {
-	const source = parseObject(value, "trainingArtifact");
-	if (source.schema !== TRAINING_ARTIFACT_SCHEMA) {
-		fail("trainingArtifact.schema", TRAINING_ARTIFACT_SCHEMA, source.schema);
-	}
-	return deepFreeze({
-		schema: TRAINING_ARTIFACT_SCHEMA,
-		engineId: parseTrainingEngineId(source.engineId),
-		engineVersion: parseNonEmptyString(
-			source.engineVersion,
-			"trainingArtifact.engineVersion",
-		),
-		methodRef: parseNonEmptyString(
-			source.methodRef,
-			"trainingArtifact.methodRef",
-		),
-		program: parseObject(
-			source.program,
-			"trainingArtifact.program",
-		) as Readonly<Record<string, unknown>>,
-	});
+	const artifact = fromJsonOrFail<TrainingArtifact>(
+		TrainingArtifactSchema,
+		typeof value === "string" ? JSON.parse(value) : value,
+		"trainingArtifact",
+	);
+	assertArtifactInvariants(artifact);
+	return deepFreeze(artifact);
 }
 
-function parseProvenance(value: unknown): CandidateProvenance {
-	const source = parseObject(value, "candidate.provenance");
-	if (
-		!Array.isArray(source.trajectoryHashes) ||
-		source.trajectoryHashes.length === 0
-	) {
+/** Parses the platform-normalized program carried in `programJson`. */
+export function parseTrainingArtifactProgram(
+	programJson: string,
+): TrainingArtifactProgram {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(programJson);
+	} catch (error) {
 		fail(
-			"candidate.provenance.trajectoryHashes",
-			"non-empty array",
-			source.trajectoryHashes,
+			"trainingArtifact.programJson",
+			"JSON",
+			error instanceof Error ? error.message : error,
 		);
 	}
-	return deepFreeze({
-		trajectoryHashes: source.trajectoryHashes.map((hash) =>
-			parseTrajectoryHash(hash),
-		),
-		rubricRef: parseNonEmptyString(
-			source.rubricRef,
-			"candidate.provenance.rubricRef",
-		),
-		contractRef: parseNonEmptyString(
-			source.contractRef,
-			"candidate.provenance.contractRef",
-		),
-	});
+	const program = fromJsonOrFail<TrainingArtifactProgram>(
+		TrainingArtifactProgramSchema,
+		parsed,
+		"trainingArtifact.programJson",
+	);
+	nonEmpty(program.instructions, "trainingArtifact.program.instructions");
+	return deepFreeze(program);
 }
 
 /**
- * Parses a candidate and, for the patch form, enforces the ADR-0048 rule
- * that every edit stays inside the generated region the request named.
+ * Parses a candidate; for the patch form, every edit must stay inside the
+ * generated region the request named (ADR-0048).
  */
 export function parseTrainingCandidate(
 	value: unknown,
 	expectedRegion?: GeneratedRegion,
 ): TrainingCandidate {
-	const source = parseObject(value, "candidate");
-	if (source.schema !== TRAINING_CANDIDATE_SCHEMA) {
-		fail("candidate.schema", TRAINING_CANDIDATE_SCHEMA, source.schema);
+	const candidate = fromJsonOrFail<TrainingCandidate>(
+		TrainingCandidateSchema,
+		value,
+		"candidate",
+	);
+	nonEmpty(candidate.id, "candidate.id");
+	parseTrainingEngineId(candidate.engineId);
+
+	const provenance = required(candidate.provenance, "candidate.provenance");
+	if (provenance.trajectoryHashes.length === 0) {
+		fail("candidate.provenance.trajectoryHashes", "non-empty array", []);
 	}
-	const id = parseNonEmptyString(source.id, "candidate.id") as CandidateId;
-	const engineId = parseTrainingEngineId(source.engineId);
-	const provenance = parseProvenance(source.provenance);
-	if (source.kind === "artifact") {
-		return deepFreeze({
-			schema: TRAINING_CANDIDATE_SCHEMA,
-			kind: "artifact",
-			id,
-			engineId,
-			artifact: parseTrainingArtifact(source.artifact),
-			provenance,
-		});
+	for (const hash of provenance.trajectoryHashes) {
+		parseTrajectoryHash(hash);
 	}
-	if (source.kind !== "patch") {
-		fail("candidate.kind", '"patch" or "artifact"', source.kind);
+	nonEmpty(provenance.rubricRef, "candidate.provenance.rubricRef");
+	nonEmpty(provenance.contractRef, "candidate.provenance.contractRef");
+
+	if (candidate.body.case === "artifact") {
+		assertArtifactInvariants(candidate.body.value);
+		return deepFreeze(candidate);
 	}
-	const region = parseGeneratedRegion(source.region, "candidate.region");
+	if (candidate.body.case !== "patch") {
+		fail("candidate.body", "patch or artifact", candidate.body.case);
+	}
+	const patch = candidate.body.value;
+	const region = required(patch.region, "candidate.patch.region");
+	assertRegionInvariants(region, "candidate.patch.region");
 	if (expectedRegion) {
 		for (const key of [
 			"regionId",
@@ -573,29 +378,25 @@ export function parseTrainingCandidate(
 		] as const) {
 			if (region[key] !== expectedRegion[key]) {
 				fail(
-					`candidate.region.${key}`,
+					`candidate.patch.region.${key}`,
 					String(expectedRegion[key]),
 					region[key],
 				);
 			}
 		}
 	}
-	if (!Array.isArray(source.edits) || source.edits.length === 0) {
-		fail("candidate.edits", "non-empty array", source.edits);
+	if (patch.edits.length === 0) {
+		fail("candidate.patch.edits", "non-empty array", []);
 	}
-	const edits = source.edits.map((entry, index) => {
-		const path = `candidate.edits.${index}`;
-		const edit = parseObject(entry, path);
-		if (
-			!Number.isInteger(edit.startOffset) ||
-			!Number.isInteger(edit.endOffset) ||
-			(edit.endOffset as number) < (edit.startOffset as number)
-		) {
-			fail(path, "integer offsets with endOffset >= startOffset", edit);
+	for (const [index, edit] of patch.edits.entries()) {
+		const path = `candidate.patch.edits.${index}`;
+		nonEmpty(edit.replacement, `${path}.replacement`);
+		if (edit.endOffset < edit.startOffset) {
+			fail(path, "endOffset >= startOffset", edit);
 		}
 		if (
-			(edit.startOffset as number) < region.startOffset ||
-			(edit.endOffset as number) > region.endOffset
+			edit.startOffset < region.startOffset ||
+			edit.endOffset > region.endOffset
 		) {
 			fail(
 				path,
@@ -603,19 +404,26 @@ export function parseTrainingCandidate(
 				edit,
 			);
 		}
-		return {
-			startOffset: edit.startOffset as number,
-			endOffset: edit.endOffset as number,
-			replacement: parseNonEmptyString(edit.replacement, `${path}.replacement`),
-		};
-	});
-	return deepFreeze({
-		schema: TRAINING_CANDIDATE_SCHEMA,
-		kind: "patch",
-		id,
-		engineId,
-		region,
-		edits,
-		provenance,
-	});
+	}
+	return deepFreeze(candidate);
+}
+
+/** Canonical provenance hash of a trajectory (ADR-0125 candidate lineage). */
+export function hashTrajectory(trajectory: Trajectory): TrajectoryHash {
+	const canonical = JSON.stringify(
+		sortKeys(toJson(TrajectorySchema, trajectory)),
+	);
+	return `sha256:${createHash("sha256")
+		.update(canonical)
+		.digest("hex")}` as TrajectoryHash;
+}
+
+function sortKeys(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(sortKeys);
+	if (!value || typeof value !== "object") return value;
+	return Object.fromEntries(
+		Object.keys(value as Record<string, unknown>)
+			.sort()
+			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+	);
 }

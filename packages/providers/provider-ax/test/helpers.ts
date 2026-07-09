@@ -35,7 +35,7 @@ export function trajectory(
 		spans: [
 			{
 				id: `${id}-root`,
-				kind: "CHAIN",
+				kind: "OPEN_INFERENCE_SPAN_KIND_CHAIN",
 				name: "support.classifyTicket",
 				startTime: "2026-06-25T09:00:00.000Z",
 				endTime: "2026-06-25T09:00:00.120Z",

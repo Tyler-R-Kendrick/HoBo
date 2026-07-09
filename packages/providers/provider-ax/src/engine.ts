@@ -10,6 +10,7 @@ import {
 	type OptimizeRequest,
 	parseOptimizeRequest,
 	parseTrainingCandidate,
+	serializeTrainingArtifactProgram,
 	type TrainingCandidate,
 	type TrainingEngineId,
 	type TrainingEnginePort,
@@ -176,7 +177,8 @@ export function createAxTrainingEngine(
 			// The artifact program is the platform-normalized TrainingArtifactProgram
 			// (core proto): tuned instructions + recorded high-reward executions as
 			// demos (deterministic floor), with ax's serialized optimized program as
-			// this engine's payload.
+			// this engine's payload. Core owns the serializer so the proto shape is
+			// never hand-built here.
 			const enginePayloadJson = axSerialized
 				? JSON.stringify(
 						toJson(
@@ -187,17 +189,14 @@ export function createAxTrainingEngine(
 						),
 					)
 				: "";
-			const programJson = JSON.stringify({
+			const programJson = serializeTrainingArtifactProgram({
 				instructions:
 					((axSerialized as { instruction?: string } | null)?.instruction ??
 						parsed.rubric?.objective) ||
 					"",
 				demos: ios
 					.filter((io) => io.reward >= DEMO_REWARD_FLOOR)
-					.map((io) => ({
-						inputJson: JSON.stringify(io.input),
-						outputJson: JSON.stringify(io.output),
-					})),
+					.map((io) => ({ input: io.input, output: io.output })),
 				enginePayloadJson,
 			});
 

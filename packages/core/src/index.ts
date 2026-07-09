@@ -200,6 +200,7 @@ export {
 	parseTrainingEngineId,
 	parseTrajectory,
 	parseTrajectoryHash,
+	serializeTrainingArtifactProgram,
 	TRAINING_ENGINE_PORT,
 	TrainingEngineParseError,
 } from "./ports/training-engine.js";

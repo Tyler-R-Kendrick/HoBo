@@ -44,7 +44,7 @@ function goldenTrajectory(overrides: Record<string, unknown> = {}) {
 		spans: [
 			{
 				id: "span-root",
-				kind: "CHAIN", // bare OpenInference token, normalized by the parser
+				kind: "OPEN_INFERENCE_SPAN_KIND_CHAIN",
 				name: "support.classifyTicket",
 				startTime: "2026-06-25T09:00:00.000Z",
 				endTime: "2026-06-25T09:00:00.120Z",
@@ -54,7 +54,7 @@ function goldenTrajectory(overrides: Record<string, unknown> = {}) {
 			{
 				id: "span-llm",
 				parentId: "span-root",
-				kind: "OPEN_INFERENCE_SPAN_KIND_LLM", // canonical proto JSON name
+				kind: "OPEN_INFERENCE_SPAN_KIND_LLM",
 				name: "llm.classifyTicket",
 				startTime: "2026-06-25T09:00:00.010Z",
 				endTime: "2026-06-25T09:00:00.100Z",

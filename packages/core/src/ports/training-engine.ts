@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { JsonValue } from "@bufbuild/protobuf";
-import { fromJson, isMessage, toJson } from "@bufbuild/protobuf";
+import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import {
 	type GeneratedRegion,
 	OpenInferenceSpanKind,
@@ -84,7 +84,6 @@ const SENSITIVE_CLASSIFICATIONS = new Set([
 	"confidential",
 	"regulated",
 ]);
-const SPAN_KIND_JSON_PREFIX = "OPEN_INFERENCE_SPAN_KIND_";
 
 function fail(path: string, expected: string, received: unknown): never {
 	throw new TrainingEngineParseError(path, expected, received);
@@ -98,29 +97,6 @@ function required<T>(value: T | undefined, path: string): T {
 function nonEmpty(value: string, path: string): string {
 	if (value.trim().length === 0) fail(path, "non-empty string", value);
 	return value;
-}
-
-/**
- * Accept OpenInference's bare span-kind tokens ("LLM", "CHAIN", …) alongside
- * the canonical proto JSON enum names by prefixing before fromJson.
- */
-function normalizeSpanKinds(value: unknown): unknown {
-	if (!value || typeof value !== "object") return value;
-	const source = value as { spans?: unknown };
-	if (!Array.isArray(source.spans)) return value;
-	const spans = source.spans.map((span) => {
-		if (!span || typeof span !== "object") return span;
-		const kind = (span as { kind?: unknown }).kind;
-		if (
-			typeof kind === "string" &&
-			kind.length > 0 &&
-			!kind.startsWith(SPAN_KIND_JSON_PREFIX)
-		) {
-			return { ...span, kind: `${SPAN_KIND_JSON_PREFIX}${kind}` };
-		}
-		return span;
-	});
-	return { ...source, spans };
 }
 
 function fromJsonOrFail<T>(
@@ -238,7 +214,7 @@ function assertTrajectoryInvariants(trajectory: Trajectory): void {
 export function parseTrajectory(value: unknown): Trajectory {
 	const trajectory = fromJsonOrFail<Trajectory>(
 		TrajectorySchema,
-		normalizeSpanKinds(value),
+		value,
 		"trajectory",
 	);
 	assertTrajectoryInvariants(trajectory);
@@ -246,22 +222,9 @@ export function parseTrajectory(value: unknown): Trajectory {
 }
 
 export function parseOptimizeRequest(value: unknown): OptimizeRequest {
-	const source =
-		value && typeof value === "object"
-			? {
-					...(value as Record<string, unknown>),
-					trajectories: Array.isArray(
-						(value as { trajectories?: unknown }).trajectories,
-					)
-						? (value as { trajectories: unknown[] }).trajectories.map(
-								normalizeSpanKinds,
-							)
-						: (value as { trajectories?: unknown }).trajectories,
-				}
-			: value;
 	const request = fromJsonOrFail<OptimizeRequest>(
 		OptimizeRequestSchema,
-		source,
+		value,
 		"optimizeRequest",
 	);
 	nonEmpty(request.requestId, "optimizeRequest.requestId");
@@ -310,6 +273,31 @@ export function parseTrainingArtifact(value: unknown): TrainingArtifact {
 			);
 	assertArtifactInvariants(artifact);
 	return deepFreeze(artifact);
+}
+
+/**
+ * Serializes a platform-normalized artifact program to the `programJson`
+ * string carried on a `TrainingArtifact` — the symmetric writer for
+ * `parseTrainingArtifactProgram`, so engines build it through the generated
+ * constructor instead of hand-shaping proto JSON (ADR-0125).
+ */
+export function serializeTrainingArtifactProgram(input: {
+	readonly instructions: string;
+	readonly demos?: readonly {
+		readonly input: unknown;
+		readonly output: unknown;
+	}[];
+	readonly enginePayloadJson?: string;
+}): string {
+	const program = create(TrainingArtifactProgramSchema, {
+		instructions: input.instructions,
+		demos: (input.demos ?? []).map((demo) => ({
+			inputJson: JSON.stringify(demo.input),
+			outputJson: JSON.stringify(demo.output),
+		})),
+		enginePayloadJson: input.enginePayloadJson ?? "",
+	});
+	return JSON.stringify(toJson(TrainingArtifactProgramSchema, program));
 }
 
 /** Parses the platform-normalized program carried in `programJson`. */

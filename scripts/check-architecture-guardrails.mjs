@@ -288,8 +288,15 @@ async function collectEvidence(root, packageRoot) {
 
 // Hand-declared TS types that duplicate a proto message/enum name are the
 // "parallel interfaces" the architecture rules forbid — record types must be
-// the generated ones (technical-standards.md). Escape hatch: annotate the
-// declaration (same or previous line) with // parallel-type-allowed: <why>.
+// the generated ones (technical-standards.md). Two markers on the
+// declaration line (or the line above) suppress a hit, for the two legitimate
+// cases the standard recognizes:
+//   // domain-view: <why>          — a deliberately richer parse-don't-validate
+//                                     domain type (branded ids, generics, extra
+//                                     fields) whose generated *_pb.ts is its
+//                                     wire form; permanent by design.
+//   // parallel-type-allowed: <why> — temporary debt awaiting migration.
+const PARALLEL_TYPE_MARKERS = ["domain-view:", "parallel-type-allowed:"];
 function parallelTypeDeclarations(typeScriptSources, protoTypes) {
 	if (protoTypes.size === 0) return [];
 	const offenders = [];
@@ -305,7 +312,9 @@ function parallelTypeDeclarations(typeScriptSources, protoTypes) {
 			const name = match?.[1] ?? match?.[2];
 			if (!name || !protoTypes.has(name)) continue;
 			const context = `${lines[index - 1] ?? ""}\n${line}`;
-			if (context.includes("parallel-type-allowed:")) continue;
+			if (PARALLEL_TYPE_MARKERS.some((marker) => context.includes(marker))) {
+				continue;
+			}
 			offenders.push(`${file}:${index + 1} ${name}`);
 		}
 	}

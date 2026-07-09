@@ -31,7 +31,7 @@ export interface ScheduledTimer {
 	readonly deduped: boolean;
 }
 
-// parallel-type-allowed: pre-codegen hand-written record; IMPL-011 migration to generated types pending (GAPS.md)
+// domain-view: parse-don't-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface CronSchedule {
 	readonly scheduleId: ScheduleId;
 	readonly everyMs: number;

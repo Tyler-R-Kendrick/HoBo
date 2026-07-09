@@ -30,7 +30,7 @@ classifyTicket.promotionGate({
   policy: "promote.semantic.prod",          // Plan 30 decision (may require approval)
 });
 ```
-Promotion = **all three** pass. Each `eval.Ran`/`eval.GatePassed|Failed` and the final promotion is an event ([Plan 11](./data-plane.md#plan-11)).
+Promotion = **all three** pass. Each `eval.Ran`/`eval.GatePassed|Failed` and the final promotion is an event ([Plan 11](./data-plane.md#plan-11)). The gate itself ships as **`@hobo/training-pipeline`** (`evaluatePromotionGate`): a pure three-lens decision over recorded eval results that returns a generated `PromotionDecision` and maps it to the promotion facts (`training.Promoted`/`impl.Promoted` on promote, `eval.GateFailed` on refuse).
 
 **How a promotion is persisted to source ([ADR-0048](./adr/03-data-plane.md#adr-0048)).** A promoted candidate is written back via **AST-aware, region-scoped** edits (a format-preserving codemod) confined to the `"use training"` method's **marked generated region** — never blind string patching, never touching hand-written code (the same generated-vs-authored boundary as `_generated/`, [ADR-0037](./adr/01-architecture-core.md#adr-0037)). The mutation carries **signed provenance** (model/prompt/seed/eval+conformance report) and lands as a **gated change**: low-risk → auto-apply to the region; prod/high-trust → **a PR/Delta for approval** (GitOps publisher + approval hook, [Plan 25](./platform-engineering.md#plan-25)/[Plan 6](./ai-native-agent-auth.md#plan-06)). It's idempotent + round-trippable (prior candidates live in the event log), so a promotion is reversible.
 

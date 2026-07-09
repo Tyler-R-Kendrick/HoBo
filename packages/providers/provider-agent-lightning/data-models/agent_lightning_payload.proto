@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package hobo.provider_agent_lightning.v1;
+
+// The engine-internal payload this adapter stores in the platform artifact
+// program's engine_payload_json (ADR-0125): the Microsoft Agent Lightning
+// rollout that produced the optimized policy, pinned by the artifact's
+// engine_version. Agent Lightning runs as an out-of-process RL trainer
+// selected behind the hobo:training-engine port (ADR-0025); this record is
+// the only trace of the engine that crosses back into the platform artifact.
+message AgentLightningPayload {
+  string rollout_id = 1;
+  string serialized_policy_json = 2;
+}

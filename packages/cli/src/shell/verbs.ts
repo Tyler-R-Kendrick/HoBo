@@ -199,6 +199,21 @@ Scaffold an offline SDK program with checked-in generated bindings.
 `;
 	}
 
+	if (verb.name === "codegen") {
+		return `HoBo codegen
+
+Usage:
+  hobo codegen [global flags] [--check]
+
+Role: ${verb.role}
+
+Regenerate the project's checked-in src/_generated/ tree from its
+WIT/Zod/allow/bindle sources. Pass --check to report drift without writing
+(exits non-zero when the tree is stale) — the same generator hobo build
+asserts freshness against.
+`;
+	}
+
 	return `HoBo ${verb.name}
 
 Usage:

@@ -22,6 +22,12 @@ export {
 	parseServiceDeclaration,
 	parseBuildManifest,
 } from "./commands/build.js";
+export {
+	createCodegenCommand,
+	runCodegen,
+	isCodegenError,
+} from "./commands/codegen.js";
+export type { CodegenRequest } from "./commands/codegen.js";
 export { VALID_TEMPLATES } from "./types/scaffold.js";
 export type {
 	CliEnvelope,

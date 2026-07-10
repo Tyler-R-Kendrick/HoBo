@@ -70,7 +70,7 @@
 				"src/cli.ts": "sha256:a6408260db5ba1912f02de0d24fb940553fa8ee789d05e90b2a14ae870dd92f2",
 				"src/codegen.ts": "sha256:e2cb6e220cc8ef85ed68ab3bea673a2bfbd0181152226432cb1a6eadcea23b86",
 				"src/cue.ts": "sha256:6c120eb8eae063f1e385cc8fb7c57e7bc4792968bdd73c98677a2cc5f0badfd1",
-				"src/discover.ts": "sha256:61eaefb81f281cbd94664cd247826e4a44e9ff6e3b986211ee9f1b8269a276ec",
+				"src/discover.ts": "sha256:685f5decd7f27d0522503c97246c917c9bcdb5d2812d87d13833c5856dc721c7",
 				"src/parse.ts": "sha256:2750ed6d6ac8d3ed6bcbe60c6f1f9a06f43b6903398d615fce901781c6dd0b4a",
 				"src/types.ts": "sha256:2fd23e4a87f8feb36d65841ad16b9fa90bcab6d6cfb4a18df206d244807fdbac",
 				"test/codegen-pipeline.test.ts": "sha256:5113466f5fbe62a9d5e31917e9ecaff7cdd62c5b825488b867c91c11a30e80c9",

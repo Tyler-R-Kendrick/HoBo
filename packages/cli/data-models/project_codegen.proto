@@ -29,11 +29,14 @@ message CodegenReport {
   repeated string checked = 3;
 }
 
-// One contract-backed trainable stub emitted for a bindle step (ADR-0125).
+// One trainable binding codegen emits (ADR-0125): a contract-backed stub
+// per bindle step, or an inferred registration generated from a bare
+// "use training" marker found in authored source.
 message TrainableStub {
   string method_ref = 1;
   string export_name = 2;
   string resource = 3;
   string type_name = 4;
   string contract_ref = 5;
+  string origin = 6;
 }

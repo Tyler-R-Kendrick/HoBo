@@ -21,12 +21,18 @@ export {
 
 import type { CodegenArtifact } from "../_generated/project_codegen_pb.js";
 
-/** Project-relative locations of the four codegen source files. */
+/** Project-relative locations of the codegen source inputs. */
 export interface CodegenSourceLayout {
 	readonly wit: string;
 	readonly zod: string;
 	readonly allow: string;
 	readonly bindle: string;
+	/**
+	 * Directory scanned for bare `"use training"` markers (ADR-0125 syntax 3);
+	 * marked functions get inferred bindings generated into the trainables
+	 * module. Generated roots inside it are excluded.
+	 */
+	readonly scanDir: string;
 }
 
 /** Project-relative output path of every generated file. */
@@ -87,6 +93,7 @@ export function defaultCodegenLayout(): CodegenLayout {
 			zod: ".hobo/sources/zod/resources.json",
 			allow: ".hobo/sources/allow/scopes.json",
 			bindle: "hobo.bindle.json",
+			scanDir: "src",
 		},
 		generatedRoots: [".hobo/generated", "src/_generated"],
 		files: {

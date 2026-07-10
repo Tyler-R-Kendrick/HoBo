@@ -23,6 +23,16 @@ export async function writeFixtureProject(
 	await writeJson(join(projectRoot, layout.sources.zod), sources.zod);
 	await writeJson(join(projectRoot, layout.sources.allow), sources.allow);
 	await writeJson(join(projectRoot, layout.sources.bindle), sources.bindle);
+	// A bare "use training" marker (ADR-0125 syntax 3): codegen scans the
+	// layout's scanDir and generates its inferred bindings.
+	await writeText(
+		join(projectRoot, layout.sources.scanDir, "rank.ts"),
+		`export async function rankFeed(input: { items: string[] }): Promise<{ ranked: string[] }> {\n` +
+			`  "use training";\n` +
+			`  // Rank feed items; stable sort as the initial implementation.\n` +
+			`  return { ranked: [...input.items].sort() };\n` +
+			`}\n`,
+	);
 }
 
 export function fixtureSources(options: CodegenFixtureOptions = {}): {

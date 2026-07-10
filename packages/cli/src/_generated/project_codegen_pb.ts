@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file project_codegen.proto.
  */
 export const file_project_codegen: GenFile = /*@__PURE__*/
-  fileDesc("ChVwcm9qZWN0X2NvZGVnZW4ucHJvdG8SC2hvYm8uY2xpLnYxIjAKD0NvZGVnZW5BcnRpZmFjdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAkiWgoKRHJpZnRFbnRyeRIMCgRwYXRoGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIXCg9leHBlY3RlZF9kaWdlc3QYAyABKAkSFQoNYWN0dWFsX2RpZ2VzdBgEIAEoCSI/Cg1Db2RlZ2VuUmVwb3J0EgwKBG1vZGUYASABKAkSDwoHd3JpdHRlbhgCIAMoCRIPCgdjaGVja2VkGAMgAygJInMKDVRyYWluYWJsZVN0dWISEgoKbWV0aG9kX3JlZhgBIAEoCRITCgtleHBvcnRfbmFtZRgCIAEoCRIQCghyZXNvdXJjZRgDIAEoCRIRCgl0eXBlX25hbWUYBCABKAkSFAoMY29udHJhY3RfcmVmGAUgASgJYgZwcm90bzM");
+  fileDesc("ChVwcm9qZWN0X2NvZGVnZW4ucHJvdG8SC2hvYm8uY2xpLnYxIjAKD0NvZGVnZW5BcnRpZmFjdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAkiWgoKRHJpZnRFbnRyeRIMCgRwYXRoGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIXCg9leHBlY3RlZF9kaWdlc3QYAyABKAkSFQoNYWN0dWFsX2RpZ2VzdBgEIAEoCSI/Cg1Db2RlZ2VuUmVwb3J0EgwKBG1vZGUYASABKAkSDwoHd3JpdHRlbhgCIAMoCRIPCgdjaGVja2VkGAMgAygJIoMBCg1UcmFpbmFibGVTdHViEhIKCm1ldGhvZF9yZWYYASABKAkSEwoLZXhwb3J0X25hbWUYAiABKAkSEAoIcmVzb3VyY2UYAyABKAkSEQoJdHlwZV9uYW1lGAQgASgJEhQKDGNvbnRyYWN0X3JlZhgFIAEoCRIOCgZvcmlnaW4YBiABKAliBnByb3RvMw");
 
 /**
  * One generated file, project-root-relative.
@@ -100,7 +100,9 @@ export const CodegenReportSchema: GenMessage<CodegenReport> = /*@__PURE__*/
   messageDesc(file_project_codegen, 2);
 
 /**
- * One contract-backed trainable stub emitted for a bindle step (ADR-0125).
+ * One trainable binding codegen emits (ADR-0125): a contract-backed stub
+ * per bindle step, or an inferred registration generated from a bare
+ * "use training" marker found in authored source.
  *
  * @generated from message hobo.cli.v1.TrainableStub
  */
@@ -129,6 +131,11 @@ export type TrainableStub = Message<"hobo.cli.v1.TrainableStub"> & {
    * @generated from field: string contract_ref = 5;
    */
   contractRef: string;
+
+  /**
+   * @generated from field: string origin = 6;
+   */
+  origin: string;
 };
 
 /**

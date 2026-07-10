@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import { toJson } from "@bufbuild/protobuf";
 import { loadSourceModel } from "../codegen/engine.js";
 import { runCodegen } from "../codegen/run-codegen.js";
-import { buildTrainables } from "../codegen/trainables.js";
+import {
+	buildTrainables,
+	scanTrainableDirectives,
+} from "../codegen/trainables.js";
 import {
 	type CodegenEngine,
 	CodegenError,
@@ -35,7 +38,8 @@ export function createStubCommand(
 					options,
 				);
 				const model = await loadSourceModel(projectRoot, layout.sources);
-				const stubs = buildTrainables(model, layout).stubs;
+				const directives = await scanTrainableDirectives(projectRoot, layout);
+				const stubs = buildTrainables(model, layout, directives).stubs;
 				return {
 					ok: true,
 					status: "ok",

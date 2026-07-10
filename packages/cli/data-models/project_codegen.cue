@@ -24,7 +24,15 @@ package project_codegen
 #TrainableStub: {
 	method_ref:   string & !=""
 	export_name:  string & =~"^[a-zA-Z_$][a-zA-Z0-9_$]*$"
-	resource:     string & !=""
-	type_name:    string & !=""
-	contract_ref: string & =~"^bindle://"
+	origin:       "bindle-step" | "directive"
+	if origin == "bindle-step" {
+		resource:     string & !=""
+		type_name:    string & !=""
+		contract_ref: string & =~"^bindle://"
+	}
+	if origin == "directive" {
+		resource:     ""
+		type_name:    ""
+		contract_ref: string & =~"^inferred://"
+	}
 }

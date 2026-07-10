@@ -7,6 +7,7 @@ import {
 	isTrainable,
 	listTrainables,
 	resetTrainables,
+	resolveTrainable,
 	type Trainable,
 } from "@hobo/runtime";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -67,6 +68,7 @@ describe("trainable codegen", () => {
 				resource: "incident",
 				typeName: "Incident",
 				contractRef: "bindle://support/steps/incident.classify",
+				origin: "bindle-step",
 			},
 			{
 				methodRef: "ticket.validate",
@@ -74,6 +76,13 @@ describe("trainable codegen", () => {
 				resource: "ticket",
 				typeName: "Ticket",
 				contractRef: "bindle://support/steps/ticket.validate",
+				origin: "bindle-step",
+			},
+			{
+				methodRef: "rankFeed",
+				exportName: "rankFeedTraining",
+				contractRef: "inferred://rankFeed",
+				origin: "directive",
 			},
 		]);
 
@@ -92,6 +101,7 @@ describe("trainable codegen", () => {
 		expect(mod.trainableStubs.map((stub) => stub.methodRef)).toEqual([
 			"incident.classify",
 			"ticket.validate",
+			"rankFeed",
 		]);
 
 		const facts = listTrainables();
@@ -101,6 +111,43 @@ describe("trainable codegen", () => {
 
 		const served = await mod.incidentClassify(INCIDENT_EXAMPLE);
 		expect(served).toEqual(INCIDENT_EXAMPLE);
+	});
+
+	it("generates inferred bindings for bare use-training markers (syntax 3)", async () => {
+		const mod = await importTrainables(projectRoot);
+
+		// The marker carried NO bindings — codegen generated them.
+		expect(isTrainable(mod.rankFeedTraining)).toBe(true);
+		const fact = listTrainables().find((f) => f.methodRef === "rankFeed");
+		expect(fact?.contractRef).toBe("inferred://rankFeed");
+		expect(fact?.baseline).toBe("body");
+		expect(fact?.intent).toContain("Rank feed items");
+
+		// DI-style resolution sees the generated registration...
+		const ranked = resolveTrainable<{ items: string[] }, { ranked: string[] }>(
+			"rankFeed",
+		);
+		await expect(ranked({ items: ["b", "a"] })).resolves.toEqual({
+			ranked: ["a", "b"],
+		});
+
+		// ...and the optimization loop applies to it like any other form.
+		const tunedArtifact = {
+			engineId: "hobo.training-engine/built-in-opto@0.1.0",
+			engineVersion: "22.0.9",
+			methodRef: "rankFeed",
+			programJson: serializeTrainingArtifactProgram({
+				instructions: "Rank by recency, not lexicographically.",
+				demos: [
+					{ input: { items: ["b", "a"] }, output: { ranked: ["b", "a"] } },
+				],
+			}),
+		};
+		applyTrainingArtifact("rankFeed", tunedArtifact);
+		applyTrainingArtifact("rankFeed", null);
+		await expect(ranked({ items: ["b", "a"] })).resolves.toEqual({
+			ranked: ["a", "b"],
+		});
 	});
 
 	it("applies a training artifact for tuned output and reverts to the stub", async () => {
@@ -131,6 +178,7 @@ describe("trainable codegen", () => {
 async function importTrainables(projectRoot: string): Promise<{
 	incidentClassify: Trainable<Incident, Incident>;
 	ticketValidate: Trainable<unknown, unknown>;
+	rankFeedTraining: Trainable<{ items: string[] }, { ranked: string[] }>;
 	trainableStubs: readonly { readonly methodRef: string }[];
 }> {
 	const moduleUrl = pathToFileURL(

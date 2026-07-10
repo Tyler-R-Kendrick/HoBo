@@ -1,9 +1,9 @@
 import { createDeterministicContext } from "./context.js";
-import { ReplayDivergenceError, digest } from "./divergence.js";
-import { canonicalStateBytes } from "./replayer.js";
-import { nextEnvelope, recordEffect } from "./recorder.js";
-import { createInMemoryEventStore } from "./store.js";
+import { digest, ReplayDivergenceError } from "./divergence.js";
 import { stableStringify } from "./equivalence.js";
+import { nextEnvelope, recordEffect } from "./recorder.js";
+import { canonicalStateBytes } from "./replayer.js";
+import { createInMemoryEventStore } from "./store.js";
 
 export interface WorkflowHandlers<S, A> {
 	name: string;
@@ -369,7 +369,7 @@ export function testRuntime(
 	};
 }
 
-export { ReplayDivergenceError, stableStringify, canonicalStateBytes };
+export { canonicalStateBytes, ReplayDivergenceError, stableStringify };
 
 function replaySleep(
 	delayMs: number,

@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 
 type Mode = "worktree" | "staged";
 
@@ -101,7 +101,7 @@ function existsAtBase(file: string): boolean {
 	);
 }
 
-function changedFiles(): string[] {
+function changedFiles(statuses: readonly string[] = ["A"]): string[] {
 	const baseForDiff = mode === "staged" ? "" : effectiveBase();
 	const nameStatus =
 		mode === "staged"
@@ -145,7 +145,9 @@ function changedFiles(): string[] {
 			}
 			return firstPath ? [{ status, file: firstPath }] : [];
 		})
-		.filter((entry) => entry.status.startsWith("A"))
+		.filter((entry) =>
+			statuses.some((status) => entry.status.startsWith(status)),
+		)
 		.map((entry) => entry.file);
 
 	const addedFiles =
@@ -223,6 +225,44 @@ if (newJavaScriptFiles.length > 0) {
 		[
 			"New JavaScript-family implementation files detected; use TypeScript (.ts) for new code or document an ADR exception:",
 			...newJavaScriptFiles.map((file) => `- ${file}`),
+		].join("\n"),
+	);
+}
+
+// Minimal public surface (technical-standards.md): no new exported
+// string-literal constants in package sources — schema identity and enum
+// vocabularies come from generated code. Constants that ARE the contract
+// carry a // public-contract: <why> marker on or above the declaration.
+const literalConstOffenders: string[] = [];
+for (const file of changedFiles(["A", "M"])) {
+	if (
+		!/^packages\/.+\/src\//.test(file) ||
+		/(^|\/)_generated(\/|$)/.test(file) ||
+		!file.endsWith(".ts") ||
+		!existsSync(file)
+	) {
+		continue;
+	}
+	const lines = readFileSync(file, "utf8").split(/\r?\n/);
+	for (const [index, line] of lines.entries()) {
+		const match = line.match(
+			/^export const [A-Za-z_$][\w$]*(?:\s*:\s*[^=]+)?\s*=\s*(["'`]|$)/,
+		);
+		if (!match) continue;
+		const opensLiteral = match[1]
+			? true
+			: /^\s*["'`]/.test(lines[index + 1] ?? "");
+		if (!opensLiteral) continue;
+		const context = `${lines[index - 1] ?? ""}\n${line}`;
+		if (context.includes("public-contract:")) continue;
+		literalConstOffenders.push(`${file}:${index + 1}`);
+	}
+}
+if (literalConstOffenders.length > 0) {
+	fail(
+		[
+			"Exported string-literal constants need a // public-contract: <why> marker (or belong in generated code / module-private scope):",
+			...literalConstOffenders.map((entry) => `- ${entry}`),
 		].join("\n"),
 	);
 }

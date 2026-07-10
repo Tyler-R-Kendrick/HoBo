@@ -16,6 +16,7 @@ import {
 	uniqueStringArray,
 } from "./parse-utils.js";
 
+// public-contract: the core manifest schema version consumers pin against.
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 
 const STABILITIES = new Set<InterfaceStability>([
@@ -38,6 +39,7 @@ const REQUIRED_MANIFEST_FILES = [
 	"cost.json",
 ] as const;
 
+// domain-view: parse-don't-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface CapabilityManifestBundle {
 	index: {
 		schemaVersion: "hobo.core/v1";

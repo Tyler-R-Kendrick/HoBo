@@ -1,0 +1,81 @@
+{
+	"schema": "hobo.promotions-ledger/v1",
+	"promotions": [
+		{
+			"proof": "src/draft/technical-proofs/deterministic-replay-engine/src",
+			"promotedTo": "packages/runtime/src/replay",
+			"status": "frozen",
+			"note": "Promoted with typing/format hardening; the package copy is canonical (GAPS.md IMPL-005).",
+			"digests": {
+				"context.ts": "sha256:48a51b61ccb05ea48594807606df36302afb85b66c0dbfc3745434a0b6b5496c",
+				"divergence.ts": "sha256:dcc24c61c10e131187ab91fa4303da5ed7d9835357394f1f197b73c799941352",
+				"equivalence.ts": "sha256:8b169a0d2f8fa85efe1d0c2d4bddc35e39a7070f9269377982959e10e4deaf7e",
+				"index.ts": "sha256:3b9f6ddd2ad0d3c9ab36a759f26a551ca3732625e5f943ef1b4633d3f0649f81",
+				"parse.ts": "sha256:c65d76dedea6d7e49e3d0bfd71864633280447613b454a5b57d8bf5cbc5cf316",
+				"recorder.ts": "sha256:8556f00fe2d054da37f0f5fd9aef01c84f8598d796a0b337e9b2a55d4ddfe185",
+				"replayer.ts": "sha256:a984b3f1ac58488efbad79d53cfb6476906841d20b0a60ec2d54394b851cd008",
+				"store.ts": "sha256:c1558f0b7f931f7ef49943aac00637ef43e294c27357406430aeb2ccb49534e4",
+				"test-runtime.ts": "sha256:6ff20013c2c7bc75643ee16a8142f319c8eb0b0a53cf888a7c7521e0b02444fc",
+				"types.ts": "sha256:9e48d761a5e97ff01c57254ad05c1fa1e25917ee538fca0a27aa09b81f43e260"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/training-engine-port-contract/src",
+			"promotedTo": "packages/core/src/ports/training-engine.ts + packages/wit/wit/deps/hobo-training-engine",
+			"status": "frozen",
+			"note": "Promoted as parse-don't-validate port types + vendored WIT; extended with the ADR-0125 artifact form.",
+			"digests": {
+				"training-engine-contract.d.mts": "sha256:ca33e3b4fdfc51161d860992bd316c2228d76fff4fd8a11f6ad91c8dec6d2d2b",
+				"training-engine-contract.ts": "sha256:d50eba5e9ae02b13feee9bc66f2e3774445dace6ae840a6fb86794d78c09c299"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/evals-training-promotion-gates-poc/src/lint",
+			"promotedTo": "packages/runtime/src/training/lint.ts",
+			"status": "frozen",
+			"note": "The use-training grounding lint; the rest of the poc (evals/promotion pipeline) remains reference until its slice lands.",
+			"digests": {
+				"use-training-lint.ts": "sha256:146aaa2800c400a76b378f973bc6c1d92a7dd490b8cad4d3a119853a92f2a50b"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/hobo-componentize/src",
+			"promotedTo": "packages/componentize/src",
+			"status": "reference",
+			"note": "Partial promotion (S0 scope, ADR-0105): oci/smoke/sources modules are S1+ scope and stay in the proof as reference (GAPS.md IMPL-006)."
+		},
+		{
+			"proof": "src/draft/technical-proofs/hobo-codegen-cli-contract/src",
+			"promotedTo": "packages/cli/src/codegen",
+			"status": "frozen",
+			"note": "HOBO-152 promotion: project codegen engine typed and split (types/engine/tree/fixture/run-codegen), injectable CodegenEngine; the CLI and build gate no longer dynamic-import the proof (GAPS.md IMPL-004).",
+			"digests": {
+				"codegen-cli-contract.ts": "sha256:9f17d8bc15639123d29623571876bbdc7155f66713eb2365a07b3a8811340e5d"
+			}
+		},
+		{
+			"proof": "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools",
+			"promotedTo": "packages/schema-tools",
+			"status": "frozen",
+			"note": "S0-04 promotion gate: production codegen orchestrator. Promoted with nested-package + buf.yaml opt-in discovery and strict-tsconfig fixes; the POC copy remains its own executable proof fixture.",
+			"digests": {
+				"contracts/pacts/schema_tools_codegen_report.pact.json": "sha256:bc246cf883752dc4ca4bd8e70d24df2177deed49d578c013f9789c388275bbba",
+				"data-models/buf.yaml": "sha256:b91555931d75c55b4ab15530a6be430649a9a1de07577a3963612b90b186434c",
+				"data-models/codegen_report.cue": "sha256:b7f492bc670ef15d9c43ac9e1b449ce18a6eeb133211249031f38ec4de6d42af",
+				"data-models/fixtures/invalid/negative-duration.json": "sha256:dd87d538183e3cc8a699c463f6eb85678d81765f9c67dd7d27ca2a61d2c21818",
+				"data-models/fixtures/valid/clean-report.json": "sha256:6ee3ef6b78daffc96962deff1c333c6191711ac10d0445097857c6d5fb7a6476",
+				"data-models/hobo/schematools/v1/codegen_report.proto": "sha256:de5cb403525016175c1e511e4292a580b7b74f718cefc908db694adcc1389afa",
+				"package.json": "sha256:6ab362f11ef3a3ecfe640c58b8ee513d50805540aeaf5f5bbc96827802132ee3",
+				"src/_generated/hobo/schematools/v1/codegen_report_pb.ts": "sha256:f882b88ea9305180334fa8e46ed9e3c600c2e62e6225810782ca56061becb105",
+				"src/cli.ts": "sha256:a6408260db5ba1912f02de0d24fb940553fa8ee789d05e90b2a14ae870dd92f2",
+				"src/codegen.ts": "sha256:e2cb6e220cc8ef85ed68ab3bea673a2bfbd0181152226432cb1a6eadcea23b86",
+				"src/cue.ts": "sha256:6c120eb8eae063f1e385cc8fb7c57e7bc4792968bdd73c98677a2cc5f0badfd1",
+				"src/discover.ts": "sha256:61eaefb81f281cbd94664cd247826e4a44e9ff6e3b986211ee9f1b8269a276ec",
+				"src/parse.ts": "sha256:2750ed6d6ac8d3ed6bcbe60c6f1f9a06f43b6903398d615fce901781c6dd0b4a",
+				"src/types.ts": "sha256:2fd23e4a87f8feb36d65841ad16b9fa90bcab6d6cfb4a18df206d244807fdbac",
+				"test/codegen-pipeline.test.ts": "sha256:5113466f5fbe62a9d5e31917e9ecaff7cdd62c5b825488b867c91c11a30e80c9",
+				"tsconfig.json": "sha256:72909bdc6a21c90a32d98bf1a5bc1b40109b130f1d71e3b22b8b90f0ef36fb0b"
+			}
+		}
+	]
+}

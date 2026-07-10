@@ -7,14 +7,13 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
-
-import { scaffoldHoboProject } from "../../src/draft/technical-proofs/hobo-new-scaffold-contract/src/scaffold.js";
-import { writeFixtureProject } from "../../src/draft/technical-proofs/hobo-codegen-cli-contract/src/codegen-cli-contract.js";
+import { writeFixtureProject } from "../../packages/cli/src/codegen/fixture.js";
 import {
 	defineDevResource,
 	startDevSession,
 } from "../../src/draft/technical-proofs/hobo-612-dev-local-loop-poc/src/dev-session.js";
 import { COLD_BOOT_BUDGET_MS } from "../../src/draft/technical-proofs/hobo-612-dev-local-loop-poc/src/types.js";
+import { scaffoldHoboProject } from "../../src/draft/technical-proofs/hobo-new-scaffold-contract/src/scaffold.js";
 
 const CREDENTIAL_ENV_VARS = [
 	"AWS_ACCESS_KEY_ID",

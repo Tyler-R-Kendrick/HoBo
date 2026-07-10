@@ -1,6 +1,7 @@
 import { CoreParseError } from "../errors.js";
 import { deepFreeze, nonEmptyString, positiveInteger } from "../parse-utils.js";
 
+// public-contract: the streamer port default stream name (port contract).
 export const DEFAULT_STREAM_NAME = "default" as StreamName;
 
 export type RunId = string & { readonly __brand: "RunId" };
@@ -21,6 +22,7 @@ export interface StreamerRunResultRecord {
 	readonly reason: string;
 }
 
+// domain-view: parse-don't-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface StreamerFrame<TChunk = unknown> {
 	readonly run_id: string;
 	readonly runId: RunId;
@@ -29,6 +31,7 @@ export interface StreamerFrame<TChunk = unknown> {
 	readonly chunk: TChunk;
 }
 
+// domain-view: parse-don't-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface StreamerRunResult {
 	readonly run_id: string;
 	readonly runId: RunId;

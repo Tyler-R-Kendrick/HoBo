@@ -3,16 +3,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
+import { runCodegen } from "../src/codegen/run-codegen.js";
 import {
 	BUILD_MANIFEST_PATH,
 	createHoboCli,
 	writeBuildFixtureProject,
 } from "../src/index.js";
-import {
-	executeCodegenRequest,
-	generateCodegenArtifacts,
-} from "../../../src/draft/technical-proofs/hobo-codegen-cli-contract/src/codegen-cli-contract.js";
 
 describe("hobo build", () => {
 	it("emits wasm and OCI fallback artifacts with JSON digests", async () => {
@@ -221,12 +217,7 @@ async function withTempBuildProject(
 }
 
 async function seedGeneratedTree(projectRoot: string) {
-	await executeCodegenRequest({
-		projectRoot,
-		check: false,
-		guestLanguage: "ts",
-		engine: generateCodegenArtifacts,
-	});
+	await runCodegen({ projectRoot, check: false });
 }
 
 function byService(artifacts: Array<{ service: string }>) {

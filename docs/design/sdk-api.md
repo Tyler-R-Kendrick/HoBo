@@ -235,6 +235,22 @@ export const classifyTicket = training(
 // directive form is equivalent:  export async function classifyTicket(t: Ticket) { "use training"; ... }
 ```
 
+**Empty implementations (`training.define`) and per-param/output metadata ([ADR-0125](./adr/03-data-plane.md#adr-0125)).** A trainable method can be declared with **no body at all** — signature + grounding only. The callable is immediately servable, backed by a contract-derived stub ([ADR-0076](./adr/02-identity-security.md#adr-0076) `mock` mode) until the engine synthesizes an initial implementation through the cold-start generation path ([ADR-0010](./adr/03-data-plane.md#adr-0010)). Per-parameter and per-output metadata (descriptions, examples) ride the **contract** — never a side channel — and lower to manifest facts + CUE constraints:
+
+```ts
+export const summarizeIncident = training.define({
+  intent: "One-paragraph incident summary for the status page; no blame, no internal names.",
+  contract: IncidentSummaryContract,        // typed I/O + invariants (Plan 29)
+  params: { incident: { description: "Resolved incident record, PII-redacted" } },
+  output: { summary: { description: "Customer-safe prose, <= 3 sentences" } },
+  rubric: { factual: 1.0, tone: 0.9, concise: 0.85 },
+});
+// callable now (stub baseline records specification-by-example traces);
+// the training loop grows it into a real implementation against those traces.
+```
+
+For OO-styled codebases an optional **`@trainable(opts)` class-method decorator** (TC39 stage-3 + `Symbol.metadata`, never `experimentalDecorators`) is pure sugar for the wrapper form — it lowers to byte-identical manifest facts (conformance-asserted); the directive/wrapper stay canonical because decorators cannot annotate free functions ([ADR-0125](./adr/03-data-plane.md#adr-0125)).
+
 What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./generated-stack.md#plan-23)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/03-data-plane.md#adr-0025)): swapping it is a config change, not an app-code change.
 
 #### Error handling & retries

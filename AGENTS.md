@@ -84,6 +84,12 @@ Avoid shared/global files unless the task explicitly requires them:
 
 Do not hand-edit generated files. Avoid manual barrel-file edits; prefer direct imports or generated barrels. Split shared fixtures into scenario/domain-local files when a task needs fixture changes. Change `package.json` or lockfiles only for dependency-related tasks.
 
+The generated-files pre-commit guard (`scripts/no-hand-edited-generated-files.mts`) accepts generated-output changes only when the same commit also touches their driving sources: protobuf/CUE schemas, WIT interfaces, or a recognized generator (schema-tools, `packages/wit` codegen + `wit-lock.json`). Regenerate with the owning codegen command (`pnpm run codegen`, `pnpm --filter @hobo/wit run wit:gen`) rather than editing outputs.
+
+## Draft-proof promotion policy
+
+When a draft proof under `src/draft/` is promoted into a production package, **the package copy becomes canonical and the proof is frozen** — record the promotion in [`scripts/promotions.json`](scripts/promotions.json) (`status: "frozen"`, digests pinned via `pnpm run promotions:check -- --update`). After that, all changes land in the package; `pnpm run promotions:check` (enforced by the root test suite) fails if a frozen proof is edited. Partial promotions that deliberately leave capability behind in the proof use `status: "reference"` with a note explaining the split. This exists because promoted copies previously diverged silently (see GAPS.md implementation-gap register, IMPL-005/IMPL-006).
+
 Before finishing a whole PR branch:
 
 ```bash
@@ -158,7 +164,7 @@ If this check fails, fix the violation rather than bypassing it.
 All HoBo implementation work, including `src/draft/<kind>/<slug>` proof packages, must preserve these architectural contracts:
 
 - Enforce every service boundary with PACT contracts. A boundary is not implemented until consumer/provider expectations, headers, payloads, and error envelopes are executable.
-- Define records, messages, data shapes, and domain objects in protobuf first. Generated or handwritten runtime types must derive from those protobuf definitions instead of inventing parallel interfaces.
+- Define records, messages, data shapes, and domain objects in protobuf first. Runtime record types must be the **generated** ones: a package opts into codegen by adding `data-models/buf.yaml`, runs `pnpm run codegen` (`@hobo/schema-tools` → buf/protoc-gen-es), and imports its types from the checked-in `src/_generated/**_pb.ts` (reference consumer: `examples/hello-bindle/src/api.ts`). Hand-declaring a TS interface that duplicates a proto message is a violation; derived types must be brands/narrowings **of** the generated types. `pnpm run codegen:check` is the drift gate.
 - Attach CUE constraints for every protobuf type and keep them with the protobuf contract or proof package. Do not create a repository-wide `contracts/data-models` catalog; each project/package that defines a CUE-constrained type owns its own local `data-models/` folder.
 - Parse, don't validate: do not pass broad primitive or DTO values after checking them. Introduce derived parsed types whose constructors apply protobuf and CUE constraints so invalid values are unrepresentable beyond the boundary.
 - Build flows on CQRS, event stores, materialized views, and actor models. Actors consume commands, emit events, and coordinate durable state; they do not mutate query read models directly.

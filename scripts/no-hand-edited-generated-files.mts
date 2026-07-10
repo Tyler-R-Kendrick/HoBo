@@ -11,14 +11,19 @@ const generated = files.filter((file) =>
 	/(^|\/)(generated|_generated|src\/gen)(\/|$)/.test(file),
 );
 if (generated.length === 0) process.exit(0);
-const schema = files.some((file) => /\.(proto|cue)$/.test(file));
+const schema = files.some((file) => /\.(proto|cue|wit)$/.test(file));
 const generator = files.some(
 	(file) =>
 		/(^|\/)buf(\.gen)?\.yaml$/.test(file) ||
 		/^src\/draft\/technical-proofs\/s0-04-protobuf-cue-codegen\/packages\/schema-tools\/(src\/(?!_generated\/)|package\.json)/.test(
 			file,
 		) ||
-		/^packages\/schema-tools\/(src\/(?!_generated\/)|package\.json)/.test(file),
+		/^packages\/schema-tools\/(src\/(?!_generated\/)|package\.json)/.test(
+			file,
+		) ||
+		/^packages\/wit\/(src\/(?!generated\/)|scripts\/|wit-lock\.json)/.test(
+			file,
+		),
 );
 if (schema || generator) process.exit(0);
 console.error(

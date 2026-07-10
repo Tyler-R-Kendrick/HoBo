@@ -1,9 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { componentizeHelloBindle, PINNED_TOOLCHAIN } from "@hobo/componentize";
 import { describe, expect, it } from "vitest";
-
-import { PINNED_TOOLCHAIN, componentizeHelloBindle } from "@hobo/componentize";
 import { defaultComponentize } from "../src/build/componentize-adapter.js";
 
 const pactPath = join(

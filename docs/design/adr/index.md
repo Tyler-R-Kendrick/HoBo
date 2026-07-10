@@ -130,3 +130,4 @@
 | 0122 | Cross-provider overlay mesh (ADR-P2): WireGuard portable default behind a `mesh` port; provider-native peering + managed meshes opt-in | [portability-extensibility](07-portability-extensibility.md#adr-0122) |
 | 0123 | Durable-workflow authoring (ADR-P5): explicit `workflow`/`step` wrappers canonical; `"use workflow"` directive = shallow opt-in TS sugar | [architecture-core](01-architecture-core.md#adr-0123) |
 | 0124 | In-Camp scheduling policies (ADR-P6/P7/P8): preemption/oversubscription/capacity-reservation as substrate-delegated per-Camp policy knobs | [architecture-core](01-architecture-core.md#adr-0124) |
+| 0125 | Trainable-annotation surface v1: signature-only empty implementations, param/output metadata on the contract, optional decorator sugar; ax-backed built-in `training-engine` | [data-plane](03-data-plane.md#adr-0125) |

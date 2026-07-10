@@ -40,6 +40,10 @@ claimed it in Linear — you have **zero Linear access** and must not attempt an
   REPORTED as `cascadeDeltas`, not applied.
 - `pnpm agent:check -- --staged` must be green before EVERY commit; never bypass hooks or gates.
 - Conventional commit messages; TypeScript only (no new .js/.mjs).
+- **Record types are the generated ones**: import from `src/_generated/**_pb.ts` (opt in via
+  `data-models/buf.yaml` + `pnpm run codegen`); never hand-declare an interface duplicating a
+  proto message. **No exported string-literal constants** without a `// public-contract: <why>`
+  marker — schema ids/enums come from generated code (technical-standards.md).
 
 ## Handback (the only completion channel)
 

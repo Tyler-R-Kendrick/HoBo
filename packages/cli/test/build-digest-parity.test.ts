@@ -3,18 +3,14 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-
 import { componentizeHelloBindle } from "@hobo/componentize";
+import { describe, expect, it } from "vitest";
+import { runCodegen } from "../src/codegen/run-codegen.js";
 import {
 	createHoboCli,
 	runBuild,
 	writeBuildFixtureProject,
 } from "../src/index.js";
-import {
-	executeCodegenRequest,
-	generateCodegenArtifacts,
-} from "../../../src/draft/technical-proofs/hobo-codegen-cli-contract/src/codegen-cli-contract.js";
 
 const GOLDEN_DIGEST = JSON.parse(
 	readFileSync(
@@ -112,10 +108,5 @@ async function copyHelloBindleSources(projectRoot: string) {
 }
 
 async function seedGeneratedTree(projectRoot: string) {
-	await executeCodegenRequest({
-		projectRoot,
-		check: false,
-		guestLanguage: "ts",
-		engine: generateCodegenArtifacts,
-	});
+	await runCodegen({ projectRoot, check: false });
 }

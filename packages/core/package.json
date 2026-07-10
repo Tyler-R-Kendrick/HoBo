@@ -23,6 +23,10 @@
 		"test:contract:provider": "vitest run contracts/provider"
 	},
 	"devDependencies": {
-		"@hobo/contract-harness": "workspace:*"
+		"@hobo/contract-harness": "workspace:*",
+		"@types/node": "^22.15.3"
+	},
+	"dependencies": {
+		"@bufbuild/protobuf": "2.12.1"
 	}
 }

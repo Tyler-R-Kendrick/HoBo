@@ -45,7 +45,10 @@ export type {
 	TrajectoryReward,
 	TrajectoryRun,
 } from "../_generated/training_engine_pb.js";
-export { OpenInferenceSpanKind } from "../_generated/training_engine_pb.js";
+export {
+	OpenInferenceSpanKind,
+	TrajectoryRewardSchema,
+} from "../_generated/training_engine_pb.js";
 
 export type TrajectoryId = string & { readonly __brand: "TrajectoryId" };
 export type CandidateId = string & { readonly __brand: "CandidateId" };

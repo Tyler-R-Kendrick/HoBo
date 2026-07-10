@@ -203,6 +203,7 @@ export {
 	serializeTrainingArtifactProgram,
 	TRAINING_ENGINE_PORT,
 	TrainingEngineParseError,
+	TrajectoryRewardSchema,
 } from "./ports/training-engine.js";
 export type {
 	ComponentRegistration,

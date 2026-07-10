@@ -14,6 +14,7 @@ export {
 	scaffoldHoboProject,
 	validateScaffoldProject,
 } from "./commands/new.js";
+export { createStubCommand } from "./commands/stub.js";
 export type {
 	CommandInvocation,
 	CreateHoboCliOptions,

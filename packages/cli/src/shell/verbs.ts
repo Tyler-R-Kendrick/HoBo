@@ -199,6 +199,21 @@ Scaffold an offline SDK program with checked-in generated bindings.
 `;
 	}
 
+	if (verb.name === "stub") {
+		return `HoBo stub
+
+Usage:
+  hobo stub [global flags] [--check]
+
+Role: ${verb.role}
+
+Materialize the contract-backed trainable stubs codegen emits for the
+project's bindle steps (src/_generated/trainables.ts) — one training.define()
+per step, served from its contract example until a training artifact is
+promoted. Pass --check to validate the generated tree without writing.
+`;
+	}
+
 	if (verb.name === "codegen") {
 		return `HoBo codegen
 

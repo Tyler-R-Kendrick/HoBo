@@ -1,6 +1,7 @@
 import { createBuildCommand } from "../commands/build.js";
 import { createCodegenCommand } from "../commands/codegen.js";
 import { createNewCommand } from "../commands/new.js";
+import { createStubCommand } from "../commands/stub.js";
 import type { CliContext, CliEnvelope } from "../types/envelope.js";
 import { buildEnvelope } from "../types/envelope.js";
 import { type ContextFactory, defaultContextFactory } from "./context.js";
@@ -53,6 +54,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 			new: createNewCommand(),
 			build: createBuildCommand(),
 			codegen: createCodegenCommand(),
+			stub: createStubCommand(),
 			...(options.commands ?? {}),
 		});
 	const contextFactory = options.contextFactory ?? defaultContextFactory;

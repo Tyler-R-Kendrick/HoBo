@@ -8,6 +8,7 @@ import {
 	toStableValue,
 	union,
 } from "./text.js";
+import { buildTrainables } from "./trainables.js";
 import {
 	type CodegenArtifact,
 	type CodegenEngine,
@@ -35,8 +36,7 @@ export function createProjectCodegenEngine(
 	return {
 		layout,
 		async generate(projectRoot: string): Promise<readonly CodegenArtifact[]> {
-			const sources = await readProjectSources(projectRoot, layout.sources);
-			const model = normalizeSourceModel(sources, layout.sources);
+			const model = await loadSourceModel(projectRoot, layout.sources);
 
 			return [
 				{
@@ -70,9 +70,24 @@ export function createProjectCodegenEngine(
 					path: "src/_generated/with-options.d.ts",
 					content: renderWithOptions(model),
 				},
+				buildTrainables(model).artifact,
 			];
 		},
 	};
+}
+
+/**
+ * Read and normalize a project's codegen sources into the deterministic
+ * source model shared by the renderers and the `hobo stub` descriptor list.
+ */
+export async function loadSourceModel(
+	projectRoot: string,
+	sources: CodegenSourceLayout,
+): Promise<SourceModel> {
+	return normalizeSourceModel(
+		await readProjectSources(projectRoot, sources),
+		sources,
+	);
 }
 
 interface ProjectSources {
@@ -151,31 +166,39 @@ interface RawBindleFile {
 	readonly bindles?: readonly RawBindle[];
 }
 
-interface SourceModel {
-	readonly rawSources: Record<string, string>;
-	readonly resources: readonly {
+export interface SourceModelField {
+	readonly name: string;
+	readonly type: string;
+	/** Deterministic example value used for contract-backed trainable stubs. */
+	readonly example: unknown;
+}
+
+export interface SourceModelResource {
+	readonly name: string;
+	readonly typeName: string;
+	readonly fields: readonly SourceModelField[];
+}
+
+export interface SourceModelBindle {
+	readonly name: string;
+	readonly provider: string;
+	readonly resources: readonly string[];
+	readonly steps: readonly string[];
+	readonly workflows: readonly string[];
+	readonly with: readonly {
 		readonly name: string;
-		readonly typeName: string;
-		readonly fields: readonly {
-			readonly name: string;
-			readonly type: string;
-		}[];
+		readonly values: readonly string[];
 	}[];
+}
+
+export interface SourceModel {
+	readonly rawSources: Record<string, string>;
+	readonly resources: readonly SourceModelResource[];
 	readonly scopes: readonly {
 		readonly name: string;
 		readonly grants: readonly string[];
 	}[];
-	readonly bindles: readonly {
-		readonly name: string;
-		readonly provider: string;
-		readonly resources: readonly string[];
-		readonly steps: readonly string[];
-		readonly workflows: readonly string[];
-		readonly with: readonly {
-			readonly name: string;
-			readonly values: readonly string[];
-		}[];
-	}[];
+	readonly bindles: readonly SourceModelBindle[];
 }
 
 function normalizeSourceModel(
@@ -202,6 +225,7 @@ function normalizeSourceModel(
 				([fieldName, field]) => ({
 					name: fieldName,
 					type: renderFieldType(field),
+					example: exampleFieldValue(field),
 				}),
 			),
 		}))
@@ -260,6 +284,14 @@ function renderFieldType(field: RawField): string {
 	if (field.type === "boolean") return "boolean";
 	if (field.type === "enum") return union(field.values ?? []);
 	return "unknown";
+}
+
+function exampleFieldValue(field: RawField): unknown {
+	if (field.type === "string") return "example";
+	if (field.type === "number") return 0;
+	if (field.type === "boolean") return false;
+	if (field.type === "enum") return [...(field.values ?? [])].sort()[0] ?? null;
+	return null;
 }
 
 function renderApiTree(model: SourceModel): string {

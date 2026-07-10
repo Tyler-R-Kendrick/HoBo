@@ -9,10 +9,12 @@ import {
 	lintUseTrainingSource,
 	listTrainables,
 	resetTrainables,
+	resolveTrainable,
 	stub,
 	TRAINABLE_METADATA,
 	TrainingArtifactError,
 	TrainingGroundingError,
+	TrainingResolutionError,
 	trainable,
 	training,
 } from "../src/index.js";
@@ -246,18 +248,169 @@ test("listTrainables exposes manifest facts for collection", () => {
 	assert.deepEqual(facts[0]?.rubric, OPTIONS.rubric);
 });
 
-test("lintUseTrainingSource flags missing groundings (promoted draft lint)", () => {
-	const bad = lintUseTrainingSource(
+test("lintUseTrainingSource reports bare markers as inferred, not errors", () => {
+	// The bare-marker form (ADR-0125): a lone "use training" is valid — the
+	// bindings are inferred/generated, and the lint reports that as info.
+	const bare = lintUseTrainingSource(
 		'export async function f() { "use training"; return 1; }',
 	);
-	assert.equal(bad.ok, false);
+	assert.equal(bare.ok, true);
+	assert.equal(bare.inferred, true);
 	assert.deepEqual(
-		bad.findings.map((f) => f.kind),
+		bare.findings.map((f) => f.kind),
 		["intent", "contract", "rubric"],
 	);
+	assert.ok(bare.findings.every((f) => f.severity === "info"));
 
-	const good = lintUseTrainingSource(
+	const grounded = lintUseTrainingSource(
 		`/** @intent classify */ export const f = training(async () => 1, { intent: "x", contract: C, rubric: { a: 1 } }); // "use training"`,
 	);
-	assert.equal(good.ok, true);
+	assert.equal(grounded.ok, true);
+	assert.notEqual(grounded.inferred, true);
+	assert.equal(grounded.findings.length, 0);
+});
+
+test("DI form: @trainable registers eagerly at construction and resolves by token", async () => {
+	const ClassifyToken = Symbol("token-classify");
+
+	class Desk {
+		async classify(t: Ticket): Promise<Classification> {
+			return { category: t.subject };
+		}
+	}
+	const initializers: Array<(this: Desk) => void> = [];
+	const context = {
+		kind: "method",
+		name: "classify",
+		static: false,
+		private: false,
+		metadata: {},
+		access: { get: (instance: Desk) => instance.classify, has: () => true },
+		addInitializer: (fn: (this: Desk) => void) => initializers.push(fn),
+	} as unknown as ClassMethodDecoratorContext<
+		Desk,
+		(this: Desk, input: Ticket) => Promise<Classification>
+	>;
+	Desk.prototype.classify = trainable<Desk, Ticket, Classification>({
+		...OPTIONS,
+		token: ClassifyToken,
+	})(Desk.prototype.classify, context);
+
+	// Simulate construction: stage-3 initializers run with the instance.
+	const desk = new Desk();
+	for (const init of initializers) init.call(desk);
+
+	// Registered with ZERO calls — DI-container semantics.
+	const fact = getTrainable("token-classify")?.fact;
+	assert.equal(fact?.methodRef, "token-classify");
+	assert.equal(getTrainable(ClassifyToken)?.calls.length, 0);
+
+	// A test/eval suite resolves the SAME instance by token and reuses its
+	// example table as the live-training eval suite.
+	const resolved = resolveTrainable<Ticket, Classification>(ClassifyToken);
+	for (const example of CONTRACT.examples) {
+		const output = await resolved(example.input);
+		assert.equal(output.category, example.input.subject);
+	}
+	assert.equal(getTrainable(ClassifyToken)?.calls.length, 2);
+
+	// The optimization loop binds by the same token.
+	applyTrainingArtifact(ClassifyToken, artifactFor("token-classify"));
+	assert.ok(getAppliedArtifact(ClassifyToken));
+	applyTrainingArtifact(ClassifyToken, null);
+	assert.equal(getAppliedArtifact(ClassifyToken), null);
+});
+
+test("DI form: second construction resolves the registered singleton", async () => {
+	class Desk {
+		async classify(t: Ticket): Promise<Classification> {
+			return { category: t.subject };
+		}
+	}
+	const initializers: Array<(this: Desk) => void> = [];
+	const context = {
+		kind: "method",
+		name: "singleton",
+		static: false,
+		private: false,
+		metadata: {},
+		access: { get: (instance: Desk) => instance.classify, has: () => true },
+		addInitializer: (fn: (this: Desk) => void) => initializers.push(fn),
+	} as unknown as ClassMethodDecoratorContext<
+		Desk,
+		(this: Desk, input: Ticket) => Promise<Classification>
+	>;
+	Desk.prototype.classify = trainable<Desk, Ticket, Classification>({
+		...OPTIONS,
+		methodRef: "singleton",
+	})(Desk.prototype.classify, context);
+
+	for (const instance of [new Desk(), new Desk()]) {
+		for (const init of initializers) init.call(instance);
+	}
+	assert.equal(
+		listTrainables().filter((f) => f.methodRef === "singleton").length,
+		1,
+	);
+});
+
+test("resolveTrainable throws a resolution error for unknown refs", () => {
+	assert.throws(() => resolveTrainable("nope"), TrainingResolutionError);
+	assert.throws(
+		() => resolveTrainable(Symbol("unbound")),
+		TrainingResolutionError,
+	);
+});
+
+test("marker form: training.infer grounds a bare use-training function", async () => {
+	async function rankFeed(input: Ticket): Promise<Classification> {
+		"use training";
+		return { category: input.subject.toUpperCase() };
+	}
+	const ranked = training.infer(rankFeed);
+
+	const record = getTrainable("rankFeed");
+	assert.equal(record?.fact.contractRef, "inferred://rankFeed");
+	assert.equal(record?.fact.baseline, "body");
+	assert.deepEqual(record?.fact.rubric, { exactMatch: 1 });
+	assert.match(record?.fact.intent ?? "", /rankFeed/);
+
+	// The body is the initial implementation, and the loop still applies.
+	assert.deepEqual(await ranked({ subject: "abc" }), { category: "ABC" });
+	applyTrainingArtifact("rankFeed", {
+		...artifactFor("rankFeed"),
+	});
+	assert.ok(getAppliedArtifact("rankFeed"));
+});
+
+test("marker form: infer requires the directive and honors overrides", () => {
+	async function unmarked(input: Ticket): Promise<Classification> {
+		return { category: input.subject };
+	}
+	assert.throws(() => training.infer(unmarked), TrainingGroundingError);
+
+	async function marked(input: Ticket): Promise<Classification> {
+		"use training";
+		return { category: input.subject };
+	}
+	training.infer(marked, {
+		methodRef: "refined",
+		rubric: { categoryCorrect: 0.9 },
+	});
+	const fact = getTrainable("refined")?.fact;
+	assert.equal(fact?.contractRef, "inferred://refined");
+	assert.deepEqual(fact?.rubric, { categoryCorrect: 0.9 });
+});
+
+test("marker form: a leading comment after the directive becomes the intent", () => {
+	async function summarize(input: Ticket): Promise<Classification> {
+		"use training";
+		// One-paragraph summary; no blame, no internal names.
+		return { category: input.subject };
+	}
+	training.infer(summarize);
+	assert.equal(
+		getTrainable("summarize")?.fact.intent,
+		"One-paragraph summary; no blame, no internal names.",
+	);
 });

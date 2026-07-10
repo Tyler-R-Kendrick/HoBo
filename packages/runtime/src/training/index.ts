@@ -11,6 +11,7 @@ export {
 	isTrainable,
 	listTrainables,
 	resetTrainables,
+	resolveTrainable,
 	stub,
 	training,
 } from "./training.js";
@@ -27,4 +28,5 @@ export {
 	type TrainingExample,
 	TrainingGroundingError,
 	type TrainingOptions,
+	TrainingResolutionError,
 } from "./types.js";

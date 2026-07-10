@@ -217,6 +217,12 @@ export const fulfillment = saga("fulfillment")
 #### Trainable methods (`"use training"`)
 A fourth directive joins `"use workflow"`/`"use step"`: **`"use training"`** marks a method as an **AI-rewritable semantic function** — HoBo continuously optimizes its prompt/code against a rubric, from real recorded executions. The body is the baseline (often a `stub()`); the optimizer may rewrite it.
 
+**Three declaration syntaxes, each complete on its own** (never combined in one declaration; all lower to the same manifest facts):
+
+1. **Verbose** — `training(fn, opts)` / `training.define(opts)`: explicit groundings, usable publicly or internally. Canonical.
+2. **DI-style decorator** — `@trainable(opts)`: sugar over the verbose form. Like a DI container, decorating registers the trainable eagerly at instance construction and it is **resolvable by injection token** (`resolveTrainable(token)`); the method body is the **initial implementation** the optimizer improves.
+3. **Bare marker** — a one-line `"use training"` directive with **no author-supplied bindings**: the tooling **infers and generates** them (`training.infer` at runtime; `hobo stub` scans source and generates the registrations).
+
 ```ts
 import { training } from "@hobo/runtime";
 
@@ -249,23 +255,23 @@ export const summarizeIncident = training.define({
 // the training loop grows it into a real implementation against those traces.
 ```
 
-For OO-styled codebases an optional **`@trainable(opts)` class-method decorator** (TC39 stage-3 + `Symbol.metadata`, never `experimentalDecorators`) is pure sugar for the wrapper form — it lowers to byte-identical manifest facts (conformance-asserted); the directive/wrapper stay canonical because decorators cannot annotate free functions ([ADR-0125](./adr/03-data-plane.md#adr-0125)). The sugar **adds** authoring forms; it does not replace them — `training(fn, opts)` and `training.define(...)` above remain fully supported and are what the sugar lowers to.
+**Syntax 2 — the DI-style `@trainable(opts)` class-method decorator** (TC39 stage-3 + `Symbol.metadata`, never `experimentalDecorators`): sugar over the wrapper form, lowering to byte-identical manifest facts (conformance-asserted). Constructing the class registers the trainable eagerly — DI-container semantics — and a **symbol token** as the id lets a test suite resolve the *same* instance (`resolveTrainable(token)`) and bind it to specific evals, so one example table doubles as unit tests **and** the live-training eval suite. The wrapper/`training.define` stay canonical because decorators cannot annotate free functions ([ADR-0125](./adr/03-data-plane.md#adr-0125)).
 
 ```ts
-import { trainable } from "@hobo/runtime";
+import { resolveTrainable, trainable } from "@hobo/runtime";
 
-// Decorator sugar — a class method with the same grounding; the body stays
-// the baseline and the "use training" directive marks the rewritable region.
-// The baseline returns semantically meaningful named outputs: each field is
-// the training surface a rubric metric scores against.
+export const ClassifyTicket = Symbol("classifyTicket");   // injection token
+
 class SupportDesk {
   @trainable({
+    token: ClassifyTicket,
     intent: "Route tickets; critical only for security/outage/prod impact.",
     contract: ClassificationContract,
     rubric: { categoryCorrect: 0.92, urgencyCalibrated: 0.90, piiSafe: 1.0 },
   })
   async classifyTicket(t: Ticket): Promise<Classification> {
-    "use training";
+    // Initial implementation the optimizer improves. Named outputs are the
+    // rubric's training surface:
     return {
       category: t.subject.includes("down") ? "outage" : "general", // ← categoryCorrect
       urgency: t.fromVip ? "high" : "normal",                      // ← urgencyCalibrated
@@ -274,15 +280,20 @@ class SupportDesk {
   }
 }
 
-// Directive-only free function — the lightest form: "use training" marks the
-// generated region and the grounding lint (lintUseTrainingSource) rejects a
-// declaration whose intent/contract/rubric grounding is missing. Again the
-// baseline emits named, rubric-scorable outputs (factual / tone):
+// In a test/eval suite: resolve by the SAME token — the assertions below are
+// the eval cases the live-training loop reuses.
+const classify = resolveTrainable<Ticket, Classification>(ClassifyTicket);
+```
+
+**Syntax 3 — the bare `"use training"` marker** (the `"use workflow"` ergonomic): one line, **no** intent/contract/rubric bound at the declaration. The bindings are **inferred and generated** — intent from the name or a leading comment, a synthesized `inferred://<methodRef>` contract ref, a default exact-match rubric (`training.infer(fn)`; `hobo stub` scans source for marked functions and generates the registrations). The grounding lint reports these as `inferred` info findings, not errors; explicit groundings can be added later by migrating to syntax 1 or 2 without changing behavior.
+
+```ts
 export async function draftStatusUpdate(i: Incident): Promise<StatusUpdate> {
   "use training";
+  // One-paragraph status update; no blame, no internal names.  ← becomes the inferred intent
   return {
-    summary: `${i.service} degraded for ${i.durationMinutes}m; mitigated.`, // ← factual
-    tone: "calm",                                                            // ← tone
+    summary: `${i.service} degraded for ${i.durationMinutes}m; mitigated.`,
+    tone: "calm",
   };
 }
 ```

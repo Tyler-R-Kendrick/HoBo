@@ -45,6 +45,15 @@
 			"note": "Partial promotion (S0 scope, ADR-0105): oci/smoke/sources modules are S1+ scope and stay in the proof as reference (GAPS.md IMPL-006)."
 		},
 		{
+			"proof": "src/draft/technical-proofs/hobo-codegen-cli-contract/src",
+			"promotedTo": "packages/cli/src/codegen",
+			"status": "frozen",
+			"note": "HOBO-152 promotion: project codegen engine typed and split (types/engine/tree/fixture/run-codegen), injectable CodegenEngine; the CLI and build gate no longer dynamic-import the proof (GAPS.md IMPL-004).",
+			"digests": {
+				"codegen-cli-contract.ts": "sha256:9f17d8bc15639123d29623571876bbdc7155f66713eb2365a07b3a8811340e5d"
+			}
+		},
+		{
 			"proof": "src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages/schema-tools",
 			"promotedTo": "packages/schema-tools",
 			"status": "frozen",

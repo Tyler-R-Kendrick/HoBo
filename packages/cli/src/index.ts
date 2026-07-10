@@ -1,41 +1,37 @@
+export type { CodegenEngine } from "./codegen/types.js";
+export {
+	BUILD_MANIFEST_PATH,
+	BuildError,
+	createBuildCommand,
+	parseBuildManifest,
+	parseBuildRequestFromInvocation,
+	parseServiceDeclaration,
+	runBuild,
+	writeBuildFixtureProject,
+} from "./commands/build.js";
+export { createCodegenCommand } from "./commands/codegen.js";
+export {
+	scaffoldHoboProject,
+	validateScaffoldProject,
+} from "./commands/new.js";
+export type {
+	CommandInvocation,
+	CreateHoboCliOptions,
+	HoboCli,
+} from "./shell/dispatch.js";
+export { createHoboCli, dispatchCommand, runHobo } from "./shell/dispatch.js";
+export { CliError, NoBindleError, UsageError } from "./shell/errors.js";
+export { parseArgv } from "./shell/parse.js";
+export { createCommandRegistry } from "./shell/registry.js";
 export {
 	CANONICAL_VERBS,
 	GLOBAL_FLAGS,
 	helpText,
 	verbHelpText,
 } from "./shell/verbs.js";
-export { createHoboCli, dispatchCommand, runHobo } from "./shell/dispatch.js";
-export { createCommandRegistry } from "./shell/registry.js";
-export { parseArgv } from "./shell/parse.js";
-export { CliError, NoBindleError, UsageError } from "./shell/errors.js";
-export {
-	scaffoldHoboProject,
-	validateScaffoldProject,
-} from "./commands/new.js";
-export {
-	createBuildCommand,
-	runBuild,
-	writeBuildFixtureProject,
-	BUILD_MANIFEST_PATH,
-	BuildError,
-	parseBuildRequestFromInvocation,
-	parseServiceDeclaration,
-	parseBuildManifest,
-} from "./commands/build.js";
-export {
-	createCodegenCommand,
-	runCodegen,
-	isCodegenError,
-} from "./commands/codegen.js";
-export type { CodegenRequest } from "./commands/codegen.js";
-export { VALID_TEMPLATES } from "./types/scaffold.js";
 export type {
-	CliEnvelope,
 	CliContext,
+	CliEnvelope,
 	CommandResult,
 } from "./types/envelope.js";
-export type {
-	CommandInvocation,
-	CreateHoboCliOptions,
-	HoboCli,
-} from "./shell/dispatch.js";
+export { VALID_TEMPLATES } from "./types/scaffold.js";

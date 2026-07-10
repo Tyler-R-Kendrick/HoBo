@@ -1,15 +1,22 @@
-import { isCodegenError, runCodegen } from "../codegen/run-codegen.js";
+import { runCodegen } from "../codegen/run-codegen.js";
+import { type CodegenEngine, CodegenError } from "../codegen/types.js";
 import type { CommandModule } from "../shell/registry.js";
 
-export type { CodegenRequest } from "../codegen/run-codegen.js";
-export { isCodegenError, runCodegen } from "../codegen/run-codegen.js";
+export interface CodegenCommandOptions {
+	readonly engine?: CodegenEngine;
+}
 
-export function createCodegenCommand(): CommandModule {
+export function createCodegenCommand(
+	options: CodegenCommandOptions = {},
+): CommandModule {
 	return {
 		run: async ({ context, flags }) => {
 			const projectRoot = context.projectDir ?? context.cwd;
 			try {
-				const result = await runCodegen({ projectRoot, check: flags.check });
+				const result = await runCodegen(
+					{ projectRoot, check: flags.check },
+					options,
+				);
 				const count = flags.check
 					? result.checked.length
 					: result.written.length;
@@ -28,8 +35,7 @@ export function createCodegenCommand(): CommandModule {
 					},
 				};
 			} catch (error) {
-				if (isCodegenError(error)) {
-					const detail = (error as { detail?: unknown }).detail;
+				if (error instanceof CodegenError) {
 					return {
 						ok: false,
 						status: "error",
@@ -38,7 +44,7 @@ export function createCodegenCommand(): CommandModule {
 						remediation: [
 							"Run `hobo codegen` to rewrite the checked-in src/_generated/ tree from your project sources.",
 						],
-						data: { command: "codegen", detail },
+						data: { command: "codegen", detail: error.detail },
 					};
 				}
 				throw error;

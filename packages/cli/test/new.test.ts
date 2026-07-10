@@ -12,9 +12,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
-	VALID_TEMPLATES,
 	runHobo,
 	scaffoldHoboProject,
+	VALID_TEMPLATES,
 	validateScaffoldProject,
 } from "../src/index.js";
 

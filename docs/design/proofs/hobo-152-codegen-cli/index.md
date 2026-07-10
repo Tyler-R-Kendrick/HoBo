@@ -3,6 +3,12 @@
 HOBO-152 is proven by the focused POC at
 `src/draft/technical-proofs/hobo-codegen-cli-contract`.
 
+> **Promoted (2026-07-10).** The engine now ships as typed, injectable
+> production modules under `packages/cli/src/codegen/` (`types`/`engine`/
+> `tree`/`fixture`/`run-codegen`), consumed by the `hobo codegen` verb and
+> the `hobo build` freshness gate. The proof is frozen in the promotions
+> ledger (`scripts/promotions.json`) and stays as reference evidence only.
+
 ## Integrated S1-21 POC (HOBO-611)
 
 Draft integration at

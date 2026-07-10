@@ -1,36 +1,39 @@
+import type { Dirent } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 
+import type { CodegenFixtureOptions } from "../codegen/fixture.js";
 import {
 	assertGeneratedFresh,
 	writeCodegenFixtureProject,
 } from "./codegen-gate.js";
 
 import {
+	type ComponentizeFn,
 	defaultComponentize,
 	toWasmBuildArtifact,
-	type ComponentizeFn,
 } from "./componentize-adapter.js";
 import { BuildError } from "./errors.js";
 import {
 	appendEvent,
+	type BuildEvent,
 	projectBuildManifest,
 	sha256Bytes,
 	sha256Text,
 	stableStringify,
-	type BuildEvent,
 } from "./events.js";
 import {
-	parseServiceDeclaration,
 	type BuildArtifact,
 	type BuildRequest,
 	type BuildResult,
+	parseServiceDeclaration,
 	type ServiceDeclaration,
 	type TargetRuntime,
 } from "./parse.js";
 
+// public-contract: the documented on-disk location of the build manifest.
 export const BUILD_MANIFEST_PATH = ".hobo/build/build-manifest.json";
-export const BUILD_ARTIFACT_DIR = ".hobo/build/artifacts";
+const BUILD_ARTIFACT_DIR = ".hobo/build/artifacts";
 
 const OCI_MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json";
 const OCI_FALLBACK_ARTIFACT_TYPE =
@@ -120,7 +123,7 @@ export async function writeBuildFixtureProject(
 	projectRoot: string,
 	options: {
 		readonly services?: readonly ServiceDeclaration[];
-		readonly codegen?: Record<string, unknown>;
+		readonly codegen?: CodegenFixtureOptions;
 		readonly helloSource?: string;
 		readonly legacySource?: string;
 	} = {},
@@ -376,7 +379,7 @@ async function listFiles(root: string): Promise<string[]> {
 	const files: string[] = [];
 
 	async function visit(directory: string): Promise<void> {
-		let entries;
+		let entries: Dirent[];
 		try {
 			entries = await readdir(directory, { withFileTypes: true });
 		} catch (error) {

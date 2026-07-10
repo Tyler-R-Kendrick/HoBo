@@ -132,7 +132,7 @@ describe("HoBo CLI shell", () => {
 		const verbHelp = await runHobo(["plan", "--help"], { cwd: process.cwd() });
 		expect(verbHelp.exitCode).toBe(0);
 		expect(verbHelp.stdout).toMatch(
-			/Usage:\n  hobo plan \[global flags\] \[args\]/,
+			/Usage:\n {2}hobo plan \[global flags\] \[args\]/,
 		);
 		expect(verbHelp.stdout).toMatch(/Status: not yet implemented/);
 

@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { writeFixtureProject } from "../../../src/draft/technical-proofs/hobo-codegen-cli-contract/src/codegen-cli-contract.js";
+import { writeFixtureProject } from "../src/codegen/fixture.js";
 import { createHoboCli } from "../src/index.js";
 
 describe("hobo codegen", () => {

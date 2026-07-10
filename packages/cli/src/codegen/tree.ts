@@ -2,8 +2,13 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
+import { create } from "@bufbuild/protobuf";
 import { digest, normalizePath, normalizeText } from "./text.js";
-import type { CodegenArtifact, DriftEntry } from "./types.js";
+import {
+	type CodegenArtifact,
+	type DriftEntry,
+	DriftEntrySchema,
+} from "./types.js";
 
 // Generated-tree operations: write an artifact set into a project (clearing
 // the roots the engine owns first), and diff a project's on-disk tree against
@@ -47,28 +52,34 @@ export async function compareGeneratedTree(
 		const expectedContent = expected.get(path);
 		const actualContent = actual.get(path);
 		if (expectedContent === undefined) {
-			drift.push({
-				path,
-				status: "extra",
-				actualDigest: digest(actualContent ?? ""),
-			});
+			drift.push(
+				create(DriftEntrySchema, {
+					path,
+					status: "extra",
+					actualDigest: digest(actualContent ?? ""),
+				}),
+			);
 			continue;
 		}
 		if (actualContent === undefined) {
-			drift.push({
-				path,
-				status: "missing",
-				expectedDigest: digest(expectedContent),
-			});
+			drift.push(
+				create(DriftEntrySchema, {
+					path,
+					status: "missing",
+					expectedDigest: digest(expectedContent),
+				}),
+			);
 			continue;
 		}
 		if (actualContent !== expectedContent) {
-			drift.push({
-				path,
-				status: "changed",
-				expectedDigest: digest(expectedContent),
-				actualDigest: digest(actualContent),
-			});
+			drift.push(
+				create(DriftEntrySchema, {
+					path,
+					status: "changed",
+					expectedDigest: digest(expectedContent),
+					actualDigest: digest(actualContent),
+				}),
+			);
 		}
 	}
 

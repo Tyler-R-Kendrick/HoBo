@@ -1,10 +1,11 @@
+import { toJson } from "@bufbuild/protobuf";
 import { createProjectCodegenEngine } from "../codegen/engine.js";
 import {
 	type CodegenFixtureOptions,
 	writeFixtureProject,
 } from "../codegen/fixture.js";
 import { compareGeneratedTree } from "../codegen/tree.js";
-import type { CodegenEngine } from "../codegen/types.js";
+import { type CodegenEngine, DriftEntrySchema } from "../codegen/types.js";
 import { BuildError } from "./errors.js";
 
 /**
@@ -27,7 +28,7 @@ export async function assertGeneratedFresh(
 		throw new BuildError(
 			"HOBO_BUILD_CODEGEN_DRIFT",
 			"generated tree drift detected; run hobo codegen to refresh _generated/",
-			{ drift },
+			{ drift: drift.map((entry) => toJson(DriftEntrySchema, entry)) },
 		);
 	}
 }

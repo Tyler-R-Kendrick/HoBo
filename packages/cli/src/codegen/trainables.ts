@@ -1,33 +1,34 @@
+import { create } from "@bufbuild/protobuf";
 import type {
 	SourceModel,
 	SourceModelBindle,
 	SourceModelResource,
 } from "./engine.js";
-import type { CodegenArtifact } from "./types.js";
+import {
+	type CodegenArtifact,
+	CodegenArtifactSchema,
+	type CodegenLayout,
+	type TrainableStub,
+	TrainableStubSchema,
+} from "./types.js";
 
 // Trainable codegen (ADR-0125 / generated-stack.md): every bindle step is a
 // semantic function, so codegen emits a contract-backed `training.define()`
-// stub per step into src/_generated/trainables.ts. The stub serves the
-// synthesized contract example until the training pipeline promotes an
-// artifact (`applyTrainingArtifact`), and the descriptors below are what
-// `hobo stub` reports.
+// stub per step. Output path and the module specifiers emitted into the
+// generated code all come from the layout config; record shapes are the
+// generated hobo.cli.v1 proto types.
 
-export interface TrainableStubDescriptor {
-	readonly methodRef: string;
-	readonly exportName: string;
-	readonly resource: string;
-	readonly typeName: string;
-	readonly contractRef: string;
-}
-
-export function buildTrainables(model: SourceModel): {
+export function buildTrainables(
+	model: SourceModel,
+	layout: CodegenLayout,
+): {
 	readonly artifact: CodegenArtifact;
-	readonly stubs: readonly TrainableStubDescriptor[];
+	readonly stubs: readonly TrainableStub[];
 } {
 	const entries = model.bindles.flatMap((bindle) =>
 		bindle.steps.map((step) => toEntry(model, bindle, step)),
 	);
-	const stubs = entries.map((entry) => entry.descriptor);
+	const stubs = entries.map((entry) => entry.stub);
 	const usedTypes = [...new Set(stubs.map((stub) => stub.typeName))].sort();
 
 	const header =
@@ -35,8 +36,8 @@ export function buildTrainables(model: SourceModel): {
 		`// Contract-backed trainable stubs (ADR-0125): one training.define() per\n` +
 		`// bindle step. Each serves its contract example until a training artifact\n` +
 		`// is applied (applyTrainingArtifact) and can be reverted with null.\n` +
-		`import { training } from "@hobo/runtime";\n` +
-		`import type { ${usedTypes.join(", ")} } from "./bindings.js";\n`;
+		`import { training } from ${JSON.stringify(layout.imports.runtimeModule)};\n` +
+		`import type { ${usedTypes.join(", ")} } from ${JSON.stringify(layout.imports.bindingsSpecifier)};\n`;
 
 	const defines = entries.map((entry) => entry.code).join("\n");
 
@@ -51,10 +52,10 @@ export function buildTrainables(model: SourceModel): {
 		`] as const;\n`;
 
 	return {
-		artifact: {
-			path: "src/_generated/trainables.ts",
+		artifact: create(CodegenArtifactSchema, {
+			path: layout.files.trainables,
 			content: `${header}\n${defines}\n${manifest}`,
-		},
+		}),
 		stubs,
 	};
 }
@@ -63,7 +64,7 @@ function toEntry(
 	model: SourceModel,
 	bindle: SourceModelBindle,
 	step: string,
-): { readonly descriptor: TrainableStubDescriptor; readonly code: string } {
+): { readonly stub: TrainableStub; readonly code: string } {
 	const resource =
 		model.resources.find((candidate) =>
 			step.startsWith(`${candidate.name}.`),
@@ -72,29 +73,29 @@ function toEntry(
 		throw new Error(`no resource available for bindle step "${step}"`);
 	}
 
-	const descriptor: TrainableStubDescriptor = {
+	const stub = create(TrainableStubSchema, {
 		methodRef: step,
 		exportName: camelCase(step),
 		resource: resource.name,
 		typeName: resource.typeName,
 		contractRef: `bindle://${bindle.name}/steps/${step}`,
-	};
+	});
 
 	const example = exampleLiteral(resource);
 	const code =
-		`export const ${descriptor.exportName} = training.define<${resource.typeName}, ${resource.typeName}>({\n` +
+		`export const ${stub.exportName} = training.define<${resource.typeName}, ${resource.typeName}>({\n` +
 		`  methodRef: ${JSON.stringify(step)},\n` +
 		`  intent: ${JSON.stringify(
 			`Implement bindle step "${step}" over resource "${resource.name}" (${bindle.provider} provider).`,
 		)},\n` +
 		`  contract: {\n` +
-		`    ref: ${JSON.stringify(descriptor.contractRef)},\n` +
+		`    ref: ${JSON.stringify(stub.contractRef)},\n` +
 		`    examples: [{ input: ${example}, output: ${example} }],\n` +
 		`  },\n` +
 		`  rubric: { exactMatch: 1 },\n` +
 		`});\n`;
 
-	return { descriptor, code };
+	return { stub, code };
 }
 
 /** The deterministic example object literal for a resource's fields. */

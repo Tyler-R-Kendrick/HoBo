@@ -1,11 +1,14 @@
 import { resolve } from "node:path";
 
+import { create, toJson } from "@bufbuild/protobuf";
 import { createProjectCodegenEngine } from "./engine.js";
 import { compareGeneratedTree, writeGeneratedTree } from "./tree.js";
 import {
 	type CodegenEngine,
 	CodegenError,
 	type CodegenReport,
+	CodegenReportSchema,
+	DriftEntrySchema,
 } from "./types.js";
 
 export interface CodegenRequest {
@@ -42,10 +45,10 @@ export async function runCodegen(
 			throw new CodegenError(
 				"HOBO_CODEGEN_DRIFT",
 				"generated tree drift detected",
-				{ drift },
+				{ drift: drift.map((entry) => toJson(DriftEntrySchema, entry)) },
 			);
 		}
-		return { mode: "check", checked: paths, written: [] };
+		return create(CodegenReportSchema, { mode: "check", checked: paths });
 	}
 
 	await writeGeneratedTree(
@@ -53,5 +56,5 @@ export async function runCodegen(
 		artifacts,
 		engine.layout.generatedRoots,
 	);
-	return { mode: "write", checked: [], written: paths };
+	return create(CodegenReportSchema, { mode: "write", written: paths });
 }

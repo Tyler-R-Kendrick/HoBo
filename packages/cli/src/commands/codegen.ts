@@ -1,5 +1,10 @@
+import { toJson } from "@bufbuild/protobuf";
 import { runCodegen } from "../codegen/run-codegen.js";
-import { type CodegenEngine, CodegenError } from "../codegen/types.js";
+import {
+	type CodegenEngine,
+	CodegenError,
+	CodegenReportSchema,
+} from "../codegen/types.js";
 import type { CommandModule } from "../shell/registry.js";
 
 export interface CodegenCommandOptions {
@@ -29,9 +34,7 @@ export function createCodegenCommand(
 						: `hobo codegen ok (${count} generated files written)`,
 					data: {
 						command: "codegen",
-						mode: result.mode,
-						written: result.written,
-						checked: result.checked,
+						...(toJson(CodegenReportSchema, result) as Record<string, unknown>),
 					},
 				};
 			} catch (error) {

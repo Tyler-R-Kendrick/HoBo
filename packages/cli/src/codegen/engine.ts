@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { create } from "@bufbuild/protobuf";
 import {
 	digest,
 	pascalCase,
@@ -11,8 +12,10 @@ import {
 import { buildTrainables } from "./trainables.js";
 import {
 	type CodegenArtifact,
+	CodegenArtifactSchema,
 	type CodegenEngine,
 	CodegenError,
+	type CodegenGeneratedImports,
 	type CodegenLayout,
 	type CodegenSourceLayout,
 	defaultCodegenLayout,
@@ -37,11 +40,14 @@ export function createProjectCodegenEngine(
 		layout,
 		async generate(projectRoot: string): Promise<readonly CodegenArtifact[]> {
 			const model = await loadSourceModel(projectRoot, layout.sources);
+			const { files, imports } = layout;
+			const artifact = (path: string, content: string) =>
+				create(CodegenArtifactSchema, { path, content });
 
 			return [
-				{
-					path: ".hobo/generated/codegen-manifest.json",
-					content: stableStringify({
+				artifact(
+					files.manifest,
+					stableStringify({
 						schema: "hobo.codegen-manifest/v1",
 						generatedBy: "hobo codegen",
 						guestLanguage: "ts",
@@ -51,26 +57,14 @@ export function createProjectCodegenEngine(
 						scopes: model.scopes.map((scope) => scope.name),
 						bindles: model.bindles.map((bindle) => bindle.name),
 					}),
-				},
-				{ path: "src/_generated/api-tree.d.ts", content: renderApiTree(model) },
-				{
-					path: "src/_generated/bindings.d.ts",
-					content: renderBindings(model),
-				},
-				{ path: "src/_generated/hooks.d.ts", content: renderHooks(model) },
-				{
-					path: "src/_generated/steps.d.ts",
-					content: renderStepSignatures(model),
-				},
-				{
-					path: "src/_generated/workflows.d.ts",
-					content: renderWorkflowSignatures(model),
-				},
-				{
-					path: "src/_generated/with-options.d.ts",
-					content: renderWithOptions(model),
-				},
-				buildTrainables(model).artifact,
+				),
+				artifact(files.apiTree, renderApiTree(model, imports)),
+				artifact(files.bindings, renderBindings(model)),
+				artifact(files.hooks, renderHooks(model, imports)),
+				artifact(files.steps, renderStepSignatures(model, imports)),
+				artifact(files.workflows, renderWorkflowSignatures(model, imports)),
+				artifact(files.withOptions, renderWithOptions(model)),
+				buildTrainables(model, layout).artifact,
 			];
 		},
 	};
@@ -294,7 +288,10 @@ function exampleFieldValue(field: RawField): unknown {
 	return null;
 }
 
-function renderApiTree(model: SourceModel): string {
+function renderApiTree(
+	model: SourceModel,
+	imports: CodegenGeneratedImports,
+): string {
 	const rows = model.resources
 		.map((resource) => {
 			const scope = findScopeForResource(model, resource.name);
@@ -304,7 +301,7 @@ function renderApiTree(model: SourceModel): string {
 		.join("\n");
 
 	return (
-		`import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from "./bindings.js";\n\n` +
+		`import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from ${JSON.stringify(imports.bindingsSpecifier)};\n\n` +
 		`export interface HoboApiTree {\n  resources: {\n${rows}\n  };\n}\n\n` +
 		`export declare const api: HoboApiTree;\n`
 	);
@@ -324,8 +321,11 @@ function renderBindings(model: SourceModel): string {
 	return `${interfaces}\n\nexport type ResourceName = ${resourceNames};\n`;
 }
 
-function renderHooks(model: SourceModel): string {
-	const imports = `import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from "./bindings.js";`;
+function renderHooks(
+	model: SourceModel,
+	generatedImports: CodegenGeneratedImports,
+): string {
+	const imports = `import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from ${JSON.stringify(generatedImports.bindingsSpecifier)};`;
 	const hooks = model.resources
 		.flatMap((resource) => [
 			`export declare function use${resource.typeName}Query(input?: { limit?: number }): Promise<readonly ${resource.typeName}[]>;`,
@@ -336,8 +336,11 @@ function renderHooks(model: SourceModel): string {
 	return `${imports}\n\n${hooks}\n`;
 }
 
-function renderStepSignatures(model: SourceModel): string {
-	const imports = `import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from "./bindings.js";`;
+function renderStepSignatures(
+	model: SourceModel,
+	generatedImports: CodegenGeneratedImports,
+): string {
+	const imports = `import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from ${JSON.stringify(generatedImports.bindingsSpecifier)};`;
 	const entries = model.bindles
 		.flatMap((bindle) =>
 			bindle.steps.map((step) => {
@@ -354,8 +357,11 @@ function renderStepSignatures(model: SourceModel): string {
 	return `${imports}\n\nexport interface StepSignatures {\n${entries}\n}\n`;
 }
 
-function renderWorkflowSignatures(model: SourceModel): string {
-	const imports = `import type { ResourceName } from "./bindings.js";`;
+function renderWorkflowSignatures(
+	model: SourceModel,
+	generatedImports: CodegenGeneratedImports,
+): string {
+	const imports = `import type { ResourceName } from ${JSON.stringify(generatedImports.bindingsSpecifier)};`;
 	const entries = model.bindles
 		.flatMap((bindle) =>
 			bindle.workflows.map(

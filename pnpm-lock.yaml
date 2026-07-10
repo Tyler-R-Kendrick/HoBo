@@ -94,6 +94,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@hobo/componentize':
         specifier: workspace:*
         version: link:../componentize

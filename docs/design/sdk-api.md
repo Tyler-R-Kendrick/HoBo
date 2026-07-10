@@ -251,6 +251,32 @@ export const summarizeIncident = training.define({
 
 For OO-styled codebases an optional **`@trainable(opts)` class-method decorator** (TC39 stage-3 + `Symbol.metadata`, never `experimentalDecorators`) is pure sugar for the wrapper form — it lowers to byte-identical manifest facts (conformance-asserted); the directive/wrapper stay canonical because decorators cannot annotate free functions ([ADR-0125](./adr/03-data-plane.md#adr-0125)).
 
+```ts
+import { trainable } from "@hobo/runtime";
+
+// Decorator sugar — a class method with the same grounding; the body stays
+// the baseline and the "use training" directive marks the rewritable region.
+class SupportDesk {
+  @trainable({
+    intent: "Route tickets; critical only for security/outage/prod impact.",
+    contract: ClassificationContract,
+    rubric: { categoryCorrect: 0.92, urgencyCalibrated: 0.90, piiSafe: 1.0 },
+  })
+  async classifyTicket(t: Ticket): Promise<Classification> {
+    "use training";
+    return llm.classify(t);            // baseline body
+  }
+}
+
+// Directive-only free function — the lightest form: "use training" marks the
+// generated region and the grounding lint (lintUseTrainingSource) rejects a
+// declaration whose intent/contract/rubric grounding is missing.
+export async function summarizeIncident(i: Incident): Promise<Summary> {
+  "use training";
+  return llm.summarize(i);
+}
+```
+
 What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./generated-stack.md#plan-23)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/03-data-plane.md#adr-0025)): swapping it is a config change, not an app-code change.
 
 #### Error handling & retries

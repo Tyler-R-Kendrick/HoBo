@@ -1,3 +1,8 @@
+export type {
+	AggregateEvalOptions,
+	GradedSample,
+} from "./aggregate.js";
+export { aggregateEvalResults } from "./aggregate.js";
 export { promotionEventNames } from "./events.js";
 export type {
 	ChampionChallenger,

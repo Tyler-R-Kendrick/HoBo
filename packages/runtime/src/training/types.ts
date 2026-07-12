@@ -57,6 +57,14 @@ export interface TrainingOptions<I = unknown, O = unknown> {
 	readonly output?: Readonly<Record<string, FieldDescription>>;
 	/** Stable method reference; defaults to the function/member name. */
 	readonly methodRef?: string;
+	/**
+	 * DI-style injection token (the decorator form's id). Registering with a
+	 * token lets tests and eval suites resolve the same instance by token
+	 * (`resolveTrainable(token)`) — the join key that lets a test suite double
+	 * as the live-training eval suite. The token's `description` becomes the
+	 * methodRef when none is given.
+	 */
+	readonly token?: symbol;
 }
 
 export interface RecordedTrainableCall<I = unknown, O = unknown> {
@@ -101,5 +109,16 @@ export class TrainingArtifactError extends Error {
 	constructor(message: string) {
 		super(message);
 		this.name = "TrainingArtifactError";
+	}
+}
+
+export class TrainingResolutionError extends Error {
+	readonly code = "hobo.training.resolution" as const;
+
+	constructor(ref: string | symbol) {
+		super(
+			`no trainable registered for ${String(ref)} — register it first (training(), training.define(), training.infer(), or an instantiated @trainable class)`,
+		);
+		this.name = "TrainingResolutionError";
 	}
 }

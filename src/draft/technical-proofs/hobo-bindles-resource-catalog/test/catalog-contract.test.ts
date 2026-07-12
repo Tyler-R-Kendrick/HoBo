@@ -9,6 +9,7 @@ import { CATALOG, catalogFactoryNames, secretRef } from "../src/catalog.js";
 const expectedCatalog = Object.freeze([
   { factory: "api", portRef: ["wasi:http", "hobo:http"], verbs: [] },
   { factory: "kv", portRef: ["wasi:keyvalue"], verbs: ["get", "set", "delete"] },
+  { factory: "cache", portRef: ["hobo:cache"], verbs: ["get", "set", "delete", "invalidate"] },
   {
     factory: "bucket",
     portRef: ["wasi:blobstore", "hobo:blob-events"],

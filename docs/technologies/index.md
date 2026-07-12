@@ -11,6 +11,7 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **CUE** | Typed config/data/validation language (config superset of JSON) | [`cue.md`](./cue.md) |
 | **Microsoft Trace** | Framework for tracing + optimizing LLM/agent workflows (auto-diff for prompts/code) | [`microsoft-trace.md`](./microsoft-trace.md) |
 | **Agent Lightning** | Microsoft RL/optimization trainer for agents (decouples training from execution) | [`agent-lightning.md`](./agent-lightning.md) |
+| **agentV** | Local-first agent-evals framework; deterministic + LLM graders over stored traces, per-metric scores | [`agentv.md`](./agentv.md) |
 | **DSPy** | Declarative framework for programming (not prompting) LMs; compiles + optimizes pipelines | [`dspy.md`](./dspy.md) |
 | **HolmesGPT / CNCF SRE Agent** | AI SRE / root-cause investigation agent over observability + runbooks | [`holmesgpt-sre-agent.md`](./holmesgpt-sre-agent.md) |
 | **StackStorm (st2)** | Event-driven automation / runbook engine ("IFTTT for ops") | [`stackstorm.md`](./stackstorm.md) |

@@ -1,6 +1,7 @@
 const catalogRows = [
   ["api", ["wasi:http", "hobo:http"], []],
   ["kv", ["wasi:keyvalue"], ["get", "set", "delete"]],
+  ["cache", ["hobo:cache"], ["get", "set", "delete", "invalidate"]],
   ["bucket", ["wasi:blobstore", "hobo:blob-events"], ["read", "write", "delete"]],
   ["queue", ["hobo:queue"], ["enqueue", "dequeue"]],
   ["topic", ["wasi:messaging"], ["publish", "subscribe"]],
@@ -108,6 +109,7 @@ function makeFactory(factory) {
 
 export const api = makeFactory("api");
 export const kv = makeFactory("kv");
+export const cache = makeFactory("cache");
 export const bucket = makeFactory("bucket");
 export const queue = makeFactory("queue");
 export const topic = makeFactory("topic");

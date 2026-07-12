@@ -98,7 +98,11 @@ const requiredSurfaces = [
 	},
 ];
 
-const importOwners = new Map([
+// Values are the packages a symbol may legitimately be imported from in the
+// docs. Most symbols have one home; `trainable` has two by design — the
+// shipped @hobo/runtime stage-3 decorator (ADR-0125) and the bindles-DSL
+// registration factory the walkthrough designs.
+const importOwners = new Map<string, string | readonly string[]>([
 	["api", "@hobo/bindles"],
 	["auth", "@hobo/bindles"],
 	["bindle", "@hobo/bindles"],
@@ -118,7 +122,6 @@ const importOwners = new Map([
 	["secretRef", "@hobo/bindles"],
 	["slo", "@hobo/bindles"],
 	["topic", "@hobo/bindles"],
-	["trainable", "@hobo/bindles"],
 	["web", "@hobo/bindles"],
 	["websocket", "@hobo/bindles"],
 	["actor", "@hobo/runtime"],
@@ -131,6 +134,7 @@ const importOwners = new Map([
 	["sleep", "@hobo/runtime"],
 	["start", "@hobo/runtime"],
 	["step", "@hobo/runtime"],
+	["trainable", ["@hobo/runtime", "@hobo/bindles"]],
 	["training", "@hobo/runtime"],
 	["workflow", "@hobo/runtime"],
 	["command", "@hobo/data"],
@@ -319,10 +323,16 @@ function validateImportOwners() {
 			for (const specifier of specifiers) {
 				const bindingName = importedBindingName(specifier);
 				const expectedPackage = importOwners.get(bindingName);
+				const allowedPackages =
+					expectedPackage === undefined
+						? undefined
+						: Array.isArray(expectedPackage)
+							? expectedPackage
+							: [expectedPackage];
 
-				if (expectedPackage && packageName !== expectedPackage) {
+				if (allowedPackages && !allowedPackages.includes(packageName)) {
 					fail(
-						`${relativePath}: ${bindingName} imported from ${packageName}; expected ${expectedPackage}`,
+						`${relativePath}: ${bindingName} imported from ${packageName}; expected ${allowedPackages.join(" or ")}`,
 					);
 				}
 

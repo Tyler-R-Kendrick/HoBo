@@ -49,6 +49,11 @@ function createBindlesPublicApiSnapshot(
 		"compileBindleManifest",
 		"wiringData",
 		"wiringService",
+		"collectBindleManifest",
+		"CollectionEngineError",
+		"createCollectionEvents",
+		"manifestFromWiring",
+		"COLLECTION_EVENT_SOURCE",
 		...factoryNames,
 	]);
 
@@ -182,6 +187,34 @@ function createBindlesPublicApiSnapshot(
 				kind: "wiring-factory",
 				signature:
 					"wiringService(name: string, options?: ServiceOptions): ComponentHandle",
+			},
+			{
+				name: "collectBindleManifest",
+				kind: "collect-engine",
+				signature:
+					"collectBindleManifest(target: CollectionTarget): CollectionResult",
+			},
+			{
+				name: "manifestFromWiring",
+				kind: "collect-helper",
+				signature:
+					"manifestFromWiring(wiring: WiringManifest, componentHost: ComponentHostDescriptor): ManifestV1",
+			},
+			{
+				name: "createCollectionEvents",
+				kind: "collect-events",
+				signature:
+					"createCollectionEvents(input: { bindleId: string; manifestHash: ManifestHash; resources: readonly string[]; binds: readonly string[] }): readonly CollectionEvent[]",
+			},
+			{
+				name: "CollectionEngineError",
+				kind: "collect-error",
+				signature: "class CollectionEngineError extends Error",
+			},
+			{
+				name: "COLLECTION_EVENT_SOURCE",
+				kind: "collect-constant",
+				signature: 'const COLLECTION_EVENT_SOURCE: "hobo.collector"',
 			},
 			...extraExports,
 		],

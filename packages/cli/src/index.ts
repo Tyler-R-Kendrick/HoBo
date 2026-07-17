@@ -10,6 +10,20 @@ export {
 	writeBuildFixtureProject,
 } from "./commands/build.js";
 export { createCodegenCommand } from "./commands/codegen.js";
+export {
+	COLLECT_GOLDEN_FILE,
+	createCollectCommand,
+	type CollectCommandDeps,
+} from "./commands/collect.js";
+export { createDevCommand, type DevCommandDeps } from "./commands/dev.js";
+export {
+	bootLocalCamp,
+	DEV_COLD_BUDGET_MS,
+	DEV_LOCAL_URL,
+	type DevBindlePlan,
+	type DevBootResult,
+	type DevRuntime,
+} from "./dev/local-camp.js";
 export { createDownCommand, type DownCommandDeps } from "./commands/down.js";
 export { createLoginCommand, type LoginCommandDeps } from "./commands/login.js";
 export {

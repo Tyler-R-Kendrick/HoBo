@@ -60,6 +60,26 @@ export type {
 	WiringManifest,
 } from "./wiring/index.js";
 
+export {
+	COLLECTION_EVENT_SOURCE,
+	collectBindleManifest,
+	CollectionEngineError,
+	createCollectionEvents,
+	manifestFromWiring,
+} from "./collect/index.js";
+export type {
+	CollectionContext,
+	CollectionEvent,
+	CollectionEventType,
+	CollectionResult,
+	CollectionTarget,
+	ComponentHostDescriptor,
+	ManifestProducedData,
+	ManifestProducedEvent,
+	ResourcesCollectedData,
+	ResourcesCollectedEvent,
+} from "./collect/index.js";
+
 export const HOBO_BINDLES_PACKAGE = "@hobo/bindles";
 
 export {

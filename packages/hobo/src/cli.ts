@@ -17,6 +17,7 @@ import {
 	createDefaultYardRuntime,
 } from "./compose.js";
 import { createDoctorCommand } from "./doctor-command.js";
+import { createInspectCommand } from "./inspect-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -51,6 +52,7 @@ export function createComposedHoboCli(
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),
+			inspect: createInspectCommand({ runtime }),
 		},
 	});
 }

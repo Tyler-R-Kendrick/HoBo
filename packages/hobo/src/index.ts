@@ -34,6 +34,10 @@ export {
 	type DoctorCommandDeps,
 } from "./doctor-command.js";
 export {
+	createInspectCommand,
+	type InspectCommandDeps,
+} from "./inspect-command.js";
+export {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 	type PulumiBackedIacProviderOptions,

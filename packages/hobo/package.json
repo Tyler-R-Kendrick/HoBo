@@ -24,6 +24,7 @@
 		"@hobo/cloud": "workspace:*",
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",
+		"@hobo/iac-pulumi": "workspace:*",
 		"@hobo/provider-cloudflare": "workspace:*",
 		"@hobo/runtime-local": "workspace:*"
 	},

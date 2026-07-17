@@ -272,6 +272,7 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/hobo", to: "packages/data" },
 	{ from: "packages/hobo", to: "packages/runtimes/runtime-local" },
 	{ from: "packages/hobo", to: "packages/providers/provider-cloudflare" },
+	{ from: "packages/hobo", to: "packages/iac/iac-pulumi" },
 	{ from: "packages/providers/provider-agentv", to: "packages/core" },
 	{ from: "packages/providers/provider-ax", to: "packages/core" },
 	// Accepted training/eval-provider composition edges (see ACCEPTED_ADAPTER_PACKAGE_EDGES).

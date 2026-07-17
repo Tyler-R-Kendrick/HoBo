@@ -25,6 +25,7 @@ export type ComponentHostManifest = ReturnType<
 
 export type ComponentHostAdapter = FixtureComponentHost;
 
+// domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export type ComponentHostConformanceReport = {
 	readonly schema: typeof COMPONENT_HOST_CONFORMANCE_SCHEMA;
 	readonly status: "pass" | "fail";
@@ -34,6 +35,7 @@ export type ComponentHostConformanceReport = {
 	readonly nonCoveredDivergences: readonly string[];
 };
 
+// domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 type HostReport = {
 	readonly kind: string;
 	readonly version: string;
@@ -53,6 +55,7 @@ type CrossHostAssertions = {
 	readonly resourceLimitSemantics: "pass" | "fail";
 };
 
+// domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 type ConformanceFailure = {
 	readonly checkId: string;
 	readonly message: string;

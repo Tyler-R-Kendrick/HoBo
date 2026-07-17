@@ -56,6 +56,7 @@ export interface RuntimeDurabilityBackend {
 	readonly actorHost: ActorHostPort;
 }
 
+	// domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface ConformanceCheckResult {
 	readonly checkId: string;
 	readonly port: string;
@@ -63,11 +64,13 @@ export interface ConformanceCheckResult {
 	readonly status: "pass" | "fail";
 }
 
+	// domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface ConformanceFailure {
 	readonly checkId: string;
 	readonly message: string;
 }
 
+	// domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface RuntimePortConformanceReport {
 	readonly contract: typeof RUNTIME_PORT_CONFORMANCE_VERSION;
 	readonly backend: string;

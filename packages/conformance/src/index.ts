@@ -65,6 +65,23 @@ export type {
 } from "./suites/component-host/index.js";
 
 export {
+	assertCorpusReplayEqualsLive,
+	buildReplayCorpus,
+	emptyGreetingReadModel,
+	foldLive,
+	helloBindleFold,
+	helloBindleUpcast,
+	parseReplayCorpus,
+	REPLAY_CORPUS_SEED,
+} from "./corpus/replay.js";
+export type {
+	CorpusReplayResult,
+	GreetingReadModel,
+	ReplayCorpus,
+} from "./corpus/replay.js";
+export { CORPUS_DIR, recordCorpus } from "./corpus/record.js";
+
+export {
 	RUNTIME_PORT_CONFORMANCE_VERSION,
 	proveCheckoutDurability,
 	parseRuntimePortReport,

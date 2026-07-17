@@ -1,4 +1,8 @@
 export {
+	type AttestCommandDeps,
+	createAttestCommand,
+} from "./attest-command.js";
+export {
 	type ComposedHoboCliOptions,
 	createComposedHoboCli,
 } from "./cli.js";
@@ -41,6 +45,13 @@ export {
 	createInspectCommand,
 	type InspectCommandDeps,
 } from "./inspect-command.js";
+export {
+	credentialAuditToOcsf,
+	OCSF_EXPORT_VERSION,
+	type OcsfAuthorizationRecord,
+	type OcsfBatch,
+	type OcsfCredentialChain,
+} from "./ocsf-export.js";
 export {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,

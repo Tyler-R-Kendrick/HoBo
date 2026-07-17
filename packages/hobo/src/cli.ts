@@ -10,7 +10,7 @@ import {
 	type HoboCli,
 	type YardRuntime,
 } from "@hobo/cli";
-
+import { createAttestCommand } from "./attest-command.js";
 import {
 	createDefaultCollectionTarget,
 	createDefaultDevRuntime,
@@ -55,6 +55,7 @@ export function createComposedHoboCli(
 			verify: createVerifyCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
+			attest: createAttestCommand({ runtime }),
 		},
 	});
 }

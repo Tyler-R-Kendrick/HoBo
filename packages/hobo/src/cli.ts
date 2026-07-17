@@ -17,6 +17,7 @@ import {
 	createDefaultYardRuntime,
 } from "./compose.js";
 import { createDoctorCommand } from "./doctor-command.js";
+import { createVerifyCommand } from "./verify-command.js";
 
 export interface ComposedHoboCliOptions {
 	// Override the default local/mocked YardRuntime shared across plan/up/down.
@@ -49,6 +50,7 @@ export function createComposedHoboCli(
 			up: createUpCommand({ runtime }),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
+			verify: createVerifyCommand(),
 		},
 	});
 }

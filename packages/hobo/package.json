@@ -22,6 +22,7 @@
 		"@hobo/bindles": "workspace:*",
 		"@hobo/cli": "workspace:*",
 		"@hobo/cloud": "workspace:*",
+		"@hobo/contracts": "workspace:*",
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",
 		"@hobo/iac-pulumi": "workspace:*",

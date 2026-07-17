@@ -58,6 +58,10 @@ export {
 	type PulumiBackedIacProviderOptions,
 } from "./pulumi-iac-provider.js";
 export {
+	createSandboxCommand,
+	type SandboxCommandDeps,
+} from "./sandbox-command.js";
+export {
 	type CreateDeploymentInput,
 	createVercelClient,
 	type VercelClient,

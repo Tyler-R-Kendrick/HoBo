@@ -21,6 +21,7 @@ import {
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
 import { createEraseCommand } from "./erase-command.js";
+import { createImportCommand } from "./import-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLogsCommand } from "./logs-command.js";
 import { createRegistryCommand } from "./registry-command.js";
@@ -69,6 +70,7 @@ export function createComposedHoboCli(
 			claim: createClaimCommand({ runtime }),
 			registry: createRegistryCommand({ runtime }),
 			add: createAddCommand({ runtime }),
+			import: createImportCommand({ runtime }),
 			logs: createLogsCommand(),
 			runbook: createRunbookCommand({ runtime }),
 			erase: createEraseCommand({ runtime }),

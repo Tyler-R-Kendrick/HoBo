@@ -43,3 +43,8 @@ export {
 	createCloudflareDeployProvider,
 	type CloudflareDeployProviderOptions,
 } from "./cloudflare-deploy-provider.js";
+export {
+	describeDeployTarget,
+	type DeployBackend,
+	type DeployTargetDescription,
+} from "./deploy-preflight.js";

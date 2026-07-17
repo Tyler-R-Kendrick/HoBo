@@ -1,5 +1,29 @@
 export type { CodegenEngine } from "./codegen/types.js";
 export {
+	AGENT_DOCS_ARTIFACTS,
+	AGENT_DOCS_GENERATOR,
+	AGENT_DOCS_MCP_CALL_VERB,
+	AGENT_DOCS_MCP_PORT,
+	AGENT_DOCS_PRODUCT,
+	AGENT_DOCS_SCHEMA_VERSION,
+	generateAgentDocs,
+	type AgentDocCapability,
+	type AgentDocEntry,
+	type AgentDocsArtifact,
+	type AgentDocsManifest,
+	type AgentDocsResult,
+	type AgentDocsToolInput,
+	type GenerateAgentDocsInput,
+} from "./agent-docs/generate.js";
+export {
+	assertAgentDocsFresh,
+	compareAgentDocs,
+	writeAgentDocs,
+	AgentDocsError,
+	type AgentDocsDriftEntry,
+	type AgentDocsDriftStatus,
+} from "./agent-docs/gate.js";
+export {
 	BUILD_MANIFEST_PATH,
 	BuildError,
 	createBuildCommand,

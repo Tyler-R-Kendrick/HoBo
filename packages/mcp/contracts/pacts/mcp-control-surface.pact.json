@@ -37,6 +37,22 @@
           "code": "MCP_SCOPE_DENIED"
         }
       }
+    },
+    {
+      "description": "flooding principal is throttled with backpressure",
+      "request": {
+        "tool": "plan",
+        "input": {
+          "camp": "prod"
+        }
+      },
+      "response": {
+        "status": "throttled",
+        "body": {
+          "ok": false,
+          "code": "MCP_RATE_LIMITED"
+        }
+      }
     }
   ]
 }

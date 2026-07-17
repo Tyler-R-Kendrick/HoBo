@@ -1,5 +1,7 @@
 import { createBuildCommand } from "../commands/build.js";
 import { createCodegenCommand } from "../commands/codegen.js";
+import { createCollectCommand } from "../commands/collect.js";
+import { createDevCommand } from "../commands/dev.js";
 import { createDownCommand } from "../commands/down.js";
 import { createLoginCommand } from "../commands/login.js";
 import { createNewCommand } from "../commands/new.js";
@@ -58,6 +60,8 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 			new: createNewCommand(),
 			build: createBuildCommand(),
 			codegen: createCodegenCommand(),
+			collect: createCollectCommand(),
+			dev: createDevCommand(),
 			stub: createStubCommand(),
 			login: createLoginCommand(),
 			plan: createPlanCommand(),

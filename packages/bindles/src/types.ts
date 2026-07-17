@@ -102,6 +102,7 @@ export interface ResourceCatalogEntry {
 	readonly allowVerbs: readonly string[];
 }
 
+// domain-view: branded parse-don't-validate view over the generated wire form.
 export interface LoweringDescriptor {
 	readonly lowersTo: "hobo:sdk";
 	readonly kind: ResourceKind;
@@ -112,6 +113,7 @@ export interface LoweringDescriptor {
 	readonly args: readonly unknown[];
 }
 
+// domain-view: generic, branded stableId view over the generated wire form.
 export interface ResourceDescriptor<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	readonly name: string;
@@ -147,17 +149,20 @@ export interface SecretRef {
 	readonly lowersTo: "hobo:sdk";
 }
 
+// domain-view: readonly parse-don't-validate view over the generated wire form.
 export interface ProviderAnnotation {
 	readonly provider: string;
 	readonly option: string;
 	readonly config: Record<string, unknown>;
 }
 
+// domain-view: readonly parse-don't-validate view over the generated wire form.
 export interface BindleEdge {
 	readonly from: string;
 	readonly to: string;
 }
 
+// domain-view: generic, branded parse-don't-validate view over the wire form.
 export interface BindleResourceRecord<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	readonly name: string;

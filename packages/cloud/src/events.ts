@@ -33,7 +33,40 @@ export const CLOUD_EVENTS = Object.freeze({
 	ExecSucceeded: "exec.Succeeded",
 	DeploymentDeployed: "deployment.Deployed",
 	DeploymentRolledBack: "deployment.RolledBack",
+	// Credential-audit facts (NFR-018): the per-resource scoped-credential
+	// lifecycle the Orchestrator brokers around each apply. Folded by
+	// `credentialAuditProjection` into a grant -> use -> revoke trail.
+	TokenGranted: "token.Granted",
+	TokenUsed: "token.Used",
+	TokenRevoked: "token.Revoked",
 } as const);
+
+// The audited (port, resource, action) scope of a brokered credential.
+export interface CredentialGrantScope {
+	port: string;
+	resource: string;
+	action: string;
+}
+
+export function tokenGranted(data: {
+	grantId: string;
+	svidSubject?: string;
+	tokenRef?: string;
+	scope?: CredentialGrantScope;
+}): EventInput {
+	return { type: CLOUD_EVENTS.TokenGranted, data };
+}
+
+export function tokenUsed(data: { grantId: string }): EventInput {
+	return { type: CLOUD_EVENTS.TokenUsed, data };
+}
+
+export function tokenRevoked(data: {
+	grantId: string;
+	reason?: string;
+}): EventInput {
+	return { type: CLOUD_EVENTS.TokenRevoked, data };
+}
 
 export interface DeploymentRequestedData {
 	deploymentId: string;
@@ -85,7 +118,9 @@ export interface ResourceProvisioningData {
 	programHash: string;
 }
 
-export function resourceProvisioning(data: ResourceProvisioningData): EventInput {
+export function resourceProvisioning(
+	data: ResourceProvisioningData,
+): EventInput {
 	return { type: CLOUD_EVENTS.ResourceProvisioning, data };
 }
 
@@ -168,6 +203,8 @@ export interface DeploymentRolledBackData {
 	reason: string;
 }
 
-export function deploymentRolledBack(data: DeploymentRolledBackData): EventInput {
+export function deploymentRolledBack(
+	data: DeploymentRolledBackData,
+): EventInput {
 	return { type: CLOUD_EVENTS.DeploymentRolledBack, data };
 }

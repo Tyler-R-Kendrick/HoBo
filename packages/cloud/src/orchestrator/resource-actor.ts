@@ -3,24 +3,26 @@ import { createHash } from "node:crypto";
 import type { EventEnvelope, EventStore, PrincipalRef } from "@hobo/core";
 import type { ActorHost } from "@hobo/data";
 import { emit } from "@hobo/events";
-
-import { CLOUD_EVENTS } from "../events.js";
 import {
+	CLOUD_EVENTS,
 	execDiff,
 	execSucceeded,
 	resourceDestroyed,
 	resourceFailed,
 	resourceProvisioned,
 	resourceProvisioning,
+	tokenGranted,
+	tokenRevoked,
+	tokenUsed,
 } from "../events.js";
-import type { ResourcePlan } from "../plan-types.js";
-import { collectStream } from "../store/index.js";
 import {
-	credentialScope,
 	type CredentialBroker,
+	credentialScope,
 	type Executor,
 	type IacProgram,
 } from "../executor/executor.js";
+import type { ResourcePlan } from "../plan-types.js";
+import { collectStream } from "../store/index.js";
 
 // The ResourceActor reconciliation FSM (control-plane.md "The ResourceActor
 // reconciliation FSM"). Each resource in a plan gets a durable virtual actor
@@ -53,7 +55,10 @@ export interface ResourceActorSnapshot {
 	deps: string[];
 }
 
-export function resourceActorKey(deploymentId: string, resourceId: string): string {
+export function resourceActorKey(
+	deploymentId: string,
+	resourceId: string,
+): string {
 	return `resource:${deploymentId}:${resourceId}`;
 }
 
@@ -74,7 +79,10 @@ export function foldResourceActor(
 	};
 
 	for (const event of events) {
-		const data = event.data as { resourceId?: string; outputs?: Record<string, string> };
+		const data = event.data as {
+			resourceId?: string;
+			outputs?: Record<string, string>;
+		};
 		if (data.resourceId !== resource.name) continue;
 		switch (event.type) {
 			case CLOUD_EVENTS.ResourceProvisioning:
@@ -125,7 +133,12 @@ export interface ReconcileContext {
 export type ReconcileOutcome =
 	| { kind: "converged"; snapshot: ResourceActorSnapshot }
 	| { kind: "provisioned"; snapshot: ResourceActorSnapshot; execId: string }
-	| { kind: "failed"; snapshot: ResourceActorSnapshot; reason: string; crossedNoGoThreshold: boolean };
+	| {
+			kind: "failed";
+			snapshot: ResourceActorSnapshot;
+			reason: string;
+			crossedNoGoThreshold: boolean;
+	  };
 
 export function iacProgramFor(
 	deploymentId: string,
@@ -138,7 +151,10 @@ export function iacProgramFor(
 		deploymentId,
 		resourceId: resource.name,
 		provider: resource.provider,
-		driver: resource.strategy && resource.strategy !== "reconcile" ? resource.strategy : "pulumi",
+		driver:
+			resource.strategy && resource.strategy !== "reconcile"
+				? resource.strategy
+				: "pulumi",
 		action,
 		stackName: `${tenant}/${deploymentId}/${resource.name}`,
 	};
@@ -170,7 +186,10 @@ export async function reconcileResource(
 	try {
 		const stream = streamId(ctx.deploymentId);
 		let events = await collectStream(deps.store, stream);
-		let snapshot = foldResourceActor(events, { ...resource, deploymentId: ctx.deploymentId });
+		let snapshot = foldResourceActor(events, {
+			...resource,
+			deploymentId: ctx.deploymentId,
+		});
 
 		// Converged: nothing to do (empty diff — the controller no-op).
 		if (snapshot.state === "Provisioned" || snapshot.state === "Destroyed") {
@@ -180,13 +199,21 @@ export async function reconcileResource(
 		const appendOpts = {
 			actor: ctx.actor,
 			tenant: ctx.tenant,
-			...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+			...(ctx.correlationId !== undefined
+				? { correlationId: ctx.correlationId }
+				: {}),
 		};
-		let lastSeq = events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
+		let lastSeq =
+			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 
 		// Transition Pending/Planning → Provisioning (durable boundary) unless we
 		// are resuming an already-in-flight Provisioning after a crash.
-		const program = iacProgramFor(ctx.deploymentId, resource, "apply", ctx.tenant);
+		const program = iacProgramFor(
+			ctx.deploymentId,
+			resource,
+			"apply",
+			ctx.tenant,
+		);
 		const programHash = `sha256:${createHash("sha256").update(JSON.stringify(program)).digest("hex")}`;
 		const credential = deps.broker.issue({
 			scope: credentialScope({
@@ -196,6 +223,20 @@ export async function reconcileResource(
 				action: "apply",
 			}),
 		});
+		// Credential-audit metadata (NFR-018): the grant is recorded as a
+		// `token.Granted` fact, then `token.Used` on a successful apply and
+		// `token.Revoked` when the scoped credential is dropped — a full,
+		// replayable grant -> use -> revoke trail correlated by correlationId.
+		const grant = {
+			grantId: credential.id,
+			tokenRef: `tokenref://scoped/${credential.id}`,
+			...(ctx.actor?.id !== undefined ? { svidSubject: ctx.actor.id } : {}),
+			scope: {
+				port: resource.port,
+				resource: resource.name,
+				action: "apply",
+			},
+		};
 
 		try {
 			if (snapshot.state !== "Provisioning") {
@@ -220,11 +261,14 @@ export async function reconcileResource(
 			const result = await deps.executor.run(program, credential);
 
 			if (result.status === "failed") {
-				const crossed = ctx.noGoThresholdResources?.has(resource.name) ?? result.classification === "fatal";
+				const crossed =
+					ctx.noGoThresholdResources?.has(resource.name) ??
+					result.classification === "fatal";
 				const emitted = await emit(
 					deps.store,
 					stream,
 					[
+						tokenGranted(grant),
 						resourceFailed({
 							deploymentId: ctx.deploymentId,
 							resourceId: resource.name,
@@ -232,13 +276,22 @@ export async function reconcileResource(
 							classification: result.classification,
 							crossedNoGoThreshold: crossed,
 						}),
+						tokenRevoked({ grantId: grant.grantId, reason: "apply failed" }),
 					],
 					{ expectedSeq: lastSeq, ...appendOpts },
 				);
 				lastSeq = emitted.seq;
 				events = await collectStream(deps.store, stream);
-				snapshot = foldResourceActor(events, { ...resource, deploymentId: ctx.deploymentId });
-				return { kind: "failed", snapshot, reason: result.reason, crossedNoGoThreshold: crossed };
+				snapshot = foldResourceActor(events, {
+					...resource,
+					deploymentId: ctx.deploymentId,
+				});
+				return {
+					kind: "failed",
+					snapshot,
+					reason: result.reason,
+					crossedNoGoThreshold: crossed,
+				};
 			}
 
 			// exec.Succeeded → record outputs, emit resource.Provisioned.
@@ -246,7 +299,12 @@ export async function reconcileResource(
 				deps.store,
 				stream,
 				[
-					execDiff({ execId: result.execId, summary: result.diff.summary, changes: result.diff.changes }),
+					tokenGranted(grant),
+					execDiff({
+						execId: result.execId,
+						summary: result.diff.summary,
+						changes: result.diff.changes,
+					}),
 					execSucceeded({
 						execId: result.execId,
 						outputsHash: `sha256:${createHash("sha256").update(JSON.stringify(result.outputs)).digest("hex")}`,
@@ -258,12 +316,17 @@ export async function reconcileResource(
 						outputs: result.outputs,
 						execId: result.execId,
 					}),
+					tokenUsed({ grantId: grant.grantId }),
+					tokenRevoked({ grantId: grant.grantId, reason: "apply complete" }),
 				],
 				{ expectedSeq: lastSeq, ...appendOpts },
 			);
 			lastSeq = emitted.seq;
 			events = await collectStream(deps.store, stream);
-			snapshot = foldResourceActor(events, { ...resource, deploymentId: ctx.deploymentId });
+			snapshot = foldResourceActor(events, {
+				...resource,
+				deploymentId: ctx.deploymentId,
+			});
 			return { kind: "provisioned", snapshot, execId: result.execId };
 		} finally {
 			deps.broker.revoke(credential);
@@ -278,23 +341,40 @@ export async function destroyResource(
 	deps: ResourceActorDeps,
 	resource: ResourcePlan,
 	ctx: ReconcileContext,
-): Promise<{ kind: "destroyed" | "converged" | "failed"; snapshot: ResourceActorSnapshot; reason?: string }> {
+): Promise<{
+	kind: "destroyed" | "converged" | "failed";
+	snapshot: ResourceActorSnapshot;
+	reason?: string;
+}> {
 	const key = resourceActorKey(ctx.deploymentId, resource.name);
-	const lease = deps.actorHost.acquire(key, { holderId: `resource-actor:${key}` });
+	const lease = deps.actorHost.acquire(key, {
+		holderId: `resource-actor:${key}`,
+	});
 	try {
 		const stream = streamId(ctx.deploymentId);
 		let events = await collectStream(deps.store, stream);
-		let snapshot = foldResourceActor(events, { ...resource, deploymentId: ctx.deploymentId });
+		let snapshot = foldResourceActor(events, {
+			...resource,
+			deploymentId: ctx.deploymentId,
+		});
 		if (snapshot.state === "Destroyed") return { kind: "converged", snapshot };
 
 		const appendOpts = {
 			actor: ctx.actor,
 			tenant: ctx.tenant,
-			...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+			...(ctx.correlationId !== undefined
+				? { correlationId: ctx.correlationId }
+				: {}),
 		};
-		let lastSeq = events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
+		let lastSeq =
+			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 
-		const program = iacProgramFor(ctx.deploymentId, resource, "destroy", ctx.tenant);
+		const program = iacProgramFor(
+			ctx.deploymentId,
+			resource,
+			"destroy",
+			ctx.tenant,
+		);
 		const credential = deps.broker.issue({
 			scope: credentialScope({
 				tenant: ctx.tenant,
@@ -307,7 +387,10 @@ export async function destroyResource(
 			const result = await deps.executor.run(program, credential);
 			if (result.status === "failed") {
 				events = await collectStream(deps.store, stream);
-				snapshot = foldResourceActor(events, { ...resource, deploymentId: ctx.deploymentId });
+				snapshot = foldResourceActor(events, {
+					...resource,
+					deploymentId: ctx.deploymentId,
+				});
 				return { kind: "failed", snapshot, reason: result.reason };
 			}
 			const emitted = await emit(
@@ -324,7 +407,10 @@ export async function destroyResource(
 			);
 			lastSeq = emitted.seq;
 			events = await collectStream(deps.store, stream);
-			snapshot = foldResourceActor(events, { ...resource, deploymentId: ctx.deploymentId });
+			snapshot = foldResourceActor(events, {
+				...resource,
+				deploymentId: ctx.deploymentId,
+			});
 			return { kind: "destroyed", snapshot };
 		} finally {
 			deps.broker.revoke(credential);

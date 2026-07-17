@@ -62,6 +62,23 @@ export {
 } from "./projections/deployment-view.js";
 
 export {
+	compactCredentialAuditStream,
+	credentialAuditProjection,
+	CREDENTIAL_AUDIT_EVENTS,
+	CREDENTIAL_AUDIT_EVENT_PREFIXES,
+	CREDENTIAL_AUDIT_RETENTION,
+	CREDENTIAL_AUDIT_RETENTION_FLOOR_DAYS,
+	CREDENTIAL_AUDIT_RETENTION_FLOOR_MS,
+	isCredentialAuditEvent,
+	type CompactionResult,
+	type CredentialAuditRow,
+	type CredentialAuditScope,
+	type CredentialAuditTimelineEntry,
+	type CredentialGrantAudit,
+	type CredentialGrantStatus,
+} from "./projections/credential-audit.js";
+
+export {
 	authorize,
 	deploy,
 	deploymentStreamId,

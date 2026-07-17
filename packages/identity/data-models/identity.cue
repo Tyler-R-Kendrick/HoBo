@@ -80,6 +80,39 @@ package hobo
   expiresAt: string & != ""
   tokenRef: =~"^tokenref://broker/grant/"
   vaultReference: =~"^tokenref://"
+  credentialSource: "oidc-federation" | "vault-static-key"
+  providerTokenRef?: =~"^tokenref://provider/"
+}
+
+// S3-03 keyless token exchange constraints (one per new protobuf message).
+
+#OidcFederationAssertion: {
+  issuer: string & != ""
+  subject: =~"^spiffe://yard/"
+  audience: string & != ""
+  scope: #TokenScope
+  issuedAt: string & != ""
+  expiresAt: string & != ""
+}
+
+#ProviderStsExchangeRequest: {
+  oidcToken: =~"^hobo-oidc\\."
+  audience: string & != ""
+  subject: =~"^spiffe://yard/"
+  scope: #TokenScope
+  now: string & != ""
+}
+
+#ExchangedProviderCredential: {
+  tokenRef: =~"^tokenref://provider/"
+  flow: "oidc-federation"
+  provider: string & != ""
+  audience: string & != ""
+  scope: #TokenScope
+  issuedAt: string & != ""
+  expiresAt: string & != ""
+  expiresInSeconds: uint & >0
+  narrowed: true
 }
 
 #TokenGrantedEventData: {

@@ -84,6 +84,43 @@ message TokenGrantRecord {
   string expires_at = 8;
   string token_ref = 9;
   string vault_reference = 10;
+  string credential_source = 11;   // "oidc-federation" | "vault-static-key"
+  string provider_token_ref = 12;  // set when credential_source = oidc-federation
+}
+
+// S3-03 keyless token exchange (ai-native-agent-auth.md §6.2/§6.8). The broker
+// mints an OIDC assertion (aud = provider) for the attested SVID and exchanges it
+// at the provider STS for a short-lived, resource-scoped provider token.
+
+message OidcFederationAssertion {
+  string issuer = 1;
+  string subject = 2;
+  string audience = 3;
+  TokenScope scope = 4;
+  string issued_at = 5;
+  string expires_at = 6;
+}
+
+message ProviderStsExchangeRequest {
+  string oidc_token = 1;
+  string audience = 2;
+  string subject = 3;
+  TokenScope scope = 4;
+  string now = 5;
+}
+
+// The narrowed provider credential returned by the exchange. The wire record
+// carries the reference, never the raw provider token material.
+message ExchangedProviderCredential {
+  string token_ref = 1;
+  string flow = 2;                 // "oidc-federation"
+  string provider = 3;
+  string audience = 4;
+  TokenScope scope = 5;
+  string issued_at = 6;
+  string expires_at = 7;
+  uint32 expires_in_seconds = 8;
+  bool narrowed = 9;
 }
 
 message TokenGrantedEventData {

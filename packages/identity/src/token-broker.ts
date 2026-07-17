@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import {
   createTokenGrantedEvent,
@@ -43,6 +43,211 @@ export function createInMemoryVault(options: {
   });
 }
 
+// ---------------------------------------------------------------------------
+// S3-03: keyless provider-STS token exchange (ai-native-agent-auth.md §6.2/§6.8)
+//
+// Keyless-by-default preference order (oidc-federation > … > api-key): rather than
+// derive a token from the vaulted static key, the broker mints an OIDC assertion
+// (aud = provider) for the attested SVID and exchanges it at the provider's STS
+// (AssumeRoleWithWebIdentity / GCP WIF / Azure federated credential / RFC 8693)
+// for a short-lived, resource-scoped provider token. The vaulted static key is a
+// bounded escape hatch, used only when federation is unavailable (NFR-005: the
+// brokered ratio must stay ≥99%).
+// ---------------------------------------------------------------------------
+
+export type BrokeredCredentialSource = "oidc-federation" | "vault-static-key";
+
+export const BROKER_OIDC_ASSERTION_TTL_SECONDS = 120;
+
+// domain-view: the OIDC assertion the broker federates to the provider. Wire form
+// is OidcFederationAssertion in data-models/identity.proto. The broker holds no
+// provider secret — the assertion is the only thing that crosses to the STS.
+export type OidcFederationAssertion = Readonly<{
+  token: string;
+  issuer: string;
+  subject: string;
+  audience: string;
+  scope: TokenScope;
+  issuedAt: string;
+  expiresAt: string;
+}>;
+
+// domain-view: the request the broker submits to a provider STS. Wire form is
+// ProviderStsExchangeRequest in data-models/identity.proto.
+export type StsExchangeRequest = Readonly<{
+  oidcToken: string;
+  audience: string;
+  subject: string;
+  scope: TokenScope;
+  now: string;
+}>;
+
+// domain-view: a short-lived, resource-scoped provider credential returned by the
+// exchange. Wire form is ExchangedProviderCredential in identity.proto — the wire
+// record carries only the reference, never the raw provider token material.
+export type ExchangedProviderCredential = Readonly<{
+  tokenRef: string;
+  token: string;
+  flow: "oidc-federation";
+  provider: string;
+  audience: string;
+  scope: TokenScope;
+  issuedAt: string;
+  expiresAt: string;
+  expiresInSeconds: number;
+  narrowed: true;
+}>;
+
+export type StsExchangeResult =
+  | Readonly<{ status: "exchanged"; credential: ExchangedProviderCredential }>
+  | Readonly<{ status: "rejected"; reason: string }>;
+
+/**
+ * The typed provider-STS port. A production adapter fronts a real cloud STS
+ * (AssumeRoleWithWebIdentity / WIF / federated credential / RFC 8693 token
+ * exchange). The in-memory implementation below models the exchange
+ * deterministically with no network and no cloud SDK.
+ */
+export interface ProviderStsExchange {
+  readonly provider: string;
+  readonly audience: string;
+  readonly flow: "oidc-federation";
+  exchange(request: StsExchangeRequest): StsExchangeResult;
+}
+
+/**
+ * Deterministic in-memory STS modelling an `AssumeRoleWithWebIdentity`-style
+ * exchange. It trusts assertions minted for its own `audience`, rejects an
+ * expired/past-TTL assertion, and mints a narrowed, resource-scoped provider
+ * token that is NOT derived from any vaulted static secret (federation needs no
+ * long-lived provider key). Pass `available: false` to model a provider whose
+ * federation endpoint is down, which forces the broker's bounded static-key
+ * fallback.
+ */
+export function createInMemoryProviderStsExchange(options: {
+  provider: string;
+  audience: string;
+  ttlSeconds?: number;
+  available?: boolean;
+}): ProviderStsExchange {
+  const provider = options.provider;
+  const audience = options.audience;
+  const ttlSeconds = options.ttlSeconds ?? 600;
+  const available = options.available ?? true;
+  let seq = 0;
+
+  return {
+    provider,
+    audience,
+    flow: "oidc-federation",
+    exchange(request: StsExchangeRequest): StsExchangeResult {
+      if (!available) {
+        return { status: "rejected", reason: "federation-unavailable" };
+      }
+      const assertion = decodeOidcAssertion(request.oidcToken);
+      if (!assertion) {
+        return { status: "rejected", reason: "malformed-oidc-assertion" };
+      }
+      // Provider trust: the STS only accepts assertions minted for its audience.
+      if (assertion.aud !== audience || request.audience !== audience) {
+        return { status: "rejected", reason: "audience-not-trusted" };
+      }
+      if (assertion.sub !== request.subject) {
+        return { status: "rejected", reason: "subject-mismatch" };
+      }
+      // Reject an expired / past-TTL assertion — no token minted from stale input.
+      if (Date.parse(request.now) >= Date.parse(assertion.exp)) {
+        return { status: "rejected", reason: "oidc-assertion-expired" };
+      }
+
+      const n = seq;
+      seq += 1;
+      const tokenRef = `tokenref://provider/${provider}/${request.scope.resource}/${request.scope.action}/${n}`;
+      const token = `providertok_${createHash("sha256")
+        .update(`${provider}:${request.subject}:${request.scope.resource}:${request.scope.action}:${n}`)
+        .digest("base64url")}`;
+      const expiresAt = new Date(Date.parse(request.now) + ttlSeconds * 1000).toISOString();
+
+      return {
+        status: "exchanged",
+        credential: {
+          tokenRef,
+          token,
+          flow: "oidc-federation",
+          provider,
+          audience,
+          scope: request.scope,
+          issuedAt: request.now,
+          expiresAt,
+          expiresInSeconds: ttlSeconds,
+          narrowed: true,
+        },
+      };
+    },
+  };
+}
+
+/**
+ * Mint the OIDC assertion (aud = provider) the broker federates to the STS. The
+ * `tag` stands in for the Yard issuer's KMS signature (real signing is the
+ * issuer's, out of scope for S3-03); no provider secret is ever involved.
+ */
+export function mintOidcFederationAssertion(input: {
+  issuer: string;
+  subject: string;
+  audience: string;
+  scope: TokenScope;
+  now: string;
+  ttlSeconds?: number;
+}): OidcFederationAssertion {
+  const ttlSeconds = input.ttlSeconds ?? BROKER_OIDC_ASSERTION_TTL_SECONDS;
+  const issuedAt = input.now;
+  const expiresAt = new Date(Date.parse(input.now) + ttlSeconds * 1000).toISOString();
+  const payload = {
+    iss: input.issuer,
+    sub: input.subject,
+    aud: input.audience,
+    scope: input.scope,
+    iat: issuedAt,
+    exp: expiresAt,
+  };
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const tag = createHash("sha256").update(encoded).digest("base64url");
+  return {
+    token: `hobo-oidc.${encoded}.${tag}`,
+    issuer: input.issuer,
+    subject: input.subject,
+    audience: input.audience,
+    scope: input.scope,
+    issuedAt,
+    expiresAt,
+  };
+}
+
+type DecodedOidcAssertion = { iss: string; sub: string; aud: string; exp: string };
+
+function decodeOidcAssertion(token: string): DecodedOidcAssertion | undefined {
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts[0] !== "hobo-oidc") return undefined;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1] ?? "", "base64url").toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    if (
+      typeof payload.iss !== "string" ||
+      typeof payload.sub !== "string" ||
+      typeof payload.aud !== "string" ||
+      typeof payload.exp !== "string"
+    ) {
+      return undefined;
+    }
+    return { iss: payload.iss, sub: payload.sub, aud: payload.aud, exp: payload.exp };
+  } catch {
+    return undefined;
+  }
+}
+
 // domain-view: a minted, per-deploy, scope-bound broker token. Its generated
 // wire form is TokenGrantRecord in data-models/identity.proto.
 export type ScopedTokenGrant = Readonly<{
@@ -57,6 +262,8 @@ export type ScopedTokenGrant = Readonly<{
   expiresAt: string;
   tokenRef: string;
   vaultReference: string;
+  credentialSource: BrokeredCredentialSource;
+  providerTokenRef?: string;
 }>;
 
 export type GrantTokenResult =
@@ -83,15 +290,42 @@ export class TokenBroker {
   private readonly vault: VaultedCredential;
   readonly ttlSeconds: number;
   readonly audience: string;
+  readonly issuer: string;
+  readonly oidcTtlSeconds: number;
+  private readonly sts?: ProviderStsExchange;
   readonly events: TokenEvent[] = [];
   private readonly grants = new Map<string, ScopedTokenGrant>();
   private readonly revoked = new Set<string>();
   private seq = 0;
+  // NFR-005 brokered-ratio signal: how many grants were keyless-federated vs how
+  // many fell back to the bounded vaulted static key.
+  private federatedGrants = 0;
+  private fallbackGrants = 0;
 
-  constructor(options: { vault: VaultedCredential; audience: string; ttlSeconds?: number }) {
+  constructor(options: {
+    vault: VaultedCredential;
+    audience: string;
+    ttlSeconds?: number;
+    sts?: ProviderStsExchange;
+    issuer?: string;
+    oidcTtlSeconds?: number;
+  }) {
     this.vault = options.vault;
     this.audience = options.audience;
     this.ttlSeconds = options.ttlSeconds ?? TOKEN_BROKER_DEFAULT_TTL_SECONDS;
+    this.sts = options.sts;
+    this.issuer = options.issuer ?? "https://identity.yard.example";
+    this.oidcTtlSeconds = options.oidcTtlSeconds ?? BROKER_OIDC_ASSERTION_TTL_SECONDS;
+  }
+
+  /** Fraction of grants brokered keylessly (oidc-federation) — NFR-005 target ≥0.99. */
+  brokeredRatio(): number {
+    const total = this.federatedGrants + this.fallbackGrants;
+    return total === 0 ? 1 : this.federatedGrants / total;
+  }
+
+  get brokeredCounts(): Readonly<{ federated: number; fallback: number }> {
+    return { federated: this.federatedGrants, fallback: this.fallbackGrants };
   }
 
   grantForDeploy(input: {
@@ -107,27 +341,47 @@ export class TokenBroker {
     const nowIso = input.now ?? new Date().toISOString();
     const tenant = tenantOfSubject(input.svid.subject);
     const grantId = `grant-${input.deployId}-${input.svid.identityId}`;
-    const expiresAt = new Date(Date.parse(nowIso) + this.ttlSeconds * 1000).toISOString();
 
-    // Deterministic binding material commits the token to this exact SVID,
-    // scope, deploy, and expiry. The vault turns it into non-invertible material.
-    const binding = JSON.stringify({
-      grantId,
-      subject: input.svid.subject,
-      identityId: input.svid.identityId,
-      scope: input.scope,
-      deployId: input.deployId,
-      audience: this.audience,
-      expiresAt,
-      vaultReference: this.vault.reference,
-    });
+    // Keyless-by-default: prefer an OIDC-federation token exchange; the vaulted
+    // static key is a bounded escape hatch used only when federation is
+    // unavailable (ai-native-agent-auth.md §6.2).
+    const federation = this.tryFederate({ svid: input.svid, scope: input.scope, nowIso });
+    if (federation.status === "denied") {
+      return { status: "denied", reason: federation.reason, events: [] };
+    }
 
-    // ponytail: S3-03 replaces this local HMAC derivation with a keyless
-    // provider-STS exchange — OIDC-federate the SVID to the cloud provider's
-    // token endpoint and return the provider-scoped access token. For the S2-04
-    // skeleton the vault mints a deterministic fixture-scoped token instead, so
-    // no long-lived provider secret is ever handled here.
-    const token = `hobotok_${this.vault.deriveScopedMaterial(binding)}`;
+    let token: string;
+    let expiresAt: string;
+    let credentialSource: BrokeredCredentialSource;
+    let providerTokenRef: string | undefined;
+
+    if (federation.status === "exchanged") {
+      // Keyless: the provider STS returned a short-lived, resource-scoped token.
+      token = federation.credential.token;
+      expiresAt = federation.credential.expiresAt;
+      providerTokenRef = federation.credential.tokenRef;
+      credentialSource = "oidc-federation";
+      this.federatedGrants += 1;
+    } else {
+      // Bounded fallback: no STS wired, or the provider's federation is down.
+      expiresAt = new Date(Date.parse(nowIso) + this.ttlSeconds * 1000).toISOString();
+      // Deterministic binding material commits the token to this exact SVID,
+      // scope, deploy, and expiry. The vault turns it into non-invertible material.
+      const binding = JSON.stringify({
+        grantId,
+        subject: input.svid.subject,
+        identityId: input.svid.identityId,
+        scope: input.scope,
+        deployId: input.deployId,
+        audience: this.audience,
+        expiresAt,
+        vaultReference: this.vault.reference,
+      });
+      token = `hobotok_${this.vault.deriveScopedMaterial(binding)}`;
+      credentialSource = "vault-static-key";
+      this.fallbackGrants += 1;
+    }
+
     const tokenRef = `tokenref://broker/grant/${grantId}`;
 
     const grant: ScopedTokenGrant = {
@@ -142,6 +396,8 @@ export class TokenBroker {
       expiresAt,
       tokenRef,
       vaultReference: this.vault.reference,
+      credentialSource,
+      ...(providerTokenRef !== undefined ? { providerTokenRef } : {}),
     };
     this.grants.set(grantId, grant);
 
@@ -219,6 +475,45 @@ export class TokenBroker {
 
   getAuditEvents(): readonly TokenEvent[] {
     return [...this.events];
+  }
+
+  // Attempt the keyless OIDC-federation exchange. Returns "fallback" when no STS
+  // is wired or the provider's federation endpoint is unavailable (→ bounded
+  // static-key path), "denied" for a real exchange rejection (e.g. an expired
+  // assertion or an untrusted audience), or the exchanged provider credential.
+  private tryFederate(input: {
+    svid: ActiveSvidRecord;
+    scope: TokenScope;
+    nowIso: string;
+  }):
+    | Readonly<{ status: "exchanged"; credential: ExchangedProviderCredential }>
+    | Readonly<{ status: "fallback" }>
+    | Readonly<{ status: "denied"; reason: string }> {
+    if (!this.sts) {
+      return { status: "fallback" };
+    }
+    const assertion = mintOidcFederationAssertion({
+      issuer: this.issuer,
+      subject: input.svid.subject,
+      audience: this.audience,
+      scope: input.scope,
+      now: input.nowIso,
+      ttlSeconds: this.oidcTtlSeconds,
+    });
+    const result = this.sts.exchange({
+      oidcToken: assertion.token,
+      audience: this.audience,
+      subject: input.svid.subject,
+      scope: input.scope,
+      now: input.nowIso,
+    });
+    if (result.status === "exchanged") {
+      return { status: "exchanged", credential: result.credential };
+    }
+    if (result.reason === "federation-unavailable") {
+      return { status: "fallback" };
+    }
+    return { status: "denied", reason: `provider-sts-${result.reason}` };
   }
 
   private nextSeq(): number {

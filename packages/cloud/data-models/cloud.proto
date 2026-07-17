@@ -225,3 +225,46 @@ message DeploymentRolledBackRecord {
   string target_set_id = 2;
   string reason = 3;
 }
+
+// ---- S3-04: CredentialAudit projection (ai-native-agent-auth.md §6.2/§6.8) ----
+// The read-model fold over identity/token/session events, correlated by
+// correlationId. Never compacted (NFR-018 retention floor).
+
+message CredentialAuditScope {
+  string port = 1;
+  string resource = 2;
+  string action = 3;
+}
+
+// The per-grant lifecycle fold: grant -> use -> revoke.
+message CredentialGrantAudit {
+  string grant_id = 1;
+  string svid_subject = 2;
+  CredentialAuditScope scope = 3;
+  string token_ref = 4;
+  string status = 5;               // "granted" | "used" | "revoked"
+  string granted_at = 6;
+  string used_at = 7;
+  string revoked_at = 8;
+  string revoked_reason = 9;
+  uint32 use_count = 10;
+}
+
+// A single ordered step in a correlation's credential timeline.
+message CredentialAuditTimelineEntry {
+  uint32 seq = 1;
+  string type = 2;
+  string grant_id = 3;
+}
+
+// The CredentialAudit read-model row, one per correlationId.
+message CredentialAuditRecord {
+  string correlation_id = 1;
+  repeated CredentialGrantAudit grants = 2;
+  repeated string identity_ids = 3;
+  repeated string session_ids = 4;
+  repeated CredentialAuditTimelineEntry timeline = 5;
+  uint32 grant_count = 6;
+  uint32 use_count = 7;
+  uint32 revoke_count = 8;
+}

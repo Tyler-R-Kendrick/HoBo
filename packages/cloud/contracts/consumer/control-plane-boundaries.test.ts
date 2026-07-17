@@ -15,9 +15,11 @@ import {
 } from "@hobo/runtime-local";
 
 import {
+	collectStream,
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 	createRegistryFromProviders,
+	credentialAuditProjection,
 	credentialScope,
 	deploy,
 	deploymentStreamId,
@@ -255,6 +257,53 @@ describe("DeploymentSagaOrchestrator boundary (consumer contract)", () => {
 		);
 		expect(result.status).toBe(body.status);
 		expect(result.compensation?.destroyedOrder).toEqual(body.destroyedOrder);
+	});
+});
+
+describe("CredentialAuditProjection boundary (consumer contract)", () => {
+	const CORRELATION = "run:run-hello-bindle-j2-1:credentials";
+	const CRED_STREAM = "credential-audit/run-hello-bindle-j2-1";
+	const svcActor = { kind: "service", id: "yard/token-broker" } as const;
+
+	it("replays a brokered-deploy credential trail with no static secrets", async () => {
+		const pact = loadPact("credential-audit-retention.pact.json");
+		expect(pact.provider.name).toBe("hobo-credential-audit-projection");
+		const body = pact.interactions[0].response.body;
+
+		const store = freshStore();
+		await store.append(
+			CRED_STREAM,
+			[
+				{
+					type: "token.Granted",
+					data: {
+						grantId: "grant-cf-deploy",
+						svidSubject: "spiffe://yard/tenant-a/agent/deployer",
+						tokenRef: "tokenref://broker/grant/grant-cf-deploy",
+						scope: { port: "compute", resource: "hello-bindle", action: "deploy" },
+					},
+				},
+				{
+					type: "token.Used",
+					data: { grantId: "grant-cf-deploy", svidSubject: "spiffe://yard/tenant-a/agent/deployer" },
+				},
+			],
+			{ expectedSeq: 0, actor: svcActor, tenant: "tenant-a", correlationId: CORRELATION },
+		);
+
+		// Replayable: rebuild-from-zero reconstructs the grant/use trail from the log.
+		const rebuilt = await credentialAuditProjection.rebuildFromZero(store, CRED_STREAM);
+		const row = credentialAuditProjection.get(rebuilt, CORRELATION);
+		expect(row).toBeDefined();
+		expect(row?.timeline.map((e) => e.type)).toEqual(body.tokenTrail);
+
+		// No static secrets found: the audit surface carries only references.
+		const events = await collectStream(store, CRED_STREAM);
+		const surface = JSON.stringify({ row, events });
+		expect(surface.includes("hobotok_")).toBe(false);
+		expect(surface.includes("providertok_")).toBe(false);
+		expect(body.replayable).toBe(true);
+		expect(body.staticSecretsFound).toBe(false);
 	});
 });
 

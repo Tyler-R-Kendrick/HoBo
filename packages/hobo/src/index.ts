@@ -9,3 +9,8 @@ export {
 	type DefaultDevRuntimeOptions,
 	type DefaultYardRuntimeOptions,
 } from "./compose.js";
+export {
+	createPulumiBackedIacProvider,
+	type PulumiAutomationAdapter,
+	type PulumiBackedIacProviderOptions,
+} from "./pulumi-iac-provider.js";

@@ -8,11 +8,6 @@ import {
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 	createRegistryFromProviders,
-	type IacDiff,
-	type IacDriftReport,
-	type IacOutputs,
-	type IacProgram,
-	type IacProvider,
 	type RegistrableProvider,
 } from "@hobo/cloud";
 import type {
@@ -33,6 +28,11 @@ import {
 	createRuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 
+import {
+	createPulumiBackedIacProvider,
+	type PulumiAutomationAdapter,
+} from "./pulumi-iac-provider.js";
+
 // @hobo/hobo — the composition root (apps layer). It wires HoBo's default
 // runtimes so the composed `hobo` binary runs the cloud verbs end to end in the
 // LOCAL/MOCKED lane. Every constructor below is REUSED from an adapter/runtime
@@ -42,35 +42,17 @@ import {
 // rather than inside adapter-free `@hobo/cli`.
 
 // ---------------------------------------------------------------------------
-// The LOCAL/MOCKED IaC backend.
+// The REAL IaC backend on the deploy path.
 //
-// This satisfies @hobo/cloud's Executor `IacProvider` port — the kernel
-// IacProgram dialect the orchestrator's `iacProgramFor` emits
-// (programId/resourceId/provider/driver/action/stackName). It is the same
-// in-memory backend the @hobo/cloud + @hobo/cli tests inject: `apply` returns a
-// synthetic endpoint and `destroy` is a no-op, so NO real cloud is ever called.
-//
-// Note: @hobo/iac-pulumi's adapter is deliberately NOT used here — it speaks a
-// different `hobo.iac-program/v1` program dialect (validateIacProgram) that the
-// cloud kernel never produces, so it cannot apply the executor's programs. See
-// ARCHITECTURE.md.
-function createInMemoryIacProvider(): IacProvider {
-	return {
-		id: "mock-local-container",
-		async preview(program: IacProgram): Promise<IacDiff> {
-			return { summary: `preview ${program.resourceId}`, changes: 1 };
-		},
-		async apply(program: IacProgram): Promise<IacOutputs> {
-			return { endpoint: `${program.resourceId}.local` };
-		},
-		async destroy(): Promise<void> {
-			/* local in-memory backend: nothing to tear down out-of-process */
-		},
-		async refresh(): Promise<IacDriftReport> {
-			return { drift: false, observed: {} };
-		},
-	};
-}
+// The default runtime now drives the REAL @hobo/iac-pulumi adapter via the REAL
+// @hobo/provider-cloudflare `realize()` — see `createPulumiBackedIacProvider`.
+// The kernel Executor still speaks its shape-A `IacProgram` execution descriptor;
+// the bridge resolves each resource's real ResourcePlan from the durable
+// `deployment.Planned` fact, lowers it with `provider.realize()` to a
+// `hobo.iac-program/v1` program, and applies it through the real adapter. There
+// is NO mock IacProvider. HONEST SCOPE: @hobo/iac-pulumi's backend is still its
+// in-memory Automation-API stand-in (no live Pulumi/Cloudflare calls) — but the
+// real adapter + real realize() are on the deploy path.
 
 // @hobo/provider-cloudflare types its capability-manifest fields more loosely
 // (PublishedManifestDocuments / Record<string, unknown>) than @hobo/cloud's
@@ -105,6 +87,10 @@ export interface DefaultYardRuntimeOptions {
 	// across runs. Callers that create the runtime directly own closing
 	// `runtime.store` when done.
 	readonly dataDir?: string;
+	// The @hobo/iac-pulumi adapter the deploy path drives. Defaults to a fresh
+	// real `createPulumiAutomationAdapter()` (in-memory backend). Injectable so a
+	// test can observe/spy the real adapter the composed `up`/`down` runs.
+	readonly iacAdapter?: PulumiAutomationAdapter;
 }
 
 // Assemble the default `YardRuntime` the cloud verbs (plan/up/down) drive. This
@@ -121,14 +107,21 @@ export function createDefaultYardRuntime(
 		dataDir,
 		clock: createManualClock(),
 	});
+	// One CloudProvider instance, shared between the planner registry (capability
+	// negotiation) and the IaC bridge (realize() on the deploy path).
+	const cloudflare = createCloudflareProvider();
 	return {
 		store,
 		actorHost: createInMemoryActorHost(),
-		executor: createInProcessExecutor({ iac: createInMemoryIacProvider() }),
+		executor: createInProcessExecutor({
+			iac: createPulumiBackedIacProvider({
+				store,
+				providers: [cloudflare],
+				...(options.iacAdapter !== undefined ? { adapter: options.iacAdapter } : {}),
+			}),
+		}),
 		broker: createInProcessCredentialBroker(),
-		registry: createRegistryFromProviders([
-			toRegistrableProvider(createCloudflareProvider()),
-		]),
+		registry: createRegistryFromProviders([toRegistrableProvider(cloudflare)]),
 	};
 }
 

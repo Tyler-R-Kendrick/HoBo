@@ -50,6 +50,10 @@ export {
 	type InspectCommandDeps,
 } from "./inspect-command.js";
 export {
+	createLogsCommand,
+	type LogsCommandDeps,
+} from "./logs-command.js";
+export {
 	credentialAuditToOcsf,
 	OCSF_EXPORT_VERSION,
 	type OcsfAuthorizationRecord,

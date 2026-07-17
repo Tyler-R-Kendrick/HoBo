@@ -92,6 +92,11 @@ export interface CloudflareClientOptions {
 
 export interface CloudflareClient {
 	uploadWorker(input: UploadWorkerInput): Promise<UploadWorkerResult>;
+	// Whether a Worker script of this name currently exists on the account. GETs
+	//   GET /accounts/{account_id}/workers/scripts/{script_name}
+	// returning true on 2xx and false on 404. Used by the deploy provider's
+	// `refresh` to detect an out-of-band delete (drift). Non-404 errors throw.
+	scriptExists(scriptName: string): Promise<boolean>;
 }
 
 // The global `fetch` presented through the injectable `CloudflareFetch` shape.
@@ -216,6 +221,20 @@ export function createCloudflareClient(
 					? `https://${input.scriptName}.${subdomain}.workers.dev`
 					: "";
 			return { url, scriptName: input.scriptName };
+		},
+		async scriptExists(scriptName: string): Promise<boolean> {
+			const response = await fetchImpl(
+				`${accountBase}/workers/scripts/${encodeURIComponent(scriptName)}`,
+				{ method: "GET", headers: { Authorization: `Bearer ${token}` } },
+			);
+			if (response.ok) {
+				return true;
+			}
+			if (response.status === 404) {
+				return false;
+			}
+			await assertOk(response, "get worker script");
+			return false;
 		},
 	};
 }

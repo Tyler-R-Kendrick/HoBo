@@ -1,17 +1,17 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
-
-import type { EventStore } from "@hobo/core";
 import type { IacProgram } from "@hobo/cloud";
 
+import type { EventStore } from "@hobo/core";
+import { afterEach, describe, expect, it } from "vitest";
+
 import {
+	type CloudflareFetch,
+	type CloudflareFetchResponse,
 	createCloudflareClient,
 	createCloudflareDeployProvider,
 	selectIacProvider,
-	type CloudflareFetch,
-	type CloudflareFetchResponse,
 } from "../src/index.js";
 
 // Request-formation + provider-selection + fallback tests for the REAL Cloudflare
@@ -179,6 +179,70 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		await expect(
 			failClient.uploadWorker({ scriptName: "n", moduleContent: "x" }),
 		).rejects.toThrow(/HTTP 403/);
+	});
+});
+
+describe("createCloudflareClient.scriptExists (mocked fetch, no network)", () => {
+	function getMock(status: number): {
+		fetch: CloudflareFetch;
+		calls: RecordedCall[];
+	} {
+		const calls: RecordedCall[] = [];
+		const fetch: CloudflareFetch = async (url, init) => {
+			calls.push({
+				url,
+				method: init.method,
+				headers: init.headers,
+				...(init.body !== undefined ? { body: init.body } : {}),
+			});
+			const response: CloudflareFetchResponse = {
+				ok: status >= 200 && status < 300,
+				status,
+				async text() {
+					return "{}";
+				},
+				async json() {
+					return {};
+				},
+			};
+			return response;
+		};
+		return { fetch, calls };
+	}
+
+	it("GETs the script and returns true on 2xx", async () => {
+		const { fetch, calls } = getMock(200);
+		const client = createCloudflareClient({
+			token: "t",
+			accountId: "a",
+			fetch,
+		});
+		await expect(client.scriptExists("hobo-hello-bindle")).resolves.toBe(true);
+		expect(calls[0]!.method).toBe("GET");
+		expect(calls[0]!.url).toBe(
+			"https://api.cloudflare.com/client/v4/accounts/a/workers/scripts/hobo-hello-bindle",
+		);
+		expect(calls[0]!.headers.Authorization).toBe("Bearer t");
+	});
+
+	it("returns false on 404 (deleted out of band = drift)", async () => {
+		const { fetch } = getMock(404);
+		const client = createCloudflareClient({
+			token: "t",
+			accountId: "a",
+			fetch,
+		});
+		await expect(client.scriptExists("gone")).resolves.toBe(false);
+	});
+
+	it("throws on a non-404 error status", async () => {
+		const { fetch } = getMock(500);
+		const client = createCloudflareClient({
+			token: "t",
+			accountId: "a",
+			fetch,
+		});
+		await expect(client.scriptExists("n")).rejects.toThrow(/HTTP 500/);
 	});
 });
 

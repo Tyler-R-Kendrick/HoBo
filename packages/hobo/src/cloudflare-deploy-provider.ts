@@ -125,7 +125,14 @@ export function createCloudflareDeployProvider(
 			byDeployment.delete(program.deploymentId);
 		},
 		async refresh(_program: IacProgram): Promise<IacDriftReport> {
-			return { drift: false, observed: {} };
+			// REAL drift check: GET the deployed Worker script. If it still exists the
+			// deployment matches what `apply` uploaded (in-sync); if it 404s the
+			// Worker was deleted out of band (drift). This is a genuine read of live
+			// Cloudflare state — credential-gated like apply, mock-tested here.
+			const exists = await client.scriptExists(scriptName);
+			return exists
+				? { drift: false, observed: { scriptName, provider: "cloudflare" } }
+				: { drift: true, observed: {} };
 		},
 	};
 }

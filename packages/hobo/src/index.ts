@@ -3,6 +3,10 @@ export {
 	createAttestCommand,
 } from "./attest-command.js";
 export {
+	type ClaimCommandDeps,
+	createClaimCommand,
+} from "./claim-command.js";
+export {
 	type ComposedHoboCliOptions,
 	createComposedHoboCli,
 } from "./cli.js";

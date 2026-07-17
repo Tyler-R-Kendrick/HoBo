@@ -15,7 +15,10 @@ import {
 } from "@hobo/runtime-local";
 
 import {
+	createInProcessCredentialBroker,
+	createInProcessExecutor,
 	createRegistryFromProviders,
+	credentialScope,
 	deploy,
 	deploymentStreamId,
 	deploymentViewProjection,
@@ -23,7 +26,12 @@ import {
 	lowerManifest,
 	matchResource,
 	plan,
+	runOrchestrator,
+	type DeploymentPlan,
+	type Executor,
 	type GatewayDeps,
+	type IacProvider,
+	type OrchestratorDeps,
 	type ResourceIntent,
 } from "../../src/index.js";
 
@@ -44,6 +52,31 @@ function helloBindle(): ManifestV1 {
 }
 function registry() {
 	return createRegistryFromProviders([createCloudflareProvider()]);
+}
+function loadPlan(): DeploymentPlan {
+	return JSON.parse(
+		readFileSync(join(fixturesDir, "multi-cloud-shop-plan.json"), "utf8"),
+	) as DeploymentPlan;
+}
+function mockIac(opts: { failApply?: string[] } = {}): IacProvider {
+	const fail = new Set(opts.failApply ?? []);
+	return {
+		id: "mock-local-container",
+		async preview(p) {
+			return { summary: `preview ${p.resourceId}`, changes: 1 };
+		},
+		async apply(p) {
+			if (fail.has(p.resourceId)) throw new Error(`apply failed for ${p.resourceId}`);
+			return { endpoint: `${p.resourceId}.local` };
+		},
+		async destroy() {},
+		async refresh() {
+			return { drift: false, observed: {} };
+		},
+	};
+}
+function orchestratorDeps(store: RuntimeLocalEventStore, executor: Executor): OrchestratorDeps {
+	return { store, actorHost: createInMemoryActorHost(), executor, broker: createInProcessCredentialBroker() };
 }
 
 let stores: RuntimeLocalEventStore[] = [];
@@ -186,5 +219,96 @@ describe("DeploymentViewProjection boundary (consumer contract)", () => {
 		expect(row?.status).toBe("planned");
 		expect(row?.decisions.length).toBe(3);
 		expect(body.missingEvents).toEqual([]);
+	});
+});
+
+describe("DeploymentSagaOrchestrator boundary (consumer contract)", () => {
+	it("choreographs the plan DAG to deployment.Deployed", async () => {
+		const pact = loadPact("deployment-saga-orchestrator.pact.json");
+		expect(pact.provider.name).toBe("DeploymentSagaOrchestrator");
+		const body = pact.interactions[0].response.body;
+
+		const store = freshStore();
+		const result = await runOrchestrator(
+			orchestratorDeps(store, createInProcessExecutor({ iac: mockIac() })),
+			loadPlan(),
+			"shop-1",
+			{ tenant: "t", actor },
+		);
+		expect(result.status).toBe(body.status);
+		expect(result.provisioned).toEqual(body.provisioned);
+		const events: EventEnvelope[] = [];
+		for await (const e of store.read(deploymentStreamId("shop-1"))) events.push(e);
+		expect(events.at(-1)?.type).toBe(body.terminalEvent);
+	});
+
+	it("compensates a no-go failure in reverse-dependency order", async () => {
+		const pact = loadPact("deployment-saga-orchestrator.pact.json");
+		const body = pact.interactions[2].response.body;
+
+		const store = freshStore();
+		const result = await runOrchestrator(
+			orchestratorDeps(store, createInProcessExecutor({ iac: mockIac({ failApply: ["web"] }) })),
+			loadPlan(),
+			"shop-rollback",
+			{ tenant: "t", actor, noGoThresholdResources: new Set(["web"]) },
+		);
+		expect(result.status).toBe(body.status);
+		expect(result.compensation?.destroyedOrder).toEqual(body.destroyedOrder);
+	});
+});
+
+describe("ExecutorSandbox boundary (consumer contract)", () => {
+	it("runs a scoped apply with no ambient credentials", async () => {
+		const pact = loadPact("executor-sandbox.pact.json");
+		expect(pact.provider.name).toBe("ExecutorSandbox");
+		const body = pact.interactions[0].response.body;
+
+		const broker = createInProcessCredentialBroker();
+		const executor = createInProcessExecutor({ iac: mockIac() });
+		const result = await executor.run(
+			{
+				programId: "deploy-1:api",
+				deploymentId: "deploy-1",
+				resourceId: "api",
+				provider: "@hobo/provider-local",
+				driver: "pulumi",
+				action: "apply",
+				stackName: "tenant-a/deploy-1/api",
+			},
+			broker.issue({
+				scope: credentialScope({ tenant: "tenant-a", resourceId: "api", driver: "pulumi", action: "apply" }),
+			}),
+		);
+		expect(result.status).toBe(body.status);
+		expect(result.sandbox.ambientCredentials).toBe(body.ambientCredentials);
+		expect(result.events.map((e) => e.type)).toEqual(body.events);
+	});
+
+	it("refuses fatally when ambient cloud credentials are present", async () => {
+		const pact = loadPact("executor-sandbox.pact.json");
+		const body = pact.interactions[1].response.body;
+
+		const broker = createInProcessCredentialBroker();
+		const executor = createInProcessExecutor({ iac: mockIac() });
+		const result = await executor.run(
+			{
+				programId: "deploy-1:api",
+				deploymentId: "deploy-1",
+				resourceId: "api",
+				provider: "@hobo/provider-local",
+				driver: "pulumi",
+				action: "apply",
+				stackName: "tenant-a/deploy-1/api",
+			},
+			broker.issue({
+				scope: credentialScope({ tenant: "tenant-a", resourceId: "api", driver: "pulumi", action: "apply" }),
+			}),
+			{ ambientEnv: { AWS_ACCESS_KEY_ID: "AKIAEXAMPLE" } },
+		);
+		expect(result.status).toBe(body.status);
+		if (result.status !== "failed") return;
+		expect(result.classification).toBe(body.classification);
+		expect(result.reason).toContain(body.reason);
 	});
 });

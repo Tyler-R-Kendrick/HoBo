@@ -90,3 +90,105 @@ package hobo
 	definitions: [...#ResourceDefinitionRef]
 	manifestIndexDigest: string
 }
+
+// ---- S2-03a/b: Orchestrator + ResourceActor FSM + Executor constraints ----
+// One constraint per new protobuf message in cloud.proto.
+
+#ResourceActorState: "Pending" | "Planning" | "Provisioning" | "Provisioned" |
+	"Updating" | "Failed" | "Compensating" | "Destroying" | "Destroyed"
+
+#IacProgram: {
+	programId:    string & !=""
+	deploymentId: string & !=""
+	resourceId:   string & !=""
+	provider:     string & !=""
+	driver:       string & !=""
+	action:       "preview" | "apply" | "destroy"
+	stackName:    string & !=""
+}
+
+#ScopedCredential: {
+	id:         string & !=""
+	scope:      string & !=""
+	ttlSeconds: uint & >0
+	ambient:    false
+}
+
+#ExecOutputRecord: {
+	execId: string & !=""
+	stream: "stdout" | "stderr"
+	line:   string
+}
+
+#ExecDiffRecord: {
+	execId:  string & !=""
+	summary: string
+	changes: uint
+}
+
+#ExecSucceededRecord: {
+	execId:      string & !=""
+	outputsHash: string & !=""
+	outputs: {[string]: string}
+}
+
+#ExecFailedRecord: {
+	execId:         string & !=""
+	classification: "retryable" | "fatal"
+	reason:         string & !=""
+}
+
+#ResourceActorSnapshot: {
+	deploymentId: string & !=""
+	resourceId:   string & !=""
+	state:        #ResourceActorState
+	sequence:     uint
+	outputs: {[string]: string}
+	deps: [...string]
+}
+
+#ResourceProvisioningRecord: {
+	deploymentId: string & !=""
+	resourceId:   string & !=""
+	execId:       string & !=""
+	programHash:  string & !=""
+}
+
+#ResourceProvisionedRecord: {
+	deploymentId: string & !=""
+	resourceId:   string & !=""
+	outputs: {[string]: string}
+	execId:       string & !=""
+}
+
+#ResourceFailedRecord: {
+	deploymentId:          string & !=""
+	resourceId:            string & !=""
+	reason:                string & !=""
+	classification:        "retryable" | "fatal"
+	crossedNoGoThreshold:  bool
+}
+
+#ResourceDestroyingRecord: {
+	deploymentId: string & !=""
+	resourceId:   string & !=""
+	reason:       string & !=""
+}
+
+#ResourceDestroyedRecord: {
+	deploymentId:   string & !=""
+	resourceId:     string & !=""
+	finalStateHash: string & !=""
+}
+
+#DeploymentDeployedRecord: {
+	deploymentId: string & !=""
+	setId:        string & !=""
+	resourceIds: [...string]
+}
+
+#DeploymentRolledBackRecord: {
+	deploymentId: string & !=""
+	targetSetId:  string & !=""
+	reason:       string & !=""
+}

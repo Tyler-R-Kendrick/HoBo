@@ -24,7 +24,15 @@ export const CLOUD_EVENTS = Object.freeze({
 	DeploymentPlanRejected: "deployment.PlanRejected",
 	ProviderRegistered: "provider.Registered",
 	ResourcePlanning: "resource.Planning",
+	ResourceProvisioning: "resource.Provisioning",
 	ResourceProvisioned: "resource.Provisioned",
+	ResourceFailed: "resource.Failed",
+	ResourceDestroying: "resource.Destroying",
+	ResourceDestroyed: "resource.Destroyed",
+	ExecDiff: "exec.Diff",
+	ExecSucceeded: "exec.Succeeded",
+	DeploymentDeployed: "deployment.Deployed",
+	DeploymentRolledBack: "deployment.RolledBack",
 } as const);
 
 export interface DeploymentRequestedData {
@@ -64,4 +72,102 @@ export function providerRegistered(data: {
 	manifestIndexDigest: string;
 }): EventInput {
 	return { type: CLOUD_EVENTS.ProviderRegistered, data };
+}
+
+// ---- S2-03a/b: Orchestrator + ResourceActor FSM + Executor facts ----
+// Past-tense facts the provisioning path appends. The per-resource subject rides
+// the fact body's `resourceId`/`deploymentId` fields, never the type string.
+
+export interface ResourceProvisioningData {
+	deploymentId: string;
+	resourceId: string;
+	execId: string;
+	programHash: string;
+}
+
+export function resourceProvisioning(data: ResourceProvisioningData): EventInput {
+	return { type: CLOUD_EVENTS.ResourceProvisioning, data };
+}
+
+export interface ResourceProvisionedData {
+	deploymentId: string;
+	resourceId: string;
+	outputs: Record<string, string>;
+	execId: string;
+}
+
+export function resourceProvisioned(data: ResourceProvisionedData): EventInput {
+	return { type: CLOUD_EVENTS.ResourceProvisioned, data };
+}
+
+export interface ResourceFailedData {
+	deploymentId: string;
+	resourceId: string;
+	reason: string;
+	classification: "retryable" | "fatal";
+	crossedNoGoThreshold: boolean;
+}
+
+export function resourceFailed(data: ResourceFailedData): EventInput {
+	return { type: CLOUD_EVENTS.ResourceFailed, data };
+}
+
+export interface ResourceDestroyingData {
+	deploymentId: string;
+	resourceId: string;
+	reason: string;
+}
+
+export function resourceDestroying(data: ResourceDestroyingData): EventInput {
+	return { type: CLOUD_EVENTS.ResourceDestroying, data };
+}
+
+export interface ResourceDestroyedData {
+	deploymentId: string;
+	resourceId: string;
+	finalStateHash: string;
+}
+
+export function resourceDestroyed(data: ResourceDestroyedData): EventInput {
+	return { type: CLOUD_EVENTS.ResourceDestroyed, data };
+}
+
+export interface ExecDiffData {
+	execId: string;
+	summary: string;
+	changes: number;
+}
+
+export function execDiff(data: ExecDiffData): EventInput {
+	return { type: CLOUD_EVENTS.ExecDiff, data };
+}
+
+export interface ExecSucceededData {
+	execId: string;
+	outputsHash: string;
+	outputs: Record<string, string>;
+}
+
+export function execSucceeded(data: ExecSucceededData): EventInput {
+	return { type: CLOUD_EVENTS.ExecSucceeded, data };
+}
+
+export interface DeploymentDeployedData {
+	deploymentId: string;
+	setId: string;
+	resourceIds: string[];
+}
+
+export function deploymentDeployed(data: DeploymentDeployedData): EventInput {
+	return { type: CLOUD_EVENTS.DeploymentDeployed, data };
+}
+
+export interface DeploymentRolledBackData {
+	deploymentId: string;
+	targetSetId: string;
+	reason: string;
+}
+
+export function deploymentRolledBack(data: DeploymentRolledBackData): EventInput {
+	return { type: CLOUD_EVENTS.DeploymentRolledBack, data };
 }

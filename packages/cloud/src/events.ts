@@ -33,6 +33,9 @@ export const CLOUD_EVENTS = Object.freeze({
 	ExecSucceeded: "exec.Succeeded",
 	DeploymentDeployed: "deployment.Deployed",
 	DeploymentRolledBack: "deployment.RolledBack",
+	// Ownership rebind: an anonymous `npx hobo up` deployment is bound to an
+	// account, preserving all provisioned state (resources, outputs, URL).
+	DeploymentClaimed: "deployment.Claimed",
 	// Credential-audit facts (NFR-018): the per-resource scoped-credential
 	// lifecycle the Orchestrator brokers around each apply. Folded by
 	// `credentialAuditProjection` into a grant -> use -> revoke trail.
@@ -46,6 +49,19 @@ export interface CredentialGrantScope {
 	port: string;
 	resource: string;
 	action: string;
+}
+
+export interface DeploymentOwner {
+	kind: string;
+	id: string;
+}
+
+export function deploymentClaimed(data: {
+	deploymentId: string;
+	previousOwner?: DeploymentOwner;
+	newOwner: DeploymentOwner;
+}): EventInput {
+	return { type: CLOUD_EVENTS.DeploymentClaimed, data };
 }
 
 export function tokenGranted(data: {

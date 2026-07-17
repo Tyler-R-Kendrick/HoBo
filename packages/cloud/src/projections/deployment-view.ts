@@ -37,9 +37,18 @@ export interface DeploymentViewRow {
 	// Saga graph: per-resource lifecycle folded from resource.* facts.
 	resources: Record<string, ResourceLifecycle>;
 	rollback?: { reason: string; targetSetId: string };
+	// The principal that owns this deployment. Seeded from the requester on
+	// `deployment.Requested`; rebound by `deployment.Claimed` (anonymous -> account)
+	// while every provisioned fact — resources, outputs, URL — is preserved.
+	owner?: { kind: string; id: string };
+	// True once ownership has been claimed away from the original requester.
+	claimed?: boolean;
 }
 
-function base(row: DeploymentViewRow | undefined, deploymentId: string): DeploymentViewRow {
+function base(
+	row: DeploymentViewRow | undefined,
+	deploymentId: string,
+): DeploymentViewRow {
 	return row
 		? { ...row, decisions: [...row.decisions], resources: { ...row.resources } }
 		: { deploymentId, status: "requested", decisions: [], resources: {} };
@@ -55,10 +64,28 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				const next = base(row, data.deploymentId);
 				next.status = "requested";
 				next.bindleHash = data.bindleHash;
+				// Seed ownership from the requesting principal (the envelope actor).
+				if (next.owner === undefined && event.actor) {
+					next.owner = { kind: event.actor.kind, id: event.actor.id };
+				}
+				return next;
+			},
+			[CLOUD_EVENTS.DeploymentClaimed]: (row, event) => {
+				const data = event.data as {
+					deploymentId: string;
+					newOwner: { kind: string; id: string };
+				};
+				const next = base(row, data.deploymentId);
+				// Rebind ownership; ALL provisioned state (resources, plan, decisions,
+				// outputs/URL) is carried forward untouched by `base`.
+				next.owner = { kind: data.newOwner.kind, id: data.newOwner.id };
+				next.claimed = true;
 				return next;
 			},
 			[CLOUD_EVENTS.MatchDecided]: (row, event) => {
-				const data = event.data as DeploymentDecisionRow & { deploymentId: string };
+				const data = event.data as DeploymentDecisionRow & {
+					deploymentId: string;
+				};
 				const next = base(row, data.deploymentId);
 				const decision: DeploymentDecisionRow = {
 					resource: data.resource,
@@ -92,7 +119,10 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				};
 				const next = base(row, data.deploymentId);
 				next.status = "rejected";
-				next.rejection = { reason: data.reason, remediations: data.remediations };
+				next.rejection = {
+					reason: data.reason,
+					remediations: data.remediations,
+				};
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceProvisioning]: (row, event) => {
@@ -132,7 +162,11 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentRolledBack]: (row, event) => {
-				const data = event.data as { deploymentId: string; reason: string; targetSetId: string };
+				const data = event.data as {
+					deploymentId: string;
+					reason: string;
+					targetSetId: string;
+				};
 				const next = base(row, data.deploymentId);
 				next.status = "rolled-back";
 				next.rollback = { reason: data.reason, targetSetId: data.targetSetId };

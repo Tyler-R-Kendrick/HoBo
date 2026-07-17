@@ -13,6 +13,23 @@ export {
 } from "./component-host.js";
 export { ComponentHostError, ComponentTrapError } from "./errors.js";
 export {
+	AmbiguousCommitError,
+	classifyToRuntimeError,
+	DeadlineExceededError,
+	isRuntimeErrorKind,
+	MembraneBackpressureError,
+	RUNTIME_ERROR_KINDS,
+	RuntimeMembraneError,
+} from "./failure/taxonomy.js";
+export type {
+	AmbiguousCommitArgs,
+	DeadlineExceededArgs,
+	MembraneBackpressureArgs,
+	RuntimeErrorKind,
+	RuntimeErrorVariant,
+} from "./failure/taxonomy.js";
+export type { LinkClock } from "./wrpc/link-layer.js";
+export {
 	createLocalBindingResolver,
 	HELLO_BINDLE_LOCAL_ENDPOINTS,
 } from "./binding-resolver.js";

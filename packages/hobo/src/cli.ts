@@ -18,6 +18,7 @@ import {
 	createDefaultDevRuntime,
 	createDefaultYardRuntime,
 } from "./compose.js";
+import { createDerivativeCommand } from "./derivative-command.js";
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
 import { createEraseCommand } from "./erase-command.js";
@@ -73,6 +74,7 @@ export function createComposedHoboCli(
 			add: createAddCommand({ runtime }),
 			import: createImportCommand({ runtime }),
 			generate: createGenerateCommand({ runtime }),
+			derivative: createDerivativeCommand({ runtime }),
 			logs: createLogsCommand(),
 			runbook: createRunbookCommand({ runtime }),
 			erase: createEraseCommand({ runtime }),

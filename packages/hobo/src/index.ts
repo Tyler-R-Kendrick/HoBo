@@ -43,6 +43,10 @@ export {
 	describeDeployTarget,
 } from "./deploy-preflight.js";
 export {
+	createDerivativeCommand,
+	type DerivativeCommandDeps,
+} from "./derivative-command.js";
+export {
 	createDoctorCommand,
 	type DoctorCommandDeps,
 } from "./doctor-command.js";

@@ -79,3 +79,48 @@ message McpToolOutputObservation {
   repeated string authorized_tools_after = 5;
   bool widened = 6;
 }
+
+// S3-06 — per-principal / per-tenant backpressure at the tool-call boundary
+// (NFR-019). A hard call quota over a fixed window; exhaustion throttles further
+// calls until the window rolls.
+message McpQuota {
+  uint32 limit = 1;
+  uint32 window_ms = 2;
+}
+
+// A token-bucket rate-limit policy (burst capacity + steady refill) plus an
+// optional hard quota. Applied per (tenant, principal) BEFORE tool dispatch, so a
+// flooding principal is throttled while other principals are unaffected.
+message McpRateLimitPolicy {
+  uint32 capacity = 1;
+  uint32 refill_tokens = 2;
+  uint32 refill_interval_ms = 3;
+  McpQuota quota = 4;
+}
+
+// The decision the limiter returns for one call. `reason` is "ok" when allowed,
+// or "rate"/"quota" when throttled — the typed backpressure signal.
+message McpRateLimitDecision {
+  bool allowed = 1;
+  string key = 2;
+  string reason = 3;
+  uint32 retry_after_ms = 4;
+  uint32 remaining_tokens = 5;
+  uint32 quota_remaining = 6;
+}
+
+// The audited throttle fact — a credential-audit sibling of McpAuthDecisionEvent
+// emitted when a call is refused for backpressure. Carries the never-compact
+// retention so the CredentialAudit projection folds it off the same stream.
+message McpToolCallThrottledEvent {
+  string schema_version = 1;
+  string type = 2;
+  string tool = 3;
+  string subject = 4;
+  string tenant = 5;
+  string reason = 6;
+  string key = 7;
+  uint64 seq = 8;
+  string time = 9;
+  string correlation_id = 10;
+}

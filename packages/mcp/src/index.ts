@@ -42,4 +42,26 @@ export {
 	type ToolCallResult,
 } from "./server.js";
 
+export {
+	MCP_RATE_LIMITED_CODE,
+	MCP_RATE_LIMIT_EVENTS_SCHEMA_VERSION,
+	MCP_TOOL_CALL_THROTTLED,
+	createRateLimiter,
+	createThrottleEvent,
+	rateLimitKey,
+	type Quota,
+	type RateLimitDecision,
+	type RateLimitEvent,
+	type RateLimitPolicy,
+	type RateLimitReason,
+	type RateLimiter,
+} from "./rate-limit.js";
+
+export {
+	INJECTION_CORPUS,
+	INJECTION_TARGET_TOOLS,
+	type InjectionCase,
+	type InjectionVector,
+} from "./injection-corpus.js";
+
 export const HOBO_MCP_PACKAGE = "@hobo/mcp";

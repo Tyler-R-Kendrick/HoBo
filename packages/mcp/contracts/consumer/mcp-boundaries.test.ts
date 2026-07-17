@@ -54,6 +54,29 @@ describe("mcp-control-surface pact — SVID-scoped agent boundary", () => {
 			expect(deniedResult.error?.code).toBe(deny.response.body.code);
 		});
 	});
+
+	it("realizes the backpressure interaction (flooding principal throttled)", async () => {
+		const pact = loadPact("mcp-control-surface.pact.json");
+		const throttle = pact.interactions.find((i: { description: string }) =>
+			i.description.includes("throttled"),
+		);
+		expect(throttle).toBeTruthy();
+
+		await withProject(HELLO_BINDLE, async (cwd) => {
+			// A single-token bucket with a frozen clock: the second call is refused.
+			const server = createHoboMcpServer({
+				cli: makeWiredCli(),
+				rateLimit: { capacity: 1, refillTokens: 1, refillIntervalMs: 1000 },
+				clock: () => 0,
+			});
+			const auth = authGranting(["plan"]);
+			await server.callTool("plan", { cwd }, auth);
+			const throttled = await server.callTool("plan", { cwd }, auth);
+			expect(throttled.ok).toBe(throttle.response.body.ok);
+			expect(throttled.code).toBe(throttle.response.body.code);
+			expect(throttled.error?.code).toBe(throttle.response.body.code);
+		});
+	});
 });
 
 describe("identity-policy-boundary pact — fail-closed decision", () => {

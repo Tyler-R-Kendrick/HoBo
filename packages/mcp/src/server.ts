@@ -19,6 +19,14 @@ import {
 	type ParityReport,
 	type ToolDescriptor,
 } from "./tool-surface.js";
+import {
+	MCP_RATE_LIMITED_CODE,
+	createRateLimiter,
+	createThrottleEvent,
+	type RateLimitEvent,
+	type RateLimitPolicy,
+	type RateLimiter,
+} from "./rate-limit.js";
 
 // S3-01/S3-02 — the MCP server object. It exposes listTools()/callTool() and
 // dispatches EVERY tool through the SAME @hobo/cli command registry the CLI
@@ -42,7 +50,9 @@ export interface ToolCallResult {
 	readonly status: string;
 	readonly code: string;
 	readonly output: unknown;
-	readonly decision: ToolDecision;
+	// Present for scope allow/deny outcomes; absent when a call is refused for
+	// backpressure (MCP_RATE_LIMITED) before the scope decision is reached.
+	readonly decision?: ToolDecision;
 	readonly error?: { readonly code: string; readonly message: string };
 }
 
@@ -62,6 +72,7 @@ export interface HoboMcpServer {
 		output: unknown;
 	}) => InertOutputObservation;
 	readonly getAuditEvents: () => readonly AuthDecisionEvent[];
+	readonly getRateLimitEvents: () => readonly RateLimitEvent[];
 }
 
 export interface CreateHoboMcpServerOptions {
@@ -71,17 +82,34 @@ export interface CreateHoboMcpServerOptions {
 	readonly surface?: readonly ToolDescriptor[];
 	readonly auditSink?: (event: AuthDecisionEvent) => void;
 	readonly now?: () => string;
+	// S3-06 — optional per-principal / per-tenant backpressure (NFR-019). When
+	// absent, no throttling is applied (existing callers are unaffected). `clock`
+	// is the monotonic millisecond source the limiter reads — injected so tests
+	// are deterministic; it defaults to Date.now.
+	readonly rateLimit?: RateLimitPolicy;
+	readonly clock?: () => number;
+	readonly rateLimitAuditSink?: (event: RateLimitEvent) => void;
 }
 
 export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMcpServer {
 	const surface = options.surface ?? MCP_TOOL_SURFACE;
 	const now = options.now ?? (() => new Date().toISOString());
+	const clock = options.clock ?? (() => Date.now());
+	const limiter: RateLimiter | undefined = options.rateLimit
+		? createRateLimiter(options.rateLimit)
+		: undefined;
 	const auditEvents: AuthDecisionEvent[] = [];
+	const rateLimitEvents: RateLimitEvent[] = [];
 	let seq = 0;
 
 	function record(event: AuthDecisionEvent): void {
 		auditEvents.push(event);
 		options.auditSink?.(event);
+	}
+
+	function recordThrottle(event: RateLimitEvent): void {
+		rateLimitEvents.push(event);
+		options.rateLimitAuditSink?.(event);
 	}
 
 	return {
@@ -96,6 +124,42 @@ export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMc
 		},
 		async callTool(name, input, auth, callOptions) {
 			const correlationId = callOptions?.correlationId ?? `mcp:${name}:${auth.subject}`;
+
+			// S3-06 — backpressure BEFORE dispatch (NFR-019). Rate-limiting is the
+			// outermost gate so a flooding principal is throttled regardless of scope
+			// (even repeated denied calls consume budget), while a control principal
+			// keyed by a different (tenant, principal) is unaffected. Fail-closed: an
+			// exhausted principal gets a typed MCP_RATE_LIMITED result + audited fact.
+			if (limiter) {
+				const rl = limiter.check({
+					tenant: auth.tenant,
+					principal: auth.principal,
+					now: clock(),
+				});
+				if (!rl.allowed) {
+					const event = createThrottleEvent({
+						tool: name,
+						auth,
+						decision: rl,
+						correlationId,
+						seq: (seq += 1),
+						now: now(),
+					});
+					recordThrottle(event);
+					return {
+						ok: false,
+						tool: name,
+						status: "throttled",
+						code: MCP_RATE_LIMITED_CODE,
+						output: null,
+						error: {
+							code: MCP_RATE_LIMITED_CODE,
+							message: `rate limit exceeded (${rl.reason}); retry after ${rl.retryAfterMs}ms`,
+						},
+					};
+				}
+			}
+
 			const tool = findTool(name, surface);
 			if (!tool) {
 				// Unknown tools are not part of the derived surface — fail closed.
@@ -154,6 +218,9 @@ export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMc
 		},
 		getAuditEvents() {
 			return [...auditEvents];
+		},
+		getRateLimitEvents() {
+			return [...rateLimitEvents];
 		},
 	};
 }

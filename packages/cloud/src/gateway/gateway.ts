@@ -1,0 +1,206 @@
+import type { EventInput, EventStore, PrincipalRef } from "@hobo/core";
+import type { ActorHost } from "@hobo/data";
+import {
+	AggregateInvariantError,
+	defineAggregate,
+	type Aggregate,
+} from "@hobo/data";
+import { emit } from "@hobo/events";
+import { canonicalManifestHash, type ManifestV1 } from "@hobo/bindles";
+
+import {
+	deploymentPlanned,
+	deploymentPlanRejected,
+	deploymentRequested,
+	matchDecided,
+} from "../events.js";
+import { plan, type PlanConfig } from "../planner/plan.js";
+import type { PlannerRegistry } from "../registry/catalog.js";
+import type { DeploymentPlan, MatchDecided, PlanRemediation } from "../plan-types.js";
+
+// The Gateway (control-plane.md "Services"): command ingress. It authenticates
+// the principal, authorizes against tenant + scope, turns a command into events,
+// and serves read models. Commands are never stored — only past-tense facts are
+// appended (control-plane.md "Command / event API surface"). Stateless.
+
+export interface DeployCommand {
+	deploymentId: string;
+	bindle: ManifestV1;
+	config?: { objective?: string; region?: string };
+}
+
+export interface GatewayContext {
+	tenant: string;
+	actor: PrincipalRef;
+	correlationId?: string;
+}
+
+export interface GatewayDeps {
+	store: EventStore;
+	actorHost: ActorHost;
+	registry: PlannerRegistry;
+}
+
+export interface AuthzResult {
+	allowed: boolean;
+	reason?: string;
+}
+
+export class UnauthorizedCommandError extends Error {
+	readonly code = "gateway.unauthorized";
+	constructor(reason: string) {
+		super(reason);
+		this.name = "UnauthorizedCommandError";
+	}
+}
+
+// Stubbed authorization (S2-01 scope): only attributable principals may issue
+// deploy commands. Full tenant/scope enforcement is S3 (MCP auth).
+export function authorize(actor: PrincipalRef): AuthzResult {
+	if (!actor || typeof actor.id !== "string" || actor.id.length === 0) {
+		return { allowed: false, reason: "missing principal" };
+	}
+	if (actor.kind === "system") {
+		return { allowed: false, reason: "system principals may not issue Deploy" };
+	}
+	return { allowed: true };
+}
+
+interface DeploymentState {
+	requested: boolean;
+}
+
+// The write-model aggregate behind the deployment stream: a single-writer actor
+// (ActorHost lease + fencing) whose only invariant is idempotent request-once.
+const deploymentAggregate: Aggregate<DeploymentState, DeployCommand & { bindleHash: string; tenant: string }> =
+	defineAggregate<DeploymentState, DeployCommand & { bindleHash: string; tenant: string }>({
+		name: "deployment",
+		initialState: { requested: false },
+		evolve: (state, event) =>
+			event.type === "deployment.Requested" ? { requested: true } : state,
+		decide: (state, command, emitter) => {
+			if (state.requested) {
+				throw new AggregateInvariantError(
+					`deployment ${command.deploymentId} already requested`,
+				);
+			}
+			emitter.emit(
+				"deployment.Requested",
+				deploymentRequested({
+					deploymentId: command.deploymentId,
+					bindleHash: command.bindleHash,
+					tenant: command.tenant,
+					config: command.config ?? {},
+				}).data as Record<string, unknown>,
+			);
+		},
+	});
+
+export interface DeployResultPlanned {
+	status: "planned";
+	streamId: string;
+	deploymentId: string;
+	seq: number;
+	planHash: string;
+	plan: DeploymentPlan;
+	decisions: MatchDecided[];
+}
+
+export interface DeployResultRejected {
+	status: "rejected";
+	streamId: string;
+	deploymentId: string;
+	seq: number;
+	reason: string;
+	remediations: PlanRemediation[];
+}
+
+export type DeployResult = DeployResultPlanned | DeployResultRejected;
+
+export function deploymentStreamId(deploymentId: string): string {
+	return `deployment:${deploymentId}`;
+}
+
+export async function deploy(
+	deps: GatewayDeps,
+	command: DeployCommand,
+	context: GatewayContext,
+): Promise<DeployResult> {
+	const authz = authorize(context.actor);
+	if (!authz.allowed) {
+		throw new UnauthorizedCommandError(authz.reason ?? "unauthorized");
+	}
+
+	const streamId = deploymentStreamId(command.deploymentId);
+	const bindleHash = canonicalManifestHash(command.bindle);
+
+	// 1. Command -> fact: append deployment.Requested under the single-writer lease.
+	const requested = await deploymentAggregate.execute(
+		{ store: deps.store, actorHost: deps.actorHost },
+		streamId,
+		{ ...command, bindleHash, tenant: context.tenant },
+		{
+			tenant: context.tenant,
+			actor: context.actor,
+			...(context.correlationId !== undefined
+				? { correlationId: context.correlationId }
+				: {}),
+		},
+	);
+
+	// 2. Run the pure Planner and append its facts (choreography fan-out path).
+	const planConfig: PlanConfig = { deploymentId: command.deploymentId };
+	if (command.config?.objective !== undefined) planConfig.objective = command.config.objective;
+	if (command.config?.region !== undefined) planConfig.region = command.config.region;
+
+	const outcome = plan(command.bindle, planConfig, deps.registry);
+
+	const facts: EventInput[] = [];
+	if (outcome.ok) {
+		for (const decision of outcome.decisions) facts.push(matchDecided(decision));
+		facts.push(
+			deploymentPlanned({
+				deploymentId: command.deploymentId,
+				planHash: outcome.planHash,
+				plan: outcome.plan,
+			}),
+		);
+	} else {
+		facts.push(
+			deploymentPlanRejected({
+				deploymentId: command.deploymentId,
+				reason: outcome.reason,
+				remediations: outcome.remediations,
+			}),
+		);
+	}
+
+	const emitted = await emit(deps.store, streamId, facts, {
+		expectedSeq: requested.seq,
+		actor: context.actor,
+		tenant: context.tenant,
+		...(context.correlationId !== undefined
+			? { correlationId: context.correlationId }
+			: {}),
+	});
+
+	if (outcome.ok) {
+		return {
+			status: "planned",
+			streamId,
+			deploymentId: command.deploymentId,
+			seq: emitted.seq,
+			planHash: outcome.planHash,
+			plan: outcome.plan,
+			decisions: outcome.decisions,
+		};
+	}
+	return {
+		status: "rejected",
+		streamId,
+		deploymentId: command.deploymentId,
+		seq: emitted.seq,
+		reason: outcome.reason,
+		remediations: outcome.remediations,
+	};
+}

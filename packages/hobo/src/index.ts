@@ -1,4 +1,9 @@
 export {
+	type AddCommandDeps,
+	createAddCommand,
+	REGISTRY_STREAM,
+} from "./add-command.js";
+export {
 	type AttestCommandDeps,
 	createAttestCommand,
 } from "./attest-command.js";
@@ -53,6 +58,7 @@ export {
 	createInspectCommand,
 	type InspectCommandDeps,
 } from "./inspect-command.js";
+export { createLocalProvider } from "./local-provider.js";
 export {
 	createLogsCommand,
 	type LogsCommandDeps,

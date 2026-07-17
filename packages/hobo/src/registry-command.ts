@@ -1,4 +1,7 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
+import { collectStream, registryCatalogProjection } from "@hobo/cloud";
+
+import { REGISTRY_STREAM } from "./add-command.js";
 
 export interface RegistryCommandDeps {
 	// The shared Yard runtime whose PlannerRegistry (the provider + capability
@@ -16,6 +19,8 @@ interface RegistryPort {
 interface RegistryProvider {
 	readonly providerId: string;
 	readonly ports: RegistryPort[];
+	// "base" = built into the runtime; "installed" = added via `hobo add`.
+	readonly source: "base" | "installed";
 }
 
 // `hobo registry` — administer registry artifacts. This read view lists the
@@ -78,11 +83,39 @@ export function createRegistryCommand(
 					ports: [...(byProvider.get(providerId)?.values() ?? [])].sort(
 						(a, b) => a.port.localeCompare(b.port),
 					),
+					source: "base" as const,
 				}));
 
-			for (const provider of providers) {
+			// Providers installed via `hobo add` — folded from the durable registry
+			// stream (registryCatalogProjection). Merged after the base providers.
+			const installedRows = registryCatalogProjection.query(
+				registryCatalogProjection.fold(
+					await collectStream(runtime.store, REGISTRY_STREAM),
+				),
+			);
+			const baseIds = new Set(providers.map((p) => p.providerId));
+			const installed: RegistryProvider[] = installedRows
+				.filter((row) => !baseIds.has(row.providerId))
+				.map((row) => ({
+					providerId: row.providerId,
+					ports: [...row.ports].sort().map((port) => ({
+						port,
+						definitions: 1,
+						features: [],
+						regions: [],
+					})),
+					source: "installed" as const,
+				}))
+				.sort((a, b) => a.providerId.localeCompare(b.providerId));
+
+			const allProviders = [...providers, ...installed];
+			const definitionCount =
+				definitions.length +
+				installedRows.reduce((n, row) => n + row.definitionCount, 0);
+
+			for (const provider of allProviders) {
 				emitProgress(
-					`${provider.providerId}: ${provider.ports.map((p) => p.port).join(", ")}`,
+					`${provider.providerId} (${provider.source}): ${provider.ports.map((p) => p.port).join(", ")}`,
 				);
 			}
 
@@ -90,12 +123,12 @@ export function createRegistryCommand(
 				ok: true,
 				status: "ok",
 				code: "HOBO_OK",
-				message: `hobo registry: ${providers.length} provider(s), ${definitions.length} definition(s) (catalog ${registry.catalogHash})`,
+				message: `hobo registry: ${allProviders.length} provider(s) (${installed.length} installed), ${definitionCount} definition(s) (catalog ${registry.catalogHash})`,
 				data: {
 					command: "registry",
 					catalogHash: registry.catalogHash,
-					providers,
-					definitionCount: definitions.length,
+					providers: allProviders,
+					definitionCount,
 				},
 			};
 		},

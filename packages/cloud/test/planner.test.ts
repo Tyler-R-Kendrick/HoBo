@@ -1,0 +1,117 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+import { parseManifest, type ManifestV1 } from "@hobo/bindles";
+import {
+	createCloudflareProvider,
+	realizeResourcePlans,
+} from "@hobo/provider-cloudflare";
+
+import {
+	canonicalPlanJson,
+	createRegistryFromProviders,
+	hashDeploymentPlan,
+	plan,
+	type DeploymentPlan,
+} from "../src/index.js";
+
+const HELLO_BINDLE_PLAN_HASH =
+	"sha256:30eb585558f0614fac037fa5ada935eaad03e86f35c39110af21b2c58bdaf5b6";
+
+function fixture(name: string): unknown {
+	return JSON.parse(
+		readFileSync(
+			fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),
+			"utf8",
+		),
+	);
+}
+
+function helloBindle(): ManifestV1 {
+	return parseManifest(fixture("hello-bindle.manifest.json"));
+}
+
+function registry() {
+	return createRegistryFromProviders([createCloudflareProvider()]);
+}
+
+describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
+	it("produces the byte-stable golden plan with the recorded content hash", () => {
+		const result = plan(helloBindle(), { deploymentId: "hello-bindle-001" }, registry());
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const golden = fixture("golden-plan.json") as DeploymentPlan;
+		expect(JSON.parse(canonicalPlanJson(result.plan))).toEqual(
+			JSON.parse(canonicalPlanJson(golden)),
+		);
+		expect(result.planHash).toBe(HELLO_BINDLE_PLAN_HASH);
+		// The hash is over the canonical form, so the committed fixture re-hashes equal.
+		expect(hashDeploymentPlan(golden)).toBe(HELLO_BINDLE_PLAN_HASH);
+	});
+
+	it("is deterministic: two independent runs are byte-identical", () => {
+		const a = plan(helloBindle(), { deploymentId: "x" }, registry());
+		const b = plan(helloBindle(), { deploymentId: "y" }, registry());
+		expect(a.ok && b.ok).toBe(true);
+		if (!a.ok || !b.ok) return;
+		expect(canonicalPlanJson(a.plan)).toBe(canonicalPlanJson(b.plan));
+		expect(a.planHash).toBe(b.planHash);
+	});
+
+	it("records a match.Decided decision per resource with catalog provenance", () => {
+		const reg = registry();
+		const result = plan(helloBindle(), { deploymentId: "hb-1" }, reg);
+		if (!result.ok) throw new Error("expected plan to succeed");
+
+		expect(result.decisions.map((d) => d.resource).sort()).toEqual([
+			"assets",
+			"service",
+			"sessions",
+		]);
+		for (const decision of result.decisions) {
+			expect(decision.providerId).toBe("@hobo/provider-cloudflare");
+			expect(decision.deploymentId).toBe("hb-1");
+			expect(decision.catalogHash).toBe(reg.catalogHash);
+			expect(decision.winner).toBe(`@hobo/provider-cloudflare.${decision.port}`);
+		}
+	});
+
+	it("realizes the golden plan into a previewable Cloudflare Pulumi program", () => {
+		const result = plan(helloBindle(), { deploymentId: "hb-1" }, registry());
+		if (!result.ok) throw new Error("expected plan to succeed");
+		const { iac } = realizeResourcePlans(result.plan.resources, {
+			deploymentId: "hb-1",
+		});
+		expect(iac.resources.map((r) => r.name).sort()).toEqual([
+			"assets",
+			"service",
+			"sessions",
+		]);
+		expect(iac.resources.map((r) => r.type).sort()).toEqual([
+			"cloudflare:kv-namespace",
+			"cloudflare:r2-bucket",
+			"cloudflare:workers-script",
+		]);
+	});
+});
+
+describe("Planner: unsatisfiable resource -> deployment.PlanRejected", () => {
+	it("rejects with a machine-readable, remediation-bearing reason", () => {
+		const manifest = parseManifest(fixture("unsatisfiable.manifest.json"));
+		const result = plan(manifest, { deploymentId: "reject-1" }, registry());
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+
+		expect(result.deploymentId).toBe("reject-1");
+		expect(result.remediations).toHaveLength(1);
+		const remediation = result.remediations[0];
+		expect(remediation.resource).toBe("ledger");
+		expect(remediation.code).toBe("capability.port-unavailable");
+		expect(remediation.requiredPort).toBe("database");
+		expect(remediation.suggestedProvider).toBeUndefined();
+		expect(remediation.remediation).toContain("register a provider");
+	});
+});

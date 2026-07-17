@@ -22,6 +22,7 @@ import { createDriftCommand } from "./drift-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLogsCommand } from "./logs-command.js";
 import { createRegistryCommand } from "./registry-command.js";
+import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 
@@ -66,6 +67,7 @@ export function createComposedHoboCli(
 			claim: createClaimCommand({ runtime }),
 			registry: createRegistryCommand({ runtime }),
 			logs: createLogsCommand(),
+			runbook: createRunbookCommand({ runtime }),
 			sandbox,
 			test: sandbox,
 		},

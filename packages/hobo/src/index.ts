@@ -70,6 +70,10 @@ export {
 	type RegistryCommandDeps,
 } from "./registry-command.js";
 export {
+	createRunbookCommand,
+	type RunbookCommandDeps,
+} from "./runbook-command.js";
+export {
 	createSandboxCommand,
 	type SandboxCommandDeps,
 } from "./sandbox-command.js";

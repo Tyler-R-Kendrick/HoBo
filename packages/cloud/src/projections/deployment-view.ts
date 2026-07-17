@@ -16,20 +16,33 @@ export interface DeploymentDecisionRow {
 	region?: string;
 }
 
+// The provisioning-phase FSM status per resource, reconstructed for the saga
+// graph (control-plane.md "a DeploymentView projection … reconstructs the saga
+// graph from events for the dashboard").
+export type ResourceLifecycle =
+	| "provisioning"
+	| "provisioned"
+	| "failed"
+	| "destroying"
+	| "destroyed";
+
 export interface DeploymentViewRow {
 	deploymentId: string;
-	status: "requested" | "planned" | "rejected";
+	status: "requested" | "planned" | "rejected" | "deployed" | "rolled-back";
 	bindleHash?: string;
 	decisions: DeploymentDecisionRow[];
 	planHash?: string;
 	plan?: DeploymentPlan;
 	rejection?: { reason: string; remediations: PlanRemediation[] };
+	// Saga graph: per-resource lifecycle folded from resource.* facts.
+	resources: Record<string, ResourceLifecycle>;
+	rollback?: { reason: string; targetSetId: string };
 }
 
 function base(row: DeploymentViewRow | undefined, deploymentId: string): DeploymentViewRow {
 	return row
-		? { ...row, decisions: [...row.decisions] }
-		: { deploymentId, status: "requested", decisions: [] };
+		? { ...row, decisions: [...row.decisions], resources: { ...row.resources } }
+		: { deploymentId, status: "requested", decisions: [], resources: {} };
 }
 
 export const deploymentViewProjection: Projection<DeploymentViewRow> =
@@ -80,6 +93,49 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				const next = base(row, data.deploymentId);
 				next.status = "rejected";
 				next.rejection = { reason: data.reason, remediations: data.remediations };
+				return next;
+			},
+			[CLOUD_EVENTS.ResourceProvisioning]: (row, event) => {
+				const data = event.data as { deploymentId: string; resourceId: string };
+				const next = base(row, data.deploymentId);
+				next.resources[data.resourceId] = "provisioning";
+				return next;
+			},
+			[CLOUD_EVENTS.ResourceProvisioned]: (row, event) => {
+				const data = event.data as { deploymentId: string; resourceId: string };
+				const next = base(row, data.deploymentId);
+				next.resources[data.resourceId] = "provisioned";
+				return next;
+			},
+			[CLOUD_EVENTS.ResourceFailed]: (row, event) => {
+				const data = event.data as { deploymentId: string; resourceId: string };
+				const next = base(row, data.deploymentId);
+				next.resources[data.resourceId] = "failed";
+				return next;
+			},
+			[CLOUD_EVENTS.ResourceDestroying]: (row, event) => {
+				const data = event.data as { deploymentId: string; resourceId: string };
+				const next = base(row, data.deploymentId);
+				next.resources[data.resourceId] = "destroying";
+				return next;
+			},
+			[CLOUD_EVENTS.ResourceDestroyed]: (row, event) => {
+				const data = event.data as { deploymentId: string; resourceId: string };
+				const next = base(row, data.deploymentId);
+				next.resources[data.resourceId] = "destroyed";
+				return next;
+			},
+			[CLOUD_EVENTS.DeploymentDeployed]: (row, event) => {
+				const data = event.data as { deploymentId: string };
+				const next = base(row, data.deploymentId);
+				next.status = "deployed";
+				return next;
+			},
+			[CLOUD_EVENTS.DeploymentRolledBack]: (row, event) => {
+				const data = event.data as { deploymentId: string; reason: string; targetSetId: string };
+				const next = base(row, data.deploymentId);
+				next.status = "rolled-back";
+				next.rollback = { reason: data.reason, targetSetId: data.targetSetId };
 				return next;
 			},
 		},

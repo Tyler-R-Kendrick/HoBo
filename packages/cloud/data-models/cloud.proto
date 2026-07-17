@@ -106,3 +106,122 @@ message RegistryCatalogEntry {
   repeated ResourceDefinitionRef definitions = 2;
   string manifest_index_digest = 3;
 }
+
+// ---- S2-03a/b: Orchestrator + ResourceActor FSM + Executor wire records ----
+// control-plane.md "The ResourceActor reconciliation FSM" + "Executor sandbox
+// model". The provisioning path: a durable ResourceActor folds its own stream
+// to an FSM snapshot, previews a diff, dispatches an IacProgram to a sandboxed
+// Executor, and on exec.Succeeded emits resource.Provisioned. Compensation is
+// choreographed via deployment.RolledBack + reverse-order resource.Destroying.
+
+// The program a CloudProvider realizes and the Orchestrator dispatches to an
+// Executor (control-plane.md "A CloudProvider composes ... emits an IacProgram").
+message IacProgram {
+  string program_id = 1;
+  string deployment_id = 2;
+  string resource_id = 3;
+  string provider = 4;
+  string driver = 5;               // iac driver: pulumi | terraform | container | ...
+  string action = 6;               // "preview" | "apply" | "destroy"
+  string stack_name = 7;           // per-resource stack key: tenant/deployment/resource
+}
+
+// A short-lived, capability-scoped token injected per-exec (control-plane.md:
+// "no ambient cloud creds ... a short-lived, capability-scoped token").
+message ScopedCredential {
+  string id = 1;
+  string scope = 2;                // tenant:<t>/resource:<r>/job:<k>/action:<a>
+  uint32 ttl_seconds = 3;
+  bool ambient = 4;                // always false — creds arrive only by injection
+}
+
+// exec.Output: streamed stdout/stderr line from a running Executor.
+message ExecOutputRecord {
+  string exec_id = 1;
+  string stream = 2;               // "stdout" | "stderr"
+  string line = 3;
+}
+
+// exec.Diff: the preview diff summary streamed before apply.
+message ExecDiffRecord {
+  string exec_id = 1;
+  string summary = 2;
+  uint32 changes = 3;
+}
+
+// exec.Succeeded: terminal success carrying captured stack outputs.
+message ExecSucceededRecord {
+  string exec_id = 1;
+  string outputs_hash = 2;
+  map<string, string> outputs = 3;
+}
+
+// exec.Failed: terminal failure with a classified error (retryable | fatal).
+message ExecFailedRecord {
+  string exec_id = 1;
+  string classification = 2;       // "retryable" | "fatal"
+  string reason = 3;
+}
+
+// The durable ResourceActor FSM snapshot, folded from the resource's own facts.
+message ResourceActorSnapshot {
+  string deployment_id = 1;
+  string resource_id = 2;
+  string state = 3;                // Pending|Planning|Provisioning|Provisioned|Updating|Failed|Compensating|Destroying|Destroyed
+  uint32 sequence = 4;
+  map<string, string> outputs = 5;
+  repeated string deps = 6;
+}
+
+// resource.Provisioning: apply dispatched to an Executor (transition to Provisioning).
+message ResourceProvisioningRecord {
+  string deployment_id = 1;
+  string resource_id = 2;
+  string exec_id = 3;
+  string program_hash = 4;
+}
+
+// resource.Provisioned: apply ok, outputs recorded (unblocks dependents).
+message ResourceProvisionedRecord {
+  string deployment_id = 1;
+  string resource_id = 2;
+  map<string, string> outputs = 3;
+  string exec_id = 4;
+}
+
+// resource.Failed: apply error with classified reason + no-go threshold flag.
+message ResourceFailedRecord {
+  string deployment_id = 1;
+  string resource_id = 2;
+  string reason = 3;
+  string classification = 4;       // "retryable" | "fatal"
+  bool crossed_no_go_threshold = 5;
+}
+
+// resource.Destroying: choreographed compensation started for this actor.
+message ResourceDestroyingRecord {
+  string deployment_id = 1;
+  string resource_id = 2;
+  string reason = 3;
+}
+
+// resource.Destroyed: compensation applied; slice removed.
+message ResourceDestroyedRecord {
+  string deployment_id = 1;
+  string resource_id = 2;
+  string final_state_hash = 3;
+}
+
+// deployment.Deployed: every resource actor reached Provisioned.
+message DeploymentDeployedRecord {
+  string deployment_id = 1;
+  string set_id = 2;
+  repeated string resource_ids = 3;
+}
+
+// deployment.RolledBack: a no-go failure crossed threshold; saga compensates.
+message DeploymentRolledBackRecord {
+  string deployment_id = 1;
+  string target_set_id = 2;
+  string reason = 3;
+}

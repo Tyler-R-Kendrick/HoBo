@@ -28,7 +28,30 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/conformance",
 	"packages/cli",
 	"packages/stage-gate",
+	"packages/policy",
+	"packages/data",
+	"packages/events",
+	"packages/identity",
+	"packages/cloud",
+	"packages/contracts",
+	"packages/mcp",
+	"packages/training-pipeline",
 ]);
+
+// Documented, narrowly-scoped exceptions. The AI training/eval providers
+// (provider-agentv, provider-ax) legitimately COMPOSE the SDK training/runtime
+// packages instead of reaching them through a core port; these edges landed in
+// #824/#825 and are tracked for a future ADR that classifies training/eval
+// providers as a distinct tier. Scoped to these EXACT edges so genuine
+// adapter->adapter and other outward imports still fail closed.
+const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
+	"packages/providers/provider-agentv->packages/training-pipeline",
+	"packages/providers/provider-ax->packages/runtime",
+]);
+
+function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
+	return ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`);
+}
 
 function isWorkspacePath(path: string): boolean {
 	return path.startsWith("packages/") || path.startsWith("examples/");
@@ -146,14 +169,19 @@ export function validateBoundaryImports(
 			from.kind === "adapter" &&
 			to.kind !== "core" &&
 			edge.from !== edge.to &&
-			edge.to !== "packages/conformance"
+			edge.to !== "packages/conformance" &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
 		) {
 			errors.push(
 				`adapters may import only core ports: ${edge.from} -> ${edge.to}`,
 			);
 		}
 
-		if (to.layer > from.layer && edge.to !== "packages/conformance") {
+		if (
+			to.layer > from.layer &&
+			edge.to !== "packages/conformance" &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
+		) {
 			errors.push(`dependency points outward: ${edge.from} -> ${edge.to}`);
 		}
 	}
@@ -216,4 +244,26 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/conformance", to: "packages/core" },
 	{ from: "packages/stage-gate", to: "packages/componentize" },
 	{ from: "packages/runtimes/runtime-local", to: "packages/conformance" },
+	{ from: "packages/data", to: "packages/core" },
+	{ from: "packages/events", to: "packages/core" },
+	{ from: "packages/events", to: "packages/data" },
+	{ from: "packages/identity", to: "packages/core" },
+	{ from: "packages/cloud", to: "packages/core" },
+	{ from: "packages/cloud", to: "packages/bindles" },
+	{ from: "packages/cloud", to: "packages/data" },
+	{ from: "packages/cloud", to: "packages/events" },
+	{ from: "packages/contracts", to: "packages/core" },
+	{ from: "packages/contracts", to: "packages/policy" },
+	{ from: "packages/mcp", to: "packages/core" },
+	{ from: "packages/mcp", to: "packages/cli" },
+	{ from: "packages/mcp", to: "packages/identity" },
+	{ from: "packages/conformance", to: "packages/runtime" },
+	{ from: "packages/training-pipeline", to: "packages/core" },
+	{ from: "packages/iac/iac-pulumi", to: "packages/core" },
+	{ from: "packages/providers/provider-cloudflare", to: "packages/core" },
+	{ from: "packages/providers/provider-agentv", to: "packages/core" },
+	{ from: "packages/providers/provider-ax", to: "packages/core" },
+	// Accepted training/eval-provider composition edges (see ACCEPTED_ADAPTER_PACKAGE_EDGES).
+	{ from: "packages/providers/provider-agentv", to: "packages/training-pipeline" },
+	{ from: "packages/providers/provider-ax", to: "packages/runtime" },
 ];

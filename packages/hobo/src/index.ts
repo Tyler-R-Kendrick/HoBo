@@ -55,6 +55,10 @@ export {
 	type EraseCommandDeps,
 } from "./erase-command.js";
 export {
+	createImportCommand,
+	type ImportCommandDeps,
+} from "./import-command.js";
+export {
 	createInspectCommand,
 	type InspectCommandDeps,
 } from "./inspect-command.js";

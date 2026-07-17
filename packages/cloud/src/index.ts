@@ -12,6 +12,7 @@ export {
 	type DeploymentRolledBackData,
 	deploymentClaimed,
 	deploymentDeployed,
+	deploymentImported,
 	deploymentPlanned,
 	deploymentPlanRejected,
 	deploymentRequested,

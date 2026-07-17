@@ -40,6 +40,9 @@ export const CLOUD_EVENTS = Object.freeze({
 	// historical events are never rewritten; projections redact the subject on
 	// rebuild.
 	SubjectErasureRequested: "subject.ErasureRequested",
+	// Adopt an existing estate in place: bring resources that ALREADY exist under
+	// HoBo management by recording them as a deployment, without provisioning.
+	DeploymentImported: "deployment.Imported",
 	// Credential-audit facts (NFR-018): the per-resource scoped-credential
 	// lifecycle the Orchestrator brokers around each apply. Folded by
 	// `credentialAuditProjection` into a grant -> use -> revoke trail.
@@ -73,6 +76,14 @@ export function subjectErasureRequested(data: {
 	reason?: string;
 }): EventInput {
 	return { type: CLOUD_EVENTS.SubjectErasureRequested, data };
+}
+
+export function deploymentImported(data: {
+	deploymentId: string;
+	bindleHash: string;
+	resources: string[];
+}): EventInput {
+	return { type: CLOUD_EVENTS.DeploymentImported, data };
 }
 
 // Fold the erased-subject set from a stream's events. Append-only crypto-shred:

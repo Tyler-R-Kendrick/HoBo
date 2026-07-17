@@ -43,6 +43,9 @@ export interface DeploymentViewRow {
 	owner?: { kind: string; id: string };
 	// True once ownership has been claimed away from the original requester.
 	claimed?: boolean;
+	// True when this deployment was adopted from an existing estate (`hobo import`)
+	// rather than provisioned by HoBo.
+	imported?: boolean;
 }
 
 function base(
@@ -65,6 +68,26 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				next.status = "requested";
 				next.bindleHash = data.bindleHash;
 				// Seed ownership from the requesting principal (the envelope actor).
+				if (next.owner === undefined && event.actor) {
+					next.owner = { kind: event.actor.kind, id: event.actor.id };
+				}
+				return next;
+			},
+			[CLOUD_EVENTS.DeploymentImported]: (row, event) => {
+				const data = event.data as {
+					deploymentId: string;
+					bindleHash: string;
+					resources: string[];
+				};
+				const next = base(row, data.deploymentId);
+				// The estate already exists: mark it deployed + adopted, each resource
+				// provisioned. No provisioning ran — this records external reality.
+				next.status = "deployed";
+				next.bindleHash = data.bindleHash;
+				next.imported = true;
+				for (const resourceId of data.resources) {
+					next.resources[resourceId] = "provisioned";
+				}
 				if (next.owner === undefined && event.actor) {
 					next.owner = { kind: event.actor.kind, id: event.actor.id };
 				}

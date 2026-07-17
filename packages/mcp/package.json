@@ -1,0 +1,35 @@
+{
+	"name": "@hobo/mcp",
+	"version": "0.0.1",
+	"type": "module",
+	"files": ["dist"],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/cli": "workspace:*",
+		"@hobo/core": "workspace:*",
+		"@hobo/identity": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/bindles": "workspace:*",
+		"@hobo/cloud": "workspace:*",
+		"@hobo/data": "workspace:*",
+		"@hobo/provider-cloudflare": "workspace:*",
+		"@hobo/runtime-local": "workspace:*"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build",
+		"test": "vitest run",
+		"test:contract:consumer": "vitest run contracts/consumer"
+	}
+}

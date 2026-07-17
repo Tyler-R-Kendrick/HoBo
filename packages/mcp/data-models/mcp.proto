@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package hobo.mcp.v1;
+
+// Wire records for @hobo/mcp (S3-01/S3-02): the MCP control-surface tool
+// descriptors, tool-call request/result envelopes, and the capability-scoped
+// auth decision records. Design source: docs/design/ai-native-agent-auth.md
+// §6.4 (MCP control surface) + §6.1-6.2 (identity), ADR-0023 item 3 (inert
+// tool output). These are the persisted / exchanged shapes; the TypeScript
+// surface in src/ follows parse-don't-validate, narrowing these wire forms into
+// derived domain types built only by this package's constructors. See mcp.cue
+// for one CUE constraint per type.
+
+// The audited decision effect for a tool call — deny-by-default.
+enum McpToolDecisionEffect {
+  MCP_TOOL_DECISION_EFFECT_UNSPECIFIED = 0;
+  MCP_TOOL_DECISION_EFFECT_ALLOW = 1;
+  MCP_TOOL_DECISION_EFFECT_DENY = 2;
+}
+
+// The capability an SVID must be granted to invoke a tool: (port, resource,
+// verb). Mirrors the @hobo/identity ScopeEntry vocabulary (least-privilege).
+message McpCapabilityScope {
+  string port = 1;
+  string resource = 2;
+  string verb = 3;
+}
+
+// One MCP tool, derived structurally from a CANONICAL_VERBS entry so the tool
+// surface cannot drift from the CLI verb surface (NFR-004 parity).
+message McpToolDescriptor {
+  string name = 1;
+  string verb = 2;
+  string role = 3;
+  string summary = 4;
+  McpCapabilityScope capability = 5;
+  string input_schema_json = 6;
+}
+
+// An agent's request to invoke a tool through the shared dispatch path.
+message McpToolCallRequest {
+  string tool = 1;
+  string correlation_id = 2;
+  string cwd = 3;
+  string input_json = 4;
+}
+
+// The inert result of a tool call: pure data. It can never schedule, authorize,
+// or widen a follow-up call beyond the caller's existing grant (ADR-0023).
+message McpToolCallResult {
+  string tool = 1;
+  bool ok = 2;
+  string status = 3;
+  string code = 4;
+  string output_json = 5;
+}
+
+// The audited allow/deny decision for a tool call — a credential-audit fact.
+message McpAuthDecisionEvent {
+  string schema_version = 1;
+  string type = 2;
+  string tool = 3;
+  string subject = 4;
+  string tenant = 5;
+  McpToolDecisionEffect effect = 6;
+  string reason = 7;
+  uint64 seq = 8;
+  string time = 9;
+  string correlation_id = 10;
+}
+
+// A recorded (but powerless) observation of a tool output. Prompt-injected
+// "instructions" in a result are recorded here and never widen the grant set.
+message McpToolOutputObservation {
+  string tool = 1;
+  string subject = 2;
+  string recorded_text = 3;
+  repeated string authorized_tools_before = 4;
+  repeated string authorized_tools_after = 5;
+  bool widened = 6;
+}

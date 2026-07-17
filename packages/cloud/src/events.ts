@@ -36,6 +36,10 @@ export const CLOUD_EVENTS = Object.freeze({
 	// Ownership rebind: an anonymous `npx hobo up` deployment is bound to an
 	// account, preserving all provisioned state (resources, outputs, URL).
 	DeploymentClaimed: "deployment.Claimed",
+	// Crypto-shred erasure REQUEST for a data subject (HOBO-295). Append-only —
+	// historical events are never rewritten; projections redact the subject on
+	// rebuild.
+	SubjectErasureRequested: "subject.ErasureRequested",
 	// Credential-audit facts (NFR-018): the per-resource scoped-credential
 	// lifecycle the Orchestrator brokers around each apply. Folded by
 	// `credentialAuditProjection` into a grant -> use -> revoke trail.
@@ -62,6 +66,32 @@ export function deploymentClaimed(data: {
 	newOwner: DeploymentOwner;
 }): EventInput {
 	return { type: CLOUD_EVENTS.DeploymentClaimed, data };
+}
+
+export function subjectErasureRequested(data: {
+	subject: string;
+	reason?: string;
+}): EventInput {
+	return { type: CLOUD_EVENTS.SubjectErasureRequested, data };
+}
+
+// Fold the erased-subject set from a stream's events. Append-only crypto-shred:
+// the events stay, but any subject named by a `subject.ErasureRequested` fact is
+// redacted from rebuilt projections (HOBO-295).
+export function foldErasedSubjects(
+	events: Iterable<{ type: string; data?: unknown }>,
+): Set<string> {
+	const erased = new Set<string>();
+	for (const event of events) {
+		if (event.type === CLOUD_EVENTS.SubjectErasureRequested) {
+			const subject = (event.data as { subject?: unknown } | undefined)
+				?.subject;
+			if (typeof subject === "string" && subject.length > 0) {
+				erased.add(subject);
+			}
+		}
+	}
+	return erased;
 }
 
 export function tokenGranted(data: {

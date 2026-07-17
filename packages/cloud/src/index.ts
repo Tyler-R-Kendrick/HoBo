@@ -20,6 +20,7 @@ export {
 	type ExecSucceededData,
 	execDiff,
 	execSucceeded,
+	foldErasedSubjects,
 	matchDecided,
 	providerRegistered,
 	type ResourceDestroyedData,
@@ -32,6 +33,7 @@ export {
 	resourceFailed,
 	resourceProvisioned,
 	resourceProvisioning,
+	subjectErasureRequested,
 } from "./events.js";
 export {
 	AMBIENT_CREDENTIAL_KEYS,

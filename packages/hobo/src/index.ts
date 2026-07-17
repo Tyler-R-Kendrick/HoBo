@@ -46,6 +46,10 @@ export {
 	type DriftCommandDeps,
 } from "./drift-command.js";
 export {
+	createEraseCommand,
+	type EraseCommandDeps,
+} from "./erase-command.js";
+export {
 	createInspectCommand,
 	type InspectCommandDeps,
 } from "./inspect-command.js";
@@ -53,6 +57,7 @@ export {
 	createLogsCommand,
 	type LogsCommandDeps,
 } from "./logs-command.js";
+export type { OcsfExportOptions } from "./ocsf-export.js";
 export {
 	credentialAuditToOcsf,
 	OCSF_EXPORT_VERSION,

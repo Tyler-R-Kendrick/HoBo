@@ -12,6 +12,7 @@ import {
 } from "@hobo/cloud";
 import type {
 	ComponentHostEvent,
+	EventStore,
 	InterfaceId,
 	ParsedComponentDescriptor,
 	ProviderDescriptor,
@@ -28,10 +29,14 @@ import {
 	createRuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 
+import type { IacProvider } from "@hobo/cloud";
+
 import {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 } from "./pulumi-iac-provider.js";
+import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
+import type { VercelFetch } from "./vercel-client.js";
 
 // @hobo/hobo — the composition root (apps layer). It wires HoBo's default
 // runtimes so the composed `hobo` binary runs the cloud verbs end to end in the
@@ -90,7 +95,47 @@ export interface DefaultYardRuntimeOptions {
 	// The @hobo/iac-pulumi adapter the deploy path drives. Defaults to a fresh
 	// real `createPulumiAutomationAdapter()` (in-memory backend). Injectable so a
 	// test can observe/spy the real adapter the composed `up`/`down` runs.
+	//
+	// NOTE: providing this override FORCES the in-memory Pulumi-backed provider
+	// even when `VERCEL_TOKEN` is set — the adapter is a Pulumi adapter, so the
+	// override is only meaningful on that lane. Env-based Vercel selection applies
+	// to the DEFAULT (un-overridden) path.
 	readonly iacAdapter?: PulumiAutomationAdapter;
+}
+
+export interface SelectIacProviderDeps {
+	// The durable event store the Pulumi-backed provider reads plans from.
+	readonly store: EventStore;
+	// The real CloudProviders whose `realize()` the Pulumi bridge drives.
+	readonly providers: readonly CloudProvider[];
+	// Optional Pulumi adapter override (forces the Pulumi lane; see above).
+	readonly adapter?: PulumiAutomationAdapter;
+	// The environment consulted for `VERCEL_TOKEN`. Defaults to `process.env`.
+	readonly env?: Record<string, string | undefined>;
+	// Optional injected transport for the Vercel client (tests mock the network).
+	readonly vercelFetch?: VercelFetch;
+}
+
+// Select the IaC backend on the deploy path by environment. This is HoBo's
+// thesis realized for the one cloud actually reachable from its own pipeline:
+//   - `VERCEL_TOKEN` present  -> the REAL Vercel deploy provider (cred-gated).
+//   - otherwise               -> the in-memory Pulumi-backed provider (fallback).
+// A Pulumi `adapter` override always wins (it is a Pulumi adapter), keeping the
+// existing spy-adapter tests deterministic regardless of ambient env.
+export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
+	const env = deps.env ?? process.env;
+	const vercelToken = env.VERCEL_TOKEN;
+	if (deps.adapter === undefined && vercelToken) {
+		return createVercelDeployProvider({
+			token: vercelToken,
+			...(deps.vercelFetch !== undefined ? { fetch: deps.vercelFetch } : {}),
+		});
+	}
+	return createPulumiBackedIacProvider({
+		store: deps.store,
+		providers: deps.providers,
+		...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+	});
 }
 
 // Assemble the default `YardRuntime` the cloud verbs (plan/up/down) drive. This
@@ -114,7 +159,9 @@ export function createDefaultYardRuntime(
 		store,
 		actorHost: createInMemoryActorHost(),
 		executor: createInProcessExecutor({
-			iac: createPulumiBackedIacProvider({
+			// Env-gated backend selection (see `selectIacProvider`): REAL Vercel when
+			// `VERCEL_TOKEN` is set, in-memory Pulumi-backed provider otherwise.
+			iac: selectIacProvider({
 				store,
 				providers: [cloudflare],
 				...(options.iacAdapter !== undefined ? { adapter: options.iacAdapter } : {}),

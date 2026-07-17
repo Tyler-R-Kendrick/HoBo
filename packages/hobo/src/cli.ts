@@ -19,6 +19,7 @@ import {
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
 import { createInspectCommand } from "./inspect-command.js";
+import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -43,6 +44,9 @@ export function createComposedHoboCli(
 	const runtime = options.yardRuntime ?? createDefaultYardRuntime();
 	const devRuntime = options.devRuntime ?? createDefaultDevRuntime();
 	const target = options.collectionTarget ?? createDefaultCollectionTarget();
+	// `sandbox` and its `test` alias share one command; each run() boots its OWN
+	// fresh runtime-local Camp (isolation), so no shared runtime is threaded here.
+	const sandbox = createSandboxCommand();
 
 	return createHoboCli({
 		commands: {
@@ -56,6 +60,8 @@ export function createComposedHoboCli(
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),
+			sandbox,
+			test: sandbox,
 		},
 	});
 }

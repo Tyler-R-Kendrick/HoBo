@@ -17,6 +17,7 @@ import {
 	createDefaultYardRuntime,
 } from "./compose.js";
 import { createDoctorCommand } from "./doctor-command.js";
+import { createDriftCommand } from "./drift-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 
@@ -53,6 +54,7 @@ export function createComposedHoboCli(
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),
 			inspect: createInspectCommand({ runtime }),
+			drift: createDriftCommand({ runtime }),
 		},
 	});
 }

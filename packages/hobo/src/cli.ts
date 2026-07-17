@@ -10,6 +10,7 @@ import {
 	type HoboCli,
 	type YardRuntime,
 } from "@hobo/cli";
+import { createAddCommand } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { createClaimCommand } from "./claim-command.js";
 import {
@@ -67,6 +68,7 @@ export function createComposedHoboCli(
 			attest: createAttestCommand({ runtime }),
 			claim: createClaimCommand({ runtime }),
 			registry: createRegistryCommand({ runtime }),
+			add: createAddCommand({ runtime }),
 			logs: createLogsCommand(),
 			runbook: createRunbookCommand({ runtime }),
 			erase: createEraseCommand({ runtime }),

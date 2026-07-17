@@ -20,6 +20,7 @@ import {
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
 import { createInspectCommand } from "./inspect-command.js";
+import { createRegistryCommand } from "./registry-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 
@@ -62,6 +63,7 @@ export function createComposedHoboCli(
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),
 			claim: createClaimCommand({ runtime }),
+			registry: createRegistryCommand({ runtime }),
 			sandbox,
 			test: sandbox,
 		},

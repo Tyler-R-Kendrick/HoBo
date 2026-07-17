@@ -62,6 +62,10 @@ export {
 	type PulumiBackedIacProviderOptions,
 } from "./pulumi-iac-provider.js";
 export {
+	createRegistryCommand,
+	type RegistryCommandDeps,
+} from "./registry-command.js";
+export {
 	createSandboxCommand,
 	type SandboxCommandDeps,
 } from "./sandbox-command.js";

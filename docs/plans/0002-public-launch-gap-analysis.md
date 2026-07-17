@@ -144,9 +144,13 @@ public launch copy today except as roadmap.
 - **Failing gates, live.** Checked 2026-07-17 via the GitHub API: `stage-gate-s0.yml` — 30 most
   recent runs all `failure` (all on a PR branch; no `main` runs in that window); `s1-stage-gate.yml`
   — 13 recent `main` runs (push + schedule) all `failure`; `hobo-ci.yml` on `main` — scheduled runs
-  of 2026-07-06 and 2026-07-13 both `failure` (each completing in seconds, suggesting a workflow-
-  level fault rather than a test failure — undiagnosed either way), last `main` success 2026-06-29.
-  The repo's fail-closed philosophy is contradicted by a red `main` with no recorded blocker.
+  of 2026-07-06 and 2026-07-13 both `failure`, last `main` success 2026-06-29. Diagnosis from the
+  job records (confirmed on this analysis PR's own runs): every job "completes" as `failure` within
+  ~3 seconds with `runner_id: 0`, an empty runner name, and no downloadable logs — **jobs are never
+  assigned a runner**. That signature points at an account-level GitHub Actions fault (spending
+  limit / billing / runner provisioning), not at the workflows or the code; the same gates pass
+  locally. Regardless of cause, the repo's fail-closed philosophy is contradicted by a red `main`
+  with no recorded blocker, and no CI evidence can be produced until runner assignment is restored.
 - **S0 acceptance record unfilled.** All ten gate rows in
   [build-s0-stage-gate-acceptance](../design/build-s0-stage-gate-acceptance.md) read `TODO` for
   both Ubuntu and Windows legs.
@@ -255,8 +259,9 @@ Ordered; items unlock the ones after them. Severity labels per the
 [taxonomy](../design/launch-blocker-taxonomy.md).
 
 **Phase 0 — restore trust in the gates (days–weeks, blocker):**
-1. Diagnose and fix the failing `hobo-ci.yml` scheduled runs on `main` (fast-fail pattern suggests
-   a workflow fault) and the `stage-gate-s0`/`s1-stage-gate` failures; get `main` green.
+1. Restore GitHub Actions runner assignment (check the account's Actions billing/spending limit —
+   §4.2: jobs fail in seconds with no runner allocated), then re-run and fix any genuine
+   `hobo-ci.yml` / `stage-gate-s0` / `s1-stage-gate` failures; get `main` green.
 2. Fill the [S0 acceptance table](../design/build-s0-stage-gate-acceptance.md) from the first
    green run; close S0-12. Wire "gate failed on main" → a recorded blocker so the fail-closed
    loop is real.

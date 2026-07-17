@@ -1,5 +1,5 @@
 // Trainable-method authoring surface (ADR-0025 / ADR-0125): the promised
-// `import { training } from "@hobo/runtime"` (sdk-api.md §Trainable methods).
+// `training` namespace exported from the package root (sdk-api.md §Trainable methods).
 export {
 	applyTrainingArtifact,
 	type FieldDescription,

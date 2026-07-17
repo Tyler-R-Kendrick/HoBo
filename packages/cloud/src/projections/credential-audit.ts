@@ -1,0 +1,250 @@
+import type { EventEnvelope } from "@hobo/core";
+import { defineProjection, type Projection } from "@hobo/data";
+
+// The CredentialAudit projection (S3-04 — ai-native-agent-auth.md §6.2/§6.8). It
+// folds the identity/token/session event families into a queryable audit of
+// grant → use → revoke, correlated by `correlationId`, so "which agent reached
+// which resource as which user, when" is always answerable. It is a read-model
+// fold (rebuildable-from-zero — the log is authoritative), and its streams are
+// NEVER compacted (NFR-018 retention floor): a compaction pass over an audit
+// stream drops nothing, so pre-floor events survive for the full retention window.
+
+// The never-compact retention descriptor. Duplicated locally (identical to
+// @hobo/identity's CREDENTIAL_AUDIT_RETENTION) so the read-model does not need an
+// inward cloud → identity dependency edge — cloud depends only on
+// core/bindles/data/events.
+export const CREDENTIAL_AUDIT_RETENTION = Object.freeze({
+	class: "security-audit",
+	neverCompact: true,
+	streamPolicy: "retain-token-identity-session-audit",
+});
+
+// NFR-018 retention floor: audit facts are retained at least this long. Seven
+// years (2555 days) mirrors the credential-audit-projection technical proof.
+export const CREDENTIAL_AUDIT_RETENTION_FLOOR_DAYS = 2555;
+export const CREDENTIAL_AUDIT_RETENTION_FLOOR_MS =
+	CREDENTIAL_AUDIT_RETENTION_FLOOR_DAYS * 24 * 60 * 60 * 1000;
+
+// The identity/token/session event types the audit folds (data-plane.md event
+// catalog). The prefixes classify a stream as a never-compact audit stream.
+export const CREDENTIAL_AUDIT_EVENTS = Object.freeze({
+	IdentityIssued: "identity.Issued",
+	IdentityRotated: "identity.Rotated",
+	TokenGranted: "token.Granted",
+	TokenUsed: "token.Used",
+	TokenRevoked: "token.Revoked",
+	SessionStarted: "session.Started",
+	SessionRevoked: "session.Revoked",
+} as const);
+
+export const CREDENTIAL_AUDIT_EVENT_PREFIXES = Object.freeze([
+	"identity.",
+	"token.",
+	"session.",
+]);
+
+export function isCredentialAuditEvent(event: EventEnvelope): boolean {
+	return CREDENTIAL_AUDIT_EVENT_PREFIXES.some((prefix) =>
+		event.type.startsWith(prefix),
+	);
+}
+
+export type CredentialGrantStatus = "granted" | "used" | "revoked";
+
+// The audited (port, resource, action) scope; wire form in cloud.proto.
+// domain-view: parse-don't-validate derived type of CredentialAuditScope.
+export interface CredentialAuditScope {
+	port: string;
+	resource: string;
+	action: string;
+}
+
+// The per-grant lifecycle fold (grant -> use -> revoke); wire form in cloud.proto.
+// domain-view: parse-don't-validate derived type of CredentialGrantAudit.
+export interface CredentialGrantAudit {
+	grantId: string;
+	svidSubject?: string;
+	scope?: CredentialAuditScope;
+	tokenRef?: string;
+	status: CredentialGrantStatus;
+	grantedAt?: string;
+	usedAt?: string;
+	revokedAt?: string;
+	revokedReason?: string;
+	useCount: number;
+}
+
+// An ordered step in a correlation's credential timeline; wire form in cloud.proto.
+// domain-view: parse-don't-validate derived type of CredentialAuditTimelineEntry.
+export interface CredentialAuditTimelineEntry {
+	seq: number;
+	type: string;
+	grantId?: string;
+}
+
+// domain-view: the CredentialAudit read-model row, one per correlationId. Its
+// wire form is CredentialAuditRecord in data-models/cloud.proto.
+export interface CredentialAuditRow {
+	correlationId: string;
+	grants: Record<string, CredentialGrantAudit>;
+	identityIds: string[];
+	sessionIds: string[];
+	timeline: CredentialAuditTimelineEntry[];
+	grantCount: number;
+	useCount: number;
+	revokeCount: number;
+}
+
+function correlationKey(event: EventEnvelope): string {
+	const data = event.data as { correlationId?: string; grantId?: string } | undefined;
+	return event.correlationId ?? data?.correlationId ?? data?.grantId ?? event.streamId;
+}
+
+function base(row: CredentialAuditRow | undefined, correlationId: string): CredentialAuditRow {
+	return row
+		? {
+				...row,
+				grants: { ...row.grants },
+				identityIds: [...row.identityIds],
+				sessionIds: [...row.sessionIds],
+				timeline: [...row.timeline],
+			}
+		: {
+				correlationId,
+				grants: {},
+				identityIds: [],
+				sessionIds: [],
+				timeline: [],
+				grantCount: 0,
+				useCount: 0,
+				revokeCount: 0,
+			};
+}
+
+function grant(row: CredentialAuditRow, grantId: string): CredentialGrantAudit {
+	const existing = row.grants[grantId];
+	return existing ? { ...existing } : { grantId, status: "granted", useCount: 0 };
+}
+
+export const credentialAuditProjection: Projection<CredentialAuditRow> =
+	defineProjection<CredentialAuditRow>({
+		name: "credential-audit",
+		key: correlationKey,
+		on: {
+			[CREDENTIAL_AUDIT_EVENTS.IdentityIssued]: (row, event) => {
+				const data = event.data as { identityId: string };
+				const next = base(row, correlationKey(event));
+				if (!next.identityIds.includes(data.identityId)) {
+					next.identityIds = [...next.identityIds, data.identityId];
+				}
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.IdentityRotated]: (row, event) => {
+				const data = event.data as { identityId: string };
+				const next = base(row, correlationKey(event));
+				if (!next.identityIds.includes(data.identityId)) {
+					next.identityIds = [...next.identityIds, data.identityId];
+				}
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.TokenGranted]: (row, event) => {
+				const data = event.data as {
+					grantId: string;
+					svidSubject?: string;
+					tokenRef?: string;
+					scope?: CredentialAuditScope;
+				};
+				const next = base(row, correlationKey(event));
+				const g = grant(next, data.grantId);
+				g.status = "granted";
+				g.grantedAt = event.ts;
+				if (data.svidSubject !== undefined) g.svidSubject = data.svidSubject;
+				if (data.tokenRef !== undefined) g.tokenRef = data.tokenRef;
+				if (data.scope !== undefined) g.scope = data.scope;
+				next.grants[data.grantId] = g;
+				next.grantCount += 1;
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type, grantId: data.grantId }];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.TokenUsed]: (row, event) => {
+				const data = event.data as { grantId: string };
+				const next = base(row, correlationKey(event));
+				const g = grant(next, data.grantId);
+				// A use before a grant is folded as an anomaly-tolerant "used" status;
+				// the timeline preserves ordering for the security reviewer either way.
+				if (g.status !== "revoked") g.status = "used";
+				g.usedAt = event.ts;
+				g.useCount += 1;
+				next.grants[data.grantId] = g;
+				next.useCount += 1;
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type, grantId: data.grantId }];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.TokenRevoked]: (row, event) => {
+				const data = event.data as { grantId: string; reason?: string };
+				const next = base(row, correlationKey(event));
+				const g = grant(next, data.grantId);
+				g.status = "revoked";
+				g.revokedAt = event.ts;
+				if (data.reason !== undefined) g.revokedReason = data.reason;
+				next.grants[data.grantId] = g;
+				next.revokeCount += 1;
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type, grantId: data.grantId }];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.SessionStarted]: (row, event) => {
+				const data = event.data as { sessionId: string };
+				const next = base(row, correlationKey(event));
+				if (!next.sessionIds.includes(data.sessionId)) {
+					next.sessionIds = [...next.sessionIds, data.sessionId];
+				}
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.SessionRevoked]: (row, event) => {
+				const data = event.data as { sessionId: string };
+				const next = base(row, correlationKey(event));
+				if (!next.sessionIds.includes(data.sessionId)) {
+					next.sessionIds = [...next.sessionIds, data.sessionId];
+				}
+				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				return next;
+			},
+		},
+	});
+
+export interface CompactionResult {
+	retained: EventEnvelope[];
+	droppedCount: number;
+	// True when no credential-audit event was removed (NFR-018 never-compact).
+	auditPreserved: boolean;
+}
+
+/**
+ * A compaction pass over a stream that respects the never-compact retention floor
+ * (NFR-018). Credential-audit events (identity/token/session families) are never
+ * dropped; only non-audit events older than the retention floor are compactable.
+ * A test can therefore prove pre-floor audit events survive a compaction pass.
+ */
+export function compactCredentialAuditStream(
+	events: readonly EventEnvelope[],
+	options: { now?: number; retentionFloorMs?: number } = {},
+): CompactionResult {
+	const now = options.now ?? Date.now();
+	const floorMs = options.retentionFloorMs ?? CREDENTIAL_AUDIT_RETENTION_FLOOR_MS;
+	const auditTotal = events.filter(isCredentialAuditEvent).length;
+
+	const retained = events.filter((event) => {
+		if (isCredentialAuditEvent(event)) return true; // never compacted
+		return now - Date.parse(event.ts) <= floorMs;
+	});
+
+	const auditRetained = retained.filter(isCredentialAuditEvent).length;
+	return {
+		retained,
+		droppedCount: events.length - retained.length,
+		auditPreserved: auditRetained === auditTotal,
+	};
+}

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   createFixtureHostAttestor,
+  createInMemoryProviderStsExchange,
   createInMemoryVault,
   IdentityService,
+  mintOidcFederationAssertion,
   TokenBroker,
   type ActiveSvidRecord,
 } from "../src/index.js";
@@ -194,6 +196,117 @@ describe("secret-scan: no static vaulted secret leaks outside the vault", () => 
     // What crosses is a non-secret reference and one-way-derived material.
     expect(granted.grant.vaultReference).toBe("tokenref://vault/root-1");
     expect(granted.grant.token).not.toContain(FIXTURE_ROOT_SECRET);
+  });
+});
+
+describe("S3-03: keyless provider-STS token exchange (oidc-federation)", () => {
+  function stsBroker(options: { available?: boolean; ttlSeconds?: number } = {}) {
+    return new TokenBroker({
+      vault: createInMemoryVault({ reference: "tokenref://vault/root-1", rootSecret: FIXTURE_ROOT_SECRET }),
+      audience: "aws",
+      sts: createInMemoryProviderStsExchange({
+        provider: "aws",
+        audience: "aws",
+        ttlSeconds: options.ttlSeconds ?? 600,
+        available: options.available ?? true,
+      }),
+    });
+  }
+
+  it("mints a scoped provider token via the OIDC-federation exchange, no static secret", async () => {
+    const { svid } = await issuedSvid();
+    const broker = stsBroker();
+    const granted = broker.grantForDeploy({
+      svid,
+      scope: { port: "database", resource: "shop.db", action: "write" },
+      deployId: "deploy-42",
+      now: NOW,
+    });
+    expect(granted.status).toBe("granted");
+    if (granted.status !== "granted") return;
+
+    // Keyless: the credential came from the exchange, not the vaulted static key.
+    expect(granted.grant.credentialSource).toBe("oidc-federation");
+    expect(granted.grant.token.startsWith("providertok_")).toBe(true);
+    expect(granted.grant.token.startsWith("hobotok_")).toBe(false);
+    expect(granted.grant.providerTokenRef).toBe(
+      "tokenref://provider/aws/shop.db/write/0",
+    );
+    expect(broker.brokeredCounts).toEqual({ federated: 1, fallback: 0 });
+
+    // The vaulted root secret never crosses the boundary on the federated path.
+    const surface = JSON.stringify({ grant: granted.grant, events: broker.getAuditEvents() });
+    expect(surface.includes(FIXTURE_ROOT_SECRET)).toBe(false);
+  });
+
+  it("keeps the brokered ratio ≥99% across a batch (NFR-005)", async () => {
+    const { svid } = await issuedSvid();
+    const broker = stsBroker();
+    for (let i = 0; i < 100; i += 1) {
+      const granted = broker.grantForDeploy({
+        svid,
+        scope: { port: "database", resource: "shop.db", action: "read" },
+        deployId: `deploy-batch-${i}`,
+        now: NOW,
+      });
+      expect(granted.status).toBe("granted");
+    }
+    expect(broker.brokeredCounts.federated).toBe(100);
+    expect(broker.brokeredRatio()).toBeGreaterThanOrEqual(0.99);
+  });
+
+  it("rejects an expired exchanged token (past-TTL grant cannot be used)", async () => {
+    const { svid } = await issuedSvid();
+    const broker = stsBroker({ ttlSeconds: 600 });
+    const granted = broker.grantForDeploy({
+      svid,
+      scope: { port: "database", resource: "shop.db", action: "read" },
+      deployId: "deploy-exp",
+      now: NOW,
+    });
+    if (granted.status !== "granted") throw new Error("expected granted");
+    expect(granted.grant.credentialSource).toBe("oidc-federation");
+
+    const afterExpiry = new Date(Date.parse(NOW) + 601 * 1000).toISOString();
+    const used = broker.useToken({ grantId: granted.grant.grantId, now: afterExpiry });
+    expect(used.status).toBe("denied");
+    if (used.status === "denied") expect(used.reason).toBe("grant-expired");
+  });
+
+  it("the STS itself rejects a stale OIDC assertion (no token minted from expired input)", () => {
+    const sts = createInMemoryProviderStsExchange({ provider: "aws", audience: "aws", ttlSeconds: 600 });
+    const scope = { port: "database", resource: "shop.db", action: "read" } as const;
+    const subject = "spiffe://yard/tenant-a/agent/deployer";
+    const assertion = mintOidcFederationAssertion({
+      issuer: "https://identity.yard.example",
+      subject,
+      audience: "aws",
+      scope,
+      now: NOW,
+      ttlSeconds: 120,
+    });
+    const stale = new Date(Date.parse(NOW) + 121 * 1000).toISOString();
+    const result = sts.exchange({ oidcToken: assertion.token, audience: "aws", subject, scope, now: stale });
+    expect(result.status).toBe("rejected");
+    if (result.status === "rejected") expect(result.reason).toBe("oidc-assertion-expired");
+  });
+
+  it("falls back to the bounded static key only when federation is unavailable", async () => {
+    const { svid } = await issuedSvid();
+    const broker = stsBroker({ available: false });
+    const granted = broker.grantForDeploy({
+      svid,
+      scope: { port: "database", resource: "shop.db", action: "write" },
+      deployId: "deploy-fallback",
+      now: NOW,
+    });
+    expect(granted.status).toBe("granted");
+    if (granted.status !== "granted") return;
+
+    expect(granted.grant.credentialSource).toBe("vault-static-key");
+    expect(granted.grant.token.startsWith("hobotok_")).toBe(true);
+    expect(granted.grant.providerTokenRef).toBeUndefined();
+    expect(broker.brokeredCounts).toEqual({ federated: 0, fallback: 1 });
   });
 });
 

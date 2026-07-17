@@ -192,3 +192,41 @@ package hobo
 	targetSetId:  string & !=""
 	reason:       string & !=""
 }
+
+// ---- S3-04: CredentialAudit projection constraints (one per protobuf message) ----
+
+#CredentialAuditScope: {
+	port:     string & !=""
+	resource: string & !=""
+	action:   string & !=""
+}
+
+#CredentialGrantAudit: {
+	grantId:        string & !=""
+	svidSubject?:   string
+	scope?:         #CredentialAuditScope
+	tokenRef?:      string
+	status:         "granted" | "used" | "revoked"
+	grantedAt?:     string
+	usedAt?:        string
+	revokedAt?:     string
+	revokedReason?: string
+	useCount:       uint
+}
+
+#CredentialAuditTimelineEntry: {
+	seq:      uint
+	type:     string & !=""
+	grantId?: string
+}
+
+#CredentialAuditRecord: {
+	correlationId: string & !=""
+	grants: {[string]: #CredentialGrantAudit}
+	identityIds: [...string]
+	sessionIds: [...string]
+	timeline: [...#CredentialAuditTimelineEntry]
+	grantCount:  uint
+	useCount:    uint
+	revokeCount: uint
+}

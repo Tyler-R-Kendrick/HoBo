@@ -41,12 +41,21 @@ export {
   type ScopeEntry,
 } from "./identity-service.js";
 export {
+  BROKER_OIDC_ASSERTION_TTL_SECONDS,
+  createInMemoryProviderStsExchange,
   createInMemoryVault,
+  mintOidcFederationAssertion,
   TokenBroker,
   TOKEN_BROKER_DEFAULT_TTL_SECONDS,
+  type BrokeredCredentialSource,
+  type ExchangedProviderCredential,
   type GrantTokenResult,
+  type OidcFederationAssertion,
+  type ProviderStsExchange,
   type RevokeTokenResult,
   type ScopedTokenGrant,
+  type StsExchangeRequest,
+  type StsExchangeResult,
   type UseTokenResult,
   type VaultedCredential,
 } from "./token-broker.js";

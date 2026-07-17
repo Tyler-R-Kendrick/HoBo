@@ -37,6 +37,8 @@ import {
 } from "./pulumi-iac-provider.js";
 import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 import type { VercelFetch } from "./vercel-client.js";
+import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
+import type { CloudflareFetch } from "./cloudflare-client.js";
 
 // @hobo/hobo — the composition root (apps layer). It wires HoBo's default
 // runtimes so the composed `hobo` binary runs the cloud verbs end to end in the
@@ -110,21 +112,38 @@ export interface SelectIacProviderDeps {
 	readonly providers: readonly CloudProvider[];
 	// Optional Pulumi adapter override (forces the Pulumi lane; see above).
 	readonly adapter?: PulumiAutomationAdapter;
-	// The environment consulted for `VERCEL_TOKEN`. Defaults to `process.env`.
+	// The environment consulted for `VERCEL_TOKEN` / `CLOUDFLARE_API_TOKEN` +
+	// `CLOUDFLARE_ACCOUNT_ID`. Defaults to `process.env`.
 	readonly env?: Record<string, string | undefined>;
 	// Optional injected transport for the Vercel client (tests mock the network).
 	readonly vercelFetch?: VercelFetch;
+	// Optional injected transport for the Cloudflare client (tests mock the network).
+	readonly cloudflareFetch?: CloudflareFetch;
 }
 
 // Select the IaC backend on the deploy path by environment. This is HoBo's
-// thesis realized for the one cloud actually reachable from its own pipeline:
-//   - `VERCEL_TOKEN` present  -> the REAL Vercel deploy provider (cred-gated).
-//   - otherwise               -> the in-memory Pulumi-backed provider (fallback).
+// thesis realized for the clouds actually reachable from its own pipeline, in
+// precedence order:
+//   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
+//     Cloudflare Workers deploy provider (cred-gated).
+//   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
+//   - otherwise -> the in-memory Pulumi-backed provider (fallback).
 // A Pulumi `adapter` override always wins (it is a Pulumi adapter), keeping the
 // existing spy-adapter tests deterministic regardless of ambient env.
 export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const env = deps.env ?? process.env;
+	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
+	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
 	const vercelToken = env.VERCEL_TOKEN;
+	if (deps.adapter === undefined && cloudflareToken && cloudflareAccountId) {
+		return createCloudflareDeployProvider({
+			token: cloudflareToken,
+			accountId: cloudflareAccountId,
+			...(deps.cloudflareFetch !== undefined
+				? { fetch: deps.cloudflareFetch }
+				: {}),
+		});
+	}
 	if (deps.adapter === undefined && vercelToken) {
 		return createVercelDeployProvider({
 			token: vercelToken,
@@ -164,7 +183,9 @@ export function createDefaultYardRuntime(
 			iac: selectIacProvider({
 				store,
 				providers: [cloudflare],
-				...(options.iacAdapter !== undefined ? { adapter: options.iacAdapter } : {}),
+				...(options.iacAdapter !== undefined
+					? { adapter: options.iacAdapter }
+					: {}),
 			}),
 		}),
 		broker: createInProcessCredentialBroker(),

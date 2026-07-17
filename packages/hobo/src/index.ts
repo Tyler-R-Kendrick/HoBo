@@ -30,3 +30,16 @@ export {
 	createVercelDeployProvider,
 	type VercelDeployProviderOptions,
 } from "./vercel-deploy-provider.js";
+export {
+	createCloudflareClient,
+	type CloudflareClient,
+	type CloudflareClientOptions,
+	type CloudflareFetch,
+	type CloudflareFetchResponse,
+	type UploadWorkerInput,
+	type UploadWorkerResult,
+} from "./cloudflare-client.js";
+export {
+	createCloudflareDeployProvider,
+	type CloudflareDeployProviderOptions,
+} from "./cloudflare-deploy-provider.js";

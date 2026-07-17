@@ -1,15 +1,19 @@
 import type { RegistrableProvider } from "@hobo/cloud";
 
-// A genuine second provider for the registry: the runtime-local in-process
-// target `hobo dev` already runs on. It offers the `kv` and `objectStore` ports
-// backed by the local component host (zero cost, single "local" region). This is
-// a real Capability-Manifest-bearing provider — installable via `hobo add local`
-// — not a placeholder: its ports are exactly what the offline hello-bindle binds.
-export function createLocalProvider(): RegistrableProvider {
-	const ports = ["kv", "objectStore"] as const;
+// Build a Capability-Manifest-bearing `RegistrableProvider` from a port spec.
+// This is the shared factory behind both the built-in `local` provider and the
+// providers `hobo generate` synthesizes: given an id, a set of ports, and a
+// region, it produces a real provider whose capabilities/cost/manifest are all
+// derived deterministically from the spec — a genuine provider definition, not a
+// placeholder.
+export function createProviderFromPorts(
+	id: string,
+	ports: readonly string[],
+	region = "local",
+): RegistrableProvider {
 	return {
-		id: "local",
-		regions: ["local"],
+		id,
+		regions: [region],
 		capabilities: ports.map((port) => ({
 			port,
 			satisfies: (req) =>
@@ -18,33 +22,40 @@ export function createLocalProvider(): RegistrableProvider {
 					: { kind: "none", missing: [req.port] },
 			estimateCost: () => ({
 				marginalPrice: "0",
-				sku: `local-${port}`,
+				sku: `${id}-${port}`,
 				unit: "hour",
 			}),
 		})),
 		capabilityManifest: () => ({
-			providerId: "local",
+			providerId: id,
 			published: {
 				"/.well-known/capability-manifest/index.json": JSON.stringify({
-					providerId: "local",
-					ports,
+					providerId: id,
+					ports: [...ports],
 				}),
 			},
 			capabilities: {
 				capabilities: ports.map((port) => ({
 					port,
 					features: [],
-					regions: ["local"],
+					regions: [region],
 				})),
 			},
 			cost: {
 				facts: ports.map((port) => ({
 					port,
-					sku: `local-${port}`,
+					sku: `${id}-${port}`,
 					unit: "hour",
 					marginalPrice: "0",
 				})),
 			},
 		}),
 	};
+}
+
+// The built-in `local` provider: the runtime-local in-process target `hobo dev`
+// already runs on (kv + objectStore, one "local" region, zero cost). Installable
+// via `hobo add local`.
+export function createLocalProvider(): RegistrableProvider {
+	return createProviderFromPorts("local", ["kv", "objectStore"]);
 }

@@ -52,3 +52,7 @@ export {
 	createVercelDeployProvider,
 	type VercelDeployProviderOptions,
 } from "./vercel-deploy-provider.js";
+export {
+	createVerifyCommand,
+	type VerifyCommandDeps,
+} from "./verify-command.js";

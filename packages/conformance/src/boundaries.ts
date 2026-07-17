@@ -267,6 +267,7 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	// exception is required.
 	{ from: "packages/hobo", to: "packages/cli" },
 	{ from: "packages/hobo", to: "packages/cloud" },
+	{ from: "packages/hobo", to: "packages/contracts" },
 	{ from: "packages/hobo", to: "packages/bindles" },
 	{ from: "packages/hobo", to: "packages/core" },
 	{ from: "packages/hobo", to: "packages/data" },
@@ -276,6 +277,9 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/providers/provider-agentv", to: "packages/core" },
 	{ from: "packages/providers/provider-ax", to: "packages/core" },
 	// Accepted training/eval-provider composition edges (see ACCEPTED_ADAPTER_PACKAGE_EDGES).
-	{ from: "packages/providers/provider-agentv", to: "packages/training-pipeline" },
+	{
+		from: "packages/providers/provider-agentv",
+		to: "packages/training-pipeline",
+	},
 	{ from: "packages/providers/provider-ax", to: "packages/runtime" },
 ];

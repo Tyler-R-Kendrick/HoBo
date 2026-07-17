@@ -4,6 +4,7 @@ import { basename, join } from "node:path";
 
 import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
 import type { DevRuntime, YardRuntime } from "@hobo/cli";
+import type { IacProvider } from "@hobo/cloud";
 import {
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
@@ -28,17 +29,14 @@ import {
 	createRuntimeLocalComponentHost,
 	createRuntimeLocalEventStore,
 } from "@hobo/runtime-local";
-
-import type { IacProvider } from "@hobo/cloud";
-
+import type { CloudflareFetch } from "./cloudflare-client.js";
+import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
 import {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 } from "./pulumi-iac-provider.js";
-import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 import type { VercelFetch } from "./vercel-client.js";
-import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
-import type { CloudflareFetch } from "./cloudflare-client.js";
+import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 
 // @hobo/hobo — the composition root (apps layer). It wires HoBo's default
 // runtimes so the composed `hobo` binary runs the cloud verbs end to end in the
@@ -103,6 +101,18 @@ export interface DefaultYardRuntimeOptions {
 	// override is only meaningful on that lane. Env-based Vercel selection applies
 	// to the DEFAULT (un-overridden) path.
 	readonly iacAdapter?: PulumiAutomationAdapter;
+	// The environment consulted for deploy credentials (`VERCEL_TOKEN`,
+	// `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`). Defaults to `process.env`.
+	// Inject a snapshot to drive the REAL Vercel/Cloudflare deploy lane through
+	// the composed runtime without mutating the ambient process environment.
+	readonly env?: Record<string, string | undefined>;
+	// Injected transport for the Vercel client. Lets a test prove `hobo up` routes
+	// end to end into the real Vercel provider's HTTP call without a live token or
+	// a real socket (mock records the request). Ignored on the in-memory lane.
+	readonly vercelFetch?: VercelFetch;
+	// Injected transport for the Cloudflare client — same purpose as `vercelFetch`
+	// for the Cloudflare Workers deploy lane.
+	readonly cloudflareFetch?: CloudflareFetch;
 }
 
 export interface SelectIacProviderDeps {
@@ -185,6 +195,13 @@ export function createDefaultYardRuntime(
 				providers: [cloudflare],
 				...(options.iacAdapter !== undefined
 					? { adapter: options.iacAdapter }
+					: {}),
+				...(options.env !== undefined ? { env: options.env } : {}),
+				...(options.vercelFetch !== undefined
+					? { vercelFetch: options.vercelFetch }
+					: {}),
+				...(options.cloudflareFetch !== undefined
+					? { cloudflareFetch: options.cloudflareFetch }
 					: {}),
 			}),
 		}),

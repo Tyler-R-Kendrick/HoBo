@@ -1,3 +1,10 @@
+---
+type: Reference Standard
+title: "Monorepo DX Playbook"
+description: "Portfolio-wide standard for TypeScript repo/monorepo developer experience; canonical home for the DX.md contract adopted across the portfolio repos."
+tags: [hobo, standards]
+---
+
 # Monorepo DX Playbook
 
 **Status:** Standard · **Canonical home:** `HoBo/docs/standards/monorepo-dx-playbook.md`

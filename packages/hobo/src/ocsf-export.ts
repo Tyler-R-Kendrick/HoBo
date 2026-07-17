@@ -74,12 +74,24 @@ export interface OcsfBatch {
 	readonly sealDigest: string;
 }
 
-function chainFor(grant: CredentialGrantAudit): OcsfCredentialChain {
+// A crypto-shredded subject is redacted to a stable, non-reversible ref so the
+// evidence stays linkable (same subject -> same ref) without exposing the
+// erased identifier (HOBO-295).
+function redactSubject(subject: string): string {
+	return `[erased:${createHash("sha256").update(subject).digest("hex").slice(0, 16)}]`;
+}
+
+function chainFor(
+	grant: CredentialGrantAudit,
+	erased: ReadonlySet<string>,
+): OcsfCredentialChain {
+	const svidSubject =
+		grant.svidSubject !== undefined && erased.has(grant.svidSubject)
+			? redactSubject(grant.svidSubject)
+			: grant.svidSubject;
 	return {
 		grantId: grant.grantId,
-		...(grant.svidSubject !== undefined
-			? { svidSubject: grant.svidSubject }
-			: {}),
+		...(svidSubject !== undefined ? { svidSubject } : {}),
 		...(grant.tokenRef !== undefined ? { tokenRef: grant.tokenRef } : {}),
 		...(grant.scope !== undefined ? { scope: grant.scope } : {}),
 		...(grant.grantedAt !== undefined ? { grantedAt: grant.grantedAt } : {}),
@@ -92,6 +104,7 @@ function chainFor(grant: CredentialGrantAudit): OcsfCredentialChain {
 function recordFor(
 	correlationId: string,
 	grant: CredentialGrantAudit,
+	erased: ReadonlySet<string>,
 ): OcsfAuthorizationRecord {
 	const activity = ACTIVITY_BY_STATUS[grant.status];
 	// A revoked grant is a benign, expected end-of-life (severity Informational=1).
@@ -116,7 +129,7 @@ function recordFor(
 			export_kind: "credential-audit",
 			export_version: OCSF_EXPORT_VERSION,
 			correlation_id: correlationId,
-			credential_chain: chainFor(grant),
+			credential_chain: chainFor(grant, erased),
 		},
 	};
 }
@@ -141,14 +154,28 @@ function sortedReplacer(): (key: string, value: unknown) => unknown {
 	};
 }
 
+export interface OcsfExportOptions {
+	// Data subjects that have requested crypto-shred erasure (HOBO-295). Their
+	// identifiers are redacted from the exported credential chains on rebuild,
+	// without rewriting any historical event.
+	readonly erasedSubjects?: ReadonlySet<string>;
+}
+
 // Map a folded CredentialAuditRow to a signed-ready OCSF Authorization batch,
 // one record per grant (its terminal lifecycle state), each carrying the full
-// credential_chain. Ordering follows the row's timeline monotonicity.
-export function credentialAuditToOcsf(row: CredentialAuditRow): OcsfBatch {
+// credential_chain. Ordering follows the row's timeline monotonicity. Erased
+// subjects (from `options.erasedSubjects`) are redacted on rebuild.
+export function credentialAuditToOcsf(
+	row: CredentialAuditRow,
+	options: OcsfExportOptions = {},
+): OcsfBatch {
+	const erased = options.erasedSubjects ?? new Set<string>();
 	const grants = Object.values(row.grants).sort((a, b) =>
 		a.grantId.localeCompare(b.grantId),
 	);
-	const records = grants.map((grant) => recordFor(row.correlationId, grant));
+	const records = grants.map((grant) =>
+		recordFor(row.correlationId, grant, erased),
+	);
 
 	let ordering: OcsfBatch["ordering"] = { mode: "ordered" };
 	for (let i = 1; i < row.timeline.length; i++) {

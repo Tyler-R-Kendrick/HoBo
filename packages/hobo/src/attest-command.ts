@@ -1,6 +1,10 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
-import { credentialAuditProjection } from "@hobo/cloud";
+import {
+	collectStream,
+	credentialAuditProjection,
+	foldErasedSubjects,
+} from "@hobo/cloud";
 
 import { credentialAuditToOcsf } from "./ocsf-export.js";
 
@@ -37,11 +41,17 @@ export function createAttestCommand(
 
 			const projectDir = context.projectDir ?? flags.cwd ?? context.cwd;
 			const deploymentId = deploymentIdFor(projectDir);
+			const stream = `deployment:${deploymentId}`;
 			const snapshot = await credentialAuditProjection.rebuildFromZero(
 				runtime.store,
-				`deployment:${deploymentId}`,
+				stream,
 			);
 			const rows = credentialAuditProjection.query(snapshot);
+			// Crypto-shred: subjects that requested erasure are redacted on rebuild
+			// (HOBO-295) without rewriting any historical event.
+			const erasedSubjects = foldErasedSubjects(
+				await collectStream(runtime.store, stream),
+			);
 
 			if (rows.length === 0) {
 				return {
@@ -53,7 +63,9 @@ export function createAttestCommand(
 				};
 			}
 
-			const batches = rows.map((row) => credentialAuditToOcsf(row));
+			const batches = rows.map((row) =>
+				credentialAuditToOcsf(row, { erasedSubjects }),
+			);
 			const recordCount = batches.reduce((n, b) => n + b.records.length, 0);
 			const unordered = batches.filter((b) => b.ordering.mode === "unordered");
 

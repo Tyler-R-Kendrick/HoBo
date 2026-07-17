@@ -19,6 +19,7 @@ import {
 } from "./compose.js";
 import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
+import { createEraseCommand } from "./erase-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLogsCommand } from "./logs-command.js";
 import { createRegistryCommand } from "./registry-command.js";
@@ -68,6 +69,7 @@ export function createComposedHoboCli(
 			registry: createRegistryCommand({ runtime }),
 			logs: createLogsCommand(),
 			runbook: createRunbookCommand({ runtime }),
+			erase: createEraseCommand({ runtime }),
 			sandbox,
 			test: sandbox,
 		},

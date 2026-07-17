@@ -95,13 +95,13 @@ export function createDerivativeCommand(
 				};
 			}
 
-			const projectDir = context.projectDir ?? flags.cwd ?? context.cwd;
+			// The derivative descriptor lives at the invocation directory (a fork
+			// need not be a Bindle project), so read from the actual cwd rather than
+			// a discovered project root.
+			const dir = flags.cwd ?? context.cwd;
 			let descriptor: DerivativeDescriptor;
 			try {
-				const raw = await readFile(
-					path.join(projectDir, DESCRIPTOR_FILE),
-					"utf8",
-				);
+				const raw = await readFile(path.join(dir, DESCRIPTOR_FILE), "utf8");
 				descriptor = parseDescriptor(JSON.parse(raw));
 			} catch (error) {
 				return {

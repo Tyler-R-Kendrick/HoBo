@@ -8,6 +8,10 @@ export {
 	createAttestCommand,
 } from "./attest-command.js";
 export {
+	type CanDeployCommandDeps,
+	createCanDeployCommand,
+} from "./can-deploy-command.js";
+export {
 	type ClaimCommandDeps,
 	createClaimCommand,
 } from "./claim-command.js";

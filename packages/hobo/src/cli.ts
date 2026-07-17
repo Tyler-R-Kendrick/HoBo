@@ -12,6 +12,7 @@ import {
 } from "@hobo/cli";
 import { createAddCommand } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
+import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
 import {
 	createDefaultCollectionTarget,
@@ -66,6 +67,7 @@ export function createComposedHoboCli(
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),
+			"can-deploy": createCanDeployCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),

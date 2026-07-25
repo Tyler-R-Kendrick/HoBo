@@ -4,7 +4,8 @@
 	"description": "HoBo composition-root app: wires the default LOCAL/MOCKED runtimes so the composed `hobo` binary runs the cloud verbs (collect/plan/up/down/dev) end to end without shell stubs.",
 	"type": "module",
 	"bin": {
-		"hobo": "./dist/bin/hobo.js"
+		"hobo": "./dist/bin/hobo.js",
+		"hobo-mcp": "./dist/bin/hobo-mcp.js"
 	},
 	"files": [
 		"dist"
@@ -26,6 +27,7 @@
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",
 		"@hobo/iac-pulumi": "workspace:*",
+		"@hobo/mcp": "workspace:*",
 		"@hobo/provider-cloudflare": "workspace:*",
 		"@hobo/runtime-local": "workspace:*"
 	},

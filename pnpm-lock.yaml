@@ -251,6 +251,9 @@ importers:
       '@hobo/iac-pulumi':
         specifier: workspace:*
         version: link:../iac/iac-pulumi
+      '@hobo/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare

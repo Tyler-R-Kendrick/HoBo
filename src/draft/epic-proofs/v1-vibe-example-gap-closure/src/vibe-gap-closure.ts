@@ -52,6 +52,7 @@ const ALLOWED_ARTIFACTS = new Set([
 
 export type VibeChildPhase = "M1" | "M2" | "M5";
 
+// domain-view: readonly parse-produced report shape; its wire form is the vibe backlog proto message of the same name.
 export interface VibeChildIssue {
   id: string;
   title: string;
@@ -67,6 +68,7 @@ export interface VibeChildIssue {
   scopeOut: string[];
 }
 
+// domain-view: readonly parse-produced report shape; its wire form is the vibe backlog proto message of the same name.
 export interface VibeGapClosureBacklog {
   parentIssue: "HOBO-539";
   parentTitle: string;
@@ -77,6 +79,7 @@ export interface VibeGapClosureBacklog {
 
 export type DxPhase = "M1" | "M2";
 
+// domain-view: readonly parse-produced report shape; its wire form is the vibe backlog proto message of the same name.
 export interface VibeDxSliceIssue {
   id: string;
   title: string;
@@ -94,6 +97,7 @@ export interface VibeDxSliceIssue {
   scopeOut: string[];
 }
 
+// domain-view: readonly parse-produced report shape; its wire form is the vibe backlog proto message of the same name.
 export interface VibeDxBackboneGraph {
   parentIssue: "HOBO-539";
   backboneIssue: {

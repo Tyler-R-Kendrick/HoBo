@@ -152,6 +152,7 @@ GitHub Actions run three primary lanes:
 - [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
 - [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated multi-cloud fixture jobs (multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
 - [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): the hello-bindle fixture lanes (simulate-mode, `packages/ci-guard` runners), also label/schedule/manual gated.
+- Manual live-deploy lanes (`workflow_dispatch` + repo secrets): [`deploy-hello-bindle-vercel.yml`](./.github/workflows/deploy-hello-bindle-vercel.yml) (Vercel CLI) and [`deploy-hello-bindle-pulumi.yml`](./.github/workflows/deploy-hello-bindle-pulumi.yml) (the real pinned Pulumi CLI engine behind the same `@hobo/iac-pulumi` adapter the composed deploy path uses; `HOBO_PULUMI_LIVE=1` selects it locally).
 
 The website is **not** CI-deployed: [`site/`](./site/README.md) is built locally and pushed to the `gh-pages` branch directly (GitHub Pages serves that branch), so publishing works even when Actions runs are unavailable.
 
@@ -176,7 +177,8 @@ Important rules for agents and humans:
 - **Design suite:** active and canonical under [`docs/design/`](./docs/design/index.md).
 - **Backlog mirror:** [`docs/implementation-plan.md`](./docs/implementation-plan.md); Linear is live operational source.
 - **Executable proof material:** `src/draft/<kind>/<slug>` packages and repo validation scripts.
-- **Primary command surface:** `hobo` CLI, specified in [`docs/design/cli-spec.md`](./docs/design/cli-spec.md) and implemented in [`packages/hobo/`](./packages/hobo/).
+- **Primary command surface:** `hobo` CLI, specified in [`docs/design/cli-spec.md`](./docs/design/cli-spec.md) and implemented in [`packages/hobo/`](./packages/hobo/). The same 27-verb surface is served over MCP stdio by the `hobo-mcp` binary (same package), with verb/tool parity enforced by contract test.
+- **Behavior suite:** every epic proof carries executable Gherkin — `pnpm run test:behavior` runs the full cucumber lane (26 epics + project rollups).
 
 ## License
 

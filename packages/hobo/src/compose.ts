@@ -11,6 +11,10 @@ import {
 } from "@hobo/cli";
 import type { IacProvider } from "@hobo/cloud";
 import {
+	createPulumiAutomationAdapter,
+	createPulumiCliAutomationEngine,
+} from "@hobo/iac-pulumi";
+import {
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 	createRegistryFromProviders,
@@ -60,9 +64,10 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // the bridge resolves each resource's real ResourcePlan from the durable
 // `deployment.Planned` fact, lowers it with `provider.realize()` to a
 // `hobo.iac-program/v1` program, and applies it through the real adapter. There
-// is NO mock IacProvider. HONEST SCOPE: @hobo/iac-pulumi's backend is still its
-// in-memory Automation-API stand-in (no live Pulumi/Cloudflare calls) — but the
-// real adapter + real realize() are on the deploy path.
+// is NO mock IacProvider. HONEST SCOPE: the DEFAULT backend is the in-memory
+// Automation-API stand-in (offline, deterministic); `HOBO_PULUMI_LIVE=1` swaps
+// in the real pinned `pulumi` CLI engine (binary- and credential-gated — see
+// selectIacProvider and the deploy-hello-bindle-pulumi workflow lane).
 
 // @hobo/provider-cloudflare types its capability-manifest fields more loosely
 // (PublishedManifestDocuments / Record<string, unknown>) than @hobo/cloud's
@@ -139,6 +144,8 @@ export interface SelectIacProviderDeps {
 // Select the IaC backend on the deploy path by environment. This is HoBo's
 // thesis realized for the clouds actually reachable from its own pipeline, in
 // precedence order:
+//   - `HOBO_PULUMI_LIVE=1` -> the REAL pinned `pulumi` CLI engine behind the
+//     same adapter (binary- and credential-gated; docs/plans/0005 item 3-2).
 //   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
 //     Cloudflare Workers deploy provider (cred-gated).
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
@@ -150,6 +157,20 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
 	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
 	const vercelToken = env.VERCEL_TOKEN;
+	if (deps.adapter === undefined && env.HOBO_PULUMI_LIVE === "1") {
+		return createPulumiBackedIacProvider({
+			store: deps.store,
+			providers: deps.providers,
+			adapter: createPulumiAutomationAdapter({
+				engine: createPulumiCliAutomationEngine({
+					workDir:
+						env.HOBO_PULUMI_WORKDIR ??
+						mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
+					env,
+				}),
+			}) as PulumiAutomationAdapter,
+		});
+	}
 	if (deps.adapter === undefined && cloudflareToken && cloudflareAccountId) {
 		return createCloudflareDeployProvider({
 			token: cloudflareToken,

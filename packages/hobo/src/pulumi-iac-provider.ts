@@ -37,11 +37,12 @@ import type { CloudProvider } from "@hobo/provider-cloudflare";
 //   4. map the adapter's per-resource-stack outputs/diff back to the kernel's
 //      `IacDiff`/`IacOutputs`/`IacDriftReport`.
 //
-// HONEST SCOPE: the Pulumi backend is still @hobo/iac-pulumi's in-memory
-// Automation-API stand-in (real `pulumi up` against a live backend is a separate
-// future step — see the ponytail note in iac-pulumi-automation-adapter.ts). But
-// the deploy path now runs the REAL adapter code and the REAL provider.realize()
-// — there is no mock IacProvider. No real Cloudflare API is called.
+// HONEST SCOPE: the DEFAULT Pulumi backend is @hobo/iac-pulumi's in-memory
+// Automation-API stand-in; the real pinned `pulumi` CLI engine exists
+// (createPulumiCliAutomationEngine) and is selected with HOBO_PULUMI_LIVE=1 —
+// binary- and credential-gated, exercised by the deploy-hello-bindle-pulumi
+// workflow lane. Either way the deploy path runs the REAL adapter code and the
+// REAL provider.realize() — there is no mock IacProvider.
 // ---------------------------------------------------------------------------
 
 // The subset of the @hobo/iac-pulumi adapter surface this bridge drives. The

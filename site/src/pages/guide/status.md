@@ -12,8 +12,16 @@ Where is HoBo on the road? Here's the honest itinerary.
 |---|---|
 | **Product** | Pre-release. Not yet accepting paying tenants — or freeloading ones. |
 | **Developer surface** | The SDK primitives, `hobo` CLI verbs, and MCP surface documented on this site are **contract-pinned**: specified, validated, and stable to learn against. |
-| **Implementation** | Progressing through staged build gates (below), each an acceptance record plus a runnable CI lane. |
+| **Implementation** | Progressing through staged build gates (below), each an acceptance record plus a runnable CI lane. See "What runs today" for the shipped slice. |
 | **This site** | The canonical developer documentation for the surfaces above — written for humans and agents alike. |
+
+## What runs today
+
+- **The TypeScript bindle flow.** A project whose `src/bindle.ts` default-exports a `bindle()` runs `hobo collect`, `hobo plan`, `hobo up`, `hobo down`, and `hobo dev` end to end against the default **local, in-memory lane** — no cloud account. `hobo dev` serves the project's own api/web entrypoint handler in-process; a committed `hobo.bindle.json` manifest artifact wins when present.
+- **The MCP control surface.** The `hobo-mcp` binary serves all 27 canonical verbs as MCP tools over stdio, dispatching through the same command registry as the CLI, with verb/tool parity contract-tested, deny-by-default auth, and audited decisions. See [the MCP surface](/HoBo/agents/mcp/).
+- **Credential-gated live lanes.** Cloudflare and Vercel deploys unlock via env tokens; the real pinned Pulumi CLI engine unlocks via `HOBO_PULUMI_LIVE=1`.
+- **Examples in the repo:** `examples/hello-bindle`, `examples/multi-cloud-shop`, and `examples/durable-agent`. A self-host-yard example is coming.
+- **Not yet shipped:** `@hobo/junctions` (deliberately deferred to the S4 multi-cloud stage) and the fly/aws/azure/gcp provider and postgres runtime packages — pages that show them are marked design-stage.
 
 ## How the build is staged
 

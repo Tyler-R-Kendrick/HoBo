@@ -89,6 +89,34 @@ importers:
         specifier: ^22.15.3
         version: 22.20.0
 
+  examples/self-host-yard:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../../packages/bindles
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../../packages/camps
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@hobo/hobo':
+        specifier: workspace:*
+        version: link:../../packages/hobo
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../../packages/runtimes/runtime-local
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../../packages/yards
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+
   packages/bindles:
     dependencies:
       '@hobo/core':
@@ -400,10 +428,6 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
-    devDependencies:
-      '@hobo/iac-pulumi':
-        specifier: workspace:*
-        version: link:../../iac/iac-pulumi
 
   packages/runtime:
     dependencies:

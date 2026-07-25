@@ -179,6 +179,13 @@ the plan landed. Status by item:
 - **Phase 4** — done. `multi-cloud-shop`, `durable-agent`, and `self-host-yard` examples;
   schema-tools 8 test files / 56 tests; `event_envelope` single-sourced with a drift-guarded
   mirror (IMPL-009 resolved); ADR-0126 records the deploy-artifact JS exception.
+- **Aftermath of Phase 0** — wiring `check:all` to actually run everything surfaced five more
+  latent failures that were red on `main` under dead CI: the bindles API-freeze fixture missing
+  the catalog's `cache` factory, a missing `cache` local-Camp equivalent, a scaffold test
+  outrunning the default timeout under full-suite load, two cwd-dependent artifact tests, and a
+  test-only adapter→adapter dependency (`provider-cloudflare` → `iac-pulumi`, merged as #868
+  during the blackout) whose conformance test now lives in the composition root where both
+  adapters are legal imports. All fixed; `check:all` runs green end to end.
 - **Phase 5** — W1 done (647 schema-validated manifests via
   `scripts/backfill-proof-manifests.mts`; the sweep also cleared 303 latent parallel-type
   declarations and taught the guard to skip frozen promoted proofs). W2 done (all 26 epics carry

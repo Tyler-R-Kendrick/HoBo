@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-// TEST-ONLY composition proof. The package boundary guard forbids adapter ->
-// adapter runtime imports, so @hobo/iac-pulumi is NOT a src or package.json
-// dependency; it is resolved here purely at test time (via node_modules symlink)
-// to prove realize() output is accepted by the real IaC backend.
+// Cross-adapter composition proof, homed in the composition root: the package
+// boundary guard forbids adapter -> adapter imports, so this test lives in
+// @hobo/hobo (which legally depends on both @hobo/iac-pulumi and
+// @hobo/provider-cloudflare) to prove realize() output is accepted by the
+// real IaC backend.
 import {
 	createPulumiAutomationAdapter,
 	runIacBackendConformance,
@@ -15,7 +16,7 @@ import {
 	createHelloBindlePlan,
 	type ResourcePlan,
 	realizeHelloBindle,
-} from "../src/index.js";
+} from "@hobo/provider-cloudflare";
 
 const PORTS: Array<{ port: string; name: string }> = [
 	{ port: "compute", name: "web" },

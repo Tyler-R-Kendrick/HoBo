@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	DecisionKind,
+	HardBlockSignalSchema,
 	UsageSnapshotSchema,
 } from "../src/_generated/runner_balancing_pb.js";
 import { parseUsageSnapshots, RegistryParseError } from "../src/parse.js";
@@ -142,6 +143,55 @@ describe("runRebalance", () => {
 				seq: "seq-12",
 			}),
 		).rejects.toBeInstanceOf(RegistryParseError);
+	});
+
+	it("replays the shipped last-resort fixture: a spending-limit hard block fails over to the requesting machine", async () => {
+		const fixture = JSON.parse(
+			await readFile(
+				path.join(HERE, "..", "fixtures", "last-resort-failover.fixture.json"),
+				"utf8",
+			),
+		) as {
+			current: Record<string, string>;
+			usage: unknown;
+			failures: Array<{ providerId: string; reason: string }>;
+			seq: string;
+		};
+		const snapshots = parseUsageSnapshots(fixture.usage);
+		const { deps } = memoryDeps({ current: fixture.current });
+		const result = await runRebalance(
+			{
+				...deps,
+				usageSources: snapshots.map((snapshot) => ({
+					providerId: snapshot.providerId,
+					read: () => Promise.resolve(snapshot),
+				})),
+				failureSignals: () =>
+					Promise.resolve(
+						fixture.failures.map((failure) =>
+							create(HardBlockSignalSchema, {
+								providerId: failure.providerId,
+								resource: "",
+								reason: failure.reason,
+							}),
+						),
+					),
+			},
+			{
+				registryDocument: DEFAULT_REGISTRY_DOCUMENT,
+				mode: "plan",
+				requestedBy: "fixture",
+				seq: fixture.seq,
+			},
+		);
+		const decision = result.plan.decisions[0];
+		// GitHub-hosted is hard-blocked (spending limit) and no third-party
+		// provider is enabled: instead of failing closed, the dispatcher
+		// fails over to the requesting machine's last-resort label.
+		expect(decision?.kind).toBe(DecisionKind.FLIP);
+		expect(decision?.toValue).toBe("hobo-last-resort");
+		expect(decision?.providerId).toBe("requesting_machine");
+		expect(decision?.reason).toContain("last resort");
 	});
 
 	it("replays the shipped free-credit-rotation fixture to the Blacksmith rung", async () => {

@@ -59,6 +59,26 @@ export const DEFAULT_REGISTRY_DOCUMENT = {
 			docsUrl: "https://docs.github.com/actions/hosting-your-own-runners",
 		},
 		{
+			id: "requesting_machine",
+			displayName: "Requesting machine (ephemeral last resort)",
+			kind: "PROVIDER_KIND_SELF_HOSTED",
+			runsOnLabels: ["hobo-last-resort"],
+			cost: {
+				// The developer/agent machine that requested CI, registered as
+				// an ephemeral self-hosted runner via `pnpm run host-runner`.
+				// Declared 0 marginal cost, but its rung is flagged
+				// last_resort so the dispatcher never prefers it while any
+				// normal provider is usable.
+				freeUnitsPerMonth: 0,
+				freeTierResetDay: 0,
+				listPriceUsdPerUnit: 0,
+				unit: "minute",
+				includedMultiplier: 1,
+				trust: DECLARED,
+			},
+			docsUrl: "https://docs.github.com/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners",
+		},
+		{
 			id: "namespace",
 			displayName: "Namespace",
 			kind: "PROVIDER_KIND_MANAGED_THIRD_PARTY",
@@ -278,12 +298,23 @@ export const DEFAULT_REGISTRY_DOCUMENT = {
 					providerId: "depot",
 					requires: enableGuard("DEPOT"),
 				},
+				{
+					// Final backup: the machine requesting CI. No enable guard —
+					// it must stay reachable exactly when everything else is
+					// blocked. Jobs routed here queue until the requester runs
+					// `pnpm --filter @hobo/example-ci-runner-balancing host-runner`.
+					value: "hobo-last-resort",
+					providerId: "requesting_machine",
+					requires: [],
+					lastResort: true,
+				},
 			],
 		},
 	],
 	envelopes: [
 		{ providerId: "github_hosted", softCapUsd: 25, hardCapUsd: 50 },
 		{ providerId: "self_hosted", softCapUsd: 5, hardCapUsd: 10 },
+		{ providerId: "requesting_machine", softCapUsd: 5, hardCapUsd: 10 },
 		{ providerId: "namespace", softCapUsd: 10, hardCapUsd: 20 },
 		{ providerId: "buildjet", softCapUsd: 10, hardCapUsd: 20 },
 		{ providerId: "actuated", softCapUsd: 10, hardCapUsd: 20 },

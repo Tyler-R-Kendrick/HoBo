@@ -66,6 +66,19 @@ make the ledger auditable; `exec.Succeeded` records each applied patch.
   (`fixtures/free-credit-rotation.fixture.json`) replays the same story
   proactively: GitHub's included minutes exhaust while Blacksmith headroom
   remains, and the dispatcher rotates before the wall instead of after it.
+- **The machine requesting CI is the final backup.** Every track ends in a
+  `last_resort` rung (`hobo-last-resort`, provider `requesting_machine`)
+  that ranks behind every normal rung regardless of its declared zero cost:
+  when every hosted provider is blocked, the dispatcher fails over to it
+  instead of failing closed, and jobs queue until the requester runs the
+  example's `host-runner` command — which registers that machine as an
+  **ephemeral** self-hosted runner, drains the queue one job per
+  registration, and deregisters. Self-hosted minutes are unbilled, so the
+  floor costs $0 in Actions spend; `FAIL_CLOSED` survives only for the case
+  where even the last resort is blocked. The failover replays offline in
+  `fixtures/last-resort-failover.fixture.json`. Ephemeral-only,
+  own-branches-only is the stated security posture — the last resort exists
+  for the repository's own developers and agents, not for fork traffic.
 
 ## Scope boundary
 

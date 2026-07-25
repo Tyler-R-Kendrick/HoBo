@@ -55,6 +55,7 @@ package data_models
 	provider_id: string & !=""
 	requires: [...#RungGuard]
 	sticky_reason: string
+	last_resort:   bool
 }
 
 #RunnerTrack: {

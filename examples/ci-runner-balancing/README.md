@@ -53,9 +53,13 @@ apply mode: patch Actions variables → exec.Succeeded events
   `usage_known: false`; routing continues but no decision pretends to be
   spend-verified. Misdeclared cost facts degrade to declared min-cost ranking
   — declared facts are untrusted ranking input, never billing input.
-- **Fail closed.** When every rung is hard-blocked, guarded off, or over
-  budget, the track holds its current value and emits a `FAIL_CLOSED`
-  decision instead of guessing.
+- **The requesting machine is the final backup.** Every track's last rung is
+  `hobo-last-resort` — the machine that requested CI, registered on demand as
+  an ephemeral self-hosted runner. It ranks after every normal rung
+  regardless of its declared zero cost, so the dispatcher fails over to it
+  only when every hosted provider is blocked, and returns as soon as one
+  recovers. `FAIL_CLOSED` remains only for the case where even the last
+  resort is unavailable.
 - **Reactive backstop.** Failed jobs whose annotations say *spending limit*,
   *minutes quota*, *no runners available* — or that died before any step
   started — saturate that provider in the ledger regardless of reported
@@ -75,6 +79,7 @@ apply mode: patch Actions variables → exec.Succeeded events
 | `src/adapters/` | GitHub billing, declared third-party usage, Actions variables (the execution adapter), failed-run scanner. |
 | `src/rebalance.ts` | The rebalance actor tying command → events → effects. |
 | `src/bin/rebalance.ts` | CLI shell (`--mode plan|apply`, `--fixture` for offline). |
+| `src/host-runner.ts` + `src/bin/host-runner.ts` | Last-resort host runner: registers this machine as an ephemeral self-hosted runner and drains queued jobs. |
 | `fixtures/` | Offline scenarios, replayed by tests and the simulate lane. |
 | `contracts/pacts/` | PACT contracts for the billing-read and variable-write boundaries. |
 
@@ -116,6 +121,35 @@ provider's GitHub App or registering its runner pool. The `self-hosted` rung
 is guarded by `HOBO_RB_ENABLE_SELF_HOSTED`. All third-party prices and free
 tiers in `src/registry.ts` are `COST_TRUST_DECLARED_UNVERIFIED` snapshots of
 public pricing pages — override them with your negotiated rates.
+
+## Last resort: run CI on the machine requesting it
+
+When GitHub refuses to schedule hosted jobs (spending limit reached,
+included minutes exhausted, payment failure) and no third-party provider is
+enabled, the dispatcher fails over the track to the `hobo-last-resort`
+label. Jobs then queue until the requesting machine serves them:
+
+```bash
+# 1) flip the track (the rebalance pass does this itself when it can run;
+#    from a blocked account, run it locally)
+HOBO_RB_REPO=owner/repo VARS_ADMIN_TOKEN=... \
+  pnpm --filter @hobo/example-ci-runner-balancing rebalance -- --mode apply
+
+# 2) serve the queued jobs from this machine as an ephemeral runner
+HOBO_RB_REPO=owner/repo HOBO_RB_RUNNER_TOKEN=<repo-admin PAT> \
+  pnpm --filter @hobo/example-ci-runner-balancing host-runner
+```
+
+The host runner downloads the official `actions/runner` build for this
+platform (Linux/macOS), registers **ephemeral** (one job per registration,
+auto-deregisters), serves the `hobo-last-resort` label, and re-registers
+while queued runs remain (`--once` / `--max N` to bound it). GitHub does not
+bill self-hosted minutes, so the last resort also costs $0 in Actions spend.
+
+**Security posture:** a registered runner executes the repository's workflow
+code on your machine. Use it for your own repository and branches only —
+never expose it to untrusted fork PRs — and prefer the default ephemeral
+mode so nothing lingers after the queue drains.
 
 ## Dogfooding in this repository
 

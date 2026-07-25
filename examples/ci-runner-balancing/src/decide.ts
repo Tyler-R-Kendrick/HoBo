@@ -118,7 +118,12 @@ function rankRungs(
 			return { rung, row, index, blocked };
 		})
 		.sort(
+			// Last-resort rungs (the requesting machine) rank behind every
+			// normal rung regardless of declared cost: first-eligible
+			// selection then reaches them only when nothing else is usable,
+			// and leaves them as soon as a normal rung recovers.
 			(left, right) =>
+				Number(left.rung.lastResort) - Number(right.rung.lastResort) ||
 				left.row.effectiveMarginalCostUsd - right.row.effectiveMarginalCostUsd ||
 				left.row.listPriceUsdPerUnit - right.row.listPriceUsdPerUnit ||
 				left.index - right.index,
@@ -176,7 +181,7 @@ export function decide(input: DecideInput): DispatchDecision[] {
 					fromValue: currentValue ?? "(unset)",
 					toValue: currentValue ?? "",
 					reason:
-						"no rung is eligible: every candidate is hard-blocked, guarded off, or at/over its budget envelope",
+						"no rung is eligible: every candidate (including any last-resort rung) is hard-blocked, guarded off, or at/over its budget envelope",
 				}),
 			);
 			continue;
@@ -251,8 +256,9 @@ export function decide(input: DecideInput): DispatchDecision[] {
 				spendUsd: target.row.spendUsd,
 				envelopeUsd: target.row.envelopeUsd,
 				direction: currentRung === undefined || movingBack ? "back" : "up",
-				reason:
-					target.row.freeHeadroomUnits > 0
+				reason: target.rung.lastResort
+					? "last resort: every normal rung is blocked or over budget; failing over to the requesting machine"
+					: target.row.freeHeadroomUnits > 0
 						? "free credit headroom available"
 						: "cheapest eligible list price under budget",
 			}),

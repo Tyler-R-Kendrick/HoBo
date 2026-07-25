@@ -18,6 +18,10 @@ on:
         type: choice
         options: [plan, apply]
         default: plan
+      runs_on:
+        description: "runner label for the controller (hobo-last-resort when hosted runners are blocked)"
+        type: string
+        default: ubuntu-latest
 
 permissions:
   contents: read
@@ -30,9 +34,11 @@ concurrency:
 
 jobs:
   rebalance:
-    # Deliberately pinned: the controller must never depend on the routed
-    # variable it manages, or a bad flip could strand it.
-    runs-on: ubuntu-latest
+    # Deliberately independent of the routed variable it manages, or a bad
+    # flip could strand it: hosted by default, dispatchable onto the
+    # last-resort label (a host-runner started from the requesting machine)
+    # when GitHub-hosted runners themselves are blocked.
+    runs-on: ${{ inputs.runs_on || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

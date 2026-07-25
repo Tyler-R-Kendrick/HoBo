@@ -320,6 +320,82 @@ describe("decide: honesty, pins, blocks, guards", () => {
 	});
 });
 
+describe("decide: last-resort failover", () => {
+	const LAST_RESORT_TRACK = create(RunnerTrackSchema, {
+		resource: "runner.linux.small",
+		variable: "RUNNER",
+		rungs: [
+			{ value: "base-c", providerId: "base_c", requires: [] },
+			{ value: "cheap-b", providerId: "cheap_b", requires: [] },
+			{
+				value: "hobo-last-resort",
+				providerId: "free_a",
+				requires: [],
+				lastResort: true,
+			},
+		],
+	});
+
+	it("never prefers a last-resort rung while a normal rung is usable, even at declared cost 0", () => {
+		const decisions = decide(
+			input({
+				entries: [FREE_HEADROOM, CHEAP, BASE],
+				tracks: [LAST_RESORT_TRACK],
+				current: { RUNNER: "base-c" },
+			}),
+		);
+		expect(decisions[0]?.kind).toBe(DecisionKind.FLIP);
+		expect(decisions[0]?.toValue).toBe("cheap-b");
+	});
+
+	it("fails over to the last-resort rung instead of failing closed when every normal rung is blocked", () => {
+		const blocked = [
+			create(CreditEntrySchema, { ...CHEAP, hardBlocked: true }),
+			create(CreditEntrySchema, { ...BASE, hardBlocked: true }),
+			FREE_HEADROOM,
+		];
+		const decisions = decide(
+			input({
+				entries: blocked,
+				tracks: [LAST_RESORT_TRACK],
+				current: { RUNNER: "base-c" },
+			}),
+		);
+		expect(decisions[0]?.kind).toBe(DecisionKind.FLIP);
+		expect(decisions[0]?.toValue).toBe("hobo-last-resort");
+		expect(decisions[0]?.reason).toContain("last resort");
+	});
+
+	it("returns from the last-resort rung as soon as a normal rung recovers", () => {
+		const decisions = decide(
+			input({
+				entries: [FREE_HEADROOM, CHEAP, BASE],
+				tracks: [LAST_RESORT_TRACK],
+				current: { RUNNER: "hobo-last-resort" },
+			}),
+		);
+		expect(decisions[0]?.kind).toBe(DecisionKind.FLIP);
+		expect(decisions[0]?.direction).toBe("back");
+		expect(decisions[0]?.toValue).toBe("cheap-b");
+	});
+
+	it("still fails closed when the last-resort rung itself is blocked", () => {
+		const allBlocked = [
+			create(CreditEntrySchema, { ...FREE_HEADROOM, hardBlocked: true }),
+			create(CreditEntrySchema, { ...CHEAP, hardBlocked: true }),
+			create(CreditEntrySchema, { ...BASE, hardBlocked: true }),
+		];
+		const decisions = decide(
+			input({
+				entries: allBlocked,
+				tracks: [LAST_RESORT_TRACK],
+				current: { RUNNER: "base-c" },
+			}),
+		);
+		expect(decisions[0]?.kind).toBe(DecisionKind.FAIL_CLOSED);
+	});
+});
+
 describe("decide: determinism and purity", () => {
 	it("replays the same decisions for the same pinned ledger input", () => {
 		const build = () => input({ entries: [FREE_HEADROOM, CHEAP, BASE] });

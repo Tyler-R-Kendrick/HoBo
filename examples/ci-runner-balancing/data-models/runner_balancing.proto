@@ -100,6 +100,12 @@ message TrackRung {
   // Non-empty marks a non-fungible rung: leaving it is a sharp capability
   // downgrade the dispatcher must hold unless the operator opts in.
   string sticky_reason = 4;
+  // Last-resort rungs (e.g. the machine that requested CI, registered as an
+  // ephemeral self-hosted runner) rank after every normal rung regardless of
+  // declared cost: the dispatcher fails over to them only when every normal
+  // rung is hard-blocked, guarded off, or over budget, and leaves them as
+  // soon as a normal rung recovers.
+  bool last_resort = 5;
 }
 
 // A routed resource: one GitHub Actions variable whose value is the runs-on

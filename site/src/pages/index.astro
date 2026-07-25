@@ -1,7 +1,6 @@
 ---
 import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
-import Cloud from "../components/Cloud.astro";
 import Mascot from "../components/Mascot.astro";
 import Blimp from "../components/scenes/Blimp.astro";
 import Crossroads from "../components/scenes/Crossroads.astro";
@@ -34,19 +33,11 @@ const shikiThemes = {
 >
 	<!-- ===================== Hero ===================== -->
 	<section class="hero">
-		<Cloud size={150} class="hero-cloud c1" />
-		<Cloud size={110} class="hero-cloud c2" />
-		<Cloud size={90} class="hero-cloud c3" />
-		<Cloud size={120} class="hero-cloud c4" />
 		<div class="container">
 			<div>
-				<p class="hero-eyebrow">
-					<span class="sticker">homeward bound</span>
-					<span class="sticker meadow">rent goes down, not up</span>
-				</p>
 				<h1>
 					Every app deserves a home.<br />
-					<span class="gradient-text">Preferably a cheap one.</span>
+					<em>Preferably a cheap one.</em>
 				</h1>
 				<p class="hero-sub">
 					HoBo is the meta-cloud that treats hosting like a hobo treats a
@@ -63,15 +54,8 @@ const shikiThemes = {
 						>Learn the lingo</a
 					>
 				</div>
-				<div class="hero-facts">
-					<span class="pill"><b>1</b> app description</span>
-					<span class="pill"><b>any</b> provider</span>
-					<span class="pill"><b>$0</b> loyalty tax</span>
-					<span class="pill"><b>0</b> forklift rewrites</span>
-				</div>
 			</div>
 			<div class="terminal-wrap">
-				<span class="roof-rider"><Mascot size={64} /></span>
 				<div class="terminal">
 				<div class="terminal-bar">
 					<span class="dots"><i></i><i></i><i></i></span>
@@ -478,8 +462,8 @@ const shikiThemes = {
 		margin: 0 0 0.65rem;
 		font-family: var(--font-display);
 		font-size: clamp(1.45rem, 2.8vw, 2rem);
-		letter-spacing: 0.01em;
-		font-weight: 400;
+		letter-spacing: -0.01em;
+		font-weight: 620;
 	}
 
 	.postcard-bo {

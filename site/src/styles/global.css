@@ -2,19 +2,20 @@
    HoBo site design system.
    One stylesheet, zero frameworks. Strict black-and-white cartoon language
    starring Bo the bindlebug: traced reference illustrations, thick ink
-   outlines, hard offset "sticker" shadows, line-art clouds, Limelight
-   title-card type. Ink on paper by day, paper on ink by night — the two
+   outlines, hard offset "sticker" shadows, and Fraunces book-serif display
+   type. Ink on paper by day, paper on ink by night — the two
    themes are exact inversions, driven by custom properties.
    ========================================================================== */
 
 /* ---------- Tokens ---------- */
 
 :root {
-	/* type: Limelight = 1930s title cards; Baloo = rounded cartoon UI chrome */
+	/* type: Fraunces = vintage book-serif display; quiet sans for everything else */
 	--font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
 		Arial, sans-serif;
-	--font-display: "Limelight", "Baloo 2", "Georgia", serif;
-	--font-round: "Baloo 2", "Comic Sans MS", system-ui, sans-serif;
+	--font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+	--font-round: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+		Arial, sans-serif;
 	--font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
 		Menlo, Consolas, monospace;
 
@@ -287,10 +288,6 @@ a:hover {
 }
 
 /* Instances blink out of phase so the page never synchronizes. */
-.roof-rider .mascot .blink ellipse {
-	animation-delay: -2.6s;
-}
-
 .postcard-bo .mascot .blink ellipse {
 	animation-delay: -4.9s;
 }
@@ -299,55 +296,6 @@ a:hover {
    mismatched prime-ish cycles so the rhythm reads as random. */
 .mascot .dust path {
 	fill: var(--soot);
-}
-
-.mascot .dust {
-	transform-box: fill-box;
-	transform-origin: 50% 100%;
-	opacity: 0;
-	animation: kick-l 3.7s ease-out infinite;
-}
-
-.mascot .dust-r {
-	animation-name: kick-r;
-	animation-duration: 5.3s;
-	animation-delay: -2.1s;
-}
-
-@keyframes kick-l {
-	0% {
-		opacity: 0;
-		transform: translate(2px, 6px) scale(0.55);
-	}
-	14% {
-		opacity: 0.95;
-	}
-	55% {
-		opacity: 0.5;
-		transform: translate(-3px, -3px) scale(1);
-	}
-	100% {
-		opacity: 0;
-		transform: translate(-7px, -9px) scale(1.12);
-	}
-}
-
-@keyframes kick-r {
-	0% {
-		opacity: 0;
-		transform: translate(-2px, 6px) scale(0.55);
-	}
-	14% {
-		opacity: 0.95;
-	}
-	55% {
-		opacity: 0.5;
-		transform: translate(3px, -3px) scale(1);
-	}
-	100% {
-		opacity: 0;
-		transform: translate(7px, -9px) scale(1.12);
-	}
 }
 
 .skip-link {
@@ -397,9 +345,9 @@ a:hover {
 	align-items: center;
 	gap: 0.55rem;
 	font-family: var(--font-display);
-	font-weight: 400;
+	font-weight: 700;
 	font-size: 1.25rem;
-	letter-spacing: 0.02em;
+	letter-spacing: -0.01em;
 	color: var(--text);
 }
 
@@ -420,7 +368,19 @@ a:hover {
 }
 
 .brand .badge {
-	margin-left: 0.15rem;
+	display: inline-block;
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	transform: none;
+	font-family: var(--font-sans);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--text-faint);
+	white-space: nowrap;
 }
 
 .site-nav {
@@ -521,23 +481,23 @@ a:hover {
 	align-items: center;
 	justify-content: center;
 	gap: 0.5rem;
-	padding: 0.6rem 1.35rem;
+	padding: 0.62rem 1.4rem;
 	border-radius: 999px;
-	border: 2.5px solid var(--ink);
-	font-family: var(--font-round);
-	font-size: 1rem;
-	font-weight: 700;
+	border: 2px solid var(--ink);
+	font-family: var(--font-sans);
+	font-size: 0.95rem;
+	font-weight: 650;
+	letter-spacing: 0.01em;
 	line-height: 1.2;
 	cursor: pointer;
-	box-shadow: 0.28rem 0.28rem 0 var(--pop);
-	transition: transform 0.22s cubic-bezier(0.34, 1.8, 0.64, 1),
-		box-shadow 0.22s cubic-bezier(0.34, 1.8, 0.64, 1);
+	box-shadow: 0.24rem 0.24rem 0 var(--pop);
+	transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
 
 .btn:hover {
 	text-decoration: none;
-	transform: translate(-2px, -2px) rotate(-1deg);
-	box-shadow: 0.45rem 0.45rem 0 var(--pop);
+	transform: translate(-1px, -1px);
+	box-shadow: 0.34rem 0.34rem 0 var(--pop);
 }
 
 .btn:active {
@@ -575,9 +535,7 @@ a:hover {
 }
 
 .badge-accent {
-	border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-	background: var(--accent-soft);
-	color: var(--accent);
+	color: var(--text-mute);
 }
 
 .pill {
@@ -603,90 +561,8 @@ a:hover {
 
 .hero {
 	position: relative;
-	overflow: hidden;
-	padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(2.5rem, 6vw, 4.5rem);
-	background:
-		radial-gradient(
-			125% 110% at 50% 35%,
-			transparent 55%,
-			color-mix(in srgb, var(--ink) 13%, transparent) 100%
-		),
-		var(--glow),
-		radial-gradient(var(--hero-grid) 2px, transparent 2.6px);
-	background-size:
-		100% 100%,
-		100% 100%,
-		28px 28px;
+	padding: clamp(3.5rem, 9vw, 6rem) 0 clamp(2.5rem, 6vw, 4.5rem);
 	border-bottom: 3px dashed var(--border-strong);
-}
-
-/* Clouds wander: a meandering multi-keyframe float on mismatched cycles,
-   plus one "voyager" that slowly crosses the whole sky. */
-.hero-cloud {
-	position: absolute;
-	opacity: 0.9;
-	animation: float 26s ease-in-out infinite;
-	pointer-events: none;
-}
-
-.hero-cloud.c1 {
-	top: 7%;
-	right: 4%;
-}
-
-.hero-cloud.c2 {
-	top: 44%;
-	left: -28px;
-	animation-delay: -11s;
-	animation-duration: 34s;
-}
-
-.hero-cloud.c3 {
-	bottom: 10%;
-	right: 30%;
-	animation-delay: -23s;
-	animation-duration: 41s;
-}
-
-.hero-cloud.c4 {
-	top: 16%;
-	left: -180px;
-	opacity: 0.75;
-	animation: voyage 95s linear infinite;
-}
-
-@keyframes float {
-	0%,
-	100% {
-		transform: translate(0, 0);
-	}
-	25% {
-		transform: translate(18px, -9px);
-	}
-	50% {
-		transform: translate(34px, 3px);
-	}
-	75% {
-		transform: translate(12px, 9px);
-	}
-}
-
-@keyframes voyage {
-	from {
-		transform: translateX(0);
-	}
-	to {
-		transform: translateX(calc(100vw + 360px));
-	}
-}
-
-.hero::after {
-	content: "";
-	position: absolute;
-	inset: auto 0 0 0;
-	height: 45%;
-	background: linear-gradient(to top, var(--bg), transparent);
-	pointer-events: none;
 }
 
 .hero .container {
@@ -712,37 +588,20 @@ a:hover {
 	margin-bottom: 1.25rem;
 }
 
-@media (max-width: 640px) {
-	.hero-cloud.c3,
-	.hero-cloud.c4 {
-		display: none;
-	}
-
-	.hero-cloud.c1 {
-		top: -6px;
-		right: -40px;
-	}
-}
-
 .hero h1 {
-	margin: 0 0 1.1rem;
+	margin: 0 0 1.15rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.65rem, 4.6vw, 3.2rem);
-	line-height: 1.12;
-	letter-spacing: 0.01em;
-	font-weight: 400;
+	font-size: clamp(2rem, 5vw, 3.6rem);
+	line-height: 1.06;
+	letter-spacing: -0.015em;
+	font-weight: 650;
+	font-variation-settings: "opsz" 144;
 	text-wrap: balance;
 }
 
-.gradient-text {
-	color: transparent;
-	-webkit-text-stroke: 2px var(--ink);
-}
-
-@supports not (-webkit-text-stroke: 1px black) {
-	.gradient-text {
-		color: var(--text);
-	}
+.hero h1 em {
+	font-style: italic;
+	font-weight: 600;
 }
 
 .hero-sub {
@@ -774,59 +633,6 @@ a:hover {
 
 .terminal-wrap {
 	position: relative;
-	padding-top: 3.4rem;
-}
-
-.terminal-wrap .roof-rider {
-	position: absolute;
-	top: 0;
-	right: 2.2rem;
-	z-index: 1;
-	transform-origin: 50% 92%;
-	animation: bob 1.6s ease-in-out infinite;
-}
-
-/* Rubber-hose squash & stretch: bounce like there's a tuba keeping time. */
-@keyframes bob {
-	0%,
-	100% {
-		transform: translateY(0) scale(1, 1) rotate(-1.5deg);
-	}
-	30% {
-		transform: translateY(-9px) scale(0.96, 1.07) rotate(1deg);
-	}
-	50% {
-		transform: translateY(-11px) scale(0.98, 1.03) rotate(2deg);
-	}
-	72% {
-		transform: translateY(0) scale(1.08, 0.9) rotate(0.5deg);
-	}
-	84% {
-		transform: translateY(-2px) scale(0.98, 1.03) rotate(-0.5deg);
-	}
-}
-
-/* The walk: a metronome rock from the shoes up. */
-@keyframes rock {
-	from {
-		transform: rotate(-5deg) translateY(0);
-	}
-	50% {
-		transform: rotate(0deg) translateY(-3px);
-	}
-	to {
-		transform: rotate(5deg) translateY(0);
-	}
-}
-
-/* Idle sway, for a Bo who is waiting for the next train. */
-@keyframes sway {
-	from {
-		transform: rotate(-3.5deg);
-	}
-	to {
-		transform: rotate(3.5deg);
-	}
 }
 
 .terminal {
@@ -941,10 +747,11 @@ a:hover {
 .section-head h2 {
 	margin: 0 0 0.7rem;
 	font-family: var(--font-display);
-	font-size: clamp(1.55rem, 3vw, 2.2rem);
-	line-height: 1.15;
-	letter-spacing: 0.01em;
-	font-weight: 400;
+	font-size: clamp(1.6rem, 3.1vw, 2.3rem);
+	line-height: 1.12;
+	letter-spacing: -0.01em;
+	font-weight: 620;
+	font-variation-settings: "opsz" 90;
 	text-wrap: balance;
 }
 
@@ -1004,25 +811,17 @@ a:hover {
 	transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 
-.grid > .card:nth-child(odd) {
-	transform: rotate(-0.35deg);
-}
-
-.grid > .card:nth-child(even) {
-	transform: rotate(0.3deg);
-}
-
 a.card:hover {
 	text-decoration: none;
-	transform: translate(-2px, -3px) rotate(-0.8deg);
-	box-shadow: 0.55rem 0.55rem 0 var(--pop-soft);
+	transform: translate(-2px, -2px);
+	box-shadow: 0.5rem 0.5rem 0 var(--pop-soft);
 }
 
 .card h3 {
 	margin: 0 0 0.45rem;
-	font-family: var(--font-round);
-	font-size: 1.12rem;
-	font-weight: 700;
+	font-family: var(--font-display);
+	font-size: 1.15rem;
+	font-weight: 620;
 	color: var(--text);
 	display: flex;
 	align-items: center;
@@ -1142,33 +941,20 @@ a.card:hover {
 
 /* ---------- Whimsy: stickers, squiggles, rails, postcards ---------- */
 
-/* Sticker badges: slightly rotated, like something slapped on a suitcase. */
+/* Inline labels: reading-order hints, set as quiet small caps. */
 .sticker {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.35rem;
-	padding: 0.18rem 0.65rem;
-	border-radius: 999px;
-	border: 2px dashed color-mix(in srgb, var(--accent) 70%, var(--ink));
-	background: var(--accent-soft);
-	color: var(--accent);
-	font-family: var(--font-round);
-	font-size: 0.76rem;
+	display: inline-block;
+	padding: 0;
+	border: 0;
+	background: none;
+	transform: none;
+	font-family: var(--font-sans);
+	font-size: 0.66rem;
 	font-weight: 700;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.14em;
 	text-transform: uppercase;
+	color: var(--text-faint);
 	white-space: nowrap;
-	transform: rotate(-2deg);
-}
-
-.sticker.meadow {
-	border-style: solid;
-	transform: rotate(1.2deg);
-}
-
-.sticker.sky {
-	border-style: dotted;
-	transform: rotate(-0.8deg);
 }
 
 /* Hand-drawn squiggle underline for the word that matters. */
@@ -1232,25 +1018,8 @@ a.card:hover {
 	border: 3px dashed var(--ink);
 	border-radius: calc(var(--radius-lg) + 10px);
 	box-shadow: 0.45rem 0.45rem 0 var(--pop-soft);
-	transform: rotate(-0.5deg);
 	background: var(--bg-raised);
 	text-align: center;
-}
-
-.postcard::after {
-	content: "HOBO POST · NO FIXED ADDRESS";
-	position: absolute;
-	top: 1.1rem;
-	right: -2.6rem;
-	padding: 0.25rem 3rem;
-	transform: rotate(28deg);
-	border-block: 1.5px dashed color-mix(in srgb, var(--accent) 50%, transparent);
-	background: var(--accent-soft);
-	color: var(--accent);
-	font-family: var(--font-mono);
-	font-size: 0.62rem;
-	letter-spacing: 0.14em;
-	pointer-events: none;
 }
 
 /* Migration lines inside the terminal. */
@@ -1582,9 +1351,10 @@ table.compare tr.hobo-row th {
 	padding-top: 1.4rem;
 	border-top: 2px dashed var(--border-strong);
 	font-family: var(--font-display);
-	font-size: 1.4rem;
-	letter-spacing: 0.01em;
-	font-weight: 400;
+	font-size: 1.45rem;
+	letter-spacing: -0.005em;
+	font-weight: 620;
+	font-variation-settings: "opsz" 60;
 }
 
 .prose h3 {

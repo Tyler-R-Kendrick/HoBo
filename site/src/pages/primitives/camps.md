@@ -1,14 +1,14 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Camps
-description: "The Camp is HoBo's second essential primitive: where your bindle lives right now — one provider, one durable runtime, and three levels of placement control."
+description: "The Camp is where your bindle lives right now — one provider, one durable runtime. Write one to pin placement, or let HoBo infer it from your configured code."
 ---
 
 # Camps
 
 > *A camp is where you stay, not who you are. Good campsites are worth appreciating — and leaving, when the rent goes up.*
 
-The **Camp** is HoBo's second essential primitive: the answer to the question the [Bindle](/HoBo/primitives/bindles/) deliberately refuses to answer — *where does this app live right now?* A camp binds a bindle to **exactly one provider** and supplies the **durable runtime** the app's actors, workflows, queues, and clocks run on. You cannot run HoBo without a camp; you just don't always have to build it yourself.
+The **Camp** is HoBo's second foundational primitive: the answer to the question the [Bindle](/HoBo/primitives/bindles/) deliberately refuses to answer — *where does this app live right now?* A camp binds a bindle to **exactly one provider** and supplies the **durable runtime** the app's actors, workflows, queues, and clocks run on. Every running app lives in a camp — but **writing one is optional**: leave it out and HoBo infers a camp from the code you've configured. You write one to pin the choice yourself, or because your junction's broker admin requires explicit camps.
 
 ## Pitching a camp
 
@@ -64,11 +64,12 @@ export default camp("prod", {
 - **The runtime is part of the address.** A camp's durable runtime (event store, queues, streams, actor host, clock) is a swappable backend — local, postgres, temporal, restate, cloudflare. Swapping it changes durability backing, never app logic.
 - **Environment comes from the name.** `prod`, `staging`, `preview`/`pr-*`, and `dev` camps get sensible environment semantics inferred (and you can override `envType` when your naming is more creative).
 
-## You can skip even this
+## Writing a camp is optional
 
-Camps are essential — but *building* one isn't always your job:
+Every app lives in a camp — but *pitching* one isn't always your job:
 
-- **Inferred camps.** With no camp pinned, the Dispatcher infers one from your platform's approved providers, optimizing for price under policy. An inferred camp is approved by policy, not automatically.
+- **Inferred camps (the default).** With no camp declared, the Dispatcher infers one from the code you've configured and your platform's approved providers, optimizing for price under policy. An inferred camp is approved by policy, not automatically.
+- **Locked-down placement.** A [junction](/HoBo/primitives/junctions/) broker admin can turn inference off and require explicit, approved camps — governance decides how much choice stays with the app team.
 - **Local camp.** `hobo dev` runs your bindle against `runtime-local` — a full offline camp on your laptop, with honest fidelity labels where local behavior differs from cloud.
 
 ## Camps and continuous migration

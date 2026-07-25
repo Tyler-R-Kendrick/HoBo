@@ -109,7 +109,11 @@ export interface YardClient {
 	) => PlanRendered;
 	readonly up: (
 		bindle: ManifestV1,
-		options: { deploymentId: string; session: YardSession; config?: DeployConfig },
+		options: {
+			deploymentId: string;
+			session: YardSession;
+			config?: DeployConfig;
+		},
 	) => Promise<UpResult>;
 	readonly down: (
 		bindle: ManifestV1,
@@ -120,18 +124,32 @@ export interface YardClient {
 function progressFrom(events: OrchestratorResult["events"]): ProgressEvent[] {
 	const progress: ProgressEvent[] = [];
 	for (const event of events) {
-		if (!event.type.startsWith("exec.") && !event.type.startsWith("resource.")) {
+		if (
+			!event.type.startsWith("exec.") &&
+			!event.type.startsWith("resource.")
+		) {
 			continue;
 		}
-		const data = event.data as { resourceId?: string; summary?: string; reason?: string };
+		const data = event.data as {
+			resourceId?: string;
+			summary?: string;
+			reason?: string;
+		};
 		const resourceId = data.resourceId;
 		const detail = data.summary ?? data.reason ?? event.type;
-		progress.push(resourceId !== undefined ? { type: event.type, resourceId, detail } : { type: event.type, detail });
+		progress.push(
+			resourceId !== undefined
+				? { type: event.type, resourceId, detail }
+				: { type: event.type, detail },
+		);
 	}
 	return progress;
 }
 
-function planConfig(deploymentId: string, config?: DeployConfig): {
+function planConfig(
+	deploymentId: string,
+	config?: DeployConfig,
+): {
 	deploymentId: string;
 	objective?: string;
 	region?: string;
@@ -156,8 +174,16 @@ export function createYardClient(runtime: YardRuntime): YardClient {
 		broker: runtime.broker,
 	};
 
-	function pureplan(bindle: ManifestV1, deploymentId: string, config?: DeployConfig): PlanResult {
-		return planDeployment(bindle, planConfig(deploymentId, config), runtime.registry);
+	function pureplan(
+		bindle: ManifestV1,
+		deploymentId: string,
+		config?: DeployConfig,
+	): PlanResult {
+		return planDeployment(
+			bindle,
+			planConfig(deploymentId, config),
+			runtime.registry,
+		);
 	}
 
 	return {
@@ -209,7 +235,11 @@ export function createYardClient(runtime: YardRuntime): YardClient {
 				orchestratorDeps,
 				deployResult.plan,
 				deploymentId,
-				{ tenant: session.tenant, actor: session.principal, correlationId: `deploy:${deploymentId}` },
+				{
+					tenant: session.tenant,
+					actor: session.principal,
+					correlationId: `deploy:${deploymentId}`,
+				},
 			);
 
 			return {
@@ -225,7 +255,12 @@ export function createYardClient(runtime: YardRuntime): YardClient {
 		async down(bindle, { deploymentId, session }) {
 			const planResult = pureplan(bindle, deploymentId);
 			if (!planResult.ok) {
-				return { status: "needs-human", deploymentId, destroyed: [], progress: [] };
+				return {
+					status: "needs-human",
+					deploymentId,
+					destroyed: [],
+					progress: [],
+				};
 			}
 			const deploymentPlan = planResult.plan;
 			const first = deploymentPlan.resources[0];
@@ -237,11 +272,19 @@ export function createYardClient(runtime: YardRuntime): YardClient {
 					resourceId: first?.name ?? deploymentId,
 					reason: "operator-requested teardown",
 				},
-				{ tenant: session.tenant, actor: session.principal, correlationId: `down:${deploymentId}` },
+				{
+					tenant: session.tenant,
+					actor: session.principal,
+					correlationId: `down:${deploymentId}`,
+				},
 			);
-			const events = await collectStream(runtime.store, `deployment:${deploymentId}`);
+			const events = await collectStream(
+				runtime.store,
+				`deployment:${deploymentId}`,
+			);
 			return {
-				status: compensation.status === "rolled-back" ? "destroyed" : "needs-human",
+				status:
+					compensation.status === "rolled-back" ? "destroyed" : "needs-human",
 				deploymentId,
 				destroyed: compensation.destroyedOrder,
 				progress: progressFrom(events),

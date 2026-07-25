@@ -78,14 +78,19 @@ export function activateActor<S, M extends FoldEvent = FoldEvent>(
 	const actorKey = `${def.name}/${key}`;
 	// Lease acquisition is the single-writer gate: the host throws when the key
 	// is already leased by a live holder.
-	const lease: ActorLease = host.acquire(actorKey, { holderId: options.holderId });
+	const lease: ActorLease = host.acquire(actorKey, {
+		holderId: options.holderId,
+	});
 	const stateHandle = host.state<S>(actorKey, {
 		initialState: def.initialState(),
 		fold: (state, event) => foldExceptLifecycle(def, state, event),
 	});
 
 	// Record activation. Lifecycle events fold to a no-op on state.
-	stateHandle.append(lease, { type: "actor.Activated", holderId: options.holderId });
+	stateHandle.append(lease, {
+		type: "actor.Activated",
+		holderId: options.holderId,
+	});
 
 	let passivated = false;
 	const assertLive = () => {

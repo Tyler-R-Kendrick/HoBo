@@ -2,7 +2,11 @@ import type { EventEnvelope, EventStore, PrincipalRef } from "@hobo/core";
 import type { ActorHost } from "@hobo/data";
 import { emit } from "@hobo/events";
 
-import { CLOUD_EVENTS, deploymentRolledBack, resourceDestroying } from "../events.js";
+import {
+	CLOUD_EVENTS,
+	deploymentRolledBack,
+	resourceDestroying,
+} from "../events.js";
 import type { DeploymentPlan } from "../plan-types.js";
 import { collectStream } from "../store/index.js";
 import type { CredentialBroker, Executor } from "../executor/executor.js";
@@ -53,7 +57,12 @@ function reverseDependencyOrder(
 ): string[] {
 	const inScope = (id: string): boolean => {
 		const s = states.get(id);
-		return s === "Provisioned" || s === "Failed" || s === "Destroying" || s === "Destroyed";
+		return (
+			s === "Provisioned" ||
+			s === "Failed" ||
+			s === "Destroying" ||
+			s === "Destroyed"
+		);
 	};
 	const byName = new Map(plan.resources.map((r) => [r.name, r]));
 	const sorted: string[] = [];
@@ -79,7 +88,9 @@ function reverseDependencyOrder(
 }
 
 function dependentsOf(plan: DeploymentPlan, resourceId: string): string[] {
-	return plan.resources.filter((r) => r.deps.includes(resourceId)).map((r) => r.name);
+	return plan.resources
+		.filter((r) => r.deps.includes(resourceId))
+		.map((r) => r.name);
 }
 
 export async function runCompensation(
@@ -93,14 +104,17 @@ export async function runCompensation(
 	const appendOpts = {
 		actor: ctx.actor,
 		tenant: ctx.tenant,
-		...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+		...(ctx.correlationId !== undefined
+			? { correlationId: ctx.correlationId }
+			: {}),
 	};
 
 	let events = await collectStream(deps.store, stream);
 
 	// Emit deployment.RolledBack once (idempotent — resume-safe).
 	if (!events.some((e) => e.type === CLOUD_EVENTS.DeploymentRolledBack)) {
-		const lastSeq = events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
+		const lastSeq =
+			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 		await emit(
 			deps.store,
 			stream,
@@ -132,7 +146,10 @@ export async function runCompensation(
 		progressed = false;
 		events = await collectStream(deps.store, stream);
 		const states = new Map<string, ResourceActorState>(
-			plan.resources.map((r) => [r.name, foldResourceActor(events, { ...r, deploymentId }).state]),
+			plan.resources.map((r) => [
+				r.name,
+				foldResourceActor(events, { ...r, deploymentId }).state,
+			]),
 		);
 
 		for (const resourceId of reverseDependencyOrder(plan, states)) {
@@ -153,20 +170,35 @@ export async function runCompensation(
 
 			// resource.Destroying (durable boundary), then Executor destroy → Destroyed.
 			const beforeEvents = await collectStream(deps.store, stream);
-			const lastSeq = beforeEvents.length > 0 ? (beforeEvents[beforeEvents.length - 1] as EventEnvelope).seq : 0;
+			const lastSeq =
+				beforeEvents.length > 0
+					? (beforeEvents[beforeEvents.length - 1] as EventEnvelope).seq
+					: 0;
 			await emit(
 				deps.store,
 				stream,
-				[resourceDestroying({ deploymentId, resourceId, reason: "rollback-compensation" })],
+				[
+					resourceDestroying({
+						deploymentId,
+						resourceId,
+						reason: "rollback-compensation",
+					}),
+				],
 				{ expectedSeq: lastSeq, ...appendOpts },
 			);
 
-			const outcome = await destroyResource(actorDeps, { ...resource, deploymentId }, {
-				deploymentId,
-				tenant: ctx.tenant,
-				actor: ctx.actor,
-				...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
-			});
+			const outcome = await destroyResource(
+				actorDeps,
+				{ ...resource, deploymentId },
+				{
+					deploymentId,
+					tenant: ctx.tenant,
+					actor: ctx.actor,
+					...(ctx.correlationId !== undefined
+						? { correlationId: ctx.correlationId }
+						: {}),
+				},
+			);
 			if (outcome.kind === "failed") {
 				events = await collectStream(deps.store, stream);
 				return { status: "needs-human", destroyedOrder, events };

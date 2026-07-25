@@ -22,8 +22,12 @@ function mockIac(opts: { failApply?: string[] } = {}): IacProvider {
 			return { summary: `preview ${program.resourceId}`, changes: 1 };
 		},
 		async apply(program) {
-			if (fail.has(program.resourceId)) throw new Error(`apply failed for ${program.resourceId}`);
-			return { endpoint: `${program.resourceId}.local`, stack: program.stackName };
+			if (fail.has(program.resourceId))
+				throw new Error(`apply failed for ${program.resourceId}`);
+			return {
+				endpoint: `${program.resourceId}.local`,
+				stack: program.stackName,
+			};
 		},
 		async destroy() {
 			/* no-op local backend */
@@ -50,7 +54,12 @@ function program(overrides: Partial<IacProgram> = {}): IacProgram {
 const broker = createInProcessCredentialBroker();
 function cred(resourceId = "api") {
 	return broker.issue({
-		scope: credentialScope({ tenant: "tenant-a", resourceId, driver: "pulumi", action: "apply" }),
+		scope: credentialScope({
+			tenant: "tenant-a",
+			resourceId,
+			driver: "pulumi",
+			action: "apply",
+		}),
 	});
 }
 
@@ -73,7 +82,9 @@ describe("Executor: sandboxed preview+apply against an injected IacProvider", ()
 	});
 
 	it("classifies an apply error as retryable and emits exec.Failed", async () => {
-		const executor = createInProcessExecutor({ iac: mockIac({ failApply: ["api"] }) });
+		const executor = createInProcessExecutor({
+			iac: mockIac({ failApply: ["api"] }),
+		});
 		const result = await executor.run(program(), cred());
 		expect(result.status).toBe("failed");
 		if (result.status !== "failed") return;
@@ -88,7 +99,10 @@ describe("Executor sandbox hardening (S2-03b): no ambient credentials", () => {
 		// Ambient creds are proven absent by contract: passing them in makes the run
 		// fail fatally; the only permitted credential is the injected scoped token.
 		const result = await executor.run(program(), cred(), {
-			ambientEnv: { AWS_ACCESS_KEY_ID: "AKIAEXAMPLE", CLOUDFLARE_API_TOKEN: "cf-secret" },
+			ambientEnv: {
+				AWS_ACCESS_KEY_ID: "AKIAEXAMPLE",
+				CLOUDFLARE_API_TOKEN: "cf-secret",
+			},
 		});
 		expect(result.status).toBe("failed");
 		if (result.status !== "failed") return;
@@ -110,7 +124,9 @@ describe("Executor sandbox hardening (S2-03b): no ambient credentials", () => {
 	it("proves the injected credential is scoped and non-ambient", () => {
 		const c = cred("database");
 		expect(c.ambient).toBe(false);
-		expect(c.scope).toBe("tenant:tenant-a/resource:database/job:pulumi/action:apply");
+		expect(c.scope).toBe(
+			"tenant:tenant-a/resource:database/job:pulumi/action:apply",
+		);
 		expect(c.ttlSeconds).toBeGreaterThan(0);
 	});
 });

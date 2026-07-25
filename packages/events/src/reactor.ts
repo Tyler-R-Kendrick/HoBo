@@ -148,9 +148,7 @@ export function createReactor(deps: {
 				close(reason = "client-closed") {
 					storeSub.unsubscribe();
 					deps.streamer.teardownRun(parseRunId(subscriptionId), reason);
-					facts.push(
-						createSubscriptionClosedEvent({ subscriptionId, reason }),
-					);
+					facts.push(createSubscriptionClosedEvent({ subscriptionId, reason }));
 				},
 			};
 		},

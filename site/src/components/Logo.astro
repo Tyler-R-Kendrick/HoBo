@@ -1,0 +1,36 @@
+---
+// The bindle mark: a traveler's stick with a bundle, drawn as two strokes and
+// an ember-filled knot. Referenced by the header and footer.
+interface Props {
+	size?: number;
+}
+const { size = 26 } = Astro.props;
+---
+
+<svg
+	width={size}
+	height={size}
+	viewBox="0 0 32 32"
+	fill="none"
+	role="img"
+	aria-label="HoBo logo"
+>
+	<defs>
+		<linearGradient id="ember" x1="10" y1="6" x2="30" y2="22" gradientUnits="userSpaceOnUse">
+			<stop stop-color="var(--ember-a, #ffd29d)"></stop>
+			<stop offset="0.55" stop-color="var(--ember-b, #ff9a3c)"></stop>
+			<stop offset="1" stop-color="var(--ember-c, #ff5c33)"></stop>
+		</linearGradient>
+	</defs>
+	<path
+		d="M4 28 L22 10"
+		stroke="currentColor"
+		stroke-width="2.6"
+		stroke-linecap="round"></path>
+	<circle cx="23.5" cy="13.5" r="6.5" fill="url(#ember)"></circle>
+	<path
+		d="M20.5 8.5 L26.5 8.5"
+		stroke="currentColor"
+		stroke-width="2.2"
+		stroke-linecap="round"></path>
+</svg>

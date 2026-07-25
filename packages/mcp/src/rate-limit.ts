@@ -159,7 +159,8 @@ export function createRateLimiter(policy: RateLimitPolicy): RateLimiter {
 					reason: "rate",
 					retryAfterMs,
 					remainingTokens: 0,
-					quotaRemaining: quotaRemaining === Number.POSITIVE_INFINITY ? -1 : quotaRemaining,
+					quotaRemaining:
+						quotaRemaining === Number.POSITIVE_INFINITY ? -1 : quotaRemaining,
 				};
 			}
 
@@ -173,7 +174,9 @@ export function createRateLimiter(policy: RateLimitPolicy): RateLimiter {
 				retryAfterMs: 0,
 				remainingTokens: Math.floor(state.tokens),
 				quotaRemaining:
-					quotaRemaining === Number.POSITIVE_INFINITY ? -1 : Math.max(0, quotaRemaining - 1),
+					quotaRemaining === Number.POSITIVE_INFINITY
+						? -1
+						: Math.max(0, quotaRemaining - 1),
 			};
 		},
 	};
@@ -188,7 +191,8 @@ export function createThrottleEvent(input: {
 	seq: number;
 	now: string;
 }): RateLimitEvent {
-	const reason: RateLimitReason = input.decision.reason === "quota" ? "quota" : "rate";
+	const reason: RateLimitReason =
+		input.decision.reason === "quota" ? "quota" : "rate";
 	return {
 		id: `evt-mcp-throttled-${input.tool}-${input.seq}`,
 		type: MCP_TOOL_CALL_THROTTLED,

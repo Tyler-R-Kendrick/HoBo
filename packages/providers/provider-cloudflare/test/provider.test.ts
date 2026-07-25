@@ -54,7 +54,10 @@ describe("Capability.estimateCost", () => {
 	});
 
 	it("prices compute and objectStore with distinct SKUs", () => {
-		assert.equal(capabilityFor("compute").estimateCost({ port: "compute" }).sku, "cloudflare.workers.request");
+		assert.equal(
+			capabilityFor("compute").estimateCost({ port: "compute" }).sku,
+			"cloudflare.workers.request",
+		);
 		assert.equal(
 			capabilityFor("objectStore").estimateCost({ port: "objectStore" }).sku,
 			"cloudflare.r2.storage.gb-month",
@@ -65,7 +68,9 @@ describe("Capability.estimateCost", () => {
 describe("CloudProvider.client", () => {
 	it("returns a binding client keyed by resource class for each port", () => {
 		const provider = createCloudflareProvider();
-		const client = provider.client("compute", { url: "https://svc.workers.dev" });
+		const client = provider.client("compute", {
+			url: "https://svc.workers.dev",
+		});
 		assert.equal(client.resourceClass, "cloudflare:workers-script");
 		assert.equal(client.providerService, "Workers");
 		assert.deepEqual(client.bindings, { url: "https://svc.workers.dev" });
@@ -73,6 +78,9 @@ describe("CloudProvider.client", () => {
 
 	it("rejects an unknown port", () => {
 		const provider = createCloudflareProvider();
-		assert.throws(() => provider.client("database", {}), /no client for port database/);
+		assert.throws(
+			() => provider.client("database", {}),
+			/no client for port database/,
+		);
 	});
 });

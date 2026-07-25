@@ -60,12 +60,13 @@ function encodeTime(ms: number): string {
 }
 
 function deriveRandomness(seed: string, index: number): string {
-	const digest = createHash("sha256")
-		.update(`${seed}:${index}`)
-		.digest("hex");
+	const digest = createHash("sha256").update(`${seed}:${index}`).digest("hex");
 	let out = "";
 	for (let position = 0; position < 16; position += 1) {
-		const byte = Number.parseInt(digest.slice(position * 2, position * 2 + 2), 16);
+		const byte = Number.parseInt(
+			digest.slice(position * 2, position * 2 + 2),
+			16,
+		);
 		out += CROCKFORD[byte % 32] as string;
 	}
 	return out;

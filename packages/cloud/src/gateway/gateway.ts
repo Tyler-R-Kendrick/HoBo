@@ -16,7 +16,11 @@ import {
 } from "../events.js";
 import { plan, type PlanConfig } from "../planner/plan.js";
 import type { PlannerRegistry } from "../registry/catalog.js";
-import type { DeploymentPlan, MatchDecided, PlanRemediation } from "../plan-types.js";
+import type {
+	DeploymentPlan,
+	MatchDecided,
+	PlanRemediation,
+} from "../plan-types.js";
 
 // The Gateway (control-plane.md "Services"): command ingress. It authenticates
 // the principal, authorizes against tenant + scope, turns a command into events,
@@ -72,29 +76,34 @@ interface DeploymentState {
 
 // The write-model aggregate behind the deployment stream: a single-writer actor
 // (ActorHost lease + fencing) whose only invariant is idempotent request-once.
-const deploymentAggregate: Aggregate<DeploymentState, DeployCommand & { bindleHash: string; tenant: string }> =
-	defineAggregate<DeploymentState, DeployCommand & { bindleHash: string; tenant: string }>({
-		name: "deployment",
-		initialState: { requested: false },
-		evolve: (state, event) =>
-			event.type === "deployment.Requested" ? { requested: true } : state,
-		decide: (state, command, emitter) => {
-			if (state.requested) {
-				throw new AggregateInvariantError(
-					`deployment ${command.deploymentId} already requested`,
-				);
-			}
-			emitter.emit(
-				"deployment.Requested",
-				deploymentRequested({
-					deploymentId: command.deploymentId,
-					bindleHash: command.bindleHash,
-					tenant: command.tenant,
-					config: command.config ?? {},
-				}).data as Record<string, unknown>,
+const deploymentAggregate: Aggregate<
+	DeploymentState,
+	DeployCommand & { bindleHash: string; tenant: string }
+> = defineAggregate<
+	DeploymentState,
+	DeployCommand & { bindleHash: string; tenant: string }
+>({
+	name: "deployment",
+	initialState: { requested: false },
+	evolve: (state, event) =>
+		event.type === "deployment.Requested" ? { requested: true } : state,
+	decide: (state, command, emitter) => {
+		if (state.requested) {
+			throw new AggregateInvariantError(
+				`deployment ${command.deploymentId} already requested`,
 			);
-		},
-	});
+		}
+		emitter.emit(
+			"deployment.Requested",
+			deploymentRequested({
+				deploymentId: command.deploymentId,
+				bindleHash: command.bindleHash,
+				tenant: command.tenant,
+				config: command.config ?? {},
+			}).data as Record<string, unknown>,
+		);
+	},
+});
 
 export interface DeployResultPlanned {
 	status: "planned";
@@ -150,14 +159,17 @@ export async function deploy(
 
 	// 2. Run the pure Planner and append its facts (choreography fan-out path).
 	const planConfig: PlanConfig = { deploymentId: command.deploymentId };
-	if (command.config?.objective !== undefined) planConfig.objective = command.config.objective;
-	if (command.config?.region !== undefined) planConfig.region = command.config.region;
+	if (command.config?.objective !== undefined)
+		planConfig.objective = command.config.objective;
+	if (command.config?.region !== undefined)
+		planConfig.region = command.config.region;
 
 	const outcome = plan(command.bindle, planConfig, deps.registry);
 
 	const facts: EventInput[] = [];
 	if (outcome.ok) {
-		for (const decision of outcome.decisions) facts.push(matchDecided(decision));
+		for (const decision of outcome.decisions)
+			facts.push(matchDecided(decision));
 		facts.push(
 			deploymentPlanned({
 				deploymentId: command.deploymentId,

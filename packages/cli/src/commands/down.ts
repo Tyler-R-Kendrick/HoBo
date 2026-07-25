@@ -2,7 +2,11 @@ import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { createFixtureSession, loadSession } from "../cloud/session.js";
 import { stubResult } from "../cloud/stub.js";
-import { createYardClient, type YardRuntime, type YardSession } from "../cloud/yard-client.js";
+import {
+	createYardClient,
+	type YardRuntime,
+	type YardSession,
+} from "../cloud/yard-client.js";
 
 export interface DownCommandDeps {
 	readonly runtime?: YardRuntime;
@@ -29,7 +33,9 @@ export function createDownCommand(deps: DownCommandDeps = {}): CommandModule {
 			}
 
 			const session =
-				deps.session ?? (await loadSession(projectDir)) ?? createFixtureSession();
+				deps.session ??
+				(await loadSession(projectDir)) ??
+				createFixtureSession();
 			const deploymentId = deploymentIdFor(projectDir);
 			const yard = createYardClient(runtime);
 			const result = await yard.down(bindle, { deploymentId, session });
@@ -37,7 +43,9 @@ export function createDownCommand(deps: DownCommandDeps = {}): CommandModule {
 			for (const step of result.progress) {
 				if (step.type.startsWith("resource.")) {
 					emitProgress(
-						step.resourceId ? `${step.type} ${step.resourceId}: ${step.detail}` : `${step.type}: ${step.detail}`,
+						step.resourceId
+							? `${step.type} ${step.resourceId}: ${step.detail}`
+							: `${step.type}: ${step.detail}`,
 					);
 				}
 			}

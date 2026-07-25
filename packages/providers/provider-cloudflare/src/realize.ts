@@ -1,5 +1,12 @@
-import { EQUIVALENCE_CLASSES, type InitialCapabilityPort } from "./equivalence.js";
-import { CLOUDFLARE_PROVIDER_TARGET, type HelloBindlePlan, type TypedOptionBlock } from "./hello-bindle.js";
+import {
+	EQUIVALENCE_CLASSES,
+	type InitialCapabilityPort,
+} from "./equivalence.js";
+import {
+	CLOUDFLARE_PROVIDER_TARGET,
+	type HelloBindlePlan,
+	type TypedOptionBlock,
+} from "./hello-bindle.js";
 import {
 	CLOUDFLARE_IAC_PROVIDER,
 	IAC_PROGRAM_API_VERSION,
@@ -54,7 +61,9 @@ export function resolveEquivalence(port: string) {
 }
 
 /** Merge only Cloudflare-owned option blocks; foreign provider blocks drop. */
-export function mergeCloudflareOptions(options: TypedOptionBlock[] = []): Record<string, unknown> {
+export function mergeCloudflareOptions(
+	options: TypedOptionBlock[] = [],
+): Record<string, unknown> {
 	const merged: Record<string, unknown> = {};
 	for (const block of options) {
 		if (block.providerId !== CLOUDFLARE_PROVIDER_TARGET) {
@@ -98,7 +107,13 @@ function buildSpecFor(plan: ResourcePlan): BuildSpec | undefined {
 	}
 	return {
 		kind: "hobo.build-spec/v1",
-		artifacts: [{ id: plan.build.artifactId, source: plan.build.source, target: plan.build.target }],
+		artifacts: [
+			{
+				id: plan.build.artifactId,
+				source: plan.build.source,
+				target: plan.build.target,
+			},
+		],
 	};
 }
 
@@ -112,7 +127,10 @@ function primaryRef(resource: IacResource): string {
  * IacProgram (+ optional BuildSpec). The emitted program matches the shape
  * @hobo/iac-pulumi.validateIacProgram() accepts.
  */
-export function realizeResourcePlan(plan: ResourcePlan): { iac: IacProgram; build?: BuildSpec } {
+export function realizeResourcePlan(plan: ResourcePlan): {
+	iac: IacProgram;
+	build?: BuildSpec;
+} {
 	const resource = buildResource(plan, false);
 	const deploymentId = plan.deploymentId ?? plan.name;
 	const iac: IacProgram = {
@@ -151,7 +169,9 @@ export function realizeResourcePlans(
 		resources,
 		stackOutputs: { endpoint: primaryRef(first) },
 	};
-	const artifacts = plans.flatMap((plan) => buildSpecFor(plan)?.artifacts ?? []);
+	const artifacts = plans.flatMap(
+		(plan) => buildSpecFor(plan)?.artifacts ?? [],
+	);
 	return artifacts.length > 0
 		? { iac, build: { kind: "hobo.build-spec/v1", artifacts } }
 		: { iac };
@@ -166,12 +186,17 @@ export function toResourcePlans(plan: HelloBindlePlan): ResourcePlan[] {
 		options: resource.options,
 		region: resource.colo,
 		deploymentId: plan.id,
-		...(resource.binds ? { deps: resource.binds.map((bind) => bind.providerResourceId) } : {}),
+		...(resource.binds
+			? { deps: resource.binds.map((bind) => bind.providerResourceId) }
+			: {}),
 		...(resource.build ? { build: resource.build } : {}),
 	}));
 }
 
 /** Realize an entire hello-bindle plan end-to-end. */
-export function realizeHelloBindle(plan: HelloBindlePlan): { iac: IacProgram; build?: BuildSpec } {
+export function realizeHelloBindle(plan: HelloBindlePlan): {
+	iac: IacProgram;
+	build?: BuildSpec;
+} {
 	return realizeResourcePlans(toResourcePlans(plan), { deploymentId: plan.id });
 }

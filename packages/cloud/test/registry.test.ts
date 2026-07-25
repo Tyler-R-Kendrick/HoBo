@@ -20,7 +20,10 @@ import {
 let stores: RuntimeLocalEventStore[] = [];
 function freshStore(): RuntimeLocalEventStore {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-cloud-reg-"));
-	const s = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const s = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	stores.push(s);
 	return s;
 }
@@ -35,13 +38,21 @@ describe("Registry: catalog from a provider capabilityManifest()", () => {
 	it("indexes each advertised capability as a default Resource Definition", () => {
 		const provider = createCloudflareProvider();
 		const defs = definitionsFor(provider);
-		expect(defs.map((d) => d.port).sort()).toEqual(["compute", "kv", "objectStore"]);
+		expect(defs.map((d) => d.port).sort()).toEqual([
+			"compute",
+			"kv",
+			"objectStore",
+		]);
 		const compute = defs.find((d) => d.port === "compute");
 		expect(compute?.providerId).toBe("@hobo/provider-cloudflare");
 		expect(compute?.features).toContain("http");
 		// Live negotiation is delegated to the provider Capability.satisfies.
-		expect(compute?.satisfies({ port: "compute", features: ["http"] }).kind).toBe("full");
-		expect(compute?.satisfies({ port: "compute", features: ["gpu"] }).kind).toBe("partial");
+		expect(
+			compute?.satisfies({ port: "compute", features: ["http"] }).kind,
+		).toBe("full");
+		expect(
+			compute?.satisfies({ port: "compute", features: ["gpu"] }).kind,
+		).toBe("partial");
 	});
 
 	it("produces a stable catalog hash for a fixed provider set", () => {
@@ -64,8 +75,14 @@ describe("Registry: catalog projection over provider.Registered", () => {
 			tenant: "yard",
 		});
 
-		const view = await registryCatalogProjection.rebuildFromZero(store, streamId);
-		const row = registryCatalogProjection.get(view, "@hobo/provider-cloudflare");
+		const view = await registryCatalogProjection.rebuildFromZero(
+			store,
+			streamId,
+		);
+		const row = registryCatalogProjection.get(
+			view,
+			"@hobo/provider-cloudflare",
+		);
 		expect(row?.ports).toEqual(["compute", "kv", "objectStore"]);
 		expect(row?.definitionCount).toBe(3);
 		expect(row?.manifestIndexDigest).toMatch(/^sha256:/);

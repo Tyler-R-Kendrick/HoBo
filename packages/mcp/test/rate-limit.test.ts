@@ -30,7 +30,8 @@ describe("token-bucket + quota limiter (pure, injected clock)", () => {
 			refillTokens: 1,
 			refillIntervalMs: 1000,
 		});
-		const at = (now: number) => limiter.check({ tenant: "acme", principal: flooder, now });
+		const at = (now: number) =>
+			limiter.check({ tenant: "acme", principal: flooder, now });
 
 		expect(at(0).allowed).toBe(true);
 		expect(at(0).allowed).toBe(true);
@@ -46,10 +47,16 @@ describe("token-bucket + quota limiter (pure, injected clock)", () => {
 			refillTokens: 1,
 			refillIntervalMs: 1000,
 		});
-		expect(limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed).toBe(true);
-		expect(limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed).toBe(false);
+		expect(
+			limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed,
+		).toBe(true);
+		expect(
+			limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed,
+		).toBe(false);
 		// One interval later, a token has refilled.
-		expect(limiter.check({ tenant: "acme", principal: flooder, now: 1000 }).allowed).toBe(true);
+		expect(
+			limiter.check({ tenant: "acme", principal: flooder, now: 1000 }).allowed,
+		).toBe(true);
 	});
 
 	it("enforces the fixed-window quota with reason 'quota'", () => {
@@ -59,7 +66,8 @@ describe("token-bucket + quota limiter (pure, injected clock)", () => {
 			refillIntervalMs: 1000,
 			quota: { limit: 3, windowMs: 60_000 },
 		});
-		const at = (now: number) => limiter.check({ tenant: "acme", principal: flooder, now });
+		const at = (now: number) =>
+			limiter.check({ tenant: "acme", principal: flooder, now });
 		expect(at(0).allowed).toBe(true);
 		expect(at(0).allowed).toBe(true);
 		expect(at(0).allowed).toBe(true);
@@ -76,13 +84,23 @@ describe("token-bucket + quota limiter (pure, injected clock)", () => {
 			refillTokens: 1,
 			refillIntervalMs: 1000,
 		});
-		expect(limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed).toBe(true);
-		expect(limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed).toBe(false);
+		expect(
+			limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed,
+		).toBe(true);
+		expect(
+			limiter.check({ tenant: "acme", principal: flooder, now: 0 }).allowed,
+		).toBe(false);
 		// The control principal has its own untouched bucket.
-		expect(limiter.check({ tenant: "acme", principal: control, now: 0 }).allowed).toBe(true);
+		expect(
+			limiter.check({ tenant: "acme", principal: control, now: 0 }).allowed,
+		).toBe(true);
 		// Same principal id under a different tenant is also a distinct key.
-		expect(rateLimitKey("acme", flooder)).not.toBe(rateLimitKey("beta", flooder));
-		expect(limiter.check({ tenant: "beta", principal: flooder, now: 0 }).allowed).toBe(true);
+		expect(rateLimitKey("acme", flooder)).not.toBe(
+			rateLimitKey("beta", flooder),
+		);
+		expect(
+			limiter.check({ tenant: "beta", principal: flooder, now: 0 }).allowed,
+		).toBe(true);
 	});
 
 	it("is deterministic — identical clock sequences decide identically", () => {
@@ -94,7 +112,9 @@ describe("token-bucket + quota limiter (pure, injected clock)", () => {
 				quota: { limit: 4, windowMs: 60_000 },
 			});
 			const nows = [0, 0, 0, 500, 1000, 1000, 2000];
-			return nows.map((now) => limiter.check({ tenant: "acme", principal: flooder, now }));
+			return nows.map((now) =>
+				limiter.check({ tenant: "acme", principal: flooder, now }),
+			);
 		};
 		expect(run()).toEqual(run());
 	});
@@ -113,8 +133,12 @@ describe("server applies backpressure BEFORE dispatch", () => {
 			const controlAuth = authGranting(["plan"], { subject: "control" });
 
 			// The flooder gets its capacity, then is throttled.
-			expect((await server.callTool("plan", { cwd }, flooderAuth)).ok).toBe(true);
-			expect((await server.callTool("plan", { cwd }, flooderAuth)).ok).toBe(true);
+			expect((await server.callTool("plan", { cwd }, flooderAuth)).ok).toBe(
+				true,
+			);
+			expect((await server.callTool("plan", { cwd }, flooderAuth)).ok).toBe(
+				true,
+			);
 			const throttled = await server.callTool("plan", { cwd }, flooderAuth);
 			expect(throttled.ok).toBe(false);
 			expect(throttled.status).toBe("throttled");

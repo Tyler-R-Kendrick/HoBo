@@ -42,13 +42,21 @@ describe("mcp-control-surface pact — SVID-scoped agent boundary", () => {
 			const server = createHoboMcpServer({ cli: makeWiredCli() });
 
 			// "SVID-scoped agent can call plan" -> { ok:true, tool:"plan" }
-			const planResult = await server.callTool("plan", { cwd }, authGranting(["plan"]));
+			const planResult = await server.callTool(
+				"plan",
+				{ cwd },
+				authGranting(["plan"]),
+			);
 			expect(planResult.ok).toBe(allow.response.body.ok);
 			expect(planResult.tool).toBe(allow.response.body.tool);
 
 			// "missing deploy scope is denied" -> { ok:false, code:"MCP_SCOPE_DENIED" }
 			// (the `deploy` tool is the `up` lifecycle verb; the agent lacks its scope.)
-			const deniedResult = await server.callTool("up", { cwd }, authGranting(["plan"]));
+			const deniedResult = await server.callTool(
+				"up",
+				{ cwd },
+				authGranting(["plan"]),
+			);
 			expect(deniedResult.ok).toBe(deny.response.body.ok);
 			expect(deniedResult.code).toBe(deny.response.body.code);
 			expect(deniedResult.error?.code).toBe(deny.response.body.code);
@@ -90,7 +98,11 @@ describe("identity-policy-boundary pact — fail-closed decision", () => {
 
 		await withProject(HELLO_BINDLE, async (cwd) => {
 			const server = createHoboMcpServer({ cli: makeWiredCli() });
-			const denied = await server.callTool("up", { cwd }, authGranting(["plan"]));
+			const denied = await server.callTool(
+				"up",
+				{ cwd },
+				authGranting(["plan"]),
+			);
 			// The MCP deny-by-default decision is the fail-closed effect the pact records.
 			expect(denied.decision.effect).toBe(denyInteraction.response.body.effect);
 			const auditEvent = server.getAuditEvents().at(-1);

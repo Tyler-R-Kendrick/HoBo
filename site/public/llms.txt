@@ -1,0 +1,41 @@
+# HoBo
+
+> HoBo is an AI-native meta-cloud, currently in the design phase: a cloud-agnostic control
+> plane and durable runtime that maps one application description (a "Bindle") onto any mix
+> of real providers. The programmable surface is WIT/WASM (Component Model / wasmCloud);
+> TypeScript is the first reference implementation. Agents are first-class principals with
+> scoped credentials, an MCP control surface, and a replayable event log for every action.
+> The product is NOT shipped: this repository is an active design suite plus executable
+> proof/contract packages and a production package scaffold.
+
+Key facts:
+
+- One deploy verb: `hobo up` realizes the object graph (build, plan, gate, provision, deploy); `hobo down` reverses it.
+- Concepts: Bindle (app topology) ⊂ Camp (provider target + durable runtime) ⊂ Yard (provider control plane) ⊂ Junction (cross-Yard federation).
+- Everything is event-sourced and replayable, including agent token issuance.
+- Providers, IaC engines (Pulumi/Crossplane/OpenTofu), and build tools sit behind WIT ports with conformance-gated adapters, ideally AI-generated.
+- This repo is wired for coding agents (Claude Code, Cursor, Codex, Copilot CLI): read AGENTS.md before editing.
+
+## Docs
+
+- [What is HoBo](https://tyler-r-kendrick.github.io/HoBo/guide/): positioning, current state, who it is for
+- [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): Bindle, Camp, Yard, Junction, membrane, event log, agent auth
+- [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, components, package layout
+- [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
+- [Agent docs](https://tyler-r-kendrick.github.io/HoBo/agents/): how AI agents work in this repo — tooling, skills, rules
+- [Contributing](https://tyler-r-kendrick.github.io/HoBo/develop/): what belongs, local gates, PR expectations
+
+## Canonical sources (GitHub)
+
+- [README](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/README.md): project overview and repo map
+- [AGENTS.md](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/AGENTS.md): repo-level agent instructions — required reading for agents
+- [Design suite index](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/index.md): every capability doc, ADR volume, and contract record
+- [Glossary](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/glossary.md): canonical terminology
+- [CLI spec](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/cli-spec.md): canonical command contract
+- [Competitor references](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/competitors/index.md): 30+ captures with HoBo parity mappings
+
+## Optional
+
+- [Agent tooling reference](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/agent-tooling.md): the twelve wired tools, MCP servers, keys and risks
+- [Implementation plan](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/implementation-plan.md): durable backlog mirror (Linear is live source)
+- [Contributing guide](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/CONTRIBUTING.md): local checks and PR expectations

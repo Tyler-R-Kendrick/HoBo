@@ -20,11 +20,9 @@ function sessionPath(dir: string): string {
 	return path.join(dir, SESSION_FILE);
 }
 
-export function createFixtureSession(input: {
-	tenant?: string;
-	subject?: string;
-	issuedAt?: string;
-} = {}): YardSession {
+export function createFixtureSession(
+	input: { tenant?: string; subject?: string; issuedAt?: string } = {},
+): YardSession {
 	const tenant = input.tenant ?? DEFAULT_TENANT;
 	const subject = input.subject ?? ANONYMOUS_SUBJECT;
 	const principal: PrincipalRef = { kind: "user", id: `user:${subject}` };
@@ -37,7 +35,10 @@ export function createFixtureSession(input: {
 	};
 }
 
-export async function persistSession(dir: string, session: YardSession): Promise<string> {
+export async function persistSession(
+	dir: string,
+	session: YardSession,
+): Promise<string> {
 	const file = sessionPath(dir);
 	await mkdir(path.dirname(file), { recursive: true });
 	await writeFile(file, `${JSON.stringify(session, null, 2)}\n`);

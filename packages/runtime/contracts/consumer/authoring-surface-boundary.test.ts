@@ -5,10 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { agent } from "../../src/agent.js";
 import { CapabilityDeniedError } from "../../src/errors.js";
-import {
-	createWorkflowEngine,
-	defineWorkflow,
-} from "../../src/workflow.js";
+import { createWorkflowEngine, defineWorkflow } from "../../src/workflow.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
@@ -88,7 +85,9 @@ describe("authoring-surface journal consumer boundary", () => {
 		const journal = await resumeEngine.journal("run-1");
 
 		expect(handle.status).toBe(interaction.response.body.status);
-		expect(reserveInvocations).toBe(interaction.response.body.reservedInvocations);
+		expect(reserveInvocations).toBe(
+			interaction.response.body.reservedInvocations,
+		);
 		expect(journal.at(-1)?.type).toBe(interaction.response.body.finalEventType);
 	});
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { ProviderHandlerStore, parseInterfaceId, parseWireVersion } from "@hobo/core";
+import {
+	ProviderHandlerStore,
+	parseInterfaceId,
+	parseWireVersion,
+} from "@hobo/core";
 
 import {
 	AmbiguousCommitError,
@@ -64,9 +68,15 @@ describe("membrane failure semantics (S1-23)", () => {
 			get: ({ key }: { key: string }) => ({ value: `stored:${key}` }),
 		});
 
-		const result = await layer.callImport("api", KV, "get", { key: "s" }, {
-			deadline: FUTURE_DEADLINE,
-		});
+		const result = await layer.callImport(
+			"api",
+			KV,
+			"get",
+			{ key: "s" },
+			{
+				deadline: FUTURE_DEADLINE,
+			},
+		);
 
 		expect(result).toEqual({ value: "stored:s" });
 		expect(layer.events.at(-1)?.type).toBe("link.Called");
@@ -84,9 +94,15 @@ describe("membrane failure semantics (S1-23)", () => {
 
 		let caught: unknown;
 		try {
-			await layer.callImport("api", KV, "get", { key: "s" }, {
-				deadline: PAST_DEADLINE,
-			});
+			await layer.callImport(
+				"api",
+				KV,
+				"get",
+				{ key: "s" },
+				{
+					deadline: PAST_DEADLINE,
+				},
+			);
 		} catch (error) {
 			caught = error;
 		}

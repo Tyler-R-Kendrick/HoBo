@@ -5,10 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import {
-	createInMemoryActorHost,
-	defineAggregate,
-} from "@hobo/data";
+import { createInMemoryActorHost, defineAggregate } from "@hobo/data";
 import {
 	createLocalStreamer,
 	createManualClock,
@@ -79,7 +76,9 @@ describe("@hobo/events subscription-gateway boundary consumer contract", () => {
 				.facts()
 				.filter((f) => f.type === "subscription.Pushed")
 				.at(-1);
-			expect(pushed?.data.resultCount).toBe(interaction.request.body.resultCount);
+			expect(pushed?.data.resultCount).toBe(
+				interaction.request.body.resultCount,
+			);
 		} finally {
 			store.close();
 		}

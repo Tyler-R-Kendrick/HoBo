@@ -111,7 +111,8 @@ function buildEntries(
 		(tools ?? []).map((tool) => [tool.name, tool.capability] as const),
 	);
 	return verbs.map((verb) => {
-		const capability = capabilityByTool.get(verb.name) ?? defaultCapabilityFor(verb.name);
+		const capability =
+			capabilityByTool.get(verb.name) ?? defaultCapabilityFor(verb.name);
 		return {
 			name: verb.name,
 			role: verb.role,
@@ -136,7 +137,9 @@ function renderConcise(manifest: AgentDocsManifest): string {
 		"## Commands",
 	];
 	for (const entry of manifest.entries) {
-		lines.push(`- ${entry.name} (${entry.role}): ${entry.summary} — CLI \`${entry.cli}\`; MCP tool \`${entry.mcpTool}\``);
+		lines.push(
+			`- ${entry.name} (${entry.role}): ${entry.summary} — CLI \`${entry.cli}\`; MCP tool \`${entry.mcpTool}\``,
+		);
 	}
 	lines.push(
 		"",
@@ -200,7 +203,9 @@ function renderManifest(manifest: AgentDocsManifest): string {
  * tool surface. Pure and deterministic: same inputs always yield byte-identical
  * artifacts, so the output is drift-gated like `hobo codegen --check`.
  */
-export function generateAgentDocs(input: GenerateAgentDocsInput = {}): AgentDocsResult {
+export function generateAgentDocs(
+	input: GenerateAgentDocsInput = {},
+): AgentDocsResult {
 	const verbs = input.verbs ?? CANONICAL_VERBS;
 	const globalFlags = input.globalFlags ?? GLOBAL_FLAGS;
 	const entries = buildEntries(verbs, input.tools);

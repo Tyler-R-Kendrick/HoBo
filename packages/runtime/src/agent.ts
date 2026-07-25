@@ -5,11 +5,7 @@
 // membrane in `ctx`. A tool the agent never declared has no capability and is
 // refused with a typed `CapabilityDeniedError`.
 
-import {
-	type Capability,
-	toolCapability,
-	tokenCapability,
-} from "./ctx.js";
+import { type Capability, toolCapability, tokenCapability } from "./ctx.js";
 import {
 	defineWorkflow,
 	type WorkflowContext,
@@ -44,8 +40,10 @@ export function agent<A, R>(
 		throw new TypeError("agent name must be a non-empty string");
 	}
 	const tools = input.tools ?? [];
-	const toolRegistry: Record<string, (value: unknown) => Promise<unknown> | unknown> =
-		{};
+	const toolRegistry: Record<
+		string,
+		(value: unknown) => Promise<unknown> | unknown
+	> = {};
 	const grantedCapabilities: Capability[] = [];
 
 	for (const tool of tools) {

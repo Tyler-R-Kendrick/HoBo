@@ -85,7 +85,11 @@ function makeDevRuntime(): DevRuntime {
 						) => Promise<unknown>;
 					},
 				) => {
-					const greeting = (await context.callImport(KV_INTERFACE, "get", {})) as string;
+					const greeting = (await context.callImport(
+						KV_INTERFACE,
+						"get",
+						{},
+					)) as string;
 					return { status: 200, headers: [], body: `hello ${greeting}` };
 				},
 			},
@@ -119,7 +123,9 @@ async function withProject(
 	manifest: unknown,
 	callback: (cwd: string) => Promise<void>,
 ): Promise<void> {
-	const dir = await mkdtempAsync(path.join(tmpdir(), "hobo-cli-devcollect-pact-"));
+	const dir = await mkdtempAsync(
+		path.join(tmpdir(), "hobo-cli-devcollect-pact-"),
+	);
 	await writeFileAsync(
 		path.join(dir, "hobo.bindle.json"),
 		`${JSON.stringify(manifest, null, 2)}\n`,
@@ -161,12 +167,18 @@ describe("CLI <-> local-dev-loop boundary pact", () => {
 		const expected = pact.interactions[0]!.response;
 		await withProject({}, async (cwd) => {
 			const cli = createHoboCli({
-				commands: { collect: createCollectCommand({ target: collectTarget() }) },
+				commands: {
+					collect: createCollectCommand({ target: collectTarget() }),
+				},
 			});
 			const result = await cli.run(["collect", "--json"], { cwd });
 			const envelope = JSON.parse(result.stdout) as {
 				status: string;
-				data: { manifestHash: string; resources: string[]; events: Array<{ type: string }> };
+				data: {
+					manifestHash: string;
+					resources: string[];
+					events: Array<{ type: string }>;
+				};
 			};
 			expect(envelope.status).toBe(expected.status);
 			expect(envelope.data.manifestHash).toBe(expected.manifestHash);

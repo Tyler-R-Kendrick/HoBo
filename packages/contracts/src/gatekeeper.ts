@@ -134,14 +134,21 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 
 	// (c) obligations — an allowed-but-must-do effect must be satisfiable. Policy
 	// obligations that are not yet satisfied gate the deploy to require-approval.
-	const obligations = collectObligations(input.obligations, policy.decision.obligations);
-	const pendingObligations = obligations.filter((obligation) => !obligation.satisfied);
+	const obligations = collectObligations(
+		input.obligations,
+		policy.decision.obligations,
+	);
+	const pendingObligations = obligations.filter(
+		(obligation) => !obligation.satisfied,
+	);
 	if (pendingObligations.length > 0) {
 		reasons.push({
 			gate: "obligations",
 			code: "obligation-pending",
 			message: `${pendingObligations.length} obligation(s) must be satisfied before apply`,
-			details: { pending: pendingObligations.map((obligation) => obligation.id) },
+			details: {
+				pending: pendingObligations.map((obligation) => obligation.id),
+			},
 		});
 	}
 

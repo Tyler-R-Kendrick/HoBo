@@ -23,7 +23,10 @@ describe("scripted agent drives plan -> up through the MCP server", () => {
 			const plan = await server.callTool("plan", { cwd }, auth);
 			expect(plan.ok).toBe(true);
 			expect(plan.tool).toBe("plan");
-			const planOut = plan.output as { status: string; data: { planHash: string } };
+			const planOut = plan.output as {
+				status: string;
+				data: { planHash: string };
+			};
 			expect(planOut.status).toBe("ok");
 			expect(planOut.data.planHash).toMatch(/^sha256:/);
 
@@ -36,13 +39,17 @@ describe("scripted agent drives plan -> up through the MCP server", () => {
 			};
 			expect(upOut.status).toBe("deployed");
 			expect(upOut.data.provisioned).toEqual(["assets", "service", "sessions"]);
-			const provisioned = upOut.data.progress.filter((p) => p.type === "resource.Provisioned");
+			const provisioned = upOut.data.progress.filter(
+				(p) => p.type === "resource.Provisioned",
+			);
 			expect(provisioned.length).toBe(3);
 
 			// Every authorized call left an audited allow decision.
 			const decisions = server.getAuditEvents();
 			expect(decisions.filter((e) => e.data.effect === "allow").length).toBe(2);
-			expect(decisions.every((e) => e.retention.neverCompact === true)).toBe(true);
+			expect(decisions.every((e) => e.retention.neverCompact === true)).toBe(
+				true,
+			);
 		});
 	});
 

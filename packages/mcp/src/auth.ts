@@ -120,7 +120,14 @@ export function decideToolCall(input: {
 		retention: CREDENTIAL_AUDIT_RETENTION,
 		data: { tool: tool.name, subject: auth.subject, effect, reason },
 	};
-	return { effect, tool: tool.name, subject: auth.subject, tenant: auth.tenant, reason, event };
+	return {
+		effect,
+		tool: tool.name,
+		subject: auth.subject,
+		tenant: auth.tenant,
+		reason,
+		event,
+	};
 }
 
 // domain-view: the recorded, powerless observation of a tool output; its wire
@@ -149,7 +156,9 @@ export function observeToolOutput(input: {
 	const before = authorizedToolNames(input.auth, surface);
 	// The output is data. It is recorded for audit but has no authority.
 	const recordedText =
-		typeof input.output === "string" ? input.output : JSON.stringify(input.output);
+		typeof input.output === "string"
+			? input.output
+			: JSON.stringify(input.output);
 	// Recompute from the SVID scope — the ONLY source of authority.
 	const after = authorizedToolNames(input.auth, surface);
 	return {
@@ -178,7 +187,12 @@ export type AuthResolution =
 // may also construct an AuthContext directly from an already-resolved SVID.
 export async function resolveAuthContext(
 	identity: IdentityService,
-	input: { token: string; audience: string; principal?: McpPrincipal; now?: string },
+	input: {
+		token: string;
+		audience: string;
+		principal?: McpPrincipal;
+		now?: string;
+	},
 ): Promise<AuthResolution> {
 	const result = await identity.authenticateAtGateway({
 		token: input.token,

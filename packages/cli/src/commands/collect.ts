@@ -42,12 +42,13 @@ export function createCollectCommand(
 			}
 
 			const projectDir = context.projectDir ?? context.cwd;
-			emitProgress(`hobo collect: running resource collection on ${target.bindleId}`);
+			emitProgress(
+				`hobo collect: running resource collection on ${target.bindleId}`,
+			);
 			const result = collectBindleManifest(target);
-			const manifestValue = JSON.parse(serializeManifest(result.manifest)) as Record<
-				string,
-				unknown
-			>;
+			const manifestValue = JSON.parse(
+				serializeManifest(result.manifest),
+			) as Record<string, unknown>;
 			const manifestIr = JSON.stringify(manifestValue, null, 2);
 
 			if (flags.check) {

@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { replayRun } from "../../src/replay/replayer.js";
-import {
-	createWorkflowEngine,
-	defineWorkflow,
-} from "../../src/workflow.js";
+import { createWorkflowEngine, defineWorkflow } from "../../src/workflow.js";
 
 interface OrderState {
 	reserved: boolean;

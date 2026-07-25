@@ -26,6 +26,8 @@ describe("Identity service boundary consumer contract", () => {
 			issuerUrl: ISSUER_URL,
 			genesisKeyId: "yard-genesis-2026-07",
 		});
-		expect(pact.interactions[0]?.response.body).toEqual(service.contractEvidence());
+		expect(pact.interactions[0]?.response.body).toEqual(
+			service.contractEvidence(),
+		);
 	});
 });

@@ -45,7 +45,11 @@ export type TokenBroker = (request: WitTokenRequest) => WitTokenHandle;
 
 /** The effect implementations the engine wires into a context. */
 export interface CtxEffects {
-	step<T>(name: string, fn: () => Promise<T> | T, opts?: StepOptions): Promise<T>;
+	step<T>(
+		name: string,
+		fn: () => Promise<T> | T,
+		opts?: StepOptions,
+	): Promise<T>;
 	sleep(durationMs: number, options?: { label?: string }): Promise<void>;
 	emit(type: string, data?: unknown): Promise<number>;
 	now(): string;
@@ -63,7 +67,11 @@ export interface CtxEffects {
 export interface RuntimeContext {
 	readonly capabilities: ReadonlySet<Capability>;
 	requireCapability(capability: Capability): void;
-	step<T>(name: string, fn: () => Promise<T> | T, opts?: StepOptions): Promise<T>;
+	step<T>(
+		name: string,
+		fn: () => Promise<T> | T,
+		opts?: StepOptions,
+	): Promise<T>;
 	sleep(durationMs: number, options?: { label?: string }): Promise<void>;
 	emit(type: string, data?: unknown): Promise<number>;
 	now(): string;
@@ -118,7 +126,9 @@ export function createRuntimeContext(input: {
 		async tool(name: string, toolInput: unknown): Promise<unknown> {
 			requireCapability(toolCapability(name));
 			if (!effects.tool) {
-				throw new CapabilityDeniedError(toolCapability(name), [...capabilities]);
+				throw new CapabilityDeniedError(toolCapability(name), [
+					...capabilities,
+				]);
 			}
 			return effects.tool(name, toolInput);
 		},

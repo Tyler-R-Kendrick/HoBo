@@ -51,7 +51,11 @@ export interface ToolDescriptor {
 }
 
 export function capabilityForTool(name: string): CapabilityScope {
-	return { port: MCP_TOOL_PORT, resource: `tool:${name}`, verb: MCP_TOOL_CALL_VERB };
+	return {
+		port: MCP_TOOL_PORT,
+		resource: `tool:${name}`,
+		verb: MCP_TOOL_CALL_VERB,
+	};
 }
 
 export function deriveToolSurface(

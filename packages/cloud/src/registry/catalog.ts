@@ -61,9 +61,13 @@ export interface PlannerRegistry {
 	providers(): string[];
 }
 
-function normalizeVerdict(raw: { kind: string; missing?: string[] }): CapabilityVerdict {
+function normalizeVerdict(raw: {
+	kind: string;
+	missing?: string[];
+}): CapabilityVerdict {
 	if (raw.kind === "full") return { kind: "full" };
-	if (raw.kind === "partial") return { kind: "partial", missing: raw.missing ?? [] };
+	if (raw.kind === "partial")
+		return { kind: "partial", missing: raw.missing ?? [] };
 	return { kind: "none" };
 }
 
@@ -76,17 +80,23 @@ function catalogHashOf(definitions: ResourceDefinition[]): string {
 			marginalPrice: d.cost.marginalPrice,
 		}))
 		.sort((a, b) => a.id.localeCompare(b.id));
-	const digest = createHash("sha256").update(JSON.stringify(summary)).digest("hex");
+	const digest = createHash("sha256")
+		.update(JSON.stringify(summary))
+		.digest("hex");
 	return `sha256:${digest}`;
 }
 
-export function definitionsFor(provider: RegistrableProvider): ResourceDefinition[] {
+export function definitionsFor(
+	provider: RegistrableProvider,
+): ResourceDefinition[] {
 	const manifest = provider.capabilityManifest();
 	const capsArray = manifest.capabilities.capabilities ?? [];
 	const costFacts = manifest.cost.facts ?? [];
 
 	return provider.capabilities.map((capability) => {
-		const manifestEntry = capsArray.find((entry) => entry.port === capability.port);
+		const manifestEntry = capsArray.find(
+			(entry) => entry.port === capability.port,
+		);
 		const costFact = costFacts.find((fact) => fact.port === capability.port);
 		const estimate = capability.estimateCost({ port: capability.port });
 		const features = Array.isArray(manifestEntry?.features)
@@ -109,7 +119,8 @@ export function definitionsFor(provider: RegistrableProvider): ResourceDefinitio
 			cost: {
 				sku: (costFact?.sku as string) ?? estimate.sku,
 				unit: (costFact?.unit as string) ?? estimate.unit,
-				marginalPrice: (costFact?.marginalPrice as string) ?? estimate.marginalPrice,
+				marginalPrice:
+					(costFact?.marginalPrice as string) ?? estimate.marginalPrice,
 			},
 			satisfies: (req) => normalizeVerdict(capability.satisfies(req)),
 		};
@@ -143,7 +154,8 @@ export function registerProviderFact(provider: RegistrableProvider) {
 		cost: d.cost,
 	}));
 	const manifest = provider.capabilityManifest();
-	const indexDoc = manifest.published["/.well-known/capability-manifest/index.json"] ?? "";
+	const indexDoc =
+		manifest.published["/.well-known/capability-manifest/index.json"] ?? "";
 	const manifestIndexDigest = `sha256:${createHash("sha256").update(indexDoc).digest("hex")}`;
 	return providerRegistered({
 		providerId: provider.id,

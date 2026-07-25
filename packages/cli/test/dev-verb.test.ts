@@ -14,7 +14,11 @@ import {
 	createRuntimeLocalComponentHost,
 } from "@hobo/runtime-local";
 
-import { createDevCommand, createHoboCli, type DevRuntime } from "../src/index.js";
+import {
+	createDevCommand,
+	createHoboCli,
+	type DevRuntime,
+} from "../src/index.js";
 
 // S1-19: `hobo dev` boots a runtime-local Camp, collects + links the Bindle,
 // serves it locally, and live-tails the component-host events through the
@@ -64,11 +68,9 @@ function makeDevRuntime(): DevRuntime {
 						) => Promise<unknown>;
 					},
 				) => {
-					const greeting = (await context.callImport(
-						KV_INTERFACE,
-						"get",
-						{ key: "greeting" },
-					)) as string;
+					const greeting = (await context.callImport(KV_INTERFACE, "get", {
+						key: "greeting",
+					})) as string;
 					return { status: 200, headers: [], body: `hello ${greeting}` };
 				},
 			},
@@ -104,7 +106,9 @@ function makeDevRuntime(): DevRuntime {
 	};
 }
 
-async function withProject(callback: (cwd: string) => Promise<void>): Promise<void> {
+async function withProject(
+	callback: (cwd: string) => Promise<void>,
+): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-dev-"));
 	await writeFile(
 		path.join(dir, "hobo.bindle.json"),
@@ -192,7 +196,10 @@ describe("hobo dev boots a runtime-local Camp offline", () => {
 	it("falls back to the shell stub when no runtime is injected", async () => {
 		await withProject(async (cwd) => {
 			const result = await createHoboCli().run(["dev", "--json"], { cwd });
-			const envelope = JSON.parse(result.stdout) as { status: string; code: string };
+			const envelope = JSON.parse(result.stdout) as {
+				status: string;
+				code: string;
+			};
 			expect(envelope.status).toBe("not_implemented");
 			expect(envelope.code).toBe("HOBO_CLI_STUB");
 		});

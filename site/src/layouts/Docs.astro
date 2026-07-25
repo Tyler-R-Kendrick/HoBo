@@ -1,0 +1,72 @@
+---
+import Base from "./Base.astro";
+import { github, nav } from "../nav";
+import { href } from "../lib/url";
+
+interface Props {
+	frontmatter: {
+		title: string;
+		description: string;
+		file?: string;
+	};
+	file?: string;
+}
+
+const { frontmatter } = Astro.props;
+const path = Astro.url.pathname;
+const section = nav.find((group) => path.startsWith(href(group.slug)));
+const current = (slug: string) =>
+	path.replace(/\/$/, "") === href(slug).replace(/\/$/, "")
+		? "page"
+		: undefined;
+
+// Astro passes the source file's absolute path for markdown layouts.
+const sourceFile = (Astro.props.file ?? "").split("/site/")[1];
+const editUrl = sourceFile
+	? `${github}/edit/main/site/${sourceFile}`
+	: `${github}/tree/main/site`;
+---
+
+<Base
+	title={`${frontmatter.title} · HoBo docs`}
+	description={frontmatter.description}
+>
+	<div class="container docs">
+		<div>
+			<button
+				class="docs-sidebar-toggle"
+				aria-expanded="false"
+				aria-controls="docs-sidebar"
+			>
+				{section?.label ?? "Docs"} menu ▾
+			</button>
+			<aside class="docs-sidebar" id="docs-sidebar">
+				{
+					nav.map((group) => (
+						<nav aria-label={group.label}>
+							<h4>{group.label}</h4>
+							<ul>
+								{group.items.map((item) => (
+									<li>
+										<a href={href(item.slug)} aria-current={current(item.slug)}>
+											{item.label}
+										</a>
+									</li>
+								))}
+							</ul>
+						</nav>
+					))
+				}
+			</aside>
+		</div>
+		<article class="prose">
+			<div class="docs-meta">
+				<span class="badge">{section?.label ?? "Docs"}</span>
+			</div>
+			<slot />
+			<p class="edit-link">
+				<a href={editUrl}>Edit this page on GitHub</a>
+			</p>
+		</article>
+	</div>
+</Base>

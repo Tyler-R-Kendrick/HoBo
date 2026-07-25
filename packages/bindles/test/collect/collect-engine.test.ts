@@ -9,7 +9,10 @@ import {
 	type CollectionContext,
 	type CollectionTarget,
 } from "../../src/index.js";
-import { data as wiringData, service as wiringService } from "../../src/wiring/index.js";
+import {
+	data as wiringData,
+	service as wiringService,
+} from "../../src/wiring/index.js";
 
 const COMPONENT_HOST = { kind: "wasmtime", version: "46.0.1" } as const;
 

@@ -112,7 +112,11 @@ export interface ExecRunOptions {
 
 // The Executor port (S2-03a): typed interface `run(program, scopedCreds) => …`.
 export interface Executor {
-	run(program: IacProgram, credential: ScopedCredential, options?: ExecRunOptions): Promise<ExecResult>;
+	run(
+		program: IacProgram,
+		credential: ScopedCredential,
+		options?: ExecRunOptions,
+	): Promise<ExecResult>;
 }
 
 // Cloud-provider ambient credential env vars the sandbox must never carry
@@ -145,7 +149,9 @@ function hashRef(value: unknown): string {
 // The sandboxed, in-process Executor. It scopes creds per-exec (only the injected
 // token), asserts no ambient cloud creds, bounds egress to the allowlist, runs
 // preview then apply against the injected IacProvider, and streams exec.* events.
-export function createInProcessExecutor(options: InProcessExecutorOptions): Executor {
+export function createInProcessExecutor(
+	options: InProcessExecutorOptions,
+): Executor {
 	const iac = options.iac;
 	const allowedEgress = [...(options.allowedEgress ?? [])];
 	const allowed = new Set(allowedEgress);
@@ -155,7 +161,10 @@ export function createInProcessExecutor(options: InProcessExecutorOptions): Exec
 			const execId = `exec-${program.action}-${hashRef({ programId: program.programId, action: program.action }).slice(7, 19)}`;
 			const events: ExecEvent[] = [];
 			let seq = 0;
-			const push = (type: ExecEventType, data: Record<string, unknown>): void => {
+			const push = (
+				type: ExecEventType,
+				data: Record<string, unknown>,
+			): void => {
 				seq += 1;
 				events.push({ type, execId, seq, data });
 			};
@@ -168,17 +177,27 @@ export function createInProcessExecutor(options: InProcessExecutorOptions): Exec
 				allowedEgress: [...allowedEgress],
 			};
 
-			push("exec.Started", { resourceId: program.resourceId, programHash: hashRef(program) });
+			push("exec.Started", {
+				resourceId: program.resourceId,
+				programHash: hashRef(program),
+			});
 
 			// --- S2-03b sandbox hardening: no ambient credentials ----------------
 			// The only credential permitted is the injected scoped token. Any
 			// ambient cloud cred visible to the run is a fatal sandbox violation.
 			if (credential.ambient !== false) {
-				return fail(events, push, sandbox, "fatal", "sandbox.ambient_credentials: injected credential is not scoped");
+				return fail(
+					events,
+					push,
+					sandbox,
+					"fatal",
+					"sandbox.ambient_credentials: injected credential is not scoped",
+				);
 			}
 			const ambientEnv = runOptions.ambientEnv ?? {};
 			const leaked = AMBIENT_CREDENTIAL_KEYS.filter(
-				(key) => typeof ambientEnv[key] === "string" && ambientEnv[key].length > 0,
+				(key) =>
+					typeof ambientEnv[key] === "string" && ambientEnv[key].length > 0,
 			);
 			if (leaked.length > 0) {
 				return fail(
@@ -198,8 +217,17 @@ export function createInProcessExecutor(options: InProcessExecutorOptions): Exec
 			// --- S2-03b sandbox hardening: bounded egress ------------------------
 			for (const attempt of runOptions.egressAttempts ?? []) {
 				if (!allowed.has(attempt.target)) {
-					push("exec.Output", { stream: "stderr", line: `egress denied: ${attempt.target}` });
-					return fail(events, push, sandbox, "fatal", `sandbox.egress_scope: undeclared egress denied: ${attempt.target}`);
+					push("exec.Output", {
+						stream: "stderr",
+						line: `egress denied: ${attempt.target}`,
+					});
+					return fail(
+						events,
+						push,
+						sandbox,
+						"fatal",
+						`sandbox.egress_scope: undeclared egress denied: ${attempt.target}`,
+					);
 				}
 			}
 
@@ -211,8 +239,17 @@ export function createInProcessExecutor(options: InProcessExecutorOptions): Exec
 
 				if (program.action === "destroy") {
 					await iac.destroy(program);
-					push("exec.Succeeded", { outputsHash: hashRef({ destroyed: program.resourceId }) });
-					return { status: "succeeded", execId, events, outputs: {}, diff, sandbox };
+					push("exec.Succeeded", {
+						outputsHash: hashRef({ destroyed: program.resourceId }),
+					});
+					return {
+						status: "succeeded",
+						execId,
+						events,
+						outputs: {},
+						diff,
+						sandbox,
+					};
 				}
 
 				const outputs = await iac.apply(program);
@@ -223,7 +260,13 @@ export function createInProcessExecutor(options: InProcessExecutorOptions): Exec
 				// Provider/apply errors are classified retryable by default; a caller
 				// (the ResourceActor) decides whether the failure crosses the no-go
 				// threshold (control-plane.md reconcile loop step 4).
-				return fail(events, push, sandbox, "retryable", `executor.apply_failed: ${reason}`);
+				return fail(
+					events,
+					push,
+					sandbox,
+					"retryable",
+					`executor.apply_failed: ${reason}`,
+				);
 			}
 		},
 	};
@@ -237,7 +280,14 @@ function fail(
 	reason: string,
 ): ExecResultFailed {
 	push("exec.Failed", { classification, reason });
-	return { status: "failed", execId: sandbox.execId, events, classification, reason, sandbox };
+	return {
+		status: "failed",
+		execId: sandbox.execId,
+		events,
+		classification,
+		reason,
+		sandbox,
+	};
 }
 
 // The Identity token broker stub (control-plane.md: "The Orchestrator requests a
@@ -265,7 +315,12 @@ export function createInProcessCredentialBroker(): CredentialBroker {
 		issue({ scope, ttlSeconds = 300 }) {
 			if (!scope) throw new TypeError("credential scope is required");
 			const id = `scoped-${createHash("sha256").update(scope).digest("hex").slice(0, 12)}`;
-			const credential: ScopedCredential = { id, scope, ttlSeconds, ambient: false };
+			const credential: ScopedCredential = {
+				id,
+				scope,
+				ttlSeconds,
+				ambient: false,
+			};
 			active.set(id, credential);
 			return credential;
 		},

@@ -76,8 +76,14 @@ function inMemoryIac(): IacProvider {
 }
 
 export function makeRuntime(): YardRuntime {
-	const dir = path.join(tmpdir(), `hobo-mcp-yard-${Math.random().toString(36).slice(2)}`);
-	const store = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const dir = path.join(
+		tmpdir(),
+		`hobo-mcp-yard-${Math.random().toString(36).slice(2)}`,
+	);
+	const store = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	openStores.push(store);
 	return {
 		store,
@@ -106,7 +112,10 @@ export async function withProject(
 	callback: (cwd: string) => Promise<void>,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-mcp-project-"));
-	await writeFile(path.join(dir, "hobo.bindle.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+	await writeFile(
+		path.join(dir, "hobo.bindle.json"),
+		`${JSON.stringify(manifest, null, 2)}\n`,
+	);
 	try {
 		await callback(dir);
 	} finally {

@@ -31,7 +31,8 @@ const orders = defineAggregate<
 				status: "placed",
 				totalCents: (event.data as { totalCents: number }).totalCents,
 			};
-		if (event.type === "order.Cancelled") return { ...state, status: "cancelled" };
+		if (event.type === "order.Cancelled")
+			return { ...state, status: "cancelled" };
 		return state;
 	},
 	decide: (state, command, emitter) => {
@@ -80,7 +81,10 @@ const orderView = defineProjection<{ orderId: string; status: string }>({
 			orderId: (e.data as { orderId: string }).orderId,
 			status: "placed",
 		}),
-		"order.Cancelled": (r, _e) => ({ ...(r as { orderId: string }), status: "cancelled" }),
+		"order.Cancelled": (r, _e) => ({
+			...(r as { orderId: string }),
+			status: "cancelled",
+		}),
 	},
 });
 
@@ -92,17 +96,29 @@ const checkout = defineSaga({
 	step: async (event, ctx) => {
 		const orderId = (event.data as { orderId: string }).orderId;
 		const totalCents = (event.data as { totalCents: number }).totalCents;
-		await ctx.dispatch("charge-payment", payments, `payment:${orderId}`, {
-			orderId,
-			amountCents: totalCents,
-		}, CTX);
+		await ctx.dispatch(
+			"charge-payment",
+			payments,
+			`payment:${orderId}`,
+			{
+				orderId,
+				amountCents: totalCents,
+			},
+			CTX,
+		);
 	},
 	compensate: async (event, ctx) => {
 		const orderId = (event.data as { orderId: string }).orderId;
-		await ctx.dispatch("cancel-order", orders, `order:${orderId}`, {
-			kind: "cancel",
-			id: orderId,
-		}, CTX);
+		await ctx.dispatch(
+			"cancel-order",
+			orders,
+			`order:${orderId}`,
+			{
+				kind: "cancel",
+				id: orderId,
+			},
+			CTX,
+		);
 	},
 });
 
@@ -119,7 +135,10 @@ afterEach(() => {
 
 async function placeOrder(
 	s: RuntimeLocalEventStore,
-	deps: { store: RuntimeLocalEventStore; actorHost: ReturnType<typeof createInMemoryActorHost> },
+	deps: {
+		store: RuntimeLocalEventStore;
+		actorHost: ReturnType<typeof createInMemoryActorHost>;
+	},
 	id: string,
 	totalCents: number,
 ): Promise<EventEnvelope> {
@@ -167,7 +186,9 @@ describe("cross-aggregate checkout saga", () => {
 		const factTypes = outcome.facts.map((f) => f.type);
 		expect(factTypes).toContain("saga.Compensated");
 		expect(factTypes).toContain("saga.StepEmitted"); // the compensating cancel
-		const compensated = outcome.facts.find((f) => f.type === "saga.Compensated");
+		const compensated = outcome.facts.find(
+			(f) => f.type === "saga.Compensated",
+		);
 		expect(compensated?.data).toMatchObject({
 			step: "charge-payment",
 			reason: "payment declined: over limit",

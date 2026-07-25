@@ -91,7 +91,9 @@ afterEach(() => {
 	openStores = [];
 });
 
-async function withProject(callback: (cwd: string) => Promise<void>): Promise<void> {
+async function withProject(
+	callback: (cwd: string) => Promise<void>,
+): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-real-iac-"));
 	await writeFile(
 		path.join(dir, "hobo.bindle.json"),
@@ -138,7 +140,9 @@ describe("composed hobo up/down drives the REAL @hobo/iac-pulumi adapter", () =>
 
 			// Observable adapter effect: applied outputs (real per-resource-stack
 			// bindings) flowed back and were recorded on the deployment.
-			const down = envelope((await cli.run(["down", "--json"], { cwd })).stdout);
+			const down = envelope(
+				(await cli.run(["down", "--json"], { cwd })).stdout,
+			);
 			expect(down.ok).toBe(true);
 			expect(down.status).toBe("destroyed");
 			expect([...down.data.destroyed].sort()).toEqual([

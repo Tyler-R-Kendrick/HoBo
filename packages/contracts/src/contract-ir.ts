@@ -108,10 +108,14 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 	const version = semver(source.version, "$.version");
 	const mode = enumValue(source.mode ?? "declared", MODE_SET, "$.mode");
 	const edge = parseEdge(source.edge, "$.edge");
-	const requiredShape = parseRequiredShape(source.requiredShape, "$.requiredShape");
+	const requiredShape = parseRequiredShape(
+		source.requiredShape,
+		"$.requiredShape",
+	);
 
 	const core = {
-		schemaVersion: CONTRACT_IR_SCHEMA_VERSION as typeof CONTRACT_IR_SCHEMA_VERSION,
+		schemaVersion:
+			CONTRACT_IR_SCHEMA_VERSION as typeof CONTRACT_IR_SCHEMA_VERSION,
 		id,
 		version,
 		mode: mode as ContractMode,
@@ -177,7 +181,9 @@ export function checkCompatibility(
 		...prev.requiredShape.requiredFields,
 	]);
 	const nextProvides = new Set(next.requiredShape.providedFields);
-	const removed = [...guaranteed].filter((field) => !nextProvides.has(field)).sort();
+	const removed = [...guaranteed]
+		.filter((field) => !nextProvides.has(field))
+		.sort();
 	if (removed.length > 0) {
 		reasons.push(
 			reason(
@@ -205,7 +211,11 @@ export function checkCompatibility(
 	if (reasons.length > 0) {
 		return { kind: "breaking", reasons };
 	}
-	return { kind: "compatible", contractId: next.id, channel: next.edge.channel };
+	return {
+		kind: "compatible",
+		contractId: next.id,
+		channel: next.edge.channel,
+	};
 }
 
 export function isCompatible(result: CompatibilityResult): boolean {
@@ -237,7 +247,11 @@ function reason(
 function parseEdge(input: unknown, path: string): ContractEdge {
 	const edge = expectObject(input, path);
 	return {
-		kind: enumValue(edge.kind, EDGE_KIND_SET, `${path}.kind`) as ContractEdgeKind,
+		kind: enumValue(
+			edge.kind,
+			EDGE_KIND_SET,
+			`${path}.kind`,
+		) as ContractEdgeKind,
 		producer: nonEmptyString(edge.producer, `${path}.producer`),
 		consumer: nonEmptyString(edge.consumer, `${path}.consumer`),
 		channel: nonEmptyString(edge.channel, `${path}.channel`),
@@ -257,7 +271,9 @@ function parseRequiredShape(input: unknown, path: string): RequiredShape {
 	};
 }
 
-function hashContract(core: Omit<BoundaryContract, "contractHash">): `sha256:${string}` {
+function hashContract(
+	core: Omit<BoundaryContract, "contractHash">,
+): `sha256:${string}` {
 	const digest = createHash("sha256").update(canonicalJson(core)).digest("hex");
 	return `sha256:${digest}`;
 }
@@ -283,11 +299,7 @@ function semverMajor(version: string): number {
 }
 
 function expectObject(input: unknown, path: string): Record<string, any> {
-	if (
-		input === null ||
-		typeof input !== "object" ||
-		Array.isArray(input)
-	) {
+	if (input === null || typeof input !== "object" || Array.isArray(input)) {
 		throw new ContractIrValidationError(
 			"expected-object",
 			"expected a JSON object",
@@ -326,8 +338,14 @@ function enumValue(input: unknown, allowed: Set<string>, path: string): string {
 
 function stringArray(input: unknown, path: string): string[] {
 	if (!Array.isArray(input)) {
-		throw new ContractIrValidationError("expected-array", "expected an array", path);
+		throw new ContractIrValidationError(
+			"expected-array",
+			"expected an array",
+			path,
+		);
 	}
-	const values = input.map((item, index) => nonEmptyString(item, `${path}[${index}]`));
+	const values = input.map((item, index) =>
+		nonEmptyString(item, `${path}[${index}]`),
+	);
 	return [...new Set(values)].sort();
 }

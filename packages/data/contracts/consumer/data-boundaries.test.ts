@@ -19,14 +19,15 @@ import {
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 
 function loadPact(name: string) {
-	return JSON.parse(
-		readFileSync(join(packageRoot, "../pacts/", name), "utf8"),
-	);
+	return JSON.parse(readFileSync(join(packageRoot, "../pacts/", name), "utf8"));
 }
 
 function freshStore() {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-data-contract-"));
-	return createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	return createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 }
 
 interface OrderState {
@@ -39,7 +40,10 @@ const orders = defineAggregate<OrderState, { id: string; totalCents: number }>({
 	initialState: { placed: false, totalCents: 0 },
 	evolve: (state, event) =>
 		event.type === "order.Placed"
-			? { placed: true, totalCents: (event.data as { totalCents: number }).totalCents }
+			? {
+					placed: true,
+					totalCents: (event.data as { totalCents: number }).totalCents,
+				}
 			: state,
 	decide: (state, command, emitter) => {
 		if (state.placed) throw new Error("order already placed");
@@ -104,7 +108,9 @@ describe("@hobo/data projection-sink boundary consumer contract", () => {
 			const snapshot = await orderView.rebuildFromZero(store, "order:1001");
 			const row = orderView.get(snapshot, "1001");
 			expect(row?.totalCents).toBe(interaction.request.body.totalCents);
-			expect(snapshot.seq).toBe(interaction.response.body.sourceSeq["order:1001"]);
+			expect(snapshot.seq).toBe(
+				interaction.response.body.sourceSeq["order:1001"],
+			);
 		} finally {
 			store.close();
 		}

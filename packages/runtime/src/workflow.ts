@@ -26,7 +26,11 @@ import { runWithRetries } from "./step.js";
 import type { WitTokenHandle, WitTokenRequest } from "./wit.js";
 
 /** Durability primitives are always granted; effect capabilities are declared. */
-const DURABILITY_CAPABILITIES: readonly Capability[] = ["step", "sleep", "emit"];
+const DURABILITY_CAPABILITIES: readonly Capability[] = [
+	"step",
+	"sleep",
+	"emit",
+];
 
 export interface WorkflowContext extends RuntimeContext {
 	readonly runId: string;
@@ -36,7 +40,9 @@ export interface WorkflowContext extends RuntimeContext {
 export interface WorkflowDefinition<A, R> {
 	readonly name: string;
 	readonly capabilities: ReadonlySet<Capability>;
-	readonly tools: Readonly<Record<string, (input: unknown) => Promise<unknown> | unknown>>;
+	readonly tools: Readonly<
+		Record<string, (input: unknown) => Promise<unknown> | unknown>
+	>;
 	run(ctx: WorkflowContext, args: A): Promise<R> | R;
 }
 
@@ -94,7 +100,10 @@ export interface WorkflowEngineOptions {
 export interface WorkflowEngine {
 	readonly store: EventStoreWriter;
 	/** Fresh run: journals `run.Started`, then executes to completion/failure. */
-	start<A, R>(def: WorkflowDefinition<A, R>, args: A): Promise<WorkflowRunHandle<R>>;
+	start<A, R>(
+		def: WorkflowDefinition<A, R>,
+		args: A,
+	): Promise<WorkflowRunHandle<R>>;
 	/** Resume after a host restart: replays the journal, continues from the tip. */
 	resume<A, R>(
 		def: WorkflowDefinition<A, R>,
@@ -110,7 +119,9 @@ export interface WorkflowEngine {
 }
 
 const DEFAULT_TOKEN_BROKER: TokenBroker = (request: WitTokenRequest) =>
-	({ ref: `stub://${request.provider}/${request.scope}` }) satisfies WitTokenHandle;
+	({
+		ref: `stub://${request.provider}/${request.scope}`,
+	}) satisfies WitTokenHandle;
 
 export function createWorkflowEngine(
 	options: WorkflowEngineOptions = {},
@@ -227,7 +238,10 @@ export function createWorkflowEngine(
 							const actorKey = `${ref.typeName}/${ref.key}`;
 							return {
 								key: ref.key,
-								async signal(message: { type: string; [key: string]: unknown }) {
+								async signal(message: {
+									type: string;
+									[key: string]: unknown;
+								}) {
 									const lease = host.acquire(actorKey, {
 										holderId: `${runId}:signal`,
 									});
@@ -240,10 +254,12 @@ export function createWorkflowEngine(
 									return appended.seq;
 								},
 								async state<S = unknown>() {
-									return host.state<S>(actorKey, {
-										initialState: {} as S,
-										fold: (current) => current,
-									}).read().state;
+									return host
+										.state<S>(actorKey, {
+											initialState: {} as S,
+											fold: (current) => current,
+										})
+										.read().state;
 								},
 							};
 						},

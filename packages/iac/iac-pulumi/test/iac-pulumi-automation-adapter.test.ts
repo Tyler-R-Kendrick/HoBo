@@ -25,7 +25,9 @@ const providersFixturePath = path.resolve(
 );
 
 async function loadProvidersFixtureProgram() {
-	return validateIacProgram(JSON.parse(await readFile(providersFixturePath, "utf8")));
+	return validateIacProgram(
+		JSON.parse(await readFile(providersFixturePath, "utf8")),
+	);
 }
 
 describe("S2-05 @hobo/iac-pulumi Automation API adapter", () => {
@@ -53,7 +55,10 @@ describe("S2-05 @hobo/iac-pulumi Automation API adapter", () => {
 		assert.equal(outputs.resources.hello.outputs.greeting, "hello-bindle");
 		assert.equal(outputs.stackOutputs.greeting, "hello-bindle");
 		assert.equal(outputs.bindings["hello.greeting"], "hello-bindle");
-		assert.equal(outputs.bindings["${resources.hello.outputs.greeting}"], "hello-bindle");
+		assert.equal(
+			outputs.bindings["${resources.hello.outputs.greeting}"],
+			"hello-bindle",
+		);
 
 		assert.deepEqual(await adapter.refresh(program), {
 			kind: "drift-report",
@@ -82,8 +87,14 @@ describe("S2-05 @hobo/iac-pulumi Automation API adapter", () => {
 			"shop-demo/assets",
 			"shop-demo/cache",
 		]);
-		assert.equal(createPerResourceStackKey(program, "cache"), "shop-demo/cache");
-		assert.equal(createPerResourceStackKey(program, "assets"), "shop-demo/assets");
+		assert.equal(
+			createPerResourceStackKey(program, "cache"),
+			"shop-demo/cache",
+		);
+		assert.equal(
+			createPerResourceStackKey(program, "assets"),
+			"shop-demo/assets",
+		);
 	});
 
 	it("Given state backend config, When lock held by another actor, Then apply fails closed", async () => {
@@ -107,12 +118,24 @@ describe("S2-05 @hobo/iac-pulumi Automation API adapter", () => {
 	it("passes @hobo/conformance/iac-backend for trivial and providers fixtures", async () => {
 		const adapter = createPulumiAutomationAdapter();
 
-		assert.deepEqual(await runIacBackendConformance({ adapter, program: createTrivialIacProgram() }), {
-			suite: "@hobo/conformance/iac-backend",
-			provider: "pulumi",
-			passed: true,
-			assertions: ["preview-diff", "apply-outputs", "binding-outputs", "refresh-clean", "destroy-clean"],
-		});
+		assert.deepEqual(
+			await runIacBackendConformance({
+				adapter,
+				program: createTrivialIacProgram(),
+			}),
+			{
+				suite: "@hobo/conformance/iac-backend",
+				provider: "pulumi",
+				passed: true,
+				assertions: [
+					"preview-diff",
+					"apply-outputs",
+					"binding-outputs",
+					"refresh-clean",
+					"destroy-clean",
+				],
+			},
+		);
 
 		assert.deepEqual(
 			await runIacBackendConformance({
@@ -123,7 +146,13 @@ describe("S2-05 @hobo/iac-pulumi Automation API adapter", () => {
 				suite: "@hobo/conformance/iac-backend",
 				provider: "pulumi",
 				passed: true,
-				assertions: ["preview-diff", "apply-outputs", "binding-outputs", "refresh-clean", "destroy-clean"],
+				assertions: [
+					"preview-diff",
+					"apply-outputs",
+					"binding-outputs",
+					"refresh-clean",
+					"destroy-clean",
+				],
 			},
 		);
 	});
@@ -193,14 +222,23 @@ describe("S2-05 @hobo/iac-pulumi Automation API adapter", () => {
 	});
 
 	it("exposes adapter identity and pluggable state backend config", () => {
-		const config = createStateBackendConfig({ kind: "memory", lockHolder: "yard-object-store" });
+		const config = createStateBackendConfig({
+			kind: "memory",
+			lockHolder: "yard-object-store",
+		});
 		const adapter = createPulumiAutomationAdapter({
 			stateBackend: createInMemoryStateBackend(),
 		});
 
 		assert.equal(adapter.id, ADAPTER_ID);
 		assert.equal(adapter.pulumiVersion, PINNED_PULUMI_AUTOMATION_VERSION);
-		assert.deepEqual(config, { kind: "memory", lockHolder: "yard-object-store" });
-		assert.deepEqual(adapter.stateBackend, { kind: "memory", lockHolder: null });
+		assert.deepEqual(config, {
+			kind: "memory",
+			lockHolder: "yard-object-store",
+		});
+		assert.deepEqual(adapter.stateBackend, {
+			kind: "memory",
+			lockHolder: null,
+		});
 	});
 });

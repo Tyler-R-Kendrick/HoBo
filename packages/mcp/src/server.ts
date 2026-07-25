@@ -91,7 +91,9 @@ export interface CreateHoboMcpServerOptions {
 	readonly rateLimitAuditSink?: (event: RateLimitEvent) => void;
 }
 
-export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMcpServer {
+export function createHoboMcpServer(
+	options: CreateHoboMcpServerOptions,
+): HoboMcpServer {
 	const surface = options.surface ?? MCP_TOOL_SURFACE;
 	const now = options.now ?? (() => new Date().toISOString());
 	const clock = options.clock ?? (() => Date.now());
@@ -123,7 +125,8 @@ export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMc
 			return authorizedToolNames(auth, surface);
 		},
 		async callTool(name, input, auth, callOptions) {
-			const correlationId = callOptions?.correlationId ?? `mcp:${name}:${auth.subject}`;
+			const correlationId =
+				callOptions?.correlationId ?? `mcp:${name}:${auth.subject}`;
 
 			// S3-06 — backpressure BEFORE dispatch (NFR-019). Rate-limiting is the
 			// outermost gate so a flooding principal is throttled regardless of scope
@@ -163,7 +166,13 @@ export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMc
 			const tool = findTool(name, surface);
 			if (!tool) {
 				// Unknown tools are not part of the derived surface — fail closed.
-				const decision = deniedUnknown(name, auth, correlationId, (seq += 1), now());
+				const decision = deniedUnknown(
+					name,
+					auth,
+					correlationId,
+					(seq += 1),
+					now(),
+				);
 				record(decision.event);
 				return {
 					ok: false,
@@ -172,7 +181,10 @@ export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMc
 					code: "MCP_UNKNOWN_TOOL",
 					output: null,
 					decision,
-					error: { code: "MCP_UNKNOWN_TOOL", message: `unknown tool "${name}"` },
+					error: {
+						code: "MCP_UNKNOWN_TOOL",
+						message: `unknown tool "${name}"`,
+					},
 				};
 			}
 
@@ -207,7 +219,8 @@ export function createHoboMcpServer(options: CreateHoboMcpServerOptions): HoboMc
 			return {
 				ok: run.exitCode === 0 && envelope.ok !== false,
 				tool: tool.name,
-				status: typeof envelope.status === "string" ? envelope.status : "unknown",
+				status:
+					typeof envelope.status === "string" ? envelope.status : "unknown",
 				code: typeof envelope.code === "string" ? envelope.code : "HOBO_OK",
 				output: envelope,
 				decision,

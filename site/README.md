@@ -46,14 +46,14 @@ pnpm --filter hobo-site preview    # serve the built dist/
 - **Voice:** playful "homeward bound" theme — the guiding principle is continuous
   migration to the cheapest home that passes policy. Whimsy in the prose, precision in
   the tables and code.
-- **Design language:** 1930s rubber-hose cartoon (Steamboat Willie / Cuphead) starring
-  **Bo the bindlebug**. `src/components/Mascot.astro` is a simplified vector *trace of
-  the reference artwork* (not procedural); `RailScene.astro` is the drawn track +
-  steam-locomotive divider; `Cloud.astro` supplies puffy line-art clouds. Aged-paper
-  light theme, Limelight title-card display type (Baloo 2 for rounded UI chrome),
-  film-grain overlay, thick ink outlines with hard offset shadows. Ink/paper invert
-  between themes via the `--ink`/`--pop` custom properties — new components should use
-  those tokens, not hardcoded colors.
+- **Design language:** strict black-and-white 1930s cartoon. All artwork is *traced
+  from the reference illustrations* (never procedural): `Mascot.astro` is Bo, and
+  `src/components/scenes/` holds the five story panels (crossroads, depot, train,
+  blimp, steamboat) placed by narrative on the landing page. White paper/black ink by
+  day, exact inversion at night — everything routes through `--ink`/`--pop`/theme
+  tokens; no hues anywhere (code blocks are grayscale-filtered). Limelight title-card
+  display type, Baloo 2 for rounded UI chrome, film-grain overlay, thick ink outlines
+  with hard offset shadows. New components must use the tokens, not hardcoded colors.
 - **No new JS-family files:** repo policy (AGENTS.md) — config is `astro.config.ts`, not `.mjs`.
 - **Single lockfile:** never add a `site/pnpm-lock.yaml`; the architecture guard rejects
   nested lockfiles. Dependencies resolve through the root workspace lockfile.

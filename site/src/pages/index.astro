@@ -3,7 +3,6 @@ import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
 import Cloud from "../components/Cloud.astro";
 import Mascot from "../components/Mascot.astro";
-import RailScene from "../components/RailScene.astro";
 import { href } from "../lib/url";
 
 const bindleSnippet = `import { bindle } from "@hobo/bindles";
@@ -30,6 +29,7 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 		<Cloud size={150} class="hero-cloud c1" />
 		<Cloud size={110} class="hero-cloud c2" />
 		<Cloud size={90} class="hero-cloud c3" />
+		<Cloud size={120} class="hero-cloud c4" />
 		<div class="container">
 			<div>
 				<p class="hero-eyebrow">
@@ -208,7 +208,6 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 		</div>
 	</section>
 
-	<RailScene />
 
 	<!-- ===================== Primitives bento ===================== -->
 	<section class="section" style="padding-top: 0;">

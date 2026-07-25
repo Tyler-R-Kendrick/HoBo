@@ -218,137 +218,6 @@ a:hover {
 	stroke-width: 3;
 }
 
-/* ---------- The rail scene: track + steam locomotive ---------- */
-
-.railscene {
-	position: relative;
-	height: 232px;
-	margin: clamp(1.5rem, 4vw, 2.5rem) 0;
-	overflow: hidden;
-}
-
-.railscene .trackband {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	width: 100%;
-}
-
-.railscene .train {
-	position: absolute;
-	bottom: 47px;
-	left: -340px;
-	animation: travel 30s linear infinite;
-}
-
-.railscene .train svg {
-	display: block;
-	overflow: visible;
-}
-
-@keyframes travel {
-	from {
-		left: -340px;
-	}
-	to {
-		left: 100%;
-	}
-}
-
-.railscene .loco {
-	animation: chug 0.42s ease-in-out infinite alternate;
-}
-
-@keyframes chug {
-	from {
-		transform: translateY(0);
-	}
-	to {
-		transform: translateY(-2px);
-	}
-}
-
-.railscene .wheel {
-	transform-box: fill-box;
-	transform-origin: center;
-	animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
-}
-
-.railscene .rod {
-	animation: crank 0.9s linear infinite;
-}
-
-@keyframes crank {
-	0% { transform: translate(10px, 0); }
-	12.5% { transform: translate(7.1px, 7.1px); }
-	25% { transform: translate(0, 10px); }
-	37.5% { transform: translate(-7.1px, 7.1px); }
-	50% { transform: translate(-10px, 0); }
-	62.5% { transform: translate(-7.1px, -7.1px); }
-	75% { transform: translate(0, -10px); }
-	87.5% { transform: translate(7.1px, -7.1px); }
-	100% { transform: translate(10px, 0); }
-}
-
-.railscene .steam {
-	opacity: 0;
-	transform-box: fill-box;
-	transform-origin: center;
-	animation: steam 2.1s ease-out infinite;
-}
-
-.railscene .steam.s2 {
-	animation-delay: 0.7s;
-}
-
-.railscene .steam.s3 {
-	animation-delay: 1.4s;
-}
-
-@keyframes steam {
-	0% {
-		opacity: 0;
-		transform: translate(0, 0) scale(0.5);
-	}
-	18% {
-		opacity: 0.9;
-	}
-	100% {
-		opacity: 0;
-		transform: translate(-32px, -48px) scale(1.3);
-	}
-}
-
-.rs-tie { fill: var(--bg-inset); stroke: var(--ink); stroke-width: 2.5; }
-.rs-stone { fill: var(--bg-raised); stroke: var(--ink); stroke-width: 1.6; }
-.rs-grass { stroke: var(--ink); stroke-width: 2; fill: none; stroke-linecap: round; }
-.rs-bed { fill: var(--bg-inset); }
-.rs-bedline { stroke: var(--ink); stroke-width: 2.5; }
-.rs-rail { fill: var(--ink); }
-.rs-glint { fill: var(--bg-raised); opacity: 0.5; }
-.rs-ink { fill: var(--ink); }
-.rs-ink-line { stroke: var(--ink); fill: none; }
-.rs-paper { fill: var(--bg-raised); stroke: var(--ink); }
-.rs-pin { fill: var(--bg-raised); stroke: var(--ink); stroke-width: 2.5; }
-.rs-puff { fill: var(--bg-raised); stroke: var(--ink); stroke-width: 3; }
-.rs-soot { fill: var(--soot); }
-.rs-whisker { stroke: var(--soot); fill: none; }
-
-:root[data-theme="dark"] .rs-soot {
-	stroke: var(--ink);
-	stroke-width: 2;
-}
-
-:root[data-theme="dark"] .rs-whisker {
-	stroke: var(--ink);
-}
-
 .cloud .cloud-outline circle {
 	stroke-width: 5;
 }
@@ -356,6 +225,111 @@ a:hover {
 .cloud .cloud-fill circle {
 	fill: var(--bg-raised);
 	stroke: none;
+}
+
+/* Bo blinks: soot eyelids drop over the traced eye holes on an irregular
+   cycle — one blink, a pause, then a quick double-blink, like he noticed
+   you watching. */
+.mascot .blink ellipse {
+	fill: var(--soot);
+	transform-box: fill-box;
+	transform-origin: 50% 0%;
+	transform: scaleY(0.04);
+	animation: blink 7.3s linear infinite;
+}
+
+@keyframes blink {
+	0%,
+	36% {
+		transform: scaleY(0.04);
+	}
+	38%,
+	39.5% {
+		transform: scaleY(1);
+	}
+	42%,
+	78% {
+		transform: scaleY(0.04);
+	}
+	79.5%,
+	80.5% {
+		transform: scaleY(1);
+	}
+	82% {
+		transform: scaleY(0.2);
+	}
+	83.5%,
+	84.5% {
+		transform: scaleY(1);
+	}
+	87%,
+	100% {
+		transform: scaleY(0.04);
+	}
+}
+
+/* Instances blink out of phase so the page never synchronizes. */
+.roof-rider .mascot .blink ellipse {
+	animation-delay: -2.6s;
+}
+
+.postcard-bo .mascot .blink ellipse {
+	animation-delay: -4.9s;
+}
+
+/* Dust kicks: the trace's own puff clusters, appearing and drifting off on
+   mismatched prime-ish cycles so the rhythm reads as random. */
+.mascot .dust path {
+	fill: var(--soot);
+}
+
+.mascot .dust {
+	transform-box: fill-box;
+	transform-origin: 50% 100%;
+	opacity: 0;
+	animation: kick-l 3.7s ease-out infinite;
+}
+
+.mascot .dust-r {
+	animation-name: kick-r;
+	animation-duration: 5.3s;
+	animation-delay: -2.1s;
+}
+
+@keyframes kick-l {
+	0% {
+		opacity: 0;
+		transform: translate(2px, 6px) scale(0.55);
+	}
+	14% {
+		opacity: 0.95;
+	}
+	55% {
+		opacity: 0.5;
+		transform: translate(-3px, -3px) scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-7px, -9px) scale(1.12);
+	}
+}
+
+@keyframes kick-r {
+	0% {
+		opacity: 0;
+		transform: translate(-2px, 6px) scale(0.55);
+	}
+	14% {
+		opacity: 0.95;
+	}
+	55% {
+		opacity: 0.5;
+		transform: translate(3px, -3px) scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(7px, -9px) scale(1.12);
+	}
 }
 
 .skip-link {
@@ -628,10 +602,12 @@ a:hover {
 	border-bottom: 3px dashed var(--border-strong);
 }
 
+/* Clouds wander: a meandering multi-keyframe float on mismatched cycles,
+   plus one "voyager" that slowly crosses the whole sky. */
 .hero-cloud {
 	position: absolute;
 	opacity: 0.9;
-	animation: drift 16s ease-in-out infinite alternate;
+	animation: float 26s ease-in-out infinite;
 	pointer-events: none;
 }
 
@@ -643,22 +619,46 @@ a:hover {
 .hero-cloud.c2 {
 	top: 44%;
 	left: -28px;
-	animation-delay: -6s;
-	animation-duration: 21s;
+	animation-delay: -11s;
+	animation-duration: 34s;
 }
 
 .hero-cloud.c3 {
 	bottom: 10%;
 	right: 30%;
-	animation-delay: -11s;
+	animation-delay: -23s;
+	animation-duration: 41s;
 }
 
-@keyframes drift {
+.hero-cloud.c4 {
+	top: 16%;
+	left: -180px;
+	opacity: 0.75;
+	animation: voyage 95s linear infinite;
+}
+
+@keyframes float {
+	0%,
+	100% {
+		transform: translate(0, 0);
+	}
+	25% {
+		transform: translate(18px, -9px);
+	}
+	50% {
+		transform: translate(34px, 3px);
+	}
+	75% {
+		transform: translate(12px, 9px);
+	}
+}
+
+@keyframes voyage {
 	from {
-		transform: translateX(0) translateY(0);
+		transform: translateX(0);
 	}
 	to {
-		transform: translateX(26px) translateY(-8px);
+		transform: translateX(calc(100vw + 360px));
 	}
 }
 

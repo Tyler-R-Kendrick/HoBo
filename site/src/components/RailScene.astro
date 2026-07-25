@@ -1,0 +1,91 @@
+---
+// The rail line: a drawn track (rail, tie ends, ballast stones, the odd tuft
+// of grass) with a rubber-hose steam locomotive chugging across it — spoked
+// drivers, a working coupling rod, steam puffs, and Bo's mop peeking out of
+// the cab window. All ink/paper theme tokens; motion respects
+// prefers-reduced-motion via the global kill switch.
+---
+
+<div class="railscene" role="presentation" aria-hidden="true">
+	<svg class="trackband" height="64" preserveAspectRatio="none">
+		<defs>
+			<pattern id="rs-ties" width="52" height="64" patternUnits="userSpaceOnUse">
+				<!-- tie end -->
+				<rect x="15" y="17" width="20" height="10" rx="2.5" class="rs-tie"></rect>
+				<!-- ballast stones -->
+				<ellipse cx="6" cy="38" rx="5" ry="3" class="rs-stone"></ellipse>
+				<ellipse cx="27" cy="42" rx="6" ry="3.4" class="rs-stone"></ellipse>
+				<ellipse cx="45" cy="37" rx="4.4" ry="2.6" class="rs-stone"></ellipse>
+				<ellipse cx="16" cy="46" rx="4" ry="2.4" class="rs-stone"></ellipse>
+			</pattern>
+			<pattern id="rs-flora" width="178" height="64" patternUnits="userSpaceOnUse">
+				<!-- an occasional tuft of grass so the repeat doesn't read -->
+				<path d="M150 16 q-2 -8 -5 -10 m5 10 q0 -9 2 -12 m-2 12 q3 -7 6 -8" class="rs-grass"></path>
+				<circle cx="163" cy="9" r="1.6" class="rs-stone"></circle>
+			</pattern>
+		</defs>
+		<!-- ballast bed -->
+		<rect x="0" y="30" width="100%" height="34" class="rs-bed"></rect>
+		<path d="M0 30 H 10000" class="rs-bedline"></path>
+		<!-- ties + stones -->
+		<rect x="0" y="0" width="100%" height="64" fill="url(#rs-ties)"></rect>
+		<rect x="0" y="0" width="100%" height="64" fill="url(#rs-flora)"></rect>
+		<!-- the rail: heavy ink with a glint -->
+		<rect x="0" y="10" width="100%" height="7" rx="2" class="rs-rail"></rect>
+		<rect x="0" y="12" width="100%" height="1.6" class="rs-glint"></rect>
+	</svg>
+
+	<div class="train">
+		<svg width="300" height="170" viewBox="0 0 300 170" fill="none">
+			<g class="loco">
+				<!-- coupling rod (behind wheels, cranks in a circle) -->
+				<g class="rod">
+					<path d="M128 138 L 216 138" stroke-width="7" stroke-linecap="round" class="rs-ink-line"></path>
+					<circle cx="128" cy="138" r="4.5" class="rs-pin"></circle>
+					<circle cx="216" cy="138" r="4.5" class="rs-pin"></circle>
+				</g>
+				<!-- frame / running board -->
+				<rect x="84" y="112" width="192" height="12" rx="4" class="rs-ink"></rect>
+				<!-- cowcatcher -->
+				<path d="M276 124 L 297 124 L 276 92 Z" class="rs-paper" stroke-width="5"></path>
+				<path d="M280 120 L 291 120 M 278 112 L 287 112 M 277 104 L 283 104" stroke-width="3.5" class="rs-ink-line"></path>
+				<!-- boiler -->
+				<rect x="158" y="66" width="112" height="50" rx="18" class="rs-paper" stroke-width="5"></rect>
+				<path d="M166 78 H 262 M166 102 H 262" stroke-width="3" class="rs-ink-line" opacity="0.55"></path>
+				<!-- smokebox door -->
+				<ellipse cx="262" cy="91" rx="12" ry="19" class="rs-paper" stroke-width="5"></ellipse>
+				<circle cx="262" cy="91" r="3.5" class="rs-ink"></circle>
+				<!-- headlamp -->
+				<rect x="252" y="50" width="18" height="16" rx="4" class="rs-paper" stroke-width="4.5"></rect>
+				<!-- smokestack (flared) -->
+				<path d="M226 66 L 226 48 Q 226 42 218 40 L 252 40 Q 244 42 244 48 L 244 66 Z" class="rs-ink"></path>
+				<ellipse cx="235" cy="40" rx="17" ry="5" class="rs-ink"></ellipse>
+				<!-- steam dome + bell -->
+				<path d="M188 66 a 12 12 0 0 1 24 0 Z" class="rs-ink"></path>
+				<circle cx="176" cy="60" r="5.5" class="rs-paper" stroke-width="4"></circle>
+				<!-- cab -->
+				<rect x="96" y="34" width="66" height="82" rx="7" class="rs-paper" stroke-width="5"></rect>
+				<rect x="88" y="26" width="82" height="14" rx="7" class="rs-ink"></rect>
+				<rect x="108" y="48" width="42" height="34" rx="6" class="rs-paper" stroke-width="5"></rect>
+				<!-- Bo's mop, peeking out of the window -->
+				<g class="bo-head">
+					<path d="M129 50 l-3 -9 m8 8 l1 -10 m4 11 l5 -8 m-19 3 l-6 -6 m24 9 l8 -5 m-28 1 l-8 -2 m32 6 l9 1" stroke-width="3" stroke-linecap="round" class="rs-whisker"></path>
+					<circle cx="130" cy="62" r="15" class="rs-soot"></circle>
+					<circle cx="125" cy="60" r="5.2" fill="#fff"></circle>
+					<circle cx="135" cy="59" r="4.6" fill="#fff"></circle>
+					<circle cx="126.5" cy="61" r="2.2" class="rs-soot"></circle>
+					<circle cx="136" cy="60" r="2" class="rs-soot"></circle>
+				</g>
+				<!-- wheels -->
+				<g class="wheel"><circle cx="128" cy="138" r="23" class="rs-paper" stroke-width="6"></circle><path d="M128 118 V158 M108 138 H148 M114 124 L142 152 M114 152 L142 124" stroke-width="4" class="rs-ink-line"></path><circle cx="128" cy="138" r="6" class="rs-ink"></circle></g>
+				<g class="wheel"><circle cx="216" cy="138" r="23" class="rs-paper" stroke-width="6"></circle><path d="M216 118 V158 M196 138 H236 M202 124 L230 152 M202 152 L230 124" stroke-width="4" class="rs-ink-line"></path><circle cx="216" cy="138" r="6" class="rs-ink"></circle></g>
+				<g class="wheel"><circle cx="266" cy="148" r="13" class="rs-paper" stroke-width="5"></circle><path d="M266 137 V159 M255 148 H277" stroke-width="3.5" class="rs-ink-line"></path><circle cx="266" cy="148" r="4" class="rs-ink"></circle></g>
+				<g class="wheel"><circle cx="96" cy="148" r="13" class="rs-paper" stroke-width="5"></circle><path d="M96 137 V159 M85 148 H107" stroke-width="3.5" class="rs-ink-line"></path><circle cx="96" cy="148" r="4" class="rs-ink"></circle></g>
+			</g>
+			<!-- steam puffs -->
+			<g class="steam s1"><circle cx="235" cy="30" r="9" class="rs-puff"></circle><circle cx="226" cy="24" r="6" class="rs-puff"></circle><circle cx="243" cy="23" r="6.5" class="rs-puff"></circle></g>
+			<g class="steam s2"><circle cx="235" cy="30" r="9" class="rs-puff"></circle><circle cx="226" cy="24" r="6" class="rs-puff"></circle><circle cx="243" cy="23" r="6.5" class="rs-puff"></circle></g>
+			<g class="steam s3"><circle cx="235" cy="30" r="9" class="rs-puff"></circle><circle cx="226" cy="24" r="6" class="rs-puff"></circle><circle cx="243" cy="23" r="6.5" class="rs-puff"></circle></g>
+		</svg>
+	</div>
+</div>

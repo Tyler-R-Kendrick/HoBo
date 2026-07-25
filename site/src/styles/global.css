@@ -188,9 +188,9 @@ a:hover {
 	fill: var(--soot);
 }
 
-.mascot .mascot-fur .leg {
-	fill: none;
-	stroke: var(--soot);
+/* White backing that shows through the traced eye holes on any background. */
+.mascot .mascot-under ellipse {
+	fill: #ffffff;
 }
 
 /* At night the whole soot silhouette gets a cream rim so Bo stays visible. */
@@ -207,22 +207,6 @@ a:hover {
 	fill: var(--soot);
 }
 
-.mascot .stick-under {
-	stroke: var(--ink);
-	fill: none;
-}
-
-.mascot .stick-over {
-	stroke: var(--bg-raised);
-	fill: none;
-}
-
-.mascot .mascot-paper path,
-.mascot .mascot-paper circle {
-	fill: var(--bg-raised);
-	stroke: var(--ink);
-}
-
 .mascot-flip {
 	transform: scaleX(-1);
 }
@@ -232,6 +216,137 @@ a:hover {
 	fill: var(--bg-raised);
 	stroke: var(--ink);
 	stroke-width: 3;
+}
+
+/* ---------- The rail scene: track + steam locomotive ---------- */
+
+.railscene {
+	position: relative;
+	height: 232px;
+	margin: clamp(1.5rem, 4vw, 2.5rem) 0;
+	overflow: hidden;
+}
+
+.railscene .trackband {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+}
+
+.railscene .train {
+	position: absolute;
+	bottom: 47px;
+	left: -340px;
+	animation: travel 30s linear infinite;
+}
+
+.railscene .train svg {
+	display: block;
+	overflow: visible;
+}
+
+@keyframes travel {
+	from {
+		left: -340px;
+	}
+	to {
+		left: 100%;
+	}
+}
+
+.railscene .loco {
+	animation: chug 0.42s ease-in-out infinite alternate;
+}
+
+@keyframes chug {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(-2px);
+	}
+}
+
+.railscene .wheel {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.railscene .rod {
+	animation: crank 0.9s linear infinite;
+}
+
+@keyframes crank {
+	0% { transform: translate(10px, 0); }
+	12.5% { transform: translate(7.1px, 7.1px); }
+	25% { transform: translate(0, 10px); }
+	37.5% { transform: translate(-7.1px, 7.1px); }
+	50% { transform: translate(-10px, 0); }
+	62.5% { transform: translate(-7.1px, -7.1px); }
+	75% { transform: translate(0, -10px); }
+	87.5% { transform: translate(7.1px, -7.1px); }
+	100% { transform: translate(10px, 0); }
+}
+
+.railscene .steam {
+	opacity: 0;
+	transform-box: fill-box;
+	transform-origin: center;
+	animation: steam 2.1s ease-out infinite;
+}
+
+.railscene .steam.s2 {
+	animation-delay: 0.7s;
+}
+
+.railscene .steam.s3 {
+	animation-delay: 1.4s;
+}
+
+@keyframes steam {
+	0% {
+		opacity: 0;
+		transform: translate(0, 0) scale(0.5);
+	}
+	18% {
+		opacity: 0.9;
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-32px, -48px) scale(1.3);
+	}
+}
+
+.rs-tie { fill: var(--bg-inset); stroke: var(--ink); stroke-width: 2.5; }
+.rs-stone { fill: var(--bg-raised); stroke: var(--ink); stroke-width: 1.6; }
+.rs-grass { stroke: var(--ink); stroke-width: 2; fill: none; stroke-linecap: round; }
+.rs-bed { fill: var(--bg-inset); }
+.rs-bedline { stroke: var(--ink); stroke-width: 2.5; }
+.rs-rail { fill: var(--ink); }
+.rs-glint { fill: var(--bg-raised); opacity: 0.5; }
+.rs-ink { fill: var(--ink); }
+.rs-ink-line { stroke: var(--ink); fill: none; }
+.rs-paper { fill: var(--bg-raised); stroke: var(--ink); }
+.rs-pin { fill: var(--bg-raised); stroke: var(--ink); stroke-width: 2.5; }
+.rs-puff { fill: var(--bg-raised); stroke: var(--ink); stroke-width: 3; }
+.rs-soot { fill: var(--soot); }
+.rs-whisker { stroke: var(--soot); fill: none; }
+
+:root[data-theme="dark"] .rs-soot {
+	stroke: var(--ink);
+	stroke-width: 2;
+}
+
+:root[data-theme="dark"] .rs-whisker {
+	stroke: var(--ink);
 }
 
 .cloud .cloud-outline circle {
@@ -1016,45 +1131,6 @@ a.card:hover {
 	background-position: 0 100%;
 	background-size: 40px 7px;
 	padding-bottom: 0.35em;
-}
-
-/* A rail line: two rails, ties, and Bo walking the track. */
-.rails {
-	position: relative;
-	height: 70px;
-	margin: clamp(1.5rem, 4vw, 2.5rem) 0;
-	background:
-		repeating-linear-gradient(
-			90deg,
-			var(--border-strong) 0 4px,
-			transparent 4px 30px
-		)
-		center bottom 6px / 100% 22px no-repeat,
-		linear-gradient(var(--ink), var(--ink)) center bottom 26px / 100% 3px
-			no-repeat,
-		linear-gradient(var(--ink), var(--ink)) center bottom 8px / 100% 3px
-			no-repeat;
-}
-
-.rails .rider {
-	position: absolute;
-	bottom: 18px;
-	left: 0;
-	animation: ride 18s linear infinite;
-}
-
-.rails .rider .mascot {
-	transform-origin: 50% 88%;
-	animation: rock 0.7s ease-in-out infinite alternate;
-}
-
-@keyframes ride {
-	from {
-		left: -6%;
-	}
-	to {
-		left: 103%;
-	}
 }
 
 /* Route strip: the stops an app might call home. */

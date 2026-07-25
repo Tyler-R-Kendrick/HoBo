@@ -1,7 +1,6 @@
 ---
 import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
-import { github } from "../nav";
 import { href } from "../lib/url";
 
 const bindleSnippet = `import { bindle } from "@hobo/bindles";
@@ -9,7 +8,7 @@ const bindleSnippet = `import { bindle } from "@hobo/bindles";
 import { app as helloApi } from "./api";
 import { app as helloWeb } from "./webapp";
 
-// Describe the app once — provider-agnostic.
+// Pack once — provider-agnostic by construction.
 export default bindle("hello-bindle", (b) => {
   const api = b.api(() => helloApi.fetch);
   const web = b.web(() => helloWeb.fetch).dependsOn(api);
@@ -20,41 +19,41 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 ---
 
 <Base
-	title="HoBo — the AI-native meta-cloud, designed in the open"
-	description="Describe an app once and let HoBo place it on any provider, mix of providers, or self-hosted yard. Cloud portability without hiding the cloud — built for humans and the agents that work for them."
+	title="HoBo — every app deserves a home. Preferably a cheap one."
+	description="HoBo describes your app once, finds it the cheapest home that passes your policies, and keeps it moving with continuous, zero-drama migrations — across any provider, any mix, or your own metal."
 >
 	<!-- ===================== Hero ===================== -->
 	<section class="hero">
 		<div class="container">
 			<div>
 				<p class="hero-eyebrow">
-					<span class="badge badge-accent">AI-native meta-cloud</span>
-					<span class="badge">designed in the open</span>
+					<span class="sticker">homeward bound</span>
+					<span class="sticker meadow">rent goes down, not up</span>
 				</p>
 				<h1>
-					Write your app once.<br />
-					<span class="gradient-text">Host it anywhere.</span>
+					Every app deserves a home.<br />
+					<span class="gradient-text">Preferably a cheap one.</span>
 				</h1>
 				<p class="hero-sub">
-					HoBo is a cloud-agnostic control plane and durable runtime under
-					active design: one app description lands on a provider, a mix of
-					providers, or your own metal — <strong
-						>agnostic by default, optimizable on demand</strong
-					>, and operable by AI agents end to end.
+					HoBo is the meta-cloud that treats hosting like a hobo treats a
+					town: stay while it's good, <strong>move on when the rent goes
+					up</strong>. Describe your app once, and continuous migrations keep
+					it in the best-value home that passes your policies — on any
+					provider, a mix of them, or your own metal.
 				</p>
 				<div class="hero-ctas">
 					<a class="btn btn-primary" href={href("/guide/getting-started/")}
-						>Get started</a
+						>Pack your bindle</a
 					>
-					<a class="btn btn-ghost" href={`${github}/blob/main/docs/design/index.md`}
-						>Read the design suite</a
+					<a class="btn btn-ghost" href={href("/guide/concepts/")}
+						>Learn the lingo</a
 					>
 				</div>
 				<div class="hero-facts">
-					<span class="pill"><b>60+</b> capability docs</span>
-					<span class="pill"><b>120+</b> ADRs</span>
-					<span class="pill"><b>30+</b> competitor captures</span>
-					<span class="pill"><b>WIT/WASM</b> component surface</span>
+					<span class="pill"><b>1</b> app description</span>
+					<span class="pill"><b>any</b> provider</span>
+					<span class="pill"><b>$0</b> loyalty tax</span>
+					<span class="pill"><b>0</b> forklift rewrites</span>
 				</div>
 			</div>
 			<div class="terminal">
@@ -71,185 +70,202 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 				<div class="terminal-run">
 					<div><span class="ps1">$</span> hobo up --camp prod</div>
 					<div>
-						<span class="ev">DeployRequested</span>
 						<span class="ev">Planned</span>
 						<span class="ev">Provisioning</span>
 						<span class="ev">Provisioned</span>
 						<span class="ev ok">Deployed ✓</span>
 					</div>
+					<div class="migrate">
+						…three weeks later: cheaper camp found down the line
+					</div>
+					<div>
+						<span class="ev">MigrationPlanned</span>
+						<span class="ev">PolicyPassed</span>
+						<span class="ev ok">Migrated ✓</span>
+						<span class="save">−$212/mo</span>
+					</div>
 					<div class="dim">
-						every transition is an event — replayable, auditable, recoverable
+						every move is an event — replayable, auditable, reversible
 					</div>
 				</div>
 			</div>
 		</div>
 	</section>
+
+	<!-- ===================== Route strip ===================== -->
+	<div class="route" aria-label="Places an app can call home">
+		<span class="stop">aws</span>
+		<span class="stop">azure</span>
+		<span class="stop here">fly.io <span class="fare">$9/mo — we're here</span></span>
+		<span class="stop">gcp</span>
+		<span class="stop">cloudflare</span>
+		<span class="stop">that server in your garage</span>
+	</div>
 
 	<!-- ===================== Problem ===================== -->
 	<section class="section">
 		<div class="container">
 			<div class="section-head">
 				<span class="badge">Why HoBo exists</span>
-				<h2>Two bad defaults, and a third path</h2>
+				<h2>Two bad landlords, and the open road</h2>
 				<p>
-					Modern teams choose between a closed PaaS that hides the cloud and
-					raw IaC that makes every app team a platform team. HoBo's goal is
-					<strong>cloud portability without hiding the cloud</strong>.
+					Modern teams pick between a closed PaaS that owns them and raw IaC
+					that consumes them. HoBo's founding grudge:
+					<strong>your code shouldn't pay a loyalty tax to its landlord</strong>.
 				</p>
 			</div>
 			<div class="grid grid-3" style="align-items: stretch;">
 				<div class="card tradeoff">
-					<h3>Closed PaaS</h3>
+					<h3>The company town</h3>
 					<p>
-						Easy deploys — but lock-in, one runtime, and limited escape
-						hatches when you need provider-native power.
+						A closed PaaS is easy right up until the rent triples. One
+						runtime, one bill, and the exits are decorative.
 					</p>
 				</div>
 				<div class="card tradeoff">
-					<h3>Raw cloud + IaC</h3>
+					<h3>The fixer-upper</h3>
 					<p>
-						Full control — but you now think in infrastructure, and every
-						application team becomes a part-time platform team.
+						Raw cloud + IaC gives you full control — of a second job. Every
+						app team slowly becomes a part-time platform team.
 					</p>
 				</div>
 				<div class="card">
-					<h3><span class="card-icon">→</span>The HoBo path</h3>
+					<h3><span class="card-icon">→</span>The HoBo way</h3>
 					<p>
-						Start from provider-agnostic intent. Let policy, cost, and
-						reliability goals choose the infrastructure. Drop down to typed
-						provider-specific options — a <code class="term">.with(...)</code>
-						away — only when optimization matters.
+						Travel light. Describe intent, not infrastructure, and let
+						policy, price, and reliability goals pick the home. Need
+						provider-native power? It's one typed
+						<code class="term">.with(...)</code> away.
 					</p>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- ===================== Concepts bento ===================== -->
+	<!-- ===================== Continuous migration ===================== -->
 	<section class="section">
 		<div class="container">
 			<div class="section-head">
-				<span class="badge">Core ideas</span>
-				<h2>A vocabulary for traveling light</h2>
+				<span class="badge badge-accent">The guiding principle</span>
+				<h2>Deployment is not a destination. <span class="squiggle">It's a journey.</span></h2>
 				<p>
-					HoBo's metaphor is the itinerant worker who travels light. Four
-					nested scopes carry an app from description to running
-					infrastructure.
-				</p>
-			</div>
-			<div class="grid grid-3 bento">
-				<a class="card span-2" href={href("/guide/concepts/")}>
-					<h3><span class="term">Bindle</span></h3>
-					<p>
-						The application package: services, resources, wiring, policies,
-						and deployment intent — provider-agnostic by construction. The
-						same Bindle ships to one provider or many without forking the
-						code.
-					</p>
-					<p class="card-cta">Explore the concepts →</p>
-				</a>
-				<div class="card">
-					<h3><span class="term">Camp</span></h3>
-					<p>
-						A provider-specific runtime target that hosts workloads and
-						provides the durable runtime: event store, queues, streams,
-						actors, clock.
-					</p>
-				</div>
-				<div class="card">
-					<h3><span class="term">Yard</span></h3>
-					<p>
-						One provider's control plane: cross-Camp policy, identity, and
-						reconciliation. Self-hostable — the Yard is itself a Bindle.
-					</p>
-				</div>
-				<div class="card">
-					<h3><span class="term">Junction</span></h3>
-					<p>
-						Cross-Yard federation for hybrid and multi-cloud operation — peer
-						Yards, no shared mutable state.
-					</p>
-				</div>
-				<div class="card">
-					<h3>Replayable event log</h3>
-					<p>
-						Control-plane state, projections, SRE workflows, and audit trails
-						all derive from an append-only event log. Time travel for free.
-					</p>
-				</div>
-				<a class="card span-2" href={href("/guide/architecture/")}>
-					<h3>WIT/WASM membrane</h3>
-					<p>
-						Ports are WIT interfaces; providers are capability providers;
-						apps are wasm components (with an OCI fallback). Any
-						Component-Model language authors against the same contracts —
-						TypeScript is just the first reference implementation.
-					</p>
-					<p class="card-cta">See the architecture →</p>
-				</a>
-				<div class="card">
-					<h3>Agent-native auth</h3>
-					<p>
-						AI agents are first-class principals with scoped short-lived
-						credentials, policy checks, and traceable actions — never
-						afterthoughts.
-					</p>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- ===================== How it works ===================== -->
-	<section class="section">
-		<div class="container">
-			<div class="section-head">
-				<span class="badge">How it works</span>
-				<h2>Describe. Map. Converge.</h2>
-				<p>
-					Two lifecycle verbs — <code>hobo up</code> and <code>hobo down</code>
-					— drive everything else. Deploys, promotions, rollbacks, and even
-					self-host bootstrap are the same convergence loop.
+					Other platforms deploy your app and call it a day. HoBo keeps
+					watching the market: when a cheaper home passes your policy gates,
+					it plans the move, rehearses it, and rides — with your blessing or
+					on full auto.
 				</p>
 			</div>
 			<div class="grid grid-3">
 				<div class="card">
-					<p class="step-num">01 · DESCRIBE</p>
+					<p class="step-num">01 · PACK</p>
 					<h3>Author the Bindle</h3>
 					<p>
-						Infrastructure-from-code resources with inline
-						<code>.allow()</code> least privilege. The manifest is collected
-						from your code — no separate config language to learn.
+						Everything your app owns, rolled into one provider-agnostic
+						bundle: services, resources, wiring, and inline
+						<code>.allow()</code> least privilege. If it's not in the
+						bindle, it doesn't ship.
 					</p>
 				</div>
 				<div class="card">
-					<p class="step-num">02 · MAP</p>
-					<h3>Choose (or delegate) placement</h3>
+					<p class="step-num">02 · SETTLE</p>
+					<h3>Pitch a Camp</h3>
 					<p>
-						Map the whole app to one provider, split tiers across providers,
-						or pin boundaries — platform rules and matching decide the rest,
-						auditable by design.
+						A Camp is where the bindle lives right now: one provider, one
+						durable runtime. Pin placement yourself, or let the Dispatcher
+						pick the cheapest camp your policies allow.
 					</p>
 				</div>
 				<div class="card">
-					<p class="step-num">03 · CONVERGE</p>
-					<h3><code class="term">hobo up</code></h3>
+					<p class="step-num">03 · RIDE</p>
+					<h3>Continuous migration</h3>
 					<p>
-						The Planner turns intent into a deployment DAG; resource actors
-						drive reality to match through sandboxed IaC executors with
-						brokered, short-lived credentials.
+						Price drops, credits appear, a region gets flaky — HoBo replans
+						placement continuously and moves the bindle when it's worth it.
+						Same convergence loop as <code class="term">hobo up</code>, so a
+						move is never a special event.
 					</p>
 					<div class="event-chips">
-						<code>Planned</code>
-						<code>Provisioning</code>
-						<code>Provisioned</code>
-						<code>Deployed</code>
+						<code>MigrationPlanned</code>
+						<code>Gated</code>
+						<code>Migrated</code>
 					</div>
 				</div>
 			</div>
 			<p class="section-foot">
-				Crash anywhere, recover by replay — the event log is the source of
-				truth. <a href={href("/guide/architecture/")}>Architecture →</a>
+				Every hop is an event in an append-only log — replay the journey,
+				audit every fare, roll back any move.
+				<a href={href("/guide/architecture/")}>How the moving works →</a>
 			</p>
+		</div>
+	</section>
+
+	<div class="rails" role="presentation"></div>
+
+	<!-- ===================== Primitives bento ===================== -->
+	<section class="section" style="padding-top: 0;">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">The vocabulary</span>
+				<h2>Four words for traveling light</h2>
+				<p>
+					HoBo's primitives are named for the life: pack a bindle, pitch a
+					camp, work a yard, meet at the junction. Two are essential, two are
+					for when your app goes places.
+				</p>
+			</div>
+			<div class="grid grid-3 bento">
+				<a class="card span-2" href={href("/primitives/bindles/")}>
+					<h3><span class="term">Bindle</span> <span class="sticker">start here</span></h3>
+					<p>
+						The app, packed: services, resources, wiring, policies, and
+						deployment intent — provider-agnostic by construction. The same
+						bindle unpacks anywhere, which is exactly what makes it cheap to
+						move.
+					</p>
+					<p class="card-cta">Pack your first bindle →</p>
+				</a>
+				<a class="card" href={href("/primitives/camps/")}>
+					<h3><span class="term">Camp</span> <span class="sticker meadow">then here</span></h3>
+					<p>
+						Where the bindle lives right now: one provider target plus the
+						durable runtime — event store, queues, streams, actors, clock.
+					</p>
+					<p class="card-cta">Pitch a camp →</p>
+				</a>
+				<a class="card" href={href("/primitives/yards/")}>
+					<h3><span class="term">Yard</span> <span class="sticker sky">advanced</span></h3>
+					<p>
+						One provider's camps under one roof: cross-camp policy,
+						identity, and reconciliation. Self-hostable — the Yard is
+						itself a bindle.
+					</p>
+					<p class="card-cta">Run a yard →</p>
+				</a>
+				<a class="card" href={href("/primitives/junctions/")}>
+					<h3><span class="term">Junction</span> <span class="sticker sky">advanced</span></h3>
+					<p>
+						Where yards meet: cross-cloud federation for hybrid and
+						multi-cloud — peer yards, no shared mutable state.
+					</p>
+					<p class="card-cta">Wire a junction →</p>
+				</a>
+				<div class="card">
+					<h3>Replayable event log</h3>
+					<p>
+						Every deploy, migration, and token grant is an appended event.
+						Time travel isn't a feature, it's the data model.
+					</p>
+				</div>
+				<div class="card span-2">
+					<h3>WIT/WASM membrane</h3>
+					<p>
+						Ports are WIT interfaces; apps are wasm components (with an OCI
+						fallback); providers are capability providers. That thin, typed
+						membrane is what makes moving homes cheap — any Component-Model
+						language rides the same rails.
+					</p>
+				</div>
+			</div>
 		</div>
 	</section>
 
@@ -261,8 +277,8 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 				<h2>Built for humans, and the agents that work for them</h2>
 				<p>
 					Every capability is reachable via SDK, CLI, <strong>and</strong> MCP.
-					The AI-native promise is concrete — operations, generation, and
-					identity, not a chat box.
+					Agents aren't a chat box bolted on — they're principals with
+					their own scoped, short-lived credentials.
 				</p>
 			</div>
 			<div class="grid grid-2">
@@ -270,39 +286,41 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 					<div class="card">
 						<h3>Agents as principals</h3>
 						<p>
-							Agents self-provision scoped credentials through a
-							machine-readable capability standard — token issuance is an
-							event like everything else, so every agent action is auditable.
+							Agents self-provision exactly the credentials a task needs
+							through a machine-readable capability standard — and every
+							token issued is an auditable event like everything else.
 						</p>
 					</div>
 					<div class="card">
 						<h3>The Crew: a built-in operator workforce</h3>
 						<p>
 							SRE, endpoint-monitor, GitOps, and platform-engineer operator
-							agents ship as autonomous, policy-gated Yard services — HoBo
-							ships the operators, not just the APIs they'd call.
+							agents ship with the platform — HoBo ships the operators, not
+							just the APIs they'd call.
 						</p>
 					</div>
 					<div class="card">
 						<h3>AI-generated providers, conformance-certified</h3>
 						<p>
-							Missing an adapter? The generation pipeline writes it; the
-							port's contract test suite certifies it. No waiting on a
-							community to cover your provider.
+							Missing an adapter for your favorite discount host? The
+							generation pipeline writes it; the port's contract suite
+							certifies it. More homes on the map, cheaper moves for
+							everyone.
 						</p>
 					</div>
 				</div>
 				<div class="card" style="display:flex; flex-direction:column; justify-content:center; gap: 0.75rem;">
-					<h3>This repo practices what it designs</h3>
+					<h3>Reading this as an agent?</h3>
 					<p>
-						HoBo is developed <em>by</em> agents too: the repository is wired
-						for Claude Code, Cursor, and Codex with twelve agent tools,
-						repo-local skills, MCP servers, and hard architecture guardrails.
+						Welcome, fellow traveler. This whole site is written to be as
+						useful to you as to the humans you work for: stable headings,
+						copy-pasteable snippets, canonical CLI verbs.
 					</p>
 					<p>
-						If you're an AI agent reading this, start at
-						<a href={href("/llms.txt")}><code>llms.txt</code></a> and the
-						repo's <a href={`${github}/blob/main/AGENTS.md`}>AGENTS.md</a>.
+						Start with the machine-readable briefing at
+						<a href={href("/llms.txt")}><code>llms.txt</code></a>, then the
+						<a href={href("/agents/")}>agent docs</a> for the MCP surface
+						and how to earn credentials.
 					</p>
 					<p class="card-cta">
 						<a href={href("/agents/")}>Read the agent docs →</a>
@@ -317,11 +335,11 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 		<div class="container">
 			<div class="section-head">
 				<span class="badge">The landscape</span>
-				<h2>The gap HoBo fills</h2>
+				<h2>Other roofs over your head</h2>
 				<p>
 					Cloud-agnostic options are IaC-flavored, Kubernetes-bound, or not
-					AI-native. AI-native options are single-runtime and locked in. The
-					intersection is empty — that intersection is HoBo.
+					AI-native. AI-native options are single-runtime and locked in.
+					Nobody else keeps looking for a cheaper home after move-in day.
 				</p>
 			</div>
 			<div class="table-wrap">
@@ -387,7 +405,7 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 						</tr>
 						<tr class="hobo-row">
 							<th>HoBo</th>
-							<td>AI-native control plane</td>
+							<td>AI-native meta-cloud</td>
 							<td class="yes">✓ ports &amp; adapters</td>
 							<td>wasm components + actors + durable workflows + sagas</td>
 							<td class="yes">agents as principals · generation pipeline · MCP</td>
@@ -397,78 +415,42 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 				</table>
 			</div>
 			<p class="section-foot">
-				Every claim is grounded in a faithful capture with a HoBo parity
-				mapping —
-				<a href={`${github}/blob/main/docs/competitors/index.md`}
-					>30+ competitor references</a
-				>.
+				And the HoBo-only column: <strong>continuous migration</strong> —
+				placement is re-decided for as long as your app lives, not once at
+				deploy time.
 			</p>
-		</div>
-	</section>
-
-	<!-- ===================== Design in the open ===================== -->
-	<section class="section">
-		<div class="container">
-			<div class="section-head">
-				<span class="badge">Design-first</span>
-				<h2>Being designed in the open, honestly</h2>
-				<p>
-					No product ships yet — and the repo says so plainly. What exists is
-					a rigorous, executable design: capability docs, decision records,
-					proof packages, and a production package scaffold, all gated by CI.
-				</p>
-			</div>
-			<div class="grid grid-4">
-				<a class="card" href={`${github}/blob/main/docs/design/index.md`}>
-					<h3>Design suite</h3>
-					<p>
-						60+ capability docs — architecture, control plane, data plane,
-						security, FinOps, DX — each with stable plan anchors.
-					</p>
-					<p class="card-cta">docs/design →</p>
-				</a>
-				<a class="card" href={`${github}/blob/main/docs/design/adr/index.md`}>
-					<h3>Decisions (ADRs)</h3>
-					<p>
-						120+ architecture decision records in four thematic volumes, with
-						a traceability gate to the backlog.
-					</p>
-					<p class="card-cta">docs/design/adr →</p>
-				</a>
-				<a class="card" href={`${github}/tree/main/src/draft`}>
-					<h3>Executable proofs</h3>
-					<p>
-						Technical, experience, and epic proof packages that pin design
-						claims with executed examples, notebooks, and contract tests.
-					</p>
-					<p class="card-cta">src/draft →</p>
-				</a>
-				<a class="card" href={`${github}/tree/main/packages`}>
-					<h3>Production scaffold</h3>
-					<p>
-						The <code>@hobo/*</code> workspace — core, wit, bindles, runtime,
-						componentize, conformance, cli — guarded by architecture gates.
-					</p>
-					<p class="card-cta">packages →</p>
-				</a>
-			</div>
 		</div>
 	</section>
 
 	<!-- ===================== CTA ===================== -->
 	<section class="cta-band">
 		<div class="container">
-			<div class="cta-inner">
-				<h2>Follow the design. Sharpen the design.</h2>
-				<p>
-					Read the docs, run the gates, file an issue, or point your favorite
-					coding agent at the repo — it's already wired for them.
+			<div class="postcard">
+				<h2 class="cta-inner-title">Ready to hit the rails?</h2>
+				<p style="margin: 0 auto 1.5rem; max-width: 36rem; color: var(--text-mute);">
+					Pack a bindle, pitch a camp, and let your app find its way home.
+					Yards and junctions can wait until it starts collecting passport
+					stamps.
 				</p>
-				<div class="hero-ctas">
-					<a class="btn btn-primary" href={href("/guide/")}>Start reading</a>
-					<a class="btn btn-ghost" href={github}>Star on GitHub</a>
+				<div class="hero-ctas" style="justify-content: center; margin-bottom: 0;">
+					<a class="btn btn-primary" href={href("/guide/getting-started/")}
+						>Get started</a
+					>
+					<a class="btn btn-ghost" href={href("/primitives/bindles/")}
+						>Meet the primitives</a
+					>
 				</div>
 			</div>
 		</div>
 	</section>
 </Base>
+
+<style>
+	.cta-inner-title {
+		margin: 0 0 0.65rem;
+		font-family: var(--font-display);
+		font-size: clamp(1.5rem, 3vw, 2.1rem);
+		letter-spacing: -0.01em;
+		font-weight: 620;
+	}
+</style>

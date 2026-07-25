@@ -1,15 +1,13 @@
 ---
 import Base from "./Base.astro";
-import { github, nav } from "../nav";
+import { nav } from "../nav";
 import { href } from "../lib/url";
 
 interface Props {
 	frontmatter: {
 		title: string;
 		description: string;
-		file?: string;
 	};
-	file?: string;
 }
 
 const { frontmatter } = Astro.props;
@@ -19,12 +17,6 @@ const current = (slug: string) =>
 	path.replace(/\/$/, "") === href(slug).replace(/\/$/, "")
 		? "page"
 		: undefined;
-
-// Astro passes the source file's absolute path for markdown layouts.
-const sourceFile = (Astro.props.file ?? "").split("/site/")[1];
-const editUrl = sourceFile
-	? `${github}/edit/main/site/${sourceFile}`
-	: `${github}/tree/main/site`;
 ---
 
 <Base
@@ -64,9 +56,6 @@ const editUrl = sourceFile
 				<span class="badge">{section?.label ?? "Docs"}</span>
 			</div>
 			<slot />
-			<p class="edit-link">
-				<a href={editUrl}>Edit this page on GitHub</a>
-			</p>
 		</article>
 	</div>
 </Base>

@@ -1,72 +1,147 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Getting started
-description: Clone the HoBo repo, install the toolchain, run the validation gates, and find your way around the design suite and executable proofs.
+description: "Pack your first Bindle, pitch a Camp, and let your app ride: the two primitives you can't run HoBo without, plus where Yards and Junctions come in."
 ---
 
 # Getting started
 
-HoBo is in its design phase, so "getting started" means getting productive **in the repository**: reading the design, running the gates, and exploring the executable proofs. There is no hosted service to sign up for yet.
+Time to leave home. This guide takes you from an empty directory to an app that has a home — and a standing ticket to a cheaper one. You'll meet the two primitives HoBo cannot run without, in the order it needs them:
+
+1. **[Bindle](/HoBo/primitives/bindles/)** — *pack.* Everything your app owns, rolled into one provider-agnostic bundle. No bindle, nothing to host.
+2. **[Camp](/HoBo/primitives/camps/)** — *settle.* The place your bindle lives right now: one provider, one durable runtime. No camp, nowhere to live.
+
+**[Yards](/HoBo/primitives/yards/)** and **[Junctions](/HoBo/primitives/junctions/)** are advanced scenarios — you'll want them when your app starts collecting regions and clouds, and not a minute before. They get a short section [at the end](#advanced--yards-and-junctions).
+
+> **Pre-release note:** HoBo is pre-release; this is the canonical developer surface the product is being built to. Commands and APIs shown here are the stable contract — the same ones the conformance suites pin.
 
 ## Prerequisites
 
-- **Node.js** ≥ 20.20 locally (CI runs Node 24 — match it for exact parity).
-- **pnpm** via Corepack (the repo pins the version in `package.json`).
-- Git, and optionally a coding agent — the repo is [wired for them](/HoBo/agents/).
+- **Node.js** ≥ 20 (any Component-Model language can author bindles eventually — TypeScript is the first reference implementation).
+- A terminal, ten minutes, and no cloud account. Really: `hobo dev` and even your first deploy work without one.
 
-## Clone and install
-
-```sh
-git clone https://github.com/Tyler-R-Kendrick/HoBo.git
-cd HoBo
-corepack enable pnpm
-pnpm run install:check     # frozen-lockfile install
-pnpm run ci:preflight      # verifies the toolchain wiring
-pnpm run doctor            # environment diagnostics
-```
-
-## Run the core gate
-
-These are the same ordinary Node scripts CI runs, so they work locally, in CI, and inside agent sessions:
+## Scaffold a program
 
 ```sh
-pnpm run architecture:guard   # PACT/protobuf/CUE/event-architecture evidence
-pnpm test                     # unit suite
-pnpm run standards:check      # TypeScript-first + contract-first standards
-pnpm run docs:cli-lint        # CLI examples use only canonical hobo verbs
-pnpm run docs:design-lint     # glossary/anchor/link integrity in the design suite
-pnpm run docs:coverage        # required docs exist
-pnpm run docs:okf             # Open Knowledge Format metadata
-pnpm run docs:freshness       # code changes carry doc changes
+npx hobo new my-app --template fullstack
+cd my-app
+hobo dev
 ```
 
-Optional but recommended — the pre-commit hook that runs the staged variants automatically:
+`hobo new` scaffolds a runnable SDK program; `hobo dev` runs it against the local runtime with hot reload — offline, no sign-up, honest fidelity labels for anything that behaves differently than the cloud.
+
+## Step 1 — Pack your bindle
+
+The bindle is the first thing HoBo looks for and the only thing it ships. It's plain code — no YAML sidecar, no config dialect:
+
+```ts
+// src/bindle.ts
+import { bindle } from "@hobo/bindles";
+
+import { app as api } from "./api";
+import { app as web } from "./webapp";
+
+export default bindle("my-app", (b) => {
+  const db = b.data();                       // a SQL-ish data port
+  const jobs = b.queue();                    // background work
+
+  const apiSvc = b
+    .api(() => api.fetch)                    // HTTP API entrypoint
+    .dependsOn(db, jobs)                     // typed bindings, injected at runtime
+    .allow("db:read", "db:write", "queue:send");
+
+  const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
+
+  return { db, jobs, api: apiSvc, web: webSvc };
+});
+```
+
+Three things to internalize — they're what make everything later cheap:
+
+- **Resource names come from the returned object keys.** `{ db, jobs, api, web }` is your app's topology; the object *is* the manifest.
+- **`.dependsOn(...)` is the wiring.** It declares edges *and* injects typed bindings at runtime. Nothing reaches a backend it didn't declare — deny by default.
+- **`.allow(...)` is inline least privilege.** Permissions travel *in* the bindle, so they move when the app moves. That's the trick: a bindle carries everything needed to unpack it anywhere, which is exactly what makes migrating to a cheaper home a routine event instead of a rewrite.
+
+That's a complete, deployable description. If you stopped reading here and ran `hobo up`, HoBo could take it from this point — which brings us to where it would land.
+
+## Step 2 — Pitch a camp
+
+A camp answers one question the bindle deliberately doesn't: **where does this live right now?** One provider, one durable runtime (event store, queues, streams, actors, clock):
+
+```ts
+// src/camp.ts
+import { camp } from "@hobo/camps";
+import { fly } from "@hobo/provider-fly";
+import { postgresRuntime } from "@hobo/runtime-postgres";
+
+import app from "./bindle";
+
+export default camp("prod", {
+  bindle: app,
+  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
+  defaultProvider: fly({ region: "iad" }),   // "host everything here, figure out the best way"
+});
+```
+
+Then converge:
 
 ```sh
-pnpm run prepare-hooks
+hobo plan --camp prod    # dry run: placement, cost, warnings — read-only
+hobo up --camp prod      # build, plan, gate, provision, deploy
+hobo logs --camp prod    # live-tail through the camp runtime
 ```
 
-## Explore the design
+A few useful truths about camps:
 
-The suggested reading order for newcomers:
+- **The camp is a *current answer*, not a vow.** The whole point of keeping the bindle provider-agnostic is that the camp can change out from under it. When continuous migration finds a cheaper camp that passes your policies, the move is the same convergence loop as `hobo up` — plan, gate, converge — never a special event.
+- **You can skip even this.** With no camp pinned, the Dispatcher infers one from your platform's approved providers, optimizing for price under policy. Explicit camps are for when *you* want to choose.
+- **Zero-setup first deploy:** `npx hobo up` from any directory deploys anonymously and returns a live URL — no account. `hobo login` and `hobo claim` later bind it to you, keeping its state and URL. Commitment-free, like all good first visits.
 
-1. [Vision](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/vision.md) — product intent, positioning, principles.
-2. [Architecture](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/architecture.md) — reference architecture and package layout.
-3. [Worked example](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/worked-example.md) — one app moving through the system.
-4. [Walkthrough](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/walkthrough.md) — role-based flows for app dev, platform, GitOps, SecOps, DevOps, and SRE.
+And if you do want provider-native power, it's a typed annotation away, still inside the bindle:
 
-Or stay on this site for the condensed versions: [Core concepts](/HoBo/guide/concepts/) and [Architecture](/HoBo/guide/architecture/).
-
-## Run something real
-
-The `examples/hello-bindle` workspace is a minimal, fully-gated example: a Hono API and web app wired through a provider-agnostic Bindle, with protobuf-generated types, CUE constraints, PACT contracts, and tests.
-
-```sh
-pnpm exec turbo run test --filter ./examples/hello-bindle
+```ts
+const apiSvc = b
+  .api(() => api.fetch)
+  .with(fly.machines({ size: "shared-cpu-2x" }));   // optimization, not a rewrite
 ```
 
-Draft proof packages under `src/draft/<kind>/<slug>` are executable design claims — each has a README explaining what it proves and how to run it. Start from the [draft taxonomy README](https://github.com/Tyler-R-Kendrick/HoBo/tree/main/src/draft).
+**You now know everything required to run HoBo.** A bindle and a camp are the whole entry fee. Everything below is for apps with wanderlust.
 
-## Working with an AI agent?
+## Advanced — Yards and Junctions
 
-Point it at [`AGENTS.md`](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/AGENTS.md) first — it's the repo's contract for agents — then see the [agent docs](/HoBo/agents/) on this site for the tooling, skills, and guardrails.
+Skip this on day one. Come back when one camp stops being enough.
+
+### Yard: one provider, many camps
+
+Running `prod` in two regions plus preview camps, all on one provider? A **yard** composes that provider's camps and carries what's shared across them — policy, identity, reconciliation, provider-global networking:
+
+```ts
+import { yard } from "@hobo/yards";
+import prodEast from "./camps/prod-east";
+import prodWest from "./camps/prod-west";
+
+export default yard("fly", { camps: [prodEast, prodWest] });
+```
+
+One yard per provider, by rule. A yard cannot mix providers — that's the next primitive's job. (And pleasingly: the Yard control plane is itself a bindle, so self-hosting HoBo is just… hosting.)
+
+### Junction: many yards, many clouds
+
+When the journey goes multi-cloud or hybrid, a **junction** federates yards — peer to peer, no shared mutable state, cross-cloud connectivity inferred from the member yards' manifests:
+
+```ts
+import { junction } from "@hobo/junctions";
+import flyYard from "./yards/fly";
+import awsYard from "./yards/aws";
+
+export default junction("my-app", { yards: [flyYard, awsYard] });
+```
+
+Now continuous migration has a bigger map to roam: the Dispatcher can weigh homes *across clouds*, and your data-residency and sovereignty policies decide what's allowed to cross which border.
+
+## Where to next
+
+- [Bindles](/HoBo/primitives/bindles/) and [Camps](/HoBo/primitives/camps/) — the full reference for the two primitives you just used.
+- [Core concepts](/HoBo/guide/concepts/) — the vocabulary in one sitting.
+- [The hobo CLI](/HoBo/guide/cli/) — the whole verb surface (it's deliberately small).
+- [HoBo for agents](/HoBo/agents/) — pointing an AI agent at HoBo? It gets its own credentials, not yours.

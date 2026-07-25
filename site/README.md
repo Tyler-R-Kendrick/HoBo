@@ -27,7 +27,7 @@ pnpm --filter hobo-site preview    # serve the built dist/
 | Path | What it is |
 |---|---|
 | `src/pages/index.astro` | The landing page. |
-| `src/pages/{guide,agents,develop}/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. |
+| `src/pages/{guide,primitives,agents}/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. |
 | `src/nav.ts` | Single source of truth for header + sidebar navigation. |
 | `src/layouts/` | `Base.astro` (head/header/footer/theme) and `Docs.astro` (sidebar + prose). |
 | `src/styles/global.css` | The whole design system: tokens, light/dark themes, components. |
@@ -39,9 +39,13 @@ pnpm --filter hobo-site preview    # serve the built dist/
   written absolute with the base (`/HoBo/guide/...`) because Astro does not rewrite
   markdown hrefs. `.astro` files use the `href()` helper from `src/lib/url.ts` instead.
   If the repo is renamed, update `base` in `astro.config.ts` and these links together.
-- **Content is curated, not mirrored.** Pages summarize and deep-link to the canonical
-  sources on GitHub (`docs/design/`, `AGENTS.md`, …) rather than duplicating them, so the
-  site stays accurate as the design suite evolves.
+- **No repository references.** The repo is private; the site is standalone product
+  developer documentation. Never link to github.com/Tyler-R-Kendrick/HoBo (or any repo
+  path like `docs/design/`) from published pages — restate what's needed instead. The
+  canonical sources in `docs/design/` inform the content but are not linked.
+- **Voice:** playful "homeward bound" theme — the guiding principle is continuous
+  migration to the cheapest home that passes policy. Whimsy in the prose, precision in
+  the tables and code.
 - **No new JS-family files:** repo policy (AGENTS.md) — config is `astro.config.ts`, not `.mjs`.
 - **Single lockfile:** never add a `site/pnpm-lock.yaml`; the architecture guard rejects
   nested lockfiles. Dependencies resolve through the root workspace lockfile.

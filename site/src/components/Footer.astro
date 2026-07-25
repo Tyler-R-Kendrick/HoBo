@@ -1,6 +1,6 @@
 ---
 import Logo from "./Logo.astro";
-import { github, nav } from "../nav";
+import { nav } from "../nav";
 import { href } from "../lib/url";
 
 const year = new Date().getFullYear();
@@ -15,9 +15,9 @@ const year = new Date().getFullYear();
 					<span>HoBo</span>
 				</a>
 				<p>
-					An AI-native meta-cloud, designed in the open: describe an app once,
-					let the control plane place it on any mix of providers — and keep
-					humans and agents on the same auditable surface.
+					Every app deserves a good home — preferably a cheap one. HoBo
+					describes your app once, finds it the best-value home that passes
+					your policies, and keeps it moving when a better one opens up.
 				</p>
 			</div>
 			{
@@ -37,13 +37,11 @@ const year = new Date().getFullYear();
 		</div>
 		<div class="footer-note">
 			<span>
-				HoBo is a <strong>design-first</strong> project — an active design suite
-				with executable proofs. The product is not shipped.
+				HoBo is <strong>pre-release</strong> — the surfaces documented here are
+				the contract the product is being built to.
 			</span>
 			<span>
-				<a href={github}>GitHub</a> ·
-				<a href={`${github}/blob/main/docs/design/index.md`}>Design suite</a> ·
-				<a href={`${github}/blob/main/LICENSE`}>License</a> · © {year}
+				Homeward bound since the design phase · © {year}
 			</span>
 		</div>
 	</div>

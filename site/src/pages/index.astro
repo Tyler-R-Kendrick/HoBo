@@ -1,0 +1,474 @@
+---
+import { Code } from "astro:components";
+import Base from "../layouts/Base.astro";
+import { github } from "../nav";
+import { href } from "../lib/url";
+
+const bindleSnippet = `import { bindle } from "@hobo/bindles";
+
+import { app as helloApi } from "./api";
+import { app as helloWeb } from "./webapp";
+
+// Describe the app once — provider-agnostic.
+export default bindle("hello-bindle", (b) => {
+  const api = b.api(() => helloApi.fetch);
+  const web = b.web(() => helloWeb.fetch).dependsOn(api);
+  return { api, web };
+});`;
+
+const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
+---
+
+<Base
+	title="HoBo — the AI-native meta-cloud, designed in the open"
+	description="Describe an app once and let HoBo place it on any provider, mix of providers, or self-hosted yard. Cloud portability without hiding the cloud — built for humans and the agents that work for them."
+>
+	<!-- ===================== Hero ===================== -->
+	<section class="hero">
+		<div class="container">
+			<div>
+				<p class="hero-eyebrow">
+					<span class="badge badge-accent">AI-native meta-cloud</span>
+					<span class="badge">designed in the open</span>
+				</p>
+				<h1>
+					Write your app once.<br />
+					<span class="gradient-text">Host it anywhere.</span>
+				</h1>
+				<p class="hero-sub">
+					HoBo is a cloud-agnostic control plane and durable runtime under
+					active design: one app description lands on a provider, a mix of
+					providers, or your own metal — <strong
+						>agnostic by default, optimizable on demand</strong
+					>, and operable by AI agents end to end.
+				</p>
+				<div class="hero-ctas">
+					<a class="btn btn-primary" href={href("/guide/getting-started/")}
+						>Get started</a
+					>
+					<a class="btn btn-ghost" href={`${github}/blob/main/docs/design/index.md`}
+						>Read the design suite</a
+					>
+				</div>
+				<div class="hero-facts">
+					<span class="pill"><b>60+</b> capability docs</span>
+					<span class="pill"><b>120+</b> ADRs</span>
+					<span class="pill"><b>30+</b> competitor captures</span>
+					<span class="pill"><b>WIT/WASM</b> component surface</span>
+				</div>
+			</div>
+			<div class="terminal">
+				<div class="terminal-bar">
+					<span class="dots"><i></i><i></i><i></i></span>
+					<span class="title">src/bindle.ts</span>
+				</div>
+				<Code
+					code={bindleSnippet}
+					lang="ts"
+					themes={shikiThemes}
+					defaultColor={false}
+				/>
+				<div class="terminal-run">
+					<div><span class="ps1">$</span> hobo up --camp prod</div>
+					<div>
+						<span class="ev">DeployRequested</span>
+						<span class="ev">Planned</span>
+						<span class="ev">Provisioning</span>
+						<span class="ev">Provisioned</span>
+						<span class="ev ok">Deployed ✓</span>
+					</div>
+					<div class="dim">
+						every transition is an event — replayable, auditable, recoverable
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===================== Problem ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">Why HoBo exists</span>
+				<h2>Two bad defaults, and a third path</h2>
+				<p>
+					Modern teams choose between a closed PaaS that hides the cloud and
+					raw IaC that makes every app team a platform team. HoBo's goal is
+					<strong>cloud portability without hiding the cloud</strong>.
+				</p>
+			</div>
+			<div class="grid grid-3" style="align-items: stretch;">
+				<div class="card tradeoff">
+					<h3>Closed PaaS</h3>
+					<p>
+						Easy deploys — but lock-in, one runtime, and limited escape
+						hatches when you need provider-native power.
+					</p>
+				</div>
+				<div class="card tradeoff">
+					<h3>Raw cloud + IaC</h3>
+					<p>
+						Full control — but you now think in infrastructure, and every
+						application team becomes a part-time platform team.
+					</p>
+				</div>
+				<div class="card">
+					<h3><span class="card-icon">→</span>The HoBo path</h3>
+					<p>
+						Start from provider-agnostic intent. Let policy, cost, and
+						reliability goals choose the infrastructure. Drop down to typed
+						provider-specific options — a <code class="term">.with(...)</code>
+						away — only when optimization matters.
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===================== Concepts bento ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">Core ideas</span>
+				<h2>A vocabulary for traveling light</h2>
+				<p>
+					HoBo's metaphor is the itinerant worker who travels light. Four
+					nested scopes carry an app from description to running
+					infrastructure.
+				</p>
+			</div>
+			<div class="grid grid-3 bento">
+				<a class="card span-2" href={href("/guide/concepts/")}>
+					<h3><span class="term">Bindle</span></h3>
+					<p>
+						The application package: services, resources, wiring, policies,
+						and deployment intent — provider-agnostic by construction. The
+						same Bindle ships to one provider or many without forking the
+						code.
+					</p>
+					<p class="card-cta">Explore the concepts →</p>
+				</a>
+				<div class="card">
+					<h3><span class="term">Camp</span></h3>
+					<p>
+						A provider-specific runtime target that hosts workloads and
+						provides the durable runtime: event store, queues, streams,
+						actors, clock.
+					</p>
+				</div>
+				<div class="card">
+					<h3><span class="term">Yard</span></h3>
+					<p>
+						One provider's control plane: cross-Camp policy, identity, and
+						reconciliation. Self-hostable — the Yard is itself a Bindle.
+					</p>
+				</div>
+				<div class="card">
+					<h3><span class="term">Junction</span></h3>
+					<p>
+						Cross-Yard federation for hybrid and multi-cloud operation — peer
+						Yards, no shared mutable state.
+					</p>
+				</div>
+				<div class="card">
+					<h3>Replayable event log</h3>
+					<p>
+						Control-plane state, projections, SRE workflows, and audit trails
+						all derive from an append-only event log. Time travel for free.
+					</p>
+				</div>
+				<a class="card span-2" href={href("/guide/architecture/")}>
+					<h3>WIT/WASM membrane</h3>
+					<p>
+						Ports are WIT interfaces; providers are capability providers;
+						apps are wasm components (with an OCI fallback). Any
+						Component-Model language authors against the same contracts —
+						TypeScript is just the first reference implementation.
+					</p>
+					<p class="card-cta">See the architecture →</p>
+				</a>
+				<div class="card">
+					<h3>Agent-native auth</h3>
+					<p>
+						AI agents are first-class principals with scoped short-lived
+						credentials, policy checks, and traceable actions — never
+						afterthoughts.
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===================== How it works ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">How it works</span>
+				<h2>Describe. Map. Converge.</h2>
+				<p>
+					Two lifecycle verbs — <code>hobo up</code> and <code>hobo down</code>
+					— drive everything else. Deploys, promotions, rollbacks, and even
+					self-host bootstrap are the same convergence loop.
+				</p>
+			</div>
+			<div class="grid grid-3">
+				<div class="card">
+					<p class="step-num">01 · DESCRIBE</p>
+					<h3>Author the Bindle</h3>
+					<p>
+						Infrastructure-from-code resources with inline
+						<code>.allow()</code> least privilege. The manifest is collected
+						from your code — no separate config language to learn.
+					</p>
+				</div>
+				<div class="card">
+					<p class="step-num">02 · MAP</p>
+					<h3>Choose (or delegate) placement</h3>
+					<p>
+						Map the whole app to one provider, split tiers across providers,
+						or pin boundaries — platform rules and matching decide the rest,
+						auditable by design.
+					</p>
+				</div>
+				<div class="card">
+					<p class="step-num">03 · CONVERGE</p>
+					<h3><code class="term">hobo up</code></h3>
+					<p>
+						The Planner turns intent into a deployment DAG; resource actors
+						drive reality to match through sandboxed IaC executors with
+						brokered, short-lived credentials.
+					</p>
+					<div class="event-chips">
+						<code>Planned</code>
+						<code>Provisioning</code>
+						<code>Provisioned</code>
+						<code>Deployed</code>
+					</div>
+				</div>
+			</div>
+			<p class="section-foot">
+				Crash anywhere, recover by replay — the event log is the source of
+				truth. <a href={href("/guide/architecture/")}>Architecture →</a>
+			</p>
+		</div>
+	</section>
+
+	<!-- ===================== Agent-native ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">AI-native</span>
+				<h2>Built for humans, and the agents that work for them</h2>
+				<p>
+					Every capability is reachable via SDK, CLI, <strong>and</strong> MCP.
+					The AI-native promise is concrete — operations, generation, and
+					identity, not a chat box.
+				</p>
+			</div>
+			<div class="grid grid-2">
+				<div class="grid" style="gap: 1rem;">
+					<div class="card">
+						<h3>Agents as principals</h3>
+						<p>
+							Agents self-provision scoped credentials through a
+							machine-readable capability standard — token issuance is an
+							event like everything else, so every agent action is auditable.
+						</p>
+					</div>
+					<div class="card">
+						<h3>The Crew: a built-in operator workforce</h3>
+						<p>
+							SRE, endpoint-monitor, GitOps, and platform-engineer operator
+							agents ship as autonomous, policy-gated Yard services — HoBo
+							ships the operators, not just the APIs they'd call.
+						</p>
+					</div>
+					<div class="card">
+						<h3>AI-generated providers, conformance-certified</h3>
+						<p>
+							Missing an adapter? The generation pipeline writes it; the
+							port's contract test suite certifies it. No waiting on a
+							community to cover your provider.
+						</p>
+					</div>
+				</div>
+				<div class="card" style="display:flex; flex-direction:column; justify-content:center; gap: 0.75rem;">
+					<h3>This repo practices what it designs</h3>
+					<p>
+						HoBo is developed <em>by</em> agents too: the repository is wired
+						for Claude Code, Cursor, and Codex with twelve agent tools,
+						repo-local skills, MCP servers, and hard architecture guardrails.
+					</p>
+					<p>
+						If you're an AI agent reading this, start at
+						<a href={href("/llms.txt")}><code>llms.txt</code></a> and the
+						repo's <a href={`${github}/blob/main/AGENTS.md`}>AGENTS.md</a>.
+					</p>
+					<p class="card-cta">
+						<a href={href("/agents/")}>Read the agent docs →</a>
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===================== Landscape ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">The landscape</span>
+				<h2>The gap HoBo fills</h2>
+				<p>
+					Cloud-agnostic options are IaC-flavored, Kubernetes-bound, or not
+					AI-native. AI-native options are single-runtime and locked in. The
+					intersection is empty — that intersection is HoBo.
+				</p>
+			</div>
+			<div class="table-wrap">
+				<table class="compare">
+					<thead>
+						<tr>
+							<th>Product</th>
+							<th>Category</th>
+							<th>Cloud-agnostic</th>
+							<th>Runtime model</th>
+							<th>AI-native</th>
+							<th>Self-host</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th>Lakebed</th>
+							<td>Agent-native PaaS</td>
+							<td class="no">✗ own runtime</td>
+							<td>sync RPC</td>
+							<td>agent-readable contracts</td>
+							<td class="no">✗</td>
+						</tr>
+						<tr>
+							<th>Vercel + Workflow SDK</th>
+							<td>PaaS + durable execution</td>
+							<td class="no">partial</td>
+							<td>durable workflows/steps</td>
+							<td>DurableAgent</td>
+							<td class="no">runtime only</td>
+						</tr>
+						<tr>
+							<th>Nitric</th>
+							<td>Infra-from-code framework</td>
+							<td class="yes">✓</td>
+							<td>functions/resources</td>
+							<td class="no">✗</td>
+							<td class="yes">✓</td>
+						</tr>
+						<tr>
+							<th>SST (v3 "Ion")</th>
+							<td>IfC framework (Pulumi/TF)</td>
+							<td class="no">◐ AWS-centric</td>
+							<td>serverless + containers</td>
+							<td class="no">✗</td>
+							<td class="yes">✓ OSS core</td>
+						</tr>
+						<tr>
+							<th>Crossplane</th>
+							<td>K8s control plane</td>
+							<td class="yes">✓</td>
+							<td>reconcilers (CRDs)</td>
+							<td class="no">✗</td>
+							<td class="yes">✓ (k8s)</td>
+						</tr>
+						<tr>
+							<th>wasmCloud</th>
+							<td>Wasm runtime (HoBo's default host)</td>
+							<td class="yes">✓</td>
+							<td>components + providers</td>
+							<td class="no">✗</td>
+							<td class="yes">✓</td>
+						</tr>
+						<tr class="hobo-row">
+							<th>HoBo</th>
+							<td>AI-native control plane</td>
+							<td class="yes">✓ ports &amp; adapters</td>
+							<td>wasm components + actors + durable workflows + sagas</td>
+							<td class="yes">agents as principals · generation pipeline · MCP</td>
+							<td class="yes">✓ the Yard is a Bindle</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<p class="section-foot">
+				Every claim is grounded in a faithful capture with a HoBo parity
+				mapping —
+				<a href={`${github}/blob/main/docs/competitors/index.md`}
+					>30+ competitor references</a
+				>.
+			</p>
+		</div>
+	</section>
+
+	<!-- ===================== Design in the open ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">Design-first</span>
+				<h2>Being designed in the open, honestly</h2>
+				<p>
+					No product ships yet — and the repo says so plainly. What exists is
+					a rigorous, executable design: capability docs, decision records,
+					proof packages, and a production package scaffold, all gated by CI.
+				</p>
+			</div>
+			<div class="grid grid-4">
+				<a class="card" href={`${github}/blob/main/docs/design/index.md`}>
+					<h3>Design suite</h3>
+					<p>
+						60+ capability docs — architecture, control plane, data plane,
+						security, FinOps, DX — each with stable plan anchors.
+					</p>
+					<p class="card-cta">docs/design →</p>
+				</a>
+				<a class="card" href={`${github}/blob/main/docs/design/adr/index.md`}>
+					<h3>Decisions (ADRs)</h3>
+					<p>
+						120+ architecture decision records in four thematic volumes, with
+						a traceability gate to the backlog.
+					</p>
+					<p class="card-cta">docs/design/adr →</p>
+				</a>
+				<a class="card" href={`${github}/tree/main/src/draft`}>
+					<h3>Executable proofs</h3>
+					<p>
+						Technical, experience, and epic proof packages that pin design
+						claims with executed examples, notebooks, and contract tests.
+					</p>
+					<p class="card-cta">src/draft →</p>
+				</a>
+				<a class="card" href={`${github}/tree/main/packages`}>
+					<h3>Production scaffold</h3>
+					<p>
+						The <code>@hobo/*</code> workspace — core, wit, bindles, runtime,
+						componentize, conformance, cli — guarded by architecture gates.
+					</p>
+					<p class="card-cta">packages →</p>
+				</a>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===================== CTA ===================== -->
+	<section class="cta-band">
+		<div class="container">
+			<div class="cta-inner">
+				<h2>Follow the design. Sharpen the design.</h2>
+				<p>
+					Read the docs, run the gates, file an issue, or point your favorite
+					coding agent at the repo — it's already wired for them.
+				</p>
+				<div class="hero-ctas">
+					<a class="btn btn-primary" href={href("/guide/")}>Start reading</a>
+					<a class="btn btn-ghost" href={github}>Star on GitHub</a>
+				</div>
+			</div>
+		</div>
+	</section>
+</Base>

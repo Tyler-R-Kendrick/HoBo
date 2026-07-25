@@ -6,6 +6,8 @@ A developer or agent should be able to describe an app once, then let HoBo place
 
 > **Current state:** active design + executable contract/proof repository with a production `packages/` workspace scaffold (`@hobo/core`, `@hobo/wit`, `@hobo/bindles`, `@hobo/runtime`, `@hobo/componentize`, `@hobo/conformance`, `@hobo/cli`). Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior before fuller production surfaces land in later S0 slices.
 
+**Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), deployed to GitHub Pages by [`.github/workflows/deploy-pages.yml`](./.github/workflows/deploy-pages.yml).
+
 ## Why HoBo exists
 
 Modern app teams still choose between two bad defaults:
@@ -50,6 +52,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 | [`docs/standards/`](./docs/standards/index.md), [`docs/technologies/`](./docs/technologies/index.md), [`docs/patterns/`](./docs/patterns/index.md) | Reference material used by design decisions. |
 | [`docs/archive/`](./docs/archive/) | Deferred or superseded planning artifacts. |
 | [`AGENTS.md`](./AGENTS.md), [`docs/agent-tooling.md`](./docs/agent-tooling.md) | Repo-level agent instructions and local agent-tooling reference. |
+| [`site/`](./site/README.md) | The GitHub Pages website (landing + developer docs + agent docs): a self-contained Astro project, deployed by [`deploy-pages.yml`](./.github/workflows/deploy-pages.yml). |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | GitHub community-health docs for contributions, vulnerability reporting, support, and conduct. |
 
 ## Suggested reading paths
@@ -148,6 +151,7 @@ GitHub Actions run three primary lanes:
 - [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
 - [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated cloud fixture jobs (hello-bindle, multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
 - [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): simulate-mode hello-bindle fixture lanes, also label/schedule/manual gated.
+- [`Deploy Pages`](./.github/workflows/deploy-pages.yml): builds [`site/`](./site/README.md) and publishes the website to GitHub Pages on pushes to `main` that touch the site (requires the repo Pages source set to "GitHub Actions").
 
 Core checks are intentionally ordinary Node scripts so they run locally, in CI, and inside agent sessions. `docs:coverage` also checks that required GitHub community-health and maintenance docs stay present.
 

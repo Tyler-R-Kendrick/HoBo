@@ -1,0 +1,50 @@
+---
+import Logo from "./Logo.astro";
+import { github, nav } from "../nav";
+import { href } from "../lib/url";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+	<div class="container">
+		<div class="footer-grid">
+			<div class="footer-brand">
+				<a class="brand" href={href("/")}>
+					<Logo />
+					<span>HoBo</span>
+				</a>
+				<p>
+					An AI-native meta-cloud, designed in the open: describe an app once,
+					let the control plane place it on any mix of providers — and keep
+					humans and agents on the same auditable surface.
+				</p>
+			</div>
+			{
+				nav.map((group) => (
+					<div>
+						<h4>{group.label}</h4>
+						<ul>
+							{group.items.map((item) => (
+								<li>
+									<a href={href(item.slug)}>{item.label}</a>
+								</li>
+							))}
+						</ul>
+					</div>
+				))
+			}
+		</div>
+		<div class="footer-note">
+			<span>
+				HoBo is a <strong>design-first</strong> project — an active design suite
+				with executable proofs. The product is not shipped.
+			</span>
+			<span>
+				<a href={github}>GitHub</a> ·
+				<a href={`${github}/blob/main/docs/design/index.md`}>Design suite</a> ·
+				<a href={`${github}/blob/main/LICENSE`}>License</a> · © {year}
+			</span>
+		</div>
+	</div>
+</footer>

@@ -419,6 +419,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0123 | [architecture-core](./adr/01-architecture-core.md#adr-0123) | Durable-workflow authoring (ADR-P5): explicit `workflow`/`step` wrappers are canonical + language-neutral; the `"use workflow"` directive is opt-in TS sugar with a shallow transform + replay-safety lint. | — (2026-07-03 design-hardening; Linear import pending) |
 | ADR-0124 | [architecture-core](./adr/01-architecture-core.md#adr-0124) | In-Camp scheduling policies (ADR-P6/P7/P8): preemption/oversubscription/capacity-reservation are substrate-delegated per-Camp policy knobs with safe deny-by-default defaults. | — (2026-07-03 design-hardening; Linear import pending) |
 | ADR-0125 | [data-plane](./adr/03-data-plane.md#adr-0125) | Trainable-annotation surface v1: signature-only empty implementations (`training.define`), param/output metadata riding the contract, optional stage-3 decorator sugar; built-in `training-engine` implemented on ax behind the port; training artifact = apply-at-load promotion mode. | — (2026-07-05 trainable-code hardening; Linear import pending) |
+| ADR-0126 | [architecture-core](./adr/01-architecture-core.md#adr-0126) | Committed platform entry files under `examples/*/deploy/` are the sanctioned JS-family exception: platforms ingest them verbatim; example sources stay TypeScript-first. | — (2026-07-25 unimplemented-features remediation, docs/plans/0005 item 4-5) |
 
 ## ADR Numbering and Status Audit
 
@@ -426,8 +427,8 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0125`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
-  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0125 are contiguous — no new gaps.)
+- Explicit numbering gaps through `ADR-0126`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0126 are contiguous — no new gaps.)
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.
 

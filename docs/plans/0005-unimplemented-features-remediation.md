@@ -153,3 +153,36 @@ then the rest.
   tool list that a parity test matches against `CANONICAL_VERBS`.
 - **Phase 5:** `src/draft/_grandfathered.json` count strictly decreases per landed batch;
   `pnpm run draft:artifacts` and `draft:cascade` green with advisories shrinking.
+
+## 10. Execution record (2026-07-25)
+
+All phases executed on `claude/unimplemented-features-analysis-sdimj6` (PR #878) the same day
+the plan landed. Status by item:
+
+- **Phase 0** — done. Guard `--all` mode wired into `check:all` + main-gate; grandfather filter
+  removed; the 10 latent violations fixed; dead push clause removed; draft/skill/behavior gates in
+  `check:all`; superseded draft fixture lanes deleted; `lint:code` in the PR gate. 0-1 (Actions
+  account outage) remains **owner-side**: Settings → Billing → Actions spending limit.
+- **Phase 1** — done. README/AGENTS/CLAUDE reconciled; CLI help derives status from the registry;
+  63 broken links fixed and the linter's coverage extended; seven package READMEs added; 0003
+  re-baselined (§8); `packages/build` references removed; site re-scoped to implemented reality.
+- **Phase 2** — done. Behavior predicate fixed + policy tests; s6-06 feature made executable and
+  the projects layer joined the cucumber glob; skill-mirror gate covers all 53 shared skills and
+  caveman is mirrored; repo skill de-Windowsed; draft CI contract mirrors the enforced gate
+  (validate-traceability descoped); `--passWithNoTests` removed; orphaned scripts retired.
+- **Phase 3** — done. 3-1 TypeScript bindle loader (collect/dev/plan/up from `src/bindle.ts`;
+  `hobo dev` serves the project's own handler). 3-2 real pinned Pulumi CLI engine behind the
+  adapter seam, `HOBO_PULUMI_LIVE=1` selection, credential-gated `deploy-hello-bindle-pulumi`
+  lane. 3-3 runnable `hobo-mcp` stdio binary with verb parity contract-tested. 3-4 stays staged
+  behind live-lane usage as planned; 3-5 Junctions remains deliberately deferred to S4; 3-6
+  trajectory capture stays scheduled with the S3 identity/audit surface.
+- **Phase 4** — done. `multi-cloud-shop`, `durable-agent`, and `self-host-yard` examples;
+  schema-tools 8 test files / 56 tests; `event_envelope` single-sourced with a drift-guarded
+  mirror (IMPL-009 resolved); ADR-0126 records the deploy-artifact JS exception.
+- **Phase 5** — W1 done (647 schema-validated manifests via
+  `scripts/backfill-proof-manifests.mts`; the sweep also cleared 303 latent parallel-type
+  declarations and taught the guard to skip frozen promoted proofs). W2 done (all 26 epics carry
+  executable Gherkin; `test:behavior` runs 98 scenarios / 352 steps). W3–W6 proceed via sdlc
+  dispatch per [`proof-hardening-backfill.md`](./proof-hardening-backfill.md);
+  `_grandfathered.json` stays the burn-down (entries delete when a package completes its last
+  wave).

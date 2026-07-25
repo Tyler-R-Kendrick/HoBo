@@ -17,10 +17,10 @@ The **Junction** is HoBo's most advanced primitive: the federation layer that co
 ```ts
 import { junction } from "@hobo/junctions";
 
-import flyYard from "./yards/fly";
 import awsYard from "./yards/aws";
+import azureYard from "./yards/azure";
 
-export default junction("my-app", { yards: [flyYard, awsYard] });
+export default junction("my-app", { yards: [awsYard, azureYard] });
 ```
 
 Just the members — connectivity is inferred. The junction reads the member yards' manifests and derives the cross-cloud connectivity plane (peering/tiering plus DNS), and **each yard realizes its own half**. Trust federation, signed policy packs, and signed registry bundles ride the same mechanism.

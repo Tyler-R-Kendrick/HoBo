@@ -46,7 +46,27 @@ pnpm --filter hobo-site preview    # serve the built dist/
 - **Single lockfile:** never add a `site/pnpm-lock.yaml`; the architecture guard rejects
   nested lockfiles. Dependencies resolve through the root workspace lockfile.
 
-## Deployment
+## Publishing (no Actions)
 
-`.github/workflows/deploy-pages.yml` builds `site/` and deploys to GitHub Pages on pushes to
-`main`. One-time repo setting: **Settings → Pages → Source → GitHub Actions**.
+The site is published by pushing the built output to the **`gh-pages` branch**, which
+GitHub Pages serves directly ("Deploy from a branch"). This deliberately avoids any
+GitHub Actions dependency. From the repo root:
+
+```sh
+pnpm --filter hobo-site run build
+cd site/dist
+git init -b gh-pages
+git add -A
+git commit -m "deploy: site @ $(git -C ../.. rev-parse --short HEAD)"
+git push --force git@github.com:Tyler-R-Kendrick/HoBo.git gh-pages
+cd .. && rm -rf dist/.git
+```
+
+Notes:
+
+- `public/.nojekyll` ships in the build so Pages serves Astro's `_astro/` asset
+  directory verbatim (Jekyll would otherwise drop underscore-prefixed paths).
+- The push is `--force` on purpose: `gh-pages` is a build artifact with disposable
+  single-commit history, never a source branch.
+- One-time repo setting if Pages isn't already serving: **Settings → Pages →
+  Source → Deploy from a branch → `gh-pages` / `(root)`**.

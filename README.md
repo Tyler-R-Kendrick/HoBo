@@ -6,7 +6,7 @@ A developer or agent should be able to describe an app once, then let HoBo place
 
 > **Current state:** active design + executable contract/proof repository with a production `packages/` workspace scaffold (`@hobo/core`, `@hobo/wit`, `@hobo/bindles`, `@hobo/runtime`, `@hobo/componentize`, `@hobo/conformance`, `@hobo/cli`). Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior before fuller production surfaces land in later S0 slices.
 
-**Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), deployed to GitHub Pages by [`.github/workflows/deploy-pages.yml`](./.github/workflows/deploy-pages.yml).
+**Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), published by pushing the built `site/dist/` to the `gh-pages` branch (no Actions dependency; see the site README for the publish commands).
 
 ## Why HoBo exists
 
@@ -151,7 +151,8 @@ GitHub Actions run three primary lanes:
 - [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
 - [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated cloud fixture jobs (hello-bindle, multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
 - [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): simulate-mode hello-bindle fixture lanes, also label/schedule/manual gated.
-- [`Deploy Pages`](./.github/workflows/deploy-pages.yml): builds [`site/`](./site/README.md) and publishes the website to GitHub Pages on pushes to `main` that touch the site (requires the repo Pages source set to "GitHub Actions").
+
+The website is **not** CI-deployed: [`site/`](./site/README.md) is built locally and pushed to the `gh-pages` branch directly (GitHub Pages serves that branch), so publishing works even when Actions runs are unavailable.
 
 Core checks are intentionally ordinary Node scripts so they run locally, in CI, and inside agent sessions. `docs:coverage` also checks that required GitHub community-health and maintenance docs stay present.
 

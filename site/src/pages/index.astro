@@ -3,6 +3,7 @@ import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
 import Cloud from "../components/Cloud.astro";
 import Mascot from "../components/Mascot.astro";
+import RailScene from "../components/RailScene.astro";
 import { href } from "../lib/url";
 
 const bindleSnippet = `import { bindle } from "@hobo/bindles";
@@ -62,7 +63,7 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 				</div>
 			</div>
 			<div class="terminal-wrap">
-				<span class="roof-rider"><Mascot size={72} /></span>
+				<span class="roof-rider"><Mascot size={64} /></span>
 				<div class="terminal">
 				<div class="terminal-bar">
 					<span class="dots"><i></i><i></i><i></i></span>
@@ -207,9 +208,7 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 		</div>
 	</section>
 
-	<div class="rails" role="presentation">
-		<span class="rider"><Mascot size={62} puffs /></span>
-	</div>
+	<RailScene />
 
 	<!-- ===================== Primitives bento ===================== -->
 	<section class="section" style="padding-top: 0;">
@@ -437,7 +436,7 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 	<section class="cta-band">
 		<div class="container">
 			<div class="postcard">
-				<div class="postcard-bo"><Mascot size={92} flip puffs /></div>
+				<div class="postcard-bo"><Mascot size={84} flip /></div>
 				<h2 class="cta-inner-title">Ready to hit the rails?</h2>
 				<p style="margin: 0 auto 1.5rem; max-width: 36rem; color: var(--text-mute);">
 					Pack a bindle — that's the only must — and let your app find its

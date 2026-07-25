@@ -46,11 +46,14 @@ pnpm --filter hobo-site preview    # serve the built dist/
 - **Voice:** playful "homeward bound" theme — the guiding principle is continuous
   migration to the cheapest home that passes policy. Whimsy in the prose, precision in
   the tables and code.
-- **Design language:** storybook cartoon line-art starring **Bo the bindlebug**
-  (`src/components/Mascot.astro`, also the logo and favicon): thick ink outlines, hard
-  offset "sticker" shadows, dashed rules, puffy `Cloud.astro` clouds, Baloo 2 display
-  type. Ink/paper invert between themes via the `--ink`/`--pop` custom properties —
-  new components should use those tokens, not hardcoded colors.
+- **Design language:** 1930s rubber-hose cartoon (Steamboat Willie / Cuphead) starring
+  **Bo the bindlebug**. `src/components/Mascot.astro` is a simplified vector *trace of
+  the reference artwork* (not procedural); `RailScene.astro` is the drawn track +
+  steam-locomotive divider; `Cloud.astro` supplies puffy line-art clouds. Aged-paper
+  light theme, Limelight title-card display type (Baloo 2 for rounded UI chrome),
+  film-grain overlay, thick ink outlines with hard offset shadows. Ink/paper invert
+  between themes via the `--ink`/`--pop` custom properties — new components should use
+  those tokens, not hardcoded colors.
 - **No new JS-family files:** repo policy (AGENTS.md) — config is `astro.config.ts`, not `.mjs`.
 - **Single lockfile:** never add a `site/pnpm-lock.yaml`; the architecture guard rejects
   nested lockfiles. Dependencies resolve through the root workspace lockfile.

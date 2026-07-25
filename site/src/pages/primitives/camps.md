@@ -16,7 +16,7 @@ The **Camp** is HoBo's second foundational primitive: the answer to the question
 
 ```ts
 import { camp } from "@hobo/camps";
-import { fly } from "@hobo/provider-fly";
+import { aws } from "@hobo/provider-aws";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 
 import app from "./bindle";
@@ -24,7 +24,7 @@ import app from "./bindle";
 export default camp("prod", {
   bindle: app,
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: fly({ region: "iad" }),
+  defaultProvider: aws({ region: "us-east-1" }),
 });
 ```
 
@@ -45,17 +45,17 @@ export default camp("prod", {
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
 
   // (a) whole-app: "host everything here, figure out the best way"
-  defaultProvider: fly({ region: "iad" }),
+  defaultProvider: aws({ region: "us-east-1" }),
 
   // (b) per-tier: route classes of resource differently
   tiers: {
-    saas: fly,                     // managed data services
-    edge: fly.machines(),          // compute tier
+    saas: aws,                        // managed data services
+    edge: cloudflare.workers(),       // edge compute tier
   },
 
   // (c) per-boundary pin: a named resource → specific options
   bindings: {
-    "my-app.db": fly.postgres({ plan: "shared-1x" }),
+    "my-app.api": aws.fargate({ cpu: 512, memory: 1024 }),
   },
 });
 ```

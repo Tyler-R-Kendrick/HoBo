@@ -21,7 +21,7 @@ import prodEast from "./camps/prod-east";
 import prodWest from "./camps/prod-west";
 import staging from "./camps/staging";
 
-export default yard("fly", { camps: [prodEast, prodWest, staging] });
+export default yard("aws", { camps: [prodEast, prodWest, staging] });
 ```
 
 That's the entire authoring surface: a name and the member camps. Cross-camp concerns — promotion policy between staging and prod camps, shared identity, provider-global DNS — attach at the yard scope.

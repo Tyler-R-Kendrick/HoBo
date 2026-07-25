@@ -28,7 +28,7 @@ const shikiThemes = {
 ---
 
 <Base
-	title="HoBo — every app deserves a home. Preferably a cheap one."
+	title="HoBo — pack your bindle, we'll find your app a home"
 	description="HoBo describes your app once, finds it the cheapest home that passes your policies, and keeps it moving with continuous, zero-drama migrations — across any provider, any mix, or your own metal."
 >
 	<!-- ===================== Hero ===================== -->
@@ -36,15 +36,14 @@ const shikiThemes = {
 		<div class="container">
 			<div>
 				<h1>
-					Every app deserves a home.<br />
-					<em>Preferably a cheap one.</em>
+					Pack your bindle and hitch a ride —<br />
+					<em>we'll find your app a home.</em>
 				</h1>
 				<p class="hero-sub">
-					HoBo is the meta-cloud that treats hosting like a hobo treats a
-					town: stay while it's good, <strong>move on when the rent goes
-					up</strong>. Describe your app once, and continuous migrations keep
-					it in the best-value home that passes your policies — on any
-					provider, a mix of them, or your own metal.
+					HoBo continuously migrates your app to the
+					<strong>cheapest home that passes your policies</strong>. Describe
+					it once; when a better deal opens up — on any provider, a mix of
+					them, or your own metal — HoBo plans the move, gates it, and rides.
 				</p>
 				<div class="hero-ctas">
 					<a class="btn btn-primary" href={href("/guide/getting-started/")}
@@ -92,16 +91,6 @@ const shikiThemes = {
 			</div>
 		</div>
 	</section>
-
-	<!-- ===================== Route strip ===================== -->
-	<div class="route" aria-label="Places an app can call home">
-		<span class="stop">aws</span>
-		<span class="stop">azure</span>
-		<span class="stop here">fly.io <span class="fare">$9/mo — we're here</span></span>
-		<span class="stop">gcp</span>
-		<span class="stop">cloudflare</span>
-		<span class="stop">that server in your garage</span>
-	</div>
 
 	<!-- ===================== Problem ===================== -->
 	<section class="section">
@@ -269,6 +258,50 @@ const shikiThemes = {
 						language rides the same rails.
 					</p>
 				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- ===================== Who writes what ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="section-head">
+				<span class="badge">The division of labor</span>
+				<h2>Who writes what</h2>
+				<p>
+					HoBo splits cleanly along the lines teams already have. Each role
+					owns one kind of artifact — and nobody has to touch the others'.
+				</p>
+			</div>
+			<div class="grid grid-3">
+				<a class="card" href={href("/roles/developers/")}>
+					<h3>Developers</h3>
+					<p class="step-num">WRITE BINDLES</p>
+					<p>
+						Describe the app — services, resources, wiring, permissions — in
+						plain code. No YAML, no infra tickets, no cloud console.
+					</p>
+					<p class="card-cta">HoBo for Developers →</p>
+				</a>
+				<a class="card" href={href("/roles/platform-engineers/")}>
+					<h3>Platform Engineers</h3>
+					<p class="step-num">WRITE CAMPS · YARDS · JUNCTIONS</p>
+					<p>
+						Own where apps live: approved providers, camp templates, yard
+						policy, and the junctions that federate clouds.
+					</p>
+					<p class="card-cta">HoBo for Platform Engineers →</p>
+				</a>
+				<a class="card" href={href("/roles/devsecops/")}>
+					<h3>DevSecOps</h3>
+					<p class="step-num">WRITE POLICY</p>
+					<p>
+						Decide what's allowed to run where — and what may cross a
+						junction. Every decision is enforced at the gate and logged as
+						an event.
+					</p>
+					<p class="card-cta">HoBo for DevSecOps →</p>
+				</a>
 			</div>
 		</div>
 	</section>

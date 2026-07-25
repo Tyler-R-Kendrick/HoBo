@@ -72,7 +72,7 @@ A camp answers one question the bindle deliberately doesn't: **where does this l
 ```ts
 // src/camp.ts
 import { camp } from "@hobo/camps";
-import { fly } from "@hobo/provider-fly";
+import { aws } from "@hobo/provider-aws";
 import { postgresRuntime } from "@hobo/runtime-postgres";
 
 import app from "./bindle";
@@ -80,7 +80,7 @@ import app from "./bindle";
 export default camp("prod", {
   bindle: app,
   runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: fly({ region: "iad" }),   // "host everything here, figure out the best way"
+  defaultProvider: aws({ region: "us-east-1" }),   // "host everything here, figure out the best way"
 });
 ```
 
@@ -103,7 +103,7 @@ And if you do want provider-native power, it's a typed annotation away, still in
 ```ts
 const apiSvc = b
   .api(() => api.fetch)
-  .with(fly.machines({ size: "shared-cpu-2x" }));   // optimization, not a rewrite
+  .with(aws.fargate({ cpu: 512, memory: 1024 }));   // optimization, not a rewrite
 ```
 
 **You now know everything required to run HoBo.** A bindle is the whole entry fee — the camp comes with the campsite, whether you pitched it or HoBo did. Everything below is for apps with wanderlust.
@@ -121,7 +121,7 @@ import { yard } from "@hobo/yards";
 import prodEast from "./camps/prod-east";
 import prodWest from "./camps/prod-west";
 
-export default yard("fly", { camps: [prodEast, prodWest] });
+export default yard("aws", { camps: [prodEast, prodWest] });
 ```
 
 One yard per provider, by rule. A yard cannot mix providers — that's the next primitive's job. (And pleasingly: the Yard control plane is itself a bindle, so self-hosting HoBo is just… hosting.)
@@ -134,10 +134,10 @@ When the journey goes multi-cloud or hybrid, a **junction** federates yards — 
 
 ```ts
 import { junction } from "@hobo/junctions";
-import flyYard from "./yards/fly";
 import awsYard from "./yards/aws";
+import azureYard from "./yards/azure";
 
-export default junction("my-app", { yards: [flyYard, awsYard] });
+export default junction("my-app", { yards: [awsYard, azureYard] });
 ```
 
 Now continuous migration has a bigger map to roam: the Dispatcher can weigh homes *across clouds*, and your data-residency and sovereignty policies decide what's allowed to cross which border.

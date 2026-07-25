@@ -62,6 +62,13 @@ Key facts:
 - [Yards](https://tyler-r-kendrick.github.io/HoBo/primitives/yards/): one-provider composition, self-host (the Yard is a Bindle)
 - [Junctions](https://tyler-r-kendrick.github.io/HoBo/primitives/junctions/): cross-cloud federation, inferred connectivity, border policy
 
+## Roles (who writes what)
+
+- [Who writes what](https://tyler-r-kendrick.github.io/HoBo/roles/): developers write Bindles; platform engineers write Camps/Yards/Junctions; DevSecOps writes policy
+- [HoBo for Developers](https://tyler-r-kendrick.github.io/HoBo/roles/developers/): the bindle is the only infrastructure a developer authors
+- [HoBo for Platform Engineers](https://tyler-r-kendrick.github.io/HoBo/roles/platform-engineers/): approved providers, golden-path camps, yard governance, junction federation
+- [HoBo for DevSecOps](https://tyler-r-kendrick.github.io/HoBo/roles/devsecops/): policy at the gate, camp approval, credential brokering, signed junction policy packs
+
 ## Agents
 
 - [HoBo for agents](https://tyler-r-kendrick.github.io/HoBo/agents/): agents as principals, capability standard, the Crew

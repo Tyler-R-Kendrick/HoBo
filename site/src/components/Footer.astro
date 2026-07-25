@@ -22,8 +22,8 @@ const year = new Date().getFullYear();
 			</div>
 			{
 				nav.map((group) => (
-					<div>
-						<h4>{group.label}</h4>
+					<nav aria-label={`Footer: ${group.label}`}>
+						<p class="nav-label">{group.label}</p>
 						<ul>
 							{group.items.map((item) => (
 								<li>
@@ -31,7 +31,7 @@ const year = new Date().getFullYear();
 								</li>
 							))}
 						</ul>
-					</div>
+					</nav>
 				))
 			}
 		</div>

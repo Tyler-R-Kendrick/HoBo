@@ -9,7 +9,12 @@ export default defineConfig({
 	trailingSlash: "ignore",
 	markdown: {
 		shikiConfig: {
-			themes: { light: "github-light", dark: "github-dark" },
+			// High-contrast variants: the standard GitHub themes fall below
+			// WCAG AA on the aged-paper/near-black code backgrounds.
+			themes: {
+				light: "github-light-high-contrast",
+				dark: "github-dark-high-contrast",
+			},
 			defaultColor: false,
 		},
 	},

@@ -19,7 +19,7 @@ jobs:
   hello-bindle-fixture:
     name: hello-bindle sandbox fixture
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
       contents: read
@@ -53,7 +53,7 @@ jobs:
   hello-bindle-fixture-quarantine:
     name: hello-bindle fixture quarantine
     if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture-quarantine')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
     continue-on-error: true
     permissions:
@@ -85,7 +85,7 @@ jobs:
   multi-cloud-shop-fixture:
     name: multi-cloud-shop provider fixture
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -117,7 +117,7 @@ jobs:
   s4-stage-gate-drill:
     name: S4 stage gate multi-cloud drill
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/s4-drill')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read

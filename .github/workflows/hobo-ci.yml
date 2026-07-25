@@ -23,7 +23,7 @@ jobs:
   artifact-trust:
     name: artifact signing and install verification
     needs: pr-gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -44,7 +44,7 @@ jobs:
     # The weekly schedule exists for main-gate and the fixture lanes; a
     # scheduled pr-gate diffs main against itself and checks nothing.
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 25
     permissions:
       contents: read
@@ -103,7 +103,7 @@ jobs:
   main-gate:
     name: Main full gate
     if: github.event_name == 'merge_group' || github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 40
     permissions:
       contents: read
@@ -135,7 +135,7 @@ jobs:
   dev-cold-loop-gate:
     name: hobo dev cold loop (offline <=60s)
     needs: pr-gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -155,7 +155,7 @@ jobs:
 
   ci-guard:
     name: CI fabric contract guard
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -173,7 +173,7 @@ jobs:
 
   secret-scan:
     name: Secret scan
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10
     permissions:
       contents: read

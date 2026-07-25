@@ -41,7 +41,7 @@ concurrency:
 jobs:
   rehearsal:
     name: rehearsal
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
     # Live cloud lane is manual-only and gated by an environment so a human must
     # approve before any real provider call. It never runs on PRs or pushes.
     if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     environment: s2-live-cloud
     permissions:

@@ -29,7 +29,7 @@ concurrency:
 jobs:
   conformance:
     name: conformance
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
 
   offline:
     name: offline-hello-bindle
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +81,7 @@ jobs:
 
   replay:
     name: replay-equals-live
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +100,7 @@ jobs:
   record:
     name: record
     needs: [conformance, offline, replay]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

@@ -76,7 +76,7 @@ jobs:
   digest-parity:
     name: Cross-OS digest parity
     needs: stage-gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - uses: actions/download-artifact@v4

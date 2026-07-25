@@ -151,6 +151,7 @@ GitHub Actions run three primary lanes:
 - [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
 - [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated cloud fixture jobs (hello-bindle, multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
 - [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): simulate-mode hello-bindle fixture lanes, also label/schedule/manual gated.
+- [`HoBo Runner Rebalance`](./.github/workflows/rebalance-runners.yml): daily/manual dogfood of [`examples/ci-runner-balancing`](./examples/ci-runner-balancing/README.md) — CI jobs consume `vars.HOBO_RUNNER_LINUX_SMALL` (falling back to `ubuntu-latest`), and this lane rebalances that variable across runner providers to maximize free credits and minimize paid minutes (record: [`docs/design/ci-runner-balancing-example.md`](./docs/design/ci-runner-balancing-example.md)).
 
 The website is **not** CI-deployed: [`site/`](./site/README.md) is built locally and pushed to the `gh-pages` branch directly (GitHub Pages serves that branch), so publishing works even when Actions runs are unavailable.
 

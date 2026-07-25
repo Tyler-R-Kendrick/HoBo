@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 
 // Reuse @hobo/runtime-local's durable ActorHost (lease + fencing). It is a
 // test-only adapter injected into the authoring surface — never a src-level dep.
-// Imported via the built dist through the workspace symlink (the package's
-// exports map only publishes its barrel).
+// Imported relatively from the sibling package's built dist (pretest builds it):
+// declaring even a devDependency would close the package cycle
+// conformance -> runtime -> runtime-local -> conformance, which turbo rejects.
 import {
 	createInMemoryActorHost,
 	createManualActorClock,
-} from "../../node_modules/@hobo/runtime-local/dist/actor-host/in-memory.js";
+} from "../../../runtimes/runtime-local/dist/actor-host/in-memory.js";
 
 import { activateActor, defineActor } from "../../src/actor.js";
 import type { FoldEvent } from "../../src/ports.js";

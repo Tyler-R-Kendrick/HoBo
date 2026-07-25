@@ -40,26 +40,39 @@ configuration). It also explains how the lockfile and formatting drift below
 merged unnoticed: the gate has been structurally dead, so "CI failed" carried
 no information.
 
-## Known remaining breakage (pre-existing, out of scope here)
+## Package build/test breakage — RESOLVED (undeclared workspace dependencies)
 
-With the two repairs above, install, lint, docs, standards, and guard lanes
-pass — but the **package build/test lanes are still red on pristine `main`**,
-verified by stashing all local changes and running:
+The third failure layer originally looked like missing `@hobo/wit` codegen
+output (`@hobo/runtime` build: `src/wit.ts(20,8) TS2307` on the generated
+bindings path). The follow-up fix disproved that hypothesis: `pnpm --filter
+@hobo/wit run wit:check` reports all 34 generated declaration files **in sync**
+— nothing needed regenerating. The real root cause was that the verb-wiring
+changes added cross-package imports **without declaring the workspace
+dependencies**, so pnpm never linked the packages into consumers'
+`node_modules` (the same disease as the lockfile drift above, at the next
+layer down). Fixed by declaring:
 
-```text
-pnpm --filter @hobo/conformance run build
-  → @hobo/core build: src/wit.ts(20,8): error TS2307: Cannot find module
-    '../node_modules/@hobo/wit/src/generated/runtime-primitives/interfaces/hobo-runtime-types.js'
-```
+- `@hobo/runtime` → `@hobo/wit` (**dependencies**; its public d.ts re-exports
+  the generated types via a `node_modules`-relative path).
+- `@hobo/cli` → `@hobo/bindles`, `@hobo/cloud` (**dependencies**; the
+  `UpResult` "type errors" in `up.ts` were pure cascade — with `@hobo/cloud`
+  unresolved, `OrchestratorStatus` degraded to `any` and broke the
+  discriminated-union narrowing).
+- `@hobo/cli` → `@hobo/data`, `@hobo/provider-cloudflare`,
+  `@hobo/runtime-local` (**devDependencies**; test-only imports).
+- `@hobo/provider-cloudflare` → `@hobo/iac-pulumi` (**devDependencies**; its
+  `pretest` already built it but the bare specifier could not resolve).
+- `@hobo/runtime`'s actor test now imports `@hobo/runtime-local`'s dist via a
+  **relative sibling path** built by `pretest`, because declaring even a
+  devDependency closes the package cycle
+  `conformance → runtime → runtime-local → conformance`, which Turbo rejects.
 
-`@hobo/core` cannot compile because `@hobo/wit` generated bindings are absent,
-which cascades to `@hobo/runtime`, `@hobo/cli`, `@hobo/conformance`,
-`@hobo/mcp`, and dependents' tests. Because `pnpm-lock.yaml` is a Turbo global
-dependency, *any* PR that syncs the lockfile marks every package affected, so
-the affected-package CI lanes cannot go green until this is repaired with the
-owning codegen path (`pnpm --filter @hobo/wit run wit:gen` / `wit-lock.json`)
-by whoever owns the recent verb-wiring changes. `docs:okf` also has four
-known-failing proof READMEs, already recorded in `AGENTS.md`.
+After the fixes the full affected lane is green: 31/31 Turbo tasks (builds and
+tests for bindles, cli, cloud, conformance, contracts, data, events, hobo,
+iac-pulumi, identity, mcp, provider-cloudflare, runtime, runtime-local), plus
+whole-workspace `pnpm run build` (25/25) and `pnpm run typecheck` (40/40).
+`docs:okf` still has four known-failing proof READMEs, already recorded in
+`AGENTS.md`.
 
 Follow-up guardrails worth considering (not done here): add `lint:code` to the
 merge-blocking main gate or to `check:all`, so formatting drift cannot

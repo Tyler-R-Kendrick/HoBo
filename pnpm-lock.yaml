@@ -97,6 +97,12 @@ importers:
       '@bufbuild/protobuf':
         specifier: 2.12.1
         version: 2.12.1
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@hobo/cloud':
+        specifier: workspace:*
+        version: link:../cloud
       '@hobo/componentize':
         specifier: workspace:*
         version: link:../componentize
@@ -104,9 +110,18 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@hobo/data':
+        specifier: workspace:*
+        version: link:../data
+      '@hobo/provider-cloudflare':
+        specifier: workspace:*
+        version: link:../providers/provider-cloudflare
       '@hobo/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
       '@types/node':
         specifier: ^22.15.29
         version: 22.20.0
@@ -353,6 +368,10 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+    devDependencies:
+      '@hobo/iac-pulumi':
+        specifier: workspace:*
+        version: link:../../iac/iac-pulumi
 
   packages/runtime:
     dependencies:
@@ -362,6 +381,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+      '@hobo/wit':
+        specifier: workspace:*
+        version: link:../wit
     devDependencies:
       '@types/node':
         specifier: ^22.15.3

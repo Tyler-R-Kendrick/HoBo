@@ -10,7 +10,7 @@ Directory listing for audit/review logs and improvement plans written to `docs/p
 | [`0001-scope-refactor-review.md`](./0001-scope-refactor-review.md) | Implementation Plan | Review-and-improve log for the Yard⊃Camp⊃Bindle scope refactor. |
 | [`0002-public-launch-gap-analysis.md`](./0002-public-launch-gap-analysis.md) | Review Findings | Public-launch gap audit at c14955f3 against HoBo's own launch criteria (readiness dashboard, go/no-go, blocker taxonomy), with a prioritized critical path. |
 | [`0003-engineering-build-plan.md`](./0003-engineering-build-plan.md) | Implementation Plan | Buildable engineering specs sharpening the production-build backlog's S1→S3 skeletons: 27 work items, dependency phases, and the three executable stage gates to first real cloud deploy and agent-via-MCP. |
-| [`0004-main-gate-repair.md`](./0004-main-gate-repair.md) | Maintenance Note | Repair record for the red main gate: pnpm-lock.yaml drift behind workspace dependency declarations, and the 99-file Biome format backfill that accumulated behind it. |
+| [`0004-main-gate-repair.md`](./0004-main-gate-repair.md) | Maintenance Note | Repair record for the red main gate: pnpm-lock.yaml drift, the 99-file Biome format backfill, the account-level Actions outage, and the undeclared-workspace-dependency fixes that restored the package build/test lanes. |
 | [`production-build-backlog.md`](./production-build-backlog.md) | Implementation Plan | HoBo v1 Production Build — staged Linear scope. |
 | [`proof-hardening-backfill.md`](./proof-hardening-backfill.md) | Implementation Plan | Backfill waves bringing the grandfathered draft proofs to the hardened artifact standard. |
 

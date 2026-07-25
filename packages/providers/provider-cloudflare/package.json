@@ -21,5 +21,8 @@
 	},
 	"dependencies": {
 		"@hobo/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/iac-pulumi": "workspace:*"
 	}
 }

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
 import { loadPactDirectory, verifyPact } from "@hobo/contract-harness";
+import { describe, expect, it } from "vitest";
 import { coreContractSurfaceStub } from "./fixtures/core-contract-surface.stub.js";
 import { skewedProviderStub } from "./fixtures/skewed-provider.stub.js";
 

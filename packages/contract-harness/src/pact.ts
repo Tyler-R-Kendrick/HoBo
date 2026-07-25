@@ -1,5 +1,5 @@
-import { readdir, readFile } from "node:fs/promises";
 import type { Dirent } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);

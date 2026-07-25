@@ -5,10 +5,10 @@ import {
 	assertLocalIacProgram,
 	cloudflare,
 	createCloudflareProvider,
-	realizeHelloBindle,
-	realizeResourcePlan,
 	createHelloBindlePlan,
 	type ResourcePlan,
+	realizeHelloBindle,
+	realizeResourcePlan,
 } from "../src/index.js";
 
 // Golden per-port ResourcePlans -> expected Cloudflare resource class.

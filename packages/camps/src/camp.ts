@@ -5,12 +5,12 @@ import type {
 
 import { providerSelection } from "./provider-selection.js";
 import {
-	TOPOLOGY_CONTRACT_VERSION,
 	type Camp,
 	type CampConfig,
 	type ProviderSelection,
 	type ResolutionPrecedenceRecord,
 	type ResolutionStep,
+	TOPOLOGY_CONTRACT_VERSION,
 } from "./types.js";
 
 export function camp(name: string, config: CampConfig): Camp {

@@ -6,11 +6,13 @@ export interface ProviderStub {
   handle(request: PactRequest): PactResponse | Promise<PactResponse>;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the InteractionFailure proto message in data-models/.
 export interface InteractionFailure {
   readonly description: string;
   readonly reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the VerificationReport proto message in data-models/.
 export interface VerificationReport {
   readonly providerName: string;
   readonly ok: boolean;

@@ -3,10 +3,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
-	collectBindleManifest,
 	type BindleDefinition,
 	type CollectionContext,
 	type CollectionTarget,
+	collectBindleManifest,
 	type ManifestV1,
 } from "@hobo/bindles";
 

@@ -11,10 +11,6 @@ import {
 } from "@hobo/cli";
 import type { IacProvider } from "@hobo/cloud";
 import {
-	createPulumiAutomationAdapter,
-	createPulumiCliAutomationEngine,
-} from "@hobo/iac-pulumi";
-import {
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 	createRegistryFromProviders,
@@ -28,6 +24,10 @@ import type {
 	ProviderDescriptor,
 } from "@hobo/core";
 import { createInMemoryActorHost } from "@hobo/data";
+import {
+	createPulumiAutomationAdapter,
+	createPulumiCliAutomationEngine,
+} from "@hobo/iac-pulumi";
 import {
 	type CloudProvider,
 	createCloudflareProvider,

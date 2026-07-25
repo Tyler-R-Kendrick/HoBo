@@ -9,7 +9,7 @@
 //   code does — behavioral verification lives in each package's tests and
 //   PACT contracts.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -140,7 +140,10 @@ export async function checkArchitectureGuardrails({
 	files,
 } = {}) {
 	const normalizedFiles = unique((files ?? []).map(normalizePath));
-	const packageRoots = implementationPackageRoots(normalizedFiles);
+	const frozen = frozenPromotedProofRoots(root);
+	const packageRoots = implementationPackageRoots(normalizedFiles).filter(
+		(packageRoot) => !frozen.has(packageRoot),
+	);
 	const problems = foreignLockfileProblems(normalizedFiles);
 
 	const evidenceByPackage = await Promise.all(
@@ -171,6 +174,29 @@ export async function checkArchitectureGuardrails({
 	}
 
 	return { packageRoots, problems };
+}
+
+// Frozen promoted proofs (scripts/promotions.json) are read-only by the
+// promoted-proof drift gate — their canonical successors in packages/ carry
+// the architecture evidence now. Evaluating them here would demand edits the
+// drift gate forbids, so they are excluded from guard evaluation.
+function frozenPromotedProofRoots(root) {
+	try {
+		const ledger = JSON.parse(
+			readFileSync(path.join(root, "scripts", "promotions.json"), "utf8"),
+		);
+		return new Set(
+			(ledger.promotions ?? [])
+				.filter((entry) => entry.status === "frozen")
+				.map((entry) => normalizePath(entry.proof))
+				.map((proofPath) => {
+					const parts = proofPath.split("/");
+					return parts.slice(0, 4).join("/");
+				}),
+		);
+	} catch {
+		return new Set();
+	}
 }
 
 export function implementationPackageRoots(files) {

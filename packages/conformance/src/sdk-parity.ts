@@ -1,7 +1,7 @@
 import { findLanguageSpecificGoldenIrField } from "./golden-ir.js";
 import {
-	SDK_PARITY_SCHEMA,
 	type ConformanceFailure,
+	SDK_PARITY_SCHEMA,
 	type SdkParityInput,
 	type SdkParityReport,
 } from "./types.js";

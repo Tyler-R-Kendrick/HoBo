@@ -22,6 +22,7 @@ export type FailureStrategy =
   | { kind: "resync"; policies: readonly string[] }
   | { kind: "leases-and-fencing"; guard: "quorum-fenced-append" };
 
+// domain-view: parse-produced draft-proof record; its wire form is the FailureClassification proto message in data-models/.
 export interface FailureClassification {
   class: FailureClass;
   reason: string;

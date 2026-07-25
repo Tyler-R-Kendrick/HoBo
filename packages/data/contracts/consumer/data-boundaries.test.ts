@@ -1,14 +1,12 @@
-import { readFileSync } from "node:fs";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { describe, expect, it } from "vitest";
 
 import {
 	createInMemoryActorHost,

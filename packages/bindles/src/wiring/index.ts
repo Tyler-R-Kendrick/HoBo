@@ -9,8 +9,8 @@ export {
 	validateLazyReferences,
 	validateLinks,
 } from "./bind-reference.js";
-export type { ComponentHandle, Handle, ResourceHandle } from "./errors.js";
 export { bindingTypesFor } from "./binding-types.js";
+export type { ComponentHandle, Handle, ResourceHandle } from "./errors.js";
 export type {
 	BindingMeta,
 	ManifestLink,

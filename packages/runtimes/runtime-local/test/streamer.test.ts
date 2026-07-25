@@ -1,12 +1,12 @@
+import { runStreamerConformance } from "@hobo/conformance";
 import {
-	StreamerBackpressureError,
-	StreamerClosedError,
-	StreamerParseError,
 	parseRunId,
 	parseSeq,
 	parseStreamName,
+	StreamerBackpressureError,
+	StreamerClosedError,
+	StreamerParseError,
 } from "@hobo/core";
-import { runStreamerConformance } from "@hobo/conformance";
 import { describe, expect, it } from "vitest";
 
 import { createLocalStreamer } from "../src/streamer/local-streamer.js";

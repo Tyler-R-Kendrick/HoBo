@@ -1,3 +1,11 @@
+export { CapabilityDeniedError, CapabilityParseError } from "./errors.js";
+export { evaluateCapabilityGrants } from "./evaluate-grants.js";
+export { inferCapabilityUsage } from "./infer-usage.js";
+export {
+	assertCapabilityDenialCode,
+	parseCapabilityGrant,
+	parseCapabilityGrantList,
+} from "./parse.js";
 export type {
 	CapabilityDenialCode,
 	CapabilityDiagnostic,
@@ -13,12 +21,3 @@ export type {
 	LinkCalledEvent,
 	LinkEstablishedEvent,
 } from "./types.js";
-
-export { CapabilityDeniedError, CapabilityParseError } from "./errors.js";
-export { inferCapabilityUsage } from "./infer-usage.js";
-export { evaluateCapabilityGrants } from "./evaluate-grants.js";
-export {
-	assertCapabilityDenialCode,
-	parseCapabilityGrant,
-	parseCapabilityGrantList,
-} from "./parse.js";

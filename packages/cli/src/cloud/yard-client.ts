@@ -1,13 +1,9 @@
 import type { ManifestV1 } from "@hobo/bindles";
-import type { PrincipalRef } from "@hobo/core";
 import {
 	collectStream,
-	deploy,
-	plan as planDeployment,
-	runCompensation,
-	runOrchestrator,
-	type DeployResult,
 	type DeploymentPlan,
+	type DeployResult,
+	deploy,
 	type GatewayContext,
 	type GatewayDeps,
 	type OrchestratorDeps,
@@ -15,7 +11,11 @@ import {
 	type PlannerRegistry,
 	type PlanRemediation,
 	type PlanResult,
+	plan as planDeployment,
+	runCompensation,
+	runOrchestrator,
 } from "@hobo/cloud";
+import type { PrincipalRef } from "@hobo/core";
 
 // The Yard-client seam (S2-08): the single in-process call path the four cloud
 // verbs (login/plan/up/down) share. The CLI dispatch layer is the source of

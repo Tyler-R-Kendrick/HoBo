@@ -33,6 +33,7 @@ type RoleJourneyNegativePath = (typeof REQUIRED_ROLE_JOURNEY_NEGATIVE_PATHS)[num
 type RoleJourneyProofMode = "reference-fixture" | "simulated" | "scope-out";
 type StepStatus = "ready" | "blocked" | "stale" | "support" | "rollback" | "migrate" | "deploy";
 
+// domain-view: parse-produced draft-proof record; its wire form is the RoleJourneyJsonResult proto message in data-models/.
 export type RoleJourneyJsonResult = {
   readonly schema: "hobo.role-journey-cli-mcp-result/v1";
   readonly status: StepStatus;
@@ -42,6 +43,7 @@ export type RoleJourneyJsonResult = {
   readonly supportHandoff: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RoleJourneyMcpResult proto message in data-models/.
 export type RoleJourneyMcpResult = {
   readonly tool: `hobo_${string}`;
   readonly status: StepStatus;
@@ -50,6 +52,7 @@ export type RoleJourneyMcpResult = {
   readonly resultSchema: "hobo.role-journey-cli-mcp-result/v1";
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RoleJourneyStep proto message in data-models/.
 export type RoleJourneyStep = {
   readonly id: string;
   readonly command: `hobo ${string}`;
@@ -62,6 +65,7 @@ export type RoleJourneyStep = {
   readonly accessibilityNote: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RoleJourney proto message in data-models/.
 export type RoleJourney = {
   readonly role: RoleJourneyRole;
   readonly title: string;
@@ -73,6 +77,7 @@ export type RoleJourney = {
   readonly sequence: readonly RoleJourneyStep[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RoleJourneyCliMcpTranscripts proto message in data-models/.
 export type RoleJourneyCliMcpTranscripts = {
   readonly issue: "HOBO-557";
   readonly phase: "M2";

@@ -1,11 +1,10 @@
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
-import { afterEach, describe, expect, it } from "vitest";
-
 import { CANONICAL_VERBS } from "@hobo/cli";
 import { createHoboMcpServer } from "@hobo/mcp";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createComposedHoboCli } from "../src/cli.js";
 import {

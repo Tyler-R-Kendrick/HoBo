@@ -4,8 +4,8 @@ import { test } from "vitest";
 
 import { findCaseCollisions } from "../scripts/check-case-collisions.js";
 import {
-	selectRelevantChecks,
 	type Check,
+	selectRelevantChecks,
 } from "../scripts/relevant-check-policy.js";
 
 function plan(files: string[], overrides = {}) {

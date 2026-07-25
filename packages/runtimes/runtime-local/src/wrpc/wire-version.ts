@@ -1,8 +1,8 @@
 import {
-	WireVersionIncompatibleError,
 	type InterfacePin,
 	type NegotiatedWire,
 	type WireVersion,
+	WireVersionIncompatibleError,
 } from "@hobo/core";
 
 function compareVersions(left: WireVersion, right: WireVersion): number {

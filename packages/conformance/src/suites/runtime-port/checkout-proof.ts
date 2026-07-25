@@ -1,12 +1,12 @@
 import {
+	type EventEnvelope,
+	type FoldHandlers,
 	parseIdempotencyKey,
 	parseQueueName,
 	parseRunId,
-	type EventEnvelope,
-	type FoldHandlers,
 } from "@hobo/core";
 
-import { readEventStream, type RuntimeDurabilityBackend } from "./types.js";
+import { type RuntimeDurabilityBackend, readEventStream } from "./types.js";
 
 export async function proveCheckoutDurability(
 	backend: RuntimeDurabilityBackend,

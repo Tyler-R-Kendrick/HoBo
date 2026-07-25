@@ -1,7 +1,7 @@
 import {
-	MCP_TOOL_SURFACE,
 	type AuthContext,
 	type HoboMcpServer,
+	MCP_TOOL_SURFACE,
 } from "@hobo/mcp";
 
 // The MCP stdio protocol layer for the composed `hobo-mcp` binary

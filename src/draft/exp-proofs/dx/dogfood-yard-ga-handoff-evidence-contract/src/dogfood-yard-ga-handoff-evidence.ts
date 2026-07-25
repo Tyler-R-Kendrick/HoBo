@@ -11,6 +11,7 @@ export type DogfoodYardGaReadinessDomain =
   | "bootstrap"
   | "broker";
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaEvidenceItem proto message in data-models/.
 export interface DogfoodYardGaEvidenceItem {
   id: string;
   ownerProject: string;
@@ -20,6 +21,7 @@ export interface DogfoodYardGaEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaBlocker proto message in data-models/.
 export interface DogfoodYardGaBlocker {
   id: string;
   ownerProject: string;
@@ -28,6 +30,7 @@ export interface DogfoodYardGaBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaAcceptedRisk proto message in data-models/.
 export interface DogfoodYardGaAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -35,6 +38,7 @@ export interface DogfoodYardGaAcceptedRisk {
   launchRiskEffect: DogfoodYardGaLaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaReleaseCutlineDependency proto message in data-models/.
 export interface DogfoodYardGaReleaseCutlineDependency {
   id: string;
   ownerProject: string;
@@ -43,12 +47,14 @@ export interface DogfoodYardGaReleaseCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaMissingEvidence proto message in data-models/.
 export interface DogfoodYardGaMissingEvidence {
   id: string;
   ownerProject: string;
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaFollowUp proto message in data-models/.
 export interface DogfoodYardGaFollowUp {
   id: string;
   evidenceId: string;
@@ -56,6 +62,7 @@ export interface DogfoodYardGaFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaInitiativeStatusGate proto message in data-models/.
 export interface DogfoodYardGaInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: DogfoodYardGaLaunchRiskEffect;
@@ -63,6 +70,7 @@ export interface DogfoodYardGaInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaPublicClaimGuard proto message in data-models/.
 export interface DogfoodYardGaPublicClaimGuard {
   id: string;
   claim: string;
@@ -70,6 +78,7 @@ export interface DogfoodYardGaPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodYardGaHandoffEvidenceRecord proto message in data-models/.
 export interface DogfoodYardGaHandoffEvidenceRecord {
   schema: string;
   issue: "HOBO-476";

@@ -14,18 +14,18 @@
  * default `HEAD~1`.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
 import { sanitizeNodeOptions } from "./lib/env.ts";
 import {
+	type ExperienceType,
 	experienceTypeForWorkspace,
 	layerForWorkspace,
+	type ProofManifest,
 	proofManifestSchema,
 	workspaceForDraftFile,
-	type ExperienceType,
-	type ProofManifest,
 } from "./lib/proof-manifest.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");

@@ -10,6 +10,7 @@ export type EvidenceDomain =
 
 export type EvidenceStatus = "accepted" | "missing" | "blocked" | "risk-accepted";
 
+// domain-view: parse-produced draft-proof record; its wire form is the DogfoodAlphaEvidenceItem proto message in data-models/.
 export interface DogfoodAlphaEvidenceItem {
   domain: EvidenceDomain;
   status: EvidenceStatus;
@@ -21,6 +22,7 @@ export interface DogfoodAlphaEvidenceItem {
   acceptedRisk?: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchBlocker proto message in data-models/.
 export interface LaunchBlocker {
   id: string;
   owner: string;
@@ -28,6 +30,7 @@ export interface LaunchBlocker {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the AcceptedRisk proto message in data-models/.
 export interface AcceptedRisk {
   id: string;
   owner: string;
@@ -36,12 +39,14 @@ export interface AcceptedRisk {
   expiresBefore: "private-beta" | "release-candidate" | "ga";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ParentInitiativeUpdate proto message in data-models/.
 export interface ParentInitiativeUpdate {
   initiative: "HoBo v1 Release Readiness";
   riskChanged: boolean;
   status: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyTermsDogfoodAlphaRecord proto message in data-models/.
 export interface LegalPrivacyTermsDogfoodAlphaRecord {
   issue: "HOBO-457";
   phase: "M1 Dogfood/alpha proof";

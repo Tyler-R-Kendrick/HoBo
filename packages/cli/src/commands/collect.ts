@@ -2,12 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
+	type CollectionTarget,
 	canonicalManifestHash,
 	collectBindleManifest,
+	type ManifestV1,
 	parseManifest,
 	serializeManifest,
-	type CollectionTarget,
-	type ManifestV1,
 } from "@hobo/bindles";
 
 import { stubResult } from "../cloud/stub.js";

@@ -4,9 +4,9 @@ import {
 	createTokenGrantedEvent,
 	createTokenRevokedEvent,
 	createTokenUsedEvent,
-	validateTokenEvent,
 	type TokenEvent,
 	type TokenScope,
+	validateTokenEvent,
 } from "./events.js";
 import type { ActiveSvidRecord } from "./identity-service.js";
 

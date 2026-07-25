@@ -33,6 +33,7 @@ type QuickstartChannel = (typeof QUICKSTART_CHANNELS)[number];
 type QuickstartProofMode = (typeof QUICKSTART_PROOF_MODES)[number];
 type QuickstartConsumer = (typeof QUICKSTART_CONSUMERS)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourceLifecycleQuickstartSnippet proto message in data-models/.
 export type ResourceLifecycleQuickstartSnippet = {
   readonly id: string;
   readonly channel: QuickstartChannel;
@@ -42,6 +43,7 @@ export type ResourceLifecycleQuickstartSnippet = {
   readonly safeClaim: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourceLifecycleQuickstartStep proto message in data-models/.
 export type ResourceLifecycleQuickstartStep = {
   readonly phase: QuickstartPhase;
   readonly title: string;
@@ -49,6 +51,7 @@ export type ResourceLifecycleQuickstartStep = {
   readonly snippets: Readonly<Record<QuickstartChannel, ResourceLifecycleQuickstartSnippet>>;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourceLifecycleQuickstartHandoff proto message in data-models/.
 export type ResourceLifecycleQuickstartHandoff = {
   readonly consumer: QuickstartConsumer;
   readonly use: string;
@@ -57,12 +60,14 @@ export type ResourceLifecycleQuickstartHandoff = {
   readonly mustNotClaim: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourceLifecycleQuickstartModeNote proto message in data-models/.
 export type ResourceLifecycleQuickstartModeNote = {
   readonly proofMode: QuickstartProofMode;
   readonly meaning: string;
   readonly docsLabel: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourceLifecycleQuickstartExamples proto message in data-models/.
 export type ResourceLifecycleQuickstartExamples = {
   readonly issue: "HOBO-577";
   readonly phase: "M2";

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	type CollectionContext,
+	CollectionEngineError,
+	type CollectionTarget,
 	canonicalManifestHash,
 	collectBindleManifest,
-	CollectionEngineError,
 	compileBindleManifest,
 	manifestFromWiring,
-	type CollectionContext,
-	type CollectionTarget,
 } from "../../src/index.js";
 import {
 	data as wiringData,

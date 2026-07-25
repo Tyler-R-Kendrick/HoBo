@@ -2,17 +2,17 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { type ManifestV1, parseManifest } from "@hobo/bindles";
 
 import type { EventEnvelope } from "@hobo/core";
 import { createInMemoryActorHost } from "@hobo/data";
-import { parseManifest, type ManifestV1 } from "@hobo/bindles";
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	collectStream,
@@ -21,20 +21,20 @@ import {
 	createRegistryFromProviders,
 	credentialAuditProjection,
 	credentialScope,
+	type DeploymentPlan,
 	deploy,
 	deploymentStreamId,
 	deploymentViewProjection,
-	hashDeploymentPlan,
-	lowerManifest,
-	matchResource,
-	plan,
-	runOrchestrator,
-	type DeploymentPlan,
 	type Executor,
 	type GatewayDeps,
+	hashDeploymentPlan,
 	type IacProvider,
+	lowerManifest,
+	matchResource,
 	type OrchestratorDeps,
+	plan,
 	type ResourceIntent,
+	runOrchestrator,
 } from "../../src/index.js";
 
 // Consumer contracts (control-plane.md service boundaries): the Yard kernel is

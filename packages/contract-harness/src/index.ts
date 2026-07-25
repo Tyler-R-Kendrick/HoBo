@@ -1,3 +1,5 @@
+export { checkPactInventory } from "./inventory.js";
+export { createMockProviderFromPact } from "./mock.js";
 export type {
 	PactDocument,
 	PactInteraction,
@@ -6,12 +8,10 @@ export type {
 	PactResponse,
 } from "./pact.js";
 export {
-	PactParseError,
 	loadPactDirectory,
+	PactParseError,
 	parsePactDocument,
 } from "./pact.js";
-export { createMockProviderFromPact } from "./mock.js";
-export { checkPactInventory } from "./inventory.js";
 export type {
 	InteractionFailure,
 	ProviderStub,

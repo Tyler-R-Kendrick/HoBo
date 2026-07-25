@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { parseManifest, type ManifestV1 } from "@hobo/bindles";
+import { type ManifestV1, parseManifest } from "@hobo/bindles";
 
 import { compileProjectManifest } from "./loader.js";
 

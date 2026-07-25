@@ -9,6 +9,7 @@ export const CHECK_IDS = [
 export type CheckId = (typeof CHECK_IDS)[number];
 export type CheckStatus = "pass" | "fail";
 
+// domain-view: parse-produced draft-proof record; its wire form is the StageGateCheck proto message in data-models/.
 export type StageGateCheck = {
   readonly checkId: CheckId;
   readonly status: CheckStatus;
@@ -16,6 +17,7 @@ export type StageGateCheck = {
   readonly reportRef: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the StageGateS1Record proto message in data-models/.
 export type StageGateS1Record = {
   readonly gateId: typeof GATE_ID;
   readonly commitSha: string;

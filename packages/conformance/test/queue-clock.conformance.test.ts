@@ -1,6 +1,9 @@
 import { parseRunId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
+import {
+	createRuntimeLocalQueueClock,
+	replayClockTrace,
+} from "../../runtimes/runtime-local/src/index.js";
 import { runRedeliveryAfterCrash } from "../fixtures/runtime-ports/redelivery-after-crash.js";
 import {
 	assertMutatedFireFactRejects,
@@ -8,10 +11,6 @@ import {
 	runTimeTravelReplay,
 } from "../fixtures/runtime-ports/time-travel-replay.js";
 import { runQueueClockConformance } from "../src/queue-clock.js";
-import {
-	createRuntimeLocalQueueClock,
-	replayClockTrace,
-} from "../../runtimes/runtime-local/src/index.js";
 
 describe("@hobo/conformance Queue + Clock suite", () => {
 	it("reports pass for every runtime-local assertion", async () => {

@@ -2,8 +2,8 @@ import type { IdentityService, ScopeEntry } from "@hobo/identity";
 import { CREDENTIAL_AUDIT_RETENTION } from "@hobo/identity";
 
 import {
-	MCP_TOOL_SURFACE,
 	type CapabilityScope,
+	MCP_TOOL_SURFACE,
 	type ToolDescriptor,
 } from "./tool-surface.js";
 

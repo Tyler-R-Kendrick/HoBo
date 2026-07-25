@@ -1,6 +1,4 @@
 import assert from "node:assert/strict";
-import { describe, it } from "vitest";
-
 // TEST-ONLY composition proof. The package boundary guard forbids adapter ->
 // adapter runtime imports, so @hobo/iac-pulumi is NOT a src or package.json
 // dependency; it is resolved here purely at test time (via node_modules symlink)
@@ -10,12 +8,13 @@ import {
 	runIacBackendConformance,
 	validateIacProgram,
 } from "@hobo/iac-pulumi";
+import { describe, it } from "vitest";
 
 import {
 	createCloudflareProvider,
-	realizeHelloBindle,
 	createHelloBindlePlan,
 	type ResourcePlan,
+	realizeHelloBindle,
 } from "../src/index.js";
 
 const PORTS: Array<{ port: string; name: string }> = [

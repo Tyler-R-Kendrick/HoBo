@@ -58,6 +58,7 @@ type FollowUpIssue = {
   allowedReason: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyPrivateBetaEvidence proto message in data-models/.
 type LegalPrivacyPrivateBetaEvidence = {
   schema: string;
   issue: "HOBO-464";

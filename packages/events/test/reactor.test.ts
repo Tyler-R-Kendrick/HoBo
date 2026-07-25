@@ -1,8 +1,7 @@
-import { afterEach, describe, expect, it } from "vitest";
-
 import { createInMemoryActorHost, defineAggregate } from "@hobo/data";
-import { createLocalStreamer } from "@hobo/runtime-local";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
+import { createLocalStreamer } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createReactor, defineMaterialization } from "../src/index.js";
 import { CTX, freshStore } from "./helpers.js";

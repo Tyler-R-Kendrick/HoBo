@@ -1,19 +1,19 @@
 import {
 	canonicalManifestHash,
+	MANIFEST_SCHEMA,
 	type ManifestHash,
 	type ManifestV1,
-	MANIFEST_SCHEMA,
 	parseManifest,
 } from "../manifest/index.js";
 import {
 	addContainer,
-	compileBindleManifest,
-	data as wiringData,
-	service as wiringService,
 	type ComponentHandle,
+	compileBindleManifest,
 	type Handle,
 	type ResourceHandle,
 	type WiringManifest,
+	data as wiringData,
+	service as wiringService,
 } from "../wiring/index.js";
 import { type CollectionEvent, createCollectionEvents } from "./events.js";
 

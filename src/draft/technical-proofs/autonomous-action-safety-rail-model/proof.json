@@ -1,0 +1,20 @@
+{
+  "layer": "technical",
+  "slug": "autonomous-action-safety-rail-model",
+  "title": "Autonomous Action Safety-Rail Model",
+  "linear": "HOBO-263",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": [
+      "docs/design/adr/02-identity-security.md"
+    ]
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "diagrams": []
+  },
+  "waivers": []
+}

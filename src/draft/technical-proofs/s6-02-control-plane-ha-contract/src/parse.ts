@@ -3,6 +3,7 @@ export type EventType = string & { readonly __brand: "EventType" };
 export type ActionId = string & { readonly __brand: "ActionId" };
 export type FenceToken = bigint & { readonly __brand: "FenceToken" };
 
+// domain-view: parse-produced draft-proof record; its wire form is the QuorumFencedAppend proto message in data-models/.
 export type QuorumFencedAppend = {
   streamId: StreamId;
   fenceToken: FenceToken;
@@ -10,6 +11,7 @@ export type QuorumFencedAppend = {
   actionId: ActionId | null;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the LeaderFailoverOutcome proto message in data-models/.
 export type LeaderFailoverOutcome = {
   leaderNode: string;
   successorNode: string;

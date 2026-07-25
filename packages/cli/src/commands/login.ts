@@ -1,6 +1,6 @@
-import type { CommandModule } from "../shell/registry.js";
 import { createFixtureSession, persistSession } from "../cloud/session.js";
 import type { YardSession } from "../cloud/yard-client.js";
+import type { CommandModule } from "../shell/registry.js";
 
 export interface LoginCommandDeps {
 	// Explicit session (tests). Otherwise a deterministic fixture SVID session is

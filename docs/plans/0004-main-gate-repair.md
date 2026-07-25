@@ -25,6 +25,21 @@ own commit:
    `test/` accumulated formatting drift. `pnpm run lint:code:fix`
    (`biome format --write`) was applied; the changes are formatting-only.
 
+## Root cause of the silent drift: Actions runs never reach a runner
+
+Discovered after opening PR #867: **every** GitHub Actions run in this
+repository — on `main` and on PRs — has been completing as `failure` in
+**3–6 seconds with `runner_id: 0` and no logs produced** since at least
+2026-07-17 (verified across hobo-ci runs #1582–#1589, including `main`'s
+scheduled run #1588 on 2026-07-20). Jobs are killed before a runner is
+assigned, which is the signature of an **account-level Actions condition**
+(spending limit reached, billing issue, or runner-group restriction), not a
+workflow bug. This cannot be fixed from inside the repo; it needs the owner
+to check **Settings → Billing → Actions spending limit** (or the runner
+configuration). It also explains how the lockfile and formatting drift below
+merged unnoticed: the gate has been structurally dead, so "CI failed" carried
+no information.
+
 ## Known remaining breakage (pre-existing, out of scope here)
 
 With the two repairs above, install, lint, docs, standards, and guard lanes

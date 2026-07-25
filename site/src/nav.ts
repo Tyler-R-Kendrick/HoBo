@@ -13,29 +13,26 @@ export const nav: NavGroup[] = [
 			{ label: "Core concepts", slug: "/guide/concepts/" },
 			{ label: "Architecture", slug: "/guide/architecture/" },
 			{ label: "The hobo CLI", slug: "/guide/cli/" },
-			{ label: "Project status", slug: "/guide/status/" },
+			{ label: "The trail map", slug: "/guide/status/" },
+		],
+	},
+	{
+		label: "Primitives",
+		slug: "/primitives/",
+		items: [
+			{ label: "Meet the primitives", slug: "/primitives/" },
+			{ label: "Bindles", slug: "/primitives/bindles/" },
+			{ label: "Camps", slug: "/primitives/camps/" },
+			{ label: "Yards", slug: "/primitives/yards/" },
+			{ label: "Junctions", slug: "/primitives/junctions/" },
 		],
 	},
 	{
 		label: "Agents",
 		slug: "/agents/",
 		items: [
-			{ label: "Agent-native repo", slug: "/agents/" },
-			{ label: "Tooling & MCP", slug: "/agents/tooling/" },
-			{ label: "Skills & workflows", slug: "/agents/skills/" },
-			{ label: "Rules & guardrails", slug: "/agents/rules/" },
-		],
-	},
-	{
-		label: "Develop",
-		slug: "/develop/",
-		items: [
-			{ label: "Contributing", slug: "/develop/" },
-			{ label: "Repository map", slug: "/develop/repo-map/" },
-			{ label: "Checks & CI gates", slug: "/develop/gates/" },
-			{ label: "Extending the design", slug: "/develop/extending/" },
+			{ label: "HoBo for agents", slug: "/agents/" },
+			{ label: "The MCP surface", slug: "/agents/mcp/" },
 		],
 	},
 ];
-
-export const github = "https://github.com/Tyler-R-Kendrick/HoBo";

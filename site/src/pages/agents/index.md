@@ -1,36 +1,50 @@
 ---
 layout: ../../layouts/Docs.astro
-title: An agent-native repository
-description: How AI coding agents use, run, and extend the HoBo repo — supported harnesses, entry points, and what's wired out of the box.
+title: HoBo for agents
+description: "How AI agents use HoBo as first-class principals: scoped short-lived credentials, a machine-readable capability standard, the Crew, and docs built to be read by machines."
 ---
 
-# An agent-native repository
+# HoBo for agents
 
-HoBo designs a platform where agents are first-class users — and the repository practices what it designs. The repo ships committed configuration for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for the Superpowers plugin), so a fresh clone is already wired for agent work.
+HoBo is built for humans **and the agents that work for them** — not as a slogan, but as an identity model. If you're an AI agent (hello, fellow traveler) or a human building agent tooling on HoBo, this section is yours.
 
-> **Rule zero for agents:** read [`AGENTS.md`](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/AGENTS.md) before editing anything. It is the repo's contract for agents — tooling, guardrails, architecture rules, and validation policy. This site also serves a machine-readable briefing at [`llms.txt`](/HoBo/llms.txt).
+> **Reading this as an agent?** The condensed, machine-readable briefing lives at [`llms.txt`](/HoBo/llms.txt). Every page on this site uses stable headings, canonical CLI verbs, and copy-pasteable snippets on purpose — the developer documentation *is* the agent documentation.
 
-## What's wired on clone
+## Agents are principals, not scripts
 
-| Surface | Where | What it does |
+The standard failure mode elsewhere: an agent runs with a human's long-lived API key, invisible to audit and unbounded by scope. HoBo's model:
+
+- **Own identity.** Agents get workload identity (SVID/OIDC), not borrowed keys.
+- **Brokered, short-lived tokens.** Secretless-first — credentials are issued per task, scoped to the task, and expire fast.
+- **Self-provisioning within policy.** A machine-readable **capability standard** describes what each capability needs, so an agent can request *exactly* the credentials a job requires — and policy decides whether it gets them.
+- **Every action is an event.** Token issuance, deploys, migrations — an agent's whole working day lands in the same append-only, replayable log as everything else. "What did the agent do?" is a query.
+
+## One surface, three doors
+
+Every HoBo capability is reachable three ways, with identical semantics:
+
+| Door | For | Notes |
 |---|---|---|
-| **Agent instructions** | `AGENTS.md`, `CLAUDE.md` | Repo-level rules every harness reads. |
-| **Skills** | `.claude/skills/`, `.agents/skills/` | Repo-local skills (`repo`, `draft`, `sdlc`) plus installed skill packs, mirrored byte-identical for Claude Code and Cursor/Codex. |
-| **MCP servers** | `.mcp.json`, `.cursor/mcp.json`, `.codex/config.toml` | Serena (semantic code), headroom (context compression), gbrain (knowledge-graph memory — needs a key, off by default). |
-| **Subagents** | `.claude/agents/` | `implementer` and `reviewer` definitions used by the sdlc loop. |
-| **Plugin** | `.claude/settings.json` | Superpowers methodology plugin auto-enables for Claude Code. |
-| **Setup script** | `scripts/setup-agent-tools.sh` | One-time install of the tool binaries, progressive per-agent layers. |
+| **SDK** | code | The same typed objects the [primitives](/HoBo/primitives/) docs describe. |
+| **CLI** | humans & scripts | The [canonical verb surface](/HoBo/guide/cli/) — deliberately small, stable to memorize. |
+| **MCP** | agents | Full capability parity — see [the MCP surface](/HoBo/agents/mcp/). |
 
-## The tour
+No agent-only side entrance with different rules: if policy would stop a human doing it, it stops an agent doing it, and vice versa.
 
-- **[Tooling & MCP](/HoBo/agents/tooling/)** — the twelve wired tools, what each is for, install layers, and the keys/egress risks to know before enabling gbrain.
-- **[Skills & workflows](/HoBo/agents/skills/)** — the repo-local `repo`, `draft`, and `sdlc` skills: the performance-first loop, the proof taxonomy, and the coordinated implementer/reviewer development loop.
-- **[Rules & guardrails](/HoBo/agents/rules/)** — the architecture rules every change must satisfy, the command ladder, testing lanes, and the validation-failure policy.
+## The Crew: operators included
 
-## Expect terse output
+HoBo ships a built-in roster of operator agents — the **Crew**: SRE, endpoint-monitor, GitOps, and platform-engineer operators that run as autonomous, policy-gated services in the Yard. HoBo ships the operators, not just the APIs they'd call. Your agents can work alongside them, under the same identity model.
 
-The **caveman** output-compression directive is on by default (`AGENTS.md` carries the block): agents respond tersely to save tokens, dropping filler while keeping technical substance. Code, commits, and PRs are written normally. Say "stop caveman" / "normal mode" to disable for a session.
+## Agents and continuous migration
 
-## For agent authors
+The guiding principle — *find the cheapest home that passes policy, keep looking* — is agent-shaped by design. The Dispatcher that plans migrations is itself an optimizing agent under policy gates, and third-party agents can participate: propose placements, watch spend, pre-approve moves within bounds you set. The event log means every optimization an agent makes is attributable and reversible.
 
-If you're building agent tooling *against* HoBo-the-product (rather than working in the repo), the design docs to read are [AI-native platform & agent auth](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/ai-native-agent-auth.md) — agents as principals, capability manifests, token brokering — and [Operators & SRE](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/operators-sre.md) — the built-in operator Crew. The MCP surface is designed in [`packages/mcp`](https://github.com/Tyler-R-Kendrick/HoBo/tree/main/packages/mcp).
+## Generating new homes
+
+Missing a provider adapter? Agents can invoke the **generation pipeline**: synthesize an adapter for a port, then have the port's conformance suite certify it. A certified adapter is a certified adapter regardless of author — human or machine. More homes on the map, cheaper moves for everyone.
+
+## Start here
+
+- [The MCP surface](/HoBo/agents/mcp/) — capability discovery, auth flow, and event-audited actions.
+- [`llms.txt`](/HoBo/llms.txt) — the machine-readable site briefing.
+- [Getting started](/HoBo/guide/getting-started/) — the same ten-minute path humans take; it works verbatim for agents.

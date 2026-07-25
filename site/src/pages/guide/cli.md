@@ -6,7 +6,7 @@ description: "The canonical hobo command surface: two lifecycle verbs (up, down)
 
 # The `hobo` CLI
 
-The CLI is deliberately small. **`up` and `down` are the only lifecycle verbs** — deploy, promotion, rollback, self-host bootstrap, and restore are all flags on the same convergence loop, not separate commands. The canonical contract is [`docs/design/cli-spec.md`](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/cli-spec.md), and a lint gate (`docs:cli-lint`) keeps every documented example on this surface.
+The CLI is deliberately small — a hobo carries one stick, not a toolbox. **`up` and `down` are the only lifecycle verbs**: deploy, promotion, rollback, migration, and even self-host bootstrap are all flags on the same convergence loop, not separate commands. Every documented example on this site sticks to this canonical surface.
 
 ## Lifecycle
 
@@ -19,7 +19,7 @@ hobo up ./platform --seed
 hobo down --camp pr-123
 ```
 
-`up` realizes the current object graph: build, plan, gate, provision, deploy. `down` tears it back in reverse dependency order. `up` always reruns the applicable gate before mutation — a stale preflight can never authorize a deploy.
+`up` realizes the current object graph: build, plan, gate, provision, deploy. `down` tears it back in reverse dependency order. `up` always reruns the applicable gate before mutation — a stale preflight can never authorize a deploy. Continuous migrations run this same loop; there is no separate `migrate` verb to learn, because a move is not a special event.
 
 ## The full verb surface
 
@@ -38,8 +38,8 @@ hobo down --camp pr-123
 | `codegen` / `build` / `collect` / `stub` | authoring | Regenerate `_generated/`; compile to wasm components; produce the manifest IR; run contract-backed stubs. |
 | `drift` | diagnostics | Report drift; route governed remediation. |
 | `add` / `registry` | distribution | Install providers after signature/provenance/conformance checks; registry administration. |
-| `import` | migration | Adopt an existing estate in place — never destroy/recreate on import. |
-| `generate` | generation | Request the provider-generation loop for a missing backend/capability. |
+| `import` | migration | Adopt an existing estate in place — never destroy/recreate on import. HoBo meets your app where it currently lives. |
+| `generate` | generation | Request the provider-generation loop for a missing backend/capability — more homes on the map. |
 | `sandbox` / `test` | test loop | Isolated lanes with out-of-scope boundaries served from contracts. |
 | `attest` / `erase` | governance | Signed audit evidence exports; crypto-shred erasure with projection rebuild. |
 | `derivative` | extensibility | Manage derived HoBo implementations (fork + upgrade with conformance). |
@@ -47,8 +47,8 @@ hobo down --camp pr-123
 
 ## Retired verbs
 
-Where you'd expect a verb from other tools, HoBo folds it into the model instead: `deploy`, `destroy`, `teardown`, `rollback`, and `promote` are all retired in favor of `up`/`down` and flags; `train`, `crew`, and `fleet` are SDK code and projections, not commands. The [spec](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/cli-spec.md#retired-or-rejected-commands) records each decision.
+Where you'd expect a verb from other tools, HoBo folds it into the model instead: `deploy`, `destroy`, `teardown`, `rollback`, and `promote` are all retired in favor of `up`/`down` and flags; `train`, `crew`, and `fleet` are SDK code and projections, not commands. If a verb would have described a one-time ceremony, it probably shouldn't exist — ceremonies are how platforms make moving expensive.
 
 ## Status
 
-The CLI is a **designed surface** with its scaffold in [`packages/cli`](https://github.com/Tyler-R-Kendrick/HoBo/tree/main/packages/cli); slices land through the staged build gates. Track progress via [Project status](/HoBo/guide/status/).
+The CLI is a **designed, contract-pinned surface** being implemented in slices. Track progress on [the trail map](/HoBo/guide/status/).

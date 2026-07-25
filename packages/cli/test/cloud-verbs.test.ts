@@ -93,8 +93,14 @@ function inMemoryIac(): IacProvider {
 }
 
 function makeRuntime(): YardRuntime {
-	const dir = path.join(tmpdir(), `hobo-cli-yard-${Math.random().toString(36).slice(2)}`);
-	const store = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const dir = path.join(
+		tmpdir(),
+		`hobo-cli-yard-${Math.random().toString(36).slice(2)}`,
+	);
+	const store = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	stores.push(store);
 	return {
 		store,
@@ -110,7 +116,10 @@ async function withProject(
 	callback: (cwd: string) => Promise<void>,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-cli-cloud-"));
-	await writeFile(path.join(dir, "hobo.bindle.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+	await writeFile(
+		path.join(dir, "hobo.bindle.json"),
+		`${JSON.stringify(manifest, null, 2)}\n`,
+	);
 	try {
 		await callback(dir);
 	} finally {
@@ -141,7 +150,11 @@ describe("hobo plan wired to the Yard Planner", () => {
 			expect(envelope.verb).toBe("plan");
 			expect(envelope.status).toBe("ok");
 			expect(envelope.data.planHash).toMatch(/^sha256:/);
-			expect(envelope.data.dependencyOrder).toEqual(["assets", "sessions", "service"]);
+			expect(envelope.data.dependencyOrder).toEqual([
+				"assets",
+				"sessions",
+				"service",
+			]);
 			expect(envelope.data.resources.map((r) => r.name)).toEqual([
 				"assets",
 				"service",
@@ -168,14 +181,19 @@ describe("hobo plan wired to the Yard Planner", () => {
 			expect(envelope.code).toBe("HOBO_PLAN_REJECTED");
 			expect(envelope.remediation.length).toBeGreaterThanOrEqual(1);
 			expect(envelope.data.remediations[0]?.resource).toBe("ledger");
-			expect(envelope.data.remediations[0]?.code).toBe("capability.port-unavailable");
+			expect(envelope.data.remediations[0]?.code).toBe(
+				"capability.port-unavailable",
+			);
 		});
 	});
 
 	it("falls back to the shell stub when no runtime is injected", async () => {
 		await withProject({ name: "snapshop" }, async (cwd) => {
 			const result = await createHoboCli().run(["plan", "--json"], { cwd });
-			const envelope = JSON.parse(result.stdout) as { status: string; code: string };
+			const envelope = JSON.parse(result.stdout) as {
+				status: string;
+				code: string;
+			};
 			expect(envelope.status).toBe("not_implemented");
 			expect(envelope.code).toBe("HOBO_CLI_STUB");
 		});
@@ -201,7 +219,9 @@ describe("hobo login establishes a Yard session the gateway accepts", () => {
 			expect(envelope.data.token).toMatch(/^hobo-svid-/);
 			expect(authorize(envelope.data.principal as never).allowed).toBe(true);
 
-			const persisted = JSON.parse(await readFile(envelope.data.sessionFile, "utf8")) as {
+			const persisted = JSON.parse(
+				await readFile(envelope.data.sessionFile, "utf8"),
+			) as {
 				token: string;
 			};
 			expect(persisted.token).toBe(envelope.data.token);
@@ -229,7 +249,11 @@ describe("hobo up drives the in-process Yard to deployment.Deployed", () => {
 			};
 			expect(envelope.ok).toBe(true);
 			expect(envelope.status).toBe("deployed");
-			expect(envelope.data.provisioned).toEqual(["assets", "service", "sessions"]);
+			expect(envelope.data.provisioned).toEqual([
+				"assets",
+				"service",
+				"sessions",
+			]);
 			const provisionedEvents = envelope.data.progress.filter(
 				(p) => p.type === "resource.Provisioned",
 			);
@@ -289,7 +313,10 @@ describe("cloud verbs emit valid JSON envelopes end to end", () => {
 
 			for (const verb of ["login", "plan", "up", "down"]) {
 				const result = await cli.run([verb, "--json"], { cwd });
-				const envelope = JSON.parse(result.stdout) as { verb: string; status: string };
+				const envelope = JSON.parse(result.stdout) as {
+					verb: string;
+					status: string;
+				};
 				expect(envelope.verb).toBe(verb);
 				expect(typeof envelope.status).toBe("string");
 			}

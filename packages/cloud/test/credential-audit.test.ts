@@ -29,7 +29,10 @@ const STREAM = "credential-audit/run-deploy-42";
 let stores: RuntimeLocalEventStore[] = [];
 function freshStore(): RuntimeLocalEventStore {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-cred-audit-"));
-	const s = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const s = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	stores.push(s);
 	return s;
 }
@@ -60,7 +63,10 @@ function credentialTrail() {
 		},
 		{
 			type: "token.Used",
-			data: { grantId: "grant-deploy-42", svidSubject: "spiffe://yard/tenant-a/agent/deployer" },
+			data: {
+				grantId: "grant-deploy-42",
+				svidSubject: "spiffe://yard/tenant-a/agent/deployer",
+			},
 		},
 		{
 			type: "token.Revoked",
@@ -83,7 +89,9 @@ describe("CredentialAudit projection folds grant/use/revoke by correlationId", (
 		const store = freshStore();
 		await appendTrail(store);
 
-		const snapshot = credentialAuditProjection.fold(await collectStream(store, STREAM));
+		const snapshot = credentialAuditProjection.fold(
+			await collectStream(store, STREAM),
+		);
 		const row = credentialAuditProjection.get(snapshot, CORRELATION);
 
 		expect(row).toBeDefined();
@@ -97,7 +105,11 @@ describe("CredentialAudit projection folds grant/use/revoke by correlationId", (
 		const grant = row.grants["grant-deploy-42"];
 		expect(grant?.status).toBe("revoked");
 		expect(grant?.svidSubject).toBe("spiffe://yard/tenant-a/agent/deployer");
-		expect(grant?.scope).toEqual({ port: "database", resource: "shop.db", action: "write" });
+		expect(grant?.scope).toEqual({
+			port: "database",
+			resource: "shop.db",
+			action: "write",
+		});
 		expect(grant?.useCount).toBe(1);
 		expect(grant?.grantedAt).toBeDefined();
 		expect(grant?.usedAt).toBeDefined();
@@ -116,13 +128,20 @@ describe("CredentialAudit projection folds grant/use/revoke by correlationId", (
 		const store = freshStore();
 		await appendTrail(store);
 
-		const live = credentialAuditProjection.fold(await collectStream(store, STREAM));
-		const rebuilt = await credentialAuditProjection.rebuildFromZero(store, STREAM);
+		const live = credentialAuditProjection.fold(
+			await collectStream(store, STREAM),
+		);
+		const rebuilt = await credentialAuditProjection.rebuildFromZero(
+			store,
+			STREAM,
+		);
 
 		expect(rebuilt).toEqual(live);
-		expect(credentialAuditProjection.get(rebuilt, CORRELATION)?.grants["grant-deploy-42"]?.status).toBe(
-			"revoked",
-		);
+		expect(
+			credentialAuditProjection.get(rebuilt, CORRELATION)?.grants[
+				"grant-deploy-42"
+			]?.status,
+		).toBe("revoked");
 	});
 });
 
@@ -138,7 +157,11 @@ describe("CredentialAudit retention floor (NFR-018 — never compacted)", () => 
 			actor,
 			tenant: "tenant-a",
 			correlationId: CORRELATION,
-			data: { grantId: "grant-deploy-42", reason: "x", svidSubject: "spiffe://yard/tenant-a/agent/deployer" },
+			data: {
+				grantId: "grant-deploy-42",
+				reason: "x",
+				svidSubject: "spiffe://yard/tenant-a/agent/deployer",
+			},
 		};
 	}
 
@@ -150,7 +173,9 @@ describe("CredentialAudit retention floor (NFR-018 — never compacted)", () => 
 	it("keeps pre-floor audit events after a compaction pass and rebuilds identically", () => {
 		const now = Date.parse("2026-07-01T00:00:00.000Z");
 		// The grant is older than the retention floor; use/revoke are recent.
-		const preFloor = new Date(now - CREDENTIAL_AUDIT_RETENTION_FLOOR_MS - 86_400_000).toISOString();
+		const preFloor = new Date(
+			now - CREDENTIAL_AUDIT_RETENTION_FLOOR_MS - 86_400_000,
+		).toISOString();
 		const events = [
 			auditEnv("token.Granted", 1, preFloor),
 			auditEnv("token.Used", 2, new Date(now - 60_000).toISOString()),

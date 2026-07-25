@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-	createInMemoryActorHost,
-	defineAggregate,
-} from "@hobo/data";
+import { createInMemoryActorHost, defineAggregate } from "@hobo/data";
 import { createLocalStreamer } from "@hobo/runtime-local";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 

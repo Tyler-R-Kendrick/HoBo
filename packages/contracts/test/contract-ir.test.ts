@@ -19,7 +19,12 @@ describe("Contract IR", () => {
 
 	it("rejects a malformed contract with a typed error", () => {
 		expect(() =>
-			parseBoundaryContract({ id: "", version: "1.0.0", edge: {}, requiredShape: {} }),
+			parseBoundaryContract({
+				id: "",
+				version: "1.0.0",
+				edge: {},
+				requiredShape: {},
+			}),
 		).toThrow(ContractIrValidationError);
 		expect(() =>
 			parseBoundaryContract({
@@ -84,6 +89,8 @@ describe("Contract IR", () => {
 		const result = checkCompatibility(prev, next);
 		expect(result.kind).toBe("breaking");
 		if (result.kind !== "breaking") throw new Error("expected breaking");
-		expect(result.reasons.some((reason) => reason.code === "version-regressed")).toBe(true);
+		expect(
+			result.reasons.some((reason) => reason.code === "version-regressed"),
+		).toBe(true);
 	});
 });

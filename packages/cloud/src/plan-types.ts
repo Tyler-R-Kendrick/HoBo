@@ -95,6 +95,8 @@ export function canonicalPlanJson(plan: DeploymentPlan): string {
 }
 
 export function hashDeploymentPlan(plan: DeploymentPlan): PlanHash {
-	const digest = createHash("sha256").update(canonicalPlanJson(plan)).digest("hex");
+	const digest = createHash("sha256")
+		.update(canonicalPlanJson(plan))
+		.digest("hex");
 	return `sha256:${digest}`;
 }

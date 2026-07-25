@@ -96,11 +96,21 @@ export interface CredentialAuditRow {
 }
 
 function correlationKey(event: EventEnvelope): string {
-	const data = event.data as { correlationId?: string; grantId?: string } | undefined;
-	return event.correlationId ?? data?.correlationId ?? data?.grantId ?? event.streamId;
+	const data = event.data as
+		| { correlationId?: string; grantId?: string }
+		| undefined;
+	return (
+		event.correlationId ??
+		data?.correlationId ??
+		data?.grantId ??
+		event.streamId
+	);
 }
 
-function base(row: CredentialAuditRow | undefined, correlationId: string): CredentialAuditRow {
+function base(
+	row: CredentialAuditRow | undefined,
+	correlationId: string,
+): CredentialAuditRow {
 	return row
 		? {
 				...row,
@@ -123,7 +133,9 @@ function base(row: CredentialAuditRow | undefined, correlationId: string): Crede
 
 function grant(row: CredentialAuditRow, grantId: string): CredentialGrantAudit {
 	const existing = row.grants[grantId];
-	return existing ? { ...existing } : { grantId, status: "granted", useCount: 0 };
+	return existing
+		? { ...existing }
+		: { grantId, status: "granted", useCount: 0 };
 }
 
 export const credentialAuditProjection: Projection<CredentialAuditRow> =
@@ -137,7 +149,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (!next.identityIds.includes(data.identityId)) {
 					next.identityIds = [...next.identityIds, data.identityId];
 				}
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.IdentityRotated]: (row, event) => {
@@ -146,7 +161,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (!next.identityIds.includes(data.identityId)) {
 					next.identityIds = [...next.identityIds, data.identityId];
 				}
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.TokenGranted]: (row, event) => {
@@ -165,7 +183,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (data.scope !== undefined) g.scope = data.scope;
 				next.grants[data.grantId] = g;
 				next.grantCount += 1;
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type, grantId: data.grantId }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type, grantId: data.grantId },
+				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.TokenUsed]: (row, event) => {
@@ -179,7 +200,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				g.useCount += 1;
 				next.grants[data.grantId] = g;
 				next.useCount += 1;
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type, grantId: data.grantId }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type, grantId: data.grantId },
+				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.TokenRevoked]: (row, event) => {
@@ -191,7 +215,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (data.reason !== undefined) g.revokedReason = data.reason;
 				next.grants[data.grantId] = g;
 				next.revokeCount += 1;
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type, grantId: data.grantId }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type, grantId: data.grantId },
+				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.SessionStarted]: (row, event) => {
@@ -200,7 +227,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (!next.sessionIds.includes(data.sessionId)) {
 					next.sessionIds = [...next.sessionIds, data.sessionId];
 				}
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.SessionRevoked]: (row, event) => {
@@ -209,7 +239,10 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (!next.sessionIds.includes(data.sessionId)) {
 					next.sessionIds = [...next.sessionIds, data.sessionId];
 				}
-				next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
 				return next;
 			},
 		},
@@ -233,7 +266,8 @@ export function compactCredentialAuditStream(
 	options: { now?: number; retentionFloorMs?: number } = {},
 ): CompactionResult {
 	const now = options.now ?? Date.now();
-	const floorMs = options.retentionFloorMs ?? CREDENTIAL_AUDIT_RETENTION_FLOOR_MS;
+	const floorMs =
+		options.retentionFloorMs ?? CREDENTIAL_AUDIT_RETENTION_FLOOR_MS;
 	const auditTotal = events.filter(isCredentialAuditEvent).length;
 
 	const retained = events.filter((event) => {

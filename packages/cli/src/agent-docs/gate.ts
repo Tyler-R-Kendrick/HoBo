@@ -37,7 +37,9 @@ export class AgentDocsError extends Error {
 }
 
 async function readIfPresent(target: string): Promise<string | undefined> {
-	return existsSync(target) ? normalizeText(await readFile(target, "utf8")) : undefined;
+	return existsSync(target)
+		? normalizeText(await readFile(target, "utf8"))
+		: undefined;
 }
 
 /**
@@ -56,7 +58,11 @@ export async function compareAgentDocs(
 		const expected = normalizeText(artifact.content);
 		const actual = await readIfPresent(join(dir, artifact.path));
 		if (actual === undefined) {
-			drift.push({ path: artifact.path, status: "missing", expectedDigest: digest(expected) });
+			drift.push({
+				path: artifact.path,
+				status: "missing",
+				expectedDigest: digest(expected),
+			});
 			continue;
 		}
 		if (actual !== expected) {
@@ -99,8 +105,8 @@ export async function writeAgentDocs(
 	input: GenerateAgentDocsInput = {},
 ): Promise<readonly string[]> {
 	const { artifacts } = generateAgentDocs(input);
-	const sorted: readonly AgentDocsArtifact[] = [...artifacts].sort((left, right) =>
-		left.path.localeCompare(right.path),
+	const sorted: readonly AgentDocsArtifact[] = [...artifacts].sort(
+		(left, right) => left.path.localeCompare(right.path),
 	);
 	for (const artifact of sorted) {
 		const target = join(dir, artifact.path);

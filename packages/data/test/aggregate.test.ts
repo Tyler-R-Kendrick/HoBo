@@ -9,11 +9,7 @@ import {
 	defineAggregate,
 	defineProjection,
 } from "../src/index.js";
-import {
-	freshStore,
-	type OrderCommand,
-	type OrderState,
-} from "./helpers.js";
+import { freshStore, type OrderCommand, type OrderState } from "./helpers.js";
 
 const orders = defineAggregate<OrderState, OrderCommand>({
 	name: "order",
@@ -78,7 +74,9 @@ describe("defineAggregate write-model fold", () => {
 		expect(result.appended.map((e) => e.type)).toEqual(["order.Placed"]);
 
 		const view = await orderView.rebuildFromZero(s, "order:1001");
-		expect(orderView.query(view)).toEqual([{ orderId: "1001", totalCents: 4200 }]);
+		expect(orderView.query(view)).toEqual([
+			{ orderId: "1001", totalCents: 4200 },
+		]);
 	});
 
 	it("emits actor.* lifecycle facts (Activated/StateAppended/Passivated)", async () => {
@@ -101,7 +99,12 @@ describe("defineAggregate write-model fold", () => {
 		const s = store();
 		const actorHost = createInMemoryActorHost();
 		const deps = { store: s, actorHost };
-		await orders.execute(deps, "order:1003", { id: "1003", totalCents: 1 }, ctx);
+		await orders.execute(
+			deps,
+			"order:1003",
+			{ id: "1003", totalCents: 1 },
+			ctx,
+		);
 
 		await expect(
 			orders.execute(deps, "order:1003", { id: "1003", totalCents: 2 }, ctx),

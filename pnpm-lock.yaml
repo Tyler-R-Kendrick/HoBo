@@ -111,6 +111,28 @@ importers:
         specifier: ^22.15.29
         version: 22.20.0
 
+  packages/cloud:
+    dependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@hobo/data':
+        specifier: workspace:*
+        version: link:../data
+      '@hobo/events':
+        specifier: workspace:*
+        version: link:../events
+    devDependencies:
+      '@hobo/provider-cloudflare':
+        specifier: workspace:*
+        version: link:../providers/provider-cloudflare
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
+
   packages/componentize:
     dependencies:
       '@hobo/core':
@@ -126,6 +148,9 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../runtime
     devDependencies:
       '@types/node':
         specifier: ^22.15.3
@@ -143,6 +168,15 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
+  packages/contracts:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@hobo/policy':
+        specifier: workspace:*
+        version: link:../policy
+
   packages/core:
     dependencies:
       '@bufbuild/protobuf':
@@ -155,6 +189,99 @@ importers:
       '@types/node':
         specifier: ^22.15.3
         version: 22.20.0
+
+  packages/data:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
+
+  packages/events:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@hobo/data':
+        specifier: workspace:*
+        version: link:../data
+    devDependencies:
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
+
+  packages/hobo:
+    dependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@hobo/cloud':
+        specifier: workspace:*
+        version: link:../cloud
+      '@hobo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@hobo/data':
+        specifier: workspace:*
+        version: link:../data
+      '@hobo/iac-pulumi':
+        specifier: workspace:*
+        version: link:../iac/iac-pulumi
+      '@hobo/provider-cloudflare':
+        specifier: workspace:*
+        version: link:../providers/provider-cloudflare
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
+
+  packages/iac/iac-pulumi:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/identity:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/mcp:
+    dependencies:
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@hobo/identity':
+        specifier: workspace:*
+        version: link:../identity
+    devDependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@hobo/cloud':
+        specifier: workspace:*
+        version: link:../cloud
+      '@hobo/data':
+        specifier: workspace:*
+        version: link:../data
+      '@hobo/provider-cloudflare':
+        specifier: workspace:*
+        version: link:../providers/provider-cloudflare
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
 
   packages/policy:
     devDependencies:
@@ -220,6 +347,12 @@ importers:
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/providers/provider-cloudflare:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
 
   packages/runtime:
     dependencies:

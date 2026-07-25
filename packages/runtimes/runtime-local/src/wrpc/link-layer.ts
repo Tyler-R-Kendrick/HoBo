@@ -53,7 +53,11 @@ function raceDeadline<T>(
 			settled = true;
 			reject(makeError());
 		}, remainingMs);
-		if (typeof timer === "object" && timer && typeof timer.unref === "function") {
+		if (
+			typeof timer === "object" &&
+			timer &&
+			typeof timer.unref === "function"
+		) {
 			timer.unref();
 		}
 		work.then(

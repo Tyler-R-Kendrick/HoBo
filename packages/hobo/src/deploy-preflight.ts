@@ -17,7 +17,10 @@ export interface DeployTargetDescription {
 	 * When not live, the env vars that would activate each real backend — each
 	 * entry lists the vars still missing for that option. Empty when already live.
 	 */
-	readonly activate: readonly { readonly backend: DeployBackend; readonly missing: readonly string[] }[];
+	readonly activate: readonly {
+		readonly backend: DeployBackend;
+		readonly missing: readonly string[];
+	}[];
 }
 
 const has = (env: Record<string, string | undefined>, key: string): boolean =>

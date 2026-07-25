@@ -1,4 +1,7 @@
-import type { PlannerRegistry, ResourceDefinition } from "../registry/catalog.js";
+import type {
+	PlannerRegistry,
+	ResourceDefinition,
+} from "../registry/catalog.js";
 import type {
 	MatchDecided,
 	PlanRemediation,
@@ -108,7 +111,8 @@ export function matchResource(
 				? `lower requirement to prefer, or select provider ${suggestedProvider} which advertises port ${intent.port}`
 				: `no registered provider advertises port ${intent.port} for resource ${intent.name}; register a provider that satisfies it or change the resource capability`,
 		};
-		if (suggestedProvider !== undefined) remediation.suggestedProvider = suggestedProvider;
+		if (suggestedProvider !== undefined)
+			remediation.suggestedProvider = suggestedProvider;
 		return { ok: false, remediation };
 	}
 

@@ -15,14 +15,22 @@ import {
 const GOLDEN: Array<{ port: string; name: string; resourceClass: string }> = [
 	{ port: "compute", name: "web", resourceClass: "cloudflare:workers-script" },
 	{ port: "kv", name: "sessions", resourceClass: "cloudflare:kv-namespace" },
-	{ port: "objectStore", name: "assets", resourceClass: "cloudflare:r2-bucket" },
+	{
+		port: "objectStore",
+		name: "assets",
+		resourceClass: "cloudflare:r2-bucket",
+	},
 ];
 
 describe("realize() emits a valid IacProgram per initial port", () => {
 	for (const golden of GOLDEN) {
 		it(`realizes ${golden.port} -> ${golden.resourceClass} as a valid program`, () => {
 			const provider = createCloudflareProvider();
-			const plan: ResourcePlan = { name: golden.name, port: golden.port, provider: "cloudflare" };
+			const plan: ResourcePlan = {
+				name: golden.name,
+				port: golden.port,
+				provider: "cloudflare",
+			};
 			const { iac } = provider.realize(plan);
 
 			// LOCAL copy of the iac-pulumi shape accepts it (see also the real
@@ -47,7 +55,13 @@ describe("realize() option negotiation", () => {
 			provider: "cloudflare",
 			options: [
 				cloudflare.with.worker({ cpuMs: 15_000 }),
-				{ providerId: "aws", port: "compute", optionName: "fargate", negotiation: "prefer", options: { cpu: 2 } },
+				{
+					providerId: "aws",
+					port: "compute",
+					optionName: "fargate",
+					negotiation: "prefer",
+					options: { cpu: 2 },
+				},
 			],
 		};
 		const { iac } = realizeResourcePlan(plan);
@@ -61,7 +75,11 @@ describe("realize() option negotiation", () => {
 			name: "web",
 			port: "compute",
 			provider: "cloudflare",
-			build: { artifactId: "hello-bindle-wasm", source: "examples/hello-bindle", target: "wasm-component" },
+			build: {
+				artifactId: "hello-bindle-wasm",
+				source: "examples/hello-bindle",
+				target: "wasm-component",
+			},
 		};
 		const emission = realizeResourcePlan(plan);
 		assert.equal(emission.build?.artifacts[0]?.id, "hello-bindle-wasm");
@@ -82,10 +100,15 @@ describe("hello-bindle realizes end-to-end", () => {
 			],
 		);
 		// Worker binds to assets + sessions via ${resources.*.outputs.binding}.
-		const bindings = iac.resources[0]?.inputs.bindings as Array<{ ref: string }>;
+		const bindings = iac.resources[0]?.inputs.bindings as Array<{
+			ref: string;
+		}>;
 		assert.deepEqual(
 			bindings.map((bind) => bind.ref),
-			["${resources.assets.outputs.binding}", "${resources.sessions.outputs.binding}"],
+			[
+				"${resources.assets.outputs.binding}",
+				"${resources.sessions.outputs.binding}",
+			],
 		);
 		assert.equal(build?.artifacts[0]?.id, "hello-bindle-wasm");
 	});

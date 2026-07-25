@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { evaluateCanDeploy, replayCanDeployDecision } from "../src/can-deploy.js";
+import {
+	evaluateCanDeploy,
+	replayCanDeployDecision,
+} from "../src/can-deploy.js";
 import { createBoundaryContract } from "../src/contract-ir.js";
 
 const deployedContract = createBoundaryContract({

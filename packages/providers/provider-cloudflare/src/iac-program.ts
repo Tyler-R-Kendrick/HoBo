@@ -31,7 +31,8 @@ export interface IacProgram {
 	stackOutputs: Record<string, string>;
 }
 
-const OUTPUT_REF = /^\$\{resources\.([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)\}$/;
+const OUTPUT_REF =
+	/^\$\{resources\.([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)\}$/;
 
 /**
  * Parse-don't-validate structural check used by tests as a LOCAL copy of the
@@ -59,7 +60,9 @@ export function assertLocalIacProgram(program: IacProgram): IacProgram {
 			throw new Error("IacProgram resource missing name");
 		}
 		if (names.has(resource.name)) {
-			throw new Error(`IacProgram includes duplicate resource ${resource.name}`);
+			throw new Error(
+				`IacProgram includes duplicate resource ${resource.name}`,
+			);
 		}
 		names.set(resource.name, resource);
 	}
@@ -74,7 +77,10 @@ export function assertLocalIacProgram(program: IacProgram): IacProgram {
 	return program;
 }
 
-function assertOutputReference(value: unknown, resources: Map<string, IacResource>): void {
+function assertOutputReference(
+	value: unknown,
+	resources: Map<string, IacResource>,
+): void {
 	if (typeof value !== "string" || !value.startsWith("${resources.")) {
 		return;
 	}
@@ -86,7 +92,9 @@ function assertOutputReference(value: unknown, resources: Map<string, IacResourc
 	const outputName = match[2] as string;
 	const resource = resources.get(resourceName);
 	if (!resource || !resource.outputs.includes(outputName)) {
-		throw new Error(`unresolved output reference resources.${resourceName}.outputs.${outputName}`);
+		throw new Error(
+			`unresolved output reference resources.${resourceName}.outputs.${outputName}`,
+		);
 	}
 }
 
@@ -94,5 +102,7 @@ function collectValues(value: unknown): unknown[] {
 	if (!value || typeof value !== "object") {
 		return [value];
 	}
-	return Object.values(value as Record<string, unknown>).flatMap((child) => collectValues(child));
+	return Object.values(value as Record<string, unknown>).flatMap((child) =>
+		collectValues(child),
+	);
 }

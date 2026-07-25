@@ -38,7 +38,11 @@ export interface OrchestratorContext {
 	noGoThresholdResources?: ReadonlySet<string>;
 }
 
-export type OrchestratorStatus = "deployed" | "rolled-back" | "needs-human" | "waiting";
+export type OrchestratorStatus =
+	| "deployed"
+	| "rolled-back"
+	| "needs-human"
+	| "waiting";
 
 export interface OrchestratorResult {
 	status: OrchestratorStatus;
@@ -66,7 +70,10 @@ function resourceStates(
 	return states;
 }
 
-function depsProvisioned(resource: ResourcePlan, states: Map<string, ResourceActorState>): boolean {
+function depsProvisioned(
+	resource: ResourcePlan,
+	states: Map<string, ResourceActorState>,
+): boolean {
 	return resource.deps.every((dep) => states.get(dep) === "Provisioned");
 }
 
@@ -90,7 +97,9 @@ export async function runOrchestrator(
 		deploymentId,
 		tenant: ctx.tenant,
 		actor: ctx.actor,
-		...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+		...(ctx.correlationId !== undefined
+			? { correlationId: ctx.correlationId }
+			: {}),
 		...(ctx.noGoThresholdResources !== undefined
 			? { noGoThresholdResources: ctx.noGoThresholdResources }
 			: {}),
@@ -106,7 +115,9 @@ export async function runOrchestrator(
 
 		// A no-go failure already on the log short-circuits to compensation.
 		const failed = events.find(
-			(e) => e.type === CLOUD_EVENTS.ResourceFailed && (e.data as { crossedNoGoThreshold?: boolean }).crossedNoGoThreshold,
+			(e) =>
+				e.type === CLOUD_EVENTS.ResourceFailed &&
+				(e.data as { crossedNoGoThreshold?: boolean }).crossedNoGoThreshold,
 		);
 		if (failed) {
 			const data = failed.data as { resourceId: string; reason: string };
@@ -119,10 +130,17 @@ export async function runOrchestrator(
 			if (state === "Provisioned" || state === "Destroyed") continue;
 			if (!depsProvisioned(resource, states)) continue;
 
-			const outcome = await reconcileResource(actorDeps, { ...resource, deploymentId }, reconcileCtx);
+			const outcome = await reconcileResource(
+				actorDeps,
+				{ ...resource, deploymentId },
+				reconcileCtx,
+			);
 			progressed = true;
 			if (outcome.kind === "failed" && outcome.crossedNoGoThreshold) {
-				triggeringFailure = { resourceId: resource.name, reason: outcome.reason };
+				triggeringFailure = {
+					resourceId: resource.name,
+					reason: outcome.reason,
+				};
 			}
 			// Re-fold from the log on the next while-iteration (level-triggered).
 			break;
@@ -138,20 +156,28 @@ export async function runOrchestrator(
 	// dependency-order destroys.
 	if (triggeringFailure) {
 		const compensation = await runCompensation(
-			{ store: deps.store, actorHost: deps.actorHost, executor: deps.executor, broker: deps.broker },
+			{
+				store: deps.store,
+				actorHost: deps.actorHost,
+				executor: deps.executor,
+				broker: deps.broker,
+			},
 			plan,
 			deploymentId,
 			triggeringFailure,
 			{
 				tenant: ctx.tenant,
 				actor: ctx.actor,
-				...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+				...(ctx.correlationId !== undefined
+					? { correlationId: ctx.correlationId }
+					: {}),
 			},
 		);
 		events = await collectStream(deps.store, stream);
 		states = resourceStates(events, plan, deploymentId);
 		return {
-			status: compensation.status === "needs-human" ? "needs-human" : "rolled-back",
+			status:
+				compensation.status === "needs-human" ? "needs-human" : "rolled-back",
 			deploymentId,
 			provisioned: provisionedList(states),
 			destroyed: destroyedList(states),
@@ -161,9 +187,15 @@ export async function runOrchestrator(
 	}
 
 	// All actors Provisioned → drive deployment.Deployed (choreography terminal).
-	const allProvisioned = plan.resources.every((r) => states.get(r.name) === "Provisioned");
-	if (allProvisioned && !events.some((e) => e.type === CLOUD_EVENTS.DeploymentDeployed)) {
-		const lastSeq = events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
+	const allProvisioned = plan.resources.every(
+		(r) => states.get(r.name) === "Provisioned",
+	);
+	if (
+		allProvisioned &&
+		!events.some((e) => e.type === CLOUD_EVENTS.DeploymentDeployed)
+	) {
+		const lastSeq =
+			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 		await emit(
 			deps.store,
 			stream,
@@ -178,7 +210,9 @@ export async function runOrchestrator(
 				expectedSeq: lastSeq,
 				actor: ctx.actor,
 				tenant: ctx.tenant,
-				...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+				...(ctx.correlationId !== undefined
+					? { correlationId: ctx.correlationId }
+					: {}),
 			},
 		);
 		events = await collectStream(deps.store, stream);
@@ -194,9 +228,15 @@ export async function runOrchestrator(
 }
 
 function provisionedList(states: Map<string, ResourceActorState>): string[] {
-	return [...states.entries()].filter(([, s]) => s === "Provisioned").map(([id]) => id).sort();
+	return [...states.entries()]
+		.filter(([, s]) => s === "Provisioned")
+		.map(([id]) => id)
+		.sort();
 }
 
 function destroyedList(states: Map<string, ResourceActorState>): string[] {
-	return [...states.entries()].filter(([, s]) => s === "Destroyed").map(([id]) => id).sort();
+	return [...states.entries()]
+		.filter(([, s]) => s === "Destroyed")
+		.map(([id]) => id)
+		.sort();
 }

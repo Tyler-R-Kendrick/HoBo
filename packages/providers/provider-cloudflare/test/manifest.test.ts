@@ -15,21 +15,30 @@ describe("Capability Manifest publication (FR-031)", () => {
 		const parsed = parsePublishedManifest(documents);
 
 		assert.equal(parsed.ok, true);
-		assert.equal((parsed.auth as { schema: string }).schema, "hobo.provider-auth/v1");
-		assert.equal((parsed.cost as { schema: string }).schema, "hobo.cost/v1");
-		const caps = parsed.capabilities as { capabilities: Array<{ port: string }> };
-		assert.equal(caps.capabilities.length, 3);
-		assert.deepEqual(
-			caps.capabilities.map((c) => c.port).sort(),
-			["compute", "kv", "objectStore"],
+		assert.equal(
+			(parsed.auth as { schema: string }).schema,
+			"hobo.provider-auth/v1",
 		);
+		assert.equal((parsed.cost as { schema: string }).schema, "hobo.cost/v1");
+		const caps = parsed.capabilities as {
+			capabilities: Array<{ port: string }>;
+		};
+		assert.equal(caps.capabilities.length, 3);
+		assert.deepEqual(caps.capabilities.map((c) => c.port).sort(), [
+			"compute",
+			"kv",
+			"objectStore",
+		]);
 	});
 
 	it("rejects manifests that publish static secrets", () => {
 		const documents = publishCapabilityManifest();
-		const auth = JSON.parse(documents["/.well-known/capability-manifest/auth.json"]);
+		const auth = JSON.parse(
+			documents["/.well-known/capability-manifest/auth.json"],
+		);
 		auth.staticKey = "secret";
-		documents["/.well-known/capability-manifest/auth.json"] = `${JSON.stringify(auth, null, 2)}\n`;
+		documents["/.well-known/capability-manifest/auth.json"] =
+			`${JSON.stringify(auth, null, 2)}\n`;
 		const parsed = parsePublishedManifest(documents);
 
 		assert.equal(parsed.ok, false);
@@ -49,9 +58,18 @@ describe("CloudProvider.capabilityManifest() shape", () => {
 			"/.well-known/capability-manifest/cost.json",
 			"/.well-known/capability-manifest/index.json",
 		]);
-		const caps = manifest.capabilities as { capabilities: Array<{ port: string }> };
-		assert.deepEqual(caps.capabilities.map((c) => c.port).sort(), ["compute", "kv", "objectStore"]);
-		assert.equal((manifest.auth as { staticSecrets: boolean }).staticSecrets, false);
+		const caps = manifest.capabilities as {
+			capabilities: Array<{ port: string }>;
+		};
+		assert.deepEqual(caps.capabilities.map((c) => c.port).sort(), [
+			"compute",
+			"kv",
+			"objectStore",
+		]);
+		assert.equal(
+			(manifest.auth as { staticSecrets: boolean }).staticSecrets,
+			false,
+		);
 	});
 
 	it("advertises the configured colo regions", () => {
@@ -62,10 +80,23 @@ describe("CloudProvider.capabilityManifest() shape", () => {
 
 describe("Equivalence-class mappings (all three initial ports)", () => {
 	it("maps web/service, kv, and objectStore to Cloudflare resource classes", () => {
-		assert.equal(equivalenceForPort("web/service").resourceClass, "cloudflare:workers-script");
-		assert.equal(equivalenceForPort("kv").resourceClass, "cloudflare:kv-namespace");
-		assert.equal(equivalenceForPort("objectStore").resourceClass, "cloudflare:r2-bucket");
-		assert.deepEqual(INITIAL_CAPABILITY_PORTS, ["web/service", "kv", "objectStore"]);
+		assert.equal(
+			equivalenceForPort("web/service").resourceClass,
+			"cloudflare:workers-script",
+		);
+		assert.equal(
+			equivalenceForPort("kv").resourceClass,
+			"cloudflare:kv-namespace",
+		);
+		assert.equal(
+			equivalenceForPort("objectStore").resourceClass,
+			"cloudflare:r2-bucket",
+		);
+		assert.deepEqual(INITIAL_CAPABILITY_PORTS, [
+			"web/service",
+			"kv",
+			"objectStore",
+		]);
 	});
 
 	it("maps each class to Workers/KV/R2 provider services", () => {

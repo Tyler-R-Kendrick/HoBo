@@ -2,7 +2,11 @@ import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { createFixtureSession, loadSession } from "../cloud/session.js";
 import { stubResult } from "../cloud/stub.js";
-import { createYardClient, type YardRuntime, type YardSession } from "../cloud/yard-client.js";
+import {
+	createYardClient,
+	type YardRuntime,
+	type YardSession,
+} from "../cloud/yard-client.js";
 
 export interface UpCommandDeps {
 	// Injected Yard runtime (tests / dev wiring): in-memory/runtime-local
@@ -36,7 +40,9 @@ export function createUpCommand(deps: UpCommandDeps = {}): CommandModule {
 			}
 
 			const session =
-				deps.session ?? (await loadSession(projectDir)) ?? createFixtureSession();
+				deps.session ??
+				(await loadSession(projectDir)) ??
+				createFixtureSession();
 			const deploymentId = deploymentIdFor(projectDir);
 			const yard = createYardClient(runtime);
 			const result = await yard.up(bindle, { deploymentId, session });
@@ -61,7 +67,9 @@ export function createUpCommand(deps: UpCommandDeps = {}): CommandModule {
 
 			for (const step of result.progress) {
 				emitProgress(
-					step.resourceId ? `${step.type} ${step.resourceId}: ${step.detail}` : `${step.type}: ${step.detail}`,
+					step.resourceId
+						? `${step.type} ${step.resourceId}: ${step.detail}`
+						: `${step.type}: ${step.detail}`,
 				);
 			}
 

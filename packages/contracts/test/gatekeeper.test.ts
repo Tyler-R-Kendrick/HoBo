@@ -63,7 +63,10 @@ const baseRequest = {
 	context: { target: "prod" },
 };
 
-const plan = { objective: "cost", resources: [{ name: "checkout-api", port: "hobo:http/handler" }] };
+const plan = {
+	objective: "cost",
+	resources: [{ name: "checkout-api", port: "hobo:http/handler" }],
+};
 const goodQuota = { quota: "deployments/day", used: 7, limit: 20 };
 
 describe("Gatekeeper composition", () => {
@@ -82,7 +85,9 @@ describe("Gatekeeper composition", () => {
 		expect(result.policyDecided.data.effect).toBe("allow");
 		expect(result.canDeploy.ok).toBe(true);
 		expect(result.costQuota.ok).toBe(true);
-		expect(result.events.some((event) => event.type === "gatekeeper.Decided")).toBe(true);
+		expect(
+			result.events.some((event) => event.type === "gatekeeper.Decided"),
+		).toBe(true);
 	});
 
 	it("DENIES a seeded breaking contract change with an explainable machine-readable reason", () => {
@@ -94,7 +99,9 @@ describe("Gatekeeper composition", () => {
 		});
 
 		expect(result.decision).toBe("deny");
-		const contractReason = result.reasons.find((reason) => reason.gate === "contracts");
+		const contractReason = result.reasons.find(
+			(reason) => reason.gate === "contracts",
+		);
 		expect(contractReason?.code).toBe("required-field-removed");
 		expect(contractReason?.details?.fields).toContain("tenantId");
 		// still audited
@@ -127,7 +134,9 @@ describe("Gatekeeper composition", () => {
 		});
 
 		expect(result.decision).toBe("deny");
-		const policyReason = result.reasons.find((reason) => reason.gate === "policy");
+		const policyReason = result.reasons.find(
+			(reason) => reason.gate === "policy",
+		);
 		expect(policyReason?.code).toBe("policy-denied");
 		expect(policyReason?.message).toMatch(/frozen/);
 	});
@@ -157,7 +166,11 @@ describe("Gatekeeper composition", () => {
 						effect: "require-approval",
 						reason: "production deploy requires approval",
 						obligations: [
-							{ id: "obl:approval:checkout-prod", kind: "require-approval", satisfied: false },
+							{
+								id: "obl:approval:checkout-prod",
+								kind: "require-approval",
+								satisfied: false,
+							},
 						],
 					}),
 				}),
@@ -173,8 +186,14 @@ describe("Gatekeeper composition", () => {
 		});
 
 		expect(result.decision).toBe("require-approval");
-		expect(result.obligations.some((obligation) => obligation.id === "obl:approval:checkout-prod")).toBe(true);
-		expect(result.reasons.some((reason) => reason.gate === "obligations")).toBe(true);
+		expect(
+			result.obligations.some(
+				(obligation) => obligation.id === "obl:approval:checkout-prod",
+			),
+		).toBe(true);
+		expect(result.reasons.some((reason) => reason.gate === "obligations")).toBe(
+			true,
+		);
 	});
 
 	it("allows once the obligation is satisfied", () => {
@@ -182,7 +201,13 @@ describe("Gatekeeper composition", () => {
 			request: baseRequest,
 			deployedState: { contracts: [deployedContract] },
 			candidate: { plan, contracts: [compatibleCandidate] },
-			obligations: [{ id: "obl:canary:checkout-prod", kind: "require-canary", satisfied: true }],
+			obligations: [
+				{
+					id: "obl:canary:checkout-prod",
+					kind: "require-canary",
+					satisfied: true,
+				},
+			],
 			costQuota: goodQuota,
 		});
 		expect(result.decision).toBe("allow");

@@ -6,7 +6,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createHoboCli } from "@hobo/cli";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 
-import { createComposedHoboCli, createDefaultYardRuntime } from "../src/index.js";
+import {
+	createComposedHoboCli,
+	createDefaultYardRuntime,
+} from "../src/index.js";
 
 // End-to-end proof that the composition root replaces @hobo/cli's shell stubs.
 // The bare @hobo/cli binary calls createHoboCli() un-injected, so the deploy
@@ -79,7 +82,9 @@ describe("composed hobo CLI runs the default local/mocked runtime end to end", (
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
 			// login works un-injected (kept as @hobo/cli's default).
-			const login = envelope((await cli.run(["login", "--json"], { cwd })).stdout);
+			const login = envelope(
+				(await cli.run(["login", "--json"], { cwd })).stdout,
+			);
 			expect(login.ok).toBe(true);
 			expect(login.status).toBe("ok");
 
@@ -93,7 +98,9 @@ describe("composed hobo CLI runs the default local/mocked runtime end to end", (
 			expect(collect.data.resources.length).toBeGreaterThan(0);
 
 			// plan renders the content-addressed DeploymentPlan (not a stub).
-			const plan = envelope((await cli.run(["plan", "--json"], { cwd })).stdout);
+			const plan = envelope(
+				(await cli.run(["plan", "--json"], { cwd })).stdout,
+			);
 			assertNotStub(plan);
 			expect(plan.ok).toBe(true);
 			expect(plan.status).toBe("ok");
@@ -112,7 +119,9 @@ describe("composed hobo CLI runs the default local/mocked runtime end to end", (
 			]);
 
 			// down tears everything back down to destroyed on the SAME store.
-			const down = envelope((await cli.run(["down", "--json"], { cwd })).stdout);
+			const down = envelope(
+				(await cli.run(["down", "--json"], { cwd })).stdout,
+			);
 			assertNotStub(down);
 			expect(down.ok).toBe(true);
 			expect(down.status).toBe("destroyed");

@@ -38,7 +38,11 @@ function registry() {
 
 describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 	it("produces the byte-stable golden plan with the recorded content hash", () => {
-		const result = plan(helloBindle(), { deploymentId: "hello-bindle-001" }, registry());
+		const result = plan(
+			helloBindle(),
+			{ deploymentId: "hello-bindle-001" },
+			registry(),
+		);
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 
@@ -74,7 +78,9 @@ describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 			expect(decision.providerId).toBe("@hobo/provider-cloudflare");
 			expect(decision.deploymentId).toBe("hb-1");
 			expect(decision.catalogHash).toBe(reg.catalogHash);
-			expect(decision.winner).toBe(`@hobo/provider-cloudflare.${decision.port}`);
+			expect(decision.winner).toBe(
+				`@hobo/provider-cloudflare.${decision.port}`,
+			);
 		}
 	});
 

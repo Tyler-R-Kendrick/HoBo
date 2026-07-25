@@ -18,7 +18,10 @@ import {
 // source of truth): it covers every canonical verb, invents none, is
 // byte-deterministic, and is drift-gated exactly like `hobo codegen --check`.
 
-const checkedInDir = join(dirname(fileURLToPath(import.meta.url)), "../agent-docs");
+const checkedInDir = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"../agent-docs",
+);
 
 describe("agent-docs generation covers the canonical verb surface", () => {
 	it("emits one manifest entry per canonical verb — none missing, none invented", () => {
@@ -41,7 +44,9 @@ describe("agent-docs generation covers the canonical verb surface", () => {
 
 	it("every verb appears in llms.txt and llms-full.txt", () => {
 		const { artifacts } = generateAgentDocs();
-		const concise = artifacts.find((a) => a.path === AGENT_DOCS_ARTIFACTS.concise);
+		const concise = artifacts.find(
+			(a) => a.path === AGENT_DOCS_ARTIFACTS.concise,
+		);
 		const full = artifacts.find((a) => a.path === AGENT_DOCS_ARTIFACTS.full);
 		expect(concise).toBeDefined();
 		expect(full).toBeDefined();
@@ -58,7 +63,9 @@ describe("agent-docs generation covers the canonical verb surface", () => {
 			AGENT_DOCS_ARTIFACTS.full,
 			AGENT_DOCS_ARTIFACTS.manifest,
 		]);
-		const manifest = artifacts.find((a) => a.path === AGENT_DOCS_ARTIFACTS.manifest);
+		const manifest = artifacts.find(
+			(a) => a.path === AGENT_DOCS_ARTIFACTS.manifest,
+		);
 		const parsed = JSON.parse(manifest?.content ?? "{}");
 		expect(parsed.entries).toHaveLength(CANONICAL_VERBS.length);
 	});
@@ -112,15 +119,23 @@ describe("agent-docs drift gate (mirrors hobo codegen --check)", () => {
 
 	it("fails closed on a hand-edited artifact (changed)", async () => {
 		await writeAgentDocs(dir);
-		await writeFile(join(dir, AGENT_DOCS_ARTIFACTS.concise), "hand-edited drift\n");
-
-		const drift = await compareAgentDocs(dir);
-		expect(drift.map((entry) => entry.path)).toContain(AGENT_DOCS_ARTIFACTS.concise);
-		expect(drift.find((entry) => entry.path === AGENT_DOCS_ARTIFACTS.concise)?.status).toBe(
-			"changed",
+		await writeFile(
+			join(dir, AGENT_DOCS_ARTIFACTS.concise),
+			"hand-edited drift\n",
 		);
 
-		await expect(assertAgentDocsFresh(dir)).rejects.toBeInstanceOf(AgentDocsError);
+		const drift = await compareAgentDocs(dir);
+		expect(drift.map((entry) => entry.path)).toContain(
+			AGENT_DOCS_ARTIFACTS.concise,
+		);
+		expect(
+			drift.find((entry) => entry.path === AGENT_DOCS_ARTIFACTS.concise)
+				?.status,
+		).toBe("changed");
+
+		await expect(assertAgentDocsFresh(dir)).rejects.toBeInstanceOf(
+			AgentDocsError,
+		);
 		await expect(assertAgentDocsFresh(dir)).rejects.toMatchObject({
 			code: "HOBO_AGENT_DOCS_DRIFT",
 		});
@@ -131,9 +146,10 @@ describe("agent-docs drift gate (mirrors hobo codegen --check)", () => {
 		await rm(join(dir, AGENT_DOCS_ARTIFACTS.manifest));
 
 		const drift = await compareAgentDocs(dir);
-		expect(drift.find((entry) => entry.path === AGENT_DOCS_ARTIFACTS.manifest)?.status).toBe(
-			"missing",
-		);
+		expect(
+			drift.find((entry) => entry.path === AGENT_DOCS_ARTIFACTS.manifest)
+				?.status,
+		).toBe("missing");
 		await expect(assertAgentDocsFresh(dir)).rejects.toMatchObject({
 			code: "HOBO_AGENT_DOCS_DRIFT",
 		});
@@ -149,7 +165,10 @@ describe("checked-in agent-docs artifacts stay fresh", () => {
 	});
 
 	it("docs.json on disk parses and covers every verb", async () => {
-		const raw = await readFile(join(checkedInDir, AGENT_DOCS_ARTIFACTS.manifest), "utf8");
+		const raw = await readFile(
+			join(checkedInDir, AGENT_DOCS_ARTIFACTS.manifest),
+			"utf8",
+		);
 		const parsed = JSON.parse(raw);
 		expect(parsed.entries.map((entry: { name: string }) => entry.name)).toEqual(
 			CANONICAL_VERBS.map((verb) => verb.name),

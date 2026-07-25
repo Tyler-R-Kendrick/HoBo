@@ -106,9 +106,7 @@ export function defineSaga(definition: SagaDefinition): Saga {
 
 			try {
 				await definition.step(triggerEvent, ctx);
-				facts.push(
-					createSagaCompletedEvent({ sagaId, outcome: "completed" }),
-				);
+				facts.push(createSagaCompletedEvent({ sagaId, outcome: "completed" }));
 				return { sagaId, name: definition.name, status: "completed", facts };
 			} catch (cause) {
 				const step =

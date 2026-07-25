@@ -78,7 +78,9 @@ export interface PulumiBackedIacProviderOptions {
 	readonly adapter?: PulumiAutomationAdapter;
 }
 
-function planFromStream(events: readonly EventEnvelope[]): DeploymentPlan | undefined {
+function planFromStream(
+	events: readonly EventEnvelope[],
+): DeploymentPlan | undefined {
 	let plan: DeploymentPlan | undefined;
 	for (const event of events) {
 		if (event.type === CLOUD_EVENTS.DeploymentPlanned) {
@@ -106,7 +108,9 @@ export function createPulumiBackedIacProvider(
 	options: PulumiBackedIacProviderOptions,
 ): IacProvider {
 	const { store } = options;
-	const adapter = options.adapter ?? (createPulumiAutomationAdapter() as PulumiAutomationAdapter);
+	const adapter =
+		options.adapter ??
+		(createPulumiAutomationAdapter() as PulumiAutomationAdapter);
 	const providersById = new Map<string, CloudProvider>(
 		options.providers.map((provider) => [provider.id, provider]),
 	);
@@ -124,17 +128,27 @@ export function createPulumiBackedIacProvider(
 	// to realize, so the mutating paths no-op rather than fabricate a plan. The
 	// apply path REQUIRES a resolved plan and rejects `undefined`.
 	async function realizeFor(program: IacProgram): Promise<unknown | undefined> {
-		const events = await collectStream(store, `deployment:${program.deploymentId}`);
+		const events = await collectStream(
+			store,
+			`deployment:${program.deploymentId}`,
+		);
 		const plan = planFromStream(events);
 		const resource = plan?.resources.find((r) => r.name === program.resourceId);
 		if (!resource) {
 			return undefined;
 		}
-		const provider = providersById.get(program.provider) ?? providersById.get(resource.provider);
+		const provider =
+			providersById.get(program.provider) ??
+			providersById.get(resource.provider);
 		if (!provider) {
-			throw new Error(`pulumi-iac-provider: no realize()-capable provider for ${program.provider}`);
+			throw new Error(
+				`pulumi-iac-provider: no realize()-capable provider for ${program.provider}`,
+			);
 		}
-		const resourcePlan: ResourcePlan = { ...resource, deploymentId: program.deploymentId };
+		const resourcePlan: ResourcePlan = {
+			...resource,
+			deploymentId: program.deploymentId,
+		};
 		const { iac } = provider.realize(resourcePlan);
 		return iac;
 	}
@@ -144,7 +158,10 @@ export function createPulumiBackedIacProvider(
 		async preview(program: IacProgram): Promise<IacDiff> {
 			const iac = await realizeFor(program);
 			if (iac === undefined) {
-				return { summary: `no stored plan for ${program.resourceId}; nothing to preview`, changes: 0 };
+				return {
+					summary: `no stored plan for ${program.resourceId}; nothing to preview`,
+					changes: 0,
+				};
 			}
 			const diff = await adapter.preview(iac);
 			return {

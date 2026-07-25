@@ -15,10 +15,7 @@ import {
 	type ResourceHandle,
 	type WiringManifest,
 } from "../wiring/index.js";
-import {
-	type CollectionEvent,
-	createCollectionEvents,
-} from "./events.js";
+import { type CollectionEvent, createCollectionEvents } from "./events.js";
 
 // Run-to-collect (S1-12b). The static path (compileBindleManifest) enumerates an
 // explicit handle array; run-to-collect instead RUNS the Bindle's components in

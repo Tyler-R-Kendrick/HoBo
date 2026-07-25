@@ -45,7 +45,11 @@ describe("deny-by-default scope enforcement", () => {
 
 	it("denies an unknown (non-derived) tool, fail-closed", async () => {
 		const server = createHoboMcpServer({ cli: makeWiredCli() });
-		const denied = await server.callTool("deploy", {}, authGranting(["plan", "up"]));
+		const denied = await server.callTool(
+			"deploy",
+			{},
+			authGranting(["plan", "up"]),
+		);
 		expect(denied.ok).toBe(false);
 		expect(denied.code).toBe("MCP_UNKNOWN_TOOL");
 	});
@@ -72,10 +76,16 @@ describe("SVID scope resolved through @hobo/identity", () => {
 			nonce: "nonce-1",
 			isolationTier: "microvm",
 		};
-		const document = attestor.createDocument({ launchMeasurement: measurement });
+		const document = attestor.createDocument({
+			launchMeasurement: measurement,
+		});
 		const issued = await identity.issueSvidFromAttestation({
 			attestationDocument: document,
-			requestedScope: { port: "hobo:mcp", resource: "tool:plan", verbs: ["call"] },
+			requestedScope: {
+				port: "hobo:mcp",
+				resource: "tool:plan",
+				verbs: ["call"],
+			},
 			audience: "hobo-mcp",
 			agentName: "deployer",
 			hostPublicKeys: attestor.publicKeys(),

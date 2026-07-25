@@ -43,7 +43,11 @@ describe("realize() output composes with @hobo/iac-pulumi.validateIacProgram", (
 describe("realized programs are previewable / applyable end-to-end", () => {
 	it("passes the iac-pulumi backend conformance suite for a single-port program", async () => {
 		const provider = createCloudflareProvider();
-		const { iac } = provider.realize({ name: "assets", port: "objectStore", provider: "cloudflare" });
+		const { iac } = provider.realize({
+			name: "assets",
+			port: "objectStore",
+			provider: "cloudflare",
+		});
 		const adapter = createPulumiAutomationAdapter();
 		const report = await runIacBackendConformance({ adapter, program: iac });
 		assert.equal(report.passed, true);

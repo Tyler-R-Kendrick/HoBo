@@ -93,25 +93,37 @@ export function evaluatePolicyPack(input: {
 	});
 
 	const matched = pack.rules.filter((rule) => safeMatch(rule, input.request));
-	const outcomes = matched.map((rule) => ({ rule, outcome: rule.decide(input.request) }));
+	const outcomes = matched.map((rule) => ({
+		rule,
+		outcome: rule.decide(input.request),
+	}));
 
 	// Most-restrictive-wins: the lowest-ranked effect across matching rules is the
 	// pack's effect; an empty pack yields `allow`.
-	const winning = outcomes.reduce<{ rule: PolicyRule; outcome: PolicyRuleOutcome } | null>(
-		(worst, current) => {
-			if (worst === null) return current;
-			return rank(current.outcome.effect) < rank(worst.outcome.effect) ? current : worst;
-		},
-		null,
-	);
+	const winning = outcomes.reduce<{
+		rule: PolicyRule;
+		outcome: PolicyRuleOutcome;
+	} | null>((worst, current) => {
+		if (worst === null) return current;
+		return rank(current.outcome.effect) < rank(worst.outcome.effect)
+			? current
+			: worst;
+	}, null);
 
 	const effect: PolicyEffect = winning?.outcome.effect ?? "allow";
 	const reason =
 		winning?.outcome.reason ??
 		`permitted by policy pack ${pack.id}@${pack.version} (no rule denied)`;
-	const obligations = outcomes.flatMap(({ outcome }) => outcome.obligations ?? []);
-	const violations = outcomes.flatMap(({ outcome }) => outcome.violations ?? []);
-	const policyIds = matched.length > 0 ? matched.map((rule) => rule.id) : [`${pack.id}:default-allow`];
+	const obligations = outcomes.flatMap(
+		({ outcome }) => outcome.obligations ?? [],
+	);
+	const violations = outcomes.flatMap(
+		({ outcome }) => outcome.violations ?? [],
+	);
+	const policyIds =
+		matched.length > 0
+			? matched.map((rule) => rule.id)
+			: [`${pack.id}:default-allow`];
 
 	const decision = createDecision(request, {
 		effect,

@@ -40,7 +40,16 @@ import {
 // examples/hello-bindle/deploy/vercel from either the built or the source module.
 function defaultTemplateDir(): string {
 	const here = dirname(fileURLToPath(import.meta.url));
-	return join(here, "..", "..", "..", "examples", "hello-bindle", "deploy", "vercel");
+	return join(
+		here,
+		"..",
+		"..",
+		"..",
+		"examples",
+		"hello-bindle",
+		"deploy",
+		"vercel",
+	);
 }
 
 // Walk the committed artifact tree and produce the Vercel inline-files payload:

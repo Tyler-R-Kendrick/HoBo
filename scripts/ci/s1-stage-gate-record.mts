@@ -74,7 +74,9 @@ function assertAcceptanceRecord(): string[] {
 	}
 	for (const check of CHECKS) {
 		if (!content.includes(check.checkId)) {
-			problems.push(`acceptance record does not mention gate check ${check.checkId}`);
+			problems.push(
+				`acceptance record does not mention gate check ${check.checkId}`,
+			);
 		}
 	}
 	return problems;

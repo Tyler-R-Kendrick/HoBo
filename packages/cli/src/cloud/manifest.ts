@@ -11,7 +11,9 @@ import { parseManifest, type ManifestV1 } from "@hobo/bindles";
 
 export const BINDLE_MANIFEST_FILE = "hobo.bindle.json";
 
-export async function loadProjectManifest(projectDir: string): Promise<ManifestV1 | null> {
+export async function loadProjectManifest(
+	projectDir: string,
+): Promise<ManifestV1 | null> {
 	let raw: string;
 	try {
 		raw = await readFile(path.join(projectDir, BINDLE_MANIFEST_FILE), "utf8");
@@ -32,6 +34,9 @@ export async function loadProjectManifest(projectDir: string): Promise<ManifestV
 }
 
 export function deploymentIdFor(projectDir: string): string {
-	const base = path.basename(projectDir).toLowerCase().replace(/[^a-z0-9-]/g, "-");
+	const base = path
+		.basename(projectDir)
+		.toLowerCase()
+		.replace(/[^a-z0-9-]/g, "-");
 	return base.length > 0 ? base : "hobo-deployment";
 }

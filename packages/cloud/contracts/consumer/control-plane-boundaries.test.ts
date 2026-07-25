@@ -49,7 +49,9 @@ function loadPact(name: string) {
 const fixturesDir = join(packageRoot, "../../test/fixtures");
 function helloBindle(): ManifestV1 {
 	return parseManifest(
-		JSON.parse(readFileSync(join(fixturesDir, "hello-bindle.manifest.json"), "utf8")),
+		JSON.parse(
+			readFileSync(join(fixturesDir, "hello-bindle.manifest.json"), "utf8"),
+		),
 	);
 }
 function registry() {
@@ -68,7 +70,8 @@ function mockIac(opts: { failApply?: string[] } = {}): IacProvider {
 			return { summary: `preview ${p.resourceId}`, changes: 1 };
 		},
 		async apply(p) {
-			if (fail.has(p.resourceId)) throw new Error(`apply failed for ${p.resourceId}`);
+			if (fail.has(p.resourceId))
+				throw new Error(`apply failed for ${p.resourceId}`);
 			return { endpoint: `${p.resourceId}.local` };
 		},
 		async destroy() {},
@@ -77,14 +80,25 @@ function mockIac(opts: { failApply?: string[] } = {}): IacProvider {
 		},
 	};
 }
-function orchestratorDeps(store: RuntimeLocalEventStore, executor: Executor): OrchestratorDeps {
-	return { store, actorHost: createInMemoryActorHost(), executor, broker: createInProcessCredentialBroker() };
+function orchestratorDeps(
+	store: RuntimeLocalEventStore,
+	executor: Executor,
+): OrchestratorDeps {
+	return {
+		store,
+		actorHost: createInMemoryActorHost(),
+		executor,
+		broker: createInProcessCredentialBroker(),
+	};
 }
 
 let stores: RuntimeLocalEventStore[] = [];
 function freshStore(): RuntimeLocalEventStore {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-cloud-pact-"));
-	const s = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const s = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	stores.push(s);
 	return s;
 }
@@ -120,7 +134,11 @@ describe("ResourceDefinitionCatalog boundary (consumer contract)", () => {
 		const pact = loadPact("resource-definition-catalog.pact.json");
 		expect(pact.provider.name).toBe("ResourceDefinitionCatalog");
 		const body = pact.interactions[0].response.body;
-		expect(Object.keys(body).sort()).toEqual(["candidates", "catalogHash", "winner"]);
+		expect(Object.keys(body).sort()).toEqual([
+			"candidates",
+			"catalogHash",
+			"winner",
+		]);
 
 		const reg = registry();
 		const intent: ResourceIntent = {
@@ -179,7 +197,8 @@ describe("EventStoreActorHost boundary (consumer contract)", () => {
 		expect(result.status).toBe("planned");
 
 		const events: EventEnvelope[] = [];
-		for await (const e of store.read(deploymentStreamId("cp-1"))) events.push(e);
+		for await (const e of store.read(deploymentStreamId("cp-1")))
+			events.push(e);
 		expect(events[0]?.type).toBe("deployment.Requested");
 		// Per-stream monotonic seq is the single-writer guarantee.
 		expect(events.map((e) => e.seq)).toEqual([1, 2, 3, 4, 5]);
@@ -190,7 +209,9 @@ describe("DeploymentSetStore boundary (consumer contract)", () => {
 	it("content-addresses the plan as an immutable set ref", () => {
 		const pact = loadPact("deployment-set-store.pact.json");
 		expect(pact.provider.name).toBe("DeploymentSetStore");
-		expect(pact.interactions[0].response.body.appliedSetRef).toMatch(/^set:.*@sha256:/);
+		expect(pact.interactions[0].response.body.appliedSetRef).toMatch(
+			/^set:.*@sha256:/,
+		);
 
 		const result = plan(helloBindle(), { deploymentId: "cp-1" }, registry());
 		if (!result.ok) throw new Error("expected plan");
@@ -240,7 +261,8 @@ describe("DeploymentSagaOrchestrator boundary (consumer contract)", () => {
 		expect(result.status).toBe(body.status);
 		expect(result.provisioned).toEqual(body.provisioned);
 		const events: EventEnvelope[] = [];
-		for await (const e of store.read(deploymentStreamId("shop-1"))) events.push(e);
+		for await (const e of store.read(deploymentStreamId("shop-1")))
+			events.push(e);
 		expect(events.at(-1)?.type).toBe(body.terminalEvent);
 	});
 
@@ -250,7 +272,10 @@ describe("DeploymentSagaOrchestrator boundary (consumer contract)", () => {
 
 		const store = freshStore();
 		const result = await runOrchestrator(
-			orchestratorDeps(store, createInProcessExecutor({ iac: mockIac({ failApply: ["web"] }) })),
+			orchestratorDeps(
+				store,
+				createInProcessExecutor({ iac: mockIac({ failApply: ["web"] }) }),
+			),
 			loadPlan(),
 			"shop-rollback",
 			{ tenant: "t", actor, noGoThresholdResources: new Set(["web"]) },
@@ -280,19 +305,34 @@ describe("CredentialAuditProjection boundary (consumer contract)", () => {
 						grantId: "grant-cf-deploy",
 						svidSubject: "spiffe://yard/tenant-a/agent/deployer",
 						tokenRef: "tokenref://broker/grant/grant-cf-deploy",
-						scope: { port: "compute", resource: "hello-bindle", action: "deploy" },
+						scope: {
+							port: "compute",
+							resource: "hello-bindle",
+							action: "deploy",
+						},
 					},
 				},
 				{
 					type: "token.Used",
-					data: { grantId: "grant-cf-deploy", svidSubject: "spiffe://yard/tenant-a/agent/deployer" },
+					data: {
+						grantId: "grant-cf-deploy",
+						svidSubject: "spiffe://yard/tenant-a/agent/deployer",
+					},
 				},
 			],
-			{ expectedSeq: 0, actor: svcActor, tenant: "tenant-a", correlationId: CORRELATION },
+			{
+				expectedSeq: 0,
+				actor: svcActor,
+				tenant: "tenant-a",
+				correlationId: CORRELATION,
+			},
 		);
 
 		// Replayable: rebuild-from-zero reconstructs the grant/use trail from the log.
-		const rebuilt = await credentialAuditProjection.rebuildFromZero(store, CRED_STREAM);
+		const rebuilt = await credentialAuditProjection.rebuildFromZero(
+			store,
+			CRED_STREAM,
+		);
 		const row = credentialAuditProjection.get(rebuilt, CORRELATION);
 		expect(row).toBeDefined();
 		expect(row?.timeline.map((e) => e.type)).toEqual(body.tokenTrail);
@@ -326,7 +366,12 @@ describe("ExecutorSandbox boundary (consumer contract)", () => {
 				stackName: "tenant-a/deploy-1/api",
 			},
 			broker.issue({
-				scope: credentialScope({ tenant: "tenant-a", resourceId: "api", driver: "pulumi", action: "apply" }),
+				scope: credentialScope({
+					tenant: "tenant-a",
+					resourceId: "api",
+					driver: "pulumi",
+					action: "apply",
+				}),
 			}),
 		);
 		expect(result.status).toBe(body.status);
@@ -351,7 +396,12 @@ describe("ExecutorSandbox boundary (consumer contract)", () => {
 				stackName: "tenant-a/deploy-1/api",
 			},
 			broker.issue({
-				scope: credentialScope({ tenant: "tenant-a", resourceId: "api", driver: "pulumi", action: "apply" }),
+				scope: credentialScope({
+					tenant: "tenant-a",
+					resourceId: "api",
+					driver: "pulumi",
+					action: "apply",
+				}),
 			}),
 			{ ambientEnv: { AWS_ACCESS_KEY_ID: "AKIAEXAMPLE" } },
 		);

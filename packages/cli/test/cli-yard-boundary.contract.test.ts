@@ -21,7 +21,11 @@ import {
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 
-import { createFixtureSession, createYardClient, type YardRuntime } from "../src/index.js";
+import {
+	createFixtureSession,
+	createYardClient,
+	type YardRuntime,
+} from "../src/index.js";
 
 // Consumer pact pinning the CLI <-> Yard (@hobo/cloud) boundary. The CLI's cloud
 // verbs share one call path (the yard-client seam); this contract asserts that
@@ -97,8 +101,14 @@ function inMemoryIac(): IacProvider {
 }
 
 function makeRuntime(): YardRuntime {
-	const dir = join(tmpdir(), `hobo-cli-pact-${Math.random().toString(36).slice(2)}`);
-	const store = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const dir = join(
+		tmpdir(),
+		`hobo-cli-pact-${Math.random().toString(36).slice(2)}`,
+	);
+	const store = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	stores.push(store);
 	return {
 		store,
@@ -109,8 +119,13 @@ function makeRuntime(): YardRuntime {
 	};
 }
 
-function interaction(pact: { interactions: Interaction[] }, description: string): Interaction {
-	const found = pact.interactions.find((entry) => entry.description === description);
+function interaction(
+	pact: { interactions: Interaction[] },
+	description: string,
+): Interaction {
+	const found = pact.interactions.find(
+		(entry) => entry.description === description,
+	);
 	if (!found) throw new Error(`missing pact interaction: ${description}`);
 	return found;
 }
@@ -130,9 +145,14 @@ describe("CLI <-> Yard boundary pact", () => {
 	it("hobo plan previews the DeploymentPlan without side-effect events", async () => {
 		const runtime = makeRuntime();
 		const client = createYardClient(runtime);
-		const rendered = client.plan(parseManifest(HELLO_BINDLE), { deploymentId: "pact-plan" });
+		const rendered = client.plan(parseManifest(HELLO_BINDLE), {
+			deploymentId: "pact-plan",
+		});
 
-		const expected = interaction(pact, pact.interactions[0]!.description).response;
+		const expected = interaction(
+			pact,
+			pact.interactions[0]!.description,
+		).response;
 		expect(rendered.ok).toBe(true);
 		if (!rendered.ok) return;
 		expect(rendered.dependencyOrder).toEqual(expected.dependencyOrder);
@@ -152,7 +172,10 @@ describe("CLI <-> Yard boundary pact", () => {
 			session,
 		});
 
-		const expected = interaction(pact, pact.interactions[1]!.description).response;
+		const expected = interaction(
+			pact,
+			pact.interactions[1]!.description,
+		).response;
 		expect(result.status).toBe(expected.status);
 		if (result.status === "rejected") throw new Error("unexpected rejection");
 		expect(result.provisioned).toEqual(expected.provisioned);
@@ -167,9 +190,15 @@ describe("CLI <-> Yard boundary pact", () => {
 		const session = createFixtureSession({ subject: "pact" });
 		const bindle = parseManifest(HELLO_BINDLE);
 		await client.up(bindle, { deploymentId: "pact-down", session });
-		const result = await client.down(bindle, { deploymentId: "pact-down", session });
+		const result = await client.down(bindle, {
+			deploymentId: "pact-down",
+			session,
+		});
 
-		const expected = interaction(pact, pact.interactions[2]!.description).response;
+		const expected = interaction(
+			pact,
+			pact.interactions[2]!.description,
+		).response;
 		expect(result.status).toBe(expected.status);
 		expect([...result.destroyed].sort()).toEqual(expected.destroyed);
 	});
@@ -177,12 +206,19 @@ describe("CLI <-> Yard boundary pact", () => {
 	it("rejects an unsatisfiable manifest with machine-readable remediation", () => {
 		const runtime = makeRuntime();
 		const client = createYardClient(runtime);
-		const rendered = client.plan(parseManifest(UNSATISFIABLE), { deploymentId: "pact-reject" });
+		const rendered = client.plan(parseManifest(UNSATISFIABLE), {
+			deploymentId: "pact-reject",
+		});
 
-		const expected = interaction(pact, pact.interactions[3]!.description).response;
+		const expected = interaction(
+			pact,
+			pact.interactions[3]!.description,
+		).response;
 		expect(rendered.ok).toBe(false);
 		if (rendered.ok) return;
-		expect(rendered.remediations[0]?.resource).toBe(expected.remediationResource);
+		expect(rendered.remediations[0]?.resource).toBe(
+			expected.remediationResource,
+		);
 		expect(rendered.remediations[0]?.code).toBe(expected.remediationCode);
 	});
 });

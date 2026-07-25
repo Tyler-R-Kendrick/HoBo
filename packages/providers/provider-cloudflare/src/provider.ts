@@ -3,7 +3,10 @@ import {
 	INITIAL_CAPABILITY_PORTS,
 	type InitialCapabilityPort,
 } from "./equivalence.js";
-import { CLOUDFLARE_PROVIDER_ID, publishCapabilityManifest } from "./manifest.js";
+import {
+	CLOUDFLARE_PROVIDER_ID,
+	publishCapabilityManifest,
+} from "./manifest.js";
 import { realizeResourcePlan } from "./realize.js";
 import type {
 	Capability,
@@ -22,11 +25,12 @@ export const DEFAULT_COLOS = ["WNAM", "ENAM", "WEUR"];
 
 // Marginal-cost facts per equivalence class, aligned with the published
 // cost.json bundle in manifest.ts.
-const COST_FACTS: Record<InitialCapabilityPort, { sku: string; unit: string }> = {
-	"web/service": { sku: "cloudflare.workers.request", unit: "request" },
-	kv: { sku: "cloudflare.kv.read", unit: "operation" },
-	objectStore: { sku: "cloudflare.r2.storage.gb-month", unit: "GB-month" },
-};
+const COST_FACTS: Record<InitialCapabilityPort, { sku: string; unit: string }> =
+	{
+		"web/service": { sku: "cloudflare.workers.request", unit: "request" },
+		kv: { sku: "cloudflare.kv.read", unit: "operation" },
+		objectStore: { sku: "cloudflare.r2.storage.gb-month", unit: "GB-month" },
+	};
 
 function makeCapability(classKey: InitialCapabilityPort): Capability {
 	const mapping = EQUIVALENCE_CLASSES[classKey];
@@ -40,8 +44,12 @@ function makeCapability(classKey: InitialCapabilityPort): Capability {
 			if (req.port !== port) {
 				return { kind: "none" };
 			}
-			const missing = (req.features ?? []).filter((feature) => !features.includes(feature));
-			return missing.length === 0 ? { kind: "full" } : { kind: "partial", missing };
+			const missing = (req.features ?? []).filter(
+				(feature) => !features.includes(feature),
+			);
+			return missing.length === 0
+				? { kind: "full" }
+				: { kind: "partial", missing };
 		},
 		estimateCost(_req: PortRequest): CostSignal {
 			return {
@@ -65,10 +73,14 @@ export interface CloudflareProviderOptions {
 	colos?: string[];
 }
 
-export function createCloudflareProvider(options: CloudflareProviderOptions = {}): CloudProvider {
+export function createCloudflareProvider(
+	options: CloudflareProviderOptions = {},
+): CloudProvider {
 	const colos = options.colos ?? DEFAULT_COLOS;
 	const published = publishCapabilityManifest({ colos });
-	const capabilities = INITIAL_CAPABILITY_PORTS.map((classKey) => makeCapability(classKey));
+	const capabilities = INITIAL_CAPABILITY_PORTS.map((classKey) =>
+		makeCapability(classKey),
+	);
 
 	return {
 		id: CLOUDFLARE_PROVIDER_ID,
@@ -81,9 +93,15 @@ export function createCloudflareProvider(options: CloudflareProviderOptions = {}
 			return {
 				providerId: CLOUDFLARE_PROVIDER_ID,
 				published,
-				capabilities: JSON.parse(published["/.well-known/capability-manifest/capabilities.json"]),
-				auth: JSON.parse(published["/.well-known/capability-manifest/auth.json"]),
-				cost: JSON.parse(published["/.well-known/capability-manifest/cost.json"]),
+				capabilities: JSON.parse(
+					published["/.well-known/capability-manifest/capabilities.json"],
+				),
+				auth: JSON.parse(
+					published["/.well-known/capability-manifest/auth.json"],
+				),
+				cost: JSON.parse(
+					published["/.well-known/capability-manifest/cost.json"],
+				),
 			};
 		},
 		client(port: PortKind, outputs: Outputs): ProviderClient {

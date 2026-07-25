@@ -47,7 +47,12 @@ function mockFetch(
 ): { fetch: VercelFetch; calls: RecordedCall[] } {
 	const calls: RecordedCall[] = [];
 	const fetch: VercelFetch = async (url, init) => {
-		calls.push({ url, method: init.method, headers: init.headers, body: init.body });
+		calls.push({
+			url,
+			method: init.method,
+			headers: init.headers,
+			body: init.body,
+		});
 		const response: VercelFetchResponse = {
 			ok: status >= 200 && status < 300,
 			status,
@@ -86,7 +91,11 @@ describe("createVercelClient.createDeployment (mocked fetch, no network)", () =>
 
 		const indexHtml = readFileSync(join(ARTIFACT_DIR, "index.html"));
 		const files = [
-			{ file: "index.html", data: indexHtml.toString("base64"), encoding: "base64" as const },
+			{
+				file: "index.html",
+				data: indexHtml.toString("base64"),
+				encoding: "base64" as const,
+			},
 		];
 
 		const result = await client.createDeployment({

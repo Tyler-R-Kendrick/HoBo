@@ -13,12 +13,22 @@ import {
 	realizeResourcePlan,
 } from "../src/index.js";
 
-const contractsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "contracts");
+const contractsDir = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"contracts",
+);
 const boundaryPact = JSON.parse(
-	readFileSync(join(contractsDir, "provider-cloudflare-boundary.pact.json"), "utf8"),
+	readFileSync(
+		join(contractsDir, "provider-cloudflare-boundary.pact.json"),
+		"utf8",
+	),
 );
 const realizePact = JSON.parse(
-	readFileSync(join(contractsDir, "provider-cloudflare-realize-emission.pact.json"), "utf8"),
+	readFileSync(
+		join(contractsDir, "provider-cloudflare-realize-emission.pact.json"),
+		"utf8",
+	),
 );
 
 describe("ProviderCloudflareBoundary pact (consumer contract)", () => {

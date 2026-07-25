@@ -28,7 +28,10 @@ const DATA_PORT_RULES: ReadonlyArray<{
 	},
 ];
 
-function lowerDataPort(port: string): { capabilityPort: string; require: string[] } {
+function lowerDataPort(port: string): {
+	capabilityPort: string;
+	require: string[];
+} {
 	for (const rule of DATA_PORT_RULES) {
 		if (rule.match(port)) {
 			return { capabilityPort: rule.capabilityPort, require: rule.require };

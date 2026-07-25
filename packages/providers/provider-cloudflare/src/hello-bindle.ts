@@ -91,7 +91,9 @@ export interface HelloBindlePlanOptions {
 	colo?: string;
 }
 
-export function createHelloBindlePlan(options: HelloBindlePlanOptions = {}): HelloBindlePlan {
+export function createHelloBindlePlan(
+	options: HelloBindlePlanOptions = {},
+): HelloBindlePlan {
 	const colo = options.colo ?? "WNAM";
 	return {
 		id: options.id ?? "hello-bindle-cloudflare",
@@ -116,8 +118,16 @@ export function createHelloBindlePlan(options: HelloBindlePlanOptions = {}): Hel
 					target: "wasm-component",
 				},
 				binds: [
-					{ import: "wasi:blobstore/blobstore", providerResourceId: "assets", capability: "objectStore" },
-					{ import: "hobo:kv/store", providerResourceId: "sessions", capability: "kv" },
+					{
+						import: "wasi:blobstore/blobstore",
+						providerResourceId: "assets",
+						capability: "objectStore",
+					},
+					{
+						import: "hobo:kv/store",
+						providerResourceId: "sessions",
+						capability: "kv",
+					},
 				],
 			},
 			{

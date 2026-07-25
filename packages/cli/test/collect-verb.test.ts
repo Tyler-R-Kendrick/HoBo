@@ -10,7 +10,11 @@ import {
 	type CollectionTarget,
 } from "@hobo/bindles";
 
-import { COLLECT_GOLDEN_FILE, createCollectCommand, createHoboCli } from "../src/index.js";
+import {
+	COLLECT_GOLDEN_FILE,
+	createCollectCommand,
+	createHoboCli,
+} from "../src/index.js";
 
 // S1-20: `hobo collect` runs run-to-collect on the project Bindle and prints /
 // emits the manifest IR, with --check failing on drift against the committed
@@ -102,7 +106,10 @@ describe("hobo collect prints the manifest IR", () => {
 	it("falls back to the shell stub when no target is injected", async () => {
 		await withProject(async (cwd) => {
 			const result = await createHoboCli().run(["collect", "--json"], { cwd });
-			const envelope = JSON.parse(result.stdout) as { status: string; code: string };
+			const envelope = JSON.parse(result.stdout) as {
+				status: string;
+				code: string;
+			};
 			expect(envelope.status).toBe("not_implemented");
 			expect(envelope.code).toBe("HOBO_CLI_STUB");
 		});

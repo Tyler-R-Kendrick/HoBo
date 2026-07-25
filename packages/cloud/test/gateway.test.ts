@@ -30,7 +30,10 @@ const HELLO_BINDLE_PLAN_HASH =
 let stores: RuntimeLocalEventStore[] = [];
 function freshStore(): RuntimeLocalEventStore {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-cloud-"));
-	const s = createRuntimeLocalEventStore({ dataDir: dir, clock: createManualClock() });
+	const s = createRuntimeLocalEventStore({
+		dataDir: dir,
+		clock: createManualClock(),
+	});
 	stores.push(s);
 	return s;
 }
@@ -41,7 +44,10 @@ afterEach(() => {
 
 function fixture(name: string): unknown {
 	return JSON.parse(
-		readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), "utf8"),
+		readFileSync(
+			fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),
+			"utf8",
+		),
 	);
 }
 function helloBindle(): ManifestV1 {
@@ -85,7 +91,10 @@ describe("Gateway: Deploy command -> events -> DeploymentView projection", () =>
 			"deployment.Planned",
 		]);
 
-		const view = await deploymentViewProjection.rebuildFromZero(store, streamId);
+		const view = await deploymentViewProjection.rebuildFromZero(
+			store,
+			streamId,
+		);
 		const row = deploymentViewProjection.get(view, "hello-1");
 		expect(row?.status).toBe("planned");
 		expect(row?.planHash).toBe(HELLO_BINDLE_PLAN_HASH);
@@ -94,7 +103,11 @@ describe("Gateway: Deploy command -> events -> DeploymentView projection", () =>
 			"service",
 			"sessions",
 		]);
-		expect(row?.plan?.dependencyOrder).toEqual(["assets", "sessions", "service"]);
+		expect(row?.plan?.dependencyOrder).toEqual([
+			"assets",
+			"sessions",
+			"service",
+		]);
 	});
 
 	it("rebuilds the projection from zero byte-identically to the live fold", async () => {
@@ -113,7 +126,10 @@ describe("Gateway: Deploy command -> events -> DeploymentView projection", () =>
 			live = deploymentViewProjection.fold(events.slice(0, i));
 		}
 		// Rebuild: drop the sink, replay the whole stream from the log.
-		const rebuilt = await deploymentViewProjection.rebuildFromZero(store, streamId);
+		const rebuilt = await deploymentViewProjection.rebuildFromZero(
+			store,
+			streamId,
+		);
 
 		expect(JSON.stringify(rebuilt)).toBe(JSON.stringify(live));
 		expect(rebuilt.seq).toBe(events.length);
@@ -149,10 +165,15 @@ describe("Gateway: unsatisfiable deploy -> deployment.PlanRejected projection", 
 			"deployment.PlanRejected",
 		]);
 
-		const view = await deploymentViewProjection.rebuildFromZero(store, streamId);
+		const view = await deploymentViewProjection.rebuildFromZero(
+			store,
+			streamId,
+		);
 		const row = deploymentViewProjection.get(view, "reject-9");
 		expect(row?.status).toBe("rejected");
 		expect(row?.rejection?.remediations[0]?.resource).toBe("ledger");
-		expect(row?.rejection?.remediations[0]?.code).toBe("capability.port-unavailable");
+		expect(row?.rejection?.remediations[0]?.code).toBe(
+			"capability.port-unavailable",
+		);
 	});
 });

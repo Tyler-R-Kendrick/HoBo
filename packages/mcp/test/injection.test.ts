@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { INJECTION_CORPUS, INJECTION_TARGET_TOOLS } from "../src/injection-corpus.js";
+import {
+	INJECTION_CORPUS,
+	INJECTION_TARGET_TOOLS,
+} from "../src/injection-corpus.js";
 // The longest alphanumeric run in a payload survives JSON.stringify unescaped, so
 // it is a robust witness that the injected text was recorded verbatim.
 function longestAlnumRun(text: string): string {
-	return (text.match(/[A-Za-z0-9]+/g) ?? [""]).reduce((a, b) => (b.length > a.length ? b : a), "");
+	return (text.match(/[A-Za-z0-9]+/g) ?? [""]).reduce(
+		(a, b) => (b.length > a.length ? b : a),
+		"",
+	);
 }
 import { createHoboMcpServer } from "../src/server.js";
 import {
@@ -59,7 +65,9 @@ describe("prompt-injection corpus fails closed", () => {
 					// The instruction is recorded but powerless.
 					expect(observation.widened).toBe(false);
 					expect(observation.authorizedToolsAfter).toEqual(baseline);
-					expect(observation.recordedText).toContain(longestAlnumRun(injection.payload));
+					expect(observation.recordedText).toContain(
+						longestAlnumRun(injection.payload),
+					);
 				}
 
 				// Invariant after every case: authority is unchanged...
@@ -71,7 +79,9 @@ describe("prompt-injection corpus fails closed", () => {
 					expect(attempt.ok).toBe(false);
 					// Either out-of-scope for a real verb, or not a derived tool at all —
 					// both are fail-closed denials, never an execution.
-					expect(["MCP_SCOPE_DENIED", "MCP_UNKNOWN_TOOL"]).toContain(attempt.code);
+					expect(["MCP_SCOPE_DENIED", "MCP_UNKNOWN_TOOL"]).toContain(
+						attempt.code,
+					);
 					expect(attempt.output).toBeNull();
 				}
 			}

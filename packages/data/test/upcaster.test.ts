@@ -41,11 +41,9 @@ describe("upcaster registry", () => {
 
 	it("round-trips: a v1 event folds identically to its current-version form", () => {
 		const registry = createUpcasterRegistry();
-		registry.register(
-			"order.Placed",
-			1,
-			(data: { cents: number }) => ({ totalCents: data.cents }),
-		);
+		registry.register("order.Placed", 1, (data: { cents: number }) => ({
+			totalCents: data.cents,
+		}));
 
 		const spec = {
 			initialState: { totalCents: 0 } as { totalCents: number },

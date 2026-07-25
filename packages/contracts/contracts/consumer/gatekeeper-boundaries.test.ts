@@ -6,7 +6,11 @@ import { describe, expect, it } from "vitest";
 import { evaluateCanDeploy } from "../../src/can-deploy.js";
 import { createBoundaryContract } from "../../src/contract-ir.js";
 import { evaluateGatekeeper } from "../../src/gatekeeper.js";
-import { definePolicyRule, evaluatePolicyPack, type PolicyPack } from "../../src/policy-pack.js";
+import {
+	definePolicyRule,
+	evaluatePolicyPack,
+	type PolicyPack,
+} from "../../src/policy-pack.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -90,12 +94,17 @@ describe("Gatekeeper -> Policy Engine consumer contract", () => {
 			rules: [
 				definePolicyRule({
 					id: "prod-deploy-requires-approval",
-					when: (candidate) => candidate.action === interaction.request.body.action,
+					when: (candidate) =>
+						candidate.action === interaction.request.body.action,
 					decide: () => ({
 						effect: "require-approval",
 						reason: "production deploy requires approval",
 						obligations: [
-							{ id: "obl:approval:checkout-prod", kind: "require-approval", satisfied: false },
+							{
+								id: "obl:approval:checkout-prod",
+								kind: "require-approval",
+								satisfied: false,
+							},
 						],
 					}),
 				}),
@@ -135,13 +144,25 @@ describe("Gatekeeper -> Obligation Engine + Cost/Quota consumer contracts", () =
 				plan: { objective: "cost", resources: [] },
 				contracts: [compatibleCandidate],
 			},
-			obligations: [{ id: "obl:canary:checkout-prod", kind: "require-canary", satisfied: true }],
-			costQuota: { quota: costPact.interactions[0].request.body.quota, used: 7, limit: 20 },
+			obligations: [
+				{
+					id: "obl:canary:checkout-prod",
+					kind: "require-canary",
+					satisfied: true,
+				},
+			],
+			costQuota: {
+				quota: costPact.interactions[0].request.body.quota,
+				used: 7,
+				limit: 20,
+			},
 		});
 
 		// obligation boundary: recorded blocked:false
 		expect(obligationPact.interactions[0].response.body.blocked).toBe(false);
-		expect(result.obligations.every((obligation) => obligation.satisfied)).toBe(true);
+		expect(result.obligations.every((obligation) => obligation.satisfied)).toBe(
+			true,
+		);
 		// cost boundary: recorded ok:true with numeric remaining/limit
 		expect(result.costQuota.ok).toBe(true);
 		expect(typeof result.costQuota.remaining).toBe("number");

@@ -48,6 +48,16 @@ importers:
         specifier: ^4.1.13
         version: 4.4.3
 
+  examples/ci-runner-balancing:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.2
+        version: 24.13.2
+
   examples/hello-bindle:
     dependencies:
       '@bufbuild/protobuf':

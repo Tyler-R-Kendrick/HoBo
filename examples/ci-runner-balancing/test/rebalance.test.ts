@@ -1,0 +1,183 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { create } from "@bufbuild/protobuf";
+import { describe, expect, it } from "vitest";
+
+import {
+	DecisionKind,
+	UsageSnapshotSchema,
+} from "../src/_generated/runner_balancing_pb.js";
+import { parseUsageSnapshots, RegistryParseError } from "../src/parse.js";
+import {
+	type RebalanceDeps,
+	runRebalance,
+	type UsageSource,
+} from "../src/rebalance.js";
+import { DEFAULT_REGISTRY_DOCUMENT } from "../src/registry.js";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+function memoryDeps(options: {
+	current?: Record<string, string>;
+	usage?: Array<{
+		providerId: string;
+		spendUsd?: number;
+		unitsUsed?: number;
+		known?: boolean;
+	}>;
+}): { deps: RebalanceDeps; writes: Array<{ name: string; value: string }> } {
+	const current = new Map(Object.entries(options.current ?? {}));
+	const writes: Array<{ name: string; value: string }> = [];
+	const usageSources: UsageSource[] = (options.usage ?? []).map((entry) => ({
+		providerId: entry.providerId,
+		read: () =>
+			Promise.resolve(
+				create(UsageSnapshotSchema, {
+					providerId: entry.providerId,
+					spendUsd: entry.spendUsd ?? 0,
+					unitsUsed: entry.unitsUsed ?? 0,
+					known: entry.known ?? true,
+					source: "test",
+				}),
+			),
+	}));
+	return {
+		deps: {
+			variables: {
+				get: (name) => Promise.resolve(current.get(name)),
+				set: (name, value) => {
+					current.set(name, value);
+					writes.push({ name, value });
+					return Promise.resolve();
+				},
+			},
+			usageSources,
+		},
+		writes,
+	};
+}
+
+describe("runRebalance", () => {
+	it("plan mode decides without writing and pins the ledger seq everywhere", async () => {
+		const { deps, writes } = memoryDeps({
+			usage: [{ providerId: "github_hosted", unitsUsed: 100 }],
+		});
+		const result = await runRebalance(deps, {
+			registryDocument: DEFAULT_REGISTRY_DOCUMENT,
+			mode: "plan",
+			requestedBy: "test",
+			seq: "seq-9",
+		});
+		expect(writes).toHaveLength(0);
+		expect(result.applied).toHaveLength(0);
+		expect(result.plan.ledgerSeq).toBe("seq-9");
+		for (const decision of result.plan.decisions) {
+			expect(decision.ledgerSeq).toBe("seq-9");
+		}
+		expect(
+			result.events.filter((event) => event.family === "meter.UsageRecorded"),
+		).toHaveLength(1);
+		expect(
+			result.events.filter((event) => event.family === "dispatch.Decided"),
+		).toHaveLength(result.plan.decisions.length);
+	});
+
+	it("apply mode patches variables for flips and records exec.Succeeded", async () => {
+		const { deps, writes } = memoryDeps({
+			usage: [{ providerId: "github_hosted", unitsUsed: 100 }],
+		});
+		const result = await runRebalance(deps, {
+			registryDocument: DEFAULT_REGISTRY_DOCUMENT,
+			mode: "apply",
+			requestedBy: "test",
+			seq: "seq-10",
+		});
+		// Unset variable adopts the eligible cheapest rung: GitHub-hosted free tier.
+		expect(writes).toStrictEqual([
+			{ name: "HOBO_RUNNER_LINUX_SMALL", value: "ubuntu-latest" },
+		]);
+		expect(result.applied).toHaveLength(1);
+		expect(
+			result.events.some((event) => event.family === "exec.Succeeded"),
+		).toBe(true);
+	});
+
+	it("emits credit.Exhausted when a declared free tier has no headroom left", async () => {
+		const { deps } = memoryDeps({
+			usage: [{ providerId: "github_hosted", unitsUsed: 2400, spendUsd: 2.4 }],
+		});
+		const result = await runRebalance(deps, {
+			registryDocument: DEFAULT_REGISTRY_DOCUMENT,
+			mode: "plan",
+			requestedBy: "test",
+			seq: "seq-11",
+		});
+		expect(
+			result.events.some(
+				(event) =>
+					event.family === "credit.Exhausted" &&
+					event.payload.providerId === "github_hosted",
+			),
+		).toBe(true);
+	});
+
+	it("rejects a structurally broken registry document at the parse boundary", async () => {
+		const { deps } = memoryDeps({});
+		await expect(
+			runRebalance(deps, {
+				registryDocument: {
+					providers: [],
+					tracks: [
+						{
+							resource: "runner.linux.small",
+							variable: "X",
+							rungs: [{ value: "a", providerId: "ghost" }],
+						},
+					],
+					envelopes: [],
+				},
+				mode: "plan",
+				requestedBy: "test",
+				seq: "seq-12",
+			}),
+		).rejects.toBeInstanceOf(RegistryParseError);
+	});
+
+	it("replays the shipped free-credit-rotation fixture to the Blacksmith rung", async () => {
+		const fixture = JSON.parse(
+			await readFile(
+				path.join(HERE, "..", "fixtures", "free-credit-rotation.fixture.json"),
+				"utf8",
+			),
+		) as { current: Record<string, string>; usage: unknown; seq: string };
+		const snapshots = parseUsageSnapshots(fixture.usage);
+		expect(snapshots).toHaveLength(3);
+		const { deps } = memoryDeps({ current: fixture.current });
+		const result = await runRebalance(
+			{
+				...deps,
+				usageSources: snapshots.map((snapshot) => ({
+					providerId: snapshot.providerId,
+					read: () => Promise.resolve(snapshot),
+				})),
+			},
+			{
+				registryDocument: DEFAULT_REGISTRY_DOCUMENT,
+				mode: "plan",
+				requestedBy: "fixture",
+				seq: fixture.seq,
+			},
+		);
+		const decision = result.plan.decisions[0];
+		// GitHub's included minutes are exhausted (2200 > 2000) while
+		// Blacksmith still has free headroom: free credits win over GitHub's
+		// realtime billing even though GitHub is still under its envelope.
+		expect(decision?.kind).toBe(DecisionKind.FLIP);
+		expect(decision?.toValue).toBe("blacksmith-2vcpu-ubuntu-2404");
+		expect(decision?.usageKnown).toBe(true);
+		expect(
+			result.events.some((event) => event.family === "credit.Exhausted"),
+		).toBe(true);
+	});
+});

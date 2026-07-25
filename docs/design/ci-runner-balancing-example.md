@@ -1,0 +1,74 @@
+---
+type: Design
+title: "CI Runner Balancing Example & Dogfood Record"
+description: "Scope, decision policy, and dogfood rollout for the ci-runner-balancing reference example: credit-aware dispatch of CI jobs across GitHub-hosted, self-hosted, and third-party Actions runner providers."
+tags: [hobo, design]
+---
+
+# CI Runner Balancing Example & Dogfood Record
+
+**Example:** [`examples/ci-runner-balancing/`](../../examples/ci-runner-balancing/README.md) ·
+**Ancestry:** [`dispatcher-maximize-credits`](./proofs/hobo-363-dispatcher-maximize-credits/index.md),
+[`execution-host-providers`](./proofs/hobo-149-execution-host-providers/index.md),
+QuickDeployAI `monorepo/apps/ci-routing-control-plane` + `deployment-watcher` failover ·
+**Objective:** [ADR-0071](./adr/01-architecture-core.md#adr-0071) `maximize-credits`
+
+## What it is
+
+The first HoBo reference example that exercises the FinOps dispatch story on a
+real workload: this repository's own CI. Jobs consume a routed GitHub Actions
+variable (`runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}`),
+and a rebalance pass — command `RebalanceRequested`, actor over a pinned
+`CreditLedgerView@seq` projection, `dispatch.Decided` events, Actions-variable
+execution adapter — moves that variable across a provider registry seeded from
+[neysofu/awesome-github-actions-runners](https://github.com/neysofu/awesome-github-actions-runners)
+(Namespace, BuildJet, Actuated, WarpBuild, Blacksmith, Ubicloud, RunsOn,
+Cirun, Depot, Cirrus Runners) plus GitHub-hosted and self-hosted pools.
+
+Selection order is the product claim: **(a)** reported usage against each
+provider's budget envelope (soft cap = hysteresis basis: leave at ≥90%,
+return below 80%; verified spend at the hard cap blocks outright), then
+**(b)** effective marginal cost — `0` while free-tier headroom remains, the
+declared list price after — so free credits are exhausted before realtime
+billing starts, and the cheapest paid rate wins only after every free tier is
+drained. Third-party cost facts are `declared-unverified` ranking input;
+misdeclared facts degrade to declared min-cost ranking; exhausted candidates
+fail closed rather than guessing. Usage reads that cannot be verified mark
+their decisions `usage_known: false` — an unverified flip is never presented
+as spend-aware routing. `credit.Exhausted` and `meter.UsageRecorded` events
+make the ledger auditable; `exec.Succeeded` records each applied patch.
+
+## Dogfood rollout in this repository
+
+- Every non-matrix Linux job in `.github/workflows/` consumes
+  `vars.HOBO_RUNNER_LINUX_SMALL` with an `ubuntu-latest` expression fallback,
+  so CI is unchanged until the variable exists and never breaks if it is
+  deleted. OS-matrix jobs (stage gates, componentize) keep explicit images.
+- [`rebalance-runners.yml`](../../.github/workflows/rebalance-runners.yml)
+  runs the example daily (03:47 UTC) and on manual dispatch: plan mode
+  always, apply mode only when a `VARS_ADMIN_TOKEN` secret (PAT with
+  repo Variables write) is configured — the default `GITHUB_TOKEN` cannot
+  manage variables. The controller job stays pinned to `ubuntu-latest` so it
+  cannot be stranded by the variable it manages.
+- Third-party rungs are capability-guarded behind `HOBO_RB_ENABLE_<PROVIDER>`
+  repo variables and stay ineligible until the corresponding GitHub App or
+  runner pool is actually installed; with none enabled the dispatcher holds
+  `ubuntu-latest` (free for public repos), which is the correct cheapest
+  answer today. The failed-run classifier (spending limit, minutes quota,
+  runner unavailable, zero-step pickup failures) is the reactive backstop
+  that rotates off a blocked provider between scheduled passes.
+- The public-repo posture means GitHub-hosted spend reads as `0`; the
+  rebalance pass is still load-bearing evidence for the private-repo path via
+  the offline fixtures (`fixtures/free-credit-rotation.fixture.json` replays
+  GitHub's included minutes exhausting while Blacksmith headroom remains).
+
+## Scope boundary
+
+Reference and contract-proof artifact per
+[`example-apps.md`](./example-apps.md) — not a hosted service with an SLA. No
+billing (ADR-0064), no reservation-CAS double-spend seam (stays with the
+`dispatcher-reservation` proofs), no live provider SDKs beyond declared
+usage, no Windows/macOS/GPU tracks yet (they are additional `RunnerTrack`
+records). The router core never names providers; names live in registry data
+and adapters below the execution-adapter boundary
+([`finops-budget-routing-control-plane.md`](./finops-budget-routing-control-plane.md)).

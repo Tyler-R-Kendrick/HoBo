@@ -21,6 +21,7 @@ export interface DevCommandDeps {
 // back to the shell stub.
 export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 	return {
+		implemented: Boolean(deps.runtime),
 		run: async ({ context, emitProgress }) => {
 			const { runtime } = deps;
 			if (!runtime) {

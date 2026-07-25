@@ -1,7 +1,7 @@
 # HOBO-639 Azure Full Provider Capability Manifest Proof
 
 Executable acceptance evidence for the independent draft package at
-[`src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest`](../../../src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest/).
+[`src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest`](../../../../src/draft/technical-proofs/s4-03-provider-azure-full-capability-manifest/).
 
 ## Acceptance Mapping
 

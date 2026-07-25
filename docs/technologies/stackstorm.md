@@ -36,11 +36,11 @@ StackStorm is the **canonical OSS analog of HoBo's Pipelines + rule-based automa
 | Rule (if-then, match criteria) | Pipeline **rules** (e.g. *"new component from `main` → deploy `staging`"*; *"tag `v*` → open a prod Delta requiring approval"*) |
 | Action / Orquesta workflow | Pipeline **steps/jobs** (ordered via `needs` or parallel; tests, health-waits, external CI, notify) |
 | Inquiry / `core.ask` approval | **Approval gate** = a `createHook` resolved in the dashboard ([Plan 6](../design/ai-native-agent-auth.md#plan-06)) |
-| Execution history / audit log | **Every trigger/step/gate is an event** (`pipeline.Triggered`/`pipeline.StepCompleted`/`pipeline.GateApproved`, [Plan 11](../design/event-model.md#plan-11)) — replayable, auditable |
+| Execution history / audit log | **Every trigger/step/gate is an event** (`pipeline.Triggered`/`pipeline.StepCompleted`/`pipeline.GateApproved`, [Plan 11](../design/data-plane.md#plan-11)) — replayable, auditable |
 | Packs (versioned content) | Resource Packs / policy packs ([Plan 25](../design/platform-engineering.md#plan-25)/[Plan 29](../design/contracts-policy-flags.md#plan-29)) — versioned, signed, distributable |
 
 Where HoBo **diverges by design**:
-- **Event-sourced, not just logged.** StackStorm records execution history; HoBo makes the event log the *source of truth* ([Plan 11](../design/event-model.md#plan-11)), so a pipeline run is replayable and time-travelable, not merely auditable after the fact.
+- **Event-sourced, not just logged.** StackStorm records execution history; HoBo makes the event log the *source of truth* ([Plan 11](../design/data-plane.md#plan-11)), so a pipeline run is replayable and time-travelable, not merely auditable after the fact.
 - **Policy-gated, not RBAC-only.** HoBo's gates compose into one **policy decision model** with rich effects and **obligations** ("allow but require canary") ([Plan 29](../design/contracts-policy-flags.md#plan-29)) — richer than st2's allow/deny RBAC plus inline inquiries.
 - **Agent-drivable & MCP-native.** An `API/MCP` trigger lets agents drive pipelines first-class ([Plan 6](../design/ai-native-agent-auth.md#plan-06)/[Plan 7](../design/developer-experience.md#plan-07)), not just chat operators via ChatOps.
 - **Typed-TS authoring option.** HoBo weighs typed-TS `definePipeline(...)` vs YAML ([Plan 25](../design/platform-engineering.md#plan-25) iteration hooks), where st2 standardizes on YAML/Orquesta.

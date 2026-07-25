@@ -4,7 +4,7 @@
 
 ## Agent tooling
 The repo-local **sdlc** skill runs the full dev loop (brainstorm→plan→Linear→gated dispatch to `.claude/agents/` implementer/reviewer subagents in worktrees); **draft** governs proof material with gate-enforced artifacts (`proof.json`, executed examples, notebooks, cucumber features via `pnpm run test:behavior`).
-This repo is wired with nine agent tools for Claude Code, Cursor, and Codex (Superpowers also targets GitHub Copilot CLI) — see **[`AGENTS.md`](AGENTS.md)** for the full table and **[`docs/agent-tooling.md`](docs/agent-tooling.md)** for setup/keys/risks. Quick map:
+This repo is wired with the agent tools listed in the docs/agent-tooling.md table for Claude Code, Cursor, and Codex (Superpowers also targets GitHub Copilot CLI) — see **[`AGENTS.md`](AGENTS.md)** for the full table and **[`docs/agent-tooling.md`](docs/agent-tooling.md)** for setup/keys/risks. Quick map:
 - **improve** — `/improve` audits the repo and writes plans to `docs/plans/` (read-only).
 - **superpowers** (`obra/Superpowers`) — plugin: dev methodology (brainstorming, writing-plans, code-review, TDD, debugging); enabled repo-wide via `.claude/settings.json`; loads at session start.
 - **mattpocock/skills** — engineering disciplines incl. **`grill-with-docs`** (design interview → ADRs+glossary), `domain-modeling`, `codebase-design`, `tdd`; one-time `/setup-matt-pocock-skills` to configure.

@@ -181,7 +181,17 @@ ${verbRows}
 `;
 }
 
-export function verbHelpText(verbName: string): string {
+export interface VerbHelpOptions {
+	// Whether the current composition wires a real handler for this verb
+	// (registry.isImplemented). Omitted: the status line is left out — help
+	// rendered without registry knowledge must not claim either way.
+	readonly implemented?: boolean;
+}
+
+export function verbHelpText(
+	verbName: string,
+	options: VerbHelpOptions = {},
+): string {
 	const verb = CANONICAL_VERBS.find((candidate) => candidate.name === verbName);
 	if (!verb) {
 		throw new Error(`verbHelpText called with unknown verb: ${verbName}`);
@@ -229,14 +239,24 @@ asserts freshness against.
 `;
 	}
 
+	const statusLine =
+		options.implemented === undefined
+			? ""
+			: options.implemented
+				? "Status: implemented in this composition\n"
+				: "Status: not yet implemented in this composition\n";
+	const body =
+		options.implemented === true
+			? `This shell dispatches ${verb.name} to the handler wired by the composition root.`
+			: `This shell dispatches ${verb.name} through the shared command registry. Un-wired compositions serve the intentional stub envelope until the owning slice injects a handler.`;
+
 	return `HoBo ${verb.name}
 
 Usage:
   hobo ${verb.name} [global flags] [args]
 
 Role: ${verb.role}
-Status: not yet implemented
-
-This shell dispatches ${verb.name} through the shared command registry. The verb behavior is intentionally stubbed until its owning slice lands.
+${statusLine}
+${body}
 `;
 }

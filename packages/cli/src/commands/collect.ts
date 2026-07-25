@@ -35,6 +35,7 @@ export function createCollectCommand(
 	deps: CollectCommandDeps = {},
 ): CommandModule {
 	return {
+		implemented: Boolean(deps.target),
 		run: async ({ context, flags, emitProgress }) => {
 			const { target } = deps;
 			if (!target) {

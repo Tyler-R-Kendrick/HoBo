@@ -11,6 +11,20 @@ const DEFAULT_SCAN_PATHS = [
 	"CLAUDE.md",
 ];
 
+// Link/anchor integrity holds repo-wide, not just for the design suite — the
+// 2026-07 audit found 63 breaks concentrated in these unscanned dirs
+// (docs/plans/0005 item 2-7). Only checkRelativeLinks runs here: the
+// ADR/SDK/event-family checks assume design-suite vocabulary and would
+// false-positive on prose about external tools (e.g. dspy.* in
+// docs/technologies is DSPy's namespace, not a HoBo event family).
+const LINK_ONLY_SCAN_PATHS = [
+	"docs/technologies",
+	"docs/plans",
+	"docs/competitors",
+	"docs/standards",
+	"docs/patterns",
+];
+
 type DesignDocProblem = {
 	code: string;
 	file: string;
@@ -28,11 +42,13 @@ export async function checkDesignDocs(
 	{ root, files }: CheckDesignDocsOptions = {} as CheckDesignDocsOptions,
 ) {
 	const targetFiles = files ?? (await collectMarkdownFiles(root));
+	const linkOnlyFiles =
+		files === undefined ? await collectLinkOnlyMarkdownFiles(root) : [];
 	const markdownByFile = new Map<string, string>();
 	const anchorsByFile = new Map<string, Set<string>>();
 	const problems: DesignDocProblem[] = [];
 
-	for (const file of targetFiles) {
+	for (const file of [...targetFiles, ...linkOnlyFiles]) {
 		const absolute = path.isAbsolute(file) ? file : path.join(root, file);
 		const relative = normalizePath(path.relative(root, absolute));
 		const content = await readFile(absolute, "utf8");
@@ -45,10 +61,21 @@ export async function checkDesignDocs(
 			...checkRelativeLinks({ root, file, content, anchorsByFile }),
 		);
 	}
+
+	const linkOnly = new Set(linkOnlyFiles.map(normalizePath));
+	const designSuiteByFile = new Map(
+		[...markdownByFile].filter(([file]) => !linkOnly.has(file)),
+	);
 	problems.push(...(await checkGlossary({ root })));
-	problems.push(...(await checkAdrReferences({ root, markdownByFile })));
-	problems.push(...checkSdkDisambiguation({ markdownByFile }));
-	problems.push(...(await checkEventFamilies({ root, markdownByFile })));
+	problems.push(
+		...(await checkAdrReferences({ root, markdownByFile: designSuiteByFile })),
+	);
+	problems.push(
+		...checkSdkDisambiguation({ markdownByFile: designSuiteByFile }),
+	);
+	problems.push(
+		...(await checkEventFamilies({ root, markdownByFile: designSuiteByFile })),
+	);
 
 	return { problems };
 }
@@ -336,20 +363,29 @@ function extractAnchors(markdown: string) {
 	markdown.split(/\r?\n/).forEach((line) => {
 		const heading = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
 		if (!heading) return;
-		anchors.add(slugifyHeading(heading[2]!));
+		const text = heading[2]!;
+		// Explicit anchor syntax: `## Heading {#custom-id}` registers custom-id.
+		const explicit = text.match(/\{#([^}]+)\}\s*$/);
+		if (explicit) {
+			anchors.add(explicit[1]!.toLowerCase());
+		}
+		anchors.add(slugifyHeading(text.replace(/\s*\{#[^}]+\}\s*$/, "")));
 	});
 
 	return anchors;
 }
 
 function slugifyHeading(heading: string) {
-	return heading
-		.replace(/`([^`]+)`/g, "$1")
-		.toLowerCase()
-		.replace(/&/g, "")
-		.replace(/[^a-z0-9\s-]/g, "")
-		.trim()
-		.replace(/\s/g, "-");
+	return (
+		heading
+			.replace(/`([^`]+)`/g, "$1")
+			.toLowerCase()
+			.replace(/&/g, "")
+			// Keep underscores: GitHub's anchor algorithm preserves them.
+			.replace(/[^a-z0-9\s_-]/g, "")
+			.trim()
+			.replace(/\s/g, "-")
+	);
 }
 
 function lineNumberAt(content: string, offset: number) {
@@ -373,6 +409,18 @@ async function collectMarkdownFiles(root: string) {
 			continue;
 		}
 
+		files.push(...(await walkMarkdown(root, absolute)));
+	}
+
+	return files;
+}
+
+async function collectLinkOnlyMarkdownFiles(root: string) {
+	const files: string[] = [];
+
+	for (const scanPath of LINK_ONLY_SCAN_PATHS) {
+		const absolute = path.join(root, scanPath);
+		if (!fs.existsSync(absolute)) continue;
 		files.push(...(await walkMarkdown(root, absolute)));
 	}
 

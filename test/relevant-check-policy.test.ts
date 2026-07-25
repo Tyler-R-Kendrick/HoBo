@@ -487,3 +487,33 @@ test("nested production category packages resolve to their own workspace", () =>
 	assert.deepEqual(workspaces, [workspace]);
 	assert.equal(turboTestSelects(checks, workspace), true);
 });
+
+function isBehaviorLane(check: Check) {
+	return (
+		check.command === "pnpm" && check.args.join(" ") === "run test:behavior"
+	);
+}
+
+test("editing an epic-proof feature file trips the behavior lane", () => {
+	const { checks } = plan([
+		"src/draft/epic-proofs/finops-budget-routing-control-plane/features/finops-budget-routing-control-plane.feature",
+	]);
+	assert.ok(checks.some(isBehaviorLane));
+});
+
+test("editing a step definition trips the behavior lane", () => {
+	const { checks } = plan([
+		"src/draft/epic-proofs/finops-budget-routing-control-plane/features/steps/steps.ts",
+	]);
+	assert.ok(checks.some(isBehaviorLane));
+});
+
+test("editing cucumber.yaml trips the behavior lane", () => {
+	const { checks } = plan(["cucumber.yaml"]);
+	assert.ok(checks.some(isBehaviorLane));
+});
+
+test("unrelated docs edits do not trip the behavior lane", () => {
+	const { checks } = plan(["docs/design/vision.md"]);
+	assert.ok(!checks.some(isBehaviorLane));
+});

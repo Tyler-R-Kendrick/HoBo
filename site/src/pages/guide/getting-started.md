@@ -145,7 +145,7 @@ Now continuous migration has a bigger map to roam: the Dispatcher can weigh home
 ## Where to next
 
 - [Bindles](/HoBo/primitives/bindles/) and [Camps](/HoBo/primitives/camps/) — the full reference for the two primitives you just used.
-- Working examples in the repo's `examples/` directory: **hello-bindle** (a minimal api + web bindle), **multi-cloud-shop** (one bindle, per-provider `.with(...)` annotations), and **durable-agent** (a durable, tool-invoking agent on `@hobo/runtime`). A self-host-yard example is coming.
+- Working examples in the repo's `examples/` directory: **hello-bindle** (a minimal api + web bindle), **multi-cloud-shop** (one bindle, per-provider `.with(...)` annotations), **durable-agent** (a durable, tool-invoking agent on `@hobo/runtime`), and **self-host-yard** (operate your own Yard: plan/up/down against a control plane whose event log lives on your disk).
 - [Core concepts](/HoBo/guide/concepts/) — the vocabulary in one sitting.
 - [The hobo CLI](/HoBo/guide/cli/) — the whole verb surface (it's deliberately small).
 - [HoBo for agents](/HoBo/agents/) — pointing an AI agent at HoBo? It gets its own credentials, not yours.

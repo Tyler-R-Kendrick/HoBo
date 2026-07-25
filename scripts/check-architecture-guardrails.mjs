@@ -1,3 +1,13 @@
+// Enforcement tiers, so nobody mistakes one for the other:
+// - Structural checks (data-models presence, PACT contract validity,
+//   proto<->CUE type coverage, parallel-proto-type) inspect real artifacts
+//   and cannot be satisfied by prose.
+// - Documentation-presence checks (missing-parse-derived-type,
+//   missing-event-architecture) grep for the vocabulary the architecture
+//   rules require the package to document. They verify the package SAYS how
+//   it applies parse-don't-validate and the event architecture, not that the
+//   code does — behavioral verification lives in each package's tests and
+//   PACT contracts.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
@@ -38,12 +48,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const PRODUCTION_PACKAGE_PARENTS = new Set(["packages", "examples"]);
-const NESTED_PRODUCTION_CATEGORIES = new Set([
-	"runtimes",
-	"providers",
-	"iac",
-	"build",
-]);
+const NESTED_PRODUCTION_CATEGORIES = new Set(["runtimes", "providers", "iac"]);
 
 export function isProductionPackageRoot(packageRoot) {
 	return PRODUCTION_PACKAGE_PARENTS.has(
@@ -372,19 +377,22 @@ function changedFiles(args) {
 	const base =
 		baseArg?.slice("--base=".length) ?? process.env.HOBO_ARCHITECTURE_BASE;
 
+	// Full-repo mode: evaluate every production package regardless of diff.
+	// Used by check:all and the CI main gate, where a fresh checkout has no
+	// diff and the bare invocation would otherwise pass vacuously.
+	if (args.has("--all")) {
+		return split(git(["ls-files", "packages", "examples"]));
+	}
+
 	if (args.has("--staged")) {
-		return filterExistingBasePackages(
-			split(git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])),
-			base,
+		return split(
+			git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]),
 		);
 	}
 
 	if (base) {
-		return filterExistingBasePackages(
-			split(
-				git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]),
-			),
-			base,
+		return split(
+			git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]),
 		);
 	}
 
@@ -396,26 +404,6 @@ function changedFiles(args) {
 
 function git(args) {
 	return execFileSync("git", args, { encoding: "utf8" }).trim();
-}
-
-function gitSucceeds(args) {
-	try {
-		execFileSync("git", args, { stdio: "ignore" });
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function filterExistingBasePackages(files, base) {
-	if (!base) return files;
-
-	return files.filter((file) => {
-		const packageRoot = implementationPackageRoot(file);
-		return (
-			!packageRoot || !gitSucceeds(["cat-file", "-e", `${base}:${packageRoot}`])
-		);
-	});
 }
 
 function implementationPackageRoot(file) {

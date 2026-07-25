@@ -5,11 +5,17 @@ Deterministic TypeScript → wasm component → OCI artifact build boundary cons
 
 ## Parse, don't validate
 
-`componentizeHelloBindle` accepts parsed epoch + pinned toolchain inputs and returns derived
-`WasmComponentArtifact` types. Raw DTOs do not cross the build seam.
+`componentizeHelloBindle` parses its epoch and pinned-toolchain inputs up front (failing closed on
+skew or nondeterminism) and returns parsed, derived types — `WasmComponentArtifact` and
+`ComponentizeResult` — so raw DTOs never cross the build seam. `validateWasmComponentArtifact`
+re-parses artifact bytes and contract metadata before any consumer uses them. Wire forms live in
+`data-models/componentize.proto` with CUE constraints alongside.
 
-## Event architecture
+## Position in the event architecture
 
-`ComponentBuildRequested` commands emit `ComponentBuilt` events append-only. The build result is a
-projection snapshot; actors emit events and never mutate read models in place. Materialized views
-and read stores persist historical snapshots for replay gates.
+This package is a pure, deterministic build function: it hosts no actor, appends nothing to an
+event store, and maintains no projection or materialized view of its own. Its artifacts enter the
+control plane downstream — the build/deploy lanes that consume `@hobo/componentize` record
+component digests as events, and the artifact itself is a content-addressed snapshot (digest +
+contract metadata) that those read stores reference. Commands and events describing builds are
+owned by the consuming packages (`@hobo/cli`, `@hobo/stage-gate`), not declared here.

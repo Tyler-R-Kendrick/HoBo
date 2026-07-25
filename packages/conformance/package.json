@@ -37,6 +37,6 @@
 		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime build && pnpm --filter @hobo/runtime-local build",
 		"build-corpus": "node --import tsx src/corpus/record.ts",
 		"test": "vitest run",
-		"test:contract:consumer": "vitest run --passWithNoTests contracts/consumer"
+		"test:contract:consumer": "vitest run contracts/consumer"
 	}
 }

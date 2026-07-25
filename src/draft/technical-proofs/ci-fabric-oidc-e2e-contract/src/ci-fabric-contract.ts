@@ -2,19 +2,15 @@ export const CI_FABRIC_SCHEMA = "hobo.ciFabric/v1";
 
 const REQUIRED_PR_CHECKS = Object.freeze(["build", "typecheck", "lint", "unit", "conformance"]);
 const REQUIRED_PR_COMMANDS = Object.freeze([
-  "npm ci",
-  "node --import tsx src/draft/technical-proofs/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build",
-  "node --import tsx src/draft/technical-proofs/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck",
-  "node --import tsx src/draft/technical-proofs/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint",
-  "npm test",
-  "npm run standards:check",
-  "npm run docs:cli-lint",
-  "npm run docs:design-lint",
-  "npm run docs:coverage",
-  "npm run docs:freshness",
-  "node --import tsx scripts/validate-traceability.ts",
-  "node --import tsx scripts/validate-sdk-contracts.ts",
-  "node --import tsx scripts/validate-deployment-set-delta.ts",
+  // Mirrors the enforced PR gate in .github/workflows/hobo-ci.yml; the
+  // production guard is packages/ci-guard/bin/assert-ci-contract.ts.
+  // scripts/validate-traceability.ts was descoped from the blocking gate:
+  // traceability is covered by docs:design-lint + konsistent.
+  "pnpm install --frozen-lockfile --config.confirmModulesPurge=false",
+  "pnpm run lint:code",
+  "pnpm agent:check -- --base=origin/main",
+  "pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer",
+  "pnpm run build:packages",
 ]);
 const REQUIRED_COVERAGE = Object.freeze([
   "pr.full-suite-blocking",

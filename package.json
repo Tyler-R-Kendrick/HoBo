@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "architecture:guard": "node scripts/check-architecture-guardrails.mjs",
+    "architecture:guard:all": "node scripts/check-architecture-guardrails.mjs --all",
     "architecture:guard:staged": "node scripts/check-architecture-guardrails.mjs --staged",
     "draft:artifacts": "node --import tsx scripts/check-draft-artifacts.ts",
     "draft:artifacts:staged": "node --import tsx scripts/check-draft-artifacts.ts --staged",
@@ -62,7 +63,7 @@
     "agent:check": "node --import tsx scripts/run-relevant-checks.ts",
     "check:changed": "node --import tsx scripts/run-relevant-checks.ts",
     "check:changed:build": "node --import tsx scripts/run-relevant-checks.ts --build",
-    "check:all": "pnpm run lint:boundaries && pnpm run architecture:guard && pnpm run konsistent && pnpm run lint:docs && pnpm run test:schema && pnpm run test:unit && pnpm run standards:check && pnpm run docs:coverage && pnpm run docs:freshness",
+    "check:all": "pnpm run lint:boundaries && pnpm run architecture:guard:all && pnpm run konsistent && pnpm run lint:docs && pnpm run draft:artifacts && pnpm run draft:cascade && pnpm run skills:mirror-check && pnpm run promotions:check && pnpm run case:check && pnpm run test:schema && pnpm run test:unit && pnpm run test:behavior && pnpm run standards:check && pnpm run docs:coverage && pnpm run docs:freshness",
     "build": "turbo run build --filter \"./packages/*\"",
     "typecheck": "turbo run typecheck --filter \"./packages/*\"",
     "typecheck:root": "tsc -p tsconfig.json",

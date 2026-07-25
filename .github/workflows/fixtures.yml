@@ -3,6 +3,9 @@ name: HoBo CI Fixture Lanes
 # Cost-gated cloud fixture lanes, split out of hobo-ci.yml so that adding a
 # label re-runs only these jobs instead of the whole PR gate. Jobs keep the
 # same names, label gates, and if: always() teardown/sweep semantics.
+#
+# The hello-bindle lanes migrated to examples-e2e.yml (packages/ci-guard
+# runners); only the multi-cloud lanes remain here.
 
 on:
   pull_request:
@@ -16,72 +19,6 @@ permissions:
   contents: read
 
 jobs:
-  hello-bindle-fixture:
-    name: hello-bindle sandbox fixture
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      id-token: write
-    concurrency:
-      group: hello-bindle-fixture-${{ github.ref }}
-      cancel-in-progress: false
-    env:
-      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
-      HOBO_E2E_FIXTURE: examples/hello-bindle
-    steps:
-      - uses: actions/checkout@v4
-      - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Assert keyless CI contract
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
-      - name: Deploy and assert hello-bindle fixture
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}"
-      - name: Tear down hello-bindle fixture
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}"
-      - name: Sweep orphaned hello-bindle fixtures
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
-
-  hello-bindle-fixture-quarantine:
-    name: hello-bindle fixture quarantine
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture-quarantine')
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    continue-on-error: true
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      HOBO_SANDBOX_CLOUD_AUDIENCE: hobo:sandbox-cloud
-      HOBO_E2E_FIXTURE: examples/hello-bindle
-    steps:
-      - uses: actions/checkout@v4
-      - run: corepack enable pnpm
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Assert keyless CI contract
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/assert-ci-contract.ts
-      - name: Run quarantine fixture lane
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase deploy-and-assert --run-id "${{ github.run_id }}-quarantine"
-      - name: Tear down quarantine fixture
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase teardown --run-id "${{ github.run_id }}-quarantine"
-      - name: Sweep orphaned quarantine fixtures
-        if: always()
-        run: node --import tsx src/draft/technical-proofs/ci-fabric-oidc-e2e-contract/scripts/run-hello-bindle-e2e-fixture.ts --phase sweep-orphans
-
   multi-cloud-shop-fixture:
     name: multi-cloud-shop provider fixture
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')

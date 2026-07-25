@@ -9,8 +9,7 @@
         "packages/{name}",
         "!packages/runtimes",
         "!packages/providers",
-        "!packages/iac",
-        "!packages/build"
+        "!packages/iac"
       ],
       "must": {
         "haveType": "directory",
@@ -19,12 +18,11 @@
     },
     {
       "name": "nested-package-scaffolding",
-      "description": "Packages nested under a category container (runtimes/, providers/, iac/, build/) follow the same HoBo package layout as top-level packages.",
+      "description": "Packages nested under a category container (runtimes/, providers/, iac/) follow the same HoBo package layout as top-level packages.",
       "paths": [
         "packages/runtimes/{name}",
         "packages/providers/{name}",
-        "packages/iac/{name}",
-        "packages/build/{name}"
+        "packages/iac/{name}"
       ],
       "must": {
         "haveType": "directory",

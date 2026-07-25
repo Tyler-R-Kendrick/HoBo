@@ -32,19 +32,11 @@ test("PR CI blocks on the full local gate including unit and conformance checks"
   ]);
   assert.equal(contract.workflow.pullRequestGate.blocksPullRequest, true);
   assert.deepEqual(contract.workflow.pullRequestGate.commands, [
-    "npm ci",
-    "node --import tsx src/draft/technical-proofs/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts build",
-    "node --import tsx src/draft/technical-proofs/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts typecheck",
-    "node --import tsx src/draft/technical-proofs/hobo-monorepo-skeleton-contract/scripts/verify-monorepo-skeleton.ts lint",
-    "npm test",
-    "npm run standards:check",
-    "npm run docs:cli-lint",
-    "npm run docs:design-lint",
-    "npm run docs:coverage",
-    "npm run docs:freshness",
-    "node --import tsx scripts/validate-traceability.ts",
-    "node --import tsx scripts/validate-sdk-contracts.ts",
-    "node --import tsx scripts/validate-deployment-set-delta.ts",
+    "pnpm install --frozen-lockfile --config.confirmModulesPurge=false",
+    "pnpm run lint:code",
+    "pnpm agent:check -- --base=origin/main",
+    "pnpm exec turbo run build typecheck lint test:unit test:schema test:contract:consumer",
+    "pnpm run build:packages",
   ]);
 });
 

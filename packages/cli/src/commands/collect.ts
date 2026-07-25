@@ -19,11 +19,15 @@ import type { CommandModule } from "../shell/registry.js";
 export const COLLECT_GOLDEN_FILE = "hobo.manifest.json";
 
 export interface CollectCommandDeps {
-	// Injected collection target (tests / dev wiring): the project's Bindle whose
-	// components run in resource-collection mode. `src/` stays adapter-free — the
-	// loader that materializes a target from a project's TS source is a later
-	// slice, so un-injected `collect` falls back to the shell stub.
+	// Injected collection target (tests / dev wiring): a fixed Bindle whose
+	// components run in resource-collection mode. Wins over `resolveTarget`.
 	readonly target?: CollectionTarget;
+	// Project-aware resolver (composition roots): materialize the target from
+	// the invoked project's own source (see cloud/loader.ts). Un-injected with
+	// no `target` either, `collect` falls back to the shell stub.
+	readonly resolveTarget?: (
+		projectDir: string,
+	) => Promise<CollectionTarget | null>;
 }
 
 // `hobo collect` (S1-20) — run resource collection on the project Bindle and
@@ -35,14 +39,14 @@ export function createCollectCommand(
 	deps: CollectCommandDeps = {},
 ): CommandModule {
 	return {
-		implemented: Boolean(deps.target),
+		implemented: Boolean(deps.target ?? deps.resolveTarget),
 		run: async ({ context, flags, emitProgress }) => {
-			const { target } = deps;
+			const projectDir = context.projectDir ?? context.cwd;
+			const target =
+				deps.target ?? (await deps.resolveTarget?.(projectDir)) ?? null;
 			if (!target) {
 				return stubResult("collect");
 			}
-
-			const projectDir = context.projectDir ?? context.cwd;
 			emitProgress(
 				`hobo collect: running resource collection on ${target.bindleId}`,
 			);

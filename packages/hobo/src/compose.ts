@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
-import type { DevRuntime, YardRuntime } from "@hobo/cli";
+import {
+	type DevRuntime,
+	loadBindleDefinition,
+	loadProjectCollectionTarget,
+	type YardRuntime,
+} from "@hobo/cli";
 import type { IacProvider } from "@hobo/cloud";
 import {
 	createInProcessCredentialBroker,
@@ -291,11 +296,105 @@ export function createDefaultDevRuntime(
 	};
 }
 
+// The project-aware dev-runtime resolver `hobo dev` boots in the composed CLI
+// (docs/plans/0005 item 3-1). When the invoked project's bindle source loads
+// and its first api/web resource carries an app-host entrypoint (the
+// `b.api(() => app.fetch)` handler), the local Camp serves THAT handler:
+// the component descriptor's HTTP export converts the host's HttpRequest to a
+// web Request, invokes the project's fetch handler in-process, and folds the
+// Response back. No entrypoint (or no loadable source) falls back to the
+// offline hello-bindle guest so composed `dev` never regresses to the stub.
+export async function resolveProjectDevRuntime(
+	projectDir: string,
+): Promise<DevRuntime> {
+	const definition = await loadBindleDefinition(projectDir);
+	const entry =
+		definition === null ? null : firstServableEntrypoint(definition);
+	if (definition === null || entry === null) {
+		return createDefaultDevRuntime();
+	}
+
+	const events: ComponentHostEvent[] = [];
+	const componentHost = createRuntimeLocalComponentHost({
+		appendEvent: (event) => {
+			events.push(event);
+		},
+	});
+	const streamer = createLocalStreamer();
+
+	const component: ParsedComponentDescriptor = {
+		parsed: true,
+		id: definition.name,
+		imports: [],
+		exports: {
+			[HTTP_INCOMING_INTERFACE]: {
+				handle: async (...args: unknown[]): Promise<unknown> => {
+					const request = args[0] as {
+						method: string;
+						path: string;
+						headers: readonly (readonly [string, string])[];
+						body: string;
+					};
+					const fetchHandler = entry.handler() as (
+						input: Request,
+					) => Response | Promise<Response>;
+					const response = await fetchHandler(
+						new Request(`http://localhost:4000${request.path || "/"}`, {
+							method: request.method,
+							headers: Object.fromEntries(request.headers ?? []),
+							...(request.body ? { body: request.body } : {}),
+						}),
+					);
+					return {
+						status: response.status,
+						headers: [...response.headers.entries()],
+						body: await response.text(),
+					};
+				},
+			},
+		},
+	};
+
+	return {
+		componentHost,
+		streamer,
+		plan: {
+			component,
+			providers: [],
+			links: [],
+			probe: { method: "GET", path: "/", headers: [], body: "" },
+		},
+		readEvents: () => events,
+	};
+}
+
+function firstServableEntrypoint(definition: {
+	readonly resources: Readonly<
+		Record<string, { readonly kind: string; readonly name: string }>
+	>;
+	readonly entrypoint?: (name: string) => (() => unknown) | undefined;
+}): { readonly name: string; readonly handler: () => unknown } | null {
+	if (typeof definition.entrypoint !== "function") {
+		return null;
+	}
+	for (const [name, record] of Object.entries(definition.resources)) {
+		if (record.kind !== "api" && record.kind !== "web") {
+			continue;
+		}
+		const handler = definition.entrypoint(name);
+		if (typeof handler === "function") {
+			return { name, handler };
+		}
+	}
+	return null;
+}
+
 // Assemble the default `CollectionTarget` the `hobo collect` command runs
-// resource collection against. Until the loader that materializes a target from
-// a project's TypeScript source lands (a later slice), the composed CLI collects
-// a representative hello-bindle (a service bound to a data resource) so `collect`
-// emits a real manifest IR rather than the shell stub. LOCAL/MOCKED lane.
+// resource collection against when the project has NO loadable bindle source:
+// a representative hello-bindle (a service bound to a data resource) so
+// `collect` emits a real manifest IR rather than the shell stub. Projects with
+// a `src/bindle.ts` (or built `dist/bindle.js`) get their OWN target via
+// `resolveProjectCollectionTarget`. LOCAL/MOCKED lane.
 export function createDefaultCollectionTarget(
 	projectDir?: string,
 ): CollectionTarget {
@@ -314,4 +413,15 @@ export function createDefaultCollectionTarget(
 			});
 		},
 	};
+}
+
+// The project-aware target resolver `hobo collect` runs with in the composed
+// CLI (docs/plans/0005 item 3-1): the invoked project's own bindle source wins
+// (TS loader → run-to-collect); the representative hello-bindle target remains
+// the fallback so composed `collect` never regresses to the shell stub.
+export async function resolveProjectCollectionTarget(
+	projectDir: string,
+): Promise<CollectionTarget> {
+	const fromSource = await loadProjectCollectionTarget(projectDir);
+	return fromSource ?? createDefaultCollectionTarget(projectDir);
 }

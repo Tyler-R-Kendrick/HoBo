@@ -9,9 +9,12 @@ import type { CommandModule } from "../shell/registry.js";
 
 export interface DevCommandDeps {
 	// Injected runtime-local Camp (tests / dev wiring): the component host +
-	// Streamer the local loop boots on. Adapter-free `src/` leaves it undefined,
-	// so `hobo dev` stays a shell stub until the runtime-local seam is wired.
+	// Streamer the local loop boots on. Wins over `resolveRuntime`.
 	readonly runtime?: DevRuntime;
+	// Project-aware resolver (composition roots): boot the runtime from the
+	// invoked project's own bindle source (see cloud/loader.ts). Un-injected
+	// with no `runtime` either, `hobo dev` stays a shell stub.
+	readonly resolveRuntime?: (projectDir: string) => Promise<DevRuntime | null>;
 }
 
 // `hobo dev` (S1-19) — boot a runtime-local Camp, collect + link the project
@@ -21,14 +24,15 @@ export interface DevCommandDeps {
 // back to the shell stub.
 export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 	return {
-		implemented: Boolean(deps.runtime),
+		implemented: Boolean(deps.runtime ?? deps.resolveRuntime),
 		run: async ({ context, emitProgress }) => {
-			const { runtime } = deps;
+			const projectDir = context.projectDir ?? context.cwd;
+			const runtime =
+				deps.runtime ?? (await deps.resolveRuntime?.(projectDir)) ?? null;
 			if (!runtime) {
 				return stubResult("dev");
 			}
 
-			const projectDir = context.projectDir ?? context.cwd;
 			const bindle = await loadProjectManifest(projectDir);
 			if (!bindle) {
 				return stubResult("dev");

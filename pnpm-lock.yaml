@@ -378,10 +378,6 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
-    devDependencies:
-      '@hobo/iac-pulumi':
-        specifier: workspace:*
-        version: link:../../iac/iac-pulumi
 
   packages/runtime:
     dependencies:

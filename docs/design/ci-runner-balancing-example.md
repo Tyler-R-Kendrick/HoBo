@@ -79,6 +79,15 @@ make the ledger auditable; `exec.Succeeded` records each applied patch.
   `fixtures/last-resort-failover.fixture.json`. Ephemeral-only,
   own-branches-only is the stated security posture — the last resort exists
   for the repository's own developers and agents, not for fork traffic.
+- **When even a runner cannot be had, the CI work itself defers to the
+  requesting machine.** Sandboxed agent sessions cannot register runners
+  (their egress proxy forbids the GitHub Actions API by policy), so the
+  example's `local-gate` command runs the same suite as the hosted pr-gate
+  job — relevant checks against the base, Turbo affected lanes, the
+  production-packages build — on the requesting machine and folds the
+  results into `golden.Ran`/`golden.Passed` evidence, Turborepo-style: the
+  requester does the work, the hosted lane replays it. The resilience
+  ladder is hosted providers → ephemeral last-resort runner → local gate.
 
 ## Scope boundary
 

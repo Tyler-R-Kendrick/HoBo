@@ -151,6 +151,31 @@ code on your machine. Use it for your own repository and branches only —
 never expose it to untrusted fork PRs — and prefer the default ephemeral
 mode so nothing lingers after the queue drains.
 
+## Deferring the CI work itself (Turborepo-style local gate)
+
+Some requesting machines cannot register a runner at all — sandboxed agent
+sessions, for example, sit behind an egress proxy that forbids the GitHub
+Actions API entirely. For those, and for anyone who wants verification
+before any runner is involved, `local-gate` inverts the relationship the
+way Turborepo remote caching does for builds: **the requesting machine runs
+the CI work; the hosted lane becomes a replay of work already done.**
+
+```bash
+pnpm --filter @hobo/example-ci-runner-balancing local-gate -- --base origin/main
+```
+
+runs the exact suite the hosted pr-gate job runs (`pnpm agent:check` against
+the base, the Turbo affected-package lanes, `pnpm run build:packages`),
+streams output, folds the results into `golden.Ran` / `golden.Passed`
+events plus a markdown verdict (written to `HOBO_RB_STATE_DIR` when set),
+and exits non-zero on any gate failure. The resilience ladder is therefore:
+
+1. **Hosted providers**, budget-routed by the dispatcher.
+2. **Ephemeral last-resort runner** on a trusted requesting machine
+   (`host-runner`) — CI jobs still run under GitHub's orchestration.
+3. **Local gate** on any requesting machine — the CI *work* runs and is
+   published as evidence even when GitHub cannot schedule anything.
+
 ## Dogfooding in this repository
 
 HoBo routes its own CI through this example: every non-matrix Linux job in

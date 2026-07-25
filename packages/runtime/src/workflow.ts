@@ -5,13 +5,6 @@
 // tip. The journal it writes is the same `run.*` shape the existing replay
 // engine (`./replay`) verifies, so a completed run is replay-equivalent.
 
-import { createDeterministicContext } from "./replay/context.js";
-import { nextEnvelope, recordEffect } from "./replay/recorder.js";
-import {
-	createInMemoryEventStore,
-	type EventStoreWriter,
-} from "./replay/store.js";
-import type { WorkflowDefinition as ReplayWorkflowDefinition } from "./replay/replayer.js";
 import {
 	type Capability,
 	type CtxEffects,
@@ -22,6 +15,13 @@ import {
 } from "./ctx.js";
 import { WorkflowFailure } from "./errors.js";
 import type { ActorHost, RuntimeClock } from "./ports.js";
+import { createDeterministicContext } from "./replay/context.js";
+import { nextEnvelope, recordEffect } from "./replay/recorder.js";
+import type { WorkflowDefinition as ReplayWorkflowDefinition } from "./replay/replayer.js";
+import {
+	createInMemoryEventStore,
+	type EventStoreWriter,
+} from "./replay/store.js";
 import { runWithRetries } from "./step.js";
 import type { WitTokenHandle, WitTokenRequest } from "./wit.js";
 

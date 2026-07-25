@@ -1,14 +1,13 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-
 import {
-	collectBindleManifest,
-	serializeManifest,
 	type CollectionContext,
 	type CollectionTarget,
+	collectBindleManifest,
+	serializeManifest,
 } from "@hobo/bindles";
+import { describe, expect, it } from "vitest";
 
 import {
 	COLLECT_GOLDEN_FILE,

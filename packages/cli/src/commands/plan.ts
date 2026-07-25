@@ -1,7 +1,7 @@
-import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { stubResult } from "../cloud/stub.js";
 import { createYardClient, type YardRuntime } from "../cloud/yard-client.js";
+import type { CommandModule } from "../shell/registry.js";
 
 export interface PlanCommandDeps {
 	// Injected Yard runtime (tests / dev wiring). Its provider registry drives the

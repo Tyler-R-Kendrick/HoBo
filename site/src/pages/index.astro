@@ -3,6 +3,11 @@ import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
 import Cloud from "../components/Cloud.astro";
 import Mascot from "../components/Mascot.astro";
+import Blimp from "../components/scenes/Blimp.astro";
+import Crossroads from "../components/scenes/Crossroads.astro";
+import Depot from "../components/scenes/Depot.astro";
+import Steamboat from "../components/scenes/Steamboat.astro";
+import Train from "../components/scenes/Train.astro";
 import { href } from "../lib/url";
 
 const bindleSnippet = `import { bindle } from "@hobo/bindles";
@@ -126,6 +131,7 @@ const shikiThemes = {
 					<strong>your code shouldn't pay a loyalty tax to its landlord</strong>.
 				</p>
 			</div>
+			<Crossroads />
 			<div class="grid grid-3" style="align-items: stretch;">
 				<div class="card tradeoff">
 					<h3>The company town</h3>
@@ -203,6 +209,7 @@ const shikiThemes = {
 					</div>
 				</div>
 			</div>
+			<Train />
 			<p class="section-foot">
 				Every hop is an event in an append-only log — replay the journey,
 				audit every fare, roll back any move.
@@ -224,6 +231,7 @@ const shikiThemes = {
 					comes with the campsite, and two are for when your app goes places.
 				</p>
 			</div>
+			<Depot />
 			<div class="grid grid-3 bento">
 				<a class="card span-2" href={href("/primitives/bindles/")}>
 					<h3><span class="term">Bindle</span> <span class="sticker">start here</span></h3>
@@ -293,6 +301,7 @@ const shikiThemes = {
 					their own scoped, short-lived credentials.
 				</p>
 			</div>
+			<Blimp />
 			<div class="grid grid-2">
 				<div class="grid" style="gap: 1rem;">
 					<div class="card">
@@ -354,6 +363,7 @@ const shikiThemes = {
 					Nobody else keeps looking for a cheaper home after move-in day.
 				</p>
 			</div>
+			<Steamboat />
 			<div
 				class="table-wrap"
 				tabindex="0"

@@ -1,10 +1,10 @@
 /* ==========================================================================
    HoBo site design system.
-   One stylesheet, zero frameworks. A storybook cartoon language starring Bo
-   the bindlebug: thick ink outlines, hard offset "sticker" shadows, puffy
-   line-art clouds, rounded Baloo display type, and the warm ember accent of
-   the campfire. Dark-first with a full light theme (ink and paper invert),
-   driven by custom properties.
+   One stylesheet, zero frameworks. Strict black-and-white cartoon language
+   starring Bo the bindlebug: traced reference illustrations, thick ink
+   outlines, hard offset "sticker" shadows, line-art clouds, Limelight
+   title-card type. Ink on paper by day, paper on ink by night — the two
+   themes are exact inversions, driven by custom properties.
    ========================================================================== */
 
 /* ---------- Tokens ---------- */
@@ -34,73 +34,65 @@
 :root,
 :root[data-theme="dark"] {
 	color-scheme: dark;
-	--bg: #0c0a09;
-	--bg-raised: #141110;
-	--bg-inset: #181412;
-	--border: rgba(231, 214, 193, 0.13);
-	--border-strong: rgba(231, 214, 193, 0.24);
-	--text: #ece9e4;
-	--text-mute: #a8a29e;
-	--text-faint: #948d86;
-	--accent: #ffa14e;
-	--accent-strong: #ff7a1a;
-	--accent-ink: #221004;
-	--accent-soft: rgba(255, 138, 61, 0.12);
-	--meadow: #6fd19a;
-	--meadow-soft: rgba(111, 209, 154, 0.14);
-	--sky: #8ec5ff;
-	--sky-soft: rgba(142, 197, 255, 0.13);
-	--ink: #e9e2d6;
-	--pop: rgba(233, 226, 214, 0.85);
-	--pop-soft: rgba(233, 226, 214, 0.22);
-	--link: #ffb066;
-	--ember-a: #ffd29d;
-	--ember-b: #ff9a3c;
-	--ember-c: #ff5c33;
-	--glow: radial-gradient(
-		60% 50% at 50% 0%,
-		rgba(255, 122, 26, 0.16),
-		transparent 70%
-	);
+	--bg: #0a0a0a;
+	--bg-raised: #111111;
+	--bg-inset: #1a1a19;
+	--border: rgba(244, 243, 238, 0.14);
+	--border-strong: rgba(244, 243, 238, 0.32);
+	--text: #f2f1ec;
+	--text-mute: #b9b7b0;
+	--text-faint: #96948d;
+	--accent: #f2f1ec;
+	--accent-strong: #ffffff;
+	--accent-ink: #0a0a0a;
+	--accent-soft: rgba(244, 243, 238, 0.1);
+	--meadow: #f2f1ec;
+	--meadow-soft: rgba(244, 243, 238, 0.1);
+	--sky: #f2f1ec;
+	--sky-soft: rgba(244, 243, 238, 0.1);
+	--ink: #f2f1ec;
+	--pop: rgba(242, 241, 236, 0.85);
+	--pop-soft: rgba(242, 241, 236, 0.22);
+	--link: #f2f1ec;
+	--ember-a: #d9d8d3;
+	--ember-b: #9c9b96;
+	--ember-c: #5c5b57;
+	--glow: linear-gradient(transparent, transparent);
 	--shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 40px -12px rgba(0, 0, 0, 0.6);
-	--code-bg: #16120f;
-	--hero-grid: rgba(231, 214, 193, 0.05);
+	--code-bg: #101010;
+	--hero-grid: rgba(244, 243, 238, 0.08);
 }
 
 :root[data-theme="light"] {
 	color-scheme: light;
-	--bg: #f2e8d5;
-	--bg-raised: #faf3e3;
-	--bg-inset: #e9dcc2;
-	--border: #d9c9a7;
-	--border-strong: #bfae8a;
-	--text: #221c13;
-	--text-mute: #5d5342;
-	--text-faint: #6b5f4b;
-	--accent: #a33208;
-	--accent-strong: #8f2c06;
+	--bg: #ffffff;
+	--bg-raised: #ffffff;
+	--bg-inset: #f4f4f2;
+	--border: #e3e2de;
+	--border-strong: #c9c8c2;
+	--text: #101010;
+	--text-mute: #4a4a46;
+	--text-faint: #6e6d68;
+	--accent: #101010;
+	--accent-strong: #000000;
 	--accent-ink: #ffffff;
-	--accent-soft: rgba(194, 65, 12, 0.08);
-	--meadow: #116434;
-	--meadow-soft: rgba(21, 128, 61, 0.09);
-	--sky: #1d6fd1;
-	--sky-soft: rgba(29, 111, 209, 0.08);
-	--ink: #221c13;
-	--pop: #221c13;
-	--pop-soft: rgba(34, 28, 19, 0.24);
-	--link: #9c3c0a;
-	--ember-a: #d97706;
-	--ember-b: #ea580c;
-	--ember-c: #dc2626;
-	--glow: radial-gradient(
-		60% 50% at 50% 0%,
-		rgba(234, 88, 12, 0.09),
-		transparent 70%
-	);
-	--shadow: 0 1px 2px rgba(28, 25, 23, 0.06),
-		0 12px 32px -12px rgba(28, 25, 23, 0.14);
-	--code-bg: #fbf6ea;
-	--hero-grid: rgba(34, 28, 19, 0.11);
+	--accent-soft: rgba(16, 16, 16, 0.06);
+	--meadow: #101010;
+	--meadow-soft: rgba(16, 16, 16, 0.06);
+	--sky: #101010;
+	--sky-soft: rgba(16, 16, 16, 0.06);
+	--ink: #101010;
+	--pop: #101010;
+	--pop-soft: rgba(16, 16, 16, 0.22);
+	--link: #101010;
+	--ember-a: #6e6d68;
+	--ember-b: #3c3b38;
+	--ember-c: #101010;
+	--glow: linear-gradient(transparent, transparent);
+	--shadow: 0 1px 2px rgba(16, 16, 16, 0.06),
+		0 12px 32px -12px rgba(16, 16, 16, 0.14);
+	--code-bg: #f7f7f5;
+	--hero-grid: rgba(16, 16, 16, 0.09);
 }
 
 /* ---------- Reset-ish ---------- */
@@ -743,15 +735,14 @@ a:hover {
 }
 
 .gradient-text {
-	background: linear-gradient(
-		92deg,
-		var(--ember-a) 0%,
-		var(--ember-b) 55%,
-		var(--ember-c) 100%
-	);
-	-webkit-background-clip: text;
-	background-clip: text;
 	color: transparent;
+	-webkit-text-stroke: 2px var(--ink);
+}
+
+@supports not (-webkit-text-stroke: 1px black) {
+	.gradient-text {
+		color: var(--text);
+	}
 }
 
 .hero-sub {
@@ -868,16 +859,13 @@ a:hover {
 	background: var(--border-strong);
 }
 
-.terminal-bar .dots i:first-child {
-	background: #ff5f57;
+.terminal-bar .dots i {
+	background: transparent;
+	border: 2px solid var(--ink);
 }
 
 .terminal-bar .dots i:nth-child(2) {
-	background: #febc2e;
-}
-
-.terminal-bar .dots i:nth-child(3) {
-	background: #28c840;
+	background: var(--ink);
 }
 
 .terminal-bar .title {
@@ -1129,6 +1117,29 @@ a.card:hover {
 	color: var(--text-mute);
 }
 
+
+/* ---------- Story panels: traced reference illustrations ---------- */
+
+.scene {
+	margin: clamp(1.75rem, 4vw, 3rem) auto;
+	max-width: 680px;
+}
+
+.scene.scene-crossroads,
+.scene.scene-depot {
+	max-width: 820px;
+}
+
+.scene svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.scene-ink {
+	fill: var(--ink);
+}
+
 /* ---------- Whimsy: stickers, squiggles, rails, postcards ---------- */
 
 /* Sticker badges: slightly rotated, like something slapped on a suitcase. */
@@ -1151,26 +1162,26 @@ a.card:hover {
 }
 
 .sticker.meadow {
-	border-color: color-mix(in srgb, var(--meadow) 55%, transparent);
-	background: var(--meadow-soft);
-	color: var(--meadow);
+	border-style: solid;
 	transform: rotate(1.2deg);
 }
 
 .sticker.sky {
-	border-color: color-mix(in srgb, var(--sky) 55%, transparent);
-	background: var(--sky-soft);
-	color: var(--sky);
+	border-style: dotted;
 	transform: rotate(-0.8deg);
 }
 
 /* Hand-drawn squiggle underline for the word that matters. */
 .squiggle {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='7' viewBox='0 0 40 7'%3E%3Cpath d='M0 5 Q 5 1 10 5 T 20 5 T 30 5 T 40 5' fill='none' stroke='%23ff9a3c' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='7' viewBox='0 0 40 7'%3E%3Cpath d='M0 5 Q 5 1 10 5 T 20 5 T 30 5 T 40 5' fill='none' stroke='%23101010' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
 	background-repeat: repeat-x;
 	background-position: 0 100%;
 	background-size: 40px 7px;
 	padding-bottom: 0.35em;
+}
+
+:root[data-theme="dark"] .squiggle {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='7' viewBox='0 0 40 7'%3E%3Cpath d='M0 5 Q 5 1 10 5 T 20 5 T 30 5 T 40 5' fill='none' stroke='%23f2f1ec' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 /* Route strip: the stops an app might call home. */
@@ -1222,18 +1233,7 @@ a.card:hover {
 	border-radius: calc(var(--radius-lg) + 10px);
 	box-shadow: 0.45rem 0.45rem 0 var(--pop-soft);
 	transform: rotate(-0.5deg);
-	background:
-		radial-gradient(
-			120% 160% at 15% 0%,
-			color-mix(in srgb, var(--ember-c) 14%, transparent),
-			transparent 55%
-		),
-		radial-gradient(
-			120% 160% at 90% 110%,
-			color-mix(in srgb, var(--ember-b) 12%, transparent),
-			transparent 55%
-		),
-		var(--bg-raised);
+	background: var(--bg-raised);
 	text-align: center;
 }
 
@@ -1344,18 +1344,7 @@ table.compare tr.hobo-row th {
 	padding: clamp(2.25rem, 5vw, 3.5rem);
 	border: 1px solid var(--border-strong);
 	border-radius: calc(var(--radius-lg) + 6px);
-	background:
-		radial-gradient(
-			120% 160% at 15% 0%,
-			color-mix(in srgb, var(--ember-c) 16%, transparent),
-			transparent 55%
-		),
-		radial-gradient(
-			120% 160% at 90% 110%,
-			color-mix(in srgb, var(--ember-b) 14%, transparent),
-			transparent 55%
-		),
-		var(--bg-raised);
+	background: var(--bg-raised);
 	text-align: center;
 }
 
@@ -1704,6 +1693,13 @@ table.compare tr.hobo-row th {
 }
 
 /* ---------- Shiki dual theme ---------- */
+
+/* Strict monochrome: keep the tonal hierarchy of syntax highlighting,
+   drop the hue. */
+.astro-code {
+	filter: grayscale(1);
+}
+
 
 .astro-code,
 .astro-code span {

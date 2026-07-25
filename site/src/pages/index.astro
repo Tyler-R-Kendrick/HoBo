@@ -1,6 +1,8 @@
 ---
 import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
+import Cloud from "../components/Cloud.astro";
+import Mascot from "../components/Mascot.astro";
 import { href } from "../lib/url";
 
 const bindleSnippet = `import { bindle } from "@hobo/bindles";
@@ -24,6 +26,9 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 >
 	<!-- ===================== Hero ===================== -->
 	<section class="hero">
+		<Cloud size={150} class="hero-cloud c1" />
+		<Cloud size={110} class="hero-cloud c2" />
+		<Cloud size={90} class="hero-cloud c3" />
 		<div class="container">
 			<div>
 				<p class="hero-eyebrow">
@@ -56,7 +61,9 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 					<span class="pill"><b>0</b> forklift rewrites</span>
 				</div>
 			</div>
-			<div class="terminal">
+			<div class="terminal-wrap">
+				<span class="roof-rider"><Mascot size={72} /></span>
+				<div class="terminal">
 				<div class="terminal-bar">
 					<span class="dots"><i></i><i></i><i></i></span>
 					<span class="title">src/bindle.ts</span>
@@ -87,6 +94,7 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 					<div class="dim">
 						every move is an event — replayable, auditable, reversible
 					</div>
+				</div>
 				</div>
 			</div>
 		</div>
@@ -171,8 +179,8 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 					<h3>Pitch a Camp</h3>
 					<p>
 						A Camp is where the bindle lives right now: one provider, one
-						durable runtime. Pin placement yourself, or let the Dispatcher
-						pick the cheapest camp your policies allow.
+						durable runtime. Pitch one to pin placement — or write none and
+						the Dispatcher infers the cheapest camp your policies allow.
 					</p>
 				</div>
 				<div class="card">
@@ -199,7 +207,9 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 		</div>
 	</section>
 
-	<div class="rails" role="presentation"></div>
+	<div class="rails" role="presentation">
+		<span class="rider"><Mascot size={62} puffs /></span>
+	</div>
 
 	<!-- ===================== Primitives bento ===================== -->
 	<section class="section" style="padding-top: 0;">
@@ -209,8 +219,8 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 				<h2>Four words for traveling light</h2>
 				<p>
 					HoBo's primitives are named for the life: pack a bindle, pitch a
-					camp, work a yard, meet at the junction. Two are essential, two are
-					for when your app goes places.
+					camp, work a yard, meet at the junction. One you must write, one
+					comes with the campsite, and two are for when your app goes places.
 				</p>
 			</div>
 			<div class="grid grid-3 bento">
@@ -228,9 +238,10 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 					<h3><span class="term">Camp</span> <span class="sticker meadow">then here</span></h3>
 					<p>
 						Where the bindle lives right now: one provider target plus the
-						durable runtime — event store, queues, streams, actors, clock.
+						durable runtime. Pitch one to pin placement — or skip it and
+						HoBo infers a camp from the code you've configured.
 					</p>
-					<p class="card-cta">Pitch a camp →</p>
+					<p class="card-cta">Pitch a camp (optional) →</p>
 				</a>
 				<a class="card" href={href("/primitives/yards/")}>
 					<h3><span class="term">Yard</span> <span class="sticker sky">advanced</span></h3>
@@ -426,11 +437,12 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 	<section class="cta-band">
 		<div class="container">
 			<div class="postcard">
+				<div class="postcard-bo"><Mascot size={92} flip puffs /></div>
 				<h2 class="cta-inner-title">Ready to hit the rails?</h2>
 				<p style="margin: 0 auto 1.5rem; max-width: 36rem; color: var(--text-mute);">
-					Pack a bindle, pitch a camp, and let your app find its way home.
-					Yards and junctions can wait until it starts collecting passport
-					stamps.
+					Pack a bindle — that's the only must — and let your app find its
+					way home. Pitch a camp if you're picky about the spot. Yards and
+					junctions can wait until it starts collecting passport stamps.
 				</p>
 				<div class="hero-ctas" style="justify-content: center; margin-bottom: 0;">
 					<a class="btn btn-primary" href={href("/guide/getting-started/")}
@@ -450,7 +462,19 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 		margin: 0 0 0.65rem;
 		font-family: var(--font-display);
 		font-size: clamp(1.5rem, 3vw, 2.1rem);
-		letter-spacing: -0.01em;
-		font-weight: 620;
+		letter-spacing: 0;
+		font-weight: 800;
+	}
+
+	.postcard-bo {
+		position: absolute;
+		left: clamp(0.5rem, 3vw, 2.5rem);
+		bottom: 0.35rem;
+	}
+
+	@media (max-width: 820px) {
+		.postcard-bo {
+			display: none;
+		}
 	}
 </style>

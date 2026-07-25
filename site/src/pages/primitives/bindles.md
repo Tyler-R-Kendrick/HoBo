@@ -73,6 +73,6 @@ Every classic lock-in mechanism is a thing that lives *outside* your app descrip
 
 ## Where bindles go next
 
-- A bindle needs a home: [Camps](/HoBo/primitives/camps/) — the second essential primitive.
+- A bindle needs a home: [Camps](/HoBo/primitives/camps/) — pitch one to pin placement, or let HoBo infer it from the code you've configured.
 - Multiple homes under one provider: [Yards](/HoBo/primitives/yards/).
 - Homes across clouds: [Junctions](/HoBo/primitives/junctions/).

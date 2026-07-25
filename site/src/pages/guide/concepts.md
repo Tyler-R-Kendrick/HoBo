@@ -10,7 +10,7 @@ HoBo's metaphor is the itinerant worker who travels light, and the names lean in
 
 ## The four scopes
 
-Scopes nest by breadth: **`Bindle ⊂ Camp ⊂ Yard ⊂ Junction`**. The first two are essential; the last two are for apps that go places.
+Scopes nest by breadth: **`Bindle ⊂ Camp ⊂ Yard ⊂ Junction`**. The bindle is the one thing you must write; the camp is where your app always lives (declare one to pin placement, or let HoBo infer it from the code you've configured); the last two are for apps that go places.
 
 | Scope | What it is |
 |---|---|

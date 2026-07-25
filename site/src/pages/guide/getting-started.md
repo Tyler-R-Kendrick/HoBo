@@ -1,15 +1,15 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Getting started
-description: "Pack your first Bindle, pitch a Camp, and let your app ride: the two primitives you can't run HoBo without, plus where Yards and Junctions come in."
+description: "Pack your first Bindle, pitch a Camp (or let HoBo pitch it for you), and let your app ride — plus where Yards and Junctions come in."
 ---
 
 # Getting started
 
-Time to leave home. This guide takes you from an empty directory to an app that has a home — and a standing ticket to a cheaper one. You'll meet the two primitives HoBo cannot run without, in the order it needs them:
+Time to leave home. This guide takes you from an empty directory to an app that has a home — and a standing ticket to a cheaper one. You'll meet HoBo's two foundational primitives, in the order you need them:
 
-1. **[Bindle](/HoBo/primitives/bindles/)** — *pack.* Everything your app owns, rolled into one provider-agnostic bundle. No bindle, nothing to host.
-2. **[Camp](/HoBo/primitives/camps/)** — *settle.* The place your bindle lives right now: one provider, one durable runtime. No camp, nowhere to live.
+1. **[Bindle](/HoBo/primitives/bindles/)** — *pack.* Everything your app owns, rolled into one provider-agnostic bundle. The one thing you must write: no bindle, nothing to host.
+2. **[Camp](/HoBo/primitives/camps/)** — *settle.* The place your bindle lives right now: one provider, one durable runtime. Every app lives in a camp, but **writing one is optional** — leave it out and HoBo infers a camp from the code you've configured. (The exception: a junction broker admin can lock placement down and require explicit camps.)
 
 **[Yards](/HoBo/primitives/yards/)** and **[Junctions](/HoBo/primitives/junctions/)** are advanced scenarios — you'll want them when your app starts collecting regions and clouds, and not a minute before. They get a short section [at the end](#advanced--yards-and-junctions).
 
@@ -62,11 +62,11 @@ Three things to internalize — they're what make everything later cheap:
 - **`.dependsOn(...)` is the wiring.** It declares edges *and* injects typed bindings at runtime. Nothing reaches a backend it didn't declare — deny by default.
 - **`.allow(...)` is inline least privilege.** Permissions travel *in* the bindle, so they move when the app moves. That's the trick: a bindle carries everything needed to unpack it anywhere, which is exactly what makes migrating to a cheaper home a routine event instead of a rewrite.
 
-That's a complete, deployable description. If you stopped reading here and ran `hobo up`, HoBo could take it from this point — which brings us to where it would land.
+That's a complete, deployable description. If you stopped reading here and ran `hobo up`, HoBo could take it from this point — it would infer a camp from what you've configured and land the app there. Which brings us to what a camp *is*, and when to write one yourself.
 
-## Step 2 — Pitch a camp
+## Step 2 — Pitch a camp (or let HoBo pitch it)
 
-A camp answers one question the bindle deliberately doesn't: **where does this live right now?** One provider, one durable runtime (event store, queues, streams, actors, clock):
+A camp answers one question the bindle deliberately doesn't: **where does this live right now?** One provider, one durable runtime (event store, queues, streams, actors, clock). Declaring one is how you *pin* that answer:
 
 ```ts
 // src/camp.ts
@@ -94,7 +94,7 @@ hobo logs --camp prod    # live-tail through the camp runtime
 A few useful truths about camps:
 
 - **The camp is a *current answer*, not a vow.** The whole point of keeping the bindle provider-agnostic is that the camp can change out from under it. When continuous migration finds a cheaper camp that passes your policies, the move is the same convergence loop as `hobo up` — plan, gate, converge — never a special event.
-- **You can skip even this.** With no camp pinned, the Dispatcher infers one from your platform's approved providers, optimizing for price under policy. Explicit camps are for when *you* want to choose.
+- **Writing a camp is optional.** With no camp pinned, the Dispatcher infers one from the code you've configured and your platform's approved providers, optimizing for price under policy. Explicit camps are for when *you* want to choose — or when your junction's broker admin has locked placement down and requires explicit, approved camps.
 - **Zero-setup first deploy:** `npx hobo up` from any directory deploys anonymously and returns a live URL — no account. `hobo login` and `hobo claim` later bind it to you, keeping its state and URL. Commitment-free, like all good first visits.
 
 And if you do want provider-native power, it's a typed annotation away, still inside the bindle:
@@ -105,7 +105,7 @@ const apiSvc = b
   .with(fly.machines({ size: "shared-cpu-2x" }));   // optimization, not a rewrite
 ```
 
-**You now know everything required to run HoBo.** A bindle and a camp are the whole entry fee. Everything below is for apps with wanderlust.
+**You now know everything required to run HoBo.** A bindle is the whole entry fee — the camp comes with the campsite, whether you pitched it or HoBo did. Everything below is for apps with wanderlust.
 
 ## Advanced — Yards and Junctions
 

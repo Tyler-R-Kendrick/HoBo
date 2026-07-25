@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import Mascot from "../components/Mascot.astro";
 import { href } from "../lib/url";
 ---
 
@@ -8,10 +9,18 @@ import { href } from "../lib/url";
 	description="This page has moved on down the line."
 >
 	<div class="error-page">
+		<Mascot size={130} puffs class="lost-bo" />
 		<h1><span class="gradient-text">404</span></h1>
-		<p>This page has moved on down the line.</p>
+		<p>This page packed its bindle and moved on down the line.</p>
 		<p>
 			<a class="btn btn-primary" href={href("/")}>Back to the campfire</a>
 		</p>
 	</div>
 </Base>
+
+<style>
+	.lost-bo {
+		margin-inline: auto;
+		animation: bob 3.6s ease-in-out infinite;
+	}
+</style>

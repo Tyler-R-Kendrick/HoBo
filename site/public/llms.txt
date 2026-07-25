@@ -15,10 +15,13 @@ Key facts:
 - Guiding principle: placement is a standing decision. The Dispatcher continuously re-plans
   where the app lives, optimizing cost under policy; migrations run the same plan → gate →
   converge loop as deploys, so a move is never a special event.
-- Primitives, in order of need: Bindle (essential — the packed, provider-agnostic app) →
-  Camp (essential — its current home: one provider + durable runtime) → Yard (advanced —
-  one provider's camps: shared policy/identity) → Junction (advanced — cross-cloud
-  federation of yards, peer-to-peer, no shared mutable state).
+- Primitives, in order of need: Bindle (the one REQUIRED authoring primitive — the packed,
+  provider-agnostic app) → Camp (its current home: one provider + durable runtime; every
+  app lives in one, but WRITING one is optional — unspecified camps are inferred from the
+  configured code, unless a junction broker admin locks placement down to explicit camps) →
+  Yard (advanced — one provider's camps: shared policy/identity) → Junction (advanced —
+  cross-cloud federation of yards, peer-to-peer, no shared mutable state; junction
+  governance is where camp inference can be disabled).
 - One lifecycle verb pair: `hobo up` realizes the object graph (build, plan, gate,
   provision, deploy); `hobo down` reverses it. `hobo dev` runs an offline local camp;
   `npx hobo new` scaffolds; anonymous `npx hobo up` deploys with no account, `hobo claim`
@@ -34,7 +37,7 @@ Key facts:
 ## Docs
 
 - [What is HoBo](https://tyler-r-kendrick.github.io/HoBo/guide/): positioning, the guiding principle, who it is for
-- [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, pitch a Camp, `hobo up`; Yards/Junctions as advanced scenarios
+- [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, pitch a Camp (or let it be inferred), `hobo up`; Yards/Junctions as advanced scenarios
 - [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): the four scopes, continuous migration, membrane, event log, agent auth
 - [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout
 - [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
@@ -44,7 +47,7 @@ Key facts:
 
 - [Meet the primitives](https://tyler-r-kendrick.github.io/HoBo/primitives/): the four scopes in order of need
 - [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/): builder surface, .dependsOn/.allow/.with, manifest rules
-- [Camps](https://tyler-r-kendrick.github.io/HoBo/primitives/camps/): runtime backends, defaultProvider/tiers/bindings resolution
+- [Camps](https://tyler-r-kendrick.github.io/HoBo/primitives/camps/): runtime backends, defaultProvider/tiers/bindings resolution, inferred vs explicit camps
 - [Yards](https://tyler-r-kendrick.github.io/HoBo/primitives/yards/): one-provider composition, self-host (the Yard is a Bindle)
 - [Junctions](https://tyler-r-kendrick.github.io/HoBo/primitives/junctions/): cross-cloud federation, inferred connectivity, border policy
 

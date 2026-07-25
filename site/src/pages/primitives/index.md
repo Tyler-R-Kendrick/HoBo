@@ -1,19 +1,19 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Meet the primitives
-description: "HoBo's four primitives in order of need: Bindles and Camps are essential; Yards and Junctions are for apps that go places."
+description: "HoBo's four primitives in order of need: the Bindle you must write, the Camp you can pin or let HoBo infer, and Yards and Junctions for apps that go places."
 ---
 
 # Meet the primitives
 
-HoBo has exactly four primitives, named for the traveling life, and you meet them **in order of need**. Two are essential — HoBo cannot run without them. Two are advanced — for apps that start collecting regions and clouds.
+HoBo has exactly four primitives, named for the traveling life, and you meet them **in order of need**. The bindle is the one thing you must write; the camp is where your app always lives — pitched by you, or inferred for you. The other two are advanced — for apps that start collecting regions and clouds.
 
-## The essentials
+## The foundation
 
-| # | Primitive | One line | You need it because… |
+| # | Primitive | One line | What it asks of you |
 |---|---|---|---|
-| 1 | **[Bindle](/HoBo/primitives/bindles/)** | Your whole app, packed into one provider-agnostic bundle. | No bindle, nothing to host. It's the first thing HoBo looks for and the only thing it ships. |
-| 2 | **[Camp](/HoBo/primitives/camps/)** | Where the bindle lives *right now*: one provider + one durable runtime. | No camp, nowhere to live. (Though the Dispatcher can pitch one for you.) |
+| 1 | **[Bindle](/HoBo/primitives/bindles/)** | Your whole app, packed into one provider-agnostic bundle. | **Required.** No bindle, nothing to host — it's the first thing HoBo looks for and the only thing it ships. |
+| 2 | **[Camp](/HoBo/primitives/camps/)** | Where the bindle lives *right now*: one provider + one durable runtime. | **Optional to write.** Skip it and HoBo infers a camp from the code you've configured; declare one to pin placement — or because your junction broker admin locked placement down to explicit camps. |
 
 Bindle first, camp second — that ordering is load-bearing. The bindle refuses to know where it lives; the camp exists to answer exactly that question, temporarily. The gap between them is where [continuous migration](/HoBo/guide/concepts/#continuous-migration) lives: keep the description portable, treat the placement as a standing decision, and the cheapest valid home wins — today and every day after.
 

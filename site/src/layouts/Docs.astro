@@ -36,7 +36,7 @@ const current = (slug: string) =>
 				{
 					nav.map((group) => (
 						<nav aria-label={group.label}>
-							<h4>{group.label}</h4>
+							<p class="nav-label">{group.label}</p>
 							<ul>
 								{group.items.map((item) => (
 									<li>

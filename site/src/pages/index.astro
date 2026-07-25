@@ -17,7 +17,10 @@ export default bindle("hello-bindle", (b) => {
   return { api, web };
 });`;
 
-const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
+const shikiThemes = {
+	light: "github-light-high-contrast",
+	dark: "github-dark-high-contrast",
+} as const;
 ---
 
 <Base
@@ -351,7 +354,12 @@ const shikiThemes = { light: "github-light", dark: "github-dark" } as const;
 					Nobody else keeps looking for a cheaper home after move-in day.
 				</p>
 			</div>
-			<div class="table-wrap">
+			<div
+				class="table-wrap"
+				tabindex="0"
+				role="region"
+				aria-label="How HoBo compares to other platforms (scrollable table)"
+			>
 				<table class="compare">
 					<thead>
 						<tr>

@@ -77,6 +77,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 					el.setAttribute("aria-expanded", String(Boolean(open)));
 				});
 			}
+			// Horizontally scrollable tables must be keyboard-reachable.
+			for (const t of document.querySelectorAll(".prose table")) {
+				t.tabIndex = 0;
+			}
 		</script>
 	</body>
 </html>

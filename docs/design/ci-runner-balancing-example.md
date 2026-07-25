@@ -53,14 +53,19 @@ make the ledger auditable; `exec.Succeeded` records each applied patch.
 - Third-party rungs are capability-guarded behind `HOBO_RB_ENABLE_<PROVIDER>`
   repo variables and stay ineligible until the corresponding GitHub App or
   runner pool is actually installed; with none enabled the dispatcher holds
-  `ubuntu-latest` (free for public repos), which is the correct cheapest
-  answer today. The failed-run classifier (spending limit, minutes quota,
-  runner unavailable, zero-step pickup failures) is the reactive backstop
-  that rotates off a blocked provider between scheduled passes.
-- The public-repo posture means GitHub-hosted spend reads as `0`; the
-  rebalance pass is still load-bearing evidence for the private-repo path via
-  the offline fixtures (`fixtures/free-credit-rotation.fixture.json` replays
-  GitHub's included minutes exhausting while Blacksmith headroom remains).
+  `ubuntu-latest` inside GitHub's included minutes, which is the correct
+  cheapest answer while free headroom remains. The failed-run classifier
+  (spending limit, minutes quota, runner unavailable, zero-step pickup
+  failures) is the reactive backstop that rotates off a blocked provider
+  between scheduled passes.
+- This repository is private, so GitHub-hosted minutes bill against the
+  account's included quota and its Actions spending limit is a real hard
+  block — a job refused for spending reasons dies before any step starts,
+  which is exactly the evidence the classifier maps to a provider-wide
+  `HardBlockSignal`. The offline fixture
+  (`fixtures/free-credit-rotation.fixture.json`) replays the same story
+  proactively: GitHub's included minutes exhaust while Blacksmith headroom
+  remains, and the dispatcher rotates before the wall instead of after it.
 
 ## Scope boundary
 

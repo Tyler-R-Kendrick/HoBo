@@ -28,6 +28,16 @@ export const nav: NavGroup[] = [
 		],
 	},
 	{
+		label: "Roles",
+		slug: "/roles/",
+		items: [
+			{ label: "Who writes what", slug: "/roles/" },
+			{ label: "HoBo for Developers", slug: "/roles/developers/" },
+			{ label: "HoBo for Platform Engineers", slug: "/roles/platform-engineers/" },
+			{ label: "HoBo for DevSecOps", slug: "/roles/devsecops/" },
+		],
+	},
+	{
 		label: "Agents",
 		slug: "/agents/",
 		items: [

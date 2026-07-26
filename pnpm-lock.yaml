@@ -318,6 +318,12 @@ importers:
         specifier: workspace:*
         version: link:../runtimes/runtime-local
 
+  packages/iac/iac-crossplane:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/iac/iac-pulumi:
     dependencies:
       '@hobo/core':

@@ -26,7 +26,7 @@ hobo down --camp pr-123
 | Verb | Role | Semantics |
 |---|---|---|
 | `up` / `down` | lifecycle | Realize / tear down the object graph. |
-| `dev` | local loop | Run against `runtime-local` with hot reload, replay, and honest fidelity labels. |
+| `dev` | local loop | Boot an offline `runtime-local` camp and serve your bindle's own api/web entrypoint handler in-process. |
 | `new` | local loop | Scaffold a runnable SDK program. |
 | `login` / `claim` | identity | OIDC dev identity; bind an anonymous deployment to an account. |
 | `plan` | read-only | Dry-run the `up` decision: plan, matching choices, cost, warnings. |
@@ -51,4 +51,4 @@ Where you'd expect a verb from other tools, HoBo folds it into the model instead
 
 ## Status
 
-The CLI is a **designed, contract-pinned surface** being implemented in slices. Track progress on [the trail map](/HoBo/guide/status/).
+All **27 canonical verbs ship today** in the composed `hobo` binary — running against the default **local, in-memory lane**, with live deploy lanes credential-gated by environment (Cloudflare/Vercel tokens, or `HOBO_PULUMI_LIVE=1` for the real pinned Pulumi engine). The same 27 verbs are served as MCP tools by the [`hobo-mcp` binary](/HoBo/agents/mcp/), with verb/tool parity contract-tested. Some flags shown above (`--to`, `--rollback`, `--seed`) are contract-pinned design not yet wired; the global flags (`--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`) work everywhere. Track progress on [the trail map](/HoBo/guide/status/).

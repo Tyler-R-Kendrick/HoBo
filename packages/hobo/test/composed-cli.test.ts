@@ -1,10 +1,9 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-
 import { createHoboCli } from "@hobo/cli";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	createComposedHoboCli,

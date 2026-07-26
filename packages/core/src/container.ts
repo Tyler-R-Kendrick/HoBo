@@ -1,4 +1,4 @@
-import { createPortDescriptor, portKey, type PortDescriptor } from "./ports.js";
+import { createPortDescriptor, type PortDescriptor, portKey } from "./ports.js";
 
 export interface Container {
 	register<T>(descriptor: PortDescriptor | unknown, implementation: T): void;

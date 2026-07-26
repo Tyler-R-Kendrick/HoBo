@@ -1,8 +1,10 @@
+// domain-view: parse-produced draft-proof record; its wire form is the GuardrailMappingRow proto message in data-models/.
 export interface GuardrailMappingRow {
   readonly platformGuardrail: string;
   readonly issueWorkerEnforcement: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the IssueWorkerGuardrailMappingRecord proto message in data-models/.
 export interface IssueWorkerGuardrailMappingRecord {
   readonly parentIssue: "HOBO-702";
   readonly automationDocPath: "docs/automations/hobo-issue-worker.md";

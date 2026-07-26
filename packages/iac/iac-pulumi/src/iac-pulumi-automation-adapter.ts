@@ -1,5 +1,8 @@
+// public-contract: the pinned Pulumi toolchain version every engine (in-memory and CLI) declares.
 export const PINNED_PULUMI_AUTOMATION_VERSION = "3.130.0";
+// public-contract: the IacProgram schema version validateIacProgram accepts.
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
+// public-contract: the adapter id stamped on every report this package emits.
 export const ADAPTER_ID = "@hobo/iac-pulumi";
 
 const OUTPUT_REF =
@@ -100,6 +103,17 @@ export function createPulumiAutomationAdapter(options: any = {}) {
 		id: ADAPTER_ID,
 		pulumiVersion,
 		stateBackend: stateBackend.describe(),
+		// Estate discovery seam: the full per-resource-stack state the backend
+		// actually holds, keyed by stack key. Drives `hobo drift` (declared vs
+		// held state) and `hobo import` (estate enumeration + adoption). The
+		// in-memory engine answers from its state backend; the real CLI engine
+		// answers by enumerating its per-resource stacks (and fails closed with a
+		// typed PulumiEngineUnavailableError when the pulumi binary is missing).
+		snapshotState() {
+			return typeof engine.snapshot === "function"
+				? engine.snapshot()
+				: stateBackend.snapshot();
+		},
 		async preview(program) {
 			const parsed = validateIacProgram(program);
 			return engine.preview(parsed);
@@ -320,18 +334,29 @@ export function createInMemoryAutomationEngine(options: any = {}) {
 				});
 			}
 
-			const preview = await this.preview(program);
+			// Refresh judges ONLY the program's own per-resource stacks (a
+			// single-resource refresh must not flag sibling stacks the way the
+			// full-program preview's extra-stack scan does — drift is per stack).
+			const drifted = [];
+			for (const resource of program.resources) {
+				const stackKey = createPerResourceStackKey(program, resource.name);
+				const state = stateBackend.read(stackKey);
+				const diff = diffResource(resource, state);
+				if (diff) {
+					drifted.push({
+						name: resource.name,
+						stackKey,
+						reason: diff.reason,
+					});
+				}
+			}
 
 			return deepFreeze({
 				kind: "drift-report",
 				provider: "pulumi",
 				model: "per-resource-stack",
-				drifted: preview.dirty,
-				resources: preview.changes.map((change) => ({
-					name: change.resource,
-					stackKey: change.stackKey,
-					reason: change.reason,
-				})),
+				drifted: drifted.length > 0,
+				resources: drifted,
 			});
 		},
 		async destroy(program) {

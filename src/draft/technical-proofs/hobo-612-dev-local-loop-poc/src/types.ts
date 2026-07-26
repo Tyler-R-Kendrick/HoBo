@@ -19,6 +19,7 @@ export interface DevEvent {
   payload: Record<string, unknown>;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DevStateSnapshot proto message in data-models/.
 export interface DevStateSnapshot {
   schema: typeof STATE_SCHEMA;
   runCount: number;
@@ -36,6 +37,7 @@ export interface DevSessionOptions {
   campOnlyCapabilities?: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DevSessionRecord proto message in data-models/.
 export interface DevSessionRecord {
   sessionId: string;
   localUrl: string;

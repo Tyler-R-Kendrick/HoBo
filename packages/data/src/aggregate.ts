@@ -234,4 +234,4 @@ export function defineAggregate<S, C>(
 	};
 }
 
-export { AggregateInvariantError, AggregateConflictError };
+export { AggregateConflictError, AggregateInvariantError };

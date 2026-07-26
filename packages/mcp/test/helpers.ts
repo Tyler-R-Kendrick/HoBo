@@ -1,21 +1,6 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-
-import { createInMemoryActorHost } from "@hobo/data";
-import { createCloudflareProvider } from "@hobo/provider-cloudflare";
-import {
-	createInProcessCredentialBroker,
-	createInProcessExecutor,
-	createRegistryFromProviders,
-	type IacProgram,
-	type IacProvider,
-} from "@hobo/cloud";
-import {
-	createManualClock,
-	createRuntimeLocalEventStore,
-	type RuntimeLocalEventStore,
-} from "@hobo/runtime-local";
 import {
 	createDownCommand,
 	createHoboCli,
@@ -25,9 +10,23 @@ import {
 	type HoboCli,
 	type YardRuntime,
 } from "@hobo/cli";
+import {
+	createInProcessCredentialBroker,
+	createInProcessExecutor,
+	createRegistryFromProviders,
+	type IacProgram,
+	type IacProvider,
+} from "@hobo/cloud";
+import { createInMemoryActorHost } from "@hobo/data";
+import { createCloudflareProvider } from "@hobo/provider-cloudflare";
+import {
+	createManualClock,
+	createRuntimeLocalEventStore,
+	type RuntimeLocalEventStore,
+} from "@hobo/runtime-local";
 
 import type { AuthContext } from "../src/auth.js";
-import { MCP_TOOL_PORT, MCP_TOOL_CALL_VERB } from "../src/tool-surface.js";
+import { MCP_TOOL_CALL_VERB, MCP_TOOL_PORT } from "../src/tool-surface.js";
 
 // Mirrors packages/cli/test/cloud-verbs.test.ts: an in-process, mocked-lane Yard
 // (runtime-local EventStore + in-memory ActorHost + an injected in-memory

@@ -1,17 +1,16 @@
-import { afterEach, describe, expect, it } from "vitest";
-
 import {
-	IdentityService,
 	createFixtureHostAttestor,
+	IdentityService,
 	type LaunchMeasurement,
 } from "@hobo/identity";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { resolveAuthContext } from "../src/auth.js";
 import { createHoboMcpServer } from "../src/server.js";
 import {
-	HELLO_BINDLE,
 	authGranting,
 	closeStores,
+	HELLO_BINDLE,
 	makeWiredCli,
 	withProject,
 } from "./helpers.js";

@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
-
 import type { EventEnvelope } from "@hobo/core";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { defineProjection } from "../src/index.js";
 import { freshStore } from "./helpers.js";

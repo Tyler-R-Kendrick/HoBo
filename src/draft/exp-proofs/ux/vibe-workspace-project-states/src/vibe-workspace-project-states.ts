@@ -38,6 +38,7 @@ type ProviderReadinessStatus =
   | "failed"
   | "value-proven";
 
+// domain-view: parse-produced draft-proof record; its wire form is the WorkspaceProjectStateFixture proto message in data-models/.
 export type WorkspaceProjectStateFixture = {
   readonly id: string;
   readonly state: WorkspaceProjectState;
@@ -98,12 +99,14 @@ export type WorkspaceProjectStateFixture = {
   };
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the WorkspaceProjectModeNote proto message in data-models/.
 export type WorkspaceProjectModeNote = {
   readonly proofMode: ProofMode;
   readonly label: string;
   readonly meaning: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeWorkspaceProjectStateModel proto message in data-models/.
 export type VibeWorkspaceProjectStateModel = {
   readonly issue: "HOBO-541";
   readonly phase: "M1";

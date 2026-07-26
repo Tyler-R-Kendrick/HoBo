@@ -2,8 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
-import { POLICY_IR_SCHEMA_VERSION } from "../src/policy-ir.js";
 import {
 	AGENT_GUARDRAILS_ENGINE_ID,
 	canAgentProceed,
@@ -11,6 +9,7 @@ import {
 	evaluateAgentGuardrail,
 	rebuildAgentGuardrailState,
 } from "../src/agent-guardrails.js";
+import { POLICY_IR_SCHEMA_VERSION } from "../src/policy-ir.js";
 
 function decisionRequest(overrides: Record<string, unknown> = {}) {
 	const context = {

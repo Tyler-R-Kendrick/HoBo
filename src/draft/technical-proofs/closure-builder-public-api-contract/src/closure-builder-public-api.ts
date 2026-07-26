@@ -9,6 +9,7 @@ export interface BuilderFactoryContract {
   readonly aliasRole: "local-and-returned-key-only";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderContract proto message in data-models/.
 export interface ClosureBuilderContract {
   readonly packageName: "@hobo/bindles";
   readonly bindleSignature: "bindle(name, builderFn)";

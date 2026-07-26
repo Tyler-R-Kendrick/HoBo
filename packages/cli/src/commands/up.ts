@@ -27,6 +27,7 @@ export interface UpCommandDeps {
 // cloud calls: provisioning runs through the injected in-memory IacProvider.
 export function createUpCommand(deps: UpCommandDeps = {}): CommandModule {
 	return {
+		implemented: Boolean(deps.runtime),
 		run: async ({ context, emitProgress }) => {
 			const { runtime } = deps;
 			if (!runtime) {

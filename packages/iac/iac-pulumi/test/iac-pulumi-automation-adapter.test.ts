@@ -6,13 +6,13 @@ import { describe, it } from "vitest";
 
 import {
 	ADAPTER_ID,
-	PINNED_PULUMI_AUTOMATION_VERSION,
 	createInMemoryAutomationEngine,
 	createInMemoryStateBackend,
 	createPerResourceStackKey,
 	createPulumiAutomationAdapter,
 	createStateBackendConfig,
 	createTrivialIacProgram,
+	PINNED_PULUMI_AUTOMATION_VERSION,
 	runIacBackendConformance,
 	validateIacProgram,
 } from "../src/iac-pulumi-automation-adapter.js";

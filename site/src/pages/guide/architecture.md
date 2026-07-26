@@ -63,6 +63,8 @@ A crash anywhere is recovered by replaying the deployment's event stream. Inspec
 
 ## Package layout
 
+> **Design-stage layout:** this table is the *target* package map — not everything in it ships yet. Shipping today (among others): `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/core`, `@hobo/cli`, `@hobo/mcp` (served by the `hobo-mcp` binary), `runtime-local`, the Cloudflare/ax/agentv provider adapters, and the Pulumi IaC engine. `@hobo/junctions` is deliberately deferred to the multi-cloud build stage (S4); the aws/azure/gcp/fly/kubernetes providers and the postgres/temporal/restate runtime backends are designed, **not installable packages**.
+
 The `@hobo/*` packages are layered; dependencies point inward only (`apps → adapters → sdk/runtime → core`), keeping adapters swappable and the agnostic core clean:
 
 | Layer | Packages |

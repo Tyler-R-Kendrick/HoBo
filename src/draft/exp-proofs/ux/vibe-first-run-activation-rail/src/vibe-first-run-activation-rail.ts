@@ -34,6 +34,7 @@ type ActivationRailStageName = (typeof ACTIVATION_RAIL_STAGES)[number];
 type ActivationRailOutcomeKind = (typeof ACTIVATION_RAIL_OUTCOMES)[number];
 type ActivationRailProofMode = (typeof ACTIVATION_RAIL_PROOF_MODES)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the ActivationRailWireframe proto message in data-models/.
 export type ActivationRailWireframe = {
   readonly entryPoint: ActivationRailEntryPoint;
   readonly primaryQuestion: string;
@@ -42,6 +43,7 @@ export type ActivationRailWireframe = {
   readonly accessibilityNotes: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ActivationRailState proto message in data-models/.
 export type ActivationRailState = {
   readonly stage: ActivationRailStageName;
   readonly entryCondition: string;
@@ -53,6 +55,7 @@ export type ActivationRailState = {
   readonly quickstartFixtureIds: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ActivationRailOutcome proto message in data-models/.
 export type ActivationRailOutcome = {
   readonly kind: ActivationRailOutcomeKind;
   readonly title: string;
@@ -62,12 +65,14 @@ export type ActivationRailOutcome = {
   readonly quickstartFixtureIds: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ActivationRailProofModeLegend proto message in data-models/.
 export type ActivationRailProofModeLegend = {
   readonly proofMode: ActivationRailProofMode;
   readonly label: string;
   readonly meaning: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeFirstRunActivationRail proto message in data-models/.
 export type VibeFirstRunActivationRail = {
   readonly issue: "HOBO-540";
   readonly phase: "M1";

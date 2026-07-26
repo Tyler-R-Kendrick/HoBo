@@ -9,6 +9,7 @@ import {
 export type PortKind = "runtime" | "provider" | "port";
 export type InterfaceStability = "stable" | "preview" | "experimental";
 
+// domain-view: parse-produced draft-proof record; its wire form is the PortDescriptor proto message in data-models/.
 export interface PortDescriptor {
   kind: PortKind;
   name: string;

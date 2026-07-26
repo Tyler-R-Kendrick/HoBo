@@ -13,10 +13,10 @@ derived types, and event-driven CQRS shape.
 | Example | What it proves |
 |---|---|
 | [`hello-bindle/`](./hello-bindle/README.md) | The minimal Bindle: a hello-world API, a web app bound to it, and the wiring — plus the S0/S1 stage-gate and E2E fixture lanes. |
+| [`multi-cloud-shop/`](./multi-cloud-shop/README.md) | A shop (storefront, API, kv store, orders queue) as one unchanged Bindle deployable to two providers. |
+| [`durable-agent/`](./durable-agent/README.md) | A durable, tool-invoking agent on `@hobo/runtime`'s authoring surface (`agent()` + `createWorkflowEngine()`). |
+| [`self-host-yard/`](./self-host-yard/README.md) | Operating your own Yard: the whole control plane composed in-process with a SQLite event log. |
 | [`ci-runner-balancing/`](./ci-runner-balancing/README.md) | A credit-aware CI runner dispatcher balancing GitHub-hosted, self-hosted, and third-party Actions runner providers by usage/budget then billable cost — free credits before realtime billing (ADR-0071 `maximize-credits`). Dogfooded by this repo's own CI. |
-
-Planned next (reserved in [`architecture.md`](../docs/design/architecture.md#plan-10)):
-`multi-cloud-shop/` · `durable-agent/` · `self-host-yard/`.
 
 ## Conventions
 

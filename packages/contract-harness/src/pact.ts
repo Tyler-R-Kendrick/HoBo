@@ -1,14 +1,16 @@
-import { readdir, readFile } from "node:fs/promises";
 import type { Dirent } from "node:fs";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const PARTICIPANT_NAME = /^[A-Z][A-Za-z0-9]*$/;
 
+// domain-view: readonly parse target validated against PARTICIPANT_NAME; data-models/contract-harness.proto PactParticipant is its wire form.
 export interface PactParticipant {
 	readonly name: string;
 }
 
+// domain-view: readonly parse target narrowed to the HTTP method union; data-models/contract-harness.proto PactRequest is its wire form.
 export interface PactRequest {
 	readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 	readonly path: string;
@@ -16,18 +18,21 @@ export interface PactRequest {
 	readonly body?: unknown;
 }
 
+// domain-view: readonly parse target; data-models/contract-harness.proto PactResponse is its wire form.
 export interface PactResponse {
 	readonly status: number;
 	readonly headers?: Readonly<Record<string, string>>;
 	readonly body?: unknown;
 }
 
+// domain-view: readonly parse target; data-models/contract-harness.proto PactInteraction is its wire form.
 export interface PactInteraction {
 	readonly description: string;
 	readonly request: PactRequest;
 	readonly response: PactResponse;
 }
 
+// domain-view: readonly parse-produced aggregate pinned to pact spec 3.0.0; data-models/contract-harness.proto PactDocument is its wire form.
 export interface PactDocument {
 	readonly consumer: PactParticipant;
 	readonly provider: PactParticipant;

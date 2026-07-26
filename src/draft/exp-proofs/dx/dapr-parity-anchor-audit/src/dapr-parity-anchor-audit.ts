@@ -10,6 +10,7 @@ export const AUDITED_DAPR_FEATURES = ["Bindings", "Distributed lock"] as const;
 
 export type AuditedDaprFeature = (typeof AUDITED_DAPR_FEATURES)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the DaprParityRow proto message in data-models/.
 export type DaprParityRow = {
   feature: AuditedDaprFeature;
   status: "✅" | "➕" | "🔜" | "↔";

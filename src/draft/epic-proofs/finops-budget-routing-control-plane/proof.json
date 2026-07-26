@@ -1,0 +1,20 @@
+{
+  "layer": "epic",
+  "slug": "finops-budget-routing-control-plane",
+  "title": "FinOps Budget Routing Control Plane",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": [
+      "docs/design/finops-budget-routing-control-plane.md"
+    ]
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

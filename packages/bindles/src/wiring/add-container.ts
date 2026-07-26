@@ -1,9 +1,9 @@
 import {
 	assertResourceName,
 	BindReferenceError,
+	type ComponentHandle,
 	createComponentHandle,
 	normalizeBindMap,
-	type ComponentHandle,
 	type ResourceHandle,
 } from "./bind-reference.js";
 

@@ -1,5 +1,15 @@
+// Enforcement tiers, so nobody mistakes one for the other:
+// - Structural checks (data-models presence, PACT contract validity,
+//   proto<->CUE type coverage, parallel-proto-type) inspect real artifacts
+//   and cannot be satisfied by prose.
+// - Documentation-presence checks (missing-parse-derived-type,
+//   missing-event-architecture) grep for the vocabulary the architecture
+//   rules require the package to document. They verify the package SAYS how
+//   it applies parse-don't-validate and the event architecture, not that the
+//   code does — behavioral verification lives in each package's tests and
+//   PACT contracts.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,12 +48,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const PRODUCTION_PACKAGE_PARENTS = new Set(["packages", "examples"]);
-const NESTED_PRODUCTION_CATEGORIES = new Set([
-	"runtimes",
-	"providers",
-	"iac",
-	"build",
-]);
+const NESTED_PRODUCTION_CATEGORIES = new Set(["runtimes", "providers", "iac"]);
 
 export function isProductionPackageRoot(packageRoot) {
 	return PRODUCTION_PACKAGE_PARENTS.has(
@@ -135,7 +140,10 @@ export async function checkArchitectureGuardrails({
 	files,
 } = {}) {
 	const normalizedFiles = unique((files ?? []).map(normalizePath));
-	const packageRoots = implementationPackageRoots(normalizedFiles);
+	const frozen = frozenPromotedProofRoots(root);
+	const packageRoots = implementationPackageRoots(normalizedFiles).filter(
+		(packageRoot) => !frozen.has(packageRoot),
+	);
 	const problems = foreignLockfileProblems(normalizedFiles);
 
 	const evidenceByPackage = await Promise.all(
@@ -166,6 +174,29 @@ export async function checkArchitectureGuardrails({
 	}
 
 	return { packageRoots, problems };
+}
+
+// Frozen promoted proofs (scripts/promotions.json) are read-only by the
+// promoted-proof drift gate — their canonical successors in packages/ carry
+// the architecture evidence now. Evaluating them here would demand edits the
+// drift gate forbids, so they are excluded from guard evaluation.
+function frozenPromotedProofRoots(root) {
+	try {
+		const ledger = JSON.parse(
+			readFileSync(path.join(root, "scripts", "promotions.json"), "utf8"),
+		);
+		return new Set(
+			(ledger.promotions ?? [])
+				.filter((entry) => entry.status === "frozen")
+				.map((entry) => normalizePath(entry.proof))
+				.map((proofPath) => {
+					const parts = proofPath.split("/");
+					return parts.slice(0, 4).join("/");
+				}),
+		);
+	} catch {
+		return new Set();
+	}
 }
 
 export function implementationPackageRoots(files) {
@@ -372,19 +403,22 @@ function changedFiles(args) {
 	const base =
 		baseArg?.slice("--base=".length) ?? process.env.HOBO_ARCHITECTURE_BASE;
 
+	// Full-repo mode: evaluate every production package regardless of diff.
+	// Used by check:all and the CI main gate, where a fresh checkout has no
+	// diff and the bare invocation would otherwise pass vacuously.
+	if (args.has("--all")) {
+		return split(git(["ls-files", "packages", "examples"]));
+	}
+
 	if (args.has("--staged")) {
-		return filterExistingBasePackages(
-			split(git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])),
-			base,
+		return split(
+			git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]),
 		);
 	}
 
 	if (base) {
-		return filterExistingBasePackages(
-			split(
-				git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]),
-			),
-			base,
+		return split(
+			git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]),
 		);
 	}
 
@@ -396,26 +430,6 @@ function changedFiles(args) {
 
 function git(args) {
 	return execFileSync("git", args, { encoding: "utf8" }).trim();
-}
-
-function gitSucceeds(args) {
-	try {
-		execFileSync("git", args, { stdio: "ignore" });
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function filterExistingBasePackages(files, base) {
-	if (!base) return files;
-
-	return files.filter((file) => {
-		const packageRoot = implementationPackageRoot(file);
-		return (
-			!packageRoot || !gitSucceeds(["cat-file", "-e", `${base}:${packageRoot}`])
-		);
-	});
 }
 
 function implementationPackageRoot(file) {

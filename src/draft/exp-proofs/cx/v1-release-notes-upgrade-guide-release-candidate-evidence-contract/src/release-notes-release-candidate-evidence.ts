@@ -9,6 +9,7 @@ export type ReadinessDomain =
   | "support"
   | "compatibility";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesReleaseCandidateEvidenceItem proto message in data-models/.
 export interface ReleaseNotesReleaseCandidateEvidenceItem {
   id: string;
   ownerProject: string;
@@ -18,6 +19,7 @@ export interface ReleaseNotesReleaseCandidateEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesReleaseCandidateBlocker proto message in data-models/.
 export interface ReleaseNotesReleaseCandidateBlocker {
   id: string;
   ownerProject: string;
@@ -26,6 +28,7 @@ export interface ReleaseNotesReleaseCandidateBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesReleaseCandidateAcceptedRisk proto message in data-models/.
 export interface ReleaseNotesReleaseCandidateAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -33,6 +36,7 @@ export interface ReleaseNotesReleaseCandidateAcceptedRisk {
   launchRiskEffect: LaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesReleaseCutlineDependency proto message in data-models/.
 export interface ReleaseNotesReleaseCutlineDependency {
   id: string;
   ownerProject: string;
@@ -41,6 +45,7 @@ export interface ReleaseNotesReleaseCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesReleaseCandidateFollowUp proto message in data-models/.
 export interface ReleaseNotesReleaseCandidateFollowUp {
   id: string;
   evidenceId: string;
@@ -48,6 +53,7 @@ export interface ReleaseNotesReleaseCandidateFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesInitiativeStatusGate proto message in data-models/.
 export interface ReleaseNotesInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: LaunchRiskEffect;
@@ -55,6 +61,7 @@ export interface ReleaseNotesInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesPublicClaimGuard proto message in data-models/.
 export interface ReleaseNotesPublicClaimGuard {
   id: string;
   claim: string;
@@ -62,6 +69,7 @@ export interface ReleaseNotesPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesReleaseCandidateEvidenceRecord proto message in data-models/.
 export interface ReleaseNotesReleaseCandidateEvidenceRecord {
   schema: string;
   issue: "HOBO-473";

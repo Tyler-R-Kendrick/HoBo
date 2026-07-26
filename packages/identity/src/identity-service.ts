@@ -1,6 +1,6 @@
 import {
-	createFixtureHostAttestor,
 	type AttestationDocument,
+	createFixtureHostAttestor,
 	verifyWorkloadAttestation,
 } from "./attestation.js";
 import {
@@ -11,10 +11,10 @@ import {
 } from "./events.js";
 import {
 	createInMemoryKms,
-	JwtSvidIssuer,
-	verifyJwtWithJwks,
 	type JwtSvidClaims,
+	JwtSvidIssuer,
 	type KmsLike,
+	verifyJwtWithJwks,
 } from "./issuer.js";
 
 export const IDENTITY_BOUNDARY_SCHEMA = "hobo.identity-boundary/v1";
@@ -363,7 +363,7 @@ function scopeWidens(
 
 export {
 	createFixtureHostAttestor,
-	verifyWorkloadAttestation,
 	createInMemoryKms,
 	verifyJwtWithJwks,
+	verifyWorkloadAttestation,
 };

@@ -1,7 +1,7 @@
 export {
+	componentizeHelloBindle,
 	DEFAULT_CI_MATRIX,
 	PINNED_TOOLCHAIN,
-	componentizeHelloBindle,
 	runWasmtimeSmoke,
 	validateWasmComponentArtifact,
 } from "./componentize.js";

@@ -1,7 +1,7 @@
 import {
-	NondeterministicClockError,
 	type ClockTraceEntry,
 	type FiredTimer,
+	NondeterministicClockError,
 	parseRunId,
 	parseScheduleId,
 } from "@hobo/core";

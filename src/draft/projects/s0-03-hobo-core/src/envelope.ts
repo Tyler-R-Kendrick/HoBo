@@ -11,12 +11,14 @@ import {
 
 export type PrincipalKind = "user" | "agent" | "service" | "system";
 
+// domain-view: parse-produced draft-proof record; its wire form is the PrincipalRef proto message in data-models/.
 export interface PrincipalRef {
   kind: PrincipalKind;
   id: string;
   delegatedBy?: PrincipalRef;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the EventEnvelope proto message in data-models/.
 export interface EventEnvelope<T = unknown> {
   id: string;
   type: string;

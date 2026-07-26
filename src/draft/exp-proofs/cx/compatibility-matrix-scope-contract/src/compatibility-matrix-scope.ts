@@ -24,6 +24,7 @@ const FORBIDDEN_WORK_KINDS = new Set([
   "live-e2e-certification",
 ]);
 
+// domain-view: parse-produced draft-proof record; its wire form is the CompatibilityMatrixScopeRecord proto message in data-models/.
 type CompatibilityMatrixScopeRecord = {
   schema: string;
   issue: string;

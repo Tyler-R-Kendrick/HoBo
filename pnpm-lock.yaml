@@ -58,6 +58,19 @@ importers:
         specifier: ^24.13.2
         version: 24.13.2
 
+  examples/durable-agent:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+
   examples/hello-bindle:
     dependencies:
       '@bufbuild/protobuf':
@@ -69,6 +82,50 @@ importers:
       hono:
         specifier: ^4.6.14
         version: 4.12.27
+
+  examples/multi-cloud-shop:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../../packages/bindles
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+
+  examples/self-host-yard:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.12.1
+        version: 2.12.1
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../../packages/bindles
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../../packages/camps
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@hobo/hobo':
+        specifier: workspace:*
+        version: link:../../packages/hobo
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../../packages/runtimes/runtime-local
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../../packages/yards
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
 
   packages/bindles:
     dependencies:
@@ -261,6 +318,9 @@ importers:
       '@hobo/iac-pulumi':
         specifier: workspace:*
         version: link:../iac/iac-pulumi
+      '@hobo/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare
@@ -279,6 +339,22 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/junctions:
+    dependencies:
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../yards
+    devDependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../camps
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
 
   packages/mcp:
     dependencies:

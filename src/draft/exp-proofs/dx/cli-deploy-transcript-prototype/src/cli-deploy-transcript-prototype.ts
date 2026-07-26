@@ -19,12 +19,14 @@ export type FixtureKind = (typeof REQUIRED_FIXTURE_KINDS)[number];
 export type ProofMode = "reference fixture" | "simulated" | "live" | "scope-out";
 export type DeployOutcome = "deployed" | "blocked";
 
+// domain-view: parse-produced draft-proof record; its wire form is the DeployFixtureReference proto message in data-models/.
 export interface DeployFixtureReference {
   kind: FixtureKind;
   id: string;
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliDeployScenario proto message in data-models/.
 export interface CliDeployScenario {
   id: string;
   title: string;
@@ -47,6 +49,7 @@ export interface CliDeployScenario {
   fixtures: DeployFixtureReference[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliDeployTranscriptPrototype proto message in data-models/.
 export interface CliDeployTranscriptPrototype {
   schema: "hobo.cli-deploy-transcript-prototype/v1";
   issue: "HOBO-573";
@@ -57,6 +60,7 @@ export interface CliDeployTranscriptPrototype {
   scopeOut: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the McpToolResult proto message in data-models/.
 export interface McpToolResult {
   operation: "hobo.up";
   status: DeployOutcome;
@@ -72,6 +76,7 @@ export interface McpToolResult {
   customerSafeSummary: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ScopeCreepDenial proto message in data-models/.
 export interface ScopeCreepDenial {
   decision: "reject";
   reason: string;

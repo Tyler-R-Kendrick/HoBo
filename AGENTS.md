@@ -1,6 +1,6 @@
 # Agent tooling for this repo
 
-This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with twelve installable agent tools plus repo-local `repo` and `draft` skills. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
+This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with the installable agent tools listed in the [`docs/agent-tooling.md`](docs/agent-tooling.md) table plus repo-local `repo` and `draft` skills. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
 
 | Tool | Type | What it does | Invoke |
 |---|---|---|---|
@@ -139,8 +139,8 @@ Examples:
 
 ```txt
 scripts/no-hand-edited-generated-files.mts
-scripts/check-targeted.mts
-scripts/agent-standards-hook.mts
+scripts/check-package-boundaries.mts
+scripts/install-hooks.mts
 ```
 
 Invoke TypeScript repo scripts through `tsx`:
@@ -149,7 +149,7 @@ Invoke TypeScript repo scripts through `tsx`:
 node --import tsx scripts/no-hand-edited-generated-files.mts
 ```
 
-Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it.
+Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it. Sanctioned exceptions: committed platform entry files under `examples/*/deploy/` that the target platform ingests verbatim (ADR-0126).
 
 Before finalizing changes that add, rename, or modify implementation files, scripts, generated-file guards, package config, TypeScript config, Turbo config, or CI config, run:
 
@@ -295,6 +295,6 @@ Durable, non-obvious notes for this environment. The startup update script alrea
 - **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
 - **Node version.** Local Node 22 satisfies `engines` (`>=20.20.0`); CI uses Node 24. The `pnpm install` warnings about `wizer-win32-x64` bins are expected on Linux (Windows-arch optional deps) and are harmless.
 - **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.
-- **`bun` is not installed**, so the `test:smoke` lane (`bun test`) is unavailable. Use `pnpm run test:file <file>` (Vitest) or `pnpm test` (node --test) instead.
+- **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency.
 - **`tgrep` is not installed**, so `pnpm run search` falls back to `rg`. Always pass explicit path args (e.g. `pnpm run search "pattern" src docs`); running it with no path scope over the full worktree can be very slow.
-- **Known pre-existing failures on `main` (not environment issues; do not chase as setup breakage):** `pnpm run docs:okf` fails on 4 `docs/design/proofs/*/README.md` files missing OKF YAML frontmatter. All other gates (`lint`, `standards:check`, `architecture:guard`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, traceability, SDK/deployment validators) pass clean.
+- **All local gates pass clean on `main`** (`lint`, `standards:check`, `architecture:guard`, `docs:okf`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, SDK/deployment validators); treat any failure as caused by the change under test, not the environment.

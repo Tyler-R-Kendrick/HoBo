@@ -73,6 +73,7 @@ export interface SdkIdiomAdapter {
   collect(facts: readonly CollectionFact[]): Promise<WitResult<string[]>>;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the SemanticsAnnexVector proto message in data-models/.
 export interface SemanticsAnnexVector {
   readonly name: string;
   readonly category: AnnexCategory;
@@ -85,6 +86,7 @@ export interface SemanticsAnnexVector {
   readonly expectedError?: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LoweringFixture proto message in data-models/.
 export interface LoweringFixture {
   readonly name: string;
   readonly program: LowerProgram;
@@ -92,6 +94,7 @@ export interface LoweringFixture {
   readonly expectedManifest: ManifestIr;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the VectorCaseResult proto message in data-models/.
 export interface VectorCaseResult {
   readonly name: string;
   readonly category?: string;
@@ -102,6 +105,7 @@ export interface VectorCaseResult {
   readonly diffPaths?: readonly string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaneReport proto message in data-models/.
 export interface LaneReport {
   readonly lane: string;
   readonly status: LaneStatus;
@@ -109,6 +113,7 @@ export interface LaneReport {
   readonly cases: readonly VectorCaseResult[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the SdkConformanceReport proto message in data-models/.
 export interface SdkConformanceReport {
   readonly suite: "@hobo/conformance/sdk";
   readonly contract: "hobo:sdk@0.1.0";

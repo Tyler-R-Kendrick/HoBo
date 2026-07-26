@@ -1,0 +1,31 @@
+{
+	"name": "@hobo/junctions",
+	"version": "0.0.1",
+	"type": "module",
+	"files": ["dist"],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/yards": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/bindles": "workspace:*",
+		"@hobo/camps": "workspace:*",
+		"@types/node": "^22.15.29"
+	},
+	"scripts": {
+		"prebuild": "pnpm --filter @hobo/yards build",
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm --filter @hobo/bindles build && pnpm --filter @hobo/camps build && pnpm --filter @hobo/yards build",
+		"test": "vitest run"
+	}
+}

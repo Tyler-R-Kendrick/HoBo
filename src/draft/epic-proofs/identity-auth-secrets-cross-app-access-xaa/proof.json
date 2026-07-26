@@ -1,0 +1,19 @@
+{
+  "layer": "epic",
+  "slug": "identity-auth-secrets-cross-app-access-xaa",
+  "title": "Identity, Auth, Secrets & Cross-App Access (XAA)",
+  "linear": "HOBO-44",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

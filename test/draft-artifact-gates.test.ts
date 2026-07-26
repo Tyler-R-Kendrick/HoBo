@@ -5,7 +5,10 @@ import path from "node:path";
 import { onTestFinished, test } from "vitest";
 
 import { checkWorkspace } from "../scripts/check-draft-artifacts.js";
-import { compareSkill } from "../scripts/check-skill-mirrors.js";
+import {
+	compareSkill,
+	discoverMirroredSkills,
+} from "../scripts/check-skill-mirrors.js";
 
 const NOTEBOOK_OK = JSON.stringify({
 	nbformat: 4,
@@ -195,4 +198,27 @@ test("skill-mirror gate: equal mirrors pass, drifted mirrors fail, absent-on-bot
 		"drifted\n",
 	);
 	assert.ok(compareSkill("draft", root).some((p) => p.includes("differs")));
+});
+
+test("skill-mirror gate: discovery covers every skill shared by both trees plus the required set", async () => {
+	const root = await mkdtemp(path.join(tmpdir(), "mirror-discover-"));
+	onTestFinished(() => rm(root, { recursive: true, force: true }));
+	// shared skill present in both trees
+	await mkdir(path.join(root, ".claude/skills/shared-extra"), {
+		recursive: true,
+	});
+	await mkdir(path.join(root, ".agents/skills/shared-extra"), {
+		recursive: true,
+	});
+	// non-required skill deliberately present in only one tree
+	await mkdir(path.join(root, ".claude/skills/claude-only"), {
+		recursive: true,
+	});
+
+	const discovered = discoverMirroredSkills(root);
+	assert.ok(discovered.includes("shared-extra"), "shared skill discovered");
+	assert.ok(!discovered.includes("claude-only"), "one-sided skill excluded");
+	for (const required of ["draft", "repo", "sdlc"]) {
+		assert.ok(discovered.includes(required), `required skill ${required}`);
+	}
 });

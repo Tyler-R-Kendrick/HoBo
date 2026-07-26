@@ -2,7 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
 import { commandForPlatform } from "./lib/env.ts";
-import { selectRelevantChecks, type Check } from "./relevant-check-policy.js";
+import { type Check, selectRelevantChecks } from "./relevant-check-policy.js";
 
 const args = new Set(process.argv.slice(2));
 const baseArg = process.argv.find((arg) => arg.startsWith("--base="));

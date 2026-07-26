@@ -12,9 +12,9 @@ Start every repo task by reading `AGENTS.md`, checking `git status --short`, and
 
 ## Setup Rules
 
-- Prefer `pnpm.cmd` on Windows.
-- Use `pnpm.cmd run install:check` when dependency state must be verified.
-- Use `pnpm.cmd run setup` only for first-run setup or when generated contracts are known stale.
+- Use `pnpm` for all package commands (works on every platform; the shell resolves the right shim).
+- Use `pnpm run install:check` when dependency state must be verified.
+- Use `pnpm run setup` only for first-run setup or when generated contracts are known stale.
 - Do not delete `node_modules`, run `pnpm update`, or prune the pnpm store unless the task explicitly changes dependency or install state.
 - Keep agent config mirrored across supported agents when changing `.agents`, `.claude`, `.codex`, `.cursor`, `.mcp.json`, or setup scripts.
 

@@ -472,3 +472,26 @@ ADR-P5 (and the "compiler magic" open question) asked how deep the build-time tr
 - **(+)** Closes ADR-P6–P8; the component-host seam now has a complete, honest scheduling-policy story that delegates first and enforces only where it must.
 - **(+)** Safe defaults (no preemption for services, no oversubscription) mean the common case needs no tuning.
 - **(−)** Guarantees are only as strong as the substrate's primitives; the conformance suite asserts per-adapter behavior, and bare-floor enforcement is simpler than a managed scheduler's.
+
+## ADR-0126
+**Committed platform entry files under `examples/*/deploy/` are the sanctioned exception to the TypeScript-first JS-family policy.**
+
+### Context
+The technical-standards policy (AGENTS.md "JS-family policy") forbids new `.js`/`.mjs` implementation
+files in favor of `.ts` sources, and requires an ADR for exceptions. `examples/hello-bindle/deploy/`
+carries `cloudflare/worker.mjs` and `vercel/api/hello.js` — the artifacts the live deploy lanes
+(`deploy-hello-bindle-vercel.yml`, the Cloudflare Workers lane) upload verbatim. These are not
+implementation sources: they are the platform-ingested entry files those providers execute directly,
+committed so the deploy lanes are reviewable and hash-stable without a build step in the lane.
+
+### Decision
+Files under an example's `deploy/<provider>/` directory MAY be plain `.js`/`.mjs` when the target
+platform ingests them verbatim. Everything else in the example (its `src/`, `test/`) stays
+TypeScript-first. The exception is scoped to committed deploy artifacts only — a deploy directory
+must not grow application logic beyond the thin entry shim, and any shared logic belongs in the
+example's `.ts` sources.
+
+### Consequences
+- **(+)** The live lanes deploy exactly what is reviewed; no lane-side transpile step to trust.
+- **(−)** The entry shims are duplicated logic if the `.ts` handler evolves; the example's tests
+  pin the shim's response against the pact to catch divergence.

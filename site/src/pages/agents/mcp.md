@@ -1,36 +1,55 @@
 ---
 layout: ../../layouts/Docs.astro
 title: The MCP surface
-description: "HoBo's MCP control surface: full capability parity with SDK and CLI, scoped credential brokering, and every agent action audited in the event log."
+description: "HoBo's shipping MCP control surface: the hobo-mcp stdio binary serves all 27 canonical CLI verbs as tools, with verb/tool parity contract-tested, deny-by-default auth, and every decision audited."
 ---
 
 # The MCP surface
 
-HoBo exposes its control plane over **MCP (Model Context Protocol)** with full capability parity: anything reachable via SDK or CLI is reachable by an agent over MCP, under the same policy checks and with the same audit trail. MCP isn't a chat integration bolted onto the side — it's the third door into the same house.
+HoBo exposes its control plane over **MCP (Model Context Protocol)** — and this surface **ships today**. The `hobo-mcp` binary serves every canonical CLI verb as an MCP tool over stdio, and every tool call dispatches through the *same command registry* as the `hobo` binary itself. Anything the [CLI verb surface](/HoBo/guide/cli/) can express, an agent can call over MCP. It isn't a chat integration bolted onto the side — it's a second transport into the same surface.
 
-## Design commitments
+## Running it
 
-- **Parity, not a subset.** Deploys, plans, inspections, logs, drift, migrations, governance — if the [CLI verb surface](/HoBo/guide/cli/) can express it, the MCP surface can too.
-- **Same gates.** MCP commands flow through the same Gateway, the same policy checks, and the same convergence loop as everything else. There are no agent-only shortcuts, in either direction.
-- **Events all the way down.** Every MCP-initiated action lands in the append-only event log with the agent's identity attached. An agent's session is replayable exactly like a human's.
+`hobo-mcp` ships alongside the `hobo` binary and speaks the MCP **stdio transport** — newline-delimited JSON-RPC 2.0 (`initialize`, `tools/list`, `tools/call`, `ping`). Point any MCP client at the binary:
 
-## The auth flow
+```json
+{
+  "mcpServers": {
+    "hobo": { "command": "hobo-mcp" }
+  }
+}
+```
 
-1. **Identify.** The agent authenticates with workload identity (SVID/OIDC) — its own, not a borrowed human key.
-2. **Discover.** The machine-readable **capability standard** describes each capability's required scopes, inputs, and effects — designed for tool-use planning, not just documentation.
-3. **Request scope.** The agent requests credentials for exactly the task at hand; policy decides. Grants are short-lived and task-scoped.
-4. **Act.** Commands emit events; reads hit projections. Long-running operations (a deploy, a migration) surface as event streams the agent can follow.
-5. **Expire.** Tokens die on schedule. The next task starts at step 3 — cheap by design, so narrow grants stay ergonomic.
+Like the CLI, it defaults to the **local, in-memory lane**: `plan`, `up`, and `down` converge against an offline Yard runtime — no cloud account, no network. Live deploy lanes are **credential-gated by environment**: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`HOBO_PULUMI_LIVE=1`).
+
+## Tools = the canonical verbs
+
+The tool surface is **derived from the CLI's 27 canonical verbs**, one tool per verb — `up`, `down`, `plan`, `dev`, `inspect`, `logs`, `drift`, `attest`, and the rest. Parity is a contract, not a convention: a structural parity check fails whenever the tool set diverges from the verb set, so there is no MCP-only subset and no MCP-only side door in either direction. A tool call becomes `hobo <verb> --json` over the shared dispatch path, and the result is the same JSON envelope the CLI emits, returned as inert data.
+
+Tool inputs accept `cwd` (resolve the project directory), `camp` (target camp), and `args` (extra verb arguments).
+
+## Auth: deny by default, audited always
+
+Authorization is checked **before** dispatch, and every decision is recorded:
+
+- **Deny-by-default scopes.** Each tool maps to a capability scope. A call outside the caller's scope is refused (`MCP_SCOPE_DENIED`); a tool that isn't part of the derived surface is refused (`MCP_UNKNOWN_TOOL`). Fail closed, never fall through.
+- **Every decision is an audit event.** Allow or deny, each tool-call decision is recorded with the principal, tenant, tool, effect, and reason attached.
+- **Scope down with `HOBO_MCP_TOOLS`.** Set a comma-separated verb list (e.g. `HOBO_MCP_TOOLS=plan,inspect,logs`) and the served surface shrinks to exactly those tools — every other verb is out of scope for that server process.
+- **Local-operator trust model.** Over stdio, `hobo-mcp` acts with the invoking user's authority — the same trust model as running `hobo` directly — bounded by the scoped tool surface above. `HOBO_MCP_SUBJECT` / `HOBO_MCP_TENANT` name the principal and tenant the audit trail records.
 
 ## What agents typically do with it
 
-| Task | Surface |
+| Task | Tool |
 |---|---|
-| "Deploy this bindle to staging" | the same convergence loop as `hobo up`, streamed as events |
-| "Why did the app move camps last night?" | time-travel projections — the migration's full decision trail |
-| "Watch spend; propose cheaper placements" | Dispatcher signals + policy-bounded migration proposals |
-| "Tail the API's logs and diagnose" | camp runtime log streams, read-scoped credentials |
-| "We need a provider for this niche host" | the generation pipeline + conformance certification |
+| "Deploy this bindle" | `up` — the same convergence loop as `hobo up`; local lane by default |
+| "What would change, and roughly what would it cost?" | `plan` — read-only dry run |
+| "Tear the preview back down" | `down` |
+| "What happened on the last run?" | `inspect` / `logs` |
+| "Anything drifting?" | `drift` |
+
+## Designed, not yet shipped
+
+The fuller agent-identity design — workload identity (SVID/OIDC), brokered short-lived per-task credentials, and a machine-readable capability standard for scope discovery — is contract-pinned design, tracked on [the trail map](/HoBo/guide/status/). What ships now is the surface above: full verb/tool parity, deny-by-default scoping, and audited decisions.
 
 ## Reading the docs as an agent
 
@@ -38,4 +57,4 @@ This site is maintained as a first-class agent surface:
 
 - [`llms.txt`](/HoBo/llms.txt) is the canonical machine-readable briefing — start there.
 - Headings are stable; CLI examples use only canonical verbs; code snippets are complete enough to run, not fragments.
-- The [primitives](/HoBo/primitives/) pages define the exact vocabulary the capability standard uses — bindle, camp, yard, junction mean the same thing to the parser as to you.
+- The [primitives](/HoBo/primitives/) pages define the exact vocabulary the tool surface uses — bindle, camp, yard, junction mean the same thing to the parser as to you.

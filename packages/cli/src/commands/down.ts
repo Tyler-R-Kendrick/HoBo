@@ -20,6 +20,7 @@ export interface DownCommandDeps {
 // runtime store. Reaches Destroyed; no real cloud calls.
 export function createDownCommand(deps: DownCommandDeps = {}): CommandModule {
 	return {
+		implemented: Boolean(deps.runtime),
 		run: async ({ context, emitProgress }) => {
 			const { runtime } = deps;
 			if (!runtime) {

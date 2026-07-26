@@ -1,12 +1,11 @@
+import { CANONICAL_VERBS } from "@hobo/cli";
 import { describe, expect, it } from "vitest";
 
-import { CANONICAL_VERBS } from "@hobo/cli";
-
 import {
-	MCP_TOOL_SURFACE,
 	assertToolSurfaceParity,
 	capabilityForTool,
 	deriveToolSurface,
+	MCP_TOOL_SURFACE,
 	type ToolDescriptor,
 } from "../src/tool-surface.js";
 

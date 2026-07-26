@@ -1,5 +1,6 @@
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
+// domain-view: readonly parse-produced selection with literal `kind` discriminant; data-models/topology_camp.proto ProviderSelection is its wire form.
 export interface ProviderSelection {
 	readonly kind: "provider-selection";
 	readonly providerId: string;

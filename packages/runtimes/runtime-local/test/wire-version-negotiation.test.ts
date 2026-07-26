@@ -1,12 +1,11 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	NoRouteError,
 	ProviderHandlerStore,
-	WireVersionIncompatibleError,
 	parseInterfaceId,
 	parseWireVersion,
+	WireVersionIncompatibleError,
 } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import { createInProcessTransport, createWrpcLinkLayer } from "../src/index.js";
 

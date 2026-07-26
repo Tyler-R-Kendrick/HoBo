@@ -58,6 +58,7 @@ type RepresentativeProofMode = (typeof REQUIRED_REPRESENTATIVE_PROOF_MODES)[numb
 type QuickstartProofMode = "reference-fixture" | "simulated" | "live" | "scope-out";
 type CheckSeverity = "launch-blocker" | "major" | "minor";
 
+// domain-view: parse-produced draft-proof record; its wire form is the RepresentativeCheckDefinition proto message in data-models/.
 export type RepresentativeCheckDefinition = {
   readonly id: RepresentativeCheckId;
   readonly label: string;
@@ -65,6 +66,7 @@ export type RepresentativeCheckDefinition = {
   readonly proves: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RepresentativeCheckEvidence proto message in data-models/.
 export type RepresentativeCheckEvidence = {
   readonly checkId: RepresentativeCheckId;
   readonly expectedEvidence: string;
@@ -74,6 +76,7 @@ export type RepresentativeCheckEvidence = {
   readonly launchReadinessImpact: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RepresentativeArtifactChecks proto message in data-models/.
 export type RepresentativeArtifactChecks = {
   readonly artifact: RepresentativeArtifact;
   readonly title: string;
@@ -86,6 +89,7 @@ export type RepresentativeArtifactChecks = {
   readonly accessibilityNote: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RepresentativeQuickstartFixtureReference proto message in data-models/.
 export type RepresentativeQuickstartFixtureReference = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: RepresentativeQuickstartFixtureId;
@@ -94,6 +98,7 @@ export type RepresentativeQuickstartFixtureReference = {
   readonly representativeUse: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RepresentativeScenario proto message in data-models/.
 export type RepresentativeScenario = {
   readonly id: RepresentativeScenarioId;
   readonly artifactRefs: readonly RepresentativeArtifact[];
@@ -101,6 +106,7 @@ export type RepresentativeScenario = {
   readonly safeOutcome: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeRepresentativeA11yUsabilityChecks proto message in data-models/.
 export type VibeRepresentativeA11yUsabilityChecks = {
   readonly issue: "HOBO-565";
   readonly phase: "M2";

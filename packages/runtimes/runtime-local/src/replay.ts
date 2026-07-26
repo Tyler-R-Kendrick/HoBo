@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 
 import {
-	NondeterministicClockError,
 	type ClockReplayResult,
 	type ClockTraceEntry,
-	type FiredTimer,
 	createClockReplayResult,
+	type FiredTimer,
+	NondeterministicClockError,
 	parseFireId,
 	parseIsoInstant,
 	parseRunId,
@@ -19,8 +19,8 @@ import {
 	formatInstant,
 	normalizeStore,
 	parseInstantMs,
-	snapshotStore,
 	type RuntimeLocalQueueClockOptions,
+	snapshotStore,
 } from "./queue-clock-store.js";
 
 export function createRuntimeLocalQueueClock(

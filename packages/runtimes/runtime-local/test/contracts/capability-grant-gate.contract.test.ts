@@ -1,9 +1,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-
 import { evaluateCapabilityGrants } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import { createCapabilityLinkTable } from "../../src/capability/link-table.js";
 

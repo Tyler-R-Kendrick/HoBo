@@ -250,6 +250,60 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/connectors/swe-claude:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/connectors/swe-codex:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/connectors/swe-copilot:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/connectors/swe-cursor:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/connectors/swe-gemini:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/connectors/swe-grok:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/contract-harness:
     devDependencies:
       '@types/node':

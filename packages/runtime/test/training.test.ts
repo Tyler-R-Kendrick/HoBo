@@ -3,11 +3,15 @@ import { afterEach, test } from "vitest";
 
 import {
 	applyTrainingArtifact,
+	COMPONENT_METADATA,
+	component,
 	getAppliedArtifact,
 	getTrainable,
 	isTrainable,
 	lintUseTrainingSource,
 	listTrainables,
+	operation,
+	param,
 	resetTrainables,
 	resolveTrainable,
 	stub,
@@ -413,4 +417,152 @@ test("marker form: a leading comment after the directive becomes the intent", ()
 		getTrainable("summarize")?.fact.intent,
 		"One-paragraph summary; no blame, no internal names.",
 	);
+});
+
+// ---------------------------------------------------------------------------
+// Declarative surface (Plan 2 Syntax 0): shaped contracts, optional rubric,
+// @component/@operation decorators, param() annotation.
+// ---------------------------------------------------------------------------
+
+test("rubric is optional: declaration grounds with intent + shape alone", () => {
+	const declared = training.define<Ticket, Classification>({
+		methodRef: "storefront.classify",
+		intent: "Route tickets to the right queue.",
+		contract: {
+			input: { subject: "string" },
+			output: { category: "string" },
+		},
+	});
+	assert.equal(isTrainable(declared), true);
+	const fact = getTrainable("storefront.classify")?.fact;
+	assert.deepEqual(fact?.rubric, {});
+	// No ref given: the shape synthesizes a decl:// contract ref.
+	assert.equal(fact?.contractRef, "decl://storefront.classify");
+});
+
+test("shape is not optional: a contract needs a ref or input + output", () => {
+	assert.throws(
+		() =>
+			training.define<Ticket, Classification>({
+				methodRef: "storefront.unshaped",
+				intent: "Route tickets.",
+				contract: { input: { subject: "string" } }, // no output, no ref
+			}),
+		TrainingGroundingError,
+	);
+});
+
+test("an explicit contract ref still wins over the synthesized one", () => {
+	training.define<Ticket, Classification>({
+		methodRef: "storefront.reffed",
+		intent: "Route tickets.",
+		contract: { ...CONTRACT },
+	});
+	assert.equal(
+		getTrainable("storefront.reffed")?.fact.contractRef,
+		CONTRACT.ref,
+	);
+});
+
+test("@component + @operation declare a component; param() annotates", async () => {
+	class Storefront {
+		async classify(_ticket: Ticket): Promise<Classification> {
+			return { category: "unset" };
+		}
+	}
+	// Applied as decorators in app code; invoked programmatically here, in
+	// TC39 evaluation order: method decorators first, then the class.
+	const context = {
+		kind: "method",
+		name: "classify",
+		metadata: {} as Record<symbol, unknown>,
+		addInitializer: undefined,
+	} as unknown as ClassMethodDecoratorContext<
+		Storefront,
+		(this: Storefront, input: Ticket) => Promise<Classification>
+	>;
+	Storefront.prototype.classify = operation<Storefront, Ticket, Classification>(
+		{
+			methodRef: "storefront.operation.classify",
+			intent: "Route tickets to the right queue.",
+			contract: {
+				input: { subject: "string" },
+				output: { category: "string" },
+			},
+			params: { ticket: param("Support ticket, PII-redacted") },
+			output: { category: param("Known category", "outage") },
+			// no rubric — optional on the declarative surface
+		},
+	)(Storefront.prototype.classify, context);
+	component({ intent: "Support desk operations." })(Storefront, {
+		kind: "class",
+		name: "Storefront",
+		metadata: context.metadata,
+	} as unknown as ClassDecoratorContext<typeof Storefront>);
+
+	// Class-level metadata aggregates the operations declared by methods.
+	const componentMeta = (context.metadata as Record<symbol, unknown>)[
+		COMPONENT_METADATA
+	] as {
+		intent: string;
+		operations: readonly string[];
+	};
+	assert.equal(componentMeta.intent, "Support desk operations.");
+	assert.deepEqual(componentMeta.operations, ["storefront.operation.classify"]);
+
+	// Operation registered + callable through the trainable machinery.
+	const desk = new Storefront();
+	const out = await desk.classify({ subject: "site is down" });
+	assert.equal(out.category, "unset");
+	const fact = getTrainable("storefront.operation.classify")?.fact;
+	assert.equal(fact?.contractRef, "decl://storefront.operation.classify");
+	assert.equal(
+		fact?.params.ticket?.description,
+		"Support ticket, PII-redacted",
+	);
+	assert.equal(fact?.output.category?.exampleJson, JSON.stringify("outage"));
+});
+
+test("@operation field form: a stub() initializer declares code to generate", async () => {
+	class Storefront {
+		rankFeed!: (input: Ticket) => Promise<Classification>;
+	}
+	const metadata: Record<PropertyKey, unknown> = {};
+	const transform = operation<Storefront, Ticket, Classification>({
+		methodRef: "storefront.field.rankFeed",
+		intent: "Rank the feed.",
+		contract: {
+			input: { subject: "string" },
+			output: { category: "string" },
+			examples: [
+				{ input: { subject: "seed" }, output: { category: "ranked" } },
+			],
+		},
+	})(undefined, {
+		kind: "field",
+		name: "rankFeed",
+		metadata,
+		static: false,
+		private: false,
+	} as unknown as ClassFieldDecoratorContext<
+		Storefront,
+		(input: Ticket) => Promise<Classification>
+	>);
+
+	// TC39 field semantics: the transformer maps the initializer (here a
+	// stub marker) to the field's actual value — the registered trainable.
+	const desk = new Storefront();
+	desk.rankFeed = (
+		transform as (
+			this: Storefront,
+			initial: ((input: Ticket) => Promise<Classification>) | undefined,
+		) => (input: Ticket) => Promise<Classification>
+	).call(desk, stub<Ticket, Classification>());
+
+	const record = getTrainable("storefront.field.rankFeed");
+	assert.equal(record?.fact.baseline, "stub");
+	assert.equal(record?.fact.contractRef, "decl://storefront.field.rankFeed");
+	const out = await desk.rankFeed({ subject: "seed" });
+	assert.equal(out.category, "ranked");
+	assert.deepEqual(metadata[TRAINABLE_METADATA], ["storefront.field.rankFeed"]);
 });

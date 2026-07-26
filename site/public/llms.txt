@@ -31,6 +31,26 @@ Key facts:
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
+- Bindles support brownfield AND greenfield. A component is declared as a `@component`
+  class whose `@operation` methods (TC39 stage-3 decorators from @hobo/runtime) carry
+  { intent, contract with a REQUIRED typed input/output shape (+ invariants, forbidden
+  outputs, examples), OPTIONAL rubric (scorer → promotion threshold, enforced as policy;
+  absent → default exact-match over examples/traces) }; per-parameter metadata uses
+  param(). An operation whose body is stub() — or a bare field — declares CODE TO BE
+  GENERATED; a hand-written body is the baseline. b.api/b.web/b.service accept the
+  decorated class directly. Operations lower to trainables (signature-only when stubbed);
+  contract-derived stubs serve the app end-to-end on day one, stub calls record
+  specification-by-example traces, and the generation pipeline synthesizes real WIT
+  component implementations — promoted only when conformance passes, eval thresholds are
+  met, and policy allows. Escalation is per-operation: stub → `"use training"` body
+  (AI-maintained) → plain hand-maintained body, with no manifest change. Granular
+  alternative — ALL decorators optional: @intent/@returns on methods, @description on
+  parameters (a real parameter decorator in legacy-decorator projects; a params: map
+  value under standard decorators), bare @trainable composing the class; missing
+  groundings are inferred. Ambient `@trainable export declare class` declarations (pure
+  signatures, no bodies) are scanned statically by `hobo stub`, which takes the
+  TypeScript signature as the declared shape and generates grounded training.define
+  registrations.
 - Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
   today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default
@@ -61,7 +81,7 @@ Key facts:
 ## Primitives (reference)
 
 - [Meet the primitives](https://tyler-r-kendrick.github.io/HoBo/primitives/): the four scopes in order of need
-- [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/): builder surface, .dependsOn/.allow/.with, manifest rules
+- [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/): builder surface, .dependsOn/.allow/.with, manifest rules; greenfield declarative bindles with stub-first AI code generation
 - [Camps](https://tyler-r-kendrick.github.io/HoBo/primitives/camps/): runtime backends, defaultProvider/tiers/bindings resolution, inferred vs explicit camps
 - [Yards](https://tyler-r-kendrick.github.io/HoBo/primitives/yards/): one-provider composition, self-host (the Yard is a Bindle)
 - [Junctions](https://tyler-r-kendrick.github.io/HoBo/primitives/junctions/): cross-cloud federation, inferred connectivity, border policy

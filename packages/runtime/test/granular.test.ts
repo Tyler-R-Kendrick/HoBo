@@ -1,0 +1,243 @@
+import assert from "node:assert/strict";
+import { afterEach, test } from "vitest";
+
+import {
+	description,
+	generateDeclaredRegistrations,
+	getTrainable,
+	intent,
+	resetTrainables,
+	resolveDeclared,
+	returns,
+	scanDeclaredTrainables,
+	trainable,
+	training,
+} from "../src/index.js";
+
+afterEach(() => {
+	resetTrainables();
+});
+
+// ---------------------------------------------------------------------------
+// Granular decorators, stage-3 call shape — all decorators optional.
+// ---------------------------------------------------------------------------
+
+test("stage-3: @intent/@returns + bare @trainable class compose and register", async () => {
+	class Program {
+		trainableMethod(name?: string): string {
+			return name ? `Hello, ${name}!` : "Hello World!";
+		}
+	}
+	const metadata: Record<PropertyKey, unknown> = {};
+	const methodContext = {
+		kind: "method",
+		name: "trainableMethod",
+		metadata,
+	} as unknown as ClassMethodDecoratorContext<
+		Program,
+		(this: Program, input?: string) => string
+	>;
+	// Applied as decorators in app code; invoked programmatically here in
+	// TC39 evaluation order (method decorators, then the class decorator).
+	returns("Hello World! or Hello, <name>! when supplied")(
+		Program.prototype.trainableMethod,
+		methodContext,
+	);
+	intent("Produce a simple hello-world program")(
+		Program.prototype.trainableMethod,
+		methodContext,
+	);
+	trainable(Program, {
+		kind: "class",
+		name: "Program",
+		metadata,
+	} as unknown as ClassDecoratorContext);
+
+	const record = getTrainable("Program.trainableMethod");
+	assert.ok(record);
+	assert.equal(record.fact.intent, "Produce a simple hello-world program");
+	assert.equal(record.fact.contractRef, "decl://Program.trainableMethod");
+	assert.equal(
+		record.fact.output.returns?.description,
+		"Hello World! or Hello, <name>! when supplied",
+	);
+	assert.deepEqual(record.fact.rubric, {}); // optional — none declared
+	const run = resolveDeclared<string | undefined, string>(
+		"Program.trainableMethod",
+	);
+	assert.equal(await run("Ada"), "Hello, Ada!");
+});
+
+test("stage-3: bare @trainable class with NO other decorators infers everything", async () => {
+	class Greeter {
+		greet(name?: string): string {
+			return name ? `Hi ${name}` : "Hi";
+		}
+	}
+	trainable(Greeter, {
+		kind: "class",
+		name: "Greeter",
+		metadata: {},
+	} as unknown as ClassDecoratorContext);
+
+	const record = getTrainable("Greeter.greet");
+	assert.ok(record);
+	assert.match(record.fact.intent, /^Inferred: implement Greeter\.greet/);
+	assert.equal(record.fact.contractRef, "decl://Greeter.greet");
+	assert.equal(
+		await resolveDeclared<string, string>("Greeter.greet")("Bo"),
+		"Hi Bo",
+	);
+});
+
+test("description() doubles as a FieldDescription value for stage-3 params maps", () => {
+	const field = description("Optional person to greet");
+	assert.equal(field.description, "Optional person to greet");
+	training(async (name?: string) => name ?? "world", {
+		methodRef: "hello",
+		intent: "Say hello.",
+		contract: { input: { name: "string?" }, output: { greeting: "string" } },
+		params: { name: field },
+	});
+	assert.equal(
+		getTrainable("hello")?.fact.params.name?.description,
+		"Optional person to greet",
+	);
+});
+
+// ---------------------------------------------------------------------------
+// Legacy (experimentalDecorators) call shapes — the literal syntax with
+// parameter decorators, for downstream projects compiled in legacy mode.
+// ---------------------------------------------------------------------------
+
+test("legacy: @intent/@returns/@description(param) + bare @trainable class", async () => {
+	class Program {
+		trainableMethod(name?: string): string {
+			return name ? `Hello, ${name}!` : "Hello World!";
+		}
+	}
+	const proto = Program.prototype as object;
+	const descriptor = Object.getOwnPropertyDescriptor(proto, "trainableMethod");
+	// Exact legacy emit order: parameter decorators, then method decorators,
+	// then the class decorator.
+	description("Optional person to greet")(proto, "trainableMethod", 0);
+	returns("Hello World! or Hello, <name>! when supplied")(
+		proto,
+		"trainableMethod",
+		descriptor,
+	);
+	intent("Produce a simple hello-world program")(
+		proto,
+		"trainableMethod",
+		descriptor,
+	);
+	trainable(Program);
+
+	const record = getTrainable("Program.trainableMethod");
+	assert.ok(record);
+	assert.equal(record.fact.intent, "Produce a simple hello-world program");
+	// The parameter decorator recovered the parameter's NAME, not an index.
+	assert.equal(
+		record.fact.params.name?.description,
+		"Optional person to greet",
+	);
+	assert.equal(
+		await resolveDeclared<string | undefined, string>(
+			"Program.trainableMethod",
+		)(undefined),
+		"Hello World!",
+	);
+});
+
+test("legacy: bare @trainable on a single method registers it", async () => {
+	class Desk {
+		route(subject: string): string {
+			return subject.toUpperCase();
+		}
+	}
+	const proto = Desk.prototype as object;
+	const descriptor = Object.getOwnPropertyDescriptor(proto, "route");
+	const result = trainable(proto, "route", descriptor as PropertyDescriptor);
+	assert.ok(result.value);
+	assert.ok(getTrainable("Desk.route"));
+	assert.equal(await resolveDeclared<string, string>("Desk.route")("hi"), "HI");
+});
+
+// ---------------------------------------------------------------------------
+// Ambient declarations: `export declare class` never runs decorators —
+// scanDeclaredTrainables honors the exact syntax statically.
+// ---------------------------------------------------------------------------
+
+const AMBIENT = `
+@trainable
+export declare class Program {
+  @intent("Produce a simple hello-world program")
+  @returns("Hello World! or Hello, <name>! when supplied")
+  trainableMethod(
+    @description("Optional person to greet")
+    name?: string,
+  ): string;
+}
+`;
+
+test("scanDeclaredTrainables parses the ambient @trainable declare class", () => {
+	const [declared] = scanDeclaredTrainables(AMBIENT);
+	assert.ok(declared);
+	assert.equal(declared.className, "Program");
+	assert.equal(declared.ambient, true);
+	const [op] = declared.operations;
+	assert.ok(op);
+	assert.equal(op.methodRef, "Program.trainableMethod");
+	assert.equal(op.intent, "Produce a simple hello-world program");
+	assert.equal(op.inferredIntent, false);
+	assert.equal(op.returns, "Hello World! or Hello, <name>! when supplied");
+	assert.equal(op.contractRef, "decl://Program.trainableMethod");
+	assert.equal(op.outputType, "string");
+	assert.deepEqual(op.parameters, [
+		{
+			name: "name",
+			optional: true,
+			type: "string",
+			description: "Optional person to greet",
+		},
+	]);
+});
+
+test("scan: every decorator optional — bare @trainable declare class still scans", () => {
+	const [declared] = scanDeclaredTrainables(`
+@trainable
+export declare class Plain {
+  greet(name?: string): string;
+}
+`);
+	assert.ok(declared);
+	const [op] = declared.operations;
+	assert.ok(op);
+	assert.equal(op.inferredIntent, true);
+	assert.match(op.intent, /^Inferred: implement Plain\.greet/);
+	assert.deepEqual(op.parameters, [
+		{ name: "name", optional: true, type: "string" },
+	]);
+});
+
+test("generateDeclaredRegistrations emits a grounded, runnable training.define", async () => {
+	const [declared] = scanDeclaredTrainables(AMBIENT);
+	assert.ok(declared);
+	const generated = generateDeclaredRegistrations(declared);
+	assert.match(generated, /Generated by hobo stub/);
+	assert.match(generated, /training\.define\(/);
+	assert.match(generated, /"methodRef": "Program\.trainableMethod"/);
+
+	// The generated options object must actually register: evaluate it.
+	const optionsJson = generated.slice(
+		generated.indexOf("training.define(") + "training.define(".length,
+		generated.lastIndexOf(");"),
+	);
+	const options = JSON.parse(optionsJson);
+	const declaredFn = training.define(options);
+	assert.equal(declaredFn.methodRef, "Program.trainableMethod");
+	assert.equal(
+		getTrainable("Program.trainableMethod")?.fact.contractRef,
+		"decl://Program.trainableMethod",
+	);
+});

@@ -1,9 +1,33 @@
-export { TRAINABLE_METADATA, trainable } from "./decorators.js";
+export {
+	COMPONENT_METADATA,
+	type ComponentMetadata,
+	type ComponentOptions,
+	component,
+	componentMetadataOf,
+	operation,
+	param,
+	TRAINABLE_METADATA,
+	trainable,
+} from "./decorators.js";
+export {
+	description,
+	intent,
+	PENDING_GROUNDINGS,
+	resolveDeclared,
+	returns,
+} from "./granular.js";
 export {
 	lintUseTrainingSource,
 	type UseTrainingLintFinding,
 	type UseTrainingLintResult,
 } from "./lint.js";
+export {
+	type DeclaredOperation,
+	type DeclaredParameter,
+	type DeclaredTrainableClass,
+	generateDeclaredRegistrations,
+	scanDeclaredTrainables,
+} from "./scan.js";
 export {
 	applyTrainingArtifact,
 	getAppliedArtifact,

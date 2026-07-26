@@ -11,6 +11,7 @@ import {
 	type YardRuntime,
 } from "@hobo/cli";
 import { createAwsProvider } from "@hobo/provider-aws";
+import { createAzureProvider } from "@hobo/provider-azure";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
@@ -55,6 +56,9 @@ export interface ComposedHoboCliOptions {
 // add-command free of adapter imports. Approval semantics stay with HOBO-710
 // (`hobo add aws` registers + approves; `--hold` defers approval).
 registerInstallable("aws", () => toRegistrableProvider(createAwsProvider()));
+registerInstallable("azure", () =>
+	toRegistrableProvider(createAzureProvider()),
+);
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},

@@ -21,6 +21,7 @@
 	"dependencies": {
 		"@bufbuild/protobuf": "2.12.1",
 		"@hobo/core": "workspace:*",
+		"ts-autocode-grounding": "workspace:*",
 		"@hobo/wit": "workspace:*"
 	},
 	"devDependencies": {

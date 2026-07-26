@@ -1,4 +1,9 @@
 import {
+	createComponentDecorator,
+	componentMetadataOf as groundingComponentMetadataOf,
+	param as groundingParam,
+} from "ts-autocode-grounding";
+import {
 	finalizeTrainableClass,
 	granularLegacyOptions,
 	granularOptionsFor,
@@ -213,27 +218,13 @@ export interface ComponentMetadata {
  * intent + operation refs. `b.api(Component)` / `b.web(...)` /
  * `b.service(...)` accept the decorated class directly; instantiation
  * registers every operation's trainable (DI semantics, same as @trainable).
+ * Built on ts-autocode-grounding's composer over HoBo's metadata symbols
+ * (ADR-0128), so @hobo/bindles' structural detection is unchanged.
  */
-export function component(options: ComponentOptions): <
-	C extends abstract new (
-		// biome-ignore lint/suspicious/noExplicitAny: decorator constructor variance
-		...args: any[]
-	) => object,
->(
-	cls: C,
-	context: ClassDecoratorContext<C>,
-) => void {
-	return (cls, context) => {
-		if (!context.metadata) return;
-		const operations =
-			(context.metadata[TRAINABLE_METADATA] as string[] | undefined) ?? [];
-		context.metadata[COMPONENT_METADATA] = Object.freeze({
-			intent: options.intent,
-			name: String(context.name ?? cls.name),
-			operations: Object.freeze([...operations]),
-		}) satisfies ComponentMetadata;
-	};
-}
+export const component = createComponentDecorator({
+	component: COMPONENT_METADATA,
+	operations: TRAINABLE_METADATA,
+});
 
 /**
  * `@operation(opts)` — the method decorator for a declared component's

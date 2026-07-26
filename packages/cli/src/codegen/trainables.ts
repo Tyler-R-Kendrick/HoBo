@@ -3,6 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, posix, relative } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
+import { discoverInSource } from "ts-autocode-training";
 import type {
 	SourceModel,
 	SourceModelBindle,
@@ -32,24 +33,19 @@ export interface DirectiveFunction {
 	readonly file: string;
 }
 
-const DIRECTIVE_PATTERN = /["']use training["']\s*;?/g;
-const EXPORTED_FUNCTION_PATTERN =
-	/export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g;
-
 /**
- * The directive is a prologue (first statement), so the marked function is
- * the nearest preceding exported function declaration — robust against
- * brace-bearing parameter/return type annotations.
+ * The directive is a prologue (first statement of the function body).
+ * Discovery delegates to ts-autocode-training's AST walk (ADR-0128):
+ * exported free functions whose first statement is the `"use training"`
+ * string literal — robust against brace-bearing parameter/return type
+ * annotations, comments, and directive-like strings elsewhere.
  */
 function directiveFunctionNames(source: string): readonly string[] {
 	const names = new Set<string>();
-	for (const directive of source.matchAll(DIRECTIVE_PATTERN)) {
-		const before = source.slice(0, directive.index);
-		let name: string | undefined;
-		for (const declaration of before.matchAll(EXPORTED_FUNCTION_PATTERN)) {
-			name = declaration[1];
+	for (const target of discoverInSource(source)) {
+		if (target.className === undefined && target.exported) {
+			names.add(target.methodName);
 		}
-		if (name) names.add(name);
 	}
 	return [...names];
 }

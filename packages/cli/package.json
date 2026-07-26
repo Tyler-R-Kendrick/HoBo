@@ -23,7 +23,9 @@
 		"@hobo/bindles": "workspace:*",
 		"@hobo/cloud": "workspace:*",
 		"@hobo/componentize": "workspace:*",
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"ts-autocode-grounding": "workspace:*",
+		"ts-autocode-training": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/data": "workspace:*",

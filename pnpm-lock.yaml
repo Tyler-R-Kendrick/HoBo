@@ -293,6 +293,12 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../core
+      ts-autocode-grounding:
+        specifier: workspace:*
+        version: link:../../external/ts-autocode/packages/grounding
+      ts-autocode-training:
+        specifier: workspace:*
+        version: link:../../external/ts-autocode/packages/training
     devDependencies:
       '@hobo/data':
         specifier: workspace:*
@@ -737,6 +743,9 @@ importers:
       '@hobo/wit':
         specifier: workspace:*
         version: link:../wit
+      ts-autocode-grounding:
+        specifier: workspace:*
+        version: link:../../external/ts-autocode/packages/grounding
     devDependencies:
       '@types/node':
         specifier: ^22.15.3

@@ -13,6 +13,7 @@ import {
 import { createAwsProvider } from "@hobo/provider-aws";
 import { createAzureProvider } from "@hobo/provider-azure";
 import { createGcpProvider } from "@hobo/provider-gcp";
+import { createLakebedProvider } from "@hobo/provider-lakebed";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
@@ -61,6 +62,13 @@ registerInstallable("azure", () =>
 	toRegistrableProvider(createAzureProvider()),
 );
 registerInstallable("gcp", () => toRegistrableProvider(createGcpProvider()));
+// The competitor deploy target registers HELD by default (ADR-0127): a second
+// `hobo add lakebed` records the explicit approval.
+registerInstallable(
+	"lakebed",
+	() => toRegistrableProvider(createLakebedProvider()),
+	{ defaultHold: true },
+);
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},

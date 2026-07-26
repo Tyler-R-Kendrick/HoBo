@@ -323,6 +323,9 @@ importers:
       '@hobo/provider-gcp':
         specifier: workspace:*
         version: link:../providers/provider-gcp
+      '@hobo/provider-lakebed':
+        specifier: workspace:*
+        version: link:../providers/provider-lakebed
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
@@ -482,6 +485,12 @@ importers:
         version: link:../../core
 
   packages/providers/provider-gcp:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/provider-lakebed:
     dependencies:
       '@hobo/core':
         specifier: workspace:*

@@ -34,6 +34,7 @@
 		"@hobo/provider-gcp": "workspace:*",
 		"@hobo/provider-lakebed": "workspace:*",
 		"@hobo/runner-blacksmith": "workspace:*",
+		"@hobo/runner-depot": "workspace:*",
 		"@hobo/runner-github": "workspace:*",
 		"@hobo/runtime-local": "workspace:*"
 	},

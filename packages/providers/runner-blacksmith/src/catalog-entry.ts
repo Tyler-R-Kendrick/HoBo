@@ -1,0 +1,102 @@
+import {
+	BUILD_MACHINE_CATEGORY,
+	CATEGORY_PORTS,
+	type ExecutionHostCategory,
+	RUNNER_CATEGORY,
+} from "@hobo/runner-github";
+
+import {
+	BLACKSMITH_PROVIDER_ID,
+	COST_FACTS,
+	DEFAULT_REGIONS,
+	publishCapabilityManifest,
+} from "./manifest.js";
+
+// The M0 catalog entry for `hobo add runner-blacksmith` (HOBO-710 registry
+// model): a registrable snapshot of both execution-host ports whose
+// Capability Manifest lands in the provider.Registered fact. Structurally
+// matches @hobo/cloud's RegistrableProvider so the composition root registers
+// it without this package depending on the kernel.
+
+const FEATURES: Record<ExecutionHostCategory, string[]> = {
+	[RUNNER_CATEGORY]: ["ci-job", "workflow-dispatch", "fast-runner"],
+	[BUILD_MACHINE_CATEGORY]: [
+		"container-build",
+		"ghcr-publish",
+		"docker-layer-cache",
+	],
+};
+
+export interface BlacksmithCatalogEntry {
+	id: string;
+	regions: string[];
+	capabilities: Array<{
+		port: string;
+		satisfies(req: { port: string; features?: string[] }): {
+			kind: string;
+			missing?: string[];
+		};
+		estimateCost(req: { port: string }): {
+			marginalPrice: string;
+			sku: string;
+			unit: string;
+		};
+	}>;
+	capabilityManifest(): {
+		providerId: string;
+		published: Record<string, string>;
+		capabilities: { capabilities?: Array<Record<string, unknown>> };
+		cost: { facts?: Array<Record<string, unknown>> };
+	};
+}
+
+export function createBlacksmithCatalogEntry(): BlacksmithCatalogEntry {
+	const published = publishCapabilityManifest();
+	const categories: ExecutionHostCategory[] = [
+		RUNNER_CATEGORY,
+		BUILD_MACHINE_CATEGORY,
+	];
+
+	return {
+		id: BLACKSMITH_PROVIDER_ID,
+		regions: [...DEFAULT_REGIONS],
+		capabilities: categories.map((category) => {
+			const port = CATEGORY_PORTS[category];
+			const features = FEATURES[category];
+			const fact = COST_FACTS[category];
+			return {
+				port,
+				satisfies(req: { port: string; features?: string[] }) {
+					if (req.port !== port) {
+						return { kind: "none" };
+					}
+					const missing = (req.features ?? []).filter(
+						(feature) => !features.includes(feature),
+					);
+					return missing.length === 0
+						? { kind: "full" }
+						: { kind: "partial", missing };
+				},
+				estimateCost() {
+					return {
+						marginalPrice: fact.marginalPrice,
+						sku: fact.sku,
+						unit: fact.unit,
+					};
+				},
+			};
+		}),
+		capabilityManifest() {
+			return {
+				providerId: BLACKSMITH_PROVIDER_ID,
+				published: { ...published },
+				capabilities: JSON.parse(
+					published["/.well-known/capability-manifest/capabilities.json"],
+				),
+				cost: JSON.parse(
+					published["/.well-known/capability-manifest/cost.json"],
+				),
+			};
+		},
+	};
+}

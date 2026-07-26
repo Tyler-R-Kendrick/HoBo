@@ -240,6 +240,15 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/connectors/swe-claude:
+    dependencies:
+      '@hobo/connector-acp':
+        specifier: workspace:*
+        version: link:../connector-acp
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/connectors/swe-gemini:
     dependencies:
       '@hobo/connector-acp':

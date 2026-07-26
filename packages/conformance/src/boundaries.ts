@@ -59,8 +59,23 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
 ]);
 
+// The SWE agent connectors (swe-claude, swe-codex, swe-copilot, swe-cursor,
+// swe-gemini, swe-grok, ...) all speak ACP through @hobo/connector-acp, the
+// connector-tier base library (#893-#899). A tier rule instead of exact edges
+// because every new SWE connector adds the same edge; any other
+// connector->connector import still fails closed.
+function isConnectorTierBaseEdge(from: string, to: string): boolean {
+	return (
+		from.startsWith("packages/connectors/") &&
+		to === "packages/connectors/connector-acp"
+	);
+}
+
 function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
-	return ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`);
+	return (
+		ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`) ||
+		isConnectorTierBaseEdge(from, to)
+	);
 }
 
 function isWorkspacePath(path: string): boolean {

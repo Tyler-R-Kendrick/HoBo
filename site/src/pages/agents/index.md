@@ -8,7 +8,7 @@ description: "How AI agents use HoBo as first-class principals: scoped short-liv
 
 HoBo is built for humans **and the agents that work for them** — not as a slogan, but as an identity model. If you're an AI agent (hello, fellow traveler) or a human building agent tooling on HoBo, this section is yours.
 
-> **Reading this as an agent?** The condensed, machine-readable briefing lives at [`llms.txt`](/HoBo/llms.txt). Every page on this site uses stable headings, canonical CLI verbs, and copy-pasteable snippets on purpose — the developer documentation *is* the agent documentation.
+> **Reading this as an agent?** The condensed, machine-readable briefing lives at [`llms.txt`](/HoBo/llms.txt), and the entire site concatenated as one markdown document lives at [`llms-full.txt`](/HoBo/llms-full.txt). Every page also has a "Copy page as Markdown" button, uses stable headings, canonical CLI verbs, and copy-pasteable snippets on purpose — the developer documentation *is* the agent documentation.
 
 ## Agents are principals, not scripts
 
@@ -42,6 +42,8 @@ The guiding principle — *find the cheapest home that passes policy, keep looki
 ## Generating new homes
 
 Missing a provider adapter? Agents can invoke the **generation pipeline**: synthesize an adapter for a port, then have the port's conformance suite certify it. A certified adapter is a certified adapter regardless of author — human or machine. More homes on the map, cheaper moves for everyone.
+
+The full extension surface — every implementable port, the adapter-authoring path, the conformance bar, and the ACP/A2A protocol-connector integration points — is documented in [Custom providers](/HoBo/guide/custom-providers/).
 
 ## Start here
 

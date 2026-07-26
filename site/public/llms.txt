@@ -44,6 +44,9 @@ Key facts:
   provider and postgres runtime packages — the docs mark those pages design-stage.
   Everything else documented on the site is the contract-pinned surface the product
   is being built to.
+- The complete documentation, concatenated as one markdown document, is at
+  https://tyler-r-kendrick.github.io/HoBo/llms-full.txt. Every docs page also has a
+  "Copy page as Markdown" button and per-snippet copy buttons.
 
 ## Docs
 
@@ -52,6 +55,7 @@ Key facts:
 - [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): the four scopes, continuous migration, membrane, event log, agent auth
 - [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout
 - [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
+- [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): implementable ports, adapter authoring, conformance certification, ACP/A2A protocol-connector integration points
 - [Trail map](https://tyler-r-kendrick.github.io/HoBo/guide/status/): honest pre-release status and stage gates
 
 ## Primitives (reference)
@@ -68,8 +72,5 @@ Key facts:
 - [HoBo for Developers](https://tyler-r-kendrick.github.io/HoBo/roles/developers/): the bindle is the only infrastructure a developer authors
 - [HoBo for Platform Engineers](https://tyler-r-kendrick.github.io/HoBo/roles/platform-engineers/): approved providers, golden-path camps, yard governance, junction federation
 - [HoBo for DevSecOps](https://tyler-r-kendrick.github.io/HoBo/roles/devsecops/): policy at the gate, camp approval, credential brokering, signed junction policy packs
-
-## Agents
-
-- [HoBo for agents](https://tyler-r-kendrick.github.io/HoBo/agents/): agents as principals, capability standard, the Crew
+- [HoBo for Agents](https://tyler-r-kendrick.github.io/HoBo/agents/): agents as principals, capability standard, the Crew
 - [The MCP surface](https://tyler-r-kendrick.github.io/HoBo/agents/mcp/): capability parity, auth flow, event-audited actions

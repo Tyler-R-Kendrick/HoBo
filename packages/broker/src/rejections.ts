@@ -74,6 +74,18 @@ export const REJECTION_MATRIX: readonly RejectionMatrixRow[] = [
 			"the remaining budget (static or metered) cannot cover the estimate; adjust the budget or reduce scope",
 	},
 	{
+		code: "environment-unapproved",
+		plane: "policy",
+		remediation:
+			"the broker environment is published but not approved; an admin must approve it before resolutions run against it",
+	},
+	{
+		code: "catalog-snapshot-stale",
+		plane: "policy",
+		remediation:
+			"the environment pins a catalog snapshot that no longer matches the live catalog; republish the environment against the current snapshot or refresh the catalog",
+	},
+	{
 		code: "no-eligible-provider",
 		plane: "placement",
 		remediation:

@@ -104,10 +104,13 @@ Enforcement uses three languages, each where it is strongest:
    policy engine never allows. OPA can run embedded, as a WASM bundle, a
    sidecar, or remote; the boundary is pinned by the
    `broker_policy_opa.pact.json` contract either way.
-3. **Cedar** — the second external language the policy-engine port accepts
-   (ABAC-style authz, `@hobo/provider-cedar` per
-   [`contracts-policy-flags.md`](./contracts-policy-flags.md)); it lowers
-   onto the same gate-decision port the Rego adapter uses.
+3. **Cedar** — the second external language, shipped as
+   `createCedarGatePlane` (ABAC-style authz per
+   [`contracts-policy-flags.md`](./contracts-policy-flags.md)): the Policy IR
+   request maps onto a Cedar authorization request (principal / action /
+   resource / context) against the `is_authorized` API, only an explicit
+   `Allow` allows, and outages fail closed exactly like the Rego adapter —
+   pinned by `broker_policy_cedar.pact.json`.
 
 **CUE is not a decision language here** — it is the *invariant* language:
 `data-models/broker.cue` constrains every wire shape (dependent constraints
@@ -192,6 +195,8 @@ the pipeline (the HOBO-528 rejection-matrix requirement as running code).
 | `policy-denied` | policy | denied by pack/Rego decision; amend via governance |
 | `policy-engine-unavailable` | policy | external engine unreachable; broker failed closed |
 | `approval-required` / `obligation-pending` | policy | obtain approval / satisfy obligations |
+| `environment-unapproved` | policy | an admin must approve the broker environment first |
+| `catalog-snapshot-stale` | policy | republish the environment against the current catalog snapshot |
 | `quota-exceeded` | billing | quota window exhausted; raise via billing governance |
 | `spend-cap-exceeded` | billing | lower estimate or raise the per-resolution cap |
 | `budget-exceeded` | billing | static or metered budget cannot cover the estimate |
@@ -231,22 +236,52 @@ pnpm --filter @hobo/broker test:contract:consumer
 The consumer-driven PACT contract for the resolve boundary is
 [`broker_resolution.pact.json`](../../packages/broker/contracts/pacts/broker_resolution.pact.json).
 
+## Broker Environments (admin controls)
+
+The HOBO-526/HOBO-527 admin-control requirements run in `@hobo/broker`:
+`publishEnvironmentFact` PROPOSES a `BrokerEnvironment` (approved providers +
+a pinned catalog snapshot hash), `approveEnvironmentFact` is the separate
+admin approval fact, and `foldBrokerEnvironments` is the rebuildable read
+model. A broker configured with an environment resolves only against
+APPROVED state: an unapproved environment rejects with
+`environment-unapproved`, a pinned snapshot that no longer matches the live
+catalog rejects with `catalog-snapshot-stale`, and placement eligibility is
+bounded to the environment's approved providers. The Admin Console's
+broker-environment UX drives exactly these facts; the console renders state,
+it never holds authority.
+
+## The hosted authority surface
+
+The same resolve/scale/deliver pipeline is exposed over HTTP
+(`createBrokerHttpHandler` / `serveBroker`): `POST /broker/resolve` (200
+receipt; 402 billing rejection; 403 other rejections), `POST /broker/scale`,
+`POST /broker/deliver`, `GET /broker/rejection-matrix`. The resolve route is
+**provider-verified** against `broker_resolution.pact.json`
+(`contracts/provider/`), so the hosted surface and the consumer contract
+cannot drift. On the CLI, the **`hobo broker`** verb ([`cli-spec.md`](./cli-spec.md))
+runs the same pipeline against the composed Yard's live registry
+(`broker resolve --policies --request`, `broker matrix`), and the MCP tool
+surface derives the matching tool automatically from `CANONICAL_VERBS`.
+
 ## Delivered beyond M0
 
-The M1–M3 runtime capabilities of the meta-cloud-broker ladder now ship in
+The runtime capabilities of the meta-cloud-broker ladder ship in
 `@hobo/broker`: deterministic per-resource resolution with content-hash
-pinning (M2), the closed rejection matrix (M3, HOBO-528), Ed25519 receipt
-integrity (M3, HOBO-529), the Rego/OPA policy engine behind the gate plane,
-the metered billing plane, and live Argo CD submission behind the delivery
-plane — each boundary pinned by its own pact
-(`broker_resolution`, `broker_policy_opa`, `broker_delivery_argocd`).
+pinning (M2), Broker Environment publication/approval controls (M2,
+HOBO-526/527), the closed rejection matrix (M3, HOBO-528), Ed25519 receipt
+integrity (M3, HOBO-529), the Rego/OPA **and Cedar** policy engines behind
+the gate plane, the metered billing plane, live Argo CD submission behind
+the delivery plane, the hosted HTTP authority surface (provider-verified
+against the resolution pact), and the `hobo broker` CLI/MCP verb — external
+boundaries pinned by four pacts (`broker_resolution`, `broker_policy_opa`,
+`broker_policy_cedar`, `broker_delivery_argocd`).
 
 ## Follow-up gates
 
-- Operating the broker as the *hosted* authority (the M4 GA handoff:
-  deployment, on-call, tenancy) — an operational milestone, not a code gap.
-- Admin Console UX for proposing Broker Environments (deferred there by the
-  Admin Console M0 record).
-- The Cedar (`@hobo/provider-cedar`) adapter behind the same gate-plane port.
-- `hobo` CLI verbs that surface broker receipts/rejections directly (the
-  27-verb surface is contract-pinned; extending it is its own change).
+- *Operating* the hosted authority (the M4 GA handoff: deployment, on-call,
+  tenancy, support rotas) — the code surface ships above; the milestone that
+  remains is operational evidence, which by definition accrues from running
+  the service, not from this repository.
+- The Admin Console *rendering* of Broker Environment state — the
+  publish/approve/fold backend above is the complete authority surface the
+  console binds to.

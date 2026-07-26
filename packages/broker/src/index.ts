@@ -10,17 +10,36 @@ export {
 	snapshotBrokerDecisions,
 } from "./broker.js";
 export {
+	buildCedarRequest,
+	CEDAR_ENGINE_ID,
+	type CedarGatePlaneOptions,
+	createCedarGatePlane,
+} from "./cedar.js";
+export {
 	type ConnectorRegistry,
 	createConnectorRegistry,
 	foldConnectorRegistry,
 	parseConnectorConfig,
 } from "./connector-registry.js";
 export {
+	approveEnvironmentFact,
+	type BrokerEnvironment,
+	foldBrokerEnvironments,
+	parseBrokerEnvironment,
+	publishEnvironmentFact,
+} from "./environments.js";
+export {
 	BROKER_EVENTS,
 	type BrokerEvent,
 	type BrokerEventType,
 	brokerEvent,
 } from "./events.js";
+export {
+	type BrokerHttpRequest,
+	type BrokerHttpResponse,
+	createBrokerHttpHandler,
+	serveBroker,
+} from "./http.js";
 export {
 	createMeteredBillingPlane,
 	foldMeteredUsage,

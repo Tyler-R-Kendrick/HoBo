@@ -1,4 +1,5 @@
 import type { ConnectorRegistry } from "./connector-registry.js";
+import type { BrokerEnvironment } from "./environments.js";
 import { BROKER_EVENTS, type BrokerEvent, brokerEvent } from "./events.js";
 import {
 	type BillingPlane,
@@ -66,6 +67,10 @@ export interface HoboBrokerDeps {
 	billingPlane?: BillingPlane;
 	deliveryPlane?: DeliveryPlane;
 	signingKey?: ResolutionSigningKey;
+	// The approved Broker Environment this broker resolves within. When set,
+	// it must be approved, its pinned catalog snapshot must match the live
+	// catalog, and only its approved providers are eligible for placement.
+	environment?: BrokerEnvironment;
 }
 
 export interface HoboBroker {
@@ -169,6 +174,40 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 				}
 			}
 
+			// Plane 0.5 — admin controls: the Broker Environment must be approved
+			// and its pinned catalog snapshot must match the live catalog.
+			if (deps.environment !== undefined) {
+				if (!deps.environment.approved) {
+					return reject(
+						request,
+						[
+							{
+								plane: "policy",
+								code: "environment-unapproved",
+								message: `broker environment ${deps.environment.environmentId} is published but not approved`,
+							},
+						],
+						events,
+					);
+				}
+				if (
+					deps.environment.catalogHash !== undefined &&
+					deps.environment.catalogHash !== deps.catalog.catalogHash
+				) {
+					return reject(
+						request,
+						[
+							{
+								plane: "policy",
+								code: "catalog-snapshot-stale",
+								message: `broker environment ${deps.environment.environmentId} pins catalog ${deps.environment.catalogHash} but the live catalog is ${deps.catalog.catalogHash}`,
+							},
+						],
+						events,
+					);
+				}
+			}
+
 			// Placement policy selection: the broker only acts on configured
 			// policy — no applicable placement policy means no placement.
 			const effective = effectivePlacementPolicy(policies, request.scope);
@@ -247,8 +286,17 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			}
 
 			// Plane 3 — placement: match every requirement against the provider
-			// catalog under the effective policy, ranked by its objective.
-			const definitions = deps.catalog.definitions();
+			// catalog under the effective policy, ranked by its objective. The
+			// approved environment's provider list bounds eligibility first.
+			const environmentProviders = deps.environment?.approvedProviders;
+			const definitions =
+				environmentProviders !== undefined && environmentProviders.length > 0
+					? deps.catalog
+							.definitions()
+							.filter((definition) =>
+								environmentProviders.includes(definition.providerId),
+							)
+					: deps.catalog.definitions();
 			const placements: PlacementDecision[] = [];
 			const placementReasons: RejectionReason[] = [];
 			for (const requirement of request.requirements) {

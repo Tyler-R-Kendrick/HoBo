@@ -28,6 +28,7 @@
 - test (test loop): Alias for the sandbox test lane — CLI `hobo test`; MCP tool `test`
 - attest (governance): Produce signed external evidence exports — CLI `hobo attest`; MCP tool `attest`
 - erase (governance): Request crypto-shred erasure — CLI `hobo erase`; MCP tool `erase`
+- broker (governance): Resolve placements through the broker (the Conductor) — CLI `hobo broker`; MCP tool `broker`
 - derivative (extensibility): Manage derived HoBo implementations — CLI `hobo derivative`; MCP tool `derivative`
 - runbook (SRE): Execute or replay incident runbooks — CLI `hobo runbook`; MCP tool `runbook`
 

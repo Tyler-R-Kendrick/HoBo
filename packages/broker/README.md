@@ -26,14 +26,29 @@ be swapped without touching the brokering pipeline:
 | Delivery | `DeliveryPlane` | `renderArgoApplication` → Argo CD Application documents; `in-proc` executor handoff | `createArgoCdDeliveryPlane` — live Argo CD applications API submission, token via the token broker, fail-closed, pinned by `broker_delivery_argocd.pact.json` |
 | Connectors | `ConnectorRegistry` | event-sourced registry of `github-app`, `pulumi`, `azure`, `vercel`, `cloudflare`, `custom` configs | an external connector catalog |
 
-Beyond M0, this package also ships **receipt integrity** — Ed25519 detached
-signatures over canonical JSON for every receipt and rejection
-(`signResolution`/`verifyResolution`, `broker.ResolutionSigned` facts) — and
-the **closed rejection matrix** (`REJECTION_MATRIX`): every broker-owned
-rejection code pinned to its plane and an agent-actionable remediation,
-enforced by test so the catalog can never drift from the pipeline. Branding
-note: product surfaces call this component **the Conductor**; code and
-technical docs keep **broker**.
+Beyond M0, this package also ships:
+
+- **Receipt integrity** — Ed25519 detached signatures over canonical JSON for
+  every receipt and rejection (`signResolution`/`verifyResolution`,
+  `broker.ResolutionSigned` facts).
+- **The closed rejection matrix** (`REJECTION_MATRIX`) — every broker-owned
+  rejection code pinned to its plane and an agent-actionable remediation,
+  test-enforced against the pipeline.
+- **Cedar** as the second external policy language (`createCedarGatePlane`,
+  fail-closed, pinned by `broker_policy_cedar.pact.json`) beside Rego.
+- **Broker Environments** (admin controls): `publishEnvironmentFact` /
+  `approveEnvironmentFact` / `foldBrokerEnvironments`; resolutions against an
+  unapproved environment or a stale pinned catalog snapshot reject
+  (`environment-unapproved`, `catalog-snapshot-stale`), and eligibility is
+  bounded to the environment's approved providers.
+- **The hosted authority surface** — `createBrokerHttpHandler` / `serveBroker`
+  expose resolve/scale/deliver/rejection-matrix over HTTP, and the resolve
+  route is PROVIDER-verified against `broker_resolution.pact.json`
+  (`contracts/provider/`). The `hobo broker` CLI verb (and its derived MCP
+  tool) runs the same pipeline against the composed Yard's live registry.
+
+Branding note: product surfaces call this component **the Conductor**; code
+and technical docs keep **broker**.
 
 Placement itself consumes any `BrokerCatalog` — a structural mirror of
 `@hobo/cloud`'s `PlannerRegistry`, so the Yard's live provider catalog plugs

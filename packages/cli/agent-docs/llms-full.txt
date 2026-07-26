@@ -191,6 +191,13 @@ Product: hobo
 - MCP tool: `erase`
 - Capability: { port: hobo:mcp, resource: tool:erase, verb: call }
 
+### broker
+- Role: governance
+- Summary: Resolve placements through the broker (the Conductor)
+- CLI: `hobo broker`
+- MCP tool: `broker`
+- Capability: { port: hobo:mcp, resource: tool:broker, verb: call }
+
 ### derivative
 - Role: extensibility
 - Summary: Manage derived HoBo implementations

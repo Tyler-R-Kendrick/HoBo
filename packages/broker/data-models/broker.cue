@@ -121,6 +121,18 @@ package data_models
 	reasons: [...#RejectionReason] & [_, ...]
 }
 
+#BrokerEnvironment: {
+	environment_id: string & !=""
+	approved_providers: [...string & !=""]
+	catalog_hash?: string & =~"^sha256:"
+	approved:      bool | *false
+	// Dependent constraint: an approved environment records its approver.
+	if approved {
+		approved_by: string & !=""
+	}
+	approved_by?: string
+}
+
 #ResolutionSignature: {
 	algorithm:      "ed25519"
 	public_key_pem: string & =~"BEGIN PUBLIC KEY"

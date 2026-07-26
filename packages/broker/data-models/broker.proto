@@ -130,6 +130,17 @@ message ResolutionRejection {
   repeated RejectionReason reasons = 5;
 }
 
+// Approved broker input state a resolution validates against: which providers
+// may be used and which catalog snapshot the decision must be made over.
+// Publication proposes; approval is a separate admin fact.
+message BrokerEnvironment {
+  string environment_id = 1;
+  repeated string approved_providers = 2;
+  string catalog_hash = 3;
+  bool approved = 4;
+  string approved_by = 5;
+}
+
 // Detached Ed25519 signature over a receipt/rejection's canonical JSON form,
 // so consumers verify resolution evidence byte-for-byte (receipt integrity).
 message ResolutionSignature {

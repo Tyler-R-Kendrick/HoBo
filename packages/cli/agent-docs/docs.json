@@ -304,6 +304,18 @@
       }
     },
     {
+      "name": "broker",
+      "role": "governance",
+      "summary": "Resolve placements through the broker (the Conductor)",
+      "cli": "hobo broker",
+      "mcpTool": "broker",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:broker",
+        "verb": "call"
+      }
+    },
+    {
       "name": "derivative",
       "role": "extensibility",
       "summary": "Manage derived HoBo implementations",

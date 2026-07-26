@@ -98,14 +98,32 @@ folds over that stream — rebuildable from zero, snapshot-cached for reads —
 and every policy evaluation records its own `policy.Decided` fact even when
 the answer is yes. Ask "why does the app live there?" and the log answers.
 
+## Try it
+
+The Conductor is on the CLI as `hobo broker` (and, through verb/tool parity,
+as an MCP tool):
+
+```bash
+hobo broker resolve --policies policies.json --request request.json
+hobo broker matrix
+```
+
+`resolve` runs the full plane pipeline against your Yard's live provider
+registry and prints the signed receipt — or the cataloged rejection with its
+remediation. `matrix` prints the whole rejection catalog. And for hosted
+operation, the same pipeline serves over HTTP, provider-verified against the
+same contract the callers consume.
+
 ## Status
 
 The Conductor ships as the `@hobo/broker` package: the policy set (protobuf
 + CUE constrained), the resolve/scale/deliver pipeline, the layered-policy
 merge, the connector registry, the closed rejection matrix, Ed25519-signed
-receipts and rejections, the Rego/OPA policy engine adapter, the metered
-billing plane, and live Argo CD submission — every external boundary pinned
-by a consumer-driven pact. Still ahead: operating it as the hosted
-authority, admin-console UX for proposing broker environments, and the
-Cedar policy adapter. See [the trail map](/HoBo/guide/status/) for the
-honest ledger.
+receipts and rejections, **both** external policy engines (Rego/OPA and
+Cedar, fail-closed), the metered billing plane, live Argo CD submission,
+broker-environment publish/approve admin controls, the hosted HTTP authority
+surface, and the `hobo broker` verb — every external boundary pinned by a
+pact, with the resolve surface verified from the provider side too. What
+remains is operational: running the hosted authority accrues its GA evidence
+in production, not in the repo. See [the trail map](/HoBo/guide/status/) for
+the honest ledger.

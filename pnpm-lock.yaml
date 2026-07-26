@@ -376,6 +376,9 @@ importers:
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../bindles
+      '@hobo/broker':
+        specifier: workspace:*
+        version: link:../broker
       '@hobo/cli':
         specifier: workspace:*
         version: link:../cli

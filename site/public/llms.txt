@@ -49,7 +49,8 @@ Key facts:
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default
   LOCAL, IN-MEMORY lane (`hobo dev` serves the project's own api/web handler
   in-process; a committed `hobo.bindle.json` artifact wins when present). The
-  `hobo-mcp` binary serves all 27 canonical verbs as MCP tools over stdio with
+  `hobo-mcp` binary serves all 28 canonical verbs (including `hobo broker`) as
+  MCP tools over stdio with
   verb/tool parity contract-tested, deny-by-default audited auth, and HOBO_MCP_TOOLS
   scoping. Live deploy lanes are credential-gated (Cloudflare/Vercel env tokens;
   HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine). Not yet shipped:

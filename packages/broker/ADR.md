@@ -57,6 +57,16 @@ policies, wraps policy enforcement (OPA-shaped), contract enforcement
 9. **The rejection matrix is a closed, tested catalog.** Reject paths may
    only emit cataloged codes (HOBO-528); the contracts plane's codes remain
    owned by `@hobo/contracts`.
+10. **Environments gate resolutions; approval is a separate fact.** A
+    `BrokerEnvironment` is published (proposal) and approved (admin fact)
+    as distinct events; the broker resolves only against approved state,
+    rejects stale pinned catalog snapshots, and bounds eligibility to the
+    environment's approved providers (HOBO-526/527).
+11. **The hosted surface is provider-verified.** `createBrokerHttpHandler`
+    replays the resolution pact from the provider side, so the hosted HTTP
+    authority and the consumer contract cannot drift; `serveBroker` binds it
+    to node:http for hosted operation, and `hobo broker` (verb #28, with its
+    parity-derived MCP tool) fronts the same pipeline on the CLI.
 
 ## Consequences
 

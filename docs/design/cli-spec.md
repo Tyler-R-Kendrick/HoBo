@@ -42,6 +42,7 @@ surfaces.
 | `test` | test loop | Alias for the contract-backed sandbox test lane; not a replacement for project test runners. | HOBO-190, HOBO-392 |
 | `attest` | governance | Produce signed OCSF, control, or model-card evidence exports from replayable audit facts for external GRC tools. | HOBO-175, HOBO-196, HOBO-282 |
 | `erase` | governance | Request crypto-shred erasure and projection rebuild for a data subject without rewriting historical events. | HOBO-295 |
+| `broker` | governance | Resolve placements through the broker (the Conductor): `broker resolve --policies --request` runs the plane pipeline against the live registry and prints the Resolution Receipt or the cataloged Resolution Rejection; `broker matrix` prints the closed rejection-code catalog. Decision surface only — spin-up/down and rollout stay `up`/`down`. | HOBO-521, HOBO-525, HOBO-528, HOBO-529 |
 | `derivative` | extensibility | Manage derived HoBo implementations; `derivative upgrade` checks descriptors, runs upcasters, and reruns conformance. | HOBO-36, HOBO-336, HOBO-386 |
 | `runbook` | SRE | Execute or replay declarative incident runbooks; write actions still pass through policy obligations. | HOBO-260, HOBO-285 |
 

@@ -19,6 +19,7 @@ import { createDepotCatalogEntry } from "@hobo/runner-depot";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
+import { createBrokerCommand } from "./broker-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
 import {
@@ -112,6 +113,9 @@ export function createComposedHoboCli(
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),
 			"can-deploy": createCanDeployCommand(),
+			// The broker (the Conductor) resolves against the same live,
+			// approval-gated registry the Planner matches over.
+			broker: createBrokerCommand({ catalog: runtime.registry }),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),

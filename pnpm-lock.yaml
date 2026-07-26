@@ -329,6 +329,9 @@ importers:
       '@hobo/runner-blacksmith':
         specifier: workspace:*
         version: link:../providers/runner-blacksmith
+      '@hobo/runner-depot':
+        specifier: workspace:*
+        version: link:../providers/runner-depot
       '@hobo/runner-github':
         specifier: workspace:*
         version: link:../providers/runner-github
@@ -510,6 +513,19 @@ importers:
       '@hobo/runner-github':
         specifier: workspace:*
         version: link:../runner-github
+
+  packages/providers/runner-depot:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@hobo/runner-github':
+        specifier: workspace:*
+        version: link:../runner-github
+    devDependencies:
+      '@hobo/runner-blacksmith':
+        specifier: workspace:*
+        version: link:../runner-blacksmith
 
   packages/providers/runner-github:
     dependencies:

@@ -14,6 +14,7 @@ import { createAwsProvider } from "@hobo/provider-aws";
 import { createAzureProvider } from "@hobo/provider-azure";
 import { createGcpProvider } from "@hobo/provider-gcp";
 import { createLakebedProvider } from "@hobo/provider-lakebed";
+import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
@@ -69,6 +70,10 @@ registerInstallable(
 	() => toRegistrableProvider(createLakebedProvider()),
 	{ defaultHold: true },
 );
+// The GitHub Actions execution-host adapter (M3): both `hobo:runner` and
+// `hobo:build-machine` ports register from one catalog entry so the
+// Dispatcher can cost-route jobs/builds across registered hosts (ADR-0071).
+registerInstallable("runner-github", () => createGithubRunnerCatalogEntry());
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},

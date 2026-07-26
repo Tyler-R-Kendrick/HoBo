@@ -31,13 +31,17 @@ Key facts:
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
-- Bindles support brownfield AND greenfield: handlers are optional, so a bindle can be a
-  pure declaration. `hobo stub` links contract-backed stubs so the app runs end-to-end
-  before any implementation exists; stub calls are recorded as specification-by-example
-  traces; the generation pipeline synthesizes real WIT component implementations from
-  interface + contract + traces, promoted only when conformance passes, eval thresholds
-  are met, and policy allows. `"use training"` marks methods as continuously
-  AI-rewritable under the same gates.
+- Bindles support brownfield AND greenfield. Every component builder (b.api/b.web/b.service)
+  accepts a DECLARATION in place of a handler: the component's intent plus per-operation
+  { intent, contract (typed I/O + invariants + forbidden outputs), rubric (scorer →
+  promotion threshold, enforced as policy) }. Each declared operation lowers to a
+  signature-only trainable bound to its resource; `hobo stub` emits the generated
+  registrations + a typed client, contract-derived stubs serve the app end-to-end on day
+  one, stub calls record specification-by-example traces, and the generation pipeline
+  synthesizes real WIT component implementations — promoted only when conformance passes,
+  rubric eval thresholds are met, and policy allows. Escalation is per-operation: replace
+  a declaration with a real body anytime; mark a body `"use training"` to keep it
+  AI-maintained under the same gates.
 - Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
   today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default

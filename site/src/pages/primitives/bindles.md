@@ -61,47 +61,60 @@ Every resource supports three chainable refinements:
 
 ## Greenfield: declare the bindle, generate the code
 
-Packing an existing app — the brownfield path above — is only half the story. A bindle is also a **declarative surface**: every builder handler is optional, and a resource declared *without* an implementation is still a fully typed WIT port. That makes the bindle a spec HoBo can generate code *from*, not just a wrapper around code you already have.
+Packing an existing app — the brownfield path above — is only half the story. Every component builder also has a **declaration form**: pass a declaration instead of a handler, and you've declared **code to be generated**. The declaration carries the same three groundings HoBo uses everywhere it generates or optimizes code — an **intent** (what it's for, in prose), a **contract** (typed I/O, invariants, forbidden outputs — the boundary generated code may never cross), and a **rubric** (named scorers with promotion thresholds, enforced as policy at the gate — not advisory metadata).
 
 ```ts
 import { bindle } from "@hobo/bindles";
+import { z } from "zod";
+import { CheckoutContract, Photo, RankInput } from "./domain";
 
-/**
- * A greenfield app: nothing is implemented yet.
- * Each declaration is a typed WIT port; the host links a stub
- * until a real implementation is promoted.
- */
-export default bindle("hello-greenfield", (b) => {
-  const db = b.data().allow("read", "write");
+/** Greenfield: no handlers anywhere. The declarations ARE the app. */
+export default bindle("snapshop", (b) => {
+  const photos = b.bucket();
+  const catalog = b.data().allow("read", "write");
 
-  // No handler — declared intent only. Runs as a contract-backed
-  // stub from day one; the generation pipeline grows it into a
-  // real wasm component.
-  const payments = b.service().stub().dependsOn(db);
+  const api = b
+    .api({
+      intent: "Public storefront API: ranked feed, cart, checkout.",
+      operations: {
+        rankFeed: {
+          intent:
+            "Order photos to maximize dwell without burying brand-new sellers.",
+          contract: {
+            input: RankInput,
+            output: z.array(Photo),
+            invariants: ["output length equals candidate length"],
+            forbidden: ["output[0] is nsfw"],
+          },
+          rubric: { dwellLift: 0.8, newSellerShare: 0.75, latencyP95: 0.9 },
+        },
+        checkout: {
+          intent: "Turn a priced cart into an order exactly once.",
+          contract: CheckoutContract,
+          rubric: { exactlyOnce: 1.0, latencyP95: 0.9 },
+        },
+      },
+    })
+    .dependsOn(catalog, photos);
 
-  const api = b.api().dependsOn(payments);
-
-  return { db, payments, api };
+  return { photos, catalog, api };
 });
 ```
 
-The loop from declaration to running implementation:
+That's a complete app description with zero implementation — and the loop from declaration to running code is the same convergence loop as everything else in HoBo:
 
-1. **Declare.** The bindle above is a complete, plannable manifest — `hobo plan` and `hobo up` work on it unchanged. `hobo stub` materializes contract-backed stubs (in `src/_generated/`) for every unimplemented port, so the whole app runs end-to-end on day one: stubs satisfy the type system and the link table, and return typed responses derived from the WIT types.
-2. **Record.** Every stub call is an event. Those recorded traces become a **specification by example** — the inputs any real implementation must satisfy, alongside the port's contract (typed I/O, invariants, forbidden outputs).
-3. **Generate.** The same **generation pipeline** that writes [provider adapters](/HoBo/guide/custom-providers/) synthesizes the component implementation from the WIT interface + contract + recorded traces. Candidates run in a capability-scoped sandbox with no egress.
-4. **Gate.** Promotion requires all three lenses: **conformance green** (the contract must never break), **eval thresholds met** (the rubric should improve), and **policy allows** (prod promotions can require human approval).
-5. **Promote.** A passing candidate is written back to source as an AST-aware, region-scoped edit with signed provenance — auto-applied when low-risk, or raised as a PR for approval. Prior candidates live in the event log, so promotion is reversible.
+1. **Declare.** The bindle above is a complete, plannable manifest — `hobo plan` and `hobo up` work on it unchanged. Under the hood each operation lowers to a **signature-only trainable** bound to its resource: the same machinery as `"use training"`, but you never touch it directly.
+2. **Stub.** `hobo stub` emits the generated registrations and a typed client into `src/_generated/`. Every declared operation is servable from day one by a **contract-derived stub**, so the whole app runs end-to-end before any implementation exists — and every stub call is recorded as a **specification-by-example** trace.
+3. **Generate.** The same **generation pipeline** that writes [provider adapters](/HoBo/guide/custom-providers/) synthesizes each operation's implementation from its interface + contract + recorded traces, in a capability-scoped sandbox with no egress.
+4. **Gate.** Promotion needs all three lenses: **conformance green** (the contract must never break), **eval thresholds met** (the rubric — scorer by scorer), and **policy allows** (prod promotions can require human approval).
+5. **Promote.** A passing candidate is written back into the operation's generated region as an AST-aware edit with signed provenance — auto-applied when low-risk, raised as a PR when not. Prior candidates live in the event log, so promotion is reversible.
 
-Methods you want to *stay* AI-maintained carry the `"use training"` directive: the body is the baseline, and HoBo's optimizer keeps rewriting it against the method's intent, contract, and rubric — under the same gates.
+Escalation is **per operation, not per app**. Write a real body for `checkout` tomorrow and keep `rankFeed` declared; mark a hand-written body `"use training"` and the optimizer keeps improving it against the same intent + contract + rubric, under the same gates:
 
 ```ts
-/**
- * @intent Charge the order; refuse when the amount disagrees with the cart.
- */
-export async function charge(order: Order): Promise<Receipt> {
-  "use training"; // AI-rewritable: optimized against intent + contract + rubric
-  return stubCharge(order); // baseline — the optimizer grows this
+export async function rankFeed(input: RankInput): Promise<Photo[]> {
+  "use training"; // AI-maintained: the optimizer owns this body
+  return [...input.candidates].sort((a, b) => b.likes - a.likes); // baseline
 }
 ```
 

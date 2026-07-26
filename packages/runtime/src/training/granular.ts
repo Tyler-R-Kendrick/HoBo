@@ -1,17 +1,17 @@
 import {
 	composeOptions,
 	finalizeTrainableClass as finalizeWithRegistry,
-	granularLegacyOptions as groundingLegacyOptions,
 	granularOptionsFor as groundingOptionsFor,
 } from "ts-autocode-grounding";
 import { getTrainable, resolveTrainable, training } from "./training.js";
 import type { Trainable, TrainingOptions } from "./types.js";
 
 // Granular grounding decorators (Plan 2 Syntax 0): @intent / @returns on
-// methods and @description on parameters. The decorator implementations —
-// dual TC39 stage-3 / legacy dispatch, pending-grounding accumulation, and
-// option composition — live upstream in ts-autocode-grounding (ADR-0128);
-// this module wires them to HoBo's training registry. Ambient
+// methods, `description()` values for `params:` maps (TC39 stage-3 only,
+// ADR-0125). The decorator implementations — pending-grounding
+// accumulation and option composition — live upstream in
+// ts-autocode-grounding (ADR-0128); this module wires them to HoBo's
+// training registry. Ambient
 // `export declare class` declarations erase at compile time, so no
 // decorator runs for them at all — they are honored by source scanning
 // instead (scan.ts, the `hobo stub` path).
@@ -65,12 +65,4 @@ export function granularOptionsFor(
 		metadata,
 		methodName,
 	) as TrainingOptions;
-}
-
-/** Compose options for a legacy bare `@trainable` method. */
-export function granularLegacyOptions(
-	prototype: object,
-	methodName: string,
-): TrainingOptions {
-	return groundingLegacyOptions(prototype, methodName) as TrainingOptions;
 }

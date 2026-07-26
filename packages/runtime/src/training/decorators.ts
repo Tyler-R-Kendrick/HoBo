@@ -3,11 +3,7 @@ import {
 	componentMetadataOf as groundingComponentMetadataOf,
 	param as groundingParam,
 } from "ts-autocode-grounding";
-import {
-	finalizeTrainableClass,
-	granularLegacyOptions,
-	granularOptionsFor,
-} from "./granular.js";
+import { finalizeTrainableClass, granularOptionsFor } from "./granular.js";
 import { getTrainable, resolveTrainable, stub, training } from "./training.js";
 import type { FieldDescription, Trainable, TrainingOptions } from "./types.js";
 
@@ -56,9 +52,8 @@ export interface TrainableDecorator<This, I, O> {
  * decorator (`@trainable` with no call) — on a class it registers every
  * granular-declared method (`@intent`/`@returns`/`@description`), or every
  * own method with fully inferred groundings when nothing was annotated;
- * on a method it registers that method the same way. Bare usage is
- * dual-mode (TC39 stage-3 and legacy `experimentalDecorators` call
- * shapes). Note: decorators never run on ambient `declare class`
+ * on a method it registers that method the same way. TC39 stage-3 call
+ * shapes only (ADR-0125). Note: decorators never run on ambient `declare class`
  * declarations — those are honored by `scanDeclaredTrainables` (the
  * `hobo stub` source-scanning path).
  */
@@ -73,31 +68,8 @@ export function trainable<This, I, O>(
 	method: TrainableMethod<This, I, O>,
 	context: ClassMethodDecoratorContext<This, TrainableMethod<This, I, O>>,
 ): (this: This, input: I) => Promise<O>;
-export function trainable(
-	prototype: object,
-	propertyKey: string | symbol,
-	descriptor: PropertyDescriptor,
-): PropertyDescriptor;
-// biome-ignore lint/suspicious/noExplicitAny: dual-mode dispatch across decorator call shapes
-export function trainable(first: any, second?: any, third?: any): any {
-	// Legacy bare method: (prototype, propertyKey, descriptor).
-	if (
-		(typeof second === "string" || typeof second === "symbol") &&
-		typeof first === "object" &&
-		first !== null
-	) {
-		const options = granularLegacyOptions(first, String(second));
-		const method = third?.value as (input: unknown) => unknown;
-		if (typeof method === "function") {
-			let self: object | undefined;
-			const registered = training((input: unknown) => {
-				self ??= Object.create(first) as object;
-				return method.call(self, input);
-			}, options);
-			return { ...third, value: registered };
-		}
-		return third;
-	}
+// biome-ignore lint/suspicious/noExplicitAny: dispatch across decorator call shapes
+export function trainable(first: any, second?: any): any {
 	if (typeof first === "function") {
 		const context = second as
 			| {
@@ -119,7 +91,7 @@ export function trainable(first: any, second?: any, third?: any): any {
 				>,
 			);
 		}
-		// Bare class: stage-3 (cls, classContext) or legacy (cls) alone.
+		// Bare class: stage-3 (cls, classContext).
 		finalizeTrainableClass(
 			first as new () => object,
 			context?.kind === "class" ? context.metadata : undefined,
@@ -245,20 +217,17 @@ export const operation = trainable;
  * so parameter metadata rides the options object; this helper keeps the
  * declaration one expression per parameter.
  */
-export function param(
+export const param: (
 	description: string,
 	example?: unknown,
-): FieldDescription {
-	return example === undefined
-		? Object.freeze({ description })
-		: Object.freeze({ description, example });
-}
+) => FieldDescription = groundingParam;
 
 /** Read a decorated class's component metadata (undefined when not one). */
 export function componentMetadataOf(
 	// biome-ignore lint/suspicious/noExplicitAny: introspects arbitrary classes
 	cls: any,
 ): ComponentMetadata | undefined {
-	const metadata = cls?.[(Symbol as { metadata?: symbol }).metadata as symbol];
-	return metadata?.[COMPONENT_METADATA] as ComponentMetadata | undefined;
+	return groundingComponentMetadataOf(cls, COMPONENT_METADATA) as
+		| ComponentMetadata
+		| undefined;
 }

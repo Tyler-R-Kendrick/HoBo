@@ -106,64 +106,6 @@ test("description() doubles as a FieldDescription value for stage-3 params maps"
 });
 
 // ---------------------------------------------------------------------------
-// Legacy (experimentalDecorators) call shapes — the literal syntax with
-// parameter decorators, for downstream projects compiled in legacy mode.
-// ---------------------------------------------------------------------------
-
-test("legacy: @intent/@returns/@description(param) + bare @trainable class", async () => {
-	class Program {
-		trainableMethod(name?: string): string {
-			return name ? `Hello, ${name}!` : "Hello World!";
-		}
-	}
-	const proto = Program.prototype as object;
-	const descriptor = Object.getOwnPropertyDescriptor(proto, "trainableMethod");
-	// Exact legacy emit order: parameter decorators, then method decorators,
-	// then the class decorator.
-	description("Optional person to greet")(proto, "trainableMethod", 0);
-	returns("Hello World! or Hello, <name>! when supplied")(
-		proto,
-		"trainableMethod",
-		descriptor,
-	);
-	intent("Produce a simple hello-world program")(
-		proto,
-		"trainableMethod",
-		descriptor,
-	);
-	trainable(Program);
-
-	const record = getTrainable("Program.trainableMethod");
-	assert.ok(record);
-	assert.equal(record.fact.intent, "Produce a simple hello-world program");
-	// The parameter decorator recovered the parameter's NAME, not an index.
-	assert.equal(
-		record.fact.params.name?.description,
-		"Optional person to greet",
-	);
-	assert.equal(
-		await resolveDeclared<string | undefined, string>(
-			"Program.trainableMethod",
-		)(undefined),
-		"Hello World!",
-	);
-});
-
-test("legacy: bare @trainable on a single method registers it", async () => {
-	class Desk {
-		route(subject: string): string {
-			return subject.toUpperCase();
-		}
-	}
-	const proto = Desk.prototype as object;
-	const descriptor = Object.getOwnPropertyDescriptor(proto, "route");
-	const result = trainable(proto, "route", descriptor as PropertyDescriptor);
-	assert.ok(result.value);
-	assert.ok(getTrainable("Desk.route"));
-	assert.equal(await resolveDeclared<string, string>("Desk.route")("hi"), "HI");
-});
-
-// ---------------------------------------------------------------------------
 // Ambient declarations: `export declare class` never runs decorators —
 // scanDeclaredTrainables honors the exact syntax statically.
 // ---------------------------------------------------------------------------

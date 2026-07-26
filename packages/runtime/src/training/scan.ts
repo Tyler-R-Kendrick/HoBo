@@ -1,11 +1,11 @@
-import {
-	generateDeclaredRegistrations as emitRegistrations,
-	scanDeclaredTrainables as scanWithGrounding,
-} from "ts-autocode-grounding";
 import type {
 	DeclaredOperation,
 	DeclaredParameter,
 	DeclaredTrainableClass,
+} from "ts-autocode-grounding";
+import {
+	generateDeclaredRegistrations as emitRegistrations,
+	scanDeclaredTrainables as scanWithGrounding,
 } from "ts-autocode-grounding";
 
 // Source scanner for ambient trainable declarations (Plan 2 Syntax 0,

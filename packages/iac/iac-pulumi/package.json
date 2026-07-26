@@ -2,7 +2,9 @@
 	"name": "@hobo/iac-pulumi",
 	"version": "0.0.1",
 	"type": "module",
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -13,7 +15,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@pulumi/pulumi": "3.130.0"
 	},
 	"scripts": {
 		"prebuild": "pnpm --filter @hobo/core build",

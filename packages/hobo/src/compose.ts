@@ -31,6 +31,7 @@ import type {
 import { createInMemoryActorHost } from "@hobo/data";
 import {
 	createPulumiAutomationAdapter,
+	createPulumiAutomationApiEngine,
 	createPulumiCliAutomationEngine,
 } from "@hobo/iac-pulumi";
 import {
@@ -72,8 +73,11 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // `hobo.iac-program/v1` program, and applies it through the real adapter. There
 // is NO mock IacProvider. HONEST SCOPE: the DEFAULT backend is the in-memory
 // Automation-API stand-in (offline, deterministic); `HOBO_PULUMI_LIVE=1` swaps
-// in the real pinned `pulumi` CLI engine (binary- and credential-gated — see
-// selectIacProvider and the deploy-hello-bindle-pulumi workflow lane).
+// in the REAL Pulumi Automation API engine (@pulumi/pulumi LocalWorkspace,
+// HOBO-715 — engine-binary- and credential-gated), with
+// `HOBO_PULUMI_LIVE_ENGINE=cli` (or the HOBO_PULUMI_BIN test seam) selecting
+// the pinned `pulumi` CLI engine instead — see selectIacProvider and the
+// deploy-hello-bindle-pulumi workflow lane.
 
 // @hobo/provider-cloudflare types its capability-manifest fields more loosely
 // (PublishedManifestDocuments / Record<string, unknown>) than @hobo/cloud's
@@ -191,24 +195,32 @@ export function selectPulumiEstateAdapter(
 		return deps.adapter;
 	}
 	if (env.HOBO_PULUMI_LIVE === "1") {
-		return memoizedPulumiAdapter(
-			deps.store,
-			"live",
-			() =>
-				createPulumiAutomationAdapter({
-					engine: createPulumiCliAutomationEngine({
-						workDir:
-							env.HOBO_PULUMI_WORKDIR ??
-							mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
+		return memoizedPulumiAdapter(deps.store, "live", () => {
+			const workDir =
+				env.HOBO_PULUMI_WORKDIR ??
+				mkdtempSync(join(tmpdir(), "hobo-pulumi-live-"));
+			// Default live engine = the REAL Pulumi Automation API (LocalWorkspace,
+			// HOBO-715). `HOBO_PULUMI_LIVE_ENGINE=cli` keeps the pinned CLI engine;
+			// the HOBO_PULUMI_BIN test seam implies the CLI engine (the Automation
+			// API embeds its own engine and takes no binary override).
+			const useCliEngine =
+				env.HOBO_PULUMI_LIVE_ENGINE === "cli" ||
+				env.HOBO_PULUMI_BIN !== undefined;
+			const engine = useCliEngine
+				? createPulumiCliAutomationEngine({
+						workDir,
 						env,
 						// Test seam mirroring the engine's own binary gate: point at a
 						// non-existent binary to exercise the typed fail-closed path.
 						...(env.HOBO_PULUMI_BIN !== undefined
 							? { pulumiBin: env.HOBO_PULUMI_BIN }
 							: {}),
-					}),
-				}) as PulumiAutomationAdapter,
-		);
+					})
+				: createPulumiAutomationApiEngine({ workDir, env });
+			return createPulumiAutomationAdapter({
+				engine,
+			}) as PulumiAutomationAdapter;
+		});
 	}
 	if (
 		(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) ||

@@ -86,7 +86,13 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // exactly this provider — so this composition-root adapter simply re-presents the
 // CloudProvider as a RegistrableProvider without changing any behavior.
 export function toRegistrableProvider(
-	provider: CloudProvider,
+	// Structural pick: registration needs the manifest surface only, so
+	// providers whose realize() emits a driver program (e.g. Lakebed,
+	// ADR-0127) register through the same seam as IaC-realizing providers.
+	provider: Pick<
+		CloudProvider,
+		"id" | "regions" | "capabilities" | "capabilityManifest"
+	>,
 ): RegistrableProvider {
 	return {
 		id: provider.id,

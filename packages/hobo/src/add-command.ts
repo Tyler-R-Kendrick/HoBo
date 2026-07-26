@@ -23,8 +23,16 @@ const ADD_ACTOR: PrincipalRef = { kind: "system", id: "yard/registry" };
 // records its manifest into the registry so the Planner can match against it.
 // Adapter slices extend this catalog via `registerInstallable` (M1–M4 of the
 // default-providers plan) instead of editing this map.
-const INSTALLABLE = new Map<string, () => RegistrableProvider>([
-	["local", createLocalProvider],
+export interface InstallableEntry {
+	readonly factory: () => RegistrableProvider;
+	// Register WITHOUT approval on first install (the operator approves with a
+	// second `hobo add <id>`). Used for postures like the Lakebed deploy target
+	// (ADR-0127) where participation must be an explicit decision.
+	readonly defaultHold?: boolean;
+}
+
+const INSTALLABLE = new Map<string, InstallableEntry>([
+	["local", { factory: createLocalProvider }],
 ]);
 
 // Extend the installable catalog with a new provider entry (idempotent per id;
@@ -33,8 +41,14 @@ const INSTALLABLE = new Map<string, () => RegistrableProvider>([
 export function registerInstallable(
 	id: string,
 	factory: () => RegistrableProvider,
+	options: { defaultHold?: boolean } = {},
 ): void {
-	INSTALLABLE.set(id, factory);
+	INSTALLABLE.set(id, {
+		factory,
+		...(options.defaultHold !== undefined
+			? { defaultHold: options.defaultHold }
+			: {}),
+	});
 }
 
 export function installableProviders(): string[] {
@@ -70,10 +84,14 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				};
 			}
 
-			const catalog = deps.catalog
-				? new Map(Object.entries(deps.catalog))
+			const catalog: Map<string, InstallableEntry> = deps.catalog
+				? new Map(
+						Object.entries(deps.catalog).map(([key, factory]) => [
+							key,
+							{ factory },
+						]),
+					)
 				: INSTALLABLE;
-			const hold = Boolean((flags as { hold?: boolean }).hold);
 			const id = args[0];
 			const available = [...catalog.keys()].sort();
 			if (!id) {
@@ -89,8 +107,8 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				};
 			}
 
-			const factory = catalog.get(id);
-			if (!factory) {
+			const entry = catalog.get(id);
+			if (!entry) {
 				return {
 					ok: false,
 					status: "unknown_provider",
@@ -104,11 +122,17 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 			// The catalog key (e.g. "aws") and the provider's durable id (e.g.
 			// "@hobo/provider-aws") may differ — the stream folds by provider id,
 			// so every check and fact below uses provider.id, never the key.
-			const provider = factory();
+			const provider = entry.factory();
 			const events = await collectStream(runtime.store, REGISTRY_STREAM);
 			const fold = foldRegistryStream(events);
 			const installed = fold.installed.has(provider.id);
 			const approved = fold.approved.has(provider.id);
+			// --hold always holds; a defaultHold catalog posture holds the FIRST
+			// install only — re-running `hobo add <id>` on a held provider is the
+			// explicit approval step.
+			const hold =
+				Boolean((flags as { hold?: boolean }).hold) ||
+				(!installed && entry.defaultHold === true);
 			const lastSeq = events.at(-1)?.seq ?? 0;
 
 			if (installed && approved) {

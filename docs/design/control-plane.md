@@ -140,6 +140,7 @@ This is HoBo's **intended seed set — not a closed list.** Every entry is a swa
 | **Vercel** | web/SSR hosting · functions (serverless + edge) · Blob · Edge Config (relational/KV via marketplace: Neon/Upstash) | Vercel CLI · Terraform `vercel` |
 | **AWS · Azure · GCP** | full IaaS/PaaS (compute, data, storage, messaging, networking) | Pulumi · Terraform · OpenTofu · Crossplane |
 | **Fly.io** | global app/VM hosting · volumes | Terraform · Pulumi |
+| **Lakebed** | Capsule app hosting (closed PaaS: sync-RPC compute · Capsule KV · Reactive DB · File Store) — honest-partial capabilities, **opt-in approval** ([ADR-0127](./adr/07-portability-extensibility.md#adr-0127)) | `lakebed-deploy` driver (a [Plan 25](./platform-engineering.md#plan-25) Driver, not IaC) |
 
 Cloudflare and self-hosted wasmCloud are first-class **wasm** targets; **Hetzner** is the cheap **self-host substrate** for wasmCloud-on-k8s; **Vercel/Cloudflare** cover the **edge/web** tier. A Camp picks one provider (and its runtime host) per [ADR-0026](./adr/01-architecture-core.md#adr-0026); cross-cloud spans Yards under a Junction ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)).
 

@@ -458,6 +458,23 @@ ADR-P2 asked which overlay-mesh technology carries cross-provider connectivity (
 - **(+)** Composes with the Junction ([ADR-0043](#adr-0043)) and the zero-egress profile ([ADR-0036](#adr-0036)) rather than adding a plane.
 - **(−)** A portable WireGuard mesh won't match a tuned provider-native fabric on latency/throughput — hence the opt-in adapters; and each adapter is one more conformance target.
 
+## ADR-0127
+**Lakebed is an accepted deploy-target adapter (`@hobo/provider-lakebed`): honest-partial capabilities, deploy-driver realization, opt-in approval — and rejected as a Yard substrate.**
+
+### Context
+Lakebed is the named head-on competitor (agent-native closed PaaS — [lakebed.md](../../competitors/lakebed.md)), and until now it appeared only as a competitive frame ([index.md](../index.md#competitive-frame-vs-lakebed-what-we-deliberately-do-differently)) and as an importer source (Lakebed Capsule import, [ADR-0041](#adr-0041)). The default-providers program ([plan 0005](../../plans/0005-default-providers.md), HOBO-714) asked whether HoBo should also deploy *to* Lakebed, giving the importer story its outbound twin: a Bindle written for HoBo lands on the competitor's runtime unedited.
+
+### Decision
+1. **Accepted as a deploy-target adapter.** `@hobo/provider-lakebed` ships in the intended seed set ([Plan 4](../control-plane.md#plan-04) intended-providers table) behind the standard `CloudProvider` authoring contract (HOBO-87) — nothing about the competitor gets a bespoke seam.
+2. **Honest-partial capabilities are the point.** The adapter's feature lists are deliberately narrow (Capsule compute is not `container`; Reactive DB is not `postgres`; File Store is not `s3-compatible`): `require` misses surface as `partial(missing)` verdicts with author-time remediation ([ADR-0033](01-architecture-core.md#adr-0033)) naming a registered provider that does satisfy them — never fabricated parity with a closed runtime.
+3. **Realization is a Driver, not IaC.** A closed PaaS exposes a deploy surface, not infrastructure state, so `realize()` emits a `lakebed-deploy` **driver program** (`hobo.driver-program/v1`, one Capsule deploy per deployment) per the [Plan 25](../platform-engineering.md#plan-25) driver taxonomy — no fake Pulumi/Terraform program for a runtime that has neither.
+4. **Opt-in approval.** The catalog entry registers **held** by default (`hobo add lakebed` records `provider.Registered` only; a second `hobo add lakebed` records `provider.Approved`) — deploying to the competitor's runtime is an explicit operator decision, not a default (HOBO-710 approval gate).
+5. **Rejected as a Yard substrate.** Lakebed never hosts HoBo control planes, Camps, or Executors; cross-cloud composition with a Lakebed-hosted app is the Junction's business ([ADR-0043](#adr-0043)), out of scope here. Credentials stay secretless-first: broker-minted, deployment-scoped deploy tokens ([Plan 6](../ai-native-agent-auth.md#plan-06)), no static vendor tokens.
+
+### Consequences
+- **(+)** The portability promise gets its sharpest demonstration — the same Bindle targets the head-on competitor — and the [ADR-0041](#adr-0041) Capsule importer gains a symmetric exit path, strengthening the no-lock-in story in both directions.
+- **(−)** A deliberately-partial provider will lose most Matching contests and needs explicit approval to participate at all; the driver lane adds a second realization shape (driver programs alongside IaC programs) the Executor surface must eventually dispatch.
+
 ## Open / proposed decisions (ADR-Pn)
 
 > **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.

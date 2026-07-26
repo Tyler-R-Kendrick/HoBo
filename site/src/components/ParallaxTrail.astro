@@ -2,8 +2,10 @@
 // ==========================================================================
 // The open road: a side-scrolling parallax band with Bo walking the trail.
 //
-// The drawing itself lives in ../lib/trail-art.ts and is served as one static
-// SVG per layer and theme; this file is the machinery that makes it move.
+// Two sources feed it. Supplied artwork dropped into public/parallax/plates/
+// is used as given, at its own aspect ratio (see ../lib/trail-plates.ts). The
+// trail, poles and grass are drawn in ../lib/trail-art.ts and served as one
+// static SVG per layer and theme. This file is the machinery that moves both.
 //
 // Every layer is the same 1200x300 tile repeated along x and scrolled by
 // translating exactly one tile width, over and over. That is what makes both
@@ -20,6 +22,21 @@
 
 import { href } from "../lib/url";
 import { BO_FEET, TH, TRAIL_LAYERS, TRAIL_SECONDS } from "../lib/trail-art";
+import { plates } from "../lib/trail-plates";
+
+// Supplied artwork goes in behind everything this file draws. A plate keeps
+// its own aspect ratio, so its tile is as wide as the band is tall times that
+// ratio — and it scrolls exactly one of those, same as any other layer.
+const supplied = plates().map((p) => ({
+	key: p.key,
+	opacity: p.opacity,
+	style: [
+		`--plate:url("${href(`/parallax/plates/${p.file}`)}")`,
+		`--plate-tile:calc(var(--band-h) * ${Math.round(p.aspect * 1000) / 1000})`,
+		`--plx-dur:${Math.round((TRAIL_SECONDS / p.speed) * 100) / 100}s`,
+		`opacity:${p.opacity}`,
+	].join(";"),
+}));
 
 const art = TRAIL_LAYERS.map((layer) => ({
 	key: layer.key,
@@ -58,8 +75,13 @@ const rootStyle = [
 	<div
 		class="plx-scene"
 		role="img"
-		aria-label="Bo the bindlebug walking a country trail past telephone poles and drifting clouds"
+		aria-label="Bo the bindlebug walking a country trail past telephone poles"
 	>
+		{
+			supplied.map((p) => (
+				<div class:list={["plx-layer", "plx-plate", `plx-${p.key}`]} style={p.style} />
+			))
+		}
 		{
 			behind.map((l) => (
 				<div class:list={["plx-layer", `plx-${l.key}`]} style={l.style} />
@@ -76,7 +98,7 @@ const rootStyle = [
 
 <style>
 	.plx {
-		--band-h: 260px;
+		--band-h: 155px;
 		--tile: calc(var(--band-h) * 4);
 		--u: calc(var(--band-h) / 300); /* one tile unit, in CSS pixels */
 		--bo-h: calc(var(--u) * var(--bo-frame-h));
@@ -119,6 +141,28 @@ const rootStyle = [
 		background-image: var(--art-light);
 	}
 
+	/* A plate is used as given: its own aspect, its own tile width, no theme
+	   swap — it is artwork, not something this file re-inks. */
+	.plx-plate {
+		background-image: var(--plate);
+		background-size: auto 100%;
+		width: calc(100% + var(--plate-tile));
+		animation-name: plx-scroll-plate;
+	}
+
+	:global(:root[data-theme="light"]) .plx-plate {
+		background-image: var(--plate);
+	}
+
+	@keyframes plx-scroll-plate {
+		from {
+			transform: translate3d(0, 0, 0);
+		}
+		to {
+			transform: translate3d(calc(var(--plate-tile) * -1), 0, 0);
+		}
+	}
+
 	/* Exactly one tile of travel, so the wrap lands on identical pixels. */
 	@keyframes plx-scroll {
 		from {
@@ -127,15 +171,6 @@ const rootStyle = [
 		to {
 			transform: translate3d(calc(var(--tile) * -1), 0, 0);
 		}
-	}
-
-	/* Distance dulls things down. */
-	.plx-far {
-		opacity: 0.5;
-	}
-
-	.plx-clouds {
-		opacity: 0.75;
 	}
 
 	.plx-poles {
@@ -272,14 +307,13 @@ const rootStyle = [
 
 	@media (max-width: 900px) {
 		.plx {
-			--band-h: 200px;
 			--bo-x: 20%;
 		}
 	}
 
 	@media (max-width: 560px) {
 		.plx {
-			--band-h: 155px;
+			--band-h: 135px;
 			--bo-x: 14%;
 		}
 

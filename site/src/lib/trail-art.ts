@@ -90,108 +90,6 @@ function seamlessBand(
 const INK = "__INK__";
 const PAPER = "__PAPER__";
 
-type Puff = { cx: number; cy: number; r: number };
-
-/**
- * The real outline of a run of overlapping circles, closed along a flat base:
- * one continuous path of true arcs, so the silhouette is clean and there are
- * no interior lines needing a second pass to erase. The first and last circle
- * must be centred on the base line — that is what lets the curve meet the
- * base squarely and close with a straight bottom, the way a drawn cloud does.
- */
-function puffOutline(puffs: Puff[]): string {
-	// Angles run 180deg (leftmost) to 360deg (rightmost) over the top.
-	const over = (p: Puff, x: number, y: number) => {
-		const t = Math.atan2(y - p.cy, x - p.cx);
-		return t <= 0 ? t + Math.PI * 2 : t;
-	};
-	// Upper crossing of two consecutive circles.
-	const meet = (p: Puff, q: Puff): [number, number] => {
-		const dx = q.cx - p.cx;
-		const dy = q.cy - p.cy;
-		const d = Math.hypot(dx, dy);
-		const a = (p.r * p.r - q.r * q.r + d * d) / (2 * d);
-		const h = Math.sqrt(Math.max(0, p.r * p.r - a * a));
-		return [p.cx + (a * dx) / d + (h * dy) / d, p.cy + (a * dy) / d - (h * dx) / d];
-	};
-
-	const first = puffs[0];
-	const last = puffs[puffs.length - 1];
-	let from: [number, number] = [first.cx - first.r, first.cy];
-	let d = `M${n(from[0])} ${n(from[1])}`;
-	for (let i = 0; i < puffs.length; i++) {
-		const p = puffs[i];
-		const to: [number, number] =
-			i === puffs.length - 1 ? [last.cx + last.r, last.cy] : meet(p, puffs[i + 1]);
-		const swept = over(p, to[0], to[1]) - over(p, from[0], from[1]);
-		d += `A${n(p.r)} ${n(p.r)} 0 ${swept > Math.PI ? 1 : 0} 1 ${n(to[0])} ${n(to[1])}`;
-		from = to;
-	}
-	// Z draws the flat bottom, both ends being on the base line.
-	return `${d}Z`;
-}
-
-/** Silhouettes as [dx, dy, r] from the left end. Ends sit on the base line. */
-const CLOUD_SHAPES = [
-	[[0, 0, 15], [26, -14, 22], [58, -20, 26], [90, -8, 20], [116, 0, 14]],
-	[[0, 0, 12], [22, -10, 18], [48, -16, 22], [72, -6, 16], [94, 0, 12]],
-	[[0, 0, 10], [20, -12, 17], [42, -4, 14], [60, 0, 9]],
-] as const;
-
-const BUSH_SHAPES = [
-	[[0, 0, 9], [16, -9, 14], [36, -5, 12], [52, 0, 8]],
-	[[0, 0, 8], [14, -11, 15], [34, -3, 11], [48, 0, 7]],
-	[[0, 0, 7], [13, -7, 11], [28, 0, 8]],
-] as const;
-
-const BANK_SHAPES = [
-	[[0, 0, 14], [24, -10, 20], [54, -14, 24], [86, -6, 19], [110, 0, 13]],
-	[[0, 0, 11], [20, -13, 19], [46, -7, 15], [66, 0, 10]],
-] as const;
-
-type Shape = ReadonlyArray<readonly [number, number, number] | readonly number[]>;
-
-function laid(shape: Shape, x: number, base: number, s: number): Puff[] {
-	return shape.map((c) => ({ cx: x + c[0] * s, cy: base + c[1] * s, r: c[2] * s }));
-}
-
-/** Mirror half of them, so a repeated silhouette does not read as repeated. */
-function maybeFlip(r: () => number, art: string, x: number, width: number) {
-	return r() > 0.5 ? `<g transform="translate(${n(2 * x + width)} 0) scale(-1 1)">${art}</g>` : art;
-}
-
-/** Puffy cartoon cloud: one path, flat bottom, rounded humps. */
-function cloud(r: () => number, x: number, base: number, s: number, sw: number) {
-	const shape = CLOUD_SHAPES[Math.floor(r() * CLOUD_SHAPES.length)];
-	const puffs = laid(shape, x, base, s);
-	const w = shape[shape.length - 1][0] * s;
-	// The plate draws a shallow arc inside the base — the cloud's underside.
-	const smile =
-		w > 30
-			? `<path d="M${n(x + w * 0.3)} ${n(base - 3 * s)}q${n(w * 0.13)} ${n(4 * s)} ${n(w * 0.26)} 0" fill="none" stroke="${INK}" stroke-width="${n(sw * 0.85)}" stroke-linecap="round"/>`
-			: "";
-	const art = `<path d="${puffOutline(puffs)}" fill="${PAPER}" stroke="${INK}" stroke-width="${n(sw)}" stroke-linejoin="round"/>${smile}`;
-	return maybeFlip(r, art, x, w);
-}
-
-/** The same shape language, lower and thicker-lined: a roadside bush. */
-function bush(r: () => number, x: number, base: number, s: number) {
-	const shape = BUSH_SHAPES[Math.floor(r() * BUSH_SHAPES.length)];
-	const puffs = laid(shape, x, base, s);
-	const art = `<path d="${puffOutline(puffs)}" fill="${PAPER}" stroke="${INK}" stroke-width="2.8" stroke-linejoin="round"/>`;
-	return maybeFlip(r, art, x, shape[shape.length - 1][0] * s);
-}
-
-/** A mass on the far horizon — solid when near the line, outlined above it. */
-function bank(r: () => number, x: number, base: number, s: number, solid: boolean) {
-	const shape = BANK_SHAPES[Math.floor(r() * BANK_SHAPES.length)];
-	const d = puffOutline(laid(shape, x, base, s));
-	const art = solid
-		? `<path d="${d}" fill="${INK}"/>`
-		: `<path d="${d}" fill="${PAPER}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
-	return maybeFlip(r, art, x, shape[shape.length - 1][0] * s);
-}
-
 /** A few blades of grass fanned out from one spot. */
 function tuft(r: () => number, x: number, base: number, h: number, sw: number) {
 	let d = "";
@@ -204,16 +102,6 @@ function tuft(r: () => number, x: number, base: number, h: number, sw: number) {
 			`q${n(lean * len * 0.25)} ${n(-len * 0.6)} ${n(lean * len * 0.9)} ${n(-len)}`;
 	}
 	return `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${n(sw)}" stroke-linecap="round"/>`;
-}
-
-/** Outlined stone resting on a ridge. */
-function rock(r: () => number, x: number, base: number, rad: number) {
-	const rx = rad * between(r, 1.05, 1.45);
-	const ry = rad * between(r, 0.62, 0.86);
-	return (
-		`<path d="M${n(x - rx)} ${n(base)}q${n(rx * 0.18)} ${n(-ry * 1.5)} ${n(rx)} ${n(-ry * 1.45)}` +
-		`q${n(rx * 0.85)} 0 ${n(rx)} ${n(ry * 1.45)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="3"/>`
-	);
 }
 
 /** Telephone pole: tapered post, tie-off knot, two insulators. */
@@ -247,16 +135,6 @@ function signpost(x: number, base: number, h: number, flip: boolean) {
 	return flip ? `<g transform="translate(${n(2 * x)} 0) scale(-1 1)">${art}</g>` : art;
 }
 
-/** Bird: the two-stroke gull everyone draws. */
-const bird = (x: number, y: number, s: number) =>
-	`<path d="M${n(x - 5 * s)} ${n(y)}q${n(2.6 * s)} ${n(-3.4 * s)} ${n(5 * s)} 0q${n(2.4 * s)} ${n(-3.4 * s)} ${n(5 * s)} 0" fill="none" stroke="${INK}" stroke-width="${n(1.5 * s)}" stroke-linecap="round"/>`;
-
-/** Curl of wind. */
-const swirl = (x: number, y: number, s: number) =>
-	`<path d="M${n(x - 26 * s)} ${n(y)}q${n(14 * s)} ${n(-9 * s)} ${n(26 * s)} ${n(-2 * s)}` +
-	`q${n(9 * s)} ${n(5 * s)} ${n(2 * s)} ${n(8 * s)}q${n(-6 * s)} ${n(2 * s)} ${n(-5 * s)} ${n(-4 * s)}" ` +
-	`fill="none" stroke="${INK}" stroke-width="1.7" stroke-linecap="round"/>`;
-
 /**
  * Wrap one layer's art into a tile. `props` are drawn three times — at -1200,
  * 0 and +1200 — so anything straddling an edge reappears on the other side.
@@ -275,76 +153,6 @@ function tile(span: string[], props: string[], after: string[]): string {
 }
 
 // ---------- the layers, back to front ----------
-
-/** Furthest back: solid scrub hugging the horizon under thin outlined humps. */
-function layerFar(): string {
-	const r = rng(0x5eed01);
-	const span = [
-		`<path d="${seamlessBand(
-			(x) =>
-				FAR_BASE +
-				wave(x, [
-					[1.4, 1, 0.1],
-					[0.8, 3, 0.6],
-				]),
-			() => 1.8,
-			60,
-		)}" fill="${INK}"/>`,
-	];
-	const props: string[] = [];
-	// Big pale humps behind, then the solid dark masses sitting on the line.
-	for (let i = 0; i < 3; i++) {
-		props.push(bank(r, between(r, 0, TW), FAR_BASE, between(r, 1.1, 1.6), false));
-	}
-	for (let i = 0; i < 6; i++) {
-		props.push(bank(r, between(r, 0, TW), FAR_BASE, between(r, 0.35, 0.6), true));
-	}
-	// One small arched bridge, because the reference plate has one.
-	const bx = 690;
-	props.push(
-		`<path d="M${n(bx - 26)} ${n(FAR_BASE - 1)}q26 -17 52 0" fill="none" stroke="${INK}" stroke-width="2.4"/>` +
-			[0, 1, 2, 3, 4]
-				.map((i) => {
-					const t = 0.16 + i * 0.17;
-					return `<path d="M${n(bx - 26 + 52 * t)} ${n(FAR_BASE - 1 - 34 * t * (1 - t))}V${n(FAR_BASE - 1)}" fill="none" stroke="${INK}" stroke-width="1.5"/>`;
-				})
-				.join(""),
-	);
-	// A couple of small clouds floating clear of the bank, each with a dot.
-	for (let i = 0; i < 2; i++) {
-		const x = between(r, 0, TW);
-		const y = FAR_BASE - between(r, 26, 44);
-		props.push(cloud(r, x, y, 0.3, 2));
-		props.push(`<circle cx="${n(x + 44)}" cy="${n(y - 3)}" r="2.4" fill="none" stroke="${INK}" stroke-width="1.8"/>`);
-	}
-	return tile(span, props, []);
-}
-
-/** Sky traffic: clouds with a thin line, birds in twos, a curl of wind. */
-function layerClouds(): string {
-	const r = rng(0x5eed02);
-	const props: string[] = [];
-	for (const x of [40, 330, 620, 930]) {
-		props.push(
-			cloud(r, x + between(r, -25, 25), between(r, 68, 118), between(r, 0.7, 1.05), 2.2),
-		);
-	}
-	// Birds travel in small flocks, not evenly scattered.
-	for (let i = 0; i < 3; i++) {
-		const x = between(r, 0, TW);
-		const y = between(r, 34, 92);
-		const count = 2 + Math.floor(r() * 2);
-		for (let j = 0; j < count; j++) {
-			props.push(
-				bird(x + j * between(r, 14, 26), y + between(r, -9, 9), between(r, 0.8, 1.2)),
-			);
-		}
-	}
-	for (let i = 0; i < 2; i++) {
-		props.push(swirl(between(r, 0, TW), between(r, 58, 116), between(r, 0.8, 1.1)));
-	}
-	return tile([], props, []);
-}
 
 /** Midground: poles and wires, plus what grows beside the trail. */
 function layerPoles(): string {
@@ -366,9 +174,6 @@ function layerPoles(): string {
 	}
 	for (const x of poleXs) props.push(pole(x, topY, MID_BASE + 2, between(r, -3.5, 3.5)));
 
-	for (let i = 0; i < 5; i++) {
-		props.push(bush(r, between(r, 0, TW), MID_BASE, between(r, 0.95, 1.35)));
-	}
 	for (const cluster of [180, 470, 800]) {
 		const count = 2 + Math.floor(r() * 2);
 		const gap = between(r, 38, 54);
@@ -424,15 +229,6 @@ function layerTrail(): string {
 		)}" fill="${INK}"/>`,
 	];
 	const props: string[] = [];
-	// Stones come in twos and threes, not evenly spaced.
-	for (const at of [90, 415, 760, 1060]) {
-		const x = at + between(r, -40, 40);
-		const count = 1 + Math.floor(r() * 3);
-		for (let i = 0; i < count; i++) {
-			const px = x + i * between(r, 16, 26);
-			props.push(rock(r, px, top(px) + 1, between(r, 8, 13)));
-		}
-	}
 	for (let i = 0; i < 7; i++) {
 		const x = between(r, 0, TW);
 		props.push(tuft(r, x, top(x) + 1, between(r, 13, 19), 2));
@@ -441,11 +237,6 @@ function layerTrail(): string {
 		const w = between(r, 6, 18) * (r() > 0.5 ? 1 : -1);
 		props.push(
 			`<path d="M${n(between(r, 0, TW))} ${n(between(r, HORIZON + 12, NEAR - 10))}q${n(w / 2)} ${n(between(r, -1.4, 1.4))} ${n(w)} 0" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linecap="round" opacity="0.45"/>`,
-		);
-	}
-	for (let i = 0; i < 12; i++) {
-		props.push(
-			`<circle cx="${n(between(r, 0, TW))}" cy="${n(between(r, HORIZON + 10, NEAR - 8))}" r="${n(between(r, 0.9, 1.6))}" fill="${INK}" opacity="0.5"/>`,
 		);
 	}
 	return tile(span, props, []);
@@ -481,14 +272,6 @@ function layerFore(): { back: string; front: string } {
 	const back: string[] = [];
 	const front: string[] = [];
 
-	for (const at of [60, 330, 640, 950]) {
-		const x = at + between(r, -40, 40);
-		const count = 1 + Math.floor(r() * 3);
-		for (let i = 0; i < count; i++) {
-			const px = x + i * between(r, 20, 32);
-			back.push(rock(r, px, top(px) + 2, between(r, 11, 18)));
-		}
-	}
 	for (let i = 0; i < 7; i++) {
 		const x = between(r, 0, TW);
 		back.push(tuft(r, x, top(x) + 1, between(r, 16, 24), 2.3));
@@ -497,19 +280,6 @@ function layerFore(): { back: string; front: string } {
 	for (let i = 0; i < 5; i++) {
 		const x = between(r, 0, TW);
 		front.push(tuft(r, x, top(x) + 1, between(r, 28, 40), 2.5));
-	}
-	for (let i = 0; i < 2; i++) {
-		const x = between(r, 0, TW);
-		front.push(rock(r, x, top(x) + 2, between(r, 16, 22)));
-	}
-	// Puffball flowers on thin stems, like the reference plate.
-	for (let i = 0; i < 3; i++) {
-		const x = between(r, 0, TW);
-		const head = top(x) - between(r, 26, 36);
-		front.push(
-			`<path d="M${n(x + 12)} ${n(head + 16)}q${n(between(r, -4, 4))} -9 0 -16" fill="none" stroke="${INK}" stroke-width="2"/>` +
-				cloud(r, x, head, 0.34, 2.2),
-		);
 	}
 	return { back: tile(span, back, []), front: tile([], front, []) };
 }
@@ -536,8 +306,6 @@ const fore = layerFore();
 
 /** Back to front. `front` is the only one drawn on Bo's side of the sprite. */
 export const TRAIL_LAYERS = [
-	{ key: "far", speed: 0.12, svg: layerFar() },
-	{ key: "clouds", speed: 0.28, svg: layerClouds() },
 	{ key: "poles", speed: 0.55, svg: layerPoles() },
 	{ key: "trail", speed: 1, svg: layerTrail() },
 	{ key: "fore", speed: 1.5, svg: fore.back },

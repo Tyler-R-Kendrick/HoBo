@@ -14,6 +14,7 @@ import { createAwsProvider } from "@hobo/provider-aws";
 import { createAzureProvider } from "@hobo/provider-azure";
 import { createGcpProvider } from "@hobo/provider-gcp";
 import { createLakebedProvider } from "@hobo/provider-lakebed";
+import { createBlacksmithCatalogEntry } from "@hobo/runner-blacksmith";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
@@ -74,6 +75,9 @@ registerInstallable(
 // `hobo:build-machine` ports register from one catalog entry so the
 // Dispatcher can cost-route jobs/builds across registered hosts (ADR-0071).
 registerInstallable("runner-github", () => createGithubRunnerCatalogEntry());
+// The Blacksmith fast-runner sibling: same job model, cheaper runs-on
+// substrate — registering both gives the Dispatcher a real price choice.
+registerInstallable("runner-blacksmith", () => createBlacksmithCatalogEntry());
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},

@@ -326,6 +326,9 @@ importers:
       '@hobo/provider-lakebed':
         specifier: workspace:*
         version: link:../providers/provider-lakebed
+      '@hobo/runner-blacksmith':
+        specifier: workspace:*
+        version: link:../providers/runner-blacksmith
       '@hobo/runner-github':
         specifier: workspace:*
         version: link:../providers/runner-github
@@ -498,6 +501,15 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+
+  packages/providers/runner-blacksmith:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+      '@hobo/runner-github':
+        specifier: workspace:*
+        version: link:../runner-github
 
   packages/providers/runner-github:
     dependencies:

@@ -46,6 +46,7 @@ export {
 	type SelectIacProviderDeps,
 	selectIacProvider,
 	selectPulumiEstateAdapter,
+	toRegistrableProvider,
 } from "./compose.js";
 export {
 	type DeployBackend,

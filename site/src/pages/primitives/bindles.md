@@ -59,6 +59,54 @@ Every resource supports three chainable refinements:
 | `.allow(...verbs)` | Inline least privilege, with verbs typed per resource kind (`"read"`/`"write"`/`"query"` on `data`, `"enqueue"`/`"dequeue"` on `queue`, `"get"`/`"set"` on `kv`, …). Permissions travel in the bindle. |
 | `.with(...annotations)` | Typed provider-specific options — the escape hatch. Optimization, never a requirement. |
 
+## Greenfield: declare the bindle, generate the code
+
+Packing an existing app — the brownfield path above — is only half the story. A bindle is also a **declarative surface**: every builder handler is optional, and a resource declared *without* an implementation is still a fully typed WIT port. That makes the bindle a spec HoBo can generate code *from*, not just a wrapper around code you already have.
+
+```ts
+import { bindle } from "@hobo/bindles";
+
+/**
+ * A greenfield app: nothing is implemented yet.
+ * Each declaration is a typed WIT port; the host links a stub
+ * until a real implementation is promoted.
+ */
+export default bindle("hello-greenfield", (b) => {
+  const db = b.data().allow("read", "write");
+
+  // No handler — declared intent only. Runs as a contract-backed
+  // stub from day one; the generation pipeline grows it into a
+  // real wasm component.
+  const payments = b.service().stub().dependsOn(db);
+
+  const api = b.api().dependsOn(payments);
+
+  return { db, payments, api };
+});
+```
+
+The loop from declaration to running implementation:
+
+1. **Declare.** The bindle above is a complete, plannable manifest — `hobo plan` and `hobo up` work on it unchanged. `hobo stub` materializes contract-backed stubs (in `src/_generated/`) for every unimplemented port, so the whole app runs end-to-end on day one: stubs satisfy the type system and the link table, and return typed responses derived from the WIT types.
+2. **Record.** Every stub call is an event. Those recorded traces become a **specification by example** — the inputs any real implementation must satisfy, alongside the port's contract (typed I/O, invariants, forbidden outputs).
+3. **Generate.** The same **generation pipeline** that writes [provider adapters](/HoBo/guide/custom-providers/) synthesizes the component implementation from the WIT interface + contract + recorded traces. Candidates run in a capability-scoped sandbox with no egress.
+4. **Gate.** Promotion requires all three lenses: **conformance green** (the contract must never break), **eval thresholds met** (the rubric should improve), and **policy allows** (prod promotions can require human approval).
+5. **Promote.** A passing candidate is written back to source as an AST-aware, region-scoped edit with signed provenance — auto-applied when low-risk, or raised as a PR for approval. Prior candidates live in the event log, so promotion is reversible.
+
+Methods you want to *stay* AI-maintained carry the `"use training"` directive: the body is the baseline, and HoBo's optimizer keeps rewriting it against the method's intent, contract, and rubric — under the same gates.
+
+```ts
+/**
+ * @intent Charge the order; refuse when the amount disagrees with the cart.
+ */
+export async function charge(order: Order): Promise<Receipt> {
+  "use training"; // AI-rewritable: optimized against intent + contract + rubric
+  return stubCharge(order); // baseline — the optimizer grows this
+}
+```
+
+Brownfield and greenfield converge on the same artifact: one manifest, one `hobo up`, one event log. Pack code you have, declare code you don't, and mix freely — a half-implemented bindle is a normal bindle.
+
 ## Rules the bindle enforces
 
 - **Names come from the returned object keys.** `{ db, api }` yields stable IDs like `data:db` and `api:api`. Duplicate stable IDs are a hard error.

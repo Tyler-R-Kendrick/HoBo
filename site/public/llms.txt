@@ -31,6 +31,13 @@ Key facts:
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
+- Bindles support brownfield AND greenfield: handlers are optional, so a bindle can be a
+  pure declaration. `hobo stub` links contract-backed stubs so the app runs end-to-end
+  before any implementation exists; stub calls are recorded as specification-by-example
+  traces; the generation pipeline synthesizes real WIT component implementations from
+  interface + contract + traces, promoted only when conformance passes, eval thresholds
+  are met, and policy allows. `"use training"` marks methods as continuously
+  AI-rewritable under the same gates.
 - Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
   today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default
@@ -61,7 +68,7 @@ Key facts:
 ## Primitives (reference)
 
 - [Meet the primitives](https://tyler-r-kendrick.github.io/HoBo/primitives/): the four scopes in order of need
-- [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/): builder surface, .dependsOn/.allow/.with, manifest rules
+- [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/): builder surface, .dependsOn/.allow/.with, manifest rules; greenfield declarative bindles with stub-first AI code generation
 - [Camps](https://tyler-r-kendrick.github.io/HoBo/primitives/camps/): runtime backends, defaultProvider/tiers/bindings resolution, inferred vs explicit camps
 - [Yards](https://tyler-r-kendrick.github.io/HoBo/primitives/yards/): one-provider composition, self-host (the Yard is a Bindle)
 - [Junctions](https://tyler-r-kendrick.github.io/HoBo/primitives/junctions/): cross-cloud federation, inferred connectivity, border policy

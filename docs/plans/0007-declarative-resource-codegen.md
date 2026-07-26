@@ -102,6 +102,20 @@ phases are dependency-ordered.
   registry — no runtime dependency); a declared component's stored handler instantiates
   it, registering every operation (DI semantics). Manifest wire shape unchanged. ✅
 
+### Phase 0.6 — Granular decorators + ambient scanning (landed with this plan)
+- **0.6.1** `@hobo/runtime`: granular grounding decorators — `@intent(text)` / `@returns(text)`
+  on methods, `@description(text)` on parameters — all optional, all **dual-mode** (TC39
+  stage-3 and legacy `experimentalDecorators` call shapes; stage-3 has no parameter
+  decorators, so `description()` doubles as a `params:` map value). Bare `@trainable`
+  (class or method, both modes) composes declared groundings and registers with full
+  inference fallbacks (intent from the method name, `decl://<Class>.<method>` contract
+  refs, default exact-match rubric). ✅
+- **0.6.2** `@hobo/runtime`: `scanDeclaredTrainables` + `generateDeclaredRegistrations` —
+  the `hobo stub` half for **ambient** `@trainable export declare class` declarations
+  (erased at compile time, so honored statically): parses intent/returns/description
+  decorators and the TypeScript signature as the declared shape, and emits grounded,
+  runnable `training.define` registrations for `src/_generated/`. ✅
+
 ### Phase 1 — Data model (G6)
 - **1.1** Extend `trainable_manifest_fact.proto` + CUE with optional `resource_stable_id` and `operation` fields; regen `_generated`; conformance vectors for byte-identical lowering from all syntaxes. (PACT/proto/CUE evidence per architecture guard.)
 - **1.2** `@hobo/bindles` manifest record: resources gain an optional frozen `declaration` block (intent + operation refs only — validators stay authoring-time; the wire form carries contract refs, mirroring `TrainingContract.ref`).

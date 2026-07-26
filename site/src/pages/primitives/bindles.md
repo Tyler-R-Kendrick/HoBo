@@ -110,6 +110,22 @@ export default bindle("snapshop", (b) => {
 4. **Gate.** Promotion needs all three lenses: **conformance green** (the contract must never break), **eval thresholds met** (the rubric — scorer by scorer), and **policy allows** (prod promotions can require human approval).
 5. **Promote.** A passing candidate is written back into the operation's generated region as an AST-aware edit with signed provenance — auto-applied when low-risk, raised as a PR when not. Prior candidates live in the event log, so promotion is reversible.
 
+Prefer declaring one grounding at a time? Every decorator is optional and the options object decomposes into **granular decorators** — `@intent`, `@returns` on methods, `@description` on parameters (in legacy-decorator projects; as a `params:` value under standard decorators), with a bare `@trainable` composing the class. The declaration can even be **ambient** — a `declare class` with only signatures, no bodies at all — which `hobo stub` scans statically, taking the TypeScript signature as the declared shape:
+
+```ts
+@trainable
+export declare class Program {
+  @intent("Produce a simple hello-world program")
+  @returns("Hello World! or Hello, <name>! when supplied")
+  trainableMethod(
+    @description("Optional person to greet")
+    name?: string,
+  ): string;
+}
+```
+
+Anything you don't declare is inferred: intent from the method name, a synthesized `decl://` contract ref, the default exact-match rubric.
+
 Escalation is **per operation, not per app** — `Storefront` above already shows all three rungs. Swap `rankFeed`'s `stub()` for a real body when you're ready to own it; keep `"use training"` on it (like `checkout`) and the optimizer keeps improving the body against the same intent + contract + rubric, under the same gates; drop the directive and it's plain hand-maintained code. The manifest never changes shape along the way.
 
 Brownfield and greenfield converge on the same artifact: one manifest, one `hobo up`, one event log. Pack code you have, declare code you don't, and mix freely — a half-implemented bindle is a normal bindle.

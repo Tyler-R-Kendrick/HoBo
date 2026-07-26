@@ -43,7 +43,14 @@ Key facts:
   specification-by-example traces, and the generation pipeline synthesizes real WIT
   component implementations — promoted only when conformance passes, eval thresholds are
   met, and policy allows. Escalation is per-operation: stub → `"use training"` body
-  (AI-maintained) → plain hand-maintained body, with no manifest change.
+  (AI-maintained) → plain hand-maintained body, with no manifest change. Granular
+  alternative — ALL decorators optional: @intent/@returns on methods, @description on
+  parameters (a real parameter decorator in legacy-decorator projects; a params: map
+  value under standard decorators), bare @trainable composing the class; missing
+  groundings are inferred. Ambient `@trainable export declare class` declarations (pure
+  signatures, no bodies) are scanned statically by `hobo stub`, which takes the
+  TypeScript signature as the declared shape and generates grounded training.define
+  registrations.
 - Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
   today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default

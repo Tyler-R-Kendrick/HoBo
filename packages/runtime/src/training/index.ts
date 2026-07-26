@@ -10,10 +10,24 @@ export {
 	trainable,
 } from "./decorators.js";
 export {
+	description,
+	intent,
+	PENDING_GROUNDINGS,
+	resolveDeclared,
+	returns,
+} from "./granular.js";
+export {
 	lintUseTrainingSource,
 	type UseTrainingLintFinding,
 	type UseTrainingLintResult,
 } from "./lint.js";
+export {
+	type DeclaredOperation,
+	type DeclaredParameter,
+	type DeclaredTrainableClass,
+	generateDeclaredRegistrations,
+	scanDeclaredTrainables,
+} from "./scan.js";
 export {
 	applyTrainingArtifact,
 	getAppliedArtifact,

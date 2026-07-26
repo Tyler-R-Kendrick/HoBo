@@ -49,10 +49,33 @@ const KNOWN_PACKAGE_PATHS = new Set([
 const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	"packages/providers/provider-agentv->packages/training-pipeline",
 	"packages/providers/provider-ax->packages/runtime",
+	// The runner tier (#891/#892) composes @hobo/runner-github's shared
+	// execution-host vocabulary (SKU catalog, host registry, dispatch
+	// tracking) rather than reaching it through a core port; runner-github is
+	// functioning as the runner-tier base library. Same future-ADR tiering as
+	// the training/eval providers above; scoped to these EXACT edges.
+	"packages/providers/runner-blacksmith->packages/providers/runner-github",
+	"packages/providers/runner-depot->packages/providers/runner-github",
+	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
 ]);
 
+// The SWE agent connectors (swe-claude, swe-codex, swe-copilot, swe-cursor,
+// swe-gemini, swe-grok, ...) all speak ACP through @hobo/connector-acp, the
+// connector-tier base library (#893-#899). A tier rule instead of exact edges
+// because every new SWE connector adds the same edge; any other
+// connector->connector import still fails closed.
+function isConnectorTierBaseEdge(from: string, to: string): boolean {
+	return (
+		from.startsWith("packages/connectors/") &&
+		to === "packages/connectors/connector-acp"
+	);
+}
+
 function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
-	return ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`);
+	return (
+		ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`) ||
+		isConnectorTierBaseEdge(from, to)
+	);
 }
 
 function isWorkspacePath(path: string): boolean {
@@ -111,7 +134,8 @@ export function classifyPackage(path: string): PackageClassification {
 		path.startsWith("packages/providers/") ||
 		path.startsWith("packages/iac/") ||
 		path.startsWith("packages/build/") ||
-		path.startsWith("packages/runtimes/")
+		path.startsWith("packages/runtimes/") ||
+		path.startsWith("packages/connectors/")
 	) {
 		return { kind: "adapter", layer: 2 };
 	}
@@ -160,7 +184,8 @@ export function validateBoundaryImports(
 		if (
 			from.kind === "adapter" &&
 			to.kind === "adapter" &&
-			edge.from !== edge.to
+			edge.from !== edge.to &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
 		) {
 			errors.push(
 				`adapters must not import each other: ${edge.from} -> ${edge.to}`,

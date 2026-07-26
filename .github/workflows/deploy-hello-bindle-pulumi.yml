@@ -19,7 +19,7 @@ concurrency:
 jobs:
   pulumi-live:
     name: Pulumi live preview/apply/refresh/destroy
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

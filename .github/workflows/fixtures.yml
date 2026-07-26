@@ -22,7 +22,7 @@ jobs:
   multi-cloud-shop-fixture:
     name: multi-cloud-shop provider fixture
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read
@@ -54,7 +54,7 @@ jobs:
   s4-stage-gate-drill:
     name: S4 stage gate multi-cloud drill
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/s4-drill')
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
       contents: read

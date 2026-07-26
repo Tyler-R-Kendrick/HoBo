@@ -164,7 +164,7 @@ packages/
     provider-agent-lightning  @hobo/provider-agent-lightning  (optional, INTERNAL) Microsoft Agent Lightning behind training-engine
     provider-trace            @hobo/provider-trace            (optional, INTERNAL) Microsoft Trace (OPTO) behind training-engine
 examples/
-  hello-bindle/ multi-cloud-shop/ durable-agent/ self-host-yard/
+  hello-bindle/ ci-runner-balancing/ multi-cloud-shop/ durable-agent/ self-host-yard/
 ```
 
 #### Projects (top-level surfaces → packages)

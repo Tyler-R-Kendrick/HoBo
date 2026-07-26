@@ -40,10 +40,12 @@ make the ledger auditable; `exec.Succeeded` records each applied patch.
 
 ## Dogfood rollout in this repository
 
-- Every non-matrix Linux job in `.github/workflows/` consumes
+- Every Linux job in `.github/workflows/` consumes
   `vars.HOBO_RUNNER_LINUX_SMALL` with an `ubuntu-latest` expression fallback,
   so CI is unchanged until the variable exists and never breaks if it is
-  deleted. OS-matrix jobs (stage gates, componentize) keep explicit images.
+  deleted. That includes the Linux legs of the OS-matrix jobs (stage gates,
+  componentize); only their Windows legs keep an explicit hosted image, since
+  no routed Windows pool exists yet.
 - [`rebalance-runners.yml`](../../.github/workflows/rebalance-runners.yml)
   runs the example daily (03:47 UTC) and on manual dispatch: plan mode
   always, apply mode only when a `VARS_ADMIN_TOKEN` secret (PAT with

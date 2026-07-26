@@ -25,7 +25,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Linux leg follows the routed runner variable (last-resort capable);
+        # the Windows leg has no routed pool and stays GitHub-hosted.
+        os:
+          - ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+          - windows-latest
     steps:
       - uses: actions/checkout@v4
         with:

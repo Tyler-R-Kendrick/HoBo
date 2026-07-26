@@ -27,6 +27,9 @@ pnpm --filter hobo-site preview    # serve the built dist/
 | Path | What it is |
 |---|---|
 | `src/pages/index.astro` | The landing page. |
+| `src/components/ParallaxTrail.astro` | The scrolling trail band above the hero (see below). |
+| `src/lib/trail-art.ts` | The band's five layer tiles, drawn at build time. |
+| `src/pages/parallax/[layer].svg.ts` | Serves those tiles as static SVGs, one per layer and theme. |
 | `src/pages/{guide,primitives,agents}/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. |
 | `src/nav.ts` | Single source of truth for header + sidebar navigation. |
 | `src/layouts/` | `Base.astro` (head/header/footer/theme) and `Docs.astro` (sidebar + prose). |
@@ -54,9 +57,41 @@ pnpm --filter hobo-site preview    # serve the built dist/
   tokens; no hues anywhere (code blocks are grayscale-filtered). Limelight title-card
   display type, Baloo 2 for rounded UI chrome, film-grain overlay, thick ink outlines
   with hard offset shadows. New components must use the tokens, not hardcoded colors.
+  Story panels stay traced. Procedural art is fine where the geometry has to be exact:
+  the parallax trail band builds its layers in code because a seamless tile needs ridges
+  and wires that are periodic by construction, which is not something you can trace. See
+  below.
 - **No new JS-family files:** repo policy (AGENTS.md) — config is `astro.config.ts`, not `.mjs`.
 - **Single lockfile:** never add a `site/pnpm-lock.yaml`; the architecture guard rejects
   nested lockfiles. Dependencies resolve through the root workspace lockfile.
+
+## The parallax trail band
+
+`ParallaxTrail.astro` sits between the header and the hero: five layers of scenery
+scrolling at five speeds while Bo walks the trail.
+
+**How it stays aligned.** Every layer is the same 1200×300 tile, sized in CSS as
+`4 × --band-h` wide by `--band-h` tall, so the layers share one geometry and cannot drift
+apart vertically no matter how differently they scroll. Each one scrolls by translating
+exactly one tile width and starting over, so the wrap lands on identical pixels. The tiles
+themselves repeat invisibly because the art is built two ways: shapes that span the width
+(the ridges, the ground line) are sums of whole-cycle sines and therefore periodic, and
+everything else is a discrete prop drawn again at −1200 and +1200 so props straddling an
+edge reappear on the other side. `--band-h` is a whole number at every breakpoint on
+purpose — a fractional tile width reintroduces sub-pixel seams.
+
+**How fast it goes.** Bo is a 36-frame sprite sheet (`public/parallax/bo-walk.png`, a 6×6
+grid, downscaled and posterized to the four tones the drawing uses). Nine frames make a
+step, eighteen a stride, and his planted foot tracks backwards about 11px of a 554px frame
+per frame. At the size the band draws him and the export's own 50ms frame timing, that is
+~45 tile units a second, which is where `TRAIL_SECONDS` comes from. **Change his size or
+frame rate and `TRAIL_SECONDS` has to change with them**, or he skates. Every other layer
+is a fraction of that one speed — that fraction is the entire parallax.
+
+**How it stops.** A hovering cursor, a held or tapped finger, the pause button, a hidden
+tab and a band scrolled out of view all set one inherited custom property, `--plx-play`,
+which every animation in the band reads. Nothing can freeze Bo without freezing the
+scenery with him. `prefers-reduced-motion` pins it to paused and hides the button.
 
 ## Publishing (no Actions)
 

@@ -2,6 +2,7 @@
 import { Code } from "astro:components";
 import Base from "../layouts/Base.astro";
 import Mascot from "../components/Mascot.astro";
+import ParallaxTrail from "../components/ParallaxTrail.astro";
 import Blimp from "../components/scenes/Blimp.astro";
 import Crossroads from "../components/scenes/Crossroads.astro";
 import Depot from "../components/scenes/Depot.astro";
@@ -31,6 +32,9 @@ const shikiThemes = {
 	title="HoBo — pack your bindle, we'll find your app a home"
 	description="HoBo describes your app once, finds it the cheapest home that passes your policies, and keeps it moving with continuous, zero-drama migrations — across any provider, any mix, or your own metal."
 >
+	<!-- ===================== Trail ===================== -->
+	<ParallaxTrail />
+
 	<!-- ===================== Hero ===================== -->
 	<section class="hero">
 		<div class="container">

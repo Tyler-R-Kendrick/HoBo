@@ -1,7 +1,9 @@
 export {
 	type AddCommandDeps,
 	createAddCommand,
+	installableProviders,
 	REGISTRY_STREAM,
+	registerInstallable,
 } from "./add-command.js";
 export {
 	type AttestCommandDeps,
@@ -33,6 +35,7 @@ export {
 	createCloudflareDeployProvider,
 } from "./cloudflare-deploy-provider.js";
 export {
+	bootstrapDefaultProviders,
 	createDefaultCollectionTarget,
 	createDefaultDevRuntime,
 	createDefaultYardRuntime,

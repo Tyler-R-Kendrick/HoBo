@@ -29,6 +29,10 @@ export function createPlanCommand(deps: PlanCommandDeps = {}): CommandModule {
 				return stubResult("plan");
 			}
 
+			// Fold any providers installed via `hobo add` from the durable registry
+			// stream into the matchable snapshot before planning.
+			await runtime.registry.refresh?.();
+
 			const deploymentId = deploymentIdFor(projectDir);
 			const yard = createYardClient(runtime);
 			const rendered = yard.plan(bindle, { deploymentId });

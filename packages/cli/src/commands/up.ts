@@ -40,6 +40,10 @@ export function createUpCommand(deps: UpCommandDeps = {}): CommandModule {
 				return stubResult("up");
 			}
 
+			// Fold any providers installed via `hobo add` from the durable registry
+			// stream into the matchable snapshot before planning.
+			await runtime.registry.refresh?.();
+
 			const session =
 				deps.session ??
 				(await loadSession(projectDir)) ??

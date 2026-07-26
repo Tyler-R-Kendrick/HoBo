@@ -91,6 +91,13 @@ package hobo
 	manifestIndexDigest: string
 }
 
+// provider.Approved fact body: only approved providers are matchable by the
+// Planner; registration alone leaves a provider held.
+#ProviderApprovedRecord: {
+	providerId: string & !=""
+	approvedBy?: string & !=""
+}
+
 // ---- S2-03a/b: Orchestrator + ResourceActor FSM + Executor constraints ----
 // One constraint per new protobuf message in cloud.proto.
 

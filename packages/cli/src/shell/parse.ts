@@ -21,6 +21,7 @@ export interface CliFlags {
 	readonly offline: boolean;
 	readonly template: string | null;
 	readonly force: boolean;
+	readonly hold: boolean;
 	readonly runtime: string | null;
 }
 
@@ -58,6 +59,7 @@ export function parseArgv(
 		offline: false,
 		template: null as string | null,
 		force: false,
+		hold: false,
 		runtime: null as string | null,
 	};
 	const args: string[] = [];
@@ -124,6 +126,7 @@ function parseOption(
 		offline: boolean;
 		template: string | null;
 		force: boolean;
+		hold: boolean;
 		runtime: string | null;
 	},
 	verb: string | null,
@@ -183,6 +186,9 @@ function parseOption(
 			return index + 1;
 		case "--force":
 			flags.force = true;
+			return index;
+		case "--hold":
+			flags.hold = true;
 			return index;
 		case "--runtime":
 			flags.runtime = takeValue(argv, index, token);

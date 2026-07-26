@@ -319,10 +319,11 @@ const shikiThemes = {
 					<div class="card">
 						<h3>Greenfield from a declaration</h3>
 						<p>
-							Every component builder takes a declaration in place of a
-							handler: intent, a typed contract, and a rubric enforced as
-							policy. Declared operations run on contract-derived stubs day
-							one, and the generation pipeline grows the real
+							Declare a <code>@component</code> class whose
+							<code>@operation</code> methods carry intent, a typed
+							contract shape, and an optional rubric enforced as policy —
+							then hand it to <code>b.api(...)</code>. Stubbed operations
+							run day one, and the generation pipeline grows the real
 							implementations — promoted only past conformance, eval
 							thresholds, and policy.
 							<a href={href("/primitives/bindles/#greenfield-declare-the-bindle-generate-the-code")}

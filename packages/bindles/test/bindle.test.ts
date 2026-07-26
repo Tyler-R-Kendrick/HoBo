@@ -87,3 +87,67 @@ describe("bindle()", () => {
 		).toThrow(/bindle resource names must be non-empty strings/);
 	});
 });
+
+describe("declared components (Plan 2 Syntax 0)", () => {
+	const METADATA_SYMBOL =
+		(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
+	const COMPONENT_METADATA = Symbol.for("hobo.component.metadata");
+
+	function declaredComponentClass(): new () => object {
+		let constructed = 0;
+		class Storefront {
+			readonly instance: number;
+			constructor() {
+				constructed += 1;
+				this.instance = constructed;
+			}
+		}
+		Object.defineProperty(Storefront, METADATA_SYMBOL, {
+			value: {
+				[COMPONENT_METADATA]: {
+					intent: "Public storefront API.",
+					name: "Storefront",
+					operations: ["storefront.rankFeed"],
+				},
+			},
+		});
+		return Storefront;
+	}
+
+	it("b.api accepts a @component-decorated class as its binding", () => {
+		const Storefront = declaredComponentClass();
+		const definition = bindle("shop", (b) => ({
+			api: b.api(Storefront),
+		}));
+
+		const entry = definition.entrypoint("api");
+		expect(typeof entry).toBe("function");
+		// The stored handler instantiates the component (DI registration).
+		const instance = entry?.() as { instance: number };
+		expect(instance.instance).toBe(1);
+		// The manifest stays pure data — no component leakage.
+		expect(Object.keys(definition.resources.api).includes("handler")).toBe(
+			false,
+		);
+	});
+
+	it("b.service and b.web accept bindings too; plain thunks still work", () => {
+		const Storefront = declaredComponentClass();
+		const thunk = () => "handler";
+		const definition = bindle("shop", (b) => ({
+			svc: b.service(Storefront),
+			web: b.web(thunk),
+		}));
+		expect(typeof definition.entrypoint("svc")).toBe("function");
+		expect(definition.entrypoint("web")?.()).toBe("handler");
+	});
+
+	it("undecorated classes pass through as plain handlers (no instantiation)", () => {
+		class NotAComponent {}
+		const definition = bindle("shop", (b) => ({
+			api: b.api(NotAComponent as unknown as () => unknown),
+		}));
+		// Stored verbatim: calling it without `new` is the caller's concern.
+		expect(definition.entrypoint("api")).toBe(NotAComponent);
+	});
+});

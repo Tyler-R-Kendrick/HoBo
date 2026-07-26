@@ -38,36 +38,41 @@ its internal compilation target rather than the thing users write.
 
 ## 3. Target design (summary — normative text lives in the design suite)
 
-The design-doc updates that land with this plan define **Syntax 0, the declaration form** of
-every component builder (`docs/design/sdk-api.md` §Layer 4; lowering semantics in
-`docs/design/generated-stack.md`):
+**Syntax 0 — declared components** (`docs/design/sdk-api.md` §Layer 4; lowering in
+`docs/design/generated-stack.md`): a `@component` class whose `@operation` methods use
+TC39 stage-3 decorators to annotate implementations with trainable options — a
+**required shape** (contract `input` + `output`, or a `ref`), intent, per-parameter
+metadata via `param()` (stage-3 has no parameter decorators; `param()` becomes one the
+day TC39 ships them), and an **optional rubric** (absent → default exact-match rubric):
 
 ```ts
-const api = b
-  .api({
-    intent: "Public storefront API: ranked feed, cart, checkout.",
-    operations: {
-      rankFeed: {
-        intent: "Order photos to maximize dwell without burying brand-new sellers.",
-        contract: RankFeedContract,            // typed I/O + invariants + forbidden (Plan 29)
-        rubric: { dwellLift: 0.80, newSellerShare: 0.75, latencyP95: 0.90 },
-      },
-    },
+@component({ intent: "Public storefront API: ranked feed, cart, checkout." })
+class Storefront {
+  @operation({
+    intent: "Order photos to maximize dwell without burying brand-new sellers.",
+    contract: { input: RankInput, output: z.array(Photo) },   // shape — required
+    params: { input: param("Candidate photos with engagement signals") },
+    rubric: { dwellLift: 0.80, newSellerShare: 0.75 },        // optional
   })
-  .dependsOn(catalog);
+  rankFeed = stub<RankInput, Photo[]>();                       // generate this
+
+  @operation({ intent: "…", contract: { input: Cart, output: Order } })
+  async checkout(cart: Cart): Promise<Order> { "use training"; return submitOrder(cart); }
+}
+const api = b.api(Storefront).dependsOn(catalog);
 ```
 
-Semantics: each operation lowers to a **signature-only trainable** (`training.define`,
-ADR-0125) bound to the owning resource's stableId; `hobo stub`/codegen emits the
+Semantics: each operation lowers to a trainable manifest fact (signature-only when
+stubbed, ADR-0125) bound to the owning resource's stableId; `hobo stub`/codegen emits the
 registrations into `src/_generated/trainables.ts`; the contract-derived stub baseline
 (ADR-0076 `mock` mode) serves it from day one; the cold-start generation pipeline
 (ADR-0010) synthesizes the implementation; promotion is the three-lens gate, with rubric
 thresholds enforced at the eval lens and surfaced to policy (rule kind `trainable`).
-Handler and declaration are mutually exclusive per resource; per-operation escalation
-(declaration → `"use training"` body → plain body) never changes the manifest shape.
-**Internality rule:** the builder declaration form and the bare `"use training"` directive
-are the two doors app developers use; `training()` / `training.define()` / `@trainable`
-remain public for library authors and tests but are documented as the compilation target.
+Per-operation escalation (stub → `"use training"` body → plain body) never changes the
+manifest shape. **Internality rule:** declared components and the bare `"use training"`
+directive are the two doors app developers use; `training()` / `training.define()` /
+`@trainable` remain public for library authors and tests but are documented as the
+compilation target.
 
 ## 4. Phased plan
 
@@ -80,13 +85,32 @@ phases are dependency-ordered.
 - **0.3** `walkthrough.md`: fix G3 drift (`"use training"`, `training()` from `@hobo/runtime`); show the declaration form first in §1.6. ✅
 - **0.4** `site/`: rewrite the bindles greenfield section around the declaration form; align homepage card, getting-started callout, llms.txt. ✅
 
+### Phase 0.5 — Runtime + builder surface (landed with this plan)
+- **0.5.1** `@hobo/runtime`: rubric OPTIONAL (`TrainingOptions.rubric?`); shape required —
+  a contract grounds with a `ref` or inline `input` + `output`, and a shaped contract with
+  no ref gets a synthesized `decl://<methodRef>` contract ref. Stub baselines register
+  with examples OR a declared output shape (call-time serving still reports cleanly when
+  neither is available yet). ✅
+- **0.5.2** `@hobo/runtime`: `@component({ intent })` class decorator (aggregates its
+  operations' methodRefs into `Symbol.metadata` under
+  `Symbol.for("hobo.component.metadata")`), `@operation` method/field decorator (field
+  form: a `stub()` or absent initializer declares generation), `param()` per-parameter
+  annotation, `componentMetadataOf()` introspection. All lower to the existing trainable
+  machinery — byte-identical facts. ✅
+- **0.5.3** `@hobo/bindles`: `b.api` / `b.web` / `b.service` accept a `ComponentBinding`
+  (handler thunk or `@component` class, detected structurally via the shared symbol
+  registry — no runtime dependency); a declared component's stored handler instantiates
+  it, registering every operation (DI semantics). Manifest wire shape unchanged. ✅
+
 ### Phase 1 — Data model (G6)
 - **1.1** Extend `trainable_manifest_fact.proto` + CUE with optional `resource_stable_id` and `operation` fields; regen `_generated`; conformance vectors for byte-identical lowering from all syntaxes. (PACT/proto/CUE evidence per architecture guard.)
 - **1.2** `@hobo/bindles` manifest record: resources gain an optional frozen `declaration` block (intent + operation refs only — validators stay authoring-time; the wire form carries contract refs, mirroring `TrainingContract.ref`).
 
-### Phase 2 — Builder surface (G1)
-- **2.1** `BindleBuilder` types: `api/web/service` accept `handler | ComponentDeclaration`; `ComponentDeclaration = { intent, operations: Record<string, TrainingOptions-shaped> }`. Declaration and handler mutually exclusive; duplicate operation refs a hard error (mirrors stable-ID rule).
-- **2.2** Builder implementation: store declarations; `toResourceRecord` lowers operation groundings to `TrainableManifestFact`s tagged with the resource stableId. Red/green TDD; collect/manifest snapshot tests.
+### Phase 2 — Manifest lowering (G1 remainder; needs Phase 1)
+- **2.1** `toResourceRecord` lowers a declared component's operation facts into the
+  manifest tagged with the resource stableId (the builder acceptance itself landed in
+  0.5.3; this item is the wire-visible half). Duplicate operation refs a hard error
+  (mirrors stable-ID rule). Red/green TDD; collect/manifest snapshot tests.
 
 ### Phase 3 — Codegen + runtime wiring (G4)
 - **3.1** `hobo stub`: for each declared operation, emit the `training.define()` registration (same generated-region conventions as ADR-0048) and a typed client the app can import (`api.rankFeed(...)`).

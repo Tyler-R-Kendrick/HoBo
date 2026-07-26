@@ -31,9 +31,14 @@ export interface TrainingExample<I = unknown, O = unknown> {
  * Valibot, ArkType) or a plain descriptor — the runtime treats them as
  * opaque facts and lowers them to the manifest; enforcement happens at the
  * conformance gate, not here.
+ *
+ * `ref` is optional when the shape is declared inline: a contract with
+ * `input` + `output` but no `ref` gets a synthesized `decl://<methodRef>`
+ * ref at lowering. Declaring the shape is not optional — a contract must
+ * carry a `ref` or both `input` and `output`.
  */
 export interface TrainingContract<I = unknown, O = unknown> {
-	readonly ref: string;
+	readonly ref?: string;
 	readonly input?: unknown;
 	readonly output?: unknown;
 	readonly invariants?: readonly string[];
@@ -50,7 +55,14 @@ export interface FieldDescription {
 export interface TrainingOptions<I = unknown, O = unknown> {
 	readonly intent: string;
 	readonly contract: TrainingContract<I, O>;
-	readonly rubric: Readonly<Record<string, number>>;
+	/**
+	 * Named scorer → promotion threshold. OPTIONAL: without one, the
+	 * promotion gate applies the default exact-match rubric over the
+	 * contract's examples and recorded traces (the same default syntax-3
+	 * inference uses). A rubric sharpens promotion; its absence never
+	 * blocks declaration.
+	 */
+	readonly rubric?: Readonly<Record<string, number>>;
 	/** Per-parameter trainable metadata — rides the contract (ADR-0125). */
 	readonly params?: Readonly<Record<string, FieldDescription>>;
 	/** Per-output trainable metadata — rides the contract (ADR-0125). */
@@ -96,7 +108,7 @@ export class TrainingGroundingError extends Error {
 		super(
 			`trainable method "${methodRef}" is missing required grounding: ${missing.join(
 				", ",
-			)} (ADR-0025: intent + contract + rubric make code rewritable)`,
+			)} (ADR-0025: intent + a shaped contract make code rewritable; the rubric is optional — the gate defaults to exact-match over examples/traces)`,
 		);
 		this.name = "TrainingGroundingError";
 		this.missing = missing;

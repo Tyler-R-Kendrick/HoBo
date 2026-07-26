@@ -298,29 +298,38 @@ export async function draftStatusUpdate(i: Incident): Promise<StatusUpdate> {
 }
 ```
 
-**Syntax 0 — the declaration form of the component builders (the primary greenfield door).** The three function-level syntaxes above are the *lowering target*, not the surface most app developers reach for first. Every component builder (`b.api`, `b.web`, `b.service`) also accepts a **declaration** in place of a handler: the component's intent plus a map of operations, each grounded exactly like a trainable (contract from [Plan 29](./contracts-policy-flags.md#plan-29), rubric from [Plan 23](./generated-stack.md#plan-23)). Declaring a component this way declares **code to be generated**:
+**Syntax 0 — declared components: `@component` classes on the builders (the primary greenfield door).** The three function-level syntaxes above are the *lowering target*, not the surface most app developers reach for first. A component is declared as a **`@component` class** whose **`@operation` methods** carry the groundings — intent, a **shaped contract** (inline `input` + `output` schemas, or a contract `ref`; the shape is never optional), and an **optional rubric** (absent → the gate's default exact-match rubric over examples/traces). The method body is the baseline the optimizer improves; a `stub()` body declares **code to be generated**. Every component builder (`b.api`, `b.web`, `b.service`) accepts the decorated class directly:
 
 ```ts
-const api = b
-  .api({
-    intent: "Public storefront API: ranked feed, cart, checkout.",
-    operations: {
-      rankFeed: {
-        intent: "Order photos to maximize dwell without burying brand-new sellers.",
-        contract: RankFeedContract,   // typed I/O + invariants + forbidden outputs (Plan 29)
-        rubric: { dwellLift: 0.80, newSellerShare: 0.75, latencyP95: 0.90 },
-      },
-      checkout: {
-        intent: "Turn a priced cart into an order exactly once.",
-        contract: CheckoutContract,
-        rubric: { exactlyOnce: 1.0, latencyP95: 0.90 },
-      },
+import { component, operation, param, stub } from "@hobo/runtime";
+
+@component({ intent: "Public storefront API: ranked feed, cart, checkout." })
+class Storefront {
+  @operation({
+    intent: "Order photos to maximize dwell without burying brand-new sellers.",
+    contract: {
+      input: RankInput, output: z.array(Photo),              // the shape — required
+      forbiddenOutputs: ["output[0] is nsfw"],
     },
+    params: { input: param("Candidate photos with engagement signals") },
+    rubric: { dwellLift: 0.80, newSellerShare: 0.75 },       // optional — sharpens promotion
   })
-  .dependsOn(catalog);
+  rankFeed = stub<RankInput, Photo[]>();                      // no implementation: generate it
+
+  @operation({
+    intent: "Turn a priced cart into an order exactly once.",
+    contract: { input: Cart, output: Order },
+  })
+  async checkout(cart: Cart): Promise<Order> {
+    "use training";                                           // hand-written baseline, AI-maintained
+    return submitOrder(cart);
+  }
+}
+
+const api = b.api(Storefront).dependsOn(catalog);
 ```
 
-Each operation lowers to a **signature-only trainable** (`training.define`, [ADR-0125](./adr/03-data-plane.md#adr-0125)) bound to the owning resource's stableId: servable immediately from the contract-derived stub baseline ([ADR-0076](./adr/02-identity-security.md#adr-0076) `mock` mode), grown into a real implementation by the cold-start generation path ([ADR-0010](./adr/03-data-plane.md#adr-0010)), promoted only through the conformance + eval + policy gate — the **rubric is the eval lens's policy input**, not advisory metadata. Handler and declaration are mutually exclusive per resource; escalation is per-operation (declaration → a body carrying `"use training"` → a plain hand-maintained body) and never changes the manifest shape. **Internality rule:** the declaration form and the bare `"use training"` directive are the two doors app developers normally use; `training()` / `training.define()` / `@trainable` stay public for library authors and test suites but are documented as what the sugar compiles to. Delivery is staged in [`docs/plans/0007`](../plans/0007-declarative-resource-codegen.md).
+`@component` and `@operation` are TC39 stage-3 decorators (never `experimentalDecorators`, [ADR-0125](./adr/03-data-plane.md#adr-0125)); per-parameter/output metadata rides the options via `param()` because stage-3 has no parameter decorators — the day TC39 ships them, `param()` becomes one with no manifest change. Each operation lowers to a trainable manifest fact (a **signature-only** one when the body is a stub) bound to the owning resource's stableId: servable immediately from the contract-derived stub baseline ([ADR-0076](./adr/02-identity-security.md#adr-0076) `mock` mode), grown into a real implementation by the cold-start generation path ([ADR-0010](./adr/03-data-plane.md#adr-0010)), promoted only through the conformance + eval + policy gate — a declared **rubric is the eval lens's policy input**, not advisory metadata. Escalation is per-operation (stub → `"use training"` body → plain hand-maintained method) and never changes the manifest shape. **Internality rule:** declared components and the bare `"use training"` directive are the two doors app developers normally use; `training()` / `training.define()` / `@trainable` stay public for library authors and test suites but are documented as what the sugar compiles to. Delivery is staged in [`docs/plans/0007`](../plans/0007-declarative-resource-codegen.md).
 
 What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./generated-stack.md#plan-23)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/03-data-plane.md#adr-0025)): swapping it is a config change, not an app-code change.
 

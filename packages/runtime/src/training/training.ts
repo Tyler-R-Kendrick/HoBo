@@ -62,19 +62,29 @@ function requireGrounding(
 	) {
 		missing.push("intent");
 	}
-	if (
-		!options.contract ||
-		typeof options.contract.ref !== "string" ||
-		options.contract.ref.trim().length === 0
-	) {
-		missing.push("contract");
-	}
-	if (!options.rubric || Object.keys(options.rubric).length === 0) {
-		missing.push("rubric");
+	const contract = options.contract;
+	const hasRef =
+		typeof contract?.ref === "string" && contract.ref.trim().length > 0;
+	const hasShape =
+		contract?.input !== undefined && contract?.output !== undefined;
+	// The shape is the non-negotiable grounding: a contract must name what
+	// goes in and what comes out, either by reference or declared inline.
+	// The rubric is optional — the gate falls back to the default
+	// exact-match rubric over examples/traces.
+	if (!contract || !(hasRef || hasShape)) {
+		missing.push("contract (a ref, or an inline input + output shape)");
 	}
 	if (missing.length > 0) {
 		throw new TrainingGroundingError(methodRef, missing);
 	}
+}
+
+/** Contract ref, synthesized from the declared shape when none is given. */
+function contractRefFor(methodRef: string, options: TrainingOptions): string {
+	const ref = options.contract.ref;
+	return typeof ref === "string" && ref.trim().length > 0
+		? ref
+		: `decl://${methodRef}`;
 }
 
 function lowerToFact(
@@ -86,8 +96,8 @@ function lowerToFact(
 		create(TrainableManifestFactSchema, {
 			methodRef,
 			intent: options.intent,
-			contractRef: options.contract.ref,
-			rubric: { ...options.rubric },
+			contractRef: contractRefFor(methodRef, options),
+			rubric: { ...(options.rubric ?? {}) },
 			params: lowerFields(options.params),
 			output: lowerFields(options.output),
 			invariants: [...(options.contract.invariants ?? [])],
@@ -179,8 +189,14 @@ function register(
 	requireGrounding(methodRef, options);
 	if (baseline === null) {
 		const examples = options.contract.examples ?? [];
-		if (examples.length === 0) {
-			throw new TrainingGroundingError(methodRef, ["contract.examples"]);
+		// A declared output shape is enough to register: the stub serves
+		// examples/demos when they exist and reports cleanly at call time
+		// when they don't yet. Without a shape, examples are the only thing
+		// a stub could serve, so they stay required.
+		if (examples.length === 0 && options.contract.output === undefined) {
+			throw new TrainingGroundingError(methodRef, [
+				"contract.examples (or a declared output shape)",
+			]);
 		}
 	}
 	const entry = {

@@ -51,6 +51,11 @@ export {
 } from "./step.js";
 export {
 	applyTrainingArtifact,
+	COMPONENT_METADATA,
+	type ComponentMetadata,
+	type ComponentOptions,
+	component,
+	componentMetadataOf,
 	type FieldDescription,
 	type FieldMetadata,
 	getAppliedArtifact,
@@ -58,6 +63,8 @@ export {
 	isTrainable,
 	lintUseTrainingSource,
 	listTrainables,
+	operation,
+	param,
 	type RecordedTrainableCall,
 	resetTrainables,
 	resolveTrainable,

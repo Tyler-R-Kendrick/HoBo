@@ -191,14 +191,26 @@ export interface BindleDefinition {
 	entrypoint(name: string): (() => unknown) | undefined;
 }
 
+/**
+ * A `@component`-decorated class (Plan 2 Syntax 0): its `@operation`
+ * methods declare shape + intent (+ optional rubric) and lower to
+ * trainable manifest facts. Detected structurally via `Symbol.metadata`
+ * (`Symbol.for("hobo.component.metadata")`) — no runtime import needed at
+ * the manifest layer.
+ */
+export type DeclaredComponent = new () => object;
+
+/** What binds an app-shaped resource: a handler thunk or a declared component. */
+export type ComponentBinding = (() => unknown) | DeclaredComponent;
+
 export interface BindleBuilder {
-	api(handler?: () => unknown): BindleResource<"api">;
-	web(handler?: () => unknown): BindleResource<"web">;
+	api(binding?: ComponentBinding): BindleResource<"api">;
+	web(binding?: ComponentBinding): BindleResource<"web">;
 	kv(): BindleResource<"kv">;
 	bucket(): BindleResource<"bucket">;
 	queue<T = unknown>(): BindleResource<"queue">;
 	topic<T = unknown>(): BindleResource<"topic">;
 	secret(): BindleResource<"secret">;
 	data(): BindleResource<"data">;
-	service(): BindleResource<"service">;
+	service(binding?: ComponentBinding): BindleResource<"service">;
 }

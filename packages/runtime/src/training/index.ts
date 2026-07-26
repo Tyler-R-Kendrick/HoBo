@@ -1,4 +1,14 @@
-export { TRAINABLE_METADATA, trainable } from "./decorators.js";
+export {
+	COMPONENT_METADATA,
+	type ComponentMetadata,
+	type ComponentOptions,
+	component,
+	componentMetadataOf,
+	operation,
+	param,
+	TRAINABLE_METADATA,
+	trainable,
+} from "./decorators.js";
 export {
 	lintUseTrainingSource,
 	type UseTrainingLintFinding,

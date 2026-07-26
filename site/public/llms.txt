@@ -31,17 +31,19 @@ Key facts:
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
-- Bindles support brownfield AND greenfield. Every component builder (b.api/b.web/b.service)
-  accepts a DECLARATION in place of a handler: the component's intent plus per-operation
-  { intent, contract (typed I/O + invariants + forbidden outputs), rubric (scorer →
-  promotion threshold, enforced as policy) }. Each declared operation lowers to a
-  signature-only trainable bound to its resource; `hobo stub` emits the generated
-  registrations + a typed client, contract-derived stubs serve the app end-to-end on day
-  one, stub calls record specification-by-example traces, and the generation pipeline
-  synthesizes real WIT component implementations — promoted only when conformance passes,
-  rubric eval thresholds are met, and policy allows. Escalation is per-operation: replace
-  a declaration with a real body anytime; mark a body `"use training"` to keep it
-  AI-maintained under the same gates.
+- Bindles support brownfield AND greenfield. A component is declared as a `@component`
+  class whose `@operation` methods (TC39 stage-3 decorators from @hobo/runtime) carry
+  { intent, contract with a REQUIRED typed input/output shape (+ invariants, forbidden
+  outputs, examples), OPTIONAL rubric (scorer → promotion threshold, enforced as policy;
+  absent → default exact-match over examples/traces) }; per-parameter metadata uses
+  param(). An operation whose body is stub() — or a bare field — declares CODE TO BE
+  GENERATED; a hand-written body is the baseline. b.api/b.web/b.service accept the
+  decorated class directly. Operations lower to trainables (signature-only when stubbed);
+  contract-derived stubs serve the app end-to-end on day one, stub calls record
+  specification-by-example traces, and the generation pipeline synthesizes real WIT
+  component implementations — promoted only when conformance passes, eval thresholds are
+  met, and policy allows. Escalation is per-operation: stub → `"use training"` body
+  (AI-maintained) → plain hand-maintained body, with no manifest change.
 - Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
   today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default

@@ -12,6 +12,7 @@ import {
 } from "@hobo/cli";
 import { createAwsProvider } from "@hobo/provider-aws";
 import { createAzureProvider } from "@hobo/provider-azure";
+import { createGcpProvider } from "@hobo/provider-gcp";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
@@ -59,6 +60,7 @@ registerInstallable("aws", () => toRegistrableProvider(createAwsProvider()));
 registerInstallable("azure", () =>
 	toRegistrableProvider(createAzureProvider()),
 );
+registerInstallable("gcp", () => toRegistrableProvider(createGcpProvider()));
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},

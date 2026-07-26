@@ -320,6 +320,9 @@ importers:
       '@hobo/provider-cloudflare':
         specifier: workspace:*
         version: link:../providers/provider-cloudflare
+      '@hobo/provider-gcp':
+        specifier: workspace:*
+        version: link:../providers/provider-gcp
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
@@ -473,6 +476,12 @@ importers:
         version: link:../../core
 
   packages/providers/provider-cloudflare:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/provider-gcp:
     dependencies:
       '@hobo/core':
         specifier: workspace:*

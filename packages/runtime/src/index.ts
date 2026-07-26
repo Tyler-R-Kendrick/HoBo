@@ -18,6 +18,22 @@ export {
 	type DefineAgentInput,
 } from "./agent.js";
 export {
+	type Boundary,
+	type BoundaryExample,
+	type BoundaryRouter,
+	BoundaryRoutingError,
+	type BoundaryServed,
+	type BoundaryStatus,
+	type BridgeContract,
+	BridgeContractError,
+	type BridgeOptions,
+	createBoundaryRouter,
+	type FaultOptions,
+	isSubsetMatch,
+	type RecordedBoundaryCall,
+	type ShadowDiff,
+} from "./bridge/index.js";
+export {
 	type ActorStub,
 	type Capability,
 	type CtxEffects,

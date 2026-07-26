@@ -76,6 +76,8 @@ Key facts:
 - [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout
 - [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
 - [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): implementable ports, adapter authoring, conformance certification, ACP/A2A protocol-connector integration points
+- [Testing](https://tyler-r-kendrick.github.io/HoBo/guide/testing/): unit tests with PACT-mocked boundaries (no hand-written mocks), executable contract verification with subset matching, deployment rehearsal (hobo plan / local in-memory lane / replay-equals-live), runtime availability (Crew synthetics, SLO projections, session-scoped fault chaos, shadow lanes)
+- [The Bridge](https://tyler-r-kendrick.github.io/HoBo/guide/bridge/): Bridge-to-Kubernetes-style local/remote dev on ANY provider — createBoundaryRouter() in @hobo/runtime; per-boundary modes live/mock/bridge/replay/shadow/fault; a bridge forks ONLY the tagged dev session's traffic to the local implementation and is PACT-contract-verified BEFORE activation (BridgeContractError otherwise); recording always on (specification-by-example); composes with preview environments
 - [Trail map](https://tyler-r-kendrick.github.io/HoBo/guide/status/): honest pre-release status and stage gates
 
 ## Primitives (reference)

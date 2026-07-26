@@ -10,6 +10,8 @@ packages:
   - "src/draft/exp-proofs/*/*"
   - "src/draft/epic-proofs/*"
   - "src/draft/projects/*"
+  - "external/ts-autocode"
+  - "external/ts-autocode/packages/*"
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.10.1'
   - '@turbo/darwin-arm64@2.10.1'

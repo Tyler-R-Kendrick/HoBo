@@ -495,3 +495,40 @@ example's `.ts` sources.
 - **(+)** The live lanes deploy exactly what is reviewed; no lane-side transpile step to trust.
 - **(−)** The entry shims are duplicated logic if the `.ts` handler evolves; the example's tests
   pin the shim's response against the pact to catch divergence.
+
+## ADR-0128
+**ts-autocode is vendored as a git submodule at `external/ts-autocode` and linked into the pnpm workspace; HoBo's trainable scanning/emission delegates to it.**
+
+### Context
+HoBo's trainable layer reimplemented discovery and registration emission with regex parsing and
+string templates (`packages/runtime/src/training/scan.ts`, the CLI directive scanner), while
+[ts-autocode](https://github.com/Tyler-R-Kendrick/ts-autocode) provides the same capabilities over
+the real TypeScript compiler API plus digest-guarded, AST-aware source rewriting — exactly the
+"AST-aware, region-scoped edits, never blind string patching" ADR-0048 requires. The reusable parts
+of HoBo's layer (the `@intent`/`@returns`/`@description` grounding decorators, ambient-class
+scanning, deterministic text helpers) were upstreamed into the `ts-autocode-grounding` package.
+
+### Decision
+- ts-autocode is a git submodule at `external/ts-autocode`, pinned by commit and tracking the
+  integration branch in `.gitmodules`. Its packages (`ts-autocode`, `ts-autocode-grounding`,
+  `ts-autocode-harness`, `ts-autocode-rewrite`, `ts-autocode-training`) are pnpm workspace members
+  (globs in `pnpm-workspace.yaml`; `pnpm.overrides` force `workspace:*` resolution for the
+  unpublished sibling versions). HoBo packages depend on them with `workspace:*`.
+- HoBo-specific semantic sugar (api/app/workflow/hooks/bindings generation in
+  `packages/cli/src/codegen/engine.ts` and the scaffold templates) stays in HoBo; reusable
+  simplifications (grounding decorators, class scanning, text/digest helpers) live upstream.
+- Contribution workflow: edit inside `external/ts-autocode`, commit and push to a ts-autocode
+  branch, then bump the submodule pointer in HoBo in the same change that consumes it. CI checks
+  out with `submodules: recursive`; the submodule keeps its own npm lockfile and CI.
+- Lint/guard scope: `external/**` is outside Biome/ast-grep/architecture-guard scope — ts-autocode
+  enforces its own conventions.
+
+### Consequences
+- **(+)** One source of truth for trainable discovery/emission; HoBo consumes current source with
+  exact-commit pinning and can contribute upstream without publish cycles.
+- **(+)** The regex parser and manual bracket counting in `scan.ts` are deleted in favor of AST
+  discovery; generated-region edits inherit ts-autocode's sha256 body-digest guard.
+- **(−)** Contributors need submodule discipline (`git submodule update --init --recursive` after
+  checkout); a stale pointer surfaces as missing workspace packages at `pnpm install`.
+- **(−)** Two package managers coexist (pnpm in HoBo, npm inside the submodule's own CI); the
+  submodule's `package-lock.json` is never touched by HoBo installs.

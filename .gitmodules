@@ -1,0 +1,4 @@
+[submodule "external/ts-autocode"]
+	path = external/ts-autocode
+	url = https://github.com/Tyler-R-Kendrick/ts-autocode.git
+	branch = claude/hobo-ts-autocode-integration-0ys9yx

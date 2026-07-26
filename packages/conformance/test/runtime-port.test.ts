@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-
-import { createBrokenFenceRuntimeBackend } from "./fixtures/broken-fence-backend.js";
-import { createRuntimeLocalDurabilityBackend } from "./fixtures/reference-backend.js";
 import {
 	proveCheckoutDurability,
 	RUNTIME_PORT_CONFORMANCE_VERSION,
 	runRuntimePortDurabilitySuite,
 } from "../src/suites/runtime-port/index.js";
+import { createBrokenFenceRuntimeBackend } from "./fixtures/broken-fence-backend.js";
+import { createRuntimeLocalDurabilityBackend } from "./fixtures/reference-backend.js";
 
 describe("runtime-port durability suite", () => {
 	it("runtime-local passes the runtime-port durability conformance suite", async () => {

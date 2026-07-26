@@ -10,9 +10,8 @@ import type {
 	ProviderDescriptor,
 	WasmtimeEngine,
 } from "@hobo/core";
-
-import { ComponentHostError, ComponentTrapError } from "./errors.js";
 import { createInProcessWasmtimeEngine } from "./engine/wasmtime.js";
+import { ComponentHostError, ComponentTrapError } from "./errors.js";
 import type { ParsedLinkRequest, ParsedProviderDescriptor } from "./parse.js";
 import { parseLinkRequest, parseProviderDescriptor } from "./parse.js";
 

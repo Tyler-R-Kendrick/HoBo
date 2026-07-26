@@ -32,6 +32,7 @@ export interface WrpcTransport {
   invoke(invocation: TransportInvocation): Promise<unknown>;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the InterfacePin proto message in data-models/.
 export interface InterfacePin {
   interfaceId: InterfaceId;
   stability: "stable" | "preview" | "experimental";
@@ -61,6 +62,7 @@ export interface LinkRequest {
   exportInterface: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the NegotiatedWire proto message in data-models/.
 export interface NegotiatedWire {
   interfaceId: string;
   version: string;

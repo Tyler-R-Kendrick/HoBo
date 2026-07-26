@@ -6,6 +6,7 @@ export type WcagViolation = {
   readonly message: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the WcagAuditResult proto message in data-models/.
 export type WcagAuditResult = {
   readonly target: "WCAG-2.1-AA";
   readonly passed: boolean;

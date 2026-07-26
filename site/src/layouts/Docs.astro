@@ -8,15 +8,23 @@ interface Props {
 		title: string;
 		description: string;
 	};
+	rawContent?: () => string;
 }
 
-const { frontmatter } = Astro.props;
+const { frontmatter, rawContent } = Astro.props;
 const path = Astro.url.pathname;
-const section = nav.find((group) => path.startsWith(href(group.slug)));
+const normalize = (p: string) => p.replace(/\/$/, "");
+const section = nav.find((group) =>
+	group.items.some((item) => path.startsWith(href(item.slug))),
+);
 const current = (slug: string) =>
-	path.replace(/\/$/, "") === href(slug).replace(/\/$/, "")
-		? "page"
-		: undefined;
+	normalize(path) === normalize(href(slug)) ? "page" : undefined;
+
+// The page's own markdown, served to the copy button. Optimized for agents:
+// title + description up front, then the raw source with stable headings.
+const pageMarkdown = rawContent
+	? `# ${frontmatter.title}\n\n> ${frontmatter.description}\n\n${rawContent().replace(/^\s*#\s+.+\n/, "")}`.trim()
+	: null;
 ---
 
 <Base
@@ -54,8 +62,45 @@ const current = (slug: string) =>
 		<article class="prose">
 			<div class="docs-meta">
 				<span class="badge">{section?.label ?? "Docs"}</span>
+				{
+					pageMarkdown && (
+						<button
+							type="button"
+							class="copy-md-btn"
+							aria-label="Copy this page as markdown"
+						>
+							Copy page as Markdown
+						</button>
+					)
+				}
 			</div>
 			<slot />
 		</article>
 	</div>
+	{
+		pageMarkdown && (
+			<script
+				type="application/json"
+				id="page-markdown"
+				set:html={JSON.stringify(pageMarkdown).replace(/</g, "\\u003c")}
+			/>
+		)
+	}
+	<script is:inline>
+		// Copy the page's markdown source — the agent-friendly form of this page.
+		(() => {
+			const btn = document.querySelector(".copy-md-btn");
+			const src = document.getElementById("page-markdown");
+			if (!btn || !src) return;
+			btn.addEventListener("click", async () => {
+				await navigator.clipboard.writeText(JSON.parse(src.textContent));
+				btn.textContent = "Copied ✓";
+				btn.classList.add("copied");
+				setTimeout(() => {
+					btn.textContent = "Copy page as Markdown";
+					btn.classList.remove("copied");
+				}, 2000);
+			});
+		})();
+	</script>
 </Base>

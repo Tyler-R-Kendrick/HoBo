@@ -134,7 +134,11 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 				assertKnownVerb(request.verb);
 
 				if (request.help) {
-					return okText(verbHelpText(request.verb));
+					return okText(
+						verbHelpText(request.verb, {
+							implemented: registry.isImplemented(request.verb),
+						}),
+					);
 				}
 
 				const context = await contextFactory({

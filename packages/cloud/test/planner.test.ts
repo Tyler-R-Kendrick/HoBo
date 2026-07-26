@@ -1,19 +1,18 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-
-import { parseManifest, type ManifestV1 } from "@hobo/bindles";
+import { type ManifestV1, parseManifest } from "@hobo/bindles";
 import {
 	createCloudflareProvider,
 	realizeResourcePlans,
 } from "@hobo/provider-cloudflare";
+import { describe, expect, it } from "vitest";
 
 import {
 	canonicalPlanJson,
 	createRegistryFromProviders,
+	type DeploymentPlan,
 	hashDeploymentPlan,
 	plan,
-	type DeploymentPlan,
 } from "../src/index.js";
 
 const HELLO_BINDLE_PLAN_HASH =

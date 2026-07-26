@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import type { EventEnvelope } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import { createUpcasterRegistry, foldEvents } from "../src/index.js";
 

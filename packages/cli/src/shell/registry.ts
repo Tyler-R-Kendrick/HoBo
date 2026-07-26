@@ -32,11 +32,16 @@ export interface CommandRunInput {
 
 export interface CommandModule {
 	readonly run: (input: CommandRunInput) => Promise<CommandResult>;
+	// false when the module is (or behaves as) the registry stub — e.g. a
+	// cloud-lane command constructed without an injected runtime. Absent
+	// means implemented: an override wired by a composition root is real.
+	readonly implemented?: boolean;
 }
 
 export interface CommandRegistry {
 	readonly get: (verb: string) => CommandModule;
 	readonly listVerbs: () => readonly string[];
+	readonly isImplemented: (verb: string) => boolean;
 }
 
 export function createCommandRegistry(
@@ -67,11 +72,15 @@ export function createCommandRegistry(
 		listVerbs() {
 			return CANONICAL_VERBS.map((verb) => verb.name);
 		},
+		isImplemented(verb: string) {
+			return registry.get(verb)?.implemented !== false;
+		},
 	};
 }
 
 function stubCommand(verb: string): CommandModule {
 	return {
+		implemented: false,
 		run: async () => ({
 			ok: true,
 			status: "not_implemented",

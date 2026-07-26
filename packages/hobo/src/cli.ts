@@ -15,9 +15,9 @@ import { createAttestCommand } from "./attest-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
 import {
-	createDefaultCollectionTarget,
-	createDefaultDevRuntime,
 	createDefaultYardRuntime,
+	resolveProjectCollectionTarget,
+	resolveProjectDevRuntime,
 } from "./compose.js";
 import { createDerivativeCommand } from "./derivative-command.js";
 import { createDoctorCommand } from "./doctor-command.js";
@@ -52,16 +52,25 @@ export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},
 ): HoboCli {
 	const runtime = options.yardRuntime ?? createDefaultYardRuntime();
-	const devRuntime = options.devRuntime ?? createDefaultDevRuntime();
-	const target = options.collectionTarget ?? createDefaultCollectionTarget();
 	// `sandbox` and its `test` alias share one command; each run() boots its OWN
 	// fresh runtime-local Camp (isolation), so no shared runtime is threaded here.
 	const sandbox = createSandboxCommand();
 
 	return createHoboCli({
 		commands: {
-			dev: createDevCommand({ runtime: devRuntime }),
-			collect: createCollectCommand({ target }),
+			// dev/collect resolve their runtime/target from the invoked project's
+			// own bindle source per run (docs/plans/0006 item 3-1); an explicit
+			// option override pins them instead (tests / bespoke wiring).
+			dev: createDevCommand(
+				options.devRuntime !== undefined
+					? { runtime: options.devRuntime }
+					: { resolveRuntime: resolveProjectDevRuntime },
+			),
+			collect: createCollectCommand(
+				options.collectionTarget !== undefined
+					? { target: options.collectionTarget }
+					: { resolveTarget: resolveProjectCollectionTarget },
+			),
 			plan: createPlanCommand({ runtime }),
 			up: createUpCommand({ runtime }),
 			down: createDownCommand({ runtime }),

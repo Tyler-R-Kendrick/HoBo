@@ -71,6 +71,8 @@ jobs:
       - uses: cue-lang/setup-cue@v1.0.0
         with:
           version: v0.14.0
+      - name: Code format gate
+        run: pnpm run lint:code
       - name: Relevant checks only
         run: pnpm agent:check -- --base=${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
       - name: Affected package lanes
@@ -102,7 +104,9 @@ jobs:
 
   main-gate:
     name: Main full gate
-    if: github.event_name == 'merge_group' || github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    # merge_group covers the path to main; this workflow declares no push
+    # trigger, so a push clause here would be dead code.
+    if: github.event_name == 'merge_group' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -127,8 +131,10 @@ jobs:
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Full S0 gate set
         run: pnpm run check:all
-      - name: Architecture guard
-        run: pnpm run architecture:guard
+      - name: Architecture guard (full repo)
+        # A fresh checkout has no diff; the bare diff-mode invocation would
+        # pass vacuously here. --all evaluates every production package.
+        run: pnpm run architecture:guard:all
       - name: Full workspace tests
         run: pnpm exec turbo run test
 

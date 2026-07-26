@@ -43,6 +43,7 @@ export interface TrustBoundaryInput {
   readonly minimumProvenanceTier: ProvenanceTier;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the TrustBoundary proto message in data-models/.
 export interface TrustBoundary {
   readonly trustedKeyIds: readonly string[];
   readonly trustedBuilderIds: readonly string[];
@@ -51,6 +52,7 @@ export interface TrustBoundary {
   readonly minimumProvenanceTier: ProvenanceTier;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ArtifactRef proto message in data-models/.
 export interface ArtifactRef {
   readonly coordinate: string;
   readonly version: string;
@@ -66,6 +68,7 @@ export interface ConformanceReport {
   readonly assertions?: readonly string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the SignedArtifactCandidate proto message in data-models/.
 export interface SignedArtifactCandidate {
   readonly artifact: ArtifactRef;
   readonly provenance: {

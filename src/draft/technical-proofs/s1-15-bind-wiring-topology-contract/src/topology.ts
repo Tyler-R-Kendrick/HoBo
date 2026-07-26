@@ -1,5 +1,6 @@
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
+// domain-view: parse-produced draft-proof record; its wire form is the ProviderSelection proto message in data-models/.
 export interface ProviderSelection {
   readonly kind: "provider-selection";
   readonly providerId: string;

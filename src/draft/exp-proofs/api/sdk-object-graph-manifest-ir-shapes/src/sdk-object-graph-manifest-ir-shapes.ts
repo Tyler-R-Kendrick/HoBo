@@ -24,6 +24,7 @@ export type DesignAnchor = (typeof REQUIRED_DESIGN_ANCHORS)[number];
 
 export type ProofMode = "live" | "simulated" | "reference-fixture" | "scope-out" | "type-test";
 
+// domain-view: parse-produced draft-proof record; its wire form is the Audience proto message in data-models/.
 export interface Audience {
   actor: string;
   goal: string;
@@ -31,6 +32,7 @@ export interface Audience {
   successCriteria: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the TypeSurface proto message in data-models/.
 export interface TypeSurface {
   importFrom: "@hobo/bindles";
   generatedBindings: string[];
@@ -122,6 +124,7 @@ export interface SdkCompileConsumer {
   typedClientCalls: TypedClientCallsFixture;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ExampleConsumer proto message in data-models/.
 export interface ExampleConsumer {
   kind: ExampleKind;
   proofMode: ProofMode;
@@ -134,17 +137,20 @@ export interface ExampleConsumer {
   typeSurface: TypeSurface;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DebtMarker proto message in data-models/.
 export interface DebtMarker {
   kind: DebtMarkerKind;
   surfacedBy: string[];
   authorMessage: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ScopeBoundary proto message in data-models/.
 export interface ScopeBoundary {
   in: string[];
   out: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the SdkObjectGraphProof proto message in data-models/.
 export interface SdkObjectGraphProof {
   issue: "HOBO-568";
   parentIssue: "HOBO-566";

@@ -55,6 +55,7 @@ type SnapshopProofMode = (typeof REQUIRED_SNAPSHOP_PROOF_MODES)[number];
 type QuickstartProofMode = (typeof REQUIRED_SNAPSHOP_QUICKSTART_PROOF_MODES)[number];
 type QuickstartFixtureId = (typeof REQUIRED_SNAPSHOP_QUICKSTART_FIXTURE_IDS)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the SnapshopQuickstartFixtureReference proto message in data-models/.
 export type SnapshopQuickstartFixtureReference = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: QuickstartFixtureId;
@@ -63,6 +64,7 @@ export type SnapshopQuickstartFixtureReference = {
   readonly storyboardUse: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the SnapshopStoryboardStep proto message in data-models/.
 export type SnapshopStoryboardStep = {
   readonly id: SnapshopStoryStepId;
   readonly title: string;
@@ -75,6 +77,7 @@ export type SnapshopStoryboardStep = {
   readonly supportDocsHandoff: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the SnapshopAssetMapEntry proto message in data-models/.
 export type SnapshopAssetMapEntry = {
   readonly kind: SnapshopAssetKind;
   readonly source: string;
@@ -85,6 +88,7 @@ export type SnapshopAssetMapEntry = {
   readonly staleDowngrade: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the SnapshopScenarioPath proto message in data-models/.
 export type SnapshopScenarioPath = {
   readonly id: SnapshopScenarioId;
   readonly narrative: string;
@@ -96,6 +100,7 @@ export type SnapshopScenarioPath = {
   readonly safeOutcome: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeSnapshopLaunchDemoStoryboard proto message in data-models/.
 export type VibeSnapshopLaunchDemoStoryboard = {
   readonly issue: "HOBO-555";
   readonly phase: "M5";

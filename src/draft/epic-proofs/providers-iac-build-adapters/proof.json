@@ -1,0 +1,19 @@
+{
+  "layer": "epic",
+  "slug": "providers-iac-build-adapters",
+  "title": "Providers, IaC & Build Adapters Reference Implementation",
+  "linear": "HOBO-87",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

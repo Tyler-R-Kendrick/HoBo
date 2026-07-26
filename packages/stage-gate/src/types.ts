@@ -22,6 +22,7 @@ export interface StageGateDefinition {
 export type CheckStatus = "passed" | "failed" | "skipped";
 export type RecordStatus = "passed" | "failed" | "skipped";
 
+// domain-view: readonly parse target narrowed to the CheckStatus union; data-models/stage_gate_record.proto CheckResult is its wire form.
 export interface CheckResult {
 	readonly checkId: string;
 	readonly command: readonly string[];
@@ -30,12 +31,14 @@ export interface CheckResult {
 	readonly evidence: Readonly<Record<string, string>>;
 }
 
+// domain-view: readonly parse target; data-models/stage_gate_record.proto ComponentArtifact is its wire form.
 export interface ComponentArtifact {
 	readonly digestSha256: string;
 	readonly byteLength: number;
 	readonly mediaType: string;
 }
 
+// domain-view: readonly parse target; data-models/stage_gate_record.proto SignatureEvidence is its wire form.
 export interface SignatureEvidence {
 	readonly verified: boolean;
 	readonly signerIdentity: string;
@@ -43,6 +46,7 @@ export interface SignatureEvidence {
 	readonly conformanceReportDigest: string;
 }
 
+// domain-view: readonly parse-produced aggregate narrowed to the RecordStatus union; data-models/stage_gate_record.proto StageGateRecord is its wire form.
 export interface StageGateRecord {
 	readonly gateId: string;
 	readonly status: RecordStatus;

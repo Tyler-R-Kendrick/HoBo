@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { test } from "vitest";
 import { fileURLToPath } from "node:url";
+import { test } from "vitest";
 
 import { checkDesignDocs } from "../scripts/check-design-docs.js";
 

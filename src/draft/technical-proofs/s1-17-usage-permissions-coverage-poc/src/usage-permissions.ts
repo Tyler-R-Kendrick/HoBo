@@ -9,11 +9,13 @@ export type AllowProvenance =
   | "declared-narrow-or-equal"
   | "declared-dynamic";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ObservedCall proto message in data-models/.
 export type ObservedCall = {
   verb: string;
   source: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourcePermissionInput proto message in data-models/.
 export type ResourcePermissionInput = {
   kind: string;
   name: string;
@@ -25,6 +27,7 @@ export type ResourcePermissionInput = {
   dynamicReason?: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the UsagePermissionInput proto message in data-models/.
 export type UsagePermissionInput = {
   bindle: string;
   resources: readonly ResourcePermissionInput[];
@@ -36,6 +39,7 @@ export type ParsedUsagePermissionInput = UsagePermissionInput & {
 
 const PARSED_BRAND = "parsed-usage-permission-input" as const;
 
+// domain-view: parse-produced draft-proof record; its wire form is the AllowEntry proto message in data-models/.
 export type AllowEntry = {
   verb: string;
   provenance: AllowProvenance;
@@ -43,6 +47,7 @@ export type AllowEntry = {
 
 export type CapabilityFailure = CapabilityFailureRecord;
 
+// domain-view: parse-produced draft-proof record; its wire form is the CapabilityContract proto message in data-models/.
 export type CapabilityContract = {
   required: readonly string[];
   granted: readonly string[];
@@ -50,6 +55,7 @@ export type CapabilityContract = {
   failures: readonly CapabilityFailure[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResourceLink proto message in data-models/.
 export type ResourceLink = {
   import: string;
   to: string;
@@ -57,6 +63,7 @@ export type ResourceLink = {
   contractStatus: "satisfied" | "failed";
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the LoweredResourcePermission proto message in data-models/.
 export type LoweredResourcePermission = {
   kind: string;
   name: string;
@@ -66,6 +73,7 @@ export type LoweredResourcePermission = {
   capabilityContract: CapabilityContract;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the UsagePermissionManifest proto message in data-models/.
 export type UsagePermissionManifest = {
   schema: "hobo.manifest/v1";
   bindle: string;
@@ -73,6 +81,7 @@ export type UsagePermissionManifest = {
   links: readonly ResourceLink[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the PermissionTriple proto message in data-models/.
 export type PermissionTriple = {
   resource: string;
   iam: {

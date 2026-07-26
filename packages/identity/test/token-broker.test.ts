@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	type ActiveSvidRecord,
 	createFixtureHostAttestor,
 	createInMemoryProviderStsExchange,
 	createInMemoryVault,
 	IdentityService,
 	mintOidcFederationAssertion,
 	TokenBroker,
-	type ActiveSvidRecord,
 } from "../src/index.js";
 
 const ISSUER_URL = "https://identity.yard.example";

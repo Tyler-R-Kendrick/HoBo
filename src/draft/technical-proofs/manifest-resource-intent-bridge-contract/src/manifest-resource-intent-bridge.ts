@@ -26,6 +26,7 @@ export type HoboManifest = {
   resources: Record<string, ManifestResource>;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the DeployContext proto message in data-models/.
 export type DeployContext = {
   tenant: string;
   workspace: string;

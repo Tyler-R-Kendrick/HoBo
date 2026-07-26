@@ -5,7 +5,7 @@
 // membrane in `ctx`. A tool the agent never declared has no capability and is
 // refused with a typed `CapabilityDeniedError`.
 
-import { type Capability, toolCapability, tokenCapability } from "./ctx.js";
+import { type Capability, tokenCapability, toolCapability } from "./ctx.js";
 import {
 	defineWorkflow,
 	type WorkflowContext,
@@ -59,4 +59,4 @@ export function agent<A, R>(
 	});
 }
 
-export { toolCapability, tokenCapability };
+export { tokenCapability, toolCapability };

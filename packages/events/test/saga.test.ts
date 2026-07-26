@@ -1,5 +1,3 @@
-import { afterEach, describe, expect, it } from "vitest";
-
 import type { EventEnvelope } from "@hobo/core";
 import {
 	AggregateInvariantError,
@@ -8,6 +6,7 @@ import {
 	defineProjection,
 } from "@hobo/data";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { defineSaga } from "../src/index.js";
 import { CTX, freshStore } from "./helpers.js";

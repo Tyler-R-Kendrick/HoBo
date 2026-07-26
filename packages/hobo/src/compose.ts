@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
 import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
-import type { DevRuntime, YardRuntime } from "@hobo/cli";
+import {
+	type DevRuntime,
+	loadBindleDefinition,
+	loadProjectCollectionTarget,
+	type YardRuntime,
+} from "@hobo/cli";
 import type { IacProvider } from "@hobo/cloud";
 import {
 	approveProviderFact,
@@ -24,6 +29,10 @@ import type {
 	ProviderDescriptor,
 } from "@hobo/core";
 import { createInMemoryActorHost } from "@hobo/data";
+import {
+	createPulumiAutomationAdapter,
+	createPulumiCliAutomationEngine,
+} from "@hobo/iac-pulumi";
 import {
 	type CloudProvider,
 	createCloudflareProvider,
@@ -61,9 +70,10 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // the bridge resolves each resource's real ResourcePlan from the durable
 // `deployment.Planned` fact, lowers it with `provider.realize()` to a
 // `hobo.iac-program/v1` program, and applies it through the real adapter. There
-// is NO mock IacProvider. HONEST SCOPE: @hobo/iac-pulumi's backend is still its
-// in-memory Automation-API stand-in (no live Pulumi/Cloudflare calls) — but the
-// real adapter + real realize() are on the deploy path.
+// is NO mock IacProvider. HONEST SCOPE: the DEFAULT backend is the in-memory
+// Automation-API stand-in (offline, deterministic); `HOBO_PULUMI_LIVE=1` swaps
+// in the real pinned `pulumi` CLI engine (binary- and credential-gated — see
+// selectIacProvider and the deploy-hello-bindle-pulumi workflow lane).
 
 // @hobo/provider-cloudflare types its capability-manifest fields more loosely
 // (PublishedManifestDocuments / Record<string, unknown>) than @hobo/cloud's
@@ -137,21 +147,164 @@ export interface SelectIacProviderDeps {
 	readonly cloudflareFetch?: CloudflareFetch;
 }
 
+// Per-store, per-lane Pulumi adapter memo. Sharing ONE adapter (and therefore
+// ONE state backend) across every command that composes against the same event
+// store is what makes `hobo drift`/`hobo import` able to read the estate a
+// prior `hobo up` actually provisioned — in the same process on the in-memory
+// lane, and against a stable `HOBO_PULUMI_WORKDIR` on the live CLI lane.
+const pulumiAdaptersByStore = new WeakMap<
+	EventStore,
+	Map<string, PulumiAutomationAdapter>
+>();
+
+function memoizedPulumiAdapter(
+	store: EventStore,
+	lane: "memory" | "live",
+	create: () => PulumiAutomationAdapter,
+): PulumiAutomationAdapter {
+	let byLane = pulumiAdaptersByStore.get(store);
+	if (byLane === undefined) {
+		byLane = new Map();
+		pulumiAdaptersByStore.set(store, byLane);
+	}
+	let adapter = byLane.get(lane);
+	if (adapter === undefined) {
+		adapter = create();
+		byLane.set(lane, adapter);
+	}
+	return adapter;
+}
+
+// Resolve the SHARED Pulumi adapter (the estate seam) for this store + env, or
+// `undefined` when the environment selects a non-Pulumi deploy provider
+// (Cloudflare/Vercel) whose state HoBo holds in the DeploymentView instead.
+// An explicit `adapter` override always wins and is memoized so later callers
+// (drift/import) observe the same backend the deploy path drove.
+export function selectPulumiEstateAdapter(
+	deps: Pick<SelectIacProviderDeps, "store" | "env" | "adapter">,
+): PulumiAutomationAdapter | undefined {
+	const env = deps.env ?? process.env;
+	if (deps.adapter !== undefined) {
+		const byLane = pulumiAdaptersByStore.get(deps.store) ?? new Map();
+		byLane.set("memory", deps.adapter);
+		pulumiAdaptersByStore.set(deps.store, byLane);
+		return deps.adapter;
+	}
+	if (env.HOBO_PULUMI_LIVE === "1") {
+		return memoizedPulumiAdapter(
+			deps.store,
+			"live",
+			() =>
+				createPulumiAutomationAdapter({
+					engine: createPulumiCliAutomationEngine({
+						workDir:
+							env.HOBO_PULUMI_WORKDIR ??
+							mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
+						env,
+						// Test seam mirroring the engine's own binary gate: point at a
+						// non-existent binary to exercise the typed fail-closed path.
+						...(env.HOBO_PULUMI_BIN !== undefined
+							? { pulumiBin: env.HOBO_PULUMI_BIN }
+							: {}),
+					}),
+				}) as PulumiAutomationAdapter,
+		);
+	}
+	if (
+		(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) ||
+		env.VERCEL_TOKEN
+	) {
+		return undefined;
+	}
+	return memoizedPulumiAdapter(
+		deps.store,
+		"memory",
+		() => createPulumiAutomationAdapter() as PulumiAutomationAdapter,
+	);
+}
+
+// domain-view: one resource's state as read from the IaC state backend (the
+// estate). A parsed, derived view over the adapter's loose snapshot shape so
+// drift/import consume trusted records instead of re-checking DTO fields.
+export interface EstateResourceState {
+	readonly resource: string;
+	readonly stackKey: string;
+	readonly externalId: string;
+	readonly status: string;
+	readonly outputs: Readonly<Record<string, unknown>>;
+}
+
+// Read the estate the adapter's state backend holds for one deployment (its
+// per-resource stacks are keyed `${deploymentId}/${resourceName}`). Parse,
+// don't validate: loose snapshot records become frozen EstateResourceState
+// derived values. Propagates the engine's typed fail-closed errors (e.g.
+// PulumiEngineUnavailableError when the live pulumi binary is missing).
+export function readPulumiEstate(
+	adapter: PulumiAutomationAdapter,
+	deploymentId: string,
+): readonly EstateResourceState[] {
+	if (typeof adapter.snapshotState !== "function") {
+		return [];
+	}
+	const snapshot = adapter.snapshotState();
+	const estate: EstateResourceState[] = [];
+	for (const [stackKey, state] of Object.entries(snapshot)) {
+		if (!stackKey.startsWith(`${deploymentId}/`)) {
+			continue;
+		}
+		const resources =
+			(state as { resources?: Record<string, unknown> } | undefined)
+				?.resources ?? {};
+		for (const [resource, record] of Object.entries(resources)) {
+			const parsed = record as {
+				id?: unknown;
+				status?: unknown;
+				outputs?: Record<string, unknown>;
+			};
+			estate.push(
+				Object.freeze({
+					resource,
+					stackKey,
+					externalId:
+						typeof parsed.id === "string" ? parsed.id : `pulumi:${stackKey}`,
+					status:
+						typeof parsed.status === "string" ? parsed.status : "provisioned",
+					outputs: Object.freeze({ ...(parsed.outputs ?? {}) }),
+				}),
+			);
+		}
+	}
+	return estate.sort((a, b) => a.resource.localeCompare(b.resource));
+}
+
 // Select the IaC backend on the deploy path by environment. This is HoBo's
 // thesis realized for the clouds actually reachable from its own pipeline, in
 // precedence order:
+//   - `HOBO_PULUMI_LIVE=1` -> the REAL pinned `pulumi` CLI engine behind the
+//     same adapter (binary- and credential-gated; docs/plans/0006 item 3-2).
 //   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
 //     Cloudflare Workers deploy provider (cred-gated).
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
 //   - otherwise -> the in-memory Pulumi-backed provider (fallback).
 // A Pulumi `adapter` override always wins (it is a Pulumi adapter), keeping the
-// existing spy-adapter tests deterministic regardless of ambient env.
+// existing spy-adapter tests deterministic regardless of ambient env. Pulumi
+// lanes resolve through the SHARED per-store adapter memo (see
+// selectPulumiEstateAdapter) so `up`, `drift`, and `import` composed over the
+// same store all observe the same state backend.
 export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const env = deps.env ?? process.env;
 	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
 	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
 	const vercelToken = env.VERCEL_TOKEN;
-	if (deps.adapter === undefined && cloudflareToken && cloudflareAccountId) {
+	const estateAdapter = selectPulumiEstateAdapter(deps);
+	if (estateAdapter !== undefined) {
+		return createPulumiBackedIacProvider({
+			store: deps.store,
+			providers: deps.providers,
+			adapter: estateAdapter,
+		});
+	}
+	if (cloudflareToken && cloudflareAccountId) {
 		return createCloudflareDeployProvider({
 			token: cloudflareToken,
 			accountId: cloudflareAccountId,
@@ -160,16 +313,9 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 				: {}),
 		});
 	}
-	if (deps.adapter === undefined && vercelToken) {
-		return createVercelDeployProvider({
-			token: vercelToken,
-			...(deps.vercelFetch !== undefined ? { fetch: deps.vercelFetch } : {}),
-		});
-	}
-	return createPulumiBackedIacProvider({
-		store: deps.store,
-		providers: deps.providers,
-		...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+	return createVercelDeployProvider({
+		token: vercelToken as string,
+		...(deps.vercelFetch !== undefined ? { fetch: deps.vercelFetch } : {}),
 	});
 }
 
@@ -341,11 +487,105 @@ export function createDefaultDevRuntime(
 	};
 }
 
+// The project-aware dev-runtime resolver `hobo dev` boots in the composed CLI
+// (docs/plans/0006 item 3-1). When the invoked project's bindle source loads
+// and its first api/web resource carries an app-host entrypoint (the
+// `b.api(() => app.fetch)` handler), the local Camp serves THAT handler:
+// the component descriptor's HTTP export converts the host's HttpRequest to a
+// web Request, invokes the project's fetch handler in-process, and folds the
+// Response back. No entrypoint (or no loadable source) falls back to the
+// offline hello-bindle guest so composed `dev` never regresses to the stub.
+export async function resolveProjectDevRuntime(
+	projectDir: string,
+): Promise<DevRuntime> {
+	const definition = await loadBindleDefinition(projectDir);
+	const entry =
+		definition === null ? null : firstServableEntrypoint(definition);
+	if (definition === null || entry === null) {
+		return createDefaultDevRuntime();
+	}
+
+	const events: ComponentHostEvent[] = [];
+	const componentHost = createRuntimeLocalComponentHost({
+		appendEvent: (event) => {
+			events.push(event);
+		},
+	});
+	const streamer = createLocalStreamer();
+
+	const component: ParsedComponentDescriptor = {
+		parsed: true,
+		id: definition.name,
+		imports: [],
+		exports: {
+			[HTTP_INCOMING_INTERFACE]: {
+				handle: async (...args: unknown[]): Promise<unknown> => {
+					const request = args[0] as {
+						method: string;
+						path: string;
+						headers: readonly (readonly [string, string])[];
+						body: string;
+					};
+					const fetchHandler = entry.handler() as (
+						input: Request,
+					) => Response | Promise<Response>;
+					const response = await fetchHandler(
+						new Request(`http://localhost:4000${request.path || "/"}`, {
+							method: request.method,
+							headers: Object.fromEntries(request.headers ?? []),
+							...(request.body ? { body: request.body } : {}),
+						}),
+					);
+					return {
+						status: response.status,
+						headers: [...response.headers.entries()],
+						body: await response.text(),
+					};
+				},
+			},
+		},
+	};
+
+	return {
+		componentHost,
+		streamer,
+		plan: {
+			component,
+			providers: [],
+			links: [],
+			probe: { method: "GET", path: "/", headers: [], body: "" },
+		},
+		readEvents: () => events,
+	};
+}
+
+function firstServableEntrypoint(definition: {
+	readonly resources: Readonly<
+		Record<string, { readonly kind: string; readonly name: string }>
+	>;
+	readonly entrypoint?: (name: string) => (() => unknown) | undefined;
+}): { readonly name: string; readonly handler: () => unknown } | null {
+	if (typeof definition.entrypoint !== "function") {
+		return null;
+	}
+	for (const [name, record] of Object.entries(definition.resources)) {
+		if (record.kind !== "api" && record.kind !== "web") {
+			continue;
+		}
+		const handler = definition.entrypoint(name);
+		if (typeof handler === "function") {
+			return { name, handler };
+		}
+	}
+	return null;
+}
+
 // Assemble the default `CollectionTarget` the `hobo collect` command runs
-// resource collection against. Until the loader that materializes a target from
-// a project's TypeScript source lands (a later slice), the composed CLI collects
-// a representative hello-bindle (a service bound to a data resource) so `collect`
-// emits a real manifest IR rather than the shell stub. LOCAL/MOCKED lane.
+// resource collection against when the project has NO loadable bindle source:
+// a representative hello-bindle (a service bound to a data resource) so
+// `collect` emits a real manifest IR rather than the shell stub. Projects with
+// a `src/bindle.ts` (or built `dist/bindle.js`) get their OWN target via
+// `resolveProjectCollectionTarget`. LOCAL/MOCKED lane.
 export function createDefaultCollectionTarget(
 	projectDir?: string,
 ): CollectionTarget {
@@ -364,4 +604,15 @@ export function createDefaultCollectionTarget(
 			});
 		},
 	};
+}
+
+// The project-aware target resolver `hobo collect` runs with in the composed
+// CLI (docs/plans/0006 item 3-1): the invoked project's own bindle source wins
+// (TS loader → run-to-collect); the representative hello-bindle target remains
+// the fallback so composed `collect` never regresses to the shell stub.
+export async function resolveProjectCollectionTarget(
+	projectDir: string,
+): Promise<CollectionTarget> {
+	const fromSource = await loadProjectCollectionTarget(projectDir);
+	return fromSource ?? createDefaultCollectionTarget(projectDir);
 }

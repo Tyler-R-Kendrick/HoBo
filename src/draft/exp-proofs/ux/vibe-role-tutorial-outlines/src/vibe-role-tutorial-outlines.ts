@@ -46,12 +46,14 @@ type TutorialProofMode = (typeof REQUIRED_ROLE_TUTORIAL_PROOF_MODES)[number];
 type TutorialQuickstartFixtureId = (typeof REQUIRED_ROLE_TUTORIAL_QUICKSTART_FIXTURE_IDS)[number];
 type QuickstartProofMode = (typeof QUICKSTART_PROOF_MODES)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the TutorialCoverage proto message in data-models/.
 type TutorialCoverage = {
   readonly id: TutorialCoveragePath;
   readonly evidence: string;
   readonly outlineRoles: readonly TutorialRole[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the TutorialQuickstartFixtureRef proto message in data-models/.
 type TutorialQuickstartFixtureRef = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: TutorialQuickstartFixtureId;
@@ -59,6 +61,7 @@ type TutorialQuickstartFixtureRef = {
   readonly tutorialUse: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RoleTutorialOutline proto message in data-models/.
 type RoleTutorialOutline = {
   readonly role: TutorialRole;
   readonly walkthroughAnchor: string;
@@ -75,6 +78,7 @@ type RoleTutorialOutline = {
   readonly supportHandoff: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeRoleTutorialOutlines proto message in data-models/.
 type VibeRoleTutorialOutlines = {
   readonly issue: "HOBO-552";
   readonly phase: "M1";

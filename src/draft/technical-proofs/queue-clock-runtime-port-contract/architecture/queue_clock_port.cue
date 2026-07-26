@@ -56,3 +56,10 @@ package queue_clock
 	seed:    string & !=""
 	now_ms:  int & >=0
 }
+
+#QueueEventRecord: {
+	type:            string & !=""
+	queue_name:      string & !=""
+	message_id:      string & !=""
+	idempotency_key: string & !=""
+}

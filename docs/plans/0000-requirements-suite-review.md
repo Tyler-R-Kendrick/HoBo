@@ -14,7 +14,7 @@ tags: [hobo, plans]
 > **Status key:** ✅ resolved in the hardening pass (commit after `b3cf64d`) · ⏳ deferred (needs user decision) · ❎ rejected (not a real issue).
 
 ## How findings were resolved
-The hardening pass added **[ADR-0023 (security posture)](../docs/design/adr/02-identity-security.md#adr-0023)** and **[ADR-0024 (portability conformance guarantee)](../docs/design/adr/07-portability-extensibility.md#adr-0024)**, plus new `NFR-017..020`, `FR-014`, and `TR-006/013/053/071/083` and tightened `TR-051/110/111/112`, and fixed the traceability matrix. See the PR description for the full hardening log.
+The hardening pass added **[ADR-0023 (security posture)](../design/adr/02-identity-security.md#adr-0023)** and **[ADR-0024 (portability conformance guarantee)](../design/adr/07-portability-extensibility.md#adr-0024)**, plus new `NFR-017..020`, `FR-014`, and `TR-006/013/053/071/083` and tightened `TR-051/110/111/112`, and fixed the traceability matrix. See the PR description for the full hardening log.
 
 ## Security lens (reviewer SEC)
 | ID | Finding | Sev | Status |

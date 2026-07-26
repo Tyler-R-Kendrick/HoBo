@@ -41,6 +41,7 @@ type CliContract = {
   readonly exitCodes: readonly number[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the McpInputField proto message in data-models/.
 type McpInputField = {
   readonly name: string;
   readonly type: McpInputType;
@@ -50,6 +51,7 @@ type McpInputField = {
   readonly enumValues?: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the McpInputSchema proto message in data-models/.
 type McpInputSchema = {
   readonly schemaId: string;
   readonly fields: readonly McpInputField[];
@@ -76,6 +78,7 @@ type OperationContract = {
   readonly migrationPhases?: readonly MigrationPhase[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResultEnvelope proto message in data-models/.
 type ResultEnvelope = {
   readonly status: "ok" | "blocked" | "warning" | "handoff";
   readonly code: string;

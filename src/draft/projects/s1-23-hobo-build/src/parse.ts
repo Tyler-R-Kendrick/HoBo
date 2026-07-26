@@ -6,6 +6,7 @@ export const DEFAULT_SOURCE_DATE_EPOCH = "2026-01-01T00:00:00.000Z";
 
 export type ArtifactKind = "wasm-component" | "oci-container";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ServiceDeclaration proto message in data-models/.
 export type ServiceDeclaration = {
   readonly name: string;
   readonly language: string;
@@ -14,6 +15,7 @@ export type ServiceDeclaration = {
   readonly entrypoint: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the BuildArtifact proto message in data-models/.
 export type BuildArtifact = {
   readonly service: string;
   readonly kind: ArtifactKind;
@@ -26,6 +28,7 @@ export type BuildArtifact = {
   readonly source: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the BuildManifest proto message in data-models/.
 export type BuildManifest = {
   readonly schema: typeof BUILD_MANIFEST_SCHEMA;
   readonly generatedBy: "hobo build";

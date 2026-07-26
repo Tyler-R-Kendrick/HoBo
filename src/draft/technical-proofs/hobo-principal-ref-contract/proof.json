@@ -1,0 +1,18 @@
+{
+  "layer": "technical",
+  "slug": "hobo-principal-ref-contract",
+  "title": "HoBo PrincipalRef Contract POC",
+  "linear": "HOBO-56",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "diagrams": []
+  },
+  "waivers": []
+}

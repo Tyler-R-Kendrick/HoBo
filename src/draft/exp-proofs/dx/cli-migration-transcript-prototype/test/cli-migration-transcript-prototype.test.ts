@@ -115,7 +115,7 @@ test("scope guard rejects live import, live data, automatic remodeling, irrevers
 });
 
 test("architecture artifacts reconcile protobuf, CUE, and Pact evidence for the transcript boundary", () => {
-  const architectureDir = join(process.cwd(), "architecture");
+  const architectureDir = join(import.meta.dirname, "..", "architecture");
   const proto = readFileSync(join(architectureDir, "cli_migration_transcript_prototype.proto"), "utf8");
   const cue = readFileSync(join(architectureDir, "cli_migration_transcript_prototype.cue"), "utf8");
   const pact = JSON.parse(

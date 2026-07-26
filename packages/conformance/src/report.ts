@@ -1,7 +1,7 @@
 import {
-	REPORT_SCHEMA,
 	type ConformanceRunEvent,
 	type PortSuiteReport,
+	REPORT_SCHEMA,
 } from "./types.js";
 
 export function projectPortSuiteReport(

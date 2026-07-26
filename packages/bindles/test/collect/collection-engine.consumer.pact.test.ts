@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
-	collectBindleManifest,
 	type CollectionContext,
 	type CollectionTarget,
+	collectBindleManifest,
 } from "../../src/index.js";
 
 // Consumer pact for the collection boundary: the run-to-collect engine

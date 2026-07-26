@@ -3,6 +3,7 @@ export type ProofMode = "design-record" | "issue-state" | "manual-review" | "sup
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
 export type BlockerState = "blocked" | "accepted-risk" | "cleared";
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportReleaseCandidateEvidenceItem proto message in data-models/.
 export interface LaunchSupportReleaseCandidateEvidenceItem {
   id: string;
   ownerProject: string;
@@ -12,6 +13,7 @@ export interface LaunchSupportReleaseCandidateEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportReleaseCandidateBlocker proto message in data-models/.
 export interface LaunchSupportReleaseCandidateBlocker {
   id: string;
   ownerProject: string;
@@ -20,6 +22,7 @@ export interface LaunchSupportReleaseCandidateBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportReleaseCandidateAcceptedRisk proto message in data-models/.
 export interface LaunchSupportReleaseCandidateAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -27,6 +30,7 @@ export interface LaunchSupportReleaseCandidateAcceptedRisk {
   launchRiskEffect: LaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportReleaseCutlineDependency proto message in data-models/.
 export interface LaunchSupportReleaseCutlineDependency {
   id: string;
   ownerProject: string;
@@ -35,6 +39,7 @@ export interface LaunchSupportReleaseCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportReleaseCandidateFollowUp proto message in data-models/.
 export interface LaunchSupportReleaseCandidateFollowUp {
   id: string;
   evidenceId: string;
@@ -42,6 +47,7 @@ export interface LaunchSupportReleaseCandidateFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportInitiativeStatusGate proto message in data-models/.
 export interface LaunchSupportInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: LaunchRiskEffect;
@@ -49,6 +55,7 @@ export interface LaunchSupportInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportPublicClaimGuard proto message in data-models/.
 export interface LaunchSupportPublicClaimGuard {
   id: string;
   claim: string;
@@ -56,6 +63,7 @@ export interface LaunchSupportPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSupportReleaseCandidateEvidenceRecord proto message in data-models/.
 export interface LaunchSupportReleaseCandidateEvidenceRecord {
   schema: string;
   issue: "HOBO-474";

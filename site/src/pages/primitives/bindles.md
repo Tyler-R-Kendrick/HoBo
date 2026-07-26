@@ -12,7 +12,7 @@ The **Bindle** is HoBo's first primitive and the only thing HoBo ships. It's you
 
 ## Declaring a bindle
 
-A bindle is plain code. `bindle(name, build)` hands your build function a resource builder; the object you return *is* the manifest:
+A bindle is plain code, and this surface ships today in `@hobo/bindles`: the default export of your project's `src/bindle.ts` is exactly what `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` load (a committed `hobo.bindle.json` manifest artifact wins when present). `bindle(name, build)` hands your build function a resource builder; the object you return *is* the manifest:
 
 ```ts
 import { bindle } from "@hobo/bindles";
@@ -21,16 +21,15 @@ import { app as api } from "./api";
 import { app as web } from "./webapp";
 
 export default bindle("my-app", (b) => {
-  const db = b.data();
-  const jobs = b.queue();
-  const cache = b.kv();
+  const db = b.data().allow("read", "write");
+  const jobs = b.queue().allow("enqueue");
+  const cache = b.kv().allow("get", "set");
   const uploads = b.bucket();
-  const apiKey = b.secret();
+  const apiKey = b.secret().allow("access");
 
   const apiSvc = b
     .api(() => api.fetch)
-    .dependsOn(db, jobs, cache, apiKey)
-    .allow("db:read", "db:write", "queue:send");
+    .dependsOn(db, jobs, cache, apiKey);
 
   const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
 
@@ -44,7 +43,7 @@ export default bindle("my-app", (b) => {
 |---|---|---|
 | `b.api(handler?)` | `api` | An HTTP API entrypoint. The handler rides along as an app-host entrypoint, never in the manifest. |
 | `b.web(handler?)` | `web` | A web app entrypoint. |
-| `b.service(handler?)` | `service` | A long-running internal service. |
+| `b.service()` | `service` | A long-running internal service. |
 | `b.data()` | `data` | A SQL-ish managed data port. |
 | `b.kv()` | `kv` | Key-value storage. |
 | `b.bucket()` | `bucket` | Object storage. |
@@ -57,7 +56,7 @@ Every resource supports three chainable refinements:
 | Method | Meaning |
 |---|---|
 | `.dependsOn(...resources)` | Declares wiring edges **and** injects typed bindings at runtime. Deny-by-default: no declared edge, no access. |
-| `.allow(...verbs)` | Inline least privilege, scoped to the resource kind (`"db:read"`, `"queue:send"`, …). Permissions travel in the bindle. |
+| `.allow(...verbs)` | Inline least privilege, with verbs typed per resource kind (`"read"`/`"write"`/`"query"` on `data`, `"enqueue"`/`"dequeue"` on `queue`, `"get"`/`"set"` on `kv`, …). Permissions travel in the bindle. |
 | `.with(...annotations)` | Typed provider-specific options — the escape hatch. Optimization, never a requirement. |
 
 ## Rules the bindle enforces

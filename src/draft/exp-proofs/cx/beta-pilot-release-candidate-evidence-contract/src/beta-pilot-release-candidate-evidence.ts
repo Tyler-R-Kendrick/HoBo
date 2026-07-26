@@ -3,6 +3,7 @@ export type ProofMode = "design-record" | "issue-state" | "manual-review" | "sup
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
 export type BlockerState = "blocked" | "accepted-risk" | "cleared";
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotReleaseCandidateEvidenceItem proto message in data-models/.
 export interface BetaPilotReleaseCandidateEvidenceItem {
   id: string;
   ownerProject: string;
@@ -12,6 +13,7 @@ export interface BetaPilotReleaseCandidateEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotReleaseCandidateBlocker proto message in data-models/.
 export interface BetaPilotReleaseCandidateBlocker {
   id: string;
   ownerProject: string;
@@ -20,6 +22,7 @@ export interface BetaPilotReleaseCandidateBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotReleaseCandidateAcceptedRisk proto message in data-models/.
 export interface BetaPilotReleaseCandidateAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -27,6 +30,7 @@ export interface BetaPilotReleaseCandidateAcceptedRisk {
   launchRiskEffect: LaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotReleaseCutlineDependency proto message in data-models/.
 export interface BetaPilotReleaseCutlineDependency {
   id: string;
   ownerProject: string;
@@ -35,6 +39,7 @@ export interface BetaPilotReleaseCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotReleaseCandidateFollowUp proto message in data-models/.
 export interface BetaPilotReleaseCandidateFollowUp {
   id: string;
   evidenceId: string;
@@ -42,6 +47,7 @@ export interface BetaPilotReleaseCandidateFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotInitiativeStatusGate proto message in data-models/.
 export interface BetaPilotInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: LaunchRiskEffect;
@@ -49,6 +55,7 @@ export interface BetaPilotInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotPublicClaimGuard proto message in data-models/.
 export interface BetaPilotPublicClaimGuard {
   id: string;
   claim: string;
@@ -56,6 +63,7 @@ export interface BetaPilotPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotReleaseCandidateEvidenceRecord proto message in data-models/.
 export interface BetaPilotReleaseCandidateEvidenceRecord {
   schema: string;
   issue: "HOBO-470";

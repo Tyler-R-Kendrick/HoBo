@@ -7,7 +7,7 @@ import {
 import { tmpdir } from "node:os";
 import path, { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
 
 import type {
 	ComponentHostEvent,
@@ -19,7 +19,7 @@ import {
 	createLocalStreamer,
 	createRuntimeLocalComponentHost,
 } from "@hobo/runtime-local";
-import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
+import { describe, expect, it } from "vitest";
 
 import {
 	createCollectCommand,

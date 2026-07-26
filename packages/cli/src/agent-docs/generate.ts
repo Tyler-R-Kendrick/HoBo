@@ -1,5 +1,5 @@
 import { normalizeText } from "../codegen/text.js";
-import { GLOBAL_FLAGS, type Verb, CANONICAL_VERBS } from "../shell/verbs.js";
+import { CANONICAL_VERBS, GLOBAL_FLAGS, type Verb } from "../shell/verbs.js";
 
 // S3-05 — the agent-docs surface (ai-native-agent-auth.md §6.4 +
 // developer-experience.md). HoBo publishes llms.txt / llms-full.txt / docs.json

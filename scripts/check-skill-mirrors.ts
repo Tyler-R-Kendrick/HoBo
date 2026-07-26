@@ -4,15 +4,39 @@
  * The repo-local skills are maintained as byte-identical copies in `.claude/skills/<name>`
  * (Claude Code) and `.agents/skills/<name>` (Cursor/Codex). Nothing previously asserted the
  * two stayed equal, so edits to one mirror silently rotted the other. This gate fails when a
- * mirrored skill differs between the trees. A skill missing on BOTH sides passes (not yet
- * created); a skill present on only one side fails.
+ * mirrored skill differs between the trees.
+ *
+ * Coverage: every skill directory present in BOTH `.claude/skills/` and `.agents/skills/`
+ * is compared byte-for-byte. The REQUIRED_SKILLS below must additionally exist in both
+ * trees — a required skill missing from either (or both) mirrors fails the gate. For
+ * non-required skills, existing in only one tree passes (deliberately unmirrored), and via
+ * `compareSkill` a skill missing on BOTH sides passes (not yet created); a required skill
+ * present on only one side fails.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const MIRRORED_SKILLS = ["draft", "repo", "sdlc"];
+const REQUIRED_SKILLS = ["draft", "repo", "sdlc"];
+
+function listSkillDirs(root: string, tree: string): Set<string> {
+	const dir = path.join(root, tree, "skills");
+	if (!existsSync(dir)) return new Set();
+	return new Set(
+		readdirSync(dir, { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name),
+	);
+}
+
+/** Skills to compare: required ones always, plus every skill present in both trees. */
+export function discoverMirroredSkills(root = repoRoot): string[] {
+	const claude = listSkillDirs(root, ".claude");
+	const agents = listSkillDirs(root, ".agents");
+	const shared = [...claude].filter((skill) => agents.has(skill));
+	return [...new Set([...REQUIRED_SKILLS, ...shared])].sort();
+}
 
 function listFiles(dir: string): string[] {
 	const out: string[] = [];
@@ -66,7 +90,18 @@ export function compareSkill(skill: string, root = repoRoot): string[] {
 }
 
 function main() {
-	const problems = MIRRORED_SKILLS.flatMap((skill) => compareSkill(skill));
+	const skills = discoverMirroredSkills();
+	const problems = skills.flatMap((skill) => compareSkill(skill));
+	for (const skill of REQUIRED_SKILLS) {
+		if (
+			!existsSync(path.join(repoRoot, ".claude/skills", skill)) &&
+			!existsSync(path.join(repoRoot, ".agents/skills", skill))
+		) {
+			problems.push(
+				`required skill "${skill}" is missing from both .claude/skills and .agents/skills`,
+			);
+		}
+	}
 	if (problems.length > 0) {
 		console.error("skill-mirror gate failed:");
 		for (const problem of problems) console.error(`  - ${problem}`);
@@ -75,7 +110,9 @@ function main() {
 		);
 		process.exit(1);
 	}
-	console.log(`skill mirrors OK: ${MIRRORED_SKILLS.join(", ")}.`);
+	console.log(
+		`skill mirrors OK: ${skills.length} skills checked (required: ${REQUIRED_SKILLS.join(", ")}).`,
+	);
 }
 
 const invokedDirectly =

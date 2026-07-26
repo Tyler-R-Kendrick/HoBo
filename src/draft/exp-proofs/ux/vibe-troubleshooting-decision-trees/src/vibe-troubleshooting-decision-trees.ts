@@ -21,12 +21,14 @@ type DecisionTreeCaseId = (typeof REQUIRED_DECISION_TREE_CASES)[number];
 type ProofMode = (typeof REQUIRED_PROOF_MODES)[number];
 type PathState = "happy" | "blocked" | "stale-or-unknown" | "support-handoff";
 
+// domain-view: parse-produced draft-proof record; its wire form is the RedactionEvidence proto message in data-models/.
 type RedactionEvidence = {
   readonly redacted: true;
   readonly visibleFields: readonly string[];
   readonly withheldFields: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the TroubleshootingDecisionCase proto message in data-models/.
 export type TroubleshootingDecisionCase = {
   readonly caseId: DecisionTreeCaseId;
   readonly pathState: PathState;
@@ -42,6 +44,7 @@ export type TroubleshootingDecisionCase = {
   readonly redaction: RedactionEvidence;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeTroubleshootingDecisionTrees proto message in data-models/.
 type VibeTroubleshootingDecisionTrees = {
   readonly issue: "HOBO-553";
   readonly phase: "M1";

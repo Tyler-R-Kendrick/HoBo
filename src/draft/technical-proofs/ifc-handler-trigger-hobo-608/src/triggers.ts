@@ -75,6 +75,7 @@ export interface WorkflowHandler {
   handler: Handler;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the TriggerEdge proto message in data-models/.
 export interface TriggerEdge {
   id: string;
   kind:

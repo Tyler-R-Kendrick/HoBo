@@ -29,6 +29,7 @@ type McpStatus = "error" | "blocked" | "needs-human";
 type AcceptedFixtureFact = (typeof DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS.scenarios)[number]["fixtureFacts"][number];
 type AcceptedFixtureProofMode = AcceptedFixtureFact["proofMode"];
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliJsonOutput proto message in data-models/.
 type CliJsonOutput = {
   readonly status: "blocked" | "refused" | "unknown" | "handoff";
   readonly code: string;
@@ -40,6 +41,7 @@ type CliJsonOutput = {
   readonly correlationId: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the McpToolResult proto message in data-models/.
 type McpToolResult = {
   readonly toolName: string;
   readonly status: McpStatus;
@@ -58,6 +60,7 @@ type McpToolResult = {
   };
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliErrorRefusalExample proto message in data-models/.
 type CliErrorRefusalExample = {
   readonly caseId: CliErrorCaseId;
   readonly operations: readonly OperationId[];
@@ -75,11 +78,13 @@ type CliErrorRefusalExample = {
   readonly customerSafeWording: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ScopeBoundary proto message in data-models/.
 type ScopeBoundary = {
   readonly inScope: readonly string[];
   readonly outOfScope: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliErrorRefusalCatalog proto message in data-models/.
 type CliErrorRefusalCatalog = {
   readonly issue: "HOBO-558";
   readonly phase: "M1";

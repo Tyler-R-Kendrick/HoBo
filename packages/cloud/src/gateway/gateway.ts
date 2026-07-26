@@ -1,12 +1,12 @@
+import { canonicalManifestHash, type ManifestV1 } from "@hobo/bindles";
 import type { EventInput, EventStore, PrincipalRef } from "@hobo/core";
 import type { ActorHost } from "@hobo/data";
 import {
+	type Aggregate,
 	AggregateInvariantError,
 	defineAggregate,
-	type Aggregate,
 } from "@hobo/data";
 import { emit } from "@hobo/events";
-import { canonicalManifestHash, type ManifestV1 } from "@hobo/bindles";
 
 import {
 	deploymentPlanned,
@@ -14,13 +14,13 @@ import {
 	deploymentRequested,
 	matchDecided,
 } from "../events.js";
-import { plan, type PlanConfig } from "../planner/plan.js";
-import type { PlannerRegistry } from "../registry/catalog.js";
 import type {
 	DeploymentPlan,
 	MatchDecided,
 	PlanRemediation,
 } from "../plan-types.js";
+import { type PlanConfig, plan } from "../planner/plan.js";
+import type { PlannerRegistry } from "../registry/catalog.js";
 
 // The Gateway (control-plane.md "Services"): command ingress. It authenticates
 // the principal, authorizes against tenant + scope, turns a command into events,

@@ -1,8 +1,7 @@
-import { spawnSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
-import { execSync } from "node:child_process";
 
 import { serializeStageGateRecord } from "./parse.js";
 import type {

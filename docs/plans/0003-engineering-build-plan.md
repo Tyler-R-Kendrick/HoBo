@@ -453,3 +453,21 @@ Evidence: appended to the existing
   document as their productionization plan. No new top-level issues.
 - **Verification (this doc):** `pnpm run docs:okf`, `pnpm run lint:docs`, `pnpm run docs:freshness`,
   `pnpm run docs:coverage`. `architecture:guard` is unaffected (no `packages/` or `src/` changes).
+
+## 8. Re-baseline (2026-07-25, HEAD 3f73928+)
+
+§2's "Holes and greenfield" table describes the 2026-07-17 baseline and is **superseded**; do not
+read it as current. Verified against the live tree
+([`0006-unimplemented-features-remediation.md`](./0006-unimplemented-features-remediation.md)):
+
+- **Now built (were Missing/Greenfield):** `@hobo/runtime` authoring surface, `@hobo/data`,
+  `@hobo/events`, `hobo dev`, `hobo collect`, `packages/cloud`, `packages/identity`,
+  `packages/contracts`, `packages/mcp`, `packages/iac/iac-pulumi`,
+  `packages/providers/provider-cloudflare` — all 27 CLI verbs dispatch to real handlers
+  (commit `5d6c386`).
+- **S1-24:** `.github/workflows/s1-stage-gate.yml` now runs production packages
+  (`@hobo/conformance` tests + `@hobo/cli` builds), no longer only the draft proof.
+- **Still open (tracked in 0005 Phase 3):** the TypeScript bindle loader (`collect`/`dev` use a
+  hardcoded hello-bindle target until it lands), the live Pulumi Automation backend (the default
+  lane is the in-memory stand-in), live estate `import`, executed `derivative` upcasters, and
+  `drift` against real infrastructure.

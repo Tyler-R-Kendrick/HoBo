@@ -16,6 +16,7 @@ export interface PlanCommandDeps {
 // non-zero. With no runtime injected (adapter-free default), it stays a stub.
 export function createPlanCommand(deps: PlanCommandDeps = {}): CommandModule {
 	return {
+		implemented: Boolean(deps.runtime),
 		run: async ({ context }) => {
 			const { runtime } = deps;
 			if (!runtime) {

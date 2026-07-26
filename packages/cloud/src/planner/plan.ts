@@ -1,17 +1,17 @@
 import type { ManifestV1 } from "@hobo/bindles";
 
 import { lowerManifest } from "../intent.js";
-import type { PlannerRegistry } from "../registry/catalog.js";
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
-	hashDeploymentPlan,
 	type DeploymentPlan,
+	hashDeploymentPlan,
 	type MatchDecided,
 	type PlanHash,
 	type PlanRemediation,
 	type ResourceIntent,
 	type ResourcePlan,
 } from "../plan-types.js";
+import type { PlannerRegistry } from "../registry/catalog.js";
 import { matchResource } from "./matching.js";
 
 // The Planner: a pure function `plan(bindle, config, registry) -> DeploymentPlan`

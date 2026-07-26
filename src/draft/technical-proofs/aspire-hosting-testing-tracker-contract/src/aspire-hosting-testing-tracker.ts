@@ -9,6 +9,7 @@ export type AspireHostingTestingTrackerStatus =
   | "planned"
   | "overclaimed";
 
+// domain-view: parse-produced draft-proof record; its wire form is the AspireHostingTestingTrackerEvaluation proto message in data-models/.
 export type AspireHostingTestingTrackerEvaluation = {
   readonly feature: "Aspire.Hosting.Testing";
   readonly status: AspireHostingTestingTrackerStatus;

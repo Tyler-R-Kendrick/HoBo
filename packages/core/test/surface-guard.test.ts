@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
-	CORE_API_SNAPSHOT,
 	assertCoreApiSnapshot,
+	CORE_API_SNAPSHOT,
 	validatePublicTypeSurface,
 } from "../src/index.js";
 

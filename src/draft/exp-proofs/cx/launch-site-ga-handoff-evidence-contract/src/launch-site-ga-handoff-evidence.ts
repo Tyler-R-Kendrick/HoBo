@@ -3,6 +3,7 @@ export type ProofMode = "design-record" | "issue-state" | "manual-review" | "liv
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
 export type BlockerState = "blocked" | "accepted-risk" | "cleared";
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaEvidenceItem proto message in data-models/.
 export interface LaunchSiteGaEvidenceItem {
   id: string;
   ownerProject: string;
@@ -12,6 +13,7 @@ export interface LaunchSiteGaEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaBlocker proto message in data-models/.
 export interface LaunchSiteGaBlocker {
   id: string;
   ownerProject: string;
@@ -20,6 +22,7 @@ export interface LaunchSiteGaBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaAcceptedRisk proto message in data-models/.
 export interface LaunchSiteGaAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -27,6 +30,7 @@ export interface LaunchSiteGaAcceptedRisk {
   launchRiskEffect: LaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaCutlineDependency proto message in data-models/.
 export interface LaunchSiteGaCutlineDependency {
   id: string;
   ownerProject: string;
@@ -41,6 +45,7 @@ export interface LaunchSiteGaCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaFollowUp proto message in data-models/.
 export interface LaunchSiteGaFollowUp {
   id: string;
   evidenceId: string;
@@ -48,6 +53,7 @@ export interface LaunchSiteGaFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaInitiativeStatusGate proto message in data-models/.
 export interface LaunchSiteGaInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: LaunchRiskEffect;
@@ -55,6 +61,7 @@ export interface LaunchSiteGaInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaPublicClaimGuard proto message in data-models/.
 export interface LaunchSiteGaPublicClaimGuard {
   id: string;
   claim: string;
@@ -62,6 +69,7 @@ export interface LaunchSiteGaPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteGaHandoffEvidenceRecord proto message in data-models/.
 export interface LaunchSiteGaHandoffEvidenceRecord {
   schema: string;
   issue: "HOBO-479";

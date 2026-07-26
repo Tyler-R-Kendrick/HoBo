@@ -1,5 +1,5 @@
-import { compileBindleManifest, data, service } from "@hobo/bindles/wiring";
 import { bindleScope } from "@hobo/bindles/topology";
+import { compileBindleManifest, data, service } from "@hobo/bindles/wiring";
 import type { BindingResolverPort } from "@hobo/core";
 import { parseResourceId } from "@hobo/core";
 import { describe, expect, it } from "vitest";

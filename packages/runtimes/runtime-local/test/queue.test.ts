@@ -1,11 +1,11 @@
+import { runQueueClockConformance } from "@hobo/conformance";
 import {
-	QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION,
-	QueueLeaseLostError,
 	parseActorKey,
 	parseIdempotencyKey,
 	parseQueueName,
+	QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION,
+	QueueLeaseLostError,
 } from "@hobo/core";
-import { runQueueClockConformance } from "@hobo/conformance";
 import { describe, expect, it } from "vitest";
 
 import { createRuntimeLocalQueueClock } from "../src/replay.js";

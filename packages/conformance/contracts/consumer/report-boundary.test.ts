@@ -3,8 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runConformanceSuite } from "../../src/index.ts";
-import { passingToyAdapter, toySuite } from "../../test/reference-adapter.ts";
 import { subtractOutputAdapter } from "../../test/mutated-adapter.ts";
+import { passingToyAdapter, toySuite } from "../../test/reference-adapter.ts";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(

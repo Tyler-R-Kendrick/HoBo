@@ -59,6 +59,77 @@ Every resource supports three chainable refinements:
 | `.allow(...verbs)` | Inline least privilege, with verbs typed per resource kind (`"read"`/`"write"`/`"query"` on `data`, `"enqueue"`/`"dequeue"` on `queue`, `"get"`/`"set"` on `kv`, …). Permissions travel in the bindle. |
 | `.with(...annotations)` | Typed provider-specific options — the escape hatch. Optimization, never a requirement. |
 
+## Greenfield: declare the bindle, generate the code
+
+Packing an existing app — the brownfield path above — is only half the story. A component can also be **declared**: a `@component` class whose `@operation` methods carry the groundings HoBo generates code from — an **intent** (what it's for, in prose), a **contract declaring the shape** (typed input and output, plus invariants and forbidden outputs — the boundary generated code may never cross; the shape is never optional), and an optional **rubric** (named scorers with promotion thresholds, enforced as policy at the gate — omit it and the gate defaults to exact-match over your contract's examples). An operation with a `stub()` body is **code to be generated**; a hand-written body is a baseline the optimizer improves.
+
+```ts
+import { bindle } from "@hobo/bindles";
+import { component, operation, param, stub } from "@hobo/runtime";
+import { z } from "zod";
+import { Cart, Order, Photo, RankInput, submitOrder } from "./domain";
+
+@component({ intent: "Public storefront API: ranked feed, cart, checkout." })
+class Storefront {
+  @operation({
+    intent: "Order photos to maximize dwell without burying brand-new sellers.",
+    contract: {
+      input: RankInput,               // the shape — required
+      output: z.array(Photo),
+      forbiddenOutputs: ["output[0] is nsfw"],
+    },
+    params: { input: param("Candidate photos with engagement signals") },
+    rubric: { dwellLift: 0.8, newSellerShare: 0.75 }, // optional — sharpens the gate
+  })
+  rankFeed = stub<RankInput, Photo[]>(); // no implementation: generate it
+
+  @operation({
+    intent: "Turn a priced cart into an order exactly once.",
+    contract: { input: Cart, output: Order },
+  })
+  async checkout(cart: Cart): Promise<Order> {
+    "use training"; // hand-written baseline the optimizer keeps improving
+    return submitOrder(cart);
+  }
+}
+
+/** The bindle hands the declared component straight to the builder. */
+export default bindle("snapshop", (b) => {
+  const photos = b.bucket();
+  const catalog = b.data().allow("read", "write");
+  const api = b.api(Storefront).dependsOn(catalog, photos);
+  return { photos, catalog, api };
+});
+```
+
+`rankFeed` has zero implementation, and the loop from declaration to running code is the same convergence loop as everything else in HoBo:
+
+1. **Declare.** The bindle above is a complete, plannable manifest — `hobo plan` and `hobo up` work on it unchanged. Under the hood each `@operation` lowers to a **trainable** bound to its resource — signature-only for stubbed operations. That's the same machinery as `"use training"`, but you never touch it directly.
+2. **Stub.** `hobo stub` emits the generated registrations and a typed client into `src/_generated/`. Every declared operation is servable from day one by a **contract-derived stub**, so the whole app runs end-to-end before any implementation exists — and every stub call is recorded as a **specification-by-example** trace.
+3. **Generate.** The same **generation pipeline** that writes [provider adapters](/HoBo/guide/custom-providers/) synthesizes each operation's implementation from its interface + contract + recorded traces, in a capability-scoped sandbox with no egress.
+4. **Gate.** Promotion needs all three lenses: **conformance green** (the contract must never break), **eval thresholds met** (the rubric — scorer by scorer), and **policy allows** (prod promotions can require human approval).
+5. **Promote.** A passing candidate is written back into the operation's generated region as an AST-aware edit with signed provenance — auto-applied when low-risk, raised as a PR when not. Prior candidates live in the event log, so promotion is reversible.
+
+Prefer declaring one grounding at a time? Every decorator is optional and the options object decomposes into **granular decorators** — `@intent`, `@returns` on methods, `@description` on parameters (in legacy-decorator projects; as a `params:` value under standard decorators), with a bare `@trainable` composing the class. The declaration can even be **ambient** — a `declare class` with only signatures, no bodies at all — which `hobo stub` scans statically, taking the TypeScript signature as the declared shape:
+
+```ts
+@trainable
+export declare class Program {
+  @intent("Produce a simple hello-world program")
+  @returns("Hello World! or Hello, <name>! when supplied")
+  trainableMethod(
+    @description("Optional person to greet")
+    name?: string,
+  ): string;
+}
+```
+
+Anything you don't declare is inferred: intent from the method name, a synthesized `decl://` contract ref, the default exact-match rubric.
+
+Escalation is **per operation, not per app** — `Storefront` above already shows all three rungs. Swap `rankFeed`'s `stub()` for a real body when you're ready to own it; keep `"use training"` on it (like `checkout`) and the optimizer keeps improving the body against the same intent + contract + rubric, under the same gates; drop the directive and it's plain hand-maintained code. The manifest never changes shape along the way.
+
+Brownfield and greenfield converge on the same artifact: one manifest, one `hobo up`, one event log. Pack code you have, declare code you don't, and mix freely — a half-implemented bindle is a normal bindle.
+
 ## Rules the bindle enforces
 
 - **Names come from the returned object keys.** `{ db, api }` yields stable IDs like `data:db` and `api:api`. Duplicate stable IDs are a hard error.

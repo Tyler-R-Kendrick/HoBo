@@ -63,6 +63,8 @@ Three things to internalize — they're what make everything later cheap:
 
 That's a complete, deployable description — and it deploys today: run `hobo up` and HoBo converges the graph against the default local, in-memory lane (build, plan, gate, provision, deploy — all in-process, no cloud account). If a committed `hobo.bindle.json` manifest artifact is present it wins; otherwise the manifest is compiled from `src/bindle.ts` itself. Which brings us to what a camp *is*, and when to write one yourself.
 
+> **Starting from nothing?** You don't need existing code to pack a bindle. Declare a `@component` class whose `@operation` methods carry an intent, a typed contract shape, and an optional rubric — a `stub()` body declares *code to be generated* — and hand it straight to `b.api(...)`. The app runs on contract-derived stubs day one, and the generation pipeline grows the real implementations behind conformance, eval, and policy gates. See [Greenfield: declare the bindle, generate the code](/HoBo/primitives/bindles/#greenfield-declare-the-bindle-generate-the-code).
+
 ## Step 2 — Pitch a camp (or let HoBo pitch it)
 
 A camp answers one question the bindle deliberately doesn't: **where does this live right now?** One provider, one durable runtime (event store, queues, streams, actors, clock). Declaring one is how you *pin* that answer:

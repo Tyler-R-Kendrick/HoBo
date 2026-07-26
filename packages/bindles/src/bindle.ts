@@ -5,9 +5,42 @@ import type {
 	BindleEdge,
 	BindleResource,
 	BindleResourceRecord,
+	ComponentBinding,
 	ProviderAnnotation,
 	ResourceKind,
 } from "./types.js";
+
+// Structural detection of a @component-decorated class (Plan 2 Syntax 0)
+// via the shared symbol registry — the manifest layer never imports the
+// runtime's training machinery.
+const METADATA_SYMBOL =
+	(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
+const COMPONENT_METADATA = Symbol.for("hobo.component.metadata");
+
+function isDeclaredComponent(binding: ComponentBinding): boolean {
+	if (typeof binding !== "function") return false;
+	const metadata = (
+		binding as unknown as Record<symbol, Record<symbol, unknown> | undefined>
+	)[METADATA_SYMBOL];
+	return metadata?.[COMPONENT_METADATA] !== undefined;
+}
+
+/**
+ * Normalize a binding to the stored handler thunk. A declared component
+ * becomes `() => new Component()` — instantiation registers each
+ * `@operation` trainable (DI semantics), so collecting or serving the
+ * bindle surfaces the component's declared operations with no extra step.
+ */
+function toHandler(
+	binding: ComponentBinding | undefined,
+): (() => unknown) | undefined {
+	if (binding === undefined) return undefined;
+	if (isDeclaredComponent(binding)) {
+		const Component = binding as new () => object;
+		return () => new Component();
+	}
+	return binding as () => unknown;
+}
 
 interface InternalBindleResource<K extends ResourceKind> {
 	readonly kind: K;
@@ -64,15 +97,18 @@ function createBindleResource<K extends ResourceKind>(
 
 function createBuilder(): BindleBuilder {
 	return Object.freeze({
-		api: (handler?: () => unknown) => createBindleResource("api", handler),
-		web: (handler?: () => unknown) => createBindleResource("web", handler),
+		api: (binding?: ComponentBinding) =>
+			createBindleResource("api", toHandler(binding)),
+		web: (binding?: ComponentBinding) =>
+			createBindleResource("web", toHandler(binding)),
 		kv: () => createBindleResource("kv"),
 		bucket: () => createBindleResource("bucket"),
 		queue: () => createBindleResource("queue"),
 		topic: () => createBindleResource("topic"),
 		secret: () => createBindleResource("secret"),
 		data: () => createBindleResource("data"),
-		service: () => createBindleResource("service"),
+		service: (binding?: ComponentBinding) =>
+			createBindleResource("service", toHandler(binding)),
 	});
 }
 

@@ -83,7 +83,7 @@ snapshop/                       # one repo, one Manifest IR, one verb (hobo up)
 │  ├─ pipeline.ts               #   "use workflow" + steps
 │  ├─ cart.ts                   #   actor + checkout saga
 │  ├─ orders.ts                 #   command/view  (@hobo/data)
-│  ├─ feed.ts feed.training.ts  #   "use trainable" + its typed groundings
+│  ├─ feed.ts feed.training.ts  #   "use training" + its typed groundings
 │  └─ cart.test.ts              #   vitest; boundaries auto-mocked
 ├─ platform/                    # ── Platform eng / DevOps ───  loop: hobo up ./platform
 │  ├─ yard.ts                   #   control plane + .register(provider)
@@ -276,25 +276,25 @@ Fix it forward and the same `up` proceeds. Deploys never half-apply.
 
 ## 1.6 — Trainable methods: a directive, plus typed groundings
 
-Some functions should improve themselves from real traffic. Mark one **`"use trainable"`** — the same ergonomics as `"use workflow"`, the spirit of Microsoft Trace's decorated methods:
+Some functions should improve themselves from real traffic — and some should be **generated from a declaration in the first place**. The declaration form of the component builders ([Plan 2 Syntax 0](./sdk-api.md#plan-02)) covers the second case: declare an operation's intent + contract + rubric on the resource itself and HoBo generates the implementation, stub-served until promoted. When you *did* write the body and want the optimizer to keep improving it, mark it **`"use training"`** — the same ergonomics as `"use workflow"`, the spirit of Microsoft Trace's decorated methods:
 
 ```ts
 // feed.ts — the method itself: a directive marks it AI-rewritable.
 export async function rankFeed(input: RankInput): Promise<Photo[]> {
-  "use trainable";                                              // the optimizer owns this body
+  "use training";                                               // the optimizer owns this body
   return [...input.candidates].sort((a, b) => b.likes - a.likes);   // your baseline / fallback
 }
 ```
 
-The groundings the optimizer needs aren't magic comments — they're a **typed registration** next to the function (intent, a contract, a rubric):
+The groundings the optimizer needs aren't magic comments — they're a **typed registration** next to the function (intent, a contract, a rubric). This is the substrate the builder declaration form compiles to; you write it by hand only when grounding a method you authored:
 
 ```ts
 // feed.training.ts
-import { trainable } from "@hobo/bindles";
+import { training } from "@hobo/runtime";
 import { z } from "zod";
 import { rankFeed } from "./feed";
 
-export default trainable(rankFeed, {
+export default training(rankFeed, {
   intent:   "Order photos to maximize dwell without burying brand-new sellers.",
   contract: {
     input: RankInput, output: z.array(Photo),
@@ -792,7 +792,7 @@ snapshop is provider-agnostic application code that **never changed** as it move
 
 | Role | Reads | Writes | Runs | Never touches |
 |---|---|---|---|---|
-| **App developer** | `hobo inspect` | `app.ts`, `feed.ts` (`"use trainable"`), `cart.ts` | `hobo dev`, `hobo up` | clouds, IAM, YAML, deploy tools |
+| **App developer** | `hobo inspect` | `app.ts`, `feed.ts` (`"use training"`), `cart.ts` | `hobo dev`, `hobo up` | clouds, IAM, YAML, deploy tools |
 | **Platform engineer** | `match.Decided` | `platform/yard.ts` (`.register`), `resources.ts` (overrides only) | `hobo up ./platform` | app business logic |
 | **GitOps** | plan + cost + preview URL on PRs | `delivery/pipelines.ts`, flags/experiments | `git push` → CI `hobo up` | manual deploys |
 | **SecOps** | `policy.Decided` (OCSF) | `security/policy.ts`, `.allow()` scopes | gates on every `up` | static secrets |

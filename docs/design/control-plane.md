@@ -260,7 +260,7 @@ flowchart TD
 #### IaC backends
 - **Pulumi Automation API** = primary (programmatic, multi-cloud, TS-native, real language for compositions).
 - **Crossplane** = the adapter used when a Camp's substrate is Kubernetes (compositions + managed resources; reconciliation delegated to k8s controllers).
-- **OpenTofu** = open-source HCL path (wrap the binary; state via supported backends).
+- **OpenTofu** = open-source HCL path (wrap the binary; state via supported backends). One adapter (`@hobo/iac-terraform`) serves the whole HCL lane: it drives the OpenTofu (`tofu`, default) or Terraform (`terraform`) binary interchangeably — they share the plan/apply/state protocol — so "Terraform support" is a binary switch, not a second adapter.
 - **CDKTF** = **import-only** (HashiCorp sunset) — read existing stacks, don't author new.
 - Provider-specific IaC config is passed via `.with(...)` too (e.g. Pulumi stack settings, OpenTofu backend, Crossplane composition selectors).
 

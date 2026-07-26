@@ -66,27 +66,6 @@ const shikiThemes = {
 					themes={shikiThemes}
 					defaultColor={false}
 				/>
-				<div class="terminal-run">
-					<div><span class="ps1">$</span> hobo up --camp prod</div>
-					<div>
-						<span class="ev">Planned</span>
-						<span class="ev">Provisioning</span>
-						<span class="ev">Provisioned</span>
-						<span class="ev ok">Deployed ✓</span>
-					</div>
-					<div class="migrate">
-						…three weeks later: cheaper camp found down the line
-					</div>
-					<div>
-						<span class="ev">MigrationPlanned</span>
-						<span class="ev">PolicyPassed</span>
-						<span class="ev ok">Migrated ✓</span>
-						<span class="save">−$212/mo</span>
-					</div>
-					<div class="dim">
-						every move is an event — replayable, auditable, reversible
-					</div>
-				</div>
 				</div>
 			</div>
 		</div>
@@ -344,6 +323,9 @@ const shikiThemes = {
 							generation pipeline writes it; the port's contract suite
 							certifies it. More homes on the map, cheaper moves for
 							everyone.
+							<a href={href("/guide/custom-providers/")}
+								>Build a custom provider →</a
+							>
 						</p>
 					</div>
 				</div>
@@ -356,7 +338,10 @@ const shikiThemes = {
 					</p>
 					<p>
 						Start with the machine-readable briefing at
-						<a href={href("/llms.txt")}><code>llms.txt</code></a>, then the
+						<a href={href("/llms.txt")}><code>llms.txt</code></a> (or the whole
+						site in one document at
+						<a href={href("/llms-full.txt")}><code>llms-full.txt</code></a>),
+						then the
 						<a href={href("/agents/")}>agent docs</a> for the MCP surface
 						and how to earn credentials.
 					</p>

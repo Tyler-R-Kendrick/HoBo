@@ -81,6 +81,28 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 			for (const t of document.querySelectorAll(".prose table")) {
 				t.tabIndex = 0;
 			}
+			// Every code block gets a copy button — for humans and agents alike.
+			for (const pre of document.querySelectorAll("pre")) {
+				const wrap = document.createElement("div");
+				wrap.className = "code-block";
+				pre.replaceWith(wrap);
+				wrap.append(pre);
+				const btn = document.createElement("button");
+				btn.type = "button";
+				btn.className = "code-copy";
+				btn.textContent = "Copy";
+				btn.setAttribute("aria-label", "Copy code to clipboard");
+				btn.addEventListener("click", async () => {
+					await navigator.clipboard.writeText(pre.innerText);
+					btn.textContent = "Copied ✓";
+					btn.classList.add("copied");
+					setTimeout(() => {
+						btn.textContent = "Copy";
+						btn.classList.remove("copied");
+					}, 2000);
+				});
+				wrap.append(btn);
+			}
 		</script>
 	</body>
 </html>

@@ -181,7 +181,17 @@ ${verbRows}
 `;
 }
 
-export function verbHelpText(verbName: string): string {
+export interface VerbHelpOptions {
+	// Whether the current composition wires a real handler for this verb
+	// (registry.isImplemented). Omitted: the status line is left out — help
+	// rendered without registry knowledge must not claim either way.
+	readonly implemented?: boolean;
+}
+
+export function verbHelpText(
+	verbName: string,
+	options: VerbHelpOptions = {},
+): string {
 	const verb = CANONICAL_VERBS.find((candidate) => candidate.name === verbName);
 	if (!verb) {
 		throw new Error(`verbHelpText called with unknown verb: ${verbName}`);
@@ -199,14 +209,54 @@ Scaffold an offline SDK program with checked-in generated bindings.
 `;
 	}
 
+	if (verb.name === "stub") {
+		return `HoBo stub
+
+Usage:
+  hobo stub [global flags] [--check]
+
+Role: ${verb.role}
+
+Materialize the contract-backed trainable stubs codegen emits for the
+project's bindle steps (src/_generated/trainables.ts) — one training.define()
+per step, served from its contract example until a training artifact is
+promoted. Pass --check to validate the generated tree without writing.
+`;
+	}
+
+	if (verb.name === "codegen") {
+		return `HoBo codegen
+
+Usage:
+  hobo codegen [global flags] [--check]
+
+Role: ${verb.role}
+
+Regenerate the project's checked-in src/_generated/ tree from its
+WIT/Zod/allow/bindle sources. Pass --check to report drift without writing
+(exits non-zero when the tree is stale) — the same generator hobo build
+asserts freshness against.
+`;
+	}
+
+	const statusLine =
+		options.implemented === undefined
+			? ""
+			: options.implemented
+				? "Status: implemented in this composition\n"
+				: "Status: not yet implemented in this composition\n";
+	const body =
+		options.implemented === true
+			? `This shell dispatches ${verb.name} to the handler wired by the composition root.`
+			: `This shell dispatches ${verb.name} through the shared command registry. Un-wired compositions serve the intentional stub envelope until the owning slice injects a handler.`;
+
 	return `HoBo ${verb.name}
 
 Usage:
   hobo ${verb.name} [global flags] [args]
 
 Role: ${verb.role}
-Status: not yet implemented
-
-This shell dispatches ${verb.name} through the shared command registry. The verb behavior is intentionally stubbed until its owning slice lands.
+${statusLine}
+${body}
 `;
 }

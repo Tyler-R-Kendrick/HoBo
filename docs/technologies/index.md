@@ -11,6 +11,7 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **CUE** | Typed config/data/validation language (config superset of JSON) | [`cue.md`](./cue.md) |
 | **Microsoft Trace** | Framework for tracing + optimizing LLM/agent workflows (auto-diff for prompts/code) | [`microsoft-trace.md`](./microsoft-trace.md) |
 | **Agent Lightning** | Microsoft RL/optimization trainer for agents (decouples training from execution) | [`agent-lightning.md`](./agent-lightning.md) |
+| **agentV** | Local-first agent-evals framework; deterministic + LLM graders over stored traces, per-metric scores | [`agentv.md`](./agentv.md) |
 | **DSPy** | Declarative framework for programming (not prompting) LMs; compiles + optimizes pipelines | [`dspy.md`](./dspy.md) |
 | **HolmesGPT / CNCF SRE Agent** | AI SRE / root-cause investigation agent over observability + runbooks | [`holmesgpt-sre-agent.md`](./holmesgpt-sre-agent.md) |
 | **StackStorm (st2)** | Event-driven automation / runbook engine ("IFTTT for ops") | [`stackstorm.md`](./stackstorm.md) |
@@ -21,7 +22,7 @@ Each file has: **What it is** · **Key features** (the documentation) · **Relev
 | **Pivotal Cloud Foundry (PCF)** | The original opinionated app PaaS (`cf push`, buildpacks, droplets) | [`cloud-foundry-pcf.md`](./cloud-foundry-pcf.md) |
 | **Prometheus AlertManager** | Alert routing/grouping/silencing/inhibition for Prometheus | [`prometheus-alertmanager.md`](./prometheus-alertmanager.md) |
 
-> See also: the AI-training trio (Trace · Agent Lightning · DSPy) directly informs HoBo's **`training-engine`** ([ADR-0025](../design/adr/06-ai-generation-operators.md#adr-0025)/[Plan 23](../design/forge-generated-stack.md#plan-23)); OPA/Rego and Pact are the canonical **optional providers** behind HoBo's policy ([Plan 29](../design/contracts-policy-flags.md#plan-29)) and contract ([Plan 29](../design/contracts-policy-flags.md#plan-29)) ports.
+> See also: the AI-training trio (Trace · Agent Lightning · DSPy) directly informs HoBo's **`training-engine`** ([ADR-0025](../design/adr/03-data-plane.md#adr-0025)/[Plan 23](../design/generated-stack.md#plan-23)); OPA/Rego and Pact are the canonical **optional providers** behind HoBo's policy ([Plan 29](../design/contracts-policy-flags.md#plan-29)) and contract ([Plan 29](../design/contracts-policy-flags.md#plan-29)) ports.
 
 ## Sources & fair use
 These are **third-party reference captures**. Each file links its upstream source; factual interface/feature surface is quoted under **fair use for commentary, comparison, and interoperability analysis**, limited to what's needed to map each to HoBo. All trademarks/copyright remain their owners'; nothing here grants rights to that material, and these captures are not part of the HoBo product.

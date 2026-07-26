@@ -43,6 +43,7 @@ export type ProjectionSource =
   | "AvailabilityView"
   | "SupportHandoffView";
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardFixtureScope proto message in data-models/.
 export interface DashboardFixtureScope {
   readonly tenantFirst: true;
   readonly tenant: string;
@@ -52,22 +53,26 @@ export interface DashboardFixtureScope {
   readonly redactionState: "none" | "masked" | "denied";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardFixtureOwner proto message in data-models/.
 export interface DashboardFixtureOwner {
   readonly actor: string;
   readonly initiative: "Deployment Dashboard & Topology Explorer";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardFixtureFreshness proto message in data-models/.
 export interface DashboardFixtureFreshness {
   readonly projectionSequence: number;
   readonly maxAgeSeconds: number;
   readonly observedAt: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardFixtureRedaction proto message in data-models/.
 export interface DashboardFixtureRedaction {
   readonly visibleFields: readonly string[];
   readonly withheldFields: readonly string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardFixtureCoveragePath proto message in data-models/.
 export interface DashboardFixtureCoveragePath {
   readonly id: DashboardCoveragePath;
   readonly fixtureIds: readonly string[];
@@ -76,6 +81,7 @@ export interface DashboardFixtureCoveragePath {
   readonly safeOutcome: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardReadStateFixture proto message in data-models/.
 export interface DashboardReadStateFixture {
   readonly state: DashboardReadState;
   readonly fixtureId: string;
@@ -99,6 +105,7 @@ export interface DashboardReadStateFixture {
   readonly redaction: DashboardFixtureRedaction;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardFreshnessRbacFixtureProof proto message in data-models/.
 export interface DashboardFreshnessRbacFixtureProof {
   readonly issue: "HOBO-545";
   readonly phase: "M1";

@@ -211,3 +211,42 @@ Blocked follow-up issues (non-exhaustive; see Linear project Build S2):
 |---|---|
 | S2-02 | `@hobo/runtime-postgres` production runtime ports |
 | S2-03..S2-11 | Remaining S2 lane implementation slices (cloud, CLI, IaC, provider, policy, contracts) |
+
+## Stage Gate Rehearsal Evidence (S2-09)
+
+The executable S2 gate is `.github/workflows/s2-stage-gate.yml` (added for S2-09). It has two lanes
+per the repo's no-live-E2E-in-the-blocking-lane policy:
+
+- **rehearsal** (CI, mocked, no cloud) — the in-memory Yard rehearsal encoded by the production
+  `@hobo/cloud` and `@hobo/contracts` suites. The Yard is constructed exactly as the gate specifies:
+  a `@hobo/runtime-local` `createRuntimeLocalEventStore` + `createInMemoryActorHost`
+  (`@hobo/data`) + `createInProcessExecutor` over a mock `IacProvider`, with
+  `createRegistryFromProviders([createCloudflareProvider()])` (`@hobo/provider-cloudflare`) as the
+  catalog projection. Gate body: `pnpm --filter @hobo/cloud test && pnpm --filter @hobo/contracts test`.
+- **live** (`workflow_dispatch`-only, `environment: s2-live-cloud`, keyless `id-token: write`,
+  guaranteed `if: always()` teardown) — the same rehearsal against a real Cloudflare Yard. **Held**:
+  no live-cloud wiring exists yet, so the deploy/teardown steps are documented placeholders.
+
+### Runnable-gate assertions covered by the rehearsal
+
+| Runnable gate assertion (from above) | Production test | Assertion |
+|---|---|---|
+| (2) Yard killed mid-deploy resumes from the event log; timeline projection reconstructs the run | `packages/cloud/test/orchestrator.test.ts` — "resumes a deploy killed mid-Provisioning by folding the event stream" | A crash during `resource.Provisioning` of `database` leaves no terminal fact; a fresh actor host/broker/executor over the same EventStore replays to `deployment.Deployed` with exactly one `resource.Provisioning` for `database` (no duplicate restart); the `DeploymentView` projection rebuilds the run from zero. |
+| (3) Provisioning failure triggers reverse-dependency saga compensation | `packages/cloud/test/orchestrator.test.ts` — "rolls back and destroys provisioned actors in reverse-dependency order" | A seeded `web` apply failure drives `deployment.RolledBack`, then `resource.Destroyed` for `api → cache → database → network` (dependents-first); the projection shows `web: failed`, `network: destroyed`. |
+| (4) Gatekeeper blocks an unsafe/incompatible change with an explainable, event-sourced reason (FR-050/051/052) | `packages/cloud/test/gatekeeper.test.ts` — "DENIES a seeded breaking contract change with an explainable machine-readable reason" | A breaking contract candidate is denied with `decision: "deny"`, a machine-readable reason `code: "required-field-removed"` naming the removed field `tenantId`, while still emitting `policy.Decided` (governed-by-default even on allow). |
+| (1)/(4) Rejection carries machine-readable remediation an agent can act on | `packages/cloud/test/planner.test.ts` + `gateway.test.ts` — "unsatisfiable resource -> deployment.PlanRejected" | An unsatisfiable port yields `deployment.PlanRejected` carrying a remediation `code: "capability.port-unavailable"` with a `requiredPort` and human remediation text — the agent-self-correction input. |
+
+### Local rehearsal run (2026-07-17)
+
+CI runners are down account-wide (infrastructure fault), so the CI-run cells are **pending runner
+restoration**. The gate body was run locally against the production packages and is green:
+
+```text
+pnpm --filter @hobo/cloud test        ->  7 files / 39 tests passed
+pnpm --filter @hobo/contracts test    ->  4 files / 18 tests passed
+```
+
+Assertion (1) — a real cloud deploy that serves traffic — is **not** covered by the rehearsal lane
+(it is the held `live` lane); the rehearsal proves the crash-resume, compensation, and Gatekeeper
+arms against the mocked Yard. This is an honest scope boundary: the S2 record is accepted on a real
+cloud only when the `live` lane runs.

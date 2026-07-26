@@ -1,0 +1,18 @@
+{
+  "layer": "epic",
+  "slug": "progressive-delivery-harness",
+  "title": "Progressive Delivery Harness Reference Implementation",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

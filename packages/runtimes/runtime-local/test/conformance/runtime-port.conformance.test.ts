@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { runRuntimePortDurabilitySuite } from "@hobo/conformance/runtime-port";
-
-import { createBrokenFenceRuntimeBackend } from "./helpers.js";
-import { createRuntimeLocalDurabilityBackend } from "./helpers.js";
+import { describe, expect, it } from "vitest";
+import {
+	createBrokenFenceRuntimeBackend,
+	createRuntimeLocalDurabilityBackend,
+} from "./helpers.js";
 
 describe("@hobo/runtime-local runtime-port conformance gate", () => {
 	it("passes the full runtime-port durability suite", async () => {

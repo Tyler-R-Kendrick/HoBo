@@ -221,3 +221,54 @@ mocked at the proof boundary.
 ## Follow-Up Gate
 
 Do not start S3-02..S3-09 until reviewers accept this record and the three executable proofs pass.
+
+## Stage Gate Rehearsal Evidence (S3-07)
+
+The executable S3 gate is `.github/workflows/s3-stage-gate.yml` (added for S3-07). A deterministic
+scripted agent (not an LLM) drives deploy exclusively through the `@hobo/mcp` control surface. Three
+jobs:
+
+- **agent-e2e** (rehearsal) — the production `@hobo/mcp` + `@hobo/identity` + `@hobo/cloud` suites.
+  Gate body: `pnpm --filter @hobo/mcp test && pnpm --filter @hobo/identity test && pnpm --filter @hobo/cloud test`.
+- **adversarial** — the prompt-injection corpus (fail-closed) + per-principal / per-tenant rate
+  limits with typed backpressure. Gate body:
+  `pnpm --filter @hobo/mcp exec vitest run test/injection.test.ts test/rate-limit.test.ts`.
+- **live** (`workflow_dispatch`-only, `environment: s3-live-cloud`, keyless `id-token: write`,
+  guaranteed `if: always()` teardown) — the same agent run against a real cloud. **Held**: no
+  live-cloud wiring exists yet.
+
+### Runnable-gate assertions covered by the rehearsal
+
+| Runnable gate assertion (from the checklist above) | Production test | Assertion |
+|---|---|---|
+| An agent deploys a bindle via MCP using only brokered tokens | `packages/mcp/test/server.test.ts` — "reaches deployment.Deployed over the shared @hobo/cli dispatch path" | The scripted agent calls `plan` then `up` through the MCP server (same `CANONICAL_VERBS` dispatch as the CLI) and reaches `deployment.Deployed`; every authorized call leaves an audited allow decision with never-compact retention. |
+| Brokered short-lived tokens; no static secrets; brokered ratio | `packages/identity/test/token-broker.test.ts` — "keeps the brokered ratio >=99% across a batch (NFR-005)" and "no static vaulted secret leaks outside the vault" | 100/100 grants are federated (`brokeredRatio() >= 0.99`); the vaulted root secret never crosses the boundary; `token.Granted` retention is never-compacted. |
+| `token.*` events exist and the run is replayable; credential audit present | `packages/cloud/test/credential-audit.test.ts` — "reconstructs the per-grant lifecycle correlated by correlationId" + "rebuild-from-zero equals the live fold" | The CredentialAudit projection folds `identity.Issued` → `token.Granted` → `token.Used` → `token.Revoked` correlated by `correlationId`; rebuild-from-zero equals live; pre-floor audit events survive compaction (NFR-018). |
+| A seeded rejection with remediation → the agent self-corrects | `packages/cloud/test/planner.test.ts` + `gateway.test.ts` — "unsatisfiable resource -> deployment.PlanRejected" | `deployment.PlanRejected` carries a machine-readable remediation (`code: "capability.port-unavailable"`, `requiredPort`, remediation text) — the field the scripted agent follows to re-plan. |
+| `request_token` scope bounded by `.allow()`; deny-by-default; inert tool output | `packages/mcp/test/auth.test.ts` — deny-by-default scope + SVID + "inert-tool-output invariant" | An unscoped tool call is a typed `MCP_SCOPE_DENIED` with an audited deny decision and inert `null` output; a real issued JWT-SVID gates tools by scope; a poisoned tool result never widens the authorized tool set (ADR-0023). |
+
+### Adversarial job assertions
+
+| Assertion | Production test |
+|---|---|
+| Every prompt-injection corpus payload (input + output vectors) fails closed: never widens authority, never dispatches a privileged tool | `packages/mcp/test/injection.test.ts` — "no case widens authority or dispatches an unauthorized tool" |
+| Per-(tenant, principal) rate limits + quotas apply typed backpressure BEFORE dispatch; a flooding principal is throttled while a control principal is unaffected | `packages/mcp/test/rate-limit.test.ts` — "throttles a flooding principal with a typed error while a control principal is unaffected" |
+
+### Local rehearsal run (2026-07-17)
+
+CI runners are down account-wide (infrastructure fault), so the CI-run cells are **pending runner
+restoration**. The gate bodies were run locally against the production packages and are green:
+
+```text
+pnpm --filter @hobo/mcp test                                              ->  6 files / 24 tests passed
+pnpm --filter @hobo/identity test                                         ->  4 files / 24 tests passed
+pnpm --filter @hobo/cloud test                                            ->  7 files / 39 tests passed
+pnpm --filter @hobo/mcp exec vitest run test/injection.test.ts test/rate-limit.test.ts  ->  2 files / 9 tests passed
+```
+
+The "high-risk action blocks on a policy gate until approved" and "Registry serves capabilities from
+an ingested Manifest" checklist lines are covered by the `@hobo/contracts` Gatekeeper
+(`require-approval` obligation path) and the `@hobo/cloud` registry projection respectively, and are
+run in full by the S2 gate's `@hobo/contracts`/`@hobo/cloud` lanes; the S3 rehearsal focuses on the
+brokered-token, credential-audit, self-correction, and adversarial arms. A real cloud deploy remains
+the held `live` lane — an honest scope boundary.

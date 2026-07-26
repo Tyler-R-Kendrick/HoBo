@@ -21,11 +21,13 @@ type FixtureSource = (typeof REQUIRED_FIXTURE_SOURCES)[number];
 type ProofMode = "reference fixture";
 type MachineStatus = "ok" | "warning" | "blocked" | "handoff";
 
+// domain-view: parse-produced draft-proof record; its wire form is the CommandTranscript proto message in data-models/.
 type CommandTranscript = {
   readonly command: string;
   readonly exitCode: 0 | 1 | 2;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MachineResult proto message in data-models/.
 type MachineResult = {
   readonly status: MachineStatus;
   readonly code: string;
@@ -33,6 +35,7 @@ type MachineResult = {
   readonly remediation: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RedactionEvidence proto message in data-models/.
 type RedactionEvidence = {
   readonly redacted: true;
   readonly classification: "tenant-safe" | "support-safe";
@@ -40,18 +43,21 @@ type RedactionEvidence = {
   readonly withheldFields: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the HumanTranscript proto message in data-models/.
 type HumanTranscript = {
   readonly summary: string;
   readonly lines: readonly string[];
   readonly accessibilityNotes: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the McpToolCall proto message in data-models/.
 type McpToolCall = {
   readonly tool: "hobo.inspect" | "hobo.logs" | "hobo.doctor";
   readonly input: Record<string, string | boolean>;
   readonly result: MachineResult;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ManageTranscriptScene proto message in data-models/.
 export type ManageTranscriptScene = {
   readonly state: ManageState;
   readonly fixtureId: `hobo-574-${string}`;
@@ -65,6 +71,7 @@ export type ManageTranscriptScene = {
   readonly redaction: RedactionEvidence;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ManageTranscriptPrototype proto message in data-models/.
 type ManageTranscriptPrototype = {
   readonly issue: "HOBO-574";
   readonly phase: "M2";

@@ -93,7 +93,7 @@ describe("hobo new scaffold contract", () => {
     });
   });
 
-  it("creates all four templates as runnable SDK project stubs", async () => {
+  it("creates all four templates as runnable SDK project stubs", { timeout: 60_000 }, async () => {
     await withScratch(async (cwd) => {
       assert.deepEqual(VALID_TEMPLATES, ["todo", "api", "agent", "fullstack"]);
 

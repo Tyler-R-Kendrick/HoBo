@@ -1,3 +1,4 @@
+// domain-view: parse-produced draft-proof record; its wire form is the TriggerFiredEvent proto message in data-models/.
 export interface TriggerFiredEvent {
   readonly type: "trigger.Fired";
   readonly triggerId: string;

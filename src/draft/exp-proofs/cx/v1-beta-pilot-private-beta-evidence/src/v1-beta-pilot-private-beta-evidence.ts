@@ -1,6 +1,7 @@
 export type EvidenceStatus = "complete" | "missing" | "accepted-limitation";
 export type RiskLevel = "low" | "medium" | "high";
 
+// domain-view: parse-produced draft-proof record; its wire form is the RequiredEvidence proto message in data-models/.
 export type RequiredEvidence = {
   readonly id: string;
   readonly ownerProject: string;
@@ -8,6 +9,7 @@ export type RequiredEvidence = {
   readonly status: EvidenceStatus;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the BlockerState proto message in data-models/.
 export type BlockerState = {
   readonly id: string;
   readonly status: "open" | "resolved" | "accepted-limitation";
@@ -15,6 +17,7 @@ export type BlockerState = {
   readonly disposition: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the AcceptedRisk proto message in data-models/.
 export type AcceptedRisk = {
   readonly id: string;
   readonly owner: string;
@@ -22,11 +25,13 @@ export type AcceptedRisk = {
   readonly launchNoteOrFollowUp: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseCutline proto message in data-models/.
 export type ReleaseCutline = {
   readonly consumesProjects: readonly string[];
   readonly blocksReleaseCandidateWithoutDependencyDisposition: boolean;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the PrivateBetaEvidenceGate proto message in data-models/.
 export type PrivateBetaEvidenceGate = {
   readonly issue: "HOBO-463";
   readonly project: "V1 Beta Pilot & Feedback Loop";

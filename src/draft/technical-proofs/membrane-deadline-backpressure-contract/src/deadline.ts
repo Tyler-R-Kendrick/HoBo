@@ -1,3 +1,4 @@
+// domain-view: parse-produced draft-proof record; its wire form is the Deadline proto message in data-models/.
 export interface Deadline {
   source: "caller" | "inherited";
   startedAtMs: number;

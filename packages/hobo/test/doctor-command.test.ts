@@ -1,0 +1,75 @@
+import { describe, expect, it } from "vitest";
+
+import { createDoctorCommand } from "../src/doctor-command.js";
+
+// A minimal CommandRunInput: `doctor` only reads `emitProgress`, so the rest is
+// present to satisfy the contract shape without exercising it.
+function runInput(emit: (m: string) => void) {
+	return {
+		context: {} as never,
+		flags: {} as never,
+		args: [] as readonly string[],
+		verb: "doctor",
+		emitProgress: emit,
+	};
+}
+
+describe("createDoctorCommand", () => {
+	it("reports a live Cloudflare target with no remediation", async () => {
+		const progress: string[] = [];
+		const command = createDoctorCommand({
+			env: { CLOUDFLARE_API_TOKEN: "cf", CLOUDFLARE_ACCOUNT_ID: "acct" },
+		});
+
+		const result = await command.run(runInput((m) => progress.push(m)));
+
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("live");
+		expect(result.code).toBe("HOBO_DEPLOY_LIVE");
+		expect(result.remediation).toBeUndefined();
+		expect(result.data).toMatchObject({
+			command: "doctor",
+			backend: "cloudflare",
+			live: true,
+		});
+		expect(progress).toEqual([result.message]);
+	});
+
+	it("reports a live Vercel target when only VERCEL_TOKEN is set", async () => {
+		const command = createDoctorCommand({ env: { VERCEL_TOKEN: "vc" } });
+
+		const result = await command.run(runInput(() => {}));
+
+		expect(result.status).toBe("live");
+		expect(result.data).toMatchObject({ backend: "vercel", live: true });
+		expect(result.remediation).toBeUndefined();
+	});
+
+	it("reports the in-memory fallback and how to activate each real backend", async () => {
+		const command = createDoctorCommand({ env: {} });
+
+		const result = await command.run(runInput(() => {}));
+
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("in-memory");
+		expect(result.code).toBe("HOBO_DEPLOY_MOCKED");
+		expect(result.remediation).toEqual([
+			"Set VERCEL_TOKEN to deploy for real via vercel.",
+			"Set CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID to deploy for real via cloudflare.",
+		]);
+		expect(result.data).toMatchObject({ backend: "in-memory", live: false });
+	});
+
+	it("names the single missing Cloudflare var when only one of the pair is set", async () => {
+		const command = createDoctorCommand({
+			env: { CLOUDFLARE_API_TOKEN: "cf" },
+		});
+
+		const result = await command.run(runInput(() => {}));
+
+		expect(result.status).toBe("in-memory");
+		expect(result.remediation).toContain(
+			"Set CLOUDFLARE_ACCOUNT_ID to deploy for real via cloudflare.",
+		);
+	});
+});

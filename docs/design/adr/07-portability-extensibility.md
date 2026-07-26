@@ -441,12 +441,48 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **(+)** The release program has a decision record; "M0" in any Productization doc resolves to one canonical M0–M4 definition inside `docs/design/`.
 - **(−)** Two ladders coexist — capability scope stays flat while readiness evidence is phased — so future docs must state which surface they phase.
 
+## ADR-0122
+**Cross-provider overlay mesh: WireGuard is the portable default behind a `mesh` port, with provider-native peering (VPC peering/PrivateLink) and managed meshes (Tailscale/Cilium ClusterMesh) as opt-in per-Junction adapters — only-registered-considered.**
+
+### Context
+ADR-P2 asked which overlay-mesh technology carries cross-provider connectivity (WireGuard vs eBPF/Cilium vs a SaaS like Tailscale). The Junction federates peer Yards across providers ([ADR-0043](#adr-0043)) and an air-gapped/zero-egress Yard must still form secure links ([ADR-0036](#adr-0036)); connectivity tiers are declared in [Plan 12](../security-networking.md#plan-12). The choice must not wire in a single vendor.
+
+### Decision
+1. **Overlay mesh is a `mesh` port; WireGuard is the portable default** — kernel-native, simple, self-host- and air-gap-friendly (no third-party control plane, works zero-egress). It is the floor every Junction can rely on.
+2. **Opt-in adapters, only-registered-considered** ([ADR-0073](#adr-0073)): **provider-native peering** (AWS VPC peering/PrivateLink, Azure VNet peering, GCP VPC peering) for lowest-latency same-cloud links with no extra hop; **managed mesh** (Tailscale/Headscale, Cilium ClusterMesh) where an org already runs one. Selection is per-Junction config, recorded, deny-by-default.
+3. **The mesh never sits on the app request path's correctness** — it carries control-plane/cross-Camp replication traffic; data-plane reads use the declared replication topology ([ADR-0040](01-architecture-core.md#adr-0040)), so a mesh outage degrades to bounded-staleness, not incorrectness.
+4. **Conformance:** each `mesh` adapter certifies encrypted transport, peer authentication via the platform's own identity (SVID, [Plan 6](../ai-native-agent-auth.md#plan-06)), and zero-egress operation for the WireGuard floor.
+
+### Consequences
+- **(+)** Resolves ADR-P2 without vendor lock-in: a portable WireGuard floor that works air-gapped, with provider-native/managed escape hatches for latency or existing investment.
+- **(+)** Composes with the Junction ([ADR-0043](#adr-0043)) and the zero-egress profile ([ADR-0036](#adr-0036)) rather than adding a plane.
+- **(−)** A portable WireGuard mesh won't match a tuned provider-native fabric on latency/throughput — hence the opt-in adapters; and each adapter is one more conformance target.
+
+## ADR-0127
+**Lakebed is an accepted deploy-target adapter (`@hobo/provider-lakebed`): honest-partial capabilities, deploy-driver realization, opt-in approval — and rejected as a Yard substrate.**
+
+### Context
+Lakebed is the named head-on competitor (agent-native closed PaaS — [lakebed.md](../../competitors/lakebed.md)), and until now it appeared only as a competitive frame ([index.md](../index.md#competitive-frame-vs-lakebed-what-we-deliberately-do-differently)) and as an importer source (Lakebed Capsule import, [ADR-0041](#adr-0041)). The default-providers program ([plan 0005](../../plans/0005-default-providers.md), HOBO-714) asked whether HoBo should also deploy *to* Lakebed, giving the importer story its outbound twin: a Bindle written for HoBo lands on the competitor's runtime unedited.
+
+### Decision
+1. **Accepted as a deploy-target adapter.** `@hobo/provider-lakebed` ships in the intended seed set ([Plan 4](../control-plane.md#plan-04) intended-providers table) behind the standard `CloudProvider` authoring contract (HOBO-87) — nothing about the competitor gets a bespoke seam.
+2. **Honest-partial capabilities are the point.** The adapter's feature lists are deliberately narrow (Capsule compute is not `container`; Reactive DB is not `postgres`; File Store is not `s3-compatible`): `require` misses surface as `partial(missing)` verdicts with author-time remediation ([ADR-0033](01-architecture-core.md#adr-0033)) naming a registered provider that does satisfy them — never fabricated parity with a closed runtime.
+3. **Realization is a Driver, not IaC.** A closed PaaS exposes a deploy surface, not infrastructure state, so `realize()` emits a `lakebed-deploy` **driver program** (`hobo.driver-program/v1`, one Capsule deploy per deployment) per the [Plan 25](../platform-engineering.md#plan-25) driver taxonomy — no fake Pulumi/Terraform program for a runtime that has neither.
+4. **Opt-in approval.** The catalog entry registers **held** by default (`hobo add lakebed` records `provider.Registered` only; a second `hobo add lakebed` records `provider.Approved`) — deploying to the competitor's runtime is an explicit operator decision, not a default (HOBO-710 approval gate).
+5. **Rejected as a Yard substrate.** Lakebed never hosts HoBo control planes, Camps, or Executors; cross-cloud composition with a Lakebed-hosted app is the Junction's business ([ADR-0043](#adr-0043)), out of scope here. Credentials stay secretless-first: broker-minted, deployment-scoped deploy tokens ([Plan 6](../ai-native-agent-auth.md#plan-06)), no static vendor tokens.
+
+### Consequences
+- **(+)** The portability promise gets its sharpest demonstration — the same Bindle targets the head-on competitor — and the [ADR-0041](#adr-0041) Capsule importer gains a symmetric exit path, strengthening the no-lock-in story in both directions.
+- **(−)** A deliberately-partial provider will lose most Matching contests and needs explicit approval to participate at all; the driver lane adds a second realization shape (driver programs alongside IaC programs) the Executor surface must eventually dispatch.
+
 ## Open / proposed decisions (ADR-Pn)
-- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — [Plan 5](../reliability-observability-cost.md#plan-05).
-- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — [Plan 12](../security-networking.md#plan-12).
+
+> **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.
+- **ADR-P1:** consensus for the built-in engine (own Raft vs delegate to the Camp's runtime store) — **Resolved by [ADR-0121](01-architecture-core.md#adr-0121)**: delegate to the substrate log/store by default (single-writer quorum, active-passive), embedded library-Raft only for the self-host floor, never hand-rolled — [Plan 5](../reliability-observability-cost.md#plan-05).
+- **ADR-P2:** overlay-mesh technology for cross-provider connectivity — **Resolved by [ADR-0122](#adr-0122)**: WireGuard portable default behind a `mesh` port, provider-native peering + managed meshes as opt-in adapters — [Plan 12](../security-networking.md#plan-12).
 - **ADR-P3:** policy language for ABAC — **Resolved by [ADR-0015](02-identity-security.md#adr-0015)** (typed TS default; OPA/Cedar optional providers behind the `policy-engine` port).
 - **ADR-P4:** default Planner objective — **Resolved by [ADR-0033](01-architecture-core.md#adr-0033)**: configurable `cost`|`latency`|`single-provider`|`carbon`, **default min-cost within constraints**, applied as a deterministic lexicographic tiebreak (no on-path solver/LLM) — [Plan 5](../reliability-observability-cost.md#plan-05)/[Plan 25](../platform-engineering.md#plan-25).
-- **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — [Plan 2](../sdk-api.md#plan-02).
-- **ADR-P6:** preemption policy for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
-- **ADR-P7:** oversubscription/density limits per component-host — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
-- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P5:** documented default for the workflow directive vs wrapper (compiler transform depth) — **Resolved by [ADR-0123](01-architecture-core.md#adr-0123)**: explicit `workflow`/`step` wrappers are canonical + language-neutral; the `"use workflow"` directive is opt-in TS sugar with a shallow transform + replay-safety lint — [Plan 2](../sdk-api.md#plan-02).
+- **ADR-P6:** preemption policy for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no preemption (`service` non-preemptible, `job` preemptible), substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P7:** oversubscription/density limits per component-host — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: default no oversubscription (requests = limits), opt-in per-Camp ratio, substrate-delegated — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).
+- **ADR-P8:** capacity-reservation semantics for in-Camp scheduling — **Resolved by [ADR-0124](01-architecture-core.md#adr-0124)**: declarative Camp-level reservation realized via the substrate's primitive, honest about limits — [ADR-0108](01-architecture-core.md#adr-0108), [Plan 20](../wasm-runtime-wit.md#plan-20).

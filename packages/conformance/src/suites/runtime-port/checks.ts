@@ -1,7 +1,7 @@
 import { parseIdempotencyKey, parseQueueName } from "@hobo/core";
 
 import { proveCheckoutDurability } from "./checkout-proof.js";
-import { readEventStream, type RuntimeDurabilityBackend } from "./types.js";
+import { type RuntimeDurabilityBackend, readEventStream } from "./types.js";
 
 type CheckDefinition = {
 	checkId: string;

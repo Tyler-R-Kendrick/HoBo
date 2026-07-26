@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package hobo.draft.v1;
+
+// Architecture-guard evidence for the S3-02 @hobo/identity draft POC.
+// Design-time contract artifact; not compiled at runtime.
+
+message AttestationBinding {
+  string run_id = 1;
+  string tenant = 2;
+  PrincipalRef parent_principal = 3;
+  CodeVersion code_version = 4;
+  string component_image_digest = 5;
+}
+
+message PrincipalRef {
+  string kind = 1;
+  string id = 2;
+}
+
+message CodeVersion {
+  string digest = 1;
+  string version = 2;
+}
+
+message ScopeEntry {
+  string port = 1;
+  string resource = 2;
+  repeated string verbs = 3;
+}
+
+message JwtSvidRecord {
+  string identity_id = 1;
+  string subject = 2;
+  string svid_ref = 3;
+  repeated ScopeEntry scope = 4;
+  string expires_at = 5;
+  string signer_kid = 6;
+}
+
+message IdentityIssuedEventData {
+  string identity_id = 1;
+  string subject = 2;
+  string svid_ref = 3;
+  repeated ScopeEntry scope = 4;
+  string expires_at = 5;
+}
+
+message IdentityRotatedEventData {
+  string identity_id = 1;
+  string previous_identity_id = 2;
+  string subject = 3;
+  string svid_ref = 4;
+  string expires_at = 5;
+}
+
+message IdentityServiceEvidence {
+  string issue = 1;
+  string summary = 2;
+  repeated string event_families = 3;
+}
+
+// Token-broker records (S2-04). The broker mints per-deploy scoped tokens bound
+// to an SVID; token events share the identity events' never-compact retention.
+
+message TokenScope {
+  string port = 1;
+  string resource = 2;
+  string action = 3;
+}
+
+message VaultedCredentialRef {
+  string reference = 1;
+}
+
+message TokenGrantRecord {
+  string grant_id = 1;
+  string svid_subject = 2;
+  string svid_identity_id = 3;
+  TokenScope scope = 4;
+  string deploy_id = 5;
+  string audience = 6;
+  string issued_at = 7;
+  string expires_at = 8;
+  string token_ref = 9;
+  string vault_reference = 10;
+  string credential_source = 11;   // "oidc-federation" | "vault-static-key"
+  string provider_token_ref = 12;  // set when credential_source = oidc-federation
+}
+
+// S3-03 keyless token exchange (ai-native-agent-auth.md §6.2/§6.8). The broker
+// mints an OIDC assertion (aud = provider) for the attested SVID and exchanges it
+// at the provider STS for a short-lived, resource-scoped provider token.
+
+message OidcFederationAssertion {
+  string issuer = 1;
+  string subject = 2;
+  string audience = 3;
+  TokenScope scope = 4;
+  string issued_at = 5;
+  string expires_at = 6;
+}
+
+message ProviderStsExchangeRequest {
+  string oidc_token = 1;
+  string audience = 2;
+  string subject = 3;
+  TokenScope scope = 4;
+  string now = 5;
+}
+
+// The narrowed provider credential returned by the exchange. The wire record
+// carries the reference, never the raw provider token material.
+message ExchangedProviderCredential {
+  string token_ref = 1;
+  string flow = 2;                 // "oidc-federation"
+  string provider = 3;
+  string audience = 4;
+  TokenScope scope = 5;
+  string issued_at = 6;
+  string expires_at = 7;
+  uint32 expires_in_seconds = 8;
+  bool narrowed = 9;
+}
+
+message TokenGrantedEventData {
+  string grant_id = 1;
+  string svid_subject = 2;
+  string svid_identity_id = 3;
+  string token_ref = 4;
+  TokenScope scope = 5;
+  string expires_at = 6;
+}
+
+message TokenUsedEventData {
+  string grant_id = 1;
+  string svid_subject = 2;
+  string token_ref = 3;
+  TokenScope scope = 4;
+}
+
+message TokenRevokedEventData {
+  string grant_id = 1;
+  string svid_subject = 2;
+  string token_ref = 3;
+  string reason = 4;
+}

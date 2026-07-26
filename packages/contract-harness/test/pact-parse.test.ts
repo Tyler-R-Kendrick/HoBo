@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePactDocument, PactParseError } from "../src/pact.js";
+import { PactParseError, parsePactDocument } from "../src/pact.js";
 
 const validPact = {
 	consumer: { name: "CoreReferenceConsumer" },

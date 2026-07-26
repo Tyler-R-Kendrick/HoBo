@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import { CapabilityDeniedError, evaluateCapabilityGrants } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import { createCapabilityLinkTable } from "../../src/capability/link-table.js";
 

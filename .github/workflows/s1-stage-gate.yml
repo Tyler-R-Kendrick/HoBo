@@ -1,15 +1,16 @@
 name: S1 Stage Gate
 
+# S1-24: this gate runs the PRODUCTION packages (not the src/draft proof).
+# - conformance: @hobo/conformance runtime-port + component-host + sdk-parity vs @hobo/runtime-local
+# - offline:     @hobo/cli `hobo dev` boots the injected runtime-local Camp and serves hello-bindle
+#                offline (docker --network=none, cleared cloud creds)
+# - replay:      @hobo/conformance replay corpus (S1-16) rebuild-from-zero byte-equals live
+# - record:      assembles docs/design/build-s1-stage-gate-acceptance.md's machine record
 on:
   pull_request:
     paths:
       - "packages/**"
-      - "src/draft/technical-proofs/s1-stage-gate/**"
-      - "src/draft/technical-proofs/runtime-port-conformance-contract/**"
-      - "src/draft/technical-proofs/component-host-conformance-suite/**"
-      - "src/draft/technical-proofs/replay-live-equivalence-poc/**"
-      - "src/draft/technical-proofs/hobo-dev-loop-contract/**"
-      - "src/draft/technical-proofs/choreography-saga-engine-contract/**"
+      - "examples/hello-bindle/**"
       - ".github/workflows/s1-stage-gate.yml"
       - "scripts/ci/s1-stage-gate-record.mts"
   push:
@@ -28,7 +29,7 @@ concurrency:
 jobs:
   conformance:
     name: conformance
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -39,12 +40,12 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Runtime-port + component-host conformance
-        run: pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1:conformance
+      - name: Runtime-port + component-host + sdk-parity conformance (vs runtime-local)
+        run: pnpm --filter @hobo/conformance test
 
-  offline-hello-bindle:
+  offline:
     name: offline-hello-bindle
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +56,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Offline hello-bindle (no network, no credentials)
+      - name: Build @hobo/cli and the injected runtime-local Camp (before the network is cut)
+        # The dev-verb test injects @hobo/runtime-local, which is not a declared
+        # @hobo/cli dependency, so build its closure explicitly too.
+        run: pnpm exec turbo run build --filter @hobo/cli... --filter @hobo/runtime-local...
+      - name: Offline hobo dev on hello-bindle (no network, no credentials)
         run: |
           docker run --rm \
             --network=none \
@@ -67,16 +72,16 @@ jobs:
             -e AZURE_CLIENT_ID= \
             -e GOOGLE_APPLICATION_CREDENTIALS= \
             node:24-bookworm-slim \
-            bash -lc 'node --import tsx --test src/draft/technical-proofs/s1-stage-gate/test/s1-stage-gate.offline.test.ts'
+            bash -lc 'node ./node_modules/vitest/vitest.mjs run packages/cli/test/dev-verb.test.ts --no-isolate'
         env:
           AWS_ACCESS_KEY_ID: ""
           AWS_SECRET_ACCESS_KEY: ""
           AZURE_CLIENT_ID: ""
           GOOGLE_APPLICATION_CREDENTIALS: ""
 
-  replay-equals-live:
+  replay:
     name: replay-equals-live
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -87,13 +92,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Replay equals live gate
-        run: pnpm --prefix src/draft/technical-proofs/s1-stage-gate run gate:s1:replay
+      - name: Build conformance dependencies (core + runtime + runtime-local)
+        run: pnpm --filter @hobo/conformance run pretest
+      - name: Replay corpus == live (S1-16, rebuild-from-zero byte-equal)
+        run: pnpm --filter @hobo/conformance exec vitest run test/replay-corpus.test.ts
 
   record:
     name: record
-    needs: [conformance, offline-hello-bindle, replay-equals-live]
-    runs-on: ubuntu-latest
+    needs: [conformance, offline, replay]
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -104,7 +111,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
-      - name: Assemble StageGateS1Record
+      - name: Assemble StageGateS1Record (production)
         run: node --import tsx scripts/ci/s1-stage-gate-record.mts
         env:
           GITHUB_SHA: ${{ github.sha }}
@@ -112,6 +119,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
       - name: Upload s1-stage-gate-record artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: s1-stage-gate-record

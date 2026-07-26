@@ -20,6 +20,7 @@ declare const parsedKnownLimitationsRegisterBrand: unique symbol;
 export type LimitationState = "real" | "beta-only" | "simulated-reference" | "unsupported" | "deferred" | "post-ga";
 export type ReviewGate = (typeof REQUIRED_REVIEW_GATES)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the KnownLimitation proto message in data-models/.
 export type KnownLimitation = {
   readonly id: string;
   readonly summary: string;
@@ -51,6 +52,7 @@ export type ReviewCheckpoint = {
   readonly blocksPublicationWhenStale: boolean;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the KnownLimitationsRegister proto message in data-models/.
 export type KnownLimitationsRegister = {
   readonly schema: string;
   readonly issue: "HOBO-485";

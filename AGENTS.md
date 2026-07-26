@@ -1,6 +1,6 @@
 # Agent tooling for this repo
 
-This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with twelve installable agent tools plus repo-local `repo` and `draft` skills. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
+This repo is wired for **Claude Code**, **Cursor**, and **Codex** (plus **GitHub Copilot CLI** for Superpowers) with the installable agent tools listed in the [`docs/agent-tooling.md`](docs/agent-tooling.md) table plus repo-local `repo` and `draft` skills. Full reference + risks: [`docs/agent-tooling.md`](docs/agent-tooling.md). One-time binary install: [`scripts/setup-agent-tools.sh`](scripts/setup-agent-tools.sh). In devcontainers, start with the common layer before agent-specific shims.
 
 | Tool | Type | What it does | Invoke |
 |---|---|---|---|
@@ -84,6 +84,12 @@ Avoid shared/global files unless the task explicitly requires them:
 
 Do not hand-edit generated files. Avoid manual barrel-file edits; prefer direct imports or generated barrels. Split shared fixtures into scenario/domain-local files when a task needs fixture changes. Change `package.json` or lockfiles only for dependency-related tasks.
 
+The generated-files pre-commit guard (`scripts/no-hand-edited-generated-files.mts`) accepts generated-output changes only when the same commit also touches their driving sources: protobuf/CUE schemas, WIT interfaces, or a recognized generator (schema-tools, `packages/wit` codegen + `wit-lock.json`). Regenerate with the owning codegen command (`pnpm run codegen`, `pnpm --filter @hobo/wit run wit:gen`) rather than editing outputs.
+
+## Draft-proof promotion policy
+
+When a draft proof under `src/draft/` is promoted into a production package, **the package copy becomes canonical and the proof is frozen** — record the promotion in [`scripts/promotions.json`](scripts/promotions.json) (`status: "frozen"`, digests pinned via `pnpm run promotions:check -- --update`). After that, all changes land in the package; `pnpm run promotions:check` (enforced by the root test suite) fails if a frozen proof is edited. Partial promotions that deliberately leave capability behind in the proof use `status: "reference"` with a note explaining the split. This exists because promoted copies previously diverged silently (see GAPS.md implementation-gap register, IMPL-005/IMPL-006).
+
 Before finishing a whole PR branch:
 
 ```bash
@@ -133,8 +139,8 @@ Examples:
 
 ```txt
 scripts/no-hand-edited-generated-files.mts
-scripts/check-targeted.mts
-scripts/agent-standards-hook.mts
+scripts/check-package-boundaries.mts
+scripts/install-hooks.mts
 ```
 
 Invoke TypeScript repo scripts through `tsx`:
@@ -143,7 +149,7 @@ Invoke TypeScript repo scripts through `tsx`:
 node --import tsx scripts/no-hand-edited-generated-files.mts
 ```
 
-Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it.
+Do not add `.mjs` repo scripts. If a non-TypeScript JavaScript-family implementation file is unavoidable because of a tooling limitation, document the exception in an ADR before adding it. Sanctioned exceptions: committed platform entry files under `examples/*/deploy/` that the target platform ingests verbatim (ADR-0126).
 
 Before finalizing changes that add, rename, or modify implementation files, scripts, generated-file guards, package config, TypeScript config, Turbo config, or CI config, run:
 
@@ -158,14 +164,14 @@ If this check fails, fix the violation rather than bypassing it.
 All HoBo implementation work, including `src/draft/<kind>/<slug>` proof packages, must preserve these architectural contracts:
 
 - Enforce every service boundary with PACT contracts. A boundary is not implemented until consumer/provider expectations, headers, payloads, and error envelopes are executable.
-- Define records, messages, data shapes, and domain objects in protobuf first. Generated or handwritten runtime types must derive from those protobuf definitions instead of inventing parallel interfaces.
+- Define records, messages, data shapes, and domain objects in protobuf first. Runtime record types must be the **generated** ones: a package opts into codegen by adding `data-models/buf.yaml`, runs `pnpm run codegen` (`@hobo/schema-tools` → buf/protoc-gen-es), and imports its types from the checked-in `src/_generated/**_pb.ts` (reference consumer: `examples/hello-bindle/src/api.ts`). Hand-declaring a TS interface that duplicates a proto message is a violation; derived types must be brands/narrowings **of** the generated types. `pnpm run codegen:check` is the drift gate.
 - Attach CUE constraints for every protobuf type and keep them with the protobuf contract or proof package. Do not create a repository-wide `contracts/data-models` catalog; each project/package that defines a CUE-constrained type owns its own local `data-models/` folder.
 - Parse, don't validate: do not pass broad primitive or DTO values after checking them. Introduce derived parsed types whose constructors apply protobuf and CUE constraints so invalid values are unrepresentable beyond the boundary.
 - Build flows on CQRS, event stores, materialized views, and actor models. Actors consume commands, emit events, and coordinate durable state; they do not mutate query read models directly.
 - Keep query surfaces event-driven: expose rx-style projections over materialized views, use cached snapshots for current reads, and persist historical snapshots in a read store.
 - For new behavior, name the command/event families, replay expectations, projection behavior, snapshot/read-store persistence, and the PACT/protobuf/CUE proof that pins the boundary.
 
-Local and CI gates enforce this early with `pnpm run architecture:guard`. The staged pre-commit path runs `pnpm run fetch:pr-base` before `pnpm agent:check -- --staged` so PR-targeted checks use the latest base branch available from `origin`/the configured remote, then only relevant architecture/test/doc lanes run before CI.
+Local and CI gates enforce this early with `pnpm run architecture:guard`. The canonical package layout these rules assume — each package pairing `package.json` and `tsconfig.json` with `src/`, `test/`, `contracts/`, and its own local `data-models/` folder — is additionally enforced structurally by [**konsistent**](https://www.npmjs.com/package/konsistent) (Vercel's structural linter for TypeScript codebases). The root [`konsistent.json`](konsistent.json) declares the `production-package-scaffolding` and `nested-package-scaffolding` conventions; run them with `pnpm run konsistent`. It is pinned as a dev dependency via pnpm, wired into `pnpm run check:all`, and selected by the narrow gate (`scripts/relevant-check-policy.ts`) whenever packages, automation, or `konsistent.json` itself change. The staged pre-commit path runs `pnpm run fetch:pr-base` before `pnpm agent:check -- --staged` so PR-targeted checks use the latest base branch available from `origin`/the configured remote, then only relevant architecture/test/doc lanes run before CI.
 
 
 ## Validation failure policy
@@ -289,6 +295,6 @@ Durable, non-obvious notes for this environment. The startup update script alrea
 - **No server/GUI.** This is a design-docs + executable proof/contract repo (see README "Current state"). "Running the app" means the validation/lint/test tooling, not a web/backend service. Verify the environment with `pnpm run doctor`, `pnpm run lint`, `pnpm run standards:check`, `pnpm test`, and the doc validators listed in `README.md` "How to work in this repo".
 - **Node version.** Local Node 22 satisfies `engines` (`>=20.20.0`); CI uses Node 24. The `pnpm install` warnings about `wizer-win32-x64` bins are expected on Linux (Windows-arch optional deps) and are harmless.
 - **Developer inner loop for a single proof package:** `pnpm exec turbo run test --filter ./src/draft/<kind>/<slug>` (see `src/draft/AGENTS.md`). The turbo "no output files found" warning on `test` is expected (no build outputs) and not a failure.
-- **`bun` is not installed**, so the `test:smoke` lane (`bun test`) is unavailable. Use `pnpm run test:file <file>` (Vitest) or `pnpm test` (node --test) instead.
+- **`test:smoke` runs Vitest** (`vitest run --no-isolate`), same engine as `test:file`; there is no bun dependency.
 - **`tgrep` is not installed**, so `pnpm run search` falls back to `rg`. Always pass explicit path args (e.g. `pnpm run search "pattern" src docs`); running it with no path scope over the full worktree can be very slow.
-- **Known pre-existing failures on `main` (not environment issues; do not chase as setup breakage):** `pnpm run docs:okf` fails on 4 `docs/design/proofs/*/README.md` files missing OKF YAML frontmatter. All other gates (`lint`, `standards:check`, `architecture:guard`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, traceability, SDK/deployment validators) pass clean.
+- **All local gates pass clean on `main`** (`lint`, `standards:check`, `architecture:guard`, `docs:okf`, `docs:cli-lint`, `docs:design-lint`, `docs:coverage`, `docs:freshness`, SDK/deployment validators); treat any failure as caused by the change under test, not the environment.

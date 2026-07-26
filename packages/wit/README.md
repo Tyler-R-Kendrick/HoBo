@@ -28,6 +28,22 @@ pnpm --filter @hobo/wit test
 3. `verifyVendoredWit` fails closed on digest mismatch before any pin can be used.
 4. jco `@bytecodealliance/jco@1.24.3` is the canonical TS binding generator; `wit-bindgen-cli@0.58.0` is compatibility-smoke only.
 
+## Parse, don't validate
+
+`verifyVendoredWit` parses `wit-lock.json` into derived types (typed pin records with
+`sha256:` digests) and fails closed on mismatch — consumers never see an unverified pin. The
+roundtrip parity check likewise parses generated binding surfaces into derived comparison
+records rather than validating raw text. Wire forms for the lock, pins, surfaces, and parity
+reports live in `data-models/` as protobuf with CUE constraints.
+
+## Position in the event architecture
+
+`@hobo/wit` is build-time tooling: it defines the WIT membrane that runtime actors' commands and
+events cross, but it hosts no actor, appends nothing to an event store, and serves no runtime
+read store. Its records are snapshots, not streams — `wit-lock.json` is a versioned snapshot of
+the vendored toolchain, and parity reports are a derived projection (a materialized view of the
+generated surface) recomputed by `wit:check`, never mutated in place.
+
 ## Upgrade rules
 
 Preview stability bumps require ADR-0085 ceremony artifacts before merge:

@@ -30,4 +30,5 @@ message EventEnvelope {
   optional string correlation_id = 11;
   optional string lane = 12;
   bytes data = 13;
+  map<string, string> meta = 14;
 }

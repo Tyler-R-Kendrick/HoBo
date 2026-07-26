@@ -7,6 +7,7 @@ export type ClosureBuilderFinalizationIssue =
   | "HOBO-537"
   | "HOBO-538";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderEvidenceEntry proto message in data-models/.
 export interface ClosureBuilderEvidenceEntry {
   readonly issueId: ClosureBuilderFinalizationIssue;
   readonly linearStatus: "Done";
@@ -15,6 +16,7 @@ export interface ClosureBuilderEvidenceEntry {
   readonly acceptedScope: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderV1FinalizationRecord proto message in data-models/.
 export interface ClosureBuilderV1FinalizationRecord {
   readonly parentIssue: "HOBO-531";
   readonly authoringPackage: "@hobo/bindles";

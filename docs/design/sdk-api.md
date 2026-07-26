@@ -217,6 +217,12 @@ export const fulfillment = saga("fulfillment")
 #### Trainable methods (`"use training"`)
 A fourth directive joins `"use workflow"`/`"use step"`: **`"use training"`** marks a method as an **AI-rewritable semantic function** — HoBo continuously optimizes its prompt/code against a rubric, from real recorded executions. The body is the baseline (often a `stub()`); the optimizer may rewrite it.
 
+**Three declaration syntaxes, each complete on its own** (never combined in one declaration; all lower to the same manifest facts):
+
+1. **Verbose** — `training(fn, opts)` / `training.define(opts)`: explicit groundings, usable publicly or internally. Canonical.
+2. **DI-style decorator** — `@trainable(opts)`: sugar over the verbose form. Like a DI container, decorating registers the trainable eagerly at instance construction and it is **resolvable by injection token** (`resolveTrainable(token)`); the method body is the **initial implementation** the optimizer improves.
+3. **Bare marker** — a one-line `"use training"` directive with **no author-supplied bindings**: the tooling **infers and generates** them (`training.infer` at runtime; `hobo stub` scans source and generates the registrations).
+
 ```ts
 import { training } from "@hobo/runtime";
 
@@ -233,6 +239,63 @@ export const classifyTicket = training(
   },
 );
 // directive form is equivalent:  export async function classifyTicket(t: Ticket) { "use training"; ... }
+```
+
+**Empty implementations (`training.define`) and per-param/output metadata ([ADR-0125](./adr/03-data-plane.md#adr-0125)).** A trainable method can be declared with **no body at all** — signature + grounding only. The callable is immediately servable, backed by a contract-derived stub ([ADR-0076](./adr/02-identity-security.md#adr-0076) `mock` mode) until the engine synthesizes an initial implementation through the cold-start generation path ([ADR-0010](./adr/03-data-plane.md#adr-0010)). Per-parameter and per-output metadata (descriptions, examples) ride the **contract** — never a side channel — and lower to manifest facts + CUE constraints:
+
+```ts
+export const summarizeIncident = training.define({
+  intent: "One-paragraph incident summary for the status page; no blame, no internal names.",
+  contract: IncidentSummaryContract,        // typed I/O + invariants (Plan 29)
+  params: { incident: { description: "Resolved incident record, PII-redacted" } },
+  output: { summary: { description: "Customer-safe prose, <= 3 sentences" } },
+  rubric: { factual: 1.0, tone: 0.9, concise: 0.85 },
+});
+// callable now (stub baseline records specification-by-example traces);
+// the training loop grows it into a real implementation against those traces.
+```
+
+**Syntax 2 — the DI-style `@trainable(opts)` class-method decorator** (TC39 stage-3 + `Symbol.metadata`, never `experimentalDecorators`): sugar over the wrapper form, lowering to byte-identical manifest facts (conformance-asserted). Constructing the class registers the trainable eagerly — DI-container semantics — and a **symbol token** as the id lets a test suite resolve the *same* instance (`resolveTrainable(token)`) and bind it to specific evals, so one example table doubles as unit tests **and** the live-training eval suite. The wrapper/`training.define` stay canonical because decorators cannot annotate free functions ([ADR-0125](./adr/03-data-plane.md#adr-0125)).
+
+```ts
+import { resolveTrainable, trainable } from "@hobo/runtime";
+
+export const ClassifyTicket = Symbol("classifyTicket");   // injection token
+
+class SupportDesk {
+  @trainable({
+    token: ClassifyTicket,
+    intent: "Route tickets; critical only for security/outage/prod impact.",
+    contract: ClassificationContract,
+    rubric: { categoryCorrect: 0.92, urgencyCalibrated: 0.90, piiSafe: 1.0 },
+  })
+  async classifyTicket(t: Ticket): Promise<Classification> {
+    // Initial implementation the optimizer improves. Named outputs are the
+    // rubric's training surface:
+    return {
+      category: t.subject.includes("down") ? "outage" : "general", // ← categoryCorrect
+      urgency: t.fromVip ? "high" : "normal",                      // ← urgencyCalibrated
+      rationale: "keyword baseline; echoes no customer data",      // ← piiSafe
+    };
+  }
+}
+
+// In a test/eval suite: resolve by the SAME token — the assertions below are
+// the eval cases the live-training loop reuses.
+const classify = resolveTrainable<Ticket, Classification>(ClassifyTicket);
+```
+
+**Syntax 3 — the bare `"use training"` marker** (the `"use workflow"` ergonomic): one line, **no** intent/contract/rubric bound at the declaration. The bindings are **inferred and generated** — intent from the name or a leading comment, a synthesized `inferred://<methodRef>` contract ref, a default exact-match rubric (`training.infer(fn)`; `hobo stub` scans source for marked functions and generates the registrations). The grounding lint reports these as `inferred` info findings, not errors; explicit groundings can be added later by migrating to syntax 1 or 2 without changing behavior.
+
+```ts
+export async function draftStatusUpdate(i: Incident): Promise<StatusUpdate> {
+  "use training";
+  // One-paragraph status update; no blame, no internal names.  ← becomes the inferred intent
+  return {
+    summary: `${i.service} degraded for ${i.durationMinutes}m; mitigated.`,
+    tone: "calm",
+  };
+}
 ```
 
 What the developer provides is **intent + contract + rubric** (the semantic grounding that makes code rewritable). What HoBo does — capture OTel/[OpenInference](https://github.com/Arize-ai/openinference) trajectories, score them with **live-evals**, run an optimizer, and promote a candidate only through the conformance + eval + policy gate — is the **training pipeline in [Plan 23](./generated-stack.md#plan-23)**. The optimizer is an **engine behind a WIT port** (built-in default; Microsoft Agent Lightning / Trace as optional *internal* providers) and is **never part of this SDK surface** ([ADR-0025](./adr/03-data-plane.md#adr-0025)): swapping it is a config change, not an app-code change.

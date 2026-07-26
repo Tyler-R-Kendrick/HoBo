@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
 	cp,
 	mkdtemp,
@@ -10,8 +10,8 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
@@ -70,6 +70,11 @@ export const GENERATION_TARGETS = [
 		witPath: "wit/deps/hobo-blob-events/hobo-blob-events.wit",
 		worldName: "blob-events-provider",
 		outSubdir: "blob-events-provider",
+	},
+	{
+		witPath: "wit/deps/hobo-training-engine/hobo-training-engine.wit",
+		worldName: "training-engine-provider",
+		outSubdir: "training-engine-provider",
 	},
 ] as const;
 

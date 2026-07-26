@@ -1,9 +1,9 @@
 import {
+	type ClockTraceEntry,
 	NondeterministicClockError,
+	parseIsoInstant,
 	QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION,
 	QueueLeaseLostError,
-	type ClockTraceEntry,
-	parseIsoInstant,
 } from "@hobo/core";
 
 export interface QueueMessageRecord {

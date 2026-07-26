@@ -24,6 +24,7 @@ export interface RuntimeDurabilityBackend {
   readonly actorHost: ActorHostPort;
 }
 
+// domain-view: readonly parse-produced report shape; its wire form is the runtime-port/conformance proto message of the same name.
 export interface ConformanceCheckResult {
   readonly checkId: string;
   readonly port: string;
@@ -31,11 +32,13 @@ export interface ConformanceCheckResult {
   readonly status: "pass" | "fail";
 }
 
+// domain-view: readonly parse-produced report shape; its wire form is the runtime-port/conformance proto message of the same name.
 export interface ConformanceFailure {
   readonly checkId: string;
   readonly message: string;
 }
 
+// domain-view: readonly parse-produced report shape; its wire form is the runtime-port/conformance proto message of the same name.
 export interface RuntimePortConformanceReport {
   readonly contract: typeof RUNTIME_PORT_CONFORMANCE_VERSION;
   readonly backend: string;

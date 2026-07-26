@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();

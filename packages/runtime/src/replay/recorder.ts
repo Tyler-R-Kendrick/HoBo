@@ -1,5 +1,5 @@
-import type { EventEnvelope } from "./types.js";
 import type { EventStoreWriter } from "./store.js";
+import type { EventEnvelope } from "./types.js";
 
 export async function recordEffect(
 	store: EventStoreWriter,

@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/konsistent/konsistent.schema.json",
+  "version": "v1",
+  "conventions": [
+    {
+      "name": "production-package-scaffolding",
+      "description": "Every production package under packages/ follows the HoBo package layout: a package.json + tsconfig.json alongside src/ (implementation), test/ (tests), contracts/ (PACT boundary contracts), and data-models/ (protobuf + CUE constrained types). See AGENTS.md.",
+      "paths": [
+        "packages/{name}",
+        "!packages/runtimes",
+        "!packages/providers",
+        "!packages/iac",
+        "!packages/connectors"
+      ],
+      "must": {
+        "haveType": "directory",
+        "haveFiles": ["package.json", "tsconfig.json", "src", "test", "contracts", "data-models"]
+      }
+    },
+    {
+      "name": "nested-package-scaffolding",
+      "description": "Packages nested under a category container (runtimes/, providers/, iac/) follow the same HoBo package layout as top-level packages.",
+      "paths": [
+        "packages/runtimes/{name}",
+        "packages/providers/{name}",
+        "packages/iac/{name}",
+        "packages/connectors/{name}"
+      ],
+      "must": {
+        "haveType": "directory",
+        "haveFiles": ["package.json", "tsconfig.json", "src", "test", "contracts", "data-models"]
+      }
+    }
+  ]
+}

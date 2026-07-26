@@ -3,6 +3,7 @@ export const DEFAULT_COMPONENT_HOST = Object.freeze({
   version: "46.0.1",
 });
 
+// domain-view: parse-produced draft-proof record; its wire form is the ComponentHost proto message in data-models/.
 export type ComponentHost = {
   readonly kind: string;
   readonly version: string;
@@ -16,6 +17,7 @@ export type SideEffectRecord =
       readonly disposition: "ignored";
     };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CoverageDiagnostic proto message in data-models/.
 export type CoverageDiagnostic = {
   readonly code: string;
   readonly severity: string;
@@ -24,6 +26,7 @@ export type CoverageDiagnostic = {
   readonly bindKey?: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CoverageSummary proto message in data-models/.
 export type CoverageSummary = {
   readonly ok: boolean;
   readonly canDeployDimension?: string;
@@ -53,6 +56,7 @@ export type CoverageEvaluator = (
   context: CoverageEvaluatorContext,
 ) => CoverageSummary;
 
+// domain-view: parse-produced draft-proof record; its wire form is the CollectionInput proto message in data-models/.
 export type CollectionInput = {
   readonly bindleId: string;
   readonly fileName: string;
@@ -62,6 +66,7 @@ export type CollectionInput = {
   readonly coverageEvaluator?: CoverageEvaluator;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CollectionEvent proto message in data-models/.
 export type CollectionEvent = {
   readonly id: string;
   readonly type: "bindle.ResourcesCollected" | "bindle.ManifestProduced";

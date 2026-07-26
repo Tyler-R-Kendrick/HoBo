@@ -1,5 +1,10 @@
 # @hobo/runtime-local
 
+> **Naming:** `packages/runtimes/*` are concrete **runtime backends** (this
+> package: the local/sqlite substrate). The singular `packages/runtime`
+> (`@hobo/runtime`) is the app-facing **SDK primitives** package — a
+> different concern; see its README for the full disambiguation.
+
 Wasmtime-based runtime-local **component host** for HoBo S1. Loads descriptor-defined
 guest components, routes WIT imports through a deny-by-default **link table**, and
 appends `component.*` / `link.*` events to an injected event-log sink.

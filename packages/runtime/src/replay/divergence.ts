@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
-
-import type { ReplayDivergenceRecord } from "./types.js";
 import { stableStringify } from "./equivalence.js";
+import type { ReplayDivergenceRecord } from "./types.js";
 
 export class ReplayDivergenceError extends Error {
 	readonly liveState: unknown;

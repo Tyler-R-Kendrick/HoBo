@@ -1,0 +1,47 @@
+{
+	"name": "@hobo/hobo",
+	"version": "0.0.1",
+	"description": "HoBo composition-root app: wires the default LOCAL/MOCKED runtimes so the composed `hobo` binary runs the cloud verbs (collect/plan/up/down/dev) end to end without shell stubs.",
+	"type": "module",
+	"bin": {
+		"hobo": "./dist/bin/hobo.js",
+		"hobo-mcp": "./dist/bin/hobo-mcp.js"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/bindles": "workspace:*",
+		"@hobo/cli": "workspace:*",
+		"@hobo/cloud": "workspace:*",
+		"@hobo/contracts": "workspace:*",
+		"@hobo/core": "workspace:*",
+		"@hobo/data": "workspace:*",
+		"@hobo/iac-pulumi": "workspace:*",
+		"@hobo/mcp": "workspace:*",
+		"@hobo/provider-aws": "workspace:*",
+		"@hobo/provider-azure": "workspace:*",
+		"@hobo/provider-cloudflare": "workspace:*",
+		"@hobo/provider-gcp": "workspace:*",
+		"@hobo/provider-lakebed": "workspace:*",
+		"@hobo/runner-blacksmith": "workspace:*",
+		"@hobo/runner-depot": "workspace:*",
+		"@hobo/runner-github": "workspace:*",
+		"@hobo/runtime-local": "workspace:*"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"test": "vitest run"
+	}
+}

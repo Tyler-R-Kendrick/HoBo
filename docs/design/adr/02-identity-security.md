@@ -722,3 +722,20 @@ appeared nowhere, and the only cost-reactive mechanisms were threshold breakers/
 - **(-)** The built-in window-based detector will miss seasonality — sophisticated detection is
   deferred to the engine port.
 - **(-)** One more projection and event family to maintain.
+
+## ADR-0120
+**API management (per-consumer API keys, usage plans/quotas, a developer API catalog) is a thin management surface composed over route-level security + identity + entitlements/quotas + rate-limit policy — not a new runtime plane; monetized API products stay out of scope.**
+
+### Context
+The 2026-07-03 infra re-classification flagged "API management" as backlogged. The building blocks already exist — route-level API security with named rules including API-key ([ADR-0114](#adr-0114), `api(name, { security })`), the bounded max-TTL static-key escape hatch (§static-key bound above), entitlements/plan limits and tenant quotas (`entitlements-plan-limits.md`, `tenant-isolation-quotas.md`), and abuse/rate-limit policy (the `hobo-491-entitlement-abuse-rate-limit-policy` proof). What is missing is the consolidated **per-consumer** surface: issuing an API key *per external consumer*, binding it to a **usage plan** (a rate/quota tier), and exposing a **developer-facing API catalog** — the layer AWS API Gateway usage plans, Apigee, and Kong call "API management."
+
+### Decision
+1. **API management is a composition, recorded as a capability — not a new plane.** A per-consumer **API key** is a scoped `PrincipalRef` credential issued through the existing identity/token machinery ([Plan 6](../ai-native-agent-auth.md#plan-06)) via the bounded max-TTL static-key path where federation is unavailable; a **usage plan** is a named policy binding (rate + quota + allowed routes) evaluated by the policy plane ([Plan 29](../contracts-policy-flags.md#plan-29)) and enforced by the existing rate-limit/quota mechanism (`tenant-isolation-quotas.md`, the `hobo-491` proof); route exposure/authz stays `api(name, { security })` ([ADR-0114](#adr-0114)).
+2. **The consumer registry + usage-plan binding is the only genuinely new ergonomics** — register consumer → issue key → bind usage plan → observe usage via MeteringView. It adds no new runtime and rides `token.*`/`policy.Decided`/`meter.*` facts (no new event family).
+3. **The developer catalog reuses the generated typed-client + contract surface** ([ADR-0037](01-architecture-core.md#adr-0037)/[Plan 29](../contracts-policy-flags.md#plan-29)) — not a bespoke portal product.
+4. **Monetized API products are out of scope.** Per-call billing, paid API tiers, and an API marketplace are commercialization ([ADR-0064](07-portability-extensibility.md#adr-0064)); usage plans meter and throttle (FinOps showback, [ADR-0039](#adr-0039)) but never invoice.
+
+### Consequences
+- **(+)** Records the API-management decision (closing the re-classification item) as a composition, so it no longer reads as a missing plane — and pins the monetization boundary explicitly.
+- **(+)** The consumer/usage-plan surface is a bounded add over proven machinery (identity + policy + quota + metering).
+- **(−)** A per-consumer-key + usage-plan management UX still has to be built as ergonomics; until then, teams wire the primitives directly.

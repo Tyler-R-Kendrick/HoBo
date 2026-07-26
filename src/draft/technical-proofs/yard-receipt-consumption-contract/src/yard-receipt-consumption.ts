@@ -9,6 +9,7 @@ export type ResourcePlan = Readonly<{
   action: "provision" | "deploy" | "bind";
 }>;
 
+// domain-view: parse-produced draft-proof record; its wire form is the ResolutionReceipt proto message in data-models/.
 export type ResolutionReceipt = {
   receiptId: string;
   protocolVersion: string;

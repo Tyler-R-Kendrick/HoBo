@@ -1,0 +1,33 @@
+{
+  "consumer": { "name": "@hobo/cli" },
+  "provider": { "name": "@hobo/local-dev-loop" },
+  "interactions": [
+    {
+      "description": "hobo collect runs run-to-collect and emits the manifest IR",
+      "request": { "verb": "collect", "bindle": "hello-bindle" },
+      "response": {
+        "status": "ok",
+        "manifestHash": "sha256:379d73d495543c6bb302184defc3a6cec7c0ce71a3eb4e7be7281108641c84de",
+        "resources": ["api", "db"],
+        "events": ["bindle.ResourcesCollected", "bindle.ManifestProduced"]
+      }
+    },
+    {
+      "description": "hobo dev boots a runtime-local Camp and serves the Bindle offline",
+      "request": { "verb": "dev", "bindle": "hello-bindle" },
+      "response": {
+        "status": "serving",
+        "runtime": "runtime-local",
+        "offline": true,
+        "served": { "status": 200, "headers": [], "body": "hello world" },
+        "events": [
+          "component.Loaded",
+          "link.Established",
+          "link.Called",
+          "component.Invoked"
+        ]
+      }
+    }
+  ],
+  "metadata": { "pactSpecification": { "version": "3.0.0" } }
+}

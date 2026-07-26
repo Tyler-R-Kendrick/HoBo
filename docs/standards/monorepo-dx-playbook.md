@@ -1,0 +1,261 @@
+---
+type: Reference Standard
+title: "Monorepo DX Playbook"
+description: "Portfolio-wide standard for TypeScript repo/monorepo developer experience; canonical home for the DX.md contract adopted across the portfolio repos."
+tags: [hobo, standards]
+---
+
+# Monorepo DX Playbook
+
+**Status:** Standard · **Canonical home:** `HoBo/docs/standards/monorepo-dx-playbook.md`
+**Applies to:** every TypeScript repo/monorepo in the portfolio (`HoBo`, `quickdeployai/monorepo`, `gitlang`, `epoch`, `universal-token-killer`, `agent_harness`; `awesome-tech` adopts the content-repo subset).
+
+This playbook abstracts the DX/build/CI setup that **HoBo** and **quickdeployai/monorepo** independently converged on. Its goal: **blazingly fast, change-scoped builds; consistent setup; quality gates in local git hooks; and GitHub Actions reserved for staged deployments + genuinely server-side-only work.**
+
+Every code block below is copied from a live reference file and cited. Adopt the **Baseline** everywhere; add **Advanced** patterns where the repo warrants them (§ each section marks which is which).
+
+---
+
+## 1. Philosophy — "fix it locally, keep CI thin"
+
+> *"Everything fixable locally is enforced locally — CI runners are reserved for environment-level tests… CI intentionally does not replay architecture fitness, lint, typecheck, unit tests, builds, or format checks."*
+> — monorepo `docs/contributing/hooks.md`
+
+Three rules follow from this:
+
+1. **Gates live in git hooks, not CI.** Lint, typecheck, unit/contract tests, format, and structural checks run at `pre-commit` (staged) and `pre-push` (affected). CI never replays them (monorepo enforces this with a `qdai/ci/no-local-check-replay` fitness rule).
+2. **Everything is change-scoped.** Nothing runs over the whole repo when it can run over the staged files (commit) or the affected package graph (push/CI). This is what makes it fast.
+3. **A workflow must earn its existence** (§8). Most repos need *few or zero* GitHub Actions workflows.
+
+---
+
+## 2. Toolchain & reproducible installs — *Baseline*
+
+**Pin the toolchain** so every machine and CI runner resolves identically:
+
+- `package.json` → `"packageManager": "pnpm@<x.y.z>"` (bootstrapped by corepack) and `"engines": { "node": ">=<x>" }`.
+- **Commit the lockfile.** Installs use `--frozen-lockfile`. (A gitignored lockfile — as in `agent_harness` today — makes installs non-reproducible and is the single highest-impact bug to fix.)
+
+**Make installs fast** with an `.npmrc` performance profile (from monorepo `.npmrc`):
+
+```ini
+# Skip re-hashing every file copied from the (trusted, local) pnpm store on each
+# install. Removes a large CPU cost from the link phase.
+verify-store-integrity=false
+# Don't re-resolve when package.json is unchanged — use the committed lockfile.
+prefer-frozen-lockfile=true
+dedupe-peer-dependents=true
+# Prefer the local store on repeat installs.
+prefer-offline=true
+# Parallel metadata fetches.
+network-concurrency=16
+# Fail before Node-incompatible scripts try to start.
+engine-strict=true
+```
+
+**Harden the supply chain:**
+- pnpm `onlyBuiltDependencies` (monorepo) / `allowBuilds` (HoBo `pnpm-workspace.yaml`) — an explicit allowlist of packages permitted to run install scripts.
+- `minimumReleaseAge` version-cooldown (HoBo) so a compromised fresh release can't be pulled instantly.
+- Security `overrides` to pin transitive deps out of known-bad ranges.
+
+---
+
+## 3. Task orchestration & caching (Turborepo) — *Baseline*
+
+**Replace every hand-ordered `&&` / `-w` build chain with Turborepo.** A 20-command `npm run build -w a && … -w t` chain (as in `epoch`, `universal-token-killer`) is fragile and un-cached; Turbo gives you a dependency graph, content-hash caching, and `--affected` for free.
+
+Canonical `turbo.json` (from HoBo `turbo.json` — the smallest complete reference):
+
+```jsonc
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json", "tsconfig.base.json"
+  ],
+  "envMode": "strict",
+  "globalPassThroughEnv": ["CI", "TMPDIR", "TMP", "TEMP", "SOURCE_DATE_EPOCH"],
+  "tasks": {
+    "build":     { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "typecheck": { "dependsOn": ["^build"], "outputs": [] },
+    "lint":      { "outputs": [] },
+    "test":      { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", "!**/*.md"], "outputs": [] },
+    "dev":       { "cache": false, "persistent": true }
+  }
+}
+```
+
+Four things make the cache both **correct** and **fast**:
+
+| Knob | Why | Reference |
+|---|---|---|
+| `dependsOn: ["^build"]` | topological ordering; a package builds after its deps | both |
+| `inputs: ["$TURBO_DEFAULT$", "!**/*.md"]` | **doc edits never bust the test cache** | HoBo `turbo.json` |
+| `outputs` declared (`dist/**`, `pacts/**`, `.eslintcache`) | Turbo can restore artifacts, not just skip | both |
+| `globalDependencies` includes the lockfile **and shared config** | a preset change correctly invalidates dependent caches | monorepo lists `packages/config/**` |
+| `envMode: "strict"` + `env`/`globalPassThroughEnv` allowlists | reproducible, no accidental env leakage into the hash | HoBo |
+
+**Scope every run:** `turbo run build typecheck lint test --affected` (or `--filter=[HEAD^]`). Never run the whole graph when the affected sub-graph will do.
+
+**Caching tiers:**
+- **Baseline:** local `.turbo/cache`, restored in CI via `actions/cache` (HoBo's approach — no secrets, no service).
+- **Advanced:** remote cache shared across machines/CI. Do it **secretlessly** — monorepo injects `TURBO_TOKEN` via OIDC → Pulumi ESC and reads `TURBO_TEAM` from repo `vars`; no stored secret. Start local; graduate to remote when a team feels the pain.
+
+---
+
+## 4. Lint & format — *Baseline*
+
+**Use a fast Rust-based formatter/linter as the baseline gate.**
+
+- **Default: Biome** — one binary, format + lint, no config coupling (HoBo's model). Adopt in repos with *no* linter today (`universal-token-killer`, `agent_harness`) and any greenfield.
+- **Keep existing ESLint** where a repo already invested (`gitlang`, `epoch`), but optimize it:
+  1. Move rules into a **shared config package** (§10) so every workspace extends one source.
+  2. Run it through the **turbo `lint` task** with `outputs: [".eslintcache"]` and `inputs` that include `eslint.config.*` (from monorepo `turbo.json`) so config changes bust the cache:
+     ```jsonc
+     "lint": {
+       "outputs": [".eslintcache"],
+       "inputs": ["$TURBO_DEFAULT$", "eslint.config.js", "eslint.config.mjs", "eslint.config.ts"]
+     }
+     ```
+  3. **Scope it:** Oxlint/Biome on **staged** files at pre-commit; full ESLint only on **affected** packages at pre-push.
+- **Keep `konsistent`** (already present in all repos) for structural conventions — which files/dirs/exports must exist. It's the portfolio's lingua franca; build the conformance layer (§12) on it.
+- Layer `ast-grep` (HoBo) / semantic fitness functions (monorepo) only where boundary rules already exist.
+
+---
+
+## 5. Typecheck — *Baseline*
+
+- One **`tsconfig.base.json`** with the strict flags, ideally exported from the shared config package (§10). Every workspace extends it and sets only `rootDir`/`outDir`/`references`.
+- **Use project references + `tsc -b`** for incremental typecheck. monorepo's pattern: each app `tsconfig.json` has `"files": []` + `"references": [...]` and the script is `"typecheck": "tsc -b"`. This reuses `.tsbuildinfo` across the graph instead of cold-checking every package (the gap in `epoch`, `universal-token-killer`).
+- Run it through the turbo `typecheck` task (`dependsOn: ["^build"]` or `["^typecheck"]`) so it's cached and topological.
+- *Advanced:* the native TS compiler preview (`tsgo`, `@typescript/native-preview`) is a large speedup HoBo/epoch experiment with — adopt once it's stable enough for your risk tolerance.
+
+---
+
+## 6. Test runners — *Baseline*
+
+- **Converge on Vitest** for unit/integration (already the plurality across the portfolio). Keep **Pact** (consumer/provider contract tests) and **Cucumber** (behavior specs) where they already earn their keep.
+- **Set an explicit coverage-threshold policy** per repo (`universal-token-killer` runs 100%; `epoch` runs lines 85 / branches 75 / functions 79 / statements 85). Pick a number and enforce it; don't leave it unset (as `gitlang` does).
+- Cache tests via the turbo `test` task with `inputs: ["$TURBO_DEFAULT$", "!**/*.md"]` and declare contract outputs (`pacts/**`, `.tmp/pacts/**`).
+
+---
+
+## 7. Local git hooks — the primary gate — *Baseline*
+
+**Use native git hooks — not Husky/lefthook.** Neither reference repo uses a hook manager; both point `core.hooksPath` at a tracked directory and install it from a **fail-open `prepare` script**.
+
+```jsonc
+// package.json
+"scripts": { "prepare": "node --import tsx scripts/install-hooks.mts" }
+```
+
+The installer must **fail open** — exit 0 on CI, when `<REPO>_SKIP_HOOKS` is set, or when there's no `.git` (HoBo `scripts/install-hooks.mts`) — so installs never break in those environments.
+
+**Two tiers.** `pre-commit` is fast and staged-scoped; `pre-push` is the affected turbo gate. HoBo's entire `pre-commit` is three lines:
+
+```sh
+#!/usr/bin/env sh
+set -eu
+pnpm run generated:guard
+BASE="${HOBO_ARCHITECTURE_BASE:-$(pnpm --silent run fetch:pr-base)}"
+pnpm run check:relevant:staged -- --base="$BASE"   # maps changed paths → minimal check set
+```
+
+A fuller "what runs when" contract (adapted from monorepo `docs/contributing/hooks.md`):
+
+| Stage | Check | Scope |
+|---|---|---|
+| pre-commit | git hygiene (whitespace, EOF, merge markers, large files) | staged |
+| pre-commit | secret scan (gitleaks / no-secrets) + staged `.env` block | staged diff |
+| pre-commit | format + lint (Biome / Oxlint) — re-stage after fixes | staged paths |
+| pre-commit | structural / fast fitness (konsistent quick, ast-grep) | staged |
+| pre-push | konsistent structural lint | whole-repo (ms) |
+| pre-push | **turbo affected gate**: `lint typecheck test [pact] build` | affected graph |
+| pre-push | dependency audit / semgrep | changed / affected |
+
+**Escape hatches (document them):** `git commit --no-verify`, per-hook `SKIP=<id>`, and repo-specific overrides (e.g. `<REPO>_ALLOW_GENERATED=1`). After any bypass, run the full local gate before handoff.
+
+---
+
+## 8. CI/CD workflow policy — the decision tree — *Baseline*
+
+**Before adding ANY GitHub Actions workflow, answer in order:**
+
+1. **Is it a deploy/release step?** → Justified **only** if the repo does **staged deployment** (dev → staging → prod with environment approval) **or staged package release** (npm publish with provenance). **Direct-to-Vercel git-integration does *not* qualify** — Vercel's own build is the deploy + PR preview; add **no** workflow. To earn a deploy workflow, first adopt staging (disable Vercel git auto-deploy — `vercel.json` → `"git": { "deploymentEnabled": { "main": false } }` — and orchestrate via Actions, §9).
+2. **Can it run in a local git hook?** (lint, typecheck, unit/contract test, format, structural) → **It belongs in a hook, never a workflow.** Do not replay local gates in CI.
+3. **Is it genuinely server-side-only and un-hookable?** (full-history secret scan, cross-OS / Windows / Deno build artifacts, Docker/testcontainers env suites, cross-app guards, scheduled CVE scan) → **one thin workflow** is justified.
+4. **Otherwise → no workflow.**
+
+**Every workflow that does exist MUST:**
+- be **`paths:`-filtered** to the changes it cares about,
+- set **`concurrency: { group: …, cancel-in-progress: true }`** (superseded runs are cancelled),
+- scope work with **`turbo … --affected`**,
+- authenticate **secretlessly via OIDC** (no stored GitHub secrets),
+- and **never replay a local gate**.
+
+`awesome-tech`'s single `konsistent.yml` (pull_request + push:main, with `concurrency`) is the reference-quality **minimal** workflow for a content/structural repo.
+
+---
+
+## 9. Deployment (staged, env-gated) — *Advanced; staged-deploy repos only*
+
+For repos that promote through environments (monorepo `deploy.yml` is the reference):
+
+- **Disable Vercel git auto-deploy** (`git.deploymentEnabled.main: false`); Actions owns every deploy.
+- **Build once, promote the artifact.** One `vercel build` output flows dev → staging → prod (rebuild only for prod-specific env). `--prebuilt` deploys.
+- **Gate prod on a GitHub `environment:`** with required approval.
+- **Fan out on shared-package changes** — a changed design-system/auth package redeploys *every* consumer, so a fix can't ship to some microfrontends but not others.
+- **Split secrets by blast radius** — cache creds (`qdai/ci`) are a different OIDC environment from deploy creds (`qdai/ci-deploy`), so a test job can never read a deploy token.
+
+Repos deploying **direct to Vercel** (`gitlang`, `epoch`, `agent_harness`) get **none** of this — Vercel's git integration builds previews and prod; their gate is the local hook (§7). That's the whole point of §8 rule 1.
+
+---
+
+## 10. Shared config as a package — *Baseline for multi-package repos*
+
+Centralize config as a real workspace package (monorepo's `@quickdeployai/config`) that exports:
+- ESLint presets (`eslint/react`, `eslint/node`, `eslint/typescript`, …) + custom rules,
+- `tsconfig.base.json`,
+- formatter config (Biome / Oxfmt / Prettier).
+
+Every app extends it (`import reactPreset from "@org/config/eslint/react"`), and it's listed in turbo `globalDependencies` so changes bust dependent caches. Pin shared tool versions with a pnpm **`catalog:`** (monorepo `pnpm-workspace.yaml`) — one version source of truth referenced as `catalog:` in each manifest (warranted at ~15+ packages).
+
+---
+
+## 11. DX tooling — *Baseline*
+
+- **A single dev CLI** for the common loop (monorepo's `vp` / `qdai-*`; HoBo's `pnpm doctor` + `ci:preflight`). Contributors learn one surface.
+- **A `doctor` / `preflight`** command that checks the toolchain is correctly provisioned.
+- **Devcontainer `postCreateCommand`** that runs setup so containers come up fully wired.
+- **The per-repo `DX.md`** stub (links here + carries the repo's adoption checklist).
+
+> **Portability note:** monorepo's `vp` (Vite+) tooling is *not* portable — this playbook abstracts the *principles* (native hooks, turbo `--affected`, staged/affected scoping), which you implement with plain scripts + Turbo + Biome/ESLint. Don't take a dependency on `vp` to adopt the baseline.
+
+---
+
+## 12. Adoption checklist / conformance
+
+A repo is **baseline-conformant** when:
+
+- [ ] `package.json` has `"packageManager"` + `engines`; lockfile is committed (not gitignored).
+- [ ] `.npmrc` install-perf profile present; installs use `--frozen-lockfile`.
+- [ ] `turbo.json` exists with `globalDependencies`, declared `outputs`, and md-ignoring test `inputs`.
+- [ ] A fast formatter/linter (Biome or optimized ESLint) runs **scoped** (staged/affected).
+- [ ] `tsconfig.base.json` shared; incremental typecheck (`tsc -b` or turbo-cached).
+- [ ] Native git hooks auto-installed via fail-open `prepare`; `pre-commit` (staged) + `pre-push` (affected turbo gate).
+- [ ] Every workflow passes the §8 decision tree; each has `paths` + `concurrency` + `--affected` + OIDC; none replays a local gate.
+- [ ] Staged-deploy repos only: Vercel auto-deploy disabled, build-once-promote, prod `environment` approval.
+- [ ] `DX.md` present, linking here.
+
+**Make it machine-checkable:** extend the shared **`konsistent.json`** (present in every repo) with rules asserting `packageManager` presence, a committed lockfile, `turbo.json` shape, the `prepare`/`.githooks` wiring, and that no workflow replays a local gate. Then `konsistent check` verifies conformance on the pre-push gate.
+
+**Smoke test after migrating a repo:**
+```sh
+corepack pnpm install --frozen-lockfile                         # reproducible install
+pnpm turbo run build typecheck lint test --affected --dry=json  # graph resolves, scoped
+# trivial edit → git commit / git push                           # hooks fire, scoping works
+pnpm turbo run build                                             # second run = full cache hit
+```
+
+---
+
+*Derived from the HoBo and quickdeployai/monorepo reference implementations. Keep this doc's code blocks in sync with those repos' `turbo.json`, `.npmrc`, `.githooks/`, and `docs/contributing/hooks.md`.*

@@ -1,21 +1,21 @@
-import type { CommandModule } from "../shell/registry.js";
 import { BuildError, remediationFor } from "../build/errors.js";
 import { parseBuildRequestFromInvocation } from "../build/parse.js";
 import { runBuild } from "../build/run-build.js";
+import type { CommandModule } from "../shell/registry.js";
 
+export { BuildCliError, BuildError } from "../build/errors.js";
 export {
-	runBuild,
-	writeBuildFixtureProject,
-	BUILD_MANIFEST_PATH,
-} from "../build/run-build.js";
-export { BuildError, BuildCliError } from "../build/errors.js";
-export {
-	parseBuildRequestFromInvocation,
-	parseServiceDeclaration,
-	parseBuildManifest,
 	type BuildRequest,
 	type BuildResult,
+	parseBuildManifest,
+	parseBuildRequestFromInvocation,
+	parseServiceDeclaration,
 } from "../build/parse.js";
+export {
+	BUILD_MANIFEST_PATH,
+	runBuild,
+	writeBuildFixtureProject,
+} from "../build/run-build.js";
 
 export function createBuildCommand(): CommandModule {
 	return {

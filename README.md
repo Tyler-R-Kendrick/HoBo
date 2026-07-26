@@ -4,7 +4,9 @@
 
 A developer or agent should be able to describe an app once, then let HoBo place it on a provider, mix of providers, or self-hosted yard without rewriting app code. The design uses **WIT/WASM Component Model interfaces** as the portable membrane, provider adapters as the integration boundary, and an event-sourced control plane as the operating model.
 
-> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace scaffold (`@hobo/core`, `@hobo/wit`, `@hobo/bindles`, `@hobo/runtime`, `@hobo/componentize`, `@hobo/conformance`, `@hobo/cli`). Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior before fuller production surfaces land in later S0 slices.
+> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace of **27 packages** (core, wit, bindles, runtime, runtimes/runtime-local, componentize, conformance, cli, hobo, cloud, identity, mcp, contracts, policy, data, events, camps, yards, iac/iac-pulumi, providers/provider-{cloudflare,ax,agentv}, schema-tools, stage-gate, ci-guard, contract-harness, training-pipeline). All 27 `hobo` CLI verbs dispatch to real handlers against the local/in-memory lane; live Vercel/Cloudflare deploy lanes are credential-gated. Honest scope limits are marked `HONEST SCOPE` in `packages/hobo/src/`. Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior for the slices still to land (live IaC, estate import, drift against real infrastructure).
+
+**Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), published by pushing the built `site/dist/` to the `gh-pages` branch (no Actions dependency; see the site README for the publish commands).
 
 ## Why HoBo exists
 
@@ -50,6 +52,7 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 | [`docs/standards/`](./docs/standards/index.md), [`docs/technologies/`](./docs/technologies/index.md), [`docs/patterns/`](./docs/patterns/index.md) | Reference material used by design decisions. |
 | [`docs/archive/`](./docs/archive/) | Deferred or superseded planning artifacts. |
 | [`AGENTS.md`](./AGENTS.md), [`docs/agent-tooling.md`](./docs/agent-tooling.md) | Repo-level agent instructions and local agent-tooling reference. |
+| [`site/`](./site/README.md) | The GitHub Pages website (landing + developer docs + agent docs): a self-contained Astro project, built locally and pushed to the `gh-pages` branch (no Actions dependency; see the site README). |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md), [`SECURITY.md`](./SECURITY.md), [`SUPPORT.md`](./SUPPORT.md), [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | GitHub community-health docs for contributions, vulnerability reporting, support, and conduct. |
 
 ## Suggested reading paths
@@ -110,10 +113,11 @@ pnpm run docs:design-lint
 pnpm run docs:coverage
 pnpm run docs:okf
 pnpm run docs:freshness
-node --import tsx scripts/validate-traceability.ts
 node --import tsx scripts/validate-sdk-contracts.ts
 node --import tsx scripts/validate-deployment-set-delta.ts
 ```
+
+(`scripts/validate-traceability.ts` is descoped from the blocking gate; traceability is covered by `docs:design-lint` and `konsistent`.)
 
 The test runner shards tracked test files into bounded `node --test` batches,
 prints full batch output only on failure, and uses smaller single-worker batches
@@ -146,8 +150,12 @@ The `docs:freshness` gate enforces the minimum rule: changes under `src/`, `scri
 GitHub Actions run three primary lanes:
 
 - [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
-- [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated cloud fixture jobs (hello-bindle, multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
-- [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): simulate-mode hello-bindle fixture lanes, also label/schedule/manual gated.
+- [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated multi-cloud fixture jobs (multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
+- [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): the hello-bindle fixture lanes (simulate-mode, `packages/ci-guard` runners), also label/schedule/manual gated.
+- [`HoBo Runner Rebalance`](./.github/workflows/rebalance-runners.yml): daily/manual dogfood of [`examples/ci-runner-balancing`](./examples/ci-runner-balancing/README.md) — CI jobs consume `vars.HOBO_RUNNER_LINUX_SMALL` (falling back to `ubuntu-latest`), and this lane rebalances that variable across runner providers to maximize free credits and minimize paid minutes (record: [`docs/design/ci-runner-balancing-example.md`](./docs/design/ci-runner-balancing-example.md)).
+- Manual live-deploy lanes (`workflow_dispatch` + repo secrets): [`deploy-hello-bindle-vercel.yml`](./.github/workflows/deploy-hello-bindle-vercel.yml) (Vercel CLI) and [`deploy-hello-bindle-pulumi.yml`](./.github/workflows/deploy-hello-bindle-pulumi.yml) (the real pinned Pulumi CLI engine behind the same `@hobo/iac-pulumi` adapter the composed deploy path uses; `HOBO_PULUMI_LIVE=1` selects it locally).
+
+The website is **not** CI-deployed: [`site/`](./site/README.md) is built locally and pushed to the `gh-pages` branch directly (GitHub Pages serves that branch), so publishing works even when Actions runs are unavailable.
 
 Core checks are intentionally ordinary Node scripts so they run locally, in CI, and inside agent sessions. `docs:coverage` also checks that required GitHub community-health and maintenance docs stay present.
 
@@ -166,11 +174,12 @@ Important rules for agents and humans:
 
 ## Status summary
 
-- **Product implementation:** not shipped.
+- **Product implementation:** 27 production packages; all 27 `hobo` CLI verbs wired against the local/in-memory lane. Not yet shipped to a package registry; live-cloud deploy lanes are credential-gated and the default IaC backend is an in-memory Pulumi stand-in (see `HONEST SCOPE` markers in `packages/hobo/src/`).
 - **Design suite:** active and canonical under [`docs/design/`](./docs/design/index.md).
 - **Backlog mirror:** [`docs/implementation-plan.md`](./docs/implementation-plan.md); Linear is live operational source.
 - **Executable proof material:** `src/draft/<kind>/<slug>` packages and repo validation scripts.
-- **Primary command surface under design:** `hobo` CLI, specified in [`docs/design/cli-spec.md`](./docs/design/cli-spec.md).
+- **Primary command surface:** `hobo` CLI, specified in [`docs/design/cli-spec.md`](./docs/design/cli-spec.md) and implemented in [`packages/hobo/`](./packages/hobo/). The same 27-verb surface is served over MCP stdio by the `hobo-mcp` binary (same package), with verb/tool parity enforced by contract test.
+- **Behavior suite:** every epic proof carries executable Gherkin — `pnpm run test:behavior` runs the full cucumber lane (26 epics + project rollups).
 
 ## License
 

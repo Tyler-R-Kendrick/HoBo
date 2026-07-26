@@ -1,0 +1,108 @@
+---
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import "../styles/global.css";
+
+interface Props {
+	title: string;
+	description: string;
+}
+
+const { title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<link rel="canonical" href={canonical} />
+		<link
+			rel="icon"
+			type="image/svg+xml"
+			href={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/favicon.svg`}
+		/>
+		<meta name="generator" content={Astro.generator} />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Chewy&display=swap"
+		/>
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta name="twitter:card" content="summary" />
+		<meta name="color-scheme" content="dark light" />
+		<script is:inline>
+			// Theme boot: runs before paint to avoid a flash. Kept tiny on purpose.
+			(() => {
+				const stored = localStorage.getItem("hobo-theme");
+				const theme =
+					stored === "light" || stored === "dark"
+						? stored
+						: matchMedia("(prefers-color-scheme: light)").matches
+							? "light"
+							: "dark";
+				document.documentElement.dataset.theme = theme;
+			})();
+		</script>
+	</head>
+	<body>
+		<a class="skip-link" href="#main">Skip to content</a>
+		<Header />
+		<main id="main">
+			<slot />
+		</main>
+		<Footer />
+		<script is:inline>
+			// The site's entire client-side behavior: theme + menu toggles.
+			document.querySelector(".theme-toggle")?.addEventListener("click", () => {
+				const root = document.documentElement;
+				const next = root.dataset.theme === "dark" ? "light" : "dark";
+				root.dataset.theme = next;
+				localStorage.setItem("hobo-theme", next);
+			});
+			for (const [btn, target] of [
+				[".nav-toggle", ".site-nav"],
+				[".docs-sidebar-toggle", ".docs-sidebar"],
+			]) {
+				const el = document.querySelector(btn);
+				el?.addEventListener("click", () => {
+					const open = document.querySelector(target)?.classList.toggle("open");
+					el.setAttribute("aria-expanded", String(Boolean(open)));
+				});
+			}
+			// Horizontally scrollable tables must be keyboard-reachable.
+			for (const t of document.querySelectorAll(".prose table")) {
+				t.tabIndex = 0;
+			}
+			// Every code block gets a copy button — for humans and agents alike.
+			for (const pre of document.querySelectorAll("pre")) {
+				const wrap = document.createElement("div");
+				wrap.className = "code-block";
+				pre.replaceWith(wrap);
+				wrap.append(pre);
+				const btn = document.createElement("button");
+				btn.type = "button";
+				btn.className = "code-copy";
+				btn.textContent = "Copy";
+				btn.setAttribute("aria-label", "Copy code to clipboard");
+				btn.addEventListener("click", async () => {
+					await navigator.clipboard.writeText(pre.innerText);
+					btn.textContent = "Copied ✓";
+					btn.classList.add("copied");
+					setTimeout(() => {
+						btn.textContent = "Copy";
+						btn.classList.remove("copied");
+					}, 2000);
+				});
+				wrap.append(btn);
+			}
+		</script>
+	</body>
+</html>

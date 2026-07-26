@@ -36,9 +36,10 @@ taxonomy path:
 
 - Never add live cloud, provider, identity, billing, or support dependencies to default proof tests.
 - Prefer protobuf, CUE, Pact, type tests, and deterministic fixtures over prose-only proof.
+- Implementation record types come from generated proto code: opt into codegen with `data-models/buf.yaml`, import from `src/_generated/**_pb.ts`, never hand-declare parallel interfaces; avoid exported string-literal constants (schema ids/enums live in the proto) — see `docs/design/technical-standards.md`.
 - Every new proof carries a `proof.json` manifest, gate-executed `examples/`, and an executed `notebook.ipynb` (tslab); scaffold from `src/draft/_templates/<layer>/`. Waivers require an ADR and live in `proof.json`.
 - For technical proofs, performance is measured with `bench/*.bench.ts` (executable; numbers advisory) or explicitly waived in the ADR; add a mermaid architecture diagram where relevant.
 - For experience proofs, model the audience and measurable friction first, then ship the per-type artifacts (`ux` real visuals · `dx` pseudo-code+proto+CUE+diagrams · `cx` journeys · `ax` MCP transcripts/tool schemas · `api` type tests+consumers).
-- For epic proofs, the Gherkin suite is executable (`features/` + steps, `pnpm run test:behavior`), and the notebook demonstrates the simulation.
+- For epic proofs, the Gherkin suite is executable (`features/` + steps, `pnpm run test:behavior`) — true for ALL epics since the W2 backfill, not just new ones — and the notebook demonstrates the simulation.
 - For epic and project rollups, propagate compatibility changes downward with ADRs; the inverse cascade is machine-enforced by `pnpm run draft:cascade` (changed leaf proofs must update referencing rollups in the same diff).
 - The gates (`draft:artifacts`, `draft:cascade`) run automatically via `agent:check`; grandfathered packages (`src/draft/_grandfathered.json`) get advisories until their backfill wave lands.

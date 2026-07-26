@@ -1,16 +1,15 @@
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-
-import type { CommandModule } from "../shell/registry.js";
 import { UsageError } from "../shell/errors.js";
+import type { CommandModule } from "../shell/registry.js";
+import { buildProjectFiles } from "../templates/index.js";
 import {
+	type ProjectName,
 	parseProjectName,
 	parseTemplateId,
-	type ProjectName,
 	type ScaffoldResult,
 	VALID_TEMPLATES,
 } from "../types/scaffold.js";
-import { buildProjectFiles } from "../templates/index.js";
 
 const createdFileOrder = [
 	".gitignore",

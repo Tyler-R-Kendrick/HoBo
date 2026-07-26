@@ -23,12 +23,60 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/bindles",
 	"packages/camps",
 	"packages/yards",
+	"packages/junctions",
 	"packages/runtime",
 	"packages/componentize",
 	"packages/conformance",
 	"packages/cli",
+	"packages/hobo",
 	"packages/stage-gate",
+	"packages/policy",
+	"packages/data",
+	"packages/events",
+	"packages/identity",
+	"packages/cloud",
+	"packages/contracts",
+	"packages/mcp",
+	"packages/training-pipeline",
 ]);
+
+// Documented, narrowly-scoped exceptions. The AI training/eval providers
+// (provider-agentv, provider-ax) legitimately COMPOSE the SDK training/runtime
+// packages instead of reaching them through a core port; these edges landed in
+// #824/#825 and are tracked for a future ADR that classifies training/eval
+// providers as a distinct tier. Scoped to these EXACT edges so genuine
+// adapter->adapter and other outward imports still fail closed.
+const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
+	"packages/providers/provider-agentv->packages/training-pipeline",
+	"packages/providers/provider-ax->packages/runtime",
+	// The runner tier (#891/#892) composes @hobo/runner-github's shared
+	// execution-host vocabulary (SKU catalog, host registry, dispatch
+	// tracking) rather than reaching it through a core port; runner-github is
+	// functioning as the runner-tier base library. Same future-ADR tiering as
+	// the training/eval providers above; scoped to these EXACT edges.
+	"packages/providers/runner-blacksmith->packages/providers/runner-github",
+	"packages/providers/runner-depot->packages/providers/runner-github",
+	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
+]);
+
+// The SWE agent connectors (swe-claude, swe-codex, swe-copilot, swe-cursor,
+// swe-gemini, swe-grok, ...) all speak ACP through @hobo/connector-acp, the
+// connector-tier base library (#893-#899). A tier rule instead of exact edges
+// because every new SWE connector adds the same edge; any other
+// connector->connector import still fails closed.
+function isConnectorTierBaseEdge(from: string, to: string): boolean {
+	return (
+		from.startsWith("packages/connectors/") &&
+		to === "packages/connectors/connector-acp"
+	);
+}
+
+function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
+	return (
+		ACCEPTED_ADAPTER_PACKAGE_EDGES.has(`${from}->${to}`) ||
+		isConnectorTierBaseEdge(from, to)
+	);
+}
 
 function isWorkspacePath(path: string): boolean {
 	return path.startsWith("packages/") || path.startsWith("examples/");
@@ -86,7 +134,8 @@ export function classifyPackage(path: string): PackageClassification {
 		path.startsWith("packages/providers/") ||
 		path.startsWith("packages/iac/") ||
 		path.startsWith("packages/build/") ||
-		path.startsWith("packages/runtimes/")
+		path.startsWith("packages/runtimes/") ||
+		path.startsWith("packages/connectors/")
 	) {
 		return { kind: "adapter", layer: 2 };
 	}
@@ -135,7 +184,8 @@ export function validateBoundaryImports(
 		if (
 			from.kind === "adapter" &&
 			to.kind === "adapter" &&
-			edge.from !== edge.to
+			edge.from !== edge.to &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
 		) {
 			errors.push(
 				`adapters must not import each other: ${edge.from} -> ${edge.to}`,
@@ -146,14 +196,19 @@ export function validateBoundaryImports(
 			from.kind === "adapter" &&
 			to.kind !== "core" &&
 			edge.from !== edge.to &&
-			edge.to !== "packages/conformance"
+			edge.to !== "packages/conformance" &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
 		) {
 			errors.push(
 				`adapters may import only core ports: ${edge.from} -> ${edge.to}`,
 			);
 		}
 
-		if (to.layer > from.layer && edge.to !== "packages/conformance") {
+		if (
+			to.layer > from.layer &&
+			edge.to !== "packages/conformance" &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
+		) {
 			errors.push(`dependency points outward: ${edge.from} -> ${edge.to}`);
 		}
 	}
@@ -209,6 +264,7 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/camps", to: "packages/bindles" },
 	{ from: "packages/camps", to: "packages/core" },
 	{ from: "packages/yards", to: "packages/camps" },
+	{ from: "packages/junctions", to: "packages/yards" },
 	{ from: "packages/runtime", to: "packages/core" },
 	{ from: "packages/cli", to: "packages/core" },
 	{ from: "packages/cli", to: "packages/runtime" },
@@ -216,4 +272,41 @@ export const canonicalWorkspaceEdges: readonly WorkspaceEdge[] = [
 	{ from: "packages/conformance", to: "packages/core" },
 	{ from: "packages/stage-gate", to: "packages/componentize" },
 	{ from: "packages/runtimes/runtime-local", to: "packages/conformance" },
+	{ from: "packages/data", to: "packages/core" },
+	{ from: "packages/events", to: "packages/core" },
+	{ from: "packages/events", to: "packages/data" },
+	{ from: "packages/identity", to: "packages/core" },
+	{ from: "packages/cloud", to: "packages/core" },
+	{ from: "packages/cloud", to: "packages/bindles" },
+	{ from: "packages/cloud", to: "packages/data" },
+	{ from: "packages/cloud", to: "packages/events" },
+	{ from: "packages/contracts", to: "packages/core" },
+	{ from: "packages/contracts", to: "packages/policy" },
+	{ from: "packages/mcp", to: "packages/core" },
+	{ from: "packages/mcp", to: "packages/cli" },
+	{ from: "packages/mcp", to: "packages/identity" },
+	{ from: "packages/conformance", to: "packages/runtime" },
+	{ from: "packages/training-pipeline", to: "packages/core" },
+	{ from: "packages/iac/iac-pulumi", to: "packages/core" },
+	{ from: "packages/providers/provider-cloudflare", to: "packages/core" },
+	// @hobo/hobo — the composition root (apps, L3). It composes the L3 sdk/runtime
+	// packages and the L2 adapters; every edge is inward or same-layer, so no
+	// exception is required.
+	{ from: "packages/hobo", to: "packages/cli" },
+	{ from: "packages/hobo", to: "packages/cloud" },
+	{ from: "packages/hobo", to: "packages/contracts" },
+	{ from: "packages/hobo", to: "packages/bindles" },
+	{ from: "packages/hobo", to: "packages/core" },
+	{ from: "packages/hobo", to: "packages/data" },
+	{ from: "packages/hobo", to: "packages/runtimes/runtime-local" },
+	{ from: "packages/hobo", to: "packages/providers/provider-cloudflare" },
+	{ from: "packages/hobo", to: "packages/iac/iac-pulumi" },
+	{ from: "packages/providers/provider-agentv", to: "packages/core" },
+	{ from: "packages/providers/provider-ax", to: "packages/core" },
+	// Accepted training/eval-provider composition edges (see ACCEPTED_ADAPTER_PACKAGE_EDGES).
+	{
+		from: "packages/providers/provider-agentv",
+		to: "packages/training-pipeline",
+	},
+	{ from: "packages/providers/provider-ax", to: "packages/runtime" },
 ];

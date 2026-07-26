@@ -16,6 +16,7 @@ export interface ArtifactCacheEntry {
 	readonly keyFrom?: readonly string[];
 }
 
+// domain-view: readonly parse target narrowed to the RequiredPrCheck union; data-models/ci_fabric.proto PullRequestGate is its wire form.
 export interface PullRequestGate {
 	readonly blocksPullRequest: boolean;
 	readonly requiredChecks: readonly RequiredPrCheck[];
@@ -42,6 +43,7 @@ export interface E2eCostGate {
 	readonly cron?: string;
 }
 
+// domain-view: readonly parse target with required nested selector; data-models/ci_fabric.proto CloudRole is its wire form.
 export interface CloudRole {
 	readonly name: string;
 	readonly allowedActions: readonly string[];
@@ -95,6 +97,7 @@ export interface E2eContract {
 	readonly quarantine: E2eQuarantine;
 }
 
+// domain-view: readonly parse-produced aggregate pinned to the literal CI_FABRIC_SCHEMA; data-models/ci_fabric.proto CiFabricContract is its wire form.
 export interface CiFabricContract {
 	readonly schema: typeof CI_FABRIC_SCHEMA;
 	readonly workflow: WorkflowContract;

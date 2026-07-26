@@ -5,6 +5,7 @@ const DEFAULT_START_INSTANT = "2026-06-26T00:00:00.000Z";
 const DEFAULT_LOCAL_EQUIVALENTS = Object.freeze({
   api: Object.freeze({ driver: "local-http-router", fidelity: "in-process" }),
   kv: Object.freeze({ driver: "memory-kv", fidelity: "in-memory" }),
+  cache: Object.freeze({ driver: "memory-cache", fidelity: "in-memory" }),
   bucket: Object.freeze({ driver: "filesystem-blobstore", fidelity: "filesystem" }),
   queue: Object.freeze({ driver: "memory-queue", fidelity: "in-memory" }),
   topic: Object.freeze({ driver: "memory-pubsub", fidelity: "in-memory" }),

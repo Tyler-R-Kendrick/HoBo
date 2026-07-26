@@ -7,7 +7,7 @@ tags: [hobo, competitors]
 
 # FinOps tooling landscape — Competitor Reference
 
-> Researched July 2026. Sources: [kubecost.com](https://www.kubecost.com/) · [opencost.io](https://opencost.io/) · [infracost.io](https://www.infracost.io/) · [vantage.sh](https://www.vantage.sh/) · [cast.ai](https://cast.ai/). **Adjacent** — none is a meta-cloud; all overlap HoBo's FinOps/showback design ([ADR-0039](../design/adr/02-identity-security.md#adr-0039), [ADR-0071](../design/adr/01-architecture-core.md#adr-0071), [Plan 5](../design/reliability-observability-cost.md#plan-05)). Excerpts quoted for analysis (see [`../README.md`](README.md#sources--fair-use)).
+> Researched July 2026. Sources: [kubecost.com](https://www.kubecost.com/) · [opencost.io](https://opencost.io/) · [infracost.io](https://www.infracost.io/) · [vantage.sh](https://www.vantage.sh/) · [cast.ai](https://cast.ai/). **Adjacent** — none is a meta-cloud; all overlap HoBo's FinOps/showback design ([ADR-0039](../design/adr/02-identity-security.md#adr-0039), [ADR-0071](../design/adr/01-architecture-core.md#adr-0071), [Plan 5](../design/reliability-observability-cost.md#plan-05)). Excerpts quoted for analysis (see [`index.md`](index.md#sources--fair-use)).
 
 ## What it is
 

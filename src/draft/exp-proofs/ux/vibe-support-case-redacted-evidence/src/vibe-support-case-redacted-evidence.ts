@@ -30,6 +30,7 @@ type SupportCaseRedactionState =
   | "requires-security-approval"
   | "scope-out";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ConsumedSupportWorkflowMockupRef proto message in data-models/.
 type ConsumedSupportWorkflowMockupRef = {
   readonly sourceIssue: "HOBO-550";
   readonly mockupId: SupportCaseConsumedMockupId;
@@ -37,6 +38,7 @@ type ConsumedSupportWorkflowMockupRef = {
   readonly supportCaseUse: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the SupportCaseEvidencePack proto message in data-models/.
 export type SupportCaseEvidencePack = {
   readonly id: string;
   readonly supportCaseState: "intake" | "triage" | "evidence-pack" | "owner-route" | "customer-update" | "closure";
@@ -66,6 +68,7 @@ export const REQUIRED_SUPPORT_CASE_EVIDENCE_FIELDS = [
   "nextUpdateCondition",
 ] as const satisfies readonly (keyof SupportCaseEvidencePack)[];
 
+// domain-view: parse-produced draft-proof record; its wire form is the SupportCaseScenarioPath proto message in data-models/.
 type SupportCaseScenarioPath = {
   readonly id: SupportCaseScenario;
   readonly narrative: string;

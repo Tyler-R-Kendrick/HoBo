@@ -1,0 +1,21 @@
+{
+  "layer": "epic",
+  "slug": "sdk-authoring-ifc-bindles",
+  "title": "SDK & Authoring Reference Implementation",
+  "linear": "HOBO-600",
+  "references": {
+    "technicalProofs": [
+      "src/draft/technical-proofs/hobo-runtime-ts-primitives"
+    ],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

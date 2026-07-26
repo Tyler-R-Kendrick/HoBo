@@ -1,5 +1,15 @@
+// Enforcement tiers, so nobody mistakes one for the other:
+// - Structural checks (data-models presence, PACT contract validity,
+//   proto<->CUE type coverage, parallel-proto-type) inspect real artifacts
+//   and cannot be satisfied by prose.
+// - Documentation-presence checks (missing-parse-derived-type,
+//   missing-event-architecture) grep for the vocabulary the architecture
+//   rules require the package to document. They verify the package SAYS how
+//   it applies parse-don't-validate and the event architecture, not that the
+//   code does — behavioral verification lives in each package's tests and
+//   PACT contracts.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,7 +52,7 @@ const NESTED_PRODUCTION_CATEGORIES = new Set([
 	"runtimes",
 	"providers",
 	"iac",
-	"build",
+	"connectors",
 ]);
 
 export function isProductionPackageRoot(packageRoot) {
@@ -104,6 +114,12 @@ const REQUIRED_CHECKS = [
 			"Name command/event, actor, event-store, materialized-view/projection, snapshot, and read-store behavior.",
 		passes: (evidence) => evidence.hasEventArchitecture,
 	},
+	{
+		code: "parallel-proto-type",
+		message: (evidence) =>
+			`Import generated types from src/_generated/**_pb.ts instead of hand-declaring proto-shaped types (technical-standards.md); annotate deliberate exceptions with // parallel-type-allowed: <why>. Offenders: ${evidence.parallelTypeDeclarations.join(", ")}`,
+		passes: (evidence) => evidence.parallelTypeDeclarations.length === 0,
+	},
 ];
 
 export function foreignLockfileProblems(files) {
@@ -129,7 +145,10 @@ export async function checkArchitectureGuardrails({
 	files,
 } = {}) {
 	const normalizedFiles = unique((files ?? []).map(normalizePath));
-	const packageRoots = implementationPackageRoots(normalizedFiles);
+	const frozen = frozenPromotedProofRoots(root);
+	const packageRoots = implementationPackageRoots(normalizedFiles).filter(
+		(packageRoot) => !frozen.has(packageRoot),
+	);
 	const problems = foreignLockfileProblems(normalizedFiles);
 
 	const evidenceByPackage = await Promise.all(
@@ -149,7 +168,10 @@ export async function checkArchitectureGuardrails({
 			if (!check.passes(evidence)) {
 				problems.push({
 					code: check.code,
-					message: check.message,
+					message:
+						typeof check.message === "function"
+							? check.message(evidence)
+							: check.message,
 					packageRoot,
 				});
 			}
@@ -157,6 +179,29 @@ export async function checkArchitectureGuardrails({
 	}
 
 	return { packageRoots, problems };
+}
+
+// Frozen promoted proofs (scripts/promotions.json) are read-only by the
+// promoted-proof drift gate — their canonical successors in packages/ carry
+// the architecture evidence now. Evaluating them here would demand edits the
+// drift gate forbids, so they are excluded from guard evaluation.
+function frozenPromotedProofRoots(root) {
+	try {
+		const ledger = JSON.parse(
+			readFileSync(path.join(root, "scripts", "promotions.json"), "utf8"),
+		);
+		return new Set(
+			(ledger.promotions ?? [])
+				.filter((entry) => entry.status === "frozen")
+				.map((entry) => normalizePath(entry.proof))
+				.map((proofPath) => {
+					const parts = proofPath.split("/");
+					return parts.slice(0, 4).join("/");
+				}),
+		);
+	} catch {
+		return new Set();
+	}
 }
 
 export function implementationPackageRoots(files) {
@@ -179,6 +224,7 @@ async function collectEvidence(root, packageRoot) {
 		? await listFiles(absolutePackageRoot, absolutePackageRoot)
 		: [];
 	const text = [];
+	const typeScriptSources = [];
 	const protoTypes = new Set();
 	const cueTexts = [];
 	let hasPactContract = false;
@@ -228,7 +274,18 @@ async function collectEvidence(root, packageRoot) {
 		}
 
 		if (TEXT_EXTENSIONS.has(ext)) {
-			text.push(await readFile(path.join(absolutePackageRoot, file), "utf8"));
+			const contents = await readFile(
+				path.join(absolutePackageRoot, file),
+				"utf8",
+			);
+			text.push(contents);
+			if (
+				ext === ".ts" &&
+				/^src\//.test(normalized) &&
+				!/(^|\/)_generated(\/|$)/.test(normalized)
+			) {
+				typeScriptSources.push({ file: normalized, contents });
+			}
 		}
 	}
 
@@ -258,7 +315,46 @@ async function collectEvidence(root, packageRoot) {
 		hasDataModelsCue,
 		hasMisplacedDataModel,
 		hasContractsPact,
+		parallelTypeDeclarations: parallelTypeDeclarations(
+			typeScriptSources,
+			protoTypes,
+		),
 	};
+}
+
+// Hand-declared TS types that duplicate a proto message/enum name are the
+// "parallel interfaces" the architecture rules forbid — record types must be
+// the generated ones (technical-standards.md). Two markers on the
+// declaration line (or the line above) suppress a hit, for the two legitimate
+// cases the standard recognizes:
+//   // domain-view: <why>          — a deliberately richer parse-don't-validate
+//                                     domain type (branded ids, generics, extra
+//                                     fields) whose generated *_pb.ts is its
+//                                     wire form; permanent by design.
+//   // parallel-type-allowed: <why> — temporary debt awaiting migration.
+const PARALLEL_TYPE_MARKERS = ["domain-view:", "parallel-type-allowed:"];
+function parallelTypeDeclarations(typeScriptSources, protoTypes) {
+	if (protoTypes.size === 0) return [];
+	const offenders = [];
+	for (const { file, contents } of typeScriptSources) {
+		const lines = contents.split(/\r?\n/u);
+		for (const [index, line] of lines.entries()) {
+			// Declarations only: `interface X ...` or `type X = {` (an alias whose
+			// right-hand side derives from another type is a legitimate narrowing,
+			// and `type X,` inside import/export lists is not a declaration).
+			const match = line.match(
+				/^\s*(?:export\s+)?(?:interface\s+([A-Za-z_$][\w$]*)[\s<{]|type\s+([A-Za-z_$][\w$]*)(?:<[^>]*>)?\s*=\s*\{)/u,
+			);
+			const name = match?.[1] ?? match?.[2];
+			if (!name || !protoTypes.has(name)) continue;
+			const context = `${lines[index - 1] ?? ""}\n${line}`;
+			if (PARALLEL_TYPE_MARKERS.some((marker) => context.includes(marker))) {
+				continue;
+			}
+			offenders.push(`${file}:${index + 1} ${name}`);
+		}
+	}
+	return offenders;
 }
 
 function protoTypeNames(content) {
@@ -312,19 +408,22 @@ function changedFiles(args) {
 	const base =
 		baseArg?.slice("--base=".length) ?? process.env.HOBO_ARCHITECTURE_BASE;
 
+	// Full-repo mode: evaluate every production package regardless of diff.
+	// Used by check:all and the CI main gate, where a fresh checkout has no
+	// diff and the bare invocation would otherwise pass vacuously.
+	if (args.has("--all")) {
+		return split(git(["ls-files", "packages", "examples"]));
+	}
+
 	if (args.has("--staged")) {
-		return filterExistingBasePackages(
-			split(git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])),
-			base,
+		return split(
+			git(["diff", "--cached", "--name-only", "--diff-filter=ACMR"]),
 		);
 	}
 
 	if (base) {
-		return filterExistingBasePackages(
-			split(
-				git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]),
-			),
-			base,
+		return split(
+			git(["diff", "--name-only", "--diff-filter=ACMR", `${base}...HEAD`]),
 		);
 	}
 
@@ -336,26 +435,6 @@ function changedFiles(args) {
 
 function git(args) {
 	return execFileSync("git", args, { encoding: "utf8" }).trim();
-}
-
-function gitSucceeds(args) {
-	try {
-		execFileSync("git", args, { stdio: "ignore" });
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function filterExistingBasePackages(files, base) {
-	if (!base) return files;
-
-	return files.filter((file) => {
-		const packageRoot = implementationPackageRoot(file);
-		return (
-			!packageRoot || !gitSucceeds(["cat-file", "-e", `${base}:${packageRoot}`])
-		);
-	});
 }
 
 function implementationPackageRoot(file) {

@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import type { ComponentHostEvent } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import {
 	ComponentHostError,

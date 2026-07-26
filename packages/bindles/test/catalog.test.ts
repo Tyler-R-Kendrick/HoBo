@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	CATALOG,
 	api,
 	auth,
 	bucket,
+	CATALOG,
 	catalogFactoryNames,
 	crypto,
 	data,

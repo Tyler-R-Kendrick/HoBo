@@ -1,21 +1,90 @@
 import {
-	NoRouteError,
-	ProviderHandlerStore,
-	WireVersionIncompatibleError,
-	linkKey,
-	parseInterfaceId,
-	parseWireVersion,
 	type ComponentRegistration,
 	type EstablishedLink,
 	type LinkRequest,
+	linkKey,
 	type MembraneEvent,
+	NoRouteError,
+	ProviderHandlerStore,
 	type ProviderRegistration,
+	parseInterfaceId,
+	parseWireVersion,
+	WireVersionIncompatibleError,
 	type WrpcLinkPort,
 	type WrpcTransport,
 } from "@hobo/core";
 
+import {
+	DeadlineExceededError,
+	MembraneBackpressureError,
+} from "../failure/taxonomy.js";
 import { createInProcessTransport } from "./in-process-transport.js";
 import { negotiateWireVersion } from "./wire-version.js";
+
+/**
+ * A monotonic-enough source of wall-clock milliseconds, injectable so tests
+ * can drive deadline enforcement deterministically. Defaults to `Date.now`.
+ */
+export interface LinkClock {
+	nowMs(): number;
+}
+
+const DEFAULT_LINK_CLOCK: LinkClock = { nowMs: () => Date.now() };
+
+/**
+ * Race a link invocation against its carried deadline. A call that settles
+ * before the remaining budget elapses wins (synchronous/fast providers resolve
+ * on the microtask queue and beat even a zero-length timer); a slow provider
+ * loses to the timer and is cancelled with a typed {@link DeadlineExceededError}.
+ * The losing invocation's settlement is consumed so it never leaks as an
+ * unhandled rejection.
+ */
+function raceDeadline<T>(
+	work: Promise<T>,
+	remainingMs: number,
+	makeError: () => DeadlineExceededError,
+): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		let settled = false;
+		const timer = setTimeout(() => {
+			if (settled) {
+				return;
+			}
+			settled = true;
+			reject(makeError());
+		}, remainingMs);
+		if (
+			typeof timer === "object" &&
+			timer &&
+			typeof timer.unref === "function"
+		) {
+			timer.unref();
+		}
+		work.then(
+			(value) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				clearTimeout(timer);
+				resolve(value);
+			},
+			(error: unknown) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				clearTimeout(timer);
+				reject(error);
+			},
+		);
+	});
+}
+
+function parseDeadlineMs(iso: string): number | null {
+	const ms = Date.parse(iso);
+	return Number.isNaN(ms) ? null : ms;
+}
 
 type IndexedPins = Map<
 	string,
@@ -43,10 +112,21 @@ export function createWrpcLinkLayer(options: {
 	transport: WrpcTransport;
 	compatibilityFloor: string;
 	store?: ProviderHandlerStore;
+	/**
+	 * Membrane backpressure bound: the maximum number of concurrent in-flight
+	 * calls per provider before the link sheds load with a typed
+	 * {@link MembraneBackpressureError}. Defaults to unbounded (carry-only).
+	 */
+	maxInFlight?: number;
+	/** Clock used to enforce carried deadlines. Defaults to `Date.now`. */
+	clock?: LinkClock;
 }): WrpcLinkPort {
 	const floor = parseWireVersion(options.compatibilityFloor);
 	const store = options.store ?? new ProviderHandlerStore();
 	const transport = options.transport;
+	const maxInFlight = options.maxInFlight ?? Number.POSITIVE_INFINITY;
+	const clock = options.clock ?? DEFAULT_LINK_CLOCK;
+	const inFlight = new Map<string, number>();
 	const codecName =
 		"codec" in transport &&
 		typeof transport.codec === "object" &&
@@ -168,26 +248,70 @@ export function createWrpcLinkLayer(options: {
 				});
 			}
 
-			const result = await transport.invoke({
-				link,
-				operation,
-				payload,
-				deadline: options.deadline ?? null,
-			});
+			// Membrane backpressure: a saturated provider sheds load with a
+			// typed retryable error rather than buffering unboundedly.
+			const providerId = link.providerId;
+			const current = inFlight.get(providerId) ?? 0;
+			if (current >= maxInFlight) {
+				throw new MembraneBackpressureError({
+					providerId,
+					operation,
+					importInterface: parsedInterface,
+					maxInFlight,
+					inFlight: current,
+				});
+			}
 
-			events.push({
-				type: "link.Called",
-				componentId: link.componentId,
-				importInterface: link.importInterface,
-				providerId: link.providerId,
-				exportInterface: link.exportInterface,
-				operation,
-				boundaryMode: link.boundaryMode,
-				transport: link.transport,
-				codec: codecName,
-				deadline: options.deadline ?? null,
-			});
-			return result;
+			// Each link is a timeout boundary: a carried deadline is enforced,
+			// not merely propagated. A call still in flight past the deadline is
+			// cancelled with a typed `cancelled`/deadline-exceeded error.
+			const deadlineIso = options.deadline ?? null;
+			const deadlineMs =
+				deadlineIso !== null ? parseDeadlineMs(deadlineIso) : null;
+			const startedAtMs = clock.nowMs();
+
+			inFlight.set(providerId, current + 1);
+			try {
+				const invocation = transport.invoke({
+					link,
+					operation,
+					payload,
+					deadline: deadlineIso,
+				});
+
+				const result =
+					deadlineMs !== null
+						? await raceDeadline(
+								invocation,
+								Math.max(0, deadlineMs - startedAtMs),
+								() =>
+									new DeadlineExceededError({
+										componentId,
+										importInterface: parsedInterface,
+										operation,
+										deadline: deadlineIso as string,
+										deadlineMs,
+										observedNowMs: startedAtMs,
+									}),
+							)
+						: await invocation;
+
+				events.push({
+					type: "link.Called",
+					componentId: link.componentId,
+					importInterface: link.importInterface,
+					providerId: link.providerId,
+					exportInterface: link.exportInterface,
+					operation,
+					boundaryMode: link.boundaryMode,
+					transport: link.transport,
+					codec: codecName,
+					deadline: deadlineIso,
+				});
+				return result;
+			} finally {
+				inFlight.set(providerId, (inFlight.get(providerId) ?? 1) - 1);
+			}
 		},
 
 		get events() {

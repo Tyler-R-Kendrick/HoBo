@@ -4,8 +4,8 @@ import { test } from "vitest";
 
 import { findCaseCollisions } from "../scripts/check-case-collisions.js";
 import {
-	selectRelevantChecks,
 	type Check,
+	selectRelevantChecks,
 } from "../scripts/relevant-check-policy.js";
 
 function plan(files: string[], overrides = {}) {
@@ -77,6 +77,10 @@ function standardsCheck(check: Check) {
 
 function lintCodeCheck(check: Check) {
 	return check.command === "pnpm" && check.args.join(" ") === "run lint:code";
+}
+
+function konsistentCheck(check: Check) {
+	return check.command === "pnpm" && check.args.join(" ") === "run konsistent";
 }
 
 test("root script-only package changes do not select all-package Turbo", () => {
@@ -165,6 +169,24 @@ test("docs-only changes do not select the Biome formatting lane", () => {
 	const { checks } = plan(["docs/agent-tooling.md"]);
 
 	assert.equal(checks.some(lintCodeCheck), false);
+});
+
+test("source changes select the konsistent structural lane", () => {
+	const { checks } = plan(["packages/core/src/index.ts"]);
+
+	assert.equal(checks.some(konsistentCheck), true);
+});
+
+test("konsistent.json changes select the konsistent structural lane", () => {
+	const { checks } = plan(["konsistent.json"]);
+
+	assert.equal(checks.some(konsistentCheck), true);
+});
+
+test("docs-only changes do not select the konsistent structural lane", () => {
+	const { checks } = plan(["docs/agent-tooling.md"]);
+
+	assert.equal(checks.some(konsistentCheck), false);
 });
 
 test("draft aggregate folders without package metadata do not select workspace tests", () => {
@@ -464,4 +486,34 @@ test("nested production category packages resolve to their own workspace", () =>
 
 	assert.deepEqual(workspaces, [workspace]);
 	assert.equal(turboTestSelects(checks, workspace), true);
+});
+
+function isBehaviorLane(check: Check) {
+	return (
+		check.command === "pnpm" && check.args.join(" ") === "run test:behavior"
+	);
+}
+
+test("editing an epic-proof feature file trips the behavior lane", () => {
+	const { checks } = plan([
+		"src/draft/epic-proofs/finops-budget-routing-control-plane/features/finops-budget-routing-control-plane.feature",
+	]);
+	assert.ok(checks.some(isBehaviorLane));
+});
+
+test("editing a step definition trips the behavior lane", () => {
+	const { checks } = plan([
+		"src/draft/epic-proofs/finops-budget-routing-control-plane/features/steps/steps.ts",
+	]);
+	assert.ok(checks.some(isBehaviorLane));
+});
+
+test("editing cucumber.yaml trips the behavior lane", () => {
+	const { checks } = plan(["cucumber.yaml"]);
+	assert.ok(checks.some(isBehaviorLane));
+});
+
+test("unrelated docs edits do not trip the behavior lane", () => {
+	const { checks } = plan(["docs/design/vision.md"]);
+	assert.ok(!checks.some(isBehaviorLane));
 });

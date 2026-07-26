@@ -1,5 +1,5 @@
-import type { AllowVerbsFor, ResourceHandle, SecretRef } from "../src/types.js";
 import { bucket, data, kv, secret, secretRef } from "../src/index.js";
+import type { AllowVerbsFor, ResourceHandle, SecretRef } from "../src/types.js";
 
 type BindlesModule = typeof import("../src/index.js");
 type KvHandle = ReturnType<typeof kv>;

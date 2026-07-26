@@ -1,16 +1,24 @@
+import { createBuildCommand } from "../commands/build.js";
+import { createCodegenCommand } from "../commands/codegen.js";
+import { createCollectCommand } from "../commands/collect.js";
+import { createDevCommand } from "../commands/dev.js";
+import { createDownCommand } from "../commands/down.js";
+import { createLoginCommand } from "../commands/login.js";
+import { createNewCommand } from "../commands/new.js";
+import { createPlanCommand } from "../commands/plan.js";
+import { createStubCommand } from "../commands/stub.js";
+import { createUpCommand } from "../commands/up.js";
 import type { CliContext, CliEnvelope } from "../types/envelope.js";
 import { buildEnvelope } from "../types/envelope.js";
-import { createNewCommand } from "../commands/new.js";
-import { createBuildCommand } from "../commands/build.js";
-import { defaultContextFactory, type ContextFactory } from "./context.js";
+import { type ContextFactory, defaultContextFactory } from "./context.js";
 import { assertKnownVerb, parseArgv } from "./parse.js";
 import {
-	createCommandRegistry,
 	type CommandModule,
 	type CommandRegistry,
+	createCommandRegistry,
 } from "./registry.js";
+import { type CliRunResult, renderError, renderSuccess } from "./render.js";
 import { helpText, projectScopedVerbs, verbHelpText } from "./verbs.js";
-import { renderError, renderSuccess, type CliRunResult } from "./render.js";
 
 export interface CommandInvocation {
 	readonly verb: string;
@@ -51,6 +59,14 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 		createCommandRegistry({
 			new: createNewCommand(),
 			build: createBuildCommand(),
+			codegen: createCodegenCommand(),
+			collect: createCollectCommand(),
+			dev: createDevCommand(),
+			stub: createStubCommand(),
+			login: createLoginCommand(),
+			plan: createPlanCommand(),
+			up: createUpCommand(),
+			down: createDownCommand(),
 			...(options.commands ?? {}),
 		});
 	const contextFactory = options.contextFactory ?? defaultContextFactory;
@@ -77,7 +93,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 	return {
 		dispatchCommand,
 		async run(argv, runOptions = {}) {
-			let request;
+			let request: ReturnType<typeof parseArgv>;
 			try {
 				request = parseArgv(
 					argv,
@@ -104,6 +120,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						offline: false,
 						template: null,
 						force: false,
+						hold: false,
 						runtime: null,
 					},
 				});
@@ -117,7 +134,11 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 				assertKnownVerb(request.verb);
 
 				if (request.help) {
-					return okText(verbHelpText(request.verb));
+					return okText(
+						verbHelpText(request.verb, {
+							implemented: registry.isImplemented(request.verb),
+						}),
+					);
 				}
 
 				const context = await contextFactory({

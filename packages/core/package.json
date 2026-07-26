@@ -18,11 +18,15 @@
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"test": "pnpm run build && vitest run test/ --passWithNoTests",
+		"test": "pnpm run build && vitest run test/",
 		"test:contract:consumer": "vitest run contracts/consumer",
 		"test:contract:provider": "vitest run contracts/provider"
 	},
 	"devDependencies": {
-		"@hobo/contract-harness": "workspace:*"
+		"@hobo/contract-harness": "workspace:*",
+		"@types/node": "^22.15.3"
+	},
+	"dependencies": {
+		"@bufbuild/protobuf": "2.12.1"
 	}
 }

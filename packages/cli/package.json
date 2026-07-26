@@ -19,16 +19,23 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@bufbuild/protobuf": "2.12.1",
+		"@hobo/bindles": "workspace:*",
+		"@hobo/cloud": "workspace:*",
 		"@hobo/componentize": "workspace:*",
 		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/data": "workspace:*",
+		"@hobo/provider-cloudflare": "workspace:*",
+		"@hobo/runtime": "workspace:*",
+		"@hobo/runtime-local": "workspace:*",
 		"@types/node": "^22.15.29"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"test": "pnpm --filter @hobo/componentize run build && pnpm run build && vitest run --passWithNoTests"
+		"test": "pnpm --filter @hobo/componentize run build && pnpm --filter @hobo/runtime run build && pnpm run build && vitest run"
 	}
 }

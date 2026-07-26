@@ -1,0 +1,48 @@
+---
+import Logo from "./Logo.astro";
+import { nav } from "../nav";
+import { href } from "../lib/url";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+	<div class="container">
+		<div class="footer-grid">
+			<div class="footer-brand">
+				<a class="brand" href={href("/")}>
+					<Logo />
+					<span>HoBo</span>
+				</a>
+				<p>
+					Every app deserves a good home — preferably a cheap one. HoBo
+					describes your app once, finds it the best-value home that passes
+					your policies, and keeps it moving when a better one opens up.
+				</p>
+			</div>
+			{
+				nav.map((group) => (
+					<nav aria-label={`Footer: ${group.label}`}>
+						<p class="nav-label">{group.label}</p>
+						<ul>
+							{group.items.map((item) => (
+								<li>
+									<a href={href(item.slug)}>{item.label}</a>
+								</li>
+							))}
+						</ul>
+					</nav>
+				))
+			}
+		</div>
+		<div class="footer-note">
+			<span>
+				HoBo is <strong>pre-release</strong> — the surfaces documented here are
+				the contract the product is being built to.
+			</span>
+			<span>
+				Homeward bound since the design phase · © {year}
+			</span>
+		</div>
+	</div>
+</footer>

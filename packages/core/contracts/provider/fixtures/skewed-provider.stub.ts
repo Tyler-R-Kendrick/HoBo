@@ -1,5 +1,8 @@
-import type { PactRequest, PactResponse } from "@hobo/contract-harness";
-import type { ProviderStub } from "@hobo/contract-harness";
+import type {
+	PactRequest,
+	PactResponse,
+	ProviderStub,
+} from "@hobo/contract-harness";
 
 export const skewedProviderStub: ProviderStub = {
 	name: "CoreContractSurface",

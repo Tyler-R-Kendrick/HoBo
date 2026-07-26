@@ -1,0 +1,344 @@
+{
+  "schemaVersion": "hobo.agent-docs/v1",
+  "generator": "@hobo/cli/agent-docs",
+  "product": "hobo",
+  "entries": [
+    {
+      "name": "up",
+      "role": "lifecycle",
+      "summary": "Realize the current object graph",
+      "cli": "hobo up",
+      "mcpTool": "up",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:up",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "down",
+      "role": "lifecycle",
+      "summary": "Tear down what up realized",
+      "cli": "hobo down",
+      "mcpTool": "down",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:down",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "dev",
+      "role": "local loop",
+      "summary": "Run against runtime-local",
+      "cli": "hobo dev",
+      "mcpTool": "dev",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:dev",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "new",
+      "role": "local loop",
+      "summary": "Scaffold a runnable SDK program",
+      "cli": "hobo new",
+      "mcpTool": "new",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:new",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "login",
+      "role": "identity",
+      "summary": "Obtain a dev SVID through OIDC",
+      "cli": "hobo login",
+      "mcpTool": "login",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:login",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "claim",
+      "role": "identity",
+      "summary": "Bind an anonymous deployment to an account",
+      "cli": "hobo claim",
+      "mcpTool": "claim",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:claim",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "plan",
+      "role": "read-only",
+      "summary": "Dry-run the up decision",
+      "cli": "hobo plan",
+      "mcpTool": "plan",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:plan",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "verify",
+      "role": "read-only",
+      "summary": "Run the unified Gatekeeper preflight",
+      "cli": "hobo verify",
+      "mcpTool": "verify",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:verify",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "can-deploy",
+      "role": "read-only",
+      "summary": "Diagnose producer/consumer compatibility",
+      "cli": "hobo can-deploy",
+      "mcpTool": "can-deploy",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:can-deploy",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "inspect",
+      "role": "read-only",
+      "summary": "Render projections and time-travel views",
+      "cli": "hobo inspect",
+      "mcpTool": "inspect",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:inspect",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "logs",
+      "role": "read-only",
+      "summary": "Live-tail Camp runtime streams",
+      "cli": "hobo logs",
+      "mcpTool": "logs",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:logs",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "doctor",
+      "role": "diagnostics",
+      "summary": "Report environment and portability hazards",
+      "cli": "hobo doctor",
+      "mcpTool": "doctor",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:doctor",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "codegen",
+      "role": "authoring",
+      "summary": "Regenerate checked-in generated clients",
+      "cli": "hobo codegen",
+      "mcpTool": "codegen",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:codegen",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "build",
+      "role": "authoring",
+      "summary": "Compile services to wasm components",
+      "cli": "hobo build",
+      "mcpTool": "build",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:build",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "collect",
+      "role": "authoring",
+      "summary": "Run resource collection and print manifest IR",
+      "cli": "hobo collect",
+      "mcpTool": "collect",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:collect",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "stub",
+      "role": "authoring",
+      "summary": "Run with a contract-backed stub",
+      "cli": "hobo stub",
+      "mcpTool": "stub",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:stub",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "drift",
+      "role": "diagnostics",
+      "summary": "Report drift and governed remediation paths",
+      "cli": "hobo drift",
+      "mcpTool": "drift",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:drift",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "add",
+      "role": "distribution",
+      "summary": "Install a provider or listing",
+      "cli": "hobo add",
+      "mcpTool": "add",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:add",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "registry",
+      "role": "distribution",
+      "summary": "Administer registry artifacts",
+      "cli": "hobo registry",
+      "mcpTool": "registry",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:registry",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "import",
+      "role": "migration",
+      "summary": "Adopt existing estate in place",
+      "cli": "hobo import",
+      "mcpTool": "import",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:import",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "generate",
+      "role": "generation",
+      "summary": "Request provider generation",
+      "cli": "hobo generate",
+      "mcpTool": "generate",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:generate",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "sandbox",
+      "role": "test loop",
+      "summary": "Run a contract-backed isolated lane",
+      "cli": "hobo sandbox",
+      "mcpTool": "sandbox",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:sandbox",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "test",
+      "role": "test loop",
+      "summary": "Alias for the sandbox test lane",
+      "cli": "hobo test",
+      "mcpTool": "test",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:test",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "attest",
+      "role": "governance",
+      "summary": "Produce signed external evidence exports",
+      "cli": "hobo attest",
+      "mcpTool": "attest",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:attest",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "erase",
+      "role": "governance",
+      "summary": "Request crypto-shred erasure",
+      "cli": "hobo erase",
+      "mcpTool": "erase",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:erase",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "derivative",
+      "role": "extensibility",
+      "summary": "Manage derived HoBo implementations",
+      "cli": "hobo derivative",
+      "mcpTool": "derivative",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:derivative",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "runbook",
+      "role": "SRE",
+      "summary": "Execute or replay incident runbooks",
+      "cli": "hobo runbook",
+      "mcpTool": "runbook",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:runbook",
+        "verb": "call"
+      }
+    }
+  ],
+  "globalFlags": [
+    "--json",
+    "--camp <camp>",
+    "--cwd <path>",
+    "--verbose",
+    "-q",
+    "--help"
+  ],
+  "artifacts": [
+    "llms.txt",
+    "llms-full.txt",
+    "docs.json"
+  ]
+}

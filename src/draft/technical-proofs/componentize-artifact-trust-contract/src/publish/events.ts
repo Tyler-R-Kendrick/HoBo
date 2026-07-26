@@ -6,6 +6,7 @@ import type {
   SignedArtifactCandidate,
 } from "./artifact-trust.js";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ArtifactPublishedEvent proto message in data-models/.
 export type ArtifactPublishedEvent = {
   readonly type: "artifact.Published";
   readonly ref: ArtifactRef;
@@ -13,6 +14,7 @@ export type ArtifactPublishedEvent = {
   readonly provenanceTier: ProvenanceTier;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ArtifactInstallVerifiedEvent proto message in data-models/.
 export type ArtifactInstallVerifiedEvent = {
   readonly type: "artifact.InstallVerified";
   readonly ref: ArtifactRef;
@@ -20,6 +22,7 @@ export type ArtifactInstallVerifiedEvent = {
   readonly provenanceTier: ProvenanceTier;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ArtifactInstallRefusedEvent proto message in data-models/.
 export type ArtifactInstallRefusedEvent = {
   readonly type: "artifact.InstallRefused";
   readonly ref: ArtifactRef | null;

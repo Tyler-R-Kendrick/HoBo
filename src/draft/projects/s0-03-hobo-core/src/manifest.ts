@@ -24,6 +24,7 @@ type AuthFlowType = (typeof FLOW_ORDER)[number];
 const FLOW_ORDER_SET = new Set<AuthFlowType>(FLOW_ORDER);
 const REQUIRED_MANIFEST_FILES = ["capabilities.json", "auth.json", "cost.json"] as const;
 
+// domain-view: parse-produced draft-proof record; its wire form is the CapabilityManifestBundle proto message in data-models/.
 export interface CapabilityManifestBundle {
   index: {
     schemaVersion: "hobo.core/v1";

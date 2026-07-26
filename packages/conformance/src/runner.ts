@@ -4,7 +4,6 @@ import { projectPortSuiteReport } from "./report.js";
 import { createCaseContext } from "./seed.js";
 import { createConformanceSuite } from "./suite.js";
 import {
-	DEFAULT_SEED,
 	type AdapterResult,
 	type CaseAssertion,
 	type ConformanceAdapter,
@@ -13,6 +12,7 @@ import {
 	type ConformanceSuite,
 	type ConformanceSuiteDefinition,
 	type ConformanceTier,
+	DEFAULT_SEED,
 	type RunConformanceSuiteOptions,
 	type SuiteCase,
 } from "./types.js";

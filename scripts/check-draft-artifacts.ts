@@ -11,21 +11,23 @@
  * Packages listed in `src/draft/_grandfathered.json` (the pre-hardening baseline) get
  * ADVISORY warnings only — backfill waves delete entries to activate enforcement. New
  * packages must comply fully. Modes mirror the other gates: `--staged`, `--base=<ref>`,
- * default `HEAD~1`.
+ * default `HEAD~1`. Positional args select packages directly (no git diff), so backfill
+ * work can verify a package before its grandfather entry is deleted:
+ * `tsx scripts/check-draft-artifacts.ts src/draft/technical-proofs/<slug>`.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
 import { sanitizeNodeOptions } from "./lib/env.ts";
 import {
+	type ExperienceType,
 	experienceTypeForWorkspace,
 	layerForWorkspace,
+	type ProofManifest,
 	proofManifestSchema,
 	workspaceForDraftFile,
-	type ExperienceType,
-	type ProofManifest,
 } from "./lib/proof-manifest.js";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -338,11 +340,15 @@ function main() {
 			) as { packages: string[] }
 		).packages,
 	);
+	const positional = argv.filter((arg) => !arg.startsWith("--"));
 	const workspaces = [
 		...new Set(
-			changedFiles(argv)
-				.map(workspaceForDraftFile)
-				.filter((w): w is string => Boolean(w)),
+			(positional.length > 0
+				? positional.map((p) =>
+						path.relative(repoRoot, path.resolve(repoRoot, p)),
+					)
+				: changedFiles(argv).map(workspaceForDraftFile)
+			).filter((w): w is string => Boolean(w)),
 		),
 	];
 	if (workspaces.length === 0) {
@@ -352,7 +358,10 @@ function main() {
 
 	let failures = 0;
 	for (const workspace of workspaces) {
-		const isGrandfathered = grandfathered.has(workspace);
+		// Direct package selection is the backfill verification path: enforce
+		// strictly even while the grandfather entry still exists.
+		const isGrandfathered =
+			positional.length === 0 && grandfathered.has(workspace);
 		const report = checkWorkspace(workspace);
 		if (report.problems.length === 0) {
 			console.log(`ok: ${workspace}`);

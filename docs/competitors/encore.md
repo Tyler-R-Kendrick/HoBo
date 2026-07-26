@@ -7,7 +7,7 @@ tags: [hobo, competitors]
 
 # Encore — competitor reference
 
-> A faithful, detailed capture of **Encore** for HoBo competitive analysis. Encore is the **closest product analog** to HoBo: **infrastructure-from-code** for TypeScript/Go where you declare cloud resources in your app code, run locally against real infra, and deploy to your own AWS/GCP. Sources: [encore.dev](https://encore.dev/) · [encore.dev/docs](https://encore.dev/docs) · [github.com/encoredev/encore](https://github.com/encoredev/encore) · [encore.cloud](https://encore.cloud/) · [encore.dev/pricing](https://encore.dev/pricing). License **MPL-2.0** (framework/CLI/self-host OSS; Encore Cloud commercial). Researched June 2026; API/CLI/pricing shapes quoted for analysis under fair use (see [`../README.md`](README.md#sources--fair-use)).
+> A faithful, detailed capture of **Encore** for HoBo competitive analysis. Encore is the **closest product analog** to HoBo: **infrastructure-from-code** for TypeScript/Go where you declare cloud resources in your app code, run locally against real infra, and deploy to your own AWS/GCP. Sources: [encore.dev](https://encore.dev/) · [encore.dev/docs](https://encore.dev/docs) · [github.com/encoredev/encore](https://github.com/encoredev/encore) · [encore.cloud](https://encore.cloud/) · [encore.dev/pricing](https://encore.dev/pricing). License **MPL-2.0** (framework/CLI/self-host OSS; Encore Cloud commercial). Researched June 2026; API/CLI/pricing shapes quoted for analysis under fair use (see [`index.md`](index.md#sources--fair-use)).
 
 ## What it is
 

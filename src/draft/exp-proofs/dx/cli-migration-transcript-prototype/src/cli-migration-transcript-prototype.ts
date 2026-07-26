@@ -47,12 +47,14 @@ export interface MigrationResultEnvelope {
   fixtureId: `hobo-575.${string}`;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the GateOutcome proto message in data-models/.
 export interface GateOutcome {
   blocked: boolean;
   blockers: GatekeeperBlocker[];
   safeNextSteps: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the TranscriptStep proto message in data-models/.
 export interface TranscriptStep {
   case: TranscriptCase;
   actor: string;
@@ -65,6 +67,7 @@ export interface TranscriptStep {
   notes: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the MigrationEventFixture proto message in data-models/.
 export interface MigrationEventFixture {
   type: MigrationEventType;
   fixtureId: `hobo-575.migration.${string}`;
@@ -82,6 +85,7 @@ export interface MigrationEventFixture {
   };
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the MigrationRequest proto message in data-models/.
 export interface MigrationRequest {
   requestId: string;
   command: `hobo ${string}`;
@@ -105,11 +109,13 @@ export interface MigrationRequest {
   };
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the MigrationExample proto message in data-models/.
 export interface MigrationExample {
   request: MigrationRequest;
   resultEnvelope: MigrationResultEnvelope;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the MigrationExamples proto message in data-models/.
 export interface MigrationExamples {
   sdk: MigrationExample & {
     snippet: string;
@@ -120,6 +126,7 @@ export interface MigrationExamples {
   };
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliMigrationTranscriptPrototype proto message in data-models/.
 export interface CliMigrationTranscriptPrototype {
   issue: "HOBO-575";
   parentIssue: "HOBO-566";

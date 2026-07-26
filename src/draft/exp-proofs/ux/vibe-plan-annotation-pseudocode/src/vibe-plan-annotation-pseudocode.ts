@@ -22,6 +22,7 @@ export type AnnotationSeverity = "info" | "warning" | "blocked" | "critical";
 export type ProofMode = "reference fixture" | "simulated" | "scope-out" | "live";
 export type EvidenceState = "happy" | "blocked" | "stale/unknown";
 
+// domain-view: parse-produced draft-proof record; its wire form is the PlanAnnotationFixture proto message in data-models/.
 export type PlanAnnotationFixture = {
   case: AnnotationCase;
   annotationInput: string;
@@ -36,6 +37,7 @@ export type PlanAnnotationFixture = {
   fixtureId: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the PlanAnnotationContractFixtures proto message in data-models/.
 export type PlanAnnotationContractFixtures = {
   protobuf: "architecture/vibe_plan_annotation_pseudocode.proto";
   cue: "architecture/vibe_plan_annotation_pseudocode.cue";

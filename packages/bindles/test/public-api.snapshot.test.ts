@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
-import * as bindles from "../src/index.js";
 import { CATALOG } from "../src/catalog.js";
+import * as bindles from "../src/index.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
 const FORBIDDEN_PUBLIC_SYMBOL =
@@ -49,6 +48,11 @@ function createBindlesPublicApiSnapshot(
 		"compileBindleManifest",
 		"wiringData",
 		"wiringService",
+		"collectBindleManifest",
+		"CollectionEngineError",
+		"createCollectionEvents",
+		"manifestFromWiring",
+		"COLLECTION_EVENT_SOURCE",
 		...factoryNames,
 	]);
 
@@ -182,6 +186,34 @@ function createBindlesPublicApiSnapshot(
 				kind: "wiring-factory",
 				signature:
 					"wiringService(name: string, options?: ServiceOptions): ComponentHandle",
+			},
+			{
+				name: "collectBindleManifest",
+				kind: "collect-engine",
+				signature:
+					"collectBindleManifest(target: CollectionTarget): CollectionResult",
+			},
+			{
+				name: "manifestFromWiring",
+				kind: "collect-helper",
+				signature:
+					"manifestFromWiring(wiring: WiringManifest, componentHost: ComponentHostDescriptor): ManifestV1",
+			},
+			{
+				name: "createCollectionEvents",
+				kind: "collect-events",
+				signature:
+					"createCollectionEvents(input: { bindleId: string; manifestHash: ManifestHash; resources: readonly string[]; binds: readonly string[] }): readonly CollectionEvent[]",
+			},
+			{
+				name: "CollectionEngineError",
+				kind: "collect-error",
+				signature: "class CollectionEngineError extends Error",
+			},
+			{
+				name: "COLLECTION_EVENT_SOURCE",
+				kind: "collect-constant",
+				signature: 'const COLLECTION_EVENT_SOURCE: "hobo.collector"',
 			},
 			...extraExports,
 		],

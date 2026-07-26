@@ -1,10 +1,10 @@
 export { camp, providerSelection, resolutionPrecedenceFor } from "./camp.js";
+export type { ResolvedEnv } from "./resolve-local-bindings.js";
 export {
 	BindingResolutionError,
 	canonicalManifestHash,
 	resolveLocalBindings,
 } from "./resolve-local-bindings.js";
-export type { ResolvedEnv } from "./resolve-local-bindings.js";
 export type {
 	Camp,
 	CampConfig,

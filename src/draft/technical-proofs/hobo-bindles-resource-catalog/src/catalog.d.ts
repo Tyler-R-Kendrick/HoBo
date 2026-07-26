@@ -1,6 +1,7 @@
 export type CatalogFactoryName =
   | "api"
   | "kv"
+  | "cache"
   | "bucket"
   | "queue"
   | "topic"
@@ -22,6 +23,7 @@ export type CatalogFactoryName =
 
 export type ApiAllowVerb = never;
 export type KvAllowVerb = "get" | "set" | "delete";
+export type CacheAllowVerb = "get" | "set" | "delete" | "invalidate";
 export type BucketAllowVerb = "read" | "write" | "delete";
 export type QueueAllowVerb = "enqueue" | "dequeue";
 export type TopicAllowVerb = "publish" | "subscribe";
@@ -91,6 +93,13 @@ export interface KvHandle extends ResourceHandle<"kv", KvAllowVerb> {
   get(...args: readonly unknown[]): LoweredCall<"kv", "get">;
   set(...args: readonly unknown[]): LoweredCall<"kv", "set">;
   delete(...args: readonly unknown[]): LoweredCall<"kv", "delete">;
+}
+
+export interface CacheHandle extends ResourceHandle<"cache", CacheAllowVerb> {
+  get(...args: readonly unknown[]): LoweredCall<"cache", "get">;
+  set(...args: readonly unknown[]): LoweredCall<"cache", "set">;
+  delete(...args: readonly unknown[]): LoweredCall<"cache", "delete">;
+  invalidate(...args: readonly unknown[]): LoweredCall<"cache", "invalidate">;
 }
 
 export interface BucketHandle extends ResourceHandle<"bucket", BucketAllowVerb> {
@@ -193,6 +202,7 @@ export const CATALOG: readonly CatalogEntry<CatalogFactoryName, string>[];
 export function catalogFactoryNames(): CatalogFactoryName[];
 export function api(name: string): ApiHandle;
 export function kv(name: string): KvHandle;
+export function cache(name: string): CacheHandle;
 export function bucket(name: string): BucketHandle;
 export function queue(name: string): QueueHandle;
 export function topic(name: string): TopicHandle;

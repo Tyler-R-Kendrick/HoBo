@@ -1,5 +1,5 @@
-import type { CreateRuntimeLocalQueueClock } from "../../src/queue-clock.js";
 import { parseIdempotencyKey, parseQueueName } from "@hobo/core";
+import type { CreateRuntimeLocalQueueClock } from "../../src/queue-clock.js";
 
 export interface RedeliveryAfterCrashResult {
 	effectCount: number;

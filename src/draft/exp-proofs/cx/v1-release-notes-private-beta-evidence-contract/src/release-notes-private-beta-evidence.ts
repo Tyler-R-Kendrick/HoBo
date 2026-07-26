@@ -19,6 +19,7 @@ export type RequiredEvidence = {
   readonly feeds: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the RecordedBlocker proto message in data-models/.
 export type RecordedBlocker = {
   readonly id: string;
   readonly status: "none-open" | "open" | "accepted-risk";
@@ -26,6 +27,7 @@ export type RecordedBlocker = {
   readonly summary: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the AcceptedRisk proto message in data-models/.
 export type AcceptedRisk = {
   readonly id: string;
   readonly owner: string;
@@ -33,6 +35,7 @@ export type AcceptedRisk = {
   readonly revisitGate: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseCutlineDependency proto message in data-models/.
 export type ReleaseCutlineDependency = {
   readonly project: string;
   readonly issueOrRecord: string;
@@ -46,6 +49,7 @@ export type FollowUpIssue = {
   readonly reason: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ReleaseNotesPrivateBetaEvidenceRecord proto message in data-models/.
 export type ReleaseNotesPrivateBetaEvidenceRecord = {
   readonly issue: "HOBO-466";
   readonly project: "V1 Release Notes & Upgrade Guide";

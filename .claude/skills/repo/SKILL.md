@@ -31,5 +31,5 @@ Use this skill for repo lifecycle work. Keep the hot path fast: search before va
 - Do not run install, update, prune, broad generation, or full repo validation as a diagnostic unless evidence shows it is required.
 - Do not use Google products for OKF ingestion or querying by default. Treat OKF as markdown plus frontmatter in git.
 - Prefer local hybrid retrieval first. Use cloud or BYOC retrieval only when explicitly requested or already configured.
-- Finish whole-branch PR work by rebasing on `origin/main`, running `pnpm.cmd run agent:check -- --base=origin/main`, opening or updating the PR, resolving conflicts/checks/comments, cleaning the workspace safely, and archiving the thread only when the client provides a thread-archive tool.
-- For iteration or a small post-rebase repair, use `pnpm.cmd run agent:check` for the latest commit or `pnpm.cmd run agent:check -- --staged` before committing. Do not pay for PR-base branch validation repeatedly.
+- Finish whole-branch PR work by rebasing on `origin/main`, running `pnpm run agent:check -- --base=origin/main`, opening or updating the PR, resolving conflicts/checks/comments, cleaning the workspace safely, and archiving the thread only when the client provides a thread-archive tool.
+- For iteration or a small post-rebase repair, use `pnpm run agent:check` for the latest commit or `pnpm run agent:check -- --staged` before committing. Do not pay for PR-base branch validation repeatedly.

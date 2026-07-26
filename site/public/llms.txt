@@ -28,6 +28,15 @@ Key facts:
   binds it later.
 - Everything is event-sourced and replayable, including agent token issuance and every
   migration decision.
+- The Broker (@hobo/broker) is the policy-governed decision authority: it brokers
+  bindle/camp/yard/junction placements PER RESOURCE across providers under the
+  configured policy set it maintains, answers with a content-hash-pinned Resolution
+  Receipt or a per-plane Resolution Rejection, handles spin up/down/zero, and wraps
+  five swappable planes — policy (OPA-shaped), contracts (Gatekeeper/PACT can-deploy),
+  billing (budget/spend-cap/quota), delivery (Argo CD Application rendering), and a
+  connector registry (github-app, pulumi, azure, vercel, cloudflare; credentialRef
+  pointers only, never secrets). Junction broker-admin lockdowns accumulate and cannot
+  be relaxed by narrower policies.
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
@@ -54,6 +63,7 @@ Key facts:
 - [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, pitch a Camp (or let it be inferred), `hobo up`; Yards/Junctions as advanced scenarios
 - [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): the four scopes, continuous migration, membrane, event log, agent auth
 - [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout
+- [The Broker](https://tyler-r-kendrick.github.io/HoBo/guide/broker/): policy-governed placement across providers, receipts/rejections, the five wrapped planes, connector registry
 - [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
 - [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): implementable ports, adapter authoring, conformance certification, ACP/A2A protocol-connector integration points
 - [Trail map](https://tyler-r-kendrick.github.io/HoBo/guide/status/): honest pre-release status and stage gates

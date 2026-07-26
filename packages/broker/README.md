@@ -1,0 +1,87 @@
+# @hobo/broker
+
+The **HoBo Broker**: the policy-governed authority that actually brokers
+Bindle/Camp/Yard/Junction placements **across providers**, spins resources up
+and down, and hands accepted work to delivery — based on the configured
+policies the broker itself maintains. It is the runtime counterpart of the
+[Meta-cloud Broker design](../../docs/design/hobo-broker.md); the Meta-cloud
+Broker artifact vocabulary (Contract Manifest → Resolution Receipt /
+Resolution Rejection) is preserved here as the receipt/rejection wire shapes.
+
+This broker is **distinct** from the Identity token broker (ADR-0008) and the
+connector runtime broker (HOBO-235): those broker *credentials*; this package
+brokers *placements*. The connector registry below stores `credentialRef`
+pointers into the token broker — never raw secrets.
+
+## What it wraps
+
+The broker is a wrapper around five planes, each behind a port so engines can
+be swapped without touching the brokering pipeline:
+
+| Plane | Port | Default engine | Swappable with |
+|---|---|---|---|
+| Policy | `GatePlane` (OPA-shaped request/decision documents) | `@hobo/contracts` policy pack (imported and **run**, not reinvented) | OPA/Rego via the planned `@hobo/provider-opa` adapter |
+| Contracts | `GatePlane` (can-deploy compatibility) | `@hobo/contracts` Gatekeeper (PACT-style boundary semantics) | an external Pact broker verification feed |
+| Billing | `BillingPlane` | in-proc budget + spend-cap + quota checks | the billing policy plane / metering service |
+| Delivery | `DeliveryPlane` | `renderArgoApplication` → Argo CD Application documents; `in-proc` executor handoff | a live Argo CD control plane |
+| Connectors | `ConnectorRegistry` | event-sourced registry of `github-app`, `pulumi`, `azure`, `vercel`, `cloudflare`, `custom` configs | an external connector catalog |
+
+Placement itself consumes any `BrokerCatalog` — a structural mirror of
+`@hobo/cloud`'s `PlannerRegistry`, so the Yard's live provider catalog plugs
+in directly.
+
+## Command/event model
+
+The broker is an **actor**: it consumes commands (`resolve`, `scale`,
+`deliver`, connector `register`/`disable`), coordinates durable state through
+the facts it emits, and never mutates a query read model directly. Event
+families:
+
+- `broker.Requested` → `broker.Resolved` (receipt) or `broker.Rejected`
+  (structured per-plane reasons), with the Gatekeeper's `policy.Decided` /
+  `gatekeeper.Decided` facts appended to the same stream for replay.
+- `broker.ScaleRequested` — spin up/down/zero directives.
+- `broker.DeliverySubmitted` — delivery-plane handoff.
+- `connector.Registered` / `connector.Disabled` — connector registry facts.
+
+Query surfaces are event-driven: `foldBrokerDecisions` and
+`foldConnectorRegistry` are pure folds over the **event store** stream into
+**materialized view** rows (each **projection** rebuilds from zero), and
+`snapshotBrokerDecisions`/`restoreBrokerDecisions` persist a **snapshot** of
+the current rows to a **read store** for cached current reads; replaying the
+stream over a restored snapshot yields the same view.
+
+## Parse, don't validate
+
+Untrusted policy documents, brokering requests, connector configs, and scale
+directives cross exactly one parser boundary (`parseBrokerPolicySet`,
+`parseBrokerRequest`, `parseConnectorConfig`, `parseScaleDirective`). The
+parsers apply the protobuf + CUE constraints from `data-models/broker.proto`
+and `data-models/broker.cue` and return refined **parsed domain types**
+(`src/types.ts`, including the branded `PolicyHash` derived type), so invalid
+values are unrepresentable past the boundary — core functions never re-check
+raw DTOs.
+
+## Policy semantics
+
+Placement policies are maintained per topology scope kind. The effective
+policy for a request merges junction → yard → camp → bindle: narrower scopes
+override choice-shaped fields (objective, allowed providers/regions, pins),
+while restrictions **accumulate** — a junction broker admin's
+`requireExplicitCamps` lockdown or denied-provider list can never be relaxed
+by a narrower policy. Every receipt and rejection pins `policyHash` (the
+content address of the whole policy set) and `catalogHash`, so a decision is
+replayable against the exact policies and catalog that produced it.
+
+## Boundary contract
+
+The consumer-driven PACT contract for the resolve boundary lives in
+[`contracts/pacts/broker_resolution.pact.json`](contracts/pacts/broker_resolution.pact.json),
+exercised by `contracts/consumer/broker-resolution-boundary.test.ts`.
+
+## Verification
+
+```sh
+pnpm --filter @hobo/broker test
+pnpm --filter @hobo/broker test:contract:consumer
+```

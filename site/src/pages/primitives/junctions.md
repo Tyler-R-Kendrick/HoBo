@@ -32,7 +32,7 @@ Just the members — connectivity is inferred. The junction reads the member yar
 - **Peer yards only.** A junction adds yards; it does not reach into them. Each yard keeps its own event log, its own control plane, its own blast radius.
 - **No shared mutable state.** What crosses a junction is signed, versioned artifacts — policy packs, registry bundles, trust roots — not live coordination.
 - **Policy at the border.** Data-residency, sovereignty, and egress rules attach at the junction scope: what may cross which border is an explicit, auditable decision.
-- **The broker admin holds the keys.** Junction governance is also where camp inference can be switched off: a junction broker admin can require explicit, approved [camps](/HoBo/primitives/camps/), so placement stays a deliberate act instead of an inferred one.
+- **The broker admin holds the keys.** Junction governance is also where camp inference can be switched off: a junction broker admin can require explicit, approved [camps](/HoBo/primitives/camps/), so placement stays a deliberate act instead of an inferred one. The lockdown is enforced by [the Broker](/HoBo/guide/broker/), and no narrower policy can switch inference back on.
 
 ## When to reach for a junction
 

@@ -31,6 +31,7 @@
 		"@hobo/provider-aws": "workspace:*",
 		"@hobo/provider-azure": "workspace:*",
 		"@hobo/provider-cloudflare": "workspace:*",
+		"@hobo/provider-gcp": "workspace:*",
 		"@hobo/runtime-local": "workspace:*"
 	},
 	"scripts": {

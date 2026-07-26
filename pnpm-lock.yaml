@@ -326,6 +326,9 @@ importers:
       '@hobo/provider-lakebed':
         specifier: workspace:*
         version: link:../providers/provider-lakebed
+      '@hobo/runner-github':
+        specifier: workspace:*
+        version: link:../providers/runner-github
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
@@ -491,6 +494,12 @@ importers:
         version: link:../../core
 
   packages/providers/provider-lakebed:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
+  packages/providers/runner-github:
     dependencies:
       '@hobo/core':
         specifier: workspace:*

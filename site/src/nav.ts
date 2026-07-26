@@ -14,6 +14,8 @@ export const nav: NavGroup[] = [
 			{ label: "Architecture", slug: "/guide/architecture/" },
 			{ label: "The hobo CLI", slug: "/guide/cli/" },
 			{ label: "Custom providers", slug: "/guide/custom-providers/" },
+			{ label: "Testing", slug: "/guide/testing/" },
+			{ label: "The Bridge", slug: "/guide/bridge/" },
 			{ label: "The trail map", slug: "/guide/status/" },
 		],
 	},

@@ -11,10 +11,15 @@ import {
 } from "@hobo/cli";
 import type { IacProvider } from "@hobo/cloud";
 import {
+	approveProviderFact,
+	collectStream,
+	createEventBackedRegistry,
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 	createRegistryFromProviders,
+	foldRegistryStream,
 	type RegistrableProvider,
+	registerProviderFact,
 } from "@hobo/cloud";
 import type {
 	ComponentHostEvent,
@@ -26,6 +31,7 @@ import type {
 import { createInMemoryActorHost } from "@hobo/data";
 import {
 	createPulumiAutomationAdapter,
+	createPulumiAutomationApiEngine,
 	createPulumiCliAutomationEngine,
 } from "@hobo/iac-pulumi";
 import {
@@ -38,6 +44,7 @@ import {
 	createRuntimeLocalComponentHost,
 	createRuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { REGISTRY_STREAM } from "./add-command.js";
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
 import {
@@ -66,8 +73,11 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // `hobo.iac-program/v1` program, and applies it through the real adapter. There
 // is NO mock IacProvider. HONEST SCOPE: the DEFAULT backend is the in-memory
 // Automation-API stand-in (offline, deterministic); `HOBO_PULUMI_LIVE=1` swaps
-// in the real pinned `pulumi` CLI engine (binary- and credential-gated — see
-// selectIacProvider and the deploy-hello-bindle-pulumi workflow lane).
+// in the REAL Pulumi Automation API engine (@pulumi/pulumi LocalWorkspace,
+// HOBO-715 — engine-binary- and credential-gated), with
+// `HOBO_PULUMI_LIVE_ENGINE=cli` (or the HOBO_PULUMI_BIN test seam) selecting
+// the pinned `pulumi` CLI engine instead — see selectIacProvider and the
+// deploy-hello-bindle-pulumi workflow lane.
 
 // @hobo/provider-cloudflare types its capability-manifest fields more loosely
 // (PublishedManifestDocuments / Record<string, unknown>) than @hobo/cloud's
@@ -75,7 +85,15 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // shapes already line up — the @hobo/cloud + @hobo/cli registry tests drive
 // exactly this provider — so this composition-root adapter simply re-presents the
 // CloudProvider as a RegistrableProvider without changing any behavior.
-function toRegistrableProvider(provider: CloudProvider): RegistrableProvider {
+export function toRegistrableProvider(
+	// Structural pick: registration needs the manifest surface only, so
+	// providers whose realize() emits a driver program (e.g. Lakebed,
+	// ADR-0127) register through the same seam as IaC-realizing providers.
+	provider: Pick<
+		CloudProvider,
+		"id" | "regions" | "capabilities" | "capabilityManifest"
+	>,
+): RegistrableProvider {
 	return {
 		id: provider.id,
 		regions: [...provider.regions],
@@ -185,24 +203,32 @@ export function selectPulumiEstateAdapter(
 		return deps.adapter;
 	}
 	if (env.HOBO_PULUMI_LIVE === "1") {
-		return memoizedPulumiAdapter(
-			deps.store,
-			"live",
-			() =>
-				createPulumiAutomationAdapter({
-					engine: createPulumiCliAutomationEngine({
-						workDir:
-							env.HOBO_PULUMI_WORKDIR ??
-							mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
+		return memoizedPulumiAdapter(deps.store, "live", () => {
+			const workDir =
+				env.HOBO_PULUMI_WORKDIR ??
+				mkdtempSync(join(tmpdir(), "hobo-pulumi-live-"));
+			// Default live engine = the REAL Pulumi Automation API (LocalWorkspace,
+			// HOBO-715). `HOBO_PULUMI_LIVE_ENGINE=cli` keeps the pinned CLI engine;
+			// the HOBO_PULUMI_BIN test seam implies the CLI engine (the Automation
+			// API embeds its own engine and takes no binary override).
+			const useCliEngine =
+				env.HOBO_PULUMI_LIVE_ENGINE === "cli" ||
+				env.HOBO_PULUMI_BIN !== undefined;
+			const engine = useCliEngine
+				? createPulumiCliAutomationEngine({
+						workDir,
 						env,
 						// Test seam mirroring the engine's own binary gate: point at a
 						// non-existent binary to exercise the typed fail-closed path.
 						...(env.HOBO_PULUMI_BIN !== undefined
 							? { pulumiBin: env.HOBO_PULUMI_BIN }
 							: {}),
-					}),
-				}) as PulumiAutomationAdapter,
-		);
+					})
+				: createPulumiAutomationApiEngine({ workDir, env });
+			return createPulumiAutomationAdapter({
+				engine,
+			}) as PulumiAutomationAdapter;
+		});
 	}
 	if (
 		(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) ||
@@ -352,8 +378,52 @@ export function createDefaultYardRuntime(
 			}),
 		}),
 		broker: createInProcessCredentialBroker(),
-		registry: createRegistryFromProviders([toRegistrableProvider(cloudflare)]),
+		// Base (in-code) providers PLUS whatever `hobo add` has installed and
+		// approved in the durable registry stream — the read model the Planner
+		// matches against, rebuildable from zero (HOBO-710). The cloud verbs
+		// call `registry.refresh()` before planning to fold the latest facts.
+		registry: createEventBackedRegistry({
+			store,
+			streamId: REGISTRY_STREAM,
+			base: createRegistryFromProviders([toRegistrableProvider(cloudflare)]),
+		}),
 	};
+}
+
+// Idempotently record the DEFAULT provider set as durable registration +
+// approval facts (walkthrough Part 0/2: a cloud exists once its default
+// providers are approved — a fact trail, not config). Providers already
+// present in the stream are skipped, so re-running a boot never duplicates
+// facts. The composed binary runs this before dispatching a verb.
+export async function bootstrapDefaultProviders(
+	runtime: { store: EventStore; registry: YardRuntime["registry"] },
+	providers: readonly RegistrableProvider[] = [
+		toRegistrableProvider(createCloudflareProvider()),
+	],
+): Promise<string[]> {
+	const events = await collectStream(runtime.store, REGISTRY_STREAM);
+	const fold = foldRegistryStream(events);
+	let lastSeq = events.length > 0 ? (events[events.length - 1]?.seq ?? 0) : 0;
+	const recorded: string[] = [];
+
+	for (const provider of providers) {
+		const facts = [];
+		if (!fold.installed.has(provider.id))
+			facts.push(registerProviderFact(provider));
+		if (!fold.approved.has(provider.id))
+			facts.push(approveProviderFact(provider.id, "yard/bootstrap"));
+		if (facts.length === 0) continue;
+		const appended = await runtime.store.append(REGISTRY_STREAM, facts, {
+			expectedSeq: lastSeq,
+			actor: { kind: "system", id: "yard/bootstrap" },
+			tenant: "hobo-dev",
+		});
+		lastSeq = appended.appended[appended.appended.length - 1]?.seq ?? lastSeq;
+		recorded.push(provider.id);
+	}
+
+	await runtime.registry.refresh?.();
+	return recorded;
 }
 
 const HTTP_INCOMING_INTERFACE =

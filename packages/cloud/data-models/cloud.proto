@@ -107,6 +107,14 @@ message RegistryCatalogEntry {
   string manifest_index_digest = 3;
 }
 
+// Approval fact body for a registered provider (provider.Approved). Only
+// approved providers are matchable by the Planner (walkthrough Part 0/2
+// "default providers approved"); registration alone leaves a provider held.
+message ProviderApprovedRecord {
+  string provider_id = 1;
+  string approved_by = 2;
+}
+
 // ---- S2-03a/b: Orchestrator + ResourceActor FSM + Executor wire records ----
 // control-plane.md "The ResourceActor reconciliation FSM" + "Executor sandbox
 // model". The provisioning path: a durable ResourceActor folds its own stream

@@ -18,6 +18,11 @@ export {
 export type { IacProvider } from "./port.js";
 export { IAC_PULUMI_INTERFACE, IAC_PULUMI_PORT } from "./port.js";
 export {
+	createPulumiAutomationApiEngine,
+	PULUMI_AUTOMATION_MODULE_MISSING,
+	type PulumiAutomationApiEngineOptions,
+} from "./pulumi-automation-api-engine.js";
+export {
 	createPulumiCliAutomationEngine,
 	PULUMI_CLI_MISSING,
 	PULUMI_UNSUPPORTED_RESOURCE,

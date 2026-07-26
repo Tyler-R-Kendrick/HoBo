@@ -132,3 +132,4 @@
 | 0124 | In-Camp scheduling policies (ADR-P6/P7/P8): preemption/oversubscription/capacity-reservation as substrate-delegated per-Camp policy knobs | [architecture-core](01-architecture-core.md#adr-0124) |
 | 0125 | Trainable-annotation surface v1: signature-only empty implementations, param/output metadata on the contract, optional decorator sugar; ax-backed built-in `training-engine` | [data-plane](03-data-plane.md#adr-0125) |
 | 0126 | Committed platform entry files under `examples/*/deploy/` are the sanctioned JS-family exception (deploy artifacts ingested verbatim; sources stay TS-first) | [architecture-core](01-architecture-core.md#adr-0126) |
+| 0127 | Lakebed accepted as a deploy-target adapter: honest-partial capabilities, deploy-driver realization, opt-in approval; rejected as a Yard substrate | [portability-extensibility](07-portability-extensibility.md#adr-0127) |

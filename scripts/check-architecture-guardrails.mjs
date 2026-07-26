@@ -48,7 +48,12 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 const PRODUCTION_PACKAGE_PARENTS = new Set(["packages", "examples"]);
-const NESTED_PRODUCTION_CATEGORIES = new Set(["runtimes", "providers", "iac"]);
+const NESTED_PRODUCTION_CATEGORIES = new Set([
+	"runtimes",
+	"providers",
+	"iac",
+	"connectors",
+]);
 
 export function isProductionPackageRoot(packageRoot) {
 	return PRODUCTION_PACKAGE_PARENTS.has(

@@ -33,6 +33,10 @@ export function createDownCommand(deps: DownCommandDeps = {}): CommandModule {
 				return stubResult("down");
 			}
 
+			// Fold any providers installed via `hobo add` from the durable registry
+			// stream so the reconstructed plan matches what `up` realized.
+			await runtime.registry.refresh?.();
+
 			const session =
 				deps.session ??
 				(await loadSession(projectDir)) ??

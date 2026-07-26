@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 
+import type { EventStore } from "@hobo/core";
 import { defineProjection, type Projection } from "@hobo/data";
-import { CLOUD_EVENTS, providerRegistered } from "../events.js";
+import {
+	CLOUD_EVENTS,
+	providerApproved,
+	providerRegistered,
+} from "../events.js";
 import type { CapabilityVerdict } from "../plan-types.js";
+import { collectStream } from "../store/index.js";
 
 // The Registry is a Provider + Capability Manifest catalog (control-plane.md
 // "Registry"). Per Decision D2 (build plan) it is a *projection* over provider
@@ -54,10 +60,22 @@ export interface ResourceDefinition {
 	satisfies(req: { port: string; features?: string[] }): CapabilityVerdict;
 }
 
+// A registered-but-unapproved provider: visible to remediation, invisible to
+// Matching (walkthrough Part 0/2 — approval is the gate, registration is not).
+export interface HeldProvider {
+	providerId: string;
+	ports: string[];
+}
+
 export interface PlannerRegistry {
 	catalogHash: string;
 	definitions(): ResourceDefinition[];
 	providers(): string[];
+	// Optional live-view extensions (event-backed registries): re-fold the
+	// durable registry stream into the matchable snapshot, and list providers
+	// that are installed but not yet approved.
+	refresh?(): Promise<void>;
+	held?(): HeldProvider[];
 }
 
 function normalizeVerdict(raw: {
@@ -161,6 +179,166 @@ export function registerProviderFact(provider: RegistrableProvider) {
 		definitions,
 		manifestIndexDigest,
 	});
+}
+
+// The approval fact: `hobo add` (or the Yard bootstrap) approving a registered
+// provider for Matching.
+export function approveProviderFact(providerId: string, approvedBy?: string) {
+	return providerApproved(
+		approvedBy !== undefined ? { providerId, approvedBy } : { providerId },
+	);
+}
+
+// Deterministic, core-owned capability negotiation over a *recorded* catalog
+// entry (ADR-0090): the fact body carries data only, so `satisfies` is
+// reconstructed from the entry's port + features — full when every required
+// feature is advertised, partial(missing) when the port matches, none otherwise.
+function negotiateFromEntry(
+	port: string,
+	features: readonly string[],
+): ResourceDefinition["satisfies"] {
+	return (req) => {
+		if (req.port !== port) return { kind: "none" };
+		const missing = (req.features ?? []).filter(
+			(feature) => !features.includes(feature),
+		);
+		if (missing.length === 0) return { kind: "full" };
+		return { kind: "partial", missing };
+	};
+}
+
+// Parse a `provider.Registered` fact body into ResourceDefinitions
+// (parse-don't-validate: malformed entries are dropped, never half-trusted).
+export function parseRegisteredDefinitions(
+	data: unknown,
+): ResourceDefinition[] {
+	if (data === null || typeof data !== "object") return [];
+	const body = data as { providerId?: unknown; definitions?: unknown };
+	if (typeof body.providerId !== "string" || body.providerId.length === 0)
+		return [];
+	if (!Array.isArray(body.definitions)) return [];
+
+	const parsed: ResourceDefinition[] = [];
+	for (const raw of body.definitions) {
+		if (raw === null || typeof raw !== "object") continue;
+		const rec = raw as Record<string, unknown>;
+		if (typeof rec.port !== "string" || rec.port.length === 0) continue;
+		const features = Array.isArray(rec.features)
+			? rec.features.filter((f): f is string => typeof f === "string")
+			: [];
+		const regions = Array.isArray(rec.regions)
+			? rec.regions.filter((r): r is string => typeof r === "string")
+			: [];
+		const cost = (rec.cost ?? {}) as Record<string, unknown>;
+		parsed.push({
+			id:
+				typeof rec.id === "string" && rec.id.length > 0
+					? rec.id
+					: `${body.providerId}:${rec.port}`,
+			providerId: body.providerId,
+			port: rec.port,
+			features,
+			regions,
+			specificity: typeof rec.specificity === "number" ? rec.specificity : 10,
+			priority: typeof rec.priority === "number" ? rec.priority : 0,
+			cost: {
+				sku:
+					typeof cost.sku === "string"
+						? cost.sku
+						: `${body.providerId}-${rec.port}`,
+				unit: typeof cost.unit === "string" ? cost.unit : "hour",
+				marginalPrice:
+					typeof cost.marginalPrice === "string" ? cost.marginalPrice : "0",
+			},
+			satisfies: negotiateFromEntry(rec.port, features),
+		});
+	}
+	return parsed;
+}
+
+export interface RegistryStreamFold {
+	// providerId -> its recorded default Resource Definitions (last write wins).
+	installed: Map<string, ResourceDefinition[]>;
+	approved: Set<string>;
+}
+
+// Fold the durable registry stream (provider.Registered + provider.Approved)
+// into the installed/approved snapshot. Pure over the event list, so the
+// snapshot is rebuildable from zero.
+export function foldRegistryStream(
+	events: Iterable<{ type: string; data?: unknown }>,
+): RegistryStreamFold {
+	const installed = new Map<string, ResourceDefinition[]>();
+	const approved = new Set<string>();
+	for (const event of events) {
+		if (event.type === CLOUD_EVENTS.ProviderRegistered) {
+			const defs = parseRegisteredDefinitions(event.data);
+			const providerId = defs[0]?.providerId;
+			if (providerId !== undefined) installed.set(providerId, defs);
+		} else if (event.type === CLOUD_EVENTS.ProviderApproved) {
+			const providerId = (event.data as { providerId?: unknown } | undefined)
+				?.providerId;
+			if (typeof providerId === "string" && providerId.length > 0)
+				approved.add(providerId);
+		}
+	}
+	return { installed, approved };
+}
+
+export interface EventBackedRegistryDeps {
+	store: Pick<EventStore, "read">;
+	streamId: string;
+	// Providers compiled into the runtime (always matchable). Installed
+	// providers whose id collides with a base provider are deduped in favor of
+	// the live base definition.
+	base?: PlannerRegistry;
+}
+
+// A PlannerRegistry over the durable registry stream: base (in-code) providers
+// plus APPROVED installed providers folded from `provider.Registered`/
+// `provider.Approved` facts. `refresh()` re-folds the stream into the sync
+// snapshot the pure Planner reads; held() lists installed-but-unapproved
+// providers so Matching can name them in remediations without matching them.
+export function createEventBackedRegistry(
+	deps: EventBackedRegistryDeps,
+): PlannerRegistry & {
+	refresh(): Promise<void>;
+	held(): HeldProvider[];
+} {
+	let installedDefs: ResourceDefinition[] = [];
+	let heldRows: HeldProvider[] = [];
+
+	function combined(): ResourceDefinition[] {
+		const baseDefs = deps.base?.definitions() ?? [];
+		const baseProviders = new Set(baseDefs.map((d) => d.providerId));
+		return [
+			...baseDefs,
+			...installedDefs.filter((d) => !baseProviders.has(d.providerId)),
+		];
+	}
+
+	return {
+		get catalogHash(): string {
+			return catalogHashOf(combined());
+		},
+		definitions: () => combined().map((d) => ({ ...d })),
+		providers: () => [...new Set(combined().map((d) => d.providerId))],
+		async refresh(): Promise<void> {
+			const events = await collectStream(deps.store, deps.streamId);
+			const fold = foldRegistryStream(events);
+			installedDefs = [...fold.installed.entries()]
+				.filter(([providerId]) => fold.approved.has(providerId))
+				.flatMap(([, defs]) => defs);
+			heldRows = [...fold.installed.entries()]
+				.filter(([providerId]) => !fold.approved.has(providerId))
+				.map(([providerId, defs]) => ({
+					providerId,
+					ports: [...new Set(defs.map((d) => d.port))].sort(),
+				}))
+				.sort((a, b) => a.providerId.localeCompare(b.providerId));
+		},
+		held: () => heldRows.map((row) => ({ ...row, ports: [...row.ports] })),
+	};
 }
 
 // ---- The Registry catalog projection (read model, rebuildable from zero) ----

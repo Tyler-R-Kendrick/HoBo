@@ -140,6 +140,7 @@ This is HoBo's **intended seed set — not a closed list.** Every entry is a swa
 | **Vercel** | web/SSR hosting · functions (serverless + edge) · Blob · Edge Config (relational/KV via marketplace: Neon/Upstash) | Vercel CLI · Terraform `vercel` |
 | **AWS · Azure · GCP** | full IaaS/PaaS (compute, data, storage, messaging, networking) | Pulumi · Terraform · OpenTofu · Crossplane |
 | **Fly.io** | global app/VM hosting · volumes | Terraform · Pulumi |
+| **Lakebed** | Capsule app hosting (closed PaaS: sync-RPC compute · Capsule KV · Reactive DB · File Store) — honest-partial capabilities, **opt-in approval** ([ADR-0127](./adr/07-portability-extensibility.md#adr-0127)) | `lakebed-deploy` driver (a [Plan 25](./platform-engineering.md#plan-25) Driver, not IaC) |
 
 Cloudflare and self-hosted wasmCloud are first-class **wasm** targets; **Hetzner** is the cheap **self-host substrate** for wasmCloud-on-k8s; **Vercel/Cloudflare** cover the **edge/web** tier. A Camp picks one provider (and its runtime host) per [ADR-0026](./adr/01-architecture-core.md#adr-0026); cross-cloud spans Yards under a Junction ([ADR-0043](./adr/07-portability-extensibility.md#adr-0043)).
 
@@ -260,7 +261,7 @@ flowchart TD
 #### IaC backends
 - **Pulumi Automation API** = primary (programmatic, multi-cloud, TS-native, real language for compositions).
 - **Crossplane** = the adapter used when a Camp's substrate is Kubernetes (compositions + managed resources; reconciliation delegated to k8s controllers).
-- **OpenTofu** = open-source HCL path (wrap the binary; state via supported backends).
+- **OpenTofu** = open-source HCL path (wrap the binary; state via supported backends). One adapter (`@hobo/iac-terraform`) serves the whole HCL lane: it drives the OpenTofu (`tofu`, default) or Terraform (`terraform`) binary interchangeably — they share the plan/apply/state protocol — so "Terraform support" is a binary switch, not a second adapter.
 - **CDKTF** = **import-only** (HashiCorp sunset) — read existing stacks, don't author new.
 - Provider-specific IaC config is passed via `.with(...)` too (e.g. Pulumi stack settings, OpenTofu backend, Crossplane composition selectors).
 

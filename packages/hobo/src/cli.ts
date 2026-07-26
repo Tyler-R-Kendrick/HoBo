@@ -10,7 +10,14 @@ import {
 	type HoboCli,
 	type YardRuntime,
 } from "@hobo/cli";
-import { createAddCommand } from "./add-command.js";
+import { createAwsProvider } from "@hobo/provider-aws";
+import { createAzureProvider } from "@hobo/provider-azure";
+import { createGcpProvider } from "@hobo/provider-gcp";
+import { createLakebedProvider } from "@hobo/provider-lakebed";
+import { createBlacksmithCatalogEntry } from "@hobo/runner-blacksmith";
+import { createDepotCatalogEntry } from "@hobo/runner-depot";
+import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
+import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
@@ -18,6 +25,7 @@ import {
 	createDefaultYardRuntime,
 	resolveProjectCollectionTarget,
 	resolveProjectDevRuntime,
+	toRegistrableProvider,
 } from "./compose.js";
 import { createDerivativeCommand } from "./derivative-command.js";
 import { createDoctorCommand } from "./doctor-command.js";
@@ -48,6 +56,33 @@ export interface ComposedHoboCliOptions {
 // to shell stubs when un-injected. ONE YardRuntime is shared across plan/up/down
 // so `up` then `down` operate on the same event store. `login`/`new`/`build`/
 // `codegen` keep @hobo/cli's defaults — they already work un-injected.
+// Default-provider catalog entries (M1+ adapter slices): each real provider
+// registers itself as `hobo add`-able here at the composition root, keeping
+// add-command free of adapter imports. Approval semantics stay with HOBO-710
+// (`hobo add aws` registers + approves; `--hold` defers approval).
+registerInstallable("aws", () => toRegistrableProvider(createAwsProvider()));
+registerInstallable("azure", () =>
+	toRegistrableProvider(createAzureProvider()),
+);
+registerInstallable("gcp", () => toRegistrableProvider(createGcpProvider()));
+// The competitor deploy target registers HELD by default (ADR-0127): a second
+// `hobo add lakebed` records the explicit approval.
+registerInstallable(
+	"lakebed",
+	() => toRegistrableProvider(createLakebedProvider()),
+	{ defaultHold: true },
+);
+// The GitHub Actions execution-host adapter (M3): both `hobo:runner` and
+// `hobo:build-machine` ports register from one catalog entry so the
+// Dispatcher can cost-route jobs/builds across registered hosts (ADR-0071).
+registerInstallable("runner-github", () => createGithubRunnerCatalogEntry());
+// The Blacksmith fast-runner sibling: same job model, cheaper runs-on
+// substrate — registering both gives the Dispatcher a real price choice.
+registerInstallable("runner-blacksmith", () => createBlacksmithCatalogEntry());
+// The Depot remote-build specialist: shared-cache economics make its warm
+// builds competitive with "free" cold options (HOBO-720).
+registerInstallable("runner-depot", () => createDepotCatalogEntry());
+
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},
 ): HoboCli {

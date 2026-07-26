@@ -23,6 +23,10 @@ export const CLOUD_EVENTS = Object.freeze({
 	DeploymentPlanned: "deployment.Planned",
 	DeploymentPlanRejected: "deployment.PlanRejected",
 	ProviderRegistered: "provider.Registered",
+	// Operator approval of a registered provider. Only approved providers are
+	// matchable by the Planner (walkthrough Part 0/2: a cloud's "default
+	// providers approved" is a durable fact, not config).
+	ProviderApproved: "provider.Approved",
 	ResourcePlanning: "resource.Planning",
 	ResourceProvisioning: "resource.Provisioning",
 	ResourceProvisioned: "resource.Provisioned",
@@ -191,6 +195,13 @@ export function providerRegistered(data: {
 	manifestIndexDigest: string;
 }): EventInput {
 	return { type: CLOUD_EVENTS.ProviderRegistered, data };
+}
+
+export function providerApproved(data: {
+	providerId: string;
+	approvedBy?: string;
+}): EventInput {
+	return { type: CLOUD_EVENTS.ProviderApproved, data };
 }
 
 // ---- S2-03a/b: Orchestrator + ResourceActor FSM + Executor facts ----

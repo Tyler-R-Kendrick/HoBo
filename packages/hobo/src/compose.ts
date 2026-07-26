@@ -85,7 +85,9 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // shapes already line up — the @hobo/cloud + @hobo/cli registry tests drive
 // exactly this provider — so this composition-root adapter simply re-presents the
 // CloudProvider as a RegistrableProvider without changing any behavior.
-function toRegistrableProvider(provider: CloudProvider): RegistrableProvider {
+export function toRegistrableProvider(
+	provider: CloudProvider,
+): RegistrableProvider {
 	return {
 		id: provider.id,
 		regions: [...provider.regions],

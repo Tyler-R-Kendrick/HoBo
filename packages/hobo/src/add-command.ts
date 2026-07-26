@@ -101,10 +101,14 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				};
 			}
 
+			// The catalog key (e.g. "aws") and the provider's durable id (e.g.
+			// "@hobo/provider-aws") may differ — the stream folds by provider id,
+			// so every check and fact below uses provider.id, never the key.
+			const provider = factory();
 			const events = await collectStream(runtime.store, REGISTRY_STREAM);
 			const fold = foldRegistryStream(events);
-			const installed = fold.installed.has(id);
-			const approved = fold.approved.has(id);
+			const installed = fold.installed.has(provider.id);
+			const approved = fold.approved.has(provider.id);
 			const lastSeq = events.at(-1)?.seq ?? 0;
 
 			if (installed && approved) {
@@ -131,7 +135,7 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				// Approval of a previously-held provider.
 				await runtime.store.append(
 					REGISTRY_STREAM,
-					[approveProviderFact(id, ADD_ACTOR.id)],
+					[approveProviderFact(provider.id, ADD_ACTOR.id)],
 					{ expectedSeq: lastSeq, actor: ADD_ACTOR, tenant: DEFAULT_TENANT },
 				);
 				await runtime.registry.refresh?.();
@@ -145,9 +149,8 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				};
 			}
 
-			const provider = factory();
 			const facts = [registerProviderFact(provider)];
-			if (!hold) facts.push(approveProviderFact(id, ADD_ACTOR.id));
+			if (!hold) facts.push(approveProviderFact(provider.id, ADD_ACTOR.id));
 			await runtime.store.append(REGISTRY_STREAM, facts, {
 				expectedSeq: lastSeq,
 				actor: ADD_ACTOR,

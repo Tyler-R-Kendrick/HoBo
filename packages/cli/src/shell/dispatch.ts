@@ -120,6 +120,7 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						offline: false,
 						template: null,
 						force: false,
+						hold: false,
 						runtime: null,
 					},
 				});

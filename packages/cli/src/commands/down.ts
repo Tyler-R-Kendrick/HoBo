@@ -1,4 +1,3 @@
-import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { createFixtureSession, loadSession } from "../cloud/session.js";
 import { stubResult } from "../cloud/stub.js";
@@ -7,6 +6,7 @@ import {
 	type YardRuntime,
 	type YardSession,
 } from "../cloud/yard-client.js";
+import type { CommandModule } from "../shell/registry.js";
 
 export interface DownCommandDeps {
 	readonly runtime?: YardRuntime;
@@ -31,6 +31,10 @@ export function createDownCommand(deps: DownCommandDeps = {}): CommandModule {
 			if (!bindle) {
 				return stubResult("down");
 			}
+
+			// Fold any providers installed via `hobo add` from the durable registry
+			// stream so the reconstructed plan matches what `up` realized.
+			await runtime.registry.refresh?.();
 
 			const session =
 				deps.session ??

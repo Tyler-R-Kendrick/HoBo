@@ -1,7 +1,7 @@
-import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { stubResult } from "../cloud/stub.js";
 import { createYardClient, type YardRuntime } from "../cloud/yard-client.js";
+import type { CommandModule } from "../shell/registry.js";
 
 export interface PlanCommandDeps {
 	// Injected Yard runtime (tests / dev wiring). Its provider registry drives the
@@ -27,6 +27,10 @@ export function createPlanCommand(deps: PlanCommandDeps = {}): CommandModule {
 			if (!bindle) {
 				return stubResult("plan");
 			}
+
+			// Fold any providers installed via `hobo add` from the durable registry
+			// stream into the matchable snapshot before planning.
+			await runtime.registry.refresh?.();
 
 			const deploymentId = deploymentIdFor(projectDir);
 			const yard = createYardClient(runtime);

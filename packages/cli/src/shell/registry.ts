@@ -22,6 +22,7 @@ export interface CommandRunInput {
 		readonly offline: boolean;
 		readonly template: string | null;
 		readonly force: boolean;
+		readonly hold: boolean;
 		readonly runtime: string | null;
 	};
 	readonly args: readonly string[];

@@ -1,12 +1,12 @@
 import type {
-	PlannerRegistry,
-	ResourceDefinition,
-} from "../registry/catalog.js";
-import type {
 	MatchDecided,
 	PlanRemediation,
 	ResourceIntent,
 } from "../plan-types.js";
+import type {
+	PlannerRegistry,
+	ResourceDefinition,
+} from "../registry/catalog.js";
 
 // Matching (control-plane.md steps 2-5): resolve a Resource Definition per
 // resource via context-matching, negotiate the provider Capability.satisfies,
@@ -90,7 +90,27 @@ export function matchResource(
 
 	if (accepted.length === 0) {
 		// Unsatisfiable: emit machine-readable remediation an agent can act on.
-		// Prefer naming a registered provider that *does* advertise the port.
+		// First preference: a provider that is INSTALLED but not APPROVED and
+		// advertises the port — approval, not registration, is what's missing
+		// (walkthrough Part 0/2).
+		const heldMatch = registry
+			.held?.()
+			.find((held) => held.ports.includes(intent.port));
+		if (heldMatch) {
+			return {
+				ok: false,
+				remediation: {
+					resource: intent.name,
+					code: "capability.provider-not-approved",
+					requiredPort: intent.port,
+					requiredFeatures: intent.require,
+					missing: [],
+					suggestedProvider: heldMatch.providerId,
+					remediation: `provider ${heldMatch.providerId} is installed but not approved; approve it (hobo add ${heldMatch.providerId}) so Matching can consider port ${intent.port}`,
+				},
+			};
+		}
+		// Otherwise prefer naming a registered provider that *does* advertise the port.
 		const suggestion = defs.find(
 			(def) =>
 				def.port === intent.port &&

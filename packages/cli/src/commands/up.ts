@@ -1,4 +1,3 @@
-import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { createFixtureSession, loadSession } from "../cloud/session.js";
 import { stubResult } from "../cloud/stub.js";
@@ -7,6 +6,7 @@ import {
 	type YardRuntime,
 	type YardSession,
 } from "../cloud/yard-client.js";
+import type { CommandModule } from "../shell/registry.js";
 
 export interface UpCommandDeps {
 	// Injected Yard runtime (tests / dev wiring): in-memory/runtime-local
@@ -38,6 +38,10 @@ export function createUpCommand(deps: UpCommandDeps = {}): CommandModule {
 			if (!bindle) {
 				return stubResult("up");
 			}
+
+			// Fold any providers installed via `hobo add` from the durable registry
+			// stream into the matchable snapshot before planning.
+			await runtime.registry.refresh?.();
 
 			const session =
 				deps.session ??

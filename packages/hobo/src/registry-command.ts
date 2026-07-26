@@ -1,5 +1,9 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
-import { collectStream, registryCatalogProjection } from "@hobo/cloud";
+import {
+	collectStream,
+	foldRegistryStream,
+	registryCatalogProjection,
+} from "@hobo/cloud";
 
 import { REGISTRY_STREAM } from "./add-command.js";
 
@@ -21,6 +25,9 @@ interface RegistryProvider {
 	readonly ports: RegistryPort[];
 	// "base" = built into the runtime; "installed" = added via `hobo add`.
 	readonly source: "base" | "installed";
+	// Only approved providers are matchable (walkthrough Part 0/2); a held
+	// (installed-but-unapproved) provider renders approved: false.
+	readonly approved: boolean;
 }
 
 // `hobo registry` — administer registry artifacts. This read view lists the
@@ -75,8 +82,23 @@ export function createRegistryCommand(
 				}
 			}
 
+			// Providers installed via `hobo add` — folded from the durable registry
+			// stream. Anything the stream knows about is "installed"; the rest of
+			// the live PlannerRegistry snapshot is "base" (compiled into the
+			// runtime). One projection, one fold — no second source of truth.
+			const registryEvents = await collectStream(
+				runtime.store,
+				REGISTRY_STREAM,
+			);
+			const installedRows = registryCatalogProjection.query(
+				registryCatalogProjection.fold(registryEvents),
+			);
+			const approvedSet = foldRegistryStream(registryEvents).approved;
+			const installedIds = new Set(installedRows.map((row) => row.providerId));
+
 			const providers: RegistryProvider[] = registry
 				.providers()
+				.filter((providerId) => !installedIds.has(providerId))
 				.sort()
 				.map((providerId) => ({
 					providerId,
@@ -84,18 +106,10 @@ export function createRegistryCommand(
 						(a, b) => a.port.localeCompare(b.port),
 					),
 					source: "base" as const,
+					approved: true,
 				}));
 
-			// Providers installed via `hobo add` — folded from the durable registry
-			// stream (registryCatalogProjection). Merged after the base providers.
-			const installedRows = registryCatalogProjection.query(
-				registryCatalogProjection.fold(
-					await collectStream(runtime.store, REGISTRY_STREAM),
-				),
-			);
-			const baseIds = new Set(providers.map((p) => p.providerId));
 			const installed: RegistryProvider[] = installedRows
-				.filter((row) => !baseIds.has(row.providerId))
 				.map((row) => ({
 					providerId: row.providerId,
 					ports: [...row.ports].sort().map((port) => ({
@@ -105,17 +119,20 @@ export function createRegistryCommand(
 						regions: [],
 					})),
 					source: "installed" as const,
+					approved: approvedSet.has(row.providerId),
 				}))
 				.sort((a, b) => a.providerId.localeCompare(b.providerId));
 
 			const allProviders = [...providers, ...installed];
 			const definitionCount =
-				definitions.length +
-				installedRows.reduce((n, row) => n + row.definitionCount, 0);
+				providers.reduce(
+					(n, row) => n + row.ports.reduce((m, p) => m + p.definitions, 0),
+					0,
+				) + installedRows.reduce((n, row) => n + row.definitionCount, 0);
 
 			for (const provider of allProviders) {
 				emitProgress(
-					`${provider.providerId} (${provider.source}): ${provider.ports.map((p) => p.port).join(", ")}`,
+					`${provider.providerId} (${provider.source}${provider.approved ? "" : " · held"}): ${provider.ports.map((p) => p.port).join(", ")}`,
 				);
 			}
 

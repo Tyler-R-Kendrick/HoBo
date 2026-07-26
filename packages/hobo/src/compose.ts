@@ -6,10 +6,15 @@ import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
 import type { DevRuntime, YardRuntime } from "@hobo/cli";
 import type { IacProvider } from "@hobo/cloud";
 import {
+	approveProviderFact,
+	collectStream,
+	createEventBackedRegistry,
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 	createRegistryFromProviders,
+	foldRegistryStream,
 	type RegistrableProvider,
+	registerProviderFact,
 } from "@hobo/cloud";
 import type {
 	ComponentHostEvent,
@@ -29,6 +34,7 @@ import {
 	createRuntimeLocalComponentHost,
 	createRuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { REGISTRY_STREAM } from "./add-command.js";
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
 import {
@@ -206,8 +212,52 @@ export function createDefaultYardRuntime(
 			}),
 		}),
 		broker: createInProcessCredentialBroker(),
-		registry: createRegistryFromProviders([toRegistrableProvider(cloudflare)]),
+		// Base (in-code) providers PLUS whatever `hobo add` has installed and
+		// approved in the durable registry stream — the read model the Planner
+		// matches against, rebuildable from zero (HOBO-710). The cloud verbs
+		// call `registry.refresh()` before planning to fold the latest facts.
+		registry: createEventBackedRegistry({
+			store,
+			streamId: REGISTRY_STREAM,
+			base: createRegistryFromProviders([toRegistrableProvider(cloudflare)]),
+		}),
 	};
+}
+
+// Idempotently record the DEFAULT provider set as durable registration +
+// approval facts (walkthrough Part 0/2: a cloud exists once its default
+// providers are approved — a fact trail, not config). Providers already
+// present in the stream are skipped, so re-running a boot never duplicates
+// facts. The composed binary runs this before dispatching a verb.
+export async function bootstrapDefaultProviders(
+	runtime: { store: EventStore; registry: YardRuntime["registry"] },
+	providers: readonly RegistrableProvider[] = [
+		toRegistrableProvider(createCloudflareProvider()),
+	],
+): Promise<string[]> {
+	const events = await collectStream(runtime.store, REGISTRY_STREAM);
+	const fold = foldRegistryStream(events);
+	let lastSeq = events.length > 0 ? (events[events.length - 1]?.seq ?? 0) : 0;
+	const recorded: string[] = [];
+
+	for (const provider of providers) {
+		const facts = [];
+		if (!fold.installed.has(provider.id))
+			facts.push(registerProviderFact(provider));
+		if (!fold.approved.has(provider.id))
+			facts.push(approveProviderFact(provider.id, "yard/bootstrap"));
+		if (facts.length === 0) continue;
+		const appended = await runtime.store.append(REGISTRY_STREAM, facts, {
+			expectedSeq: lastSeq,
+			actor: { kind: "system", id: "yard/bootstrap" },
+			tenant: "hobo-dev",
+		});
+		lastSeq = appended.appended[appended.appended.length - 1]?.seq ?? lastSeq;
+		recorded.push(provider.id);
+	}
+
+	await runtime.registry.refresh?.();
+	return recorded;
 }
 
 const HTTP_INCOMING_INTERFACE =

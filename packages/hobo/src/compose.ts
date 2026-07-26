@@ -275,7 +275,7 @@ export function readPulumiEstate(
 // thesis realized for the clouds actually reachable from its own pipeline, in
 // precedence order:
 //   - `HOBO_PULUMI_LIVE=1` -> the REAL pinned `pulumi` CLI engine behind the
-//     same adapter (binary- and credential-gated; docs/plans/0005 item 3-2).
+//     same adapter (binary- and credential-gated; docs/plans/0006 item 3-2).
 //   - `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` present -> the REAL
 //     Cloudflare Workers deploy provider (cred-gated).
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
@@ -438,7 +438,7 @@ export function createDefaultDevRuntime(
 }
 
 // The project-aware dev-runtime resolver `hobo dev` boots in the composed CLI
-// (docs/plans/0005 item 3-1). When the invoked project's bindle source loads
+// (docs/plans/0006 item 3-1). When the invoked project's bindle source loads
 // and its first api/web resource carries an app-host entrypoint (the
 // `b.api(() => app.fetch)` handler), the local Camp serves THAT handler:
 // the component descriptor's HTTP export converts the host's HttpRequest to a
@@ -557,7 +557,7 @@ export function createDefaultCollectionTarget(
 }
 
 // The project-aware target resolver `hobo collect` runs with in the composed
-// CLI (docs/plans/0005 item 3-1): the invoked project's own bindle source wins
+// CLI (docs/plans/0006 item 3-1): the invoked project's own bindle source wins
 // (TS loader → run-to-collect); the representative hello-bindle target remains
 // the fallback so composed `collect` never regresses to the shell stub.
 export async function resolveProjectCollectionTarget(

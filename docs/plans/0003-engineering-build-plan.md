@@ -458,7 +458,7 @@ Evidence: appended to the existing
 
 §2's "Holes and greenfield" table describes the 2026-07-17 baseline and is **superseded**; do not
 read it as current. Verified against the live tree
-([`0005-unimplemented-features-remediation.md`](./0005-unimplemented-features-remediation.md)):
+([`0006-unimplemented-features-remediation.md`](./0006-unimplemented-features-remediation.md)):
 
 - **Now built (were Missing/Greenfield):** `@hobo/runtime` authoring surface, `@hobo/data`,
   `@hobo/events`, `hobo dev`, `hobo collect`, `packages/cloud`, `packages/identity`,

@@ -5,7 +5,7 @@ import {
 } from "@hobo/mcp";
 
 // The MCP stdio protocol layer for the composed `hobo-mcp` binary
-// (docs/plans/0005 item 3-3). Newline-delimited JSON-RPC 2.0 per the MCP
+// (docs/plans/0006 item 3-3). Newline-delimited JSON-RPC 2.0 per the MCP
 // stdio transport; no SDK dependency — the protocol subset the surface needs
 // (initialize / tools/list / tools/call / ping) is small enough for the
 // standard library. All dispatch flows through the injected HoboMcpServer,

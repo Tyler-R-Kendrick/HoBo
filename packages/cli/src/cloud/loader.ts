@@ -10,7 +10,7 @@ import {
 	type ManifestV1,
 } from "@hobo/bindles";
 
-// The TypeScript-source bindle loader (docs/plans/0005 item 3-1). It
+// The TypeScript-source bindle loader (docs/plans/0006 item 3-1). It
 // materializes the collection target the cloud verbs operate on from the
 // project's own `src/bindle.ts` (the flagship authoring flow the site
 // teaches), instead of requiring a hand-written `hobo.bindle.json`. The

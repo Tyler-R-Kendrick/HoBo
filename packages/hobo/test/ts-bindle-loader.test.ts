@@ -9,7 +9,7 @@ import helloBindle from "../../../examples/hello-bindle/src/bindle.js";
 import { createComposedHoboCli } from "../src/cli.js";
 import { createDefaultYardRuntime } from "../src/compose.js";
 
-// docs/plans/0005 item 3-1 verification: a fresh project with only a bindle
+// docs/plans/0006 item 3-1 verification: a fresh project with only a bindle
 // source (no hobo.bindle.json) runs collect → plan → up against the local
 // lane, and the example's real TS bindle compiles through the same loader.
 

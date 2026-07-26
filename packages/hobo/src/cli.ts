@@ -59,7 +59,7 @@ export function createComposedHoboCli(
 	return createHoboCli({
 		commands: {
 			// dev/collect resolve their runtime/target from the invoked project's
-			// own bindle source per run (docs/plans/0005 item 3-1); an explicit
+			// own bindle source per run (docs/plans/0006 item 3-1); an explicit
 			// option override pins them instead (tests / bespoke wiring).
 			dev: createDevCommand(
 				options.devRuntime !== undefined

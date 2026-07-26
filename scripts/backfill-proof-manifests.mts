@@ -1,6 +1,6 @@
 /**
  * W1 proof.json bootstrap (docs/plans/proof-hardening-backfill.md wave W1;
- * scheduled by docs/plans/0005 Phase 5).
+ * scheduled by docs/plans/0006 Phase 5).
  *
  * For every grandfathered proof package without a proof.json, generate an
  * honest manifest: layer/type from the path, title from the README's first

@@ -27,7 +27,7 @@ Every HoBo capability is reachable three ways, with identical semantics:
 |---|---|---|
 | **SDK** | code | The same typed objects the [primitives](/HoBo/primitives/) docs describe. |
 | **CLI** | humans & scripts | The [canonical verb surface](/HoBo/guide/cli/) — deliberately small, stable to memorize. |
-| **MCP** | agents | Ships today as the `hobo-mcp` stdio binary: all 27 CLI verbs as tools, parity contract-tested — see [the MCP surface](/HoBo/agents/mcp/). |
+| **MCP** | agents | Ships today as the `hobo-mcp` stdio binary: all 28 CLI verbs as tools, parity contract-tested — see [the MCP surface](/HoBo/agents/mcp/). |
 
 No agent-only side entrance with different rules: if policy would stop a human doing it, it stops an agent doing it, and vice versa.
 
@@ -47,6 +47,6 @@ The full extension surface — every implementable port, the adapter-authoring p
 
 ## Start here
 
-- [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the 27 canonical verbs as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
+- [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the 28 canonical verbs as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
 - [`llms.txt`](/HoBo/llms.txt) — the machine-readable site briefing.
 - [Getting started](/HoBo/guide/getting-started/) — the same ten-minute path humans take; it works verbatim for agents.

@@ -12,6 +12,7 @@ export const nav: NavGroup[] = [
 			{ label: "Getting started", slug: "/guide/getting-started/" },
 			{ label: "Core concepts", slug: "/guide/concepts/" },
 			{ label: "Architecture", slug: "/guide/architecture/" },
+			{ label: "The Conductor", slug: "/guide/broker/" },
 			{ label: "The hobo CLI", slug: "/guide/cli/" },
 			{ label: "Custom providers", slug: "/guide/custom-providers/" },
 			{ label: "Testing", slug: "/guide/testing/" },

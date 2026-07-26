@@ -36,6 +36,7 @@ const canonicalVerbNames = [
 	"test",
 	"attest",
 	"erase",
+	"broker",
 	"derivative",
 	"runbook",
 ];
@@ -90,6 +91,7 @@ Canonical verbs:
   test        test loop     Alias for the sandbox test lane
   attest      governance    Produce signed external evidence exports
   erase       governance    Request crypto-shred erasure
+  broker      governance    Resolve placements through the broker (the Conductor)
   derivative  extensibility Manage derived HoBo implementations
   runbook     SRE           Execute or replay incident runbooks
 `;

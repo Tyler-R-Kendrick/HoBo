@@ -9,6 +9,9 @@ tags: [hobo, design]
 
 Source issue: HOBO-521.
 
+Runtime architecture (what the broker wraps, enforcement order, event
+families, `@hobo/broker`): [`hobo-broker.md`](./hobo-broker.md).
+
 Executable proofs:
 
 - [`meta-cloud-broker-scope-contract`](../../src/draft/exp-proofs/api/meta-cloud-broker-scope-contract/README.md)

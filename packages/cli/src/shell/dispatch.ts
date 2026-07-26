@@ -122,6 +122,10 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						force: false,
 						hold: false,
 						runtime: null,
+						config: null,
+						policies: null,
+						request: null,
+						init: false,
 					},
 				});
 			}

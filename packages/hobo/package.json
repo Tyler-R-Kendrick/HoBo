@@ -21,6 +21,7 @@
 	},
 	"dependencies": {
 		"@hobo/bindles": "workspace:*",
+		"@hobo/broker": "workspace:*",
 		"@hobo/cli": "workspace:*",
 		"@hobo/cloud": "workspace:*",
 		"@hobo/contracts": "workspace:*",

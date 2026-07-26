@@ -17,11 +17,13 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `alert.*` | `alert.Fired`, `alert.Grouped`, `alert.Routed`, `alert.Silenced`, `alert.Inhibited`, `alert.Deduped`, `alert.InhibitionCycleRejected`, `alert.Resolved` |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
 | `breakglass.*` | `breakglass.Requested`, `breakglass.Approved`, `breakglass.Started`, `breakglass.Used`, `breakglass.Revoked` |
+| `broker.*` | `broker.Requested`, `broker.Resolved`, `broker.Rejected`, `broker.ScaleRequested`, `broker.DeliverySubmitted`, `broker.ResolutionSigned`, `broker.EnvironmentPublished`, `broker.EnvironmentApproved` |
 | `camp.*` | `camp.Created`, `camp.RuntimeBound` |
 | `capability.*` | `capability.Denied` |
 | `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected` |
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |
+| `connector.*` | `connector.Registered`, `connector.Disabled` |
 | `contract.*` | `contract.Observed`, `contract.Verified` |
 | `cost.*` | `cost.AnomalyDetected`, `cost.AnomalyResolved`, `cost.ForecastUpdated`, `cost.RecommendationIssued` |
 | `credit.*` | `credit.Registered`, `credit.Reset`, `credit.Exhausted`, `credit.BudgetCapSet` |
@@ -41,6 +43,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `exec.*` | `exec.Started`, `exec.Succeeded` |
 | `experiment.*` | `experiment.Assigned`, `experiment.Concluded` |
 | `flag.*` | `flag.Defined`, `flag.Changed` |
+| `gatekeeper.*` | `gatekeeper.Decided` |
 | `gen.*` | `gen.Requested`, `gen.PluginCertified` |
 | `golden.*` | `golden.Ran`, `golden.Passed` |
 | `governance.*` | `governance.ResidencyEnforced` |

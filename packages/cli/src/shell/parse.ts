@@ -23,6 +23,10 @@ export interface CliFlags {
 	readonly force: boolean;
 	readonly hold: boolean;
 	readonly runtime: string | null;
+	readonly config: string | null;
+	readonly policies: string | null;
+	readonly request: string | null;
+	readonly init: boolean;
 }
 
 export interface CliRequest {
@@ -61,6 +65,10 @@ export function parseArgv(
 		force: false,
 		hold: false,
 		runtime: null as string | null,
+		config: null as string | null,
+		policies: null as string | null,
+		request: null as string | null,
+		init: false,
 	};
 	const args: string[] = [];
 	let verb: string | null = null;
@@ -128,6 +136,10 @@ function parseOption(
 		force: boolean;
 		hold: boolean;
 		runtime: string | null;
+		config: string | null;
+		policies: string | null;
+		request: string | null;
+		init: boolean;
 	},
 	verb: string | null,
 ): number {
@@ -193,6 +205,22 @@ function parseOption(
 		case "--runtime":
 			flags.runtime = takeValue(argv, index, token);
 			return index + 1;
+		case "--config":
+		case "--policies":
+		case "--request":
+			// Broker-scoped value flags (cli-spec.md `broker` row).
+			if (verb === "broker") {
+				const key = token.slice(2) as "config" | "policies" | "request";
+				flags[key] = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
+		case "--init":
+			if (verb === "broker") {
+				flags.init = true;
+				return index;
+			}
+			throw unknownOption(token, verb);
 		case "--offline":
 			if (verb === "doctor") {
 				flags.offline = true;

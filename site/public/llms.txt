@@ -28,6 +28,23 @@ Key facts:
   binds it later.
 - Everything is event-sourced and replayable, including agent token issuance and every
   migration decision.
+- The Conductor (branded name; technically "the broker", @hobo/broker) is the
+  policy-governed decision authority: it brokers bindle/camp/yard/junction placements
+  PER RESOURCE across providers under the configured policy set it maintains, answers
+  with a content-hash-pinned, Ed25519-signable Resolution Receipt or a per-plane
+  Resolution Rejection from a closed rejection catalog with remediations, handles spin
+  up/down/zero, and wraps five swappable planes — policy (typed TS policy packs by
+  default, real OPA/Rego decisions at hobo/broker/decision with fail-closed semantics,
+  Cedar planned), contracts (Gatekeeper/PACT can-deploy), billing (budget/spend-cap/
+  quota, plus a metered plane folding meter.UsageRecorded facts), delivery (Argo CD
+  Application rendering plus live fail-closed Argo CD API submission), and a connector
+  registry (github-app, pulumi, azure, vercel, cloudflare; credentialRef pointers only,
+  never secrets). Junction broker-admin lockdowns accumulate and cannot be relaxed by
+  narrower policies. On the CLI: `hobo broker config [--init]` scaffolds/validates
+  hobo.broker.json (policies, budgets, connectors, OPA/Cedar policyEngine, delivery);
+  `hobo broker up` realizes placements — with NO cloud config, the running machine
+  registers itself as a zero-cost local HoBo provider host so the whole loop is
+  testable on a bare machine.
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
@@ -56,7 +73,8 @@ Key facts:
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default
   LOCAL, IN-MEMORY lane (`hobo dev` serves the project's own api/web handler
   in-process; a committed `hobo.bindle.json` artifact wins when present). The
-  `hobo-mcp` binary serves all 27 canonical verbs as MCP tools over stdio with
+  `hobo-mcp` binary serves all 28 canonical verbs (including `hobo broker`) as
+  MCP tools over stdio with
   verb/tool parity contract-tested, deny-by-default audited auth, and HOBO_MCP_TOOLS
   scoping. Live deploy lanes are credential-gated (Cloudflare/Vercel env tokens;
   HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine). Not yet shipped:
@@ -74,6 +92,7 @@ Key facts:
 - [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, pitch a Camp (or let it be inferred), `hobo up`; Yards/Junctions as advanced scenarios
 - [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): the four scopes, continuous migration, membrane, event log, agent auth
 - [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout
+- [The Conductor](https://tyler-r-kendrick.github.io/HoBo/guide/broker/): policy-governed placement across providers (the broker), signed receipts/rejections, Rego/OPA policy, the five wrapped planes, connector registry
 - [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
 - [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): implementable ports, adapter authoring, conformance certification, ACP/A2A protocol-connector integration points
 - [Testing](https://tyler-r-kendrick.github.io/HoBo/guide/testing/): unit tests with PACT-mocked boundaries (no hand-written mocks), executable contract verification with subset matching, deployment rehearsal (hobo plan / local in-memory lane / replay-equals-live), runtime availability (Crew synthetics, SLO projections, session-scoped fault chaos, shadow lanes)

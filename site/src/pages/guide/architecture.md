@@ -27,6 +27,7 @@ Keeping these separate is a core architectural commitment:
 | **Identity** | Workload identities (SVIDs); OIDC; broker provider tokens | `IdentityIssued`, `TokenGranted` |
 | **Registry** | Catalog of providers + their Capability Manifests | `ProviderRegistered` |
 | **Planner** | Resolve mappings → `DeploymentPlan` DAG; capability/region/cost constraints | `Planned`, `PlanRejected` |
+| **Broker** (branded "the Conductor") | Policy-governed placement decisions across providers; wraps the policy/contract/billing/delivery/connector planes ([details](/HoBo/guide/broker/)) | `broker.Resolved`, `broker.Rejected` |
 | **Dispatcher** | Continuous placement: watch cost/policy/reliability signals; propose policy-gated migrations to better homes | `MigrationPlanned`, … |
 | **Orchestrator** | One ResourceActor per resource reconciling desired↔actual; sagas for ordering & compensation | `Provisioning`, `Provisioned`, `Failed`, `Deployed` |
 | **Executors** | Run IaC apply/preview/destroy + builds in sandboxes with scoped, short-lived credentials | `ExecStarted`, `ExecSucceeded`, `ExecFailed` |
@@ -63,7 +64,7 @@ A crash anywhere is recovered by replaying the deployment's event stream. Inspec
 
 ## Package layout
 
-> **Design-stage layout:** this table is the *target* package map — not everything in it ships yet. Shipping today (among others): `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/core`, `@hobo/cli`, `@hobo/mcp` (served by the `hobo-mcp` binary), `runtime-local`, the Cloudflare/ax/agentv provider adapters, and the Pulumi IaC engine. `@hobo/junctions` is deliberately deferred to the multi-cloud build stage (S4); the aws/azure/gcp/fly/kubernetes providers and the postgres/temporal/restate runtime backends are designed, **not installable packages**.
+> **Design-stage layout:** this table is the *target* package map — not everything in it ships yet. Shipping today (among others): `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/core`, `@hobo/cli`, `@hobo/mcp` (served by the `hobo-mcp` binary), `@hobo/broker` (the [Conductor](/HoBo/guide/broker/) decision authority), `runtime-local`, the Cloudflare/ax/agentv provider adapters, and the Pulumi IaC engine. `@hobo/junctions` is deliberately deferred to the multi-cloud build stage (S4); the aws/azure/gcp/fly/kubernetes providers and the postgres/temporal/restate runtime backends are designed, **not installable packages**.
 
 The `@hobo/*` packages are layered; dependencies point inward only (`apps → adapters → sdk/runtime → core`), keeping adapters swappable and the agnostic core clean:
 

@@ -119,6 +119,11 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		summary: "Request crypto-shred erasure",
 	},
 	{
+		name: "broker",
+		role: "governance",
+		summary: "Resolve placements through the broker (the Conductor)",
+	},
+	{
 		name: "derivative",
 		role: "extensibility",
 		summary: "Manage derived HoBo implementations",
@@ -152,6 +157,7 @@ export const projectScopedVerbs = new Set(
 				"registry",
 				"generate",
 				"derivative",
+				"broker",
 			].includes(verb),
 	),
 );

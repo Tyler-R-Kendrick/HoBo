@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: The MCP surface
-description: "HoBo's shipping MCP control surface: the hobo-mcp stdio binary serves all 27 canonical CLI verbs as tools, with verb/tool parity contract-tested, deny-by-default auth, and every decision audited."
+description: "HoBo's shipping MCP control surface: the hobo-mcp stdio binary serves all 28 canonical CLI verbs as tools, with verb/tool parity contract-tested, deny-by-default auth, and every decision audited."
 ---
 
 # The MCP surface
@@ -24,7 +24,7 @@ Like the CLI, it defaults to the **local, in-memory lane**: `plan`, `up`, and `d
 
 ## Tools = the canonical verbs
 
-The tool surface is **derived from the CLI's 27 canonical verbs**, one tool per verb — `up`, `down`, `plan`, `dev`, `inspect`, `logs`, `drift`, `attest`, and the rest. Parity is a contract, not a convention: a structural parity check fails whenever the tool set diverges from the verb set, so there is no MCP-only subset and no MCP-only side door in either direction. A tool call becomes `hobo <verb> --json` over the shared dispatch path, and the result is the same JSON envelope the CLI emits, returned as inert data.
+The tool surface is **derived from the CLI's 28 canonical verbs**, one tool per verb — `up`, `down`, `plan`, `dev`, `inspect`, `logs`, `drift`, `attest`, and the rest. Parity is a contract, not a convention: a structural parity check fails whenever the tool set diverges from the verb set, so there is no MCP-only subset and no MCP-only side door in either direction. A tool call becomes `hobo <verb> --json` over the shared dispatch path, and the result is the same JSON envelope the CLI emits, returned as inert data.
 
 Tool inputs accept `cwd` (resolve the project directory), `camp` (target camp), and `args` (extra verb arguments).
 

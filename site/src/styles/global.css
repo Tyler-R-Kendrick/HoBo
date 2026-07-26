@@ -1255,6 +1255,12 @@ table.compare tr.hobo-row th {
 	color: var(--text);
 }
 
+/* Bo idles in the footer note, standing on the baseline of the text. */
+.footer-bo {
+	flex: none;
+	margin-bottom: -0.35rem;
+}
+
 .footer-note {
 	padding-top: 1.5rem;
 	border-top: 1px solid var(--border);

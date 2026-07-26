@@ -28,6 +28,7 @@ pnpm --filter hobo-site preview    # serve the built dist/
 |---|---|
 | `src/pages/index.astro` | The landing page. |
 | `src/components/ParallaxTrail.astro` | The scrolling trail band above the hero (see below). |
+| `src/components/BoIdle.astro` | Bo standing about — rest, bounce and blink (see below). |
 | `src/lib/trail-art.ts` | The trail, poles and grass, drawn at build time. |
 | `src/lib/trail-plates.ts` | Picks up supplied artwork from `public/parallax/plates/`. |
 | `src/pages/parallax/[layer].svg.ts` | Serves those tiles as static SVGs, one per layer and theme. |
@@ -107,6 +108,29 @@ of that one speed — that fraction is the entire parallax.
 tab and a band scrolled out of view all set one inherited custom property, `--plx-play`,
 which every animation in the band reads. Nothing can freeze Bo without freezing the
 scenery with him. `prefers-reduced-motion` pins it to paused and hides the button.
+
+## Bo idling
+
+`BoIdle.astro` renders Bo standing still, and every so often he blinks or takes a hop.
+One strip, `public/parallax/bo-idle.png`, holds three independent states:
+
+| Frames | State | |
+|---|---|---|
+| `0` | rest | the still pose, shown when nothing is playing |
+| `1`–`10` | bounce | one hop, which lands back on the rest pose |
+| `11` | blink | eyes shut, on a body pose that matches rest |
+
+The clips were picked by silhouette rather than by eye. Alpha is identical whether his
+eyes are open or shut, so the outline is a pure pose key: the bounce ends **1.78** units
+from rest and the blink sits **6.38** from it, both under the **7.55** median step between
+neighbouring frames of the source sheet. That is what lets a clip start or stop at any
+moment without a visible pop, and it is why the states can be triggered independently
+instead of being locked into one long loop.
+
+Each instance runs its own timer, so several Bos on a page drift apart rather than
+blinking in unison. `<BoIdle still="rest" />` freezes him on one frame and never
+animates; `prefers-reduced-motion` does the same. He sleeps while off screen or on a
+hidden tab. Pass `label` for a Bo that should be announced, otherwise he is `aria-hidden`.
 
 ## Publishing (no Actions)
 

@@ -9,7 +9,8 @@
         "packages/{name}",
         "!packages/runtimes",
         "!packages/providers",
-        "!packages/iac"
+        "!packages/iac",
+        "!packages/connectors"
       ],
       "must": {
         "haveType": "directory",
@@ -22,7 +23,8 @@
       "paths": [
         "packages/runtimes/{name}",
         "packages/providers/{name}",
-        "packages/iac/{name}"
+        "packages/iac/{name}",
+        "packages/connectors/{name}"
       ],
       "must": {
         "haveType": "directory",

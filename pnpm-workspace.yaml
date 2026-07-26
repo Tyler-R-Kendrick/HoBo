@@ -1,6 +1,7 @@
 packages:
   - "site"
   - "packages/*"
+  - "packages/connectors/*"
   - "packages/runtimes/*"
   - "packages/providers/*"
   - "packages/iac/*"

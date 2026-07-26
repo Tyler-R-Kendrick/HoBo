@@ -231,6 +231,15 @@ importers:
         specifier: ^4.20.3
         version: 4.22.4
 
+  packages/connectors/connector-acp:
+    dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: ^0.14.1
+        version: 0.14.1(zod@4.4.3)
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+
   packages/contract-harness:
     devDependencies:
       '@types/node':
@@ -7336,6 +7345,10 @@ snapshots:
   '@agentclientprotocol/sdk@0.14.1(zod@3.25.76)':
     dependencies:
       zod: 3.25.76
+
+  '@agentclientprotocol/sdk@0.14.1(zod@4.4.3)':
+    dependencies:
+      zod: 4.4.3
 
   '@agentv/core@4.42.4(ws@8.21.0)':
     dependencies:

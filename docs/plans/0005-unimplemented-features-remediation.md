@@ -173,9 +173,23 @@ the plan landed. Status by item:
 - **Phase 3** — done. 3-1 TypeScript bindle loader (collect/dev/plan/up from `src/bindle.ts`;
   `hobo dev` serves the project's own handler). 3-2 real pinned Pulumi CLI engine behind the
   adapter seam, `HOBO_PULUMI_LIVE=1` selection, credential-gated `deploy-hello-bindle-pulumi`
-  lane. 3-3 runnable `hobo-mcp` stdio binary with verb parity contract-tested. 3-4 stays staged
-  behind live-lane usage as planned; 3-5 Junctions remains deliberately deferred to S4; 3-6
-  trajectory capture stays scheduled with the S3 identity/audit surface.
+  lane. 3-3 runnable `hobo-mcp` stdio binary with verb parity contract-tested.
+- **Phase 3 deferral override (2026-07-26)** — the owner directed that no unimplemented feature
+  may remain deferred, so the three staged slices shipped:
+  3-4: `hobo drift` does REAL drift detection (declared bindle vs the estate the IaC backend
+  holds — missing/orphaned/diverged via per-resource refresh through the engine seam, in-memory
+  and `HOBO_PULUMI_LIVE=1` lanes, `drift.Checked`/`drift.Detected` facts on the deployment
+  stream); `hobo import` discovers the estate from the adapter's state backend and adopts it
+  (`resource.Adopted` facts, adopt-in-place semantics); `hobo derivative` executes upcaster
+  chains over stored events and reruns seam conformance, reporting executed results.
+  3-5: `@hobo/junctions` is a production package — `junction(name, {yards})` authoring,
+  five-tier connectivity inference with per-yard halves (`planForYard`), federated DNS plan,
+  trust/policy-pack/registry federation records; proto+CUE, junction↔yard PACT, 24 tests;
+  realization stays each yard's half (site page re-scoped honestly).
+  3-6: trajectory capture is production in `@hobo/training-pipeline` (`src/trajectory/`) —
+  OpenInference-conformant OTel-shaped spans, traceparent propagation, assembly into core's
+  generated `Trajectory`, `training.TrajectoryCaptured`; capture→grade→gate loop
+  integration-tested. IMPL-003 and IMPL-004 are fully ✔ in GAPS.md.
 - **Phase 4** — done. `multi-cloud-shop`, `durable-agent`, and `self-host-yard` examples;
   schema-tools 8 test files / 56 tests; `event_envelope` single-sourced with a drift-guarded
   mirror (IMPL-009 resolved); ADR-0126 records the deploy-artifact JS exception.
@@ -189,7 +203,12 @@ the plan landed. Status by item:
 - **Phase 5** — W1 done (647 schema-validated manifests via
   `scripts/backfill-proof-manifests.mts`; the sweep also cleared 303 latent parallel-type
   declarations and taught the guard to skip frozen promoted proofs). W2 done (all 26 epics carry
-  executable Gherkin; `test:behavior` runs 98 scenarios / 352 steps). W3–W6 proceed via sdlc
-  dispatch per [`proof-hardening-backfill.md`](./proof-hardening-backfill.md);
+  executable Gherkin; `test:behavior` runs 98 scenarios / 352 steps). W3–W6 execution started
+  2026-07-26 (deferral overridden): the artifact gate gained strict direct-package selection for
+  pre-delete verification, and the first batches landed with gate-executed examples, executed
+  notebooks, benches, and honest waivers — all 6 `projects` proofs, the first 12
+  `technical-proofs` (11 real benches, 1 ADR-backed bench waiver on the documentation-only
+  safety-rail model), and the first 10 `epic-proofs`. Burn-down: 647 → 619. Remaining batches
+  continue wave order per [`proof-hardening-backfill.md`](./proof-hardening-backfill.md);
   `_grandfathered.json` stays the burn-down (entries delete when a package completes its last
   wave).

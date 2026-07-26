@@ -21,4 +21,6 @@ package data_models
 	causation_id?: string & !=""
 	correlation_id?: string & !=""
 	lane?: string & !=""
+	data?: bytes
+	meta?: {[string]: string}
 }

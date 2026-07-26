@@ -34,6 +34,7 @@ export const cloudflare = {
   },
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the HelloBindlePlan proto message in data-models/.
 export interface HelloBindlePlan {
   id: string;
   context: {

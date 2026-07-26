@@ -1,0 +1,18 @@
+{
+  "layer": "epic",
+  "slug": "control-plane-planner-matching-orchestrator",
+  "title": "Control Plane Reference Architecture",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

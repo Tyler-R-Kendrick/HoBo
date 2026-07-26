@@ -1,6 +1,6 @@
-import type { RuntimeDurabilityBackend } from "../../src/suites/runtime-port/types.js";
-import { createRuntimeLocalDurabilityBackend } from "../../../runtimes/runtime-local/test/conformance/helpers.js";
 import { createInMemoryActorHost } from "../../../runtimes/runtime-local/src/actor-host/in-memory.js";
+import { createRuntimeLocalDurabilityBackend } from "../../../runtimes/runtime-local/test/conformance/helpers.js";
+import type { RuntimeDurabilityBackend } from "../../src/suites/runtime-port/types.js";
 
 export function createBrokenFenceRuntimeBackend(): RuntimeDurabilityBackend {
 	const base = createRuntimeLocalDurabilityBackend();

@@ -31,6 +31,7 @@ const NAMED_BINDLES_IMPORT =
 const NAMESPACE_BINDLES_IMPORT =
   /import\s+\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)\s+from\s*["']@hobo\/bindles["']/g;
 
+// domain-view: parse-produced draft-proof record; its wire form is the DeclaredResource proto message in data-models/.
 export type DeclaredResource = {
   resourceId: string;
   callee: string;
@@ -41,6 +42,7 @@ export type DeclaredResource = {
   evidence: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the DeclaredBind proto message in data-models/.
 export type DeclaredBind = {
   from: string;
   to: string;
@@ -52,6 +54,7 @@ export type DeclaredBind = {
   evidence: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the UnresolvedDeclaration proto message in data-models/.
 export type UnresolvedDeclaration = {
   callee: string;
   argument: string;
@@ -61,6 +64,7 @@ export type UnresolvedDeclaration = {
   reason: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CoverageDiagnostic proto message in data-models/.
 export type CoverageDiagnostic = {
   code: string;
   severity: "error" | "warning";
@@ -75,6 +79,7 @@ export type CoverageDiagnostic = {
   callee?: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CoverageResult proto message in data-models/.
 export type CoverageResult = {
   ok: boolean;
   canDeployDimension: "collectionCoverage";

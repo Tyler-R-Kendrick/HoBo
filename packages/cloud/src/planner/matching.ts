@@ -1,12 +1,12 @@
 import type {
-	PlannerRegistry,
-	ResourceDefinition,
-} from "../registry/catalog.js";
-import type {
 	MatchDecided,
 	PlanRemediation,
 	ResourceIntent,
 } from "../plan-types.js";
+import type {
+	PlannerRegistry,
+	ResourceDefinition,
+} from "../registry/catalog.js";
 
 // Matching (control-plane.md steps 2-5): resolve a Resource Definition per
 // resource via context-matching, negotiate the provider Capability.satisfies,

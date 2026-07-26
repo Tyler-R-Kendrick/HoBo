@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
-	EnvelopeParseError,
 	createEventEnvelope,
+	EnvelopeParseError,
 	fromCloudEvent,
 	parseEventEnvelope,
 	toCloudEvent,
@@ -85,7 +85,6 @@ describe("EventEnvelope", () => {
 		const envelope = parseEventEnvelope(raw);
 
 		expect(() => {
-			"use strict";
 			(envelope as { seq: number }).seq = 99;
 		}).toThrow();
 	});

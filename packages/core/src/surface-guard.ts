@@ -1,5 +1,5 @@
-import { cloneJson, deepFreeze, expectObject } from "./parse-utils.js";
 import { EnvelopeParseError } from "./errors.js";
+import { cloneJson, deepFreeze, expectObject } from "./parse-utils.js";
 
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 

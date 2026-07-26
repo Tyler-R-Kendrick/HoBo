@@ -1,17 +1,30 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { parseManifest, type ManifestV1 } from "@hobo/bindles";
+import { type ManifestV1, parseManifest } from "@hobo/bindles";
+
+import { compileProjectManifest } from "./loader.js";
 
 // Resolve the Bindle manifest a project-scoped cloud verb operates on. The
-// mocked lane reads the project's `hobo.bindle.json` and parses it into a
-// ManifestV1 via @hobo/bindles (the same parser the Yard gateway hashes). A
-// missing or non-manifest file surfaces as `null` so the caller can fall back to
+// committed `hobo.bindle.json` artifact wins when present (byte-stable,
+// reviewable); otherwise the TS-source loader compiles the project's
+// `src/bindle.ts` through run-to-collect — the flagship authoring flow. A
+// project with neither surfaces as `null` so the caller can fall back to
 // the shell stub rather than throwing an internal error.
 
 export const BINDLE_MANIFEST_FILE = "hobo.bindle.json";
 
 export async function loadProjectManifest(
+	projectDir: string,
+): Promise<ManifestV1 | null> {
+	const fromArtifact = await loadManifestArtifact(projectDir);
+	if (fromArtifact !== null) {
+		return fromArtifact;
+	}
+	return compileProjectManifest(projectDir);
+}
+
+async function loadManifestArtifact(
 	projectDir: string,
 ): Promise<ManifestV1 | null> {
 	let raw: string;

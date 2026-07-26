@@ -7,7 +7,7 @@ This executable proof backs [PLAN-02](../../sdk-api.md#plan-02),
 [ADR-0081](../../adr/03-data-plane.md#adr-0081).
 
 The proof lives in
-[`../../../src/draft/technical-proofs/data-paradigm-authoring-contract`](../../../src/draft/technical-proofs/data-paradigm-authoring-contract).
+[`../../../src/draft/technical-proofs/data-paradigm-authoring-contract`](../../../../src/draft/technical-proofs/data-paradigm-authoring-contract).
 
 It verifies:
 

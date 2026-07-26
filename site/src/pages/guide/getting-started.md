@@ -13,7 +13,7 @@ Time to leave home. This guide takes you from an empty directory to an app that 
 
 **[Yards](/HoBo/primitives/yards/)** and **[Junctions](/HoBo/primitives/junctions/)** are advanced scenarios — you'll want them when your app starts collecting regions and clouds, and not a minute before. They get a short section [at the end](#advanced--yards-and-junctions).
 
-> **Pre-release note:** HoBo is pre-release; this is the canonical developer surface the product is being built to. Commands and APIs shown here are the stable contract — the same ones the conformance suites pin.
+> **Pre-release note:** HoBo is pre-release, but the core flow on this page **runs today**: a project with a `src/bindle.ts` runs `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` against HoBo's default **local, in-memory lane** — no cloud account required. Live deploy lanes (Cloudflare, Vercel, the real pinned Pulumi engine) are credential-gated by environment variables. Sections that lean on packages that don't ship yet are marked design-stage below.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ cd my-app
 hobo dev
 ```
 
-`hobo new` scaffolds a runnable SDK program; `hobo dev` runs it against the local runtime with hot reload — offline, no sign-up, honest fidelity labels for anything that behaves differently than the cloud.
+`hobo new` scaffolds a runnable SDK program (templates: `todo`, `api`, `agent`, `fullstack`); `hobo dev` boots an offline `runtime-local` camp and serves **your bindle's own api/web entrypoint handler in-process** — no sign-up, no network.
 
 ## Step 1 — Pack your bindle
 
@@ -42,13 +42,12 @@ import { app as api } from "./api";
 import { app as web } from "./webapp";
 
 export default bindle("my-app", (b) => {
-  const db = b.data();                       // a SQL-ish data port
-  const jobs = b.queue();                    // background work
+  const db = b.data().allow("read", "write"); // a SQL-ish data port, least-privilege verbs inline
+  const jobs = b.queue().allow("enqueue");    // background work
 
   const apiSvc = b
-    .api(() => api.fetch)                    // HTTP API entrypoint
-    .dependsOn(db, jobs)                     // typed bindings, injected at runtime
-    .allow("db:read", "db:write", "queue:send");
+    .api(() => api.fetch)                     // HTTP API entrypoint
+    .dependsOn(db, jobs);                     // typed bindings, injected at runtime
 
   const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
 
@@ -60,13 +59,15 @@ Three things to internalize — they're what make everything later cheap:
 
 - **Resource names come from the returned object keys.** `{ db, jobs, api, web }` is your app's topology; the object *is* the manifest.
 - **`.dependsOn(...)` is the wiring.** It declares edges *and* injects typed bindings at runtime. Nothing reaches a backend it didn't declare — deny by default.
-- **`.allow(...)` is inline least privilege.** Permissions travel *in* the bindle, so they move when the app moves. That's the trick: a bindle carries everything needed to unpack it anywhere, which is exactly what makes migrating to a cheaper home a routine event instead of a rewrite.
+- **`.allow(...)` is inline least privilege.** Verbs are scoped to the resource's kind — `"read"`/`"write"` on a data port, `"enqueue"` on a queue, `"get"`/`"set"` on a kv store. Permissions travel *in* the bindle, so they move when the app moves. That's the trick: a bindle carries everything needed to unpack it anywhere, which is exactly what makes migrating to a cheaper home a routine event instead of a rewrite.
 
-That's a complete, deployable description. If you stopped reading here and ran `hobo up`, HoBo could take it from this point — it would infer a camp from what you've configured and land the app there. Which brings us to what a camp *is*, and when to write one yourself.
+That's a complete, deployable description — and it deploys today: run `hobo up` and HoBo converges the graph against the default local, in-memory lane (build, plan, gate, provision, deploy — all in-process, no cloud account). If a committed `hobo.bindle.json` manifest artifact is present it wins; otherwise the manifest is compiled from `src/bindle.ts` itself. Which brings us to what a camp *is*, and when to write one yourself.
 
 ## Step 2 — Pitch a camp (or let HoBo pitch it)
 
 A camp answers one question the bindle deliberately doesn't: **where does this live right now?** One provider, one durable runtime (event store, queues, streams, actors, clock). Declaring one is how you *pin* that answer:
+
+> **Design-stage:** `@hobo/camps` ships, but the `@hobo/provider-fly` and `@hobo/runtime-postgres` packages imported below **do not ship yet** — this snippet shows the designed authoring surface. Today's shipped providers are `@hobo/provider-cloudflare` (plus the `ax` and `agentv` adapters), the shipped runtime backend is `runtime-local`, and the default lane is local/in-memory.
 
 ```ts
 // src/camp.ts
@@ -95,9 +96,9 @@ A few useful truths about camps:
 
 - **The camp is a *current answer*, not a vow.** The whole point of keeping the bindle provider-agnostic is that the camp can change out from under it. When continuous migration finds a cheaper camp that passes your policies, the move is the same convergence loop as `hobo up` — plan, gate, converge — never a special event.
 - **Writing a camp is optional.** With no camp pinned, the Dispatcher infers one from the code you've configured and your platform's approved providers, optimizing for price under policy. Explicit camps are for when *you* want to choose — or when your junction's broker admin has locked placement down and requires explicit, approved camps.
-- **Zero-setup first deploy:** `npx hobo up` from any directory deploys anonymously and returns a live URL — no account. `hobo login` and `hobo claim` later bind it to you, keeping its state and URL. Commitment-free, like all good first visits.
+- **Zero-setup first deploy:** `hobo up` works with no account and no cloud credentials — the default lane converges anonymously against the local, in-memory Yard runtime. `hobo login` mints a local dev session, and `hobo claim` binds an anonymous deployment to an account afterwards without re-provisioning. **Live** deploy lanes are credential-gated by environment: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`HOBO_PULUMI_LIVE=1`).
 
-And if you do want provider-native power, it's a typed annotation away, still inside the bindle:
+And if you do want provider-native power, it's a typed annotation away, still inside the bindle (`.with(...)` ships; the `fly` annotation below is the same design-stage provider surface as above):
 
 ```ts
 const apiSvc = b
@@ -127,7 +128,9 @@ One yard per provider, by rule. A yard cannot mix providers — that's the next 
 
 ### Junction: many yards, many clouds
 
-When the journey goes multi-cloud or hybrid, a **junction** federates yards — peer to peer, no shared mutable state, cross-cloud connectivity inferred from the member yards' manifests:
+When the journey goes multi-cloud or hybrid, a **junction** federates yards — peer to peer, no shared mutable state, cross-cloud connectivity inferred from the member yards' manifests.
+
+> **Design-stage:** the `@hobo/junctions` package does not ship yet — it's deliberately deferred to the multi-cloud build stage (S4 on [the trail map](/HoBo/guide/status/)). This snippet describes the designed surface.
 
 ```ts
 import { junction } from "@hobo/junctions";
@@ -142,6 +145,7 @@ Now continuous migration has a bigger map to roam: the Dispatcher can weigh home
 ## Where to next
 
 - [Bindles](/HoBo/primitives/bindles/) and [Camps](/HoBo/primitives/camps/) — the full reference for the two primitives you just used.
+- Working examples in the repo's `examples/` directory: **hello-bindle** (a minimal api + web bindle), **multi-cloud-shop** (one bindle, per-provider `.with(...)` annotations), **durable-agent** (a durable, tool-invoking agent on `@hobo/runtime`), and **self-host-yard** (operate your own Yard: plan/up/down against a control plane whose event log lives on your disk).
 - [Core concepts](/HoBo/guide/concepts/) — the vocabulary in one sitting.
 - [The hobo CLI](/HoBo/guide/cli/) — the whole verb surface (it's deliberately small).
 - [HoBo for agents](/HoBo/agents/) — pointing an AI agent at HoBo? It gets its own credentials, not yours.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parsePactDocument } from "../src/pact.js";
-import { verifyPact, type ProviderStub } from "../src/verify.js";
+import { type ProviderStub, verifyPact } from "../src/verify.js";
 
 const pact = parsePactDocument({
 	consumer: { name: "TestConsumer" },

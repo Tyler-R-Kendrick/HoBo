@@ -12,7 +12,7 @@ HoBo is built for humans **and the agents that work for them** — not as a slog
 
 ## Agents are principals, not scripts
 
-The standard failure mode elsewhere: an agent runs with a human's long-lived API key, invisible to audit and unbounded by scope. HoBo's model:
+The standard failure mode elsewhere: an agent runs with a human's long-lived API key, invisible to audit and unbounded by scope. HoBo's model (the full brokered-identity flow below is contract-pinned design; the shipping `hobo-mcp` binary runs today with a deny-by-default, scoped local-operator identity and audits every decision):
 
 - **Own identity.** Agents get workload identity (SVID/OIDC), not borrowed keys.
 - **Brokered, short-lived tokens.** Secretless-first — credentials are issued per task, scoped to the task, and expire fast.
@@ -27,7 +27,7 @@ Every HoBo capability is reachable three ways, with identical semantics:
 |---|---|---|
 | **SDK** | code | The same typed objects the [primitives](/HoBo/primitives/) docs describe. |
 | **CLI** | humans & scripts | The [canonical verb surface](/HoBo/guide/cli/) — deliberately small, stable to memorize. |
-| **MCP** | agents | Full capability parity — see [the MCP surface](/HoBo/agents/mcp/). |
+| **MCP** | agents | Ships today as the `hobo-mcp` stdio binary: all 27 CLI verbs as tools, parity contract-tested — see [the MCP surface](/HoBo/agents/mcp/). |
 
 No agent-only side entrance with different rules: if policy would stop a human doing it, it stops an agent doing it, and vice versa.
 
@@ -47,6 +47,6 @@ The full extension surface — every implementable port, the adapter-authoring p
 
 ## Start here
 
-- [The MCP surface](/HoBo/agents/mcp/) — capability discovery, auth flow, and event-audited actions.
+- [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the 27 canonical verbs as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
 - [`llms.txt`](/HoBo/llms.txt) — the machine-readable site briefing.
 - [Getting started](/HoBo/guide/getting-started/) — the same ten-minute path humans take; it works verbatim for agents.

@@ -1,15 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
-
-import { createHoboMcpServer } from "../src/server.js";
 import {
 	createRateLimiter,
-	rateLimitKey,
 	type RateLimitDecision,
+	rateLimitKey,
 } from "../src/rate-limit.js";
+import { createHoboMcpServer } from "../src/server.js";
 import {
-	HELLO_BINDLE,
 	authGranting,
 	closeStores,
+	HELLO_BINDLE,
 	makeWiredCli,
 	withProject,
 } from "./helpers.js";

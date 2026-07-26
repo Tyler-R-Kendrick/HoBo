@@ -23,6 +23,14 @@ export {
 	generateAgentDocs,
 } from "./agent-docs/generate.js";
 export {
+	BINDLE_SOURCE_CANDIDATES,
+	compileProjectManifest,
+	DEFAULT_COMPONENT_HOST,
+	loadBindleDefinition,
+	loadProjectCollectionTarget,
+	targetFromBindleDefinition,
+} from "./cloud/loader.js";
+export {
 	BINDLE_MANIFEST_FILE,
 	deploymentIdFor,
 	loadProjectManifest,

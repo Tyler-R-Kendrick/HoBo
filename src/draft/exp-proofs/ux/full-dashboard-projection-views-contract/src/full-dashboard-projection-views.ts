@@ -53,6 +53,7 @@ export type RenderedDashboardView = {
   readonly payload: Record<string, unknown>;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the DashboardRenderResult proto message in data-models/.
 export type DashboardRenderResult = {
   readonly issue: "HOBO-662";
   readonly fixture: string;

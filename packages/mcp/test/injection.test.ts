@@ -4,6 +4,7 @@ import {
 	INJECTION_CORPUS,
 	INJECTION_TARGET_TOOLS,
 } from "../src/injection-corpus.js";
+
 // The longest alphanumeric run in a payload survives JSON.stringify unescaped, so
 // it is a robust witness that the injected text was recorded verbatim.
 function longestAlnumRun(text: string): string {
@@ -12,11 +13,12 @@ function longestAlnumRun(text: string): string {
 		"",
 	);
 }
+
 import { createHoboMcpServer } from "../src/server.js";
 import {
-	HELLO_BINDLE,
 	authGranting,
 	closeStores,
+	HELLO_BINDLE,
 	makeWiredCli,
 	withProject,
 } from "./helpers.js";

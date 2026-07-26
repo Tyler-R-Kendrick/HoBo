@@ -1,13 +1,13 @@
 export {
-	plan,
+	type MatchAccepted,
+	type MatchOutcome,
+	type MatchRejected,
+	matchResource,
+} from "./matching.js";
+export {
 	type PlanConfig,
+	type PlanRejection,
 	type PlanResult,
 	type PlanSuccess,
-	type PlanRejection,
+	plan,
 } from "./plan.js";
-export {
-	matchResource,
-	type MatchOutcome,
-	type MatchAccepted,
-	type MatchRejected,
-} from "./matching.js";

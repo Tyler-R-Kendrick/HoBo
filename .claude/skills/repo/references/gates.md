@@ -19,13 +19,13 @@ Failed validation is not a completion state. Fix the failure or report the block
 
 ## Common Commands
 
-- Staged path: `pnpm.cmd run check:relevant:staged`
-- Latest-commit path: `pnpm.cmd run agent:check`
-- Branch path: `pnpm.cmd run check:relevant -- --base=origin/main`
-- Final PR-base path: `pnpm.cmd run agent:check -- --base=origin/main`
-- Technical standards: `pnpm.cmd run standards:check -- --base=origin/main`
-- OKF structure: `pnpm.cmd run docs:okf`
-- Skill validation: `py -3 C:\Users\conta\.codex\skills\.system\skill-creator\scripts\quick_validate.py <skill-folder>`
+- Staged path: `pnpm run check:relevant:staged`
+- Latest-commit path: `pnpm run agent:check`
+- Branch path: `pnpm run check:relevant -- --base=origin/main`
+- Final PR-base path: `pnpm run agent:check -- --base=origin/main`
+- Technical standards: `pnpm run standards:check -- --base=origin/main`
+- OKF structure: `pnpm run docs:okf`
+- Skill validation: no standalone validator ships in-repo; skill integrity is covered by `pnpm run skills:mirror-check` (byte-identical `.claude`/`.agents` mirrors) plus `pnpm run docs:okf` for reference bundles.
 
 ## Gate Rules
 

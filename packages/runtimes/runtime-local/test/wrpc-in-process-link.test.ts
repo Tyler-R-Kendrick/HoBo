@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	NoRouteError,
 	ProviderHandlerStore,
 	parseInterfaceId,
 	parseWireVersion,
 } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import {
 	createInProcessTransport,

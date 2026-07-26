@@ -18,6 +18,7 @@
           "factoryNames": [
             "api",
             "kv",
+            "cache",
             "bucket",
             "queue",
             "topic",
@@ -55,6 +56,18 @@
                 "get",
                 "set",
                 "delete"
+              ]
+            },
+            {
+              "factory": "cache",
+              "portRef": [
+                "hobo:cache"
+              ],
+              "allowVerbs": [
+                "get",
+                "set",
+                "delete",
+                "invalidate"
               ]
             },
             {

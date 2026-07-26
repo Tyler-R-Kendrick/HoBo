@@ -1,7 +1,7 @@
 import {
-	SUITE_SCHEMA,
 	type ConformanceSuite,
 	type ConformanceSuiteDefinition,
+	SUITE_SCHEMA,
 	type SuiteCase,
 } from "./types.js";
 

@@ -1,3 +1,6 @@
+// MIRROR — single-sourced from packages/core/data-models/event_envelope.proto (GAPS IMPL-009).
+// Do not edit by hand: only the proto package line may differ from the core
+// original. Divergence fails packages/schema-tools/test/envelope-single-source.test.ts.
 syntax = "proto3";
 
 package hobo.runtime_local.v1;

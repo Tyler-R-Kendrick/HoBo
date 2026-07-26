@@ -892,10 +892,9 @@ export function vendorFileName(pin: InterfacePin): string {
 	return basename(pin.path);
 }
 
+export type * as HoboSdk from "./generated/sdk/sdk.js";
 export {
 	assertGeneratedMatches,
-	writeGeneratedBindings,
 	WIT_ROOT,
+	writeGeneratedBindings,
 } from "./wit-gen.js";
-
-export type * as HoboSdk from "./generated/sdk/sdk.js";

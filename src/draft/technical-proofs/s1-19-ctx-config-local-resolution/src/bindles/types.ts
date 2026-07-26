@@ -20,6 +20,7 @@ export type ConfigContract<TEntries extends Record<string, ConfigEntry> = Record
   readonly entries: TEntries;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ConfigManifestEntry proto message in data-models/.
 export type ConfigManifestEntry = {
   readonly type: ConfigValueType;
   readonly required: boolean;
@@ -33,6 +34,7 @@ export type ConfigManifestEntry = {
   readonly productionDeployable?: false;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the ConfigManifest proto message in data-models/.
 export type ConfigManifest = {
   readonly schema: typeof CONFIG_SCHEMA_VERSION;
   readonly entries: Record<string, ConfigManifestEntry>;

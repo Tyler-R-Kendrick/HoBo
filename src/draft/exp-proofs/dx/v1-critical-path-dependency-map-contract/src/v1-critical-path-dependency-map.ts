@@ -14,6 +14,7 @@ export const REQUIRED_RELEASE_DEPENDENCY_DOMAINS = [
 export type ReleaseDependencyDomain = (typeof REQUIRED_RELEASE_DEPENDENCY_DOMAINS)[number];
 export type ReleaseBlockerType = "beta-blocker" | "rc-blocker" | "ga-blocker" | "known-limitation";
 
+// domain-view: parse-produced draft-proof record; its wire form is the CriticalPathDependency proto message in data-models/.
 export type CriticalPathDependency = {
   id: string;
   domain: ReleaseDependencyDomain;
@@ -23,6 +24,7 @@ export type CriticalPathDependency = {
   owner: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the KnownLimitation proto message in data-models/.
 export type KnownLimitation = {
   id: string;
   blockerType: "known-limitation";

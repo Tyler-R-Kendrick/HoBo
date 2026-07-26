@@ -7,9 +7,9 @@ import {
 	deploymentRolledBack,
 	resourceDestroying,
 } from "../events.js";
+import type { CredentialBroker, Executor } from "../executor/executor.js";
 import type { DeploymentPlan } from "../plan-types.js";
 import { collectStream } from "../store/index.js";
-import type { CredentialBroker, Executor } from "../executor/executor.js";
 import {
 	destroyResource,
 	foldResourceActor,

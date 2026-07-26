@@ -1,5 +1,5 @@
-import { RUNTIME_PORT_CHECKS } from "./checks.js";
 import { proveCheckoutDurability } from "./checkout-proof.js";
+import { RUNTIME_PORT_CHECKS } from "./checks.js";
 import { parseRuntimePortReport } from "./parse.js";
 import {
 	RUNTIME_PORT_CONFORMANCE_VERSION,
@@ -7,13 +7,13 @@ import {
 	type RuntimePortConformanceReport,
 } from "./types.js";
 
+export { proveCheckoutDurability } from "./checkout-proof.js";
+export { parseRuntimePortReport } from "./parse.js";
 export {
 	RUNTIME_PORT_CONFORMANCE_VERSION,
 	type RuntimeDurabilityBackend,
 	type RuntimePortConformanceReport,
 } from "./types.js";
-export { proveCheckoutDurability } from "./checkout-proof.js";
-export { parseRuntimePortReport } from "./parse.js";
 
 export async function runRuntimePortDurabilitySuite(
 	createBackend: () => RuntimeDurabilityBackend,

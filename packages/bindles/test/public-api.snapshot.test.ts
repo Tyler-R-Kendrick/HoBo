@@ -2,9 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
-import * as bindles from "../src/index.js";
 import { CATALOG } from "../src/catalog.js";
+import * as bindles from "../src/index.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
 const FORBIDDEN_PUBLIC_SYMBOL =

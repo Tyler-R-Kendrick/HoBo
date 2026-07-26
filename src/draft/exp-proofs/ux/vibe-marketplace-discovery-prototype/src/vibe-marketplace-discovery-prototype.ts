@@ -64,30 +64,35 @@ type MarketplaceTrustCopyState =
   | "yanked-support-route"
   | "hidden-listing";
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceDiscoverySourceIssue proto message in data-models/.
 export type MarketplaceDiscoverySourceIssue = {
   readonly issue: "HOBO-546" | "HOBO-547" | "HOBO-577";
   readonly packagePath: string;
   readonly proofPath: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceDiscoveryMockupSource proto message in data-models/.
 export type MarketplaceDiscoveryMockupSource = {
   readonly sourceIssue: "HOBO-546";
   readonly fixtureId: string;
   readonly surface: MarketplaceDiscoverySurface;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceDiscoveryTrustCopySource proto message in data-models/.
 export type MarketplaceDiscoveryTrustCopySource = {
   readonly sourceIssue: "HOBO-547";
   readonly fixtureId: string;
   readonly copyState: MarketplaceTrustCopyState;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceDiscoveryQuickstartRef proto message in data-models/.
 export type MarketplaceDiscoveryQuickstartRef = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: QuickstartFixtureId;
   readonly proofMode: "reference-fixture" | "simulated" | "live" | "scope-out";
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceDiscoveryCatalogFixture proto message in data-models/.
 export type MarketplaceDiscoveryCatalogFixture = {
   readonly fixtureId: string;
   readonly listingState: MarketplaceDiscoveryListingState;
@@ -104,6 +109,7 @@ export type MarketplaceDiscoveryCatalogFixture = {
   readonly safeNextAction: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceDiscoveryPath proto message in data-models/.
 export type MarketplaceDiscoveryPath = {
   readonly kind: MarketplaceDiscoveryPathKind;
   readonly fixtureIds: readonly string[];

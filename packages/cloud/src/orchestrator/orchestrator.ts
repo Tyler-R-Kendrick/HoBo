@@ -3,17 +3,17 @@ import type { ActorHost } from "@hobo/data";
 import { emit } from "@hobo/events";
 
 import { CLOUD_EVENTS, deploymentDeployed } from "../events.js";
+import type { CredentialBroker, Executor } from "../executor/executor.js";
 import type { DeploymentPlan, ResourcePlan } from "../plan-types.js";
 import { collectStream } from "../store/index.js";
-import type { CredentialBroker, Executor } from "../executor/executor.js";
+import { type CompensationResult, runCompensation } from "./compensation.js";
 import {
 	foldResourceActor,
-	reconcileResource,
 	type ReconcileContext,
 	type ResourceActorDeps,
 	type ResourceActorState,
+	reconcileResource,
 } from "./resource-actor.js";
-import { runCompensation, type CompensationResult } from "./compensation.js";
 
 // The Orchestrator (control-plane.md "Choreography over orchestration"): given a
 // DeploymentPlan DAG it activates ResourceActors; each self-activates when all its

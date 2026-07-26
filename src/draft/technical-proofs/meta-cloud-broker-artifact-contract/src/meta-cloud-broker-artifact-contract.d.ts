@@ -6,6 +6,7 @@ export type BrokerArtifactKind =
   | "resolution-receipt"
   | "resolution-rejection";
 
+// domain-view: parse-produced draft-proof record; its wire form is the BrokerArtifactEnvelope proto message in data-models/.
 export interface BrokerArtifactEnvelope<TPayload = Record<string, unknown>> {
   kind: BrokerArtifactKind;
   schema: string;
@@ -15,6 +16,7 @@ export interface BrokerArtifactEnvelope<TPayload = Record<string, unknown>> {
   payload: TPayload;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BrokerArtifactProvenance proto message in data-models/.
 export interface BrokerArtifactProvenance {
   source: {
     issue: string;

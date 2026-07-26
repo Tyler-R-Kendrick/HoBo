@@ -31,8 +31,19 @@ Key facts:
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.
-- Status: pre-release. The SDK/CLI/MCP surfaces documented on the site are the
-  contract-pinned surfaces the product is being built to.
+- Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
+  today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
+  drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default
+  LOCAL, IN-MEMORY lane (`hobo dev` serves the project's own api/web handler
+  in-process; a committed `hobo.bindle.json` artifact wins when present). The
+  `hobo-mcp` binary serves all 27 canonical verbs as MCP tools over stdio with
+  verb/tool parity contract-tested, deny-by-default audited auth, and HOBO_MCP_TOOLS
+  scoping. Live deploy lanes are credential-gated (Cloudflare/Vercel env tokens;
+  HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine). Not yet shipped:
+  @hobo/junctions (deferred to the S4 multi-cloud stage) and the fly/aws/azure/gcp
+  provider and postgres runtime packages — the docs mark those pages design-stage.
+  Everything else documented on the site is the contract-pinned surface the product
+  is being built to.
 - The complete documentation, concatenated as one markdown document, is at
   https://tyler-r-kendrick.github.io/HoBo/llms-full.txt. Every docs page also has a
   "Copy page as Markdown" button and per-snippet copy buttons.

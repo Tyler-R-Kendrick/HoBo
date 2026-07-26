@@ -2,6 +2,7 @@ export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "reference-fixture" | "live-recording" | "manual-review";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteDemoEvidenceItem proto message in data-models/.
 export interface LaunchSiteDemoEvidenceItem {
   id: string;
   ownerProject: string;
@@ -11,6 +12,7 @@ export interface LaunchSiteDemoEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteDemoBlocker proto message in data-models/.
 export interface LaunchSiteDemoBlocker {
   id: string;
   ownerProject: string;
@@ -19,6 +21,7 @@ export interface LaunchSiteDemoBlocker {
   mitigation: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteDemoAcceptedRisk proto message in data-models/.
 export interface LaunchSiteDemoAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -34,6 +37,7 @@ export interface ReleaseCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteDemoFollowUp proto message in data-models/.
 export interface LaunchSiteDemoFollowUp {
   id: string;
   evidenceId: string;
@@ -55,6 +59,7 @@ export interface PublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchSiteDemoAlphaEvidenceRecord proto message in data-models/.
 export interface LaunchSiteDemoAlphaEvidenceRecord {
   schema: string;
   issue: "HOBO-458";

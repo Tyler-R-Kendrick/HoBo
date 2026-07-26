@@ -1,8 +1,9 @@
 # Experience-proof classification manifest
 
-> Drives the one-time reorganization of `src/draft/exp-proofs/` into experience-type subfolders
+> Drove the one-time reorganization of `src/draft/exp-proofs/` into experience-type subfolders
 > (`dx` developer · `ux` user · `cx` customer · `ax` agent · `api` API/SDK surface), executed with
-> `git mv` by `scripts/migrate-exp-proofs.ts`. Every package appears exactly once. After the move a
+> `git mv` by a one-off migration script (`migrate-exp-proofs.ts`, retired from `scripts/` after
+> the migration completed). Every package appears exactly once. After the move a
 > package lives at `src/draft/exp-proofs/<type>/<slug>/`.
 >
 > **Classification rules.** Prefix defaults: `vibe-*`→ux · `dx-*`/`cli-*`→dx · `sdk-*`→api ·

@@ -1,16 +1,16 @@
 import {
-	type CandidateDeployment,
 	type CanDeployResult,
+	type CandidateDeployment,
 	type DeployedContractState,
 	evaluateCanDeploy,
 } from "./can-deploy.js";
 import {
+	createPermissiveDefaultPack,
 	EFFECT_RANK,
+	evaluatePolicyPack,
 	type PolicyDecisionRequest,
 	type PolicyEffect,
 	type PolicyPack,
-	createPermissiveDefaultPack,
-	evaluatePolicyPack,
 } from "./policy-pack.js";
 
 // The unified Gatekeeper (contracts-policy-flags.md §unified Gatekeeper). It sits

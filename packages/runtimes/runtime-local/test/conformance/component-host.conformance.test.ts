@@ -1,11 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	createReferenceComponentHostManifest,
 	createReferenceInContainerHost,
 	createReferenceRuntimeLocalHost,
 	runComponentHostConformance,
 } from "@hobo/conformance/component-host";
+import { describe, expect, it } from "vitest";
 
 describe("@hobo/runtime-local component-host conformance gate", () => {
 	it("passes the component-host portability suite for certified fixture hosts", async () => {

@@ -1,4 +1,3 @@
-import type { CommandModule } from "../shell/registry.js";
 import { deploymentIdFor, loadProjectManifest } from "../cloud/manifest.js";
 import { createFixtureSession, loadSession } from "../cloud/session.js";
 import { stubResult } from "../cloud/stub.js";
@@ -7,6 +6,7 @@ import {
 	type YardRuntime,
 	type YardSession,
 } from "../cloud/yard-client.js";
+import type { CommandModule } from "../shell/registry.js";
 
 export interface DownCommandDeps {
 	readonly runtime?: YardRuntime;
@@ -20,6 +20,7 @@ export interface DownCommandDeps {
 // runtime store. Reaches Destroyed; no real cloud calls.
 export function createDownCommand(deps: DownCommandDeps = {}): CommandModule {
 	return {
+		implemented: Boolean(deps.runtime),
 		run: async ({ context, emitProgress }) => {
 			const { runtime } = deps;
 			if (!runtime) {

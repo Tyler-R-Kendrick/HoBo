@@ -42,6 +42,7 @@ export type ProofMode =
   | "projection-snapshot"
   | "support-safe-evidence";
 
+// domain-view: parse-produced draft-proof record; its wire form is the DxScenarioJourney proto message in data-models/.
 export type DxScenarioJourney = {
   readonly id: string;
   readonly role: RequiredRole;
@@ -57,6 +58,7 @@ export type DxScenarioJourney = {
   readonly designTerms: readonly RequiredDesignTerm[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the DxResourceLifecycleScenarioMatrix proto message in data-models/.
 export type DxResourceLifecycleScenarioMatrix = {
   readonly issue: "HOBO-567";
   readonly phase: "M1";

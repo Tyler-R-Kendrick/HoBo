@@ -1,6 +1,6 @@
-import type { BuildSpec } from "./realize.js";
 import type { IacProgram } from "./iac-program.js";
 import type { PublishedManifestDocuments } from "./manifest.js";
+import type { BuildSpec } from "./realize.js";
 
 // Capability port kind as used by the control-plane CloudProvider contract
 // (control-plane.md "Port & provider interfaces"): "compute" | "kv" |

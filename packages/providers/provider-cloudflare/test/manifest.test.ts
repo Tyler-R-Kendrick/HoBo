@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
 import {
-	INITIAL_CAPABILITY_PORTS,
 	createCloudflareProvider,
 	equivalenceForPort,
+	INITIAL_CAPABILITY_PORTS,
 	parsePublishedManifest,
 	publishCapabilityManifest,
 } from "../src/index.js";

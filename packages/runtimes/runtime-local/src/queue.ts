@@ -5,17 +5,17 @@ import {
 	type EnqueueResult,
 	type HandleReport,
 	type IdempotencyKey,
-	type LeaseId,
 	type LeasedMessage,
+	type LeaseId,
 	type MessageId,
-	type Queue,
-	type QueueName,
-	QueueLeaseLostError,
 	parseDequeueOptions,
 	parseIdempotencyKey,
 	parseLeaseId,
 	parseMessageId,
 	parseQueueName,
+	type Queue,
+	QueueLeaseLostError,
+	type QueueName,
 } from "@hobo/core";
 
 import {
@@ -26,9 +26,9 @@ import {
 	getQueue,
 	isAvailableForLease,
 	normalizeNonNegativeInteger,
-	requireNonEmptyString,
 	type QueueClockStore,
 	type QueueMessageRecord,
+	requireNonEmptyString,
 } from "./queue-clock-store.js";
 
 export function createLocalQueue(store: QueueClockStore): Queue {

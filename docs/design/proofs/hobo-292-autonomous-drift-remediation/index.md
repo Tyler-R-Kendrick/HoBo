@@ -1,7 +1,7 @@
 # HOBO-292 Autonomous Drift Remediation Proof
 
 This branch proves the Operators/SRE drift-remediation slice as an independent draft contract:
-[`src/draft/technical-proofs/autonomous-drift-remediation-contract`](../../../src/draft/technical-proofs/autonomous-drift-remediation-contract).
+[`src/draft/technical-proofs/autonomous-drift-remediation-contract`](../../../../src/draft/technical-proofs/autonomous-drift-remediation-contract).
 
 ## Acceptance Mapping
 

@@ -81,17 +81,20 @@ type MarketplaceListingState =
 
 type MarketplaceCopyPath = "happy" | "blocked" | "stale-or-unknown" | "support-handoff";
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceTrustCopy proto message in data-models/.
 export type MarketplaceTrustCopy = {
   readonly headline: string;
   readonly body: string;
   readonly nextAction: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceAccessibilityNote proto message in data-models/.
 export type MarketplaceAccessibilityNote = {
   readonly check: MarketplaceAccessibilityCheck;
   readonly note: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceTrustCopyScenario proto message in data-models/.
 export type MarketplaceTrustCopyScenario = {
   readonly kind: MarketplaceScenarioKind;
   readonly fixtureId: string;
@@ -106,12 +109,14 @@ export type MarketplaceTrustCopyScenario = {
   readonly accessibilityNotes: readonly MarketplaceAccessibilityNote[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceTrustHandoff proto message in data-models/.
 export type MarketplaceTrustHandoff = {
   readonly owner: MarketplaceHandoffOwner;
   readonly consumes: string;
   readonly mustNotOwn: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceTrustQuickstartFixtureReference proto message in data-models/.
 export type MarketplaceTrustQuickstartFixtureReference = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: MarketplaceTrustQuickstartFixtureId;
@@ -120,6 +125,7 @@ export type MarketplaceTrustQuickstartFixtureReference = {
   readonly trustCopyUse: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceTrustCopyStates proto message in data-models/.
 export type MarketplaceTrustCopyStates = {
   readonly issue: "HOBO-547";
   readonly phase: "M1";

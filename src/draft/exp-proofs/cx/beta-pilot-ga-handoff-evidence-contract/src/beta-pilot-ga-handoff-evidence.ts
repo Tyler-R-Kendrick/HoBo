@@ -9,6 +9,7 @@ export type ReadinessDomain =
   | "support"
   | "release-cutline";
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaEvidenceItem proto message in data-models/.
 export interface BetaPilotGaEvidenceItem {
   id: string;
   ownerProject: string;
@@ -18,6 +19,7 @@ export interface BetaPilotGaEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaBlocker proto message in data-models/.
 export interface BetaPilotGaBlocker {
   id: string;
   ownerProject: string;
@@ -26,6 +28,7 @@ export interface BetaPilotGaBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaAcceptedRisk proto message in data-models/.
 export interface BetaPilotGaAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -33,6 +36,7 @@ export interface BetaPilotGaAcceptedRisk {
   launchRiskEffect: LaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaCutlineDependency proto message in data-models/.
 export interface BetaPilotGaCutlineDependency {
   id: string;
   ownerProject: string;
@@ -41,6 +45,7 @@ export interface BetaPilotGaCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaFollowUp proto message in data-models/.
 export interface BetaPilotGaFollowUp {
   id: string;
   evidenceId: string;
@@ -48,6 +53,7 @@ export interface BetaPilotGaFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaInitiativeStatusGate proto message in data-models/.
 export interface BetaPilotGaInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: LaunchRiskEffect;
@@ -55,6 +61,7 @@ export interface BetaPilotGaInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaPublicClaimGuard proto message in data-models/.
 export interface BetaPilotGaPublicClaimGuard {
   id: string;
   claim: string;
@@ -62,6 +69,7 @@ export interface BetaPilotGaPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BetaPilotGaHandoffEvidenceRecord proto message in data-models/.
 export interface BetaPilotGaHandoffEvidenceRecord {
   schema: string;
   issue: "HOBO-477";

@@ -3,8 +3,8 @@
 // short-circuits it after a restart. This module holds the authoring wrapper
 // plus the retry policy the workflow engine applies when a step's body throws.
 
-import { FatalError, RetryableError, WorkflowFailure } from "./errors.js";
 import type { StepOptions } from "./ctx.js";
+import { FatalError, RetryableError, WorkflowFailure } from "./errors.js";
 
 export type { StepOptions } from "./ctx.js";
 

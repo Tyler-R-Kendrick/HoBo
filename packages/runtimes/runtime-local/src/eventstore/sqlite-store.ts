@@ -5,9 +5,9 @@ import { DatabaseSync } from "node:sqlite";
 import type { EventEnvelope, SnapshotRecord } from "@hobo/core";
 
 import {
-	parseStoredEnvelope,
 	type ParsedAppendContext,
 	type ParsedEventInput,
+	parseStoredEnvelope,
 } from "./parse.js";
 
 const SCHEMA_SQL = `

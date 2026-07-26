@@ -1,4 +1,4 @@
-export { emit, subscribe, type EmitResult } from "./bus.js";
+export { type EmitResult, emit, subscribe } from "./bus.js";
 export { SagaCompensationError } from "./errors.js";
 export {
 	createDataChangedEvent,
@@ -14,6 +14,10 @@ export {
 	type ReactiveFact,
 } from "./events.js";
 export {
+	SUBSCRIPTION_GATEWAY_INTERFACE,
+	SUBSCRIPTION_GATEWAY_PORT,
+} from "./port.js";
+export {
 	createReactor,
 	defineMaterialization,
 	type Materialization,
@@ -27,9 +31,5 @@ export {
 	type SagaDefinition,
 	type SagaOutcome,
 } from "./saga.js";
-export {
-	SUBSCRIPTION_GATEWAY_INTERFACE,
-	SUBSCRIPTION_GATEWAY_PORT,
-} from "./port.js";
 
 export const HOBO_EVENTS_PACKAGE = "@hobo/events";

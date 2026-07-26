@@ -1,17 +1,17 @@
 export {
-	collectBindleManifest,
-	CollectionEngineError,
-	manifestFromWiring,
 	type CollectionContext,
+	CollectionEngineError,
 	type CollectionResult,
 	type CollectionTarget,
 	type ComponentHostDescriptor,
+	collectBindleManifest,
+	manifestFromWiring,
 } from "./collect.js";
 export {
 	COLLECTION_EVENT_SOURCE,
-	createCollectionEvents,
 	type CollectionEvent,
 	type CollectionEventType,
+	createCollectionEvents,
 	type ManifestProducedData,
 	type ManifestProducedEvent,
 	type ResourcesCollectedData,

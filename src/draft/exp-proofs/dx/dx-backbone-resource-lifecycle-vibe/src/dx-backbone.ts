@@ -42,6 +42,7 @@ type ProofMode = (typeof REQUIRED_PROOF_MODES)[number];
 type Coverage = (typeof REQUIRED_COVERAGE)[number];
 type Phase = "M1" | "M2";
 
+// domain-view: parse-produced draft-proof record; its wire form is the DesignAnchor proto message in data-models/.
 interface DesignAnchor {
   source: DesignAnchorSource;
   reason: string;
@@ -50,6 +51,7 @@ interface DesignAnchor {
 type ExperienceType = "dx" | "ux" | "cx" | "ax" | "api";
 type ExpProofPackagePath = `src/draft/exp-proofs/${ExperienceType}/${string}`;
 
+// domain-view: parse-produced draft-proof record; its wire form is the ChildSlice proto message in data-models/.
 interface ChildSlice {
   issue: `HOBO-${number}`;
   title: string;
@@ -61,6 +63,7 @@ interface ChildSlice {
   scopeOut: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DownstreamConsumerGate proto message in data-models/.
 interface DownstreamConsumerGate {
   consumer: string;
   mustConsume: `HOBO-${number}`[];
@@ -68,6 +71,7 @@ interface DownstreamConsumerGate {
   inventBehavior: boolean;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DxBackboneRecord proto message in data-models/.
 interface DxBackboneRecord {
   issue: "HOBO-566";
   targetPackage: "src/draft/exp-proofs/dx/dx-backbone-resource-lifecycle-vibe";

@@ -64,6 +64,7 @@ type AccessibilityQuickstartProofMode =
   (typeof REQUIRED_ACCESSIBILITY_QUICKSTART_PROOF_MODES)[number];
 type LaunchSeverity = "launch-blocker" | "major" | "minor";
 
+// domain-view: parse-produced draft-proof record; its wire form is the AccessibilityCheck proto message in data-models/.
 type AccessibilityCheck = {
   readonly id: AccessibilityCheckId;
   readonly label: string;
@@ -71,6 +72,7 @@ type AccessibilityCheck = {
   readonly proves: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the SurfaceChecklistEntry proto message in data-models/.
 type SurfaceChecklistEntry = {
   readonly surface: LaunchSurface;
   readonly owner: string;
@@ -81,6 +83,7 @@ type SurfaceChecklistEntry = {
   readonly proofModes: readonly ProofModeLabel[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the AccessibilityQuickstartFixtureReference proto message in data-models/.
 type AccessibilityQuickstartFixtureReference = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: AccessibilityQuickstartFixtureId;
@@ -97,6 +100,7 @@ type ChecklistScenarioId =
   | "accessibility-notes"
   | "proof-mode-labels";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ChecklistScenario proto message in data-models/.
 type ChecklistScenario = {
   readonly id: ChecklistScenarioId;
   readonly surfaceRefs: readonly LaunchSurface[];
@@ -109,6 +113,7 @@ type ValidationError = {
   readonly message: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeAccessibilityChecklist proto message in data-models/.
 type VibeAccessibilityChecklist = {
   readonly issue: "HOBO-554";
   readonly phase: "M1";

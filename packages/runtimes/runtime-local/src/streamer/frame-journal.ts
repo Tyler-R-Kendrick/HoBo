@@ -1,15 +1,15 @@
 import {
-	DEFAULT_STREAM_NAME,
-	StreamerBackpressureError,
-	StreamerClosedError,
 	createStreamerFrame,
+	DEFAULT_STREAM_NAME,
+	parseSeq,
 	type RunId,
 	type Seq,
-	type StreamName,
+	StreamerBackpressureError,
+	StreamerClosedError,
 	type StreamerFrame,
 	type StreamerRunResult,
 	type StreamerRunStatus,
-	parseSeq,
+	type StreamName,
 } from "@hobo/core";
 
 const END_OF_STREAM = Symbol("streamer.end");

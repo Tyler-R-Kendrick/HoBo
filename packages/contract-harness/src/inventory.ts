@@ -1,5 +1,5 @@
-import { access, readdir, readFile } from "node:fs/promises";
 import type { Dirent } from "node:fs";
+import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const INVENTORY_TABLE_HEADER =

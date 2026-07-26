@@ -1,27 +1,26 @@
-import { mkdtempSync } from "node:fs";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { type ManifestV1, parseManifest } from "@hobo/bindles";
 
 import type { EventEnvelope } from "@hobo/core";
 import { createInMemoryActorHost } from "@hobo/data";
-import { parseManifest, type ManifestV1 } from "@hobo/bindles";
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	createRegistryFromProviders,
 	deploy,
 	deploymentStreamId,
 	deploymentViewProjection,
-	UnauthorizedCommandError,
 	type GatewayDeps,
+	UnauthorizedCommandError,
 } from "../src/index.js";
 
 const HELLO_BINDLE_PLAN_HASH =

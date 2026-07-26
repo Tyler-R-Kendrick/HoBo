@@ -2,31 +2,31 @@ import type { HoboCli } from "@hobo/cli";
 import { CREDENTIAL_AUDIT_RETENTION } from "@hobo/identity";
 
 import {
-	MCP_EVENTS_SCHEMA_VERSION,
-	MCP_TOOL_CALL_DECIDED,
-	decideToolCall,
-	observeToolOutput,
-	authorizedToolNames,
 	type AuthContext,
 	type AuthDecisionEvent,
+	authorizedToolNames,
+	decideToolCall,
 	type InertOutputObservation,
+	MCP_EVENTS_SCHEMA_VERSION,
+	MCP_TOOL_CALL_DECIDED,
+	observeToolOutput,
 	type ToolDecision,
 } from "./auth.js";
 import {
-	MCP_TOOL_SURFACE,
+	createRateLimiter,
+	createThrottleEvent,
+	MCP_RATE_LIMITED_CODE,
+	type RateLimitEvent,
+	type RateLimiter,
+	type RateLimitPolicy,
+} from "./rate-limit.js";
+import {
 	assertToolSurfaceParity,
 	findTool,
+	MCP_TOOL_SURFACE,
 	type ParityReport,
 	type ToolDescriptor,
 } from "./tool-surface.js";
-import {
-	MCP_RATE_LIMITED_CODE,
-	createRateLimiter,
-	createThrottleEvent,
-	type RateLimitEvent,
-	type RateLimitPolicy,
-	type RateLimiter,
-} from "./rate-limit.js";
 
 // S3-01/S3-02 — the MCP server object. It exposes listTools()/callTool() and
 // dispatches EVERY tool through the SAME @hobo/cli command registry the CLI

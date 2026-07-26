@@ -8,7 +8,7 @@ description: "HoBo is an AI-native meta-cloud with one guiding principle: every 
 
 HoBo is an **AI-native meta-cloud** built on one guiding principle: **every app deserves a home — preferably a cheap one.** You describe your app once, HoBo places it on real infrastructure that passes your policies, and then — this is the part nobody else does — **it keeps looking**. When a better-value home opens up, continuous migration moves your app there, without a rewrite, a war room, or a weekend.
 
-> **Honest status:** HoBo is **pre-release**. The surfaces documented on this site — the SDK primitives, the `hobo` CLI, the MCP surface — are the contract the product is being built to, and they're stable enough to learn today. See [the trail map](/HoBo/guide/status/) for where the build is.
+> **Honest status:** HoBo is **pre-release**, and the core loop already runs: `src/bindle.ts` → `hobo plan`/`hobo up`/`hobo dev` against the default local, in-memory lane, plus the `hobo-mcp` agent surface — with live deploy lanes credential-gated. The rest of what's documented here — the SDK primitives, the full `hobo` CLI, the MCP surface — is the contract the product is being built to, stable enough to learn today. See [the trail map](/HoBo/guide/status/) for exactly what runs now.
 
 ## The pitch
 

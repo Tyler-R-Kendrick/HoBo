@@ -12,6 +12,8 @@ The **Camp** is HoBo's second foundational primitive: the answer to the question
 
 ## Pitching a camp
 
+> **Design-stage:** `@hobo/camps` ships (with `camp()`, `defaultProvider`/`tiers`/`bindings` resolution, and env-type inference), but the `@hobo/provider-fly` and `@hobo/runtime-postgres` packages imported in these snippets **do not ship yet** — they show the designed surface. Shipped today: `@hobo/provider-cloudflare` (plus the `ax` and `agentv` adapters) and the `runtime-local` backend; the default `hobo up` lane is local/in-memory, with live lanes credential-gated.
+
 ```ts
 import { camp } from "@hobo/camps";
 import { aws } from "@hobo/provider-aws";
@@ -61,7 +63,7 @@ export default camp("prod", {
 ## Rules camps enforce
 
 - **One provider per camp.** Mixing providers in one camp is a hard error — that's what [Yards](/HoBo/primitives/yards/) (regions) and [Junctions](/HoBo/primitives/junctions/) (clouds) are for. The constraint is what keeps a camp cheap to reason about, price, and leave.
-- **The runtime is part of the address.** A camp's durable runtime (event store, queues, streams, actor host, clock) is a swappable backend — local, postgres, temporal, restate, cloudflare. Swapping it changes durability backing, never app logic.
+- **The runtime is part of the address.** A camp's durable runtime (event store, queues, streams, actor host, clock) is a swappable backend — `runtime-local` ships today; postgres, temporal, restate, and cloudflare backends are designed. Swapping it changes durability backing, never app logic.
 - **Environment comes from the name.** `prod`, `staging`, `preview`/`pr-*`, and `dev` camps get sensible environment semantics inferred (and you can override `envType` when your naming is more creative).
 
 ## Writing a camp is optional

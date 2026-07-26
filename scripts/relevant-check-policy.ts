@@ -163,8 +163,16 @@ export function selectRelevantChecks(
 	const uiChanged =
 		touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/u]);
 	const behaviorChanged =
-		touched(["tests/behavior", "features"]) ||
-		touchedAny([/playwright\.behavior\.config\./u, /cucumber\.config\./u]);
+		touched(["tests/behavior"]) ||
+		// Feature files and step definitions live inside proof packages
+		// (src/draft/<kind>/<slug>/features/...), so match the path segment,
+		// not a repo-root prefix. The cucumber config is cucumber.yaml.
+		touchedAny([
+			/(^|\/)features\//u,
+			/\.feature$/u,
+			/^cucumber\.ya?ml$/u,
+			/playwright\.behavior\.config\./u,
+		]);
 	const visualChanged =
 		touched(["tests/visual", "storybook"]) ||
 		touchedAny([/playwright\.visual\.config\./u, /\.stories\./u]);

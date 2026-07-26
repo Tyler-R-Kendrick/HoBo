@@ -13,8 +13,8 @@ import {
 	type WiringManifest,
 } from "./types.js";
 
-export { BindReferenceError } from "./errors.js";
 export type { ComponentHandle, Handle, ResourceHandle } from "./errors.js";
+export { BindReferenceError } from "./errors.js";
 
 export function data(
 	name: string,

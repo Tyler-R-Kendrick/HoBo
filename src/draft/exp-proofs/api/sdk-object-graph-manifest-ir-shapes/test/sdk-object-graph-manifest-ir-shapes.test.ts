@@ -114,7 +114,7 @@ test("unsupported SDK semantics beyond WIT-first thin idiom layer are rejected",
 });
 
 test("architecture artifacts reconcile protobuf, CUE, and Pact evidence for the package boundary", () => {
-  const architectureDir = join(process.cwd(), "architecture");
+  const architectureDir = join(import.meta.dirname, "..", "architecture");
   const proto = readFileSync(join(architectureDir, "sdk_object_graph_manifest_ir_shapes.proto"), "utf8");
   const cue = readFileSync(join(architectureDir, "sdk_object_graph_manifest_ir_shapes.cue"), "utf8");
   const pact = JSON.parse(

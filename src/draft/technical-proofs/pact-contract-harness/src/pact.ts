@@ -4,10 +4,12 @@ import path from "node:path";
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const PARTICIPANT_NAME = /^[A-Z][A-Za-z0-9]*$/;
 
+// domain-view: parse-produced draft-proof record; its wire form is the PactParticipant proto message in data-models/.
 export interface PactParticipant {
   readonly name: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the PactRequest proto message in data-models/.
 export interface PactRequest {
   readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string;
@@ -15,18 +17,21 @@ export interface PactRequest {
   readonly body?: unknown;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the PactResponse proto message in data-models/.
 export interface PactResponse {
   readonly status: number;
   readonly headers?: Readonly<Record<string, string>>;
   readonly body?: unknown;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the PactInteraction proto message in data-models/.
 export interface PactInteraction {
   readonly description: string;
   readonly request: PactRequest;
   readonly response: PactResponse;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the PactDocument proto message in data-models/.
 export interface PactDocument {
   readonly consumer: PactParticipant;
   readonly provider: PactParticipant;

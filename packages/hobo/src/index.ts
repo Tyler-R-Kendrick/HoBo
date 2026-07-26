@@ -38,8 +38,11 @@ export {
 	createDefaultYardRuntime,
 	type DefaultDevRuntimeOptions,
 	type DefaultYardRuntimeOptions,
+	type EstateResourceState,
+	readPulumiEstate,
 	type SelectIacProviderDeps,
 	selectIacProvider,
+	selectPulumiEstateAdapter,
 } from "./compose.js";
 export {
 	type DeployBackend,
@@ -49,6 +52,8 @@ export {
 export {
 	createDerivativeCommand,
 	type DerivativeCommandDeps,
+	type DerivativeUpcasterStep,
+	type UpcastedEventRecord,
 } from "./derivative-command.js";
 export {
 	createDoctorCommand,
@@ -56,7 +61,10 @@ export {
 } from "./doctor-command.js";
 export {
 	createDriftCommand,
+	DRIFT_CHECKED_EVENT,
+	DRIFT_DETECTED_EVENT,
 	type DriftCommandDeps,
+	type DriftKind,
 } from "./drift-command.js";
 export {
 	createEraseCommand,
@@ -67,8 +75,10 @@ export {
 	type GenerateCommandDeps,
 } from "./generate-command.js";
 export {
+	type AdoptedResourceEntry,
 	createImportCommand,
 	type ImportCommandDeps,
+	RESOURCE_ADOPTED_EVENT,
 } from "./import-command.js";
 export {
 	createInspectCommand,

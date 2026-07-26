@@ -1,6 +1,7 @@
 export type ClosureBuilderResourceKind = "api" | "cache" | "queue";
 export type ClosureBuilderRelationshipVerb = "dependsOn";
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderLoweringResource proto message in data-models/.
 export interface ClosureBuilderLoweringResource {
   readonly generatedId: string;
   readonly kind: ClosureBuilderResourceKind;
@@ -8,28 +9,33 @@ export interface ClosureBuilderLoweringResource {
   readonly annotations?: readonly ProviderAnnotation[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderWorkloadDescriptor proto message in data-models/.
 export interface ClosureBuilderWorkloadDescriptor {
   readonly kind: "inert-workload-factory";
   readonly entrypoint?: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ProviderAnnotation proto message in data-models/.
 export interface ProviderAnnotation {
   readonly provider: string;
   readonly option: string;
   readonly value: unknown;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderAlias proto message in data-models/.
 export interface ClosureBuilderAlias {
   readonly alias: string;
   readonly generatedId: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderRelationship proto message in data-models/.
 export interface ClosureBuilderRelationship {
   readonly from: string;
   readonly to: string;
   readonly verb: ClosureBuilderRelationshipVerb;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderLoweringInput proto message in data-models/.
 export interface ClosureBuilderLoweringInput {
   readonly bindleName: string;
   readonly resources: readonly ClosureBuilderLoweringResource[];

@@ -1,6 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	AggregateConflictError,

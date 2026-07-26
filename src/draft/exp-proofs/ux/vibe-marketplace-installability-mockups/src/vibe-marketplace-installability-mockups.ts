@@ -52,6 +52,7 @@ type MarketplaceProofMode = (typeof REQUIRED_MARKETPLACE_PROOF_MODES)[number];
 type QuickstartFixtureId = (typeof REQUIRED_QUICKSTART_FIXTURE_IDS)[number];
 type QuickstartProofMode = "reference-fixture" | "simulated" | "live" | "scope-out";
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceWireframe proto message in data-models/.
 export type MarketplaceWireframe = {
   readonly id: string;
   readonly surface: MarketplaceSurface;
@@ -61,6 +62,7 @@ export type MarketplaceWireframe = {
   readonly fixtureIds: readonly string[];
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceListingFixture proto message in data-models/.
 export type MarketplaceListingFixture = {
   readonly state: MarketplaceFixtureState;
   readonly fixtureId: string;
@@ -74,6 +76,7 @@ export type MarketplaceListingFixture = {
   readonly supportHandoff: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceScenarioPath proto message in data-models/.
 export type MarketplaceScenarioPath = {
   readonly id: MarketplaceScenario;
   readonly narrative: string;
@@ -83,6 +86,7 @@ export type MarketplaceScenarioPath = {
   readonly safeOutcome: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the MarketplaceQuickstartFixtureReference proto message in data-models/.
 export type MarketplaceQuickstartFixtureReference = {
   readonly sourceIssue: "HOBO-577";
   readonly fixtureId: QuickstartFixtureId;
@@ -91,6 +95,7 @@ export type MarketplaceQuickstartFixtureReference = {
   readonly marketplaceUse: string;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the VibeMarketplaceInstallabilityMockups proto message in data-models/.
 export type VibeMarketplaceInstallabilityMockups = {
   readonly issue: "HOBO-546";
   readonly phase: "M1";

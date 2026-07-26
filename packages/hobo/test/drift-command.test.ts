@@ -2,6 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { CliContext } from "@hobo/cli";
+import { deploymentIdFor } from "@hobo/cli";
+import { collectStream } from "@hobo/cloud";
+import { createInMemoryStateBackend } from "@hobo/iac-pulumi";
+import { createPulumiAutomationAdapter } from "@hobo/iac-pulumi";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -11,13 +15,19 @@ import {
 	createComposedHoboCli,
 	createDefaultYardRuntime,
 	createDriftCommand,
+	DRIFT_CHECKED_EVENT,
+	DRIFT_DETECTED_EVENT,
+	type PulumiAutomationAdapter,
 } from "../src/index.js";
 
-// `hobo drift` checks a recorded deployment against its LIVE backend via the IaC
-// port's refresh(). On the in-memory lane there is nothing live to drift, so it
-// says so. On the live Cloudflare lane it does a REAL refresh (GET the Worker
-// script): present -> in-sync, 404 -> drifted with a governed remediation. The
-// network is mocked throughout — no live token, no socket.
+// `hobo drift` — REAL drift detection: the declared bindle manifest's desired
+// resources are compared against the state the IaC backend actually holds.
+// On the Pulumi lanes the estate comes from the shared adapter's state backend
+// (seeded by a prior `hobo up`); per-resource verdicts are missing / orphaned /
+// diverged (the latter via a refresh through the engine seam). On the live
+// Cloudflare lane the recorded DeploymentView is the held state and the REAL
+// refresh (GET the Worker script) decides divergence. Every run appends
+// `drift.Checked` (+ per-finding `drift.Detected`) facts to the durable log.
 
 const HELLO_BINDLE = {
 	schema: "hobo.manifest/v1",
@@ -71,12 +81,15 @@ afterEach(() => {
 
 async function withProject(
 	callback: (cwd: string) => Promise<void>,
+	writeManifest = true,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-drift-"));
-	await writeFile(
-		path.join(dir, "hobo.bindle.json"),
-		`${JSON.stringify(HELLO_BINDLE, null, 2)}\n`,
-	);
+	if (writeManifest) {
+		await writeFile(
+			path.join(dir, "hobo.bindle.json"),
+			`${JSON.stringify(HELLO_BINDLE, null, 2)}\n`,
+		);
+	}
 	try {
 		await callback(dir);
 	} finally {
@@ -94,8 +107,18 @@ function runInput(cwd: string, emit: (m: string) => void = () => {}) {
 	};
 }
 
+interface DriftData {
+	checked: number;
+	drifted: string[];
+	missing: string[];
+	orphaned: string[];
+	diverged: string[];
+	backend?: string;
+	engineCode?: string;
+}
+
 describe("createDriftCommand", () => {
-	it("reports no-live-backend on the in-memory lane (nothing to drift)", async () => {
+	it("reports in-sync on the in-memory lane after `hobo up` (declared == held state)", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
 			openStores.push(runtime.store as RuntimeLocalEventStore);
@@ -108,13 +131,136 @@ describe("createDriftCommand", () => {
 				ok: boolean;
 				status: string;
 				code?: string;
-				data: { checked: number };
+				data: DriftData;
 			};
 
 			expect(drift.code).not.toBe("HOBO_CLI_STUB");
 			expect(drift.ok).toBe(true);
-			expect(drift.status).toBe("no_live_backend");
-			expect(drift.data.checked).toBe(0);
+			expect(drift.status).toBe("in-sync");
+			expect(drift.data.checked).toBe(2);
+			expect(drift.data.drifted).toEqual([]);
+
+			// The check is a durable fact on the deployment stream.
+			const events = await collectStream(
+				runtime.store,
+				`deployment:${deploymentIdFor(cwd)}`,
+			);
+			const checked = events.filter((e) => e.type === DRIFT_CHECKED_EVENT);
+			expect(checked.length).toBe(1);
+			expect((checked[0]?.data as { checked: number }).checked).toBe(2);
+		});
+	});
+
+	it("reports a declared-but-absent resource as missing", async () => {
+		await withProject(async (cwd) => {
+			const runtime = createDefaultYardRuntime();
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const cli = createComposedHoboCli({ yardRuntime: runtime });
+			await cli.run(["up", "--json"], { cwd });
+
+			// Declare one MORE resource than the estate holds.
+			await writeFile(
+				path.join(cwd, "hobo.bindle.json"),
+				`${JSON.stringify(
+					{
+						...HELLO_BINDLE,
+						resources: {
+							...HELLO_BINDLE.resources,
+							cache: { type: "data.v1", port: "kv" },
+						},
+					},
+					null,
+					2,
+				)}\n`,
+			);
+
+			const drift = JSON.parse(
+				(await cli.run(["drift", "--json"], { cwd })).stdout,
+			) as { ok: boolean; status: string; data: DriftData };
+			expect(drift.status).toBe("drifted");
+			expect(drift.data.missing).toEqual(["cache"]);
+			expect(drift.data.orphaned).toEqual([]);
+			expect(drift.data.drifted).toContain("cache");
+		});
+	});
+
+	it("reports a held-but-undeclared resource as orphaned", async () => {
+		await withProject(async (cwd) => {
+			const runtime = createDefaultYardRuntime();
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const cli = createComposedHoboCli({ yardRuntime: runtime });
+			await cli.run(["up", "--json"], { cwd });
+
+			// Remove `sessions` from the declaration; the estate still holds it.
+			await writeFile(
+				path.join(cwd, "hobo.bindle.json"),
+				`${JSON.stringify(
+					{
+						...HELLO_BINDLE,
+						resources: {
+							service: {
+								...HELLO_BINDLE.resources.service,
+								bind: [],
+							},
+						},
+					},
+					null,
+					2,
+				)}\n`,
+			);
+
+			const drift = JSON.parse(
+				(await cli.run(["drift", "--json"], { cwd })).stdout,
+			) as { ok: boolean; status: string; data: DriftData };
+			expect(drift.status).toBe("drifted");
+			expect(drift.data.orphaned).toEqual(["sessions"]);
+			expect(drift.data.missing).toEqual([]);
+
+			// The finding is recorded as a drift.Detected fact.
+			const events = await collectStream(
+				runtime.store,
+				`deployment:${deploymentIdFor(cwd)}`,
+			);
+			const detected = events.filter((e) => e.type === DRIFT_DETECTED_EVENT);
+			expect(
+				detected.map((e) => (e.data as { resource: string }).resource),
+			).toContain("sessions");
+			expect(detected.map((e) => (e.data as { kind: string }).kind)).toContain(
+				"orphaned",
+			);
+		});
+	});
+
+	it("reports diverged when the held state no longer matches the stored plan", async () => {
+		await withProject(async (cwd) => {
+			const stateBackend = createInMemoryStateBackend();
+			const adapter = createPulumiAutomationAdapter({
+				stateBackend,
+			}) as PulumiAutomationAdapter;
+			const runtime = createDefaultYardRuntime({ iacAdapter: adapter });
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const cli = createComposedHoboCli({ yardRuntime: runtime });
+			await cli.run(["up", "--json"], { cwd });
+
+			// Tamper with the held state OUT OF BAND (the drift story): the stack
+			// still exists but its record no longer matches the realized spec.
+			const deploymentId = deploymentIdFor(cwd);
+			const stackKey = `${deploymentId}/service`;
+			const held = stateBackend.read(stackKey) as {
+				resources: Record<string, { specHash?: string }>;
+			};
+			expect(held.resources.service).toBeDefined();
+			held.resources.service!.specHash = "sha256:tampered-out-of-band";
+			stateBackend.write(stackKey, held);
+
+			const command = createDriftCommand({ runtime, adapter });
+			const result = await command.run(runInput(cwd));
+			const data = result.data as DriftData;
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe("drifted");
+			expect(data.diverged).toEqual(["service"]);
+			expect(data.missing).toEqual([]);
+			expect(data.orphaned).toEqual([]);
 		});
 	});
 
@@ -134,12 +280,12 @@ describe("createDriftCommand", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("in-sync");
-			expect((result.data as { checked: number }).checked).toBe(2);
-			expect((result.data as { drifted: string[] }).drifted).toEqual([]);
+			expect((result.data as DriftData).checked).toBe(2);
+			expect((result.data as DriftData).drifted).toEqual([]);
 		});
 	});
 
-	it("reports drift + a governed remediation when the live Worker is gone (404)", async () => {
+	it("reports divergence + a governed remediation when the live Worker is gone (404)", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
 			openStores.push(runtime.store as RuntimeLocalEventStore);
@@ -156,13 +302,17 @@ describe("createDriftCommand", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("drifted");
-			expect((result.data as { checked: number }).checked).toBe(2);
-			expect((result.data as { drifted: string[] }).drifted.sort()).toEqual([
+			expect((result.data as DriftData).checked).toBe(2);
+			expect([...(result.data as DriftData).diverged].sort()).toEqual([
+				"service",
+				"sessions",
+			]);
+			expect([...(result.data as DriftData).drifted].sort()).toEqual([
 				"service",
 				"sessions",
 			]);
 			expect(result.remediation?.[0]).toMatch(/hobo up/);
-			expect(emitted.every((m) => m.endsWith("drifted"))).toBe(true);
+			expect(emitted.every((m) => m.endsWith("diverged"))).toBe(true);
 		});
 	});
 
@@ -178,8 +328,38 @@ describe("createDriftCommand", () => {
 			const result = await command.run(runInput(cwd));
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("no_deployment");
-			expect((result.data as { checked: number }).checked).toBe(0);
+			expect((result.data as DriftData).checked).toBe(0);
 		});
+	});
+
+	it("fails closed with a typed error when HOBO_PULUMI_LIVE=1 and the pulumi binary is missing", async () => {
+		await withProject(async (cwd) => {
+			const runtime = createDefaultYardRuntime();
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const command = createDriftCommand({
+				runtime,
+				env: {
+					HOBO_PULUMI_LIVE: "1",
+					HOBO_PULUMI_BIN: "definitely-not-pulumi-xyz",
+				},
+			});
+			const result = await command.run(runInput(cwd));
+			expect(result.ok).toBe(false);
+			expect(result.code).toBe("HOBO_PULUMI_UNAVAILABLE");
+			expect((result.data as DriftData).backend).toBe("pulumi-live");
+			expect((result.data as DriftData).engineCode).toBe("pulumi-cli-missing");
+		});
+	});
+
+	it("errors when there is no bindle to compare against", async () => {
+		await withProject(async (cwd) => {
+			const runtime = createDefaultYardRuntime();
+			openStores.push(runtime.store as RuntimeLocalEventStore);
+			const command = createDriftCommand({ runtime });
+			const result = await command.run(runInput(cwd));
+			expect(result.ok).toBe(false);
+			expect(result.code).toBe("HOBO_NO_BINDLE");
+		}, false);
 	});
 
 	it("reports unavailable when no runtime is wired", async () => {

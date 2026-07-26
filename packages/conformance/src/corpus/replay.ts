@@ -5,8 +5,8 @@ import {
 	type EventEnvelope,
 	type FoldFn,
 	type ReplayReport,
-	type UpcastFn,
 	stableStringify,
+	type UpcastFn,
 } from "@hobo/runtime/replay";
 
 import { createSeededClock, createSeededUlid } from "./deterministic-seed.js";

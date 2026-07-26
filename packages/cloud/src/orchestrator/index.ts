@@ -1,28 +1,27 @@
 export {
-	RESOURCE_ACTOR_STATES,
-	foldResourceActor,
-	reconcileResource,
-	destroyResource,
-	iacProgramFor,
-	resourceActorKey,
-	type ResourceActorState,
-	type ResourceActorSnapshot,
-	type ResourceActorDeps,
-	type ReconcileContext,
-	type ReconcileOutcome,
-} from "./resource-actor.js";
+	type CompensationContext,
+	type CompensationDeps,
+	type CompensationResult,
+	runCompensation,
+} from "./compensation.js";
 
 export {
-	runOrchestrator,
-	type OrchestratorDeps,
 	type OrchestratorContext,
+	type OrchestratorDeps,
 	type OrchestratorResult,
 	type OrchestratorStatus,
+	runOrchestrator,
 } from "./orchestrator.js";
-
 export {
-	runCompensation,
-	type CompensationDeps,
-	type CompensationContext,
-	type CompensationResult,
-} from "./compensation.js";
+	destroyResource,
+	foldResourceActor,
+	iacProgramFor,
+	RESOURCE_ACTOR_STATES,
+	type ReconcileContext,
+	type ReconcileOutcome,
+	type ResourceActorDeps,
+	type ResourceActorSnapshot,
+	type ResourceActorState,
+	reconcileResource,
+	resourceActorKey,
+} from "./resource-actor.js";

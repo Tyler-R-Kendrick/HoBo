@@ -20,6 +20,7 @@ export type AssetKind = (typeof REQUIRED_ASSET_KINDS)[number];
 export type ProofMode = (typeof REQUIRED_PROOF_MODES)[number];
 export type ScenarioKind = (typeof REQUIRED_SCENARIO_KINDS)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the LaunchAsset proto message in data-models/.
 export interface LaunchAsset {
   id: string;
   kind: AssetKind;
@@ -70,6 +71,7 @@ export interface ParsedVibeLaunchAssetRefreshPlan extends VibeLaunchAssetRefresh
   readonly __parsed: "VibeLaunchAssetRefreshPlan";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the ScopeCreepDenial proto message in data-models/.
 export interface ScopeCreepDenial {
   decision: "reject";
   reason: string;

@@ -4,6 +4,7 @@ import {
 } from "./full-dashboard-projection-views.ts";
 import type { DashboardHtmlDocument } from "./dashboard-html-renderer.ts";
 
+// domain-view: parse-produced draft-proof record; its wire form is the PseudoLocalizationResult proto message in data-models/.
 export type PseudoLocalizationResult = {
   readonly expansionFactor: number;
   readonly direction: "rtl";

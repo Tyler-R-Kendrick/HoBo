@@ -1,0 +1,18 @@
+{
+  "layer": "epic",
+  "slug": "wit-component-model-runtime-membrane",
+  "title": "WIT & Component-Model Runtime Membrane Reference Implementation",
+  "references": {
+    "technicalProofs": [],
+    "epicProofs": [],
+    "expProofs": [],
+    "designDocs": []
+  },
+  "artifacts": {
+    "examples": "examples",
+    "notebook": "notebook.ipynb",
+    "features": "features",
+    "diagrams": []
+  },
+  "waivers": []
+}

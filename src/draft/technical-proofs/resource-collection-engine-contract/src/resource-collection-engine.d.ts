@@ -1,3 +1,4 @@
+// domain-view: parse-produced draft-proof record; its wire form is the CollectionInput proto message in data-models/.
 export interface CollectionInput {
   readonly bindleId?: string;
   readonly fileName?: string;

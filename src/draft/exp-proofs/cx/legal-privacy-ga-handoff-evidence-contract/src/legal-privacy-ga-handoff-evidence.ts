@@ -4,6 +4,7 @@ export type BlockerState = "cleared" | "accepted-risk";
 export type LaunchRiskEffect = "unchanged" | "reduced";
 export type ReadinessDomain = "legal" | "privacy" | "customer-assurance" | "security" | "release-cutline";
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaEvidenceItem proto message in data-models/.
 export interface LegalPrivacyGaEvidenceItem {
   id: string;
   ownerProject: string;
@@ -13,6 +14,7 @@ export interface LegalPrivacyGaEvidenceItem {
   acceptanceBullet: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaBlocker proto message in data-models/.
 export interface LegalPrivacyGaBlocker {
   id: string;
   ownerProject: string;
@@ -21,6 +23,7 @@ export interface LegalPrivacyGaBlocker {
   disposition: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaAcceptedRisk proto message in data-models/.
 export interface LegalPrivacyGaAcceptedRisk {
   id: string;
   ownerProject: string;
@@ -28,6 +31,7 @@ export interface LegalPrivacyGaAcceptedRisk {
   launchRiskEffect: LaunchRiskEffect;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaReleaseCutlineDependency proto message in data-models/.
 export interface LegalPrivacyGaReleaseCutlineDependency {
   id: string;
   ownerProject: string;
@@ -36,12 +40,14 @@ export interface LegalPrivacyGaReleaseCutlineDependency {
   source: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaMissingEvidence proto message in data-models/.
 export interface LegalPrivacyGaMissingEvidence {
   id: string;
   ownerProject: string;
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaFollowUp proto message in data-models/.
 export interface LegalPrivacyGaFollowUp {
   id: string;
   evidenceId: string;
@@ -49,6 +55,7 @@ export interface LegalPrivacyGaFollowUp {
   reason: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaInitiativeStatusGate proto message in data-models/.
 export interface LegalPrivacyGaInitiativeStatusGate {
   parentInitiative: "HoBo v1 Release Readiness";
   launchRiskChange: LaunchRiskEffect;
@@ -56,6 +63,7 @@ export interface LegalPrivacyGaInitiativeStatusGate {
   updateSource: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaPublicClaimGuard proto message in data-models/.
 export interface LegalPrivacyGaPublicClaimGuard {
   id: string;
   claim: string;
@@ -63,6 +71,7 @@ export interface LegalPrivacyGaPublicClaimGuard {
   disposition: "hold" | "draft" | "publish";
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the LegalPrivacyGaHandoffEvidenceRecord proto message in data-models/.
 export interface LegalPrivacyGaHandoffEvidenceRecord {
   schema: string;
   issue: "HOBO-478";

@@ -1,4 +1,4 @@
-import type { StageGateDefinition, StageGateCheck } from "./types.js";
+import type { StageGateCheck, StageGateDefinition } from "./types.js";
 
 const NODE = process.execPath;
 const TSX_IMPORT = "--import";

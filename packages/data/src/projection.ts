@@ -1,12 +1,11 @@
 import type { EventEnvelope, EventStore } from "@hobo/core";
-
+import { ProjectionWriteError } from "./errors.js";
 import {
 	createProjectionDeclaredEvent,
 	createProjectionLaggedEvent,
 	createProjectionSinkReboundEvent,
 	type DataFact,
 } from "./events.js";
-import { ProjectionWriteError } from "./errors.js";
 import type { UpcasterRegistry } from "./upcaster.js";
 
 // A projection is the read-model fold: a deterministic, read-only `(row, event)

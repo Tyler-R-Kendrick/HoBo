@@ -88,6 +88,7 @@ export type JourneyStep = {
   readonly fixtureId: typeof FIXTURE_ID;
 };
 
+// domain-view: parse-produced draft-proof record; its wire form is the CliCloudYardPathRecord proto message in data-models/.
 export type CliCloudYardPathRecord = {
   readonly issue: "HOBO-625";
   readonly phase: "M1";

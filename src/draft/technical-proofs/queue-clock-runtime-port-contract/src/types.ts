@@ -51,6 +51,7 @@ export interface ScheduledTimer {
   deduped: boolean;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the CronSchedule proto message in data-models/.
 export interface CronSchedule {
   scheduleId: string;
   everyMs: number;

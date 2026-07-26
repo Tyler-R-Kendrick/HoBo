@@ -1,13 +1,12 @@
-import { expect, test } from "vitest";
-
 import {
 	CapabilityDeniedError,
-	evaluateCapabilityGrants,
-	inferCapabilityUsage,
 	type CapabilityDiagnostic,
 	type CapabilityGrant,
 	type CapabilityLinkTableEvent,
+	evaluateCapabilityGrants,
+	inferCapabilityUsage,
 } from "@hobo/core";
+import { expect, test } from "vitest";
 
 import type { CapabilityHandle, CapabilityLinkTable } from "./host-types.js";
 

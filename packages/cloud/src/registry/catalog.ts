@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { defineProjection, type Projection } from "@hobo/data";
-
-import type { CapabilityVerdict } from "../plan-types.js";
 import { CLOUD_EVENTS, providerRegistered } from "../events.js";
+import type { CapabilityVerdict } from "../plan-types.js";
 
 // The Registry is a Provider + Capability Manifest catalog (control-plane.md
 // "Registry"). Per Decision D2 (build plan) it is a *projection* over provider

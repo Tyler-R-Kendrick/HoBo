@@ -1,9 +1,9 @@
 import {
 	type InterfaceId,
 	type LinkRequest,
-	parseInterfaceId,
 	type ParsedComponentDescriptor,
 	type ProviderDescriptor,
+	parseInterfaceId,
 } from "@hobo/core";
 
 import { ComponentHostError } from "./errors.js";

@@ -1,10 +1,6 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-
-import { createInMemoryActorHost } from "@hobo/data";
-import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import {
 	authorize,
 	createInProcessCredentialBroker,
@@ -13,11 +9,15 @@ import {
 	type IacProgram,
 	type IacProvider,
 } from "@hobo/cloud";
+
+import { createInMemoryActorHost } from "@hobo/data";
+import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
 	createDownCommand,

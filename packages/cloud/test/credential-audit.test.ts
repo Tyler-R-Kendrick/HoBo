@@ -1,21 +1,20 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-
 import type { EventEnvelope, PrincipalRef } from "@hobo/core";
 import {
 	createManualClock,
 	createRuntimeLocalEventStore,
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
+	CREDENTIAL_AUDIT_RETENTION,
+	CREDENTIAL_AUDIT_RETENTION_FLOOR_MS,
 	collectStream,
 	compactCredentialAuditStream,
 	credentialAuditProjection,
-	CREDENTIAL_AUDIT_RETENTION,
-	CREDENTIAL_AUDIT_RETENTION_FLOOR_MS,
 } from "../src/index.js";
 
 // S3-04 CredentialAudit projection: folds identity/token/session events into a

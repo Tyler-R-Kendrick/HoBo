@@ -17,6 +17,7 @@ export interface ManifestLink {
   readonly to: string;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the BindingMeta proto message in data-models/.
 export interface BindingMeta {
   readonly port: string;
   readonly resource: string;

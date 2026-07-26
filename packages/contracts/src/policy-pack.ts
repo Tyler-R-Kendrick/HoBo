@@ -1,9 +1,9 @@
 import {
-	POLICY_DECIDED_EVENT_TYPE,
-	POLICY_IR_SCHEMA_VERSION,
 	createDecision,
 	createDecisionRequest,
 	createPolicyDecidedEvent,
+	POLICY_DECIDED_EVENT_TYPE,
+	POLICY_IR_SCHEMA_VERSION,
 } from "@hobo/policy";
 
 // This module COMPOSES @hobo/policy — it does not reimplement the policy engine.

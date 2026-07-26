@@ -1,5 +1,4 @@
 import { ManifestParseError } from "./errors.js";
-import type { InterfaceStability } from "./ports.js";
 import {
 	assertNoExtra,
 	cloneJson,
@@ -15,6 +14,7 @@ import {
 	sha256Ref,
 	uniqueStringArray,
 } from "./parse-utils.js";
+import type { InterfaceStability } from "./ports.js";
 
 // public-contract: the core manifest schema version consumers pin against.
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";

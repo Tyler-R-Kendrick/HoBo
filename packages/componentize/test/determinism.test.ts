@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	componentizeHelloBindle,
 	DEFAULT_CI_MATRIX,
 	PINNED_TOOLCHAIN,
-	componentizeHelloBindle,
 	runWasmtimeSmoke,
 	validateWasmComponentArtifact,
 } from "../src/index.js";

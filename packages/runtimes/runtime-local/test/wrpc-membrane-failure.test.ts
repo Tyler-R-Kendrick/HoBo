@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import {
 	ProviderHandlerStore,
 	parseInterfaceId,
 	parseWireVersion,
 } from "@hobo/core";
+import { describe, expect, it } from "vitest";
 
 import {
 	AmbiguousCommitError,
@@ -14,7 +13,7 @@ import {
 	createWrpcLinkLayer,
 	DeadlineExceededError,
 	MembraneBackpressureError,
-	RuntimeMembraneError,
+	type RuntimeMembraneError,
 } from "../src/index.js";
 
 const KV = parseInterfaceId("wasi:keyvalue/store@0.2.0");

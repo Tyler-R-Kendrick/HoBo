@@ -23,6 +23,7 @@ export type ProofMode = (typeof PROOF_MODES)[number];
 export type RedactionClass = (typeof REDACTION_CLASSES)[number];
 export type EnvelopeOutcome = (typeof OUTCOMES)[number];
 
+// domain-view: parse-produced draft-proof record; its wire form is the DxResultEnvelope proto message in data-models/.
 export interface DxResultEnvelope {
   kind: EnvelopeKind;
   outcome: EnvelopeOutcome;
@@ -38,6 +39,7 @@ export interface DxResultEnvelope {
   copyNotes: string[];
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DxResultRefusalProof proto message in data-models/.
 export interface DxResultRefusalProof {
   issue: "HOBO-571";
   phase: "M1";
@@ -115,6 +117,7 @@ export interface DeterministicFixtureRecord {
   redactionClass: RedactionClass;
 }
 
+// domain-view: parse-produced draft-proof record; its wire form is the DeterministicFixtureSet proto message in data-models/.
 export interface DeterministicFixtureSet {
   schema: "hobo.dx-result-refusal-proof-envelopes/fixture-set/v1";
   issue: "HOBO-571";

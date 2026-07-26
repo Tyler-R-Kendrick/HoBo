@@ -18,11 +18,11 @@
 const TW = 1200; // tile width, in tile units
 export const TH = 300; // tile height, in tile units
 
-const FAR_BASE = 214; // distant cloud bank sits on this line
-const MID_BASE = 230; // poles, bushes and fence posts stand here
-const HORIZON = 236; // far edge of the trail
-const NEAR = 287; // near bank of the trail
-export const BO_FEET = 272; // where Bo's feet land on the path
+const FAR_BASE = 202; // distant scrub, just beyond the fence line
+const MID_BASE = 212; // poles, bushes and fence posts stand here
+const HORIZON = 222; // far edge of the trail
+const NEAR = 286; // near bank of the trail
+export const BO_FEET = 264; // where Bo's feet land on the path
 
 /** Deterministic PRNG — the scene must come out identical on every build. */
 function rng(seed: number): () => number {
@@ -90,52 +90,106 @@ function seamlessBand(
 const INK = "__INK__";
 const PAPER = "__PAPER__";
 
-const circles = (
-	ps: ReadonlyArray<{ cx: number; cy: number; r: number }>,
-	attrs: string,
-) =>
-	ps
-		.map((p) => `<circle cx="${n(p.cx)}" cy="${n(p.cy)}" r="${n(p.r)}"${attrs}/>`)
-		.join("");
+type Puff = { cx: number; cy: number; r: number };
 
-/** Puffy cartoon cloud: stroke every circle, then erase the interior lines. */
-function cloud(r: () => number, cx: number, cy: number, s: number, sw: number) {
-	const shape = [
-		[-36, 2, 20],
-		[-11, -14, 24],
-		[19, -4, 19],
-		[40, 9, 14],
-		[2, 8, 22],
-	] as const;
-	const ps = shape.map(([dx, dy, rad]) => ({
-		cx: cx + dx * s,
-		cy: cy + dy * s,
-		r: rad * s * between(r, 0.88, 1.14),
-	}));
-	return (
-		circles(ps, ` fill="${PAPER}" stroke="${INK}" stroke-width="${n(sw)}"`) +
-		circles(ps, ` fill="${PAPER}"`)
-	);
+/**
+ * The real outline of a run of overlapping circles, closed along a flat base:
+ * one continuous path of true arcs, so the silhouette is clean and there are
+ * no interior lines needing a second pass to erase. The first and last circle
+ * must be centred on the base line — that is what lets the curve meet the
+ * base squarely and close with a straight bottom, the way a drawn cloud does.
+ */
+function puffOutline(puffs: Puff[]): string {
+	// Angles run 180deg (leftmost) to 360deg (rightmost) over the top.
+	const over = (p: Puff, x: number, y: number) => {
+		const t = Math.atan2(y - p.cy, x - p.cx);
+		return t <= 0 ? t + Math.PI * 2 : t;
+	};
+	// Upper crossing of two consecutive circles.
+	const meet = (p: Puff, q: Puff): [number, number] => {
+		const dx = q.cx - p.cx;
+		const dy = q.cy - p.cy;
+		const d = Math.hypot(dx, dy);
+		const a = (p.r * p.r - q.r * q.r + d * d) / (2 * d);
+		const h = Math.sqrt(Math.max(0, p.r * p.r - a * a));
+		return [p.cx + (a * dx) / d + (h * dy) / d, p.cy + (a * dy) / d - (h * dx) / d];
+	};
+
+	const first = puffs[0];
+	const last = puffs[puffs.length - 1];
+	let from: [number, number] = [first.cx - first.r, first.cy];
+	let d = `M${n(from[0])} ${n(from[1])}`;
+	for (let i = 0; i < puffs.length; i++) {
+		const p = puffs[i];
+		const to: [number, number] =
+			i === puffs.length - 1 ? [last.cx + last.r, last.cy] : meet(p, puffs[i + 1]);
+		const swept = over(p, to[0], to[1]) - over(p, from[0], from[1]);
+		d += `A${n(p.r)} ${n(p.r)} 0 ${swept > Math.PI ? 1 : 0} 1 ${n(to[0])} ${n(to[1])}`;
+		from = to;
+	}
+	// Z draws the flat bottom, both ends being on the base line.
+	return `${d}Z`;
 }
 
-/** Same trick, flat-bottomed: a roadside bush. */
-function bush(r: () => number, cx: number, base: number, s: number) {
-	const shape = [
-		[-20, -8, 13],
-		[-4, -17, 16],
-		[14, -9, 12],
-		[24, -3, 8],
-		[-26, -2, 8],
-	] as const;
-	const ps = shape.map(([dx, dy, rad]) => ({
-		cx: cx + dx * s,
-		cy: base + dy * s,
-		r: rad * s * between(r, 0.85, 1.15),
-	}));
-	return (
-		circles(ps, ` fill="${PAPER}" stroke="${INK}" stroke-width="2.2"`) +
-		circles(ps, ` fill="${PAPER}"`)
-	);
+/** Silhouettes as [dx, dy, r] from the left end. Ends sit on the base line. */
+const CLOUD_SHAPES = [
+	[[0, 0, 15], [26, -14, 22], [58, -20, 26], [90, -8, 20], [116, 0, 14]],
+	[[0, 0, 12], [22, -10, 18], [48, -16, 22], [72, -6, 16], [94, 0, 12]],
+	[[0, 0, 10], [20, -12, 17], [42, -4, 14], [60, 0, 9]],
+] as const;
+
+const BUSH_SHAPES = [
+	[[0, 0, 9], [16, -9, 14], [36, -5, 12], [52, 0, 8]],
+	[[0, 0, 8], [14, -11, 15], [34, -3, 11], [48, 0, 7]],
+	[[0, 0, 7], [13, -7, 11], [28, 0, 8]],
+] as const;
+
+const BANK_SHAPES = [
+	[[0, 0, 14], [24, -10, 20], [54, -14, 24], [86, -6, 19], [110, 0, 13]],
+	[[0, 0, 11], [20, -13, 19], [46, -7, 15], [66, 0, 10]],
+] as const;
+
+type Shape = ReadonlyArray<readonly [number, number, number] | readonly number[]>;
+
+function laid(shape: Shape, x: number, base: number, s: number): Puff[] {
+	return shape.map((c) => ({ cx: x + c[0] * s, cy: base + c[1] * s, r: c[2] * s }));
+}
+
+/** Mirror half of them, so a repeated silhouette does not read as repeated. */
+function maybeFlip(r: () => number, art: string, x: number, width: number) {
+	return r() > 0.5 ? `<g transform="translate(${n(2 * x + width)} 0) scale(-1 1)">${art}</g>` : art;
+}
+
+/** Puffy cartoon cloud: one path, flat bottom, rounded humps. */
+function cloud(r: () => number, x: number, base: number, s: number, sw: number) {
+	const shape = CLOUD_SHAPES[Math.floor(r() * CLOUD_SHAPES.length)];
+	const puffs = laid(shape, x, base, s);
+	const w = shape[shape.length - 1][0] * s;
+	// The plate draws a shallow arc inside the base — the cloud's underside.
+	const smile =
+		w > 30
+			? `<path d="M${n(x + w * 0.3)} ${n(base - 3 * s)}q${n(w * 0.13)} ${n(4 * s)} ${n(w * 0.26)} 0" fill="none" stroke="${INK}" stroke-width="${n(sw * 0.85)}" stroke-linecap="round"/>`
+			: "";
+	const art = `<path d="${puffOutline(puffs)}" fill="${PAPER}" stroke="${INK}" stroke-width="${n(sw)}" stroke-linejoin="round"/>${smile}`;
+	return maybeFlip(r, art, x, w);
+}
+
+/** The same shape language, lower and thicker-lined: a roadside bush. */
+function bush(r: () => number, x: number, base: number, s: number) {
+	const shape = BUSH_SHAPES[Math.floor(r() * BUSH_SHAPES.length)];
+	const puffs = laid(shape, x, base, s);
+	const art = `<path d="${puffOutline(puffs)}" fill="${PAPER}" stroke="${INK}" stroke-width="2.8" stroke-linejoin="round"/>`;
+	return maybeFlip(r, art, x, shape[shape.length - 1][0] * s);
+}
+
+/** A mass on the far horizon — solid when near the line, outlined above it. */
+function bank(r: () => number, x: number, base: number, s: number, solid: boolean) {
+	const shape = BANK_SHAPES[Math.floor(r() * BANK_SHAPES.length)];
+	const d = puffOutline(laid(shape, x, base, s));
+	const art = solid
+		? `<path d="${d}" fill="${INK}"/>`
+		: `<path d="${d}" fill="${PAPER}" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/>`;
+	return maybeFlip(r, art, x, shape[shape.length - 1][0] * s);
 }
 
 /** A few blades of grass fanned out from one spot. */
@@ -158,7 +212,7 @@ function rock(r: () => number, x: number, base: number, rad: number) {
 	const ry = rad * between(r, 0.62, 0.86);
 	return (
 		`<path d="M${n(x - rx)} ${n(base)}q${n(rx * 0.18)} ${n(-ry * 1.5)} ${n(rx)} ${n(-ry * 1.45)}` +
-		`q${n(rx * 0.85)} 0 ${n(rx)} ${n(ry * 1.45)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="2"/>`
+		`q${n(rx * 0.85)} 0 ${n(rx)} ${n(ry * 1.45)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="3"/>`
 	);
 }
 
@@ -166,10 +220,10 @@ function rock(r: () => number, x: number, base: number, rad: number) {
 function pole(x: number, topY: number, base: number, lean: number) {
 	const tx = x + lean;
 	return (
-		`<path d="M${n(x - 3.9)} ${n(base)}L${n(x + 3.9)} ${n(base)}L${n(tx + 2.4)} ${n(topY)}L${n(tx - 2.4)} ${n(topY)}Z" fill="${INK}"/>` +
-		`<circle cx="${n(tx - 5.2)}" cy="${n(topY + 1.5)}" r="2.8" fill="${INK}"/>` +
-		`<circle cx="${n(tx + 5.2)}" cy="${n(topY + 1.5)}" r="2.8" fill="${INK}"/>` +
-		`<path d="M${n(tx - 6.5)} ${n(topY - 2)}q${n(6.5)} ${n(-6)} ${n(13)} 0" fill="none" stroke="${INK}" stroke-width="2"/>`
+		`<path d="M${n(x - 5.5)} ${n(base)}L${n(x + 5.5)} ${n(base)}L${n(tx + 3.4)} ${n(topY)}L${n(tx - 3.4)} ${n(topY)}Z" fill="${INK}"/>` +
+		`<circle cx="${n(tx - 5.4)}" cy="${n(topY + 2.5)}" r="3" fill="${INK}"/>` +
+		`<circle cx="${n(tx + 5.4)}" cy="${n(topY + 2.5)}" r="3" fill="${INK}"/>` +
+		`<path d="M${n(tx - 5)} ${n(topY - 1)}q5 -6 10 0" fill="none" stroke="${INK}" stroke-width="2.4"/>`
 	);
 }
 
@@ -179,17 +233,17 @@ const wire = (x1: number, x2: number, y: number, sag: number, sw = 1.6) =>
 
 /** Fence post: a little tombstone. */
 const fencePost = (x: number, base: number, h: number) =>
-	`<path d="M${n(x - 3.4)} ${n(base)}L${n(x - 3.4)} ${n(base - h + 3.4)}` +
-	`a3.4 3.4 0 0 1 6.8 0L${n(x + 3.4)} ${n(base)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="2"/>`;
+	`<path d="M${n(x - 6)} ${n(base)}L${n(x - 6)} ${n(base - h + 6)}` +
+	`a6 6 0 0 1 12 0L${n(x + 6)} ${n(base)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="2.8"/>`;
 
 /** Signpost pointing up the road (mirrored by the caller to point back). */
 function signpost(x: number, base: number, h: number, flip: boolean) {
 	const y = base - h;
 	const art =
-		`<path d="M${n(x - 2.2)} ${n(base)}L${n(x - 2.2)} ${n(y - 5)}L${n(x + 2.2)} ${n(y - 5)}L${n(x + 2.2)} ${n(base)}Z" fill="${INK}"/>` +
-		`<path d="M${n(x - 3)} ${n(y)}H${n(x + 24)}L${n(x + 31)} ${n(y + 6)}L${n(x + 24)} ${n(y + 12)}H${n(x - 3)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="2"/>` +
-		`<path d="M${n(x + 2)} ${n(y + 6)}h14" fill="none" stroke="${INK}" stroke-width="1.6" opacity="0.7"/>` +
-		`<circle cx="${n(x)}" cy="${n(y - 3.5)}" r="2.4" fill="${INK}"/>`;
+		`<path d="M${n(x - 3.6)} ${n(base)}L${n(x - 3.6)} ${n(y - 8)}L${n(x + 3.6)} ${n(y - 8)}L${n(x + 3.6)} ${n(base)}Z" fill="${INK}"/>` +
+		`<path d="M${n(x - 5)} ${n(y)}H${n(x + 34)}L${n(x + 46)} ${n(y + 10)}L${n(x + 34)} ${n(y + 20)}H${n(x - 5)}Z" fill="${PAPER}" stroke="${INK}" stroke-width="2.8"/>` +
+		`<path d="M${n(x + 3)} ${n(y + 10)}h22" fill="none" stroke="${INK}" stroke-width="2" opacity="0.7"/>` +
+		`<circle cx="${n(x)}" cy="${n(y - 6)}" r="4" fill="${INK}"/>`;
 	return flip ? `<g transform="translate(${n(2 * x)} 0) scale(-1 1)">${art}</g>` : art;
 }
 
@@ -222,7 +276,7 @@ function tile(span: string[], props: string[], after: string[]): string {
 
 // ---------- the layers, back to front ----------
 
-/** Furthest back: a cloud bank hugging the horizon, with a bridge on it. */
+/** Furthest back: solid scrub hugging the horizon under thin outlined humps. */
 function layerFar(): string {
 	const r = rng(0x5eed01);
 	const span = [
@@ -230,123 +284,117 @@ function layerFar(): string {
 			(x) =>
 				FAR_BASE +
 				wave(x, [
-					[1.6, 1, 0.1],
-					[0.9, 3, 0.6],
+					[1.4, 1, 0.1],
+					[0.8, 3, 0.6],
 				]),
-			() => 2.2,
+			() => 1.8,
 			60,
 		)}" fill="${INK}"/>`,
 	];
 	const props: string[] = [];
-
-	for (let i = 0; i < 30; i++) {
-		const rad = between(r, 7, 22);
-		props.push(
-			`<circle cx="${n(between(r, 0, TW))}" cy="${n(FAR_BASE - rad * 0.42)}" r="${n(rad)}" fill="${INK}"/>`,
-		);
+	// Big pale humps behind, then the solid dark masses sitting on the line.
+	for (let i = 0; i < 3; i++) {
+		props.push(bank(r, between(r, 0, TW), FAR_BASE, between(r, 1.1, 1.6), false));
 	}
-	for (let i = 0; i < 9; i++) {
-		const x = between(r, 0, TW);
-		const rad = between(r, 22, 58);
-		props.push(
-			`<path d="M${n(x - rad)} ${n(FAR_BASE)}a${n(rad)} ${n(rad * between(r, 0.55, 0.8))} 0 0 1 ${n(rad * 2)} 0Z" fill="${PAPER}" stroke="${INK}" stroke-width="2"/>`,
-		);
+	for (let i = 0; i < 6; i++) {
+		props.push(bank(r, between(r, 0, TW), FAR_BASE, between(r, 0.35, 0.6), true));
 	}
-	// One tiny bridge, because the reference art has one.
+	// One small arched bridge, because the reference plate has one.
 	const bx = 690;
 	props.push(
-		`<path d="M${n(bx - 30)} ${n(FAR_BASE - 1)}q30 -19 60 0" fill="none" stroke="${INK}" stroke-width="2.4"/>` +
+		`<path d="M${n(bx - 26)} ${n(FAR_BASE - 1)}q26 -17 52 0" fill="none" stroke="${INK}" stroke-width="2.4"/>` +
 			[0, 1, 2, 3, 4]
 				.map((i) => {
 					const t = 0.16 + i * 0.17;
-					const px = bx - 30 + 60 * t;
-					const py = FAR_BASE - 1 - 38 * t * (1 - t);
-					return `<path d="M${n(px)} ${n(py)}V${n(FAR_BASE - 1)}" fill="none" stroke="${INK}" stroke-width="1.6"/>`;
+					return `<path d="M${n(bx - 26 + 52 * t)} ${n(FAR_BASE - 1 - 34 * t * (1 - t))}V${n(FAR_BASE - 1)}" fill="none" stroke="${INK}" stroke-width="1.5"/>`;
 				})
 				.join(""),
 	);
-	for (let i = 0; i < 3; i++) {
-		props.push(
-			cloud(r, between(r, 0, TW), FAR_BASE - between(r, 24, 42), 0.34, 2.2),
-		);
+	// A couple of small clouds floating clear of the bank, each with a dot.
+	for (let i = 0; i < 2; i++) {
+		const x = between(r, 0, TW);
+		const y = FAR_BASE - between(r, 26, 44);
+		props.push(cloud(r, x, y, 0.3, 2));
+		props.push(`<circle cx="${n(x + 44)}" cy="${n(y - 3)}" r="2.4" fill="none" stroke="${INK}" stroke-width="1.8"/>`);
 	}
 	return tile(span, props, []);
 }
 
-/** Sky traffic: clouds, birds, a curl of wind. */
+/** Sky traffic: clouds with a thin line, birds in twos, a curl of wind. */
 function layerClouds(): string {
 	const r = rng(0x5eed02);
 	const props: string[] = [];
-	for (const x of [70, 300, 520, 760, 1010]) {
+	for (const x of [40, 330, 620, 930]) {
 		props.push(
-			cloud(
-				r,
-				x + between(r, -30, 30),
-				between(r, 42, 118),
-				between(r, 0.62, 1),
-				2.6,
-			),
+			cloud(r, x + between(r, -25, 25), between(r, 68, 118), between(r, 0.7, 1.05), 2.2),
 		);
 	}
-	for (let i = 0; i < 7; i++) {
-		props.push(bird(between(r, 0, TW), between(r, 26, 108), between(r, 0.75, 1.25)));
-	}
+	// Birds travel in small flocks, not evenly scattered.
 	for (let i = 0; i < 3; i++) {
-		props.push(swirl(between(r, 0, TW), between(r, 50, 112), between(r, 0.7, 1.1)));
+		const x = between(r, 0, TW);
+		const y = between(r, 34, 92);
+		const count = 2 + Math.floor(r() * 2);
+		for (let j = 0; j < count; j++) {
+			props.push(
+				bird(x + j * between(r, 14, 26), y + between(r, -9, 9), between(r, 0.8, 1.2)),
+			);
+		}
+	}
+	for (let i = 0; i < 2; i++) {
+		props.push(swirl(between(r, 0, TW), between(r, 58, 116), between(r, 0.8, 1.1)));
 	}
 	return tile([], props, []);
 }
 
-/** Midground: poles and wires, plus everything growing beside the trail. */
+/** Midground: poles and wires, plus what grows beside the trail. */
 function layerPoles(): string {
 	const r = rng(0x5eed03);
 	const props: string[] = [];
-	// Below the midground baseline is ground, so it is paper — which is also
-	// what flattens the bottom of every bush standing on it.
 	const after = [
 		`<rect x="-4" y="${n(MID_BASE)}" width="${TW + 8}" height="${TH - MID_BASE}" fill="${PAPER}"/>`,
 	];
 
-	const poleXs = [110, 520, 900];
-	const topY = 62;
+	// The plate's poles are stout and only about as tall as they are apart is
+	// wide, with a little tied-off bow at the top.
+	const poleXs = [130, 545, 930];
+	const topY = 60;
 	for (let i = 0; i < poleXs.length; i++) {
 		const last = i === poleXs.length - 1;
 		props.push(
-			wire(poleXs[i], poleXs[(i + 1) % poleXs.length] + (last ? TW : 0), topY + 4, 30),
+			wire(poleXs[i], poleXs[(i + 1) % poleXs.length] + (last ? TW : 0), topY + 5, 40),
 		);
 	}
-	for (const x of poleXs) props.push(pole(x, topY, MID_BASE + 2, between(r, -4, 4)));
+	for (const x of poleXs) props.push(pole(x, topY, MID_BASE + 2, between(r, -3.5, 3.5)));
 
-	for (let i = 0; i < 7; i++) {
-		props.push(bush(r, between(r, 0, TW), MID_BASE, between(r, 0.62, 1)));
+	for (let i = 0; i < 5; i++) {
+		props.push(bush(r, between(r, 0, TW), MID_BASE, between(r, 0.95, 1.35)));
 	}
-	for (const cluster of [140, 400, 660, 1040]) {
+	for (const cluster of [180, 470, 800]) {
 		const count = 2 + Math.floor(r() * 2);
-		const gap = between(r, 34, 50);
-		const hs = Array.from({ length: count }, () => between(r, 15, 22));
+		const gap = between(r, 38, 54);
+		const hs = Array.from({ length: count }, () => between(r, 30, 42));
 		for (let i = 0; i < count - 1; i++) {
 			props.push(
 				wire(
 					cluster + i * gap,
 					cluster + (i + 1) * gap,
-					MID_BASE - Math.min(hs[i], hs[i + 1]) * 0.62,
-					4,
+					MID_BASE - Math.min(hs[i], hs[i + 1]) * 0.66,
+					3,
 					1.3,
 				),
 			);
 		}
 		for (let i = 0; i < count; i++) props.push(fencePost(cluster + i * gap, MID_BASE, hs[i]));
 	}
-	props.push(signpost(300, MID_BASE, 30, false));
-	props.push(signpost(840, MID_BASE, 27, true));
+	props.push(signpost(310, MID_BASE, 56, false));
+	props.push(signpost(1020, MID_BASE, 50, true));
 
-	for (let i = 0; i < 14; i++) {
-		props.push(tuft(r, between(r, 0, TW), MID_BASE, between(r, 7, 12), 1.5));
+	for (let i = 0; i < 7; i++) {
+		props.push(tuft(r, between(r, 0, TW), MID_BASE, between(r, 12, 18), 1.8));
 	}
-	// Broken dashes of far ground, so nothing looks like it is floating.
-	for (let i = 0; i < 22; i++) {
+	for (let i = 0; i < 12; i++) {
 		after.push(
-			`<path d="M${n(between(r, 0, TW))} ${n(MID_BASE + between(r, -1, 1.5))}h${n(between(r, 8, 24))}" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round" opacity="0.42"/>`,
+			`<path d="M${n(between(r, 0, TW))} ${n(MID_BASE + between(r, -1, 1))}h${n(between(r, 10, 26))}" fill="none" stroke="${INK}" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>`,
 		);
 	}
 	return tile([], props, after);
@@ -358,41 +406,46 @@ function layerTrail(): string {
 	const top = (x: number) =>
 		HORIZON +
 		wave(x, [
-			[2.4, 1, 0.2],
-			[1.5, 3, 0.55],
-			[0.8, 7, 0.1],
+			[2.6, 1, 0.2],
+			[1.6, 3, 0.55],
+			[0.9, 7, 0.1],
 		]);
+	// The plates draw both edges of the path as a bold, ragged brush stroke.
 	const span = [
 		`<path d="${seamlessBand(
 			top,
 			(x) =>
-				3.4 +
+				6.5 +
 				wave(x, [
-					[1.5, 2, 0.3],
-					[0.9, 5, 0.8],
+					[2.2, 2, 0.3],
+					[1.4, 5, 0.8],
 				]),
-			30,
+			24,
 		)}" fill="${INK}"/>`,
 	];
 	const props: string[] = [];
-	for (let i = 0; i < 12; i++) {
+	// Stones come in twos and threes, not evenly spaced.
+	for (const at of [90, 415, 760, 1060]) {
+		const x = at + between(r, -40, 40);
+		const count = 1 + Math.floor(r() * 3);
+		for (let i = 0; i < count; i++) {
+			const px = x + i * between(r, 16, 26);
+			props.push(rock(r, px, top(px) + 1, between(r, 8, 13)));
+		}
+	}
+	for (let i = 0; i < 7; i++) {
 		const x = between(r, 0, TW);
-		props.push(rock(r, x, top(x) + 1, between(r, 4, 8)));
+		props.push(tuft(r, x, top(x) + 1, between(r, 13, 19), 2));
 	}
 	for (let i = 0; i < 16; i++) {
-		const x = between(r, 0, TW);
-		props.push(tuft(r, x, top(x) + 1, between(r, 6, 11), 1.6));
-	}
-	// Ruts and scuffs across the path surface.
-	for (let i = 0; i < 28; i++) {
-		const w = between(r, 5, 20) * (r() > 0.5 ? 1 : -1);
+		const w = between(r, 6, 18) * (r() > 0.5 ? 1 : -1);
 		props.push(
-			`<path d="M${n(between(r, 0, TW))} ${n(between(r, HORIZON + 10, NEAR - 8))}q${n(w / 2)} ${n(between(r, -1.6, 1.6))} ${n(w)} 0" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linecap="round" opacity="0.45"/>`,
+			`<path d="M${n(between(r, 0, TW))} ${n(between(r, HORIZON + 12, NEAR - 10))}q${n(w / 2)} ${n(between(r, -1.4, 1.4))} ${n(w)} 0" fill="none" stroke="${INK}" stroke-width="1.4" stroke-linecap="round" opacity="0.45"/>`,
 		);
 	}
-	for (let i = 0; i < 14; i++) {
+	for (let i = 0; i < 12; i++) {
 		props.push(
-			`<circle cx="${n(between(r, 0, TW))}" cy="${n(between(r, HORIZON + 8, NEAR - 6))}" r="${n(between(r, 0.9, 1.9))}" fill="${INK}" opacity="0.5"/>`,
+			`<circle cx="${n(between(r, 0, TW))}" cy="${n(between(r, HORIZON + 10, NEAR - 8))}" r="${n(between(r, 0.9, 1.6))}" fill="${INK}" opacity="0.5"/>`,
 		);
 	}
 	return tile(span, props, []);
@@ -409,49 +462,53 @@ function layerFore(): { back: string; front: string } {
 	const top = (x: number) =>
 		NEAR +
 		wave(x, [
-			[3, 1, 0.6],
-			[1.8, 2, 0.15],
+			[3.2, 1, 0.6],
+			[1.9, 2, 0.15],
 			[1, 5, 0.42],
 		]);
 	const span = [
 		`<path d="${seamlessBand(
 			top,
 			(x) =>
-				5.5 +
+				10 +
 				wave(x, [
-					[2, 3, 0.7],
-					[1.2, 6, 0.2],
+					[2.6, 3, 0.7],
+					[1.5, 6, 0.2],
 				]),
-			30,
+			24,
 		)}" fill="${INK}"/>`,
 	];
 	const back: string[] = [];
 	const front: string[] = [];
 
-	for (let i = 0; i < 13; i++) {
-		const x = between(r, 0, TW);
-		back.push(rock(r, x, top(x) + 2, between(r, 6, 12)));
+	for (const at of [60, 330, 640, 950]) {
+		const x = at + between(r, -40, 40);
+		const count = 1 + Math.floor(r() * 3);
+		for (let i = 0; i < count; i++) {
+			const px = x + i * between(r, 20, 32);
+			back.push(rock(r, px, top(px) + 2, between(r, 11, 18)));
+		}
 	}
-	for (let i = 0; i < 16; i++) {
+	for (let i = 0; i < 7; i++) {
 		const x = between(r, 0, TW);
-		back.push(tuft(r, x, top(x) + 1, between(r, 9, 15), 1.9));
+		back.push(tuft(r, x, top(x) + 1, between(r, 16, 24), 2.3));
 	}
 	// The tall stuff, reaching up past Bo's feet.
-	for (let i = 0; i < 9; i++) {
-		const x = between(r, 0, TW);
-		front.push(tuft(r, x, top(x) + 1, between(r, 20, 30), 2.1));
-	}
-	for (let i = 0; i < 4; i++) {
-		const x = between(r, 0, TW);
-		front.push(rock(r, x, top(x) + 2, between(r, 11, 16)));
-	}
-	// Puffball flowers, like the reference art.
 	for (let i = 0; i < 5; i++) {
 		const x = between(r, 0, TW);
-		const y = top(x) - between(r, 18, 27);
+		front.push(tuft(r, x, top(x) + 1, between(r, 28, 40), 2.5));
+	}
+	for (let i = 0; i < 2; i++) {
+		const x = between(r, 0, TW);
+		front.push(rock(r, x, top(x) + 2, between(r, 16, 22)));
+	}
+	// Puffball flowers on thin stems, like the reference plate.
+	for (let i = 0; i < 3; i++) {
+		const x = between(r, 0, TW);
+		const head = top(x) - between(r, 26, 36);
 		front.push(
-			`<path d="M${n(x)} ${n(y + 11)}q${n(between(r, -3, 3))} -6 0 -10" fill="none" stroke="${INK}" stroke-width="1.7"/>` +
-				cloud(r, x, y, 0.13, 2),
+			`<path d="M${n(x + 12)} ${n(head + 16)}q${n(between(r, -4, 4))} -9 0 -16" fill="none" stroke="${INK}" stroke-width="2"/>` +
+				cloud(r, x, head, 0.34, 2.2),
 		);
 	}
 	return { back: tile(span, back, []), front: tile([], front, []) };
@@ -469,11 +526,11 @@ export type ThemeName = keyof typeof THEMES;
  *
  * Measured off the sprite sheet: his planted foot tracks backwards about
  * 11px of a 554px frame per frame, and the export's own timing is 50ms a
- * frame, so at the size the band draws him he covers ~45 tile units a second.
+ * frame, so at the size the band draws him he covers ~42 tile units a second.
  * One tile is 1200 units. Run the trail any faster and he ice-skates; any
  * slower and he moonwalks.
  */
-export const TRAIL_SECONDS = 26.5;
+export const TRAIL_SECONDS = 28.4;
 
 const fore = layerFore();
 

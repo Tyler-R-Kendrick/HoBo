@@ -37,7 +37,7 @@ const behind = art.slice(0, -1);
 const inFront = art[art.length - 1];
 
 // Sprite geometry: 6x6 grid of 554x542 source frames, feet at 524/542 down.
-const BO_FRAME_H = 112; // frame height, in tile units
+const BO_FRAME_H = 104; // frame height, in tile units
 const BO_FRAME_W = (BO_FRAME_H * 554) / 542;
 const BO_BOTTOM = TH - BO_FEET - (1 - 524 / 542) * BO_FRAME_H;
 // 50ms a frame, the cadence the sprite was exported at: 9 frames to a step,
@@ -76,7 +76,7 @@ const rootStyle = [
 
 <style>
 	.plx {
-		--band-h: 300px;
+		--band-h: 260px;
 		--tile: calc(var(--band-h) * 4);
 		--u: calc(var(--band-h) / 300); /* one tile unit, in CSS pixels */
 		--bo-h: calc(var(--u) * var(--bo-frame-h));
@@ -131,7 +131,7 @@ const rootStyle = [
 
 	/* Distance dulls things down. */
 	.plx-far {
-		opacity: 0.35;
+		opacity: 0.5;
 	}
 
 	.plx-clouds {
@@ -272,14 +272,14 @@ const rootStyle = [
 
 	@media (max-width: 900px) {
 		.plx {
-			--band-h: 230px;
+			--band-h: 200px;
 			--bo-x: 20%;
 		}
 	}
 
 	@media (max-width: 560px) {
 		.plx {
-			--band-h: 170px;
+			--band-h: 155px;
 			--bo-x: 14%;
 		}
 

@@ -49,6 +49,14 @@ const KNOWN_PACKAGE_PATHS = new Set([
 const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	"packages/providers/provider-agentv->packages/training-pipeline",
 	"packages/providers/provider-ax->packages/runtime",
+	// The runner tier (#891/#892) composes @hobo/runner-github's shared
+	// execution-host vocabulary (SKU catalog, host registry, dispatch
+	// tracking) rather than reaching it through a core port; runner-github is
+	// functioning as the runner-tier base library. Same future-ADR tiering as
+	// the training/eval providers above; scoped to these EXACT edges.
+	"packages/providers/runner-blacksmith->packages/providers/runner-github",
+	"packages/providers/runner-depot->packages/providers/runner-github",
+	"packages/providers/runner-depot->packages/providers/runner-blacksmith",
 ]);
 
 function isAcceptedAdapterPackageEdge(from: string, to: string): boolean {
@@ -111,7 +119,8 @@ export function classifyPackage(path: string): PackageClassification {
 		path.startsWith("packages/providers/") ||
 		path.startsWith("packages/iac/") ||
 		path.startsWith("packages/build/") ||
-		path.startsWith("packages/runtimes/")
+		path.startsWith("packages/runtimes/") ||
+		path.startsWith("packages/connectors/")
 	) {
 		return { kind: "adapter", layer: 2 };
 	}
@@ -160,7 +169,8 @@ export function validateBoundaryImports(
 		if (
 			from.kind === "adapter" &&
 			to.kind === "adapter" &&
-			edge.from !== edge.to
+			edge.from !== edge.to &&
+			!isAcceptedAdapterPackageEdge(edge.from, edge.to)
 		) {
 			errors.push(
 				`adapters must not import each other: ${edge.from} -> ${edge.to}`,

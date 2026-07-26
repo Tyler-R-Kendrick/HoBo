@@ -24,6 +24,10 @@ export interface CommandRunInput {
 		readonly force: boolean;
 		readonly hold: boolean;
 		readonly runtime: string | null;
+		readonly config: string | null;
+		readonly policies: string | null;
+		readonly request: string | null;
+		readonly init: boolean;
 	};
 	readonly args: readonly string[];
 	readonly verb: string;

@@ -41,6 +41,12 @@ export {
 	serveBroker,
 } from "./http.js";
 export {
+	createLocalHostCatalog,
+	defaultLocalPolicySet,
+	LOCAL_HOST_PROVIDER_ID,
+	LOCAL_HOST_REGION,
+} from "./local-host.js";
+export {
 	createMeteredBillingPlane,
 	foldMeteredUsage,
 	METER_USAGE_RECORDED_EVENT,

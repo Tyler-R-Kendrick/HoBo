@@ -104,6 +104,172 @@ describe("hobo broker — the Conductor on the CLI", () => {
 		expect(result.remediation?.[0]).toContain("spend cap");
 	});
 
+	it("broker up with no cloud config registers this machine as a local provider host", async () => {
+		const bare = await mkdtemp(join(tmpdir(), "hobo-broker-bare-"));
+		const command = createBrokerCommand({ catalog });
+		const result = await command.run({
+			args: ["up"],
+			flags: { cwd: bare },
+			context: { cwd: bare },
+			emitProgress: () => {},
+		} as never);
+		expect(result.ok).toBe(true);
+		expect(result.code).toBe("HOBO_BROKER_UP");
+		const data = result.data as {
+			catalog: string;
+			receipt: {
+				placements: Array<{ providerId: string; marginalPrice: string }>;
+			};
+			ticket: { engine: string };
+			events: Array<{ type: string }>;
+		};
+		// The running machine IS the provider — zero-cost local catalog.
+		expect(data.catalog).toBe("local-host");
+		expect(data.receipt.placements[0]?.providerId).toBe(
+			"@hobo/provider-local-host",
+		);
+		expect(data.receipt.placements[0]?.marginalPrice).toBe("0.00");
+		expect(data.ticket.engine).toBe("in-proc");
+		const types = data.events.map((event) => event.type);
+		expect(types).toContain("broker.Resolved");
+		expect(types).toContain("broker.ScaleRequested");
+		expect(types).toContain("broker.DeliverySubmitted");
+	});
+
+	it("broker up derives requirements from the project's bindle manifest", async () => {
+		const project = await mkdtemp(join(tmpdir(), "hobo-broker-proj-"));
+		await writeFile(
+			join(project, "hobo.bindle.json"),
+			JSON.stringify({
+				schema: "hobo.manifest/v1",
+				componentHost: { kind: "wasmtime", version: "1.0.0" },
+				resources: {
+					api: {
+						type: "component.v1",
+						image: "oci://registry.example.com/api@sha256:abc123",
+						runtime: "wasm",
+						exports: ["wasi:http/incoming-handler"],
+						bind: ["media"],
+					},
+					media: { type: "data.v1", port: "kv" },
+				},
+			}),
+		);
+		const command = createBrokerCommand({ catalog });
+		const result = await command.run({
+			args: ["up"],
+			flags: { cwd: project },
+			context: { cwd: project, projectDir: project },
+			emitProgress: () => {},
+		} as never);
+		expect(result.ok).toBe(true);
+		const receipt = (
+			result.data as {
+				receipt: { placements: Array<{ resourceId: string }> };
+			}
+		).receipt;
+		expect(receipt.placements.map((p) => p.resourceId).sort()).toEqual([
+			"api",
+			"media",
+		]);
+	});
+
+	it("broker config --init scaffolds, then config validates and summarizes", async () => {
+		const project = await mkdtemp(join(tmpdir(), "hobo-broker-cfg-"));
+		const command = createBrokerCommand({ catalog });
+		const init = await command.run({
+			args: ["config"],
+			flags: { cwd: project, init: true },
+			context: { cwd: project, projectDir: project },
+			emitProgress: () => {},
+		} as never);
+		expect(init.ok).toBe(true);
+		expect(init.code).toBe("HOBO_BROKER_CONFIG_INIT");
+
+		const summary = await command.run({
+			args: ["config"],
+			flags: { cwd: project },
+			context: { cwd: project, projectDir: project },
+			emitProgress: () => {},
+		} as never);
+		expect(summary.ok).toBe(true);
+		expect(summary.status).toBe("config_valid");
+		const config = (summary.data as { config: Record<string, unknown> }).config;
+		expect(config.catalog).toBe("local-host");
+		expect(config.policyEngine).toBe("builtin");
+		expect(String(config.policyHash)).toMatch(/^sha256:/);
+
+		// A second --init refuses to clobber the existing config.
+		const again = await command.run({
+			args: ["config"],
+			flags: { cwd: project, init: true },
+			context: { cwd: project, projectDir: project },
+			emitProgress: () => {},
+		} as never);
+		expect(again.ok).toBe(false);
+		expect(again.code).toBe("HOBO_BROKER_CONFIG_EXISTS");
+	});
+
+	it("broker config wires OPA/Cedar engines and connectors from the config file", async () => {
+		const project = await mkdtemp(join(tmpdir(), "hobo-broker-opa-"));
+		await writeFile(
+			join(project, "hobo.broker.json"),
+			JSON.stringify({
+				...policies,
+				requiredConnectorKinds: ["cloudflare"],
+				connectors: [
+					{
+						id: "conn-cf",
+						kind: "cloudflare",
+						displayName: "Cloudflare",
+						settings: { accountId: "acct-1" },
+					},
+				],
+				policyEngine: { kind: "opa", endpoint: "http://opa.local:8181" },
+			}),
+		);
+		// The injected fetch plays a Rego deny — proving the configured engine
+		// is actually on the resolve path.
+		const command = createBrokerCommand({
+			catalog,
+			fetchFn: async () => ({
+				status: 200,
+				json: async () => ({
+					result: {
+						effect: "deny",
+						reasons: [
+							{
+								code: "policy-denied",
+								message: "frozen by Rego",
+								plane: "policy",
+							},
+						],
+					},
+				}),
+			}),
+		});
+		const summary = await command.run({
+			args: ["config"],
+			flags: { cwd: project },
+			context: { cwd: project, projectDir: project },
+			emitProgress: () => {},
+		} as never);
+		expect(summary.status).toBe("config_valid");
+		expect(
+			(summary.data as { config: { policyEngine: string } }).config
+				.policyEngine,
+		).toBe("opa");
+
+		const up = await command.run({
+			args: ["up"],
+			flags: { cwd: project },
+			context: { cwd: project, projectDir: project },
+			emitProgress: () => {},
+		} as never);
+		expect(up.ok).toBe(false);
+		expect(up.message).toContain("policy:policy-denied");
+	});
+
 	it("prints the rejection matrix and rejects unknown subcommands", async () => {
 		const command = createBrokerCommand({ catalog });
 		const matrix = await command.run(runContext({}, ["matrix"]));

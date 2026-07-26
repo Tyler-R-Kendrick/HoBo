@@ -40,7 +40,11 @@ Key facts:
   Application rendering plus live fail-closed Argo CD API submission), and a connector
   registry (github-app, pulumi, azure, vercel, cloudflare; credentialRef pointers only,
   never secrets). Junction broker-admin lockdowns accumulate and cannot be relaxed by
-  narrower policies.
+  narrower policies. On the CLI: `hobo broker config [--init]` scaffolds/validates
+  hobo.broker.json (policies, budgets, connectors, OPA/Cedar policyEngine, delivery);
+  `hobo broker up` realizes placements — with NO cloud config, the running machine
+  registers itself as a zero-cost local HoBo provider host so the whole loop is
+  testable on a bare machine.
 - Providers, IaC engines, and build tools sit behind WIT ports with conformance-gated
   adapters — AI-generated adapters are certified by the same contract suites as
   human-written ones.

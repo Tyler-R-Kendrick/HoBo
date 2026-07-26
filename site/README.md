@@ -39,10 +39,11 @@ pnpm --filter hobo-site preview    # serve the built dist/
   written absolute with the base (`/HoBo/guide/...`) because Astro does not rewrite
   markdown hrefs. `.astro` files use the `href()` helper from `src/lib/url.ts` instead.
   If the repo is renamed, update `base` in `astro.config.ts` and these links together.
-- **No repository references.** The repo is private; the site is standalone product
-  developer documentation. Never link to github.com/Tyler-R-Kendrick/HoBo (or any repo
-  path like `docs/design/`) from published pages — restate what's needed instead. The
-  canonical sources in `docs/design/` inform the content but are not linked.
+- **Repository links are chrome-only.** The site header (GitHub icon, top right)
+  and footer link to github.com/Tyler-R-Kendrick/HoBo — that is the ONLY sanctioned
+  repo linking. Page *content* stays standalone: never link to repo paths like
+  `docs/design/` from prose — restate what's needed instead. The canonical sources
+  in `docs/design/` inform the content but are not linked.
 - **Voice:** playful "homeward bound" theme — the guiding principle is continuous
   migration to the cheapest home that passes policy. Whimsy in the prose, precision in
   the tables and code.

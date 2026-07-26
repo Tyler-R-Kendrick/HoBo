@@ -104,15 +104,23 @@ The Conductor is on the CLI as `hobo broker` (and, through verb/tool parity,
 as an MCP tool):
 
 ```bash
+hobo broker up                 # realize placements — no cloud needed (see below)
+hobo broker config --init      # scaffold hobo.broker.json
+hobo broker config             # validate policies/budgets/connectors/engine
 hobo broker resolve --policies policies.json --request request.json
-hobo broker matrix
+hobo broker matrix             # the closed rejection-code catalog
 ```
 
-`resolve` runs the full plane pipeline against your Yard's live provider
-registry and prints the signed receipt — or the cataloged rejection with its
-remediation. `matrix` prints the whole rejection catalog. And for hosted
-operation, the same pipeline serves over HTTP, provider-verified against the
-same contract the callers consume.
+**No cloud? No problem.** Run `hobo broker up` with no cloud config and the
+running machine registers itself as a HoBo cloud provider host — a zero-cost
+local catalog serving the runtime ports (and standing in for any port, in
+the sandbox spirit) — so the whole resolve → receipt → spin-up → delivery
+loop runs on the machine you're sitting at. Add a `hobo.broker.json` (see
+[HoBo for DevSecOps](/HoBo/roles/devsecops/) for a production-shaped one)
+and the same command brokers against your real registry, budgets,
+connectors, and OPA/Cedar policy engine. And for hosted operation, the same
+pipeline serves over HTTP, provider-verified against the same contract the
+callers consume.
 
 ## Status
 

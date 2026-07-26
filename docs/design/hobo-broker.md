@@ -259,9 +259,18 @@ receipt; 402 billing rejection; 403 other rejections), `POST /broker/scale`,
 **provider-verified** against `broker_resolution.pact.json`
 (`contracts/provider/`), so the hosted surface and the consumer contract
 cannot drift. On the CLI, the **`hobo broker`** verb ([`cli-spec.md`](./cli-spec.md))
-runs the same pipeline against the composed Yard's live registry
-(`broker resolve --policies --request`, `broker matrix`), and the MCP tool
-surface derives the matching tool automatically from `CANONICAL_VERBS`.
+runs the same pipeline: `broker config [--init]` scaffolds/validates
+`hobo.broker.json` (the `BrokerPolicySet` plus `connectors`, a
+`policyEngine` block that swaps in the OPA/Rego or Cedar engine, and a
+`catalog` selector), `broker up [--config --request]` assembles the broker
+from that config and realizes the request (resolve → spin-up directives →
+delivery handoff), `broker resolve` runs one resolution, and `broker matrix`
+prints the rejection catalog. With **no cloud config supplied, `broker up`
+registers the running machine as a HoBo cloud provider host**
+(`createLocalHostCatalog` — the core runtime ports plus a wildcard test-lane
+definition at zero marginal cost, under `defaultLocalPolicySet`), so the
+whole pipeline is exercisable on a bare machine. The MCP tool surface
+derives the matching tool automatically from `CANONICAL_VERBS`.
 
 ## Delivered beyond M0
 

@@ -2,7 +2,7 @@ import {
 	type CandidateDeployment,
 	type DeployedContractState,
 	evaluateGatekeeper,
-	type GatekeeperDecision,
+	type GatekeeperEffect,
 	type PolicyDecisionRequest,
 	type PolicyPack,
 } from "@hobo/contracts";
@@ -16,23 +16,30 @@ import type {
 } from "./types.js";
 
 // The enforcement/execution planes the broker wraps. Each plane is a port so
-// deployments can swap engines (OPA for the policy plane, a Pact broker for
-// the contract plane, a metering service for billing, Argo CD for delivery)
-// without touching the brokering pipeline. The defaults below COMPOSE
-// @hobo/contracts — the Gatekeeper (contract compatibility + policy pack +
-// obligations + quota) is imported and RUN, not reinvented.
+// deployments can swap engines (OPA/Rego or Cedar for the policy plane, a
+// Pact broker for the contract plane, a metering service for billing, Argo CD
+// for delivery) without touching the brokering pipeline. The defaults below
+// COMPOSE @hobo/contracts — the Gatekeeper (contract compatibility + policy
+// pack + obligations + quota) is imported and RUN, not reinvented.
 
-// OPA-shaped: a decision request document in, an effect + reasons out. An OPA
-// adapter maps this to a Rego `hobo/broker/decision` query; the default runs
-// the @hobo/contracts policy pack + Gatekeeper composition in process.
+// The engine-neutral gate verdict every policy engine lowers onto: the same
+// effect vocabulary as the Gatekeeper, per-plane machine-readable reasons,
+// and the decision facts the engine recorded (policy.Decided et al).
+export interface GateDecision {
+	effect: GatekeeperEffect;
+	reasons: RejectionReason[];
+	events: Array<Record<string, unknown>>;
+}
+
+// OPA-shaped: a decision request document in, an effect + reasons out. The
+// default runs the @hobo/contracts policy pack + Gatekeeper composition in
+// process; createOpaGatePlane (opa.ts) queries a Rego decision instead.
+// Engines may be remote, so evaluate is allowed to be async.
 export interface GatePlane {
 	evaluate(input: {
 		request: PolicyDecisionRequest;
 		costQuota: { quota: string; used: number; limit: number };
-	}): {
-		decision: GatekeeperDecision;
-		reasons: RejectionReason[];
-	};
+	}): GateDecision | Promise<GateDecision>;
 }
 
 // Billing enforcement plane: authorize estimated spend against the billing
@@ -45,14 +52,19 @@ export interface BillingPlane {
 }
 
 // Argo-shaped delivery plane: hand an accepted receipt to the rollout engine.
+// Live engines submit over the network, so submit is allowed to be async.
 export interface DeliveryTicket {
 	engine: string;
 	target: string;
 	document: Record<string, unknown>;
+	response?: Record<string, unknown>;
 }
 
 export interface DeliveryPlane {
-	submit(receipt: ResolutionReceipt, policy: DeliveryPolicy): DeliveryTicket;
+	submit(
+		receipt: ResolutionReceipt,
+		policy: DeliveryPolicy,
+	): DeliveryTicket | Promise<DeliveryTicket>;
 }
 
 export interface GatePlaneOptions {
@@ -88,7 +100,7 @@ export function createGatekeeperGatePlane(
 				code: reason.code,
 				message: reason.message,
 			}));
-			return { decision, reasons };
+			return { effect: decision.decision, reasons, events: decision.events };
 		},
 	};
 }
@@ -164,6 +176,85 @@ export function createDeliveryPlane(): DeliveryPlane {
 				engine: "in-proc",
 				target: receipt.brokerId,
 				document: { receipt: receipt as unknown as Record<string, unknown> },
+			};
+		},
+	};
+}
+
+// A minimal structural fetch so live planes stay testable against
+// pact-derived mocks and never force a global fetch polyfill.
+export type FetchLike = (
+	url: string,
+	init: {
+		method: string;
+		headers: Record<string, string>;
+		body: string;
+	},
+) => Promise<{ status: number; json(): Promise<unknown> }>;
+
+export interface ArgoCdDeliveryPlaneOptions {
+	endpoint: string;
+	fetchFn: FetchLike;
+	// Resolves the delivery credential OUT of the token broker; the plane
+	// never holds a raw secret itself.
+	tokenProvider?: () => Promise<string> | string;
+}
+
+// Live Argo CD submission: POST the rendered Application to the Argo CD
+// applications API. Fail-closed — a non-2xx or transport error surfaces as a
+// thrown DeliverySubmissionError, never a silently-dropped rollout.
+export class DeliverySubmissionError extends Error {
+	readonly code: string;
+
+	constructor(code: string, message: string) {
+		super(message);
+		this.name = "DeliverySubmissionError";
+		this.code = code;
+	}
+}
+
+export function createArgoCdDeliveryPlane(
+	options: ArgoCdDeliveryPlaneOptions,
+): DeliveryPlane {
+	return {
+		async submit(receipt, policy) {
+			const document = renderArgoApplication(receipt, policy);
+			const token = options.tokenProvider
+				? await options.tokenProvider()
+				: undefined;
+			let response: { status: number; json(): Promise<unknown> };
+			try {
+				response = await options.fetchFn(
+					`${options.endpoint.replace(/\/$/u, "")}/api/v1/applications`,
+					{
+						method: "POST",
+						headers: {
+							"content-type": "application/json",
+							...(token !== undefined
+								? { authorization: `Bearer ${token}` }
+								: {}),
+						},
+						body: JSON.stringify(document),
+					},
+				);
+			} catch (error) {
+				throw new DeliverySubmissionError(
+					"delivery-transport-failed",
+					`Argo CD submission failed in transport: ${String(error)}`,
+				);
+			}
+			if (response.status < 200 || response.status >= 300) {
+				throw new DeliverySubmissionError(
+					"delivery-rejected",
+					`Argo CD rejected the Application (HTTP ${response.status})`,
+				);
+			}
+			const body = (await response.json()) as Record<string, unknown>;
+			return {
+				engine: "argo",
+				target: options.endpoint,
+				document,
+				response: body,
 			};
 		},
 	};

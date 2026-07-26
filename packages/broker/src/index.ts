@@ -22,12 +22,30 @@ export {
 	brokerEvent,
 } from "./events.js";
 export {
+	createMeteredBillingPlane,
+	foldMeteredUsage,
+	METER_USAGE_RECORDED_EVENT,
+	type MeteredUsageFold,
+} from "./metering.js";
+export {
+	buildOpaInput,
+	createOpaGatePlane,
+	OPA_DECISION_PATH,
+	OPA_ENGINE_ID,
+	type OpaGatePlaneOptions,
+} from "./opa.js";
+export {
+	type ArgoCdDeliveryPlaneOptions,
 	type BillingPlane,
+	createArgoCdDeliveryPlane,
 	createBillingPlane,
 	createDeliveryPlane,
 	createGatekeeperGatePlane,
 	type DeliveryPlane,
+	DeliverySubmissionError,
 	type DeliveryTicket,
+	type FetchLike,
+	type GateDecision,
 	type GatePlane,
 	type GatePlaneOptions,
 	renderArgoApplication,
@@ -46,6 +64,22 @@ export {
 	parseTopologyScope,
 	policyHashOf,
 } from "./policies.js";
+export {
+	isCatalogedRejectionCode,
+	REJECTION_MATRIX,
+	type RejectionMatrixRow,
+	rejectionMatrixRow,
+} from "./rejections.js";
+export {
+	canonicalResolutionJson,
+	generateResolutionSigningKey,
+	importResolutionSigningKey,
+	RESOLUTION_SIGNATURE_ALGORITHM,
+	type ResolutionSignature,
+	type ResolutionSigningKey,
+	signResolution,
+	verifyResolution,
+} from "./signing.js";
 export {
 	type BillingPolicy,
 	BROKER_SCHEMA_VERSION,

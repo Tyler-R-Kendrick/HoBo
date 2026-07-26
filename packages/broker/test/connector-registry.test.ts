@@ -11,7 +11,7 @@ import { BrokerParseError } from "../src/policies.js";
 import type { BrokerCatalog } from "../src/types.js";
 
 describe("parseConnectorConfig", () => {
-	it("parses each well-known connector kind with its required settings", () => {
+	it("parses each well-known connector kind with its required settings", async () => {
 		const githubApp = parseConnectorConfig({
 			id: "conn-github",
 			kind: "github-app",
@@ -56,7 +56,7 @@ describe("parseConnectorConfig", () => {
 		).toBe("cloudflare");
 	});
 
-	it("refuses unknown kinds and missing required settings", () => {
+	it("refuses unknown kinds and missing required settings", async () => {
 		expect(() =>
 			parseConnectorConfig({
 				id: "conn-x",
@@ -76,7 +76,7 @@ describe("parseConnectorConfig", () => {
 });
 
 describe("createConnectorRegistry", () => {
-	it("registers, disables, and reports missing kinds", () => {
+	it("registers, disables, and reports missing kinds", async () => {
 		const registry = createConnectorRegistry();
 		const { event } = registry.register({
 			id: "conn-github",
@@ -94,7 +94,7 @@ describe("createConnectorRegistry", () => {
 		expect(registry.missingKinds(["github-app"])).toEqual(["github-app"]);
 	});
 
-	it("folds registration facts back into the read model from zero", () => {
+	it("folds registration facts back into the read model from zero", async () => {
 		const registry = createConnectorRegistry();
 		const first = registry.register({
 			id: "conn-github",
@@ -116,7 +116,7 @@ describe("createConnectorRegistry", () => {
 		expect(byId.get("conn-cf")?.enabled).toBe(false);
 	});
 
-	it("satisfies the broker's required-connector gate once registered", () => {
+	it("satisfies the broker's required-connector gate once registered", async () => {
 		const catalog: BrokerCatalog = {
 			catalogHash: "sha256:catalog-min",
 			definitions: () => [
@@ -162,7 +162,7 @@ describe("createConnectorRegistry", () => {
 			catalog,
 			connectors,
 		});
-		const result = broker.resolve({
+		const result = await broker.resolve({
 			schemaVersion: "hobo.broker/v1",
 			requestId: "req-conn",
 			scope: { bindleId: "bindle:site" },

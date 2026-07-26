@@ -20,6 +20,11 @@ import {
 	policyHashOf,
 } from "./policies.js";
 import {
+	type ResolutionSignature,
+	type ResolutionSigningKey,
+	signResolution,
+} from "./signing.js";
+import {
 	BROKER_SCHEMA_VERSION,
 	type BrokerCatalog,
 	type BrokerCatalogDefinition,
@@ -46,6 +51,9 @@ export interface BrokerResolution {
 	outcome: "resolved" | "rejected";
 	receipt?: ResolutionReceipt;
 	rejection?: ResolutionRejection;
+	// Ed25519 detached signature over the receipt/rejection's canonical JSON,
+	// present when the broker is configured with a signing key.
+	signature?: ResolutionSignature;
 	events: BrokerEvent[];
 }
 
@@ -57,17 +65,18 @@ export interface HoboBrokerDeps {
 	gateOptions?: GatePlaneOptions;
 	billingPlane?: BillingPlane;
 	deliveryPlane?: DeliveryPlane;
+	signingKey?: ResolutionSigningKey;
 }
 
 export interface HoboBroker {
 	brokerId: string;
 	policyHash: PolicyHash;
-	resolve(input: unknown): BrokerResolution;
+	resolve(input: unknown): Promise<BrokerResolution>;
 	scale(input: unknown): { directive: ScaleDirective; events: BrokerEvent[] };
-	deliver(receipt: ResolutionReceipt): {
+	deliver(receipt: ResolutionReceipt): Promise<{
 		ticket: DeliveryTicket;
 		events: BrokerEvent[];
-	};
+	}>;
 }
 
 export function createBroker(deps: HoboBrokerDeps): HoboBroker {
@@ -79,6 +88,23 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 		deps.gatePlane ?? createGatekeeperGatePlane(deps.gateOptions ?? {});
 	const billingPlane = deps.billingPlane ?? createBillingPlane();
 	const deliveryPlane = deps.deliveryPlane ?? createDeliveryPlane();
+
+	function sign(
+		resolution: ResolutionReceipt | ResolutionRejection,
+		events: BrokerEvent[],
+	): ResolutionSignature | undefined {
+		if (deps.signingKey === undefined) return undefined;
+		const signature = signResolution(resolution, deps.signingKey);
+		events.push(
+			brokerEvent(BROKER_EVENTS.ResolutionSigned, {
+				requestId: resolution.requestId,
+				brokerId: policies.brokerId,
+				algorithm: signature.algorithm,
+				payloadDigest: signature.payloadDigest,
+			}),
+		);
+		return signature;
+	}
 
 	function reject(
 		request: BrokerRequest,
@@ -92,25 +118,28 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			policyHash,
 			reasons,
 		};
+		const events = [
+			...priorEvents,
+			brokerEvent(BROKER_EVENTS.Rejected, {
+				requestId: request.requestId,
+				brokerId: policies.brokerId,
+				policyHash,
+				reasons: reasons.map((reason) => ({ ...reason })),
+			}),
+		];
+		const signature = sign(rejection, events);
 		return {
 			outcome: "rejected",
 			rejection,
-			events: [
-				...priorEvents,
-				brokerEvent(BROKER_EVENTS.Rejected, {
-					requestId: request.requestId,
-					brokerId: policies.brokerId,
-					policyHash,
-					reasons: reasons.map((reason) => ({ ...reason })),
-				}),
-			],
+			...(signature !== undefined ? { signature } : {}),
+			events,
 		};
 	}
 
 	return {
 		brokerId: policies.brokerId,
 		policyHash,
-		resolve(input) {
+		async resolve(input) {
 			const request = parseBrokerRequest(input);
 			const events: BrokerEvent[] = [
 				brokerEvent(BROKER_EVENTS.Requested, {
@@ -180,7 +209,7 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			// compatibility + obligations + quota), imported and RUN from
 			// @hobo/contracts. Its policy.Decided / gatekeeper.Decided facts are
 			// appended to this resolution's event list.
-			const gate = gatePlane.evaluate({
+			const gate = await gatePlane.evaluate({
 				request: toPolicyDecisionRequest(policies.brokerId, request),
 				costQuota: {
 					quota: policies.billing.quota,
@@ -188,16 +217,13 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 					limit: policies.billing.quotaLimit,
 				},
 			});
-			for (const gateEvent of gate.decision.events) {
+			for (const gateEvent of gate.events) {
 				events.push({
 					type: String(gateEvent.type ?? "gatekeeper.Event"),
 					data: gateEvent,
 				});
 			}
-			if (
-				gate.decision.decision === "deny" ||
-				gate.decision.decision === "require-approval"
-			) {
+			if (gate.effect === "deny" || gate.effect === "require-approval") {
 				const reasons: RejectionReason[] =
 					gate.reasons.length > 0
 						? gate.reasons
@@ -256,7 +282,13 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 					placements: placements.map((placement) => ({ ...placement })),
 				}),
 			);
-			return { outcome: "resolved", receipt, events };
+			const signature = sign(receipt, events);
+			return {
+				outcome: "resolved",
+				receipt,
+				...(signature !== undefined ? { signature } : {}),
+				events,
+			};
 		},
 		scale(input) {
 			const directive = parseScaleDirective(input);
@@ -272,8 +304,8 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 				],
 			};
 		},
-		deliver(receipt) {
-			const ticket = deliveryPlane.submit(receipt, policies.delivery);
+		async deliver(receipt) {
+			const ticket = await deliveryPlane.submit(receipt, policies.delivery);
 			return {
 				ticket,
 				events: [

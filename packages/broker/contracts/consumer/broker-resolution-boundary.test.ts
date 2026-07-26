@@ -61,14 +61,14 @@ function brokerWith(policies: Record<string, unknown>) {
 }
 
 describe("HoBo Broker resolution boundary (consumer side of the pact)", () => {
-	it("resolves a policy-clean request to the cheapest eligible provider", () => {
+	it("resolves a policy-clean request to the cheapest eligible provider", async () => {
 		const interaction = pact.interactions[0];
 		const broker = brokerWith({
 			placementPolicies: [
 				{ id: "pp-default", scopeKind: "bindle", objective: "min-cost" },
 			],
 		});
-		const result = broker.resolve(interaction.request.body);
+		const result = await broker.resolve(interaction.request.body);
 
 		expect(result.outcome).toBe(interaction.response.body.outcome);
 		expect(result.receipt?.requestId).toBe(
@@ -86,7 +86,7 @@ describe("HoBo Broker resolution boundary (consumer side of the pact)", () => {
 		}
 	});
 
-	it("rejects a locked-down junction request that names no explicit camp", () => {
+	it("rejects a locked-down junction request that names no explicit camp", async () => {
 		const interaction = pact.interactions[1];
 		const broker = brokerWith({
 			placementPolicies: [
@@ -99,7 +99,7 @@ describe("HoBo Broker resolution boundary (consumer side of the pact)", () => {
 				},
 			],
 		});
-		const result = broker.resolve(interaction.request.body);
+		const result = await broker.resolve(interaction.request.body);
 
 		expect(result.outcome).toBe(interaction.response.body.outcome);
 		expect(result.rejection?.reasons[0]?.plane).toBe(
@@ -110,14 +110,14 @@ describe("HoBo Broker resolution boundary (consumer side of the pact)", () => {
 		);
 	});
 
-	it("rejects a spend estimate above the billing plane's cap", () => {
+	it("rejects a spend estimate above the billing plane's cap", async () => {
 		const interaction = pact.interactions[2];
 		const broker = brokerWith({
 			placementPolicies: [
 				{ id: "pp-default", scopeKind: "bindle", objective: "min-cost" },
 			],
 		});
-		const result = broker.resolve(interaction.request.body);
+		const result = await broker.resolve(interaction.request.body);
 
 		expect(result.outcome).toBe(interaction.response.body.outcome);
 		expect(result.rejection?.reasons[0]?.plane).toBe(

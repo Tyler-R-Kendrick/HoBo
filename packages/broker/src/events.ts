@@ -8,6 +8,7 @@ export const BROKER_EVENTS = {
 	Rejected: "broker.Rejected",
 	ScaleRequested: "broker.ScaleRequested",
 	DeliverySubmitted: "broker.DeliverySubmitted",
+	ResolutionSigned: "broker.ResolutionSigned",
 	ConnectorRegistered: "connector.Registered",
 	ConnectorDisabled: "connector.Disabled",
 } as const;

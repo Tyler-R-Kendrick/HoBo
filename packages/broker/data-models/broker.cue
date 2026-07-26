@@ -121,6 +121,13 @@ package data_models
 	reasons: [...#RejectionReason] & [_, ...]
 }
 
+#ResolutionSignature: {
+	algorithm:      "ed25519"
+	public_key_pem: string & =~"BEGIN PUBLIC KEY"
+	signature:      string & !=""
+	payload_digest: string & =~"^sha256:"
+}
+
 #ScaleDirection: "up" | "down" | "zero"
 
 #ScaleDirective: {

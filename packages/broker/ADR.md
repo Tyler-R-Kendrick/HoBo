@@ -46,6 +46,18 @@ policies, wraps policy enforcement (OPA-shaped), contract enforcement
    connector runtime broker, per the meta-cloud-broker adversarial
    requirement that the terms never conflate.
 
+7. **Rego is the external policy language; the adapter fails closed.**
+   `createOpaGatePlane` lowers the Policy IR request onto the OPA Data API
+   (`hobo/broker/decision`) and parses the Rego result defensively; any
+   engine unavailability denies with `policy-engine-unavailable`. Cedar
+   lands behind the same port later.
+8. **Signatures are detached and canonical.** Ed25519 over recursively
+   key-sorted JSON keeps `ResolutionReceipt`/`ResolutionRejection` wire
+   shapes stable while making every field tamper-evident (HOBO-529).
+9. **The rejection matrix is a closed, tested catalog.** Reject paths may
+   only emit cataloged codes (HOBO-528); the contracts plane's codes remain
+   owned by `@hobo/contracts`.
+
 ## Consequences
 
 - The Yard gateway (or `hobo` CLI) can wire the live `PlannerRegistry` and

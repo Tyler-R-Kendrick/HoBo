@@ -21,6 +21,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Capability provider | A Provider acting as a wasm capability adapter that implements a WIT interface. |
 | Component | WASM/WASI component, the default deployable unit for a HoBo service, with an OCI-container fallback. |
 | Component host | Camp capability that executes components; Wasmtime locally and wasm-in-container as the v1 production floor. |
+| Conductor | Product branding for the HoBo Broker on user-facing surfaces; technical docs, code, and wire contracts keep the term "broker" ([hobo-broker.md](./hobo-broker.md)). |
 | Config and secrets | Secretless-first app configuration resolved through `ctx.config` to Camp-specific references rather than plaintext values. |
 | Connector Registry | Broker-maintained, event-sourced registry of connector configurations (HoBo GitHub App, Pulumi, Azure, Vercel, Cloudflare, custom) whose `credentialRef` entries point into the token broker; required connector kinds gate broker resolutions ([hobo-broker.md](./hobo-broker.md)). |
 | Contract | Typed expectation on a graph edge, declared, inferred, observed, or promoted, and checked by the compatibility gate. |

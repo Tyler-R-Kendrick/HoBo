@@ -91,9 +91,9 @@ const baseRequest = {
 };
 
 describe("createBroker.resolve — brokering across providers", () => {
-	it("places each resource on the cheapest provider that satisfies it", () => {
+	it("places each resource on the cheapest provider that satisfies it", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
-		const result = broker.resolve(baseRequest);
+		const result = await broker.resolve(baseRequest);
 
 		expect(result.outcome).toBe("resolved");
 		const byResource = new Map(
@@ -107,7 +107,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 		expect(result.receipt?.placementPolicyId).toBe("pp-bindle");
 	});
 
-	it("honours denied providers accumulated from broader scope policies", () => {
+	it("honours denied providers accumulated from broader scope policies", async () => {
 		const broker = createBroker({
 			policies: {
 				...basePolicies,
@@ -123,7 +123,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 			},
 			catalog,
 		});
-		const result = broker.resolve({
+		const result = await broker.resolve({
 			...baseRequest,
 			scope: { bindleId: "bindle:checkout", yardId: "yard:eu" },
 		});
@@ -134,7 +134,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 		expect(api?.providerId).toBe("@hobo/provider-azure");
 	});
 
-	it("pins placement to the pinned provider when the objective is pinned", () => {
+	it("pins placement to the pinned provider when the objective is pinned", async () => {
 		const broker = createBroker({
 			policies: {
 				...basePolicies,
@@ -149,7 +149,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 			},
 			catalog,
 		});
-		const result = broker.resolve(baseRequest);
+		const result = await broker.resolve(baseRequest);
 
 		expect(result.outcome).toBe("resolved");
 		for (const placement of result.receipt?.placements ?? []) {
@@ -157,7 +157,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 		}
 	});
 
-	it("rejects with explicit-camp-required when a junction policy locks placement down", () => {
+	it("rejects with explicit-camp-required when a junction policy locks placement down", async () => {
 		const broker = createBroker({
 			policies: {
 				...basePolicies,
@@ -173,7 +173,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 			},
 			catalog,
 		});
-		const rejected = broker.resolve({
+		const rejected = await broker.resolve({
 			...baseRequest,
 			scope: { bindleId: "bindle:checkout", junctionId: "junction:global" },
 		});
@@ -181,7 +181,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 		expect(rejected.rejection?.reasons[0]?.code).toBe("explicit-camp-required");
 
 		// Naming an explicit camp satisfies the lockdown.
-		const allowed = broker.resolve({
+		const allowed = await broker.resolve({
 			...baseRequest,
 			scope: {
 				bindleId: "bindle:checkout",
@@ -192,16 +192,19 @@ describe("createBroker.resolve — brokering across providers", () => {
 		expect(allowed.outcome).toBe("resolved");
 	});
 
-	it("rejects through the billing plane when the estimate exceeds the spend cap", () => {
+	it("rejects through the billing plane when the estimate exceeds the spend cap", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
-		const result = broker.resolve({ ...baseRequest, spendEstimateUsd: 250 });
+		const result = await broker.resolve({
+			...baseRequest,
+			spendEstimateUsd: 250,
+		});
 
 		expect(result.outcome).toBe("rejected");
 		expect(result.rejection?.reasons[0]?.plane).toBe("billing");
 		expect(result.rejection?.reasons[0]?.code).toBe("spend-cap-exceeded");
 	});
 
-	it("rejects through the gate plane when a policy rule denies the resolve action", () => {
+	it("rejects through the gate plane when a policy rule denies the resolve action", async () => {
 		const broker = createBroker({
 			policies: basePolicies,
 			catalog,
@@ -222,7 +225,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 				},
 			}),
 		});
-		const result = broker.resolve(baseRequest);
+		const result = await broker.resolve(baseRequest);
 
 		expect(result.outcome).toBe("rejected");
 		expect(result.rejection?.reasons[0]?.plane).toBe("policy");
@@ -232,9 +235,9 @@ describe("createBroker.resolve — brokering across providers", () => {
 		);
 	});
 
-	it("rejects with no-eligible-provider when no provider satisfies a port", () => {
+	it("rejects with no-eligible-provider when no provider satisfies a port", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
-		const result = broker.resolve({
+		const result = await broker.resolve({
 			...baseRequest,
 			requirements: [{ resourceId: "queue", port: "hobo:message-queue" }],
 		});
@@ -244,7 +247,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 		expect(result.rejection?.reasons[0]?.code).toBe("no-eligible-provider");
 	});
 
-	it("respects allowed regions and per-requirement region pins", () => {
+	it("respects allowed regions and per-requirement region pins", async () => {
 		const broker = createBroker({
 			policies: {
 				...basePolicies,
@@ -259,13 +262,13 @@ describe("createBroker.resolve — brokering across providers", () => {
 			},
 			catalog,
 		});
-		const result = broker.resolve(baseRequest);
+		const result = await broker.resolve(baseRequest);
 		expect(result.outcome).toBe("resolved");
 		for (const placement of result.receipt?.placements ?? []) {
 			expect(placement.region).toBe("eu-west-1");
 		}
 
-		const pinned = broker.resolve({
+		const pinned = await broker.resolve({
 			...baseRequest,
 			requirements: [
 				{ resourceId: "api", port: "hobo:http-service", region: "us-east-1" },
@@ -277,7 +280,7 @@ describe("createBroker.resolve — brokering across providers", () => {
 });
 
 describe("createBroker.scale — spin resources up and down", () => {
-	it("emits broker.ScaleRequested for a valid directive", () => {
+	it("emits broker.ScaleRequested for a valid directive", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
 		const { directive, events } = broker.scale({
 			resourceId: "api",
@@ -287,7 +290,7 @@ describe("createBroker.scale — spin resources up and down", () => {
 		expect(events[0]?.type).toBe(BROKER_EVENTS.ScaleRequested);
 	});
 
-	it("refuses a zero directive with non-zero replicas", () => {
+	it("refuses a zero directive with non-zero replicas", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
 		expect(() =>
 			broker.scale({ resourceId: "api", direction: "zero", replicas: 3 }),
@@ -296,14 +299,14 @@ describe("createBroker.scale — spin resources up and down", () => {
 });
 
 describe("createBroker.deliver — Argo-shaped delivery plane", () => {
-	it("renders an Argo CD Application for the receipt under an argo policy", () => {
+	it("renders an Argo CD Application for the receipt under an argo policy", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
-		const resolved = broker.resolve(baseRequest);
+		const resolved = await broker.resolve(baseRequest);
 		expect(resolved.receipt).toBeDefined();
 		const receipt = resolved.receipt;
 		if (receipt === undefined) throw new Error("expected a receipt");
 
-		const { ticket, events } = broker.deliver(receipt);
+		const { ticket, events } = await broker.deliver(receipt);
 		expect(ticket.engine).toBe("argo");
 		expect(ticket.document.kind).toBe("Application");
 		const spec = ticket.document.spec as Record<string, unknown>;
@@ -325,7 +328,7 @@ describe("createBroker.deliver — Argo-shaped delivery plane", () => {
 });
 
 describe("effectivePlacementPolicy — scope merge semantics", () => {
-	it("lets narrower scopes override choice fields while restrictions accumulate", () => {
+	it("lets narrower scopes override choice fields while restrictions accumulate", async () => {
 		const policies = parseBrokerPolicySet({
 			...basePolicies,
 			placementPolicies: [
@@ -356,10 +359,10 @@ describe("effectivePlacementPolicy — scope merge semantics", () => {
 });
 
 describe("broker decision read model", () => {
-	it("folds decision facts into a materialized view and round-trips snapshots", () => {
+	it("folds decision facts into a materialized view and round-trips snapshots", async () => {
 		const broker = createBroker({ policies: basePolicies, catalog });
-		const resolved = broker.resolve(baseRequest);
-		const rejected = broker.resolve({
+		const resolved = await broker.resolve(baseRequest);
+		const rejected = await broker.resolve({
 			...baseRequest,
 			requestId: "req-2",
 			spendEstimateUsd: 9999,
@@ -378,7 +381,7 @@ describe("broker decision read model", () => {
 });
 
 describe("connector requirements gate", () => {
-	it("rejects when a required connector kind is not registered", () => {
+	it("rejects when a required connector kind is not registered", async () => {
 		const broker = createBroker({
 			policies: {
 				...basePolicies,
@@ -386,7 +389,7 @@ describe("connector requirements gate", () => {
 			},
 			catalog,
 		});
-		const result = broker.resolve(baseRequest);
+		const result = await broker.resolve(baseRequest);
 		expect(result.outcome).toBe("rejected");
 		expect(result.rejection?.reasons[0]?.plane).toBe("connectors");
 		expect(result.rejection?.reasons[0]?.code).toBe("connector-missing");

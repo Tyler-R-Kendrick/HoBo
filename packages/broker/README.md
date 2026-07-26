@@ -18,13 +18,22 @@ pointers into the token broker — never raw secrets.
 The broker is a wrapper around five planes, each behind a port so engines can
 be swapped without touching the brokering pipeline:
 
-| Plane | Port | Default engine | Swappable with |
+| Plane | Port | Default engine | Alternate engine (shipped in this package) |
 |---|---|---|---|
-| Policy | `GatePlane` (OPA-shaped request/decision documents) | `@hobo/contracts` policy pack (imported and **run**, not reinvented) | OPA/Rego via the planned `@hobo/provider-opa` adapter |
-| Contracts | `GatePlane` (can-deploy compatibility) | `@hobo/contracts` Gatekeeper (PACT-style boundary semantics) | an external Pact broker verification feed |
-| Billing | `BillingPlane` | in-proc budget + spend-cap + quota checks | the billing policy plane / metering service |
-| Delivery | `DeliveryPlane` | `renderArgoApplication` → Argo CD Application documents; `in-proc` executor handoff | a live Argo CD control plane |
+| Policy | `GatePlane` (OPA-shaped request/decision documents) | `@hobo/contracts` policy pack (imported and **run**, not reinvented) | **Rego** via `createOpaGatePlane` — OPA Data API decision at `hobo/broker/decision`, fail-closed (`policy-engine-unavailable`), pinned by `broker_policy_opa.pact.json` |
+| Contracts | `GatePlane` (can-deploy compatibility) | `@hobo/contracts` Gatekeeper (PACT-style boundary semantics) | an external Pact broker verification feed (port-compatible) |
+| Billing | `BillingPlane` | in-proc budget + spend-cap + quota checks | `createMeteredBillingPlane` — folds `meter.UsageRecorded` facts into observed spend and authorizes against the metered remaining budget |
+| Delivery | `DeliveryPlane` | `renderArgoApplication` → Argo CD Application documents; `in-proc` executor handoff | `createArgoCdDeliveryPlane` — live Argo CD applications API submission, token via the token broker, fail-closed, pinned by `broker_delivery_argocd.pact.json` |
 | Connectors | `ConnectorRegistry` | event-sourced registry of `github-app`, `pulumi`, `azure`, `vercel`, `cloudflare`, `custom` configs | an external connector catalog |
+
+Beyond M0, this package also ships **receipt integrity** — Ed25519 detached
+signatures over canonical JSON for every receipt and rejection
+(`signResolution`/`verifyResolution`, `broker.ResolutionSigned` facts) — and
+the **closed rejection matrix** (`REJECTION_MATRIX`): every broker-owned
+rejection code pinned to its plane and an agent-actionable remediation,
+enforced by test so the catalog can never drift from the pipeline. Branding
+note: product surfaces call this component **the Conductor**; code and
+technical docs keep **broker**.
 
 Placement itself consumes any `BrokerCatalog` — a structural mirror of
 `@hobo/cloud`'s `PlannerRegistry`, so the Yard's live provider catalog plugs

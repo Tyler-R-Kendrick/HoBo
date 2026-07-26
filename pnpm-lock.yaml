@@ -330,6 +330,22 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/junctions:
+    dependencies:
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../yards
+    devDependencies:
+      '@hobo/bindles':
+        specifier: workspace:*
+        version: link:../bindles
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../camps
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+
   packages/mcp:
     dependencies:
       '@hobo/cli':

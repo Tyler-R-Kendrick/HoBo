@@ -25,6 +25,9 @@ Waves are dependency-ordered; issues within a wave are independent (parallelizab
   and honest; its entry **deleted** from `src/draft/_grandfathered.json`;
   `pnpm run draft:artifacts -- --staged` green (no advisories for the package);
   `pnpm run draft:cascade -- --staged` green; `pnpm agent:check -- --staged` green.
+  Before the allowlist entry is deleted, a package can be verified strictly with the gate's
+  direct mode: `tsx scripts/check-draft-artifacts.ts <workspace-path>` (positional paths skip
+  the git diff and enforce even while grandfathered — examples are executed and diffed).
 - **Guardrails:** scaffold shapes from `src/draft/_templates/<layer>/`; waivers (proof.json + ADR)
   are sanctioned where an artifact is genuinely N/A — fabricated filler is a review failure
   (the reviewer subagent audits honesty, not just presence).

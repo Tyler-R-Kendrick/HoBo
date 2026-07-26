@@ -23,3 +23,9 @@ Two things the band needs from a plate:
 Nothing else is needed — the aspect ratio is read from the file, the tile is
 sized from it, and the scroll distance follows so the loop lands on the same
 pixels it started from. An empty slot renders nothing.
+
+`clouds.png` and `hills.png` are captures from the reference plates: object
+crops normalized to the band's 6-level grayscale + alpha and placed on a
+600px-tall canvas (2px per tile unit) at their scene height. Plates are
+grayscale on purpose — dark mode inverts them with a CSS filter, matching the
+design system's exact ink/paper inversion.

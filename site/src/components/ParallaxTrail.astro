@@ -30,6 +30,7 @@ import { plates } from "../lib/trail-plates";
 const supplied = plates().map((p) => ({
 	key: p.key,
 	opacity: p.opacity,
+	href: href(`/parallax/plates/${p.file}`),
 	style: [
 		`--plate:url("${href(`/parallax/plates/${p.file}`)}")`,
 		`--plate-tile:calc(var(--band-h) * ${Math.round(p.aspect * 1000) / 1000})`,
@@ -71,6 +72,12 @@ const rootStyle = [
 ].join(";");
 ---
 
+{
+	supplied.map((p) => (
+		<link rel="preload" as="image" href={p.href} />
+	))
+}
+<link rel="preload" as="image" href={href("/parallax/bo-walk.png")} />
 <div class="plx" data-plx style={rootStyle}>
 	<div
 		class="plx-scene"
@@ -152,6 +159,11 @@ const rootStyle = [
 
 	:global(:root[data-theme="light"]) .plx-plate {
 		background-image: var(--plate);
+		filter: none;
+	}
+
+	:global(:root:not([data-theme="light"])) .plx-plate {
+		filter: invert(1);
 	}
 
 	@keyframes plx-scroll-plate {

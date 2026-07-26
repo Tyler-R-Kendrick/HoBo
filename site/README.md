@@ -76,9 +76,16 @@ split is deliberate.
 **Supplied artwork** goes in `public/parallax/plates/`, one file per slot — `sky`,
 `clouds`, `hills` — and is used exactly as given, at its own aspect ratio, tiled and
 scrolled at that slot's speed. See the README in that folder. An empty slot renders
-nothing, which is why the sky is bare until plates are dropped in. **Scenery objects are
-not to be hand-authored in this repo**; if a plate is missing, the answer is to supply it,
-not to draw a substitute.
+nothing. **Scenery objects are not to be hand-authored in this repo**; if a plate is
+missing, the answer is to supply it, not to draw a substitute.
+
+The `clouds` and `hills` slots ship filled, with props captured from the reference
+plates (via the rubber-hose asset site): four cloud crops composed into one tile, and
+the horizon strip with its bridge. Each capture is cropped to the rows actually used,
+normalized to the same 6-level grayscale + alpha the Bo sheets use, and recomposed on a
+full-height canvas so it lands at its scene position — 2.6MB of source crops became
+~20KB of plates. Being grayscale is also what makes the night theme free: plates take
+`filter: invert(1)` in dark mode, the design system's exact ink/paper inversion.
 
 **Drawn here** are only the things that must be exact to tile: the trail's two ragged
 banks, the telephone poles and their wires, fence posts, signposts and grass. These live

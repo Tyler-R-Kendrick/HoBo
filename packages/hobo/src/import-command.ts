@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { canonicalManifestHash } from "@hobo/bindles";
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import {
@@ -6,23 +7,83 @@ import {
 	loadProjectManifest,
 } from "@hobo/cli";
 import { deploymentImported, deploymentViewProjection } from "@hobo/cloud";
-import type { PrincipalRef } from "@hobo/core";
+import type { EventInput, PrincipalRef } from "@hobo/core";
+
+import {
+	type EstateResourceState,
+	readPulumiEstate,
+	selectPulumiEstateAdapter,
+} from "./compose.js";
+import type { PulumiAutomationAdapter } from "./pulumi-iac-provider.js";
 
 export interface ImportCommandDeps {
 	// The shared Yard runtime whose durable log records the adoption.
 	readonly runtime?: YardRuntime;
+	// Credential env consulted to pick the estate backend (same precedence as
+	// `hobo up`/`hobo drift`). Defaults to `process.env`.
+	readonly env?: Record<string, string | undefined>;
+	// Explicit Pulumi adapter override (tests): discover the estate from THIS
+	// adapter's state backend.
+	readonly adapter?: PulumiAutomationAdapter;
 }
 
 const IMPORT_ACTOR: PrincipalRef = { kind: "user", id: "user:importer" };
 
-// `hobo import` — adopt an existing estate in place. It reads the project's
-// Bindle (which describes resources that ALREADY exist) and records them under
-// HoBo management by appending a single `deployment.Imported` fact — no
-// provisioning runs. The DeploymentView then reflects the adopted deployment as
-// deployed (with `imported: true`), so `inspect`/`drift` operate on it like any
-// other. Reads/writes only the local event store; no cloud call, no credential.
-// HONEST SCOPE: adopts the DECLARED bindle; live-cloud estate discovery is a
-// follow-up.
+// public-contract: per-resource adoption fact for each DISCOVERED estate resource (adopt-in-place proof).
+export const RESOURCE_ADOPTED_EVENT = "resource.Adopted";
+
+// domain-view: one adopted-manifest resource entry produced by estate
+// discovery — the adopt-in-place record for a resource that already exists in
+// the IaC state backend but is not (or not fully) declared in the Bindle.
+export interface AdoptedResourceEntry {
+	readonly type: string;
+	readonly externalId: string;
+	readonly adopted: true;
+	readonly outputs: Readonly<Record<string, unknown>>;
+}
+
+function stableJson(value: unknown): string {
+	if (Array.isArray(value)) {
+		return `[${value.map((item) => stableJson(item)).join(",")}]`;
+	}
+	if (value && typeof value === "object") {
+		return `{${Object.keys(value as Record<string, unknown>)
+			.sort()
+			.map(
+				(key) =>
+					`${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`,
+			)
+			.join(",")}}`;
+	}
+	return JSON.stringify(value);
+}
+
+function isEngineUnavailable(
+	error: unknown,
+): error is Error & { code: string } {
+	return (
+		error instanceof Error && error.name === "PulumiEngineUnavailableError"
+	);
+}
+
+// `hobo import` — adopt an existing estate in place. Two adoption sources fold
+// into ONE adopted manifest:
+//   - DISCOVERY: enumerate the IaC state backend's per-resource stacks (the
+//     estate the backend actually holds — the in-memory backend, or the real
+//     pulumi CLI's stacks under HOBO_PULUMI_LIVE=1, binary-gated with a typed
+//     fail-closed error) and produce an adopt-in-place manifest entry per
+//     discovered resource (outputs + externalId; reconcile drift-detect-only,
+//     destroy retain — per the adopt-in-place-contract draft proof).
+//   - DECLARATION: the project's Bindle (resources that ALREADY exist) merges
+//     in as-is; declared entries win over discovered ones with the same name.
+// Adoption is recorded by appending a single `deployment.Imported` fact plus
+// one `resource.Adopted` fact per discovered resource — no provisioning runs.
+// The DeploymentView then reflects the adopted deployment as deployed (with
+// `imported: true`), so `inspect`/`drift` operate on it like any other.
+// HONEST SCOPE: discovery reads the estate held by the SELECTED IaC state
+// backend (in-memory or live pulumi stacks); estates held only by a foreign
+// tool's state (raw Terraform, console-created resources) are out of reach
+// until that backend is pointed at them.
 export function createImportCommand(
 	deps: ImportCommandDeps = {},
 ): CommandModule {
@@ -40,22 +101,8 @@ export function createImportCommand(
 				};
 			}
 
+			const env = deps.env ?? process.env;
 			const projectDir = context.projectDir ?? flags.cwd ?? context.cwd;
-			const manifest = await loadProjectManifest(projectDir);
-			if (!manifest) {
-				return {
-					ok: false,
-					status: "no_bindle",
-					code: "HOBO_NO_BINDLE",
-					message:
-						"hobo import found no readable hobo.bindle.json — run from a Bindle project describing the estate to adopt.",
-					remediation: [
-						"Run `hobo import` from a directory containing a valid hobo.bindle.json.",
-					],
-					data: { command: "import" },
-				};
-			}
-
 			const deploymentId = deploymentIdFor(projectDir);
 			const stream = `deployment:${deploymentId}`;
 			const snapshot = await deploymentViewProjection.rebuildFromZero(
@@ -77,20 +124,102 @@ export function createImportCommand(
 				};
 			}
 
-			const resources = Object.keys(manifest.value.resources).sort();
-			const bindleHash = String(canonicalManifestHash(manifest));
+			// DISCOVERY: enumerate the estate the IaC state backend actually holds.
+			const adapter = selectPulumiEstateAdapter({
+				store: runtime.store,
+				env,
+				...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+			});
+			let discovered: readonly EstateResourceState[] = [];
+			if (adapter !== undefined) {
+				try {
+					discovered = readPulumiEstate(adapter, deploymentId);
+				} catch (error) {
+					if (isEngineUnavailable(error)) {
+						return {
+							ok: false,
+							status: "backend_unavailable",
+							code: "HOBO_PULUMI_UNAVAILABLE",
+							message: `hobo import: the live Pulumi backend is unavailable — ${error.message}`,
+							remediation: [
+								"Install the pinned pulumi CLI (or unset HOBO_PULUMI_LIVE to use the in-memory lane).",
+							],
+							data: {
+								command: "import",
+								deploymentId,
+								engineCode: error.code,
+							},
+						};
+					}
+					throw error;
+				}
+			}
 
-			await runtime.store.append(
-				stream,
-				[deploymentImported({ deploymentId, bindleHash, resources })],
-				{
-					expectedSeq: snapshot.seq,
-					actor: IMPORT_ACTOR,
-					tenant: DEFAULT_TENANT,
-				},
-			);
+			// DECLARATION: the project's Bindle, when present.
+			const manifest = await loadProjectManifest(projectDir);
+			if (!manifest && discovered.length === 0) {
+				return {
+					ok: false,
+					status: "no_bindle",
+					code: "HOBO_NO_BINDLE",
+					message:
+						"hobo import found no readable hobo.bindle.json and discovered no estate in the IaC state backend — nothing to adopt.",
+					remediation: [
+						"Run `hobo import` from a directory containing a valid hobo.bindle.json, or against a backend holding provisioned resources.",
+					],
+					data: { command: "import" },
+				};
+			}
+
+			// Merge into the adopted manifest: declared entries win; every
+			// discovered-but-undeclared resource gains an adopt-in-place entry.
+			const declaredResources = manifest ? manifest.value.resources : {};
+			const adoptedEntries: Record<string, AdoptedResourceEntry> = {};
+			for (const state of discovered) {
+				if (Object.hasOwn(declaredResources, state.resource)) {
+					continue;
+				}
+				adoptedEntries[state.resource] = Object.freeze({
+					type: "adopted.v1",
+					externalId: state.externalId,
+					adopted: true,
+					outputs: state.outputs,
+				});
+			}
+			const adoptedManifest = {
+				schema: "hobo.manifest/v1",
+				resources: { ...declaredResources, ...adoptedEntries },
+			};
+			const resources = Object.keys(adoptedManifest.resources).sort();
+			const bindleHash = manifest
+				? String(canonicalManifestHash(manifest))
+				: `sha256:${createHash("sha256").update(stableJson(adoptedManifest)).digest("hex")}`;
+
+			const events: EventInput[] = [
+				deploymentImported({ deploymentId, bindleHash, resources }),
+				...discovered.map(
+					(state): EventInput => ({
+						type: RESOURCE_ADOPTED_EVENT,
+						data: {
+							deploymentId,
+							resource: state.resource,
+							externalId: state.externalId,
+							stackKey: state.stackKey,
+							outputs: state.outputs,
+							lifecycle: { reconcile: "drift-detect-only", destroy: "retain" },
+						},
+					}),
+				),
+			];
+			await runtime.store.append(stream, events, {
+				expectedSeq: snapshot.seq,
+				actor: IMPORT_ACTOR,
+				tenant: DEFAULT_TENANT,
+			});
 			for (const resource of resources) {
-				emitProgress(`adopted ${resource}`);
+				emitProgress(
+					`adopted ${resource}${adoptedEntries[resource] ? " (discovered)" : ""}`,
+				);
 			}
 
 			const view = deploymentViewProjection.get(
@@ -102,7 +231,7 @@ export function createImportCommand(
 				ok: true,
 				status: "imported",
 				code: "HOBO_OK",
-				message: `hobo import: adopted ${resources.length} resource(s) into "${deploymentId}" (no provisioning ran).`,
+				message: `hobo import: adopted ${resources.length} resource(s) into "${deploymentId}" (${discovered.length} discovered from the estate; no provisioning ran).`,
 				data: {
 					command: "import",
 					deploymentId,
@@ -110,6 +239,9 @@ export function createImportCommand(
 					imported: view?.imported ?? true,
 					deploymentStatus: view?.status ?? "deployed",
 					resources: view?.resources ?? {},
+					discovered: discovered.map((state) => state.resource),
+					declared: Object.keys(declaredResources).sort(),
+					adoptedManifest,
 				},
 			};
 		},

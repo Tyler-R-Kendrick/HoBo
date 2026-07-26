@@ -65,6 +65,12 @@ export interface PulumiAutomationAdapter {
 	apply(program: unknown): Promise<PulumiApplyOutputs>;
 	destroy(program: unknown): Promise<unknown>;
 	refresh(program: unknown): Promise<PulumiDriftReport>;
+	// Estate discovery seam (optional — spy/test adapters may omit it): the full
+	// per-resource-stack state the adapter's backend holds, `{ [stackKey]:
+	// { resources } }`. Drives `hobo drift`/`hobo import`; the real CLI engine
+	// fails closed with a typed PulumiEngineUnavailableError when the pulumi
+	// binary is missing.
+	snapshotState?(): Record<string, unknown>;
 }
 
 export interface PulumiBackedIacProviderOptions {

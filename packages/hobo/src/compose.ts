@@ -141,6 +141,136 @@ export interface SelectIacProviderDeps {
 	readonly cloudflareFetch?: CloudflareFetch;
 }
 
+// Per-store, per-lane Pulumi adapter memo. Sharing ONE adapter (and therefore
+// ONE state backend) across every command that composes against the same event
+// store is what makes `hobo drift`/`hobo import` able to read the estate a
+// prior `hobo up` actually provisioned — in the same process on the in-memory
+// lane, and against a stable `HOBO_PULUMI_WORKDIR` on the live CLI lane.
+const pulumiAdaptersByStore = new WeakMap<
+	EventStore,
+	Map<string, PulumiAutomationAdapter>
+>();
+
+function memoizedPulumiAdapter(
+	store: EventStore,
+	lane: "memory" | "live",
+	create: () => PulumiAutomationAdapter,
+): PulumiAutomationAdapter {
+	let byLane = pulumiAdaptersByStore.get(store);
+	if (byLane === undefined) {
+		byLane = new Map();
+		pulumiAdaptersByStore.set(store, byLane);
+	}
+	let adapter = byLane.get(lane);
+	if (adapter === undefined) {
+		adapter = create();
+		byLane.set(lane, adapter);
+	}
+	return adapter;
+}
+
+// Resolve the SHARED Pulumi adapter (the estate seam) for this store + env, or
+// `undefined` when the environment selects a non-Pulumi deploy provider
+// (Cloudflare/Vercel) whose state HoBo holds in the DeploymentView instead.
+// An explicit `adapter` override always wins and is memoized so later callers
+// (drift/import) observe the same backend the deploy path drove.
+export function selectPulumiEstateAdapter(
+	deps: Pick<SelectIacProviderDeps, "store" | "env" | "adapter">,
+): PulumiAutomationAdapter | undefined {
+	const env = deps.env ?? process.env;
+	if (deps.adapter !== undefined) {
+		const byLane = pulumiAdaptersByStore.get(deps.store) ?? new Map();
+		byLane.set("memory", deps.adapter);
+		pulumiAdaptersByStore.set(deps.store, byLane);
+		return deps.adapter;
+	}
+	if (env.HOBO_PULUMI_LIVE === "1") {
+		return memoizedPulumiAdapter(
+			deps.store,
+			"live",
+			() =>
+				createPulumiAutomationAdapter({
+					engine: createPulumiCliAutomationEngine({
+						workDir:
+							env.HOBO_PULUMI_WORKDIR ??
+							mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
+						env,
+						// Test seam mirroring the engine's own binary gate: point at a
+						// non-existent binary to exercise the typed fail-closed path.
+						...(env.HOBO_PULUMI_BIN !== undefined
+							? { pulumiBin: env.HOBO_PULUMI_BIN }
+							: {}),
+					}),
+				}) as PulumiAutomationAdapter,
+		);
+	}
+	if (
+		(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) ||
+		env.VERCEL_TOKEN
+	) {
+		return undefined;
+	}
+	return memoizedPulumiAdapter(
+		deps.store,
+		"memory",
+		() => createPulumiAutomationAdapter() as PulumiAutomationAdapter,
+	);
+}
+
+// domain-view: one resource's state as read from the IaC state backend (the
+// estate). A parsed, derived view over the adapter's loose snapshot shape so
+// drift/import consume trusted records instead of re-checking DTO fields.
+export interface EstateResourceState {
+	readonly resource: string;
+	readonly stackKey: string;
+	readonly externalId: string;
+	readonly status: string;
+	readonly outputs: Readonly<Record<string, unknown>>;
+}
+
+// Read the estate the adapter's state backend holds for one deployment (its
+// per-resource stacks are keyed `${deploymentId}/${resourceName}`). Parse,
+// don't validate: loose snapshot records become frozen EstateResourceState
+// derived values. Propagates the engine's typed fail-closed errors (e.g.
+// PulumiEngineUnavailableError when the live pulumi binary is missing).
+export function readPulumiEstate(
+	adapter: PulumiAutomationAdapter,
+	deploymentId: string,
+): readonly EstateResourceState[] {
+	if (typeof adapter.snapshotState !== "function") {
+		return [];
+	}
+	const snapshot = adapter.snapshotState();
+	const estate: EstateResourceState[] = [];
+	for (const [stackKey, state] of Object.entries(snapshot)) {
+		if (!stackKey.startsWith(`${deploymentId}/`)) {
+			continue;
+		}
+		const resources =
+			(state as { resources?: Record<string, unknown> } | undefined)
+				?.resources ?? {};
+		for (const [resource, record] of Object.entries(resources)) {
+			const parsed = record as {
+				id?: unknown;
+				status?: unknown;
+				outputs?: Record<string, unknown>;
+			};
+			estate.push(
+				Object.freeze({
+					resource,
+					stackKey,
+					externalId:
+						typeof parsed.id === "string" ? parsed.id : `pulumi:${stackKey}`,
+					status:
+						typeof parsed.status === "string" ? parsed.status : "provisioned",
+					outputs: Object.freeze({ ...(parsed.outputs ?? {}) }),
+				}),
+			);
+		}
+	}
+	return estate.sort((a, b) => a.resource.localeCompare(b.resource));
+}
+
 // Select the IaC backend on the deploy path by environment. This is HoBo's
 // thesis realized for the clouds actually reachable from its own pipeline, in
 // precedence order:
@@ -151,27 +281,24 @@ export interface SelectIacProviderDeps {
 //   - else `VERCEL_TOKEN` present -> the REAL Vercel deploy provider (cred-gated).
 //   - otherwise -> the in-memory Pulumi-backed provider (fallback).
 // A Pulumi `adapter` override always wins (it is a Pulumi adapter), keeping the
-// existing spy-adapter tests deterministic regardless of ambient env.
+// existing spy-adapter tests deterministic regardless of ambient env. Pulumi
+// lanes resolve through the SHARED per-store adapter memo (see
+// selectPulumiEstateAdapter) so `up`, `drift`, and `import` composed over the
+// same store all observe the same state backend.
 export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const env = deps.env ?? process.env;
 	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
 	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
 	const vercelToken = env.VERCEL_TOKEN;
-	if (deps.adapter === undefined && env.HOBO_PULUMI_LIVE === "1") {
+	const estateAdapter = selectPulumiEstateAdapter(deps);
+	if (estateAdapter !== undefined) {
 		return createPulumiBackedIacProvider({
 			store: deps.store,
 			providers: deps.providers,
-			adapter: createPulumiAutomationAdapter({
-				engine: createPulumiCliAutomationEngine({
-					workDir:
-						env.HOBO_PULUMI_WORKDIR ??
-						mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
-					env,
-				}),
-			}) as PulumiAutomationAdapter,
+			adapter: estateAdapter,
 		});
 	}
-	if (deps.adapter === undefined && cloudflareToken && cloudflareAccountId) {
+	if (cloudflareToken && cloudflareAccountId) {
 		return createCloudflareDeployProvider({
 			token: cloudflareToken,
 			accountId: cloudflareAccountId,
@@ -180,16 +307,9 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 				: {}),
 		});
 	}
-	if (deps.adapter === undefined && vercelToken) {
-		return createVercelDeployProvider({
-			token: vercelToken,
-			...(deps.vercelFetch !== undefined ? { fetch: deps.vercelFetch } : {}),
-		});
-	}
-	return createPulumiBackedIacProvider({
-		store: deps.store,
-		providers: deps.providers,
-		...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+	return createVercelDeployProvider({
+		token: vercelToken as string,
+		...(deps.vercelFetch !== undefined ? { fetch: deps.vercelFetch } : {}),
 	});
 }
 

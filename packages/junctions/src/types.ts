@@ -1,15 +1,12 @@
 import type { Yard } from "@hobo/yards";
 
-// public-contract: version tag stamped on every parsed junction record so
-// downstream consumers can reject records from an incompatible authoring surface.
+// public-contract: version tag on every parsed junction record — consumers reject incompatible authoring surfaces.
 export const JUNCTION_CONTRACT_VERSION = "hobo.junction-objects/v1" as const;
 
-// public-contract: event appended when the junction derives its cross-cloud
-// connectivity plan from member yard manifests.
+// public-contract: event appended when the junction derives its cross-cloud connectivity plan.
 export const JUNCTION_PLAN_DERIVED_EVENT = "junction.PlanDerived" as const;
 
-// public-contract: event carrying the frozen JunctionDefinition snapshot on the
-// topology authoring stream, mirroring topology.CampComposed/topology.YardComposed.
+// public-contract: event carrying the frozen JunctionDefinition snapshot, mirroring topology.CampComposed.
 export const JUNCTION_COMPOSED_EVENT = "topology.JunctionComposed" as const;
 
 /**

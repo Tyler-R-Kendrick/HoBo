@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -250,6 +250,50 @@ export function createPulumiCliAutomationEngine(
 
 	return {
 		pulumiVersion: PINNED_PULUMI_AUTOMATION_VERSION,
+		// Estate enumeration: the state each per-resource stack actually holds,
+		// in the same `{ [stackKey]: { resources } }` shape the in-memory engine's
+		// snapshot() returns. Binary-gated like every other operation — a missing
+		// pulumi CLI fails closed with the typed PulumiEngineUnavailableError.
+		snapshot() {
+			ensureAvailable();
+			const stacks: Record<string, unknown> = {};
+			if (!existsSync(programsDir)) {
+				return Object.freeze(stacks);
+			}
+			for (const entry of readdirSync(programsDir, { withFileTypes: true })) {
+				if (!entry.isDirectory()) {
+					continue;
+				}
+				const dir = join(programsDir, entry.name);
+				let outputs: Record<string, unknown>;
+				try {
+					outputs = JSON.parse(
+						run(["stack", "output", "--json", "--stack", "hobo"], dir),
+					) as Record<string, unknown>;
+				} catch {
+					// A stack with unreadable outputs holds no adoptable state.
+					continue;
+				}
+				if (Object.keys(outputs).length === 0) {
+					continue;
+				}
+				// Stack dirs are stack keys with non-portable chars mapped to `__`
+				// (see stackDir); a stack key is `${deploymentId}/${resourceName}`.
+				const parts = entry.name.split("__");
+				const resourceName = parts.at(-1) ?? entry.name;
+				const stackKey = parts.join("/");
+				stacks[stackKey] = {
+					resources: {
+						[resourceName]: {
+							id: `pulumi:stack:${resourceName}`,
+							status: "provisioned",
+							outputs,
+						},
+					},
+				};
+			}
+			return Object.freeze(stacks);
+		},
 		async preview(program: IacProgramLike) {
 			ensureAvailable();
 			const changes = [];

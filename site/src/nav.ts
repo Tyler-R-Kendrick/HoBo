@@ -13,6 +13,7 @@ export const nav: NavGroup[] = [
 			{ label: "Core concepts", slug: "/guide/concepts/" },
 			{ label: "Architecture", slug: "/guide/architecture/" },
 			{ label: "The hobo CLI", slug: "/guide/cli/" },
+			{ label: "Custom providers", slug: "/guide/custom-providers/" },
 			{ label: "The trail map", slug: "/guide/status/" },
 		],
 	},
@@ -35,13 +36,7 @@ export const nav: NavGroup[] = [
 			{ label: "HoBo for Developers", slug: "/roles/developers/" },
 			{ label: "HoBo for Platform Engineers", slug: "/roles/platform-engineers/" },
 			{ label: "HoBo for DevSecOps", slug: "/roles/devsecops/" },
-		],
-	},
-	{
-		label: "Agents",
-		slug: "/agents/",
-		items: [
-			{ label: "HoBo for agents", slug: "/agents/" },
+			{ label: "HoBo for Agents", slug: "/agents/" },
 			{ label: "The MCP surface", slug: "/agents/mcp/" },
 		],
 	},

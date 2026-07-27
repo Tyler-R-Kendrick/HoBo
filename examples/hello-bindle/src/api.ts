@@ -6,6 +6,11 @@ import {
 	GreetingRequestSchema,
 	GreetingResponseSchema,
 } from "./_generated/greeting_pb.js";
+import {
+	API_GREETING_PREFIX_KEY,
+	type ConfigEnv,
+	resolveBindleConfig,
+} from "./config.js";
 
 /**
  * The single parse boundary: raw `?name` query → a derived {@link GreetingRequest}
@@ -20,11 +25,28 @@ export function parseGreetingRequest(
 	});
 }
 
+/**
+ * Build the greeting using the bindle-injected GREETING_PREFIX.
+ * Without camp injection this throws — the intermediary is required.
+ */
+export function buildGreeting(
+	rawName: string | undefined,
+	env: ConfigEnv = process.env,
+): { message: string; greetingPrefix: string; via: "bindle-env" } {
+	const greetingPrefix = resolveBindleConfig(API_GREETING_PREFIX_KEY, env);
+	const request = parseGreetingRequest(rawName);
+	const response = create(GreetingResponseSchema, {
+		message: `${greetingPrefix}, ${request.name}`,
+	});
+	return {
+		message: response.message,
+		greetingPrefix,
+		via: "bindle-env",
+	};
+}
+
 /** The hello-world API: a minimal Hono app exposing `GET /hello`. */
 export const app = new Hono().get("/hello", (c) => {
-	const request = parseGreetingRequest(c.req.query("name"));
-	const response = create(GreetingResponseSchema, {
-		message: `hello, ${request.name}`,
-	});
-	return c.json({ message: response.message });
+	const body = buildGreeting(c.req.query("name"));
+	return c.json(body);
 });

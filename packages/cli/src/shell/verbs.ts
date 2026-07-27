@@ -124,6 +124,11 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		summary: "Resolve placements through the broker (the Conductor)",
 	},
 	{
+		name: "yard",
+		role: "control plane",
+		summary: "Install and inspect the default bare-metal Yard",
+	},
+	{
 		name: "derivative",
 		role: "extensibility",
 		summary: "Manage derived HoBo implementations",
@@ -158,6 +163,7 @@ export const projectScopedVerbs = new Set(
 				"generate",
 				"derivative",
 				"broker",
+				"yard",
 			].includes(verb),
 	),
 );

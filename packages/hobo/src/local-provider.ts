@@ -53,9 +53,34 @@ export function createProviderFromPorts(
 	};
 }
 
+// public-contract: provider id for the default bare-metal / local-host yard.
+export const BARE_METAL_PROVIDER_ID = "local" as const;
+
+// Ports the bare-metal camp host can realize on the operator's machine.
+const BARE_METAL_PORTS = [
+	"kv",
+	"objectStore",
+	"hobo:key-value",
+	"hobo:object-store",
+	"hobo:http-service",
+	"hobo:web-app",
+	"hobo:data",
+	"wasi:http",
+	"compute",
+] as const;
+
 // The built-in `local` provider: the runtime-local in-process target `hobo dev`
 // already runs on (kv + objectStore, one "local" region, zero cost). Installable
 // via `hobo add local`.
 export function createLocalProvider(): RegistrableProvider {
 	return createProviderFromPorts("local", ["kv", "objectStore"]);
+}
+
+/**
+ * Bare-metal provider: local machine as a HoBo camp host. Extends the basic
+ * local provider with HTTP/compute ports so api/web bindles plan and serve
+ * without a cloud account.
+ */
+export function createBareMetalProvider(): RegistrableProvider {
+	return createProviderFromPorts(BARE_METAL_PROVIDER_ID, [...BARE_METAL_PORTS]);
 }

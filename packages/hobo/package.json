@@ -22,6 +22,7 @@
 	"dependencies": {
 		"@hobo/bindles": "workspace:*",
 		"@hobo/broker": "workspace:*",
+		"@hobo/camps": "workspace:*",
 		"@hobo/cli": "workspace:*",
 		"@hobo/cloud": "workspace:*",
 		"@hobo/contracts": "workspace:*",
@@ -37,7 +38,8 @@
 		"@hobo/runner-blacksmith": "workspace:*",
 		"@hobo/runner-depot": "workspace:*",
 		"@hobo/runner-github": "workspace:*",
-		"@hobo/runtime-local": "workspace:*"
+		"@hobo/runtime-local": "workspace:*",
+		"@hobo/yards": "workspace:*"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",

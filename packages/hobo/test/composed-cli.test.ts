@@ -136,7 +136,14 @@ describe("composed hobo CLI runs the default local/mocked runtime end to end", (
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
 			openStores.push(runtime.store as RuntimeLocalEventStore);
-			const cli = createComposedHoboCli({ yardRuntime: runtime });
+			// Pin DevRuntime so this regression stays on the one-shot probe path
+			// (no project bindle source → bare-metal serve falls back).
+			const cli = createComposedHoboCli({
+				yardRuntime: runtime,
+				devRuntime: (
+					await import("../src/compose.js")
+				).createDefaultDevRuntime(),
+			});
 
 			const dev = envelope((await cli.run(["dev", "--json"], { cwd })).stdout);
 			assertNotStub(dev);

@@ -28,6 +28,9 @@ export interface CommandRunInput {
 		readonly policies: string | null;
 		readonly request: string | null;
 		readonly init: boolean;
+		readonly once: boolean;
+		readonly port: string | null;
+		readonly home: string | null;
 	};
 	readonly args: readonly string[];
 	readonly verb: string;

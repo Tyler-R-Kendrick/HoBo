@@ -4,6 +4,39 @@ export {
 	type ConnectivityConfig,
 } from "./config.js";
 export {
+	accessTokenHash,
+	createDpopJtiCache,
+	exportDpopPrivateJwk,
+	generateDpopKeyPair,
+	importDpopKeyPair,
+	mintDpopProof,
+	verifyDpopProof,
+	type DpopJtiCache,
+	type DpopKeyPair,
+	type JsonWebKeyPublic,
+	type MintDpopProofInput,
+	type VerifiedDpopProof,
+} from "./crypto/dpop.js";
+export {
+	DEFAULT_SVID_HMAC_SECRET,
+	generateSvidIssuerKeys,
+	mintJwtSvid,
+	resolveSvidHmacSecret,
+	spiffeIdForAgent,
+	verifyJwtSvid,
+	type JwtSvidClaims,
+	type MintedJwtSvid,
+} from "./crypto/jwt-svid.js";
+export {
+	createRoute53SigV4Signer,
+	hmac,
+	sha256Hex,
+	signAwsRequest,
+	type AwsCredentials,
+	type SignAwsRequestInput,
+	type SignedAwsRequest,
+} from "./dns/aws-sigv4.js";
+export {
 	createCloudflareDnsProvider,
 	type CloudflareDnsProviderOptions,
 } from "./dns/cloudflare-provider.js";
@@ -22,6 +55,7 @@ export { createPublicDnsManager } from "./dns/public-dns-manager.js";
 export {
 	createDnsProviderFromConfig,
 	createRoute53DnsProvider,
+	parseListResourceRecordSets,
 	type Route53DnsProviderOptions,
 } from "./dns/route53-provider.js";
 export {
@@ -57,10 +91,33 @@ export {
 	type PriceBook,
 } from "./metering/billing-aggregator.js";
 export {
+	createFileInvoiceLedger,
+	createLedgerBillingProvider,
+	createStripeBillingProvider,
+	exportInvoiceStripeLines,
+	type BillingChargeResult,
+	type BillingChargeStatus,
+	type BillingProvider,
+	type InvoiceLedger,
+} from "./metering/billing-provider.js";
+export {
 	createInMemoryMeteringSink,
 	createLogMeteringSink,
 } from "./metering/sinks.js";
+export {
+	createNetbirdApiClient,
+	type NetbirdApiClient,
+	type NetbirdApiOptions,
+	type NetbirdDnsNameserverGroup,
+	type NetbirdPeer,
+} from "./overlay/netbird-api.js";
 export { createNetbirdOverlay } from "./overlay/netbird.js";
+export {
+	createTailscaleApiClient,
+	type TailscaleApiClient,
+	type TailscaleApiOptions,
+	type TailscaleSplitDnsMap,
+} from "./overlay/tailscale-api.js";
 export {
 	createTailscaleOverlay,
 	parseTenantTag,
@@ -73,6 +130,14 @@ export {
 	SAMPLE_HOBO_AUTHZ_REGO,
 	type OpaPolicyEngineOptions,
 } from "./policy/opa-engine.js";
+export {
+	evaluateRegoLite,
+	HOBO_DEFAULT_POLICY_DOCUMENT,
+	parseRegoLiteDocument,
+	type RegoLiteDocument,
+	type RegoLiteRule,
+	type RegoLiteWhen,
+} from "./policy/rego-lite.js";
 export {
 	createTagAclPolicyEngine,
 	TAG_ACL_POLICY_ENGINE_ID,

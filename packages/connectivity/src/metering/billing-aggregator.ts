@@ -45,6 +45,17 @@ export interface BillingAggregator extends MeteringSink {
 		readonly periodStart: string;
 		readonly periodEnd: string;
 	}): Invoice;
+	/**
+	 * Close period, then charge via BillingProvider when configured.
+	 */
+	closeAndCharge(input: {
+		readonly tenantId: TenantId;
+		readonly periodStart: string;
+		readonly periodEnd: string;
+	}): Promise<{
+		readonly invoice: Invoice;
+		readonly charge?: import("./billing-provider.js").BillingChargeResult;
+	}>;
 	listInvoices(tenantId?: TenantId): readonly Invoice[];
 }
 
@@ -81,6 +92,7 @@ export function createBillingAggregator(options?: {
 	readonly sinkId?: string;
 	readonly priceBook?: PriceBook;
 	readonly onInvoice?: (invoice: Invoice) => void | Promise<void>;
+	readonly billingProvider?: import("./billing-provider.js").BillingProvider;
 }): BillingAggregator {
 	const events: UsageEvent[] = [];
 	const buckets = new Map<string, BillingPeriodBucket>();
@@ -125,18 +137,65 @@ export function createBillingAggregator(options?: {
 				: all;
 		},
 		closePeriod(input) {
-			const tenantBuckets = [...buckets.values()].filter(
-				(b) => b.tenantId === input.tenantId,
-			);
-			const lines: InvoiceLine[] = tenantBuckets
+			const periodStartMs = Date.parse(input.periodStart);
+			const periodEndMs = Date.parse(input.periodEnd);
+			const hasWindow =
+				Number.isFinite(periodStartMs) && Number.isFinite(periodEndMs);
+
+			// Rebuild buckets for this close from events in the period window when timestamps exist.
+			const periodBuckets = new Map<string, BillingPeriodBucket>();
+			for (const event of events) {
+				if (event.tenantId !== input.tenantId) continue;
+				if (
+					event.eventType === "billing.invoice_line" ||
+					event.eventType === "billing.period_close"
+				) {
+					continue;
+				}
+				if (hasWindow) {
+					const ts = Date.parse(event.timestamp);
+					if (!Number.isFinite(ts)) continue;
+					// Inclusive start, exclusive end-of-day if date-only, else inclusive range.
+					const endBound =
+						input.periodEnd.length <= 10
+							? periodEndMs + 24 * 60 * 60 * 1000
+							: periodEndMs + 1;
+					if (ts < periodStartMs || ts >= endBound) continue;
+				}
+				const k = bucketKey(event.tenantId, event.eventType);
+				const existing = periodBuckets.get(k);
+				if (existing) existing.quantity += event.quantity;
+				else {
+					periodBuckets.set(k, {
+						tenantId: event.tenantId,
+						eventType: event.eventType,
+						quantity: event.quantity,
+					});
+				}
+			}
+
+			const sourceBuckets =
+				periodBuckets.size > 0 || hasWindow
+					? [...periodBuckets.values()]
+					: [...buckets.values()].filter(
+							(b) => b.tenantId === input.tenantId,
+						);
+
+			const lines: InvoiceLine[] = sourceBuckets
 				.map((b) => {
 					const unitPrice = priceBook.prices[b.eventType] ?? 0;
+					const amount = unitPrice * b.quantity;
+					if (!Number.isInteger(amount) || amount < 0) {
+						throw new Error(
+							`billing: non-integer or negative amount for ${b.eventType} (amounts must be minor currency units)`,
+						);
+					}
 					return {
 						tenantId: input.tenantId,
 						eventType: b.eventType,
 						quantity: b.quantity,
 						unitPrice,
-						amount: unitPrice * b.quantity,
+						amount,
 						currency: priceBook.currency,
 						periodStart: input.periodStart,
 						periodEnd: input.periodEnd,
@@ -165,6 +224,14 @@ export function createBillingAggregator(options?: {
 
 			void options?.onInvoice?.(invoice);
 			return invoice;
+		},
+		async closeAndCharge(input) {
+			const invoice = aggregator.closePeriod(input);
+			if (!options?.billingProvider) {
+				return { invoice };
+			}
+			const charge = await options.billingProvider.charge(invoice);
+			return { invoice, charge };
 		},
 		listInvoices(tenantId) {
 			return tenantId

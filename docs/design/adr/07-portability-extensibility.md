@@ -516,8 +516,8 @@ Local port-based `hobo dev`, cross-cloud Junction connectivity, and public DNS w
 ### Consequences
 - **(+)** Local + overlay + public share one naming scheme; SaaS/billing/policy can grow without rewriting callers; platform engineers can keep cloud DNS ownership.
 - **(+)** Composes with ADR-0122 (WireGuard floor) rather than replacing it.
-- **(+)** Follow-on landed: MagicDNS/Funnel automation, Cloudflare+Route53 providers, OPA/Rego engine, billing aggregator, hard tenant isolation planes, heartbeat dynamic DNS.
-- **(−)** Route53 still requires an injected SigV4 signer for live AWS; Netbird management API client remains partial; payment capture (Stripe) is intentionally out of package scope.
+- **(+)** Follow-on closed robustness: Tailscale API MagicDNS, Netbird management HTTP, built-in Route53 SigV4, real ES256 DPoP + JWT-SVID, rego-lite policy docs, durable billing ledger + Stripe PaymentIntent REST.
+- **(−)** Multi-cluster hard isolation sharding, SPIRE Workload API fetch, and WebAuthn claim step-up remain operational/product follow-ons (interfaces ready).
 
 ## Open / proposed decisions (ADR-Pn)
 

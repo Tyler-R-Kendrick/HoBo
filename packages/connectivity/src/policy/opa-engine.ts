@@ -10,6 +10,12 @@ import {
 	denyDecision,
 } from "@hobo/core";
 
+import {
+	evaluateRegoLite,
+	HOBO_DEFAULT_POLICY_DOCUMENT,
+	type RegoLiteDocument,
+} from "./rego-lite.js";
+
 // public-contract: engine id for the OPA/Rego PolicyEngine adapter.
 export const OPA_POLICY_ENGINE_ID = "hobo.policy.opa-rego/v1" as const;
 
@@ -26,16 +32,21 @@ export interface OpaPolicyEngineOptions {
 	readonly regoModulePath?: string;
 	readonly opaBin?: string;
 	/**
+	 * In-process JSON policy document (rego-lite). Used when OPA HTTP/CLI
+	 * unavailable. Default: HOBO_DEFAULT_POLICY_DOCUMENT.
+	 */
+	readonly policyDocument?: RegoLiteDocument;
+	/**
 	 * In-process fallback evaluator used when OPA is unavailable.
-	 * Default enforces same-tenant unless resource.attributes.shared === "true",
-	 * and evaluates simple `input.subject.tags[_] == "role:admin"` style allow tags.
+	 * Default: rego-lite document + require:* tag checks.
 	 */
 	readonly fallback?: (request: PolicyRequest) => PolicyDecision;
 }
 
 /**
  * OPA/Rego PolicyEngine adapter.
- * Prefers HTTP to a running OPA; falls back to `opa eval` CLI; then in-process tenant isolation.
+ * Prefers HTTP to a running OPA; falls back to `opa eval` CLI; then in-process
+ * rego-lite document evaluation (tenant-aware, auditable).
  */
 export function createOpaPolicyEngine(
 	options: OpaPolicyEngineOptions = {},
@@ -43,7 +54,8 @@ export function createOpaPolicyEngine(
 	const fetchImpl = options.fetchImpl ?? fetch;
 	const fallback =
 		options.fallback ??
-		((request: PolicyRequest) => defaultRegoLikeEval(request));
+		((request: PolicyRequest) =>
+			defaultRegoLikeEval(request, options.policyDocument));
 
 	return {
 		engineId: OPA_POLICY_ENGINE_ID,
@@ -191,21 +203,12 @@ function evalViaOpaCli(
 }
 
 /**
- * Minimal Rego-like semantics used when OPA is not running:
- * allow if same tenant OR shared; deny cross-tenant; honor require:* tags.
+ * In-process fallback: rego-lite document + require:* resource tag checks.
  */
-export function defaultRegoLikeEval(request: PolicyRequest): PolicyDecision {
-	const sameTenant = request.subject.tenantId === request.resource.tenantId;
-	const shared =
-		request.resource.tags?.includes("shared:true") === true ||
-		request.resource.attributes?.shared === "true";
-
-	if (!sameTenant && !shared) {
-		return denyDecision(OPA_POLICY_ENGINE_ID, request, [
-			"rego-fallback: cross-tenant access denied",
-		]);
-	}
-
+export function defaultRegoLikeEval(
+	request: PolicyRequest,
+	document?: RegoLiteDocument,
+): PolicyDecision {
 	const required = (request.resource.tags ?? []).filter((t) =>
 		t.startsWith("require:"),
 	);
@@ -214,23 +217,24 @@ export function defaultRegoLikeEval(request: PolicyRequest): PolicyDecision {
 	);
 	if (missing.length > 0) {
 		return denyDecision(OPA_POLICY_ENGINE_ID, request, [
-			`rego-fallback: missing tags ${missing.join(", ")}`,
+			`rego-lite: missing tags ${missing.join(", ")}`,
 		]);
 	}
 
-	// Optional: actions ending in .admin require role:admin
 	if (
 		request.action.endsWith(".admin") &&
 		!request.subject.tags.includes("role:admin")
 	) {
 		return denyDecision(OPA_POLICY_ENGINE_ID, request, [
-			"rego-fallback: role:admin required",
+			"rego-lite: role:admin required for *.admin",
 		]);
 	}
 
-	return allowDecision(OPA_POLICY_ENGINE_ID, request, [
-		"rego-fallback: allow",
-	]);
+	return evaluateRegoLite(
+		document ?? HOBO_DEFAULT_POLICY_DOCUMENT,
+		request,
+		OPA_POLICY_ENGINE_ID,
+	);
 }
 
 /** Sample Rego module string operators can drop into OPA. */

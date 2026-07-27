@@ -196,7 +196,61 @@ export {
 	createProviderFromPorts,
 } from "./local-provider.js";
 export { createYardCommand } from "./yard-command.js";
-export { createBrokerAwareUpCommand } from "./broker-up-command.js";
+export {
+	createBrokerAwareUpCommand,
+	createBrokerAwareUpCommandWithMock,
+	type BrokerAwareUpCommandDeps,
+} from "./broker-up-command.js";
+export {
+	createBrokerAwareLoginCommand,
+	type BrokerAwareLoginCommandDeps,
+} from "./login-command.js";
+export {
+	resolveBrokerTarget,
+	resolveBrokerUriFromFlags,
+	wantsAnonymousMode,
+	normalizeBrokerUri,
+	type BrokerTarget,
+	type BrokerTargetFlags,
+	type BrokerDeployMode,
+} from "./broker-target.js";
+export {
+	BROKER_DISCOVERY_SCHEMA,
+	BrokerDiscoveryError,
+	createBrokerDiscoveryClient,
+	defaultMockDiscovery,
+	parseBrokerDiscoveryDocument,
+	type BrokerDiscoveryDocument,
+	type BrokerAuthMethod,
+} from "./broker-discovery.js";
+export {
+	createCredentialPresenter,
+	authorizationHeaders,
+	mintMockDpopProof,
+	type PresentedCredential,
+	type CredentialScheme,
+	type CredentialPresenter,
+} from "./credential-presenter.js";
+export {
+	createRemoteBrokerClient,
+	createMockRemoteBrokerState,
+	RemoteBrokerClientError,
+	type RemoteBrokerClient,
+	type RemotePlaceResult,
+	type RemoteClaimResult,
+	type AnonymousSessionResult,
+	type MockRemoteBrokerState,
+} from "./broker-remote-client.js";
+export {
+	HOBO_PROFILE_SCHEMA,
+	loadHoboProfile,
+	saveHoboProfile,
+	upsertLoginProfile,
+	type HoboProfile,
+} from "./hobo-profile.js";
+export {
+	createClaimCommandWithMock,
+} from "./claim-command.js";
 export {
 	collectExplicitProviderPins,
 	createYardBrokerCatalog,

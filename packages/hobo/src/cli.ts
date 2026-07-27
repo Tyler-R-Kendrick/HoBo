@@ -49,6 +49,7 @@ import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
+import { createBrokerAwareLoginCommand } from "./login-command.js";
 import { createYardCommand } from "./yard-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -172,8 +173,11 @@ export function createComposedHoboCli(
 			),
 			plan: createPlanCommand({ runtime }),
 			// Always place through the embedded broker-runtime (prefer wasm-sandbox yards).
+			// Remote --broker / --anonymous paths use discovery + credential presenter.
 			// The cloud mock `createUpCommand` remains for tests that wire it directly.
-			up: createBrokerAwareUpCommand(),
+			up: createBrokerAwareUpCommand({ runtime }),
+			// Identity plane: persist profile + optional default broker association.
+			login: createBrokerAwareLoginCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

@@ -1,20 +1,26 @@
 /**
- * `hobo up` composition: deploy through the embedded broker-runtime.
+ * `hobo up` composition: deploy through embedded or remote broker.
  *
  * Flow:
- *   1. Load project Bindle
- *   2. Ensure Yard + embedded broker exist (broker resolves yards/camps)
- *   3. Broker places the Bindle (prefer wasm-sandbox when available)
- *   4. Auto-create Camp when none exists
- *   5. Realize on the local Yard component host chosen by the broker
+ *   resolve target (flag > env > profile > local)
+ *   if local: existing embedded path
+ *   if remote: discover → anonymous|auth → place
  *
  * Explicit `.with({ provider })` pins hard-fail when that provider is absent
- * from the broker junction catalog.
+ * from the local broker junction catalog.
+ *
+ * HONEST SCOPE: remote place uses mock-capable HTTP client; live multi-broker
+ * production transport, real DPoP validation, and SPIRE attestation plug into
+ * the same control flow.
  */
 import { createServer } from "node:net";
 
-import { loadBindleDefinition } from "@hobo/cli";
-import type { CommandModule } from "@hobo/cli";
+import {
+	createUpCommand,
+	loadBindleDefinition,
+	type CommandModule,
+	type YardRuntime,
+} from "@hobo/cli";
 
 import {
 	defaultHoboHome,
@@ -22,9 +28,26 @@ import {
 	loadBareMetalYardConfig,
 } from "./bare-metal-yard.js";
 import {
+	BrokerDiscoveryError,
+	createBrokerDiscoveryClient,
+	type BrokerDiscoveryClient,
+} from "./broker-discovery.js";
+import {
+	createMockRemoteBrokerState,
+	createRemoteBrokerClient,
+	RemoteBrokerClientError,
+	type MockRemoteBrokerState,
+	type RemoteBrokerClient,
+} from "./broker-remote-client.js";
+import {
 	ensureEmbeddedBroker,
 	resolveBindlePlacement,
 } from "./broker-runtime.js";
+import { resolveBrokerTarget } from "./broker-target.js";
+import {
+	createCredentialPresenter,
+	type CredentialPresenter,
+} from "./credential-presenter.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
 
 async function freePort(): Promise<number> {
@@ -44,21 +67,107 @@ async function freePort(): Promise<number> {
 	});
 }
 
-export function createBrokerAwareUpCommand(): CommandModule {
+export interface BrokerAwareUpCommandDeps {
+	readonly discovery?: BrokerDiscoveryClient;
+	readonly presenter?: CredentialPresenter;
+	/** Inject remote client factory (tests). */
+	readonly createRemoteClient?: (brokerUri: string) => RemoteBrokerClient;
+	/** Shared mock state for in-process remote lane tests. */
+	readonly mockRemote?: MockRemoteBrokerState;
+	readonly env?: NodeJS.ProcessEnv;
+	/**
+	 * Shared Yard runtime for the local event-sourced deploy lane (claim/inspect).
+	 * When set, local `hobo up` prefers the cloud mock orchestrator path so
+	 * deployments land on the durable log; broker placement+serve remains the
+	 * offline bindle-source path when no runtime is wired.
+	 */
+	readonly runtime?: YardRuntime;
+}
+
+export function createBrokerAwareUpCommand(
+	deps: BrokerAwareUpCommandDeps = {},
+): CommandModule {
+	const presenter = deps.presenter ?? createCredentialPresenter();
+	const yardUp =
+		deps.runtime !== undefined
+			? createUpCommand({ runtime: deps.runtime })
+			: null;
+
 	return {
 		implemented: true,
-		run: async ({ context, flags, emitProgress }) => {
+		run: async (input) => {
+			const { context, flags, emitProgress } = input;
+			const env =
+				deps.env ??
+				(context as { env?: NodeJS.ProcessEnv }).env ??
+				process.env;
 			const projectDir =
 				(context as { projectDir?: string }).projectDir ??
 				(typeof flags.cwd === "string" ? flags.cwd : context.cwd);
 			const hoboHome =
 				typeof flags.home === "string" && flags.home.length > 0
 					? flags.home
-					: defaultHoboHome(
-							(context as { env?: NodeJS.ProcessEnv }).env ?? process.env,
-						);
+					: defaultHoboHome(env);
 
 			try {
+				const target = resolveBrokerTarget({
+					flags: {
+						broker: flags.broker,
+						brokerUri: flags.brokerUri,
+						anonymous: flags.anonymous,
+						temporary: flags.temporary,
+					},
+					env,
+					hoboHome,
+				});
+
+				// Local zero-config: prefer event-sourced Yard lane when runtime is wired
+				// (preserves claim/inspect). Fall back to broker-runtime placement+serve
+				// when a bindle() source is present without a cloud runtime.
+				if (target.kind === "local") {
+					// Event-sourced Yard lane when runtime is wired (claim/inspect).
+					if (yardUp) {
+						const yardResult = await yardUp.run(input);
+						// Only fall through when the Yard path is a pure stub (no manifest).
+						const isStub =
+							yardResult.code === "HOBO_CLI_STUB" ||
+							(yardResult.ok === false &&
+								yardResult.status === "stub");
+						if (!isStub) {
+							return {
+								...yardResult,
+								data: {
+									...((yardResult.data as Record<string, unknown>) ?? {}),
+									mode: "local",
+								},
+							};
+						}
+					}
+
+					const definition = await loadBindleDefinition(projectDir);
+					if (definition === null) {
+						return {
+							ok: false,
+							status: "no_bindle",
+							code: "HOBO_UP_NO_BINDLE",
+							message: `hobo up: no loadable bindle in ${projectDir}`,
+							remediation: [
+								"Add src/bindle.ts (or dist/bindle.js) exporting a default bindle.",
+								"Or hobo.bindle.json for the local Yard event-sourced lane.",
+								"See examples/hello-bindle for the minimal shape.",
+							],
+							data: { command: "up", projectDir, mode: "local" },
+						};
+					}
+					return await runLocalUp({
+						projectDir,
+						hoboHome,
+						definitionName: definition.name,
+						definition,
+						emitProgress,
+					});
+				}
+
 				const definition = await loadBindleDefinition(projectDir);
 				if (definition === null) {
 					return {
@@ -74,77 +183,220 @@ export function createBrokerAwareUpCommand(): CommandModule {
 					};
 				}
 
-				// Installed runtime always has a broker.
-				if (loadBareMetalYardConfig(hoboHome) === null) {
-					emitProgress("hobo up: no Yard yet — installing local Yard + broker");
-					initBareMetalYard({ hoboHome });
-				}
-				await ensureEmbeddedBroker({ hoboHome, emitProgress });
+				// Remote path
+				emitProgress(
+					`hobo up: remote broker ${target.uri} (mode=${target.mode}, source=${target.source})`,
+				);
 
-				const placement = await resolveBindlePlacement({
-					definition,
-					hoboHome,
-					emitProgress,
-				});
-				if (placement.outcome === "rejected") {
+				const client =
+					deps.createRemoteClient?.(target.uri) ??
+					createRemoteBrokerClient({
+						brokerUri: target.uri,
+						presenter,
+						...(deps.discovery ? { discovery: deps.discovery } : {}),
+						...(deps.mockRemote
+							? { mock: deps.mockRemote }
+							: deps.createRemoteClient
+								? {}
+								: // HONEST SCOPE: without a live broker, unit tests inject mockRemote;
+									// composed CLI without mock fails discovery closed against real URI.
+									{}),
+					});
+
+				let discovery;
+				try {
+					discovery = await client.discover();
+				} catch (error) {
+					if (error instanceof BrokerDiscoveryError) {
+						return {
+							ok: false,
+							status: "discovery_failed",
+							code: error.code,
+							message: `hobo up: ${error.message}`,
+							remediation: [
+								"Verify the broker URI is reachable and serves /.well-known/hobo-broker.",
+								"Run `hobo up` without --broker for the local embedded path.",
+								`Try \`hobo login --broker ${target.uri}\` for authenticated remote use.`,
+							],
+							data: {
+								command: "up",
+								projectDir,
+								brokerUri: target.uri,
+							},
+						};
+					}
+					throw error;
+				}
+
+				const wantAnonymous = target.mode === "anonymous";
+				// Also enter anonymous when auth has no principal and broker allows it
+				// only if explicitly requested via --anonymous/--temporary (product: opt-in).
+				if (wantAnonymous) {
+					if (!discovery.supportsAnonymous) {
+						return {
+							ok: false,
+							status: "anonymous_not_supported",
+							code: "HOBO_ANON_NOT_SUPPORTED",
+							message: `hobo up: broker ${discovery.brokerId} does not advertise anonymous/temporary deploy`,
+							remediation: [
+								`Run \`hobo login --broker ${target.uri}\` then \`hobo up --broker ${target.uri}\`.`,
+								"Pick a broker that advertises supportsAnonymous in discovery.",
+								"Fall back to local: `hobo up` with no --broker flags.",
+							],
+							data: {
+								command: "up",
+								projectDir,
+								brokerUri: target.uri,
+								brokerId: discovery.brokerId,
+								authMethods: discovery.authMethods,
+								supportsAnonymous: false,
+							},
+						};
+					}
+
+					emitProgress(
+						"hobo up: requesting anonymous/temporary session (discovery allows)",
+					);
+					const session = await client.createAnonymousSession({
+						bindleName: definition.name,
+					});
+					const credential = presenter.presentAnonymous({
+						audience: discovery.issuer,
+						ephemeralPrincipal: session.ephemeralPrincipal,
+						accessToken: session.accessToken,
+						expiresAt: session.expiresAt,
+					});
+					const placed = await client.place({
+						bindleName: definition.name,
+						projectDir,
+						camp: flags.camp,
+						credential,
+						anonymous: true,
+						claimToken: session.claimToken,
+					});
+
+					const claimHint = `hobo claim <account> --broker ${target.uri} --token ${session.claimToken}`;
+					emitProgress(
+						`hobo up: temporary deployment ${placed.primaryUrl} — claim before ${session.expiresAt}`,
+					);
+					emitProgress(`hobo up: claim with: ${claimHint}`);
+
 					return {
-						ok: false,
-						status: "broker_rejected",
-						code: "HOBO_UP_BROKER_REJECTED",
-						message: `hobo up: ${placement.message}`,
-						...(placement.remediation
-							? { remediation: [...placement.remediation] }
-							: {}),
+						ok: true,
+						status: "deployed_anonymous",
+						code: "HOBO_OK",
+						message: `hobo up: anonymous deploy of ${definition.name} at ${placed.primaryUrl} (claim by ${session.expiresAt})`,
 						data: {
 							command: "up",
 							projectDir,
-							brokerId: placement.brokerId,
-							explicitProviders: placement.explicitProviders,
-							rejection: placement.resolution.rejection,
+							bindleName: definition.name,
+							brokerUri: target.uri,
+							brokerId: discovery.brokerId,
+							mode: "anonymous",
+							deploymentId: placed.deploymentId,
+							primaryUrl: placed.primaryUrl,
+							claimToken: session.claimToken,
+							claimUrl: session.claimUrl,
+							expiresAt: session.expiresAt,
+							ttlSeconds: session.ttlSeconds,
+							restrictions: session.restrictions,
+							principal: credential.principal,
+							principalKind: credential.principal.kind,
+							credentialScheme: credential.scheme,
+							resources: placed.resources,
+							claimHint,
 						},
 					};
 				}
 
-				emitProgress(`hobo up: ${placement.message}`);
-
-				// Realize on the broker-chosen component host (local | isolated-wasm).
-				// Ephemeral port avoids collisions with a long-running `hobo dev`.
-				const port = await freePort();
-				const serve = await serveProjectOnLocalYard({
-					projectDir,
+				// Authenticated remote
+				const credential = await presenter.presentAuthenticated({
+					audience: discovery.issuer,
 					hoboHome,
-					componentHost: placement.componentHost,
-					port,
-					emitProgress,
+					env,
+					requirePrincipal: true,
 				});
-				const primaryUrl = serve.primaryUrl;
-				const exposedEndpoints = serve.exposedEndpoints;
-				const serviceDiscovery = serve.serviceDiscovery;
-				const probe = serve.probe;
-				await serve.close();
+				if (credential === null) {
+					return {
+						ok: false,
+						status: "no_principal",
+						code: "HOBO_UP_NO_PRINCIPAL",
+						message:
+							"hobo up: authenticated remote deploy needs a principal (login or agent SVID)",
+						remediation: [
+							`Run \`hobo login --broker ${target.uri}\`.`,
+							"Or set HOBO_AGENT_SVID / HOBO_AGENT_ID for a workload principal.",
+							"Or use `--anonymous` / `--temporary` if the broker advertises support.",
+							"Local fallback: `hobo up` with no --broker flags.",
+						],
+						data: {
+							command: "up",
+							projectDir,
+							brokerUri: target.uri,
+							brokerId: discovery.brokerId,
+						},
+					};
+				}
+
+				emitProgress(
+					`hobo up: authenticated as ${credential.principal.kind}:${credential.principal.id} (${credential.scheme})`,
+				);
+				const placed = await client.place({
+					bindleName: definition.name,
+					projectDir,
+					camp: flags.camp,
+					credential,
+					anonymous: false,
+				});
 
 				return {
 					ok: true,
 					status: "deployed",
 					code: "HOBO_OK",
-					message: `hobo up: placed ${definition.name} via broker on ${placement.providerId} (camp ${placement.campId}, host ${placement.componentHost})`,
+					message: `hobo up: placed ${definition.name} on remote broker ${discovery.brokerId} as ${credential.principal.id}`,
 					data: {
 						command: "up",
 						projectDir,
 						bindleName: definition.name,
-						brokerId: placement.brokerId,
-						campId: placement.campId,
-						yardName: placement.yardName,
-						providerId: placement.providerId,
-						componentHost: placement.componentHost,
-						placements: placement.resolution.receipt?.placements ?? [],
-						primaryUrl,
-						exposedEndpoints,
-						serviceDiscovery,
-						probe,
+						brokerUri: target.uri,
+						brokerId: discovery.brokerId,
+						mode: "auth",
+						deploymentId: placed.deploymentId,
+						primaryUrl: placed.primaryUrl,
+						principal: credential.principal,
+						principalKind: credential.principal.kind,
+						...(credential.humanPrincipal
+							? {
+									humanPrincipal: credential.humanPrincipal,
+									humanPrincipalKind: credential.humanPrincipal.kind,
+								}
+							: {}),
+						credentialScheme: credential.scheme,
+						resources: placed.resources,
+						// Dual principal is explicit in data — agents are never collapsed into human.
+						dualPrincipal: credential.humanPrincipal !== undefined,
 					},
 				};
 			} catch (error) {
+				if (error instanceof RemoteBrokerClientError) {
+					return {
+						ok: false,
+						status: "remote_error",
+						code: error.code,
+						message: `hobo up: ${error.message}`,
+						remediation: [
+							`Run \`hobo login --broker <uri>\` for authenticated remote use.`,
+							"Check discovery/anonymous support on the target broker.",
+							"Local fallback: `hobo up` with no --broker flags.",
+						],
+						data: {
+							command: "up",
+							projectDir,
+							hoboHome,
+							...(error.data ?? {}),
+						},
+					};
+				}
 				const message = error instanceof Error ? error.message : String(error);
 				return {
 					ok: false,
@@ -160,5 +412,116 @@ export function createBrokerAwareUpCommand(): CommandModule {
 				};
 			}
 		},
+	};
+}
+
+async function runLocalUp(input: {
+	readonly projectDir: string;
+	readonly hoboHome: string;
+	readonly definitionName: string;
+	readonly definition: NonNullable<
+		Awaited<ReturnType<typeof loadBindleDefinition>>
+	>;
+	readonly emitProgress: (message: string) => void;
+}) {
+	const { projectDir, hoboHome, definition, emitProgress } = input;
+
+	// Installed runtime always has a broker.
+	if (loadBareMetalYardConfig(hoboHome) === null) {
+		emitProgress("hobo up: no Yard yet — installing local Yard + broker");
+		initBareMetalYard({ hoboHome });
+	}
+	await ensureEmbeddedBroker({ hoboHome, emitProgress });
+
+	const placement = await resolveBindlePlacement({
+		definition,
+		hoboHome,
+		emitProgress,
+	});
+	if (placement.outcome === "rejected") {
+		return {
+			ok: false,
+			status: "broker_rejected",
+			code: "HOBO_UP_BROKER_REJECTED",
+			message: `hobo up: ${placement.message}`,
+			...(placement.remediation
+				? { remediation: [...placement.remediation] }
+				: {}),
+			data: {
+				command: "up",
+				projectDir,
+				mode: "local",
+				brokerId: placement.brokerId,
+				explicitProviders: placement.explicitProviders,
+				rejection: placement.resolution.rejection,
+			},
+		};
+	}
+
+	emitProgress(`hobo up: ${placement.message}`);
+
+	const port = await freePort();
+	const serve = await serveProjectOnLocalYard({
+		projectDir,
+		hoboHome,
+		componentHost: placement.componentHost,
+		port,
+		emitProgress,
+	});
+	const primaryUrl = serve.primaryUrl;
+	const exposedEndpoints = serve.exposedEndpoints;
+	const serviceDiscovery = serve.serviceDiscovery;
+	const probe = serve.probe;
+	await serve.close();
+
+	return {
+		ok: true,
+		status: "deployed",
+		code: "HOBO_OK",
+		message: `hobo up: placed ${definition.name} via broker on ${placement.providerId} (camp ${placement.campId}, host ${placement.componentHost})`,
+		data: {
+			command: "up",
+			projectDir,
+			mode: "local",
+			bindleName: definition.name,
+			brokerId: placement.brokerId,
+			campId: placement.campId,
+			yardName: placement.yardName,
+			providerId: placement.providerId,
+			componentHost: placement.componentHost,
+			placements: placement.resolution.receipt?.placements ?? [],
+			primaryUrl,
+			exposedEndpoints,
+			serviceDiscovery,
+			probe,
+		},
+	};
+}
+
+/** Test helper: build up command with shared mock remote broker. */
+export function createBrokerAwareUpCommandWithMock(options?: {
+	readonly supportsAnonymous?: boolean;
+	readonly brokerUri?: string;
+}): {
+	readonly command: CommandModule;
+	readonly mock: MockRemoteBrokerState;
+} {
+	const mock = createMockRemoteBrokerState({
+		brokerUri: options?.brokerUri ?? "https://public.example.com",
+		...(options?.supportsAnonymous !== undefined
+			? { supportsAnonymous: options.supportsAnonymous }
+			: {}),
+	});
+	const discovery = createBrokerDiscoveryClient({
+		fixed: new Map([
+			[mock.discovery.issuer.replace(/\/+$/, ""), mock.discovery],
+		]),
+	});
+	return {
+		mock,
+		command: createBrokerAwareUpCommand({
+			mockRemote: mock,
+			discovery,
+		}),
 	};
 }

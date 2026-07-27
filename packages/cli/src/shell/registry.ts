@@ -32,6 +32,11 @@ export interface CommandRunInput {
 		readonly port: string | null;
 		readonly home: string | null;
 		readonly host: string | null;
+		readonly broker: string | null;
+		readonly brokerUri: string | null;
+		readonly anonymous: boolean;
+		readonly temporary: boolean;
+		readonly token: string | null;
 	};
 	readonly args: readonly string[];
 	readonly verb: string;

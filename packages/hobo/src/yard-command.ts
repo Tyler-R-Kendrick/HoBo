@@ -6,28 +6,27 @@ import {
 	defaultHoboHome,
 	initBareMetalYard,
 	loadBareMetalYardConfig,
+	normalizeComponentHostKind,
 	yardConfigPath,
 } from "./bare-metal-yard.js";
 import { ensureEmbeddedBroker } from "./broker-runtime.js";
+import { ensureAllRuntimeHosts, getRuntimeHost } from "./host-registry.js";
 import { probeWasmHostInstall } from "./wasm-host.js";
-import { ensureIsolatedWasmToolchain } from "./wasm-sandbox.js";
 
 // `hobo yard` — install/inspect a **Yard** (glossary: provider-specific control
 // plane). Camps are placement targets the Yard creates when serving Bindles.
-//   hobo yard init [--force] [--port <n>] [--host local|isolated-wasm]
-//     --host selects the Camp *component host* backend (not the Yard itself).
-//     --host isolated-wasm also ensures wasmtime + jco under HOBO_HOME.
-//   hobo yard ensure  — install isolated-wasm toolchain (wasmtime, jco check)
+//   hobo yard init [--force] [--port <n>] [--host local|wasm|oci|cloud-native]
+//     aliases: isolated-wasm→wasm, bare-metal|runtime-local→local
+//   hobo yard ensure  — ensure all registered host runtimes
 //   hobo yard status | doctor
 
 function parseComponentHostFlag(raw: unknown): ComponentHostKind | undefined {
 	if (raw === undefined || raw === null) return undefined;
-	const value = String(raw);
-	if (value === "bare-metal" || value === "runtime-local") return "local";
-	if ((COMPONENT_HOST_KINDS as readonly string[]).includes(value)) {
-		return value as ComponentHostKind;
+	try {
+		return normalizeComponentHostKind(String(raw));
+	} catch {
+		return undefined;
 	}
-	return undefined;
 }
 
 export function createYardCommand(): CommandModule {
@@ -69,66 +68,49 @@ export function createYardCommand(): CommandModule {
 						ok: false,
 						status: "invalid_host",
 						code: "HOBO_YARD_USAGE",
-						message: `hobo yard init: --host (Camp component host) must be one of ${COMPONENT_HOST_KINDS.join("|")}`,
+						message: `hobo yard init: --host (Camp component host) must be one of ${COMPONENT_HOST_KINDS.join("|")} (aliases: isolated-wasm→wasm)`,
 						remediation: [
 							"Example: hobo yard init --host local",
-							"Example: hobo yard init --host isolated-wasm",
+							"Example: hobo yard init --host wasm",
+							"Example: hobo yard init --host oci",
+							"Example: hobo yard init --host cloud-native",
 							"Yard = control plane; --host selects the Camp component host backend.",
 						],
 						data: { command: "yard" },
 					};
 				}
 				try {
-					// Installed runtime always includes an embedded broker.
 					const embedded = await ensureEmbeddedBroker({
 						hoboHome,
 						emitProgress,
 					});
-					const preferredHost =
-						componentHost ?? embedded.state.preferredComponentHost;
+					const preferredHost = normalizeComponentHostKind(
+						componentHost ?? embedded.state.preferredComponentHost,
+					);
 					const { config, configPath } = initBareMetalYard({
 						hoboHome,
 						force: flags.force === true,
 						...(defaultPort !== undefined ? { defaultPort } : {}),
 						componentHost: preferredHost,
 					});
-					let toolchain: Awaited<
-						ReturnType<typeof ensureIsolatedWasmToolchain>
-					> | null = null;
-					if (config.componentHost === "isolated-wasm") {
-						emitProgress?.(
-							"hobo yard init: ensuring isolated-wasm toolchain (wasmtime + jco)",
-						);
-						toolchain = await ensureIsolatedWasmToolchain({
-							hoboHome,
-							env,
-							emitProgress,
-						});
-					}
-					const wasm = probeWasmHostInstall({
-						env: {
-							...env,
-							...(toolchain
-								? { HOBO_WASMTIME_BIN: toolchain.wasmtime.binPath }
-								: {}),
-						},
+					const hostEnsure = await getRuntimeHost(config.componentHost).ensure({
+						hoboHome,
+						env,
+						emitProgress,
 					});
+					const wasm = probeWasmHostInstall({ env });
 					return {
 						ok: true,
 						status: "initialized",
 						code: "HOBO_YARD_INIT",
-						message:
-							`hobo yard init: Yard '${config.name}' componentHost=${config.componentHost} at ${configPath}; broker ${embedded.state.brokerId}` +
-							(toolchain
-								? `; toolchain wasmtime ${toolchain.wasmtime.version}`
-								: ""),
+						message: `hobo yard init: Yard '${config.name}' componentHost=${config.componentHost} at ${configPath}; broker ${embedded.state.brokerId}; host ready=${hostEnsure.ready}`,
 						data: {
 							command: "yard",
 							configPath,
 							config,
 							wasm,
 							broker: embedded.state,
-							...(toolchain !== null ? { toolchain } : {}),
+							hostEnsure,
 						},
 					};
 				} catch (error) {
@@ -140,8 +122,9 @@ export function createYardCommand(): CommandModule {
 						remediation: [
 							"Pass --force to overwrite an existing yard.json.",
 							"Set HOBO_HOME to choose an alternate install root.",
-							"Use --host isolated-wasm for Wasmtime process sandboxes (private components).",
-							"Run `hobo yard ensure` to install the isolated-wasm toolchain.",
+							"Use --host wasm for Wasmtime process sandboxes (private components).",
+							"Use --host oci for WASM-on-OCI / Kubernetes.",
+							"Run `hobo yard ensure` to install host toolchains.",
 						],
 						data: { command: "yard" },
 					};
@@ -150,21 +133,22 @@ export function createYardCommand(): CommandModule {
 
 			if (subcommand === "ensure") {
 				try {
-					const toolchain = await ensureIsolatedWasmToolchain({
+					const hosts = await ensureAllRuntimeHosts({
 						hoboHome,
 						env,
 						emitProgress,
 					});
+					const allReady = hosts.every((h) => h.ready);
 					return {
-						ok: true,
-						status: "ready",
-						code: "HOBO_YARD_ENSURE",
-						message: `hobo yard ensure: isolated-wasm toolchain ready (wasmtime ${toolchain.wasmtime.version}, jco ${toolchain.jco.version}) under ${hoboHome}`,
+						ok: allReady,
+						status: allReady ? "ready" : "partial",
+						code: allReady ? "HOBO_YARD_ENSURE" : "HOBO_YARD_ENSURE_PARTIAL",
+						message: `hobo yard ensure: ${hosts.map((h) => `${h.kind}=${h.ready ? "ready" : "not-ready"}`).join(", ")} under ${hoboHome}`,
 						data: {
 							command: "yard",
 							subcommand: "ensure",
 							hoboHome,
-							toolchain,
+							hosts,
 						},
 					};
 				} catch (error) {
@@ -175,7 +159,8 @@ export function createYardCommand(): CommandModule {
 						message: `hobo yard ensure: ${error instanceof Error ? error.message : String(error)}`,
 						remediation: [
 							"Ensure network access to download wasmtime, or set HOBO_WASMTIME_BIN.",
-							"Reinstall @hobo/hobo so @bytecodealliance/jco is available.",
+							"Install kubectl and ensure KUBECONFIG points at a cluster for oci host.",
+							"Override kubectl with HOBO_KUBECTL_BIN; runtime image via HOBO_OCI_RUNTIME_IMAGE.",
 							"Set HOBO_HOME if the Yard tools dir should not be ~/.hobo.",
 						],
 						data: { command: "yard", subcommand: "ensure", hoboHome },
@@ -192,7 +177,7 @@ export function createYardCommand(): CommandModule {
 						code: "HOBO_YARD_MISSING",
 						message: `hobo yard status: no local Yard at ${yardConfigPath(hoboHome)}`,
 						remediation: [
-							"Run `hobo yard init` (optionally `--host isolated-wasm`).",
+							"Run `hobo yard init` (optionally `--host wasm|oci|cloud-native`).",
 						],
 						data: {
 							command: "yard",
@@ -218,61 +203,45 @@ export function createYardCommand(): CommandModule {
 			if (subcommand === "doctor") {
 				const config = loadBareMetalYardConfig(hoboHome);
 				const componentHost = config?.componentHost ?? "local";
-				let toolchain: Awaited<
-					ReturnType<typeof ensureIsolatedWasmToolchain>
+				let hostEnsure: Awaited<
+					ReturnType<ReturnType<typeof getRuntimeHost>["ensure"]>
 				> | null = null;
-				let toolchainError: string | null = null;
-				if (componentHost === "isolated-wasm") {
-					try {
-						// Doctor repairs missing toolchain for isolated-wasm Yards.
-						toolchain = await ensureIsolatedWasmToolchain({
-							hoboHome,
-							env,
-							emitProgress,
-						});
-					} catch (error) {
-						toolchainError =
-							error instanceof Error ? error.message : String(error);
-					}
+				let hostError: string | null = null;
+				try {
+					hostEnsure = await getRuntimeHost(componentHost).ensure({
+						hoboHome,
+						env,
+						emitProgress,
+					});
+				} catch (error) {
+					hostError = error instanceof Error ? error.message : String(error);
 				}
-				const wasm = probeWasmHostInstall({
-					env: {
-						...env,
-						...(toolchain
-							? { HOBO_WASMTIME_BIN: toolchain.wasmtime.binPath }
-							: {}),
-					},
-				});
-				const ok =
-					config !== null &&
-					(componentHost !== "isolated-wasm" || toolchain !== null);
+				const wasm = probeWasmHostInstall({ env });
+				const ok = config !== null && hostEnsure?.ready === true;
 				return {
 					ok,
 					status: ok
 						? "healthy"
 						: config === null
 							? "missing_config"
-							: "toolchain_missing",
+							: "host_not_ready",
 					code: ok
 						? "HOBO_YARD_DOCTOR"
 						: config === null
 							? "HOBO_YARD_MISSING"
-							: "HOBO_YARD_TOOLCHAIN_MISSING",
+							: "HOBO_YARD_HOST_NOT_READY",
 					message: ok
-						? `hobo yard doctor: Yard componentHost=${componentHost}; engine=${wasm.engineSource} ${wasm.engineVersion}` +
-							(componentHost === "isolated-wasm"
-								? `; private components use wasmtime OS-process sandboxes (mesh injects bindle env)`
-								: "; private mesh is process-local")
+						? `hobo yard doctor: Yard componentHost=${componentHost}; engine=${wasm.engineSource} ${wasm.engineVersion}; host ready`
 						: config === null
 							? `hobo yard doctor: no Yard config — run hobo yard init`
-							: `hobo yard doctor: isolated-wasm toolchain missing — ${toolchainError ?? "run hobo yard ensure"}`,
+							: `hobo yard doctor: host ${componentHost} not ready — ${hostError ?? "run hobo yard ensure"}`,
 					...(ok
 						? {}
 						: {
 								remediation: [
 									config === null
-										? "Run `hobo yard init [--host isolated-wasm]`."
-										: "Run `hobo yard ensure` to install wasmtime + verify jco.",
+										? "Run `hobo yard init [--host local|wasm|oci|cloud-native]`."
+										: "Run `hobo yard ensure` to install host toolchains.",
 								],
 							}),
 					data: {
@@ -280,13 +249,13 @@ export function createYardCommand(): CommandModule {
 						hoboHome,
 						config,
 						wasm,
-						...(toolchain !== null ? { toolchain } : {}),
-						...(toolchainError !== null ? { toolchainError } : {}),
+						...(hostEnsure !== null ? { hostEnsure } : {}),
+						...(hostError !== null ? { hostError } : {}),
 						scopes: {
 							yard: "provider-specific control plane (this config)",
 							camp: "placement target created when serving a Bindle (e.g. dev-local)",
 							componentHost:
-								"Camp capability that executes components (local | isolated-wasm)",
+								"Camp capability that executes components (local | wasm | oci | cloud-native)",
 							bindle: "app topology placed into a Camp",
 							meshEnv:
 								'bindle .with({option:"env"}) values injected on private hops as x-hobo-env-*',
@@ -302,8 +271,8 @@ export function createYardCommand(): CommandModule {
 				code: "HOBO_YARD_USAGE",
 				message: `hobo yard: unknown subcommand '${subcommand}'`,
 				remediation: [
-					"Use `hobo yard init [--force] [--port <n>] [--host local|isolated-wasm]`.",
-					"Use `hobo yard ensure` to install the isolated-wasm toolchain.",
+					"Use `hobo yard init [--force] [--port <n>] [--host local|wasm|oci|cloud-native]`.",
+					"Use `hobo yard ensure` to install all host toolchains.",
 					"Use `hobo yard status` or `hobo yard doctor`.",
 					"Yard = control plane; Camp = placement; component host = Camp execution capability.",
 				],

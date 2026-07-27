@@ -77,9 +77,35 @@ actually applies the executor's programs — and does not depend on
 
 | Surface | What HoBo sees | Where frameworks live |
 |---------|----------------|------------------------|
-| local component host | bindle entrypoint as `(Request) => Response` | **`packages/adapters/adapter-hono`** + app routes |
-| isolated-wasm host | bundles `src/<name>.ts` (`export const app` with `.fetch`) to wasi:http | same app source as local |
+| local component host | bindle entrypoint as `(Request) => Response` | **`@hobo/runtime-local`** + **`packages/adapters/*`** |
+| wasm host | bundles `src/<name>.ts` to wasi:http → Wasmtime OS sandboxes | **`@hobo/runtime-wasm`** |
+| oci host | WASM packed as OCI, scheduled on Kubernetes via real kubectl client | **`@hobo/runtime-oci`** |
+| cloud-native host | multi-cloud registry (mock + aws/gcp/azure/vercel/cloudflare stubs) | **`@hobo/runtime-cloud-native`** |
 | mesh env | `x-hobo-env-*` when camp injects config | Camp mesh |
+
+Host runtimes are **separate packages** under `packages/runtimes/*`. The composition
+root dispatches via `serveProjectOnHost` / `getRuntimeHost`. Alias: `isolated-wasm` → `wasm`.
+
+### External dependencies (Aspire-style)
+
+Bindle authoring (`@hobo/bindles`):
+
+| Factory | Runtime required | Discovery |
+|---------|------------------|-----------|
+| `b.external({ connectionString, endpoints })` | none (BYO) | `ConnectionStrings__*` / `services__*` |
+| `b.container({ image })` | **oci** | mesh + K8s Deployment |
+| `b.wasmComponent({ source })` | **wasm** | wasmtime sandbox |
+| `.withReference(...)` | — | alias of `dependsOn` |
+
+Broker hard-fails when required runtimes are not installed:
+
+```bash
+hobo add runtime-wasm    # enable wasm host on this yard
+hobo add runtime-oci     # enable oci/k8s host
+hobo yard ensure         # equip toolchains
+```
+
+Missing install → `required-runtime-unavailable` (same plane as provider pins).
 
 Adapters are **shared monorepo packages** for any project (`pnpm add @hobo/adapter-hono`).
 Examples only *consume* them — adapter source does not live under `examples/`.

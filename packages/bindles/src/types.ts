@@ -39,6 +39,24 @@ export const CATALOG_ROWS = [
 	{ factory: "job", portRef: ["hobo:job"], allowVerbs: ["submit"] },
 	{ factory: "web", portRef: ["wasi:http"], allowVerbs: [] },
 	{ factory: "service", portRef: ["wasi:http"], allowVerbs: [] },
+	/**
+	 * External BYO dependency (SaaS / brownfield). No provision; Camp injects
+	 * connection strings / endpoint URLs. Aspire: AddConnectionString / external.
+	 */
+	{ factory: "external", portRef: ["hobo:external"], allowVerbs: [] },
+	/**
+	 * Container image dependency. Requires oci Camp host runtime on the broker.
+	 * Aspire: AddContainer.
+	 */
+	{ factory: "container", portRef: ["hobo:container"], allowVerbs: [] },
+	/**
+	 * Wasm component dependency (wasi:http or other). Requires wasm Camp host.
+	 */
+	{
+		factory: "wasm-component",
+		portRef: ["wasi:http", "hobo:wasm-component"],
+		allowVerbs: [],
+	},
 	{
 		factory: "flag",
 		portRef: ["hobo:feature-flag"],
@@ -84,6 +102,9 @@ export type AllowVerbsByKind = {
 	job: "submit";
 	web: never;
 	service: never;
+	external: never;
+	container: never;
+	"wasm-component": never;
 	flag: "eval" | "change";
 	auth: "verify" | "session";
 	crypto: "encrypt" | "decrypt" | "sign" | "verify";
@@ -175,6 +196,8 @@ export interface BindleResourceRecord<K extends ResourceKind = ResourceKind> {
 export interface BindleResource<K extends ResourceKind = ResourceKind> {
 	readonly kind: K;
 	dependsOn(...deps: BindleResource[]): BindleResource<K>;
+	/** Aspire-style WithReference — alias of dependsOn. */
+	withReference(...deps: BindleResource[]): BindleResource<K>;
 	allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K>;
 	with(...annotations: ProviderAnnotation[]): BindleResource<K>;
 }
@@ -203,6 +226,30 @@ export type DeclaredComponent = new () => object;
 /** What binds an app-shaped resource: a handler thunk or a declared component. */
 export type ComponentBinding = (() => unknown) | DeclaredComponent;
 
+/** Options for BYO external dependencies (no provision). */
+export interface ExternalDependencyOptions {
+	readonly connectionString?: string;
+	readonly endpoints?: Readonly<Record<string, string>>;
+}
+
+/** Options for container image dependencies (requires oci runtime). */
+export interface ContainerDependencyOptions {
+	readonly image: string;
+	readonly endpoints?: Readonly<
+		Record<string, { readonly port: number; readonly external?: boolean }>
+	>;
+	readonly env?: Readonly<Record<string, string>>;
+}
+
+/** Options for wasm component dependencies (requires wasm runtime). */
+export interface WasmComponentDependencyOptions {
+	readonly source: string;
+	readonly witWorld?: string;
+	readonly endpoints?: Readonly<
+		Record<string, { readonly port?: number }>
+	>;
+}
+
 export interface BindleBuilder {
 	api(binding?: ComponentBinding): BindleResource<"api">;
 	web(binding?: ComponentBinding): BindleResource<"web">;
@@ -213,4 +260,16 @@ export interface BindleBuilder {
 	secret(): BindleResource<"secret">;
 	data(): BindleResource<"data">;
 	service(binding?: ComponentBinding): BindleResource<"service">;
+	/** BYO external service (connection string / URL). No host runtime required. */
+	external(
+		options?: ExternalDependencyOptions,
+	): BindleResource<"external">;
+	/** Container image dependency — requires `hobo add runtime-oci`. */
+	container(
+		options: ContainerDependencyOptions,
+	): BindleResource<"container">;
+	/** Wasm component dependency — requires `hobo add runtime-wasm`. */
+	wasmComponent(
+		options: WasmComponentDependencyOptions,
+	): BindleResource<"wasm-component">;
 }

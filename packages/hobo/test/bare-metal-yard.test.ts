@@ -47,10 +47,10 @@ describe("bare-metal yard e2e", () => {
 		expect(envelope.data.config.kind).toBe("bare-metal");
 		expect(envelope.data.config.name).toBe("local");
 		expect(envelope.data.config.defaultPort).toBe(4100);
-		// Broker-runtime prefers isolated-wasm when tooling can be equipped.
+		// Broker-runtime prefers wasm when tooling can be equipped.
 		expect(
 			(envelope.data.config as { componentHost?: string }).componentHost,
-		).toMatch(/^(local|isolated-wasm)$/);
+		).toMatch(/^(local|wasm|oci|cloud-native)$/);
 
 		const loaded = loadBareMetalYardConfig(hoboHome);
 		expect(loaded?.providerId).toBe("local");

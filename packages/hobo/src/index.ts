@@ -121,6 +121,7 @@ export {
 	LOCAL_HOST_KINDS,
 	type LocalHostKind,
 	loadBareMetalYardConfig,
+	normalizeComponentHostKind,
 	openBareMetalYard,
 	parseBareMetalYardConfig,
 	scaffoldBareMetalYardConfig,
@@ -136,6 +137,36 @@ export {
 	serveProjectOnIsolatedWasm,
 	type IsolatedWasmServeResult,
 } from "./isolated-wasm-runtime.js";
+export {
+	serveProjectOnHost,
+	type MultiHostServeResult,
+} from "./multi-host-serve.js";
+export {
+	buildPrivateComponentSpecs,
+	ensureAllRuntimeHosts,
+	getRuntimeHost,
+	servePrivateOnHost,
+	toRuntimeHostKind,
+} from "./host-registry.js";
+export {
+	createCloudNativeRuntimeCatalogEntry,
+	createLocalRuntimeCatalogEntry,
+	createOciRuntimeCatalogEntry,
+	createWasmRuntimeCatalogEntry,
+	hostToRuntimeInstallId,
+	OCI_PROVIDER_ID,
+	RUNTIME_INSTALL_IDS,
+	RUNTIME_PROVIDER_IDS,
+	runtimeInstallIdToHost,
+	type RuntimeInstallId,
+} from "./runtime-catalog.js";
+export {
+	installRuntime,
+	installedHostKinds,
+	isRuntimeInstalled,
+	loadInstalledRuntimes,
+} from "./installed-runtimes.js";
+export { collectRequiredRuntimes } from "./broker-runtime.js";
 export {
 	bootWasmtimeSandbox,
 	componentizePrivateGuest,

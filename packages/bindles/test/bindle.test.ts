@@ -97,6 +97,36 @@ describe("bindle()", () => {
 		expect(definition.resources.web.annotations).toEqual([campEnv]);
 	});
 
+	it("external / container / wasmComponent declare deps with required runtimes", async () => {
+		const { collectRequiredRuntimes } = await import("../src/dependencies.js");
+		const definition = bindle("deps-demo", (b) => {
+			const legacy = b.external({
+				connectionString: "Host=legacy;Db=app",
+			});
+			const redis = b.container({
+				image: "redis:7",
+				endpoints: { http: { port: 6379 } },
+			});
+			const plugin = b.wasmComponent({
+				source: "./deps/plugin.wasm",
+			});
+			const api = b.api().withReference(legacy, redis, plugin);
+			return { legacy, redis, plugin, api };
+		});
+
+		expect(definition.resources.legacy?.kind).toBe("external");
+		expect(definition.resources.redis?.kind).toBe("container");
+		expect(definition.resources.plugin?.kind).toBe("wasm-component");
+		expect(definition.edges).toEqual(
+			expect.arrayContaining([
+				{ from: "api", to: "legacy" },
+				{ from: "api", to: "redis" },
+				{ from: "api", to: "plugin" },
+			]),
+		);
+		expect(collectRequiredRuntimes(definition)).toEqual(["oci", "wasm"]);
+	});
+
 	it("rejects empty resource names", () => {
 		expect(() =>
 			bindle("shop", (b) => ({

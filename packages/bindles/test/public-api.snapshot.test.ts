@@ -53,6 +53,17 @@ function createBindlesPublicApiSnapshot(
 		"createCollectionEvents",
 		"manifestFromWiring",
 		"COLLECTION_EVENT_SOURCE",
+		"env",
+		"collectRequiredRuntimes",
+		"DEPENDENCY_OPTION",
+		"dependencyAnnotation",
+		"dependencyRuntimeOf",
+		"discoveryEnvForDependency",
+		"externalDependencyAnnotation",
+		"containerDependencyAnnotation",
+		"wasmComponentDependencyAnnotation",
+		"isDependencyAnnotation",
+		"readDependencyConfig",
 		...factoryNames,
 	]);
 
@@ -214,6 +225,70 @@ function createBindlesPublicApiSnapshot(
 				name: "COLLECTION_EVENT_SOURCE",
 				kind: "collect-constant",
 				signature: 'const COLLECTION_EVENT_SOURCE: "hobo.collector"',
+			},
+			{
+				name: "env",
+				kind: "helper",
+				signature:
+					"env(config: Readonly<Record<string, string | number | boolean>>): ProviderAnnotation",
+			},
+			{
+				name: "collectRequiredRuntimes",
+				kind: "dependency-helper",
+				signature:
+					"collectRequiredRuntimes(definition: BindleDefinition): readonly RequiredRuntimeKind[]",
+			},
+			{
+				name: "DEPENDENCY_OPTION",
+				kind: "dependency-constant",
+				signature: 'const DEPENDENCY_OPTION: "dependency"',
+			},
+			{
+				name: "dependencyAnnotation",
+				kind: "dependency-helper",
+				signature: "dependencyAnnotation(config): ProviderAnnotation",
+			},
+			{
+				name: "externalDependencyAnnotation",
+				kind: "dependency-helper",
+				signature:
+					"externalDependencyAnnotation(options?: ExternalDependencyOptions): ProviderAnnotation",
+			},
+			{
+				name: "containerDependencyAnnotation",
+				kind: "dependency-helper",
+				signature:
+					"containerDependencyAnnotation(options: ContainerDependencyOptions): ProviderAnnotation",
+			},
+			{
+				name: "wasmComponentDependencyAnnotation",
+				kind: "dependency-helper",
+				signature:
+					"wasmComponentDependencyAnnotation(options: WasmComponentDependencyOptions): ProviderAnnotation",
+			},
+			{
+				name: "isDependencyAnnotation",
+				kind: "dependency-helper",
+				signature:
+					"isDependencyAnnotation(annotation: ProviderAnnotation): boolean",
+			},
+			{
+				name: "dependencyRuntimeOf",
+				kind: "dependency-helper",
+				signature:
+					'dependencyRuntimeOf(annotation: ProviderAnnotation): "wasm" | "oci" | "none" | undefined',
+			},
+			{
+				name: "readDependencyConfig",
+				kind: "dependency-helper",
+				signature:
+					"readDependencyConfig(annotations: readonly ProviderAnnotation[]): Readonly<Record<string, unknown>> | null",
+			},
+			{
+				name: "discoveryEnvForDependency",
+				kind: "dependency-helper",
+				signature:
+					"discoveryEnvForDependency(resourceName, config, resolved): Record<string, string>",
 			},
 			...extraExports,
 		],

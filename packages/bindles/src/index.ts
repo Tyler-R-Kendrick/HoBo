@@ -1,4 +1,17 @@
 export { bindle } from "./bindle.js";
+export {
+	collectRequiredRuntimes,
+	containerDependencyAnnotation,
+	DEPENDENCY_OPTION,
+	dependencyAnnotation,
+	dependencyRuntimeOf,
+	discoveryEnvForDependency,
+	externalDependencyAnnotation,
+	isDependencyAnnotation,
+	readDependencyConfig,
+	wasmComponentDependencyAnnotation,
+	type RequiredRuntimeKind,
+} from "./dependencies.js";
 export { env } from "./env.js";
 
 export {
@@ -52,6 +65,8 @@ export type {
 	BindleEdge,
 	BindleResource,
 	BindleResourceRecord,
+	ContainerDependencyOptions,
+	ExternalDependencyOptions,
 	LoweringDescriptor,
 	ProviderAnnotation,
 	ResourceCatalogEntry,
@@ -59,6 +74,7 @@ export type {
 	ResourceHandle,
 	ResourceKind,
 	SecretRef,
+	WasmComponentDependencyOptions,
 } from "./types.js";
 export type {
 	BindingMeta,

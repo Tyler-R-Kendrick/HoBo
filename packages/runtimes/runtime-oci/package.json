@@ -1,0 +1,30 @@
+{
+	"name": "@hobo/runtime-oci",
+	"version": "0.0.1",
+	"description": "Camp component host: WASM-on-OCI scheduled on Kubernetes (kind: oci).",
+	"type": "module",
+	"files": ["dist"],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@hobo/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
+		"@types/node": ">=24.0.0"
+	},
+	"scripts": {
+		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"lint": "biome check .",
+		"pretest": "pnpm run build && pnpm --filter @hobo/contract-harness build",
+		"test": "vitest run"
+	}
+}

@@ -1,4 +1,8 @@
 export {
+	createLocalRuntimeHost,
+	ensureLocalRuntime,
+} from "./host.js";
+export {
 	createLocalBindingResolver,
 	HELLO_BINDLE_LOCAL_ENDPOINTS,
 } from "./binding-resolver.js";

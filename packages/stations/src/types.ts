@@ -17,6 +17,17 @@ export type StationIsolation = Readonly<{
 	residency: string;
 	airgap: boolean;
 	trustDomain: string;
+	/**
+	 * Environment isolation class (ADR-0133). Station tagged to exactly one class.
+	 * Reachable only under that class's isolation + chaining rules.
+	 */
+	isolationClass?:
+		| "local-dev"
+		| "preview"
+		| "development"
+		| "staging"
+		| "production"
+		| "ephemeral";
 }>;
 
 export type RailPolicyEngine = Readonly<{

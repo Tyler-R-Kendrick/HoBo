@@ -18,6 +18,7 @@ const canonicalVerbNames = [
 	"login",
 	"connection",
 	"identity",
+	"access",
 	"claim",
 	"plan",
 	"verify",
@@ -77,6 +78,7 @@ Canonical verbs:
   login       identity      Obtain a dev SVID through OIDC
   connection  identity      Manage durable Connections (create/authorize/list/get/revoke/rotate)
   identity    identity      Observe continuous identity migration status (status/inspect; zero Bindle config)
+  access      identity      Request elevated/cross-env access or break-glass (short-lived capability; audited)
   claim       identity      Bind an anonymous deployment to an account
   plan        read-only     Dry-run the up decision
   verify      read-only     Run the unified Gatekeeper preflight

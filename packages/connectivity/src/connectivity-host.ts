@@ -149,17 +149,33 @@ async function handlePolicy(
 	const tags = Array.isArray(body.subjectTags)
 		? body.subjectTags.filter((t): t is string => typeof t === "string")
 		: [];
+	const resourceTags = Array.isArray(body.resourceTags)
+		? body.resourceTags.filter((t): t is string => typeof t === "string")
+		: [];
+	// Env isolation: ensure both sides carry env: tags (default development for
+	// same-tenant contract paths when omitted).
+	const subjectEnv =
+		tags.find((t) => t.startsWith("env:")) ?? "env:development";
+	const resourceEnv =
+		resourceTags.find((t) => t.startsWith("env:")) ?? subjectEnv;
+	const subjectTags = tags.some((t) => t.startsWith("env:"))
+		? tags
+		: [...tags, subjectEnv];
+	const resTags = resourceTags.some((t) => t.startsWith("env:"))
+		? resourceTags
+		: [...resourceTags, resourceEnv];
 	const req: PolicyRequest = {
 		subject: {
 			identity: String(body.subjectIdentity ?? "pact-subject"),
 			tenantId: parseTenantId(subjectTenant),
-			tags,
+			tags: subjectTags,
 		},
 		action,
 		resource: {
 			kind: String(body.resourceKind ?? "resource"),
 			id: String(body.resourceId ?? "1"),
 			tenantId: parseTenantId(resourceTenant),
+			tags: resTags,
 			...(body.resourceShared === true
 				? { attributes: { shared: "true" } }
 				: {}),

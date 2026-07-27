@@ -122,7 +122,11 @@ export function createBootstrapRail(stationId: string, now?: string): Rail {
 		stationId,
 		isBootstrap: true,
 		activationStatus: "active",
-		policyPacks: Object.freeze(["hobo.bootstrap.least-privilege/v1"]),
+		policyPacks: Object.freeze([
+			"hobo.bootstrap.least-privilege/v1",
+			// Soft floor always available; Station may also pin env isolation pack.
+			"hobo.env-network-isolation/v1",
+		]),
 		policyEngine: { kind: "ts" },
 		placementDefaults: {
 			objective: "pinned",

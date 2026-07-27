@@ -13,6 +13,11 @@ import {
 	type DynamicDnsTarget,
 	type JunctionDynamicDnsRegistrar,
 } from "./dns/dynamic-registrar.js";
+import {
+	isolationClassTag,
+	parseIsolationClass,
+	type IsolationClass,
+} from "./env-isolation/types.js";
 
 export type JunctionAgentRole = "junction" | "broker";
 
@@ -20,6 +25,7 @@ export interface JunctionAgentConfig {
 	readonly tenantId: TenantId | string;
 	readonly name: string;
 	readonly role?: JunctionAgentRole;
+	/** Isolation class / env — fixed at start; change only via control-plane. */
 	readonly env?: string;
 	readonly cloud?: string;
 	readonly authKey?: string;
@@ -27,6 +33,11 @@ export interface JunctionAgentConfig {
 	readonly overlayNetworkId?: string;
 	/** Targets to advertise via dynamic DNS on each heartbeat. */
 	readonly dnsTargets?: readonly DynamicDnsTarget[];
+	/**
+	 * Peer junction isolation class for federation checks.
+	 * Cross-env federation denied unless explicit grant presented to PolicyEngine.
+	 */
+	readonly federationPeerEnv?: string;
 }
 
 export interface JunctionAgent {
@@ -97,19 +108,48 @@ export function createJunctionAgent(options: {
 		config: { ...options.config, tenantId },
 		dynamicDns,
 		async start() {
-			const tags = options.overlay.tenantTags({
-				tenantId,
-				role,
-				...(options.config.env !== undefined
-					? { env: options.config.env }
-					: {}),
-				...(options.config.cloud !== undefined
-					? { cloud: options.config.cloud }
-					: {}),
-				...(options.config.overlayNetworkId !== undefined
-					? { overlayNetworkId: options.config.overlayNetworkId }
-					: {}),
-			});
+			const isolationClass: IsolationClass | null = parseIsolationClass(
+				options.config.env,
+			);
+			// Fail closed: Junction agents require an env / isolation class.
+			if (!isolationClass) {
+				return {
+					ready: false,
+					notes: [
+						"junction env isolation class required (fail closed) — set config.env",
+					],
+					overlayIps: [],
+				};
+			}
+			const envTag = isolationClassTag(isolationClass);
+			const tags = [
+				...options.overlay.tenantTags({
+					tenantId,
+					role,
+					env: isolationClass,
+					...(options.config.cloud !== undefined
+						? { cloud: options.config.cloud }
+						: {}),
+					...(options.config.overlayNetworkId !== undefined
+						? { overlayNetworkId: options.config.overlayNetworkId }
+						: {}),
+				}),
+				envTag,
+			];
+
+			// Cross-env federation denied by default (peer env must match).
+			if (options.config.federationPeerEnv !== undefined) {
+				const peer = parseIsolationClass(options.config.federationPeerEnv);
+				if (peer !== isolationClass) {
+					return {
+						ready: false,
+						notes: [
+							`junction env-scoped federation denied: ${isolationClass} cannot federate ${peer ?? "unknown"} without dual-controlled CrossEnvGrant`,
+						],
+						overlayIps: [],
+					};
+				}
+			}
 
 			if (options.policy) {
 				const decision = await options.policy.evaluate({
@@ -123,6 +163,7 @@ export function createJunctionAgent(options: {
 						kind: "junction",
 						id: options.config.name,
 						tenantId,
+						tags: [envTag],
 					},
 				});
 				if (decision.effect === "deny") {

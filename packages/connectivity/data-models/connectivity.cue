@@ -40,3 +40,24 @@ package connectivity
 	tenant_id?:     string
 	workload_id?:   string
 }
+
+#EnvMembershipRecord: {
+  id: string & != ""
+  principalId: string & != ""
+  isolationClass: "local-dev" | "preview" | "development" | "staging" | "production" | "ephemeral"
+  assignedAt: string & != ""
+  assignedBy: string & != ""
+  expiresAt?: string
+  dualControlRequired: bool
+  controlPlaneGated: true
+}
+
+#ElevatedAccessCapabilityRecord: {
+  id: string & != ""
+  subject: string & != ""
+  audience: string & != ""
+  isolationClass: "local-dev" | "preview" | "development" | "staging" | "production" | "ephemeral"
+  issuedAt: string & != ""
+  expiresAt: string & != ""
+  tokenRef: =~"^tokenref://"
+}

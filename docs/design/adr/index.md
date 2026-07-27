@@ -138,3 +138,4 @@
 | 0130 | DNS-valid hierarchical naming, optional portless local named endpoints, Tailscale-first managed overlay in `@hobo/connectivity`, pluggable public DNS, multi-tenant PolicyEngine + metering foundations | [portability-extensibility](07-portability-extensibility.md#adr-0130) |
 | 0131 | Station as control-plane occupancy primitive; Broker pure Conductor; Rails as versioned profiles | [architecture-core](01-architecture-core.md#adr-0131) |
 | 0132 | Continuous Identity Migration Plane: dual-path PrincipalRef continuity, Matching/policy-triggered, zero Bindle config | [identity-security](02-identity-security.md#adr-0132) |
+| 0133 | Hard environment network isolation + optional Privileged Access Gateway | [identity-security](02-identity-security.md#adr-0133) |

@@ -167,6 +167,7 @@ export {
 export {
 	createTagAclPolicyEngine,
 	TAG_ACL_POLICY_ENGINE_ID,
+	type TagAclPolicyEngineOptions,
 } from "./policy/tag-acl-engine.js";
 export {
 	createTenantIsolationRegistry,
@@ -176,6 +177,12 @@ export {
 	type TenantIsolationRegistryOptions,
 	type TenantOverlayPlane,
 } from "./tenancy/isolation.js";
+
+// Environment network isolation + elevated access + break-glass (ADR-0133).
+export * from "./env-isolation/index.js";
+export {
+	ENV_NETWORK_ISOLATION_REGO_DOCUMENT,
+} from "./policy/rego-lite.js";
 
 // Re-export pure naming / tenancy from core so consumers can depend on one package.
 export {

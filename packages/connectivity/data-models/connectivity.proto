@@ -46,3 +46,25 @@ message SecretlessLeaseRecord {
   string tenant_id = 8;
   string workload_id = 9;
 }
+
+// Environment network isolation (ADR-0133).
+message EnvMembershipRecord {
+  string id = 1;
+  string principal_id = 2;
+  string isolation_class = 3;
+  string assigned_at = 4;
+  string assigned_by = 5;
+  string expires_at = 6;
+  bool dual_control_required = 7;
+  bool control_plane_gated = 8;
+}
+
+message ElevatedAccessCapabilityRecord {
+  string id = 1;
+  string subject = 2;
+  string audience = 3;
+  string isolation_class = 4;
+  string issued_at = 5;
+  string expires_at = 6;
+  string token_ref = 7;
+}

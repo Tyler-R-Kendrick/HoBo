@@ -41,13 +41,14 @@ describe("tag ACL policy (pure)", () => {
 			subject: {
 				identity: "j1",
 				tenantId: parseTenantId("acme"),
-				tags: ["role:junction"],
+				tags: ["role:junction", "env:development"],
 			},
 			action: "junction.join",
 			resource: {
 				kind: "junction",
 				id: "j1",
 				tenantId: parseTenantId("acme"),
+				tags: ["env:development"],
 			},
 		});
 		expect(allow.effect).toBe("allow");
@@ -56,13 +57,14 @@ describe("tag ACL policy (pure)", () => {
 			subject: {
 				identity: "j1",
 				tenantId: parseTenantId("acme"),
-				tags: ["role:junction"],
+				tags: ["role:junction", "env:development"],
 			},
 			action: "name.resolve",
 			resource: {
 				kind: "endpoint",
 				id: "web",
 				tenantId: parseTenantId("other"),
+				tags: ["env:development"],
 			},
 		});
 		expect(deny.effect).toBe("deny");

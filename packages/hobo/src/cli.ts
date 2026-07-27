@@ -17,6 +17,7 @@ import { createLakebedProvider } from "@hobo/provider-lakebed";
 import { createBlacksmithCatalogEntry } from "@hobo/runner-blacksmith";
 import { createDepotCatalogEntry } from "@hobo/runner-depot";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
+import { createAccessCommand } from "./access-command.js";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
@@ -185,6 +186,8 @@ export function createComposedHoboCli(
 			connection: createConnectionCommand(),
 			// Continuous identity migration observe surface (Matching/policy-driven; zero Bindle config).
 			identity: createIdentityCommand(),
+			// Elevated / cross-env access request + break-glass (short-lived capability).
+			access: createAccessCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

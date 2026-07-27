@@ -47,6 +47,24 @@ export {
 	STATION_CONTRACT_VERSION,
 	STATION_SCHEMA_VERSION,
 } from "./types.js";
+export {
+	createBoundaryPamGatewayStub,
+	createJumpServerPamGatewayStub,
+	createPamGatewayStub,
+	createTeleportPamGatewayStub,
+	PAM_GATEWAY_SCHEMA,
+	PAM_RAIL_CAPABILITY,
+	type AuditSink,
+	type CreatePamGatewayOptions,
+	type PamAuditEvent,
+	type PamIsolationClass,
+	type PamKind,
+	type PrivilegedAccessGateway,
+	type SessionHandle,
+	type SessionRequest,
+	type StationContext,
+	railEnablesPam,
+} from "./privileged-access-gateway.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_STATIONS_PACKAGE = "@hobo/stations";

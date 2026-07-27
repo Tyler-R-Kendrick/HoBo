@@ -228,3 +228,35 @@ const invoice = billing.closePeriod({
 - SPIRE Workload API fetch as drop-in replacement for local JWT-SVID mint
 - WebAuthn ceremony for human claim step-up (human-only; agents never hold passkeys)
 - Netbird agent gRPC path if management HTTP enroll is disabled on your build
+
+## Environment network isolation (ADR-0133)
+
+Cross-env traffic is **denied by default**. Isolation classes: `local-dev`, `preview`, `development`, `staging`, `production`, `ephemeral`.
+
+```ts
+import {
+  createTagAclPolicyEngine,
+  EnvMembershipService,
+  mintElevatedAccessCapability,
+  DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK,
+} from "@hobo/connectivity";
+
+const membership = new EnvMembershipService({ tenant: "acme" });
+membership.assign({
+  principalId: "user:alice",
+  isolationClass: "development",
+  assignedBy: "cp-admin",
+});
+const engine = createTagAclPolicyEngine({
+  envIsolation: { membership, enforceMembershipIntegrity: true },
+});
+// env:development → env:production denies without elevated capability
+```
+
+Policy pack id: `hobo.env-network-isolation/v1` (Rail `policyPacks`).
+
+Conformance: `pnpm --filter @hobo/connectivity exec vitest run test/pure/env-network-isolation.test.ts`
+
+Elevated access CLI: `hobo access request --env production --reason "..." --duration 30m`
+
+Local-dev is air-gapped: `hobo dev` does not join remote overlays.

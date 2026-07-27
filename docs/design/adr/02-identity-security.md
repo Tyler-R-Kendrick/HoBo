@@ -825,3 +825,45 @@ Identity adapters, residency obligations, tenancy-spectrum promotion, claim-sche
 - **(+)** Zero required Bindle fields; optional preferredAdapters only influence Matching ranking.
 - **(+)** Built-in OpenFeature `FeatureFlagStore` drives cohort ramps (`flag.*` events); `IdentityMigrationControlPlane` auto-starts from Matching; spectrum cutover composes Suspend→drain→dual-migrate→export→import→fence→resume; dual adapters implement `hobo:identity/adapter` (contract-asserted offline, live IdPs swap behind the same port); MCP agents re-attest via `rebindAgentsOnMigrationEvents` with zero config.
 - **(−)** Full multi-IdP federation *UI* and billing/support automation remain product surfaces outside this plane's contracts.
+
+
+## ADR-0133
+**Hard environment network isolation + optional Privileged Access Gateway (PAM).**
+
+### Context
+Local-dev, remote development, staging, and production networks must be unable to talk to each other by default while preserving an in-env "one network" feel. Prior connectivity delivered soft multi-tenancy and overlay foundations ([ADR-0130](07-portability-extensibility.md#adr-0130)) but `createTagAclPolicyEngine` only denied cross-tenant traffic — not cross-`env:` classes. Tenant isolation (`TenantIsolationRegistry`) did not cover environment classes. Elevated production access must not trust pure network membership.
+
+### Decision
+1. **Isolation spectrum** — soft floor always on (PolicyEngine + `env:` tags + default deny across isolation classes); hard floor optional (distinct overlay control planes per class, recommended for production).
+2. **Canonical isolation classes** — `local-dev`, `preview`, `development`, `staging`, `production`, `ephemeral` with parse-don't-validate aliases (`dev`→`development`, `prod`→`production`).
+3. **Env membership is control-plane gated** — isolation-critical labels cannot be self-assigned; production assignment requires dual control; membership emits `access.Membership*` events.
+4. **Elevated access** — short-lived audience-bound JWT-SVID capability (`mintElevatedAccessCapability`); network membership is a signal only. `hobo access request` mints audited capabilities.
+5. **Break-glass** — dual-approved, time-bound, auto-expiry, post-incident review obligation (`access.BreakGlass*`).
+6. **Local-dev air-gap** — pure local/portless never joins remote overlays; named endpoints reject remote backends in local mode.
+7. **Junctions env-scoped** — federation denied across isolation classes without dual-controlled CrossEnvGrant.
+8. **Privileged Access Gateway** — optional Station capability / Rail profile (Teleport preferred stub; JumpServer stub without embedding GPLv3); Station tagged to one isolation class; production sessions require elevated capability; audit streams off-box immediately.
+9. **Policy pack** — versioned `hobo.env-network-isolation/v1` loaded by TagAcl/rego-lite and referenced from Rails; fail-closed; refuse silent widening.
+10. **Composition** — tenant × env: harder axis wins (`assertComposedIsolation`).
+
+```mermaid
+flowchart LR
+  subgraph Local["local-dev air-gap"]
+    LD[hobo dev / portless]
+  end
+  subgraph Dev["development"]
+    D1[Yard / Junction]
+  end
+  subgraph Prod["production"]
+    P1[Yard]
+    PAM[PAM Station optional]
+  end
+  LD -.->|denied| Dev
+  LD -.->|denied| Prod
+  Dev -.->|elevated capability only| Prod
+  PAM --- P1
+```
+
+### Consequences
+- **(+)** Hard, testable walls between environment networks; elevated access is capability-based; PAM is optional and subject to policy.
+- **(+)** Offline conformance suite proves cross-env deny + positive controls.
+- **(−)** Operators must assign control-plane membership for isolation-critical labels; live Tailscale ACL push remains out of band (pure policy documents only).

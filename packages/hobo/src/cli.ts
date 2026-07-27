@@ -42,6 +42,7 @@ import { createRegistryCommand } from "./registry-command.js";
 import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
+import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createYardCommand } from "./yard-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -152,7 +153,9 @@ export function createComposedHoboCli(
 					: { resolveTarget: resolveProjectCollectionTarget },
 			),
 			plan: createPlanCommand({ runtime }),
-			up: createUpCommand({ runtime }),
+			// Always place through the embedded broker-runtime (prefer wasm-sandbox yards).
+			// The cloud mock `createUpCommand` remains for tests that wire it directly.
+			up: createBrokerAwareUpCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

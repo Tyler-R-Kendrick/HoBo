@@ -2,16 +2,16 @@
  * Real Wasmtime OS-process sandboxes for private Camp components.
  *
  * Framework-agnostic (no Hono / Express / etc. in this package):
- *   - Apps supply wasi:http/proxy **guest adapters** (e.g. `src/adapters/wasm/api-guest.mjs`)
+ *   - Apps supply wasi:http/proxy **guests** (e.g. `src/wasm/api-guest.mjs`)
  *   - Local host uses bindle entrypoints as plain `(Request) => Response` (any framework)
- *   - HoBo never imports HTTP frameworks; adapters live with the app or adapter packages
+ *   - HTTP frameworks live in `packages/adapters/*` (e.g. `@hobo/adapter-hono`), never core
  *
  * Driven through HoBo CLI (Yard component host = isolated-wasm):
  *   - `hobo yard ensure` / `init --host isolated-wasm` / `doctor` → toolchain under HOBO_HOME
  *   - `hobo dev` resolves project guests, componentizes, boots sandboxes
  *   - Camp mesh injects bindle env on every hop (`x-hobo-env-*`)
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import {
 	existsSync,
@@ -202,7 +202,11 @@ export async function ensureWasmtimeBinary(options: {
 	const version = PINNED_WASMTIME_VERSION;
 	const archiveName = `wasmtime-v${version}-${triple}.tar.xz`;
 	const url = `https://github.com/bytecodealliance/wasmtime/releases/download/v${version}/${archiveName}`;
-	const staging = join(tmpdir(), `hobo-wasmtime-${version}-${process.pid}`);
+	// Unique staging dir per call (vitest runs concurrent ensures in one PID).
+	const staging = join(
+		tmpdir(),
+		`hobo-wasmtime-${version}-${process.pid}-${randomUUID()}`,
+	);
 	mkdirSync(staging, { recursive: true });
 	const archivePath = join(staging, archiveName);
 
@@ -368,15 +372,14 @@ export interface ResolvedPrivateGuest {
 }
 
 /**
- * Resolve a project-supplied wasm guest adapter for a private bindle resource.
+ * Resolve a project-supplied wasi:http guest for a private bindle resource.
  *
- * Convention (first match wins):
- *   - dist/adapters/wasm/<name>.wasm
- *   - src/adapters/wasm/<name>-guest.mjs|.js
- *   - src/adapters/wasm/<name>.mjs|.js
- *   - adapters/wasm/<name>-guest.mjs|.js
+ * Convention (first match wins) — **not** framework adapters:
+ *   - dist/wasm/<name>.wasm | src/wasm/<name>-guest.mjs
+ *   - legacy: src/adapters/wasm/<name>-guest.mjs (still accepted)
  *
- * App code (Hono, etc.) is never loaded by this resolver — only guest adapters.
+ * HTTP frameworks (Hono, etc.) live in `packages/adapters/*` and are never
+ * loaded by this resolver.
  */
 export function resolvePrivateWasmGuest(options: {
 	readonly projectDir: string;
@@ -385,6 +388,8 @@ export function resolvePrivateWasmGuest(options: {
 	const { projectDir, resourceName } = options;
 	const name = resourceName;
 	const candidatesWasm = [
+		join(projectDir, "dist", "wasm", `${name}.wasm`),
+		join(projectDir, "src", "wasm", `${name}.wasm`),
 		join(projectDir, "dist", "adapters", "wasm", `${name}.wasm`),
 		join(projectDir, "adapters", "wasm", `${name}.wasm`),
 	];
@@ -399,14 +404,19 @@ export function resolvePrivateWasmGuest(options: {
 		}
 	}
 	const candidatesJs = [
+		join(projectDir, "src", "wasm", `${name}-guest.mjs`),
+		join(projectDir, "src", "wasm", `${name}-guest.js`),
+		join(projectDir, "src", "wasm", `${name}.mjs`),
+		join(projectDir, "src", "wasm", `${name}.js`),
+		// legacy path
 		join(projectDir, "src", "adapters", "wasm", `${name}-guest.mjs`),
 		join(projectDir, "src", "adapters", "wasm", `${name}-guest.js`),
 		join(projectDir, "src", "adapters", "wasm", `${name}.mjs`),
 		join(projectDir, "src", "adapters", "wasm", `${name}.js`),
 		join(projectDir, "adapters", "wasm", `${name}-guest.mjs`),
 		join(projectDir, "adapters", "wasm", `${name}-guest.js`),
+		join(projectDir, "dist", "wasm", `${name}-guest.mjs`),
 		join(projectDir, "dist", "adapters", "wasm", `${name}-guest.mjs`),
-		join(projectDir, "dist", "adapters", "wasm", `${name}-guest.js`),
 	];
 	for (const guestSourcePath of candidatesJs) {
 		if (existsSync(guestSourcePath)) {
@@ -546,8 +556,8 @@ export async function preparePrivateWasmComponent(options: {
 	if (resolved.guestSourcePath === null) {
 		throw new Error(
 			`isolated-wasm: no wasm guest adapter for private resource '${options.resourceName}' in ${options.projectDir}. ` +
-				`Add a framework-free wasi:http guest at src/adapters/wasm/${options.resourceName}-guest.mjs ` +
-				`(HTTP frameworks like Hono belong in app entrypoints for the local host, not in @hobo/* core).`,
+				`Add a framework-free wasi:http guest at src/wasm/${options.resourceName}-guest.mjs ` +
+				`(HTTP frameworks like Hono belong in packages/adapters/* + app code, not in @hobo/* core).`,
 		);
 	}
 	return componentizePrivateGuest({

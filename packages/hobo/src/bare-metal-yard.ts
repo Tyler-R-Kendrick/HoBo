@@ -39,6 +39,10 @@ export type ComponentHostKind = (typeof COMPONENT_HOST_KINDS)[number];
 export const LOCAL_HOST_KINDS = COMPONENT_HOST_KINDS;
 /** @deprecated use ComponentHostKind */
 export type LocalHostKind = ComponentHostKind;
+/**
+ * Scaffold default before broker-runtime equip. `hobo yard init` / broker-runtime
+ * prefer isolated-wasm when tooling is available; explicit `--host` always wins.
+ */
 export const DEFAULT_COMPONENT_HOST: ComponentHostKind = "local";
 /** @deprecated use DEFAULT_COMPONENT_HOST */
 export const DEFAULT_LOCAL_HOST = DEFAULT_COMPONENT_HOST;

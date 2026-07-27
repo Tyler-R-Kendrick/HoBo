@@ -164,6 +164,23 @@ export {
 	createProviderFromPorts,
 } from "./local-provider.js";
 export { createYardCommand } from "./yard-command.js";
+export { createBrokerAwareUpCommand } from "./broker-up-command.js";
+export {
+	collectExplicitProviderPins,
+	createYardBrokerCatalog,
+	defaultComponentHostFromBroker,
+	defaultEmbeddedPolicySet,
+	describeBrokerRuntime,
+	EMBEDDED_BROKER_SCHEMA,
+	ensureEmbeddedBroker,
+	LOCAL_PROCESS_PROVIDER_ID,
+	loadEmbeddedBrokerState,
+	resolveBindlePlacement,
+	saveEmbeddedBrokerState,
+	WASM_SANDBOX_PROVIDER_ID,
+	type EmbeddedBrokerState,
+	type PlacementResult,
+} from "./broker-runtime.js";
 export {
 	createLogsCommand,
 	type LogsCommandDeps,

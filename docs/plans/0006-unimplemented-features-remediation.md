@@ -110,7 +110,7 @@ Each is a proper sdlc slice with contracts, proto+CUE, PACT, and tests per AGENT
 | 4-2 | **`packages/schema-tools` test coverage**: 967 src LOC, 1 test file — thinnest ratio in the repo, and it's the codegen driver everything's proto/CUE story depends on. | Add tests around the buf/protoc-gen-es pipeline and CUE emission (golden-file style, matching `packages/bindles` fixtures). |
 | 4-3 | **Thin packages**: `yards` (72 LOC), `componentize` (388 LOC, no PACT — also 0-4), `training-pipeline`, `provider-ax`, `provider-agentv`. | Grow only when their slices demand it; the immediate work is 0-4's contract/doc backfill so they pass the guard honestly. |
 | 4-4 | **`event_envelope.{cue,proto}` duplicated** in `core` and `runtime-local` data-models (GAPS IMPL-009, deferred). | Single-source via schema-tools generation once 4-2's tests exist to protect the move. |
-| 4-5 | **JS-family policy violated by the repo's own example** (`examples/hello-bindle/deploy/**/*.{mjs,js}` vs AGENTS.md:120-128, which requires an ADR for exceptions). | Record the deploy-artifact exception in an ADR (they're platform entry files), or convert to TS build outputs. |
+| 4-5 | **JS-family policy for deploy entry shims** (platform `.mjs`/`.js` under `packages/hobo/fixtures/deploy/**` vs AGENTS.md JS-family policy). | Covered by ADR-0126: fixtures under `packages/hobo/fixtures/deploy/` are the sanctioned exception; barebones examples must not ship deploy trees. |
 
 ## 7. Phase 5 — Proof backfill execution
 

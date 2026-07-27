@@ -24,10 +24,7 @@ import {
 const ARTIFACT_DIR = join(
 	dirname(fileURLToPath(import.meta.url)),
 	"..",
-	"..",
-	"..",
-	"examples",
-	"hello-bindle",
+	"fixtures",
 	"deploy",
 	"vercel",
 );

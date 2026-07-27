@@ -113,23 +113,26 @@ describe("bare-metal yard e2e", () => {
 			}),
 		).rejects.toThrow();
 
-		// Defaults — no .with({ option: "env" }) required on the bindle.
-		expect(serve.bindleEnv).toEqual({});
+		// Bindle injects camp env — proves api + web are actually running under HoBo.
+		expect(serve.bindleEnv).toEqual({
+			GREETING_PREFIX: "howdy",
+			APP_TITLE: "howdy",
+		});
 
-		// Web (public) calls private api via mesh with app defaults.
+		// Web (public) calls private api via mesh; both surfaces use injected "howdy".
 		const web = await fetch(`${serve.primaryUrl}/?name=Yard`);
 		expect(web.status).toBe(200);
 		const html = await web.text();
-		expect(html).toContain('data-testid="app-title">hello-bindle</h1>');
-		expect(html).toContain('data-testid="greeting">hello, Yard</p>');
+		expect(html).toContain('data-testid="app-title">howdy</h1>');
+		expect(html).toContain('data-testid="greeting">howdy, Yard</p>');
 
 		// Private mesh URL works through camp-routed fetch; no public TCP for api.
 		const mesh = await fetch(
 			`${serve.serviceDiscovery.services__api__http__0}/hello?name=Mesh`,
 		);
 		expect(await mesh.json()).toEqual({
-			message: "hello, Mesh",
-			greetingPrefix: "hello",
+			message: "howdy, Mesh",
+			greetingPrefix: "howdy",
 		});
 	});
 
@@ -184,8 +187,8 @@ describe("bare-metal yard e2e", () => {
 			expect(apiEp?.external).toBe(false);
 			expect(apiEp?.port).toBeNull();
 			expect(envelope.data.served.status).toBe(200);
-			expect(envelope.data.served.body).toContain("hello-bindle");
-			expect(envelope.data.served.body).toContain("hello, world");
+			expect(envelope.data.served.body).toContain("howdy");
+			expect(envelope.data.served.body).toContain("howdy, world");
 			expect(envelope.ok).toBe(true);
 		} finally {
 			if (previous === undefined) delete process.env.HOBO_HOME;

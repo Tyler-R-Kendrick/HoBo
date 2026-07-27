@@ -26,10 +26,7 @@ import {
 const WORKER_MODULE = join(
 	dirname(fileURLToPath(import.meta.url)),
 	"..",
-	"..",
-	"..",
-	"examples",
-	"hello-bindle",
+	"fixtures",
 	"deploy",
 	"cloudflare",
 	"worker.mjs",

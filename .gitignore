@@ -27,8 +27,16 @@ node_modules/
 # Package build output
 dist/
 
+# Isolated-wasm intermediates (esbuild bundles / componentize outputs).
+# Cached under $HOBO_HOME/sandboxes by default — never commit guest.wasm.
+**/*.guest.mjs
+**/*-wasm-entry.mjs
+sandboxes/
+
 # Pinned toolchain binaries downloaded on demand (e.g. CUE v0.14.0)
 .tools/
+# Local yard/broker tooling installs (prefer $HOBO_HOME; belt-and-suspenders)
+.hobo/
 
 # CI fixture runner append-only event logs (local + CI artifacts)
 test-results/

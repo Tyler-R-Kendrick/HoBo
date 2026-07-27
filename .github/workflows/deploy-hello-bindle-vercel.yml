@@ -1,7 +1,7 @@
 name: Deploy hello-bindle (Vercel)
 
-# Real continuous-deploy path for the committed hello-bindle artifact
-# (examples/hello-bindle/deploy/vercel). This runs in CI with a repo secret,
+# Real continuous-deploy path for the committed Vercel deploy fixture
+# (packages/hobo/fixtures/deploy/vercel). This runs in CI with a repo secret,
 # so it is NOT subject to any interactive/agent action gate — the only thing
 # needed to go live is a `VERCEL_TOKEN` secret (Settings → Secrets → Actions).
 #
@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: 24
       - name: Deploy to Vercel
-        working-directory: examples/hello-bindle/deploy/vercel
+        working-directory: packages/hobo/fixtures/deploy/vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           TARGET: ${{ inputs.target }}

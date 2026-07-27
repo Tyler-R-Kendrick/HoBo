@@ -1,3 +1,5 @@
+import { collectBindleManifest } from "@hobo/bindles";
+import { targetFromBindleDefinition } from "@hobo/cli";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { app as api } from "../src/api.js";
@@ -12,15 +14,106 @@ afterEach(() => {
 	delete process.env.APP_TITLE;
 });
 
+/** Camp env injected by `env({ … })` on both resources (not a placement pin). */
+const injectedEnv = {
+	provider: "hobo",
+	option: "env",
+	config: { GREETING_PREFIX: "howdy", APP_TITLE: "howdy" },
+} as const;
+
+/**
+ * Default-state authoring graph from `bindle()` — what the example constructs
+ * before collection / plan / serve.
+ */
+const DEFAULT_DEFINITION = {
+	name: "hello-bindle",
+	resources: {
+		api: {
+			kind: "api",
+			name: "api",
+			stableId: "api:api",
+			declaredAllow: [],
+			annotations: [injectedEnv],
+			dependsOn: [],
+		},
+		web: {
+			kind: "web",
+			name: "web",
+			stableId: "web:web",
+			declaredAllow: [],
+			annotations: [injectedEnv],
+			// dependsOn stores dependency *kinds* (api resource kind is "api").
+			dependsOn: ["api"],
+		},
+	},
+	edges: [{ from: "web", to: "api" }],
+} as const;
+
+/**
+ * Provider-agnostic manifest IR from run-to-collect (`hobo collect`).
+ * Component→component edges (web→api) stay on the definition graph; they are
+ * not wiring binds. Camp env annotations are injected at serve time, not
+ * baked into this IR.
+ */
+const DEFAULT_MANIFEST = {
+	schema: "hobo.manifest/v1",
+	componentHost: {
+		kind: "wasmtime",
+		version: "46.0.1",
+	},
+	resources: {
+		api: {
+			type: "component.v1",
+			runtime: "wasm",
+			exports: ["wasi:http/incoming-handler"],
+			links: [],
+			env: {},
+			bindings: {},
+		},
+		web: {
+			type: "component.v1",
+			runtime: "wasm",
+			exports: ["wasi:http/incoming-handler"],
+			links: [],
+			env: {},
+			bindings: {},
+		},
+	},
+} as const;
+
+/** Canonical hash of DEFAULT_MANIFEST — fails if the default IR drifts. */
+const DEFAULT_MANIFEST_HASH =
+	"sha256:6aac7af02cc319a8559bca291c6f210d42fe0a07cd935113051b2f3c327f4bbe";
+
 describe("hello-bindle", () => {
-	it("wires api → web with no .with annotations", () => {
-		expect(Object.keys(definition.resources)).toEqual(["api", "web"]);
-		expect(definition.edges).toEqual([{ from: "web", to: "api" }]);
-		expect(definition.resources.api?.annotations).toEqual([]);
-		expect(definition.resources.web?.annotations).toEqual([]);
+	it("constructs the default bindle definition (authoring graph)", () => {
+		// Full snapshot so devs can read exactly what bindle() builds.
+		expect({
+			name: definition.name,
+			resources: definition.resources,
+			edges: definition.edges,
+		}).toEqual(DEFAULT_DEFINITION);
 	});
 
-	it("api greets with default prefix", async () => {
+	it("collects the default hobo.manifest/v1 IR (what plan/up read)", () => {
+		const first = collectBindleManifest(targetFromBindleDefinition(definition));
+		const second = collectBindleManifest(
+			targetFromBindleDefinition(definition),
+		);
+
+		expect(first.bindleId).toBe("hello-bindle");
+		expect(first.resources).toEqual(["api", "web"]);
+		// No backing-data binds: only two HTTP components + app-level edge.
+		expect(first.binds).toEqual([]);
+		expect(first.manifest.value).toEqual(DEFAULT_MANIFEST);
+		expect(first.manifestHash).toBe(DEFAULT_MANIFEST_HASH);
+
+		// Deterministic: same source → same IR + hash every run.
+		expect(second.manifestHash).toBe(first.manifestHash);
+		expect(second.manifest).toEqual(first.manifest);
+	});
+
+	it("api greets with default prefix when env is unset", async () => {
 		const res = await api.request("/hello?name=World");
 		expect(await res.json()).toEqual({
 			message: "hello, World",
@@ -37,20 +130,21 @@ describe("hello-bindle", () => {
 		});
 	});
 
-	it("web calls api via services__api__http__0", async () => {
+	it("web calls api via services__api__http__0 and uses APP_TITLE", async () => {
 		process.env[API] = "http://api.test/";
+		process.env.APP_TITLE = "howdy";
 		const original = globalThis.fetch;
 		globalThis.fetch = async (input) => {
 			expect(String(input)).toBe("http://api.test/hello?name=bindle");
 			return Response.json({
-				message: "hello, bindle",
-				greetingPrefix: "hello",
+				message: "howdy, bindle",
+				greetingPrefix: "howdy",
 			});
 		};
 		try {
 			const html = await (await web.request("/?name=bindle")).text();
-			expect(html).toContain('data-testid="app-title">hello-bindle</h1>');
-			expect(html).toContain('data-testid="greeting">hello, bindle</p>');
+			expect(html).toContain('data-testid="app-title">howdy</h1>');
+			expect(html).toContain('data-testid="greeting">howdy, bindle</p>');
 		} finally {
 			globalThis.fetch = original;
 		}

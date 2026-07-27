@@ -11,10 +11,7 @@ const WORKER_URL = new URL(
 	join(
 		dirname(fileURLToPath(import.meta.url)),
 		"..",
-		"..",
-		"..",
-		"examples",
-		"hello-bindle",
+		"fixtures",
 		"deploy",
 		"cloudflare",
 		"worker.mjs",

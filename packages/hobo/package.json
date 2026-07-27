@@ -22,6 +22,7 @@
 	},
 	"dependencies": {
 		"@bytecodealliance/jco": "1.24.3",
+		"esbuild": "^0.25.0",
 		"@hobo/bindles": "workspace:*",
 		"@hobo/broker": "workspace:*",
 		"@hobo/camps": "workspace:*",

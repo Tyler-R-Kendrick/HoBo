@@ -76,6 +76,7 @@ function portForResourceKind(kind: string): string {
 /**
  * Providers explicitly pinned by `.with({ provider })` on the Bindle.
  * Any such pin is a hard requirement for the broker junction catalog.
+ * Env injections (`.with(env({...}))` / `option: "env"`) are not pins.
  */
 export function collectExplicitProviderPins(
 	definition: BindleDefinition,
@@ -83,6 +84,7 @@ export function collectExplicitProviderPins(
 	const pins = new Set<string>();
 	for (const record of Object.values(definition.resources)) {
 		for (const annotation of record.annotations) {
+			if (annotation.option === "env") continue;
 			if (
 				typeof annotation.provider === "string" &&
 				annotation.provider.length > 0

@@ -36,6 +36,33 @@ import {
 	type WasmtimeSandbox,
 } from "./wasm-sandbox.js";
 
+/**
+ * Optional bindle annotation to point isolated-wasm at a non-default module path.
+ * `.with({ option: "module", config: { path: "src/services/orders.ts" } })`
+ * Only needed when the file is not `src/<resourceName>.ts`.
+ */
+function modulePathFromAnnotations(
+	annotations:
+		| readonly {
+				readonly option: string;
+				readonly config: Record<string, unknown>;
+		  }[]
+		| undefined,
+): string | undefined {
+	if (annotations === undefined) return undefined;
+	for (const annotation of annotations) {
+		if (annotation.option !== "module" && annotation.option !== "wasm") {
+			continue;
+		}
+		const path =
+			annotation.config.path ??
+			annotation.config.module ??
+			annotation.config.source;
+		if (typeof path === "string" && path.length > 0) return path;
+	}
+	return undefined;
+}
+
 // **Isolated-wasm Camp component host** — real Wasmtime OS-process sandboxes.
 //
 // Feature parity with componentHost=local:
@@ -225,17 +252,23 @@ export async function serveProjectOnIsolatedWasm(options: {
 		process.env[key] = value;
 	}
 
-	// Boot private components in real Wasmtime OS-process sandboxes.
-	// Guests are app-supplied adapters (not frameworks baked into @hobo/*).
+	// Boot each private resource in its own Wasmtime sandbox.
+	// Module resolution is by resource name: src/<name>.ts (any API, not only "api").
 	// Bindle env is injected by the Camp mesh on each hop.
 	const sandboxes: WasmtimeSandbox[] = [];
 	const privateHandlers = new Map<string, FetchHandler>();
 	try {
 		for (const entry of privateEntries) {
+			const moduleOverride = modulePathFromAnnotations(
+				definition.resources[entry.name]?.annotations,
+			);
 			const component = await preparePrivateWasmComponent({
 				projectDir: options.projectDir,
 				resourceName: entry.name,
 				jcoBin: toolchain.jco.binPath,
+				...(moduleOverride !== undefined
+					? { modulePath: moduleOverride }
+					: {}),
 				...(options.hoboHome !== undefined
 					? { hoboHome: options.hoboHome }
 					: {}),

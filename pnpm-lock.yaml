@@ -79,15 +79,15 @@ importers:
 
   examples/hello-bindle:
     dependencies:
-      '@bufbuild/protobuf':
-        specifier: ^2.12.1
-        version: 2.12.1
       '@hobo/adapter-hono':
         specifier: workspace:*
         version: link:../../packages/adapters/adapter-hono
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../../packages/bindles
+      '@hobo/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
       hono:
         specifier: ^4.6.14
         version: 4.12.27
@@ -562,6 +562,9 @@ importers:
       '@hobo/yards':
         specifier: workspace:*
         version: link:../yards
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
 
   packages/iac/iac-crossplane:
     dependencies:

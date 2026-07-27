@@ -51,8 +51,13 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | `defineResource`, `dispatcher`, `runner`, `runbook`, `generateProvider` | `@hobo/sdk` | provider authors and self-host operators | Provider/runtime implementation hooks are not app authoring factories. |
 | `policyPack`, `rule`, `waiver`, `chaos` | `@hobo/sdk` | operators | Governance and resilience tooling target operator workflows. |
 | shared schemas and branded IDs | `@hobo/core` | package internals, generated code | Stable internal substrate without app factory ownership. |
+| EventStore / DurableEventStore ports, positions, fence errors | `@hobo/core` | package internals, runtimes | Shared internal contract substrate; not app authoring. |
+| SQLite schema, migrations, journal semantics | `@hobo/storage-sqlite` | runtime adapters | Driver-neutral default engine logic; not the public portability boundary ([ADR-0135](./adr/03-data-plane-sqlite-default.md)). |
 | generated WIT bindings | `@hobo/wit` | package internals, generated code | WIT contract materialization, not the ergonomic authoring API. |
+| host event-store/runtime-journal WIT | `hobo:storage@0.1.0` via `@hobo/wit` | component hosts | Engine-neutral storage capability; no SQL/paths cross the membrane. |
 | local runtime harness | `@hobo/runtime-local/testing` | tests | Local test runtime is intentionally separate from production runtime imports. |
+| Node SQLite EventStore + storage worker | `@hobo/runtime-local` | Camp local runtime | Native single-owner partition adapter. |
+| Browser SQLite WASM + OPFS EventStore | `@hobo/runtime-browser` | browser hosts | Worker + OPFS policy; transient fallback only when allowed. |
 
 ## Re-export Decision
 

@@ -12,10 +12,16 @@ folded for two purposes:
   single-writer boundary (an **actor** realized through the `ActorHost` lease +
   fencing token). It folds the stream to authoritative state, checks invariants,
   and emits past-tense **events** appended to the **event store** under optimistic
-  `seq`. A concurrent append fails the optimistic check and raises a typed,
-  retryable `AggregateConflictError`; an illegal command raises a
-  non-retryable `AggregateInvariantError`. The aggregate emits `actor.*`
-  lifecycle facts (Activated / StateAppended / Passivated).
+  `seq` **and** the lease `fenceToken` (storage `owner_epoch`). A concurrent
+  append fails the optimistic check and raises a typed, retryable
+  `AggregateConflictError`; a stale fence is distinct (`STALE_FENCE`); an illegal
+  command raises a non-retryable `AggregateInvariantError`. `CommandEmitter`
+  may `stageEffect()` durable queue/timer/outbox effects for the same
+  `DurableEventStore.commit` transaction; `decide()` stays pure (no I/O). The
+  aggregate emits `actor.*` lifecycle facts (Activated / StateAppended /
+  Passivated). `createDurableActorHost` persists lease/fence state in the
+  SQLite partition; `createInMemoryActorHost` remains the deterministic test
+  default.
 - **Read-model fold — the projection.** A projection is a deterministic,
   read-only fold producing **materialized views** (read models) keyed into rows.
   It is derived and **rebuildable from zero** (`rebuildFromZero()` replays the
@@ -44,8 +50,9 @@ form is the wire encoding. The shared `EventEnvelope` is reused from
 
 ## Boundary
 
-`@hobo/data` depends inward on `@hobo/core` only. The `hobo:projection` provider
-port ([`src/port.ts`](./src/port.ts)) is the seam a concrete sink adapter
-(native / relational / document) binds behind via Matching. The PACT evidence in
-[`contracts/`](./contracts) pins the event-store-append and projection-sink
-boundaries.
+`@hobo/data` depends inward on `@hobo/core` and optionally
+`@hobo/storage-sqlite` for the durable ActorHost adapter. The
+`hobo:projection` provider port ([`src/port.ts`](./src/port.ts)) is the seam a
+concrete sink adapter (native / relational / document) binds behind via
+Matching. The PACT evidence in [`contracts/`](./contracts) pins the
+event-store-append and projection-sink boundaries.

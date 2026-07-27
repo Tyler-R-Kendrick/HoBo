@@ -17,17 +17,18 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/storage-sqlite": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/conformance": "workspace:*",
 		"@types/node": ">=24.0.0"
 	},
 	"scripts": {
-		"build": "pnpm --filter @hobo/core build && tsc -p tsconfig.json",
+		"build": "pnpm --filter @hobo/core build && pnpm --filter @hobo/storage-sqlite build && tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm --filter @hobo/core build && pnpm run build && pnpm --filter @hobo/conformance build",
+		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/storage-sqlite build && pnpm run build && pnpm --filter @hobo/conformance build",
 		"test": "vitest run && node --import tsx --test contracts/consumer/*.test.ts contracts/provider/*.test.ts",
 		"test:unit": "vitest run",
 		"test:contract:consumer": "node --import tsx --test contracts/consumer/*.test.ts",

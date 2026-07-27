@@ -14,7 +14,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@hobo/core": "workspace:*"
+		"@hobo/core": "workspace:*",
+		"@hobo/storage-sqlite": "workspace:*"
 	},
 	"devDependencies": {
 		"@hobo/runtime-local": "workspace:*"

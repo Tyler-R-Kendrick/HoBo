@@ -26,6 +26,17 @@ Epic reference implementation: [`src/draft/epic-proofs/data-plane-event-sourcing
 
 The cost is discipline (CQRS, projections, versioning) and that read-after-write needs projections; the audit/replay story is a primary differentiator vs Lakebed.
 
+**Default durable engine.** SQLite is the default embedded EventStore / runtime
+journal behind HoBo ports (`@hobo/core` `EventStore` / `DurableEventStore`,
+`@hobo/storage-sqlite` schema + migrations, Node `@hobo/runtime-local`, browser
+`@hobo/runtime-browser`, WIT `hobo:storage@0.1.0`). SQLite is **not** the public
+portability boundary: one partition, one active writer; scale by partitions;
+managed stores remain adapters. Stream revision is a dedicated head row (not
+`COUNT(*)`); append CAS + actor `fenceToken` / `owner_epoch` run in one write
+transaction; database-local `global_position` supports catch-up and durable
+subscription checkpoints without entering domain envelope identity. See
+[ADR-0135](./adr/03-data-plane-sqlite-default.md).
+
 ### The event envelope
 A single envelope shape across control plane and data plane:
 ```ts

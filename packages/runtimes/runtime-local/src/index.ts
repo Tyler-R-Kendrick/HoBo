@@ -32,6 +32,9 @@ export {
 	createRuntimeLocalEventStore,
 	OptimisticSequenceConflictError,
 } from "./eventstore/eventstore.js";
+export { StorageWorkerClient } from "./eventstore/worker-client.js";
+export type { StorageWorkerClientOptions } from "./eventstore/worker-client.js";
+export { defaultDbPath } from "./eventstore/sqlite-store.js";
 export type {
 	AmbiguousCommitArgs,
 	DeadlineExceededArgs,

@@ -23,6 +23,9 @@ surfaces.
 | `new` | local loop | Scaffold a runnable SDK program. | HOBO-118, HOBO-198 |
 | `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. Optional `--broker` / `--broker-uri` associates a default remote broker on the HOBO_HOME profile (identity plane; not placement). | HOBO-136, HOBO-184 |
 | `connection` | identity | Manage durable Station-owned Connections (create/authorize/list/get/revoke/rotate). Scoped by `--station` / profile.defaultStation. | HOBO-connection, ADR-0131 |
+| `identity` | identity | Observe continuous identity migration (status/inspect). Zero Bindle config; Matching + dual fixtures drive dual-path. | ADR-0132 |
+| `access` | identity | Request elevated or cross-env access / break-glass (short-lived capability; audited). | ADR-0133 |
+| `feature` | delivery | OpenFeature flags, canary, and experiment observe: `list` \| `eval` \| `set` (dev) \| `kill` \| `canary` \| `experiment`. Sole app evaluation API is OpenFeature; no vendor SDKs. | ADR-0044, ADR-0083 |
 | `claim` | identity | Bind an anonymous `npx hobo up` deployment to an account while preserving state and URL. Local: event-store rebind. Remote: `hobo claim <account> --broker <uri> --token <claimToken>` exchanges the claim token without re-provision. | HOBO-136, HOBO-164 |
 | `plan` | read-only | Dry-run the `up` decision: DeploymentPlan, Matching choices, cost, and warnings as an approvable diff. | HOBO-125, HOBO-203, HOBO-208 |
 | `verify` | read-only | Optional preflight for the unified Gatekeeper decision. `up` still runs the same gate automatically before mutation. | HOBO-146, HOBO-227 |

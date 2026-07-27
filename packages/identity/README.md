@@ -25,6 +25,72 @@ promotes the near-production draft proof
   existing Harness cohort flags; dual fixtures extend [ADR-0070](../../docs/design/adr/02-identity-security.md#adr-0070)
   for offline `hobo dev` / tests. Observe with `hobo identity status` /
   `hobo identity inspect <id>` and `hobo doctor`.
+- **The Harness** ([ADR-0083](../../docs/design/adr/02-identity-security.md#adr-0083) /
+  [ADR-0044](../../docs/design/adr/02-identity-security.md#adr-0044)) — progressive
+  delivery as a native plane: single `FeatureFlagStore` (shared with identity
+  migration cohorts — **no parallel store**), OpenFeature-only app API
+  (`HoboOpenFeatureProvider` / `HoboFeatureClient`), OpenDelivery staged
+  rollouts + auto-rollback obligations, OpenExperiment assignment/exposure,
+  policy-gated mutations, and contract-asserted local fixtures. Bindle IfC:
+  `features()` / `declareExperiment()` / `rollout()` from `@hobo/bindles`.
+  CLI: `hobo feature list|eval|set|kill|canary|experiment`.
+
+## The Harness (feature flags · progressive delivery · experiments)
+
+```ts
+import {
+  FeatureFlagStore,
+  createLocalFeatureClient,
+  createHarness,
+  createContractAssertedHarnessFixtures,
+  enrichEvaluationContext,
+  gateFlagMutation,
+} from "@hobo/identity";
+import { features, rollout, declareExperiment } from "@hobo/bindles";
+
+// Bindle IfC (schema is truth; runtime values live in the store)
+const appFeatures = features({
+  "new-checkout-flow": {
+    state: "ENABLED",
+    percentage: 10,
+    variants: { control: false, treatment: true },
+    defaultVariant: "control",
+  },
+});
+
+// Sole public evaluation API shape (OpenFeature)
+const store = new FeatureFlagStore();
+const client = createLocalFeatureClient(store, { userId: "user:alice", tenant: "acme" });
+const on = client.getBooleanValue("new-checkout-flow", false);
+
+// Progressive composition: flag ramp → gateway weight → auto-rollback
+const harness = createHarness({ store });
+const run = harness.startProgressive({
+  rollout: {
+    name: "checkout-canary",
+    flag: "new-checkout-flow",
+    stages: [{ percent: 5 }, { percent: 25 }, { percent: 100 }],
+    traffic: "gateway-weighted",
+    autoRollback: true,
+  },
+  experiment: {
+    name: "checkout-exp",
+    flag: "new-checkout-flow",
+    variants: ["control", "treatment"],
+  },
+});
+// Offline local path
+const fx = createContractAssertedHarnessFixtures();
+fx.client.getBooleanDetails("example-feature", false);
+```
+
+Application code **never** imports flagd, Unleash, GrowthBook, LaunchDarkly, or
+Argo. External backends rank behind `hobo:feature-flag` / `hobo:delivery` /
+`hobo:experiment` ports (local-builtin → camp-managed → ofrep-internal → external).
+Gateway-weighted rollouts emit `domain.RoutingChanged` via
+`applyRolloutToGatewayRouting`. Experiment `analyzeExperiment` /
+`concludeExperiment` use the built-in baseline analysis/export (commercial
+engines plug in as residual adapters).
 
 ## Continuous identity migration (hands-off)
 
@@ -86,6 +152,10 @@ item (S3-03); see the `ponytail:` note in `src/token-broker.ts`.
   `FeatureFlagStore`, `runSpectrumIdentityCutover` (Plan 50 composition),
   `dualVerifyClaims`, `mintDualAudienceGrant`, `advanceMigrationRamp`,
   `agentActionsForMigrationEvents`, `identity.Migration*` events.
+- Harness: `HoboOpenFeatureProvider`, `HoboFeatureClient`, `createHarness`,
+  `OpenDeliveryEngine`, `OpenExperimentEngine`, `gateFlagMutation`,
+  `createContractAssertedHarnessFixtures`, `enrichEvaluationContext`,
+  `selectFeatureFlagBackend`, `flag.*` / `rollout.*` / `experiment.*` events.
 
 ## Verification
 

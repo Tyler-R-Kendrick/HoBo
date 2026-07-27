@@ -24,7 +24,7 @@ function allowUnion(verbs: readonly string[]): string {
 		.join(" | ");
 }
 
-function createBindlesPublicApiSnapshot(
+export function createBindlesPublicApiSnapshot(
 	module: typeof bindles = bindles,
 ): Record<string, unknown> {
 	const factoryNames = CATALOG.map((entry) => entry.factory);
@@ -86,6 +86,13 @@ function createBindlesPublicApiSnapshot(
 		"generateCtxConfigSource",
 		"materializeAgentConfigView",
 		"evaluateSecretlessConfigGate",
+		// Harness / feature flags IfC (ADR-0044 / ADR-0083)
+		"BINDLE_FEATURES_SCHEMA",
+		"declareExperiment",
+		"features",
+		"featureSpecsToStoreInputs",
+		"rollout",
+		"rolloutResource",
 		...factoryNames,
 	]);
 
@@ -375,6 +382,40 @@ function createBindlesPublicApiSnapshot(
 				kind: "dependency-helper",
 				signature:
 					"discoveryEnvForDependency(resourceName, config, resolved): Record<string, string>",
+			},
+			{
+				name: "BINDLE_FEATURES_SCHEMA",
+				kind: "features-constant",
+				signature: 'const BINDLE_FEATURES_SCHEMA: "hobo.bindle-features/v1"',
+			},
+			{
+				name: "features",
+				kind: "features-builder",
+				signature:
+					"features(defs: Readonly<Record<string, FeatureFlagSpec>>): FeaturesDeclaration",
+			},
+			{
+				name: "declareExperiment",
+				kind: "features-builder",
+				signature:
+					"declareExperiment(name: string, spec: ExperimentSpec): ExperimentDeclaration",
+			},
+			{
+				name: "rollout",
+				kind: "features-builder",
+				signature: "rollout(spec: RolloutSpec): RolloutDeclaration",
+			},
+			{
+				name: "featureSpecsToStoreInputs",
+				kind: "features-helper",
+				signature:
+					"featureSpecsToStoreInputs(decl: FeaturesDeclaration): readonly FlagStoreInput[]",
+			},
+			{
+				name: "rolloutResource",
+				kind: "resource-factory",
+				signature:
+					'rolloutResource(name: string): ResourceHandle<"rollout", "start" | "step" | "promote" | "rollback">',
 			},
 			...extraExports,
 		],

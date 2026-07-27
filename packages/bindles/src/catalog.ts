@@ -164,3 +164,6 @@ export function golden(name: string): ResourceHandle<"golden"> {
 export function experiment(name: string): ResourceHandle<"experiment"> {
 	return createHandle("experiment", name);
 }
+export function rolloutResource(name: string): ResourceHandle<"rollout"> {
+	return createHandle("rollout", name);
+}

@@ -11,6 +11,7 @@
 - connection (identity): Manage durable Connections (create/authorize/list/get/revoke/rotate) — CLI `hobo connection`; MCP tool `connection`
 - identity (identity): Observe continuous identity migration status (status/inspect; zero Bindle config) — CLI `hobo identity`; MCP tool `identity`
 - access (identity): Request elevated/cross-env access or break-glass (short-lived capability; audited) — CLI `hobo access`; MCP tool `access`
+- feature (delivery): OpenFeature flags / canary / experiment status (list|eval|set|kill) — CLI `hobo feature`; MCP tool `feature`
 - claim (identity): Bind an anonymous deployment to an account — CLI `hobo claim`; MCP tool `claim`
 - plan (read-only): Dry-run the up decision — CLI `hobo plan`; MCP tool `plan`
 - verify (read-only): Run the unified Gatekeeper preflight — CLI `hobo verify`; MCP tool `verify`

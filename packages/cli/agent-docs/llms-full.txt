@@ -72,6 +72,13 @@ Product: hobo
 - MCP tool: `access`
 - Capability: { port: hobo:mcp, resource: tool:access, verb: call }
 
+### feature
+- Role: delivery
+- Summary: OpenFeature flags / canary / experiment status (list|eval|set|kill)
+- CLI: `hobo feature`
+- MCP tool: `feature`
+- Capability: { port: hobo:mcp, resource: tool:feature, verb: call }
+
 ### claim
 - Role: identity
 - Summary: Bind an anonymous deployment to an account

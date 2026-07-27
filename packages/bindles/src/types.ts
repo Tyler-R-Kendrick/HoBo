@@ -85,6 +85,11 @@ export const CATALOG_ROWS = [
 		portRef: ["hobo:experiment"],
 		allowVerbs: ["assign", "expose", "analyze"],
 	},
+	{
+		factory: "rollout",
+		portRef: ["hobo:delivery"],
+		allowVerbs: ["start", "step", "promote", "rollback"],
+	},
 ] as const;
 
 export type ResourceKind = (typeof CATALOG_ROWS)[number]["factory"];
@@ -113,6 +118,7 @@ export type AllowVerbsByKind = {
 	ui: "render" | "drive";
 	golden: "run" | "bless";
 	experiment: "assign" | "expose" | "analyze";
+	rollout: "start" | "step" | "promote" | "rollback";
 };
 
 export type AllowVerbsFor<K extends ResourceKind> = AllowVerbsByKind[K];

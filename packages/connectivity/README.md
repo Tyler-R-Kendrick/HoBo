@@ -260,3 +260,33 @@ Conformance: `pnpm --filter @hobo/connectivity exec vitest run test/pure/env-net
 Elevated access CLI: `hobo access request --env production --reason "..." --duration 30m`
 
 Local-dev is air-gapped: `hobo dev` does not join remote overlays.
+
+
+### Privileged Access Gateway
+
+```ts
+import {
+  createTeleportPamGateway,
+  mintElevatedAccessCapability,
+} from "@hobo/connectivity";
+
+const elev = mintElevatedAccessCapability({
+  subject: "user:alice",
+  isolationClass: "production",
+  issuedBy: "cp-admin",
+  evidence: { kind: "dual-approval", ref: "a1" },
+  allowDefaultSecret: true,
+});
+const gw = createTeleportPamGateway({
+  isolationClass: "production",
+  elevatedHmacSecret: process.env.HOBO_SVID_HMAC_SECRET,
+});
+await gw.start({ stationId: "s1", tenant: "acme", isolationClass: "production", trustDomain: "yard" });
+const session = await gw.brokerSession({
+  subject: "user:alice",
+  target: "ssh:db",
+  preferSecretless: true,
+  elevatedToken: elev.token,
+});
+// session.sessionToken is short-lived and verifiable; audit drained to Yard sink
+```

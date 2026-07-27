@@ -307,5 +307,5 @@ Hard environment network isolation is a first-class, fail-closed property of the
 | staging | Soft | Optional hard-overlay | Configurable |
 | production | Soft + capability required | Recommended hard-overlay | Dual-control membership |
 
-Elevated production access requires a short-lived capability (`hobo access request`), not network membership alone. Optional Privileged Access Gateway attaches as a Station Rail capability and is env-scoped. Break-glass is dual-controlled and auto-expires. Conformance: `pnpm --filter @hobo/connectivity test`.
+Elevated production access requires a short-lived capability (`hobo access request`), not network membership alone. Optional Privileged Access Gateway (`@hobo/connectivity` pam/) attaches as a Station Rail capability, is env-scoped, and brokers secretless short-lived sessions (local mint + optional remote HTTP transports). Break-glass is dual-controlled and auto-expires. Conformance: `pnpm --filter @hobo/connectivity test`.
 

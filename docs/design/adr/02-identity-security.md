@@ -841,7 +841,7 @@ Local-dev, remote development, staging, and production networks must be unable t
 5. **Break-glass** — dual-approved, time-bound, auto-expiry, post-incident review obligation (`access.BreakGlass*`).
 6. **Local-dev air-gap** — pure local/portless never joins remote overlays; named endpoints reject remote backends in local mode.
 7. **Junctions env-scoped** — federation denied across isolation classes without dual-controlled CrossEnvGrant.
-8. **Privileged Access Gateway** — optional Station capability / Rail profile (Teleport preferred stub; JumpServer stub without embedding GPLv3); Station tagged to one isolation class; production sessions require elevated capability; audit streams off-box immediately.
+8. **Privileged Access Gateway** — optional Station capability / Rail profile with full secretless session brokering (`createPrivilegedAccessGateway` / Teleport·Boundary·JumpServer·native kinds). Local path mints verifiable short-lived session tokens; remote HTTP transports are complete API clients (no embedded third-party binaries). Station tagged to one isolation class; production/staging require elevated capability JWT verify; audit streams off-box immediately.
 9. **Policy pack** — versioned `hobo.env-network-isolation/v1` loaded by TagAcl/rego-lite and referenced from Rails; fail-closed; refuse silent widening.
 10. **Composition** — tenant × env: harder axis wins (`assertComposedIsolation`).
 
@@ -866,4 +866,4 @@ flowchart LR
 ### Consequences
 - **(+)** Hard, testable walls between environment networks; elevated access is capability-based; PAM is optional and subject to policy.
 - **(+)** Offline conformance suite proves cross-env deny + positive controls.
-- **(−)** Operators must assign control-plane membership for isolation-critical labels; live Tailscale ACL push remains out of band (pure policy documents only).
+- **(−)** Operators must assign control-plane membership for isolation-critical labels. Tailscale ACL documents are generated and DNS preferences can be applied when an API client is configured; full ACL JSON review/push remains an operator control-plane action.

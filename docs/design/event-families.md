@@ -25,7 +25,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |
 | `connector.*` | `connector.Registered`, `connector.Disabled` |
-| `contract.*` | `contract.Observed`, `contract.Verified` |
+| `contract.*` | `contract.Observed`, `contract.Verified`, `contract.EffectDeclared`, `contract.EffectInvoked` |
 | `cost.*` | `cost.AnomalyDetected`, `cost.AnomalyResolved`, `cost.ForecastUpdated`, `cost.RecommendationIssued` |
 | `credit.*` | `credit.Registered`, `credit.Reset`, `credit.Exhausted`, `credit.BudgetCapSet` |
 | `crew.*` | `crew.ActionProposed`, `crew.HandoffRequested` |
@@ -73,6 +73,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `redteam.*` | `redteam.FindingRecorded` |
 | `registry.*` | `registry.BundleImported` |
 | `resource.*` | `resource.Provisioned`, `resource.DriftDetected` |
+| `resilience.*` | `resilience.Attempt`, `resilience.Terminal` |
 | `resourcedef.*` | `resourcedef.Registered`, `resourcedef.Updated` |
 | `rollout.*` | `rollout.Started`, `rollout.Stepped`, `rollout.Promoted`, `rollout.RolledBack`, `rollout.Failed` |
 | `run.*` | `run.Started`, `run.StepCompleted` |

@@ -11,11 +11,21 @@ explainable, machine-readable decision — the can-deploy contract check, the
 obligation check, and a cost/quota check. Every evaluation records a
 `policy.Decided` fact even when it allows.
 
+**Effects + resiliency (ADR-0136):** optional `effects: EffectSpec` (Verse-inspired
+purity lattice + domain I/O) and `resilience: ResilienceProfile` (secondary
+visibility layer; deterministic retry; never retries `policy.Decided` / terminal).
+Export via `toEffectManifest` / `formatContractDescribe`; harness integration in
+`@hobo/contract-harness`.
+
 ```ts
 import {
   createBoundaryContract,
   checkCompatibility,
   evaluateGatekeeper,
+  pureEffects,
+  createResilienceProfile,
+  formatContractDescribe,
+  toEffectManifest,
 } from "@hobo/contracts";
 
 // Contract IR: is api@v3 compatible with what worker@v2 expects?

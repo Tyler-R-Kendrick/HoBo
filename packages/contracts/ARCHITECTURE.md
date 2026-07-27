@@ -19,7 +19,13 @@ is that dimension.
   producer/consumer boundary contract and its compatibility rules.
   `checkCompatibility(prev, next)` returns `compatible` or `breaking` with
   machine-readable reasons; a removed field a consumer depends on is a breaking
-  change, an added field is safe.
+  change, an added field is safe. Optional **EffectSpec** (Verse-inspired purity
+  lattice + domain I/O effects) and **ResilienceProfile** (secondary resiliency
+  metadata) fields are first-class ([ADR-0136](../../docs/design/adr/03-data-plane-effects-resiliency.md));
+  effect widening is breaking when effects are declared. Lattice helpers live in
+  [`src/effects.ts`](./src/effects.ts); resiliency applicator in
+  [`src/resilience.ts`](./src/resilience.ts); describe/export in
+  [`src/describe.ts`](./src/describe.ts).
 - **can-deploy** ([`src/can-deploy.ts`](./src/can-deploy.ts)) — given the
   currently-deployed contract state and a candidate deployment plan, it builds a
   compatibility matrix and emits `compat.GatePassed` / `compat.GateFailed` with a
@@ -66,3 +72,20 @@ outputs are the event-sourced substrate of the deploy pipeline: a **command**
 over the append-only **event-store**, rebuilt from **snapshots** in the **read
 store**) that the Planner **actor** maintains, and every verdict is emitted as a
 replayable `policy.Decided` / `compat.Gate*` / `gatekeeper.Decided` **event**.
+Gatekeeper decisions also surface **effectSummaries** and optional
+`gate: "effects" | "resilience"` reasons so CLI/MCP/SRE tooling can inspect
+declared side effects and resiliency intent without elevating resiliency to a
+primary control-plane noun.
+
+## Effects + resiliency (ADR-0136)
+
+| Symbol | Role |
+|---|---|
+| `EffectSpec` | purity + capabilities + domains on a contract |
+| `effectiveEffects` | declared or conservative default for external reasoning |
+| `effectUnion` / `effectSubtype` / `isEffectWideningBreaking` | lattice |
+| `EffectManifest` / `toEffectManifest` | export for policy/SRE/MCP |
+| `EffectTracer` | `contract.EffectDeclared` / `EffectInvoked` facts (no re-exec on replay) |
+| `ResilienceProfile` | secondary strategy metadata (retry/circuitBreaker/…) |
+| `applyResilienceProfile` | thin fact-emitting applicator; never retries policy.Decided/terminal |
+| `describeContractEffects` | CLI/MCP human+machine describe |

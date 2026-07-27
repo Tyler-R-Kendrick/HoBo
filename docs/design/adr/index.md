@@ -141,3 +141,4 @@
 | 0133 | Hard environment network isolation + optional Privileged Access Gateway | [identity-security](02-identity-security.md#adr-0133) |
 | 0134 | HoBo Trails: app-owned continuous migration recipes that compose continuous identity | [identity-security](02-identity-security.md#adr-0134) |
 | 0135 | SQLite is the default embedded EventStore/runtime journal behind HoBo ports; single-owner partitions; not the public portability boundary | [data-plane sqlite default](03-data-plane-sqlite-default.md) |
+| 0136 | Effects on Contracts (Verse-inspired EffectSpec) + visible secondary ResilienceProfile; no Effect-TS/Polly/XState public deps | [data-plane effects+resiliency](03-data-plane-effects-resiliency.md) |

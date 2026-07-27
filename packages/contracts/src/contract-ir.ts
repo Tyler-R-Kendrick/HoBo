@@ -1,5 +1,16 @@
 import { createHash } from "node:crypto";
 
+import {
+	type EffectSpec,
+	isEffectWideningBreaking,
+	parseEffectSpec,
+} from "./effects.js";
+import {
+	type ResilienceProfile,
+	parseResilienceProfile,
+	validateResilienceAgainstEffects,
+} from "./resilience.js";
+
 // Parse, don't validate: the exported interfaces below are the parsed, derived
 // domain types the contract engine works with. Their protobuf wire forms live in
 // data-models/contracts.proto with a CUE constraint per message in
@@ -77,6 +88,17 @@ export interface BoundaryContract {
 	edge: ContractEdge;
 	requiredShape: RequiredShape;
 	contractHash: `sha256:${string}`;
+	/**
+	 * Optional Verse-inspired effect exposure (ADR-0136). When omitted, treated
+	 * conservatively (noRollback + decides + network/externalCall) for external
+	 * reasoning, but hash stability preserves absence as undefined.
+	 */
+	effects?: EffectSpec;
+	/**
+	 * Optional secondary ResilienceProfile (ADR-0136). Visible metadata + thin
+	 * applicator; never elevates resiliency to a primary control-plane noun.
+	 */
+	resilience?: ResilienceProfile;
 }
 
 // domain-view: single breaking-change fact; wire form is CompatibilityReason in data-models/contracts.proto.
@@ -100,6 +122,8 @@ export interface BoundaryContractInput {
 	mode?: unknown;
 	edge: unknown;
 	requiredShape: unknown;
+	effects?: unknown;
+	resilience?: unknown;
 }
 
 export function parseBoundaryContract(input: unknown): BoundaryContract {
@@ -113,7 +137,19 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 		"$.requiredShape",
 	);
 
-	const core = {
+	const effects =
+		source.effects === undefined
+			? undefined
+			: parseEffectSpec(source.effects);
+	const resilience =
+		source.resilience === undefined
+			? undefined
+			: parseResilienceProfile(source.resilience);
+	if (effects && resilience) {
+		validateResilienceAgainstEffects(resilience, effects);
+	}
+
+	const core: Omit<BoundaryContract, "contractHash"> = {
 		schemaVersion:
 			CONTRACT_IR_SCHEMA_VERSION as typeof CONTRACT_IR_SCHEMA_VERSION,
 		id,
@@ -121,6 +157,8 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 		mode: mode as ContractMode,
 		edge,
 		requiredShape,
+		...(effects !== undefined ? { effects } : {}),
+		...(resilience !== undefined ? { resilience } : {}),
 	};
 	const contractHash = hashContract(core);
 	return Object.freeze({ ...core, contractHash });
@@ -129,7 +167,7 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 export function createBoundaryContract(
 	input: Partial<BoundaryContractInput> = {},
 ): BoundaryContract {
-	return parseBoundaryContract({
+	const base: Record<string, unknown> = {
 		id: input.id ?? "contract-orders-http",
 		version: input.version ?? "1.0.0",
 		mode: input.mode ?? "declared",
@@ -149,7 +187,15 @@ export function createBoundaryContract(
 				requiredFields: ["id", "tenantId"],
 				providedFields: ["id", "tenantId"],
 			} as unknown),
-	});
+	};
+	if (input.effects !== undefined) base.effects = input.effects;
+	if (input.resilience !== undefined) base.resilience = input.resilience;
+	return parseBoundaryContract(base);
+}
+
+/** Effective effects: declared or conservative default for external reasoning. */
+export function effectiveEffects(contract: BoundaryContract): EffectSpec {
+	return contract.effects ?? parseEffectSpec(undefined);
 }
 
 // checkCompatibility(prev, next) is the version-skew answer the design calls for
@@ -206,6 +252,31 @@ export function checkCompatibility(
 				[],
 			),
 		);
+	}
+
+	// Effect axis (ADR-0136): widening purity/domains/capabilities is breaking
+	// when either revision declares effects (or both use effective defaults).
+	// Missing effects on both sides: no effect-axis check (opt-in migration).
+	if (prev.effects !== undefined || next.effects !== undefined) {
+		const prevFx = effectiveEffects(prev);
+		const nextFx = effectiveEffects(next);
+		if (isEffectWideningBreaking(prevFx, nextFx)) {
+			reasons.push(
+				reason(
+					"effect-widened",
+					`contract ${prev.id} widened effects (purity/domains/capabilities); consumers that assumed a narrower set may break`,
+					prev,
+					next,
+					[
+						`purity:${prevFx.purity}->${nextFx.purity}`,
+						...nextFx.domains.filter((d) => !prevFx.domains.includes(d)),
+						...nextFx.capabilities.filter(
+							(c) => !prevFx.capabilities.includes(c),
+						),
+					],
+				),
+			);
+		}
 	}
 
 	if (reasons.length > 0) {

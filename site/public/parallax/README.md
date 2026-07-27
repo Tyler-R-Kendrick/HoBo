@@ -63,6 +63,24 @@ limb placement, a little fur overlap, restrained pole and bundle follow-through.
 Body mass, eye size and separation, pole length and thickness, knot design and
 bundle volume all hold steady, and both feet stay on one ground baseline.
 
+## What a west sheet has to match
+
+Measured off `bo-walk.png`'s own export, so a new sheet lands registered without
+any nudging:
+
+| | |
+|---|---|
+| Grid | 6 columns × 6 rows, 36 frames, read left-to-right then down |
+| Frame | 554 × 542 px |
+| Cadence | 50 ms a frame — 9 frames to a step, 18 to a stride |
+| Background | transparent |
+| Ink extent | rows 18–530, columns 19–538 of the frame |
+| Feet baseline | solid ink ends at row 523, 96.5% down the frame |
+
+The cadence is the part that is easy to miss and impossible to fudge: the band
+derives Bo's speed from it, so a sheet at a different frame rate makes his feet
+plant in one direction and skate in the other.
+
 ## What the site does to a sheet once it is here
 
 Nothing that changes the drawing. It is repacked to a 6×6 grid at 160×157 per

@@ -18,15 +18,21 @@ export class BindingResolutionError extends Error {
 
 export type ResolvedEnv = Readonly<Record<string, string>>;
 
+/**
+ * Resolve lazy binding tokens for a Camp running on the local provider.
+ * Provider is inherited from the enclosing Yard (derivedProviderId) or
+ * explicitly required as "local" for bare-metal camps.
+ */
 export async function resolveLocalBindings(
 	manifest: WiringManifest,
 	camp: Camp,
 	resolver: BindingResolverPort,
 ): Promise<ResolvedEnv> {
-	if (camp.providerId !== "local") {
+	const providerId = camp.derivedProviderId ?? "local";
+	if (providerId !== "local") {
 		throw new BindingResolutionError(
-			"camp.providerId",
-			`resolveLocalBindings requires local provider, got ${camp.providerId}`,
+			"camp.derivedProviderId",
+			`resolveLocalBindings requires local provider, got ${providerId}`,
 		);
 	}
 
@@ -65,6 +71,9 @@ function sortKeys(value: unknown): unknown {
 	return Object.fromEntries(
 		Object.keys(value)
 			.sort()
-			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+			.map((key) => [
+				key,
+				sortKeys((value as Record<string, unknown>)[key]),
+			]),
 	);
 }

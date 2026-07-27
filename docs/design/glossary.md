@@ -88,8 +88,13 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | WIT interface | Canonical language-neutral contract form for a HoBo port. |
 | WIT-first SDK | SDK model where each language uses generated `hobo:sdk` WIT bindings plus a thin idiom layer. |
 | Workload Profile | How a service is realized, such as wasm component, container, serverless, or VM. |
-| Yard | Provider-specific cross-Camp scope and the control plane that runs that provider's orchestration. |
+| Yard | Provider-specific topology and control-plane boundary. **Owns provider selection.** May declare zero Camps (requested shape before a live instance). See [yard-first-placement ADR](./adr/yard-first-placement.md). |
+| Yard instance | Live, registered, attested control-plane inventory record (not a fifth topology primitive). |
+| Yard runtime registration | Broker-approved template capable of hosting/generating a Yard for one provider/runtime family (not an app runtime backend). |
+| Yard shape | Planning record comparing a requested Yard to live instances / generatable runtimes. |
 | Yard manifest | Generated IR of a Yard's exposed endpoints, domains, cross-Yard links, residency, and trust requirements. |
+| Camp | Logical environment/substrate shape **inside a Yard**. Does not own a Bindle and does not choose a cloud provider; inherits provider from its enclosing Yard. |
+| Bindle deployment request | Wire artifact attaching a provider-agnostic Bindle manifest to a requested Yard/shape (the Bindle itself is not mutated). |
 | `@hobo/bindles` | App idiom layer for declaring resources, `.allow()` grants, and Bindles. |
 | `@hobo/camps` | Topology idiom package for declaring Camps. |
 | `@hobo/junctions` | Topology idiom package for declaring Junctions. |

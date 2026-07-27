@@ -1,17 +1,19 @@
 /**
  * Embedded broker-runtime for an installed local Yard.
  *
- * The Yard install always has a broker: it resolves which Yards/Camps can host
- * a Bindle, prefers isolated-wasm (Wasmtime sandboxes) when available, creates
- * a Camp when none is named, and hard-fails when the Bindle pins a provider via
- * `.with({ provider })` that is not in the broker's junction catalog.
+ * Yard-first placement: Bindle is provider-agnostic; the Broker selects a
+ * registered Yard (or generates one under policy), then a Camp inside that Yard,
+ * then runs resolvers under the Yard provider. Bindle provider pins are rejected.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 
 import {
+	assertNoBindleProviderSelection,
+	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
+	BINDLE_PROVIDER_SELECTION_REMEDIATION,
 	collectRequiredRuntimes,
 	type BindleDefinition,
 	type RequiredRuntimeKind,
@@ -21,10 +23,13 @@ import {
 	type BrokerCatalogDefinition,
 	type BrokerPolicySet,
 	type BrokerResolution,
+	buildDeploymentRequestFromParts,
 	createBroker,
 	type HoboBroker,
 	LOCAL_HOST_PROVIDER_ID,
 	LOCAL_HOST_REGION,
+	resolveBindleDeployment,
+	type YardPlacementReceipt,
 } from "@hobo/broker";
 
 import {
@@ -73,8 +78,10 @@ export interface PlacementResult {
 	readonly componentHost: ComponentHostKind;
 	readonly providerId: string;
 	readonly resolution: BrokerResolution;
+	/** @deprecated Always empty — Bindle provider pins are forbidden. */
 	readonly explicitProviders: readonly string[];
 	readonly requiredRuntimes?: readonly RequiredRuntimeKind[];
+	readonly yardPlacement?: YardPlacementReceipt;
 	readonly message: string;
 	readonly remediation?: readonly string[];
 }
@@ -102,26 +109,14 @@ function portForResourceKind(kind: string): string {
 export { collectRequiredRuntimes } from "@hobo/bindles";
 
 /**
- * Providers explicitly pinned by `.with({ provider })` on the Bindle.
- * Any such pin is a hard requirement for the broker junction catalog.
- * Env injections (`.with(env({...}))` / `option: "env"`) are not pins.
+ * @deprecated Bindle provider pins are forbidden. Asserts none exist and returns [].
+ * Prefer assertNoBindleProviderSelection from @hobo/bindles.
  */
 export function collectExplicitProviderPins(
 	definition: BindleDefinition,
 ): readonly string[] {
-	const pins = new Set<string>();
-	for (const record of Object.values(definition.resources)) {
-		for (const annotation of record.annotations) {
-			if (annotation.option === "env") continue;
-			if (
-				typeof annotation.provider === "string" &&
-				annotation.provider.length > 0
-			) {
-				pins.add(annotation.provider);
-			}
-		}
-	}
-	return Object.freeze([...pins].sort());
+	assertNoBindleProviderSelection(definition);
+	return Object.freeze([]);
 }
 
 function definitionEntry(options: {
@@ -399,21 +394,65 @@ function componentHostForProvider(
 }
 
 /**
- * Resolve deployment placement through the embedded broker.
- * Creates a Camp id when the request does not name one.
- * Hard-fails when the Bindle pins providers missing from the catalog.
+ * Resolve deployment placement through the embedded broker (Yard-first).
+ * Bindle is provider-agnostic; Yard selection owns provider context.
+ * Creates a Camp id inside the selected Yard when none is named.
+ * Rejects Bindle provider selection annotations.
  */
 export async function resolveBindlePlacement(options: {
 	readonly definition: BindleDefinition;
 	readonly hoboHome?: string;
 	readonly yard?: BareMetalYardConfig | null;
 	readonly campId?: string;
+	readonly yardId?: string;
+	readonly providerId?: string;
+	readonly selectionMode?: "exact" | "compatible" | "compatible-or-generate";
 	readonly emitProgress?: (message: string) => void;
 }): Promise<PlacementResult> {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const emit = options.emitProgress ?? (() => {});
 	const yardConfig =
 		options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
+
+	// Fail fast: Bindle must not select providers.
+	try {
+		assertNoBindleProviderSelection(options.definition);
+	} catch (error) {
+		const message =
+			error instanceof Error ? error.message : String(error);
+		return {
+			outcome: "rejected",
+			brokerId: "uninitialized",
+			campId: options.campId ?? "unplaced",
+			yardName: yardConfig?.name ?? "local",
+			componentHost: yardConfig?.componentHost ?? DEFAULT_COMPONENT_HOST,
+			providerId: "none",
+			resolution: {
+				outcome: "rejected",
+				rejection: {
+					schemaVersion: "hobo.broker/v1",
+					requestId: "bindle-provider-check",
+					brokerId: "uninitialized",
+					policyHash: "sha256:none" as never,
+					reasons: [
+						{
+							plane: "placement",
+							code: BINDLE_PROVIDER_SELECTION_FORBIDDEN,
+							message,
+						},
+					],
+				},
+				events: [],
+			},
+			explicitProviders: [],
+			message,
+			remediation: [
+				BINDLE_PROVIDER_SELECTION_REMEDIATION,
+				"Remove .with({ provider }) / provider-specific Bindle annotations.",
+				"Declare or request a provider-specific Yard and attach this Bindle deployment to it.",
+			],
+		};
+	}
 
 	// Fail fast on missing runtimes before equipping toolchains / downloading wasmtime.
 	const requiredRuntimes = collectRequiredRuntimes(options.definition);
@@ -444,7 +483,7 @@ export async function resolveBindlePlacement(options: {
 				},
 				events: [],
 			},
-			explicitProviders: collectExplicitProviderPins(options.definition),
+			explicitProviders: [],
 			requiredRuntimes,
 			message,
 			remediation: [
@@ -460,52 +499,18 @@ export async function resolveBindlePlacement(options: {
 		emitProgress: emit,
 	});
 
-	const explicitProviders = collectExplicitProviderPins(options.definition);
-	if (explicitProviders.length > 0) {
-		const available = new Set(
-			catalog.definitions().map((d) => d.providerId),
-		);
-		const missing = explicitProviders.filter((p) => !available.has(p));
-		if (missing.length > 0) {
-			const message = `bindle pins provider(s) via .with({ provider }) that are not available on this broker junction: ${missing.join(", ")}`;
-			return {
-				outcome: "rejected",
-				brokerId: state.brokerId,
-				campId: options.campId ?? "unplaced",
-				yardName: yardConfig?.name ?? "local",
-				componentHost: state.preferredComponentHost,
-				providerId: "none",
-				resolution: {
-					outcome: "rejected",
-					rejection: {
-						schemaVersion: "hobo.broker/v1",
-						requestId: "pin-check",
-						brokerId: state.brokerId,
-						policyHash: broker.policyHash,
-						reasons: missing.map((provider) => ({
-							plane: "placement" as const,
-							code: "pinned-provider-unavailable",
-							message: `provider ${provider} is not registered on the broker junction`,
-						})),
-					},
-					events: [],
-				},
-				explicitProviders,
-				requiredRuntimes,
-				message,
-				remediation: [
-					"Remove the .with({ provider }) pin to let the broker choose (default: wasm-sandbox when available).",
-					"Or register/approve the pinned provider on this broker junction, then retry.",
-					`Broker state: ${brokerStatePath(hoboHome)}`,
-				],
-			};
-		}
-	}
-
 	const yardName = yardConfig?.name ?? "local";
-	// Auto-create camp when none is named (broker requireExplicitCamps=false).
-	const campId = options.campId ?? `camp:dev-${yardName}`;
-	const requirements = Object.values(options.definition.resources).map(
+	const yardId = options.yardId ?? `yard:${yardName}`;
+	// Prefer runtime provider from installed hosts when no explicit yard provider.
+	const preferredProvider =
+		options.providerId ??
+		(requiredRuntimes.includes("oci")
+			? OCI_PROVIDER_ID
+			: isRuntimeInstalled("wasm", hoboHome)
+				? WASM_SANDBOX_PROVIDER_ID
+				: LOCAL_PROCESS_PROVIDER_ID);
+
+	const resources = Object.values(options.definition.resources).map(
 		(resource) => ({
 			resourceId: resource.name,
 			port: portForResourceKind(resource.kind),
@@ -513,77 +518,121 @@ export async function resolveBindlePlacement(options: {
 		}),
 	);
 
-	const request = {
-		schemaVersion: "hobo.broker/v1" as const,
-		requestId: `req-${randomUUID()}`,
-		scope: {
-			bindleId: `bindle:${options.definition.name}`,
-			campId,
-			yardId: `yard:${yardName}`,
-		},
-		requirements,
-		spendEstimateUsd: 0,
+	const requirements = options.definition.requirements ?? {
+		require: [],
+		prefer: [],
+		runtimes: requiredRuntimes,
+		labels: {},
 	};
 
-	emit(`hobo broker-runtime: resolving placement for ${request.scope.bindleId}`);
-	const resolution = await broker.resolve(request);
-	if (resolution.outcome === "rejected" || !resolution.receipt) {
+	const deploymentRequest = buildDeploymentRequestFromParts({
+		bindleName: options.definition.name,
+		manifestHash: `sha256:${createHash("sha256")
+			.update(JSON.stringify({ name: options.definition.name, resources: Object.keys(options.definition.resources).sort() }))
+			.digest("hex")}`,
+		requirements: {
+			require: [...requirements.require],
+			prefer: [...requirements.prefer],
+			runtimes: [
+				...new Set([...requirements.runtimes, ...requiredRuntimes]),
+			],
+			labels: { ...requirements.labels },
+		},
+		yardId,
+		providerId: preferredProvider,
+		selectionMode: options.selectionMode ?? "compatible",
+		allowGeneration: false,
+		resources,
+		ownerTenantId: "local",
+		objective: "min-cost",
+	});
+
+	emit(
+		`hobo broker-runtime: yard-first placement for bindle:${options.definition.name} → ${yardId}`,
+	);
+
+	const yardFirst = await resolveBindleDeployment(deploymentRequest, {
+		brokerId: state.brokerId,
+		catalog,
+		ownerTenantId: "local",
+		seedLocalYard: true,
+	});
+
+	if (yardFirst.outcome === "rejected" || !yardFirst.receipt) {
 		const reasons =
-			resolution.rejection?.reasons.map((r) => r.message).join("; ") ??
-			"placement rejected";
+			yardFirst.reasons?.map((r) => r.message).join("; ") ??
+			"yard-first placement rejected";
 		return {
 			outcome: "rejected",
 			brokerId: state.brokerId,
-			campId,
+			campId: options.campId ?? "unplaced",
 			yardName,
 			componentHost: state.preferredComponentHost,
 			providerId: "none",
-			resolution,
-			explicitProviders,
+			resolution: {
+				outcome: "rejected",
+				rejection: {
+					schemaVersion: "hobo.broker/v1",
+					requestId: deploymentRequest.requestId,
+					brokerId: state.brokerId,
+					policyHash: broker.policyHash,
+					reasons: (yardFirst.reasons ?? []).map((r) => ({
+						plane: r.plane as "placement",
+						code: r.code,
+						message: r.message,
+					})),
+				},
+				events: [],
+			},
+			explicitProviders: [],
+			requiredRuntimes,
 			message: `broker rejected placement: ${reasons}`,
 			remediation: [
-				"Run `hobo yard ensure` so isolated-wasm tooling is available when preferred.",
-				"Inspect broker policies under ~/.hobo/broker-runtime.json.",
+				"Request a compatible Yard shape or register a ready Yard instance.",
+				"Run `hobo yard ensure` so local component hosts are available.",
+				"Provider selection belongs on a Yard, not the Bindle.",
 			],
 		};
 	}
 
-	// Prefer oci > wasm-sandbox > local among decided providers.
-	const providerIds = resolution.receipt.placements.map((p) => p.providerId);
-	const providerId = requiredRuntimes.includes("oci") &&
-		(providerIds.includes(OCI_PROVIDER_ID) ||
-			providerIds.includes(RUNTIME_PROVIDER_IDS.oci))
-		? (providerIds.includes(OCI_PROVIDER_ID)
-				? OCI_PROVIDER_ID
-				: RUNTIME_PROVIDER_IDS.oci)
-		: providerIds.includes(WASM_SANDBOX_PROVIDER_ID)
-			? WASM_SANDBOX_PROVIDER_ID
-			: (providerIds[0] ?? LOCAL_PROCESS_PROVIDER_ID);
+	const receipt = yardFirst.receipt;
+	const campId = options.campId ?? receipt.selectedCampId;
+	const providerId = receipt.selectedProviderId;
 	let componentHost = componentHostForProvider(
 		providerId,
 		state.preferredComponentHost,
 	);
-	// Dependency-required hosts win over soft catalog preference.
 	if (requiredRuntimes.includes("oci")) componentHost = "oci";
 	else if (requiredRuntimes.includes("wasm")) componentHost = "wasm";
 
-	// Ensure yard + camp topology exists on disk (auto-create).
-	openBareMetalYard({
-		hoboHome,
-		// open auto-inits when missing
-	});
+	openBareMetalYard({ hoboHome });
+
+	const resolution: BrokerResolution = {
+		outcome: "resolved",
+		receipt: {
+			schemaVersion: "hobo.broker/v1",
+			requestId: deploymentRequest.requestId,
+			brokerId: state.brokerId,
+			catalogHash: catalog.catalogHash,
+			policyHash: broker.policyHash,
+			placementPolicyId: "yard-first",
+			placements: [...yardFirst.placements],
+		},
+		events: [],
+	};
 
 	return {
 		outcome: "resolved",
 		brokerId: state.brokerId,
 		campId,
-		yardName,
+		yardName: receipt.selectedYardId.replace(/^yard:/, ""),
 		componentHost,
 		providerId,
 		resolution,
-		explicitProviders,
+		explicitProviders: [],
 		requiredRuntimes,
-		message: `broker placed ${options.definition.name} on ${providerId} (componentHost=${componentHost}, camp=${campId})`,
+		yardPlacement: receipt,
+		message: `broker placed ${options.definition.name} on yard ${receipt.selectedYardId} provider ${providerId} (componentHost=${componentHost}, camp=${campId})`,
 	};
 }
 

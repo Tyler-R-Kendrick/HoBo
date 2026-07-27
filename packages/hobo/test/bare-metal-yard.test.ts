@@ -69,10 +69,10 @@ describe("bare-metal yard e2e", () => {
 		expect(topology.kind).toBe("yard");
 		expect(topology.providerId).toBe("local");
 		expect(topology.camps).toHaveLength(1);
-		expect(topology.camps[0]?.bindle.resources.map((r) => r.stableId)).toEqual([
-			"api:api",
-			"web:web",
-		]);
+		// Camp no longer owns the Bindle; it inherits provider from the Yard.
+		expect(topology.camps[0]?.derivedProviderId).toBe("local");
+		expect(topology.camps[0]?.labels.bindle).toBe("hello-bindle");
+		expect((topology.camps[0] as { bindle?: unknown }).bindle).toBeUndefined();
 	});
 
 	it("exposes only the web endpoint; api stays on the private mesh", async () => {

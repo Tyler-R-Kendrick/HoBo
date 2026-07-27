@@ -1,107 +1,80 @@
-import { bindleScope } from "@hobo/bindles/topology";
 import { describe, expect, it } from "vitest";
 
 import {
+	attachCampToYard,
 	camp,
+	CAMP_BINDLE_OWNERSHIP_FORBIDDEN,
+	CAMP_MIGRATION_CODE,
 	providerSelection,
-	resolutionPrecedenceFor,
+	withResolvers,
 } from "../src/index.js";
 
-function resource(
-	kind: string,
-	name: string,
-	portRef: readonly string[] = [`hobo:${kind}`],
-) {
-	return Object.freeze({
-		kind,
-		name,
-		stableId: `${kind}:${name}`,
-		portRef,
-		toDescriptor() {
-			return {
-				kind,
-				name,
-				stableId: `${kind}:${name}`,
-				portRef,
-			};
-		},
-	});
-}
-
-const localRuntime = Object.freeze({ kind: "runtime", id: "runtime-local" });
-const awsDefault = providerSelection("aws", "default");
-const localDefault = providerSelection("local", "default");
-
-describe("camp()", () => {
-	it("composes bindle and camp without config files", () => {
-		const shop = bindleScope("shop", (collector) => {
-			collector.use(resource("data", "db"));
-			collector.use(resource("service", "api", ["wasi:http"]));
-		});
-
+describe("camp() — provider-neutral, no bindle ownership", () => {
+	it("authors a camp without bindle or provider", () => {
 		const prod = camp("prod", {
-			bindle: shop,
 			envType: "production",
-			runtime: localRuntime,
-			defaultProvider: awsDefault,
+			require: ["private-ingress", "managed-container-substrate"],
+			prefer: ["scale-to-zero"],
+			labels: { tier: "production" },
 		});
 
 		expect(prod.kind).toBe("camp");
-		expect(prod.id).toBe("prod-aws");
-		expect(prod.providerId).toBe("aws");
-		expect(prod.resolutionOrder).toEqual([
-			"bindings",
-			"tiers",
-			"defaultProvider",
-		]);
+		expect(prod.id).toBe("prod");
+		expect(prod.envType).toBe("production");
+		expect(prod.require).toContain("private-ingress");
+		expect(prod.derivedProviderId).toBeUndefined();
+		expect((prod as { bindle?: unknown }).bindle).toBeUndefined();
 	});
 
-	it("rejects mixed provider mappings", () => {
-		const app = bindleScope("api", (collector) => {
-			collector.use(resource("service", "api"));
-		});
-
+	it("rejects bindle ownership on camp", () => {
 		expect(() =>
 			camp("dev", {
-				bindle: app,
-				runtime: localRuntime,
-				defaultProvider: localDefault,
-				tiers: { service: awsDefault },
+				bindle: { kind: "bindle" },
 			}),
-		).toThrow(/camp mappings must target one provider/);
+		).toThrow(/must not own a Bindle/);
+		try {
+			camp("dev", { bindle: { kind: "bindle" } });
+		} catch (error) {
+			expect((error as { code?: string }).code).toBe(
+				CAMP_BINDLE_OWNERSHIP_FORBIDDEN,
+			);
+		}
 	});
 
-	it("rejects camp without runtime", () => {
-		const app = bindleScope("api", (collector) => {
-			collector.use(resource("service", "api"));
-		});
-
+	it("rejects provider selection on camp authoring", () => {
 		expect(() =>
 			camp("dev", {
-				bindle: app,
-				runtime: undefined as unknown as object,
-				defaultProvider: localDefault,
+				defaultProvider: providerSelection("aws"),
 			}),
-		).toThrow(/camp requires a runtime backend descriptor/);
+		).toThrow(/must not select a cloud provider/);
+		try {
+			camp("dev", { defaultProvider: providerSelection("local") });
+		} catch (error) {
+			expect((error as { code?: string }).code).toBe(CAMP_MIGRATION_CODE);
+		}
 	});
 
-	it("records resolution precedence bindings before tiers before defaultProvider", () => {
-		const app = bindleScope("shop", (collector) => {
-			collector.use(resource("data", "db", ["hobo:sql"]));
+	it("attaches camp to yard and derives provider", () => {
+		const dev = camp("dev", { envType: "development" });
+		const attached = attachCampToYard(dev, {
+			yardId: "azure-prod",
+			providerId: "azure",
 		});
+		expect(attached.id).toBe("azure-prod/dev");
+		expect(attached.derivedProviderId).toBe("azure");
+		expect(attached.enclosingYardId).toBe("azure-prod");
+	});
 
-		const prod = camp("prod", {
-			bindle: app,
-			runtime: localRuntime,
-			defaultProvider: awsDefault,
-			bindings: { "shop.db": providerSelection("aws", "rds") },
+	it("withResolvers adds provider-local pins after yard attachment", () => {
+		const base = camp("prod", { envType: "production" });
+		const withPins = withResolvers(base, {
+			substrate: "azure.camp.aca-environment/v1",
 		});
-
-		const order = resolutionPrecedenceFor(prod, "data:db");
-		expect(order.map((step) => step.source)).toEqual([
-			"bindings",
-			"tiers",
-			"defaultProvider",
+		expect(withPins.resolverConfig.pins).toEqual([
+			{
+				slot: "substrate",
+				resolverId: "azure.camp.aca-environment/v1",
+			},
 		]);
 	});
 });

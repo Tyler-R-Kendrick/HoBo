@@ -13,6 +13,17 @@ export {
 	type RequiredRuntimeKind,
 } from "./dependencies.js";
 export { env } from "./env.js";
+export {
+	assertNoBindleProviderSelection,
+	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
+	BINDLE_PROVIDER_SELECTION_REMEDIATION,
+	collectExplicitProviderPins,
+	emptyBindleRequirements,
+	hashBindleRequirements,
+	isPlatformAnnotation,
+	parseBindleRequirements,
+	type BindleRequirementsHash,
+} from "./requirements.js";
 
 export {
 	api,
@@ -63,6 +74,7 @@ export type {
 	BindleBuilder,
 	BindleDefinition,
 	BindleEdge,
+	BindleRequirements,
 	BindleResource,
 	BindleResourceRecord,
 	ContainerDependencyOptions,

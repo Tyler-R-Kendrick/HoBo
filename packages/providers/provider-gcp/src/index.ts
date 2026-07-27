@@ -53,3 +53,9 @@ export type {
 	ProviderClient,
 	ResourcePlan,
 } from "./types.js";
+export {
+	GCP_YARD_GENERATOR_CONNECTOR_ID,
+	GCP_YARD_RUNTIME_ID,
+	gcpDefaultResolverPins,
+	gcpYardRuntimeRegistration,
+} from "./yard-defaults.js";

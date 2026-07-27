@@ -33,6 +33,12 @@ describe("bindle()", () => {
 		]);
 		expect(JSON.parse(JSON.stringify(definition))).toEqual({
 			name: "shop",
+			requirements: {
+				labels: {},
+				prefer: [],
+				require: [],
+				runtimes: [],
+			},
 			resources: {
 				store: {
 					kind: "data",
@@ -66,18 +72,22 @@ describe("bindle()", () => {
 		});
 	});
 
-	it("records allow narrowing and opaque provider annotations", () => {
+	it("records allow narrowing; rejects cloud provider annotations", () => {
 		const definition = bindle("annotated", (b) => ({
 			todos: b.kv().allow("get", "set"),
-			api: b
-				.api()
-				.with({ provider: "aws", option: "fargate", config: { cpu: 512 } }),
+			api: b.api(),
 		}));
-
 		expect(definition.resources.todos.declaredAllow).toEqual(["get", "set"]);
-		expect(definition.resources.api.annotations).toEqual([
-			{ provider: "aws", option: "fargate", config: { cpu: 512 } },
-		]);
+
+		expect(() =>
+			bindle("bad", (b) => ({
+				api: b.api().with({
+					provider: "aws",
+					option: "fargate",
+					config: { cpu: 512 },
+				}),
+			})),
+		).toThrow(/bindle-provider-selection-forbidden/);
 	});
 
 	it("env() is injectable camp config attached with .with", () => {

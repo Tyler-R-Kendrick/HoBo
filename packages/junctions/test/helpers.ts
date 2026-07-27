@@ -1,20 +1,16 @@
-import { bindleScope } from "@hobo/bindles/topology";
-import { camp, providerSelection } from "@hobo/camps";
+import { camp } from "@hobo/camps";
 import { type Yard, yard } from "@hobo/yards";
 
+/** Build a provider-specific Yard with a neutral Camp shape (no Bindle ownership). */
 export function makeYard(name: string, providerId: string): Yard {
-	const app = bindleScope("shop", (collector) => {
-		collector.use({
-			kind: "service",
-			name: "api",
-			stableId: "service:api",
-			portRef: ["wasi:http"],
-		});
-	});
 	const dev = camp("dev", {
-		bindle: app,
-		runtime: { kind: "runtime", id: "runtime-local" },
-		defaultProvider: providerSelection(providerId),
+		envType: "development",
+		require: ["managed-http-runtime"],
+		runtimeRequirements: ["local"],
 	});
-	return yard(name, { camps: [dev] });
+	return yard(name, {
+		provider: providerId,
+		regions: ["local"],
+		camps: [dev],
+	});
 }

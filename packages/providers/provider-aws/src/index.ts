@@ -53,3 +53,9 @@ export type {
 	ProviderClient,
 	ResourcePlan,
 } from "./types.js";
+export {
+	AWS_YARD_GENERATOR_CONNECTOR_ID,
+	AWS_YARD_RUNTIME_ID,
+	awsDefaultResolverPins,
+	awsYardRuntimeRegistration,
+} from "./yard-defaults.js";

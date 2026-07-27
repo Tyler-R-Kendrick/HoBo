@@ -1,0 +1,159 @@
+import { describe, expect, it } from "vitest";
+
+import {
+	BINDLE_DEPLOYMENT_REQUEST_SCHEMA,
+	buildDeploymentRequestFromParts,
+	contentHashOf,
+	createYardInventory,
+	createYardRuntimeCatalog,
+	DEFAULT_YARD_GENERATION_POLICY,
+	LOCAL_HOST_PROVIDER_ID,
+	localYardInstance,
+	matchYard,
+	planYardGeneration,
+	resolveBindleDeployment,
+} from "../src/index.js";
+import { createLocalHostCatalog } from "../src/local-host.js";
+
+describe("yard-first placement", () => {
+	it("matches an existing ready yard before generating", async () => {
+		const catalog = createLocalHostCatalog();
+		const inventory = createYardInventory("broker:test");
+		inventory.apply({
+			type: "yard.Registered",
+			yard: localYardInstance({
+				yardId: "yard:local-main",
+				ownerTenantId: "local",
+				providerId: LOCAL_HOST_PROVIDER_ID,
+			}),
+		});
+
+		const request = buildDeploymentRequestFromParts({
+			bindleName: "shop",
+			providerId: LOCAL_HOST_PROVIDER_ID,
+			yardId: "yard:local-main",
+			selectionMode: "compatible",
+			resources: [
+				{ resourceId: "api", port: "hobo:http-service", features: [] },
+			],
+		});
+
+		const result = await resolveBindleDeployment(request, {
+			brokerId: "broker:test",
+			catalog,
+			inventory,
+			seedLocalYard: false,
+		});
+
+		expect(result.outcome).toBe("resolved");
+		expect(result.receipt?.selectedYardId).toBe("yard:local-main");
+		expect(result.receipt?.selectedProviderId).toBe(LOCAL_HOST_PROVIDER_ID);
+		expect(
+			result.placements.every((p) => p.providerId === LOCAL_HOST_PROVIDER_ID),
+		).toBe(true);
+		// Bindle destroy must not destroy yard/camp/shared units.
+		const units = result.receipt?.executionUnits ?? [];
+		expect(units.find((u) => u.kind === "yard")?.destroyWithBindle).toBe(
+			false,
+		);
+		expect(units.find((u) => u.kind === "shared")?.destroyWithBindle).toBe(
+			false,
+		);
+		expect(units.find((u) => u.kind === "bindle")?.destroyWithBindle).toBe(
+			true,
+		);
+	});
+
+	it("denies generation by default", () => {
+		const runtimes = createYardRuntimeCatalog();
+		runtimes.register({
+			schemaVersion: "hobo.yard-runtime/v1",
+			runtimeId: "azure-yard/v1",
+			providerId: "azure",
+			version: "1",
+			supportedShape: {
+				regions: ["eastus2"],
+				capabilities: [],
+				requireProperties: [],
+			},
+			resolverCatalogHash: contentHashOf("r"),
+			generatorConnectorId: "conn-azure-yard",
+			default: true,
+			priority: 10,
+			requiredPermissions: [],
+			conformanceRef: "ref",
+			conformanceHash: contentHashOf("c"),
+			status: "approved",
+		});
+		const decision = planYardGeneration({
+			ownerTenantId: "t1",
+			requestedShape: {
+				providerId: "azure",
+				regions: [],
+				require: [],
+				prefer: [],
+				residency: [],
+				isolation: [],
+				network: [],
+				componentHosts: [],
+				labels: {},
+				properties: {},
+				camps: [],
+			},
+			runtimeCatalog: runtimes.snapshot(),
+			policy: DEFAULT_YARD_GENERATION_POLICY,
+			allowGenerationRequested: true,
+			attemptId: "a1",
+		});
+		expect(decision.allowed).toBe(false);
+		expect(decision.reason).toMatch(/denies generation/i);
+	});
+
+	it("exact mode does not silently substitute another yard", () => {
+		const inventory = createYardInventory("broker:test");
+		inventory.apply({
+			type: "yard.Registered",
+			yard: localYardInstance({
+				yardId: "yard:other",
+				ownerTenantId: "local",
+				providerId: LOCAL_HOST_PROVIDER_ID,
+			}),
+		});
+		const snap = inventory.snapshot();
+		const decision = matchYard(
+			{
+				requestId: "r1",
+				selectionMode: "exact",
+				requestedYardId: "yard:missing",
+				requestedShape: {
+					providerId: LOCAL_HOST_PROVIDER_ID,
+					regions: [],
+					require: [],
+					prefer: [],
+					residency: [],
+					isolation: [],
+					network: [],
+					componentHosts: [],
+					labels: {},
+					properties: {},
+					camps: [],
+				},
+				bindleManifestHash: contentHashOf("m"),
+				bindleRequirementsHash: contentHashOf("req"),
+				allowGenerationRequested: false,
+			},
+			snap,
+			{ ownerTenantId: "local" },
+		);
+		expect(decision.outcome).toBe("rejected");
+		expect(decision.winnerYardId).toBeUndefined();
+	});
+
+	it("parses deployment request schema", () => {
+		const req = buildDeploymentRequestFromParts({
+			bindleName: "x",
+			resources: [],
+		});
+		expect(req.schemaVersion).toBe(BINDLE_DEPLOYMENT_REQUEST_SCHEMA);
+	});
+});

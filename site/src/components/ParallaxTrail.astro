@@ -19,12 +19,24 @@
 // frame and posterized to the four tones the drawing actually uses). He holds
 // one spot while the world slides past, and his stride is timed against the
 // ground plate so his feet plant instead of skating.
+//
+// He can walk either way. `facing` picks the sheet and reverses every layer,
+// so the world slides the other way and his feet still plant — one prop, not
+// two sets of timings to keep in step.
 // ==========================================================================
 
 import { href } from "../lib/url";
 import { BO_FEET, TH, TRAIL_LAYERS, TRAIL_SECONDS } from "../lib/trail-art";
 import { plates } from "../lib/trail-plates";
 import { CLOUD_SPEED, CLOUD_TILE, CLOUD_TONE, clouds } from "../lib/trail-clouds";
+
+interface Props {
+	/** Which way Bo walks. The whole band reverses with him. */
+	facing?: "east" | "west";
+}
+
+const { facing = "east" } = Astro.props;
+const west = facing === "west";
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
@@ -115,8 +127,13 @@ const rootStyle = [
 	`--bo-frame-w:${Math.round(BO_FRAME_W * 100) / 100}`,
 	`--bo-bottom:${Math.round(BO_BOTTOM * 100) / 100}`,
 	`--bo-frame:${BO_FRAME}s`,
-	`--bo-sprite:url("${href("/parallax/bo-walk.png")}")`,
+	// Both are declared but only the matching rule resolves its var(), so the
+	// sheet for the other direction is never fetched.
+	`--bo-sprite-east:url("${href("/parallax/bo-walk.png")}")`,
+	`--bo-sprite-west:url("${href("/parallax/bo-walk-left.png")}")`,
 ].join(";");
+
+const walkSheet = href(west ? "/parallax/bo-walk-left.png" : "/parallax/bo-walk.png");
 ---
 
 {
@@ -129,12 +146,12 @@ const rootStyle = [
 		<link rel="preload" as="image" href={href(`/parallax/clouds/${c.file}`)} />
 	))
 }
-<link rel="preload" as="image" href={href("/parallax/bo-walk.png")} />
-<div class="plx" data-plx style={rootStyle}>
+<link rel="preload" as="image" href={walkSheet} />
+<div class:list={["plx", west && "is-west"]} data-plx style={rootStyle}>
 	<div
 		class="plx-scene"
 		role="img"
-		aria-label="Bo the bindlebug walking a country trail past telephone poles and drifting clouds"
+		aria-label={`Bo the bindlebug walking ${west ? "west" : "east"} along a country trail past telephone poles and drifting clouds`}
 	>
 		{
 			behind.map((l) =>
@@ -360,7 +377,7 @@ const rootStyle = [
 		bottom: calc(var(--u) * var(--bo-bottom));
 		width: var(--bo-w);
 		height: var(--bo-h);
-		background-image: var(--bo-sprite);
+		background-image: var(--bo-sprite-east);
 		background-repeat: no-repeat;
 		background-size: calc(var(--bo-w) * 6) calc(var(--bo-h) * 6);
 		background-position: 0 0;
@@ -368,6 +385,24 @@ const rootStyle = [
 			bo-col calc(var(--bo-frame) * 6) steps(6) infinite,
 			bo-row calc(var(--bo-frame) * 36) steps(6) infinite;
 		animation-play-state: var(--plx-play, running);
+	}
+
+	/* Walking the other way. The sprite sheet is the same drawing mirrored per
+	   frame — mirroring the whole sheet would reverse the column order, and the
+	   column is the frame index, so the walk would run backwards. Every layer
+	   reverses with him; his own two animations do not, because the gait plays
+	   forward whichever way he is pointed. animation-direction does not
+	   inherit, so the cloud squash inside the track is left alone too. */
+	.plx.is-west .plx-bo {
+		background-image: var(--bo-sprite-west);
+	}
+
+	.plx.is-west .plx-layer {
+		animation-direction: reverse;
+	}
+
+	.plx.is-west {
+		--bo-x: 62%;
 	}
 
 	/* At night the soot silhouette gets the cream rim the SVG Bo already has. */
@@ -484,12 +519,20 @@ const rootStyle = [
 		.plx {
 			--bo-x: 20%;
 		}
+
+		.plx.is-west {
+			--bo-x: 68%;
+		}
 	}
 
 	@media (max-width: 560px) {
 		.plx {
 			--band-h: 135px;
 			--bo-x: 14%;
+		}
+
+		.plx.is-west {
+			--bo-x: 74%;
 		}
 
 		.plx-pause {

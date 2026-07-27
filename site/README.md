@@ -27,7 +27,7 @@ pnpm --filter hobo-site preview    # serve the built dist/
 | Path | What it is |
 |---|---|
 | `src/pages/index.astro` | The landing page. |
-| `src/components/ParallaxTrail.astro` | The scrolling trail band above the hero (see below). |
+| `src/components/ParallaxTrail.astro` | The scrolling trail band above the hero (see below); `facing` turns it around. |
 | `src/components/BoIdle.astro` | Bo standing about — rest, bounce and blink (see below). |
 | `src/lib/trail-art.ts` | The telephone wire — the one thing the band draws for itself. |
 | `src/lib/trail-plates.ts` | Picks up supplied artwork from `public/parallax/plates/`. |
@@ -117,6 +117,19 @@ identical pixels. A plate has to repeat cleanly on its own; nothing mirrors or b
 join for it at runtime, which is why the ground plates are mirrored into `A A'` tiles when
 they are composed. `--band-h` is a whole number at every breakpoint on purpose — a
 fractional tile width brings back sub-pixel seams.
+
+**Which way he walks.** `<ParallaxTrail facing="west" />` turns him around: it picks the
+mirrored sheet and reverses every layer, so the world slides the other way and his feet
+still plant. `public/parallax/bo-walk-left.png` is `bo-walk.png` with **each cell
+mirrored in place** — flipping the whole sheet would also reverse the column order, and
+the column *is* the frame index, so the walk would run backwards. Mirroring per frame is
+also the only way to guarantee what a separately drawn sheet cannot: identical outlines,
+identical white bindle fill, and a ground shadow that breathes and slides through the
+stride exactly as it does going the other way. His own two animations never reverse —
+the gait plays forward whichever way he is pointed — and `animation-direction` does not
+inherit, so the cloud squash inside the track is left alone too. Verified by measurement:
+the planted foot tracks −1.33px per frame east and +1.33px west, matching the sign of the
+ground it is standing on.
 
 **How fast it goes.** Bo is a 36-frame sprite sheet (`public/parallax/bo-walk.png`, a 6×6
 grid, downscaled and posterized to the four tones the drawing uses, with the bindle sack

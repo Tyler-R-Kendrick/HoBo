@@ -83,7 +83,7 @@ export const TRAIL_SECONDS = 23.1;
 
 /** Drawn layers, with the depth order they share with the plates. */
 export const TRAIL_LAYERS = [
-	{ key: "wires", speed: 0.55, order: 50, svg: layerWires() },
+	{ key: "wires", speed: 0.55, order: 50, tone: 0.74, svg: layerWires() },
 ] as const;
 
 export type TrailLayerKey = (typeof TRAIL_LAYERS)[number]["key"];

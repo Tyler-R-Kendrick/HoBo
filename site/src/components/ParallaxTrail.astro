@@ -24,6 +24,7 @@
 import { href } from "../lib/url";
 import { BO_FEET, TH, TRAIL_LAYERS, TRAIL_SECONDS } from "../lib/trail-art";
 import { plates } from "../lib/trail-plates";
+import { CLOUD_SPEED, CLOUD_TILE, CLOUD_TONE, clouds } from "../lib/trail-clouds";
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
@@ -40,19 +41,22 @@ type Layer = {
 	front: boolean;
 	href?: string;
 	style: string;
-	plate: boolean;
+	kind: "plate" | "drawn" | "clouds";
+	night: string;
 };
 
 const supplied: Layer[] = plates().map((p) => ({
 	key: p.key,
 	order: p.order,
 	front: p.front,
-	plate: true,
+	kind: "plate",
+	night: p.night,
 	href: href(`/parallax/plates/${p.file}`),
 	style: [
 		`--plate:url("${href(`/parallax/plates/${p.file}`)}")`,
 		`--plate-tile:calc(var(--band-h) * ${round(p.aspect)})`,
 		`--plx-dur:${seconds(p.aspect * TH, p.speed)}s`,
+		`--tone:${p.tone}`,
 		`opacity:${p.opacity}`,
 	].join(";"),
 }));
@@ -61,17 +65,39 @@ const drawn: Layer[] = TRAIL_LAYERS.map((layer) => ({
 	key: layer.key,
 	order: layer.order,
 	front: false,
-	plate: false,
+	kind: "drawn",
+	// Already themed at the source — the route serves a light tile and a dark
+	// one and the swap happens above. Filtering as well would invert twice.
+	night: "keep",
 	style: [
 		`--art-light:url("${href(`/parallax/${layer.key}-light.svg`)}")`,
 		`--art-dark:url("${href(`/parallax/${layer.key}-dark.svg`)}")`,
 		`--plx-dur:${seconds(1200, layer.speed)}s`,
+		`--tone:${layer.tone}`,
 	].join(";"),
 }));
 
-// One depth order over both sources, so a drawn layer can sit between two
+// The clouds are sprites, not a plate, so each can squash on its own. The
+// track is a row of identical segments scrolling by exactly one of them —
+// same loop guarantee as a tiled plate, just built out of elements.
+const sky = clouds();
+const SKY_SEGMENTS = 6; // one tile is 4x the band height, so six spans any viewport
+const cloudLayer: Layer | null = sky.length
+	? {
+			key: "clouds",
+			order: 20,
+			front: false,
+			kind: "clouds",
+			night: "keep",
+			style: `--plx-dur:${seconds(CLOUD_TILE, CLOUD_SPEED)}s;--tone:${CLOUD_TONE}`,
+		}
+	: null;
+
+// One depth order over all three sources, so a drawn layer can sit between two
 // plates — the wires hang in front of the poles and behind the ground.
-const ordered = [...supplied, ...drawn].sort((a, b) => a.order - b.order);
+const ordered = [...supplied, ...drawn, ...(cloudLayer ? [cloudLayer] : [])].sort(
+	(a, b) => a.order - b.order,
+);
 const behind = ordered.filter((l) => !l.front);
 const inFront = ordered.filter((l) => l.front);
 
@@ -98,6 +124,11 @@ const rootStyle = [
 		<link rel="preload" as="image" href={p.href} />
 	))
 }
+{
+	sky.map((c) => (
+		<link rel="preload" as="image" href={href(`/parallax/clouds/${c.file}`)} />
+	))
+}
 <link rel="preload" as="image" href={href("/parallax/bo-walk.png")} />
 <div class="plx" data-plx style={rootStyle}>
 	<div
@@ -106,18 +137,43 @@ const rootStyle = [
 		aria-label="Bo the bindlebug walking a country trail past telephone poles and drifting clouds"
 	>
 		{
-			behind.map((l) => (
-				<div
-					class:list={["plx-layer", l.plate && "plx-plate", `plx-${l.key}`]}
-					style={l.style}
-				/>
-			))
+			behind.map((l) =>
+				l.kind === "clouds" ? (
+					<div class:list={["plx-layer", "plx-sky", `is-${l.night}`]} style={l.style}>
+						{Array.from({ length: SKY_SEGMENTS }, () => (
+							<div class="plx-sky-seg">
+								{sky.map((c) => (
+									<span
+										class="plx-cloud"
+										style={`--cx:${c.x};--cy:${c.y};--cw:${c.w};--ch:${c.h};--cloud:url("${href(`/parallax/clouds/${c.file}`)}")`}
+									/>
+								))}
+							</div>
+						))}
+					</div>
+				) : (
+					<div
+						class:list={[
+							"plx-layer",
+							l.kind === "plate" && "plx-plate",
+							`plx-${l.key}`,
+							`is-${l.night}`,
+						]}
+						style={l.style}
+					/>
+				),
+			)
 		}
 		<div class="plx-bo"></div>
 		{
 			inFront.map((l) => (
 				<div
-					class:list={["plx-layer", l.plate && "plx-plate", `plx-${l.key}`]}
+					class:list={[
+						"plx-layer",
+						l.kind === "plate" && "plx-plate",
+						`plx-${l.key}`,
+						`is-${l.night}`,
+					]}
 					style={l.style}
 				/>
 			))
@@ -185,11 +241,6 @@ const rootStyle = [
 
 	:global(:root[data-theme="light"]) .plx-plate {
 		background-image: var(--plate);
-		filter: none;
-	}
-
-	:global(:root:not([data-theme="light"])) .plx-plate {
-		filter: invert(1);
 	}
 
 	@keyframes plx-scroll-plate {
@@ -198,6 +249,96 @@ const rootStyle = [
 		}
 		to {
 			transform: translate3d(calc(var(--plate-tile) * -1), 0, 0);
+		}
+	}
+
+	/* ---------- night ---------- */
+
+	/* Three treatments, one per layer, because the scene is not all one kind
+	   of thing (see ../lib/trail-plates.ts). Each is graded by --tone, so the
+	   far layers sit back in the dark instead of every layer arriving at the
+	   same brilliant white and flattening the depth the parallax just built.
+	   By day none of this applies: paper is behind everything and distance
+	   already reads without help. */
+	:global(:root:not([data-theme="light"])) .plx-layer.is-invert {
+		filter: invert(1) brightness(var(--tone, 1));
+	}
+
+	/* Keeping means keeping the ink, not keeping the brightness — a cloud that
+	   stays paper-white is a cut-out pasted on the night. */
+	:global(:root:not([data-theme="light"])) .plx-layer.is-keep {
+		opacity: var(--tone, 1);
+	}
+
+	/* A solid silhouette stays solid and gets an ink outline instead — the
+	   same four-way rim Bo takes, so a black post reads against a black sky
+	   without turning into a white one. */
+	:global(:root:not([data-theme="light"])) .plx-layer.is-rim {
+		/* Scaled off the tile unit rather than fixed: a pole shaft is only a
+		   few pixels across at this band height, so a rim that does not shrink
+		   with the band eats the black it is supposed to be outlining. */
+		--rim: calc(var(--u) * 0.75);
+		/* The rim carries the depth. Mixing toward the background rather than
+		   picking a grey keeps it correct in both themes and at any tone. */
+		--rim-ink: color-mix(in srgb, var(--ink) calc(var(--tone, 1) * 100%), var(--bg));
+		filter: drop-shadow(var(--rim) 0 0 var(--rim-ink))
+			drop-shadow(calc(var(--rim) * -1) 0 0 var(--rim-ink))
+			drop-shadow(0 var(--rim) 0 var(--rim-ink))
+			drop-shadow(0 calc(var(--rim) * -1) 0 var(--rim-ink));
+	}
+
+	/* ---------- the clouds ---------- */
+
+	/* Sprites rather than a plate, so each one can squash on its own. The
+	   track is a row of identical segments and scrolls by exactly one of
+	   them, which is the same loop guarantee a tiled plate gets. */
+	.plx-sky {
+		display: flex;
+		width: max-content;
+		background-image: none;
+		animation-name: plx-scroll;
+	}
+
+	.plx-sky-seg {
+		position: relative;
+		flex: 0 0 var(--tile);
+		width: var(--tile);
+		height: 100%;
+	}
+
+	.plx-cloud {
+		position: absolute;
+		left: calc(var(--u) * var(--cx));
+		top: calc(var(--u) * var(--cy));
+		width: calc(var(--u) * var(--cw));
+		height: calc(var(--u) * var(--ch));
+		background-image: var(--cloud);
+		background-repeat: no-repeat;
+		background-size: 100% 100%;
+		/* Squashing about a point low in the shape is what makes it read as
+		   weight settling rather than a box being scaled. */
+		transform-origin: 50% 72%;
+		animation: plx-cloud-squash 3.1s ease-in-out infinite;
+		animation-play-state: var(--plx-play, running);
+		will-change: transform;
+	}
+
+	@keyframes plx-cloud-squash {
+		0%,
+		100% {
+			transform: translateY(0) scale(1);
+		}
+		18% {
+			transform: translateY(calc(var(--u) * 1.6)) scale(1.08, 0.92);
+		}
+		36% {
+			transform: translateY(calc(var(--u) * -2.1)) scale(0.95, 1.08);
+		}
+		55% {
+			transform: translateY(calc(var(--u) * 0.6)) scale(1.04, 0.97);
+		}
+		72% {
+			transform: translateY(calc(var(--u) * -0.66)) scale(0.98, 1.03);
 		}
 	}
 

@@ -31,6 +31,7 @@ pnpm --filter hobo-site preview    # serve the built dist/
 | `src/components/BoIdle.astro` | Bo standing about — rest, bounce and blink (see below). |
 | `src/lib/trail-art.ts` | The telephone wire — the one thing the band draws for itself. |
 | `src/lib/trail-plates.ts` | Picks up supplied artwork from `public/parallax/plates/`. |
+| `src/lib/trail-clouds.ts` | The cloud sprites and where each one sits in the tile. |
 | `src/pages/parallax/[layer].svg.ts` | Serves those tiles as static SVGs, one per layer and theme. |
 | `src/pages/{guide,primitives,agents}/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. |
 | `src/nav.ts` | Single source of truth for header + sidebar navigation. |
@@ -62,8 +63,8 @@ pnpm --filter hobo-site preview    # serve the built dist/
   Story panels stay traced. The trail band draws only what cannot be cropped out of a
   plate — which is the telephone wire and nothing else. **Scenery objects are supplied
   artwork, not drawn here:** clouds, hills, poles, ground, birds, wind, rocks, flowers
-  and plants go in `public/parallax/plates/` and are used as given. Do not hand-author
-  replacements for them.
+  and plants go in `public/parallax/plates/` (or `public/parallax/clouds/`) and are used
+  as given. Do not hand-author replacements for them.
 - **No new JS-family files:** repo policy (AGENTS.md) — config is `astro.config.ts`, not `.mjs`.
 - **Single lockfile:** never add a `site/pnpm-lock.yaml`; the architecture guard rejects
   nested lockfiles. Dependencies resolve through the root workspace lockfile.
@@ -79,14 +80,26 @@ the README in that folder for the slot table and how the shipped plates were com
 An empty slot renders nothing. **Scenery objects are not to be hand-authored in this
 repo**; if a plate is missing, the answer is to supply it, not to draw a substitute.
 
-Five of the six slots ship filled, with props cut out of the reference plates: four
-clouds, the horizon strip with its bridge, three telephone poles, and the ground strip —
-split at the emptiest row in it into the part behind Bo and the near bank in front of
-him. Each capture is cropped to the rows actually used, normalized to the same 6-level
-grayscale + alpha the Bo sheets use, and recomposed on a full-height canvas so it lands
-at its scene position: 2.6MB of source crops became ~120KB of plates. Being grayscale is
-also what makes the night theme free — plates take `filter: invert(1)` in dark mode, the
-design system's exact ink/paper inversion.
+Everything in the band is cut out of the reference plates: four clouds, three telephone
+poles, and the ground strip — split at the emptiest row in it into the part behind Bo
+and the near bank in front of him. Each capture is cropped to the rows actually used,
+normalized to the same 6-level grayscale + alpha the Bo sheets use, and recomposed on a
+full-height canvas so it lands at its scene position: 2.6MB of source crops became ~95KB
+of plates.
+
+**The clouds are sprites, not a plate.** They live in `public/parallax/clouds/` with
+their placements in `src/lib/trail-clouds.ts`, because each one squashes and bobs on its
+own and a single background image can only move as a whole. The layer is a track of
+identical segments scrolling by exactly one segment, so it loops on the same guarantee a
+tiled plate does.
+
+**Night is per-layer, not one filter.** Grayscale artwork makes it cheap, but a single
+`invert(1)` across the band is wrong: it turns clouds into holes in the sky and
+telephone poles into white posts. Each slot declares its own treatment — `invert` for
+line art, `keep` for artwork whose own ink is the point, `rim` for silhouettes that
+should stay dark and take an outline instead — and each is graded by a `tone` that
+tracks the parallax speed, so the far layers sit back in the dark instead of all
+arriving at the same brilliant white. The plates folder README has the reasoning.
 
 **Drawn here** is one thing only: the wire between the poles, in `src/lib/trail-art.ts`,
 served as one static SVG per theme. A wire cannot be cropped out of a plate the way an

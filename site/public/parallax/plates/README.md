@@ -3,14 +3,17 @@
 Supplied artwork. Almost the whole trail band above the hero is made of these —
 the file name is the slot, and the slot fixes where it sits and how fast it goes:
 
-| File | Layer | Speed (ground = 1) | Shipped |
-|---|---|---|---|
-| `sky.png` | furthest back | 0.12x | — |
-| `clouds.png` | drifting clouds | 0.28x | yes |
-| `hills.png` | distant horizon | 0.40x | yes |
-| `poles.png` | telephone poles | 0.55x | yes |
-| `trail.png` | the ground, behind Bo | 1.00x | yes |
-| `trail-front.png` | the near bank, in front of Bo | 1.00x | yes |
+| File | Layer | Speed (ground = 1) | Night | Shipped |
+|---|---|---|---|---|
+| `sky.png` | furthest back | 0.12x | invert | — |
+| `hills.png` | distant horizon | 0.40x | invert | — |
+| `poles.png` | telephone poles | 0.55x | rim | yes |
+| `trail.png` | the ground, behind Bo | 1.00x | invert | yes |
+| `trail-front.png` | the near bank, in front of Bo | 1.00x | invert | yes |
+
+The clouds are **not** a plate — they live in `../clouds/` as individual crops,
+because each one squashes on its own and a single background image can only
+move as a whole. See `src/lib/trail-clouds.ts`.
 
 Also accepted: `.webp`, `.avif`, `.jpg`, `.gif`, `.svg`. An empty slot renders
 nothing.
@@ -30,19 +33,35 @@ tile is sized from it, and the scroll duration is derived from that width so
 every plate travels at the speed its slot claims and lands the loop back on the
 pixels it started from.
 
+## Night
+
+A slot also declares how it becomes its night self, because one rule does not
+fit everything the scene is made of:
+
+- **invert** — ink and paper swap. Right for line art that reads as drawing:
+  the ground is black on white by day and white on black by night.
+- **keep** — the artwork's own ink is the point. A cloud is white *because
+  clouds are white*; invert it and it becomes a hole in the sky.
+- **rim** — the silhouette stays dark and gets an outline instead, the same
+  treatment Bo takes. A telephone pole is a creosote post at noon and at
+  midnight; it should be picked out against the dark, not turned into a white
+  post.
+
+Each is then graded by the slot's `tone`. By day the paper sits behind
+everything and distance reads as detail falling away, but at night distance
+reads as *light* falling away — so without it every layer arrives at the same
+brilliant white and flattens the depth the parallax just built. Tone tracks the
+parallax speed, because that is what depth is here: the slower a layer goes
+past, the further away it is, and the dimmer it should be. The rim colour is
+mixed toward the background rather than picked as a grey, so it stays correct
+in both themes and at any tone.
+
 ## How the shipped plates were made
 
-All six come from the reference plates. Each object was cut out, cropped to the
+All of them come from the reference plates. Each object was cut out, cropped to the
 rows it actually occupies, and normalized to the same 6-level grayscale + alpha
-the Bo sprite sheets use — 2.6MB of source crops became ~120KB of plates.
+the Bo sprite sheets use — 2.6MB of source crops became ~95KB of plates.
 
-- `clouds.png` — four cloud crops spread across one 2400px tile, all clear of
-  the edges, so the wrap needs no blending at all.
-- `hills.png` — the horizon strip with its bridge, upscaled 1.5x so its tile
-  repeats less often, joined with a 16px crossfade (its own edges differed by
-  ~7/255 of antialiasing noise), and faded out along the bottom. That last part
-  matters: the strip was cut off a ground line, so its bottom is dead straight,
-  and held back as distance a straight edge reads as a rule ruled across the band.
 - `poles.png` — three post crops on a 2400px tile, which is exactly 2x the
   1200-unit drawn tile, so the generated wires line up with them. The pole
   centres are repeated in `src/lib/trail-art.ts`; move one and move both.

@@ -16,18 +16,52 @@ import fs from "node:fs";
 // ==========================================================================
 
 /**
+ * How a plate becomes its night self. The band is achromatic, so this is the
+ * whole of theming — but it is per-slot, because one rule does not fit
+ * everything the scene is made of:
+ *
+ * - `invert` — ink and paper swap. Right for line art that reads as drawing:
+ *   the ground is black on white by day and white on black by night.
+ * - `keep` — untouched. Right for anything whose colour is the subject
+ *   rather than its ink. A cloud is white because clouds are white; invert it
+ *   and it becomes a hole in the sky.
+ * - `rim` — kept dark and given a light outline, the same treatment Bo gets.
+ *   Right for solid silhouettes that should stay solid: a telephone pole is a
+ *   creosote post at noon and at midnight, picked out against the dark.
+ */
+export type Night = "invert" | "keep" | "rim";
+
+/**
+ * How bright a layer is after dark, 0 to 1. This is aerial perspective: by day
+ * the paper is behind everything and distance reads as detail falling away, but
+ * at night distance reads as light falling away, so the far layers have to be
+ * knocked back or the scene flattens into one sheet of white. It tracks the
+ * parallax speed, because that is what depth *is* here — the slower a layer
+ * goes past, the further away it is, and the dimmer it should be.
+ */
+export type Tone = number;
+
+/**
  * Every slot, back to front. `order` interleaves these with the drawn layers
- * (see ./trail-art.ts); `front` marks the ones that go on Bo's side of the
- * sprite, so the nearest grass passes in front of his feet.
+ * (see ./trail-art.ts) and the clouds (./trail-clouds.ts); `front` marks the
+ * ones that go on Bo's side of the sprite, so the nearest grass passes in
+ * front of his feet.
  */
 export const PLATE_SLOTS = [
-	{ key: "sky", speed: 0.12, opacity: 0.55, order: 10, front: false },
-	{ key: "clouds", speed: 0.28, opacity: 0.8, order: 20, front: false },
-	{ key: "hills", speed: 0.4, opacity: 0.7, order: 30, front: false },
-	{ key: "poles", speed: 0.55, opacity: 0.95, order: 40, front: false },
-	{ key: "trail", speed: 1, opacity: 1, order: 60, front: false },
-	{ key: "trail-front", speed: 1, opacity: 1, order: 80, front: true },
-] as const;
+	{ key: "sky", speed: 0.12, opacity: 0.55, order: 10, front: false, night: "invert", tone: 0.42 },
+	{ key: "hills", speed: 0.4, opacity: 0.7, order: 30, front: false, night: "invert", tone: 0.62 },
+	{ key: "poles", speed: 0.55, opacity: 1, order: 40, front: false, night: "rim", tone: 0.74 },
+	{ key: "trail", speed: 1, opacity: 1, order: 60, front: false, night: "invert", tone: 0.94 },
+	{ key: "trail-front", speed: 1, opacity: 1, order: 80, front: true, night: "invert", tone: 1 },
+] as const satisfies ReadonlyArray<{
+	key: string;
+	speed: number;
+	opacity: number;
+	order: number;
+	front: boolean;
+	night: Night;
+	tone: Tone;
+}>;
 
 export type PlateSlot = (typeof PLATE_SLOTS)[number]["key"];
 
@@ -71,6 +105,8 @@ export type Plate = {
 	opacity: number;
 	order: number;
 	front: boolean;
+	night: Night;
+	tone: Tone;
 	file: string;
 	/** Tile width as a multiple of the band height, so the aspect holds. */
 	aspect: number;

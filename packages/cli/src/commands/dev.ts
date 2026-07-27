@@ -17,10 +17,22 @@ export interface DevServeResult {
 		readonly resourceName: string;
 		readonly kind: string;
 		readonly url: string;
+		readonly port: number | null;
+		readonly external: boolean;
+		readonly serviceDiscoveryKey: string;
+	}[];
+	readonly exposedEndpoints?: readonly {
+		readonly resourceName: string;
+		readonly kind: string;
+		readonly url: string;
+		readonly port: number | null;
+		readonly external: boolean;
 		readonly serviceDiscoveryKey: string;
 	}[];
 	readonly serviceDiscovery: Readonly<Record<string, string>>;
 	readonly bindleEnv?: Readonly<Record<string, string>>;
+	/** Camp component-host backend (glossary: Component host). */
+	readonly componentHost?: string;
 	readonly probe: { readonly status: number; readonly body: string };
 	readonly close: () => Promise<void>;
 	readonly waitUntilStopped: () => Promise<void>;
@@ -95,19 +107,26 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 						status: ok ? "serving" : "degraded",
 						code: ok ? "HOBO_OK" : "HOBO_DEV_DEGRADED",
 						message: ok
-							? `hobo dev serving ${serve.primaryUrl} on bare-metal yard '${serve.yardName}' camp ${serve.campId} (bindle ${serve.bindleName}, booted in ${bootMs}ms)`
+							? `hobo dev serving ${serve.primaryUrl} on Yard '${serve.yardName}' Camp ${serve.campId} componentHost=${serve.componentHost ?? "local"} (bindle ${serve.bindleName}, booted in ${bootMs}ms)`
 							: `hobo dev booted but did not serve cleanly (status ${serve.probe.status}, ${bootMs}ms)`,
 						data: {
 							command: "dev",
-							mode: "bare-metal-yard",
+							mode: "local-yard",
+							componentHost: serve.componentHost ?? "local",
 							deploymentId: deploymentIdFor(projectDir),
 							localUrl: serve.primaryUrl,
-							runtime: "runtime-local",
+							runtime:
+								serve.componentHost === "isolated-wasm"
+									? "isolated-wasm"
+									: "local",
 							yard: serve.yardName,
 							campId: serve.campId,
 							providerId: serve.providerId,
 							bindleName: serve.bindleName,
 							endpoints: serve.endpoints,
+							...(serve.exposedEndpoints !== undefined
+								? { exposedEndpoints: serve.exposedEndpoints }
+								: {}),
 							serviceDiscovery: serve.serviceDiscovery,
 							...(serve.bindleEnv !== undefined
 								? { bindleEnv: serve.bindleEnv }

@@ -70,3 +70,16 @@ apply the executor's programs. The default runtime therefore injects the same
 in-memory `IacProvider` the `@hobo/cloud` + `@hobo/cli` tests use — the one that
 actually applies the executor's programs — and does not depend on
 `@hobo/iac-pulumi`.
+
+## HTTP frameworks are L2 packages under `packages/adapters/`
+
+`@hobo/hobo` / `@hobo/core` do **not** depend on Hono or other HTTP frameworks.
+
+| Surface | What HoBo sees | Where frameworks live |
+|---------|----------------|------------------------|
+| local component host | bindle entrypoint as `(Request) => Response` | **`packages/adapters/adapter-hono`** + app routes |
+| isolated-wasm host | bundles `src/<name>.ts` (`export const app` with `.fetch`) to wasi:http | same app source as local |
+| mesh env | `x-hobo-env-*` when camp injects config | Camp mesh |
+
+Adapters are **shared monorepo packages** for any project (`pnpm add @hobo/adapter-hono`).
+Examples only *consume* them — adapter source does not live under `examples/`.

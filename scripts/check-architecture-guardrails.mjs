@@ -47,7 +47,10 @@ const TEXT_EXTENSIONS = new Set([
 	".wit",
 ]);
 
-const PRODUCTION_PACKAGE_PARENTS = new Set(["packages", "examples"]);
+// Production packages under packages/ require full scaffolding (contracts/,
+// data-models/). Barebones examples under examples/ are demos — only src/ +
+// tests; they must not be forced to ship contracts/data-models/deploy in git.
+const PRODUCTION_PACKAGE_PARENTS = new Set(["packages"]);
 const NESTED_PRODUCTION_CATEGORIES = new Set([
 	"runtimes",
 	"providers",

@@ -22,9 +22,8 @@ import {
 // (preview/apply/destroy/refresh over the kernel's shape-A `IacProgram`), but
 // instead of the in-memory Pulumi stand-in it forms a REAL Vercel Create
 // Deployment request. On `apply` it reads the committed, known-good Vercel file
-// tree (examples/hello-bindle/deploy/vercel/ — the SINGLE source of truth for the
-// deployable app), posts it via `createVercelClient`, and maps the returned
-// deployment URL into the kernel's `IacOutputs` (`outputs.url`).
+// tree (packages/hobo/fixtures/deploy/vercel/), posts it via `createVercelClient`,
+// and maps the returned deployment URL into the kernel's `IacOutputs` (`outputs.url`).
 //
 // HONEST SCOPE: the live Vercel call is credential-gated (activates only when a
 // real `VERCEL_TOKEN` reaches `createVercelClient`) and is NOT exercised in this
@@ -33,23 +32,11 @@ import {
 // deployments are immutable, so a real teardown would DELETE the deployment; this
 // provider best-effort forgets its local memo and no-ops (see note on `destroy`).
 
-// Resolve the committed hello-bindle Vercel artifact directory relative to this
-// module. Both `dist/vercel-deploy-provider.js` and `src/vercel-deploy-provider.ts`
-// sit three directories below the repo root
-// (packages/hobo/{dist,src}), so the same relative hop reaches
-// examples/hello-bindle/deploy/vercel from either the built or the source module.
+// Default Vercel tree lives next to this package (fixtures/), not under examples/.
+// Both `dist/` and `src/` resolve via `../fixtures/deploy/vercel`.
 function defaultTemplateDir(): string {
 	const here = dirname(fileURLToPath(import.meta.url));
-	return join(
-		here,
-		"..",
-		"..",
-		"..",
-		"examples",
-		"hello-bindle",
-		"deploy",
-		"vercel",
-	);
+	return join(here, "..", "fixtures", "deploy", "vercel");
 }
 
 // Walk the committed artifact tree and produce the Vercel inline-files payload:
@@ -89,8 +76,8 @@ export interface VercelDeployProviderOptions {
 	readonly projectName?: string;
 	// The team id, when the token is a team token.
 	readonly teamId?: string;
-	// The artifact directory to deploy. Defaults to the committed
-	// examples/hello-bindle/deploy/vercel tree (the single source of truth).
+	// The artifact directory to deploy. Defaults to
+	// packages/hobo/fixtures/deploy/vercel.
 	readonly templateDir?: string;
 	// The deploy target. Defaults to "production".
 	readonly target?: string;

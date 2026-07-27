@@ -31,6 +31,7 @@ export interface CommandRunInput {
 		readonly once: boolean;
 		readonly port: string | null;
 		readonly home: string | null;
+		readonly host: string | null;
 	};
 	readonly args: readonly string[];
 	readonly verb: string;

@@ -4,15 +4,17 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { loadBindleDefinition } from "@hobo/cli";
+
+import { createComposedHoboCli } from "../src/cli.js";
 import {
 	composeBareMetalTopology,
+	INTERNAL_MESH_HOST,
 	initBareMetalYard,
 	loadBareMetalYardConfig,
 	openBareMetalYard,
 	serveProjectOnBareMetalYard,
 } from "../src/index.js";
-import { createComposedHoboCli } from "../src/cli.js";
-import { loadBindleDefinition } from "@hobo/cli";
 
 const helloBindleDir = fileURLToPath(
 	new URL("../../../examples/hello-bindle", import.meta.url),
@@ -45,6 +47,10 @@ describe("bare-metal yard e2e", () => {
 		expect(envelope.data.config.kind).toBe("bare-metal");
 		expect(envelope.data.config.name).toBe("local");
 		expect(envelope.data.config.defaultPort).toBe(4100);
+		// Broker-runtime prefers isolated-wasm when tooling can be equipped.
+		expect(
+			(envelope.data.config as { componentHost?: string }).componentHost,
+		).toMatch(/^(local|isolated-wasm)$/);
 
 		const loaded = loadBareMetalYardConfig(hoboHome);
 		expect(loaded?.providerId).toBe("local");
@@ -52,7 +58,6 @@ describe("bare-metal yard e2e", () => {
 	});
 
 	it("composes a real Camp/Yard from the hello-bindle definition", async () => {
-		// Ensure tsx-style import path works in vitest for the example.
 		const definition = await loadBindleDefinition(helloBindleDir);
 		expect(definition).not.toBeNull();
 		expect(definition?.name).toBe("hello-bindle");
@@ -69,15 +74,12 @@ describe("bare-metal yard e2e", () => {
 		);
 	});
 
-	it("serves hello-bindle through the bare-metal yard with services__ injection", async () => {
+	it("exposes only the web endpoint; api stays on the private mesh", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-home-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
-		initBareMetalYard({ hoboHome, defaultPort: 0 }); // port ignored; we pass explicit port
+		initBareMetalYard({ hoboHome });
 
-		// Pick free ports by binding base 0 via serve — use a high base from env.
-		// Use random high port to avoid collisions.
 		const basePort = 18000 + Math.floor(Math.random() * 1000);
-
 		const serve = await serveProjectOnBareMetalYard({
 			projectDir: helloBindleDir,
 			hoboHome,
@@ -87,35 +89,50 @@ describe("bare-metal yard e2e", () => {
 
 		expect(serve.bindleName).toBe("hello-bindle");
 		expect(serve.yard.providerId).toBe("local");
-		expect(serve.serviceDiscovery.services__api__http__0).toMatch(
-			/^http:\/\/127\.0\.0\.1:\d+$/,
-		);
-		expect(serve.serviceDiscovery.services__web__http__0).toMatch(
-			/^http:\/\/127\.0\.0\.1:\d+$/,
+
+		// Exactly one public surface.
+		expect(serve.exposedEndpoints).toHaveLength(1);
+		expect(serve.exposedEndpoints[0]?.resourceName).toBe("web");
+		expect(serve.exposedEndpoints[0]?.external).toBe(true);
+		expect(serve.exposedEndpoints[0]?.port).toBe(basePort);
+		expect(serve.primaryUrl).toBe(`http://127.0.0.1:${basePort}`);
+
+		// API is private mesh — no TCP port.
+		const api = serve.endpoints.find((e) => e.resourceName === "api");
+		expect(api?.external).toBe(false);
+		expect(api?.port).toBeNull();
+		expect(api?.url).toBe(`http://${INTERNAL_MESH_HOST}/api`);
+		expect(serve.serviceDiscovery.services__api__http__0).toBe(
+			`http://${INTERNAL_MESH_HOST}/api`,
 		);
 
-		// Host must inject bindle-declared env (intermediary proof).
+		// Public TCP must not answer on basePort+1 (legacy dual-port posture).
+		await expect(
+			fetch(`http://127.0.0.1:${basePort + 1}/hello?name=Yard`, {
+				signal: AbortSignal.timeout(500),
+			}),
+		).rejects.toThrow();
+
+		// Bindle injects camp env — proves api + web are actually running under HoBo.
 		expect(serve.bindleEnv).toEqual({
-			GREETING_PREFIX: "from-bindle-api",
-			APP_TITLE: "from-bindle-web",
+			GREETING_PREFIX: "howdy",
+			APP_TITLE: "howdy",
 		});
 
-		// Web is primary (ordered first) and must call the API through the
-		// bindle-resolved services__api__http__0 endpoint, rendering bindle env.
+		// Web (public) calls private api via mesh; both surfaces use injected "howdy".
 		const web = await fetch(`${serve.primaryUrl}/?name=Yard`);
 		expect(web.status).toBe(200);
 		const html = await web.text();
-		expect(html).toContain('data-testid="app-title">from-bindle-web</h1>');
-		expect(html).toContain('data-testid="greeting">from-bindle-api, Yard</p>');
-		expect(html).toContain('data-testid="greeting-prefix">from-bindle-api</p>');
-		expect(html).toContain("services__api__http__0");
+		expect(html).toContain('data-testid="app-title">howdy</h1>');
+		expect(html).toContain('data-testid="greeting">howdy, Yard</p>');
 
-		const apiUrl = serve.serviceDiscovery.services__api__http__0!;
-		const api = await fetch(`${apiUrl}/hello?name=Yard`);
-		expect(await api.json()).toEqual({
-			message: "from-bindle-api, Yard",
-			greetingPrefix: "from-bindle-api",
-			via: "bindle-env",
+		// Private mesh URL works through camp-routed fetch; no public TCP for api.
+		const mesh = await fetch(
+			`${serve.serviceDiscovery.services__api__http__0}/hello?name=Mesh`,
+		);
+		expect(await mesh.json()).toEqual({
+			message: "howdy, Mesh",
+			greetingPrefix: "howdy",
 		});
 	});
 
@@ -126,9 +143,6 @@ describe("bare-metal yard e2e", () => {
 
 		const basePort = 19000 + Math.floor(Math.random() * 1000);
 		const cli = createComposedHoboCli();
-		// serveProject uses openBareMetalYard which reads HOBO_HOME from env
-		// only via defaultHoboHome(); our serveProject in cli doesn't pass hoboHome.
-		// Override by setting process.env.HOBO_HOME for the duration.
 		const previous = process.env.HOBO_HOME;
 		process.env.HOBO_HOME = hoboHome;
 		try {
@@ -151,16 +165,30 @@ describe("bare-metal yard e2e", () => {
 					mode: string;
 					bindleName: string;
 					serviceDiscovery: Record<string, string>;
+					exposedEndpoints?: Array<{ resourceName: string; external: boolean }>;
+					endpoints: Array<{
+						resourceName: string;
+						external: boolean;
+						port: number | null;
+					}>;
 					served: { status: number; body: string };
 				};
 			};
 			expect(envelope.code).not.toBe("HOBO_CLI_STUB");
-			expect(envelope.data.mode).toBe("bare-metal-yard");
+			expect(envelope.data.mode).toBe("local-yard");
 			expect(envelope.data.bindleName).toBe("hello-bindle");
-			expect(envelope.data.serviceDiscovery.services__api__http__0).toBeTruthy();
+			expect(envelope.data.serviceDiscovery.services__api__http__0).toContain(
+				INTERNAL_MESH_HOST,
+			);
+			expect(envelope.data.exposedEndpoints).toEqual([
+				expect.objectContaining({ resourceName: "web", external: true }),
+			]);
+			const apiEp = envelope.data.endpoints.find((e) => e.resourceName === "api");
+			expect(apiEp?.external).toBe(false);
+			expect(apiEp?.port).toBeNull();
 			expect(envelope.data.served.status).toBe(200);
-			expect(envelope.data.served.body).toContain("from-bindle-web");
-			expect(envelope.data.served.body).toContain("from-bindle-api, world");
+			expect(envelope.data.served.body).toContain("howdy");
+			expect(envelope.data.served.body).toContain("howdy, world");
 			expect(envelope.ok).toBe(true);
 		} finally {
 			if (previous === undefined) delete process.env.HOBO_HOME;
@@ -169,7 +197,6 @@ describe("bare-metal yard e2e", () => {
 	});
 
 	it("openBareMetalYard auto-inits when missing", () => {
-		// sync path — use unique home
 		const hoboHome = join(tmpdir(), `hobo-auto-${Date.now()}`);
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const yard = openBareMetalYard({ hoboHome });

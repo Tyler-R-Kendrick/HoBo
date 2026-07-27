@@ -56,7 +56,7 @@ export function createProviderFromPorts(
 // public-contract: provider id for the default bare-metal / local-host yard.
 export const BARE_METAL_PROVIDER_ID = "local" as const;
 
-// Ports the bare-metal camp host can realize on the operator's machine.
+// Ports a local Yard's Camps can realize on the operator's machine.
 const BARE_METAL_PORTS = [
 	"kv",
 	"objectStore",
@@ -77,9 +77,9 @@ export function createLocalProvider(): RegistrableProvider {
 }
 
 /**
- * Bare-metal provider: local machine as a HoBo camp host. Extends the basic
- * local provider with HTTP/compute ports so api/web bindles plan and serve
- * without a cloud account.
+ * Local provider: this machine as a HoBo Camp placement target under a local
+ * Yard. Extends basic local ports with HTTP/compute so api/web Bindles can
+ * place and serve without a cloud account.
  */
 export function createBareMetalProvider(): RegistrableProvider {
 	return createProviderFromPorts(BARE_METAL_PROVIDER_ID, [...BARE_METAL_PORTS]);

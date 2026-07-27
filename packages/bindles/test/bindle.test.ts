@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bindle } from "../src/bindle.js";
+import { env } from "../src/env.js";
 
 describe("bindle()", () => {
 	it("builds a graph with at least two resources and one dependsOn edge", () => {
@@ -77,6 +78,23 @@ describe("bindle()", () => {
 		expect(definition.resources.api.annotations).toEqual([
 			{ provider: "aws", option: "fargate", config: { cpu: 512 } },
 		]);
+	});
+
+	it("env() is injectable camp config attached with .with", () => {
+		const campEnv = env({ GREETING_PREFIX: "howdy", APP_TITLE: "howdy" });
+		const definition = bindle("hello", (b) => {
+			const api = b.api().with(campEnv);
+			const web = b.web().with(campEnv).dependsOn(api);
+			return { api, web };
+		});
+
+		expect(campEnv).toEqual({
+			provider: "hobo",
+			option: "env",
+			config: { GREETING_PREFIX: "howdy", APP_TITLE: "howdy" },
+		});
+		expect(definition.resources.api.annotations).toEqual([campEnv]);
+		expect(definition.resources.web.annotations).toEqual([campEnv]);
 	});
 
 	it("rejects empty resource names", () => {

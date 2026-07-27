@@ -19,7 +19,7 @@ import { createDepotCatalogEntry } from "@hobo/runner-depot";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
-import { serveProjectOnBareMetalYard } from "./bare-metal-host.js";
+import { serveProjectOnLocalYard } from "./wasm-host.js";
 import { createBrokerCommand } from "./broker-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
@@ -42,6 +42,7 @@ import { createRegistryCommand } from "./registry-command.js";
 import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
+import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createYardCommand } from "./yard-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -86,8 +87,8 @@ registerInstallable("runner-blacksmith", () => createBlacksmithCatalogEntry());
 // The Depot remote-build specialist: shared-cache economics make its warm
 // builds competitive with "free" cold options (HOBO-720).
 registerInstallable("runner-depot", () => createDepotCatalogEntry());
-// Bare-metal / local camp host — installable via `hobo add local` and used as
-// the default provider id on `hobo yard init` topologies.
+// Local provider — installable via `hobo add local`; default provider id for
+// local Yard topologies (`hobo yard init`).
 registerInstallable("local", () => createLocalProvider());
 
 export function createComposedHoboCli(
@@ -100,9 +101,8 @@ export function createComposedHoboCli(
 
 	return createHoboCli({
 		commands: {
-			// Real e2e local loop: bare-metal Yard hosts the project's bindle
-			// (camp routing + services__* injection + long-lived HTTP). Tests
-			// can still pin a DevRuntime for the one-shot probe path.
+			// Local loop: open the Yard, place the Bindle into a Camp, run the Camp's
+			// component host (services__* + bindle env + external-only TCP).
 			dev: createDevCommand(
 				options.devRuntime !== undefined
 					? { runtime: options.devRuntime }
@@ -114,11 +114,18 @@ export function createComposedHoboCli(
 								emitProgress,
 							}) => {
 								const hoboHome = process.env.HOBO_HOME;
-								const serve = await serveProjectOnBareMetalYard({
+								const hostEnv = process.env.HOBO_YARD_HOST;
+								const serve = await serveProjectOnLocalYard({
 									projectDir,
 									...(port !== undefined ? { port } : {}),
 									...(typeof hoboHome === "string" && hoboHome.length > 0
 										? { hoboHome }
+										: {}),
+									...(hostEnv === "local" ||
+									hostEnv === "isolated-wasm" ||
+									hostEnv === "bare-metal" ||
+									hostEnv === "runtime-local"
+										? { componentHost: hostEnv }
 										: {}),
 									emitProgress,
 								});
@@ -129,11 +136,13 @@ export function createComposedHoboCli(
 									yardName: serve.yard.name,
 									providerId: serve.yard.providerId,
 									endpoints: serve.endpoints,
+									exposedEndpoints: serve.exposedEndpoints,
 									serviceDiscovery: serve.serviceDiscovery,
 									bindleEnv: serve.bindleEnv,
 									probe: serve.probe,
 									close: serve.close,
 									waitUntilStopped: serve.waitUntilStopped,
+									componentHost: serve.componentHost,
 								};
 							},
 						},
@@ -144,7 +153,9 @@ export function createComposedHoboCli(
 					: { resolveTarget: resolveProjectCollectionTarget },
 			),
 			plan: createPlanCommand({ runtime }),
-			up: createUpCommand({ runtime }),
+			// Always place through the embedded broker-runtime (prefer wasm-sandbox yards).
+			// The cloud mock `createUpCommand` remains for tests that wire it directly.
+			up: createBrokerAwareUpCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

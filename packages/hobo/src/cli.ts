@@ -41,6 +41,7 @@ import { createEraseCommand } from "./erase-command.js";
 import { createGenerateCommand } from "./generate-command.js";
 import { createIdentityCommand } from "./identity-command.js";
 import { createImportCommand } from "./import-command.js";
+import { createTrailsCommand } from "./trails-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLocalProvider } from "./local-provider.js";
 import { createLogsCommand } from "./logs-command.js";
@@ -189,6 +190,8 @@ export function createComposedHoboCli(
 			connection: createConnectionCommand(),
 			// Continuous identity migration observe surface (Matching/policy-driven; zero Bindle config).
 			identity: createIdentityCommand(),
+			// Continuous migration Trails observe surface (identity hands-off + app-authored recipes).
+			trails: createTrailsCommand(),
 			// Elevated / cross-env access request + break-glass (short-lived capability).
 			access: createAccessCommand(),
 			// OpenFeature flags + canary/experiment observe (Harness ADR-0083).

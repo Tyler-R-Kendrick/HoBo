@@ -24,7 +24,10 @@ promotes the near-production draft proof
   migration: Matching + policy activate dual mode; progressive ramp uses
   existing Harness cohort flags; dual fixtures extend [ADR-0070](../../docs/design/adr/02-identity-security.md#adr-0070)
   for offline `hobo dev` / tests. Observe with `hobo identity status` /
-  `hobo identity inspect <id>` and `hobo doctor`.
+  `hobo identity inspect <id>` and `hobo doctor`. Composed into **HoBo Trails**
+  ([ADR-0134](../../docs/design/adr/02-identity-security.md#adr-0134),
+  `@hobo/trails`) as the platform recipe `identity.continuous` — pure identity
+  continuous cases still require **zero Trail authoring**.
 - **The Harness** ([ADR-0083](../../docs/design/adr/02-identity-security.md#adr-0083) /
   [ADR-0044](../../docs/design/adr/02-identity-security.md#adr-0044)) — progressive
   delivery as a native plane: single `FeatureFlagStore` (shared with identity

@@ -139,3 +139,4 @@
 | 0131 | Station as control-plane occupancy primitive; Broker pure Conductor; Rails as versioned profiles | [architecture-core](01-architecture-core.md#adr-0131) |
 | 0132 | Continuous Identity Migration Plane: dual-path PrincipalRef continuity, Matching/policy-triggered, zero Bindle config | [identity-security](02-identity-security.md#adr-0132) |
 | 0133 | Hard environment network isolation + optional Privileged Access Gateway | [identity-security](02-identity-security.md#adr-0133) |
+| 0134 | HoBo Trails: app-owned continuous migration recipes that compose continuous identity | [identity-security](02-identity-security.md#adr-0134) |

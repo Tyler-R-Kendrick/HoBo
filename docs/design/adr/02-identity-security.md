@@ -908,3 +908,26 @@ flowchart LR
 - **(+)** Hard, testable walls between environment networks; elevated access is capability-based; PAM is optional and subject to policy.
 - **(+)** Offline conformance suite proves cross-env deny + positive controls.
 - **(−)** Operators must assign control-plane membership for isolation-critical labels. Tailscale ACL documents are generated and DNS preferences can be applied when an API client is configured; full ACL JSON review/push remains an operator control-plane action.
+
+## ADR-0134
+**HoBo Trails: app-owned continuous migration recipes that compose continuous identity.**
+
+### Context
+Schema/data migrations (Supabase/Flyway/Atlas/pgroll patterns), cross-cloud app moves, and continuous identity duals ([ADR-0132](#adr-0132)) were separate mental models. Apps need versioned, composable runbooks for *their* transforms while pure identity continuous migration must remain hands-off (zero Bindle/Trail authoring). Inventing a parallel progressive system or replacing the identity plane would violate architecture guards.
+
+### Decision
+1. **Trails** are versioned, app-owned, Git-resident recipe packs (OpenRewrite-inspired composition) executed by `@hobo/trails`. Naming is locked to **Trails** (not tracks).
+2. **Continuous identity is a first-class platform recipe** (`identity.continuous`) composed into Trails; Matching/policy still activates pure identity duals with **zero required Trail or Bindle authoring**.
+3. **Step kinds** include schema (versioned SQL / declarative / expand-contract), data transform + continuous-dual-data (CDC-style dual/delta), identity-continuous, junction-rebind, secretless re-resolve, validation/oracle, cutover, custom TS. Platform recipes expand hierarchically.
+4. **Progressive dual by default** — expand/contract dual-schema, dual data fixtures, Harness `FeatureFlagStore` ramp ([ADR-0083](#adr-0083)/[ADR-0044](#adr-0044)); auto-abort + compensate on dual/junction failure. No parallel progressive plane.
+5. **History** is durable and idempotent per trail/step/target/tenant (schema_migrations analog).
+6. **can-trail** is a Gatekeeper-compatible dry-run dimension (compatible with can-migrate / upgrade-migration dry-run shapes). Offline when fixtures are present.
+7. **Cross-cloud** orchestrates over existing junctions + overlay — Trails do not invent networking.
+8. **Local/prod parity** — `createContractAssertedTrailFixtures` (ADR-0070 fidelity `simulated`); CLI observe: `hobo trails status|plan|inspect`; `hobo doctor` surfaces Trails + hands-off identity evidence.
+9. **Events** `trail.Started|Planned|DualActive|Progressed|Validated|Cutover|Compensated|Aborted|Failed|HistoryRecorded` (cataloged in event-families); identity-linked runs use never-compact credential-audit retention.
+10. **App ownership of Trail content**; platform owns engine, common recipes, history, progressive controls, Golden oracles.
+
+### Consequences
+- **(+)** One continuous migration abstraction spanning identity (hands-off) and app-specific data/schema/cross-cloud without parallel control planes.
+- **(+)** Golden oracles prove dual consistency, zero-loss, fail-closed, progressive abort, compensation, history idempotency, junction integrity, identity hands-off.
+- **(−)** Full commercial CDC depth (live Debezium connectors) and multi-DB dual-schema beyond Postgres-shaped fixtures remain residual production hardening, not required for the continuous dual Trail contracts.

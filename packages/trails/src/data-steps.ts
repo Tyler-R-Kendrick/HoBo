@@ -1,0 +1,147 @@
+/**
+ * Schema + data continuous dual steps (Supabase/Atlas/pgroll/Debezium patterns).
+ * Offline-capable with contract-asserted dual simulation.
+ */
+import { createHash } from "node:crypto";
+
+import type { TrailStep } from "./definition.js";
+
+// public-contract: data dual schema.
+export const DATA_DUAL_SCHEMA = "hobo.trail-data-dual/v1" as const;
+
+export type SchemaApplyResult = Readonly<{
+	schemaVersion: typeof DATA_DUAL_SCHEMA;
+	stepId: string;
+	mode: "versioned-sql" | "declarative-desired" | "expand-contract";
+	version: string;
+	applied: boolean;
+	/** Expand/contract dual window open when progressive. */
+	dualSchema: boolean;
+	checksum: `sha256:${string}`;
+	dryRun: boolean;
+}>;
+
+export type DataDualResult = Readonly<{
+	schemaVersion: typeof DATA_DUAL_SCHEMA;
+	stepId: string;
+	mode: "bulk" | "delta" | "cdc-dual";
+	/** Row/event checksum equivalence between source and target dual. */
+	sourceChecksum: `sha256:${string}`;
+	targetChecksum: `sha256:${string}`;
+	consistent: boolean;
+	zeroLoss: boolean;
+	/** CDC-style dual is continuous until cutover. */
+	continuous: boolean;
+	fidelity: "simulated" | "live";
+}>;
+
+export type DataDualFixture = Readonly<{
+	sourceRows: readonly Readonly<Record<string, unknown>>[];
+	targetRows: readonly Readonly<Record<string, unknown>>[];
+	fidelity: "simulated";
+}>;
+
+/**
+ * Apply schema step (dry-run or execute). Expand-contract opens dual schema.
+ * Never executes against a live DB in fixtures — returns plan evidence.
+ */
+export function applySchemaStep(
+	step: TrailStep,
+	options?: { readonly dryRun?: boolean },
+): SchemaApplyResult {
+	if (step.kind !== "schema" || !step.schema) {
+		throw Object.assign(new Error("not a schema step"), {
+			code: "trail-step-kind",
+		});
+	}
+	const dryRun = options?.dryRun !== false;
+	const dualSchema =
+		step.schema.mode === "expand-contract" || step.progressive === true;
+	const checksum =
+		`sha256:${createHash("sha256")
+			.update(
+				JSON.stringify({
+					id: step.id,
+					mode: step.schema.mode,
+					version: step.schema.version,
+					sql: step.schema.sql ?? "",
+					desired: step.schema.desiredHash ?? "",
+				}),
+			)
+			.digest("hex")}` as const;
+	return Object.freeze({
+		schemaVersion: DATA_DUAL_SCHEMA,
+		stepId: step.id,
+		mode: step.schema.mode,
+		version: step.schema.version,
+		applied: !dryRun,
+		dualSchema,
+		checksum,
+		dryRun,
+	});
+}
+
+/**
+ * Evaluate data dual consistency (CDC dual / bulk transform checksum).
+ */
+export function evaluateDataDual(
+	step: TrailStep,
+	fixture: DataDualFixture,
+): DataDualResult {
+	if (
+		step.kind !== "data-transform" &&
+		step.kind !== "continuous-dual-data"
+	) {
+		throw Object.assign(new Error("not a data dual step"), {
+			code: "trail-step-kind",
+		});
+	}
+	const sourceChecksum = rowsChecksum(fixture.sourceRows);
+	const targetChecksum = rowsChecksum(fixture.targetRows);
+	const consistent = sourceChecksum === targetChecksum;
+	// Zero-loss: same cardinality and consistent checksums.
+	const zeroLoss =
+		consistent &&
+		fixture.sourceRows.length === fixture.targetRows.length;
+	return Object.freeze({
+		schemaVersion: DATA_DUAL_SCHEMA,
+		stepId: step.id,
+		mode: step.data?.mode ?? "cdc-dual",
+		sourceChecksum,
+		targetChecksum,
+		consistent,
+		zeroLoss,
+		continuous:
+			step.kind === "continuous-dual-data" ||
+			step.data?.mode === "cdc-dual",
+		fidelity: fixture.fidelity,
+	});
+}
+
+export function createContractAssertedDataDualFixtures(input?: {
+	readonly diverge?: boolean;
+}): DataDualFixture {
+	const source = Object.freeze([
+		Object.freeze({ id: "1", v: 1 }),
+		Object.freeze({ id: "2", v: 2 }),
+	]);
+	const target = input?.diverge
+		? Object.freeze([
+				Object.freeze({ id: "1", v: 1 }),
+				Object.freeze({ id: "2", v: 99 }),
+			])
+		: source;
+	return Object.freeze({
+		sourceRows: source,
+		targetRows: target,
+		fidelity: "simulated",
+	});
+}
+
+function rowsChecksum(
+	rows: readonly Readonly<Record<string, unknown>>[],
+): `sha256:${string}` {
+	return `sha256:${createHash("sha256")
+		.update(JSON.stringify(rows))
+		.digest("hex")}`;
+}

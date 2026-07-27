@@ -5,6 +5,12 @@ import {
 	evaluateCanMigrate,
 } from "@hobo/identity";
 import { createStationClient, listStationIds } from "@hobo/stations";
+import {
+	createContractAssertedTrailFixtures,
+	evaluateCanTrail,
+	goldenIdentityHandsOff,
+	identityContinuousTrail,
+} from "@hobo/trails";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
@@ -143,6 +149,47 @@ export function createDoctorCommand(
 				);
 			}
 
+			// Trails (continuous migration plane) — identity hands-off + local dual fixtures.
+			const trailTenant =
+				(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
+				profile?.session?.tenant ||
+				"local";
+			const trailFx = createContractAssertedTrailFixtures({
+				tenant: trailTenant,
+			});
+			const identityTrail = identityContinuousTrail();
+			const canTrailIdentity = evaluateCanTrail({
+				trail: identityTrail,
+				dualOracleReady: dualOracle.ok,
+				policyAllows: true,
+			});
+			const canTrailApp = trailFx.runner.plan(trailFx.appTrail);
+			const handsOff = goldenIdentityHandsOff({
+				bindleConfigRequired: false,
+				continuousDefault: true,
+			});
+			const trailsReport = {
+				fidelity: trailFx.fidelity,
+				label: trailFx.label,
+				identityContinuous: {
+					trailId: identityTrail.id,
+					bindleConfigRequired: false,
+					canTrailOk: canTrailIdentity.ok,
+					handsOff: handsOff.ok,
+				},
+				appSample: {
+					trailId: trailFx.appTrail.id,
+					canTrailOk: canTrailApp.canTrail.ok,
+					identityContinuous: canTrailApp.identityContinuous,
+				},
+				canTrailDimension: "can-trail" as const,
+			};
+			if (!canTrailIdentity.ok || !handsOff.ok) {
+				remediation.push(
+					"Continuous identity Trail hands-off path failed — pure identity continuous must not require Bindle config.",
+				);
+			}
+
 			return {
 				ok: true,
 				status: target.live ? "live" : "in-memory",
@@ -156,6 +203,7 @@ export function createDoctorCommand(
 					activate: target.activate,
 					station: stationReport,
 					identityMigration: identityMigrationReport,
+					trails: trailsReport,
 				},
 			};
 		},

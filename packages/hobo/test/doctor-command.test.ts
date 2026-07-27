@@ -36,6 +36,14 @@ describe("createDoctorCommand", () => {
 				dualFixtures: { dualOracleOk: true },
 				canMigrate: { ok: true, dimension: "can-migrate" },
 			},
+			trails: {
+				identityContinuous: {
+					bindleConfigRequired: false,
+					canTrailOk: true,
+					handsOff: true,
+				},
+				canTrailDimension: "can-trail",
+			},
 		});
 		expect(progress).toEqual([result.message]);
 	});
@@ -74,6 +82,9 @@ describe("createDoctorCommand", () => {
 				continuousDefault: true,
 				bindleConfigRequired: false,
 				dualFixtures: { dualOracleOk: true },
+			},
+			trails: {
+				identityContinuous: { bindleConfigRequired: false, handsOff: true },
 			},
 		});
 	});

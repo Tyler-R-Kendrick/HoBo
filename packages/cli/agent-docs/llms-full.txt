@@ -65,6 +65,13 @@ Product: hobo
 - MCP tool: `identity`
 - Capability: { port: hobo:mcp, resource: tool:identity, verb: call }
 
+### trails
+- Role: migration
+- Summary: Observe Trails status/plan/inspect (continuous migration; identity hands-off)
+- CLI: `hobo trails`
+- MCP tool: `trails`
+- Capability: { port: hobo:mcp, resource: tool:trails, verb: call }
+
 ### access
 - Role: identity
 - Summary: Request elevated/cross-env access or break-glass (short-lived capability; audited)

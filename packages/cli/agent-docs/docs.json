@@ -88,6 +88,18 @@
       }
     },
     {
+      "name": "trails",
+      "role": "migration",
+      "summary": "Observe Trails status/plan/inspect (continuous migration; identity hands-off)",
+      "cli": "hobo trails",
+      "mcpTool": "trails",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:trails",
+        "verb": "call"
+      }
+    },
+    {
       "name": "access",
       "role": "identity",
       "summary": "Request elevated/cross-env access or break-glass (short-lived capability; audited)",

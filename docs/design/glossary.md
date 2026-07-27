@@ -97,7 +97,9 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | WIT interface | Canonical language-neutral contract form for a HoBo port. |
 | WIT-first SDK | SDK model where each language uses generated `hobo:sdk` WIT bindings plus a thin idiom layer. |
 | Workload Profile | How a service is realized, such as wasm component, container, serverless, or VM. |
-| Continuous Identity Migration | Platform dual-path principal migration (Matching/policy-triggered; zero Bindle config; PrincipalRef continuity; dual fixtures offline). See [ADR-0132](./adr/02-identity-security.md#adr-0132). |
+| Continuous Identity Migration | Platform dual-path principal migration (Matching/policy-triggered; zero Bindle config; PrincipalRef continuity; dual fixtures offline). See [ADR-0132](./adr/02-identity-security.md#adr-0132). Composed into Trails as the `identity.continuous` platform recipe without requiring Trail authoring. |
+| Trail | Versioned, app-owned continuous migration runbook/recipe pack (schema, data dual, identity dual, junction rebind, cutover). Platform engine in `@hobo/trails`; pure identity continuous remains hands-off. See [ADR-0134](./adr/02-identity-security.md#adr-0134). |
+| can-trail | Gatekeeper-compatible dry-run dimension for Trails (compatible with can-migrate / upgrade-migration dry-run shapes). Offline-capable with contract-asserted fixtures. |
 | Connection | Durable, **Station-owned** authorization handle for an external app (provider + subject + grantedScopes + opaque vault `credentialRef` + `stationId`). Authorize once; mint short-lived tokens thereafter via the token broker. Event family `connection.*`; CLI/MCP verb `connection`. Cross-Station use fails closed without federation grant. See [Plan 06 §6.9](./ai-native-agent-auth.md), [Connections ADR](./adr/02-identity-security-connections.md), and Station. |
 | Rail | Station-owned, content-addressed, versioned policy/engine/billing/connector/guardrail **profile** (not the Guardrail effect language). Activation is an audited fact; receipts pin `railHash`. Bootstrap Rail is sealed least-privilege for `station init`. |
 | Station | Hard control-plane **isolation boundary** a Conductor occupies. One Station = one isolation domain (not multi-tenant by default). Owns Connections, Rails, Station identity, and control-plane event partition. **Not** app-topology containment (Bindle ⊂ Camp ⊂ Yard ⊂ Junction remains). Main setup path: `hobo station init`. Package `@hobo/stations`. |
@@ -117,4 +119,4 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Package namespace map | Canonical import-ownership table for `@hobo/*` packages; see [package-namespaces.md](./package-namespaces.md) (ADR-0087). |
 | `"use training"` | SDK directive marking an AI-rewritable semantic function optimized behind the `training-engine` port. |
 
-| MappingSpec | Versioned platform claim/subject mapping between source and target identity adapters; validated at can-migrate; never application claim-mapping code. |
+| MappingSpec | Versioned platform claim/subject mapping between source and target identity adapters; validated at can-migrate; never application claim-mapping code. Platform-derived for continuous identity Trails. |

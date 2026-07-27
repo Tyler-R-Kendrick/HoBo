@@ -44,8 +44,9 @@ describe("deny-by-default scope enforcement", () => {
 
 	it("denies an unknown (non-derived) tool, fail-closed", async () => {
 		const server = createHoboMcpServer({ cli: makeWiredCli() });
+		// Use a name that is never a CANONICAL_VERBS entry (deploy/up/trails are real tools).
 		const denied = await server.callTool(
-			"deploy",
+			"not-a-canonical-verb",
 			{},
 			authGranting(["plan", "up"]),
 		);

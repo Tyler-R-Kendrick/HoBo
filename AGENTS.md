@@ -69,6 +69,13 @@ Only edit files directly related to the assigned task.
 
 Prefer changes inside one package, app, feature folder, or test folder.
 
+### Connectivity, naming, multi-tenant foundations
+
+- Hierarchical DNS-valid names are pure functions in `@hobo/core` (`getNamedEndpoint`, `sanitizeDnsLabel`). Never emit bare `.hobo`; use `.hobo.localhost` (local) or `.hobo.test` (overlay). See [ADR-0130](docs/design/adr/07-portability-extensibility.md#adr-0130).
+- Implementations for overlay (Tailscale/Netbird), pluggable DNS, tag/ACL `PolicyEngine`, metering sinks, and optional portless local named endpoints live in `@hobo/connectivity`.
+- Local serve paths inject `namedEndpoints` / `primaryNamedUrl` when available; port-based behavior remains the default offline path when portless is absent (`HOBO_PORTLESS=0` forces off).
+- Tenant context: `HOBO_TENANT` / `HOBO_PROJECT` / `HOBO_BRANCH` / `HOBO_ENV`. Soft multi-tenancy via IDs + PolicyEngine is the baseline; hard isolation is a later phase.
+
 Avoid shared/global files unless the task explicitly requires them:
 
 - `package.json`

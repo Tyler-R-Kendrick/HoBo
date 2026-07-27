@@ -3,7 +3,10 @@
 	"version": "0.0.1",
 	"description": "Camp component host: WASM-on-OCI scheduled on Kubernetes (kind: oci).",
 	"type": "module",
-	"files": ["dist"],
+	"files": [
+		"LICENSE",
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -26,5 +29,6 @@
 		"lint": "biome check .",
 		"pretest": "pnpm run build && pnpm --filter @hobo/contract-harness build",
 		"test": "vitest run"
-	}
+	},
+	"license": "MIT"
 }

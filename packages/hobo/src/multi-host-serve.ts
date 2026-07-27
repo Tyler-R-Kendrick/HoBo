@@ -9,6 +9,11 @@ import {
 	readDependencyConfig,
 } from "@hobo/bindles";
 import { loadBindleDefinition } from "@hobo/cli";
+import {
+	attachNamedEndpoints,
+	createInMemoryMeteringSink,
+	createMeteringBus,
+} from "@hobo/connectivity";
 import type {
 	FetchHandler,
 	HttpRequest,
@@ -344,9 +349,31 @@ export async function serveProjectOnHost(options: {
 		emit(`hobo dev: exposed ${entry.kind}:${entry.name} at ${url}`);
 	}
 
+	const meteringSink = createInMemoryMeteringSink(`host-${kind}`);
+	const metering = createMeteringBus([meteringSink]);
+	const named = await attachNamedEndpoints({
+		app: definition.name,
+		env: "local",
+		sessionId: `host:${kind}:${campObject.id}`,
+		metering,
+		emitProgress: emit,
+		endpoints: endpoints.map((endpoint) => ({
+			resourceName: endpoint.resourceName,
+			kind: endpoint.kind,
+			backendUrl: endpoint.url,
+			external: endpoint.external,
+			serviceDiscoveryKey: endpoint.serviceDiscoveryKey,
+		})),
+	});
+	for (const [key, value] of Object.entries(named.serviceDiscovery)) {
+		serviceDiscovery[key] = value;
+		process.env[key] = value;
+	}
+
 	emit(
 		`hobo dev: injected discovery [${Object.keys(serviceDiscovery).join(", ")}] ` +
-			`bindle-env [${Object.keys(bindleEnv).join(", ")}] host=${kind}`,
+			`bindle-env [${Object.keys(bindleEnv).join(", ")}] host=${kind}` +
+			(named.primaryNamedUrl ? ` named=${named.primaryNamedUrl}` : ""),
 	);
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);
@@ -382,6 +409,7 @@ export async function serveProjectOnHost(options: {
 		);
 		uninstallMesh();
 		await privateServe.close();
+		await named.close();
 		for (const entry of externalEntries) {
 			try {
 				await host.teardownComponent(entry.name);
@@ -414,6 +442,8 @@ export async function serveProjectOnHost(options: {
 		serviceDiscovery,
 		bindleEnv,
 		primaryUrl: primary.url,
+		namedEndpoints: named.namedEndpoints,
+		primaryNamedUrl: named.primaryNamedUrl,
 		probe,
 		close,
 		waitUntilStopped,

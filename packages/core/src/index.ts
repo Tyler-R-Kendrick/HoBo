@@ -46,6 +46,7 @@ export {
 } from "./manifest.js";
 export type {
 	BindingResolverPort,
+	BindingSource,
 	ResolvedBinding,
 	ResourceId,
 } from "./ports/binding-resolver.js";
@@ -53,6 +54,70 @@ export {
 	parseResourceId,
 	RESOURCE_ID_PATTERN,
 } from "./ports/binding-resolver.js";
+export type {
+	NamedEndpointMode,
+	NamedEndpointParams,
+} from "./naming.js";
+export {
+	DEFAULT_LOCAL_TLD,
+	DEFAULT_OMITTED_ENV,
+	DEFAULT_OVERLAY_TLD,
+	getNamedEndpoint,
+	getNamedEndpointHost,
+	HOBO_ZONE_LABEL,
+	isHoboHierarchicalName,
+	sanitizeDnsLabel,
+} from "./naming.js";
+export type {
+	ProjectId,
+	Tenant,
+	TenantContext,
+	TenantId,
+	TenantIsolationMode,
+	TenantScoped,
+} from "./ports/tenant.js";
+export {
+	LOCAL_DEFAULT_TENANT_ID,
+	parseProjectId,
+	parseTenantId,
+	tenantContextFromEnv,
+} from "./ports/tenant.js";
+export type {
+	PolicyDecision,
+	PolicyDecisionEffect,
+	PolicyEngine,
+	PolicyRequest,
+	PolicyResource,
+	PolicySubject,
+} from "./ports/policy-engine.js";
+export { allowDecision, denyDecision } from "./ports/policy-engine.js";
+export type {
+	MeteringBus,
+	MeteringSink,
+	UsageEvent,
+	UsageEventType,
+} from "./ports/metering.js";
+export { createMeteringBus, createUsageEvent } from "./ports/metering.js";
+export type {
+	DnsManagedBy,
+	DnsProvider,
+	DnsProviderKind,
+	DnsRecord,
+	DnsRecordType,
+	PublicDnsConfig,
+	PublicDnsManager,
+} from "./ports/dns.js";
+export type {
+	FunnelPublishOptions,
+	FunnelPublishResult,
+	MagicDnsSplitConfig,
+	MagicDnsSplitResult,
+	OverlayIdentity,
+	OverlayJoinOptions,
+	OverlayJoinResult,
+	OverlayNetwork,
+	OverlayProviderKind,
+} from "./ports/overlay.js";
 export type {
 	ClockReplayResult,
 	ClockTraceEntry,

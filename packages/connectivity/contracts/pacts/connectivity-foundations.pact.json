@@ -1,0 +1,39 @@
+{
+	"consumer": { "name": "hobo-connectivity-consumer" },
+	"provider": { "name": "hobo-connectivity-foundations" },
+	"interactions": [
+		{
+			"description": "resolve hierarchical local named endpoint",
+			"request": {
+				"method": "GET",
+				"path": "/named-endpoints/local",
+				"query": { "resource": "web", "app": "myapp", "env": "local" }
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"url": "https://web.myapp.local.hobo.localhost"
+				}
+			}
+		},
+		{
+			"description": "policy evaluate junction join same tenant",
+			"request": {
+				"method": "POST",
+				"path": "/policy/evaluate",
+				"body": {
+					"action": "junction.join",
+					"subjectTenant": "acme",
+					"resourceTenant": "acme"
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": { "effect": "allow" }
+			}
+		}
+	],
+	"metadata": {
+		"pactSpecification": { "version": "2.0.0" }
+	}
+}

@@ -62,6 +62,16 @@ export interface ComponentEndpoint {
 	readonly serviceDiscoveryKey: string;
 }
 
+export interface NamedEndpointInfo {
+	readonly resourceName: string;
+	readonly hostname: string;
+	readonly url: string;
+	readonly backendUrl: string;
+	readonly mode: "local" | "overlay";
+	readonly external: boolean;
+	readonly serviceDiscoveryKey: string;
+}
+
 export interface BareMetalServeResult {
 	readonly projectDir: string;
 	readonly bindleName: string;
@@ -74,6 +84,10 @@ export interface BareMetalServeResult {
 	/** Env keys injected from bindle `.with({ option: "env", config })` annotations. */
 	readonly bindleEnv: Readonly<Record<string, string>>;
 	readonly primaryUrl: string;
+	/** Hierarchical DNS-valid named endpoints (HoBo-owned naming). */
+	readonly namedEndpoints?: readonly NamedEndpointInfo[];
+	/** Preferred hierarchical HTTPS URL for the primary external endpoint. */
+	readonly primaryNamedUrl?: string | null;
 	readonly probe: { readonly status: number; readonly body: string };
 	readonly close: () => Promise<void>;
 	/** Block until the host is stopped (SIGINT/SIGTERM or close()). */

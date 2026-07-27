@@ -3,7 +3,11 @@
 	"version": "0.0.1",
 	"description": "Camp component host: Wasmtime OS-process sandboxes for private WASM components (kind: wasm).",
 	"type": "module",
-	"files": ["dist", "wit"],
+	"files": [
+		"LICENSE",
+		"dist",
+		"wit"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -27,5 +31,6 @@
 		"lint": "biome check .",
 		"pretest": "pnpm run build",
 		"test": "vitest run"
-	}
+	},
+	"license": "MIT"
 }

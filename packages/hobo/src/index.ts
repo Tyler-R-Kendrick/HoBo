@@ -102,6 +102,7 @@ export {
 	serviceDiscoveryKey,
 	type BareMetalServeResult,
 	type ComponentEndpoint,
+	type NamedEndpointInfo,
 	type ServableEntrypoint,
 } from "./bare-metal-host.js";
 export {

@@ -151,6 +151,12 @@ export function createComposedHoboCli(
 									exposedEndpoints: serve.exposedEndpoints,
 									serviceDiscovery: serve.serviceDiscovery,
 									bindleEnv: serve.bindleEnv,
+									...(serve.namedEndpoints !== undefined
+										? { namedEndpoints: serve.namedEndpoints }
+										: {}),
+									...(serve.primaryNamedUrl !== undefined
+										? { primaryNamedUrl: serve.primaryNamedUrl }
+										: {}),
 									probe: serve.probe,
 									close: serve.close,
 									waitUntilStopped: serve.waitUntilStopped,

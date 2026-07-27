@@ -1,6 +1,11 @@
 import { createServer, type Server } from "node:http";
 
 import { loadBindleDefinition } from "@hobo/cli";
+import {
+	attachNamedEndpoints,
+	createInMemoryMeteringSink,
+	createMeteringBus,
+} from "@hobo/connectivity";
 import type {
 	HttpRequest,
 	HttpResponse,
@@ -312,9 +317,35 @@ export async function serveBindleOnLocalYard(options: {
 	for (const [key, value] of Object.entries(bindleEnv)) {
 		process.env[key] = value;
 	}
+
+	const meteringSink = createInMemoryMeteringSink("local-yard");
+	const metering = createMeteringBus([meteringSink]);
+	const named = await attachNamedEndpoints({
+		app: definition.name,
+		env: "local",
+		sessionId: `local-yard:${campObject.id}`,
+		metering,
+		emitProgress: emit,
+		endpoints: endpoints.map((endpoint) => ({
+			resourceName: endpoint.resourceName,
+			kind: endpoint.kind,
+			backendUrl: endpoint.url,
+			external: endpoint.external,
+			serviceDiscoveryKey: endpoint.serviceDiscoveryKey,
+		})),
+	});
+	// Overlay named discovery keys onto services__* (prefer named when portless).
+	for (const [key, value] of Object.entries(named.serviceDiscovery)) {
+		serviceDiscovery[key] = value;
+		process.env[key] = value;
+	}
+
 	emit(
 		`hobo dev: Camp injected discovery [${Object.keys(serviceDiscovery).join(", ")}] ` +
-			`bindle-env [${Object.keys(bindleEnv).join(", ")}]`,
+			`bindle-env [${Object.keys(bindleEnv).join(", ")}]` +
+			(named.primaryNamedUrl
+				? ` named=${named.primaryNamedUrl}`
+				: ""),
 	);
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);
@@ -356,6 +387,7 @@ export async function serveBindleOnLocalYard(options: {
 			}
 		}
 		uninstallMesh();
+		await named.close();
 		for (const key of Object.keys(serviceDiscovery)) {
 			if (process.env[key] === serviceDiscovery[key]) {
 				delete process.env[key];
@@ -380,6 +412,8 @@ export async function serveBindleOnLocalYard(options: {
 		serviceDiscovery,
 		bindleEnv,
 		primaryUrl: primary.url,
+		namedEndpoints: named.namedEndpoints,
+		primaryNamedUrl: named.primaryNamedUrl,
 		probe,
 		close,
 		waitUntilStopped,

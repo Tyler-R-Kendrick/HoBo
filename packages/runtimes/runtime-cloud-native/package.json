@@ -3,7 +3,10 @@
 	"version": "0.0.1",
 	"description": "Camp component host registry for multi-cloud implementations (kind: cloud-native).",
 	"type": "module",
-	"files": ["dist"],
+	"files": [
+		"LICENSE",
+		"dist"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -25,5 +28,6 @@
 		"lint": "biome check .",
 		"pretest": "pnpm run build",
 		"test": "vitest run"
-	}
+	},
+	"license": "MIT"
 }

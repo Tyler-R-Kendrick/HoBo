@@ -3,21 +3,32 @@
 Barebones HoBo hello-world: private `api` + public `web`.
 
 ```ts
-// src/bindle.ts
+// src/bindle.ts — one line to set, two .with() to inject
+const campEnv = env({ GREETING_PREFIX: "howdy", APP_TITLE: "howdy" });
+
 export default bindle("hello-bindle", (b) => {
-  const a = b.api(honoEntrypoint(api));
-  const w = b.web(honoEntrypoint(web)).dependsOn(a);
+  const a = b.api(honoEntrypoint(api)).with(campEnv);
+  const w = b.web(honoEntrypoint(web)).with(campEnv).dependsOn(a);
   return { api: a, web: w };
 });
 ```
 
+`api` reads `GREETING_PREFIX`; `web` reads `APP_TITLE`. When you `hobo up` / `hobo dev`,
+outputs say **howdy** (not the process defaults) — proof the camp is running the apps.
+
 | File | Role |
 |------|------|
-| `src/api.ts` | Hono `GET /hello` |
+| `src/api.ts` | Hono `GET /hello` (also compiled to wasm for isolated-wasm) |
 | `src/webapp.ts` | Hono `GET /` → calls api via `services__api__http__0` |
-| `src/bindle.ts` | Topology (defaults: api private, web public) |
-| `src/wasm/api-guest.mjs` | wasi:http guest for isolated-wasm |
+| `src/bindle.ts` | Topology + `env()` injection (api private, web public) |
+| `test/` | Golden definition + collected `hobo.manifest/v1`, plus handler smoke |
 | `@hobo/adapter-hono` | Shared package: Hono → bindle entrypoint |
+
+Barebones on purpose: no `contracts/`, `data-models/`, `deploy/`, or fixture trees in this example.
+Generated wasm/sandbox outputs live under `$HOBO_HOME` (default `~/.hobo`) or a project-local `.hobo/` (gitignored) — never committed.
+
+No separate wasm guest file — `hobo` bundles `src/api.ts` into a wasi:http component when `componentHost=isolated-wasm`.
+Cloud/Vercel deploy defaults ship as package fixtures under `packages/hobo/fixtures/deploy/`.
 
 ## Run
 

@@ -38,9 +38,9 @@ export default bindle("my-app", (b) => {
 
 ## Isolated-wasm
 
-This package does **not** componentize Hono. For `componentHost=isolated-wasm`,
-the app supplies a framework-free wasi:http guest (e.g. `src/wasm/api-guest.mjs`).
-Keep Hono on the local-host path via this adapter.
+For `componentHost=isolated-wasm`, HoBo bundles the same app module
+(`src/api.ts` exporting `{ app }` with `.fetch`) into a wasi:http component.
+No separate guest file is required — Hono routes compile through esbuild + jco.
 
 ## Boundary
 

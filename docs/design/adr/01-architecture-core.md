@@ -474,27 +474,24 @@ ADR-P5 (and the "compiler magic" open question) asked how deep the build-time tr
 - **(−)** Guarantees are only as strong as the substrate's primitives; the conformance suite asserts per-adapter behavior, and bare-floor enforcement is simpler than a managed scheduler's.
 
 ## ADR-0126
-**Committed platform entry files under `examples/*/deploy/` are the sanctioned exception to the TypeScript-first JS-family policy.**
+**Committed platform entry files under `packages/hobo/fixtures/deploy/` are the sanctioned exception to the TypeScript-first JS-family policy.**
 
 ### Context
 The technical-standards policy (AGENTS.md "JS-family policy") forbids new `.js`/`.mjs` implementation
-files in favor of `.ts` sources, and requires an ADR for exceptions. `examples/hello-bindle/deploy/`
-carries `cloudflare/worker.mjs` and `vercel/api/hello.js` — the artifacts the live deploy lanes
-(`deploy-hello-bindle-vercel.yml`, the Cloudflare Workers lane) upload verbatim. These are not
-implementation sources: they are the platform-ingested entry files those providers execute directly,
-committed so the deploy lanes are reviewable and hash-stable without a build step in the lane.
+files in favor of `.ts` sources, and requires an ADR for exceptions. Deploy providers need known-good
+platform entry files (`cloudflare/worker.mjs`, `vercel/api/hello.js`) that live deploy lanes upload
+verbatim. Those artifacts are not part of barebones examples — examples keep only `src/` + tests.
 
 ### Decision
-Files under an example's `deploy/<provider>/` directory MAY be plain `.js`/`.mjs` when the target
-platform ingests them verbatim. Everything else in the example (its `src/`, `test/`) stays
-TypeScript-first. The exception is scoped to committed deploy artifacts only — a deploy directory
-must not grow application logic beyond the thin entry shim, and any shared logic belongs in the
-example's `.ts` sources.
+Files under `packages/hobo/fixtures/deploy/<provider>/` MAY be plain `.js`/`.mjs` when the target
+platform ingests them verbatim. Barebones examples (e.g. `examples/hello-bindle`) must not ship
+`deploy/`, `contracts/`, or `data-models/` folders. The exception is scoped to package-owned deploy
+fixtures only — a fixture directory must not grow application logic beyond the thin entry shim.
 
 ### Consequences
 - **(+)** The live lanes deploy exactly what is reviewed; no lane-side transpile step to trust.
-- **(−)** The entry shims are duplicated logic if the `.ts` handler evolves; the example's tests
-  pin the shim's response against the pact to catch divergence.
+- **(+)** Examples stay free of boilerplate and stay out of source control noise.
+- **(−)** Entry shims can diverge from example `.ts` handlers; provider tests pin the fixture response.
 
 ## ADR-0128
 **ts-autocode is vendored as a git submodule at `external/ts-autocode` and linked into the pnpm workspace; HoBo's trainable scanning/emission delegates to it.**

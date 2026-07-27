@@ -1,4 +1,5 @@
 export { bindle } from "./bindle.js";
+export { env } from "./env.js";
 
 export {
 	api,

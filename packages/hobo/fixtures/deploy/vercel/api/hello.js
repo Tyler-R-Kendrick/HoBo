@@ -1,6 +1,5 @@
-// hello-bindle API (HoBo example), realized as a Vercel Node function.
-// Mirrors examples/hello-bindle/src/api.ts: GET /hello?name= -> { message: "hello, <name>" }
-// with the same parse-boundary default ("world").
+// Default Vercel Node function for createVercelDeployProvider.
+// Mirrors hello-bindle GET /hello?name= -> { message: "hello, <name>" } (default "world").
 export default function handler(req, res) {
 	const raw = (req.query && req.query.name) || "";
 	const name = String(raw).trim() || "world";

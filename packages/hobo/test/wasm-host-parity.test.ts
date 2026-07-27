@@ -121,8 +121,13 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(api?.url).toContain(INTERNAL_MESH_HOST);
 
 		const html = await (await fetch(`${serve.primaryUrl}/?name=Local`)).text();
-		// Defaults — no .with env required.
-		expect(html).toContain("hello, Local");
+		// Bindle injects GREETING_PREFIX/APP_TITLE via env() — proves apps are live.
+		expect(html).toContain("howdy, Local");
+		expect(html).toContain("howdy");
+		expect(serve.bindleEnv).toEqual({
+			GREETING_PREFIX: "howdy",
+			APP_TITLE: "howdy",
+		});
 	});
 
 	it(
@@ -150,12 +155,15 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			expect(serve.isolation.wasmPaths.length).toBe(1);
 			expect(existsSync(serve.isolation.wasmPaths[0]!)).toBe(true);
 			expect(serve.exposedEndpoints).toHaveLength(1);
-			// No required .with env — guest uses defaults; mesh header prefix still defined.
-			expect(serve.bindleEnv).toEqual({});
+			// Camp injects bindle env onto mesh hops into the wasm sandbox.
+			expect(serve.bindleEnv).toEqual({
+				GREETING_PREFIX: "howdy",
+				APP_TITLE: "howdy",
+			});
 			expect(HOBO_ENV_HEADER_PREFIX).toBe("x-hobo-env-");
 
 			const html = await (await fetch(`${serve.primaryUrl}/?name=Iso`)).text();
-			expect(html).toContain("hello, Iso");
+			expect(html).toContain("howdy, Iso");
 		},
 		180_000,
 	);
@@ -179,19 +187,14 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(PINNED_WASMTIME_VERSION).toBe("46.0.1");
 	});
 
-	it("resolves private wasm guests from app src/wasm (not core templates)", () => {
+	it("resolves private wasm from src/<resourceName>.ts by resource name", () => {
+		// hello-bindle's private resource is named "api" → src/api.ts (generic rule).
 		const resolved = resolvePrivateWasmGuest({
 			projectDir: helloBindleDir,
 			resourceName: "api",
 		});
-		expect(resolved.guestSourcePath).toContain("src/wasm/api-guest.mjs");
+		expect(resolved.appModulePath).toMatch(/src[/\\]api\.ts$/);
+		expect(resolved.guestSourcePath).toBeNull();
 		expect(resolved.wasmPath).toBeNull();
-		// Core must not invent app routes — missing guest fails closed.
-		const missing = resolvePrivateWasmGuest({
-			projectDir: helloBindleDir,
-			resourceName: "nope",
-		});
-		expect(missing.guestSourcePath).toBeNull();
-		expect(missing.wasmPath).toBeNull();
 	});
 });

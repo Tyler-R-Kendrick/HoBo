@@ -1,11 +1,10 @@
-// hello-bindle — Cloudflare Worker (ESM module) realization of the HoBo example.
+// Default Cloudflare Worker module for createCloudflareDeployProvider.
 //
-// Mirrors the bindle's exact observable contract (see examples/hello-bindle/src/api.ts):
-//   GET /            -> the hello-bindle web page (HTML).
+// Mirrors the barebones hello-bindle API contract (examples/hello-bindle/src/api.ts):
+//   GET /            -> web page (HTML).
 //   GET /hello?name= -> { "message": "hello, <name>" }, same parse default ("world").
 //
-// A single ESM module Worker with no build step and no dependencies, so it deploys
-// as-is via `wrangler deploy` or the Workers Script Upload API (multipart module upload).
+// Platform entry file (no build step) — lives under packages/hobo/fixtures, not examples.
 
 const PAGE = `<!doctype html>
 <html lang="en">
@@ -40,8 +39,7 @@ const PAGE = `<!doctype html>
 	</body>
 </html>`;
 
-// The single parse boundary: raw `?name` query -> the greeting name, defaulting to
-// "world" (parse, don't validate) — identical to examples/hello-bindle/src/api.ts.
+// Parse boundary: raw `?name` query -> greeting name, default "world".
 function parseGreetingName(rawName) {
 	const name = (rawName ?? "").trim();
 	return name.length > 0 ? name : "world";

@@ -21,9 +21,9 @@ import {
 // (preview/apply/destroy/refresh over the kernel's shape-A `IacProgram`), but
 // instead of the in-memory Pulumi stand-in it forms a REAL Cloudflare Workers
 // Script Upload request. On `apply` it reads the committed, known-good ESM Worker
-// module (examples/hello-bindle/deploy/cloudflare/worker.mjs — the SINGLE source of
-// truth for the deployable app), uploads it via `createCloudflareClient`, and maps
-// the returned workers.dev URL into the kernel's `IacOutputs` (`outputs.url`).
+// module (packages/hobo/fixtures/deploy/cloudflare/worker.mjs), uploads it via
+// `createCloudflareClient`, and maps the returned workers.dev URL into the
+// kernel's `IacOutputs` (`outputs.url`).
 //
 // HONEST SCOPE: the live Cloudflare call is credential-gated (activates only when a
 // real `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` reach the client) and is NOT
@@ -32,24 +32,11 @@ import {
 // honestly: a real teardown would DELETE the script; this provider best-effort
 // forgets its local memo and no-ops (see note on `destroy`).
 
-// Resolve the committed hello-bindle Cloudflare Worker module relative to this
-// module. Both `dist/cloudflare-deploy-provider.js` and
-// `src/cloudflare-deploy-provider.ts` sit three directories below the repo root
-// (packages/hobo/{dist,src}), so the same relative hop reaches
-// examples/hello-bindle/deploy/cloudflare/worker.mjs from either module.
+// Default Worker module lives next to this package (fixtures/), not under examples/.
+// Both `dist/` and `src/` resolve via `../fixtures/deploy/cloudflare/worker.mjs`.
 function defaultWorkerModulePath(): string {
 	const here = dirname(fileURLToPath(import.meta.url));
-	return join(
-		here,
-		"..",
-		"..",
-		"..",
-		"examples",
-		"hello-bindle",
-		"deploy",
-		"cloudflare",
-		"worker.mjs",
-	);
+	return join(here, "..", "fixtures", "deploy", "cloudflare", "worker.mjs");
 }
 
 export interface CloudflareDeployProviderOptions {
@@ -61,8 +48,8 @@ export interface CloudflareDeployProviderOptions {
 	readonly fetch?: CloudflareFetch;
 	// The Worker script name. Defaults to "hobo-hello-bindle".
 	readonly scriptName?: string;
-	// The ESM Worker module to upload. Defaults to the committed
-	// examples/hello-bindle/deploy/cloudflare/worker.mjs (the single source of truth).
+	// The ESM Worker module to upload. Defaults to
+	// packages/hobo/fixtures/deploy/cloudflare/worker.mjs.
 	readonly workerModulePath?: string;
 }
 

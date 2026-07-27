@@ -77,8 +77,8 @@ actually applies the executor's programs — and does not depend on
 
 | Surface | What HoBo sees | Where frameworks live |
 |---------|----------------|------------------------|
-| local component host | bindle entrypoint as `(Request) => Response` | **`packages/adapters/adapter-hono`** (`@hobo/adapter-hono`) + app routes |
-| isolated-wasm host | project wasi:http guest under `src/wasm/<name>-guest.mjs` | app guest only (framework-free) |
+| local component host | bindle entrypoint as `(Request) => Response` | **`packages/adapters/adapter-hono`** + app routes |
+| isolated-wasm host | bundles `src/<name>.ts` (`export const app` with `.fetch`) to wasi:http | same app source as local |
 | mesh env | `x-hobo-env-*` when camp injects config | Camp mesh |
 
 Adapters are **shared monorepo packages** for any project (`pnpm add @hobo/adapter-hono`).

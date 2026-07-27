@@ -185,11 +185,17 @@ test("implementationPackageRoots maps production package paths", () => {
 			"examples/hello-bindle/src/main.ts",
 			"docs/design/index.md",
 		]),
-		[
-			"packages/core",
-			"packages/runtimes/runtime-local",
-			"examples/hello-bindle",
-		],
+		["packages/core", "packages/runtimes/runtime-local"],
+	);
+});
+
+test("implementationPackageRoots ignores barebones examples", () => {
+	assert.deepEqual(
+		implementationPackageRoots([
+			"examples/hello-bindle/src/api.ts",
+			"examples/hello-bindle/src/bindle.ts",
+		]),
+		[],
 	);
 });
 

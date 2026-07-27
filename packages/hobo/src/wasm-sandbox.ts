@@ -2,14 +2,14 @@
  * Real Wasmtime OS-process sandboxes for private Camp components.
  *
  * Framework-agnostic (no Hono / Express / etc. in this package):
- *   - Apps supply wasi:http/proxy **guests** (e.g. `src/wasm/api-guest.mjs`)
- *   - Local host uses bindle entrypoints as plain `(Request) => Response` (any framework)
+ *   - Bundles the app module (e.g. `src/api.ts` exporting `{ app }` with `.fetch`)
+ *     into a wasi:http/proxy component — no hand-written guest required
+ *   - Optional override: prebuilt `dist/wasm/<name>.wasm` or `src/wasm/<name>-guest.mjs`
  *   - HTTP frameworks live in `packages/adapters/*` (e.g. `@hobo/adapter-hono`), never core
  *
  * Driven through HoBo CLI (Yard component host = isolated-wasm):
  *   - `hobo yard ensure` / `init --host isolated-wasm` / `doctor` → toolchain under HOBO_HOME
- *   - `hobo dev` resolves project guests, componentizes, boots sandboxes
- *   - Camp mesh injects bindle env on every hop (`x-hobo-env-*`)
+ *   - Camp mesh injects bindle env on every hop (`x-hobo-env-*` / `x-hobo-bindle-env`)
  */
 import { createHash, randomUUID } from "node:crypto";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
@@ -367,31 +367,58 @@ export interface ResolvedPrivateGuest {
 	readonly projectDir: string;
 	/** Prebuilt wasi:http/proxy component, if the app already componentized. */
 	readonly wasmPath: string | null;
-	/** App-supplied guest JS (wasi:http fetch-event). Framework-free at the HoBo boundary. */
+	/**
+	 * Explicit wasi:http guest source (optional override).
+	 * When null, HoBo bundles the app module (`src/<resourceName>.ts` etc.).
+	 */
 	readonly guestSourcePath: string | null;
+	/**
+	 * App module to bundle. Any resource name: exports `app` | `default` |
+	 * `handler` | `fetch` | named export matching the resource, with `.fetch`
+	 * or as a fetch function.
+	 */
+	readonly appModulePath: string | null;
 }
 
 /**
- * Resolve a project-supplied wasi:http guest for a private bindle resource.
+ * Resolve sources for **any** private bindle resource (not hello-bindle-specific).
  *
- * Convention (first match wins) — **not** framework adapters:
- *   - dist/wasm/<name>.wasm | src/wasm/<name>-guest.mjs
- *   - legacy: src/adapters/wasm/<name>-guest.mjs (still accepted)
- *
- * HTTP frameworks (Hono, etc.) live in `packages/adapters/*` and are never
- * loaded by this resolver.
+ * Priority:
+ *   1. `modulePath` override (explicit path)
+ *   2. Prebuilt `dist/wasm/<resourceName>.wasm`
+ *   3. Explicit guest `src/wasm/<resourceName>-guest.mjs` (optional)
+ *   4. App module by resource name: `src/<resourceName>.ts` (default)
  */
 export function resolvePrivateWasmGuest(options: {
 	readonly projectDir: string;
 	readonly resourceName: string;
+	/** Absolute or project-relative path to the app module (optional). */
+	readonly modulePath?: string;
 }): ResolvedPrivateGuest {
 	const { projectDir, resourceName } = options;
 	const name = resourceName;
+
+	if (options.modulePath !== undefined && options.modulePath.length > 0) {
+		const absolute = options.modulePath.startsWith("/")
+			? options.modulePath
+			: join(projectDir, options.modulePath);
+		if (!existsSync(absolute)) {
+			throw new Error(
+				`isolated-wasm: modulePath not found for resource '${name}': ${absolute}`,
+			);
+		}
+		return {
+			resourceName: name,
+			projectDir,
+			wasmPath: null,
+			guestSourcePath: null,
+			appModulePath: absolute,
+		};
+	}
+
 	const candidatesWasm = [
 		join(projectDir, "dist", "wasm", `${name}.wasm`),
 		join(projectDir, "src", "wasm", `${name}.wasm`),
-		join(projectDir, "dist", "adapters", "wasm", `${name}.wasm`),
-		join(projectDir, "adapters", "wasm", `${name}.wasm`),
 	];
 	for (const wasmPath of candidatesWasm) {
 		if (existsSync(wasmPath)) {
@@ -400,46 +427,171 @@ export function resolvePrivateWasmGuest(options: {
 				projectDir,
 				wasmPath,
 				guestSourcePath: null,
+				appModulePath: null,
 			};
 		}
 	}
-	const candidatesJs = [
+
+	const candidatesGuest = [
 		join(projectDir, "src", "wasm", `${name}-guest.mjs`),
 		join(projectDir, "src", "wasm", `${name}-guest.js`),
-		join(projectDir, "src", "wasm", `${name}.mjs`),
-		join(projectDir, "src", "wasm", `${name}.js`),
-		// legacy path
-		join(projectDir, "src", "adapters", "wasm", `${name}-guest.mjs`),
-		join(projectDir, "src", "adapters", "wasm", `${name}-guest.js`),
-		join(projectDir, "src", "adapters", "wasm", `${name}.mjs`),
-		join(projectDir, "src", "adapters", "wasm", `${name}.js`),
-		join(projectDir, "adapters", "wasm", `${name}-guest.mjs`),
-		join(projectDir, "adapters", "wasm", `${name}-guest.js`),
-		join(projectDir, "dist", "wasm", `${name}-guest.mjs`),
-		join(projectDir, "dist", "adapters", "wasm", `${name}-guest.mjs`),
 	];
-	for (const guestSourcePath of candidatesJs) {
-		if (existsSync(guestSourcePath)) {
-			return {
-				resourceName: name,
-				projectDir,
-				wasmPath: null,
-				guestSourcePath,
-			};
+	let guestSourcePath: string | null = null;
+	for (const candidate of candidatesGuest) {
+		if (existsSync(candidate)) {
+			guestSourcePath = candidate;
+			break;
 		}
 	}
+
+	// Generic layout: one module per bindle resource name.
+	const candidatesApp = [
+		join(projectDir, "src", `${name}.ts`),
+		join(projectDir, "src", `${name}.tsx`),
+		join(projectDir, "src", `${name}.mts`),
+		join(projectDir, "src", `${name}.js`),
+		join(projectDir, "src", `${name}.mjs`),
+		join(projectDir, "src", name, "index.ts"),
+		join(projectDir, "src", name, "index.tsx"),
+		join(projectDir, "src", name, "index.js"),
+		join(projectDir, "src", name, "index.mjs"),
+		join(projectDir, "dist", `${name}.js`),
+		join(projectDir, "dist", `${name}.mjs`),
+		join(projectDir, "dist", name, "index.js"),
+	];
+	let appModulePath: string | null = null;
+	for (const candidate of candidatesApp) {
+		if (existsSync(candidate)) {
+			appModulePath = candidate;
+			break;
+		}
+	}
+
 	return {
 		resourceName: name,
 		projectDir,
 		wasmPath: null,
-		guestSourcePath: null,
+		guestSourcePath,
+		appModulePath,
 	};
 }
 
 /**
- * Componentize an **app-supplied** wasi:http/proxy guest into .wasm for wasmtime serve.
- * Does not invent application routes or frameworks — guestSourcePath is required.
- * Env is not part of the artifact — HoBo injects it on the mesh hop.
+ * Bundle any app module into a wasi:http fetch-event guest.
+ *
+ * Accepted exports (first match):
+ *   - `app` / `default` / `handler` / `fetch` / named export == resourceName
+ *   - object with `.fetch`, or a bare `(Request) => Response` function
+ *
+ * Camp env is applied from mesh headers at request time (not baked in).
+ */
+export async function bundleAppModuleAsWasiHttpGuest(options: {
+	readonly projectDir: string;
+	readonly resourceName: string;
+	readonly appModulePath: string;
+	readonly outPath: string;
+}): Promise<void> {
+	const esbuild = await import("esbuild");
+	const appImport = options.appModulePath.replaceAll("\\", "/");
+	const resourceLiteral = JSON.stringify(options.resourceName);
+	const entry = `
+import * as mod from ${JSON.stringify(appImport)};
+
+const RESOURCE = ${resourceLiteral};
+
+function resolveFetchHandler(mod, resourceName) {
+  const candidates = [
+    mod.app,
+    mod.default,
+    mod.handler,
+    mod.fetch,
+    mod[resourceName],
+  ];
+  for (const candidate of candidates) {
+    if (candidate == null) continue;
+    if (typeof candidate.fetch === "function") {
+      return (request) => candidate.fetch(request);
+    }
+    if (typeof candidate === "function") {
+      return (request) => candidate(request);
+    }
+  }
+  throw new Error(
+    "wasm guest for resource " + resourceName +
+    ": export app|default|handler|fetch|{" + resourceName + "} " +
+    "as a fetch handler (function or { fetch })",
+  );
+}
+
+const handler = resolveFetchHandler(mod, RESOURCE);
+
+function applyMeshEnv(request) {
+  const g = globalThis;
+  g.process = g.process || {};
+  g.process.env = g.process.env || {};
+  const raw = request.headers.get("x-hobo-bindle-env");
+  if (raw) {
+    try {
+      const map = JSON.parse(raw);
+      if (map && typeof map === "object") {
+        for (const [key, value] of Object.entries(map)) {
+          if (typeof value === "string") g.process.env[key] = value;
+        }
+      }
+    } catch {
+      // ignore malformed mesh header
+    }
+  }
+  // x-hobo-env-<key> (key lowercased by the mesh); set both cases for app code.
+  for (const [header, value] of request.headers) {
+    if (!header.startsWith("x-hobo-env-")) continue;
+    const key = header.slice("x-hobo-env-".length);
+    g.process.env[key.toUpperCase()] = value;
+    g.process.env[key] = value;
+  }
+}
+
+addEventListener("fetch", (event) => {
+  event.respondWith(
+    (async () => {
+      applyMeshEnv(event.request);
+      return handler(event.request);
+    })(),
+  );
+});
+`;
+	const result = await esbuild.build({
+		stdin: {
+			contents: entry,
+			resolveDir: options.projectDir,
+			sourcefile: `${options.resourceName}-wasm-entry.mjs`,
+			loader: "js",
+		},
+		bundle: true,
+		write: false,
+		format: "esm",
+		platform: "browser",
+		target: "es2022",
+		absWorkingDir: options.projectDir,
+		logLevel: "silent",
+		// App deps (hono, etc.) resolve from the project, not from @hobo/hobo.
+		nodePaths: [
+			join(options.projectDir, "node_modules"),
+			join(packageRoot(), "node_modules"),
+		],
+	});
+	const file = result.outputFiles?.[0];
+	if (!file) {
+		throw new Error(
+			`esbuild produced no output for private resource ${options.resourceName}`,
+		);
+	}
+	mkdirSync(dirname(options.outPath), { recursive: true });
+	writeFileSync(options.outPath, file.text, "utf8");
+}
+
+/**
+ * Componentize a wasi:http/proxy guest .js/.mjs into .wasm for wasmtime serve.
  */
 export async function componentizePrivateGuest(options: {
 	readonly resourceName: string;
@@ -472,7 +624,6 @@ export async function componentizePrivateGuest(options: {
 
 	const guestSourcePath = join(workDir, "guest.mjs");
 	const wasmPath = join(workDir, "guest.wasm");
-	// Copy app guest into the work dir so componentize inputs are self-contained.
 	writeFileSync(guestSourcePath, guestBytes);
 
 	if (existsSync(wasmPath) && existsSync(join(workDir, ".componentize-ok"))) {
@@ -488,7 +639,7 @@ export async function componentizePrivateGuest(options: {
 	const jco = options.jcoBin ?? resolveJcoBin();
 	const witDir = wasiHttpWitDir();
 	emit(
-		`hobo: componentizing private ${options.resourceName} from app adapter ${options.guestSourcePath}`,
+		`hobo: componentizing private ${options.resourceName} → wasi:http/proxy .wasm`,
 	);
 	const args = [
 		jco,
@@ -529,21 +680,30 @@ export async function componentizePrivateGuest(options: {
 }
 
 /**
- * Resolve + componentize (if needed) a private resource for isolated-wasm.
+ * Resolve + componentize **any** private bindle resource for isolated-wasm.
+ *
+ * Default: bundle `src/<resourceName>.ts` (export app|default|handler|fetch).
+ * Optional: `modulePath`, prebuilt `.wasm`, or explicit `-guest.mjs`.
  */
 export async function preparePrivateWasmComponent(options: {
 	readonly projectDir: string;
 	readonly resourceName: string;
+	/** Override module path (absolute or project-relative). */
+	readonly modulePath?: string;
 	readonly hoboHome?: string;
 	readonly jcoBin?: string;
 	readonly emitProgress?: (message: string) => void;
 }): Promise<ComponentizeResult> {
+	const emit = options.emitProgress ?? (() => {});
 	const resolved = resolvePrivateWasmGuest({
 		projectDir: options.projectDir,
 		resourceName: options.resourceName,
+		...(options.modulePath !== undefined
+			? { modulePath: options.modulePath }
+			: {}),
 	});
 	if (resolved.wasmPath !== null) {
-		options.emitProgress?.(
+		emit(
 			`hobo: using prebuilt wasm for private ${options.resourceName} at ${resolved.wasmPath}`,
 		);
 		return {
@@ -553,22 +713,49 @@ export async function preparePrivateWasmComponent(options: {
 			resourceName: options.resourceName,
 		};
 	}
-	if (resolved.guestSourcePath === null) {
-		throw new Error(
-			`isolated-wasm: no wasm guest adapter for private resource '${options.resourceName}' in ${options.projectDir}. ` +
-				`Add a framework-free wasi:http guest at src/wasm/${options.resourceName}-guest.mjs ` +
-				`(HTTP frameworks like Hono belong in packages/adapters/* + app code, not in @hobo/* core).`,
-		);
+
+	const stagingDir = join(
+		tmpdir(),
+		`hobo-wasm-stage-${process.pid}-${randomUUID()}`,
+	);
+	mkdirSync(stagingDir, { recursive: true });
+	const bundledGuest = join(stagingDir, "guest.mjs");
+
+	try {
+		// Prefer app source (generic). Explicit guest only when no app module.
+		if (resolved.appModulePath !== null) {
+			emit(
+				`hobo: bundling ${resolved.appModulePath} → wasi:http guest for private ${options.resourceName}`,
+			);
+			await bundleAppModuleAsWasiHttpGuest({
+				projectDir: options.projectDir,
+				resourceName: options.resourceName,
+				appModulePath: resolved.appModulePath,
+				outPath: bundledGuest,
+			});
+		} else if (resolved.guestSourcePath !== null) {
+			emit(
+				`hobo: using explicit wasm guest ${resolved.guestSourcePath} for ${options.resourceName}`,
+			);
+			writeFileSync(bundledGuest, readFileSync(resolved.guestSourcePath));
+		} else {
+			throw new Error(
+				`isolated-wasm: no source for private resource '${options.resourceName}' in ${options.projectDir}. ` +
+					`Add src/${options.resourceName}.ts exporting app|default|handler|fetch ` +
+					`(function or { fetch }), or dist/wasm/${options.resourceName}.wasm.`,
+			);
+		}
+
+		return await componentizePrivateGuest({
+			resourceName: options.resourceName,
+			guestSourcePath: bundledGuest,
+			...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
+			...(options.jcoBin !== undefined ? { jcoBin: options.jcoBin } : {}),
+			emitProgress: emit,
+		});
+	} finally {
+		rmSync(stagingDir, { recursive: true, force: true });
 	}
-	return componentizePrivateGuest({
-		resourceName: options.resourceName,
-		guestSourcePath: resolved.guestSourcePath,
-		...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
-		...(options.jcoBin !== undefined ? { jcoBin: options.jcoBin } : {}),
-		...(options.emitProgress !== undefined
-			? { emitProgress: options.emitProgress }
-			: {}),
-	});
 }
 
 async function freeLoopbackPort(): Promise<number> {

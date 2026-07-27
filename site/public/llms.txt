@@ -71,17 +71,25 @@ Key facts:
 - Status: pre-release, with a real shipped slice. The TypeScript authoring flow runs
   today: a project's `src/bindle.ts` (default export of `bindle()` from @hobo/bindles)
   drives `hobo collect` / `hobo plan` / `hobo up` / `hobo dev` against the default
-  LOCAL, IN-MEMORY lane (`hobo dev` serves the project's own api/web handler
-  in-process; a committed `hobo.bindle.json` artifact wins when present). The
-  `hobo-mcp` binary serves all 28 canonical verbs (including `hobo broker`) as
-  MCP tools over stdio with
-  verb/tool parity contract-tested, deny-by-default audited auth, and HOBO_MCP_TOOLS
-  scoping. Live deploy lanes are credential-gated (Cloudflare/Vercel env tokens;
-  HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine). Not yet shipped:
-  @hobo/junctions (deferred to the S4 multi-cloud stage) and the fly/aws/azure/gcp
-  provider and postgres runtime packages — the docs mark those pages design-stage.
-  Everything else documented on the site is the contract-pinned surface the product
-  is being built to.
+  LOCAL lane (`hobo dev` serves the project's own api/web handler in-process; a
+  committed `hobo.bindle.json` artifact wins when present). Durable Camp EventStore
+  defaults to a single-owner SQLite partition (@hobo/storage-sqlite +
+  @hobo/runtime-local): stream-head CAS, actor fencing, positioned catch-up, atomic
+  domain events + staged queue/timer/outbox; browser OPFS path via
+  @hobo/runtime-browser (fail-closed without OPFS when durable is required). SQLite
+  is the default engine behind ports, not the public portability boundary — scale by
+  partitions, never multi-writer shared WAL. BoundaryContracts may declare EffectSpec
+  (purity + domain I/O) and secondary ResilienceProfile metadata; effect widening can
+  break can-deploy; never retry policy.Decided deny or terminal failures
+  (@hobo/contracts, @hobo/contract-harness). No public Effect-TS/Polly/XState deps.
+  The `hobo-mcp` binary serves all 28 canonical verbs (including `hobo broker`) as
+  MCP tools over stdio with verb/tool parity contract-tested, deny-by-default audited
+  auth, and HOBO_MCP_TOOLS scoping. Live deploy lanes are credential-gated
+  (Cloudflare/Vercel env tokens; HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine).
+  Not yet shipped: @hobo/junctions (deferred to the S4 multi-cloud stage) and the
+  fly/aws/azure/gcp provider and postgres runtime packages — the docs mark those pages
+  design-stage. Everything else documented on the site is the contract-pinned surface
+  the product is being built to.
 - The complete documentation, concatenated as one markdown document, is at
   https://tyler-r-kendrick.github.io/HoBo/llms-full.txt. Every docs page also has a
   "Copy page as Markdown" button and per-snippet copy buttons.
@@ -91,11 +99,12 @@ Key facts:
 - [What is HoBo](https://tyler-r-kendrick.github.io/HoBo/guide/): positioning, the guiding principle, who it is for
 - [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, pitch a Camp (or let it be inferred), `hobo up`; Yards/Junctions as advanced scenarios
 - [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): the four scopes, continuous migration, membrane, event log, agent auth
-- [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout
+- [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout, SQLite EventStore default, contract effects + resiliency
+- [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): Bindle/Camp/Yard/Junction, event log durability, EffectSpec, ResilienceProfile
 - [The Conductor](https://tyler-r-kendrick.github.io/HoBo/guide/broker/): policy-governed placement across providers (the broker), signed receipts/rejections, Rego/OPA policy, the five wrapped planes, connector registry
 - [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
 - [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): implementable ports, adapter authoring, conformance certification, ACP/A2A protocol-connector integration points
-- [Testing](https://tyler-r-kendrick.github.io/HoBo/guide/testing/): unit tests with PACT-mocked boundaries (no hand-written mocks), executable contract verification with subset matching, deployment rehearsal (hobo plan / local in-memory lane / replay-equals-live), runtime availability (Crew synthetics, SLO projections, session-scoped fault chaos, shadow lanes)
+- [Testing](https://tyler-r-kendrick.github.io/HoBo/guide/testing/): unit tests with PACT-mocked boundaries, effect-aware isolation, executable contract verification, deployment rehearsal, replay-equals-live, runtime availability
 - [The Bridge](https://tyler-r-kendrick.github.io/HoBo/guide/bridge/): Bridge-to-Kubernetes-style local/remote dev on ANY provider — createBoundaryRouter() in @hobo/runtime; per-boundary modes live/mock/bridge/replay/shadow/fault; a bridge forks ONLY the tagged dev session's traffic to the local implementation and is PACT-contract-verified BEFORE activation (BridgeContractError otherwise); recording always on (specification-by-example); composes with preview environments
 - [Trail map](https://tyler-r-kendrick.github.io/HoBo/guide/status/): honest pre-release status and stage gates
 

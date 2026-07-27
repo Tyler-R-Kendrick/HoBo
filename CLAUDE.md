@@ -18,5 +18,8 @@ Install the binaries once with [`scripts/setup-agent-tools.sh`](scripts/setup-ag
 ## Working norms
 - This is a documentation repo: prefer editing the numbered design docs; keep cross-doc links valid (relative `.md` links).
 - Follow the HoBo implementation architecture rules in [`AGENTS.md`](AGENTS.md): PACT at service boundaries, protobuf plus CUE for records/messages/data/objects, project-local `data-models/` folders for CUE-constrained types, parse-don't-validate derived types, and event-driven CQRS/actors/materialized views.
+- **Durable EventStore (ADR-0135):** default SQLite behind ports (`@hobo/storage-sqlite`, `@hobo/runtime-local`, `@hobo/runtime-browser`); one partition / one writer; stream-head CAS + fencing; never multi-writer NFS WAL. See AGENTS.md “Portable SQLite EventStore”.
+- **Contract effects (ADR-0136):** optional `EffectSpec` + secondary `ResilienceProfile` on BoundaryContract; effect widening can break can-deploy; never retry `policy.Decided`/terminal; no Effect-TS/Polly/XState public deps. See AGENTS.md “Contract effects + visible resiliency”.
+- Site/agents/OKF: design suite under `docs/design/` (OKF bundle; `pnpm run docs:okf`); GitHub Pages from `site/` (Astro → `gh-pages`); agent briefing `site/public/llms.txt` + `/llms-full.txt`.
 - Run `npm run architecture:guard` for implementation-package changes; pre-commit runs the staged variant before the slower tests.
-- Conventional, scoped commits; branch `claude/charming-volta-lzlf0m`; changes land on PR #1.
+- Conventional, scoped commits.

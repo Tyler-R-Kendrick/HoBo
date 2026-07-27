@@ -55,6 +55,16 @@ Control-plane state, projections, SRE workflows, and audit trails all derive fro
 - **Audit:** every state transition, including *agent token issuance* and *every migration decision*, is a durable, attributable fact.
 - **Time travel:** projections can be rebuilt at any point in history. "Where did this app live in March, and why did it move?" is a query, not a forensic investigation.
 
+The default durable Camp EventStore is **SQLite behind ports** (one partition, one active writer; scale by partitions). Actors append under optimistic sequence **and** a fencing token so a stale holder cannot win after lease transfer. Catch-up projections use database-local positions; live callbacks are an optimization, not the only delivery path. Queue/timer/outbox side effects can stage in the **same** durable transaction as domain facts, while network dispatch happens outside that transaction.
+
+## Contract effects (what a boundary can do)
+
+Contracts are not only request/response shapes. A boundary can declare an **EffectSpec**: purity (pure vs varies vs transacts…), capability tags (may fail, may suspend…), and domain I/O (network, storage, identity, policy eval, agent tools…). Pure contracts isolate for unit tests with zero infrastructure; domain effects drive automatic harness mocks. When a revision **widens** effects (for example pure → network), can-deploy treats that as a potential breaking change for consumers that assumed a narrower set.
+
+## Visible resiliency (secondary layer)
+
+Operations that face flaky I/O may carry a **ResilienceProfile** — deterministic retry schedules, timeouts, circuit-breakers, and related strategies — as **contract-visible metadata**, not a new top-level control-plane noun. Application emits attempt/terminal facts for replay. Hard rules stay fixed: `policy.Decided` denials and typed terminal failures **never** retry; cancellation stops pending work; inspection is reconstructed from the event log, never process memory.
+
 ## Agent-native identity
 
 AI agents are **first-class principals**, not scripts holding a human's API key:

@@ -125,12 +125,16 @@ packages/
   junctions/       @hobo/junctions    junction() — cross-cloud federation + inferred connectivity  [ADR-0043]
   bindles-rs/ bindles-py/ bindles-go/ ... per-language app idiom layers over the same hobo:sdk bindings (hand-authored or SWE-operator-generated; gated by @hobo/conformance/sdk)  [ADR-0072]
   runtime/         @hobo/runtime      actors/grains, workflow/step, agent(), stubs, ctx
-  data/            @hobo/data         command/view/projection CQRS authoring helpers
+  data/            @hobo/data         command/view/projection CQRS authoring helpers (fenceToken on aggregate append — ADR-0135)
   events/          @hobo/events       emit/subscribe/saga messaging and choreography helpers
+  contracts/       @hobo/contracts    Contract IR + can-deploy + Gatekeeper; optional EffectSpec + ResilienceProfile (ADR-0136)
+  contract-harness/@hobo/contract-harness  PACT harness + effect-aware isolation/mocks/fault injection (ADR-0136)
+  storage-sqlite/  @hobo/storage-sqlite  SQLite schema/migrations/journal semantics behind ports (ADR-0135; not the public boundary)
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
   cli/             @hobo/cli          hobo up|down|dev|new|login|claim|plan|verify|can-deploy|inspect|logs|doctor|codegen|build|collect|stub|drift|add|registry|import|generate|sandbox|test|attest|erase|derivative|runbook
   runtimes/          (the durable runtime backends a Camp provides)
-    runtime-local      @hobo/runtime-local     (built-in engine; sqlite/filesystem)
+    runtime-local      @hobo/runtime-local     (built-in engine; node:sqlite + storage worker — ADR-0135)
+    runtime-browser    @hobo/runtime-browser   (SQLite WASM + OPFS policy; fail-closed without OPFS — ADR-0135)
     runtime-postgres   @hobo/runtime-postgres
     runtime-temporal   @hobo/runtime-temporal
     runtime-restate    @hobo/runtime-restate

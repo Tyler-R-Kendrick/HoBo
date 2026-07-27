@@ -10,7 +10,7 @@ This bundle follows Open Knowledge Format v0.1 conventions: `index.md` files pro
 
 | Area | Start here | Purpose |
 |---|---|---|
-| Design suite | [`design/index.md`](./design/index.md) | Canonical product/platform design, ADRs, glossary, event families, traceability, CLI and SDK contracts. |
+| Design suite | [`design/index.md`](./design/index.md) | Canonical product/platform design, ADRs (incl. **ADR-0135** SQLite EventStore default, **ADR-0136** EffectSpec + ResilienceProfile), glossary, event families, traceability, CLI and SDK contracts. |
 | Implementation backlog | [`implementation-plan.md`](./implementation-plan.md) | Durable mirror of Linear's subsystem decomposition and issue plan. Linear remains live status source. |
 | Agent tooling | [`agent-tooling.md`](./agent-tooling.md) | Local agent-tooling setup, trust boundaries, data-egress notes, and maintenance expectations. |
 | Automations | [`automations/hobo-issue-worker.md`](./automations/hobo-issue-worker.md) | How issue-worker automation should interpret design docs and report changes. |

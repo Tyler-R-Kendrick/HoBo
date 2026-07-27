@@ -45,6 +45,7 @@ Every fact rides a shared envelope family of fields:
 | `guardrail.*` | `Blocked` | AI safety |
 | `trail.*` | Plan/run/cutover facts | Continuous migration recipes |
 | `station.*` | Station/Rail lifecycle | Control-plane isolation |
+| `replay.*` | `Started` / `ChunkIngested` / `Ended` / `Accessed` / … | Session Replay lifecycle (not event-log replay) |
 
 Domain apps add **their own** families under app namespaces — do not overload `crew.*` or `deployment.*` for business cart events.
 

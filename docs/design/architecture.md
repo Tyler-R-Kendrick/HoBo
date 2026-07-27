@@ -135,8 +135,9 @@ packages/
   connectivity/    @hobo/connectivity naming consumers, overlay, DNS, secretless connectors, env isolation, metering sinks (ADR-0130+)
   broker/          @hobo/broker       pure Conductor: policy-governed placement receipts (mounts Station client)
   cloud/           @hobo/cloud        Planner/Matching + continuous-delivery apply plane (workload-attested)
+  replay/          @hobo/replay       Session Replay (privacy-first DOM/session reconstruction; `replay.*`; ADR-0137 — distinct from event-log replay)
   componentize/    @hobo/componentize component build via jco + per-language toolchains -> OCI artifacts  [Plan 20]
-  cli/             @hobo/cli          hobo up|down|dev|new|login|claim|plan|verify|can-deploy|inspect|logs|doctor|codegen|build|collect|stub|drift|add|registry|import|generate|sandbox|test|attest|erase|derivative|runbook|station|trails|feature|identity|connection|broker
+  cli/             @hobo/cli          hobo up|down|dev|new|login|claim|plan|verify|can-deploy|inspect|logs|doctor|codegen|build|collect|stub|drift|add|registry|import|generate|sandbox|test|attest|erase|derivative|runbook|station|trails|feature|identity|connection|broker|replay
   runtimes/          (Camp durable engines + component hosts)
     runtime-local      @hobo/runtime-local     (built-in EventStore engine; node:sqlite + storage worker — ADR-0135)
     runtime-browser    @hobo/runtime-browser   (SQLite WASM + OPFS policy; fail-closed without OPFS — ADR-0135)

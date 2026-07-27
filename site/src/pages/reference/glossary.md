@@ -50,5 +50,7 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **can-deploy** | Compatibility matrix diagnostic for producer/consumer skew |
 | **can-trail** | Gate dimension for Trail readiness |
 | **WIT** | Wasm Interface Types — component capability membrane |
+| **Session Replay** | Privacy-first DOM/session reconstruction (`@hobo/replay`, ADR-0137); `replay.*` — not event-log replay |
+| **Event-log replay** | Folding durable EventStore facts for projections/audit — different from Session Replay |
 
 Longer design glossary lives in the repo design suite; this page is the **site-facing** subset for humans and agents reading Pages.

@@ -75,7 +75,7 @@ describe("Dispatcher routing across github + blacksmith (min-cost, ADR-0071)", (
 			]),
 		);
 		assert.equal(costs[BLACKSMITH_PROVIDER_ID], 0.004);
-		assert.equal(costs[GITHUB_RUNNER_PROVIDER_ID], 0.008);
+		assert.equal(costs[GITHUB_RUNNER_PROVIDER_ID], 0.006);
 	});
 
 	it("still routes to GitHub while GitHub free headroom covers the job and Blacksmith's is gone", () => {

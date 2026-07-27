@@ -56,6 +56,7 @@ follow-ups.
 | Subprocessors/provider claims | vendor owner | Compliance Evidence Pack | Confirmed subprocessor/provider list and provider claim evidence. | Provider and subprocessor statements must distinguish required, optional, mocked, and unsupported services. | Escalate customer assurance requests to vendor owner. | Subprocessor list, provider claim register, and known limitations. | Blocks enterprise pilot commitments if required subprocessors are unconfirmed. |
 | Security claims | security owner | Security Verification | [ADR-0023](./adr/02-identity-security.md#adr-0023) security posture, vulnerability process, SBOM/provenance, and launch-blocker gates. | Security claims must name implemented, simulated/reference, beta-only, and future-roadmap evidence. | Remove or downgrade unsupported public security claims. | Claim register row plus linked verification evidence. | Unsupported security claims cannot unlock customer-facing launch copy. |
 | Support obligations | support owner | Support & Debug Tools | Support intake, severity, escalation, and debug evidence contract. | Support expectations must state response path, evidence needed, known limitations, and escalation triggers. | Route incidents through support intake with launch-blocker escalation. | Support runbook, severity table, and handoff evidence. | Defines beta and GA support boundaries without promising unowned SLAs. |
+| Provider terms of service | legal owner | V1 Legal, Privacy & Terms Readiness | Per-provider review that the intended commercial model is permitted by each registered vendor's terms, against the [ADR-0129](./adr/07-portability-extensibility.md#adr-0129) invariants and the adapter `terms` references. | Providers are registered under the operator's own account; HoBo never fronts its own provider accounts, pools free-tier headroom, or resells provider capacity. | Route provider-terms and free-tier questions to the legal owner; do not promise pooled or HoBo-supplied provider capacity. | Per-provider terms URL, `reviewedOn` date, and the reviewed commercial-model determination. | Blocks paid GA if any registered provider's terms do not permit the intended commercial model. |
 | Customer communications | launch communications owner | V1 Launch Site, Messaging & Demo Assets | Launch messaging claim register and release notes. | Customer-facing communications must align with evidence, known limitations, support boundaries, and release cutline. | Route unsupported or risky claims back to launch communications owner. | Claim register, release notes, and approval references. | Controls which claims can appear in beta, GA, docs, and demo assets. |
 
 ## Open Unknowns
@@ -64,6 +65,7 @@ follow-ups.
 |---|---|---|---|
 | Final legal review for terms, privacy notice, and customer-facing legal copy | Launch blocker | legal owner | Public launch or paid GA |
 | Confirmed v1 subprocessor/provider list | Launch blocker | vendor owner | Enterprise beta or GA customer assurance packet |
+| Per-provider confirmation that the intended hosted commercial model is permitted by that vendor's terms ([ADR-0129](./adr/07-portability-extensibility.md#adr-0129)) | Launch blocker | legal owner | Paid GA of any hosted offering |
 | Evidence review for public security claims | Launch blocker | security owner | Public security or compliance claims |
 | Localized terms, translations, and jurisdiction-specific notices | Post-v1 follow-up | legal owner | Post-v1 expansion |
 | Formal SOC2 or similar certification program | Post-v1 follow-up | compliance owner | Future certification program |
@@ -82,6 +84,10 @@ follow-ups.
   own control-plane actions.
 - [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) keeps commercial/legal business
   mechanics outside the HoBo meta-cloud implementation scope.
+- [ADR-0129](./adr/07-portability-extensibility.md#adr-0129) fixes the provider-terms invariants
+  the credit-routing objective depends on: registered providers are the operator's own accounts,
+  free-tier headroom is never pooled or resold, no account is multiplied to reset a tier, and each
+  adapter carries a dated `terms` reference.
 
 ## Follow-Up Gate
 

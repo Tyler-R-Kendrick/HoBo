@@ -1,9 +1,11 @@
 {
 	"name": "@hobo/adapter-hono",
 	"version": "0.0.1",
+	"license": "MIT",
 	"description": "HoBo L2 adapter: wire Hono apps as bindle HTTP entrypoints ((Request) => Response). Framework lives here — not in @hobo/core or @hobo/hobo.",
 	"type": "module",
 	"files": [
+		"LICENSE",
 		"dist",
 		"README.md"
 	],

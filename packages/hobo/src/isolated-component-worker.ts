@@ -7,10 +7,7 @@ import { parentPort, workerData } from "node:worker_threads";
 
 import { loadBindleDefinition } from "@hobo/cli";
 
-import {
-	isExternalComponent,
-	type FetchHandler,
-} from "./bare-metal-host.js";
+import { isExternalComponent, type FetchHandler } from "./bare-metal-host.js";
 
 interface BootData {
 	readonly projectDir: string;
@@ -56,7 +53,9 @@ async function boot(): Promise<void> {
 	}
 	const resolved = thunk();
 	if (typeof resolved !== "function") {
-		throw new Error(`worker: entrypoint for ${data.resourceName} is not a fetch handler`);
+		throw new Error(
+			`worker: entrypoint for ${data.resourceName} is not a fetch handler`,
+		);
 	}
 	handler = resolved as FetchHandler;
 	parentPort?.postMessage({ type: "ready", resourceName: data.resourceName });

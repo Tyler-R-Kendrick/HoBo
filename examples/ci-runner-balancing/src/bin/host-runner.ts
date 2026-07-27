@@ -3,12 +3,18 @@
  *
  *   node --import tsx src/bin/host-runner.ts [--repo owner/name] [--once]
  *     [--max 10] [--dir <install dir>] [--labels hobo-last-resort]
+ *     [--allow-public]
  *
  * Registers this machine as an ephemeral self-hosted runner for the
  * repository and serves queued jobs until the queue drains (or --once).
  * Needs a token able to mint runner registration tokens (repo admin):
  * HOBO_RB_RUNNER_TOKEN, else VARS_ADMIN_TOKEN, else GITHUB_TOKEN.
  * Linux and macOS only — the Windows runner uses a different bootstrap.
+ *
+ * Refuses to register against a PUBLIC repository unless --allow-public (or
+ * HOBO_RB_ALLOW_PUBLIC=1) is passed: a self-hosted runner executes workflow
+ * code on this machine, and on a public repo a stranger's pull request can be
+ * that code.
  */
 
 import { spawn } from "node:child_process";
@@ -18,9 +24,11 @@ import path from "node:path";
 import process from "node:process";
 
 import {
+	evaluateRegistrationGuard,
 	pickRunnerAsset,
 	queuedRunsPath,
 	registrationTokenPath,
+	repositoryPath,
 	type RunnerAsset,
 	runnerConfigArgs,
 	runnerDownloadsPath,
@@ -35,6 +43,7 @@ interface CliArgs {
 	maxIterations: number;
 	dir: string;
 	labels: string[];
+	allowPublic: boolean;
 }
 
 function parseArgs(argv: readonly string[]): CliArgs {
@@ -47,6 +56,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
 			env.HOBO_RB_RUNNER_DIR ??
 			path.join(homedir(), ".hobo", "last-resort-runner"),
 		labels: ["hobo-last-resort"],
+		allowPublic: env.HOBO_RB_ALLOW_PUBLIC === "1",
 	};
 	for (let index = 0; index < argv.length; index += 1) {
 		const token = argv[index];
@@ -56,6 +66,8 @@ function parseArgs(argv: readonly string[]): CliArgs {
 			index += 1;
 		} else if (token === "--once") {
 			args.once = true;
+		} else if (token === "--allow-public") {
+			args.allowPublic = true;
 		} else if (token === "--max" && value !== undefined) {
 			const parsed = Number(value);
 			if (Number.isInteger(parsed) && parsed > 0) args.maxIterations = parsed;
@@ -172,6 +184,48 @@ async function queuedRunCount(owner: string, repo: string): Promise<number> {
 	}
 }
 
+/**
+ * Fail closed before anything is installed or registered: a public repository
+ * (or a repository we cannot read) is not a safe host for a self-hosted runner.
+ */
+async function assertSafeToRegister(
+	owner: string,
+	repo: string,
+	allowPublic: boolean,
+): Promise<void> {
+	let repository: { private?: boolean; fork_pr_workflows_enabled?: boolean };
+	try {
+		repository = (await api(repositoryPath(owner, repo))) as typeof repository;
+	} catch (error) {
+		throw new Error(
+			`HOST_RUNNER_VISIBILITY_UNKNOWN: could not read ${owner}/${repo} to confirm it is private, ` +
+				"so registration is refused. A self-hosted runner executes workflow code on this machine. " +
+				`(${error instanceof Error ? error.message : String(error)})`,
+		);
+	}
+	if (typeof repository.private !== "boolean") {
+		throw new Error(
+			`HOST_RUNNER_VISIBILITY_UNKNOWN: ${owner}/${repo} did not report its visibility, so registration is refused.`,
+		);
+	}
+
+	const verdict = evaluateRegistrationGuard({
+		repository: {
+			private: repository.private,
+			forkPullRequestWorkflows: repository.fork_pr_workflows_enabled,
+		},
+		allowPublic,
+	});
+	if (!verdict.allowed) {
+		throw new Error(`${verdict.code}: ${verdict.reason}`);
+	}
+	if (!repository.private && allowPublic) {
+		console.warn(
+			"::warning::registering a self-hosted runner against a PUBLIC repository because --allow-public was passed",
+		);
+	}
+}
+
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	if (!args.repo.includes("/")) {
@@ -179,6 +233,7 @@ async function main(): Promise<void> {
 	}
 	const [owner = "", repo = ""] = args.repo.split("/", 2);
 
+	await assertSafeToRegister(owner, repo, args.allowPublic);
 	await ensureRunnerInstalled(owner, repo, args.dir);
 
 	for (let iteration = 0; ; iteration += 1) {

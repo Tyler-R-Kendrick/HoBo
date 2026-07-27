@@ -38,8 +38,8 @@ describe("execution-host capability manifest (Dispatcher lane)", () => {
 		}
 	});
 
-	it("declares REAL GitHub Actions list prices, not uniform zeros", () => {
-		assert.equal(COST_FACTS.runner.marginalPrice, "0.0080");
+	it("declares transcribed GitHub Actions list prices, not uniform zeros", () => {
+		assert.equal(COST_FACTS.runner.marginalPrice, "0.0060");
 		assert.equal(COST_FACTS.runner.included, 2000);
 		const manifest = executionHostManifest("runner");
 		assert.equal(manifest.cost.facts[0]?.freeTier.included, 2000);
@@ -94,7 +94,7 @@ describe("published well-known bundle (registry lane)", () => {
 		);
 		assert.equal(
 			runner?.estimateCost({ port: "hobo:runner" }).marginalPrice,
-			"0.0080",
+			"0.0060",
 		);
 		const manifest = entry.capabilityManifest();
 		assert.equal(manifest.capabilities.capabilities?.length, 2);

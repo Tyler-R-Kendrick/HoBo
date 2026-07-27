@@ -73,15 +73,7 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
 		const init = await cli.run(
-			[
-				"yard",
-				"init",
-				"--home",
-				hoboHome,
-				"--host",
-				"isolated-wasm",
-				"--json",
-			],
+			["yard", "init", "--home", hoboHome, "--host", "isolated-wasm", "--json"],
 			{ cwd: hoboHome },
 		);
 		const envelope = JSON.parse(init.stdout) as {
@@ -96,7 +88,9 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(envelope.data.config.componentHost).toBe("isolated-wasm");
 		expect(envelope.data.config.host).toBe("isolated-wasm");
 		expect(envelope.message).toContain("componentHost=isolated-wasm");
-		expect(envelope.data.toolchain?.wasmtime.version).toMatch(/^\d+\.\d+\.\d+$/);
+		expect(envelope.data.toolchain?.wasmtime.version).toMatch(
+			/^\d+\.\d+\.\d+$/,
+		);
 	}, 120_000);
 
 	it("local component host: Yard places Camp; only web is public", async () => {
@@ -130,43 +124,39 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		});
 	});
 
-	it(
-		"isolated-wasm via hobo path: private api in wasmtime sandbox (defaults)",
-		async () => {
-			const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-"));
-			cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
+	it("isolated-wasm via hobo path: private api in wasmtime sandbox (defaults)", async () => {
+		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-"));
+		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 
-			// Toolchain + yard via hobo APIs (same path as CLI ensure/init).
-			await ensureIsolatedWasmToolchain({ hoboHome });
-			initBareMetalYard({ hoboHome, componentHost: "isolated-wasm" });
+		// Toolchain + yard via hobo APIs (same path as CLI ensure/init).
+		await ensureIsolatedWasmToolchain({ hoboHome });
+		initBareMetalYard({ hoboHome, componentHost: "isolated-wasm" });
 
-			const port = 24000 + Math.floor(Math.random() * 500);
-			const serve = await serveProjectOnIsolatedWasm({
-				projectDir: helloBindleDir,
-				hoboHome,
-				port,
-			});
-			cleanups.push(() => serve.close());
+		const port = 24000 + Math.floor(Math.random() * 500);
+		const serve = await serveProjectOnIsolatedWasm({
+			projectDir: helloBindleDir,
+			hoboHome,
+			port,
+		});
+		cleanups.push(() => serve.close());
 
-			expect(serve.componentHost).toBe("isolated-wasm");
-			expect(serve.isolation.isolateBoundary).toBe("wasmtime_process");
-			expect(serve.isolation.privateSandboxes).toBe(1);
-			expect(serve.isolation.wasmtimeVersion).toMatch(/^\d+\.\d+\.\d+$/);
-			expect(serve.isolation.wasmPaths.length).toBe(1);
-			expect(existsSync(serve.isolation.wasmPaths[0]!)).toBe(true);
-			expect(serve.exposedEndpoints).toHaveLength(1);
-			// Camp injects bindle env onto mesh hops into the wasm sandbox.
-			expect(serve.bindleEnv).toEqual({
-				GREETING_PREFIX: "howdy",
-				APP_TITLE: "howdy",
-			});
-			expect(HOBO_ENV_HEADER_PREFIX).toBe("x-hobo-env-");
+		expect(serve.componentHost).toBe("isolated-wasm");
+		expect(serve.isolation.isolateBoundary).toBe("wasmtime_process");
+		expect(serve.isolation.privateSandboxes).toBe(1);
+		expect(serve.isolation.wasmtimeVersion).toMatch(/^\d+\.\d+\.\d+$/);
+		expect(serve.isolation.wasmPaths.length).toBe(1);
+		expect(existsSync(serve.isolation.wasmPaths[0]!)).toBe(true);
+		expect(serve.exposedEndpoints).toHaveLength(1);
+		// Camp injects bindle env onto mesh hops into the wasm sandbox.
+		expect(serve.bindleEnv).toEqual({
+			GREETING_PREFIX: "howdy",
+			APP_TITLE: "howdy",
+		});
+		expect(HOBO_ENV_HEADER_PREFIX).toBe("x-hobo-env-");
 
-			const html = await (await fetch(`${serve.primaryUrl}/?name=Iso`)).text();
-			expect(html).toContain("howdy, Iso");
-		},
-		180_000,
-	);
+		const html = await (await fetch(`${serve.primaryUrl}/?name=Iso`)).text();
+		expect(html).toContain("howdy, Iso");
+	}, 180_000);
 
 	it("legacy host aliases normalize to local component host", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-legacy-"));

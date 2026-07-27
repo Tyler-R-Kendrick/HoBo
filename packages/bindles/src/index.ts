@@ -77,6 +77,7 @@ export {
 	service as wiringService,
 } from "./wiring/index.js";
 
+// public-contract: the package id emitted into generated bindle artifacts.
 export const HOBO_BINDLES_PACKAGE = "@hobo/bindles";
 
 export type {

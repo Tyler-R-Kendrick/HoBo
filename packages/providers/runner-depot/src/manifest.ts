@@ -5,9 +5,11 @@ import {
 	CATEGORY_PORTS,
 	CATEGORY_SKUS,
 	COST_SCHEMA,
+	type CostProvenance,
 	EXECUTION_HOST_MANIFEST_SCHEMA,
 	type ExecutionHostCategory,
 	type ExecutionHostManifest,
+	type ProviderTerms,
 	RUNNER_CATEGORY,
 } from "@hobo/runner-github";
 
@@ -30,13 +32,28 @@ export const DEFAULT_REGIONS = ["global"];
 // public-contract: the declared expected shared-cache hit rate for warm projects.
 export const DEPOT_DECLARED_CACHE_HIT_RATE = "0.80";
 
-// Declared cost facts — REAL Depot public list magnitudes (declared-provider
-// source): Depot-managed Actions runners at half GitHub's price
-// ($0.004/min), and remote build machines at $0.04/build-minute with 500
-// included minutes/month. The shared BuildKit cache is the economic point:
+// Declared cost facts — Depot public list magnitudes TRANSCRIBED BY HOBO from
+// the vendor's published pricing page: Depot-managed Actions runners at
+// $0.004/min, and remote build machines at $0.04/build-minute with 500
+// included minutes/month. Ranking input, never billing input, and NOT attested
+// by the provider (see COST_SOURCE/PROVIDER_TERMS below and ADR-0129 §5). The shared BuildKit cache is the economic point:
 // a warm-cache Depot build does LESS metered work per identical build, so
 // its EFFECTIVE cost can outrank a "free" cold GitHub build — CreditLedger
 // ranking captures that through per-build observed cache facts.
+// public-contract: where Depot's published rates were read from, and when.
+export const COST_SOURCE: CostProvenance = {
+	sourceUrl: "https://depot.dev/pricing",
+	transcribedOn: "2026-07-27",
+};
+
+// public-contract: Depot's terms of service. A login may be used by one person
+// only, so the adapter is only ever pointed at the operator's OWN Depot org
+// (ADR-0129 §1).
+export const PROVIDER_TERMS: ProviderTerms = {
+	url: "https://depot.dev/terms-of-service",
+	reviewedOn: "2026-07-27",
+};
+
 export const COST_FACTS: Record<
 	ExecutionHostCategory,
 	{ sku: string; unit: string; marginalPrice: string; included: number }
@@ -203,7 +220,7 @@ export function publishCapabilityManifest(
 				source: {
 					type: "declared-provider",
 					documentRef: digestRef({ providerId, sku: fact.sku }),
-					signedAt: "2026-07-01T00:00:00Z",
+					...COST_SOURCE,
 				},
 			};
 		}),

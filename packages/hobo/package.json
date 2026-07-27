@@ -1,6 +1,7 @@
 {
 	"name": "@hobo/hobo",
 	"version": "0.0.1",
+	"license": "MIT",
 	"description": "HoBo composition-root app: wires the default LOCAL/MOCKED runtimes so the composed `hobo` binary runs the cloud verbs (collect/plan/up/down/dev) end to end without shell stubs.",
 	"type": "module",
 	"bin": {
@@ -8,6 +9,7 @@
 		"hobo-mcp": "./dist/bin/hobo-mcp.js"
 	},
 	"files": [
+		"LICENSE",
 		"dist",
 		"wit"
 	],

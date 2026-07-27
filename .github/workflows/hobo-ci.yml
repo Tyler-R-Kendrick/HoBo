@@ -74,6 +74,31 @@ jobs:
       - uses: cue-lang/setup-cue@v1.0.0
         with:
           version: v0.14.0
+      # Inbound=outbound licensing: every commit on a PR carries a DCO
+      # sign-off (CONTRIBUTING.md, docs/plans/0009-legal-compliance-audit.md
+      # finding 7). Advisory for now so existing branches are not stranded;
+      # flip continue-on-error off once contributors are signing off.
+      - name: DCO sign-off check
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          DCO_BASE: origin/${{ github.base_ref }}
+        run: |
+          missing=0
+          while read -r sha; do
+            [ -z "$sha" ] && continue
+            author="$(git show -s --format='%an <%ae>' "$sha")"
+            if ! git show -s --format='%B' "$sha" | grep -qiF "Signed-off-by: $author"; then
+              echo "::warning::missing or mismatched DCO sign-off on $(git show -s --format='%h %s' "$sha") (expected 'Signed-off-by: $author')"
+              missing=$((missing + 1))
+            fi
+          done < <(git rev-list "${DCO_BASE}..HEAD")
+          if [ "$missing" -gt 0 ]; then
+            echo "$missing commit(s) without a matching DCO sign-off. Fix with: git rebase --signoff ${DCO_BASE}"
+            exit 1
+          fi
+          echo "All commits carry a matching DCO sign-off."
+
       - name: Code format gate
         run: pnpm run lint:code
       - name: Relevant checks only

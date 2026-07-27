@@ -40,7 +40,7 @@ The SAME `RunnerJob` spec that runs on runner-github runs UNMODIFIED on
 Blacksmith — the replay-lane conformance test feeds one job object to both
 providers and asserts the same result/fact shape. What changes is the
 substrate (`runs_on` input) and the economics: $0.004/min for the 4-vCPU
-Linux class (vs GitHub's $0.008/min 2-core) with 3,000 free minutes/month,
+Linux class (vs GitHub's $0.006/min 2-core) with 3,000 free minutes/month,
 declared-provider source. With both registered, the Dispatcher
 (ADR-0071) gets its first real price/performance routing choice for the
 same job shape, and min-cost routing picks the cheaper effective option.

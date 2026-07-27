@@ -22,10 +22,9 @@ import {
 //     services__<name>__http__0 = http://hobo.internal/<name>
 //   - The Yard/Camp intermediary keeps private surfaces off the public wire.
 
-export type FetchHandler = (
-	input: Request,
-) => Response | Promise<Response>;
+export type FetchHandler = (input: Request) => Response | Promise<Response>;
 
+// public-contract: reserved hostname for in-mesh hops between components.
 export const INTERNAL_MESH_HOST = "hobo.internal";
 
 /**
@@ -33,8 +32,10 @@ export const INTERNAL_MESH_HOST = "hobo.internal";
  * (including isolated-wasm sandboxes). Guests must read camp config from these
  * headers, not from host process.env.
  */
+// public-contract: wire prefix for per-key bindle env injected over mesh hops.
 export const HOBO_ENV_HEADER_PREFIX = "x-hobo-env-";
 /** JSON map of all bindle env keys for guests that prefer one parse. */
+// public-contract: wire header carrying the whole bindle env as one JSON map.
 export const HOBO_BINDLE_ENV_HEADER = "x-hobo-bindle-env";
 
 /** Apply HoBo bindle env onto Headers for a mesh hop into a private component. */
@@ -246,7 +247,11 @@ export function installInternalMesh(
 		let body: BodyInit | null | undefined;
 		if (input instanceof Request && method !== "GET" && method !== "HEAD") {
 			body = input.body;
-		} else if (init?.body !== undefined && method !== "GET" && method !== "HEAD") {
+		} else if (
+			init?.body !== undefined &&
+			method !== "GET" &&
+			method !== "HEAD"
+		) {
 			body = init.body;
 		}
 		const requestInit: RequestInit = {
@@ -258,7 +263,9 @@ export function installInternalMesh(
 				? ({ duplex: "half" } as RequestInit)
 				: {}),
 		};
-		return handler(new Request(`http://component.local${restPath}`, requestInit));
+		return handler(
+			new Request(`http://component.local${restPath}`, requestInit),
+		);
 	};
 	globalThis.fetch = meshFetch;
 	return () => {

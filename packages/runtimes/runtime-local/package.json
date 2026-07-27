@@ -1,8 +1,10 @@
 {
 	"name": "@hobo/runtime-local",
 	"version": "0.0.1",
+	"license": "MIT",
 	"type": "module",
 	"files": [
+		"LICENSE",
 		"dist"
 	],
 	"exports": {

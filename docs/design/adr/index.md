@@ -134,3 +134,4 @@
 | 0126 | Committed platform entry files under `examples/*/deploy/` are the sanctioned JS-family exception (deploy artifacts ingested verbatim; sources stay TS-first) | [architecture-core](01-architecture-core.md#adr-0126) |
 | 0127 | Lakebed accepted as a deploy-target adapter: honest-partial capabilities, deploy-driver realization, opt-in approval; rejected as a Yard substrate | [portability-extensibility](07-portability-extensibility.md#adr-0127) |
 | 0128 | ts-autocode vendored as a git submodule (`external/ts-autocode`) linked into the pnpm workspace; trainable scanning/emission delegates upstream | [architecture-core](01-architecture-core.md#adr-0128) |
+| 0129 | Provider-terms compliance: registered providers are the operator's own accounts; free-tier headroom is never pooled or resold; no account multiplication; adapters carry dated `terms` references | [portability-extensibility](07-portability-extensibility.md#adr-0129) |

@@ -16,9 +16,10 @@ afterEach(() => {
 	}
 });
 
-function fixtureProject(
-	files: Record<string, string>,
-): { dir: string; hoboHome: string } {
+function fixtureProject(files: Record<string, string>): {
+	dir: string;
+	hoboHome: string;
+} {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-wasm-fixture-"));
 	const hoboHome = mkdtempSync(join(tmpdir(), "hobo-home-"));
 	cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
@@ -113,11 +114,9 @@ export const payments = {
 		}
 	});
 
-	it(
-		"componentizes and serves an arbitrary private resource via wasmtime",
-		async () => {
-			const { dir, hoboHome } = fixtureProject({
-				"src/orders.ts": `
+	it("componentizes and serves an arbitrary private resource via wasmtime", async () => {
+		const { dir, hoboHome } = fixtureProject({
+			"src/orders.ts": `
 export const app = {
   async fetch(request) {
     const url = new URL(request.url);
@@ -131,44 +130,42 @@ export const app = {
   }
 };
 `,
-				"package.json": `{"type":"module","name":"fixture-orders"}`,
-			});
+			"package.json": `{"type":"module","name":"fixture-orders"}`,
+		});
 
-			const prepared = await preparePrivateWasmComponent({
-				projectDir: dir,
-				resourceName: "orders",
-				hoboHome,
-			});
-			expect(prepared.wasmPath.endsWith(".wasm")).toBe(true);
+		const prepared = await preparePrivateWasmComponent({
+			projectDir: dir,
+			resourceName: "orders",
+			hoboHome,
+		});
+		expect(prepared.wasmPath.endsWith(".wasm")).toBe(true);
 
-			const { bootWasmtimeSandbox } = await import("../src/wasm-sandbox.js");
-			const { ensureWasmtimeBinary } = await import("../src/wasm-sandbox.js");
-			const wt = await ensureWasmtimeBinary({ hoboHome });
-			const sandbox = await bootWasmtimeSandbox({
-				resourceName: "orders",
-				wasmPath: prepared.wasmPath,
-				wasmtimeBin: wt.binPath,
-			});
-			cleanups.push(() => {
-				void sandbox.terminate();
-			});
+		const { bootWasmtimeSandbox } = await import("../src/wasm-sandbox.js");
+		const { ensureWasmtimeBinary } = await import("../src/wasm-sandbox.js");
+		const wt = await ensureWasmtimeBinary({ hoboHome });
+		const sandbox = await bootWasmtimeSandbox({
+			resourceName: "orders",
+			wasmPath: prepared.wasmPath,
+			wasmtimeBin: wt.binPath,
+		});
+		cleanups.push(() => {
+			void sandbox.terminate();
+		});
 
-			// Simulate camp mesh env injection.
-			const response = await sandbox.invoke(
-				new Request("http://component.local/items?id=42", {
-					headers: {
-						"x-hobo-bindle-env": JSON.stringify({ TENANT_ID: "acme" }),
-					},
-				}),
-			);
-			expect(response.status).toBe(200);
-			expect(await response.json()).toEqual({
-				resource: "orders",
-				id: "42",
-				tenant: "acme",
-			});
-			await sandbox.terminate();
-		},
-		180_000,
-	);
+		// Simulate camp mesh env injection.
+		const response = await sandbox.invoke(
+			new Request("http://component.local/items?id=42", {
+				headers: {
+					"x-hobo-bindle-env": JSON.stringify({ TENANT_ID: "acme" }),
+				},
+			}),
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			resource: "orders",
+			id: "42",
+			tenant: "acme",
+		});
+		await sandbox.terminate();
+	}, 180_000);
 });

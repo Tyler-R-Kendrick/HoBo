@@ -1,5 +1,6 @@
 {
   "name": "hobo-design",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +14,7 @@
     "skills:mirror-check": "node --import tsx scripts/check-skill-mirrors.ts",
     "test": "pnpm run test:unit",
     "standards:check": "node --import tsx scripts/check-technical-standards.ts",
+    "licenses:check": "node --import tsx scripts/check-licenses.ts",
     "docs:cli-lint": "node --import tsx scripts/check-cli-docs.ts",
     "docs:design-lint": "node --import tsx scripts/check-design-docs.ts",
     "docs:freshness": "node --import tsx scripts/check-docs-freshness.ts",
@@ -63,7 +65,7 @@
     "agent:check": "node --import tsx scripts/run-relevant-checks.ts",
     "check:changed": "node --import tsx scripts/run-relevant-checks.ts",
     "check:changed:build": "node --import tsx scripts/run-relevant-checks.ts --build",
-    "check:all": "pnpm run lint:boundaries && pnpm run architecture:guard:all && pnpm run konsistent && pnpm run lint:docs && pnpm run draft:artifacts && pnpm run draft:cascade && pnpm run skills:mirror-check && pnpm run promotions:check && pnpm run case:check && pnpm run test:schema && pnpm run test:unit && pnpm run test:behavior && pnpm run standards:check && pnpm run docs:coverage && pnpm run docs:freshness",
+    "check:all": "pnpm run lint:boundaries && pnpm run architecture:guard:all && pnpm run konsistent && pnpm run lint:docs && pnpm run draft:artifacts && pnpm run draft:cascade && pnpm run skills:mirror-check && pnpm run promotions:check && pnpm run case:check && pnpm run test:schema && pnpm run test:unit && pnpm run test:behavior && pnpm run standards:check && pnpm run licenses:check && pnpm run docs:coverage && pnpm run docs:freshness",
     "build": "turbo run build --filter \"./packages/*\"",
     "typecheck": "turbo run typecheck --filter \"./packages/*\"",
     "typecheck:root": "tsc -p tsconfig.json",

@@ -34,7 +34,9 @@ import {
 } from "./bare-metal-yard.js";
 import { ensureIsolatedWasmToolchain } from "./wasm-sandbox.js";
 
+// public-contract: embedded broker-runtime document schema id.
 export const EMBEDDED_BROKER_SCHEMA = "hobo.broker-runtime/v1" as const;
+// public-contract: provider id the wasm-sandbox yard registers under.
 export const WASM_SANDBOX_PROVIDER_ID = "@hobo/provider-wasm-sandbox" as const;
 export const LOCAL_PROCESS_PROVIDER_ID = LOCAL_HOST_PROVIDER_ID;
 
@@ -241,11 +243,13 @@ export function saveEmbeddedBrokerState(
 	return path;
 }
 
-export async function ensureEmbeddedBroker(options: {
-	readonly hoboHome?: string;
-	readonly preferWasmSandbox?: boolean;
-	readonly emitProgress?: (message: string) => void;
-} = {}): Promise<{
+export async function ensureEmbeddedBroker(
+	options: {
+		readonly hoboHome?: string;
+		readonly preferWasmSandbox?: boolean;
+		readonly emitProgress?: (message: string) => void;
+	} = {},
+): Promise<{
 	readonly state: EmbeddedBrokerState;
 	readonly broker: HoboBroker;
 	readonly catalog: BrokerCatalog;
@@ -268,11 +272,9 @@ export async function ensureEmbeddedBroker(options: {
 		);
 	}
 
-	const preferWasm =
-		options.preferWasmSandbox !== false && wasmAvailable;
+	const preferWasm = options.preferWasmSandbox !== false && wasmAvailable;
 	const existing = loadEmbeddedBrokerState(hoboHome);
-	const brokerId =
-		existing?.brokerId ?? `broker:local/${hostname()}`;
+	const brokerId = existing?.brokerId ?? `broker:local/${hostname()}`;
 	const catalog = createYardBrokerCatalog({
 		includeWasmSandbox: preferWasm,
 	});
@@ -317,8 +319,7 @@ export async function resolveBindlePlacement(options: {
 }): Promise<PlacementResult> {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const emit = options.emitProgress ?? (() => {});
-	const yardConfig =
-		options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
+	const yardConfig = options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
 
 	const { state, broker, catalog } = await ensureEmbeddedBroker({
 		hoboHome,
@@ -327,9 +328,7 @@ export async function resolveBindlePlacement(options: {
 
 	const explicitProviders = collectExplicitProviderPins(options.definition);
 	if (explicitProviders.length > 0) {
-		const available = new Set(
-			catalog.definitions().map((d) => d.providerId),
-		);
+		const available = new Set(catalog.definitions().map((d) => d.providerId));
 		const missing = explicitProviders.filter((p) => !available.has(p));
 		if (missing.length > 0) {
 			const message = `bindle pins provider(s) via .with({ provider }) that are not available on this broker junction: ${missing.join(", ")}`;
@@ -389,7 +388,9 @@ export async function resolveBindlePlacement(options: {
 		spendEstimateUsd: 0,
 	};
 
-	emit(`hobo broker-runtime: resolving placement for ${request.scope.bindleId}`);
+	emit(
+		`hobo broker-runtime: resolving placement for ${request.scope.bindleId}`,
+	);
 	const resolution = await broker.resolve(request);
 	if (resolution.outcome === "rejected" || !resolution.receipt) {
 		const reasons =

@@ -1,8 +1,10 @@
 {
 	"name": "@hobo/wit",
 	"version": "0.0.1",
+	"license": "MIT",
 	"type": "module",
 	"files": [
+		"LICENSE",
 		"dist",
 		"src/generated",
 		"wit",

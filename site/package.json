@@ -1,5 +1,6 @@
 {
   "name": "hobo-site",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "GitHub Pages site for HoBo: landing page, developer docs, and agent docs.",

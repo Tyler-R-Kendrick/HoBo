@@ -1,9 +1,11 @@
 {
 	"name": "@hobo/iac-crossplane",
 	"version": "0.0.1",
+	"license": "MIT",
 	"description": "HoBo Kubernetes-substrate IacProvider: CompositeResourceClaims over a Crossplane cluster (HOBO-716).",
 	"type": "module",
 	"files": [
+		"LICENSE",
 		"dist"
 	],
 	"exports": {

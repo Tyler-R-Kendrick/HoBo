@@ -18,9 +18,7 @@ export interface HonoFetchApp {
 }
 
 /** Framework-free handler shape used by local Yard / Camp hosts. */
-export type FetchHandler = (
-	request: Request,
-) => Response | Promise<Response>;
+export type FetchHandler = (request: Request) => Response | Promise<Response>;
 
 /** Bindle entrypoint thunk: `b.api(honoEntrypoint(app))`. */
 export type BindleHttpEntrypoint = () => FetchHandler;

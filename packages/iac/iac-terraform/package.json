@@ -1,9 +1,11 @@
 {
 	"name": "@hobo/iac-terraform",
 	"version": "0.0.1",
+	"license": "MIT",
 	"description": "HoBo HCL-lane IacProvider: one adapter driving the OpenTofu (default) or Terraform binary over per-resource workspaces (HOBO-717).",
 	"type": "module",
 	"files": [
+		"LICENSE",
 		"dist"
 	],
 	"exports": {

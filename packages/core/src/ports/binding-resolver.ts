@@ -9,9 +9,15 @@ export function parseResourceId(raw: string): ResourceId {
 	return raw as ResourceId;
 }
 
+export type BindingSource =
+	| "runtime-local"
+	| "named"
+	| "overlay"
+	| "service-discovery";
+
 export interface ResolvedBinding {
 	readonly value: string;
-	readonly source: "runtime-local";
+	readonly source: BindingSource;
 }
 
 export interface BindingResolverPort {

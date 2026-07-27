@@ -1,0 +1,29 @@
+package connectivity
+
+// CUE constraints for connectivity wire forms (see connectivity.proto).
+
+#UsageEventRecord: {
+	tenant_id:  string & !=""
+	event_type: string & !=""
+	resource:   string & !=""
+	quantity:   number
+	unit:       string & !=""
+	timestamp:  string & !=""
+}
+
+#NamedEndpointRecord: {
+	tenant_id:   string & !=""
+	resource:    string & !=""
+	hostname:    string & !=""
+	url:         string & !=""
+	mode:        "local" | "overlay"
+	backend_url: string
+}
+
+#PublicDnsEntrypointRecord: {
+	tenant_id:         string & !=""
+	hostname:          string & !=""
+	gateway_hostname:  string & !=""
+	managed_by:        "hobo" | "cloud-provider" | "none"
+	provider:          string & !=""
+}

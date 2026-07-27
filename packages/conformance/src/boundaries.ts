@@ -35,6 +35,7 @@ const KNOWN_PACKAGE_PATHS = new Set([
 	"packages/events",
 	"packages/identity",
 	"packages/cloud",
+	"packages/connectivity",
 	"packages/contracts",
 	"packages/broker",
 	"packages/mcp",

@@ -4,7 +4,7 @@
 
 A developer or agent should be able to describe an app once, then let HoBo place it on a provider, mix of providers, or self-hosted yard without rewriting app code. The design uses **WIT/WASM Component Model interfaces** as the portable membrane, provider adapters as the integration boundary, and an event-sourced control plane as the operating model.
 
-> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace of **27 packages** (core, wit, bindles, runtime, runtimes/runtime-local, componentize, conformance, cli, hobo, cloud, identity, mcp, contracts, policy, data, events, camps, yards, iac/iac-pulumi, providers/provider-{cloudflare,ax,agentv}, schema-tools, stage-gate, ci-guard, contract-harness, training-pipeline). All 27 `hobo` CLI verbs dispatch to real handlers against the local/in-memory lane; live Vercel/Cloudflare deploy lanes are credential-gated. Honest scope limits are marked `HONEST SCOPE` in `packages/hobo/src/`. Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior for the slices still to land (live IaC, estate import, drift against real infrastructure).
+> **Current state:** active design + executable contract/proof repository with a production `packages/` workspace (core, wit, bindles, runtime, runtimes/*, connectivity, componentize, conformance, cli, hobo, cloud, identity, mcp, contracts, policy, data, events, camps, yards, junctions, iac/*, providers/*, schema-tools, stage-gate, ci-guard, contract-harness, training-pipeline, …). All 27 `hobo` CLI verbs dispatch to real handlers against the local/in-memory lane; live Vercel/Cloudflare deploy lanes are credential-gated. Hierarchical DNS-valid naming, optional local named endpoints, overlay/DNS/policy/metering foundations live in `@hobo/connectivity` ([ADR-0130](./docs/design/adr/07-portability-extensibility.md#adr-0130)). Honest scope limits are marked `HONEST SCOPE` in `packages/hobo/src/`. Design docs, ADRs, backlog mirrors, validation scripts, and `src/draft/<kind>/<slug>` proof packages pin behavior for the slices still to land (live IaC, estate import, drift against real infrastructure).
 
 **Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), published by pushing the built `site/dist/` to the `gh-pages` branch (no Actions dependency; see the site README for the publish commands).
 
@@ -34,8 +34,10 @@ HoBo's goal is a third path: **cloud portability without hiding the cloud**.
 | **Ports and adapters** | Cloud providers, IaC engines, build tools, identity systems, and AI optimizers sit behind replaceable ports. |
 | **Replayable event log** | Control-plane state, projections, SRE workflows, and audit trails derive from events. |
 | **Agent-native auth** | AI agents are first-class principals with scoped credentials, policy checks, and traceable actions. |
+| **Named endpoints** | HoBo-owned DNS-valid hierarchy (`.hobo.localhost` / `.hobo.test`); optional local portless HTTPS; overlay + pluggable public DNS. |
+| **Multi-tenant foundations** | Tenant-scoped models, `PolicyEngine`, and metering `UsageEvent` hooks — SaaS/billing/policy language as natural extensions. |
 
-Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossary.md). The high-level design starts in [`docs/design/vision.md`](./docs/design/vision.md).
+Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossary.md). The high-level design starts in [`docs/design/vision.md`](./docs/design/vision.md). Connectivity deep-dive: [`packages/connectivity/README.md`](./packages/connectivity/README.md).
 
 ## Repository map
 

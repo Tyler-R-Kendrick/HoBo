@@ -498,6 +498,27 @@ The relevant vendor terms are explicit. GitHub's [Terms for Additional Products 
 - **(−)** Point 4 forecloses the highest-margin hosted model (pooled provider accounts resold per-tenant) as a matter of decision rather than leaving it to be discovered at launch review; final confirmation that the intended commercial model is permitted remains a paid-GA launch blocker owned by the legal owner ([legal-privacy-terms-readiness.md](../legal-privacy-terms-readiness.md)).
 - **(↔)** Vendor terms change; point 5's `reviewedOn` dates make this a maintenance obligation rather than a one-time check.
 
+
+## ADR-0130
+**DNS-valid hierarchical naming, optional local portless, Tailscale-first managed overlay in `@hobo/connectivity`, pluggable public DNS, and first-class multi-tenant PolicyEngine + metering foundations.**
+
+### Context
+Local port-based `hobo dev`, cross-cloud Junction connectivity, and public DNS were evolving as separate concerns. Bare `.hobo` hostnames are not DNS-valid. Multi-tenancy, billing hooks, and extensible policy must shape core models rather than arrive as SaaS afterthoughts. ADR-0122 already established a **WireGuard portable mesh floor** with managed meshes (Tailscale, Cilium) as opt-in adapters; the developer overlay / named-endpoint path still needed a concrete TypeScript foundation.
+
+### Decision
+1. **Single hierarchical naming function** owned by HoBo: `{resource}.{app}.{env?}.{branch?}.{project?}.{tenant?}.hobo.{tld}` via `sanitizeDnsLabel` + `getNamedEndpoint` in `@hobo/core`. Never emit bare `.hobo`. Defaults: local TLD `localhost`, overlay TLD `test`; omit `env` when `prod`.
+2. **Local named HTTPS is optional**: detect `vercel-labs/portless`; inject `namedEndpoints` / `primaryNamedUrl` into serve results; real servers remain backends. Without portless, port-based behavior is unchanged + one-line hint.
+3. **Managed overlay primary for `@hobo/connectivity`**: Tailscale CLI adapter is primary; Netbird is the self-hosted alternative behind the same `OverlayNetwork` port. This does **not** revoke ADR-0122's WireGuard floor for air-gapped Junction mesh — it supplies the developer/managed path adapters that ADR-0122 already permitted.
+4. **Public DNS is configuration-driven**: `dns.public.managedBy: hobo | cloud-provider | none` with swappable `DnsProvider`. When not `hobo`, HoBo only suggests records. When `hobo`, records must CNAME authenticated gateways only (never raw overlay IPs). DNSControl plan export is the preferred DNS-as-Code path.
+5. **Multi-tenant soft isolation**: `Tenant` / `TenantId` / tenant-scoped resources; `PolicyEngine` with initial tag/ACL implementation; authorization-sensitive paths evaluate policy.
+6. **Metering hooks**: `UsageEvent` + `MeteringBus` + memory/log sinks on junction, tunnel, name, DNS, and policy paths. Full billing engines plug in as sinks/aggregators later.
+
+### Consequences
+- **(+)** Local + overlay + public share one naming scheme; SaaS/billing/policy can grow without rewriting callers; platform engineers can keep cloud DNS ownership.
+- **(+)** Composes with ADR-0122 (WireGuard floor) rather than replacing it.
+- **(+)** Follow-on landed: MagicDNS/Funnel automation, Cloudflare+Route53 providers, OPA/Rego engine, billing aggregator, hard tenant isolation planes, heartbeat dynamic DNS.
+- **(−)** Route53 still requires an injected SigV4 signer for live AWS; Netbird management API client remains partial; payment capture (Stripe) is intentionally out of package scope.
+
 ## Open / proposed decisions (ADR-Pn)
 
 > **Status (2026-07-03):** the last six open ADR-Pn are now resolved (P3/P4 were already); this list is retained as the decision trail.

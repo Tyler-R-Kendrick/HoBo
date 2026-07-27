@@ -30,6 +30,7 @@
 		"@hobo/camps": "workspace:*",
 		"@hobo/cli": "workspace:*",
 		"@hobo/cloud": "workspace:*",
+		"@hobo/connectivity": "workspace:*",
 		"@hobo/contracts": "workspace:*",
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",

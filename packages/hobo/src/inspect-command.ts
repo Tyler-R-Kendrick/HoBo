@@ -1,6 +1,10 @@
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
 import { deploymentViewProjection } from "@hobo/cloud";
+import {
+	getNamedEndpointSession,
+	listNamedEndpointSessions,
+} from "@hobo/connectivity";
 
 export interface InspectCommandDeps {
 	// The shared Yard runtime whose durable event store `inspect` folds. The
@@ -42,13 +46,32 @@ export function createInspectCommand(
 			);
 			const row = deploymentViewProjection.get(snapshot, deploymentId);
 
+			// MCP/agent discovery of the current session's hierarchical named endpoints
+			// (list_local_named_endpoints surface via inspect).
+			const namedSessions = listNamedEndpointSessions();
+			const activeNamed =
+				getNamedEndpointSession("default") ??
+				(namedSessions[0]
+					? getNamedEndpointSession(namedSessions[0].sessionId)
+					: null);
+			const namedEndpointsPayload = {
+				sessions: namedSessions,
+				namedEndpoints: activeNamed?.namedEndpoints ?? [],
+				primaryNamedUrl: activeNamed?.primaryNamedUrl ?? null,
+			};
+
 			if (!row) {
 				return {
 					ok: true,
 					status: "no_history",
 					code: "HOBO_OK",
 					message: `hobo inspect: no deployment history for "${deploymentId}" — run \`hobo up\` first.`,
-					data: { command: "inspect", deploymentId, found: false },
+					data: {
+						command: "inspect",
+						deploymentId,
+						found: false,
+						...namedEndpointsPayload,
+					},
 				};
 			}
 
@@ -56,6 +79,11 @@ export function createInspectCommand(
 				([a], [b]) => a.localeCompare(b),
 			)) {
 				emitProgress(`${resource}: ${lifecycle}`);
+			}
+			if (namedEndpointsPayload.primaryNamedUrl) {
+				emitProgress(
+					`named: ${namedEndpointsPayload.primaryNamedUrl} (${namedEndpointsPayload.namedEndpoints.length} endpoint(s))`,
+				);
 			}
 
 			return {
@@ -76,6 +104,7 @@ export function createInspectCommand(
 						: {}),
 					...(row.rejection !== undefined ? { rejection: row.rejection } : {}),
 					...(row.rollback !== undefined ? { rollback: row.rollback } : {}),
+					...namedEndpointsPayload,
 				},
 			};
 		},

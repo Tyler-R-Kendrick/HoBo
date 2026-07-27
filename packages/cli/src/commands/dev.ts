@@ -31,6 +31,18 @@ export interface DevServeResult {
 	}[];
 	readonly serviceDiscovery: Readonly<Record<string, string>>;
 	readonly bindleEnv?: Readonly<Record<string, string>>;
+	/** Hierarchical DNS-valid named endpoints (HoBo-owned naming). */
+	readonly namedEndpoints?: readonly {
+		readonly resourceName: string;
+		readonly hostname: string;
+		readonly url: string;
+		readonly backendUrl: string;
+		readonly mode: "local" | "overlay";
+		readonly external: boolean;
+		readonly serviceDiscoveryKey: string;
+	}[];
+	/** Preferred hierarchical HTTPS URL for the primary external endpoint. */
+	readonly primaryNamedUrl?: string | null;
 	/** Camp component-host backend (glossary: Component host). */
 	readonly componentHost?: string;
 	readonly probe: { readonly status: number; readonly body: string };
@@ -127,6 +139,15 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 							serviceDiscovery: serve.serviceDiscovery,
 							...(serve.bindleEnv !== undefined
 								? { bindleEnv: serve.bindleEnv }
+								: {}),
+							...(serve.namedEndpoints !== undefined
+								? { namedEndpoints: serve.namedEndpoints }
+								: {}),
+							...(serve.primaryNamedUrl !== undefined
+								? {
+										primaryNamedUrl: serve.primaryNamedUrl,
+										localNamedUrl: serve.primaryNamedUrl,
+									}
 								: {}),
 							offline: true,
 							bootMs,

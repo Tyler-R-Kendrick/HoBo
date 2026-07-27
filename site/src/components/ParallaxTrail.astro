@@ -21,22 +21,27 @@
 // ground plate so his feet plant instead of skating.
 //
 // He can walk either way. `facing` picks the sheet and reverses every layer,
-// so the world slides the other way and his feet still plant — one prop, not
-// two sets of timings to keep in step.
+// so the world slides the other way and his feet still plant. The two sheets
+// are separate drawings, not one flipped: Bo is not symmetric, and mirroring
+// hands the bindle to the wrong arm (see ../lib/bo-walk.ts).
 // ==========================================================================
 
 import { href } from "../lib/url";
 import { BO_FEET, TH, TRAIL_LAYERS, TRAIL_SECONDS } from "../lib/trail-art";
 import { plates } from "../lib/trail-plates";
 import { CLOUD_SPEED, CLOUD_TILE, CLOUD_TONE, clouds } from "../lib/trail-clouds";
+import { type Facing, WALK_SHEETS, hasWalkSheet, walkSheet } from "../lib/bo-walk";
 
 interface Props {
 	/** Which way Bo walks. The whole band reverses with him. */
-	facing?: "east" | "west";
+	facing?: Facing;
 }
 
 const { facing = "east" } = Astro.props;
 const west = facing === "west";
+
+// Throws, with the reason, if the sheet for this direction is not on disk.
+const sheet = walkSheet(facing);
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
@@ -127,13 +132,16 @@ const rootStyle = [
 	`--bo-frame-w:${Math.round(BO_FRAME_W * 100) / 100}`,
 	`--bo-bottom:${Math.round(BO_BOTTOM * 100) / 100}`,
 	`--bo-frame:${BO_FRAME}s`,
-	// Both are declared but only the matching rule resolves its var(), so the
-	// sheet for the other direction is never fetched.
-	`--bo-sprite-east:url("${href("/parallax/bo-walk.png")}")`,
-	`--bo-sprite-west:url("${href("/parallax/bo-walk-left.png")}")`,
+	// Only the matching rule resolves its var(), so the sheet for the other
+	// direction is never fetched. The one for a direction with no artwork is
+	// simply not declared, rather than pointing at a 404.
+	`--bo-sprite-east:url("${href(`/parallax/${WALK_SHEETS.east}`)}")`,
+	...(hasWalkSheet("west")
+		? [`--bo-sprite-west:url("${href(`/parallax/${WALK_SHEETS.west}`)}")`]
+		: []),
 ].join(";");
 
-const walkSheet = href(west ? "/parallax/bo-walk-left.png" : "/parallax/bo-walk.png");
+const preloadSheet = href(`/parallax/${sheet}`);
 ---
 
 {
@@ -146,7 +154,7 @@ const walkSheet = href(west ? "/parallax/bo-walk-left.png" : "/parallax/bo-walk.
 		<link rel="preload" as="image" href={href(`/parallax/clouds/${c.file}`)} />
 	))
 }
-<link rel="preload" as="image" href={walkSheet} />
+<link rel="preload" as="image" href={preloadSheet} />
 <div class:list={["plx", west && "is-west"]} data-plx style={rootStyle}>
 	<div
 		class="plx-scene"

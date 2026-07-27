@@ -32,6 +32,7 @@ pnpm --filter hobo-site preview    # serve the built dist/
 | `src/lib/trail-art.ts` | The telephone wire — the one thing the band draws for itself. |
 | `src/lib/trail-plates.ts` | Picks up supplied artwork from `public/parallax/plates/`. |
 | `src/lib/trail-clouds.ts` | The cloud sprites and where each one sits in the tile. |
+| `src/lib/bo-walk.ts` | The walk sheets, one per direction, and the refusal to fake a missing one. |
 | `src/pages/parallax/[layer].svg.ts` | Serves those tiles as static SVGs, one per layer and theme. |
 | `src/pages/{guide,primitives,agents}/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. |
 | `src/nav.ts` | Single source of truth for header + sidebar navigation. |
@@ -119,17 +120,19 @@ they are composed. `--band-h` is a whole number at every breakpoint on purpose �
 fractional tile width brings back sub-pixel seams.
 
 **Which way he walks.** `<ParallaxTrail facing="west" />` turns him around: it picks the
-mirrored sheet and reverses every layer, so the world slides the other way and his feet
-still plant. `public/parallax/bo-walk-left.png` is `bo-walk.png` with **each cell
-mirrored in place** — flipping the whole sheet would also reverse the column order, and
-the column *is* the frame index, so the walk would run backwards. Mirroring per frame is
-also the only way to guarantee what a separately drawn sheet cannot: identical outlines,
-identical white bindle fill, and a ground shadow that breathes and slides through the
-stride exactly as it does going the other way. His own two animations never reverse —
-the gait plays forward whichever way he is pointed — and `animation-direction` does not
-inherit, so the cloud squash inside the track is left alone too. Verified by measurement:
-the planted foot tracks −1.33px per frame east and +1.33px west, matching the sign of the
-ground it is standing on.
+west sheet and reverses every layer, so the world slides the other way and his feet still
+plant. His own two animations never reverse — the gait plays forward whichever way he is
+pointed — and `animation-direction` does not inherit, so the cloud squash inside the
+cloud track is left alone too.
+
+**The west sheet is a separate drawing, not a flip.** Bo is not symmetric: the bindle
+hangs from one specific anatomical arm, and mirroring hands it to the other one. Walking
+west, that arm becomes the far arm and goes *behind* the fur silhouette with the bundle
+trailing to screen-right. `public/parallax/README.md` carries the full brief — persistent
+limb identities, the character lock, frame hygiene, and the cadence a new sheet has to
+share so his feet plant in both directions. Until `bo-walk-left.png` is supplied,
+`facing="west"` **fails the build** with that reason rather than falling back, because
+the mirror looked plausible enough to ship once already.
 
 **How fast it goes.** Bo is a 36-frame sprite sheet (`public/parallax/bo-walk.png`, a 6×6
 grid, downscaled and posterized to the four tones the drawing uses, with the bindle sack

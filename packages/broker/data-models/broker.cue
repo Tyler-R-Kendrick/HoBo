@@ -103,6 +103,8 @@ package data_models
 	policy_hash:         string & =~"^sha256:"
 	placement_policy_id: string & !=""
 	placements: [...#PlacementDecision] & [_, ...]
+	station_id?: string
+	rail_hash?:  string
 }
 
 #RejectionPlane: "policy" | "contracts" | "billing" | "placement" | "connectors"
@@ -119,6 +121,8 @@ package data_models
 	broker_id:      string & !=""
 	policy_hash:    string & =~"^sha256:"
 	reasons: [...#RejectionReason] & [_, ...]
+	station_id?: string
+	rail_hash?:  string
 }
 
 #BrokerEnvironment: {

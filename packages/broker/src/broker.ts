@@ -67,10 +67,15 @@ export interface HoboBrokerDeps {
 	billingPlane?: BillingPlane;
 	deliveryPlane?: DeliveryPlane;
 	signingKey?: ResolutionSigningKey;
-	// The approved Broker Environment this broker resolves within. When set,
-	// it must be approved, its pinned catalog snapshot must match the live
-	// catalog, and only its approved providers are eligible for placement.
+	/**
+	 * Optional approved provider/catalog ceiling applied in addition to the
+	 * active Rail (not a substitute for Station occupancy).
+	 */
 	environment?: BrokerEnvironment;
+	/** Station occupancy — required. Conductor holds no durable Connection state. */
+	stationId: string;
+	/** Active Rail content hash — required on every resolve. */
+	railHash: string;
 }
 
 export interface HoboBroker {
@@ -85,6 +90,18 @@ export interface HoboBroker {
 }
 
 export function createBroker(deps: HoboBrokerDeps): HoboBroker {
+	if (typeof deps.stationId !== "string" || deps.stationId.length === 0) {
+		throw new BrokerParseError(
+			"station-missing",
+			"station-missing: Conductor requires stationId (hobo station init)",
+		);
+	}
+	if (typeof deps.railHash !== "string" || !deps.railHash.startsWith("sha256:")) {
+		throw new BrokerParseError(
+			"rail-inactive",
+			"rail-inactive: Conductor requires active railHash (hobo station rails activate)",
+		);
+	}
 	// Parse, don't validate: the policy document crosses the parser boundary
 	// once; from here on the broker only ever sees the refined domain types.
 	const policies = parseBrokerPolicySet(deps.policies);
@@ -93,6 +110,8 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 		deps.gatePlane ?? createGatekeeperGatePlane(deps.gateOptions ?? {});
 	const billingPlane = deps.billingPlane ?? createBillingPlane();
 	const deliveryPlane = deps.deliveryPlane ?? createDeliveryPlane();
+	const stationId = deps.stationId;
+	const railHash = deps.railHash;
 
 	function sign(
 		resolution: ResolutionReceipt | ResolutionRejection,
@@ -122,6 +141,8 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			brokerId: policies.brokerId,
 			policyHash,
 			reasons,
+			stationId,
+			railHash,
 		};
 		const events = [
 			...priorEvents,
@@ -319,6 +340,8 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 				policyHash,
 				placementPolicyId: effective.id,
 				placements,
+				stationId,
+				railHash,
 			};
 			events.push(
 				brokerEvent(BROKER_EVENTS.Resolved, {

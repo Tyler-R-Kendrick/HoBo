@@ -31,6 +31,7 @@
 - erase (governance): Request crypto-shred erasure — CLI `hobo erase`; MCP tool `erase`
 - broker (governance): Resolve placements through the broker (the Conductor) — CLI `hobo broker`; MCP tool `broker`
 - yard (control plane): Install and inspect the default bare-metal Yard — CLI `hobo yard`; MCP tool `yard`
+- station (control plane): Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb — CLI `hobo station`; MCP tool `station`
 - derivative (extensibility): Manage derived HoBo implementations — CLI `hobo derivative`; MCP tool `derivative`
 - runbook (SRE): Execute or replay incident runbooks — CLI `hobo runbook`; MCP tool `runbook`
 

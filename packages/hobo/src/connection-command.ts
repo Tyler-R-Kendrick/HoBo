@@ -84,11 +84,27 @@ function publicView(c: ConnectionView): Record<string, unknown> {
 		...(c.credentialRef !== undefined
 			? { credentialRef: c.credentialRef }
 			: {}),
+		stationId: c.stationId,
 		tenant: c.tenant,
 		createdAt: c.createdAt,
 		updatedAt: c.updatedAt,
 		metadata: c.metadata,
 	};
+}
+
+function resolveStationId(
+	hoboHome: string,
+	flags: Record<string, unknown>,
+	env: NodeJS.ProcessEnv,
+): string | undefined {
+	const stationFlag = flags["station"];
+	if (typeof stationFlag === "string" && stationFlag.length > 0) {
+		return stationFlag;
+	}
+	if (typeof env.HOBO_STATION === "string" && env.HOBO_STATION.length > 0) {
+		return env.HOBO_STATION;
+	}
+	return loadHoboProfile(hoboHome)?.defaultStation?.id;
 }
 
 function resolveActor(
@@ -110,14 +126,15 @@ export function createConnectionCommand(
 ): CommandModule {
 	return {
 		run: async ({ context, flags, args }) => {
+			const f = flags as unknown as Record<string, unknown>;
 			const env =
 				deps.env ??
 				(context as { env?: NodeJS.ProcessEnv }).env ??
 				process.env;
 			const hoboHome =
 				deps.hoboHome ??
-				(typeof flags.home === "string" && flags.home.length > 0
-					? flags.home
+				(typeof f.home === "string" && f.home.length > 0
+					? f.home
 					: defaultHoboHome(env));
 
 			const sub = (args[0] ?? "") as Subcommand | "";
@@ -140,8 +157,8 @@ export function createConnectionCommand(
 
 			const actor = resolveActor(hoboHome);
 			const tenant =
-				typeof flags.tenant === "string" && flags.tenant.length > 0
-					? flags.tenant
+				typeof f.tenant === "string" && f.tenant.length > 0
+					? f.tenant
 					: actor.tenant;
 			const service =
 				deps.service ?? loadService(hoboHome, tenant);
@@ -159,16 +176,32 @@ export function createConnectionCommand(
 						};
 					}
 					const alias =
-						typeof flags.alias === "string" ? flags.alias : undefined;
+						typeof f.alias === "string" ? f.alias : undefined;
 					const scopesRaw =
-						typeof flags.scopes === "string" ? flags.scopes : "";
+						typeof f.scopes === "string" ? f.scopes : "";
 					const scopes = scopesRaw
 						? scopesRaw.split(",").map((s) => s.trim()).filter(Boolean)
 						: [];
 					const flow =
-						typeof flags.flow === "string"
-							? (flags.flow as ConnectionFlow)
+						typeof f.flow === "string"
+							? (f.flow as ConnectionFlow)
 							: "oauth2-obo";
+					const stationId = resolveStationId(
+						hoboHome,
+						flags as unknown as Record<string, unknown>,
+						env,
+					);
+					if (!stationId) {
+						return {
+							ok: false,
+							status: "usage",
+							code: "HOBO_CONNECTION_STATION_REQUIRED",
+							message:
+								"hobo connection create requires Station context (--station / HOBO_STATION / profile.defaultStation)",
+							remediation: ["hobo station init"],
+							data: { command: "connection", subcommand: "create" },
+						};
+					}
 					const { connection } = service.create({
 						provider,
 						flow,
@@ -176,6 +209,7 @@ export function createConnectionCommand(
 						subject: { kind: actor.kind, id: actor.id },
 						createdBy: { kind: actor.kind, id: actor.id },
 						scopes,
+						stationId,
 					});
 					if (!deps.service) persistService(hoboHome, service);
 					return {
@@ -203,13 +237,13 @@ export function createConnectionCommand(
 						};
 					}
 					const scopesRaw =
-						typeof flags.scopes === "string" ? flags.scopes : "";
+						typeof f.scopes === "string" ? f.scopes : "";
 					const grantedScopes = scopesRaw
 						? scopesRaw.split(",").map((s) => s.trim()).filter(Boolean)
 						: undefined;
 					const installationId =
-						typeof flags.installationId === "string"
-							? flags.installationId
+						typeof f.installationId === "string"
+							? f.installationId
 							: undefined;
 					const { connection } = service.authorize({
 						idOrAlias,
@@ -233,13 +267,13 @@ export function createConnectionCommand(
 
 				if (sub === "list") {
 					const provider =
-						typeof flags.provider === "string" ? flags.provider : undefined;
+						typeof f.provider === "string" ? f.provider : undefined;
 					const status =
-						typeof flags.status === "string"
-							? (flags.status as ConnectionView["status"])
+						typeof f.status === "string"
+							? (f.status as ConnectionView["status"])
 							: undefined;
 					const subjectId =
-						typeof flags.subject === "string" ? flags.subject : undefined;
+						typeof f.subject === "string" ? f.subject : undefined;
 					const rows = service.list({
 						...(provider !== undefined ? { provider } : {}),
 						...(status !== undefined ? { status } : {}),
@@ -306,7 +340,7 @@ export function createConnectionCommand(
 						};
 					}
 					const reason =
-						typeof flags.reason === "string" ? flags.reason : "user-revoked";
+						typeof f.reason === "string" ? f.reason : "user-revoked";
 					const { connection } = service.revoke({
 						idOrAlias,
 						actor: { kind: actor.kind, id: actor.id },

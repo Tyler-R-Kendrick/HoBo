@@ -212,6 +212,13 @@ Product: hobo
 - MCP tool: `yard`
 - Capability: { port: hobo:mcp, resource: tool:yard, verb: call }
 
+### station
+- Role: control plane
+- Summary: Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb
+- CLI: `hobo station`
+- MCP tool: `station`
+- Capability: { port: hobo:mcp, resource: tool:station, verb: call }
+
 ### derivative
 - Role: extensibility
 - Summary: Manage derived HoBo implementations

@@ -32,6 +32,9 @@ import {
 	type YardPlacementReceipt,
 } from "@hobo/broker";
 
+import { resolveStationContext } from "@hobo/stations";
+import { loadHoboProfile } from "./hobo-profile.js";
+
 import {
 	type ComponentHostKind,
 	DEFAULT_COMPONENT_HOST,
@@ -366,7 +369,24 @@ export async function ensureEmbeddedBroker(options: {
 	const policies = defaultEmbeddedPolicySet(brokerId, {
 		preferWasmSandbox: preferWasm,
 	});
-	const broker = createBroker({ policies, catalog });
+	// Embedded Conductor requires Station occupancy (same as CLI broker path).
+		const profile = loadHoboProfile(hoboHome);
+	const stationCtx = resolveStationContext({
+		hoboHome,
+		...(typeof process.env.HOBO_STATION === "string"
+			? { stationEnv: process.env.HOBO_STATION }
+			: {}),
+		...(profile?.defaultStation?.id !== undefined
+			? { profileStationId: profile.defaultStation.id }
+			: {}),
+	});
+	const pins = stationCtx.client.pins();
+	const broker = createBroker({
+		policies,
+		catalog,
+		stationId: pins.stationId,
+		railHash: pins.railHash,
+	});
 	const preferred: ComponentHostKind = includeOci
 		? "oci"
 		: preferWasm

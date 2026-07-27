@@ -529,3 +529,23 @@ scanning, deterministic text helpers) were upstreamed into the `ts-autocode-grou
   checkout); a stale pointer surfaces as missing workspace packages at `pnpm install`.
 - **(−)** Two package managers coexist (pnpm in HoBo, npm inside the submodule's own CI); the
   submodule's `package-lock.json` is never touched by HoBo installs.
+
+## ADR-0131
+**Station as control-plane occupancy primitive; Broker as pure Conductor; Rails as versioned profiles.**
+
+### Context
+Self-host and cloud-host setup previously split across bare-metal Yard init, embedded broker, local-host catalog, and `hobo.broker.json`. Durable Connections lived on the Yard token-broker framing while the Conductor accumulated policy ownership. The railroad vocabulary (Station / Rail / Conductor / Yard / Junction) risked overlap with app-topology containment.
+
+### Decision
+1. **Station** is the hard control-plane isolation boundary a Conductor occupies. One Station = one isolation domain (not multi-tenant by default). Station is **not** a fifth app-topology containment noun — `Bindle ⊂ Camp ⊂ Yard ⊂ Junction` is unchanged.
+2. **Station owns** Connections, Rails (content-addressed profiles), Station identity, Station-scoped connector registry portion, and the control-plane event partition for `station.*` / `rail.*` / `connection.*` while occupied.
+3. **Conductor (Broker)** owns nothing durable: mounts Station client + active Rail(s), runs resolve/scale/deliver, emits receipts/rejections that pin `stationId` + `railHash` + `catalogHash` + `policyHash`.
+4. **Rail** is a Station-owned, versioned, content-addressed policy/engine/billing/delivery/connector profile. Guardrail remains the *effect language* inside policies; Rail is the *profile*. Bootstrap Rail is sealed least-privilege for `station init`; production posture detects bootstrap left active.
+5. **Junction** remains peer federation (ADR-0043): no shared mutable state, never a super-controller. May federate Stations as members with signed trust/Rails/policy packs; authority stays at the Station that owns the data. Full membership machinery is follow-on; this ADR requires fail-closed cross-Station Connection denial without federation grant.
+6. **Station-as-Bindle** when possible (`station()` in `@hobo/stations`); `hobo station init` is the only non-Bindle seed.
+7. **Main setup** is Station occupancy. Missing Station fails closed with remediation `hobo station init` — no silent durable auto-init.
+8. **CLI:** `up`/`down` remain sole lifecycle verbs; `station` is ops/setup only.
+
+### Consequences
+- **(+)** Single occupancy model; every Conductor resolve pins Station + active Rail; Connections are Station-owned by construction; cross-Station use fails closed without federation grant.
+- **(−)** Operators must run `hobo station init` before broker/connection/up paths; bootstrap Rail is for seed only — production posture refuses bootstrap-active occupancy.

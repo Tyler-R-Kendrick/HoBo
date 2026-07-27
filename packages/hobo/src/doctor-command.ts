@@ -1,9 +1,12 @@
 import type { CommandModule } from "@hobo/cli";
+import { createStationClient, listStationIds } from "@hobo/stations";
 
+import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
 	type DeployTargetDescription,
 	describeDeployTarget,
 } from "./deploy-preflight.js";
+import { loadHoboProfile } from "./hobo-profile.js";
 
 export interface DoctorCommandDeps {
 	// The environment consulted for deploy credentials. Defaults to `process.env`.
@@ -35,10 +38,65 @@ export function createDoctorCommand(
 ): CommandModule {
 	return {
 		run: async ({ emitProgress }) => {
-			const target = describeDeployTarget(deps.env ?? process.env);
+			const env = deps.env ?? process.env;
+			const target = describeDeployTarget(env);
 			emitProgress(target.summary);
 
+			const hoboHome =
+				typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0
+					? env.HOBO_HOME
+					: defaultHoboHome();
+			const profile = loadHoboProfile(hoboHome);
+			const stationId =
+				(typeof env.HOBO_STATION === "string" && env.HOBO_STATION) ||
+				profile?.defaultStation?.id;
+			let stationReport: Record<string, unknown> = {
+				present: false,
+				remediation: "hobo station init",
+			};
+			if (stationId) {
+				try {
+					const client = createStationClient({ hoboHome, stationId });
+					const occ = client.occupancy();
+					if (occ) {
+						stationReport = {
+							present: true,
+							stationId,
+							bootstrapActive: occ.bootstrapActive,
+							activeRailHash: occ.activeRailHash,
+							connectionCount: occ.connectionCount,
+							doctorFlag: occ.bootstrapActive
+								? "bootstrap-rail-active"
+								: undefined,
+						};
+					}
+				} catch {
+					stationReport = {
+						present: false,
+						stationId,
+						remediation: "hobo station init",
+					};
+				}
+			} else {
+				const ids = listStationIds(hoboHome);
+				if (ids.length > 0) {
+					stationReport = {
+						present: true,
+						stationIds: ids,
+						remediation: "set profile.defaultStation or HOBO_STATION",
+					};
+				}
+			}
+
 			const remediation = remediationFor(target);
+			if (!stationReport.present) {
+				remediation.push("Run `hobo station init` for Station occupancy setup.");
+			} else if (stationReport.bootstrapActive === true) {
+				remediation.push(
+					"Bootstrap Rail still active — publish/activate a non-bootstrap Rail for production posture.",
+				);
+			}
+
 			return {
 				ok: true,
 				status: target.live ? "live" : "in-memory",
@@ -50,6 +108,7 @@ export function createDoctorCommand(
 					backend: target.backend,
 					live: target.live,
 					activate: target.activate,
+					station: stationReport,
 				},
 			};
 		},

@@ -62,9 +62,7 @@ const baseRequest = {
 describe("receipt integrity — Ed25519 over canonical JSON", () => {
 	it("signs resolutions when a key is configured and verification round-trips", async () => {
 		const key = generateResolutionSigningKey();
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			signingKey: key,
 		});
 		const result = await broker.resolve(baseRequest);
@@ -95,9 +93,7 @@ describe("receipt integrity — Ed25519 over canonical JSON", () => {
 
 	it("signs rejections too, and a foreign key does not verify", async () => {
 		const key = generateResolutionSigningKey();
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			signingKey: key,
 		});
 		const result = await broker.resolve({
@@ -135,9 +131,7 @@ describe("metered billing plane", () => {
 	});
 
 	it("authorizes against the metered remaining budget", async () => {
-		const broker = createBroker({
-			policies: basePolicies,
-			catalog,
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			billingPlane: createMeteredBillingPlane(usage),
 		});
 		// Budget 100, metered spend 75.5 → remaining 24.5: 10 fits...
@@ -164,7 +158,7 @@ describe("rejection matrix", () => {
 	});
 
 	it("covers every reason the broker's own reject paths emit", async () => {
-		const broker = createBroker({ policies: basePolicies, catalog });
+		const broker = createBroker({ policies: basePolicies, catalog, stationId: "station:test", railHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
 		const rejections = [
 			await broker.resolve({ ...baseRequest, spendEstimateUsd: 500 }),
 			await broker.resolve({

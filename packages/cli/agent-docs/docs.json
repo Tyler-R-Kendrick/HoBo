@@ -340,6 +340,18 @@
       }
     },
     {
+      "name": "station",
+      "role": "control plane",
+      "summary": "Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb",
+      "cli": "hobo station",
+      "mcpTool": "station",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:station",
+        "verb": "call"
+      }
+    },
+    {
       "name": "derivative",
       "role": "extensibility",
       "summary": "Manage derived HoBo implementations",

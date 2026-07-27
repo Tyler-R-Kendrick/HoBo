@@ -4,8 +4,10 @@
  */
 import { CREDENTIAL_AUDIT_RETENTION } from "./events.js";
 
+// public-contract: connection event envelope schema version.
 export const CONNECTION_EVENT_SCHEMA_VERSION = "hobo.connection-events/v1";
 
+// public-contract: wire schema / event catalog constant.
 export const CONNECTION_EVENTS = {
 	Created: "connection.Created",
 	AuthorizationStarted: "connection.AuthorizationStarted",
@@ -95,9 +97,14 @@ export function createConnectionCreatedEvent(input: {
 	tenant: string;
 	createdBy: ConnectionPrincipalRef;
 	requestedScopes: readonly string[];
+	/** Station ownership (required). */
+	stationId: string;
 	seq?: number;
 	time?: string;
 }): ConnectionEvent {
+	if (typeof input.stationId !== "string" || input.stationId.length === 0) {
+		throw new TypeError("connection.Created requires stationId");
+	}
 	return baseEvent(CONNECTION_EVENTS.Created, {
 		connectionId: input.connectionId,
 		tenant: input.tenant,
@@ -111,6 +118,7 @@ export function createConnectionCreatedEvent(input: {
 			createdBy: input.createdBy,
 			requestedScopes: Object.freeze([...input.requestedScopes]),
 			status: "pending" satisfies ConnectionStatus,
+			stationId: input.stationId,
 		},
 	});
 }

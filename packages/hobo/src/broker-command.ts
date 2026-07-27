@@ -19,6 +19,33 @@ import {
 } from "@hobo/broker";
 import type { CommandModule } from "@hobo/cli";
 import { loadProjectManifest } from "@hobo/cli";
+import { resolveStationContext } from "@hobo/stations";
+
+import { defaultHoboHome } from "./bare-metal-yard.js";
+import { loadHoboProfile } from "./hobo-profile.js";
+
+/** Required Station + active Rail pins for every Conductor resolve. */
+function requireStationPins(flags: Record<string, unknown>): {
+	stationId: string;
+	railHash: string;
+} {
+	const home =
+		typeof flags.home === "string" && flags.home.length > 0
+			? flags.home
+			: defaultHoboHome();
+	const ctx = resolveStationContext({
+		hoboHome: home,
+		...(typeof flags.station === "string" ? { stationFlag: flags.station } : {}),
+		...(typeof process.env.HOBO_STATION === "string"
+			? { stationEnv: process.env.HOBO_STATION }
+			: {}),
+		...(loadHoboProfile(home)?.defaultStation?.id !== undefined
+			? { profileStationId: loadHoboProfile(home)!.defaultStation!.id }
+			: {}),
+	});
+	const pins = ctx.client.pins();
+	return { stationId: pins.stationId, railHash: pins.railHash };
+}
 
 export interface BrokerCommandDeps {
 	// The provider catalog resolutions run against when a cloud config is
@@ -303,9 +330,12 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 
 				if (subcommand === "up") {
 					const assembled = await assembleBroker(deps, flags, projectDir);
+					const pins = requireStationPins(flags);
 					const broker = createBroker({
 						policies: assembled.policies,
 						catalog: assembled.catalog,
+						stationId: pins.stationId,
+						railHash: pins.railHash,
 						...(assembled.connectors !== undefined
 							? { connectors: assembled.connectors }
 							: {}),
@@ -396,9 +426,12 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 							data: { command: "broker" },
 						};
 					}
+					const pins = requireStationPins(flags);
 					const broker = createBroker({
 						policies: await readJson(policiesPath, "broker policy set"),
 						catalog: deps.catalog,
+						stationId: pins.stationId,
+						railHash: pins.railHash,
 					});
 					const resolution = await broker.resolve(
 						await readJson(requestPath, "broker request"),

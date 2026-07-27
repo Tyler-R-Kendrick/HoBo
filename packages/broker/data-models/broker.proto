@@ -110,6 +110,9 @@ message ResolutionReceipt {
   string policy_hash = 5;
   string placement_policy_id = 6;
   repeated PlacementDecision placements = 7;
+  // Station occupancy pins (ADR-0131); Conductor does not own durable state.
+  string station_id = 8;
+  string rail_hash = 9;
 }
 
 // One machine-readable reason a resolution was rejected, named by the
@@ -128,6 +131,8 @@ message ResolutionRejection {
   string broker_id = 3;
   string policy_hash = 4;
   repeated RejectionReason reasons = 5;
+  string station_id = 6;
+  string rail_hash = 7;
 }
 
 // Approved broker input state a resolution validates against: which providers

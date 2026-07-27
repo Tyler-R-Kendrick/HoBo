@@ -136,3 +136,4 @@
 | 0128 | ts-autocode vendored as a git submodule (`external/ts-autocode`) linked into the pnpm workspace; trainable scanning/emission delegates upstream | [architecture-core](01-architecture-core.md#adr-0128) |
 | 0129 | Provider-terms compliance: registered providers are the operator's own accounts; free-tier headroom is never pooled or resold; no account multiplication; adapters carry dated `terms` references | [portability-extensibility](07-portability-extensibility.md#adr-0129) |
 | 0130 | DNS-valid hierarchical naming, optional portless local named endpoints, Tailscale-first managed overlay in `@hobo/connectivity`, pluggable public DNS, multi-tenant PolicyEngine + metering foundations | [portability-extensibility](07-portability-extensibility.md#adr-0130) |
+| 0131 | Station as control-plane occupancy primitive; Broker pure Conductor; Rails as versioned profiles | [architecture-core](01-architecture-core.md#adr-0131) |

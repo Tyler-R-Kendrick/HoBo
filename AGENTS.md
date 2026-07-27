@@ -81,8 +81,8 @@ Prefer changes inside one package, app, feature folder, or test folder.
 - **Station** is the hard control-plane isolation boundary a Conductor occupies — **not** app-topology containment (Bindle ⊂ Camp ⊂ Yard ⊂ Junction unchanged).
 - Package `@hobo/stations`: `station()`, StationService, Rails (content-addressed), bootstrap Rail, local Station client under `HOBO_HOME/stations/`.
 - Station owns Connections + Rails; Broker is pure Conductor (receipts pin `stationId` + `railHash`). Cross-Station Connection use fails closed without federation grant.
-- CLI: `hobo station init|up|down|status|rails *` is **ops/setup**, not a lifecycle verb. Prefer fail-with-remediation (`hobo station init`) over silent durable auto-init.
-- Profile: `defaultStation` / `activeRail`; `defaultBrokerUri` remains for back-compat.
+- CLI: `hobo station init|up|down|status|rails *` is **ops/setup**, not a lifecycle verb. Missing Station fails closed (`hobo station init`).
+- Profile: `defaultStation` / `activeRail` required for control-plane work; `defaultBrokerUri` is only a remote Conductor HTTP endpoint, not a setup path.
 
 ### Secretless-first config & secrets (ADR-0027)
 

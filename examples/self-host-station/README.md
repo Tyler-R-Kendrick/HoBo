@@ -37,10 +37,6 @@ export const acme = station("acme-platform", {
 Connections and Rails are Station aggregates (not ordinary Bindle graph resources).
 `hobo.broker.json`, when present at init time, is imported as an approved Rail under the Station.
 
-## Migration
+## Policy document as Rail
 
-Existing `HOBO_HOME` with `hobo.broker.json` or bare-metal Yard state:
-
-1. `hobo station init` (imports broker config as Rail when present).
-2. Profile gains `defaultStation`; `defaultBrokerUri` remains for back-compat.
-3. Activate a non-bootstrap Rail before production posture (`hobo station rails activate <hash>`).
+If `HOBO_HOME/hobo.broker.json` exists at init time, it is published and **activated** as the Station's non-bootstrap Rail (bootstrap is demoted). Production occupancy uses that Rail hash on every Conductor receipt.

@@ -25,6 +25,7 @@ export {
 	stationRoot,
 	type InitStationResult,
 	type StationClient,
+	type StationPins,
 } from "./station-client.js";
 export {
 	foldStationEvents,

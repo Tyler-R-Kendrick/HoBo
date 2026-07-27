@@ -98,6 +98,14 @@ describe("@hobo/stations", () => {
 			assertConnectionStationAccess({
 				connectionStationId: "station:a",
 				requestStationId: "station:b",
+				federationGrant: false,
+			}),
+		).toThrow(/cross-Station/);
+		expect(() =>
+			assertConnectionStationAccess({
+				connectionStationId: "station:a",
+				requestStationId: "station:b",
+				federationGrant: false,
 			}),
 		).toThrow(/cross-Station/);
 		expect(() =>
@@ -111,17 +119,17 @@ describe("@hobo/stations", () => {
 
 	it("resolveStationContext fails with remediation when missing", () => {
 		const home = tempHome();
-		expect(() =>
-			resolveStationContext({ hoboHome: home }),
-		).toThrow(/hobo station init/);
-		const soft: string[] = [];
-		const ctx = resolveStationContext({
-			hoboHome: home,
-			allowSoftAutoInit: true,
-			log: (l) => soft.push(l),
-		});
-		expect(ctx.softAutoInit).toBe(true);
-		expect(soft[0]).toMatch(/soft auto-init/);
+		expect(() => resolveStationContext({ hoboHome: home })).toThrow(
+			/hobo station init/,
+		);
+	});
+
+	it("pins always include stationId and railHash", () => {
+		const home = tempHome();
+		const { stationId } = initStation({ hoboHome: home, name: "local" });
+		const pins = createStationClient({ hoboHome: home, stationId }).pins();
+		expect(pins.stationId).toBe(stationId);
+		expect(pins.railHash.startsWith("sha256:")).toBe(true);
 	});
 
 	it("imports hobo.broker.json as approved rail under station", () => {
@@ -147,9 +155,9 @@ describe("@hobo/stations", () => {
 		const result = initStation({
 			hoboHome: home,
 			name: "local",
-			importBrokerConfigPath: brokerPath,
+			importRailDocPath: brokerPath,
 		});
-		expect(result.importedBrokerConfig).toBe(true);
+		expect(result.activatedRailHash).toBeTruthy();
 		const state = createStationClient({
 			hoboHome: home,
 			stationId: result.stationId,

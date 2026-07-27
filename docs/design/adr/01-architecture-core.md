@@ -543,9 +543,9 @@ Self-host and cloud-host setup previously split across bare-metal Yard init, emb
 4. **Rail** is a Station-owned, versioned, content-addressed policy/engine/billing/delivery/connector profile. Guardrail remains the *effect language* inside policies; Rail is the *profile*. Bootstrap Rail is sealed least-privilege for `station init`; production posture detects bootstrap left active.
 5. **Junction** remains peer federation (ADR-0043): no shared mutable state, never a super-controller. May federate Stations as members with signed trust/Rails/policy packs; authority stays at the Station that owns the data. Full membership machinery is follow-on; this ADR requires fail-closed cross-Station Connection denial without federation grant.
 6. **Station-as-Bindle** when possible (`station()` in `@hobo/stations`); `hobo station init` is the only non-Bindle seed.
-7. **Main setup** is Station occupancy. Prefer fail-with-remediation when no Station exists; soft local-dev auto-init must log and set a doctor flag.
+7. **Main setup** is Station occupancy. Missing Station fails closed with remediation `hobo station init` — no silent durable auto-init.
 8. **CLI:** `up`/`down` remain sole lifecycle verbs; `station` is ops/setup only.
 
 ### Consequences
-- **(+)** Single occupancy model for local and remote; receipts correlate Station + Rail; Connections cannot leak across Stations without explicit grants.
-- **(−)** Dual-read window for Connections lacking `stationId` and for `hobo.broker.json` / BrokerEnvironment during migration; operators must activate non-bootstrap Rails for production posture.
+- **(+)** Single occupancy model; every Conductor resolve pins Station + active Rail; Connections are Station-owned by construction; cross-Station use fails closed without federation grant.
+- **(−)** Operators must run `hobo station init` before broker/connection/up paths; bootstrap Rail is for seed only — production posture refuses bootstrap-active occupancy.

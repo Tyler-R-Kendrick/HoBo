@@ -72,15 +72,13 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 				const name = flagString(flagBag, "name") ?? "local";
 				const id = flagString(flagBag, "id") ?? `station:${name}`;
 				const tenant = flagString(flagBag, "tenant") ?? name;
-				const brokerConfig = join(home, "hobo.broker.json");
+				const railDoc = join(home, "hobo.broker.json");
 				const result = initStation({
 					hoboHome: home,
 					id,
 					name,
 					tenant,
-					...(existsSync(brokerConfig)
-						? { importBrokerConfigPath: brokerConfig }
-						: {}),
+					...(existsSync(railDoc) ? { importRailDocPath: railDoc } : {}),
 				});
 				setDefaultStation(
 					home,
@@ -98,7 +96,10 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 						created: result.created,
 						bootstrapRailHash: result.bootstrap.contentHash,
 						bootstrapActive: result.occupancy.bootstrapActive,
-						importedBrokerConfig: result.importedBrokerConfig,
+						activeRailHash: result.occupancy.activeRailHash,
+						...(result.activatedRailHash !== undefined
+							? { activatedRailHash: result.activatedRailHash }
+							: {}),
 						remediation: result.created
 							? "hobo station status"
 							: undefined,
@@ -111,16 +112,7 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 				let client: StationClient;
 				try {
 					client = createStationClient({ hoboHome: home, stationId });
-					if (!client.load()) {
-						return {
-							ok: false,
-							message: `station ${stationId} not found`,
-							data: {
-								code: "station-missing",
-								remediation: "hobo station init",
-							},
-						};
-					}
+					client.load();
 				} catch (err) {
 					return {
 						ok: false,
@@ -128,7 +120,7 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 						data: { code: "station-missing", remediation: "hobo station init" },
 					};
 				}
-				const occ = client.occupancy()!;
+				const occ = client.occupancy();
 				const rail = client.activeRail();
 				if (sub === "up") {
 					log(
@@ -192,12 +184,14 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 			if (sub === "rails") {
 				const railSub = args[1] ?? "list";
 				const stationId = resolveStationId(deps, flagBag, home);
-				const client = createStationClient({ hoboHome: home, stationId });
-				const state = client.load();
-				if (!state) {
+				let state;
+				try {
+					const client = createStationClient({ hoboHome: home, stationId });
+					state = client.load();
+				} catch (err) {
 					return {
 						ok: false,
-						message: `station ${stationId} not found`,
+						message: err instanceof Error ? err.message : String(err),
 						data: { remediation: "hobo station init" },
 					};
 				}
@@ -266,14 +260,15 @@ export function createStationCommand(deps: StationCommandDeps = {}): CommandModu
 					if (railSub === "approve") svc.approveRail(resolved.contentHash);
 					else svc.activateRail(resolved.contentHash);
 					persistStationEvents(home, stationId, svc.events);
-					const pins = createStationClient({
+					const stationClient = createStationClient({
 						hoboHome: home,
 						stationId,
-					}).pins();
+					});
+					const pins = stationClient.pins();
 					if (railSub === "activate") {
 						setDefaultStation(
 							home,
-							{ id: stationId, dataDir: client.dataDir },
+							{ id: stationId, dataDir: stationClient.dataDir },
 							pins.railHash,
 						);
 					}

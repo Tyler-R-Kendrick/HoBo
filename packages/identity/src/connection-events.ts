@@ -97,11 +97,14 @@ export function createConnectionCreatedEvent(input: {
 	tenant: string;
 	createdBy: ConnectionPrincipalRef;
 	requestedScopes: readonly string[];
-	/** Station ownership (control-plane occupancy). */
-	stationId?: string;
+	/** Station ownership (required). */
+	stationId: string;
 	seq?: number;
 	time?: string;
 }): ConnectionEvent {
+	if (typeof input.stationId !== "string" || input.stationId.length === 0) {
+		throw new TypeError("connection.Created requires stationId");
+	}
 	return baseEvent(CONNECTION_EVENTS.Created, {
 		connectionId: input.connectionId,
 		tenant: input.tenant,
@@ -115,7 +118,7 @@ export function createConnectionCreatedEvent(input: {
 			createdBy: input.createdBy,
 			requestedScopes: Object.freeze([...input.requestedScopes]),
 			status: "pending" satisfies ConnectionStatus,
-			...(input.stationId !== undefined ? { stationId: input.stationId } : {}),
+			stationId: input.stationId,
 		},
 	});
 }

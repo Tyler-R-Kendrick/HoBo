@@ -19,7 +19,9 @@
 | CLI verb | `station` in `CANONICAL_VERBS` (ops/setup, not lifecycle) |
 | Package architecture | `packages/stations/ARCHITECTURE.md` |
 
-## HONEST SCOPE
+## Closed risks
 
-- Full Junction Station-membership federation machinery is not required here; fail-closed cross-Station Connection denial is.
-- Remote Station discovery URI fields are profile-shaped only.
+- No dual-read Connections: `stationId` required on create and fold.
+- No soft auto-init: `resolveStationContext` never creates durable state.
+- Conductor always requires `stationId` + `railHash` pins.
+- Cross-Station Connection use requires explicit `federationGrant: true`.

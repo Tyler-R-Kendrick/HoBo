@@ -23,13 +23,16 @@ export interface HoboProfileSession {
 export interface HoboProfileDefaultStation {
 	readonly id: string;
 	readonly dataDir?: string;
-	readonly discoveryUri?: string;
 }
 
 export interface HoboProfile {
 	readonly schemaVersion: typeof HOBO_PROFILE_SCHEMA;
+	/**
+	 * Optional remote Conductor HTTP base URI for login/placement over the network.
+	 * Local setup is always Station occupancy — this is not a parallel setup path.
+	 */
 	readonly defaultBrokerUri?: string;
-	/** Station occupancy context (main setup path). */
+	/** Required for control-plane work once Station is initialized. */
 	readonly defaultStation?: HoboProfileDefaultStation;
 	readonly activeRail?: string;
 	readonly session?: HoboProfileSession;
@@ -166,9 +169,6 @@ export function parseHoboProfile(raw: unknown): HoboProfile {
 			defaultStation: Object.freeze({
 				id: ds.id,
 				...(typeof ds.dataDir === "string" ? { dataDir: ds.dataDir } : {}),
-				...(typeof ds.discoveryUri === "string"
-					? { discoveryUri: ds.discoveryUri }
-					: {}),
 			}),
 		});
 	}

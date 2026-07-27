@@ -15,7 +15,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Aggregate | The write-model consistency boundary, realized as an actor over the event log. |
 | Bindle | App-level topology and bindings, provider-agnostic, deployed into one or more Camps. |
 | Broker Catalog Snapshot | Versioned provider/catalog evidence set consumed by the Meta-cloud Broker when validating a Contract Manifest. |
-| Broker Environment | **Derived / dual-read.** Historical approved broker input state (providers, catalogs, policy pins). New deployments prefer **Station + active Rail** (catalog pin and placement defaults live on the Rail). See Station / Rail rows. |
+| Broker Environment | Optional additional approved provider/catalog ceiling applied **in addition to** the active Rail. Not a setup path — Station + Rail are required. See Station / Rail rows. |
 | Camp | Provider-specific deployment target such as `prod-aws`; it selects runtime backend, Provider, and IaC engine for a Bindle placement. |
 | Capability Manifest | Machine-readable provider manifest describing capabilities, auth flows, cost facts, and how an agent obtains scoped tokens. |
 | Capability provider | A Provider acting as a wasm capability adapter that implements a WIT interface. |

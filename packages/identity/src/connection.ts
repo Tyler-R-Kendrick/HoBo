@@ -44,11 +44,8 @@ export type ConnectionRecord = Readonly<{
 	}>;
 	/** Opaque vault reference — never the secret. */
 	credentialRef?: string;
-	/**
-	 * Owning Station (control-plane occupancy). Optional during dual-read
-	 * migration for pre-Station events; new creates require stationId.
-	 */
-	stationId?: string;
+	/** Owning Station (control-plane occupancy). Required — Station owns Connections. */
+	stationId: string;
 	tenant: string;
 	createdAt: string;
 	updatedAt: string;
@@ -104,8 +101,8 @@ export type CreateConnectionInput = {
 	readonly scopes?: readonly string[];
 	readonly labels?: Readonly<Record<string, string>>;
 	readonly description?: string;
-	/** Required for new Connections (Station-owned). */
-	readonly stationId?: string;
+	/** Owning Station id (required). */
+	readonly stationId: string;
 };
 
 export type AuthorizeConnectionInput = {
@@ -193,6 +190,14 @@ export class ConnectionService {
 				code: decision.code,
 			});
 		}
+		if (typeof input.stationId !== "string" || input.stationId.length === 0) {
+			throw Object.assign(
+				new Error(
+					"connection requires stationId (Station owns Connections; run hobo station init)",
+				),
+				{ code: "connection-station-required" },
+			);
+		}
 		if (input.alias) {
 			if (this.aliasIndex.has(input.alias)) {
 				throw Object.assign(
@@ -214,7 +219,7 @@ export class ConnectionService {
 			tenant: this.tenant,
 			createdBy: input.createdBy,
 			requestedScopes: scopes,
-			...(input.stationId !== undefined ? { stationId: input.stationId } : {}),
+			stationId: input.stationId,
 			seq: this.nextSeq(),
 			time,
 		});
@@ -575,10 +580,13 @@ export class ConnectionService {
 		if (event.type === CONNECTION_EVENTS.Created) {
 			const alias =
 				typeof event.data.alias === "string" ? event.data.alias : undefined;
-			const stationId =
-				typeof event.data.stationId === "string"
-					? event.data.stationId
-					: undefined;
+			const stationId = event.data.stationId;
+			if (typeof stationId !== "string" || stationId.length === 0) {
+				throw Object.assign(
+					new Error("connection.Created missing stationId"),
+					{ code: "connection-station-required" },
+				);
+			}
 			const record: ConnectionRecord = Object.freeze({
 				schemaVersion: CONNECTION_SCHEMA_VERSION,
 				id,
@@ -595,7 +603,7 @@ export class ConnectionService {
 					labels: Object.freeze({}),
 					createdBy: event.data.createdBy as ConnectionPrincipalRef,
 				}),
-				...(stationId !== undefined ? { stationId } : {}),
+				stationId,
 				tenant: event.tenant,
 				createdAt: time,
 				updatedAt: time,

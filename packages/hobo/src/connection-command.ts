@@ -84,13 +84,11 @@ function publicView(c: ConnectionView): Record<string, unknown> {
 		...(c.credentialRef !== undefined
 			? { credentialRef: c.credentialRef }
 			: {}),
+		stationId: c.stationId,
 		tenant: c.tenant,
 		createdAt: c.createdAt,
 		updatedAt: c.updatedAt,
 		metadata: c.metadata,
-		...((c as { stationId?: string }).stationId !== undefined
-			? { stationId: (c as { stationId?: string }).stationId }
-			: {}),
 	};
 }
 
@@ -193,6 +191,17 @@ export function createConnectionCommand(
 						flags as unknown as Record<string, unknown>,
 						env,
 					);
+					if (!stationId) {
+						return {
+							ok: false,
+							status: "usage",
+							code: "HOBO_CONNECTION_STATION_REQUIRED",
+							message:
+								"hobo connection create requires Station context (--station / HOBO_STATION / profile.defaultStation)",
+							remediation: ["hobo station init"],
+							data: { command: "connection", subcommand: "create" },
+						};
+					}
 					const { connection } = service.create({
 						provider,
 						flow,
@@ -200,8 +209,8 @@ export function createConnectionCommand(
 						subject: { kind: actor.kind, id: actor.id },
 						createdBy: { kind: actor.kind, id: actor.id },
 						scopes,
-						...(stationId !== undefined ? { stationId } : {}),
-					} as Parameters<typeof service.create>[0]);
+						stationId,
+					});
 					if (!deps.service) persistService(hoboHome, service);
 					return {
 						ok: true,

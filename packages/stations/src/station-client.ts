@@ -20,18 +20,20 @@ import {
 import type { StationEvent } from "./events.js";
 import type { Rail, StationIsolation, StationOccupancy } from "./types.js";
 
+export type StationPins = Readonly<{
+	stationId: string;
+	railHash: `sha256:${string}`;
+	bootstrapActive: boolean;
+}>;
+
 export type StationClient = Readonly<{
 	stationId: string;
 	dataDir: string;
-	load: () => StationState | null;
-	occupancy: () => StationOccupancy | null;
-	activeRail: () => Rail | null;
-	/** Pins for receipts. */
-	pins: () => {
-		stationId: string;
-		railHash?: `sha256:${string}`;
-		bootstrapActive: boolean;
-	};
+	load: () => StationState;
+	occupancy: () => StationOccupancy;
+	activeRail: () => Rail;
+	/** Pins for receipts — always complete (stationId + active railHash). */
+	pins: () => StationPins;
 }>;
 
 export function stationRoot(hoboHome: string, stationId: string): string {
@@ -69,6 +71,23 @@ export function persistStationEvents(
 	);
 }
 
+function requireState(
+	hoboHome: string,
+	stationId: string,
+): StationState {
+	const events = loadStationEvents(hoboHome, stationId);
+	const state = foldStationEvents(events);
+	if (!state) {
+		throw Object.assign(
+			new Error(
+				`station ${stationId} not found — run hobo station init`,
+			),
+			{ code: "station-missing", remediation: "hobo station init" },
+		);
+	}
+	return state;
+}
+
 export function createStationClient(input: {
 	readonly hoboHome: string;
 	readonly stationId: string;
@@ -78,27 +97,38 @@ export function createStationClient(input: {
 		stationId,
 		dataDir: stationRoot(hoboHome, stationId),
 		load() {
-			const events = loadStationEvents(hoboHome, stationId);
-			return foldStationEvents(events);
+			return requireState(hoboHome, stationId);
 		},
 		occupancy() {
-			return this.load()?.occupancy ?? null;
+			return this.load().occupancy;
 		},
 		activeRail() {
 			const state = this.load();
-			const hash = state?.occupancy.activeRailHash;
-			if (!hash || !state) return null;
-			return state.rails[hash] ?? null;
+			const hash = state.occupancy.activeRailHash;
+			if (!hash) {
+				throw Object.assign(
+					new Error(
+						`station ${stationId} has no active Rail — activate a Rail`,
+					),
+					{ code: "rail-inactive", remediation: "hobo station rails activate <hash>" },
+				);
+			}
+			const rail = state.rails[hash];
+			if (!rail) {
+				throw Object.assign(
+					new Error(`active Rail ${hash} missing from Station catalog`),
+					{ code: "rail-not-found" },
+				);
+			}
+			return rail;
 		},
 		pins() {
-			const occ = this.occupancy();
-			return {
+			const rail = this.activeRail();
+			return Object.freeze({
 				stationId,
-				...(occ?.activeRailHash !== undefined
-					? { railHash: occ.activeRailHash }
-					: {}),
-				bootstrapActive: occ?.bootstrapActive === true,
-			};
+				railHash: rail.contentHash,
+				bootstrapActive: rail.isBootstrap,
+			});
 		},
 	};
 }
@@ -109,12 +139,13 @@ export type InitStationResult = Readonly<{
 	occupancy: StationOccupancy;
 	bootstrap: Rail;
 	created: boolean;
-	importedBrokerConfig: boolean;
+	/** Non-bootstrap Rail activated from an imported policy document, if any. */
+	activatedRailHash?: `sha256:${string}`;
 }>;
 
 /**
- * Create Station under HOBO_HOME. Fail-closed re-init returns existing (idempotent).
- * Soft auto-init is NOT done here — CLI must call this explicitly (or log loudly).
+ * Create Station under HOBO_HOME. Idempotent: re-init returns existing Station.
+ * No silent auto-create elsewhere — callers must invoke init explicitly.
  */
 export function initStation(input: {
 	readonly hoboHome: string;
@@ -124,8 +155,11 @@ export function initStation(input: {
 	readonly residency?: string;
 	readonly airgap?: boolean;
 	readonly trustDomain?: string;
-	/** Import existing hobo.broker.json as an approved Rail when present. */
-	readonly importBrokerConfigPath?: string;
+	/**
+	 * Optional policy document (e.g. project hobo.broker.json) published and
+	 * activated as the Station's non-bootstrap Rail at init time.
+	 */
+	readonly importRailDocPath?: string;
 }): InitStationResult {
 	const name = input.name ?? "local";
 	const stationId = input.id ?? `station:${name}`;
@@ -135,9 +169,10 @@ export function initStation(input: {
 		if (!state) {
 			throw new Error("corrupt station event log");
 		}
+		const bootstrapHash = state.occupancy.bootstrapRailHash;
 		const bootstrap =
-			state.rails[state.occupancy.bootstrapRailHash ?? ""] ??
-			Object.values(state.rails)[0];
+			(bootstrapHash ? state.rails[bootstrapHash] : undefined) ??
+			Object.values(state.rails).find((r) => r.isBootstrap);
 		if (!bootstrap) {
 			throw new Error("station missing bootstrap rail");
 		}
@@ -147,7 +182,10 @@ export function initStation(input: {
 			occupancy: state.occupancy,
 			bootstrap,
 			created: false,
-			importedBrokerConfig: false,
+			...(state.occupancy.activeRailHash !== undefined &&
+			state.occupancy.activeRailHash !== bootstrap.contentHash
+				? { activatedRailHash: state.occupancy.activeRailHash }
+				: {}),
 		};
 	}
 
@@ -165,14 +203,13 @@ export function initStation(input: {
 		dataDir,
 	});
 
-	let importedBrokerConfig = false;
-	if (
-		input.importBrokerConfigPath &&
-		existsSync(input.importBrokerConfigPath)
-	) {
-		const raw = JSON.parse(
-			readFileSync(input.importBrokerConfigPath, "utf8"),
-		) as Record<string, unknown>;
+	let activatedRailHash: `sha256:${string}` | undefined;
+	const railDocPath = input.importRailDocPath;
+	if (railDocPath && existsSync(railDocPath)) {
+		const raw = JSON.parse(readFileSync(railDocPath, "utf8")) as Record<
+			string,
+			unknown
+		>;
 		const imported = railFromBrokerConfig(stationId, raw);
 		const published = svc.publishRail({
 			id: imported.id,
@@ -187,19 +224,20 @@ export function initStation(input: {
 			metadata: imported.metadata,
 			activationStatus: "approved",
 		});
-		// Leave bootstrap active until operator activates imported rail.
-		void published;
-		importedBrokerConfig = true;
+		svc.approveRail(published.contentHash);
+		svc.activateRail(published.contentHash);
+		activatedRailHash = published.contentHash;
 	}
 
 	persistStationEvents(input.hoboHome, stationId, svc.events);
+	const snap = svc.snapshot()!;
 	return {
 		stationId,
 		dataDir,
-		occupancy: svc.snapshot()!.occupancy,
+		occupancy: snap.occupancy,
 		bootstrap,
 		created: true,
-		importedBrokerConfig,
+		...(activatedRailHash !== undefined ? { activatedRailHash } : {}),
 	};
 }
 
@@ -216,20 +254,17 @@ export function listStationIds(hoboHome: string): readonly string[] {
 }
 
 /**
- * Resolve Station context: flags → env → profile → fail with remediation.
- * Soft auto-init is opt-in via allowSoftAutoInit (local-dev only).
+ * Resolve Station context: flags → env → profile → single local Station → fail.
+ * Never auto-creates durable Station state.
  */
 export function resolveStationContext(input: {
 	readonly hoboHome: string;
 	readonly stationFlag?: string;
 	readonly stationEnv?: string;
 	readonly profileStationId?: string;
-	readonly allowSoftAutoInit?: boolean;
-	readonly log?: (line: string) => void;
 }): {
 	stationId: string;
 	client: StationClient;
-	softAutoInit: boolean;
 } {
 	const candidates = [
 		input.stationFlag,
@@ -243,47 +278,33 @@ export function resolveStationContext(input: {
 			return {
 				stationId: id,
 				client: createStationClient({ hoboHome: input.hoboHome, stationId: id }),
-				softAutoInit: false,
 			};
 		}
 	}
 
-	// Implicit local station under HOBO_HOME if exactly one exists.
 	const ids = listStationIds(input.hoboHome);
 	if (ids.length === 1) {
-		const stationId = ids[0]!;
-		// directory name may be escaped; load via listing events path
-		const dir = join(input.hoboHome, "stations", stationId);
-		const eventsPath = join(dir, "events.jsonl");
+		const dirName = ids[0]!;
+		const eventsPath = join(input.hoboHome, "stations", dirName, "events.jsonl");
 		if (existsSync(eventsPath)) {
-			const events = JSON.parse(
-				`[${readFileSync(eventsPath, "utf8").split("\n").filter(Boolean).join(",")}]`,
-			) as StationEvent[];
-			const realId = events[0]?.stationId ?? stationId;
-			return {
-				stationId: realId,
-				client: createStationClient({
-					hoboHome: input.hoboHome,
+			const events = loadStationEvents(
+				input.hoboHome,
+				// Prefer id from first event when directory is escaped.
+				(JSON.parse(
+					readFileSync(eventsPath, "utf8").split("\n").filter(Boolean)[0]!,
+				) as StationEvent).stationId ?? dirName,
+			);
+			if (events.length > 0) {
+				const realId = events[0]!.stationId;
+				return {
 					stationId: realId,
-				}),
-				softAutoInit: false,
-			};
+					client: createStationClient({
+						hoboHome: input.hoboHome,
+						stationId: realId,
+					}),
+				};
+			}
 		}
-	}
-
-	if (input.allowSoftAutoInit) {
-		input.log?.(
-			"hobo station: soft auto-init (local-dev) — creating default Station; doctor will flag bootstrap Rail",
-		);
-		const result = initStation({ hoboHome: input.hoboHome, name: "local" });
-		return {
-			stationId: result.stationId,
-			client: createStationClient({
-				hoboHome: input.hoboHome,
-				stationId: result.stationId,
-			}),
-			softAutoInit: true,
-		};
 	}
 
 	throw Object.assign(
@@ -295,12 +316,12 @@ export function resolveStationContext(input: {
 }
 
 /**
- * Cross-Station Connection use fails closed without explicit federation grant.
+ * Cross-Station Connection use fails closed without an explicit federation grant.
  */
 export function assertConnectionStationAccess(input: {
 	readonly connectionStationId: string;
 	readonly requestStationId: string;
-	readonly federationGrant?: boolean;
+	readonly federationGrant: boolean;
 }): void {
 	if (input.connectionStationId === input.requestStationId) return;
 	if (input.federationGrant === true) return;

@@ -9,6 +9,7 @@ import {
 
 const TENANT = "tenant-a";
 const USER = { kind: "user" as const, id: "user:alice" };
+const STATION = "station:test";
 
 function vault() {
 	return createInMemoryVault({
@@ -30,6 +31,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["tasks:read", "tasks:write"],
+			stationId: STATION,
 		});
 		expect(created.status).toBe("pending");
 		expect(created.credentialRef).toBeUndefined();
@@ -62,6 +64,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["chat:write"],
+			stationId: STATION,
 		});
 		svc.authorize({ idOrAlias: "ops", actor: USER });
 		const rebuilt = ConnectionService.fromEvents(svc.events, {
@@ -80,6 +83,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["tasks:read"],
+			stationId: STATION,
 		});
 		svc.authorize({ idOrAlias: "work", actor: USER });
 		svc.revoke({ idOrAlias: "work", actor: USER, reason: "compromised" });
@@ -103,6 +107,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["tasks:read"],
+			stationId: STATION,
 		});
 		svc.authorize({ idOrAlias: "work", actor: USER });
 		svc.markNeedsReauth({ idOrAlias: "work", reason: "provider-consent-expired" });
@@ -128,6 +133,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["tasks:read"],
+			stationId: STATION,
 		});
 		svc.authorize({
 			idOrAlias: "work",
@@ -154,6 +160,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["tasks:read"],
+			stationId: STATION,
 		});
 		svc.authorize({ idOrAlias: "work", actor: USER });
 		const resolved = svc.resolveForToken({
@@ -176,6 +183,7 @@ describe("first-class Connection aggregate", () => {
 			subject: USER,
 			createdBy: USER,
 			scopes: ["tasks:read"],
+			stationId: STATION,
 		});
 		const { connection } = svc.authorize({ idOrAlias: "work", actor: USER });
 

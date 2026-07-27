@@ -34,8 +34,8 @@ pnpm --filter hobo-site preview    # serve the built dist/
 | `src/lib/trail-clouds.ts` | The cloud sprites and where each one sits in the tile. |
 | `src/lib/bo-walk.ts` | The walk sheets, one per direction, and the refusal to fake a missing one. |
 | `src/pages/parallax/[layer].svg.ts` | Serves those tiles as static SVGs, one per layer and theme. |
-| `src/pages/{guide,primitives,agents}/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. |
-| `src/nav.ts` | Single source of truth for header + sidebar navigation. |
+| `src/pages/{guide,primitives,testing,reference,crew,roles,agents}/**/*.md` | Docs pages; frontmatter picks the `Docs.astro` layout. Sections: Guide, Primitives, **Testing**, **Reference**, **Crew**, Roles/Agents. |
+| `src/nav.ts` | Single source of truth for header + sidebar navigation (all sections). |
 | `src/layouts/` | `Base.astro` (head/header/footer/theme) and `Docs.astro` (sidebar + prose). |
 | `src/styles/global.css` | The whole design system: tokens, light/dark themes, components. |
 | `public/llms.txt` | Machine-readable briefing for AI agents (mirrors the pattern HoBo itself designs for). |

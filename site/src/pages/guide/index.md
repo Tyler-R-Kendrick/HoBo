@@ -63,4 +63,7 @@ HoBo is the third option: **cloud portability without hiding the cloud.**
 - [Getting started](/HoBo/guide/getting-started/) — pack a bindle, pitch a camp, `hobo up`.
 - [Core concepts](/HoBo/guide/concepts/) — the vocabulary: Bindle, Camp, Yard, Junction, and friends.
 - [Architecture](/HoBo/guide/architecture/) — how the describing, placing, and moving actually works.
+- [Testing](/HoBo/testing/) — effect-aware isolation, contracts, durability, bridge modes, chaos.
+- [Reference](/HoBo/reference/) — packages, EventStore, contracts, effects, CLI, events.
+- [The Crew](/HoBo/crew/) — built-in operator agents (SRE, GitOps, FinOps, …).
 - [Agent docs](/HoBo/agents/) — how AI agents authenticate to and operate HoBo.

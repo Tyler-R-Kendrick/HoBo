@@ -96,6 +96,7 @@ export const nav: NavGroup[] = [
 			{ label: "Connectivity", slug: "/reference/connectivity/" },
 			{ label: "Config & secrets", slug: "/reference/config-secrets/" },
 			{ label: "Metering", slug: "/reference/metering/" },
+			{ label: "Session Replay", slug: "/reference/session-replay/" },
 			{ label: "Glossary", slug: "/reference/glossary/" },
 		],
 	},

@@ -22,6 +22,7 @@ Each capability doc is one coherent decision area; some absorb more than one pla
 | [`package-namespaces.md`](./package-namespaces.md) | Canonical package/import ownership for `@hobo/*` namespaces (incl. `@hobo/storage-sqlite`, `@hobo/runtime-browser`/`-wasm`/`-oci`/`-cloud-native`, `@hobo/stations`, `@hobo/trails`, `@hobo/connectivity`, EffectSpec ownership) | 02, 10, 21 |
 | [`adr/03-data-plane-sqlite-default.md`](./adr/03-data-plane-sqlite-default.md) | **ADR-0135** — SQLite default EventStore/runtime journal behind ports; single-owner partitions | — |
 | [`adr/03-data-plane-effects-resiliency.md`](./adr/03-data-plane-effects-resiliency.md) | **ADR-0136** — EffectSpec on Contract IR + visible secondary ResilienceProfile | — |
+| [`adr/03-data-plane.md`](./adr/03-data-plane.md#adr-0137) | **ADR-0137** — Session Replay (`@hobo/replay`); privacy-first; `replay.*`; distinct from event-log replay | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0131) | **ADR-0131** — Station occupancy (hard control-plane isolation; Rails; pure Conductor) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0132) | **ADR-0132** — Continuous identity migration (dual-path; zero Bindle config) | — |
 | [`adr/02-identity-security.md`](./adr/02-identity-security.md#adr-0134) | **ADR-0134** — HoBo Trails (app-owned continuous migration recipes; composes `identity.continuous`) | — |

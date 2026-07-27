@@ -86,7 +86,7 @@ Key facts:
   MCP tools over stdio with verb/tool parity contract-tested, deny-by-default audited
   auth, and HOBO_MCP_TOOLS scoping. Live deploy lanes are credential-gated
   (Cloudflare/Vercel env tokens; HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine).
-  Not yet shipped: @hobo/junctions (deferred to the S4 multi-cloud stage) and the
+  Session Replay (@hobo/replay, ADR-0137) is shipped locally with dual fixtures. Not yet shipped: full multi-cloud provider adapters; @hobo/junctions maturity (deferred to the S4 multi-cloud stage) and the
   fly/aws/azure/gcp provider and postgres runtime packages — the docs mark those pages
   design-stage. Everything else documented on the site is the contract-pinned surface
   the product is being built to.
@@ -175,6 +175,7 @@ Key facts:
 - [Connectivity](https://tyler-r-kendrick.github.io/HoBo/reference/connectivity/)
 - [Config & secrets](https://tyler-r-kendrick.github.io/HoBo/reference/config-secrets/)
 - [Metering](https://tyler-r-kendrick.github.io/HoBo/reference/metering/)
+- [Session Replay](https://tyler-r-kendrick.github.io/HoBo/reference/session-replay/)
 - [Glossary](https://tyler-r-kendrick.github.io/HoBo/reference/glossary/)
 
 ## The Crew

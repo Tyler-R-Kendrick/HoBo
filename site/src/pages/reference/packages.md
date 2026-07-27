@@ -19,6 +19,7 @@ Dependencies point **inward only** (`apps → adapters → runtime/sdk → core`
 | **Component hosts** | `@hobo/runtime-wasm`, `@hobo/runtime-oci`, `@hobo/runtime-cloud-native` | How components execute |
 | **Identity & connectivity** | `@hobo/identity`, `@hobo/connectivity` | SVIDs, Harness/OpenFeature, overlay, DNS, secretless connectors |
 | **Control topology** | `@hobo/stations`, `@hobo/trails`, `@hobo/broker`, `@hobo/cloud` | Station, Trails, Conductor, Planner/Matching/CD |
+| **Observability** | `@hobo/replay` | Session Replay (DOM/session; ADR-0137) |
 | **Surfaces** | `@hobo/cli`, `@hobo/mcp`, `@hobo/sdk`, `@hobo/hobo` | Humans, agents, operators |
 
 ## Storage / runtime engines
@@ -58,6 +59,7 @@ Deep dive: [Component hosts](/HoBo/reference/component-hosts/).
 | Station client | `@hobo/stations` |
 | Harness / OpenFeature | `@hobo/identity` |
 | Overlay / secretless dial | `@hobo/connectivity` |
+| Session Replay | `@hobo/replay` |
 
 ## Ownership rules
 

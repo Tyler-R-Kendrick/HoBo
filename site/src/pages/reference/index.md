@@ -30,6 +30,7 @@ This section is the **lookup manual** — precise surfaces agents and engineers 
 | [WIT & storage](/HoBo/reference/wit-storage/) | Component storage capability |
 | [Identity](/HoBo/reference/identity/) · [Naming](/HoBo/reference/naming/) · [Connectivity](/HoBo/reference/connectivity/) | Identity + network substrate |
 | [Config & secrets](/HoBo/reference/config-secrets/) · [Metering](/HoBo/reference/metering/) | Secretless config + usage facts |
+| [Session Replay](/HoBo/reference/session-replay/) | DOM/session reconstruction (`@hobo/replay`, ADR-0137) |
 | [Glossary](/HoBo/reference/glossary/) | One-line definitions |
 
 ## Design authority

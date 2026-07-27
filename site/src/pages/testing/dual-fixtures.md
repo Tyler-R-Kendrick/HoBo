@@ -29,6 +29,10 @@ Continuous identity migration uses dual-path principal fixtures:
 
 Schema/data dual windows: produce fixtures that assert both old and new folds during the dual period, then cutover.
 
+## Session Replay duals (ADR-0137)
+
+Local Session Replay stores heavy blobs via **dual-fixture** adapters (memory/fixture engines) so privacy + tracker/player contracts stay offline-green without multi-cloud object storage. Production binds object-storage ports; dual fixtures remain the proof path.
+
 ## Rules
 
 1. One source of truth for input shapes (contract examples / fixture tables).

@@ -25,10 +25,11 @@ Where is HoBo on the road? Here's the honest itinerary.
 - **Harness progressive delivery.** OpenFeature-shaped flag evaluation, delivery, and experiments in `@hobo/identity`; CD apply plane in `@hobo/cloud`.
 - **Connectivity foundations.** `@hobo/connectivity` — hierarchical naming (never bare `.hobo`), overlay/DNS, secretless connectors, env isolation, PAM hooks.
 - **Component host scaffolds.** `@hobo/runtime-wasm` (Wasmtime), `@hobo/runtime-oci` (kubectl transport), `@hobo/runtime-cloud-native` (mock + provider stubs). See [Component hosts](/HoBo/reference/component-hosts/).
+- **Session Replay.** `@hobo/replay` (ADR-0137) — privacy-first DOM/session reconstruction; local dual fixtures default-on; production flag/sample gated; `hobo replay *`; distinct from event-log replay. See [Session Replay](/HoBo/reference/session-replay/).
 - **The MCP control surface.** The `hobo-mcp` binary serves all 28 canonical verbs as MCP tools over stdio, dispatching through the same command registry as the CLI, with verb/tool parity contract-tested, deny-by-default auth, and audited decisions. See [the MCP surface](/HoBo/agents/mcp/).
 - **Credential-gated live lanes.** Cloudflare and Vercel deploys unlock via env tokens; the real pinned Pulumi CLI engine unlocks via `HOBO_PULUMI_LIVE=1`.
 - **Examples in the repo:** `examples/hello-bindle`, `examples/multi-cloud-shop`, `examples/durable-agent`, and `examples/self-host-yard` (operate your own Yard: the control-plane event log on your disk).
-- **Not yet shipped / design-stage:** full certified multi-cloud provider adapters (fly/aws/azure/gcp production paths), Junction package maturity toward S4, alternate EventStore engines (`runtime-postgres` / Temporal / Restate / Cloudflare DO), and Session Replay (`@hobo/replay` — open PR, not on main yet).
+- **Not yet shipped / design-stage:** full certified multi-cloud provider adapters (fly/aws/azure/gcp production paths), Junction package maturity toward S4, and alternate EventStore engines (`runtime-postgres` / Temporal / Restate / Cloudflare DO).
 
 ## How the build is staged
 

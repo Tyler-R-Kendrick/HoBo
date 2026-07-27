@@ -15,7 +15,7 @@ function runInput(emit: (m: string) => void) {
 }
 
 describe("createDoctorCommand", () => {
-	it("reports a live Cloudflare target with no remediation", async () => {
+	it("reports a live Cloudflare target", async () => {
 		const progress: string[] = [];
 		const command = createDoctorCommand({
 			env: { CLOUDFLARE_API_TOKEN: "cf", CLOUDFLARE_ACCOUNT_ID: "acct" },
@@ -26,11 +26,16 @@ describe("createDoctorCommand", () => {
 		expect(result.ok).toBe(true);
 		expect(result.status).toBe("live");
 		expect(result.code).toBe("HOBO_DEPLOY_LIVE");
-		expect(result.remediation).toBeUndefined();
 		expect(result.data).toMatchObject({
 			command: "doctor",
 			backend: "cloudflare",
 			live: true,
+			identityMigration: {
+				continuousDefault: true,
+				bindleConfigRequired: false,
+				dualFixtures: { dualOracleOk: true },
+				canMigrate: { ok: true, dimension: "can-migrate" },
+			},
 		});
 		expect(progress).toEqual([result.message]);
 	});
@@ -41,8 +46,11 @@ describe("createDoctorCommand", () => {
 		const result = await command.run(runInput(() => {}));
 
 		expect(result.status).toBe("live");
-		expect(result.data).toMatchObject({ backend: "vercel", live: true });
-		expect(result.remediation).toBeUndefined();
+		expect(result.data).toMatchObject({
+			backend: "vercel",
+			live: true,
+			identityMigration: { continuousDefault: true, bindleConfigRequired: false },
+		});
 	});
 
 	it("reports the in-memory fallback and how to activate each real backend", async () => {
@@ -53,11 +61,21 @@ describe("createDoctorCommand", () => {
 		expect(result.ok).toBe(true);
 		expect(result.status).toBe("in-memory");
 		expect(result.code).toBe("HOBO_DEPLOY_MOCKED");
-		expect(result.remediation).toEqual([
-			"Set VERCEL_TOKEN to deploy for real via vercel.",
-			"Set CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID to deploy for real via cloudflare.",
-		]);
-		expect(result.data).toMatchObject({ backend: "in-memory", live: false });
+		expect(result.remediation).toEqual(
+			expect.arrayContaining([
+				"Set VERCEL_TOKEN to deploy for real via vercel.",
+				"Set CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID to deploy for real via cloudflare.",
+			]),
+		);
+		expect(result.data).toMatchObject({
+			backend: "in-memory",
+			live: false,
+			identityMigration: {
+				continuousDefault: true,
+				bindleConfigRequired: false,
+				dualFixtures: { dualOracleOk: true },
+			},
+		});
 	});
 
 	it("names the single missing Cloudflare var when only one of the pair is set", async () => {

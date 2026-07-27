@@ -802,3 +802,25 @@ The 2026-07-03 infra re-classification flagged "API management" as backlogged. T
 - **(+)** Records the API-management decision (closing the re-classification item) as a composition, so it no longer reads as a missing plane — and pins the monetization boundary explicitly.
 - **(+)** The consumer/usage-plan surface is a bounded add over proven machinery (identity + policy + quota + metering).
 - **(−)** A per-consumer-key + usage-plan management UX still has to be built as ergonomics; until then, teams wire the primitives directly.
+
+## ADR-0132
+**Continuous Identity Migration Plane: dual-path PrincipalRef continuity, Matching/policy-triggered, zero Bindle config.**
+
+### Context
+Identity adapters, residency obligations, tenancy-spectrum promotion, claim-schema evolution, and Yard moves all require moving principals between source and target IdP/adapters without bricking long-running sessions, agents, or SVIDs. Prior design covered contract-asserted dev principals ([ADR-0070](#adr-0070)), SVID partition grace ([ADR-0100](#adr-0100)), and tenant lifecycle fencing (Plan 50), but continuous dual-path migration was not a first-class platform capability. Requiring Bindle dual-adapter blocks, migration scripts, or progressive flags would violate hands-off DevX.
+
+### Decision
+1. **Continuous dual path is the platform default.** Matching records when migration is required or desirable (adapter-change, residency, spectrum, schema, yard-move, policy). Policy packs may ceiling-deny; they are never required to enable continuous mode. **Nothing is required in the Bindle** for continuous migration.
+2. **PrincipalRef is the durable identity.** Source and target adapter subjects are aliases mapped through a platform-derived **MappingSpec** (parse-don't-validate; auto-default via `defaultContinuousMappingSpec`). Application code and agents never observe adapter subject change as a breaking event.
+3. **Dual-path / dual-audience continuity** reuses ADR-0100 short-lived grace discipline: both adapters (or dual-audience bridge tokens from the TokenBroker) remain valid until Golden dual-consistency oracles and Harness ramp declare cutover safe. Scope never widens.
+4. **Progressive ramp** uses existing Harness / OpenFeature-shaped cohort flags (`createMigrationCohortFlag` / `advanceMigrationRamp`); auto-abort + compensate on dual-oracle failure. No parallel flag system.
+5. **Event family** `identity.MigrationStarted` / `DualLinked` / `ShadowVerified` / `DualConsistencyChecked` / `MigrationProgressed` / `Migrated` / `MigrationCutover` / `MigrationAborted` / `MigrationCompensated` carries never-compact `CREDENTIAL_AUDIT_RETENTION` and folds into CredentialAudit.
+6. **Local/prod parity:** contract-asserted dual fixtures extend ADR-0070 (`createContractAssertedDualFixtures`); fidelity labels stay `simulated` offline. `hobo doctor` and `hobo identity status` surface dual-oracle + can-migrate evidence.
+7. **can-migrate** is a Gatekeeper-compatible dry-run dimension (compatible with upgrade-migration shapes); offline-capable when MappingSpec + dual fixtures are present.
+8. **Reactive agents** re-attest on `identity.Migrated` with zero agent or developer configuration (`agentActionsForMigrationEvents`).
+9. **Spectrum / bulk cutover** composes with existing Suspend → drain → export → import → fence — this plane does not reimplement fencing.
+
+### Consequences
+- **(+)** Hands-off continuous migration; PrincipalRef continuity; offline dual fixtures; Harness auto-abort; CredentialAudit completeness.
+- **(+)** Zero required Bindle fields; optional preferredAdapters only influence Matching ranking.
+- **(−)** Live multi-IdP federation UI and customer data runners remain out of scope; residual production hardening (cohort metrics backends, live IdP adapters) may follow without changing this contract.

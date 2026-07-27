@@ -259,3 +259,54 @@ describe("CredentialAudit retention floor (NFR-018 — never compacted)", () => 
 		expect(JSON.stringify(row)).not.toMatch(/password|api[_-]?key\s*[:=]/i);
 	});
 });
+
+describe("CredentialAudit folds identity migration events", () => {
+	it("records migrationIds and never drops migration audit events", () => {
+		const events: EventEnvelope[] = [
+			{
+				id: "evt-mig-1",
+				type: "identity.MigrationStarted",
+				v: 1,
+				streamId: STREAM,
+				seq: 1,
+				ts: "2026-01-01T00:00:00.000Z",
+				actor,
+				tenant: "tenant-a",
+				correlationId: CORRELATION,
+				data: {
+					migrationId: "mig_test1",
+					sourceAdapter: "a",
+					targetAdapter: "b",
+					reason: "adapter-change",
+					mappingSpecHash: "sha256:abc",
+					mode: "jit",
+				},
+			},
+			{
+				id: "evt-mig-2",
+				type: "identity.Migrated",
+				v: 1,
+				streamId: STREAM,
+				seq: 2,
+				ts: "2026-01-01T00:00:01.000Z",
+				actor,
+				tenant: "tenant-a",
+				correlationId: CORRELATION,
+				data: {
+					migrationId: "mig_test1",
+					principalRef: "principal:t:x",
+					targetAdapter: "b",
+				},
+			},
+		];
+		const snapshot = credentialAuditProjection.fold(events);
+		const row = credentialAuditProjection.get(snapshot, CORRELATION);
+		expect(row?.migrationIds).toEqual(["mig_test1"]);
+		expect(row?.migrationEventCount).toBe(2);
+		expect(row?.timeline.map((e) => e.type)).toEqual([
+			"identity.MigrationStarted",
+			"identity.Migrated",
+		]);
+	});
+});
+

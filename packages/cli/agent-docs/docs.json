@@ -76,6 +76,18 @@
       }
     },
     {
+      "name": "identity",
+      "role": "identity",
+      "summary": "Observe continuous identity migration status (status/inspect; zero Bindle config)",
+      "cli": "hobo identity",
+      "mcpTool": "identity",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:identity",
+        "verb": "call"
+      }
+    },
+    {
       "name": "claim",
       "role": "identity",
       "summary": "Bind an anonymous deployment to an account",

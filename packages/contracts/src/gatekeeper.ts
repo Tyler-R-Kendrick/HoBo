@@ -93,6 +93,21 @@ export interface SecretlessConfigGateVerdict {
 	}>;
 }
 
+/**
+ * Precomputed can-migrate dimension (from @hobo/identity evaluateCanMigrate).
+ * Compatible with upgrade-migration dry-run shape; offline-capable.
+ * Continuous dual path is the default — no Bindle fields required.
+ */
+export interface CanMigrateGateVerdict {
+	ok: boolean;
+	summary?: string;
+	reasons: ReadonlyArray<{
+		code: string;
+		message: string;
+	}>;
+	evidence?: Readonly<Record<string, unknown>>;
+}
+
 export interface GatekeeperInput {
 	request: PolicyDecisionRequest;
 	deployedState: DeployedContractState;
@@ -102,6 +117,12 @@ export interface GatekeeperInput {
 	costQuota: CostQuotaInput;
 	/** Optional secretless-first config schema ranking gate (ADR-0027). */
 	secretlessConfig?: SecretlessConfigGateVerdict;
+	/**
+	 * Optional can-migrate dimension for identity adapter / spectrum cutovers.
+	 * When omitted, Gatekeeper does not block on migration readiness (deploy
+	 * path remains available; continuous migration is still Matching-driven).
+	 */
+	canMigrate?: CanMigrateGateVerdict;
 }
 
 export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
@@ -198,8 +219,31 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		}
 	}
 
+	// (f) can-migrate identity dual-path readiness — optional precomputed dimension.
+	// Continuous migration is Matching-driven; this gate only blocks when a caller
+	// supplies a dry-run verdict (adapter change / spectrum cutover evidence).
+	let canMigrateOk = true;
+	let canMigrateSummary: string | undefined;
+	if (input.canMigrate) {
+		canMigrateOk = input.canMigrate.ok;
+		canMigrateSummary = input.canMigrate.summary;
+		if (!input.canMigrate.ok) {
+			for (const reason of input.canMigrate.reasons) {
+				reasons.push({
+					gate: "contracts",
+					code: `can-migrate:${reason.code}`,
+					message: reason.message,
+					details: {
+						dimension: "can-migrate",
+						...(input.canMigrate.evidence ?? {}),
+					},
+				});
+			}
+		}
+	}
+
 	const decision = composeEffect({
-		contractOk: canDeploy.ok && secretlessConfigOk,
+		contractOk: canDeploy.ok && secretlessConfigOk && canMigrateOk,
 		policyEffect,
 		pendingObligations: pendingObligations.length > 0,
 		quotaOk: costQuota.ok,
@@ -212,6 +256,9 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		decision,
 		reasons,
 		deployable: decision === "allow" || decision === "allow-degraded",
+		...(canMigrateSummary !== undefined
+			? { canMigrate: { ok: canMigrateOk, summary: canMigrateSummary } }
+			: {}),
 	};
 
 	return {

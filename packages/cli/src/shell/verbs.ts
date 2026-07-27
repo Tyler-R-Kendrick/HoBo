@@ -29,6 +29,12 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 			"Manage durable Connections (create/authorize/list/get/revoke/rotate)",
 	},
 	{
+		name: "identity",
+		role: "identity",
+		summary:
+			"Observe continuous identity migration status (status/inspect; zero Bindle config)",
+	},
+	{
 		name: "claim",
 		role: "identity",
 		summary: "Bind an anonymous deployment to an account",
@@ -170,6 +176,7 @@ export const projectScopedVerbs = new Set(
 				"new",
 				"login",
 				"claim",
+				"identity",
 				"add",
 				"registry",
 				"generate",

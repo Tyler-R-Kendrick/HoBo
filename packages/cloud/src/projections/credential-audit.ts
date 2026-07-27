@@ -30,6 +30,16 @@ export const CREDENTIAL_AUDIT_RETENTION_FLOOR_MS =
 export const CREDENTIAL_AUDIT_EVENTS = Object.freeze({
 	IdentityIssued: "identity.Issued",
 	IdentityRotated: "identity.Rotated",
+	/** Continuous identity migration plane (never-compact). */
+	MigrationStarted: "identity.MigrationStarted",
+	DualLinked: "identity.DualLinked",
+	ShadowVerified: "identity.ShadowVerified",
+	DualConsistencyChecked: "identity.DualConsistencyChecked",
+	MigrationProgressed: "identity.MigrationProgressed",
+	Migrated: "identity.Migrated",
+	MigrationCutover: "identity.MigrationCutover",
+	MigrationAborted: "identity.MigrationAborted",
+	MigrationCompensated: "identity.MigrationCompensated",
 	TokenGranted: "token.Granted",
 	TokenUsed: "token.Used",
 	TokenRevoked: "token.Revoked",
@@ -107,6 +117,8 @@ export interface CredentialAuditRow {
 	configNames: string[];
 	/** Secret refs accessed on this correlation (never values). */
 	secretValueRefs: string[];
+	/** Continuous identity migration ids observed on this correlation. */
+	migrationIds: string[];
 	timeline: CredentialAuditTimelineEntry[];
 	grantCount: number;
 	useCount: number;
@@ -114,6 +126,8 @@ export interface CredentialAuditRow {
 	/** Count of config.Resolved / secret.Accessed events (audit). */
 	configResolveCount: number;
 	secretAccessCount: number;
+	/** Count of identity.Migration* events folded. */
+	migrationEventCount: number;
 }
 
 function correlationKey(event: EventEnvelope): string {
@@ -141,6 +155,7 @@ function base(
 				connectionIds: [...(row.connectionIds ?? [])],
 				configNames: [...(row.configNames ?? [])],
 				secretValueRefs: [...(row.secretValueRefs ?? [])],
+				migrationIds: [...(row.migrationIds ?? [])],
 				timeline: [...row.timeline],
 			}
 		: {
@@ -151,12 +166,14 @@ function base(
 				connectionIds: [],
 				configNames: [],
 				secretValueRefs: [],
+				migrationIds: [],
 				timeline: [],
 				grantCount: 0,
 				useCount: 0,
 				revokeCount: 0,
 				configResolveCount: 0,
 				secretAccessCount: 0,
+				migrationEventCount: 0,
 			};
 }
 
@@ -168,6 +185,28 @@ function noteConnection(
 	if (!row.connectionIds.includes(connectionId)) {
 		row.connectionIds = [...row.connectionIds, connectionId];
 	}
+}
+
+function noteMigration(
+	row: CredentialAuditRow,
+	migrationId: string | undefined,
+): void {
+	if (!migrationId) return;
+	if (!row.migrationIds.includes(migrationId)) {
+		row.migrationIds = [...row.migrationIds, migrationId];
+	}
+	row.migrationEventCount = (row.migrationEventCount ?? 0) + 1;
+}
+
+function foldMigrationEvent(
+	row: CredentialAuditRow | undefined,
+	event: EventEnvelope,
+): CredentialAuditRow {
+	const data = event.data as { migrationId?: string };
+	const next = base(row, correlationKey(event));
+	noteMigration(next, data.migrationId);
+	next.timeline = [...next.timeline, { seq: event.seq, type: event.type }];
+	return next;
 }
 
 function grant(row: CredentialAuditRow, grantId: string): CredentialGrantAudit {
@@ -206,6 +245,24 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				];
 				return next;
 			},
+			[CREDENTIAL_AUDIT_EVENTS.MigrationStarted]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.DualLinked]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.ShadowVerified]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.DualConsistencyChecked]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.MigrationProgressed]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.Migrated]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.MigrationCutover]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.MigrationAborted]: (row, event) =>
+				foldMigrationEvent(row, event),
+			[CREDENTIAL_AUDIT_EVENTS.MigrationCompensated]: (row, event) =>
+				foldMigrationEvent(row, event),
 			[CREDENTIAL_AUDIT_EVENTS.TokenGranted]: (row, event) => {
 				const data = event.data as {
 					grantId: string;

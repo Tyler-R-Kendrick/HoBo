@@ -48,7 +48,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `golden.*` | `golden.Ran`, `golden.Passed` |
 | `governance.*` | `governance.ResidencyEnforced` |
 | `guardrail.*` | `guardrail.Blocked` |
-| `identity.*` | `identity.Issued`, `identity.Rotated`, `identity.PartitionGraceEntered`, `identity.PartitionGraceExpired` |
+| `identity.*` | `identity.Issued`, `identity.Rotated`, `identity.PartitionGraceEntered`, `identity.PartitionGraceExpired`, `identity.MigrationStarted`, `identity.DualLinked`, `identity.ShadowVerified`, `identity.DualConsistencyChecked`, `identity.MigrationProgressed`, `identity.Migrated`, `identity.MigrationCutover`, `identity.MigrationAborted`, `identity.MigrationCompensated` |
 | `impl.*` | `impl.Generated`, `impl.Promoted` |
 | `incident.*` | `incident.Opened`, `incident.Resolved` |
 | `inference.*` | `inference.BudgetGateEvaluated`, `inference.BudgetContextMissing` |

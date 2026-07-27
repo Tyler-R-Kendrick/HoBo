@@ -35,6 +35,7 @@ import { createDoctorCommand } from "./doctor-command.js";
 import { createDriftCommand } from "./drift-command.js";
 import { createEraseCommand } from "./erase-command.js";
 import { createGenerateCommand } from "./generate-command.js";
+import { createIdentityCommand } from "./identity-command.js";
 import { createImportCommand } from "./import-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLocalProvider } from "./local-provider.js";
@@ -182,6 +183,8 @@ export function createComposedHoboCli(
 			login: createBrokerAwareLoginCommand(),
 			// Durable Connections: authorize once, mint short-lived tokens thereafter.
 			connection: createConnectionCommand(),
+			// Continuous identity migration observe surface (Matching/policy-driven; zero Bindle config).
+			identity: createIdentityCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

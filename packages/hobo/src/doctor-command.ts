@@ -1,4 +1,9 @@
 import type { CommandModule } from "@hobo/cli";
+import {
+	createContractAssertedDualFixtures,
+	dualVerifyClaims,
+	evaluateCanMigrate,
+} from "@hobo/identity";
 import { createStationClient, listStationIds } from "@hobo/stations";
 
 import { defaultHoboHome } from "./bare-metal-yard.js";
@@ -97,6 +102,47 @@ export function createDoctorCommand(
 				);
 			}
 
+			// Continuous identity migration dual fixtures (ADR-0070 extension) —
+			// offline dual-consistency oracle; fidelity remains simulated without real IdPs.
+			const dual = createContractAssertedDualFixtures({
+				tenant:
+					(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
+					profile?.session?.tenant ||
+					"local",
+			});
+			const dualOracle = dualVerifyClaims({
+				mapping: dual.mapping,
+				sourceClaims: dual.sourceClaims,
+				targetClaims: dual.targetClaims,
+				tenant: dual.tenant,
+			});
+			const canMigrate = evaluateCanMigrate({
+				sourceAdapter: dual.sourceAdapter,
+				targetAdapter: dual.targetAdapter,
+				mapping: dual.mapping,
+				dualOracleReady: dualOracle.ok,
+			});
+			const identityMigrationReport = {
+				continuousDefault: true,
+				bindleConfigRequired: false,
+				dualFixtures: {
+					label: dual.label,
+					fidelity: dual.fidelity,
+					principalRef: dual.principalRef,
+					dualOracleOk: dualOracle.ok,
+				},
+				canMigrate: {
+					ok: canMigrate.ok,
+					summary: canMigrate.summary,
+					dimension: "can-migrate" as const,
+				},
+			};
+			if (!dualOracle.ok) {
+				remediation.push(
+					"Dual identity fixtures oracle failed — continuous migration dual path needs attention.",
+				);
+			}
+
 			return {
 				ok: true,
 				status: target.live ? "live" : "in-memory",
@@ -109,6 +155,7 @@ export function createDoctorCommand(
 					live: target.live,
 					activate: target.activate,
 					station: stationReport,
+					identityMigration: identityMigrationReport,
 				},
 			};
 		},

@@ -143,5 +143,86 @@ export {
 	type VaultedCredential,
 } from "./token-broker.js";
 
+// Continuous Identity Migration Plane (hands-off; zero Bindle config required).
+export {
+	CAN_MIGRATE_SCHEMA_VERSION,
+	type CanMigrateInput,
+	type CanMigrateReason,
+	type CanMigrateResult,
+	evaluateCanMigrate,
+} from "./can-migrate.js";
+export {
+	type AdapterClaims,
+	agentRebindHint,
+	type DualAudienceGrant,
+	type DualVerifyResult,
+	dualConsistencyDigest,
+	dualVerifyClaims,
+	mintDualAudienceGrant,
+	verifyDualAudienceGrant,
+} from "./dual-adapter.js";
+export {
+	applyClaimTransform,
+	defaultContinuousMappingSpec,
+	MAPPING_SPEC_SCHEMA_VERSION,
+	type ClaimMapping,
+	type MappingSpec,
+	type MappingSpecInput,
+	parseMappingSpec,
+} from "./mapping-spec.js";
+export {
+	foldIdentityMigrationEvents,
+	IDENTITY_MIGRATION_SCHEMA,
+	IdentityMigrationService,
+	type IdentityMigrationRecord,
+	type MigrationMode,
+	type MigrationReason,
+	type MigrationState,
+	type PrincipalLink,
+	type StartMigrationInput,
+} from "./migration-aggregate.js";
+export {
+	createContractAssertedDualFixtures,
+	DUAL_FIXTURE_FIDELITY,
+	type DualIdentityFixtures,
+} from "./migration-dual-fixtures.js";
+export {
+	createDualConsistencyCheckedEvent,
+	createDualLinkedEvent,
+	createMigratedEvent,
+	createMigrationAbortedEvent,
+	createMigrationCompensatedEvent,
+	createMigrationCutoverEvent,
+	createMigrationProgressedEvent,
+	createMigrationStartedEvent,
+	createShadowVerifiedEvent,
+	IDENTITY_MIGRATION_EVENT_SCHEMA,
+	IDENTITY_MIGRATION_EVENTS,
+	type IdentityMigrationEvent,
+	type IdentityMigrationEventType,
+	isIdentityMigrationEventType,
+	validateIdentityMigrationEvent,
+} from "./migration-events.js";
+export {
+	advanceMigrationRamp,
+	createMigrationCohortFlag,
+	MIGRATION_COHORT_FLAG_SCHEMA,
+	type MigrationCohortFlag,
+	principalInMigrationCohort,
+} from "./migration-harness.js";
+export {
+	decideIdentityMigration,
+	IDENTITY_MIGRATION_MATCH_SCHEMA,
+	type IdentityMigrationMatchDecision,
+	type MatchingMigrationInput,
+} from "./migration-matching.js";
+export {
+	agentActionsForMigrationEvents,
+	type AgentRebindAction,
+	isMigrationReactiveEvent,
+	migrationStatusView,
+	type MigrationStatusView,
+} from "./migration-observe.js";
+
 // public-contract: the package id consumers assert against.
 export const HOBO_IDENTITY_PACKAGE = "@hobo/identity";

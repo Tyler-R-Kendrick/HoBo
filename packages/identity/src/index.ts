@@ -162,6 +162,28 @@ export {
 	verifyDualAudienceGrant,
 } from "./dual-adapter.js";
 export {
+	createMigrationFlagId,
+	FeatureFlagStore,
+	FLAG_EVENT_SCHEMA_VERSION,
+	FLAG_EVENTS,
+	type FlagDefinition,
+	type FlagEvalContext,
+	type FlagEvaluation,
+	type FlagEvent,
+	type FlagEventType,
+	migrationCohortFlagKey,
+} from "./feature-flag-store.js";
+export {
+	ContractAssertedIdentityAdapter,
+	createDualAdapterPair,
+	type DualAdapterPair,
+	type IdentityAdapter,
+	type IdentityAdapterKind,
+	IDENTITY_ADAPTER_INTERFACE,
+	type AdapterVerifyResult,
+	verifyDualAdapters,
+} from "./identity-adapter-port.js";
+export {
 	applyClaimTransform,
 	defaultContinuousMappingSpec,
 	MAPPING_SPEC_SCHEMA_VERSION,
@@ -181,6 +203,14 @@ export {
 	type PrincipalLink,
 	type StartMigrationInput,
 } from "./migration-aggregate.js";
+export {
+	type ControlPlaneProgress,
+	IDENTITY_MATCH_DECIDED,
+	type IdentityMatchDecidedAudit,
+	IdentityMigrationControlPlane,
+	matchingSignalsFromResourceDecision,
+	startContinuousMigrationFromMatch,
+} from "./migration-control-plane.js";
 export {
 	createContractAssertedDualFixtures,
 	DUAL_FIXTURE_FIDELITY,
@@ -223,6 +253,17 @@ export {
 	migrationStatusView,
 	type MigrationStatusView,
 } from "./migration-observe.js";
+export {
+	createMemoryFencePort,
+	createMemoryTenantTransferPort,
+	type FencePort,
+	runSpectrumIdentityCutover,
+	SPECTRUM_CUTOVER_SCHEMA,
+	type SpectrumCutoverResult,
+	type TenantExportImportPort,
+	type TenantLifecycleEvent,
+	type TenantLifecyclePhase,
+} from "./spectrum-cutover.js";
 
 // public-contract: the package id consumers assert against.
 export const HOBO_IDENTITY_PACKAGE = "@hobo/identity";

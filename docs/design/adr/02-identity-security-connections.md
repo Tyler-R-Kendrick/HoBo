@@ -1,3 +1,10 @@
+---
+type: Architecture Decision Record
+title: "First-class Connections on the Yard token broker"
+description: "First-class Connections on the Yard token broker"
+tags: [hobo, design]
+---
+
 # ADR: First-class Connections on the Yard token broker
 
 ## Status

@@ -79,8 +79,11 @@ item (S3-03); see the `ponytail:` note in `src/token-broker.ts`.
 - Event factories/validators and `CREDENTIAL_AUDIT_RETENTION`.
 - `IDENTITY_PORT` — the `IdentityProvider` port descriptor built through
   `@hobo/core`.
-- Migration plane: `IdentityMigrationService`, `decideIdentityMigration`,
-  `evaluateCanMigrate`, `createContractAssertedDualFixtures`,
+- Migration plane: `IdentityMigrationControlPlane` (Matching → auto-start →
+  OpenFeature ramp → cutover), `IdentityMigrationService`,
+  `decideIdentityMigration`, `evaluateCanMigrate`,
+  `createContractAssertedDualFixtures` / `createDualAdapterPair`,
+  `FeatureFlagStore`, `runSpectrumIdentityCutover` (Plan 50 composition),
   `dualVerifyClaims`, `mintDualAudienceGrant`, `advanceMigrationRamp`,
   `agentActionsForMigrationEvents`, `identity.Migration*` events.
 

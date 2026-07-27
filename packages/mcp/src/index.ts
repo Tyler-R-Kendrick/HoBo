@@ -9,6 +9,7 @@ export {
 	MCP_TOOL_CALL_DECIDED,
 	type McpPrincipal,
 	observeToolOutput,
+	rebindAgentsOnMigrationEvents,
 	resolveAuthContext,
 	scopeAuthorizesCapability,
 	type ToolDecision,
@@ -59,4 +60,5 @@ export {
 	type ToolDescriptor,
 } from "./tool-surface.js";
 
+// public-contract: the package id consumers assert against.
 export const HOBO_MCP_PACKAGE = "@hobo/mcp";

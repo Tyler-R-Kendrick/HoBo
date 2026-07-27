@@ -90,7 +90,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `stub.*` | `stub.Recorded` |
 | `subscription.*` | `subscription.Opened`, `subscription.Pushed` |
 | `support.*` | `support.UsageCorrectionApproved`, `support.DisputeOpened` |
-| `tenant.*` | `tenant.Suspended`, `tenant.Resumed` |
+| `tenant.*` | `tenant.Provisioned`, `tenant.Suspended`, `tenant.Resumed`, `tenant.Offboarded`, `tenant.Exported`, `tenant.Imported`, `tenant.Fenced`, `tenant.Drained`, `tenant.Erased`, `tenant.CutoverFailed` |
 | `token.*` | `token.Granted`, `token.Used`, `token.Denied`, `token.Revoked` |
 | `training.*` | `training.RunStarted`, `training.Promoted` |
 | `user.*` | `user.Authenticated` |

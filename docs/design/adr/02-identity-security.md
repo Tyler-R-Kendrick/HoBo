@@ -823,4 +823,5 @@ Identity adapters, residency obligations, tenancy-spectrum promotion, claim-sche
 ### Consequences
 - **(+)** Hands-off continuous migration; PrincipalRef continuity; offline dual fixtures; Harness auto-abort; CredentialAudit completeness.
 - **(+)** Zero required Bindle fields; optional preferredAdapters only influence Matching ranking.
-- **(−)** Live multi-IdP federation UI and customer data runners remain out of scope; residual production hardening (cohort metrics backends, live IdP adapters) may follow without changing this contract.
+- **(+)** Built-in OpenFeature `FeatureFlagStore` drives cohort ramps (`flag.*` events); `IdentityMigrationControlPlane` auto-starts from Matching; spectrum cutover composes Suspend→drain→dual-migrate→export→import→fence→resume; dual adapters implement `hobo:identity/adapter` (contract-asserted offline, live IdPs swap behind the same port); MCP agents re-attest via `rebindAgentsOnMigrationEvents` with zero config.
+- **(−)** Full multi-IdP federation *UI* and billing/support automation remain product surfaces outside this plane's contracts.

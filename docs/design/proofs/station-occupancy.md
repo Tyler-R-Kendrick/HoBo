@@ -1,3 +1,10 @@
+---
+type: Proof
+title: "Station control-plane occupancy proof"
+description: "Station control-plane occupancy proof"
+tags: [hobo, design]
+---
+
 # Proof note: Station control-plane occupancy (ADR-0131)
 
 ## Claims

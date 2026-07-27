@@ -1,7 +1,13 @@
 /**
- * Progressive dual-ramp via Harness-shaped cohort flags (no parallel flag system).
- * Auto-abort / compensate on dual-consistency failure.
+ * Progressive dual-ramp via built-in OpenFeature-compatible FeatureFlagStore
+ * (ADR-0044 / ADR-0083 Harness). Auto-abort / compensate on dual-consistency failure.
+ * No parallel flag system.
  */
+import {
+	FeatureFlagStore,
+	migrationCohortFlagKey,
+	type FlagDefinition,
+} from "./feature-flag-store.js";
 import type { IdentityMigrationService } from "./migration-aggregate.js";
 
 // public-contract: migration cohort flag schema (OpenFeature-compatible shape).
@@ -11,6 +17,7 @@ export const MIGRATION_COHORT_FLAG_SCHEMA =
 export type MigrationCohortFlag = Readonly<{
 	schemaVersion: typeof MIGRATION_COHORT_FLAG_SCHEMA;
 	flagId: string;
+	flagKey: string;
 	migrationId: string;
 	tenant: string;
 	/** 0–100 ramp percent. */
@@ -18,31 +25,51 @@ export type MigrationCohortFlag = Readonly<{
 	enabled: boolean;
 	/** Harness auto-abort when dual oracle fails. */
 	autoAbortOnDualFailure: true;
+	/** Bound OpenFeature store definition (when store provided). */
+	definition?: FlagDefinition;
 }>;
 
 export function createMigrationCohortFlag(input: {
 	readonly migrationId: string;
 	readonly tenant: string;
 	readonly percentage?: number;
+	readonly store?: FeatureFlagStore;
 }): MigrationCohortFlag {
+	const flagKey = migrationCohortFlagKey(input.migrationId);
+	const percentage = input.percentage ?? 0;
+	let definition: FlagDefinition | undefined;
+	if (input.store) {
+		definition = input.store.define({
+			key: flagKey,
+			defaultValue: false,
+			percentage,
+			enabled: true,
+			migrationId: input.migrationId,
+			autoAbortOnDualFailure: true,
+		});
+	}
 	return Object.freeze({
 		schemaVersion: MIGRATION_COHORT_FLAG_SCHEMA,
 		flagId: `flag:identity-migration:${input.migrationId}`,
+		flagKey,
 		migrationId: input.migrationId,
 		tenant: input.tenant,
-		percentage: input.percentage ?? 0,
+		percentage,
 		enabled: true,
 		autoAbortOnDualFailure: true as const,
+		...(definition !== undefined ? { definition } : {}),
 	});
 }
 
 /**
  * Advance ramp under Harness discipline. Auto-aborts + compensates on failures.
+ * Syncs percentage into the OpenFeature store when provided.
  */
 export function advanceMigrationRamp(input: {
 	readonly service: IdentityMigrationService;
 	readonly targetPercent: number;
 	readonly dualConsistencyOk: boolean;
+	readonly store?: FeatureFlagStore;
 }): {
 	flag: MigrationCohortFlag;
 	aborted: boolean;
@@ -66,8 +93,18 @@ export function advanceMigrationRamp(input: {
 		const flag = createMigrationCohortFlag({
 			migrationId: snap.id,
 			tenant: snap.tenant,
-			percentage: snap.rampPercent,
+			percentage: 0,
+			...(input.store !== undefined ? { store: input.store } : {}),
 		});
+		if (input.store) {
+			input.store.define({
+				key: migrationCohortFlagKey(snap.id),
+				percentage: 0,
+				enabled: false,
+				migrationId: snap.id,
+				autoAbortOnDualFailure: true,
+			});
+		}
 		return {
 			flag: Object.freeze({ ...flag, enabled: false, percentage: 0 }),
 			aborted: true,
@@ -83,18 +120,33 @@ export function advanceMigrationRamp(input: {
 		migrationId: record.id,
 		tenant: record.tenant,
 		percentage: record.rampPercent,
+		...(input.store !== undefined ? { store: input.store } : {}),
 	});
 	return { flag, aborted: false, record };
 }
 
 /**
  * Evaluate whether a principal is in the migration ramp cohort (OpenFeature-style).
- * Deterministic: hash principal into 0–99 bucket.
+ * Prefer FeatureFlagStore.evaluateBoolean when a store is available.
  */
 export function principalInMigrationCohort(input: {
 	readonly principalRef: string;
 	readonly percentage: number;
+	readonly store?: FeatureFlagStore;
+	readonly migrationId?: string;
+	readonly tenant?: string;
 }): boolean {
+	if (input.store && input.migrationId) {
+		const evalResult = input.store.evaluateBoolean(
+			migrationCohortFlagKey(input.migrationId),
+			{
+				targetingKey: input.principalRef,
+				...(input.tenant !== undefined ? { tenant: input.tenant } : {}),
+			},
+			false,
+		);
+		return evalResult.value;
+	}
 	if (input.percentage >= 100) return true;
 	if (input.percentage <= 0) return false;
 	let h = 0;

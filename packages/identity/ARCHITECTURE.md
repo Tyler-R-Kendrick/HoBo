@@ -91,12 +91,16 @@ influence Matching inputs; continuous dual mode is already the default.
 | --- | --- | --- |
 | MappingSpec | `mapping-spec.ts` | Platform claim mapping; parse-don't-validate; auto-default |
 | Dual verify / dual-audience | `dual-adapter.ts` | Fail-closed dual claims; ADR-0100-style bridge grants |
+| Adapter port | `identity-adapter-port.ts` | Source/target IdP port; contract-asserted dual pair offline |
 | Aggregate | `migration-aggregate.ts` | Idle → dual/shadow → ramp → cutover / abort / compensate |
 | Events | `migration-events.ts` | `identity.Migration*` never-compact audit family |
 | Matching trigger | `migration-matching.ts` | `decideIdentityMigration` — continuous by default |
+| Control plane | `migration-control-plane.ts` | Matching → auto-start → flags → JIT link → ramp → cutover |
+| Feature flags | `feature-flag-store.ts` | Built-in OpenFeature store; `flag.*` events; cohort ramps |
 | can-migrate | `can-migrate.ts` | Gatekeeper dry-run dimension (offline-capable) |
-| Harness ramp | `migration-harness.ts` | Cohort flags + auto-abort/compensate |
+| Harness ramp | `migration-harness.ts` | Cohort flags + auto-abort/compensate via FeatureFlagStore |
 | Dual fixtures | `migration-dual-fixtures.ts` | ADR-0070 extension; fidelity `simulated` offline |
+| Spectrum cutover | `spectrum-cutover.ts` | Suspend→drain→dual-migrate→export→import→fence→resume |
 | Observe / agents | `migration-observe.ts` | Status view; zero-config re-attest on Migrated |
 
 Invariants: PrincipalRef continuity; scope never widens; dual inconsistency

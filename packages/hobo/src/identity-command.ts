@@ -15,6 +15,7 @@ import {
 	evaluateCanMigrate,
 	foldIdentityMigrationEvents,
 	IdentityMigrationService,
+	matchingSignalsFromResourceDecision,
 	migrationStatusView,
 	type IdentityMigrationEvent,
 } from "@hobo/identity";
@@ -182,6 +183,14 @@ export function createIdentityCommand(
 				? `identity migration ${view.migrationId}: ${view.state} (ramp ${view.rampPercent}%)`
 				: "no active identity migration — continuous dual path available by default (zero Bindle config)";
 			emitProgress(message);
+			// Illustrate Matching→migration signal extraction (no Bindle fields).
+			const exampleMatchSignal = matchingSignalsFromResourceDecision({
+				tenant,
+				port: "auth",
+				previousProviderId: dual.sourceAdapter,
+				winnerProviderId: dual.targetAdapter,
+			});
+
 			return {
 				ok: true,
 				status: view.present ? String(view.state) : "idle",
@@ -208,6 +217,7 @@ export function createIdentityCommand(
 						continuousDefault: true,
 						dryRun: true,
 					},
+					matchingSignal: exampleMatchSignal,
 					bindleConfigRequired: false,
 					observeOnly: true,
 				},

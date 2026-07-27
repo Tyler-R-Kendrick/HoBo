@@ -2,15 +2,35 @@
  * Dual-principal credential presentation for remote broker calls.
  *
  * - Human principal: from `hobo login` / profile OIDC session
- * - Agent/workload principal: SPIFFE-style SVID (attestation or local fixture)
+ * - Agent/workload principal: SPIFFE JWT-SVID + real DPoP (ES256) binding
  * - Anonymous ephemeral: temporary principal + claim token material
  *
- * HONEST SCOPE: real SPIRE attestation and full DPoP proof generation/validation
- * are interface-complete with local fixtures; production crypto plugs into the
- * same presenter without changing call sites.
+ * DPoP proofs are mint+verify capable (RFC 9449). JWT-SVIDs are audience-bound
+ * and short-lived. SPIRE Workload API can replace mint with a fetch later
+ * without changing presentAuthenticated call sites.
  */
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 
+import {
+	exportDpopPrivateJwk,
+	generateDpopKeyPair,
+	importDpopKeyPair,
+	mintDpopProof,
+	verifyDpopProof,
+	type DpopKeyPair,
+} from "@hobo/connectivity";
+import {
+	mintJwtSvid,
+	spiffeIdForAgent,
+	verifyJwtSvid,
+} from "@hobo/connectivity";
 import type { PrincipalRef } from "@hobo/core";
 
 import type { HoboProfile } from "./hobo-profile.js";
@@ -33,29 +53,22 @@ export interface PresentedCredential {
 	readonly accessToken: string;
 	readonly audience: string;
 	readonly expiresAt: string;
-	/**
-	 * HONEST SCOPE: DPoP proof JWT when scheme is dpop-bound.
-	 * Local fixtures mint a deterministic mock proof header value.
-	 */
+	/** DPoP proof JWT (ES256) when scheme is dpop-bound. */
 	readonly dpopProof?: string;
 	readonly proofKeyId?: string;
 	readonly metadata?: Readonly<Record<string, string>>;
 }
 
 export interface CredentialPresenter {
-	/**
-	 * Resolve the principal for an authenticated remote call.
-	 * Prefers agent SVID when HOBO_AGENT_SVID / agent fixture is present,
-	 * else human profile session, else local fixture (dev).
-	 */
 	presentAuthenticated(input: {
 		readonly audience: string;
 		readonly hoboHome: string;
 		readonly env?: NodeJS.ProcessEnv;
 		readonly requirePrincipal?: boolean;
+		/** HTTP method for DPoP htm (default POST). */
+		readonly htm?: string;
 	}): Promise<PresentedCredential | null>;
 
-	/** Mint / wrap an anonymous ephemeral credential from a broker session. */
 	presentAnonymous(input: {
 		readonly audience: string;
 		readonly ephemeralPrincipal: PrincipalRef;
@@ -66,9 +79,11 @@ export interface CredentialPresenter {
 }
 
 export function createCredentialPresenter(options?: {
-	/** Force agent principal in tests. */
 	readonly agentPrincipal?: PrincipalRef;
 	readonly humanPrincipal?: PrincipalRef;
+	/** Inject DPoP key pair (tests). */
+	readonly dpopKeyPair?: DpopKeyPair;
+	readonly svidHmacSecret?: string;
 }): CredentialPresenter {
 	return {
 		async presentAuthenticated(input) {
@@ -77,68 +92,113 @@ export function createCredentialPresenter(options?: {
 
 			const agent = resolveAgentPrincipal(env, options?.agentPrincipal);
 			const human =
-				options?.humanPrincipal ??
-				profile?.session?.principal ??
-				null;
+				options?.humanPrincipal ?? profile?.session?.principal ?? null;
+			const htm = input.htm ?? "POST";
 
 			if (agent) {
-				const token = mintAudienceBoundToken({
-					subject: agent.id,
+				const spiffeId =
+					env.HOBO_SPIFFE_ID ??
+					(agent.id.startsWith("spiffe://")
+						? agent.id
+						: spiffeIdForAgent(agent.id));
+				const svid = mintJwtSvid({
+					spiffeId,
 					audience: input.audience,
-					kind: "agent",
-					seed: env.HOBO_AGENT_SVID ?? agent.id,
+					ttlSeconds: 900,
+					issuer: env.HOBO_SVID_ISSUER ?? "spiffe://hobo.local",
+					env,
+					...(options?.svidHmacSecret !== undefined
+						? { hmacSecret: options.svidHmacSecret }
+						: {}),
 				});
-				// HONEST SCOPE: real DPoP uses private key material; fixture binds a key id.
-				const proofKeyId = `dpop:${createHash("sha256").update(agent.id).digest("hex").slice(0, 12)}`;
-				const dpopProof = mintMockDpopProof({
-					htm: "POST",
+				// Validate self-mint (ensures verify path is exercised).
+				verifyJwtSvid({
+					token: svid.token,
+					audience: input.audience,
+					...(options?.svidHmacSecret !== undefined
+						? { hmacSecret: options.svidHmacSecret }
+						: env.HOBO_SVID_HMAC_SECRET
+							? { hmacSecret: env.HOBO_SVID_HMAC_SECRET }
+							: { hmacSecret: "hobo-local-svid-dev-only" }),
+				});
+
+				const keyPair =
+					options?.dpopKeyPair ??
+					loadOrCreateDpopKeyPair(input.hoboHome, agent.id);
+				const dpopProof = mintDpopProof({
+					keyPair,
+					htm,
 					htu: input.audience,
-					ath: token,
-					keyId: proofKeyId,
+					accessToken: svid.token,
 				});
+				// Round-trip verify so broken proofs never leave the presenter.
+				verifyDpopProof({
+					proof: dpopProof,
+					htm,
+					htu: input.audience,
+					accessToken: svid.token,
+				});
+
 				return {
 					scheme: "dpop-bound",
-					principal: agent,
+					principal: { kind: "agent", id: agent.id },
 					...(human !== null ? { humanPrincipal: human } : {}),
 					tenant:
-						env.HOBO_TENANT ??
-						profile?.session?.tenant ??
-						"hobo-dev",
-					accessToken: token,
+						env.HOBO_TENANT ?? profile?.session?.tenant ?? "hobo-dev",
+					accessToken: svid.token,
 					audience: input.audience,
-					expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+					expiresAt: new Date(svid.claims.exp * 1000).toISOString(),
 					dpopProof,
-					proofKeyId,
+					proofKeyId: keyPair.kid,
 					metadata: {
-						// HONEST SCOPE: spiffe id form for fixtures
-						spiffeId: `spiffe://hobo.local/agent/${encodeURIComponent(agent.id)}`,
+						spiffeId,
+						credentialScheme: "spiffe-jwt-svid+dpop",
+						svidAlg: "HS256",
+						dpopAlg: "ES256",
 					},
 				};
 			}
 
 			if (profile?.session) {
 				const session = profile.session;
+				const keyPair =
+					session.proofKeyId !== undefined
+						? loadOrCreateDpopKeyPair(
+								input.hoboHome,
+								session.principal.id,
+							)
+						: null;
+				if (keyPair) {
+					const dpopProof = mintDpopProof({
+						keyPair,
+						htm,
+						htu: input.audience,
+						accessToken: session.token,
+					});
+					verifyDpopProof({
+						proof: dpopProof,
+						htm,
+						htu: input.audience,
+						accessToken: session.token,
+					});
+					return {
+						scheme: "dpop-bound",
+						principal: session.principal,
+						tenant: session.tenant,
+						accessToken: session.token,
+						audience: input.audience,
+						expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+						dpopProof,
+						proofKeyId: keyPair.kid,
+					};
+				}
 				return {
-					scheme:
-						session.proofKeyId !== undefined
-							? "dpop-bound"
-							: "bearer-session",
+					scheme: "bearer-session",
 					principal: session.principal,
 					tenant: session.tenant,
 					accessToken: session.token,
 					audience: input.audience,
 					expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
-					...(session.proofKeyId !== undefined
-						? {
-								proofKeyId: session.proofKeyId,
-								dpopProof: mintMockDpopProof({
-									htm: "POST",
-									htu: input.audience,
-									ath: session.token,
-									keyId: session.proofKeyId,
-								}),
-							}
-						: {}),
 				};
 			}
 
@@ -146,25 +206,40 @@ export function createCredentialPresenter(options?: {
 				return null;
 			}
 
-			// Local/dev fixture path — offline capable.
+			// Local/dev fixture path — offline capable, still DPoP-bound.
 			const principal: PrincipalRef = {
 				kind: "user",
 				id: "user:local-fixture",
 			};
-			const token = mintAudienceBoundToken({
-				subject: principal.id,
+			const svid = mintJwtSvid({
+				spiffeId: "spiffe://hobo.local/user/local-fixture",
 				audience: input.audience,
-				kind: "user",
-				seed: "local-fixture",
+				ttlSeconds: 3600,
+				env,
+				allowDefaultSecret: true,
+				...(options?.svidHmacSecret !== undefined
+					? { hmacSecret: options.svidHmacSecret }
+					: {}),
+			});
+			const keyPair =
+				options?.dpopKeyPair ??
+				loadOrCreateDpopKeyPair(input.hoboHome, principal.id);
+			const dpopProof = mintDpopProof({
+				keyPair,
+				htm,
+				htu: input.audience,
+				accessToken: svid.token,
 			});
 			return {
 				scheme: "local-fixture-svid",
 				principal,
 				tenant: env.HOBO_TENANT ?? "hobo-dev",
-				accessToken: token,
+				accessToken: svid.token,
 				audience: input.audience,
-				expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
-				metadata: { fixture: "true" },
+				expiresAt: new Date(svid.claims.exp * 1000).toISOString(),
+				dpopProof,
+				proofKeyId: keyPair.kid,
+				metadata: { fixture: "true", spiffeId: svid.spiffeId },
 			};
 		},
 
@@ -186,72 +261,56 @@ function resolveAgentPrincipal(
 	forced?: PrincipalRef,
 ): PrincipalRef | null {
 	if (forced) return forced;
+	if (env.HOBO_AGENT_ID) {
+		return { kind: "agent", id: env.HOBO_AGENT_ID };
+	}
 	const svid = env.HOBO_AGENT_SVID ?? env.SPIFFE_ENDPOINT_SOCKET;
 	if (!svid || svid.length === 0) return null;
-	// HONEST SCOPE: real SPIRE workload API would fetch JWT-SVID; fixture uses env id.
-	const id =
-		env.HOBO_AGENT_ID ??
-		(svid.startsWith("spiffe://")
-			? svid
-			: `agent:${createHash("sha256").update(svid).digest("hex").slice(0, 12)}`);
-	return { kind: "agent", id };
+	if (svid.startsWith("spiffe://")) {
+		return { kind: "agent", id: svid };
+	}
+	return {
+		kind: "agent",
+		id: `agent:${svid.replace(/[^a-zA-Z0-9_-]+/g, "-").slice(0, 32)}`,
+	};
 }
 
-function mintAudienceBoundToken(input: {
-	readonly subject: string;
-	readonly audience: string;
-	readonly kind: string;
-	readonly seed: string;
-}): string {
-	const header = Buffer.from(
-		JSON.stringify({ alg: "HS256", typ: "JWT" }),
-	).toString("base64url");
-	const now = Math.floor(Date.now() / 1000);
-	const payload = Buffer.from(
-		JSON.stringify({
-			sub: input.subject,
-			aud: input.audience,
-			iat: now,
-			exp: now + 900,
-			kind: input.kind,
-		}),
-	).toString("base64url");
-	const sig = createHmac("sha256", input.seed)
-		.update(`${header}.${payload}`)
-		.digest("base64url");
-	return `${header}.${payload}.${sig}`;
+function dpopKeyPath(hoboHome: string, principalId: string): string {
+	const safe = principalId.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 64);
+	return join(hoboHome, "keys", `dpop-${safe}.json`);
 }
 
-/**
- * HONEST SCOPE: mock DPoP proof — shape only (RFC 9449-like header claims).
- * Production must sign with an asymmetric key and validate `ath`/`htu`/`htm`.
- */
-export function mintMockDpopProof(input: {
-	readonly htm: string;
-	readonly htu: string;
-	readonly ath: string;
-	readonly keyId: string;
-}): string {
-	const header = Buffer.from(
-		JSON.stringify({
-			typ: "dpop+jwt",
-			alg: "ES256",
-			jwk: { kty: "EC", kid: input.keyId, crv: "P-256", x: "mock", y: "mock" },
-		}),
-	).toString("base64url");
-	const payload = Buffer.from(
-		JSON.stringify({
-			htm: input.htm,
-			htu: input.htu,
-			iat: Math.floor(Date.now() / 1000),
-			jti: randomBytes(8).toString("hex"),
-			ath: createHash("sha256").update(input.ath).digest("base64url"),
-		}),
-	).toString("base64url");
-	const sig = createHmac("sha256", input.keyId)
-		.update(`${header}.${payload}`)
-		.digest("base64url");
-	return `${header}.${payload}.${sig}`;
+export function loadOrCreateDpopKeyPair(
+	hoboHome: string,
+	principalId: string,
+): DpopKeyPair {
+	const path = dpopKeyPath(hoboHome, principalId);
+	if (existsSync(path)) {
+		const raw = JSON.parse(readFileSync(path, "utf8")) as Record<
+			string,
+			unknown
+		>;
+		return importDpopKeyPair({ privateJwk: raw });
+	}
+	const pair = generateDpopKeyPair();
+	const keysDir = join(hoboHome, "keys");
+	mkdirSync(keysDir, { recursive: true, mode: 0o700 });
+	try {
+		chmodSync(keysDir, 0o700);
+	} catch {
+		// best-effort on platforms without chmod
+	}
+	writeFileSync(
+		path,
+		`${JSON.stringify(exportDpopPrivateJwk(pair), null, 2)}\n`,
+		{ encoding: "utf8", mode: 0o600 },
+	);
+	try {
+		chmodSync(path, 0o600);
+	} catch {
+		// best-effort
+	}
+	return pair;
 }
 
 export function authorizationHeaders(
@@ -271,10 +330,28 @@ export function authorizationHeaders(
 	if (credential.dpopProof) {
 		headers.dpop = credential.dpopProof;
 	}
+	if (credential.metadata?.spiffeId) {
+		headers["x-hobo-spiffe-id"] = credential.metadata.spiffeId;
+	}
 	return headers;
 }
 
-/** Test helper: profile has a usable authenticated session. */
+/** @deprecated use mintDpopProof from @hobo/connectivity */
+export function mintMockDpopProof(input: {
+	readonly htm: string;
+	readonly htu: string;
+	readonly ath: string;
+	readonly keyId: string;
+}): string {
+	const pair = generateDpopKeyPair(input.keyId);
+	return mintDpopProof({
+		keyPair: pair,
+		htm: input.htm,
+		htu: input.htu,
+		accessToken: input.ath,
+	});
+}
+
 export function profileHasSession(
 	profile: HoboProfile | null,
 ): profile is HoboProfile & { session: NonNullable<HoboProfile["session"]> } {

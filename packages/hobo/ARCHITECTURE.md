@@ -119,5 +119,5 @@ Examples only *consume* them — adapter source does not live under `examples/`.
 3. `HOBO_HOME/profile.json` default from `hobo login --broker`
 4. Local embedded broker / Yard event-sourced lane
 
-Remote paths **discover** first (`.well-known/hobo-broker`). Anonymous/`--temporary` requires `supportsAnonymous`. Claim rebinds ownership locally (event store) or remotely (`--broker` + `--token`) without re-provision. Human vs agent principals stay distinct; DPoP/SPIRE production crypto is **HONEST SCOPE** behind fixture presenters.
+Remote paths **discover** first (`.well-known/hobo-broker`). Anonymous/`--temporary` requires `supportsAnonymous`. Claim rebinds ownership locally (event store) or remotely (`--broker` + `--token`) without re-provision. Human vs agent principals stay distinct: the credential presenter mints **real ES256 DPoP** proofs and audience-bound **JWT-SVIDs** (self-verified before send). Follow-ons: broker **server-side** DPoP verify, SPIRE Workload API fetch, WebAuthn human step-up.
 

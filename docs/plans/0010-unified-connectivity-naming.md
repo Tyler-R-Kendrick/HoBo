@@ -30,15 +30,16 @@ One-shot delivery of the v4.2 unified connectivity prompt: hierarchical DNS-vali
 - `@hobo/connectivity`: implementations + tests + contracts/data-models + README/ARCHITECTURE.
 - `@hobo/hobo` / `@hobo/cli`: named endpoints on local + multi-host serve; `DevServeResult`; inspect/MCP discovery payload.
 
-## Next steps (landed in follow-on)
+## Next steps (closed)
 
-1. ~~Live Tailscale MagicDNS split + Funnel gateway automation~~ — `configureMagicDns` / `publishFunnel` on Tailscale overlay.
-2. Netbird management API client still partial (port methods + plans complete).
-3. ~~Cloudflare/Route53 providers~~ — REST clients behind `DnsProvider` (`createCloudflareDnsProvider`, `createRoute53DnsProvider`).
-4. ~~OPA/Rego `PolicyEngine` adapter~~ — `createOpaPolicyEngine` + sample Rego.
-5. ~~Billing aggregator~~ — `createBillingAggregator` + period invoices.
-6. ~~Hard multi-tenant isolation~~ — `createTenantIsolationRegistry` (`soft` / `hard-overlay` / `hard-control-plane`).
-7. ~~Dynamic DNS from junction heartbeats~~ — `createJunctionDynamicDnsRegistrar` wired into junction agent heartbeats.
+1. ~~Live Tailscale MagicDNS split + Funnel~~ — CLI + **Tailscale API** split DNS (`TS_API_KEY`).
+2. ~~Netbird management API~~ — enroll, peers, DNS nameserver groups over HTTP.
+3. ~~Cloudflare/Route53~~ — Route53 uses **built-in SigV4** (no unsigned default).
+4. ~~OPA/Rego~~ — HTTP + CLI + **rego-lite** JSON policy documents.
+5. ~~Billing~~ — durable ledger + **Stripe PaymentIntent** provider + `closeAndCharge`.
+6. ~~Hard multi-tenant isolation~~ — `createTenantIsolationRegistry`.
+7. ~~Dynamic DNS heartbeats~~ — junction agent integration.
+8. ~~DPoP + JWT-SVID~~ — real ES256 DPoP + audience-bound SPIFFE JWTs.
 
 ## Gates
 

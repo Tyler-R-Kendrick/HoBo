@@ -32,6 +32,14 @@ export function createTailscaleOverlay(options?: {
 	readonly run?: TailscaleRunner;
 	/** Default MagicDNS domains for hierarchical overlay names. */
 	readonly defaultMagicDnsDomains?: readonly string[];
+	/**
+	 * Tailscale API key for control-plane MagicDNS split DNS.
+	 * Also read from env TS_API_KEY / HOBO_TS_API_KEY when unset.
+	 */
+	readonly apiKey?: string;
+	readonly tailnet?: string;
+	readonly apiBase?: string;
+	readonly fetchImpl?: typeof fetch;
 }): OverlayNetwork {
 	const bin = options?.bin ?? "tailscale";
 	const run: TailscaleRunner =
@@ -235,30 +243,67 @@ export function createTailscaleOverlay(options?: {
 				config.domains.length > 0
 					? config.domains
 					: (options?.defaultMagicDnsDomains ?? ["hobo.test", "hobo.internal"]);
-
-			// Accept DNS + document split DNS map. Tailscale admin split DNS is often
-			// console/API configured; CLI best-effort applies local accept + records intent.
-			const accept = run(["set", "--accept-dns=true"]);
-			if (!accept.ok) {
-				notes.push(
-					`accept-dns failed: ${accept.stderr.trim() || accept.stdout.trim() || "cli error"}`,
-				);
-			}
-
-			// Prefer tailscale debug / set when available; always emit structured plan notes.
 			const nameservers =
 				config.nameservers.length > 0
 					? config.nameservers
 					: ["100.100.100.100"];
-			const planLine = `split-dns domains=[${domains.join(",")}] nameservers=[${nameservers.join(",")}] tenant=${config.tenantId}`;
-			notes.push(planLine);
+			let localAccepted = false;
+			let controlPlaneApplied = false;
 
-			// Attempt: tailscale set --advertise-routes is wrong for DNS; use `tailscale dns` if present.
+			// 1) Local CLI: accept MagicDNS on this node.
+			const accept = run(["set", "--accept-dns=true"]);
+			if (!accept.ok) {
+				notes.push(
+					`localAccepted=false: ${accept.stderr.trim() || accept.stdout.trim() || "cli error"}`,
+				);
+			} else {
+				localAccepted = true;
+				notes.push("localAccepted=true (tailscale set --accept-dns=true)");
+			}
+
+			// 2) Control-plane API: push split DNS for hierarchical hobo zones.
+			const apiKey =
+				options?.apiKey ??
+				process.env.TS_API_KEY ??
+				process.env.HOBO_TS_API_KEY;
+			if (apiKey) {
+				try {
+					const { createTailscaleApiClient } = await import(
+						"./tailscale-api.js"
+					);
+					const api = createTailscaleApiClient({
+						apiKey,
+						...(options?.tailnet !== undefined
+							? { tailnet: options.tailnet }
+							: {}),
+						...(options?.apiBase !== undefined
+							? { apiBase: options.apiBase }
+							: {}),
+						...(options?.fetchImpl !== undefined
+							? { fetchImpl: options.fetchImpl }
+							: {}),
+					});
+					await api.setDnsPreferences({ magicDNS: true });
+					const map = await api.putSplitDns(domains, nameservers);
+					controlPlaneApplied = true;
+					notes.push(
+						`controlPlaneApplied=true split-dns=[${Object.keys(map).join(",")}]`,
+					);
+				} catch (error) {
+					notes.push(
+						`controlPlaneApplied=false: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			} else {
+				notes.push(
+					"controlPlaneApplied=false: TS_API_KEY/HOBO_TS_API_KEY unset",
+				);
+			}
+
+			// 3) Optional local CLI dns helpers (does not imply control-plane).
 			const dnsHelp = run(["dns", "--help"]);
-			let applied = accept.ok;
 			if (dnsHelp.ok) {
 				for (const domain of domains) {
-					// Best-effort: some builds support `tailscale dns set-split` variants.
 					const attempt = run([
 						"dns",
 						"set",
@@ -267,19 +312,19 @@ export function createTailscaleOverlay(options?: {
 						"--nameservers",
 						nameservers.join(","),
 					]);
-					if (!attempt.ok) {
-						notes.push(
-							`dns set ${domain}: ${attempt.stderr.trim() || "not supported by this CLI; configure split DNS in admin console"}`,
-						);
-					} else {
-						applied = true;
+					if (attempt.ok) {
+						localAccepted = true;
+						notes.push(`cli dns set ${domain} ok`);
 					}
 				}
-			} else {
-				notes.push(
-					"tailscale dns subcommand unavailable; configure MagicDNS split DNS for hobo.test in the admin console (plan recorded)",
-				);
 			}
+
+			notes.push(
+				`split-dns domains=[${domains.join(",")}] nameservers=[${nameservers.join(",")}] tenant=${config.tenantId}`,
+			);
+
+			// applied means something useful succeeded; control-plane is explicit in notes/metadata.
+			const applied = localAccepted || controlPlaneApplied;
 
 			await options?.metering?.emit(
 				createUsageEvent({
@@ -288,7 +333,10 @@ export function createTailscaleOverlay(options?: {
 					resource: domains.join(","),
 					metadata: {
 						applied,
+						localAccepted,
+						controlPlaneApplied,
 						nameservers: nameservers.join(","),
+						api: Boolean(apiKey),
 					},
 				}),
 			);

@@ -90,9 +90,10 @@ flowchart TB
 |---------|------------------|------------|
 | Tenants | `Tenant`, `TenantId`, `tenantContextFromEnv` | Org membership, invites, SSO |
 | Isolation | Soft **and** hard (`TenantIsolationRegistry`: dedicated overlay + control-plane partitions) | Multi-process shard routing / separate clusters |
-| Policy | Tag ACL **and** OPA/Rego adapter (`createOpaPolicyEngine`) | Per-tenant bundle distribution, time windows |
-| Billing | `UsageEvent` → `createBillingAggregator` period invoices | Stripe/payment capture, tax, dunning |
-| DNS | Cloudflare + Route53 providers, Funnel gateways, heartbeat dynamic DNS | Full admin MagicDNS API, multi-region failover |
+| Policy | Tag ACL + OPA HTTP/CLI + **rego-lite** JSON documents | Per-tenant OPA bundle distribution |
+| Billing | Aggregator + **durable ledger** + Stripe PaymentIntent REST | Tax, dunning, hosted checkout UX |
+| DNS | Cloudflare + Route53 (**SigV4**), Tailscale **API** MagicDNS, Netbird management DNS, heartbeat dynamic DNS | Multi-region failover automation |
+| Credentials | Real **ES256 DPoP** + audience-bound **JWT-SVID** | SPIRE Workload API fetch drop-in |
 
 ```mermaid
 flowchart LR

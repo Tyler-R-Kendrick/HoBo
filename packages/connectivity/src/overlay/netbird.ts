@@ -10,17 +10,48 @@ import {
 	createUsageEvent,
 } from "@hobo/core";
 
+import {
+	createNetbirdApiClient,
+	type NetbirdApiClient,
+} from "./netbird-api.js";
+
 /**
- * Netbird overlay adapter (self-hosted alternative to Tailscale).
- * Implements the full OverlayNetwork surface including MagicDNS zones and
- * reverse-proxy gateway publishing as structured plans until a live agent client
- * is wired to the management API.
+ * Netbird overlay adapter — management API for enrollment, peers, and DNS.
+ * Ready when management URL + setup key (join) and/or access token (DNS admin).
  */
 export function createNetbirdOverlay(options?: {
 	readonly metering?: MeteringBus;
 	readonly managementUrl?: string;
+	readonly accessToken?: string;
+	readonly setupKey?: string;
+	readonly fetchImpl?: typeof fetch;
+	readonly api?: NetbirdApiClient;
 }): OverlayNetwork {
 	let current: OverlayJoinResult["identity"] | null = null;
+	const managementUrl =
+		options?.managementUrl ??
+		process.env.NETBIRD_MANAGEMENT_URL ??
+		process.env.HOBO_NETBIRD_URL;
+
+	function client(): NetbirdApiClient | null {
+		if (options?.api) return options.api;
+		if (!managementUrl) return null;
+		const accessToken = options?.accessToken ?? process.env.NETBIRD_TOKEN;
+		const setupKey = options?.setupKey ?? process.env.NETBIRD_SETUP_KEY;
+		return createNetbirdApiClient({
+			managementUrl,
+			...(accessToken !== undefined && accessToken.length > 0
+				? { accessToken }
+				: {}),
+			...(setupKey !== undefined && setupKey.length > 0
+				? { setupKey }
+				: {}),
+			...(options?.fetchImpl !== undefined
+				? { fetchImpl: options.fetchImpl }
+				: {}),
+		});
+	}
+
 	return {
 		provider: "netbird",
 		tenantTags({ tenantId, role, env, cloud, overlayNetworkId }) {
@@ -35,10 +66,58 @@ export function createNetbirdOverlay(options?: {
 			if (!tags.some((t) => t.startsWith("tenant:"))) {
 				tags.push(`tenant:${join.tenantId}`);
 			}
+			const api = client();
+			const notes: string[] = [];
+			let ready = false;
+			let overlayIps: string[] = [];
+			let nodeId = `netbird:${join.hostname}`;
+
+			if (api) {
+				const enrolled = await api.enrollPeer({
+					name: join.hostname,
+					...(join.authKey ? { setupKey: join.authKey } : {}),
+				});
+				notes.push(...enrolled.notes);
+				if (enrolled.peer) {
+					nodeId = enrolled.peer.id;
+					if (enrolled.peer.ip) overlayIps = [enrolled.peer.ip];
+				}
+				// ready requires concrete peer identity (id and/or ip), not mere key validation.
+				if (enrolled.enrolled && !enrolled.peer?.id && !enrolled.peer?.ip) {
+					try {
+						const peers = await api.listPeers();
+						const hit = peers.find(
+							(p) =>
+								p.name === join.hostname || p.id === join.hostname,
+						);
+						if (hit) {
+							nodeId = hit.id;
+							if (hit.ip) overlayIps = [hit.ip];
+						}
+					} catch (error) {
+						notes.push(
+							`list peers: ${error instanceof Error ? error.message : String(error)}`,
+						);
+					}
+				}
+				ready =
+					Boolean(enrolled.peer?.id || enrolled.peer?.ip) ||
+					(overlayIps.length > 0 && nodeId !== `netbird:${join.hostname}`);
+				if (enrolled.enrolled && !ready) {
+					notes.push(
+						"setup key accepted but peer identity not confirmed — ready=false until peer appears",
+					);
+				}
+			} else {
+				notes.push(
+					"netbird: set NETBIRD_MANAGEMENT_URL + NETBIRD_SETUP_KEY (or accessToken) for live join",
+				);
+			}
+
 			current = {
-				nodeId: `netbird-stub:${join.hostname}`,
+				nodeId,
 				hostname: join.hostname,
-				overlayIps: [],
+				overlayIps,
 				tags,
 				tenantId: join.tenantId,
 			};
@@ -49,24 +128,21 @@ export function createNetbirdOverlay(options?: {
 					resource: join.hostname,
 					metadata: {
 						provider: "netbird",
-						ready: false,
-						stub: true,
-						...(options?.managementUrl
-							? { managementUrl: options.managementUrl }
-							: {}),
+						ready,
+						...(managementUrl ? { managementUrl } : {}),
 					},
 				}),
 			);
 			join.emitProgress?.(
-				"hobo overlay: netbird join recorded — wire management API for production readiness",
+				ready
+					? `hobo overlay: netbird joined ${join.hostname}`
+					: `hobo overlay: netbird join incomplete — ${notes[notes.length - 1] ?? "configure management API"}`,
 			);
 			return {
 				identity: current,
 				provider: "netbird",
-				ready: false,
-				notes: [
-					"netbird agent client pending; OverlayNetwork port surface (join/magicdns/funnel) is complete",
-				],
+				ready,
+				notes,
 			};
 		},
 		async status() {
@@ -88,31 +164,81 @@ export function createNetbirdOverlay(options?: {
 		async configureMagicDns(
 			config: MagicDnsSplitConfig,
 		): Promise<MagicDnsSplitResult> {
+			const notes: string[] = [];
+			const api = client();
+			let applied = false;
+			if (api) {
+				try {
+					const group = await api.upsertDnsNameserverGroup({
+						name: `hobo-${config.tenantId}`,
+						description: "HoBo hierarchical DNS zones",
+						nameservers: config.nameservers.map((ip) => ({
+							ip,
+							nsType: "udp",
+						})),
+						domains: [...config.domains],
+						enabled: true,
+						primary: false,
+					});
+					applied = true;
+					notes.push(
+						`netbird DNS nameserver group ${group.name} domains=[${group.domains.join(",")}]`,
+					);
+				} catch (error) {
+					notes.push(
+						`netbird DNS upsert failed: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			} else {
+				notes.push(
+					"netbird DNS requires management URL + access token (NETBIRD_TOKEN)",
+				);
+			}
 			await options?.metering?.emit(
 				createUsageEvent({
 					tenantId: config.tenantId,
 					eventType: "overlay.magicdns",
 					resource: config.domains.join(","),
-					metadata: { provider: "netbird", applied: false },
+					metadata: { provider: "netbird", applied },
 				}),
 			);
-			return {
-				applied: false,
-				domains: config.domains,
-				notes: [
-					`netbird custom DNS zones planned for domains=[${config.domains.join(",")}] nameservers=[${config.nameservers.join(",")}]`,
-				],
-			};
+			return { applied, domains: config.domains, notes };
 		},
 		async publishFunnel(
 			funnel: FunnelPublishOptions,
 		): Promise<FunnelPublishResult> {
-			const gateway =
+			const notes: string[] = [];
+			// Netbird reverse-proxy / public access: use configured gateway hostname.
+			let gateway =
 				funnel.hostnameHint &&
 				(funnel.hostnameHint.endsWith(".netbird.selfhosted") ||
-					funnel.hostnameHint.endsWith(".nb.local"))
+					funnel.hostnameHint.endsWith(".nb.local") ||
+					funnel.hostnameHint.includes("netbird"))
 					? funnel.hostnameHint
 					: null;
+
+			const api = client();
+			if (!gateway && api && current) {
+				try {
+					const peers = await api.listPeers();
+					const hit = peers.find((p) => p.id === current?.nodeId);
+					if (hit?.dnsLabel) {
+						gateway = hit.dnsLabel;
+						notes.push(`derived gateway from peer dns label ${gateway}`);
+					}
+				} catch (error) {
+					notes.push(
+						`peer lookup: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			}
+
+			if (!gateway) {
+				notes.push(
+					"pass hostnameHint for netbird reverse-proxy / public domain, or ensure peer has dns_label",
+				);
+			}
+
 			await options?.metering?.emit(
 				createUsageEvent({
 					tenantId: funnel.tenantId,
@@ -128,11 +254,7 @@ export function createNetbirdOverlay(options?: {
 			return {
 				enabled: gateway !== null,
 				gatewayHostname: gateway,
-				notes: gateway
-					? [`netbird reverse-proxy gateway ${gateway}`]
-					: [
-							"netbird reverse proxy not configured; pass hostnameHint ending in .netbird.selfhosted or .nb.local",
-						],
+				notes,
 			};
 		},
 	};

@@ -210,10 +210,21 @@ const invoice = billing.closePeriod({
 });
 ```
 
-## Residual limitations
+## Production-shaped crypto & providers
 
-- Route53 live AWS calls need a SigV4 `signRequest` (unsigned only for tests).
-- Netbird management API is planned/stubbed; port methods exist.
-- OPA HTTP / `opa eval` used when available; otherwise in-process Rego-like fallback.
-- Billing produces invoices in-process — no Stripe/payment capture.
-- Hard isolation allocates planes in-process; multi-process control-plane sharding is follow-on ops.
+| Surface | Implementation |
+|---------|----------------|
+| Route53 | Built-in **AWS SigV4** (no SDK); list + change RR sets |
+| DPoP | Real **ES256 P-256** mint + verify (RFC 9449); keys under `HOBO_HOME/keys/` |
+| JWT-SVID | Audience-bound short-lived SPIFFE JWTs (HS256 local / ES256 issuer keys) |
+| Tailscale MagicDNS | Control-plane **API** split DNS when `TS_API_KEY` set + local `--accept-dns` |
+| Netbird | Management HTTP: enroll, peers, DNS nameserver groups |
+| Billing | Durable JSONL ledger + **Stripe PaymentIntent** REST provider |
+| Policy | OPA HTTP → `opa eval` → **rego-lite** JSON documents |
+
+## Residual / operational follow-ons
+
+- Multi-process control-plane sharding for hard isolation across clusters
+- SPIRE Workload API fetch as drop-in replacement for local JWT-SVID mint
+- WebAuthn ceremony for human claim step-up (human-only; agents never hold passkeys)
+- Netbird agent gRPC path if management HTTP enroll is disabled on your build

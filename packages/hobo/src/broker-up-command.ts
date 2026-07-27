@@ -9,9 +9,10 @@
  * Explicit `.with({ provider })` pins hard-fail when that provider is absent
  * from the local broker junction catalog.
  *
- * HONEST SCOPE: remote place uses mock-capable HTTP client; live multi-broker
- * production transport, real DPoP validation, and SPIRE attestation plug into
- * the same control flow.
+ * Remote place uses a mock-capable HTTP client; live multi-broker hosts plug in
+ * without changing CLI control flow. Client credentials use real ES256 DPoP +
+ * audience-bound JWT-SVID mint/verify. Remaining follow-ons: broker **server**
+ * DPoP enforcement and SPIRE Workload API fetch (replace local SVID mint).
  */
 import { createServer } from "node:net";
 

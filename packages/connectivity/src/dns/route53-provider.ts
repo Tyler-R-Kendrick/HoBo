@@ -5,18 +5,22 @@ import type {
 	TenantId,
 } from "@hobo/core";
 
+import {
+	createRoute53SigV4Signer,
+	type AwsCredentials,
+} from "./aws-sigv4.js";
 import { createCloudflareDnsProvider } from "./cloudflare-provider.js";
 
 export interface Route53DnsProviderOptions {
 	readonly accessKeyId: string;
 	readonly secretAccessKey: string;
+	readonly sessionToken?: string;
 	readonly region?: string;
 	/** Hosted zone ID (Z…). Required for writes when not resolving by name. */
 	readonly hostedZoneId?: string;
 	readonly fetchImpl?: typeof fetch;
 	/**
-	 * Optional pre-signer for SigV4. When omitted, the provider uses a
-	 * test/dev unsigned mode only if `allowUnsigned` is true (never default).
+	 * Optional pre-signer override. Default: built-in AWS SigV4 for route53.
 	 */
 	readonly signRequest?: (input: {
 		readonly method: string;
@@ -26,13 +30,19 @@ export interface Route53DnsProviderOptions {
 	}) => Promise<{
 		readonly headers: Record<string, string>;
 	}>;
+	/** Test-only: skip signing (never default for production). */
 	readonly allowUnsigned?: boolean;
 	readonly endpoint?: string;
+	/**
+	 * When true, list() may fall back to the local mirror on *network* errors only.
+	 * HTTP 4xx/5xx never fall back (avoids hiding auth failures).
+	 */
+	readonly offlineCache?: boolean;
 }
 
 /**
- * Route53 DNS provider via ChangeResourceRecordSets (REST + injectable signer).
- * Production: inject a SigV4 signer (AWS SDK or custom). Tests inject fetch.
+ * Route53 DNS provider via ChangeResourceRecordSets.
+ * Signs with AWS SigV4 by default (no SDK). Supports list via ListResourceRecordSets.
  */
 export function createRoute53DnsProvider(
 	options: Route53DnsProviderOptions,
@@ -40,12 +50,24 @@ export function createRoute53DnsProvider(
 	readonly kind: "route53";
 	readonly store: ReadonlyMap<string, DnsRecord>;
 } {
-	const region = options.region ?? "us-east-1";
-	const endpoint =
-		options.endpoint ?? `https://route53.amazonaws.com`;
+	const endpoint = (options.endpoint ?? "https://route53.amazonaws.com").replace(
+		/\/$/,
+		"",
+	);
 	const fetchImpl = options.fetchImpl ?? fetch;
-	// Local mirror for list() when API listing is not fully wired.
 	const store = new Map<string, DnsRecord>();
+	const credentials: AwsCredentials = {
+		accessKeyId: options.accessKeyId,
+		secretAccessKey: options.secretAccessKey,
+		...(options.sessionToken !== undefined
+			? { sessionToken: options.sessionToken }
+			: {}),
+	};
+	const sign =
+		options.signRequest ??
+		(options.allowUnsigned
+			? null
+			: createRoute53SigV4Signer(credentials));
 
 	function key(tenantId: TenantId, zone: string, name: string, type: string) {
 		return `${tenantId}::${zone}::${name}::${type}`;
@@ -54,9 +76,44 @@ export function createRoute53DnsProvider(
 	function r53Name(name: string, zone: string): string {
 		const n = name.endsWith(".") ? name : `${name}.`;
 		if (n.endsWith(`${zone}.`) || n === `${zone}.`) return n;
-		// FQDN already?
 		if (name.includes(zone)) return n;
 		return `${name}.${zone}.`;
+	}
+
+	async function signedFetch(
+		method: string,
+		url: string,
+		body?: string,
+	): Promise<Response> {
+		const baseHeaders: Record<string, string> = {
+			Host: new URL(url).host,
+		};
+		if (body !== undefined) {
+			baseHeaders["Content-Type"] = "text/xml; charset=utf-8";
+			baseHeaders["Content-Length"] = String(Buffer.byteLength(body));
+		}
+		let headers = baseHeaders;
+		if (sign) {
+			const signed = await sign({
+				method,
+				url,
+				headers: baseHeaders,
+				body: body ?? "",
+			});
+			headers = signed.headers;
+		} else if (options.allowUnsigned) {
+			headers = {
+				...baseHeaders,
+				"X-Amz-Access-Key-Id": options.accessKeyId,
+			};
+		} else {
+			throw new Error("route53: no signer configured");
+		}
+		return fetchImpl(url, {
+			method,
+			headers,
+			...(body !== undefined ? { body } : {}),
+		});
 	}
 
 	async function changeResourceRecordSets(
@@ -66,6 +123,10 @@ export function createRoute53DnsProvider(
 		zone: string,
 	): Promise<void> {
 		const fqdn = r53Name(record.name, zone);
+		const value =
+			record.type === "CNAME" && !record.content.endsWith(".")
+				? `${record.content}.`
+				: record.content;
 		const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <ChangeResourceRecordSetsRequest xmlns="https://route53.amazonaws.com/doc/2013-04-01/">
   <ChangeBatch>
@@ -78,7 +139,7 @@ export function createRoute53DnsProvider(
           <TTL>${record.ttl ?? 300}</TTL>
           <ResourceRecords>
             <ResourceRecord>
-              <Value>${escapeXml(record.type === "CNAME" && !record.content.endsWith(".") ? `${record.content}.` : record.content)}</Value>
+              <Value>${escapeXml(value)}</Value>
             </ResourceRecord>
           </ResourceRecords>
         </ResourceRecordSet>
@@ -88,55 +149,34 @@ export function createRoute53DnsProvider(
 </ChangeResourceRecordSetsRequest>`;
 
 		const url = `${endpoint}/2013-04-01/hostedzone/${zoneId}/rrset/`;
-		const method = "POST";
-		const headers: Record<string, string> = {
-			"Content-Type": "text/xml",
-			"Content-Length": String(Buffer.byteLength(xml)),
-			Host: new URL(endpoint).host,
-		};
-
-		let signedHeaders = headers;
-		if (options.signRequest) {
-			const signed = await options.signRequest({
-				method,
-				url,
-				headers,
-				body: xml,
-			});
-			signedHeaders = signed.headers;
-		} else if (!options.allowUnsigned) {
-			throw new Error(
-				"route53: signRequest is required for live AWS calls (or set allowUnsigned for tests)",
-			);
-		} else {
-			// Dev/test path: still send credentials as headers only if unsigned allowed.
-			signedHeaders = {
-				...headers,
-				"X-Amz-Access-Key-Id": options.accessKeyId,
-				"X-Amz-Region": region,
-			};
-		}
-
-		const res = await fetchImpl(url, {
-			method,
-			headers: signedHeaders,
-			body: xml,
-		});
+		const res = await signedFetch("POST", url, xml);
 		if (!res.ok) {
 			const text = await res.text().catch(() => "");
 			throw new Error(
-				`route53 ${action} failed (${res.status}): ${text.slice(0, 200)}`,
+				`route53 ${action} failed (${res.status}): ${text.slice(0, 400)}`,
 			);
 		}
 	}
 
+	async function listResourceRecordSets(
+		zoneId: string,
+	): Promise<readonly DnsRecord[]> {
+		const url = `${endpoint}/2013-04-01/hostedzone/${zoneId}/rrset?maxitems=100`;
+		const res = await signedFetch("GET", url);
+		if (!res.ok) {
+			const text = await res.text().catch(() => "");
+			throw new Error(
+				`route53 list failed (${res.status}): ${text.slice(0, 400)}`,
+			);
+		}
+		const xml = await res.text();
+		return parseListResourceRecordSets(xml);
+	}
+
 	function zoneIdFor(zone: string): string {
 		if (options.hostedZoneId) return options.hostedZoneId;
-		// Allow tests to pass zone as zone id.
 		if (zone.startsWith("Z")) return zone;
-		throw new Error(
-			`route53: hostedZoneId required to manage zone ${zone}`,
-		);
+		throw new Error(`route53: hostedZoneId required to manage zone ${zone}`);
 	}
 
 	return {
@@ -150,22 +190,52 @@ export function createRoute53DnsProvider(
 			store.set(key(tenantId, zone, record.name, record.type), record);
 		},
 		async remove(tenantId, zone, name, type) {
-			const existing = store.get(key(tenantId, zone, name, type));
-			const record: DnsRecord = existing ?? {
-				name,
-				type,
-				content: "placeholder.invalid.",
-				gatewayTarget: true,
-			};
+			let existing = store.get(key(tenantId, zone, name, type));
+			if (!existing) {
+				// Require exact RRSet for Route53 DELETE — never invent placeholder content.
+				const listed = await this.list(tenantId, zone);
+				existing = listed.find(
+					(r) =>
+						r.name === name ||
+						r.name === name.replace(/\.$/, "") ||
+						r.name.startsWith(`${name}.`),
+				);
+				if (existing && existing.type !== type) {
+					existing = listed.find((r) => r.type === type && r.name.includes(name));
+				}
+			}
+			if (!existing) {
+				throw new Error(
+					`route53 delete: unknown record ${type} ${name} (list/upsert first so content is known)`,
+				);
+			}
 			const zoneId = zoneIdFor(zone);
-			await changeResourceRecordSets(zoneId, "DELETE", record, zone);
+			await changeResourceRecordSets(zoneId, "DELETE", existing, zone);
 			store.delete(key(tenantId, zone, name, type));
 		},
 		async list(tenantId, zone) {
-			const prefix = `${tenantId}::${zone}::`;
-			return [...store.entries()]
-				.filter(([k]) => k.startsWith(prefix))
-				.map(([, v]) => v);
+			const zoneId = zoneIdFor(zone);
+			try {
+				const remote = await listResourceRecordSets(zoneId);
+				for (const r of remote) {
+					store.set(key(tenantId, zone, r.name, r.type), r);
+				}
+				return remote;
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : String(error);
+				// Never hide HTTP auth/permission failures behind an empty cache.
+				if (/failed \(\d{3}\)/.test(message) && !message.includes("(0)")) {
+					throw error;
+				}
+				if (options.offlineCache === true) {
+					const prefix = `${tenantId}::${zone}::`;
+					return [...store.entries()]
+						.filter(([k]) => k.startsWith(prefix))
+						.map(([, v]) => v);
+				}
+				throw error;
+			}
 		},
 	};
 }
@@ -178,8 +248,44 @@ function escapeXml(value: string): string {
 		.replace(/"/g, "&quot;");
 }
 
+/** Minimal XML parse for ListResourceRecordSetsResponse. */
+export function parseListResourceRecordSets(
+	xml: string,
+): readonly DnsRecord[] {
+	const records: DnsRecord[] = [];
+	const setRe =
+		/<ResourceRecordSet>([\s\S]*?)<\/ResourceRecordSet>/g;
+	let match: RegExpExecArray | null;
+	while ((match = setRe.exec(xml)) !== null) {
+		const block = match[1] ?? "";
+		const name = textBetween(block, "Name")?.replace(/\.$/, "") ?? "";
+		const type = textBetween(block, "Type") as DnsRecordType | null;
+		const ttlRaw = textBetween(block, "TTL");
+		const value = textBetween(block, "Value")?.replace(/\.$/, "") ?? "";
+		if (!name || !type || !value) continue;
+		if (type !== "A" && type !== "AAAA" && type !== "CNAME" && type !== "TXT") {
+			continue;
+		}
+		records.push({
+			name,
+			type,
+			content: value,
+			...(ttlRaw !== null ? { ttl: Number(ttlRaw) } : {}),
+			gatewayTarget: type === "CNAME",
+		});
+	}
+	return records;
+}
+
+function textBetween(xml: string, tag: string): string | null {
+	const re = new RegExp(`<${tag}>([^<]*)</${tag}>`);
+	const m = re.exec(xml);
+	return m?.[1] ?? null;
+}
+
 /**
  * Factory that picks Cloudflare / Route53 / memory / dnscontrol from config.
+ * Route53 always gets built-in SigV4 unless allowUnsigned is set for tests.
  */
 export function createDnsProviderFromConfig(input: {
 	readonly kind: string;
@@ -215,6 +321,12 @@ export function createDnsProviderFromConfig(input: {
 		return createRoute53DnsProvider({
 			accessKeyId,
 			secretAccessKey,
+			...(creds.sessionToken || creds.AWS_SESSION_TOKEN
+				? {
+						sessionToken:
+							creds.sessionToken ?? creds.AWS_SESSION_TOKEN,
+					}
+				: {}),
 			...(creds.region ? { region: creds.region } : {}),
 			...(creds.hostedZoneId || input.zoneId
 				? { hostedZoneId: creds.hostedZoneId ?? input.zoneId }
@@ -224,5 +336,7 @@ export function createDnsProviderFromConfig(input: {
 			allowUnsigned: input.allowUnsigned === true,
 		});
 	}
-	throw new Error(`createDnsProviderFromConfig: unsupported kind ${input.kind}`);
+	throw new Error(
+		`createDnsProviderFromConfig: unsupported kind ${input.kind}`,
+	);
 }

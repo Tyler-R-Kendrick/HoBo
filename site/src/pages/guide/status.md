@@ -20,10 +20,15 @@ Where is HoBo on the road? Here's the honest itinerary.
 - **The TypeScript bindle flow.** A project whose `src/bindle.ts` default-exports a `bindle()` runs `hobo collect`, `hobo plan`, `hobo up`, `hobo down`, and `hobo dev` end to end against the default **local, in-memory lane** — no cloud account. `hobo dev` serves the project's own api/web entrypoint handler in-process; a committed `hobo.bindle.json` manifest artifact wins when present.
 - **Durable local EventStore.** The Camp EventStore defaults to a **single-owner SQLite partition** (`@hobo/storage-sqlite` + `@hobo/runtime-local`): stream-head CAS, actor fencing, positioned catch-up, durable subscription checkpoints, and atomic domain events with staged queue/timer/outbox effects. Browser hosts use `@hobo/runtime-browser` with OPFS when available (fail-closed when durable is required but OPFS is not).
 - **Contract effects + visible resiliency.** `@hobo/contracts` BoundaryContracts may declare **EffectSpec** and **ResilienceProfile**; can-deploy treats effect widening as breaking when declared; Gatekeeper surfaces effect summaries; `@hobo/contract-harness` isolates pure contracts and runs never-retry fault injection. No Effect-TS/Polly/XState public dependency.
+- **Station + pure Conductor.** `@hobo/stations` + `@hobo/broker` — control-plane isolation, Rails, receipts pin `stationId` + `railHash`.
+- **Trails + continuous identity.** `@hobo/trails` recipes and hands-off dual-path identity continuous (`@hobo/identity`); pure identity continuous needs zero Trail authoring.
+- **Harness progressive delivery.** OpenFeature-shaped flag evaluation, delivery, and experiments in `@hobo/identity`; CD apply plane in `@hobo/cloud`.
+- **Connectivity foundations.** `@hobo/connectivity` — hierarchical naming (never bare `.hobo`), overlay/DNS, secretless connectors, env isolation, PAM hooks.
+- **Component host scaffolds.** `@hobo/runtime-wasm` (Wasmtime), `@hobo/runtime-oci` (kubectl transport), `@hobo/runtime-cloud-native` (mock + provider stubs). See [Component hosts](/HoBo/reference/component-hosts/).
 - **The MCP control surface.** The `hobo-mcp` binary serves all 28 canonical verbs as MCP tools over stdio, dispatching through the same command registry as the CLI, with verb/tool parity contract-tested, deny-by-default auth, and audited decisions. See [the MCP surface](/HoBo/agents/mcp/).
 - **Credential-gated live lanes.** Cloudflare and Vercel deploys unlock via env tokens; the real pinned Pulumi CLI engine unlocks via `HOBO_PULUMI_LIVE=1`.
 - **Examples in the repo:** `examples/hello-bindle`, `examples/multi-cloud-shop`, `examples/durable-agent`, and `examples/self-host-yard` (operate your own Yard: the control-plane event log on your disk).
-- **Not yet shipped:** `@hobo/junctions` (deliberately deferred to the S4 multi-cloud stage) and the fly/aws/azure/gcp provider and postgres runtime packages — pages that show them are marked design-stage.
+- **Not yet shipped / design-stage:** full certified multi-cloud provider adapters (fly/aws/azure/gcp production paths), Junction package maturity toward S4, alternate EventStore engines (`runtime-postgres` / Temporal / Restate / Cloudflare DO), and Session Replay (`@hobo/replay` — open PR, not on main yet).
 
 ## How the build is staged
 

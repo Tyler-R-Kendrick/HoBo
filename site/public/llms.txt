@@ -153,6 +153,7 @@ Key facts:
 
 - [Reference overview](https://tyler-r-kendrick.github.io/HoBo/reference/)
 - [Package map](https://tyler-r-kendrick.github.io/HoBo/reference/packages/)
+- [Component hosts](https://tyler-r-kendrick.github.io/HoBo/reference/component-hosts/)
 - [EventStore & journal](https://tyler-r-kendrick.github.io/HoBo/reference/eventstore/)
 - [Schema & migrations](https://tyler-r-kendrick.github.io/HoBo/reference/schema/)
 - [Queue port](https://tyler-r-kendrick.github.io/HoBo/reference/queue/)

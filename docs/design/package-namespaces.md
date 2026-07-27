@@ -59,6 +59,15 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | local runtime harness | `@hobo/runtime-local/testing` | tests | Local test runtime is intentionally separate from production runtime imports. |
 | Node SQLite EventStore + storage worker | `@hobo/runtime-local` | Camp local runtime | Native single-owner partition adapter. |
 | Browser SQLite WASM + OPFS EventStore | `@hobo/runtime-browser` | browser hosts | Worker + OPFS policy; transient fallback only when allowed. |
+| Station factories, Rails, local Station client, PAM hooks | `@hobo/stations` | operators + CLI | Station is control-plane isolation (ADR-0131), not Bindle/Camp/Yard topology. |
+| Trail definitions, can-trail, dual fixtures, recipe runner | `@hobo/trails` | app authors + platform | Continuous migration recipes; pure identity continuous needs zero Trail authoring (ADR-0134). |
+| Overlay, DNS managers, secretless connectors, isolation tiers, metering sinks | `@hobo/connectivity` | runtimes + operators | Multi-tenant connectivity foundations; hierarchical naming pure functions stay in `@hobo/core` (ADR-0130). |
+| Harness (OpenFeature provider, OpenDelivery, OpenExperiment) | `@hobo/identity` | app + platform | Progressive delivery plane; flags are facts. |
+| Planner / Matching / continuous-delivery apply | `@hobo/cloud` | control plane | Provider-neutral ResourceIntent + workload-attested apply. |
+| Conductor placement, receipts, rejections | `@hobo/broker` | operators + CLI | Pure runtime mounting Station client; no durable Connection ownership. |
+| Component host: Wasmtime sandboxes (`componentHost=wasm`) | `@hobo/runtime-wasm` | Camp hosts | Private components as wasi:http processes. |
+| Component host: OCI + kubectl transport (`componentHost=oci`) | `@hobo/runtime-oci` | Camp hosts | PACT-shaped KubectlTransport; schedule on Kubernetes. |
+| Component host: multi-cloud registry (`componentHost=cloud-native`) | `@hobo/runtime-cloud-native` | Camp hosts | Mock provider for parity; cloud providers stubbed until certified. |
 
 ## Re-export Decision
 

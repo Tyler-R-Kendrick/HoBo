@@ -23,6 +23,7 @@
     "prepare": "node --import tsx scripts/install-hooks.mts",
     "docs:coverage": "node --import tsx scripts/check-docs-coverage.ts",
     "docs:okf": "node --import tsx scripts/check-okf-docs.mts",
+    "docs:site-nav": "node --import tsx scripts/check-site-nav.mts",
     "docs:register-check": "node --import tsx scripts/check-gaps-register-lag.ts",
     "case:check": "node --import tsx scripts/check-case-collisions.ts",
     "test:fast": "node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts",

@@ -13,9 +13,10 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **Yard** | Provider control-plane scope over camps (policy, identity, reconciliation) |
 | **Junction** | Cross-yard federation; peer yards, no shared mutable state |
 | **Conductor / Broker** | Policy-governed placement authority (`@hobo/broker`) |
-| **Station** | Hard control-plane isolation boundary a Conductor occupies |
+| **Station** | Hard control-plane isolation boundary a Conductor occupies (ADR-0131) |
 | **Rail** | Content-addressed Station profile/bootstrap pin |
-| **Trail** | App-owned continuous migration recipe |
+| **Trail** | App-owned continuous migration recipe (ADR-0134) |
+| **OpenFeature** | CNCF flag evaluation API; sole public app flag surface under Harness |
 | **Matching** | Resource definition + placement selection process |
 | **ResourceActor** | Single-writer reconcilers for infrastructure resources |
 | **Gatekeeper** | Composite deploy gate: contracts + policy + obligations + cost (+ more) |
@@ -42,7 +43,7 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **Golden suite** | Signed multi-check deploy gate bundle |
 | **SVID** | Workload/agent SPIFFE-style identity document |
 | **Relay** | Outbound network proxy keeping cloud creds in-boundary — *not* an agent |
-| **Named endpoint** | Hierarchical DNS-valid host under `.hobo.localhost` / `.hobo.test` |
+| **Named endpoint** | Hierarchical DNS-valid host under `.hobo.localhost` / `.hobo.test` (ADR-0130; never bare `.hobo`) |
 | **Resource intent** | Provider-neutral desired resource used in planning/FinOps routing |
 | **Showback** | Usage attribution projection — not an invoice by itself |
 | **Secretless-first** | Prefer federation/bindings over stored secrets |

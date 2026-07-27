@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Package map
-description: "Canonical @hobo/* ownership: authoring, contracts, runtime, storage, identity, connectivity, stations, trails, adapters, and surfaces."
+description: "Canonical @hobo/* ownership: authoring, contracts, runtime, storage, identity, connectivity, stations, trails, component hosts, and surfaces."
 ---
 
 # Package map
@@ -15,20 +15,25 @@ Dependencies point **inward only** (`apps → adapters → runtime/sdk → core`
 | **Authoring** | `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/junctions` | App + topology factories |
 | **App runtime** | `@hobo/runtime`, `@hobo/data`, `@hobo/events` | Workflows, CQRS, messaging |
 | **Contracts** | `@hobo/core`, `@hobo/wit`, `@hobo/contracts`, `@hobo/policy`, `@hobo/contract-harness`, `@hobo/conformance` | Ports, IR, Gatekeeper, PACT |
-| **Storage engines** | `@hobo/storage-sqlite`, `@hobo/runtime-local`, `@hobo/runtime-browser` | Default durable journal |
-| **Identity & connectivity** | `@hobo/identity`, `@hobo/connectivity` | SVIDs, config ladder, overlay, DNS, secretless connectors |
-| **Control topology** | `@hobo/stations`, `@hobo/trails`, `@hobo/broker` | Station isolation, migration recipes, Conductor |
+| **Storage engines** | `@hobo/storage-sqlite`, `@hobo/runtime-local`, `@hobo/runtime-browser` | Default durable journal (ADR-0135) |
+| **Component hosts** | `@hobo/runtime-wasm`, `@hobo/runtime-oci`, `@hobo/runtime-cloud-native` | How components execute |
+| **Identity & connectivity** | `@hobo/identity`, `@hobo/connectivity` | SVIDs, Harness/OpenFeature, overlay, DNS, secretless connectors |
+| **Control topology** | `@hobo/stations`, `@hobo/trails`, `@hobo/broker`, `@hobo/cloud` | Station, Trails, Conductor, Planner/Matching/CD |
 | **Surfaces** | `@hobo/cli`, `@hobo/mcp`, `@hobo/sdk`, `@hobo/hobo` | Humans, agents, operators |
-| **Adapters** | `providers/*`, `iac/*`, `cloud/*`, connector plugins | Clouds and protocols |
 
 ## Storage / runtime engines
 
 | Package | Role | Status |
 |---|---|---|
-| `@hobo/storage-sqlite` | Schema, migrations, `SqliteJournal` semantics | Shipped |
+| `@hobo/storage-sqlite` | Schema, migrations, journal semantics | Shipped |
 | `@hobo/runtime-local` | Node EventStore + storage worker | Shipped |
 | `@hobo/runtime-browser` | Browser SQLite WASM + OPFS policy | Shipped (OPFS env-dependent) |
-| `runtime-postgres` / Temporal / Restate / Cloudflare | Alternate engines | Design / later |
+| `@hobo/runtime-wasm` | Wasmtime component host | Shipped scaffold |
+| `@hobo/runtime-oci` | OCI + kubectl transport host | Shipped scaffold |
+| `@hobo/runtime-cloud-native` | Multi-cloud host registry (mock + stubs) | Shipped scaffold |
+| `runtime-postgres` / Temporal / Restate / Cloudflare DO | Alternate engines | Design / later |
+
+Deep dive: [Component hosts](/HoBo/reference/component-hosts/).
 
 ## Contracts plane
 
@@ -51,15 +56,18 @@ Dependencies point **inward only** (`apps → adapters → runtime/sdk → core`
 | EventStore ports, naming, envelopes | `@hobo/core` |
 | Trails / can-trail | `@hobo/trails` |
 | Station client | `@hobo/stations` |
+| Harness / OpenFeature | `@hobo/identity` |
+| Overlay / secretless dial | `@hobo/connectivity` |
 
 ## Ownership rules
 
 1. App authors do **not** import `@hobo/storage-sqlite` for business logic.
 2. `@hobo/core` is substrate — not app authoring factories.
 3. `@hobo/bindles` must **not** re-export topology factories (`camp`, `yard`, `junction`).
-4. SQLite is the **default engine**, not the public portability boundary.
-5. Generated `_generated/**` is owned by codegen — no hand edits.
+4. SQLite is the **default EventStore engine**, not the public portability boundary.
+5. Component hosts are **not** interchangeable with EventStore engines without understanding both tables.
+6. Generated `_generated/**` is owned by codegen — no hand edits.
 
 ## Related
 
-[Architecture](/HoBo/guide/architecture/) · [Runtime ports](/HoBo/reference/runtime-ports/) · [CLI](/HoBo/reference/cli/)
+[Architecture](/HoBo/guide/architecture/) · [Component hosts](/HoBo/reference/component-hosts/) · [Runtime ports](/HoBo/reference/runtime-ports/) · [CLI](/HoBo/reference/cli/)

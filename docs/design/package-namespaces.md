@@ -68,6 +68,9 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | Component host: Wasmtime sandboxes (`componentHost=wasm`) | `@hobo/runtime-wasm` | Camp hosts | Private components as wasi:http processes. |
 | Component host: OCI + kubectl transport (`componentHost=oci`) | `@hobo/runtime-oci` | Camp hosts | PACT-shaped KubectlTransport; schedule on Kubernetes. |
 | Component host: multi-cloud registry (`componentHost=cloud-native`) | `@hobo/runtime-cloud-native` | Camp hosts | Mock provider for parity; cloud providers stubbed until certified. |
+| MCP server (tool surface parity with CLI verbs) | `@hobo/mcp` | agents | Deny-by-default auth; same canonical verb registry as CLI. |
+| Port/provider conformance suites | `@hobo/conformance` | adapters + CI | Certifies engines/providers claiming a port. |
+| PACT harness + effect-aware isolation/mocks/fault injection | `@hobo/contract-harness` | tests | ADR-0136 testing leverage for EffectSpec/ResilienceProfile. |
 
 ## Re-export Decision
 

@@ -13,6 +13,7 @@ This section is the **lookup manual** — precise surfaces agents and engineers 
 | Page | Use when you need |
 |---|---|
 | [Package map](/HoBo/reference/packages/) | Which `@hobo/*` package owns a symbol |
+| [Component hosts](/HoBo/reference/component-hosts/) | wasm / oci / cloud-native hosts vs EventStore engines |
 | [EventStore & journal](/HoBo/reference/eventstore/) | Durable log, positions, fencing, SQLite default |
 | [Schema & migrations](/HoBo/reference/schema/) | `user_version`, tables, codecs, integrity |
 | [Queue](/HoBo/reference/queue/) · [Streamer](/HoBo/reference/streamer/) · [Clock](/HoBo/reference/clock/) | Other Camp ports |

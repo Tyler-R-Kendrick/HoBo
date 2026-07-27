@@ -74,6 +74,7 @@ export const nav: NavGroup[] = [
 		items: [
 			{ label: "Reference overview", slug: "/reference/" },
 			{ label: "Package map", slug: "/reference/packages/" },
+			{ label: "Component hosts", slug: "/reference/component-hosts/" },
 			{ label: "EventStore & journal", slug: "/reference/eventstore/" },
 			{ label: "Schema & migrations", slug: "/reference/schema/" },
 			{ label: "Queue port", slug: "/reference/queue/" },

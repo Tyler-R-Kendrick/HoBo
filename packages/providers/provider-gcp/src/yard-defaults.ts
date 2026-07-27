@@ -74,5 +74,9 @@ export function gcpDefaultResolverPins(): readonly {
 			resolverId: "gcp.bindle.cloud-run/v1",
 		}),
 		Object.freeze({ slot: "network", resolverId: "gcp.yard.vpc/v1" }),
+		Object.freeze({
+			slot: "event-store",
+			resolverId: "gcp.yard.event-store/v1",
+		}),
 	]);
 }

@@ -187,6 +187,27 @@ export function defaultProviderResolvers(
 		mk("substrate", "camp.substrate"),
 		mk("workload", "bindle.workload"),
 		mk("network", "yard.network"),
+		// Event-store fold resolver: rebuilds inventory + generation from yard.* facts.
+		Object.freeze({
+			schemaVersion: "hobo.primitive-resolver/v1" as const,
+			id: `${providerId}.yard.event-store/v1`,
+			version: "1",
+			providerId,
+			primitiveKind: "yard" as const,
+			slot: "event-store",
+			additive: false,
+			source: "provider-default" as const,
+			default: true,
+			priority: 200,
+			requiresCapabilities: Object.freeze(["event-store"]),
+			providesCapabilities: Object.freeze([
+				"event-store",
+				"yard-inventory-fold",
+				"yard-generation-fold",
+			]),
+			implementationRef: `${providerId}/resolvers/event-store-fold`,
+			remediation: `Register ${providerId}.yard.event-store/v1 for Yard event-store folds`,
+		}),
 	]);
 }
 

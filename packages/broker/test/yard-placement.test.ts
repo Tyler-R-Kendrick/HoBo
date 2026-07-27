@@ -12,21 +12,23 @@ import {
 	matchYard,
 	planYardGeneration,
 	resolveBindleDeployment,
+	YARD_EVENTS,
+	yardEvent,
 } from "../src/index.js";
 import { createLocalHostCatalog } from "../src/local-host.js";
 
 describe("yard-first placement", () => {
 	it("matches an existing ready yard before generating", async () => {
 		const catalog = createLocalHostCatalog();
-		const inventory = createYardInventory("broker:test");
-		inventory.apply({
-			type: "yard.Registered",
-			yard: localYardInstance({
-				yardId: "yard:local-main",
-				ownerTenantId: "local",
-				providerId: LOCAL_HOST_PROVIDER_ID,
-			}),
+		const yard = localYardInstance({
+			yardId: "yard:local-main",
+			ownerTenantId: "local",
+			providerId: LOCAL_HOST_PROVIDER_ID,
 		});
+		const priorEvents = [
+			yardEvent(YARD_EVENTS.Registered, { yard }),
+			yardEvent(YARD_EVENTS.Ready, { yardId: "yard:local-main" }),
+		];
 
 		const request = buildDeploymentRequestFromParts({
 			bindleName: "shop",
@@ -41,8 +43,8 @@ describe("yard-first placement", () => {
 		const result = await resolveBindleDeployment(request, {
 			brokerId: "broker:test",
 			catalog,
-			inventory,
 			seedLocalYard: false,
+			priorEvents,
 		});
 
 		expect(result.outcome).toBe("resolved");
@@ -60,6 +62,9 @@ describe("yard-first placement", () => {
 			false,
 		);
 		expect(units.find((u) => u.kind === "bindle")?.destroyWithBindle).toBe(
+			true,
+		);
+		expect(result.events.some((e) => e.type === YARD_EVENTS.PlacementResolved)).toBe(
 			true,
 		);
 	});

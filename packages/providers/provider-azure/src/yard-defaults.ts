@@ -83,5 +83,9 @@ export function azureDefaultResolverPins(): readonly {
 			slot: "network",
 			resolverId: "azure.yard.vnet/v1",
 		}),
+		Object.freeze({
+			slot: "event-store",
+			resolverId: "azure.yard.event-store/v1",
+		}),
 	]);
 }

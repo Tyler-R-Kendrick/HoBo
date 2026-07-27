@@ -74,5 +74,9 @@ export function awsDefaultResolverPins(): readonly {
 			resolverId: "aws.bindle.fargate/v1",
 		}),
 		Object.freeze({ slot: "network", resolverId: "aws.yard.vpc/v1" }),
+		Object.freeze({
+			slot: "event-store",
+			resolverId: "aws.yard.event-store/v1",
+		}),
 	]);
 }

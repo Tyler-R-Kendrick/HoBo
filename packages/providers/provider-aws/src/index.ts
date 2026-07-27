@@ -59,3 +59,10 @@ export {
 	awsDefaultResolverPins,
 	awsYardRuntimeRegistration,
 } from "./yard-defaults.js";
+export {
+	AWS_EVENT_STORE_RESOLVER_ID,
+	awsEventStoreFoldDescriptor,
+	normalizeAwsYardSignal,
+	type AwsProviderNativeSignal,
+	type AwsYardEvent,
+} from "./yard-event-fold.js";

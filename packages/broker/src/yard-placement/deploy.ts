@@ -1,6 +1,20 @@
 import { randomUUID } from "node:crypto";
 
 import type { BrokerCatalog, PlacementDecision } from "../types.js";
+import { defaultYardGenerationConnectors } from "./connectors.js";
+import {
+	createDefaultEventStoreFoldResolvers,
+	createEventStoreFoldResolverRegistry,
+	type ProviderNativeSignal,
+	type YardEventStoreFoldResolver,
+} from "./event-store-resolvers.js";
+import { type YardEvent, yardEvent, YARD_EVENTS } from "./events.js";
+import {
+	emptyYardEventStoreState,
+	foldYardEventStore,
+	inventorySnapshotFromFold,
+	type YardEventStoreState,
+} from "./folds.js";
 import {
 	createYardGenerationSaga,
 	DEFAULT_YARD_GENERATION_POLICY,
@@ -8,7 +22,6 @@ import {
 	type YardGenerationConnector,
 } from "./generation.js";
 import {
-	createYardInventory,
 	createYardRuntimeCatalog,
 	localYardInstance,
 } from "./inventory.js";
@@ -27,10 +40,8 @@ import {
 	emptyYardShape,
 	parseYardShape,
 	type YardGenerationPolicy,
-	type YardInventorySnapshot,
 	type YardPlacementReceipt,
 	type YardPlacementRequest,
-	type YardRuntimeCatalogSnapshot,
 	YARD_PLACEMENT_RECEIPT_SCHEMA,
 } from "./types.js";
 
@@ -38,12 +49,15 @@ export interface YardFirstPlacementDeps {
 	readonly brokerId: string;
 	readonly catalog: BrokerCatalog;
 	readonly ownerTenantId?: string;
-	readonly inventory?: ReturnType<typeof createYardInventory>;
 	readonly runtimeCatalog?: ReturnType<typeof createYardRuntimeCatalog>;
 	readonly generationPolicy?: YardGenerationPolicy;
 	readonly connectors?: ReadonlyMap<string, YardGenerationConnector>;
 	/** Seed a ready local yard when inventory is empty (zero-config path). */
 	readonly seedLocalYard?: boolean;
+	/** Provider event-store fold resolvers (default: local+azure+aws+gcp). */
+	readonly foldResolvers?: readonly YardEventStoreFoldResolver[];
+	/** Prior event log for crash-resume / replay. */
+	readonly priorEvents?: readonly YardEvent[];
 }
 
 export interface YardFirstPlacementResult {
@@ -56,41 +70,108 @@ export interface YardFirstPlacementResult {
 		readonly message: string;
 	}[];
 	readonly generationAttemptId?: string;
+	/** Durable yard.* facts emitted for this request (append-only). */
+	readonly events: readonly YardEvent[];
+	/** Fold projection after applying prior + new events. */
+	readonly foldState: YardEventStoreState;
 }
 
 /**
  * Canonical production path: Yard match → optional generation → Camp →
  * resolvers → residual resource placement under selected Yard provider only.
+ *
+ * All decisions append yard.* facts; inventory/generation state is the pure
+ * fold of those facts (via the provider event-store fold resolver).
  */
 export async function resolveBindleDeployment(
 	request: BindleDeploymentRequest,
 	deps: YardFirstPlacementDeps,
 ): Promise<YardFirstPlacementResult> {
+	const emitted: YardEvent[] = [];
+	let foldState = emptyYardEventStoreState(deps.brokerId);
+	// Replay prior events for crash-resume.
+	for (const prior of deps.priorEvents ?? []) {
+		foldState = foldYardEventStore(foldState, prior);
+	}
+
+	const foldRegistry = createEventStoreFoldResolverRegistry(
+		deps.foldResolvers ?? createDefaultEventStoreFoldResolvers(),
+	);
+
+	const append = (event: YardEvent): void => {
+		emitted.push(event);
+		foldState = foldYardEventStore(foldState, {
+			...event,
+			seq: (event.seq ?? foldState.seq) + 1,
+		});
+	};
+
+	const appendProviderSignals = (
+		providerId: string,
+		signals: readonly { kind: string; payload: Record<string, unknown> }[],
+	): void => {
+		const resolver =
+			foldRegistry.get(providerId) ??
+			foldRegistry.get("local") ??
+			createDefaultEventStoreFoldResolvers()[0]!;
+		for (const signal of signals) {
+			const native: ProviderNativeSignal = {
+				providerId,
+				kind: signal.kind,
+				payload: signal.payload as ProviderNativeSignal["payload"],
+			};
+			for (const event of resolver.normalize(native)) {
+				append(event);
+			}
+		}
+	};
+
 	if (request.schemaVersion !== BINDLE_DEPLOYMENT_REQUEST_SCHEMA) {
-		return reject("contracts", "schema-mismatch", "invalid deployment request schema");
+		return rejectResult(
+			foldState,
+			emitted,
+			"contracts",
+			"schema-mismatch",
+			"invalid deployment request schema",
+		);
 	}
 
 	const ownerTenantId = request.ownerTenantId || deps.ownerTenantId || "local";
-	const inventory =
-		deps.inventory ?? createYardInventory(deps.brokerId);
 	const runtimeCatalog = deps.runtimeCatalog ?? createYardRuntimeCatalog();
 
-	// Zero-config: ensure a ready local yard exists for local provider shapes.
-	if (deps.seedLocalYard !== false && inventory.snapshot().yards.length === 0) {
+	append(
+		yardEvent(YARD_EVENTS.PlacementRequested, {
+			requestId: request.requestId,
+			bindleName: request.bindleName,
+			ownerTenantId,
+			selectionMode: request.yard.selectionMode,
+			requestedYardId: request.yard.requestedYardId,
+			requestedShape: request.yard.requestedShape,
+		}),
+	);
+
+	// Zero-config: seed a ready local yard via facts when inventory empty.
+	if (
+		deps.seedLocalYard !== false &&
+		Object.keys(foldState.yards).length === 0
+	) {
 		const providerId =
 			request.yard.requestedShape.providerId ?? "local";
-		inventory.apply({
-			type: "yard.Registered",
-			yard: localYardInstance({
-				yardId: request.yard.requestedYardId ?? `yard:local-${providerId}`,
-				ownerTenantId,
-				providerId,
-				componentHosts: ["local", "wasm", "oci"],
-			}),
+		const yard = localYardInstance({
+			yardId: request.yard.requestedYardId ?? `yard:local-${providerId}`,
+			ownerTenantId,
+			providerId,
+			componentHosts: ["local", "wasm", "oci"],
 		});
+		append(yardEvent(YARD_EVENTS.Registered, { yard }));
+		append(
+			yardEvent(YARD_EVENTS.Ready, {
+				yardId: yard.yardId,
+			}),
+		);
 	}
 
-	const snapshot = inventory.snapshot();
+	const snapshot = inventorySnapshotFromFold(foldState);
 	const match = matchYard(request.yard, snapshot, {
 		ownerTenantId,
 		objective: request.objective,
@@ -98,9 +179,15 @@ export async function resolveBindleDeployment(
 		contributingPolicyIds: ["yard-match"],
 	});
 
+	append(
+		yardEvent(YARD_EVENTS.MatchDecided, {
+			requestId: request.requestId,
+			match,
+		}),
+	);
+
 	let selectedYardId = match.winnerYardId;
 	let generationAttemptId: string | undefined;
-	let workingSnapshot: YardInventorySnapshot = snapshot;
 	const runtimeSnapshot = runtimeCatalog.snapshot();
 
 	if (match.outcome === "generation-required") {
@@ -113,57 +200,158 @@ export async function resolveBindleDeployment(
 			attemptId: `gen-${request.requestId}`,
 		});
 		if (!genDecision.allowed) {
-			return reject(
+			append(
+				yardEvent(YARD_EVENTS.PlacementRejected, {
+					requestId: request.requestId,
+					code: "yard-generation-denied",
+					reasonCodes: ["yard-generation-denied"],
+					message: genDecision.reason,
+				}),
+			);
+			return rejectResult(
+				foldState,
+				emitted,
 				"policy",
 				"yard-generation-denied",
 				genDecision.reason,
 			);
 		}
-		const saga = createYardGenerationSaga({
-			connectors: deps.connectors ?? new Map(),
-		});
+
+		append(
+			yardEvent(YARD_EVENTS.GenerationRequested, {
+				attemptId: genDecision.plan.attemptId,
+				idempotencyKey: genDecision.plan.idempotencyKey,
+				providerId: genDecision.plan.providerId,
+				runtimeId: genDecision.plan.runtimeId,
+				expectedYardId: genDecision.plan.expectedYardId,
+			}),
+		);
+		append(
+			yardEvent(YARD_EVENTS.GenerationReserved, {
+				attemptId: genDecision.plan.attemptId,
+				idempotencyKey: genDecision.plan.idempotencyKey,
+				providerId: genDecision.plan.providerId,
+				runtimeId: genDecision.plan.runtimeId,
+				expectedYardId: genDecision.plan.expectedYardId,
+			}),
+		);
+
+		const connectors =
+			deps.connectors ?? defaultYardGenerationConnectors();
+		const saga = createYardGenerationSaga({ connectors });
+		append(
+			yardEvent(YARD_EVENTS.GenerationStarted, {
+				attemptId: genDecision.plan.attemptId,
+				idempotencyKey: genDecision.plan.idempotencyKey,
+				providerId: genDecision.plan.providerId,
+				runtimeId: genDecision.plan.runtimeId,
+				expectedYardId: genDecision.plan.expectedYardId,
+			}),
+		);
+
 		const genResult = await saga.run(genDecision.plan);
 		generationAttemptId = genDecision.plan.attemptId;
+
+		// Feed connector progress signals through the provider fold resolver.
+		const connector = connectors.get(genDecision.plan.generatorConnectorId) as
+			| (YardGenerationConnector & {
+					signalsFor?: (
+						id: string,
+					) => readonly { kind: string; payload: Record<string, unknown> }[];
+			  })
+			| undefined;
+		if (connector?.signalsFor) {
+			appendProviderSignals(
+				genDecision.plan.providerId,
+				connector.signalsFor(genDecision.plan.attemptId),
+			);
+		}
+
 		if (genResult.status === "failed" || !genResult.yardId) {
-			return reject(
+			append(
+				yardEvent(YARD_EVENTS.GenerationFailed, {
+					attemptId: genDecision.plan.attemptId,
+					idempotencyKey: genDecision.plan.idempotencyKey,
+					providerId: genDecision.plan.providerId,
+					failure: genResult.failure ?? {
+						code: "yard-generation-failed",
+						message: "yard generation failed",
+						retryable: false,
+					},
+				}),
+			);
+			append(
+				yardEvent(YARD_EVENTS.PlacementRejected, {
+					requestId: request.requestId,
+					code: genResult.failure?.code ?? "yard-generation-failed",
+					reasonCodes: [
+						genResult.failure?.code ?? "yard-generation-failed",
+					],
+				}),
+			);
+			return rejectResult(
+				foldState,
+				emitted,
 				"placement",
 				genResult.failure?.code ?? "yard-generation-failed",
 				genResult.failure?.message ?? "yard generation failed",
 			);
 		}
-		// Register generated yard as ready only after attestation path.
-		if (genResult.status !== "ready" && genResult.status !== "registered") {
-			return reject(
-				"placement",
-				"yard-not-ready",
-				`generated yard status ${genResult.status}; not ready for placement`,
+
+		// If connector did not emit ready via signals, complete attestation path.
+		if (!foldState.yards[genResult.yardId]?.status || foldState.yards[genResult.yardId]?.status !== "ready") {
+			const providerId = genDecision.plan.providerId;
+			append(
+				yardEvent(YARD_EVENTS.Registered, {
+					yard: localYardInstance({
+						yardId: genResult.yardId,
+						ownerTenantId,
+						providerId,
+						runtimeId: genDecision.plan.runtimeId,
+					}),
+				}),
+			);
+			append(
+				yardEvent(YARD_EVENTS.AttestationStarted, {
+					yardId: genResult.yardId,
+				}),
+			);
+			append(yardEvent(YARD_EVENTS.Attested, { yardId: genResult.yardId }));
+			append(
+				yardEvent(YARD_EVENTS.Ready, {
+					yardId: genResult.yardId,
+					attemptId: genDecision.plan.attemptId,
+				}),
 			);
 		}
-		const providerId = genDecision.plan.providerId;
-		inventory.apply({
-			type: "yard.Registered",
-			yard: localYardInstance({
-				yardId: genResult.yardId,
+
+		const rematch = matchYard(
+			request.yard,
+			inventorySnapshotFromFold(foldState),
+			{
 				ownerTenantId,
-				providerId,
-				runtimeId: genDecision.plan.runtimeId,
+				objective: request.objective,
+				bindleRuntimes: request.bindleRequirements.runtimes,
+			},
+		);
+		append(
+			yardEvent(YARD_EVENTS.MatchDecided, {
+				requestId: request.requestId,
+				match: rematch,
+				phase: "post-generation",
 			}),
-		});
-		// Attest → ready
-		inventory.apply({
-			type: "yard.StatusChanged",
-			yardId: genResult.yardId,
-			status: "ready",
-			observedAt: new Date().toISOString(),
-		});
-		workingSnapshot = inventory.snapshot();
-		const rematch = matchYard(request.yard, workingSnapshot, {
-			ownerTenantId,
-			objective: request.objective,
-			bindleRuntimes: request.bindleRequirements.runtimes,
-		});
+		);
 		if (rematch.outcome !== "existing-yard" || !rematch.winnerYardId) {
-			return reject(
+			append(
+				yardEvent(YARD_EVENTS.PlacementRejected, {
+					requestId: request.requestId,
+					code: "yard-rematch-failed",
+					reasonCodes: ["yard-rematch-failed"],
+				}),
+			);
+			return rejectResult(
+				foldState,
+				emitted,
 				"placement",
 				"yard-rematch-failed",
 				"generated yard did not become selectable",
@@ -173,17 +361,52 @@ export async function resolveBindleDeployment(
 	}
 
 	if (match.outcome === "rejected" && !selectedYardId) {
-		return reject("placement", "yard-match-rejected", match.rationale);
+		append(
+			yardEvent(YARD_EVENTS.PlacementRejected, {
+				requestId: request.requestId,
+				code: "yard-match-rejected",
+				reasonCodes: ["yard-match-rejected"],
+				message: match.rationale,
+			}),
+		);
+		return rejectResult(
+			foldState,
+			emitted,
+			"placement",
+			"yard-match-rejected",
+			match.rationale,
+		);
 	}
 	if (!selectedYardId) {
-		return reject("placement", "no-yard-selected", "no yard selected");
+		append(
+			yardEvent(YARD_EVENTS.PlacementRejected, {
+				requestId: request.requestId,
+				code: "no-yard-selected",
+				reasonCodes: ["no-yard-selected"],
+			}),
+		);
+		return rejectResult(
+			foldState,
+			emitted,
+			"placement",
+			"no-yard-selected",
+			"no yard selected",
+		);
 	}
 
-	const yard =
-		workingSnapshot.yards.find((y) => y.yardId === selectedYardId) ??
-		inventory.get(selectedYardId);
+	const workingSnapshot = inventorySnapshotFromFold(foldState);
+	const yard = workingSnapshot.yards.find((y) => y.yardId === selectedYardId);
 	if (!yard || yard.status !== "ready") {
-		return reject(
+		append(
+			yardEvent(YARD_EVENTS.PlacementRejected, {
+				requestId: request.requestId,
+				code: "yard-not-ready",
+				reasonCodes: ["yard-not-ready"],
+			}),
+		);
+		return rejectResult(
+			foldState,
+			emitted,
 			"placement",
 			"yard-not-ready",
 			`yard ${selectedYardId} is not ready`,
@@ -193,7 +416,7 @@ export async function resolveBindleDeployment(
 	// Camp placement inside selected yard.
 	const campId = selectOrGenerateCamp(request, yard.yardId);
 
-	// Resolvers constrained to yard provider.
+	// Resolvers constrained to yard provider (includes event-store slot).
 	const { pins } = composeResolverPins({
 		providerId: yard.providerId,
 		yardDefaults: EMPTY_RESOLVER_CONFIG,
@@ -202,9 +425,27 @@ export async function resolveBindleDeployment(
 	});
 
 	// Residual resources: all under selected yard provider only (no cross-yard split).
-	const placements = placeResourcesUnderYard(request, yard.providerId, deps.catalog);
+	const placements = placeResourcesUnderYard(
+		request,
+		yard.providerId,
+		deps.catalog,
+	);
 	if ("error" in placements) {
-		return reject("placement", placements.code, placements.error);
+		append(
+			yardEvent(YARD_EVENTS.PlacementRejected, {
+				requestId: request.requestId,
+				code: placements.code,
+				reasonCodes: [placements.code],
+				message: placements.error,
+			}),
+		);
+		return rejectResult(
+			foldState,
+			emitted,
+			"placement",
+			placements.code,
+			placements.error,
+		);
 	}
 
 	const residualDefinitionIds = placements.decisions.map((p) => p.definitionId);
@@ -222,7 +463,9 @@ export async function resolveBindleDeployment(
 		requestId: request.requestId,
 		brokerId: deps.brokerId,
 		selectionMode: request.yard.selectionMode,
-		requestedShapeHash: contentHashOf(request.yard.requestedShape) as ContentHash,
+		requestedShapeHash: contentHashOf(
+			request.yard.requestedShape,
+		) as ContentHash,
 		inventoryHash: workingSnapshot.contentHash,
 		runtimeCatalogHash: runtimeSnapshot.contentHash,
 		selectedYardId: yard.yardId,
@@ -241,6 +484,7 @@ export async function resolveBindleDeployment(
 		contributingPolicyIds: Object.freeze([
 			...match.contributingPolicyIds,
 			deps.generationPolicy?.id ?? DEFAULT_YARD_GENERATION_POLICY.id,
+			`${yard.providerId}.yard.event-store/v1`,
 		]),
 		resolverPins: pins,
 	};
@@ -250,11 +494,27 @@ export async function resolveBindleDeployment(
 		contentHash: contentHashOf(receiptBody) as ContentHash,
 	});
 
+	append(
+		yardEvent(YARD_EVENTS.PlacementResolved, {
+			requestId: request.requestId,
+			selectedYardId: yard.yardId,
+			selectedProviderId: yard.providerId,
+			selectedCampId: campId,
+			...(generationAttemptId !== undefined
+				? { generationAttemptId }
+				: {}),
+			receiptHash: receipt.contentHash,
+			receipt,
+		}),
+	);
+
 	return {
 		outcome: "resolved",
 		receipt,
 		placements: placements.decisions,
 		...(generationAttemptId !== undefined ? { generationAttemptId } : {}),
+		events: Object.freeze([...emitted]),
+		foldState,
 	};
 }
 
@@ -408,9 +668,16 @@ export function buildDeploymentRequestFromParts(options: {
 		runtimes: [],
 		labels: {},
 	};
+	const isLocal =
+		!options.providerId ||
+		options.providerId === "local" ||
+		options.providerId === "@hobo/provider-local-host";
 	const shape = parseYardShape({
 		...(options.providerId ? { providerId: options.providerId } : {}),
-		componentHosts: ["local", "wasm", "oci"],
+		// Local zero-config hosts only; cloud yards declare their own substrate.
+		...(isLocal
+			? { componentHosts: ["local", "wasm", "oci"] }
+			: { componentHosts: [] }),
 	});
 	const mode =
 		options.selectionMode ??
@@ -510,7 +777,9 @@ function placeResourcesUnderYard(
 	return { decisions: Object.freeze(decisions) };
 }
 
-function reject(
+function rejectResult(
+	foldState: YardEventStoreState,
+	emitted: readonly YardEvent[],
 	plane: string,
 	code: string,
 	message: string,
@@ -519,6 +788,8 @@ function reject(
 		outcome: "rejected",
 		placements: Object.freeze([]),
 		reasons: Object.freeze([{ plane, code, message }]),
+		events: Object.freeze([...emitted]),
+		foldState,
 	};
 }
 

@@ -1,10 +1,50 @@
 export {
+	defaultYardGenerationConnectors,
+	createAwsYardGenerationConnector,
+	createAzureYardGenerationConnector,
+	createGcpYardGenerationConnector,
+	createLocalYardGenerationConnector,
+} from "./connectors.js";
+export {
 	buildDeploymentRequestFromParts,
 	parseBindleDeploymentRequest,
 	resolveBindleDeployment,
 	type YardFirstPlacementDeps,
 	type YardFirstPlacementResult,
 } from "./deploy.js";
+export {
+	createAwsYardEventStoreFoldResolver,
+	createAzureYardEventStoreFoldResolver,
+	createDefaultEventStoreFoldResolvers,
+	createEventStoreFoldResolverRegistry,
+	createGcpYardEventStoreFoldResolver,
+	createLocalYardEventStoreFoldResolver,
+	createYardEventStoreFoldResolver,
+	defaultNormalize,
+	EVENT_STORE_SLOT,
+	isProviderNativeSignal,
+	type ProviderNativeSignal,
+	type YardEventStoreFoldResolver,
+} from "./event-store-resolvers.js";
+export {
+	isYardEventType,
+	YARD_EVENT_READ_SET,
+	YARD_EVENTS,
+	type YardEvent,
+	type YardEventType,
+	yardEvent,
+} from "./events.js";
+export {
+	emptyYardEventStoreState,
+	foldYardEventStore,
+	foldYardEventStoreAll,
+	inventorySnapshotFromFold,
+	restoreYardEventStore,
+	snapshotYardEventStore,
+	type YardEventStoreState,
+	type YardGenerationAttemptRow,
+	type YardPlacementDecisionRow,
+} from "./folds.js";
 export {
 	createYardGenerationSaga,
 	DEFAULT_YARD_GENERATION_POLICY,

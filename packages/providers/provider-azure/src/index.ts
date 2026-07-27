@@ -63,3 +63,10 @@ export {
 	azureDefaultResolverPins,
 	azureYardRuntimeRegistration,
 } from "./yard-defaults.js";
+export {
+	AZURE_EVENT_STORE_RESOLVER_ID,
+	azureEventStoreFoldDescriptor,
+	normalizeAzureYardSignal,
+	type AzureProviderNativeSignal,
+	type AzureYardEvent,
+} from "./yard-event-fold.js";

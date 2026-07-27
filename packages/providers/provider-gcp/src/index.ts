@@ -59,3 +59,10 @@ export {
 	gcpDefaultResolverPins,
 	gcpYardRuntimeRegistration,
 } from "./yard-defaults.js";
+export {
+	GCP_EVENT_STORE_RESOLVER_ID,
+	gcpEventStoreFoldDescriptor,
+	normalizeGcpYardSignal,
+	type GcpProviderNativeSignal,
+	type GcpYardEvent,
+} from "./yard-event-fold.js";

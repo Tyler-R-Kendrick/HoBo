@@ -31,3 +31,22 @@ Earlier code incorrectly:
 - Topology packages (`@hobo/yards`, `@hobo/camps`, `@hobo/bindles`) and `@hobo/broker` implement the production path.
 - Embedded `hobo up` uses `resolveBindlePlacement` → `resolveBindleDeployment`.
 - Multi-cloud means multiple provider-specific Yards under a Junction, not multi-provider pins in one Bindle/Camp.
+
+## Event-store folds (provider resolvers)
+
+Yard inventory and generation sagas are pure folds over the `yard.*` event family
+(`yard.PlacementRequested` … `yard.PlacementResolved`).
+
+Each provider registers a **primitive resolver** on slot `event-store`:
+
+| Provider | Resolver ID | Role |
+|----------|-------------|------|
+| local | `local.yard.event-store/v1` | Zero-config component-host ready signals |
+| azure | `azure.yard.event-store/v1` | ARM / ACA signal → yard.* |
+| aws | `aws.yard.event-store/v1` | VPC / ECS signal → yard.* |
+| gcp | `gcp.yard.event-store/v1` | VPC / Cloud Run signal → yard.* |
+
+Provider packages export `normalize*YardSignal` + descriptors; the Broker fold
+engine (`foldYardEventStore`) is provider-neutral. Connectors emit structured
+progress; fold resolvers normalize into durable facts. Generation is
+idempotent via `idempotencyKey` lease in the fold.

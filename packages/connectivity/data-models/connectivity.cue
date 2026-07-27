@@ -27,3 +27,16 @@ package connectivity
 	managed_by:        "hobo" | "cloud-provider" | "none"
 	provider:          string & !=""
 }
+
+// ADR-0027 secretless connector public lease (credential never on the wire).
+#SecretlessLeaseRecord: {
+	lease_id:       string & !=""
+	protocol:       string & !=""
+	local_endpoint: string & !=""
+	target_ref:     string & !=""
+	expires_at:     string & !=""
+	has_credential: true
+	isolation:      "shared" | "per-tenant" | "per-workload"
+	tenant_id?:     string
+	workload_id?:   string
+}

@@ -43,6 +43,7 @@ export {
 	type GatekeeperInput,
 	type MachineReadableReason,
 	type ObligationRecord,
+	type SecretlessConfigGateVerdict,
 } from "./gatekeeper.js";
 export {
 	createPermissiveDefaultPack,
@@ -66,4 +67,5 @@ export {
 	GATEKEEPER_PORT,
 } from "./port.js";
 
+// public-contract: the package id consumers assert against.
 export const HOBO_CONTRACTS_PACKAGE = "@hobo/contracts";

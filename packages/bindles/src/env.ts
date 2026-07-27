@@ -1,20 +1,18 @@
 import type { ProviderAnnotation } from "./types.js";
 
+import {
+	envField,
+	type ConfigFieldDef,
+} from "./config-schema.js";
+
 /**
- * Injectable env for bindle resources (Camp injects at serve time).
+ * Dual surface (ADR-0027 + Plan 21):
  *
- * Author once, attach with `.with(...)` on each resource that should receive it:
- *
- * ```ts
- * const campEnv = env({ GREETING_PREFIX: "howdy", APP_TITLE: "howdy" });
- * const a = b.api(handler).with(campEnv);
- * const w = b.web(handler).with(campEnv).dependsOn(a);
- * ```
- *
- * Local hosts set `process.env`; isolated-wasm gets mesh headers (`x-hobo-env-*`).
- * Not a provider pin — placement never hard-fails on `option: "env"`.
+ * 1. `env({ KEY: value })` — injectable Camp annotation for resources
+ *    (not a provider pin; option "env").
+ * 2. `env.string()/.boolean()/.int()/.json()` — typed config schema fields.
  */
-export function env(
+function envAnnotation(
 	config: Readonly<Record<string, string | number | boolean>>,
 ): ProviderAnnotation {
 	const frozen: Record<string, string | number | boolean> = {};
@@ -30,3 +28,19 @@ export function env(
 		config: Object.freeze(frozen),
 	});
 }
+
+type EnvSurface = typeof envAnnotation & {
+	string: typeof envField.string;
+	boolean: typeof envField.boolean;
+	int: typeof envField.int;
+	json: typeof envField.json;
+};
+
+export const env: EnvSurface = Object.assign(envAnnotation, {
+	string: envField.string,
+	boolean: envField.boolean,
+	int: envField.int,
+	json: envField.json,
+});
+
+export type { ConfigFieldDef };

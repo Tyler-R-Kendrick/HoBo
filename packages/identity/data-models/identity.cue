@@ -137,3 +137,80 @@ package hobo
   tokenRef: =~"^tokenref://broker/grant/"
   reason: string & != ""
 }
+
+// First-class Connection aggregate (broker-owned). credential_ref is opaque.
+#ConnectionRecord: {
+  schemaVersion: string & != ""
+  id: string & != ""
+  alias: string & != ""
+  provider: string & != ""
+  flow: "oidc-federation" | "oauth2-xaa" | "oauth2-obo" | "device-code" | "api-key" | "app-install"
+  status: "pending" | "active" | "needs-reauth" | "revoked" | "expired"
+  subject: #PrincipalRef
+  installationId?: string
+  grantedScopes: [...string]
+  requestedScopes: [...string]
+  credentialRef: =~"^tokenref://|^secref://|^vault://" | ""
+  tenant: string & != ""
+  createdAt: string & != ""
+  updatedAt: string & != ""
+  seq: uint
+}
+
+#ConnectionCreatedEventData: {
+  connectionId: string & != ""
+  alias: string & != ""
+  provider: string & != ""
+  flow: string & != ""
+  subject: #PrincipalRef
+  createdBy: #PrincipalRef
+  requestedScopes: [...string]
+  status: string & != ""
+}
+
+#ConnectionAuthorizedEventData: {
+  connectionId: string & != ""
+  grantedScopes: [...string]
+  installationId?: string
+  subject: #PrincipalRef
+  credentialRef: string & != ""
+  status: string & != ""
+}
+
+#ConnectionTokenIssuedEventData: {
+  connectionId: string & != ""
+  grantId: string & != ""
+  tokenRef: =~"^tokenref://"
+  scopes: [...string]
+  expiresAt: string & != ""
+}
+
+// ADR-0027 secretless-first audit + schema shapes (refs only).
+#ConfigResolvedEventData: {
+  name: string & != ""
+  source: "bound-resource" | "provider-federation" | "camp-value" | "static-escape"
+  valueRef?: string
+  subject?: string
+  redacted: true
+}
+
+#SecretAccessedEventData: {
+  name: string & != ""
+  source: "bound-resource" | "provider-federation" | "camp-value" | "static-escape"
+  valueRef: string & != ""
+  versionId?: string
+  subject?: string
+  grantId?: string
+  redacted: true
+  plaintextPresent: false
+}
+
+#ConfigFieldRecord: {
+  name: string & != ""
+  type: "string" | "boolean" | "int" | "json"
+  required: bool
+  sensitive: bool
+  source: "bound-resource" | "provider-federation" | "camp-value" | "static-escape"
+  ttl?: =~"^[1-7]d$"
+  rotation?: "required" | "optional"
+}

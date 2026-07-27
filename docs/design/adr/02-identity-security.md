@@ -62,9 +62,72 @@ HoBo defines a **secretless-first** config/secrets model ([Plan 21](../authoring
 4. **Provider resolution is a pluggable adapter, scoped to the Camp.** The default identity/secrets model (SVID/SVID-brokered tokens, OIDC federation) stays the default, but cloud-specific IAM, keys, and certs plug in through a **`secrets` port adapter / extension** per provider. The Bindle declares *what it needs*; each Camp supplies *where it comes from* (Key Vault vs Secrets Manager vs Vault) via the matching adapter — so swapping clouds, or overriding the default identity path with a cloud-native one, is a Camp + extension change, not an app edit ([ADR-0024](07-portability-extensibility.md#adr-0024)).
 5. **Audit + redaction.** Resolution is `config.Resolved` (ref → source, not value); secret reads are `secret.Accessed` joined to `token.Used`; values are redacted from logs/OTel/OpenInference spans and per-run-encrypted if they must transit a step's I/O.
 
+### Operational design (implemented)
+
+#### Authoring surface (`@hobo/bindles`)
+```ts
+import { config, secret, env, secretRef, fromBinding } from "@hobo/bindles";
+
+export const appConfig = config({
+  LOG_LEVEL: env.string().default("info").enum(["debug", "info", "warn", "error"]),
+  FEATURE_X: env.boolean().default(false),
+  MAX_CONCURRENCY: env.int().min(1).max(1000).default(32),
+  DB_URL: secret.string().required().source("bound-resource"),
+  API_KEY: secret.string().sensitive().source("provider-federation"),
+  LEGACY_PASSWORD: secret.string().sensitive()
+    .source("static-escape").ttl("7d").rotation("required"),
+});
+```
+- **Dual `env` / `secret` surfaces:** `env({...})` remains Camp annotation injection; `env.string()/.boolean()/.int()/.json()` build schema fields. `secret(name)` remains the residual managed-store resource (`hobo:secrets`, [ADR-0113](#adr-0113)); `secret.string()` builds sensitive schema fields. Preferred paths are identity federation + `secretRef` / `fromBinding` — **`hobo:secrets` is residual only**.
+- Schema is hashed (`schemaHash`) and versioned (`hobo.config-schema/v1`). Agents receive `schemaOnlyView(...)` only — no values.
+- Static-escape TTL is enforced ≤ **7 days** at schema build time ([ADR-0023](#adr-0023)). Sensitive fields cannot carry default values.
+
+#### Resolution ladder + ranking (enforced)
+| Rank | Source | Mechanism |
+|------|--------|-----------|
+| 1 | `bound-resource` | SVID → token broker → short-lived token; no secret exists |
+| 2 | `provider-federation` | Brokered token + Camp `secrets` port (Vault JWT/OIDC preferred; AWS SM / Azure KV adapters) |
+| 3 | `camp-value` | Non-secret typed value from Deployment Set / fixtures |
+| 4 | `static-escape` | Opt-in only; TTL ≤ 7d; rotation required; fully audited; deny-ceiling capable |
+
+Policy may set **deny-ceilings** (`allowedSources`, `forbidStaticEscape`) so production packs forbid rank 4. Capability Manifest ranking for residual classical credentials:
+1. Native identity federation (no secret)
+2. Mediated dynamic secret via short-lived brokered token + secretless connector
+3. Versioned managed secret via `hobo:secrets` (still mediated)
+4. Static escape hatch (last, bounded, audited)
+
+#### Package responsibilities
+| Package | Responsibility |
+|---------|----------------|
+| `@hobo/bindles` | `config` / `env` / `secret` / `fromBinding` / `secretRef` schema surface + validation |
+| `@hobo/identity` | Resolution ladder orchestration (`resolveConfigSchema` / `resolveConfigEntry`), residual `SecretsPort` adapters (memory fixture, Vault JWT/OIDC, AWS SM stub, Azure KV stub), redacted `config.Resolved` / `secret.Accessed` events, contract-asserted dev fixtures |
+| `@hobo/connectivity` | Secretless connector (CyberArk-style mediation): plugin registry (postgres, tcp, mysql, redis + extensions); isolation tiers `shared` / `per-tenant` / `per-workload`; named local endpoints ([ADR-0130](07-portability-extensibility.md)); lease renew / drain; credential closed over — never on public lease |
+| `@hobo/cloud` CredentialAudit | Folds `config.*` / `secret.*` into never-compact security audit (joined with `token.*` / `connection.*`) |
+| `@hobo/contracts` Gatekeeper | Optional `secretlessConfig` verdict dimension composed into can-deploy |
+| `@hobo/wit` | `hobo:secrets@0.1.0` residual managed-store WIT (experimental) + generated provider/guest bindings |
+| Policy plane | Ranking enforcement, static-hatch ceilings, cross-yard trust deny-by-default |
+| Architecture guards / can-deploy | `evaluateSecretlessConfigGate` + Gatekeeper; schema validity, ranking, no plaintext in events/IaC/agent context (`assertNoPlaintextConformance`) |
+
+#### Mediation architecture (residual classical credentials)
+When pure identity federation is impossible (legacy protocols): the **secretless connector** is a Junction-local / Camp-scoped mediator. The workload dials only a **stable named endpoint** (overlay DNS / portless). The mediator authenticates with its own short-lived SVID, fetches material via the ladder, performs the protocol handshake, and shuttles bytes. **Credential material never reaches the application process.** Lease renewal composes with SVID partition grace ([ADR-0100](#adr-0100)). First plugins: **Postgres** and **generic TCP**; interface is extensible.
+
+#### Local / agent DX
+- Schema is the primary artifact. `hobo dev` uses **contract-asserted fixtures** (`createContractAssertedConfigFixtures`) matching the same contracts as `can-deploy` ([ADR-0070](#adr-0070)).
+- Agents / MCP / training trajectories receive schema + placeholders only (redaction-at-capture + inert-output invariant).
+- Optional encrypted local overrides (git-ignored) are limited to **non-sensitive** values.
+- Existing gitleaks + hooks block high-severity plaintext leaks.
+
+#### Events & retention
+- `config.Resolved` — name, source, valueRef (never value); `redacted: true`
+- `secret.Accessed` — valueRef, versionId, optional grantId join to `token.Used`; `plaintextPresent: false`
+- Credential events use **never-compact** security-audit retention ([ADR-0023](#adr-0023) / NFR-018)
+
+#### Threat mitigations (summary)
+Static key leakage → ranking + TTL + rotation + redaction + scanning + opt-in. Confused deputy → attested workload + policy deny-by-default. Proxy compromise → short-lived only, minimal privilege, monitoring. Partition mid-flight → signed grace leases. Agent/log leakage → schema-only + inert outputs. Cross-yard over-permission → explicit trust + audited grants. IaC state leakage → reference-ize outputs; encrypt state; conformance asserts no plaintext.
+
 ### Consequences
-- **(+)** The common case has **no secret to steal** (brokered tokens); secrets that do exist are referenced, short-lived, and audited (strengthens the zero-secret KPI, NFR-005), and config/secret sourcing is portable (declared in Bindle, sourced per Camp).
-- **(−)** Requires a `secrets` port adapter per provider and a config-resolution path in the runtime; providers lacking federation fall back to the bounded static hatch.
+- **(+)** The common case has **no secret to steal** (brokered tokens); secrets that do exist are referenced, short-lived, and audited (strengthens the zero-secret KPI, NFR-005), and config/secret sourcing is portable (declared in Bindle, sourced per Camp). Residual classical credentials are mediated so apps never hold them. can-deploy + Gatekeeper enforce ranking; typed `ctx.config` is codegen'd; local DX uses encrypted non-sensitive overrides + contract fixtures; `hobo:secrets@0.1.0` WIT is available as the residual managed-store port only.
+- **(−)** Requires a Camp-scoped `secrets` port adapter selection and a config-resolution path in the runtime; providers lacking federation fall back to the bounded static hatch or the secretless connector. Operator-run live cloud accounts still supply brokered STS/OIDC tokens to the adapters (adapters never hold long-lived cloud root keys).
 
 ## ADR-0038
 **End-user / application auth.**

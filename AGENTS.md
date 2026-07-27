@@ -76,6 +76,14 @@ Prefer changes inside one package, app, feature folder, or test folder.
 - Local serve paths inject `namedEndpoints` / `primaryNamedUrl` when available; port-based behavior remains the default offline path when portless is absent (`HOBO_PORTLESS=0` forces off).
 - Tenant context: `HOBO_TENANT` / `HOBO_PROJECT` / `HOBO_BRANCH` / `HOBO_ENV`. Soft multi-tenancy via IDs + PolicyEngine is the baseline; hard isolation is a later phase.
 
+### Secretless-first config & secrets (ADR-0027)
+
+- Prefer identity federation / `fromBinding` / ranked `bound-resource` over any stored secret. `hobo:secrets` and catalog `secret(name)` are **residual** Nitric-parity only ([ADR-0113](docs/design/adr/02-identity-security.md#adr-0113)).
+- Authoring: `@hobo/bindles` `config({ ... })` with `env.string()` / `secret.string().source(...)` / `secretRef` / `fromBinding`. Dual surfaces: `env({...})` annotations + `env.string()` fields; `secret(name)` resource + `secret.string()` fields. Codegen: `generateCtxConfigSource`. Gate: `evaluateSecretlessConfigGate` (wired into Gatekeeper via `secretlessConfig`).
+- Resolution: `@hobo/identity` `resolveConfigSchema` ladder (`bound-resource` → `provider-federation` → `camp-value` → `static-escape` ≤7d). Camp adapters via `createCampSecretsPort` (Vault JWT/OIDC, AWS SM, Azure KV with brokered fetch). Events `config.Resolved` / `secret.Accessed` are refs-only (never-compact CredentialAudit). Conformance: `requireNoPlaintextConformance`. Local non-sensitive overrides: `encryptLocalOverrides` / `decryptLocalOverrides`.
+- Residual classical credentials: `@hobo/connectivity` secretless connector plugins (postgres/tcp/mysql/redis + registry); isolation tiers; workload dials named endpoints only — never receives material.
+- WIT: `hobo:secrets@0.1.0` under `@hobo/wit` (experimental); bridge with `asHoboSecretsStore`.
+- Agents / `hobo dev`: schemaOnlyView + contract-asserted fixtures; no plaintext in agent context, events, or IaC.
 Avoid shared/global files unless the task explicitly requires them:
 
 - `package.json`

@@ -344,30 +344,39 @@ Apps need configuration (URLs, flags, tuning) and credentials (DB access, third-
 
 **SDK surface.** Declared inline (IfC) alongside resources; read via `ctx.config`. Each item is a **varlock-style declarative schema** entry ([ADR-0027](./adr/02-identity-security.md#adr-0027)) — typed and annotation-driven, carrying its **type, required, sensitivity, and source** — so `can-deploy` can validate the config surface without ever touching values:
 ```ts
-import { config, secretRef, env, fromBinding } from "@hobo/bindles";
+import { config, secret, secretRef, env, fromBinding } from "@hobo/bindles";
 
-export const cfg = config({
-  DB:        fromBinding("db"),            // secretless: brokered client/token via the bind (Plan 13)
-  STRIPE:    secretRef("stripe/api-key"),  // a real secret → resolved from the Camp's secret store at use-time
-  LOG_LEVEL: env("info"),                  // non-secret typed config (per-Camp overridable)
+export const appConfig = config({
+  LOG_LEVEL: env.string().default("info").enum(["debug", "info", "warn", "error"]),
+  FEATURE_X: env.boolean().default(false),
+  MAX_CONCURRENCY: env.int().min(1).max(1000).default(32),
+  DB_URL: secret.string().required().source("bound-resource"), // prefers identity
+  API_KEY: secret.string().sensitive().source("provider-federation"),
+  LEGACY_PASSWORD: secret.string().sensitive()
+    .source("static-escape").ttl("7d").rotation("required"),
+  // Alternatives still supported:
+  DB: fromBinding("db"),                   // secretless: brokered token via the bind
+  STRIPE: secretRef("stripe/api-key"),     // residual value-ref → Camp secrets port at use-time
 });
 
 export const charge = step(async (o: Order) => {
-  const stripe = await ctx.config.STRIPE();   // fetched now via a brokered token; in-memory only
+  // Sensitive fields resolve to refs/placeholders in agent paths; residual material
+  // is broker-internal or mediated via the secretless connector (never plaintext in events).
+  const stripe = await ctx.config.STRIPE();
   // ...
 });
 ```
+- `env.string()/.boolean()/.int()/.json()` — non-secret typed config fields (also `env({ KEY: value })` for Camp annotation injection). Defaults live in the Camp Deployment Set ([Plan 25](./platform-engineering.md#plan-25)).
+- `secret.string()` — sensitive schema fields with explicit `source` ranking (`bound-resource` > `provider-federation` > `camp-value` > `static-escape`). Dual with residual catalog resource `secret(name)` for managed stores.
 - `fromBinding(name)` — **preferred**: no secret at all; the bound resource is reached with the app's SVID-brokered token (the `bind` edge already wires identity-aware connectivity, [Plan 12](./security-networking.md#plan-12)).
-- `secretRef(ref)` — a genuine third-party secret; `ref` is a logical name resolved per-Camp to the provider's `secrets` port path; the value is fetched at use-time and held in memory, never persisted. *(Named `secretRef`, **not** `secret`, to avoid colliding with the catalog's `secret()` resource, which **declares a managed secret store**; `secretRef` only **reads** a value from one.)*
+- `secretRef(ref)` — a genuine third-party secret; `ref` is a logical name resolved per-Camp to the provider's `secrets` port path; the value is fetched at use-time and held in memory, never persisted. *(Named `secretRef` for value-reads; catalog `secret(name)` **declares a managed secret store** — residual Nitric parity only.)*
 
-**Versioned managed secrets (`secret()` + `hobo:secrets`).** The `secret(name)` catalog resource
+**Versioned managed secrets (`secret(name)` + `hobo:secrets`).** The `secret(name)` catalog resource
 backs a versioned managed store ([Plan 20](./wasm-runtime-wit.md#plan-20)/[ADR-0113](./adr/02-identity-security.md#adr-0113)):
 `put` yields a new `version-id`, `access` reads the latest value or a pinned version (version
 pinning is an argument to `access`, not a separate `.allow()` verb), and `list-versions` supports
 audit and rollback. `secret.Accessed` events carry the resolved version-id. This is the
-Nitric-parity managed-store surface; secretless brokering via `fromBinding` / `secretRef` remains
-the default ([ADR-0027](./adr/02-identity-security.md#adr-0027)).
-- `env(default)` — non-secret configuration; lives in the Camp's Deployment Set ([Plan 25](./platform-engineering.md#plan-25)) and is overridable per Camp/Delta.
+Nitric-parity managed-store surface; **secretless brokering via identity federation + `fromBinding` / `secretRef` / ranked `config()` remains the default** ([ADR-0027](./adr/02-identity-security.md#adr-0027)). Residual classical credentials that cannot be pure identity are **mediated** by the secretless connector (`@hobo/connectivity`) so the workload never holds the value.
 
 **The resolution ladder (secretless-first).**
 ```mermaid

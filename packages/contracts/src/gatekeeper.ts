@@ -14,17 +14,22 @@ import {
 } from "./policy-pack.js";
 
 // The unified Gatekeeper (contracts-policy-flags.md §unified Gatekeeper). It sits
-// in front of every deploy and composes four gates into ONE explainable,
+// in front of every deploy and composes five gates into ONE explainable,
 // machine-readable decision (FR-050/051/052, NFR-017):
 //   (a) the can-deploy contract-compatibility check,
 //   (b) the @hobo/policy policy-pack decision (imported and RUN, not reinvented),
 //   (c) an obligation check (allowed-but-must-do effects must be satisfiable),
-//   (d) a cost/quota check.
+//   (d) a cost/quota check,
+//   (e) optional secretless-config schema ranking gate (ADR-0027) — caller supplies
+//       the precomputed verdict from evaluateSecretlessConfigGate so contracts stays
+//       free of a bindles dependency.
 // Every evaluation records a `policy.Decided` fact even when it allows; a seeded
-// unsafe change (breaking contract OR deny policy OR quota-exceeded) is denied
-// with a precise reason.
+// unsafe change (breaking contract OR deny policy OR quota-exceeded OR config ranking)
+// is denied with a precise reason.
 
+// public-contract: Gatekeeper decision schema version consumers pin against.
 export const GATEKEEPER_SCHEMA_VERSION = "hobo.gatekeeper/v1";
+// public-contract: event type for composed gatekeeper.Decided facts.
 export const GATEKEEPER_DECIDED_EVENT = "gatekeeper.Decided";
 
 export type GatekeeperEffect =
@@ -78,6 +83,16 @@ export interface GatekeeperDecision {
 	events: Array<Record<string, unknown>>;
 }
 
+/** Precomputed ADR-0027 secretless-config can-deploy dimension (from @hobo/bindles). */
+export interface SecretlessConfigGateVerdict {
+	ok: boolean;
+	reasons: ReadonlyArray<{
+		code: string;
+		message: string;
+		field?: string;
+	}>;
+}
+
 export interface GatekeeperInput {
 	request: PolicyDecisionRequest;
 	deployedState: DeployedContractState;
@@ -85,6 +100,8 @@ export interface GatekeeperInput {
 	policyPack?: PolicyPack;
 	obligations?: ObligationRecord[];
 	costQuota: CostQuotaInput;
+	/** Optional secretless-first config schema ranking gate (ADR-0027). */
+	secretlessConfig?: SecretlessConfigGateVerdict;
 }
 
 export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
@@ -163,8 +180,26 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		});
 	}
 
+	// (e) secretless-config ranking (ADR-0027) — optional precomputed dimension.
+	let secretlessConfigOk = true;
+	if (input.secretlessConfig) {
+		secretlessConfigOk = input.secretlessConfig.ok;
+		if (!input.secretlessConfig.ok) {
+			for (const reason of input.secretlessConfig.reasons) {
+				reasons.push({
+					gate: "contracts",
+					code: `secretless-config:${reason.code}`,
+					message: reason.message,
+					...(reason.field !== undefined
+						? { details: { field: reason.field } }
+						: {}),
+				});
+			}
+		}
+	}
+
 	const decision = composeEffect({
-		contractOk: canDeploy.ok,
+		contractOk: canDeploy.ok && secretlessConfigOk,
 		policyEffect,
 		pendingObligations: pendingObligations.length > 0,
 		quotaOk: costQuota.ok,

@@ -4,6 +4,25 @@ export {
 	type ConnectivityConfig,
 } from "./config.js";
 export {
+	createSecretlessConnector,
+	openMysqlSecretlessLease,
+	openPostgresSecretlessLease,
+	openRedisSecretlessLease,
+	type IsolationTier,
+	type SecretlessConnector,
+	type SecretlessLease,
+	type SecretlessProtocol,
+} from "./secretless/connector.js";
+export {
+	createPluginRegistry,
+	mysqlPlugin,
+	postgresPlugin,
+	redisPlugin,
+	tcpPlugin,
+	type ProtocolPlugin,
+	type SecretlessProtocolId,
+} from "./secretless/plugins.js";
+export {
 	CONNECTIVITY_HOST_PROVIDER_NAME,
 	createConnectivityHostHandler,
 	type ConnectivityHostHandler,

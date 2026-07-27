@@ -30,3 +30,19 @@ message PublicDnsEntrypointRecord {
   string managed_by = 4; // hobo | cloud-provider | none
   string provider = 5;
 }
+
+// ADR-0027 secretless connector lease — public view only (no credential material).
+message SecretlessLeaseRecord {
+  string lease_id = 1;
+  // postgres | tcp | mysql | redis | extension plugin id
+  string protocol = 2;
+  // Workload dials this named/local endpoint only (ADR-0130).
+  string local_endpoint = 3;
+  string target_ref = 4;
+  string expires_at = 5;
+  bool has_credential = 6;
+  // shared | per-tenant | per-workload
+  string isolation = 7;
+  string tenant_id = 8;
+  string workload_id = 9;
+}

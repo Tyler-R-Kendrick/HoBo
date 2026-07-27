@@ -290,6 +290,16 @@
       "stability": "experimental",
       "path": "wit/deps/hobo-training-engine/hobo-training-engine.wit",
       "sha256": "sha256:9c6a5ac9cec50169a66865551cfa6a4b8e7434907d62c26c445fc7d16bedc6de"
+    },
+    {
+      "id": "hobo:secrets/store@0.1.0@experimental",
+      "namespace": "hobo",
+      "package_name": "secrets",
+      "interface_name": "store",
+      "version": "0.1.0",
+      "stability": "experimental",
+      "path": "wit/deps/hobo-secrets/hobo-secrets.wit",
+      "sha256": "sha256:d4671767fb14a2b619d4ed1c4046832a4953c1df93d198c7e691faab7fb1f838"
     }
   ],
   "guards": [

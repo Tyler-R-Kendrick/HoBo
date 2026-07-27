@@ -46,6 +46,22 @@ Every service boundary ships **executable PACT contracts** (`contracts/pacts/` i
 - Provider verification replays every interaction against the real implementation with **subset matching** — the expectation must be a subset of the actual response, so providers can grow without breaking consumers.
 - The same interactions feed [the Bridge](/HoBo/guide/bridge/): a local implementation must pass the boundary's contract *before* it may carry any traffic.
 
+### Effects make isolation mechanical
+
+When a boundary declares an **EffectSpec**, the contract harness can choose the right isolation mode without hand-written infrastructure:
+
+| Declared effects | Test isolation |
+|---|---|
+| `pure` | Zero infrastructure — pure unit tests |
+| Domain I/O (`network`, `storage`, …) | Automatic domain mocks / dual fixtures |
+| `decides` + **ResilienceProfile** | Fault-injection vectors that never retry `policy.Decided` or terminal failures |
+
+Effect **widening** (safer → more side effects) participates in can-deploy compatibility so consumers that assumed purity cannot be silently broken. Export an **EffectManifest** when policy, SRE, MCP, or agents need a machine-readable “what this boundary can do” summary.
+
+### Durable runtime tests stay offline
+
+The default SQLite EventStore is tested as a single-owner partition: stream-head CAS, fencing, positioned catch-up, atomic events+effects, migration from the prior schema, and restart recovery. Prefer package-scoped tests (`@hobo/storage-sqlite`, `@hobo/runtime-local`, `@hobo/contract-harness`) over broad discovery sweeps.
+
 ## Testing deployments
 
 Deploys are plans before they're actions, which makes them testable at three speeds:

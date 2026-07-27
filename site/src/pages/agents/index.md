@@ -45,8 +45,20 @@ Missing a provider adapter? Agents can invoke the **generation pipeline**: synth
 
 The full extension surface — every implementable port, the adapter-authoring path, the conformance bar, and the ACP/A2A protocol-connector integration points — is documented in [Custom providers](/HoBo/guide/custom-providers/).
 
+## Contracts agents can read (and test)
+
+When you call `hobo verify` / can-deploy or inspect a BoundaryContract, look for optional **effects** and **resilience** fields:
+
+- **EffectSpec** — purity + domain I/O tags. Pure contracts isolate with zero infrastructure; network/storage domains imply harness mocks. Effect widening is a compatibility signal.
+- **ResilienceProfile** — secondary retry/timeout/circuit-breaker metadata. Deterministic schedules only; **never** retry a `policy.Decided` deny or a terminal failure. Prefer reconstructing state from event facts over process memory.
+- **EffectManifest** — exportable summary for policy, SRE tooling, and training trajectories (with redaction).
+
+Durable Camp storage defaults to a **single-owner SQLite partition** behind EventStore ports. Do not assume multi-writer shared filesystems; do not invent parallel event-store engines when the ports already exist.
+
 ## Start here
 
 - [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the 28 canonical verbs as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
 - [`llms.txt`](/HoBo/llms.txt) — the machine-readable site briefing.
+- [Architecture](/HoBo/guide/architecture/) — package layout, durable EventStore default, contract effects.
+- [Testing](/HoBo/guide/testing/) — effect-aware isolation and offline durability tests.
 - [Getting started](/HoBo/guide/getting-started/) — the same ten-minute path humans take; it works verbatim for agents.

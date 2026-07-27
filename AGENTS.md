@@ -84,6 +84,25 @@ Prefer changes inside one package, app, feature folder, or test folder.
 - CLI: `hobo station init|up|down|status|rails *` is **ops/setup**, not a lifecycle verb. Missing Station fails closed (`hobo station init`).
 - Profile: `defaultStation` / `activeRail` required for control-plane work; `defaultBrokerUri` is only a remote Conductor HTTP endpoint, not a setup path.
 
+### Portable SQLite EventStore / durable actor journal (ADR-0135)
+
+- SQLite is the **default durable engine** behind HoBo-owned ports — **not** the public portability boundary. Managed stores remain adapters.
+- Package map: `@hobo/core` (`EventStore` / `DurableEventStore`, positions, fences, errors) · `@hobo/storage-sqlite` (schema v2, migrations, `SqliteJournal`, codecs) · `@hobo/runtime-local` (Node `node:sqlite` + storage worker) · `@hobo/runtime-browser` (WASM/OPFS policy; fail-closed without real OPFS) · WIT `hobo:storage@0.1.0`.
+- **One SQLite partition, one active writer.** Scale by partitions; never multi-writer WAL over shared NFS/SMB.
+- Stream revision via **stream-head row** (not `COUNT(*)`); append CAS + `fenceToken`/`owner_epoch` inside one write transaction; database-local `global_position` for catch-up (not domain envelope identity).
+- Durable commit can stage queue / actor-signal / timer / cron / outbox effects atomically with domain events; network I/O stays **outside** the SQLite transaction.
+- Delivery: per-stream OCC, fenced single writer, at-least-once subscriptions/outbox, idempotent keys — **not** external exactly-once.
+- Design: [`docs/design/adr/03-data-plane-sqlite-default.md`](docs/design/adr/03-data-plane-sqlite-default.md), package-namespaces, `docs/design/data-plane.md`.
+
+### Contract effects + visible resiliency (ADR-0136)
+
+- Optional `effects?: EffectSpec` and `resilience?: ResilienceProfile` on `BoundaryContract` in `@hobo/contracts` (protobuf + CUE + parse-don't-validate TS).
+- **EffectSpec** (Verse-inspired): purity lattice `pure` ⊂ `varies` ⊂ `transacts` ⊂ `noRollback`; capabilities (`decides`, `suspends`, …); domain I/O (`network`, `storage`, …). Effect **widening** is a breaking compatibility reason (`effect-widened`) when effects are declared.
+- **ResilienceProfile** is a **secondary** visible layer (retry / circuitBreaker / timeout / bulkhead / fallback / hedging). Thin `applyResilienceProfile` applicator emits facts; **never** retries `policy.Decided` deny, terminal, or cancellation — aligned with [`docs/design/dx-sdk-resilience-semantics.md`](docs/design/dx-sdk-resilience-semantics.md). Not a primary control-plane noun.
+- Capture/export: `EffectManifest`, `EffectTracer` (`contract.EffectDeclared` / `contract.EffectInvoked`); Gatekeeper `effectSummaries` + `gate: "effects" | "resilience"`.
+- Harness: `@hobo/contract-harness` `createEffectIsolation`, `mocksForEffects`, `runResilienceFaultInjection` — pure contracts isolate with zero infra.
+- No public Effect-TS, Polly, or XState dependency. Design: [`docs/design/adr/03-data-plane-effects-resiliency.md`](docs/design/adr/03-data-plane-effects-resiliency.md).
+
 ### Secretless-first config & secrets (ADR-0027)
 
 - Prefer identity federation / `fromBinding` / ranked `bound-resource` over any stored secret. `hobo:secrets` and catalog `secret(name)` are **residual** Nitric-parity only ([ADR-0113](docs/design/adr/02-identity-security.md#adr-0113)).

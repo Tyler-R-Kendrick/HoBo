@@ -31,7 +31,7 @@ Keeping these separate is a core architectural commitment:
 | **Dispatcher** | Continuous placement: watch cost/policy/reliability signals; propose policy-gated migrations to better homes | `MigrationPlanned`, … |
 | **Orchestrator** | One ResourceActor per resource reconciling desired↔actual; sagas for ordering & compensation | `Provisioning`, `Provisioned`, `Failed`, `Deployed` |
 | **Executors** | Run IaC apply/preview/destroy + builds in sandboxes with scoped, short-lived credentials | `ExecStarted`, `ExecSucceeded`, `ExecFailed` |
-| **Event Store** | Append-only source of truth; subscriptions; snapshots | *(is the log)* |
+| **Event Store** | Append-only source of truth; durable subscriptions; snapshots (default engine: single-owner SQLite partition behind ports) | *(is the log)* |
 | **Read models** | Materialized projections for queries and dashboards | *(query API)* |
 
 Two runtime/IfC additions: the **wasm host** (runs components; holds the link table binding each import to a capability provider) and the **Collector** (runs components in resource-collection mode to produce the manifest IR the Planner consumes).
@@ -64,16 +64,24 @@ A crash anywhere is recovered by replaying the deployment's event stream. Inspec
 
 ## Package layout
 
-> **Design-stage layout:** this table is the *target* package map — not everything in it ships yet. Shipping today (among others): `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/core`, `@hobo/cli`, `@hobo/mcp` (served by the `hobo-mcp` binary), `@hobo/broker` (the [Conductor](/HoBo/guide/broker/) decision authority), `runtime-local`, the Cloudflare/ax/agentv provider adapters, and the Pulumi IaC engine. `@hobo/junctions` is deliberately deferred to the multi-cloud build stage (S4); the aws/azure/gcp/fly/kubernetes providers and the postgres/temporal/restate runtime backends are designed, **not installable packages**.
+> **Design-stage layout:** this table is the *target* package map — not everything in it ships yet. Shipping today (among others): `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/core`, `@hobo/cli`, `@hobo/mcp` (served by the `hobo-mcp` binary), `@hobo/broker` (the [Conductor](/HoBo/guide/broker/) decision authority), `@hobo/contracts` (Contract IR + Gatekeeper + EffectSpec/ResilienceProfile), `@hobo/storage-sqlite` + `@hobo/runtime-local` (default durable SQLite EventStore), `@hobo/runtime-browser` (browser SQLite/OPFS policy), the Cloudflare/ax/agentv provider adapters, and the Pulumi IaC engine. `@hobo/junctions` is deliberately deferred to the multi-cloud build stage (S4); the aws/azure/gcp/fly/kubernetes providers and the postgres/temporal/restate runtime backends are designed, **not installable packages**.
 
 The `@hobo/*` packages are layered; dependencies point inward only (`apps → adapters → sdk/runtime → core`), keeping adapters swappable and the agnostic core clean:
 
 | Layer | Packages |
 |---|---|
 | Authoring | `@hobo/bindles` (IfC resources + `.allow()`), `@hobo/camps`, `@hobo/yards`, `@hobo/junctions` |
-| Contracts | `@hobo/core` (ports, event envelope), `@hobo/wit` (WIT interfaces + bindings), `@hobo/conformance`, `@hobo/contracts`, `@hobo/policy` |
-| Runtime | `@hobo/runtime` (actors, workflow/step, agents), `@hobo/data`, `@hobo/events`, `runtimes/*` (local, postgres, temporal, restate, cloudflare) |
+| Contracts | `@hobo/core` (ports, event envelope, EventStore/DurableEventStore), `@hobo/wit` (WIT + `hobo:storage`), `@hobo/conformance`, `@hobo/contracts` (IR + Gatekeeper + **EffectSpec** + **ResilienceProfile**), `@hobo/policy`, `@hobo/contract-harness` |
+| Runtime | `@hobo/runtime` (actors, workflow/step, agents), `@hobo/data`, `@hobo/events`, `@hobo/storage-sqlite` (default journal semantics), `runtimes/*` (**local** SQLite, **browser** OPFS policy, postgres, temporal, restate, cloudflare) |
 | Adapters | `providers/*` (aws, azure, gcp, cloudflare, fly, kubernetes), `iac/*` (pulumi primary; cdktf, crossplane, opentofu), `build/*` (wasm, dagger, packer) |
 | Surfaces | `@hobo/cli`, `@hobo/sdk` (operator SDK), `@hobo/mcp`, `@hobo/registry`, `@hobo/identity`, `@hobo/componentize` |
+
+### Durable event log default (SQLite behind ports)
+
+The Camp durable EventStore defaults to **SQLite** as the engine, with one database file (**partition**) owned by one active writer. Scale by partitions — not by multi-writer access to one WAL over shared network storage. SQLite is **not** the public portability boundary: the same `EventStore` / `DurableEventStore` ports, WIT `hobo:storage`, and journal semantics can be implemented by managed stores later. Stream revision uses a stream-head row (not a full scan), actor **fencing tokens** reach storage, and domain events can commit atomically with staged queue/timer/outbox effects. Database-local **positions** support catch-up projections without becoming domain event identity.
+
+### Contract effects + visible resiliency
+
+Boundary contracts may declare optional **effects** (what the boundary can do: pure vs network/storage/…) and optional **resiliency profiles** (deterministic retry, timeouts, circuit-breakers — as metadata + thin fact-emitting application). Effect widening can break can-deploy compatibility when consumers assumed purity. Resiliency stays **secondary**: it never becomes a top-level primitive like Policy or the Gatekeeper, and `policy.Decided` denials / terminal failures **never** enter a retry schedule.
 
 Structural rules are enforced mechanically: every package pairs `src/`, `test/`, `contracts/`, and `data-models/`, and architecture guards keep the layering honest.

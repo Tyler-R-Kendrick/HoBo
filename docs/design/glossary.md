@@ -29,6 +29,9 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | EffectSpec | Optional Verse-inspired side-effect annotation on a BoundaryContract (purity lattice + capability + domain I/O effects); first-class Contract IR field (ADR-0136). |
 | EffectManifest | Versioned exportable summary of a contract's EffectSpec for policy, SRE, MCP, and agent consumers. |
 | ResilienceProfile | Optional secondary resiliency metadata on a BoundaryContract (retry/circuit-breaker/timeout/… strategies + never-retry classes); not a primary control-plane noun (ADR-0136). |
+| DurableEventStore | Extended EventStore port with positioned catch-up (`readAll`), transactional `commit` (events + durable effects), and durable subscription checkpoints (ADR-0135). |
+| EventPosition | Database-local monotonic position within one storage partition; distinct from per-stream `seq` and ULID event id (ADR-0135). |
+| SQLite partition | One SQLite database file owned by one active storage writer at a time; scale by partitions, not multi-writer shared WAL (ADR-0135). |
 | Crew | Alias for Operator Agents — the built-in autonomous Yard services roster; see the Operator Agents row and [operators-sre.md](./operators-sre.md#plan-40). |
 | Cross-App Access | IdP-brokered, policy-governed access from a HoBo app or agent to an external app on a user's behalf, using ID-JAG token exchange. |
 | Decision graph | Per-decision explainability artifact (`DecisionGraph`) emitted by the FinOps routing control plane, recording candidates generated/rejected, constraint results, policy outcomes, metric vectors, Pareto frontier, preference result, stability decision, rationale, and audit references; DX/OpsX/FinX surfaces read this same graph ([finops-budget-routing-control-plane.md](./finops-budget-routing-control-plane.md)). |

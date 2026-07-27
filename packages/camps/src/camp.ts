@@ -1,192 +1,455 @@
-import type {
-	BindleResourceDescriptor,
-	BindleScope,
-} from "@hobo/bindles/topology";
-
-import { providerSelection } from "./provider-selection.js";
 import {
 	type Camp,
 	type CampConfig,
+	type CampShape,
+	type JsonValue,
+	type PrimitiveResolverConfig,
 	type ProviderSelection,
-	type ResolutionPrecedenceRecord,
-	type ResolutionStep,
+	type ResolverPin,
+	type ResourceMappingRule,
+	EMPTY_RESOLVER_CONFIG,
 	TOPOLOGY_CONTRACT_VERSION,
 } from "./types.js";
 
-export function camp(name: string, config: CampConfig): Camp {
+export const CAMP_MIGRATION_CODE = "camp-provider-selection-forbidden" as const;
+export const CAMP_BINDLE_OWNERSHIP_FORBIDDEN =
+	"camp-bindle-ownership-forbidden" as const;
+
+/**
+ * Author a provider-neutral Camp. Camps do not own Bindles and do not select
+ * cloud providers — those belong on Yard attachment / Bindle deployment requests.
+ */
+export function camp(name: string, config: CampConfig = {}): Camp {
 	requireName("camp name", name);
 	if (!isPlainObject(config)) {
 		throw new TypeError("camp config must be an object");
 	}
-	if (config.bindle?.kind !== "bindle") {
-		throw new TypeError("camp requires a Bindle object");
-	}
-	if (!config.runtime) {
-		throw new TypeError("camp requires a runtime backend descriptor");
+
+	if (config.bindle !== undefined) {
+		throw Object.assign(
+			new Error(
+				"Camp must not own a Bindle. Attach the Bindle via a deployment request to a Yard/Camp.",
+			),
+			{
+				code: CAMP_BINDLE_OWNERSHIP_FORBIDDEN,
+				remediation:
+					"Use camp(name, { envType, require, prefer, labels }) and deploy(bindle, { yard, camp }).",
+			},
+		);
 	}
 
-	const defaultProvider = config.defaultProvider
-		? normalizeProviderSelection(config.defaultProvider)
-		: null;
-	const tiers = normalizeSelectorMap(config.tiers ?? {}, "tiers");
-	const bindings = normalizeSelectorMap(config.bindings ?? {}, "bindings");
-	const providerId = singleProviderId([
-		defaultProvider,
-		...Object.values(tiers),
-		...Object.values(bindings),
-	]);
-	const { id, env } = normalizeCampId(name, providerId);
-	const mappings = {
-		defaultProvider,
-		tiers,
-		bindings,
-	};
+	if (
+		config.defaultProvider !== undefined ||
+		config.tiers !== undefined ||
+		config.bindings !== undefined
+	) {
+		throw Object.assign(
+			new Error(
+				"Camp must not select a cloud provider. Provider selection belongs on a Yard.",
+			),
+			{
+				code: CAMP_MIGRATION_CODE,
+				remediation:
+					"Declare yard(name, { provider, camps: [camp(...)] }) and map resources within that provider.",
+			},
+		);
+	}
 
-	return deepFreeze({
+	const env = name.includes("/") ? name.split("/").pop()! : name;
+	const id = sanitizeCampId(env);
+	const envType: string =
+		typeof config.envType === "string" && config.envType.length > 0
+			? config.envType
+			: inferEnvType(env);
+	const require = canonicalizeStringList(
+		Array.isArray(config.require) ? config.require : [],
+	);
+	const prefer = canonicalizeStringList(
+		Array.isArray(config.prefer) ? config.prefer : [],
+	);
+	const labels = canonicalizeLabels(
+		(config.labels ?? {}) as Readonly<Record<string, string>>,
+	);
+	const resolverConfig = parseResolverConfig(
+		config.resolverConfig as Partial<PrimitiveResolverConfig> | undefined,
+	);
+	const resourceMappings = parseResourceMappings(
+		Array.isArray(config.resourceMappings) ? config.resourceMappings : [],
+	);
+	const runtimeRequirements = canonicalizeStringList(
+		Array.isArray(config.runtimeRequirements)
+			? config.runtimeRequirements
+			: config.runtime
+				? [runtimeRequirementFromDescriptor(config.runtime)]
+				: [],
+	);
+
+	const result: Camp = {
 		kind: "camp",
 		contract: TOPOLOGY_CONTRACT_VERSION,
 		id,
 		name: id,
 		env,
-		envType: config.envType ?? inferEnvType(env),
-		providerId,
-		runtime: config.runtime,
-		bindle: config.bindle,
-		mappings,
-		resolutionOrder: ["bindings", "tiers", "defaultProvider"],
-		resolutionPrecedence: buildResolutionPrecedence(config.bindle, mappings),
+		envType,
+		require,
+		prefer,
+		labels,
+		resolverConfig,
+		resourceMappings,
+		runtimeRequirements,
+	};
+	return deepFreeze(result);
+}
+
+/**
+ * Attach a Camp into a Yard: derive provider from the Yard (never override).
+ * Canonical identity becomes `<yardId>/<campId>`.
+ */
+export function attachCampToYard(
+	campObject: Camp,
+	options: {
+		readonly yardId: string;
+		readonly providerId: string;
+		readonly resolverConfig?: Partial<PrimitiveResolverConfig>;
+		readonly resourceMappings?: readonly ResourceMappingRule[];
+	},
+): Camp {
+	if (campObject?.kind !== "camp") {
+		throw new TypeError("attachCampToYard expects a Camp object");
+	}
+	requireName("yard id", options.yardId);
+	requireName("provider id", options.providerId);
+	if (
+		campObject.derivedProviderId !== undefined &&
+		campObject.derivedProviderId !== options.providerId
+	) {
+		throw Object.assign(
+			new Error(
+				`Camp provider ${campObject.derivedProviderId} disagrees with Yard provider ${options.providerId}`,
+			),
+			{ code: CAMP_MIGRATION_CODE },
+		);
+	}
+	const mergedResolvers = mergeResolverConfig(
+		campObject.resolverConfig,
+		parseResolverConfig(options.resolverConfig),
+	);
+	const mappings =
+		options.resourceMappings !== undefined
+			? parseResourceMappings(options.resourceMappings)
+			: campObject.resourceMappings;
+
+	return deepFreeze({
+		...campObject,
+		id: `${options.yardId}/${campObject.id}`,
+		name: `${options.yardId}/${campObject.id}`,
+		derivedProviderId: options.providerId,
+		enclosingYardId: options.yardId,
+		resolverConfig: mergedResolvers,
+		resourceMappings: mappings,
 	});
 }
 
-export function resolutionPrecedenceFor(
+/**
+ * Compatibility: accept legacy provider-bearing mappings only when every
+ * provider ID equals the enclosing Yard provider; strip provider IDs.
+ */
+export function parseLegacyCampMappings(
+	input: {
+		readonly defaultProvider?: ProviderSelection;
+		readonly tiers?: Readonly<Record<string, ProviderSelection>>;
+		readonly bindings?: Readonly<Record<string, ProviderSelection>>;
+	},
+	yardProviderId: string,
+): {
+	readonly resourceMappings: readonly ResourceMappingRule[];
+	readonly deprecation: string;
+} {
+	const selections: ProviderSelection[] = [];
+	if (input.defaultProvider) selections.push(input.defaultProvider);
+	for (const s of Object.values(input.tiers ?? {})) selections.push(s);
+	for (const s of Object.values(input.bindings ?? {})) selections.push(s);
+	for (const s of selections) {
+		if (s.providerId !== yardProviderId) {
+			throw Object.assign(
+				new Error(
+					`legacy camp mapping provider ${s.providerId} != yard provider ${yardProviderId}`,
+				),
+				{ code: CAMP_MIGRATION_CODE },
+			);
+		}
+	}
+	const resourceMappings: ResourceMappingRule[] = [];
+	for (const [key, sel] of Object.entries(input.bindings ?? {})) {
+		const rule: ResourceMappingRule = {
+			selector: { resourceName: key },
+			require: [],
+			prefer: [],
+			properties: asJsonProperties(sel.options),
+			...(sel.selector ? { resolverId: sel.selector } : {}),
+		};
+		resourceMappings.push(rule);
+	}
+	for (const [key, sel] of Object.entries(input.tiers ?? {})) {
+		const rule: ResourceMappingRule = {
+			selector: { resourceKind: key },
+			require: [],
+			prefer: [],
+			properties: asJsonProperties(sel.options),
+			...(sel.selector ? { resolverId: sel.selector } : {}),
+		};
+		resourceMappings.push(rule);
+	}
+	if (input.defaultProvider?.selector) {
+		resourceMappings.push({
+			selector: {},
+			resolverId: input.defaultProvider.selector,
+			require: [],
+			prefer: [],
+			properties: asJsonProperties(input.defaultProvider.options),
+		});
+	}
+	return {
+		resourceMappings: Object.freeze(resourceMappings),
+		deprecation:
+			"legacy camp provider mappings accepted only when equal to yard provider; stripped from canonical camp",
+	};
+}
+
+export function campToShape(campObject: Camp): CampShape {
+	const localId = campObject.id.includes("/")
+		? campObject.id.split("/").pop()!
+		: campObject.id;
+	const shape: CampShape = {
+		id: localId,
+		env: campObject.env,
+		envType: campObject.envType,
+		require: campObject.require,
+		prefer: campObject.prefer,
+		labels: campObject.labels,
+		runtimeRequirements: campObject.runtimeRequirements,
+	};
+	return deepFreeze(shape);
+}
+
+export function withResolvers(
 	campObject: Camp,
-	resourceKey: string,
-): readonly ResolutionStep[] {
+	pins: Readonly<Record<string, string>>,
+): Camp {
 	if (campObject?.kind !== "camp") {
-		throw new TypeError("resolutionPrecedenceFor expects a Camp object");
+		throw new TypeError("withResolvers expects a Camp object");
 	}
-	requireName("resource key", resourceKey);
-
-	const record = campObject.resolutionPrecedence.find((entry) =>
-		[
-			entry.resource,
-			entry.resourceName,
-			`${campObject.bindle.name}.${entry.resourceName}`,
-			entry.resourceKind,
-			entry.portRef,
-		].includes(resourceKey),
-	);
-	if (!record) {
-		throw new Error(`no resolution precedence record for ${resourceKey}`);
-	}
-	return record.order;
-}
-
-function normalizeSelectorMap(
-	value: Readonly<Record<string, ProviderSelection>>,
-	fieldName: string,
-): Readonly<Record<string, ProviderSelection>> {
-	if (!isPlainObject(value)) {
-		throw new TypeError(`camp ${fieldName} must be an object`);
-	}
-	return Object.fromEntries(
-		Object.entries(value).map(([key, selector]) => [
-			key,
-			normalizeProviderSelection(selector),
-		]),
-	);
-}
-
-function normalizeProviderSelection(
-	value: ProviderSelection,
-): ProviderSelection {
-	if (value?.kind !== "provider-selection") {
-		throw new TypeError(
-			"provider mappings must use providerSelection(...) descriptors",
-		);
-	}
-	return value;
-}
-
-function singleProviderId(
-	selectors: readonly (ProviderSelection | null)[],
-): string {
-	const ids = [
-		...new Set(
-			selectors.filter(Boolean).map((selector) => selector!.providerId),
-		),
+	const nextPins: ResolverPin[] = [
+		...campObject.resolverConfig.pins,
+		...Object.entries(pins).map(([slot, resolverId]) => ({
+			slot,
+			resolverId,
+		})),
 	];
-	if (ids.length === 0) {
-		throw new Error("camp requires at least one provider mapping");
+	const slots = new Set<string>();
+	for (const pin of nextPins) {
+		if (slots.has(pin.slot)) {
+			throw new Error(`duplicate resolver pin slot: ${pin.slot}`);
+		}
+		slots.add(pin.slot);
 	}
-	if (ids.length > 1) {
-		throw new Error(
-			`camp mappings must target one provider, got ${ids.join(", ")}`,
-		);
-	}
-	return ids[0]!;
+	return deepFreeze({
+		...campObject,
+		resolverConfig: {
+			...campObject.resolverConfig,
+			pins: Object.freeze(nextPins),
+		},
+	});
 }
 
-function buildResolutionPrecedence(
-	bindleObject: BindleScope,
-	mappings: Camp["mappings"],
-): ResolutionPrecedenceRecord[] {
-	return bindleObject.resources.flatMap((resource: BindleResourceDescriptor) =>
-		resource.portRef.map((portRef: string) => {
-			const binding = firstSelection(mappings.bindings, [
-				resource.stableId,
-				resource.name,
-				`${bindleObject.name}.${resource.name}`,
-				portRef,
-			]);
-			const tier = firstSelection(mappings.tiers, [resource.kind, portRef]);
+function parseResolverConfig(
+	input: Partial<PrimitiveResolverConfig> | undefined,
+): PrimitiveResolverConfig {
+	if (input === undefined) return EMPTY_RESOLVER_CONFIG;
+	const pins = Object.freeze(
+		(input.pins ?? []).map((p) => {
+			if (!p?.slot || !p?.resolverId) {
+				throw new TypeError("resolver pin requires slot and resolverId");
+			}
+			return Object.freeze({ slot: p.slot, resolverId: p.resolverId });
+		}),
+	);
+	const slots = new Set<string>();
+	for (const pin of pins) {
+		if (slots.has(pin.slot)) {
+			throw new Error(`duplicate resolver pin slot: ${pin.slot}`);
+		}
+		slots.add(pin.slot);
+	}
+	return deepFreeze({
+		require: canonicalizeStringList(input.require ?? []),
+		prefer: canonicalizeStringList(input.prefer ?? []),
+		pins,
+		properties: canonicalizeProperties(input.properties ?? {}),
+		labels: canonicalizeLabels(input.labels ?? {}),
+	});
+}
 
-			return {
-				resource: resource.stableId,
-				resourceName: resource.name,
-				resourceKind: resource.kind,
-				portRef,
-				order: [
-					summarizeResolution(
-						"bindings",
-						binding.key ?? resource.name,
-						binding.selector,
+function parseResourceMappings(
+	rules: readonly ResourceMappingRule[],
+): readonly ResourceMappingRule[] {
+	return Object.freeze(
+		rules.map((rule) => {
+			if (!isPlainObject(rule) || !isPlainObject(rule.selector)) {
+				throw new TypeError("resource mapping requires selector object");
+			}
+			// Reject provider field if present on legacy payloads.
+			if ("provider" in rule || "providerId" in rule) {
+				throw Object.assign(
+					new Error(
+						"ResourceMappingRule must not include provider; Yard fixes provider",
 					),
-					summarizeResolution(
-						"tiers",
-						tier.key ?? resource.kind,
-						tier.selector,
-					),
-					summarizeResolution("defaultProvider", "*", mappings.defaultProvider),
-				],
-			};
+					{ code: CAMP_MIGRATION_CODE },
+				);
+			}
+			return Object.freeze({
+				selector: Object.freeze({ ...rule.selector }),
+				...(rule.definitionId !== undefined
+					? { definitionId: rule.definitionId }
+					: {}),
+				...(rule.resolverId !== undefined
+					? { resolverId: rule.resolverId }
+					: {}),
+				...(rule.className !== undefined ? { className: rule.className } : {}),
+				require: canonicalizeStringList(rule.require ?? []),
+				prefer: canonicalizeStringList(rule.prefer ?? []),
+				properties: canonicalizeProperties(rule.properties ?? {}),
+			});
 		}),
 	);
 }
 
-function firstSelection(
-	map: Readonly<Record<string, ProviderSelection>>,
-	keys: readonly string[],
-): { key: string | null; selector: ProviderSelection | null } {
-	for (const key of keys) {
-		if (map[key]) {
-			return { key, selector: map[key]! };
-		}
-	}
-	return { key: null, selector: null };
+function mergeResolverConfig(
+	base: PrimitiveResolverConfig,
+	overlay: PrimitiveResolverConfig,
+): PrimitiveResolverConfig {
+	const pinMap = new Map<string, string>();
+	for (const p of base.pins) pinMap.set(p.slot, p.resolverId);
+	for (const p of overlay.pins) pinMap.set(p.slot, p.resolverId);
+	return deepFreeze({
+		require: canonicalizeStringList([...base.require, ...overlay.require]),
+		prefer: canonicalizeStringList([...base.prefer, ...overlay.prefer]),
+		pins: Object.freeze(
+			[...pinMap.entries()].map(([slot, resolverId]) =>
+				Object.freeze({ slot, resolverId }),
+			),
+		),
+		properties: canonicalizeProperties({
+			...base.properties,
+			...overlay.properties,
+		}),
+		labels: canonicalizeLabels({ ...base.labels, ...overlay.labels }),
+	});
 }
 
-function normalizeCampId(
-	name: string,
-	providerId: string,
-): { id: string; env: string } {
-	const suffix = `-${providerId}`;
-	if (name.endsWith(suffix)) {
-		const env = name.slice(0, -suffix.length);
-		requireName("camp env", env);
-		return { id: name, env };
+function runtimeRequirementFromDescriptor(runtime: unknown): string {
+	if (typeof runtime === "string") return runtime;
+	if (isPlainObject(runtime) && typeof runtime.id === "string") {
+		return runtime.id;
 	}
-	return { id: `${name}-${providerId}`, env: name };
+	return "runtime";
+}
+
+function asJsonProperties(
+	options: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, JsonValue>> {
+	const out: Record<string, JsonValue> = {};
+	for (const [k, v] of Object.entries(options ?? {})) {
+		out[k] = toJsonValue(v);
+	}
+	return Object.freeze(out);
+}
+
+function toJsonValue(value: unknown): JsonValue {
+	if (
+		value === null ||
+		typeof value === "boolean" ||
+		typeof value === "number" ||
+		typeof value === "string"
+	) {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return Object.freeze(value.map(toJsonValue));
+	}
+	if (isPlainObject(value)) {
+		return canonicalizeProperties(value as Record<string, unknown>);
+	}
+	throw new TypeError("resolver/resource properties must be JSON-safe");
+}
+
+function canonicalizeProperties(
+	input: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, JsonValue>> {
+	const keys = Object.keys(input).sort();
+	const out: Record<string, JsonValue> = {};
+	for (const key of keys) {
+		if (
+			/^(provider|providerId|resolverId|subscriptionId|accountId|projectId|resourceGroup)$/i.test(
+				key,
+			)
+		) {
+			// properties on camp mappings may still hold class options; provider* keys are forbidden.
+			if (/^provider(Id)?$/i.test(key) || key === "resolverId") {
+				// resolverId is a first-class field, not a property key
+				if (key === "resolverId") continue;
+			}
+			if (/^provider(Id)?$/i.test(key)) {
+				throw Object.assign(
+					new Error(`provider-specific property key forbidden: ${key}`),
+					{ code: CAMP_MIGRATION_CODE },
+				);
+			}
+		}
+		out[key] = toJsonValue(input[key]);
+	}
+	return Object.freeze(out);
+}
+
+function canonicalizeStringList(values: readonly string[]): readonly string[] {
+	return Object.freeze(
+		[...new Set(values.filter((v) => typeof v === "string" && v.length > 0))].sort(),
+	);
+}
+
+function canonicalizeLabels(
+	labels: Readonly<Record<string, string>> | Record<string, string>,
+): Readonly<Record<string, string>> {
+	const source = labels ?? {};
+	const keys = Object.keys(source).sort();
+	const out: Record<string, string> = {};
+	for (const key of keys) {
+		const value = source[key];
+		if (typeof value !== "string") {
+			throw new TypeError(`label ${key} must be a string`);
+		}
+		if (/^(provider|providerId|resolverId)$/i.test(key)) {
+			throw Object.assign(
+				new Error(`provider-specific label forbidden: ${key}`),
+				{ code: CAMP_MIGRATION_CODE },
+			);
+		}
+		out[key] = value;
+	}
+	return Object.freeze(out);
+}
+
+function sanitizeCampId(env: string): string {
+	requireName("camp env", env);
+	// Strip legacy -<provider> suffix display convention when present.
+	return env.replace(
+		/-(local|aws|azure|gcp|cloudflare|oci|wasm-sandbox)$/i,
+		(match, provider) => {
+			// Keep as-is if the whole name is just the provider (unlikely).
+			if (match.length === env.length) return env;
+			return "";
+		},
+	).replace(/-+$/g, "") || env;
 }
 
 function inferEnvType(env: string): string {
@@ -195,19 +458,6 @@ function inferEnvType(env: string): string {
 	if (/^(preview|pr|ephemeral)$/i.test(env)) return "ephemeral";
 	if (/^(dev|development|local)$/i.test(env)) return "development";
 	return env;
-}
-
-function summarizeResolution(
-	source: ResolutionStep["source"],
-	key: string,
-	selector: ProviderSelection | null,
-): ResolutionStep {
-	return {
-		source,
-		key,
-		providerId: selector?.providerId ?? null,
-		selector: selector?.selector ?? null,
-	};
 }
 
 function requireName(label: string, value: string): void {
@@ -224,10 +474,10 @@ function deepFreeze<T>(value: T): T {
 	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
 		return value;
 	}
-	for (const child of Object.values(value)) {
+	for (const child of Object.values(value as object)) {
 		deepFreeze(child);
 	}
 	return Object.freeze(value);
 }
 
-export { providerSelection };
+export { providerSelection } from "./provider-selection.js";

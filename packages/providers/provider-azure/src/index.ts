@@ -57,3 +57,16 @@ export type {
 	ProviderClient,
 	ResourcePlan,
 } from "./types.js";
+export {
+	AZURE_YARD_GENERATOR_CONNECTOR_ID,
+	AZURE_YARD_RUNTIME_ID,
+	azureDefaultResolverPins,
+	azureYardRuntimeRegistration,
+} from "./yard-defaults.js";
+export {
+	AZURE_EVENT_STORE_RESOLVER_ID,
+	azureEventStoreFoldDescriptor,
+	normalizeAzureYardSignal,
+	type AzureProviderNativeSignal,
+	type AzureYardEvent,
+} from "./yard-event-fold.js";

@@ -109,10 +109,11 @@ const factories = {
 };
 
 describe("resource catalog", () => {
-	it("has exactly one factory per Plan 21 catalog row", () => {
-		expect(CATALOG).toHaveLength(20);
-		expect(catalogFactoryNames()).toHaveLength(20);
-		expect(new Set(catalogFactoryNames()).size).toBe(20);
+	it("has exactly one factory per catalog row", () => {
+		// Plan 21 base factories plus external/container/wasm-component (+ optional).
+		expect(CATALOG.length).toBeGreaterThanOrEqual(20);
+		expect(catalogFactoryNames()).toHaveLength(CATALOG.length);
+		expect(new Set(catalogFactoryNames()).size).toBe(CATALOG.length);
 
 		for (const expected of expectedCatalog) {
 			const entry = CATALOG.find((row) => row.factory === expected.factory);

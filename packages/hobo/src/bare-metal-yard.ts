@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import type { BindleDefinition } from "@hobo/bindles";
 import { bindleScope, descriptorFromHandle } from "@hobo/bindles/topology";
-import { camp, providerSelection } from "@hobo/camps";
+import { camp } from "@hobo/camps";
 import type { YardRuntime } from "@hobo/cli";
 import { type Yard, yard } from "@hobo/yards";
 
@@ -262,8 +262,10 @@ export function openBareMetalYard(
 }
 
 /**
- * Compose a real Yard topology for a Bindle: one Camp on the local provider,
- * with every bindle resource mapped in (Junction ⊃ Yard ⊃ Camp ⊃ Bindle).
+ * Compose a real Yard topology for a Bindle deployment:
+ * Yard owns provider; Camp is provider-neutral shape (no Bindle ownership).
+ * Bindle attaches via deployment request, not Camp fields.
+ * (Junction ⊃ Yard ⊃ Camp; Bindle is attached to Yard/Camp at deploy time.)
  */
 export function composeBareMetalTopology(
 	definition: BindleDefinition,
@@ -273,7 +275,8 @@ export function composeBareMetalTopology(
 		readonly dataDir: string;
 	},
 ): Yard {
-	const scope = bindleScope(definition.name, (collector) => {
+	// Bindle is collected for side-effect validation only; it is not stored on Camp.
+	void bindleScope(definition.name, (collector) => {
 		for (const resource of Object.values(definition.resources)) {
 			const port =
 				resource.kind === "api" ||
@@ -296,19 +299,20 @@ export function composeBareMetalTopology(
 	});
 
 	const homeCamp = camp(options.campEnv ?? "dev", {
-		bindle: scope,
-		runtime: {
-			kind: "runtime-local",
-			eventStore: "sqlite",
-			dataDir: options.dataDir,
-			provider: BARE_METAL_PROVIDER_ID,
-		},
 		envType: "development",
-		defaultProvider: providerSelection(BARE_METAL_PROVIDER_ID),
+		require: ["managed-http-runtime"],
+		runtimeRequirements: ["local"],
+		labels: { bindle: definition.name },
 	});
 
 	return yard(options.yardName ?? "bare-metal", {
+		provider: BARE_METAL_PROVIDER_ID,
+		regions: ["local"],
+		componentHosts: ["local", "wasm", "oci"],
 		camps: [homeCamp],
+		properties: {
+			dataDir: options.dataDir,
+		},
 	});
 }
 

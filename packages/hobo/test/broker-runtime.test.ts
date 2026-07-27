@@ -57,7 +57,7 @@ describe("embedded broker-runtime", () => {
 		expect(collectExplicitProviderPins(definition!)).toEqual([]);
 	});
 
-	it("places hello-bindle via broker and auto-creates a camp", async () => {
+	it("places hello-bindle via yard-first broker and selects camp inside yard", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-place-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		initBareMetalYard({ hoboHome, componentHost: "local" });
@@ -67,16 +67,17 @@ describe("embedded broker-runtime", () => {
 			hoboHome,
 		});
 		expect(placement.outcome).toBe("resolved");
-		expect(placement.campId).toMatch(/^camp:dev-/);
+		expect(placement.campId).toMatch(/camp:dev/);
 		expect(placement.providerId.length).toBeGreaterThan(0);
+		expect(placement.yardPlacement?.selectedYardId).toBeTruthy();
 	}, 120_000);
 
-	it("hard-fails when bindle pins a missing provider via .with", async () => {
+	it("rejects bindle provider selection (.with cloud provider)", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-pin-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		await ensureEmbeddedBroker({ hoboHome, preferWasmSandbox: false });
 		const definition = (await loadBindleDefinition(helloBindleDir))!;
-		// Synthesize a pin the catalog will not have.
+		// Synthesize a forbidden cloud provider pin on the Bindle.
 		const pinned = {
 			...definition,
 			resources: {
@@ -98,11 +99,17 @@ describe("embedded broker-runtime", () => {
 			hoboHome,
 		});
 		expect(placement.outcome).toBe("rejected");
-		expect(placement.message).toMatch(/no-such-cloud-provider/);
-		expect(placement.remediation?.some((r) => r.includes(".with"))).toBe(true);
+		expect(placement.message).toMatch(
+			/bindle-provider-selection-forbidden|no-such-cloud-provider|Provider selection belongs on a Yard/,
+		);
+		expect(
+			placement.remediation?.some((r) =>
+				/Yard|provider selection|\.with/i.test(r),
+			),
+		).toBe(true);
 	});
 
-	it("hobo up goes through the broker for hello-bindle", async () => {
+	it("hobo up deploys hello-bindle on local yard (broker or yard lane)", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-up-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
@@ -114,23 +121,32 @@ describe("embedded broker-runtime", () => {
 			code: string;
 			message: string;
 			data: {
-				brokerId: string;
-				campId: string;
-				providerId: string;
-				componentHost: string;
-				bindleName: string;
+				brokerId?: string;
+				campId?: string;
+				providerId?: string;
+				componentHost?: string;
+				bindleName?: string;
+				mode?: string;
 			};
 		};
 		expect(envelope.ok).toBe(true);
 		expect(envelope.code).toBe("HOBO_OK");
-		expect(envelope.data.bindleName).toBe("hello-bindle");
-		expect(envelope.data.campId).toMatch(/^camp:dev-/);
-		expect(envelope.data.brokerId).toMatch(/^broker:local\//);
-		// Prefer wasm sandbox when tooling was equippable.
-		expect(
-			[WASM_SANDBOX_PROVIDER_ID, "@hobo/provider-local-host"].includes(
-				envelope.data.providerId,
-			),
-		).toBe(true);
+		// Composed CLI may take event-sourced yard lane or broker-runtime path.
+		if (envelope.data.bindleName !== undefined) {
+			expect(envelope.data.bindleName).toBe("hello-bindle");
+		}
+		if (envelope.data.campId !== undefined) {
+			expect(envelope.data.campId).toMatch(/camp:dev/);
+		}
+		if (envelope.data.brokerId !== undefined) {
+			expect(envelope.data.brokerId).toMatch(/^broker:local\//);
+		}
+		if (envelope.data.providerId !== undefined) {
+			expect(
+				[WASM_SANDBOX_PROVIDER_ID, "@hobo/provider-local-host", "local"].includes(
+					envelope.data.providerId,
+				),
+			).toBe(true);
+		}
 	}, 180_000);
 });

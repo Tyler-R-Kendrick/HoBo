@@ -202,10 +202,23 @@ export interface BindleResource<K extends ResourceKind = ResourceKind> {
 	with(...annotations: ProviderAnnotation[]): BindleResource<K>;
 }
 
+/**
+ * Provider-neutral Bindle workload requirements (not provider resolver control).
+ * See packages/bindles/src/requirements.ts for the parse boundary.
+ */
+export interface BindleRequirements {
+	readonly require: readonly string[];
+	readonly prefer: readonly string[];
+	readonly runtimes: readonly string[];
+	readonly labels: Readonly<Record<string, string>>;
+}
+
 export interface BindleDefinition {
 	readonly name: string;
 	readonly resources: Readonly<Record<string, BindleResourceRecord>>;
 	readonly edges: readonly BindleEdge[];
+	/** Provider-neutral requirements only — never provider pins or resolver IDs. */
+	readonly requirements: BindleRequirements;
 	/**
 	 * Returns the app-host entrypoint handler bound to a resource via
 	 * `b.api(handler)` / `b.web(handler)`, or `undefined` when none was bound.

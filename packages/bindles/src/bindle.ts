@@ -3,6 +3,10 @@ import {
 	externalDependencyAnnotation,
 	wasmComponentDependencyAnnotation,
 } from "./dependencies.js";
+import {
+	assertNoBindleProviderSelection,
+	parseBindleRequirements,
+} from "./requirements.js";
 import type {
 	AllowVerbsFor,
 	BindleBuilder,
@@ -10,6 +14,7 @@ import type {
 	BindleEdge,
 	BindleResource,
 	BindleResourceRecord,
+	BindleRequirements,
 	ComponentBinding,
 	ContainerDependencyOptions,
 	ExternalDependencyOptions,
@@ -157,10 +162,34 @@ function toResourceRecord<K extends ResourceKind>(
 export function bindle(
 	name: string,
 	build: (builder: BindleBuilder) => Record<string, BindleResource>,
+): BindleDefinition;
+export function bindle(
+	name: string,
+	requirements: Partial<BindleRequirements> | Record<string, unknown>,
+	build: (builder: BindleBuilder) => Record<string, BindleResource>,
+): BindleDefinition;
+export function bindle(
+	name: string,
+	buildOrRequirements:
+		| ((builder: BindleBuilder) => Record<string, BindleResource>)
+		| Partial<BindleRequirements>
+		| Record<string, unknown>,
+	maybeBuild?: (builder: BindleBuilder) => Record<string, BindleResource>,
 ): BindleDefinition {
 	if (typeof name !== "string" || name.length === 0) {
 		throw new TypeError("bindle name must be a non-empty string");
 	}
+
+	const build =
+		typeof buildOrRequirements === "function"
+			? buildOrRequirements
+			: maybeBuild;
+	if (typeof build !== "function") {
+		throw new TypeError("bindle requires a builder function");
+	}
+	const requirements = parseBindleRequirements(
+		typeof buildOrRequirements === "function" ? {} : buildOrRequirements,
+	);
 
 	const builder = createBuilder();
 	const built = build(builder);
@@ -213,12 +242,16 @@ export function bindle(
 		name,
 		resources: Object.freeze(resources),
 		edges: Object.freeze(edges),
+		requirements,
 		entrypoint: (resourceName: string): (() => unknown) | undefined =>
 			handlers.get(resourceName),
 	};
 	// Keep the app-host entrypoints reachable for tooling/tests but out of the
 	// provider-agnostic manifest graph: non-enumerable so JSON.stringify and
-	// Object.keys still yield exactly { name, resources, edges }.
+	// Object.keys still yield exactly { name, resources, edges, requirements }.
 	Object.defineProperty(definition, "entrypoint", { enumerable: false });
-	return Object.freeze(definition);
+	const frozen = Object.freeze(definition);
+	// Reject cloud provider selection annotations at collection boundary.
+	assertNoBindleProviderSelection(frozen);
+	return frozen;
 }

@@ -489,6 +489,8 @@ HoBo's release machinery is real but scattered: feature flags ([ADR-0044](#adr-0
 
 Harness ports are production-ready in `@hobo/identity`: `FeatureFlagStore` + `HoboOpenFeatureProvider` (OpenFeature), `OpenDeliveryEngine` (OpenDelivery), `OpenExperimentEngine` (OpenExperiment), composed by `Harness` / `createHarness`. Progressive loop emits `rollout.*` / `experiment.*` / `flag.*` / `domain.RoutingChanged`; auto-rollback activates kill-switch + zero flag percent + zero gateway weight. Built-in experiment analysis/export and ranked residual adapters (OFREP / CD webhook / analysis) are complete without hard vendor deps. Continuous identity migration continues to use the same store.
 
+**Continuous Delivery plane (attested apply · 2026-07-27)** lives in `@hobo/cloud` `src/cd/`: Gatekeeper-approved **ResolvedDeploymentSet** → workload-attested apply worker (SVID + launch measurement + short-lived scoped tokens, no ambient credentials) → secret-free status/diff (references only) → OpenDelivery progressive composition → failure opens Incident with **default A2H** or opt-in self-heal **only inside an ADR-0076 lane** proposing a Delta that re-enters Gatekeeper + Harness. CLI: `hobo deploy`, `hobo incident`.
+
 ```mermaid
 flowchart LR
   B[Bindle features/rollout/experiment] --> S[FeatureFlagStore]
@@ -502,6 +504,11 @@ flowchart LR
   R[Ranked residual adapters] -.-> OF
   R -.-> OD
   R -.-> AN
+  SET[Resolved Set + Gatekeeper] --> AA[Attested apply worker]
+  AA --> OD
+  AA --> INC[Incident]
+  INC -->|default| A2H[A2H handoff]
+  INC -->|agent+envelope| LANE[ADR-0076 lane + proposed Delta]
 ```
 
 ### Consequences

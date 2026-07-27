@@ -20,6 +20,8 @@ import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAccessCommand } from "./access-command.js";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createFeatureCommand } from "./feature-command.js";
+import { createDeployCommand } from "./deploy-command.js";
+import { createIncidentCommand } from "./incident-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
 import { createBrokerCommand } from "./broker-command.js";
@@ -191,6 +193,10 @@ export function createComposedHoboCli(
 			access: createAccessCommand(),
 			// OpenFeature flags + canary/experiment observe (Harness ADR-0083).
 			feature: createFeatureCommand(),
+			// Continuous delivery observe / rollback (attested apply plane).
+			deploy: createDeployCommand(),
+			// CD failure disposition (A2H default / sandboxed self-heal).
+			incident: createIncidentCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

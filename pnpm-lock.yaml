@@ -346,6 +346,9 @@ importers:
       '@hobo/events':
         specifier: workspace:*
         version: link:../events
+      '@hobo/identity':
+        specifier: workspace:*
+        version: link:../identity
     devDependencies:
       '@hobo/provider-cloudflare':
         specifier: workspace:*

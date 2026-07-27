@@ -237,3 +237,67 @@ package hobo
 	useCount:    uint
 	revokeCount: uint
 }
+
+// Continuous Delivery plane records
+#ResolvedDeploymentSetRecord: {
+	schema_version:          string
+	set_id:                  string
+	tenant:                  string
+	environment:             string
+	camp_id:                 string
+	plan_hash:               string
+	content_hash:            string
+	gatekeeper_decision_id:  string
+	gatekeeper_decision:     "allow" | "allow-degraded"
+}
+
+#AttestedPrincipalRecord: {
+	svid_subject:            string
+	identity_id:             string
+	tenant:                  string
+	code_digest:             string
+	component_image_digest:  string
+	attestation_state:       "attested"
+	isolation_tier:          string
+}
+
+#SecretFreeStatusRecord: {
+	schema_version: string
+	resource_id:    string
+	state:          string
+	secret_free:    true
+}
+
+#SafetyEnvelopeRecord: {
+	schema_version:       string
+	blast_radius:         "none" | "resource" | "camp" | "tenant" | "unknown"
+	reversible:           bool
+	spend_cap_usd:        uint
+	estimated_spend_usd:  uint
+	self_causation:       bool
+	max_attempts:         uint
+	attempts_used:        uint
+	requires_lane:        true
+}
+
+#A2HHandoffRecord: {
+	schema_version: string
+	incident_id:    string
+	signal:         string
+	tenant:         string
+	environment:    string
+	deployment_id:  string
+	set_id:         string
+	deadline:       string
+	obligation_id:  string
+}
+
+#LaneGrantRecord: {
+	lane_id:                       string
+	tenant:                        string
+	membership:                    "granted"
+	fork_on_touch:                 true
+	baseline_single_writer_lease:  false
+	baseline_mutation:             false
+	external_side_effects:         "mock" | "explicit-grant"
+}

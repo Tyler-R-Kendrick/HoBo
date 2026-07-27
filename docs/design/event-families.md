@@ -33,7 +33,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `delta.*` | `delta.Opened`, `delta.Applied` |
 | `deploy.*` | `deploy.PreviewUrlAssigned`, `deploy.PreviewTeardownRequested` |
 | `dev.*` | `dev.SessionStarted`, `dev.RequestServed`, `dev.HandlerReloaded`, `dev.ReloadFailed`, `dev.CodegenRan`, `dev.SessionStopped` |
-| `deployment.*` | `deployment.Planned`, `deployment.PlanRejected` |
+| `deployment.*` | `deployment.Planned`, `deployment.PlanRejected`, `deployment.ApplyStarted`, `deployment.ResourceApplied`, `deployment.ApplySucceeded`, `deployment.ApplyFailed`, `deployment.StatusObserved`, `deployment.Deployed`, `deployment.RolledBack` |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided` |
 | `drift.*` | `drift.RemediationRouted`, `drift.DiffProposed` |
@@ -51,7 +51,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `guardrail.*` | `guardrail.Blocked` |
 | `identity.*` | `identity.Issued`, `identity.Rotated`, `identity.PartitionGraceEntered`, `identity.PartitionGraceExpired`, `identity.MigrationStarted`, `identity.DualLinked`, `identity.ShadowVerified`, `identity.DualConsistencyChecked`, `identity.MigrationProgressed`, `identity.Migrated`, `identity.MigrationCutover`, `identity.MigrationAborted`, `identity.MigrationCompensated` |
 | `impl.*` | `impl.Generated`, `impl.Promoted` |
-| `incident.*` | `incident.Opened`, `incident.Resolved` |
+| `incident.*` | `incident.Opened`, `incident.Escalated`, `incident.A2HHandedOff`, `incident.SelfHealAttempted`, `incident.SelfHealDenied`, `incident.Resolved` |
 | `inference.*` | `inference.BudgetGateEvaluated`, `inference.BudgetContextMissing` |
 | `invoice.*` | `invoice.LineItem`, `invoice.AdjustmentLine`, `invoice.LateUsageAdjustment` |
 | `junction.*` | `junction.TrustEstablished`, `junction.ArtifactShared` |

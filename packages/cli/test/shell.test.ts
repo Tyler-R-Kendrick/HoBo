@@ -20,6 +20,8 @@ const canonicalVerbNames = [
 	"identity",
 	"access",
 	"feature",
+	"deploy",
+	"incident",
 	"claim",
 	"plan",
 	"verify",
@@ -81,6 +83,8 @@ Canonical verbs:
   identity    identity      Observe continuous identity migration status (status/inspect; zero Bindle config)
   access      identity      Request elevated/cross-env access or break-glass (short-lived capability; audited)
   feature     delivery      OpenFeature flags / canary / experiment status (list|eval|set|kill)
+  deploy      delivery      Attested continuous delivery status/logs/rollback (secret-free)
+  incident    delivery      CD failure disposition: A2H handoff or sandboxed self-heal
   claim       identity      Bind an anonymous deployment to an account
   plan        read-only     Dry-run the up decision
   verify      read-only     Run the unified Gatekeeper preflight
@@ -154,7 +158,7 @@ describe("HoBo CLI shell", () => {
 			expect(result.stdout).toMatch(new RegExp(flag.replace(/[<>]/g, "\\$&")));
 		}
 		for (const retired of [
-			"deploy",
+			// "deploy" is a first-class delivery verb (attested CD plane), not retired.
 			"destroy",
 			"teardown",
 			"rollback",

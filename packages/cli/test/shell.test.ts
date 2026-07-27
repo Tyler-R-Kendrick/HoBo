@@ -37,6 +37,7 @@ const canonicalVerbNames = [
 	"attest",
 	"erase",
 	"broker",
+	"yard",
 	"derivative",
 	"runbook",
 ];
@@ -92,6 +93,7 @@ Canonical verbs:
   attest      governance    Produce signed external evidence exports
   erase       governance    Request crypto-shred erasure
   broker      governance    Resolve placements through the broker (the Conductor)
+  yard        control plane Install and inspect the default bare-metal Yard
   derivative  extensibility Manage derived HoBo implementations
   runbook     SRE           Execute or replay incident runbooks
 `;
@@ -147,7 +149,6 @@ describe("HoBo CLI shell", () => {
 			"teardown",
 			"rollback",
 			"promote",
-			"yard",
 			"forge",
 			"train",
 			"crew",

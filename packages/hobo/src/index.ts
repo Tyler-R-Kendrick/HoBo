@@ -89,9 +89,36 @@ export {
 	type InspectCommandDeps,
 } from "./inspect-command.js";
 export {
+	collectBindleEnvInjections,
+	listServableEntrypoints,
+	serveProjectOnBareMetalYard,
+	serviceDiscoveryKey,
+	type BareMetalServeResult,
+	type ComponentEndpoint,
+} from "./bare-metal-host.js";
+export {
+	BARE_METAL_YARD_KIND,
+	BARE_METAL_YARD_SCHEMA,
+	type BareMetalYard,
+	type BareMetalYardConfig,
+	composeBareMetalTopology,
+	defaultHoboHome,
+	DEFAULT_BARE_METAL_YARD_NAME,
+	DEFAULT_DEV_PORT,
+	initBareMetalYard,
+	loadBareMetalYardConfig,
+	openBareMetalYard,
+	parseBareMetalYardConfig,
+	scaffoldBareMetalYardConfig,
+	yardConfigPath,
+} from "./bare-metal-yard.js";
+export {
+	BARE_METAL_PROVIDER_ID,
+	createBareMetalProvider,
 	createLocalProvider,
 	createProviderFromPorts,
 } from "./local-provider.js";
+export { createYardCommand } from "./yard-command.js";
 export {
 	createLogsCommand,
 	type LogsCommandDeps,

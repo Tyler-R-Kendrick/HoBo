@@ -19,6 +19,7 @@ import { createDepotCatalogEntry } from "@hobo/runner-depot";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
+import { serveProjectOnBareMetalYard } from "./bare-metal-host.js";
 import { createBrokerCommand } from "./broker-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
@@ -35,11 +36,13 @@ import { createEraseCommand } from "./erase-command.js";
 import { createGenerateCommand } from "./generate-command.js";
 import { createImportCommand } from "./import-command.js";
 import { createInspectCommand } from "./inspect-command.js";
+import { createLocalProvider } from "./local-provider.js";
 import { createLogsCommand } from "./logs-command.js";
 import { createRegistryCommand } from "./registry-command.js";
 import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
+import { createYardCommand } from "./yard-command.js";
 
 export interface ComposedHoboCliOptions {
 	// Override the default local/mocked YardRuntime shared across plan/up/down.
@@ -83,6 +86,9 @@ registerInstallable("runner-blacksmith", () => createBlacksmithCatalogEntry());
 // The Depot remote-build specialist: shared-cache economics make its warm
 // builds competitive with "free" cold options (HOBO-720).
 registerInstallable("runner-depot", () => createDepotCatalogEntry());
+// Bare-metal / local camp host — installable via `hobo add local` and used as
+// the default provider id on `hobo yard init` topologies.
+registerInstallable("local", () => createLocalProvider());
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},
@@ -94,13 +100,43 @@ export function createComposedHoboCli(
 
 	return createHoboCli({
 		commands: {
-			// dev/collect resolve their runtime/target from the invoked project's
-			// own bindle source per run (docs/plans/0006 item 3-1); an explicit
-			// option override pins them instead (tests / bespoke wiring).
+			// Real e2e local loop: bare-metal Yard hosts the project's bindle
+			// (camp routing + services__* injection + long-lived HTTP). Tests
+			// can still pin a DevRuntime for the one-shot probe path.
 			dev: createDevCommand(
 				options.devRuntime !== undefined
 					? { runtime: options.devRuntime }
-					: { resolveRuntime: resolveProjectDevRuntime },
+					: {
+							resolveRuntime: resolveProjectDevRuntime,
+							serveProject: async ({
+								projectDir,
+								port,
+								emitProgress,
+							}) => {
+								const hoboHome = process.env.HOBO_HOME;
+								const serve = await serveProjectOnBareMetalYard({
+									projectDir,
+									...(port !== undefined ? { port } : {}),
+									...(typeof hoboHome === "string" && hoboHome.length > 0
+										? { hoboHome }
+										: {}),
+									emitProgress,
+								});
+								return {
+									primaryUrl: serve.primaryUrl,
+									bindleName: serve.bindleName,
+									campId: serve.campId,
+									yardName: serve.yard.name,
+									providerId: serve.yard.providerId,
+									endpoints: serve.endpoints,
+									serviceDiscovery: serve.serviceDiscovery,
+									bindleEnv: serve.bindleEnv,
+									probe: serve.probe,
+									close: serve.close,
+									waitUntilStopped: serve.waitUntilStopped,
+								};
+							},
+						},
 			),
 			collect: createCollectCommand(
 				options.collectionTarget !== undefined
@@ -116,6 +152,8 @@ export function createComposedHoboCli(
 			// The broker (the Conductor) resolves against the same live,
 			// approval-gated registry the Planner matches over.
 			broker: createBrokerCommand({ catalog: runtime.registry }),
+			// Install/inspect the default bare-metal yard (`hobo yard init|status`).
+			yard: createYardCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),

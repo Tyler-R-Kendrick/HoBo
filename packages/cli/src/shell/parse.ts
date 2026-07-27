@@ -27,6 +27,9 @@ export interface CliFlags {
 	readonly policies: string | null;
 	readonly request: string | null;
 	readonly init: boolean;
+	readonly once: boolean;
+	readonly port: string | null;
+	readonly home: string | null;
 }
 
 export interface CliRequest {
@@ -69,6 +72,9 @@ export function parseArgv(
 		policies: null as string | null,
 		request: null as string | null,
 		init: false,
+		once: false,
+		port: null as string | null,
+		home: null as string | null,
 	};
 	const args: string[] = [];
 	let verb: string | null = null;
@@ -140,6 +146,9 @@ function parseOption(
 		policies: string | null;
 		request: string | null;
 		init: boolean;
+		once: boolean;
+		port: string | null;
+		home: string | null;
 	},
 	verb: string | null,
 ): number {
@@ -225,6 +234,24 @@ function parseOption(
 			if (verb === "doctor") {
 				flags.offline = true;
 				return index;
+			}
+			throw unknownOption(token, verb);
+		case "--once":
+			if (verb === "dev") {
+				flags.once = true;
+				return index;
+			}
+			throw unknownOption(token, verb);
+		case "--port":
+			if (verb === "dev" || verb === "yard") {
+				flags.port = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
+		case "--home":
+			if (verb === "yard" || verb === "dev") {
+				flags.home = takeValue(argv, index, token);
+				return index + 1;
 			}
 			throw unknownOption(token, verb);
 		default:

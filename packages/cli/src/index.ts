@@ -69,7 +69,11 @@ export {
 	type CollectCommandDeps,
 	createCollectCommand,
 } from "./commands/collect.js";
-export { createDevCommand, type DevCommandDeps } from "./commands/dev.js";
+export {
+	createDevCommand,
+	type DevCommandDeps,
+	type DevServeResult,
+} from "./commands/dev.js";
 export { createDownCommand, type DownCommandDeps } from "./commands/down.js";
 export { createLoginCommand, type LoginCommandDeps } from "./commands/login.js";
 export {

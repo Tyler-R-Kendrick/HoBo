@@ -123,16 +123,23 @@ export default {
 `,
 		);
 		const cli = createComposedHoboCli();
-		const result = await cli.run(["dev", "--json"], { cwd: projectDir });
+		const result = await cli.run(["dev", "--once", "--json"], {
+			cwd: projectDir,
+		});
 
 		expect(result.exitCode).toBe(0);
 		const envelope = JSON.parse(result.stdout) as {
 			code: string;
-			data: { served: { status: number; body: string } };
+			data: {
+				mode?: string;
+				served: { status: number; body: string };
+			};
 		};
 		expect(envelope.code).toBe("HOBO_OK");
 		expect(envelope.data.served.status).toBe(200);
-		expect(envelope.data.served.body).toBe("hi from loader /");
+		// Bare-metal yard serves the project's entrypoint; body is the handler
+		// response for GET / (may be HTML or plain text).
+		expect(envelope.data.served.body).toContain("hi from loader /");
 	});
 
 	it("a committed hobo.bindle.json still wins over the source path", async () => {

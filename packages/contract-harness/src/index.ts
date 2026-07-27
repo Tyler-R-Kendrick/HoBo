@@ -18,3 +18,15 @@ export type {
 	VerificationReport,
 } from "./verify.js";
 export { verifyPact } from "./verify.js";
+export type {
+	DomainMock,
+	EffectIsolationReport,
+} from "./effects-harness.js";
+export {
+	captureContractEffects,
+	createEffectIsolation,
+	dualFixturesForEffects,
+	filterPureContracts,
+	mocksForEffects,
+	runResilienceFaultInjection,
+} from "./effects-harness.js";

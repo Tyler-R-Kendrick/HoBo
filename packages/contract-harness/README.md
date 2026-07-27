@@ -28,6 +28,10 @@ Status progresses `consumer_tested` → `provider_verified`.
 - `createMockProviderFromPact` — consumer-side in-process mock
 - `verifyPact` — provider verification (exact provider identity/status/headers; response body recursive-subset)
 - `checkPactInventory` — pact file ↔ inventory drift gate
+- **Effects (ADR-0136):** `createEffectIsolation`, `mocksForEffects`, `filterPureContracts`,
+  `dualFixturesForEffects`, `runResilienceFaultInjection`, `captureContractEffects` —
+  pure contracts isolate with zero infra; domain effects drive automatic mocks;
+  ResilienceProfile guides fault injection that never retries `policy.Decided` / terminal.
 
 ## Commands
 

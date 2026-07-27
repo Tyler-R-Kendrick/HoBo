@@ -463,6 +463,10 @@ importers:
         version: link:../../core
 
   packages/contract-harness:
+    dependencies:
+      '@hobo/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       '@types/node':
         specifier: ^22.15.29

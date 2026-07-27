@@ -5,6 +5,16 @@ import {
 	evaluateCanDeploy,
 } from "./can-deploy.js";
 import {
+	effectiveEffects,
+	parseBoundaryContract,
+} from "./contract-ir.js";
+import {
+	isPure,
+	mayFail,
+	requiresNetwork,
+	toEffectManifest,
+} from "./effects.js";
+import {
 	createPermissiveDefaultPack,
 	EFFECT_RANK,
 	evaluatePolicyPack,
@@ -40,7 +50,7 @@ export type GatekeeperEffect =
 
 // domain-view: composed gate reason; wire form is MachineReadableReason in data-models/contracts.proto.
 export interface MachineReadableReason {
-	gate: "contracts" | "policy" | "obligations" | "cost";
+	gate: "contracts" | "policy" | "obligations" | "cost" | "effects" | "resilience";
 	code: string;
 	message: string;
 	details?: Record<string, unknown>;
@@ -81,6 +91,8 @@ export interface GatekeeperDecision {
 	canDeploy: CanDeployResult;
 	costQuota: CostQuotaRecord;
 	events: Array<Record<string, unknown>>;
+	/** Visible effects/resiliency summaries for CLI/MCP/external consumers (ADR-0136). */
+	effectSummaries: Array<Record<string, unknown>>;
 }
 
 /** Precomputed ADR-0027 secretless-config can-deploy dimension (from @hobo/bindles). */
@@ -249,6 +261,27 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		quotaOk: costQuota.ok,
 	});
 
+	// Effects + resiliency visibility (ADR-0136) — secondary metadata on the decision.
+	const effectSummaries = summarizeCandidateEffects(input.candidate);
+	for (const summary of effectSummaries) {
+		if (summary.isPure) {
+			reasons.push({
+				gate: "effects",
+				code: "effects-pure",
+				message: `contract ${String(summary.contractId)} is pure (isolatable)`,
+				details: summary,
+			});
+		}
+		if (summary.resilienceId) {
+			reasons.push({
+				gate: "resilience",
+				code: "resilience-profile",
+				message: `contract ${String(summary.contractId)} resilience profile ${String(summary.resilienceId)} strategies=[${String(summary.strategies)}] neverRetry=[${String(summary.neverRetry)}]`,
+				details: summary,
+			});
+		}
+	}
+
 	const policyDecided = policy.event as unknown as Record<string, unknown>;
 	const gatekeeperEvent = {
 		type: GATEKEEPER_DECIDED_EVENT,
@@ -256,6 +289,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		decision,
 		reasons,
 		deployable: decision === "allow" || decision === "allow-degraded",
+		effectSummaries,
 		...(canMigrateSummary !== undefined
 			? { canMigrate: { ok: canMigrateOk, summary: canMigrateSummary } }
 			: {}),
@@ -271,7 +305,52 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		canDeploy,
 		costQuota,
 		events: [...canDeploy.events, policyDecided, gatekeeperEvent],
+		effectSummaries,
 	};
+}
+
+function summarizeCandidateEffects(
+	candidate: CandidateDeployment,
+): Array<Record<string, unknown>> {
+	const contracts = candidate.contracts ?? [];
+	return contracts.map((raw) => {
+		try {
+			const contract = parseBoundaryContract(raw);
+			const fx = effectiveEffects(contract);
+			const manifest = toEffectManifest({
+				contractId: contract.id,
+				contractVersion: contract.version,
+				channel: contract.edge.channel,
+				effects: fx,
+			});
+			return {
+				contractId: contract.id,
+				channel: contract.edge.channel,
+				purity: fx.purity,
+				isPure: isPure(fx),
+				mayFail: mayFail(fx),
+				requiresNetwork: requiresNetwork(fx),
+				domains: fx.domains,
+				capabilities: fx.capabilities,
+				manifest,
+				...(contract.resilience
+					? {
+							resilienceId: contract.resilience.id,
+							strategies: contract.resilience.strategies.map((s) => s.kind),
+							neverRetry: contract.resilience.neverRetry,
+						}
+					: {}),
+			};
+		} catch {
+			const c = raw as { id?: string; edge?: { channel?: string } };
+			return {
+				contractId: c.id ?? "unknown",
+				channel: c.edge?.channel ?? "unknown",
+				purity: "unknown",
+				isPure: false,
+			};
+		}
+	});
 }
 
 function composeEffect(input: {

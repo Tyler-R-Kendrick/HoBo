@@ -23,6 +23,46 @@ package hobo
   providedFields: [...string]
 }
 
+#PurityLevel: "pure" | "varies" | "transacts" | "noRollback"
+
+#CapabilityEffect: "decides" | "suspends" | "allocates" | "concurrent"
+
+#DomainEffect: "network" | "storage" | "identity" | "policyEval" | "eventEmit" |
+	"metering" | "overlayTunnel" | "iac" | "secretsResidual" | "clock" |
+	"externalCall" | "agentTool"
+
+#EffectSpec: {
+  schemaVersion: "hobo.effect-spec/v1"
+  purity:        #PurityLevel
+  capabilities:  [...#CapabilityEffect]
+  domains:       [...#DomainEffect]
+}
+
+#ResilienceStrategy: {
+  kind: "retry" | "circuitBreaker" | "timeout" | "bulkhead" | "fallback" | "hedging"
+  ...
+}
+
+#ResilienceProfile: {
+  schemaVersion: "hobo.resilience-profile/v1"
+  id:            string & != ""
+  strategies:    [...#ResilienceStrategy]
+  neverRetry:    [...("policy.Decided" | "terminal" | "cancellation")]
+}
+
+#EffectManifest: {
+  schemaVersion:    "hobo.effect-manifest/v1"
+  contractId:       string & != ""
+  contractVersion:  string & != ""
+  channel:          string & != ""
+  effects:          #EffectSpec
+  purityLabel:      #PurityLevel
+  mayFail:          bool
+  requiresNetwork:  bool
+  isPure:           bool
+  exportedAt:       string & != ""
+}
+
 #BoundaryContract: {
   schemaVersion: "hobo.contract-ir/v1"
   id:            string & != ""
@@ -31,6 +71,8 @@ package hobo
   edge:          #ContractEdge
   requiredShape: #RequiredShape
   contractHash:  =~"^sha256:[a-f0-9]{64}$"
+  effects?:      #EffectSpec
+  resilience?:   #ResilienceProfile
 }
 
 #CompatibilityReason: {
@@ -57,7 +99,7 @@ package hobo
 }
 
 #MachineReadableReason: {
-  gate:    "contracts" | "policy" | "obligations" | "cost"
+  gate:    "contracts" | "policy" | "obligations" | "cost" | "effects" | "resilience"
   code:    string & != ""
   message: string & != ""
 }

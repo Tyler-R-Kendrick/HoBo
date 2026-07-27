@@ -9,6 +9,20 @@ tags: [hobo, design]
 
 This capability doc covers three planes — contracts (the `can-deploy` gate), the policy plane (decisions, obligations & gates), and feature flags & progressive delivery.
 
+### Effects on contracts + visible resiliency ([ADR-0136](./adr/03-data-plane-effects-resiliency.md))
+
+Boundary contracts may declare an optional **EffectSpec** (Verse-inspired purity
+lattice + domain I/O effects) and an optional **ResilienceProfile** (secondary
+resiliency metadata: deterministic retry, circuit-breaker, timeout, …). Effects
+make pure isolation testing and domain-effect mocks machine-driven; effect
+widening participates in `checkCompatibility` / can-deploy. Resiliency stays
+secondary — visible in Gatekeeper reasons, CLI describe, MCP export, and events —
+and never becomes a primary control-plane noun. Application of retry schedules
+must obey [`dx-sdk-resilience-semantics.md`](./dx-sdk-resilience-semantics.md)
+(never retry `policy.Decided` deny or terminal failures; inspection is
+replay-derived). Package surface: `@hobo/contracts` + effect-aware
+`@hobo/contract-harness`.
+
 ## Plan 29
 
 ### Why this exists (conformance ≠ compatibility)

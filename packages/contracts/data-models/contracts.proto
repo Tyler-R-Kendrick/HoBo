@@ -43,6 +43,51 @@ message RequiredShape {
   repeated string provided_fields = 3;
 }
 
+// Verse-inspired purity lattice position (ADR-0136).
+enum PurityLevel {
+  PURITY_LEVEL_UNSPECIFIED = 0;
+  PURITY_LEVEL_PURE = 1;
+  PURITY_LEVEL_VARIES = 2;
+  PURITY_LEVEL_TRANSACTS = 3;
+  PURITY_LEVEL_NO_ROLLBACK = 4;
+}
+
+// EffectSpec: declarative side-effect exposure on a contract boundary (ADR-0136).
+message EffectSpec {
+  string schema_version = 1;
+  PurityLevel purity = 2;
+  repeated string capabilities = 3;
+  repeated string domains = 4;
+}
+
+// One Polly-inspired resilience strategy as HoBo-native metadata (not a runtime lib).
+message ResilienceStrategy {
+  string kind = 1;
+  map<string, string> params = 2;
+}
+
+// Secondary ResilienceProfile attached to a contract (ADR-0136).
+message ResilienceProfile {
+  string schema_version = 1;
+  string id = 2;
+  repeated ResilienceStrategy strategies = 3;
+  repeated string never_retry = 4;
+}
+
+// Exportable effect summary for policy/SRE/MCP/external systems.
+message EffectManifest {
+  string schema_version = 1;
+  string contract_id = 2;
+  string contract_version = 3;
+  string channel = 4;
+  EffectSpec effects = 5;
+  string purity_label = 6;
+  bool may_fail = 7;
+  bool requires_network = 8;
+  bool is_pure = 9;
+  string exported_at = 10;
+}
+
 // A versioned producer/consumer boundary contract and its compatibility rules.
 message BoundaryContract {
   string schema_version = 1;
@@ -52,6 +97,8 @@ message BoundaryContract {
   ContractEdge edge = 5;
   RequiredShape required_shape = 6;
   string contract_hash = 7;
+  optional EffectSpec effects = 8;
+  optional ResilienceProfile resilience = 9;
 }
 
 // One machine-readable breaking-change fact from checkCompatibility.

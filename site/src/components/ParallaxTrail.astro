@@ -2,60 +2,81 @@
 // ==========================================================================
 // The open road: a side-scrolling parallax band with Bo walking the trail.
 //
-// Two sources feed it. Supplied artwork dropped into public/parallax/plates/
-// is used as given, at its own aspect ratio (see ../lib/trail-plates.ts). The
-// trail, poles and grass are drawn in ../lib/trail-art.ts and served as one
-// static SVG per layer and theme. This file is the machinery that moves both.
+// Nearly all of it is supplied artwork. Clouds, the horizon, the telephone
+// poles and the ground itself are plates dropped into public/parallax/plates/
+// and looped as given, at their own aspect ratios (see ../lib/trail-plates.ts).
+// The only thing drawn here is the wire strung between the poles, which has to
+// be generated because it spans the gap and closes across the tile seam (see
+// ../lib/trail-art.ts). This file is the machinery that moves both.
 //
-// Every layer is the same 1200x300 tile repeated along x and scrolled by
-// translating exactly one tile width, over and over. That is what makes both
-// halves of the ask true at once: the loop is invisible because the wrap
-// lands on identical pixels, and the layers cannot fall out of alignment
-// because they share one tile geometry pinned to the band height — only the
-// duration differs.
+// A layer scrolls by translating exactly one of its own tile widths, over and
+// over, so the wrap always lands on identical pixels. Layers stay in vertical
+// alignment because every tile — drawn or supplied — is pinned to the band
+// height and composed against the same 300-unit scene. What differs is only
+// how long one tile takes to go by.
 //
 // Bo is the uploaded 36-frame walk sprite (6x6 grid, repacked to 160x157 per
 // frame and posterized to the four tones the drawing actually uses). He holds
 // one spot while the world slides past, and his stride is timed against the
-// trail layer so his feet plant instead of skating.
+// ground plate so his feet plant instead of skating.
 // ==========================================================================
 
 import { href } from "../lib/url";
 import { BO_FEET, TH, TRAIL_LAYERS, TRAIL_SECONDS } from "../lib/trail-art";
 import { plates } from "../lib/trail-plates";
 
-// Supplied artwork goes in behind everything this file draws. A plate keeps
-// its own aspect ratio, so its tile is as wide as the band is tall times that
-// ratio — and it scrolls exactly one of those, same as any other layer.
-const supplied = plates().map((p) => ({
+const round = (v: number) => Math.round(v * 100) / 100;
+
+// TRAIL_SECONDS times one 1200-unit tile. A layer with a wider tile has more
+// ground to cover in the same apparent motion, so its duration scales with its
+// own width — otherwise a plate that is not 4:1 travels at the wrong speed and
+// the parallax it claims is not the parallax you see.
+const seconds = (tileUnits: number, speed: number) =>
+	round((TRAIL_SECONDS * (tileUnits / 1200)) / speed);
+
+type Layer = {
+	key: string;
+	order: number;
+	front: boolean;
+	href?: string;
+	style: string;
+	plate: boolean;
+};
+
+const supplied: Layer[] = plates().map((p) => ({
 	key: p.key,
-	opacity: p.opacity,
+	order: p.order,
+	front: p.front,
+	plate: true,
 	href: href(`/parallax/plates/${p.file}`),
 	style: [
 		`--plate:url("${href(`/parallax/plates/${p.file}`)}")`,
-		`--plate-tile:calc(var(--band-h) * ${Math.round(p.aspect * 1000) / 1000})`,
-		`--plx-dur:${Math.round((TRAIL_SECONDS / p.speed) * 100) / 100}s`,
+		`--plate-tile:calc(var(--band-h) * ${round(p.aspect)})`,
+		`--plx-dur:${seconds(p.aspect * TH, p.speed)}s`,
 		`opacity:${p.opacity}`,
 	].join(";"),
 }));
 
-const art = TRAIL_LAYERS.map((layer) => ({
+const drawn: Layer[] = TRAIL_LAYERS.map((layer) => ({
 	key: layer.key,
+	order: layer.order,
+	front: false,
+	plate: false,
 	style: [
 		`--art-light:url("${href(`/parallax/${layer.key}-light.svg`)}")`,
 		`--art-dark:url("${href(`/parallax/${layer.key}-dark.svg`)}")`,
-		`--plx-dur:${Math.round((TRAIL_SECONDS / layer.speed) * 100) / 100}s`,
+		`--plx-dur:${seconds(1200, layer.speed)}s`,
 	].join(";"),
 }));
 
-// Only the tallest foreground grass and stones are drawn on Bo's side of the
-// sprite. Splitting the near bank by object rather than by a horizontal cut
-// means nothing ever gets sliced in half where the two copies meet.
-const behind = art.slice(0, -1);
-const inFront = art[art.length - 1];
+// One depth order over both sources, so a drawn layer can sit between two
+// plates — the wires hang in front of the poles and behind the ground.
+const ordered = [...supplied, ...drawn].sort((a, b) => a.order - b.order);
+const behind = ordered.filter((l) => !l.front);
+const inFront = ordered.filter((l) => l.front);
 
 // Sprite geometry: 6x6 grid of 554x542 source frames, feet at 524/542 down.
-const BO_FRAME_H = 104; // frame height, in tile units
+const BO_FRAME_H = 128; // frame height, in tile units
 const BO_FRAME_W = (BO_FRAME_H * 554) / 542;
 const BO_BOTTOM = TH - BO_FEET - (1 - 524 / 542) * BO_FRAME_H;
 // 50ms a frame, the cadence the sprite was exported at: 9 frames to a step,
@@ -82,20 +103,25 @@ const rootStyle = [
 	<div
 		class="plx-scene"
 		role="img"
-		aria-label="Bo the bindlebug walking a country trail past telephone poles"
+		aria-label="Bo the bindlebug walking a country trail past telephone poles and drifting clouds"
 	>
 		{
-			supplied.map((p) => (
-				<div class:list={["plx-layer", "plx-plate", `plx-${p.key}`]} style={p.style} />
-			))
-		}
-		{
 			behind.map((l) => (
-				<div class:list={["plx-layer", `plx-${l.key}`]} style={l.style} />
+				<div
+					class:list={["plx-layer", l.plate && "plx-plate", `plx-${l.key}`]}
+					style={l.style}
+				/>
 			))
 		}
 		<div class="plx-bo"></div>
-		<div class:list={["plx-layer", "plx-fore-front"]} style={inFront.style}></div>
+		{
+			inFront.map((l) => (
+				<div
+					class:list={["plx-layer", l.plate && "plx-plate", `plx-${l.key}`]}
+					style={l.style}
+				/>
+			))
+		}
 	</div>
 	<button class="plx-pause" type="button" aria-pressed="false">
 		<span class="plx-pause-icon" aria-hidden="true"></span>
@@ -183,10 +209,6 @@ const rootStyle = [
 		to {
 			transform: translate3d(calc(var(--tile) * -1), 0, 0);
 		}
-	}
-
-	.plx-poles {
-		opacity: 0.92;
 	}
 
 	/* Bo: 36 frames in a 6x6 grid. One animation walks the columns; a second,

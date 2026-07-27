@@ -6,19 +6,27 @@ import fs from "node:fs";
 // speed named here, at its own aspect ratio, so nothing is squashed.
 //
 // The slot name is the file name. `plates/clouds.png` fills the cloud layer,
-// `plates/sky.png` the distant one, and so on. Naming a plate after a layer
-// this repo draws itself — poles, trail, fore — replaces the drawn one.
+// `plates/sky.png` the distant one, and so on. An empty slot renders nothing,
+// so the band is whatever artwork is present plus the one thing it draws.
 //
 // A plate must repeat cleanly left-to-right; the band tiles it, it does not
-// mirror or blend the join. Crop it vertically to the strip you want to see,
-// because the whole image height is mapped onto the band height.
+// mirror or blend the join. The whole image height maps onto the band height,
+// so a plate is composed on a full-height canvas with its content at the
+// scene position it belongs at, rather than cropped to its own content.
 // ==========================================================================
 
-/** Back to front, with each slot's speed relative to the trail plane. */
+/**
+ * Every slot, back to front. `order` interleaves these with the drawn layers
+ * (see ./trail-art.ts); `front` marks the ones that go on Bo's side of the
+ * sprite, so the nearest grass passes in front of his feet.
+ */
 export const PLATE_SLOTS = [
-	{ key: "sky", speed: 0.12, opacity: 0.5 },
-	{ key: "clouds", speed: 0.28, opacity: 0.8 },
-	{ key: "hills", speed: 0.4, opacity: 0.9 },
+	{ key: "sky", speed: 0.12, opacity: 0.55, order: 10, front: false },
+	{ key: "clouds", speed: 0.28, opacity: 0.8, order: 20, front: false },
+	{ key: "hills", speed: 0.4, opacity: 0.7, order: 30, front: false },
+	{ key: "poles", speed: 0.55, opacity: 0.95, order: 40, front: false },
+	{ key: "trail", speed: 1, opacity: 1, order: 60, front: false },
+	{ key: "trail-front", speed: 1, opacity: 1, order: 80, front: true },
 ] as const;
 
 export type PlateSlot = (typeof PLATE_SLOTS)[number]["key"];
@@ -61,6 +69,8 @@ export type Plate = {
 	key: string;
 	speed: number;
 	opacity: number;
+	order: number;
+	front: boolean;
 	file: string;
 	/** Tile width as a multiple of the band height, so the aspect holds. */
 	aspect: number;
@@ -79,13 +89,11 @@ export function plates(): Plate[] {
 			if (!fs.existsSync(file)) continue;
 			const size = measure(file, ext);
 			found.push({
-				key: slot.key,
-				speed: slot.speed,
-				opacity: slot.opacity,
+				...slot,
 				file: `${slot.key}.${ext}`,
-				// A plate whose size cannot be read is assumed 3:2, the shape the
-				// reference sheets came in.
-				aspect: size && size.h > 0 ? size.w / size.h : 1.5,
+				// A plate whose size cannot be read is assumed 4:1, the shape the
+				// tile geometry itself uses.
+				aspect: size && size.h > 0 ? size.w / size.h : 4,
 			});
 			break;
 		}

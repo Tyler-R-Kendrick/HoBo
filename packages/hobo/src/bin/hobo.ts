@@ -25,7 +25,7 @@ import { createBareMetalProvider } from "../local-provider.js";
 // real in-process flow. Before dispatch, the default provider set is recorded
 // as durable registration + approval facts (walkthrough Part 0/2 — "default
 // providers approved" is a fact trail, not config). Bare-metal is bootstrapped
-// alongside cloudflare so `hobo yard` / `hobo dev` have a local camp host.
+// alongside cloudflare so `hobo yard` / `hobo dev` have a local Yard provider.
 const runtime = createDefaultYardRuntime();
 await bootstrapDefaultProviders(runtime, [
 	toRegistrableProvider(createCloudflareProvider()),

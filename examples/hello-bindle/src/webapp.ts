@@ -7,6 +7,9 @@ import {
 } from "./config.js";
 import { resolveServiceEndpoint } from "./endpoints.js";
 
+// Hono app for external `web`. Wired into the bindle via
+// `@hobo/adapter-hono` (`honoEntrypoint`) — see src/bindle.ts.
+
 export interface GreetingPayload {
 	readonly message: string;
 	readonly greetingPrefix: string;
@@ -27,7 +30,12 @@ export async function fetchGreetingFromApi(
 	} = {},
 ): Promise<GreetingPayload> {
 	const apiBase = resolveServiceEndpoint("api", { env: options.env });
-	const url = new URL("/hello", `${apiBase}/`);
+	// Relative "hello" keeps the mesh base path (http://hobo.internal/api/hello).
+	// An absolute "/hello" would strip /api and break private discovery.
+	const url = new URL(
+		"hello",
+		apiBase.endsWith("/") ? apiBase : `${apiBase}/`,
+	);
 	if (options.name !== undefined && options.name.length > 0) {
 		url.searchParams.set("name", options.name);
 	}
@@ -67,7 +75,7 @@ function renderPage(input: {
 	</head>
 	<body>
 		<h1 data-testid="app-title">${escapeHtml(input.appTitle)}</h1>
-		<p>Web title and API prefix come from bindle env injected by the bare-metal camp.</p>
+		<p>Web title and API prefix come from bindle env injected by the local Yard/Camp.</p>
 		<p data-testid="greeting">${escapeHtml(input.greeting.message)}</p>
 		<p data-testid="greeting-prefix">${escapeHtml(input.greeting.greetingPrefix)}</p>
 		<p data-testid="via">${escapeHtml(input.greeting.via)}</p>

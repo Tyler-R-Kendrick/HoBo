@@ -12,7 +12,7 @@ derived types, and event-driven CQRS shape.
 
 | Example | What it proves |
 |---|---|
-| [`hello-bindle/`](./hello-bindle/README.md) | The minimal Bindle: a hello-world API, a web app bound to it, and the wiring — plus the S0/S1 stage-gate and E2E fixture lanes. |
+| [`hello-bindle/`](./hello-bindle/README.md) | Minimal Bindle: private API + public web via mesh. Hono apps wired through [`@hobo/adapter-hono`](../packages/adapters/adapter-hono/README.md); optional isolated-wasm guest under `src/adapters/wasm/`. |
 | [`multi-cloud-shop/`](./multi-cloud-shop/README.md) | A shop (storefront, API, kv store, orders queue) as one unchanged Bindle deployable to two providers. |
 | [`durable-agent/`](./durable-agent/README.md) | A durable, tool-invoking agent on `@hobo/runtime`'s authoring surface (`agent()` + `createWorkflowEngine()`). |
 | [`self-host-yard/`](./self-host-yard/README.md) | Operating your own Yard: the whole control plane composed in-process with a SQLite event log. |

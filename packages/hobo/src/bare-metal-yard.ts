@@ -14,15 +14,45 @@ import {
 	BARE_METAL_PROVIDER_ID,
 } from "./local-provider.js";
 
-// Bare-metal Yard: the default local control scope that runs on the operator's
-// own machine. `hobo yard init` writes the config; `hobo dev` opens it and
-// creates Camps from each project's bindle so entrypoints are served with
-// Aspire-compatible service-discovery injection (services__*).
+// Local Yard: provider-specific control plane on the operator's machine
+// (glossary: Yard). `hobo yard init` installs it; `hobo dev` opens the Yard,
+// places the project Bindle into a Camp, and runs the Camp's component host
+// with Aspire-compatible service discovery (services__*).
 
 export const BARE_METAL_YARD_SCHEMA = "hobo.yard/v1" as const;
 export const BARE_METAL_YARD_KIND = "bare-metal" as const;
 export const DEFAULT_BARE_METAL_YARD_NAME = "local";
 export const DEFAULT_DEV_PORT = 4000;
+
+/**
+ * Camp **component host** backend for a local Yard (glossary: Component host
+ * is a Camp capability, not the Yard itself).
+ * - local: process-local mesh + Wasmtime-shaped component host
+ * - isolated-wasm: real Wasmtime OS-process sandboxes for private components
+ *
+ * Legacy aliases accepted on read: bare-metal|runtime-local → local;
+ * config field `host` still accepted as alias for `componentHost`.
+ */
+export const COMPONENT_HOST_KINDS = ["local", "isolated-wasm"] as const;
+export type ComponentHostKind = (typeof COMPONENT_HOST_KINDS)[number];
+/** @deprecated use COMPONENT_HOST_KINDS */
+export const LOCAL_HOST_KINDS = COMPONENT_HOST_KINDS;
+/** @deprecated use ComponentHostKind */
+export type LocalHostKind = ComponentHostKind;
+export const DEFAULT_COMPONENT_HOST: ComponentHostKind = "local";
+/** @deprecated use DEFAULT_COMPONENT_HOST */
+export const DEFAULT_LOCAL_HOST = DEFAULT_COMPONENT_HOST;
+
+function normalizeComponentHostKind(raw: unknown): ComponentHostKind {
+	if (raw === undefined || raw === null) return DEFAULT_COMPONENT_HOST;
+	if (raw === "bare-metal" || raw === "runtime-local") return "local";
+	if ((COMPONENT_HOST_KINDS as readonly string[]).includes(String(raw))) {
+		return raw as ComponentHostKind;
+	}
+	throw new TypeError(
+		`yard config componentHost must be one of ${COMPONENT_HOST_KINDS.join("|")} (got ${String(raw)})`,
+	);
+}
 
 export interface BareMetalYardConfig {
 	readonly schemaVersion: typeof BARE_METAL_YARD_SCHEMA;
@@ -31,6 +61,13 @@ export interface BareMetalYardConfig {
 	readonly dataDir: string;
 	readonly providerId: typeof BARE_METAL_PROVIDER_ID;
 	readonly defaultPort: number;
+	/**
+	 * Camp component-host backend for placements on this Yard
+	 * (`local` | `isolated-wasm`). Prefer this over legacy `host`.
+	 */
+	readonly componentHost: ComponentHostKind;
+	/** @deprecated alias of componentHost — still serialized for older configs */
+	readonly host: ComponentHostKind;
 }
 
 export interface BareMetalYard {
@@ -83,6 +120,10 @@ export function parseBareMetalYardConfig(input: unknown): BareMetalYardConfig {
 		typeof raw.defaultPort === "number" && Number.isInteger(raw.defaultPort)
 			? raw.defaultPort
 			: DEFAULT_DEV_PORT;
+	// Accept either componentHost or legacy host field.
+	const componentHost = normalizeComponentHostKind(
+		raw.componentHost ?? raw.host,
+	);
 	return {
 		schemaVersion: BARE_METAL_YARD_SCHEMA,
 		kind: BARE_METAL_YARD_KIND,
@@ -90,6 +131,8 @@ export function parseBareMetalYardConfig(input: unknown): BareMetalYardConfig {
 		dataDir: raw.dataDir,
 		providerId: BARE_METAL_PROVIDER_ID,
 		defaultPort,
+		componentHost,
+		host: componentHost,
 	};
 }
 
@@ -99,10 +142,15 @@ export function scaffoldBareMetalYardConfig(
 		readonly name?: string;
 		readonly dataDir?: string;
 		readonly defaultPort?: number;
+		readonly componentHost?: ComponentHostKind;
+		/** @deprecated use componentHost */
+		readonly host?: ComponentHostKind;
 	} = {},
 ): BareMetalYardConfig {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const name = options.name ?? DEFAULT_BARE_METAL_YARD_NAME;
+	const componentHost =
+		options.componentHost ?? options.host ?? DEFAULT_COMPONENT_HOST;
 	return {
 		schemaVersion: BARE_METAL_YARD_SCHEMA,
 		kind: BARE_METAL_YARD_KIND,
@@ -110,6 +158,8 @@ export function scaffoldBareMetalYardConfig(
 		dataDir: options.dataDir ?? defaultYardDataDir(hoboHome, name),
 		providerId: BARE_METAL_PROVIDER_ID,
 		defaultPort: options.defaultPort ?? DEFAULT_DEV_PORT,
+		componentHost,
+		host: componentHost,
 	};
 }
 
@@ -119,6 +169,9 @@ export function initBareMetalYard(
 		readonly name?: string;
 		readonly dataDir?: string;
 		readonly defaultPort?: number;
+		readonly componentHost?: ComponentHostKind;
+		/** @deprecated use componentHost */
+		readonly host?: ComponentHostKind;
 		readonly force?: boolean;
 	} = {},
 ): { readonly config: BareMetalYardConfig; readonly configPath: string } {
@@ -126,7 +179,7 @@ export function initBareMetalYard(
 	const configPath = yardConfigPath(hoboHome);
 	if (existsSync(configPath) && options.force !== true) {
 		throw new Error(
-			`bare-metal yard already configured at ${configPath} (pass --force to overwrite)`,
+			`local Yard already configured at ${configPath} (pass --force to overwrite)`,
 		);
 	}
 	const config = scaffoldBareMetalYardConfig({
@@ -136,6 +189,11 @@ export function initBareMetalYard(
 		...(options.defaultPort !== undefined
 			? { defaultPort: options.defaultPort }
 			: {}),
+		...(options.componentHost !== undefined
+			? { componentHost: options.componentHost }
+			: options.host !== undefined
+				? { componentHost: options.host }
+				: {}),
 	});
 	mkdirSync(hoboHome, { recursive: true });
 	mkdirSync(config.dataDir, { recursive: true });
@@ -155,9 +213,9 @@ export function loadBareMetalYardConfig(
 }
 
 /**
- * Open the installed bare-metal yard (or init a default one when missing).
+ * Open the installed local Yard (or init a default one when missing).
  * Uses the composition root's YardRuntime with a durable dataDir so plan/up
- * facts and the local camp host share one control scope.
+ * facts and Bindle serves share one control-plane scope.
  */
 export function openBareMetalYard(
 	options: {
@@ -170,7 +228,7 @@ export function openBareMetalYard(
 	if (config === null) {
 		if (options.autoInit === false) {
 			throw new Error(
-				`no bare-metal yard at ${yardConfigPath(hoboHome)}; run \`hobo yard init\``,
+				`no local Yard at ${yardConfigPath(hoboHome)}; run \`hobo yard init\``,
 			);
 		}
 		config = initBareMetalYard({ hoboHome }).config;
@@ -188,8 +246,8 @@ export function openBareMetalYard(
 }
 
 /**
- * Compose a real Yard topology object for a project's BindleDefinition:
- * one Camp on the bare-metal provider, with every bindle resource mapped in.
+ * Compose a real Yard topology for a Bindle: one Camp on the local provider,
+ * with every bindle resource mapped in (Junction ⊃ Yard ⊃ Camp ⊃ Bindle).
  */
 export function composeBareMetalTopology(
 	definition: BindleDefinition,

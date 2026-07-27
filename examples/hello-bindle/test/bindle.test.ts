@@ -1,3 +1,4 @@
+import { honoEntrypoint, toFetchHandler } from "@hobo/adapter-hono";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { app as helloApi, buildGreeting } from "../src/api.js";
@@ -69,7 +70,16 @@ describe("hello-bindle", () => {
 		expect(definition.edges).toEqual([{ from: "web", to: "api" }]);
 	});
 
-	it("declares bindle env config on api and web resources", () => {
+	it("declares private api + external web endpoints and bindle env", () => {
+		const apiEndpoint = definition.resources.api?.annotations.find(
+			(a) => a.option === "endpoint",
+		);
+		const webEndpoint = definition.resources.web?.annotations.find(
+			(a) => a.option === "endpoint",
+		);
+		expect(apiEndpoint?.config.external).toBe(false);
+		expect(webEndpoint?.config.external).toBe(true);
+
 		const apiAnn = definition.resources.api?.annotations.find(
 			(a) => a.option === "env",
 		);
@@ -85,6 +95,45 @@ describe("hello-bindle", () => {
 		expect(() => resolveBindleConfig(API_GREETING_PREFIX_KEY, {})).toThrow(
 			/unresolved bindle config GREETING_PREFIX/,
 		);
+	});
+
+	it("wires api/web through @hobo/adapter-hono honoEntrypoint", async () => {
+		injectBindleEnvFromDefinition();
+		const boundApi = definition.entrypoint("api");
+		const boundWeb = definition.entrypoint("web");
+		expect(boundApi).toBeTypeOf("function");
+		expect(boundWeb).toBeTypeOf("function");
+
+		// Entrypoint thunk shape matches the L2 adapter contract.
+		const viaAdapter = honoEntrypoint(helloApi)();
+		const fromBindle = boundApi?.() as typeof viaAdapter;
+		const adapterBody = await (
+			await viaAdapter(
+				new Request("http://hello-bindle.test/hello?name=Adapter"),
+			)
+		).json();
+		const bindleBody = await (
+			await fromBindle(
+				new Request("http://hello-bindle.test/hello?name=Adapter"),
+			)
+		).json();
+		expect(adapterBody).toEqual(bindleBody);
+		expect(bindleBody).toEqual({
+			message: "from-bindle-api, Adapter",
+			greetingPrefix: "from-bindle-api",
+			via: "bindle-env",
+		});
+
+		// toFetchHandler is the non-thunk form of the same bridge.
+		const direct = toFetchHandler(helloApi);
+		const directRes = await direct(
+			new Request("http://hello-bindle.test/hello?name=Direct"),
+		);
+		expect(await directRes.json()).toEqual({
+			message: "from-bindle-api, Direct",
+			greetingPrefix: "from-bindle-api",
+			via: "bindle-env",
+		});
 	});
 
 	it("binds the Hono api handler and renders the bindle-injected prefix", async () => {
@@ -190,5 +239,17 @@ describe("hello-bindle", () => {
 
 		expect(calls[0]).toBe(`${apiA}/hello?name=A`);
 		expect(calls[1]).toBe(`${apiB}/hello?name=B`);
+		// Mesh-style base with a path segment must preserve the component prefix.
+		const meshBase = "http://hobo.internal/api";
+		process.env[API_ENDPOINT_KEY] = meshBase;
+		await fetchGreetingFromApi({
+			name: "Mesh",
+			fetchImpl: async (input) => {
+				expect(String(input)).toBe(`${meshBase}/hello?name=Mesh`);
+				return apiFetchAt("http://api.hello-bindle.test")(
+					String(input).replace(meshBase, "http://api.hello-bindle.test"),
+				);
+			},
+		});
 	});
 });

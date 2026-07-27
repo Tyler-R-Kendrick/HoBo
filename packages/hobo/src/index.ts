@@ -89,12 +89,20 @@ export {
 	type InspectCommandDeps,
 } from "./inspect-command.js";
 export {
+	applyHoboMeshEnvHeaders,
 	collectBindleEnvInjections,
+	HOBO_BINDLE_ENV_HEADER,
+	HOBO_ENV_HEADER_PREFIX,
+	INTERNAL_MESH_HOST,
+	installInternalMesh,
+	internalMeshBase,
+	isExternalComponent,
 	listServableEntrypoints,
 	serveProjectOnBareMetalYard,
 	serviceDiscoveryKey,
 	type BareMetalServeResult,
 	type ComponentEndpoint,
+	type ServableEntrypoint,
 } from "./bare-metal-host.js";
 export {
 	BARE_METAL_YARD_KIND,
@@ -102,16 +110,53 @@ export {
 	type BareMetalYard,
 	type BareMetalYardConfig,
 	composeBareMetalTopology,
+	COMPONENT_HOST_KINDS,
+	type ComponentHostKind,
+	DEFAULT_COMPONENT_HOST,
+	DEFAULT_LOCAL_HOST,
 	defaultHoboHome,
 	DEFAULT_BARE_METAL_YARD_NAME,
 	DEFAULT_DEV_PORT,
 	initBareMetalYard,
+	LOCAL_HOST_KINDS,
+	type LocalHostKind,
 	loadBareMetalYardConfig,
 	openBareMetalYard,
 	parseBareMetalYardConfig,
 	scaffoldBareMetalYardConfig,
 	yardConfigPath,
 } from "./bare-metal-yard.js";
+export {
+	serveBindleOnLocalYard,
+	serveProjectOnLocalCamp,
+	type LocalCampServeResult,
+	type LocalYardServeResult,
+} from "./local-yard-serve.js";
+export {
+	serveProjectOnIsolatedWasm,
+	type IsolatedWasmServeResult,
+} from "./isolated-wasm-runtime.js";
+export {
+	bootWasmtimeSandbox,
+	componentizePrivateGuest,
+	ensureIsolatedWasmToolchain,
+	ensureWasmtimeBinary,
+	PINNED_WASMTIME_VERSION,
+	preparePrivateWasmComponent,
+	resolvePrivateWasmGuest,
+	type ComponentizeResult,
+	type IsolatedWasmToolchain,
+	type JcoTool,
+	type ResolvedPrivateGuest,
+	type WasmtimeBinary,
+	type WasmtimeSandbox,
+} from "./wasm-sandbox.js";
+export {
+	probeWasmHostInstall,
+	serveProjectOnLocalYard,
+	serveProjectOnWasmHost,
+	type WasmHostProbe,
+} from "./wasm-host.js";
 export {
 	BARE_METAL_PROVIDER_ID,
 	createBareMetalProvider,

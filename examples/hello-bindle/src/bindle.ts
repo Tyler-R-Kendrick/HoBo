@@ -1,3 +1,4 @@
+import { honoEntrypoint } from "@hobo/adapter-hono";
 import { bindle } from "@hobo/bindles";
 
 import { app as helloApi } from "./api.js";
@@ -8,37 +9,53 @@ import {
 import { app as helloWeb } from "./webapp.js";
 
 /**
- * The bindle config does the wiring *and* declares camp-injected values:
- *  - `b.api(...).with({ option: "env", config })` — GREETING_PREFIX for the API
- *  - `b.web(...).with({ option: "env", config })` — APP_TITLE for the web app
- *  - `.dependsOn(api)` — service discovery key services__api__http__0
+ * hello-bindle — one public web surface, private api behind the camp mesh.
  *
- * The bare-metal Yard host reads these annotations and injects them into the
- * process env before serving entrypoints. That is the intermediary: app code
- * only reads env; the bindle is the source of the configured strings.
+ *  - `api` is **private** (`endpoint.external: false`): no public TCP port.
+ *    Consumers reach it only via camp-injected `services__api__http__0`
+ *    (`http://hobo.internal/api/...`), the same posture a wasm-cloud link table
+ *    would enforce.
+ *  - `web` is **external** (`endpoint.external: true`): the sole exposed HTTP
+ *    endpoint. It dependsOn(api) and calls the private mesh URL.
+ *  - `.with({ option: "env", config })` declares camp-injected config values.
+ *  - Hono is wired through `@hobo/adapter-hono` (L2 adapter), not core.
  *
- * Resource names ("api", "web") are also service-discovery identities.
+ * App code never hardcodes hosts or those strings — the bare-metal Yard host
+ * injects discovery + env before entrypoints run.
  */
 export default bindle("hello-bindle", (b) => {
 	const api = b
-		.api(() => helloApi.fetch)
-		.with({
-			provider: "local",
-			option: "env",
-			config: {
-				// Distinctive string so e2e can prove the host injected bindle config.
-				[API_GREETING_PREFIX_KEY]: "from-bindle-api",
+		.api(honoEntrypoint(helloApi))
+		.with(
+			{
+				provider: "local",
+				option: "endpoint",
+				config: { external: false },
 			},
-		});
+			{
+				provider: "local",
+				option: "env",
+				config: {
+					[API_GREETING_PREFIX_KEY]: "from-bindle-api",
+				},
+			},
+		);
 	const web = b
-		.web(() => helloWeb.fetch)
+		.web(honoEntrypoint(helloWeb))
 		.dependsOn(api)
-		.with({
-			provider: "local",
-			option: "env",
-			config: {
-				[WEB_APP_TITLE_KEY]: "from-bindle-web",
+		.with(
+			{
+				provider: "local",
+				option: "endpoint",
+				config: { external: true },
 			},
-		});
+			{
+				provider: "local",
+				option: "env",
+				config: {
+					[WEB_APP_TITLE_KEY]: "from-bindle-web",
+				},
+			},
+		);
 	return { api, web };
 });

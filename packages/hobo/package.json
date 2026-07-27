@@ -8,7 +8,8 @@
 		"hobo-mcp": "./dist/bin/hobo-mcp.js"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"wit"
 	],
 	"exports": {
 		".": {
@@ -20,6 +21,7 @@
 		"access": "public"
 	},
 	"dependencies": {
+		"@bytecodealliance/jco": "1.24.3",
 		"@hobo/bindles": "workspace:*",
 		"@hobo/broker": "workspace:*",
 		"@hobo/camps": "workspace:*",

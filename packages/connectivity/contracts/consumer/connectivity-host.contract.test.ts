@@ -72,7 +72,8 @@ describe("ConnectivityHost consumer contract (PACT)", () => {
 				action: "junction.join",
 				subjectTenant: "acme",
 				resourceTenant: "acme",
-				subjectTags: ["role:junction"],
+				subjectTags: ["role:junction", "env:development"],
+				resourceTags: ["env:development"],
 			},
 		});
 		expect((allow.body as { effect: string }).effect).toBe("allow");

@@ -133,3 +133,29 @@ Untrusted inputs at package boundaries are parse, don't validate: DNS labels, te
 ## Secretless connector (ADR-0027 + ADR-0130)
 
 Residual classical credentials (Postgres, generic TCP) are mediated: the workload dials only a stable **named endpoint**; the connector holds short-lived material closed over, performs the handshake, and shuttles bytes. Public lease objects never expose `credentialMaterial`. Preferred path remains identity federation; mediation is for protocols that cannot be pure keyless.
+
+## Environment network isolation (ADR-0133)
+
+```mermaid
+flowchart TB
+  subgraph Soft["Soft floor (always on)"]
+    PE[PolicyEngine TagAcl / rego-lite]
+    TAG["env: tags"]
+    MEM[EnvMembershipService]
+    PE --> TAG
+    PE --> MEM
+  end
+  subgraph Hard["Hard floor (optional)"]
+    REG[EnvNetworkIsolationRegistry]
+    OV[Distinct overlay per class]
+    REG --> OV
+  end
+  subgraph Elevated["Elevated path"]
+    CAP[ElevatedAccessCapability JWT]
+    BG[BreakGlass dual-control]
+    CAP --> PE
+    BG --> PE
+  end
+```
+
+Modules under `src/env-isolation/`: types, membership, grants, elevated-capability, registry, compose, policy-pack, local-airgap, evaluate. Junction agents require `config.env` and refuse cross-env federation by default. Compose with `TenantIsolationRegistry` via `assertComposedIsolation` (harder axis wins).

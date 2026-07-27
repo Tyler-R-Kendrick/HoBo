@@ -910,6 +910,9 @@ importers:
 
   packages/stations:
     dependencies:
+      '@hobo/connectivity':
+        specifier: workspace:*
+        version: link:../connectivity
       '@hobo/core':
         specifier: workspace:*
         version: link:../core

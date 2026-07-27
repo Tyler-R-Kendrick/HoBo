@@ -34,6 +34,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Dispatcher | Credit-aware deterministic selector used for placement, dispatch, and traffic decisions. |
 | Driver | Execution mechanism a Resource Definition uses, such as `terraform`, `template`, `echo`, `container`, or `custom-webhook`. |
 | DX / OpsX / FinX surfaces | The three FinOps control-plane product surfaces over the same decision graph: DX (intent spec, dry-run preview, simulation, "why this placement?"), OpsX (override, freeze, rollback, migrate, incident reroute, blast-radius controls), and FinX (budgets, forecasts, attribution, anomaly signals, commitments, optimization recommendations). |
+| Environment network isolation | Fail-closed walls between isolation classes (local-dev/preview/development/staging/production/ephemeral); elevated access uses short-lived capabilities; optional PAM Station capability ([ADR-0133](./adr/02-identity-security.md#adr-0133)). |
 | Environment group | Member Camps of one logical environment, promoted or rolled back as a saga. |
 | Environment type | Environment classification such as `production` or `ephemeral`, used as a matching dimension. |
 | Event model | Durable append-only substrate where facts are `EventEnvelope` records and projections fold replayable streams. |

@@ -294,3 +294,18 @@ A first-class lifecycle, event-sourced as the **app-tenant `tenant.*` family** (
 
 - **In scope:** the app-tenant model + `ctx.tenant`, the declared tenancy-model spectrum (pooled/siloed/bridge/region-pooled) over Matching, isolation-by-construction + the conformance gate, per-tenant routing/config/flags/quotas/showback/residency/lifecycle/observability — all over existing planes.
 - **Out of scope** (the [ADR-0064](./adr/07-portability-extensibility.md#adr-0064) boundary): **per-tenant billing/subscriptions/invoicing/plans-as-a-product** (the developer's business — HoBo gives them showback + quotas, not a billing engine); a tenant **self-service admin UI** beyond the events/API (the developer builds it, or generates it via the UI layer [ADR-0056](./adr/03-data-plane.md#adr-0056)); cross-tenant **analytics** beyond an OLAP sink ([ADR-0052](./adr/03-data-plane.md#adr-0052)).
+
+## Environment network isolation (ADR-0133)
+
+Hard environment network isolation is a first-class, fail-closed property of the PolicyEngine / overlay stack:
+
+| Class | Soft floor | Hard floor (optional) | Notes |
+|-------|------------|----------------------|-------|
+| local-dev | Air-gap | n/a | No remote overlay join |
+| preview / ephemeral | Short-lived soft | — | Auto-revoke on TTL |
+| development | Soft deny cross-env | — | Shared remote-dev |
+| staging | Soft | Optional hard-overlay | Configurable |
+| production | Soft + capability required | Recommended hard-overlay | Dual-control membership |
+
+Elevated production access requires a short-lived capability (`hobo access request`), not network membership alone. Optional Privileged Access Gateway (`@hobo/connectivity` pam/) attaches as a Station Rail capability, is env-scoped, and brokers secretless short-lived sessions (local mint + optional remote HTTP transports). Break-glass is dual-controlled and auto-expires. Conformance: `pnpm --filter @hobo/connectivity test`.
+

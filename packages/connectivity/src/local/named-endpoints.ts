@@ -12,6 +12,8 @@ import {
 	tenantContextFromEnv,
 } from "@hobo/core";
 
+import { assertLocalNamedEndpointBackend } from "../env-isolation/local-airgap.js";
+
 import {
 	probePortless,
 	registerPortlessRoute,
@@ -104,6 +106,19 @@ export async function attachNamedEndpoints(options: {
 		// Private mesh endpoints keep mesh URLs; still publish hierarchical overlay names for discovery.
 		const endpointMode: "local" | "overlay" =
 			endpoint.external ? mode : "overlay";
+
+		// Local-dev air-gap: never bind local mode to remote/prod backends.
+		if (endpointMode === "local") {
+			const airgap = assertLocalNamedEndpointBackend({
+				mode: "local",
+				backendUrl: endpoint.backendUrl,
+				resourceEnv: options.env ?? tenant.env ?? "local-dev",
+			});
+			if (!airgap.ok) {
+				throw new Error(`local-dev air-gap: ${airgap.reason}`);
+			}
+		}
+
 		// Omit default single-tenant "local" slug so pure-local names stay clean
 		// (web.myapp.local.hobo.localhost). Multi-tenant always includes tenant.
 		const includeTenant = tenant.tenantId !== LOCAL_DEFAULT_TENANT_ID;

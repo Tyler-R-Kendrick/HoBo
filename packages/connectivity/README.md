@@ -228,3 +228,65 @@ const invoice = billing.closePeriod({
 - SPIRE Workload API fetch as drop-in replacement for local JWT-SVID mint
 - WebAuthn ceremony for human claim step-up (human-only; agents never hold passkeys)
 - Netbird agent gRPC path if management HTTP enroll is disabled on your build
+
+## Environment network isolation (ADR-0133)
+
+Cross-env traffic is **denied by default**. Isolation classes: `local-dev`, `preview`, `development`, `staging`, `production`, `ephemeral`.
+
+```ts
+import {
+  createTagAclPolicyEngine,
+  EnvMembershipService,
+  mintElevatedAccessCapability,
+  DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK,
+} from "@hobo/connectivity";
+
+const membership = new EnvMembershipService({ tenant: "acme" });
+membership.assign({
+  principalId: "user:alice",
+  isolationClass: "development",
+  assignedBy: "cp-admin",
+});
+const engine = createTagAclPolicyEngine({
+  envIsolation: { membership, enforceMembershipIntegrity: true },
+});
+// env:development → env:production denies without elevated capability
+```
+
+Policy pack id: `hobo.env-network-isolation/v1` (Rail `policyPacks`).
+
+Conformance: `pnpm --filter @hobo/connectivity exec vitest run test/pure/env-network-isolation.test.ts`
+
+Elevated access CLI: `hobo access request --env production --reason "..." --duration 30m`
+
+Local-dev is air-gapped: `hobo dev` does not join remote overlays.
+
+
+### Privileged Access Gateway
+
+```ts
+import {
+  createTeleportPamGateway,
+  mintElevatedAccessCapability,
+} from "@hobo/connectivity";
+
+const elev = mintElevatedAccessCapability({
+  subject: "user:alice",
+  isolationClass: "production",
+  issuedBy: "cp-admin",
+  evidence: { kind: "dual-approval", ref: "a1" },
+  allowDefaultSecret: true,
+});
+const gw = createTeleportPamGateway({
+  isolationClass: "production",
+  elevatedHmacSecret: process.env.HOBO_SVID_HMAC_SECRET,
+});
+await gw.start({ stationId: "s1", tenant: "acme", isolationClass: "production", trustDomain: "yard" });
+const session = await gw.brokerSession({
+  subject: "user:alice",
+  target: "ssh:db",
+  preferSecretless: true,
+  elevatedToken: elev.token,
+});
+// session.sessionToken is short-lived and verifiable; audit drained to Yard sink
+```

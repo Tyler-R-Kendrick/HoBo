@@ -150,3 +150,5 @@ implementation.
 M1/M2/M3/M4 environment lifecycle design, service, dashboard, admin, security, support, backup,
 cleanup, or provider work must wait until this M0 scope record is accepted. This branch records the
 gate and its executable guard; it does not create follow-up implementation issues.
+
+Isolation tiers for each lifecycle class are defined in [ADR-0133](./adr/02-identity-security.md#adr-0133) (environment network isolation).

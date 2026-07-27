@@ -65,6 +65,13 @@ Product: hobo
 - MCP tool: `identity`
 - Capability: { port: hobo:mcp, resource: tool:identity, verb: call }
 
+### access
+- Role: identity
+- Summary: Request elevated/cross-env access or break-glass (short-lived capability; audited)
+- CLI: `hobo access`
+- MCP tool: `access`
+- Capability: { port: hobo:mcp, resource: tool:access, verb: call }
+
 ### claim
 - Role: identity
 - Summary: Bind an anonymous deployment to an account

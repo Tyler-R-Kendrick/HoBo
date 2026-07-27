@@ -35,6 +35,12 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 			"Observe continuous identity migration status (status/inspect; zero Bindle config)",
 	},
 	{
+		name: "access",
+		role: "identity",
+		summary:
+			"Request elevated/cross-env access or break-glass (short-lived capability; audited)",
+	},
+	{
 		name: "claim",
 		role: "identity",
 		summary: "Bind an anonymous deployment to an account",
@@ -177,6 +183,7 @@ export const projectScopedVerbs = new Set(
 				"login",
 				"claim",
 				"identity",
+				"access",
 				"add",
 				"registry",
 				"generate",

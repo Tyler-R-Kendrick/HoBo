@@ -27,11 +27,15 @@ import {
 	denyDecision,
 } from "@hobo/core";
 
+import { parseIsolationClass } from "../env-isolation/types.js";
+
 // Keep engine id local to avoid circular import with opa-engine.ts.
 const REGO_LITE_ENGINE_ID = "hobo.policy.opa-rego/v1" as const;
 
 export interface RegoLiteWhen {
 	readonly sameTenant?: boolean;
+	/** Require subject and resource share the same env: isolation class. */
+	readonly sameEnv?: boolean;
 	readonly subjectTagsAny?: readonly string[];
 	readonly subjectTagsAll?: readonly string[];
 	readonly resourceKinds?: readonly string[];
@@ -131,6 +135,15 @@ function whenMatches(
 	if (when.sameTenant === true && !sameTenant) return false;
 	if (when.sameTenant === false && sameTenant) return false;
 
+	const subjectEnv = parseIsolationClass(request.subject.tags);
+	const resourceEnv = parseIsolationClass(request.resource.tags ?? []);
+	const sameEnv =
+		subjectEnv !== null &&
+		resourceEnv !== null &&
+		subjectEnv === resourceEnv;
+	if (when.sameEnv === true && !sameEnv) return false;
+	if (when.sameEnv === false && sameEnv) return false;
+
 	const shared =
 		request.resource.tags?.includes("shared:true") === true ||
 		request.resource.attributes?.shared === "true";
@@ -153,25 +166,42 @@ function whenMatches(
 	return true;
 }
 
-/** Built-in default document: admin, same-tenant, or shared allow; else deny. */
+/**
+ * Built-in default document: admin+same-env, same-tenant+same-env, or shared+same-env.
+ * Cross-env never allowed by default (Environment Network Isolation pack).
+ */
 export const HOBO_DEFAULT_POLICY_DOCUMENT: RegoLiteDocument = {
 	default: "deny",
 	rules: [
 		{
 			effect: "allow",
 			actions: ["*"],
-			when: { subjectTagsAny: ["role:admin"] },
-			reason: "admin role",
+			when: { subjectTagsAny: ["role:admin"], sameEnv: true },
+			reason: "admin role same-env",
 		},
 		{
 			effect: "allow",
-			when: { sameTenant: true },
-			reason: "same-tenant",
+			when: { sameTenant: true, sameEnv: true },
+			reason: "same-tenant same-env",
 		},
 		{
 			effect: "allow",
-			when: { resourceShared: true },
-			reason: "shared-resource",
+			when: { resourceShared: true, sameEnv: true },
+			reason: "shared-resource same-env",
+		},
+	],
+};
+
+/**
+ * Environment Network Isolation pack as rego-lite document (explicit deny default).
+ */
+export const ENV_NETWORK_ISOLATION_REGO_DOCUMENT: RegoLiteDocument = {
+	default: "deny",
+	rules: [
+		{
+			effect: "allow",
+			when: { sameTenant: true, sameEnv: true },
+			reason: "env-isolation: same-tenant same-env",
 		},
 	],
 };

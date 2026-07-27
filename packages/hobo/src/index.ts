@@ -203,6 +203,10 @@ export {
 	type IdentityCommandDeps,
 } from "./identity-command.js";
 export {
+	createAccessCommand,
+	type AccessCommandDeps,
+} from "./access-command.js";
+export {
 	setDefaultStation,
 	type HoboProfileDefaultStation,
 } from "./hobo-profile.js";

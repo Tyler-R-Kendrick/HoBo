@@ -74,6 +74,18 @@ function createBindlesPublicApiSnapshot(
 		"parseBindleRequirements",
 		"connectionRef",
 		"requireConnection",
+		// ADR-0027 secretless-first config schema surface
+		"config",
+		"envField",
+		"fromBinding",
+		"schemaOnlyView",
+		"SECRET_SOURCE_RANKS",
+		"secretField",
+		"sourceRankIndex",
+		"assertSourceAllowed",
+		"generateCtxConfigSource",
+		"materializeAgentConfigView",
+		"evaluateSecretlessConfigGate",
 		...factoryNames,
 	]);
 
@@ -241,6 +253,70 @@ function createBindlesPublicApiSnapshot(
 				kind: "helper",
 				signature:
 					"env(config: Readonly<Record<string, string | number | boolean>>): ProviderAnnotation",
+			},
+			{
+				name: "config",
+				kind: "config-schema",
+				signature:
+					"config(fields: Readonly<Record<string, FieldBuilder | ConfigFieldDef>>): ConfigSchema",
+			},
+			{
+				name: "fromBinding",
+				kind: "config-schema",
+				signature: "fromBinding(resourceName: string): ConfigFieldDef",
+			},
+			{
+				name: "schemaOnlyView",
+				kind: "config-schema",
+				signature:
+					"schemaOnlyView(schema: ConfigSchema): Readonly<{ schemaVersion; schemaHash; fields }>",
+			},
+			{
+				name: "SECRET_SOURCE_RANKS",
+				kind: "config-schema-constant",
+				signature:
+					'const SECRET_SOURCE_RANKS: readonly ["bound-resource","provider-federation","camp-value","static-escape"]',
+			},
+			{
+				name: "sourceRankIndex",
+				kind: "config-schema",
+				signature: "sourceRankIndex(source: SecretSourceRank): number",
+			},
+			{
+				name: "assertSourceAllowed",
+				kind: "config-schema",
+				signature:
+					"assertSourceAllowed(field: ConfigFieldDef, allowedRanks: readonly SecretSourceRank[]): void",
+			},
+			{
+				name: "envField",
+				kind: "config-schema",
+				signature:
+					"envField: { string(); boolean(); int(); json() } // typed non-secret fields",
+			},
+			{
+				name: "secretField",
+				kind: "config-schema",
+				signature:
+					"secretField: { string() } // sensitive field builders; prefer secret.string()",
+			},
+			{
+				name: "generateCtxConfigSource",
+				kind: "config-codegen",
+				signature:
+					"generateCtxConfigSource(schema: ConfigSchema, options?): string",
+			},
+			{
+				name: "materializeAgentConfigView",
+				kind: "config-codegen",
+				signature:
+					"materializeAgentConfigView(schema: ConfigSchema, values): GeneratedAgentConfigView",
+			},
+			{
+				name: "evaluateSecretlessConfigGate",
+				kind: "config-can-deploy",
+				signature:
+					"evaluateSecretlessConfigGate(input: SecretlessConfigGateInput): SecretlessConfigGateResult",
 			},
 			{
 				name: "collectRequiredRuntimes",

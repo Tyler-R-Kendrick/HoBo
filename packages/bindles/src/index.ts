@@ -20,6 +20,32 @@ export {
 } from "./dependencies.js";
 export { env } from "./env.js";
 export {
+	assertSourceAllowed,
+	config,
+	envField,
+	fromBinding,
+	schemaOnlyView,
+	SECRET_SOURCE_RANKS,
+	secretField,
+	sourceRankIndex,
+	type ConfigFieldDef,
+	type ConfigFieldKind,
+	type ConfigSchema,
+	type SecretSourceRank,
+} from "./config-schema.js";
+export {
+	generateCtxConfigSource,
+	materializeAgentConfigView,
+	type GeneratedAgentConfigView,
+} from "./config-codegen.js";
+export {
+	evaluateSecretlessConfigGate,
+	type ConfigGateReason,
+	type SecretlessConfigGateInput,
+	type SecretlessConfigGateResult,
+} from "./config-can-deploy.js";
+export { secret } from "./secret-surface.js";
+export {
 	assertNoBindleProviderSelection,
 	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
 	BINDLE_PROVIDER_SELECTION_REMEDIATION,
@@ -48,7 +74,7 @@ export {
 	notify,
 	queue,
 	schedule,
-	secret,
+	// secret is dual-exported from secret-surface.ts (resource + field builders)
 	service,
 	topic,
 	ui,

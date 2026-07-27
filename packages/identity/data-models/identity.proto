@@ -196,3 +196,35 @@ message TokenRevokedEventData {
   string token_ref = 3;
   string reason = 4;
 }
+
+// ADR-0027 secretless-first config/secret audit payloads (refs only — never values).
+message ConfigResolvedEventData {
+  string name = 1;
+  // bound-resource | provider-federation | camp-value | static-escape
+  string source = 2;
+  string value_ref = 3;
+  string subject = 4;
+  bool redacted = 5;
+}
+
+message SecretAccessedEventData {
+  string name = 1;
+  string source = 2;
+  string value_ref = 3;
+  string version_id = 4;
+  string subject = 5;
+  string grant_id = 6;
+  bool redacted = 7;
+  bool plaintext_present = 8;
+}
+
+// Ranked config field shape (schema-only; values never on the wire as secrets).
+message ConfigFieldRecord {
+  string name = 1;
+  string type = 2; // string | boolean | int | json
+  bool required = 3;
+  bool sensitive = 4;
+  string source = 5;
+  string ttl = 6;
+  string rotation = 7;
+}

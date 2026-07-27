@@ -40,6 +40,10 @@ export const CREDENTIAL_AUDIT_EVENTS = Object.freeze({
 	ConnectionTokenIssued: "connection.TokenIssued",
 	ConnectionRevoked: "connection.Revoked",
 	ConnectionNeedsReauth: "connection.NeedsReauth",
+	/** ADR-0027 secretless-first config resolution (refs only). */
+	ConfigResolved: "config.Resolved",
+	/** ADR-0027 residual secret access (version-id; never plaintext). */
+	SecretAccessed: "secret.Accessed",
 } as const);
 
 export const CREDENTIAL_AUDIT_EVENT_PREFIXES = Object.freeze([
@@ -47,6 +51,8 @@ export const CREDENTIAL_AUDIT_EVENT_PREFIXES = Object.freeze([
 	"token.",
 	"session.",
 	"connection.",
+	"config.",
+	"secret.",
 ]);
 
 export function isCredentialAuditEvent(event: EventEnvelope): boolean {
@@ -97,10 +103,17 @@ export interface CredentialAuditRow {
 	sessionIds: string[];
 	/** First-class Connection ids observed on this correlation chain. */
 	connectionIds: string[];
+	/** Config field names resolved on this correlation (refs only). */
+	configNames: string[];
+	/** Secret refs accessed on this correlation (never values). */
+	secretValueRefs: string[];
 	timeline: CredentialAuditTimelineEntry[];
 	grantCount: number;
 	useCount: number;
 	revokeCount: number;
+	/** Count of config.Resolved / secret.Accessed events (audit). */
+	configResolveCount: number;
+	secretAccessCount: number;
 }
 
 function correlationKey(event: EventEnvelope): string {
@@ -126,6 +139,8 @@ function base(
 				identityIds: [...row.identityIds],
 				sessionIds: [...row.sessionIds],
 				connectionIds: [...(row.connectionIds ?? [])],
+				configNames: [...(row.configNames ?? [])],
+				secretValueRefs: [...(row.secretValueRefs ?? [])],
 				timeline: [...row.timeline],
 			}
 		: {
@@ -134,10 +149,14 @@ function base(
 				identityIds: [],
 				sessionIds: [],
 				connectionIds: [],
+				configNames: [],
+				secretValueRefs: [],
 				timeline: [],
 				grantCount: 0,
 				useCount: 0,
 				revokeCount: 0,
+				configResolveCount: 0,
+				secretAccessCount: 0,
 			};
 }
 
@@ -323,6 +342,53 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				next.timeline = [
 					...next.timeline,
 					{ seq: event.seq, type: event.type },
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.ConfigResolved]: (row, event) => {
+				const data = event.data as {
+					name?: string;
+					valueRef?: string;
+					source?: string;
+					redacted?: boolean;
+				};
+				const next = base(row, correlationKey(event));
+				if (data.name && !next.configNames.includes(data.name)) {
+					next.configNames = [...next.configNames, data.name];
+				}
+				next.configResolveCount += 1;
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.SecretAccessed]: (row, event) => {
+				const data = event.data as {
+					name?: string;
+					valueRef?: string;
+					versionId?: string;
+					grantId?: string;
+					plaintextPresent?: boolean;
+				};
+				// Fail closed in fold if an event claims plaintext (conformance).
+				if (data.plaintextPresent === true) {
+					throw new Error(
+						"CredentialAudit: secret.Accessed claimed plaintextPresent",
+					);
+				}
+				const next = base(row, correlationKey(event));
+				if (data.valueRef && !next.secretValueRefs.includes(data.valueRef)) {
+					next.secretValueRefs = [...next.secretValueRefs, data.valueRef];
+				}
+				next.secretAccessCount += 1;
+				next.timeline = [
+					...next.timeline,
+					{
+						seq: event.seq,
+						type: event.type,
+						...(data.grantId !== undefined ? { grantId: data.grantId } : {}),
+					},
 				];
 				return next;
 			},

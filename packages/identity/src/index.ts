@@ -76,6 +76,54 @@ export {
 	type IdentityProvider,
 } from "./port.js";
 export {
+	resolveConfigSchema,
+	type ConfigResolutionResult,
+	type ConfigResolverOptions,
+} from "./config-resolver.js";
+export {
+	createContractAssertedConfigFixtures,
+	type DevConfigFixture,
+} from "./config-dev-fixtures.js";
+export type {
+	ConfigFieldDef,
+	ConfigSchema,
+	SecretSourceRank,
+} from "./config-types.js";
+export {
+	assertNoPlaintextInEvent,
+	CONFIG_SECRET_EVENT_SCHEMA,
+	createConfigResolvedEvent,
+	createSecretAccessedEvent,
+	type ConfigSecretEvent,
+} from "./secrets-events.js";
+export {
+	asHoboSecretsStore,
+	createAwsSecretsManagerPort,
+	createAwsSecretsManagerStub,
+	createAzureKeyVaultPort,
+	createAzureKeyVaultStub,
+	createCampSecretsPort,
+	createMemorySecretsPort,
+	createVaultJwtSecretsPort,
+	resolveConfigEntry,
+	type FetchLike,
+	type ResolvedConfigEntry,
+	type ResolutionLadderInput,
+	type SecretsAccessResult,
+	type SecretsPort,
+} from "./secrets-port.js";
+export {
+	decryptLocalOverrides,
+	encryptLocalOverrides,
+	type LocalOverrideFile,
+} from "./local-overrides.js";
+export {
+	assertNoPlaintextConformance,
+	requireNoPlaintextConformance,
+	type PlaintextConformanceResult,
+	type PlaintextScanHit,
+} from "./secrets-conformance.js";
+export {
 	BROKER_OIDC_ASSERTION_TTL_SECONDS,
 	type BrokeredCredentialSource,
 	createInMemoryProviderStsExchange,
@@ -95,4 +143,5 @@ export {
 	type VaultedCredential,
 } from "./token-broker.js";
 
+// public-contract: the package id consumers assert against.
 export const HOBO_IDENTITY_PACKAGE = "@hobo/identity";

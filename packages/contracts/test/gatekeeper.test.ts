@@ -213,3 +213,26 @@ describe("Gatekeeper composition", () => {
 		expect(result.decision).toBe("allow");
 	});
 });
+
+	it("DENIES when secretless-config ranking gate fails (ADR-0027)", () => {
+		const result = evaluateGatekeeper({
+			request: baseRequest,
+			deployedState: { contracts: [deployedContract] },
+			candidate: { plan, contracts: [compatibleCandidate] },
+			costQuota: goodQuota,
+			secretlessConfig: {
+				ok: false,
+				reasons: [
+					{
+						code: "static-escape-forbidden",
+						message: "field LEGACY source static-escape exceeds policy ceiling",
+						field: "LEGACY",
+					},
+				],
+			},
+		});
+		expect(result.decision).toBe("deny");
+		expect(
+			result.reasons.some((r) => r.code === "secretless-config:static-escape-forbidden"),
+		).toBe(true);
+	});

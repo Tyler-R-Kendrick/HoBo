@@ -76,6 +76,16 @@ export const GENERATION_TARGETS = [
 		worldName: "training-engine-provider",
 		outSubdir: "training-engine-provider",
 	},
+	{
+		witPath: "wit/deps/hobo-secrets/hobo-secrets.wit",
+		worldName: "secrets-provider",
+		outSubdir: "secrets-provider",
+	},
+	{
+		witPath: "wit/deps/hobo-secrets/hobo-secrets.wit",
+		worldName: "secrets-guest",
+		outSubdir: "secrets-guest",
+	},
 ] as const;
 
 export function digestSource(source: string | Buffer): string {

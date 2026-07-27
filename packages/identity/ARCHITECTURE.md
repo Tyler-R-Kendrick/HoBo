@@ -44,19 +44,33 @@ token-exchange call will replace the fixture derivation.
 ## Event architecture
 
 - **Command** — an attested-workload `issueSvidFromAttestation` /
-  `rotateSvid` request, or a `grantForDeploy` / `useToken` / `revokeToken`
-  request against the broker.
+  `rotateSvid` request, a `grantForDeploy` / `useToken` / `revokeToken`
+  request against the broker, a Connection create/authorize/revoke, or a
+  `resolveConfigSchema` / residual secrets-port access.
 - **Event** — `identity.Issued`, `identity.Rotated`, `token.Granted`,
-  `token.Used`, and `token.Revoked` facts. Every event carries the
-  never-compact `CREDENTIAL_AUDIT_RETENTION` descriptor.
-- **Actor** — the per-subject identity aggregate (and the per-grant broker
-  aggregate) apply those events in order and own the active-SVID/grant state.
+  `token.Used`, `token.Revoked`, `connection.*`, `config.Resolved`, and
+  `secret.Accessed` facts. Every event carries the never-compact
+  `CREDENTIAL_AUDIT_RETENTION` descriptor. Config/secret events carry **refs
+  and version-ids only** — never plaintext values.
+- **Actor** — the per-subject identity aggregate (and the per-grant broker /
+  Connection / config-resolver aggregates) apply those events in order and own
+  the active-SVID/grant/config-ref state.
 - **Event store** — accepted events append to the platform event store as the
   durable source of truth for the credential-audit stream.
 - **Materialized view / projection** — the credential-audit projection (S3-04,
-  in `packages/cloud`) folds both the identity and token event families into a
-  per-subject audit view off the single retained stream.
-- **Snapshot** — the `activeSvids` / active-grant maps are the in-memory
-  snapshot of that projection.
-- **Read store** — `getAuditEvents`, `discovery`, and `jwks` serve reads from
-  that snapshot rather than replaying the raw event log.
+  in `packages/cloud`) folds identity, token, connection, config, and secret
+  event families into a per-correlation audit view off the single retained stream.
+- **Snapshot** — the `activeSvids` / active-grant / Connection maps and resolved
+  config placeholders are the in-memory snapshot of that projection.
+- **Read store** — `getAuditEvents`, `discovery`, `jwks`, and agent-safe
+  `schemaOnlyView` / `agentView` serve reads from that snapshot rather than
+  replaying the raw event log.
+
+## Secretless-first config (ADR-0027)
+
+Ranked resolution ladder in `src/secrets-port.ts` / `src/config-resolver.ts`:
+`bound-resource` → `provider-federation` → `camp-value` → `static-escape` (≤7d).
+`hobo:secrets` / Vault JWT-OIDC / cloud SM stubs are residual adapters; preferred
+paths are SVID-brokered tokens and `fromBinding` / `secretRef`. Dev uses
+contract-asserted fixtures (`createContractAssertedConfigFixtures`) with the same
+schema contracts as can-deploy.

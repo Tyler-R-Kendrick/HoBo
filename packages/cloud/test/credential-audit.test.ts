@@ -200,4 +200,62 @@ describe("CredentialAudit retention floor (NFR-018 — never compacted)", () => 
 		const after = credentialAuditProjection.fold(result.retained);
 		expect(after).toEqual(before);
 	});
+
+	it("never drops config.Resolved / secret.Accessed (ADR-0027)", () => {
+		const now = Date.parse("2026-07-01T00:00:00.000Z");
+		const preFloor = new Date(
+			now - CREDENTIAL_AUDIT_RETENTION_FLOOR_MS - 86_400_000,
+		).toISOString();
+		const events: EventEnvelope[] = [
+			{
+				id: "evt-config-1",
+				type: "config.Resolved",
+				v: 1,
+				streamId: STREAM,
+				seq: 1,
+				ts: preFloor,
+				actor,
+				tenant: "tenant-a",
+				correlationId: CORRELATION,
+				data: {
+					name: "API_KEY",
+					source: "provider-federation",
+					valueRef: "secref://API_KEY/v1",
+					redacted: true,
+				},
+			},
+			{
+				id: "evt-secret-1",
+				type: "secret.Accessed",
+				v: 1,
+				streamId: STREAM,
+				seq: 2,
+				ts: preFloor,
+				actor,
+				tenant: "tenant-a",
+				correlationId: CORRELATION,
+				data: {
+					name: "API_KEY",
+					source: "provider-federation",
+					valueRef: "secref://API_KEY/v1",
+					versionId: "v1",
+					redacted: true,
+					plaintextPresent: false,
+				},
+			},
+		];
+		const result = compactCredentialAuditStream(events, {
+			now,
+			retentionFloorMs: CREDENTIAL_AUDIT_RETENTION_FLOOR_MS,
+		});
+		expect(result.droppedCount).toBe(0);
+		expect(result.auditPreserved).toBe(true);
+		const fold = credentialAuditProjection.fold(events);
+		const row = credentialAuditProjection.get(fold, CORRELATION);
+		expect(row?.configNames).toEqual(["API_KEY"]);
+		expect(row?.secretValueRefs).toEqual(["secref://API_KEY/v1"]);
+		expect(row?.configResolveCount).toBe(1);
+		expect(row?.secretAccessCount).toBe(1);
+		expect(JSON.stringify(row)).not.toMatch(/password|api[_-]?key\s*[:=]/i);
+	});
 });

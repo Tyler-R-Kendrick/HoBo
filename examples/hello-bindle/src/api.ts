@@ -45,7 +45,11 @@ export function buildGreeting(
 	};
 }
 
-/** The hello-world API: a minimal Hono app exposing `GET /hello`. */
+/**
+ * Hono app for the private `api` resource.
+ * Wired into the bindle via `@hobo/adapter-hono` (`honoEntrypoint`).
+ * For isolated-wasm, see `src/adapters/wasm/api-guest.mjs` (framework-free wasi guest).
+ */
 export const app = new Hono().get("/hello", (c) => {
 	const body = buildGreeting(c.req.query("name"));
 	return c.json(body);

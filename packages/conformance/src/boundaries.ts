@@ -136,7 +136,8 @@ export function classifyPackage(path: string): PackageClassification {
 		path.startsWith("packages/iac/") ||
 		path.startsWith("packages/build/") ||
 		path.startsWith("packages/runtimes/") ||
-		path.startsWith("packages/connectors/")
+		path.startsWith("packages/connectors/") ||
+		path.startsWith("packages/adapters/")
 	) {
 		return { kind: "adapter", layer: 2 };
 	}

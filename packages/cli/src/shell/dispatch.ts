@@ -130,6 +130,11 @@ export function createHoboCli(options: CreateHoboCliOptions = {}): HoboCli {
 						port: null,
 						home: null,
 						host: null,
+						broker: null,
+						brokerUri: null,
+						anonymous: false,
+						temporary: false,
+						token: null,
 					},
 				});
 			}

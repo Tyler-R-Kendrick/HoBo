@@ -31,6 +31,15 @@ export interface CliFlags {
 	readonly port: string | null;
 	readonly home: string | null;
 	readonly host: string | null;
+	/** Target broker URI for `up` / `claim` (alias of --broker-uri). */
+	readonly broker: string | null;
+	/** Alias of --broker. */
+	readonly brokerUri: string | null;
+	/** Anonymous / temporary remote deploy (aliases of each other). */
+	readonly anonymous: boolean;
+	readonly temporary: boolean;
+	/** Claim token for remote `hobo claim --broker --token`. */
+	readonly token: string | null;
 }
 
 export interface CliRequest {
@@ -77,6 +86,11 @@ export function parseArgv(
 		port: null as string | null,
 		home: null as string | null,
 		host: null as string | null,
+		broker: null as string | null,
+		brokerUri: null as string | null,
+		anonymous: false,
+		temporary: false,
+		token: null as string | null,
 	};
 	const args: string[] = [];
 	let verb: string | null = null;
@@ -152,6 +166,11 @@ function parseOption(
 		port: string | null;
 		home: string | null;
 		host: string | null;
+		broker: string | null;
+		brokerUri: string | null;
+		anonymous: boolean;
+		temporary: boolean;
+		token: string | null;
 	},
 	verb: string | null,
 ): number {
@@ -252,8 +271,14 @@ function parseOption(
 			}
 			throw unknownOption(token, verb);
 		case "--home":
-			// Yard/dev install root; also `hobo up` for broker-runtime placement.
-			if (verb === "yard" || verb === "dev" || verb === "up") {
+			// Yard/dev install root; also `up`/`claim`/`login` for HOBO_HOME profile.
+			if (
+				verb === "yard" ||
+				verb === "dev" ||
+				verb === "up" ||
+				verb === "claim" ||
+				verb === "login"
+			) {
 				flags.home = takeValue(argv, index, token);
 				return index + 1;
 			}
@@ -261,6 +286,38 @@ function parseOption(
 		case "--host":
 			if (verb === "yard" || verb === "dev") {
 				flags.host = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
+		case "--broker":
+			if (verb === "up" || verb === "claim" || verb === "login") {
+				// Canonical flag; --broker-uri is an accepted alias.
+				flags.broker = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
+		case "--broker-uri":
+			if (verb === "up" || verb === "claim" || verb === "login") {
+				flags.brokerUri = takeValue(argv, index, token);
+				return index + 1;
+			}
+			throw unknownOption(token, verb);
+		case "--anonymous":
+			if (verb === "up") {
+				flags.anonymous = true;
+				return index;
+			}
+			throw unknownOption(token, verb);
+		case "--temporary":
+			// Alias of --anonymous (Cloudflare wrangler deploy --temporary style).
+			if (verb === "up") {
+				flags.temporary = true;
+				return index;
+			}
+			throw unknownOption(token, verb);
+		case "--token":
+			if (verb === "claim") {
+				flags.token = takeValue(argv, index, token);
 				return index + 1;
 			}
 			throw unknownOption(token, verb);

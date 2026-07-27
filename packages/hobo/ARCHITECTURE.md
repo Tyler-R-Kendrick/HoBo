@@ -109,3 +109,15 @@ Missing install → `required-runtime-unavailable` (same plane as provider pins)
 
 Adapters are **shared monorepo packages** for any project (`pnpm add @hobo/adapter-hono`).
 Examples only *consume* them — adapter source does not live under `examples/`.
+
+## Broker targeting + anonymous deploy (identity ≠ placement)
+
+`createBrokerAwareUpCommand` resolves the target broker as:
+
+1. `--broker` / `--broker-uri`
+2. `HOBO_BROKER` / `HOBO_BROKER_URI`
+3. `HOBO_HOME/profile.json` default from `hobo login --broker`
+4. Local embedded broker / Yard event-sourced lane
+
+Remote paths **discover** first (`.well-known/hobo-broker`). Anonymous/`--temporary` requires `supportsAnonymous`. Claim rebinds ownership locally (event store) or remotely (`--broker` + `--token`) without re-provision. Human vs agent principals stay distinct; DPoP/SPIRE production crypto is **HONEST SCOPE** behind fixture presenters.
+

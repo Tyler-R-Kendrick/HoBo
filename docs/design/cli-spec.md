@@ -17,12 +17,12 @@ surfaces.
 
 | Verb | Role | Semantics | Implementation issues |
 |---|---|---|---|
-| `up` | lifecycle | Realize the current object graph: build, plan, gate, provision, and deploy. `--camp`, `--strategy`, `--to`, `--rollback`, `--seed`, and `--restore` select target or revision without adding lifecycle verbs. | HOBO-130, HOBO-164, HOBO-198, HOBO-203, HOBO-208, HOBO-213, HOBO-219, HOBO-224 |
+| `up` | lifecycle | Realize the current object graph: build, plan, gate, provision, and deploy. `--camp`, `--strategy`, `--to`, `--rollback`, `--seed`, and `--restore` select target or revision without adding lifecycle verbs. `--broker` / `--broker-uri` target a remote broker (discovery required); `--anonymous` / `--temporary` request an ephemeral deploy when discovery advertises support. No flags = local embedded broker (zero-config, offline). | HOBO-130, HOBO-164, HOBO-198, HOBO-203, HOBO-208, HOBO-213, HOBO-219, HOBO-224 |
 | `down` | lifecycle | Tear down what `up` realized, in reverse dependency order. | HOBO-132 |
 | `dev` | local loop | Run against `runtime-local` with hot reload, replay, codegen-in-watch, and honest fidelity labels. Every workload lane participates: wasm components in any supported language recompile in-watch and OCI-fallback services restart-on-change per the dev-loop matrix ([ADR-0109](./adr/07-portability-extensibility.md#adr-0109)). | HOBO-122, HOBO-190, HOBO-198, HOBO-392, HOBO-612 (draft POC: `src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`) |
 | `new` | local loop | Scaffold a runnable SDK program. | HOBO-118, HOBO-198 |
-| `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. | HOBO-136, HOBO-184 |
-| `claim` | identity | Bind an anonymous `npx hobo up` deployment to an account while preserving state and URL. | HOBO-136, HOBO-164 |
+| `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. Optional `--broker` / `--broker-uri` associates a default remote broker on the HOBO_HOME profile (identity plane; not placement). | HOBO-136, HOBO-184 |
+| `claim` | identity | Bind an anonymous `npx hobo up` deployment to an account while preserving state and URL. Local: event-store rebind. Remote: `hobo claim <account> --broker <uri> --token <claimToken>` exchanges the claim token without re-provision. | HOBO-136, HOBO-164 |
 | `plan` | read-only | Dry-run the `up` decision: DeploymentPlan, Matching choices, cost, and warnings as an approvable diff. | HOBO-125, HOBO-203, HOBO-208 |
 | `verify` | read-only | Optional preflight for the unified Gatekeeper decision. `up` still runs the same gate automatically before mutation. | HOBO-146, HOBO-227 |
 | `can-deploy` | read-only | Compatibility-matrix diagnostic for producer/consumer skew; an input to `verify` and `up`. | HOBO-123, HOBO-146 |
@@ -58,8 +58,29 @@ hobo up --camp prod --to <revision>
 hobo up --rollback
 hobo up ./platform --seed
 hobo up ./platform --restore <log>
+hobo up --broker https://broker.example.com
+hobo up --broker-uri https://broker.example.com
+hobo up --broker https://public.example.com --anonymous
+hobo up --broker https://public.example.com --temporary
+hobo login --broker https://broker.example.com
+hobo claim acme
+hobo claim acme --to acme
+hobo claim acme --broker https://public.example.com --token <claimToken>
 hobo down --camp pr-123
 ```
+
+### Broker targeting and anonymous deploy
+
+Target resolution for `up` / default remote association:
+
+1. `--broker` or `--broker-uri` (aliases)
+2. `HOBO_BROKER` or `HOBO_BROKER_URI`
+3. Persisted profile under `HOBO_HOME` / `~/.hobo/profile.json`
+4. Embedded local broker (zero-config default)
+
+Remote paths **must** fetch a discovery document before place/claim. Anonymous/`--temporary` is **forbidden** unless discovery sets `supportsAnonymous` (or lists `anonymous` in auth methods). Success prints claim token/URL + TTL + primary URL (Cloudflare temporary / Lakebed claim style). Agents use SPIFFE-style SVID principals distinct from human login; DPoP-capable presentation is preferred for remote agent credentials.
+
+Identity remains the identity plane (`login` / SVID / claim); placement remains the broker plane. No new lifecycle verbs.
 
 `verify`, `can-deploy`, `plan`, `inspect`, and `logs` are read-only diagnostics.
 They do not mutate infrastructure. `up` always reruns the applicable gate before

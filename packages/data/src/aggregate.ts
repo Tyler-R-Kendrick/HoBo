@@ -1,5 +1,6 @@
 import type {
 	AppendOptions,
+	DurableEffectInput,
 	EventEnvelope,
 	EventInput,
 	EventStore,
@@ -11,6 +12,7 @@ import type { ActorHost } from "./actor-host.js";
 import {
 	AggregateConflictError,
 	AggregateInvariantError,
+	AggregateStaleFenceError,
 	isOptimisticConflict,
 } from "./errors.js";
 import {
@@ -24,8 +26,11 @@ import type { UpcasterRegistry } from "./upcaster.js";
 
 // Emit surface handed to a command: it stages past-tense facts to append. It is
 // the typed, domain-write sibling of an actor signal — no reads, no side effects.
+// stageEffect() records durable side effects for the same transaction as append
+// when the store implements DurableEventStore.commit; decide() stays pure (no I/O).
 export interface CommandEmitter {
 	emit(type: string, data?: unknown, options?: { v?: number }): void;
+	stageEffect(effect: DurableEffectInput): void;
 }
 
 export type Decide<S, C> = (
@@ -137,6 +142,7 @@ export function defineAggregate<S, C>(
 
 				// Run the command: invariant check against current state + emit.
 				const staged: EventInput[] = [];
+				const stagedEffects: DurableEffectInput[] = [];
 				const emitter: CommandEmitter = {
 					emit(type, data, options) {
 						if (typeof type !== "string" || !type.includes(".")) {
@@ -150,10 +156,13 @@ export function defineAggregate<S, C>(
 							data: (data ?? {}) as EventInput["data"],
 						});
 					},
+					stageEffect(effect) {
+						stagedEffects.push(effect);
+					},
 				};
 				definition.decide(outcome.state, command, emitter);
 
-				if (staged.length === 0) {
+				if (staged.length === 0 && stagedEffects.length === 0) {
 					finalSeq = outcome.seq;
 					return {
 						streamId,
@@ -166,11 +175,12 @@ export function defineAggregate<S, C>(
 					};
 				}
 
-				// Append under optimistic concurrency: expectedSeq is what we folded.
+				// Append under optimistic concurrency + actor fence.
 				const appendOptions: AppendOptions = {
 					expectedSeq: outcome.seq,
 					actor: context.actor,
 					tenant: context.tenant,
+					fenceToken: lease.fenceToken,
 				};
 				if (context.project !== undefined)
 					appendOptions.project = context.project;
@@ -182,15 +192,40 @@ export function defineAggregate<S, C>(
 
 				let appended: EventEnvelope[];
 				try {
-					const result = await deps.store.append(
-						streamId,
-						staged,
-						appendOptions,
-					);
-					appended = result.appended;
+					const durable = deps.store as EventStore & {
+						commit?: (req: {
+							streamId: string;
+							events: readonly EventInput[];
+							append: AppendOptions;
+							effects?: readonly DurableEffectInput[];
+						}) => Promise<{ appended: EventEnvelope[] }>;
+					};
+					if (typeof durable.commit === "function") {
+						const result = await durable.commit({
+							streamId,
+							events: staged,
+							append: appendOptions,
+							effects: stagedEffects,
+						});
+						appended = result.appended;
+					} else if (staged.length === 0) {
+						appended = [];
+					} else {
+						const result = await deps.store.append(
+							streamId,
+							staged,
+							appendOptions,
+						);
+						appended = result.appended;
+					}
 				} catch (error) {
 					if (isOptimisticConflict(error)) {
 						throw new AggregateConflictError(streamId, outcome.seq);
+					}
+					const name = (error as { name?: string })?.name;
+					const code = (error as { code?: string })?.code;
+					if (name === "StaleFenceError" || code === "STALE_FENCE") {
+						throw new AggregateStaleFenceError(streamId);
 					}
 					throw error;
 				}

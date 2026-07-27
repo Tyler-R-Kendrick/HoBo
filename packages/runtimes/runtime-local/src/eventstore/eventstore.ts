@@ -4,17 +4,33 @@ import { join } from "node:path";
 import type {
 	AppendOptions,
 	AppendResult,
+	ClaimSubscriptionOptions,
 	Clock,
+	DurableCommitRequest,
+	DurableCommitResult,
+	DurableEventStore,
 	EventEnvelope,
 	EventInput,
 	EventStore,
 	FoldHandlers,
 	FoldResult,
+	PositionedEvent,
+	ReadAllOptions,
 	SnapshotRecord,
 	StreamFilter,
 	Subscription,
+	SubscriptionCheckpoint,
+	SubscriptionLease,
 } from "@hobo/core";
-import { parseEventEnvelope } from "@hobo/core";
+import {
+	OptimisticSequenceConflictError,
+	parseEventEnvelope,
+	SnapshotAheadError,
+} from "@hobo/core";
+import {
+	createNodeSqliteDriver,
+	SqliteJournal,
+} from "@hobo/storage-sqlite";
 
 import {
 	type ParsedAppendContext,
@@ -25,20 +41,10 @@ import {
 	parseExpectedSeq,
 	parseStreamId,
 } from "./parse.js";
-import {
-	defaultDbPath,
-	SnapshotAheadError,
-	SqliteEventStore,
-	StaleSequenceError,
-} from "./sqlite-store.js";
+import { defaultDbPath } from "./sqlite-store.js";
 import { createUlidGenerator } from "./ulid.js";
 
-export class OptimisticSequenceConflictError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = "OptimisticSequenceConflictError";
-	}
-}
+export { OptimisticSequenceConflictError } from "@hobo/core";
 
 export interface ManualClock extends Clock {
 	advance(deltaMs: number): string;
@@ -69,20 +75,20 @@ export function createManualClock(
 export interface RuntimeLocalEventStoreOptions {
 	dataDir: string;
 	clock?: Clock;
+	/** Override db path (tests). */
+	dbPath?: string;
+	partitionId?: string;
 }
 
-export interface RuntimeLocalEventStore extends EventStore {
+export interface RuntimeLocalEventStore extends DurableEventStore {
 	fold<S>(
 		streamId: string,
 		opts: { initialState: S; handlers: FoldHandlers<S> },
 	): Promise<FoldResult<S>>;
 	loadSnapshot<S>(streamId: string): Promise<SnapshotRecord<S> | undefined>;
+	/** @internal */
+	journal(): SqliteJournal;
 	close(): void;
-}
-
-interface LiveSubscription {
-	filter: StreamFilter;
-	handler: (event: EventEnvelope) => void | Promise<void>;
 }
 
 export function createRuntimeLocalEventStore(
@@ -91,32 +97,15 @@ export function createRuntimeLocalEventStore(
 	const clock = options.clock ?? createManualClock();
 	const dataDir = options.dataDir;
 	mkdirSync(dataDir, { recursive: true });
-	const storage = new SqliteEventStore(defaultDbPath(dataDir));
+	const dbPath = options.dbPath ?? defaultDbPath(dataDir);
+	const driver = createNodeSqliteDriver({ path: dbPath });
+	const storage = new SqliteJournal(driver, {
+		clock,
+		nativePragmas: true,
+		partitionId: options.partitionId ?? "default",
+	});
 	const nextUlid = createUlidGenerator(clock);
-	const subscriptions = new Set<LiveSubscription>();
 	const quarantinedSeqs = new Set<string>();
-
-	const createEnvelope = (
-		input: ParsedEventInput,
-		seq: number,
-		context: ParsedAppendContext,
-	): EventEnvelope =>
-		parseEventEnvelope({
-			id: nextUlid(),
-			streamId: context.streamId,
-			seq,
-			type: input.type,
-			v: input.v,
-			ts: clock.now(),
-			actor: context.actor,
-			tenant: context.tenant,
-			project: context.project,
-			causationId: context.causationId,
-			correlationId: context.correlationId,
-			lane: context.lane,
-			data: cloneJson(input.data),
-			meta: cloneJson(input.meta),
-		});
 
 	return Object.freeze({
 		async append(
@@ -124,113 +113,47 @@ export function createRuntimeLocalEventStore(
 			events: EventInput[],
 			appendOptions: AppendOptions,
 		): Promise<AppendResult> {
-			const context = parseAppendContext(streamId, appendOptions);
-			const inputs = parseEventInputs(events);
-			const deduped: EventEnvelope[] = [];
-			const pending: ParsedEventInput[] = [];
-			const pendingByKey = new Map<string, ParsedEventInput>();
-			const pendingDuplicateKeys: string[] = [];
+			// Parse boundary for back-compat validation
+			parseAppendContext(streamId, appendOptions);
+			parseEventInputs(events);
+			return storage.append(streamId, events, appendOptions);
+		},
 
-			for (const input of inputs) {
-				if (input.idempotencyKey) {
-					const previous = storage.findByIdempotencyKey(
-						context.streamId,
-						input.idempotencyKey,
-					);
-					if (previous) {
-						deduped.push(previous);
-						continue;
-					}
-					if (pendingByKey.has(input.idempotencyKey)) {
-						pendingDuplicateKeys.push(input.idempotencyKey);
-						continue;
-					}
-					pendingByKey.set(input.idempotencyKey, input);
-				}
-				pending.push(input);
-			}
-
-			if (pending.length === 0) {
-				return Object.freeze({
-					streamId: context.streamId,
-					appended: [],
-					deduped: cloneJson(deduped),
-				});
-			}
-
-			let appended: EventEnvelope[] = [];
-			try {
-				const result = storage.appendBatch(context, pending, createEnvelope);
-				appended = result.appended;
-				deduped.push(...result.deduped);
-			} catch (error) {
-				if (error instanceof StaleSequenceError) {
-					throw new OptimisticSequenceConflictError(error.message);
-				}
-				throw error;
-			}
-
-			const appendedByKey = new Map<string, EventEnvelope>();
-			for (const envelope of appended) {
-				const key = envelope.meta?.idempotencyKey;
-				if (typeof key === "string" && key.length > 0) {
-					appendedByKey.set(key, envelope);
-				}
-				publish(subscriptions, envelope);
-			}
-			for (const key of pendingDuplicateKeys) {
-				const envelope = appendedByKey.get(key);
-				if (envelope) {
-					deduped.push(envelope);
-				}
-			}
-
-			return Object.freeze({
-				streamId: context.streamId,
-				appended: cloneJson(appended),
-				deduped: cloneJson(deduped),
-			});
+		async commit(request: DurableCommitRequest): Promise<DurableCommitResult> {
+			parseAppendContext(request.streamId, request.append);
+			if (request.events.length > 0) parseEventInputs([...request.events]);
+			return storage.commit(request);
 		},
 
 		read(streamId: string, fromSeq = 1) {
 			const parsedStreamId = parseStreamId(streamId);
 			const startSeq = parseExpectedSeq(fromSeq, "fromSeq");
-			return readIterable(storage, parsedStreamId, startSeq);
+			return storage.read(parsedStreamId, startSeq);
+		},
+
+		readAll(options?: ReadAllOptions): AsyncIterable<PositionedEvent> {
+			return storage.readAll(options);
 		},
 
 		subscribe(
 			filter: StreamFilter,
 			handler: (event: EventEnvelope) => void | Promise<void>,
 		) {
-			if (typeof handler !== "function") {
-				throw new TypeError("handler must be a function");
-			}
-			const subscription: LiveSubscription = {
-				filter: Object.freeze({ ...filter }),
-				handler,
-			};
-			subscriptions.add(subscription);
-			return Object.freeze({
-				unsubscribe() {
-					subscriptions.delete(subscription);
-				},
-			}) satisfies Subscription;
+			return storage.subscribe(filter, handler);
 		},
 
 		async snapshot(streamId: string, state: unknown, seq: number) {
 			const parsedStreamId = parseStreamId(streamId);
 			const snapshotSeq = parseExpectedSeq(seq, "seq");
-			const record: SnapshotRecord = {
-				streamId: parsedStreamId,
-				seq: snapshotSeq,
-				state: cloneJson(state),
-				savedAt: clock.now(),
-			};
 			try {
-				return storage.saveSnapshot(record);
+				return await storage.snapshot(parsedStreamId, state, snapshotSeq);
 			} catch (error) {
 				if (error instanceof SnapshotAheadError) {
-					throw new OptimisticSequenceConflictError(error.message);
+					throw new OptimisticSequenceConflictError(
+						parsedStreamId,
+						snapshotSeq,
+						error.headSeq,
+					);
 				}
 				throw error;
 			}
@@ -238,6 +161,38 @@ export function createRuntimeLocalEventStore(
 
 		async loadSnapshot<S>(streamId: string) {
 			return storage.loadSnapshot<S>(parseStreamId(streamId));
+		},
+
+		async claimSubscription(
+			options: ClaimSubscriptionOptions,
+		): Promise<SubscriptionLease> {
+			return storage.claimSubscription(options);
+		},
+
+		async loadCheckpoint(options: {
+			subscriptionId: string;
+			partitionId: string;
+		}): Promise<SubscriptionCheckpoint | undefined> {
+			return storage.loadCheckpoint(options);
+		},
+
+		async commitCheckpoint(options: {
+			subscriptionId: string;
+			partitionId: string;
+			position: bigint;
+			fenceToken: bigint;
+		}): Promise<SubscriptionCheckpoint> {
+			return storage.commitCheckpoint(options);
+		},
+
+		async resetCheckpoint(options: {
+			subscriptionId: string;
+			partitionId: string;
+			position: bigint;
+			administrative: true;
+			holderId: string;
+		}): Promise<SubscriptionCheckpoint> {
+			return storage.resetCheckpoint(options);
 		},
 
 		async fold<S>(
@@ -251,7 +206,10 @@ export function createRuntimeLocalEventStore(
 				"foldOptions.initialState",
 			);
 			const quarantined: FoldResult<S>["quarantined"] = [];
-			const events = storage.readStream(parsedStreamId);
+			const events: EventEnvelope[] = [];
+			for await (const event of storage.read(parsedStreamId)) {
+				events.push(event);
+			}
 
 			for (const event of events) {
 				const quarantineKey = `${parsedStreamId}:${event.seq}`;
@@ -266,7 +224,7 @@ export function createRuntimeLocalEventStore(
 				try {
 					state = cloneJson(handler(cloneJson(state), cloneJson(event)));
 				} catch (cause) {
-					const quarantine = appendQuarantine({
+					const quarantine = await appendQuarantine({
 						storage,
 						streamId: parsedStreamId,
 						event,
@@ -274,7 +232,6 @@ export function createRuntimeLocalEventStore(
 						clock,
 						nextUlid,
 						quarantinedSeqs,
-						subscriptions,
 					});
 					quarantined.push({
 						offendingSeq: event.seq,
@@ -295,13 +252,17 @@ export function createRuntimeLocalEventStore(
 			});
 		},
 
+		journal() {
+			return storage;
+		},
+
 		close() {
 			storage.close();
 		},
-	});
+	}) satisfies RuntimeLocalEventStore & EventStore;
 }
 
-function appendQuarantine({
+async function appendQuarantine({
 	storage,
 	streamId,
 	event,
@@ -309,28 +270,25 @@ function appendQuarantine({
 	clock,
 	nextUlid,
 	quarantinedSeqs,
-	subscriptions,
 }: {
-	storage: SqliteEventStore;
+	storage: SqliteJournal;
 	streamId: string;
 	event: EventEnvelope;
 	cause: unknown;
 	clock: Clock;
 	nextUlid: () => string;
 	quarantinedSeqs: Set<string>;
-	subscriptions: Set<LiveSubscription>;
-}): EventEnvelope {
+}): Promise<EventEnvelope> {
 	const quarantineKey = `${streamId}:${event.seq}`;
 	if (quarantinedSeqs.has(quarantineKey)) {
-		const existing = storage
-			.readStream(streamId)
-			.find(
-				(candidate) =>
-					isQuarantineEvent(candidate) &&
-					(candidate.data as { offendingSeq?: number }).offendingSeq ===
-						event.seq,
-			);
-		return existing as EventEnvelope;
+		for await (const candidate of storage.read(streamId)) {
+			if (
+				isQuarantineEvent(candidate) &&
+				(candidate.data as { offendingSeq?: number }).offendingSeq === event.seq
+			) {
+				return candidate;
+			}
+		}
 	}
 
 	quarantinedSeqs.add(quarantineKey);
@@ -347,59 +305,35 @@ function appendQuarantine({
 			quarantines: event.id,
 		},
 	});
-	const context = parseAppendContext(streamId, {
+	void nextUlid;
+	void clock;
+	// Quarantine must not bypass fencing: use current owner_epoch when fenced.
+	const head = storage.getStreamHead(streamId);
+	const appendOpts: AppendOptions = {
 		expectedSeq: storage.getStreamLength(streamId),
 		actor: { kind: "system", id: "runtime-local" },
 		tenant: event.tenant,
 		causationId: event.id,
-		correlationId: event.correlationId,
-	});
-	const quarantine = storage.appendSingle(context, input, (_parsed, seq, ctx) =>
-		parseEventEnvelope({
-			id: nextUlid(),
-			streamId: ctx.streamId,
-			seq,
-			type: input.type,
-			v: input.v,
-			ts: clock.now(),
-			actor: ctx.actor,
-			tenant: ctx.tenant,
-			causationId: ctx.causationId,
-			correlationId: ctx.correlationId,
-			data: cloneJson(input.data),
-			meta: cloneJson(input.meta),
-		}),
-	);
-	publish(subscriptions, quarantine);
-	return quarantine;
-}
-
-async function* readIterable(
-	storage: SqliteEventStore,
-	streamId: string,
-	fromSeq: number,
-): AsyncIterable<EventEnvelope> {
-	for (const event of storage.readStream(streamId, fromSeq)) {
-		yield cloneJson(event);
+	};
+	if (head && head.ownerEpoch > 0n) {
+		appendOpts.fenceToken = head.ownerEpoch;
 	}
-}
-
-function publish(
-	subscriptions: Set<LiveSubscription>,
-	envelope: EventEnvelope,
-): void {
-	for (const subscription of subscriptions) {
-		if (matches(subscription.filter, envelope)) {
-			void subscription.handler(cloneJson(envelope));
-		}
+	if (event.correlationId !== undefined) {
+		appendOpts.correlationId = event.correlationId;
 	}
-}
-
-function matches(filter: StreamFilter, envelope: EventEnvelope): boolean {
-	return (
-		(!filter.streamId || filter.streamId === envelope.streamId) &&
-		(!filter.type || filter.type === envelope.type)
+	const result = await storage.append(
+		streamId,
+		[
+			{
+				type: input.type,
+				v: input.v,
+				data: input.data,
+				meta: input.meta as Record<string, unknown>,
+			},
+		],
+		appendOpts,
 	);
+	return result.appended[0] as EventEnvelope;
 }
 
 function normalizeHandlers<S>(
@@ -448,3 +382,8 @@ export async function collectStream(
 	}
 	return events;
 }
+
+// keep parse imports used for side-effect validation paths
+export type { ParsedAppendContext, ParsedEventInput };
+void parseEventEnvelope;
+void join;

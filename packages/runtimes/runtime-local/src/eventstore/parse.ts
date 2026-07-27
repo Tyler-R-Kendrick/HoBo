@@ -24,6 +24,7 @@ export interface ParsedAppendContext {
 	readonly causationId?: string | undefined;
 	readonly correlationId?: string | undefined;
 	readonly lane?: string | undefined;
+	readonly fenceToken?: bigint | undefined;
 }
 
 export function parseStreamId(value: unknown): ParsedStreamId {
@@ -88,6 +89,11 @@ export function parseAppendContext(
 		throw new TypeError("appendOptions.actor must be an object");
 	}
 
+	const fenceToken = parseOptionalFenceToken(
+		options.fenceToken,
+		"appendOptions.fenceToken",
+	);
+
 	return Object.freeze({
 		streamId: parseStreamId(streamId),
 		expectedSeq: parseExpectedSeq(
@@ -106,7 +112,28 @@ export function parseAppendContext(
 			"appendOptions.correlationId",
 		),
 		lane: optionalString(options.lane, "appendOptions.lane"),
+		fenceToken,
 	});
+}
+
+function parseOptionalFenceToken(
+	value: unknown,
+	fieldName: string,
+): bigint | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value === "bigint") {
+		if (value < 0n) {
+			throw new TypeError(`${fieldName} must be a non-negative bigint`);
+		}
+		return value;
+	}
+	if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+		return BigInt(value);
+	}
+	if (typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)) {
+		return BigInt(value);
+	}
+	throw new TypeError(`${fieldName} must be a non-negative integer/bigint`);
 }
 
 export function parseStoredEnvelope(row: {

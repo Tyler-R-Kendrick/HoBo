@@ -83,16 +83,21 @@ mutates read models directly.
 ## EventStore — actor / projection behavior
 
 - **Actor** — the `actor` principal on each envelope names who emitted the
-  fact; actors append events, never mutate read models directly.
-- **Event store** — `events` table is the durable source of truth (WAL +
-  `synchronous=FULL`, one transaction per append batch).
-- **Materialized view / projection** — `fold` replays the log through handlers
-  to derive state; downstream reactors/projections (Plan 32) consume the same
-  log.
-- **Snapshot** — `snapshots` table caches fold state at a `seq` for faster
-  replay (snapshots + cache, not always from seq 0).
+  fact; actors append events, never mutate read models directly. Aggregate
+  appends carry `fenceToken` from `ActorHost` into storage (`owner_epoch`).
+- **Event store** — `events` + `streams` (revision / owner_epoch) are the
+  durable source of truth (WAL + `synchronous=FULL` on native; one transaction
+  per commit batch). Schema/migrations live in `@hobo/storage-sqlite`
+  (versioned via `PRAGMA user_version`). Database-local `global_position`
+  supports catch-up reads; it is not domain envelope identity.
+- **Materialized view / projection** — `fold` / `readAll(after)` replays the
+  log; durable subscription leases + monotonic checkpoints survive restart.
+- **Snapshot** — `snapshots` table caches fold state at a `seq` (never ahead of
+  stream head); cache only, not source of truth.
 - **Read store** — callers query fold output or snapshots; the raw log remains
   append-only.
+- **Storage worker** — production Node path serializes `node:sqlite` access
+  through a Worker Thread (`src/eventstore/storage-worker.ts`).
 
 ## Streamer — event architecture (S1-08 / HOBO-597)
 
@@ -120,15 +125,20 @@ lifecycle is event-sourced; frame retention is dev-grade in-memory until
 - **Command** — `queue.enqueue`, `queue.handle`, `queue.signal`, `clock.sleep`,
   `clock.cron`, and `clock.advance` requests.
 - **Event** — append-only trace records (`queue.enqueued`, `timer.scheduled`,
-  `cron.fired`, etc.) folded into in-memory store state.
+  `cron.fired`, etc.).
 - **Actor** — `queue.signal(actorKey, msg)` maps actor messages onto per-actor
   queues with idempotency-key dedup.
-- **Event store** — queue/clock state is in-memory with `snapshot()` for simulated
-  restart; EventStore envelope timestamps can use `clock.now()` via
+- **Durable path** — when a durable EventStore partition is configured, queue /
+  timer / outbox rows stage in the same SQLite transaction as domain events via
+  `DurableEventStore.commit` (`@hobo/storage-sqlite`). Handlers and outbox
+  network I/O run **outside** the write transaction.
+- **In-memory path** — `QueueClockStore` remains an explicit deterministic test
+  adapter with `snapshot()` for simulated restart (not the production durability
+  default).
+- **Event store timestamps** — can use `clock.now()` via
   `createRuntimeLocal({ queueClock })`.
 - **Materialized view / projection** — completed-message dedup suppresses duplicate
-  handler effects on redelivery.
-- **Snapshot** — `snapshot()` serializes queues, timers, cron schedules, and trace.
+  handler effects on redelivery; durable subscription checkpoints resume catch-up.
 - **Read store** — `dequeue` / `handle` query current lease state; deterministic
   replay uses `replayClockTrace`.
 

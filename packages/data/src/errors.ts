@@ -53,3 +53,20 @@ export function isOptimisticConflict(error: unknown): boolean {
 		code === "OPTIMISTIC_SEQUENCE_CONFLICT"
 	);
 }
+
+export function isStaleFenceError(error: unknown): boolean {
+	const name = (error as { name?: unknown })?.name;
+	const code = (error as { code?: unknown })?.code;
+	return name === "StaleFenceError" || code === "STALE_FENCE";
+}
+
+export class AggregateStaleFenceError extends Error {
+	readonly code = "STALE_FENCE" as const;
+	readonly retryable = false as const;
+	readonly streamId: string;
+	constructor(streamId: string, message?: string) {
+		super(message ?? `stale actor fence for ${streamId}`);
+		this.name = "AggregateStaleFenceError";
+		this.streamId = streamId;
+	}
+}

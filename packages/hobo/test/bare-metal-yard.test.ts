@@ -47,10 +47,10 @@ describe("bare-metal yard e2e", () => {
 		expect(envelope.data.config.kind).toBe("bare-metal");
 		expect(envelope.data.config.name).toBe("local");
 		expect(envelope.data.config.defaultPort).toBe(4100);
+		// Broker-runtime prefers isolated-wasm when tooling can be equipped.
 		expect(
-			(envelope.data.config as { componentHost?: string }).componentHost ??
-				"local",
-		).toBe("local");
+			(envelope.data.config as { componentHost?: string }).componentHost,
+		).toMatch(/^(local|isolated-wasm)$/);
 
 		const loaded = loadBareMetalYardConfig(hoboHome);
 		expect(loaded?.providerId).toBe("local");
@@ -113,30 +113,23 @@ describe("bare-metal yard e2e", () => {
 			}),
 		).rejects.toThrow();
 
-		// Host injects bindle env.
-		expect(serve.bindleEnv).toEqual({
-			GREETING_PREFIX: "from-bindle-api",
-			APP_TITLE: "from-bindle-web",
-		});
+		// Defaults — no .with({ option: "env" }) required on the bindle.
+		expect(serve.bindleEnv).toEqual({});
 
-		// Web (public) calls private api via mesh and renders bindle config.
+		// Web (public) calls private api via mesh with app defaults.
 		const web = await fetch(`${serve.primaryUrl}/?name=Yard`);
 		expect(web.status).toBe(200);
 		const html = await web.text();
-		expect(html).toContain('data-testid="app-title">from-bindle-web</h1>');
-		expect(html).toContain('data-testid="greeting">from-bindle-api, Yard</p>');
-		expect(html).toContain('data-testid="greeting-prefix">from-bindle-api</p>');
+		expect(html).toContain('data-testid="app-title">hello-bindle</h1>');
+		expect(html).toContain('data-testid="greeting">hello, Yard</p>');
 
-		// Private mesh URL works only through camp-routed fetch (already proven
-		// by the web response). Direct fetch to hobo.internal also works while
-		// the mesh interceptor is installed — but there is no public TCP for api.
+		// Private mesh URL works through camp-routed fetch; no public TCP for api.
 		const mesh = await fetch(
 			`${serve.serviceDiscovery.services__api__http__0}/hello?name=Mesh`,
 		);
 		expect(await mesh.json()).toEqual({
-			message: "from-bindle-api, Mesh",
-			greetingPrefix: "from-bindle-api",
-			via: "bindle-env",
+			message: "hello, Mesh",
+			greetingPrefix: "hello",
 		});
 	});
 
@@ -191,8 +184,8 @@ describe("bare-metal yard e2e", () => {
 			expect(apiEp?.external).toBe(false);
 			expect(apiEp?.port).toBeNull();
 			expect(envelope.data.served.status).toBe(200);
-			expect(envelope.data.served.body).toContain("from-bindle-web");
-			expect(envelope.data.served.body).toContain("from-bindle-api, world");
+			expect(envelope.data.served.body).toContain("hello-bindle");
+			expect(envelope.data.served.body).toContain("hello, world");
 			expect(envelope.ok).toBe(true);
 		} finally {
 			if (previous === undefined) delete process.env.HOBO_HOME;

@@ -252,7 +252,8 @@ function parseOption(
 			}
 			throw unknownOption(token, verb);
 		case "--home":
-			if (verb === "yard" || verb === "dev") {
+			// Yard/dev install root; also `hobo up` for broker-runtime placement.
+			if (verb === "yard" || verb === "dev" || verb === "up") {
 				flags.home = takeValue(argv, index, token);
 				return index + 1;
 			}

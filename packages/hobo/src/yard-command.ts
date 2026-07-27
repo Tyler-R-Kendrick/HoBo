@@ -8,6 +8,7 @@ import {
 	loadBareMetalYardConfig,
 	yardConfigPath,
 } from "./bare-metal-yard.js";
+import { ensureEmbeddedBroker } from "./broker-runtime.js";
 import { probeWasmHostInstall } from "./wasm-host.js";
 import { ensureIsolatedWasmToolchain } from "./wasm-sandbox.js";
 
@@ -78,11 +79,18 @@ export function createYardCommand(): CommandModule {
 					};
 				}
 				try {
+					// Installed runtime always includes an embedded broker.
+					const embedded = await ensureEmbeddedBroker({
+						hoboHome,
+						emitProgress,
+					});
+					const preferredHost =
+						componentHost ?? embedded.state.preferredComponentHost;
 					const { config, configPath } = initBareMetalYard({
 						hoboHome,
 						force: flags.force === true,
 						...(defaultPort !== undefined ? { defaultPort } : {}),
-						...(componentHost !== undefined ? { componentHost } : {}),
+						componentHost: preferredHost,
 					});
 					let toolchain: Awaited<
 						ReturnType<typeof ensureIsolatedWasmToolchain>
@@ -109,7 +117,7 @@ export function createYardCommand(): CommandModule {
 						ok: true,
 						status: "initialized",
 						code: "HOBO_YARD_INIT",
-						message: `hobo yard init: Yard '${config.name}' componentHost=${config.componentHost} at ${configPath} (dataDir ${config.dataDir})` +
+						message: `hobo yard init: Yard '${config.name}' componentHost=${config.componentHost} at ${configPath}; broker ${embedded.state.brokerId}` +
 							(toolchain
 								? `; toolchain wasmtime ${toolchain.wasmtime.version}`
 								: ""),
@@ -118,6 +126,7 @@ export function createYardCommand(): CommandModule {
 							configPath,
 							config,
 							wasm,
+							broker: embedded.state,
 							...(toolchain !== null ? { toolchain } : {}),
 						},
 					};

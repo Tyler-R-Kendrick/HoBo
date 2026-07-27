@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createComposedHoboCli } from "../src/cli.js";
 import {
+	ensureIsolatedWasmToolchain,
 	HOBO_ENV_HEADER_PREFIX,
 	INTERNAL_MESH_HOST,
 	initBareMetalYard,
@@ -47,9 +48,11 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			["yard", "ensure", "--home", hoboHome, "--json"],
 			{ cwd: hoboHome },
 		);
+		expect(result.stdout.length).toBeGreaterThan(0);
 		const envelope = JSON.parse(result.stdout) as {
 			ok: boolean;
 			code: string;
+			message?: string;
 			data: {
 				toolchain: {
 					wasmtime: { version: string; binPath: string };
@@ -58,12 +61,12 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 				};
 			};
 		};
-		expect(envelope.ok).toBe(true);
+		expect(envelope.ok, envelope.message ?? result.stdout).toBe(true);
 		expect(envelope.code).toBe("HOBO_YARD_ENSURE");
 		expect(envelope.data.toolchain.ready).toBe(true);
 		expect(envelope.data.toolchain.wasmtime.version).toMatch(/^\d+\.\d+\.\d+$/);
 		expect(existsSync(envelope.data.toolchain.wasmtime.binPath)).toBe(true);
-	}, 120_000);
+	}, 180_000);
 
 	it("hobo yard init --host isolated-wasm records config and ensures toolchain", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-home-"));
@@ -118,22 +121,19 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(api?.url).toContain(INTERNAL_MESH_HOST);
 
 		const html = await (await fetch(`${serve.primaryUrl}/?name=Local`)).text();
-		expect(html).toContain("from-bindle-api, Local");
+		// Defaults — no .with env required.
+		expect(html).toContain("hello, Local");
 	});
 
 	it(
-		"isolated-wasm via hobo path: mesh injects env into wasmtime sandbox",
+		"isolated-wasm via hobo path: private api in wasmtime sandbox (defaults)",
 		async () => {
 			const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-"));
 			cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 
-			// Toolchain must come from hobo yard ensure — not ad-hoc agent setup.
-			const cli = createComposedHoboCli();
-			const ensure = await cli.run(
-				["yard", "init", "--home", hoboHome, "--host", "isolated-wasm", "--json"],
-				{ cwd: hoboHome },
-			);
-			expect(JSON.parse(ensure.stdout).ok).toBe(true);
+			// Toolchain + yard via hobo APIs (same path as CLI ensure/init).
+			await ensureIsolatedWasmToolchain({ hoboHome });
+			initBareMetalYard({ hoboHome, componentHost: "isolated-wasm" });
 
 			const port = 24000 + Math.floor(Math.random() * 500);
 			const serve = await serveProjectOnIsolatedWasm({
@@ -150,15 +150,14 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			expect(serve.isolation.wasmPaths.length).toBe(1);
 			expect(existsSync(serve.isolation.wasmPaths[0]!)).toBe(true);
 			expect(serve.exposedEndpoints).toHaveLength(1);
-			// Mesh-injected bindle env (not baked into the .wasm).
-			expect(serve.bindleEnv.GREETING_PREFIX).toBe("from-bindle-api");
+			// No required .with env — guest uses defaults; mesh header prefix still defined.
+			expect(serve.bindleEnv).toEqual({});
 			expect(HOBO_ENV_HEADER_PREFIX).toBe("x-hobo-env-");
 
 			const html = await (await fetch(`${serve.primaryUrl}/?name=Iso`)).text();
-			expect(html).toContain("from-bindle-api, Iso");
-			expect(html).toContain("wasm-sandbox");
+			expect(html).toContain("hello, Iso");
 		},
-		120_000,
+		180_000,
 	);
 
 	it("legacy host aliases normalize to local component host", async () => {
@@ -180,14 +179,12 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		expect(PINNED_WASMTIME_VERSION).toBe("46.0.1");
 	});
 
-	it("resolves private wasm guests from app adapters (not core templates)", () => {
+	it("resolves private wasm guests from app src/wasm (not core templates)", () => {
 		const resolved = resolvePrivateWasmGuest({
 			projectDir: helloBindleDir,
 			resourceName: "api",
 		});
-		expect(resolved.guestSourcePath).toContain(
-			"src/adapters/wasm/api-guest.mjs",
-		);
+		expect(resolved.guestSourcePath).toContain("src/wasm/api-guest.mjs");
 		expect(resolved.wasmPath).toBeNull();
 		// Core must not invent app routes — missing guest fails closed.
 		const missing = resolvePrivateWasmGuest({

@@ -71,15 +71,15 @@ in-memory `IacProvider` the `@hobo/cloud` + `@hobo/cli` tests use — the one th
 actually applies the executor's programs — and does not depend on
 `@hobo/iac-pulumi`.
 
-## HTTP frameworks are L2 adapters (not core)
+## HTTP frameworks are L2 packages under `packages/adapters/`
 
 `@hobo/hobo` / `@hobo/core` do **not** depend on Hono or other HTTP frameworks.
 
 | Surface | What HoBo sees | Where frameworks live |
 |---------|----------------|------------------------|
-| local component host | bindle entrypoint as `(Request) => Response` | `@hobo/adapter-hono` + app Hono routes |
-| isolated-wasm host | project wasi:http guest under `src/adapters/wasm/<name>-guest.mjs` | app wasm adapter (framework-free guest) |
-| mesh env | `x-hobo-env-*` headers from bindle `.with({ option: "env" })` | HoBo Camp mesh only |
+| local component host | bindle entrypoint as `(Request) => Response` | **`packages/adapters/adapter-hono`** (`@hobo/adapter-hono`) + app routes |
+| isolated-wasm host | project wasi:http guest under `src/wasm/<name>-guest.mjs` | app guest only (framework-free) |
+| mesh env | `x-hobo-env-*` when camp injects config | Camp mesh |
 
-Framework packages live under `packages/adapters/` (L2), e.g. `@hobo/adapter-hono`.
-Do not fold Hono or jco-std into `@hobo/core` / `@hobo/hobo`.
+Adapters are **shared monorepo packages** for any project (`pnpm add @hobo/adapter-hono`).
+Examples only *consume* them — adapter source does not live under `examples/`.

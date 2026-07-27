@@ -1,38 +1,48 @@
 ---
 layout: ../../layouts/Docs.astro
 title: WIT & storage
-description: "Component Model storage capability: hobo:storage is engine-neutral; SQLite handles never cross the guest boundary."
+description: "hobo:storage@0.1.0 host capability, component isolation, no SQL across the boundary, and relation to SQLite default engines."
 ---
 
 # WIT & storage
 
-## Principle
+HoBo’s programmable surface is **WIT/WASM** (Component Model). TypeScript packages are the first reference implementation, not the only runtime. Storage for components is a **host-supplied capability**, not “open a file path from guest code.”
 
-WebAssembly Components **import** storage capabilities from the host. Guests must not assume filesystem paths, SQL dialects, or SQLite handles.
+## `hobo:storage@0.1.0`
 
-## `hobo:storage@0.1.0` (intent)
-
-Host-facing surface (conceptual):
-
-- Append / commit with `expected-seq` and optional `fence-token` (`u64`)
-- Bounded stream pages and positioned catch-up pages (cursors, not unbounded lists)
-- Typed errors: optimistic conflict, stale fence, busy, unsupported schema, …
-- Subscription claim / checkpoint with fencing
-
-No SQL, VFS names, or file paths appear on the WIT boundary.
-
-## Hosts
-
-| Host | Engine |
+| Rule | Detail |
 |---|---|
-| Node runtime-local | `node:sqlite` + worker, serial owner |
-| Browser | SQLite WASM + OPFS when available |
-| Future | Postgres / managed stores behind same ports |
+| Package | Generated bindings via `@hobo/wit` |
+| Guest sees | Engine-neutral storage operations aligned with EventStore semantics |
+| Guest must not see | SQL dialects, filesystem paths, driver pragmas |
+| Host implements | SQLite partition, future remote adapters, in-memory test fakes |
 
-## Authz
+Conformance tests prove guests behave identically across hosts that implement the WIT.
 
-Host binds tenant/lane/capability grants. A guest cannot choose a broader tenant or baseline lane than its grant.
+## Why capability-shaped storage
+
+1. **Move cheap** — swap host engine without rewriting app components.
+2. **Deny-by-default sandbox** — WASM capability security is a structural isolation dimension.
+3. **Air-gap friendly** — host can bind in-boundary storage only; no egress required for durability.
+
+## Related WIT surfaces (experimental / evolving)
+
+| Interface | Role |
+|---|---|
+| `hobo:storage` | Event/journal durability |
+| `hobo:secrets` | Residual secrets store bridge (`asHoboSecretsStore`) |
+| Runtime WIT ports | Broader Camp capabilities as they stabilize |
+
+Stability tags on `PortDescriptor` (`stable` | `preview` | `experimental`) apply — do not treat experimental WIT as frozen.
+
+## Coupling to ADR-0135
+
+SQLite is the **default host engine**, not the public portability boundary. Apps and components depend on ports/WIT; operators choose engines that pass `@hobo/conformance`.
+
+## Build path
+
+`hobo build` compiles services to wasm components with OCI fallback. Generated drift fails closed (`codegen --check` / build guards).
 
 ## Related
 
-[EventStore reference](/HoBo/reference/eventstore/) · [Architecture](/HoBo/guide/architecture/)
+[Package map](/HoBo/reference/packages/) · [EventStore](/HoBo/reference/eventstore/) · [Architecture](/HoBo/guide/architecture/) · [WASM guide](/HoBo/guide/wasm/)

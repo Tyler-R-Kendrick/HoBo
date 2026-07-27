@@ -63,7 +63,12 @@ HoBo is the third option: **cloud portability without hiding the cloud.**
 - [Getting started](/HoBo/guide/getting-started/) — pack a bindle, pitch a camp, `hobo up`.
 - [Core concepts](/HoBo/guide/concepts/) — the vocabulary: Bindle, Camp, Yard, Junction, and friends.
 - [Architecture](/HoBo/guide/architecture/) — how the describing, placing, and moving actually works.
-- [Testing](/HoBo/testing/) — effect-aware isolation, contracts, durability, bridge modes, chaos.
-- [Reference](/HoBo/reference/) — packages, EventStore, contracts, effects, CLI, events.
-- [The Crew](/HoBo/crew/) — built-in operator agents (SRE, GitOps, FinOps, …).
-- [Agent docs](/HoBo/agents/) — how AI agents authenticate to and operate HoBo.
+- [Data plane](/HoBo/guide/data-plane/) · [Control plane](/HoBo/guide/control-plane/) · [Conductor](/HoBo/guide/broker/)
+- [Identity](/HoBo/guide/identity/) · [Security](/HoBo/guide/security/) · [Connectivity](/HoBo/guide/connectivity/)
+- [Continuous migration](/HoBo/guide/migration/) · [Progressive delivery](/HoBo/guide/progressive-delivery/) · [Generation](/HoBo/guide/generation/)
+- [WASM & WIT](/HoBo/guide/wasm/) · [Observability](/HoBo/guide/observability/) · [Air-gapped](/HoBo/guide/air-gapped/)
+- [Troubleshooting](/HoBo/guide/troubleshooting/) · [CLI guide](/HoBo/guide/cli/) · [Bridge](/HoBo/guide/bridge/) · [Trail map](/HoBo/guide/status/)
+- [Testing](/HoBo/testing/) — full section: effects, durability, PACT, bridge modes, chaos, anti-patterns.
+- [Reference](/HoBo/reference/) — packages, EventStore, contracts, effects, policy, matching, connectivity, CLI, errors.
+- [The Crew](/HoBo/crew/) — SRE through FinOps, handoffs, runbooks, engines.
+- [Agent docs](/HoBo/agents/) — principals, MCP, credentials, audit.

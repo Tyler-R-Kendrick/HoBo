@@ -183,8 +183,8 @@ const shikiThemes = {
 				<h2>Four words for traveling light</h2>
 				<p>
 					HoBo's primitives are named for the life: pack a bindle, pitch a
-					camp, work a yard, meet at the junction. One you must write, one
-					comes with the campsite, and two are for when your app goes places.
+					camp, work a yard, meet at the junction — plus stations for control
+					isolation and trails for continuous moves. Start with the bindle.
 				</p>
 			</div>
 			<Depot />
@@ -224,6 +224,22 @@ const shikiThemes = {
 						multi-cloud — peer yards, no shared mutable state.
 					</p>
 					<p class="card-cta">Wire a junction →</p>
+				</a>
+				<a class="card" href={href("/primitives/stations/")}>
+					<h3><span class="term">Station</span> <span class="sticker sky">ops</span></h3>
+					<p>
+						Hard isolation boundary a Conductor occupies — rails,
+						connections, fail-closed setup. Not app topology.
+					</p>
+					<p class="card-cta">Init a station →</p>
+				</a>
+				<a class="card" href={href("/primitives/trails/")}>
+					<h3><span class="term">Trail</span> <span class="sticker meadow">migrate</span></h3>
+					<p>
+						App-owned continuous migration recipes: duals, rebinds,
+						cutover — composing identity continuous when you need it.
+					</p>
+					<p class="card-cta">Plan a trail →</p>
 				</a>
 				<div class="card">
 					<h3>Replayable event log</h3>
@@ -315,9 +331,10 @@ const shikiThemes = {
 					<div class="card">
 						<h3>The Crew: a built-in operator workforce</h3>
 						<p>
-							SRE, endpoint-monitor, GitOps, and platform-engineer operator
-							agents ship with the platform — HoBo ships the operators, not
-							just the APIs they'd call.
+							SRE, Endpoint Monitor, GitOps, Platform Engineer, SWE, UX
+							Designer, and FinOps ship as policy-gated Yard operators —
+							HoBo ships the operators, not just the APIs they'd call.
+							<a href={href("/crew/")}>Meet the Crew →</a>
 						</p>
 					</div>
 					<div class="card">
@@ -366,6 +383,11 @@ const shikiThemes = {
 					</p>
 					<p class="card-cta">
 						<a href={href("/agents/")}>Read the agent docs →</a>
+					</p>
+					<p class="card-cta">
+						<a href={href("/testing/")}>Testing patterns →</a>
+						{" · "}
+						<a href={href("/reference/")}>Technical reference →</a>
 					</p>
 				</div>
 			</div>

@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: CLI surface
-description: "Canonical hobo verbs by role: lifecycle, read-only diagnosis, authoring, identity, and distribution."
+description: "Canonical hobo verbs by role: lifecycle, diagnosis, authoring, identity, progressive delivery, broker/station, and distribution."
 ---
 
 # CLI surface
 
-The `hobo` CLI is deliberately **small and stable**. Same verbs appear as MCP tools.
+The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MCP tools. Docs examples are linted against the canonical verb list.
 
 ## Lifecycle
 
@@ -15,16 +15,26 @@ The `hobo` CLI is deliberately **small and stable**. Same verbs appear as MCP to
 | `up` | Realize the object graph (build, plan, gate, provision, deploy) |
 | `down` | Reverse |
 | `dev` | Offline local Camp / inner loop |
-| `plan` | Dry-run the up decision |
-| `verify` | Unified Gatekeeper preflight |
+| `deploy` | Deploy-oriented delivery entry |
+| `plan` | Dry-run the up decision (approvable diff) |
+| `verify` | Unified Gatekeeper preflight (read-only) |
 | `can-deploy` | Producer/consumer compatibility diagnosis |
 
-## Identity & access
+`up` still runs the same gate as `verify` automatically before mutation.
+
+## Identity, access, progressive
 
 | Verb | Role |
 |---|---|
 | `login` | Authenticate |
 | `claim` | Bind anonymous deployment to an account |
+| `identity` | Continuous identity status / ops |
+| `access` | Access / RBAC operations |
+| `connection` | Connection management (Station-bound) |
+| `feature` | Flags / progressive delivery (Harness) |
+| `trails` | Continuous migration recipes (`status|plan|inspect`) |
+| `station` | Station **ops/setup** (not app lifecycle) |
+| `yard` | Yard ops surfaces |
 
 ## Authoring
 
@@ -32,27 +42,47 @@ The `hobo` CLI is deliberately **small and stable**. Same verbs appear as MCP to
 |---|---|
 | `new` | Scaffold |
 | `collect` | Resource collection → manifest IR |
-| `codegen` / `build` / `stub` | Generate, compile, contract stubs |
+| `codegen` | Regenerate `_generated/` (`--check` fails on drift) |
+| `build` | Compile to wasm components (OCI fallback) |
+| `stub` | Contract-backed stub behind a WIT port |
+| `generate` | Generation pipeline entry |
+| `sandbox` | Isolated lane; out-of-scope boundaries from contracts |
+| `test` | Contract-backed sandbox test lane (not a jest replacement) |
 
-## Observe
+## Observe & operate
 
 | Verb | Role |
 |---|---|
-| `inspect` | Projections / time-travel |
-| `logs` | Live-tail Camp streams |
-| `doctor` | Environment / portability hazards |
+| `inspect` | Projections / time-travel (`run`, `deploy`, `topology`, …) |
+| `logs` | Live-tail Camp Streamer |
+| `doctor` | Environment / credential / portability hazards |
 | `drift` | Drift + governed remediation |
+| `incident` | Incident disposition / A2H |
+| `runbook` | Execute runbooks (writes still policy-gated) |
+| `attest` | Signed evidence exports from audit facts |
+| `erase` | Crypto-shred subject + projection rebuild |
+| `derivative` | Derived implementation upgrade / conformance |
+
+## Distribution
+
+| Verb | Role |
+|---|---|
+| `add` | Install provider or listing (sig + provenance + conformance) |
+| `registry` | Registry admin; signed offline bundle import |
+| `import` | Adopt estate in place — never destroy/recreate on import |
 
 ## Broker (Conductor)
 
 | Verb | Role |
 |---|---|
-| `broker config` | Scaffold/validate broker config |
-| `broker up` | Realize placements (local zero-cost host when no cloud) |
+| `broker` | Conductor config + ops; requires Station context when available |
 
-## Notes
+Station context resolution: profile / `HOBO_STATION` / `--station`. Receipts pin `stationId` + `railHash`.
 
-- Control-plane verbs map to `hobo:<resource>:<verb>` policy actions (deny-by-default).
-- Docs examples are linted against the canonical verb list.
+## Policy mapping
 
-See also [The hobo CLI](/HoBo/guide/cli/) (guide) and [MCP](/HoBo/agents/mcp/).
+Control-plane verbs map to `hobo:<resource>:<verb>` policy actions (**deny-by-default**). Unmapped verbs fail conformance.
+
+## Related
+
+[The hobo CLI](/HoBo/guide/cli/) · [MCP](/HoBo/agents/mcp/) · [Stations](/HoBo/primitives/stations/) · [Troubleshooting](/HoBo/guide/troubleshooting/)

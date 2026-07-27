@@ -1,28 +1,28 @@
 ---
 layout: ../../layouts/Docs.astro
-title: FinOps operator
-description: "Crew FinOps: forecasts, anomaly signals, commitment recommendations — advisory only, never auto-purchasing cloud savings plans."
+title: FinOps
+description: "Advisory cost operator: showback, anomalies, forecasts, commitments — never silent spend or free-tier pooling."
 ---
 
-# FinOps operator
+# FinOps (Crew)
 
-**Mission:** forecasts · anomaly signals · commitment recommendations · optimization proposals — **advisory-only**.
+The FinOps Crew member **advises** on cost and efficiency. It does not auto-spend, auto-destroy, or pool free-tier headroom across tenants.
 
-## What it does
+## Mission
 
-- Reads MeteringView / showback / credit ledger projections.
-- Emits recommendations as `crew.ActionProposed` with require-approval obligations.
-- MCP: `forecast`, `recommend-commitment`, `propose-optimization`.
-- **Never** auto-purchases savings plans or mutates billing without policy + human path.
+| Input | Output |
+|---|---|
+| Metering facts / showback projections | Anomaly flags |
+| Price/tier ranking inputs (dated sources) | Move / commitment **proposals** |
+| Budget policy | Alerts; breaker recommendations |
 
-## What enforces cost
+## Hard rules
 
-Enforcement stays with spend breakers, costAvailabilityProfile tiers, and Gatekeeper cost/quota — not silent FinOps side effects. SRE may handle cost-induced degradation as an incident class; FinOps advises.
-
-## Events
-
-Rides `crew.*`, `spend.*`, `cost.*`, `policy.Decided`. Recommendations are replayable decisions.
+1. Ranking input ≠ billing invention.  
+2. Free-tier never pooled across tenants.  
+3. Rotation across **providers**, not multi-account free-tier games.  
+4. Enforcement via policy breakers/tiers — not chatty overrides.
 
 ## Related
 
-[SRE](/HoBo/crew/sre/) · [Shared model](/HoBo/crew/shared-model/) · [Gatekeeper cost gate](/HoBo/reference/contracts/)
+[Metering](/HoBo/reference/metering/) · [FinOps role](/HoBo/roles/finops/) · [Continuous migration](/HoBo/guide/migration/)

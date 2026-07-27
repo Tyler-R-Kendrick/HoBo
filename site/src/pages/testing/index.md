@@ -24,13 +24,21 @@ HoBo collapses a lot of “special testing tools” into one idea: **every bound
 ## Layers (read in this order)
 
 1. **[Unit tests & boundaries](/HoBo/testing/unit/)** — vitest-style tests; boundaries auto-mock from contract examples.
-2. **[Contracts & PACT](/HoBo/testing/contracts/)** — consumer/provider executable contracts; subset matching.
-3. **[Effect-aware isolation](/HoBo/testing/effects/)** — pure vs domain-effect harness modes (ADR-0136).
-4. **[Durable EventStore](/HoBo/testing/durability/)** — stream-head CAS, fencing, positions, migration, restart (ADR-0135).
-5. **[Deployment rehearsal](/HoBo/testing/deployment/)** — `hobo plan`, local lane, can-deploy / Gatekeeper.
-6. **[Bridge modes](/HoBo/testing/bridge-modes/)** — live/mock/bridge/replay/shadow/fault session routing.
-7. **[Chaos & availability](/HoBo/testing/chaos/)** — session-scoped faults, synthetics, SLOs as projections.
-8. **[Conformance & golden](/HoBo/testing/conformance/)** — port suites, golden suite as a deploy gate.
+2. **[Aggregates & CQRS](/HoBo/testing/aggregates/)** — pure decide, fenceToken, conflict vs invariant.
+3. **[Contracts & PACT](/HoBo/testing/contracts/)** — consumer/provider executable contracts; subset matching.
+4. **[Effect-aware isolation](/HoBo/testing/effects/)** — pure vs domain-effect harness modes (ADR-0136).
+5. **[Dual fixtures](/HoBo/testing/dual-fixtures/)** — pure path vs effect path from the same metadata.
+6. **[Durable EventStore](/HoBo/testing/durability/)** — stream-head CAS, fencing, positions, restart (ADR-0135).
+7. **[Migration fixtures](/HoBo/testing/migration/)** — legacy schema → current, fail-closed integrity.
+8. **[Queue, timer, outbox](/HoBo/testing/queue-outbox/)** — lease fences, once-after-restart timers.
+9. **[Deployment rehearsal](/HoBo/testing/deployment/)** — `hobo plan`, local lane, Gatekeeper.
+10. **[Bridge modes](/HoBo/testing/bridge-modes/)** — live/mock/bridge/replay/shadow/fault.
+11. **[Chaos & availability](/HoBo/testing/chaos/)** — session faults, synthetics, shadow.
+12. **[Property & model](/HoBo/testing/property/)** — journal ≡ reference model.
+13. **[Behavior & Cucumber](/HoBo/testing/behavior/)** — Gherkin evidence, not live E2E.
+14. **[Benchmarks](/HoBo/testing/benchmarks/)** — catch algorithmic regressions.
+15. **[Conformance & golden](/HoBo/testing/conformance/)** — port suites + deploy golden gate.
+16. **[Anti-patterns](/HoBo/testing/anti-patterns/)** — what not to do.
 
 ## What you should *not* do
 

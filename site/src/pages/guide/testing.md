@@ -10,4 +10,4 @@ The single-page testing overview outgrew this Guide slot. Full coverage is here:
 
 **[→ Testing overview](/HoBo/testing/)**
 
-Includes unit boundaries, contracts/PACT, effect-aware isolation, durable EventStore tests, deployment rehearsal, Bridge modes, chaos/availability, and conformance/golden suites.
+Includes unit boundaries, aggregates/CQRS, contracts/PACT, effect-aware isolation, dual fixtures, durable EventStore, migration fixtures, queue/timer/outbox, deployment rehearsal, Bridge modes, chaos, property tests, behavior/Cucumber, benchmarks, conformance/golden, and anti-patterns.

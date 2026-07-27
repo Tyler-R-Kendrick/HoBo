@@ -45,6 +45,10 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Golden Suite | Signed bundle of conformance, contract, eval, benchmark, chaos, SLO, and golden-master checks for a deployment. |
 | Grain | Virtual actor, HoBo's default concurrency primitive. |
 | Harness | Progressive delivery core over OpenFeature, HoBo-shaped OpenDelivery, HoBo-shaped OpenExperiment, and OpenTelemetry. Realized in `@hobo/identity` as `FeatureFlagStore` + `OpenDeliveryEngine` + `OpenExperimentEngine` composed by `Harness`. |
+| Continuous Delivery plane | Workload-attested apply of a Gatekeeper-approved resolved Deployment Set (`@hobo/cloud` `src/cd/`), secret-free status/diff, progressive composition via Harness, failure default A2H or sandboxed self-heal in an ADR-0076 lane. |
+| Resolved Deployment Set | Post-Matching, Gatekeeper-approved content-addressed plan + secret refs only; the sole CD plane input. |
+| A2H | Ask-to-Human handoff: typed package + deadline obligation when progressive/apply/Golden/SLO fails and self-heal is not permitted. |
+| SafetyEnvelope | Autonomous-action bounds (blast radius, reversibility, spend, self-causation, max attempts); unknown blast radius fails closed to A2H (ADR-0094). |
 | OpenFeature | CNCF flag evaluation API; sole public evaluation surface for application code (`HoboOpenFeatureProvider` / `HoboFeatureClient`). |
 | OpenDelivery | HoBo-shaped port (`hobo:delivery`) for canary, blue/green, staged rollouts, traffic shift, and auto-rollback obligations. |
 | OpenExperiment | HoBo-shaped port (`hobo:experiment`) for sticky assignment, exposure tracking, and pluggable statistical analysis. |

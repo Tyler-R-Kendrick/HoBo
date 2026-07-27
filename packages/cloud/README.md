@@ -8,6 +8,48 @@ A coherent vertical: a **Deploy command** becomes past-tense **events**, the pur
 **Planner** resolves them to a content-addressed `DeploymentPlan` DAG, and a
 **materialized view** (projection) reconstructs deployment state from the log.
 
+## Continuous Delivery plane (attested apply)
+
+`src/cd/` is the **workload-attested, secret-free-by-construction** apply path
+over a Gatekeeper-approved resolved Deployment Set — not an Argo-style controller.
+
+Both **`mode: "simulate"`** (offline equip) and **`mode: "live"`** (injected
+`IacProvider` / `Executor`) share the same contracts: attestation, short-lived
+scoped credentials, Executor sandbox, secret-free status/diff, progressive
+composition, and failure disposition.
+
+1. **Resolved Set** (`createResolvedDeploymentSet`) — post-Matching plan + Gatekeeper allow.
+2. **Attested apply worker** (`createAttestedApplyWorker`) — SVID + launch measurement;
+   short-lived scoped credentials per resource, revoked after each step; no ambient keys.
+   Live mode fails closed without injected IaC/Executor.
+3. **Secret-free status/diff** — references only (`secretRef:` / `valueRef:`); closes
+   ServerSideDiff-class leaks. Status after apply returns recorded scrubbed projections.
+4. **Progressive composition** via Harness OpenDelivery (flag ramp ± gateway weight ±
+   auto-rollback on SLO/Golden). Rollback zeros flag percent, gateway weight, and
+   activates kill-switch. Optional residual analysis adapters (Flagger/Argo-shaped HTTP)
+   are complete fail-soft ports.
+5. **Failure path** — Incident → default **A2H** handoff (typed package + deadline
+   obligation); opt-in self-heal only inside an ADR-0076 lane, proposing a Delta that
+   re-enters Gatekeeper + Harness (never baseline mutation). Unknown blast radius
+   fails closed to A2H.
+
+```ts
+import {
+  createContractAssertedCdFixtures,
+  createContinuousDeliveryPlane,
+} from "@hobo/cloud";
+
+const fx = createContractAssertedCdFixtures({ tenant: "acme" });
+const plane = createContinuousDeliveryPlane({ mode: "simulate" });
+const result = await plane.deliver(fx.set);
+// result.apply.principal.attestationState === "attested"
+// result.apply.secretFree === true
+// result.apply.activeCredentialsAfter === 0
+```
+
+CLI: `hobo deploy status|logs|rollback`, `hobo incident status|open` — each drives
+the shipped plane (real deliver events for logs; real A2H/self-heal dispositions).
+
 ## Architecture
 
 - **Gateway** (`src/gateway/`) — command ingress. Authenticates + authorizes the

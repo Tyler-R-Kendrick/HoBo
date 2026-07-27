@@ -112,6 +112,30 @@
       }
     },
     {
+      "name": "deploy",
+      "role": "delivery",
+      "summary": "Attested continuous delivery status/logs/rollback (secret-free)",
+      "cli": "hobo deploy",
+      "mcpTool": "deploy",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:deploy",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "incident",
+      "role": "delivery",
+      "summary": "CD failure disposition: A2H handoff or sandboxed self-heal",
+      "cli": "hobo incident",
+      "mcpTool": "incident",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:incident",
+        "verb": "call"
+      }
+    },
+    {
       "name": "claim",
       "role": "identity",
       "summary": "Bind an anonymous deployment to an account",

@@ -211,6 +211,14 @@ export {
 	type FeatureCommandDeps,
 } from "./feature-command.js";
 export {
+	createDeployCommand,
+	type DeployCommandDeps,
+} from "./deploy-command.js";
+export {
+	createIncidentCommand,
+	type IncidentCommandDeps,
+} from "./incident-command.js";
+export {
 	setDefaultStation,
 	type HoboProfileDefaultStation,
 } from "./hobo-profile.js";

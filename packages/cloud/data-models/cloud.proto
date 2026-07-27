@@ -276,3 +276,67 @@ message CredentialAuditRecord {
   uint32 use_count = 7;
   uint32 revoke_count = 8;
 }
+
+// Continuous Delivery plane (attested apply + progressive + A2H).
+message ResolvedDeploymentSetRecord {
+  string schema_version = 1;
+  string set_id = 2;
+  string tenant = 3;
+  string environment = 4;
+  string camp_id = 5;
+  string plan_hash = 6;
+  string content_hash = 7;
+  string gatekeeper_decision_id = 8;
+  string gatekeeper_decision = 9;
+}
+
+message AttestedPrincipalRecord {
+  string svid_subject = 1;
+  string identity_id = 2;
+  string tenant = 3;
+  string code_digest = 4;
+  string component_image_digest = 5;
+  string attestation_state = 6;
+  string isolation_tier = 7;
+}
+
+message SecretFreeStatusRecord {
+  string schema_version = 1;
+  string resource_id = 2;
+  string state = 3;
+  bool secret_free = 4;
+}
+
+message SafetyEnvelopeRecord {
+  string schema_version = 1;
+  string blast_radius = 2;
+  bool reversible = 3;
+  uint32 spend_cap_usd = 4;
+  uint32 estimated_spend_usd = 5;
+  bool self_causation = 6;
+  uint32 max_attempts = 7;
+  uint32 attempts_used = 8;
+  bool requires_lane = 9;
+}
+
+message A2HHandoffRecord {
+  string schema_version = 1;
+  string incident_id = 2;
+  string signal = 3;
+  string tenant = 4;
+  string environment = 5;
+  string deployment_id = 6;
+  string set_id = 7;
+  string deadline = 8;
+  string obligation_id = 9;
+}
+
+message LaneGrantRecord {
+  string lane_id = 1;
+  string tenant = 2;
+  string membership = 3;
+  bool fork_on_touch = 4;
+  bool baseline_single_writer_lease = 5;
+  bool baseline_mutation = 6;
+  string external_side_effects = 7;
+}

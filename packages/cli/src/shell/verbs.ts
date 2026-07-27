@@ -47,6 +47,17 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 			"OpenFeature flags / canary / experiment status (list|eval|set|kill)",
 	},
 	{
+		name: "deploy",
+		role: "delivery",
+		summary:
+			"Attested continuous delivery status/logs/rollback (secret-free)",
+	},
+	{
+		name: "incident",
+		role: "delivery",
+		summary: "CD failure disposition: A2H handoff or sandboxed self-heal",
+	},
+	{
 		name: "claim",
 		role: "identity",
 		summary: "Bind an anonymous deployment to an account",

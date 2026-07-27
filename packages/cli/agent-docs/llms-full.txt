@@ -79,6 +79,20 @@ Product: hobo
 - MCP tool: `feature`
 - Capability: { port: hobo:mcp, resource: tool:feature, verb: call }
 
+### deploy
+- Role: delivery
+- Summary: Attested continuous delivery status/logs/rollback (secret-free)
+- CLI: `hobo deploy`
+- MCP tool: `deploy`
+- Capability: { port: hobo:mcp, resource: tool:deploy, verb: call }
+
+### incident
+- Role: delivery
+- Summary: CD failure disposition: A2H handoff or sandboxed self-heal
+- CLI: `hobo incident`
+- MCP tool: `incident`
+- Capability: { port: hobo:mcp, resource: tool:incident, verb: call }
+
 ### claim
 - Role: identity
 - Summary: Bind an anonymous deployment to an account

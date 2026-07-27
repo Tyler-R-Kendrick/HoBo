@@ -94,33 +94,68 @@ Key facts:
   https://tyler-r-kendrick.github.io/HoBo/llms-full.txt. Every docs page also has a
   "Copy page as Markdown" button and per-snippet copy buttons.
 
-## Docs
+## Guide
 
-- [What is HoBo](https://tyler-r-kendrick.github.io/HoBo/guide/): positioning, the guiding principle, who it is for
-- [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, pitch a Camp (or let it be inferred), `hobo up`; Yards/Junctions as advanced scenarios
-- [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): the four scopes, continuous migration, membrane, event log, agent auth
-- [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, Dispatcher, components, package layout, SQLite EventStore default, contract effects + resiliency
-- [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): Bindle/Camp/Yard/Junction, event log durability, EffectSpec, ResilienceProfile
-- [The Conductor](https://tyler-r-kendrick.github.io/HoBo/guide/broker/): policy-governed placement across providers (the broker), signed receipts/rejections, Rego/OPA policy, the five wrapped planes, connector registry
-- [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical `hobo` verb surface
-- [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): implementable ports, adapter authoring, conformance certification, ACP/A2A protocol-connector integration points
-- [Testing](https://tyler-r-kendrick.github.io/HoBo/guide/testing/): unit tests with PACT-mocked boundaries, effect-aware isolation, executable contract verification, deployment rehearsal, replay-equals-live, runtime availability
-- [The Bridge](https://tyler-r-kendrick.github.io/HoBo/guide/bridge/): Bridge-to-Kubernetes-style local/remote dev on ANY provider — createBoundaryRouter() in @hobo/runtime; per-boundary modes live/mock/bridge/replay/shadow/fault; a bridge forks ONLY the tagged dev session's traffic to the local implementation and is PACT-contract-verified BEFORE activation (BridgeContractError otherwise); recording always on (specification-by-example); composes with preview environments
-- [Trail map](https://tyler-r-kendrick.github.io/HoBo/guide/status/): honest pre-release status and stage gates
+- [What is HoBo](https://tyler-r-kendrick.github.io/HoBo/guide/): positioning, guiding principle
+- [Getting started](https://tyler-r-kendrick.github.io/HoBo/guide/getting-started/): pack a Bindle, `hobo up`
+- [Core concepts](https://tyler-r-kendrick.github.io/HoBo/guide/concepts/): Bindle/Camp/Yard/Junction, event log, EffectSpec, ResilienceProfile
+- [Architecture](https://tyler-r-kendrick.github.io/HoBo/guide/architecture/): control/data planes, package layout, SQLite EventStore default
+- [The Conductor](https://tyler-r-kendrick.github.io/HoBo/guide/broker/): broker placement, receipts/rejections, five planes
+- [CLI](https://tyler-r-kendrick.github.io/HoBo/guide/cli/): canonical verbs
+- [Custom providers](https://tyler-r-kendrick.github.io/HoBo/guide/custom-providers/): ports, adapters, conformance
+- [The Bridge](https://tyler-r-kendrick.github.io/HoBo/guide/bridge/): live/mock/bridge/replay/shadow/fault session routing
+- [Trail map](https://tyler-r-kendrick.github.io/HoBo/guide/status/): what runs today, stage gates
 
-## Primitives (reference)
+## Testing (full section)
 
-- [Meet the primitives](https://tyler-r-kendrick.github.io/HoBo/primitives/): the four scopes in order of need
-- [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/): builder surface, .dependsOn/.allow/.with, manifest rules; greenfield declarative bindles with stub-first AI code generation
-- [Camps](https://tyler-r-kendrick.github.io/HoBo/primitives/camps/): runtime backends, defaultProvider/tiers/bindings resolution, inferred vs explicit camps
-- [Yards](https://tyler-r-kendrick.github.io/HoBo/primitives/yards/): one-provider composition, self-host (the Yard is a Bindle)
-- [Junctions](https://tyler-r-kendrick.github.io/HoBo/primitives/junctions/): cross-cloud federation, inferred connectivity, border policy
+- [Testing overview](https://tyler-r-kendrick.github.io/HoBo/testing/): mental model and layer map
+- [Unit tests & boundaries](https://tyler-r-kendrick.github.io/HoBo/testing/unit/): contract-derived mocks, no hand-written fakes
+- [Contracts & PACT](https://tyler-r-kendrick.github.io/HoBo/testing/contracts/): consumer/provider, subset matching, inventory
+- [Effect-aware isolation](https://tyler-r-kendrick.github.io/HoBo/testing/effects/): pure zero-infra, domain mocks, never-retry fault injection
+- [Durable EventStore](https://tyler-r-kendrick.github.io/HoBo/testing/durability/): stream-head CAS, fencing, migration, restart
+- [Deployment rehearsal](https://tyler-r-kendrick.github.io/HoBo/testing/deployment/): plan / local lane / Gatekeeper
+- [Bridge modes](https://tyler-r-kendrick.github.io/HoBo/testing/bridge-modes/): session-scoped routing modes
+- [Chaos & availability](https://tyler-r-kendrick.github.io/HoBo/testing/chaos/): synthetics, shadow, session faults
+- [Conformance & golden](https://tyler-r-kendrick.github.io/HoBo/testing/conformance/): port suites, golden deploy gate
 
-## Roles (who writes what)
+## Reference (technical lookup)
 
-- [Who writes what](https://tyler-r-kendrick.github.io/HoBo/roles/): developers write Bindles; platform engineers write Camps/Yards/Junctions; DevSecOps writes policy
-- [HoBo for Developers](https://tyler-r-kendrick.github.io/HoBo/roles/developers/): the bindle is the only infrastructure a developer authors
-- [HoBo for Platform Engineers](https://tyler-r-kendrick.github.io/HoBo/roles/platform-engineers/): approved providers, golden-path camps, yard governance, junction federation
-- [HoBo for DevSecOps](https://tyler-r-kendrick.github.io/HoBo/roles/devsecops/): policy at the gate, camp approval, credential brokering, signed junction policy packs
-- [HoBo for Agents](https://tyler-r-kendrick.github.io/HoBo/agents/): agents as principals, capability standard, the Crew
-- [The MCP surface](https://tyler-r-kendrick.github.io/HoBo/agents/mcp/): capability parity, auth flow, event-audited actions
+- [Reference overview](https://tyler-r-kendrick.github.io/HoBo/reference/)
+- [Package map](https://tyler-r-kendrick.github.io/HoBo/reference/packages/)
+- [EventStore & journal](https://tyler-r-kendrick.github.io/HoBo/reference/eventstore/): positions, fencing, single-owner partitions
+- [Contracts & Gatekeeper](https://tyler-r-kendrick.github.io/HoBo/reference/contracts/)
+- [Effects & resiliency](https://tyler-r-kendrick.github.io/HoBo/reference/effects/): EffectSpec lattice, ResilienceProfile rules
+- [Event families](https://tyler-r-kendrick.github.io/HoBo/reference/events/)
+- [CLI surface](https://tyler-r-kendrick.github.io/HoBo/reference/cli/)
+- [Runtime ports](https://tyler-r-kendrick.github.io/HoBo/reference/runtime-ports/)
+- [WIT & storage](https://tyler-r-kendrick.github.io/HoBo/reference/wit-storage/)
+- [Glossary](https://tyler-r-kendrick.github.io/HoBo/reference/glossary/)
+
+## The Crew (operator agents)
+
+- [Meet the Crew](https://tyler-r-kendrick.github.io/HoBo/crew/): roster + shared guarantees
+- [Shared model](https://tyler-r-kendrick.github.io/HoBo/crew/shared-model/): identity, events, engines, handoffs
+- [SRE](https://tyler-r-kendrick.github.io/HoBo/crew/sre/): Incident aggregate, decision tree, runbooks, A2H
+- [Endpoint Monitor](https://tyler-r-kendrick.github.io/HoBo/crew/endpoint-monitor/): synthetics feeding SRE
+- [GitOps](https://tyler-r-kendrick.github.io/HoBo/crew/gitops/): promote only when can-deploy green
+- [Platform Engineer](https://tyler-r-kendrick.github.io/HoBo/crew/platform-engineer/): definitions, packs, policy proposals
+- [SWE](https://tyler-r-kendrick.github.io/HoBo/crew/swe/): implement/refactor/repair behind ports
+- [UX Designer](https://tyler-r-kendrick.github.io/HoBo/crew/ux-designer/): UI against design.md
+- [FinOps](https://tyler-r-kendrick.github.io/HoBo/crew/finops/): advisory forecasts/commitments only
+
+## Primitives
+
+- [Meet the primitives](https://tyler-r-kendrick.github.io/HoBo/primitives/)
+- [Bindles](https://tyler-r-kendrick.github.io/HoBo/primitives/bindles/)
+- [Camps](https://tyler-r-kendrick.github.io/HoBo/primitives/camps/)
+- [Yards](https://tyler-r-kendrick.github.io/HoBo/primitives/yards/)
+- [Junctions](https://tyler-r-kendrick.github.io/HoBo/primitives/junctions/)
+
+## Roles
+
+- [Who writes what](https://tyler-r-kendrick.github.io/HoBo/roles/)
+- [Developers](https://tyler-r-kendrick.github.io/HoBo/roles/developers/)
+- [Platform Engineers](https://tyler-r-kendrick.github.io/HoBo/roles/platform-engineers/)
+- [DevSecOps](https://tyler-r-kendrick.github.io/HoBo/roles/devsecops/)
+- [HoBo for Agents](https://tyler-r-kendrick.github.io/HoBo/agents/): external agents as principals + Crew pointers
+- [MCP surface](https://tyler-r-kendrick.github.io/HoBo/agents/mcp/)

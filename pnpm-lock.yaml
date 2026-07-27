@@ -579,6 +579,9 @@ importers:
       '@hobo/provider-lakebed':
         specifier: workspace:*
         version: link:../providers/provider-lakebed
+      '@hobo/replay':
+        specifier: workspace:*
+        version: link:../replay
       '@hobo/runner-blacksmith':
         specifier: workspace:*
         version: link:../providers/runner-blacksmith
@@ -810,6 +813,18 @@ importers:
       '@hobo/core':
         specifier: workspace:*
         version: link:../../core
+
+  packages/replay:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.29
+        version: 22.20.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/runtime:
     dependencies:
@@ -1342,6 +1357,16 @@ importers:
   src/draft/exp-proofs/dx/secops-policy-audit-journey-contract: {}
 
   src/draft/exp-proofs/dx/security-verification-scope-acceptance: {}
+
+  src/draft/exp-proofs/dx/session-replay-local-path:
+    dependencies:
+      '@hobo/replay':
+        specifier: workspace:*
+        version: link:../../../../../packages/replay
+    devDependencies:
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract: {}
 
@@ -2311,6 +2336,16 @@ importers:
   src/draft/technical-proofs/self-host-bootstrap-ordering-spike: {}
 
   src/draft/technical-proofs/self-host-bootstrap-saga-contract: {}
+
+  src/draft/technical-proofs/session-replay-contracts:
+    dependencies:
+      '@hobo/replay':
+        specifier: workspace:*
+        version: link:../../../../packages/replay
+    devDependencies:
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   src/draft/technical-proofs/session-revocation-contract: {}
 

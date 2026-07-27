@@ -207,6 +207,10 @@ export {
 	type TrailsCommandDeps,
 } from "./trails-command.js";
 export {
+	createReplayCommand,
+	type ReplayCommandDeps,
+} from "./replay-command.js";
+export {
 	createAccessCommand,
 	type AccessCommandDeps,
 } from "./access-command.js";

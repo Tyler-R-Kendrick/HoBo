@@ -1,0 +1,87 @@
+import { describe, expect, it } from "vitest";
+
+import { createReplayService } from "@hobo/replay";
+
+import { createReplayCommand } from "../src/replay-command.js";
+
+function runInput(args: string[], flags: Record<string, unknown> = {}) {
+	return {
+		args,
+		flags,
+		context: { cwd: "/tmp", projectDir: "/tmp" },
+		emitProgress: () => {},
+	};
+}
+
+describe("hobo replay", () => {
+	it("doctor reports default local path and honest scope", async () => {
+		const service = createReplayService({
+			stationId: "station:local",
+			memory: true,
+		});
+		const cmd = createReplayCommand({ service, env: {} });
+		const result = await cmd.run(runInput(["doctor"]) as never);
+		expect(result.ok).toBe(true);
+		expect(result.data?.package).toBe("@hobo/replay");
+		expect(result.data?.defaultLocalOn).toBe(true);
+		expect(result.data?.killEnv).toBe("HOBO_REPLAY=0");
+	});
+
+	it("list/get/summarize round-trip after recording", async () => {
+		const service = createReplayService({
+			stationId: "station:local",
+			memory: true,
+		});
+		const tracker = service.startRecording({
+			seedEvents: [
+				{ type: 2, timestamp: 1, data: { tagName: "div" } },
+			],
+			sessionId: "sess-cli-1",
+		});
+		await tracker.linkError("err-99");
+		await tracker.flush();
+		await tracker.stop();
+
+		const cmd = createReplayCommand({ service, env: {} });
+		const listed = await cmd.run(runInput(["list"]) as never);
+		expect(listed.ok).toBe(true);
+		const sessions = listed.data?.sessions as { id: string }[];
+		expect(sessions.some((s) => s.id === "sess-cli-1")).toBe(true);
+
+		const byError = await cmd.run(
+			runInput(["list"], { error: "err-99" }) as never,
+		);
+		expect(
+			(byError.data?.sessions as { id: string }[]).some(
+				(s) => s.id === "sess-cli-1",
+			),
+		).toBe(true);
+
+		const got = await cmd.run(runInput(["get", "sess-cli-1"]) as never);
+		expect(got.ok).toBe(true);
+		expect((got.data?.session as { id: string }).id).toBe("sess-cli-1");
+
+		const summary = await cmd.run(
+			runInput(["summarize", "sess-cli-1"]) as never,
+		);
+		expect(summary.ok).toBe(true);
+		expect(String(summary.message)).toContain("err-99");
+
+		const opened = await cmd.run(runInput(["open", "sess-cli-1"]) as never);
+		expect(opened.ok).toBe(true);
+		expect(opened.data?.openUi).toMatchObject({
+			kind: "hobo.replay.player",
+			mutationSurface: "cli-only",
+		});
+	});
+
+	it("unknown subcommand returns usage", async () => {
+		const cmd = createReplayCommand({
+			service: createReplayService({ memory: true }),
+			env: {},
+		});
+		const result = await cmd.run(runInput(["nope"]) as never);
+		expect(result.ok).toBe(false);
+		expect(result.code).toBe("HOBO_REPLAY_USAGE");
+	});
+});

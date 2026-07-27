@@ -1,11 +1,12 @@
 {
 	"name": "@hobo/stage-gate",
 	"version": "0.0.1",
+	"license": "MIT",
 	"type": "module",
 	"bin": {
 		"hobo-stage-gate": "./dist/cli.js"
 	},
-	"files": ["dist"],
+	"files": ["LICENSE", "dist"],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",

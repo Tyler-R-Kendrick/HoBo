@@ -61,10 +61,39 @@ Use this checklist:
 - New event families are added to `docs/design/event-families.md` before use.
 - New JavaScript-family implementation files are TypeScript `.ts` sources, and `npm run standards:check` passes or the exception is recorded in an ADR/proof note.
 
+## Licensing of contributions
+
+HoBo is released under the [MIT Licence](./LICENSE), and contributions come in on the
+same terms — **inbound equals outbound**. By submitting a contribution you agree that
+it is licensed under the MIT Licence in `LICENSE`, and you keep the copyright in your
+own work. There is no CLA and no copyright assignment.
+
+Sign off each commit with the [Developer Certificate of Origin](https://developercertificate.org/):
+
+```sh
+git commit -s -m "feat(scope): ..."
+```
+
+`-s` appends a `Signed-off-by:` trailer using your `user.name` and `user.email`. The
+DCO is a statement that you wrote the contribution, or otherwise have the right to
+submit it under the project's licence — it is not a copyright transfer.
+
+If you forget, `git commit --amend -s --no-edit` fixes the last commit and
+`git rebase --signoff <base>` fixes a branch.
+
+Two rules that keep the licence surface clean:
+
+- **Don't paste code you don't have the right to relicense** — including
+  copyleft-licensed code and output you are not permitted to redistribute under MIT.
+- **New dependencies must pass `pnpm run licenses:check`**, which enforces the
+  permissive allowlist in `scripts/check-licenses.ts`. If a dependency's licence is
+  not listed, raise it in the PR rather than editing the allowlist silently.
+
 ## Pull request expectations
 
 Every PR should include:
 
+- Commits signed off with the DCO (`git commit -s`), per [Licensing of contributions](#licensing-of-contributions).
 - Purpose and scope.
 - Files or design areas changed.
 - Tests and validators run.

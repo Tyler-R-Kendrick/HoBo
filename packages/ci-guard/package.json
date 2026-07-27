@@ -1,6 +1,7 @@
 {
 	"name": "@hobo/ci-guard",
 	"version": "0.0.1",
+	"license": "MIT",
 	"private": true,
 	"type": "module",
 	"description": "HOBO-586 CI fabric contract validator, workflow guard, and examples E2E fixture runner.",

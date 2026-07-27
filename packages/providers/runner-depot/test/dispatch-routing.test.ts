@@ -85,7 +85,7 @@ describe("Dispatcher routing across the M3 trio (ADR-0071)", () => {
 		);
 
 		// blacksmith and depot tie on list price (0.004) — deterministic
-		// provider-id tie-break picks blacksmith; github's 0.008 ranks last.
+		// provider-id tie-break picks blacksmith; github's 0.006 ranks last.
 		assert.equal(decision.selectedProvider, BLACKSMITH_PROVIDER_ID);
 		assert.equal(decision.dispatchDecided.data.candidates.length, 3);
 		const costs = Object.fromEntries(
@@ -95,7 +95,7 @@ describe("Dispatcher routing across the M3 trio (ADR-0071)", () => {
 			]),
 		);
 		assert.equal(costs[DEPOT_PROVIDER_ID], 0.004);
-		assert.equal(costs[GITHUB_RUNNER_PROVIDER_ID], 0.008);
+		assert.equal(costs[GITHUB_RUNNER_PROVIDER_ID], 0.006);
 	});
 
 	it("a warm-cache Depot build outranks a free-exhausted cold GitHub build", () => {

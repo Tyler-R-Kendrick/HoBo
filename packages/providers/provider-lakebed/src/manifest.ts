@@ -127,7 +127,9 @@ export function publishCapabilityManifest(
 				source: {
 					type: "declared-provider",
 					documentRef: digestRef(`cost:${providerId}:${fact.sku}`),
-					signedAt: "2026-07-01T00:00:00Z",
+					// Transcribed from the vendor's public pricing page, not
+					// attested by the provider (ADR-0129 §5).
+					transcribedOn: "2026-07-27",
 				},
 			};
 		}),

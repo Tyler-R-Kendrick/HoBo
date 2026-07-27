@@ -5,9 +5,11 @@ import {
 	CATEGORY_PORTS,
 	CATEGORY_SKUS,
 	COST_SCHEMA,
+	type CostProvenance,
 	EXECUTION_HOST_MANIFEST_SCHEMA,
 	type ExecutionHostCategory,
 	type ExecutionHostManifest,
+	type ProviderTerms,
 	RUNNER_CATEGORY,
 } from "@hobo/runner-github";
 
@@ -26,11 +28,30 @@ export const BLACKSMITH_RUNS_ON_DEFAULT = "blacksmith-4vcpu-ubuntu-2204";
 
 export const DEFAULT_REGIONS = ["global"];
 
-// Declared cost facts — REAL Blacksmith public list prices (the pitch is
-// "half the cost of GitHub-hosted runners": $0.004/min for the 4-vCPU Linux
-// class vs GitHub's $0.008/min 2-core, with 3,000 free minutes/month),
-// declared-provider source. With GitHub and Blacksmith both registered the
-// Dispatcher gets its first real price/performance choice for the same job.
+// Declared cost facts — Blacksmith public list prices TRANSCRIBED BY HOBO from
+// the vendor's published pricing page ($0.004/min for the 4-vCPU Linux class,
+// with 3,000 free minutes/month). With GitHub and Blacksmith both registered
+// the Dispatcher gets its first real price/performance choice for the same job.
+//
+// Ranking input, never billing input, and NOT attested by the provider —
+// `declared-provider` marks a declared fact as opposed to an
+// `observed-executor` measured one. See COST_SOURCE/PROVIDER_TERMS below and
+// ADR-0129 §5.
+// public-contract: where Blacksmith's published rates were read from, and when.
+export const COST_SOURCE: CostProvenance = {
+	sourceUrl: "https://www.blacksmith.sh/pricing",
+	transcribedOn: "2026-07-27",
+};
+
+// public-contract: Blacksmith's terms of service. §3 prohibits acting as a
+// service bureau or otherwise letting third parties use the Services — the
+// adapter is only ever pointed at the operator's OWN Blacksmith org
+// (ADR-0129 §1).
+export const PROVIDER_TERMS: ProviderTerms = {
+	url: "https://docs.blacksmith.sh/about/terms-of-service",
+	reviewedOn: "2026-07-27",
+};
+
 export const COST_FACTS: Record<
 	ExecutionHostCategory,
 	{ sku: string; unit: string; marginalPrice: string; included: number }
@@ -196,7 +217,7 @@ export function publishCapabilityManifest(
 				source: {
 					type: "declared-provider",
 					documentRef: digestRef({ providerId, sku: fact.sku }),
-					signedAt: "2026-07-01T00:00:00Z",
+					...COST_SOURCE,
 				},
 			};
 		}),

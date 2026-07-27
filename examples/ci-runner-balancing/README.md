@@ -113,6 +113,7 @@ Operator levers (all optional):
 | `HOBO_RB_GH_SPEND_USD` / `HOBO_RB_GH_MINUTES` | Override GitHub usage when the billing API is unreachable. |
 | `HOBO_RB_USAGE_<PROVIDER>_USD` / `_UNITS` / `_URL` | Declared usage for third-party providers without public APIs. |
 | `HOBO_RB_STATE_DIR` | Append events (JSONL) + plan snapshot to this directory. |
+| `HOBO_RB_ALLOW_PUBLIC` / `--allow-public` | Permit `host-runner` to register against a **public** repository (refused by default). |
 | `HOBO_RB_ENABLE_<PROVIDER>` (repo variable) | Capability guard: makes that provider's rung eligible. |
 
 Third-party rungs are **guarded off until you enable them**: set the repo
@@ -150,6 +151,20 @@ bill self-hosted minutes, so the last resort also costs $0 in Actions spend.
 code on your machine. Use it for your own repository and branches only —
 never expose it to untrusted fork PRs — and prefer the default ephemeral
 mode so nothing lingers after the queue drains.
+
+This is **enforced, not just advised**: `host-runner` reads the repository
+record before it installs or registers anything and refuses outright when the
+repository is public (`HOST_RUNNER_PUBLIC_REPO_REFUSED`), naming fork
+pull-request workflows explicitly when they are enabled. It also fails closed
+when the repository's visibility cannot be read at all
+(`HOST_RUNNER_VISIBILITY_UNKNOWN`) — "we could not tell" is not "it is fine".
+Override only if you accept the risk:
+
+```bash
+# refuses by default on a public repo; opt in deliberately
+HOBO_RB_ALLOW_PUBLIC=1 pnpm --filter @hobo/example-ci-runner-balancing host-runner
+#   ... or --allow-public
+```
 
 ## Deferring the CI work itself (Turborepo-style local gate)
 

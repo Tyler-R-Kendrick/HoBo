@@ -26,10 +26,52 @@ export const GITHUB_RUNNER_PROVIDER_ID = "@hobo/runner-github";
 
 export const DEFAULT_REGIONS = ["global"];
 
-// Declared cost facts — REAL GitHub Actions public list prices (Linux 2-core
-// hosted runner $0.008/min; 2,000 included free minutes/month on the Free
-// plan), declared-provider source, so the Dispatcher's CreditLedgerView ranks
-// by honest effective marginal cost instead of uniform zeros.
+// Declared cost facts — GitHub Actions public list prices TRANSCRIBED BY HOBO
+// from the vendor's published pricing page (Linux 2-core hosted runner
+// $0.006/min; 2,000 included free minutes/month on the Free plan), so the
+// Dispatcher's CreditLedgerView ranks by honest effective marginal cost
+// instead of uniform zeros.
+//
+// These are ranking input, never billing input, and they are NOT attested by
+// the provider — `declared-provider` distinguishes a declared fact from an
+// `observed-executor` measured one, nothing more. Every fact carries the
+// source URL it was transcribed from and the date a human last checked it;
+// see COST_SOURCE below and ADR-0129 §5.
+/**
+ * Provenance for a transcribed cost fact (ADR-0129 §5). `sourceUrl` is the
+ * vendor page the numbers came from and `transcribedOn` is the date a human
+ * last reconciled them against it — deliberately NOT `signedAt`, which would
+ * imply a provider attestation that does not exist.
+ */
+export interface CostProvenance {
+	readonly sourceUrl: string;
+	readonly transcribedOn: string;
+}
+
+// public-contract: where GitHub's published rates were read from, and when.
+export const COST_SOURCE: CostProvenance = {
+	sourceUrl:
+		"https://docs.github.com/en/billing/managing-billing-for-your-products/about-billing-for-github-actions",
+	transcribedOn: "2026-07-27",
+};
+
+/**
+ * The vendor terms this adapter operates under (ADR-0129 §5). Registering a
+ * provider means the operator's own agreement with that vendor governs the
+ * usage HoBo will drive; GitHub's Actions terms in particular restrict
+ * commercial resale of Actions and per-VM sharing.
+ */
+export interface ProviderTerms {
+	readonly url: string;
+	readonly reviewedOn: string;
+}
+
+// public-contract: GitHub's additional product terms covering Actions.
+export const PROVIDER_TERMS: ProviderTerms = {
+	url: "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
+	reviewedOn: "2026-07-27",
+};
+
 export const COST_FACTS: Record<
 	ExecutionHostCategory,
 	{ sku: string; unit: string; marginalPrice: string; included: number }
@@ -37,13 +79,13 @@ export const COST_FACTS: Record<
 	[RUNNER_CATEGORY]: {
 		sku: CATEGORY_SKUS[RUNNER_CATEGORY],
 		unit: "minute",
-		marginalPrice: "0.0080",
+		marginalPrice: "0.0060",
 		included: 2000,
 	},
 	[BUILD_MACHINE_CATEGORY]: {
 		sku: CATEGORY_SKUS[BUILD_MACHINE_CATEGORY],
 		unit: "minute",
-		marginalPrice: "0.0080",
+		marginalPrice: "0.0060",
 		included: 2000,
 	},
 };
@@ -259,7 +301,7 @@ export function publishCapabilityManifest(
 				source: {
 					type: "declared-provider",
 					documentRef: digestRef({ providerId, sku: fact.sku }),
-					signedAt: "2026-07-01T00:00:00Z",
+					...COST_SOURCE,
 				},
 			};
 		}),

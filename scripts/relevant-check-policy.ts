@@ -380,6 +380,24 @@ export function selectRelevantChecks(
 		});
 	}
 
+	// Any manifest or lockfile edit can change outbound licence metadata or
+	// pull in a dependency whose licence is not on the allowlist
+	// (docs/plans/0009-legal-compliance-audit.md findings 3 and 5).
+	if (
+		rootConfigChanged ||
+		touchedAny([
+			/^(packages|examples|site)\/.*package\.json$/u,
+			/^(packages|examples)\/.*\/LICENSE$/u,
+		])
+	) {
+		checks.push({
+			command: "pnpm",
+			args: ["run", "licenses:check"],
+			reason:
+				"package manifests or dependencies changed; licence metadata must stay compliant",
+		});
+	}
+
 	if (docsChanged || automationChanged) {
 		checks.push({
 			command: "pnpm",

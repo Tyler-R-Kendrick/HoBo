@@ -122,8 +122,8 @@ describe("Dispatcher cost routing over registered execution hosts (ADR-0071)", (
 		const github = decision.candidates.find(
 			(candidate) => candidate.providerId === GITHUB_RUNNER_PROVIDER_ID,
 		);
-		// GitHub falls back to its REAL declared list price once free is gone.
-		assert.equal(github?.effectiveMarginalCost, 0.008);
+		// GitHub falls back to its declared list price once free is gone.
+		assert.equal(github?.effectiveMarginalCost, 0.006);
 	});
 
 	it("pinning a provider opts out of routing and says so in the fact", () => {

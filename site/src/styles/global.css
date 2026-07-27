@@ -1272,6 +1272,13 @@ table.compare tr.hobo-row th {
 	justify-content: space-between;
 }
 
+/* Trademark disclaimer sits quietly on its own line under the footer note. */
+.footer-trademark {
+	flex-basis: 100%;
+	font-size: 0.78rem;
+	opacity: 0.75;
+}
+
 /* ---------- Docs layout ---------- */
 
 .docs {

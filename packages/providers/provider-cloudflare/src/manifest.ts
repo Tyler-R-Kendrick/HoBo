@@ -1,11 +1,16 @@
 import type { InitialCapabilityPort } from "./equivalence.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
 
+// public-contract: capability-manifest bundle schema id (registry parity).
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
+// public-contract: capabilities document schema id.
 export const CAPABILITIES_SCHEMA = "hobo.capabilities/v1";
+// public-contract: auth document schema id.
 export const AUTH_SCHEMA = "hobo.provider-auth/v1";
+// public-contract: cost document schema id.
 export const COST_SCHEMA = "hobo.cost/v1";
 
+// public-contract: the provider id every published document carries.
 export const CLOUDFLARE_PROVIDER_ID = "@hobo/provider-cloudflare";
 
 export interface PublishedManifestDocuments {
@@ -84,7 +89,9 @@ export function publishCapabilityManifest(
 			source: {
 				type: "declared-provider",
 				documentRef: digestRef(`cost:${providerId}:${sku}`),
-				signedAt: "2026-07-01T00:00:00Z",
+				// Transcribed from the vendor's public pricing page, not
+				// attested by the provider (ADR-0129 §5).
+				transcribedOn: "2026-07-27",
 			},
 		};
 	});
@@ -101,7 +108,9 @@ export function publishCapabilityManifest(
 					source: {
 						type: "declared-provider",
 						documentRef: digestRef(`cost:${providerId}:${fact.sku}`),
-						signedAt: "2026-07-01T00:00:00Z",
+						// Transcribed from the vendor's public pricing page, not
+						// attested by the provider (ADR-0129 §5).
+						transcribedOn: "2026-07-27",
 					},
 				}))
 			: defaultFacts,

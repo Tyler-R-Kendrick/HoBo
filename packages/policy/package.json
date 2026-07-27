@@ -1,8 +1,9 @@
 {
 	"name": "@hobo/policy",
 	"version": "0.0.1",
+	"license": "MIT",
 	"type": "module",
-	"files": ["dist"],
+	"files": ["LICENSE", "dist"],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",

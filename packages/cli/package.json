@@ -1,12 +1,14 @@
 {
 	"name": "@hobo/cli",
 	"version": "0.0.1",
+	"license": "MIT",
 	"description": "HoBo CLI shell with canonical verbs (up, down, dev, new, plan, doctor, codegen, build, inspect, logs, verify, sandbox, test, and more) and offline project scaffolds.",
 	"type": "module",
 	"bin": {
 		"hobo": "./dist/bin/hobo.js"
 	},
 	"files": [
+		"LICENSE",
 		"dist"
 	],
 	"exports": {

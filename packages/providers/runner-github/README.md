@@ -20,7 +20,7 @@ REST API.
 `execution-host-provider-contract` draft proof) rank registered hosts by
 effective marginal cost against the `CreditLedgerView` and record the pick
 as a `dispatch.Decided` fact. GitHub declares its real list price
-($0.008/min hosted Linux runner) and free tier (2,000 min/month), so it
+($0.006/min hosted Linux runner) and free tier (2,000 min/month), so it
 wins while free headroom remains and loses to the cheapest remaining
 registered host once exhausted.
 

@@ -80,7 +80,13 @@ make the ledger auditable; `exec.Succeeded` records each applied patch.
   where even the last resort is blocked. The failover replays offline in
   `fixtures/last-resort-failover.fixture.json`. Ephemeral-only,
   own-branches-only is the stated security posture — the last resort exists
-  for the repository's own developers and agents, not for fork traffic.
+  for the repository's own developers and agents, not for fork traffic. That
+  posture is **enforced**: `host-runner` reads the repository record before
+  installing or registering anything and refuses a **public** repository
+  (`HOST_RUNNER_PUBLIC_REPO_REFUSED`, naming fork pull-request workflows when
+  enabled), and fails closed when visibility cannot be read at all
+  (`HOST_RUNNER_VISIBILITY_UNKNOWN`); `--allow-public` /
+  `HOBO_RB_ALLOW_PUBLIC=1` is the deliberate override.
 - **When even a runner cannot be had, the CI work itself defers to the
   requesting machine.** Sandboxed agent sessions cannot register runners
   (their egress proxy forbids the GitHub Actions API by policy), so the

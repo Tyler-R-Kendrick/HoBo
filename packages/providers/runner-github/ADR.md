@@ -46,7 +46,7 @@ typed `GITHUB_CREDENTIALS_MISSING` gate rather than limping into 401s.
 `selectExecutionHost` ranks ONLY the registered providers of a category by
 effective marginal cost against the `CreditLedgerView` (Plan 5): a host
 with free-tier headroom costs zero, an exhausted one falls back to its
-REAL declared list price ($0.008/min for the hosted Linux runner, 2,000
+transcribed declared list price ($0.006/min for the hosted Linux runner, 2,000
 included minutes/month), and ties break deterministically by provider id.
 Free-tier exhaustion therefore re-routes the next job to the cheapest
 remaining registered runner. Credit exhaustion on the build-machine side

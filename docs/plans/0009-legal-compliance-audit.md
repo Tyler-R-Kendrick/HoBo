@@ -28,17 +28,32 @@ Separately, the repository has a concrete and immediately fixable outbound-licen
 packages are configured to publish to npm with no license metadata and no `LICENSE` file in the
 published tarball.
 
-| # | Finding | Severity | Type |
-|---|---|---|---|
-| [1](#1-the-account-ownership-boundary-is-load-bearing-and-undocumented) | The account-ownership boundary is load-bearing and undocumented | **High** (L1) | Provider terms |
-| [2](#2-a-hosted-multi-tenant-hobo-would-breach-provider-terms-outright) | A hosted multi-tenant HoBo would breach provider terms outright | **High** (L1) | Provider terms |
-| [3](#3-24-packages-publish-to-npm-with-no-license-metadata) | 24 packages publish to npm with no license metadata | **High** | Outbound licensing |
-| [4](#4-third-party-pricing-is-hardcoded-misattributed-and-already-wrong) | Third-party pricing is hardcoded, misattributed, and already wrong | **Medium** | Misrepresentation |
-| [5](#5-no-inbound-dependency-licence-gate) | No inbound dependency-licence gate | **Medium** | Inbound licensing |
-| [6](#6-the-public-site-has-no-terms-privacy-notice-or-licence-notice) | The public site has no terms, privacy notice, or licence notice | **Medium** | Terms/privacy |
-| [7](#7-no-contributor-licensing-mechanism-dcocla) | No contributor licensing mechanism (DCO/CLA) | **Medium** | Inbound licensing |
-| [8](#8-provider-trademarks-are-used-without-a-notice) | Provider trademarks are used without a notice | **Low** | Trademark |
-| [9](#9-the-last-resort-runner-shifts-execution-risk-onto-a-developer-machine) | The last-resort runner shifts execution risk onto a developer machine | **Low** | Liability |
+| # | Finding | Severity | Type | Status |
+|---|---|---|---|---|
+| [1](#1-the-account-ownership-boundary-is-load-bearing-and-undocumented) | The account-ownership boundary is load-bearing and undocumented | **High** (L1) | Provider terms | **Fixed** — [ADR-0129](../design/adr/07-portability-extensibility.md#adr-0129) |
+| [2](#2-a-hosted-multi-tenant-hobo-would-breach-provider-terms-outright) | A hosted multi-tenant HoBo would breach provider terms outright | **High** (L1) | Provider terms | **Fixed** — ADR-0129 §4 + paid-GA launch blocker; **counsel review still open** |
+| [3](#3-24-packages-publish-to-npm-with-no-license-metadata) | 23 packages publish to npm with no license metadata | **High** | Outbound licensing | **Fixed** — gated by `licenses:check` |
+| [4](#4-third-party-pricing-is-hardcoded-misattributed-and-already-wrong) | Third-party pricing is hardcoded, misattributed, and already wrong | **Medium** | Misrepresentation | **Fixed** |
+| [5](#5-no-inbound-dependency-licence-gate) | No inbound dependency-licence gate | **Medium** | Inbound licensing | **Fixed** — `scripts/check-licenses.ts` |
+| [6](#6-the-public-site-has-no-terms-privacy-notice-or-licence-notice) | The public site has no terms, privacy notice, or licence notice | **Medium** | Terms/privacy | **Fixed** — `/legal` |
+| [7](#7-no-contributor-licensing-mechanism-dcocla) | No contributor licensing mechanism (DCO/CLA) | **Medium** | Inbound licensing | **Fixed** — inbound=outbound + DCO |
+| [8](#8-provider-trademarks-are-used-without-a-notice) | Provider trademarks are used without a notice | **Low** | Trademark | **Fixed** — `/legal` + AGENTS.md rule |
+| [9](#9-the-last-resort-runner-shifts-execution-risk-onto-a-developer-machine) | The last-resort runner shifts execution risk onto a developer machine | **Low** | Liability | **Fixed** — enforced guard + tests |
+
+> **Remediation status (2026-07-27).** All nine findings are remediated in the same
+> change as this audit; each section's Remediation paragraph records what landed. Two
+> caveats that are *not* closed by code:
+>
+> - **Finding 2 still needs counsel.** The invariants are recorded and the launch
+>   blocker is filed, but confirming that the intended hosted commercial model is
+>   permitted by each vendor's terms is a legal determination, not an engineering one.
+> - **Finding 4's enum was deliberately not renamed.** The audit suggested retagging
+>   `source.type: "declared-provider"`. On inspection that value is a wire-contract
+>   enum pinned in CUE, PACT contracts, and draft proofs across ~30 files, and it
+>   contrasts with `observed-executor` — it reads as "declared, not measured", which is
+>   defensible. The clearly-false part was the fabricated `signedAt` attestation
+>   timestamp, which is gone everywhere and replaced with `transcribedOn` plus a source
+>   URL. Renaming the enum remains available if the vocabulary is revisited.
 
 Two things are already handled well and should not be disturbed:
 
@@ -189,7 +204,7 @@ counsel first, because it constrains the business model, not just the code.
 **Severity: High · Outbound licensing**
 
 Every workspace package is missing a `license` field, and there is not one `LICENSE` file anywhere
-under `packages/` (`find packages -name LICENSE | wc -l` → `0`). Twenty-four of them are
+under `packages/` (`find packages -name LICENSE | wc -l` → `0`). Twenty-three of them are
 publishable — no `"private": true`, and `publishConfig.access: "public"`:
 
 ```
@@ -197,7 +212,7 @@ publishable — no `"private": true`, and `publishConfig.access: "public"`:
 @hobo/contract-harness  @hobo/contracts  @hobo/core  @hobo/data  @hobo/events
 @hobo/hobo  @hobo/iac-crossplane  @hobo/iac-pulumi  @hobo/iac-terraform
 @hobo/identity  @hobo/junctions  @hobo/mcp  @hobo/policy  @hobo/runtime
-@hobo/runtime-local  @hobo/stage-gate  @hobo/wit  @hobo/yards  (+ schema-tools)
+@hobo/runtime-local  @hobo/stage-gate  @hobo/wit  @hobo/yards
 ```
 
 Compounding it, each package sets `"files": ["dist"]`, so even if a root `LICENSE` existed at pack

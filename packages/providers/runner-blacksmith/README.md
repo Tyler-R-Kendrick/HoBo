@@ -19,7 +19,7 @@ substituting the `runs-on` substrate of the GitHub Actions job model.
 ## Economics
 
 Declared cost facts (declared-provider source): $0.004/min for the 4-vCPU
-Linux class — half of GitHub's $0.008/min — with 3,000 free minutes/month.
+Linux class — below GitHub's $0.006/min 2-core — with 3,000 free minutes/month.
 With GitHub and Blacksmith both registered, the Dispatcher's min-cost
 objective routes each job to the cheaper effective option and records the
 rationale in `dispatch.Decided` (ADR-0071).

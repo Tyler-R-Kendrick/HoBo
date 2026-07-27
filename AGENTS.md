@@ -192,6 +192,18 @@ Whenever a change touches code, automation, package metadata, CI, hooks, or agen
 
 Local and CI gates enforce this with `pnpm run docs:freshness`: code changes under `src/`, `scripts/`, `test/`, package metadata, workflows, or agent config must be accompanied by a docs change. The repo hook in `.githooks/pre-commit` runs `pnpm run check:relevant:staged`, which routes to the smallest relevant architecture, test, docs, traceability, and contract lanes; enable it with `pnpm run prepare-hooks`.
 
+## Legal hygiene rules
+
+These are cheap to honor and expensive to unwind. See
+[`docs/plans/0009-legal-compliance-audit.md`](docs/plans/0009-legal-compliance-audit.md).
+
+- **Licence metadata is enforced.** Every workspace manifest declares `"license": "MIT"`, and every publishable package (no `"private": true`) ships a `LICENSE` listed in its `files` array. `pnpm run licenses:check` gates this, and also rejects a production dependency whose licence is not on the allowlist in `scripts/check-licenses.ts`. Add a new licence there with a review note rather than working around the gate.
+- **No third-party logos.** Naming a vendor is nominative fair use; reproducing its logo or brand mark is not. Do not add third-party logos or brand assets to the site, docs, or README without explicit review. Word marks in prose are fine.
+- **Never imply endorsement.** Nothing in docs, site copy, or marketing may state or suggest that HoBo is affiliated with, endorsed by, sponsored by, or certified by any provider.
+- **Third-party facts carry a source and a date.** Prices, free tiers, and vendor terms transcribed into this repo are *ranking input, never billing input*. Tag them with the source URL and the date a human checked them (`COST_SOURCE`, `PROVIDER_TERMS`); never fabricate an attestation field like `signedAt` that implies the vendor signed something.
+- **Provider-terms invariants ([ADR-0129](docs/design/adr/07-portability-extensibility.md#adr-0129)).** Registered providers are the operator's own accounts. Never pool, share, or resell free-tier headroom across tenants; never create provider accounts or rotate identities to reset a free tier. Rotation is *across providers*, never *across accounts within a provider*.
+- **No unsupported compliance claims.** SOC 2, ISO 27001, GDPR, HIPAA, PCI, and similar certifications stay unclaimed until an owning evidence surface accepts them.
+
 ## Keys & risks (read before enabling gbrain)
 - **gbrain needs an embedding key** (`OPENAI_API_KEY` *or* `ZEROENTROPY_API_KEY` *or* `VOYAGE_API_KEY`) and **sends the text it embeds + your queries to that provider** — recurring cost + data egress. It is **inert until you run `gbrain init` and set a key**. Don't point it at sensitive content you don't want leaving your machine. Configure via `.env` (see `.env.example`).
 - **Serena / headroom / RTK / improve / caveman / ponytail / superpowers** need **no keys** and run locally; superpowers has optional telemetry (set `SUPERPOWERS_DISABLE_TELEMETRY=1` to disable).

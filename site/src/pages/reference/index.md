@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Reference overview
-description: "Technical reference for HoBo packages, EventStore, contracts, effects, events, CLI, runtime ports, and WIT storage."
+description: "Technical reference for HoBo packages, ports, contracts, effects, identity, connectivity, CLI, events, and errors."
 ---
 
 # Reference overview
@@ -13,13 +13,22 @@ This section is the **lookup manual** — precise surfaces agents and engineers 
 | Page | Use when you need |
 |---|---|
 | [Package map](/HoBo/reference/packages/) | Which `@hobo/*` package owns a symbol |
-| [EventStore & journal](/HoBo/reference/eventstore/) | Durable log semantics, positions, fencing, SQLite default |
-| [Contracts & Gatekeeper](/HoBo/reference/contracts/) | BoundaryContract, can-deploy, Gatekeeper composition |
-| [Effects & resiliency](/HoBo/reference/effects/) | EffectSpec lattice, ResilienceProfile, never-retry rules |
-| [Event families](/HoBo/reference/events/) | Canonical `family.Event` names for design/code |
-| [CLI surface](/HoBo/reference/cli/) | Canonical verbs and roles |
-| [Runtime ports](/HoBo/reference/runtime-ports/) | EventStore, Queue, Streamer, ActorHost, Clock |
-| [WIT & storage](/HoBo/reference/wit-storage/) | Component-facing storage capability |
+| [EventStore & journal](/HoBo/reference/eventstore/) | Durable log, positions, fencing, SQLite default |
+| [Schema & migrations](/HoBo/reference/schema/) | `user_version`, tables, codecs, integrity |
+| [Queue](/HoBo/reference/queue/) · [Streamer](/HoBo/reference/streamer/) · [Clock](/HoBo/reference/clock/) | Other Camp ports |
+| [ActorHost & fencing](/HoBo/reference/actor-host/) | Leases and fence tokens |
+| [Runtime ports](/HoBo/reference/runtime-ports/) | Port coupling summary |
+| [Contracts & Gatekeeper](/HoBo/reference/contracts/) | IR, can-deploy, composition |
+| [Effects & resiliency](/HoBo/reference/effects/) | EffectSpec, ResilienceProfile |
+| [Policy plane](/HoBo/reference/policy/) | Packs, obligations, deny ceilings |
+| [Matching & ResourceActors](/HoBo/reference/matching/) | Placement + reconciliation |
+| [Harness & progressive](/HoBo/reference/harness/) | Flags, experiments, lanes |
+| [Errors & codes](/HoBo/reference/errors/) | Stable machine codes |
+| [Event families](/HoBo/reference/events/) | Canonical event names |
+| [CLI surface](/HoBo/reference/cli/) | Canonical verbs |
+| [WIT & storage](/HoBo/reference/wit-storage/) | Component storage capability |
+| [Identity](/HoBo/reference/identity/) · [Naming](/HoBo/reference/naming/) · [Connectivity](/HoBo/reference/connectivity/) | Identity + network substrate |
+| [Config & secrets](/HoBo/reference/config-secrets/) · [Metering](/HoBo/reference/metering/) | Secretless config + usage facts |
 | [Glossary](/HoBo/reference/glossary/) | One-line definitions |
 
 ## Design authority

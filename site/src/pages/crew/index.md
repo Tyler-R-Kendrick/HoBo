@@ -29,6 +29,8 @@ HoBo is AI-native: the work a software and platform team does — triage inciden
 | **UX Designer** | Generate & maintain app UI against design.md | [UX Designer](/HoBo/crew/ux-designer/) |
 | **FinOps** | Forecasts, anomalies, commitments (advisory) | [FinOps](/HoBo/crew/finops/) |
 
+Also: [Handoffs & A2H](/HoBo/crew/handoffs/) · [Runbooks](/HoBo/crew/runbooks/) · [Engines & ports](/HoBo/crew/engines/)
+
 ## Shared guarantees
 
 Every Crew member:

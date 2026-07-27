@@ -1,28 +1,25 @@
 ---
 layout: ../../layouts/Docs.astro
-title: UX Designer operator
-description: "Crew UX Designer: generate and maintain app UI against design.md through the ui-render port."
+title: UX Designer
+description: "Crew operator that generates and maintains app UI against design.md under guardrails and contract boundaries."
 ---
 
-# UX Designer operator
+# UX Designer (Crew)
 
-**Mission:** generate and maintain the application **UI** against **design.md** through the `ui-render` port.
+Generates and maintains application UI against design specs (e.g. `design.md`), under the same guardrails and sandbox rules as other generators.
 
-## What it does
+## Mission
 
-- Produces UI artifacts typed from domain records and reactive to materializations.
-- Enforces design-system gates: violations of design.md are **blocked**, not “best effort.”
-- Uses MCP tools such as `generate-ui` / `update-ui`.
-- Persists mutations with the same provenance/policy path as other generated code.
+- Propose UI diffs in sandbox lanes  
+- Keep components aligned with design tokens/specs  
+- Never ship unguarded prompt output to prod without policy  
 
-## Engines behind `ui-render`
+## Boundaries
 
-OpenUI / json-render / mcp-apps or custom adapters — swappable; design.md remains the trust gate.
-
-## Policy
-
-UI that would ship PII-laden patterns or break accessibility gates is a policy/guardrail concern, not a silent merge.
+- Uses MCP/tools with scoped credentials  
+- Pairs with SWE for behavioral code  
+- Accessibility baselines are gates, not suggestions  
 
 ## Related
 
-[SWE](/HoBo/crew/swe/) · [Shared model](/HoBo/crew/shared-model/)
+[Generation](/HoBo/guide/generation/) · [SWE](/HoBo/crew/swe/) · [Shared model](/HoBo/crew/shared-model/)

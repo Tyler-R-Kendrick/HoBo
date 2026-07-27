@@ -1,32 +1,39 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Meet the primitives
-description: "HoBo's four primitives in order of need: the Bindle you must write, the Camp you can pin or let HoBo infer, and Yards and Junctions for apps that go places."
+description: "Bindle, Camp, Yard, Junction, Station, Trail, and the resource catalog — the nouns HoBo is built from."
 ---
 
 # Meet the primitives
 
-HoBo has exactly four primitives, named for the traveling life, and you meet them **in order of need**. The bindle is the one thing you must write; the camp is where your app always lives — pitched by you, or inferred for you. The other two are advanced — for apps that start collecting regions and clouds.
+HoBo’s vocabulary is small on purpose. Learn these nouns once; every guide and reference page reuses them.
 
-## The foundation
+## Topology & packaging
 
-| # | Primitive | One line | What it asks of you |
-|---|---|---|---|
-| 1 | **[Bindle](/HoBo/primitives/bindles/)** | Your whole app, packed into one provider-agnostic bundle. | **Required.** No bindle, nothing to host — it's the first thing HoBo looks for and the only thing it ships. |
-| 2 | **[Camp](/HoBo/primitives/camps/)** | Where the bindle lives *right now*: one provider + one durable runtime. | **Optional to write.** Skip it and HoBo infers a camp from the code you've configured; declare one to pin placement — or because your junction broker admin locked placement down to explicit camps. |
+| Primitive | One-liner | Page |
+|---|---|---|
+| **Bindle** | Provider-agnostic packed app | [Bindles](/HoBo/primitives/bindles/) |
+| **Camp** | Current home + durable runtime | [Camps](/HoBo/primitives/camps/) |
+| **Yard** | Provider control-plane scope | [Yards](/HoBo/primitives/yards/) |
+| **Junction** | Cross-yard federation | [Junctions](/HoBo/primitives/junctions/) |
 
-Bindle first, camp second — that ordering is load-bearing. The bindle refuses to know where it lives; the camp exists to answer exactly that question, temporarily. The gap between them is where [continuous migration](/HoBo/guide/concepts/#continuous-migration) lives: keep the description portable, treat the placement as a standing decision, and the cheapest valid home wins — today and every day after.
+## Control isolation & migration
 
-## The advanced scopes
+| Primitive | One-liner | Page |
+|---|---|---|
+| **Station** | Hard isolation for a Conductor | [Stations](/HoBo/primitives/stations/) |
+| **Trail** | App-owned continuous migration recipe | [Trails](/HoBo/primitives/trails/) |
+| **Resources** | Catalog factories inside a Bindle | [Resource catalog](/HoBo/primitives/resources/) |
 
-| # | Primitive | One line | Reach for it when… |
-|---|---|---|---|
-| 3 | **[Yard](/HoBo/primitives/yards/)** | One provider's camps under one roof: shared policy, identity, reconciliation. | One camp stops being enough — multi-region, environment fleets, governance. |
-| 4 | **[Junction](/HoBo/primitives/junctions/)** | Where yards meet: cross-cloud federation, peer to peer, no shared state. | The journey goes hybrid or multi-cloud, and borders need policies. |
+## Not primitives (but nearby)
 
-Scopes nest by breadth — **`Bindle ⊂ Camp ⊂ Yard ⊂ Junction`** — and every scope object is plain, typed, composable code. No config dialects; the objects *are* the topology.
+| Term | Where it lives |
+|---|---|
+| Conductor / Broker | [Guide](/HoBo/guide/broker/) |
+| Gatekeeper | [Reference](/HoBo/reference/contracts/) |
+| Harness | [Reference](/HoBo/reference/harness/) |
+| Crew | [Crew](/HoBo/crew/) |
 
-## Start walking
+## Related
 
-- [Getting started](/HoBo/guide/getting-started/) — pack a bindle and pitch a camp in ten minutes.
-- [Core concepts](/HoBo/guide/concepts/) — the rest of the vocabulary: the membrane, the event log, agent identity.
+[Core concepts](/HoBo/guide/concepts/) · [Architecture](/HoBo/guide/architecture/) · [Glossary](/HoBo/reference/glossary/)

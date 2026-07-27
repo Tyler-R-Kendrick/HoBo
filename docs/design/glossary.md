@@ -88,6 +88,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | WIT interface | Canonical language-neutral contract form for a HoBo port. |
 | WIT-first SDK | SDK model where each language uses generated `hobo:sdk` WIT bindings plus a thin idiom layer. |
 | Workload Profile | How a service is realized, such as wasm component, container, serverless, or VM. |
+| Connection | Durable, broker-owned authorization handle for an external app (provider + subject + grantedScopes + opaque vault `credentialRef`). Authorize once; mint short-lived tokens thereafter. Event family `connection.*`; CLI/MCP verb `connection`. See [Plan 06 §6.9](./ai-native-agent-auth.md) and [Connections ADR](./adr/02-identity-security-connections.md). |
 | Yard | Provider-specific topology and control-plane boundary. **Owns provider selection.** May declare zero Camps (requested shape before a live instance). See [yard-first-placement ADR](./adr/yard-first-placement.md). |
 | Yard instance | Live, registered, attested control-plane inventory record (not a fifth topology primitive). |
 | Yard runtime registration | Broker-approved template capable of hosting/generating a Yard for one provider/runtime family (not an app runtime backend). |

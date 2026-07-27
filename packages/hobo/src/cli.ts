@@ -23,6 +23,7 @@ import { serveProjectOnLocalYard } from "./wasm-host.js";
 import { createBrokerCommand } from "./broker-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
 import { createClaimCommand } from "./claim-command.js";
+import { createConnectionCommand } from "./connection-command.js";
 import {
 	createDefaultYardRuntime,
 	resolveProjectCollectionTarget,
@@ -178,6 +179,8 @@ export function createComposedHoboCli(
 			up: createBrokerAwareUpCommand({ runtime }),
 			// Identity plane: persist profile + optional default broker association.
 			login: createBrokerAwareLoginCommand(),
+			// Durable Connections: authorize once, mint short-lived tokens thereafter.
+			connection: createConnectionCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

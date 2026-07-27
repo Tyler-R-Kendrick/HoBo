@@ -51,6 +51,13 @@ Product: hobo
 - MCP tool: `login`
 - Capability: { port: hobo:mcp, resource: tool:login, verb: call }
 
+### connection
+- Role: identity
+- Summary: Manage durable Connections (create/authorize/list/get/revoke/rotate)
+- CLI: `hobo connection`
+- MCP tool: `connection`
+- Capability: { port: hobo:mcp, resource: tool:connection, verb: call }
+
 ### claim
 - Role: identity
 - Summary: Bind an anonymous deployment to an account
@@ -197,6 +204,13 @@ Product: hobo
 - CLI: `hobo broker`
 - MCP tool: `broker`
 - Capability: { port: hobo:mcp, resource: tool:broker, verb: call }
+
+### yard
+- Role: control plane
+- Summary: Install and inspect the default bare-metal Yard
+- CLI: `hobo yard`
+- MCP tool: `yard`
+- Capability: { port: hobo:mcp, resource: tool:yard, verb: call }
 
 ### derivative
 - Role: extensibility

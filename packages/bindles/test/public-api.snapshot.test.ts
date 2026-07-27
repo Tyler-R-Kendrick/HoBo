@@ -72,6 +72,8 @@ function createBindlesPublicApiSnapshot(
 		"hashBindleRequirements",
 		"isPlatformAnnotation",
 		"parseBindleRequirements",
+		"connectionRef",
+		"requireConnection",
 		...factoryNames,
 	]);
 

@@ -57,7 +57,10 @@ export function createInMemoryVault(options: {
 // brokered ratio must stay ≥99%).
 // ---------------------------------------------------------------------------
 
-export type BrokeredCredentialSource = "oidc-federation" | "vault-static-key";
+export type BrokeredCredentialSource =
+	| "oidc-federation"
+	| "vault-static-key"
+	| "connection-obo";
 
 export const BROKER_OIDC_ASSERTION_TTL_SECONDS = 120;
 
@@ -281,6 +284,8 @@ export type ScopedTokenGrant = Readonly<{
 	vaultReference: string;
 	credentialSource: BrokeredCredentialSource;
 	providerTokenRef?: string;
+	/** When minted via a first-class Connection (XAA/OBO path). */
+	connectionId?: string;
 }>;
 
 export type GrantTokenResult =
@@ -366,11 +371,23 @@ export class TokenBroker {
 		return { federated: this.federatedGrants, fallback: this.fallbackGrants };
 	}
 
+	/**
+	 * Preference order (ai-native-agent-auth + first-class Connections):
+	 * 1. Keyless OIDC federation (no Connection required for pure cloud ports)
+	 * 2. Healthy matching Connection (connectionId / connectionCredentialRef)
+	 * 3. Bounded vault static-key fallback
+	 */
 	grantForDeploy(input: {
 		svid: ActiveSvidRecord;
 		scope: TokenScope;
 		deployId: string;
 		now?: string;
+		/** Optional first-class Connection id used for XAA/OBO. */
+		connectionId?: string;
+		/** Opaque vault ref from an authorized Connection (never the secret). */
+		connectionCredentialRef?: string;
+		/** Provider name when using a Connection (e.g. asana). */
+		connectionProvider?: string;
 	}): GrantTokenResult {
 		if (!svidAuthorizesScope(input.svid, input.scope)) {
 			return {
@@ -400,6 +417,7 @@ export class TokenBroker {
 		let expiresAt: string;
 		let credentialSource: BrokeredCredentialSource;
 		let providerTokenRef: string | undefined;
+		let connectionId: string | undefined;
 
 		if (federation.status === "exchanged") {
 			// Keyless: the provider STS returned a short-lived, resource-scoped token.
@@ -407,6 +425,33 @@ export class TokenBroker {
 			expiresAt = federation.credential.expiresAt;
 			providerTokenRef = federation.credential.tokenRef;
 			credentialSource = "oidc-federation";
+			this.federatedGrants += 1;
+		} else if (
+			input.connectionId !== undefined &&
+			input.connectionCredentialRef !== undefined
+		) {
+			// Connection-aware OBO/XAA path: broker holds vault ref only; mint
+			// short-lived audience-bound token derived from Connection material.
+			expiresAt = new Date(
+				Date.parse(nowIso) + this.ttlSeconds * 1000,
+			).toISOString();
+			const binding = JSON.stringify({
+				grantId,
+				subject: input.svid.subject,
+				identityId: input.svid.identityId,
+				scope: input.scope,
+				deployId: input.deployId,
+				audience: this.audience,
+				expiresAt,
+				connectionId: input.connectionId,
+				connectionCredentialRef: input.connectionCredentialRef,
+				connectionProvider: input.connectionProvider ?? null,
+				vaultReference: this.vault.reference,
+			});
+			token = `hobotok_conn_${this.vault.deriveScopedMaterial(binding)}`;
+			credentialSource = "connection-obo";
+			connectionId = input.connectionId;
+			providerTokenRef = `tokenref://connection/${input.connectionId}/grant/${grantId}`;
 			this.federatedGrants += 1;
 		} else {
 			// Bounded fallback: no STS wired, or the provider's federation is down.
@@ -446,6 +491,7 @@ export class TokenBroker {
 			vaultReference: this.vault.reference,
 			credentialSource,
 			...(providerTokenRef !== undefined ? { providerTokenRef } : {}),
+			...(connectionId !== undefined ? { connectionId } : {}),
 		};
 		this.grants.set(grantId, grant);
 
@@ -459,6 +505,8 @@ export class TokenBroker {
 			tenant,
 			seq: this.nextSeq(),
 			time: nowIso,
+			...(connectionId !== undefined ? { connectionId } : {}),
+			credentialSource,
 		});
 		validateTokenEvent(event);
 		this.events.push(event);

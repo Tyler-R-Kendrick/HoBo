@@ -1,5 +1,11 @@
 export { bindle } from "./bindle.js";
 export {
+	connectionRef,
+	requireConnection,
+	type ConnectionClient,
+	type ConnectionRequirement,
+} from "./connection.js";
+export {
 	collectRequiredRuntimes,
 	containerDependencyAnnotation,
 	DEPENDENCY_OPTION,

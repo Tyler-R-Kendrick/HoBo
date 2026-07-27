@@ -271,6 +271,48 @@ await asana.tasks.create({ name, assignee: ctx.user.id });  // usage → infers 
 ```
 `auth.json`'s `scopes` advertise what the target *offers*; the manifest records the inferred subset HoBo actually *requests* (`allow`). `connector("asana").allow("tasks:read")` narrows it; a policy deny-ceiling ([ADR-0074](./adr/02-identity-security.md#adr-0074)) caps it. Full authoring surface in [Plan 21](./authoring-resources-wiring.md#plan-21).
 
+### 6.9 First-class Connections (setup at most once)
+
+A **Connection** is a durable, broker-owned control-plane entity that captures
+the long-lived authorization material for an external app (Asana, Slack, …)
+*once*, so humans and agents can later obtain short-lived tokens without
+re-consent. See [ADR: first-class Connections](./adr/02-identity-security-connections.md).
+
+**Lifecycle.** `connection.Created` → `AuthorizationStarted` → `Authorized`
+(status `active`, opaque `credentialRef` in the vault) → repeated
+`connection.TokenIssued` + `token.Granted` → optional `NeedsReauth` /
+`Rotated` / `Revoked`. Aggregate rebuilds from the event log; secrets never
+appear in events.
+
+**Surfaces (CLI ↔ MCP parity).**
+
+```
+hobo connection create <provider> [--alias] [--scopes]
+hobo connection authorize <id-or-alias>
+hobo connection list|get|revoke|rotate …
+```
+
+The MCP tool is the same verb name `connection` (args carry the subcommand) so
+NFR-004 tool/verb parity holds. Agents call `request_token` with an optional
+`connection` identifier once authorized.
+
+**Token preference** (unchanged keyless-first):
+
+1. OIDC federation (no Connection required for pure cloud ports)
+2. Healthy matching Connection → short-lived `connection-obo` token
+3. Bounded vault static-key fallback
+
+**Bindle.** `requireConnection({ provider, scopes })` declares a Connection
+need without embedding provider pins. Scope inference + `.allow()` still
+narrow; the Connection supplies the ceiling.
+
+**Policy.** `connection.use` is deny-by-default and subject-bound. Cross-tenant
+use requires audited admin privilege. `needs-reauth` returns actionable
+remediation (`hobo connection authorize …`).
+
+**HONEST SCOPE.** Live XAA IdP adapters remain provider-specific; the offline
+path exercises vault-backed OBO material + full audit chain.
+
 **Verification ([Plan 9](./generated-stack.md#plan-09)).** An end-user-auth test: a JWT from a fixture IdP is verified via JWKS → `ctx.user` carries the claims; an **expired / wrong-issuer / tampered** token is rejected; a **policy/`.allow()` rule keyed on user claims** gates a query/mutation (allow + deny cases); **revocation** (`session.Revoked`) blocks subsequent requests **and re-pushes affected reactive queries**; the **thin built-in dev provider works offline** (air-gap tie, [ADR-0036](./adr/07-portability-extensibility.md#adr-0036)).
 
 **Scope.** The `auth()` federate+verify port (OIDC + `customJwt`, reference adapters: Google/GitHub/Clerk/Auth0) + a thin built-in (passkey/email) for dev; `ctx.user` as a unified `PrincipalRef`; policy/`.allow()` authorization on user claims; stateless JWKS verify + event-sourced sessions/revocation; `useAuth()`/`signIn`/`signOut`. A full hosted IdP (accounts/passwords/MFA at scale), B2B org/role hierarchies beyond claims, SCIM provisioning, and step-up/MFA orchestration are out of scope.

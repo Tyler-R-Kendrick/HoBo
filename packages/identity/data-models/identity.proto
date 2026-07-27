@@ -84,8 +84,59 @@ message TokenGrantRecord {
   string expires_at = 8;
   string token_ref = 9;
   string vault_reference = 10;
-  string credential_source = 11;   // "oidc-federation" | "vault-static-key"
+  string credential_source = 11;   // "oidc-federation" | "vault-static-key" | "connection-obo"
   string provider_token_ref = 12;  // set when credential_source = oidc-federation
+  string connection_id = 13;       // set when issued via first-class Connection
+}
+
+// First-class durable Connection aggregate (broker-owned).
+// credential_ref is an opaque vault reference — never a raw secret.
+message ConnectionRecord {
+  string schema_version = 1;
+  string id = 2;
+  string alias = 3;
+  string provider = 4;
+  // oidc-federation | oauth2-xaa | oauth2-obo | device-code | api-key | app-install
+  string flow = 5;
+  // pending | active | needs-reauth | revoked | expired
+  string status = 6;
+  PrincipalRef subject = 7;
+  string installation_id = 8;
+  repeated string granted_scopes = 9;
+  repeated string requested_scopes = 10;
+  string credential_ref = 11;
+  string tenant = 12;
+  string created_at = 13;
+  string updated_at = 14;
+  uint64 seq = 15;
+}
+
+message ConnectionCreatedEventData {
+  string connection_id = 1;
+  string alias = 2;
+  string provider = 3;
+  string flow = 4;
+  PrincipalRef subject = 5;
+  PrincipalRef created_by = 6;
+  repeated string requested_scopes = 7;
+  string status = 8;
+}
+
+message ConnectionAuthorizedEventData {
+  string connection_id = 1;
+  repeated string granted_scopes = 2;
+  string installation_id = 3;
+  PrincipalRef subject = 4;
+  string credential_ref = 5;
+  string status = 6;
+}
+
+message ConnectionTokenIssuedEventData {
+  string connection_id = 1;
+  string grant_id = 2;
+  string token_ref = 3;
+  repeated string scopes = 4;
+  string expires_at = 5;
 }
 
 // S3-03 keyless token exchange (ai-native-agent-auth.md §6.2/§6.8). The broker

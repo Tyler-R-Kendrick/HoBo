@@ -98,6 +98,13 @@ preflight status, compatibility inputs, backup requirement, migration plan summa
 rollback evidence, and support handoff. A dry-run is evidence, not execution. It must not mutate live
 schema, provider state, customer data, package registries, or support queues.
 
+**Trails extension (ADR-0134):** continuous app migration dry-runs use the Gatekeeper-compatible
+`can-trail` dimension (`@hobo/trails` / `hobo trails plan`) with the same evidence posture —
+dryRun, blocked reasons, rollbackPosture (`compensate-to-source`), and identity-continuous
+hands-off flags. Continuous identity remains Matching/policy-driven with zero Trail authoring
+(`can-migrate` / ADR-0132); Trails compose it as `identity.continuous` when apps author broader
+schema/data duals.
+
 HOBO-499 proves this M1 dry-run shape in
 [`src/draft/technical-proofs/upgrade-rollback-dry-run-contract`](../../src/draft/technical-proofs/upgrade-rollback-dry-run-contract/README.md)
 with deterministic clean, blocked, failed-migration, and rollback-ready fixtures plus a scope guard

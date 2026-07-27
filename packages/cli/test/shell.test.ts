@@ -18,6 +18,7 @@ const canonicalVerbNames = [
 	"login",
 	"connection",
 	"identity",
+	"trails",
 	"access",
 	"feature",
 	"deploy",
@@ -81,6 +82,7 @@ Canonical verbs:
   login       identity      Obtain a dev SVID through OIDC
   connection  identity      Manage durable Connections (create/authorize/list/get/revoke/rotate)
   identity    identity      Observe continuous identity migration status (status/inspect; zero Bindle config)
+  trails      migration     Observe Trails status/plan/inspect (continuous migration; identity hands-off)
   access      identity      Request elevated/cross-env access or break-glass (short-lived capability; audited)
   feature     delivery      OpenFeature flags / canary / experiment status (list|eval|set|kill)
   deploy      delivery      Attested continuous delivery status/logs/rollback (secret-free)

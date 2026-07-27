@@ -45,17 +45,18 @@ describe("MCP tool surface parity with CANONICAL_VERBS", () => {
 	});
 
 	it("fails parity for a divergent hand-list (an invented tool)", () => {
+		// Must not collide with any real CANONICAL_VERBS name (deploy/up/etc. are real).
 		const invented: ToolDescriptor = {
-			name: "deploy",
-			verb: "deploy",
+			name: "not-a-canonical-verb",
+			verb: "not-a-canonical-verb",
 			role: "lifecycle",
 			summary: "invented tool not in CANONICAL_VERBS",
-			capability: capabilityForTool("deploy"),
-			inputSchema: MCP_TOOL_SURFACE[0].inputSchema,
+			capability: capabilityForTool("not-a-canonical-verb"),
+			inputSchema: MCP_TOOL_SURFACE[0]!.inputSchema,
 		};
 		const report = assertToolSurfaceParity([...MCP_TOOL_SURFACE, invented]);
 		expect(report.ok).toBe(false);
-		expect(report.extra).toContain("deploy");
+		expect(report.extra).toContain("not-a-canonical-verb");
 	});
 
 	it("deriveToolSurface tracks a mutated verb list (proving derivation, not hardcoding)", () => {

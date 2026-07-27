@@ -1,0 +1,46 @@
+# @hobo/trails — Architecture Evidence
+
+HoBo Trails: versioned, app-owned, composable continuous migration runbooks.
+Continuous identity remains hands-off (zero Bindle config) and is composed as
+the platform recipe `identity.continuous`.
+
+## Schema and constraints
+
+- Protobuf records live in [`data-models/trails.proto`](./data-models/trails.proto).
+- CUE constraints in [`data-models/trails.cue`](./data-models/trails.cue) bound
+  every protobuf message.
+- PACT consumer evidence (observe boundary) under [`contracts/`](./contracts).
+
+## Parse, don't validate
+
+`defineTrail` is the single parse, don't validate boundary for Trail definitions:
+untrusted authoring input becomes frozen `TrailDefinition` / `TrailStep` **derived
+types** with ordered dependency validation and secret-free checks before the
+runner accepts a plan. Callers receive derived domain types — never re-check raw
+JSON maps.
+
+## Event architecture
+
+- **Command** — plan / run / abort / compensate / baseline / repair.
+- **Events** — `trail.Started|Planned|DualActive|Progressed|Validated|Cutover|Compensated|Aborted|Failed|HistoryRecorded`.
+- **Actor** — TrailRunService is the single-writer aggregate for a trail run.
+- **Event store** — append-only run events (identity-linked use never-compact retention).
+- **Materialized view / projection** — TrailHistoryStore folds HistoryRecorded.
+- **Snapshot** — TrailRunRecord for observe surfaces.
+- **Read store** — history list + can-trail dry-run evidence.
+
+## Hands-off continuous identity
+
+Architecture guarantee: pure continuous identity Trails expand from
+`identity.continuous` with `bindleConfigRequired: false`. Matching/policy
+activation via `activateIdentityContinuousFromMatching` requires no Trail
+authoring. Guards and Golden oracles assert this property.
+
+## Public surface encapsulation
+
+`@hobo/identity` (control plane, dual fixtures, FeatureFlagStore / Harness) is an
+**internal** dependency only. Package entry and all published `.d.ts` files must
+not import or re-export foreign packages. Consumers receive Trails-owned DTOs
+(`IdentityTrailHandle`, `TrailIdentityProgress`, `TrailCanMigrateEvidence`,
+`ProgressiveFlagPort` internals). Encapsulation is gated by
+`test/public-surface.test.ts`.

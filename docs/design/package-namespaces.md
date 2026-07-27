@@ -47,6 +47,7 @@ backs ADR-0087 and gives docs, generators, and boundary lint one table to check.
 | `camp` | `@hobo/camps` | platform authors and app/platform topology docs | Camp placement is topology, not an app resource catalog primitive. |
 | `yard`, `domain` | `@hobo/yards` | platform authors | Yard tenancy, placement, and admission attach policy without builder-level approval shortcuts. |
 | `junction` | `@hobo/junctions` | platform authors | Junction routing stays explicit at topology edges. |
+| Trails (continuous migration recipes, can-trail, history, dual fixtures) | `@hobo/trails` | app authors + platform | App-owned versioned Trails compose platform `identity.continuous` (hands-off). Continuous identity itself remains Matching/policy-driven with zero Trail authoring ([ADR-0134](./adr/02-identity-security.md#adr-0134)). |
 | `defineResource`, `dispatcher`, `runner`, `runbook`, `generateProvider` | `@hobo/sdk` | provider authors and self-host operators | Provider/runtime implementation hooks are not app authoring factories. |
 | `policyPack`, `rule`, `waiver`, `chaos` | `@hobo/sdk` | operators | Governance and resilience tooling target operator workflows. |
 | shared schemas and branded IDs | `@hobo/core` | package internals, generated code | Stable internal substrate without app factory ownership. |

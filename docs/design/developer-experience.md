@@ -111,6 +111,10 @@ hobo inspect run <id> | deploy <id> | topology           projections / time-trav
 hobo logs [--follow] [<resource>]                        live stream via the Camp runtime streams
 hobo drift [--heal|--propose]                            drift status + reconcile
 hobo login | claim                                       obtain a dev SVID (OIDC); claim an anonymous deploy into an account
+hobo identity status | inspect <id>                      observe continuous identity duals (zero Bindle config; ADR-0132)
+hobo trails status | plan | inspect <id>                 observe Trails (continuous migration; identity hands-off; ADR-0134)
+hobo feature list|eval|set|kill|canary|experiment        OpenFeature / progressive delivery observe (ADR-0083)
+hobo deploy | incident                                   attested CD status / failure disposition
 hobo registry search <capability> | add <provider>       browse/install providers (Capability Manifest)
 hobo generate <provider-url>                                request an AI-generated provider
 hobo import terraform|pulumi|opentofu|lakebed|faas <src> adopt an existing estate in place (ADR-0041)

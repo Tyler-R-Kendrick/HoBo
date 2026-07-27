@@ -203,6 +203,10 @@ export {
 	type IdentityCommandDeps,
 } from "./identity-command.js";
 export {
+	createTrailsCommand,
+	type TrailsCommandDeps,
+} from "./trails-command.js";
+export {
 	createAccessCommand,
 	type AccessCommandDeps,
 } from "./access-command.js";

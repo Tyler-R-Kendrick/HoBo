@@ -35,6 +35,12 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 			"Observe continuous identity migration status (status/inspect; zero Bindle config)",
 	},
 	{
+		name: "trails",
+		role: "migration",
+		summary:
+			"Observe Trails status/plan/inspect (continuous migration; identity hands-off)",
+	},
+	{
 		name: "access",
 		role: "identity",
 		summary:
@@ -200,6 +206,7 @@ export const projectScopedVerbs = new Set(
 				"login",
 				"claim",
 				"identity",
+				"trails",
 				"access",
 				"feature",
 				"add",

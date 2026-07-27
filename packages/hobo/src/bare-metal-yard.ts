@@ -19,8 +19,11 @@ import {
 // places the project Bindle into a Camp, and runs the Camp's component host
 // with Aspire-compatible service discovery (services__*).
 
+// public-contract: yard document schema id persisted under HOBO_HOME.
 export const BARE_METAL_YARD_SCHEMA = "hobo.yard/v1" as const;
+// public-contract: yard kind discriminator for the bare-metal lane.
 export const BARE_METAL_YARD_KIND = "bare-metal" as const;
+// public-contract: default yard name when none is supplied.
 export const DEFAULT_BARE_METAL_YARD_NAME = "local";
 export const DEFAULT_DEV_PORT = 4000;
 
@@ -43,6 +46,7 @@ export type LocalHostKind = ComponentHostKind;
  * Scaffold default before broker-runtime equip. `hobo yard init` / broker-runtime
  * prefer isolated-wasm when tooling is available; explicit `--host` always wins.
  */
+// public-contract: default component-host kind when `--host` is not given.
 export const DEFAULT_COMPONENT_HOST: ComponentHostKind = "local";
 /** @deprecated use DEFAULT_COMPONENT_HOST */
 export const DEFAULT_LOCAL_HOST = DEFAULT_COMPONENT_HOST;
@@ -222,10 +226,7 @@ export function loadBareMetalYardConfig(
  * facts and Bindle serves share one control-plane scope.
  */
 export function openBareMetalYard(
-	options: {
-		readonly hoboHome?: string;
-		readonly autoInit?: boolean;
-	} = {},
+	options: { readonly hoboHome?: string; readonly autoInit?: boolean } = {},
 ): BareMetalYard {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	let config = loadBareMetalYardConfig(hoboHome);

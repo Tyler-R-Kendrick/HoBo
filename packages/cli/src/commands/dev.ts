@@ -85,15 +85,12 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 				try {
 					const serve = await deps.serveProject({
 						projectDir,
-						...(port !== undefined && Number.isInteger(port)
-							? { port }
-							: {}),
+						...(port !== undefined && Number.isInteger(port) ? { port } : {}),
 						once,
 						emitProgress,
 					});
 					const bootMs = Date.now() - startedAt;
-					const ok =
-						serve.probe.status === 200 && bootMs <= DEV_COLD_BUDGET_MS;
+					const ok = serve.probe.status === 200 && bootMs <= DEV_COLD_BUDGET_MS;
 					if (!once) {
 						emitProgress(
 							`hobo dev: listening on ${serve.primaryUrl} (Ctrl-C to stop)`,

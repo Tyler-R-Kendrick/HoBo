@@ -108,11 +108,7 @@ export function createComposedHoboCli(
 					? { runtime: options.devRuntime }
 					: {
 							resolveRuntime: resolveProjectDevRuntime,
-							serveProject: async ({
-								projectDir,
-								port,
-								emitProgress,
-							}) => {
+							serveProject: async ({ projectDir, port, emitProgress }) => {
 								const hoboHome = process.env.HOBO_HOME;
 								const hostEnv = process.env.HOBO_YARD_HOST;
 								const serve = await serveProjectOnLocalYard({

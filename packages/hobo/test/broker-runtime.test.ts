@@ -31,10 +31,9 @@ describe("embedded broker-runtime", () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-init-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
-		const init = await cli.run(
-			["yard", "init", "--home", hoboHome, "--json"],
-			{ cwd: hoboHome },
-		);
+		const init = await cli.run(["yard", "init", "--home", hoboHome, "--json"], {
+			cwd: hoboHome,
+		});
 		const envelope = JSON.parse(init.stdout) as {
 			ok: boolean;
 			data: {
@@ -107,10 +106,9 @@ describe("embedded broker-runtime", () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-up-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
-		const up = await cli.run(
-			["up", "--home", hoboHome, "--json"],
-			{ cwd: helloBindleDir },
-		);
+		const up = await cli.run(["up", "--home", hoboHome, "--json"], {
+			cwd: helloBindleDir,
+		});
 		const envelope = JSON.parse(up.stdout) as {
 			ok: boolean;
 			code: string;

@@ -69,9 +69,10 @@ describe("bare-metal yard e2e", () => {
 		expect(topology.kind).toBe("yard");
 		expect(topology.providerId).toBe("local");
 		expect(topology.camps).toHaveLength(1);
-		expect(topology.camps[0]?.bindle.resources.map((r) => r.stableId)).toEqual(
-			["api:api", "web:web"],
-		);
+		expect(topology.camps[0]?.bindle.resources.map((r) => r.stableId)).toEqual([
+			"api:api",
+			"web:web",
+		]);
 	});
 
 	it("exposes only the web endpoint; api stays on the private mesh", async () => {
@@ -183,7 +184,9 @@ describe("bare-metal yard e2e", () => {
 			expect(envelope.data.exposedEndpoints).toEqual([
 				expect.objectContaining({ resourceName: "web", external: true }),
 			]);
-			const apiEp = envelope.data.endpoints.find((e) => e.resourceName === "api");
+			const apiEp = envelope.data.endpoints.find(
+				(e) => e.resourceName === "api",
+			);
 			expect(apiEp?.external).toBe(false);
 			expect(apiEp?.port).toBeNull();
 			expect(envelope.data.served.status).toBe(200);

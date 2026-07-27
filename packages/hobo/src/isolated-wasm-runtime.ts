@@ -266,9 +266,7 @@ export async function serveProjectOnIsolatedWasm(options: {
 				projectDir: options.projectDir,
 				resourceName: entry.name,
 				jcoBin: toolchain.jco.binPath,
-				...(moduleOverride !== undefined
-					? { modulePath: moduleOverride }
-					: {}),
+				...(moduleOverride !== undefined ? { modulePath: moduleOverride } : {}),
 				...(options.hoboHome !== undefined
 					? { hoboHome: options.hoboHome }
 					: {}),

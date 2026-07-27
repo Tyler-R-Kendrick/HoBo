@@ -117,7 +117,8 @@ export function createYardCommand(): CommandModule {
 						ok: true,
 						status: "initialized",
 						code: "HOBO_YARD_INIT",
-						message: `hobo yard init: Yard '${config.name}' componentHost=${config.componentHost} at ${configPath}; broker ${embedded.state.brokerId}` +
+						message:
+							`hobo yard init: Yard '${config.name}' componentHost=${config.componentHost} at ${configPath}; broker ${embedded.state.brokerId}` +
 							(toolchain
 								? `; toolchain wasmtime ${toolchain.wasmtime.version}`
 								: ""),
@@ -288,7 +289,7 @@ export function createYardCommand(): CommandModule {
 								"Camp capability that executes components (local | isolated-wasm)",
 							bindle: "app topology placed into a Camp",
 							meshEnv:
-								"bindle .with({option:\"env\"}) values injected on private hops as x-hobo-env-*",
+								'bindle .with({option:"env"}) values injected on private hops as x-hobo-env-*',
 						},
 						componentHosts: wasm.componentHosts,
 					},

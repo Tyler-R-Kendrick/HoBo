@@ -32,17 +32,18 @@ export interface WasmHostProbe {
 	readonly tiers: WasmHostProbe["componentHosts"];
 }
 
-export function probeWasmHostInstall(options: {
-	readonly binPath?: string;
-	readonly env?: NodeJS.ProcessEnv;
-} = {}): WasmHostProbe {
+export function probeWasmHostInstall(
+	options: { readonly binPath?: string; readonly env?: NodeJS.ProcessEnv } = {},
+): WasmHostProbe {
 	const env = options.env ?? process.env;
 	const candidates = [
 		options.binPath,
 		env.HOBO_WASMTIME_BIN,
 		env.HOME ? `${env.HOME}/.hobo/tools/wasmtime` : undefined,
 		"wasmtime",
-	].filter((value): value is string => typeof value === "string" && value.length > 0);
+	].filter(
+		(value): value is string => typeof value === "string" && value.length > 0,
+	);
 
 	const notes: string[] = [];
 	const componentHosts = {
@@ -103,9 +104,7 @@ export async function serveProjectOnWasmHost(
 	return { ...result, componentHost: "local" };
 }
 
-function normalizeKind(
-	raw: string | undefined,
-): ComponentHostKind {
+function normalizeKind(raw: string | undefined): ComponentHostKind {
 	if (raw === "bare-metal" || raw === "runtime-local" || raw === undefined) {
 		return "local";
 	}
@@ -138,9 +137,7 @@ export async function serveProjectOnLocalYard(options: {
 > {
 	const owned =
 		options.yard === undefined
-			? (
-					await import("./bare-metal-yard.js")
-				).openBareMetalYard({
+			? (await import("./bare-metal-yard.js")).openBareMetalYard({
 					...(options.hoboHome !== undefined
 						? { hoboHome: options.hoboHome }
 						: {}),
@@ -154,7 +151,9 @@ export async function serveProjectOnLocalYard(options: {
 			yard.config.host,
 	);
 
-	const wrapClose = <T extends { close: () => Promise<void> }>(result: T): T => {
+	const wrapClose = <T extends { close: () => Promise<void> }>(
+		result: T,
+	): T => {
 		if (owned === null) return result;
 		const inner = result.close.bind(result);
 		return {

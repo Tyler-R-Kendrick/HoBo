@@ -41,6 +41,12 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 			"Request elevated/cross-env access or break-glass (short-lived capability; audited)",
 	},
 	{
+		name: "feature",
+		role: "delivery",
+		summary:
+			"OpenFeature flags / canary / experiment status (list|eval|set|kill)",
+	},
+	{
 		name: "claim",
 		role: "identity",
 		summary: "Bind an anonymous deployment to an account",
@@ -184,6 +190,7 @@ export const projectScopedVerbs = new Set(
 				"claim",
 				"identity",
 				"access",
+				"feature",
 				"add",
 				"registry",
 				"generate",

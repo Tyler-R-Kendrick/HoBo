@@ -207,6 +207,10 @@ export {
 	type AccessCommandDeps,
 } from "./access-command.js";
 export {
+	createFeatureCommand,
+	type FeatureCommandDeps,
+} from "./feature-command.js";
+export {
 	setDefaultStation,
 	type HoboProfileDefaultStation,
 } from "./hobo-profile.js";

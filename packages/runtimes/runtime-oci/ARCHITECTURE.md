@@ -18,7 +18,10 @@ The kubectl/cluster integration boundary is HTTP-shaped and captured as PACT
 
 Image refs and resource names are sanitized once before manifests. Invalid empty
 resource names cannot form Deployment metadata. Pack requires an existing wasm
-file path — missing bytes throw at the pack boundary.
+file path — missing bytes throw at the pack boundary. Kubectl binaries resolved
+by `ensureKubectlBinary` become **derived types** (`KubectlBinary` with pinned
+version + source) — consumers receive the parsed record, never a bare path string
+that still needs validation.
 
 ## Component host — event architecture
 

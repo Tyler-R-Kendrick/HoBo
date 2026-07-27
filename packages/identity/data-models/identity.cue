@@ -305,3 +305,61 @@ package hobo
   dryRun: true
   rollbackPosture: "compensate-to-source"
 }
+
+// Harness records (ADR-0044 / ADR-0083)
+#FlagDefinitionRecord: {
+	key:                         string
+	default_value:               bool
+	percentage:                  uint & >=0 & <=100
+	enabled:                     bool
+	state:                       "ENABLED" | "DISABLED"
+	default_variant:             string
+	kill_switch:                 bool
+	migration_id?:               string
+	auto_abort_on_dual_failure:  bool
+	seq:                         uint
+	updated_at:                  string
+}
+
+#FlagEvaluationRecord: {
+	flag_key:        string
+	variant:         string
+	reason:          string
+	ruleset_seq:     uint
+	context_digest:  string
+}
+
+#RolloutStageRecord: {
+	percent:   uint & >=0 & <=100
+	duration?: string
+}
+
+#RolloutPolicyRecord: {
+	name:          string
+	flag:          string
+	stages:        [...#RolloutStageRecord]
+	traffic:       "flag-only" | "gateway-weighted"
+	auto_rollback: bool
+}
+
+#RolloutStateRecord: {
+	id:                     string
+	status:                 "running" | "promoted" | "rolled_back" | "failed"
+	stage_index:            uint
+	percent:                uint & >=0 & <=100
+	gateway_weight_percent: uint & >=0 & <=100
+}
+
+#ExperimentDefinitionRecord: {
+	name:     string
+	flag:     string
+	variants: [...string]
+}
+
+#ExperimentAssignmentRecord: {
+	experiment:       string
+	flag:             string
+	variant:          string
+	subject_key_hash: string
+	assigned_at:      string
+}

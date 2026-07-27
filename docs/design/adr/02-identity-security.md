@@ -251,6 +251,21 @@ HoBo controls *deploys* with canary/progressive rollout ([Plan 5](../reliability
 - **(+)** A standard-compatible capability that composes with HoBo's audit (`flag.*`), policy (gated flips + obligations), identity (`ctx.user` targeting), and reactive (`useFlag` re-eval) planes; the built-in default keeps it air-gap-friendly and OpenFeature compatibility avoids lock-in, while deterministic in-process eval is edge-friendly and replay-safe.
 - **(−)** A synced ruleset means a bounded propagation delay on an ordinary flip (seconds); **kill-switches** take the push fast path (point 3) with a declared, alerted latency budget rather than the poll-sync interval.
 
+
+### Executable expansion (production Harness · 2026-07-27)
+
+- Single `FeatureFlagStore` in `@hobo/identity` (variants, fractional splits, kill-switch invalidation seq, tenant isolation, migration cohort fields). `flag.Evaluated` is sampled (default 1%; kill-switch / fail-safe always recorded).
+- OpenFeature-shaped `HoboOpenFeatureProvider` / `HoboFeatureClient` — sole app evaluation API (no vendor SDK). Ranked residual OFREP backends are mediated only.
+- EvaluationContext auto-enriched from `PrincipalRef` + Camp/Yard/env via `enrichEvaluationContext`.
+- Bindle IfC: `features()`, `declareExperiment()`, `rollout()` in `@hobo/bindles`.
+- OpenDelivery (`OpenDeliveryEngine`) + OpenExperiment (`OpenExperimentEngine`) + `Harness` composition with auto-rollback obligations.
+- Gateway-weighted rollouts compose via `composeGatewayWeightFromRollout` / `applyRolloutToGatewayRouting` → `domain.RoutingChanged` / `domain.RolledBack` (ADR-0035 weighted split).
+- Experiment analysis/export: built-in baseline + residual analysis port; commercial engines stay adapters.
+- Optional CD residual adapters (Argo/Flagger-shaped HTTP) rank behind built-in delivery — no operator binaries.
+- Policy-gated mutations (`gateFlagMutation`) emit `policy.Decided`-shaped facts.
+- CLI: `hobo feature list|eval|set|kill|canary|experiment`.
+- Local fixtures: `createContractAssertedHarnessFixtures` for offline `hobo dev`.
+
 ## ADR-0045
 **SLO-as-code, error-budget gating & alerting model.**
 
@@ -469,6 +484,25 @@ HoBo's release machinery is real but scattered: feature flags ([ADR-0044](#adr-0
 4. **Composition (the standard progressive-delivery loop):** deploy dark → ramp the flag (OpenFeature) → shift traffic to the canary (OpenDelivery over the gateway) → watch SLO + experiment metrics (OTEL) → **auto-rollback or promote** → optionally conclude an experiment (OpenExperiment). Policy obligations (`require-canary`) and the Golden gate shape it; every step is event-sourced.
 5. **Swappable core — for the right reason only.** The Harness's built-in delivery/experiment engines are per-Camp Matching selections like any port. The **core pattern** itself (progressive delivery) changes only if the industry's dominant release pattern shifts — at which point a new Harness implements the new pattern behind the same three-port shape.
 6. **Events** `rollout.Started/Stepped/Promoted/RolledBack/Failed` and `experiment.Assigned`(sampled)/`Exposed`(sampled)/`Concluded`; reuse `flag.*` ([ADR-0044](#adr-0044)), SLO/`alert.*` ([ADR-0045](#adr-0045)), and `policy.Decided`. Auto-rollback rides the existing obligation mechanism — no bespoke rollback family.
+
+### Executable expansion (2026-07-27)
+
+Harness ports are production-ready in `@hobo/identity`: `FeatureFlagStore` + `HoboOpenFeatureProvider` (OpenFeature), `OpenDeliveryEngine` (OpenDelivery), `OpenExperimentEngine` (OpenExperiment), composed by `Harness` / `createHarness`. Progressive loop emits `rollout.*` / `experiment.*` / `flag.*` / `domain.RoutingChanged`; auto-rollback activates kill-switch + zero flag percent + zero gateway weight. Built-in experiment analysis/export and ranked residual adapters (OFREP / CD webhook / analysis) are complete without hard vendor deps. Continuous identity migration continues to use the same store.
+
+```mermaid
+flowchart LR
+  B[Bindle features/rollout/experiment] --> S[FeatureFlagStore]
+  S --> OF[OpenFeature client]
+  S --> OD[OpenDelivery]
+  S --> OE[OpenExperiment]
+  OD --> GW[Gateway weights / domain.RoutingChanged]
+  OD --> RB[Auto-rollback obligation]
+  OE --> OTEL[OTEL hooks]
+  OE --> AN[Analysis export]
+  R[Ranked residual adapters] -.-> OF
+  R -.-> OD
+  R -.-> AN
+```
 
 ### Consequences
 - **(+)** One coherent, industry-legible delivery story (progressive delivery; OpenFeature + OTEL real; canary/blue-green/experiment vocabulary) that **consolidates four scattered areas** into one Harness with three clean ports, pluggable to the dominant tools (Argo/Flagger/Spinnaker; Statsig/GrowthBook/Optimizely).

@@ -162,17 +162,118 @@ export {
 	verifyDualAudienceGrant,
 } from "./dual-adapter.js";
 export {
+	bucket,
 	createMigrationFlagId,
 	FeatureFlagStore,
+	FEATURE_FLAG_PORT,
 	FLAG_EVENT_SCHEMA_VERSION,
 	FLAG_EVENTS,
+	type DetailEvaluation,
 	type FlagDefinition,
+	type FlagDefinitionInput,
 	type FlagEvalContext,
 	type FlagEvaluation,
 	type FlagEvent,
 	type FlagEventType,
+	type FlagState,
+	type FlagTargeting,
+	type FlagValue,
+	type FractionalVariant,
 	migrationCohortFlagKey,
+	pickFractionalVariant,
 } from "./feature-flag-store.js";
+export {
+	createDevEvaluationContext,
+	enrichEvaluationContext,
+	type HoBoScopeAttributes,
+	type PrincipalRefLike,
+} from "./evaluation-context.js";
+export {
+	createLocalFeatureClient,
+	HoboFeatureClient,
+	HoboOpenFeatureProvider,
+	HOBO_OPENFEATURE_PROVIDER_NAME,
+	type OpenFeatureResolutionDetails,
+} from "./openfeature-provider.js";
+export {
+	contentHashRollout,
+	DELIVERY_PORT,
+	OpenDeliveryEngine,
+	ROLLOUT_EVENT_SCHEMA,
+	ROLLOUT_EVENTS,
+	type DeliveryHealthSignal,
+	type RolloutEvent,
+	type RolloutPolicy,
+	type RolloutStage,
+	type RolloutState,
+} from "./harness-delivery.js";
+export {
+	createExperimentId,
+	EXPERIMENT_EVENT_SCHEMA,
+	EXPERIMENT_EVENTS,
+	EXPERIMENT_PORT,
+	OpenExperimentEngine,
+	type ExperimentAssignment,
+	type ExperimentDefinition,
+	type ExperimentEvent,
+} from "./harness-experiment.js";
+export {
+	createHarness,
+	HARNESS_SCHEMA,
+	Harness,
+	type HarnessPorts,
+	type ProgressiveRun,
+} from "./harness-compose.js";
+export {
+	createContractAssertedHarnessFixtures,
+	type LocalHarnessFixtures,
+} from "./harness-fixtures.js";
+export {
+	applyPolicyGatedDefine,
+	classifyFlagMutationRisk,
+	FLAG_CHANGE_ACTION,
+	FLAG_POLICY_SCHEMA,
+	gateFlagMutation,
+	ROLLOUT_START_ACTION,
+	type FlagMutationDecision,
+	type FlagMutationEffect,
+	type FlagMutationObligation,
+	type FlagMutationRequest,
+	type FlagMutationRiskReason,
+} from "./flag-policy.js";
+export {
+	FEATURE_FLAG_BACKEND_RANKS,
+	selectFeatureFlagBackend,
+	type FeatureFlagBackendRank,
+	type RankedBackend,
+} from "./feature-flag-ranking.js";
+export {
+	applyRolloutToGatewayRouting,
+	composeGatewayWeightFromRollout,
+	DOMAIN_ROUTING_EVENTS,
+	GATEWAY_WEIGHT_SCHEMA,
+	trafficWeightSplitFromPercent,
+	type DomainRoutingEvent,
+	type TrafficWeightSplit,
+} from "./gateway-weight.js";
+export {
+	analyzeExperimentFromEngine,
+	createBuiltinDeliveryAdapter,
+	createBuiltinExperimentAnalysis,
+	createCdResidualDeliveryAdapter,
+	createMediatedFlagEvaluator,
+	createOfrepResidualBackend,
+	createResidualExperimentAnalysis,
+	selectDeliveryAdapter,
+	DELIVERY_ADAPTER_SCHEMA,
+	EXPERIMENT_ANALYSIS_SCHEMA,
+	OFREP_RESIDUAL_SCHEMA,
+	type DeliveryAdapter,
+	type DeliveryAdapterKind,
+	type ExperimentAnalysisPort,
+	type ExperimentAnalysisResult,
+	type MediatedFlagEvaluator,
+} from "./harness-adapters.js";
 export {
 	ContractAssertedIdentityAdapter,
 	createDualAdapterPair,

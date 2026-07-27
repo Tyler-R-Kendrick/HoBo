@@ -46,6 +46,21 @@ export {
 } from "./config-can-deploy.js";
 export { secret } from "./secret-surface.js";
 export {
+	BINDLE_FEATURES_SCHEMA,
+	experiment as declareExperiment,
+	features,
+	featureSpecsToStoreInputs,
+	rollout,
+	type ExperimentDeclaration,
+	type ExperimentSpec,
+	type FeatureFlagSpec,
+	type FeaturesDeclaration,
+	type FeatureState,
+	type RolloutDeclaration,
+	type RolloutSpec,
+	type RolloutStageSpec,
+} from "./features.js";
+export {
 	assertNoBindleProviderSelection,
 	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
 	BINDLE_PROVIDER_SELECTION_REMEDIATION,
@@ -67,6 +82,7 @@ export {
 	data,
 	experiment,
 	flag,
+	rolloutResource,
 	golden,
 	guardrail,
 	job,

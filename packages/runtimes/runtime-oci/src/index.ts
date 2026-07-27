@@ -19,5 +19,13 @@ export {
 	WASM_COMPONENT_MEDIA_TYPE,
 	type OciPackResult,
 } from "./oci-pack.js";
+export {
+	ensureKubectlBinary,
+	isKubectlPresent,
+	kubectlToolsPath,
+	PINNED_KUBECTL_VERSION,
+	type KubectlBinary,
+} from "./kubectl-ensure.js";
 
+// public-contract: package id consumers assert against.
 export const HOBO_RUNTIME_OCI_PACKAGE = "@hobo/runtime-oci";

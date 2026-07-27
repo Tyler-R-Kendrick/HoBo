@@ -19,6 +19,7 @@ import { createDepotCatalogEntry } from "@hobo/runner-depot";
 import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAccessCommand } from "./access-command.js";
 import { createAddCommand, registerInstallable } from "./add-command.js";
+import { createFeatureCommand } from "./feature-command.js";
 import { createAttestCommand } from "./attest-command.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
 import { createBrokerCommand } from "./broker-command.js";
@@ -188,6 +189,8 @@ export function createComposedHoboCli(
 			identity: createIdentityCommand(),
 			// Elevated / cross-env access request + break-glass (short-lived capability).
 			access: createAccessCommand(),
+			// OpenFeature flags + canary/experiment observe (Harness ADR-0083).
+			feature: createFeatureCommand(),
 			down: createDownCommand({ runtime }),
 			doctor: createDoctorCommand(),
 			verify: createVerifyCommand(),

@@ -76,24 +76,64 @@ export function createOciRuntimeHost(
 		async ensure(ctx: RuntimeEnsureContext): Promise<RuntimeEnsureResult> {
 			const emit = ctx.emitProgress ?? (() => {});
 			emit(`hobo: ensuring oci kubernetes host (kubectl transport) namespace=${namespace}`);
-			const k8s = clientFor(ctx);
+			// Equip kubectl client offline under HOBO_HOME when using process transport.
+			// Injected Kubernetes clients (PACT mocks) skip download.
+			let kubectlNote = "kubectl client equip skipped (injected transport)";
+			let equippedBin: string | undefined;
+			if (!options.kubernetes) {
+				try {
+					const { ensureKubectlBinary } = await import("./kubectl-ensure.js");
+					const bin = await ensureKubectlBinary({
+						hoboHome: ctx.hoboHome,
+						...(ctx.env !== undefined ? { env: ctx.env } : {}),
+						download: true,
+						emitProgress: emit,
+					});
+					equippedBin = bin.binPath;
+					kubectlNote = `kubectl client equipped source=${bin.source} version=${bin.version}`;
+				} catch (err) {
+					kubectlNote = `kubectl equip failed: ${err instanceof Error ? err.message : String(err)}`;
+				}
+			}
+			const k8s = clientFor({
+				...ctx,
+				env: {
+					...(ctx.env ?? process.env),
+					...(equippedBin !== undefined
+						? { HOBO_KUBECTL_BIN: equippedBin }
+						: {}),
+				},
+			});
 			const probe = await k8s.probe();
+			// ready = client available (equippable offline); clusterReachable is separate.
+			const ready =
+				probe.ready || equippedBin !== undefined || options.kubernetes !== undefined;
 			const notes = [
 				...probe.notes,
+				kubectlNote,
 				`namespace=${namespace}`,
 				"WASM components packed under $HOBO_HOME/oci; scheduled via kubectl transport",
+				ready && !probe.clusterReachable
+					? "client ready; cluster not required for ensure (servePrivate needs cluster)"
+					: ready
+						? "client and cluster ready"
+						: "oci host not ready",
 			];
 			return {
 				kind: "oci",
-				ready: probe.ready,
+				ready,
 				notes,
 				details: {
 					mode: "kubectl",
 					namespace,
 					clusterReachable: probe.clusterReachable,
-					clientVersion: probe.clientVersion,
-					kubectlBin: probe.kubectlBin,
+					clientVersion: probe.clientVersion ?? null,
+					kubectlBin: equippedBin ?? probe.kubectlBin,
 					transport: k8s.transport.name,
+					clientEquipped:
+						equippedBin !== undefined ||
+						probe.ready ||
+						options.kubernetes !== undefined,
 				},
 			};
 		},

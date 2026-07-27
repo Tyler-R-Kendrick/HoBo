@@ -32,8 +32,8 @@ import {
 	type YardPlacementReceipt,
 } from "@hobo/broker";
 
-import { resolveStationContext } from "@hobo/stations";
-import { loadHoboProfile } from "./hobo-profile.js";
+import { initStation, listStationIds, resolveStationContext } from "@hobo/stations";
+import { loadHoboProfile, setDefaultStation } from "./hobo-profile.js";
 
 import {
 	type ComponentHostKind,
@@ -370,15 +370,39 @@ export async function ensureEmbeddedBroker(options: {
 		preferWasmSandbox: preferWasm,
 	});
 	// Embedded Conductor requires Station occupancy (same as CLI broker path).
-		const profile = loadHoboProfile(hoboHome);
+	// Zero-config local: auto-bootstrap station:local when none exists under HOBO_HOME.
+	const profile = loadHoboProfile(hoboHome);
+	const existingStations = listStationIds(hoboHome);
+	if (
+		existingStations.length === 0 &&
+		profile?.defaultStation?.id === undefined &&
+		typeof process.env.HOBO_STATION !== "string"
+	) {
+		const boot = initStation({
+			hoboHome,
+			id: "station:local",
+			name: "local",
+			tenant: "local",
+		});
+		setDefaultStation(
+			hoboHome,
+			{ id: boot.stationId, dataDir: boot.dataDir },
+			boot.occupancy.activeRailHash,
+		);
+		emit(`hobo broker-runtime: bootstrapped ${boot.stationId} for local Yard`);
+	}
 	const stationCtx = resolveStationContext({
 		hoboHome,
 		...(typeof process.env.HOBO_STATION === "string"
 			? { stationEnv: process.env.HOBO_STATION }
 			: {}),
-		...(profile?.defaultStation?.id !== undefined
-			? { profileStationId: profile.defaultStation.id }
-			: {}),
+		...(loadHoboProfile(hoboHome)?.defaultStation?.id !== undefined
+			? {
+					profileStationId: loadHoboProfile(hoboHome)!.defaultStation!.id,
+				}
+			: existingStations[0] !== undefined
+				? { profileStationId: existingStations[0] }
+				: { profileStationId: "station:local" }),
 	});
 	const pins = stationCtx.client.pins();
 	const broker = createBroker({

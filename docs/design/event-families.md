@@ -37,13 +37,13 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided` |
 | `drift.*` | `drift.RemediationRouted`, `drift.DiffProposed` |
-| `domain.*` | `domain.Validated`, `domain.RoutingChanged` |
+| `domain.*` | `domain.Validated`, `domain.RoutingChanged`, `domain.RolledBack` |
 | `env.*` | `env.Cloned`, `env.Promoted` |
 | `erasure.*` | `erasure.Requested`, `erasure.Completed` |
 | `eval.*` | `eval.Ran`, `eval.GateFailed` |
 | `exec.*` | `exec.Started`, `exec.Succeeded` |
-| `experiment.*` | `experiment.Assigned`, `experiment.Concluded` |
-| `flag.*` | `flag.Defined`, `flag.Changed` |
+| `experiment.*` | `experiment.Assigned` (sampled), `experiment.Exposed` (sampled), `experiment.Concluded` |
+| `flag.*` | `flag.Defined`, `flag.Changed`, `flag.Evaluated` (sampled), `flag.Archived`, `flag.KillSwitch` |
 | `gatekeeper.*` | `gatekeeper.Decided` |
 | `gen.*` | `gen.Requested`, `gen.PluginCertified` |
 | `golden.*` | `golden.Ran`, `golden.Passed` |
@@ -74,7 +74,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `registry.*` | `registry.BundleImported` |
 | `resource.*` | `resource.Provisioned`, `resource.DriftDetected` |
 | `resourcedef.*` | `resourcedef.Registered`, `resourcedef.Updated` |
-| `rollout.*` | `rollout.Started`, `rollout.RolledBack` |
+| `rollout.*` | `rollout.Started`, `rollout.Stepped`, `rollout.Promoted`, `rollout.RolledBack`, `rollout.Failed` |
 | `run.*` | `run.Started`, `run.StepCompleted` |
 | `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
 | `saga.*` | `saga.Started`, `saga.Compensated` |

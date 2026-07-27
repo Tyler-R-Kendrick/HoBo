@@ -100,6 +100,18 @@
       }
     },
     {
+      "name": "feature",
+      "role": "delivery",
+      "summary": "OpenFeature flags / canary / experiment status (list|eval|set|kill)",
+      "cli": "hobo feature",
+      "mcpTool": "feature",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:feature",
+        "verb": "call"
+      }
+    },
+    {
       "name": "claim",
       "role": "identity",
       "summary": "Bind an anonymous deployment to an account",

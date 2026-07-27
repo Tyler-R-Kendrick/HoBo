@@ -44,7 +44,11 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Gatekeeper | Composite deploy gate combining contracts, policy, evals, conformance, cost, signing, and golden-suite decisions. |
 | Golden Suite | Signed bundle of conformance, contract, eval, benchmark, chaos, SLO, and golden-master checks for a deployment. |
 | Grain | Virtual actor, HoBo's default concurrency primitive. |
-| Harness | Progressive delivery core over OpenFeature, HoBo-shaped OpenDelivery, HoBo-shaped OpenExperiment, and OpenTelemetry. |
+| Harness | Progressive delivery core over OpenFeature, HoBo-shaped OpenDelivery, HoBo-shaped OpenExperiment, and OpenTelemetry. Realized in `@hobo/identity` as `FeatureFlagStore` + `OpenDeliveryEngine` + `OpenExperimentEngine` composed by `Harness`. |
+| OpenFeature | CNCF flag evaluation API; sole public evaluation surface for application code (`HoboOpenFeatureProvider` / `HoboFeatureClient`). |
+| OpenDelivery | HoBo-shaped port (`hobo:delivery`) for canary, blue/green, staged rollouts, traffic shift, and auto-rollback obligations. |
+| OpenExperiment | HoBo-shaped port (`hobo:experiment`) for sticky assignment, exposure tracking, and pluggable statistical analysis. |
+| Feature flag | Bindle IfC declaration (`features()`) + event-sourced runtime values in the single built-in `FeatureFlagStore` (shared with continuous identity cohorts). |
 | HoBo Broker | Runtime brokering authority (**Conductor**) that places Bindles/Camps/Yards/Junctions across providers under the active Rail's policies, wrapping the policy, contract, billing, delivery, and connector-registry planes; realized by `@hobo/broker`. Durable Connections and Rails live on the **Station**; the broker holds short-lived caches only. Distinct from the Identity token broker and the connector runtime broker ([hobo-broker.md](./hobo-broker.md)). |
 | Hobo Code | Planned declarative plus generated-stub DSL that lowers to the same manifest IR and SDK constructs as TypeScript authoring. |
 | ID-JAG | Identity Assertion JWT Authorization Grant used for Cross-App Access token exchange. |

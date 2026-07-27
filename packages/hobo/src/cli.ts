@@ -51,6 +51,7 @@ import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createBrokerAwareLoginCommand } from "./login-command.js";
+import { createStationCommand } from "./station-command.js";
 import { createYardCommand } from "./yard-command.js";
 
 export interface ComposedHoboCliOptions {
@@ -190,6 +191,8 @@ export function createComposedHoboCli(
 			broker: createBrokerCommand({ catalog: runtime.registry }),
 			// Install/inspect the default bare-metal yard (`hobo yard init|status`).
 			yard: createYardCommand(),
+			// Station occupancy setup/ops (main control-plane setup path; not lifecycle).
+			station: createStationCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),

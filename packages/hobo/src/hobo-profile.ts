@@ -1,5 +1,5 @@
 /**
- * Persisted HOBO_HOME profile: default broker association + login principal metadata.
+ * Persisted HOBO_HOME profile: default Station occupancy + broker association + login.
  * Local `hobo up` never requires this file; remote authenticated paths prefer it.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -20,9 +20,18 @@ export interface HoboProfileSession {
 	readonly brokerUri?: string;
 }
 
+export interface HoboProfileDefaultStation {
+	readonly id: string;
+	readonly dataDir?: string;
+	readonly discoveryUri?: string;
+}
+
 export interface HoboProfile {
 	readonly schemaVersion: typeof HOBO_PROFILE_SCHEMA;
 	readonly defaultBrokerUri?: string;
+	/** Station occupancy context (main setup path). */
+	readonly defaultStation?: HoboProfileDefaultStation;
+	readonly activeRail?: string;
 	readonly session?: HoboProfileSession;
 	readonly updatedAt: string;
 }
@@ -59,6 +68,7 @@ export function upsertLoginProfile(input: {
 	readonly token: string;
 	readonly brokerUri?: string;
 	readonly proofKeyId?: string;
+	readonly stationId?: string;
 }): HoboProfile {
 	const existing = loadHoboProfile(input.hoboHome);
 	const session: HoboProfileSession = {
@@ -86,8 +96,40 @@ export function upsertLoginProfile(input: {
 				: session.brokerUri !== undefined
 					? { defaultBrokerUri: session.brokerUri }
 					: {}),
+		...(input.stationId !== undefined
+			? { defaultStation: { id: input.stationId } }
+			: existing?.defaultStation !== undefined
+				? { defaultStation: existing.defaultStation }
+				: {}),
+		...(existing?.activeRail !== undefined
+			? { activeRail: existing.activeRail }
+			: {}),
 	};
 	saveHoboProfile(input.hoboHome, profile);
+	return profile;
+}
+
+export function setDefaultStation(
+	hoboHome: string,
+	station: HoboProfileDefaultStation,
+	activeRail?: string,
+): HoboProfile {
+	const existing = loadHoboProfile(hoboHome);
+	const profile: HoboProfile = {
+		schemaVersion: HOBO_PROFILE_SCHEMA,
+		updatedAt: new Date().toISOString(),
+		defaultStation: station,
+		...(activeRail !== undefined
+			? { activeRail }
+			: existing?.activeRail !== undefined
+				? { activeRail: existing.activeRail }
+				: {}),
+		...(existing?.defaultBrokerUri !== undefined
+			? { defaultBrokerUri: existing.defaultBrokerUri }
+			: {}),
+		...(existing?.session !== undefined ? { session: existing.session } : {}),
+	};
+	saveHoboProfile(hoboHome, profile);
 	return profile;
 }
 
@@ -111,7 +153,25 @@ export function parseHoboProfile(raw: unknown): HoboProfile {
 		obj.defaultBrokerUri.length > 0
 			? { defaultBrokerUri: obj.defaultBrokerUri }
 			: {}),
+		...(typeof obj.activeRail === "string" && obj.activeRail.length > 0
+			? { activeRail: obj.activeRail }
+			: {}),
 	};
+	if (obj.defaultStation !== undefined && obj.defaultStation !== null) {
+		const ds = obj.defaultStation as Record<string, unknown>;
+		if (typeof ds.id !== "string" || ds.id.length === 0) {
+			throw new TypeError("hobo profile.defaultStation.id required");
+		}
+		Object.assign(profile, {
+			defaultStation: Object.freeze({
+				id: ds.id,
+				...(typeof ds.dataDir === "string" ? { dataDir: ds.dataDir } : {}),
+				...(typeof ds.discoveryUri === "string"
+					? { discoveryUri: ds.discoveryUri }
+					: {}),
+			}),
+		});
+	}
 	if (obj.session !== undefined && obj.session !== null) {
 		const s = obj.session as Record<string, unknown>;
 		const principal = parsePrincipal(s.principal);

@@ -70,7 +70,12 @@ export interface HoboBrokerDeps {
 	// The approved Broker Environment this broker resolves within. When set,
 	// it must be approved, its pinned catalog snapshot must match the live
 	// catalog, and only its approved providers are eligible for placement.
+	// Prefer Station + active Rail (stationId/railHash) for new deployments;
+	// environment remains for dual-read migration of BrokerEnvironment.
 	environment?: BrokerEnvironment;
+	/** Station occupancy pins — Conductor holds no durable Connection state. */
+	stationId?: string;
+	railHash?: string;
 }
 
 export interface HoboBroker {
@@ -122,6 +127,8 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			brokerId: policies.brokerId,
 			policyHash,
 			reasons,
+			...(deps.stationId !== undefined ? { stationId: deps.stationId } : {}),
+			...(deps.railHash !== undefined ? { railHash: deps.railHash } : {}),
 		};
 		const events = [
 			...priorEvents,
@@ -319,6 +326,10 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 				policyHash,
 				placementPolicyId: effective.id,
 				placements,
+				...(deps.stationId !== undefined
+					? { stationId: deps.stationId }
+					: {}),
+				...(deps.railHash !== undefined ? { railHash: deps.railHash } : {}),
 			};
 			events.push(
 				brokerEvent(BROKER_EVENTS.Resolved, {

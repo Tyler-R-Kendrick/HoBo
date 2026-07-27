@@ -76,6 +76,14 @@ Prefer changes inside one package, app, feature folder, or test folder.
 - Local serve paths inject `namedEndpoints` / `primaryNamedUrl` when available; port-based behavior remains the default offline path when portless is absent (`HOBO_PORTLESS=0` forces off).
 - Tenant context: `HOBO_TENANT` / `HOBO_PROJECT` / `HOBO_BRANCH` / `HOBO_ENV`. Soft multi-tenancy via IDs + PolicyEngine is the baseline; hard isolation is a later phase.
 
+### Station occupancy (ADR-0131)
+
+- **Station** is the hard control-plane isolation boundary a Conductor occupies — **not** app-topology containment (Bindle ⊂ Camp ⊂ Yard ⊂ Junction unchanged).
+- Package `@hobo/stations`: `station()`, StationService, Rails (content-addressed), bootstrap Rail, local Station client under `HOBO_HOME/stations/`.
+- Station owns Connections + Rails; Broker is pure Conductor (receipts pin `stationId` + `railHash`). Cross-Station Connection use fails closed without federation grant.
+- CLI: `hobo station init|up|down|status|rails *` is **ops/setup**, not a lifecycle verb. Prefer fail-with-remediation (`hobo station init`) over silent durable auto-init.
+- Profile: `defaultStation` / `activeRail`; `defaultBrokerUri` remains for back-compat.
+
 ### Secretless-first config & secrets (ADR-0027)
 
 - Prefer identity federation / `fromBinding` / ranked `bound-resource` over any stored secret. `hobo:secrets` and catalog `secret(name)` are **residual** Nitric-parity only ([ADR-0113](docs/design/adr/02-identity-security.md#adr-0113)).

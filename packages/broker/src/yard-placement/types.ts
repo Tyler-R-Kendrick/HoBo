@@ -1,15 +1,22 @@
 import { createHash } from "node:crypto";
 
 /** Schema versions for yard-first placement records. */
+// public-contract: yard instance registration schema id.
 export const YARD_INSTANCE_SCHEMA = "hobo.yard-instance/v1" as const;
+// public-contract: yard inventory snapshot schema id.
 export const YARD_INVENTORY_SCHEMA = "hobo.yard-inventory/v1" as const;
+// public-contract: yard runtime registration schema id.
 export const YARD_RUNTIME_SCHEMA = "hobo.yard-runtime/v1" as const;
+// public-contract: yard runtime catalog schema id.
 export const YARD_RUNTIME_CATALOG_SCHEMA =
 	"hobo.yard-runtime-catalog/v1" as const;
+// public-contract: yard generation plan schema id.
 export const YARD_GENERATION_PLAN_SCHEMA =
 	"hobo.yard-generation-plan/v1" as const;
+// public-contract: bindle deployment request schema id.
 export const BINDLE_DEPLOYMENT_REQUEST_SCHEMA =
 	"hobo.bindle-deployment-request/v1" as const;
+// public-contract: yard placement receipt schema id.
 export const YARD_PLACEMENT_RECEIPT_SCHEMA =
 	"hobo.yard-placement-receipt/v1" as const;
 
@@ -42,6 +49,7 @@ export interface CampShape {
  * Planning record comparing requested Yard to live instances / runtimes.
  * Not a topology primitive.
  */
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface YardShape {
 	readonly providerId?: string;
 	readonly runtimeId?: string;
@@ -57,6 +65,7 @@ export interface YardShape {
 	readonly camps: readonly CampShape[];
 }
 
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface YardPlacementRequest {
 	readonly requestId: string;
 	readonly selectionMode: YardSelectionMode;
@@ -76,6 +85,7 @@ export type YardInstanceStatus =
 	| "draining"
 	| "offline";
 
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface YardInstanceRegistration {
 	readonly schemaVersion: typeof YARD_INSTANCE_SCHEMA;
 	readonly yardId: string;
@@ -101,6 +111,7 @@ export interface YardInstanceRegistration {
 	readonly registrationSeq: number;
 }
 
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface YardInventorySnapshot {
 	readonly schemaVersion: typeof YARD_INVENTORY_SCHEMA;
 	readonly brokerId: string;
@@ -113,6 +124,7 @@ export interface YardInventorySnapshot {
  * Broker-approved runtime template capable of hosting/generating a Yard.
  * Not an app runtime backend and not a live Yard instance.
  */
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface YardRuntimeRegistration {
 	readonly schemaVersion: typeof YARD_RUNTIME_SCHEMA;
 	readonly runtimeId: string;
@@ -232,6 +244,7 @@ export interface BindleRequirementsView {
 	readonly labels: Readonly<Record<string, string>>;
 }
 
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface BindleDeploymentRequest {
 	readonly schemaVersion: typeof BINDLE_DEPLOYMENT_REQUEST_SCHEMA;
 	readonly requestId: string;
@@ -304,6 +317,7 @@ export interface ExecutionUnit {
 	readonly residualDefinitions: readonly string[];
 }
 
+// domain-view: planning/placement domain type (wire form in broker.proto when present).
 export interface YardPlacementReceipt {
 	readonly schemaVersion: typeof YARD_PLACEMENT_RECEIPT_SCHEMA;
 	readonly requestId: string;

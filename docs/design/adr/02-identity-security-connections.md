@@ -12,8 +12,11 @@ not authorize a named Connection once and reuse it safely with full audit.
 
 ## Decision
 
-1. **Connection** is a durable, event-sourced aggregate owned by Yard Identity /
-   the token broker (`@hobo/identity` `ConnectionService`).
+1. **Connection** is a durable, event-sourced aggregate **owned by Station**
+   (control-plane occupancy, ADR-0131). The token broker still mints short-lived
+   tokens from Station-owned Connections (`@hobo/identity` `ConnectionService`);
+   records carry optional `stationId` (required on create when Station context
+   is available; dual-read for pre-Station events).
 2. Fields: id, alias, provider, flow, status, subject, installationId,
    grantedScopes, metadata, **credentialRef** (opaque vault ref only), tenant,
    timestamps, seq.

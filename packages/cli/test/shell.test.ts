@@ -39,6 +39,7 @@ const canonicalVerbNames = [
 	"erase",
 	"broker",
 	"yard",
+	"station",
 	"derivative",
 	"runbook",
 ];
@@ -96,6 +97,7 @@ Canonical verbs:
   erase       governance    Request crypto-shred erasure
   broker      governance    Resolve placements through the broker (the Conductor)
   yard        control plane Install and inspect the default bare-metal Yard
+  station     control plane Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb
   derivative  extensibility Manage derived HoBo implementations
   runbook     SRE           Execute or replay incident runbooks
 `;

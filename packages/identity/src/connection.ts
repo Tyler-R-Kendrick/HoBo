@@ -21,6 +21,7 @@ import {
 } from "./connection-events.js";
 import type { VaultedCredential } from "./token-broker.js";
 
+// public-contract: wire schema / event catalog constant.
 export const CONNECTION_SCHEMA_VERSION = "hobo.connection/v1" as const;
 
 export type ConnectionRecord = Readonly<{
@@ -43,6 +44,11 @@ export type ConnectionRecord = Readonly<{
 	}>;
 	/** Opaque vault reference — never the secret. */
 	credentialRef?: string;
+	/**
+	 * Owning Station (control-plane occupancy). Optional during dual-read
+	 * migration for pre-Station events; new creates require stationId.
+	 */
+	stationId?: string;
 	tenant: string;
 	createdAt: string;
 	updatedAt: string;
@@ -98,6 +104,8 @@ export type CreateConnectionInput = {
 	readonly scopes?: readonly string[];
 	readonly labels?: Readonly<Record<string, string>>;
 	readonly description?: string;
+	/** Required for new Connections (Station-owned). */
+	readonly stationId?: string;
 };
 
 export type AuthorizeConnectionInput = {
@@ -206,6 +214,7 @@ export class ConnectionService {
 			tenant: this.tenant,
 			createdBy: input.createdBy,
 			requestedScopes: scopes,
+			...(input.stationId !== undefined ? { stationId: input.stationId } : {}),
 			seq: this.nextSeq(),
 			time,
 		});
@@ -566,6 +575,10 @@ export class ConnectionService {
 		if (event.type === CONNECTION_EVENTS.Created) {
 			const alias =
 				typeof event.data.alias === "string" ? event.data.alias : undefined;
+			const stationId =
+				typeof event.data.stationId === "string"
+					? event.data.stationId
+					: undefined;
 			const record: ConnectionRecord = Object.freeze({
 				schemaVersion: CONNECTION_SCHEMA_VERSION,
 				id,
@@ -582,6 +595,7 @@ export class ConnectionService {
 					labels: Object.freeze({}),
 					createdBy: event.data.createdBy as ConnectionPrincipalRef,
 				}),
+				...(stationId !== undefined ? { stationId } : {}),
 				tenant: event.tenant,
 				createdAt: time,
 				updatedAt: time,

@@ -19,6 +19,35 @@ import {
 } from "@hobo/broker";
 import type { CommandModule } from "@hobo/cli";
 import { loadProjectManifest } from "@hobo/cli";
+import { createStationClient } from "@hobo/stations";
+
+import { defaultHoboHome } from "./bare-metal-yard.js";
+import { loadHoboProfile } from "./hobo-profile.js";
+
+/** Optional Station pins for Conductor receipts (fail soft if Station missing). */
+function stationPinsFromEnv(
+	flags: Record<string, unknown>,
+): { stationId?: string; railHash?: string } {
+	const home =
+		typeof flags.home === "string" && flags.home.length > 0
+			? flags.home
+			: defaultHoboHome();
+	const stationId =
+		(typeof flags.station === "string" && flags.station) ||
+		process.env.HOBO_STATION ||
+		loadHoboProfile(home)?.defaultStation?.id;
+	if (!stationId) return {};
+	try {
+		const client = createStationClient({ hoboHome: home, stationId });
+		const pins = client.pins();
+		return {
+			stationId: pins.stationId,
+			...(pins.railHash !== undefined ? { railHash: pins.railHash } : {}),
+		};
+	} catch {
+		return { stationId };
+	}
+}
 
 export interface BrokerCommandDeps {
 	// The provider catalog resolutions run against when a cloud config is
@@ -303,6 +332,7 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 
 				if (subcommand === "up") {
 					const assembled = await assembleBroker(deps, flags, projectDir);
+					const pins = stationPinsFromEnv(flags);
 					const broker = createBroker({
 						policies: assembled.policies,
 						catalog: assembled.catalog,
@@ -311,6 +341,12 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 							: {}),
 						...(assembled.gatePlane !== undefined
 							? { gatePlane: assembled.gatePlane }
+							: {}),
+						...(pins.stationId !== undefined
+							? { stationId: pins.stationId }
+							: {}),
+						...(pins.railHash !== undefined
+							? { railHash: pins.railHash }
 							: {}),
 					});
 					const resolution = await broker.resolve(
@@ -396,9 +432,16 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 							data: { command: "broker" },
 						};
 					}
+					const pins = stationPinsFromEnv(flags);
 					const broker = createBroker({
 						policies: await readJson(policiesPath, "broker policy set"),
 						catalog: deps.catalog,
+						...(pins.stationId !== undefined
+							? { stationId: pins.stationId }
+							: {}),
+						...(pins.railHash !== undefined
+							? { railHash: pins.railHash }
+							: {}),
 					});
 					const resolution = await broker.resolve(
 						await readJson(requestPath, "broker request"),

@@ -78,6 +78,10 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
 | `saga.*` | `saga.Started`, `saga.Compensated` |
 | `secret.*` | `secret.Accessed`, `secret.Unavailable` |
+| `yard.*` | `yard.Registered`, `yard.InventoryUpdated`, `yard.PlacementDecided` |
+| `connection.*` | `connection.Created`, `connection.Authorized`, `connection.TokenIssued`, `connection.Revoked`, `connection.Rotated` |
+| `rail.*` | `rail.Published`, `rail.Approved`, `rail.Activated`, `rail.Deactivated`, `rail.Retired` |
+| `station.*` | `station.Created`, `station.Configured`, `station.Closed`, `station.IdentityRotated` |
 | `session.*` | `session.Started`, `session.Refreshed`, `session.Revoked` |
 | `set.*` | `set.Created` |
 | `slo.*` | `slo.Declared`, `slo.BudgetBurned` |

@@ -196,6 +196,11 @@ export {
 	createProviderFromPorts,
 } from "./local-provider.js";
 export { createYardCommand } from "./yard-command.js";
+export { createStationCommand } from "./station-command.js";
+export {
+	setDefaultStation,
+	type HoboProfileDefaultStation,
+} from "./hobo-profile.js";
 export {
 	createBrokerAwareUpCommand,
 	createBrokerAwareUpCommandWithMock,

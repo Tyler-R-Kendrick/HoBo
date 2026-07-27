@@ -22,6 +22,7 @@ surfaces.
 | `dev` | local loop | Run against `runtime-local` with hot reload, replay, codegen-in-watch, and honest fidelity labels. Every workload lane participates: wasm components in any supported language recompile in-watch and OCI-fallback services restart-on-change per the dev-loop matrix ([ADR-0109](./adr/07-portability-extensibility.md#adr-0109)). | HOBO-122, HOBO-190, HOBO-198, HOBO-392, HOBO-612 (draft POC: `src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`) |
 | `new` | local loop | Scaffold a runnable SDK program. | HOBO-118, HOBO-198 |
 | `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. Optional `--broker` / `--broker-uri` associates a default remote broker on the HOBO_HOME profile (identity plane; not placement). | HOBO-136, HOBO-184 |
+| `connection` | identity | Manage durable Station-owned Connections (create/authorize/list/get/revoke/rotate). Scoped by `--station` / profile.defaultStation. | HOBO-connection, ADR-0131 |
 | `claim` | identity | Bind an anonymous `npx hobo up` deployment to an account while preserving state and URL. Local: event-store rebind. Remote: `hobo claim <account> --broker <uri> --token <claimToken>` exchanges the claim token without re-provision. | HOBO-136, HOBO-164 |
 | `plan` | read-only | Dry-run the `up` decision: DeploymentPlan, Matching choices, cost, and warnings as an approvable diff. | HOBO-125, HOBO-203, HOBO-208 |
 | `verify` | read-only | Optional preflight for the unified Gatekeeper decision. `up` still runs the same gate automatically before mutation. | HOBO-146, HOBO-227 |
@@ -42,13 +43,23 @@ surfaces.
 | `test` | test loop | Alias for the contract-backed sandbox test lane; not a replacement for project test runners. | HOBO-190, HOBO-392 |
 | `attest` | governance | Produce signed OCSF, control, or model-card evidence exports from replayable audit facts for external GRC tools. | HOBO-175, HOBO-196, HOBO-282 |
 | `erase` | governance | Request crypto-shred erasure and projection rebuild for a data subject without rewriting historical events. | HOBO-295 |
-| `broker` | governance | The broker (the Conductor) on the CLI. `broker config [--init]` scaffolds/validates `hobo.broker.json` (placement policies, budgets, connectors, OPA/Cedar policy engine, catalog choice); `broker up [--config --request]` assembles the broker from config and realizes the request through the full plane pipeline — with **no cloud config supplied, the running machine is registered as a HoBo cloud provider host** (zero-cost local catalog) so the loop is testable on a bare machine; `broker resolve --policies --request` runs one resolution; `broker matrix` prints the closed rejection-code catalog. App lifecycle stays `up`/`down`. | HOBO-521, HOBO-525, HOBO-528, HOBO-529 |
+| `broker` | governance | The broker (the Conductor) on the CLI. Requires Station context when available (profile / `HOBO_STATION` / `--station`); receipts pin `stationId` + `railHash`. `broker config [--init]` scaffolds/validates `hobo.broker.json` (importable as a Rail under a Station); `broker up [--config --request]` assembles the Conductor against Station + active Rail + local-host catalog when no cloud config; `broker resolve --policies --request` runs one resolution; `broker matrix` prints the closed rejection-code catalog. App lifecycle stays `up`/`down`. | HOBO-521, HOBO-525, HOBO-528, HOBO-529 |
+| `station` | control plane (ops/setup) | **Station occupancy setup/ops family — not a lifecycle verb.** `station init` creates a Station under `HOBO_HOME` with a sealed bootstrap Rail and sets `profile.defaultStation` (imports existing `hobo.broker.json` as an approved Rail when present); `station up` / `station down` start/stop occupancy (data retained on down); `station status` projects isolation, active Rail hash, bootstrap-active, Connection counts; `station rails list\|publish\|approve\|activate\|status` manages Station-owned Rails. Soft auto-init of durable Station state is forbidden on silent paths — prefer fail with remediation `hobo station init`. | ADR-0131 |
 | `derivative` | extensibility | Manage derived HoBo implementations; `derivative upgrade` checks descriptors, runs upcasters, and reruns conformance. | HOBO-36, HOBO-336, HOBO-386 |
 | `runbook` | SRE | Execute or replay declarative incident runbooks; write actions still pass through policy obligations. | HOBO-260, HOBO-285 |
 
+## Station context resolution
+
+For `station`, `broker`, `connection`, `up`, and `login --station`:
+
+1. `--station` / `--station-uri`
+2. `HOBO_STATION` / `HOBO_STATION_URI`
+3. `profile.defaultStation`
+4. Fail with remediation `hobo station init` (preferred). Soft local-dev auto-init only when explicitly enabled, with a progress line and doctor flag.
+
 ## Lifecycle Semantics
 
-`up` and `down` are the only lifecycle verbs. `up` subsumes deploy,
+`up` and `down` are the only lifecycle verbs. `station` is an ops/setup family like `broker` / `connection` / `registry` — never a second lifecycle. `up` subsumes deploy,
 promotion, rollback, self-host bootstrap, and restore through flags:
 
 ```bash

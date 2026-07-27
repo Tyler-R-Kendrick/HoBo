@@ -135,6 +135,10 @@ export interface ResolutionReceipt {
 	policyHash: PolicyHash;
 	placementPolicyId: string;
 	placements: readonly PlacementDecision[];
+	/** Station occupancy context (Conductor pins; durable state is Station-owned). */
+	stationId?: string;
+	/** Content-addressed active Rail hash when Station context is used. */
+	railHash?: string;
 }
 
 // domain-view: machine-readable per-plane refusal; wire form is RejectionReason in data-models/broker.proto.
@@ -151,6 +155,8 @@ export interface ResolutionRejection {
 	brokerId: string;
 	policyHash: PolicyHash;
 	reasons: readonly RejectionReason[];
+	stationId?: string;
+	railHash?: string;
 }
 
 // domain-view: parsed spin-up/spin-down command; wire form is ScaleDirective in data-models/broker.proto.

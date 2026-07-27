@@ -15,13 +15,13 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Aggregate | The write-model consistency boundary, realized as an actor over the event log. |
 | Bindle | App-level topology and bindings, provider-agnostic, deployed into one or more Camps. |
 | Broker Catalog Snapshot | Versioned provider/catalog evidence set consumed by the Meta-cloud Broker when validating a Contract Manifest. |
-| Broker Environment | Approved broker input state that constrains which providers, catalogs, mapping contracts, policies, and version pins may be used for a broker decision. |
+| Broker Environment | **Derived / dual-read.** Historical approved broker input state (providers, catalogs, policy pins). New deployments prefer **Station + active Rail** (catalog pin and placement defaults live on the Rail). See Station / Rail rows. |
 | Camp | Provider-specific deployment target such as `prod-aws`; it selects runtime backend, Provider, and IaC engine for a Bindle placement. |
 | Capability Manifest | Machine-readable provider manifest describing capabilities, auth flows, cost facts, and how an agent obtains scoped tokens. |
 | Capability provider | A Provider acting as a wasm capability adapter that implements a WIT interface. |
 | Component | WASM/WASI component, the default deployable unit for a HoBo service, with an OCI-container fallback. |
 | Component host | Camp capability that executes components; Wasmtime locally and wasm-in-container as the v1 production floor. |
-| Conductor | Product branding for the HoBo Broker on user-facing surfaces; technical docs, code, and wire contracts keep the term "broker" ([hobo-broker.md](./hobo-broker.md)). |
+| Conductor | Product branding for the HoBo Broker on user-facing surfaces; technical docs, code, and wire contracts keep the term "broker" ([hobo-broker.md](./hobo-broker.md)). The Conductor is a **pure runtime**: it mounts a Station client + active Rail(s), runs resolve/scale/deliver, and emits receipts that pin `stationId` + `railHash` + `catalogHash` + `policyHash`. It owns no durable Connections or policy packs. |
 | Config and secrets | Secretless-first app configuration resolved through `ctx.config` to Camp-specific references rather than plaintext values. |
 | Connector Registry | Broker-maintained, event-sourced registry of connector configurations (HoBo GitHub App, Pulumi, Azure, Vercel, Cloudflare, custom) whose `credentialRef` entries point into the token broker; required connector kinds gate broker resolutions ([hobo-broker.md](./hobo-broker.md)). |
 | Contract | Typed expectation on a graph edge, declared, inferred, observed, or promoted, and checked by the compatibility gate. |
@@ -44,7 +44,7 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Golden Suite | Signed bundle of conformance, contract, eval, benchmark, chaos, SLO, and golden-master checks for a deployment. |
 | Grain | Virtual actor, HoBo's default concurrency primitive. |
 | Harness | Progressive delivery core over OpenFeature, HoBo-shaped OpenDelivery, HoBo-shaped OpenExperiment, and OpenTelemetry. |
-| HoBo Broker | Runtime brokering authority that places Bindles/Camps/Yards/Junctions across providers under the configured placement policies it maintains, wrapping the policy, contract, billing, delivery, and connector-registry planes; realized by `@hobo/broker` and sharing the Meta-cloud Broker's receipt/rejection artifact vocabulary ([hobo-broker.md](./hobo-broker.md)). Distinct from the Identity token broker and the connector runtime broker. |
+| HoBo Broker | Runtime brokering authority (**Conductor**) that places Bindles/Camps/Yards/Junctions across providers under the active Rail's policies, wrapping the policy, contract, billing, delivery, and connector-registry planes; realized by `@hobo/broker`. Durable Connections and Rails live on the **Station**; the broker holds short-lived caches only. Distinct from the Identity token broker and the connector runtime broker ([hobo-broker.md](./hobo-broker.md)). |
 | Hobo Code | Planned declarative plus generated-stub DSL that lowers to the same manifest IR and SDK constructs as TypeScript authoring. |
 | ID-JAG | Identity Assertion JWT Authorization Grant used for Cross-App Access token exchange. |
 | IfC | Infrastructure-from-Code, where resources are declared inline and collected by running the component. |
@@ -88,13 +88,14 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | WIT interface | Canonical language-neutral contract form for a HoBo port. |
 | WIT-first SDK | SDK model where each language uses generated `hobo:sdk` WIT bindings plus a thin idiom layer. |
 | Workload Profile | How a service is realized, such as wasm component, container, serverless, or VM. |
-| Connection | Durable, broker-owned authorization handle for an external app (provider + subject + grantedScopes + opaque vault `credentialRef`). Authorize once; mint short-lived tokens thereafter. Event family `connection.*`; CLI/MCP verb `connection`. See [Plan 06 §6.9](./ai-native-agent-auth.md) and [Connections ADR](./adr/02-identity-security-connections.md). |
+| Connection | Durable, **Station-owned** authorization handle for an external app (provider + subject + grantedScopes + opaque vault `credentialRef` + `stationId`). Authorize once; mint short-lived tokens thereafter via the token broker. Event family `connection.*`; CLI/MCP verb `connection`. Cross-Station use fails closed without federation grant. See [Plan 06 §6.9](./ai-native-agent-auth.md), [Connections ADR](./adr/02-identity-security-connections.md), and Station. |
+| Rail | Station-owned, content-addressed, versioned policy/engine/billing/connector/guardrail **profile** (not the Guardrail effect language). Activation is an audited fact; receipts pin `railHash`. Bootstrap Rail is sealed least-privilege for `station init`. |
+| Station | Hard control-plane **isolation boundary** a Conductor occupies. One Station = one isolation domain (not multi-tenant by default). Owns Connections, Rails, Station identity, and control-plane event partition. **Not** app-topology containment (Bindle ⊂ Camp ⊂ Yard ⊂ Junction remains). Main setup path: `hobo station init`. Package `@hobo/stations`. |
 | Yard | Provider-specific topology and control-plane boundary. **Owns provider selection.** May declare zero Camps (requested shape before a live instance). See [yard-first-placement ADR](./adr/yard-first-placement.md). |
 | Yard instance | Live, registered, attested control-plane inventory record (not a fifth topology primitive). |
 | Yard runtime registration | Broker-approved template capable of hosting/generating a Yard for one provider/runtime family (not an app runtime backend). |
 | Yard shape | Planning record comparing a requested Yard to live instances / generatable runtimes. |
 | Yard manifest | Generated IR of a Yard's exposed endpoints, domains, cross-Yard links, residency, and trust requirements. |
-| Camp | Logical environment/substrate shape **inside a Yard**. Does not own a Bindle and does not choose a cloud provider; inherits provider from its enclosing Yard. |
 | Bindle deployment request | Wire artifact attaching a provider-agnostic Bindle manifest to a requested Yard/shape (the Bindle itself is not mutated). |
 | `@hobo/bindles` | App idiom layer for declaring resources, `.allow()` grants, and Bindles. |
 | `@hobo/camps` | Topology idiom package for declaring Camps. |

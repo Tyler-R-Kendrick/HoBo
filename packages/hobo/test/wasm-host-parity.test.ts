@@ -35,12 +35,16 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		const probe = probeWasmHostInstall();
 		expect(probe.engineKind).toBe("wasmtime");
 		expect(probe.componentHosts.local).toContain("Camp capability");
+		expect(probe.componentHosts.wasm).toContain("wasmtime OS-process");
+		expect(probe.componentHosts.oci).toContain("Kubernetes");
+		expect(probe.componentHosts["cloud-native"]).toContain("multi-cloud");
+		// Legacy alias key still present on probe.
 		expect(probe.componentHosts["isolated-wasm"]).toContain(
 			"wasmtime OS-process",
 		);
 	});
 
-	it("hobo yard ensure installs isolated-wasm toolchain under HOBO_HOME", async () => {
+	it("hobo yard ensure installs host runtimes under HOBO_HOME", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-ensure-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
@@ -54,26 +58,30 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			code: string;
 			message?: string;
 			data: {
-				toolchain: {
-					wasmtime: { version: string; binPath: string };
-					jco: { version: string };
-					ready: boolean;
-				};
+				hosts: Array<{ kind: string; ready: boolean; details?: { wasmtimeVersion?: string } }>;
 			};
 		};
 		expect(envelope.ok, envelope.message ?? result.stdout).toBe(true);
 		expect(envelope.code).toBe("HOBO_YARD_ENSURE");
-		expect(envelope.data.toolchain.ready).toBe(true);
-		expect(envelope.data.toolchain.wasmtime.version).toMatch(/^\d+\.\d+\.\d+$/);
-		expect(existsSync(envelope.data.toolchain.wasmtime.binPath)).toBe(true);
+		expect(envelope.data.hosts.every((h) => h.ready)).toBe(true);
+		const wasmHost = envelope.data.hosts.find((h) => h.kind === "wasm");
+		expect(wasmHost?.details?.wasmtimeVersion).toMatch(/^\d+\.\d+\.\d+$/);
 	}, 180_000);
 
-	it("hobo yard init --host isolated-wasm records config and ensures toolchain", async () => {
+	it("hobo yard init --host wasm (and isolated-wasm alias) records config", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-home-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
 		const init = await cli.run(
-			["yard", "init", "--home", hoboHome, "--host", "isolated-wasm", "--json"],
+			[
+				"yard",
+				"init",
+				"--home",
+				hoboHome,
+				"--host",
+				"isolated-wasm",
+				"--json",
+			],
 			{ cwd: hoboHome },
 		);
 		const envelope = JSON.parse(init.stdout) as {
@@ -81,14 +89,16 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			message: string;
 			data: {
 				config: { componentHost: string; host: string };
-				toolchain?: { wasmtime: { version: string } };
+				hostEnsure?: { ready: boolean; details?: { wasmtimeVersion?: string } };
 			};
 		};
 		expect(envelope.ok).toBe(true);
-		expect(envelope.data.config.componentHost).toBe("isolated-wasm");
-		expect(envelope.data.config.host).toBe("isolated-wasm");
-		expect(envelope.message).toContain("componentHost=isolated-wasm");
-		expect(envelope.data.toolchain?.wasmtime.version).toMatch(
+		// Alias isolated-wasm normalizes to wasm.
+		expect(envelope.data.config.componentHost).toBe("wasm");
+		expect(envelope.data.config.host).toBe("wasm");
+		expect(envelope.message).toContain("componentHost=wasm");
+		expect(envelope.data.hostEnsure?.ready).toBe(true);
+		expect(envelope.data.hostEnsure?.details?.wasmtimeVersion).toMatch(
 			/^\d+\.\d+\.\d+$/,
 		);
 	}, 120_000);
@@ -124,39 +134,43 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 		});
 	});
 
-	it("isolated-wasm via hobo path: private api in wasmtime sandbox (defaults)", async () => {
-		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-"));
-		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
+	it(
+		"wasm host via hobo path: private api in wasmtime sandbox (defaults)",
+		async () => {
+			const hoboHome = await mkdtemp(join(tmpdir(), "hobo-iso-"));
+			cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 
-		// Toolchain + yard via hobo APIs (same path as CLI ensure/init).
-		await ensureIsolatedWasmToolchain({ hoboHome });
-		initBareMetalYard({ hoboHome, componentHost: "isolated-wasm" });
+			// Toolchain + yard via hobo APIs (same path as CLI ensure/init).
+			await ensureIsolatedWasmToolchain({ hoboHome });
+			initBareMetalYard({ hoboHome, componentHost: "wasm" });
 
-		const port = 24000 + Math.floor(Math.random() * 500);
-		const serve = await serveProjectOnIsolatedWasm({
-			projectDir: helloBindleDir,
-			hoboHome,
-			port,
-		});
-		cleanups.push(() => serve.close());
+			const port = 24000 + Math.floor(Math.random() * 500);
+			const serve = await serveProjectOnIsolatedWasm({
+				projectDir: helloBindleDir,
+				hoboHome,
+				port,
+			});
+			cleanups.push(() => serve.close());
 
-		expect(serve.componentHost).toBe("isolated-wasm");
-		expect(serve.isolation.isolateBoundary).toBe("wasmtime_process");
-		expect(serve.isolation.privateSandboxes).toBe(1);
-		expect(serve.isolation.wasmtimeVersion).toMatch(/^\d+\.\d+\.\d+$/);
-		expect(serve.isolation.wasmPaths.length).toBe(1);
-		expect(existsSync(serve.isolation.wasmPaths[0]!)).toBe(true);
-		expect(serve.exposedEndpoints).toHaveLength(1);
-		// Camp injects bindle env onto mesh hops into the wasm sandbox.
-		expect(serve.bindleEnv).toEqual({
-			GREETING_PREFIX: "howdy",
-			APP_TITLE: "howdy",
-		});
-		expect(HOBO_ENV_HEADER_PREFIX).toBe("x-hobo-env-");
+			expect(serve.componentHost).toBe("wasm");
+			expect(serve.isolation.isolateBoundary).toBe("wasmtime_process");
+			expect(serve.isolation.privateSandboxes).toBe(1);
+			expect(serve.isolation.wasmtimeVersion).toMatch(/^\d+\.\d+\.\d+$/);
+			expect(serve.isolation.wasmPaths?.length).toBe(1);
+			expect(existsSync(serve.isolation.wasmPaths![0]!)).toBe(true);
+			expect(serve.exposedEndpoints).toHaveLength(1);
+			// Camp injects bindle env onto mesh hops into the wasm sandbox.
+			expect(serve.bindleEnv).toEqual({
+				GREETING_PREFIX: "howdy",
+				APP_TITLE: "howdy",
+			});
+			expect(HOBO_ENV_HEADER_PREFIX).toBe("x-hobo-env-");
 
-		const html = await (await fetch(`${serve.primaryUrl}/?name=Iso`)).text();
-		expect(html).toContain("howdy, Iso");
-	}, 180_000);
+			const html = await (await fetch(`${serve.primaryUrl}/?name=Iso`)).text();
+			expect(html).toContain("howdy, Iso");
+		},
+		180_000,
+	);
 
 	it("legacy host aliases normalize to local component host", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-legacy-"));

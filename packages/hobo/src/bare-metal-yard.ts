@@ -30,13 +30,22 @@ export const DEFAULT_DEV_PORT = 4000;
 /**
  * Camp **component host** backend for a local Yard (glossary: Component host
  * is a Camp capability, not the Yard itself).
- * - local: process-local mesh + Wasmtime-shaped component host
- * - isolated-wasm: real Wasmtime OS-process sandboxes for private components
+ * - local: process-local mesh + in-process private components (`@hobo/runtime-local`)
+ * - wasm: Wasmtime OS-process sandboxes (`@hobo/runtime-wasm`)
+ * - oci: WASM-on-OCI scheduled on Kubernetes (`@hobo/runtime-oci`)
+ * - cloud-native: multi-cloud host registry (`@hobo/runtime-cloud-native`)
  *
- * Legacy aliases accepted on read: bare-metal|runtime-local → local;
- * config field `host` still accepted as alias for `componentHost`.
+ * Legacy aliases accepted on read:
+ *   bare-metal | runtime-local → local
+ *   isolated-wasm → wasm
+ * Config field `host` still accepted as alias for `componentHost`.
  */
-export const COMPONENT_HOST_KINDS = ["local", "isolated-wasm"] as const;
+export const COMPONENT_HOST_KINDS = [
+	"local",
+	"wasm",
+	"oci",
+	"cloud-native",
+] as const;
 export type ComponentHostKind = (typeof COMPONENT_HOST_KINDS)[number];
 /** @deprecated use COMPONENT_HOST_KINDS */
 export const LOCAL_HOST_KINDS = COMPONENT_HOST_KINDS;
@@ -44,21 +53,22 @@ export const LOCAL_HOST_KINDS = COMPONENT_HOST_KINDS;
 export type LocalHostKind = ComponentHostKind;
 /**
  * Scaffold default before broker-runtime equip. `hobo yard init` / broker-runtime
- * prefer isolated-wasm when tooling is available; explicit `--host` always wins.
+ * prefer wasm when tooling is available; explicit `--host` always wins.
  */
 // public-contract: default component-host kind when `--host` is not given.
 export const DEFAULT_COMPONENT_HOST: ComponentHostKind = "local";
 /** @deprecated use DEFAULT_COMPONENT_HOST */
 export const DEFAULT_LOCAL_HOST = DEFAULT_COMPONENT_HOST;
 
-function normalizeComponentHostKind(raw: unknown): ComponentHostKind {
+export function normalizeComponentHostKind(raw: unknown): ComponentHostKind {
 	if (raw === undefined || raw === null) return DEFAULT_COMPONENT_HOST;
 	if (raw === "bare-metal" || raw === "runtime-local") return "local";
+	if (raw === "isolated-wasm") return "wasm";
 	if ((COMPONENT_HOST_KINDS as readonly string[]).includes(String(raw))) {
 		return raw as ComponentHostKind;
 	}
 	throw new TypeError(
-		`yard config componentHost must be one of ${COMPONENT_HOST_KINDS.join("|")} (got ${String(raw)})`,
+		`yard config componentHost must be one of ${COMPONENT_HOST_KINDS.join("|")} (aliases: isolated-wasm→wasm, bare-metal|runtime-local→local) (got ${String(raw)})`,
 	);
 }
 
@@ -71,7 +81,7 @@ export interface BareMetalYardConfig {
 	readonly defaultPort: number;
 	/**
 	 * Camp component-host backend for placements on this Yard
-	 * (`local` | `isolated-wasm`). Prefer this over legacy `host`.
+	 * (`local` | `wasm` | `oci` | `cloud-native`). Prefer this over legacy `host`.
 	 */
 	readonly componentHost: ComponentHostKind;
 	/** @deprecated alias of componentHost — still serialized for older configs */
@@ -157,8 +167,9 @@ export function scaffoldBareMetalYardConfig(
 ): BareMetalYardConfig {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const name = options.name ?? DEFAULT_BARE_METAL_YARD_NAME;
-	const componentHost =
-		options.componentHost ?? options.host ?? DEFAULT_COMPONENT_HOST;
+	const componentHost = normalizeComponentHostKind(
+		options.componentHost ?? options.host ?? DEFAULT_COMPONENT_HOST,
+	);
 	return {
 		schemaVersion: BARE_METAL_YARD_SCHEMA,
 		kind: BARE_METAL_YARD_KIND,

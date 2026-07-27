@@ -11,7 +11,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
 
-import type { BindleDefinition } from "@hobo/bindles";
+import {
+	collectRequiredRuntimes,
+	type BindleDefinition,
+	type RequiredRuntimeKind,
+} from "@hobo/bindles";
 import {
 	type BrokerCatalog,
 	type BrokerCatalogDefinition,
@@ -29,16 +33,29 @@ import {
 	defaultHoboHome,
 	loadBareMetalYardConfig,
 	type BareMetalYardConfig,
+	normalizeComponentHostKind,
 	openBareMetalYard,
 	yardConfigPath,
 } from "./bare-metal-yard.js";
+import { getRuntimeHost } from "./host-registry.js";
+import {
+	installedHostKinds,
+	isRuntimeInstalled,
+} from "./installed-runtimes.js";
+import {
+	OCI_PROVIDER_ID,
+	providerIdToHost,
+	RUNTIME_PROVIDER_IDS,
+	WASM_SANDBOX_PROVIDER_ID as RUNTIME_WASM_SANDBOX_ID,
+} from "./runtime-catalog.js";
 import { ensureIsolatedWasmToolchain } from "./wasm-sandbox.js";
 
 // public-contract: embedded broker-runtime document schema id.
 export const EMBEDDED_BROKER_SCHEMA = "hobo.broker-runtime/v1" as const;
 // public-contract: provider id the wasm-sandbox yard registers under.
-export const WASM_SANDBOX_PROVIDER_ID = "@hobo/provider-wasm-sandbox" as const;
+export const WASM_SANDBOX_PROVIDER_ID = RUNTIME_WASM_SANDBOX_ID;
 export const LOCAL_PROCESS_PROVIDER_ID = LOCAL_HOST_PROVIDER_ID;
+export { OCI_PROVIDER_ID };
 
 export interface EmbeddedBrokerState {
 	readonly schemaVersion: typeof EMBEDDED_BROKER_SCHEMA;
@@ -57,6 +74,7 @@ export interface PlacementResult {
 	readonly providerId: string;
 	readonly resolution: BrokerResolution;
 	readonly explicitProviders: readonly string[];
+	readonly requiredRuntimes?: readonly RequiredRuntimeKind[];
 	readonly message: string;
 	readonly remediation?: readonly string[];
 }
@@ -72,8 +90,16 @@ function portForResourceKind(kind: string): string {
 	if (kind === "bucket") return "hobo:object-store";
 	if (kind === "queue") return "hobo:message-queue";
 	if (kind === "data") return "hobo:event-store";
+	if (kind === "container") return "hobo:container";
+	if (kind === "wasm-component") return "hobo:wasm-component";
+	if (kind === "external") return "hobo:external";
 	return `hobo:${kind}`;
 }
+
+/**
+ * Re-export bindles collector for broker + CLI.
+ */
+export { collectRequiredRuntimes } from "@hobo/bindles";
 
 /**
  * Providers explicitly pinned by `.with({ provider })` on the Bindle.
@@ -125,10 +151,11 @@ function definitionEntry(options: {
 
 /**
  * Catalog of yards available to the embedded broker.
- * Isolated-wasm (sandbox) is cheaper so min-cost prefers it when present.
+ * Wasm/oci hosts are cheaper when installed so min-cost prefers them.
  */
 export function createYardBrokerCatalog(options: {
 	readonly includeWasmSandbox: boolean;
+	readonly includeOci?: boolean;
 }): BrokerCatalog {
 	const definitions: BrokerCatalogDefinition[] = [
 		definitionEntry({
@@ -157,7 +184,6 @@ export function createYardBrokerCatalog(options: {
 				providerId: WASM_SANDBOX_PROVIDER_ID,
 				port: "hobo:http-service",
 				features: ["wasm-sandbox"],
-				// Prefer sandboxes under min-cost.
 				marginalPrice: "0.00",
 			}),
 			definitionEntry({
@@ -174,9 +200,41 @@ export function createYardBrokerCatalog(options: {
 				features: ["wasm-sandbox"],
 				marginalPrice: "0.00",
 			}),
+			definitionEntry({
+				id: `${RUNTIME_PROVIDER_IDS.wasm}:*`,
+				providerId: RUNTIME_PROVIDER_IDS.wasm,
+				port: "*",
+				features: ["wasm-sandbox", "component-host"],
+				marginalPrice: "0.00",
+			}),
 		);
 	}
-	const catalogHash = `sha256:yard-broker:${options.includeWasmSandbox ? "wasm" : "local"}`;
+	if (options.includeOci) {
+		definitions.push(
+			definitionEntry({
+				id: `${OCI_PROVIDER_ID}:http`,
+				providerId: OCI_PROVIDER_ID,
+				port: "hobo:http-service",
+				features: ["kubernetes-oci", "container"],
+				marginalPrice: "0.01",
+			}),
+			definitionEntry({
+				id: `${OCI_PROVIDER_ID}:*`,
+				providerId: OCI_PROVIDER_ID,
+				port: "*",
+				features: ["kubernetes-oci", "container", "component-host"],
+				marginalPrice: "0.01",
+			}),
+			definitionEntry({
+				id: `${RUNTIME_PROVIDER_IDS.oci}:*`,
+				providerId: RUNTIME_PROVIDER_IDS.oci,
+				port: "*",
+				features: ["kubernetes-oci", "container", "component-host"],
+				marginalPrice: "0.01",
+			}),
+		);
+	}
+	const catalogHash = `sha256:yard-broker:${options.includeWasmSandbox ? "w" : ""}${options.includeOci ? "o" : ""}:${options.includeWasmSandbox || options.includeOci ? "x" : "local"}`;
 	return {
 		catalogHash,
 		definitions: () => definitions.map((d) => ({ ...d })),
@@ -243,13 +301,11 @@ export function saveEmbeddedBrokerState(
 	return path;
 }
 
-export async function ensureEmbeddedBroker(
-	options: {
-		readonly hoboHome?: string;
-		readonly preferWasmSandbox?: boolean;
-		readonly emitProgress?: (message: string) => void;
-	} = {},
-): Promise<{
+export async function ensureEmbeddedBroker(options: {
+	readonly hoboHome?: string;
+	readonly preferWasmSandbox?: boolean;
+	readonly emitProgress?: (message: string) => void;
+} = {}): Promise<{
 	readonly state: EmbeddedBrokerState;
 	readonly broker: HoboBroker;
 	readonly catalog: BrokerCatalog;
@@ -257,35 +313,74 @@ export async function ensureEmbeddedBroker(
 }> {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const emit = options.emitProgress ?? (() => {});
+	const installed = installedHostKinds(hoboHome);
+	const wasmInstalled = installed.includes("wasm");
+	const ociInstalled = installed.includes("oci");
+
 	let wasmAvailable = false;
-	try {
-		await ensureIsolatedWasmToolchain({
-			hoboHome,
-			download: options.preferWasmSandbox !== false,
-			emitProgress: emit,
-		});
-		wasmAvailable = true;
-	} catch {
-		wasmAvailable = false;
-		emit(
-			"hobo broker-runtime: isolated-wasm toolchain unavailable; local process yard remains eligible",
-		);
+	if (wasmInstalled || options.preferWasmSandbox !== false) {
+		try {
+			await ensureIsolatedWasmToolchain({
+				hoboHome,
+				download: options.preferWasmSandbox !== false,
+				emitProgress: emit,
+			});
+			wasmAvailable = true;
+		} catch {
+			wasmAvailable = false;
+			emit(
+				"hobo broker-runtime: wasm toolchain unavailable; local process yard remains eligible",
+			);
+		}
 	}
 
-	const preferWasm = options.preferWasmSandbox !== false && wasmAvailable;
+	let ociReady = false;
+	if (ociInstalled) {
+		try {
+			const ensure = await getRuntimeHost("oci").ensure({
+				hoboHome,
+				emitProgress: emit,
+			});
+			ociReady = ensure.ready;
+		} catch {
+			ociReady = false;
+			emit("hobo broker-runtime: oci runtime ensure failed");
+		}
+	}
+
+	// Only surface wasm/oci in the junction when installed AND ready.
+	const includeWasm = wasmInstalled && wasmAvailable;
+	const includeOci = ociInstalled && ociReady;
+	// Back-compat: if operator never ran `hobo add runtime-*` beyond bootstrap
+	// but wasm tools equip, still offer wasm (legacy yards).
+	const legacyWasm =
+		!wasmInstalled &&
+		wasmAvailable &&
+		options.preferWasmSandbox !== false &&
+		installed.length === 1 &&
+		installed[0] === "local";
+
+	const preferWasm = includeWasm || legacyWasm;
 	const existing = loadEmbeddedBrokerState(hoboHome);
-	const brokerId = existing?.brokerId ?? `broker:local/${hostname()}`;
+	const brokerId =
+		existing?.brokerId ?? `broker:local/${hostname()}`;
 	const catalog = createYardBrokerCatalog({
 		includeWasmSandbox: preferWasm,
+		includeOci,
 	});
 	const policies = defaultEmbeddedPolicySet(brokerId, {
 		preferWasmSandbox: preferWasm,
 	});
 	const broker = createBroker({ policies, catalog });
+	const preferred: ComponentHostKind = includeOci
+		? "oci"
+		: preferWasm
+			? "wasm"
+			: "local";
 	const state: EmbeddedBrokerState = {
 		schemaVersion: EMBEDDED_BROKER_SCHEMA,
 		brokerId,
-		preferredComponentHost: preferWasm ? "isolated-wasm" : "local",
+		preferredComponentHost: preferred,
 		catalogHash: catalog.catalogHash,
 		updatedAt: new Date().toISOString(),
 	};
@@ -300,9 +395,7 @@ function componentHostForProvider(
 	providerId: string,
 	fallback: ComponentHostKind,
 ): ComponentHostKind {
-	if (providerId === WASM_SANDBOX_PROVIDER_ID) return "isolated-wasm";
-	if (providerId === LOCAL_PROCESS_PROVIDER_ID) return "local";
-	return fallback;
+	return providerIdToHost(providerId) ?? fallback;
 }
 
 /**
@@ -319,7 +412,48 @@ export async function resolveBindlePlacement(options: {
 }): Promise<PlacementResult> {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const emit = options.emitProgress ?? (() => {});
-	const yardConfig = options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
+	const yardConfig =
+		options.yard ?? loadBareMetalYardConfig(hoboHome) ?? null;
+
+	// Fail fast on missing runtimes before equipping toolchains / downloading wasmtime.
+	const requiredRuntimes = collectRequiredRuntimes(options.definition);
+	const missingRuntimes = requiredRuntimes.filter(
+		(runtime) => !isRuntimeInstalled(runtime, hoboHome),
+	);
+	if (missingRuntimes.length > 0) {
+		const message = `bindle requires runtime(s) [${missingRuntimes.join(", ")}] that are not installed on this yard/broker`;
+		return {
+			outcome: "rejected",
+			brokerId: "uninitialized",
+			campId: options.campId ?? "unplaced",
+			yardName: yardConfig?.name ?? "local",
+			componentHost: yardConfig?.componentHost ?? DEFAULT_COMPONENT_HOST,
+			providerId: "none",
+			resolution: {
+				outcome: "rejected",
+				rejection: {
+					schemaVersion: "hobo.broker/v1",
+					requestId: "runtime-check",
+					brokerId: "uninitialized",
+					policyHash: "sha256:none" as never,
+					reasons: missingRuntimes.map((runtime) => ({
+						plane: "placement" as const,
+						code: "required-runtime-unavailable",
+						message: `runtime ${runtime} is not installed (hobo add runtime-${runtime})`,
+					})),
+				},
+				events: [],
+			},
+			explicitProviders: collectExplicitProviderPins(options.definition),
+			requiredRuntimes,
+			message,
+			remediation: [
+				...missingRuntimes.map((r) => `Install: hobo add runtime-${r}`),
+				"Then equip toolchains: hobo yard ensure",
+				`Installed runtimes: ${installedHostKinds(hoboHome).join(", ") || "(none)"}`,
+			],
+		};
+	}
 
 	const { state, broker, catalog } = await ensureEmbeddedBroker({
 		hoboHome,
@@ -328,7 +462,9 @@ export async function resolveBindlePlacement(options: {
 
 	const explicitProviders = collectExplicitProviderPins(options.definition);
 	if (explicitProviders.length > 0) {
-		const available = new Set(catalog.definitions().map((d) => d.providerId));
+		const available = new Set(
+			catalog.definitions().map((d) => d.providerId),
+		);
 		const missing = explicitProviders.filter((p) => !available.has(p));
 		if (missing.length > 0) {
 			const message = `bindle pins provider(s) via .with({ provider }) that are not available on this broker junction: ${missing.join(", ")}`;
@@ -355,6 +491,7 @@ export async function resolveBindlePlacement(options: {
 					events: [],
 				},
 				explicitProviders,
+				requiredRuntimes,
 				message,
 				remediation: [
 					"Remove the .with({ provider }) pin to let the broker choose (default: wasm-sandbox when available).",
@@ -388,9 +525,7 @@ export async function resolveBindlePlacement(options: {
 		spendEstimateUsd: 0,
 	};
 
-	emit(
-		`hobo broker-runtime: resolving placement for ${request.scope.bindleId}`,
-	);
+	emit(`hobo broker-runtime: resolving placement for ${request.scope.bindleId}`);
 	const resolution = await broker.resolve(request);
 	if (resolution.outcome === "rejected" || !resolution.receipt) {
 		const reasons =
@@ -413,15 +548,24 @@ export async function resolveBindlePlacement(options: {
 		};
 	}
 
-	// Prefer wasm-sandbox placement among decided providers.
+	// Prefer oci > wasm-sandbox > local among decided providers.
 	const providerIds = resolution.receipt.placements.map((p) => p.providerId);
-	const providerId = providerIds.includes(WASM_SANDBOX_PROVIDER_ID)
-		? WASM_SANDBOX_PROVIDER_ID
-		: (providerIds[0] ?? LOCAL_PROCESS_PROVIDER_ID);
-	const componentHost = componentHostForProvider(
+	const providerId = requiredRuntimes.includes("oci") &&
+		(providerIds.includes(OCI_PROVIDER_ID) ||
+			providerIds.includes(RUNTIME_PROVIDER_IDS.oci))
+		? (providerIds.includes(OCI_PROVIDER_ID)
+				? OCI_PROVIDER_ID
+				: RUNTIME_PROVIDER_IDS.oci)
+		: providerIds.includes(WASM_SANDBOX_PROVIDER_ID)
+			? WASM_SANDBOX_PROVIDER_ID
+			: (providerIds[0] ?? LOCAL_PROCESS_PROVIDER_ID);
+	let componentHost = componentHostForProvider(
 		providerId,
 		state.preferredComponentHost,
 	);
+	// Dependency-required hosts win over soft catalog preference.
+	if (requiredRuntimes.includes("oci")) componentHost = "oci";
+	else if (requiredRuntimes.includes("wasm")) componentHost = "wasm";
 
 	// Ensure yard + camp topology exists on disk (auto-create).
 	openBareMetalYard({
@@ -438,6 +582,7 @@ export async function resolveBindlePlacement(options: {
 		providerId,
 		resolution,
 		explicitProviders,
+		requiredRuntimes,
 		message: `broker placed ${options.definition.name} on ${providerId} (componentHost=${componentHost}, camp=${campId})`,
 	};
 }
@@ -459,8 +604,13 @@ export function describeBrokerRuntime(hoboHome: string = defaultHoboHome()): {
 export function defaultComponentHostFromBroker(
 	hoboHome: string = defaultHoboHome(),
 ): ComponentHostKind {
-	return (
+	const raw =
 		loadEmbeddedBrokerState(hoboHome)?.preferredComponentHost ??
-		DEFAULT_COMPONENT_HOST
-	);
+		DEFAULT_COMPONENT_HOST;
+	// Normalize legacy preferredComponentHost values (isolated-wasm → wasm).
+	try {
+		return normalizeComponentHostKind(raw);
+	} catch {
+		return DEFAULT_COMPONENT_HOST;
+	}
 }

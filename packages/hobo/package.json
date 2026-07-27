@@ -43,8 +43,14 @@
 		"@hobo/runner-blacksmith": "workspace:*",
 		"@hobo/runner-depot": "workspace:*",
 		"@hobo/runner-github": "workspace:*",
+		"@hobo/runtime-cloud-native": "workspace:*",
 		"@hobo/runtime-local": "workspace:*",
+		"@hobo/runtime-oci": "workspace:*",
+		"@hobo/runtime-wasm": "workspace:*",
 		"@hobo/yards": "workspace:*"
+	},
+	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*"
 	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",

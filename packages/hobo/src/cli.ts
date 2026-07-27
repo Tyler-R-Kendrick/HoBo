@@ -39,6 +39,12 @@ import { createInspectCommand } from "./inspect-command.js";
 import { createLocalProvider } from "./local-provider.js";
 import { createLogsCommand } from "./logs-command.js";
 import { createRegistryCommand } from "./registry-command.js";
+import {
+	createCloudNativeRuntimeCatalogEntry,
+	createLocalRuntimeCatalogEntry,
+	createOciRuntimeCatalogEntry,
+	createWasmRuntimeCatalogEntry,
+} from "./runtime-catalog.js";
 import { createRunbookCommand } from "./runbook-command.js";
 import { createSandboxCommand } from "./sandbox-command.js";
 import { createVerifyCommand } from "./verify-command.js";
@@ -90,6 +96,13 @@ registerInstallable("runner-depot", () => createDepotCatalogEntry());
 // Local provider — installable via `hobo add local`; default provider id for
 // local Yard topologies (`hobo yard init`).
 registerInstallable("local", () => createLocalProvider());
+// Camp component-host runtimes (installable; broker hard-fails when missing).
+registerInstallable("runtime-local", () => createLocalRuntimeCatalogEntry());
+registerInstallable("runtime-wasm", () => createWasmRuntimeCatalogEntry());
+registerInstallable("runtime-oci", () => createOciRuntimeCatalogEntry());
+registerInstallable("runtime-cloud-native", () =>
+	createCloudNativeRuntimeCatalogEntry(),
+);
 
 export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},
@@ -118,6 +131,9 @@ export function createComposedHoboCli(
 										? { hoboHome }
 										: {}),
 									...(hostEnv === "local" ||
+									hostEnv === "wasm" ||
+									hostEnv === "oci" ||
+									hostEnv === "cloud-native" ||
 									hostEnv === "isolated-wasm" ||
 									hostEnv === "bare-metal" ||
 									hostEnv === "runtime-local"

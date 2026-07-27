@@ -556,15 +556,28 @@ importers:
       '@hobo/runner-github':
         specifier: workspace:*
         version: link:../providers/runner-github
+      '@hobo/runtime-cloud-native':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-cloud-native
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
+      '@hobo/runtime-oci':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-oci
+      '@hobo/runtime-wasm':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-wasm
       '@hobo/yards':
         specifier: workspace:*
         version: link:../yards
       esbuild:
         specifier: ^0.25.0
         version: 0.25.12
+    devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../contract-harness
 
   packages/iac/iac-crossplane:
     dependencies:
@@ -782,6 +795,16 @@ importers:
         specifier: ^4.20.3
         version: 4.22.4
 
+  packages/runtimes/runtime-cloud-native:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 24.13.2
+
   packages/runtimes/runtime-local:
     dependencies:
       '@hobo/core':
@@ -794,6 +817,35 @@ importers:
       '@types/node':
         specifier: '>=24.0.0'
         version: 26.0.1
+
+  packages/runtimes/runtime-oci:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      '@hobo/contract-harness':
+        specifier: workspace:*
+        version: link:../../contract-harness
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 24.13.2
+
+  packages/runtimes/runtime-wasm:
+    dependencies:
+      '@bytecodealliance/jco':
+        specifier: 1.24.3
+        version: 1.24.3(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+    devDependencies:
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 24.13.2
 
   packages/schema-tools:
     devDependencies:

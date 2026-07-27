@@ -1,3 +1,8 @@
+import {
+	containerDependencyAnnotation,
+	externalDependencyAnnotation,
+	wasmComponentDependencyAnnotation,
+} from "./dependencies.js";
 import type {
 	AllowVerbsFor,
 	BindleBuilder,
@@ -6,8 +11,11 @@ import type {
 	BindleResource,
 	BindleResourceRecord,
 	ComponentBinding,
+	ContainerDependencyOptions,
+	ExternalDependencyOptions,
 	ProviderAnnotation,
 	ResourceKind,
+	WasmComponentDependencyOptions,
 } from "./types.js";
 
 // Structural detection of a @component-decorated class (Plan 2 Syntax 0)
@@ -78,6 +86,9 @@ function createBindleResource<K extends ResourceKind>(
 			}
 			return resource;
 		},
+		withReference(...deps: BindleResource[]): BindleResource<K> {
+			return resource.dependsOn(...deps);
+		},
 		allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K> {
 			for (const verb of verbs) {
 				if (!internal.declaredAllow.includes(verb as string)) {
@@ -109,6 +120,18 @@ function createBuilder(): BindleBuilder {
 		data: () => createBindleResource("data"),
 		service: (binding?: ComponentBinding) =>
 			createBindleResource("service", toHandler(binding)),
+		external: (options: ExternalDependencyOptions = {}) =>
+			createBindleResource("external").with(
+				externalDependencyAnnotation(options),
+			) as BindleResource<"external">,
+		container: (options: ContainerDependencyOptions) =>
+			createBindleResource("container").with(
+				containerDependencyAnnotation(options),
+			) as BindleResource<"container">,
+		wasmComponent: (options: WasmComponentDependencyOptions) =>
+			createBindleResource("wasm-component").with(
+				wasmComponentDependencyAnnotation(options),
+			) as BindleResource<"wasm-component">,
 	});
 }
 

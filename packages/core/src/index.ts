@@ -100,6 +100,21 @@ export type {
 } from "./ports/component-host.js";
 export { parseInterfaceId } from "./ports/component-host.js";
 export type {
+	FetchHandler,
+	HoboRuntimeHost,
+	HoboRuntimeHostKind,
+	IsolationInfo,
+	PrivateComponentSpec,
+	PrivateServeResult,
+	RuntimeEnsureContext,
+	RuntimeEnsureResult,
+	ServePrivateContext,
+} from "./ports/runtime-host.js";
+export {
+	HOBO_RUNTIME_HOST_KINDS,
+	isHoboRuntimeHostKind,
+} from "./ports/runtime-host.js";
+export type {
 	AppendOptions,
 	AppendResult,
 	Clock,

@@ -4,19 +4,25 @@
  * Yard = control plane (`hobo yard init`).
  * Camp = placement target created when serving a Bindle.
  * Component host = Camp capability that executes components:
- *   - local: process-local mesh + Wasmtime-shaped component host
- *   - isolated-wasm: real Wasmtime OS-process sandboxes for private components
+ *   - local: process-local mesh (`@hobo/runtime-local`)
+ *   - wasm: Wasmtime OS-process sandboxes (`@hobo/runtime-wasm`)
+ *   - oci: WASM-on-OCI / Kubernetes (`@hobo/runtime-oci`)
+ *   - cloud-native: multi-cloud registry (`@hobo/runtime-cloud-native`)
  */
 import {
 	createInProcessWasmtimeEngine,
 	createWasmtimeCliEngine,
 } from "@hobo/runtime-local";
+import { PINNED_WASMTIME_VERSION } from "@hobo/runtime-wasm";
 
 import type { BareMetalServeResult } from "./bare-metal-host.js";
-import type { BareMetalYard, ComponentHostKind } from "./bare-metal-yard.js";
-import { serveProjectOnIsolatedWasm } from "./isolated-wasm-runtime.js";
+import {
+	type BareMetalYard,
+	type ComponentHostKind,
+	normalizeComponentHostKind,
+} from "./bare-metal-yard.js";
+import { serveProjectOnHost } from "./multi-host-serve.js";
 import { serveBindleOnLocalYard } from "./local-yard-serve.js";
-import { PINNED_WASMTIME_VERSION } from "./wasm-sandbox.js";
 
 export interface WasmHostProbe {
 	readonly engineKind: "wasmtime";
@@ -25,29 +31,35 @@ export interface WasmHostProbe {
 	readonly wasmtimeCliAvailable: boolean;
 	readonly notes: readonly string[];
 	readonly componentHosts: {
-		readonly local: "process-local mesh + component host (Camp capability)";
-		readonly "isolated-wasm": "wasmtime OS-process sandboxes for private components";
+		readonly local: string;
+		readonly wasm: string;
+		readonly oci: string;
+		readonly "cloud-native": string;
+		/** @deprecated alias of wasm */
+		readonly "isolated-wasm": string;
 	};
 	/** @deprecated use componentHosts */
 	readonly tiers: WasmHostProbe["componentHosts"];
 }
 
-export function probeWasmHostInstall(
-	options: { readonly binPath?: string; readonly env?: NodeJS.ProcessEnv } = {},
-): WasmHostProbe {
+export function probeWasmHostInstall(options: {
+	readonly binPath?: string;
+	readonly env?: NodeJS.ProcessEnv;
+} = {}): WasmHostProbe {
 	const env = options.env ?? process.env;
 	const candidates = [
 		options.binPath,
 		env.HOBO_WASMTIME_BIN,
 		env.HOME ? `${env.HOME}/.hobo/tools/wasmtime` : undefined,
 		"wasmtime",
-	].filter(
-		(value): value is string => typeof value === "string" && value.length > 0,
-	);
+	].filter((value): value is string => typeof value === "string" && value.length > 0);
 
 	const notes: string[] = [];
 	const componentHosts = {
 		local: "process-local mesh + component host (Camp capability)" as const,
+		wasm: "wasmtime OS-process sandboxes for private components" as const,
+		oci: "WASM-on-OCI scheduled on Kubernetes" as const,
+		"cloud-native": "multi-cloud host registry (aws/gcp/azure/vercel/cloudflare)" as const,
 		"isolated-wasm":
 			"wasmtime OS-process sandboxes for private components" as const,
 	};
@@ -61,8 +73,9 @@ export function probeWasmHostInstall(
 				"Yard places Camps; component host is a Camp capability (not the Yard itself)",
 			);
 			notes.push(
-				`isolated-wasm uses real .wasm + wasmtime serve (pinned ${PINNED_WASMTIME_VERSION})`,
+				`wasm host uses real .wasm + wasmtime serve (pinned ${PINNED_WASMTIME_VERSION})`,
 			);
+			notes.push("oci host packs WASM as OCI and schedules on Kubernetes via kubectl");
 			return {
 				engineKind: "wasmtime",
 				engineSource: "cli",
@@ -79,7 +92,7 @@ export function probeWasmHostInstall(
 
 	notes.push(`wasmtime CLI unavailable: ${lastError}`);
 	notes.push(
-		`isolated-wasm will auto-download wasmtime ${PINNED_WASMTIME_VERSION} into ~/.hobo/tools on first serve`,
+		`wasm will auto-download wasmtime ${PINNED_WASMTIME_VERSION} into ~/.hobo/tools on first serve`,
 	);
 	notes.push(
 		"local component host still runs (in-process engine; no .wasm bytes)",
@@ -104,14 +117,6 @@ export async function serveProjectOnWasmHost(
 	return { ...result, componentHost: "local" };
 }
 
-function normalizeKind(raw: string | undefined): ComponentHostKind {
-	if (raw === "bare-metal" || raw === "runtime-local" || raw === undefined) {
-		return "local";
-	}
-	if (raw === "local" || raw === "isolated-wasm") return raw;
-	return "local";
-}
-
 /** Place a Bindle on the local Yard using the configured Camp component host. */
 export async function serveProjectOnLocalYard(options: {
 	readonly projectDir: string;
@@ -119,9 +124,9 @@ export async function serveProjectOnLocalYard(options: {
 	readonly port?: number;
 	readonly hoboHome?: string;
 	readonly emitProgress?: (message: string) => void;
-	readonly componentHost?: ComponentHostKind | "bare-metal" | "runtime-local";
+	readonly componentHost?: ComponentHostKind | "bare-metal" | "runtime-local" | "isolated-wasm" | string;
 	/** @deprecated use componentHost */
-	readonly host?: ComponentHostKind | "bare-metal" | "runtime-local";
+	readonly host?: ComponentHostKind | "bare-metal" | "runtime-local" | "isolated-wasm" | string;
 }): Promise<
 	BareMetalServeResult & {
 		readonly componentHost: string;
@@ -132,28 +137,29 @@ export async function serveProjectOnLocalYard(options: {
 			readonly isolateBoundary: string;
 			readonly wasmtimeVersion?: string;
 			readonly wasmPaths?: readonly string[];
+			readonly details?: Readonly<Record<string, unknown>>;
 		};
 	}
 > {
 	const owned =
 		options.yard === undefined
-			? (await import("./bare-metal-yard.js")).openBareMetalYard({
+			? (
+					await import("./bare-metal-yard.js")
+				).openBareMetalYard({
 					...(options.hoboHome !== undefined
 						? { hoboHome: options.hoboHome }
 						: {}),
 				})
 			: null;
 	const yard = options.yard ?? owned!;
-	const componentHost = normalizeKind(
+	const componentHost = normalizeComponentHostKind(
 		options.componentHost ??
 			options.host ??
 			yard.config.componentHost ??
 			yard.config.host,
 	);
 
-	const wrapClose = <T extends { close: () => Promise<void> }>(
-		result: T,
-	): T => {
+	const wrapClose = <T extends { close: () => Promise<void> }>(result: T): T => {
 		if (owned === null) return result;
 		const inner = result.close.bind(result);
 		return {
@@ -165,17 +171,20 @@ export async function serveProjectOnLocalYard(options: {
 		};
 	};
 
-	if (componentHost === "isolated-wasm") {
-		const result = await serveProjectOnIsolatedWasm({
+	// local keeps the dedicated path (runtime-local component host lifecycle
+	// for both public and private) for back-compat with existing tests.
+	if (componentHost === "local") {
+		const result = await serveBindleOnLocalYard({
 			...options,
 			yard,
 		});
-		return wrapClose(result);
+		return wrapClose({ ...result, componentHost: "local" });
 	}
 
-	const result = await serveBindleOnLocalYard({
+	const result = await serveProjectOnHost({
 		...options,
 		yard,
+		componentHost,
 	});
 	return wrapClose(result);
 }

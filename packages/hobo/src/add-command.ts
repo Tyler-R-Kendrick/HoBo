@@ -9,7 +9,14 @@ import {
 } from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
 
+import { installRuntime } from "./installed-runtimes.js";
 import { createLocalProvider } from "./local-provider.js";
+import {
+	type RuntimeInstallId,
+	RUNTIME_INSTALL_IDS,
+	runtimeInstallIdToHost,
+} from "./runtime-catalog.js";
+import { defaultHoboHome } from "./bare-metal-yard.js";
 
 // The durable stream the registry catalog is projected from — `hobo add` appends
 // `provider.Registered` (+ `provider.Approved`) facts here; the Registry folds
@@ -136,6 +143,13 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 			const lastSeq = events.at(-1)?.seq ?? 0;
 
 			if (installed && approved) {
+				// Re-run still ensures durable runtime enablement for runtime-*.
+				if ((RUNTIME_INSTALL_IDS as readonly string[]).includes(id)) {
+					installRuntime(
+						id as RuntimeInstallId,
+						process.env.HOBO_HOME ?? defaultHoboHome(),
+					);
+				}
 				return {
 					ok: true,
 					status: "already_installed",
@@ -182,6 +196,21 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 			});
 			await runtime.registry.refresh?.();
 			const ports = provider.capabilities.map((c) => c.port).sort();
+
+			// Camp host runtimes also update the durable installed-runtimes set
+			// used by broker hard-fail for wasm/oci dependencies.
+			let runtimeHost: string | undefined;
+			if ((RUNTIME_INSTALL_IDS as readonly string[]).includes(id) && !hold) {
+				const installed = installRuntime(
+					id as RuntimeInstallId,
+					process.env.HOBO_HOME ?? defaultHoboHome(),
+				);
+				runtimeHost = runtimeInstallIdToHost(id);
+				emitProgress(
+					`enabled camp host runtime ${id} (hosts: ${installed.runtimes.join(", ")})`,
+				);
+			}
+
 			emitProgress(
 				`installed ${id}: ${ports.join(", ")}${hold ? " (held)" : ""}`,
 			);
@@ -192,13 +221,16 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 				code: "HOBO_OK",
 				message: hold
 					? `hobo add: installed provider "${id}" (${ports.join(", ")}) — held; run \`hobo add ${id}\` to approve.`
-					: `hobo add: installed provider "${id}" (${ports.join(", ")}).`,
+					: runtimeHost
+						? `hobo add: installed runtime "${id}" (componentHost=${runtimeHost}). Run \`hobo yard ensure\` to equip toolchains.`
+						: `hobo add: installed provider "${id}" (${ports.join(", ")}).`,
 				data: {
 					command: "add",
 					provider: id,
 					ports,
 					regions: [...provider.regions],
 					approved: !hold,
+					...(runtimeHost !== undefined ? { componentHost: runtimeHost } : {}),
 				},
 			};
 		},

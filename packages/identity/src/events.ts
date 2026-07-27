@@ -159,6 +159,9 @@ export function createTokenGrantedEvent(input: {
 	tenant: string;
 	seq?: number;
 	time?: string;
+	/** When issued via a first-class Connection. */
+	connectionId?: string;
+	credentialSource?: string;
 }): TokenEvent {
 	return {
 		id: `evt-token-granted-${input.grantId}`,
@@ -178,6 +181,12 @@ export function createTokenGrantedEvent(input: {
 			tokenRef: input.tokenRef,
 			scope: input.scope,
 			expiresAt: input.expiresAt,
+			...(input.connectionId !== undefined
+				? { connectionId: input.connectionId }
+				: {}),
+			...(input.credentialSource !== undefined
+				? { credentialSource: input.credentialSource }
+				: {}),
 		},
 	};
 }

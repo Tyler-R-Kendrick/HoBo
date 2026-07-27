@@ -16,6 +16,7 @@ const canonicalVerbNames = [
 	"dev",
 	"new",
 	"login",
+	"connection",
 	"claim",
 	"plan",
 	"verify",
@@ -72,6 +73,7 @@ Canonical verbs:
   dev         local loop    Run against runtime-local
   new         local loop    Scaffold a runnable SDK program
   login       identity      Obtain a dev SVID through OIDC
+  connection  identity      Manage durable Connections (create/authorize/list/get/revoke/rotate)
   claim       identity      Bind an anonymous deployment to an account
   plan        read-only     Dry-run the up decision
   verify      read-only     Run the unified Gatekeeper preflight

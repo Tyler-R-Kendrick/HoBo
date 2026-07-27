@@ -23,6 +23,12 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		summary: "Obtain a dev SVID through OIDC",
 	},
 	{
+		name: "connection",
+		role: "identity",
+		summary:
+			"Manage durable Connections (create/authorize/list/get/revoke/rotate)",
+	},
+	{
 		name: "claim",
 		role: "identity",
 		summary: "Bind an anonymous deployment to an account",

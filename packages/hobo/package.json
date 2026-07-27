@@ -35,6 +35,7 @@
 		"@hobo/core": "workspace:*",
 		"@hobo/data": "workspace:*",
 		"@hobo/iac-pulumi": "workspace:*",
+		"@hobo/identity": "workspace:*",
 		"@hobo/mcp": "workspace:*",
 		"@hobo/provider-aws": "workspace:*",
 		"@hobo/provider-azure": "workspace:*",

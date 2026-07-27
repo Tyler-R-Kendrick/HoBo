@@ -64,6 +64,18 @@
       }
     },
     {
+      "name": "connection",
+      "role": "identity",
+      "summary": "Manage durable Connections (create/authorize/list/get/revoke/rotate)",
+      "cli": "hobo connection",
+      "mcpTool": "connection",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:connection",
+        "verb": "call"
+      }
+    },
+    {
       "name": "claim",
       "role": "identity",
       "summary": "Bind an anonymous deployment to an account",
@@ -312,6 +324,18 @@
       "capability": {
         "port": "hobo:mcp",
         "resource": "tool:broker",
+        "verb": "call"
+      }
+    },
+    {
+      "name": "yard",
+      "role": "control plane",
+      "summary": "Install and inspect the default bare-metal Yard",
+      "cli": "hobo yard",
+      "mcpTool": "yard",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:yard",
         "verb": "call"
       }
     },

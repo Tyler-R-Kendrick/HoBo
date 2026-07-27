@@ -35,12 +35,18 @@ export const CREDENTIAL_AUDIT_EVENTS = Object.freeze({
 	TokenRevoked: "token.Revoked",
 	SessionStarted: "session.Started",
 	SessionRevoked: "session.Revoked",
+	ConnectionCreated: "connection.Created",
+	ConnectionAuthorized: "connection.Authorized",
+	ConnectionTokenIssued: "connection.TokenIssued",
+	ConnectionRevoked: "connection.Revoked",
+	ConnectionNeedsReauth: "connection.NeedsReauth",
 } as const);
 
 export const CREDENTIAL_AUDIT_EVENT_PREFIXES = Object.freeze([
 	"identity.",
 	"token.",
 	"session.",
+	"connection.",
 ]);
 
 export function isCredentialAuditEvent(event: EventEnvelope): boolean {
@@ -89,6 +95,8 @@ export interface CredentialAuditRow {
 	grants: Record<string, CredentialGrantAudit>;
 	identityIds: string[];
 	sessionIds: string[];
+	/** First-class Connection ids observed on this correlation chain. */
+	connectionIds: string[];
 	timeline: CredentialAuditTimelineEntry[];
 	grantCount: number;
 	useCount: number;
@@ -117,6 +125,7 @@ function base(
 				grants: { ...row.grants },
 				identityIds: [...row.identityIds],
 				sessionIds: [...row.sessionIds],
+				connectionIds: [...(row.connectionIds ?? [])],
 				timeline: [...row.timeline],
 			}
 		: {
@@ -124,11 +133,22 @@ function base(
 				grants: {},
 				identityIds: [],
 				sessionIds: [],
+				connectionIds: [],
 				timeline: [],
 				grantCount: 0,
 				useCount: 0,
 				revokeCount: 0,
 			};
+}
+
+function noteConnection(
+	row: CredentialAuditRow,
+	connectionId: string | undefined,
+): void {
+	if (!connectionId) return;
+	if (!row.connectionIds.includes(connectionId)) {
+		row.connectionIds = [...row.connectionIds, connectionId];
+	}
 }
 
 function grant(row: CredentialAuditRow, grantId: string): CredentialGrantAudit {
@@ -173,6 +193,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 					svidSubject?: string;
 					tokenRef?: string;
 					scope?: CredentialAuditScope;
+					connectionId?: string;
 				};
 				const next = base(row, correlationKey(event));
 				const g = grant(next, data.grantId);
@@ -183,9 +204,69 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				if (data.scope !== undefined) g.scope = data.scope;
 				next.grants[data.grantId] = g;
 				next.grantCount += 1;
+				noteConnection(next, data.connectionId);
 				next.timeline = [
 					...next.timeline,
 					{ seq: event.seq, type: event.type, grantId: data.grantId },
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.ConnectionCreated]: (row, event) => {
+				const data = event.data as { connectionId: string };
+				const next = base(row, correlationKey(event));
+				noteConnection(next, data.connectionId);
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.ConnectionAuthorized]: (row, event) => {
+				const data = event.data as { connectionId: string };
+				const next = base(row, correlationKey(event));
+				noteConnection(next, data.connectionId);
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.ConnectionTokenIssued]: (row, event) => {
+				const data = event.data as {
+					connectionId: string;
+					grantId?: string;
+				};
+				const next = base(row, correlationKey(event));
+				noteConnection(next, data.connectionId);
+				next.timeline = [
+					...next.timeline,
+					{
+						seq: event.seq,
+						type: event.type,
+						...(data.grantId !== undefined
+							? { grantId: data.grantId }
+							: {}),
+					},
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.ConnectionRevoked]: (row, event) => {
+				const data = event.data as { connectionId: string };
+				const next = base(row, correlationKey(event));
+				noteConnection(next, data.connectionId);
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
+				];
+				return next;
+			},
+			[CREDENTIAL_AUDIT_EVENTS.ConnectionNeedsReauth]: (row, event) => {
+				const data = event.data as { connectionId: string };
+				const next = base(row, correlationKey(event));
+				noteConnection(next, data.connectionId);
+				next.timeline = [
+					...next.timeline,
+					{ seq: event.seq, type: event.type },
 				];
 				return next;
 			},

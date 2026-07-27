@@ -8,6 +8,36 @@ export {
 	verifyWorkloadAttestation,
 } from "./attestation.js";
 export {
+	CONNECTION_EVENTS,
+	CONNECTION_EVENT_SCHEMA_VERSION,
+	type ConnectionEvent,
+	type ConnectionEventType,
+	type ConnectionFlow,
+	type ConnectionPrincipalRef,
+	type ConnectionStatus,
+	createConnectionAuthorizationStartedEvent,
+	createConnectionAuthorizedEvent,
+	createConnectionCreatedEvent,
+	createConnectionHealthChangedEvent,
+	createConnectionRevokedEvent,
+	createConnectionRotatedEvent,
+	createConnectionTokenIssuedEvent,
+	isConnectionEventType,
+	validateConnectionEvent,
+} from "./connection-events.js";
+export {
+	CONNECTION_SCHEMA_VERSION,
+	type AuthorizeConnectionInput,
+	type ConnectionPolicyDecision,
+	type ConnectionPolicyGate,
+	type ConnectionRecord,
+	type ConnectionView,
+	type CreateConnectionInput,
+	ConnectionService,
+	defaultConnectionPolicyGate,
+	foldConnectionEvents,
+} from "./connection.js";
+export {
 	CREDENTIAL_AUDIT_RETENTION,
 	createIdentityIssuedEvent,
 	createIdentityRotatedEvent,

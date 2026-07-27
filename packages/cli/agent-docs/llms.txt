@@ -8,6 +8,7 @@
 - dev (local loop): Run against runtime-local — CLI `hobo dev`; MCP tool `dev`
 - new (local loop): Scaffold a runnable SDK program — CLI `hobo new`; MCP tool `new`
 - login (identity): Obtain a dev SVID through OIDC — CLI `hobo login`; MCP tool `login`
+- connection (identity): Manage durable Connections (create/authorize/list/get/revoke/rotate) — CLI `hobo connection`; MCP tool `connection`
 - claim (identity): Bind an anonymous deployment to an account — CLI `hobo claim`; MCP tool `claim`
 - plan (read-only): Dry-run the up decision — CLI `hobo plan`; MCP tool `plan`
 - verify (read-only): Run the unified Gatekeeper preflight — CLI `hobo verify`; MCP tool `verify`
@@ -29,6 +30,7 @@
 - attest (governance): Produce signed external evidence exports — CLI `hobo attest`; MCP tool `attest`
 - erase (governance): Request crypto-shred erasure — CLI `hobo erase`; MCP tool `erase`
 - broker (governance): Resolve placements through the broker (the Conductor) — CLI `hobo broker`; MCP tool `broker`
+- yard (control plane): Install and inspect the default bare-metal Yard — CLI `hobo yard`; MCP tool `yard`
 - derivative (extensibility): Manage derived HoBo implementations — CLI `hobo derivative`; MCP tool `derivative`
 - runbook (SRE): Execute or replay incident runbooks — CLI `hobo runbook`; MCP tool `runbook`
 

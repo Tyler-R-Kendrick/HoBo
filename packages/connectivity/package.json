@@ -21,6 +21,7 @@
 		"@hobo/core": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/contract-harness": "workspace:*",
 		"@types/node": "^22.15.29",
 		"vitest": "^4.1.9"
 	},
@@ -29,7 +30,10 @@
 		"build": "tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm run build",
-		"test": "vitest run"
+		"pretest": "pnpm run build && pnpm --filter @hobo/contract-harness build",
+		"test": "vitest run test/ contracts/",
+		"test:unit": "vitest run test/",
+		"test:contract:consumer": "vitest run contracts/consumer",
+		"test:contract:provider": "vitest run contracts/provider"
 	}
 }

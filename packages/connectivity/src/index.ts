@@ -4,6 +4,13 @@ export {
 	type ConnectivityConfig,
 } from "./config.js";
 export {
+	CONNECTIVITY_HOST_PROVIDER_NAME,
+	createConnectivityHostHandler,
+	type ConnectivityHostHandler,
+	type ConnectivityHostRequest,
+	type ConnectivityHostResponse,
+} from "./connectivity-host.js";
+export {
 	accessTokenHash,
 	createDpopJtiCache,
 	exportDpopPrivateJwk,

@@ -198,6 +198,11 @@ export {
 export { createYardCommand } from "./yard-command.js";
 export { createStationCommand } from "./station-command.js";
 export {
+	createIdentityCommand,
+	persistMigrationEvents,
+	type IdentityCommandDeps,
+} from "./identity-command.js";
+export {
 	setDefaultStation,
 	type HoboProfileDefaultStation,
 } from "./hobo-profile.js";

@@ -45,26 +45,31 @@ token-exchange call will replace the fixture derivation.
 
 - **Command** — an attested-workload `issueSvidFromAttestation` /
   `rotateSvid` request, a `grantForDeploy` / `useToken` / `revokeToken`
-  request against the broker, a Connection create/authorize/revoke, or a
-  `resolveConfigSchema` / residual secrets-port access.
-- **Event** — `identity.Issued`, `identity.Rotated`, `token.Granted`,
-  `token.Used`, `token.Revoked`, `connection.*`, `config.Resolved`, and
-  `secret.Accessed` facts. Every event carries the never-compact
-  `CREDENTIAL_AUDIT_RETENTION` descriptor. Config/secret events carry **refs
-  and version-ids only** — never plaintext values.
+  request against the broker, a Connection create/authorize/revoke, a
+  `resolveConfigSchema` / residual secrets-port access, or a Matching/policy
+  StartMigration / LinkPrincipal / AdvanceRamp / Cutover / Compensate command
+  on the IdentityMigration aggregate.
+- **Event** — `identity.Issued`, `identity.Rotated`, `identity.Migration*`,
+  `token.Granted`, `token.Used`, `token.Revoked`, `connection.*`,
+  `config.Resolved`, and `secret.Accessed` facts. Every event carries the
+  never-compact `CREDENTIAL_AUDIT_RETENTION` descriptor. Config/secret events
+  carry **refs and version-ids only** — never plaintext values. Migration
+  events store PrincipalRef and opaque adapter subject refs only.
 - **Actor** — the per-subject identity aggregate (and the per-grant broker /
-  Connection / config-resolver aggregates) apply those events in order and own
-  the active-SVID/grant/config-ref state.
+  Connection / config-resolver / IdentityMigration aggregates) apply those
+  events in order and own the active-SVID/grant/config-ref/dual-link state.
 - **Event store** — accepted events append to the platform event store as the
   durable source of truth for the credential-audit stream.
 - **Materialized view / projection** — the credential-audit projection (S3-04,
-  in `packages/cloud`) folds identity, token, connection, config, and secret
-  event families into a per-correlation audit view off the single retained stream.
-- **Snapshot** — the `activeSvids` / active-grant / Connection maps and resolved
-  config placeholders are the in-memory snapshot of that projection.
-- **Read store** — `getAuditEvents`, `discovery`, `jwks`, and agent-safe
-  `schemaOnlyView` / `agentView` serve reads from that snapshot rather than
-  replaying the raw event log.
+  in `packages/cloud`) folds identity (including migration), token, connection,
+  config, and secret event families into a per-correlation audit view off the
+  single retained stream.
+- **Snapshot** — the `activeSvids` / active-grant / Connection /
+  IdentityMigration maps and resolved config placeholders are the in-memory
+  snapshot of that projection.
+- **Read store** — `getAuditEvents`, `discovery`, `jwks`, agent-safe
+  `schemaOnlyView` / `agentView`, and migration status views serve reads from
+  that snapshot rather than replaying the raw event log.
 
 ## Secretless-first config (ADR-0027)
 
@@ -74,3 +79,32 @@ Ranked resolution ladder in `src/secrets-port.ts` / `src/config-resolver.ts`:
 paths are SVID-brokered tokens and `fromBinding` / `secretRef`. Dev uses
 contract-asserted fixtures (`createContractAssertedConfigFixtures`) with the same
 schema contracts as can-deploy.
+
+## Continuous Identity Migration Plane (ADR-0132)
+
+Hands-off platform capability: Matching/policy starts continuous dual-path
+migration when adapters, residency, spectrum, claim schema, or Yard placement
+change. **Zero required Bindle fields** — optional `preferredAdapters` only
+influence Matching inputs; continuous dual mode is already the default.
+
+| Piece | Module | Role |
+| --- | --- | --- |
+| MappingSpec | `mapping-spec.ts` | Platform claim mapping; parse-don't-validate; auto-default |
+| Dual verify / dual-audience | `dual-adapter.ts` | Fail-closed dual claims; ADR-0100-style bridge grants |
+| Adapter port | `identity-adapter-port.ts` | Source/target IdP port; contract-asserted dual pair offline |
+| Aggregate | `migration-aggregate.ts` | Idle → dual/shadow → ramp → cutover / abort / compensate |
+| Events | `migration-events.ts` | `identity.Migration*` never-compact audit family |
+| Matching trigger | `migration-matching.ts` | `decideIdentityMigration` — continuous by default |
+| Control plane | `migration-control-plane.ts` | Matching → auto-start → flags → JIT link → ramp → cutover |
+| Feature flags | `feature-flag-store.ts` | Built-in OpenFeature store; `flag.*` events; cohort ramps |
+| can-migrate | `can-migrate.ts` | Gatekeeper dry-run dimension (offline-capable) |
+| Harness ramp | `migration-harness.ts` | Cohort flags + auto-abort/compensate via FeatureFlagStore |
+| Dual fixtures | `migration-dual-fixtures.ts` | ADR-0070 extension; fidelity `simulated` offline |
+| Spectrum cutover | `spectrum-cutover.ts` | Suspend→drain→dual-migrate→export→import→fence→resume |
+| Observe / agents | `migration-observe.ts` | Status view; zero-config re-attest on Migrated |
+
+Invariants: PrincipalRef continuity; scope never widens; dual inconsistency
+denies or holds; Golden oracles cover dual consistency, zero-loss cutover,
+fail-closed, agent continuity, and compensation. Spectrum bulk cutover composes
+with existing Suspend → drain → export → import → fence (Plan 50) — not
+reimplemented here.

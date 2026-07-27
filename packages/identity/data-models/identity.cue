@@ -214,3 +214,94 @@ package hobo
   ttl?: =~"^[1-7]d$"
   rotation?: "required" | "optional"
 }
+
+// Continuous Identity Migration Plane (PrincipalRef continuity; dual-path).
+#MappingSpecRecord: {
+  schemaVersion: string & != ""
+  id: string & != ""
+  version: string & != ""
+  contentHash: =~"^sha256:[a-f0-9]+$"
+  sourceAdapter: string & != ""
+  targetAdapter: string & != ""
+  principalSubjectClaim: string & != ""
+  allowNonCriticalDrift: bool
+}
+
+#IdentityMigrationRecord: {
+  schemaVersion: string & != ""
+  id: string & != ""
+  tenant: string & != ""
+  state: "idle" | "dual-active" | "shadow" | "ramping" | "quiescent" | "cutover" | "compensated" | "failed" | "aborted"
+  reason: "adapter-change" | "residency" | "spectrum" | "policy" | "schema" | "yard-move"
+  mode: "jit" | "shadow" | "background"
+  sourceAdapter: string & != ""
+  targetAdapter: string & != ""
+  mappingSpecHash: string & != ""
+  matchDecisionId?: string
+  cohortFlagId: string & != ""
+  rampPercent: uint & <= 100
+  linkedPrincipals: uint
+  failedChecks: uint
+  createdAt: string & != ""
+  updatedAt: string & != ""
+  seq: uint
+  outcomeReason?: string
+}
+
+#MigrationStartedEventData: {
+  migrationId: string & != ""
+  sourceAdapter: string & != ""
+  targetAdapter: string & != ""
+  reason: string & != ""
+  mappingSpecHash: string & != ""
+  mode: "jit" | "shadow" | "background"
+  matchDecisionId?: string
+}
+
+#DualLinkedEventData: {
+  migrationId: string & != ""
+  principalRef: string & != ""
+  sourceSubjectRef: string & != ""
+  targetSubjectRef: string & != ""
+}
+
+#DualConsistencyCheckedEventData: {
+  migrationId: string & != ""
+  ok: bool
+  checked: uint
+  failed: uint
+}
+
+#MigratedEventData: {
+  migrationId: string & != ""
+  principalRef: string & != ""
+  targetAdapter: string & != ""
+}
+
+#MigrationCutoverEventData: {
+  migrationId: string & != ""
+  linkedPrincipals: uint
+}
+
+#MigrationAbortedEventData: {
+  migrationId: string & != ""
+  reason: string & != ""
+  code: string & != ""
+}
+
+#MigrationCompensatedEventData: {
+  migrationId: string & != ""
+  reason: string & != ""
+  restoredAdapter: string & != ""
+}
+
+#CanMigrateResult: {
+  schemaVersion: string & != ""
+  ok: bool
+  dimension: "can-migrate"
+  summary: string & != ""
+  mode: "jit" | "shadow" | "background"
+  continuousDefault: true
+  dryRun: true
+  rollbackPosture: "compensate-to-source"
+}

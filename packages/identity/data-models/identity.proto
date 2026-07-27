@@ -228,3 +228,99 @@ message ConfigFieldRecord {
   string ttl = 6;
   string rotation = 7;
 }
+
+// Continuous Identity Migration Plane (ADR continuous dual-path).
+// PrincipalRef continuity; adapters are aliases. Never-compact credential audit.
+
+message MappingSpecRecord {
+  string schema_version = 1;
+  string id = 2;
+  string version = 3;
+  string content_hash = 4;
+  string source_adapter = 5;
+  string target_adapter = 6;
+  string principal_subject_claim = 7;
+  bool allow_non_critical_drift = 8;
+}
+
+message IdentityMigrationRecord {
+  string schema_version = 1;
+  string id = 2;
+  string tenant = 3;
+  // idle | dual-active | shadow | ramping | quiescent | cutover | compensated | failed | aborted
+  string state = 4;
+  // adapter-change | residency | spectrum | policy | schema | yard-move
+  string reason = 5;
+  // jit | shadow | background
+  string mode = 6;
+  string source_adapter = 7;
+  string target_adapter = 8;
+  string mapping_spec_hash = 9;
+  string match_decision_id = 10;
+  string cohort_flag_id = 11;
+  uint32 ramp_percent = 12;
+  uint32 linked_principals = 13;
+  uint32 failed_checks = 14;
+  string created_at = 15;
+  string updated_at = 16;
+  uint64 seq = 17;
+  string outcome_reason = 18;
+}
+
+message MigrationStartedEventData {
+  string migration_id = 1;
+  string source_adapter = 2;
+  string target_adapter = 3;
+  string reason = 4;
+  string mapping_spec_hash = 5;
+  string mode = 6;
+  string match_decision_id = 7;
+}
+
+message DualLinkedEventData {
+  string migration_id = 1;
+  string principal_ref = 2;
+  string source_subject_ref = 3;
+  string target_subject_ref = 4;
+}
+
+message DualConsistencyCheckedEventData {
+  string migration_id = 1;
+  bool ok = 2;
+  uint32 checked = 3;
+  uint32 failed = 4;
+}
+
+message MigratedEventData {
+  string migration_id = 1;
+  string principal_ref = 2;
+  string target_adapter = 3;
+}
+
+message MigrationCutoverEventData {
+  string migration_id = 1;
+  uint32 linked_principals = 2;
+}
+
+message MigrationAbortedEventData {
+  string migration_id = 1;
+  string reason = 2;
+  string code = 3;
+}
+
+message MigrationCompensatedEventData {
+  string migration_id = 1;
+  string reason = 2;
+  string restored_adapter = 3;
+}
+
+message CanMigrateResult {
+  string schema_version = 1;
+  bool ok = 2;
+  string dimension = 3; // always "can-migrate"
+  string summary = 4;
+  string mode = 5;
+  bool continuous_default = 6;
+  bool dry_run = 7;
+  string rollback_posture = 8;
+}

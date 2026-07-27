@@ -1,3 +1,10 @@
+---
+type: Architecture Decision Record
+title: "Yard-first placement and primitive-scoped provider resolvers"
+description: "Yard-first placement and primitive-scoped provider resolvers"
+tags: [hobo, design]
+---
+
 # ADR: Yard-first placement and primitive-scoped provider resolvers
 
 ## Status

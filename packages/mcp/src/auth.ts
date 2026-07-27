@@ -1,5 +1,14 @@
-import type { IdentityService, ScopeEntry } from "@hobo/identity";
-import { CREDENTIAL_AUDIT_RETENTION } from "@hobo/identity";
+import type {
+	AgentRebindAction,
+	IdentityMigrationEvent,
+	IdentityService,
+	ScopeEntry,
+} from "@hobo/identity";
+import {
+	agentActionsForMigrationEvents,
+	CREDENTIAL_AUDIT_RETENTION,
+	isMigrationReactiveEvent,
+} from "@hobo/identity";
 
 import {
 	type CapabilityScope,
@@ -15,7 +24,9 @@ import {
 // inert-tool-output invariant: a tool result is pure data that can never widen
 // the caller's authorized tool set.
 
+// public-contract: MCP auth decision event schema version.
 export const MCP_EVENTS_SCHEMA_VERSION = "hobo.mcp-events/v1";
+// public-contract: audited MCP tool-call decision event type.
 export const MCP_TOOL_CALL_DECIDED = "mcp.ToolCallDecided";
 
 export interface McpPrincipal {
@@ -211,4 +222,16 @@ export async function resolveAuthContext(
 			scope: result.scope,
 		},
 	};
+}
+
+/**
+ * Zero-config agent re-attest on identity.Migrated (ADR-0132).
+ * MCP subscriptions / sessions call this on delivered migration events —
+ * no agent or Bindle configuration required.
+ */
+export function rebindAgentsOnMigrationEvents(
+	events: readonly IdentityMigrationEvent[],
+): readonly AgentRebindAction[] {
+	const reactive = events.filter((e) => isMigrationReactiveEvent(e.type));
+	return agentActionsForMigrationEvents(reactive);
 }

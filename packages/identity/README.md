@@ -18,6 +18,52 @@ promotes the near-production draft proof
   / `token.Revoked`.
 - Every identity and token event carries the never-compact
   `CREDENTIAL_AUDIT_RETENTION` descriptor.
+- **Continuous Identity Migration Plane** ([ADR-0132](../../docs/design/adr/02-identity-security.md#adr-0132))
+  — dual-path PrincipalRef continuity when adapters, residency, spectrum, or
+  Yard placement change. **Nothing is required in the Bindle** for continuous
+  migration: Matching + policy activate dual mode; progressive ramp uses
+  existing Harness cohort flags; dual fixtures extend [ADR-0070](../../docs/design/adr/02-identity-security.md#adr-0070)
+  for offline `hobo dev` / tests. Observe with `hobo identity status` /
+  `hobo identity inspect <id>` and `hobo doctor`.
+
+## Continuous identity migration (hands-off)
+
+```ts
+import {
+  decideIdentityMigration,
+  defaultContinuousMappingSpec,
+  createContractAssertedDualFixtures,
+  IdentityMigrationService,
+  evaluateCanMigrate,
+} from "@hobo/identity";
+
+// Matching decides — no Bindle dual-adapter block required.
+const decision = decideIdentityMigration({
+  tenant: "acme",
+  sourceAdapter: "oidc-legacy",
+  targetAdapter: "oidc-modern",
+});
+
+const dual = createContractAssertedDualFixtures({ tenant: "acme" });
+const can = evaluateCanMigrate({
+  sourceAdapter: dual.sourceAdapter,
+  targetAdapter: dual.targetAdapter,
+  mapping: dual.mapping,
+  dualOracleReady: true,
+});
+
+const svc = new IdentityMigrationService({ tenant: "acme" });
+svc.start({
+  tenant: "acme",
+  sourceAdapter: decision.sourceAdapter,
+  targetAdapter: decision.targetAdapter,
+  mapping: decision.mapping,
+  reason: decision.reason,
+  mode: decision.mode,
+  matchDecisionId: decision.decisionId,
+});
+// JIT link keeps both adapters valid until cutover (ADR-0100 grace patterns).
+```
 
 ## Deferred: keyless provider-STS exchange (S3-03)
 
@@ -33,6 +79,13 @@ item (S3-03); see the `ponytail:` note in `src/token-broker.ts`.
 - Event factories/validators and `CREDENTIAL_AUDIT_RETENTION`.
 - `IDENTITY_PORT` — the `IdentityProvider` port descriptor built through
   `@hobo/core`.
+- Migration plane: `IdentityMigrationControlPlane` (Matching → auto-start →
+  OpenFeature ramp → cutover), `IdentityMigrationService`,
+  `decideIdentityMigration`, `evaluateCanMigrate`,
+  `createContractAssertedDualFixtures` / `createDualAdapterPair`,
+  `FeatureFlagStore`, `runSpectrumIdentityCutover` (Plan 50 composition),
+  `dualVerifyClaims`, `mintDualAudienceGrant`, `advanceMigrationRamp`,
+  `agentActionsForMigrationEvents`, `identity.Migration*` events.
 
 ## Verification
 

@@ -1,8 +1,13 @@
 /**
  * Contract-asserted config fixtures for `hobo dev` (ADR-0027 + ADR-0070).
  * Same schema contracts as can-deploy; agents only ever see schemaOnlyView.
+ * Dual identity fixtures (ADR-0132) are composed in for continuous migration parity.
  */
 import type { ConfigSchema, SecretSourceRank } from "./config-types.js";
+import {
+	createContractAssertedDualFixtures,
+	type DualIdentityFixtures,
+} from "./migration-dual-fixtures.js";
 import {
 	createMemorySecretsPort,
 	type SecretsPort,
@@ -21,6 +26,11 @@ export type DevConfigFixture = Readonly<{
 	/** Production-like default: forbid static-escape in local parity mode. */
 	forbidStaticEscape: boolean;
 	allowedSources: readonly SecretSourceRank[];
+	/**
+	 * Contract-asserted dual identity fixtures for continuous migration offline
+	 * (ADR-0070 + ADR-0132). Fidelity remains `simulated` without real IdPs.
+	 */
+	dualIdentity: DualIdentityFixtures;
 }>;
 
 /**
@@ -36,6 +46,8 @@ export async function createContractAssertedConfigFixtures(
 		seedSecrets?: Readonly<Record<string, string>>;
 		/** Allow static-escape for local hatch testing (default false). */
 		allowStaticEscape?: boolean;
+		/** Tenant for dual identity fixtures. */
+		tenant?: string;
 	},
 ): Promise<DevConfigFixture> {
 	const secretsPort = createMemorySecretsPort({
@@ -78,6 +90,10 @@ export async function createContractAssertedConfigFixtures(
 		...(forbidStaticEscape ? [] : (["static-escape"] as const)),
 	];
 
+	const dualIdentity = createContractAssertedDualFixtures({
+		tenant: options?.tenant ?? "tenant-dev",
+	});
+
 	return Object.freeze({
 		schemaHash: schema.schemaHash,
 		campValues: Object.freeze(campValues),
@@ -86,5 +102,6 @@ export async function createContractAssertedConfigFixtures(
 		staticMaterials: Object.freeze(staticMaterials),
 		forbidStaticEscape,
 		allowedSources: Object.freeze(allowedSources),
+		dualIdentity,
 	});
 }

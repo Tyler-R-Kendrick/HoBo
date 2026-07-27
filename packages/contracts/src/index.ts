@@ -44,6 +44,7 @@ export {
 	type MachineReadableReason,
 	type ObligationRecord,
 	type SecretlessConfigGateVerdict,
+	type CanMigrateGateVerdict,
 } from "./gatekeeper.js";
 export {
 	createPermissiveDefaultPack,

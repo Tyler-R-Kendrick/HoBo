@@ -58,6 +58,13 @@ Product: hobo
 - MCP tool: `connection`
 - Capability: { port: hobo:mcp, resource: tool:connection, verb: call }
 
+### identity
+- Role: identity
+- Summary: Observe continuous identity migration status (status/inspect; zero Bindle config)
+- CLI: `hobo identity`
+- MCP tool: `identity`
+- Capability: { port: hobo:mcp, resource: tool:identity, verb: call }
+
 ### claim
 - Role: identity
 - Summary: Bind an anonymous deployment to an account

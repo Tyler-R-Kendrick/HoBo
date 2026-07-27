@@ -261,6 +261,13 @@ Product: hobo
 - MCP tool: `station`
 - Capability: { port: hobo:mcp, resource: tool:station, verb: call }
 
+### replay
+- Role: observability
+- Summary: Session Replay list/get/open/summarize/retention/doctor (privacy-first; distinct from event-log replay)
+- CLI: `hobo replay`
+- MCP tool: `replay`
+- Capability: { port: hobo:mcp, resource: tool:replay, verb: call }
+
 ### derivative
 - Role: extensibility
 - Summary: Manage derived HoBo implementations

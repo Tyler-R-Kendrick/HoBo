@@ -176,6 +176,12 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 			"Station occupancy setup/ops (init/up/status/rails); not a lifecycle verb",
 	},
 	{
+		name: "replay",
+		role: "observability",
+		summary:
+			"Session Replay list/get/open/summarize/retention/doctor (privacy-first; distinct from event-log replay)",
+	},
+	{
 		name: "derivative",
 		role: "extensibility",
 		summary: "Manage derived HoBo implementations",
@@ -216,6 +222,7 @@ export const projectScopedVerbs = new Set(
 				"broker",
 				"yard",
 				"station",
+				"replay",
 			].includes(verb),
 	),
 );

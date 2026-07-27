@@ -42,6 +42,7 @@ import { createGenerateCommand } from "./generate-command.js";
 import { createIdentityCommand } from "./identity-command.js";
 import { createImportCommand } from "./import-command.js";
 import { createTrailsCommand } from "./trails-command.js";
+import { createReplayCommand } from "./replay-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { createLocalProvider } from "./local-provider.js";
 import { createLogsCommand } from "./logs-command.js";
@@ -211,6 +212,8 @@ export function createComposedHoboCli(
 			yard: createYardCommand(),
 			// Station occupancy setup/ops (main control-plane setup path; not lifecycle).
 			station: createStationCommand(),
+			// Session Replay (DOM/session reconstruction; distinct from event-log replay).
+			replay: createReplayCommand(),
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),

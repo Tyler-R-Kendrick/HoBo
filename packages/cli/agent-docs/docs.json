@@ -424,6 +424,18 @@
       }
     },
     {
+      "name": "replay",
+      "role": "observability",
+      "summary": "Session Replay list/get/open/summarize/retention/doctor (privacy-first; distinct from event-log replay)",
+      "cli": "hobo replay",
+      "mcpTool": "replay",
+      "capability": {
+        "port": "hobo:mcp",
+        "resource": "tool:replay",
+        "verb": "call"
+      }
+    },
+    {
       "name": "derivative",
       "role": "extensibility",
       "summary": "Manage derived HoBo implementations",

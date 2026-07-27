@@ -587,3 +587,33 @@ The 2026-07-03 infra re-classification flagged "realtime collaboration" as backl
 - **(+)** The built-in engine stops being aspirational: ax provides typed signatures, a production-grade optimizer, and an artifact format that matches HoBo's offline-train → gated-promote → runtime-load shape, at zero SDK-surface cost.
 - **(−)** Four authoring forms must be kept provably equivalent (a conformance lane, not a convention); the decorator form is a second surface to document and lint.
 - **(−)** A pinned third-party optimizer inside the built-in engine adds a supply-chain dependency to track (mitigated by the port boundary and the engines-behind-ports rule).
+
+## ADR-0137
+**Session Replay is a default-supplied, privacy-first Station capability (`@hobo/replay`), distinct from control-plane event-log replay.**
+
+### Context
+Operators and coding agents need OpenReplay-class session reconstruction for web Bindles and local Stations: DOM mutations, network/console/errors, correlation to control-plane incidents, Trails, and Harness flag exposures. The monorepo already has a **replayable control-plane event log** (projections, SRE, audit) and auth `session.*` events — overloaded "replay"/"session" language risks conflation. Competitors (OpenReplay AGPL stack, PostHog, Sentry, Highlight) show that privacy-by-default masking, low-footprint async trackers, self-host data ownership, and error/session correlation matter. HoBo must deliver the experience **natively** (Stations, dual fixtures, secretless, Junction storage ports, Trails retention, OpenFeature progressive control, MCP/CLI parity) without making AGPL multi-service K8s the default path.
+
+### Decision
+1. **Package `@hobo/replay` owns Session Replay.** Tracker, privacy masks, SessionBlobStore/SessionIndex ports, dual-fixture adapters, player/OpenUI descriptors, access policy, retention recipes, metering hooks, and template auto-wire. No new control-plane noun; composition over Station / Junction / Trail / Harness / continuous identity / PAM.
+2. **rrweb is the capture/reconstruction primitive.** Injectable `RecordEngine` / `ReplayEngine` adapters; default CI path uses deterministic fixtures. OpenReplay is inspiration + optional full-suite Station template (Assist/cobrowsing), **not** a default dependency.
+3. **Event family is `replay.*`, not `session.*`.** Lifecycle: `replay.Started`, `replay.ChunkIngested`, `replay.Ended`, `replay.ErrorLinked`, `replay.RetentionApplied`, `replay.Accessed`, `replay.Disabled`, `replay.Metered`. Heavy rrweb streams never enter the control-plane event log — only content-addressed `blob_ref`s. Auth keeps `session.Started|Refreshed|Revoked`.
+4. **Default-supply rules.** Local / Station / dual-fixture / hobo-code web templates: **on** by default with zero Bindle config. Production/staging: **off** unless OpenFeature flag `hobo.session-replay` or explicit sample rate. Kill switch: `HOBO_REPLAY=0`.
+5. **Privacy by construction.** Client-side mask of password/email/tel inputs and configurable selectors before send or local persist; network header redaction; continuous-identity `principalRef` attribution without free-text PII; production view requires elevated PAM capability.
+6. **Station isolation fails closed.** Cross-Station or cross-isolation-class viewing requires federation grant (Junction) or elevated short-lived capability; audited.
+7. **Trails compose retention.** Platform recipe id `replay.retention` for GC/erasure; FinOps meters ingest bytes, storage, and player access.
+8. **CLI/MCP:** `hobo replay` (list|get|open|summarize|retention|doctor) with MCP tool parity via CANONICAL_VERBS. Control Yard / OpenUI player is read-only; CLI remains the mutation surface.
+9. **Evidence:** session recordings may ship in evidence packs alongside Playwright/CDP artifacts for behavior proofs.
+
+### Performance budget
+- Batch interval 1000 ms, batch size 50, main-thread per flush ≤ 16 ms target, tracker overhead beyond rrweb ≤ ~15 KB gzipped.
+
+### Honest Scope / residual
+- Live multi-cloud object storage + high-volume ClickHouse analytics: port-shaped / residual — dual fixtures are the default proof path.
+- Full OpenReplay Assist / Helm deploy: optional Station template, not required for success.
+- Scale soak of production ingest and long-term retention cost models: residual hardening.
+
+### Consequences
+- **(+)** Agents and humans get a first-class session evidence surface that dogfoods Stations, privacy defaults, and progressive delivery without a second event bus or secret store.
+- **(+)** Naming split (`replay.*` vs event-log "replay" vs auth `session.*`) prevents contract and doc collisions.
+- **(−)** Three "replay/session" concepts must stay documented in glossary and CLI help; authors must not emit full DOM streams into the control-plane log.

@@ -94,6 +94,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `support.*` | `support.UsageCorrectionApproved`, `support.DisputeOpened` |
 | `tenant.*` | `tenant.Provisioned`, `tenant.Suspended`, `tenant.Resumed`, `tenant.Offboarded`, `tenant.Exported`, `tenant.Imported`, `tenant.Fenced`, `tenant.Drained`, `tenant.Erased`, `tenant.CutoverFailed` |
 | `token.*` | `token.Granted`, `token.Used`, `token.Denied`, `token.Revoked` |
+| `replay.*` | `replay.Started`, `replay.ChunkIngested`, `replay.Ended`, `replay.ErrorLinked`, `replay.RetentionApplied`, `replay.Accessed`, `replay.Disabled`, `replay.Metered` |
 | `trail.*` | `trail.Started`, `trail.Planned`, `trail.DualActive`, `trail.Progressed`, `trail.Validated`, `trail.Cutover`, `trail.Compensated`, `trail.Aborted`, `trail.Failed`, `trail.HistoryRecorded` |
 | `training.*` | `training.RunStarted`, `training.Promoted` |
 | `user.*` | `user.Authenticated` |

@@ -9,6 +9,7 @@ import {
 	eraseSessionById,
 	type RetentionPolicy,
 } from "./retention.js";
+import { REPLAY_BOUNDARIES } from "./http-surface.js";
 import {
 	createFilesystemDualFixtures,
 	createMemoryDualFixtures,
@@ -56,6 +57,8 @@ export type ReplayService = Readonly<{
 		defaultLocalOn: boolean;
 		killEnv: string;
 		honestScope: readonly string[];
+		/** Integration boundary ids (PACT inventory). */
+		boundaries: readonly string[];
 	}>;
 }>;
 
@@ -173,10 +176,12 @@ export function createReplayService(input: {
 				stationId,
 				defaultLocalOn: true,
 				killEnv: "HOBO_REPLAY=0",
+				boundaries: Object.freeze(REPLAY_BOUNDARIES.map((b) => b.id)),
 				honestScope: Object.freeze([
 					"Live multi-cloud object storage is port-based; dual fixtures are the default proof path",
 					"Full OpenReplay Assist / Helm stack is optional Station template, not required",
 					"High-volume ClickHouse analytics are residual",
+					"Every integration boundary (including internal) is PACT-verified via createReplayHttpSurface",
 				]),
 			});
 		},

@@ -97,6 +97,16 @@ export {
 	type ReplayService,
 } from "./service.js";
 export {
+	createReplayHttpSurface,
+	REPLAY_BOUNDARIES,
+	seedReplayFixture,
+	type HttpMethod,
+	type ReplayBoundaryDescriptor,
+	type ReplayHttpRequest,
+	type ReplayHttpResponse,
+	type ReplayHttpSurface,
+} from "./http-surface.js";
+export {
 	createFilesystemDualFixtures,
 	createMemoryDualFixtures,
 	createObjectStorageBlobStore,

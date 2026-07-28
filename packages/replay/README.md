@@ -98,6 +98,29 @@ Client-side before send/persist:
 | Main-thread per flush | ≤ 16 ms target |
 | Tracker overhead beyond rrweb | ≤ ~15 KB gzipped |
 
+## Accessibility surface + PACT
+
+Every integration boundary — **including internal module edges** — is reachable
+via `createReplayHttpSurface` and listed by `REPLAY_BOUNDARIES` /
+`service.doctor().boundaries`.
+
+```ts
+import { createReplayHttpSurface, REPLAY_BOUNDARIES } from "@hobo/replay";
+
+const surface = createReplayHttpSurface({ stationId: "station:local" });
+await surface.handle({
+  method: "POST",
+  path: "/replay/sessions/sess-1/chunks",
+  body: { seq: 0, events: [{ type: 2, timestamp: 1, data: {} }] },
+});
+console.log(REPLAY_BOUNDARIES.map((b) => b.id));
+```
+
+Full inventory: [`contracts/pact-inventory.md`](./contracts/pact-inventory.md).
+Provider verification: `pnpm --filter @hobo/replay test` runs
+`test/pacts/provider-verify.pact.test.ts` (contract-harness `verifyPact` against
+real modules + dual fixtures).
+
 ## Related
 
 - ADR-0137 (Session Replay)

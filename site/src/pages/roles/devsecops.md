@@ -30,7 +30,7 @@ A [junction](/HoBo/primitives/junctions/) is where clouds meet, so it's where so
 
 ## Configuring the Conductor
 
-[The Conductor](/HoBo/guide/broker/) — the broker that decides where every
+[The Conductor](/HoBo/primitives/stations/#the-conductor) — the broker that decides where every
 app lives — acts **only** on the policy set you configure. That policy set is
 one reviewable document, `hobo.broker.json`, and it is where budgets, cloud
 connectors, and your policy engine of choice all meet:

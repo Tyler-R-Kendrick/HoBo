@@ -41,9 +41,9 @@ That's the entire authoring surface: a name and the member camps. Cross-camp con
 
 ## The yard is itself a bindle
 
-HoBo's control plane — Gateway, Planner, Dispatcher, Orchestrator, the whole [architecture](/HoBo/guide/architecture/) — ships *as a bindle*. Self-hosting HoBo is `hobo up ./platform --seed` into a camp you own; the only difference between hosted and self-hosted is who runs the yard. No enterprise-edition fork, no second product. Even the landlord lives in a tent.
+HoBo's control plane — Gateway, Planner, Dispatcher, Orchestrator, the whole [architecture](/HoBo/architecture/) — ships *as a bindle*. Self-hosting HoBo is `hobo up ./platform --seed` into a camp you own; the only difference between hosted and self-hosted is who runs the yard. No enterprise-edition fork, no second product. Even the landlord lives in a tent.
 
 ## Where yards go next
 
 - Crossing clouds: [Junctions](/HoBo/primitives/junctions/).
-- What the yard's machinery does all day: [Architecture](/HoBo/guide/architecture/).
+- What the yard's machinery does all day: [Architecture](/HoBo/architecture/).

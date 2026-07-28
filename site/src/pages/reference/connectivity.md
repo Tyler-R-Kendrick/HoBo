@@ -48,4 +48,4 @@ Hard environment isolation and optional **Privileged Access Gateway** bound who 
 
 ## Related
 
-[Naming](/HoBo/reference/naming/) · [Security](/HoBo/guide/security/) · [Identity](/HoBo/reference/identity/) · [Stations](/HoBo/primitives/stations/)
+[Naming](/HoBo/reference/naming/) · [Security](/HoBo/security/) · [Identity](/HoBo/reference/identity/) · [Stations](/HoBo/primitives/stations/)

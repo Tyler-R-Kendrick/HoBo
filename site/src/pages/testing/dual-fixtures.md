@@ -41,4 +41,4 @@ Local Session Replay (default on every **App Kit**) stores heavy blobs via **dua
 
 ## Related
 
-[Effect-aware isolation](/HoBo/testing/effects/) · [Migration fixtures](/HoBo/testing/migration/) · [Identity](/HoBo/guide/identity/)
+[Effect-aware isolation](/HoBo/testing/effects/) · [Migration fixtures](/HoBo/testing/migration/) · [Identity](/HoBo/security/identity/)

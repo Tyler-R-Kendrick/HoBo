@@ -67,4 +67,4 @@ await host.ensure({ hoboHome });
 
 ## Related
 
-[Package map](/HoBo/reference/packages/) · [WASM guide](/HoBo/guide/wasm/) · [Trail map](/HoBo/guide/status/) · [Conformance](/HoBo/testing/conformance/)
+[Package map](/HoBo/reference/packages/) · [WASM guide](/HoBo/architecture/wasm/) · [Trail map](/HoBo/guide/status/) · [Conformance](/HoBo/testing/conformance/)

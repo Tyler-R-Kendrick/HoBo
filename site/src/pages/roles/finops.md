@@ -27,4 +27,4 @@ You care about **unit economics and accountability** without becoming the team t
 
 ## Related
 
-[Metering](/HoBo/reference/metering/) · [FinOps Crew](/HoBo/crew/finops/) · [Migration](/HoBo/guide/migration/)
+[Metering](/HoBo/reference/metering/) · [FinOps Crew](/HoBo/operations/finops/) · [Migration](/HoBo/cicd/migration/)

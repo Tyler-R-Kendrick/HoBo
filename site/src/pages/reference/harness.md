@@ -51,4 +51,4 @@ description: "OpenFeature flags, OpenDelivery, OpenExperiment, gateway weights, 
 
 ## Related
 
-[Progressive delivery guide](/HoBo/guide/progressive-delivery/) · [Trails](/HoBo/primitives/trails/) · [Bridge modes](/HoBo/testing/bridge-modes/) · [Identity](/HoBo/reference/identity/) · [Matching](/HoBo/reference/matching/)
+[Progressive delivery guide](/HoBo/cicd/progressive-delivery/) · [Trails](/HoBo/primitives/trails/) · [Bridge modes](/HoBo/testing/bridge-modes/) · [Identity](/HoBo/reference/identity/) · [Matching](/HoBo/reference/matching/)

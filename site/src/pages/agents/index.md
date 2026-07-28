@@ -43,7 +43,7 @@ The guiding principle — *find the cheapest home that passes policy, keep looki
 
 Missing a provider adapter? Agents can invoke the **generation pipeline**: synthesize an adapter for a port, then have the port's conformance suite certify it. A certified adapter is a certified adapter regardless of author — human or machine. More homes on the map, cheaper moves for everyone.
 
-The full extension surface — every implementable port, the adapter-authoring path, the conformance bar, and the ACP/A2A protocol-connector integration points — is documented in [Custom providers](/HoBo/guide/custom-providers/).
+The full extension surface — every implementable port, the adapter-authoring path, the conformance bar, and the ACP/A2A protocol-connector integration points — is documented in [Custom providers](/HoBo/customizations/providers/).
 
 ## Contracts agents can read (and test)
 
@@ -59,6 +59,6 @@ Durable Camp storage defaults to a **single-owner SQLite partition** behind Even
 
 - [The MCP surface](/HoBo/agents/mcp/) — the shipping `hobo-mcp` binary: stdio transport, the 28 canonical verbs as tools, `HOBO_MCP_TOOLS` scoping, deny-by-default audited decisions.
 - [`llms.txt`](/HoBo/llms.txt) — the machine-readable site briefing.
-- [Architecture](/HoBo/guide/architecture/) — package layout, durable EventStore default, contract effects.
+- [Architecture](/HoBo/architecture/) — package layout, durable EventStore default, contract effects.
 - [Testing](/HoBo/guide/testing/) — effect-aware isolation and offline durability tests.
 - [Getting started](/HoBo/guide/getting-started/) — the same ten-minute path humans take; it works verbatim for agents.

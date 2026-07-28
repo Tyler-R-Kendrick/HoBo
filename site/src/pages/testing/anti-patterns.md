@@ -24,4 +24,4 @@ description: "Testing anti-patterns: drifting mocks, multi-writer SQLite myths, 
 
 ## Related
 
-[Testing overview](/HoBo/testing/) · [Errors](/HoBo/reference/errors/) · [Security](/HoBo/guide/security/)
+[Testing overview](/HoBo/testing/) · [Errors](/HoBo/reference/errors/) · [Security](/HoBo/security/)

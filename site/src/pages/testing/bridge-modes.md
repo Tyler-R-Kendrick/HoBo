@@ -6,7 +6,7 @@ description: "live, mock, bridge, replay, shadow, and fault — the same boundar
 
 # Bridge modes
 
-Boundary modes are not only a test helper. They are the same routing model used by **[the Bridge](/HoBo/guide/bridge/)** for local/remote development.
+Boundary modes are not only a test helper. They are the same routing model used by **[the Bridge](/HoBo/troubleshooting/bridge/)** for local/remote development.
 
 ## Mode table
 
@@ -40,5 +40,5 @@ Recording stays on: interactions become specification-by-example traces and trai
 
 ## Next
 
-- [The Bridge](/HoBo/guide/bridge/)
+- [The Bridge](/HoBo/troubleshooting/bridge/)
 - [Chaos & availability](/HoBo/testing/chaos/)

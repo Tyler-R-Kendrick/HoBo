@@ -51,4 +51,4 @@ AI operators and generation paths evaluate content/tool guardrails (PII, jailbre
 
 ## Related
 
-[Contracts & Gatekeeper](/HoBo/reference/contracts/) · [Security](/HoBo/guide/security/) · [Effects](/HoBo/reference/effects/)
+[Contracts & Gatekeeper](/HoBo/reference/contracts/) · [Security](/HoBo/security/) · [Effects](/HoBo/reference/effects/)

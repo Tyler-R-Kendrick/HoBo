@@ -1,57 +1,39 @@
 ---
 layout: ../../layouts/Docs.astro
-title: Meet the Crew
-description: "HoBo ships built-in operator agents in the Yard: SRE, Endpoint Monitor, GitOps, Platform Engineer, SWE, UX Designer, and FinOps — policy-gated, event-sourced, MCP-reachable."
+title: The Crew — custom ACP agents
+description: "Bring your own agents over ACP/A2A connectors: policy-gated, audited, MCP-reachable — without replacing built-in Operations operators."
 ---
 
-# Meet the Crew
+# The Crew — custom ACP agents
 
-HoBo is AI-native: the work a software and platform team does — triage incidents, watch endpoints, drive delivery, author platform rules, write and repair application code, generate UI, and advise on cost — is exactly what agents can do against an event-sourced, MCP-complete surface. Rather than leave every team to wire its own, HoBo **ships the Crew** as built-in Yard services: opinionated, audited, policy-gated, and sandboxed under enforced AI governance, while remaining **pluggable** (each brain is an engine behind a port).
+**The Crew** (this section) is for **custom agents you bring** — ACP/A2A-connected, policy-gated, audited. Built-in Yard operators (SRE, GitOps, FinOps, …) live under **[Operations](/HoBo/operations/)**.
 
 ## Disambiguation
 
-| Term | Meaning |
+| Term | Where |
 |---|---|
-| **Operator Agent (Crew)** | Built-in Yard autonomous principal (this section) |
-| **Agents-as-users** | External/customer agents acting for a developer ([Agents](/HoBo/agents/)) |
-| **`agent()` primitive** | SDK runtime building block both kinds use |
-| **Relay** | Outbound network proxy — *not* an agent |
+| **Custom ACP / A2A agents** | This section |
+| **Built-in operator agents** | [Operations](/HoBo/operations/) |
+| **Agents-as-users** (developer copilots) | [HoBo for Agents](/HoBo/agents/) |
+| **`agent()` runtime primitive** | SDK — both kinds use it |
+| **Relay** | Network proxy — *not* an agent |
 
-## Roster
+## What you configure here
 
-| Operator | Mission | Deep dive |
-|---|---|---|
-| **SRE** | Detect → diagnose → gated remediate | [SRE](/HoBo/crew/sre/) |
-| **Endpoint Monitor** | Synthetics, SLO burn, drift signals | [Endpoint Monitor](/HoBo/crew/endpoint-monitor/) |
-| **GitOps** | When/what deploys; env promotion | [GitOps](/HoBo/crew/gitops/) |
-| **Platform Engineer** | Resource definitions, packs, policy proposals | [Platform Engineer](/HoBo/crew/platform-engineer/) |
-| **SWE** | Implement / refactor / repair business code | [SWE](/HoBo/crew/swe/) |
-| **UX Designer** | Generate & maintain app UI against design.md | [UX Designer](/HoBo/crew/ux-designer/) |
-| **FinOps** | Forecasts, anomalies, commitments (advisory) | [FinOps](/HoBo/crew/finops/) |
+| Topic | Page |
+|---|---|
+| Agent-as-user identity & MCP | [HoBo for Agents](/HoBo/agents/) · [MCP surface](/HoBo/agents/mcp/) |
+| Credentials (scoped, short-lived) | [Agent credentials](/HoBo/security/credentials/) |
+| Pluggable engines / ports | [Engines](/HoBo/operations/engines/) (shared machinery) |
+| Connector protocol (`a2a` / `acp`) | [Connectors](/HoBo/customizations/connectors/) · Bindle `connector(..., { protocol: "acp" })` |
 
-Also: [Handoffs & A2H](/HoBo/crew/handoffs/) · [Runbooks](/HoBo/crew/runbooks/) · [Engines & ports](/HoBo/crew/engines/)
+## Rules for custom agents
 
-## Shared guarantees
-
-Every Crew member:
-
-- Runs under **org RBAC** — cannot exceed its role.
-- Is **event-sourced** — observations, tool calls, token grants, approvals are facts.
-- Uses **MCP** for tools — same capability surface as humans where applicable.
-- Has an **engine behind a port** (built-in default; swap e.g. HolmesGPT for SRE).
-- **Reads/diagnoses autonomously**; **writes are policy-gated** (often require-approval in prod).
-
-Details: [Shared model](/HoBo/crew/shared-model/).
-
-## Example loop
-
-1. Endpoint Monitor emits SLO burn.
-2. SRE dispatches (`crew.AgentDispatched`), diagnoses from projections.
-3. Low-risk fix → canary live-fix + auto-rollback; prod fix → gated Delta + approval.
-4. Everything is replayable: “why did SRE act at 02:14?” is a query.
+1. Authenticate as first-class principals — never ambient org-admin  
+2. Every tool call and token grant is an auditable fact  
+3. High-risk writes pass Gatekeeper / policy obligations  
+4. Prefer connector protocols HoBo owns (ACP/A2A) over inventing a private agent SDK  
 
 ## Related
 
-- [HoBo for Agents](/HoBo/agents/) — external agent identity
-- [MCP surface](/HoBo/agents/mcp/)
-- [Chaos & availability testing](/HoBo/testing/chaos/)
+[Operations](/HoBo/operations/) · [Security](/HoBo/security/) · [Observability / audit](/HoBo/observability/agent-audit/)

@@ -62,4 +62,4 @@ Kill switch: `HOBO_REPLAY=0`. Full surface: [Session Replay](/HoBo/reference/ses
 
 ## Related
 
-[Bindles](/HoBo/primitives/bindles/) · [Resource catalog](/HoBo/primitives/resources/) · [Session Replay](/HoBo/reference/session-replay/) · [WASM & WIT](/HoBo/guide/wasm/) · [Core concepts](/HoBo/guide/concepts/)
+[Bindles](/HoBo/primitives/bindles/) · [Resource catalog](/HoBo/primitives/resources/) · [Session Replay](/HoBo/reference/session-replay/) · [WASM & WIT](/HoBo/architecture/wasm/) · [Core concepts](/HoBo/guide/concepts/)

@@ -87,4 +87,4 @@ Control-plane verbs map to `hobo:<resource>:<verb>` policy actions (**deny-by-de
 
 ## Related
 
-[The hobo CLI](/HoBo/guide/cli/) · [MCP](/HoBo/agents/mcp/) · [Stations](/HoBo/primitives/stations/) · [Troubleshooting](/HoBo/guide/troubleshooting/)
+[The hobo CLI](/HoBo/guide/cli/) · [MCP](/HoBo/agents/mcp/) · [Stations](/HoBo/primitives/stations/) · [Troubleshooting](/HoBo/troubleshooting/)

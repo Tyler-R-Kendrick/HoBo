@@ -1,10 +1,13 @@
 /* ==========================================================================
    HoBo site design system.
-   One stylesheet, zero frameworks. Strict black-and-white cartoon language
-   starring Bo the bindlebug: traced reference illustrations, thick ink
-   outlines, hard offset "sticker" shadows, and Fraunces book-serif display
-   type. Ink on paper by day, paper on ink by night — the two
-   themes are exact inversions, driven by custom properties.
+   One stylesheet, zero frameworks. Strict black-and-white rubberhose cartoon
+   language (Steamboat Willie / Cuphead / Fleischer) starring Bo the bindlebug:
+   traced reference illustrations, thick ink outlines, hard offset "sticker"
+   shadows, Chewy title-card display type. Ink on paper by day, paper on ink
+   by night — exact inversions via custom properties.
+
+   Agent contract: site/DESIGN.md (Google DESIGN.md format). Lint with
+   `pnpm --filter hobo-site run design:lint` before shipping token changes.
    ========================================================================== */
 
 /* ---------- Tokens ---------- */

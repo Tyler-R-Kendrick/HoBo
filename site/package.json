@@ -8,9 +8,16 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "design:lint": "designmd lint DESIGN.md",
+    "design:export:css": "designmd export --format css-tailwind DESIGN.md",
+    "design:export:dtcg": "designmd export --format dtcg DESIGN.md",
+    "design:spec": "designmd spec"
   },
   "dependencies": {
     "astro": "^5.17.0"
+  },
+  "devDependencies": {
+    "@google/design.md": "^0.4.0"
   }
 }

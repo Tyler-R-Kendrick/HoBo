@@ -22,6 +22,24 @@ pnpm --filter hobo-site build      # writes site/dist/
 pnpm --filter hobo-site preview    # serve the built dist/
 ```
 
+
+## Design system (DESIGN.md)
+
+Visual identity for agents lives in **[`DESIGN.md`](./DESIGN.md)** — Google’s open
+[DESIGN.md](https://github.com/google-labs-code/design.md) format (`@google/design.md`).
+
+Aesthetic: **Steamboat Willie / Cuphead / rubberhose** (thick ink, sticker shadows,
+film grain, Chewy title cards, B&W day/night inversion). Runtime CSS remains
+`src/styles/global.css`; keep the two aligned.
+
+```sh
+pnpm --filter hobo-site run design:lint         # structure + WCAG (0 errors)
+pnpm --filter hobo-site run design:export:css   # Tailwind v4 @theme export
+pnpm --filter hobo-site run design:export:dtcg  # W3C design tokens
+```
+
+Agent skill mirrors: `.agents/skills/design-md` and `.claude/skills/design-md`.
+
 ## Layout
 
 | Path | What it is |
@@ -54,7 +72,7 @@ pnpm --filter hobo-site preview    # serve the built dist/
 - **Voice:** playful "homeward bound" theme — the guiding principle is continuous
   migration to the cheapest home that passes policy. Whimsy in the prose, precision in
   the tables and code.
-- **Design language:** strict black-and-white 1930s cartoon. All artwork is *traced
+- **Design language:** strict black-and-white **rubberhose** 1930s cartoon (Steamboat Willie / Cuphead / Fleischer) — see `DESIGN.md`. All artwork is *traced
   from the reference illustrations* (never procedural): `Mascot.astro` is Bo, and
   `src/components/scenes/` holds the five story panels (crossroads, depot, train,
   blimp, steamboat) placed by narrative on the landing page. White paper/black ink by

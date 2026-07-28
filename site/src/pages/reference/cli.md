@@ -56,7 +56,8 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 | `inspect` | Projections / time-travel (`run`, `deploy`, `topology`, …) |
 | `logs` | Live-tail Camp Streamer |
 | `replay` | **Session Replay** (every App Kit) — `list|get|open|summarize|retention|doctor` (not event-log replay) |
-| `doctor` | Environment / credential / portability hazards |
+| `doctor` | Environment / credential / portability hazards (incl. Kafka + Dapr readiness) |
+| `messaging` | Messaging plane status, Kafka realize, dry-run secretless Dapr component YAML (ADR-0138) |
 | `drift` | Drift + governed remediation |
 | `incident` | Incident disposition / A2H |
 | `runbook` | Execute runbooks (writes still policy-gated) |

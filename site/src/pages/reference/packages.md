@@ -13,10 +13,11 @@ Dependencies point **inward only** (`apps → adapters → runtime/sdk → core`
 | Layer | Packages | Notes |
 |---|---|---|
 | **Authoring** | `@hobo/bindles`, `@hobo/camps`, `@hobo/yards`, `@hobo/junctions` | App + topology factories |
-| **App runtime** | `@hobo/runtime`, `@hobo/data`, `@hobo/events` | Workflows, CQRS, messaging |
-| **Contracts** | `@hobo/core`, `@hobo/wit`, `@hobo/contracts`, `@hobo/policy`, `@hobo/contract-harness`, `@hobo/conformance` | Ports, IR, Gatekeeper, PACT |
+| **App runtime** | `@hobo/runtime`, `@hobo/data`, `@hobo/events` | Workflows, CQRS, messaging helpers |
+| **Contracts** | `@hobo/core`, `@hobo/wit`, `@hobo/contracts`, `@hobo/policy`, `@hobo/contract-harness`, `@hobo/conformance` | Ports (incl. Messaging), IR, Gatekeeper, PACT |
 | **Storage engines** | `@hobo/storage-sqlite`, `@hobo/runtime-local`, `@hobo/runtime-browser` | Default durable journal (ADR-0135) |
-| **Component hosts** | `@hobo/runtime-wasm`, `@hobo/runtime-oci`, `@hobo/runtime-cloud-native` | How components execute |
+| **Messaging backends** | `@hobo/provider-kafka`, `@hobo/runtime-dapr` | Kafka capability provider; optional Dapr Camp runtime (ADR-0138) |
+| **Component hosts** | `@hobo/runtime-wasm`, `@hobo/runtime-oci`, `@hobo/runtime-cloud-native`, `@hobo/runtime-dapr` | How components execute (dapr is opt-in sidecar host) |
 | **Identity & connectivity** | `@hobo/identity`, `@hobo/connectivity` | SVIDs, Harness/OpenFeature, overlay, DNS, secretless connectors |
 | **Control topology** | `@hobo/stations`, `@hobo/trails`, `@hobo/broker`, `@hobo/cloud` | Station, Trails, Conductor, Planner/Matching/CD |
 | **Observability** | `@hobo/replay` | Session Replay on every App Kit (DOM/session; ADR-0137) |
@@ -32,6 +33,8 @@ Dependencies point **inward only** (`apps → adapters → runtime/sdk → core`
 | `@hobo/runtime-wasm` | Wasmtime component host | Shipped scaffold |
 | `@hobo/runtime-oci` | OCI + kubectl transport host | Shipped scaffold |
 | `@hobo/runtime-cloud-native` | Multi-cloud host registry (mock + stubs) | Shipped scaffold |
+| `@hobo/runtime-dapr` | Optional Dapr sidecar Camp runtime (actors + pubsub) | Shipped scaffold (opt-in; ADR-0138) |
+| `@hobo/provider-kafka` | Kafka / Redpanda / MSK capability → `wasi:messaging` | Shipped scaffold (ADR-0138) |
 | `runtime-postgres` / Temporal / Restate / Cloudflare DO | Alternate engines | Design / later |
 
 Deep dive: [Component hosts](/HoBo/reference/component-hosts/).
@@ -61,6 +64,8 @@ Deep dive: [Component hosts](/HoBo/reference/component-hosts/).
 | Overlay / secretless dial | `@hobo/connectivity` |
 | Session Replay (App Kits) | `@hobo/replay` |
 | App Kit taxonomy | `@hobo/bindles` (`APP_KIT_KINDS`) |
+| `Messaging` / `topic()` port | `@hobo/core` (adapters: `@hobo/provider-kafka`, `@hobo/runtime-dapr`) |
+| `resolveActorPlacement` | `@hobo/runtime` |
 
 ## Ownership rules
 

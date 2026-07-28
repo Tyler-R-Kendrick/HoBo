@@ -86,10 +86,15 @@ Key facts:
   MCP tools over stdio with verb/tool parity contract-tested, deny-by-default audited
   auth, and HOBO_MCP_TOOLS scoping. Live deploy lanes are credential-gated
   (Cloudflare/Vercel env tokens; HOBO_PULUMI_LIVE=1 for the real pinned Pulumi engine).
-  Session Replay (@hobo/replay, ADR-0137) is shipped locally with dual fixtures. Not yet shipped: full multi-cloud provider adapters; @hobo/junctions maturity (deferred to the S4 multi-cloud stage) and the
-  fly/aws/azure/gcp provider and postgres runtime packages — the docs mark those pages
-  design-stage. Everything else documented on the site is the contract-pinned surface
-  the product is being built to.
+  Session Replay (@hobo/replay, ADR-0137) is shipped locally with dual fixtures.
+  Messaging plane (ADR-0138): unified wasi:messaging / topic() port; @hobo/provider-kafka
+  (honest live transport harness); optional @hobo/runtime-dapr Camp runtime (actors +
+  pubsub; secretless component YAML); hobo messaging + doctor readiness; conformance
+  against Kafka and Dapr adapters. In-process wasm remains default (ADR-0031). Not yet
+  shipped: full multi-cloud provider adapters; @hobo/junctions maturity (deferred to the
+  S4 multi-cloud stage) and the fly/aws/azure/gcp provider and postgres runtime packages —
+  the docs mark those pages design-stage. Everything else documented on the site is the
+  contract-pinned surface the product is being built to.
 - The complete documentation, concatenated as one markdown document, is at
   https://tyler-r-kendrick.github.io/HoBo/llms-full.txt. Every docs page also has a
   "Copy page as Markdown" button and per-snippet copy buttons.
@@ -157,6 +162,7 @@ Key facts:
 - [EventStore & journal](https://tyler-r-kendrick.github.io/HoBo/reference/eventstore/)
 - [Schema & migrations](https://tyler-r-kendrick.github.io/HoBo/reference/schema/)
 - [Queue port](https://tyler-r-kendrick.github.io/HoBo/reference/queue/)
+- [Messaging, Kafka & Dapr](https://tyler-r-kendrick.github.io/HoBo/reference/messaging/)
 - [Streamer port](https://tyler-r-kendrick.github.io/HoBo/reference/streamer/)
 - [ActorHost & fencing](https://tyler-r-kendrick.github.io/HoBo/reference/actor-host/)
 - [Clock port](https://tyler-r-kendrick.github.io/HoBo/reference/clock/)

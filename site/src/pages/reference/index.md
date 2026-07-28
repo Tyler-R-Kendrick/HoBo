@@ -17,7 +17,8 @@ This section is the **lookup manual** — precise surfaces agents and engineers 
 | [EventStore & journal](/HoBo/reference/eventstore/) | Durable log, positions, fencing, SQLite default |
 | [Schema & migrations](/HoBo/reference/schema/) | `user_version`, tables, codecs, integrity |
 | [Queue](/HoBo/reference/queue/) · [Streamer](/HoBo/reference/streamer/) · [Clock](/HoBo/reference/clock/) | Other Camp ports |
-| [ActorHost & fencing](/HoBo/reference/actor-host/) | Leases and fence tokens |
+| [Messaging, Kafka & Dapr](/HoBo/reference/messaging/) | `wasi:messaging` / `topic()`, Kafka provider, optional Dapr runtime (ADR-0138) |
+| [ActorHost & fencing](/HoBo/reference/actor-host/) | Leases and fence tokens; native or Dapr placement |
 | [Runtime ports](/HoBo/reference/runtime-ports/) | Port coupling summary |
 | [Contracts & Gatekeeper](/HoBo/reference/contracts/) | IR, can-deploy, composition |
 | [Effects & resiliency](/HoBo/reference/effects/) | EffectSpec, ResilienceProfile |

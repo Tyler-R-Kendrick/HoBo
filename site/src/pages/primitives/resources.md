@@ -8,7 +8,7 @@ description: "Bindle resource factories grouped as App Kits vs Infra Kits: api, 
 
 App resources are declared in **`@hobo/bindles`** — **not** in `@hobo/core`. Names come from record keys the builder returns; explicit Bindle v1 methods do not take resource name arguments.
 
-Prefer **App Kit** / **Infra Kit** over calling resource kinds "membrane types." The WIT/WASM **membrane** is the low-level portability contract ([WASM & WIT](/HoBo/guide/wasm/)).
+Prefer **App Kit** / **Infra Kit** over calling resource kinds "membrane types." The WIT/WASM **membrane** is the low-level portability contract ([WASM & WIT](/HoBo/architecture/wasm/)).
 
 ## App Kits
 

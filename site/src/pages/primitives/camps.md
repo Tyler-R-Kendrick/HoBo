@@ -82,4 +82,4 @@ Here's the point of the whole design: **the camp is your app's current address, 
 
 - Several camps, one provider: [Yards](/HoBo/primitives/yards/).
 - Several providers: [Junctions](/HoBo/primitives/junctions/).
-- The machinery underneath: [Architecture](/HoBo/guide/architecture/).
+- The machinery underneath: [Architecture](/HoBo/architecture/).

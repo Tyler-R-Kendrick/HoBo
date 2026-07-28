@@ -78,4 +78,4 @@ Deep dive: [Component hosts](/HoBo/reference/component-hosts/).
 
 ## Related
 
-[Architecture](/HoBo/guide/architecture/) · [Component hosts](/HoBo/reference/component-hosts/) · [Runtime ports](/HoBo/reference/runtime-ports/) · [CLI](/HoBo/reference/cli/)
+[Architecture](/HoBo/architecture/) · [Component hosts](/HoBo/reference/component-hosts/) · [Runtime ports](/HoBo/reference/runtime-ports/) · [CLI](/HoBo/reference/cli/)

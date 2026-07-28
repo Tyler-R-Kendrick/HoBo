@@ -45,4 +45,4 @@ SQLite is the **default host engine**, not the public portability boundary. Apps
 
 ## Related
 
-[Package map](/HoBo/reference/packages/) · [EventStore](/HoBo/reference/eventstore/) · [Architecture](/HoBo/guide/architecture/) · [WASM guide](/HoBo/guide/wasm/)
+[Package map](/HoBo/reference/packages/) · [EventStore](/HoBo/reference/eventstore/) · [Architecture](/HoBo/architecture/) · [WASM guide](/HoBo/architecture/wasm/)

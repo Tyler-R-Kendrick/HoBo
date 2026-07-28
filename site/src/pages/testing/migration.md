@@ -37,4 +37,4 @@ While dual is open, both old and new projections must answer consistently for in
 
 ## Related
 
-[Schema](/HoBo/reference/schema/) · [Trails](/HoBo/primitives/trails/) · [Continuous migration](/HoBo/guide/migration/) · [Dual fixtures](/HoBo/testing/dual-fixtures/)
+[Schema](/HoBo/reference/schema/) · [Trails](/HoBo/primitives/trails/) · [Continuous migration](/HoBo/cicd/migration/) · [Dual fixtures](/HoBo/testing/dual-fixtures/)

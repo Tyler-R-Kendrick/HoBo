@@ -53,4 +53,4 @@ Gateway authenticates humans (OIDC/SSO) and agents/workloads (SVIDs), then autho
 
 ## Related
 
-[Identity guide](/HoBo/guide/identity/) · [Config & secrets](/HoBo/reference/config-secrets/) · [Agent credentials](/HoBo/agents/credentials/) · [Trails](/HoBo/primitives/trails/)
+[Identity guide](/HoBo/security/identity/) · [Config & secrets](/HoBo/reference/config-secrets/) · [Agent credentials](/HoBo/security/credentials/) · [Trails](/HoBo/primitives/trails/)

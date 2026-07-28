@@ -41,4 +41,4 @@ Observe and plan; do not invent parallel progressive/ETL planes.
 
 ## Related
 
-[Continuous migration](/HoBo/guide/migration/) · [Harness](/HoBo/reference/harness/) · [Identity](/HoBo/guide/identity/) · [Migration fixtures](/HoBo/testing/migration/)
+[Continuous migration](/HoBo/cicd/migration/) · [Harness](/HoBo/reference/harness/) · [Identity](/HoBo/security/identity/) · [Migration fixtures](/HoBo/testing/migration/)

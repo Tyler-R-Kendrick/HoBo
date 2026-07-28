@@ -53,4 +53,4 @@ Workloads dial **named endpoints only** for secretless connectors — never rece
 
 ## Related
 
-[Security](/HoBo/guide/security/) · [Connectivity](/HoBo/reference/connectivity/) · [Camps](/HoBo/primitives/camps/) · [Stations](/HoBo/primitives/stations/)
+[Security](/HoBo/security/) · [Connectivity](/HoBo/reference/connectivity/) · [Camps](/HoBo/primitives/camps/) · [Stations](/HoBo/primitives/stations/)

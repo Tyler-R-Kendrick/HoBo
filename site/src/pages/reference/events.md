@@ -63,4 +63,4 @@ Boundary virtualization tags envelope **lane** metadata. Baseline contract promo
 
 ## Related
 
-[Architecture](/HoBo/guide/architecture/) · [Data plane](/HoBo/guide/data-plane/) · [Crew shared model](/HoBo/crew/shared-model/) · [EventStore](/HoBo/reference/eventstore/)
+[Architecture](/HoBo/architecture/) · [Data plane](/HoBo/architecture/data-plane/) · [Crew shared model](/HoBo/operations/shared-model/) · [EventStore](/HoBo/reference/eventstore/)

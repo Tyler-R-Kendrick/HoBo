@@ -54,4 +54,4 @@ Experimental `hobo:secrets@0.1.0` under `@hobo/wit`; bridge with `asHoboSecretsS
 
 ## Related
 
-[Identity](/HoBo/reference/identity/) · [Identity guide](/HoBo/guide/identity/) · [Resources](/HoBo/primitives/resources/) · [Agent credentials](/HoBo/agents/credentials/)
+[Identity](/HoBo/reference/identity/) · [Identity guide](/HoBo/security/identity/) · [Resources](/HoBo/primitives/resources/) · [Agent credentials](/HoBo/security/credentials/)

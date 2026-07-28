@@ -26,7 +26,7 @@ Inventory columns track boundary → consumer → provider → protocol → stat
 
 1. **Consumer tests** generate or refresh the pact document against expected interactions.
 2. **Provider verification** replays interactions against the real implementation with **subset matching**: the expected response must be a subset of actual, so providers may grow fields without breaking consumers.
-3. The same interactions feed **[Bridge](/HoBo/guide/bridge/)** activation: a local fork must pass the boundary contract before carrying traffic.
+3. The same interactions feed **[Bridge](/HoBo/troubleshooting/bridge/)** activation: a local fork must pass the boundary contract before carrying traffic.
 
 ## Harness API (`@hobo/contract-harness`)
 

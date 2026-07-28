@@ -30,11 +30,11 @@ HoBo’s vocabulary is small on purpose. Learn these nouns once; every guide and
 
 | Term | Where it lives |
 |---|---|
-| Conductor / Broker | [Guide](/HoBo/guide/broker/) |
+| Conductor / Broker | [Guide](/HoBo/primitives/stations/#the-conductor) |
 | Gatekeeper | [Reference](/HoBo/reference/contracts/) |
 | Harness | [Reference](/HoBo/reference/harness/) |
 | Crew | [Crew](/HoBo/crew/) |
 
 ## Related
 
-[Core concepts](/HoBo/guide/concepts/) · [Architecture](/HoBo/guide/architecture/) · [Glossary](/HoBo/reference/glossary/)
+[Core concepts](/HoBo/guide/concepts/) · [Architecture](/HoBo/architecture/) · [Glossary](/HoBo/reference/glossary/)

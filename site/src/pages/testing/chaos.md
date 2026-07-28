@@ -18,7 +18,7 @@ Use boundary **fault** mode with a session tag so chaos stays personal:
 
 ## Synthetics (Crew)
 
-The **Endpoint Monitor** Crew operator probes camp endpoints continuously and emits burn/alert signals that feed the **SRE** operator. See [Crew: Endpoint Monitor](/HoBo/crew/endpoint-monitor/) and [Crew: SRE](/HoBo/crew/sre/).
+The **Endpoint Monitor** Crew operator probes camp endpoints continuously and emits burn/alert signals that feed the **SRE** operator. See [Crew: Endpoint Monitor](/HoBo/operations/endpoint-monitor/) and [Crew: SRE](/HoBo/operations/sre/).
 
 ## SLOs as projections
 

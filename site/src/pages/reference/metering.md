@@ -47,8 +47,8 @@ Sensitive classes require redaction/retention rules before customer export.
 
 ## FinOps Crew
 
-The FinOps operator agent reads metering projections, flags anomalies, and proposes commitment/move advice. It does **not** auto-spend or auto-destroy. See [FinOps Crew](/HoBo/crew/finops/).
+The FinOps operator agent reads metering projections, flags anomalies, and proposes commitment/move advice. It does **not** auto-spend or auto-destroy. See [FinOps Crew](/HoBo/operations/finops/).
 
 ## Related
 
-[Policy](/HoBo/reference/policy/) · [FinOps role](/HoBo/roles/finops/) · [Security](/HoBo/guide/security/)
+[Policy](/HoBo/reference/policy/) · [FinOps role](/HoBo/roles/finops/) · [Security](/HoBo/security/)

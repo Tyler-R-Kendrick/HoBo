@@ -71,4 +71,4 @@ Never treat a boolean flag as live while still on the pure emulator.
 
 ## Related
 
-[ActorHost](/HoBo/reference/actor-host/) · [Queue](/HoBo/reference/queue/) · [Component hosts](/HoBo/reference/component-hosts/) · [Package map](/HoBo/reference/packages/) · [CLI](/HoBo/reference/cli/) · [WASM & WIT](/HoBo/guide/wasm/)
+[ActorHost](/HoBo/reference/actor-host/) · [Queue](/HoBo/reference/queue/) · [Component hosts](/HoBo/reference/component-hosts/) · [Package map](/HoBo/reference/packages/) · [CLI](/HoBo/reference/cli/) · [WASM & WIT](/HoBo/architecture/wasm/)

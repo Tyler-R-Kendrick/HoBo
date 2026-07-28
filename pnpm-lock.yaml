@@ -1617,6 +1617,12 @@ importers:
 
   src/draft/exp-proofs/ux/workspace-onboarding-scope-acceptance: {}
 
+  src/draft/projects/otel-office:
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.2
+        version: 24.13.2
+
   src/draft/projects/s0-03-hobo-core: {}
 
   src/draft/projects/s1-23-hobo-build: {}

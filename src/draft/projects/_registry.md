@@ -10,6 +10,7 @@ Project MVP rollups live under `src/draft/projects/<slug>`.
 | `s2-08-provider-cloudflare` | HOBO-623 | draft POC | Cloudflare provider + Capability Manifest; promotes HOBO-165 contract proof |
 | `s3-02-hobo-identity` | HOBO-628 | draft | SVID issuance, attestation, rotation, OIDC provider POC; promotes to `packages/identity/` after S3-01 |
 | `s6-06-finops-plane` | HOBO-661 | draft POC | Plan estimates, budget gates, showback; promotes finops epic proofs |
+| `otel-office` | — | draft POC | OTel observability as a pixel office; bindles as NPCs driven by spans/metrics/logs; Phase 2 slice 1 — interpolated renderer, click-to-inspect panel, junction trace packets |
 
 Each project entry must list:
 

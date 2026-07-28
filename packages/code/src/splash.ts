@@ -17,6 +17,12 @@ import {
 	BO_IDLE_TUI_ROWS,
 	BO_IDLE_TUI_SOURCE,
 } from "./_generated/bo-idle-tui-frames.js";
+import {
+	HOBO_LOGO_TUI,
+	HOBO_LOGO_TUI_COLS,
+	HOBO_LOGO_TUI_ROWS,
+	HOBO_LOGO_TUI_SOURCE,
+} from "./_generated/hobo-logo-tui.js";
 
 /** Cadence from bo-idle export (~95ms/frame on site BoIdle.astro). */
 export const BO_IDLE_TICK_MS = 95;
@@ -242,4 +248,49 @@ export function dumpLoadingAnimation(
 		parts.push(f.text);
 	}
 	return parts.join("\n");
+}
+
+// ── Title screen (interactive TUI entry) ─────────────────────────────────
+
+/** Chewy wordmark provenance for docs/tests. */
+export const HOBO_LOGO_SPRITE_SOURCE = HOBO_LOGO_TUI_SOURCE;
+
+/** Title canvas: Chewy logo + Bo cell + cue — fixed geometry, anti-flicker. */
+export const TITLE_CANVAS_WIDTH = HOBO_LOGO_TUI_COLS;
+export const TITLE_CANVAS_HEIGHT = HOBO_LOGO_TUI_ROWS + BO_CELL_HEIGHT + 2;
+
+export interface TitleScreenOptions {
+	/** Absolute Bo frame index (mod 12). */
+	readonly frame?: number;
+	/** Wall clock ms — drives rest→bounce→blink loop when frame omitted. */
+	readonly tickMs?: number;
+	/** One-line cue under Bo. */
+	readonly cue?: string;
+}
+
+/**
+ * Full title screen: large Chewy "HoBo" logo (site display font) + animated
+ * sprite-derived Bo idle + cue. Pure string — the bin repaints on a tick.
+ * Every line is exactly TITLE_CANVAS_WIDTH; height is constant.
+ */
+export function renderTitleScreen(options: TitleScreenOptions = {}): string {
+	const frame = selectBoIdleFrame(options);
+	const logoLines = paintCell(
+		HOBO_LOGO_TUI,
+		TITLE_CANVAS_WIDTH,
+		HOBO_LOGO_TUI_ROWS,
+	);
+	const boLines = paintCell(
+		renderBoIdleFrame(frame),
+		TITLE_CANVAS_WIDTH,
+		BO_CELL_HEIGHT,
+	).map((l) => centerIn(l.trimEnd(), TITLE_CANVAS_WIDTH));
+	const cue = centerIn(
+		options.cue ?? "pack your bindle — press any key",
+		TITLE_CANVAS_WIDTH,
+	);
+	const rows = [...logoLines, ...boLines, cue, centerIn("", TITLE_CANVAS_WIDTH)];
+	return paintCell(rows.join("\n"), TITLE_CANVAS_WIDTH, TITLE_CANVAS_HEIGHT).join(
+		"\n",
+	);
 }

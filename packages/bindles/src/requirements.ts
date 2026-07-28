@@ -10,7 +10,7 @@ export const BINDLE_PROVIDER_SELECTION_REMEDIATION =
 
 /** Platform annotations that are not cloud provider pins. */
 const PLATFORM_PROVIDERS = new Set(["hobo", "hobo:build"]);
-const PLATFORM_OPTIONS = new Set(["env", "dependency"]);
+const PLATFORM_OPTIONS = new Set(["env", "dependency", "session-replay"]);
 
 /**
  * Provider-neutral Bindle workload requirements (not resolver control).

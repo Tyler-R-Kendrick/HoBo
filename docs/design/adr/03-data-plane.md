@@ -604,6 +604,7 @@ Operators and coding agents need OpenReplay-class session reconstruction for web
 7. **Trails compose retention.** Platform recipe id `replay.retention` for GC/erasure; FinOps meters ingest bytes, storage, and player access.
 8. **CLI/MCP:** `hobo replay` (list|get|open|summarize|retention|doctor) with MCP tool parity via CANONICAL_VERBS. Control Yard / OpenUI player is read-only; CLI remains the mutation surface.
 9. **Evidence:** session recordings may ship in evidence packs alongside Playwright/CDP artifacts for behavior proofs.
+10. **Deep Bindle integration:** every Bindle `web` resource receives a default `session-replay` platform annotation at construction. Local Yard / `hobo dev` wraps those entrypoints so HTML responses inject the privacy-first bootstrap and `/__hobo/replay/*` serves ingest/list without app-author wiring. Opt out with `.with(sessionReplay({ enabled: false }))` or `HOBO_REPLAY=0`.
 
 ### Performance budget
 - Batch interval 1000 ms, batch size 50, main-thread per flush ≤ 16 ms target, tracker overhead beyond rrweb ≤ ~15 KB gzipped.

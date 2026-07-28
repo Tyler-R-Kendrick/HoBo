@@ -547,6 +547,21 @@
 			"name": "rolloutResource",
 			"kind": "resource-factory",
 			"signature": "rolloutResource(name: string): ResourceHandle<\"rollout\", \"start\" | \"step\" | \"promote\" | \"rollback\">"
+		},
+		{
+			"name": "sessionReplay",
+			"kind": "session-replay-annotation",
+			"signature": "sessionReplay(config?: SessionReplayBindleConfig): ProviderAnnotation"
+		},
+		{
+			"name": "SESSION_REPLAY_OPTION",
+			"kind": "session-replay-constant",
+			"signature": "const SESSION_REPLAY_OPTION: \"session-replay\""
+		},
+		{
+			"name": "isSessionReplayAnnotation",
+			"kind": "session-replay-helper",
+			"signature": "isSessionReplayAnnotation(annotation: ProviderAnnotation): boolean"
 		}
 	]
 }

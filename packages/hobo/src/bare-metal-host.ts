@@ -10,6 +10,14 @@ import {
 	DEFAULT_DEV_PORT,
 	openBareMetalYard,
 } from "./bare-metal-yard.js";
+import {
+	type FetchHandler,
+	isExternalComponent,
+	listServableEntrypoints,
+	listServableEntrypointsWithReplay,
+	type ListServableEntrypointsResult,
+	type ServableEntrypoint,
+} from "./servable-entrypoints.js";
 
 // Mesh + exposure primitives for a **local Yard** placing Bindles into a **Camp**.
 // Glossary: Yard = control plane; Camp = placement target; Component host =
@@ -21,8 +29,20 @@ import {
 //   - Private components are reached only via mesh URLs injected as
 //     services__<name>__http__0 = http://hobo.internal/<name>
 //   - The Yard/Camp intermediary keeps private surfaces off the public wire.
+//
+// Session Replay (ADR-0137): listServableEntrypoints wraps Bindle `web`
+// handlers — see servable-entrypoints.ts.
 
-export type FetchHandler = (input: Request) => Response | Promise<Response>;
+export type {
+	FetchHandler,
+	ListServableEntrypointsResult,
+	ServableEntrypoint,
+};
+export {
+	isExternalComponent,
+	listServableEntrypoints,
+	listServableEntrypointsWithReplay,
+};
 
 // public-contract: reserved hostname for in-mesh hops between components.
 export const INTERNAL_MESH_HOST = "hobo.internal";
@@ -106,38 +126,6 @@ export function internalMeshBase(resourceName: string): string {
 	return `http://${INTERNAL_MESH_HOST}/${resourceName}`;
 }
 
-function isHttpComponent(kind: string): boolean {
-	return kind === "api" || kind === "web" || kind === "service";
-}
-
-/**
- * External exposure policy.
- * Default: only `web` is public (ingress). `api`/`service` stay private mesh.
- * Override with `.with({ provider: "local", option: "endpoint", config: { external: true|false } })`.
- */
-export function isExternalComponent(
-	kind: string,
-	annotations: readonly {
-		readonly option: string;
-		readonly config: Record<string, unknown>;
-	}[],
-): boolean {
-	for (const annotation of annotations) {
-		if (annotation.option !== "endpoint") continue;
-		if (typeof annotation.config.external === "boolean") {
-			return annotation.config.external;
-		}
-	}
-	return kind === "web";
-}
-
-function asFetchHandler(value: unknown): FetchHandler | null {
-	if (typeof value === "function") {
-		return value as FetchHandler;
-	}
-	return null;
-}
-
 /**
  * Collect process env the camp must inject from bindle resource annotations.
  * Convention: `.with({ provider, option: "env", config: { KEY: "value" } })`.
@@ -161,42 +149,6 @@ export function collectBindleEnvInjections(
 		}
 	}
 	return env;
-}
-
-export interface ServableEntrypoint {
-	readonly name: string;
-	readonly kind: string;
-	readonly handler: FetchHandler;
-	readonly external: boolean;
-}
-
-/**
- * Collect api/web/service entrypoints from a loaded BindleDefinition.
- * Order: external first (web), then private (api/service).
- */
-export function listServableEntrypoints(
-	definition: BindleDefinition,
-): ServableEntrypoint[] {
-	const entries: ServableEntrypoint[] = [];
-	for (const [name, record] of Object.entries(definition.resources)) {
-		if (!isHttpComponent(record.kind)) continue;
-		const thunk = definition.entrypoint(name);
-		if (typeof thunk !== "function") continue;
-		const resolved = asFetchHandler(thunk());
-		if (resolved === null) continue;
-		entries.push({
-			name,
-			kind: record.kind,
-			handler: resolved,
-			external: isExternalComponent(record.kind, record.annotations),
-		});
-	}
-	const rank = (entry: ServableEntrypoint) => {
-		if (entry.external) return 0;
-		if (entry.kind === "api") return 1;
-		return 2;
-	};
-	return entries.sort((a, b) => rank(a) - rank(b));
 }
 
 /**

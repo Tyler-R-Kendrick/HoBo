@@ -20,6 +20,12 @@ export {
 } from "./dependencies.js";
 export { env } from "./env.js";
 export {
+	isSessionReplayAnnotation,
+	sessionReplay,
+	SESSION_REPLAY_OPTION,
+	type SessionReplayBindleConfig,
+} from "./session-replay.js";
+export {
 	assertSourceAllowed,
 	config,
 	envField,

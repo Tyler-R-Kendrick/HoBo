@@ -93,6 +93,10 @@ export function createBindlesPublicApiSnapshot(
 		"featureSpecsToStoreInputs",
 		"rollout",
 		"rolloutResource",
+		// Session Replay default supply on web (ADR-0137)
+		"sessionReplay",
+		"SESSION_REPLAY_OPTION",
+		"isSessionReplayAnnotation",
 		...factoryNames,
 	]);
 
@@ -416,6 +420,23 @@ export function createBindlesPublicApiSnapshot(
 				kind: "resource-factory",
 				signature:
 					'rolloutResource(name: string): ResourceHandle<"rollout", "start" | "step" | "promote" | "rollback">',
+			},
+			{
+				name: "sessionReplay",
+				kind: "session-replay-annotation",
+				signature:
+					"sessionReplay(config?: SessionReplayBindleConfig): ProviderAnnotation",
+			},
+			{
+				name: "SESSION_REPLAY_OPTION",
+				kind: "session-replay-constant",
+				signature: 'const SESSION_REPLAY_OPTION: "session-replay"',
+			},
+			{
+				name: "isSessionReplayAnnotation",
+				kind: "session-replay-helper",
+				signature:
+					"isSessionReplayAnnotation(annotation: ProviderAnnotation): boolean",
 			},
 			...extraExports,
 		],

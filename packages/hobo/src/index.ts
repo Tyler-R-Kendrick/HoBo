@@ -98,6 +98,7 @@ export {
 	internalMeshBase,
 	isExternalComponent,
 	listServableEntrypoints,
+	listServableEntrypointsWithReplay,
 	serveProjectOnBareMetalYard,
 	serviceDiscoveryKey,
 	type BareMetalServeResult,

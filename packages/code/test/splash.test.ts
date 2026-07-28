@@ -171,3 +171,41 @@ describe("hobo-code default loading splash (logo + sprite Bo idle)", () => {
 		);
 	});
 });
+
+describe("hobo-code title screen (Chewy logo + animated Bo)", () => {
+	it("renders the Chewy wordmark at fixed canvas geometry", async () => {
+		const {
+			HOBO_LOGO_SPRITE_SOURCE,
+			renderTitleScreen,
+			TITLE_CANVAS_HEIGHT,
+			TITLE_CANVAS_WIDTH,
+		} = await import("../src/splash.js");
+		expect(HOBO_LOGO_SPRITE_SOURCE).toBe("assets/hobo-logo.png");
+		const text = renderTitleScreen({ frame: 0 });
+		const lines = text.split("\n");
+		expect(lines).toHaveLength(TITLE_CANVAS_HEIGHT);
+		for (const l of lines) expect(l).toHaveLength(TITLE_CANVAS_WIDTH);
+		// Logo block letters present (Chewy-derived half-blocks).
+		expect(text).toMatch(/█{6,}/);
+		expect(text).toContain("press any key");
+	});
+
+	it("animates: distinct Bo frames at fixed geometry", async () => {
+		const { renderTitleScreen } = await import("../src/splash.js");
+		const rest = renderTitleScreen({ frame: 0 });
+		const bounce = renderTitleScreen({ frame: 3 });
+		const blink = renderTitleScreen({ frame: 11 });
+		expect(rest).not.toBe(bounce);
+		expect(rest).not.toBe(blink);
+		expect(rest.split("\n").length).toBe(blink.split("\n").length);
+	});
+
+	it("tickMs drives the rest→bounce→blink loop", async () => {
+		const { BO_IDLE_TICK_MS, renderTitleScreen } = await import(
+			"../src/splash.js"
+		);
+		const rest = renderTitleScreen({ tickMs: 0 });
+		const blink = renderTitleScreen({ tickMs: 19 * BO_IDLE_TICK_MS + 1 });
+		expect(rest).not.toBe(blink);
+	});
+});

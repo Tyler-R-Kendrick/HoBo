@@ -35,6 +35,9 @@ export interface Runtime {       // the durable runtime a Camp supplies
   streams: Streamer;     // realtime read/write per run (run.readable)
   actors:  ActorHost;    // virtual-actor placement, single-writer leases + fencing
   clock:   Clock;        // deterministic time + durable timers (sleep/cron)
+  // Messaging (topic / wasi:messaging) is a Camp capability export, not a
+  // separate primary service — see ADR-0138 unified Messaging port + Kafka /
+  // optional Dapr realizations. ActorHost may be native or dapr-placed.
 }
 
 export interface EventStore {
@@ -48,7 +51,7 @@ export interface ActorHost {
   state<S>(key: string): DurableState<S>;          // backed by the actor's event stream
 }
 ```
-**Provided by the Camp** (the provider-specific layer); **the same app code runs regardless of the runtime backend** (`HOBO_RUNTIME` env or Camp config). Built-in `@hobo/runtime-local` (SQLite/filesystem) for dev; production backends: `runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./data-plane.md#plan-11)).
+**Provided by the Camp** (the provider-specific layer); **the same app code runs regardless of the runtime backend** (`HOBO_RUNTIME` env or Camp config). Built-in `@hobo/runtime-local` (SQLite/filesystem) for dev; production backends: `runtime-postgres`, `runtime-temporal`, `runtime-restate`, `runtime-cloudflare`; optional **`@hobo/runtime-dapr`** for Dapr-backed ActorHost + pub/sub when a Camp opts in ([ADR-0138](./adr/01-architecture-core.md#adr-0138)) — default remains in-process wasm ([ADR-0031](./adr/01-architecture-core.md#adr-0031)). Durable messaging backends include **`@hobo/provider-kafka`** (native Kafka / Redpanda / MSK / Confluent) exporting `wasi:messaging`. This seam is what makes durability portable and gives replay everywhere ([Plan 11](./data-plane.md#plan-11)).
 
 > **Runtime vs Providers** (a key distinction): the **Camp runtime** backs the *data-plane runtime* of your app (durable state, queues, timers). A **Provider** ([Layer 2](#layer-2--providers-infra-capability-ports)) provisions *infrastructure* (databases, compute, buckets). A Camp **supplies both, chosen independently** — its runtime backend **and** its provider can be different vendors (e.g. `provider-aws` for infra + a Temporal runtime). *"Runtime" has three senses — the `@hobo/runtime` SDK-primitives package, the `Runtime` interface, and the `runtime-*` backends; see the [glossary](./index.md#glossary--naming-thematic-all-tunable).*
 

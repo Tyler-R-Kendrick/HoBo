@@ -167,7 +167,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 | `wasi:http/incoming-handler`, `.../outgoing-handler` | `api` / `service` / `web`; outbound fetch | service exports incoming-handler; outbound is an import; **`hobo:http`** adds per-route security + middleware ([Plan 21](./authoring-resources-wiring.md#route-level-api-security)) |
 | `wasi:keyvalue/store` | `kv` | `get`/`set`/`delete`/`exists` (+ batch) |
 | `wasi:blobstore/blobstore` | `bucket` | object RW; presigned-URL + events extended by `hobo:blob-events` |
-| `wasi:messaging` | `topic` (push) | publish/subscribe |
+| `wasi:messaging` | `topic` (push) | publish/subscribe; unified Messaging port with delivery guarantees, consumer groups, DLQ ([ADR-0138](./adr/01-architecture-core.md#adr-0138)); backends: Kafka provider, Dapr pubsub, local memory |
 | `wasi:sql` | `data` (relational; driver-level) | draft; a `hobo:data/relational` provider/sink driver may realize its mapping over it — not an app-facing catalog port ([ADR-0112](./adr/03-data-plane.md#adr-0112)) |
 | `wasi:config/store` | `secret`/config | config + latest-secret access; version model added by `hobo:secrets` ([ADR-0113](./adr/02-identity-security.md#adr-0113)) |
 | `wasi:logging/logging` | `ctx.log` | structured logging |
@@ -178,7 +178,7 @@ A provider exports the subset it backs; conformance to the interface is the cont
 |---|---|---|
 | `hobo:http` | **thin extension** over `wasi:http` — route-level security + middleware ([ADR-0114](./adr/02-identity-security.md#adr-0114), [Plan 21](./authoring-resources-wiring.md#route-level-api-security)) | `match-route`, `enforce-security(rule)`, `run-middleware(chain)`, `inject-principal` → then delegate to `wasi:http/incoming-handler` |
 | `hobo:runtime/workflow` | durable workflow/step | `run-step(name,input,opts)`, `sleep(ms)`, `emit(type,data)` |
-| `hobo:runtime/actor` | virtual-actor (grain) state + messaging | `get-state`/`append-state`, `signal(key,msg)` |
+| `hobo:runtime/actor` | virtual-actor (grain) state + messaging | `get-state`/`append-state`, `signal(key,msg)`; dual placement **native** (lease+fence) or **dapr** via Camp runtime ([ADR-0138](./adr/01-architecture-core.md#adr-0138)) |
 | `hobo:runtime/saga` | choreography process manager | `on(event)`, `emit(event)`, `compensate(event)` |
 | `hobo:runtime/agent` | durable AI agent | `run(messages)`, `tool(name,input)`, `token(provider,scope)` |
 | `hobo:secrets` | versioned managed secrets (Nitric parity) over `wasi:config/store` ([Plan 21](./authoring-resources-wiring.md#plan-21)/[ADR-0113](./adr/02-identity-security.md#adr-0113)) | `put(name,value)` → version-id, `access(name)` → latest, `access-version(name,version)`, `list-versions(name)` |

@@ -18,6 +18,7 @@ import {
 	describeDeployTarget,
 } from "./deploy-preflight.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { buildMessagingDoctorSection } from "./messaging-doctor.js";
 
 export interface DoctorCommandDeps {
 	// The environment consulted for deploy credentials. Defaults to `process.env`.
@@ -190,6 +191,10 @@ export function createDoctorCommand(
 				);
 			}
 
+			// Messaging plane readiness (ADR-0138): Kafka + optional Dapr.
+			const messaging = buildMessagingDoctorSection(env);
+			remediation.push(...messaging.remediation);
+
 			return {
 				ok: true,
 				status: target.live ? "live" : "in-memory",
@@ -204,6 +209,7 @@ export function createDoctorCommand(
 					station: stationReport,
 					identityMigration: identityMigrationReport,
 					trails: trailsReport,
+					messaging: messaging.report,
 				},
 			};
 		},

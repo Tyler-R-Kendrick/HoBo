@@ -29,6 +29,8 @@
 		"@hobo/runtime": "workspace:*"
 	},
 	"devDependencies": {
+		"@hobo/provider-kafka": "workspace:*",
+		"@hobo/runtime-dapr": "workspace:*",
 		"@types/node": "^22.15.3",
 		"tsx": "^4.20.3"
 	},
@@ -36,7 +38,7 @@
 		"build": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime build && tsc -p tsconfig.json",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
-		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime build && pnpm --filter @hobo/runtime-local build",
+		"pretest": "pnpm --filter @hobo/core build && pnpm --filter @hobo/runtime build && pnpm --filter @hobo/runtime-local build && pnpm --filter @hobo/provider-kafka build && pnpm --filter @hobo/runtime-dapr build",
 		"build-corpus": "node --import tsx src/corpus/record.ts",
 		"test": "vitest run",
 		"test:contract:consumer": "vitest run contracts/consumer"

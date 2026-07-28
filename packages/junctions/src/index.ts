@@ -4,6 +4,14 @@ export {
 	selectConnectivityTier,
 } from "./connectivity.js";
 export { deriveFederationPlan } from "./federation.js";
+export {
+	type ActorSignalFederationLink,
+	type DeriveMessagingFederationInput,
+	deriveMessagingFederationPlan,
+	type JunctionMessagingFederationPlan,
+	JUNCTION_MESSAGING_FEDERATED_EVENT,
+	type TopicFederationLink,
+} from "./messaging-federation.js";
 export type {
 	JunctionConfig,
 	JunctionMemberManifestInput,

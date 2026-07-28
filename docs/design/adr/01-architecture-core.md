@@ -549,3 +549,60 @@ Self-host and cloud-host setup previously split across bare-metal Yard init, emb
 ### Consequences
 - **(+)** Single occupancy model; every Conductor resolve pins Station + active Rail; Connections are Station-owned by construction; cross-Station use fails closed without federation grant.
 - **(−)** Operators must run `hobo station init` before broker/connection/up paths; bootstrap Rail is for seed only — production posture refuses bootstrap-active occupancy.
+
+## ADR-0138
+**Messaging plane unification; Kafka first-class capability provider; Dapr as optional Camp runtime / sidecar adapter (ActorHost dual realization).**
+
+### Context
+HoBo already maps `topic()` → `wasi:messaging`, `queue()` → `hobo:queue`, and actor `signal` onto Runtime ports, with the preferred execution path the **in-process wasm component-host** ([ADR-0031](#adr-0031)). Durable log backends (Kafka / Redpanda / MSK / Confluent / Event Hubs Kafka protocol) and optional **Dapr** sidecars (pub/sub, virtual actors, workflows) are common production shapes. The competitor reference noted composition as plausible but uncommitted (`docs/competitors/dapr.md`). Without a unified Messaging model, delivery guarantees, consumer groups, secretless credentials, multi-tenant topic isolation, and dual actor placement (native lease+fence vs Dapr placement) would fragment into parallel tools — violating ports-first late binding.
+
+### Decision
+1. **Unified Messaging port** (`@hobo/core` Messaging / `MESSAGING_PORT_CONTRACT_VERSION`): backend-agnostic publish / subscribe / consume / ack / nack / dead-letter / audit events. Portable default delivery is **at-least-once**; **exactly-once** and transactional produce are **capability flags** Matching and `can-deploy` may require. App code targets `wasi:messaging` / `topic()` only — never Kafka clients or Dapr SDKs (escape hatches remain doctor-flagged non-portable).
+2. **Kafka capability provider** (`@hobo/provider-kafka`): exports `wasi:messaging` (+ aligned `hobo:queue` pull semantics). Resource Definitions (`KafkaCluster` / `KafkaTopic`) are secretless-first (`credentialBindingRef`; parse rejects plaintext password fields). Local path: Redpanda or **fidelity=simulated** emulator. Metering on produce/consume. Cross-Yard federation composes with Junctions (`deriveMessagingFederationPlan`).
+3. **Dapr optional Camp runtime** (`@hobo/runtime-dapr`, `HoboRuntimeHostKind: "dapr"`): realizes **ActorHost** over Dapr virtual-actor concurrency mapped to HoBo lease+fence tokens; **messaging** over Dapr pub/sub (including generated `pubsub.kafka` component YAML from HoBo Resource Definitions + `.allow()` scopes); **workflows** mapped partially to Dapr activities. Self-hosted and Kubernetes modes. HoBo remains control-plane authority (Matching, policy, cost, SVID injection, junctions, audit). **ADR-0031 stands** — Dapr is opt-in via Camp `runtimeRequirements` / explicit placement, never the default.
+4. **ActorHost dual realization**: `defineActor` / `activateActor` are host-injected; `resolveActorPlacement` selects `native` (default) or `dapr` without app code change. Single-writer + fencing assertions apply to both; residual Dapr divergences (reminders, optional state-store fold) are declared non-covered where not claimed.
+5. **Surfaces**: `hobo doctor` reports Kafka/Dapr readiness; `hobo messaging status|realize|component-yaml` inspects and dry-runs secretless component YAML; policy pack `hobo.policy.messaging/v1` can require exactly-once, deny Dapr in regulated envs, and deny cross-tenant messaging; Gatekeeper reasons via `evaluateMessagingCanDeploy`.
+6. **Event-sourced audit**: topic/subscription creation, publish, consume, dead-letter, permanent delivery failures, actor activation under either placement, and junction messaging federation emit replayable facts.
+
+### Diagrams
+
+Native Kafka path:
+
+```mermaid
+flowchart LR
+  Bindle["Bindle topic()"] --> Port["wasi:messaging"]
+  Port --> KafkaProv["@hobo/provider-kafka"]
+  KafkaProv --> Brokers["Kafka / Redpanda / MSK"]
+  KafkaProv --> Audit["messaging.* events"]
+```
+
+Dapr path:
+
+```mermaid
+flowchart LR
+  Bindle["Bindle topic() + defineActor"] --> Ports["wasi:messaging + ActorHost"]
+  Ports --> DaprRT["@hobo/runtime-dapr"]
+  DaprRT --> Sidecar["daprd"]
+  Sidecar --> Comp["pubsub.kafka / actors"]
+  Comp --> Backing["Kafka etc provisioned by HoBo"]
+```
+
+Hybrid + cross-cloud:
+
+```mermaid
+flowchart TB
+  subgraph YardA
+    AppA --> KafkaA
+  end
+  subgraph YardB
+    AppB --> DaprB --> KafkaB
+  end
+  Junction["Junction messaging federation"] --- YardA
+  Junction --- YardB
+```
+
+### Consequences
+- **(+)** One authoring surface; Kafka production durability via honest `KafkaBrokerTransport` (harness or real broker); Dapr polyglot/sidecar path via honest `DaprSidecarClient` without reversing wasm-first default; secretless + multi-tenant defaults; executable messaging conformance against both adapters.
+- **(−)** Permanent non-goals (not open residuals): Kafka operator UI, full Dapr workflow **engine** parity (activity-name map only), advanced schema-registry wire protocols, junction data-plane byte relay (control-plane federation is in).
+- **Preserves** ADR-0031, ports/adapters, PACT/CUE/protobuf discipline, Matching, Junctions, Trails composition points for topic/schema migrations.
+- **Fidelity honesty:** `live` only when a transport/client is actually used; `live: true` without one throws.

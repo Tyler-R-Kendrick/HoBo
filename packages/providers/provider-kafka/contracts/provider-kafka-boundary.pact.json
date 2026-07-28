@@ -1,0 +1,30 @@
+{
+	"consumer": { "name": "@hobo/core" },
+	"provider": { "name": "ProviderKafkaBoundary" },
+	"metadata": {
+		"pactSpecification": { "version": "3.0.0" }
+	},
+	"interactions": [
+		{
+			"description": "realize kafka cluster and topic with wasi:messaging export",
+			"request": {
+				"method": "POST",
+				"path": "/providers/kafka/realize",
+				"body": {
+					"port": "topic",
+					"wit": "wasi:messaging/messaging@0.2.0",
+					"features": ["consumer-groups", "exactly-once"]
+				}
+			},
+			"response": {
+				"status": 200,
+				"body": {
+					"providerId": "@hobo/provider-kafka",
+					"secretless": true,
+					"messagingBackend": "native-kafka",
+					"witExports": ["wasi:messaging/messaging@0.2.0"]
+				}
+			}
+		}
+	]
+}

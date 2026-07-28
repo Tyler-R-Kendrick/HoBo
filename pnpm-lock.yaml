@@ -376,6 +376,12 @@ importers:
         specifier: workspace:*
         version: link:../runtime
     devDependencies:
+      '@hobo/provider-kafka':
+        specifier: workspace:*
+        version: link:../providers/provider-kafka
+      '@hobo/runtime-dapr':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-dapr
       '@types/node':
         specifier: ^22.15.3
         version: 22.20.0
@@ -576,6 +582,9 @@ importers:
       '@hobo/provider-gcp':
         specifier: workspace:*
         version: link:../providers/provider-gcp
+      '@hobo/provider-kafka':
+        specifier: workspace:*
+        version: link:../providers/provider-kafka
       '@hobo/provider-lakebed':
         specifier: workspace:*
         version: link:../providers/provider-lakebed
@@ -594,6 +603,9 @@ importers:
       '@hobo/runtime-cloud-native':
         specifier: workspace:*
         version: link:../runtimes/runtime-cloud-native
+      '@hobo/runtime-dapr':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-dapr
       '@hobo/runtime-local':
         specifier: workspace:*
         version: link:../runtimes/runtime-local
@@ -780,6 +792,16 @@ importers:
         specifier: workspace:*
         version: link:../../core
 
+  packages/providers/provider-kafka:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 24.13.2
+
   packages/providers/provider-lakebed:
     dependencies:
       '@hobo/core':
@@ -875,6 +897,16 @@ importers:
         version: 3.49.1-build4
 
   packages/runtimes/runtime-cloud-native:
+    dependencies:
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 24.13.2
+
+  packages/runtimes/runtime-dapr:
     dependencies:
       '@hobo/core':
         specifier: workspace:*
@@ -2040,6 +2072,34 @@ importers:
   src/draft/technical-proofs/mcp-server-hardening-contract: {}
 
   src/draft/technical-proofs/membrane-deadline-backpressure-contract: {}
+
+  src/draft/technical-proofs/messaging-dapr-kafka:
+    dependencies:
+      '@hobo/camps':
+        specifier: workspace:*
+        version: link:../../../../packages/camps
+      '@hobo/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+      '@hobo/junctions':
+        specifier: workspace:*
+        version: link:../../../../packages/junctions
+      '@hobo/provider-kafka':
+        specifier: workspace:*
+        version: link:../../../../packages/providers/provider-kafka
+      '@hobo/runtime':
+        specifier: workspace:*
+        version: link:../../../../packages/runtime
+      '@hobo/runtime-dapr':
+        specifier: workspace:*
+        version: link:../../../../packages/runtimes/runtime-dapr
+      '@hobo/yards':
+        specifier: workspace:*
+        version: link:../../../../packages/yards
+    devDependencies:
+      '@types/node':
+        specifier: '>=24.0.0'
+        version: 24.13.2
 
   src/draft/technical-proofs/meta-cloud-broker-artifact-contract: {}
 

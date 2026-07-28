@@ -64,6 +64,20 @@ export {
 	type DoctorCommandDeps,
 } from "./doctor-command.js";
 export {
+	createMessagingCommand,
+	type MessagingCommandDeps,
+} from "./messaging-command.js";
+export {
+	buildMessagingDoctorSection,
+	type MessagingDoctorSection,
+} from "./messaging-doctor.js";
+export {
+	evaluateMessagingCanDeploy,
+	type MessagingCanDeployReason,
+	type MessagingCanDeployRequest,
+	type MessagingCanDeployResult,
+} from "./messaging-can-deploy.js";
+export {
 	createDriftCommand,
 	DRIFT_CHECKED_EVENT,
 	DRIFT_DETECTED_EVENT,

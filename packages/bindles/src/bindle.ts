@@ -1,3 +1,4 @@
+import { isAppKitKind } from "./app-kits.js";
 import {
 	containerDependencyAnnotation,
 	externalDependencyAnnotation,
@@ -7,6 +8,7 @@ import {
 	assertNoBindleProviderSelection,
 	parseBindleRequirements,
 } from "./requirements.js";
+import { defaultAppKitSessionReplayAnnotation } from "./session-replay.js";
 import type {
 	AllowVerbsFor,
 	BindleBuilder,
@@ -67,18 +69,6 @@ type TrackedBindleResource<K extends ResourceKind> = BindleResource<K> & {
 	readonly __bindleInternal: InternalBindleResource<K>;
 };
 
-/**
- * Default Session Replay annotation for every Bindle `web` resource (ADR-0137).
- * Hosts (`hobo dev` / local Yard) wrap web entrypoints so HTML pages are
- * recorded without per-app wiring. Opt out with:
- *   `.with({ provider: "hobo", option: "session-replay", config: { enabled: false } })`
- */
-const DEFAULT_WEB_SESSION_REPLAY_ANNOTATION: ProviderAnnotation = Object.freeze({
-	provider: "hobo",
-	option: "session-replay",
-	config: Object.freeze({ enabled: true, defaultSupply: "local-on" }),
-});
-
 function createBindleResource<K extends ResourceKind>(
 	kind: K,
 	handler?: () => unknown,
@@ -86,9 +76,11 @@ function createBindleResource<K extends ResourceKind>(
 	const internal: InternalBindleResource<K> = {
 		kind,
 		declaredAllow: [],
-		// Web surfaces are Session-Replay capable by default — zero Bindle config.
-		annotations:
-			kind === "web" ? [DEFAULT_WEB_SESSION_REPLAY_ANNOTATION] : [],
+		// Every App Kit (api/web/service/ui/websocket/job/wasm-component) is
+		// Session-Replay capable by default — zero Bindle config (ADR-0137).
+		annotations: isAppKitKind(kind)
+			? [defaultAppKitSessionReplayAnnotation()]
+			: [],
 		dependencies: new Set(),
 		handler,
 	};
@@ -118,7 +110,7 @@ function createBindleResource<K extends ResourceKind>(
 		},
 		with(...annotations: ProviderAnnotation[]): BindleResource<K> {
 			for (const annotation of annotations) {
-				// Later session-replay annotations replace the default web one.
+				// Later session-replay annotations replace the default App Kit one.
 				if (annotation.option === "session-replay") {
 					internal.annotations = internal.annotations.filter(
 						(a) => a.option !== "session-replay",

@@ -1,7 +1,10 @@
 /**
- * Deep Bindle integration: every web-facing Bindle surface is Session-Replay
- * capable by default (ADR-0137). Hosts wrap fetch handlers so HTML responses
- * get a privacy-first tracker bootstrap and `/__hobo/replay/*` serves ingest.
+ * Deep Bindle integration: every **App Kit** is Session-Replay capable by
+ * default (ADR-0137). App Kits (api, web, service, ui, websocket, job,
+ * wasm-component) are the Bindle authoring term for entrypoint-bearing surfaces
+ * — prefer this over "membrane types". Hosts wrap HTTP App Kit fetch handlers
+ * so HTML responses get a privacy-first tracker bootstrap and
+ * `/__hobo/replay/*` serves ingest.
  */
 import {
 	injectSessionReplayBootstrap,
@@ -33,8 +36,21 @@ export const SESSION_REPLAY_OPTION = "session-replay" as const;
 // public-contract: HTTP path prefix for ingest/list/open on Bindle hosts.
 export const SESSION_REPLAY_PATH_PREFIX = "/__hobo/replay" as const;
 
+/** App Kit kinds that receive Session Replay by default (mirrors @hobo/bindles). */
+export const REPLAYABLE_APP_KIT_KINDS = Object.freeze([
+	"api",
+	"web",
+	"service",
+	"ui",
+	"websocket",
+	"job",
+	"wasm-component",
+] as const);
+
+export type ReplayableAppKitKind = (typeof REPLAYABLE_APP_KIT_KINDS)[number];
+
 export type SessionReplayAnnotationConfig = Readonly<{
-	/** Default true for web resources. Explicit false opts out. */
+	/** Default true for App Kits. Explicit false opts out. */
 	enabled?: boolean;
 	/** Production sampling 0..1 when progressive. */
 	sampleRate?: number;
@@ -62,7 +78,9 @@ export type BindleSessionReplayPlan = Readonly<{
 	/** True when at least one replayable surface exists and policy allows. */
 	enabled: boolean;
 	reason:
+		| "bindle-kit-default-on"
 		| "bindle-web-default-on"
+		| "no-replayable-app-kit"
 		| "no-replayable-web-surface"
 		| "local-default-on"
 		| "env-kill"
@@ -115,19 +133,23 @@ export function readSessionReplayAnnotation(
 	return undefined;
 }
 
+export function isReplayableAppKitKind(kind: string): kind is ReplayableAppKitKind {
+	return (REPLAYABLE_APP_KIT_KINDS as readonly string[]).includes(kind);
+}
+
 /**
- * Web resources are replayable by default. Explicit annotation can disable.
- * Api/service resources are included only when they carry an explicit
- * session-replay annotation (or endpoint.external + session-replay).
+ * Every App Kit is replayable by default. Explicit annotation can disable.
+ * Infra Kits (kv, bucket, queue, …) are not entrypoint hosts — not replayable
+ * unless explicitly annotated on.
  */
 export function isResourceReplayable(record: BindleResourceLike): boolean {
 	const ann = readSessionReplayAnnotation(record.annotations);
 	if (ann !== undefined && ann.enabled === false) return false;
-	if (record.kind === "web") {
-		// Default-on for all web surfaces unless opted out.
+	if (isReplayableAppKitKind(record.kind)) {
+		// Default-on for all App Kits unless opted out.
 		return true;
 	}
-	// Other HTTP kinds: only when explicitly annotated on.
+	// Infra Kits: only when explicitly annotated on.
 	return ann?.enabled === true;
 }
 
@@ -153,10 +175,10 @@ export function deriveBindleSessionReplayPlan(
 	const hasSurface = resourceNames.length > 0;
 	const enabled = hasSurface && policy.enabled;
 	const reason: BindleSessionReplayPlan["reason"] = !hasSurface
-		? "no-replayable-web-surface"
+		? "no-replayable-app-kit"
 		: !policy.enabled
 			? policy.reason
-			: "bindle-web-default-on";
+			: "bindle-kit-default-on";
 
 	return Object.freeze({
 		bindleName: definition.name,

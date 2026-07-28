@@ -1,7 +1,10 @@
 /**
- * HTTP entrypoint collection + Session Replay wrap (ADR-0137).
+ * HTTP App Kit entrypoint collection + Session Replay wrap (ADR-0137).
  * Kept free of Yard/compose imports so tests and agents can exercise
- * Bindle web replay without loading the full host graph.
+ * Bindle Kit replay without loading the full host graph.
+ *
+ * **App Kit** (not "membrane type"): Bindle-declared application surfaces
+ * (api, web, service, ui, …). Every HTTP App Kit is Session-Replay wrapped.
  */
 import type { BindleDefinition } from "@hobo/bindles";
 import {
@@ -25,8 +28,14 @@ export type ListServableEntrypointsResult = {
 	readonly sessionReplayStore: DualFixtureStore;
 };
 
-function isHttpComponent(kind: string): boolean {
-	return kind === "api" || kind === "web" || kind === "service";
+/** HTTP App Kits that host fetch handlers on local Yard / Camp. */
+function isHttpAppKit(kind: string): boolean {
+	return (
+		kind === "api" ||
+		kind === "web" ||
+		kind === "service" ||
+		kind === "ui"
+	);
 }
 
 /**
@@ -78,7 +87,7 @@ export function listServableEntrypointsWithReplay(
 ): ListServableEntrypointsResult {
 	const entries: ServableEntrypoint[] = [];
 	for (const [name, record] of Object.entries(definition.resources)) {
-		if (!isHttpComponent(record.kind)) continue;
+		if (!isHttpAppKit(record.kind)) continue;
 		const thunk = definition.entrypoint(name);
 		if (typeof thunk !== "function") continue;
 		const resolved = asFetchHandler(thunk());

@@ -21,6 +21,16 @@ const sampleDefinition = {
 		api: {
 			kind: "api",
 			name: "api",
+			annotations: [sessionReplayAnnotation()],
+		},
+		worker: {
+			kind: "service",
+			name: "worker",
+			annotations: [],
+		},
+		kv: {
+			kind: "kv",
+			name: "kv",
 			annotations: [],
 		},
 		optOut: {
@@ -32,22 +42,28 @@ const sampleDefinition = {
 };
 
 describe("bindle session-replay integration", () => {
-	it("web resources are replayable by default; explicit false opts out", () => {
+	it("every App Kit is replayable by default; infra kits and explicit false opt out", () => {
 		expect(isResourceReplayable(sampleDefinition.resources.storefront)).toBe(
 			true,
 		);
-		expect(isResourceReplayable(sampleDefinition.resources.api)).toBe(false);
+		expect(isResourceReplayable(sampleDefinition.resources.api)).toBe(true);
+		// service is an App Kit even without annotation (default-on by kind)
+		expect(isResourceReplayable(sampleDefinition.resources.worker)).toBe(true);
+		expect(isResourceReplayable(sampleDefinition.resources.kv)).toBe(false);
 		expect(isResourceReplayable(sampleDefinition.resources.optOut)).toBe(
 			false,
 		);
 	});
 
-	it("derive plan enables local default when web surfaces exist", () => {
+	it("derive plan enables local default when any App Kit exists", () => {
 		const plan = deriveBindleSessionReplayPlan(sampleDefinition, {});
 		expect(plan.enabled).toBe(true);
+		expect(plan.reason).toBe("bindle-kit-default-on");
 		expect(plan.resourceNames).toContain("storefront");
+		expect(plan.resourceNames).toContain("api");
+		expect(plan.resourceNames).toContain("worker");
 		expect(plan.resourceNames).not.toContain("optOut");
-		expect(plan.resourceNames).not.toContain("api");
+		expect(plan.resourceNames).not.toContain("kv");
 		expect(plan.pathPrefix).toBe(SESSION_REPLAY_PATH_PREFIX);
 	});
 

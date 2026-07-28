@@ -93,10 +93,18 @@ export function createBindlesPublicApiSnapshot(
 		"featureSpecsToStoreInputs",
 		"rollout",
 		"rolloutResource",
-		// Session Replay default supply on web (ADR-0137)
+		// Session Replay default supply on App Kits (ADR-0137)
 		"sessionReplay",
 		"SESSION_REPLAY_OPTION",
 		"isSessionReplayAnnotation",
+		"defaultAppKitSessionReplayAnnotation",
+		// App Kit taxonomy (prefer over "membrane types" at Bindle layer)
+		"APP_KIT_KINDS",
+		"HTTP_APP_KIT_KINDS",
+		"INFRA_KIT_KINDS",
+		"appKitLabel",
+		"isAppKitKind",
+		"isHttpAppKitKind",
 		...factoryNames,
 	]);
 
@@ -437,6 +445,44 @@ export function createBindlesPublicApiSnapshot(
 				kind: "session-replay-helper",
 				signature:
 					"isSessionReplayAnnotation(annotation: ProviderAnnotation): boolean",
+			},
+			{
+				name: "defaultAppKitSessionReplayAnnotation",
+				kind: "session-replay-helper",
+				signature:
+					"defaultAppKitSessionReplayAnnotation(): ProviderAnnotation",
+			},
+			{
+				name: "APP_KIT_KINDS",
+				kind: "app-kit-constant",
+				signature:
+					'const APP_KIT_KINDS: readonly ["api","web","service","ui","websocket","job","wasm-component"]',
+			},
+			{
+				name: "HTTP_APP_KIT_KINDS",
+				kind: "app-kit-constant",
+				signature:
+					'const HTTP_APP_KIT_KINDS: readonly ["api","web","service","ui"]',
+			},
+			{
+				name: "INFRA_KIT_KINDS",
+				kind: "app-kit-constant",
+				signature: "const INFRA_KIT_KINDS: readonly ResourceKind[]",
+			},
+			{
+				name: "isAppKitKind",
+				kind: "app-kit-helper",
+				signature: "isAppKitKind(kind: string): kind is AppKitKind",
+			},
+			{
+				name: "isHttpAppKitKind",
+				kind: "app-kit-helper",
+				signature: "isHttpAppKitKind(kind: string): kind is HttpAppKitKind",
+			},
+			{
+				name: "appKitLabel",
+				kind: "app-kit-helper",
+				signature: "appKitLabel(kind: AppKitKind): string",
 			},
 			...extraExports,
 		],

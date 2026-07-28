@@ -1,14 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: App Kits
-description: "App Kit (Kit): Bindle-declared application surfaces — api, web, service, ui, websocket, job, wasm-component. Prefer Kit over membrane type at authoring; WIT membrane stays the low-level portability contract."
+description: "App Kit (Kit): Bindle-declared application surfaces — api, web, service, ui, websocket, job, wasm-component."
 ---
 
 # App Kits
 
-An **App Kit** (short: **Kit**) is a Bindle-declared **application surface** — the kinds that host entrypoints or interactive runtime behavior.
-
-Prefer **Kit** / **App Kit** at the Bindle authoring layer. Do **not** call these "membrane types." The **WIT/WASM membrane** (ADR-0069 / wRPC) is the *low-level* portability contract between components and capability providers; Kits are the *app-facing* composition of ports into something you pack in a Bindle.
+An **App Kit** (short: **Kit**) is a Bindle-declared **application surface** — the kinds that host entrypoints or interactive runtime behavior. Kits compose runtime ports into something you pack in a Bindle; providers implement those ports behind WIT interfaces (ADR-0069 / wRPC).
 
 ## App Kit kinds
 
@@ -58,7 +56,7 @@ Kill switch: `HOBO_REPLAY=0`. Full surface: [Session Replay](/HoBo/reference/ses
 |---|---|---|
 | **App Kit** | Bindle authoring | Entrypoint-bearing resource kinds |
 | **Infra Kit** | Bindle authoring | Port / infrastructure resources |
-| **Membrane** | Runtime substrate | WIT/WASM + wRPC capability boundary |
+| **WIT port** | Runtime capability interface | Host/provider link for a Kit |
 
 ## Related
 

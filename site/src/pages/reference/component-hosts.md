@@ -31,7 +31,7 @@ See [EventStore](/HoBo/reference/eventstore/) · [Runtime ports](/HoBo/reference
 
 - Private components componentized to **wasi:http** and run in **Wasmtime OS-process sandboxes**
 - Public web may stay process-local (wired by the app host)
-- Structural capability deny-by-default (imports are the membrane)
+- Structural capability deny-by-default (only linked WIT imports are invokable)
 
 ### `componentHost=oci` — `@hobo/runtime-oci`
 

@@ -1,14 +1,14 @@
 ---
 layout: ../../layouts/Docs.astro
 title: WASM & WIT surface
-description: "Component Model membrane: ports as WIT, apps as components, deny-by-default capabilities, and host-supplied storage."
+description: "WIT/WASM Component Model: ports as WIT, apps as components, deny-by-default capabilities, and host-supplied storage."
 ---
 
 # WASM & WIT surface
 
-HoBo’s portability **membrane** is **WIT/WASM** (Component Model / wasmCloud-shaped). TypeScript is the first reference implementation language, not a requirement for the architecture.
+HoBo’s portability contract is **WIT/WASM** (Component Model / wasmCloud-shaped). TypeScript is the first reference implementation language, not a requirement for the architecture.
 
-Do not confuse the membrane with **[App Kits](/HoBo/primitives/app-kits/)** (Bindle-declared `api`/`web`/`service`/… surfaces). Kits compose ports at authoring time; the membrane is the low-level capability boundary those ports implement.
+**[App Kits](/HoBo/primitives/app-kits/)** (Bindle-declared `api`/`web`/`service`/… surfaces) compose those ports at authoring time. WIT interfaces are the capability boundary the hosts and providers implement.
 
 ## Why WIT
 

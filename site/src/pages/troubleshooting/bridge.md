@@ -10,7 +10,7 @@ description: "Session-scoped local/remote development on any provider: fork one 
 
 Bridge to Kubernetes had one great idea: develop **one** service on your laptop while it participates in the **real** deployed environment — your requests detour to your machine, everyone else's don't. Its limits were structural: it worked by intercepting pod traffic, so it only worked on Kubernetes.
 
-HoBo's version keeps the idea and drops the requirement. Every service boundary is a WIT port whose peers are PACT-emulable, and every boundary supports per-request routing modes (`live · mock · bridge · replay · shadow · fault`). Forking traffic to your laptop is just one more route — applied **at the membrane**, not in any orchestrator — so it works identically on any provider, a mix of them, or your own metal.
+HoBo's version keeps the idea and drops the requirement. Every service boundary is a WIT port whose peers are PACT-emulable, and every boundary supports per-request routing modes (`live · mock · bridge · replay · shadow · fault`). Forking traffic to your laptop is just one more route — applied **at the WIT port boundary**, not in any orchestrator — so it works identically on any provider, a mix of them, or your own metal.
 
 ## The three moves
 
@@ -87,5 +87,5 @@ The boundary router above ships today in `@hobo/runtime` (`createBoundaryRouter`
 ## Related
 
 - [Testing](/HoBo/guide/testing/) — the same modes, pointed at tests.
-- [Core concepts](/HoBo/guide/concepts/) — the WIT/WASM membrane the routing lives in.
+- [Core concepts](/HoBo/guide/concepts/) — WIT/WASM ports the routing lives in.
 - [Custom providers](/HoBo/customizations/providers/) — why boundaries are provider-agnostic in the first place.

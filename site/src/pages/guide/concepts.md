@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Core concepts
-description: "The HoBo vocabulary: Bindle, App Kits, Camp, Yard, Junction, continuous migration, the WIT/WASM membrane, the replayable event log, and agent-native identity."
+description: "The HoBo vocabulary: Bindle, App Kits, Camp, Yard, Junction, continuous migration, WIT/WASM ports, the replayable event log, and agent-native identity."
 ---
 
 # Core concepts
@@ -30,7 +30,7 @@ Inside a Bindle, resources split into two families:
 | **[App Kit](/HoBo/primitives/app-kits/)** | Application surface that hosts entrypoints or interactive runtime behavior | `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component` |
 | **Infra Kit** | Port / infrastructure dependency — not an entrypoint host | `kv`, `bucket`, `queue`, `topic`, `secret`, `data`, … |
 
-Prefer **Kit** / **App Kit** at the Bindle authoring layer. Do **not** call these "membrane types." **[Session Replay](/HoBo/reference/session-replay/)** is default-supplied on every App Kit (not only `web`).
+**[Session Replay](/HoBo/reference/session-replay/)** is default-supplied on every App Kit (not only `web`).
 
 ## Continuous migration
 
@@ -40,16 +40,16 @@ The guiding principle behind everything above: **placement is a standing decisio
 - **Reversible:** every move is a sequence of events; rolling back a migration is replaying the decision, not archaeology.
 - **Cost-directed:** the default objective is simple and honest — the cheapest home that meets your standards.
 
-## The WIT/WASM membrane
+## WIT/WASM ports
 
-The portable contract between app code, runtime ports, and provider adapters is **WIT** (the WebAssembly Component Model's interface language, hosted on wasmCloud by default). This is the **membrane** — the low-level portability boundary. It is **not** the same idea as an App Kit:
+The portable contract between app code, runtime ports, and provider adapters is **WIT** (the WebAssembly Component Model's interface language, hosted on wasmCloud by default). App Kits sit above that contract:
 
 - **Ports are WIT interfaces** — storage, messaging, HTTP, identity, and more.
 - **Apps are wasm components** (with an OCI-container fallback for anything wasm can't host yet).
 - **Providers are capability providers** linked to component imports — deny-by-default: a component reaches a backend only via a link the manifest declared.
 - **Any Component-Model language** can author against the same interfaces. TypeScript is the first reference implementation, not a requirement.
 
-This thin, typed membrane is what makes continuous migration economical: moving homes means re-linking ports to a new provider's adapters, not rewriting the app. App Kits *compose* those ports into Bindle-declared surfaces you author day to day.
+That thin, typed port contract is what makes continuous migration economical: moving homes means re-linking ports to a new provider's adapters, not rewriting the app. App Kits *compose* those ports into Bindle-declared surfaces you author day to day.
 
 ## Ports and adapters, everywhere
 

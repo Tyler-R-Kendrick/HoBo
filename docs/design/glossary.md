@@ -14,6 +14,8 @@ This is the canonical glossary for HoBo design terms. `docs:design-lint` treats 
 | Agent-to-human handoff | A typed escalation package over `hobo:notify` that asks a human to apply a fix, re-bless output, or abort work before a deadline. |
 | Aggregate | The write-model consistency boundary, realized as an actor over the event log. |
 | Bindle | App-level topology and bindings, provider-agnostic, deployed into one or more Camps. |
+| App Kit (Kit) | Bindle-declared application surface kinds that host entrypoints or interactive runtime behavior: `api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component`. Prefer **Kit** / **App Kit** over calling these "membrane types" at the Bindle authoring layer. Session Replay is default-supplied on every Kit ([ADR-0137](./adr/03-data-plane.md#adr-0137)). Distinct from the low-level WIT/WASM **membrane** (wRPC portability boundary, [ADR-0069](./adr/01-architecture-core.md#adr-0069)). |
+| Infra Kit | Bindle-declared infrastructure/port resources that are not entrypoint hosts (`kv`, `bucket`, `queue`, `topic`, `secret`, `data`, …). No default Session Replay unless explicitly annotated. |
 | Broker Catalog Snapshot | Versioned provider/catalog evidence set consumed by the Meta-cloud Broker when validating a Contract Manifest. |
 | Broker Environment | Optional additional approved provider/catalog ceiling applied **in addition to** the active Rail. Not a setup path — Station + Rail are required. See Station / Rail rows. |
 | Camp | Provider-specific deployment target such as `prod-aws`; it selects runtime backend, Provider, and IaC engine for a Bindle placement. |

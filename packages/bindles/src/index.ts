@@ -20,6 +20,17 @@ export {
 } from "./dependencies.js";
 export { env } from "./env.js";
 export {
+	APP_KIT_KINDS,
+	HTTP_APP_KIT_KINDS,
+	INFRA_KIT_KINDS,
+	appKitLabel,
+	isAppKitKind,
+	isHttpAppKitKind,
+	type AppKitKind,
+	type HttpAppKitKind,
+} from "./app-kits.js";
+export {
+	defaultAppKitSessionReplayAnnotation,
 	isSessionReplayAnnotation,
 	sessionReplay,
 	SESSION_REPLAY_OPTION,

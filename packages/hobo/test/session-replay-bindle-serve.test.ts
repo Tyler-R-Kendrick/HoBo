@@ -35,17 +35,37 @@ describe("session replay deep bindle serve integration", () => {
 			{ env: {}, stationId: "station:local" },
 		);
 		expect(sessionReplay.enabled).toBe(true);
+		// Every App Kit (web + api) is replayable by default.
 		expect(sessionReplay.resourceNames).toContain("web");
-		expect(sessionReplay.resourceNames).not.toContain("api");
+		expect(sessionReplay.resourceNames).toContain("api");
+		expect(sessionReplay.reason).toBe("bindle-kit-default-on");
 
 		const webEntry = entrypoints.find((e) => e.name === "web");
+		const apiEntry = entrypoints.find((e) => e.name === "api");
 		expect(webEntry).toBeDefined();
+		expect(apiEntry).toBeDefined();
 		const page = await webEntry!.handler(
 			new Request("http://127.0.0.1:4000/"),
 		);
 		const html = await page.text();
 		expect(html).toContain('data-hobo-replay="1"');
 		expect(page.headers.get("x-hobo-session-replay")).toBe("1");
+
+		// API Kit also exposes ingest on the wrap (JSON body pass-through).
+		const apiJson = await apiEntry!.handler(new Request("http://x/api"));
+		expect(await apiJson.json()).toEqual({ ok: true });
+		const apiIngest = await apiEntry!.handler(
+			new Request("http://127.0.0.1:4000/__hobo/replay/ingest", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					sessionId: "sess-api-1",
+					seq: 0,
+					events: [{ type: 2, timestamp: 1, data: { tagName: "div" } }],
+				}),
+			}),
+		);
+		expect(apiIngest.status).toBe(202);
 
 		const ingest = await webEntry!.handler(
 			new Request("http://127.0.0.1:4000/__hobo/replay/ingest", {

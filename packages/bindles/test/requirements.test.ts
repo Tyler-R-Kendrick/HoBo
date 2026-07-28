@@ -55,6 +55,14 @@ describe("bindle requirements + provider selection rejection", () => {
 			});
 			return { api };
 		});
-		expect(shop.resources.api?.annotations[0]?.option).toBe("env");
+		// App Kit default session-replay comes first; env is appended via .with.
+		expect(
+			shop.resources.api?.annotations.some((a) => a.option === "env"),
+		).toBe(true);
+		expect(
+			shop.resources.api?.annotations.some(
+				(a) => a.option === "session-replay",
+			),
+		).toBe(true);
 	});
 });

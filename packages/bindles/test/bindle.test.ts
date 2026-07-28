@@ -61,7 +61,13 @@ describe("bindle()", () => {
 					name: "api",
 					stableId: "api:api",
 					declaredAllow: [],
-					annotations: [],
+					annotations: [
+						{
+							provider: "hobo",
+							option: "session-replay",
+							config: { enabled: true, defaultSupply: "kit-local-on" },
+						},
+					],
 					dependsOn: ["data", "queue"],
 				},
 			},
@@ -103,33 +109,51 @@ describe("bindle()", () => {
 			option: "env",
 			config: { GREETING_PREFIX: "howdy", APP_TITLE: "howdy" },
 		});
-		expect(definition.resources.api.annotations).toEqual([campEnv]);
-		// Web carries default Session Replay annotation (ADR-0137) plus env.
+		// Every App Kit (api + web) carries default Session Replay (ADR-0137).
+		expect(definition.resources.api.annotations).toEqual([
+			{
+				provider: "hobo",
+				option: "session-replay",
+				config: { enabled: true, defaultSupply: "kit-local-on" },
+			},
+			campEnv,
+		]);
 		expect(definition.resources.web.annotations).toEqual([
 			{
 				provider: "hobo",
 				option: "session-replay",
-				config: { enabled: true, defaultSupply: "local-on" },
+				config: { enabled: true, defaultSupply: "kit-local-on" },
 			},
 			campEnv,
 		]);
 	});
 
-	it("web resources auto-enable session-replay; explicit false opts out", () => {
+	it("every App Kit auto-enables session-replay; explicit false opts out; kv does not", () => {
 		const definition = bindle("replay-demo", (b) => {
-			const on = b.web();
+			const api = b.api();
+			const web = b.web();
+			const service = b.service();
+			const kv = b.kv();
 			const off = b.web().with({
 				provider: "hobo",
 				option: "session-replay",
 				config: { enabled: false },
 			});
-			return { on, off };
+			return { api, web, service, kv, off };
 		});
+		for (const name of ["api", "web", "service"] as const) {
+			expect(
+				definition.resources[name].annotations.some(
+					(a) => a.option === "session-replay" && a.config.enabled === true,
+				),
+				name,
+			).toBe(true);
+		}
 		expect(
-			definition.resources.on.annotations.some(
-				(a) => a.option === "session-replay" && a.config.enabled === true,
+			definition.resources.kv.annotations.some(
+				(a) => a.option === "session-replay",
 			),
-		).toBe(true);
+		).toBe(false);
 		expect(
 			definition.resources.off.annotations.some(
 				(a) => a.option === "session-replay" && a.config.enabled === false,

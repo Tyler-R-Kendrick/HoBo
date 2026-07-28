@@ -14,23 +14,36 @@ Harness/OpenFeature, continuous identity, and the control-plane event log.
 
 ## Default local path
 
-### Every Bindle `web` app is Session-Replay capable (no app code required)
+### Every App Kit is Session-Replay capable (no app code required)
 
-`bindle("app", b => ({ web: b.web(handler) }))` auto-attaches a
-`session-replay` platform annotation. Local Yard hosts (`hobo dev`) wrap web
-entrypoints so that:
+**App Kit** (Kit) = Bindle-declared application surface — `api`, `web`, `service`,
+`ui`, `websocket`, `job`, `wasm-component`. Prefer this term over "membrane type"
+at the Bindle layer (the WIT/WASM membrane stays the low-level portability
+contract).
+
+Any Kit auto-attaches `session-replay`. Local Yard hosts (`hobo dev`) wrap every
+HTTP App Kit so that:
 
 1. HTML responses get a privacy-first bootstrap (`data-hobo-replay`)
-2. Batches POST to `/__hobo/replay/ingest` on the same origin
+2. Batches POST to `/__hobo/replay/ingest` on the same origin (API Kits too)
 3. Agents/CLI can list via `hobo replay list` / `/__hobo/replay/sessions`
 
-Opt out per resource:
+```ts
+bindle("shop", (b) => ({
+  api: b.api(apiHandler),       // API Kit — replay on by default
+  web: b.web(storefront),       // Web Kit — replay on by default
+  worker: b.service(worker),    // Service Kit — replay on by default
+  cache: b.kv(),                // Infra Kit — no default replay
+}));
+```
+
+Opt out per Kit:
 
 ```ts
 import { bindle, sessionReplay } from "@hobo/bindles";
 
 bindle("app", (b) => ({
-  web: b.web(handler).with(sessionReplay({ enabled: false })),
+  api: b.api(handler).with(sessionReplay({ enabled: false })),
 }));
 ```
 

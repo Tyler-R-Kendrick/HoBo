@@ -8,11 +8,11 @@ description: "Port conformance suites, SDK semantics annex, and the golden suite
 
 ## Port conformance
 
-Every implementable port (runtime EventStore, provider adapters, IaC engines, …) ships a **conformance suite**. Human- and AI-authored adapters must pass the same suite to be certified. `@hobo/conformance` hosts shared suites (for example EventStore append/idempotency/replay).
+Every implementable port (runtime EventStore, provider adapters, IaC engines, …) ships a **conformance suite**. Human- and AI-authored adapters must pass the same suite to be certified. conformance suite hosts shared suites (for example EventStore append/idempotency/replay).
 
 ## SDK semantics annex
 
-Resilience, cancellation, deadlines, lifecycle tables, and supervision are pinned by the **DX SDK resilience semantics** matrix — without depending on Effect-TS or XState as public libraries. Contract-visible ResilienceProfile application **must** obey that matrix (never-retry rules, deterministic schedules, fact-based inspection).
+Resilience, cancellation, deadlines, lifecycle tables, and supervision are pinned by the **DX SDK resilience semantics** matrix — Contract-visible ResilienceProfile application **must** obey that matrix (never-retry rules, deterministic schedules, fact-based inspection).
 
 ## Golden suite (deploy gate)
 

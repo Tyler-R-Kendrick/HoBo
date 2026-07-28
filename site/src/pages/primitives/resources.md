@@ -6,7 +6,7 @@ description: "Bindle resource factories grouped as App Kits vs Infra Kits: api, 
 
 # Resource catalog
 
-App resources are declared in **`@hobo/bindles`** — **not** in `@hobo/core`. Names come from record keys the builder returns; explicit Bindle v1 methods do not take resource name arguments.
+App resources are declared in **`hobo/bindles`** — the app authoring surface — not in lower-level runtime ports. Names come from record keys the builder returns; explicit Bindle v1 methods do not take resource name arguments.
 
 Resources group as **App Kits** (entrypoint surfaces) and **Infra Kits** (platform resources). Ports and providers link via WIT/WASM ([WASM & WIT](/HoBo/architecture/wasm/)).
 
@@ -55,4 +55,4 @@ Collection produces provider-agnostic **manifest IR**. Planner lowers nodes to *
 
 ## Related
 
-[Bindles](/HoBo/primitives/bindles/) · [Matching](/HoBo/reference/matching/) · [Config & secrets](/HoBo/reference/config-secrets/) · [Package map](/HoBo/reference/packages/)
+[Bindles](/HoBo/primitives/bindles/) · [Matching](/HoBo/reference/matching/) · [Config & secrets](/HoBo/reference/config-secrets/) · [Capability map](/HoBo/reference/packages/)

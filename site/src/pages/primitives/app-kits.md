@@ -6,7 +6,7 @@ description: "App Kit (Kit): Bindle-declared application surfaces — api, web, 
 
 # App Kits
 
-An **App Kit** (short: **Kit**) is a Bindle-declared **application surface** — the kinds that host entrypoints or interactive runtime behavior. Kits compose runtime ports into something you pack in a Bindle; providers implement those ports behind WIT interfaces (ADR-0069 / wRPC).
+An **App Kit** (short: **Kit**) is a Bindle-declared **application surface** — the kinds that host entrypoints or interactive runtime behavior. Kits compose runtime ports into something you pack in a Bindle; providers implement those ports behind WIT interfaces.
 
 ## App Kit kinds
 
@@ -20,7 +20,7 @@ An **App Kit** (short: **Kit**) is a Bindle-declared **application surface** —
 | Job Kit | `job` | Batch / async work |
 | Component Kit | `wasm-component` | Wasm component dependency as surface |
 
-Package constants: `APP_KIT_KINDS`, `isAppKitKind`, `appKitLabel` from `@hobo/bindles`.
+Helpers: app kit kinds and labels in the Bindles SDK.
 
 ## Infra Kits (not App Kits)
 
@@ -28,22 +28,22 @@ Infrastructure/port resources that are **not** entrypoint hosts:
 
 `kv` · `bucket` · `queue` · `topic` · `secret` · `data` · `schedule` · `external` · `container` · `flag` · `auth` · `crypto` · `notify` · `guardrail` · `golden` · `experiment` · `rollout`
 
-See `INFRA_KIT_KINDS` in `@hobo/bindles`.
+See infra kit kinds in the Bindles SDK.
 
 ## HTTP App Kits
 
 Subset of App Kits that local Yard hosts serve as fetch handlers:
 
-`api` · `web` · `service` · `ui` — `HTTP_APP_KIT_KINDS` / `isHttpAppKitKind`.
+`api` · `web` · `service` · `ui` — `HTTP_app kit kinds` / `isHttpAppKitKind`.
 
 ## Session Replay
 
-**Every App Kit** is Session-Replay capable by default (ADR-0137): privacy-first capture, dual fixtures locally, progressive gating in production. Infra Kits are not auto-annotated.
+**Every App Kit** is Session-Replay capable by default: privacy-first capture, dual fixtures locally, progressive gating in production. Infra Kits are not auto-annotated.
 
 Opt out per Kit:
 
 ```ts
-import { sessionReplay } from "@hobo/bindles";
+import { sessionReplay } from "hobo/bindles";
 
 b.api(handler).with(sessionReplay({ enabled: false }));
 ```

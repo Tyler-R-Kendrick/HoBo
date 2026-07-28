@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "Handoffs (moved) (moved)"
+title: "Handoffs (moved)"
 description: "This page moved to /HoBo/operations/handoffs/."
 ---
 

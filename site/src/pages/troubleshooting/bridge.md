@@ -19,16 +19,16 @@ HoBo's version keeps the idea and drops the requirement. Every service boundary 
 **2. Bridge the boundary.** Point the boundary at the implementation you're editing, scoped to your session:
 
 ```ts
-import { createBoundaryRouter } from "@hobo/runtime";
+import { createBoundaryRouter } from "hobo/runtime";
 
 const router = createBoundaryRouter();
 const payments = router
-  .boundary<Charge, Receipt>("payments")
-  .live(deployedPayments); // the version running in the camp
+.boundary<Charge, Receipt>("payments")
+.live(deployedPayments); // the version running in the camp
 
 await payments.bridge(myLocalPayments, {
-  session: "tyler/feature-refunds",
-  contract: paymentsPact, // the boundary's PACT interactions
+ session: "tyler/feature-refunds",
+ contract: paymentsPact, // the boundary's PACT interactions
 });
 ```
 
@@ -36,7 +36,7 @@ await payments.bridge(myLocalPayments, {
 
 ```ts
 await payments.call(charge, { session: "tyler/feature-refunds" }); // → your laptop
-await payments.call(charge);                                       // → the deployed camp
+await payments.call(charge); // → the deployed camp
 ```
 
 Tear it down with `payments.unbridge("tyler/feature-refunds")`. A bridge with **no** session forks the whole boundary — the classic "route this service to me" mode — and `unbridge()` restores it.
@@ -47,8 +47,8 @@ A bridge is **contract-gated**. Before your local implementation carries a singl
 
 ```ts
 await payments.bridge(brokenLocalBuild, {
-  session: "tyler/feature-refunds",
-  contract: paymentsPact,
+ session: "tyler/feature-refunds",
+ contract: paymentsPact,
 });
 // BridgeContractError: bridged implementation for boundary "payments"
 // fails its contract (1 interaction): for input {"amount":42,…}
@@ -82,7 +82,7 @@ The bridge is one routing mode of six, and they compose per boundary:
 
 ## Honest status
 
-The boundary router above ships today in `@hobo/runtime` (`createBoundaryRouter`) with in-process session tagging, and its test suite is the executable example of everything on this page. Session baggage on wire transports, the `hobo bridge` CLI verb (open tunnel, register fork, stream contract verification), automatic PACT-broker → bridge-contract conversion, and branch-tagged preview environments are staged next — the design is pinned even where the plumbing isn't.
+The boundary router above ships today with in-process session tagging, and its tests are the executable example of everything on this page. Session baggage on wire transports, the `hobo bridge` CLI verb (open tunnel, register fork, stream contract verification), automatic pact-broker → bridge-contract conversion, and branch-tagged preview environments are staged next — the design is pinned even where the plumbing isn't.
 
 ## Related
 

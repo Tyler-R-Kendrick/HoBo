@@ -18,9 +18,9 @@ The FinOps Crew member **advises** on cost and efficiency. It does not auto-spen
 
 ## Hard rules
 
-1. Ranking input ≠ billing invention.  
-2. Free-tier never pooled across tenants.  
-3. Rotation across **providers**, not multi-account free-tier games.  
+1. Ranking input ≠ billing invention. 
+2. Free-tier never pooled across tenants. 
+3. Rotation across **providers**, not multi-account free-tier games. 
 4. Enforcement via policy breakers/tiers — not chatty overrides.
 
 ## Related

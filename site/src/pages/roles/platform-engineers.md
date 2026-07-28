@@ -12,25 +12,25 @@ description: "Platform engineers write Camps, Yards, and Junctions — the typed
 
 ```ts
 // A camp: one provider + one durable runtime — a place an app can live
-import { camp } from "@hobo/camps";
-import { aws } from "@hobo/provider-aws";
-import { postgresRuntime } from "@hobo/runtime-postgres";
+import { camp } from "hobo/camps";
+import { aws } from "hobo/providers/aws";
+import { postgresRuntime } from "hobo/runtimes/postgres";
 import app from "../apps/my-app/bindle";
 
 export const prodEast = camp("prod-east", {
-  bindle: app,
-  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: aws({ region: "us-east-1" }),
+ bindle: app,
+ runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
+ defaultProvider: aws({ region: "us-east-1" }),
 });
 ```
 
 ```ts
 // A yard: one provider's camps under shared policy, identity, reconciliation
-import { yard } from "@hobo/yards";
+import { yard } from "hobo/yards";
 export const awsYard = yard("aws", { camps: [prodEast, prodWest, staging] });
 
 // A junction: yards federated across clouds — peer to peer, no shared state
-import { junction } from "@hobo/junctions";
+import { junction } from "hobo/junctions";
 export default junction("acme", { yards: [awsYard, azureYard] });
 ```
 
@@ -40,16 +40,16 @@ export default junction("acme", { yards: [awsYard, azureYard] });
 - **Golden-path camps.** Templates for prod/staging/preview with the runtime backend, region defaults, and env semantics already decided. App teams get paved roads, not tickets.
 - **Yard-level governance.** Promotion rules between camps, shared identity, provider-global networking, drift posture (`hobo drift`), and reconciliation cadence.
 - **Junction federation.** Which clouds peer, what connectivity is inferred, and which [policy packs](/HoBo/roles/devsecops/) apply at each border. You also hold the broker-admin switch: leave camp inference on, or lock placement down to explicit, approved camps.
-- **The self-hosting decision.** The Yard control plane is itself a bindle — run HoBo's control plane in your own camp with the same tooling app teams use (`hobo up ./platform --seed`).
+- **The self-hosting decision.** The Yard control plane is itself a bindle — run HoBo's control plane in your own camp with the same tooling app teams use (`hobo up./platform --seed`).
 
 ## Your loop
 
 ```sh
-hobo plan --camp prod-east   # dry-run any change before it lands
-hobo verify                  # preflight the unified gate decision
-hobo drift                   # report drift; route governed remediation
-hobo add                     # install providers after signature + conformance checks
-hobo import                  # adopt an existing estate in place — never destroy/recreate
+hobo plan --camp prod-east # dry-run any change before it lands
+hobo verify # preflight the unified gate decision
+hobo drift # report drift; route governed remediation
+hobo add # install providers after signature + conformance checks
+hobo import # adopt an existing estate in place — never destroy/recreate
 ```
 
 ## Continuous migration is your dial

@@ -11,21 +11,21 @@ Your services, actors, and workflows are ordinary TypeScript functions. Dependen
 ## Boundary router pattern
 
 ```ts
-import { createBoundaryRouter } from "@hobo/runtime";
-import { expect, test } from "vitest";
+import { createBoundaryRouter } from "hobo/runtime";
+import { expect, test } from "node:test";
 
 const router = createBoundaryRouter();
 
 const payments = router.boundary<Charge, Receipt>("payments").mock([
-  {
-    input: { orderId: "o-1", amount: 42 },
-    output: { orderId: "o-1", status: "charged" },
-  },
+ {
+ input: { orderId: "o-1", amount: 42 },
+ output: { orderId: "o-1", status: "charged" },
+ },
 ]);
 
-test("checkout charges the cart", async () => {
-  const receipt = await payments.call({ orderId: "o-1", amount: 42 });
-  expect(receipt.status).toBe("charged");
+test("checkout charges the cart", async => {
+ const receipt = await payments.call({ orderId: "o-1", amount: 42 });
+ expect(receipt.status).toBe("charged");
 });
 ```
 
@@ -39,7 +39,7 @@ A `@trainable` / `@operation` contract’s examples double as its **eval suite**
 
 ## Aggregate / CQRS unit style
 
-Write-model aggregates (`@hobo/data`) fold streams and emit past-tense facts. Unit tests typically:
+Write-model aggregates fold streams and emit past-tense facts. Unit tests typically:
 
 1. Use an in-memory EventStore or a temp SQLite partition.
 2. Acquire a lease (in-memory ActorHost for pure unit speed, durable host for lease persistence).
@@ -48,8 +48,8 @@ Write-model aggregates (`@hobo/data`) fold streams and emit past-tense facts. Un
 ## Prefer package-scoped runs
 
 ```bash
-pnpm --filter @hobo/data test
-pnpm --filter @hobo/runtime-local exec vitest run test/eventstore
+run the package tests
+run the package tests
 ```
 
 Do not use full-repo test globs as a discovery tool. Search first.

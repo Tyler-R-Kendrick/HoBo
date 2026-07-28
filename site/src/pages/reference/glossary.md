@@ -12,10 +12,10 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **Camp** | Current home: one provider + durable runtime substrate |
 | **Yard** | Provider control-plane scope over camps (policy, identity, reconciliation) |
 | **Junction** | Cross-yard federation; peer yards, no shared mutable state |
-| **Conductor / Broker** | Policy-governed placement authority (`@hobo/broker`) |
-| **Station** | Hard control-plane isolation boundary a Conductor occupies (ADR-0131) |
+| **Conductor / Broker** | Policy-governed placement authority (Conductor) |
+| **Station** | Hard control-plane isolation boundary a Conductor occupies |
 | **Rail** | Content-addressed Station profile/bootstrap pin |
-| **Trail** | App-owned continuous migration recipe (ADR-0134) |
+| **Trail** | App-owned continuous migration recipe |
 | **OpenFeature** | CNCF flag evaluation API; sole public app flag surface under Harness |
 | **Matching** | Resource definition + placement selection process |
 | **ResourceActor** | Single-writer reconcilers for infrastructure resources |
@@ -43,7 +43,7 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **Golden suite** | Signed multi-check deploy gate bundle |
 | **SVID** | Workload/agent SPIFFE-style identity document |
 | **Relay** | Outbound network proxy keeping cloud creds in-boundary — *not* an agent |
-| **Named endpoint** | Hierarchical DNS-valid host under `.hobo.localhost` / `.hobo.test` (ADR-0130; never bare `.hobo`) |
+| **Named endpoint** | Hierarchical DNS-valid host under `.hobo.localhost` / `.hobo.test` |
 | **Resource intent** | Provider-neutral desired resource used in planning/FinOps routing |
 | **Showback** | Usage attribution projection — not an invoice by itself |
 | **Secretless-first** | Prefer federation/bindings over stored secrets |
@@ -52,10 +52,10 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **WIT** | Wasm Interface Types — portability contract for capabilities (wRPC) |
 | **App Kit (Kit)** | Bindle-declared application surface (`api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component`). Session Replay default-on. |
 | **Infra Kit** | Bindle port/infra resource (`kv`, `bucket`, `queue`, …) — not an entrypoint host; no default Session Replay |
-| **Session Replay** | Privacy-first DOM/session reconstruction on every App Kit (`@hobo/replay`, ADR-0137); `replay.*` — not event-log replay |
-| **Messaging** | Backend-agnostic publish/subscribe over `wasi:messaging` / `topic()` with delivery guarantees, consumer groups, DLQ (ADR-0138) |
-| **Kafka capability provider** | `@hobo/provider-kafka` exporting `wasi:messaging` for Kafka-compatible brokers; secretless bindings |
-| **Dapr runtime adapter** | Optional `@hobo/runtime-dapr` Camp runtime realizing ActorHost + pubsub; never the default (ADR-0031, ADR-0138) |
+| **Session Replay** | Privacy-first DOM/session reconstruction on every App Kit (Session Replay, ); `replay.*` — not event-log replay |
+| **Messaging** | Backend-agnostic publish/subscribe over the messaging port / `topic()` with delivery guarantees, consumer groups, DLQ |
+| **Kafka capability provider** | Kafka provider exporting the messaging port for Kafka-compatible brokers; secretless bindings |
+| **Dapr runtime adapter** | Optional optional Dapr runtime Camp runtime realizing ActorHost + pubsub; never the default |
 | **Event-log replay** | Folding durable EventStore facts for projections/audit — different from Session Replay |
 
 Longer design glossary lives in the repo design suite; this page is the **site-facing** subset for humans and agents reading Pages.

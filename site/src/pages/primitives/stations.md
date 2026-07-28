@@ -6,7 +6,7 @@ description: "Station is the hard control-plane isolation boundary a Conductor o
 
 # Stations & the Conductor
 
-A **Station** is the hard control-plane isolation boundary a **Conductor** occupies. It is **not** Bindle ⊂ Camp ⊂ Yard ⊂ Junction containment (ADR-0131). The Conductor (technical name: the **broker**, `@hobo/broker`) is a **pure runtime** that mounts a Station client + active Rail(s), runs resolve/scale/deliver, and emits receipts that pin `stationId` + `railHash` (+ catalog/policy hashes). It owns no durable Connections or policy packs — the Station does.
+A **Station** is the hard control-plane isolation boundary a **Conductor** occupies. It is **not** Bindle ⊂ Camp ⊂ Yard ⊂ Junction containment. The **Conductor** (sometimes called the broker in lower-level surfaces) is a **pure runtime** that mounts a Station client + active Rail(s), runs resolve/scale/deliver, and emits receipts that pin `stationId` + `railHash` (+ catalog/policy hashes). It owns no durable Connections or policy packs — the Station does.
 
 ## Station owns
 
@@ -17,7 +17,7 @@ A **Station** is the hard control-plane isolation boundary a **Conductor** occup
 | Bootstrap Rail | Initial trusted least-privilege profile |
 | Local client state | Under `HOBO_HOME/stations/` |
 
-Package: `@hobo/stations` (`station()`, StationService, Rails, local client, Privileged Access Gateway hooks).
+Authoring and ops surfaces: `station()` helpers, Rails, local client, and Privileged Access Gateway hooks.
 
 ## Station CLI (ops/setup)
 
@@ -45,7 +45,7 @@ Privileged Access Gateway sessions can be Station-aware — break-glass paths st
 
 ## The Conductor
 
-Somebody has to decide which provider hosts your bindle, whether a deploy is allowed, whether it fits the budget, whether it breaks a downstream contract, whether the app scales up or down to zero. That somebody is **the Conductor** — the one who decides which train you're riding. In code: **broker** (`@hobo/broker`). Same component.
+Somebody has to decide which provider hosts your bindle, whether a deploy is allowed, whether it fits the budget, whether it breaks a downstream contract, whether the app scales up or down to zero. That somebody is **the Conductor** — the one who decides which train you're riding. In code: **broker** (Conductor). Same component.
 
 The Conductor decides *only* from the policies it is configured to maintain, while **occupying a Station**.
 

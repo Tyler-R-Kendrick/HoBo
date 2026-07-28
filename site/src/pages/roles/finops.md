@@ -20,9 +20,9 @@ You care about **unit economics and accountability** without becoming the team t
 
 ## What you should demand
 
-1. No free-tier pooling stories.  
-2. No fabricated “vendor signed” price attestations.  
-3. Replayable dispute lineage from invoice-adjacent views to facts.  
+1. No free-tier pooling stories. 
+2. No fabricated “vendor signed” price attestations. 
+3. Replayable dispute lineage from invoice-adjacent views to facts. 
 4. Clear separation of **ranking** vs **billing**.
 
 ## Related

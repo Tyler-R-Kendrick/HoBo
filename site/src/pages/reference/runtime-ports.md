@@ -6,7 +6,7 @@ description: "Camp durable ports: EventStore, DurableEventStore, Queue, Streamer
 
 # Runtime ports
 
-A **Camp** provides the durable substrate app runtimes need. **Ports** live in `@hobo/core`; **engines** implement them (`@hobo/storage-sqlite`, `@hobo/runtime-local`, `@hobo/runtime-browser`, future Postgres/Temporal/… adapters).
+A **Camp** provides the durable substrate app runtimes need. **Ports** are product surfaces; **engines** implement them (SQLite storage engine, local runtime, browser runtime, future Postgres/Temporal/… adapters).
 
 ## Port table
 
@@ -27,20 +27,20 @@ A **Camp** provides the durable substrate app runtimes need. **Ports** live in `
 4. Clock reads during replay must not inject wall-clock nondeterminism into pure folds.
 5. Yard control plane is **not** on the Camp data path for live user requests.
 
-## Default engine (ADR-0135)
+## Default engine
 
-| Package | Role |
+| Engine | Role |
 |---|---|
-| `@hobo/storage-sqlite` | Schema, migrations, journal semantics |
-| `@hobo/runtime-local` | Node EventStore + storage worker |
-| `@hobo/runtime-browser` | SQLite WASM + OPFS policy (fail-closed if durable required) |
-| `@hobo/wit` `hobo:storage@0.1.0` | Component-host storage capability |
+| SQLite storage | Schema, migrations, journal semantics |
+| Local runtime | Node EventStore + storage worker |
+| Browser runtime | SQLite WASM + OPFS policy (fail-closed if durable required) |
+| `hobo:storage@0.1.0` | Component-host storage capability |
 
 Scale by **adding partitions** (single active writer each), not multi-writer WAL over shared network filesystems.
 
 ## Port descriptors
 
-`PortDescriptor` / `createPortDescriptor` carry WIT-style interface refs and stability (`stable` | `preview` | `experimental`). Apps depend on ports; engines stay swappable behind conformance.
+Port descriptors carry WIT-style interface refs and stability (`stable` | `preview` | `experimental`). Apps depend on ports; engines stay swappable behind conformance.
 
 ## Testing
 

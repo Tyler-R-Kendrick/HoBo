@@ -14,7 +14,7 @@ Deploys are **plans before actions**. You can fail a gate without provisioning a
 |---|---|---|
 | **Plan only** | `hobo plan` | No |
 | **Local lane** | `hobo up` / `hobo dev` against local Camp | No |
-| **Gatekeeper** | `hobo verify` / `evaluateGatekeeper` | No |
+| **Gatekeeper** | `hobo verify` / Gatekeeper | No |
 
 ### `hobo plan`
 
@@ -42,7 +42,7 @@ Full plan → gate → provision → deploy against the default local Camp. CI c
 ## Suggested package tests
 
 ```bash
-pnpm --filter @hobo/contracts test
+run the package tests
 ```
 
 ## Next

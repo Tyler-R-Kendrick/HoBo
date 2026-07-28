@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "UX Designer (moved) (moved)"
+title: "UX Designer (moved)"
 description: "This page moved to /HoBo/operations/ux-designer/."
 ---
 

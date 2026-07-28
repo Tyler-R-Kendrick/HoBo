@@ -13,7 +13,7 @@ every third-party product named here belongs to its own owner.
 
 HoBo is released under the **MIT Licence**. The authoritative text is
 [`LICENSE`](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/LICENSE) in the
-repository, and it travels with every published `@hobo/*` package.
+repository, and it travels with every published HoBo distribution.
 
 The licence includes a warranty disclaimer and limitation of liability. Those
 terms govern — nothing on this site adds to, narrows, or replaces them.
@@ -63,7 +63,7 @@ governs that usage, including its free-tier and acceptable-use terms.
 HoBo never holds a provider account on your behalf, never pools or resells free-tier
 capacity across users, and never creates or rotates accounts to reset a free tier.
 That boundary is a recorded architectural decision, not just a practice — see
-[ADR-0129](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/docs/design/adr/07-portability-extensibility.md#adr-0129).
+[](https://github.com/Tyler-R-Kendrick/HoBo/blob/main/).
 
 ## Contact
 

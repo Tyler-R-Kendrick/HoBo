@@ -6,20 +6,20 @@ description: "EffectSpec purity lattice, domain effects, EffectManifest capture,
 
 # Effects & resiliency
 
-ADR-0136. Names are locked: **Effects** on contracts; **Resiliency** as secondary visible layer. No Effect-TS / Polly / XState public dependencies.
+. Names are locked: **Effects** on contracts; **Resiliency** as secondary visible layer. 
 
 ## EffectSpec
 
 ```ts
 interface EffectSpec {
-  schemaVersion: "hobo.effect-spec/v1";
-  purity: "pure" | "varies" | "transacts" | "noRollback";
-  capabilities: ("decides" | "suspends" | "allocates" | "concurrent")[];
-  domains: (
-    | "network" | "storage" | "identity" | "policyEval" | "eventEmit"
-    | "metering" | "overlayTunnel" | "iac" | "secretsResidual" | "clock"
-    | "externalCall" | "agentTool"
-  )[];
+ schemaVersion: "hobo.effect-spec/v1";
+ purity: "pure" | "varies" | "transacts" | "noRollback";
+ capabilities: ("decides" | "suspends" | "allocates" | "concurrent")[];
+ domains: (
+ | "network" | "storage" | "identity" | "policyEval" | "eventEmit"
+ | "metering" | "overlayTunnel" | "iac" | "secretsResidual" | "clock"
+ | "externalCall" | "agentTool"
+ )[];
 }
 ```
 
@@ -36,7 +36,7 @@ interface EffectSpec {
 
 ### Defaults
 
-Missing effects are valid (opt-in). `effectiveEffects()` applies a **conservative** default for external reasoning (`noRollback` + `decides` + network/externalCall) without rewriting the content hash of contracts that omitted effects.
+Missing effects are valid (opt-in). External reasoning applies a **conservative** default (`noRollback` + `decides` + network/externalCall) without rewriting the content hash of contracts that omitted effects.
 
 ## Capture
 
@@ -45,9 +45,9 @@ Missing effects are valid (opt-in). `effectiveEffects()` applies a **conservativ
 | `contract.EffectDeclared` | Contract effects registered |
 | `contract.EffectInvoked` | Boundary invocation recorded |
 
-`EffectTracer` writes to an `EffectSink`. Replay **reads facts** — does not re-execute handlers.
+Effect capture writes to an event sink. Replay **reads facts** — does not re-execute handlers.
 
-`EffectManifest` exports purity, domains, flags (`mayFail`, `requiresNetwork`, `isPure`) for external systems.
+Effect manifests export purity, domains, and flags (`mayFail`, `requiresNetwork`, `isPure`) for CLI, MCP, policy, and SRE tooling.
 
 ## ResilienceProfile (secondary)
 
@@ -58,7 +58,7 @@ Strategies (metadata + thin applicator):
 
 Always enforce **neverRetry**: `policy.Decided`, `terminal`, `cancellation`.
 
-`applyResilienceProfile` emits `resilience.Attempt` / `resilience.Terminal`. `inspectResilienceFromFacts` rebuilds terminal state without re-running ops.
+Applying a profile emits `resilience.Attempt` / `resilience.Terminal`. Inspection rebuilds terminal state from those facts without re-running ops.
 
 Circuit-breaker / hedging require network/externalCall domains on the contract.
 

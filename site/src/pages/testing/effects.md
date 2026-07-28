@@ -6,7 +6,7 @@ description: "Use EffectSpec so pure contracts unit-test with zero infra, domain
 
 # Effect-aware isolation
 
-This is one of the patterns that feels unfamiliar if you came from “hand-roll mocks.” HoBo puts **side-effect intent on the contract** (ADR-0136). Tests read that metadata and choose isolation automatically.
+This is one of the patterns that feels unfamiliar if you came from “hand-roll mocks.” HoBo puts **side-effect intent on the contract**. Tests read that metadata and choose isolation automatically.
 
 ## EffectSpec in one minute
 
@@ -25,13 +25,8 @@ A `BoundaryContract` may declare:
 ## Harness modes
 
 ```ts
-import { createBoundaryContract, pureEffects } from "@hobo/contracts";
-import {
-  createEffectIsolation,
-  mocksForEffects,
-  runResilienceFaultInjection,
-  filterPureContracts,
-} from "@hobo/contract-harness";
+import { createBoundaryContract, pureEffects } from "hobo/contracts";
+import { createEffectIsolation } from "hobo/testing";
 
 const pure = createBoundaryContract({
   id: "pure-math",
@@ -66,20 +61,21 @@ Attach a **ResilienceProfile** (secondary metadata — not a new top-level primi
 - Inspection is reconstructed from **facts**, not process memory.
 
 ```ts
+// Fault-injection harness: one policy deny, no blind retries
 await runResilienceFaultInjection({
   contract: netWithProfile,
   failures: [{ attempt: 1, failureClass: "policy.Decided", message: "deny" }],
 });
-// attempts === 1, neverRetriedPolicyOrTerminal === true
+// attempts === 1 — policy denies are never retried
 ```
 
 ## Capture without re-execution
 
-`captureContractEffects` records `contract.EffectDeclared` / `contract.EffectInvoked`. Replay **inspects those facts** — it does not re-invoke handlers. That matches the product rule: inspection is event-sourced.
+Effect capture records `contract.EffectDeclared` / `contract.EffectInvoked`. Replay **inspects those facts** — it does not re-invoke handlers. That matches the product rule: inspection is event-sourced.
 
 ## Export
 
-`toEffectManifest` / `formatContractDescribe` produce machine- and human-readable summaries for CLI, MCP, policy, and SRE tooling.
+CLI and MCP can describe a contract or export an effect manifest for policy and SRE tooling.
 
 ## Next
 

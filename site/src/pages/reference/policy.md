@@ -6,7 +6,7 @@ description: "Policy packs, mandatory deny ceilings, obligations, policy.Decided
 
 # Policy plane
 
-Policy is **versioned, signed-pack evaluated** authorization and obligation logic. It is not “config flags scattered in YAML.” Package **`@hobo/policy`** holds IR and agent guardrails; Gatekeeper in **`@hobo/contracts`** composes policy with contracts and cost.
+Policy is **versioned, signed-pack evaluated** authorization and obligation logic. It is not “config flags scattered in YAML.” The policy engine holds IR and agent guardrails; Gatekeeper composes policy with contracts and cost.
 
 ## Packs
 
@@ -43,11 +43,11 @@ AI operators and generation paths evaluate content/tool guardrails (PII, jailbre
 
 ## Composition order (Gatekeeper)
 
-1. Contracts / can-deploy  
-2. **Policy pack**  
-3. Obligations  
-4. Cost / quota  
-5. Optional secretless-config / can-migrate / effects visibility  
+1. Contracts / can-deploy 
+2. **Policy pack** 
+3. Obligations 
+4. Cost / quota 
+5. Optional secretless-config / can-migrate / effects visibility 
 
 ## Related
 

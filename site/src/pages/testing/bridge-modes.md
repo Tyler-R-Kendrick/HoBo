@@ -27,12 +27,12 @@ Fault and bridge modes are **session-tagged**. Break a dependency for `tyler/cha
 payments.fault({ message: "simulated outage", session: "tyler/chaos" });
 
 await payments.call(charge, { session: "tyler/chaos" }); // fails for you
-await payments.call(charge);                             // fine for others
+await payments.call(charge); // fine for others
 ```
 
 ## Contract gate on bridge activation
 
-A bridge that would carry traffic **must** satisfy the boundary contract first. Failures surface as typed contract errors — not silent skew.
+A bridge that would carry traffic **must** satisfy the BoundaryContract first. Failures surface as typed contract errors — not silent skew.
 
 ## Recording
 

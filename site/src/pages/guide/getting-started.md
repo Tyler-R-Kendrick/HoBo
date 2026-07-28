@@ -13,7 +13,7 @@ Time to leave home. This guide takes you from an empty directory to an app that 
 
 **[Yards](/HoBo/primitives/yards/)** and **[Junctions](/HoBo/primitives/junctions/)** are advanced scenarios — you'll want them when your app starts collecting regions and clouds, and not a minute before. They get a short section [at the end](#advanced--yards-and-junctions).
 
-> **Pre-release note:** HoBo is pre-release, but the core flow on this page **runs today**: a project with a `src/bindle.ts` runs `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` against HoBo's default **local, in-memory lane** — no cloud account required. Live deploy lanes (Cloudflare, Vercel, the real pinned Pulumi engine) are credential-gated by environment variables. Sections that lean on packages that don't ship yet are marked design-stage below.
+> **Pre-release note:** HoBo is pre-release, but the core flow on this page **runs today**: a project with a `src/bindle.ts` runs `hobo collect`, `hobo plan`, `hobo up`, and `hobo dev` against HoBo's default **local, in-memory lane** — no cloud account required. Live deploy lanes (Cloudflare, Vercel, the real pinned Pulumi engine) are credential-gated by environment variables. Sections still maturing are marked design-stage below.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ cd my-app
 hobo dev
 ```
 
-`hobo new` scaffolds a runnable SDK program (templates: `todo`, `api`, `agent`, `fullstack`); `hobo dev` boots an offline `runtime-local` camp and serves **your bindle's own api/web entrypoint handler in-process** — no sign-up, no network.
+`hobo new` scaffolds a runnable SDK program (templates: `todo`, `api`, `agent`, `fullstack`); `hobo dev` boots an offline local camp and serves **your bindle's own api/web entrypoint handler in-process** — no sign-up, no network.
 
 ## Step 1 — Pack your bindle
 
@@ -36,22 +36,22 @@ The bindle is the first thing HoBo looks for and the only thing it ships. It's p
 
 ```ts
 // src/bindle.ts
-import { bindle } from "@hobo/bindles";
+import { bindle } from "hobo/bindles";
 
 import { app as api } from "./api";
 import { app as web } from "./webapp";
 
 export default bindle("my-app", (b) => {
-  const db = b.data().allow("read", "write"); // a SQL-ish data port, least-privilege verbs inline
-  const jobs = b.queue().allow("enqueue");    // background work
+ const db = b.data().allow("read", "write"); // a SQL-ish data port, least-privilege verbs inline
+ const jobs = b.queue().allow("enqueue"); // background work
 
-  const apiSvc = b
-    .api(() => api.fetch)                     // HTTP API entrypoint
-    .dependsOn(db, jobs);                     // typed bindings, injected at runtime
+ const apiSvc = b
+.api(() => api.fetch) // HTTP API entrypoint
+.dependsOn(db, jobs); // typed bindings, injected at runtime
 
-  const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
+ const webSvc = b.web(() => web.fetch).dependsOn(apiSvc);
 
-  return { db, jobs, api: apiSvc, web: webSvc };
+ return { db, jobs, api: apiSvc, web: webSvc };
 });
 ```
 
@@ -69,43 +69,43 @@ That's a complete, deployable description — and it deploys today: run `hobo up
 
 A camp answers one question the bindle deliberately doesn't: **where does this live right now?** One provider, one durable runtime (event store, queues, streams, actors, clock). Declaring one is how you *pin* that answer:
 
-> **Design-stage:** `@hobo/camps` ships, but the `@hobo/provider-fly` and `@hobo/runtime-postgres` packages imported below **do not ship yet** — this snippet shows the designed authoring surface. Today's shipped providers are `@hobo/provider-cloudflare` (plus the `ax` and `agentv` adapters), the shipped runtime backend is `runtime-local`, and the default lane is local/in-memory.
+> **Design-stage:** Camps ship, but the Fly provider and Postgres runtime shown below are not available yet — this snippet is the intended authoring surface. Today the default lane is local/in-memory; Cloudflare is among the credential-gated live providers.
 
 ```ts
 // src/camp.ts
-import { camp } from "@hobo/camps";
-import { aws } from "@hobo/provider-aws";
-import { postgresRuntime } from "@hobo/runtime-postgres";
+import { camp } from "hobo/camps";
+import { aws } from "hobo/providers/aws";
+import { postgresRuntime } from "hobo/runtimes/postgres";
 
 import app from "./bindle";
 
 export default camp("prod", {
-  bindle: app,
-  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: aws({ region: "us-east-1" }),   // "host everything here, figure out the best way"
+ bindle: app,
+ runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
+ defaultProvider: aws({ region: "us-east-1" }), // "host everything here, figure out the best way"
 });
 ```
 
 Then converge:
 
 ```sh
-hobo plan --camp prod    # dry run: placement, cost, warnings — read-only
-hobo up --camp prod      # build, plan, gate, provision, deploy
-hobo logs --camp prod    # live-tail through the camp runtime
+hobo plan --camp prod # dry run: placement, cost, warnings — read-only
+hobo up --camp prod # build, plan, gate, provision, deploy
+hobo logs --camp prod # live-tail through the camp runtime
 ```
 
 A few useful truths about camps:
 
 - **The camp is a *current answer*, not a vow.** The whole point of keeping the bindle provider-agnostic is that the camp can change out from under it. When continuous migration finds a cheaper camp that passes your policies, the move is the same convergence loop as `hobo up` — plan, gate, converge — never a special event.
 - **Writing a camp is optional.** With no camp pinned, the Dispatcher infers one from the code you've configured and your platform's approved providers, optimizing for price under policy. Explicit camps are for when *you* want to choose — or when your junction's broker admin has locked placement down and requires explicit, approved camps.
-- **Zero-setup first deploy:** `hobo up` works with no account and no cloud credentials — the default lane converges anonymously against the local, in-memory Yard runtime. `hobo login` mints a local dev session, and `hobo claim` binds an anonymous deployment to an account afterwards without re-provisioning. **Live** deploy lanes are credential-gated by environment: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`HOBO_PULUMI_LIVE=1`).
+- **Zero-setup first deploy:** `hobo up` works with no account and no cloud credentials — the default lane converges anonymously against the local, in-memory Yard runtime. `hobo login` mints a local dev session, and `hobo claim` binds an anonymous deployment to an account afterwards without re-provisioning. **Live** deploy lanes are credential-gated by environment: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`provider live credentials`).
 
 And if you do want provider-native power, it's a typed annotation away, still inside the bindle (`.with(...)` ships; the `fly` annotation below is the same design-stage provider surface as above):
 
 ```ts
 const apiSvc = b
-  .api(() => api.fetch)
-  .with(aws.fargate({ cpu: 512, memory: 1024 }));   // optimization, not a rewrite
+.api(() => api.fetch)
+.with(aws.fargate({ cpu: 512, memory: 1024 })); // optimization, not a rewrite
 ```
 
 **You now know everything required to run HoBo.** A bindle is the whole entry fee — the camp comes with the campsite, whether you pitched it or HoBo did. Everything below is for apps with wanderlust.
@@ -119,7 +119,7 @@ Skip this on day one. Come back when one camp stops being enough.
 Running `prod` in two regions plus preview camps, all on one provider? A **yard** composes that provider's camps and carries what's shared across them — policy, identity, reconciliation, provider-global networking:
 
 ```ts
-import { yard } from "@hobo/yards";
+import { yard } from "hobo/yards";
 import prodEast from "./camps/prod-east";
 import prodWest from "./camps/prod-west";
 
@@ -132,10 +132,10 @@ One yard per provider, by rule. A yard cannot mix providers — that's the next 
 
 When the journey goes multi-cloud or hybrid, a **junction** federates yards — peer to peer, no shared mutable state, cross-cloud connectivity inferred from the member yards' manifests.
 
-> **Design-stage:** the `@hobo/junctions` package does not ship yet — it's deliberately deferred to the multi-cloud build stage (S4 on [the trail map](/HoBo/guide/status/)). This snippet describes the designed surface.
+> **Design-stage:** Junctions are not available yet — multi-cloud federation is coming. This snippet is the intended surface.
 
 ```ts
-import { junction } from "@hobo/junctions";
+import { junction } from "hobo/junctions";
 import awsYard from "./yards/aws";
 import azureYard from "./yards/azure";
 
@@ -147,7 +147,7 @@ Now continuous migration has a bigger map to roam: the Dispatcher can weigh home
 ## Where to next
 
 - [Bindles](/HoBo/primitives/bindles/) and [Camps](/HoBo/primitives/camps/) — the full reference for the two primitives you just used.
-- Working examples in the repo's `examples/` directory: **hello-bindle** (a minimal api + web bindle), **multi-cloud-shop** (one bindle, per-provider `.with(...)` annotations), **durable-agent** (a durable, tool-invoking agent on `@hobo/runtime`), and **self-host-yard** (operate your own Yard: plan/up/down against a control plane whose event log lives on your disk).
+- Worked examples ship with the product docs and starter templates.
 - [Core concepts](/HoBo/guide/concepts/) — the vocabulary in one sitting.
 - [The hobo CLI](/HoBo/guide/cli/) — the whole verb surface (it's deliberately small).
 - [HoBo for agents](/HoBo/agents/) — pointing an AI agent at HoBo? It gets its own credentials, not yours.

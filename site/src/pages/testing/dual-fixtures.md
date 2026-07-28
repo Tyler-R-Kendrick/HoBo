@@ -8,7 +8,7 @@ description: "One metadata description, two paths: pure isolation vs effectful p
 
 **Dual fixtures** keep pure and effectful (or dual-path identity) tests aligned from the **same metadata** so they cannot silently diverge.
 
-## Effect duals (ADR-0136)
+## Effect duals
 
 | Path | When | Infrastructure |
 |---|---|---|
@@ -17,7 +17,7 @@ description: "One metadata description, two paths: pure isolation vs effectful p
 
 Same contract id, same examples, different routing. If pure path asserts X and effectful asserts ¬X, the fixture definition is wrong — fix metadata, not only one side.
 
-## Identity duals (ADR-0132 / ADR-0070 offline)
+## Identity duals
 
 Continuous identity migration uses dual-path principal fixtures:
 
@@ -29,7 +29,7 @@ Continuous identity migration uses dual-path principal fixtures:
 
 Schema/data dual windows: produce fixtures that assert both old and new folds during the dual period, then cutover.
 
-## Session Replay duals (ADR-0137)
+## Session Replay duals
 
 Local Session Replay (default on every **App Kit**) stores heavy blobs via **dual-fixture** adapters (memory/fixture engines) so privacy + tracker/player contracts stay offline-green without multi-cloud object storage. Production binds object-storage ports; dual fixtures remain the proof path. See [Session Replay](/HoBo/reference/session-replay/) · [App Kits](/HoBo/primitives/app-kits/).
 

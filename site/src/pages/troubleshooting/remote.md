@@ -18,9 +18,9 @@ description: "Inspect live Camps and Yards: projections, logs, incidents, runboo
 
 ## When you must change something
 
-- Prefer canary / progressive paths ([CI/CD](/HoBo/cicd/))  
-- Production writes often `require-approval`  
-- SRE/runbooks: [Operations](/HoBo/operations/)  
+- Prefer canary / progressive paths ([CI/CD](/HoBo/cicd/)) 
+- Production writes often `require-approval` 
+- SRE/runbooks: [Operations](/HoBo/operations/) 
 
 ## Agent “what happened?”
 

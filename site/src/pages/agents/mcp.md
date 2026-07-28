@@ -14,13 +14,13 @@ HoBo exposes its control plane over **MCP (Model Context Protocol)** — and thi
 
 ```json
 {
-  "mcpServers": {
-    "hobo": { "command": "hobo-mcp" }
-  }
+ "mcpServers": {
+ "hobo": { "command": "hobo-mcp" }
+ }
 }
 ```
 
-Like the CLI, it defaults to the **local, in-memory lane**: `plan`, `up`, and `down` converge against an offline Yard runtime — no cloud account, no network. Live deploy lanes are **credential-gated by environment**: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`HOBO_PULUMI_LIVE=1`).
+Like the CLI, it defaults to the **local, in-memory lane**: `plan`, `up`, and `down` converge against an offline Yard runtime — no cloud account, no network. Live deploy lanes are **credential-gated by environment**: Cloudflare (`CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`), Vercel (`VERCEL_TOKEN`), or the real pinned Pulumi CLI engine (`provider live credentials`).
 
 ## Tools = the canonical verbs
 

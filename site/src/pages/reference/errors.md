@@ -38,7 +38,7 @@ Parse-don’t-validate constructors throw typed parse errors (`CoreParseError`, 
 | `SNAPSHOT_AHEAD` | Snapshot seq > head | No |
 | `STORAGE_WORKER_TERMINATED` | Worker crash | Restart worker |
 
-## Aggregates (`@hobo/data`)
+## Aggregates 
 
 | Code | Meaning | Retry? |
 |---|---|---|

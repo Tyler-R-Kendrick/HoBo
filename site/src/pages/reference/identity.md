@@ -6,7 +6,7 @@ description: "Workload SVIDs, token brokering, connections, continuous identity 
 
 # Identity ports
 
-Package **`@hobo/identity`** owns workload identity, connection lifecycle, continuous identity migration, config resolution ladder integration points, and progressive Harness adapters that identity continuous reuses. App authors rarely import it directly; CLI (`hobo identity`, `hobo doctor`) and the Yard Gateway do.
+**Identity services** own workload identity, connection lifecycle, continuous identity migration, config resolution ladder integration points, and progressive Harness adapters that identity continuous reuses. App authors rarely touch them directly; CLI (`hobo identity`, `hobo doctor`) and the Yard Gateway do.
 
 ## Responsibilities
 
@@ -16,17 +16,17 @@ Package **`@hobo/identity`** owns workload identity, connection lifecycle, conti
 | Broker short-lived provider tokens | Capability-scoped grants after policy |
 | Connections | Authorize, status, events — Station-bound |
 | Continuous identity migration | Dual-path `PrincipalRef` continuity |
-| Dual fixtures | Offline ADR-0070-style fixtures for dual-path tests |
+| Dual fixtures | Offline -style fixtures for dual-path tests |
 | Attestation | Measurement / launch attestation documents |
 | Credential audit | **Refs only** — never plaintext secrets in events |
 
-## Continuous identity migration (ADR-0132)
+## Continuous identity migration
 
 When IdPs or principal shapes change:
 
 1. Matching/policy drives **dual-path** continuity.
 2. **Zero required Bindle config** for pure identity continuous.
-3. Dual fixtures extend offline proofs; live paths stay policy-gated.
+3. Dual fixtures extend offline fixtures; live paths stay policy-gated.
 4. Observe with `hobo identity status` and `hobo doctor`.
 5. Do **not** invent a parallel IdP product or Bindle migration DSL.
 

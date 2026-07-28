@@ -15,7 +15,7 @@ hobo up
 hobo up --camp prod
 hobo up --camp prod --to <revision>
 hobo up --rollback
-hobo up ./platform --seed
+hobo up./platform --seed
 hobo down --camp pr-123
 ```
 
@@ -26,7 +26,7 @@ hobo down --camp pr-123
 | Verb | Role | Semantics |
 |---|---|---|
 | `up` / `down` | lifecycle | Realize / tear down the object graph. |
-| `dev` | local loop | Boot an offline `runtime-local` camp and serve your bindle's own api/web entrypoint handler in-process. |
+| `dev` | local loop | Boot an offline local-runtime camp and serve your bindle's own api/web entrypoint handler in-process. |
 | `new` | local loop | Scaffold a runnable SDK program. |
 | `login` / `claim` | identity | OIDC dev identity; bind an anonymous deployment to an account. |
 | `plan` | read-only | Dry-run the `up` decision: plan, matching choices, cost, warnings. |
@@ -35,7 +35,7 @@ hobo down --camp pr-123
 | `inspect` | read-only | Projections and time-travel views (`run`, `deploy`, `topology`). |
 | `logs` | read-only | Live-tail logs/streams through the Camp runtime. |
 | `doctor` | diagnostics | Environment, credential, connectivity, and portability hazards. |
-| `codegen` / `build` / `collect` / `stub` | authoring | Regenerate `_generated/`; compile to wasm components; produce the manifest IR; run contract-backed stubs. |
+| `codegen` / `build` / `collect` / `stub` | authoring | Regenerate generated bindings; compile to wasm components; produce the manifest IR; run contract-backed stubs. |
 | `drift` | diagnostics | Report drift; route governed remediation. |
 | `add` / `registry` | distribution | Install providers after signature/provenance/conformance checks; registry administration. |
 | `import` | migration | Adopt an existing estate in place — never destroy/recreate on import. HoBo meets your app where it currently lives. |
@@ -51,4 +51,4 @@ Where you'd expect a verb from other tools, HoBo folds it into the model instead
 
 ## Status
 
-All **27 canonical verbs ship today** in the composed `hobo` binary — running against the default **local, in-memory lane**, with live deploy lanes credential-gated by environment (Cloudflare/Vercel tokens, or `HOBO_PULUMI_LIVE=1` for the real pinned Pulumi engine). The same 27 verbs are served as MCP tools by the [`hobo-mcp` binary](/HoBo/agents/mcp/), with verb/tool parity contract-tested. Some flags shown above (`--to`, `--rollback`, `--seed`) are contract-pinned design not yet wired; the global flags (`--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`) work everywhere. Track progress on [the trail map](/HoBo/guide/status/).
+All **27 canonical verbs ship today** in the composed `hobo` binary — running against the default **local, in-memory lane**, with live deploy lanes credential-gated by environment (Cloudflare/Vercel tokens, or `provider live credentials` for the real pinned Pulumi engine). The same 27 verbs are served as MCP tools by the [`hobo-mcp` binary](/HoBo/agents/mcp/), with verb/tool parity contract-tested. Some flags shown above (`--to`, `--rollback`, `--seed`) are contract-pinned design not yet wired; the global flags (`--json`, `--camp`, `--cwd`, `--verbose`, `-q`, `--help`) work everywhere. Track progress on [the trail map](/HoBo/guide/status/).

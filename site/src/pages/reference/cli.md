@@ -42,7 +42,7 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 |---|---|
 | `new` | Scaffold |
 | `collect` | Resource collection → manifest IR |
-| `codegen` | Regenerate `_generated/` (`--check` fails on drift) |
+| `codegen` | Regenerate project bindings (`--check` fails on drift) |
 | `build` | Compile to wasm components (OCI fallback) |
 | `stub` | Contract-backed stub behind a WIT port |
 | `generate` | Generation pipeline entry |
@@ -57,7 +57,7 @@ The `hobo` CLI is deliberately **small and stable**. The same verbs appear as MC
 | `logs` | Live-tail Camp Streamer |
 | `replay` | **Session Replay** (every App Kit) — `list|get|open|summarize|retention|doctor` (not event-log replay) |
 | `doctor` | Environment / credential / portability hazards (incl. Kafka + Dapr readiness) |
-| `messaging` | Messaging plane status, Kafka realize, dry-run secretless Dapr component YAML (ADR-0138) |
+| `messaging` | Messaging plane status, Kafka realize, dry-run secretless Dapr component YAML |
 | `drift` | Drift + governed remediation |
 | `incident` | Incident disposition / A2H |
 | `runbook` | Execute runbooks (writes still policy-gated) |

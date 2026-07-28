@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Testing overview
-description: "How HoBo makes testing unfamiliar-but-powerful: contract-derived mocks, effect-aware isolation, durable EventStore proofs, bridge modes, and offline deployment rehearsal."
+description: "How HoBo makes testing unfamiliar-but-powerful: contract-derived mocks, effect-aware isolation, durable EventStore tests, bridge modes, and offline deployment rehearsal."
 ---
 
 # Testing overview
@@ -23,12 +23,12 @@ HoBo collapses a lot of “special testing tools” into one idea: **every bound
 
 ## Layers (read in this order)
 
-1. **[Unit tests & boundaries](/HoBo/testing/unit/)** — vitest-style tests; boundaries auto-mock from contract examples.
+1. **[Unit tests & boundaries](/HoBo/testing/unit/)** — unit tests; boundaries auto-mock from contract examples.
 2. **[Aggregates & CQRS](/HoBo/testing/aggregates/)** — pure decide, fenceToken, conflict vs invariant.
 3. **[Contracts & PACT](/HoBo/testing/contracts/)** — consumer/provider executable contracts; subset matching.
-4. **[Effect-aware isolation](/HoBo/testing/effects/)** — pure vs domain-effect harness modes (ADR-0136).
+4. **[Effect-aware isolation](/HoBo/testing/effects/)** — pure vs domain-effect harness modes.
 5. **[Dual fixtures](/HoBo/testing/dual-fixtures/)** — pure path vs effect path from the same metadata.
-6. **[Durable EventStore](/HoBo/testing/durability/)** — stream-head CAS, fencing, positions, restart (ADR-0135).
+6. **[Durable EventStore](/HoBo/testing/durability/)** — stream-head CAS, fencing, positions, restart.
 7. **[Migration fixtures](/HoBo/testing/migration/)** — legacy schema → current, fail-closed integrity.
 8. **[Queue, timer, outbox](/HoBo/testing/queue-outbox/)** — lease fences, once-after-restart timers.
 9. **[Deployment rehearsal](/HoBo/testing/deployment/)** — `hobo plan`, local lane, Gatekeeper.

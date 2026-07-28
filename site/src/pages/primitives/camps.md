@@ -12,27 +12,27 @@ The **Camp** is HoBo's second foundational primitive: the answer to the question
 
 ## Pitching a camp
 
-> **Design-stage:** `@hobo/camps` ships (with `camp()`, `defaultProvider`/`tiers`/`bindings` resolution, and env-type inference), but the `@hobo/provider-fly` and `@hobo/runtime-postgres` packages imported in these snippets **do not ship yet** — they show the designed surface. Shipped today: `@hobo/provider-cloudflare` (plus the `ax` and `agentv` adapters) and the `runtime-local` backend; the default `hobo up` lane is local/in-memory, with live lanes credential-gated.
+> **Design-stage:** Camp authoring ships (`camp()`, default provider / tiers / bindings, env-type inference). Some provider and runtime examples below (for example Fly or managed Postgres) show the **designed** surface and may not be live yet. Shipped today: the Cloudflare provider path and the local runtime; the default `hobo up` lane is local/in-memory, with live lanes credential-gated.
 
 ```ts
-import { camp } from "@hobo/camps";
-import { aws } from "@hobo/provider-aws";
-import { postgresRuntime } from "@hobo/runtime-postgres";
+import { camp } from "hobo/camps";
+import { aws } from "hobo/providers/aws";
+import { postgresRuntime } from "hobo/runtimes/postgres";
 
 import app from "./bindle";
 
 export default camp("prod", {
-  bindle: app,
-  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
-  defaultProvider: aws({ region: "us-east-1" }),
+ bindle: app,
+ runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
+ defaultProvider: aws({ region: "us-east-1" }),
 });
 ```
 
 A camp needs only `{ bindle, runtime, defaultProvider }` — the provider's built-in resource definitions match every port in the bindle's manifest automatically. Then:
 
 ```sh
-hobo plan --camp prod   # dry run: placement, cost, warnings
-hobo up --camp prod     # converge
+hobo plan --camp prod # dry run: placement, cost, warnings
+hobo up --camp prod # converge
 ```
 
 ## Three levels of placement control
@@ -41,29 +41,29 @@ All three mapping styles are **overrides** — each narrower one wins over the b
 
 ```ts
 export default camp("prod", {
-  bindle: app,
-  runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
+ bindle: app,
+ runtime: postgresRuntime({ url: process.env.DATABASE_URL }),
 
-  // (a) whole-app: "host everything here, figure out the best way"
-  defaultProvider: aws({ region: "us-east-1" }),
+ // (a) whole-app: "host everything here, figure out the best way"
+ defaultProvider: aws({ region: "us-east-1" }),
 
-  // (b) per-tier: route classes of resource differently
-  tiers: {
-    saas: aws,                        // managed data services
-    edge: cloudflare.workers(),       // edge compute tier
-  },
+ // (b) per-tier: route classes of resource differently
+ tiers: {
+ saas: aws, // managed data services
+ edge: cloudflare.workers(), // edge compute tier
+ },
 
-  // (c) per-boundary pin: a named resource → specific options
-  bindings: {
-    "my-app.api": aws.fargate({ cpu: 512, memory: 1024 }),
-  },
+ // (c) per-boundary pin: a named resource → specific options
+ bindings: {
+ "my-app.api": aws.fargate({ cpu: 512, memory: 1024 }),
+ },
 });
 ```
 
 ## Rules camps enforce
 
 - **One provider per camp.** Mixing providers in one camp is a hard error — that's what [Yards](/HoBo/primitives/yards/) (regions) and [Junctions](/HoBo/primitives/junctions/) (clouds) are for. The constraint is what keeps a camp cheap to reason about, price, and leave.
-- **The runtime is part of the address.** A camp's durable runtime (event store, queues, streams, actor host, clock) is a swappable backend — `runtime-local` ships today; postgres, temporal, restate, and cloudflare backends are designed. Swapping it changes durability backing, never app logic.
+- **The runtime is part of the address.** A camp's durable runtime (event store, queues, streams, actor host, clock) is a swappable backend — the local runtime ships today; postgres, temporal, restate, and cloudflare backends are designed. Swapping it changes durability backing, never app logic.
 - **Environment comes from the name.** `prod`, `staging`, `preview`/`pr-*`, and `dev` camps get sensible environment semantics inferred (and you can override `envType` when your naming is more creative).
 
 ## Writing a camp is optional
@@ -72,7 +72,7 @@ Every app lives in a camp — but *pitching* one isn't always your job:
 
 - **Inferred camps (the default).** With no camp declared, the Dispatcher infers one from the code you've configured and your platform's approved providers, optimizing for price under policy. An inferred camp is approved by policy, not automatically.
 - **Locked-down placement.** A [junction](/HoBo/primitives/junctions/) broker admin can turn inference off and require explicit, approved camps — governance decides how much choice stays with the app team.
-- **Local camp.** `hobo dev` runs your bindle against `runtime-local` — a full offline camp on your laptop, with honest fidelity labels where local behavior differs from cloud.
+- **Local camp.** `hobo dev` runs your bindle against the local runtime — a full offline camp on your laptop, with honest fidelity labels where local behavior differs from cloud.
 
 ## Camps and continuous migration
 

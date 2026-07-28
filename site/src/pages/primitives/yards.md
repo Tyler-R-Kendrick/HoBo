@@ -15,7 +15,7 @@ The **Yard** is an advanced primitive — you'll know you need one when a single
 ## Building a yard
 
 ```ts
-import { yard } from "@hobo/yards";
+import { yard } from "hobo/yards";
 
 import prodEast from "./camps/prod-east";
 import prodWest from "./camps/prod-west";
@@ -41,7 +41,7 @@ That's the entire authoring surface: a name and the member camps. Cross-camp con
 
 ## The yard is itself a bindle
 
-HoBo's control plane — Gateway, Planner, Dispatcher, Orchestrator, the whole [architecture](/HoBo/architecture/) — ships *as a bindle*. Self-hosting HoBo is `hobo up ./platform --seed` into a camp you own; the only difference between hosted and self-hosted is who runs the yard. No enterprise-edition fork, no second product. Even the landlord lives in a tent.
+HoBo's control plane — Gateway, Planner, Dispatcher, Orchestrator, the whole [architecture](/HoBo/architecture/) — ships *as a bindle*. Self-hosting HoBo is `hobo up./platform --seed` into a camp you own; the only difference between hosted and self-hosted is who runs the yard. No enterprise-edition fork, no second product. Even the landlord lives in a tent.
 
 ## Where yards go next
 

@@ -10,16 +10,16 @@ import Steamboat from "../components/scenes/Steamboat.astro";
 import Train from "../components/scenes/Train.astro";
 import { href } from "../lib/url";
 
-const bindleSnippet = `import { bindle } from "@hobo/bindles";
+const bindleSnippet = `import { bindle } from "hobo/bindles";
 
 import { app as helloApi } from "./api";
 import { app as helloWeb } from "./webapp";
 
 // Pack once — provider-agnostic by construction.
 export default bindle("hello-bindle", (b) => {
-  const api = b.api(() => helloApi.fetch);
-  const web = b.web(() => helloWeb.fetch).dependsOn(api);
-  return { api, web };
+ const api = b.api(() => helloApi.fetch);
+ const web = b.web(() => helloWeb.fetch).dependsOn(api);
+ return { api, web };
 });`;
 
 const shikiThemes = {
@@ -173,7 +173,6 @@ const shikiThemes = {
 			</p>
 		</div>
 	</section>
-
 
 	<!-- ===================== Primitives bento ===================== -->
 	<section class="section" style="padding-top: 0;">

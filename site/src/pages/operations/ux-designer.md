@@ -10,15 +10,15 @@ Generates and maintains application UI against design specs — for this site th
 
 ## Mission
 
-- Propose UI diffs in sandbox lanes  
-- Keep components aligned with design tokens/specs  
-- Never ship unguarded prompt output to prod without policy  
+- Propose UI diffs in sandbox lanes 
+- Keep components aligned with design tokens/specs 
+- Never ship unguarded prompt output to prod without policy 
 
 ## Boundaries
 
-- Uses MCP/tools with scoped credentials  
-- Pairs with SWE for behavioral code  
-- Accessibility baselines are gates, not suggestions  
+- Uses MCP/tools with scoped credentials 
+- Pairs with SWE for behavioral code 
+- Accessibility baselines are gates, not suggestions 
 
 ## Related
 

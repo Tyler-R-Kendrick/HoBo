@@ -1,6 +1,6 @@
 ---
 layout: ../../layouts/Docs.astro
-title: "Engines (moved) (moved)"
+title: "Engines (moved)"
 description: "This page moved to /HoBo/operations/engines/."
 ---
 

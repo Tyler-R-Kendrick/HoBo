@@ -10,7 +10,7 @@ Networking in HoBo is **identity-aware and name-first**. Apps dial hierarchical 
 
 ## Named endpoints
 
-- Pure naming in `@hobo/core` — `getNamedEndpoint` / `sanitizeDnsLabel`
+- Pure hierarchical naming (DNS-safe labels, never bare `.hobo`)
 - Local: `*.hobo.localhost`
 - Overlay: `*.hobo.test`
 - **Never** bare `.hobo`
@@ -19,7 +19,7 @@ See [Naming reference](/HoBo/reference/naming/).
 
 ## Overlay & DNS
 
-`@hobo/connectivity` hosts overlay adapters (Tailscale/Netbird-class), pluggable DNS providers, and Junction dynamic DNS for federation without shared mutable control state.
+Connectivity hosts overlay adapters (Tailscale/Netbird-class), pluggable DNS providers, and Junction dynamic DNS for federation without shared mutable control state.
 
 ## Secretless connectors
 

@@ -21,10 +21,10 @@ You care about **MTTR, error budgets, and change safety**. HoBo makes the contro
 
 ## Mindset shifts
 
-- Audit = event log, not ticket archaeology  
-- Remediation is often canary + auto-rollback  
-- Prod writes frequently require-approval  
-- Never retry policy denials as “healing”  
+- Audit = event log, not ticket archaeology 
+- Remediation is often canary + auto-rollback 
+- Prod writes frequently require-approval 
+- Never retry policy denials as “healing” 
 
 ## Related
 

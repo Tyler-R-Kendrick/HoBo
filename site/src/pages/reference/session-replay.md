@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Session Replay
-description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): default on every App Kit, dual fixtures, replay.* events, CLI, and naming split from event-log replay."
+description: "Privacy-first Session Replay (Session Replay, ): default on every App Kit, dual fixtures, replay.* events, CLI, and naming split from event-log replay."
 ---
 
 # Session Replay
 
-**Session Replay** reconstructs user DOM/sessions (and Kit-level interactive capture) for debugging and support. Package **`@hobo/replay`** (ADR-0137). It is **not** control-plane event-log replay and **not** auth `session.*`.
+**Session Replay** reconstructs user DOM/sessions (and Kit-level interactive capture) for debugging and support. It is **not** control-plane event-log replay and **not** auth `session.*`.
 
 ## Naming split (critical)
 
@@ -14,8 +14,8 @@ description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): default on 
 |---|---|---|
 | **Event-log replay** | Fold durable facts for projections/audit | EventStore / `hobo inspect` |
 | **Auth session** | Login/refresh/revoke | `session.Started` / `Refreshed` / `Revoked` |
-| **Session Replay** | DOM/session reconstruction | `replay.*` + `@hobo/replay` |
-| **App Kit** | Bindle-declared app surface (`api`, `web`, `service`, …) | `@hobo/bindles` `APP_KIT_KINDS` |
+| **Session Replay** | DOM/session reconstruction | `replay.*` + Session Replay |
+| **App Kit** | Bindle-declared app surface (`api`, `web`, `service`, …) | `hobo/bindles` `app kit kinds` |
 
 Heavy rrweb streams **never** enter the control-plane event log — only content-addressed blob refs.
 
@@ -29,7 +29,7 @@ Heavy rrweb streams **never** enter the control-plane event log — only content
 
 ## Deep Bindle integration (App Kits)
 
-Every **App Kit** receives a default platform annotation `session-replay` at construction (ADR-0137 §10) — **not only** `web`:
+Every **App Kit** receives a default platform annotation `session-replay` at construction — **not only** `web`:
 
 | App Kit | Kind | Default Session Replay |
 |---|---|---|
@@ -47,24 +47,24 @@ Local Yard / `hobo dev` wraps every **HTTP App Kit** (`api`, `web`, `service`, `
 
 | Piece | Package / surface |
 |---|---|
-| Annotation helper | `sessionReplay({ enabled?, sampleRate? })` from `@hobo/bindles` |
-| Kit taxonomy | `APP_KIT_KINDS`, `isAppKitKind`, `appKitLabel` |
-| Runtime plan + wrap | `@hobo/replay` bindle integration |
+| Annotation helper | `sessionReplay({ enabled?, sampleRate? })` from `hobo/bindles` |
+| Kit taxonomy | `app kit kinds`, `isAppKitKind`, `appKitLabel` |
+| Runtime plan + wrap | Session Replay bindle integration |
 | Local host | `hobo dev` / Yard entrypoints |
 | Ingest path | `/__hobo/replay/*` |
 | Response marker | `x-hobo-session-replay: 1` when HTML wrap applied |
 
 ```ts
-import { bindle, sessionReplay } from "@hobo/bindles";
+import { bindle, sessionReplay } from "hobo/bindles";
 
 export default bindle("shop", (b) => {
-  const api = b.api(() => apiHandler);     // API Kit — Session Replay default-on
-  const web = b.web(() => storefront);   // Web Kit — Session Replay default-on
-  const worker = b.service(() => worker); // Service Kit — Session Replay default-on
-  const cache = b.kv();                  // Infra Kit — no default Session Replay
-  // opt out one Kit:
-  // const api = b.api(() => apiHandler).with(sessionReplay({ enabled: false }));
-  return { api, web, worker, cache };
+ const api = b.api(() => apiHandler); // API Kit — Session Replay default-on
+ const web = b.web(() => storefront); // Web Kit — Session Replay default-on
+ const worker = b.service(() => worker); // Service Kit — Session Replay default-on
+ const cache = b.kv(); // Infra Kit — no default Session Replay
+ // opt out one Kit:
+ // const api = b.api(() => apiHandler).with(sessionReplay({ enabled: false }));
+ return { api, web, worker, cache };
 });
 ```
 
@@ -86,7 +86,7 @@ hobo replay open <sessionId>
 hobo replay retention
 ```
 
-MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation stays on CLI under policy/PAM. `doctor` lists PACT boundary ids.
+MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation stays on CLI under policy/PAM. `hobo doctor` lists contract boundary ids.
 
 ## Event family (`replay.*`)
 
@@ -103,7 +103,7 @@ MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation
 | **Continuous identity** | Principal refs only |
 | **Metering** | Ingest bytes, storage, player access |
 | **PAM** | Access policy for open/list |
-| **PACT** | Every integration boundary (including internal) via `createReplayHttpSurface` |
+| **PACT** | Integration boundaries via the replay HTTP surface |
 
 ## Performance budget (targets)
 

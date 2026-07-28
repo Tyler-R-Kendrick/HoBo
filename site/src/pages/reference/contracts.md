@@ -17,11 +17,11 @@ Versioned producer/consumer boundary:
 - optional **`effects`** — [EffectSpec](/HoBo/reference/effects/)
 - optional **`resilience`** — [ResilienceProfile](/HoBo/reference/effects/)
 
-Constructors: `parseBoundaryContract` / `createBoundaryContract` (parse-don’t-validate).
+Contracts are parse-don’t-validate: invalid shapes never become live values past the boundary.
 
 ## Compatibility
 
-`checkCompatibility(prev, next)`:
+Compatibility checks compare previous vs next revisions:
 
 | Change | Result |
 |---|---|
@@ -32,28 +32,27 @@ Constructors: `parseBoundaryContract` / `createBoundaryContract` (parse-don’t-
 
 ## can-deploy
 
-Given deployed contract state + candidate deployment plan → compatibility matrix + `compat.GatePassed` / `compat.GateFailed` with agent-actionable reasons.
+Given deployed contract state + candidate deployment plan → compatibility matrix + gate pass/fail events with agent-actionable reasons.
 
 ## Gatekeeper
 
 Composes into one decision (`allow` \| `allow-degraded` \| `deny` \| `require-approval`):
 
 1. can-deploy (contracts)
-2. policy pack (`@hobo/policy`) — **always** emits `policy.Decided`
+2. policy pack — **always** emits `policy.Decided`
 3. obligations
 4. cost/quota
 5. optional secretless-config / can-migrate dimensions
 
-Also surfaces **effectSummaries** and optional reasons with `gate: "effects" | "resilience"`.
+Also surfaces effect summaries and optional reasons with `gate: "effects" | "resilience"`.
 
 ## Describe / export
 
-- `formatContractDescribe(contract)` — human CLI-style text
-- `toEffectManifest(…)` — JSON export for MCP/SRE/policy
+CLI and MCP can describe a contract as human text or export an effect manifest for policy and SRE tooling.
 
-## Package
+## Testing
 
-`@hobo/contracts` · harness in `@hobo/contract-harness`
+See [Testing: contracts](/HoBo/testing/contracts/) for harness usage.
 
 ## Related
 

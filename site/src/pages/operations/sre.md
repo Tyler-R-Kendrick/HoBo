@@ -31,18 +31,18 @@ Multiple alerts fold into **one** incident via correlation/causation IDs — not
 
 ```text
 signal → open Incident
-      → diagnose (projections; optional HolmesGPT engine)
-      → classify (runtime + contract taxonomy)
-      → decide:
-           low-risk reversible  → auto-fix (canary live-fix + auto-rollback)
-           needs review         → propose gated Delta/PR
-           high-impact/unknown  → escalate (on-call / A2H handoff)
-      → policy gate always
+ → diagnose (projections; optional HolmesGPT engine)
+ → classify (runtime + contract taxonomy)
+ → decide:
+ low-risk reversible → auto-fix (canary live-fix + auto-rollback)
+ needs review → propose gated Delta/PR
+ high-impact/unknown → escalate (on-call / A2H handoff)
+ → policy gate always
 ```
 
 ### A2H (agent-to-human)
 
-Escalate packages: failing check, proposed fixes, blast radius, decision required. Routed over notify + obligation deadlines. Human apply / re-bless / abort is event-sourced. Security or money-touching goldens marked `requiresHuman` skip auto-fix.
+Escalate with a structured handoff: failing check, proposed fixes, blast radius, decision required. Routed over notify + obligation deadlines. Human apply / re-bless / abort is event-sourced. Security or money-touching goldens marked `requiresHuman` skip auto-fix.
 
 ## Runbooks
 

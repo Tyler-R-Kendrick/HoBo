@@ -6,7 +6,7 @@ description: "Camp Queue: enqueue, lease, complete, idempotency, actor signals, 
 
 # Queue port
 
-The **Queue** is the Camp port for deferred and concurrent work: jobs, actor signals, delayed delivery, and outbox-style dispatch. Ports live in `@hobo/core`; engines implement lease semantics.
+The **Queue** is the Camp port for deferred and concurrent work: jobs, actor signals, delayed delivery, and outbox-style dispatch. Ports are product surfaces; engines implement lease semantics.
 
 ## Operations (conceptual)
 

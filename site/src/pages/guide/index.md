@@ -8,7 +8,7 @@ description: "HoBo is an AI-native meta-cloud with one guiding principle: every 
 
 HoBo is an **AI-native meta-cloud** built on one guiding principle: **every app deserves a home — preferably a cheap one.** You describe your app once, HoBo places it on real infrastructure that passes your policies, and then — this is the part nobody else does — **it keeps looking**. When a better-value home opens up, continuous migration moves your app there, without a rewrite, a war room, or a weekend.
 
-> **Honest status:** HoBo is **pre-release**, and the core loop already runs: `src/bindle.ts` → `hobo plan`/`hobo up`/`hobo dev` against the default local lane, plus the `hobo-mcp` agent surface — with live deploy lanes credential-gated. See [the trail map](/HoBo/guide/status/) for what runs now.
+> **Honest status:** HoBo is **pre-release**, and the core loop already runs: pack a Bindle → `hobo plan` / `hobo up` / `hobo dev` against the default local lane, plus the `hobo-mcp` agent surface — with live deploy lanes credential-gated. See [the trail map](/HoBo/guide/status/) for what runs now.
 
 ## The pitch
 
@@ -20,9 +20,9 @@ A developer (or an agent) packs the app into a [**Bindle**](/HoBo/primitives/bin
 
 The name is the philosophy. A hobo travels light, works where the work is, and moves on when a town stops being worth the rent:
 
-- **Travel light.** Everything the app owns fits in its bindle.  
-- **Work anywhere.** Ports and adapters mean any conforming provider is a valid home.  
-- **Move when it's worth it.** Continuous migration re-plans placement for as long as the app lives.  
+- **Travel light.** Everything the app owns fits in its bindle. 
+- **Work anywhere.** Ports and adapters mean any conforming provider is a valid home. 
+- **Move when it's worth it.** Continuous migration re-plans placement for as long as the app lives. 
 
 ## Where to go next
 

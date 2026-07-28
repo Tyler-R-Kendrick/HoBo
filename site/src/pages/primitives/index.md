@@ -1,7 +1,7 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Meet the primitives
-description: "Bindle, Camp, Yard, Junction, Station, Trail, and the resource catalog — the nouns HoBo is built from."
+description: "Bindle, App Kits, Camp, Yard, Junction, Station, Trail, and the resource catalog — the nouns HoBo is built from."
 ---
 
 # Meet the primitives
@@ -13,6 +13,7 @@ HoBo’s vocabulary is small on purpose. Learn these nouns once; every guide and
 | Primitive | One-liner | Page |
 |---|---|---|
 | **Bindle** | Provider-agnostic packed app | [Bindles](/HoBo/primitives/bindles/) |
+| **App Kit** | Bindle-declared app surface (`api`/`web`/…) — not a "membrane type" | [App Kits](/HoBo/primitives/app-kits/) |
 | **Camp** | Current home + durable runtime | [Camps](/HoBo/primitives/camps/) |
 | **Yard** | Provider control-plane scope | [Yards](/HoBo/primitives/yards/) |
 | **Junction** | Cross-yard federation | [Junctions](/HoBo/primitives/junctions/) |
@@ -23,7 +24,7 @@ HoBo’s vocabulary is small on purpose. Learn these nouns once; every guide and
 |---|---|---|
 | **Station** | Hard isolation for a Conductor | [Stations](/HoBo/primitives/stations/) |
 | **Trail** | App-owned continuous migration recipe | [Trails](/HoBo/primitives/trails/) |
-| **Resources** | Catalog factories inside a Bindle | [Resource catalog](/HoBo/primitives/resources/) |
+| **Resources** | Catalog factories (App Kits + Infra Kits) | [Resource catalog](/HoBo/primitives/resources/) |
 
 ## Not primitives (but nearby)
 

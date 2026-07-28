@@ -6,7 +6,9 @@ description: "Component Model membrane: ports as WIT, apps as components, deny-b
 
 # WASM & WIT surface
 
-HoBo’s portability membrane is **WIT/WASM** (Component Model / wasmCloud-shaped). TypeScript is the first reference implementation language, not a requirement for the architecture.
+HoBo’s portability **membrane** is **WIT/WASM** (Component Model / wasmCloud-shaped). TypeScript is the first reference implementation language, not a requirement for the architecture.
+
+Do not confuse the membrane with **[App Kits](/HoBo/primitives/app-kits/)** (Bindle-declared `api`/`web`/`service`/… surfaces). Kits compose ports at authoring time; the membrane is the low-level capability boundary those ports implement.
 
 ## Why WIT
 

@@ -49,8 +49,10 @@ description: "Site-facing definitions for HoBo primitives, ports, contracts, eff
 | **Secretless-first** | Prefer federation/bindings over stored secrets |
 | **can-deploy** | Compatibility matrix diagnostic for producer/consumer skew |
 | **can-trail** | Gate dimension for Trail readiness |
-| **WIT** | Wasm Interface Types — component capability membrane |
-| **Session Replay** | Privacy-first DOM/session reconstruction (`@hobo/replay`, ADR-0137); `replay.*` — not event-log replay |
+| **WIT** | Wasm Interface Types — the low-level capability **membrane** (wRPC portability contract) |
+| **App Kit (Kit)** | Bindle-declared application surface (`api`, `web`, `service`, `ui`, `websocket`, `job`, `wasm-component`). Prefer over "membrane type" at authoring. Session Replay default-on. |
+| **Infra Kit** | Bindle port/infra resource (`kv`, `bucket`, `queue`, …) — not an entrypoint host; no default Session Replay |
+| **Session Replay** | Privacy-first DOM/session reconstruction on every App Kit (`@hobo/replay`, ADR-0137); `replay.*` — not event-log replay |
 | **Event-log replay** | Folding durable EventStore facts for projections/audit — different from Session Replay |
 
 Longer design glossary lives in the repo design suite; this page is the **site-facing** subset for humans and agents reading Pages.

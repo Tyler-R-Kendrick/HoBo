@@ -1,12 +1,12 @@
 ---
 layout: ../../layouts/Docs.astro
 title: Session Replay
-description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): rrweb-compatible capture, dual fixtures, replay.* events, CLI, and naming split from event-log replay."
+description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): default on every App Kit, dual fixtures, replay.* events, CLI, and naming split from event-log replay and the WIT membrane."
 ---
 
 # Session Replay
 
-**Session Replay** reconstructs user DOM/sessions for debugging and support. Package **`@hobo/replay`** (ADR-0137). It is **not** control-plane event-log replay and **not** auth `session.*`.
+**Session Replay** reconstructs user DOM/sessions (and Kit-level interactive capture) for debugging and support. Package **`@hobo/replay`** (ADR-0137). It is **not** control-plane event-log replay and **not** auth `session.*`.
 
 ## Naming split (critical)
 
@@ -15,6 +15,8 @@ description: "Privacy-first Session Replay (@hobo/replay, ADR-0137): rrweb-compa
 | **Event-log replay** | Fold durable facts for projections/audit | EventStore / `hobo inspect` |
 | **Auth session** | Login/refresh/revoke | `session.Started` / `Refreshed` / `Revoked` |
 | **Session Replay** | DOM/session reconstruction | `replay.*` + `@hobo/replay` |
+| **App Kit** | Bindle-declared app surface (`api`, `web`, `service`, …) | `@hobo/bindles` `APP_KIT_KINDS` |
+| **Membrane** | WIT/WASM portability contract (wRPC) | ADR-0069 — **not** a Kit synonym |
 
 Heavy rrweb streams **never** enter the control-plane event log — only content-addressed blob refs.
 
@@ -22,35 +24,50 @@ Heavy rrweb streams **never** enter the control-plane event log — only content
 
 | Environment | Default |
 |---|---|
-| Local / dual fixtures / Station air-gap / web templates | **On** (zero Bindle config) |
+| Local / dual fixtures / Station air-gap / every **App Kit** | **On** (zero Bindle config) |
 | Production / staging | **Off** unless OpenFeature `hobo.session-replay` or sample rate |
 | Kill switch | `HOBO_REPLAY=0` (or flag false) |
 
-## Deep Bindle web integration
+## Deep Bindle integration (App Kits)
 
-Every Bindle **`web`** resource receives a default platform annotation `session-replay` at construction (ADR-0137 §10). App authors do **not** need to wire a tracker for local DX.
+Every **App Kit** receives a default platform annotation `session-replay` at construction (ADR-0137 §10) — **not only** `web`:
+
+| App Kit | Kind | Default Session Replay |
+|---|---|---|
+| API Kit | `api` | **On** |
+| Web Kit | `web` | **On** |
+| Service Kit | `service` | **On** |
+| UI Kit | `ui` | **On** |
+| Realtime Kit | `websocket` | **On** |
+| Job Kit | `job` | **On** |
+| Component Kit | `wasm-component` | **On** |
+
+**Infra Kits** (`kv`, `bucket`, `queue`, `topic`, `secret`, `data`, …) are **not** entrypoint hosts — no default Session Replay.
+
+Local Yard / `hobo dev` wraps every **HTTP App Kit** (`api`, `web`, `service`, `ui`) so HTML gets a privacy-first bootstrap and `/__hobo/replay/*` serves ingest/list — **no app tracker code required**. JSON API Kits still expose the ingest path on the same wrap.
 
 | Piece | Package / surface |
 |---|---|
 | Annotation helper | `sessionReplay({ enabled?, sampleRate? })` from `@hobo/bindles` |
+| Kit taxonomy | `APP_KIT_KINDS`, `isAppKitKind`, `appKitLabel` |
 | Runtime plan + wrap | `@hobo/replay` bindle integration |
-| Local host | `hobo dev` / Yard entrypoints inject privacy-first HTML bootstrap |
-| Ingest path | `/__hobo/replay/*` served by the host (list/open/ingest) |
-| Response marker | `x-hobo-session-replay: 1` when wrap applied |
+| Local host | `hobo dev` / Yard entrypoints |
+| Ingest path | `/__hobo/replay/*` |
+| Response marker | `x-hobo-session-replay: 1` when HTML wrap applied |
 
 ```ts
 import { bindle, sessionReplay } from "@hobo/bindles";
 
-export default bindle("app", (b) => {
-  // web is Session-Replay capable by default
-  const web = b.web(() => handler);
-  // opt out a surface:
-  // const web = b.web(() => handler).with(sessionReplay({ enabled: false }));
-  return { web };
+export default bindle("shop", (b) => {
+  const api = b.api(() => apiHandler);     // API Kit — Session Replay default-on
+  const web = b.web(() => storefront);   // Web Kit — Session Replay default-on
+  const worker = b.service(() => worker); // Service Kit — Session Replay default-on
+  const cache = b.kv();                  // Infra Kit — no default Session Replay
+  // opt out one Kit:
+  // const api = b.api(() => apiHandler).with(sessionReplay({ enabled: false }));
+  return { api, web, worker, cache };
 });
 ```
-
-API / non-web resources are **not** auto-annotated.
 
 ## Privacy (client-side before send/persist)
 
@@ -70,7 +87,7 @@ hobo replay open <sessionId>
 hobo replay retention
 ```
 
-MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation stays on CLI under policy/PAM.
+MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation stays on CLI under policy/PAM. `doctor` lists PACT boundary ids.
 
 ## Event family (`replay.*`)
 
@@ -80,12 +97,14 @@ MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation
 
 | Composes with | How |
 |---|---|
+| **App Kits** | Default annotation + host wrap on every Kit |
 | **Station** | Isolation + local path |
 | **Harness / OpenFeature** | Prod enablement + sampling |
 | **Trails** | Platform recipe `replay.retention` |
 | **Continuous identity** | Principal refs only |
 | **Metering** | Ingest bytes, storage, player access |
 | **PAM** | Access policy for open/list |
+| **PACT** | Every integration boundary (including internal) via `createReplayHttpSurface` |
 
 ## Performance budget (targets)
 
@@ -104,4 +123,4 @@ MCP tool parity via canonical verbs. Player surfaces are read-oriented; mutation
 
 ## Related
 
-[Trail map](/HoBo/guide/status/) · [Harness](/HoBo/reference/harness/) · [CLI](/HoBo/reference/cli/) · [Event families](/HoBo/reference/events/) · [Dual fixtures](/HoBo/testing/dual-fixtures/) · [Stations](/HoBo/primitives/stations/)
+[Bindles](/HoBo/primitives/bindles/) · [App Kits](/HoBo/primitives/app-kits/) · [Trail map](/HoBo/guide/status/) · [Harness](/HoBo/reference/harness/) · [CLI](/HoBo/reference/cli/) · [Event families](/HoBo/reference/events/) · [Dual fixtures](/HoBo/testing/dual-fixtures/) · [Stations](/HoBo/primitives/stations/)

@@ -37,6 +37,7 @@ export const nav: NavGroup[] = [
 		items: [
 			{ label: "Meet the primitives", slug: "/primitives/" },
 			{ label: "Bindles", slug: "/primitives/bindles/" },
+			{ label: "App Kits", slug: "/primitives/app-kits/" },
 			{ label: "Camps", slug: "/primitives/camps/" },
 			{ label: "Yards", slug: "/primitives/yards/" },
 			{ label: "Junctions", slug: "/primitives/junctions/" },

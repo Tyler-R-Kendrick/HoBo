@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "GitHub Pages site for HoBo: landing page, developer docs, and agent docs.",
+  "hobo": {
+    "webUi": true
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",

@@ -26,6 +26,9 @@ importers:
       '@cucumber/cucumber':
         specifier: ^13.0.0
         version: 13.0.0
+      '@google/design.md':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@types/node':
         specifier: ^24.13.2
         version: 24.13.2

@@ -161,7 +161,18 @@ export function selectRelevantChecks(
 			!workspaceFor(file),
 	);
 	const uiChanged =
-		touched(["apps/web", "packages/ui"]) || touchedAny([/\.(tsx|jsx|css)$/u]);
+		touched(["apps/web", "packages/ui", "site"]) ||
+		touchedAny([
+			/\.(tsx|jsx|css|astro)$/u,
+			/(^|\/)DESIGN\.md$/u,
+			/^scripts\/check-design-md\.mts$/u,
+		]);
+	const designMdChanged =
+		touchedAny([
+			/(^|\/)DESIGN\.md$/u,
+			/^scripts\/check-design-md\.mts$/u,
+			/^site\/(src\/styles|src\/components|src\/layouts)\//u,
+		]) || uiChanged;
 	const behaviorChanged =
 		touched(["tests/behavior"]) ||
 		// Feature files and step definitions live inside proof packages
@@ -416,6 +427,17 @@ export function selectRelevantChecks(
 		});
 	}
 
+	// Google DESIGN.md visual contract for every web UI package (site + future apps).
+	// Pre-commit routes here via check:relevant:staged when UI/DESIGN.md changes.
+	if (designMdChanged || automationChanged) {
+		checks.push({
+			command: "pnpm",
+			args: ["run", "design:lint"],
+			reason:
+				"web UI or DESIGN.md changed; Google designmd lint must pass for all web UI projects",
+		});
+	}
+
 	if (sourceChanged || automationChanged) {
 		checks.push({
 			command: "pnpm",
@@ -458,6 +480,7 @@ export function selectRelevantChecks(
 		schemaChanged && "schema",
 		pactChanged && "contract",
 		uiChanged && "ui",
+		designMdChanged && "design-md",
 		behaviorChanged && "behavior",
 		visualChanged && "visual",
 		agentEvalChanged && "agent-eval",
